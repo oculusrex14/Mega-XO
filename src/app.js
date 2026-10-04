@@ -13,6 +13,7 @@ const themeNames={vector:'Vector Light',dark:'Midnight Club',paper:'Paper Club',
 const lightBadges=[['#ead9c5','#715234'],['#e3e8ed','#58646b'],['#dae3f0','#465c7d'],['#f4dfc6','#7c4b20'],['#e3edf4','#4a6276'],['#f5e7b2','#805b0c'],['#d7f0fa','#176d8a'],['#d7efdf','#23673f'],['#eed7f0','#784576'],['#e7defa','#644991'],['#faf0c7','#805b0c']];
 const darkBadges=[['#42372d','#e4c49c'],['#343f48','#d0dce5'],['#283b53','#b8d1f7'],['#4a3526','#f0bf91'],['#314455','#d6eafa'],['#4c4123','#f2d88d'],['#173e52','#9ce2f8'],['#233e31','#a5e4bf'],['#442e49','#e7b8ee'],['#362b51','#d9c2fc'],['#514224','#fff0aa']];
 const icon=n=>I.icon(n),badge=(t,large=false)=>{const c=(['dark','neon'].includes(data.settings.theme)?darkBadges:lightBadges)[t.index];return '<span class="badge-wrap" style="--badge-bg:'+c[0]+';--badge-ink:'+c[1]+'">'+I.badge(t,large)+'</span>';};
+function refreshIcons(){requestAnimationFrame(()=>I.refresh?.());}
 function save(){try{localStorage.setItem(KEY,JSON.stringify(data));}catch{notify('Storage is unavailable. Progress lasts for this session only.');}}
 function notify(text){const t=$('#toast');t.textContent=text;t.classList.add('visible');clearTimeout(toastTimer);toastTimer=setTimeout(()=>t.classList.remove('visible'),2800);}
 function applyTheme(){document.documentElement.dataset.theme=data.settings.theme;document.documentElement.dataset.motion=data.settings.motion?'reduced':'full';document.querySelector('meta[name="theme-color"]').content=getComputedStyle(document.documentElement).getPropertyValue('--surface').trim();}
@@ -29,6 +30,7 @@ function render(){
  $('#walletAmount').textContent=data.wallet.coins.toLocaleString();
  $('#navigation').innerHTML=[['play','Play','board'],['friends','Friends','users'],['rank','Rank','trophy'],['stats','Stats','chart'],['quests','Quests','quest']].map(([id,name,symbol])=>'<button class="nav-button '+(id===page?'active':'')+'" data-action="nav" data-value="'+id+'" '+(id===page?'aria-current="page"':'')+'>'+icon(symbol)+'<span>'+name+'</span></button>').join('');
  $('#page').innerHTML=({play:home,friends:friends,rank:ranks,stats:statsView,quests:quests})[page]();
+ refreshIcons();
 }
 function home(){
  const desc={Beginner:'Learning the rules. Plenty of room to experiment.',Easy:'Spots simple wins and blocks.',Medium:'Looks ahead and considers where each move sends you next.',Hard:'Deeper search and fewer tactical mistakes.',Expert:'The strongest offline search, with the least room for mistakes.'}[difficulty];
@@ -43,7 +45,7 @@ function home(){
  '<button class="card rank-summary" data-action="nav" data-value="rank">'+badge(D.TIERS[0])+'<span class="grow"><b>Your ranked journey starts here</b><small>Unranked &middot; 0 / 10 placement games</small></span>'+icon('arrow')+'</button>'+
  '<div class="section-heading"><h3>Choose mode</h3><span class="eyebrow">OFFLINE READY</span></div><div class="mode-list">'+modes.map(([id,sym,title,desc])=>'<button class="mode '+(id===mode?'active':'')+'" data-action="mode" data-value="'+id+'" aria-pressed="'+(id===mode)+'"><span class="mode-symbol">'+icon(sym)+'</span><span class="mode-copy"><strong>'+title+'</strong><small>'+desc+'</small></span>'+icon('arrow')+'</button>').join('')+'</div>'+setup+
  fullButton(icon('play')+cta,'start')+
- '<button class="learn" data-action="tutorial">'+icon('help')+'<span><strong>New to Mega XO?</strong><small>Learn the rules in under a minute</small></span>'+icon('arrow')+'</button>'+
+ '<button class="learn" data-action="tutorial">'+icon('tutorial')+'<span><strong>New to Mega XO?</strong><small>Learn the rules in under a minute</small></span>'+icon('arrow')+'</button>'+
  '<div class="home-quests"><span><b>Daily quests</b><small>Earn coins through play.</small></span>'+button('View quests','nav','quests',true)+'</div>';
 }
 function friends(){return '<h2>Friends</h2><p class="caption">A good rivalry deserves another game.</p><div class="two-fields"><label class="field">Username<input id="friendName" placeholder="Find a player" maxlength="30"></label>'+button('Find player','findfriend','',true)+'</div>'+empty('users','Bring your favourite rival','Friend search and invitations will connect to real accounts. No requests are sent from this local preview.')+fullButton('Preview friend challenge','challenge','friend',true)+'<div class="note">Choose free play or an earned-coin stake proposal. Both players must agree before any coins could be reserved. Purchased currency cannot be staked.</div>';}
@@ -68,7 +70,7 @@ function ranks(){const t=rankLeague==='all'?D.tier('grandmaster'):D.tier(rankLea
 function quests(){const d=D.getDaily(data);const remaining=Math.max(0,100-d.botPaid);return '<h2>A reason for one more</h2><p class="caption">Small goals. Coins for playing, not paying.</p><div class="status-line">'+icon('clock')+'Resets at 00:00 UTC &middot; '+D.day()+'</div><div class="note">On-device preview rewards only. Online verification will be required before coins can enter any live economy.</div>'+D.QUESTS.map(q=>{const count=Math.min(q.target,d[q.metric]||0),done=d.claimed.includes(q.id),ready=count>=q.target&&!q.online;return '<div class="quest"><div><strong>'+q.title+'</strong><p>'+q.desc+'</p><div class="progress" aria-label="'+Math.round(count/q.target*100)+' percent"><span style="width:'+Math.min(100,count/q.target*100)+'%"></span></div><p>'+ (q.metric==='seconds'?seconds(count)+' / 10:00':count+' / '+q.target)+(q.online?' &middot; needs online play':'')+'</p></div><div class="quest-side"><span class="reward">'+icon('coin')+' '+q.reward+'</span><button class="button quiet" data-action="claim" data-value="'+q.id+'" '+(!ready||done?'disabled':'')+'>'+(done?'Claimed':'Claim')+'</button></div></div>';}).join('')+'<div class="section-heading"><h3>Bot rewards</h3><span class="pill">'+remaining+' / 100 left today</span></div>'+G.LEVELS.map(l=>'<div class="split"><span>'+l+'</span><span class="amount">'+D.BOT_PAY[l]+' coins / win</span></div>').join('')+'<p class="caption">Maximum 5 rewarded wins per difficulty and 100 bot coins per UTC day. Full games only: at least 12 moves and 30 active seconds. No rewards for restarts, resignations, local two-player or tutorial practice.</p>'+fullButton('Open wallet','wallet','',true);}
 function sheetOpen(){return !$('#sheet').hidden;}
 function open(title,html,kind='info'){
- clearTimeout(botTimer);botTimer=null;sheetKind=kind;$('#sheetTitle').textContent=title;$('#sheetBody').innerHTML=html;$('#sheet').dataset.kind=kind;$('#sheetBackdrop').hidden=false;$('#sheet').hidden=false;$('#sheet').scrollTop=0;lastTick=performance.now();
+ clearTimeout(botTimer);botTimer=null;sheetKind=kind;$('#sheetTitle').textContent=title;$('#sheetBody').innerHTML=html;$('#sheet').dataset.kind=kind;$('#sheetBackdrop').hidden=false;$('#sheet').hidden=false;$('#sheet').scrollTop=0;lastTick=performance.now();refreshIcons();
 }
 function close(){if($('#sheet').hidden)return;$('#sheet').hidden=true;$('#sheetBackdrop').hidden=true;sheetKind='';lastTick=performance.now();lastInput=lastTick;scheduleBot();}
 function settings(){const s=data.settings;
@@ -128,26 +130,16 @@ function preview(b,c){
  if(match.state.mini[c])$('#previewText').textContent='This gives your opponent free choice of any open board.';
  else{miniNodes[c].el.classList.add('preview');$('#previewText').textContent='This sends your opponent to the '+G.NAMES[c].toLowerCase()+' board.';}
 }
-function animateRoute(fromBoard,fromCell,toBoard){
- const overlay=$('#routeOverlay'),wrap=$('#boardWrap');if(!overlay||!wrap||!match)return;
- overlay.innerHTML='';
- miniNodes.forEach(x=>x.el.classList.remove('route-target','free-route-pulse'));
- const origin=cellNodes[fromBoard]?.[fromCell];if(!origin)return;
- if(toBoard===null||match.state.mini[toBoard]){
-   miniNodes.forEach((x,i)=>{if(!match.state.mini[i])x.el.classList.add('free-route-pulse');});
-   setTimeout(()=>miniNodes.forEach(x=>x.el.classList.remove('free-route-pulse')),560);
-   return;
- }
- const target=miniNodes[toBoard]?.el;if(!target)return;
+function animateRoute(b,c,next){
+ const routeOverlay=$('#routeOverlay');routeOverlay.innerHTML="";if(next===null)return;
  requestAnimationFrame(()=>{
-   const wr=wrap.getBoundingClientRect(),a=origin.getBoundingClientRect(),b=target.getBoundingClientRect();
-   const x1=a.left+a.width/2-wr.left,y1=a.top+a.height/2-wr.top,x2=b.left+b.width/2-wr.left,y2=b.top+b.height/2-wr.top;
-   const bend=Math.max(-28,Math.min(28,(x2-x1)*.10));
-   overlay.setAttribute('viewBox','0 0 '+wr.width+' '+wr.height);
-   overlay.innerHTML='<path class="route-path" d="M '+x1+' '+y1+' Q '+((x1+x2)/2+bend)+' '+((y1+y2)/2-16)+' '+x2+' '+y2+'"/><circle class="route-start" cx="'+x1+'" cy="'+y1+'" r="4"/><circle class="route-end" cx="'+x2+'" cy="'+y2+'" r="5"/>';
-   const path=overlay.querySelector('.route-path'),len=path?.getTotalLength?.()||180;if(path){path.style.setProperty('--route-length',len);path.style.strokeDasharray=len;path.style.strokeDashoffset=len;}
+   const wrap=$('#boardWrap').getBoundingClientRect(),cell=cellNodes[b]?.[c],target=miniNodes[next]?.el;
+   if(!cell||!target)return;const a=cell.getBoundingClientRect(),t=target.getBoundingClientRect();
+   const x1=a.left+a.width/2-wrap.left,y1=a.top+a.height/2-wrap.top,x2=t.left+t.width/2-wrap.left,y2=t.top+t.height/2-wrap.top;
+   routeOverlay.setAttribute("viewBox","0 0 "+wrap.width+" "+wrap.height);
+   routeOverlay.innerHTML='<line x1="'+x1+'" y1="'+y1+'" x2="'+x2+'" y2="'+y2+'"/><circle cx="'+x2+'" cy="'+y2+'" r="5"/>';
    target.classList.add('route-target');
-   setTimeout(()=>{overlay.innerHTML='';target.classList.remove('route-target');},data.settings.motion?260:820);
+   setTimeout(()=>{routeOverlay.innerHTML="";target.classList.remove('route-target');},700);
  });
 }
 function humanMove(b,c){if(!match||match.state.winner||sheetOpen()||(match.mode==='bot'&&match.state.turn==='O'))return;lastInput=performance.now();if(data.settings.confirm&&(!match.pending||match.pending.b!==b||match.pending.c!==c)){match.pending={b,c};preview(b,c);$('#previewText').textContent='Tap the same cell again to confirm.';return;}move({b,c},'human');}
@@ -187,9 +179,9 @@ document.addEventListener('change',e=>{
  else if(el.id==='statsDifficulty'){statsDifficulty=el.value;render();}else if(el.id==='rankScope'){rankScope=el.value;render();}else if(el.id==='rankLeague'){rankLeague=el.value;render();}
  else if(el.id==='profileRegion'){data.profile.region=el.value;save();render();}else if(el.id==='wealthPublic'){data.profile.wealthPublic=el.checked;save();}else if(el.id.startsWith('challenge'))updateQuote();
 });
-for(const [id,name] of [['brandIcon','board'],['coinIcon','coin'],['settingsButton','settings'],['sheetClose','close'],['backIcon','back'],['matchSettings','settings'],['routeIcon','route'],['rulesIcon','help'],['restartIcon','refresh'],['statsIcon','chart']])$('#'+id).innerHTML=icon(name);
-applyTheme();buildBoard();render();save();
+for(const [id,name] of [['brandIcon','board'],['coinIcon','coin'],['settingsButton','settings'],['sheetClose','close'],['backIcon','back'],['matchSettings','sliders'],['routeIcon','route'],['rulesIcon','help'],['restartIcon','refresh'],['statsIcon','chart']])$('#'+id).innerHTML=icon(name);
+refreshIcons();applyTheme();buildBoard();render();save();
 // Read-only diagnostics: no method can credit money, set rank or submit a server result.
-window.MegaXO=Object.freeze({version:'3.2.2',getState:()=>match?structuredClone(match.state):null,getSettings:()=>({...data.settings})});
+window.MegaXO=Object.freeze({version:'3.2.3',getState:()=>match?structuredClone(match.state):null,getSettings:()=>({...data.settings})});
 try{if(!localStorage.getItem('mega_v32_tutorial_seen'))tutorial();}catch{}
 })();

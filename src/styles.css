@@ -157,3 +157,31 @@ body{font-family:'Space Grotesk',ui-sans-serif,system-ui,-apple-system,BlinkMacS
 @keyframes routeTargetExact{50%{box-shadow:0 0 0 4px var(--accent)}}
 /* The old game had no persistent last-move dot; the route line is the movement cue. */
 .cell.last:after{content:none!important}
+
+
+/* V3.2.4 — Friends page restored to the supplied V3.1 layout. */
+.panel-head{padding:20px 0 12px}
+.panel-head h2{font-size:28px;letter-spacing:-1px;margin:5px 0 4px}
+.panel-head p{font-size:12px;color:var(--muted);margin:0}
+.friend-search{display:flex;gap:8px}
+.friend-search-wrap{flex:1;position:relative}
+.friend-search-wrap>.icon{position:absolute;left:11px;top:50%;transform:translateY(-50%);width:16px;height:16px;color:var(--muted);pointer-events:none}
+.friend-search-wrap input{width:100%;height:42px;border:1px solid var(--line);border-radius:13px;background:var(--raised);color:var(--ink);padding:0 12px 0 36px;outline:none}
+.friend-search-wrap input:focus{border-color:var(--ink)}
+.friend-add{height:42px;border:1px solid var(--line);border-radius:13px;background:var(--raised);color:var(--ink);padding:0 12px;display:flex;align-items:center;gap:6px;font-size:11px;font-weight:650}
+.friend-add .icon{width:16px;height:16px}
+.friend-code-card{border:1px solid var(--line);background:var(--raised);border-radius:16px;padding:12px;margin-top:12px;display:flex;align-items:center;gap:10px}
+.friend-code-card>div:first-child{min-width:0}
+.friend-code-card span{display:block;font:500 9px var(--mono);color:var(--muted)}
+.friend-code{font:600 14px var(--mono);letter-spacing:.05em;margin-top:2px}
+.copy-friend{margin-left:auto;border:1px solid var(--line);background:var(--soft);color:var(--ink);border-radius:10px;width:36px;height:36px;display:grid;place-items:center;flex:none}
+.copy-friend .icon{width:16px;height:16px}
+.friends-section-title{font-size:13px;font-weight:700;margin:18px 0 8px;display:flex;align-items:center;justify-content:space-between}
+.friends-section-title small{font:500 9px var(--mono);color:var(--muted)}
+.friend-empty{border:1px dashed var(--line);border-radius:18px;padding:24px 18px;text-align:center;margin-top:14px;background:color-mix(in srgb,var(--raised) 58%,transparent)}
+.friend-empty-icon{width:52px;height:52px;border-radius:17px;background:var(--soft);display:grid;place-items:center;margin:0 auto 10px}
+.friend-empty-icon .icon{width:24px;height:24px}
+.friend-empty b{display:block;font-size:14px}
+.friend-empty p{font-size:11px;color:var(--muted);margin:5px auto 0;max-width:260px;line-height:1.45}
+:root[data-theme="paper"] .friend-code-card,:root[data-theme="paper"] .friend-empty,:root[data-theme="paper"] .friend-search-wrap input,:root[data-theme="paper"] .friend-add{border-radius:9px}
+:root[data-theme="neon"] .friend-code-card,:root[data-theme="neon"] .friend-empty{box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--line) 45%,transparent)}

@@ -6,6 +6,12 @@ const KEY='mega_v32_state',escape=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp
 const parse=(key)=>{try{return JSON.parse(localStorage.getItem(key)||'null');}catch{return null;}};
 let data=parse(KEY);if(!data||data.version!==3.2){data=D.fresh();const old=parse('mega_v3_settings');if(old){Object.assign(data.settings,old);data.settings.haptics=old.haptic!==false;}data.legacy=parse('mega_v3_stats');}
 data.playSeconds=data.playSeconds||{};
+data.profile=data.profile||{};
+if(!data.profile.friendCode){
+ const chars='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';let code='MEGA-';
+ for(let i=0;i<4;i++)code+=chars[Math.floor(Math.random()*chars.length)];
+ data.profile.friendCode=code;
+}
 if(!['vector','dark','paper','neon'].includes(data.settings.theme))data.settings.theme='vector';
 let page='play',mode='bot',difficulty='Medium',first='X',onlineType='ranked',statsMode='bot',statsDifficulty='all',rankLeague='all',rankScope='global',rankMetric='rating',demo=false;
 let match=null,botTimer=null,toastTimer=null,ctx=null,ambient=null,sheetKind='',lastTick=performance.now(),lastInput=performance.now(),lastSave=0;
@@ -48,7 +54,13 @@ function home(){
  '<button class="learn" data-action="tutorial">'+icon('tutorial')+'<span><strong>New to Mega XO?</strong><small>Learn the rules in under a minute</small></span>'+icon('arrow')+'</button>'+
  '<div class="home-quests"><span><b>Daily quests</b><small>Earn coins through play.</small></span>'+button('View quests','nav','quests',true)+'</div>';
 }
-function friends(){return '<h2>Friends</h2><p class="caption">A good rivalry deserves another game.</p><div class="two-fields"><label class="field">Username<input id="friendName" placeholder="Find a player" maxlength="30"></label>'+button('Find player','findfriend','',true)+'</div>'+empty('users','Bring your favourite rival','Friend search and invitations will connect to real accounts. No requests are sent from this local preview.')+fullButton('Preview friend challenge','challenge','friend',true)+'<div class="note">Choose free play or an earned-coin stake proposal. Both players must agree before any coins could be reserved. Purchased currency cannot be staked.</div>';}
+function friends(){
+ return '<div class="panel-head friends-head"><div class="eyebrow">Social</div><h2>Friends</h2><p>Challenge people you know, or add someone you just played.</p></div>'+
+ '<div class="friend-search"><div class="friend-search-wrap">'+icon('search')+'<input id="friendName" placeholder="Search username" maxlength="30" autocomplete="off"></div><button class="friend-add" data-action="findfriend">'+icon('userPlus')+'<span>Add</span></button></div>'+
+ '<div class="friend-code-card"><div><span>YOUR FRIEND CODE</span><div class="friend-code">'+escape(data.profile.friendCode)+'</div></div><button class="copy-friend" data-action="copyfriend" aria-label="Copy friend code">'+icon('copy')+'</button></div>'+
+ '<div class="section-title friends-section-title"><span>Friends</span><small>0 ONLINE</small></div>'+
+ '<div class="friend-empty"><div class="friend-empty-icon">'+icon('usersRound')+'</div><b>Your squad is empty</b><p>Add a friend by username or share your code. Recent online opponents will also appear here once multiplayer is connected.</p></div>';
+}
 function statsView(){const a=D.aggregate(data.records,statsMode,statsDifficulty);return '<h2>Your game, in numbers</h2><p class="caption">Different opponents. Separate records.</p><div class="tabs">'+[['bot','Bot'],['ranked','Ranked'],['casual','Casual'],['friend','Friends']].map(([id,name])=>'<button class="tab '+(statsMode===id?'active':'')+'" data-action="statmode" data-value="'+id+'">'+name+'</button>').join('')+'</div>'+(statsMode==='bot'?field('Bot difficulty','statsDifficulty',opts([['all','All difficulties'],...G.LEVELS.map(x=>[x,x])],statsDifficulty)):'<div class="note">Online results require verified server match records. Offline games are never added here.</div>')+
  '<div class="section-heading"><h3>'+({bot:'Against the bot',ranked:'Ranked matches',casual:'Casual matches',friend:'Friend matches'}[statsMode])+'</h3><span class="eyebrow">'+a.games+' games</span></div><div class="stats-grid">'+[['Win rate',a.winRate===null?'--':(a.winRate*100).toFixed(1)+'%'],['Wins',a.wins],['Average game',seconds(a.averageSeconds)],['Hours played',((data.playSeconds[statsMode+':'+statsDifficulty]??a.hours*3600)/3600).toFixed(2)],['Losses',a.losses],['Draws',a.draws]].map(([label,value])=>'<div class="stat"><span>'+label+'</span><strong>'+value+'</strong></div>').join('')+'</div><p class="caption">Win rate = wins / all completed games, including draws. Average game time uses completed matches. Total hours also includes unfinished sessions. Menus, background time, Pass & Play and tutorial practice are excluded.</p>'+
  (data.legacy?'<div class="note">Your V3.1 summary is preserved: '+(data.legacy.g||0)+' games, '+(data.legacy.w||0)+' bot wins. It is not merged into the new averages because old records did not store mode-specific timing.</div>':'')+
@@ -166,7 +178,9 @@ const actions={
  statmode:v=>{statsMode=v;statsDifficulty='all';render();},metric:v=>{rankMetric=v;render();},league:v=>{rankLeague=v;render();},demo:()=>{demo=!demo;render();},challenge,
  claim:v=>{const n=D.claim(data,v);save();render();notify(n?'Claimed '+n+' coins.':'Quest is not ready.');},cosmetic:v=>{const cost={'Copper edge':30,'Orbit frame':60,'Crown frame':120}[v];try{const ok=D.spend(data,v,cost);save();render();wallet();notify(ok?'Cosmetic added to your local collection.':'Already owned.');}catch(e){notify(e.message==='INSUFFICIENT_COINS'?'Earn a few more coins first.':e.message);}},
  billing:()=>open('Purchases are not connected','<p>Crown packs and Remove Ads need the native store and server receipt verification. There is no payment or purchase confirmation in this preview.</p><div class="note">Paid Crowns buy cosmetics only. They cannot be converted into earned coins, staked, gifted or cashed out. An optional Crown vault compares verified in-game balances, never skill.</div>'+fullButton('Back to wallet','wallet','',true)),
- findfriend:()=>{const name=$('#friendName').value.trim();if(!name)return notify('Enter a username first.');onlineInfo();},practice:()=>{close();mode='bot';difficulty='Beginner';startGame(true);},
+ findfriend:()=>{const name=$('#friendName').value.trim();if(!name)return notify('Enter a username first.');onlineInfo();},
+ copyfriend:()=>{const code=data.profile.friendCode;if(navigator.clipboard?.writeText)navigator.clipboard.writeText(code).then(()=>notify('Friend code copied.')).catch(()=>notify(code));else notify(code);},
+ practice:()=>{close();mode='bot';difficulty='Beginner';startGame(true);},
  leave:()=>{if(!match||match.state.winner)return leave();open('Leave this game?','<p>Your current offline match will be discarded. No coins or completed-game stats are awarded.</p>'+fullButton('Leave game','home')+fullButton('Keep playing','close','',true));},
  home:leave,restart:()=>open('Start a new game?','<p>This discards the current match, without rewards.</p>'+fullButton('Start again','restartyes')+fullButton('Keep playing','close','',true)),restartyes:()=>{close();startGame();},
  rematch:()=>{close();startGame(match?.practice||false,true);},resign:()=>{if(!match||match.state.winner)return;open('Resign?','<p>A bot game resignation counts as a loss, but gives no coins.</p>'+fullButton('Resign match','resignyes')+fullButton('Keep playing','close','',true));},
@@ -182,6 +196,6 @@ document.addEventListener('change',e=>{
 for(const [id,name] of [['brandIcon','board'],['coinIcon','coin'],['settingsButton','settings'],['sheetClose','close'],['backIcon','back'],['matchSettings','sliders'],['routeIcon','route'],['rulesIcon','help'],['restartIcon','refresh'],['statsIcon','chart']])$('#'+id).innerHTML=icon(name);
 refreshIcons();applyTheme();buildBoard();render();save();
 // Read-only diagnostics: no method can credit money, set rank or submit a server result.
-window.MegaXO=Object.freeze({version:'3.2.3',getState:()=>match?structuredClone(match.state):null,getSettings:()=>({...data.settings})});
+window.MegaXO=Object.freeze({version:'3.2.4',getState:()=>match?structuredClone(match.state):null,getSettings:()=>({...data.settings})});
 try{if(!localStorage.getItem('mega_v32_tutorial_seen'))tutorial();}catch{}
 })();

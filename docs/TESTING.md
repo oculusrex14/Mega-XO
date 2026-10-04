@@ -1,31 +1,21 @@
-# V3.2 validation report
+# economy-1 test evidence
 
-## Automated domain tests
+## Executed in this run
 
-`npm test`: **24 passed, 0 failed**.
+55 Node tests passed: 25 rules/domain tests, 21 authority tests, 5 durable-store tests and 4 HTTP tests. The rules tests also run 200 seeded complete games. Commands: `npm test`, `npm run test:balance`.
 
-Coverage includes opening 81 cells, index-zero routing, resolved/free-choice destinations, self-send after a claim, no DRAW ownership line, immediate Mega victory, invalid input, 200 seeded complete random games, legal bot output, immediate strategic wins, symmetric Elo, elite caps, small-population gates, 50/50 arithmetic, mode separation, durations, reward caps, repeated IDs, excluded reward modes, UTC claims, cosmetic overspend, top-20/privacy filters, disabled paid stakes, atomic two-wallet reservation, void refunds, stale turns/revisions, idempotency conflicts and server timeouts.
+Coverage includes all 121 league price pairings, reversible/no-arbitrage conversion, idempotency conflicts, safe-integer bounds, zero-sum bounded Elo, placement/elite caps, bot caps, quest duplicate claims, weekly eligibility/pro-rating, contributor-specific refunds, direct/queue payer separation, rejected/unfunded offers, stale quotes, timeout/resignation, randomized payer-independent symbols, native receipt replay/refund holds, persistence after restart, independent SQLite connections, role isolation and authenticated HTTP routes.
 
-This does not establish a statistically measured Elo difference between bot levels. The bots have distinct increasing search budgets and tactical tests; large-scale strength calibration is future work.
+Functional Chromium test passed two scenarios:
+1. Offline wallet exchange both ways, no invented rank rows, five navigation tabs, local send rule, all four theme IDs preserving state, actual bot reply and straight route overlay.
+2. Two authenticated TEST clients through the actual HTTP handler/SQLite authority: real fixture leaderboard, Gold-to-Diamond 26-Crown quote, challenger-funded consent, invitee zero debit, alternating validated moves, resignation settlement and Elo. Alice went from 100 to 74 Crowns; Bob from 0 to 13; 13 burned.
 
-## Browser validation
+The browser's loopback navigation was blocked by the execution environment. The test injected the actual HTML/JS and bridged browser fetch requests to the loopback HTTP server using Python. External fonts/icons were blocked; a test-only sheet/overlay positioning shim was used with the locally available historical CSS fixture. Therefore these are FUNCTIONAL/STATE checks, not a new pixel-equivalence, font, accessibility or four-theme contrast audit. Production theme CSS/game.js/icons.js are intentionally excluded from this commit.
 
-Headless Chromium rendered the actual app source. All four themes were exercised through the settings UI, including bot replies, persistent cell geometry and settings changes during a game. Viewports: 320x568, 360x640, 390x844, 430x932 and 768x1024. A complete pass-and-play match was clicked through without board size changes on claims and without personal-stat pollution. No JavaScript page errors were recorded.
+The balance script uses exact binomial expectations, not Monte Carlo promises: ten same-league ranked games/day, seven days, 50% win chance, no draws, complete weekly qualification and no quests/bots. Expected net Coins are positive across all leagues (+400 Wood through +1,036.64 Grandmaster). It also reports a 30% win scenario. These assumptions do not predict player behaviour, retention, revenue, within-week liquidity or profitability.
 
-Additional UI tests passed: mode-filtered wins/time/rate, quest claiming and disabled re-claim, cosmetic duplicate-spend protection, global/league/country top-20 filtering, friend and leaderboard quote math, preserved turn timer after a theme change, a bot-first opening, the four-mode home flow, chip-based setup controls, and the restored bottom-sheet Settings/Tutorial interactions.
+## Still required before release
 
-`tests/contrast.py`: **44 semantic color-pair checks passed**. See THEMES.md.
+Real identity integration; native store verification/billing sandbox tests; matchmaking deployment; reviewed paid-entry territories and age controls; offline-result verification; multi-process load and recovery drills; solver/collusion fraud review; native iOS/Android testing; real-font visual regression; accessibility and spending-protection audits. The SQLite snapshot design favors first-service correctness over throughput and was not load-tested for a large player population.
 
-## Test-environment limitation
-
-The environment blocks browser URL navigation, including localhost and file URLs. Browser tests therefore inject the real HTML/CSS/JS into Chromium and use a small controlled localStorage adapter. Serialization and reinitialization were tested. This is not a claim that native device storage, real HTTP delivery, App Store behavior, web payments or production networking were tested.
-
-To rerun UI tests, install Python Playwright and Chromium. Set CHROMIUM_EXECUTABLE when using a non-default browser path. Test artifacts are intentionally not committed.
-
-## Manual release checklist still open
-
-- Actual iOS/Android devices, safe areas, font scaling and screen readers.
-- Native-store receipts, entitlement restoration, refunds and regional billing.
-- Auth/session expiry, WebSocket/SSE recovery and multiplayer outage refunds.
-- Durable DB concurrency, kill-switch operation and ledger reconciliation.
-- Legal classification and age/jurisdiction policy for any stake feature.
+Run commands from the README. `.artifacts/` contains local run logs but is not a source dependency or production user data. Test identities exist only under `tests/`.

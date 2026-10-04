@@ -1,61 +1,55 @@
-# Mega XO - V3.2.1
+# Mega XO - V3.2.1 / economy-1
 
-A playable offline prototype with authored themes, mode-specific statistics, a league gallery and a deliberately separated cosmetic economy. The V3.2 continuity pass restores the strongest V3.1 interaction patterns instead of redesigning the whole shell.
+The final Figma appearance packs and restored game UI remain intact. This update implements the revised skill/wealth economy: reversible Coins/Crowns, ranked direct challenges, challenger-funded pots, gap pricing, weekly league rewards and a clean Rank/Wallet experience.
 
-## Run
+## Run and test
 
-Open `index.html` with the `src` folder next to it, or run `npm start` and visit localhost:8080. There are no JavaScript packages or image downloads required at runtime. The theme packs load Space Grotesk + IBM Plex Mono, Paper Club adds Caveat + Patrick Hand, and After Hours adds Orbitron + Chakra Petch + Share Tech Mono; every family has a system fallback. `npm test` runs the Node regression suite.
+Open `index.html` with `src` beside it, or `npm start` for the static UI. Node 22.13+ is needed for server/SQLite tests; Node 22.16 was used here (`node:sqlite` reports its experimental status in that release).
 
-## What works
+- `npm test`: rules, economy, authority, durable transactions and authenticated HTTP tests.
+- `npm run test:balance`: reproducible mathematical balance scenarios.
+- `npm run test:ui`: functional Chromium checks, including two test clients against the real local HTTP/SQLite service. Requires Python Playwright and Chromium.
 
-- The complete 81-cell game, all routing/draw rules, five offline bot levels and local pass-and-play.
-- Vector Light, Midnight Club, Paper Club and After Hours. Every filled control has a paired foreground token. Theme changes preserve the game and remaining timer.
-- Restored V3.1 UI continuity: Space Grotesk + IBM Plex Mono, a floating island bottom bar with scroll-behind content, bottom-sheet Settings/Tutorial, four home modes, chip-based match setup, and the board-first match screen.
-- V3.2.3 restores the supplied V3.1 interaction details exactly where requested: Lucide UI icons (including Settings 2, Sliders Horizontal, Swords, Graduation Cap and the older navigation family), the original straight route line + destination dot animation, no persistent last-move dot, while retaining V3.2's improved exact-cell hover and destination preview. Quests remains the fifth floating-nav destination and timer-off remains the infinity symbol.
-- V3.2.4 restores the V3.1 Friends page structure: Social/Friends header, username search + Add action, persistent friend code with copy button, online-count section header, and the original empty-state presentation. The newer standalone challenge/economy block is removed from the Friends landing screen for now.
-- Play Online is one home mode with Ranked/Casual choices; Private Match keeps its dedicated Open Private Lobby action. Quests remains the fifth floating-nav destination.
-- Lucide UI icons plus eleven original rank emblems. No emoji icon substitutes.
-- Tutorial and unrewarded Beginner practice.
-- Separate Bot, Ranked, Casual and Friend stat views: wins, win rate, average completed-game time, total active hours, losses and draws. Online views stay empty without verified results. Pass-and-play is excluded.
-- On-device quests, capped bot rewards, a local wallet ledger, duplicate-claim protection and cosmetic ownership previews.
-- All eleven league presentations, Global/Country and league filters, top-20 lists and separate skill/earned-coin/cosmetic-crown views. Fictional preview data requires an explicit click and is labelled.
-- Friend and leaderboard challenge quotations, including the 50/50 burn/payout arithmetic. Quotes do not move money.
+Google Fonts and the existing Lucide 0.468.0 script remain the same UI dependencies. Theme CSS, game.js and icons.js are not changed by this economy pass.
 
-## What is NOT live
+## Product rules
 
-Authentication, actual online matches, live rankings, real friend invitations, purchases, notifications and coin-stake play are **not connected**. The browser never claims a payment succeeded or a bot is a human. Local balances cannot be trusted or imported as spendable server balances.
+10 Coins = 1 Crown, both directions, no fee. Skill uses K=24 Elo; wealth uses Coins + 10*Crowns, including reserved balances. Purchases count toward wealth only. Global/country and per-league top-20 lists use real server data, with no fictional rankings bundled in the application.
 
-`src/authority.js` is a **server-only, in-memory reference**, not a deployable financial service. It tests consent, legal moves, revisions, idempotency, escrow, refunds and settlement. A real service still needs authenticated APIs, durable database transactions, receipt verification, jurisdiction/age controls, abuse review and operations. Stake functionality is disabled by default; paid-currency stakes are rejected.
+Matched ranked games: equal Coin contributions, half the pot burned, half to the winner. Direct ranked challenges: challenger pays the entire Crown pot; invitee pays zero. The same 50/50 split applies. Unranked games are free. Friend pot max 20 Crowns = 200 Coins. Leaderboard minimum grows with target league and upward league gap, without a business ceiling. Both players must approve the terms.
 
-## Product decisions
+Weekly rewards are posted after completed UTC weeks from qualified play and daily rank snapshots. Grandmaster/Master/Champion caps and qualification remain the approved system, with weekly title allocation. Purchases never increase Elo, its K factor, win bonus multiplier or league eligibility.
 
-1. Elo determines skill; percentile is informational. Wood through Emerald are open leagues. Elite caps are exclusive: up to 20 Grandmasters, the next 200 Masters and the next 1,000 Champions, subject to eligibility and floors.
-2. Earned **Coins** and purchased cosmetic **Crowns** are separate. No conversion, gifting or cash-out. Paid currency never enters a match pot. Any earned-coin stake system remains subject to legal review.
-3. A 50% pot burn means the winner only recovers their own entry fee before a separate bonus. The UI explicitly shows this.
-4. V3.1 summaries are preserved separately because they cannot reconstruct mode-specific time. No historical hours are invented.
+Full formulas, examples, reward table, business assumptions and sources are in [PRODUCT.md](docs/PRODUCT.md). [ECONOMY-PLAN.md](docs/ECONOMY-PLAN.md) maps the requested changes to implementation. [SECURITY.md](docs/SECURITY.md) lists actual safeguards and outstanding release gates. [TESTING.md](docs/TESTING.md) records what was run.
 
-Read [the delivery plan](docs/V3.2-PLAN.md), [economy and rank rules](docs/PRODUCT.md), [theme contracts](docs/THEMES.md), [security requirements](docs/SECURITY.md) and [test evidence](docs/TESTING.md).
+## Implemented versus deployed
 
-## Structure
+The static app has local conversions, bot rewards, clean league/wealth views, online challenge/consent flows, and a same-origin API adapter. The repository now includes a durable SQLite economy authority and authenticated HTTP integration surface. Tests exercise actual move validation, settlement, Elo, refunds, receipt replay and restart durability.
 
-- `src/game.js`: pure rules and budgeted iterative-deepening AI.
-- `src/domain.js`: tiers, Elo helper, fee quotes, stat aggregation, quests and local economy.
-- `src/app.js`: rendering, pause-aware clocks, persistence and page flows.
-- `src/icons.js`: original SVG icons and rank emblems.
-- `src/styles.css`: all four theme contracts and fixed gameplay geometry.
-- `src/authority.js`: server-only settlement reference; not loaded by the browser.
-- `tests`: rules/economy, browser interaction and color-contrast regressions.
+This does not provision or deploy identity, matchmaking or native billing. Paid entries are disabled until a server owner supplies jurisdiction/platform/account eligibility. The UI reports an unavailable service instead of inventing an opponent or purchase. Developer notes and fictional preview controls are removed from the game; necessary pricing/consent and unavailable states remain.
 
-This branch is a development preview, not an App Store-ready release.
+Offline rewards are stored on the device. They are convertible there but cannot be imported into an account wallet merely because a client reports a balance. Verified online rewards/purchases use a separate server journal. Verified bot/offline ingestion remains a release requirement, not an implemented anti-tamper claim.
 
+## Server integration
 
-## V3.2.1 final appearance packs
+`server/http.js` exports `createHandler({store, authenticate, origin, matchmaker})`. Authentication must resolve a real account ID from a verified session. It must NOT use the loopback test identity header.
 
-This branch keeps the V3.2 game, navigation, friends, rank, quests, stats and interaction behavior unchanged. Only the four appearance packs were replaced with the final Figma-authored designs from `Design Game Themes.zip`:
+`server/economy-store.js` exports `DurableStore(path, authorityOptions)`. The options include `paidEntryEnabled`, per-account/quote `eligibility`, and an account-bound native-store `verifyPurchase` callback. Operator provisioning is separate from player commands. Player JSON never controls actor IDs or grants.
 
-- **Vector Light** — clean neutral Vector Relay baseline.
-- **Midnight Club** — deep slate surfaces, soft highlights and lime tactical accents.
-- **Paper Club** — spiral-notebook paper, hand-drawn typography, irregular ink edges and warm printed colors.
-- **After Hours** — purple arcade shell, cyan/pink marks, yellow signal accents, scanlines and retro display typography.
+`server/jobs.js` exports `startMaintenance(store)` for expiry/timeout processing, daily snapshots and retry-safe weekly rewards. It belongs in the deployed service, not the browser.
 
-Existing saved `dark`, `paper` and `neon` preferences migrate automatically to `midnight`, `paperclub` and `afterhours`. Theme changes remain visual only and preserve match state, timers and board geometry.
+`src/network.js` targets `/api/v1`. Optional native bridge contract: `MegaBilling.products()` returns localized product IDs/prices; `MegaBilling.purchase(productId)` returns native evidence for SERVER verification; `MegaBilling.restore()` handles the applicable native restoration flow. A client-only success flag never grants Crowns.
+
+## Files
+
+- `src/game.js`: unchanged pure Mega Tic-Tac-Toe rules and offline AI.
+- `src/domain.js`: versioned economic formulas, conversions, Elo, leagues, rewards, aggregation.
+- `src/authority.js`: trusted match/receipt/reward state machine.
+- `server/economy-store.js`: atomic durable state and idempotent transactions.
+- `server/http.js`: authenticated allowlisted player endpoints.
+- `server/jobs.js`: maintenance and weekly payout worker.
+- `src/network.js`: client API requests, no balance uploads.
+- `src/app.js`: current UI, clean live-data flows, local and authoritative game controllers.
+- `tests`: deterministic unit/integration fixtures only; no fake users in product code.
+
+This is implemented development code with tested integration boundaries, not a claim of production deployment, store approval or guaranteed profitability.

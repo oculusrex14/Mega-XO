@@ -1,89 +1,109 @@
-# V3.2 product decisions: progression, statistics and economy
+# Mega XO economy-1: approved ranks, unified wealth, challenger-funded play
 
-All economic amounts and rating boundaries below are initial tuning values, not empirical balance claims. Product version: 3.2. Rules must eventually be versioned and signed by the authority.
+This supersedes the earlier V3.2 cosmetic-only Crowns and unrated-only direct-challenge proposal. The implementation lives on V3.2.1. The four Figma themes, icons, game rules and CSS are retained.
 
-## Home
+## Exact product model
 
-MEGA XO has no secondary product subtitle.
+Skill and wealth are independent. Ranked queue games and ranked direct challenges use the same Elo calculation. Unranked queue/direct games are free and do not alter Elo. Crown purchases increase wealth, never skill. Coins and Crowns are not redeemable for money and have no external transfer/gifting endpoint.
 
-**Tic-tac-toe. Think bigger.**
+The retained 50/50 split is an explicit interpretation of the latest request: both queued and direct ranked pots are half burned and half paid to the winner. The difference is WHO contributes: both queue players versus only the direct challenger.
 
-Win the small boards to win the big one. Every move also decides where your opponent plays next.
+## Currency and wealth
 
-There is no bottom relay-rule box. The tutorial remains available from home, settings and a match.
+10 Coins = 1 Crown, reversibly, without a spread or exchange fee. Coin debits must be positive multiples of 10; Crown debits must be positive integers. All currency arithmetic uses validated safe integers, not fractions. A repeated transaction key returns the original receipt; reusing that key with different terms is rejected.
 
-## Statistics
+Wealth score = Coins + reserved Coins + 10 * (Crowns + reserved Crowns).
 
-Keep Bot, Ranked, Casual and Friend records separate. Bot includes a difficulty filter. Pass-and-play cannot reliably identify the account holder, so it has no personal win rate, ranked effect or reward. Tutorial practice is also excluded.
+Reserved funds count once while a match is in progress. Conversion cannot improve wealth. Purchases, legitimate rewards, winnings, spending and burns can change wealth. This measures CURRENT in-game holdings, not lifetime purchase volume or real-world net worth. Public wealth is opt-in. Suspended accounts and financially held wallets do not appear in wealth results. Skill and wealth each support global/country, any league and top-20 filters. No fictional players are bundled in the application.
 
-Win rate is wins / completed games, including draws in the denominator. Average game time uses completed eligible games with known active time. Total hours also include unfinished eligible sessions. Hidden tabs, open dialogs and inactivity beyond 60 seconds do not accrue playtime; a visible turn clock still expires normally. Offline dialogs pause the clock and bot. Theme changes do not reset clocks or start a new match.
+## Elo, not position swapping
 
-New timing begins in V3.2. The V3.1 summary is retained in a separate legacy field; it does not contain enough evidence to reconstruct old per-mode durations. Never replace unknown historical hours with invented estimates.
+E_A = 1 / (1 + 10^((R_B - R_A) / 400))
+Delta = round_to_hundredth(24 * (score_A - E_A))
+R_A' = R_A + Delta; R_B' = R_B - Delta.
 
-## Elo plus leagues
+Score is 1 for a win, 0.5 for a draw and 0 for a loss. A paired clamp prevents ratings below zero without creating points. Coins, Crowns, pot size, purchase history, league multipliers and leaderboard position are NOT inputs. This is a game-by-game, chess-inspired Elo variant; it does not claim to reproduce FIDE's rating-period, initial-rating, K-factor or rating-difference rules.
 
-Elo changes from the opponent's rating and the result, not rank color, entry fee, playtime, coins or purchases. Expected score: E = 1 / (1 + 10^((opponent - self)/400)). Delta = round(K * (score - E)), score 0/0.5/1. The supplied helper defaults to K=24; an authority may use a shared K=40 for placement pairings, then 24. Apply equal/opposite deltas from one pre-game snapshot. Ten placements precede a public league. Starting server rating proposal: 1000; never show a fake Gold rank before play.
+Examples: equally rated winner gains 12; 1500 beating 2700 gains 23.98 while 2700 loses 23.98; a draw in that pairing gives the underdog 11.98. There is no 500-point single-game jackpot. Position changes are recalculated from Elo; players never exchange positions.
 
-Use percentile only as descriptive context within the eligible rated population. It should not move someone from Silver to Gold merely because weaker players joined. No hard seasonal reset; store peak separately. Award elite titles from a scheduled, transactional leaderboard snapshot.
+Ten verified ranked placements precede public skill listing/direct rated challenges. New accounts start at 600; the placement phase does not fabricate a high initial tier. All ranked accounts use K=24.
 
-| League | Open threshold or elite floor | Ticket per player | Ranked win multiplier |
-|---|---:|---:|---:|
-| Wood | 0-699 | 2 | 1.00x |
-| Stone | 700-899 | 4 | 1.05x |
-| Iron | 900-1099 | 6 | 1.10x |
-| Bronze | 1100-1299 | 8 | 1.15x |
-| Silver | 1300-1499 | 10 | 1.20x |
-| Gold | 1500-1699 | 12 | 1.30x |
-| Diamond | 1700-1899 | 16 | 1.40x |
-| Emerald | 1900+ | 20 | 1.50x |
-| Champion | 2200+ and a seat | 24 | 1.65x |
-| Master | 2400+ and a seat | 30 | 1.80x |
-| Grandmaster | 2600+ and a seat | 40 | 2.00x |
+## Approved leagues and rewards
 
-Elite caps are **exclusive**, not inclusive: highest eligible Grandmasters up to 20, next eligible Masters up to 200, then Champions up to 1,000. The population must first reach 5,000 verified placed players. Individual eligibility: at least 50 ranked games, 10 unique opponents, account age 14 days, five ranked games in the preceding seven days, no suspension. Rating floors still apply and seats may be empty. Unfilled seats are not handed to low-rated launch users.
+| League | Elo floor | Queue entry each, Coins | Win bonus multiplier | Full weekly Coins |
+|---|---:|---:|---:|---:|
+| Wood | 0 | 2 | 1.00 | 50 |
+| Stone | 700 | 4 | 1.05 | 150 |
+| Iron | 900 | 6 | 1.10 | 250 |
+| Bronze | 1100 | 8 | 1.15 | 350 |
+| Silver | 1300 | 10 | 1.20 | 450 |
+| Gold | 1500 | 12 | 1.30 | 550 |
+| Diamond | 1700 | 16 | 1.40 | 700 |
+| Emerald | 1900 | 20 | 1.50 | 850 |
+| Champion | 2200 | 24 | 1.65 | 1050 |
+| Master | 2400 | 30 | 1.80 | 1300 |
+| Grandmaster | 2600 | 40 | 2.00 | 1700 |
 
-Sort by rating, then time that rating was reached, then immutable account ID. A country leaderboard never confers global elite status. Eligibility loss removes an elite title but does not arbitrarily delete Elo. Opening qualification games and anti-collusion review still need to be run by the real server.
+Wood through Emerald are open leagues. Elite seats are exclusive: at most 20 Grandmasters, the next 200 Masters, the next 1,000 Champions. Elite allocation activates at 5,000 verified placed players. Candidates need 50 ranked games, 10 distinct opponents, a 14-day-old account and 5 ranked games in the last 7 days, and must meet rating floors. Seats may remain vacant. Ties use rating, rating-reached time, stable account ID.
 
-## Rank UI
+Elite titles are published weekly. Elo changes immediately; weekly allocation avoids promoting/demoting a title on every individual result. This is NOT permanent rank protection: eligibility and rating floors are checked at the next allocation. Open leagues continue to follow current Elo.
 
-Every league has its own emblem: Wood grain, Stone facets, Iron anvil, Bronze medal, Silver wings, Gold crown, Diamond cut, Emerald cut, Champion star, Master wings and Grandmaster crowned laurels. Badge ink/background colors are paired separately for light and dark themes. League cards show qualification, ticket proposal and reward multiplier, never a fake number of live members.
+## Matched ranked pots
 
-Rank view: Skill / Coin vault / Crown vault; Global / selected country; All leagues / any specific league. Exactly up to 20 rows per query. The current player gets a separate position card when a live profile exists, even outside the top 20. The current build is Unranked and explains its placements instead. Preview data is fictional and opt-in.
+Both players pay the SAME Coin entry: the lower league's configured entry. The matchmaker, not the user, chooses the pairing. Search costs nothing. Both approve exact terms before either debit. Equal entries f + f create a 2f pot. Burn f; pay f to the winner. Therefore a winner breaks even on the entry before a separate reward; a loser loses f.
 
-Vaults are separate from skill. Coin vault ranks earned spendable server Coins. Crown vault ranks verified current cosmetic-Crown balance. Neither counts local preview balances, pending receipts or refunded purchases. Public vault participation is opt-in; never disclose real-money spend. Server privacy and age policies must decide eligibility for a public vault.
+A qualifying queued win additionally mints floor(12 * the winner's pre-match tier multiplier) Coins, capped at 120 per UTC day. Direct challenges do not mint this bonus. Qualifying games finish by a normal line win, have at least 12 total moves and 30 server-measured seconds. Timeout/resignation results still settle the pot and Elo but do not earn this bonus.
 
-## Two currencies, not paid stakes
+Draw: return each contribution to its original payer; Elo processes the draw. Server-voided match: full refund and no Elo change. Resignation/timeout are losses, not refund shortcuts. Ranked clock: 30 seconds per turn.
 
-**Coins:** earned only, no fiat purchase, no Crown conversion, no gifting, no resale or cash-out. Local prototype grants 100 welcome coins once per local installation and tracks them in a local ledger. This grant is not a server entitlement.
+## Direct challenges
 
-**Crowns:** proposed store currency for deterministic cosmetics and profile presentation. No match entry, winnings, conversion into Coins, gifting or cash-out. Current balance is zero and purchase integration is disabled. Prices and localized currency strings must come from StoreKit/Play Billing. Never simulate a successful transaction. Restore/reconcile non-consumable entitlements and reconstruct consumable balances from the verified account ledger.
+Only the challenger funds the Crown pot. The invitee pays zero and may accept or reject. Until acceptance, no currency is reserved. Both see the same hashed terms. Changed ratings/tier before acceptance require a fresh quote. Acceptance atomically reserves the entire pot from the challenger; insufficient funds leave both balances untouched.
 
-A legal review must evaluate the complete experience, not just currency names. Splitting wallets is risk reduction, not an automatic safe harbor. Do not add token exchange, cash-equivalent prizes or secondary-market transfers later without a new review.
+Friends: minimum 2 Crowns; maximum 20 Crowns (200 Coins). A ranked friend challenge requires mutual server-recorded friendship; a player cannot simply label a stranger a friend to evade leaderboard pricing.
 
-## Earned-coin sources
+Leaderboard minimum: let g = max(0, target tier index - challenger tier index), and B = target league's queue fee.
 
-Bot win rewards: Beginner 2, Easy 4, Medium 8, Hard 12, Expert 18. Shared maximum 100/day, and maximum five paid wins per difficulty/day. Clock day is UTC in the prototype; production must use authoritative server time. Reward only completed wins with at least 12 total moves and 30 active seconds. No restart, resignation, timeout, local multiplayer or practice reward. Caps apply before crediting; once a cap is hit, play remains available.
+P_min = 2 * ceil(B * (8 + 4g + g^2) / 16) Crowns.
 
-Daily quests: one finished match 5; three finished matches 15; 10 active minutes in qualifying completed games 15; six claimed Mini Boards 10; a free casual online match 15; a free friend match 15; a ranked match 20. Every quest claims once per UTC day. No streak penalty or paid streak repair. Online quests are disabled until verified events exist. No infinite idle playtime mint.
+An offer must be an even integer at least P_min. There is no commercial upper ceiling for leaderboard challenges; balance sufficiency and safe-integer limits remain mandatory. Target may reject even an offer above the floor.
 
-Server reward ceiling: up to 100 bot coins + 95 quest coins + 120 ranked bonus coins per account/day (315 maximum before further fraud controls). The prototype can earn only offline categories. A legitimate implementation needs match receipts and replay validation; uploading a local total is never sufficient.
+Gold -> Grandmaster: g=5, B=40, minimum=266 Crowns. Challenger reserves 266; invitee reserves zero; 133 burn, 133 go to the winner. If challenger wins, their net Crown loss is 133. If they lose, it is 266. A victorious invitee gains 133. The minimum is payment for an optional challenge opportunity, not a purchased result.
 
-## Entry, escrow and the 50/50 split
+Grandmaster -> Grandmaster: minimum 40 Crowns. Wood -> Grandmaster: minimum 740 Crowns. Both examples follow the same formula without a hidden ceiling.
 
-Casual online and free friend matches have zero entry fee. For random ranked pairs, use the lower player's league ticket for **both** players and disclose it before readiness. Do not charge when searching or charge a stronger player a different amount into the same pot.
+A direct draw returns the entire pot to the challenger, not half to the invitee. Server void also returns funds to the challenger and leaves Elo unchanged. Unranked direct play has no pot and no Elo change.
 
-For a leaderboard challenge: fee = min(200, roundUpToEven(targetTicket * (1 + 0.25 * max(0, targetTierIndex - challengerTierIndex)))). Friend stakes may be even integers from 2 to 200 per player, or free. Both must accept the exact same quote. Direct challenges never affect Elo; otherwise a paying player could buy favorable ranked opponents.
+## Weekly payout
 
-If each enters F, total pot = 2F. Burn F (50%), credit F to the winner (50%). **Winner net = 0 before bonuses.** This is not a profitable double-or-nothing wager. Showing the entire payout as profit would mislead users.
+Week = Monday 00:00 UTC through the following Monday. A worker captures daily post-placement tier snapshots and posts rewards automatically for completed weeks. There is no claim timer and no expiration. Missing snapshots are not invented after an outage.
 
-Ranked completion win bonus is a separate issuance: floor(12 * winnerTierMultiplier), capped at 120/day. Apply only to eligible verified ranked wins, never multiply the pot or apply the multiplier to bot rewards. Grandmaster maximum per eligible win: 24 bonus coins. An 80-coin pot at 40 each burns 40, pays 40 back to the winner, plus up to 24 independent bonus coins. The loser loses 40. A 50% win-rate player loses coins in expectation before rewards/quests: ticket burn is a deliberate sink, not a revenue source.
+Qualification: 5 qualifying ranked games, including 3 matchmade games, 3 unique opponents, activity on 3 days, and at least 3 valid daily tier snapshots. A final-day snapshot must exist. Rank used = lower of the final-day snapshot and the lower median of that week's observed daily tiers. Payout = floor(full weekly reward * observed snapshot days / 7).
 
-Invite creation, declined/expired invites, canceled queues and failed readiness: no burn and no fee. Both players accepting starts atomic escrow reservation. Draws and operator-voided server failures: refund both entries fully, no burn, no win bonus. A real disconnect policy must distinguish server outage from a player timeout; do not auto-forfeit during an outage. Timeouts derive from the server clock, not client timestamps.
+A full Gold week pays 550 Coins. A qualifying first Gold week with 3 snapshots pays 235. A Sunday-only last-minute rank spike cannot earn a full higher-tier week. Unique week/account ledger keys prevent repeat payouts; interrupted jobs can retry safely.
 
-The current UI only calculates these terms. `authority.js` is an in-memory test reference. It does not process money or expose a live backend.
+## Daily earn routes
 
-## Tuning and launch gate
+Bot win rewards: Beginner 2, Easy 4, Medium 8, Hard 12, Expert 18 Coins; at most 5 rewarded wins per difficulty and 100 total bot Coins/day. Normal full-game completion and the same 12-move/30-active-second minimum apply. Tutorial, local pass-and-play, timeout, resignation and restart cannot mint bot rewards.
 
-Before release measure coins minted/burned per active player, low-balance lockouts, free-play conversion, time-to-afford one ticket, win rates by tier and bot strength. At 50/50 skill, expected ticket loss is F/2 per match; source budgets must support the intended session length without forcing purchases. Since Coins are not purchasable, casual play must always be available to a low-balance player. Do not sell loss recovery, paid stronger moves, urgent top-ups or status shame prompts.
+Daily quests award 5/15/15/10 Coins for finishing 1/3 games, 10 active minutes in completed games, and 6 Mini Boards; verified casual/friend/ranked quests award 15/15/20. Daily claim IDs are unique. Server quest counters are derived from server matches, not client assertions.
 
-The tier schedule, percentile display, fees, multipliers and caps are hypotheses. Ship A/B changes only as explicit, versioned rules that cannot change mid-match.
+Offline device rewards remain local. They can be converted locally, but are never silently imported into a paid/server wallet. A verified offline-result/attestation pipeline or server-verified bot mode is still required to make offline bot rewards account-spendable. This security boundary is not bypassed by the new conversion.
+
+## Monetization and balance
+
+Suggested starting catalogue: 100 Crowns at USD 0.99, 525 at 4.99, 1,100 at 9.99. These are tuning hypotheses, not live prices. UI uses the native store's localized product prices. No quantity is granted on a client's claimed purchase success: an account-bound, verified store receipt must resolve to the server catalogue and be globally unique.
+
+No cash-out, paid skill boost, loot-box randomness, artificial currency expiration, loss-triggered purchase nag or paid extra move. Unranked multiplayer remains free. 100 welcome Coins provide an initial runway. Earned progression remains meaningful; purchases accelerate wealth/access, not the rating formula.
+
+`node tests/balance.js` calculates exact binomial expectations for ten same-tier ranked games/day, 50% independent wins, no draws, all weekly eligibility met, and no bot/quest income. Expected NET weekly Coins after entries/bonuses/reward range from +400 Wood to +1,036.64 Grandmaster. At 30% wins the same scenario remains positive at every league. These are conditional mathematical checks, not a promise about any player's path or an empirical forecast. They do not guarantee sufficient cash balance at every point within the week.
+
+Burning virtual Coins is not business revenue. Revenue comes from real purchases. Generous reward supply may reduce purchases, while arbitrary scarcity can damage retention. Before launch, instrument net mint/burn by cohort, purchasing share, direct challenge acceptance, queue abandonment on low balance, retention, refunds and currency concentration. No claim of profitability is made without real user data.
+
+## Source context, checked 5 October 2026
+
+- FIDE rating regulations, section 8.3: https://handbook.fide.com/chapter/B022024
+- Apple App Review Guidelines, sections 3.1 and 5.3: https://developer.apple.com/app-store/review/guidelines/
+- Google Play Real-Money Gambling, Games and Contests: https://support.google.com/googleplay/android-developer/answer/9877032/
+
+The game-specific numbers above are authored design decisions. The sources do not endorse this economy. Paid-entry release requires jurisdiction/platform review; conversion does not remove the original monetary purchase provenance.

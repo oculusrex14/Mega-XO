@@ -1,46 +1,38 @@
-# V3.2 risk review and release blockers
+# Economy-1 trust boundaries and release gates
 
-## Primary product risk: purchased-coin stakes
+This replaces the earlier cosmetic-only-Crowns restriction. The requested convertible currency and paid direct challenge mathematics are implemented. They are NOT automatically legally cleared or enabled for production.
 
-Apple App Review Guidelines 5.3 restrict real-money gaming and prohibit IAP currency for that use. Google Play's real-money-games policy restricts staking real money, including purchased in-app items, for prizes of real-world monetary value. These rules do not by themselves settle the classification of every closed-loop virtual economy.
+## Implemented safeguards
 
-India's Promotion and Regulation of Online Gaming Act, 2025, section 2, defines online money games and other stakes broadly, including specified purchased virtual coins/tokens. The precise classification, current rules, enforcement, and each launch jurisdiction need qualified legal review. Do not assume "skill game" or "no cash-out" alone clears the proposed design.
+All online changes go through a server-only Authority and DurableStore. The authenticated principal is supplied by the API's authentication callback, never JSON. Player endpoints cannot provision funds, choose a queued opponent, set rank, submit a winner, award a weekly grant, issue a refund, or invoke operator actions.
 
-For this reason V3.2 does not implement paid-currency wagering. Purchased cosmetic Crowns are segregated from earned Coins, with no conversion. Even earned-coin stakes remain off until reviewed. The prototype is not a legal compliance certification.
+A SQLite WAL database plus BEGIN IMMEDIATE serializes wallet, escrow, rating, journal and idempotency updates. Results survive restart. A command exception rolls back all state. Returned state is cloned. Monetary values are nonnegative safe integers; currency conversion is exact and idempotent. Unique native store/transaction IDs prevent cross-account receipt replay.
 
-Sources reviewed 4 October 2026:
-- Apple: https://developer.apple.com/app-store/review/guidelines/ (5.3)
-- Google Play: https://support.google.com/googleplay/android-developer/answer/9877032/
-- India Code, Act 32 of 2025: https://www.indiacode.nic.in/indiacode/handle/123456789/22148
-- MeitY Act/rules register: https://www.meity.gov.in/documents/act-and-policies/promotion-andregulation-of-online-gaming-act-2025-and-its-corrigenda-kTMxQjMtQWa
-- Mark Glickman on rating uncertainty (alternative to a future Elo implementation): https://glicko.net/glicko.html
+Invitations expire after 10 minutes. No invitation/rejection/cancellation fee. Only mutually accepted, unchanged terms debit funds. The payer vector remains attached to escrow so refunds return to contributors, not the symbol X/O holder or the invitee by mistake. X/O is randomized independently from who funds a challenge. One live match/account prevents concurrent pre-rating settlement exploits.
 
-## What the old static model cannot secure
+Repeated ranked direct encounters: at most one per rolling 24 hours and three per UTC calendar week per pair. Queued repeated pairings: at most three per 24 hours. Challenger invitations: 20/day. Self challenges and blocked/held/suspended/unverified accounts are rejected. Friend pricing requires mutual friendship. Direct rated challenges require completed placements. These checks reduce abuse; they do not prove two accounts are distinct people.
 
-LocalStorage, JavaScript, browser clocks, bot outcomes, account IDs supplied by a caller and claimed balances can be edited. A hidden client function, a checksum or minification is not an anti-cheat boundary. A local bot match cannot automatically mint trusted live currency. Do not import V3.2 wallet totals into a production wallet.
+Short direct results and direct pots of 5,000+ Crowns receive risk flags. These flags are evidence for review, not claims of an automatic fraud classifier. Solver assistance, smurfing, collusion rings, purchased accounts, manufactured friendships and deliberate resignations remain real risks even though legal moves are server-validated. Money cannot increase K, but opponent selection still needs abuse monitoring.
 
-Server-authoritative legal moves prevent impossible moves. They do **not** prevent someone consulting an external solver, using another device, account sharing or colluding. Never advertise the game as cheat-proof.
+Receipt refunds create a financial hold; held wallets cannot transact or appear on wealth rankings. The service does not automatically seize an innocent opponent's funds. Source tags and a purchase-influenced account flag provide an audit starting point, not exact unit-by-unit provenance accounting or a complete chargeback dispute workflow.
 
-## Implemented/tested reference controls
+## Production prerequisites not supplied by this commit
 
-The browser uses the pure move validator and keeps human/bot move sources separate. Stakes and purchases fail closed. Local reward events use match IDs, daily caps, per-difficulty caps, completion thresholds, exclusions and once-per-day quest keys. These provide a correct local UX, not tamper resistance.
+1. Actual identity-provider sessions, account recovery, ownership binding, TLS, CSRF/session configuration and edge rate limits.
+2. A deployed matchmaker with skill windows, queue health and anti-repeat controls. The API currently accepts an injected matchmaker; it cannot pretend to find a player when absent.
+3. StoreKit/Play Billing UI and verification against real signed store evidence or server API results. `MegaBilling` is a native integration contract, not a fake payment processor. Avoid network receipt lookups inside a long-held database write lock; verify first, then bind trusted verification to the atomic grant.
+4. Per-territory/platform/account eligibility, including applicable age controls and spending protections, approved by qualified counsel and platform review. `paidEntryEnabled=false` and an eligibility callback denying by default are intentional. Both queue Coin entries and Crown direct pots use this gate, including Coins converted from purchased Crowns.
+5. A verified offline-result/attestation pipeline before any device-local bot balance becomes server-spendable. No client wallet import endpoint exists.
+6. Durable deployment, backups/restore drills, observability, privacy/deletion controls, fraud investigation and refund workflows. SQLite snapshot serialization is an auditable starter design, not a throughput claim for a large service; shard/normalize for scale after correctness and load testing.
 
-The server-only `Authority` reference verifies participant membership, blocks self-challenges/blocked accounts, derives quote tiers from account state, rejects purchased stake currencies, checks both balances before either debit, requires both consents, expires invitations, validates every move/turn/revision, handles duplicate command IDs and rejects mismatched retries. It derives timeout winners from its clock, settles once, refunds draws/voids and restricts staked pair frequency. It is in-memory and cannot survive restarts or coordinate multiple workers. It is NOT connected to a network or an identity provider.
+## Platform risk, not a blanket legal classification
 
-## Required production controls
+Apple 5.3.3 disallows IAP currency for real-money gaming. Google Play restricts money/purchased-item stakes for prizes of real-world monetary value. Whether this non-redeemable closed-loop implementation falls into a prohibited or regulated category requires the actual jurisdictions, terms and distribution model. Skill, calling it Crowns, or converting it into earned-looking Coins does not establish compliance. Do not misrepresent the stake functionality during app review.
 
-1. **Trust and transport:** authenticated sessions, server-resolved actor IDs, TLS, token rotation, CSRF/origin checks as appropriate, strict schemas, length limits, account and IP rate limits. Never accept a client `verified` flag or authoritative tier.
-2. **Persistence:** transactional PostgreSQL or equivalent; integer minor units; currency-tagged immutable double-entry ledger; row locks on both wallets in deterministic order; unique match/settlement/receipt keys; idempotency fingerprints; outbox for realtime events. Debit, settlement, rating, reward caps and results commit atomically or not at all. Regular reconciliation: available + reserved + paid + burned = funded + minted - refunded as appropriate for the ledger model.
-3. **Purchases:** server-to-store receipt verification, unique transaction IDs, durable grants, restore/reconciliation, refund and chargeback reversals, held/negative premium balances, spending suspension when necessary. Never reclassify refunded paid currency as earned. No hard-coded success UI.
-4. **Match validation:** authoritative sequence and turn deadlines, input legality, board replay from the immutable log, snapshot recovery. Reconnect must not duplicate moves. Server incidents void/refund affected matches. Rated outcome is distinct from animation or connection UI state.
-5. **Offline farming:** issue signed game seeds/receipts or cap offline rewards to cosmetic-only local progression; replay submissions on the server; reconcile attestations and suspicious automation. Offline totals alone are never accepted. Play Integrity/App Attest can add signals, not mathematical proof of honest play.
-6. **Collusion:** flag repeated-pair concentration, reciprocal losses, rapid resignations, reward-only play, multi-account device clusters, improbable move timing, impossible growth and receipt reuse. Friend/leaderboard challenges are unrated. Do not count repeated friend games toward unlimited quests. Cooldowns and capped rewards, then review holds. Shared IP is not proof of cheating.
-7. **Adjudication:** delayed payouts/held balances for flagged events, human review, appeal path, visible reasons, reversible rating adjustments and audit logs. Do not auto-ban for solver similarity or a fast move alone.
-8. **Safety/privacy:** jurisdiction and age checks before gated mechanics, parental controls where required, opt-in public vaults, no real-money spend disclosure, spending history/limits, account deletion/support/block/report. No coercive loss-recovery offers or gambling-style urgency.
-9. **Operational limits:** daily issuance ceilings, coin supply dashboards, outage kill switch, rollback and alerting, fraud telemetry with retention limits, moderation ownership, documented incident response. Avoid false positives from accessibility tools.
+Sources checked 5 October 2026:
+https://developer.apple.com/app-store/review/guidelines/
+https://support.google.com/googleplay/android-developer/answer/9877032/
 
-## Unimplemented release blockers
+## Test authentication
 
-Live auth, transactional wallet service, verified online game results, matchmaking/presence, realtime recovery, receipt verification, attestation, anti-collusion analytics/review, jurisdiction and age policy, production abuse reporting and push notifications.
-
-Do not enable the experimental earned-stake flag until these controls and a written legal classification are complete.
+`tests/fixture-server.js` trusts X-Fixture-User ONLY for isolated loopback test identities, with an in-memory database. Never use it as deployed authentication. The production HTTP module contains no such shortcut. Test account data is not loaded into the client application or production database.

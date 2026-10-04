@@ -1,44 +1,40 @@
-# Mega-XO V3 - Tactical Board Game Design Specification
+# Mega-XO V3 — Vector Relay
 
-V3 is a **full visual and UX redesign** of Mega Tic-Tac-Toe, not a reskin of V1/V2.
+V3 is a complete UI/UX redesign of Mega Tic-Tac-Toe built around the game's defining mechanic:
 
-The design direction is **Tactical Board Game**: a polished mobile strategy game with a tactile tabletop feel, crisp geometric structure, strong information hierarchy, restrained personality, and zero layout instability.
+**every move routes the opponent to their next Mini Board.**
 
-The board is the hero. Everything else supports decision-making.
-
----
-
-## 1. Product Goal
-
-Mega Tic-Tac-Toe should feel closer to a premium compact strategy game than a casual tic-tac-toe toy.
-
-The experience should communicate:
-
-- strategy
-- clarity
-- tactility
-- confidence
-- polish
-- fairness
-- fast comprehension
-
-Avoid:
-
-- sketch-prototype appearance
-- emoji icons
-- excessive handwritten typography
-- random pastel styling
-- layout movement when marks appear
-- overloaded screens
-- decorative animation that obscures gameplay
+This version deliberately abandons the hand-drawn / paper-mockup direction used in earlier concepts. The new identity is called **Vector Relay** — a clean tactical interface built around routing, sectors, signal flow, and board control.
 
 ---
 
-## 2. Core Game Rules - Non-Negotiable
+## 1. Design Thesis
 
-The Mega Board is a 3x3 grid of Mini Boards. Each Mini Board is another 3x3 tic-tac-toe board, giving 81 playable cells.
+Mega Tic-Tac-Toe should not look like a novelty tic-tac-toe app.
 
-Both Mega Board positions and Mini Board cells use the same indices:
+It should feel like a compact strategy game with its own visual language.
+
+The interface is based on three ideas:
+
+1. **Sector control** — each Mini Board behaves like a tactical sector.
+2. **Routing** — the chosen cell visibly sends the opponent somewhere.
+3. **Board ownership** — claimed sectors visibly become X or O territory.
+
+The result should feel modern, precise, competitive, and immediately understandable.
+
+No imitation of sketchpad, notebook, Muse-style, or doodle UI is part of this direction.
+
+---
+
+## 2. Core Rules
+
+The game contains:
+
+- 1 Mega Board
+- 9 Mini Boards
+- 81 playable cells
+
+Both Mega Board positions and Mini Board cells use:
 
 ```
 0 1 2
@@ -46,7 +42,7 @@ Both Mega Board positions and Mini Board cells use the same indices:
 6 7 8
 ```
 
-A move is:
+A move is represented as:
 
 `{ boardIndex, cellIndex }`
 
@@ -56,852 +52,667 @@ The central rule is:
 
 Example:
 
-Player X plays in Mega Board 4, Cell 2.
+- Player X plays inside Mini Board 4
+- X chooses Cell 2
+- Player O must next play inside Mini Board 2
 
-The opponent must next play inside Mega Board 2.
+If Mini Board 2 is already:
+- won by X
+- won by O
+- drawn
 
-If the destination Mini Board is already resolved - X won, O won, or draw - the opponent receives a **Free Move** and may play in any unresolved Mini Board.
+then O receives a **Free Move** and may play inside any unresolved Mini Board.
 
-A Mini Board is claimed by standard tic-tac-toe rules.
+A Mini Board is claimed with a normal tic-tac-toe 3-in-a-row.
 
 The match is won when a player claims 3 Mini Boards in a row on the Mega Board.
 
-A resolved Mini Board is never playable again.
-
-These rules must be implemented independently from the UI layer.
-
 ---
 
-# 3. Visual Identity
+# 3. Visual Identity — Vector Relay
 
-## Design language
+## Personality
 
-**Tactical Board Game**
+- tactical
+- compact
+- intelligent
+- clean
+- premium
+- slightly futuristic
+- not sci-fi
+- not playful-cartoon
+- not skeuomorphic
+- not hand-drawn
 
-The UI should look like a modern physical strategy game translated carefully to mobile.
+## Signature visual idea
 
-Think:
+Whenever a move is made, the interface briefly shows a **route vector** from the selected cell to the opponent's destination Mini Board.
 
-- matte board-game surfaces
-- clean printed cards
-- precision-cut tiles
-- restrained ink texture
-- subtle depth
-- strong grid geometry
-- tactile button feedback
+That routing visualization becomes a distinctive part of the game's identity.
 
-Do not recreate the old "hand-drawn wireframe" look.
+The game is not merely "tic-tac-toe inside tic-tac-toe."
 
-Small imperfections may appear in decorative surfaces, but controls, icons, grids and typography must remain precise.
+It is a **routing strategy game**.
 
 ---
 
 # 4. Color System
 
-Use a small intentional palette.
+### Neutral system
 
-### Core surfaces
+- App background: `#E9ECEF`
+- Main surface: `#F8F9FB`
+- Raised surface: `#FFFFFF`
+- Primary ink: `#15181C`
+- Secondary text: `#747B84`
+- Divider: `#CDD2D8`
 
-- App Background: `#F2EEE5`
-- Primary Surface: `#FBF9F4`
-- Raised Surface: `#FFFFFF`
-- Ink: `#25282D`
-- Secondary Ink: `#666A70`
-- Divider: `#D6D1C7`
+### X
 
-### Player colors
+- Primary: `#246BFD`
+- Soft ownership: `#DFE9FF`
 
-**X**
-- Primary: `#315FCB`
-- Soft: `#DFE8FF`
-- Dark: `#23469A`
+### O
 
-**O**
-- Primary: `#D34F68`
-- Soft: `#FBE1E7`
-- Dark: `#A6384E`
+- Primary: `#F45669`
+- Soft ownership: `#FFE1E6`
 
-### Tactical states
+### Routing
 
-- Active Board: `#F4C84A`
-- Active Board Soft: `#FFF4C4`
-- Victory: `#62A66A`
-- Victory Soft: `#DDEFD9`
-- Danger/Low Timer: `#D75252`
-- Disabled Surface: `#E3E0D9`
+- Signal / legal-route accent: `#C6FF42`
+- Signal text: `#27310A`
 
-X and O must remain distinguishable by **shape**, never color alone.
+### State colors
+
+- Win: `#81C784`
+- Danger: `#E84B4B`
+
+The route color is intentionally separate from both players so that it always represents **movement / destination**, not ownership.
 
 ---
 
 # 5. Typography
 
-Use personality only where it helps branding.
+## Primary UI
 
-### Display / Logo
-Recommended:
-- Bricolage Grotesque
-- Baloo 2
-- Fraunces Sans-style alternative
-- or a custom Mega XO wordmark later
+**Space Grotesk**
 
-### UI
-Recommended:
-- Inter
-- Manrope
-- Nunito Sans
+Used for:
+- navigation
+- mode labels
+- buttons
+- player names
+- screen headings
+- readable gameplay UI
 
-### Rules
+## Tactical metadata
 
-- Never use a handwriting font for body copy.
-- Never use decorative type for timers, scores, stats or controls.
-- Title personality is allowed.
-- Gameplay text must prioritize instant legibility.
+**IBM Plex Mono**
 
-Suggested hierarchy:
+Used sparingly for:
+- rating
+- route labels
+- turn-state metadata
+- timers
+- friend codes
+- small tactical labels
 
-- App title: 32-40 px
-- Screen title: 24 px
-- Player names: 14-16 px
-- Turn instruction: 14 px semibold
-- Cell-independent labels: 12-14 px
-- Supporting text: 11-13 px
+No handwriting fonts.
+
+No decorative font is used for gameplay-critical information.
 
 ---
 
-# 6. Icon System
+# 6. Iconography
 
-V3 must contain **no emoji-based UI icons**.
+V3 uses **Lucide SVG icons**.
 
-Use SVG icons from one consistent family.
+No emojis are used as interface icons.
 
-Preferred starting library:
+Core mappings include:
 
-**Lucide**
+- Bot → Bot
+- Pass & Play → Users
+- Online → Swords
+- Private Match → Link2
+- Friends → UsersRound
+- Rank → Trophy
+- Stats → ChartNoAxesColumnIncreasing
+- Settings → Settings2
+- Match Settings → SlidersHorizontal
+- Rules → CircleHelp
+- Restart → RotateCcw
+- Copy → Copy
+- Route → Route
+- Back → ChevronLeft
 
-Acceptable alternatives:
-
-- Phosphor
-- Tabler
-
-Recommended mappings:
-
-- Bot: Bot
-- Local multiplayer: Users
-- Ranked: Trophy
-- Casual: Gamepad2
-- Private match: LockKeyhole / Link
-- Friends: UsersRound
-- Leaderboard: ChartNoAxesColumnIncreasing / Trophy
-- Stats: ChartColumn
-- Settings: Settings
-- Timer: Timer
-- Restart: RotateCcw
-- Rematch: RefreshCw
-- Sound: Volume2
-- Music: Music2
-- Haptics: Vibrate
-- Ad-free: BadgeMinus / Ban
-- Back: ChevronLeft
-- Help: CircleHelp
-- Profile: CircleUserRound
-
-All icons should use the same stroke weight.
-
-Recommended visual size:
-- navigation: 22-24 px
-- cards: 24-28 px
-- compact controls: 18-20 px
+All icons:
+- use one icon family
+- share one stroke weight
+- inherit foreground color
+- scale independently from text
 
 ---
 
-# 7. Layout System
+# 7. Home Information Architecture
 
-All gameplay geometry must be independent of text or icon dimensions.
+The home experience uses a bottom navigation system:
 
-Use a spacing scale based on:
+- Play
+- Friends
+- Rank
+- Stats
 
-`4 / 8 / 12 / 16 / 24 / 32`
+Settings lives in the top-right.
 
-Minimum touch target:
-
-**44x44 px**
-
-Primary screen content should sit inside:
-
-- 16 px phone edge padding
-- 20-24 px on larger devices
-
-The Mega Board should use nearly the full available width while preserving safe margins.
+This makes social and competitive systems first-class areas instead of hidden modal features.
 
 ---
 
-# 8. Critical Board Rendering Architecture
+# 8. Play Screen
 
-The board must never resize when X, O, a winner overlay, hint, or animation is added.
+The Play screen leads with the game's strategic identity:
 
-This is a hard V3 acceptance requirement.
+**Win the board. Control the route.**
 
-## Mega Board
+The mode selector is a vertical stack rather than a 2x2 card grid.
 
-Use a fixed CSS grid:
-
-`grid-template-columns: repeat(3, 1fr)`
-
-Each Mini Board:
-
-- `aspect-ratio: 1 / 1`
-- `min-width: 0`
-- `min-height: 0`
-- fixed grid participation
-- no content-driven sizing
-
-## Mini Board
-
-Each Mini Board is another 3x3 CSS grid.
-
-Each Cell:
-
-- `position: relative`
-- `aspect-ratio: 1 / 1`
-- `overflow: hidden`
-- `min-width: 0`
-- `min-height: 0`
-
-## X/O marks
-
-Never render X as a font character.
-
-Never create O using layout-affecting borders on the cell itself.
-
-Both are dedicated SVG marks placed inside an absolute layer:
-
-```css
-.cellMark {
-  position: absolute;
-  inset: 0;
-  display: grid;
-  place-items: center;
-  pointer-events: none;
-}
-
-.cellMark svg {
-  width: 68%;
-  height: 68%;
-}
-```
-
-Adding a mark must cause **zero reflow**.
-
-## Claimed Mini Board
-
-Do not remove the Mini Board DOM structure.
-
-Add an absolutely positioned overlay:
-
-```
-position: absolute;
-inset: 0;
-z-index: ...
-```
-
-The underlying board remains geometrically identical.
-
-No winner state may change Mini Board width, height, gap or Mega Board dimensions.
-
----
-
-# 9. Mark Design
-
-## X
-
-Create a custom SVG using two slightly softened diagonal strokes.
-
-Characteristics:
-
-- cobalt blue
-- rounded stroke caps
-- consistent stroke width
-- visually centered
-- slight optical asymmetry allowed
-
-## O
-
-Create a custom SVG circle/path.
-
-Characteristics:
-
-- coral red
-- rounded stroke
-- identical apparent visual weight to X
-- not mathematically thin
-
-Both marks should remain clear at very small sizes.
-
----
-
-# 10. Home Screen
-
-The home screen should be calm and high hierarchy.
-
-## Header
-
-Left:
-- optional profile/avatar
-
-Center:
-- Mega Tic-Tac-Toe logo
-
-Right:
-- Settings
-
-Below logo:
-- rank/rating chip when signed in
-
-Example:
-
-**Gold II - 1,428**
-
-Do not make rating the visual focus.
-
-## Primary modes
-
-Use four large mode cards:
+Modes:
 
 ### Vs Bot
-Icon: Bot  
-Subtitle: Offline - 5 difficulties
+Five offline difficulties.
 
 ### Pass & Play
-Icon: Users  
-Subtitle: Two players - one device
+Two players on one device.
 
 ### Play Online
-Icon: Trophy / Gamepad2  
-Subtitle: Ranked or Casual
+Ranked or Casual matchmaking.
 
 ### Private Match
-Icon: LockKeyhole  
-Subtitle: Play with a friend
+Friend room / invite flow.
 
-Cards should have:
-- icon
-- title
-- short description
-- clear selected state
-- large touch surface
+Only context-relevant settings appear after choosing a mode.
 
-Do not place configuration controls inside every card.
+For Vs Bot:
+- difficulty
+- starting side
 
----
+For Pass & Play:
+- starting side
 
-# 11. Contextual Match Setup
-
-Only show options relevant to the selected mode.
-
-### Vs Bot
-Show:
-- Difficulty
-- Who starts
-- Timer optional
-
-### Pass & Play
-Show:
-- Who starts
-- Timer
-
-### Online
-Show:
-- Ranked / Casual
-- matchmaking status
-
-### Private Match
-Show:
-- Create Room
-- Join Room
-- friend code / invite link
-
-Use one strong bottom CTA:
-
-**Start Match**
-
-or contextually:
-
-**Find Match**
-
-**Create Room**
+Online/private options do not fake a match in the static prototype.
 
 ---
 
-# 12. Game Screen
+# 9. Friends Screen
 
-The game screen must prioritize the board.
+The Friends area contains:
 
-## Top Bar
-
-- Back/menu
-- mode label
-- timer if enabled
-- overflow/settings
-
-Keep it compact.
-
-## Player Row
-
-Two compact player cards.
-
-Each contains:
-
-- avatar
-- display name
-- X or O indicator
-- Mini Boards claimed
-
-The active player's card gets a subtle surface/elevation change.
-
-Do not animate its dimensions.
-
-## Turn Banner
-
-Examples:
-
-**Your turn - play in Top Right**
-
-**Opponent's turn**
-
-**Free Move - choose any open board**
-
-This should be readable in under one second.
-
-## Board
-
-The board occupies the largest visual area on screen.
-
-## Bottom Utility Row
-
-Recommended:
-
-- Rules/help
-- Restart or Resign depending on mode
-- Stats / match info
-
-Avoid permanently visible controls that are rarely used.
-
----
-
-# 13. Board Interaction States
-
-Each unresolved Mini Board can be:
-
-### Active
-The only board currently legal.
-
-Treatment:
-- amber border
-- soft amber surface
-- modest elevation/glow
-
-### Inactive
-Visible but unavailable.
-
-Treatment:
-- reduced contrast
-- no dramatic opacity loss; state must remain readable
-
-### Free Move Available
-Every unresolved board is legal.
-
-Treatment:
-- subtle amber edge on all available boards
-- banner explicitly says "Free Move"
-
-### Won by X
-Treatment:
-- soft blue surface
-- large blue X overlay
-- underlying cell history remains faintly visible
-
-### Won by O
-Treatment:
-- soft coral surface
-- large coral O overlay
-- history remains faintly visible
-
-### Draw
-Treatment:
-- neutral muted surface
-- small neutral blocked/draw mark
-- no X/O ownership implication
-
----
-
-# 14. Destination Preview
-
-This mechanic is central and deserves dedicated UX.
-
-When the player presses or hovers a legal empty cell:
-
-1. the candidate mark previews in that cell
-2. the corresponding destination Mini Board receives a subtle outline
-3. if that destination is already resolved, show a small **FREE MOVE** indicator instead
-
-This teaches the send rule without forcing users to reread instructions.
-
-Preview must never alter layout.
-
----
-
-# 15. Move Animation
-
-Total duration target:
-
-**180-260 ms**
-
-Sequence:
-
-1. X/O draws or scales into the selected cell
-2. selected cell gives a short tactile pulse
-3. destination Mini Board gets a brief highlight
-4. turn ownership changes
-
-No camera zoom.
-
-No board movement.
-
-No layout shift.
-
----
-
-# 16. Mini Board Win Animation
-
-Target:
-
-**350-500 ms**
-
-Sequence:
-
-1. winning 3-cell line flashes
-2. board surface softens
-3. large winner SVG fades/scales in
-4. Mega Board state updates
-5. destination logic continues normally
-
-The Mini Board must not expand.
-
----
-
-# 17. Mega Board Victory
-
-This is the strongest animation in the game.
-
-Sequence:
-
-1. three claimed Mini Boards brighten
-2. a clean victory line draws across the Mega Board
-3. board receives a short success pulse
-4. result sheet rises from bottom
-
-Optional confetti may occur outside the board.
-
-Target before result sheet:
-
-**700-1000 ms**
-
-Keep it satisfying, not theatrical.
-
----
-
-# 18. Invalid Move Feedback
-
-Never use an alert dialog.
-
-If the player taps an illegal board:
-
-- tapped board gives a tiny shake
-- required board pulses once
-- optional short haptic
-- optional temporary text: "Play in the highlighted board"
-
-No state change.
-
----
-
-# 19. Settings
-
-Organize settings into clear groups.
-
-## Gameplay
-- Show legal board highlight
-- Show destination preview
-- Move timer
-- Confirm move: Off by default
-
-## Audio
-- Sound FX
-- SFX volume
-- Ambient music
-- Music volume
-
-## Haptics
-- Haptic feedback
-
-## Appearance
-- Light / Dark / System
-- Board theme
-- X/O cosmetic style
-
-## Accessibility
-- High contrast
-- Reduce motion
-- Larger UI
-- color-safe mode if additional colors are introduced
-
-## Notifications
-- Friend requests
-- Match found
-- Friend challenges
-- Rank changes
-- Marketing separately
-
-## Privacy
-- Online status
-- Friend request permissions
-- Challenge permissions
-- Profile visibility
-
-## Account
-- Profile
-- Linked login
-- Cloud sync
-- Sign out
-
-## Purchases
-- Remove Ads
-- Restore Purchases
-
----
-
-# 20. Stats
-
-Keep offline and online stats separate.
-
-## Overview
-- games played
-- W/L/D
-- win rate
-- current streak
-- best streak
-- Mini Boards claimed
-- average moves
-- total play time
-
-## Bot
-Break down by difficulty:
-- games
-- wins
-- losses
-- draws
-- win rate
-
-## Online
-Future server-backed:
-- rating
-- peak rating
-- rank
-- Ranked W/L/D
-- Casual W/L/D
-- streaks
-- match history
-
-Never count bot/local games toward ranked stats.
-
----
-
-# 21. Friends / Online Structure
-
-Future production structure:
-
-- username
-- avatar
-- rating/rank
-- online status
+- username search
+- friend code
+- copy action
+- future recent opponents
 - friend requests
-- recent opponents
-- private challenges
-- block/report
+- online/offline friend state
 
-Ranked games must use a server-authoritative rules engine.
+The current prototype intentionally uses an honest empty state rather than fabricated social data.
 
-The client may optimistically animate a move, but the server decides validity.
+Future production actions:
 
-Never fake online opponents using bots.
-
----
-
-# 22. Monetization
-
-Recommended launch model:
-
-- free game
-- occasional post-match ads only
-- no ads during a live game
-- one-time Remove Ads purchase
-- optional cosmetic board and X/O themes
-
-Never sell competitive advantages.
-
-No energy system.
-
-No paid extra moves.
-
-No stronger paid bot assistance in ranked play.
+- Add Friend
+- Challenge
+- View Stats
+- Remove
+- Block
+- Report
 
 ---
 
-# 23. Responsive Requirements
+# 10. Rankings Screen
 
-V3 must be tested at minimum at:
+Competitive identity is deliberately separated from offline play.
 
-- 320 px width
-- 360 px
-- 390 px
-- 430 px
-- tablet portrait
+The screen contains:
 
-Hard rules:
+- current tier
+- rating
+- progression bar
+- leaderboard area
 
-- board remains square
-- no X/O-induced resizing
-- no claimed-board-induced resizing
-- player cards never push board off-screen unexpectedly
-- bottom controls remain reachable
-- no horizontal scrolling
-- modals fit within safe viewport height
-- keyboard should not destroy layout in code/join-room fields
+V3 does not fabricate leaderboard users.
 
-Use `clamp()` sparingly for typography and spacing.
+Until the multiplayer backend exists, the screen clearly identifies online data as unavailable.
 
-Never use content dimensions to size gameplay cells.
+Future filters:
+
+- Global
+- Friends
+- Weekly
+- Seasonal
+- Regional
 
 ---
 
-# 24. Accessibility
+# 11. Stats Screen
 
-- X and O differentiated by geometry, not color
-- minimum 44x44 touch targets
-- sufficient text/background contrast
-- Reduce Motion disables nonessential animation
-- screen reader labels on cells:
-  - "Centre Mini Board, Top Right cell, empty"
-  - "Top Left Mini Board, won by X"
-- active board state must be announced
-- timer warning should not rely only on color
+Offline statistics are locally persisted.
 
----
+Overview includes:
 
-# 25. Code Architecture Target
+- games played
+- bot win rate
+- best streak
+- average moves
+- Mini Boards claimed
+- draws
 
-The current single-file prototype should not be the long-term architecture.
+Bot performance is broken down by:
 
-Separate:
-
-## Rules Engine
-Pure functions:
-- `getLegalMoves`
-- `isLegalMove`
-- `applyMove`
-- `resolveMiniBoard`
-- `resolveMegaBoard`
-- `getNextBoard`
-- `isFreeMove`
-
-## UI
-Components:
-- AppShell
-- MainMenu
-- ModeCard
-- MatchSetup
-- PlayerHeader
-- TurnBanner
-- MegaBoard
-- MiniBoard
-- Cell
-- MarkX
-- MarkO
-- Settings
-- Stats
-- MatchResult
-
-## AI
-Separate bot module:
 - Beginner
 - Easy
 - Medium
 - Hard
 - Expert
 
-## Networking
-Separate online adapter:
+Online statistics remain separate.
+
+---
+
+# 12. Game Screen Hierarchy
+
+The gameplay hierarchy is:
+
+1. player state
+2. route instruction
+3. Mega Board
+4. lightweight match controls
+
+The Mega Board remains the visual focus.
+
+The game screen contains:
+
+### Compact header
+- back
+- mode
+- difficulty / context
+- timer
+- settings
+
+### Player cards
+- custom X / O glyph
+- player name
+- Mini Boards claimed
+
+### Route HUD
+Examples:
+
+`FREE ROUTE`
+
+or:
+
+`YOUR TURN · TOP-RIGHT`
+
+This is more useful than generic "your turn" messaging because the game's main constraint is destination routing.
+
+### Mega Board
+Dominates the screen.
+
+### Bottom actions
+- Rules
+- Restart
+- Stats
+
+---
+
+# 13. Board Geometry — Hard Requirement
+
+The board must never resize when marks, claimed states, or animations appear.
+
+The Mega Board is a fixed 3x3 CSS grid.
+
+Each Mini Board:
+
+- `aspect-ratio: 1 / 1`
+- `min-width: 0`
+- `min-height: 0`
+- participates only in grid geometry
+
+Each Mini Board contains its own fixed 3x3 grid.
+
+Every Cell:
+
+- `position: relative`
+- `aspect-ratio: 1 / 1`
+- `min-width: 0`
+- `min-height: 0`
+- `overflow: hidden`
+
+Marks are absolutely positioned inside cells.
+
+They never affect document flow.
+
+This directly fixes the previous X/O resizing bug.
+
+---
+
+# 14. X and O Rendering
+
+X and O are not text characters.
+
+They are custom SVG marks.
+
+## X
+- cobalt blue
+- two rounded diagonal strokes
+- 68% of cell size
+
+## O
+- coral red
+- SVG circle
+- equal apparent stroke weight to X
+- 68% of cell size
+
+Both are rendered inside:
+
+```
+position: absolute;
+inset: 0;
+display: grid;
+place-items: center;
+```
+
+Therefore adding a mark produces **zero layout reflow**.
+
+---
+
+# 15. Claimed Mini Boards
+
+Claiming a Mini Board does not delete or replace its grid container.
+
+Instead, an absolute overlay appears above the existing Mini Board.
+
+### X claim
+- pale cobalt ownership surface
+- large custom X
+
+### O claim
+- pale coral ownership surface
+- large custom O
+
+### Draw
+- neutral grey ownership surface
+- compact DRAW label
+
+The Mini Board's geometry never changes.
+
+---
+
+# 16. Board Interaction States
+
+## Forced active board
+
+The required Mini Board receives:
+
+- dark border
+- bright route-green outer ring
+
+Other unresolved boards remain visible but lower in opacity.
+
+## Free Move
+
+All unresolved boards receive a subtle legal-state treatment.
+
+The route HUD says:
+
+**FREE ROUTE — CHOOSE ANY OPEN MINI BOARD**
+
+## Destination preview
+
+Hovering / pressing a legal cell previews its corresponding destination board.
+
+This is a direct visual explanation of:
+
+`nextBoard = cellIndex`
+
+## Invalid move
+
+Invalid input never opens an alert.
+
+Instead:
+- lightweight toast
+- optional haptic
+- legal state remains visually obvious
+
+---
+
+# 17. Signature Route Animation
+
+After a legal move:
+
+1. the mark appears
+2. the game calculates the next target board
+3. a route vector briefly draws from the selected Cell to the destination Mini Board
+4. the target Mini Board pulses
+5. turn ownership changes
+
+The vector:
+- uses the routing accent color
+- exists in an SVG overlay above the board
+- does not affect layout
+- fades within roughly 650 ms
+
+If the destination Mini Board is resolved, no line is drawn and the route HUD moves to **FREE ROUTE**.
+
+This is the core original interaction motif of V3.
+
+---
+
+# 18. Match Result UX
+
+The result appears as a bottom sheet rather than a full-screen takeover.
+
+It shows:
+
+- Victory / Defeat / Draw
+- Mini Boards controlled
+- moves played
+- match duration
+- Rematch
+- Back to menu
+
+Rematches swap the starting side.
+
+---
+
+# 19. Settings UX
+
+Settings are presented as a bottom sheet.
+
+## Gameplay
+- Legal board highlight
+- Destination preview
+- Move timer
+
+## Feedback
+- Sound effects
+- Ambient sound
+- Haptics
+
+## Appearance
+- Light
+- Dark
+- Reduce motion
+
+## Purchases
+- Remove Ads
+
+The static prototype exposes the purchase entry point but does not simulate App Store / Play Billing success.
+
+---
+
+# 20. Responsive Strategy
+
+V3 must work without board distortion at:
+
+- 320 px
+- 360 px
+- 390 px
+- 430 px
+- portrait tablet
+
+Hard rules:
+
+- Mega Board remains square
+- Mini Boards remain square
+- Cells remain square
+- X/O never alter dimensions
+- ownership overlays never alter dimensions
+- no horizontal scroll
+- route overlay remains aligned with board
+- bottom navigation remains reachable
+- gameplay actions remain inside safe viewport
+
+---
+
+# 21. Accessibility
+
+- X and O differ by shape and color
+- route state does not rely on color alone
+- touch targets aim for at least 44 px where practical
+- Reduce Motion disables nonessential animation
+- timer danger should include a numeric countdown
+- cells can receive descriptive aria labels in production
+- active Mini Board should be announced to assistive technology
+
+---
+
+# 22. Bot Difficulty
+
+### Beginner
+Random legal play.
+
+### Easy
+Finds immediate Mini Board wins and simple blocks.
+
+### Medium
+Uses tactical heuristics:
+- immediate win/block
+- destination control
+- centre/corner preference
+- avoiding free-route gifts
+
+### Hard
+Shallow minimax / alpha-beta.
+
+### Expert
+Deeper search when branching allows it.
+
+Bot logic remains completely offline.
+
+No LLM is used.
+
+---
+
+# 23. Online Architecture
+
+Production online play must be server-authoritative.
+
+The server must validate:
+
+- player turn
+- active Mini Board
+- target Cell
+- Cell occupancy
+- Mini Board resolution
+- Mega Board resolution
+- timers
+- move sequence
+
+Future systems:
+
 - auth
-- room
 - matchmaking
-- authoritative move submission
+- private rooms
 - reconnect
-- rating update
+- rating
+- leaderboards
+- friends
+- match history
 
-This separation is required before production online multiplayer.
-
----
-
-# 26. V3 Acceptance Criteria
-
-V3 is not complete until all of the following are true:
-
-- [ ] No emoji icons in product UI
-- [ ] Consistent SVG icon family
-- [ ] Custom SVG X and O
-- [ ] No board/cell resizing after any move
-- [ ] No board resizing after a Mini Board is claimed
-- [ ] Active-board state is unmistakable
-- [ ] Free Move state is unmistakable
-- [ ] Destination preview works without reflow
-- [ ] Responsive at 320-430 px widths
-- [ ] Rules engine is separated from visual rendering
-- [ ] Offline bot modes work end-to-end
-- [ ] Local pass-and-play works end-to-end
-- [ ] Stats separate offline and online
-- [ ] Settings do not interrupt or resize gameplay
-- [ ] Reduced-motion mode works
-- [ ] Online UI does not fake a real connected opponent
-- [ ] Ranked implementation remains server-authoritative when backend is added
+The client may animate optimistically, but server state is authoritative.
 
 ---
 
-# 27. V3 Design Summary
+# 24. Monetization
 
-**Mega Tic-Tac-Toe V3 should look like a premium pocket strategy board game.**
+Recommended:
 
-The visual hierarchy is:
+- free game
+- post-match ads only
+- no ads during gameplay
+- one-time Remove Ads purchase
+- cosmetic themes later
 
-**Board > Turn information > Players > Controls > Decoration**
+Never:
+- sell stronger moves
+- sell extra turns
+- sell competitive advantage
+- interrupt a live match with an ad
 
-The interaction hierarchy is:
+---
 
-**Legal move > Destination consequence > Mini Board ownership > Mega Board strategy**
+# 25. V3 Acceptance Criteria
 
-Every visual decision should make one of those relationships clearer.
+- [x] Completely new visual identity
+- [x] No notebook / sketch UI
+- [x] No emoji interface icons
+- [x] Lucide icon system
+- [x] Custom SVG X
+- [x] Custom SVG O
+- [x] Fixed square cell geometry
+- [x] No X/O-induced board resizing
+- [x] No claim-overlay-induced resizing
+- [x] Distinct forced-board state
+- [x] Distinct Free Route state
+- [x] Destination preview
+- [x] Signature route-vector animation
+- [x] Play / Friends / Rank / Stats information architecture
+- [x] Offline stats
+- [x] Five bot difficulties
+- [x] Local two-player
+- [x] Light and dark themes
+- [x] Reduced-motion setting
+- [x] Honest online placeholders
+- [ ] Production multiplayer backend
+- [ ] Real auth
+- [ ] Real leaderboard
+- [ ] StoreKit / Play Billing
+- [ ] Push notifications
+- [ ] Production match history
 
-The unique identity comes from the combination of:
+---
 
-- warm matte board-game surfaces
-- precise modular geometry
-- cobalt X vs coral O
-- amber tactical highlighting
-- custom scalable marks
-- restrained tactile motion
-- premium SVG iconography
-- a board-first interface
+# 26. Design Summary
 
-V3 should no longer look like a mockup of an app.
+The final V3 identity is:
 
-It should look like the actual game.
+## **Vector Relay**
+
+A clean tactical mobile game where the UI visually reinforces the game's unique strategic rule:
+
+**the cell you choose is also the route you give your opponent.**
+
+That idea drives:
+
+- the route-green signal color
+- the route HUD
+- destination previews
+- vector animations
+- sector-like Mini Boards
+- competitive typography
+- clean geometric layout
+- separated social / ranked / stats navigation
+
+V3 should not look like a redesigned tic-tac-toe mockup.
+
+It should look like a game that could only belong to **Mega XO**.

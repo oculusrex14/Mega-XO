@@ -47,3 +47,15 @@ Read [the delivery plan](docs/V3.2-PLAN.md), [economy and rank rules](docs/PRODU
 - `tests`: rules/economy, browser interaction and color-contrast regressions.
 
 This branch is a development preview, not an App Store-ready release.
+
+
+## V3.2.1 final appearance packs
+
+This branch keeps the V3.2 game, navigation, friends, rank, quests, stats and interaction behavior unchanged. Only the four appearance packs were replaced with the final Figma-authored designs from `Design Game Themes.zip`:
+
+- **Vector Light** — clean neutral Vector Relay baseline.
+- **Midnight Club** — deep slate surfaces, soft highlights and lime tactical accents.
+- **Paper Club** — spiral-notebook paper, hand-drawn typography, irregular ink edges and warm printed colors.
+- **After Hours** — purple arcade shell, cyan/pink marks, yellow signal accents, scanlines and retro display typography.
+
+Existing saved `dark`, `paper` and `neon` preferences migrate automatically to `midnight`, `paperclub` and `afterhours`. Theme changes remain visual only and preserve match state, timers and board geometry.

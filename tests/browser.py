@@ -7,7 +7,7 @@ OUT=(ROOT/'.artifacts');OUT.mkdir(exist_ok=True)
 results=[]
 def document(storage=None):
  text=(ROOT/'index.html').read_text()
- text=text.replace('<link rel="preconnect" href="https://fonts.googleapis.com">','').replace('<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>','').replace('<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">','')
+ text=text.replace('<link rel="preconnect" href="https://fonts.googleapis.com">','').replace('<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>','').replace('<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600&family=Space+Grotesk:wght@500;600;700&family=Caveat:wght@600;700&family=Patrick+Hand&family=Orbitron:wght@600;800&family=Chakra+Petch:wght@400;500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">','')
  text=text.replace('<link rel="stylesheet" href="src/styles.css">','<style>'+(ROOT/'src/styles.css').read_text()+'</style>')
  initial=json.dumps(storage or {})
  shim='<script>Object.defineProperty(window,"localStorage",{configurable:true,value:{data:'+initial+',getItem(k){return this.data[k]??null},setItem(k,v){this.data[k]=String(v)},removeItem(k){delete this.data[k]}}});</script>'
@@ -22,7 +22,7 @@ with sync_playwright() as p:
  page.set_content(document())
  page.locator('#sheetClose').click()
  page.screenshot(path=str(OUT/'home-vector.png'))
- for theme in ['vector','dark','paper','neon']:
+ for theme in ['vector','midnight','paperclub','afterhours']:
   page.locator('#settingsButton').click()
   page.locator('[data-action="theme"][data-value="'+theme+'"]').click()
   assert page.locator('html').get_attribute('data-theme')==theme
@@ -71,7 +71,7 @@ with sync_playwright() as p:
  assert page.evaluate("JSON.parse(localStorage.getItem('mega_v32_state')).records.length")==0
  page.locator('[data-action="home"]').click()
  # Theme persists across reload.
- saved=page.evaluate('localStorage.data');page.goto('about:blank');page.set_content(document(saved));assert page.locator('html').get_attribute('data-theme')=='neon'
+ saved=page.evaluate('localStorage.data');page.goto('about:blank');page.set_content(document(saved));assert page.locator('html').get_attribute('data-theme')=='afterhours'
  assert not errors,errors
  results.append({'complete_local_game':True,'no_claim_resize':True,'local_excluded':True,'theme_persistence':True,'console_errors':errors})
  browser.close()

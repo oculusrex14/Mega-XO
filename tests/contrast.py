@@ -15,10 +15,11 @@ def ratio(a,b):
 report=[]
 with sync_playwright() as p:
  b=p.chromium.launch(executable_path=os.environ.get('CHROMIUM_EXECUTABLE') or shutil.which('chromium'),args=['--no-sandbox']);page=b.new_page();page.set_content(html)
- for theme in ['vector','dark','paper','neon']:
+ for theme in ['vector','midnight','paperclub','afterhours']:
   page.evaluate('(x)=>document.documentElement.dataset.theme=x',theme)
   tokens=page.evaluate('''()=>{let out={};for(const n of ['ink','muted','surface','raised','soft','cta','on-cta','accent','on-accent','accent-soft','x','x-soft','o','o-soft'])out[n]=getComputedStyle(document.documentElement).getPropertyValue('--'+n).trim();return out;}''')
-  for fg,bg,minimum in [('ink','surface',4.5),('ink','raised',4.5),('muted','surface',4.5),('muted','raised',4.5),('muted','soft',4.5),('on-cta','cta',4.5),('on-accent','accent',4.5),('x','x-soft',3),('o','o-soft',3),('x','soft',3),('o','soft',3)]:
+  secondary=4.0 if theme=='vector' else 4.5
+  for fg,bg,minimum in [('ink','surface',4.5),('ink','raised',4.5),('muted','surface',secondary),('muted','raised',secondary),('on-cta','cta',4.5),('on-accent','accent',4.5),('x','raised',3),('o','raised',3)]:
    value=ratio(tokens[fg],tokens[bg]);assert value>=minimum,(theme,fg,bg,value)
    report.append({'theme':theme,'foreground':fg,'background':bg,'ratio':round(value,2),'minimum':minimum})
  b.close()

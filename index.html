@@ -3,6 +3,9 @@
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#f7f9fc"><title>Mega XO - V3.2</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="src/styles.css">
 </head>
 <body>
@@ -10,16 +13,17 @@
 <header class="topbar"><button class="brand" data-action="nav" data-value="play" aria-label="Mega XO home"><span id="brandIcon"></span><b>MEGA XO</b></button><div class="header-actions"><button class="wallet-pill" data-action="wallet" aria-label="Open wallet"><span id="coinIcon"></span><b id="walletAmount">100</b></button><button class="icon-button" id="settingsButton" data-action="settings" aria-label="Settings"></button></div></header>
 <main id="page" tabindex="-1"></main>
 <section id="gameScreen" class="game-screen" hidden aria-label="Match">
-<div class="match-top"><button class="icon-button" data-action="leave" aria-label="Leave match" id="backIcon"></button><div><b id="matchMode">Vs Bot</b><small id="matchLevel">Medium</small></div><span class="timer" id="clock">No clock</span><button class="icon-button" data-action="settings" aria-label="Match settings" id="matchSettings"></button></div>
+<div class="match-top"><button class="icon-button" data-action="leave" aria-label="Leave match" id="backIcon"></button><div><b id="matchMode">Vs Bot</b><small id="matchLevel">Medium</small></div><span class="timer" id="clock">∞</span><button class="icon-button" data-action="settings" aria-label="Match settings" id="matchSettings"></button></div>
 <div class="players"><div class="player" id="playerX"><span class="player-glyph x">X</span><div><b id="playerXName">You</b><small>Mini Boards</small></div><strong id="miniX">0</strong></div><div class="player" id="playerO"><span class="player-glyph o">O</span><div><b id="playerOName">Bot</b><small>Mini Boards</small></div><strong id="miniO">0</strong></div></div>
-<div class="turn-hud" role="status" aria-live="polite"><b id="turnText">Your turn</b><span id="destinationText">Choose any open board</span></div>
+<div class="turn-hud" role="status" aria-live="polite"><span class="turn-icon" id="routeIcon"></span><div><b id="turnText">FREE ROUTE</b><span id="destinationText">CHOOSE ANY OPEN MINI BOARD</span></div></div>
 <div class="board-wrap" id="boardWrap"><div id="board" class="mega-board" aria-label="Nine Mini Boards"></div></div>
 <p class="board-note" id="previewText">Your cell decides where the next player goes.</p>
-<div class="match-controls"><button class="button quiet" data-action="tutorial">How to play</button><button class="button quiet" data-action="restart">New game</button><button class="button quiet" data-action="resign">Resign</button></div>
+<div class="match-controls"><button class="button quiet" data-action="tutorial"><span class="match-control-icon" id="rulesIcon"></span>Rules</button><button class="button quiet danger-text" data-action="restart"><span class="match-control-icon" id="restartIcon"></span>Restart</button><button class="button quiet" data-action="matchstats"><span class="match-control-icon" id="statsIcon"></span>Stats</button></div>
 </section>
 <nav class="bottom-nav" id="navigation" aria-label="Main navigation"></nav>
-</div>
-<dialog id="sheet" aria-labelledby="sheetTitle"><div class="sheet-head"><h2 id="sheetTitle"></h2><button class="icon-button" data-action="close" id="sheetClose" aria-label="Close dialog"></button></div><div id="sheetBody"></div></dialog>
+<div class="sheet-backdrop" id="sheetBackdrop" data-action="close" hidden></div>
+<section id="sheet" class="bottom-sheet" aria-labelledby="sheetTitle" role="dialog" aria-modal="true" hidden><div class="grabber"></div><div class="sheet-head"><h2 id="sheetTitle"></h2><button class="icon-button" data-action="close" id="sheetClose" aria-label="Close dialog"></button></div><div id="sheetBody"></div></section>
 <div id="toast" class="toast" role="status"></div>
+</div>
 <script src="src/game.js"></script><script src="src/domain.js"></script><script src="src/icons.js"></script><script src="src/app.js"></script>
 </body></html>

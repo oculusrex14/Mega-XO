@@ -12,7 +12,7 @@ This does not establish a statistically measured Elo difference between bot leve
 
 Headless Chromium rendered the actual app source. All four themes were exercised through the settings UI, including bot replies, persistent cell geometry and settings changes during a game. Viewports: 320x568, 360x640, 390x844, 430x932 and 768x1024. A complete pass-and-play match was clicked through without board size changes on claims and without personal-stat pollution. No JavaScript page errors were recorded.
 
-Additional UI tests passed: mode-filtered wins/time/rate, quest claiming and disabled re-claim, cosmetic duplicate-spend protection, global/league/country top-20 filtering, friend and leaderboard quote math, preserved turn timer after a theme change, and a bot-first opening.
+Additional UI tests passed: mode-filtered wins/time/rate, quest claiming and disabled re-claim, cosmetic duplicate-spend protection, global/league/country top-20 filtering, friend and leaderboard quote math, preserved turn timer after a theme change, a bot-first opening, the four-mode home flow, chip-based setup controls, and the restored bottom-sheet Settings/Tutorial interactions.
 
 `tests/contrast.py`: **44 semantic color-pair checks passed**. See THEMES.md.
 

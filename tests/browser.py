@@ -7,6 +7,7 @@ OUT=(ROOT/'.artifacts');OUT.mkdir(exist_ok=True)
 results=[]
 def document(storage=None):
  text=(ROOT/'index.html').read_text()
+ text=text.replace('<link rel="preconnect" href="https://fonts.googleapis.com">','').replace('<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>','').replace('<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">','')
  text=text.replace('<link rel="stylesheet" href="src/styles.css">','<style>'+(ROOT/'src/styles.css').read_text()+'</style>')
  initial=json.dumps(storage or {})
  shim='<script>Object.defineProperty(window,"localStorage",{configurable:true,value:{data:'+initial+',getItem(k){return this.data[k]??null},setItem(k,v){this.data[k]=String(v)},removeItem(k){delete this.data[k]}}});</script>'
@@ -53,7 +54,7 @@ with sync_playwright() as p:
   page.locator('[data-action="start"]').click()
   box=page.locator('#boardWrap').bounding_box();assert abs(box['width']-box['height'])<1
   assert page.evaluate('document.documentElement.scrollWidth <= window.innerWidth')
-  page.locator('[data-action="resign"]').scroll_into_view_if_needed()
+  page.locator('[data-action="matchstats"]').scroll_into_view_if_needed()
   page.screenshot(path=str(OUT/('responsive-'+str(width)+'.png')))
   page.locator('[data-action="leave"]').click();page.locator('[data-action="home"]').click()
   results.append({'viewport':[width,height],'square_board':True,'no_horizontal_scroll':True})

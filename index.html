@@ -1,1598 +1,1140 @@
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Mega Tic-Tac-Toe</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Architects+Daughter&family=Patrick+Hand&family=Caveat:wght@600;700&display=swap" rel="stylesheet">
-  <style>
-    :root {
-      --pencil: #2b2b2b;
-      --pencil-light: #5a5a5a;
-      --pencil-faint: #9c9c9c;
-      --paper: #f7f5f0;
-      --paper-grid: #ebe7de;
-      --accent: #1e1e1e;
-      --highlight: rgba(50, 50, 50, 0.08);
-      --highlight-active: rgba(40, 110, 220, 0.12);
-      --highlight-border: #444;
-      --x-color: #263238;
-      --o-color: #37474f;
-      --claimed-bg: rgba(0, 0, 0, 0.03);
-    }
-
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-      user-select: none;
-      -webkit-user-select: none;
-      -webkit-tap-highlight-color: transparent;
-    }
-
-    body {
-      background-color: #dcd7cd;
-      background-image: radial-gradient(#c5bfb4 1px, transparent 1px);
-      background-size: 18px 18px;
-      font-family: 'Patrick Hand', cursive, sans-serif;
-      color: var(--pencil);
-      min-height: 100vh;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      padding: 12px;
-    }
-
-    /* Sketch phone mockup container */
-    .phone-frame {
-      width: 100%;
-      max-width: 440px;
-      height: 94vh;
-      max-height: 900px;
-      background: var(--paper);
-      border-radius: 42px;
-      border: 3.5px solid var(--pencil);
-      box-shadow: 
-        0 18px 40px rgba(0,0,0,0.18),
-        inset 0 0 45px rgba(210, 195, 170, 0.25);
-      position: relative;
-      display: flex;
-      flex-direction: column;
-      overflow: hidden;
-      /* Textured paper look */
-      background-image: 
-        radial-gradient(var(--paper-grid) 1px, transparent 0),
-        linear-gradient(to right, rgba(0,0,0,0.01) 1px, transparent 1px),
-        linear-gradient(to bottom, rgba(0,0,0,0.01) 1px, transparent 1px);
-      background-size: 20px 20px, 20px 20px, 20px 20px;
-    }
-
-    /* Hand-drawn sketchy outer border overlay */
-    .phone-frame::before {
-      content: "";
-      position: absolute;
-      inset: 2px;
-      border: 1.5px dashed rgba(40,40,40,0.25);
-      border-radius: 38px;
-      pointer-events: none;
-      z-index: 10;
-    }
-
-    /* Mobile Status Bar */
-    .status-bar {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 10px 24px 4px 24px;
-      font-size: 15px;
-      font-weight: 700;
-      color: var(--pencil-light);
-      position: relative;
-      z-index: 5;
-    }
-
-    .notch {
-      width: 90px;
-      height: 18px;
-      background: var(--pencil);
-      border-bottom-left-radius: 12px;
-      border-bottom-right-radius: 12px;
-      position: absolute;
-      top: 0;
-      left: 50%;
-      transform: translateX(-50%);
-    }
-
-    .status-icons {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-    }
-
-    /* Header Doodle Title */
-    .header-section {
-      text-align: center;
-      padding: 4px 16px 2px;
-      position: relative;
-    }
-
-    .title-wrapper {
-      position: relative;
-      display: inline-block;
-    }
-
-    .game-title {
-      font-family: 'Caveat', cursive;
-      font-size: 42px;
-      line-height: 0.95;
-      font-weight: 700;
-      letter-spacing: -0.5px;
-      color: var(--pencil);
-      text-shadow: 1px 1px 0px rgba(0,0,0,0.15);
-      transform: rotate(-1.5deg);
-    }
-
-    .crown-doodle {
-      position: absolute;
-      top: -16px;
-      right: -32px;
-      width: 32px;
-      height: 24px;
-      transform: rotate(18deg);
-      stroke: var(--pencil);
-      fill: none;
-      stroke-width: 2;
-      stroke-linecap: round;
-      stroke-linejoin: round;
-    }
-
-    .spark-left, .spark-right {
-      position: absolute;
-      font-size: 18px;
-      color: var(--pencil-light);
-      opacity: 0.8;
-    }
-    .spark-left { left: -22px; top: 18px; }
-    .spark-right { right: -22px; top: 22px; }
-
-    /* Players Scoreboard */
-    .score-board {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 6px 18px;
-      margin-top: 2px;
-      position: relative;
-    }
-
-    .player-card {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      background: rgba(255, 255, 255, 0.65);
-      border: 2px solid var(--pencil);
-      border-radius: 16px 14px 18px 13px;
-      padding: 6px 14px;
-      min-width: 125px;
-      box-shadow: 2px 3px 0px rgba(0,0,0,0.08);
-      position: relative;
-      transition: all 0.25s ease;
-    }
-
-    .player-card.active-turn {
-      border-color: #111;
-      background: #ffffff;
-      box-shadow: 0 0 0 2px #333, 3px 4px 0px rgba(0,0,0,0.15);
-      transform: scale(1.03) rotate(-0.5deg);
-    }
-
-    .player-card.active-turn::after {
-      content: "TURN";
-      position: absolute;
-      top: -9px;
-      right: 12px;
-      background: #2b2b2b;
-      color: #fff;
-      font-size: 10px;
-      letter-spacing: 0.8px;
-      font-family: 'Architects Daughter', cursive;
-      padding: 1px 6px;
-      border-radius: 6px;
-      line-height: 1.2;
-    }
-
-    .avatar-icon {
-      width: 26px;
-      height: 26px;
-      stroke: var(--pencil);
-      stroke-width: 2;
-      fill: none;
-      stroke-linecap: round;
-      stroke-linejoin: round;
-    }
-
-    .player-info {
-      display: flex;
-      flex-direction: column;
-    }
-
-    .player-name {
-      font-size: 15px;
-      font-weight: 700;
-      line-height: 1;
-      color: var(--pencil-light);
-    }
-
-    .player-score {
-      font-family: 'Caveat', cursive;
-      font-size: 26px;
-      font-weight: 700;
-      line-height: 0.9;
-      color: var(--pencil);
-    }
-
-    .vs-badge {
-      font-family: 'Caveat', cursive;
-      font-size: 22px;
-      font-weight: 700;
-      color: var(--pencil-light);
-      position: relative;
-      padding: 0 4px;
-    }
-    .vs-badge::before { content: "—"; margin-right: 3px; }
-    .vs-badge::after { content: "—"; margin-left: 3px; }
-
-    /* Mega Board Container */
-    .mega-board-container {
-      flex: 1;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      padding: 6px 14px;
-      position: relative;
-    }
-
-    .mega-board {
-      width: 100%;
-      aspect-ratio: 1 / 1;
-      max-width: 360px;
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      grid-template-rows: repeat(3, 1fr);
-      gap: 7px;
-      background: transparent;
-      position: relative;
-    }
-
-    /* Hand-drawn sketch lines for 3x3 mega grid */
-    .mega-board::before {
-      content: "";
-      position: absolute;
-      inset: -4px;
-      border: 3px solid var(--pencil);
-      border-radius: 12px;
-      pointer-events: none;
-      box-shadow: 2px 2px 0px rgba(0,0,0,0.1);
-    }
-
-    /* Mini Board */
-    .mini-board {
-      background: rgba(255, 255, 255, 0.45);
-      border: 2px solid #555;
-      border-radius: 8px;
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      grid-template-rows: repeat(3, 1fr);
-      position: relative;
-      transition: all 0.2s ease;
-      overflow: hidden;
-    }
-
-    .mini-board.active-playable {
-      background: rgba(255, 248, 220, 0.85);
-      border: 2.5px solid #111;
-      box-shadow: 0 0 0 2px rgba(0,0,0,0.15), inset 0 0 10px rgba(255, 215, 0, 0.25);
-      animation: gentlePencilGlow 2s infinite alternate;
-    }
-
-    @keyframes gentlePencilGlow {
-      0% { box-shadow: 0 0 0 2px rgba(40,40,40,0.2), inset 0 0 4px rgba(0,0,0,0.05); }
-      100% { box-shadow: 0 0 0 3px rgba(40,40,40,0.4), inset 0 0 12px rgba(255, 200, 50, 0.35); }
-    }
-
-    .mini-board.inactive {
-      opacity: 0.72;
-    }
-
-    /* Cells */
-    .cell {
-      border: 1px dashed rgba(80, 80, 80, 0.38);
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      cursor: pointer;
-      position: relative;
-      transition: background-color 0.15s;
-    }
-
-    .cell:hover {
-      background: rgba(0, 0, 0, 0.04);
-    }
-
-    .cell.clickable-spot {
-      cursor: pointer;
-    }
-    .cell.clickable-spot:hover {
-      background: rgba(0, 0, 0, 0.08);
-    }
-
-    /* Pencil Markings inside Cell */
-    .cell svg {
-      width: 78%;
-      height: 78%;
-      stroke-linecap: round;
-      stroke-linejoin: round;
-      filter: drop-shadow(0.5px 0.5px 0px rgba(0,0,0,0.2));
-    }
-
-    .cell svg.mark-x {
-      stroke: var(--x-color);
-      stroke-width: 3.8;
-      animation: drawStroke 0.2s ease-out forwards;
-    }
-
-    .cell svg.mark-o {
-      stroke: var(--o-color);
-      stroke-width: 3.5;
-      fill: none;
-      animation: drawStroke 0.22s ease-out forwards;
-    }
-
-    @keyframes drawStroke {
-      0% { transform: scale(0.4) rotate(-10deg); opacity: 0; }
-      70% { transform: scale(1.1) rotate(3deg); }
-      100% { transform: scale(1) rotate(0deg); opacity: 1; }
-    }
-
-    /* Won Mini Board Overlay */
-    .mini-board-overlay {
-      position: absolute;
-      inset: 0;
-      background: rgba(247, 245, 240, 0.92);
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      z-index: 5;
-      border-radius: 6px;
-      animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
-    }
-
-    .mini-board-overlay svg {
-      width: 78%;
-      height: 78%;
-      stroke-width: 4.5;
-      stroke-linecap: round;
-      stroke-linejoin: round;
-    }
-
-    .mini-board-overlay.draw {
-      font-size: 26px;
-      font-weight: 700;
-      color: var(--pencil-light);
-      text-transform: uppercase;
-      letter-spacing: 2px;
-      font-family: 'Caveat', cursive;
-    }
-
-    @keyframes popIn {
-      0% { transform: scale(0.3); opacity: 0; }
-      100% { transform: scale(1); opacity: 1; }
-    }
-
-    /* Hint / Instruction Banner */
-    .hint-section {
-      padding: 0 16px;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      margin-bottom: 6px;
-    }
-
-    .hint-banner {
-      width: 100%;
-      background: #fdfcf7;
-      border: 2px solid var(--pencil);
-      border-radius: 12px;
-      padding: 7px 12px;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      position: relative;
-      box-shadow: 2px 2px 0px rgba(0,0,0,0.08);
-      font-size: 15px;
-      line-height: 1.25;
-      color: var(--pencil);
-      text-align: center;
-      justify-content: center;
-    }
-
-    /* Lightbulb Doodle */
-    .lightbulb-icon {
-      width: 22px;
-      height: 22px;
-      flex-shrink: 0;
-      stroke: var(--pencil);
-      fill: none;
-      stroke-width: 2;
-    }
-
-    .banner-text {
-      font-family: 'Architects Daughter', cursive;
-      font-size: 14px;
-      letter-spacing: -0.2px;
-    }
-
-    /* Bottom Button Controls */
-    .bottom-controls {
-      display: grid;
-      grid-template-columns: 78px 1fr 78px;
-      gap: 10px;
-      padding: 6px 18px 18px;
-      align-items: center;
-    }
-
-    .sketch-btn {
-      background: #fff;
-      border: 2.2px solid var(--pencil);
-      border-radius: 16px;
-      padding: 8px 6px;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      align-items: center;
-      gap: 2px;
-      cursor: pointer;
-      font-family: 'Patrick Hand', cursive;
-      font-size: 14px;
-      font-weight: 700;
-      color: var(--pencil);
-      box-shadow: 2px 3px 0px rgba(0,0,0,0.1);
-      transition: all 0.15s ease;
-      touch-action: manipulation;
-    }
-
-    .sketch-btn:active {
-      transform: translate(2px, 2px);
-      box-shadow: 0px 0px 0px rgba(0,0,0,0);
-    }
-
-    .sketch-btn svg {
-      width: 22px;
-      height: 22px;
-      stroke: var(--pencil);
-      fill: none;
-      stroke-width: 2;
-    }
-
-    .sketch-btn.primary-btn {
-      background: #fdfdf9;
-      flex-direction: row;
-      gap: 8px;
-      padding: 12px 14px;
-      border-radius: 20px;
-      font-size: 20px;
-      font-family: 'Caveat', cursive;
-    }
-
-    .sketch-btn.primary-btn svg {
-      width: 24px;
-      height: 24px;
-    }
-
-    /* Overlays / Modals (Settings, Stats, Game Over) */
-    .modal-overlay {
-      position: absolute;
-      inset: 0;
-      background: rgba(30, 30, 30, 0.6);
-      backdrop-filter: blur(2px);
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      z-index: 50;
-      opacity: 0;
-      pointer-events: none;
-      transition: opacity 0.25s ease;
-      padding: 20px;
-    }
-
-    .modal-overlay.open {
-      opacity: 1;
-      pointer-events: auto;
-    }
-
-    .modal-box {
-      background: var(--paper);
-      border: 3px solid var(--pencil);
-      border-radius: 22px;
-      width: 100%;
-      max-width: 340px;
-      padding: 20px;
-      box-shadow: 6px 8px 0px rgba(0,0,0,0.25);
-      position: relative;
-      transform: scale(0.9) translateY(10px);
-      transition: transform 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-    }
-
-    .modal-overlay.open .modal-box {
-      transform: scale(1) translateY(0);
-    }
-
-    .modal-title {
-      font-family: 'Caveat', cursive;
-      font-size: 32px;
-      text-align: center;
-      margin-bottom: 14px;
-      border-bottom: 2px dashed #999;
-      padding-bottom: 6px;
-    }
-
-    .modal-close {
-      position: absolute;
-      top: 12px;
-      right: 14px;
-      background: transparent;
-      border: none;
-      font-size: 24px;
-      font-weight: bold;
-      color: var(--pencil);
-      cursor: pointer;
-    }
-
-    .setting-row {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 12px;
-      font-size: 18px;
-    }
-
-    .setting-select, .sketch-toggle {
-      border: 2px solid var(--pencil);
-      border-radius: 8px;
-      padding: 4px 8px;
-      background: #fff;
-      font-family: 'Patrick Hand', cursive;
-      font-size: 16px;
-      color: var(--pencil);
-      outline: none;
-    }
-
-    .stat-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 10px;
-      margin-bottom: 14px;
-    }
-
-    .stat-card {
-      border: 1.5px solid var(--pencil);
-      background: #fff;
-      border-radius: 12px;
-      padding: 8px;
-      text-align: center;
-    }
-
-    .stat-val {
-      font-family: 'Caveat', cursive;
-      font-size: 30px;
-      font-weight: 700;
-    }
-
-    .stat-lbl {
-      font-size: 14px;
-      color: var(--pencil-light);
-    }
-
-    /* Win Banner Animation Modal */
-    .gameover-content {
-      text-align: center;
-    }
-
-    .gameover-crown {
-      width: 54px;
-      height: 42px;
-      margin: 0 auto 8px;
-      stroke: var(--pencil);
-      fill: none;
-      stroke-width: 2.5;
-    }
-
-    .gameover-winner {
-      font-family: 'Caveat', cursive;
-      font-size: 38px;
-      margin-bottom: 8px;
-    }
-
-    .gameover-subtitle {
-      font-size: 17px;
-      color: var(--pencil-light);
-      margin-bottom: 18px;
-    }
-
-    /* Small Screen adaptations */
-    @media (max-height: 720px) {
-      .phone-frame {
-        height: 98vh;
-        border-radius: 28px;
-      }
-      .game-title {
-        font-size: 34px;
-      }
-      .score-board {
-        padding: 4px 12px;
-      }
-      .player-card {
-        padding: 4px 10px;
-        min-width: 105px;
-      }
-      .player-score {
-        font-size: 22px;
-      }
-      .hint-banner {
-        padding: 4px 8px;
-      }
-      .bottom-controls {
-        padding: 4px 12px 10px;
-      }
-    }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
+<title>Mega Tic-Tac-Toe V3</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Architects+Daughter&family=Caveat:wght@600;700&family=Patrick+Hand&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#292929;--ink2:#575757;--paper:#fbfaf4;--paper2:#f3f0e5;--desk:#d8d2bf;
+  --yellow:#ffe47b;--yellow2:#fff4b7;--blue:#ddecfb;--blue-strong:#2166c2;
+  --pink:#f8dbe5;--pink-strong:#b51655;--green:#d9efcf;--red:#d84343;
+  --shadow:rgba(35,35,35,.18);--line:#bbb7ab;--muted:#8a887f;
+}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%;background:var(--desk);color:var(--ink)}
+body{
+  min-height:100vh;display:flex;align-items:center;justify-content:center;padding:12px;
+  font-family:"Patrick Hand",cursive;
+  background-image:linear-gradient(rgba(80,70,45,.055) 1px,transparent 1px);
+  background-size:100% 28px;
+}
+button,select,input{font:inherit;color:inherit}
+button{-webkit-tap-highlight-color:transparent}
+.phone{
+  width:min(430px,100%);height:min(920px,96vh);min-height:680px;background:var(--paper);
+  border:4px solid var(--ink);border-radius:44px;box-shadow:10px 12px 0 rgba(35,35,35,.16),0 22px 50px rgba(35,35,35,.18);
+  overflow:hidden;position:relative;
+}
+.phone:after{content:"";position:absolute;inset:7px;border:1.5px solid rgba(40,40,40,.18);border-radius:36px;pointer-events:none;z-index:100}
+.screen{position:absolute;inset:0;display:none;overflow-y:auto;overscroll-behavior:contain}
+.screen.active{display:block}
+#gameScreen{overflow:hidden}
+.status{
+  height:32px;padding:8px 24px 0;display:flex;align-items:center;justify-content:space-between;
+  font-family:"Architects Daughter",cursive;font-size:11px;position:relative;z-index:2
+}
+.notch{position:absolute;top:0;left:50%;transform:translateX(-50%);width:142px;height:26px;background:var(--ink);border-radius:0 0 18px 18px}
+.status-icons{letter-spacing:2px;font-size:10px}
+.brand{text-align:center;position:relative;padding:3px 18px 0}
+.brand h1{font-family:"Caveat",cursive;font-size:41px;line-height:.9;margin:4px 0 1px;transform:rotate(-1.2deg)}
+.brand h1 span{display:block}
+.brand .subtitle{font-family:"Architects Daughter",cursive;font-size:10px;color:var(--ink2);margin-top:5px}
+.pencil{position:absolute;top:14px;font-size:22px;transform:rotate(-22deg)}
+.pencil.left{left:44px}.pencil.right{right:44px;transform:rotate(22deg)}
+.crown{position:absolute;right:84px;top:3px;font-size:20px;transform:rotate(12deg)}
+.rating-chip{
+  width:max-content;margin:9px auto 8px;border:2px solid var(--ink);border-radius:9px;background:#fff;padding:3px 11px;
+  font-family:"Architects Daughter",cursive;font-size:11px;box-shadow:1px 2px 0 rgba(0,0,0,.08)
+}
+.home-content{padding:0 18px 24px}
+.section-label{text-align:center;font-size:14px;margin:5px 0 7px}
+.mode-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.mode-card{
+  min-height:78px;background:#fff;border:2px solid var(--ink);border-radius:13px;padding:8px 8px 7px;cursor:pointer;
+  box-shadow:2px 3px 0 rgba(0,0,0,.07);transition:transform .14s,background .14s,box-shadow .14s
+}
+.mode-card:active{transform:translate(1px,2px);box-shadow:0 1px 0 rgba(0,0,0,.07)}
+.mode-card.selected{background:var(--yellow2);box-shadow:3px 4px 0 var(--ink);transform:rotate(-.5deg)}
+.mode-card .icon{font-size:22px;line-height:1}.mode-card b{display:block;font-size:14px;margin-top:3px}
+.mode-card small{display:block;font-size:11px;color:var(--ink2);line-height:1.15}
+.private-row{
+  margin:10px 0 8px;border:2px dashed var(--ink);border-radius:12px;padding:7px 8px;display:flex;align-items:center;gap:7px;
+  background:rgba(255,255,255,.55);font-size:11px
+}
+.private-row .code{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tiny-btn,.pill-btn{
+  border:1.8px solid var(--ink);background:#fff;border-radius:9px;padding:4px 7px;cursor:pointer;box-shadow:1px 1px 0 rgba(0,0,0,.08)
+}
+.options-card{margin-top:7px;padding-top:1px}
+.option-title{text-align:center;font-size:13px;margin:7px 0 5px}
+.segment{display:flex;gap:6px;justify-content:center;flex-wrap:wrap}
+.seg-btn{
+  border:1.8px solid var(--ink);background:#fff;border-radius:999px;padding:4px 10px;cursor:pointer;font-size:12px;min-width:52px
+}
+.seg-btn.selected{background:var(--ink);color:#fff}
+.start-toggle{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.start-toggle .seg-btn{border-radius:9px;padding:7px}.start-toggle .seg-btn.selected{background:var(--green);color:var(--ink)}
+.option-note{text-align:center;color:var(--muted);font-size:10px;margin-top:6px;font-family:"Architects Daughter",cursive}
+.start-btn{
+  width:100%;margin:10px 0 8px;border:0;border-radius:13px;background:var(--ink);color:#fff;padding:10px 14px;
+  font-family:"Caveat",cursive;font-size:27px;font-weight:700;cursor:pointer;box-shadow:3px 4px 0 rgba(0,0,0,.12)
+}
+.start-btn:active{transform:translateY(2px);box-shadow:1px 2px 0 rgba(0,0,0,.12)}
+.how-card{border:2px dashed var(--ink);border-radius:12px;background:#fffdf5;margin-top:4px;padding:8px 9px;font-size:11px}
+.how-card summary{cursor:pointer;font-size:13px;list-style:none}
+.how-card summary::-webkit-details-marker{display:none}
+.how-card ul{margin:6px 0 5px;padding-left:17px;line-height:1.25}
+.map-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;margin-top:6px}
+.map-grid span{border:1px solid var(--ink);border-radius:5px;text-align:center;padding:2px 0;background:#fff;font-family:"Architects Daughter",cursive;font-size:10px}
+.dev-note{font-size:9px;color:var(--muted);text-align:center;margin-top:8px;font-family:"Architects Daughter",cursive}
+.top-actions{position:absolute;right:19px;top:40px;display:flex;gap:6px;z-index:3}
+.icon-btn{
+  width:34px;height:34px;border:2px solid var(--ink);border-radius:10px;background:#fff;cursor:pointer;display:grid;place-items:center;
+  box-shadow:1px 2px 0 rgba(0,0,0,.08)
+}
+.game-wrap{height:100%;display:flex;flex-direction:column;padding:0 14px 13px}
+.game-top{display:flex;align-items:center;gap:7px;margin-top:2px}
+.game-title-mini{font-family:"Caveat",cursive;font-size:25px;font-weight:700;flex:1;text-align:center;line-height:1}
+.timer{
+  min-width:42px;border:1.8px solid var(--ink);border-radius:10px;padding:4px 6px;background:#fff;text-align:center;
+  font-family:"Architects Daughter",cursive;font-size:11px
+}
+.timer.urgent{background:#ffe4e4;color:#a01515;animation:pulseTimer .6s infinite alternate}
+@keyframes pulseTimer{to{transform:scale(1.06)}}
+.players{display:flex;align-items:center;gap:7px;margin:8px 0 6px}
+.player{
+  flex:1;border:2px solid var(--ink);border-radius:14px;padding:6px 9px;background:#fff;display:flex;align-items:center;gap:7px;min-height:54px;
+  box-shadow:2px 2px 0 rgba(0,0,0,.07);position:relative
+}
+.player.active{background:var(--blue);box-shadow:3px 3px 0 var(--ink)}
+.player.o.active{background:var(--pink)}
+.avatar{width:31px;height:31px;border:1.7px solid var(--ink);border-radius:9px;display:grid;place-items:center;background:#fff}
+.player-meta{line-height:1}.player-name{font-size:12px}.player-score{font-family:"Caveat",cursive;font-size:25px;font-weight:700}
+.vs{font-family:"Caveat",cursive;font-size:18px;font-weight:700}
+.turn-banner{
+  border:1.8px dashed var(--ink);border-radius:10px;padding:5px 8px;text-align:center;font-size:11px;margin-bottom:7px;
+  font-family:"Architects Daughter",cursive;background:#fff
+}
+.turn-banner.free{background:var(--yellow2);border-style:solid}
+.board-shell{background:var(--ink);border:3px solid var(--ink);border-radius:16px;padding:5px;box-shadow:2px 4px 0 rgba(0,0,0,.15)}
+.mega{display:grid;grid-template-columns:repeat(3,1fr);gap:5px}
+.mini{
+  aspect-ratio:1;display:grid;grid-template-columns:repeat(3,1fr);background:#fffdf4;border-radius:9px;overflow:hidden;
+  border:2px solid transparent;position:relative;transition:opacity .18s,transform .18s,box-shadow .18s,background .18s
+}
+.mini.active{background:#fffbe3;border-color:#f0b400;box-shadow:0 0 0 3px #ffd13a;z-index:2}
+.mini.free-active{background:#fffbe3;border-color:#f4c025}
+.mini.inactive{opacity:.42;filter:grayscale(.25)}
+.mini.sent-target{animation:sentPulse .5s ease}
+@keyframes sentPulse{0%{transform:scale(.96)}50%{transform:scale(1.04);box-shadow:0 0 0 5px var(--yellow)}100%{transform:scale(1)}}
+.mini.preview-target{outline:3px dashed var(--blue-strong);outline-offset:-4px}
+.mini.mega-line{outline:5px solid var(--green);outline-offset:-5px;z-index:6}
+.cell{
+  border:0;border-right:1px solid var(--line);border-bottom:1px solid var(--line);background:transparent;cursor:pointer;display:grid;place-items:center;
+  min-width:0;position:relative
+}
+.cell:nth-child(3n){border-right:0}.cell:nth-child(n+7){border-bottom:0}
+.cell:disabled{cursor:default}
+.cell.legal:hover{background:rgba(255,224,80,.28)}
+.cell.legal:active{background:rgba(255,224,80,.48)}
+.mark{font-family:"Caveat",cursive;font-size:23px;font-weight:700;line-height:1;animation:markIn .2s ease}
+.mark.x{color:var(--blue-strong);transform:rotate(-7deg)}
+.mark.o{color:var(--pink-strong);font-size:0;width:23px;height:23px;border:2.8px solid var(--pink-strong);border-radius:50%;transform:rotate(7deg)}
+@keyframes markIn{from{opacity:0;transform:scale(.4) rotate(-10deg)}70%{opacity:1;transform:scale(1.12) rotate(3deg)}to{opacity:1}}
+.claim{
+  position:absolute;inset:0;z-index:4;display:grid;place-items:center;border-radius:8px;background:rgba(255,255,255,.95);
+  animation:claimIn .34s cubic-bezier(.2,.85,.2,1.2)
+}
+.claim.x{background:repeating-linear-gradient(-35deg,#e7f4ff,#e7f4ff 7px,#d9edff 7px,#d9edff 9px)}
+.claim.o{background:repeating-linear-gradient(35deg,#fdeaf0,#fdeaf0 7px,#f8dbe5 7px,#f8dbe5 9px)}
+.claim.draw{background:#ecebe5;color:#777;font-family:"Architects Daughter",cursive;font-size:12px}
+.claim .bigx{font-family:"Caveat",cursive;font-size:62px;color:var(--blue-strong);font-weight:700;transform:rotate(-8deg)}
+.claim .bigo{width:54px;height:54px;border:6px solid var(--pink-strong);border-radius:50%;transform:rotate(7deg)}
+@keyframes claimIn{from{opacity:0;transform:scale(.65)}to{opacity:1;transform:scale(1)}}
+.shake{animation:shake .28s ease}
+@keyframes shake{25%{transform:translateX(-4px)}50%{transform:translateX(4px)}75%{transform:translateX(-2px)}}
+.tip{
+  margin:8px 2px 7px;border:2px solid var(--ink);border-radius:12px;background:#fff;padding:6px 9px;text-align:center;
+  font-family:"Architects Daughter",cursive;font-size:10px;min-height:34px;display:flex;align-items:center;justify-content:center;gap:6px
+}
+.bottom{display:grid;grid-template-columns:68px 1fr 68px;gap:8px;margin-top:auto}
+.ctrl{
+  border:2px solid var(--ink);border-radius:14px;background:#fff;padding:7px 4px;cursor:pointer;box-shadow:2px 2px 0 rgba(0,0,0,.08);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:10px
+}
+.ctrl span{font-size:18px;line-height:1}
+.ctrl.primary{font-family:"Caveat",cursive;font-size:20px;flex-direction:row;gap:7px;background:var(--paper2)}
+.toast{
+  position:absolute;left:50%;bottom:76px;transform:translate(-50%,12px);background:var(--ink);color:#fff;border-radius:999px;
+  padding:7px 12px;font-size:11px;opacity:0;pointer-events:none;transition:.2s;z-index:80;white-space:nowrap
+}
+.toast.show{opacity:1;transform:translate(-50%,0)}
+.modal{
+  position:absolute;inset:0;background:rgba(250,248,239,.92);backdrop-filter:blur(2px);z-index:60;display:none;align-items:center;justify-content:center;padding:20px
+}
+.modal.open{display:flex}
+.modal-card{
+  width:100%;max-width:354px;max-height:88%;overflow:auto;background:var(--paper);border:3px solid var(--ink);border-radius:21px;padding:16px;
+  box-shadow:6px 7px 0 var(--ink);animation:modalIn .18s ease
+}
+@keyframes modalIn{from{opacity:0;transform:translateY(8px) scale(.96)}to{opacity:1;transform:none}}
+.modal-card h2{font-family:"Caveat",cursive;font-size:32px;text-align:center;margin:0 0 10px}
+.modal-card h3{font-size:14px;margin:12px 0 6px;border-bottom:1px dashed var(--line);padding-bottom:3px}
+.setting{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:7px 0;border-bottom:1px dashed #d3d0c7;font-size:13px}
+.switch{position:relative;width:48px;height:27px;display:inline-block}
+.switch input{display:none}.slider{position:absolute;inset:0;background:#fff;border:2px solid var(--ink);border-radius:999px;cursor:pointer}
+.slider:after{content:"";position:absolute;width:19px;height:19px;left:2px;top:2px;background:var(--ink);border-radius:50%;transition:.16s}
+.switch input:checked+.slider{background:#bfe7aa}.switch input:checked+.slider:after{transform:translateX(21px)}
+.setting select{border:1.8px solid var(--ink);border-radius:8px;background:#fff;padding:3px 6px}
+.modal-actions{display:flex;gap:8px;margin-top:12px}
+.action{
+  flex:1;border:2px solid var(--ink);border-radius:11px;background:#fff;padding:8px;cursor:pointer;box-shadow:2px 2px 0 rgba(0,0,0,.08)
+}
+.action.primary{background:var(--ink);color:#fff;font-family:"Caveat",cursive;font-size:20px}
+.action.warn{background:#fff0f0;color:#9a2020}
+.premium-row{margin-top:10px;border:2px dashed var(--ink);border-radius:11px;padding:9px;background:#fffbe7}
+.premium-row b{display:block;font-size:14px}.premium-row small{font-size:10px;color:var(--muted)}
+.stats-tabs{display:flex;gap:5px;margin-bottom:9px}
+.tab{flex:1;border:1.8px solid var(--ink);background:#fff;border-radius:999px;padding:4px;cursor:pointer;font-size:11px}
+.tab.active{background:var(--ink);color:#fff}
+.stat-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+.stat-card{border:1.7px solid var(--ink);border-radius:11px;background:#fff;padding:8px;text-align:center}
+.stat-card b{display:block;font-family:"Caveat",cursive;font-size:28px;line-height:1}.stat-card span{font-size:10px;color:var(--muted)}
+.diff-stats{margin-top:8px;font-size:11px}
+.diff-line{display:grid;grid-template-columns:1fr 45px 55px;gap:4px;padding:3px 0;border-bottom:1px dashed #ddd}
+.online-note{border:2px dashed var(--ink);border-radius:12px;padding:10px;background:#fffbe7;font-size:12px;line-height:1.3}
+.online-note code{font-family:monospace;font-size:10px}
+.result-icon{text-align:center;font-size:42px}.result-title{font-family:"Caveat",cursive;text-align:center;font-size:36px;margin:0}
+.result-sub{text-align:center;font-size:12px;color:var(--ink2);margin:3px 0 10px}
+.result-strip{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.result-strip div{border:1.5px solid var(--ink);border-radius:9px;background:#fff;padding:6px;text-align:center;font-size:9px}
+.result-strip b{display:block;font-size:18px}
+.confetti{position:absolute;inset:0;pointer-events:none;overflow:hidden;z-index:55}
+.confetti i{position:absolute;top:-14px;width:7px;height:12px;border-radius:2px;animation:fall 1.7s linear forwards}
+@keyframes fall{to{transform:translateY(1000px) rotate(560deg);opacity:.2}}
+body[data-theme="dark"]{--paper:#24231f;--paper2:#302e29;--ink:#f1eee5;--ink2:#cac6bb;--desk:#151512;--line:#5c5951;--muted:#a9a599;--yellow2:#554a22;--blue:#23394c;--pink:#4b2633;--green:#31482e}
+body[data-theme="dark"] .phone{box-shadow:10px 12px 0 #050505,0 22px 50px #000}
+body[data-theme="dark"] .mode-card,body[data-theme="dark"] .player,body[data-theme="dark"] .turn-banner,body[data-theme="dark"] .tip,
+body[data-theme="dark"] .ctrl,body[data-theme="dark"] .modal-card,body[data-theme="dark"] .stat-card,body[data-theme="dark"] .tiny-btn,
+body[data-theme="dark"] .seg-btn,body[data-theme="dark"] .rating-chip{background:#2c2a25}
+body[data-theme="dark"] .mini{background:#39362f}
+body[data-theme="dark"] .claim.x{background:#213647}body[data-theme="dark"] .claim.o{background:#442631}body[data-theme="dark"] .claim.draw{background:#3b3934}
+.reduce-motion *{animation:none!important;transition:none!important}
+@media(max-height:760px){
+  .phone{height:98vh;min-height:640px;border-radius:32px}.brand h1{font-size:34px}.brand .subtitle{display:none}
+  .mode-card{min-height:68px}.home-content{padding-bottom:14px}.how-card{font-size:10px}
+  .players{margin:5px 0 4px}.player{min-height:46px;padding:4px 7px}.avatar{width:27px;height:27px}
+  .turn-banner{margin-bottom:4px}.tip{margin:5px 2px}.ctrl{padding:5px 3px}
+}
+@media(max-width:380px){
+  body{padding:0}.phone{height:100vh;width:100%;border-radius:0;border-left:0;border-right:0}
+  .phone:after{display:none}.home-content{padding-left:13px;padding-right:13px}.game-wrap{padding-left:10px;padding-right:10px}
+}
+</style>
 </head>
 <body>
+<div class="phone" id="phone">
 
-  <!-- Mockup Phone Container -->
-  <div class="phone-frame">
-    <!-- Status Bar -->
-    <div class="status-bar">
-      <span>9:41</span>
-      <div class="notch"></div>
-      <div class="status-icons">
-        <!-- Signal sketch -->
-        <svg width="14" height="12" viewBox="0 0 16 14" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M1 12h2 M5 9h2 M9 6h2 M13 2h2" stroke-linecap="round"/>
-        </svg>
-        <!-- Wifi sketch -->
-        <svg width="14" height="12" viewBox="0 0 16 14" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M1 4c4-4 10-4 14 0 M3.5 7.5c2.5-2.5 6.5-2.5 9 0 M6 11c1-1 3-1 4 0" stroke-linecap="round"/>
-        </svg>
-        <!-- Battery sketch -->
-        <svg width="18" height="11" viewBox="0 0 22 13" fill="none" stroke="currentColor" stroke-width="2">
-          <rect x="1" y="1" width="16" height="11" rx="2" />
-          <path d="M19 4v5" stroke-linecap="round" />
-          <rect x="3" y="3" width="9" height="7" fill="currentColor" />
-        </svg>
-      </div>
+  <section class="screen active" id="homeScreen" aria-label="Main menu">
+    <div class="status"><span>9:41</span><div class="notch"></div><span class="status-icons">▮▮▮ ◌ ▰</span></div>
+    <div class="top-actions">
+      <button class="icon-btn" id="homeStatsBtn" aria-label="Stats">▥</button>
+      <button class="icon-btn" id="homeSettingsBtn" aria-label="Settings">⚙</button>
     </div>
-
-    <!-- Header / Doodle Title -->
-    <div class="header-section">
-      <div class="title-wrapper">
-        <span class="spark-left">˗ˏˋ</span>
-        <h1 class="game-title">Mega<br>tic-tac-toe</h1>
-        <span class="spark-right">ˎˊ˗</span>
-        <!-- Doodle Crown -->
-        <svg class="crown-doodle" viewBox="0 0 40 30">
-          <path d="M4 24 L10 8 L20 18 L30 8 L36 24 Z" />
-          <circle cx="10" cy="7" r="2" fill="currentColor"/>
-          <circle cx="20" cy="17" r="2" fill="currentColor"/>
-          <circle cx="30" cy="7" r="2" fill="currentColor"/>
-        </svg>
-      </div>
+    <div class="brand">
+      <span class="pencil left">✎</span><span class="pencil right">✎</span><span class="crown">♕</span>
+      <h1>Mega <span>tic-tac-toe</span></h1>
+      <div class="subtitle">Ultimate 81-cell strategy · send-rule ON</div>
     </div>
+    <div class="rating-chip">🏆 Rating: 1200 · Gold</div>
 
-    <!-- Score & Turn Header -->
-    <div class="score-board">
-      <div class="player-card active-turn" id="card-x">
-        <svg class="avatar-icon" viewBox="0 0 24 24">
-          <path d="M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z" />
-          <path d="M4 21c0-4 4-6 8-6s8 2 8 6" />
-        </svg>
-        <div class="player-info">
-          <span class="player-name" id="name-x">You (X)</span>
-          <span class="player-score" id="score-x">0</span>
+    <div class="home-content">
+      <div class="section-label">Choose mode:</div>
+      <div class="mode-grid" id="modeGrid">
+        <button class="mode-card selected" data-mode="bot"><span class="icon">🤖</span><b>Vs Bot</b><small>5 difficulties · offline</small></button>
+        <button class="mode-card" data-mode="local"><span class="icon">👥</span><b>2 Players</b><small>pass & play</small></button>
+        <button class="mode-card" data-mode="ranked"><span class="icon">🏆</span><b>Ranked</b><small>online · rating</small></button>
+        <button class="mode-card" data-mode="casual"><span class="icon">🎲</span><b>Casual</b><small>online · no rating</small></button>
+      </div>
+
+      <div class="private-row">
+        <span>🔒</span><span class="code">Private code: <b id="friendCode"></b></span>
+        <button class="tiny-btn" id="copyCodeBtn">Copy</button>
+        <button class="tiny-btn" id="friendModeBtn">Friend Mode</button>
+      </div>
+
+      <div class="options-card" id="offlineOptions">
+        <div id="botOnlyOptions">
+          <div class="option-title">Bot difficulty:</div>
+          <div class="segment" id="difficultySegment">
+            <button class="seg-btn" data-difficulty="Beginner">Beginner</button>
+            <button class="seg-btn" data-difficulty="Easy">Easy</button>
+            <button class="seg-btn selected" data-difficulty="Medium">Medium</button>
+            <button class="seg-btn" data-difficulty="Hard">Hard</button>
+            <button class="seg-btn" data-difficulty="Expert">Expert</button>
+          </div>
+          <div class="option-note" id="difficultyNote">Medium: blocks wins, reads sends and avoids traps.</div>
+        </div>
+        <div class="option-title">Who starts?</div>
+        <div class="start-toggle" id="startSegment">
+          <button class="seg-btn selected" data-start="X">X starts</button>
+          <button class="seg-btn" data-start="O">O starts</button>
         </div>
       </div>
 
-      <div class="vs-badge">vs</div>
+      <button class="start-btn" id="startBtn">▶ Start Battle!</button>
 
-      <div class="player-card" id="card-o">
-        <svg class="avatar-icon" viewBox="0 0 24 24">
-          <rect x="4" y="8" width="16" height="12" rx="3" />
-          <circle cx="9" cy="13" r="1.5" fill="currentColor"/>
-          <circle cx="15" cy="13" r="1.5" fill="currentColor"/>
-          <path d="M9 17h6" />
-          <path d="M12 4v4 M8 4h8" />
-        </svg>
-        <div class="player-info">
-          <span class="player-name" id="name-o">Bot (O)</span>
-          <span class="player-score" id="score-o">0</span>
+      <details class="how-card">
+        <summary>📜 <b>How to play</b> — tap to expand</summary>
+        <ul>
+          <li>Win 3 Mini Boards in a row to win the Mega Board.</li>
+          <li>Your cell position sends the opponent to that matching Mini Board.</li>
+          <li>Example: play cell <b>2 ↗</b> → opponent must play in Mega Board <b>2 ↗</b>.</li>
+          <li>If that destination Mini Board is already won or drawn, opponent gets a <b>FREE MOVE</b> anywhere.</li>
+        </ul>
+        <div class="map-grid">
+          <span>0 ↖</span><span>1 ↑</span><span>2 ↗</span>
+          <span>3 ←</span><span>4 •</span><span>5 →</span>
+          <span>6 ↙</span><span>7 ↓</span><span>8 ↘</span>
+        </div>
+      </details>
+      <div class="dev-note">V3 client prototype · online modes are visibly scaffolded, not faked.</div>
+    </div>
+  </section>
+
+  <section class="screen" id="gameScreen" aria-label="Game">
+    <div class="status"><span>9:41</span><div class="notch"></div><span class="status-icons">▮▮▮ ◌ ▰</span></div>
+    <div class="game-wrap">
+      <div class="game-top">
+        <button class="icon-btn" id="backBtn" aria-label="Back to menu">‹</button>
+        <div class="game-title-mini">Mega tic-tac-toe</div>
+        <div class="timer" id="timerBadge">∞</div>
+        <button class="icon-btn" id="gameSettingsBtn" aria-label="Settings">⚙</button>
+      </div>
+
+      <div class="players">
+        <div class="player" id="playerXCard">
+          <div class="avatar">👤</div>
+          <div class="player-meta"><div class="player-name" id="playerXName">You (X)</div><div class="player-score" id="playerXScore">0</div></div>
+        </div>
+        <div class="vs">vs</div>
+        <div class="player o" id="playerOCard">
+          <div class="avatar" id="playerOAvatar">🤖</div>
+          <div class="player-meta"><div class="player-name" id="playerOName">Bot (O)</div><div class="player-score" id="playerOScore">0</div></div>
         </div>
       </div>
-    </div>
 
-    <!-- Mega Board 3x3 Grid -->
-    <div class="mega-board-container">
-      <div class="mega-board" id="mega-board">
-        <!-- 9 Mini Boards generated via JS -->
+      <div class="turn-banner free" id="turnBanner">Your turn — Free Move, play anywhere!</div>
+
+      <div class="board-shell">
+        <div class="mega" id="megaBoard" role="grid" aria-label="Mega tic tac toe board"></div>
+      </div>
+
+      <div class="tip" id="tipText"><span>💡</span><span>Win mini boards to claim the big board.</span></div>
+
+      <div class="bottom">
+        <button class="ctrl" id="gameMenuBtn"><span>⌂</span>Menu</button>
+        <button class="ctrl primary" id="restartBtn"><span>↻</span>Restart</button>
+        <button class="ctrl" id="gameStatsBtn"><span>▥</span>Stats</button>
       </div>
     </div>
+  </section>
 
-    <!-- Hint / Guidance Ribbon -->
-    <div class="hint-section">
-      <div class="hint-banner" id="hint-banner">
-        <svg class="lightbulb-icon" viewBox="0 0 24 24">
-          <path d="M9 18h6 M10 21h4 M12 3a7 7 0 0 0-5 11.9c.7.7 1 1.6 1 2.6v.5h8v-.5c0-1 .3-1.9 1-2.6A7 7 0 0 0 12 3z" />
-          <path d="M12 7v2 M8.5 8.5l1.4 1.4 M15.5 8.5l-1.4 1.4" stroke-linecap="round"/>
-        </svg>
-        <span class="banner-text" id="hint-text">Win mini boards to claim the big board!</span>
-      </div>
-    </div>
+  <div class="toast" id="toast"></div>
+  <div class="confetti" id="confetti"></div>
 
-    <!-- Bottom Controls: Settings, Restart, Stats -->
-    <div class="bottom-controls">
-      <button class="sketch-btn" id="btn-settings" title="Settings">
-        <svg viewBox="0 0 24 24">
-          <circle cx="12" cy="12" r="3"/>
-          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
-        </svg>
-        <span>Settings</span>
-      </button>
+  <div class="modal" id="settingsModal" role="dialog" aria-modal="true" aria-label="Settings">
+    <div class="modal-card">
+      <h2>⚙ Settings</h2>
+      <h3>Sound & feel</h3>
+      <label class="setting"><span>🔊 Sound FX</span><span class="switch"><input id="soundFxToggle" type="checkbox" checked><span class="slider"></span></span></label>
+      <label class="setting"><span>🎵 Ambient music</span><span class="switch"><input id="musicToggle" type="checkbox"><span class="slider"></span></span></label>
+      <label class="setting"><span>📳 Haptics</span><span class="switch"><input id="hapticsToggle" type="checkbox" checked><span class="slider"></span></span></label>
+      <label class="setting"><span>🎉 Win confetti</span><span class="switch"><input id="confettiToggle" type="checkbox" checked><span class="slider"></span></span></label>
 
-      <button class="sketch-btn primary-btn" id="btn-restart">
-        <svg viewBox="0 0 24 24">
-          <path d="M3 12a9 9 0 0 1 15-6.7L21 8"/>
-          <path d="M21 3v5h-5"/>
-          <path d="M21 12a9 9 0 0 1-15 6.7L3 16"/>
-          <path d="M3 21v-5h5"/>
-        </svg>
-        <span>Restart</span>
-      </button>
+      <h3>Gameplay</h3>
+      <label class="setting"><span>💡 Show legal boards</span><span class="switch"><input id="hintsToggle" type="checkbox" checked><span class="slider"></span></span></label>
+      <label class="setting"><span>🎯 Destination preview</span><span class="switch"><input id="previewToggle" type="checkbox" checked><span class="slider"></span></span></label>
+      <label class="setting"><span>⏱ Move timer</span>
+        <select id="timerSelect"><option value="0">Off</option><option value="15">15 sec</option><option value="30">30 sec</option><option value="60">60 sec</option></select>
+      </label>
 
-      <button class="sketch-btn" id="btn-stats" title="Stats">
-        <svg viewBox="0 0 24 24">
-          <path d="M18 20V10 M12 20V4 M6 20v-6" stroke-linecap="round"/>
-          <path d="M3 20h18" stroke-linecap="round"/>
-        </svg>
-        <span>Stats</span>
-      </button>
-    </div>
-  </div>
+      <h3>Appearance & accessibility</h3>
+      <label class="setting"><span>Theme</span><select id="themeSelect"><option value="paper">Paper</option><option value="dark">Dark notebook</option></select></label>
+      <label class="setting"><span>Reduce motion</span><span class="switch"><input id="motionToggle" type="checkbox"><span class="slider"></span></span></label>
 
-  <!-- Settings Modal -->
-  <div class="modal-overlay" id="modal-settings">
-    <div class="modal-box">
-      <button class="modal-close" data-close="settings">&times;</button>
-      <h2 class="modal-title">Game Settings</h2>
-      
-      <div class="setting-row">
-        <span>Game Mode</span>
-        <select class="setting-select" id="mode-select">
-          <option value="bot">Vs Bot</option>
-          <option value="pvp">Pass & Play (2P)</option>
-        </select>
+      <div class="premium-row">
+        <b>🚫 Remove Ads — paid upgrade</b>
+        <small>No ads are shown inside a match. Store purchase integration is intentionally not mocked in this prototype.</small>
+        <button class="action" id="removeAdsBtn" style="margin-top:7px;width:100%">View Ad-Free Upgrade</button>
       </div>
 
-      <div class="setting-row" id="diff-row">
-        <span>Bot Difficulty</span>
-        <select class="setting-select" id="bot-difficulty">
-          <option value="easy">Easy</option>
-          <option value="medium" selected>Medium</option>
-          <option value="hard">Hard (Master)</option>
-        </select>
-      </div>
-
-      <div class="setting-row">
-        <span>Sound Effects</span>
-        <select class="setting-select" id="sound-toggle">
-          <option value="on">On (Pencil SFX)</option>
-          <option value="off">Mute</option>
-        </select>
-      </div>
-
-      <div class="setting-row">
-        <span>Start As</span>
-        <select class="setting-select" id="start-player">
-          <option value="X">Player X (First)</option>
-          <option value="O">Player O (Second)</option>
-        </select>
-      </div>
-
-      <div style="margin-top: 18px; text-align: center;">
-        <button class="sketch-btn primary-btn" style="width: 100%; justify-content: center;" id="settings-save-btn">
-          <span>Save & Apply</span>
-        </button>
+      <div class="modal-actions">
+        <button class="action" data-close="settings">Cancel</button>
+        <button class="action primary" id="saveSettingsBtn">Done</button>
       </div>
     </div>
   </div>
 
-  <!-- Stats Modal -->
-  <div class="modal-overlay" id="modal-stats">
-    <div class="modal-box">
-      <button class="modal-close" data-close="stats">&times;</button>
-      <h2 class="modal-title">Pencil Stats</h2>
-      
-      <div class="stat-grid">
-        <div class="stat-card">
-          <div class="stat-val" id="stat-wins">0</div>
-          <div class="stat-lbl">Wins</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-val" id="stat-losses">0</div>
-          <div class="stat-lbl">Losses</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-val" id="stat-draws">0</div>
-          <div class="stat-lbl">Draws</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-val" id="stat-streak">0</div>
-          <div class="stat-lbl">Current Streak</div>
-        </div>
+  <div class="modal" id="statsModal" role="dialog" aria-modal="true" aria-label="Stats">
+    <div class="modal-card">
+      <h2>▥ Stats</h2>
+      <div class="stats-tabs">
+        <button class="tab active" data-tab="overview">Overview</button>
+        <button class="tab" data-tab="bot">Vs Bot</button>
+        <button class="tab" data-tab="online">Online</button>
       </div>
-
-      <button class="sketch-btn" style="width: 100%; padding: 8px;" id="btn-reset-stats">Reset Stats</button>
+      <div id="statsContent"></div>
+      <div class="modal-actions">
+        <button class="action warn" id="resetStatsBtn">Reset</button>
+        <button class="action primary" data-close="stats">Done</button>
+      </div>
     </div>
   </div>
 
-  <!-- Game Over Modal -->
-  <div class="modal-overlay" id="modal-gameover">
-    <div class="modal-box gameover-content">
-      <svg class="gameover-crown" viewBox="0 0 40 30">
-        <path d="M4 24 L10 8 L20 18 L30 8 L36 24 Z" />
-        <circle cx="10" cy="7" r="2" fill="currentColor"/>
-        <circle cx="20" cy="17" r="2" fill="currentColor"/>
-        <circle cx="30" cy="7" r="2" fill="currentColor"/>
-      </svg>
-      <h2 class="gameover-winner" id="winner-title">You Won!</h2>
-      <p class="gameover-subtitle" id="winner-desc">Claimed 3 mini boards in a row!</p>
-      <button class="sketch-btn primary-btn" style="width: 100%; justify-content: center;" id="btn-play-again">
-        <svg viewBox="0 0 24 24">
-          <path d="M3 12a9 9 0 0 1 15-6.7L21 8"/>
-          <path d="M21 3v5h-5"/>
-          <path d="M21 12a9 9 0 0 1-15 6.7L3 16"/>
-          <path d="M3 21v-5h5"/>
-        </svg>
-        <span>Play Again</span>
-      </button>
+  <div class="modal" id="onlineModal" role="dialog" aria-modal="true" aria-label="Online mode">
+    <div class="modal-card">
+      <h2 id="onlineTitle">Online Mode</h2>
+      <div class="online-note" id="onlineBody"></div>
+      <div class="modal-actions">
+        <button class="action" id="onlineCopyBtn">Copy code</button>
+        <button class="action primary" data-close="online">Got it</button>
+      </div>
     </div>
   </div>
 
-  <script>
-    /* =========================================================
-       AUDIO SYNTHESIS (Web Audio API - Pencil & Paper sounds)
-       ========================================================= */
-    const SoundManager = {
-      ctx: null,
-      enabled: true,
+  <div class="modal" id="premiumModal" role="dialog" aria-modal="true" aria-label="Remove ads">
+    <div class="modal-card">
+      <h2>🚫 Ad-Free</h2>
+      <div class="online-note">
+        V3 includes the paid <b>Remove Ads</b> setting and purchase entry point, but does not fake an App Store / Play Billing transaction.
+        Connect StoreKit 2 and Google Play Billing when the app wrapper/backend is added.
+      </div>
+      <div class="modal-actions"><button class="action primary" data-close="premium">Done</button></div>
+    </div>
+  </div>
 
-      init() {
-        if (!this.ctx) {
-          const AudioContext = window.AudioContext || window.webkitAudioContext;
-          this.ctx = new AudioContext();
-        }
-        if (this.ctx && this.ctx.state === 'suspended') {
-          this.ctx.resume();
-        }
-      },
+  <div class="modal" id="resultModal" role="dialog" aria-modal="true" aria-label="Match result">
+    <div class="modal-card">
+      <div class="result-icon" id="resultIcon">🏆</div>
+      <h2 class="result-title" id="resultTitle">Victory!</h2>
+      <div class="result-sub" id="resultSub"></div>
+      <div class="result-strip">
+        <div><span>MINI X</span><b id="resultMiniX">0</b></div>
+        <div><span>MOVES</span><b id="resultMoves">0</b></div>
+        <div><span>TIME</span><b id="resultTime">0:00</b></div>
+      </div>
+      <div class="modal-actions">
+        <button class="action" id="resultMenuBtn">Menu</button>
+        <button class="action primary" id="rematchBtn">Rematch</button>
+      </div>
+    </div>
+  </div>
 
-      playPencilScratch(type = 'X') {
-        if (!this.enabled) return;
-        this.init();
-        if (!this.ctx) return;
+</div>
 
-        const now = this.ctx.currentTime;
-        
-        // Generate realistic pencil graphite scratch sound using filtered noise
-        const bufferSize = this.ctx.sampleRate * 0.12;
-        const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
-        const data = buffer.getChannelData(0);
-        for (let i = 0; i < bufferSize; i++) {
-          data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (bufferSize * 0.45));
-        }
+<script>
+(function(){
+"use strict";
 
-        const noise = this.ctx.createBufferSource();
-        noise.buffer = buffer;
+var WIN_LINES=[[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
+var POS_NAMES=["Top-left","Top-centre","Top-right","Middle-left","Centre","Middle-right","Bottom-left","Bottom-centre","Bottom-right"];
+var DIFF_NOTES={
+  Beginner:"Beginner: mostly random, occasionally spots a win.",
+  Easy:"Easy: takes obvious wins and blocks simple threats.",
+  Medium:"Medium: blocks wins, reads sends and avoids traps.",
+  Hard:"Hard: searches ahead and values Mega-board threats.",
+  Expert:"Expert: deeper alpha-beta search with send-rule heuristics."
+};
 
-        // Bandpass filter for distinct pencil on paper texture
-        const filter = this.ctx.createBiquadFilter();
-        filter.type = 'bandpass';
-        filter.frequency.setValueAtTime(type === 'X' ? 2200 : 1600, now);
-        filter.Q.setValueAtTime(3.0, now);
+var homeScreen=document.getElementById("homeScreen");
+var gameScreen=document.getElementById("gameScreen");
+var megaBoard=document.getElementById("megaBoard");
+var turnBanner=document.getElementById("turnBanner");
+var tipText=document.getElementById("tipText");
+var timerBadge=document.getElementById("timerBadge");
+var toast=document.getElementById("toast");
+var confettiLayer=document.getElementById("confetti");
 
-        const gain = this.ctx.createGain();
-        gain.gain.setValueAtTime(0.35, now);
-        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.12);
+var menu={
+  mode:"bot",
+  difficulty:"Medium",
+  startPlayer:"X",
+  friendCode:makeFriendCode()
+};
 
-        noise.connect(filter);
-        filter.connect(gain);
-        gain.connect(this.ctx.destination);
-        noise.start(now);
-      },
+var settings=loadSettings();
+var stats=loadStats();
+var game=null;
+var turnTimerId=null;
+var botTimerId=null;
+var toastTimer=null;
+var ambientNodes=null;
+var currentStatsTab="overview";
 
-      playBoardWin() {
-        if (!this.enabled) return;
-        this.init();
-        if (!this.ctx) return;
+document.getElementById("friendCode").textContent=menu.friendCode;
 
-        // Upbeat harmonic paper ding
-        const notes = [440, 554.37, 659.25];
-        notes.forEach((freq, idx) => {
-          const osc = this.ctx.createOscillator();
-          const gain = this.ctx.createGain();
-          const startTime = this.ctx.currentTime + idx * 0.07;
-          osc.type = 'triangle';
-          osc.frequency.setValueAtTime(freq, startTime);
-          gain.gain.setValueAtTime(0.2, startTime);
-          gain.gain.exponentialRampToValueAtTime(0.001, startTime + 0.35);
-          osc.connect(gain);
-          gain.connect(this.ctx.destination);
-          osc.start(startTime);
-          osc.stop(startTime + 0.36);
-        });
-      },
+function defaultSettings(){
+  return {soundFx:true,music:false,haptics:true,confetti:true,hints:true,preview:true,timerSeconds:0,theme:"paper",reduceMotion:false};
+}
+function loadSettings(){
+  try{
+    var s=JSON.parse(localStorage.getItem("mega_xo_v3_settings")||"null");
+    return Object.assign(defaultSettings(),s||{});
+  }catch(e){return defaultSettings();}
+}
+function saveSettings(){try{localStorage.setItem("mega_xo_v3_settings",JSON.stringify(settings));}catch(e){}}
+function defaultStats(){
+  var d={};
+  ["Beginner","Easy","Medium","Hard","Expert"].forEach(function(k){d[k]={g:0,w:0,l:0,d:0};});
+  return {games:0,wins:0,losses:0,draws:0,xWins:0,oWins:0,localGames:0,botGames:0,streak:0,bestStreak:0,miniWon:0,totalMoves:0,diff:d};
+}
+function loadStats(){
+  try{
+    var s=JSON.parse(localStorage.getItem("mega_xo_v3_stats")||"null");
+    var base=defaultStats();
+    if(!s)return base;
+    var merged=Object.assign(base,s);
+    merged.diff=Object.assign(base.diff,s.diff||{});
+    return merged;
+  }catch(e){return defaultStats();}
+}
+function saveStats(){try{localStorage.setItem("mega_xo_v3_stats",JSON.stringify(stats));}catch(e){}}
+function makeFriendCode(){
+  var chars="ABCDEFGHJKLMNPQRSTUVWXYZ23456789",out="MEGA-";
+  for(var i=0;i<4;i++)out+=chars[Math.floor(Math.random()*chars.length)];
+  return out;
+}
 
-      playMegaWin() {
-        if (!this.enabled) return;
-        this.init();
-        if (!this.ctx) return;
-
-        // Glorious fanfare
-        const chord = [392, 523.25, 659.25, 783.99, 1046.50];
-        chord.forEach((freq, idx) => {
-          const osc = this.ctx.createOscillator();
-          const gain = this.ctx.createGain();
-          const startTime = this.ctx.currentTime + idx * 0.09;
-          osc.type = 'sine';
-          osc.frequency.setValueAtTime(freq, startTime);
-          gain.gain.setValueAtTime(0.28, startTime);
-          gain.gain.exponentialRampToValueAtTime(0.001, startTime + 0.6);
-          osc.connect(gain);
-          gain.connect(this.ctx.destination);
-          osc.start(startTime);
-          osc.stop(startTime + 0.65);
-        });
-      }
-    };
-
-    /* =========================================================
-       GAME STATE & RULES ENGINE
-       ========================================================= */
-    const WINNING_LINES = [
-      [0, 1, 2], [3, 4, 5], [6, 7, 8], // Rows
-      [0, 3, 6], [1, 4, 7], [2, 5, 8], // Cols
-      [0, 4, 8], [2, 4, 6]             // Diagonals
-    ];
-
-    const BOARD_POS_NAMES = [
-      "Top-Left", "Top-Center", "Top-Right",
-      "Mid-Left", "Center", "Mid-Right",
-      "Bottom-Left", "Bottom-Center", "Bottom-Right"
-    ];
-
-    let state = {
-      // 9 mini boards, each with 9 cells: null, 'X', or 'O'
-      board: Array(9).fill(null).map(() => Array(9).fill(null)),
-      // Resolved status for 9 mini boards: null, 'X', 'O', or 'DRAW'
-      miniWins: Array(9).fill(null),
-      // Active required mini board index (0-8) or null for any free move
-      activeBoard: null,
-      // Current player: 'X' or 'O'
-      turn: 'X',
-      // Game state: 'PLAYING', 'OVER'
-      status: 'PLAYING',
-      winner: null, // 'X', 'O', 'DRAW'
-      // Mode & Settings
-      mode: 'bot', // 'bot' or 'pvp'
-      botDifficulty: 'medium', // 'easy', 'medium', 'hard'
-      scores: { X: 0, O: 0 },
-      streak: 0
-    };
-
-    // Load saved stats
-    let stats = {
-      wins: 0,
-      losses: 0,
-      draws: 0,
-      streak: 0
-    };
-    try {
-      const saved = localStorage.getItem('mega_ttt_stats');
-      if (saved) stats = JSON.parse(saved);
-    } catch(e) {}
-
-    /* =========================================================
-       DOM ELEMENTS
-       ========================================================= */
-    const megaBoardEl = document.getElementById('mega-board');
-    const hintTextEl = document.getElementById('hint-text');
-    const cardX = document.getElementById('card-x');
-    const cardO = document.getElementById('card-o');
-    const nameXEl = document.getElementById('name-x');
-    const nameOEl = document.getElementById('name-o');
-    const scoreXEl = document.getElementById('score-x');
-    const scoreOEl = document.getElementById('score-o');
-
-    const modalSettings = document.getElementById('modal-settings');
-    const modalStats = document.getElementById('modal-stats');
-    const modalGameOver = document.getElementById('modal-gameover');
-    const winnerTitle = document.getElementById('winner-title');
-    const winnerDesc = document.getElementById('winner-desc');
-
-    const modeSelect = document.getElementById('mode-select');
-    const diffRow = document.getElementById('diff-row');
-    const botDiffSelect = document.getElementById('bot-difficulty');
-    const soundToggle = document.getElementById('sound-toggle');
-    const startPlayerSelect = document.getElementById('start-player');
-
-    /* =========================================================
-       DRAWING SVG HELPERS
-       ========================================================= */
-    function getXMarkSvg() {
-      // Hand-sketched natural crossed lines
-      return `
-        <svg class="mark-x" viewBox="0 0 40 40">
-          <path d="M 9 9 Q 20 20 31 31" />
-          <path d="M 31 9 Q 20 20 9 31" />
-        </svg>
-      `;
+var Audio={
+  ctx:null,
+  init:function(){
+    if(!this.ctx){
+      var C=window.AudioContext||window.webkitAudioContext;
+      if(C)this.ctx=new C();
     }
+    if(this.ctx&&this.ctx.state==="suspended")this.ctx.resume();
+  },
+  scratch:function(mark){
+    if(!settings.soundFx)return;
+    this.init();if(!this.ctx)return;
+    var n=this.ctx.sampleRate*.09,b=this.ctx.createBuffer(1,n,this.ctx.sampleRate),data=b.getChannelData(0);
+    for(var i=0;i<n;i++)data[i]=(Math.random()*2-1)*Math.exp(-i/(n*.38));
+    var src=this.ctx.createBufferSource(),filter=this.ctx.createBiquadFilter(),gain=this.ctx.createGain();
+    src.buffer=b;filter.type="bandpass";filter.frequency.value=mark==="X"?2100:1500;filter.Q.value=2.2;
+    gain.gain.value=.18;src.connect(filter);filter.connect(gain);gain.connect(this.ctx.destination);src.start();
+  },
+  tone:function(freq,dur,volume){
+    if(!settings.soundFx)return;
+    this.init();if(!this.ctx)return;
+    var o=this.ctx.createOscillator(),g=this.ctx.createGain(),t=this.ctx.currentTime;
+    o.type="triangle";o.frequency.value=freq;g.gain.setValueAtTime(volume||.1,t);g.gain.exponentialRampToValueAtTime(.001,t+dur);
+    o.connect(g);g.connect(this.ctx.destination);o.start(t);o.stop(t+dur);
+  },
+  winMini:function(){this.tone(520,.22,.12);var self=this;setTimeout(function(){self.tone(690,.25,.11);},70);},
+  winMega:function(){var self=this;[523,659,784,1046].forEach(function(f,i){setTimeout(function(){self.tone(f,.42,.11);},i*75);});},
+  syncAmbient:function(){
+    if(!settings.music){this.stopAmbient();return;}
+    this.init();if(!this.ctx||ambientNodes)return;
+    var g=this.ctx.createGain(),o1=this.ctx.createOscillator(),o2=this.ctx.createOscillator();
+    o1.type="sine";o2.type="sine";o1.frequency.value=130.81;o2.frequency.value=196;
+    g.gain.value=.008;o1.connect(g);o2.connect(g);g.connect(this.ctx.destination);o1.start();o2.start();
+    ambientNodes={g:g,o1:o1,o2:o2};
+  },
+  stopAmbient:function(){
+    if(!ambientNodes)return;
+    try{ambientNodes.o1.stop();ambientNodes.o2.stop();}catch(e){}
+    ambientNodes=null;
+  }
+};
+function haptic(pattern){if(settings.haptics&&navigator.vibrate)navigator.vibrate(pattern||12);}
 
-    function getOMarkSvg() {
-      // Hand-sketched circle with overlap loop
-      return `
-        <svg class="mark-o" viewBox="0 0 40 40">
-          <path d="M 20 8 C 30 8, 33 22, 28 29 C 23 35, 12 34, 9 26 C 6 18, 12 8, 22 8" />
-        </svg>
-      `;
+function showScreen(name){
+  homeScreen.classList.toggle("active",name==="home");
+  gameScreen.classList.toggle("active",name==="game");
+}
+function openModal(id){document.getElementById(id).classList.add("open");}
+function closeModal(id){document.getElementById(id).classList.remove("open");}
+function showToast(msg){
+  toast.textContent=msg;toast.classList.add("show");clearTimeout(toastTimer);
+  toastTimer=setTimeout(function(){toast.classList.remove("show");},1400);
+}
+function copyText(text){
+  if(navigator.clipboard&&navigator.clipboard.writeText){
+    navigator.clipboard.writeText(text).then(function(){showToast("Copied "+text);}).catch(function(){showToast(text);});
+  }else showToast(text);
+}
+
+function syncHomeMode(){
+  document.querySelectorAll(".mode-card").forEach(function(b){b.classList.toggle("selected",b.dataset.mode===menu.mode);});
+  var offline=menu.mode==="bot"||menu.mode==="local";
+  document.getElementById("offlineOptions").style.display=offline?"block":"none";
+  document.getElementById("botOnlyOptions").style.display=menu.mode==="bot"?"block":"none";
+  document.querySelectorAll("#difficultySegment .seg-btn").forEach(function(b){b.classList.toggle("selected",b.dataset.difficulty===menu.difficulty);});
+  document.querySelectorAll("#startSegment .seg-btn").forEach(function(b){b.classList.toggle("selected",b.dataset.start===menu.startPlayer);});
+  document.getElementById("difficultyNote").textContent=DIFF_NOTES[menu.difficulty];
+  var label="▶ Start Battle!";
+  if(menu.mode==="ranked")label="🏆 Find Ranked Match";
+  if(menu.mode==="casual")label="🎲 Find Casual Match";
+  if(menu.mode==="friend")label="🔒 Open Private Lobby";
+  document.getElementById("startBtn").textContent=label;
+}
+
+function blankGame(){
+  return {
+    board:Array.from({length:9},function(){return Array(9).fill(null);}),
+    mini:Array(9).fill(null),
+    turn:menu.startPlayer,
+    activeBoard:null,
+    status:"PLAYING",
+    winner:null,
+    megaLine:null,
+    mode:menu.mode,
+    difficulty:menu.difficulty,
+    startPlayer:menu.startPlayer,
+    moveCount:0,
+    history:[],
+    startedAt:Date.now(),
+    justSentTo:null,
+    endReason:null,
+    secondsLeft:settings.timerSeconds
+  };
+}
+
+function startOfflineGame(isRematch){
+  clearTimers();
+  game=blankGame();
+  if(isRematch){
+    game.startPlayer=menu.startPlayer==="X"?"O":"X";
+    menu.startPlayer=game.startPlayer;
+    game.turn=game.startPlayer;
+    syncHomeMode();
+  }
+  configurePlayerLabels();
+  showScreen("game");
+  renderAll();
+  startTurnClock();
+  if(game.mode==="bot"&&game.turn==="O")scheduleBot();
+}
+
+function configurePlayerLabels(){
+  if(!game)return;
+  var local=game.mode==="local";
+  document.getElementById("playerXName").textContent=local?"Player 1 (X)":"You (X)";
+  document.getElementById("playerOName").textContent=local?"Player 2 (O)":"Bot (O)";
+  document.getElementById("playerOAvatar").textContent=local?"👤":"🤖";
+}
+
+function checkWinner(cells){
+  for(var i=0;i<WIN_LINES.length;i++){
+    var l=WIN_LINES[i],a=cells[l[0]];
+    if((a==="X"||a==="O")&&a===cells[l[1]]&&a===cells[l[2]])return {winner:a,line:l};
+  }
+  return null;
+}
+function full(cells){return cells.every(function(v){return v!==null;});}
+function legalMovesFor(s){
+  var out=[],target=s.activeBoard;
+  if(target!==null&&s.mini[target]===null){
+    for(var c=0;c<9;c++)if(s.board[target][c]===null)out.push({b:target,c:c});
+    return out;
+  }
+  for(var b=0;b<9;b++)if(s.mini[b]===null){
+    for(var j=0;j<9;j++)if(s.board[b][j]===null)out.push({b:b,c:j});
+  }
+  return out;
+}
+function isLegal(b,c){
+  if(!game||game.status!=="PLAYING")return false;
+  if(game.mini[b]!==null||game.board[b][c]!==null)return false;
+  if(game.activeBoard!==null&&game.mini[game.activeBoard]===null)return b===game.activeBoard;
+  return true;
+}
+
+function renderAll(){renderBoard();renderHeader();renderTurn();}
+function renderHeader(){
+  if(!game)return;
+  var x=game.mini.filter(function(v){return v==="X";}).length;
+  var o=game.mini.filter(function(v){return v==="O";}).length;
+  document.getElementById("playerXScore").textContent=x;
+  document.getElementById("playerOScore").textContent=o;
+  document.getElementById("playerXCard").classList.toggle("active",game.status==="PLAYING"&&game.turn==="X");
+  document.getElementById("playerOCard").classList.toggle("active",game.status==="PLAYING"&&game.turn==="O");
+}
+function renderTurn(){
+  if(!game)return;
+  var free=game.activeBoard===null||game.mini[game.activeBoard]!==null;
+  var who;
+  if(game.mode==="bot")who=game.turn==="X"?"Your turn":"Bot thinking";
+  else who=game.turn==="X"?"Player X":"Player O";
+  turnBanner.classList.toggle("free",free);
+  if(game.status!=="PLAYING"){
+    turnBanner.textContent=game.winner==="DRAW"?"Match drawn":game.winner+" wins the Mega Board!";
+  }else if(free){
+    turnBanner.textContent="● "+who+" — Free Move, play anywhere!";
+  }else{
+    turnBanner.textContent="● "+who+" — Play in "+POS_NAMES[game.activeBoard]+" board";
+  }
+  if(game.status==="PLAYING"){
+    if(free)tipText.innerHTML="<span>💡</span><span>FREE MOVE: choose any unresolved Mini Board.</span>";
+    else tipText.innerHTML="<span>💡</span><span>Your chosen cell sends the opponent to the matching board.</span>";
+  }
+}
+function renderBoard(){
+  megaBoard.innerHTML="";
+  if(!game)return;
+  var forced=game.activeBoard!==null&&game.mini[game.activeBoard]===null;
+  for(var b=0;b<9;b++){
+    var mini=document.createElement("div");
+    mini.className="mini";
+    mini.dataset.board=String(b);
+    var resolved=game.mini[b]!==null;
+    var playable=game.status==="PLAYING"&&!resolved&&(!forced||b===game.activeBoard);
+    if(playable&&settings.hints)mini.classList.add(forced?"active":"free-active");
+    if(!playable&&!resolved&&forced)mini.classList.add("inactive");
+    if(game.justSentTo===b)mini.classList.add("sent-target");
+    if(game.megaLine&&game.megaLine.indexOf(b)>=0)mini.classList.add("mega-line");
+
+    for(var c=0;c<9;c++){
+      var cell=document.createElement("button");
+      cell.className="cell";
+      cell.type="button";
+      cell.dataset.board=String(b);cell.dataset.cell=String(c);
+      cell.setAttribute("aria-label","Board "+b+", cell "+c);
+      var v=game.board[b][c];
+      if(v){
+        var mark=document.createElement("span");mark.className="mark "+v.toLowerCase();mark.textContent=v==="X"?"X":"";
+        cell.appendChild(mark);
+      }
+      var legal=playable&&v===null;
+      cell.disabled=!legal;
+      if(legal)cell.classList.add("legal");
+      (function(bb,cc){
+        cell.addEventListener("click",function(){attemptMove(bb,cc);});
+        cell.addEventListener("pointerenter",function(){previewDestination(cc,true);});
+        cell.addEventListener("pointerleave",function(){previewDestination(cc,false);});
+      })(b,c);
+      mini.appendChild(cell);
     }
-
-    function getBigMarkSvg(winner) {
-      if (winner === 'X') {
-        return `
-          <svg viewBox="0 0 80 80" style="stroke: #1e293b; stroke-width: 7; fill: none;">
-            <path d="M 16 16 Q 40 40 64 64" />
-            <path d="M 64 16 Q 40 40 16 64" />
-          </svg>
-        `;
-      } else if (winner === 'O') {
-        return `
-          <svg viewBox="0 0 80 80" style="stroke: #1e293b; stroke-width: 6.5; fill: none;">
-            <path d="M 40 14 C 62 14, 66 44, 58 58 C 50 70, 24 68, 18 52 C 12 36, 24 14, 44 14" />
-          </svg>
-        `;
-      }
-      return '';
+    if(resolved){
+      var claim=document.createElement("div");
+      claim.className="claim "+(game.mini[b]==="D"?"draw":game.mini[b].toLowerCase());
+      if(game.mini[b]==="X")claim.innerHTML='<span class="bigx">X</span>';
+      else if(game.mini[b]==="O")claim.innerHTML='<span class="bigo"></span>';
+      else claim.textContent="DRAW";
+      mini.appendChild(claim);
     }
+    megaBoard.appendChild(mini);
+  }
+}
 
-    /* =========================================================
-       INITIALIZE & RENDER BOARD
-       ========================================================= */
-    function initMegaBoard() {
-      megaBoardEl.innerHTML = '';
-      for (let b = 0; b < 9; b++) {
-        const miniEl = document.createElement('div');
-        miniEl.className = 'mini-board';
-        miniEl.dataset.board = b;
+function previewDestination(cellIndex,on){
+  if(!settings.preview||!game||game.status!=="PLAYING")return;
+  var els=megaBoard.querySelectorAll(".mini");
+  els.forEach(function(e){e.classList.remove("preview-target");});
+  if(!on)return;
+  if(game.mini[cellIndex]===null&&els[cellIndex])els[cellIndex].classList.add("preview-target");
+}
+function shakeLegal(clickedBoard){
+  var el=megaBoard.querySelector('.mini[data-board="'+clickedBoard+'"]');
+  if(el){el.classList.remove("shake");void el.offsetWidth;el.classList.add("shake");}
+  if(game.activeBoard!==null){
+    var legal=megaBoard.querySelector('.mini[data-board="'+game.activeBoard+'"]');
+    if(legal){legal.classList.remove("shake");void legal.offsetWidth;legal.classList.add("shake");}
+  }
+  haptic(25);Audio.tone(170,.12,.08);showToast("Play in the highlighted board");
+}
+function attemptMove(b,c){
+  Audio.init();Audio.syncAmbient();
+  if(!game||game.status!=="PLAYING")return;
+  if(game.mode==="bot"&&game.turn==="O")return;
+  if(!isLegal(b,c)){shakeLegal(b);return;}
+  executeMove(b,c);
+}
+function executeMove(b,c){
+  if(!game||game.status!=="PLAYING"||!isLegal(b,c))return;
+  clearTimeout(botTimerId);
+  var player=game.turn;
+  game.board[b][c]=player;
+  game.history.push({b:b,c:c,p:player,t:Date.now()});
+  game.moveCount++;
+  Audio.scratch(player);haptic(10);
 
-        for (let c = 0; c < 9; c++) {
-          const cellEl = document.createElement('div');
-          cellEl.className = 'cell';
-          cellEl.dataset.board = b;
-          cellEl.dataset.cell = c;
+  var miniResult=checkWinner(game.board[b]);
+  if(miniResult){
+    game.mini[b]=player;
+    Audio.winMini();haptic([18,25,18]);
+  }else if(full(game.board[b])){
+    game.mini[b]="D";
+    Audio.tone(300,.18,.07);
+  }
 
-          cellEl.addEventListener('click', () => handleCellClick(b, c));
-          miniEl.appendChild(cellEl);
-        }
-        megaBoardEl.appendChild(miniEl);
-      }
+  var megaResult=checkWinner(game.mini);
+  if(megaResult){
+    game.megaLine=megaResult.line.slice();
+    endGame(player,"mega");
+    return;
+  }
+  if(game.mini.every(function(v){return v!==null;})){
+    endGame("DRAW","resolved");
+    return;
+  }
+
+  game.activeBoard=game.mini[c]===null?c:null;
+  game.justSentTo=game.activeBoard;
+  game.turn=player==="X"?"O":"X";
+  renderAll();
+  startTurnClock();
+
+  if(game.justSentTo!==null){
+    setTimeout(function(){
+      if(game&&game.status==="PLAYING"){game.justSentTo=null;renderBoard();}
+    },520);
+  }
+  if(game.mode==="bot"&&game.turn==="O")scheduleBot();
+}
+
+function clearTimers(){
+  clearInterval(turnTimerId);turnTimerId=null;
+  clearTimeout(botTimerId);botTimerId=null;
+}
+function startTurnClock(){
+  clearInterval(turnTimerId);
+  if(!game||game.status!=="PLAYING"||!settings.timerSeconds){
+    timerBadge.textContent="∞";timerBadge.classList.remove("urgent");return;
+  }
+  game.secondsLeft=settings.timerSeconds;
+  updateTimerBadge();
+  turnTimerId=setInterval(function(){
+    if(!game||game.status!=="PLAYING"){clearInterval(turnTimerId);return;}
+    game.secondsLeft--;
+    updateTimerBadge();
+    if(game.secondsLeft<=0){
+      clearInterval(turnTimerId);
+      var loser=game.turn,winner=loser==="X"?"O":"X";
+      endGame(winner,"timeout");
     }
-
-    function check3x3Winner(arr) {
-      for (let line of WINNING_LINES) {
-        const [a, b, c] = line;
-        if (arr[a] && arr[a] === arr[b] && arr[a] === arr[c]) {
-          return arr[a];
-        }
-      }
-      if (arr.every(cell => cell !== null)) {
-        return 'DRAW';
-      }
-      return null;
-    }
-
-    function isLegalMove(boardIndex, cellIndex) {
-      if (state.status !== 'PLAYING') return false;
-      // Cell already taken?
-      if (state.board[boardIndex][cellIndex] !== null) return false;
-      // Mini board already resolved?
-      if (state.miniWins[boardIndex] !== null) return false;
-
-      // If activeBoard is defined and unresolved, must play in activeBoard
-      if (state.activeBoard !== null && state.miniWins[state.activeBoard] === null) {
-        return boardIndex === state.activeBoard;
-      }
-
-      // Free Move rule: can play in any unresolved mini board
-      return state.miniWins[boardIndex] === null;
-    }
-
-    function handleCellClick(boardIndex, cellIndex) {
-      SoundManager.init();
-
-      if (state.mode === 'bot' && state.turn === 'O') return; // Not player's turn
-      if (!isLegalMove(boardIndex, cellIndex)) return;
-
-      executeMove(boardIndex, cellIndex);
-
-      // Trigger bot turn if vs bot
-      if (state.status === 'PLAYING' && state.mode === 'bot' && state.turn === 'O') {
-        setTimeout(botMove, 450);
-      }
-    }
-
-    function executeMove(bIdx, cIdx) {
-      const player = state.turn;
-      state.board[bIdx][cIdx] = player;
-
-      SoundManager.playPencilScratch(player);
-
-      // Check if this move resolved the mini board
-      const miniResult = check3x3Winner(state.board[bIdx]);
-      if (miniResult) {
-        state.miniWins[bIdx] = miniResult;
-        if (miniResult !== 'DRAW') {
-          SoundManager.playBoardWin();
-        }
-      }
-
-      // Check if Mega Board is won
-      const megaResult = check3x3Winner(state.miniWins);
-      if (megaResult) {
-        endGame(megaResult);
-        updateUI();
-        return;
-      }
-
-      // Determine next board send rule:
-      // Target board is determined by cellIndex
-      if (state.miniWins[cIdx] === null) {
-        state.activeBoard = cIdx;
-      } else {
-        // Target board is resolved -> Free Move
-        state.activeBoard = null;
-      }
-
-      // Switch turn
-      state.turn = (player === 'X') ? 'O' : 'X';
-
-      updateUI();
-    }
-
-    /* =========================================================
-       UI UPDATER & ANIMATIONS
-       ========================================================= */
-    function updateUI() {
-      // 1. Update player active turn cards
-      if (state.turn === 'X') {
-        cardX.classList.add('active-turn');
-        cardO.classList.remove('active-turn');
-      } else {
-        cardO.classList.add('active-turn');
-        cardX.classList.remove('active-turn');
-      }
-
-      // 2. Update mini boards & cells
-      for (let b = 0; b < 9; b++) {
-        const miniEl = megaBoardEl.children[b];
-        const isResolved = state.miniWins[b] !== null;
-
-        // Is this board playable right now?
-        let isPlayable = false;
-        if (state.status === 'PLAYING' && !isResolved) {
-          if (state.activeBoard === null || state.activeBoard === b) {
-            isPlayable = true;
-          }
-        }
-
-        miniEl.classList.toggle('active-playable', isPlayable);
-        miniEl.classList.toggle('inactive', !isPlayable && !isResolved);
-
-        // Update cells inside mini board
-        for (let c = 0; c < 9; c++) {
-          const cellEl = miniEl.children[c];
-          const val = state.board[b][c];
-
-          // Set markings if empty
-          if (val && cellEl.children.length === 0) {
-            cellEl.innerHTML = (val === 'X') ? getXMarkSvg() : getOMarkSvg();
-          }
-
-          cellEl.classList.toggle('clickable-spot', isPlayable && val === null);
-        }
-
-        // Overlay for completed mini board
-        let overlay = miniEl.querySelector('.mini-board-overlay');
-        if (isResolved) {
-          if (!overlay) {
-            overlay = document.createElement('div');
-            overlay.className = 'mini-board-overlay';
-            if (state.miniWins[b] === 'DRAW') {
-              overlay.classList.add('draw');
-              overlay.innerText = 'DRAW';
-            } else {
-              overlay.innerHTML = getBigMarkSvg(state.miniWins[b]);
-            }
-            miniEl.appendChild(overlay);
-          }
-        } else if (overlay) {
-          overlay.remove();
-        }
-      }
-
-      // 3. Update Hint / Ribbon Message
-      updateHintBanner();
-    }
-
-    function updateHintBanner() {
-      if (state.status === 'OVER') {
-        if (state.winner === 'DRAW') {
-          hintTextEl.textContent = "Draw game! Both played brilliantly.";
-        } else if (state.mode === 'bot') {
-          hintTextEl.textContent = state.winner === 'X' ? "Victory! You defeated the Bot!" : "Bot claimed 3 in a row. Try again!";
-        } else {
-          hintTextEl.textContent = `Player ${state.winner} Wins the Mega Board!`;
-        }
-        return;
-      }
-
-      const turnName = (state.mode === 'bot') 
-        ? (state.turn === 'X' ? "Your turn" : "Bot is thinking...")
-        : (state.turn === 'X' ? "Player X's turn" : "Player O's turn");
-
-      if (state.activeBoard === null) {
-        hintTextEl.textContent = `${turnName}: Free Move! Pick ANY open board!`;
-      } else {
-        const boardName = BOARD_POS_NAMES[state.activeBoard];
-        hintTextEl.textContent = `${turnName}: Must play in ${boardName}!`;
-      }
-    }
-
-    /* =========================================================
-       BOT AI ENGINE (Easy, Medium, Hard)
-       ========================================================= */
-    function botMove() {
-      if (state.status !== 'PLAYING') return;
-
-      const legalMoves = [];
-      for (let b = 0; b < 9; b++) {
-        for (let c = 0; c < 9; c++) {
-          if (isLegalMove(b, c)) {
-            legalMoves.push({ b, c });
-          }
-        }
-      }
-
-      if (legalMoves.length === 0) return;
-
-      let chosenMove = null;
-
-      if (state.botDifficulty === 'easy') {
-        // Random selection with 25% chance of instant win
-        const winningMove = findMiniWinningMove(legalMoves, 'O');
-        if (winningMove && Math.random() < 0.3) {
-          chosenMove = winningMove;
-        } else {
-          chosenMove = legalMoves[Math.floor(Math.random() * legalMoves.length)];
-        }
-      } 
-      else if (state.botDifficulty === 'medium') {
-        // Heuristic:
-        // 1. Win mini board immediately
-        // 2. Block player X from winning mini board
-        // 3. Avoid sending opponent to a free move or easily winnable board
-        // 4. Prefer center of mini board
-        chosenMove = findBestMediumMove(legalMoves);
-      } 
-      else {
-        // Hard AI: Evaluates mega-board wins, mini-wins, blocking mega-lines,
-        // and recursive send safety.
-        chosenMove = findBestHardMove(legalMoves);
-      }
-
-      if (chosenMove) {
-        executeMove(chosenMove.b, chosenMove.c);
-      }
-    }
-
-    function findMiniWinningMove(moves, player) {
-      for (let move of moves) {
-        const boardCopy = [...state.board[move.b]];
-        boardCopy[move.c] = player;
-        if (check3x3Winner(boardCopy) === player) {
-          return move;
-        }
-      }
-      return null;
-    }
-
-    function findBestMediumMove(moves) {
-      // 1. Win mini board
-      const winMove = findMiniWinningMove(moves, 'O');
-      if (winMove) return winMove;
-
-      // 2. Block opponent X from winning mini board
-      const blockMove = findMiniWinningMove(moves, 'X');
-      if (blockMove) return blockMove;
-
-      // 3. Filter moves that send opponent to a won board (which grants free move)
-      const safeMoves = moves.filter(m => state.miniWins[m.c] === null);
-      const pool = safeMoves.length > 0 ? safeMoves : moves;
-
-      // Prefer center (4) or corners (0, 2, 6, 8)
-      const centerMove = pool.find(m => m.c === 4);
-      if (centerMove && Math.random() < 0.6) return centerMove;
-
-      return pool[Math.floor(Math.random() * pool.length)];
-    }
-
-    function findBestHardMove(moves) {
-      let bestScore = -Infinity;
-      let candidateMoves = [];
-
-      for (let move of moves) {
-        let score = 0;
-
-        // Evaluate Mini-Board Impact
-        const miniCopy = [...state.board[move.b]];
-        miniCopy[move.c] = 'O';
-        const miniResult = check3x3Winner(miniCopy);
-
-        if (miniResult === 'O') {
-          // Does winning this mini board win the whole game?
-          const megaCopy = [...state.miniWins];
-          megaCopy[move.b] = 'O';
-          if (check3x3Winner(megaCopy) === 'O') {
-            return move; // INSTANT MEGA WIN
-          }
-          score += 150;
-
-          // Check if it creates 2-in-a-row on mega board
-          score += evaluateMegaLines(megaCopy, 'O') * 30;
-        } else {
-          // Check if this move blocks opponent from winning this mini board
-          const blockCopy = [...state.board[move.b]];
-          blockCopy[move.c] = 'X';
-          if (check3x3Winner(blockCopy) === 'X') {
-            score += 90;
-            // High bonus if that board was critical for opponent's mega-win
-            const oppMega = [...state.miniWins];
-            oppMega[move.b] = 'X';
-            if (check3x3Winner(oppMega) === 'X') {
-              score += 250;
-            }
-          }
-        }
-
-        // Evaluate Next Board (Send Rule penalty / reward)
-        const targetBoard = move.c;
-        if (state.miniWins[targetBoard] !== null) {
-          // Sending opponent to resolved board gives them a FREE MOVE! Heavy penalty
-          score -= 75;
-        } else {
-          // Check if target board allows opponent to immediately win that mini board
-          const oppCanWinTarget = canPlayerWinBoard(targetBoard, 'X');
-          if (oppCanWinTarget) {
-            score -= 60;
-          }
-        }
-
-        // Positional bias: mini-center
-        if (move.c === 4) score += 15;
-        // Mini-corners
-        if ([0, 2, 6, 8].includes(move.c)) score += 8;
-
-        if (score > bestScore) {
-          bestScore = score;
-          candidateMoves = [move];
-        } else if (score === bestScore) {
-          candidateMoves.push(move);
-        }
-      }
-
-      return candidateMoves[Math.floor(Math.random() * candidateMoves.length)];
-    }
-
-    function canPlayerWinBoard(boardIdx, player) {
-      const bState = state.board[boardIdx];
-      for (let c = 0; c < 9; c++) {
-        if (bState[c] === null) {
-          const testCopy = [...bState];
-          testCopy[c] = player;
-          if (check3x3Winner(testCopy) === player) return true;
-        }
-      }
-      return false;
-    }
-
-    function evaluateMegaLines(megaArr, player) {
-      let count = 0;
-      for (let line of WINNING_LINES) {
-        const marks = line.map(idx => megaArr[idx]);
-        const playerCount = marks.filter(m => m === player).length;
-        const emptyCount = marks.filter(m => m === null).length;
-        if (playerCount === 2 && emptyCount === 1) count++;
-      }
-      return count;
-    }
-
-    /* =========================================================
-       GAME OVER & RESTART
-       ========================================================= */
-    function endGame(winner) {
-      state.status = 'OVER';
-      state.winner = winner;
-
-      if (winner === 'DRAW') {
-        stats.draws++;
-        stats.streak = 0;
-        winnerTitle.textContent = "It's a Draw!";
-        winnerDesc.textContent = "All boards contested without a triple line!";
-      } else {
-        state.scores[winner]++;
-        scoreXEl.textContent = state.scores.X;
-        scoreOEl.textContent = state.scores.O;
-
-        if (state.mode === 'bot') {
-          if (winner === 'X') {
-            stats.wins++;
-            stats.streak++;
-            SoundManager.playMegaWin();
-            winnerTitle.textContent = "You Won!";
-            winnerDesc.textContent = "You claimed 3 mega boards in a row!";
-          } else {
-            stats.losses++;
-            stats.streak = 0;
-            winnerTitle.textContent = "Bot Won!";
-            winnerDesc.textContent = "Bot out-strategized the mega board!";
-          }
-        } else {
-          stats.wins++;
-          SoundManager.playMegaWin();
-          winnerTitle.textContent = `Player ${winner} Won!`;
-          winnerDesc.textContent = `Masterful alignment of 3 mini boards!`;
-        }
-      }
-
-      // Save stats
-      try {
-        localStorage.setItem('mega_ttt_stats', JSON.stringify(stats));
-      } catch(e) {}
-
-      updateStatsModal();
-
-      setTimeout(() => {
-        modalGameOver.classList.add('open');
-      }, 700);
-    }
-
-    function resetGame(keepScores = true) {
-      state.board = Array(9).fill(null).map(() => Array(9).fill(null));
-      state.miniWins = Array(9).fill(null);
-      state.activeBoard = null;
-      state.status = 'PLAYING';
-      state.winner = null;
-
-      const startingPlayer = startPlayerSelect.value || 'X';
-      state.turn = startingPlayer;
-
-      if (!keepScores) {
-        state.scores = { X: 0, O: 0 };
-        scoreXEl.textContent = "0";
-        scoreOEl.textContent = "0";
-      }
-
-      modalGameOver.classList.remove('open');
-      initMegaBoard();
-      updateUI();
-
-      if (state.mode === 'bot' && state.turn === 'O') {
-        setTimeout(botMove, 500);
-      }
-    }
-
-    /* =========================================================
-       MODALS & CONTROLS BINDING
-       ========================================================= */
-    document.getElementById('btn-restart').addEventListener('click', () => {
-      SoundManager.init();
-      resetGame(true);
-    });
-
-    document.getElementById('btn-play-again').addEventListener('click', () => {
-      modalGameOver.classList.remove('open');
-      resetGame(true);
-    });
-
-    document.getElementById('btn-settings').addEventListener('click', () => {
-      SoundManager.init();
-      modalSettings.classList.add('open');
-    });
-
-    document.getElementById('btn-stats').addEventListener('click', () => {
-      SoundManager.init();
-      updateStatsModal();
-      modalStats.classList.add('open');
-    });
-
-    document.querySelectorAll('.modal-close').forEach(btn => {
-      btn.addEventListener('click', (e) => {
-        const target = e.target.dataset.close;
-        if (target === 'settings') modalSettings.classList.remove('open');
-        if (target === 'stats') modalStats.classList.remove('open');
+  },1000);
+}
+function updateTimerBadge(){
+  var s=game?game.secondsLeft:0;
+  timerBadge.textContent=s+"s";
+  timerBadge.classList.toggle("urgent",s<=5);
+}
+
+function endGame(winner,reason){
+  if(!game||game.status!=="PLAYING")return;
+  clearTimers();
+  game.status="OVER";game.winner=winner;game.endReason=reason;
+  renderAll();
+  if(winner!=="DRAW"){Audio.winMega();haptic([40,45,60]);if(settings.confetti)burstConfetti();}
+  recordStats();
+  setTimeout(showResult,settings.reduceMotion?0:420);
+}
+function recordStats(){
+  stats.games++;stats.totalMoves+=game.moveCount;
+  stats.miniWon+=game.mini.filter(function(v){return v==="X"||v==="O";}).length;
+  if(game.winner==="X")stats.xWins++;
+  if(game.winner==="O")stats.oWins++;
+  if(game.mode==="bot"){
+    stats.botGames++;
+    var d=stats.diff[game.difficulty]||{g:0,w:0,l:0,d:0};d.g++;
+    if(game.winner==="X"){stats.wins++;stats.streak++;d.w++;}
+    else if(game.winner==="O"){stats.losses++;stats.streak=0;d.l++;}
+    else{stats.draws++;stats.streak=0;d.d++;}
+    stats.bestStreak=Math.max(stats.bestStreak,stats.streak);stats.diff[game.difficulty]=d;
+  }else{
+    stats.localGames++;
+    if(game.winner==="DRAW")stats.draws++;
+  }
+  saveStats();
+}
+function formatTime(ms){
+  var sec=Math.max(0,Math.round(ms/1000)),m=Math.floor(sec/60),s=sec%60;
+  return m+":"+(s<10?"0":"")+s;
+}
+function showResult(){
+  var title,icon,sub;
+  if(game.winner==="DRAW"){title="Draw!";icon="🤝";sub="All Mini Boards resolved without a Mega line.";}
+  else if(game.mode==="bot"&&game.winner==="X"){title="Victory!";icon="🏆";sub="You claimed 3 Mini Boards in a row.";}
+  else if(game.mode==="bot"){title="Defeat";icon="🤖";sub=game.endReason==="timeout"?"Time ran out.":"The bot claimed the Mega Board.";}
+  else{title="Player "+game.winner+" wins!";icon="🏆";sub=game.endReason==="timeout"?"Opponent ran out of time.":"Three claimed Mini Boards in a row.";}
+  document.getElementById("resultIcon").textContent=icon;
+  document.getElementById("resultTitle").textContent=title;
+  document.getElementById("resultSub").textContent=sub;
+  document.getElementById("resultMiniX").textContent=game.mini.filter(function(v){return v==="X";}).length;
+  document.getElementById("resultMoves").textContent=game.moveCount;
+  document.getElementById("resultTime").textContent=formatTime(Date.now()-game.startedAt);
+  openModal("resultModal");
+}
+function burstConfetti(){
+  confettiLayer.innerHTML="";
+  var colors=["#ffd13a","#2166c2","#b51655","#7fbf68","#333"];
+  for(var i=0;i<34;i++){
+    var p=document.createElement("i");
+    p.style.left=(Math.random()*100)+"%";
+    p.style.background=colors[i%colors.length];
+    p.style.animationDelay=(Math.random()*.35)+"s";
+    p.style.animationDuration=(1.2+Math.random()*.8)+"s";
+    confettiLayer.appendChild(p);
+  }
+  setTimeout(function(){confettiLayer.innerHTML="";},2400);
+}
+
+function cloneState(s){
+  return {board:s.board.map(function(r){return r.slice();}),mini:s.mini.slice(),turn:s.turn,activeBoard:s.activeBoard,status:s.status,winner:s.winner};
+}
+function simMove(s,m){
+  var n=cloneState(s),p=n.turn;
+  n.board[m.b][m.c]=p;
+  if(checkWinner(n.board[m.b]))n.mini[m.b]=p;
+  else if(full(n.board[m.b]))n.mini[m.b]="D";
+  var mw=checkWinner(n.mini);
+  if(mw){n.status="OVER";n.winner=p;return n;}
+  if(n.mini.every(function(v){return v!==null;})){n.status="OVER";n.winner="DRAW";return n;}
+  n.activeBoard=n.mini[m.c]===null?m.c:null;
+  n.turn=p==="X"?"O":"X";
+  return n;
+}
+function wouldWinMini(s,m,player){
+  if(s.board[m.b][m.c]!==null)return false;
+  var cells=s.board[m.b].slice();cells[m.c]=player;
+  var r=checkWinner(cells);return !!r&&r.winner===player;
+}
+function moveHeuristic(s,m,player){
+  var opp=player==="X"?"O":"X",score=0;
+  if(wouldWinMini(s,m,player))score+=900;
+  if(wouldWinMini(s,m,opp))score+=520;
+  if(m.c===4)score+=24;else if([0,2,6,8].indexOf(m.c)>=0)score+=11;
+  if(m.b===4)score+=16;else if([0,2,6,8].indexOf(m.b)>=0)score+=7;
+  var n=simMove(s,m);
+  if(n.status==="OVER"&&n.winner===player)score+=100000;
+  if(n.activeBoard===null)score-=player==="O"?90:40;
+  else{
+    var oppMoves=legalMovesFor(n),danger=false;
+    for(var i=0;i<oppMoves.length;i++){if(wouldWinMini(n,oppMoves[i],opp)){danger=true;break;}}
+    if(danger)score-=460;
+  }
+  score+=evaluate(n)*(player==="O"?1:-1)*.15;
+  return score;
+}
+function evaluate(s){
+  if(s.status==="OVER"){
+    if(s.winner==="O")return 100000;
+    if(s.winner==="X")return -100000;
+    return 0;
+  }
+  var score=0,weights=[1.15,1,1.15,1,1.35,1,1.15,1,1.15];
+  for(var b=0;b<9;b++){
+    if(s.mini[b]==="O")score+=150*weights[b];
+    else if(s.mini[b]==="X")score-=150*weights[b];
+    else if(s.mini[b]===null){
+      var cells=s.board[b];
+      WIN_LINES.forEach(function(l){
+        var o=0,x=0,e=0;
+        l.forEach(function(i){if(cells[i]==="O")o++;else if(cells[i]==="X")x++;else e++;});
+        if(x===0)score+=[0,2,13,110][o];
+        if(o===0)score-=[0,2,13,110][x];
       });
-    });
-
-    // Close on overlay backdrop tap
-    [modalSettings, modalStats, modalGameOver].forEach(modal => {
-      modal.addEventListener('click', (e) => {
-        if (e.target === modal) modal.classList.remove('open');
-      });
-    });
-
-    // Mode Selector change in Settings
-    modeSelect.addEventListener('change', () => {
-      diffRow.style.display = modeSelect.value === 'bot' ? 'flex' : 'none';
-    });
-
-    // Save Settings
-    document.getElementById('settings-save-btn').addEventListener('click', () => {
-      state.mode = modeSelect.value;
-      state.botDifficulty = botDiffSelect.value;
-      SoundManager.enabled = (soundToggle.value === 'on');
-
-      if (state.mode === 'pvp') {
-        nameXEl.textContent = "Player 1 (X)";
-        nameOEl.textContent = "Player 2 (O)";
-      } else {
-        nameXEl.textContent = "You (X)";
-        nameOEl.textContent = `Bot [${state.botDifficulty.toUpperCase()}]`;
-      }
-
-      modalSettings.classList.remove('open');
-      resetGame(false);
-    });
-
-    // Reset Stats
-    document.getElementById('btn-reset-stats').addEventListener('click', () => {
-      stats = { wins: 0, losses: 0, draws: 0, streak: 0 };
-      try {
-        localStorage.removeItem('mega_ttt_stats');
-      } catch(e) {}
-      updateStatsModal();
-    });
-
-    function updateStatsModal() {
-      document.getElementById('stat-wins').textContent = stats.wins;
-      document.getElementById('stat-losses').textContent = stats.losses;
-      document.getElementById('stat-draws').textContent = stats.draws;
-      document.getElementById('stat-streak').textContent = stats.streak;
     }
+  }
+  WIN_LINES.forEach(function(l){
+    var o=0,x=0,e=0;
+    l.forEach(function(i){if(s.mini[i]==="O")o++;else if(s.mini[i]==="X")x++;else if(s.mini[i]===null)e++;});
+    if(x===0)score+=[0,24,230,100000][o];
+    if(o===0)score-=[0,24,230,100000][x];
+  });
+  if(s.activeBoard===null)score+=s.turn==="O"?32:-32;
+  return score;
+}
+function orderedMoves(s,moves){
+  var p=s.turn;
+  return moves.slice().sort(function(a,b){return moveHeuristic(s,b,p)-moveHeuristic(s,a,p);});
+}
+function minimax(s,depth,alpha,beta){
+  if(depth<=0||s.status==="OVER")return evaluate(s);
+  var moves=orderedMoves(s,legalMovesFor(s));
+  var cap=depth>=3?14:20;if(moves.length>cap)moves=moves.slice(0,cap);
+  if(!moves.length)return evaluate(s);
+  if(s.turn==="O"){
+    var best=-Infinity;
+    for(var i=0;i<moves.length;i++){best=Math.max(best,minimax(simMove(s,moves[i]),depth-1,alpha,beta));alpha=Math.max(alpha,best);if(beta<=alpha)break;}
+    return best;
+  }else{
+    var worst=Infinity;
+    for(var j=0;j<moves.length;j++){worst=Math.min(worst,minimax(simMove(s,moves[j]),depth-1,alpha,beta));beta=Math.min(beta,worst);if(beta<=alpha)break;}
+    return worst;
+  }
+}
+function bestSearchMove(depth){
+  var root=cloneState(game),moves=orderedMoves(root,legalMovesFor(root)),best=moves[0],bestVal=-Infinity;
+  for(var i=0;i<moves.length;i++){
+    var v=minimax(simMove(root,moves[i]),depth-1,-Infinity,Infinity);
+    v+=Math.random()*.01;
+    if(v>bestVal){bestVal=v;best=moves[i];}
+  }
+  return best;
+}
+function mediumMove(moves){
+  var best=moves[0],bestS=-Infinity;
+  for(var i=0;i<moves.length;i++){
+    var s=moveHeuristic(game,moves[i],"O")+Math.random()*5;
+    if(s>bestS){bestS=s;best=moves[i];}
+  }
+  return best;
+}
+function chooseBotMove(){
+  var moves=legalMovesFor(game);if(!moves.length)return null;
+  var immediate=moves.find(function(m){return wouldWinMini(game,m,"O");});
+  if(menu.difficulty==="Beginner"){
+    if(immediate&&Math.random()<.25)return immediate;
+    return moves[Math.floor(Math.random()*moves.length)];
+  }
+  var block=moves.find(function(m){return wouldWinMini(game,m,"X");});
+  if(menu.difficulty==="Easy"){
+    if(immediate)return immediate;if(block)return block;
+    var centers=moves.filter(function(m){return m.c===4;});
+    return centers.length?centers[Math.floor(Math.random()*centers.length)]:moves[Math.floor(Math.random()*moves.length)];
+  }
+  if(menu.difficulty==="Medium")return mediumMove(moves);
+  if(menu.difficulty==="Hard")return bestSearchMove(2);
+  var depth=moves.length<=12?4:3;
+  return bestSearchMove(depth);
+}
+function scheduleBot(){
+  clearTimeout(botTimerId);
+  var delay=menu.difficulty==="Beginner"?650:menu.difficulty==="Expert"?780:560;
+  botTimerId=setTimeout(function(){
+    if(!game||game.status!=="PLAYING"||game.turn!=="O")return;
+    var m=chooseBotMove();if(m)executeMove(m.b,m.c);
+  },settings.reduceMotion?120:delay);
+}
 
-    /* =========================================================
-       STARTUP
-       ========================================================= */
-    initMegaBoard();
-    updateUI();
-  </script>
+function openOnlineMode(){
+  var title="Online mode";
+  var body="";
+  var copyBtn=document.getElementById("onlineCopyBtn");
+  if(menu.mode==="friend"){
+    title="Private Friend Match";
+    body="<b>Room code: "+menu.friendCode+"</b><br><br>The V3 static client now has the private-lobby UI, friend-code flow and game rules ready. A realtime backend/auth service is still required before a second device can join. This prototype will not pretend a bot is a human opponent.";
+    copyBtn.style.display="block";
+  }else{
+    title=menu.mode==="ranked"?"Ranked Matchmaking":"Casual Matchmaking";
+    body="The <b>"+title+"</b> client flow is scaffolded, but this repository is currently a static single-file prototype. Production online play needs server-authoritative rooms, authentication, realtime state sync, rating storage and reconnect handling.<br><br>No fake matchmaking is used in V3.";
+    copyBtn.style.display="none";
+  }
+  document.getElementById("onlineTitle").textContent=title;
+  document.getElementById("onlineBody").innerHTML=body;
+  openModal("onlineModal");
+}
+
+function syncSettingsUI(){
+  document.getElementById("soundFxToggle").checked=settings.soundFx;
+  document.getElementById("musicToggle").checked=settings.music;
+  document.getElementById("hapticsToggle").checked=settings.haptics;
+  document.getElementById("confettiToggle").checked=settings.confetti;
+  document.getElementById("hintsToggle").checked=settings.hints;
+  document.getElementById("previewToggle").checked=settings.preview;
+  document.getElementById("timerSelect").value=String(settings.timerSeconds);
+  document.getElementById("themeSelect").value=settings.theme;
+  document.getElementById("motionToggle").checked=settings.reduceMotion;
+}
+function applyTheme(){
+  document.body.dataset.theme=settings.theme==="dark"?"dark":"paper";
+  document.body.classList.toggle("reduce-motion",!!settings.reduceMotion);
+}
+function saveSettingsFromUI(){
+  settings.soundFx=document.getElementById("soundFxToggle").checked;
+  settings.music=document.getElementById("musicToggle").checked;
+  settings.haptics=document.getElementById("hapticsToggle").checked;
+  settings.confetti=document.getElementById("confettiToggle").checked;
+  settings.hints=document.getElementById("hintsToggle").checked;
+  settings.preview=document.getElementById("previewToggle").checked;
+  settings.timerSeconds=parseInt(document.getElementById("timerSelect").value,10)||0;
+  settings.theme=document.getElementById("themeSelect").value;
+  settings.reduceMotion=document.getElementById("motionToggle").checked;
+  saveSettings();applyTheme();Audio.syncAmbient();
+  if(game&&game.status==="PLAYING"){renderAll();startTurnClock();}
+  closeModal("settingsModal");
+}
+
+function renderStats(tab){
+  currentStatsTab=tab||currentStatsTab;
+  document.querySelectorAll(".tab").forEach(function(t){t.classList.toggle("active",t.dataset.tab===currentStatsTab);});
+  var c=document.getElementById("statsContent");
+  if(currentStatsTab==="online"){
+    c.innerHTML='<div class="online-note"><b>Online stats are separated by design.</b><br>Ranked rating, peak rating, W/L/D, streaks and match history will live here once the server-authoritative online layer is connected. V3 does not mix offline bot results into competitive stats.</div>';
+    return;
+  }
+  if(currentStatsTab==="bot"){
+    var html='<div class="stat-grid"><div class="stat-card"><b>'+stats.botGames+'</b><span>BOT GAMES</span></div><div class="stat-card"><b>'+pct(stats.wins,stats.botGames)+'</b><span>WIN RATE</span></div><div class="stat-card"><b>'+stats.streak+'</b><span>CURRENT STREAK</span></div><div class="stat-card"><b>'+stats.bestStreak+'</b><span>BEST STREAK</span></div></div><div class="diff-stats">';
+    ["Beginner","Easy","Medium","Hard","Expert"].forEach(function(k){var d=stats.diff[k]||{g:0,w:0};html+='<div class="diff-line"><span>'+k+'</span><span>'+d.g+' games</span><span>'+pct(d.w,d.g)+'</span></div>';});
+    html+="</div>";c.innerHTML=html;return;
+  }
+  var avg=stats.games?Math.round(stats.totalMoves/stats.games):0;
+  c.innerHTML='<div class="stat-grid"><div class="stat-card"><b>'+stats.games+'</b><span>TOTAL GAMES</span></div><div class="stat-card"><b>'+stats.miniWon+'</b><span>MINI BOARDS CLAIMED</span></div><div class="stat-card"><b>'+stats.xWins+'</b><span>X WINS</span></div><div class="stat-card"><b>'+stats.oWins+'</b><span>O WINS</span></div><div class="stat-card"><b>'+stats.draws+'</b><span>DRAWS</span></div><div class="stat-card"><b>'+avg+'</b><span>AVG MOVES</span></div></div>';
+}
+function pct(a,b){return b?Math.round(a/b*100)+"%":"0%";}
+
+document.querySelectorAll(".mode-card").forEach(function(btn){
+  btn.addEventListener("click",function(){menu.mode=btn.dataset.mode;syncHomeMode();Audio.init();Audio.syncAmbient();});
+});
+document.querySelectorAll("#difficultySegment .seg-btn").forEach(function(btn){
+  btn.addEventListener("click",function(){menu.difficulty=btn.dataset.difficulty;syncHomeMode();});
+});
+document.querySelectorAll("#startSegment .seg-btn").forEach(function(btn){
+  btn.addEventListener("click",function(){menu.startPlayer=btn.dataset.start;syncHomeMode();});
+});
+document.getElementById("friendModeBtn").addEventListener("click",function(){menu.mode="friend";syncHomeMode();openOnlineMode();});
+document.getElementById("copyCodeBtn").addEventListener("click",function(){copyText(menu.friendCode);});
+document.getElementById("startBtn").addEventListener("click",function(){
+  Audio.init();Audio.syncAmbient();
+  if(menu.mode==="bot"||menu.mode==="local")startOfflineGame(false);else openOnlineMode();
+});
+document.getElementById("onlineCopyBtn").addEventListener("click",function(){copyText(menu.friendCode);});
+
+["homeSettingsBtn","gameSettingsBtn"].forEach(function(id){
+  document.getElementById(id).addEventListener("click",function(){syncSettingsUI();openModal("settingsModal");});
+});
+["homeStatsBtn","gameStatsBtn"].forEach(function(id){
+  document.getElementById(id).addEventListener("click",function(){renderStats("overview");openModal("statsModal");});
+});
+document.getElementById("saveSettingsBtn").addEventListener("click",saveSettingsFromUI);
+document.getElementById("removeAdsBtn").addEventListener("click",function(){openModal("premiumModal");});
+document.querySelectorAll("[data-close]").forEach(function(btn){
+  btn.addEventListener("click",function(){closeModal(btn.dataset.close+"Modal");});
+});
+document.querySelectorAll(".modal").forEach(function(m){
+  m.addEventListener("click",function(e){if(e.target===m)m.classList.remove("open");});
+});
+document.querySelectorAll(".tab").forEach(function(t){t.addEventListener("click",function(){renderStats(t.dataset.tab);});});
+document.getElementById("resetStatsBtn").addEventListener("click",function(){
+  if(confirm("Reset all offline stats?")){stats=defaultStats();saveStats();renderStats(currentStatsTab);showToast("Stats reset");}
+});
+
+document.getElementById("backBtn").addEventListener("click",function(){clearTimers();showScreen("home");});
+document.getElementById("gameMenuBtn").addEventListener("click",function(){clearTimers();showScreen("home");});
+document.getElementById("restartBtn").addEventListener("click",function(){startOfflineGame(false);});
+document.getElementById("resultMenuBtn").addEventListener("click",function(){closeModal("resultModal");showScreen("home");});
+document.getElementById("rematchBtn").addEventListener("click",function(){closeModal("resultModal");startOfflineGame(true);});
+
+applyTheme();syncHomeMode();syncSettingsUI();
+
+window.MegaXO={
+  getState:function(){return game?cloneState(game):null;},
+  getMenu:function(){return Object.assign({},menu);},
+  getSettings:function(){return Object.assign({},settings);},
+  rules:{
+    nextBoard:"cellIndex",
+    freeMove:"If the target Mini Board is already won or drawn, the next player may play in any unresolved Mini Board.",
+    win:"Claim 3 Mini Boards in a row on the Mega Board."
+  }
+};
+})();
+</script>
 </body>
 </html>

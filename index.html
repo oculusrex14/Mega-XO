@@ -1,1139 +1,598 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
-<title>Mega Tic-Tac-Toe V3</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,maximum-scale=1">
+<title>Mega XO — V3 Vector Relay</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Architects+Daughter&family=Caveat:wght@600;700&family=Patrick+Hand&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js"></script>
 <style>
 :root{
-  --ink:#292929;--ink2:#575757;--paper:#fbfaf4;--paper2:#f3f0e5;--desk:#d8d2bf;
-  --yellow:#ffe47b;--yellow2:#fff4b7;--blue:#ddecfb;--blue-strong:#2166c2;
-  --pink:#f8dbe5;--pink-strong:#b51655;--green:#d9efcf;--red:#d84343;
-  --shadow:rgba(35,35,35,.18);--line:#bbb7ab;--muted:#8a887f;
+  --bg:#e9ecef;--surface:#f8f9fb;--surface2:#ffffff;--ink:#15181c;--muted:#747b84;--line:#cdd2d8;
+  --x:#246bfd;--xsoft:#dfe9ff;--o:#f45669;--osoft:#ffe1e6;--route:#c6ff42;--routeInk:#27310a;
+  --win:#81c784;--warn:#e84b4b;--shadow:0 18px 50px rgba(21,24,28,.14);
+  --r:20px;--r2:14px;
 }
 *{box-sizing:border-box}
-html,body{margin:0;min-height:100%;background:var(--desk);color:var(--ink)}
-body{
-  min-height:100vh;display:flex;align-items:center;justify-content:center;padding:12px;
-  font-family:"Patrick Hand",cursive;
-  background-image:linear-gradient(rgba(80,70,45,.055) 1px,transparent 1px);
-  background-size:100% 28px;
+html,body{margin:0;min-height:100%;background:var(--bg);color:var(--ink);font-family:"Space Grotesk",system-ui,sans-serif}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer}
+body{display:flex;justify-content:center;align-items:center;padding:12px}
+.app{
+  width:min(430px,100%);height:min(900px,96vh);min-height:680px;background:var(--surface);border:1px solid #bfc5cc;
+  border-radius:34px;box-shadow:var(--shadow);overflow:hidden;position:relative
 }
-button,select,input{font:inherit;color:inherit}
-button{-webkit-tap-highlight-color:transparent}
-.phone{
-  width:min(430px,100%);height:min(920px,96vh);min-height:680px;background:var(--paper);
-  border:4px solid var(--ink);border-radius:44px;box-shadow:10px 12px 0 rgba(35,35,35,.16),0 22px 50px rgba(35,35,35,.18);
-  overflow:hidden;position:relative;
+.shell{height:100%;display:flex;flex-direction:column}
+.topbar{height:64px;display:flex;align-items:center;gap:12px;padding:12px 16px 8px}
+.logo{display:flex;align-items:center;gap:9px;min-width:0}
+.logo-mark{width:34px;height:34px;border-radius:10px;background:var(--ink);display:grid;place-items:center;flex:0 0 auto}
+.logo-mark svg{width:22px;height:22px}
+.logo-copy{line-height:1}.logo-copy b{display:block;font-size:18px;letter-spacing:-.5px}.logo-copy span{font:500 9px "IBM Plex Mono",monospace;color:var(--muted);letter-spacing:.08em}
+.top-spacer{flex:1}
+.icon-btn{width:38px;height:38px;border:1px solid var(--line);background:var(--surface2);border-radius:12px;display:grid;place-items:center;padding:0}
+.icon-btn i,.icon-btn svg{width:18px;height:18px;stroke-width:2}
+.views{flex:1;min-height:0;position:relative}
+.view{position:absolute;inset:0;display:none;overflow:auto;padding:0 16px 104px}
+.view.active{display:block}
+.hero{padding:18px 0 12px}
+.eyebrow{font:600 10px "IBM Plex Mono",monospace;letter-spacing:.12em;color:var(--muted);text-transform:uppercase}
+.hero h1{font-size:34px;line-height:1.02;letter-spacing:-1.6px;margin:6px 0 8px;max-width:330px}
+.hero p{font-size:13px;line-height:1.45;color:var(--muted);margin:0;max-width:340px}
+.rating-strip{display:flex;align-items:center;gap:10px;margin-top:16px;border:1px solid var(--line);background:var(--surface2);border-radius:15px;padding:10px 12px}
+.rating-glyph{width:36px;height:36px;border-radius:11px;background:var(--ink);color:#fff;display:grid;place-items:center}
+.rating-glyph svg{width:18px}
+.rating-main{flex:1;line-height:1.05}.rating-main b{display:block;font-size:14px}.rating-main span{font:500 10px "IBM Plex Mono",monospace;color:var(--muted)}
+.rating-value{font:600 15px "IBM Plex Mono",monospace}
+.section-title{font-size:13px;font-weight:700;margin:18px 0 8px;display:flex;align-items:center;justify-content:space-between}
+.section-title small{font:500 9px "IBM Plex Mono",monospace;color:var(--muted)}
+.mode-stack{display:grid;gap:8px}
+.mode-row{border:1px solid var(--line);background:var(--surface2);border-radius:16px;padding:12px;display:grid;grid-template-columns:44px 1fr auto;align-items:center;gap:11px;text-align:left}
+.mode-row.selected{border-color:var(--ink);box-shadow:0 0 0 1px var(--ink)}
+.mode-icon{width:44px;height:44px;border-radius:13px;background:#eef1f4;display:grid;place-items:center}
+.mode-icon svg{width:21px;height:21px}
+.mode-row.selected .mode-icon{background:var(--route)}
+.mode-copy{min-width:0}.mode-copy b{display:block;font-size:15px}.mode-copy span{display:block;font-size:11px;color:var(--muted);margin-top:2px}
+.chev{color:var(--muted)}
+.config-card{margin-top:10px;border:1px solid var(--line);background:#f0f2f5;border-radius:18px;padding:12px}
+.config-line{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:38px}
+.config-line+.config-line{border-top:1px solid #d7dbe0}
+.config-label{font-size:12px}.config-label span{display:block;font:500 9px "IBM Plex Mono",monospace;color:var(--muted);margin-top:1px}
+.chips{display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end}
+.chip{border:1px solid var(--line);background:var(--surface2);border-radius:999px;padding:5px 8px;font:600 9px "IBM Plex Mono",monospace}
+.chip.active{background:var(--ink);border-color:var(--ink);color:#fff}
+.primary{width:100%;border:0;border-radius:16px;background:var(--ink);color:#fff;padding:14px 16px;font-weight:700;font-size:15px;margin-top:10px;display:flex;align-items:center;justify-content:center;gap:8px}
+.primary svg{width:18px}
+.primary:active{transform:translateY(1px)}
+.rule-card{margin-top:12px;background:#171a1f;color:#fff;border-radius:18px;padding:13px}
+.rule-top{display:flex;align-items:center;gap:8px}.rule-top svg{width:17px}.rule-top b{font-size:12px}.rule-top span{margin-left:auto;font:500 9px "IBM Plex Mono",monospace;color:#aeb5bd}
+.rule-card p{font-size:11px;color:#cfd4da;line-height:1.45;margin:8px 0 0}
+.route-map{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;margin-top:9px}
+.route-map span{border:1px solid #3b4047;border-radius:7px;padding:5px;text-align:center;font:600 9px "IBM Plex Mono",monospace}
+.bottomnav{
+  position:absolute;left:12px;right:12px;bottom:12px;height:72px;border:1px solid var(--line);background:rgba(255,255,255,.94);backdrop-filter:blur(14px);
+  border-radius:22px;display:grid;grid-template-columns:repeat(4,1fr);padding:6px;z-index:20;box-shadow:0 8px 24px rgba(21,24,28,.09)
 }
-.phone:after{content:"";position:absolute;inset:7px;border:1.5px solid rgba(40,40,40,.18);border-radius:36px;pointer-events:none;z-index:100}
-.screen{position:absolute;inset:0;display:none;overflow-y:auto;overscroll-behavior:contain}
-.screen.active{display:block}
-#gameScreen{overflow:hidden}
-.status{
-  height:32px;padding:8px 24px 0;display:flex;align-items:center;justify-content:space-between;
-  font-family:"Architects Daughter",cursive;font-size:11px;position:relative;z-index:2
-}
-.notch{position:absolute;top:0;left:50%;transform:translateX(-50%);width:142px;height:26px;background:var(--ink);border-radius:0 0 18px 18px}
-.status-icons{letter-spacing:2px;font-size:10px}
-.brand{text-align:center;position:relative;padding:3px 18px 0}
-.brand h1{font-family:"Caveat",cursive;font-size:41px;line-height:.9;margin:4px 0 1px;transform:rotate(-1.2deg)}
-.brand h1 span{display:block}
-.brand .subtitle{font-family:"Architects Daughter",cursive;font-size:10px;color:var(--ink2);margin-top:5px}
-.pencil{position:absolute;top:14px;font-size:22px;transform:rotate(-22deg)}
-.pencil.left{left:44px}.pencil.right{right:44px;transform:rotate(22deg)}
-.crown{position:absolute;right:84px;top:3px;font-size:20px;transform:rotate(12deg)}
-.rating-chip{
-  width:max-content;margin:9px auto 8px;border:2px solid var(--ink);border-radius:9px;background:#fff;padding:3px 11px;
-  font-family:"Architects Daughter",cursive;font-size:11px;box-shadow:1px 2px 0 rgba(0,0,0,.08)
-}
-.home-content{padding:0 18px 24px}
-.section-label{text-align:center;font-size:14px;margin:5px 0 7px}
-.mode-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px}
-.mode-card{
-  min-height:78px;background:#fff;border:2px solid var(--ink);border-radius:13px;padding:8px 8px 7px;cursor:pointer;
-  box-shadow:2px 3px 0 rgba(0,0,0,.07);transition:transform .14s,background .14s,box-shadow .14s
-}
-.mode-card:active{transform:translate(1px,2px);box-shadow:0 1px 0 rgba(0,0,0,.07)}
-.mode-card.selected{background:var(--yellow2);box-shadow:3px 4px 0 var(--ink);transform:rotate(-.5deg)}
-.mode-card .icon{font-size:22px;line-height:1}.mode-card b{display:block;font-size:14px;margin-top:3px}
-.mode-card small{display:block;font-size:11px;color:var(--ink2);line-height:1.15}
-.private-row{
-  margin:10px 0 8px;border:2px dashed var(--ink);border-radius:12px;padding:7px 8px;display:flex;align-items:center;gap:7px;
-  background:rgba(255,255,255,.55);font-size:11px
-}
-.private-row .code{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.tiny-btn,.pill-btn{
-  border:1.8px solid var(--ink);background:#fff;border-radius:9px;padding:4px 7px;cursor:pointer;box-shadow:1px 1px 0 rgba(0,0,0,.08)
-}
-.options-card{margin-top:7px;padding-top:1px}
-.option-title{text-align:center;font-size:13px;margin:7px 0 5px}
-.segment{display:flex;gap:6px;justify-content:center;flex-wrap:wrap}
-.seg-btn{
-  border:1.8px solid var(--ink);background:#fff;border-radius:999px;padding:4px 10px;cursor:pointer;font-size:12px;min-width:52px
-}
-.seg-btn.selected{background:var(--ink);color:#fff}
-.start-toggle{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-.start-toggle .seg-btn{border-radius:9px;padding:7px}.start-toggle .seg-btn.selected{background:var(--green);color:var(--ink)}
-.option-note{text-align:center;color:var(--muted);font-size:10px;margin-top:6px;font-family:"Architects Daughter",cursive}
-.start-btn{
-  width:100%;margin:10px 0 8px;border:0;border-radius:13px;background:var(--ink);color:#fff;padding:10px 14px;
-  font-family:"Caveat",cursive;font-size:27px;font-weight:700;cursor:pointer;box-shadow:3px 4px 0 rgba(0,0,0,.12)
-}
-.start-btn:active{transform:translateY(2px);box-shadow:1px 2px 0 rgba(0,0,0,.12)}
-.how-card{border:2px dashed var(--ink);border-radius:12px;background:#fffdf5;margin-top:4px;padding:8px 9px;font-size:11px}
-.how-card summary{cursor:pointer;font-size:13px;list-style:none}
-.how-card summary::-webkit-details-marker{display:none}
-.how-card ul{margin:6px 0 5px;padding-left:17px;line-height:1.25}
-.map-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;margin-top:6px}
-.map-grid span{border:1px solid var(--ink);border-radius:5px;text-align:center;padding:2px 0;background:#fff;font-family:"Architects Daughter",cursive;font-size:10px}
-.dev-note{font-size:9px;color:var(--muted);text-align:center;margin-top:8px;font-family:"Architects Daughter",cursive}
-.top-actions{position:absolute;right:19px;top:40px;display:flex;gap:6px;z-index:3}
-.icon-btn{
-  width:34px;height:34px;border:2px solid var(--ink);border-radius:10px;background:#fff;cursor:pointer;display:grid;place-items:center;
-  box-shadow:1px 2px 0 rgba(0,0,0,.08)
-}
-.game-wrap{height:100%;display:flex;flex-direction:column;padding:0 14px 13px}
-.game-top{display:flex;align-items:center;gap:7px;margin-top:2px}
-.game-title-mini{font-family:"Caveat",cursive;font-size:25px;font-weight:700;flex:1;text-align:center;line-height:1}
-.timer{
-  min-width:42px;border:1.8px solid var(--ink);border-radius:10px;padding:4px 6px;background:#fff;text-align:center;
-  font-family:"Architects Daughter",cursive;font-size:11px
-}
-.timer.urgent{background:#ffe4e4;color:#a01515;animation:pulseTimer .6s infinite alternate}
-@keyframes pulseTimer{to{transform:scale(1.06)}}
-.players{display:flex;align-items:center;gap:7px;margin:8px 0 6px}
-.player{
-  flex:1;border:2px solid var(--ink);border-radius:14px;padding:6px 9px;background:#fff;display:flex;align-items:center;gap:7px;min-height:54px;
-  box-shadow:2px 2px 0 rgba(0,0,0,.07);position:relative
-}
-.player.active{background:var(--blue);box-shadow:3px 3px 0 var(--ink)}
-.player.o.active{background:var(--pink)}
-.avatar{width:31px;height:31px;border:1.7px solid var(--ink);border-radius:9px;display:grid;place-items:center;background:#fff}
-.player-meta{line-height:1}.player-name{font-size:12px}.player-score{font-family:"Caveat",cursive;font-size:25px;font-weight:700}
-.vs{font-family:"Caveat",cursive;font-size:18px;font-weight:700}
-.turn-banner{
-  border:1.8px dashed var(--ink);border-radius:10px;padding:5px 8px;text-align:center;font-size:11px;margin-bottom:7px;
-  font-family:"Architects Daughter",cursive;background:#fff
-}
-.turn-banner.free{background:var(--yellow2);border-style:solid}
-.board-shell{background:var(--ink);border:3px solid var(--ink);border-radius:16px;padding:5px;box-shadow:2px 4px 0 rgba(0,0,0,.15)}
-.mega{display:grid;grid-template-columns:repeat(3,1fr);gap:5px}
-.mini{
-  aspect-ratio:1;display:grid;grid-template-columns:repeat(3,1fr);background:#fffdf4;border-radius:9px;overflow:hidden;
-  border:2px solid transparent;position:relative;transition:opacity .18s,transform .18s,box-shadow .18s,background .18s
-}
-.mini.active{background:#fffbe3;border-color:#f0b400;box-shadow:0 0 0 3px #ffd13a;z-index:2}
-.mini.free-active{background:#fffbe3;border-color:#f4c025}
-.mini.inactive{opacity:.42;filter:grayscale(.25)}
-.mini.sent-target{animation:sentPulse .5s ease}
-@keyframes sentPulse{0%{transform:scale(.96)}50%{transform:scale(1.04);box-shadow:0 0 0 5px var(--yellow)}100%{transform:scale(1)}}
-.mini.preview-target{outline:3px dashed var(--blue-strong);outline-offset:-4px}
-.mini.mega-line{outline:5px solid var(--green);outline-offset:-5px;z-index:6}
-.cell{
-  border:0;border-right:1px solid var(--line);border-bottom:1px solid var(--line);background:transparent;cursor:pointer;display:grid;place-items:center;
-  min-width:0;position:relative
-}
-.cell:nth-child(3n){border-right:0}.cell:nth-child(n+7){border-bottom:0}
-.cell:disabled{cursor:default}
-.cell.legal:hover{background:rgba(255,224,80,.28)}
-.cell.legal:active{background:rgba(255,224,80,.48)}
-.mark{font-family:"Caveat",cursive;font-size:23px;font-weight:700;line-height:1;animation:markIn .2s ease}
-.mark.x{color:var(--blue-strong);transform:rotate(-7deg)}
-.mark.o{color:var(--pink-strong);font-size:0;width:23px;height:23px;border:2.8px solid var(--pink-strong);border-radius:50%;transform:rotate(7deg)}
-@keyframes markIn{from{opacity:0;transform:scale(.4) rotate(-10deg)}70%{opacity:1;transform:scale(1.12) rotate(3deg)}to{opacity:1}}
-.claim{
-  position:absolute;inset:0;z-index:4;display:grid;place-items:center;border-radius:8px;background:rgba(255,255,255,.95);
-  animation:claimIn .34s cubic-bezier(.2,.85,.2,1.2)
-}
-.claim.x{background:repeating-linear-gradient(-35deg,#e7f4ff,#e7f4ff 7px,#d9edff 7px,#d9edff 9px)}
-.claim.o{background:repeating-linear-gradient(35deg,#fdeaf0,#fdeaf0 7px,#f8dbe5 7px,#f8dbe5 9px)}
-.claim.draw{background:#ecebe5;color:#777;font-family:"Architects Daughter",cursive;font-size:12px}
-.claim .bigx{font-family:"Caveat",cursive;font-size:62px;color:var(--blue-strong);font-weight:700;transform:rotate(-8deg)}
-.claim .bigo{width:54px;height:54px;border:6px solid var(--pink-strong);border-radius:50%;transform:rotate(7deg)}
-@keyframes claimIn{from{opacity:0;transform:scale(.65)}to{opacity:1;transform:scale(1)}}
-.shake{animation:shake .28s ease}
-@keyframes shake{25%{transform:translateX(-4px)}50%{transform:translateX(4px)}75%{transform:translateX(-2px)}}
-.tip{
-  margin:8px 2px 7px;border:2px solid var(--ink);border-radius:12px;background:#fff;padding:6px 9px;text-align:center;
-  font-family:"Architects Daughter",cursive;font-size:10px;min-height:34px;display:flex;align-items:center;justify-content:center;gap:6px
-}
-.bottom{display:grid;grid-template-columns:68px 1fr 68px;gap:8px;margin-top:auto}
-.ctrl{
-  border:2px solid var(--ink);border-radius:14px;background:#fff;padding:7px 4px;cursor:pointer;box-shadow:2px 2px 0 rgba(0,0,0,.08);
-  display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:10px
-}
-.ctrl span{font-size:18px;line-height:1}
-.ctrl.primary{font-family:"Caveat",cursive;font-size:20px;flex-direction:row;gap:7px;background:var(--paper2)}
-.toast{
-  position:absolute;left:50%;bottom:76px;transform:translate(-50%,12px);background:var(--ink);color:#fff;border-radius:999px;
-  padding:7px 12px;font-size:11px;opacity:0;pointer-events:none;transition:.2s;z-index:80;white-space:nowrap
-}
-.toast.show{opacity:1;transform:translate(-50%,0)}
-.modal{
-  position:absolute;inset:0;background:rgba(250,248,239,.92);backdrop-filter:blur(2px);z-index:60;display:none;align-items:center;justify-content:center;padding:20px
-}
-.modal.open{display:flex}
-.modal-card{
-  width:100%;max-width:354px;max-height:88%;overflow:auto;background:var(--paper);border:3px solid var(--ink);border-radius:21px;padding:16px;
-  box-shadow:6px 7px 0 var(--ink);animation:modalIn .18s ease
-}
-@keyframes modalIn{from{opacity:0;transform:translateY(8px) scale(.96)}to{opacity:1;transform:none}}
-.modal-card h2{font-family:"Caveat",cursive;font-size:32px;text-align:center;margin:0 0 10px}
-.modal-card h3{font-size:14px;margin:12px 0 6px;border-bottom:1px dashed var(--line);padding-bottom:3px}
-.setting{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:7px 0;border-bottom:1px dashed #d3d0c7;font-size:13px}
-.switch{position:relative;width:48px;height:27px;display:inline-block}
-.switch input{display:none}.slider{position:absolute;inset:0;background:#fff;border:2px solid var(--ink);border-radius:999px;cursor:pointer}
-.slider:after{content:"";position:absolute;width:19px;height:19px;left:2px;top:2px;background:var(--ink);border-radius:50%;transition:.16s}
-.switch input:checked+.slider{background:#bfe7aa}.switch input:checked+.slider:after{transform:translateX(21px)}
-.setting select{border:1.8px solid var(--ink);border-radius:8px;background:#fff;padding:3px 6px}
-.modal-actions{display:flex;gap:8px;margin-top:12px}
-.action{
-  flex:1;border:2px solid var(--ink);border-radius:11px;background:#fff;padding:8px;cursor:pointer;box-shadow:2px 2px 0 rgba(0,0,0,.08)
-}
-.action.primary{background:var(--ink);color:#fff;font-family:"Caveat",cursive;font-size:20px}
-.action.warn{background:#fff0f0;color:#9a2020}
-.premium-row{margin-top:10px;border:2px dashed var(--ink);border-radius:11px;padding:9px;background:#fffbe7}
-.premium-row b{display:block;font-size:14px}.premium-row small{font-size:10px;color:var(--muted)}
-.stats-tabs{display:flex;gap:5px;margin-bottom:9px}
-.tab{flex:1;border:1.8px solid var(--ink);background:#fff;border-radius:999px;padding:4px;cursor:pointer;font-size:11px}
-.tab.active{background:var(--ink);color:#fff}
-.stat-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
-.stat-card{border:1.7px solid var(--ink);border-radius:11px;background:#fff;padding:8px;text-align:center}
-.stat-card b{display:block;font-family:"Caveat",cursive;font-size:28px;line-height:1}.stat-card span{font-size:10px;color:var(--muted)}
-.diff-stats{margin-top:8px;font-size:11px}
-.diff-line{display:grid;grid-template-columns:1fr 45px 55px;gap:4px;padding:3px 0;border-bottom:1px dashed #ddd}
-.online-note{border:2px dashed var(--ink);border-radius:12px;padding:10px;background:#fffbe7;font-size:12px;line-height:1.3}
-.online-note code{font-family:monospace;font-size:10px}
-.result-icon{text-align:center;font-size:42px}.result-title{font-family:"Caveat",cursive;text-align:center;font-size:36px;margin:0}
-.result-sub{text-align:center;font-size:12px;color:var(--ink2);margin:3px 0 10px}
-.result-strip{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
-.result-strip div{border:1.5px solid var(--ink);border-radius:9px;background:#fff;padding:6px;text-align:center;font-size:9px}
-.result-strip b{display:block;font-size:18px}
-.confetti{position:absolute;inset:0;pointer-events:none;overflow:hidden;z-index:55}
-.confetti i{position:absolute;top:-14px;width:7px;height:12px;border-radius:2px;animation:fall 1.7s linear forwards}
-@keyframes fall{to{transform:translateY(1000px) rotate(560deg);opacity:.2}}
-body[data-theme="dark"]{--paper:#24231f;--paper2:#302e29;--ink:#f1eee5;--ink2:#cac6bb;--desk:#151512;--line:#5c5951;--muted:#a9a599;--yellow2:#554a22;--blue:#23394c;--pink:#4b2633;--green:#31482e}
-body[data-theme="dark"] .phone{box-shadow:10px 12px 0 #050505,0 22px 50px #000}
-body[data-theme="dark"] .mode-card,body[data-theme="dark"] .player,body[data-theme="dark"] .turn-banner,body[data-theme="dark"] .tip,
-body[data-theme="dark"] .ctrl,body[data-theme="dark"] .modal-card,body[data-theme="dark"] .stat-card,body[data-theme="dark"] .tiny-btn,
-body[data-theme="dark"] .seg-btn,body[data-theme="dark"] .rating-chip{background:#2c2a25}
-body[data-theme="dark"] .mini{background:#39362f}
-body[data-theme="dark"] .claim.x{background:#213647}body[data-theme="dark"] .claim.o{background:#442631}body[data-theme="dark"] .claim.draw{background:#3b3934}
+.nav-btn{border:0;background:transparent;border-radius:16px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;font-size:9px;color:var(--muted)}
+.nav-btn svg{width:20px;height:20px}
+.nav-btn.active{background:var(--ink);color:#fff}
+.panel-head{padding:20px 0 12px}.panel-head h2{font-size:28px;letter-spacing:-1px;margin:5px 0 4px}.panel-head p{font-size:12px;color:var(--muted);margin:0}
+.search{display:flex;gap:8px}.search-wrap{flex:1;position:relative}.search-wrap svg{position:absolute;left:11px;top:50%;transform:translateY(-50%);width:16px;color:var(--muted)}
+.search input{width:100%;height:42px;border:1px solid var(--line);border-radius:13px;background:var(--surface2);padding:0 12px 0 36px;outline:none}
+.search input:focus{border-color:var(--ink)}
+.secondary-btn{height:42px;border:1px solid var(--line);border-radius:13px;background:var(--surface2);padding:0 12px;display:flex;align-items:center;gap:6px;font-size:11px}
+.secondary-btn svg{width:16px}
+.empty{border:1px dashed #bcc2c9;border-radius:18px;padding:24px 18px;text-align:center;margin-top:14px;background:rgba(255,255,255,.5)}
+.empty .empty-icon{width:52px;height:52px;border-radius:17px;background:#eef1f4;display:grid;place-items:center;margin:0 auto 10px}
+.empty svg{width:24px}.empty b{display:block;font-size:14px}.empty p{font-size:11px;color:var(--muted);margin:5px auto 0;max-width:260px}
+.code-card{border:1px solid var(--line);background:var(--surface2);border-radius:16px;padding:12px;margin-top:12px;display:flex;align-items:center;gap:10px}
+.code-card .code{font:600 14px "IBM Plex Mono",monospace;letter-spacing:.05em}.code-card span{display:block;font-size:9px;color:var(--muted);font-family:"IBM Plex Mono",monospace}
+.copy-btn{margin-left:auto;border:1px solid var(--line);background:#f0f2f5;border-radius:10px;width:36px;height:36px;display:grid;place-items:center}
+.copy-btn svg{width:16px}
+.rank-card{background:#171a1f;color:#fff;border-radius:20px;padding:16px;margin-top:6px;position:relative;overflow:hidden}
+.rank-card:before{content:"";position:absolute;width:140px;height:140px;border:28px solid #242931;border-radius:50%;right:-38px;top:-45px}
+.rank-card .rank-label{font:600 9px "IBM Plex Mono",monospace;color:#9ea6af;letter-spacing:.12em}
+.rank-card h3{font-size:24px;margin:5px 0 2px;position:relative}.rank-card .score{font:600 13px "IBM Plex Mono",monospace;color:var(--route);position:relative}
+.progress{height:7px;background:#30353c;border-radius:999px;margin-top:15px;overflow:hidden;position:relative}.progress i{display:block;width:42%;height:100%;background:var(--route);border-radius:999px}
+.leader-list{display:grid;gap:7px;margin-top:10px}.leader{display:grid;grid-template-columns:34px 1fr auto;align-items:center;gap:9px;border:1px solid var(--line);background:var(--surface2);border-radius:14px;padding:9px}
+.leader .pos{font:600 11px "IBM Plex Mono",monospace;color:var(--muted)}.leader b{font-size:12px}.leader small{display:block;color:var(--muted);font-size:9px}.leader .elo{font:600 11px "IBM Plex Mono",monospace}
+.stats-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}.stat{border:1px solid var(--line);background:var(--surface2);border-radius:15px;padding:12px}
+.stat span{font:600 8px "IBM Plex Mono",monospace;color:var(--muted);letter-spacing:.08em}.stat b{display:block;font-size:25px;letter-spacing:-1px;margin-top:4px}
+.diff-table{margin-top:10px;border:1px solid var(--line);border-radius:15px;overflow:hidden}.diff-row{display:grid;grid-template-columns:1fr 52px 52px;gap:8px;padding:9px 11px;background:var(--surface2);font-size:10px}
+.diff-row+.diff-row{border-top:1px solid var(--line)}.diff-row span:nth-child(n+2){font-family:"IBM Plex Mono",monospace;text-align:right}
+.game-screen{position:absolute;inset:0;background:var(--surface);display:none;z-index:50;overflow:hidden}
+.game-screen.active{display:flex;flex-direction:column}
+.gamebar{height:58px;padding:10px 12px 6px;display:flex;align-items:center;gap:8px}
+.gamebar-title{flex:1;text-align:center}.gamebar-title b{display:block;font-size:13px}.gamebar-title span{font:500 8px "IBM Plex Mono",monospace;color:var(--muted)}
+.timer{min-width:44px;height:36px;border:1px solid var(--line);background:var(--surface2);border-radius:11px;display:grid;place-items:center;font:600 10px "IBM Plex Mono",monospace}
+.timer.danger{background:#ffe4e4;border-color:#f29a9a;color:#a82424}
+.game-content{flex:1;min-height:0;display:flex;flex-direction:column;padding:0 12px 12px}
+.players{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:4px}
+.player{border:1px solid var(--line);background:var(--surface2);border-radius:15px;padding:9px;display:grid;grid-template-columns:34px 1fr auto;align-items:center;gap:8px}
+.player.active{box-shadow:0 0 0 2px var(--ink);border-color:var(--ink)}
+.player-badge{width:34px;height:34px;border-radius:11px;display:grid;place-items:center;background:#eef1f4}
+.player-badge.x{background:var(--xsoft)}.player-badge.o{background:var(--osoft)}
+.player-badge svg{width:20px;height:20px}
+.player-copy b{display:block;font-size:11px}.player-copy span{display:block;font:500 8px "IBM Plex Mono",monospace;color:var(--muted);margin-top:1px}
+.player-score{font:600 17px "IBM Plex Mono",monospace}
+.route-hud{margin:8px 0 7px;border:1px solid var(--line);background:#171a1f;color:#fff;border-radius:14px;padding:8px 10px;display:flex;align-items:center;gap:8px;min-height:42px}
+.route-icon{width:26px;height:26px;border-radius:8px;background:var(--route);color:var(--routeInk);display:grid;place-items:center}
+.route-icon svg{width:15px}.route-copy{line-height:1}.route-copy b{display:block;font-size:11px}.route-copy span{font:500 8px "IBM Plex Mono",monospace;color:#aeb5bd}
+.board-wrap{position:relative;aspect-ratio:1;width:100%;max-width:390px;align-self:center}
+.board{position:absolute;inset:0;display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.route-overlay{position:absolute;inset:0;pointer-events:none;z-index:30;overflow:visible}
+.route-overlay line{stroke:var(--route);stroke-width:3;stroke-linecap:round;filter:drop-shadow(0 0 4px rgba(198,255,66,.8));animation:routeFade .65s ease forwards}
+.route-overlay circle{fill:var(--route);animation:routeFade .65s ease forwards}
+@keyframes routeFade{0%{opacity:0}18%{opacity:1}75%{opacity:1}100%{opacity:0}}
+.mini{aspect-ratio:1;min-width:0;min-height:0;border:1px solid #bfc5cc;background:var(--surface2);border-radius:16px;display:grid;grid-template-columns:repeat(3,1fr);position:relative;overflow:hidden;transition:opacity .18s,box-shadow .18s,border-color .18s}
+.mini.active{border-color:var(--ink);box-shadow:0 0 0 3px var(--route)}
+.mini.free{box-shadow:inset 0 0 0 2px #d9e9a6}
+.mini.dim{opacity:.4}
+.mini.route-target{animation:routeTarget .45s ease}
+@keyframes routeTarget{50%{box-shadow:0 0 0 4px var(--route)}}
+.cell{position:relative;aspect-ratio:1;min-width:0;min-height:0;border:0;border-right:1px solid #e0e3e6;border-bottom:1px solid #e0e3e6;background:transparent;padding:0}
+.cell:nth-child(3n){border-right:0}.cell:nth-child(n+7){border-bottom:0}.cell:disabled{cursor:default}
+.cell.legal:hover{background:#f2f6e5}.cell.legal:active{background:#eaf4cb}
+.mark-layer{position:absolute;inset:0;display:grid;place-items:center;pointer-events:none}
+.mark-layer svg{width:68%;height:68%;overflow:visible}
+.mark-x path{stroke:var(--x);stroke-width:4.4;stroke-linecap:round;fill:none}
+.mark-o circle{stroke:var(--o);stroke-width:4.4;fill:none}
+.claim{position:absolute;inset:0;z-index:6;pointer-events:none;display:grid;place-items:center;border-radius:15px}
+.claim.x{background:rgba(223,233,255,.91)}.claim.o{background:rgba(255,225,230,.91)}.claim.d{background:rgba(227,230,233,.93)}
+.claim svg{width:55%;height:55%}.claim.x path{stroke:var(--x);stroke-width:7;stroke-linecap:round;fill:none}.claim.o circle{stroke:var(--o);stroke-width:7;fill:none}
+.claim.d span{font:600 10px "IBM Plex Mono",monospace;color:var(--muted);letter-spacing:.08em}
+.mega-win{box-shadow:0 0 0 4px var(--win)!important;opacity:1!important}
+.game-help{margin-top:8px;display:flex;align-items:center;justify-content:center;gap:6px;color:var(--muted);font-size:10px;min-height:30px}
+.game-help svg{width:14px}
+.game-actions{display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px;margin-top:auto}
+.game-action{border:1px solid var(--line);background:var(--surface2);border-radius:13px;height:44px;display:flex;align-items:center;justify-content:center;gap:6px;font-size:10px}
+.game-action svg{width:16px}.game-action.danger{color:#a92d2d}
+.sheet{position:absolute;inset:0;background:rgba(21,24,28,.36);backdrop-filter:blur(5px);display:none;align-items:flex-end;z-index:80}
+.sheet.open{display:flex}
+.sheet-card{width:100%;max-height:84%;overflow:auto;background:var(--surface);border-radius:24px 24px 0 0;padding:10px 16px 24px;box-shadow:0 -20px 50px rgba(0,0,0,.14)}
+.grabber{width:44px;height:4px;background:#c7ccd2;border-radius:999px;margin:0 auto 14px}
+.sheet-head{display:flex;align-items:center;gap:10px;margin-bottom:10px}.sheet-head h3{font-size:22px;margin:0;flex:1}
+.setting-group{margin-top:14px}.setting-group h4{font:600 9px "IBM Plex Mono",monospace;color:var(--muted);letter-spacing:.12em;text-transform:uppercase;margin:0 0 5px}
+.setting-row{min-height:46px;border-bottom:1px solid #dde1e5;display:flex;align-items:center;gap:10px}.setting-row span:first-child{flex:1;font-size:12px}
+.switch{width:46px;height:26px;position:relative}.switch input{display:none}.switch i{position:absolute;inset:0;border:1px solid #b9c0c8;background:#fff;border-radius:999px}.switch i:after{content:"";position:absolute;width:20px;height:20px;left:2px;top:2px;background:var(--ink);border-radius:50%;transition:.15s}
+.switch input:checked+i{background:var(--route);border-color:#9dbd39}.switch input:checked+i:after{transform:translateX(20px)}
+.setting-row select{border:1px solid var(--line);background:#fff;border-radius:9px;padding:5px 7px;font-size:10px}
+.sheet-primary{width:100%;border:0;background:var(--ink);color:#fff;border-radius:14px;padding:12px;margin-top:14px;font-weight:700}
+.result{text-align:center;padding:8px 0}.result-symbol{width:60px;height:60px;border-radius:18px;background:var(--route);display:grid;place-items:center;margin:0 auto 10px}.result-symbol svg{width:28px}
+.result h3{font-size:28px;margin:0}.result p{font-size:11px;color:var(--muted);margin:6px auto 12px;max-width:280px}.result-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}.result-grid div{border:1px solid var(--line);background:#fff;border-radius:12px;padding:8px}.result-grid b{display:block;font:600 16px "IBM Plex Mono",monospace}.result-grid span{font-size:8px;color:var(--muted)}
+.toast{position:absolute;left:50%;bottom:92px;transform:translate(-50%,10px);background:var(--ink);color:#fff;padding:7px 11px;border-radius:999px;font-size:10px;opacity:0;pointer-events:none;transition:.2s;z-index:100;white-space:nowrap}.toast.show{opacity:1;transform:translate(-50%,0)}
 .reduce-motion *{animation:none!important;transition:none!important}
+.dark{--bg:#101216;--surface:#16191e;--surface2:#1d2127;--ink:#f5f7fa;--muted:#9299a3;--line:#323842;--xsoft:#1b2b50;--osoft:#4b252c}
+.dark .mode-icon,.dark .player-badge,.dark .empty-icon{background:#252a31}.dark .config-card{background:#1a1e24}.dark .chip{background:#1d2127}.dark .rule-card{background:#0f1114}.dark .bottomnav{background:rgba(29,33,39,.95)}.dark .cell{border-color:#2f353d}.dark .mini{border-color:#343a43}.dark .sheet-card{background:#16191e}.dark .setting-row{border-color:#2b3037}.dark input,.dark select{background:#1d2127!important;color:#f5f7fa}
 @media(max-height:760px){
-  .phone{height:98vh;min-height:640px;border-radius:32px}.brand h1{font-size:34px}.brand .subtitle{display:none}
-  .mode-card{min-height:68px}.home-content{padding-bottom:14px}.how-card{font-size:10px}
-  .players{margin:5px 0 4px}.player{min-height:46px;padding:4px 7px}.avatar{width:27px;height:27px}
-  .turn-banner{margin-bottom:4px}.tip{margin:5px 2px}.ctrl{padding:5px 3px}
+  .hero{padding-top:8px}.hero h1{font-size:28px}.rating-strip{margin-top:10px}.section-title{margin-top:12px}.mode-row{padding:9px}.mode-icon{width:38px;height:38px}.rule-card{display:none}
+  .gamebar{height:52px}.players{margin-top:0}.player{padding:7px}.route-hud{margin:5px 0}.game-help{margin-top:4px}
 }
-@media(max-width:380px){
-  body{padding:0}.phone{height:100vh;width:100%;border-radius:0;border-left:0;border-right:0}
-  .phone:after{display:none}.home-content{padding-left:13px;padding-right:13px}.game-wrap{padding-left:10px;padding-right:10px}
+@media(max-width:365px){
+  body{padding:0}.app{height:100vh;width:100%;border-radius:0;border:0}.view{padding-left:12px;padding-right:12px}.topbar{padding-left:12px;padding-right:12px}.bottomnav{left:8px;right:8px;bottom:8px}
 }
 </style>
 </head>
 <body>
-<div class="phone" id="phone">
-
-  <section class="screen active" id="homeScreen" aria-label="Main menu">
-    <div class="status"><span>9:41</span><div class="notch"></div><span class="status-icons">▮▮▮ ◌ ▰</span></div>
-    <div class="top-actions">
-      <button class="icon-btn" id="homeStatsBtn" aria-label="Stats">▥</button>
-      <button class="icon-btn" id="homeSettingsBtn" aria-label="Settings">⚙</button>
-    </div>
-    <div class="brand">
-      <span class="pencil left">✎</span><span class="pencil right">✎</span><span class="crown">♕</span>
-      <h1>Mega <span>tic-tac-toe</span></h1>
-      <div class="subtitle">Ultimate 81-cell strategy · send-rule ON</div>
-    </div>
-    <div class="rating-chip">🏆 Rating: 1200 · Gold</div>
-
-    <div class="home-content">
-      <div class="section-label">Choose mode:</div>
-      <div class="mode-grid" id="modeGrid">
-        <button class="mode-card selected" data-mode="bot"><span class="icon">🤖</span><b>Vs Bot</b><small>5 difficulties · offline</small></button>
-        <button class="mode-card" data-mode="local"><span class="icon">👥</span><b>2 Players</b><small>pass & play</small></button>
-        <button class="mode-card" data-mode="ranked"><span class="icon">🏆</span><b>Ranked</b><small>online · rating</small></button>
-        <button class="mode-card" data-mode="casual"><span class="icon">🎲</span><b>Casual</b><small>online · no rating</small></button>
+<div class="app" id="app">
+  <div class="shell">
+    <header class="topbar">
+      <div class="logo">
+        <div class="logo-mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none">
+            <rect x="2.5" y="2.5" width="19" height="19" rx="4" stroke="#fff" stroke-width="1.5"/>
+            <path d="M8.8 3v18M15.2 3v18M3 8.8h18M3 15.2h18" stroke="#fff" stroke-width="1"/>
+            <path d="M5 5l2.6 2.6M7.6 5L5 7.6" stroke="#c6ff42" stroke-width="1.5" stroke-linecap="round"/>
+          </svg>
+        </div>
+        <div class="logo-copy"><b>MEGA XO</b><span>VECTOR RELAY</span></div>
       </div>
+      <div class="top-spacer"></div>
+      <button class="icon-btn" id="settingsOpen" aria-label="Settings"><i data-lucide="settings-2"></i></button>
+    </header>
 
-      <div class="private-row">
-        <span>🔒</span><span class="code">Private code: <b id="friendCode"></b></span>
-        <button class="tiny-btn" id="copyCodeBtn">Copy</button>
-        <button class="tiny-btn" id="friendModeBtn">Friend Mode</button>
-      </div>
-
-      <div class="options-card" id="offlineOptions">
-        <div id="botOnlyOptions">
-          <div class="option-title">Bot difficulty:</div>
-          <div class="segment" id="difficultySegment">
-            <button class="seg-btn" data-difficulty="Beginner">Beginner</button>
-            <button class="seg-btn" data-difficulty="Easy">Easy</button>
-            <button class="seg-btn selected" data-difficulty="Medium">Medium</button>
-            <button class="seg-btn" data-difficulty="Hard">Hard</button>
-            <button class="seg-btn" data-difficulty="Expert">Expert</button>
+    <main class="views">
+      <section class="view active" id="playView">
+        <div class="hero">
+          <div class="eyebrow">Tactical routing game</div>
+          <h1>Win the board.<br>Control the route.</h1>
+          <p>Every move changes two battles: the Mini Board you play now, and the Mini Board your opponent must enter next.</p>
+          <div class="rating-strip">
+            <div class="rating-glyph"><i data-lucide="shield"></i></div>
+            <div class="rating-main"><b>Gold II</b><span>RANKED PROFILE</span></div>
+            <div class="rating-value">1200</div>
           </div>
-          <div class="option-note" id="difficultyNote">Medium: blocks wins, reads sends and avoids traps.</div>
         </div>
-        <div class="option-title">Who starts?</div>
-        <div class="start-toggle" id="startSegment">
-          <button class="seg-btn selected" data-start="X">X starts</button>
-          <button class="seg-btn" data-start="O">O starts</button>
-        </div>
-      </div>
 
-      <button class="start-btn" id="startBtn">▶ Start Battle!</button>
-
-      <details class="how-card">
-        <summary>📜 <b>How to play</b> — tap to expand</summary>
-        <ul>
-          <li>Win 3 Mini Boards in a row to win the Mega Board.</li>
-          <li>Your cell position sends the opponent to that matching Mini Board.</li>
-          <li>Example: play cell <b>2 ↗</b> → opponent must play in Mega Board <b>2 ↗</b>.</li>
-          <li>If that destination Mini Board is already won or drawn, opponent gets a <b>FREE MOVE</b> anywhere.</li>
-        </ul>
-        <div class="map-grid">
-          <span>0 ↖</span><span>1 ↑</span><span>2 ↗</span>
-          <span>3 ←</span><span>4 •</span><span>5 →</span>
-          <span>6 ↙</span><span>7 ↓</span><span>8 ↘</span>
+        <div class="section-title"><span>Choose mode</span><small>OFFLINE READY</small></div>
+        <div class="mode-stack">
+          <button class="mode-row selected" data-mode="bot">
+            <span class="mode-icon"><i data-lucide="bot"></i></span>
+            <span class="mode-copy"><b>Vs Bot</b><span>Five skill levels, fully offline</span></span>
+            <span class="chev"><i data-lucide="chevron-right"></i></span>
+          </button>
+          <button class="mode-row" data-mode="local">
+            <span class="mode-icon"><i data-lucide="users"></i></span>
+            <span class="mode-copy"><b>Pass & Play</b><span>Two players on one device</span></span>
+            <span class="chev"><i data-lucide="chevron-right"></i></span>
+          </button>
+          <button class="mode-row" data-mode="online">
+            <span class="mode-icon"><i data-lucide="swords"></i></span>
+            <span class="mode-copy"><b>Play Online</b><span>Ranked or casual matchmaking</span></span>
+            <span class="chev"><i data-lucide="chevron-right"></i></span>
+          </button>
+          <button class="mode-row" data-mode="private">
+            <span class="mode-icon"><i data-lucide="link-2"></i></span>
+            <span class="mode-copy"><b>Private Match</b><span>Create or join a friend room</span></span>
+            <span class="chev"><i data-lucide="chevron-right"></i></span>
+          </button>
         </div>
-      </details>
-      <div class="dev-note">V3 client prototype · online modes are visibly scaffolded, not faked.</div>
+
+        <div class="config-card" id="offlineConfig">
+          <div class="config-line" id="difficultyLine">
+            <div class="config-label">Bot difficulty<span>Strategy depth</span></div>
+            <div class="chips" id="difficultyChips">
+              <button class="chip" data-diff="Beginner">BEGINNER</button>
+              <button class="chip" data-diff="Easy">EASY</button>
+              <button class="chip active" data-diff="Medium">MEDIUM</button>
+              <button class="chip" data-diff="Hard">HARD</button>
+              <button class="chip" data-diff="Expert">EXPERT</button>
+            </div>
+          </div>
+          <div class="config-line">
+            <div class="config-label">First move<span>Starting side</span></div>
+            <div class="chips" id="startChips">
+              <button class="chip active" data-start="X">X STARTS</button>
+              <button class="chip" data-start="O">O STARTS</button>
+            </div>
+          </div>
+        </div>
+
+        <button class="primary" id="startMatch"><i data-lucide="play"></i><span>Start Match</span></button>
+
+        <div class="rule-card">
+          <div class="rule-top"><i data-lucide="route"></i><b>The relay rule</b><span>NEXT BOARD = CELL</span></div>
+          <p>The position of the cell you choose determines the opponent's next Mini Board. If that board is already resolved, they receive a Free Move.</p>
+          <div class="route-map"><span>0 ↖</span><span>1 ↑</span><span>2 ↗</span><span>3 ←</span><span>4 ·</span><span>5 →</span><span>6 ↙</span><span>7 ↓</span><span>8 ↘</span></div>
+        </div>
+      </section>
+
+      <section class="view" id="friendsView">
+        <div class="panel-head"><div class="eyebrow">Social</div><h2>Friends</h2><p>Challenge people you know, or add someone you just played.</p></div>
+        <div class="search">
+          <div class="search-wrap"><i data-lucide="search"></i><input id="friendSearch" placeholder="Search username"></div>
+          <button class="secondary-btn"><i data-lucide="user-plus"></i>Add</button>
+        </div>
+        <div class="code-card">
+          <div><span>YOUR FRIEND CODE</span><div class="code" id="friendCode">MEGA-7K2Q</div></div>
+          <button class="copy-btn" id="copyFriendCode" aria-label="Copy friend code"><i data-lucide="copy"></i></button>
+        </div>
+        <div class="section-title"><span>Friends</span><small>0 ONLINE</small></div>
+        <div class="empty">
+          <div class="empty-icon"><i data-lucide="users-round"></i></div>
+          <b>Your squad is empty</b>
+          <p>Add a friend by username or share your code. Recent online opponents will also appear here once multiplayer is connected.</p>
+        </div>
+      </section>
+
+      <section class="view" id="rankView">
+        <div class="panel-head"><div class="eyebrow">Competitive</div><h2>Rankings</h2><p>Your ranked identity is separate from offline play.</p></div>
+        <div class="rank-card">
+          <div class="rank-label">CURRENT TIER</div>
+          <h3>Gold II</h3>
+          <div class="score">1200 RATING</div>
+          <div class="progress"><i></i></div>
+        </div>
+        <div class="section-title"><span>Leaderboard</span><small>ONLINE PLACEHOLDER</small></div>
+        <div class="leader-list">
+          <div class="leader"><span class="pos">--</span><div><b>Server not connected</b><small>Ranked data will load here from the authoritative backend.</small></div><span class="elo">--</span></div>
+        </div>
+        <div class="empty">
+          <div class="empty-icon"><i data-lucide="trophy"></i></div>
+          <b>No fake leaderboard data</b>
+          <p>V3 intentionally keeps competitive data empty until real authentication, matchmaking and rating storage exist.</p>
+        </div>
+      </section>
+
+      <section class="view" id="statsView">
+        <div class="panel-head"><div class="eyebrow">Performance</div><h2>Stats</h2><p>Offline results stay separate from future ranked statistics.</p></div>
+        <div class="stats-grid" id="statsGrid"></div>
+        <div class="section-title"><span>Bot difficulty</span><small>WIN RATE</small></div>
+        <div class="diff-table" id="diffTable"></div>
+      </section>
+    </main>
+
+    <nav class="bottomnav" aria-label="Main navigation">
+      <button class="nav-btn active" data-view="play"><i data-lucide="grid-3x3"></i><span>Play</span></button>
+      <button class="nav-btn" data-view="friends"><i data-lucide="users-round"></i><span>Friends</span></button>
+      <button class="nav-btn" data-view="rank"><i data-lucide="trophy"></i><span>Rank</span></button>
+      <button class="nav-btn" data-view="stats"><i data-lucide="chart-no-axes-column-increasing"></i><span>Stats</span></button>
+    </nav>
+  </div>
+
+  <section class="game-screen" id="gameScreen" aria-label="Match">
+    <div class="gamebar">
+      <button class="icon-btn" id="leaveGame" aria-label="Back"><i data-lucide="chevron-left"></i></button>
+      <div class="gamebar-title"><b id="gameModeLabel">VS BOT</b><span id="gameSubLabel">MEDIUM · OFFLINE</span></div>
+      <div class="timer" id="timerBadge">∞</div>
+      <button class="icon-btn" id="gameSettingsOpen" aria-label="Settings"><i data-lucide="sliders-horizontal"></i></button>
     </div>
-  </section>
-
-  <section class="screen" id="gameScreen" aria-label="Game">
-    <div class="status"><span>9:41</span><div class="notch"></div><span class="status-icons">▮▮▮ ◌ ▰</span></div>
-    <div class="game-wrap">
-      <div class="game-top">
-        <button class="icon-btn" id="backBtn" aria-label="Back to menu">‹</button>
-        <div class="game-title-mini">Mega tic-tac-toe</div>
-        <div class="timer" id="timerBadge">∞</div>
-        <button class="icon-btn" id="gameSettingsBtn" aria-label="Settings">⚙</button>
-      </div>
-
+    <div class="game-content">
       <div class="players">
-        <div class="player" id="playerXCard">
-          <div class="avatar">👤</div>
-          <div class="player-meta"><div class="player-name" id="playerXName">You (X)</div><div class="player-score" id="playerXScore">0</div></div>
+        <div class="player" id="playerX">
+          <div class="player-badge x">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6L18 18M18 6L6 18" stroke="var(--x)" stroke-width="3" stroke-linecap="round"/></svg>
+          </div>
+          <div class="player-copy"><b id="nameX">You</b><span>X · MINI BOARDS</span></div>
+          <div class="player-score" id="scoreX">0</div>
         </div>
-        <div class="vs">vs</div>
-        <div class="player o" id="playerOCard">
-          <div class="avatar" id="playerOAvatar">🤖</div>
-          <div class="player-meta"><div class="player-name" id="playerOName">Bot (O)</div><div class="player-score" id="playerOScore">0</div></div>
+        <div class="player" id="playerO">
+          <div class="player-badge o">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="7" stroke="var(--o)" stroke-width="3" fill="none"/></svg>
+          </div>
+          <div class="player-copy"><b id="nameO">Bot</b><span>O · MINI BOARDS</span></div>
+          <div class="player-score" id="scoreO">0</div>
         </div>
       </div>
 
-      <div class="turn-banner free" id="turnBanner">Your turn — Free Move, play anywhere!</div>
-
-      <div class="board-shell">
-        <div class="mega" id="megaBoard" role="grid" aria-label="Mega tic tac toe board"></div>
+      <div class="route-hud" id="routeHud">
+        <div class="route-icon"><i data-lucide="route"></i></div>
+        <div class="route-copy"><b id="routeTitle">FREE ROUTE</b><span id="routeSub">CHOOSE ANY OPEN MINI BOARD</span></div>
       </div>
 
-      <div class="tip" id="tipText"><span>💡</span><span>Win mini boards to claim the big board.</span></div>
+      <div class="board-wrap" id="boardWrap">
+        <div class="board" id="megaBoard"></div>
+        <svg class="route-overlay" id="routeOverlay" aria-hidden="true"></svg>
+      </div>
 
-      <div class="bottom">
-        <button class="ctrl" id="gameMenuBtn"><span>⌂</span>Menu</button>
-        <button class="ctrl primary" id="restartBtn"><span>↻</span>Restart</button>
-        <button class="ctrl" id="gameStatsBtn"><span>▥</span>Stats</button>
+      <div class="game-help"><i data-lucide="crosshair"></i><span id="helpText">Your cell determines the opponent's destination.</span></div>
+
+      <div class="game-actions">
+        <button class="game-action" id="rulesBtn"><i data-lucide="circle-help"></i>Rules</button>
+        <button class="game-action danger" id="restartGame"><i data-lucide="rotate-ccw"></i>Restart</button>
+        <button class="game-action" id="matchStatsBtn"><i data-lucide="chart-spline"></i>Stats</button>
       </div>
     </div>
   </section>
+
+  <div class="sheet" id="settingsSheet">
+    <div class="sheet-card">
+      <div class="grabber"></div>
+      <div class="sheet-head"><h3>Settings</h3><button class="icon-btn" data-close-sheet="settingsSheet"><i data-lucide="x"></i></button></div>
+      <div class="setting-group"><h4>Gameplay</h4>
+        <label class="setting-row"><span>Legal board highlight</span><span class="switch"><input id="legalToggle" type="checkbox" checked><i></i></span></label>
+        <label class="setting-row"><span>Destination preview</span><span class="switch"><input id="previewToggle" type="checkbox" checked><i></i></span></label>
+        <label class="setting-row"><span>Move timer</span><select id="timerSelect"><option value="0">Off</option><option value="15">15 sec</option><option value="30">30 sec</option><option value="60">60 sec</option></select></label>
+      </div>
+      <div class="setting-group"><h4>Feedback</h4>
+        <label class="setting-row"><span>Sound effects</span><span class="switch"><input id="soundToggle" type="checkbox" checked><i></i></span></label>
+        <label class="setting-row"><span>Ambient sound</span><span class="switch"><input id="musicToggle" type="checkbox"><i></i></span></label>
+        <label class="setting-row"><span>Haptics</span><span class="switch"><input id="hapticToggle" type="checkbox" checked><i></i></span></label>
+      </div>
+      <div class="setting-group"><h4>Appearance</h4>
+        <label class="setting-row"><span>Theme</span><select id="themeSelect"><option value="light">Light</option><option value="dark">Dark</option></select></label>
+        <label class="setting-row"><span>Reduce motion</span><span class="switch"><input id="motionToggle" type="checkbox"><i></i></span></label>
+      </div>
+      <div class="setting-group"><h4>Purchases</h4>
+        <div class="setting-row"><span>Remove Ads<br><small style="color:var(--muted)">One-time purchase · store integration pending</small></span><i data-lucide="badge-minus"></i></div>
+      </div>
+      <button class="sheet-primary" id="saveSettings">Save settings</button>
+    </div>
+  </div>
+
+  <div class="sheet" id="infoSheet">
+    <div class="sheet-card">
+      <div class="grabber"></div>
+      <div class="sheet-head"><h3 id="infoTitle">How routing works</h3><button class="icon-btn" data-close-sheet="infoSheet"><i data-lucide="x"></i></button></div>
+      <div id="infoBody" style="font-size:12px;line-height:1.55;color:var(--muted)"></div>
+    </div>
+  </div>
+
+  <div class="sheet" id="resultSheet">
+    <div class="sheet-card">
+      <div class="grabber"></div>
+      <div class="result">
+        <div class="result-symbol"><i data-lucide="trophy"></i></div>
+        <h3 id="resultTitle">Victory</h3>
+        <p id="resultSub">Three claimed Mini Boards in a row.</p>
+        <div class="result-grid">
+          <div><b id="resultBoards">0</b><span>MINI BOARDS</span></div>
+          <div><b id="resultMoves">0</b><span>MOVES</span></div>
+          <div><b id="resultTime">0:00</b><span>TIME</span></div>
+        </div>
+      </div>
+      <button class="sheet-primary" id="rematchBtn">Rematch</button>
+      <button class="sheet-primary" id="menuBtn" style="background:#e7eaee;color:var(--ink);margin-top:7px">Back to menu</button>
+    </div>
+  </div>
 
   <div class="toast" id="toast"></div>
-  <div class="confetti" id="confetti"></div>
-
-  <div class="modal" id="settingsModal" role="dialog" aria-modal="true" aria-label="Settings">
-    <div class="modal-card">
-      <h2>⚙ Settings</h2>
-      <h3>Sound & feel</h3>
-      <label class="setting"><span>🔊 Sound FX</span><span class="switch"><input id="soundFxToggle" type="checkbox" checked><span class="slider"></span></span></label>
-      <label class="setting"><span>🎵 Ambient music</span><span class="switch"><input id="musicToggle" type="checkbox"><span class="slider"></span></span></label>
-      <label class="setting"><span>📳 Haptics</span><span class="switch"><input id="hapticsToggle" type="checkbox" checked><span class="slider"></span></span></label>
-      <label class="setting"><span>🎉 Win confetti</span><span class="switch"><input id="confettiToggle" type="checkbox" checked><span class="slider"></span></span></label>
-
-      <h3>Gameplay</h3>
-      <label class="setting"><span>💡 Show legal boards</span><span class="switch"><input id="hintsToggle" type="checkbox" checked><span class="slider"></span></span></label>
-      <label class="setting"><span>🎯 Destination preview</span><span class="switch"><input id="previewToggle" type="checkbox" checked><span class="slider"></span></span></label>
-      <label class="setting"><span>⏱ Move timer</span>
-        <select id="timerSelect"><option value="0">Off</option><option value="15">15 sec</option><option value="30">30 sec</option><option value="60">60 sec</option></select>
-      </label>
-
-      <h3>Appearance & accessibility</h3>
-      <label class="setting"><span>Theme</span><select id="themeSelect"><option value="paper">Paper</option><option value="dark">Dark notebook</option></select></label>
-      <label class="setting"><span>Reduce motion</span><span class="switch"><input id="motionToggle" type="checkbox"><span class="slider"></span></span></label>
-
-      <div class="premium-row">
-        <b>🚫 Remove Ads — paid upgrade</b>
-        <small>No ads are shown inside a match. Store purchase integration is intentionally not mocked in this prototype.</small>
-        <button class="action" id="removeAdsBtn" style="margin-top:7px;width:100%">View Ad-Free Upgrade</button>
-      </div>
-
-      <div class="modal-actions">
-        <button class="action" data-close="settings">Cancel</button>
-        <button class="action primary" id="saveSettingsBtn">Done</button>
-      </div>
-    </div>
-  </div>
-
-  <div class="modal" id="statsModal" role="dialog" aria-modal="true" aria-label="Stats">
-    <div class="modal-card">
-      <h2>▥ Stats</h2>
-      <div class="stats-tabs">
-        <button class="tab active" data-tab="overview">Overview</button>
-        <button class="tab" data-tab="bot">Vs Bot</button>
-        <button class="tab" data-tab="online">Online</button>
-      </div>
-      <div id="statsContent"></div>
-      <div class="modal-actions">
-        <button class="action warn" id="resetStatsBtn">Reset</button>
-        <button class="action primary" data-close="stats">Done</button>
-      </div>
-    </div>
-  </div>
-
-  <div class="modal" id="onlineModal" role="dialog" aria-modal="true" aria-label="Online mode">
-    <div class="modal-card">
-      <h2 id="onlineTitle">Online Mode</h2>
-      <div class="online-note" id="onlineBody"></div>
-      <div class="modal-actions">
-        <button class="action" id="onlineCopyBtn">Copy code</button>
-        <button class="action primary" data-close="online">Got it</button>
-      </div>
-    </div>
-  </div>
-
-  <div class="modal" id="premiumModal" role="dialog" aria-modal="true" aria-label="Remove ads">
-    <div class="modal-card">
-      <h2>🚫 Ad-Free</h2>
-      <div class="online-note">
-        V3 includes the paid <b>Remove Ads</b> setting and purchase entry point, but does not fake an App Store / Play Billing transaction.
-        Connect StoreKit 2 and Google Play Billing when the app wrapper/backend is added.
-      </div>
-      <div class="modal-actions"><button class="action primary" data-close="premium">Done</button></div>
-    </div>
-  </div>
-
-  <div class="modal" id="resultModal" role="dialog" aria-modal="true" aria-label="Match result">
-    <div class="modal-card">
-      <div class="result-icon" id="resultIcon">🏆</div>
-      <h2 class="result-title" id="resultTitle">Victory!</h2>
-      <div class="result-sub" id="resultSub"></div>
-      <div class="result-strip">
-        <div><span>MINI X</span><b id="resultMiniX">0</b></div>
-        <div><span>MOVES</span><b id="resultMoves">0</b></div>
-        <div><span>TIME</span><b id="resultTime">0:00</b></div>
-      </div>
-      <div class="modal-actions">
-        <button class="action" id="resultMenuBtn">Menu</button>
-        <button class="action primary" id="rematchBtn">Rematch</button>
-      </div>
-    </div>
-  </div>
-
 </div>
 
 <script>
 (function(){
 "use strict";
+const WIN=[[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
+const NAMES=["Top-left","Top-centre","Top-right","Middle-left","Centre","Middle-right","Bottom-left","Bottom-centre","Bottom-right"];
+const app=document.getElementById("app"),gameScreen=document.getElementById("gameScreen"),megaBoard=document.getElementById("megaBoard"),routeOverlay=document.getElementById("routeOverlay");
+let menu={mode:"bot",difficulty:"Medium",start:"X"};
+let game=null,botTimer=null,turnTimer=null,toastTimer=null;
+let settings=load("mega_v3_settings",{legal:true,preview:true,timer:0,sound:true,music:false,haptic:true,theme:"light",motion:false});
+let stats=load("mega_v3_stats",defaultStats());
+let audioCtx=null,ambient=null;
 
-var WIN_LINES=[[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
-var POS_NAMES=["Top-left","Top-centre","Top-right","Middle-left","Centre","Middle-right","Bottom-left","Bottom-centre","Bottom-right"];
-var DIFF_NOTES={
-  Beginner:"Beginner: mostly random, occasionally spots a win.",
-  Easy:"Easy: takes obvious wins and blocks simple threats.",
-  Medium:"Medium: blocks wins, reads sends and avoids traps.",
-  Hard:"Hard: searches ahead and values Mega-board threats.",
-  Expert:"Expert: deeper alpha-beta search with send-rule heuristics."
+function defaultStats(){const diff={};["Beginner","Easy","Medium","Hard","Expert"].forEach(k=>diff[k]={g:0,w:0,l:0,d:0});return{g:0,w:0,l:0,d:0,mini:0,moves:0,streak:0,best:0,diff};}
+function load(k,f){try{return Object.assign(structuredClone(f),JSON.parse(localStorage.getItem(k)||"null")||{});}catch(e){return structuredClone(f)}}
+function save(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}
+function mkCode(){const a="ABCDEFGHJKLMNPQRSTUVWXYZ23456789";let s="MEGA-";for(let i=0;i<4;i++)s+=a[Math.floor(Math.random()*a.length)];return s}
+document.getElementById("friendCode").textContent=mkCode();
+
+function refreshIcons(){if(window.lucide)lucide.createIcons({attrs:{"stroke-width":2}})}
+refreshIcons();
+
+const Audio={
+ init(){if(!audioCtx){const C=window.AudioContext||window.webkitAudioContext;if(C)audioCtx=new C()}if(audioCtx&&audioCtx.state==="suspended")audioCtx.resume()},
+ tone(f,d=.12,v=.05){if(!settings.sound)return;this.init();if(!audioCtx)return;const o=audioCtx.createOscillator(),g=audioCtx.createGain(),t=audioCtx.currentTime;o.type="triangle";o.frequency.value=f;g.gain.setValueAtTime(v,t);g.gain.exponentialRampToValueAtTime(.001,t+d);o.connect(g);g.connect(audioCtx.destination);o.start();o.stop(t+d)},
+ syncAmbient(){if(!settings.music){if(ambient){try{ambient.o.stop()}catch(e){}ambient=null}return}this.init();if(!audioCtx||ambient)return;const o=audioCtx.createOscillator(),g=audioCtx.createGain();o.type="sine";o.frequency.value=98;g.gain.value=.006;o.connect(g);g.connect(audioCtx.destination);o.start();ambient={o,g}}
 };
+function vibrate(p=10){if(settings.haptic&&navigator.vibrate)navigator.vibrate(p)}
+function toast(t){const el=document.getElementById("toast");el.textContent=t;el.classList.add("show");clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.classList.remove("show"),1200)}
 
-var homeScreen=document.getElementById("homeScreen");
-var gameScreen=document.getElementById("gameScreen");
-var megaBoard=document.getElementById("megaBoard");
-var turnBanner=document.getElementById("turnBanner");
-var tipText=document.getElementById("tipText");
-var timerBadge=document.getElementById("timerBadge");
-var toast=document.getElementById("toast");
-var confettiLayer=document.getElementById("confetti");
+document.querySelectorAll(".nav-btn").forEach(b=>b.onclick=()=>{document.querySelectorAll(".nav-btn").forEach(x=>x.classList.remove("active"));b.classList.add("active");document.querySelectorAll(".view").forEach(v=>v.classList.remove("active"));document.getElementById(b.dataset.view+"View").classList.add("active");if(b.dataset.view==="stats")renderStats()});
+document.querySelectorAll(".mode-row").forEach(b=>b.onclick=()=>{menu.mode=b.dataset.mode;document.querySelectorAll(".mode-row").forEach(x=>x.classList.toggle("selected",x===b));syncMenu()});
+document.querySelectorAll("[data-diff]").forEach(b=>b.onclick=()=>{menu.difficulty=b.dataset.diff;document.querySelectorAll("[data-diff]").forEach(x=>x.classList.toggle("active",x===b))});
+document.querySelectorAll("[data-start]").forEach(b=>b.onclick=()=>{menu.start=b.dataset.start;document.querySelectorAll("[data-start]").forEach(x=>x.classList.toggle("active",x===b))});
+function syncMenu(){const offline=menu.mode==="bot"||menu.mode==="local";document.getElementById("offlineConfig").style.display=offline?"block":"none";document.getElementById("difficultyLine").style.display=menu.mode==="bot"?"flex":"none";document.querySelector("#startMatch span").textContent=offline?"Start Match":menu.mode==="private"?"Open Private Lobby":"Find Match"}
+syncMenu();
 
-var menu={
-  mode:"bot",
-  difficulty:"Medium",
-  startPlayer:"X",
-  friendCode:makeFriendCode()
-};
-
-var settings=loadSettings();
-var stats=loadStats();
-var game=null;
-var turnTimerId=null;
-var botTimerId=null;
-var toastTimer=null;
-var ambientNodes=null;
-var currentStatsTab="overview";
-
-document.getElementById("friendCode").textContent=menu.friendCode;
-
-function defaultSettings(){
-  return {soundFx:true,music:false,haptics:true,confetti:true,hints:true,preview:true,timerSeconds:0,theme:"paper",reduceMotion:false};
-}
-function loadSettings(){
-  try{
-    var s=JSON.parse(localStorage.getItem("mega_xo_v3_settings")||"null");
-    return Object.assign(defaultSettings(),s||{});
-  }catch(e){return defaultSettings();}
-}
-function saveSettings(){try{localStorage.setItem("mega_xo_v3_settings",JSON.stringify(settings));}catch(e){}}
-function defaultStats(){
-  var d={};
-  ["Beginner","Easy","Medium","Hard","Expert"].forEach(function(k){d[k]={g:0,w:0,l:0,d:0};});
-  return {games:0,wins:0,losses:0,draws:0,xWins:0,oWins:0,localGames:0,botGames:0,streak:0,bestStreak:0,miniWon:0,totalMoves:0,diff:d};
-}
-function loadStats(){
-  try{
-    var s=JSON.parse(localStorage.getItem("mega_xo_v3_stats")||"null");
-    var base=defaultStats();
-    if(!s)return base;
-    var merged=Object.assign(base,s);
-    merged.diff=Object.assign(base.diff,s.diff||{});
-    return merged;
-  }catch(e){return defaultStats();}
-}
-function saveStats(){try{localStorage.setItem("mega_xo_v3_stats",JSON.stringify(stats));}catch(e){}}
-function makeFriendCode(){
-  var chars="ABCDEFGHJKLMNPQRSTUVWXYZ23456789",out="MEGA-";
-  for(var i=0;i<4;i++)out+=chars[Math.floor(Math.random()*chars.length)];
-  return out;
+document.getElementById("startMatch").onclick=()=>{Audio.init();Audio.syncAmbient();if(menu.mode==="bot"||menu.mode==="local")startGame(false);else showOnlineInfo()};
+function showOnlineInfo(){
+ const privateMode=menu.mode==="private";
+ document.getElementById("infoTitle").textContent=privateMode?"Private multiplayer":"Online multiplayer";
+ document.getElementById("infoBody").innerHTML=privateMode
+ ?"<p>The V3 client has the private-room UX, but this repository is still a static prototype. A server-authoritative realtime backend must create the room, validate moves and reconnect players before another device can actually join.</p><p>No bot is disguised as a human opponent.</p>"
+ :"<p>Ranked and Casual require authenticated players, matchmaking, realtime room state, authoritative move validation, rating persistence and reconnect handling.</p><p>This V3 UI intentionally does not fake a live opponent.</p>";
+ openSheet("infoSheet");
 }
 
-var Audio={
-  ctx:null,
-  init:function(){
-    if(!this.ctx){
-      var C=window.AudioContext||window.webkitAudioContext;
-      if(C)this.ctx=new C();
-    }
-    if(this.ctx&&this.ctx.state==="suspended")this.ctx.resume();
-  },
-  scratch:function(mark){
-    if(!settings.soundFx)return;
-    this.init();if(!this.ctx)return;
-    var n=this.ctx.sampleRate*.09,b=this.ctx.createBuffer(1,n,this.ctx.sampleRate),data=b.getChannelData(0);
-    for(var i=0;i<n;i++)data[i]=(Math.random()*2-1)*Math.exp(-i/(n*.38));
-    var src=this.ctx.createBufferSource(),filter=this.ctx.createBiquadFilter(),gain=this.ctx.createGain();
-    src.buffer=b;filter.type="bandpass";filter.frequency.value=mark==="X"?2100:1500;filter.Q.value=2.2;
-    gain.gain.value=.18;src.connect(filter);filter.connect(gain);gain.connect(this.ctx.destination);src.start();
-  },
-  tone:function(freq,dur,volume){
-    if(!settings.soundFx)return;
-    this.init();if(!this.ctx)return;
-    var o=this.ctx.createOscillator(),g=this.ctx.createGain(),t=this.ctx.currentTime;
-    o.type="triangle";o.frequency.value=freq;g.gain.setValueAtTime(volume||.1,t);g.gain.exponentialRampToValueAtTime(.001,t+dur);
-    o.connect(g);g.connect(this.ctx.destination);o.start(t);o.stop(t+dur);
-  },
-  winMini:function(){this.tone(520,.22,.12);var self=this;setTimeout(function(){self.tone(690,.25,.11);},70);},
-  winMega:function(){var self=this;[523,659,784,1046].forEach(function(f,i){setTimeout(function(){self.tone(f,.42,.11);},i*75);});},
-  syncAmbient:function(){
-    if(!settings.music){this.stopAmbient();return;}
-    this.init();if(!this.ctx||ambientNodes)return;
-    var g=this.ctx.createGain(),o1=this.ctx.createOscillator(),o2=this.ctx.createOscillator();
-    o1.type="sine";o2.type="sine";o1.frequency.value=130.81;o2.frequency.value=196;
-    g.gain.value=.008;o1.connect(g);o2.connect(g);g.connect(this.ctx.destination);o1.start();o2.start();
-    ambientNodes={g:g,o1:o1,o2:o2};
-  },
-  stopAmbient:function(){
-    if(!ambientNodes)return;
-    try{ambientNodes.o1.stop();ambientNodes.o2.stop();}catch(e){}
-    ambientNodes=null;
-  }
-};
-function haptic(pattern){if(settings.haptics&&navigator.vibrate)navigator.vibrate(pattern||12);}
-
-function showScreen(name){
-  homeScreen.classList.toggle("active",name==="home");
-  gameScreen.classList.toggle("active",name==="game");
+function makeMark(p,big=false){
+ if(p==="X")return '<svg class="mark-x" viewBox="0 0 40 40"><path d="M10 10L30 30M30 10L10 30"/></svg>';
+ return '<svg class="mark-o" viewBox="0 0 40 40"><circle cx="20" cy="20" r="11"/></svg>';
 }
-function openModal(id){document.getElementById(id).classList.add("open");}
-function closeModal(id){document.getElementById(id).classList.remove("open");}
-function showToast(msg){
-  toast.textContent=msg;toast.classList.add("show");clearTimeout(toastTimer);
-  toastTimer=setTimeout(function(){toast.classList.remove("show");},1400);
+function blankGame(){return{board:Array.from({length:9},()=>Array(9).fill(null)),mini:Array(9).fill(null),active:null,turn:menu.start,status:"PLAYING",winner:null,line:null,moves:0,startAt:Date.now(),mode:menu.mode,diff:menu.difficulty,seconds:settings.timer,lastRoute:null}}
+function startGame(rematch){
+ clearTimers();
+ if(rematch){menu.start=menu.start==="X"?"O":"X"}
+ game=blankGame();
+ gameScreen.classList.add("active");
+ document.getElementById("gameModeLabel").textContent=game.mode==="local"?"PASS & PLAY":"VS BOT";
+ document.getElementById("gameSubLabel").textContent=game.mode==="local"?"LOCAL · TWO PLAYERS":game.diff.toUpperCase()+" · OFFLINE";
+ document.getElementById("nameX").textContent=game.mode==="local"?"Player 1":"You";
+ document.getElementById("nameO").textContent=game.mode==="local"?"Player 2":"Bot";
+ renderGame();startClock();if(game.mode==="bot"&&game.turn==="O")scheduleBot()
 }
-function copyText(text){
-  if(navigator.clipboard&&navigator.clipboard.writeText){
-    navigator.clipboard.writeText(text).then(function(){showToast("Copied "+text);}).catch(function(){showToast(text);});
-  }else showToast(text);
+function clearTimers(){clearTimeout(botTimer);clearInterval(turnTimer);botTimer=null;turnTimer=null}
+function legalMoves(s=game){
+ const out=[];if(s.active!==null&&s.mini[s.active]===null){for(let c=0;c<9;c++)if(s.board[s.active][c]===null)out.push({b:s.active,c});return out}
+ for(let b=0;b<9;b++)if(s.mini[b]===null)for(let c=0;c<9;c++)if(s.board[b][c]===null)out.push({b,c});return out
 }
-
-function syncHomeMode(){
-  document.querySelectorAll(".mode-card").forEach(function(b){b.classList.toggle("selected",b.dataset.mode===menu.mode);});
-  var offline=menu.mode==="bot"||menu.mode==="local";
-  document.getElementById("offlineOptions").style.display=offline?"block":"none";
-  document.getElementById("botOnlyOptions").style.display=menu.mode==="bot"?"block":"none";
-  document.querySelectorAll("#difficultySegment .seg-btn").forEach(function(b){b.classList.toggle("selected",b.dataset.difficulty===menu.difficulty);});
-  document.querySelectorAll("#startSegment .seg-btn").forEach(function(b){b.classList.toggle("selected",b.dataset.start===menu.startPlayer);});
-  document.getElementById("difficultyNote").textContent=DIFF_NOTES[menu.difficulty];
-  var label="▶ Start Battle!";
-  if(menu.mode==="ranked")label="🏆 Find Ranked Match";
-  if(menu.mode==="casual")label="🎲 Find Casual Match";
-  if(menu.mode==="friend")label="🔒 Open Private Lobby";
-  document.getElementById("startBtn").textContent=label;
+function isLegal(b,c){return !!game&&game.status==="PLAYING"&&game.mini[b]===null&&game.board[b][c]===null&&(game.active===null||game.mini[game.active]!==null||game.active===b)}
+function winner(arr){for(const l of WIN){const a=arr[l[0]];if((a==="X"||a==="O")&&a===arr[l[1]]&&a===arr[l[2]])return{p:a,line:l}}return null}
+function renderGame(){
+ megaBoard.innerHTML="";
+ const forced=game.active!==null&&game.mini[game.active]===null;
+ for(let b=0;b<9;b++){
+   const m=document.createElement("div");m.className="mini";m.dataset.board=b;
+   const resolved=game.mini[b]!==null,playable=game.status==="PLAYING"&&!resolved&&(!forced||game.active===b);
+   if(playable&&settings.legal)m.classList.add(forced?"active":"free");
+   if(forced&&!playable&&!resolved)m.classList.add("dim");
+   if(game.line&&game.line.includes(b))m.classList.add("mega-win");
+   for(let c=0;c<9;c++){
+     const cell=document.createElement("button");cell.className="cell";cell.type="button";cell.dataset.board=b;cell.dataset.cell=c;
+     const v=game.board[b][c],legal=playable&&v===null;
+     if(v){const layer=document.createElement("span");layer.className="mark-layer";layer.innerHTML=makeMark(v);cell.appendChild(layer)}
+     cell.disabled=!legal;if(legal)cell.classList.add("legal");
+     cell.onclick=()=>playMove(b,c);
+     if(settings.preview){cell.onpointerenter=()=>previewTarget(c,true);cell.onpointerleave=()=>previewTarget(c,false)}
+     m.appendChild(cell)
+   }
+   if(resolved){
+     const cl=document.createElement("div");cl.className="claim "+game.mini[b].toLowerCase();
+     cl.innerHTML=game.mini[b]==="D"?'<span>DRAW</span>':makeMark(game.mini[b],true);m.appendChild(cl)
+   }
+   megaBoard.appendChild(m)
+ }
+ document.getElementById("scoreX").textContent=game.mini.filter(x=>x==="X").length;
+ document.getElementById("scoreO").textContent=game.mini.filter(x=>x==="O").length;
+ document.getElementById("playerX").classList.toggle("active",game.status==="PLAYING"&&game.turn==="X");
+ document.getElementById("playerO").classList.toggle("active",game.status==="PLAYING"&&game.turn==="O");
+ renderRouteHud();refreshIcons()
 }
-
-function blankGame(){
-  return {
-    board:Array.from({length:9},function(){return Array(9).fill(null);}),
-    mini:Array(9).fill(null),
-    turn:menu.startPlayer,
-    activeBoard:null,
-    status:"PLAYING",
-    winner:null,
-    megaLine:null,
-    mode:menu.mode,
-    difficulty:menu.difficulty,
-    startPlayer:menu.startPlayer,
-    moveCount:0,
-    history:[],
-    startedAt:Date.now(),
-    justSentTo:null,
-    endReason:null,
-    secondsLeft:settings.timerSeconds
-  };
+function renderRouteHud(){
+ const free=game.active===null||game.mini[game.active]!==null;
+ const who=game.mode==="bot"?(game.turn==="X"?"YOUR TURN":"BOT TURN"):(game.turn==="X"?"PLAYER 1":"PLAYER 2");
+ document.getElementById("routeTitle").textContent=free?"FREE ROUTE":who+" · "+NAMES[game.active].toUpperCase();
+ document.getElementById("routeSub").textContent=free?"CHOOSE ANY OPEN MINI BOARD":"PLAY ONLY IN THIS MINI BOARD";
+ document.getElementById("helpText").textContent=free?"No forced destination this turn.":"Your chosen cell will route the opponent to the matching board."
 }
-
-function startOfflineGame(isRematch){
-  clearTimers();
-  game=blankGame();
-  if(isRematch){
-    game.startPlayer=menu.startPlayer==="X"?"O":"X";
-    menu.startPlayer=game.startPlayer;
-    game.turn=game.startPlayer;
-    syncHomeMode();
-  }
-  configurePlayerLabels();
-  showScreen("game");
-  renderAll();
-  startTurnClock();
-  if(game.mode==="bot"&&game.turn==="O")scheduleBot();
+function previewTarget(c,on){document.querySelectorAll(".mini").forEach(x=>x.classList.remove("route-target"));if(!on||game.mini[c]!==null)return;const e=document.querySelector('.mini[data-board="'+c+'"]');if(e)e.classList.add("route-target")}
+function playMove(b,c){
+ Audio.init();if(game.mode==="bot"&&game.turn==="O")return;if(!isLegal(b,c)){toast("That board is not active");vibrate(22);return}
+ const p=game.turn;game.board[b][c]=p;game.moves++;Audio.tone(p==="X"?480:360,.1,.04);vibrate(8);
+ const mw=winner(game.board[b]);if(mw)game.mini[b]=p;else if(game.board[b].every(Boolean))game.mini[b]="D";
+ const big=winner(game.mini);if(big){game.line=big.line;endGame(p);return}
+ if(game.mini.every(x=>x!==null)){endGame("DRAW");return}
+ const next=game.mini[c]===null?c:null;game.lastRoute={b,c,next};game.active=next;game.turn=p==="X"?"O":"X";
+ renderGame();animateRoute(b,c,next);startClock();if(game.mode==="bot"&&game.turn==="O")scheduleBot()
 }
-
-function configurePlayerLabels(){
-  if(!game)return;
-  var local=game.mode==="local";
-  document.getElementById("playerXName").textContent=local?"Player 1 (X)":"You (X)";
-  document.getElementById("playerOName").textContent=local?"Player 2 (O)":"Bot (O)";
-  document.getElementById("playerOAvatar").textContent=local?"👤":"🤖";
+function animateRoute(b,c,next){
+ routeOverlay.innerHTML="";if(next===null)return;
+ requestAnimationFrame(()=>{
+   const wrap=document.getElementById("boardWrap").getBoundingClientRect(),cell=document.querySelector('.cell[data-board="'+b+'"][data-cell="'+c+'"]'),target=document.querySelector('.mini[data-board="'+next+'"]');
+   if(!cell||!target)return;const a=cell.getBoundingClientRect(),t=target.getBoundingClientRect();
+   const x1=a.left+a.width/2-wrap.left,y1=a.top+a.height/2-wrap.top,x2=t.left+t.width/2-wrap.left,y2=t.top+t.height/2-wrap.top;
+   routeOverlay.setAttribute("viewBox","0 0 "+wrap.width+" "+wrap.height);
+   routeOverlay.innerHTML='<line x1="'+x1+'" y1="'+y1+'" x2="'+x2+'" y2="'+y2+'"/><circle cx="'+x2+'" cy="'+y2+'" r="5"/>';
+   setTimeout(()=>routeOverlay.innerHTML="",700)
+ })
 }
-
-function checkWinner(cells){
-  for(var i=0;i<WIN_LINES.length;i++){
-    var l=WIN_LINES[i],a=cells[l[0]];
-    if((a==="X"||a==="O")&&a===cells[l[1]]&&a===cells[l[2]])return {winner:a,line:l};
-  }
-  return null;
+function endGame(w){
+ clearTimers();game.status="OVER";game.winner=w;renderGame();recordStats();
+ document.getElementById("resultTitle").textContent=w==="DRAW"?"Draw":(game.mode==="bot"?(w==="X"?"Victory":"Defeat"):"Player "+w+" wins");
+ document.getElementById("resultSub").textContent=w==="DRAW"?"All Mini Boards resolved without a Mega line.":"Three claimed Mini Boards formed a Mega-board line.";
+ document.getElementById("resultBoards").textContent=game.mini.filter(x=>x===w).length||game.mini.filter(x=>x==="X"||x==="O").length;
+ document.getElementById("resultMoves").textContent=game.moves;document.getElementById("resultTime").textContent=formatTime(Date.now()-game.startAt);
+ Audio.tone(w==="DRAW"?260:720,.3,.06);vibrate(w==="DRAW"?20:[30,30,45]);setTimeout(()=>openSheet("resultSheet"),settings.motion?0:350)
 }
-function full(cells){return cells.every(function(v){return v!==null;});}
-function legalMovesFor(s){
-  var out=[],target=s.activeBoard;
-  if(target!==null&&s.mini[target]===null){
-    for(var c=0;c<9;c++)if(s.board[target][c]===null)out.push({b:target,c:c});
-    return out;
-  }
-  for(var b=0;b<9;b++)if(s.mini[b]===null){
-    for(var j=0;j<9;j++)if(s.board[b][j]===null)out.push({b:b,c:j});
-  }
-  return out;
-}
-function isLegal(b,c){
-  if(!game||game.status!=="PLAYING")return false;
-  if(game.mini[b]!==null||game.board[b][c]!==null)return false;
-  if(game.activeBoard!==null&&game.mini[game.activeBoard]===null)return b===game.activeBoard;
-  return true;
-}
-
-function renderAll(){renderBoard();renderHeader();renderTurn();}
-function renderHeader(){
-  if(!game)return;
-  var x=game.mini.filter(function(v){return v==="X";}).length;
-  var o=game.mini.filter(function(v){return v==="O";}).length;
-  document.getElementById("playerXScore").textContent=x;
-  document.getElementById("playerOScore").textContent=o;
-  document.getElementById("playerXCard").classList.toggle("active",game.status==="PLAYING"&&game.turn==="X");
-  document.getElementById("playerOCard").classList.toggle("active",game.status==="PLAYING"&&game.turn==="O");
-}
-function renderTurn(){
-  if(!game)return;
-  var free=game.activeBoard===null||game.mini[game.activeBoard]!==null;
-  var who;
-  if(game.mode==="bot")who=game.turn==="X"?"Your turn":"Bot thinking";
-  else who=game.turn==="X"?"Player X":"Player O";
-  turnBanner.classList.toggle("free",free);
-  if(game.status!=="PLAYING"){
-    turnBanner.textContent=game.winner==="DRAW"?"Match drawn":game.winner+" wins the Mega Board!";
-  }else if(free){
-    turnBanner.textContent="● "+who+" — Free Move, play anywhere!";
-  }else{
-    turnBanner.textContent="● "+who+" — Play in "+POS_NAMES[game.activeBoard]+" board";
-  }
-  if(game.status==="PLAYING"){
-    if(free)tipText.innerHTML="<span>💡</span><span>FREE MOVE: choose any unresolved Mini Board.</span>";
-    else tipText.innerHTML="<span>💡</span><span>Your chosen cell sends the opponent to the matching board.</span>";
-  }
-}
-function renderBoard(){
-  megaBoard.innerHTML="";
-  if(!game)return;
-  var forced=game.activeBoard!==null&&game.mini[game.activeBoard]===null;
-  for(var b=0;b<9;b++){
-    var mini=document.createElement("div");
-    mini.className="mini";
-    mini.dataset.board=String(b);
-    var resolved=game.mini[b]!==null;
-    var playable=game.status==="PLAYING"&&!resolved&&(!forced||b===game.activeBoard);
-    if(playable&&settings.hints)mini.classList.add(forced?"active":"free-active");
-    if(!playable&&!resolved&&forced)mini.classList.add("inactive");
-    if(game.justSentTo===b)mini.classList.add("sent-target");
-    if(game.megaLine&&game.megaLine.indexOf(b)>=0)mini.classList.add("mega-line");
-
-    for(var c=0;c<9;c++){
-      var cell=document.createElement("button");
-      cell.className="cell";
-      cell.type="button";
-      cell.dataset.board=String(b);cell.dataset.cell=String(c);
-      cell.setAttribute("aria-label","Board "+b+", cell "+c);
-      var v=game.board[b][c];
-      if(v){
-        var mark=document.createElement("span");mark.className="mark "+v.toLowerCase();mark.textContent=v==="X"?"X":"";
-        cell.appendChild(mark);
-      }
-      var legal=playable&&v===null;
-      cell.disabled=!legal;
-      if(legal)cell.classList.add("legal");
-      (function(bb,cc){
-        cell.addEventListener("click",function(){attemptMove(bb,cc);});
-        cell.addEventListener("pointerenter",function(){previewDestination(cc,true);});
-        cell.addEventListener("pointerleave",function(){previewDestination(cc,false);});
-      })(b,c);
-      mini.appendChild(cell);
-    }
-    if(resolved){
-      var claim=document.createElement("div");
-      claim.className="claim "+(game.mini[b]==="D"?"draw":game.mini[b].toLowerCase());
-      if(game.mini[b]==="X")claim.innerHTML='<span class="bigx">X</span>';
-      else if(game.mini[b]==="O")claim.innerHTML='<span class="bigo"></span>';
-      else claim.textContent="DRAW";
-      mini.appendChild(claim);
-    }
-    megaBoard.appendChild(mini);
-  }
-}
-
-function previewDestination(cellIndex,on){
-  if(!settings.preview||!game||game.status!=="PLAYING")return;
-  var els=megaBoard.querySelectorAll(".mini");
-  els.forEach(function(e){e.classList.remove("preview-target");});
-  if(!on)return;
-  if(game.mini[cellIndex]===null&&els[cellIndex])els[cellIndex].classList.add("preview-target");
-}
-function shakeLegal(clickedBoard){
-  var el=megaBoard.querySelector('.mini[data-board="'+clickedBoard+'"]');
-  if(el){el.classList.remove("shake");void el.offsetWidth;el.classList.add("shake");}
-  if(game.activeBoard!==null){
-    var legal=megaBoard.querySelector('.mini[data-board="'+game.activeBoard+'"]');
-    if(legal){legal.classList.remove("shake");void legal.offsetWidth;legal.classList.add("shake");}
-  }
-  haptic(25);Audio.tone(170,.12,.08);showToast("Play in the highlighted board");
-}
-function attemptMove(b,c){
-  Audio.init();Audio.syncAmbient();
-  if(!game||game.status!=="PLAYING")return;
-  if(game.mode==="bot"&&game.turn==="O")return;
-  if(!isLegal(b,c)){shakeLegal(b);return;}
-  executeMove(b,c);
-}
-function executeMove(b,c){
-  if(!game||game.status!=="PLAYING"||!isLegal(b,c))return;
-  clearTimeout(botTimerId);
-  var player=game.turn;
-  game.board[b][c]=player;
-  game.history.push({b:b,c:c,p:player,t:Date.now()});
-  game.moveCount++;
-  Audio.scratch(player);haptic(10);
-
-  var miniResult=checkWinner(game.board[b]);
-  if(miniResult){
-    game.mini[b]=player;
-    Audio.winMini();haptic([18,25,18]);
-  }else if(full(game.board[b])){
-    game.mini[b]="D";
-    Audio.tone(300,.18,.07);
-  }
-
-  var megaResult=checkWinner(game.mini);
-  if(megaResult){
-    game.megaLine=megaResult.line.slice();
-    endGame(player,"mega");
-    return;
-  }
-  if(game.mini.every(function(v){return v!==null;})){
-    endGame("DRAW","resolved");
-    return;
-  }
-
-  game.activeBoard=game.mini[c]===null?c:null;
-  game.justSentTo=game.activeBoard;
-  game.turn=player==="X"?"O":"X";
-  renderAll();
-  startTurnClock();
-
-  if(game.justSentTo!==null){
-    setTimeout(function(){
-      if(game&&game.status==="PLAYING"){game.justSentTo=null;renderBoard();}
-    },520);
-  }
-  if(game.mode==="bot"&&game.turn==="O")scheduleBot();
-}
-
-function clearTimers(){
-  clearInterval(turnTimerId);turnTimerId=null;
-  clearTimeout(botTimerId);botTimerId=null;
-}
-function startTurnClock(){
-  clearInterval(turnTimerId);
-  if(!game||game.status!=="PLAYING"||!settings.timerSeconds){
-    timerBadge.textContent="∞";timerBadge.classList.remove("urgent");return;
-  }
-  game.secondsLeft=settings.timerSeconds;
-  updateTimerBadge();
-  turnTimerId=setInterval(function(){
-    if(!game||game.status!=="PLAYING"){clearInterval(turnTimerId);return;}
-    game.secondsLeft--;
-    updateTimerBadge();
-    if(game.secondsLeft<=0){
-      clearInterval(turnTimerId);
-      var loser=game.turn,winner=loser==="X"?"O":"X";
-      endGame(winner,"timeout");
-    }
-  },1000);
-}
-function updateTimerBadge(){
-  var s=game?game.secondsLeft:0;
-  timerBadge.textContent=s+"s";
-  timerBadge.classList.toggle("urgent",s<=5);
-}
-
-function endGame(winner,reason){
-  if(!game||game.status!=="PLAYING")return;
-  clearTimers();
-  game.status="OVER";game.winner=winner;game.endReason=reason;
-  renderAll();
-  if(winner!=="DRAW"){Audio.winMega();haptic([40,45,60]);if(settings.confetti)burstConfetti();}
-  recordStats();
-  setTimeout(showResult,settings.reduceMotion?0:420);
-}
+function formatTime(ms){let s=Math.round(ms/1000),m=Math.floor(s/60);s%=60;return m+":"+(s<10?"0":"")+s}
 function recordStats(){
-  stats.games++;stats.totalMoves+=game.moveCount;
-  stats.miniWon+=game.mini.filter(function(v){return v==="X"||v==="O";}).length;
-  if(game.winner==="X")stats.xWins++;
-  if(game.winner==="O")stats.oWins++;
-  if(game.mode==="bot"){
-    stats.botGames++;
-    var d=stats.diff[game.difficulty]||{g:0,w:0,l:0,d:0};d.g++;
-    if(game.winner==="X"){stats.wins++;stats.streak++;d.w++;}
-    else if(game.winner==="O"){stats.losses++;stats.streak=0;d.l++;}
-    else{stats.draws++;stats.streak=0;d.d++;}
-    stats.bestStreak=Math.max(stats.bestStreak,stats.streak);stats.diff[game.difficulty]=d;
-  }else{
-    stats.localGames++;
-    if(game.winner==="DRAW")stats.draws++;
-  }
-  saveStats();
+ stats.g++;stats.moves+=game.moves;stats.mini+=game.mini.filter(x=>x==="X"||x==="O").length;
+ if(game.mode==="bot"){const d=stats.diff[game.diff]||{g:0,w:0,l:0,d:0};d.g++;if(game.winner==="X"){stats.w++;stats.streak++;d.w++}else if(game.winner==="O"){stats.l++;stats.streak=0;d.l++}else{stats.d++;stats.streak=0;d.d++}stats.best=Math.max(stats.best,stats.streak);stats.diff[game.diff]=d}else if(game.winner==="DRAW")stats.d++;
+ save("mega_v3_stats",stats)
 }
-function formatTime(ms){
-  var sec=Math.max(0,Math.round(ms/1000)),m=Math.floor(sec/60),s=sec%60;
-  return m+":"+(s<10?"0":"")+s;
+function startClock(){clearInterval(turnTimer);const badge=document.getElementById("timerBadge");if(!settings.timer){badge.textContent="∞";badge.classList.remove("danger");return}game.seconds=settings.timer;badge.textContent=game.seconds+"s";turnTimer=setInterval(()=>{game.seconds--;badge.textContent=game.seconds+"s";badge.classList.toggle("danger",game.seconds<=5);if(game.seconds<=0){clearInterval(turnTimer);endGame(game.turn==="X"?"O":"X")}},1000)}
+function clone(s){return{board:s.board.map(r=>r.slice()),mini:s.mini.slice(),active:s.active,turn:s.turn,status:s.status,winner:s.winner}}
+function sim(s,m){const n=clone(s),p=n.turn;n.board[m.b][m.c]=p;if(winner(n.board[m.b]))n.mini[m.b]=p;else if(n.board[m.b].every(Boolean))n.mini[m.b]="D";const w=winner(n.mini);if(w){n.status="OVER";n.winner=p;return n}if(n.mini.every(x=>x!==null)){n.status="OVER";n.winner="DRAW";return n}n.active=n.mini[m.c]===null?m.c:null;n.turn=p==="X"?"O":"X";return n}
+function localWin(s,m,p){const r=s.board[m.b].slice();r[m.c]=p;const w=winner(r);return w&&w.p===p}
+function evalState(s){if(s.status==="OVER")return s.winner==="O"?99999:s.winner==="X"?-99999:0;let v=0;for(let i=0;i<9;i++){if(s.mini[i]==="O")v+=150;if(s.mini[i]==="X")v-=150}WIN.forEach(l=>{let o=0,x=0,e=0;l.forEach(i=>{if(s.mini[i]==="O")o++;else if(s.mini[i]==="X")x++;else if(s.mini[i]===null)e++});if(x===0)v+=[0,12,180,9999][o];if(o===0)v-=[0,12,180,9999][x]});return v}
+function legalFor(s){const out=[];if(s.active!==null&&s.mini[s.active]===null){for(let c=0;c<9;c++)if(s.board[s.active][c]===null)out.push({b:s.active,c});return out}for(let b=0;b<9;b++)if(s.mini[b]===null)for(let c=0;c<9;c++)if(s.board[b][c]===null)out.push({b,c});return out}
+function heuristic(s,m,p){let v=0,opp=p==="O"?"X":"O";if(localWin(s,m,p))v+=700;if(localWin(s,m,opp))v+=450;if(m.c===4)v+=22;if([0,2,6,8].includes(m.c))v+=9;const n=sim(s,m);if(n.status==="OVER"&&n.winner===p)v+=99999;if(n.active===null)v-=70;v+=evalState(n)*(p==="O"?1:-1)*.15;return v}
+function minimax(s,d,a,b){if(!d||s.status==="OVER")return evalState(s);let moves=legalFor(s).sort((m1,m2)=>heuristic(s,m2,s.turn)-heuristic(s,m1,s.turn));if(moves.length>14)moves=moves.slice(0,14);if(s.turn==="O"){let best=-Infinity;for(const m of moves){best=Math.max(best,minimax(sim(s,m),d-1,a,b));a=Math.max(a,best);if(b<=a)break}return best}else{let best=Infinity;for(const m of moves){best=Math.min(best,minimax(sim(s,m),d-1,a,b));b=Math.min(b,best);if(b<=a)break}return best}}
+function botChoice(){
+ const moves=legalFor(game);if(!moves.length)return null;if(menu.difficulty==="Beginner")return moves[Math.floor(Math.random()*moves.length)];
+ const win=moves.find(m=>localWin(game,m,"O"));if(win)return win;const block=moves.find(m=>localWin(game,m,"X"));if(menu.difficulty==="Easy"){if(block)return block;return moves[Math.floor(Math.random()*moves.length)]}
+ if(menu.difficulty==="Medium"){return moves.slice().sort((a,b)=>heuristic(game,b,"O")-heuristic(game,a,"O"))[0]}
+ const depth=menu.difficulty==="Expert"&&moves.length<18?3:2;let best=moves[0],score=-Infinity;for(const m of moves){const v=minimax(sim(game,m),depth-1,-Infinity,Infinity);if(v>score){score=v;best=m}}return best
 }
-function showResult(){
-  var title,icon,sub;
-  if(game.winner==="DRAW"){title="Draw!";icon="🤝";sub="All Mini Boards resolved without a Mega line.";}
-  else if(game.mode==="bot"&&game.winner==="X"){title="Victory!";icon="🏆";sub="You claimed 3 Mini Boards in a row.";}
-  else if(game.mode==="bot"){title="Defeat";icon="🤖";sub=game.endReason==="timeout"?"Time ran out.":"The bot claimed the Mega Board.";}
-  else{title="Player "+game.winner+" wins!";icon="🏆";sub=game.endReason==="timeout"?"Opponent ran out of time.":"Three claimed Mini Boards in a row.";}
-  document.getElementById("resultIcon").textContent=icon;
-  document.getElementById("resultTitle").textContent=title;
-  document.getElementById("resultSub").textContent=sub;
-  document.getElementById("resultMiniX").textContent=game.mini.filter(function(v){return v==="X";}).length;
-  document.getElementById("resultMoves").textContent=game.moveCount;
-  document.getElementById("resultTime").textContent=formatTime(Date.now()-game.startedAt);
-  openModal("resultModal");
+function scheduleBot(){clearTimeout(botTimer);botTimer=setTimeout(()=>{if(game&&game.status==="PLAYING"&&game.turn==="O"){const m=botChoice();if(m)playMove(m.b,m.c)}},settings.motion?150:520)}
+function renderStats(){
+ const avg=stats.g?Math.round(stats.moves/stats.g):0,rate=stats.g?Math.round(stats.w/stats.g*100):0;
+ document.getElementById("statsGrid").innerHTML=[["GAMES",stats.g],["BOT WIN RATE",rate+"%"],["BEST STREAK",stats.best],["AVG MOVES",avg],["MINI BOARDS",stats.mini],["DRAWS",stats.d]].map(x=>'<div class="stat"><span>'+x[0]+'</span><b>'+x[1]+'</b></div>').join("");
+ document.getElementById("diffTable").innerHTML=["Beginner","Easy","Medium","Hard","Expert"].map(k=>{const d=stats.diff[k]||{g:0,w:0};return'<div class="diff-row"><span>'+k+'</span><span>'+d.g+' g</span><span>'+(d.g?Math.round(d.w/d.g*100):0)+'%</span></div>'}).join("")
 }
-function burstConfetti(){
-  confettiLayer.innerHTML="";
-  var colors=["#ffd13a","#2166c2","#b51655","#7fbf68","#333"];
-  for(var i=0;i<34;i++){
-    var p=document.createElement("i");
-    p.style.left=(Math.random()*100)+"%";
-    p.style.background=colors[i%colors.length];
-    p.style.animationDelay=(Math.random()*.35)+"s";
-    p.style.animationDuration=(1.2+Math.random()*.8)+"s";
-    confettiLayer.appendChild(p);
-  }
-  setTimeout(function(){confettiLayer.innerHTML="";},2400);
+function openSheet(id){document.getElementById(id).classList.add("open");refreshIcons()}
+function closeSheet(id){document.getElementById(id).classList.remove("open")}
+document.querySelectorAll("[data-close-sheet]").forEach(b=>b.onclick=()=>closeSheet(b.dataset.closeSheet));
+document.querySelectorAll(".sheet").forEach(s=>s.onclick=e=>{if(e.target===s&&s.id!=="resultSheet")closeSheet(s.id)});
+document.getElementById("settingsOpen").onclick=()=>{syncSettings();openSheet("settingsSheet")};
+document.getElementById("gameSettingsOpen").onclick=()=>{syncSettings();openSheet("settingsSheet")};
+function syncSettings(){
+ document.getElementById("legalToggle").checked=settings.legal;document.getElementById("previewToggle").checked=settings.preview;document.getElementById("timerSelect").value=String(settings.timer);
+ document.getElementById("soundToggle").checked=settings.sound;document.getElementById("musicToggle").checked=settings.music;document.getElementById("hapticToggle").checked=settings.haptic;document.getElementById("themeSelect").value=settings.theme;document.getElementById("motionToggle").checked=settings.motion
 }
+document.getElementById("saveSettings").onclick=()=>{settings.legal=document.getElementById("legalToggle").checked;settings.preview=document.getElementById("previewToggle").checked;settings.timer=parseInt(document.getElementById("timerSelect").value)||0;settings.sound=document.getElementById("soundToggle").checked;settings.music=document.getElementById("musicToggle").checked;settings.haptic=document.getElementById("hapticToggle").checked;settings.theme=document.getElementById("themeSelect").value;settings.motion=document.getElementById("motionToggle").checked;save("mega_v3_settings",settings);applyTheme();Audio.syncAmbient();closeSheet("settingsSheet");if(game){renderGame();startClock()}};
+function applyTheme(){app.classList.toggle("dark",settings.theme==="dark");app.classList.toggle("reduce-motion",settings.motion)}
+applyTheme();
 
-function cloneState(s){
-  return {board:s.board.map(function(r){return r.slice();}),mini:s.mini.slice(),turn:s.turn,activeBoard:s.activeBoard,status:s.status,winner:s.winner};
-}
-function simMove(s,m){
-  var n=cloneState(s),p=n.turn;
-  n.board[m.b][m.c]=p;
-  if(checkWinner(n.board[m.b]))n.mini[m.b]=p;
-  else if(full(n.board[m.b]))n.mini[m.b]="D";
-  var mw=checkWinner(n.mini);
-  if(mw){n.status="OVER";n.winner=p;return n;}
-  if(n.mini.every(function(v){return v!==null;})){n.status="OVER";n.winner="DRAW";return n;}
-  n.activeBoard=n.mini[m.c]===null?m.c:null;
-  n.turn=p==="X"?"O":"X";
-  return n;
-}
-function wouldWinMini(s,m,player){
-  if(s.board[m.b][m.c]!==null)return false;
-  var cells=s.board[m.b].slice();cells[m.c]=player;
-  var r=checkWinner(cells);return !!r&&r.winner===player;
-}
-function moveHeuristic(s,m,player){
-  var opp=player==="X"?"O":"X",score=0;
-  if(wouldWinMini(s,m,player))score+=900;
-  if(wouldWinMini(s,m,opp))score+=520;
-  if(m.c===4)score+=24;else if([0,2,6,8].indexOf(m.c)>=0)score+=11;
-  if(m.b===4)score+=16;else if([0,2,6,8].indexOf(m.b)>=0)score+=7;
-  var n=simMove(s,m);
-  if(n.status==="OVER"&&n.winner===player)score+=100000;
-  if(n.activeBoard===null)score-=player==="O"?90:40;
-  else{
-    var oppMoves=legalMovesFor(n),danger=false;
-    for(var i=0;i<oppMoves.length;i++){if(wouldWinMini(n,oppMoves[i],opp)){danger=true;break;}}
-    if(danger)score-=460;
-  }
-  score+=evaluate(n)*(player==="O"?1:-1)*.15;
-  return score;
-}
-function evaluate(s){
-  if(s.status==="OVER"){
-    if(s.winner==="O")return 100000;
-    if(s.winner==="X")return -100000;
-    return 0;
-  }
-  var score=0,weights=[1.15,1,1.15,1,1.35,1,1.15,1,1.15];
-  for(var b=0;b<9;b++){
-    if(s.mini[b]==="O")score+=150*weights[b];
-    else if(s.mini[b]==="X")score-=150*weights[b];
-    else if(s.mini[b]===null){
-      var cells=s.board[b];
-      WIN_LINES.forEach(function(l){
-        var o=0,x=0,e=0;
-        l.forEach(function(i){if(cells[i]==="O")o++;else if(cells[i]==="X")x++;else e++;});
-        if(x===0)score+=[0,2,13,110][o];
-        if(o===0)score-=[0,2,13,110][x];
-      });
-    }
-  }
-  WIN_LINES.forEach(function(l){
-    var o=0,x=0,e=0;
-    l.forEach(function(i){if(s.mini[i]==="O")o++;else if(s.mini[i]==="X")x++;else if(s.mini[i]===null)e++;});
-    if(x===0)score+=[0,24,230,100000][o];
-    if(o===0)score-=[0,24,230,100000][x];
-  });
-  if(s.activeBoard===null)score+=s.turn==="O"?32:-32;
-  return score;
-}
-function orderedMoves(s,moves){
-  var p=s.turn;
-  return moves.slice().sort(function(a,b){return moveHeuristic(s,b,p)-moveHeuristic(s,a,p);});
-}
-function minimax(s,depth,alpha,beta){
-  if(depth<=0||s.status==="OVER")return evaluate(s);
-  var moves=orderedMoves(s,legalMovesFor(s));
-  var cap=depth>=3?14:20;if(moves.length>cap)moves=moves.slice(0,cap);
-  if(!moves.length)return evaluate(s);
-  if(s.turn==="O"){
-    var best=-Infinity;
-    for(var i=0;i<moves.length;i++){best=Math.max(best,minimax(simMove(s,moves[i]),depth-1,alpha,beta));alpha=Math.max(alpha,best);if(beta<=alpha)break;}
-    return best;
-  }else{
-    var worst=Infinity;
-    for(var j=0;j<moves.length;j++){worst=Math.min(worst,minimax(simMove(s,moves[j]),depth-1,alpha,beta));beta=Math.min(beta,worst);if(beta<=alpha)break;}
-    return worst;
-  }
-}
-function bestSearchMove(depth){
-  var root=cloneState(game),moves=orderedMoves(root,legalMovesFor(root)),best=moves[0],bestVal=-Infinity;
-  for(var i=0;i<moves.length;i++){
-    var v=minimax(simMove(root,moves[i]),depth-1,-Infinity,Infinity);
-    v+=Math.random()*.01;
-    if(v>bestVal){bestVal=v;best=moves[i];}
-  }
-  return best;
-}
-function mediumMove(moves){
-  var best=moves[0],bestS=-Infinity;
-  for(var i=0;i<moves.length;i++){
-    var s=moveHeuristic(game,moves[i],"O")+Math.random()*5;
-    if(s>bestS){bestS=s;best=moves[i];}
-  }
-  return best;
-}
-function chooseBotMove(){
-  var moves=legalMovesFor(game);if(!moves.length)return null;
-  var immediate=moves.find(function(m){return wouldWinMini(game,m,"O");});
-  if(menu.difficulty==="Beginner"){
-    if(immediate&&Math.random()<.25)return immediate;
-    return moves[Math.floor(Math.random()*moves.length)];
-  }
-  var block=moves.find(function(m){return wouldWinMini(game,m,"X");});
-  if(menu.difficulty==="Easy"){
-    if(immediate)return immediate;if(block)return block;
-    var centers=moves.filter(function(m){return m.c===4;});
-    return centers.length?centers[Math.floor(Math.random()*centers.length)]:moves[Math.floor(Math.random()*moves.length)];
-  }
-  if(menu.difficulty==="Medium")return mediumMove(moves);
-  if(menu.difficulty==="Hard")return bestSearchMove(2);
-  var depth=moves.length<=12?4:3;
-  return bestSearchMove(depth);
-}
-function scheduleBot(){
-  clearTimeout(botTimerId);
-  var delay=menu.difficulty==="Beginner"?650:menu.difficulty==="Expert"?780:560;
-  botTimerId=setTimeout(function(){
-    if(!game||game.status!=="PLAYING"||game.turn!=="O")return;
-    var m=chooseBotMove();if(m)executeMove(m.b,m.c);
-  },settings.reduceMotion?120:delay);
-}
-
-function openOnlineMode(){
-  var title="Online mode";
-  var body="";
-  var copyBtn=document.getElementById("onlineCopyBtn");
-  if(menu.mode==="friend"){
-    title="Private Friend Match";
-    body="<b>Room code: "+menu.friendCode+"</b><br><br>The V3 static client now has the private-lobby UI, friend-code flow and game rules ready. A realtime backend/auth service is still required before a second device can join. This prototype will not pretend a bot is a human opponent.";
-    copyBtn.style.display="block";
-  }else{
-    title=menu.mode==="ranked"?"Ranked Matchmaking":"Casual Matchmaking";
-    body="The <b>"+title+"</b> client flow is scaffolded, but this repository is currently a static single-file prototype. Production online play needs server-authoritative rooms, authentication, realtime state sync, rating storage and reconnect handling.<br><br>No fake matchmaking is used in V3.";
-    copyBtn.style.display="none";
-  }
-  document.getElementById("onlineTitle").textContent=title;
-  document.getElementById("onlineBody").innerHTML=body;
-  openModal("onlineModal");
-}
-
-function syncSettingsUI(){
-  document.getElementById("soundFxToggle").checked=settings.soundFx;
-  document.getElementById("musicToggle").checked=settings.music;
-  document.getElementById("hapticsToggle").checked=settings.haptics;
-  document.getElementById("confettiToggle").checked=settings.confetti;
-  document.getElementById("hintsToggle").checked=settings.hints;
-  document.getElementById("previewToggle").checked=settings.preview;
-  document.getElementById("timerSelect").value=String(settings.timerSeconds);
-  document.getElementById("themeSelect").value=settings.theme;
-  document.getElementById("motionToggle").checked=settings.reduceMotion;
-}
-function applyTheme(){
-  document.body.dataset.theme=settings.theme==="dark"?"dark":"paper";
-  document.body.classList.toggle("reduce-motion",!!settings.reduceMotion);
-}
-function saveSettingsFromUI(){
-  settings.soundFx=document.getElementById("soundFxToggle").checked;
-  settings.music=document.getElementById("musicToggle").checked;
-  settings.haptics=document.getElementById("hapticsToggle").checked;
-  settings.confetti=document.getElementById("confettiToggle").checked;
-  settings.hints=document.getElementById("hintsToggle").checked;
-  settings.preview=document.getElementById("previewToggle").checked;
-  settings.timerSeconds=parseInt(document.getElementById("timerSelect").value,10)||0;
-  settings.theme=document.getElementById("themeSelect").value;
-  settings.reduceMotion=document.getElementById("motionToggle").checked;
-  saveSettings();applyTheme();Audio.syncAmbient();
-  if(game&&game.status==="PLAYING"){renderAll();startTurnClock();}
-  closeModal("settingsModal");
-}
-
-function renderStats(tab){
-  currentStatsTab=tab||currentStatsTab;
-  document.querySelectorAll(".tab").forEach(function(t){t.classList.toggle("active",t.dataset.tab===currentStatsTab);});
-  var c=document.getElementById("statsContent");
-  if(currentStatsTab==="online"){
-    c.innerHTML='<div class="online-note"><b>Online stats are separated by design.</b><br>Ranked rating, peak rating, W/L/D, streaks and match history will live here once the server-authoritative online layer is connected. V3 does not mix offline bot results into competitive stats.</div>';
-    return;
-  }
-  if(currentStatsTab==="bot"){
-    var html='<div class="stat-grid"><div class="stat-card"><b>'+stats.botGames+'</b><span>BOT GAMES</span></div><div class="stat-card"><b>'+pct(stats.wins,stats.botGames)+'</b><span>WIN RATE</span></div><div class="stat-card"><b>'+stats.streak+'</b><span>CURRENT STREAK</span></div><div class="stat-card"><b>'+stats.bestStreak+'</b><span>BEST STREAK</span></div></div><div class="diff-stats">';
-    ["Beginner","Easy","Medium","Hard","Expert"].forEach(function(k){var d=stats.diff[k]||{g:0,w:0};html+='<div class="diff-line"><span>'+k+'</span><span>'+d.g+' games</span><span>'+pct(d.w,d.g)+'</span></div>';});
-    html+="</div>";c.innerHTML=html;return;
-  }
-  var avg=stats.games?Math.round(stats.totalMoves/stats.games):0;
-  c.innerHTML='<div class="stat-grid"><div class="stat-card"><b>'+stats.games+'</b><span>TOTAL GAMES</span></div><div class="stat-card"><b>'+stats.miniWon+'</b><span>MINI BOARDS CLAIMED</span></div><div class="stat-card"><b>'+stats.xWins+'</b><span>X WINS</span></div><div class="stat-card"><b>'+stats.oWins+'</b><span>O WINS</span></div><div class="stat-card"><b>'+stats.draws+'</b><span>DRAWS</span></div><div class="stat-card"><b>'+avg+'</b><span>AVG MOVES</span></div></div>';
-}
-function pct(a,b){return b?Math.round(a/b*100)+"%":"0%";}
-
-document.querySelectorAll(".mode-card").forEach(function(btn){
-  btn.addEventListener("click",function(){menu.mode=btn.dataset.mode;syncHomeMode();Audio.init();Audio.syncAmbient();});
-});
-document.querySelectorAll("#difficultySegment .seg-btn").forEach(function(btn){
-  btn.addEventListener("click",function(){menu.difficulty=btn.dataset.difficulty;syncHomeMode();});
-});
-document.querySelectorAll("#startSegment .seg-btn").forEach(function(btn){
-  btn.addEventListener("click",function(){menu.startPlayer=btn.dataset.start;syncHomeMode();});
-});
-document.getElementById("friendModeBtn").addEventListener("click",function(){menu.mode="friend";syncHomeMode();openOnlineMode();});
-document.getElementById("copyCodeBtn").addEventListener("click",function(){copyText(menu.friendCode);});
-document.getElementById("startBtn").addEventListener("click",function(){
-  Audio.init();Audio.syncAmbient();
-  if(menu.mode==="bot"||menu.mode==="local")startOfflineGame(false);else openOnlineMode();
-});
-document.getElementById("onlineCopyBtn").addEventListener("click",function(){copyText(menu.friendCode);});
-
-["homeSettingsBtn","gameSettingsBtn"].forEach(function(id){
-  document.getElementById(id).addEventListener("click",function(){syncSettingsUI();openModal("settingsModal");});
-});
-["homeStatsBtn","gameStatsBtn"].forEach(function(id){
-  document.getElementById(id).addEventListener("click",function(){renderStats("overview");openModal("statsModal");});
-});
-document.getElementById("saveSettingsBtn").addEventListener("click",saveSettingsFromUI);
-document.getElementById("removeAdsBtn").addEventListener("click",function(){openModal("premiumModal");});
-document.querySelectorAll("[data-close]").forEach(function(btn){
-  btn.addEventListener("click",function(){closeModal(btn.dataset.close+"Modal");});
-});
-document.querySelectorAll(".modal").forEach(function(m){
-  m.addEventListener("click",function(e){if(e.target===m)m.classList.remove("open");});
-});
-document.querySelectorAll(".tab").forEach(function(t){t.addEventListener("click",function(){renderStats(t.dataset.tab);});});
-document.getElementById("resetStatsBtn").addEventListener("click",function(){
-  if(confirm("Reset all offline stats?")){stats=defaultStats();saveStats();renderStats(currentStatsTab);showToast("Stats reset");}
-});
-
-document.getElementById("backBtn").addEventListener("click",function(){clearTimers();showScreen("home");});
-document.getElementById("gameMenuBtn").addEventListener("click",function(){clearTimers();showScreen("home");});
-document.getElementById("restartBtn").addEventListener("click",function(){startOfflineGame(false);});
-document.getElementById("resultMenuBtn").addEventListener("click",function(){closeModal("resultModal");showScreen("home");});
-document.getElementById("rematchBtn").addEventListener("click",function(){closeModal("resultModal");startOfflineGame(true);});
-
-applyTheme();syncHomeMode();syncSettingsUI();
-
-window.MegaXO={
-  getState:function(){return game?cloneState(game):null;},
-  getMenu:function(){return Object.assign({},menu);},
-  getSettings:function(){return Object.assign({},settings);},
-  rules:{
-    nextBoard:"cellIndex",
-    freeMove:"If the target Mini Board is already won or drawn, the next player may play in any unresolved Mini Board.",
-    win:"Claim 3 Mini Boards in a row on the Mega Board."
-  }
-};
+document.getElementById("leaveGame").onclick=()=>{clearTimers();gameScreen.classList.remove("active")};
+document.getElementById("restartGame").onclick=()=>startGame(false);
+document.getElementById("rulesBtn").onclick=()=>{document.getElementById("infoTitle").textContent="The relay rule";document.getElementById("infoBody").innerHTML="<p>Win any Mini Board by making a normal 3-in-a-row. That Mini Board becomes your X or O on the Mega Board.</p><p><b>Routing:</b> the cell position you choose becomes the opponent's required Mini Board. Cell 2 sends them to board 2, cell 4 sends them to board 4, and so on.</p><p>If that target Mini Board is already won or drawn, they receive a Free Move in any unresolved board.</p><p>Claim three Mini Boards in a row on the Mega Board to win.</p>";openSheet("infoSheet")};
+document.getElementById("matchStatsBtn").onclick=()=>{document.getElementById("infoTitle").textContent="Current match";document.getElementById("infoBody").innerHTML="<p>Moves: <b>"+game.moves+"</b></p><p>X Mini Boards: <b>"+game.mini.filter(x=>x==="X").length+"</b></p><p>O Mini Boards: <b>"+game.mini.filter(x=>x==="O").length+"</b></p><p>Elapsed: <b>"+formatTime(Date.now()-game.startAt)+"</b></p>";openSheet("infoSheet")};
+document.getElementById("rematchBtn").onclick=()=>{closeSheet("resultSheet");startGame(true)};
+document.getElementById("menuBtn").onclick=()=>{closeSheet("resultSheet");clearTimers();gameScreen.classList.remove("active")};
+document.getElementById("copyFriendCode").onclick=()=>{const t=document.getElementById("friendCode").textContent;if(navigator.clipboard)navigator.clipboard.writeText(t).then(()=>toast("Friend code copied"));else toast(t)};
+renderStats();refreshIcons();
 })();
 </script>
 </body>

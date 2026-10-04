@@ -11,6 +11,7 @@ Open `index.html` with the `src` folder next to it, or run `npm start` and visit
 - The complete 81-cell game, all routing/draw rules, five offline bot levels and local pass-and-play.
 - Vector Light, Midnight Club, Paper Club and After Hours. Every filled control has a paired foreground token. Theme changes preserve the game and remaining timer.
 - Restored V3.1 UI continuity: Space Grotesk + IBM Plex Mono, a floating island bottom bar with scroll-behind content, bottom-sheet Settings/Tutorial, four home modes, chip-based match setup, and the board-first match screen.
+- V3.2.2 restores the stronger cell-hover treatment and the animated route connection from the chosen cell to the next Mini Board. Quests are again a fifth floating-nav destination, Play Online uses the older battle/swords icon, and timer-off remains the infinity symbol.
 - Play Online is one home mode with Ranked/Casual choices; Private Match keeps its dedicated Open Private Lobby action. Quests remain accessible from the home/wallet flow without occupying the primary bottom navigation.
 - Original inline SVG icons and eleven rank emblems. No emoji icon substitutes.
 - Tutorial and unrewarded Beginner practice.

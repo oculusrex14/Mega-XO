@@ -5,6 +5,7 @@ const p={
  bot:'<rect x="4" y="7" width="16" height="14" rx="4"/><path d="M12 3v4m-4 6h.01M16 13h.01M9 17h6M1 12v5m22-5v5"/>',
  users:'<circle cx="9" cy="8" r="3"/><path d="M3 21v-3a6 6 0 0 1 12 0v3m1-17a3 3 0 0 1 0 6m2 4a5 5 0 0 1 3 5v2"/>',
  trophy:'<path d="M7 3h10v7a5 5 0 0 1-10 0V3zm5 12v6m-4 0h8M7 5H3v3a4 4 0 0 0 4 4m10-7h4v3a4 4 0 0 1-4 4"/>',
+ swords:'<path d="m5 3 6 6-2 2-6-6V3h2zm14 0-6 6 2 2 6-6V3h-2zM8 12l-5 5m13-5 5 5M5 15l4 4m10-4-4 4M3 21l4-4m14 4-4-4"/>',
  chart:'<path d="M4 3v17h17M8 16v-4m5 4V7m5 9V4"/>',
  coin:'<circle cx="12" cy="12" r="9"/><path d="m12 7 4 5-4 5-4-5 4-5z"/>',
  crown:'<path d="m3 6 5 4 4-7 4 7 5-4-2 13H5L3 6zm3 10h12"/>',

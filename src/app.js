@@ -27,13 +27,13 @@ const field=(title,id,options)=>'<label class="field">'+title+'<select id="'+id+
 const empty=(symbol,title,text)=>'<div class="empty">'+icon(symbol)+'<h3>'+title+'</h3><p>'+text+'</p></div>';
 function render(){
  $('#walletAmount').textContent=data.wallet.coins.toLocaleString();
- $('#navigation').innerHTML=[['play','Play','board'],['friends','Friends','users'],['rank','Rank','trophy'],['stats','Stats','chart']].map(([id,name,symbol])=>'<button class="nav-button '+(id===page?'active':'')+'" data-action="nav" data-value="'+id+'" '+(id===page?'aria-current="page"':'')+'>'+icon(symbol)+'<span>'+name+'</span></button>').join('');
+ $('#navigation').innerHTML=[['play','Play','board'],['friends','Friends','users'],['rank','Rank','trophy'],['stats','Stats','chart'],['quests','Quests','quest']].map(([id,name,symbol])=>'<button class="nav-button '+(id===page?'active':'')+'" data-action="nav" data-value="'+id+'" '+(id===page?'aria-current="page"':'')+'>'+icon(symbol)+'<span>'+name+'</span></button>').join('');
  $('#page').innerHTML=({play:home,friends:friends,rank:ranks,stats:statsView,quests:quests})[page]();
 }
 function home(){
  const desc={Beginner:'Learning the rules. Plenty of room to experiment.',Easy:'Spots simple wins and blocks.',Medium:'Looks ahead and considers where each move sends you next.',Hard:'Deeper search and fewer tactical mistakes.',Expert:'The strongest offline search, with the least room for mistakes.'}[difficulty];
  const chip=(label,action,value,active)=>'<button class="setup-chip '+(active?'active':'')+'" data-action="'+action+'" data-value="'+value+'">'+label+'</button>';
- const modes=[['bot','bot','Vs Bot','Five skill levels, fully offline'],['local','users','Pass & Play','Two players on one device'],['online','trophy','Play Online','Ranked or casual matchmaking'],['private','link','Private Match','Create or join a friend room']];
+ const modes=[['bot','bot','Vs Bot','Five skill levels, fully offline'],['local','users','Pass & Play','Two players on one device'],['online','swords','Play Online','Ranked or casual matchmaking'],['private','link','Private Match','Create or join a friend room']];
  let setup='';
  if(mode==='bot') setup='<div class="setup old-setup"><div class="setup-block"><div class="setup-title"><b>Bot difficulty</b><span>Strategy depth</span></div><div class="setup-chips">'+G.LEVELS.map(x=>chip(x.toUpperCase(),'difficulty',x,difficulty===x)).join('')+'</div></div><div class="setup-block"><div class="setup-title"><b>First move</b><span>Who starts</span></div><div class="setup-chips two">'+chip('X STARTS','first','X',first==='X')+chip('O STARTS','first','O',first==='O')+'</div></div><div class="setup-block"><div class="setup-title"><b>Turn timer</b><span>Optional</span></div><div class="setup-chips three">'+[['0','OFF'],['30','30 SEC'],['60','60 SEC']].map(([v,l])=>chip(l,'settimer',v,String(data.settings.timer)===v)).join('')+'</div></div><p class="setup-note">'+desc+'</p></div>';
  else if(mode==='local') setup='<div class="setup old-setup"><div class="setup-block"><div class="setup-title"><b>First move</b><span>Who starts</span></div><div class="setup-chips two">'+chip('X STARTS','first','X',first==='X')+chip('O STARTS','first','O',first==='O')+'</div></div><div class="setup-block"><div class="setup-title"><b>Turn timer</b><span>Optional</span></div><div class="setup-chips three">'+[['0','OFF'],['30','30 SEC'],['60','60 SEC']].map(([v,l])=>chip(l,'settimer',v,String(data.settings.timer)===v)).join('')+'</div></div><p class="setup-note">Pass & Play stays off your personal stats, coins and rank.</p></div>';
@@ -114,12 +114,46 @@ function paint(){if(!match)return;const s=match.state,canHuman=!s.winner&&(match
  $('#destinationText').textContent=s.winner?'Review the board or start a rematch.':s.required===null?'CHOOSE ANY OPEN MINI BOARD':'PLAY ONLY IN THIS MINI BOARD';
  $('#clock').textContent=match.turnLimit?Math.ceil(match.turnRemaining)+'s':'∞';$('#clock').classList.toggle('urgent',match.turnLimit>0&&match.turnRemaining<=5);
 }
-function clearPreview(){miniNodes.forEach(x=>x.el.classList.remove('preview'));if(match)$('#previewText').textContent=match.pending?'Tap the same cell again to confirm.':"Your cell determines the opponent's next board.";}
-function preview(b,c){if(!match||!data.settings.preview||cellNodes[b][c].disabled)return;clearPreview();if(match.state.mini[c])$('#previewText').textContent='This gives your opponent free choice of any open board.';else{miniNodes[c].el.classList.add('preview');$('#previewText').textContent='This sends your opponent to the '+G.NAMES[c].toLowerCase()+' board.';}}
+function clearPreview(){
+ miniNodes.forEach(x=>x.el.classList.remove('preview'));
+ cellNodes.flat().forEach(n=>n.classList.remove('cell-hover','hover-x','hover-o'));
+ if(match)$('#previewText').textContent=match.pending?'Tap the same cell again to confirm.':"Your cell determines the opponent's next board.";
+}
+function preview(b,c){
+ if(!match||cellNodes[b][c].disabled)return;
+ clearPreview();
+ const cell=cellNodes[b][c];
+ cell.classList.add('cell-hover',match.state.turn==='X'?'hover-x':'hover-o');
+ if(!data.settings.preview)return;
+ if(match.state.mini[c])$('#previewText').textContent='This gives your opponent free choice of any open board.';
+ else{miniNodes[c].el.classList.add('preview');$('#previewText').textContent='This sends your opponent to the '+G.NAMES[c].toLowerCase()+' board.';}
+}
+function animateRoute(fromBoard,fromCell,toBoard){
+ const overlay=$('#routeOverlay'),wrap=$('#boardWrap');if(!overlay||!wrap||!match)return;
+ overlay.innerHTML='';
+ miniNodes.forEach(x=>x.el.classList.remove('route-target','free-route-pulse'));
+ const origin=cellNodes[fromBoard]?.[fromCell];if(!origin)return;
+ if(toBoard===null||match.state.mini[toBoard]){
+   miniNodes.forEach((x,i)=>{if(!match.state.mini[i])x.el.classList.add('free-route-pulse');});
+   setTimeout(()=>miniNodes.forEach(x=>x.el.classList.remove('free-route-pulse')),560);
+   return;
+ }
+ const target=miniNodes[toBoard]?.el;if(!target)return;
+ requestAnimationFrame(()=>{
+   const wr=wrap.getBoundingClientRect(),a=origin.getBoundingClientRect(),b=target.getBoundingClientRect();
+   const x1=a.left+a.width/2-wr.left,y1=a.top+a.height/2-wr.top,x2=b.left+b.width/2-wr.left,y2=b.top+b.height/2-wr.top;
+   const bend=Math.max(-28,Math.min(28,(x2-x1)*.10));
+   overlay.setAttribute('viewBox','0 0 '+wr.width+' '+wr.height);
+   overlay.innerHTML='<path class="route-path" d="M '+x1+' '+y1+' Q '+((x1+x2)/2+bend)+' '+((y1+y2)/2-16)+' '+x2+' '+y2+'"/><circle class="route-start" cx="'+x1+'" cy="'+y1+'" r="4"/><circle class="route-end" cx="'+x2+'" cy="'+y2+'" r="5"/>';
+   const path=overlay.querySelector('.route-path'),len=path?.getTotalLength?.()||180;if(path){path.style.setProperty('--route-length',len);path.style.strokeDasharray=len;path.style.strokeDashoffset=len;}
+   target.classList.add('route-target');
+   setTimeout(()=>{overlay.innerHTML='';target.classList.remove('route-target');},data.settings.motion?260:820);
+ });
+}
 function humanMove(b,c){if(!match||match.state.winner||sheetOpen()||(match.mode==='bot'&&match.state.turn==='O'))return;lastInput=performance.now();if(data.settings.confirm&&(!match.pending||match.pending.b!==b||match.pending.c!==c)){match.pending={b,c};preview(b,c);$('#previewText').textContent='Tap the same cell again to confirm.';return;}move({b,c},'human');}
 function move(m,source){if(!match||match.state.winner)return;if(match.mode==='bot'&&((match.state.turn==='O')!==(source==='bot')))return;
  try{match.state=G.apply(match.state,m);}catch{notify('Choose an empty cell in the highlighted board.');return;}
- match.last=m;match.pending=null;match.turnRemaining=match.turnLimit;tone(source==='bot'?370:540);haptic();paint();clearPreview();if(match.state.winner)finish(match.state.winner==='DRAW'?'draw':'line');else scheduleBot();
+ match.last=m;match.pending=null;match.turnRemaining=match.turnLimit;tone(source==='bot'?370:540);haptic();paint();clearPreview();animateRoute(m.b,m.c,match.state.required);if(match.state.winner)finish(match.state.winner==='DRAW'?'draw':'line');else scheduleBot();
 }
 function scheduleBot(){clearTimeout(botTimer);botTimer=null;if(!match||match.state.winner||match.mode!=='bot'||match.state.turn!=='O'||sheetOpen()||document.hidden)return;const current=match,revision=match.state.moves.length;
  botTimer=setTimeout(()=>{botTimer=null;if(match!==current||match.state.moves.length!==revision||sheetOpen()||document.hidden)return;const m=G.choose(match.state,match.difficulty);if(m)move(m,'bot');},850+Math.random()*220);
@@ -156,6 +190,6 @@ document.addEventListener('change',e=>{
 for(const [id,name] of [['brandIcon','board'],['coinIcon','coin'],['settingsButton','settings'],['sheetClose','close'],['backIcon','back'],['matchSettings','settings'],['routeIcon','route'],['rulesIcon','help'],['restartIcon','refresh'],['statsIcon','chart']])$('#'+id).innerHTML=icon(name);
 applyTheme();buildBoard();render();save();
 // Read-only diagnostics: no method can credit money, set rank or submit a server result.
-window.MegaXO=Object.freeze({version:'3.2.1',getState:()=>match?structuredClone(match.state):null,getSettings:()=>({...data.settings})});
+window.MegaXO=Object.freeze({version:'3.2.2',getState:()=>match?structuredClone(match.state):null,getSettings:()=>({...data.settings})});
 try{if(!localStorage.getItem('mega_v32_tutorial_seen'))tutorial();}catch{}
 })();

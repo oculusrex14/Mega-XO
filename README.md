@@ -1,10 +1,17 @@
-# Mega-XO V3 — Vector Relay
+# Mega-XO V3.1 — Vector Relay
 
-V3 is a complete UI/UX redesign of Mega Tic-Tac-Toe built around the game's defining mechanic:
+V3.1 builds on the Vector Relay redesign with four production-focused upgrades:
+
+- **Genuinely scaled bot difficulties** — Beginner through Expert now use progressively stronger decision logic, from mostly-random play through tactical heuristics to deeper alpha-beta search.
+- **More natural bot pacing** — response time now varies by difficulty at roughly 0.7–1.5 seconds instead of replying almost instantly.
+- **A first-run tutorial** — four short steps explain Mini Board wins, the send rule, Free Route, and Mega Board victory, with a one-tap practice match against Beginner.
+- **A rebuilt theme engine** — Vector Light, Vector Dark, Paper Grid, and Neon Retro all use shared design tokens so the full UI, board, settings, results, navigation, and controls update together. The previous dark-mode contrast failures are removed.
+
+The core identity remains built around the game's defining mechanic:
 
 **every move routes the opponent to their next Mini Board.**
 
-This version deliberately abandons the hand-drawn / paper-mockup direction used in earlier concepts. The new identity is called **Vector Relay** — a clean tactical interface built around routing, sectors, signal flow, and board control.
+Vector Relay treats Mega XO as a routing strategy game rather than a novelty tic-tac-toe app.
 
 ---
 
@@ -610,6 +617,72 @@ Deeper search when branching allows it.
 Bot logic remains completely offline.
 
 No LLM is used.
+
+---
+
+# V3.1 Theme Variants
+
+## Vector Light
+The default tactical UI: cool neutral surfaces, cobalt X, coral O, and acid-green routing.
+
+## Vector Dark
+A true dark interface, not a simple color inversion. Surfaces, controls, active states, navigation, claims, result cards, and form controls all receive dark-specific tokens while preserving readable contrast.
+
+## Paper Grid
+A warmer board-game interpretation:
+- cream paper surfaces
+- graphite ink
+- ruled-paper background
+- tighter card radii
+- muted blue/red marks
+- mustard routing signal
+- subtle offset shadows
+
+It keeps the Vector Relay information architecture while giving the game a physical tabletop feel.
+
+## Neon Retro
+A high-contrast arcade interpretation:
+- midnight navy surfaces
+- cyan X
+- hot-pink O
+- electric route green
+- luminous route/active-board states
+- subtle neon grid background
+- controlled glow on marks and selected controls
+
+Themes change presentation only; rules, hit targets, board geometry, state logic, and accessibility structure remain identical.
+
+---
+
+# Bot Difficulty Model
+
+### Beginner
+Mostly random legal play. It only occasionally notices an immediate winning move.
+
+### Easy
+Always takes an immediate Mini Board win, usually blocks an obvious loss, and has simple centre/corner preferences.
+
+### Medium
+Scores send-rule consequences, Mini Board value, Mega Board position, and dangerous replies. It deliberately chooses among the best few moves so it remains beatable.
+
+### Hard
+Uses the tactical evaluator plus alpha-beta search when branching is manageable. It searches deeper than Medium and stops making most obvious routing mistakes.
+
+### Expert
+Uses the strongest evaluator and deeper alpha-beta search, increasing search depth as the position narrows. It should be materially stronger than Hard, especially in mid- and late-game positions.
+
+---
+
+# Tutorial UX
+
+The tutorial is intentionally short:
+
+1. **Win a Mini Board** with normal 3-in-a-row.
+2. **Your chosen cell sends the opponent** to the matching Mega Board sector.
+3. **Resolved destination = Free Route** anywhere unresolved.
+4. **Claim 3 Mini Boards in a row** to win the Mega Board.
+
+It appears automatically once on first run and remains available from the Play screen, in Settings, and from the in-match Rules button.
 
 ---
 

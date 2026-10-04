@@ -1,776 +1,1598 @@
-<!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Mega Tic-Tac-Toe</title>
-<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@700&family=Patrick+Hand&family=Architects+Daughter&display=swap" rel="stylesheet">
-<script src="https://cdn.tailwindcss.com"></script>
-<style>
-*{box-sizing:border-box}
-body{margin:0;min-height:100vh;background:#e8e6dd;display:flex;align-items:center;justify-content:center;padding:14px;font-family:'Patrick Hand',cursive;color:#1d1d1d}
-.paper{position:fixed;inset:0;opacity:0.35;pointer-events:none;background-image:radial-gradient(#c8c5bc 1.1px, transparent 1.1px);background-size:20px 20px}
-.phone{width:390px;max-width:100%;background:#fdfcfa;border:3.5px solid #1e1e1e;border-radius:40px;padding:10px 13px 14px;position:relative;box-shadow:7px 7px 0 #1e1e1e,0 18px 36px rgba(0,0,0,.18);overflow:hidden}
-.phone::after{content:"";position:absolute;inset:7px;border:1.6px solid #1e1e1e;border-radius:34px;opacity:.10;pointer-events:none}
-.notch{width:138px;height:20px;background:#1e1e1e;border-radius:0 0 16px 16px;margin:0 auto;position:relative;top:-10px;display:flex;align-items:center;justify-content:center}
-.notch i{width:58px;height:6px;background:#2b2b2b;border-radius:10px;display:block;border:1px solid #3a3a3a}
-.statusbar{display:flex;justify-content:space-between;align-items:center;font-family:'Architects Daughter',cursive;font-size:12.5px;padding:0 6px;margin-top:-4px}
-.sig{display:flex;align-items:center;gap:4px}
-.sig span{height:8px;background:#1e1e1e;display:inline-block;border-radius:2px}
-.battery{width:22px;height:11px;border:1.6px solid #1e1e1e;border-radius:3px;position:relative}
-.battery::after{content:"";position:absolute;right:-4px;top:2px;width:2px;height:5px;background:#1e1e1e;border-radius:1px}
-.title{text-align:center;margin:6px 0 8px;position:relative}
-.title h1{font-family:'Caveat',cursive;font-weight:700;font-size:52px;line-height:.92;margin:0;transform:rotate(-1.6deg);letter-spacing:.5px}
-.title h1 span{font-size:48px;display:block;margin-top:-6px}
-.crown{position:absolute;right:18px;top:0;font-size:22px;transform:rotate(14deg)}
-.ray{position:absolute;font-size:14px;opacity:.9}
-.ray.l1{left:28px;top:18px;transform:rotate(-32deg)} .ray.l2{left:12px;top:42px;transform:rotate(-18deg)} .ray.l3{left:8px;top:68px;transform:rotate(-28deg)}
-.ray.r1{right:20px;top:28px;transform:rotate(22deg)} .ray.r2{right:6px;top:56px;transform:rotate(18deg)} .ray.r3{right:10px;top:92px;transform:rotate(32deg)}
-.underline{width:62%;height:9px;margin:2px auto 0;background:url("data:image/svg+xml,%3Csvg width='220' height='10' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M4 8 Q70 2 120 6 T216 5' stroke='%23222222' stroke-width='2.6' fill='none' stroke-linecap='round'/%3E%3C/svg%3E") no-repeat center;background-size:100% 100%}
-.scoreRow{display:flex;align-items:center;gap:8px;margin:10px 0 10px}
-.pill{flex:1;display:flex;align-items:center;gap:9px;border:2.2px solid #1e1e1e;border-radius:13px;padding:7px 10px;background:#fff;box-shadow:2px 2px 0 rgba(0,0,0,.08);position:relative;transition:.2s}
-.pill.active{box-shadow:0 0 0 3px #ffe55e,2px 2px 0 rgba(0,0,0,.08);background:#fffbcf;transform:translateY(-1px)}
-.pill .ava{width:38px;height:38px;border:1.7px solid #1e1e1e;border-radius:9px;display:flex;align-items:center;justify-content:center;background:#f3f1ea;flex-shrink:0;font-size:20px;overflow:hidden}
-.pill .meta{line-height:1}
-.pill .who{font-size:14px;white-space:nowrap}
-.pill .pts{font-size:26px;font-weight:700;margin-top:1px}
-.vs{font-weight:700;font-size:15px;padding:0 2px;position:relative;display:flex;flex-direction:column;align-items:center;line-height:1}
-.vs small{font-size:10px;opacity:.7;letter-spacing:.6px}
-.mega{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;background:#1e1e1e;padding:6px;border-radius:15px;border:2.8px solid #1e1e1e}
-.mini{background:#fffef8;border-radius:9px;padding:4px;display:grid;grid-template-columns:repeat(3,1fr);gap:1.5px;position:relative;min-height:96px;border:1.6px solid transparent;transition:.22s;overflow:hidden}
-.mini.active{background:#fff9c2;border-color:#1e1e1e;box-shadow:inset 0 0 0 1px #fff,0 0 0 3px #ffea63;transform:scale(1.025);z-index:2;animation:pulse 1.4s infinite}
-.mini.inactive{opacity:.42;filter:grayscale(.2)}
-.mini.won{opacity:1;filter:none}
-@keyframes pulse{0%,100%{box-shadow:inset 0 0 0 1px #fff,0 0 0 3px #ffea63}50%{box-shadow:inset 0 0 0 1px #fff,0 0 0 5px #ffef8a}}
-.cell{aspect-ratio:1;border:1px solid #c9c7c0;border-radius:4px;background:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;position:relative;transition:.13s}
-.cell:hover:not(:disabled){background:#fff59d;border-color:#1e1e1e;transform:scale(1.07);z-index:1;box-shadow:0 2px 8px rgba(0,0,0,.12)}
-.cell:disabled{cursor:default}
-.cell.winCell{background:#ffe55e!important;border-color:#1e1e1e}
-.markX{font-family:'Caveat',cursive;font-size:26px;font-weight:700;line-height:1;transform:rotate(-6deg);color:#1e1e1e}
-.markO{width:24px;height:24px;border:2.6px solid #1e1e1e;border-radius:50%;display:flex;align-items:center;justify-content:center}
-.miniOverlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.92);border-radius:9px;z-index:3;border:2px solid #1e1e1e;backdrop-filter:blur(0.5px)}
-.bigX{font-family:'Caveat',cursive;font-size:62px;font-weight:700;transform:rotate(-4deg)}
-.bigO{width:54px;height:54px;border:4px solid #1e1e1e;border-radius:50%}
-.bigD{font-size:28px;color:#777;letter-spacing:2px}
-.megaWin{outline:4px solid #ff3b30;outline-offset:-3px;animation:flash .7s alternate infinite}
-@keyframes flash{from{background:#fff7f7}to{background:#ffe8e8}}
-.turnInfo{text-align:center;min-height:20px;margin:7px 0 4px;font-family:'Architects Daughter',cursive;font-size:12.8px;display:flex;align-items:center;justify-content:center;gap:6px;flex-wrap:wrap}
-.badge{background:#1e1e1e;color:#fff;padding:2px 9px;border-radius:20px;font-size:11px;letter-spacing:.4px}
-.badge.free{background:#ff3b30;animation:wiggle .6s}
-.badge.your{background:#ffe55e;color:#1e1e1e;border:1.5px solid #1e1e1e}
-@keyframes wiggle{0%,100%{transform:rotate(-1deg)}50%{transform:rotate(1.5deg) scale(1.06)}}
-.tip{margin:8px 2px 12px;background:#fff;border:2px solid #1e1e1e;border-radius:11px;padding:9px 10px 9px 40px;position:relative;text-align:center;font-size:13.5px;line-height:1.25;box-shadow:2px 2px 0 rgba(0,0,0,.08);transform:rotate(-.45deg)}
-.tip i{position:absolute;left:12px;top:50%;transform:translateY(-50%);font-size:19px;font-style:normal}
-.tip::after{content:"✦";position:absolute;right:-6px;top:44%;font-size:10px}
-.controls{display:flex;gap:9px;align-items:center}
-.cbtn{border:2.2px solid #1e1e1e;background:#fff;border-radius:15px;padding:8px 10px;display:flex;flex-direction:column;align-items:center;gap:2px;font-size:12.5px;cursor:pointer;box-shadow:2px 3px 0 rgba(0,0,0,.12);transition:.12s;min-width:74px}
-.cbtn:active{transform:translateY(2px);box-shadow:1px 1px 0 rgba(0,0,0,.12)}
-.cbtn.primary{flex:1;flex-direction:row;justify-content:center;gap:8px;background:#f2f0e6;font-size:16px;padding:12px;border-radius:16px}
-.cbtn .ico{font-size:19px}
-.modal{position:absolute;inset:0;background:rgba(252,250,246,.97);display:flex;align-items:center;justify-content:center;padding:18px;z-index:30;border-radius:36px}
-.modal.hidden{display:none}
-.card{background:#fff;border:2.6px solid #1e1e1e;border-radius:18px;padding:16px;width:100%;max-width:320px;box-shadow:5px 5px 0 #1e1e1e;text-align:center;transform:rotate(-.4deg);max-height:92%;overflow:auto}
-.card h2{font-family:'Caveat',cursive;font-size:30px;margin:0 0 6px}
-.card p{font-size:13.5px;line-height:1.45;margin:6px 0}
-.btn{border:2px solid #1e1e1e;background:#fff;border-radius:12px;padding:8px 14px;font-family:'Patrick Hand',cursive;font-size:14px;cursor:pointer;box-shadow:2px 2px 0 #1e1e1e;transition:.12s}
-.btn.primary{background:#ffe55e}
-.btn:active{transform:translateY(2px);box-shadow:1px 1px 0 #1e1e1e}
-.row{display:flex;gap:8px;justify-content:center;margin-top:10px;flex-wrap:wrap}
-.shake{animation:shake .34s}
-@keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-5px) rotate(-.7deg)}75%{transform:translateX(5px) rotate(.7deg)}}
-.sel{width:100%;border:2px solid #1e1e1e;border-radius:10px;padding:7px 8px;font-family:'Patrick Hand',cursive;background:#fff;margin:4px 0}
-.toggle{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:8px 0;font-size:13.5px;text-align:left}
-.grid2{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin:10px 0}
-.sbox{border:1.7px solid #1e1e1e;border-radius:11px;padding:8px;background:#fafaf6}
-.sbox b{display:block;font-size:20px;line-height:1}
-.homeBar{height:4px;width:120px;background:#1e1e1e;border-radius:10px;margin:12px auto 0;opacity:.85}
-@media(max-width:400px){.phone{border-radius:30px}.title h1{font-size:46px}.title h1 span{font-size:42px}}
-</style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Mega Tic-Tac-Toe</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Architects+Daughter&family=Patrick+Hand&family=Caveat:wght@600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --pencil: #2b2b2b;
+      --pencil-light: #5a5a5a;
+      --pencil-faint: #9c9c9c;
+      --paper: #f7f5f0;
+      --paper-grid: #ebe7de;
+      --accent: #1e1e1e;
+      --highlight: rgba(50, 50, 50, 0.08);
+      --highlight-active: rgba(40, 110, 220, 0.12);
+      --highlight-border: #444;
+      --x-color: #263238;
+      --o-color: #37474f;
+      --claimed-bg: rgba(0, 0, 0, 0.03);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+      -webkit-user-select: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      background-color: #dcd7cd;
+      background-image: radial-gradient(#c5bfb4 1px, transparent 1px);
+      background-size: 18px 18px;
+      font-family: 'Patrick Hand', cursive, sans-serif;
+      color: var(--pencil);
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 12px;
+    }
+
+    /* Sketch phone mockup container */
+    .phone-frame {
+      width: 100%;
+      max-width: 440px;
+      height: 94vh;
+      max-height: 900px;
+      background: var(--paper);
+      border-radius: 42px;
+      border: 3.5px solid var(--pencil);
+      box-shadow: 
+        0 18px 40px rgba(0,0,0,0.18),
+        inset 0 0 45px rgba(210, 195, 170, 0.25);
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      /* Textured paper look */
+      background-image: 
+        radial-gradient(var(--paper-grid) 1px, transparent 0),
+        linear-gradient(to right, rgba(0,0,0,0.01) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(0,0,0,0.01) 1px, transparent 1px);
+      background-size: 20px 20px, 20px 20px, 20px 20px;
+    }
+
+    /* Hand-drawn sketchy outer border overlay */
+    .phone-frame::before {
+      content: "";
+      position: absolute;
+      inset: 2px;
+      border: 1.5px dashed rgba(40,40,40,0.25);
+      border-radius: 38px;
+      pointer-events: none;
+      z-index: 10;
+    }
+
+    /* Mobile Status Bar */
+    .status-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 24px 4px 24px;
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--pencil-light);
+      position: relative;
+      z-index: 5;
+    }
+
+    .notch {
+      width: 90px;
+      height: 18px;
+      background: var(--pencil);
+      border-bottom-left-radius: 12px;
+      border-bottom-right-radius: 12px;
+      position: absolute;
+      top: 0;
+      left: 50%;
+      transform: translateX(-50%);
+    }
+
+    .status-icons {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    /* Header Doodle Title */
+    .header-section {
+      text-align: center;
+      padding: 4px 16px 2px;
+      position: relative;
+    }
+
+    .title-wrapper {
+      position: relative;
+      display: inline-block;
+    }
+
+    .game-title {
+      font-family: 'Caveat', cursive;
+      font-size: 42px;
+      line-height: 0.95;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      color: var(--pencil);
+      text-shadow: 1px 1px 0px rgba(0,0,0,0.15);
+      transform: rotate(-1.5deg);
+    }
+
+    .crown-doodle {
+      position: absolute;
+      top: -16px;
+      right: -32px;
+      width: 32px;
+      height: 24px;
+      transform: rotate(18deg);
+      stroke: var(--pencil);
+      fill: none;
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .spark-left, .spark-right {
+      position: absolute;
+      font-size: 18px;
+      color: var(--pencil-light);
+      opacity: 0.8;
+    }
+    .spark-left { left: -22px; top: 18px; }
+    .spark-right { right: -22px; top: 22px; }
+
+    /* Players Scoreboard */
+    .score-board {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 6px 18px;
+      margin-top: 2px;
+      position: relative;
+    }
+
+    .player-card {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(255, 255, 255, 0.65);
+      border: 2px solid var(--pencil);
+      border-radius: 16px 14px 18px 13px;
+      padding: 6px 14px;
+      min-width: 125px;
+      box-shadow: 2px 3px 0px rgba(0,0,0,0.08);
+      position: relative;
+      transition: all 0.25s ease;
+    }
+
+    .player-card.active-turn {
+      border-color: #111;
+      background: #ffffff;
+      box-shadow: 0 0 0 2px #333, 3px 4px 0px rgba(0,0,0,0.15);
+      transform: scale(1.03) rotate(-0.5deg);
+    }
+
+    .player-card.active-turn::after {
+      content: "TURN";
+      position: absolute;
+      top: -9px;
+      right: 12px;
+      background: #2b2b2b;
+      color: #fff;
+      font-size: 10px;
+      letter-spacing: 0.8px;
+      font-family: 'Architects Daughter', cursive;
+      padding: 1px 6px;
+      border-radius: 6px;
+      line-height: 1.2;
+    }
+
+    .avatar-icon {
+      width: 26px;
+      height: 26px;
+      stroke: var(--pencil);
+      stroke-width: 2;
+      fill: none;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .player-info {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .player-name {
+      font-size: 15px;
+      font-weight: 700;
+      line-height: 1;
+      color: var(--pencil-light);
+    }
+
+    .player-score {
+      font-family: 'Caveat', cursive;
+      font-size: 26px;
+      font-weight: 700;
+      line-height: 0.9;
+      color: var(--pencil);
+    }
+
+    .vs-badge {
+      font-family: 'Caveat', cursive;
+      font-size: 22px;
+      font-weight: 700;
+      color: var(--pencil-light);
+      position: relative;
+      padding: 0 4px;
+    }
+    .vs-badge::before { content: "—"; margin-right: 3px; }
+    .vs-badge::after { content: "—"; margin-left: 3px; }
+
+    /* Mega Board Container */
+    .mega-board-container {
+      flex: 1;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 6px 14px;
+      position: relative;
+    }
+
+    .mega-board {
+      width: 100%;
+      aspect-ratio: 1 / 1;
+      max-width: 360px;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      grid-template-rows: repeat(3, 1fr);
+      gap: 7px;
+      background: transparent;
+      position: relative;
+    }
+
+    /* Hand-drawn sketch lines for 3x3 mega grid */
+    .mega-board::before {
+      content: "";
+      position: absolute;
+      inset: -4px;
+      border: 3px solid var(--pencil);
+      border-radius: 12px;
+      pointer-events: none;
+      box-shadow: 2px 2px 0px rgba(0,0,0,0.1);
+    }
+
+    /* Mini Board */
+    .mini-board {
+      background: rgba(255, 255, 255, 0.45);
+      border: 2px solid #555;
+      border-radius: 8px;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      grid-template-rows: repeat(3, 1fr);
+      position: relative;
+      transition: all 0.2s ease;
+      overflow: hidden;
+    }
+
+    .mini-board.active-playable {
+      background: rgba(255, 248, 220, 0.85);
+      border: 2.5px solid #111;
+      box-shadow: 0 0 0 2px rgba(0,0,0,0.15), inset 0 0 10px rgba(255, 215, 0, 0.25);
+      animation: gentlePencilGlow 2s infinite alternate;
+    }
+
+    @keyframes gentlePencilGlow {
+      0% { box-shadow: 0 0 0 2px rgba(40,40,40,0.2), inset 0 0 4px rgba(0,0,0,0.05); }
+      100% { box-shadow: 0 0 0 3px rgba(40,40,40,0.4), inset 0 0 12px rgba(255, 200, 50, 0.35); }
+    }
+
+    .mini-board.inactive {
+      opacity: 0.72;
+    }
+
+    /* Cells */
+    .cell {
+      border: 1px dashed rgba(80, 80, 80, 0.38);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      cursor: pointer;
+      position: relative;
+      transition: background-color 0.15s;
+    }
+
+    .cell:hover {
+      background: rgba(0, 0, 0, 0.04);
+    }
+
+    .cell.clickable-spot {
+      cursor: pointer;
+    }
+    .cell.clickable-spot:hover {
+      background: rgba(0, 0, 0, 0.08);
+    }
+
+    /* Pencil Markings inside Cell */
+    .cell svg {
+      width: 78%;
+      height: 78%;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      filter: drop-shadow(0.5px 0.5px 0px rgba(0,0,0,0.2));
+    }
+
+    .cell svg.mark-x {
+      stroke: var(--x-color);
+      stroke-width: 3.8;
+      animation: drawStroke 0.2s ease-out forwards;
+    }
+
+    .cell svg.mark-o {
+      stroke: var(--o-color);
+      stroke-width: 3.5;
+      fill: none;
+      animation: drawStroke 0.22s ease-out forwards;
+    }
+
+    @keyframes drawStroke {
+      0% { transform: scale(0.4) rotate(-10deg); opacity: 0; }
+      70% { transform: scale(1.1) rotate(3deg); }
+      100% { transform: scale(1) rotate(0deg); opacity: 1; }
+    }
+
+    /* Won Mini Board Overlay */
+    .mini-board-overlay {
+      position: absolute;
+      inset: 0;
+      background: rgba(247, 245, 240, 0.92);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 5;
+      border-radius: 6px;
+      animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+    }
+
+    .mini-board-overlay svg {
+      width: 78%;
+      height: 78%;
+      stroke-width: 4.5;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .mini-board-overlay.draw {
+      font-size: 26px;
+      font-weight: 700;
+      color: var(--pencil-light);
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      font-family: 'Caveat', cursive;
+    }
+
+    @keyframes popIn {
+      0% { transform: scale(0.3); opacity: 0; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+
+    /* Hint / Instruction Banner */
+    .hint-section {
+      padding: 0 16px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      margin-bottom: 6px;
+    }
+
+    .hint-banner {
+      width: 100%;
+      background: #fdfcf7;
+      border: 2px solid var(--pencil);
+      border-radius: 12px;
+      padding: 7px 12px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      position: relative;
+      box-shadow: 2px 2px 0px rgba(0,0,0,0.08);
+      font-size: 15px;
+      line-height: 1.25;
+      color: var(--pencil);
+      text-align: center;
+      justify-content: center;
+    }
+
+    /* Lightbulb Doodle */
+    .lightbulb-icon {
+      width: 22px;
+      height: 22px;
+      flex-shrink: 0;
+      stroke: var(--pencil);
+      fill: none;
+      stroke-width: 2;
+    }
+
+    .banner-text {
+      font-family: 'Architects Daughter', cursive;
+      font-size: 14px;
+      letter-spacing: -0.2px;
+    }
+
+    /* Bottom Button Controls */
+    .bottom-controls {
+      display: grid;
+      grid-template-columns: 78px 1fr 78px;
+      gap: 10px;
+      padding: 6px 18px 18px;
+      align-items: center;
+    }
+
+    .sketch-btn {
+      background: #fff;
+      border: 2.2px solid var(--pencil);
+      border-radius: 16px;
+      padding: 8px 6px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      gap: 2px;
+      cursor: pointer;
+      font-family: 'Patrick Hand', cursive;
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--pencil);
+      box-shadow: 2px 3px 0px rgba(0,0,0,0.1);
+      transition: all 0.15s ease;
+      touch-action: manipulation;
+    }
+
+    .sketch-btn:active {
+      transform: translate(2px, 2px);
+      box-shadow: 0px 0px 0px rgba(0,0,0,0);
+    }
+
+    .sketch-btn svg {
+      width: 22px;
+      height: 22px;
+      stroke: var(--pencil);
+      fill: none;
+      stroke-width: 2;
+    }
+
+    .sketch-btn.primary-btn {
+      background: #fdfdf9;
+      flex-direction: row;
+      gap: 8px;
+      padding: 12px 14px;
+      border-radius: 20px;
+      font-size: 20px;
+      font-family: 'Caveat', cursive;
+    }
+
+    .sketch-btn.primary-btn svg {
+      width: 24px;
+      height: 24px;
+    }
+
+    /* Overlays / Modals (Settings, Stats, Game Over) */
+    .modal-overlay {
+      position: absolute;
+      inset: 0;
+      background: rgba(30, 30, 30, 0.6);
+      backdrop-filter: blur(2px);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 50;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.25s ease;
+      padding: 20px;
+    }
+
+    .modal-overlay.open {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .modal-box {
+      background: var(--paper);
+      border: 3px solid var(--pencil);
+      border-radius: 22px;
+      width: 100%;
+      max-width: 340px;
+      padding: 20px;
+      box-shadow: 6px 8px 0px rgba(0,0,0,0.25);
+      position: relative;
+      transform: scale(0.9) translateY(10px);
+      transition: transform 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+
+    .modal-overlay.open .modal-box {
+      transform: scale(1) translateY(0);
+    }
+
+    .modal-title {
+      font-family: 'Caveat', cursive;
+      font-size: 32px;
+      text-align: center;
+      margin-bottom: 14px;
+      border-bottom: 2px dashed #999;
+      padding-bottom: 6px;
+    }
+
+    .modal-close {
+      position: absolute;
+      top: 12px;
+      right: 14px;
+      background: transparent;
+      border: none;
+      font-size: 24px;
+      font-weight: bold;
+      color: var(--pencil);
+      cursor: pointer;
+    }
+
+    .setting-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+      font-size: 18px;
+    }
+
+    .setting-select, .sketch-toggle {
+      border: 2px solid var(--pencil);
+      border-radius: 8px;
+      padding: 4px 8px;
+      background: #fff;
+      font-family: 'Patrick Hand', cursive;
+      font-size: 16px;
+      color: var(--pencil);
+      outline: none;
+    }
+
+    .stat-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+
+    .stat-card {
+      border: 1.5px solid var(--pencil);
+      background: #fff;
+      border-radius: 12px;
+      padding: 8px;
+      text-align: center;
+    }
+
+    .stat-val {
+      font-family: 'Caveat', cursive;
+      font-size: 30px;
+      font-weight: 700;
+    }
+
+    .stat-lbl {
+      font-size: 14px;
+      color: var(--pencil-light);
+    }
+
+    /* Win Banner Animation Modal */
+    .gameover-content {
+      text-align: center;
+    }
+
+    .gameover-crown {
+      width: 54px;
+      height: 42px;
+      margin: 0 auto 8px;
+      stroke: var(--pencil);
+      fill: none;
+      stroke-width: 2.5;
+    }
+
+    .gameover-winner {
+      font-family: 'Caveat', cursive;
+      font-size: 38px;
+      margin-bottom: 8px;
+    }
+
+    .gameover-subtitle {
+      font-size: 17px;
+      color: var(--pencil-light);
+      margin-bottom: 18px;
+    }
+
+    /* Small Screen adaptations */
+    @media (max-height: 720px) {
+      .phone-frame {
+        height: 98vh;
+        border-radius: 28px;
+      }
+      .game-title {
+        font-size: 34px;
+      }
+      .score-board {
+        padding: 4px 12px;
+      }
+      .player-card {
+        padding: 4px 10px;
+        min-width: 105px;
+      }
+      .player-score {
+        font-size: 22px;
+      }
+      .hint-banner {
+        padding: 4px 8px;
+      }
+      .bottom-controls {
+        padding: 4px 12px 10px;
+      }
+    }
+  </style>
 </head>
 <body>
-<div class="paper"></div>
-<div class="phone" id="phone">
-  <div class="notch"><i></i></div>
-  <div class="statusbar">
-    <span>9:41</span>
-    <span class="sig"><span style="width:3px;opacity:.4"></span><span style="width:3px;opacity:.6"></span><span style="width:3px;opacity:.9"></span><span style="width:4px"></span> <span style="margin-left:6px">◯</span> <span class="battery"><span style="position:absolute;inset:2px;background:#1e1e1e;border-radius:1px;width:70%"></span></span></span>
-  </div>
 
-  <div class="title">
-    <span class="ray l1">—</span><span class="ray l2">—</span><span class="ray l3">—</span>
-    <span class="ray r1">—</span><span class="ray r2">—</span><span class="ray r3">—</span>
-    <h1>Mega <span>tic-tac-toe</span></h1>
-    <div class="underline"></div>
-    <div class="crown">♔</div>
-  </div>
-
-  <div class="scoreRow">
-    <div class="pill" id="pillX">
-      <div class="ava">👤</div>
-      <div class="meta">
-        <div class="who" id="labelX">You (X)</div>
-        <div class="pts" id="scoreX">0</div>
+  <!-- Mockup Phone Container -->
+  <div class="phone-frame">
+    <!-- Status Bar -->
+    <div class="status-bar">
+      <span>9:41</span>
+      <div class="notch"></div>
+      <div class="status-icons">
+        <!-- Signal sketch -->
+        <svg width="14" height="12" viewBox="0 0 16 14" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M1 12h2 M5 9h2 M9 6h2 M13 2h2" stroke-linecap="round"/>
+        </svg>
+        <!-- Wifi sketch -->
+        <svg width="14" height="12" viewBox="0 0 16 14" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M1 4c4-4 10-4 14 0 M3.5 7.5c2.5-2.5 6.5-2.5 9 0 M6 11c1-1 3-1 4 0" stroke-linecap="round"/>
+        </svg>
+        <!-- Battery sketch -->
+        <svg width="18" height="11" viewBox="0 0 22 13" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="1" y="1" width="16" height="11" rx="2" />
+          <path d="M19 4v5" stroke-linecap="round" />
+          <rect x="3" y="3" width="9" height="7" fill="currentColor" />
+        </svg>
       </div>
     </div>
-    <div class="vs">vs</div>
-    <div class="pill" id="pillO">
-      <div class="ava" id="avaO">🤖</div>
-      <div class="meta">
-        <div class="who" id="labelO">Bot (O)</div>
-        <div class="pts" id="scoreO">0</div>
+
+    <!-- Header / Doodle Title -->
+    <div class="header-section">
+      <div class="title-wrapper">
+        <span class="spark-left">˗ˏˋ</span>
+        <h1 class="game-title">Mega<br>tic-tac-toe</h1>
+        <span class="spark-right">ˎˊ˗</span>
+        <!-- Doodle Crown -->
+        <svg class="crown-doodle" viewBox="0 0 40 30">
+          <path d="M4 24 L10 8 L20 18 L30 8 L36 24 Z" />
+          <circle cx="10" cy="7" r="2" fill="currentColor"/>
+          <circle cx="20" cy="17" r="2" fill="currentColor"/>
+          <circle cx="30" cy="7" r="2" fill="currentColor"/>
+        </svg>
+      </div>
+    </div>
+
+    <!-- Score & Turn Header -->
+    <div class="score-board">
+      <div class="player-card active-turn" id="card-x">
+        <svg class="avatar-icon" viewBox="0 0 24 24">
+          <path d="M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z" />
+          <path d="M4 21c0-4 4-6 8-6s8 2 8 6" />
+        </svg>
+        <div class="player-info">
+          <span class="player-name" id="name-x">You (X)</span>
+          <span class="player-score" id="score-x">0</span>
+        </div>
+      </div>
+
+      <div class="vs-badge">vs</div>
+
+      <div class="player-card" id="card-o">
+        <svg class="avatar-icon" viewBox="0 0 24 24">
+          <rect x="4" y="8" width="16" height="12" rx="3" />
+          <circle cx="9" cy="13" r="1.5" fill="currentColor"/>
+          <circle cx="15" cy="13" r="1.5" fill="currentColor"/>
+          <path d="M9 17h6" />
+          <path d="M12 4v4 M8 4h8" />
+        </svg>
+        <div class="player-info">
+          <span class="player-name" id="name-o">Bot (O)</span>
+          <span class="player-score" id="score-o">0</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Mega Board 3x3 Grid -->
+    <div class="mega-board-container">
+      <div class="mega-board" id="mega-board">
+        <!-- 9 Mini Boards generated via JS -->
+      </div>
+    </div>
+
+    <!-- Hint / Guidance Ribbon -->
+    <div class="hint-section">
+      <div class="hint-banner" id="hint-banner">
+        <svg class="lightbulb-icon" viewBox="0 0 24 24">
+          <path d="M9 18h6 M10 21h4 M12 3a7 7 0 0 0-5 11.9c.7.7 1 1.6 1 2.6v.5h8v-.5c0-1 .3-1.9 1-2.6A7 7 0 0 0 12 3z" />
+          <path d="M12 7v2 M8.5 8.5l1.4 1.4 M15.5 8.5l-1.4 1.4" stroke-linecap="round"/>
+        </svg>
+        <span class="banner-text" id="hint-text">Win mini boards to claim the big board!</span>
+      </div>
+    </div>
+
+    <!-- Bottom Controls: Settings, Restart, Stats -->
+    <div class="bottom-controls">
+      <button class="sketch-btn" id="btn-settings" title="Settings">
+        <svg viewBox="0 0 24 24">
+          <circle cx="12" cy="12" r="3"/>
+          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+        </svg>
+        <span>Settings</span>
+      </button>
+
+      <button class="sketch-btn primary-btn" id="btn-restart">
+        <svg viewBox="0 0 24 24">
+          <path d="M3 12a9 9 0 0 1 15-6.7L21 8"/>
+          <path d="M21 3v5h-5"/>
+          <path d="M21 12a9 9 0 0 1-15 6.7L3 16"/>
+          <path d="M3 21v-5h5"/>
+        </svg>
+        <span>Restart</span>
+      </button>
+
+      <button class="sketch-btn" id="btn-stats" title="Stats">
+        <svg viewBox="0 0 24 24">
+          <path d="M18 20V10 M12 20V4 M6 20v-6" stroke-linecap="round"/>
+          <path d="M3 20h18" stroke-linecap="round"/>
+        </svg>
+        <span>Stats</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Settings Modal -->
+  <div class="modal-overlay" id="modal-settings">
+    <div class="modal-box">
+      <button class="modal-close" data-close="settings">&times;</button>
+      <h2 class="modal-title">Game Settings</h2>
+      
+      <div class="setting-row">
+        <span>Game Mode</span>
+        <select class="setting-select" id="mode-select">
+          <option value="bot">Vs Bot</option>
+          <option value="pvp">Pass & Play (2P)</option>
+        </select>
+      </div>
+
+      <div class="setting-row" id="diff-row">
+        <span>Bot Difficulty</span>
+        <select class="setting-select" id="bot-difficulty">
+          <option value="easy">Easy</option>
+          <option value="medium" selected>Medium</option>
+          <option value="hard">Hard (Master)</option>
+        </select>
+      </div>
+
+      <div class="setting-row">
+        <span>Sound Effects</span>
+        <select class="setting-select" id="sound-toggle">
+          <option value="on">On (Pencil SFX)</option>
+          <option value="off">Mute</option>
+        </select>
+      </div>
+
+      <div class="setting-row">
+        <span>Start As</span>
+        <select class="setting-select" id="start-player">
+          <option value="X">Player X (First)</option>
+          <option value="O">Player O (Second)</option>
+        </select>
+      </div>
+
+      <div style="margin-top: 18px; text-align: center;">
+        <button class="sketch-btn primary-btn" style="width: 100%; justify-content: center;" id="settings-save-btn">
+          <span>Save & Apply</span>
+        </button>
       </div>
     </div>
   </div>
 
-  <div class="turnInfo" id="turnInfo"></div>
-  <div class="mega" id="megaBoard"></div>
-
-  <div class="tip" id="tip"><i>💡</i><span id="tipText">Win mini boards to claim the big board!</span></div>
-
-  <div class="controls">
-    <button class="cbtn" id="btnSettings"><span class="ico">⚙︎</span>Settings</button>
-    <button class="cbtn primary" id="btnRestart"><span class="ico">↻</span>Restart</button>
-    <button class="cbtn" id="btnStats"><span class="ico">▅▃▇</span>Stats</button>
-  </div>
-  <div class="homeBar"></div>
-
-  <!-- START MODAL -->
-  <div class="modal" id="startModal">
-    <div class="card" style="transform:rotate(-1deg)">
-      <h2>Mega Tic-Tac-Toe</h2>
-      <p style="font-family:'Architects Daughter',cursive">Win <b>3 mini boards in a row</b> to claim the mega board!<br>The cell you pick decides where your opponent must play next.</p>
-      <div style="text-align:left;background:#fffef0;border:1.6px dashed #1e1e1e;border-radius:10px;padding:8px 10px;font-size:12.5px;margin:10px 0">
-        <b>Send Rule:</b> <span style="font-family:monospace;background:#fff;padding:1px 4px;border:1px solid #ddd;border-radius:4px">nextBoard = cellIndex</span><br>
-        • Highlighted board = must play there<br>
-        • If that board is won/draw, you get a <b>FREE MOVE</b>
+  <!-- Stats Modal -->
+  <div class="modal-overlay" id="modal-stats">
+    <div class="modal-box">
+      <button class="modal-close" data-close="stats">&times;</button>
+      <h2 class="modal-title">Pencil Stats</h2>
+      
+      <div class="stat-grid">
+        <div class="stat-card">
+          <div class="stat-val" id="stat-wins">0</div>
+          <div class="stat-lbl">Wins</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-val" id="stat-losses">0</div>
+          <div class="stat-lbl">Losses</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-val" id="stat-draws">0</div>
+          <div class="stat-lbl">Draws</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-val" id="stat-streak">0</div>
+          <div class="stat-lbl">Current Streak</div>
+        </div>
       </div>
-      <div class="row">
-        <button class="btn primary" id="playBot">Play vs Bot</button>
-        <button class="btn" id="playFriend">Pass & Play</button>
-      </div>
-      <p style="font-size:11px;opacity:.6;margin-top:8px">81 cells • Unlimited depth • No pay-to-win</p>
+
+      <button class="sketch-btn" style="width: 100%; padding: 8px;" id="btn-reset-stats">Reset Stats</button>
     </div>
   </div>
 
-  <!-- GAME OVER -->
-  <div class="modal hidden" id="overModal">
-    <div class="card" id="overCard">
-      <h2 id="overTitle">X Wins!</h2>
-      <p id="overDesc"></p>
-      <div class="grid2" id="overStats"></div>
-      <div class="row">
-        <button class="btn primary" id="btnRematch">Rematch</button>
-        <button class="btn" id="btnHome">Menu</button>
-      </div>
+  <!-- Game Over Modal -->
+  <div class="modal-overlay" id="modal-gameover">
+    <div class="modal-box gameover-content">
+      <svg class="gameover-crown" viewBox="0 0 40 30">
+        <path d="M4 24 L10 8 L20 18 L30 8 L36 24 Z" />
+        <circle cx="10" cy="7" r="2" fill="currentColor"/>
+        <circle cx="20" cy="17" r="2" fill="currentColor"/>
+        <circle cx="30" cy="7" r="2" fill="currentColor"/>
+      </svg>
+      <h2 class="gameover-winner" id="winner-title">You Won!</h2>
+      <p class="gameover-subtitle" id="winner-desc">Claimed 3 mini boards in a row!</p>
+      <button class="sketch-btn primary-btn" style="width: 100%; justify-content: center;" id="btn-play-again">
+        <svg viewBox="0 0 24 24">
+          <path d="M3 12a9 9 0 0 1 15-6.7L21 8"/>
+          <path d="M21 3v5h-5"/>
+          <path d="M21 12a9 9 0 0 1-15 6.7L3 16"/>
+          <path d="M3 21v-5h5"/>
+        </svg>
+        <span>Play Again</span>
+      </button>
     </div>
   </div>
 
-  <!-- SETTINGS -->
-  <div class="modal hidden" id="settingsModal">
-    <div class="card">
-      <h2>Settings</h2>
-      <div class="toggle"><span>Mode</span><select id="modeSel" class="sel" style="width:150px;margin:0"><option value="bot">vs Bot (You=X)</option><option value="pvp">Pass & Play</option></select></div>
-      <div class="toggle"><span>Bot Difficulty</span><select id="diffSel" class="sel" style="width:150px;margin:0"><option>Beginner</option><option>Easy</option><option selected>Medium</option><option>Hard</option><option>Expert</option></select></div>
-      <label class="toggle"><span>🔊 Sound</span><input type="checkbox" id="soundChk" checked></label>
-      <label class="toggle"><span>📳 Haptics</span><input type="checkbox" id="hapChk" checked></label>
-      <label class="toggle"><span>✨ Highlight legal boards</span><input type="checkbox" id="hilChk" checked></label>
-      <label class="toggle"><span>Confirm move (tap twice)</span><input type="checkbox" id="confirmChk"></label>
-      <div class="row">
-        <button class="btn primary" id="closeSettings">Done</button>
-        <button class="btn" id="resetScores">Reset Scores</button>
-      </div>
-    </div>
-  </div>
+  <script>
+    /* =========================================================
+       AUDIO SYNTHESIS (Web Audio API - Pencil & Paper sounds)
+       ========================================================= */
+    const SoundManager = {
+      ctx: null,
+      enabled: true,
 
-  <!-- STATS -->
-  <div class="modal hidden" id="statsModal">
-    <div class="card">
-      <h2>Stats</h2>
-      <div class="grid2">
-        <div class="sbox"><span style="font-size:11px;opacity:.7">GAMES</span><b id="stGames">0</b></div>
-        <div class="sbox"><span style="font-size:11px;opacity:.7">WIN RATE</span><b id="stRate">0%</b></div>
-        <div class="sbox"><span style="font-size:11px;opacity:.7">X WINS</span><b id="stX">0</b></div>
-        <div class="sbox"><span style="font-size:11px;opacity:.7">O WINS</span><b id="stO">0</b></div>
-        <div class="sbox"><span style="font-size:11px;opacity:.7">DRAWS</span><b id="stD">0</b></div>
-        <div class="sbox"><span style="font-size:11px;opacity:.7">MINI BOARDS WON</span><b id="stMini">0</b></div>
-      </div>
-      <p id="stExtra" style="font-size:12px;opacity:.7"></p>
-      <div class="row"><button class="btn primary" id="closeStats">Close</button><button class="btn" id="clearStats">Clear</button></div>
-    </div>
-  </div>
+      init() {
+        if (!this.ctx) {
+          const AudioContext = window.AudioContext || window.webkitAudioContext;
+          this.ctx = new AudioContext();
+        }
+        if (this.ctx && this.ctx.state === 'suspended') {
+          this.ctx.resume();
+        }
+      },
 
-</div>
+      playPencilScratch(type = 'X') {
+        if (!this.enabled) return;
+        this.init();
+        if (!this.ctx) return;
 
-<script>
-const WIN = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
-let board = Array.from({length:9},()=>Array(9).fill(null));
-let mini = Array(9).fill('OPEN');
-let cur='X', required=null, over=false, winner=null, vsBot=true, diff='Medium', soundOn=true, hapOn=true, highlightOn=true, confirmMove=false;
-let pendingConfirm=null;
-let scoreX=0, scoreO=0, draws=0;
-let games=0, miniWon=0, history=[];
-let audioCtx=null;
+        const now = this.ctx.currentTime;
+        
+        // Generate realistic pencil graphite scratch sound using filtered noise
+        const bufferSize = this.ctx.sampleRate * 0.12;
+        const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+        const data = buffer.getChannelData(0);
+        for (let i = 0; i < bufferSize; i++) {
+          data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (bufferSize * 0.45));
+        }
 
-const names = ['Top-Left','Top-Centre','Top-Right','Mid-Left','Centre','Mid-Right','Bot-Left','Bot-Centre','Bot-Right'];
+        const noise = this.ctx.createBufferSource();
+        noise.buffer = buffer;
 
-function ac(){ if(!audioCtx) audioCtx=new (window.AudioContext||window.webkitAudioContext)(); if(audioCtx.state==='suspended') audioCtx.resume(); }
-function tone(f,d,t='sine',v=.18){ if(!soundOn) return; try{ac(); const o=audioCtx.createOscillator(), g=audioCtx.createGain(); o.type=t; o.frequency.value=f; g.gain.value=v; o.connect(g); g.connect(audioCtx.destination); o.start(); g.gain.exponentialRampToValueAtTime(.01, audioCtx.currentTime+d); o.stop(audioCtx.currentTime+d);}catch(e){}}
-function haptic(ms=20){ if(hapOn && navigator.vibrate) navigator.vibrate(ms); }
+        // Bandpass filter for distinct pencil on paper texture
+        const filter = this.ctx.createBiquadFilter();
+        filter.type = 'bandpass';
+        filter.frequency.setValueAtTime(type === 'X' ? 2200 : 1600, now);
+        filter.Q.setValueAtTime(3.0, now);
 
-function checkMini(b){
-  const c=board[b];
-  for(let l of WIN){ const [a,b1,c1]=l; if(c[a]&&c[a]===c[b1]&&c[a]===c[c1]) return c[a]; }
-  return null;
-}
-function isFull(b){ return board[b].every(v=>v!==null); }
-function checkMega(){
-  const m=mini.map(s=> s==='X_WON'?'X': s==='O_WON'?'O':null);
-  for(let l of WIN){ const [a,b,c]=l; if(m[a]&&m[a]===m[b]&&m[a]===m[c]) return {w:m[a], line:l}; }
-  return null;
-}
-function legalMoves(){
-  let res=[];
-  if(required!==null && mini[required]==='OPEN'){
-    for(let c=0;c<9;c++) if(board[required][c]===null) res.push({b:required,c});
-  } else {
-    for(let b=0;b<9;b++) if(mini[b]==='OPEN') for(let c=0;c<9;c++) if(board[b][c]===null) res.push({b,c});
-  }
-  return res;
-}
-function isLegal(b,c){
-  if(over) return false;
-  if(mini[b]!=='OPEN') return false;
-  if(board[b][c]!==null) return false;
-  if(required!==null && mini[required]==='OPEN') return b===required;
-  return true;
-}
+        const gain = this.ctx.createGain();
+        gain.gain.setValueAtTime(0.35, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.12);
 
-function render(){
-  const mega=document.getElementById('megaBoard');
-  mega.innerHTML='';
-  for(let b=0;b<9;b++){
-    const box=document.createElement('div');
-    box.className='mini';
-    box.dataset.b=b;
-    if(mini[b]==='X_WON' || mini[b]==='O_WON' || mini[b]==='DRAW') box.classList.add('won');
-    let active=false;
-    if(!over && mini[b]==='OPEN'){
-      if(required!==null){ if(b===required) active=true; }
-      else active=true;
-    }
-    if(active && highlightOn) box.classList.add('active');
-    else if(!active && mini[b]==='OPEN' && !over) box.classList.add('inactive');
+        noise.connect(filter);
+        filter.connect(gain);
+        gain.connect(this.ctx.destination);
+        noise.start(now);
+      },
 
-    // cells
-    for(let c=0;c<9;c++){
-      const cell=document.createElement('button');
-      cell.className='cell';
-      cell.dataset.b=b; cell.dataset.c=c;
-      const v=board[b][c];
-      if(v==='X') cell.innerHTML='<span class="markX">X</span>';
-      else if(v==='O') cell.innerHTML='<span class="markO"></span>';
-      // highlight winning cells inside mini
-      if(mini[b]!=='OPEN' && v){
-        // check if part of winning line
-        const w = getMiniWinLine(b);
-        if(w && w.includes(c)) cell.classList.add('winCell');
+      playBoardWin() {
+        if (!this.enabled) return;
+        this.init();
+        if (!this.ctx) return;
+
+        // Upbeat harmonic paper ding
+        const notes = [440, 554.37, 659.25];
+        notes.forEach((freq, idx) => {
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          const startTime = this.ctx.currentTime + idx * 0.07;
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(freq, startTime);
+          gain.gain.setValueAtTime(0.2, startTime);
+          gain.gain.exponentialRampToValueAtTime(0.001, startTime + 0.35);
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start(startTime);
+          osc.stop(startTime + 0.36);
+        });
+      },
+
+      playMegaWin() {
+        if (!this.enabled) return;
+        this.init();
+        if (!this.ctx) return;
+
+        // Glorious fanfare
+        const chord = [392, 523.25, 659.25, 783.99, 1046.50];
+        chord.forEach((freq, idx) => {
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          const startTime = this.ctx.currentTime + idx * 0.09;
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(freq, startTime);
+          gain.gain.setValueAtTime(0.28, startTime);
+          gain.gain.exponentialRampToValueAtTime(0.001, startTime + 0.6);
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start(startTime);
+          osc.stop(startTime + 0.65);
+        });
       }
-      cell.disabled = !!v;
-      cell.addEventListener('click',()=>onCell(b,c));
-      cell.addEventListener('mouseenter',()=>previewDest(c));
-      cell.addEventListener('mouseleave',()=>previewDest(null));
-      box.appendChild(cell);
+    };
+
+    /* =========================================================
+       GAME STATE & RULES ENGINE
+       ========================================================= */
+    const WINNING_LINES = [
+      [0, 1, 2], [3, 4, 5], [6, 7, 8], // Rows
+      [0, 3, 6], [1, 4, 7], [2, 5, 8], // Cols
+      [0, 4, 8], [2, 4, 6]             // Diagonals
+    ];
+
+    const BOARD_POS_NAMES = [
+      "Top-Left", "Top-Center", "Top-Right",
+      "Mid-Left", "Center", "Mid-Right",
+      "Bottom-Left", "Bottom-Center", "Bottom-Right"
+    ];
+
+    let state = {
+      // 9 mini boards, each with 9 cells: null, 'X', or 'O'
+      board: Array(9).fill(null).map(() => Array(9).fill(null)),
+      // Resolved status for 9 mini boards: null, 'X', 'O', or 'DRAW'
+      miniWins: Array(9).fill(null),
+      // Active required mini board index (0-8) or null for any free move
+      activeBoard: null,
+      // Current player: 'X' or 'O'
+      turn: 'X',
+      // Game state: 'PLAYING', 'OVER'
+      status: 'PLAYING',
+      winner: null, // 'X', 'O', 'DRAW'
+      // Mode & Settings
+      mode: 'bot', // 'bot' or 'pvp'
+      botDifficulty: 'medium', // 'easy', 'medium', 'hard'
+      scores: { X: 0, O: 0 },
+      streak: 0
+    };
+
+    // Load saved stats
+    let stats = {
+      wins: 0,
+      losses: 0,
+      draws: 0,
+      streak: 0
+    };
+    try {
+      const saved = localStorage.getItem('mega_ttt_stats');
+      if (saved) stats = JSON.parse(saved);
+    } catch(e) {}
+
+    /* =========================================================
+       DOM ELEMENTS
+       ========================================================= */
+    const megaBoardEl = document.getElementById('mega-board');
+    const hintTextEl = document.getElementById('hint-text');
+    const cardX = document.getElementById('card-x');
+    const cardO = document.getElementById('card-o');
+    const nameXEl = document.getElementById('name-x');
+    const nameOEl = document.getElementById('name-o');
+    const scoreXEl = document.getElementById('score-x');
+    const scoreOEl = document.getElementById('score-o');
+
+    const modalSettings = document.getElementById('modal-settings');
+    const modalStats = document.getElementById('modal-stats');
+    const modalGameOver = document.getElementById('modal-gameover');
+    const winnerTitle = document.getElementById('winner-title');
+    const winnerDesc = document.getElementById('winner-desc');
+
+    const modeSelect = document.getElementById('mode-select');
+    const diffRow = document.getElementById('diff-row');
+    const botDiffSelect = document.getElementById('bot-difficulty');
+    const soundToggle = document.getElementById('sound-toggle');
+    const startPlayerSelect = document.getElementById('start-player');
+
+    /* =========================================================
+       DRAWING SVG HELPERS
+       ========================================================= */
+    function getXMarkSvg() {
+      // Hand-sketched natural crossed lines
+      return `
+        <svg class="mark-x" viewBox="0 0 40 40">
+          <path d="M 9 9 Q 20 20 31 31" />
+          <path d="M 31 9 Q 20 20 9 31" />
+        </svg>
+      `;
     }
-    if(mini[b]!=='OPEN'){
-      const ov=document.createElement('div');
-      ov.className='miniOverlay';
-      if(mini[b]==='X_WON') ov.innerHTML='<span class="bigX">X</span>';
-      else if(mini[b]==='O_WON') ov.innerHTML='<div class="bigO"></div>';
-      else ov.innerHTML='<span class="bigD">DRAW</span>';
-      box.appendChild(ov);
+
+    function getOMarkSvg() {
+      // Hand-sketched circle with overlap loop
+      return `
+        <svg class="mark-o" viewBox="0 0 40 40">
+          <path d="M 20 8 C 30 8, 33 22, 28 29 C 23 35, 12 34, 9 26 C 6 18, 12 8, 22 8" />
+        </svg>
+      `;
     }
-    mega.appendChild(box);
-  }
-  // mega win highlight
-  const mw=checkMega();
-  if(over && mw){
-    mw.line.forEach(idx=>{
-      const el=mega.children[idx];
-      if(el) el.classList.add('megaWin');
+
+    function getBigMarkSvg(winner) {
+      if (winner === 'X') {
+        return `
+          <svg viewBox="0 0 80 80" style="stroke: #1e293b; stroke-width: 7; fill: none;">
+            <path d="M 16 16 Q 40 40 64 64" />
+            <path d="M 64 16 Q 40 40 16 64" />
+          </svg>
+        `;
+      } else if (winner === 'O') {
+        return `
+          <svg viewBox="0 0 80 80" style="stroke: #1e293b; stroke-width: 6.5; fill: none;">
+            <path d="M 40 14 C 62 14, 66 44, 58 58 C 50 70, 24 68, 18 52 C 12 36, 24 14, 44 14" />
+          </svg>
+        `;
+      }
+      return '';
+    }
+
+    /* =========================================================
+       INITIALIZE & RENDER BOARD
+       ========================================================= */
+    function initMegaBoard() {
+      megaBoardEl.innerHTML = '';
+      for (let b = 0; b < 9; b++) {
+        const miniEl = document.createElement('div');
+        miniEl.className = 'mini-board';
+        miniEl.dataset.board = b;
+
+        for (let c = 0; c < 9; c++) {
+          const cellEl = document.createElement('div');
+          cellEl.className = 'cell';
+          cellEl.dataset.board = b;
+          cellEl.dataset.cell = c;
+
+          cellEl.addEventListener('click', () => handleCellClick(b, c));
+          miniEl.appendChild(cellEl);
+        }
+        megaBoardEl.appendChild(miniEl);
+      }
+    }
+
+    function check3x3Winner(arr) {
+      for (let line of WINNING_LINES) {
+        const [a, b, c] = line;
+        if (arr[a] && arr[a] === arr[b] && arr[a] === arr[c]) {
+          return arr[a];
+        }
+      }
+      if (arr.every(cell => cell !== null)) {
+        return 'DRAW';
+      }
+      return null;
+    }
+
+    function isLegalMove(boardIndex, cellIndex) {
+      if (state.status !== 'PLAYING') return false;
+      // Cell already taken?
+      if (state.board[boardIndex][cellIndex] !== null) return false;
+      // Mini board already resolved?
+      if (state.miniWins[boardIndex] !== null) return false;
+
+      // If activeBoard is defined and unresolved, must play in activeBoard
+      if (state.activeBoard !== null && state.miniWins[state.activeBoard] === null) {
+        return boardIndex === state.activeBoard;
+      }
+
+      // Free Move rule: can play in any unresolved mini board
+      return state.miniWins[boardIndex] === null;
+    }
+
+    function handleCellClick(boardIndex, cellIndex) {
+      SoundManager.init();
+
+      if (state.mode === 'bot' && state.turn === 'O') return; // Not player's turn
+      if (!isLegalMove(boardIndex, cellIndex)) return;
+
+      executeMove(boardIndex, cellIndex);
+
+      // Trigger bot turn if vs bot
+      if (state.status === 'PLAYING' && state.mode === 'bot' && state.turn === 'O') {
+        setTimeout(botMove, 450);
+      }
+    }
+
+    function executeMove(bIdx, cIdx) {
+      const player = state.turn;
+      state.board[bIdx][cIdx] = player;
+
+      SoundManager.playPencilScratch(player);
+
+      // Check if this move resolved the mini board
+      const miniResult = check3x3Winner(state.board[bIdx]);
+      if (miniResult) {
+        state.miniWins[bIdx] = miniResult;
+        if (miniResult !== 'DRAW') {
+          SoundManager.playBoardWin();
+        }
+      }
+
+      // Check if Mega Board is won
+      const megaResult = check3x3Winner(state.miniWins);
+      if (megaResult) {
+        endGame(megaResult);
+        updateUI();
+        return;
+      }
+
+      // Determine next board send rule:
+      // Target board is determined by cellIndex
+      if (state.miniWins[cIdx] === null) {
+        state.activeBoard = cIdx;
+      } else {
+        // Target board is resolved -> Free Move
+        state.activeBoard = null;
+      }
+
+      // Switch turn
+      state.turn = (player === 'X') ? 'O' : 'X';
+
+      updateUI();
+    }
+
+    /* =========================================================
+       UI UPDATER & ANIMATIONS
+       ========================================================= */
+    function updateUI() {
+      // 1. Update player active turn cards
+      if (state.turn === 'X') {
+        cardX.classList.add('active-turn');
+        cardO.classList.remove('active-turn');
+      } else {
+        cardO.classList.add('active-turn');
+        cardX.classList.remove('active-turn');
+      }
+
+      // 2. Update mini boards & cells
+      for (let b = 0; b < 9; b++) {
+        const miniEl = megaBoardEl.children[b];
+        const isResolved = state.miniWins[b] !== null;
+
+        // Is this board playable right now?
+        let isPlayable = false;
+        if (state.status === 'PLAYING' && !isResolved) {
+          if (state.activeBoard === null || state.activeBoard === b) {
+            isPlayable = true;
+          }
+        }
+
+        miniEl.classList.toggle('active-playable', isPlayable);
+        miniEl.classList.toggle('inactive', !isPlayable && !isResolved);
+
+        // Update cells inside mini board
+        for (let c = 0; c < 9; c++) {
+          const cellEl = miniEl.children[c];
+          const val = state.board[b][c];
+
+          // Set markings if empty
+          if (val && cellEl.children.length === 0) {
+            cellEl.innerHTML = (val === 'X') ? getXMarkSvg() : getOMarkSvg();
+          }
+
+          cellEl.classList.toggle('clickable-spot', isPlayable && val === null);
+        }
+
+        // Overlay for completed mini board
+        let overlay = miniEl.querySelector('.mini-board-overlay');
+        if (isResolved) {
+          if (!overlay) {
+            overlay = document.createElement('div');
+            overlay.className = 'mini-board-overlay';
+            if (state.miniWins[b] === 'DRAW') {
+              overlay.classList.add('draw');
+              overlay.innerText = 'DRAW';
+            } else {
+              overlay.innerHTML = getBigMarkSvg(state.miniWins[b]);
+            }
+            miniEl.appendChild(overlay);
+          }
+        } else if (overlay) {
+          overlay.remove();
+        }
+      }
+
+      // 3. Update Hint / Ribbon Message
+      updateHintBanner();
+    }
+
+    function updateHintBanner() {
+      if (state.status === 'OVER') {
+        if (state.winner === 'DRAW') {
+          hintTextEl.textContent = "Draw game! Both played brilliantly.";
+        } else if (state.mode === 'bot') {
+          hintTextEl.textContent = state.winner === 'X' ? "Victory! You defeated the Bot!" : "Bot claimed 3 in a row. Try again!";
+        } else {
+          hintTextEl.textContent = `Player ${state.winner} Wins the Mega Board!`;
+        }
+        return;
+      }
+
+      const turnName = (state.mode === 'bot') 
+        ? (state.turn === 'X' ? "Your turn" : "Bot is thinking...")
+        : (state.turn === 'X' ? "Player X's turn" : "Player O's turn");
+
+      if (state.activeBoard === null) {
+        hintTextEl.textContent = `${turnName}: Free Move! Pick ANY open board!`;
+      } else {
+        const boardName = BOARD_POS_NAMES[state.activeBoard];
+        hintTextEl.textContent = `${turnName}: Must play in ${boardName}!`;
+      }
+    }
+
+    /* =========================================================
+       BOT AI ENGINE (Easy, Medium, Hard)
+       ========================================================= */
+    function botMove() {
+      if (state.status !== 'PLAYING') return;
+
+      const legalMoves = [];
+      for (let b = 0; b < 9; b++) {
+        for (let c = 0; c < 9; c++) {
+          if (isLegalMove(b, c)) {
+            legalMoves.push({ b, c });
+          }
+        }
+      }
+
+      if (legalMoves.length === 0) return;
+
+      let chosenMove = null;
+
+      if (state.botDifficulty === 'easy') {
+        // Random selection with 25% chance of instant win
+        const winningMove = findMiniWinningMove(legalMoves, 'O');
+        if (winningMove && Math.random() < 0.3) {
+          chosenMove = winningMove;
+        } else {
+          chosenMove = legalMoves[Math.floor(Math.random() * legalMoves.length)];
+        }
+      } 
+      else if (state.botDifficulty === 'medium') {
+        // Heuristic:
+        // 1. Win mini board immediately
+        // 2. Block player X from winning mini board
+        // 3. Avoid sending opponent to a free move or easily winnable board
+        // 4. Prefer center of mini board
+        chosenMove = findBestMediumMove(legalMoves);
+      } 
+      else {
+        // Hard AI: Evaluates mega-board wins, mini-wins, blocking mega-lines,
+        // and recursive send safety.
+        chosenMove = findBestHardMove(legalMoves);
+      }
+
+      if (chosenMove) {
+        executeMove(chosenMove.b, chosenMove.c);
+      }
+    }
+
+    function findMiniWinningMove(moves, player) {
+      for (let move of moves) {
+        const boardCopy = [...state.board[move.b]];
+        boardCopy[move.c] = player;
+        if (check3x3Winner(boardCopy) === player) {
+          return move;
+        }
+      }
+      return null;
+    }
+
+    function findBestMediumMove(moves) {
+      // 1. Win mini board
+      const winMove = findMiniWinningMove(moves, 'O');
+      if (winMove) return winMove;
+
+      // 2. Block opponent X from winning mini board
+      const blockMove = findMiniWinningMove(moves, 'X');
+      if (blockMove) return blockMove;
+
+      // 3. Filter moves that send opponent to a won board (which grants free move)
+      const safeMoves = moves.filter(m => state.miniWins[m.c] === null);
+      const pool = safeMoves.length > 0 ? safeMoves : moves;
+
+      // Prefer center (4) or corners (0, 2, 6, 8)
+      const centerMove = pool.find(m => m.c === 4);
+      if (centerMove && Math.random() < 0.6) return centerMove;
+
+      return pool[Math.floor(Math.random() * pool.length)];
+    }
+
+    function findBestHardMove(moves) {
+      let bestScore = -Infinity;
+      let candidateMoves = [];
+
+      for (let move of moves) {
+        let score = 0;
+
+        // Evaluate Mini-Board Impact
+        const miniCopy = [...state.board[move.b]];
+        miniCopy[move.c] = 'O';
+        const miniResult = check3x3Winner(miniCopy);
+
+        if (miniResult === 'O') {
+          // Does winning this mini board win the whole game?
+          const megaCopy = [...state.miniWins];
+          megaCopy[move.b] = 'O';
+          if (check3x3Winner(megaCopy) === 'O') {
+            return move; // INSTANT MEGA WIN
+          }
+          score += 150;
+
+          // Check if it creates 2-in-a-row on mega board
+          score += evaluateMegaLines(megaCopy, 'O') * 30;
+        } else {
+          // Check if this move blocks opponent from winning this mini board
+          const blockCopy = [...state.board[move.b]];
+          blockCopy[move.c] = 'X';
+          if (check3x3Winner(blockCopy) === 'X') {
+            score += 90;
+            // High bonus if that board was critical for opponent's mega-win
+            const oppMega = [...state.miniWins];
+            oppMega[move.b] = 'X';
+            if (check3x3Winner(oppMega) === 'X') {
+              score += 250;
+            }
+          }
+        }
+
+        // Evaluate Next Board (Send Rule penalty / reward)
+        const targetBoard = move.c;
+        if (state.miniWins[targetBoard] !== null) {
+          // Sending opponent to resolved board gives them a FREE MOVE! Heavy penalty
+          score -= 75;
+        } else {
+          // Check if target board allows opponent to immediately win that mini board
+          const oppCanWinTarget = canPlayerWinBoard(targetBoard, 'X');
+          if (oppCanWinTarget) {
+            score -= 60;
+          }
+        }
+
+        // Positional bias: mini-center
+        if (move.c === 4) score += 15;
+        // Mini-corners
+        if ([0, 2, 6, 8].includes(move.c)) score += 8;
+
+        if (score > bestScore) {
+          bestScore = score;
+          candidateMoves = [move];
+        } else if (score === bestScore) {
+          candidateMoves.push(move);
+        }
+      }
+
+      return candidateMoves[Math.floor(Math.random() * candidateMoves.length)];
+    }
+
+    function canPlayerWinBoard(boardIdx, player) {
+      const bState = state.board[boardIdx];
+      for (let c = 0; c < 9; c++) {
+        if (bState[c] === null) {
+          const testCopy = [...bState];
+          testCopy[c] = player;
+          if (check3x3Winner(testCopy) === player) return true;
+        }
+      }
+      return false;
+    }
+
+    function evaluateMegaLines(megaArr, player) {
+      let count = 0;
+      for (let line of WINNING_LINES) {
+        const marks = line.map(idx => megaArr[idx]);
+        const playerCount = marks.filter(m => m === player).length;
+        const emptyCount = marks.filter(m => m === null).length;
+        if (playerCount === 2 && emptyCount === 1) count++;
+      }
+      return count;
+    }
+
+    /* =========================================================
+       GAME OVER & RESTART
+       ========================================================= */
+    function endGame(winner) {
+      state.status = 'OVER';
+      state.winner = winner;
+
+      if (winner === 'DRAW') {
+        stats.draws++;
+        stats.streak = 0;
+        winnerTitle.textContent = "It's a Draw!";
+        winnerDesc.textContent = "All boards contested without a triple line!";
+      } else {
+        state.scores[winner]++;
+        scoreXEl.textContent = state.scores.X;
+        scoreOEl.textContent = state.scores.O;
+
+        if (state.mode === 'bot') {
+          if (winner === 'X') {
+            stats.wins++;
+            stats.streak++;
+            SoundManager.playMegaWin();
+            winnerTitle.textContent = "You Won!";
+            winnerDesc.textContent = "You claimed 3 mega boards in a row!";
+          } else {
+            stats.losses++;
+            stats.streak = 0;
+            winnerTitle.textContent = "Bot Won!";
+            winnerDesc.textContent = "Bot out-strategized the mega board!";
+          }
+        } else {
+          stats.wins++;
+          SoundManager.playMegaWin();
+          winnerTitle.textContent = `Player ${winner} Won!`;
+          winnerDesc.textContent = `Masterful alignment of 3 mini boards!`;
+        }
+      }
+
+      // Save stats
+      try {
+        localStorage.setItem('mega_ttt_stats', JSON.stringify(stats));
+      } catch(e) {}
+
+      updateStatsModal();
+
+      setTimeout(() => {
+        modalGameOver.classList.add('open');
+      }, 700);
+    }
+
+    function resetGame(keepScores = true) {
+      state.board = Array(9).fill(null).map(() => Array(9).fill(null));
+      state.miniWins = Array(9).fill(null);
+      state.activeBoard = null;
+      state.status = 'PLAYING';
+      state.winner = null;
+
+      const startingPlayer = startPlayerSelect.value || 'X';
+      state.turn = startingPlayer;
+
+      if (!keepScores) {
+        state.scores = { X: 0, O: 0 };
+        scoreXEl.textContent = "0";
+        scoreOEl.textContent = "0";
+      }
+
+      modalGameOver.classList.remove('open');
+      initMegaBoard();
+      updateUI();
+
+      if (state.mode === 'bot' && state.turn === 'O') {
+        setTimeout(botMove, 500);
+      }
+    }
+
+    /* =========================================================
+       MODALS & CONTROLS BINDING
+       ========================================================= */
+    document.getElementById('btn-restart').addEventListener('click', () => {
+      SoundManager.init();
+      resetGame(true);
     });
-  }
-  updateTurn();
-  document.getElementById('scoreX').textContent=scoreX;
-  document.getElementById('scoreO').textContent=scoreO;
-  document.getElementById('pillX').classList.toggle('active', !over && cur==='X');
-  document.getElementById('pillO').classList.toggle('active', !over && cur==='O');
-  if(vsBot){
-    document.getElementById('labelX').textContent='You (X)';
-    document.getElementById('labelO').textContent='Bot (O)';
-    document.getElementById('avaO').textContent='🤖';
-  } else {
-    document.getElementById('labelX').textContent='Player X';
-    document.getElementById('labelO').textContent='Player O';
-    document.getElementById('avaO').textContent='👥';
-  }
-}
 
-function getMiniWinLine(b){
-  const c=board[b];
-  for(let l of WIN){ const [a,b1,c1]=l; if(c[a]&&c[a]===c[b1]&&c[a]===c[c1]) return l; }
-  return null;
-}
-function previewDest(c){
-  if(c===null || over) return;
-  // subtle highlight of destination mini
-  document.querySelectorAll('.mini').forEach((el,i)=>{
-    el.style.outline = (i===c && mini[i]==='OPEN') ? '2px dashed #222' : '';
-    el.style.outlineOffset = '2px';
-  });
-  setTimeout(()=>document.querySelectorAll('.mini').forEach(el=>el.style.outline=''), 600);
-}
+    document.getElementById('btn-play-again').addEventListener('click', () => {
+      modalGameOver.classList.remove('open');
+      resetGame(true);
+    });
 
-function updateTurn(){
-  const el=document.getElementById('turnInfo');
-  const tip=document.getElementById('tipText');
-  if(over){
-    if(winner==='DRAW'){ el.innerHTML='<span class="badge">Match Draw</span> All boards resolved'; tip.textContent='No mega winner — it\'s a draw! Tap Rematch to play again.'; }
-    else { el.innerHTML=`<span class="badge" style="background:${winner==='X'?'#ffe55e':'#dbe8ff'};color:#1e1e1e;border:1.5px solid #1e1e1e">${winner} Wins the Mega Board!</span>`; tip.textContent=`${winner} claimed 3 mini boards in a row — Mega victory!`; }
-    return;
-  }
-  const free = (required===null || mini[required]!=='OPEN');
-  if(free){
-    el.innerHTML=`<span class="badge free">FREE MOVE</span> <b>${cur}'s turn</b> — play in any open board`;
-    tip.textContent = cur==='X' ? 'Free move! Choose any unresolved mini board.' : (vsBot ? 'Bot has a free move...' : 'Free move for O — any board!');
-  } else {
-    el.innerHTML=`<span class="badge your">${cur}'s turn</span> Must play in <b>${names[required]}</b> ${vsBot && cur==='O' ? '(Bot thinking…)' : ''}`;
-    tip.textContent = `Send rule: your cell decides the next board. Now → ${names[required]} board is highlighted.`;
-  }
-}
+    document.getElementById('btn-settings').addEventListener('click', () => {
+      SoundManager.init();
+      modalSettings.classList.add('open');
+    });
 
-function shakeBoard(b){
-  const el=document.querySelector(`.mini[data-b="${b}"]`);
-  if(!el) return;
-  el.classList.remove('shake'); void el.offsetWidth; el.classList.add('shake');
-  // also pulse legal boards
-  if(required!==null && mini[required]==='OPEN'){
-    const t=document.querySelector(`.mini[data-b="${required}"]`);
-    if(t){ t.classList.remove('shake'); void t.offsetWidth; t.classList.add('shake'); }
-  }
-  haptic(30);
-}
+    document.getElementById('btn-stats').addEventListener('click', () => {
+      SoundManager.init();
+      updateStatsModal();
+      modalStats.classList.add('open');
+    });
 
-function onCell(b,c){
-  if(over) return;
-  if(confirmMove){
-    if(pendingConfirm && pendingConfirm.b===b && pendingConfirm.c===c){
-      pendingConfirm=null;
-      doMove(b,c);
-    } else {
-      if(!isLegal(b,c)){ shakeBoard(b); tone(180,.18,'square',.15); return; }
-      pendingConfirm={b,c};
-      // visual confirm cue
-      document.querySelectorAll('.cell').forEach(el=>el.style.outline='');
-      const sel=document.querySelector(`.cell[data-b="${b}"][data-c="${c}"]`);
-      if(sel){ sel.style.outline='3px solid #ff3b30'; sel.style.outlineOffset='1px'; tone(900,.08,'sine',.12); }
-      setTimeout(()=>{ if(pendingConfirm && pendingConfirm.b===b && pendingConfirm.c===c){ pendingConfirm=null; document.querySelectorAll('.cell').forEach(el=>el.style.outline=''); }}, 1800);
-      return;
-    }
-  } else {
-    doMove(b,c);
-  }
-}
+    document.querySelectorAll('.modal-close').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const target = e.target.dataset.close;
+        if (target === 'settings') modalSettings.classList.remove('open');
+        if (target === 'stats') modalStats.classList.remove('open');
+      });
+    });
 
-function doMove(b,c){
-  if(!isLegal(b,c)){ shakeBoard(b); tone(150,.2,'square',.14); return; }
-  document.querySelectorAll('.cell').forEach(el=>el.style.outline='');
-  pendingConfirm=null;
-  board[b][c]=cur;
-  history.push({b,c,player:cur});
-  tone(cur==='X'?720:520,.11,'sine',.16);
-  haptic(12);
+    // Close on overlay backdrop tap
+    [modalSettings, modalStats, modalGameOver].forEach(modal => {
+      modal.addEventListener('click', (e) => {
+        if (e.target === modal) modal.classList.remove('open');
+      });
+    });
 
-  // check mini win/draw
-  const w=checkMini(b);
-  if(w){
-    mini[b]= w==='X'?'X_WON':'O_WON';
-    miniWon++;
-    tone(w==='X'?880:660,.32,'triangle',.2);
-    haptic(40);
-  } else if(isFull(b)){
-    mini[b]='DRAW';
-    tone(380,.25,'sine',.12);
-  }
+    // Mode Selector change in Settings
+    modeSelect.addEventListener('change', () => {
+      diffRow.style.display = modeSelect.value === 'bot' ? 'flex' : 'none';
+    });
 
-  // check mega win
-  const mw=checkMega();
-  if(mw){
-    over=true; winner=mw.w;
-    if(winner==='X') scoreX++; else scoreO++;
-    games++;
-    render();
-    setTimeout(()=>showOver(winner), 420);
-    tone(1200,.6,'sine',.22); setTimeout(()=>tone(1400,.4,'sine',.22),180);
-    haptic(60);
-    saveStats();
-    return;
-  }
-  if(mini.every(s=>s!=='OPEN')){
-    over=true; winner='DRAW'; draws++; games++;
-    render();
-    setTimeout(()=>showOver('DRAW'), 420);
-    tone(400,.5,'square',.14);
-    saveStats();
-    return;
-  }
+    // Save Settings
+    document.getElementById('settings-save-btn').addEventListener('click', () => {
+      state.mode = modeSelect.value;
+      state.botDifficulty = botDiffSelect.value;
+      SoundManager.enabled = (soundToggle.value === 'on');
 
-  // next board
-  if(mini[c]==='OPEN') required=c;
-  else required=null;
-
-  cur = cur==='X'?'O':'X';
-  render();
-
-  if(!over && vsBot && cur==='O'){
-    setTimeout(botThink, 520+Math.random()*520);
-  }
-}
-
-// BOT
-function botThink(){
-  if(over || cur!=='O') return;
-  const moves=legalMoves();
-  if(!moves.length) return;
-  let pick=null;
-  if(diff==='Beginner'){
-    pick=moves[Math.floor(Math.random()*moves.length)];
-    if(Math.random()<.3){
-      // occasionally play random even if winning available – keep beginner dumb
-    } else {
-      const win=moves.find(m=> wouldWinMini(m.b,m.c,'O'));
-      if(win) pick=win;
-    }
-  } else if(diff==='Easy'){
-    pick=findEasy(moves);
-  } else if(diff==='Medium'){
-    pick=findMedium(moves);
-  } else {
-    pick=findHard(moves);
-  }
-  doMove(pick.b, pick.c);
-}
-
-function wouldWinMini(b,c,player){
-  if(board[b][c]!==null) return false;
-  board[b][c]=player;
-  const w=checkMini(b);
-  board[b][c]=null;
-  return w===player;
-}
-function wouldBlockMini(b,c,player){
-  const opp=player==='X'?'O':'X';
-  return wouldWinMini(b,c,opp);
-}
-
-function findEasy(moves){
-  // win if possible
-  for(let m of moves) if(wouldWinMini(m.b,m.c,'O')) return m;
-  // block
-  for(let m of moves) if(wouldBlockMini(m.b,m.c,'O')) return m;
-  // otherwise random with slight centre preference
-  const centre=moves.filter(m=>m.c===4);
-  if(centre.length && Math.random()<.5) return centre[Math.floor(Math.random()*centre.length)];
-  return moves[Math.floor(Math.random()*moves.length)];
-}
-
-function findMedium(moves){
-  let best=null, bestScore=-1e9;
-  for(let m of moves){
-    let score=0;
-    if(wouldWinMini(m.b,m.c,'O')) score+=1000;
-    else if(wouldBlockMini(m.b,m.c,'O')) score+=500;
-    // mega implications
-    // simulate
-    board[m.b][m.c]='O';
-    const prevMini=mini[m.b];
-    let tempWin=null;
-    if(checkMini(m.b)==='O') tempWin='O';
-    const savedMini=mini.slice();
-    if(tempWin) mini[m.b]='O_WON';
-    else if(isFull(m.b)) mini[m.b]='DRAW';
-    const mw=checkMega();
-    if(mw && mw.w==='O') score+=5000;
-    // block opponent mega win next move
-    // if move gives opponent instant mega win, penalize heavily
-    // evaluate mega two-in-row
-    score += evalMegaFor('O')*30;
-    score -= evalMegaFor('X')*35;
-    // avoid sending opponent to winning board
-    const dest=m.c;
-    if(mini[dest]==='OPEN'){
-      // does opponent have winning move there?
-      let oppWin=false;
-      for(let cc=0;cc<9;cc++) if(board[dest][cc]===null){
-        board[dest][cc]='X';
-        if(checkMini(dest)==='X') oppWin=true;
-        board[dest][cc]=null;
-        if(oppWin) break;
+      if (state.mode === 'pvp') {
+        nameXEl.textContent = "Player 1 (X)";
+        nameOEl.textContent = "Player 2 (O)";
+      } else {
+        nameXEl.textContent = "You (X)";
+        nameOEl.textContent = `Bot [${state.botDifficulty.toUpperCase()}]`;
       }
-      if(oppWin) score-=700;
-      // does dest give opponent free move that is strong? penalize free move gift if dest is resolved
-      // already handled by required logic, but sending to centre is often stronger -> small bonus for sending to edge?
-      if(dest===4) score-=15; // avoid feeding centre
-      if([0,2,6,8].includes(dest)) score+=8;
-    } else {
-      // sending to resolved gives opponent free move – generally bad if we have many threats
-      score-=80;
+
+      modalSettings.classList.remove('open');
+      resetGame(false);
+    });
+
+    // Reset Stats
+    document.getElementById('btn-reset-stats').addEventListener('click', () => {
+      stats = { wins: 0, losses: 0, draws: 0, streak: 0 };
+      try {
+        localStorage.removeItem('mega_ttt_stats');
+      } catch(e) {}
+      updateStatsModal();
+    });
+
+    function updateStatsModal() {
+      document.getElementById('stat-wins').textContent = stats.wins;
+      document.getElementById('stat-losses').textContent = stats.losses;
+      document.getElementById('stat-draws').textContent = stats.draws;
+      document.getElementById('stat-streak').textContent = stats.streak;
     }
-    // mini board positional: centre cell value
-    if(m.c===4) score+=12;
-    else if([0,2,6,8].includes(m.c)) score+=6;
-    // board positional for mega
-    if(m.b===4) score+=10;
-    else if([0,2,6,8].includes(m.b)) score+=6;
 
-    // undo
-    board[m.b][m.c]=null;
-    mini.splice(0,9,...savedMini);
-    if(score>bestScore){ bestScore=score; best=m; }
-  }
-  return best||moves[0];
-}
-
-function evalMegaFor(player){
-  const tag=player==='X'?'X_WON':'O_WON';
-  const oppTag=player==='X'?'O_WON':'X_WON';
-  let count=0;
-  for(let l of WIN){
-    let p=0, o=0, empty=0;
-    for(let idx of l){
-      if(mini[idx]===tag) p++;
-      else if(mini[idx]===oppTag) o++;
-      else if(mini[idx]==='OPEN') empty++;
-    }
-    if(p===2 && empty===1) count+=10;
-    else if(p===1 && empty===2) count+=1;
-    if(o===2 && empty===1) count-=8; // opponent threat
-  }
-  return count;
-}
-
-function findHard(moves){
-  // depth 3 minimax
-  let best=null, bestScore=-1e9;
-  for(let m of moves){
-    board[m.b][m.c]='O';
-    const savedMini=mini.slice();
-    const savedReq=required;
-    let wonMini=false;
-    if(checkMini(m.b)==='O'){ mini[m.b]='O_WON'; wonMini=true; }
-    else if(isFull(m.b)) mini[m.b]='DRAW';
-    const mw=checkMega();
-    let score;
-    if(mw && mw.w==='O') score=10000;
-    else {
-      const nextReq = (mini[m.c]==='OPEN'? m.c : null);
-      score = minimax(2, false, nextReq, -1e9, 1e9);
-    }
-    // heuristic tie breaker
-    if(m.c===4) score+=5;
-    board[m.b][m.c]=null;
-    mini.splice(0,9,...savedMini);
-    required=savedReq;
-    if(score>bestScore){ bestScore=score; best=m; }
-  }
-  return best||findMedium(moves);
-}
-
-function minimax(depth, isMax, req, alpha, beta){
-  const mw=checkMega();
-  if(mw){
-    if(mw.w==='O') return 1000 + depth*10;
-    if(mw.w==='X') return -1000 - depth*10;
-  }
-  if(mini.every(s=>s!=='OPEN')) return 0;
-  if(depth===0) return heuristic();
-
-  const player=isMax?'O':'X';
-  let moves=[];
-  if(req!==null && mini[req]==='OPEN'){
-    for(let c=0;c<9;c++) if(board[req][c]===null) moves.push({b:req,c});
-  } else {
-    for(let b=0;b<9;b++) if(mini[b]==='OPEN') for(let c=0;c<9;c++) if(board[b][c]===null) moves.push({b,c});
-  }
-  if(!moves.length) return heuristic();
-
-  // order moves by immediate win
-  moves.sort((a,b)=>{
-    const aW=wouldWinMini(a.b,a.c,player)?1:0;
-    const bW=wouldWinMini(b.b,b.c,player)?1:0;
-    return bW-aW;
-  });
-  // limit branching for performance
-  if(moves.length>12) moves=moves.slice(0,12);
-
-  if(isMax){
-    let maxEval=-1e9;
-    for(let m of moves){
-      board[m.b][m.c]='O';
-      const saved=mini.slice();
-      if(checkMini(m.b)==='O') mini[m.b]='O_WON';
-      else if(isFull(m.b)) mini[m.b]='DRAW';
-      const nextReq = (mini[m.c]==='OPEN'? m.c : null);
-      const ev=minimax(depth-1,false,nextReq,alpha,beta);
-      board[m.b][m.c]=null;
-      mini.splice(0,9,...saved);
-      maxEval=Math.max(maxEval,ev);
-      alpha=Math.max(alpha,ev);
-      if(beta<=alpha) break;
-    }
-    return maxEval;
-  } else {
-    let minEval=1e9;
-    for(let m of moves){
-      board[m.b][m.c]='X';
-      const saved=mini.slice();
-      if(checkMini(m.b)==='X') mini[m.b]='X_WON';
-      else if(isFull(m.b)) mini[m.b]='DRAW';
-      const nextReq = (mini[m.c]==='OPEN'? m.c : null);
-      const ev=minimax(depth-1,true,nextReq,alpha,beta);
-      board[m.b][m.c]=null;
-      mini.splice(0,9,...saved);
-      minEval=Math.min(minEval,ev);
-      beta=Math.min(beta,ev);
-      if(beta<=alpha) break;
-    }
-    return minEval;
-  }
-}
-function heuristic(){
-  let s=0;
-  // mini counts
-  for(let i=0;i<9;i++){
-    if(mini[i]==='O_WON') s+=120;
-    else if(mini[i]==='X_WON') s-=120;
-    else if(mini[i]==='OPEN'){
-      // evaluate mini board potential
-      s+= evalMiniBoard(i,'O')*4;
-      s-= evalMiniBoard(i,'X')*4;
-    }
-  }
-  s+= evalMegaFor('O')*18;
-  s-= evalMegaFor('X')*18;
-  // centre control
-  if(mini[4]==='O_WON') s+=20;
-  if(mini[4]==='X_WON') s-=20;
-  return s;
-}
-function evalMiniBoard(b, player){
-  const cells=board[b];
-  let score=0;
-  for(let l of WIN){
-    let p=0,e=0,opp=0;
-    for(let idx of l){
-      if(cells[idx]===player) p++;
-      else if(cells[idx]===null) e++;
-      else opp++;
-    }
-    if(p===2 && e===1) score+=10;
-    else if(p===1 && e===2) score+=1;
-    if(opp===2 && e===1) score-=8;
-  }
-  return score;
-}
-
-function resetBoard(keepScores=true){
-  board=Array.from({length:9},()=>Array(9).fill(null));
-  mini=Array(9).fill('OPEN');
-  cur='X'; required=null; over=false; winner=null; history=[]; pendingConfirm=null;
-  document.querySelectorAll('.cell').forEach(el=>el.style.outline='');
-  render();
-}
-function showOver(w){
-  const m=document.getElementById('overModal');
-  const t=document.getElementById('overTitle');
-  const d=document.getElementById('overDesc');
-  const s=document.getElementById('overStats');
-  if(w==='DRAW'){
-    t.textContent="It's a Draw!";
-    d.textContent="All mini boards are resolved with no mega winner. Well fought!";
-  } else {
-    t.textContent=`${w} Wins the Mega!`;
-    if(vsBot) d.textContent= w==='X' ? "You claimed 3 mini boards in a row — brilliant strategy!" : "Bot claimed the mega board. Can you out-send it next time?";
-    else d.textContent=`Player ${w} wins by claiming three mini boards in a row.`;
-  }
-  s.innerHTML=`<div class="sbox"><span style="font-size:11px;opacity:.6">SCORE</span><b>${scoreX} - ${scoreO}</b></div><div class="sbox"><span style="font-size:11px;opacity:.6">MOVES</span><b>${history.length}</b></div>`;
-  m.classList.remove('hidden');
-}
-function saveStats(){
-  try{ localStorage.setItem('megaStats', JSON.stringify({scoreX,scoreO,draws,games,miniWon})); }catch(e){}
-}
-function loadStats(){
-  try{
-    const d=JSON.parse(localStorage.getItem('megaStats')||'null');
-    if(d){ scoreX=d.scoreX||0; scoreO=d.scoreO||0; draws=d.draws||0; games=d.games||0; miniWon=d.miniWon||0; }
-  }catch(e){}
-}
-function updateStatsModal(){
-  document.getElementById('stGames').textContent=games;
-  document.getElementById('stX').textContent=scoreX;
-  document.getElementById('stO').textContent=scoreO;
-  document.getElementById('stD').textContent=draws;
-  document.getElementById('stMini').textContent=miniWon;
-  const rate=games? Math.round((scoreX/games)*100):0;
-  document.getElementById('stRate').textContent=rate+'%';
-  document.getElementById('stExtra').textContent= vsBot ? `Mode: vs Bot • Difficulty: ${diff}` : `Mode: Pass & Play`;
-}
-
-// events
-document.getElementById('btnRestart').addEventListener('click',()=>{ tone(700,.12); resetBoard(true); document.getElementById('overModal').classList.add('hidden'); });
-document.getElementById('btnRematch').addEventListener('click',()=>{
-  document.getElementById('overModal').classList.add('hidden');
-  resetBoard(true);
-  if(!vsBot && winner && winner!=='DRAW'){
-    // swap X/O? but keep vs passing, just alternate start? For simplicity keep X start
-  }
-});
-document.getElementById('btnHome').addEventListener('click',()=>{
-  document.getElementById('overModal').classList.add('hidden');
-  document.getElementById('startModal').classList.remove('hidden');
-});
-document.getElementById('playBot').addEventListener('click',()=>{
-  vsBot=true; document.getElementById('modeSel').value='bot';
-  document.getElementById('startModal').classList.add('hidden'); resetBoard(false);
-});
-document.getElementById('playFriend').addEventListener('click',()=>{
-  vsBot=false; document.getElementById('modeSel').value='pvp';
-  document.getElementById('startModal').classList.add('hidden'); resetBoard(false);
-});
-document.getElementById('btnSettings').addEventListener('click',()=>document.getElementById('settingsModal').classList.remove('hidden'));
-document.getElementById('closeSettings').addEventListener('click',()=>document.getElementById('settingsModal').classList.add('hidden'));
-document.getElementById('btnStats').addEventListener('click',()=>{ updateStatsModal(); document.getElementById('statsModal').classList.remove('hidden'); });
-document.getElementById('closeStats').addEventListener('click',()=>document.getElementById('statsModal').classList.add('hidden'));
-document.getElementById('clearStats').addEventListener('click',()=>{
-  scoreX=0;scoreO=0;draws=0;games=0;miniWon=0; saveStats(); updateStatsModal(); render();
-});
-document.getElementById('resetScores').addEventListener('click',()=>{
-  scoreX=0;scoreO=0;draws=0;games=0;miniWon=0; saveStats(); render(); tone(500,.15);
-});
-document.getElementById('modeSel').addEventListener('change',e=>{ vsBot=e.target.value==='bot'; render(); });
-document.getElementById('diffSel').addEventListener('change',e=> diff=e.target.value);
-document.getElementById('soundChk').addEventListener('change',e=> soundOn=e.target.checked);
-document.getElementById('hapChk').addEventListener('change',e=> hapOn=e.target.checked);
-document.getElementById('hilChk').addEventListener('change',e=>{ highlightOn=e.target.checked; render(); });
-document.getElementById('confirmChk').addEventListener('change',e=> confirmMove=e.target.checked);
-
-// close modals on backdrop click
-document.querySelectorAll('.modal').forEach(m=>{
-  m.addEventListener('click',e=>{ if(e.target===m) m.classList.add('hidden'); });
-});
-
-loadStats();
-render();
-// show start modal already visible; hide after delay? keep visible until choice
-</script>
+    /* =========================================================
+       STARTUP
+       ========================================================= */
+    initMegaBoard();
+    updateUI();
+  </script>
 </body>
 </html>

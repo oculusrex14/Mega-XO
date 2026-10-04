@@ -1,20 +1,90 @@
-# V3.2 authored theme contracts
+# V3.2.1 final theme contracts
 
-Vector Light preserves the familiar clean hierarchy. Midnight Club uses layered slate surfaces and lime control faces. Paper Club uses printed cream stock, warm ink, serif display text, ruled texture and restrained offset shadows. After Hours uses deep violet, cyan/rose marks, arcade-like edges and controlled glow without flicker.
+These four appearances are ported from the user's Figma export in `Design Game Themes.zip`. The V3.2 component tree, board geometry, game rules, social/rank/quest pages and interaction behavior remain unchanged.
 
-All themes share interaction and board geometry, not colors. The cell DOM is created once, with explicit 3x3 rows/columns and absolute SVG mark/claim layers. A theme change cannot insert text into a sizing track, reset a game or restart the turn timer.
+## Vector Light
 
-Required pairs: `surface/ink`, `raised/ink`, `soft/muted`, `cta/on-cta`, `accent/on-accent`, `x-soft/x`, `o-soft/o`. Never assume white is the correct foreground on a colored control. SVG icons inherit the foreground of the paired control, not the global text token. Badge backgrounds and strokes have a separate light/dark palette for each league.
+The clean default:
 
-| Theme | Primary text/surface | Muted text/soft | CTA text/fill | Accent text/fill |
-|---|---:|---:|---:|---:|
-| Vector Light | 15.43 | 5.23 | 16.27 | 10.03 |
-| Midnight Club | 15.96 | 7.10 | 11.60 | 11.60 |
-| Paper Club | 11.45 | 4.93 | 11.64 | 8.09 |
-| After Hours | 16.53 | 7.35 | 10.38 | 10.38 |
+- canvas `#E9ECEF`
+- app surface `#F8F9FB`
+- raised cards `#FFFFFF`
+- ink `#15181C`
+- X `#246BFD`
+- O `#F45669`
+- route/accent `#C6FF42`
+- Space Grotesk + IBM Plex Mono
 
-Ratios are measured contrast checks, not a claim of full WCAG certification. The automated suite checks 44 semantic foreground/background pairs across all themes; normal text targets 4.5:1 and marks target 3:1. Small borders/decorative textures are not used as the only state indicator.
+The intent is bright, neutral and familiar.
 
-Native dialogs retain focus and block background taps. Controls generally target 44px or more. The 81-cell board necessarily has smaller cells on phones; a future magnified-board input mode is an accessibility improvement still worth shipping. Screen readers receive board/cell names and the live turn instruction. Reduce motion never changes bot strength, delays or rules.
+## Midnight Club
 
-Test widths: 320, 360, 390, 430 and portrait tablet 768. Small-height screens scale the board within a constrained height budget and keep the controls reachable. Native iOS/Android and assistive-technology audits are still required.
+A deliberately authored dark theme rather than an inversion:
+
+- canvas `#080B10`
+- app surface `#101720`
+- raised cards `#18212C`
+- text `#D4DCE5`
+- X `#6F9DFF`
+- O `#FF7A98`
+- route/accent `#B9F03C`
+- subtle inset highlights on cards and controls
+- lime selection outlines and active-board glow
+- Space Grotesk + IBM Plex Mono
+
+## Paper Club
+
+The notebook theme from the supplied Figma pack:
+
+- canvas `#B9AB8F`
+- paper surface `#F6EFDC`
+- card paper `#fffbee`
+- ink `#27221B`
+- X `#2A4F9B`
+- O `#C23A2E`
+- route/accent `#FFD23F`
+- ruled-paper + grain texture
+- red notebook margin line
+- irregular card radii and offset ink shadows
+- SVG wobble filter on X/O and the brand mark
+- Caveat + Patrick Hand
+
+## After Hours
+
+The retro arcade pack:
+
+- canvas `#07030F`
+- app surface `#0F0722`
+- raised cards `#190D38`
+- text `#F1EAFF`
+- X `#2CF2FF`
+- O `#FF4FB6`
+- route/accent `#FFD83D`
+- purple grid/gradient background
+- square-edged controls
+- cyan/pink mark glow
+- yellow active-state glow
+- subtle scanlines
+- Orbitron + Chakra Petch + Share Tech Mono
+
+No flashing or strobe effects are introduced.
+
+## Shared guarantees
+
+Theme switching is presentation-only. It does not:
+
+- rebuild or resize the 81-cell board,
+- reset a match,
+- restart the turn timer,
+- change bot strength,
+- alter rank/coins/quests,
+- change legal-move logic.
+
+Saved legacy appearance IDs migrate automatically:
+
+- `dark` -> `midnight`
+- `paper` -> `paperclub`
+- `neon` -> `afterhours`
+- `light` -> `vector`
+
+The settings UI keeps the V3.2 theme-card picker; only the four final appearance contracts changed.

@@ -1,10 +1,10 @@
-# Mega XO - V3.2
+# Mega XO - V3.2.1
 
 A playable offline prototype with authored themes, mode-specific statistics, a league gallery and a deliberately separated cosmetic economy. The V3.2 continuity pass restores the strongest V3.1 interaction patterns instead of redesigning the whole shell.
 
 ## Run
 
-Open `index.html` with the `src` folder next to it, or run `npm start` and visit localhost:8080. There are no JavaScript packages or image downloads required at runtime. The restored V3.1 typography loads Space Grotesk and IBM Plex Mono from Google Fonts, with system fallbacks if the font CDN is unavailable. `npm test` runs the Node regression suite.
+Open `index.html` with the `src` folder next to it, or run `npm start` and visit localhost:8080. There are no JavaScript packages or image downloads required at runtime. The theme packs load Space Grotesk + IBM Plex Mono, Paper Club adds Caveat + Patrick Hand, and After Hours adds Orbitron + Chakra Petch + Share Tech Mono; every family has a system fallback. `npm test` runs the Node regression suite.
 
 ## What works
 
@@ -13,8 +13,8 @@ Open `index.html` with the `src` folder next to it, or run `npm start` and visit
 - Restored V3.1 UI continuity: Space Grotesk + IBM Plex Mono, a floating island bottom bar with scroll-behind content, bottom-sheet Settings/Tutorial, four home modes, chip-based match setup, and the board-first match screen.
 - V3.2.3 restores the supplied V3.1 interaction details exactly where requested: Lucide UI icons (including Settings 2, Sliders Horizontal, Swords, Graduation Cap and the older navigation family), the original straight route line + destination dot animation, no persistent last-move dot, while retaining V3.2's improved exact-cell hover and destination preview. Quests remains the fifth floating-nav destination and timer-off remains the infinity symbol.
 - V3.2.4 restores the V3.1 Friends page structure: Social/Friends header, username search + Add action, persistent friend code with copy button, online-count section header, and the original empty-state presentation. The newer standalone challenge/economy block is removed from the Friends landing screen for now.
-- Play Online is one home mode with Ranked/Casual choices; Private Match keeps its dedicated Open Private Lobby action. Quests remain accessible from the home/wallet flow without occupying the primary bottom navigation.
-- Original inline SVG icons and eleven rank emblems. No emoji icon substitutes.
+- Play Online is one home mode with Ranked/Casual choices; Private Match keeps its dedicated Open Private Lobby action. Quests remains the fifth floating-nav destination.
+- Lucide UI icons plus eleven original rank emblems. No emoji icon substitutes.
 - Tutorial and unrewarded Beginner practice.
 - Separate Bot, Ranked, Casual and Friend stat views: wins, win rate, average completed-game time, total active hours, losses and draws. Online views stay empty without verified results. Pass-and-play is excluded.
 - On-device quests, capped bot rewards, a local wallet ledger, duplicate-claim protection and cosmetic ownership previews.

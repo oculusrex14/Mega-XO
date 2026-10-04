@@ -517,8 +517,8 @@ function renderRouteHud(){
  document.getElementById("helpText").textContent=free?"No forced destination this turn.":"Your chosen cell will route the opponent to the matching board."
 }
 function previewTarget(c,on){document.querySelectorAll(".mini").forEach(x=>x.classList.remove("route-target"));if(!on||game.mini[c]!==null)return;const e=document.querySelector('.mini[data-board="'+c+'"]');if(e)e.classList.add("route-target")}
-function playMove(b,c){
- Audio.init();if(game.mode==="bot"&&game.turn==="O")return;if(!isLegal(b,c)){toast("That board is not active");vibrate(22);return}
+function playMove(b,c,source="human"){
+ Audio.init();if(game.mode==="bot"&&game.turn==="O"&&source!=="bot")return;if(!isLegal(b,c)){toast("That board is not active");vibrate(22);return}
  const p=game.turn;game.board[b][c]=p;game.moves++;Audio.tone(p==="X"?480:360,.1,.04);vibrate(8);
  const mw=winner(game.board[b]);if(mw)game.mini[b]=p;else if(game.board[b].every(Boolean))game.mini[b]="D";
  const big=winner(game.mini);if(big){game.line=big.line;endGame(p);return}
@@ -565,7 +565,7 @@ function botChoice(){
  if(menu.difficulty==="Medium"){return moves.slice().sort((a,b)=>heuristic(game,b,"O")-heuristic(game,a,"O"))[0]}
  const depth=menu.difficulty==="Expert"&&moves.length<18?3:2;let best=moves[0],score=-Infinity;for(const m of moves){const v=minimax(sim(game,m),depth-1,-Infinity,Infinity);if(v>score){score=v;best=m}}return best
 }
-function scheduleBot(){clearTimeout(botTimer);botTimer=setTimeout(()=>{if(game&&game.status==="PLAYING"&&game.turn==="O"){const m=botChoice();if(m)playMove(m.b,m.c)}},settings.motion?150:520)}
+function scheduleBot(){clearTimeout(botTimer);botTimer=setTimeout(()=>{if(game&&game.status==="PLAYING"&&game.turn==="O"){const m=botChoice();if(m)playMove(m.b,m.c,"bot")}},settings.motion?150:520)}
 function renderStats(){
  const avg=stats.g?Math.round(stats.moves/stats.g):0,rate=stats.g?Math.round(stats.w/stats.g*100):0;
  document.getElementById("statsGrid").innerHTML=[["GAMES",stats.g],["BOT WIN RATE",rate+"%"],["BEST STREAK",stats.best],["AVG MOVES",avg],["MINI BOARDS",stats.mini],["DRAWS",stats.d]].map(x=>'<div class="stat"><span>'+x[0]+'</span><b>'+x[1]+'</b></div>').join("");

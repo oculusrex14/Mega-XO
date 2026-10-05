@@ -30,6 +30,13 @@ jobs:
           set -o pipefail
           mkdir -p tests-output
           npm test 2>&1 | tee tests-output/v334-node-results.txt
+      - name: HTTP suites terminate individually
+        run: |
+          set -euo pipefail
+          for suite in tests/community-http.test.js tests/http.test.js tests/party-http.test.js; do
+            echo "Running $suite"
+            timeout --signal=KILL 45s node --test "$suite"
+          done
       - name: Browser dependencies
         run: |
           python -m pip install playwright==1.55.0

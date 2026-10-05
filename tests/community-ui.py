@@ -69,18 +69,24 @@ try:
    page.locator('[data-action="nav"][data-value="friends"]').click()
    page.locator('#cQuery').wait_for(timeout=5000)
   results.append('two real accounts with unique usernames, tags and profile edit')
+  a.locator('#settingsButton').click();a.locator('#sheet[data-kind="settings"]').wait_for();assert not a.locator('#setting-notifications').is_checked();assert a.locator('#setting-notifyMatches').is_disabled();assert a.locator('#setting-notifySocial').is_disabled();assert a.locator('#setting-notifyRewards').is_disabled();a.locator('#sheetClose').click()
+  results.append('notification groups are opt-in and disabled by default')
   a.locator('#cQuery').fill('bob');a.locator('#cSearch button').click();a.locator('.friend-person').last.click();a.locator('[data-c="social"]').first.click();a.locator('[data-c="dismiss"]').click()
-  b.evaluate('MegaCommunity.refresh()');b.locator('[data-c="social"][data-id^="accept:"]').wait_for(timeout=5000);b.locator('[data-c="social"][data-id^="accept:"]').click()
+  b.evaluate('MegaCommunity.refresh()');b.locator('#notificationBadge:not([hidden])').wait_for(timeout=5000);b.locator('#notificationButton').click();b.locator('#sheet[data-kind="notifications"] .notification-group').wait_for();assert 'Social' in b.locator('#sheet[data-kind="notifications"]').inner_text();b.locator('[data-c="open-friends"]').click();b.locator('[data-c="social"][data-id^="accept:"]').wait_for(timeout=5000);b.locator('[data-c="social"][data-id^="accept:"]').click()
   a.evaluate('MegaCommunity.refresh()');a.locator('.friend-person').last.click();a.locator('[data-c="challenge"]').click()
   a.locator('#challengeRated').select_option('false');a.locator('[data-action="sendchallenge"]').click()
-  a.locator('#sheet[data-kind="waiting"] .theme-loader').wait_for(timeout=5000)
-  b.evaluate('MegaCommunity.refresh()');b.locator('[data-c="review"]').click();b.locator('[data-action="acceptinvite"]').click()
+  a.locator('#sheet[data-kind="waiting"] .theme-loader').wait_for(timeout=5000);assert 'Opponent pays' not in a.locator('#sheet[data-kind="waiting"]').inner_text() or 'Free' in a.locator('#sheet[data-kind="waiting"]').inner_text()
+  b.evaluate('MegaCommunity.refresh()');b.locator('#notificationBadge:not([hidden])').wait_for(timeout=5000);b.locator('#notificationButton').click();b.locator('#sheet[data-kind="notifications"] [data-c="review"]').wait_for(timeout=5000)
+  for theme in ['vector','midnight','paperclub','afterhours']:
+   b.evaluate('(theme)=>{const s=MegaApp.getSave();s.settings.theme=theme;MegaApp.applyPractice(s);}',theme)
+   assert b.evaluate('document.querySelector("#sheet").scrollWidth <= document.querySelector("#sheet").clientWidth + 1')
+  b.locator('#sheet[data-kind="notifications"] [data-c="review"]').click();b.locator('[data-action="acceptinvite"]').click()
   a.locator('#gameScreen:not([hidden])').wait_for(timeout=5000);b.locator('#gameScreen:not([hidden])').wait_for(timeout=5000)
   first=a if a.locator('#board .cell:not([disabled])').count() else b
   other=b if first==a else a
   before=first.locator('#boardWrap').bounding_box();first.locator('#board .cell:not([disabled])').first.click();other.locator('#board .cell:not([disabled])').first.wait_for(timeout=5000);other.locator('#board .cell:not([disabled])').first.click()
   assert first.locator('#boardWrap').bounding_box()==before
-  results.append('friend search -> request -> accept -> profile -> challenge -> accept -> real board moves')
+  results.append('friend search -> notification -> accept -> challenge notification -> accept -> real board moves across all themes')
   a.locator('[data-action="matchstats"]').click();a.locator('#sheet [data-action="resign"]').click();a.locator('[data-action="resignyes"]').click()
   a.locator('[data-action="home"]').wait_for(timeout=5000);a.locator('[data-action="home"]').click()
   b.locator('[data-action="home"]').wait_for(timeout=5000);b.locator('[data-action="home"]').click()

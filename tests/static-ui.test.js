@@ -76,3 +76,5 @@ test('each theme owns a separate typography contract', () => {
   assert.ok(styles.includes(':root[data-theme="afterhours"] .setup-chip{font-size:10.5px'));
   assert.ok(styles.includes(':root[data-theme="paperclub"] .setup-chip{border:1.5px solid var(--ink);font-size:12px'));
 });
+
+test('rank UI explains quarterly requalification and Elo continuity',()=>{const app=fs.readFileSync(path.join(ROOT,'src','app.js'),'utf8');assert.ok(app.includes('Season requalification'));assert.ok(app.includes('Quarterly seasons'));assert.ok(app.includes('Your Elo is never wiped'));assert.ok(app.includes('Direct ranked challenges count toward activity but are never mandatory'));});

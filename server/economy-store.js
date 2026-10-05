@@ -40,7 +40,7 @@ class DurableStore {
     case 'resign': result=a.resign(cmd.id,actor);break;
     case 'purchase': result=a.purchase(actor,cmd.evidence);break;
     case 'provision': role('operator');result=a.addAccount(cmd.account,cmd.options);break;
-    case 'queue': role('matchmaker');result=a.offerQueue(cmd.id,cmd.a,cmd.b);break;
+    case 'queue': role('matchmaker');result=a.offerQueue(cmd.id,cmd.a,cmd.b,cmd.mode||'ranked',cmd.turnSeconds);break;
     case 'timeout': role('operator','matchmaker');result=a.timeout(cmd.id);break;
     case 'expire': role('operator','matchmaker');result=a.expire(cmd.id);break;
     case 'void': role('operator');result=a.voidByOperator(cmd.id,cmd.reason);break;

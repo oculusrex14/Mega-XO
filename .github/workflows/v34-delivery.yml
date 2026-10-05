@@ -1,0 +1,82 @@
+name: Apply and verify V3.4
+on:
+  push:
+    branches: [V3.4]
+    paths: ['.github/v34-delivery/manifest.json']
+permissions:
+  contents: write
+concurrency:
+  group: v34-delivery
+  cancel-in-progress: false
+jobs:
+  deliver:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify and apply exact source changes
+        shell: python
+        run: |
+          import base64, hashlib, json, lzma, pathlib, subprocess
+          root=pathlib.Path.cwd()
+          meta=json.loads((root/'.github/v34-delivery/manifest.json').read_text())
+          assert meta['branch']=='V3.4'
+          data=base64.b64decode(''.join((root/'.github/v34-delivery'/p).read_text() for p in meta['parts']))
+          assert hashlib.sha256(data).hexdigest()==meta['sha256']
+          bundle=json.loads(lzma.decompress(data))
+          subprocess.run(['git','merge-base','--is-ancestor',bundle['base'],'HEAD'],check=True)
+          for change in bundle['files']:
+              p=pathlib.PurePosixPath(change['path'])
+              assert not p.is_absolute() and '..' not in p.parts and '.git' not in p.parts
+              assert p.parts[0] in ['src','server','tests','docs','native','.github','index.html','package.json','README.md','.env.example']
+              target=root/p
+              old=hashlib.sha256(target.read_bytes()).hexdigest() if target.exists() else None
+              assert old==change['before'], str(p)+' baseline mismatch'
+              subprocess.run(['git','apply','--whitespace=nowarn','-'],input=change['diff'].encode(),check=True)
+              assert hashlib.sha256(target.read_bytes()).hexdigest()==change['after'], str(p)+' output mismatch'
+          (root/'.v34-changed-paths').write_text('\n'.join(c['path'] for c in bundle['files']))
+          import shutil
+          shutil.rmtree(root/'.github/v34-delivery')
+          (root/'.github/workflows/v34-delivery.yml').unlink()
+      - name: Test authoritative rules and balances
+        run: |
+          mkdir -p tests-output
+          set -o pipefail
+          npm test 2>&1 | tee tests-output/v34-node.txt
+          npm run test:invariants 2>&1 | tee tests-output/v34-invariants.txt
+          npm run test:balance 2>&1 | tee tests-output/v34-binomial.txt
+          node tests/balance-v34.js tests-output/v34-simulation.json
+      - name: Browser dependencies
+        run: |
+          python -m pip install playwright==1.55.0
+          python -m playwright install --with-deps chromium
+      - name: Full static, account, party and economy regression
+        run: |
+          set -o pipefail
+          python tests/static-browser.py 2>&1 | tee tests-output/v34-static.txt
+          python tests/community-ui.py 2>&1 | tee tests-output/v34-community.txt
+          python tests/party-browser.py 2>&1 | tee tests-output/v34-party.txt
+          python tests/economy-ui.py 2>&1 | tee tests-output/v34-economy.txt
+      - name: Commit validated source to V3.4 only
+        run: |
+          git config user.name 'Mega XO validation'
+          git config user.email 'mega-xo-validation@users.noreply.github.com'
+          while IFS= read -r path || [ -n "$path" ]; do git add -- "$path"; done < .v34-changed-paths
+          git add -u -- .github/v34-delivery .github/workflows/v34-delivery.yml
+          rm .v34-changed-paths
+          git commit -m 'Implement V3.4 seasons, economy calibration and design invariants'
+          git push origin HEAD:refs/heads/V3.4
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: v34-delivery-evidence
+          path: tests-output/
+          retention-days: 5

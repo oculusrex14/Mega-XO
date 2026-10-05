@@ -1,12 +1,15 @@
 {
   "name": "mega-xo",
-  "version": "3.2.1",
+  "version": "3.3.0",
   "private": true,
   "engines": { "node": ">=22.13.0" },
   "scripts": {
     "start": "python3 -m http.server 8080",
+    "start:lan": "node server/party-server.js",
     "test": "node --test tests/*.test.js",
     "test:balance": "node tests/balance.js",
-    "test:ui": "python3 tests/economy-ui.py"
+    "test:ui": "python3 tests/economy-ui.py",
+    "test:parties": "node --test tests/tournament.test.js tests/rooms.test.js tests/party-http.test.js",
+    "test:party-ui": "python3 tests/party-browser.py"
   }
 }

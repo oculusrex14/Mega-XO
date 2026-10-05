@@ -28,9 +28,10 @@ with sync_playwright() as p:
   text=re.sub(r'<link[^>]+(?:fonts.googleapis|fonts.gstatic)[^>]*>','',text)
   text=re.sub(r'<script src="https://unpkg.com/[^"]+"></script>','',text)
   text=text.replace('<link rel="stylesheet" href="src/styles.css">','<style>'+(ROOT/'src/styles.css').read_text()+'</style>')
-  shim='<script>Object.defineProperty(window,"localStorage",{value:{data:{mega_v32_tutorial_seen:"1"},getItem(k){return this.data[k]??null},setItem(k,v){this.data[k]=String(v)}}});window.fetch=async(path,options={})=>{const r=await window.__fixtureFetch({path,method:options.method||"GET",headers:options.headers||{},body:options.body});return new Response(r.body,{status:r.status,headers:{"Content-Type":"application/json"}});};</script>'
+  text=text.replace('<link rel="stylesheet" href="src/party.css">','<style>'+(ROOT/'src/party.css').read_text()+'</style>')
+  shim='<script>Object.defineProperty(window,"localStorage",{value:{data:{mega_v32_tutorial_seen:"1"},getItem(k){return this.data[k]??null},setItem(k,v){this.data[k]=String(v)},removeItem(k){delete this.data[k]}}});window.fetch=async(path,options={})=>{const r=await window.__fixtureFetch({path,method:options.method||"GET",headers:options.headers||{},body:options.body});return new Response(r.body,{status:r.status,headers:{"Content-Type":"application/json"}});};</script>'
   text=text.replace('<script src="src/game.js"></script>',shim+'<script>'+(ROOT/'src/game.js').read_text()+'</script>')
-  for name in ['domain','icons','network','app']:text=text.replace('<script src="src/'+name+'.js"></script>','<script>'+(ROOT/('src/'+name+'.js')).read_text()+'</script>')
+  for name in ['domain','icons','network','app','tournament','party-ui']:text=text.replace('<script src="src/'+name+'.js"></script>','<script>'+(ROOT/('src/'+name+'.js')).read_text()+'</script>')
   page.set_content(text)
   page.add_style_tag(content='#routeOverlay{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}#sheet:not([hidden]){position:fixed;z-index:99;inset:auto 0 0 0;max-height:90vh;overflow:auto;background:var(--surface);padding:16px}#sheetBackdrop:not([hidden]){position:fixed;inset:0;z-index:98;background:#0005}')
   return page
@@ -41,7 +42,7 @@ with sync_playwright() as p:
  try:
   page=create();page.wait_for_timeout(150)
   assert page.locator('#navigation button').count()==5
-  assert page.locator('.mode').count()==4
+  assert page.locator('.mode').count()==5
   click(page,'wallet');assert 'Saved on this device' in page.locator('#sheetBody').inner_text()
   page.locator('#exchangeAmount').fill('100');click(page,'exchange');click(page,'exchangeconfirm')
   assert 'Exchange complete' in page.locator('#toast').inner_text()
@@ -63,7 +64,7 @@ with sync_playwright() as p:
   after=page.locator('#boardWrap').bounding_box();assert abs(before['width']-after['width'])<1 and abs(before['height']-after['height'])<1
   click(page,'leave');click(page,'home');click(page,'mode','bot');click(page,'start')
   page.locator('.cell[data-b="4"][data-c="2"]').click();page.wait_for_function('MegaXO.getState().moves.length===2',timeout=7000)
-  assert not page.errors,page.errors;results.append('offline exchange round-trip, no fabricated ranks, five tabs, local routing, four theme IDs preserve match, bot reply')
+  assert not page.errors,page.errors;results.append('offline exchange round-trip, no fabricated ranks, five tabs and five home modes, local routing, four theme IDs preserve match, bot reply')
   a=create('alice');b=create('bob');a.wait_for_timeout(200);b.wait_for_timeout(200)
   click(a,'nav','rank');a.wait_for_selector('.standing');click(a,'challenge','bob')
   a.locator('#challengeRated').select_option('true');assert a.locator('#challengeAmount').input_value()=='26'

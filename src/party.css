@@ -1,0 +1,22 @@
+/* Additive V3.3 screens only. Does not override the approved theme pack. */
+.party-screen{position:absolute;inset:0;z-index:65;display:flex;flex-direction:column;background:var(--surface);background-image:var(--texture);color:var(--ink);overflow:hidden;font-family:var(--sans,inherit)}
+.party-top{display:flex;align-items:center;gap:10px;padding:12px 14px;flex:none;border-bottom:1px solid var(--line)}
+.party-top h2{font-family:var(--display,inherit);font-size:18px;margin:0;flex:1;line-height:1.2}
+.party-body{padding:16px 14px 28px;min-height:0;overflow:auto;flex:1;overscroll-behavior:contain}
+#partyMessage{margin:0;padding:9px 14px;background:var(--soft);color:var(--ink);font-size:12px;flex:none;max-height:80px;overflow:auto}
+.party-options{display:grid;gap:9px}.party-options .button{width:100%}
+.party-body>.button{width:100%;margin-top:10px}.party-body>.field{margin-bottom:12px}
+.party-body input,.party-body select,.party-body textarea{min-width:0;max-width:100%;font:inherit;background:var(--raised);color:var(--ink);border:1px solid var(--line);border-radius:9px;padding:10px}
+.party-body textarea{resize:vertical}.party-command{display:block;overflow:auto;padding:12px;background:var(--soft);font-size:12px;border-radius:8px}
+.party-tables{display:grid;grid-template-columns:1fr 1fr;gap:10px}.party-tables h3{font-size:17px}.party-tables .split{display:block;line-height:1.8}.party-tables .button{width:100%;font-size:11px;padding:8px}
+.party-standings{overflow:auto;border:1px solid var(--line);border-radius:9px;margin:12px 0 18px}.party-standings table{border-collapse:collapse;width:100%;font-size:12px}.party-standings td,.party-standings th{text-align:left;padding:9px 10px;border-bottom:1px solid var(--line)}.party-standings thead{background:var(--soft)}
+.party-room-heading{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-bottom:10px;font-size:12px}.party-room-heading .button{margin-left:auto;font-size:10px}
+.party-roster{margin:6px 0 12px}.party-roster .ledger span{overflow-wrap:anywhere}.party-body h3{margin-top:18px}
+.party-host-controls .ledger{flex-wrap:wrap}.party-host-controls .button{font-size:10px;padding:5px}
+.party-fixtures{display:grid;gap:9px}.party-fixtures .card{padding:12px}.party-fixtures b,.party-fixtures small{display:block}.party-fixtures b{margin:4px 0}.party-fixtures .button{margin-top:8px;min-height:40px;width:100%}
+#partyGame .players{margin-top:0}#partyGame .player strong{font-size:15px;white-space:nowrap}#partyGame .player b{max-width:85px;text-overflow:ellipsis;overflow:hidden;white-space:nowrap}#partyGame .turn-hud{margin-bottom:12px}#partyGame .board-wrap{width:100%;max-width:390px}#partyGame .party-options{margin-top:12px}
+#partyGame .mark-layer svg{fill:none;stroke-width:4.5;stroke-linecap:round}#partyGame .route-overlay{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:30}#partyGame .route-overlay line{stroke:var(--accent);stroke-width:3;stroke-linecap:round}#partyGame .route-overlay circle{fill:var(--accent)}
+@media(max-width:350px){.party-tables{grid-template-columns:1fr}.party-top h2{font-size:16px}.party-body{padding:12px 10px}.party-body .tutorial-card{grid-template-columns:30px 1fr}}
+#partyX.active{background:var(--x-soft)}#partyO.active{background:var(--o-soft)}
+:root[data-theme="paperclub"] .party-screen{background-color:var(--surface);background-image:var(--paper-grain),var(--paper-ruled)}
+:root[data-theme="afterhours"] .party-screen::after{content:"";position:absolute;inset:0;z-index:70;pointer-events:none;background:repeating-linear-gradient(to bottom,rgba(255,255,255,.022) 0,rgba(255,255,255,.022) 1px,transparent 1px,transparent 3px)}

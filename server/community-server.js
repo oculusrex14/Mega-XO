@@ -28,11 +28,15 @@ function buildService({file,origin,providers:providerConfig={},providerInstance,
   const types={'.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.svg':'image/svg+xml','.png':'image/png'};
   res.writeHead(200,{'Content-Type':types[path.extname(target)]||'application/octet-stream','Cache-Control':'no-cache','X-Content-Type-Options':'nosniff','Referrer-Policy':'same-origin','X-Frame-Options':'DENY'});if(req.method==='HEAD')return res.end();fs.createReadStream(target).pipe(res);
  }catch{if(!res.headersSent)res.writeHead(409,{'Content-Type':'application/json'});res.end(JSON.stringify({error:'REQUEST_FAILED'}));}};
- const server=http.createServer(request);let timer=null;
- return {server,store,community,matchmaker,rooms,request,startWorkers(){timer=setInterval(()=>{try{matchmaker.tick();rooms.tick();community.cleanup();}catch(e){console.error('Maintenance error:',e.message);}},1000);timer.unref();},close(){clearInterval(timer);rooms.close();store.close();server.close();}};
+ const server=http.createServer(request);let timer=null,closing=null;
+ return {server,store,community,matchmaker,rooms,request,startWorkers(){if(timer)return;timer=setInterval(()=>{try{matchmaker.tick();rooms.tick();community.cleanup();}catch(e){console.error('Maintenance error:',e.message);}},1000);timer.unref();},close(){
+  if(closing)return closing;clearInterval(timer);timer=null;
+  closing=(async()=>{try{server.closeIdleConnections?.();server.closeAllConnections?.();if(server.listening)await new Promise(resolve=>server.close(()=>resolve()));}finally{rooms.close();store.close();}})();
+  return closing;
+ }};
 }
 if(require.main===module){const port=Number(process.env.PORT||8080),origin=process.env.MEGA_ORIGIN||'http://localhost:'+port,file=process.env.MEGA_DB||path.join(ROOT,'.data','mega.sqlite');fs.mkdirSync(path.dirname(file),{recursive:true});
  const service=buildService({file,origin,allowLocalHttp:true,providers:{google:{clientId:process.env.GOOGLE_CLIENT_ID,clientSecret:process.env.GOOGLE_CLIENT_SECRET,nativeAudiences:(process.env.GOOGLE_NATIVE_AUDIENCES||'').split(',').filter(Boolean),authorizedParties:(process.env.GOOGLE_AUTHORIZED_PARTIES||'').split(',').filter(Boolean)},apple:{clientId:process.env.APPLE_SERVICE_ID,teamId:process.env.APPLE_TEAM_ID,keyId:process.env.APPLE_KEY_ID,privateKey:process.env.APPLE_PRIVATE_KEY?.replace(/\\n/g,'\n'),nativeAudiences:(process.env.APPLE_NATIVE_AUDIENCES||'').split(',').filter(Boolean)}}});
- service.rooms.recover();service.startWorkers();service.server.listen(port,'127.0.0.1',()=>console.log('Mega XO account service: '+origin));for(const signal of ['SIGINT','SIGTERM'])process.on(signal,()=>{service.close();process.exit(0);});
+ service.rooms.recover();service.startWorkers();service.server.listen(port,'127.0.0.1',()=>console.log('Mega XO account service: '+origin));let stopping=false;for(const signal of ['SIGINT','SIGTERM'])process.on(signal,async()=>{if(stopping)return;stopping=true;try{await service.close();}finally{process.exit(0);}});
 }
 module.exports={buildService};

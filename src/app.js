@@ -233,6 +233,6 @@ for(const [id,name] of [['brandIcon','board'],['coinIcon','coin'],['settingsButt
 refreshIcons();applyTheme();buildBoard();render();save();refreshOnline();
 if(window.MegaBilling?.products)window.MegaBilling.products().then(items=>{online.products=items.filter(p=>D.CROWN_PACKS.some(q=>q.id===p.id));if(sheetKind==='wallet')wallet();}).catch(()=>{});
 // Read-only diagnostics: no method can credit money, set rank or submit a server result.
-window.MegaXO=Object.freeze({version:'3.2.1-economy-1',getState:()=>match?structuredClone(match.state):null,getSettings:()=>({...data.settings})});
+window.MegaXO=Object.freeze({version:'3.2.1-economy-1-ui1',getState:()=>match?structuredClone(match.state):null,getSettings:()=>({...data.settings})});
 try{if(!localStorage.getItem('mega_v32_tutorial_seen'))tutorial();}catch{}
 })();

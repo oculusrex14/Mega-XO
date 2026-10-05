@@ -33,7 +33,9 @@ const names={
  volume:'volume-2',
  check:'check',
  shield:'shield',
- palette:'palette'
+ palette:'palette',
+ bell:'bell',
+ bellRing:'bell-ring'
 };
 function icon(name,cls=''){
  const n=names[name]||names.board;

@@ -1,0 +1,33 @@
+name: V3.4 game-system validation
+on:
+  push:
+    branches: [V3.4]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: v34-game-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  game:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Full Node regression
+        run: npm test
+      - name: Ranked expected-value report
+        run: npm run test:balance
+      - name: 90-day population economy simulation
+        run: npm run test:economy-sim
+      - name: Upload economy reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: v34-economy-reports
+          path: .artifacts/
+          if-no-files-found: ignore
+          retention-days: 7

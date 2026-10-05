@@ -47,7 +47,7 @@ class Authority {
   if(q.mode==='direct'&&players.some(p=>p.games<D.POLICY.placements))throw Error('COMPLETE_PLACEMENTS');
   this._paidAllowed(players,q);this._pairLimit(a,b,q);
   const turnSeconds=terms.turnSeconds??(q.rated?30:60);if(q.rated?turnSeconds!==30:![0,30,60].includes(turnSeconds))throw Error('INVALID_CLOCK');
-  const clean={source:queueSource?'queue':'direct',mode:q.mode,kind:q.kind||terms.kind||(queueSource?'casual':'friend'),rated:q.rated,amount:q.pool,currency:q.currency,turnSeconds,from:this.currentTier(players[0]),to:this.currentTier(players[1]),ratings:players.map(p=>p.rating)};
+  const clean={source:queueSource?'queue':'direct',mode:q.mode,kind:q.kind||terms.kind||(queueSource?(q.rated?'ranked':'casual'):'friend'),rated:q.rated,amount:q.pool,currency:q.currency,turnSeconds,from:this.currentTier(players[0]),to:this.currentTier(players[1]),ratings:players.map(p=>p.rating)};
   const fingerprint=hash({players:[a,b],terms:clean,quote:q});
   const m={id,players:[a,b],terms:clean,quote:q,termsHash:fingerprint,accepted:queueSource?[]:[a],created:now,expires:now+(queueSource?15000:D.POLICY.offerMinutes*60000),status:'OFFERED',state:G.create(),symbols:null,revision:0,commands:new Map(),escrow:0,settled:false,riskFlags:q.mode==='direct'&&q.pool>=5000?['HIGH_VALUE_DIRECT_POT']:[]};
   this.matches.set(id,m);return this.view(id);

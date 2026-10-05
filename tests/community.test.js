@@ -25,3 +25,29 @@ module.exports={pair,jwk,jwt};
 
 test('cloud and provider mapping survive a new database connection',t=>{const dir=fs.mkdtempSync(path.join(os.tmpdir(),'mega-restore-')),file=path.join(dir,'db.sqlite');let store=new DurableStore(file),c=new CommunityStore({store,origin:'https://mega.example'});const a=login(c,'persist');c.edit(a.actor,{username:'persistent',displayName:'Saved player'});c.save(a.actor,0,D.fresh());store.close();store=new DurableStore(file);c=new CommunityStore({store,origin:'https://mega.example'});const restored=login(c,'persist');assert.equal(restored.actor,a.actor);assert.equal(restored.profile.username,'persistent');assert.equal(restored.profile.tag,a.profile.tag);assert.equal(c.restore(a.actor).revision,1);store.close();fs.rmSync(dir,{recursive:true,force:true});});
 test('queued presence is derived from the scheduler hook, not heartbeat JSON',t=>{const {c}=fixture(t),a=login(c,'a');c.isQueued=actor=>actor===a.actor;c.heartbeat(a.token,true);assert.equal(c.presence(a.actor,a.actor).state,'queued');assert.throws(()=>c.heartbeat(a.token,'in-match'),/INVALID_PRESENCE/);});
+
+test('reauthentication rotates a session but cannot switch the profile or add an identity',t=>{
+ const {c,advance}=fixture(t),a=login(c,'alice'),b=login(c,'bob');advance(16*60000);
+ assert.throws(()=>c.start(a.token,'apple','link','native'),/REAUTH_REQUIRED/);
+ const started=c.start(a.token,'google','reauth','native'),attempt=c.consume(a.token,started.state,'google','native');
+ assert.throws(()=>c.finishVerified(a.token,attempt,{provider:'google',subject:'bob'}),/REAUTH_ACCOUNT_MISMATCH/);
+ assert.equal(c.requireLinked(a.token).actor,a.actor);assert.equal(c.identities(a.actor).length,1);
+ const retry=c.start(a.token,'google','reauth','native'),good=c.consume(a.token,retry.state,'google','native');
+ const verified=c.finishVerified(a.token,good,{provider:'google',subject:'alice'});
+ assert.equal(verified.actor,a.actor);assert.equal(verified.profile.tag,a.profile.tag);assert.equal(c.session(a.token),null);
+ assert.ok(c.start(verified.token,'apple','link','native').state);
+ const anonymous=c.bootstrap();assert.throws(()=>c.start(anonymous.token,'google','reauth','native'),/LINK_ACCOUNT_REQUIRED/);
+});
+
+test('crossed friend requests settle to one friendship and no stale invitations',t=>{
+ const {c}=fixture(t),a=login(c,'alice'),b=login(c,'bob');
+ c.social(a.actor,'request-a','request',b.actor);c.social(b.actor,'request-b','request',a.actor);
+ c.social(a.actor,'accept-b','accept',b.actor);
+ for(const actor of [a.actor,b.actor]){const f=c.friends(actor);assert.equal(f.friends.length,1);assert.equal(f.incoming.length,0);assert.equal(f.outgoing.length,0);}
+});
+
+test('a held profile is not exposed through search or public profile statistics',t=>{
+ const {c,store}=fixture(t),a=login(c,'alice'),b=login(c,'bob');c.edit(b.actor,{username:'bob_test',statsVisibility:'public'});
+ const authority=store.read();authority.account(b.actor).hold=true;c.write(authority);
+ assert.deepEqual(c.search(a.actor,'bob_test'),[]);assert.throws(()=>c.profile(a.actor,b.actor),/PROFILE_NOT_FOUND/);
+});

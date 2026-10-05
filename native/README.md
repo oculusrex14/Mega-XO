@@ -13,7 +13,7 @@ window.MegaNativeIdentity = {
 };
 ```
 
-The browser controller first requests `POST /api/account/native/challenge` with `{provider, intent: 'login'|'link'}`. The server returns state and nonce, bound to the current HttpOnly session. Pass that exact nonce to the SDK. Then the controller sends the SDK ID token and state to `/api/account/native/finish`. The server verifies the signature and all claims before creating/restoring/linking a profile. Native credentials are not stored in localStorage. Keep the HTTP cookie session and CSRF context on the same origin.
+The browser controller first requests `POST /api/account/native/challenge` with `{provider, intent: 'login'|'link'|'reauth'}`. The server returns state and nonce, bound to the current HttpOnly session. Pass that exact nonce to the SDK. Then the controller sends the SDK ID token and state to `/api/account/native/finish`. The server verifies the signature and all claims before creating/restoring/linking a profile. For reauthentication, the returned provider identity must already belong to the current profile; a different login cannot silently switch the player or become a new linked method. Native credentials are not stored in localStorage. Keep the HTTP cookie session and CSRF context on the same origin.
 
 ## Android / Google
 

@@ -46,10 +46,11 @@ try:
   a.locator('[data-party="table"][data-table="low"]').click()
   assert '360' in a.locator('#partyBody').inner_text()
   a.locator('[data-party="back"]').click();a.locator('[data-party="local"]').click();a.locator('#partyNames').fill('Alice\nBob\nCara\nDan');a.locator('#partyFormat').select_option('mixed');a.locator('#partyClock').select_option('0');a.locator('[data-party="createRoom"]').click();a.locator('[data-party="start"]').click();assert 'Group A' in a.locator('#partyBody').inner_text();a.locator('[data-party="back"]').click()
-  # Restored private-room landing is spacious and explicitly labels 1v1.
-  a.locator('[data-party="back"]').click()
+  # Back from an event closes the overlay; explicitly reopen the private hub.
+  a.locator('[data-action="start"]').click()
   assert 'Challenge a friend (1v1)' in a.locator('#partyBody').inner_text()
   assert a.locator('.party-choice').count()>=4
+  a.locator('[data-party="back"]').click()
   # Actual separate-client free LAN room.
   for page,name in [(a,'Alice'),(b,'Bob')]:
    page.locator('[data-action="start"]').click();page.locator('[data-party="lan"]').click();page.locator('#partyName').fill(name)

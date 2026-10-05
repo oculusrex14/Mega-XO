@@ -60,9 +60,10 @@ CREATE INDEX IF NOT EXISTS identities_actor ON identities(actor);`);
  csrf(token,provided){const s=this.requireSession(token);if(!equal(s.csrf,provided))fail('CSRF_FAILED');return s;}
  identities(actor){return this.db.prepare('SELECT provider,created FROM identities WHERE actor=? ORDER BY provider').all(actor);}
  start(token,provider,intent='login',kind='web'){
-  const session=this.requireSession(token);if(!['google','apple'].includes(provider)||!['login','link'].includes(intent)||!['web','native'].includes(kind))fail('INVALID_AUTH_REQUEST');
+  const session=this.requireSession(token);if(!['google','apple'].includes(provider)||!['login','link','reauth'].includes(intent)||!['web','native'].includes(kind))fail('INVALID_AUTH_REQUEST');
+  if(intent==='reauth'&&!session.actor)fail('LINK_ACCOUNT_REQUIRED');
   if(intent==='link'&&session.actor&&this.now()-session.authAt>15*60000)fail('REAUTH_REQUIRED');this.rate(session.hash,'signin',15,300);
-  const attempt={state:crypto.randomBytes(32).toString('base64url'),nonce:crypto.randomBytes(32).toString('base64url'),verifier:crypto.randomBytes(32).toString('base64url'),provider,kind,intent,target:intent==='link'?session.actor:null,expires:this.now()+5*60000};
+  const attempt={state:crypto.randomBytes(32).toString('base64url'),nonce:crypto.randomBytes(32).toString('base64url'),verifier:crypto.randomBytes(32).toString('base64url'),provider,kind,intent,target:['link','reauth'].includes(intent)?session.actor:null,expires:this.now()+5*60000};
   this.db.prepare('INSERT INTO signin_attempts VALUES(?,?,?,?,?,?,?,?,?,0)').run(sha(attempt.state),session.hash,provider,kind,intent,attempt.target,attempt.nonce,attempt.verifier,attempt.expires);
   return attempt;
  }
@@ -71,7 +72,9 @@ CREATE INDEX IF NOT EXISTS identities_actor ON identities(actor);`);
  finishVerified(token,attempt,{provider,subject}){
   const session=this.requireSession(token);if(provider!==attempt.provider||typeof subject!=='string'||!subject||subject.length>255)fail('INVALID_IDENTITY');
   return this.tx(()=>{const authority=this.read();const found=this.db.prepare('SELECT actor FROM identities WHERE provider=? AND subject=?').get(provider,subject);let actor=attempt.target,created=false;
-   if(actor&&actor!==session.actor)fail('ACCOUNT_CHANGED');if(actor&&found&&found.actor!==actor)fail('ACCOUNT_LINKED_ELSEWHERE');
+   if(actor&&actor!==session.actor)fail('ACCOUNT_CHANGED');
+   if(attempt.intent==='reauth'&&(!actor||!found||found.actor!==actor))fail('REAUTH_ACCOUNT_MISMATCH');
+   if(actor&&found&&found.actor!==actor)fail('ACCOUNT_LINKED_ELSEWHERE');
    if(!actor&&found)actor=found.actor;
    if(!actor){actor='u_'+crypto.randomUUID();authority.addAccount(actor,{verified:true,createdAt:this.now()});created=true;}
    const a=authority.account(actor);if(a.suspended||a.hold)fail('ACCOUNT_UNAVAILABLE');
@@ -98,7 +101,7 @@ CREATE INDEX IF NOT EXISTS identities_actor ON identities(actor);`);
   return {state,online:true};
  }
  heartbeat(token,foreground){const s=this.requireLinked(token);if(typeof foreground!=='boolean')fail('INVALID_PRESENCE');this.rate(s.hash,'presence',12,60);this.db.prepare('INSERT INTO session_presence VALUES(?,?,?,?) ON CONFLICT(session) DO UPDATE SET seen=excluded.seen,foreground=excluded.foreground').run(s.hash,s.actor,this.now(),foreground?1:0);return this.presence(s.actor,s.actor);}
- profile(viewer,actor){const a=this.read(),account=a.account(actor),p=this.profileRow(actor);if(!p||account.suspended||this.relation(viewer,actor,a)==='blocked')fail('PROFILE_NOT_FOUND');const relation=this.relation(viewer,actor,a),show=viewer===actor||p.stats_visibility==='public'||p.stats_visibility==='friends'&&relation==='friend';
+ profile(viewer,actor){const a=this.read(),account=a.account(actor),p=this.profileRow(actor);if(!p||account.suspended||account.hold||this.relation(viewer,actor,a)==='blocked')fail('PROFILE_NOT_FOUND');const relation=this.relation(viewer,actor,a),show=viewer===actor||p.stats_visibility==='public'||p.stats_visibility==='friends'&&relation==='friend';
   return {id:actor,tag:p.tag,friendCode:p.tag,username:p.username,name:p.display_name,displayName:p.display_name,avatar:p.avatar,rating:account.rating,games:account.games,tier:a.currentTier(account),relation,stats:show?this.stats(account):null,statsVisibility:p.stats_visibility,presence:this.presence(actor,viewer),...(viewer===actor?{providers:this.identities(actor).map(i=>i.provider),presenceVisibility:p.presence_visibility,profileVersion:p.version,activeMatch:account.activeMatch,cloudRevision:this.db.prepare('SELECT revision FROM profile_saves WHERE actor=?').get(actor)?.revision||0}: {})};
  }
  search(actor,query){this.requireAccount(actor);this.rate(actor,'search',30);if(typeof query!=='string'||query.length>64)fail('INVALID_SEARCH');const q=query.trim().replace(/^#|^@/,'');if(q.length<3)fail('SEARCH_TOO_SHORT');let rows;
@@ -110,7 +113,7 @@ CREATE INDEX IF NOT EXISTS identities_actor ON identities(actor);`);
  social(actor,key,command,target){if(!safeKey(key))fail('INVALID_OPERATION');this.requireAccount(actor);const fp=sha(json({command,target})),op=actor+':'+key;return this.tx(()=>{const existing=this.db.prepare('SELECT * FROM social_operations WHERE id=?').get(op);if(existing){if(existing.fingerprint!==fp)fail('IDEMPOTENCY_CONFLICT');return JSON.parse(existing.result);}this.rate(actor,'social',30);const a=this.read(),id=this.resolve(target,a),A=a.account(actor),B=a.account(id);if(id===actor)fail('SELF_REQUEST');const relation=this.relation(actor,id,a);
   if(!['request','accept','decline','cancel','remove','block','unblock'].includes(command))fail('INVALID_SOCIAL_ACTION');if(relation==='blocked'&&!['block','unblock'].includes(command))fail('PROFILE_NOT_FOUND');
   if(command==='request'){if(A.friends.length>=200||B.friendRequests.length>=50)fail('FRIEND_LIMIT');a.requestFriend(actor,id);}
-  if(command==='accept'){if(A.friends.length>=200||B.friends.length>=200)fail('FRIEND_LIMIT');a.acceptFriend(actor,id);}
+  if(command==='accept'){if(A.friends.length>=200||B.friends.length>=200)fail('FRIEND_LIMIT');a.acceptFriend(actor,id);A.friendRequests=A.friendRequests.filter(x=>x!==id);B.friendRequests=B.friendRequests.filter(x=>x!==actor);}
   if(command==='decline')A.friendRequests=A.friendRequests.filter(x=>x!==id);
   if(command==='cancel')B.friendRequests=B.friendRequests.filter(x=>x!==actor);
   if(['remove','block'].includes(command)){A.friends=A.friends.filter(x=>x!==id);B.friends=B.friends.filter(x=>x!==actor);A.friendRequests=A.friendRequests.filter(x=>x!==id);B.friendRequests=B.friendRequests.filter(x=>x!==actor);for(const m of a.matches.values())if(m.status==='OFFERED'&&m.players.includes(actor)&&m.players.includes(id))m.status='CANCELLED';}

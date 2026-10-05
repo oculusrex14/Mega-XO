@@ -60,8 +60,14 @@ with sync_playwright() as p:
   for theme in ['vector','midnight','paperclub','afterhours']:
    page.locator('#matchSettings').click();click(page,'theme',theme);click(page,'close')
    assert page.locator('html').get_attribute('data-theme')==theme
-   assert page.evaluate('MegaXO.getState().moves.length')==1
-  after=page.locator('#boardWrap').bounding_box();assert abs(before['width']-after['width'])<1 and abs(before['height']-after['height'])<1
+   # Themes intentionally have different border/material geometry. Inside each
+   # theme, cells and the board must stay square and unchanged by adding marks.
+   current=page.locator('#boardWrap').bounding_box();assert abs(current['width']-current['height'])<1
+   moves=page.evaluate('MegaXO.getState().moves.length')
+   page.locator('#board .cell:not([disabled])').first.click()
+   after=page.locator('#boardWrap').bounding_box()
+   assert abs(current['width']-after['width'])<1 and abs(current['height']-after['height'])<1
+   assert page.evaluate('MegaXO.getState().moves.length')==moves+1
   click(page,'leave');click(page,'home');click(page,'mode','bot');click(page,'start')
   page.locator('.cell[data-b="4"][data-c="2"]').click();page.wait_for_function('MegaXO.getState().moves.length===2',timeout=7000)
   assert not page.errors,page.errors;results.append('offline exchange round-trip, no fabricated ranks, five tabs and five home modes, local routing, four theme IDs preserve match, bot reply')

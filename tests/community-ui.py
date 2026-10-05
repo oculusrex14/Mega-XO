@@ -21,9 +21,11 @@ errors=[];results=[]
 try:
  with sync_playwright() as p:
   browser=p.chromium.launch(executable_path=os.environ.get('CHROMIUM_EXECUTABLE') or shutil.which('chromium'),args=['--no-sandbox'])
-  def client(subject,storage=None):
-   jar={'cookie':''}; lock=threading.Lock();ctx=browser.new_context(viewport={'width':390,'height':844});page=ctx.new_page();page.on('pageerror',lambda e:errors.append(str(e)))
+  def client(subject,storage=None,initial_cookie="",offline=False):
+   jar={'cookie':initial_cookie,'offline':offline}; lock=threading.Lock();ctx=browser.new_context(viewport={'width':390,'height':844});page=ctx.new_page();page.on('pageerror',lambda e:errors.append(str(e)))
    def bridge(url,options=None):
+    
+    if jar['offline']:return {'status':503,'data':{'error':'SERVICE_UNAVAILABLE'}}
     options=options or {}; path=re.sub(r'^https?://[^/]+','',str(url))
     if not path.startswith('/'):return {'status':503,'data':{'error':'SERVICE_UNAVAILABLE'}}
     headers=dict(options.get('headers',{}));headers['Origin']=origin
@@ -101,6 +103,50 @@ try:
   assert a.evaluate('MegaCommunity.getStatus().syncState')=='saved'
   for width,height in [(320,568),(390,844),(768,1024)]:
    a.set_viewport_size({'width':width,'height':height});assert a.evaluate('document.documentElement.scrollWidth<=innerWidth')
+  # Cold-start offline edits belong to the known owner and must sync after reconnect.
+  persisted=a.evaluate('localStorage.data');owner=a.evaluate('JSON.parse(localStorage.getItem("mega_v333_owner"))')
+  original_revision=a.evaluate('JSON.parse(localStorage.getItem("mega_v333_sync")).revision')
+  cookie=ja['cookie'];a.close()
+  offline_client,offline_jar=client('alice',persisted,cookie,True)
+  offline_client.wait_for_function('MegaCommunity.getStatus().syncState === "offline" && !document.querySelector("#identityScreen")')
+  offline_client.evaluate("""()=>{const data=MegaApp.getSave();data.settings.theme='paperclub';data.records.push({id:'cold-start-practice',mode:'bot',difficulty:'Easy',result:'win',activeSeconds:44,moves:15,reason:'line'});MegaApp.applyPractice(data);}""")
+  metadata=offline_client.evaluate('JSON.parse(localStorage.getItem("mega_v333_sync"))')
+  assert metadata['actor']==owner and metadata['dirty'] and metadata['revision']==original_revision
+  offline_jar['offline']=False;offline_client.evaluate('window.dispatchEvent(new Event("online"))')
+  offline_client.wait_for_function('MegaCommunity.getStatus().linked && MegaCommunity.getStatus().syncState === "saved"',timeout=10000)
+  cloud=offline_client.evaluate('MegaAccount.request("/api/account/save")')
+  assert cloud['practice']['settings']['theme']=='paperclub'
+  assert any(r['id']=='cold-start-practice' for r in cloud['practice']['records'])
+  tag=offline_client.evaluate('MegaAccount.peek().profile.tag')
+  results.append('offline cold-start preserves pending revision and syncs after reconnect')
+  # A fresh device recovers the same tag, stats archive and chosen theme.
+  recovered,recovered_jar=client('alice')
+  recovered.locator('#identityScreen.signin').wait_for(timeout=10000)
+  recovered.locator('[data-c="signin"][data-id="google"]').click()
+  recovered.wait_for_function('MegaCommunity.getStatus().linked && MegaCommunity.getStatus().syncState === "saved"',timeout=10000)
+  assert recovered.evaluate('MegaAccount.peek().profile.tag')==tag
+  assert recovered.evaluate('MegaApp.getSave().settings.theme')=='paperclub'
+  assert recovered.evaluate('MegaApp.getSave().records.some(r=>r.id==="cold-start-practice")')
+  recovered.evaluate('MegaCommunity.openProfile()');recovered.locator('[data-c="connections"]').click()
+  assert recovered.locator('[data-c="unlink"]').is_disabled()
+  recovered.locator('[data-c="signin"][data-id="apple"][data-intent="link"]').click()
+  recovered.wait_for_function('MegaAccount.peek()?.profile?.providers?.includes("apple")',timeout=10000)
+  assert recovered.evaluate('MegaAccount.peek().profile.tag')==tag
+  results.append('new device restores the same profile and Apple linking preserves its tag and progress')
+  # Selecting an unrelated new profile never silently imports another account's practice.
+  inherited=recovered.evaluate('localStorage.data')
+  stranger,stranger_jar=client('charlie',inherited)
+  stranger.locator('#identityScreen.signin').wait_for(timeout=10000)
+  stranger.locator('[data-c="signin"][data-id="google"]').click()
+  stranger.locator('#identityScreen.conflict').wait_for(timeout=10000)
+  assert 'Start fresh for this profile' in stranger.locator('#identityScreen').inner_text()
+  stranger.locator('[data-c="restore-choice"]').click()
+  stranger.wait_for_function('MegaCommunity.getStatus().syncState === "saved"',timeout=10000)
+  assert stranger.evaluate('MegaApp.getSave().records.length')==0
+  assert stranger.evaluate('MegaAccount.peek().profile.tag')!=tag
+  assert len(stranger.evaluate('MegaAccount.request("/api/account/save")')['practice']['records'])==0
+  assert any(r['id']=='cold-start-practice' for r in stranger.evaluate('JSON.parse(localStorage.getItem("mega_v333_archive:"+%s))' % json.dumps(owner))['records'])
+  results.append('profile switch requires explicit practice choice; displaced progress is archived')
   assert not errors,errors
   print(json.dumps({'passed':results,'pageErrors':errors,'limitations':'set_content + authenticated HTTP bridge; provider tokens signed by fixture RSA keys; no live Google/Apple consent or native build'},indent=2))
   browser.close()

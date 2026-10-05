@@ -4,79 +4,46 @@ on:
     branches: [V3.3.3]
   workflow_dispatch:
 permissions:
-  contents: write
+  contents: read
 concurrency:
-  group: v333-source-verification
-  cancel-in-progress: false
+  group: v333-regression-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
   verify:
     runs-on: ubuntu-latest
+    timeout-minutes: 12
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: V3.3.3
           fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Apply checksum-verified source
-        if: hashFiles('.v333-delivery/part4') != ''
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Preserve approved core and appearance files
         run: |
-          python3 - <<'PY'
-          import base64, hashlib, json, lzma, pathlib, subprocess
-          root=pathlib.Path.cwd()
-          parts=[root/'.v333-delivery'/('part'+str(i)) for i in range(5)]
-          packed=base64.b64decode(''.join(p.read_text().strip() for p in parts),validate=True)
-          assert hashlib.sha256(packed).hexdigest()=='13814dc33fbd4f85321a5a6ffb791fc24237e484e2cda8851b94022bedd629e1','Delivery digest mismatch'
-          doc=json.loads(lzma.decompress(packed))
-          subprocess.run(['git','merge-base','--is-ancestor',doc['base'],'HEAD'],check=True)
-          exact={'.env.example','.gitignore','README.md','index.html','package.json'}
-          prefixes=('src/','server/','tests/','docs/','native/')
-          paths=[]
-          for entry in doc['files']:
-              rel=entry['path']; p=root/rel
-              assert not pathlib.PurePosixPath(rel).is_absolute() and '..' not in pathlib.PurePosixPath(rel).parts
-              assert rel in exact or rel.startswith(prefixes),'Unexpected path'
-              assert p.resolve().is_relative_to(root) and not p.is_symlink()
-              if entry['before'] is None:
-                  assert not p.exists(), 'New file already exists: '+rel
-              else:
-                  assert hashlib.sha256(p.read_bytes()).hexdigest()==entry['before'],'Source changed: '+rel
-              if 'patch' in entry:
-                  subprocess.run(['git','apply','--whitespace=nowarn','-'],input=entry['patch'],text=True,check=True)
-              else:
-                  p.parent.mkdir(parents=True,exist_ok=True); p.write_text(entry['content'])
-              assert hashlib.sha256(p.read_bytes()).hexdigest()==entry['after'],'Result mismatch: '+rel
-              paths.append(rel)
-          pathlib.Path('/tmp/v333-files.json').write_text(json.dumps(paths))
-          print('Verified and applied',len(paths),'source files')
-          PY
-      - name: Strict full Node regression
+          git diff --exit-code 493a81c8e6a3765a2615ed1339c5b236e2d91b05 HEAD -- src/styles.css src/icons.js src/game.js src/domain.js src/authority.js src/tournament.js src/party.css src/party-ui.js
+      - name: Full Node regression
         run: |
           set -o pipefail
-          npm test 2>&1 | tee /tmp/v333-node-results.txt
-      - name: Commit verified implementation to requested branch
-        if: hashFiles('.v333-delivery/part4') != ''
+          mkdir -p tests-output
+          npm test 2>&1 | tee tests-output/node-results.txt
+      - name: Browser dependencies
         run: |
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          python3 - <<'PY'
-          import json, pathlib, subprocess
-          paths=json.loads(pathlib.Path('/tmp/v333-files.json').read_text())
-          subprocess.run(['git','add','--',*paths],check=True)
-          subprocess.run(['git','rm','-r','--','.v333-delivery'],check=True)
-          PY
-          git commit -m 'Build V3.3.3 profiles, account linking, friends and themed loading'
-          git push origin HEAD:V3.3.3
-      - name: Source snapshot
-        if: always()
-        run: git archive --format=tar HEAD -o /tmp/mega-source.tar
-      - name: Publish verification artifact
+          python -m pip install playwright==1.55.0
+          python -m playwright install --with-deps chromium
+      - name: Account, friends and recovery browser flows
+        run: python tests/community-ui.py
+      - name: Existing party browser flows
+        run: python tests/party-browser.py
+      - name: Existing economy browser flows
+        run: python tests/economy-ui.py
+      - name: Test evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: mega-v333-verification
-          path: |
-            /tmp/mega-source.tar
-            /tmp/v333-node-results.txt
-          retention-days: 3
+          name: mega-v333-tests
+          path: tests-output/
+          retention-days: 7

@@ -26,3 +26,15 @@ test('quest claim once and UTC reset',()=>{const d=D.fresh(),now=Date.parse('202
 test('stats keep modes, draws and timing separate',()=>{const a=D.aggregate([{mode:'bot',difficulty:'Easy',result:'win',activeSeconds:60},{mode:'bot',difficulty:'Easy',result:'draw',activeSeconds:120},{mode:'ranked',result:'win',activeSeconds:180}],'bot');assert.equal(a.wins,1);assert.equal(a.winRate,.5);assert.equal(a.averageSeconds,90);});
 test('weekly values, median rank, pro-rating, eligibility',()=>{const args={dailyTiers:Array(7).fill('gold'),endTier:'gold',games:5,queueGames:3,uniqueOpponents:3,activeDays:3};assert.equal(D.weeklyReward(args).amount,550);assert.equal(D.weeklyReward({...args,dailyTiers:[...Array(6).fill('wood'),'grandmaster'],endTier:'grandmaster'}).amount,50);assert.equal(D.weeklyReward({...args,dailyTiers:['gold','gold','gold']}).amount,235);assert.equal(D.weeklyReward({...args,queueGames:2}).amount,0);});
 test('weeks are UTC Monday, not locale based',()=>{assert.equal(D.week(Date.parse('2026-10-04T23:59:59Z')),'2026-09-28');assert.equal(D.week(Date.parse('2026-10-05T00:00:00Z')),'2026-10-05');assert.throws(()=>D.weekStart('2026-10-06'));});
+
+
+test('notification preferences are opt-in and migrate old saves safely',()=>{
+ const fresh=D.fresh();
+ assert.equal(fresh.settings.notifications,false);
+ assert.equal(fresh.settings.notifyMatches,false);
+ assert.equal(fresh.settings.notifySocial,false);
+ assert.equal(fresh.settings.notifyRewards,false);
+ const old=D.fresh();delete old.settings.notifications;delete old.settings.notifyMatches;delete old.settings.notifySocial;delete old.settings.notifyRewards;
+ D.migrate(old);
+ assert.deepEqual({notifications:old.settings.notifications,matches:old.settings.notifyMatches,social:old.settings.notifySocial,rewards:old.settings.notifyRewards},{notifications:false,matches:false,social:false,rewards:false});
+});

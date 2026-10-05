@@ -25,7 +25,7 @@ function createHandler({store,authenticate,origin,matchmaker=null}={}){
      const rows=a.leaderboard({metric,scope,league:url.searchParams.get('league')||'all',region:url.searchParams.get('region')||''});return json(res,200,rows.map(p=>publicPlayer(p,p.tier,metric==='wealth')));
     }
     if(path==='/invitations')return json(res,200,[...a.matches.values()].filter(m=>m.players.includes(self.id)&&!m.accepted.includes(self.id)&&m.status==='OFFERED'&&m.expires>a.now()).map(m=>publicMatch(a.view(m.id),self.id)));
-    if(path==='/queue'){if(!matchmaker?.status)return json(res,503,{error:'ONLINE_UNAVAILABLE'});return json(res,200,matchmaker.status(self.id));}
+    if(path==='/queue'){if(!matchmaker?.status)return json(res,503,{error:'ONLINE_UNAVAILABLE'});matchmaker.sweep?.();return json(res,200,matchmaker.status(self.id));}
     if(path.startsWith('/match/')){let m=a.view(path.slice(7));if(!m.players.includes(self.id))return json(res,403,{error:'NOT_PARTICIPANT'});
      if(m.status==='PLAYING'&&m.deadline!==null&&a.now()>=m.deadline){try{store.run({actor:'clock',scope:'matchmaker'},'timeout:'+m.id+':'+m.revision,{type:'timeout',id:m.id});}catch{}m=store.read().view(m.id);}
      if(m.status==='OFFERED'&&a.now()>=m.expires){try{store.run({actor:'clock',scope:'matchmaker'},'expire:'+m.id,{type:'expire',id:m.id});}catch{}m=store.read().view(m.id);}

@@ -24,7 +24,7 @@ jobs:
           python-version: '3.12'
       - name: Preserve approved gameplay, economics and theme contracts
         run: |
-          git diff --exit-code V3.3.3 HEAD -- src/styles.css src/game.js src/authority.js src/tournament.js src/party.css src/party-ui.js
+          git diff --exit-code 0b9e84db768dffed8c1396e272c0b173b3d8d414 HEAD -- src/styles.css src/game.js src/authority.js src/tournament.js src/party.css src/party-ui.js
       - name: Full Node regression
         run: |
           set -o pipefail

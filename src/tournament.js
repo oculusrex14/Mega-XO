@@ -1,7 +1,7 @@
 /* Shared V3.3 tournament rules. No balances, sockets, or trusted client results. */
 (function(root,factory){const api=factory(typeof module==='object'?require('./game.js'):root.MegaGame);if(typeof module==='object')module.exports=api;else root.MegaTournament=api;})(globalThis,G=>{
 'use strict';
-const VERSION='tournament-1', TABLES=Object.freeze({low:{name:'Low',currency:'coins',entry:100},medium:{name:'Medium',currency:'coins',entry:500},high:{name:'High',currency:'coins',entry:2000},premium:{name:'Premium',currency:'crowns',entry:500}});
+const VERSION='tournament-2', TABLES=Object.freeze({low:{name:'Low',currency:'coins',entry:100},medium:{name:'Medium',currency:'coins',entry:400},high:{name:'High',currency:'coins',entry:1200},premium:{name:'Premium',currency:'crowns',entry:200}});
 const SHARES=Object.freeze([36,20,13,11,10,0,0,0,0,0]);
 const copy=x=>structuredClone(x), fail=s=>{throw Error(s);};
 const integer=(n,min=0,max=Number.MAX_SAFE_INTEGER)=>Number.isSafeInteger(n)&&n>=min&&n<=max;

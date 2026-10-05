@@ -23,6 +23,7 @@ class RoomStore{
  code(){let c;do{c=crypto.randomBytes(5).toString('hex').toUpperCase();}while(this.db.prepare('SELECT id FROM party_rooms WHERE code=?').get(c));return c;}
  shuffle(ids){const a=ids.slice();for(let i=a.length-1;i>0;i--){const j=crypto.randomInt(i+1);[a[i],a[j]]=[a[j],a[i]];}return a;}
  journal(e,id,actor,currency,amount,reason){e.journal.push({id,actor,currency,amount,reason,source:'tournament',at:this.now()});}
+ recordTournament(a,place,table){const t=a.tournamentRecord||(a.tournamentRecord={entered:0,wins:0,runnerUp:0,top3:0,top5:0,bestFinish:null,finishSum:0,premiumWins:0});t.entered=safe(t.entered+1);t.finishSum=safe(t.finishSum+place);if(place===1){t.wins=safe(t.wins+1);if(table==='premium')t.premiumWins=safe(t.premiumWins+1);}if(place===2)t.runnerUp=safe(t.runnerUp+1);if(place<=3)t.top3=safe(t.top3+1);if(place<=5)t.top5=safe(t.top5+1);t.bestFinish=t.bestFinish===null||t.bestFinish===undefined?place:Math.min(t.bestFinish,place);}
  reserve(r,e){const q=clone(r.quote),held=q.currency==='coins'?'reservedCoins':'reservedCrowns',players=r.players.map(p=>this.eligible(e,p.id,q));
   if(players.some(p=>p.activeMatch))err('ALREADY_IN_MATCH');if(Math.max(...players.map(p=>p.rating))-Math.min(...players.map(p=>p.rating))>MM.CONFIG.tournament.hardMax)err('SKILL_WINDOW_CHANGED');
   for(const p of players){if(p[q.currency]<q.entry)err('INSUFFICIENT_'+q.currency.toUpperCase());safe(p[held]+q.entry);}
@@ -37,7 +38,7 @@ class RoomStore{
   for(const p of payouts)safe(this.account(e,p.id)[c]+p.amount);if(!refund)safe(e.burned[c]+q.burn);
   for(const p of r.contributions){const a=this.account(e,p.id);if(a[held]<p.amount)err('ESCROW_MISMATCH');a[held]-=p.amount;if(a.activeMatch==='tournament:'+r.id)a.activeMatch=null;}
   for(const p of payouts){const a=this.account(e,p.id);a[c]+=p.amount;this.journal(e,r.id+(refund?':refund:':':payout:')+p.id,p.id,c,p.amount,refund?'Tournament entry refunded':'Tournament placement payout');}
-  if(!refund)e.burned[c]+=q.burn;r.receipt={currency:c,pool:r.escrow,burn:refund?0:q.burn,payouts,refunded:refund};r.escrow=0;r.settled=true;
+  if(!refund){e.burned[c]+=q.burn;r.ranking.forEach((id,i)=>this.recordTournament(this.account(e,id),i+1,r.table));}r.receipt={currency:c,pool:r.escrow,burn:refund?0:q.burn,payouts,refunded:refund};r.escrow=0;r.settled=true;
   r.riskFlags=[];if(!refund&&r.fixtures.filter(f=>f.reason==='resign'||f.reason==='no-show').length>4)r.riskFlags.push('HIGH_FORFEIT_RATE');
  }
  view(id,actor){const r=this.get(id);if(!r.players.some(p=>p.id===actor))err('NOT_IN_ROOM');return T.view(r,this.now());}

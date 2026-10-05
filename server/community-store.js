@@ -2,7 +2,7 @@
  * account wallets/Elo remain authoritative and are never restored from a client save. */
 'use strict';
 const crypto=require('node:crypto');
-const {sha,equal}=require('./identity-provider.js');
+const {sha,equal}=require('./identity-provider.js'),D=require('../src/domain.js');
 const DAY=86400000,MAX_SAVE_BYTES=262144,AVATARS=['cross','ring','board','rook','crown','star'];
 const NAME=/^[a-z][a-z0-9_]{2,19}$/;
 const RESERVED=new Set(['admin','administrator','moderator','support','system','megaxo','mega_xo','official','deleted','anonymous']);
@@ -94,7 +94,7 @@ CREATE INDEX IF NOT EXISTS identities_actor ON identities(actor);`);
   this.db.prepare('UPDATE profiles SET username=?,display_name=?,avatar=?,stats_visibility=?,presence_visibility=?,username_changed=?,version=version+1 WHERE actor=?').run(username,name,avatar,sv,pv,username!==p.username?this.now():p.username_changed,actor);a.account(actor).name=name;this.write(a);return this.profile(actor,actor);
  });}
  relation(actor,target,a=this.read()){const A=a.account(actor),B=a.account(target);if(A.blocked.includes(target)||B.blocked.includes(actor))return 'blocked';if(A.friends.includes(target)&&B.friends.includes(actor))return 'friend';if(A.friendRequests.includes(target))return 'incoming';if(B.friendRequests.includes(actor))return 'outgoing';return actor===target?'self':'none';}
- stats(a){const out={};for(const mode of ['ranked','casual','friend']){const rows=(a.history||[]).filter(r=>r.mode===mode&&['win','loss','draw'].includes(r.result)),wins=rows.filter(r=>r.result==='win').length,losses=rows.filter(r=>r.result==='loss').length,seconds=rows.reduce((s,r)=>s+(Number.isFinite(r.activeSeconds)?Math.max(0,r.activeSeconds):0),0);out[mode]={games:rows.length,wins,losses,draws:rows.length-wins-losses,winRate:rows.length?wins/rows.length:null,averageSeconds:rows.length?seconds/rows.length:null,hours:seconds/3600};}return out;}
+ stats(a){const out={};for(const mode of ['ranked','casual','friend']){const rows=(a.history||[]).filter(r=>r.mode===mode&&['win','loss','draw'].includes(r.result)),wins=rows.filter(r=>r.result==='win').length,losses=rows.filter(r=>r.result==='loss').length,seconds=rows.reduce((s,r)=>s+(Number.isFinite(r.activeSeconds)?Math.max(0,r.activeSeconds):0),0);out[mode]={games:rows.length,wins,losses,draws:rows.length-wins-losses,winRate:rows.length?wins/rows.length:null,averageSeconds:rows.length?seconds/rows.length:null,hours:seconds/3600};}out.tournament=D.tournamentStats(a.tournamentRecord);return out;}
  presence(actor,viewer){const authority=this.read(),p=this.profileRow(actor);if(!p||actor!==viewer&&(p.presence_visibility==='hidden'||this.relation(actor,viewer,authority)!=='friend'))return {state:'hidden',online:false};
   const rows=this.db.prepare('SELECT p.seen,p.foreground FROM session_presence p JOIN account_sessions s ON s.token=p.session WHERE p.actor=? AND p.seen>? AND s.expires>?').all(actor,this.now()-45000,this.now());if(!rows.length)return {state:'offline',online:false};if(!rows.some(r=>r.foreground))return {state:'away',online:false};
   const a=authority.account(actor);let state=a.activeMatch?'in-match':this.isQueued?.(actor)?'queued':'online';const table=this.db.prepare("SELECT name FROM sqlite_master WHERE name='party_rooms'").get();if(state==='online'&&table){const rooms=this.db.prepare("SELECT json FROM party_rooms WHERE json_extract(json,'$.status') IN ('LOBBY','RUNNING','PAUSED')").all();if(rooms.some(r=>JSON.parse(r.json).players.some(p=>p.id===actor)))state='in-lobby';}

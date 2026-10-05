@@ -41,6 +41,10 @@ jobs:
         run: |
           python -m pip install playwright==1.55.0
           python -m playwright install --with-deps chromium
+      - name: Static-server guest/settings/private sweep
+        run: |
+          set -o pipefail
+          python tests/static-browser.py 2>&1 | tee tests-output/v334-static-ui.txt
       - name: Account, friends, notification and challenge browser flow
         run: |
           set -o pipefail

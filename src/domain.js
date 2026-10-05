@@ -75,6 +75,7 @@ function migrate(data){
  if(!data||data.version!==3.2)throw Error('INVALID_SAVE');
  const w=data.wallet;integer(w.coins);integer(w.crowns);w.ledger=w.ledger||[];w.operations=w.operations||{};w.reservedCoins=w.reservedCoins||0;w.reservedCrowns=w.reservedCrowns||0;
  for(const row of w.ledger)if(!row.currency)row.currency='coins';
+ data.settings=data.settings||{};for(const [key,value] of Object.entries({notifications:false,notifyMatches:false,notifySocial:false,notifyRewards:false}))if(typeof data.settings[key]!=='boolean')data.settings[key]=value;
  data.economyVersion=POLICY.version;data.weekly=data.weekly||{};return data;
 }
 /* Atomic local conversion. The online server has its own independent wallet and journal. */
@@ -93,7 +94,7 @@ function aggregate(records,mode='bot',difficulty='all'){
  const timed=rows.filter(r=>Number.isFinite(r.activeSeconds));const total=timed.reduce((a,r)=>a+Math.max(0,r.activeSeconds),0);
  return {games:rows.length,wins,losses,draws,winRate:rows.length?wins/rows.length:null,averageSeconds:timed.length?total/timed.length:null,hours:total/3600,timedGames:timed.length};
 }
-function fresh(now=Date.now()){return {version:3.2,economyVersion:POLICY.version,settings:{theme:'vector',sound:true,music:false,haptics:true,motion:false,legal:true,preview:true,timer:0,confirm:false},records:[],processed:[],wallet:{coins:100,crowns:0,reservedCoins:0,reservedCrowns:0,operations:{},ledger:[{id:'welcome',currency:'coins',amount:100,reason:'Welcome coins',at:now}],owned:[]},daily:{},weekly:{},legacy:null,profile:{name:'You',region:'India',wealthPublic:false}};}
+function fresh(now=Date.now()){return {version:3.2,economyVersion:POLICY.version,settings:{theme:'vector',sound:true,music:false,haptics:true,motion:false,legal:true,preview:true,timer:0,confirm:false,notifications:false,notifyMatches:false,notifySocial:false,notifyRewards:false},records:[],processed:[],wallet:{coins:100,crowns:0,reservedCoins:0,reservedCrowns:0,operations:{},ledger:[{id:'welcome',currency:'coins',amount:100,reason:'Welcome coins',at:now}],owned:[]},daily:{},weekly:{},legacy:null,profile:{name:'You',region:'India',wealthPublic:false}};}
 function getDaily(data,now=Date.now()){
  const key=day(now);if(!data.daily[key])data.daily[key]={finished:0,seconds:0,boards:0,casual:0,friend:0,ranked:0,botPaid:0,botWins:{},claimed:[]};return data.daily[key];
 }

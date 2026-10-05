@@ -2,22 +2,22 @@
 (function(root,factory){const api=factory();if(typeof module==='object')module.exports=api;else root.MegaDomain=api;})(globalThis,()=>{
 'use strict';
 const TIERS=[
- ['wood','Wood',0,2,1,'Seed',50],['stone','Stone',700,4,1.05,'Foundation',150],['iron','Iron',900,6,1.1,'Resolve',250],
- ['bronze','Bronze',1100,8,1.15,'Contender',350],['silver','Silver',1300,10,1.2,'Precision',450],['gold','Gold',1500,12,1.3,'Brilliance',550],
- ['diamond','Diamond',1700,16,1.4,'Clarity',700],['emerald','Emerald',1900,20,1.5,'Distinction',850],
- ['champion','Champion',2200,24,1.65,'Laureate',1050],['master','Master',2400,30,1.8,'Virtuoso',1300],['grandmaster','Grandmaster',2600,40,2,'The Twenty',1700]
+ ['wood','Wood',0,2,1,'Seed',20],['stone','Stone',700,4,1.05,'Foundation',25],['iron','Iron',900,6,1.1,'Resolve',30],
+ ['bronze','Bronze',1100,8,1.15,'Contender',40],['silver','Silver',1300,10,1.2,'Precision',50],['gold','Gold',1500,12,1.3,'Brilliance',65],
+ ['diamond','Diamond',1700,16,1.4,'Clarity',85],['emerald','Emerald',1900,20,1.5,'Distinction',110],
+ ['champion','Champion',2200,24,1.65,'Laureate',150],['master','Master',2400,30,1.8,'Virtuoso',220],['grandmaster','Grandmaster',2600,40,2,'The Twenty',300]
 ].map(([id,name,min,fee,multiplier,motto,weekly],index)=>Object.freeze({id,name,min,fee,multiplier,motto,weekly,index,cap:index===8?1000:index===9?200:index===10?20:null}));
 const QUESTS=[
- {id:'finish',title:'A good start',desc:'Finish one full match.',metric:'finished',target:1,reward:5},
- {id:'three',title:'One more round',desc:'Finish three matches.',metric:'finished',target:3,reward:15},
- {id:'time',title:'Take your time',desc:'Complete 10 active minutes in full games.',metric:'seconds',target:600,reward:15},
- {id:'boards',title:'Small victories',desc:'Claim six Mini Boards.',metric:'boards',target:6,reward:10},
- {id:'casual',title:'Meet your match',desc:'Finish a free casual online match.',metric:'casual',target:1,reward:15,online:true},
- {id:'friend',title:'Friendly rivalry',desc:'Finish a free game with a friend.',metric:'friend',target:1,reward:15,online:true},
- {id:'ranked',title:'Step up',desc:'Finish a ranked match.',metric:'ranked',target:1,reward:20,online:true}
+ {id:'finish',title:'A good start',desc:'Finish one full match.',metric:'finished',target:1,reward:2},
+ {id:'three',title:'One more round',desc:'Finish three matches.',metric:'finished',target:3,reward:4},
+ {id:'time',title:'Take your time',desc:'Complete 10 active minutes in full games.',metric:'seconds',target:600,reward:5},
+ {id:'boards',title:'Small victories',desc:'Claim six Mini Boards.',metric:'boards',target:6,reward:3},
+ {id:'casual',title:'Meet your match',desc:'Finish a free casual online match.',metric:'casual',target:1,reward:5,online:true},
+ {id:'friend',title:'Friendly rivalry',desc:'Finish a free game with a friend.',metric:'friend',target:1,reward:5,online:true},
+ {id:'ranked',title:'Step up',desc:'Finish a ranked match.',metric:'ranked',target:1,reward:6,online:true}
 ];
-const BOT_PAY=Object.freeze({Beginner:2,Easy:4,Medium:8,Hard:12,Expert:18});
-const POLICY=Object.freeze({version:'economy-1',coinsPerCrown:10,eloK:24,botDailyCap:100,botWinsPerLevel:5,rankedBonusDailyCap:120,minRewardSeconds:30,minRewardMoves:12,elitePopulation:5000,placements:10,friendPotCap:20,directPairDaily:1,directPairWeekly:3,queuePairDaily:3,offerDaily:20,offerMinutes:10,weeklyGames:5,weeklyQueueGames:3,weeklyOpponents:3,weeklyActiveDays:3});
+const BOT_PAY=Object.freeze({Beginner:1,Easy:1,Medium:2,Hard:4,Expert:6});
+const POLICY=Object.freeze({version:'economy-2',startingCoins:150,coinsPerCrown:10,eloK:24,rankedBonusRatio:.6,botDailyCap:20,botWinsPerLevel:3,rankedBonusDailyCap:50,minRewardSeconds:30,minRewardMoves:12,elitePopulation:5000,placements:10,friendPotCap:20,directPairDaily:1,directPairWeekly:3,queuePairDaily:3,offerDaily:20,offerMinutes:10,weeklyGames:5,weeklyQueueGames:3,weeklyOpponents:3,weeklyActiveDays:3});
 /* Suggested catalogue quantities. Localized prices always come from the native store. */
 const CROWN_PACKS=Object.freeze([{id:'crowns_100',crowns:100,suggestedUSD:0.99},{id:'crowns_525',crowns:525,suggestedUSD:4.99},{id:'crowns_1100',crowns:1100,suggestedUSD:9.99}].map(Object.freeze));
 const DAY=86400000;
@@ -29,6 +29,7 @@ const day=(now=Date.now())=>new Date(now).toISOString().slice(0,10);
 function week(now=Date.now()){const d=new Date(now);d.setUTCHours(0,0,0,0);d.setUTCDate(d.getUTCDate()-((d.getUTCDay()+6)%7));return d.toISOString().slice(0,10);}
 function weekStart(id){const n=Date.parse(id+'T00:00:00Z');if(!Number.isFinite(n)||week(n)!==id)throw Error('INVALID_WEEK');return n;}
 function basicTier(rating){return TIERS.slice(0,8).filter(t=>rating>=t.min).pop()||TIERS[0];}
+function rankedWinBonus(value){const t=typeof value==='string'?requireTier(value):value;if(!t||!Number.isSafeInteger(t.fee))throw Error('INVALID_TIER');return Math.max(1,Math.floor(t.fee*POLICY.rankedBonusRatio));}
 function eligible(p,now){return p.verified&&!p.suspended&&p.games>=50&&p.uniqueOpponents>=10&&p.recentGames>=5&&now-p.createdAt>=14*DAY;}
 /* Publish elite seats weekly; caps are exclusive and may remain unfilled. */
 function assignTiers(players,now=Date.now()){
@@ -52,7 +53,7 @@ function quote({mode='ranked',kind='leaderboard',rated=true,from='wood',to='wood
  if(['casual','friend-free'].includes(mode)||mode==='direct'&&!rated)return {version:POLICY.version,mode:'unranked',rated:false,currency:null,minimum:0,ceiling:0,fee:0,contributions:[0,0],pool:0,burn:0,payout:0,bonus:0,netWin:0};
  const A=requireTier(from),B=requireTier(to);
  if(mode==='ranked'||mode==='queue'){
-  const fee=Math.min(A.fee,B.fee);return {version:POLICY.version,mode:'queue',rated:true,currency:'coins',minimum:fee,ceiling:fee,fee,contributions:[fee,fee],pool:2*fee,burn:fee,payout:fee,bonus:Math.floor(12*A.multiplier),netWin:0};
+  const fee=Math.min(A.fee,B.fee);return {version:POLICY.version,mode:'queue',rated:true,currency:'coins',minimum:fee,ceiling:fee,fee,contributions:[fee,fee],pool:2*fee,burn:fee,payout:fee,bonus:rankedWinBonus(A),netWin:0};
  }
  if(!['direct','challenge','friend-stake'].includes(mode))throw Error('INVALID_MODE');
  if(mode==='friend-stake')kind='friend';if(!['friend','leaderboard'].includes(kind))throw Error('INVALID_KIND');
@@ -94,7 +95,7 @@ function aggregate(records,mode='bot',difficulty='all'){
  const timed=rows.filter(r=>Number.isFinite(r.activeSeconds));const total=timed.reduce((a,r)=>a+Math.max(0,r.activeSeconds),0);
  return {games:rows.length,wins,losses,draws,winRate:rows.length?wins/rows.length:null,averageSeconds:timed.length?total/timed.length:null,hours:total/3600,timedGames:timed.length};
 }
-function fresh(now=Date.now()){return {version:3.2,economyVersion:POLICY.version,settings:{theme:'vector',sound:true,music:false,haptics:true,motion:false,legal:true,preview:true,timer:0,confirm:false,notifications:false,notifyMatches:false,notifySocial:false,notifyRewards:false},records:[],processed:[],wallet:{coins:100,crowns:0,reservedCoins:0,reservedCrowns:0,operations:{},ledger:[{id:'welcome',currency:'coins',amount:100,reason:'Welcome coins',at:now}],owned:[]},daily:{},weekly:{},legacy:null,profile:{name:'You',region:'India',wealthPublic:false}};}
+function fresh(now=Date.now()){return {version:3.2,economyVersion:POLICY.version,settings:{theme:'vector',sound:true,music:false,haptics:true,motion:false,legal:true,preview:true,timer:0,confirm:false,notifications:false,notifyMatches:false,notifySocial:false,notifyRewards:false},records:[],processed:[],wallet:{coins:POLICY.startingCoins,crowns:0,reservedCoins:0,reservedCrowns:0,operations:{},ledger:[{id:'welcome',currency:'coins',amount:POLICY.startingCoins,reason:'Welcome coins',at:now}],owned:[]},daily:{},weekly:{},legacy:null,profile:{name:'You',region:'India',wealthPublic:false}};}
 function getDaily(data,now=Date.now()){
  const key=day(now);if(!data.daily[key])data.daily[key]={finished:0,seconds:0,boards:0,casual:0,friend:0,ranked:0,botPaid:0,botWins:{},claimed:[]};return data.daily[key];
 }
@@ -135,5 +136,5 @@ function weeklyReward({dailyTiers=[],endTier='wood',games=0,queueGames=0,uniqueO
  const indices=dailyTiers.map(x=>requireTier(x).index).sort((a,b)=>a-b),median=indices[Math.floor((indices.length-1)/2)],t=TIERS[Math.min(end.index,median)];
  return {amount:Math.floor(t.weekly*dailyTiers.length/7),tier:t.id,eligible:true,days:dailyTiers.length};
 }
-return {TIERS,QUESTS,BOT_PAY,POLICY,CROWN_PACKS,DAY,tier,requireTier,integer,add,day,week,weekStart,eligible,basicTier,assignTiers,elo,quote,conversion,wealth,migrate,convert,aggregate,fresh,getDaily,complete,claim,spend,leaderboard,weeklyReward};
+return {TIERS,QUESTS,BOT_PAY,POLICY,CROWN_PACKS,DAY,tier,requireTier,integer,add,day,week,weekStart,eligible,basicTier,rankedWinBonus,assignTiers,elo,quote,conversion,wealth,migrate,convert,aggregate,fresh,getDaily,complete,claim,spend,leaderboard,weeklyReward};
 });

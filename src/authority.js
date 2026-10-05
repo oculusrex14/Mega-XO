@@ -16,7 +16,7 @@ class Authority {
  account(id){const a=this.accounts.get(id);if(!a)throw Error('UNKNOWN_ACCOUNT');return a;}
  _entry(id,actor,currency,amount,reason,source='game'){this.journal.push({id,actor,currency,amount,reason,source,at:this.now()});}
  /* Provisioning is a trusted server operation, never a user-supplied balance import. */
- addAccount(id,{coins=100,crowns=0,rating=600,games=0,verified=false,createdAt=this.now(),region='',wealthPublic=false}={}){
+ addAccount(id,{coins=D.POLICY.startingCoins,crowns=0,rating=600,games=0,verified=false,createdAt=this.now(),region='',wealthPublic=false}={}){
   if(!validId(id)||this.accounts.has(id))throw Error('INVALID_ACCOUNT');D.integer(coins);D.integer(crowns);D.integer(games);if(!Number.isFinite(rating)||rating<0)throw Error('INVALID_RATING');
   let friendCode;do{friendCode='MEGA-'+crypto.randomBytes(4).toString('hex').toUpperCase();}while([...this.accounts.values()].some(p=>p.friendCode===friendCode));
   const a={id,friendCode,coins,crowns,reservedCoins:0,reservedCrowns:0,rating:Math.round(rating*100)/100,peak:rating,games,tier:D.basicTier(rating).id,casualRating:games>=D.POLICY.placements?Math.round(rating*100)/100:1000,casualGames:0,verified,createdAt,region,wealthPublic,suspended:false,hold:false,blocked:[],friends:[],friendRequests:[],activeMatch:null,history:[],daily:{},operations:{},ledger:[],owned:[],purchaseInfluenced:false};
@@ -100,7 +100,7 @@ class Authority {
   let casual=null;if(!m.quote.rated&&m.terms.source==='queue'&&m.terms.kind==='casual'){const score=isDraw?.5:winnerId===m.players[0]?1:0,k=Math.min(players[0].casualGames,players[1].casualGames)<10?32:Math.min(players[0].casualGames,players[1].casualGames)<40?24:16;casual=D.elo(players[0].casualRating,players[1].casualRating,score,k);players[0].casualRating=casual.a;players[1].casualRating=casual.b;players[0].casualGames++;players[1].casualGames++;}
   const winAccount=winnerId?this.account(winnerId):null;
   if(winAccount&&m.quote.mode==='queue'&&qualified&&reason==='line'){
-   const d=this._daily(winAccount,now),idx=m.players.indexOf(winnerId);bonus=Math.min(Math.floor(12*D.tier(m.preTiers[idx]).multiplier),Math.max(0,D.POLICY.rankedBonusDailyCap-d.rankedBonus));
+   const d=this._daily(winAccount,now),idx=m.players.indexOf(winnerId);bonus=Math.min(D.rankedWinBonus(m.preTiers[idx]),Math.max(0,D.POLICY.rankedBonusDailyCap-d.rankedBonus));
   }
   // Check the resulting balances before releasing escrow, including additive Coin bonus.
   if(winAccount&&c)D.add(winAccount[c],payout+(c==='coins'?bonus:0));if(winAccount&&c!=='coins')D.add(winAccount.coins,bonus);

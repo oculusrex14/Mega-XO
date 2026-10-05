@@ -7,7 +7,7 @@ const CONFIG=Object.freeze({
 });
 const sec=(ticket,now)=>Math.max(0,(now-ticket.joinedAt)/1000);
 function expected(a,b){return 1/(1+10**((b-a)/400));}
-function quality(a,b){return 1-Math.abs(expected(a,b)-.5)*2;}
+function quality(a,b){return 2/(1+10**(Math.abs(b-a)/400));}
 function casualSkill(a){return Number.isFinite(a.casualRating)?a.casualRating:(a.games>=D.POLICY.placements?a.rating:1000);}
 function skill(a,mode){return mode==='casual'?casualSkill(a):a.rating;}
 function searchWindow(mode,wait,a){
@@ -36,11 +36,12 @@ function compatibility(a,b,ta,tb,mode,now=Date.now()){
 }
 function tournamentWindow(wait){return wait<25?100:wait<60?150:CONFIG.tournament.hardMax;}
 function median(values){const x=values.slice().sort((a,b)=>a-b),m=Math.floor(x.length/2);return x.length%2?x[m]:(x[m-1]+x[m])/2;}
+function lookupAccount(e,id){const a=e.accounts instanceof Map?e.accounts.get(id):Array.isArray(e.accounts)?e.accounts.find(([key])=>key===id)?.[1]:e.account(id);if(!a)throw Error('UNKNOWN_ACCOUNT');return a;}
 function selectTournamentRoom(rooms,economy,actor,table,now=Date.now()){
- const a=economy.accounts instanceof Map?economy.accounts.get(actor):economy.account(actor),candidates=[];
+ const a=lookupAccount(economy,actor),candidates=[];
  for(const room of rooms){
   if(room.table!==table||room.status!=='LOBBY'||room.players.length>=10||now>=room.expires)continue;
-  const players=room.players.map(p=>economy.accounts instanceof Map?economy.accounts.get(p.id):economy.account(p.id)).filter(Boolean);
+  const players=room.players.map(p=>lookupAccount(economy,p.id)).filter(Boolean);
   if(players.some(p=>(p.blocked||[]).includes(actor)||(a.blocked||[]).includes(p.id)))continue;
   if(players.some(p=>(p.friends||[]).includes(actor)||(a.friends||[]).includes(p.id)))continue;
   const ratings=players.map(p=>p.rating),centre=median(ratings),wait=(now-room.created)/1000,window=tournamentWindow(wait),next=ratings.concat(a.rating),spread=Math.max(...next)-Math.min(...next);
@@ -49,7 +50,7 @@ function selectTournamentRoom(rooms,economy,actor,table,now=Date.now()){
  }
  return candidates.sort((x,y)=>x.score-y.score||x.room.created-y.room.created)[0]?.room||null;
 }
-function tournamentSeed(ids,economy){const get=id=>economy.accounts instanceof Map?economy.accounts.get(id):economy.account(id);return ids.slice().sort((a,b)=>{const A=get(a),B=get(b);return B.rating-A.rating||(B.games||0)-(A.games||0)||String(a).localeCompare(String(b));});}
+function tournamentSeed(ids,economy){const get=id=>lookupAccount(economy,id);return ids.slice().sort((a,b)=>{const A=get(a),B=get(b);return B.rating-A.rating||(B.games||0)-(A.games||0)||String(a).localeCompare(String(b));});}
 class Matchmaker{
  constructor({store,now=()=>Date.now(),makeId=()=>crypto.randomUUID(),maxTickets=5000}={}){if(!store)throw Error('STORE_REQUIRED');this.store=store;this.now=now;this.makeId=makeId;this.maxTickets=maxTickets;this.tickets=new Map();this.results=new Map();}
  _context(context={}){const latency=Number(context.latencyMs);return {region:normalizedRegion(context.region),latencyMs:Number.isFinite(latency)?Math.max(0,Math.min(1000,latency)):null};}

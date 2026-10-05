@@ -3,3 +3,12 @@ __pycache__/
 *.pyc
 node_modules/
 .DS_Store
+
+# Local identity service / validation output
+.data/
+.env
+.env.*
+!.env.example
+tests-output/
+node_modules/
+__pycache__/

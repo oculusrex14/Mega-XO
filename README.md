@@ -1,4 +1,4 @@
-# Mega XO - V3.3.2
+# Mega XO - V3.3.3
 
 Private rooms and ten-player tournaments, added on top of the approved V3.2.1 Figma themes and economy. V3.3.1 is a UI polish pass for the new party surfaces: more spacing, clearer table hierarchy, and larger private-room choices across all four themes. The existing game rules, bot engine, icon adapter, theme CSS and normal app controller are unchanged.
 
@@ -65,3 +65,15 @@ This is implemented development code, not a claim of production deployment, nati
 ## V3.3.2 matchmaking
 
 V3.3.2 adds bounded server-side matchmaking for Ranked and Casual queues plus stricter public-tournament cohort assembly. Ranked keeps the approved visible Elo; Casual uses a hidden matchmaking-only rating. Search windows widen with wait time but retain hard caps, recent rematches and ranked friends are avoided, queued opponent identity stays hidden until both players accept, and public ten-player tables are assembled within a 200-Elo spread with deterministic seeding. Full rules and research basis: `docs/V3.3.2-MATCHMAKING.md`.
+
+
+## V3.3.3 - profiles and friends
+
+Guest-first landing/startup, unique usernames and immutable tags, Google/Apple identity and explicit linking/recovery, versioned practice backups, real friendship/search/profile-stat/challenge flows, leased presence and four theme-specific loading/waiting states. Existing palettes and game/economy/tournament rules are preserved.
+
+- `npm run start:accounts`: combined same-origin identity/community/game/party server.
+- `npm run test:accounts`: signed-token, SQLite and actual HTTP identity/social tests.
+- `npm run test:account-ui`: two-client full UI flow (Python Playwright/Chromium required).
+- `npm test`: full existing plus new Node regressions.
+
+Provider sign-in is configurable, not fake: set the real Google/Apple app credentials and callback origin from `.env.example`. Unconfigured sign-in stays unavailable while guest offline play remains usable. Native credential adapter sources are in `native/`, not a compiled mobile project. Read [V3.3.3 account contracts and release boundaries](docs/V3.3.3-ACCOUNTS.md) and [test evidence](docs/V3.3.3-TESTING.md).

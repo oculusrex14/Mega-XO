@@ -11,7 +11,7 @@ if(legacyThemeMap[data.settings.theme])data.settings.theme=legacyThemeMap[data.s
 if(!data.profile.friendCode){const chars='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';data.profile.friendCode='MEGA-'+Array.from({length:4},()=>chars[Math.floor(Math.random()*chars.length)]).join('');}
 if(!['vector','midnight','paperclub','afterhours'].includes(data.settings.theme))data.settings.theme='vector';
 let page='play',mode='bot',difficulty='Medium',first='X',onlineType='ranked',statsMode='bot',statsDifficulty='all',rankLeague='all',rankScope='global',rankMetric='rating';
-let online={ready:false,profile:null,rows:[],invitations:[],products:[]},target=null,pendingExchange=null,refreshSerial=0,onlinePoll=null,onlinePending=false,waitingId=null;
+let online={ready:false,profile:null,rows:[],invitations:[],products:[]},target=null,pendingExchange=null,refreshSerial=0,onlinePoll=null,onlinePending=false,waitingId=null,queueSubmission=null,queueCancelling=false;
 const NET=window.MegaNetwork,opId=()=>globalThis.crypto?.randomUUID?.()||String(Date.now())+'-'+Math.random().toString(36).slice(2);
 let match=null,botTimer=null,toastTimer=null,ctx=null,ambient=null,sheetKind='',lastTick=performance.now(),lastInput=performance.now(),lastSave=0;
 const themeNames={vector:'Vector Light',midnight:'Midnight Club',paperclub:'Paper Club',afterhours:'After Hours'};
@@ -21,7 +21,11 @@ const icon=n=>I.icon(n),badge=(t,large=false)=>{const c=(['midnight','afterhours
 function refreshIcons(){requestAnimationFrame(()=>I.refresh?.());}
 function walletData(){return online.ready&&online.profile?online.profile.wallet:data.wallet;}
 function myTier(){return online.profile?.tier||'wood';}
-function save(){try{localStorage.setItem(KEY,JSON.stringify(data));}catch{notify('Storage is unavailable. Progress lasts for this session only.');}}
+function save(){try{
+ if(match&&!match.online&&!match.recorded&&!match.state.winner&&!$('#gameScreen').hidden)data.offlineMatch={id:match.id,first:match.first,mode:match.mode,difficulty:match.difficulty,practice:match.practice,moves:match.state.moves,active:match.active,turnLimit:match.turnLimit,turnRemaining:match.turnRemaining};
+ else if(match?.recorded||match?.state.winner)delete data.offlineMatch;
+ localStorage.setItem(KEY,JSON.stringify(data));window.dispatchEvent(new Event('mega:local-save'));
+ }catch{notify('Storage is unavailable. Progress lasts for this session only.');}}
 function notify(text){const t=$('#toast');t.textContent=text;t.classList.add('visible');clearTimeout(toastTimer);toastTimer=setTimeout(()=>t.classList.remove('visible'),2800);}
 function applyTheme(){document.documentElement.dataset.theme=data.settings.theme;document.body.dataset.theme=data.settings.theme;document.documentElement.dataset.motion=data.settings.motion?'reduced':'full';document.querySelector('meta[name="theme-color"]').content=getComputedStyle(document.documentElement).getPropertyValue('--surface').trim();}
 function tone(freq=500){if(!data.settings.sound)return;try{const C=window.AudioContext||window.webkitAudioContext;if(!C)return;ctx=ctx||new C();ctx.resume().catch(()=>{});const o=ctx.createOscillator(),a=ctx.createGain();o.type='sine';o.frequency.value=freq;a.gain.setValueAtTime(.035,ctx.currentTime);a.gain.exponentialRampToValueAtTime(.001,ctx.currentTime+.12);o.connect(a);a.connect(ctx.destination);o.start();o.stop(ctx.currentTime+.14);}catch{}}
@@ -52,7 +56,7 @@ function home(){
  '<button class="learn" data-action="tutorial">'+icon('tutorial')+'<span><strong>New to Mega XO?</strong><small>Learn the rules in under a minute</small></span>'+icon('arrow')+'</button>'+
  '<div class="home-quests"><span><b>Daily quests</b><small>Earn coins through play.</small></span>'+button('View quests','nav','quests',true)+'</div>';
 }
-function friends(){return '<div class="panel-head friends-head"><div class="eyebrow">Social</div><h2>Friends</h2><p>Challenge people you know, or add someone you just played.</p></div>'+
+function friends(){if(window.MegaCommunity?.friendsMarkup)return window.MegaCommunity.friendsMarkup();return '<div class="panel-head friends-head"><div class="eyebrow">Social</div><h2>Friends</h2><p>Challenge people you know, or add someone you just played.</p></div>'+
  '<div class="friend-search"><div class="friend-search-wrap">'+icon('search')+'<input id="friendName" aria-label="Search username" placeholder="Search username" maxlength="30" autocomplete="off"></div><button class="friend-add" data-action="findfriend">'+icon('userPlus')+'<span>Add</span></button></div>'+
  '<div class="friend-code-card"><div><span>YOUR FRIEND CODE</span><div class="friend-code">'+escape(online.profile?.friendCode||'Sign in')+'</div></div><button class="copy-friend" data-action="copyfriend" aria-label="Copy friend code">'+icon('copy')+'</button></div>'+
  '<div class="section-title friends-section-title"><span>Friends</span><small>'+(online.profile?.friends||[]).filter(p=>p.online).length+' ONLINE</small></div>'+
@@ -87,7 +91,7 @@ function quests(){const d=D.getDaily(data),remaining=Math.max(0,100-d.botPaid);r
 function sheetOpen(){return !$('#sheet').hidden;}
 
 function open(title,html,kind='info'){
- clearTimeout(botTimer);botTimer=null;sheetKind=kind;$('#sheetTitle').textContent=title;$('#sheetBody').innerHTML=html;$('#sheet').dataset.kind=kind;$('#sheetBackdrop').hidden=false;$('#sheet').hidden=false;$('#sheet').scrollTop=0;lastTick=performance.now();refreshIcons();
+ clearTimeout(botTimer);botTimer=null;sheetKind=kind;$('#sheetTitle').textContent=title;$('#sheetBody').innerHTML=html;$('#sheet').dataset.kind=kind;$('#sheetBackdrop').hidden=false;$('#sheet').hidden=false;$('#sheet').scrollTop=0;lastTick=performance.now();refreshIcons();window.dispatchEvent(new Event('mega:sheet'));
 }
 function close(){if($('#sheet').hidden)return;$('#sheet').hidden=true;$('#sheetBackdrop').hidden=true;sheetKind='';lastTick=performance.now();lastInput=lastTick;scheduleBot();}
 
@@ -118,13 +122,14 @@ function updateQuote(reset=false){if(!target||!$('#challengeQuote'))return;try{
  target.quote=q;$('#challengeQuote').innerHTML=rated?'<div class="card"><h3>Before you send</h3>'+[['You reserve',q.pool],['Your opponent pays',0],['Winner receives',q.payout],['Burned',q.burn]].map(([k,v])=>'<div class="split"><span>'+k+'</span><b>'+v+' Crowns</b></div>').join('')+'<p class="caption">If you win: net -'+q.burn+' Crowns. If you lose: net -'+q.pool+'. '+(q.ceiling===null?'Minimum '+q.minimum+'; no pricing ceiling.':'Maximum '+q.ceiling+' Crowns.')+'</p></div>':'<p>Free game. No stake and no Elo changes.</p>';
  }catch{target.quote=null;$('#challengeQuote').innerHTML='<p class="caption">Use an even Crown amount at or above the minimum'+(target.kind==='friend'?', up to 20.':'.')+'</p>';}}
 async function sendChallenge(){if(!target?.quote)return;try{const invitation=await NET.offer(target.id,{kind:target.kind,rated:target.quote.rated,amount:target.quote.pool},opId());watchInvitation(invitation.id);}catch(e){notify(friendlyError(e));}}
-function reviewInvite(id){const m=online.invitations.find(m=>m.id===id);if(!m)return;const entry=m.quote.contributions[m.players.indexOf(online.profile.id)];open('Match invitation','<p>'+(m.quote.mode==='queue'?'A ranked opponent is ready.':escape(m.challengerName||m.players[0])+' invited you to '+(m.quote.rated?'a ranked':'an unranked')+' game.')+'</p><div class="card"><p>You pay: '+entry+' '+(m.quote.currency||'')+'</p><p>Winner receives: '+m.quote.payout+' '+(m.quote.currency||'')+'</p><p>Burned: '+m.quote.burn+' '+(m.quote.currency||'')+'</p></div>'+fullButton('Accept','acceptinvite',id)+fullButton('Decline','declineinvite',id,true),'invite');}
+function reviewInvite(id){const m=online.invitations.find(m=>m.id===id);if(!m)return;const entry=m.quote.contributions[m.players.indexOf(online.profile.id)];open('Match invitation','<p>'+(m.terms?.source==='queue'?(m.quote.rated?'A ranked opponent is ready.':'A casual opponent is ready.'):escape(m.challengerName||m.players[0])+' invited you to '+(m.quote.rated?'a ranked':'an unranked')+' game.')+'</p><div class="card"><p>You pay: '+entry+' '+(m.quote.currency||'')+'</p><p>Winner receives: '+m.quote.payout+' '+(m.quote.currency||'')+'</p><p>Burned: '+m.quote.burn+' '+(m.quote.currency||'')+'</p></div>'+fullButton('Accept','acceptinvite',id)+fullButton('Decline','declineinvite',id,true),'invite');}
 function friendlyError(e){return ({COMPLETE_PLACEMENTS:'Finish your ranked placements first.',FRIENDSHIP_REQUIRED:'Add this player as a friend first.',ALREADY_IN_MATCH:'Finish your current match first.',RATED_PAIR_LIMIT:'You have reached the rated rematch limit with this player.',INSUFFICIENT_CROWNS:'Not enough Crowns.',INSUFFICIENT_COINS:'Not enough Coins.',PAID_ENTRY_UNAVAILABLE:'Paid-entry play is currently unavailable.',AUTH_REQUIRED:'Sign in to play online.',STORE_UNAVAILABLE:'The store is unavailable.',REQUOTE_REQUIRED:'The terms changed. Please request a new quote.'})[e?.message]||'Online play is unavailable right now.';}
 async function onlineInfo(){try{if(!online.ready)await refreshOnline();if(!online.ready)return notify('Online play is unavailable right now.');if(mode==='private'){open('Private Match','<p>Choose a friend to invite.</p>'+fullButton('Open Friends','openfriends'));return;}if(onlineType==='ranked'){const q=D.quote({from:myTier(),to:myTier()});open('Find a ranked match','<p>Entry: up to '+q.fee+' Coins. The exact ticket is shown when a match is found.</p><p class="caption">Nothing is charged while searching.</p>'+fullButton('Find Match','queue'));}else await startQueue();}catch(e){notify(friendlyError(e));}}
 async function startQueue(){
- try{await NET.queue(onlineType,opId());clearInterval(onlinePoll);waitingId='queue';open('Finding a match','<p>Searching for an opponent. No entry is charged yet.</p>'+fullButton('Cancel search','cancelqueue'),'queue');
- const check=async()=>{try{const invitations=await NET.invitations();if(waitingId!=='queue')return;const m=invitations.find(x=>x.quote.mode==='queue');if(m){online.invitations=invitations;clearInterval(onlinePoll);waitingId=null;reviewInvite(m.id);}}catch{}};
- onlinePoll=setInterval(check,1000);check();}catch(e){notify(friendlyError(e));}
+ if(queueSubmission||queueCancelling)return;
+ try{clearInterval(onlinePoll);waitingId='queue';open('Finding a match','<p>Searching for an opponent. No entry is charged yet.</p>'+fullButton('Cancel search','cancelqueue'),'queue');queueSubmission=NET.queue(onlineType,opId());await queueSubmission;queueSubmission=null;if(queueCancelling)return;
+ const check=async()=>{try{const queueState=NET.queueStatus?await NET.queueStatus():null;const invitations=await NET.invitations();if(waitingId!=='queue')return;if(queueState&&['expired','declined','cancelled','disconnected'].includes(queueState.state)){clearInterval(onlinePoll);waitingId=null;open('Match not accepted','<p>No entry was charged. Search again when you are ready.</p>'+fullButton('Find Match','queue')+fullButton('Back','close','',true));return;}const m=invitations.find(x=>x.terms?.source==='queue'||x.quote.mode==='queue');if(m){online.invitations=invitations;clearInterval(onlinePoll);waitingId=null;reviewInvite(m.id);}}catch{}};
+ onlinePoll=setInterval(check,1000);check();}catch(e){waitingId=null;close();notify(friendlyError(e));}finally{queueSubmission=null;}
 }
 
 function tutorial(){
@@ -132,15 +137,15 @@ function tutorial(){
  open('How to play','<div class="tutorial-cards"><div class="tutorial-card"><span class="step-number">01</span><div><b>Win a Mini Board</b><p>Inside any Mini Board, X and O play normal tic-tac-toe. Make 3 in a row to claim that whole board.</p>'+grid([2],{0:'X',1:'X',2:'X',3:'O',5:'O'})+'</div></div><div class="tutorial-card"><span class="step-number">02</span><div><b>Your cell sends the opponent</b><p>The cell position you choose becomes the opponent\'s next Mini Board. Play top-right and they must play in the top-right board.</p><div class="tutorial-flow">'+grid([2],{2:'X'})+icon('arrow')+grid([2],{2:'GO'})+'</div></div></div><div class="tutorial-card"><span class="step-number">03</span><div><b>Closed board? Free Move.</b><p>If your move points to a Mini Board that is already won or drawn, the next player can choose any open Mini Board.</p></div></div><div class="tutorial-card"><span class="step-number">04</span><div><b>Win the Mega Board</b><p>Claim 3 Mini Boards in a row, column or diagonal to win the match.</p>'+grid([0,1,2],{0:'X',1:'X',2:'X',4:'O',6:'O'})+'</div></div></div>'+fullButton(match&&!match.state.winner?'Back to your match':'Practice vs Beginner Bot',match&&!match.state.winner?'close':'practice')+'<p class="caption">Practice has no coins or personal stats.</p>','tutorial');try{localStorage.setItem('mega_v32_tutorial_seen','1');}catch{}}
 
 
-function watchInvitation(id){
- waitingId=id;clearInterval(onlinePoll);open('Challenge sent','<p>Waiting for the other player. No funds are taken until acceptance.</p>'+fullButton('Cancel invitation','cancelinvite'),'waiting');
+function watchInvitation(id,kind='challenge'){
+ waitingId=id;clearInterval(onlinePoll);open(kind==='queue'?'Waiting for your opponent':'Challenge sent','<p>Waiting for the other player. No funds are taken until acceptance.</p>'+fullButton(kind==='queue'?'Cancel match':'Cancel invitation',kind==='queue'?'cancelqueue':'cancelinvite'),'waiting');
  const check=async()=>{try{const m=await NET.match(id);if(waitingId!==id)return;if(m.status==='PLAYING'){beginOnline(m);}else if(['DECLINED','CANCELLED','EXPIRED','VOID'].includes(m.status)){clearInterval(onlinePoll);waitingId=null;close();notify('Invitation '+m.status.toLowerCase()+'. No charge.');}}catch{}};
  onlinePoll=setInterval(check,1000);check();
 }
 function beginOnline(m){
  clearInterval(onlinePoll);waitingId=null;close();clearTimeout(botTimer);onlinePending=false;
- match={id:m.id,state:m.state,online:true,symbols:m.symbols,mode:m.quote.rated?'ranked':'friend',difficulty:'',first:'X',practice:false,active:0,turnLimit:m.terms.turnSeconds,turnRemaining:0,deadline:m.deadline,clockOffset:(m.serverNow||Date.now())-Date.now(),last:null,recorded:false,pending:null};
- $('#gameScreen').hidden=false;$('#matchMode').textContent=m.quote.rated?'Ranked challenge':'Friendly match';$('#matchLevel').textContent='ONLINE';$('#playerXName').textContent=m.symbols.X===online.profile.id?'You':m.symbols.X;$('#playerOName').textContent=m.symbols.O===online.profile.id?'You':m.symbols.O;
+ match={id:m.id,state:m.state,online:true,symbols:m.symbols,mode:m.quote.rated?'ranked':m.terms.source==='queue'?'casual':'friend',difficulty:'',first:'X',practice:false,active:0,turnLimit:m.terms.turnSeconds,turnRemaining:0,deadline:m.deadline,clockOffset:(m.serverNow||Date.now())-Date.now(),last:null,recorded:false,pending:null};
+ $('#gameScreen').hidden=false;$('#matchMode').textContent=m.terms.source==='queue'?(m.quote.rated?'Ranked':'Casual'):(m.quote.rated?'Ranked challenge':'Friendly match');$('#matchLevel').textContent='ONLINE';$('#playerXName').textContent=m.symbols.X===online.profile.id?'You':m.playerNames?.[m.symbols.X]||'Opponent';$('#playerOName').textContent=m.symbols.O===online.profile.id?'You':m.playerNames?.[m.symbols.O]||'Opponent';
  lastTick=lastInput=performance.now();receiveOnline(m);onlinePoll=setInterval(async()=>{try{const state=await NET.match(m.id);if(match?.id===m.id&&match.online)receiveOnline(state);}catch{}},700);
 }
 function receiveOnline(m){
@@ -185,7 +190,7 @@ function animateRoute(b,c,next){const routeOverlay=$('#routeOverlay');routeOverl
 function humanMove(b,c){if(match?.online){onlineMove({b,c});return;}if(!match||match.state.winner||sheetOpen()||(match.mode==='bot'&&match.state.turn==='O'))return;lastInput=performance.now();if(data.settings.confirm&&(!match.pending||match.pending.b!==b||match.pending.c!==c)){match.pending={b,c};preview(b,c);$('#previewText').textContent='Tap the same cell again to confirm.';return;}move({b,c},'human');}
 function move(m,source){if(!match||match.state.winner)return;if(match.mode==='bot'&&((match.state.turn==='O')!==(source==='bot')))return;
  try{match.state=G.apply(match.state,m);}catch{notify('Choose an empty cell in the highlighted board.');return;}
- match.last=m;match.pending=null;match.turnRemaining=match.turnLimit;tone(source==='bot'?370:540);haptic();paint();clearPreview();animateRoute(m.b,m.c,match.state.required);if(match.state.winner)finish(match.state.winner==='DRAW'?'draw':'line');else scheduleBot();
+ match.last=m;match.pending=null;match.turnRemaining=match.turnLimit;tone(source==='bot'?370:540);haptic();paint();clearPreview();animateRoute(m.b,m.c,match.state.required);if(match.state.winner)finish(match.state.winner==='DRAW'?'draw':'line');else{save();scheduleBot();}
 }
 function scheduleBot(){clearTimeout(botTimer);botTimer=null;if(!match||match.state.winner||match.mode!=='bot'||match.state.turn!=='O'||sheetOpen()||document.hidden)return;const current=match,revision=match.state.moves.length;
  botTimer=setTimeout(()=>{botTimer=null;if(match!==current||match.state.moves.length!==revision||sheetOpen()||document.hidden)return;const m=G.choose(match.state,match.difficulty);if(m)move(m,'bot');},850+Math.random()*220);
@@ -199,15 +204,15 @@ setInterval(()=>{const now=performance.now(),delta=Math.min(1,Math.max(0,(now-la
 document.addEventListener('visibilitychange',()=>{lastTick=performance.now();if(document.hidden){clearTimeout(botTimer);botTimer=null;}else{lastInput=lastTick;scheduleBot();}syncAudio();});
 document.addEventListener('pointerdown',()=>{lastInput=performance.now();},true);
 function currentMatchStats(){if(!match)return;const s=match.state;open('Current match','<div class="stats-grid"><div class="stat"><span>Moves</span><strong>'+s.moves.length+'</strong></div><div class="stat"><span>Active time</span><strong>'+seconds(match.active)+'</strong></div><div class="stat"><span>X Mini Boards</span><strong>'+s.mini.filter(x=>x==='X').length+'</strong></div><div class="stat"><span>O Mini Boards</span><strong>'+s.mini.filter(x=>x==='O').length+'</strong></div></div>'+fullButton('Resign match','resign','',true),'matchstats');}
-function leave(){clearInterval(onlinePoll);onlinePoll=null;waitingId=null;save();clearTimeout(botTimer);botTimer=null;match=null;$('#gameScreen').hidden=true;close();page='play';render();}
+function leave(){clearInterval(onlinePoll);onlinePoll=null;waitingId=null;delete data.offlineMatch;match=null;save();clearTimeout(botTimer);botTimer=null;$('#gameScreen').hidden=true;close();page='play';render();}
 const actions={
  nav:v=>{page=v;render();$('#page').scrollTop=0;if(['rank','friends'].includes(v))refreshOnline();},mode:v=>{mode=v;render();},difficulty:v=>{difficulty=v;render();},first:v=>{first=v;render();},settimer:v=>{data.settings.timer=Number(v);save();render();},onlinetype:v=>{onlineType=v;render();},start:()=>['bot','local'].includes(mode)?startGame():onlineInfo(),queue:startQueue,settings,wallet,tutorial,matchstats:currentMatchStats,rankhelp:rankHelp,feehelp:feeHelp,weeklyhelp:weeklyHelp,onlineinfo:onlineInfo,
  acceptfriend:async id=>{try{await NET.acceptFriend(id,opId());await refreshOnline();render();}catch(e){notify(friendlyError(e));}},
- cancelqueue:async()=>{clearInterval(onlinePoll);waitingId=null;try{await NET.cancelQueue(opId());}catch{notify('Search cancellation could not be confirmed. No entry has been charged.');}close();},
+ cancelqueue:async()=>{if(queueCancelling)return;queueCancelling=true;clearInterval(onlinePoll);waitingId=null;try{if(queueSubmission)await queueSubmission.catch(()=>{});const r=await NET.cancelQueue(opId());if(r.state==='playing'){beginOnline(await NET.match(r.matchId));return;}}catch{notify('Cancellation could not be confirmed. Reconnect to check the match.');}finally{queueCancelling=false;}close();},
  cancelinvite:async()=>{const id=waitingId;if(!id)return;try{await NET.cancel(id,opId());clearInterval(onlinePoll);waitingId=null;close();}catch(e){notify(friendlyError(e));}},
- close,theme:v=>{if(!themeNames[v])return;data.settings.theme=v;applyTheme();save();const top=$('#sheet').scrollTop;settings();$('#sheet').scrollTop=top;render();paint();},
+ close:()=>{if(sheetKind==='queue')return actions.cancelqueue();if(sheetKind==='waiting'&&waitingId)return $('#sheet [data-action="cancelqueue"]')?actions.cancelqueue():actions.cancelinvite();close();},theme:v=>{if(!themeNames[v])return;data.settings.theme=v;applyTheme();save();const top=$('#sheet').scrollTop;settings();$('#sheet').scrollTop=top;render();paint();},
  statmode:v=>{statsMode=v;statsDifficulty='all';render();},metric:v=>{rankMetric=v;online.rows=[];render();refreshOnline();},league:v=>{rankLeague=v;online.rows=[];render();refreshOnline();},challenge,friendchallenge:v=>challenge(v,'friend'),sendchallenge:sendChallenge,reviewinvite:reviewInvite,
- acceptinvite:async v=>{const m=online.invitations.find(x=>x.id===v);if(!m)return;try{const accepted=await NET.accept(v,m.termsHash,opId());if(accepted.status==='PLAYING')beginOnline(accepted);else watchInvitation(accepted.id);}catch(e){notify(friendlyError(e));}},
+ acceptinvite:async v=>{const m=online.invitations.find(x=>x.id===v);if(!m)return;try{const accepted=await NET.accept(v,m.termsHash,opId());if(accepted.status==='PLAYING')beginOnline(accepted);else watchInvitation(accepted.id,accepted.terms?.source==='queue'?'queue':'challenge');}catch(e){notify(friendlyError(e));}},
  declineinvite:async v=>{try{await NET.decline(v,opId());close();refreshOnline();}catch(e){notify(friendlyError(e));}},
  openfriends:()=>{close();page='friends';render();refreshOnline();},exchange:reviewExchange,exchangeconfirm:confirmExchange,
  claim:async v=>{try{let n;if(online.ready){n=await NET.quest(v,opId());await refreshOnline();}else n=D.claim(data,v);save();render();notify(n?'Claimed '+n+' Coins.':'Quest is not ready.');}catch(e){notify(friendlyError(e));}},
@@ -232,7 +237,21 @@ document.addEventListener('change',e=>{
 for(const [id,name] of [['brandIcon','board'],['coinIcon','coin'],['settingsButton','settings'],['sheetClose','close'],['backIcon','back'],['matchSettings','sliders'],['routeIcon','route'],['rulesIcon','help'],['restartIcon','refresh'],['statsIcon','chart']])$('#'+id).innerHTML=icon(name);
 refreshIcons();applyTheme();buildBoard();render();save();refreshOnline();
 if(window.MegaBilling?.products)window.MegaBilling.products().then(items=>{online.products=items.filter(p=>D.CROWN_PACKS.some(q=>q.id===p.id));if(sheetKind==='wallet')wallet();}).catch(()=>{});
+
+// Explicit UI integration points; these never mutate a server wallet or server rating.
+window.MegaApp=Object.freeze({
+ render,refresh:refreshOnline,notify,open,close,tutorial,
+ getContext:()=>({page,mode,onlineType,sheetKind,playing:!!match&&!match.state.winner,onlineMatch:!!match?.online,waitingId}),
+ getSave:()=>structuredClone(data),
+ applyPractice:value=>{if(match&&!match.state.winner)throw Error('MATCH_ACTIVE');data=D.migrate(structuredClone(value));data.playSeconds=data.playSeconds||{};data.profile=data.profile||{};applyTheme();save();render();},
+ goFriends:()=>actions.nav('friends'),
+ challenge:async id=>{await refreshOnline();challenge(id,'friend');},
+ reviewInvite:async id=>{await refreshOnline();reviewInvite(id);},
+ resumeOnline:async id=>{await refreshOnline();if(!online.ready)throw Error('AUTH_REQUIRED');const m=await NET.match(id);if(m.status==='PLAYING')beginOnline(m);else if(m.status==='OFFERED')watchInvitation(id,m.terms.source==='queue'?'queue':'challenge');},
+ resumeOffline:()=>{const old=data.offlineMatch;if(!old)return;let state=G.create(old.first);for(const m of old.moves||[])state=G.apply(state,m);if(state.winner)throw Error('MATCH_FINISHED');mode=['bot','local'].includes(old.mode)?old.mode:'bot';difficulty=G.LEVELS.includes(old.difficulty)?old.difficulty:'Medium';first=old.first;startGame(old.practice===true);match.id=old.id;match.state=state;match.active=Math.max(0,Math.min(86400,Number(old.active)||0));match.turnLimit=[0,30,60].includes(old.turnLimit)?old.turnLimit:0;match.turnRemaining=Math.min(match.turnLimit,Math.max(0,Number(old.turnRemaining)||0));paint();save();scheduleBot();}
+});
+
 // Read-only diagnostics: no method can credit money, set rank or submit a server result.
 window.MegaXO=Object.freeze({version:'3.2.1-economy-1',getState:()=>match?structuredClone(match.state):null,getSettings:()=>({...data.settings})});
-try{if(!localStorage.getItem('mega_v32_tutorial_seen'))tutorial();}catch{}
+try{if(!window.MegaAccount&&!localStorage.getItem('mega_v32_tutorial_seen'))tutorial();}catch{}
 })();

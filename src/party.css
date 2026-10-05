@@ -96,3 +96,62 @@
  .party-table{min-height:232px;padding:18px 16px 15px}
  .party-room-choices{gap:12px}
 }
+
+
+/* V3.3.4 party typography audit — authored per theme, not one global enlargement. */
+/* Vector Light */
+:root[data-theme="vector"] .party-kicker{font-size:10px}
+:root[data-theme="vector"] .party-choice-copy small{font-size:11px}
+:root[data-theme="vector"] .party-currency{font-size:9px}
+:root[data-theme="vector"] .party-entry>span{font-size:10px}
+:root[data-theme="vector"] .party-entry small{font-size:10px}
+:root[data-theme="vector"] .party-table-stats span{font-size:10px}
+:root[data-theme="vector"] .party-table .button,
+:root[data-theme="vector"] .party-room-heading .button,
+:root[data-theme="vector"] .party-host-controls .button{font-size:11px}
+
+/* Midnight Club */
+:root[data-theme="midnight"] .party-kicker{font-size:10.5px}
+:root[data-theme="midnight"] .party-page-intro p{font-size:12.5px}
+:root[data-theme="midnight"] .party-choice-copy small{font-size:11.5px}
+:root[data-theme="midnight"] .party-currency{font-size:9.5px}
+:root[data-theme="midnight"] .party-entry>span{font-size:10.5px}
+:root[data-theme="midnight"] .party-entry small{font-size:10.5px}
+:root[data-theme="midnight"] .party-table-stats span{font-size:10.5px}
+:root[data-theme="midnight"] .party-table .button,
+:root[data-theme="midnight"] .party-room-heading .button,
+:root[data-theme="midnight"] .party-host-controls .button{font-size:11.5px}
+
+/* Paper Club */
+:root[data-theme="paperclub"] .party-kicker{font-size:13px;letter-spacing:.07em}
+:root[data-theme="paperclub"] .party-page-intro p{font-size:14px}
+:root[data-theme="paperclub"] .party-info-card b{font-size:14px}
+:root[data-theme="paperclub"] .party-info-card p{font-size:13px}
+:root[data-theme="paperclub"] .party-choice-copy strong{font-size:17px}
+:root[data-theme="paperclub"] .party-choice-copy small{font-size:13px}
+:root[data-theme="paperclub"] .party-currency{font-size:11px}
+:root[data-theme="paperclub"] .party-entry>span{font-size:12px}
+:root[data-theme="paperclub"] .party-entry small{font-size:12px}
+:root[data-theme="paperclub"] .party-table-stats span{font-size:12px}
+:root[data-theme="paperclub"] .party-table-stats b{font-size:14px}
+:root[data-theme="paperclub"] .party-table .button,
+:root[data-theme="paperclub"] .party-room-heading .button,
+:root[data-theme="paperclub"] .party-host-controls .button{font-size:13px}
+:root[data-theme="paperclub"] .party-table{min-height:238px}
+
+/* After Hours */
+:root[data-theme="afterhours"] .party-kicker{font-size:10.5px;letter-spacing:.09em}
+:root[data-theme="afterhours"] .party-page-intro p{font-size:13px}
+:root[data-theme="afterhours"] .party-info-card b{font-size:13px}
+:root[data-theme="afterhours"] .party-info-card p{font-size:12px}
+:root[data-theme="afterhours"] .party-choice-copy strong{font-size:15px}
+:root[data-theme="afterhours"] .party-choice-copy small{font-size:11.5px}
+:root[data-theme="afterhours"] .party-currency{font-size:9.5px;letter-spacing:.05em}
+:root[data-theme="afterhours"] .party-entry>span{font-size:10.5px}
+:root[data-theme="afterhours"] .party-entry small{font-size:10.5px}
+:root[data-theme="afterhours"] .party-table-stats span{font-size:10.5px}
+:root[data-theme="afterhours"] .party-table-stats b{font-size:13px}
+:root[data-theme="afterhours"] .party-table .button,
+:root[data-theme="afterhours"] .party-room-heading .button,
+:root[data-theme="afterhours"] .party-host-controls .button{font-size:11.5px}
+:root[data-theme="afterhours"] .party-table{min-height:238px}

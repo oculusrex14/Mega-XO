@@ -54,3 +54,25 @@ test('Midnight selected mode restores icon tile contrast', () => {
   assert.ok(css.includes('background:var(--accent)!important'));
   assert.ok(css.includes('color:var(--on-accent)!important'));
 });
+
+
+test('After Hours XO loader has no stale arcade-route override', () => {
+  const css = fs.readFileSync(path.join(ROOT, 'src', 'community.css'), 'utf8');
+  assert.ok(!css.includes("[data-theme='afterhours'] .theme-loader span"));
+  assert.ok(!css.includes('@keyframes arcade-route'));
+  assert.ok(css.includes('.xo-step-1 .xo-loader-mark{animation:xo-mark-1'));
+  assert.ok(css.includes('.xo-loader-strike path'));
+});
+
+test('each theme owns a separate typography contract', () => {
+  const styles = fs.readFileSync(path.join(ROOT, 'src', 'styles.css'), 'utf8');
+  const community = fs.readFileSync(path.join(ROOT, 'src', 'community.css'), 'utf8');
+  const party = fs.readFileSync(path.join(ROOT, 'src', 'party.css'), 'utf8');
+  for (const theme of ['vector','midnight','paperclub','afterhours']) {
+    assert.ok(styles.includes(':root[data-theme="'+theme+'"] .setup'));
+    assert.ok(community.includes(":root[data-theme='"+theme+"']"));
+    assert.ok(party.includes(':root[data-theme="'+theme+'"] .party'));
+  }
+  assert.ok(styles.includes(':root[data-theme="afterhours"] .setup-chip{font-size:10.5px'));
+  assert.ok(styles.includes(':root[data-theme="paperclub"] .setup-chip{border:1.5px solid var(--ink);font-size:12px'));
+});

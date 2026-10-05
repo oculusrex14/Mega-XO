@@ -556,3 +556,114 @@ body{font-family:'Space Grotesk',ui-sans-serif,system-ui,-apple-system,BlinkMacS
   opacity:1!important;
   filter:none!important;
 }
+
+
+/* V3.3.4 per-theme legibility audit.
+   These are intentionally separate contracts; do not collapse into a shared font-size override. */
+
+/* Vector Light — compact utility UI, but no essential label below a comfortable phone size. */
+:root[data-theme="vector"] .eyebrow{font-size:10.5px}
+:root[data-theme="vector"] .setup-title span{font-size:9px}
+:root[data-theme="vector"] .setup-chip{font-size:10px;min-height:32px;padding:6px 9px}
+:root[data-theme="vector"] .setup-note{font-size:10px}
+:root[data-theme="vector"] .nav-button{font-size:9.5px}
+:root[data-theme="vector"] .setting-group h4{font-size:10px}
+:root[data-theme="vector"] .setting-row small{font-size:10px}
+:root[data-theme="vector"] .setting-row select{font-size:11px}
+:root[data-theme="vector"] .theme-card small{font-size:10.5px}
+:root[data-theme="vector"] .tutorial-map.old-map span{font-size:9.5px}
+:root[data-theme="vector"] .match-top>div small{font-size:9px}
+:root[data-theme="vector"] .timer{font-size:10px}
+:root[data-theme="vector"] .player small{font-size:9px}
+:root[data-theme="vector"] .turn-hud span:not(.turn-icon){font-size:9px}
+:root[data-theme="vector"] .board-note{font-size:11px}
+:root[data-theme="vector"] .match-controls .button{font-size:10px}
+:root[data-theme="vector"] .standing small{font-size:10.5px}
+:root[data-theme="vector"] .league{font-size:10.5px}
+:root[data-theme="vector"] .home-quests small{font-size:10.5px}
+
+/* Midnight Club — dark surfaces need a little more physical type size than Vector. */
+:root[data-theme="midnight"] .eyebrow{font-size:11px}
+:root[data-theme="midnight"] .rank-summary small{font-size:11.5px}
+:root[data-theme="midnight"] .mode-copy small{font-size:11.5px}
+:root[data-theme="midnight"] .setup-title span{font-size:9.5px}
+:root[data-theme="midnight"] .setup-chip{font-size:10.5px;min-height:33px;padding:6px 9px}
+:root[data-theme="midnight"] .setup-note{font-size:10.5px}
+:root[data-theme="midnight"] .nav-button{font-size:10px}
+:root[data-theme="midnight"] .setting-group h4{font-size:10px}
+:root[data-theme="midnight"] .setting-row small{font-size:10.5px}
+:root[data-theme="midnight"] .setting-row select{font-size:11.5px}
+:root[data-theme="midnight"] .theme-card small{font-size:11px}
+:root[data-theme="midnight"] .tutorial-map.old-map span{font-size:10px}
+:root[data-theme="midnight"] .match-top>div small{font-size:9.5px}
+:root[data-theme="midnight"] .timer{font-size:10.5px}
+:root[data-theme="midnight"] .player small{font-size:9.5px}
+:root[data-theme="midnight"] .turn-hud span:not(.turn-icon){font-size:9.5px}
+:root[data-theme="midnight"] .board-note{font-size:11px}
+:root[data-theme="midnight"] .match-controls .button{font-size:10px}
+:root[data-theme="midnight"] .standing small{font-size:11px}
+:root[data-theme="midnight"] .league{font-size:11px}
+:root[data-theme="midnight"] .home-quests small{font-size:11px}
+
+/* Paper Club — handwriting needs generous sizing; preserve its looser editorial rhythm. */
+:root[data-theme="paperclub"] .caption,
+:root[data-theme="paperclub"] .status-line{font-size:13px}
+:root[data-theme="paperclub"] .rank-summary small{font-size:13px}
+:root[data-theme="paperclub"] .setup-note{font-size:12px}
+:root[data-theme="paperclub"] .setting-group h4{font-size:12px;letter-spacing:.08em}
+:root[data-theme="paperclub"] .setting-row small{font-size:12px}
+:root[data-theme="paperclub"] .theme-card b{font-size:15px}
+:root[data-theme="paperclub"] .theme-card small{font-size:12px}
+:root[data-theme="paperclub"] .tutorial-map.old-map span{font-size:11px}
+:root[data-theme="paperclub"] .standing small{font-size:12px}
+:root[data-theme="paperclub"] .league{font-size:12px}
+:root[data-theme="paperclub"] .home-quests b{font-size:14px}
+:root[data-theme="paperclub"] .home-quests small{font-size:12px}
+
+/* After Hours — arcade/mono faces read smaller, so labels are deliberately larger
+   and the setup controls get more vertical room instead of squeezing the type. */
+:root[data-theme="afterhours"] .eyebrow{font-size:11px;letter-spacing:.1em}
+:root[data-theme="afterhours"] .rank-summary b{font-size:15px}
+:root[data-theme="afterhours"] .rank-summary small{font-size:12px}
+:root[data-theme="afterhours"] .mode-copy strong{font-size:15.5px}
+:root[data-theme="afterhours"] .mode-copy small{font-size:12px;line-height:1.35}
+:root[data-theme="afterhours"] .old-setup{padding:12px 13px}
+:root[data-theme="afterhours"] .setup-block{grid-template-columns:minmax(94px,.66fr) minmax(0,1.9fr);gap:9px;padding:10px 0}
+:root[data-theme="afterhours"] .setup-title b{font-size:13px}
+:root[data-theme="afterhours"] .setup-title span{font-size:10.5px;letter-spacing:.05em}
+:root[data-theme="afterhours"] .setup-chips{gap:6px}
+:root[data-theme="afterhours"] .setup-chip{font-size:10.5px;min-height:35px;padding:7px 9px;letter-spacing:.045em}
+:root[data-theme="afterhours"] .setup-note{font-size:11px;line-height:1.5}
+:root[data-theme="afterhours"] .nav-button{font-size:10px}
+:root[data-theme="afterhours"] .setting-group h4{font-size:10.5px}
+:root[data-theme="afterhours"] .setting-row label,
+:root[data-theme="afterhours"] .setting-row>label{font-size:13px}
+:root[data-theme="afterhours"] .setting-row small{font-size:11px;line-height:1.4}
+:root[data-theme="afterhours"] .setting-row select{font-size:12px;min-height:36px}
+:root[data-theme="afterhours"] .theme-card b{font-size:13px}
+:root[data-theme="afterhours"] .theme-card small{font-size:11px;line-height:1.35}
+:root[data-theme="afterhours"] .tutorial-card b{font-size:14px}
+:root[data-theme="afterhours"] .tutorial-card p{font-size:12px}
+:root[data-theme="afterhours"] .tutorial-map.old-map span{font-size:10px}
+:root[data-theme="afterhours"] .match-top>div b{font-size:14px}
+:root[data-theme="afterhours"] .match-top>div small{font-size:10px}
+:root[data-theme="afterhours"] .timer{font-size:10.5px}
+:root[data-theme="afterhours"] .player b{font-size:12.5px}
+:root[data-theme="afterhours"] .player small{font-size:10px}
+:root[data-theme="afterhours"] .turn-hud b{font-size:12px}
+:root[data-theme="afterhours"] .turn-hud span:not(.turn-icon){font-size:9.5px;letter-spacing:.04em}
+:root[data-theme="afterhours"] .board-note{font-size:11px;line-height:1.4}
+:root[data-theme="afterhours"] .match-controls .button{font-size:10px}
+:root[data-theme="afterhours"] .standing b{font-size:13px}
+:root[data-theme="afterhours"] .standing small{font-size:11px}
+:root[data-theme="afterhours"] .league{font-size:10.5px}
+:root[data-theme="afterhours"] .home-quests b{font-size:13px}
+:root[data-theme="afterhours"] .home-quests small{font-size:11px}
+:root[data-theme="afterhours"] .button.full{font-size:14px}
+
+@media(max-width:365px){
+ :root[data-theme="vector"] .nav-button{font-size:9px}
+ :root[data-theme="midnight"] .nav-button{font-size:9.5px}
+ :root[data-theme="paperclub"] .nav-button{font-size:11px}
+ :root[data-theme="afterhours"] .nav-button{font-size:9.5px}
+}

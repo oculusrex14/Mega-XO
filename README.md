@@ -1,4 +1,4 @@
-# Mega XO - V3.3.1
+# Mega XO - V3.3.2
 
 Private rooms and ten-player tournaments, added on top of the approved V3.2.1 Figma themes and economy. V3.3.1 is a UI polish pass for the new party surfaces: more spacing, clearer table hierarchy, and larger private-room choices across all four themes. The existing game rules, bot engine, icon adapter, theme CSS and normal app controller are unchanged.
 
@@ -60,3 +60,8 @@ Those earlier rules remain in [PRODUCT.md](docs/PRODUCT.md), [SECURITY.md](docs/
 - `tests/party-browser.py`: two-client functional checks, with environment limitations recorded.
 
 This is implemented development code, not a claim of production deployment, native radio compatibility, store approval or guaranteed player profit.
+
+
+## V3.3.2 matchmaking
+
+V3.3.2 adds bounded server-side matchmaking for Ranked and Casual queues plus stricter public-tournament cohort assembly. Ranked keeps the approved visible Elo; Casual uses a hidden matchmaking-only rating. Search windows widen with wait time but retain hard caps, recent rematches and ranked friends are avoided, queued opponent identity stays hidden until both players accept, and public ten-player tables are assembled within a 200-Elo spread with deterministic seeding. Full rules and research basis: `docs/V3.3.2-MATCHMAKING.md`.

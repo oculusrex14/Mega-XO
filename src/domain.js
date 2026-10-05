@@ -17,7 +17,7 @@ const QUESTS=[
  {id:'ranked',title:'Step up',desc:'Finish a ranked match.',metric:'ranked',target:1,reward:6,online:true}
 ];
 const BOT_PAY=Object.freeze({Beginner:1,Easy:1,Medium:2,Hard:4,Expert:6});
-const POLICY=Object.freeze({version:'economy-2',startingCoins:150,coinsPerCrown:10,eloK:24,rankedBonusRatio:.6,botDailyCap:20,botWinsPerLevel:3,rankedBonusDailyCap:50,minRewardSeconds:30,minRewardMoves:12,elitePopulation:5000,placements:10,friendPotCap:20,directPairDaily:1,directPairWeekly:3,queuePairDaily:3,offerDaily:20,offerMinutes:10,weeklyGames:5,weeklyQueueGames:3,weeklyOpponents:3,weeklyActiveDays:3});
+const POLICY=Object.freeze({version:'economy-2',startingCoins:150,coinsPerCrown:10,eloK:24,rankedBonusRatio:.6,botDailyCap:20,botWinsPerLevel:3,rankedBonusDailyCap:50,minRewardSeconds:30,minRewardMoves:12,elitePopulation:5000,placements:10,friendPotCap:20,directPairDaily:1,directPairWeekly:3,queuePairDaily:3,offerDaily:20,offerMinutes:10,weeklyGames:5,weeklyQueueGames:3,weeklyOpponents:3,weeklyActiveDays:3,seasonPlacementGames:5,seasonPlacementQueueGames:3,seasonPlacementOpponents:3,eliteActivityDays:14,eliteActivityGames:5,eliteActivityQueueGames:3,eliteActivityOpponents:3,eliteLastGameDays:7,leaderboardInactiveDays:28,seasonHistoryLimit:8});
 /* Suggested catalogue quantities. Localized prices always come from the native store. */
 const CROWN_PACKS=Object.freeze([{id:'crowns_100',crowns:100,suggestedUSD:0.99},{id:'crowns_525',crowns:525,suggestedUSD:4.99},{id:'crowns_1100',crowns:1100,suggestedUSD:9.99}].map(Object.freeze));
 const DAY=86400000;
@@ -28,12 +28,15 @@ function add(a,b){const n=a+b;integer(n);return n;}
 const day=(now=Date.now())=>new Date(now).toISOString().slice(0,10);
 function week(now=Date.now()){const d=new Date(now);d.setUTCHours(0,0,0,0);d.setUTCDate(d.getUTCDate()-((d.getUTCDay()+6)%7));return d.toISOString().slice(0,10);}
 function weekStart(id){const n=Date.parse(id+'T00:00:00Z');if(!Number.isFinite(n)||week(n)!==id)throw Error('INVALID_WEEK');return n;}
+function season(now=Date.now()){const d=new Date(now);if(!Number.isFinite(d.getTime()))throw Error('INVALID_SEASON_DATE');const year=d.getUTCFullYear(),quarter=Math.floor(d.getUTCMonth()/3)+1,start=Date.UTC(year,(quarter-1)*3,1),end=quarter===4?Date.UTC(year+1,0,1):Date.UTC(year,quarter*3,1);return {id:year+'-Q'+quarter,year,quarter,start,end};}
+function seasonQualified(p,now=Date.now()){const s=p?.season;return !!s&&s.id===season(now).id&&p.games>=POLICY.placements&&s.games>=POLICY.seasonPlacementGames&&s.queueGames>=POLICY.seasonPlacementQueueGames&&new Set(s.opponents||[]).size>=POLICY.seasonPlacementOpponents;}
+function skillLeaderboardEligible(p,now=Date.now()){const last=p?.season?.lastRatedAt??p?.lastRatedAt;return !!p?.verified&&!p.suspended&&!p.hold&&seasonQualified(p,now)&&Number.isFinite(last)&&now-last<=POLICY.leaderboardInactiveDays*DAY;}
 function basicTier(rating){return TIERS.slice(0,8).filter(t=>rating>=t.min).pop()||TIERS[0];}
 function rankedWinBonus(value){const t=typeof value==='string'?requireTier(value):value;if(!t||!Number.isSafeInteger(t.fee))throw Error('INVALID_TIER');return Math.max(1,Math.floor(t.fee*POLICY.rankedBonusRatio));}
-function eligible(p,now){return p.verified&&!p.suspended&&p.games>=50&&p.uniqueOpponents>=10&&p.recentGames>=5&&now-p.createdAt>=14*DAY;}
+function eligible(p,now){return skillLeaderboardEligible(p,now)&&p.games>=50&&p.uniqueOpponents>=10&&p.recent14Games>=POLICY.eliteActivityGames&&p.recent14QueueGames>=POLICY.eliteActivityQueueGames&&p.recent14Opponents>=POLICY.eliteActivityOpponents&&Number.isFinite(p.lastRatedAt)&&now-p.lastRatedAt<=POLICY.eliteLastGameDays*DAY&&now-p.createdAt>=14*DAY;}
 /* Publish elite seats weekly; caps are exclusive and may remain unfilled. */
 function assignTiers(players,now=Date.now()){
- const ranked=players.filter(p=>p.verified&&!p.suspended&&p.games>=POLICY.placements).sort((a,b)=>b.rating-a.rating||(a.reachedAt||0)-(b.reachedAt||0)||a.id.localeCompare(b.id));
+ const ranked=players.filter(p=>skillLeaderboardEligible(p,now)).sort((a,b)=>b.rating-a.rating||(a.reachedAt||0)-(b.reachedAt||0)||a.id.localeCompare(b.id));
  const out=new Map(ranked.map((p,i)=>[p.id,{tier:basicTier(p.rating).id,position:i+1,percentile:ranked.length>1?100*(ranked.length-i-1)/(ranked.length-1):null}]));
  if(ranked.length>=POLICY.elitePopulation){const used=new Set();for(const t of [...TIERS.slice(8)].reverse()){let count=0;for(const p of ranked)if(!used.has(p.id)&&eligible(p,now)&&p.rating>=t.min&&count<t.cap){out.get(p.id).tier=t.id;used.add(p.id);count++;}}}
  return out;
@@ -123,10 +126,10 @@ function claim(data,id,now=Date.now()){
 }
 function spend(data,id,cost){integer(cost);if(!cost)throw Error('INVALID_COST');if(data.wallet.owned.includes(id))return false;if(data.wallet.coins<cost)throw Error('INSUFFICIENT_COINS');data.wallet.coins-=cost;data.wallet.owned.push(id);data.wallet.ledger.push({id:'cosmetic:'+id,currency:'coins',amount:-cost,reason:id,at:Date.now()});return true;}
 /* One unified wealth table, not lifetime gross purchase volume. Held balances count once. */
-function leaderboard(rows,{scope='global',region='',league='all',metric='rating',limit=20}={}){
+function leaderboard(rows,{scope='global',region='',league='all',metric='rating',limit=20,now=Date.now()}={}){
  if(!['rating','wealth'].includes(metric))throw Error('INVALID_METRIC');
  const value=p=>metric==='rating'?p.rating:wealth(p.wallet||p);
- return rows.filter(p=>p.verified&&!p.suspended&&(metric==='wealth'||p.games>=POLICY.placements)&&(scope!=='local'||p.region===region)&&(league==='all'||p.tier===league)&&(metric==='rating'||(p.wealthPublic&&!p.hold))).sort((a,b)=>value(b)-value(a)||a.id.localeCompare(b.id)).slice(0,Math.min(20,Math.max(0,limit)));
+ return rows.filter(p=>p.verified&&!p.suspended&&(metric==='wealth'||skillLeaderboardEligible(p,now))&&(scope!=='local'||p.region===region)&&(league==='all'||p.tier===league)&&(metric==='rating'||(p.wealthPublic&&!p.hold))).sort((a,b)=>value(b)-value(a)||a.id.localeCompare(b.id)).slice(0,Math.min(20,Math.max(0,limit)));
 }
 /* Snapshot-based weekly reward. A late rank spike cannot buy the full higher weekly payment.
    dailyTiers are trusted post-placement daily snapshots, at most one for each of the seven days. */
@@ -136,5 +139,5 @@ function weeklyReward({dailyTiers=[],endTier='wood',games=0,queueGames=0,uniqueO
  const indices=dailyTiers.map(x=>requireTier(x).index).sort((a,b)=>a-b),median=indices[Math.floor((indices.length-1)/2)],t=TIERS[Math.min(end.index,median)];
  return {amount:Math.floor(t.weekly*dailyTiers.length/7),tier:t.id,eligible:true,days:dailyTiers.length};
 }
-return {TIERS,QUESTS,BOT_PAY,POLICY,CROWN_PACKS,DAY,tier,requireTier,integer,add,day,week,weekStart,eligible,basicTier,rankedWinBonus,assignTiers,elo,quote,conversion,wealth,migrate,convert,aggregate,fresh,getDaily,complete,claim,spend,leaderboard,weeklyReward};
+return {TIERS,QUESTS,BOT_PAY,POLICY,CROWN_PACKS,DAY,tier,requireTier,integer,add,day,week,weekStart,season,seasonQualified,skillLeaderboardEligible,eligible,basicTier,rankedWinBonus,assignTiers,elo,quote,conversion,wealth,migrate,convert,aggregate,fresh,getDaily,complete,claim,spend,leaderboard,weeklyReward};
 });

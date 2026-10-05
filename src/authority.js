@@ -12,21 +12,23 @@ class Authority {
   if(state)this.restore(state);
  }
  export(){return clone({accounts:[...this.accounts],matches:[...this.matches].map(([id,m])=>[id,{...m,commands:[...m.commands]}]),receipts:[...this.receipts],snapshots:[...this.snapshots],weeklyPaid:[...this.weeklyPaid],burned:this.burned,journal:this.journal,leagueWeek:this.leagueWeek});}
- restore(s){this.accounts=new Map(s.accounts);for(const a of this.accounts.values()){if(!Number.isFinite(a.casualRating))a.casualRating=a.games>=D.POLICY.placements?a.rating:1000;if(!Number.isSafeInteger(a.casualGames))a.casualGames=0;}this.matches=new Map(s.matches.map(([id,m])=>[id,{...m,commands:new Map(m.commands)}]));this.receipts=new Map(s.receipts);this.snapshots=new Map(s.snapshots);this.weeklyPaid=new Map(s.weeklyPaid);this.burned=s.burned;this.journal=s.journal;this.leagueWeek=s.leagueWeek;}
+ restore(s){this.accounts=new Map(s.accounts);for(const a of this.accounts.values()){if(!Number.isFinite(a.casualRating))a.casualRating=a.games>=D.POLICY.placements?a.rating:1000;if(!Number.isSafeInteger(a.casualGames))a.casualGames=0;a.seasonHistory=a.seasonHistory||[];this._season(a,this.now());}this.matches=new Map(s.matches.map(([id,m])=>[id,{...m,commands:new Map(m.commands)}]));this.receipts=new Map(s.receipts);this.snapshots=new Map(s.snapshots);this.weeklyPaid=new Map(s.weeklyPaid);this.burned=s.burned;this.journal=s.journal;this.leagueWeek=s.leagueWeek;}
  account(id){const a=this.accounts.get(id);if(!a)throw Error('UNKNOWN_ACCOUNT');return a;}
+ _season(a,now=this.now()){const current=D.season(now);a.seasonHistory=a.seasonHistory||[];if(!a.season||a.season.id!==current.id){if(a.season){a.seasonHistory.push({...clone(a.season),finishRating:a.rating,finishTier:a.tier,endedAt:current.start});if(a.seasonHistory.length>D.POLICY.seasonHistoryLimit)a.seasonHistory.splice(0,a.seasonHistory.length-D.POLICY.seasonHistoryLimit);}a.season={id:current.id,startedAt:current.start,games:0,queueGames:0,opponents:[],wins:0,losses:0,draws:0,peakRating:a.rating,lastRatedAt:null,qualifiedAt:null};}return a.season;}
+ seasonStatus(a){const s=this._season(a),info=D.season(this.now()),opponents=new Set(s.opponents||[]).size;return {id:s.id,start:info.start,end:info.end,qualified:D.seasonQualified(a,this.now()),games:s.games,queueGames:s.queueGames,uniqueOpponents:opponents,qualifiedAt:s.qualifiedAt,peakRating:s.peakRating,lastRatedAt:s.lastRatedAt,requirements:{games:D.POLICY.seasonPlacementGames,queueGames:D.POLICY.seasonPlacementQueueGames,uniqueOpponents:D.POLICY.seasonPlacementOpponents},previous:a.seasonHistory.at(-1)||null};}
  _entry(id,actor,currency,amount,reason,source='game'){this.journal.push({id,actor,currency,amount,reason,source,at:this.now()});}
  /* Provisioning is a trusted server operation, never a user-supplied balance import. */
  addAccount(id,{coins=D.POLICY.startingCoins,crowns=0,rating=600,games=0,verified=false,createdAt=this.now(),region='',wealthPublic=false}={}){
   if(!validId(id)||this.accounts.has(id))throw Error('INVALID_ACCOUNT');D.integer(coins);D.integer(crowns);D.integer(games);if(!Number.isFinite(rating)||rating<0)throw Error('INVALID_RATING');
   let friendCode;do{friendCode='MEGA-'+crypto.randomBytes(4).toString('hex').toUpperCase();}while([...this.accounts.values()].some(p=>p.friendCode===friendCode));
-  const a={id,friendCode,coins,crowns,reservedCoins:0,reservedCrowns:0,rating:Math.round(rating*100)/100,peak:rating,games,tier:D.basicTier(rating).id,casualRating:games>=D.POLICY.placements?Math.round(rating*100)/100:1000,casualGames:0,verified,createdAt,region,wealthPublic,suspended:false,hold:false,blocked:[],friends:[],friendRequests:[],activeMatch:null,history:[],daily:{},operations:{},ledger:[],owned:[],purchaseInfluenced:false};
-  D.wealth(a);this.accounts.set(id,a);this._entry('opening:'+id,id,'coins',coins,'Opening balance','provisioning');if(crowns)this._entry('opening-crowns:'+id,id,'crowns',crowns,'Opening balance','provisioning');return clone(a);
+  const a={id,friendCode,coins,crowns,reservedCoins:0,reservedCrowns:0,rating:Math.round(rating*100)/100,peak:rating,games,tier:D.basicTier(rating).id,casualRating:games>=D.POLICY.placements?Math.round(rating*100)/100:1000,casualGames:0,verified,createdAt,region,wealthPublic,suspended:false,hold:false,blocked:[],friends:[],friendRequests:[],activeMatch:null,history:[],daily:{},operations:{},ledger:[],owned:[],purchaseInfluenced:false,season:null,seasonHistory:[]};
+  this._season(a,this.now());D.wealth(a);this.accounts.set(id,a);this._entry('opening:'+id,id,'coins',coins,'Opening balance','provisioning');if(crowns)this._entry('opening-crowns:'+id,id,'crowns',crowns,'Opening balance','provisioning');return clone(a);
  }
  preferences(actor,changes){const a=this.account(actor);if(typeof changes.wealthPublic==='boolean')a.wealthPublic=changes.wealthPublic;if(typeof changes.region==='string'&&changes.region.length<=64)a.region=changes.region;return {wealthPublic:a.wealthPublic,region:a.region};}
  cosmetic(actor,name){const prices={'Copper edge':30,'Orbit frame':60,'Crown frame':120},a=this.account(actor);if(a.hold||a.suspended)throw Error('ACCOUNT_HELD');if(!Object.hasOwn(prices,name))throw Error('UNKNOWN_COSMETIC');if(a.owned.includes(name))return {owned:true};if(a.coins<prices[name])throw Error('INSUFFICIENT_COINS');a.coins-=prices[name];a.owned.push(name);this._entry('cosmetic:'+actor+':'+name,actor,'coins',-prices[name],name,'spend');return {owned:true};}
  requestFriend(actor,target){const found=this.accounts.get(target)||[...this.accounts.values()].find(p=>p.friendCode===target);if(!found)throw Error('UNKNOWN_ACCOUNT');target=found.id;const a=this.account(actor),b=this.account(target);this._players(actor,target);if(a.friends.includes(target))return {alreadyFriends:true};if(!b.friendRequests.includes(actor))b.friendRequests.push(actor);return {requested:true};}
  acceptFriend(actor,from){const a=this.account(actor),b=this.account(from);this._players(actor,from);if(!a.friendRequests.includes(from))throw Error('NO_FRIEND_REQUEST');if(!a.friends.includes(from))a.friends.push(from);if(!b.friends.includes(actor))b.friends.push(actor);a.friendRequests=a.friendRequests.filter(x=>x!==from);return {friends:true};}
- currentTier(a){if(this.leagueWeek===D.week(this.now())&&D.tier(a.tier).index>=8)return a.tier;return D.basicTier(a.rating).id;}
+ currentTier(a){this._season(a);if(D.seasonQualified(a,this.now())&&this.leagueWeek===D.week(this.now())&&D.tier(a.tier).index>=8)return a.tier;return D.basicTier(a.rating).id;}
  _players(a,b){const A=this.account(a),B=this.account(b);if(a===b)throw Error('SELF_CHALLENGE');if(!A.verified||!B.verified||A.suspended||B.suspended||A.hold||B.hold||A.blocked.includes(b)||B.blocked.includes(a))throw Error('INELIGIBLE');return [A,B];}
  _paidAllowed(players,q){if(!q.pool)return;if(!this.paidEntryEnabled||!players.every(p=>this.eligibility(clone(p),clone(q))))throw Error('PAID_ENTRY_UNAVAILABLE');}
  _pairLimit(a,b,q){if(!q.rated)return;const now=this.now(),start=D.weekStart(D.week(now));const completed=[...this.matches.values()].filter(m=>m.quote.rated&&m.status!=='VOID'&&m.started!==undefined&&m.players.includes(a)&&m.players.includes(b));
@@ -92,7 +94,7 @@ class Authority {
  _settle(m,winner,reason){
   if(m.settled)return clone(m.receipt);if(!['X','O','DRAW'].includes(winner))throw Error('INVALID_RESULT');
   const now=this.now(),isDraw=winner==='DRAW',winnerId=isDraw?null:m.symbols[winner],players=m.players.map(id=>this.account(id));
-  const qualified=['line','draw'].includes(reason)&&m.state.moves.length>=D.POLICY.minRewardMoves&&now-m.started>=D.POLICY.minRewardSeconds*1000;
+  const elapsed=now-m.started,qualified=['line','draw'].includes(reason)&&m.state.moves.length>=D.POLICY.minRewardMoves&&elapsed>=D.POLICY.minRewardSeconds*1000,ratedActivity=m.quote.rated&&reason!=='no-show'&&m.state.moves.length>=D.POLICY.minRewardMoves&&elapsed>=D.POLICY.minRewardSeconds*1000;
   if(m.quote.mode==='direct'&&!qualified)m.riskFlags.push('SHORT_DIRECT_RESULT_REVIEW');
   const c=m.quote.currency,burn=isDraw?0:m.escrow/2,payout=isDraw?0:m.escrow-burn;
   let bonus=0,rating=null;
@@ -111,7 +113,8 @@ class Authority {
   if(rating)players.forEach((a,i)=>{a.rating=i?rating.b:rating.a;a.games++;a.peak=Math.max(a.peak,a.rating);a.reachedAt=now;a.tier=this.currentTier(a);});
   players.forEach((a,i)=>{
    const result=isDraw?'draw':a.id===winnerId?'win':'loss',mode=m.quote.rated?'ranked':m.terms.kind==='friend'?'friend':'casual';
-   a.history.push({id:m.id,at:now,opponent:m.players[1-i],mode,queue:m.terms.source==='queue',symbol:m.symbols.X===a.id?'X':'O',rated:m.quote.rated,qualified,result,reason,activeSeconds:Math.floor((now-m.started)/1000),ratingDelta:rating?(i?-rating.delta:rating.delta):0,casualDelta:casual?(i?-casual.delta:casual.delta):0});
+   a.history.push({id:m.id,at:now,opponent:m.players[1-i],mode,queue:m.terms.source==='queue',symbol:m.symbols.X===a.id?'X':'O',rated:m.quote.rated,qualified,activityQualified:ratedActivity,result,reason,activeSeconds:Math.floor(elapsed/1000),ratingDelta:rating?(i?-rating.delta:rating.delta):0,casualDelta:casual?(i?-casual.delta:casual.delta):0});
+   if(ratedActivity){const s=this._season(a,now);s.games++;if(m.terms.source==='queue')s.queueGames++;if(!s.opponents.includes(m.players[1-i]))s.opponents.push(m.players[1-i]);s[result+'s']++;s.peakRating=Math.max(s.peakRating,a.rating);s.lastRatedAt=now;a.lastRatedAt=now;if(D.seasonQualified(a,now)&&!s.qualifiedAt)s.qualifiedAt=now;}
    if(qualified){const d=this._daily(a,now);d.finished++;d.seconds+=Math.min(900,(now-m.started)/1000);d.boards+=m.state.mini.filter(v=>v===(m.symbols.X===a.id?'X':'O')).length;d[mode]++;}
    a.activeMatch=null;
   });
@@ -136,12 +139,12 @@ class Authority {
  }
  publishLeagues(){
   const now=this.now(),key=D.week(now);if(this.leagueWeek===key)return;
-  const players=[...this.accounts.values()].map(a=>({...a,uniqueOpponents:new Set(a.history.filter(h=>h.rated).map(h=>h.opponent)).size,recentGames:a.history.filter(h=>h.rated&&now-h.at<7*D.DAY).length}));
+  const players=[...this.accounts.values()].map(a=>{this._season(a,now);const active=(a.history||[]).filter(h=>h.rated&&(h.activityQualified??h.qualified)),recent14=active.filter(h=>now-h.at< D.POLICY.eliteActivityDays*D.DAY);return {...a,uniqueOpponents:new Set(active.map(h=>h.opponent)).size,recent14Games:recent14.length,recent14QueueGames:recent14.filter(h=>h.queue).length,recent14Opponents:new Set(recent14.map(h=>h.opponent)).size,lastRatedAt:a.season.lastRatedAt,seasonQualified:D.seasonQualified(a,now)};});
   const assignments=D.assignTiers(players,now);this.leagueWeek=key;for(const a of this.accounts.values())a.tier=assignments.get(a.id)?.tier||D.basicTier(a.rating).id;
  }
  snapshotDay(){
   this.publishLeagues();const date=D.day(this.now());if(this.snapshots.has(date))return clone(this.snapshots.get(date));
-  const snapshot={};for(const a of this.accounts.values())if(a.verified&&!a.suspended&&!a.hold&&a.games>=D.POLICY.placements)snapshot[a.id]=this.currentTier(a);
+  const snapshot={};for(const a of this.accounts.values())if(a.verified&&!a.suspended&&!a.hold&&D.seasonQualified(a,this.now()))snapshot[a.id]=this.currentTier(a);
   this.snapshots.set(date,snapshot);return clone(snapshot);
  }
  payoutWeek(key){
@@ -156,6 +159,6 @@ class Authority {
    if(!reward.eligible)continue;a.coins=D.add(a.coins,reward.amount);const payment={id,account:a.id,week:key,...reward};this.weeklyPaid.set(id,payment);payments.push(payment);this._entry('weekly:'+id,a.id,'coins',reward.amount,'Weekly '+D.tier(reward.tier).name+' reward','mint');
   }return clone(payments);
  }
- leaderboard(options={}){return clone(D.leaderboard([...this.accounts.values()].map(a=>({...a,tier:this.currentTier(a)})),options));}
+ leaderboard(options={}){const now=this.now();return clone(D.leaderboard([...this.accounts.values()].map(a=>{this._season(a,now);return {...a,tier:this.currentTier(a)};}),{...options,now}));}
 }
 module.exports={Authority};

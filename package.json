@@ -1,6 +1,6 @@
 {
   "name": "mega-xo",
-  "version": "3.3.4",
+  "version": "3.4.0",
   "private": true,
   "engines": {
     "node": ">=22.13.0"
@@ -16,6 +16,7 @@
     "test:matchmaking": "node --test tests/matchmaking.test.js",
     "start:accounts": "node server/community-server.js",
     "test:accounts": "node --test tests/community.test.js tests/community-http.test.js",
-    "test:account-ui": "python3 tests/community-ui.py"
+    "test:account-ui": "python3 tests/community-ui.py",
+    "test:economy-sim": "node tests/economy-sim.js"
   }
 }

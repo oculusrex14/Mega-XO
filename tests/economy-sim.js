@@ -28,8 +28,8 @@ function simulate(config,seed){
  return {players:N,days:DAYS,coinsGeneratedPerPlayerDay:sum('minted')/N/DAYS,coinsBurnedEquivalentPerPlayerDay:sum('burned')/N/DAYS,tournamentEntrySpendPerPlayer:sum('tournamentEntries')/N,directChallengeCrownsSpentPerPlayer:sum('directSpend')/N,coinToCrownConversionPerPlayer:sum('converted')/N,wallet:{p10:percentile(wealth,.1),median:percentile(wealth,.5),p90:percentile(wealth,.9)},everBelow25Coins:players.filter(p=>p.low).length/N,modeledPurchasePressure:players.filter(p=>p.purchased).length/N};
 }
 const legacy=simulate(LEGACY,0x334),current=simulate(CURRENT,0x340),report={model:'pressure model, not revenue forecast',segments:ARCH,legacy,current,changes:{mintReduction:1-current.coinsGeneratedPerPlayerDay/legacy.coinsGeneratedPerPlayerDay,medianWealthReduction:1-current.wallet.median/legacy.wallet.median}};
+fs.mkdirSync(path.join(__dirname,'../.artifacts'),{recursive:true});fs.writeFileSync(path.join(__dirname,'../.artifacts/v34-economy-sim.json'),JSON.stringify(report,null,2));console.log(JSON.stringify(report,null,2));
 if(!(current.coinsGeneratedPerPlayerDay<legacy.coinsGeneratedPerPlayerDay*.75))throw Error('MINT_REDUCTION_TOO_SMALL');
 if(current.wallet.median>2500)throw Error('WALLET_INFLATION_HIGH');
 if(current.modeledPurchasePressure>.16)throw Error('PURCHASE_PRESSURE_TOO_HIGH');
 if(current.everBelow25Coins>.35)throw Error('TOO_MANY_COIN_STARVED');
-fs.mkdirSync(path.join(__dirname,'../.artifacts'),{recursive:true});fs.writeFileSync(path.join(__dirname,'../.artifacts/v34-economy-sim.json'),JSON.stringify(report,null,2));console.log(JSON.stringify(report,null,2));

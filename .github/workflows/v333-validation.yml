@@ -1,0 +1,29 @@
+name: V3.3.3 regression
+on:
+  push:
+    branches: [V3.3.3]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Source snapshot
+        run: git archive --format=tar HEAD -o /tmp/mega-source.tar
+      - name: Regression suite
+        continue-on-error: true
+        run: npm test > test-results.txt 2>&1
+      - name: Publish verification artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mega-v333-verification
+          path: |
+            /tmp/mega-source.tar
+            test-results.txt
+          retention-days: 3

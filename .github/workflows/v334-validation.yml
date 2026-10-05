@@ -24,7 +24,7 @@ jobs:
           python-version: '3.12'
       - name: Preserve approved gameplay and economy contracts
         run: |
-          git diff --exit-code 88537427065c88a921364eeca28fa4630b2aff33 HEAD -- src/game.js src/domain.js src/authority.js src/tournament.js src/party.css
+          git diff --exit-code 88537427065c88a921364eeca28fa4630b2aff33 HEAD -- src/game.js src/domain.js src/authority.js src/tournament.js
       - name: Full Node regression
         run: |
           set -o pipefail

@@ -40,9 +40,28 @@ def main():
             page.locator('[data-action="start"]').click()
             page.locator('#partyScreen[data-view="hub"]').wait_for(timeout=3000)
             assert 'One device' in page.locator('#partyBody').inner_text()
+            page.locator('[data-party="back"]').click()
+
+            # Tournaments behaves like every other mode: select first, open only from CTA.
+            page.locator('[data-action="mode"][data-value="tournament"]').click()
+            assert page.locator('#partyScreen').count()==0
+            assert page.locator('[data-action="mode"][data-value="tournament"]').get_attribute('aria-pressed')=='true'
+            assert 'Browse Tournaments' in page.locator('[data-action="start"]').inner_text()
+            page.locator('[data-action="start"]').scroll_into_view_if_needed()
+            page.locator('[data-action="start"]').click()
+            page.locator('#partyScreen[data-view="tables"]').wait_for(timeout=3000)
+
+            # Midnight selected-mode icon tile remains readable.
+            page.locator('[data-party="back"]').click()
+            page.evaluate("""()=>{const s=MegaApp.getSave();s.settings.theme='midnight';MegaApp.applyPractice(s);}""")
+            page.locator('[data-action="mode"][data-value="bot"]').click()
+            bg=page.eval_on_selector('.mode.active .mode-symbol',"el=>getComputedStyle(el).backgroundColor")
+            fg=page.eval_on_selector('.mode.active .mode-symbol svg',"el=>getComputedStyle(el).color")
+            assert bg!=fg,(bg,fg)
+
             assert not favicon_404,favicon_404
             browser.close()
-        print('static guest/settings/private/favicon sweep: PASS')
+        print('static guest/settings/private/tournament/theme/favicon sweep: PASS')
     finally:
         proc.terminate()
         try:proc.wait(timeout=3)

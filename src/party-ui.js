@@ -11,8 +11,8 @@ try{session=JSON.parse(localStorage.getItem('mega_party_session')||'null');}catc
 const saved=()=>{try{return JSON.parse(localStorage.getItem('mega_party_local')||'null');}catch{return null;}};
 const networkSaved=()=>{try{return JSON.parse(localStorage.getItem('mega_party_network_room')||'null');}catch{return null;}};
 function persist(){if(transport==='local'&&room)try{localStorage.setItem('mega_party_local',JSON.stringify(room));}catch{}}
-function mount(){const list=$('#page .mode-list');if(!list||$('[data-party="tables"]',list))return;const b=document.createElement('button');b.type='button';b.className='mode';b.dataset.party='tables';b.innerHTML='<span class="mode-symbol">'+icon('trophy')+'</span><span class="mode-copy"><strong>Tournaments</strong><small>Ten players. One table. Bigger prizes.</small></span>'+icon('arrow');list.append(b);I?.refresh?.();}
-new MutationObserver(mount).observe($('#page'),{childList:true,subtree:true});mount();
+// Tournaments is a first-class home mode in app.js. Selecting the card only selects it;
+// the shared Start/Browse CTA calls MegaParties.tables().
 function shell(title){if(!screen){savedFocus=document.activeElement;screen=document.createElement('section');screen.id='partyScreen';screen.className='party-screen';screen.setAttribute('aria-label','Private rooms and tournaments');screen.innerHTML='<div class="party-top"><button class="icon-button" data-party="back" aria-label="Back">'+icon('back')+'</button><h2></h2><button class="icon-button" data-party="rules" aria-label="Tournament rules">'+icon('help')+'</button></div><p id="partyMessage" role="status" aria-live="polite" hidden></p><div id="partyBody" class="party-body"></div>';$('#app').append(screen);body=$('#partyBody');}screen.dataset.view=viewName;$('.party-top h2',screen).textContent=title;I?.refresh?.();}
 function message(text){const el=$('#partyMessage');if(el){el.textContent=text;el.hidden=!text;}}
 function hide(){const refreshWallet=room?.table&&room?.status==='COMPLETE';clearInterval(poll);poll=null;screen?.remove();screen=null;body=null;activeFixture=null;savedFocus?.focus?.();if(refreshWallet)location.reload();}
@@ -88,5 +88,5 @@ document.addEventListener('click',async e=>{
 },true);
 setInterval(clock,200);
 if(location.hash.startsWith('#party=')){const code=location.hash.slice(7);request('capabilities').then(c=>connect(c.lan?'lan':'online')).then(async()=>{if(viewName==='create'){if(transport==='online')await ensureOnlineActor();setup(true);$('#partyCode').value=code;}}).catch(()=>{hub();message('Open the invite on the room host address.');});}
-window.MegaParties=Object.freeze({open:hub,tables,version:'3.3.1'});
+window.MegaParties=Object.freeze({open:hub,tables,version:'3.3.4'});
 })();

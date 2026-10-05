@@ -541,3 +541,18 @@ body{font-family:'Space Grotesk',ui-sans-serif,system-ui,-apple-system,BlinkMacS
   filter:none!important;
   transform:none!important;
 }
+
+
+/* V3.3.4 targeted Midnight selected-mode fix.
+   Keep Midnight Club's authored card styling; only restore the selected icon tile contrast. */
+:root[data-theme="midnight"] .mode.active .mode-symbol{
+  background:var(--accent)!important;
+  color:var(--on-accent)!important;
+}
+:root[data-theme="midnight"] .mode.active .mode-symbol .icon,
+:root[data-theme="midnight"] .mode.active .mode-symbol svg{
+  color:var(--on-accent)!important;
+  stroke:currentColor!important;
+  opacity:1!important;
+  filter:none!important;
+}

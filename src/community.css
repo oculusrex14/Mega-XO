@@ -6,14 +6,45 @@
 .identity-screen.startup{justify-content:center;align-items:center;text-align:center}.identity-screen.startup h1{font-size:27px}.identity-screen.startup .button{margin-top:24px}
 .identity-eyebrow{font:600 10px var(--mono,monospace);letter-spacing:.15em;color:var(--muted);text-transform:uppercase;margin-bottom:12px}
 .signin-art{align-self:center;width:128px;margin:14px 0 26px}.signin-options{display:grid;gap:9px;margin-top:16px}.provider-button{border:1px solid var(--line);min-height:50px;border-radius:12px;padding:12px;background:var(--raised);color:var(--ink);font:600 14px var(--sans,inherit);display:flex;justify-content:center;align-items:center;gap:12px}.provider-button:disabled{opacity:.55;cursor:not-allowed}.provider-letter{font:700 18px system-ui,sans-serif}.signin-foot{margin-top:auto;padding-top:24px}.signin-foot p{font-size:12px}.identity-status{display:block;font:500 12px var(--sans);color:var(--muted);line-height:1.5;margin:8px 0 12px;overflow-wrap:anywhere}.identity-status.error{color:var(--danger)}
-/* A nine-cell motif is drawn once and restyled per theme. No fake percentage,
- * timer padding or expensive video asset is used. */
-.theme-loader{position:relative;width:108px;aspect-ratio:1;display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin:14px auto 22px}.theme-loader span{border:1px solid var(--line);border-radius:6px;background:var(--soft);animation:loader-route 1.7s ease-in-out infinite;animation-delay:calc(var(--i)*90ms)}
-@keyframes loader-route{0%,100%{background:var(--soft);box-shadow:none;opacity:.6}35%{background:var(--accent);box-shadow:0 0 0 1px var(--accent-edge);opacity:1}70%{background:var(--raised);opacity:1}}
-.theme-loader-label{font:600 11px var(--mono);letter-spacing:.12em;color:var(--muted);text-align:center;margin:0 0 12px}.loading-track{height:3px;background:var(--line);overflow:hidden;border-radius:4px;margin:20px 0;max-width:240px;width:100%}.loading-track::after{content:'';display:block;width:40%;height:100%;background:var(--accent);animation:loader-track 1.8s ease-in-out infinite}@keyframes loader-track{from{transform:translateX(-100%)}to{transform:translateX(350%)}}
-:root[data-theme='midnight'] .theme-loader span{border-color:var(--line);box-shadow:inset 0 1px 0 #ffffff08}:root[data-theme='midnight'] .theme-loader{filter:drop-shadow(0 0 8px #b9f03c12)}
-:root[data-theme='paperclub'] .identity-screen{background-image:var(--paper-grain),var(--paper-ruled)}:root[data-theme='paperclub'] .theme-loader{gap:0;transform:rotate(-2deg)}:root[data-theme='paperclub'] .theme-loader span{border-color:var(--ink);border-radius:3px 6px 2px 4px;animation-name:paper-route}@keyframes paper-route{0%,100%{background:transparent;opacity:1}40%{background:var(--route-hover);box-shadow:inset 0 0 0 2px var(--accent)}}
+/* Theme-aware mock Mega XO loading game.
+ * It reuses the real .mark-layer X/O geometry and theme mark colors/effects. */
+.theme-loader{position:relative;width:112px;aspect-ratio:1;margin:14px auto 22px;display:grid;place-items:center}
+.xo-loader-board{position:relative;width:100%;height:100%;display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(3,1fr);overflow:hidden;background:var(--raised);border:1px solid var(--border-strong);border-radius:12px}
+.xo-loader-cell{position:relative;min-width:0;min-height:0;border-right:1px solid var(--line);border-bottom:1px solid var(--line)}
+.xo-loader-cell:nth-child(3n){border-right:0}.xo-loader-cell:nth-child(n+7){border-bottom:0}
+.xo-loader-mark{opacity:0;transform:scale(.72);transform-origin:center}
+.xo-step-1 .xo-loader-mark{animation:xo-mark-1 2.65s ease-out infinite}
+.xo-step-2 .xo-loader-mark{animation:xo-mark-2 2.65s ease-out infinite}
+.xo-step-3 .xo-loader-mark{animation:xo-mark-3 2.65s ease-out infinite}
+.xo-step-4 .xo-loader-mark{animation:xo-mark-4 2.65s ease-out infinite}
+.xo-step-5 .xo-loader-mark{animation:xo-mark-5 2.65s ease-out infinite}
+@keyframes xo-mark-1{0%,7%{opacity:0;transform:scale(.72)}11%,90%{opacity:1;transform:scale(1)}96%,100%{opacity:0;transform:scale(.9)}}
+@keyframes xo-mark-2{0%,20%{opacity:0;transform:scale(.72)}24%,90%{opacity:1;transform:scale(1)}96%,100%{opacity:0;transform:scale(.9)}}
+@keyframes xo-mark-3{0%,34%{opacity:0;transform:scale(.72)}38%,90%{opacity:1;transform:scale(1)}96%,100%{opacity:0;transform:scale(.9)}}
+@keyframes xo-mark-4{0%,48%{opacity:0;transform:scale(.72)}52%,90%{opacity:1;transform:scale(1)}96%,100%{opacity:0;transform:scale(.9)}}
+@keyframes xo-mark-5{0%,61%{opacity:0;transform:scale(.72)}65%,90%{opacity:1;transform:scale(1)}96%,100%{opacity:0;transform:scale(.9)}}
+.xo-loader-strike{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;overflow:visible}
+.xo-loader-strike path{fill:none;stroke:var(--x);stroke-width:5;stroke-linecap:round;vector-effect:non-scaling-stroke;stroke-dasharray:108;stroke-dashoffset:108;opacity:0;animation:xo-loader-strike 2.65s ease-out infinite}
+@keyframes xo-loader-strike{0%,70%{stroke-dashoffset:108;opacity:0}73%{opacity:1}84%,91%{stroke-dashoffset:0;opacity:1}96%,100%{stroke-dashoffset:0;opacity:0}}
+.theme-loader.small{width:42px;margin:0;flex:none}.theme-loader.small .xo-loader-board{border-radius:5px}.theme-loader.small .xo-loader-strike path{stroke-width:2.4}.theme-loader.small .mark-layer svg{stroke-width:4.7}
+.theme-loader-label{font:600 11px var(--mono);letter-spacing:.12em;color:var(--muted);text-align:center;margin:0 0 12px}
+:root[data-theme='midnight'] .xo-loader-board{box-shadow:0 0 18px rgba(185,240,60,.08),inset 0 1px 0 rgba(255,255,255,.035)}
+:root[data-theme='midnight'] .xo-loader-strike path{filter:drop-shadow(0 0 3px rgba(111,157,255,.32))}
+:root[data-theme='paperclub'] .identity-screen{background-image:var(--paper-grain),var(--paper-ruled)}
+:root[data-theme='paperclub'] .xo-loader-board{border:1.5px solid var(--ink);border-radius:255px 10px 225px 8px/10px 225px 8px 255px;box-shadow:3px 4px 0 rgba(39,34,27,.16);transform:rotate(-1deg)}
+:root[data-theme='paperclub'] .xo-loader-cell{border-color:var(--line)}
+:root[data-theme='paperclub'] .xo-loader-strike path{filter:url(#wobble)}
 :root[data-theme='paperclub'] .identity-screen h1{font-size:40px}:root[data-theme='paperclub'] .identity-screen p{font-size:17px}:root[data-theme='paperclub'] .identity-top h2{font-size:30px}:root[data-theme='paperclub'] .provider-button,:root[data-theme='paperclub'] .profile-card{border-radius:255px 12px 225px 9px/12px 225px 9px 255px;box-shadow:2px 3px 0 #27221b20}
+:root[data-theme='afterhours'] .identity-screen{background-image:linear-gradient(#2cf2ff05 1px,transparent 1px),linear-gradient(90deg,#ff4fb605 1px,transparent 1px);background-size:24px 24px}
+:root[data-theme='afterhours'] .identity-screen h1{font-size:25px;text-transform:uppercase;line-height:1.3;letter-spacing:.015em}:root[data-theme='afterhours'] .identity-top h2{font-size:19px;text-transform:uppercase}
+:root[data-theme='afterhours'] .xo-loader-board{border-radius:2px;border-color:#6549b7;box-shadow:0 0 14px rgba(44,242,255,.12),3px 3px 0 #2a1566}
+:root[data-theme='afterhours'] .xo-loader-cell{border-color:#46308c}
+:root[data-theme='afterhours'] .xo-loader-strike path{filter:drop-shadow(0 0 5px rgba(44,242,255,.72))}
+:root[data-theme='afterhours'] .provider-button,:root[data-theme='afterhours'] .profile-card,:root[data-theme='afterhours'] .friend-person{border-radius:3px}
+:root[data-motion='reduced'] .xo-loader-mark,
+:root[data-motion='reduced'] .xo-loader-strike path{animation:none!important;opacity:1!important;transform:none!important;stroke-dashoffset:0!important}
+@media(prefers-reduced-motion:reduce){.xo-loader-mark,.xo-loader-strike path{animation:none!important;opacity:1!important;transform:none!important;stroke-dashoffset:0!important}}
+.profile-card{border-radius:255px 12px 225px 9px/12px 225px 9px 255px;box-shadow:2px 3px 0 #27221b20}
 :root[data-theme='afterhours'] .identity-screen{background-image:linear-gradient(#2cf2ff05 1px,transparent 1px),linear-gradient(90deg,#ff4fb605 1px,transparent 1px);background-size:24px 24px}
 :root[data-theme='afterhours'] .identity-screen h1{font-size:25px;text-transform:uppercase;line-height:1.3;letter-spacing:.015em}:root[data-theme='afterhours'] .identity-top h2{font-size:19px;text-transform:uppercase}:root[data-theme='afterhours'] .theme-loader span{border-radius:1px;animation:arcade-route 1.8s steps(1,end) infinite;animation-delay:calc(var(--i)*100ms)}@keyframes arcade-route{0%,80%,100%{background:var(--raised);opacity:1}30%,60%{background:var(--accent);box-shadow:0 0 8px #ffd83d33;opacity:1}}
 :root[data-theme='afterhours'] .loading-track{border-radius:0;background:repeating-linear-gradient(90deg,var(--soft) 0 11px,transparent 11px 14px)}:root[data-theme='afterhours'] .loading-track::after{animation-timing-function:steps(8,end)}:root[data-theme='afterhours'] .provider-button,:root[data-theme='afterhours'] .profile-card,:root[data-theme='afterhours'] .friend-person{border-radius:3px}

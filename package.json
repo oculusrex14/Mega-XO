@@ -1,6 +1,6 @@
 {
   "name": "mega-xo",
-  "version": "3.3.1",
+  "version": "3.3.2",
   "private": true,
   "engines": {
     "node": ">=22.13.0"
@@ -12,6 +12,7 @@
     "test:balance": "node tests/balance.js",
     "test:ui": "python3 tests/economy-ui.py",
     "test:parties": "node --test tests/tournament.test.js tests/rooms.test.js tests/party-http.test.js",
-    "test:party-ui": "python3 tests/party-browser.py"
+    "test:party-ui": "python3 tests/party-browser.py",
+    "test:matchmaking": "node --test tests/matchmaking.test.js"
   }
 }

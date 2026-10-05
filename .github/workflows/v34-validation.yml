@@ -1,0 +1,33 @@
+name: V3.4 gameplay validation
+on:
+  push:
+    branches: [V3.4]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: v34-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Baseline tests
+        run: |
+          mkdir -p tests-output
+          set -o pipefail
+          npm test 2>&1 | tee tests-output/node.txt
+      - name: Source snapshot for offline test runner
+        if: always()
+        run: tar -czf tests-output/v34-source.tgz src server tests docs native index.html package.json README.md .env.example .github
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mega-v34-source-and-tests
+          path: tests-output/
+          retention-days: 2

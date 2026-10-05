@@ -521,3 +521,23 @@ body{font-family:'Space Grotesk',ui-sans-serif,system-ui,-apple-system,BlinkMacS
   color:var(--mode-icon-active-contrast)!important;
   stroke:currentColor!important;
 }
+
+
+/* V3.2.1 targeted appearance fixes — no theme redesign.
+   1) After Hours: selected mode keeps its original purple tile but uses a visible yellow icon.
+   2) Paper Club: keep the irregular paper logo tile/wordmark, but keep the small grid mark crisp. */
+:root[data-theme="afterhours"] .mode.active .mode-symbol .icon,
+:root[data-theme="afterhours"] .mode.active .mode-symbol svg{
+  color:#ffd83d!important;
+  stroke:#ffd83d!important;
+  opacity:1!important;
+  filter:drop-shadow(0 0 3px rgba(255,216,61,.28))!important;
+}
+:root[data-theme="paperclub"] .brand>span .icon,
+:root[data-theme="paperclub"] .brand>span svg{
+  color:var(--on-cta)!important;
+  stroke:currentColor!important;
+  opacity:1!important;
+  filter:none!important;
+  transform:none!important;
+}

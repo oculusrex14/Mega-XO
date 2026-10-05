@@ -80,6 +80,8 @@ try:
   for theme in ['vector','midnight','paperclub','afterhours']:
    b.evaluate('(theme)=>{const s=MegaApp.getSave();s.settings.theme=theme;MegaApp.applyPractice(s);}',theme)
    assert b.evaluate('document.querySelector("#sheet").scrollWidth <= document.querySelector("#sheet").clientWidth + 1')
+   assert b.evaluate('document.querySelector(".topbar").scrollWidth <= document.querySelector(".topbar").clientWidth + 1')
+   b.screenshot(path=str(output/('notifications-'+theme+'.png')))
   b.locator('#sheet[data-kind="notifications"] [data-c="review"]').click();b.locator('[data-action="acceptinvite"]').click()
   a.locator('#gameScreen:not([hidden])').wait_for(timeout=5000);b.locator('#gameScreen:not([hidden])').wait_for(timeout=5000)
   first=a if a.locator('#board .cell:not([disabled])').count() else b

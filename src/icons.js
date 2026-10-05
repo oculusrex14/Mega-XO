@@ -42,7 +42,14 @@ function icon(name,cls=''){
  return '<i data-lucide="'+n+'" class="icon '+cls+'" aria-hidden="true"></i>';
 }
 function refresh(){
- if(root.lucide?.createIcons)root.lucide.createIcons({attrs:{"stroke-width":2}});
+ if(!root.lucide?.createIcons)return false;
+ /* Lucide leaves data-lucide on rendered SVGs. Calling createIcons() again
+  * would re-process those SVGs and mutate the DOM indefinitely when a
+  * MutationObserver reacts to icon replacement. Only run when raw icon
+  * placeholders are actually waiting to be rendered. */
+ if(!root.document?.querySelector('i[data-lucide]'))return false;
+ root.lucide.createIcons({attrs:{"stroke-width":2}});
+ return true;
 }
 root.MegaIcons={icon,refresh,badge(t,large=false){
  const i=t.index||0;let outer=i<2?'<rect x="14" y="14" width="36" height="36" rx="10"/>':i<5?'<path d="m32 7 22 11v20L32 57 10 38V18z"/>':i<8?'<path d="m32 4 25 28-25 28L7 32z"/>':'<path d="m32 4 21 12 5 23-26 21L6 39l5-23z"/>';

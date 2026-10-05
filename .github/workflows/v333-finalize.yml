@@ -1,0 +1,95 @@
+name: Complete V3.3.3 verification
+on:
+  push:
+    branches: [V3.3.3]
+    paths: [.v333-completion.b64, .github/workflows/v333-finalize.yml]
+permissions:
+  contents: write
+concurrency:
+  group: v333-completion
+  cancel-in-progress: false
+jobs:
+  finish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Apply exact tested source changes
+        run: |
+          python3 - <<'PY'
+          import pathlib,base64,lzma,hashlib,json,subprocess
+          root=pathlib.Path.cwd()
+          packed=base64.b64decode((root/'.v333-completion.b64').read_text(),validate=True)
+          assert hashlib.sha256(packed).hexdigest()=='06c37dd95660b088a2cb417ce60473f087a12abe394f4f04ee814533dd704f32'
+          doc=json.loads(lzma.decompress(packed))
+          assert doc['base']=='4d945dad8ad7dc27700d8cd3dce2e6d464f171fb'
+          subprocess.run(['git','merge-base','--is-ancestor',doc['base'],'HEAD'],check=True)
+          allowed={'.github/workflows/v333-validation.yml','docs/V3.3.3-ACCOUNTS.md','docs/V3.3.3-PLAN.md','docs/V3.3.3-TESTING.md','native/README.md','server/community-store.js','src/community.js','tests/community-ui.py','tests/community.test.js','tests/economy-ui.py','tests/party-browser.py'}
+          assert set(f['path'] for f in doc['files'])==allowed and len(doc['files'])==len(allowed)
+          outputs={}
+          for f in doc['files']:
+              p=root/f['path']
+              assert p.resolve().is_relative_to(root) and not p.is_symlink()
+              original=p.read_bytes()
+              assert hashlib.sha256(original).hexdigest()==f['before'],f['path']
+              source=original.decode()
+              previous=0
+              for start,end,replacement in f['ops']:
+                  assert previous<=start<=end<=len(source) and isinstance(replacement,str)
+                  previous=end
+              result=source
+              for start,end,replacement in reversed(f['ops']):
+                  result=result[:start]+replacement+result[end:]
+              result=result.encode()
+              assert hashlib.sha256(result).hexdigest()==f['after'],f['path']
+              outputs[p]=result
+          for p,content in outputs.items():
+              p.write_bytes(content)
+          pathlib.Path('/tmp/v333-completed-files.json').write_text(json.dumps(sorted(allowed)))
+          print('Verified and applied all',len(outputs),'reviewed source files')
+          PY
+      - name: Verify accepted gameplay and themes remain untouched
+        run: |
+          git diff --exit-code 493a81c8e6a3765a2615ed1339c5b236e2d91b05 -- src/styles.css src/icons.js src/game.js src/domain.js src/authority.js src/tournament.js src/party.css src/party-ui.js
+      - name: Complete Node regression
+        run: |
+          set -o pipefail
+          mkdir -p tests-output
+          npm test 2>&1 | tee tests-output/node-results.txt
+      - name: Browser dependencies
+        run: |
+          python -m pip install playwright==1.55.0
+          python -m playwright install --with-deps chromium
+      - name: Profiles, friends, linked recovery, offline restart
+        run: python tests/community-ui.py
+      - name: Existing party flow
+        run: python tests/party-browser.py
+      - name: Existing economy flow
+        run: python tests/economy-ui.py
+      - name: Commit verified source and remove one-time delivery
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          python3 - <<'PY'
+          import pathlib,json,subprocess
+          paths=json.loads(pathlib.Path('/tmp/v333-completed-files.json').read_text())
+          subprocess.run(['git','add','--',*paths],check=True)
+          subprocess.run(['git','rm','--','.v333-completion.b64','.github/workflows/v333-finalize.yml'],check=True)
+          PY
+          git commit -m 'Harden V3.3.3 recovery, linking and friend lifecycle; verify full regressions'
+          git push origin HEAD:V3.3.3
+      - name: Publish verification evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mega-v333-final-verification
+          path: tests-output/
+          retention-days: 7

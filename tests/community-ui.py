@@ -53,8 +53,17 @@ try:
    assert a.locator('.theme-loader span').count()>=9
    a.screenshot(path=str(output/('signin-'+theme+'.png')))
   results.append('four themed sign-in surfaces and CSS loaders at 390px')
+  # Guest transition must not spin-lock the MutationObserver/Lucide loop.
+  a.evaluate("""()=>{window.__realIconRefresh=MegaIcons.refresh;window.__iconRefreshProbe=0;MegaIcons.refresh=()=>{window.__iconRefreshProbe++;const n=document.querySelector('[data-lucide]');if(n)n.replaceWith(n.cloneNode(true));return true;};}""")
+  a.locator('[data-c="guest"]').click();a.wait_for_timeout(350)
+  refresh_a=a.evaluate('window.__iconRefreshProbe');a.wait_for_timeout(350);refresh_b=a.evaluate('window.__iconRefreshProbe')
+  assert refresh_b==refresh_a,(refresh_a,refresh_b)
+  assert refresh_b<12,refresh_b
+  assert a.evaluate('document.querySelector("#page") && !document.querySelector("#identityScreen")')
+  a.evaluate("""()=>{MegaIcons.refresh=window.__realIconRefresh;delete window.__realIconRefresh;delete window.__iconRefreshProbe;MegaIcons.refresh();}""")
+  results.append('guest dismissal remains responsive with a mutation-producing icon refresh')
   # Guest starts real offline game without creating a cloud account.
-  a.locator('[data-c="guest"]').click();a.locator('[data-action="start"]').first.click();a.locator('#board .cell:not([disabled])').first.click();a.wait_for_timeout(1600)
+  a.locator('[data-action="start"]').first.click();a.locator('#board .cell:not([disabled])').first.click();a.wait_for_timeout(1600)
   assert a.evaluate('MegaXO.getState().moves.length')>=2
   a.locator('[data-action="leave"]').click();a.locator('#sheet [data-action="home"]').click()
   assert a.evaluate('JSON.parse(localStorage.getItem("mega_v32_state")).records.length')==0

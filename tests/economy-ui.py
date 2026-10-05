@@ -75,7 +75,7 @@ with sync_playwright() as p:
   click(a,'nav','rank');a.wait_for_selector('.standing');click(a,'challenge','bob')
   a.locator('#challengeRated').select_option('true');assert a.locator('#challengeAmount').input_value()=='26'
   click(a,'sendchallenge');a.wait_for_timeout(250);assert 'Challenge sent' in a.locator('#sheetTitle').inner_text(),a.locator('#toast').inner_text();click(b,'nav','friends');b.wait_for_selector('[data-action="reviewinvite"]')
-  click(b,'reviewinvite');assert 'You pay: 0' in b.locator('#sheetBody').inner_text()
+  click(b,'reviewinvite');assert 'Your entry' in b.locator('#sheetBody').inner_text() and '0 Crowns' in b.locator('#sheetBody').inner_text()
   click(b,'acceptinvite');a.wait_for_function('MegaXO.getState()!==null');b.wait_for_function('MegaXO.getState()!==null')
   a.locator('.cell[data-b="4"][data-c="2"]').click();b.wait_for_function('MegaXO.getState().moves.length===1')
   b.locator('.cell[data-b="2"][data-c="0"]').click();a.wait_for_function('MegaXO.getState().moves.length===2')

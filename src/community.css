@@ -33,3 +33,28 @@
 #sheet[data-kind="queue"] .queue-time,#sheet[data-kind="waiting"] .queue-time{text-align:center;font:600 18px var(--mono);margin:8px 0 18px}
 #sheet[data-kind="queue"] #sheetBody>p,#sheet[data-kind="waiting"] #sheetBody>p{text-align:center;line-height:1.5;color:var(--muted)}
 #sheet[data-kind="queue"] .theme-loader,#sheet[data-kind="waiting"] .theme-loader{margin-top:22px;margin-bottom:24px}
+
+
+/* V3.3.4 ranked challenge + notification surfaces. These use the existing
+ * theme tokens so each pack keeps its own material/shape language. */
+.notification-button{position:relative}
+.notification-badge{position:absolute;right:-4px;top:-4px;min-width:18px;height:18px;padding:0 5px;border-radius:999px;display:grid;place-items:center;background:var(--accent);color:var(--on-accent);border:2px solid var(--surface);font:700 9px/1 var(--mono);font-variant-numeric:tabular-nums;z-index:2}
+.notification-options{padding-left:12px;border-left:2px solid var(--soft);margin-left:3px}
+.notification-child{padding-left:4px}.notification-child input:disabled{opacity:.38}.notification-child:has(input:disabled) label{opacity:.62}
+.challenge-opponent{display:flex;align-items:center;gap:11px;padding:12px 0}.challenge-opponent .rank-badge{width:42px;height:42px}.challenge-opponent>div{min-width:0;flex:1}.challenge-opponent b{display:block;font-size:14px;overflow-wrap:anywhere}.challenge-opponent small{display:block;margin-top:2px;color:var(--muted);font-size:11px;line-height:1.45}
+.challenge-terms h3{margin-bottom:12px}.challenge-wait .community-terms,.challenge-invite .community-terms{margin-top:6px}
+.notification-center{display:grid;gap:18px;padding:2px 0 4px}.notification-group h3{font-size:13px;margin:0 0 7px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
+.notification-item{display:grid;grid-template-columns:38px minmax(0,1fr) auto;align-items:center;gap:10px;border:1px solid var(--line);background:var(--raised);border-radius:14px;padding:11px 10px;margin:8px 0}
+.notification-item .notification-symbol{width:38px;height:38px;border-radius:11px;background:var(--soft);display:grid;place-items:center;color:var(--ink)}.notification-item .notification-symbol .icon{width:18px;height:18px}
+.notification-item>div{min-width:0}.notification-item b{display:block;font-size:13px;overflow-wrap:anywhere}.notification-item small{display:block;color:var(--muted);font-size:10px;line-height:1.45;margin-top:2px}.notification-item .button{min-width:70px;min-height:38px;padding:8px 10px;font-size:10px}
+.notification-empty{text-align:center;padding:26px 14px;border:1px dashed var(--line);border-radius:14px;background:var(--soft)}.notification-empty>.icon{width:28px;height:28px;margin:0 auto 10px;color:var(--muted)}.notification-empty h3{margin:0 0 5px}.notification-empty p{font-size:12px;color:var(--muted);margin:0 0 8px}
+.notification-preferences-link{width:100%;display:flex;align-items:center;gap:10px;text-align:left;border:1px solid var(--line);background:var(--soft);color:var(--ink);border-radius:13px;padding:12px}.notification-preferences-link>span{flex:1;min-width:0}.notification-preferences-link b{display:block;font-size:12px}.notification-preferences-link small{display:block;color:var(--muted);font-size:10px;margin-top:2px}.notification-preferences-link>.icon{width:18px;height:18px}
+:root[data-theme='midnight'] .notification-badge{box-shadow:0 0 10px rgba(185,240,60,.28)}
+:root[data-theme='paperclub'] .notification-badge{border-radius:50% 45% 55% 45%;border-color:var(--surface);transform:rotate(3deg)}
+:root[data-theme='paperclub'] :is(.notification-item,.notification-empty,.notification-preferences-link){border-radius:255px 12px 225px 9px/12px 225px 9px 255px;box-shadow:2px 3px 0 rgba(39,34,27,.16)}
+:root[data-theme='paperclub'] .notification-symbol{border-radius:50% 45% 52% 46%}
+:root[data-theme='paperclub'] .notification-group h3{font-family:var(--display);font-size:18px;letter-spacing:0;text-transform:none;color:var(--ink)}
+:root[data-theme='afterhours'] :is(.notification-badge,.notification-item,.notification-empty,.notification-preferences-link,.notification-symbol){border-radius:2px}
+:root[data-theme='afterhours'] .notification-badge{box-shadow:0 0 10px rgba(255,216,61,.4)}
+:root[data-theme='afterhours'] .notification-item{box-shadow:2px 2px 0 #2a1566}.notification-settings .setting-row:last-child{border-bottom:0}
+@media(max-width:350px){.notification-item{grid-template-columns:34px minmax(0,1fr)}.notification-item .notification-symbol{width:34px;height:34px}.notification-item .button{grid-column:2;width:100%}.notification-options{padding-left:7px}}

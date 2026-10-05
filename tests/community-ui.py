@@ -62,6 +62,18 @@ try:
   assert a.evaluate('document.querySelector("#page") && !document.querySelector("#identityScreen")')
   a.evaluate("""()=>{MegaIcons.refresh=window.__realIconRefresh;delete window.__realIconRefresh;delete window.__iconRefreshProbe;MegaIcons.refresh();}""")
   results.append('guest dismissal remains responsive with a mutation-producing icon refresh')
+  # Settings decoration must be idempotent for guests as well as linked profiles.
+  a.locator('#settingsButton').click();a.locator('#sheet[data-kind="settings"]').wait_for(timeout=3000)
+  assert a.locator('#sheet .community-profile-cta').count()==1
+  a.wait_for_timeout(700);assert a.locator('#sheet .community-profile-cta').count()==1
+  a.locator('#sheetClose').click();assert not a.locator('#sheet').get_attribute('data-kind')
+  results.append('guest settings stays at one profile CTA and close clears sheet kind')
+  # Private rooms must open before any online-account readiness check.
+  a.locator('[data-action="mode"][data-value="private"]').click();a.locator('[data-action="start"]').click()
+  a.locator('#partyScreen[data-view="hub"]').wait_for(timeout=3000)
+  assert 'One device' in a.locator('#partyBody').inner_text()
+  a.locator('[data-party="back"]').click();a.locator('[data-action="mode"][data-value="bot"]').click()
+  results.append('guest can reach free Private Rooms without online readiness')
   # Guest starts real offline game without creating a cloud account.
   a.locator('[data-action="start"]').first.click();a.locator('#board .cell:not([disabled])').first.click();a.wait_for_timeout(1600)
   assert a.evaluate('MegaXO.getState().moves.length')>=2

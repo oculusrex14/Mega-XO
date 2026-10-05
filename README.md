@@ -1,10 +1,10 @@
-# Mega XO - V3.3
+# Mega XO - V3.3.1
 
-Private rooms and ten-player tournaments, added on top of the approved V3.2.1 Figma themes and economy. The existing game rules, bot engine, icon adapter, theme CSS and normal app controller are unchanged.
+Private rooms and ten-player tournaments, added on top of the approved V3.2.1 Figma themes and economy. V3.3.1 is a UI polish pass for the new party surfaces: more spacing, clearer table hierarchy, and larger private-room choices across all four themes. The existing game rules, bot engine, icon adapter, theme CSS and normal app controller are unchanged.
 
 ## New play flows
 
-**Private Match** opens a free room hub: One device, Same Wi-Fi, or Online. Hosts choose League, Knockout, Mixed or a two-player duel. Up to ten people can join, ready, view fixtures/standings, play and reconnect. Private events do not charge currency or affect global Elo.
+**Private Match** opens a free room hub: One device, Same Wi-Fi, Online, or **Challenge a friend (1v1)**. Hosts choose League, Knockout, Mixed or a two-player duel. Up to ten people can join, ready, view fixtures/standings, play and reconnect. Private events do not charge currency or affect global Elo.
 
 **Tournaments** is the fifth home game mode. Public tables require ten equal entries: Low/Medium/High in Coins, Premium in Crowns. Mixed format gives everyone group games and an actual placement game. Payouts are 36/20/13/11/10 percent of the original pool to places 1-5; 10 percent burns. Fifth breaks even, the top four profit, the bottom five lose their entries. These tournament rules do not alter the existing two-player 50/50 economy.
 

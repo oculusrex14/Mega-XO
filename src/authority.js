@@ -114,7 +114,7 @@ class Authority {
   players.forEach((a,i)=>{
    const result=isDraw?'draw':a.id===winnerId?'win':'loss',mode=m.quote.rated?'ranked':m.terms.kind==='friend'?'friend':'casual';
    a.history.push({id:m.id,at:now,opponent:m.players[1-i],mode,queue:m.terms.source==='queue',symbol:m.symbols.X===a.id?'X':'O',rated:m.quote.rated,qualified,activityQualified:ratedActivity,result,reason,activeSeconds:Math.floor(elapsed/1000),ratingDelta:rating?(i?-rating.delta:rating.delta):0,casualDelta:casual?(i?-casual.delta:casual.delta):0});
-   if(ratedActivity){const s=this._season(a,now);s.games++;if(m.terms.source==='queue')s.queueGames++;if(!s.opponents.includes(m.players[1-i]))s.opponents.push(m.players[1-i]);s[result+'s']++;s.peakRating=Math.max(s.peakRating,a.rating);s.lastRatedAt=now;a.lastRatedAt=now;if(D.seasonQualified(a,now)&&!s.qualifiedAt)s.qualifiedAt=now;}
+   if(ratedActivity){const s=this._season(a,now);s.games++;if(m.terms.source==='queue')s.queueGames++;if(!s.opponents.includes(m.players[1-i]))s.opponents.push(m.players[1-i]);const resultKey={win:'wins',loss:'losses',draw:'draws'}[result];s[resultKey]++;s.peakRating=Math.max(s.peakRating,a.rating);s.lastRatedAt=now;a.lastRatedAt=now;if(D.seasonQualified(a,now)&&!s.qualifiedAt)s.qualifiedAt=now;}
    if(qualified){const d=this._daily(a,now);d.finished++;d.seconds+=Math.min(900,(now-m.started)/1000);d.boards+=m.state.mini.filter(v=>v===(m.symbols.X===a.id?'X':'O')).length;d[mode]++;}
    a.activeMatch=null;
   });

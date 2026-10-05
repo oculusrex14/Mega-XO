@@ -12,14 +12,14 @@ class Authority {
   if(state)this.restore(state);
  }
  export(){return clone({accounts:[...this.accounts],matches:[...this.matches].map(([id,m])=>[id,{...m,commands:[...m.commands]}]),receipts:[...this.receipts],snapshots:[...this.snapshots],weeklyPaid:[...this.weeklyPaid],burned:this.burned,journal:this.journal,leagueWeek:this.leagueWeek});}
- restore(s){this.accounts=new Map(s.accounts);this.matches=new Map(s.matches.map(([id,m])=>[id,{...m,commands:new Map(m.commands)}]));this.receipts=new Map(s.receipts);this.snapshots=new Map(s.snapshots);this.weeklyPaid=new Map(s.weeklyPaid);this.burned=s.burned;this.journal=s.journal;this.leagueWeek=s.leagueWeek;}
+ restore(s){this.accounts=new Map(s.accounts);for(const a of this.accounts.values()){if(!Number.isFinite(a.casualRating))a.casualRating=a.games>=D.POLICY.placements?a.rating:1000;if(!Number.isSafeInteger(a.casualGames))a.casualGames=0;}this.matches=new Map(s.matches.map(([id,m])=>[id,{...m,commands:new Map(m.commands)}]));this.receipts=new Map(s.receipts);this.snapshots=new Map(s.snapshots);this.weeklyPaid=new Map(s.weeklyPaid);this.burned=s.burned;this.journal=s.journal;this.leagueWeek=s.leagueWeek;}
  account(id){const a=this.accounts.get(id);if(!a)throw Error('UNKNOWN_ACCOUNT');return a;}
  _entry(id,actor,currency,amount,reason,source='game'){this.journal.push({id,actor,currency,amount,reason,source,at:this.now()});}
  /* Provisioning is a trusted server operation, never a user-supplied balance import. */
  addAccount(id,{coins=100,crowns=0,rating=600,games=0,verified=false,createdAt=this.now(),region='',wealthPublic=false}={}){
   if(!validId(id)||this.accounts.has(id))throw Error('INVALID_ACCOUNT');D.integer(coins);D.integer(crowns);D.integer(games);if(!Number.isFinite(rating)||rating<0)throw Error('INVALID_RATING');
   let friendCode;do{friendCode='MEGA-'+crypto.randomBytes(4).toString('hex').toUpperCase();}while([...this.accounts.values()].some(p=>p.friendCode===friendCode));
-  const a={id,friendCode,coins,crowns,reservedCoins:0,reservedCrowns:0,rating:Math.round(rating*100)/100,peak:rating,games,tier:D.basicTier(rating).id,verified,createdAt,region,wealthPublic,suspended:false,hold:false,blocked:[],friends:[],friendRequests:[],activeMatch:null,history:[],daily:{},operations:{},ledger:[],owned:[],purchaseInfluenced:false};
+  const a={id,friendCode,coins,crowns,reservedCoins:0,reservedCrowns:0,rating:Math.round(rating*100)/100,peak:rating,games,tier:D.basicTier(rating).id,casualRating:games>=D.POLICY.placements?Math.round(rating*100)/100:1000,casualGames:0,verified,createdAt,region,wealthPublic,suspended:false,hold:false,blocked:[],friends:[],friendRequests:[],activeMatch:null,history:[],daily:{},operations:{},ledger:[],owned:[],purchaseInfluenced:false};
   D.wealth(a);this.accounts.set(id,a);this._entry('opening:'+id,id,'coins',coins,'Opening balance','provisioning');if(crowns)this._entry('opening-crowns:'+id,id,'crowns',crowns,'Opening balance','provisioning');return clone(a);
  }
  preferences(actor,changes){const a=this.account(actor);if(typeof changes.wealthPublic==='boolean')a.wealthPublic=changes.wealthPublic;if(typeof changes.region==='string'&&changes.region.length<=64)a.region=changes.region;return {wealthPublic:a.wealthPublic,region:a.region};}
@@ -35,21 +35,21 @@ class Authority {
   }else if(completed.filter(m=>m.quote.mode==='queue'&&now-m.started<D.DAY).length>=D.POLICY.queuePairDaily)throw Error('RATED_PAIR_LIMIT');
  }
  /* queue offers are created by the trusted matchmaker, never by a client choosing an opponent. */
- offerQueue(id,a,b,turnSeconds=30){return this._offer(id,a,b,{mode:'ranked',turnSeconds});}
+ offerQueue(id,a,b,mode='ranked',turnSeconds){if(typeof mode==='number'){turnSeconds=mode;mode='ranked';}if(!['ranked','casual'].includes(mode))throw Error('INVALID_MODE');return this._offer(id,a,b,{mode,kind:mode==='casual'?'casual':undefined,source:'queue',turnSeconds:turnSeconds??(mode==='ranked'?30:60)});}
  offer(id,a,b,terms={}){if(terms.mode==='ranked'||terms.mode==='queue')throw Error('MATCHMAKER_REQUIRED');return this._offer(id,a,b,{...terms,mode:'direct'});}
  _offer(id,a,b,terms){
   if(!validId(id)||this.matches.has(id))throw Error('DUPLICATE_OR_INVALID_MATCH');const players=this._players(a,b),now=this.now();
   if(players.some(p=>p.activeMatch))throw Error('ALREADY_IN_MATCH');
   if([...this.matches.values()].filter(m=>m.players[0]===a&&now-m.created<D.DAY).length>=D.POLICY.offerDaily)throw Error('INVITE_RATE_LIMIT');
   if([...this.matches.values()].some(m=>m.status==='OFFERED'&&m.expires>now&&m.players.includes(a)&&m.players.includes(b)))throw Error('PENDING_INVITATION');
-  const q=D.quote({...terms,from:this.currentTier(players[0]),to:this.currentTier(players[1])});
+  const queueSource=terms.source==='queue',q=D.quote({...terms,from:this.currentTier(players[0]),to:this.currentTier(players[1])});
   if(q.rated&&q.kind==='friend'&&(!players[0].friends.includes(b)||!players[1].friends.includes(a)))throw Error('FRIENDSHIP_REQUIRED');
   if(q.mode==='direct'&&players.some(p=>p.games<D.POLICY.placements))throw Error('COMPLETE_PLACEMENTS');
   this._paidAllowed(players,q);this._pairLimit(a,b,q);
   const turnSeconds=terms.turnSeconds??(q.rated?30:60);if(q.rated?turnSeconds!==30:![0,30,60].includes(turnSeconds))throw Error('INVALID_CLOCK');
-  const clean={mode:q.mode,kind:q.kind||terms.kind||'friend',rated:q.rated,amount:q.pool,currency:q.currency,turnSeconds,from:this.currentTier(players[0]),to:this.currentTier(players[1]),ratings:players.map(p=>p.rating)};
+  const clean={source:queueSource?'queue':'direct',mode:q.mode,kind:q.kind||terms.kind||(queueSource?'casual':'friend'),rated:q.rated,amount:q.pool,currency:q.currency,turnSeconds,from:this.currentTier(players[0]),to:this.currentTier(players[1]),ratings:players.map(p=>p.rating)};
   const fingerprint=hash({players:[a,b],terms:clean,quote:q});
-  const m={id,players:[a,b],terms:clean,quote:q,termsHash:fingerprint,accepted:q.mode==='queue'?[]:[a],created:now,expires:now+D.POLICY.offerMinutes*60000,status:'OFFERED',state:G.create(),symbols:null,revision:0,commands:new Map(),escrow:0,settled:false,riskFlags:q.mode==='direct'&&q.pool>=5000?['HIGH_VALUE_DIRECT_POT']:[]};
+  const m={id,players:[a,b],terms:clean,quote:q,termsHash:fingerprint,accepted:queueSource?[]:[a],created:now,expires:now+(queueSource?15000:D.POLICY.offerMinutes*60000),status:'OFFERED',state:G.create(),symbols:null,revision:0,commands:new Map(),escrow:0,settled:false,riskFlags:q.mode==='direct'&&q.pool>=5000?['HIGH_VALUE_DIRECT_POT']:[]};
   this.matches.set(id,m);return this.view(id);
  }
  view(id){const m=this.matches.get(id);if(!m)throw Error('UNKNOWN_MATCH');const {commands,...rest}=m;return clone(rest);}
@@ -65,7 +65,7 @@ class Authority {
   // Preflight every write before modifying either account. DurableStore wraps the operation in one transaction.
   if(currency)players.forEach((p,i)=>{const amount=m.quote.contributions[i];p[currency]-=amount;p[held]+=amount;this._entry(id+':reserve:'+p.id,p.id,currency,-amount,'Reserved for match');});
   m.accepted=[...accepted];m.escrow=m.quote.pool;m.status='PLAYING';m.started=this.now();m.preRatings=players.map(p=>p.rating);m.preTiers=players.map(p=>this.currentTier(p));
-  const swap=this.random()===1;m.symbols={X:m.players[swap?1:0],O:m.players[swap?0:1]};m.deadline=m.terms.turnSeconds?this.now()+m.terms.turnSeconds*1000:null;
+  let swap;if(m.terms.source==='queue'){const bias=p=>(p.history||[]).filter(h=>h.queue&&h.symbol).slice(-8).reduce((n,h)=>n+(h.symbol==='X'?1:-1),0),aBias=bias(players[0]),bBias=bias(players[1]),normal=Math.abs(aBias+1)+Math.abs(bBias-1),flipped=Math.abs(aBias-1)+Math.abs(bBias+1);swap=flipped<normal?true:normal<flipped?false:this.random()===1;}else swap=this.random()===1;m.symbols={X:m.players[swap?1:0],O:m.players[swap?0:1]};m.deadline=m.terms.turnSeconds?this.now()+m.terms.turnSeconds*1000:null;
   for(const p of players)p.activeMatch=id;return this.view(id);
  }
  decline(id,actor){const m=this.matches.get(id);if(!m||!m.players.includes(actor)||m.status!=='OFFERED')throw Error('CANNOT_DECLINE');m.status='DECLINED';return this.view(id);}
@@ -97,6 +97,7 @@ class Authority {
   const c=m.quote.currency,burn=isDraw?0:m.escrow/2,payout=isDraw?0:m.escrow-burn;
   let bonus=0,rating=null;
   if(m.quote.rated){const score=isDraw?.5:winnerId===m.players[0]?1:0;rating=D.elo(m.preRatings[0],m.preRatings[1],score);}
+  let casual=null;if(!m.quote.rated&&m.terms.source==='queue'&&m.terms.kind==='casual'){const score=isDraw?.5:winnerId===m.players[0]?1:0,k=Math.min(players[0].casualGames,players[1].casualGames)<10?32:Math.min(players[0].casualGames,players[1].casualGames)<40?24:16;casual=D.elo(players[0].casualRating,players[1].casualRating,score,k);players[0].casualRating=casual.a;players[1].casualRating=casual.b;players[0].casualGames++;players[1].casualGames++;}
   const winAccount=winnerId?this.account(winnerId):null;
   if(winAccount&&m.quote.mode==='queue'&&qualified&&reason==='line'){
    const d=this._daily(winAccount,now),idx=m.players.indexOf(winnerId);bonus=Math.min(Math.floor(12*D.tier(m.preTiers[idx]).multiplier),Math.max(0,D.POLICY.rankedBonusDailyCap-d.rankedBonus));
@@ -110,7 +111,7 @@ class Authority {
   if(rating)players.forEach((a,i)=>{a.rating=i?rating.b:rating.a;a.games++;a.peak=Math.max(a.peak,a.rating);a.reachedAt=now;a.tier=this.currentTier(a);});
   players.forEach((a,i)=>{
    const result=isDraw?'draw':a.id===winnerId?'win':'loss',mode=m.quote.rated?'ranked':m.terms.kind==='friend'?'friend':'casual';
-   a.history.push({id:m.id,at:now,opponent:m.players[1-i],mode,queue:m.quote.mode==='queue',rated:m.quote.rated,qualified,result,reason,activeSeconds:Math.floor((now-m.started)/1000),ratingDelta:rating?(i?-rating.delta:rating.delta):0});
+   a.history.push({id:m.id,at:now,opponent:m.players[1-i],mode,queue:m.terms.source==='queue',symbol:m.symbols.X===a.id?'X':'O',rated:m.quote.rated,qualified,result,reason,activeSeconds:Math.floor((now-m.started)/1000),ratingDelta:rating?(i?-rating.delta:rating.delta):0,casualDelta:casual?(i?-casual.delta:casual.delta):0});
    if(qualified){const d=this._daily(a,now);d.finished++;d.seconds+=Math.min(900,(now-m.started)/1000);d.boards+=m.state.mini.filter(v=>v===(m.symbols.X===a.id?'X':'O')).length;d[mode]++;}
    a.activeMatch=null;
   });

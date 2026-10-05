@@ -35,8 +35,9 @@ try:
    shim='<script>Object.defineProperty(window,"localStorage",{value:{data:'+json.dumps(storage or {})+',getItem(k){return this.data[k]??null},setItem(k,v){this.data[k]=String(v)},removeItem(k){delete this.data[k]}}});window.fetch=async(url,opts={})=>{const r=await __partyBridge(url,opts);return new Response(JSON.stringify(r.data),{status:r.status,headers:{"Content-Type":"application/json"}});};</script>'
    page.set_content(html.replace('<body>', '<body>'+shim));return page
   a,b=client(),client()
-  assert a.locator('[data-party="tables"]').count()==1
-  a.locator('[data-party="tables"]').click()
+  # Tournaments is now a first-class app mode; party-ui no longer injects a fifth card.
+  assert a.locator('[data-party="tables"]').count()==0
+  a.evaluate('MegaParties.tables()')
   assert a.locator('.party-table').count()==4
   assert a.locator('.party-entry').count()==4
   for theme in ['vector','midnight','paperclub','afterhours']:

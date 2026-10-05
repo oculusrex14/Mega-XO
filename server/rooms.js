@@ -1,6 +1,7 @@
 /* V3.3 party authority. Use the SAME SQLite path as DurableStore for paid events.
    Authentication/eligibility belong to the deployment, never player JSON. */
 'use strict';
+const MM=require('./matchmaking.js');
 const {DatabaseSync}=require('node:sqlite'),crypto=require('node:crypto'),T=require('../src/tournament.js');
 const clone=x=>structuredClone(x),hash=x=>crypto.createHash('sha256').update(typeof x==='string'?x:JSON.stringify(x)).digest('hex');
 const err=s=>{throw Error(s);}, safe=n=>{if(!Number.isSafeInteger(n)||n<0)err('INVALID_BALANCE');return n;};
@@ -23,7 +24,7 @@ class RoomStore{
  shuffle(ids){const a=ids.slice();for(let i=a.length-1;i>0;i--){const j=crypto.randomInt(i+1);[a[i],a[j]]=[a[j],a[i]];}return a;}
  journal(e,id,actor,currency,amount,reason){e.journal.push({id,actor,currency,amount,reason,source:'tournament',at:this.now()});}
  reserve(r,e){const q=clone(r.quote),held=q.currency==='coins'?'reservedCoins':'reservedCrowns',players=r.players.map(p=>this.eligible(e,p.id,q));
-  if(players.some(p=>p.activeMatch))err('ALREADY_IN_MATCH');if(Math.max(...players.map(p=>p.rating))-Math.min(...players.map(p=>p.rating))>400)err('SKILL_WINDOW_CHANGED');
+  if(players.some(p=>p.activeMatch))err('ALREADY_IN_MATCH');if(Math.max(...players.map(p=>p.rating))-Math.min(...players.map(p=>p.rating))>MM.CONFIG.tournament.hardMax)err('SKILL_WINDOW_CHANGED');
   for(const p of players){if(p[q.currency]<q.entry)err('INSUFFICIENT_'+q.currency.toUpperCase());safe(p[held]+q.entry);}
   r.escrow=q.pool;r.quote=q;r.settled=false;r.contributions=players.map(p=>({id:p.id,amount:q.entry}));
   for(const p of players){p[q.currency]-=q.entry;p[held]+=q.entry;p.activeMatch='tournament:'+r.id;this.journal(e,r.id+':reserve:'+p.id,p.id,q.currency,-q.entry,'Tournament entry reserved');}
@@ -50,7 +51,7 @@ class RoomStore{
    }else if(cmd.type==='publicJoin'){
     if(this.lanOnly)err('FREE_PRIVATE_ONLY');const q=T.prize(cmd.table);e=this.economy();const a=this.eligible(e,actor,q);if(a.activeMatch)err('ALREADY_IN_MATCH');
     if(active.some(r=>r.table&&r.players.some(p=>p.id===actor)))err('ALREADY_QUEUED');if(a[q.currency]<q.entry)err('INSUFFICIENT_'+q.currency.toUpperCase());
-    r=active.find(r=>r.table===cmd.table&&r.status==='LOBBY'&&r.players.length<10&&now<r.expires&&r.players.every(p=>{const b=this.account(e,p.id);return Math.abs(a.rating-b.rating)<=400&&!a.blocked.includes(p.id)&&!b.blocked.includes(actor);}));
+    r=MM.selectTournamentRoom(active,e,actor,cmd.table,now);
     if(!r)r=T.create({id:crypto.randomUUID(),code:this.code(),owner:'service',name:q.name+' table',table:cmd.table,now});T.join(r,actor,principal.name||a.id,now);
    }else{
     r=this.get(cmd.id);if(cmd.type==='join'){if(r.table)err('USE_PUBLIC_QUEUE');if(!this.lanOnly){const accounts=this.economy(),joining=this.account(accounts,actor);if(r.players.some(p=>joining.blocked.includes(p.id)||this.account(accounts,p.id).blocked.includes(actor)))err('INELIGIBLE');}T.join(r,actor,principal.name||actor,now);}
@@ -72,7 +73,7 @@ class RoomStore{
      }
     }
    }
-   if(r.table){e=e||this.economy();if(r.status==='LOBBY'&&r.players.length===10&&r.players.every(p=>p.ready)){this.reserve(r,e);T.start(r,'service',this.shuffle(r.players.map(p=>p.id)).sort((a,b)=>this.account(e,b).rating-this.account(e,a).rating),now);}this.settle(r,e);this.writeEconomy(e);}
+   if(r.table){e=e||this.economy();if(r.status==='LOBBY'&&r.players.length===10&&r.players.every(p=>p.ready)){this.reserve(r,e);T.start(r,'service',MM.tournamentSeed(r.players.map(p=>p.id),e),now);}this.settle(r,e);this.writeEconomy(e);}
    this.save(r);const response=T.view(r,now);this.db.prepare('INSERT INTO party_commands VALUES(?,?,?)').run(op,fp,JSON.stringify({id:r.id}));this.db.exec('COMMIT');return response;
   }catch(error){this.db.exec('ROLLBACK');throw error;}
  }

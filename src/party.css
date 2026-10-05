@@ -1,22 +1,98 @@
-/* Additive V3.3 screens only. Does not override the approved theme pack. */
+/* V3.3.1 additive party/tournament screens.
+   Uses the approved theme tokens; does not alter core V3.2.1 theme packs. */
 .party-screen{position:absolute;inset:0;z-index:65;display:flex;flex-direction:column;background:var(--surface);background-image:var(--texture);color:var(--ink);overflow:hidden;font-family:var(--sans,inherit)}
-.party-top{display:flex;align-items:center;gap:10px;padding:12px 14px;flex:none;border-bottom:1px solid var(--line)}
-.party-top h2{font-family:var(--display,inherit);font-size:18px;margin:0;flex:1;line-height:1.2}
-.party-body{padding:16px 14px 28px;min-height:0;overflow:auto;flex:1;overscroll-behavior:contain}
-#partyMessage{margin:0;padding:9px 14px;background:var(--soft);color:var(--ink);font-size:12px;flex:none;max-height:80px;overflow:auto}
-.party-options{display:grid;gap:9px}.party-options .button{width:100%}
-.party-body>.button{width:100%;margin-top:10px}.party-body>.field{margin-bottom:12px}
-.party-body input,.party-body select,.party-body textarea{min-width:0;max-width:100%;font:inherit;background:var(--raised);color:var(--ink);border:1px solid var(--line);border-radius:9px;padding:10px}
-.party-body textarea{resize:vertical}.party-command{display:block;overflow:auto;padding:12px;background:var(--soft);font-size:12px;border-radius:8px}
-.party-tables{display:grid;grid-template-columns:1fr 1fr;gap:10px}.party-tables h3{font-size:17px}.party-tables .split{display:block;line-height:1.8}.party-tables .button{width:100%;font-size:11px;padding:8px}
-.party-standings{overflow:auto;border:1px solid var(--line);border-radius:9px;margin:12px 0 18px}.party-standings table{border-collapse:collapse;width:100%;font-size:12px}.party-standings td,.party-standings th{text-align:left;padding:9px 10px;border-bottom:1px solid var(--line)}.party-standings thead{background:var(--soft)}
-.party-room-heading{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-bottom:10px;font-size:12px}.party-room-heading .button{margin-left:auto;font-size:10px}
-.party-roster{margin:6px 0 12px}.party-roster .ledger span{overflow-wrap:anywhere}.party-body h3{margin-top:18px}
-.party-host-controls .ledger{flex-wrap:wrap}.party-host-controls .button{font-size:10px;padding:5px}
-.party-fixtures{display:grid;gap:9px}.party-fixtures .card{padding:12px}.party-fixtures b,.party-fixtures small{display:block}.party-fixtures b{margin:4px 0}.party-fixtures .button{margin-top:8px;min-height:40px;width:100%}
-#partyGame .players{margin-top:0}#partyGame .player strong{font-size:15px;white-space:nowrap}#partyGame .player b{max-width:85px;text-overflow:ellipsis;overflow:hidden;white-space:nowrap}#partyGame .turn-hud{margin-bottom:12px}#partyGame .board-wrap{width:100%;max-width:390px}#partyGame .party-options{margin-top:12px}
+.party-top{display:flex;align-items:center;gap:12px;padding:14px 16px;min-height:64px;flex:none;border-bottom:1px solid var(--line)}
+.party-top .icon-button{width:42px;height:42px;flex:none}
+.party-top h2{font-family:var(--display,inherit);font-size:20px;margin:0;flex:1;line-height:1.2;letter-spacing:-.02em}
+.party-body{padding:22px 18px 38px;min-height:0;overflow:auto;flex:1;overscroll-behavior:contain}
+#partyMessage{margin:0;padding:10px 18px;background:var(--soft);color:var(--ink);font-size:12px;line-height:1.45;flex:none;max-height:88px;overflow:auto}
+.party-body>.button{width:100%;min-height:48px;margin-top:14px}
+.party-body>.field{margin-bottom:18px}
+.party-body>p{line-height:1.55}
+.party-body input,.party-body select,.party-body textarea{min-width:0;max-width:100%;font:inherit;background:var(--raised);color:var(--ink);border:1px solid var(--line);border-radius:11px;padding:12px}
+.party-body textarea{resize:vertical;min-height:130px}.party-command{display:block;overflow:auto;padding:14px;background:var(--soft);font-size:12px;border-radius:10px;margin:12px 0}
+.party-options{display:grid;gap:12px}.party-options .button{width:100%;min-height:48px}
+.party-page-intro{padding:4px 0 20px}
+.party-kicker{display:block;font:600 9px var(--mono,monospace);letter-spacing:.12em;color:var(--muted);margin-bottom:8px}
+.party-page-intro h3{font-family:var(--display,inherit);font-size:25px;line-height:1.08;letter-spacing:-.03em;margin:0 0 8px;color:var(--ink)}
+.party-page-intro p{max-width:340px;margin:0;color:var(--muted);font-size:12px;line-height:1.5}
+.party-info-card{margin-top:18px;padding:15px 16px;border:1px solid var(--line);border-radius:14px;background:var(--soft)}
+.party-info-card b{display:block;font-size:12px;margin-bottom:4px}.party-info-card p{margin:0;color:var(--muted);font-size:11px;line-height:1.5}
+
+/* Private-room landing */
+.party-room-choices{display:grid;gap:11px}
+.party-choice{width:100%;min-height:78px;display:grid;grid-template-columns:44px minmax(0,1fr) 22px;align-items:center;gap:12px;padding:12px 14px;border:1px solid var(--line);border-radius:16px;background:var(--raised);color:var(--ink);text-align:left}
+.party-choice:active{transform:translateY(1px)}
+.party-choice-icon{width:44px;height:44px;border-radius:13px;display:grid;place-items:center;background:var(--soft);color:var(--ink)}
+.party-choice-icon .icon{width:20px;height:20px}.party-choice-copy{min-width:0}.party-choice-copy strong{display:block;font-size:14px;line-height:1.2}.party-choice-copy small{display:block;margin-top:4px;color:var(--muted);font-size:10px;line-height:1.35}.party-choice-arrow{display:grid;place-items:center;color:var(--muted)}.party-choice-arrow .icon{width:18px;height:18px}
+.party-choice.quiet{background:color-mix(in srgb,var(--raised) 72%,var(--soft))}
+
+/* Tournament landing */
+.party-tournament-intro{padding-bottom:18px}
+.party-tables{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.party-table{min-width:0;min-height:226px;padding:16px 14px 14px;display:flex;flex-direction:column;border:1px solid var(--line);border-radius:16px;background:var(--raised)}
+.party-table-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:14px}.party-table-head h3{font-size:18px;line-height:1.1;margin:0}
+.party-currency{display:inline-flex;align-items:center;gap:4px;padding:4px 6px;border-radius:999px;background:var(--soft);color:var(--muted);font:600 7px var(--mono,monospace);letter-spacing:.06em;white-space:nowrap}.party-currency .icon{width:11px;height:11px}
+.party-entry{padding:0 0 13px;border-bottom:1px solid var(--line)}.party-entry>span{display:block;font:600 8px var(--mono,monospace);letter-spacing:.08em;color:var(--muted)}.party-entry strong{display:block;font-family:var(--display,inherit);font-size:27px;line-height:1;margin-top:5px;letter-spacing:-.03em}.party-entry small{display:block;color:var(--muted);font-size:9px;margin-top:3px}
+.party-table-stats{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:12px 0}.party-table-stats div{min-width:0}.party-table-stats span{display:block;color:var(--muted);font-size:8px;margin-bottom:3px}.party-table-stats b{font-size:12px;line-height:1.15;overflow-wrap:anywhere}
+.party-table .button{width:100%;min-height:40px;margin-top:auto;padding:8px 6px;font-size:10px}
+.party-prize-note{margin-top:16px}
+
+/* Setup, room, standings and fixture pages also get more breathing room. */
+.party-body .two-fields{gap:12px}.party-body .field{gap:7px}.party-body .field>span,.party-body .field{line-height:1.4}
+.party-standings{overflow:auto;border:1px solid var(--line);border-radius:12px;margin:16px 0 22px}.party-standings table{border-collapse:collapse;width:100%;font-size:12px}.party-standings td,.party-standings th{text-align:left;padding:11px 12px;border-bottom:1px solid var(--line)}.party-standings thead{background:var(--soft)}
+.party-room-heading{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-bottom:16px;font-size:12px}.party-room-heading .button{margin-left:auto;font-size:10px}
+.party-roster{margin:9px 0 16px}.party-roster .ledger{padding:10px 0}.party-roster .ledger span{overflow-wrap:anywhere}.party-body h3{margin-top:24px;margin-bottom:10px}
+.party-host-controls .ledger{flex-wrap:wrap;gap:8px}.party-host-controls .button{font-size:10px;padding:6px 9px}
+.party-fixtures{display:grid;gap:12px}.party-fixtures .card{padding:14px}.party-fixtures b,.party-fixtures small{display:block}.party-fixtures b{margin:5px 0}.party-fixtures .button{margin-top:10px;min-height:42px;width:100%}
+.party-body .note{padding:14px 15px;line-height:1.5}
+
+/* Tournament gameplay keeps the existing board geometry. */
+#partyGame .players{margin-top:0}#partyGame .player strong{font-size:15px;white-space:nowrap}#partyGame .player b{max-width:85px;text-overflow:ellipsis;overflow:hidden;white-space:nowrap}#partyGame .turn-hud{margin-bottom:12px}#partyGame .board-wrap{width:100%;max-width:390px}#partyGame .party-options{margin-top:14px}
 #partyGame .mark-layer svg{fill:none;stroke-width:4.5;stroke-linecap:round}#partyGame .route-overlay{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:30}#partyGame .route-overlay line{stroke:var(--accent);stroke-width:3;stroke-linecap:round}#partyGame .route-overlay circle{fill:var(--accent)}
-@media(max-width:350px){.party-tables{grid-template-columns:1fr}.party-top h2{font-size:16px}.party-body{padding:12px 10px}.party-body .tutorial-card{grid-template-columns:30px 1fr}}
 #partyX.active{background:var(--x-soft)}#partyO.active{background:var(--o-soft)}
+
+/* Theme-specific material treatment: layout stays identical, character does not. */
+:root[data-theme="vector"] .party-choice,
+:root[data-theme="vector"] .party-table{box-shadow:0 8px 20px rgba(21,24,28,.055)}
+:root[data-theme="midnight"] .party-choice,
+:root[data-theme="midnight"] .party-table,
+:root[data-theme="midnight"] .party-info-card{box-shadow:inset 0 1px 0 rgba(255,255,255,.035)}
+:root[data-theme="midnight"] .party-choice-icon{background:#222d3a}
 :root[data-theme="paperclub"] .party-screen{background-color:var(--surface);background-image:var(--paper-grain),var(--paper-ruled)}
+:root[data-theme="paperclub"] .party-top{min-height:66px}
+:root[data-theme="paperclub"] .party-page-intro h3{font-size:32px;letter-spacing:0;transform:rotate(-.5deg);transform-origin:left}
+:root[data-theme="paperclub"] :is(.party-choice,.party-table,.party-info-card){border:1.5px solid var(--ink);border-radius:255px 14px 225px 12px/14px 225px 12px 255px;box-shadow:3px 4px 0 rgba(39,34,27,.18)}
+:root[data-theme="paperclub"] .party-choice-icon{border-radius:255px 12px 225px 10px/12px 225px 10px 255px}
+:root[data-theme="paperclub"] .party-table-head h3{font-size:21px}
+:root[data-theme="paperclub"] .party-entry strong{font-size:31px}
+:root[data-theme="paperclub"] .party-currency{border:1px solid var(--ink);border-radius:999px}
+:root[data-theme="paperclub"] .party-table .button{border:1.5px solid var(--ink)}
 :root[data-theme="afterhours"] .party-screen::after{content:"";position:absolute;inset:0;z-index:70;pointer-events:none;background:repeating-linear-gradient(to bottom,rgba(255,255,255,.022) 0,rgba(255,255,255,.022) 1px,transparent 1px,transparent 3px)}
+:root[data-theme="afterhours"] .party-choice,
+:root[data-theme="afterhours"] .party-table,
+:root[data-theme="afterhours"] .party-info-card{border-radius:3px;border-color:#46308c;box-shadow:3px 3px 0 #2a1566}
+:root[data-theme="afterhours"] .party-choice-icon,
+:root[data-theme="afterhours"] .party-currency{border-radius:2px;background:#26164f;color:var(--x)}
+:root[data-theme="afterhours"] .party-page-intro h3{text-transform:uppercase;font-size:21px;letter-spacing:.03em}
+:root[data-theme="afterhours"] .party-kicker{color:var(--x)}
+:root[data-theme="afterhours"] .party-table-head h3{text-transform:uppercase}
+:root[data-theme="afterhours"] .party-entry strong{font-size:24px}
+:root[data-theme="afterhours"] .party-table .button{text-transform:uppercase;letter-spacing:.04em}
+:root[data-theme="afterhours"] .party-choice:focus-visible,
+:root[data-theme="afterhours"] .party-table:focus-within{outline:2px solid var(--accent);outline-offset:2px}
+
+@media(max-width:350px){
+ .party-tables{grid-template-columns:1fr}
+ .party-table{min-height:0}
+ .party-top h2{font-size:18px}
+ .party-body{padding:18px 12px 32px}
+ .party-page-intro h3{font-size:22px}
+ .party-body .tutorial-card{grid-template-columns:30px 1fr}
+}
+@media(min-width:430px){
+ .party-body{padding-left:20px;padding-right:20px}
+ .party-tables{gap:16px}
+ .party-table{min-height:232px;padding:18px 16px 15px}
+ .party-room-choices{gap:12px}
+}

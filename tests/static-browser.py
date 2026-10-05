@@ -74,9 +74,11 @@ def main():
             page.locator('[data-action="mode"][data-value="tournament"]').click()
             assert page.locator('#partyScreen').count()==0
             assert page.locator('[data-action="mode"][data-value="tournament"]').get_attribute('aria-pressed')=='true'
-            assert 'Browse Tournaments' in page.locator('[data-action="start"]').inner_text()
-            page.locator('[data-action="start"]').scroll_into_view_if_needed()
-            page.locator('[data-action="start"]').click()
+            assert page.evaluate("MegaApp.getContext().mode")=='tournament'
+            cta=page.locator('#page [data-action="start"]')
+            assert 'Browse Tournaments' in (cta.text_content() or '')
+            cta.scroll_into_view_if_needed()
+            cta.click()
             page.locator('#partyScreen[data-view="tables"]').wait_for(timeout=3000)
 
             # Midnight selected-mode icon tile remains readable.

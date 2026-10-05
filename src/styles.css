@@ -480,3 +480,76 @@ body{font-family:'Space Grotesk',ui-sans-serif,system-ui,-apple-system,BlinkMacS
 .theme-preview.afterhours{background:linear-gradient(145deg,#0f0722,#26164f);color:#2cf2ff;border-color:#5a3fb0;font-family:"Orbitron",system-ui,sans-serif}
 .theme-preview.afterhours .sample-o{color:#ff4fb6}
 .theme-preview.afterhours span{text-shadow:0 0 10px currentColor}
+
+
+/* V3.2.1 UI hotfix — keep the Mega XO brand stable across appearance packs
+   and give play-mode icon tiles explicit high-contrast contracts. */
+:root[data-theme] .brand b{
+  font-family:"Space Grotesk",system-ui,sans-serif!important;
+  font-size:19px!important;
+  font-weight:700!important;
+  letter-spacing:-.6px!important;
+  line-height:1!important;
+  text-transform:none!important;
+  text-shadow:none!important;
+  transform:none!important;
+}
+:root[data-theme] .brand>span{
+  width:34px!important;
+  height:34px!important;
+  border-radius:10px!important;
+  background:#15181c!important;
+  color:#fff!important;
+  border:1px solid rgba(255,255,255,.12)!important;
+  box-shadow:none!important;
+  filter:none!important;
+  transform:none!important;
+}
+:root[data-theme] .brand>span .icon,
+:root[data-theme] .brand>span svg{
+  color:#fff!important;
+  stroke:currentColor!important;
+  filter:none!important;
+  opacity:1!important;
+  transform:none!important;
+}
+
+/* Mode icons must be readable independently from card/background colors. */
+:root[data-theme] .mode-symbol .icon,
+:root[data-theme] .mode-symbol svg{
+  color:inherit!important;
+  stroke:currentColor!important;
+  opacity:1!important;
+}
+:root[data-theme="midnight"] .mode-symbol{
+  background:#263747!important;
+  color:#f4f8fc!important;
+  border:1px solid #3b5064!important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.05)!important;
+}
+:root[data-theme="midnight"] .mode.active .mode-symbol{
+  background:#b9f03c!important;
+  color:#121a08!important;
+  border-color:#b9f03c!important;
+  box-shadow:none!important;
+}
+:root[data-theme="afterhours"] .mode-symbol{
+  background:#26164f!important;
+  color:#2cf2ff!important;
+  border:1px solid #6549b7!important;
+  box-shadow:inset 0 0 0 1px rgba(44,242,255,.08),0 0 10px rgba(44,242,255,.08)!important;
+}
+:root[data-theme="afterhours"] .mode-symbol .icon,
+:root[data-theme="afterhours"] .mode-symbol svg{
+  filter:drop-shadow(0 0 3px rgba(44,242,255,.38));
+}
+:root[data-theme="afterhours"] .mode.active .mode-symbol{
+  background:#ffd83d!important;
+  color:#1a1200!important;
+  border-color:#ffd83d!important;
+  box-shadow:0 0 12px rgba(255,216,61,.25)!important;
+}
+:root[data-theme="afterhours"] .mode.active .mode-symbol .icon,
+:root[data-theme="afterhours"] .mode.active .mode-symbol svg{
+  filter:none!important;
+}

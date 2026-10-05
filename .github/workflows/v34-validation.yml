@@ -19,6 +19,8 @@ jobs:
           node-version: '22'
       - name: Full Node regression
         run: npm test
+      - name: Game-design invariant contract
+        run: npm run test:invariants
       - name: Ranked expected-value report
         run: npm run test:balance
       - name: 90-day population economy simulation

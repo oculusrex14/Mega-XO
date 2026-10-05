@@ -17,6 +17,7 @@
     "start:accounts": "node server/community-server.js",
     "test:accounts": "node --test tests/community.test.js tests/community-http.test.js",
     "test:account-ui": "python3 tests/community-ui.py",
-    "test:economy-sim": "node tests/economy-sim.js"
+    "test:economy-sim": "node tests/economy-sim.js",
+    "test:invariants": "node --test tests/design-invariants.test.js"
   }
 }

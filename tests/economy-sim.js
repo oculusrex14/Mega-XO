@@ -32,4 +32,7 @@ fs.mkdirSync(path.join(__dirname,'../.artifacts'),{recursive:true});fs.writeFile
 if(!(current.coinsGeneratedPerPlayerDay<legacy.coinsGeneratedPerPlayerDay*.75))throw Error('MINT_REDUCTION_TOO_SMALL');
 if(current.wallet.median>2500)throw Error('WALLET_INFLATION_HIGH');
 if(current.modeledPurchasePressure>.16)throw Error('PURCHASE_PRESSURE_TOO_HIGH');
-if(current.everBelow25Coins>.35)throw Error('TOO_MANY_COIN_STARVED');
+if(current.everBelow25Coins>.10)throw Error('TOO_MANY_COIN_STARVED');
+if(current.everBlockedFromRanked>.15)throw Error('RANKED_ACCESS_TOO_TIGHT');
+if(current.everSkippedChosenTournament>.50)throw Error('TOURNAMENT_ACCESS_TOO_TIGHT');
+if(current.coinsBurnedEquivalentPerPlayerDay/current.coinsGeneratedPerPlayerDay<.45)throw Error('CURRENCY_SINK_TOO_WEAK');

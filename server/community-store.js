@@ -33,8 +33,8 @@ function sanitizePractice(value){
  return clean;
 }
 class CommunityStore {
- constructor({store,origin,now=Date.now,otpSecret=process.env.MEGA_OTP_SECRET,securityNotify=()=>{}}={}){
-  if(!store?.db||!origin)fail('IDENTITY_STORE_REQUIRED');this.store=store;this.db=store.db;this.origin=new URL(origin).origin;this.now=now;this.otpSecret=Buffer.from(otpSecret||crypto.randomBytes(32).toString('base64url'));this.securityNotify=securityNotify;
+ constructor({store,origin,now=Date.now,otpSecret=process.env.MEGA_OTP_SECRET,securityNotify=()=>{},deletionPolicy={}}={}){
+  if(!store?.db||!origin)fail('IDENTITY_STORE_REQUIRED');this.store=store;this.db=store.db;this.origin=new URL(origin).origin;this.now=now;this.otpSecret=Buffer.from(otpSecret||crypto.randomBytes(32).toString('base64url'));this.securityNotify=securityNotify;this.deletionPolicy={enabled:deletionPolicy.enabled===true,policyVersion:typeof deletionPolicy.policyVersion==='string'?deletionPolicy.policyVersion:''};
   this.db.exec(`CREATE TABLE IF NOT EXISTS profiles(actor TEXT PRIMARY KEY,tag TEXT NOT NULL UNIQUE,username TEXT NOT NULL UNIQUE,display_name TEXT NOT NULL,avatar TEXT NOT NULL DEFAULT 'board',stats_visibility TEXT NOT NULL DEFAULT 'friends',presence_visibility TEXT NOT NULL DEFAULT 'friends',created INTEGER NOT NULL,username_changed INTEGER NOT NULL DEFAULT 0,version INTEGER NOT NULL DEFAULT 1);
 CREATE TABLE IF NOT EXISTS identities(provider TEXT NOT NULL,subject TEXT NOT NULL,actor TEXT NOT NULL,created INTEGER NOT NULL,PRIMARY KEY(provider,subject),UNIQUE(actor,provider));
 CREATE TABLE IF NOT EXISTS email_credentials(email TEXT PRIMARY KEY COLLATE NOCASE,actor TEXT NOT NULL UNIQUE,salt TEXT NOT NULL,password_hash TEXT NOT NULL,created INTEGER NOT NULL,verified_at INTEGER);
@@ -46,6 +46,8 @@ CREATE TABLE IF NOT EXISTS social_operations(id TEXT PRIMARY KEY,fingerprint TEX
 CREATE TABLE IF NOT EXISTS community_limits(id TEXT PRIMARY KEY,hits INTEGER NOT NULL);
 CREATE TABLE IF NOT EXISTS email_challenges(id TEXT PRIMARY KEY,session TEXT NOT NULL,email TEXT NOT NULL COLLATE NOCASE,purpose TEXT NOT NULL,actor TEXT,code_hash TEXT NOT NULL,password_salt TEXT,password_hash TEXT,created INTEGER NOT NULL,expires INTEGER NOT NULL,attempts INTEGER NOT NULL DEFAULT 0,verified_at INTEGER,consumed INTEGER NOT NULL DEFAULT 0);
 CREATE TABLE IF NOT EXISTS v41_reports(id TEXT PRIMARY KEY,reporter TEXT NOT NULL,target TEXT NOT NULL,category TEXT NOT NULL CHECK(category IN ('cheating','username','harassment','unsportsmanlike','other')),detail TEXT NOT NULL DEFAULT '',created INTEGER NOT NULL,state TEXT NOT NULL DEFAULT 'open' CHECK(state IN ('open','reviewed')),reviewed_at INTEGER,reviewed_by TEXT,outcome TEXT CHECK(outcome IS NULL OR outcome IN ('no_action','action_taken','duplicate')));
+CREATE TABLE IF NOT EXISTS v41_privacy_requests(id TEXT PRIMARY KEY,actor TEXT NOT NULL,kind TEXT NOT NULL,state TEXT NOT NULL,requested_at INTEGER NOT NULL,updated_at INTEGER NOT NULL,completed_at INTEGER,policy_version TEXT NOT NULL,note TEXT NOT NULL DEFAULT '');
+CREATE TABLE IF NOT EXISTS v41_deletion_receipts(id TEXT PRIMARY KEY,actor_hash TEXT NOT NULL UNIQUE,tombstone TEXT NOT NULL UNIQUE,completed_at INTEGER NOT NULL,policy_version TEXT NOT NULL,retained TEXT NOT NULL);
 CREATE INDEX IF NOT EXISTS v41_reports_target_state ON v41_reports(target,state,created);
 CREATE INDEX IF NOT EXISTS v41_reports_reporter_created ON v41_reports(reporter,created);
 CREATE INDEX IF NOT EXISTS session_actor ON account_sessions(actor);
@@ -217,6 +219,45 @@ CREATE INDEX IF NOT EXISTS email_challenges_email ON email_challenges(email);`);
   const receipts=[...a.receipts.entries()].filter(([,r])=>r.actor===actor).map(([transactionId,r])=>({transactionId,...JSON.parse(json(r))}));
   const wallet={coins:account.coins,crowns:account.crowns,reservedCoins:account.reservedCoins,reservedCrowns:account.reservedCrowns,owned:JSON.parse(json(account.owned||[])),purchaseInfluenced:!!account.purchaseInfluenced,monetization:JSON.parse(json(account.monetization||{}))};
   return {schemaVersion:1,exportedAt:this.now(),account:{playerId:actor,createdAt:account.createdAt,region:account.region||'',wealthPublic:!!account.wealthPublic,suspended:!!account.suspended,securityHold:!!account.hold,profile:{tag:profile.tag,username:profile.username,displayName:profile.display_name,avatar:profile.avatar,statsVisibility:profile.stats_visibility,presenceVisibility:profile.presence_visibility,created:profile.created,usernameChanged:profile.username_changed},email:email?{address:email.email,created:email.created,verifiedAt:email.verified_at}:null,identities,wallet,competitive:{rating:account.rating,peakRating:account.peak,games:account.games,tier:account.tier,casualRating:account.casualRating,casualGames:account.casualGames,season:JSON.parse(json(account.season)),seasonHistory:JSON.parse(json(account.seasonHistory||[])),tournamentRecord:JSON.parse(json(account.tournamentRecord||{})),matchHistory:JSON.parse(json(account.history||[])),daily:JSON.parse(json(account.daily||{})),activeMatch:account.activeMatch||null},social:{friends:(account.friends||[]).map(ref),incomingRequests:(account.friendRequests||[]).map(ref),outgoingRequests:outgoing.map(ref),blocked:(account.blocked||[]).map(ref)},economyJournal:a.journal.filter(e=>e.actor===actor).map(e=>JSON.parse(json(e))),purchaseReceipts:receipts,practiceSave:save?{revision:save.revision,updated:save.updated,practice:JSON.parse(save.payload)}:null,reportsSubmitted:reports}};
+ }
+ deletionStatus(token){
+  const session=this.requireLinked(token),p=this.profileRow(session.actor);return {available:this.deletionPolicy.enabled===true,policyVersion:this.deletionPolicy.policyVersion||null,confirmation:p?.tag||null,recentlyVerified:this.now()-session.authAt<=15*60000};
+ }
+ deleteAccount(token,confirmation){
+  const session=this.requireLinked(token);if(!this.deletionPolicy.enabled||!this.deletionPolicy.policyVersion)fail('ACCOUNT_DELETION_UNAVAILABLE');if(this.now()-session.authAt>15*60000)fail('REAUTH_REQUIRED');
+  const actor=session.actor,profile=this.profileRow(actor);if(!profile||confirmation!==profile.tag)fail('DELETE_CONFIRMATION_REQUIRED');this.rate(actor,'account-delete',2,86400);
+  const a=this.read(),account=a.account(actor);if(account.activeMatch||this.isQueued?.(actor)||this.isDeletionBusy?.(actor)||[...a.matches.values()].some(m=>m.players.includes(actor)&&['OFFERED','PLAYING'].includes(m.status)))fail('ACCOUNT_BUSY');
+  const tombstone='deleted_'+crypto.randomUUID().replace(/-/g,''),receiptId='del_'+crypto.randomUUID(),now=this.now(),policyVersion=this.deletionPolicy.policyVersion,actorHash=crypto.createHash('sha256').update('mega-xo-deleted-account:'+actor).digest('base64url');
+  return this.tx(()=>{
+   const authority=this.read(),current=authority.account(actor);if(current.activeMatch||[...authority.matches.values()].some(m=>m.players.includes(actor)&&['OFFERED','PLAYING'].includes(m.status)))fail('ACCOUNT_BUSY');
+   const sessions=this.db.prepare('SELECT token FROM account_sessions WHERE actor=?').all(actor).map(r=>r.token);
+   this.db.prepare('INSERT INTO v41_privacy_requests(id,actor,kind,state,requested_at,updated_at,policy_version,note) VALUES(?,?,?,?,?,?,?,?)').run(receiptId,actor,'deletion','processing',now,now,policyVersion,'');
+   for(const other of authority.accounts.values())if(other.id!==actor){
+    other.friends=(other.friends||[]).filter(x=>x!==actor);other.friendRequests=(other.friendRequests||[]).filter(x=>x!==actor);other.blocked=(other.blocked||[]).filter(x=>x!==actor);
+    for(const h of other.history||[])if(h.opponent===actor)h.opponent=tombstone;
+    if(other.season?.opponents)other.season.opponents=other.season.opponents.map(x=>x===actor?tombstone:x);
+    for(const season of other.seasonHistory||[])if(season.opponents)season.opponents=season.opponents.map(x=>x===actor?tombstone:x);
+   }
+   for(const m of authority.matches.values())if(m.players.includes(actor)){
+    m.players=m.players.map(x=>x===actor?tombstone:x);m.accepted=(m.accepted||[]).map(x=>x===actor?tombstone:x);
+    if(m.symbols){if(m.symbols.X===actor)m.symbols.X=tombstone;if(m.symbols.O===actor)m.symbols.O=tombstone;}
+   }
+   for(const r of authority.receipts.values())if(r.actor===actor)r.actor=tombstone;
+   for(const snapshot of authority.snapshots.values())if(snapshot&&Object.hasOwn(snapshot,actor))delete snapshot[actor];
+   for(const [key,payment] of [...authority.weeklyPaid])if(payment?.account===actor)authority.weeklyPaid.delete(key);
+   for(const e of authority.journal)if(e.actor===actor)e.actor=tombstone;
+   authority.accounts.delete(actor);this.write(authority);
+   if(this.db.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name='v4_outbox'").get()&&sessions.length){const q=sessions.map(()=>'?').join(',');this.db.prepare(`UPDATE v4_outbox SET state='cancelled',payload=NULL WHERE state IN ('queued','sending') AND id IN (SELECT id FROM email_challenges WHERE session IN (${q}))`).run(...sessions);}
+   this.db.prepare('DELETE FROM session_presence WHERE actor=?').run(actor);this.db.prepare('DELETE FROM account_sessions WHERE actor=?').run(actor);this.db.prepare('DELETE FROM signin_attempts WHERE target=?').run(actor);
+   for(const hash of sessions)this.db.prepare('DELETE FROM signin_attempts WHERE session=?').run(hash);
+   this.db.prepare('DELETE FROM email_challenges WHERE actor=?').run(actor);this.db.prepare('DELETE FROM identities WHERE actor=?').run(actor);this.db.prepare('DELETE FROM email_credentials WHERE actor=?').run(actor);this.db.prepare('DELETE FROM profile_saves WHERE actor=?').run(actor);this.db.prepare('DELETE FROM profiles WHERE actor=?').run(actor);
+   this.db.prepare("DELETE FROM social_operations WHERE id LIKE ?").run(actor+':%');this.db.prepare("DELETE FROM community_limits WHERE id LIKE ?").run('%'+actor+'%');
+   for(const table of ['v35_commands','v35_tickets','v35_casual','v35_events'])if(this.db.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name=?").get(table))this.db.prepare('DELETE FROM '+table+' WHERE actor=?').run(actor);
+   this.db.prepare("DELETE FROM v41_reports WHERE reporter=?").run(actor);this.db.prepare("UPDATE v41_reports SET target=?,detail='' WHERE target=?").run(tombstone,actor);
+   this.db.prepare('UPDATE v41_privacy_requests SET actor=?,state=?,updated_at=?,completed_at=?,note=? WHERE id=?').run(tombstone,'completed',now,now,'',receiptId);
+   this.db.prepare('INSERT INTO v41_deletion_receipts VALUES(?,?,?,?,?,?)').run(receiptId,actorHash,tombstone,now,policyVersion,json(['purchase_replay_records','operator_security_audit','pseudonymized_moderation_outcomes']));
+   return {deleted:true,receiptId,policyVersion};
+  });
  }
  save(actor,expected,payload){this.requireAccount(actor);if(!Number.isSafeInteger(expected)||expected<0)fail('INVALID_REVISION');this.rate(actor,'save',20);const clean=sanitizePractice(payload);return this.tx(()=>{const row=this.db.prepare('SELECT revision FROM profile_saves WHERE actor=?').get(actor);if((row?.revision||0)!==expected)fail('SAVE_CONFLICT');const revision=expected+1;this.db.prepare('INSERT INTO profile_saves VALUES(?,?,?,?) ON CONFLICT(actor) DO UPDATE SET revision=excluded.revision,payload=excluded.payload,updated=excluded.updated').run(actor,revision,json(clean),this.now());return {revision,updated:this.now()};});}
  restore(actor){this.requireAccount(actor);const row=this.db.prepare('SELECT * FROM profile_saves WHERE actor=?').get(actor);return row?{revision:row.revision,updated:row.updated,practice:JSON.parse(row.payload)}:{revision:0,practice:null};}

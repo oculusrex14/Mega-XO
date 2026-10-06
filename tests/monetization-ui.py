@@ -111,6 +111,9 @@ try:
   page.locator('[data-monetization="review"][data-value="crowns_100"]').click()
   page.locator('[data-monetization="confirm"]').click()
   page.wait_for_function('window.__purchases === 2')
+  # Billing starts before the authoritative purchase grant finishes. Wait on the
+  # server-owned wallet rather than the native fixture call count.
+  page.wait_for_function('async()=>{try{return (await MegaAccount.request("/api/v1/profile")).wallet.crowns===100}catch{return false}}',timeout=10000)
   wallet=page.evaluate('MegaAccount.request("/api/v1/profile")')['wallet'];assert wallet['crowns']==100
   page.locator('[data-monetization="restore"]').click();page.wait_for_function('!document.querySelector("[data-monetization=restore]").disabled')
   state=page.evaluate('MegaAccount.request("/api/monetization/status")');wallet=page.evaluate('MegaAccount.request("/api/v1/profile")')['wallet']

@@ -10,6 +10,7 @@ const {ReadContext}=require('./read-context');
 const {MailOutbox}=require('./mail-outbox');
 const {EmailAuth}=require('./email-auth');
 const {createPerimeter,Telemetry,json}=require('./perimeter');
+const {OperatorService}=require('./operator-service');
 function recover(service) {
  const c=service.community;
  c.tx(()=>{
@@ -40,6 +41,7 @@ async function createRuntime(config,{transport,log=()=>{}}={}) {
   telemetry=new Telemetry(log);passwords=new Passwords({concurrency:config.authWorkers});
   outbox=new MailOutbox(service.community,{secret:config.otpSecret,daily:config.mailDaily,monthly:config.mailMonthly,email:config.email,transport,log:value=>telemetry.event(value)});
   const emailAuth=new EmailAuth(service.community,{passwords,outbox,secret:config.otpSecret});
+  const operatorService=new OperatorService(service,{secret:config.proxySecret});
   service.community.securityNotify=(actor,event,details={})=>{
    const to=service.community.emailAddress(actor);if(!to)return;
    const provider=typeof details.provider==='string'?details.provider:'',count=Number.isInteger(details.count)?details.count:null;
@@ -64,11 +66,25 @@ async function createRuntime(config,{transport,log=()=>{}}={}) {
   state.operational=()=>state.healthy()&&backupStatus().fresh&&diskStatus().healthy;
   const snapshot=()=>({ok:state.healthy(),operational:state.operational(),maintenance:state.maintenance(),release:config.release,schema:inspect(service.store.db).length,uptimeSeconds:Math.floor(process.uptime()),...telemetry.snapshot(),requestReads:{reused:reads.hits,loaded:reads.misses},queued:service.matchmaker.tickets.size,backup:backupStatus(),disk:diskStatus(),mail:service.store.db.prepare('SELECT state,count(*) AS count FROM v4_outbox GROUP BY state').all()});
   // Never proxied by Caddy; Docker publishes this port to host loopback only.
-  metrics=http.createServer((req,res)=>{if(req.method!=='GET')return json(res,405,{error:'METHOD_NOT_ALLOWED'});if(req.url!=='/status')return json(res,404,{error:'NOT_FOUND'});return json(res,200,snapshot());});
+  metrics=http.createServer(async(req,res)=>{
+   try{
+    if(req.method==='GET'&&req.url==='/status')return json(res,200,snapshot());
+    if(req.method==='POST'&&req.url==='/operator'){
+     if(!operatorService.authenticate(String(req.headers['x-mega-operator-key']||'')))return json(res,403,{error:'FORBIDDEN'});
+     let text='';for await(const chunk of req){text+=chunk;if(Buffer.byteLength(text)>8192)throw Error('BODY_TOO_LARGE');}
+     let body;try{body=JSON.parse(text||'{}');}catch{throw Error('BAD_REQUEST');}
+     return json(res,200,operatorService.command(body));
+    }
+    return json(res,req.method==='GET'||req.method==='POST'?404:405,{error:req.method==='GET'||req.method==='POST'?'NOT_FOUND':'METHOD_NOT_ALLOWED'});
+   }catch(error){
+    const code=/^[A-Z0-9_]+$/.test(error.message)?error.message:'OPERATOR_FAILED';
+    return json(res,['PLAYER_NOT_FOUND'].includes(code)?404:['INVALID_OPERATOR','INVALID_REASON','INVALID_LOOKUP','INVALID_LIMIT','INVALID_OPERATOR_ACTION','INVALID_OPERATOR_REQUEST','BODY_TOO_LARGE','BAD_REQUEST'].includes(code)?400:409,{error:code});
+   }
+  });
   await new Promise((resolve,reject)=>{service.server.once('error',reject);service.server.listen(config.port,config.host,resolve);});
   await new Promise((resolve,reject)=>{metrics.once('error',reject);metrics.listen(config.adminPort,config.host,resolve);});
   state.ready=true;telemetry.event({event:'service_ready'});
-  return {service,state,telemetry,passwords,outbox,emailAuth,metrics,snapshot,async close(){
+  return {service,state,telemetry,passwords,outbox,emailAuth,operatorService,metrics,snapshot,async close(){
    if(closed)return;closed=true;state.draining=true;clearInterval(timer);clearInterval(slowTimer);outbox.close();passwords.close();
    service.server.close();service.server.closeIdleConnections?.();metrics.close();metrics.closeIdleConnections?.();
    const until=Date.now()+config.drainMs;

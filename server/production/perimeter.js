@@ -4,7 +4,7 @@ const {Readable}=require('node:stream');
 const {performance,monitorEventLoopDelay}=require('node:perf_hooks');
 const {equal}=require('./passwords');
 const {AbuseGuard}=require('./abuse-guard');
-const known=new Set(['/api/account/email','/api/account/session','/api/account/save','/api/account/logout','/api/account/profile','/api/account/deletion','/api/account/delete','/api/account/start','/api/account/native/challenge','/api/account/native/finish','/api/account/unlink','/api/community/friends','/api/community/search','/api/community/presence','/api/community/friend','/api/community/challenges','/api/v1/profile','/api/v1/queue','/api/v1/cancel-queue','/api/v1/move','/api/v1/resign','/api/v1/offer','/api/v1/accept','/api/v1/decline','/api/v1/cancel','/api/v1/leaderboard','/api/v1/invitations','/api/v1/purchase','/api/v1/convert','/api/v1/quest','/api/party/command','/api/party/capabilities','/api/monetization/status','/api/monetization/purchase','/api/monetization/restore','/api/monetization/claim','/api/monetization/reward-ticket','/api/monetization/interstitial-permit','/api/monetization/admob-ssv']);
+const known=new Set(['/api/account/email','/api/account/session','/api/account/save','/api/account/logout','/api/account/profile','/api/account/deletion','/api/account/delete','/api/account/start','/api/account/native/challenge','/api/account/native/finish','/api/account/unlink','/api/community/friends','/api/community/search','/api/community/presence','/api/community/friend','/api/community/challenges','/api/v1/profile','/api/v1/queue','/api/v1/cancel-queue','/api/v1/move','/api/v1/resign','/api/v1/offer','/api/v1/accept','/api/v1/decline','/api/v1/cancel','/api/v1/leaderboard','/api/v1/invitations','/api/v1/purchase','/api/v1/convert','/api/v1/quest','/api/party/command','/api/party/capabilities','/api/monetization/status','/api/monetization/purchase','/api/monetization/restore','/api/monetization/claim','/api/monetization/reward-ticket','/api/monetization/interstitial-permit','/api/monetization/admob-ssv','/api/monetization/google-play-rtdn','/api/monetization/apple-notifications']);
 function route(path) {
  if(known.has(path))return path;
  for(const prefix of ['/api/v1/match/','/api/community/profile/','/api/party/rooms/'])if(path.startsWith(prefix))return prefix+':id';
@@ -55,7 +55,7 @@ function createPerimeter({service,config,emailAuth,telemetry,state}) {
    if(state.draining||telemetry.inflight>=config.maxInflight){telemetry.busy++;res.setHeader('Retry-After','5');return json(res,503,{error:'SERVICE_UNAVAILABLE'});}
    telemetry.inflight++;tracked=true;
    if(!['GET','HEAD','POST'].includes(req.method))return json(res,405,{error:'METHOD_NOT_ALLOWED'});
-   const limit=path==='/api/account/save'?300000:24576;
+   const limit=path==='/api/account/save'?300000:['/api/monetization/google-play-rtdn','/api/monetization/apple-notifications'].includes(path)?131072:24576;
    if(req.headers['content-encoding']&&req.headers['content-encoding']!=='identity')return json(res,415,{error:'UNSUPPORTED_ENCODING'});
    if(req.headers['content-length']&&(!/^\d+$/.test(req.headers['content-length'])||Number(req.headers['content-length'])>limit))throw Error('BODY_TOO_LARGE');
    const data=req.method==='POST'?await body(req,limit):Buffer.alloc(0);
@@ -66,7 +66,7 @@ function createPerimeter({service,config,emailAuth,telemetry,state}) {
     if(!parsed||typeof parsed!=='object'||Array.isArray(parsed))throw Error('BAD_REQUEST');
     if(!abuse.sensitive(ip,path,req.method,parsed)){res.setHeader('Retry-After','60');telemetry.event({event:'sensitive_rate_limited'});return json(res,429,{error:'RATE_LIMITED'});}
    }
-   const continued=new Set(['/api/v1/move','/api/v1/resign','/api/v1/decline','/api/v1/cancel','/api/v1/cancel-queue','/api/account/save','/api/account/logout','/api/community/presence']);
+   const continued=new Set(['/api/v1/move','/api/v1/resign','/api/v1/decline','/api/v1/cancel','/api/v1/cancel-queue','/api/account/save','/api/account/logout','/api/community/presence','/api/monetization/google-play-rtdn','/api/monetization/apple-notifications']);
    const continuingParty=path==='/api/party/command'&&['move','resign','leave','cancel','pause'].includes(parsed?.type);
    if(state.maintenance()&&((req.method==='POST'&&!continued.has(path)&&!continuingParty)||(req.method==='GET'&&path==='/api/v1/queue'))){res.setHeader('Retry-After','30');return json(res,503,{error:'MAINTENANCE'});}
    if(path==='/api/account/email'&&req.method==='POST') {

@@ -1,7 +1,7 @@
-name: V3.5 monetisation validation
+name: V3.5.x monetisation and account validation
 on:
   push:
-    branches: [V3.5]
+    branches: [V3.5, V3.5.1]
   workflow_dispatch:
 permissions:
   contents: read
@@ -44,7 +44,7 @@ jobs:
         if: always()
         run: |
           mkdir -p .artifacts/screenshots
-          if [ -d tests-output ]; then cp tests-output/v35-*.png .artifacts/screenshots/ 2>/dev/null || true; fi
+          if [ -d tests-output ]; then cp tests-output/v35*.png .artifacts/screenshots/ 2>/dev/null || true; fi
       - name: Retain validation evidence
         if: always()
         uses: actions/upload-artifact@v4

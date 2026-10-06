@@ -9,8 +9,7 @@ const REQUIRED=Object.freeze([
 
 function parseLedger(text){
  const rows=new Map();
- for(const line of text.split(/?
-/)){
+ for(const line of text.split(/\r?\n/)){
   if(!line.startsWith('| EXT-'))continue;
   const cells=line.split('|').slice(1,-1).map(x=>x.trim());
   if(cells.length<5)continue;
@@ -21,7 +20,7 @@ function parseLedger(text){
 function gate({tag=process.env.GITHUB_REF_NAME||'',sha=process.env.GITHUB_SHA||'',root=ROOT}={}){
  const pkg=JSON.parse(fs.readFileSync(path.join(root,'package.json'),'utf8'));
  const expected='v'+pkg.version;
- if(!/^v4.d+.d+$/.test(tag)||tag!==expected)throw Error('RELEASE_TAG_MUST_MATCH_PACKAGE_VERSION');
+ if(!/^v4\.\d+\.\d+$/.test(tag)||tag!==expected)throw Error('RELEASE_TAG_MUST_MATCH_PACKAGE_VERSION');
  if(!/^[a-f0-9]{40}$/.test(sha))throw Error('RELEASE_SHA_REQUIRED');
  const ledger=parseLedger(fs.readFileSync(path.join(root,'docs','V4-OPEN-BLOCKERS.md'),'utf8'));
  const missing=[],open=[];

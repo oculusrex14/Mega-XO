@@ -51,7 +51,7 @@ services:
       MEGA_TRUSTED_PROXIES: ${MEGA_TRUSTED_PROXIES:-127.0.0.1/32}
     secrets: [proxy_secret]
     volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./${MEGA_CADDY_FILE:-Caddyfile}:/etc/caddy/Caddyfile:ro
       - caddy-data:/data
       - caddy-config:/config
     tmpfs: ['/tmp:size=16m,mode=1777']

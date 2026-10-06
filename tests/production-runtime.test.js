@@ -86,3 +86,12 @@ test('migration preflight refuses future schemas before application constructors
  const f=await fixture(t);f.runtime.service.store.db.exec("INSERT INTO v4_schema VALUES(99,'future','unknown',1)");
  assert.throws(()=>preflight(f.cfg.file),/SCHEMA_NEWER/);
 });
+
+test('production ads require deletion privacy consent and complete platform units',()=>{
+ const base={...secrets,MEGA_ACCOUNT_DELETION_ENABLED:'true',MEGA_PRIVACY_POLICY_VERSION:'privacy-2026-10',MEGA_AD_CONSENT_VERSION:'ump-2026-10',ADMOB_ANDROID_REWARDED_UNIT:'ca-app-pub-1234567890123456/1234567890'};
+ const rewarded=config({...base,MEGA_AD_MODE:'rewarded'});assert.equal(rewarded.ads.mode,'rewarded');assert.equal(rewarded.ads.platforms.android.rewarded,'ca-app-pub-1234567890123456/1234567890');
+ assert.throws(()=>config({...base,MEGA_AD_MODE:'hybrid'}),/INCOMPLETE_ADMOB_UNITS/);
+ const hybrid=config({...base,MEGA_AD_MODE:'hybrid',ADMOB_ANDROID_INTERSTITIAL_UNIT:'ca-app-pub-1234567890123456/0987654321'});assert.equal(hybrid.ads.platforms.android.interstitial,'ca-app-pub-1234567890123456/0987654321');
+ assert.throws(()=>config({...base,MEGA_ACCOUNT_DELETION_ENABLED:'false',MEGA_AD_MODE:'rewarded'}),/ADS_REQUIRE_PRIVACY_RELEASE/);
+ assert.throws(()=>config({...base,MEGA_AD_CONSENT_VERSION:'',MEGA_AD_MODE:'rewarded'}),/ADS_REQUIRE_CONSENT_RELEASE/);
+});

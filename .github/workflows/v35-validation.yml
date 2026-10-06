@@ -1,10 +1,10 @@
 name: Mega XO validation
 on:
   push:
-    branches: [V3.5, V3.5.1, V4]
+    branches: [V3.5, V3.5.1, V4, V4.1]
     tags: ['v4.*']
   pull_request:
-    branches: [V4]
+    branches: [V4, V4.1]
   workflow_dispatch:
 permissions:
   contents: read
@@ -50,7 +50,7 @@ jobs:
           npm run test:load 2>&1 | tee .artifacts/load-tests.log
       - name: Deployment tooling syntax
         run: |
-          bash -n deploy/release.sh deploy/verify-release.sh deploy/install-secrets.sh deploy/configure-r2-backup.sh deploy/enable-backups.sh deploy/prepare-staging.sh deploy/staging-smoke.sh deploy/audit-perimeter.sh deploy/host-health-monitor.sh deploy/install-monitoring.sh scripts/image-smoke.sh scripts/vps-preflight.sh
+          bash -n deploy/release.sh deploy/verify-release.sh deploy/rotate-secret.sh deploy/install-secrets.sh deploy/configure-r2-backup.sh deploy/enable-backups.sh deploy/prepare-staging.sh deploy/staging-smoke.sh deploy/audit-perimeter.sh deploy/host-health-monitor.sh deploy/install-monitoring.sh scripts/image-smoke.sh scripts/vps-preflight.sh
           sh -n deploy/run.sh deploy/backup-loop.sh
           node --check scripts/release-gate.js
           node --check scripts/live-email-acceptance.js
@@ -59,6 +59,7 @@ jobs:
           node --check scripts/init-vps.js
           node --check scripts/backup-run.js
           node --check scripts/ops.js
+          node --check scripts/operator.js
       - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
         with:
           python-version: '3.12'

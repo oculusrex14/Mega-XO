@@ -96,7 +96,7 @@ async function createRuntime(config,{transport,log=()=>{}}={}) {
     return json(res,req.method==='GET'||req.method==='POST'?404:405,{error:req.method==='GET'||req.method==='POST'?'NOT_FOUND':'METHOD_NOT_ALLOWED'});
    }catch(error){
     const code=/^[A-Z0-9_]+$/.test(error.message)?error.message:'OPERATOR_FAILED';
-    return json(res,['PLAYER_NOT_FOUND'].includes(code)?404:['INVALID_OPERATOR','INVALID_REASON','INVALID_LOOKUP','INVALID_LIMIT','INVALID_OPERATOR_ACTION','INVALID_OPERATOR_REQUEST','BODY_TOO_LARGE','BAD_REQUEST'].includes(code)?400:409,{error:code});
+    return json(res,['PLAYER_NOT_FOUND','SUPPORT_EVENT_NOT_FOUND'].includes(code)?404:['INVALID_SUPPORT_ID','INVALID_OPERATOR','INVALID_REASON','INVALID_LOOKUP','INVALID_LIMIT','INVALID_OPERATOR_ACTION','INVALID_OPERATOR_REQUEST','BODY_TOO_LARGE','BAD_REQUEST'].includes(code)?400:409,{error:code});
    }
   });
   await new Promise((resolve,reject)=>{service.server.once('error',reject);service.server.listen(config.port,config.host,resolve);});

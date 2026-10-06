@@ -1,0 +1,31 @@
+{
+ admin off
+ skip_install_trust
+ log {
+  level WARN
+  format filter {
+   request delete
+   headers delete
+   resp_headers delete
+   wrap json
+  }
+ }
+}
+{$MEGA_HOSTNAME} {
+ tls internal
+ encode zstd gzip
+ @private path /internal/* /metrics /status /server/* /scripts/* /deploy/* /tests/* /.git/* /.env* /src/authority.js
+ respond @private 404
+ request_body {
+  max_size 300000
+ }
+ reverse_proxy app:8080 {
+  header_up X-Mega-Proxy-Key {$MEGA_PROXY_SECRET}
+  header_up X-Mega-Client-IP {client_ip}
+  header_up -X-Forwarded-Host
+  transport http {
+   dial_timeout 3s
+   response_header_timeout 15s
+  }
+ }
+}

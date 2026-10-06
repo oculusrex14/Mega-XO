@@ -34,6 +34,7 @@ function config(env = process.env) {
   const proxySecret = secret(env, 'MEGA_PROXY_SECRET', true);
   if (!/^[a-f0-9]{64}$/i.test(otpSecret) || !/^[a-f0-9]{64}$/i.test(proxySecret) || otpSecret === proxySecret) throw Error('INDEPENDENT_256_BIT_SECRETS_REQUIRED');
   for (const key of ['MEGA_PAID_ENTRY_ENABLED', 'MEGA_PURCHASES_ENABLED']) if (env[key] && env[key] !== 'false') throw Error('PAID_FEATURES_NOT_RELEASED');
+  if (env.MEGA_ACCOUNT_DELETION_ENABLED && env.MEGA_ACCOUNT_DELETION_ENABLED !== 'false') throw Error('ACCOUNT_DELETION_POLICY_NOT_APPROVED');
   if (env.MEGA_AD_MODE && env.MEGA_AD_MODE !== 'off') throw Error('ADS_NOT_RELEASED');
   const apiKey = secret(env, 'RESEND_API_KEY');
   if (apiKey && !/^re_[A-Za-z0-9_-]+$/.test(apiKey)) throw Error('INVALID_RESEND_API_KEY');

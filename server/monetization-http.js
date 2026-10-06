@@ -5,7 +5,7 @@ const send=(res,status,value)=>{res.writeHead(status,{'Content-Type':'applicatio
 function createMonetizationHandler({monetization,authenticate,guard,origin}){
  const rates=new Map();
  return async(req,res)=>{
-  const path=new URL(req.url,origin).pathname;if(!path.startsWith('/api/monetization/'))return false;
+  const path=new URL(req.url,origin).pathname;if(!path.startsWith('/api/monetization/')&&path!=='/api/v1/purchase')return false;
   try{
    if(path==='/api/monetization/admob-ssv'){if(req.method!=='GET')return send(res,405,{error:'METHOD_NOT_ALLOWED'}),true;await monetization.callback(req.url);return send(res,200,{ok:true}),true;}
    const identity=await authenticate(req);if(!identity?.id)return send(res,401,{error:'AUTH_REQUIRED'}),true;
@@ -18,6 +18,7 @@ function createMonetizationHandler({monetization,authenticate,guard,origin}){
     case '/api/monetization/claim':result=monetization.claim(actor,key);break;
     case '/api/monetization/redeem':result=monetization.cosmetic(actor,key,b.frame,false);break;
     case '/api/monetization/equip':result=monetization.cosmetic(actor,key,b.frame,true);break;
+    case '/api/v1/purchase':
     case '/api/monetization/purchase':result=await monetization.purchase(actor,key,b.evidence,false);break;
     case '/api/monetization/restore':result=await monetization.purchase(actor,key,b.evidence,true);break;
     case '/api/monetization/reward-ticket':result=monetization.ticket(actor,key,b.kind);break;

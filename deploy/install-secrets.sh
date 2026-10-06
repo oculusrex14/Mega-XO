@@ -9,6 +9,8 @@ shift
 resend_file=''
 google_file=''
 apple_file=''
+google_play_file=''
+apple_roots_file=''
 verify_only=false
 
 while (($#)); do
@@ -16,6 +18,8 @@ while (($#)); do
     --resend-file) resend_file=${2:?Missing path}; shift 2 ;;
     --google-file) google_file=${2:?Missing path}; shift 2 ;;
     --apple-file) apple_file=${2:?Missing path}; shift 2 ;;
+    --google-play-file) google_play_file=${2:?Missing path}; shift 2 ;;
+    --apple-store-roots-file) apple_roots_file=${2:?Missing path}; shift 2 ;;
     --verify-only) verify_only=true; shift ;;
     *) echo "Unknown option: $1" >&2; exit 64 ;;
   esac
@@ -77,6 +81,8 @@ if ! $verify_only; then
   if [[ -n "$resend_file" ]]; then write_secret resend_api_key "$resend_file"; else prompt_resend; fi
   [[ -z "$google_file" ]] || write_secret google_client_secret "$google_file"
   [[ -z "$apple_file" ]] || write_secret apple_private_key "$apple_file"
+  [[ -z "$google_play_file" ]] || write_secret google_play_service_account "$google_play_file"
+  [[ -z "$apple_roots_file" ]] || write_secret apple_store_roots "$apple_roots_file"
 fi
 
 [[ -s "$secret_dir/resend_api_key" ]] || { echo 'Resend API key is not installed.' >&2; exit 65; }
@@ -84,11 +90,19 @@ resend=$(tr -d '\r\n' < "$secret_dir/resend_api_key")
 [[ "$resend" =~ ^re_[A-Za-z0-9_-]+$ ]] || { unset resend; echo 'Stored Resend API key has invalid format.' >&2; exit 65; }
 unset resend
 
+if [[ -s "$secret_dir/google_play_service_account" ]]; then
+  node -e 'const fs=require("fs"),x=JSON.parse(fs.readFileSync(process.argv[1],"utf8"));if(!x.client_email||!x.private_key||!x.private_key.includes("BEGIN PRIVATE KEY"))process.exit(1)' "$secret_dir/google_play_service_account" || { echo 'Google Play service account JSON is invalid.' >&2; exit 65; }
+fi
+
+if [[ -s "$secret_dir/apple_store_roots" ]]; then
+  grep -q -- '-----BEGIN CERTIFICATE-----' "$secret_dir/apple_store_roots" || { echo 'Apple Store trust roots do not contain PEM certificates.' >&2; exit 65; }
+fi
+
 if [[ -s "$secret_dir/apple_private_key" ]]; then
   grep -q -- '-----BEGIN PRIVATE KEY-----' "$secret_dir/apple_private_key" || { echo 'Apple private key does not look like a PEM private key.' >&2; exit 65; }
 fi
 
-for file in otp_secret proxy_secret restic_password resend_api_key google_client_secret apple_private_key; do
+for file in otp_secret proxy_secret restic_password resend_api_key google_client_secret apple_private_key google_play_service_account apple_store_roots; do
   [[ -e "$secret_dir/$file" ]] || continue
   chmod 600 "$secret_dir/$file"
   if ((${#owner_args[@]})); then chown 1000:1000 "$secret_dir/$file"; fi

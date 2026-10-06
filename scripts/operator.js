@@ -32,7 +32,7 @@ async function request(body){
  if(!r.ok)throw Error(data.error||'OPERATOR_FAILED');return data;
 }
 async function main(argv=process.argv.slice(2)){
- const a=args(argv),map={lookup:'lookup',audit:'audit','audit-verify':'audit-verify','sessions-revoke':'sessions-revoke',suspend:'suspend',unsuspend:'unsuspend','hold-on':'hold-on','hold-off':'hold-off','incident-status':'incident-status','incident-lockdown':'incident-lockdown','incident-clear':'incident-clear','report-list':'report-list','report-resolve':'report-resolve'},action=map[a.command];
+ const a=args(argv),map={support:'support',lookup:'lookup',audit:'audit','audit-verify':'audit-verify','sessions-revoke':'sessions-revoke',suspend:'suspend',unsuspend:'unsuspend','hold-on':'hold-on','hold-off':'hold-off','incident-status':'incident-status','incident-lockdown':'incident-lockdown','incident-clear':'incident-clear','report-list':'report-list','report-resolve':'report-resolve'},action=map[a.command];
  if(!action)fail('Unknown operator command.');
  if(!['audit-verify','incident-status','incident-lockdown','incident-clear','report-list'].includes(action)&&!a.query&&action!=='audit')fail('Player/report lookup value required.');
  if(['sessions-revoke','suspend','unsuspend','hold-on','hold-off','incident-lockdown','incident-clear','report-resolve'].includes(action)&&(!a.operator||!a.reason))fail('Mutations require --operator and --reason.');

@@ -15,3 +15,13 @@ test('rewarded choices remain optional after Remove Ads; no ads during server ma
 test('server automatic cap, conservative permits, and full-screen gap cannot be bypassed by refresh',t=>{const f=fixture(t);for(let i=0;i<6;i++){assert(f.service.automaticPermit('alice','p'+i).allowed);assert.throws(()=>f.service.automaticPermit('alice','fast'+i),/COOLDOWN/);f.time(f.now()+M.POLICY.fullScreenGap);}assert.throws(()=>f.service.automaticPermit('alice','seventh'),/DAILY_LIMIT/);});
 test('callback cannot use stale, future, duplicate query parameters or wrong ad unit',async t=>{const f=fixture(t),q=f.service.ticket('alice','r','credits');await assert.rejects(()=>f.service.callback(f.signed(q,'wrong',{ad_unit:'other'})),/INVALID_AD_REWARD/);await assert.rejects(()=>f.service.callback(f.signed(q,'future',{timestamp:String(f.now()+M.DAY)})),/STALE/);await assert.rejects(()=>f.service.callback('user_id=x&user_id=y&signature=x&key_id=1'),/DUPLICATE/);f.time(f.now()+M.POLICY.ticketLifetime+1);await assert.rejects(()=>f.service.callback(f.signed(q,'late')),/TICKET/);});
 test('boost uses exact authoritative match start at sub-second boundaries when available',async t=>{const f=fixture(t);const q=f.service.ticket('alice','b','boost');await f.service.callback(f.signed(q));const start=f.now(),end=start+M.POLICY.boostDuration;f.time(end+120000);f.write(a=>{const h=casual('boundary',end+60000,{activeSeconds:60});a.account('alice').history=[h];a.matches.set('boundary',{id:'boundary',started:end-500,commands:new Map()});});const result=f.service.claim('alice','c');assert.equal(result.base,2);assert.equal(result.bonus,2);});
+
+test('rewarded and automatic ads are bound to the exact configured native platform unit',async t=>{
+ const f=fixture(t,{adUnit:'',adUnits:{android:{rewarded:'android-reward',interstitial:'android-interstitial'},ios:{rewarded:'ios-reward',interstitial:'ios-interstitial'}}});
+ const ticket=f.service.ticket('alice','platform-reward','credits','android');
+ assert.equal(ticket.platform,'android');assert.equal(ticket.adUnit,'android-reward');
+ await assert.rejects(()=>f.service.callback(f.signed(ticket,'wrong-platform',{ad_unit:'ios-reward'})),/INVALID_AD_TICKET/);
+ const granted=await f.service.callback(f.signed(ticket,'right-platform',{ad_unit:'android-reward'}));assert.equal(granted.credits,5);
+ assert.throws(()=>f.service.ticket('bob','unknown-platform','credits','web'),/ADS_UNAVAILABLE/);
+ const permit=f.service.automaticPermit('bob','android-auto','android');assert.equal(permit.platform,'android');assert.equal(permit.adUnit,'android-interstitial');
+});

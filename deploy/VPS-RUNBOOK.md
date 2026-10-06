@@ -100,23 +100,28 @@ Expected result:
 
 The initializer creates private directories, independent random OTP/proxy/restic secrets, empty placeholders for external credentials, and release state. It refuses to overwrite an existing initialized deployment.
 
-## 6. Install the Resend API key without putting it in shell history
+## 6. Install production secrets without putting them in shell history
 
 Run:
 
 ```bash
-sudo bash -c '
-  read -rsp "Paste Resend API key: " key </dev/tty
-  printf "\n"
-  printf "%s\n" "$key" > /opt/mega-xo/secrets/resend_api_key
-  chmod 600 /opt/mega-xo/secrets/resend_api_key
-  unset key
-'
+sudo bash deploy/install-secrets.sh /opt/mega-xo
 ```
 
-The key must begin with `re_`.
+The script securely prompts for the Resend API key, verifies the generated OTP/proxy/Restic secrets, enforces owner-only permissions, and never prints secret values.
 
-Never put the key in:
+If Google or Apple sign-in is enabled later, install their private credentials from owner-only source files:
+
+```bash
+sudo bash deploy/install-secrets.sh /opt/mega-xo \
+  --resend-file /root/resend-key \
+  --google-file /root/google-client-secret \
+  --apple-file /root/AuthKey_PRIVATE.p8
+```
+
+Only file **paths** appear on the command line; secret values do not.
+
+Never put any secret in:
 
 - GitHub;
 - `.env.example`;
@@ -136,6 +141,8 @@ These files should exist:
 /opt/mega-xo/secrets/otp_secret
 /opt/mega-xo/secrets/proxy_secret
 /opt/mega-xo/secrets/resend_api_key
+/opt/mega-xo/secrets/google_client_secret
+/opt/mega-xo/secrets/apple_private_key
 /opt/mega-xo/secrets/restic_password
 /opt/mega-xo/data/
 /opt/mega-xo/backup-status/

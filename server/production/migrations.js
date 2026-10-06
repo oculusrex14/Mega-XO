@@ -43,6 +43,20 @@ CREATE TABLE IF NOT EXISTS v41_reports (
 );
 CREATE INDEX IF NOT EXISTS v41_reports_target_state ON v41_reports(target,state,created);
 CREATE INDEX IF NOT EXISTS v41_reports_reporter_created ON v41_reports(reporter,created);
+`},
+ {id:4, name:'v41-privacy-requests', sql:`
+CREATE TABLE IF NOT EXISTS v41_privacy_requests (
+ id TEXT PRIMARY KEY,
+ actor TEXT NOT NULL,
+ kind TEXT NOT NULL CHECK(kind='deletion'),
+ state TEXT NOT NULL CHECK(state IN ('requested','verified','processing','completed','cancelled','failed')),
+ requested_at INTEGER NOT NULL,
+ updated_at INTEGER NOT NULL,
+ completed_at INTEGER,
+ policy_version TEXT NOT NULL,
+ note TEXT NOT NULL DEFAULT ''
+);
+CREATE INDEX IF NOT EXISTS v41_privacy_requests_actor ON v41_privacy_requests(actor,requested_at);
 `}
 ]);
 const checksum = m => crypto.createHash('sha256').update(m.name + '\n' + m.sql).digest('hex');

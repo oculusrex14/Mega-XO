@@ -17,7 +17,16 @@ state_file="$root/monitoring/last-state"
 reason=''
 
 if ! "$here/check-health.sh" "$root" >/dev/null 2>&1; then
-  reason='application/backup/disk health check failed'
+  reason='application/backup/disk/storage health check failed'
+fi
+
+integrity_file="$root/monitoring/db-integrity-last.json"
+if [[ ! -s "$integrity_file" ]]; then
+  reason="${reason:+$reason; }database integrity result is missing"
+else
+  integrity_age=$(( $(date +%s) - $(stat -c %Y "$integrity_file" 2>/dev/null || echo 0) ))
+  (( integrity_age <= 93600 )) || reason="${reason:+$reason; }database integrity result is stale"
+  grep -q '"ok":true' "$integrity_file" || reason="${reason:+$reason; }database integrity check failed"
 fi
 
 for service in app edge; do

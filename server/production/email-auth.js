@@ -87,6 +87,19 @@ class EmailAuth {
     this.db.prepare('UPDATE email_challenges SET verified_at=?,consumed=1 WHERE id=?').run(this.now(),id);
     return this.c._replaceSession(session,row.actor,false);
    }
+   if(row.purpose==='change-email'){
+    if(session.actor!==row.actor||this.now()-session.authAt>900000)return {error:'REAUTH_REQUIRED'};
+    const current=this.db.prepare('SELECT * FROM email_credentials WHERE actor=? AND verified_at IS NOT NULL').get(row.actor);
+    if(!current||stamp(current)!==row.credential_hash||credential)return {error:'INVALID_OTP'};
+    const oldEmail=current.email;
+    this.db.prepare('UPDATE email_credentials SET email=?,verified_at=? WHERE actor=?').run(row.email,this.now(),row.actor);
+    this.db.prepare("UPDATE identities SET subject=? WHERE actor=? AND provider='email'").run(row.email,row.actor);
+    this.db.prepare('UPDATE email_challenges SET consumed=1 WHERE actor=?').run(row.actor);
+    this.db.prepare("UPDATE v4_outbox SET state='cancelled',payload=NULL WHERE state='queued' AND id IN (SELECT id FROM email_challenges WHERE actor=?)").run(row.actor);
+    this.db.prepare('DELETE FROM session_presence WHERE actor=? AND session<>?').run(row.actor,session.hash);
+    this.db.prepare('DELETE FROM account_sessions WHERE actor=? AND token<>?').run(row.actor,session.hash);
+    return {linked:true,emailChanged:true,oldEmail,newEmail:row.email,profile:this.c.profile(row.actor,row.actor)};
+   }
    if(!['signup','link'].includes(row.purpose)||credential)return {error:'INVALID_OTP'};
    if(row.purpose==='link'&&(session.actor!==row.actor||this.now()-session.authAt>900000))return {error:'REAUTH_REQUIRED'};
    if(row.purpose==='signup'&&session.actor)return {error:'ALREADY_LINKED'};
@@ -98,7 +111,21 @@ class EmailAuth {
    this.db.prepare('UPDATE email_challenges SET consumed=1,verified_at=?,password_hash=NULL,password_salt=NULL WHERE id=?').run(this.now(),id);
    return row.purpose==='link'?{linked:true,profile:this.c.profile(actor,actor)}:this.c._replaceSession(session,actor,true);
   });
-  if(result.error)throw Error(result.error);return result;
+  if(result.error)throw Error(result.error);
+  if(result.emailChanged){
+   for(const to of [result.oldEmail,result.newEmail])try{this.c.tx(()=>this.outbox.enqueue('security-email-'+crypto.randomUUID(),{to,event:'email_changed',detail:'The email address used to sign in to your Mega XO profile was changed.'},this.now()+86400000,'security'));}catch{}
+   delete result.oldEmail;delete result.newEmail;
+  }
+  return result;
+ }
+ async change(token,address) {
+  const session=this.c.requireLinked(token);if(this.now()-session.authAt>900000)throw Error('REAUTH_REQUIRED');
+  address=email(address);this.rate(session,address);const current=this.db.prepare('SELECT * FROM email_credentials WHERE actor=? AND verified_at IS NOT NULL').get(session.actor);
+  if(!current)throw Error('EMAIL_NOT_LINKED');if(current.email===address)throw Error('EMAIL_UNCHANGED');
+  const used=this.credential(address);if(used)throw Error(used.actor===session.actor?'EMAIL_UNCHANGED':'EMAIL_IN_USE');
+  if(!this.outbox.enabled())throw Error('EMAIL_DELIVERY_NOT_CONFIGURED');
+  this.requireCurrent(token,session.hash);
+  return this.challenge(session,address,'change-email',{actor:session.actor,credential:current});
  }
  forgot(token,address) {
   const session=this.c.requireSession(token);address=email(address);this.rate(session,address);
@@ -138,6 +165,7 @@ class EmailAuth {
    case 'continue':return this.continue(token,body.email,body.password);
    case 'link':return this.link(token,body.email,body.password);
    case 'verify':return this.verify(token,body.challengeId,body.code);
+   case 'change':return this.change(token,body.email);
    case 'forgot':return this.forgot(token,body.email);
    case 'reset':return this.reset(token,body.challengeId,body.password);
    case 'reauth':return this.reauth(token,body.email,body.password);

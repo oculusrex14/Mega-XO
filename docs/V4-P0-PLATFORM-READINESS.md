@@ -2,7 +2,7 @@
 
 This document governs the work that follows the first secure V4 backend deployment.
 
-The first backend release may operate with verified email accounts only. Google/Apple buttons remain disabled unless their complete production configuration is present. Purchases, ads, and paid-entry competition remain hard-disabled by V4 production configuration until their separate gates below are complete.
+The first backend release may operate with verified email accounts only. Google/Apple buttons remain disabled unless their complete production configuration is present. V4.1 contains guarded backend implementations for account deletion, Google Play Billing, Apple StoreKit and AdMob SSV, but purchases and ads remain disabled until their separate provider/native/privacy gates below are complete. Paid-entry competition remains hard-disabled.
 
 ## 1. Google web and native identity
 
@@ -155,17 +155,11 @@ Then manually complete each real consent flow in a browser:
 
 Do not enable a provider merely because its configuration smoke passes; a real provider login must succeed.
 
-## 4. Store billing remains disabled until server verification exists
+## 4. Store billing backend is implemented but remains release-gated
 
-V4.0 production deliberately rejects:
+V4.1 can enable `MEGA_PURCHASES_ENABLED=true` only when account deletion is enabled under an approved privacy policy and at least one complete native store provider is configured. The default remains `false`.
 
-```text
-MEGA_PURCHASES_ENABLED=true
-```
-
-The server also refuses a purchase unless a real `verifyPurchase` implementation exists.
-
-This is intentional.
+The server never trusts client-supplied `valid`, price, currency quantity or entitlement fields. Store evidence is verified by the backend and bound to a stable per-account store context before any grant commits.
 
 ### Google Play Billing
 
@@ -175,18 +169,9 @@ Official reference:
 
 - https://developer.android.com/google/play/billing/integrate
 
-Required production work:
+Repository-side backend work now includes ProductPurchaseV2 verification through the Android Publisher API, immutable store-product mapping, server-generated obfuscated account binding, idempotent grants, post-commit consume/acknowledge with retry, authenticated Pub/Sub push verification, RTDN/voided-purchase revocation handling and refund holds for previously granted Crown purchases.
 
-1. create the exact products in Play Console;
-2. integrate Play Billing in the real Android target;
-3. send only the purchase token/product/store evidence to the backend;
-4. verify the purchase against Google on the backend;
-5. bind it to the expected package, product and Mega XO account;
-6. grant Crowns/Remove Ads idempotently;
-7. acknowledge/consume according to product type;
-8. process refunds/revocations through server notifications;
-9. prove replay, wrong-account, wrong-product and refunded purchase rejection;
-10. run licensed/sandbox purchase and restore tests on a physical device.
+Remaining production work is external/native: create the exact products in Play Console, integrate Play Billing in the real Android target using the server-provided `googleAccountId`, configure the service account and RTDN subscription, then prove sandbox purchase/cancel/pending/consume/acknowledge/refund/replay and Remove Ads restore on physical devices.
 
 Do not trust a client JSON object containing `valid:true`.
 
@@ -199,17 +184,9 @@ Official references:
 - https://developer.apple.com/documentation/storekit/transaction
 - https://developer.apple.com/documentation/appstoreserverapi/get-transaction-info
 
-Required production work:
+Repository-side backend work now verifies StoreKit signed transaction JWS values with ES256 and an Apple certificate chain anchored in configured trusted roots, then checks bundle ID, environment, product mapping, quantity, transaction ID, revocation state and the server-provided `appleAppAccountToken`. App Store Server Notifications V2 are independently verified/deduplicated and can revoke/refund prior grants.
 
-1. create matching in-app products in App Store Connect;
-2. use StoreKit 2 verified transactions on-device;
-3. send signed transaction/JWS evidence to the backend;
-4. verify signed transaction information server-side;
-5. bind bundle/product/account;
-6. grant idempotently;
-7. configure App Store Server Notifications V2 for refunds/revocations;
-8. prove restore/remove-ads behavior;
-9. run Sandbox/TestFlight purchase tests on a physical device.
+Remaining production work is external/native: create products in App Store Connect, integrate StoreKit 2 in the real iOS target using the provided app-account token, configure server notifications and trusted roots/environment, then prove Sandbox/TestFlight purchase/cancel/pending/finish/restore/refund/revocation behavior on physical devices.
 
 ### Product mapping
 
@@ -224,17 +201,11 @@ remove_ads
 
 Store-console IDs must have an explicit immutable mapping to these server IDs. Do not let a device choose the Crown amount.
 
-## 5. Ads remain disabled until native SDK + consent + SSV are proven
+## 5. Ads backend is implemented but remains disabled until native SDK + consent + SSV are proven
 
-V4.0 production deliberately requires:
+`MEGA_AD_MODE=off` remains the default. V4.1 permits `rewarded` or `hybrid` only when account deletion/privacy policy is enabled, an explicit consent-release version is configured, and the relevant native AdMob units are complete.
 
-```text
-MEGA_AD_MODE=off
-```
-
-Ad rewards are never granted from a client-side "watched" flag.
-
-For rewarded ads, Mega XO already has a server-ticket model and an AdMob SSV verification boundary. Production still needs the real mobile SDK, real ad unit configuration, consent/privacy handling, and live SSV validation.
+Ad rewards are never granted from a client-side "watched" flag. Rewarded tickets are bound to an exact Android/iOS rewarded unit; the SSV callback must cryptographically verify and match that ticket/unit/account/reward before Cosmetic Credits or a boost can settle. Automatic interstitial permits are likewise bound to the exact platform unit.
 
 Official references:
 
@@ -279,9 +250,9 @@ Official:
 - https://support.google.com/googleplay/android-developer/answer/13327111
 - https://support.google.com/googleplay/android-developer/answer/10144311
 
-### Do not implement deletion semantics by guessing
+### Deletion code exists; policy approval is still mandatory
 
-Before writing destructive production deletion code, Antimatter Innovations must approve:
+V4.1 implements a policy-gated destructive flow with recent reauthentication, exact MEGA-tag confirmation, session/identity revocation, profile/social/cloud deletion, pseudonymisation of retained integrity records, and a public `/delete-account` resource. The implementation remains disabled until Antimatter Innovations approves:
 
 - Privacy Policy;
 - Terms of Service;
@@ -293,19 +264,9 @@ Before writing destructive production deletion code, Antimatter Innovations must
 - deletion/anonymisation treatment for match history, ratings, leaderboards, social relationships and receipts;
 - support/escalation process.
 
-Once approved, implementation must provide:
+Once approved, set a versioned policy identifier and perform live staging acceptance. The repository already provides the discoverable in-app control, recent reauthentication, explicit destructive confirmation, immediate session/identity revocation, deletion/pseudonymisation machinery, the stable public `/delete-account` resource, a minimal retained deletion receipt and tests proving a formerly linked identity cannot restore the deleted profile.
 
-1. discoverable in-app **Delete account** control;
-2. recent reauthentication;
-3. explicit destructive confirmation;
-4. immediate session revocation;
-5. deletion/anonymisation according to the approved policy;
-6. provider credential/token revocation where applicable;
-7. external deletion-request web page for Google Play;
-8. deletion audit record containing only the minimum retained proof;
-9. tests that a deleted identity cannot log back into the former profile accidentally.
-
-No production release should claim account deletion until that end-to-end behavior exists.
+The live release must still confirm provider-specific credential/revocation requirements and that the published Privacy Policy/Terms accurately disclose every retained category and duration.
 
 ## 7. Physical-device release QA
 
@@ -394,12 +355,12 @@ Recommended sequence after V4 backend launch:
 
 1. Google web production identity;
 2. Apple web production identity;
-3. privacy/retention decision and account deletion implementation;
+3. approve/publish privacy/retention policy and live-test the implemented deletion flow;
 4. real Android/iOS application targets and identity;
 5. physical-device baseline QA;
-6. Google Play Billing server verification;
-7. Apple StoreKit server verification;
-8. native ad SDK/consent/SSV;
+6. configure/test the implemented Google Play Billing backend with the Android client;
+7. configure/test the implemented Apple StoreKit backend with the iOS client;
+8. integrate native Google Mobile Ads/UMP and prove the implemented SSV boundary;
 9. store submission data/privacy declarations;
 10. paid-entry review as a separate later decision.
 

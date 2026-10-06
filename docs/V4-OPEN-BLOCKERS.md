@@ -52,6 +52,7 @@ Repository-side work is implemented; external execution remains tracked below.
 ## Additional P0 hardening tasks 21-26
 
 - **Task 21 — real VPS capacity/degradation acceptance:** repository harness is `scripts/capacity-acceptance.js` with execution/evidence rules in `deploy/CAPACITY-RUNBOOK.md`. It uses disposable state, the production coordinator, real HTTP matchmaking/matches, auth contention and forced inflight saturation. Actual Oracle ARM evidence remains `EXT-31`.
+- **Task 22 — database growth and long-running safeguards:** private DB/WAL/aggregate telemetry, configurable growth warnings, guarded maintenance commands, a daily quick/foreign-key integrity check and `scripts/db-growth-smoke.js` are implemented. See `deploy/DATABASE-HEALTH-RUNBOOK.md`. Actual long-running Oracle/staging evidence remains `EXT-32`.
 
 ## External action ledger
 
@@ -88,6 +89,7 @@ Repository-side work is implemented; external execution remains tracked below.
 | EXT-29 | Moderation and appeals policy | BLOCKED | Antimatter Innovations policy decision | Conduct policy, evidence thresholds, suspension/escalation rules, appeals/support path, report retention and authorized moderator roles are approved. |
 | EXT-30 | Personal data export acceptance | BLOCKED | Live staging + real account/browser | Recently reauthenticated account downloads expected JSON; stale auth is rejected; no password/session/OTP/operator material appears; export rate limits proven. |
 | EXT-31 | Oracle ARM capacity/degradation acceptance | BLOCKED | Oracle VPS shell + immutable release-candidate image | Run `deploy/CAPACITY-RUNBOOK.md` on the actual ARM host at multiple client levels; record image digest, VM shape, p95/p99 route latency, event-loop p99, RSS, backpressure onset and the resulting production concurrency limits. |
+| EXT-32 | SQLite growth/integrity soak | BLOCKED | Staging/Oracle VPS + time to accumulate synthetic load | Run the growth benchmark at launch-scale history sizes, prove the daily integrity timer, observe DB/WAL/state growth during a multi-hour staging soak, perform guarded checkpoint/optimize in maintenance, and record backup/restore duration plus any threshold adjustments. |
 
 ## Local-agent execution order
 
@@ -101,6 +103,7 @@ Repository-side work is implemented; external execution remains tracked below.
 8. Treat EXT-26 as a separate future compliance decision. Technical existence of paid-entry code is not approval to enable it.
 9. Complete EXT-27 through EXT-30 before a V4.1 production tag: incident operations, operator access, moderation policy and live data-export acceptance are launch gates.
 10. Run EXT-31 on the real Oracle ARM host before freezing production concurrency limits; keep the harness on disposable state only.
+11. Complete EXT-32 before freezing database growth warning thresholds; do not normalize the persistence model without measured evidence.
 
 ## Completed external prerequisites
 

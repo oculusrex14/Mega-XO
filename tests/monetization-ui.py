@@ -37,7 +37,7 @@ try:
   window.MegaNativeIdentity={getCredential:async({provider,nonce})=>fixture('token',{provider,nonce,subject:'alice'})};
   window.__purchases=0;window.__ads=0;window.__privacy=false;window.__ready={};
   window.MegaBilling={products:async()=>[{id:'crowns_100',price:'$0.99 TEST'},{id:'crowns_525',price:'$4.99 TEST'},{id:'crowns_1100',price:'$9.99 TEST'},{id:'remove_ads',price:'$3.99 TEST'}],purchase:async id=>{__purchases++;return (await fixture('buy',{productId:id})).evidence;},restore:()=>fixture('restore')};
-  window.MegaAds={privacyState:()=>({canRequestAds:__privacy}),privacyOptions:async()=>{__privacy=true;},isReady:kind=>__ready[kind]===true,prepare:async kind=>{__ready[kind]=true;},showRewarded:async ticket=>{__ads++;const r=await fixture('ad',ticket);await fetch('/api/monetization/admob-ssv?'+r.query);return {shown:true,completed:true};},showInterstitial:async()=>{__ads++;return {shown:true};},reportAd:async()=>{}};
+  window.MegaAds={platform:'android',privacyState:()=>({canRequestAds:__privacy}),privacyOptions:async()=>{__privacy=true;},isReady:kind=>__ready[kind]===true,prepare:async kind=>{__ready[kind]=true;},showRewarded:async ticket=>{__ads++;const r=await fixture('ad',ticket);await fetch('/api/monetization/admob-ssv?'+r.query);return {shown:true,completed:true};},showInterstitial:async()=>{__ads++;return {shown:true};},reportAd:async()=>{}};
   </script>'''
   page.set_content(html.replace('<body>','<body>'+shim),wait_until='domcontentloaded')
 

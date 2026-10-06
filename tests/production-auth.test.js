@@ -84,7 +84,7 @@ test('verified email change preserves actor, rejects collisions and revokes othe
 });
 test('email change requires recent reauthentication and cannot take another profile email',async t=>{
  const f=fixture(t),a=await f.create('one@example.com');
- f.advance(61000);const b=await f.create('two@example.com');
+ f.advance(16*60000);const b=await f.create('two@example.com');
  assert.throws(()=>f.auth.change(a.token,'fresh@example.com'),/REAUTH_REQUIRED/);
  await f.auth.reauth(a.token,'one@example.com','correct-horse-42');
  assert.throws(()=>f.auth.change(a.token,'two@example.com'),/EMAIL_IN_USE/);

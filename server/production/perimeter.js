@@ -51,6 +51,7 @@ function createPerimeter({service,config,emailAuth,telemetry,state}) {
   try {
    if(typeof req.url!=='string'||!req.url.startsWith('/')||req.url.length>8192)throw Error('BAD_REQUEST');
    path=new URL(req.url,config.origin).pathname;
+   if(['/api/v1/cosmetic','/api/monetization/redeem','/api/monetization/equip'].includes(path))return json(res,404,{error:'NOT_FOUND'});
    if((path==='/livez'||path==='/readyz')&&req.method==='GET')return json(res,path==='/livez'||state.healthy()?200:503,{ok:path==='/livez'||state.healthy()});
    if(req.headers.host!==new URL(config.origin).host||!equal(String(req.headers['x-mega-proxy-key']||''),config.proxySecret))return json(res,403,{error:'FORBIDDEN'});
    const ip=String(req.headers['x-mega-client-ip']||'');if(!net.isIP(ip))return json(res,400,{error:'BAD_REQUEST'});
@@ -70,7 +71,7 @@ function createPerimeter({service,config,emailAuth,telemetry,state}) {
    }
    const continued=new Set(['/api/v1/move','/api/v1/resign','/api/v1/decline','/api/v1/cancel','/api/v1/cancel-queue','/api/account/save','/api/account/logout','/api/community/presence']);
    const continuingParty=path==='/api/party/command'&&['move','resign','leave','cancel','pause'].includes(parsed?.type);
-   if(state.maintenance()&&req.method==='POST'&&!continued.has(path)&&!continuingParty){res.setHeader('Retry-After','30');return json(res,503,{error:'MAINTENANCE'});}
+   if(state.maintenance()&&((req.method==='POST'&&!continued.has(path)&&!continuingParty)||(req.method==='GET'&&path==='/api/v1/queue'))){res.setHeader('Retry-After','30');return json(res,503,{error:'MAINTENANCE'});}
    if(path==='/api/account/email'&&req.method==='POST') {
     const cookie=String(req.headers.cookie||'').split(';').map(x=>x.trim()).find(x=>x.startsWith('__Host-mega_session='));const token=cookie?.slice('__Host-mega_session='.length);
     if(req.headers.origin!==config.origin)return json(res,403,{error:'ORIGIN_OR_CONTENT_TYPE'});

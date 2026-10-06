@@ -52,7 +52,7 @@ function createPerimeter({service,config,emailAuth,telemetry,state}) {
    if(typeof req.url!=='string'||!req.url.startsWith('/')||req.url.length>8192)throw Error('BAD_REQUEST');
    path=new URL(req.url,config.origin).pathname;
    if(['/api/v1/cosmetic','/api/monetization/redeem','/api/monetization/equip'].includes(path))return json(res,404,{error:'NOT_FOUND'});
-   if((path==='/livez'||path==='/readyz')&&req.method==='GET')return json(res,path==='/livez'||state.healthy()?200:503,{ok:path==='/livez'||state.healthy()});
+   if((path==='/livez'||path==='/readyz'||path==='/opsz')&&req.method==='GET'){const ok=path==='/livez'?true:path==='/readyz'?state.healthy():state.operational();return json(res,ok?200:503,{ok});}
    if(req.headers.host!==new URL(config.origin).host||!equal(String(req.headers['x-mega-proxy-key']||''),config.proxySecret))return json(res,403,{error:'FORBIDDEN'});
    const ip=String(req.headers['x-mega-client-ip']||'');if(!net.isIP(ip))return json(res,400,{error:'BAD_REQUEST'});
    if(!consume(ip,'all',600)||((path.startsWith('/api/account/')&&req.method==='POST')&&!consume(ip,'auth',20))||(path==='/api/monetization/admob-ssv'&&!consume(ip,'ssv',120))) {res.setHeader('Retry-After','60');return json(res,429,{error:'RATE_LIMITED'});}

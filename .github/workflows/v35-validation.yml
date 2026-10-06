@@ -26,7 +26,7 @@ jobs:
       - name: Source checkpoint
         run: |
           mkdir -p .artifacts
-          git archive --format=tar HEAD | gzip > .artifacts/v35-source.tar.gz
+          git archive --format=tar HEAD | gzip > .artifacts/v4-source.tar.gz
       - name: Full Node regression
         run: npm test 2>&1 | tee .artifacts/node-tests.log
       - name: Game design invariants

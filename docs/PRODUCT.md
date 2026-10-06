@@ -1,3 +1,5 @@
+> **V3.5 addendum:** The competitive rules below remain the V3.4 baseline. For the current additive purchase, cosmetic-credit and ad rules, use [V3.5-MONETISATION-IMPLEMENTATION.md](V3.5-MONETISATION-IMPLEMENTATION.md). That addendum governs V3.5 monetisation; it does not enable paid-entry operation or change Elo/tournament currency rules.
+
 # Mega XO V3.4 — canonical product rules
 
 This document is the **current V3.4 product contract**. Historical V3.2/V3.3 documents remain in the repository for implementation history, but where they disagree with this file or the V3.4 design/economy documents, V3.4 wins.

@@ -1,6 +1,14 @@
-# Mega XO - V3.4
+# Mega XO - V3.5
 
-V3.4 is the current game-system hardening and balance branch. It closes economy/design gaps, introduces quarterly Ranked seasons with inactivity protection, adds aggregate tournament records, and locks the core rules behind executable invariants.
+V3.5 adds a research-backed monetisation layer on the verified V3.4 competitive baseline: Rewards & Style, transparent one-time purchases, optional cosmetic ad rewards, and a conservative bot-result advertising pilot. **Live ads and purchases are disabled by default.** Real native SDKs, store verification and trusted audience/territory eligibility must be configured before rollout.
+
+Current V3.5 references: [Research](docs/V3.5-MONETISATION-RESEARCH.md), [Implementation and release contract](docs/V3.5-MONETISATION-IMPLEMENTATION.md), and [Validation evidence](docs/V3.5-TESTING.md). The V3.4 sections below describe the retained competitive rules, not a new paid-entry approval.
+
+Run `npm run test:monetization`, `npm run test:monetization-model` and `npm run test:monetization-ui` alongside the full regression. Browser tests require Python Playwright/Chromium and use isolated test providers, never live ad inventory or real payments.
+
+## Retained V3.4 baseline
+
+V3.4 is the retained game-system hardening and balance baseline. It closes economy/design gaps, introduces quarterly Ranked seasons with inactivity protection, adds aggregate tournament records, and locks the core rules behind executable invariants.
 
 For current product rules, use **[docs/PRODUCT.md](docs/PRODUCT.md)**. Older V3.2/V3.3 documents are historical implementation records and may contain superseded values.
 

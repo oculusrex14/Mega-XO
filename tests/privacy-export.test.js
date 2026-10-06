@@ -9,7 +9,7 @@ function add(c,store){
  const a=store.read(),id='u_'+crypto.randomUUID();a.addAccount(id,{verified:true,createdAt:Date.now()});c.ensureProfile(id,a);c.write(a);return id;
 }
 function fixture(t){
- const dir=fs.mkdtempSync(path.join(os.tmpdir(),'mega-privacy-')),store=new DurableStore(path.join(dir,'db.sqlite')),now=Date.parse('2026-10-06T15:00:00Z'),c=new CommunityStore({store,origin:'https://game.test',now:()=>now});migrate(store.db);
+ const dir=fs.mkdtempSync(path.join(os.tmpdir(),'mega-privacy-')),store=new DurableStore(path.join(dir,'db.sqlite'));let now=Date.parse('2026-10-06T15:00:00Z');const c=new CommunityStore({store,origin:'https://game.test',now:()=>now});migrate(store.db);
  const actor=add(c,store),friend=add(c,store),other=add(c,store),profile=c.profileRow(actor);
  const salt='SECRET-SALT-VALUE',passwordHash='SECRET-PASSWORD-HASH';
  store.db.prepare('INSERT INTO email_credentials(email,actor,salt,password_hash,created,verified_at) VALUES(?,?,?,?,?,?)').run('owner@example.com',actor,salt,passwordHash,now,now);

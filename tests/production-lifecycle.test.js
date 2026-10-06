@@ -78,3 +78,28 @@ test('backup and monitoring assets preserve environment isolation and private di
  assert.ok(staging.includes('basic_auth'));
  assert.ok(staging.includes('X-Robots-Tag'));
 });
+
+test('production perimeter assets keep only edge web ports public',()=>{
+ const compose=fs.readFileSync(path.join(ROOT,'deploy','compose.yaml'),'utf8');
+ const caddy=fs.readFileSync(path.join(ROOT,'deploy','Caddyfile'),'utf8');
+ const audit=fs.readFileSync(path.join(ROOT,'deploy','audit-perimeter.sh'),'utf8');
+ const outside=fs.readFileSync(path.join(ROOT,'scripts','external-perimeter-probe.js'),'utf8');
+ assert.ok(compose.includes("'127.0.0.1:\${MEGA_LOCAL_METRICS_PORT:-9091}:9091'"));
+ assert.equal(compose.includes(':8080:8080'),false);
+ assert.ok(caddy.includes('header -Server'));
+ assert.ok(caddy.includes('Strict-Transport-Security'));
+ for(const port of ['22','2375','2376','8080','9091'])assert.ok(outside.includes(port));
+ assert.ok(audit.includes('ReadonlyRootfs'));
+ assert.ok(audit.includes('no-new-privileges:true'));
+ assert.ok(audit.includes('Tailscale'));
+});
+test('release workflow is gated and emits an immutable release manifest',()=>{
+ const workflow=fs.readFileSync(path.join(ROOT,'.github','workflows','v35-validation.yml'),'utf8');
+ const verify=fs.readFileSync(path.join(ROOT,'deploy','verify-release.sh'),'utf8');
+ assert.ok(workflow.includes('node scripts/release-gate.js'));
+ assert.ok(workflow.includes('immutable-release.json'));
+ assert.ok(workflow.includes('gh release create'));
+ assert.ok(workflow.includes('provenance: true'));assert.ok(workflow.includes('sbom: true'));
+ assert.ok(verify.includes('org.opencontainers.image.revision'));
+ assert.ok(verify.includes('ghcr.io/oculusrex14/mega-xo@sha256:'));
+});

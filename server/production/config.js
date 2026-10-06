@@ -55,6 +55,10 @@ function config(env = process.env) {
   if (apiKey && !/^re_[A-Za-z0-9_-]+$/.test(apiKey)) throw Error('INVALID_RESEND_API_KEY');
   const from = env.MEGA_EMAIL_FROM || 'Mega XO by Antimatter Innovations <contact@antimatterinnovations.com>';
   if (/[\r\n]/.test(from) || from.length > 254 || !/^[^<>]*<[^<>\s]+@[^<>\s]+>$/.test(from)) throw Error('INVALID_EMAIL_FROM');
+  const emailDomain=(env.MEGA_EMAIL_DOMAIN||'antimatterinnovations.com').trim().toLowerCase();
+  if(!/^(?=.{3,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/.test(emailDomain))throw Error('INVALID_EMAIL_DOMAIN');
+  const fromAddress=from.match(/<([^<>\s]+)>$/)?.[1]||'',fromDomain=fromAddress.split('@')[1]?.toLowerCase()||'';
+  if(fromDomain!==emailDomain)throw Error('EMAIL_FROM_DOMAIN_MISMATCH');
   const googleId = env.GOOGLE_CLIENT_ID || '';
   const googleSecret = secret(env, 'GOOGLE_CLIENT_SECRET');
   if (!!googleId !== !!googleSecret) throw Error('INCOMPLETE_GOOGLE_WEB_CONFIG');
@@ -89,7 +93,7 @@ function config(env = process.env) {
     storage: Object.freeze({dbWarnBytes:integer(env,'MEGA_DB_WARN_BYTES',1073741824,1048576,1099511627776),walWarnBytes:integer(env,'MEGA_WAL_WARN_BYTES',134217728,1048576,1099511627776),stateWarnBytes:integer(env,'MEGA_STATE_WARN_BYTES',67108864,1048576,1073741824)}),
     backupStatus: env.MEGA_BACKUP_STATUS || '/backup-status/last-success.json',
     release: /^[a-f0-9]{40}$/.test(env.MEGA_RELEASE || '') ? env.MEGA_RELEASE : 'local',
-    email: {apiKey, from},
+    email: {apiKey, from, domain:emailDomain},
     privacy: {deletionEnabled, policyVersion:privacyPolicyVersion},
     ads: {mode:adMode,consentVersion,platforms:Object.freeze(adPlatforms)},
     purchases: {enabled:purchasesEnabled,googlePlay,appleStore},

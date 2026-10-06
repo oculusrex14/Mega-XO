@@ -2,19 +2,13 @@
 (function(root,factory){const api=factory(typeof module==='object'?require('./domain.js'):root.MegaDomain);if(typeof module==='object')module.exports=api;else root.MegaMonetization=api;})(globalThis,D=>{
 'use strict';
 const MINUTE=60000,DAY=86400000;
-const POLICY=Object.freeze({version:'monetisation-1',firstAdAge:DAY,firstAdGames:5,gamesBetweenAds:3,activeTimeBetweenAds:8*MINUTE,fullScreenGap:8*MINUTE,interstitialSessionCap:2,interstitialDayCap:6,rewardedDayCap:4,rewardedGap:2*MINUTE,ticketLifetime:5*MINUTE,callbackGrace:24*60*MINUTE,rewardCredits:5,casualCredits:2,casualDayCap:10,boostDuration:10*MINUTE,boostDayCap:10,maxGameSeconds:86400});
+const POLICY=Object.freeze({version:'monetisation-1.1',firstAdAge:DAY,firstAdGames:5,gamesBetweenAds:3,activeTimeBetweenAds:8*MINUTE,fullScreenGap:8*MINUTE,interstitialSessionCap:2,interstitialDayCap:6,rewardedDayCap:4,rewardedGap:2*MINUTE,ticketLifetime:5*MINUTE,callbackGrace:24*60*MINUTE,rewardCredits:5,casualCredits:2,casualDayCap:10,boostDuration:10*MINUTE,boostDayCap:10,maxGameSeconds:86400});
 const FRAMES=Object.freeze([
- {id:'classic',name:'Classic',credits:0,description:'The original board surround.'},
- {id:'copper',name:'Copper edge',credits:30,description:'A fine double-line surround.'},
- {id:'orbit',name:'Orbit frame',credits:60,description:'A softly rounded orbital surround.'},
- {id:'crown',name:'Crown frame',credits:120,description:'A confident, stepped border.'},
- {id:'origin',name:'Origin frame',credits:null,description:'The Starter collection signature.'}
+ {id:'classic',name:'Classic',credits:0,description:'The standard Mega XO board surround. V3.5.1 archives purchasable board-frame cosmetics.'}
 ].map(Object.freeze));
 const PRODUCTS=Object.freeze([
  ...D.CROWN_PACKS.map(p=>({...p,name:p.crowns+' Crowns',type:'consumable',once:false,frames:[],removeAds:false})),
- {id:'starter_100',name:'Starter',type:'non-consumable',once:true,crowns:100,frames:['origin'],removeAds:false,suggestedUSD:.99},
- {id:'remove_ads',name:'Remove Ads',type:'non-consumable',once:true,crowns:0,frames:[],removeAds:true,suggestedUSD:3.99},
- {id:'style_collection',name:'Style Collection',type:'non-consumable',once:true,crowns:0,frames:['orbit','crown'],removeAds:false,suggestedUSD:2.99}
+ {id:'remove_ads',name:'Remove Ads',type:'non-consumable',once:true,crowns:0,frames:[],removeAds:true,suggestedUSD:3.99}
 ].map(p=>Object.freeze({...p,frames:Object.freeze(p.frames)})));
 const product=id=>PRODUCTS.find(p=>p.id===id)||null;
 const frame=id=>FRAMES.find(f=>f.id===id)||null;

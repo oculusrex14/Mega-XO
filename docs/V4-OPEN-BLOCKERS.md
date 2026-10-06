@@ -14,7 +14,17 @@ Rules:
 - Production origin: `https://play.antimatterinnovations.com`
 - Production architecture: one authoritative Node coordinator + local SQLite WAL + Caddy TLS edge + encrypted off-box Restic backups.
 - Purchases, ads, and paid-entry competition remain disabled in the V4 production baseline.
-- Source and amd64/arm64 container acceptance were green on V4 commit `c5fb98962a68cf3e7eaa9ff6c3dcdb9d055d875a`.
+- Last fully green source + amd64/arm64 baseline before tasks 6-10: `c5fb98962a68cf3e7eaa9ff6c3dcdb9d055d875a`. The current tasks 6-10 head must pass final exact-head validation before release.
+
+## Repository readiness for tasks 6-10
+
+Repository-side work is implemented; external execution remains tracked below.
+
+- **Task 6 — production secrets:** `deploy/install-secrets.sh` installs/validates Resend and optional Google/Apple secrets without putting values on the command line. Compose mounts provider credentials as Docker secrets.
+- **Task 7 — encrypted off-box backups:** `deploy/configure-r2-backup.sh`, `deploy/enable-backups.sh`, and `deploy/R2-BACKUP-RUNBOOK.md` implement isolated staging/production Restic repositories, first-backup integrity proof, retrieval verification, and a conservative 2 GiB repository budget.
+- **Task 8 — staging:** staging origin is `https://staging.play.antimatterinnovations.com`; it has separate state/secrets, real Caddy TLS, Basic Auth, no-index headers, and the deployment flow in `deploy/STAGING-RUNBOOK.md`.
+- **Task 9 — staging acceptance:** `deploy/staging-smoke.sh` provides non-destructive live edge/security validation; the staging runbook defines real OTP, password reset, restart/reboot, and restore drills.
+- **Task 10 — monitoring:** public `/opsz` reports only `{"ok":...}` while incorporating readiness, backup freshness, and disk headroom; `deploy/install-monitoring.sh` installs local five-minute health checks and Resend state-change alerts; `deploy/MONITORING-RUNBOOK.md` defines the independent UptimeRobot monitors.
 
 ## External action ledger
 

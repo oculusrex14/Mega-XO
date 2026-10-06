@@ -57,6 +57,16 @@ CREATE TABLE IF NOT EXISTS v41_privacy_requests (
  note TEXT NOT NULL DEFAULT ''
 );
 CREATE INDEX IF NOT EXISTS v41_privacy_requests_actor ON v41_privacy_requests(actor,requested_at);
+`},
+ {id:5, name:'v41-account-deletion-receipts', sql:`
+CREATE TABLE IF NOT EXISTS v41_deletion_receipts (
+ id TEXT PRIMARY KEY,
+ actor_hash TEXT NOT NULL UNIQUE,
+ tombstone TEXT NOT NULL UNIQUE,
+ completed_at INTEGER NOT NULL,
+ policy_version TEXT NOT NULL,
+ retained TEXT NOT NULL
+);
 `}
 ]);
 const checksum = m => crypto.createHash('sha256').update(m.name + '\n' + m.sql).digest('hex');

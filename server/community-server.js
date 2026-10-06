@@ -5,14 +5,15 @@ const http=require('node:http'),fs=require('node:fs'),path=require('node:path');
 const {DurableStore}=require('./economy-store.js');
 const {CommunityStore}=require('./community-store.js');
 const {IdentityProviders}=require('./identity-provider.js');
+const {TransactionalEmail}=require('./email-provider.js');
 const {QueueSession}=require('./queue-session.js');
 const {createCommunityHandler}=require('./community-http.js');
 const {RoomStore}=require('./rooms.js');
 const {MonetizationStore}=require('./monetization-store.js');
 const {createMonetizationHandler}=require('./monetization-http.js');
 const ROOT=path.resolve(__dirname,'..');
-function buildService({file,origin,providers:providerConfig={},providerInstance,storeOptions={},monetizationOptions={},allowLocalHttp=false,networkContext=()=>({})}={}){
- const store=new DurableStore(file,storeOptions),community=new CommunityStore({store,origin,now:storeOptions.now||Date.now}),providers=providerInstance||new IdentityProviders({config:providerConfig}),matchmaker=new QueueSession({store,now:storeOptions.now||Date.now}),accountHandler=createCommunityHandler({store,community,providers,matchmaker,origin,allowLocalHttp,networkContext});
+function buildService({file,origin,providers:providerConfig={},providerInstance,emailOptions={},emailInstance,storeOptions={},monetizationOptions={},allowLocalHttp=false,networkContext=()=>({})}={}){
+ const store=new DurableStore(file,storeOptions),community=new CommunityStore({store,origin,now:storeOptions.now||Date.now,otpSecret:storeOptions.otpSecret}),providers=providerInstance||new IdentityProviders({config:providerConfig}),emailer=emailInstance||new TransactionalEmail(emailOptions),matchmaker=new QueueSession({store,now:storeOptions.now||Date.now}),accountHandler=createCommunityHandler({store,community,providers,emailer,matchmaker,origin,allowLocalHttp,networkContext});
  community.isQueued=actor=>matchmaker.busy(actor);
  const rooms=new RoomStore(file,{...storeOptions,lanOnly:false});
  const auth=async req=>accountHandler.authenticate(req);
@@ -34,14 +35,14 @@ function buildService({file,origin,providers:providerConfig={},providerInstance,
   res.writeHead(200,{'Content-Type':types[path.extname(target)]||'application/octet-stream','Cache-Control':'no-cache','X-Content-Type-Options':'nosniff','Referrer-Policy':'same-origin','X-Frame-Options':'DENY'});if(req.method==='HEAD')return res.end();fs.createReadStream(target).pipe(res);
  }catch{if(!res.headersSent)res.writeHead(409,{'Content-Type':'application/json'});res.end(JSON.stringify({error:'REQUEST_FAILED'}));}};
  const server=http.createServer(request);let timer=null,closing=null;
- return {server,store,community,matchmaker,rooms,monetization,request,startWorkers(){if(timer)return;timer=setInterval(()=>{try{matchmaker.tick();rooms.tick();community.cleanup();}catch(e){console.error('Maintenance error:',e.message);}},1000);timer.unref();},close(){
+ return {server,store,community,providers,emailer,matchmaker,rooms,monetization,request,startWorkers(){if(timer)return;timer=setInterval(()=>{try{matchmaker.tick();rooms.tick();community.cleanup();}catch(e){console.error('Maintenance error:',e.message);}},1000);timer.unref();},close(){
   if(closing)return closing;clearInterval(timer);timer=null;
   closing=(async()=>{try{server.closeIdleConnections?.();server.closeAllConnections?.();if(server.listening)await new Promise(resolve=>server.close(()=>resolve()));}finally{rooms.close();store.close();}})();
   return closing;
  }};
 }
 if(require.main===module){const port=Number(process.env.PORT||8080),origin=process.env.MEGA_ORIGIN||'http://localhost:'+port,file=process.env.MEGA_DB||path.join(ROOT,'.data','mega.sqlite');fs.mkdirSync(path.dirname(file),{recursive:true});
- const service=buildService({file,origin,allowLocalHttp:true,providers:{google:{clientId:process.env.GOOGLE_CLIENT_ID,clientSecret:process.env.GOOGLE_CLIENT_SECRET,nativeAudiences:(process.env.GOOGLE_NATIVE_AUDIENCES||'').split(',').filter(Boolean),authorizedParties:(process.env.GOOGLE_AUTHORIZED_PARTIES||'').split(',').filter(Boolean)},apple:{clientId:process.env.APPLE_SERVICE_ID,teamId:process.env.APPLE_TEAM_ID,keyId:process.env.APPLE_KEY_ID,privateKey:process.env.APPLE_PRIVATE_KEY?.replace(/\\n/g,'\n'),nativeAudiences:(process.env.APPLE_NATIVE_AUDIENCES||'').split(',').filter(Boolean)}}});
+ const service=buildService({file,origin,allowLocalHttp:true,emailOptions:{apiKey:process.env.RESEND_API_KEY,from:process.env.MEGA_EMAIL_FROM||'Mega XO by Antimatter Innovations <contact@antimatterinnovations.com>'},storeOptions:{otpSecret:process.env.MEGA_OTP_SECRET},providers:{google:{clientId:process.env.GOOGLE_CLIENT_ID,clientSecret:process.env.GOOGLE_CLIENT_SECRET,nativeAudiences:(process.env.GOOGLE_NATIVE_AUDIENCES||'').split(',').filter(Boolean),authorizedParties:(process.env.GOOGLE_AUTHORIZED_PARTIES||'').split(',').filter(Boolean)},apple:{clientId:process.env.APPLE_SERVICE_ID,teamId:process.env.APPLE_TEAM_ID,keyId:process.env.APPLE_KEY_ID,privateKey:process.env.APPLE_PRIVATE_KEY?.replace(/\\n/g,'\n'),nativeAudiences:(process.env.APPLE_NATIVE_AUDIENCES||'').split(',').filter(Boolean)}}});
  service.rooms.recover();service.startWorkers();service.server.listen(port,'127.0.0.1',()=>console.log('Mega XO account service: '+origin));let stopping=false;for(const signal of ['SIGINT','SIGTERM'])process.on(signal,async()=>{if(stopping)return;stopping=true;try{await service.close();}finally{process.exit(0);}});
 }
 module.exports={buildService};

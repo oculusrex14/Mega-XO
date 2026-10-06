@@ -5,6 +5,10 @@ const {createRuntime}=require('../server/production/main');
 const {snapshot,verify,restore}=require('../server/production/backup');
 const {preflight}=require('../server/production/migrations');
 const {DatabaseSync}=require('node:sqlite');
+const http=require('node:http'),crypto=require('node:crypto');
+function httpFetch(url,options={}) {
+ return new Promise((resolve,reject)=>{const req=http.request(url,{method:options.method,headers:options.headers},res=>{const chunks=[];res.on('data',c=>chunks.push(c));res.on('end',()=>resolve({status:res.statusCode,headers:new Headers(Object.entries(res.headers).map(([k,v])=>[k,Array.isArray(v)?v.join('; '):v])),text:async()=>Buffer.concat(chunks).toString('utf8')}));});req.on('error',reject);req.end(options.body);});
+}
 const secrets={MEGA_ORIGIN:'https://game.test',MEGA_OTP_SECRET:'1'.repeat(64),MEGA_PROXY_SECRET:'2'.repeat(64)};
 async function fixture(t) {
  const dir=fs.mkdtempSync(path.join(os.tmpdir(),'mega-production-')),logs=[],sent=[];
@@ -14,7 +18,7 @@ async function fixture(t) {
  const url='http://127.0.0.1:'+runtime.service.server.address().port;
  function client(ip='198.51.100.2') {
   let cookie='',csrf='';return {get cookie(){return cookie;},async call(route,data,extra={}) {
-   const result=await fetch(url+route,{method:data===undefined?'GET':'POST',headers:{Host:'game.test','X-Mega-Proxy-Key':cfg.proxySecret,'X-Mega-Client-IP':ip,Origin:cfg.origin,'Content-Type':'application/json',...(cookie?{Cookie:cookie}:{}),'X-CSRF-Token':csrf,'Idempotency-Key':crypto.randomUUID(),...extra},body:data===undefined?undefined:JSON.stringify(data)});
+   const result=await httpFetch(url+route,{method:data===undefined?'GET':'POST',headers:{Host:'game.test','X-Mega-Proxy-Key':cfg.proxySecret,'X-Mega-Client-IP':ip,Origin:cfg.origin,'Content-Type':'application/json',...(cookie?{Cookie:cookie}:{}),'X-CSRF-Token':csrf,'Idempotency-Key':crypto.randomUUID(),...extra},body:data===undefined?undefined:JSON.stringify(data)});
    if(result.headers.get('set-cookie'))cookie=result.headers.get('set-cookie').split(';')[0];
    const text=await result.text();let value;try{value=JSON.parse(text);}catch{value=text;}
    if(value.csrf)csrf=value.csrf;return {status:result.status,data:value,headers:result.headers};
@@ -31,7 +35,7 @@ test('production perimeter authenticates the proxy and never logs tokens or quer
  assert.equal((await fetch(f.url+'/livez')).status,200);
  assert.equal((await c.call('/api/account/session',undefined,{'X-Mega-Proxy-Key':''})).status,403);
  assert.equal((await c.call('/api/account/session',undefined,{'X-Mega-Client-IP':'spoof, 1.1.1.1'})).status,400);
- const r=await c.call('/api/account/session?password=DO_NOT_LOG_ME');assert.equal(r.status,200);assert.match(r.headers.get('set-cookie'),/HttpOnly; Secure; SameSite=Lax/);assert.match(r.headers.get('content-security-policy'),/frame-ancestors 'none'/);
+ const r=await c.call('/api/account/session?password=DO_NOT_LOG_ME');assert.equal(r.status,200);for(const flag of ['HttpOnly','Secure','SameSite=Lax'])assert(r.headers.get('set-cookie').includes(flag));assert.match(r.headers.get('content-security-policy'),/frame-ancestors 'none'/);
  assert.equal((await c.call('/api/account/email',{action:'continue',email:'private@example.com',password:'private-password-42'},{Origin:'https://evil.test'})).status,403);
  assert(!JSON.stringify(f.logs).includes('DO_NOT_LOG_ME'));assert(!JSON.stringify(f.logs).includes('private@example.com'));assert(!JSON.stringify(f.logs).includes(c.cookie));
  assert.equal((await c.call('/api/account/email',{x:'a'.repeat(25000)})).status,413);

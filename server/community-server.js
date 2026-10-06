@@ -17,6 +17,7 @@ function buildService({file,origin,providers:providerConfig={},providerInstance,
  const store=new DurableStore(file,storeOptions),community=new CommunityStore({store,origin,now:storeOptions.now||Date.now,otpSecret:storeOptions.otpSecret,...communityOptions}),providers=providerInstance||new IdentityProviders({config:providerConfig}),emailer=emailInstance||new TransactionalEmail(emailOptions),matchmaker=new QueueSession({store,now:storeOptions.now||Date.now}),accountHandler=createCommunityHandler({store,community,providers,emailer,matchmaker,origin,allowLocalHttp,networkContext});
  community.isQueued=actor=>matchmaker.busy(actor);
  const rooms=new RoomStore(file,{...storeOptions,lanOnly:false});
+ community.isDeletionBusy=actor=>rooms.active().some(r=>r.players.some(p=>p.id===actor));
  const auth=async req=>accountHandler.authenticate(req);
  const monetization=new MonetizationStore(store,{...monetizationOptions,busy:actor=>matchmaker.busy(actor)||rooms.active().some(r=>r.players.some(p=>p.id===actor))});
  const monetizationHandler=createMonetizationHandler({monetization,authenticate:auth,guard:accountHandler.guard,origin});

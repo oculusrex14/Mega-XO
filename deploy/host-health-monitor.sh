@@ -61,18 +61,23 @@ send_alert(){
   rm -f "$cfg"
 }
 
+transition_notified=true
 if [[ "$new_state" != "$old_state" ]]; then
   host=$(hostname -s 2>/dev/null || echo mega-xo)
   if [[ "$new_state" = unhealthy ]]; then
     safe_reason=$(printf '%s' "$reason" | tr -cd 'A-Za-z0-9 .,:;_/-' | cut -c1-500)
-    send_alert 'Mega XO operational alert' "Mega XO on $host is unhealthy: $safe_reason. Connect through Tailscale and run the V4 health runbook." || true
+    send_alert 'Mega XO operational alert' "Mega XO on $host is unhealthy: $safe_reason. Connect through Tailscale and run the V4 health runbook." || transition_notified=false
   elif [[ "$old_state" = unhealthy ]]; then
-    send_alert 'Mega XO recovered' "Mega XO on $host returned to healthy operational state." || true
+    send_alert 'Mega XO recovered' "Mega XO on $host returned to healthy operational state." || transition_notified=false
   fi
 fi
 
-printf '%s\n' "$new_state" > "$state_file"
-chmod 600 "$state_file"
+if $transition_notified; then
+  printf '%s\n' "$new_state" > "$state_file"
+  chmod 600 "$state_file"
+else
+  echo 'Alert delivery failed; state transition will be retried on the next health run.' >&2
+fi
 
 if [[ "$new_state" = unhealthy ]]; then
   echo "MEGA_XO_UNHEALTHY: $reason" >&2

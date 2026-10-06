@@ -2,6 +2,7 @@
 set -euo pipefail
 image=${1:?Pass the locally built image}
 platform=${2:-linux/amd64}
+caddy_image='caddy@sha256:d8542f48d34a9cf4e4c11a478865229840e87e4c96ea3f439101f31a5d35f75f'
 name="mega-v4-smoke-${RANDOM}"
 volume="$name-data"
 work=$(mktemp -d)
@@ -42,7 +43,7 @@ address=$(docker port "$name" 8080/tcp | head -1)
 for _ in $(seq 1 30); do if curl -fsS "http://$address/readyz" >/dev/null; then break; fi; sleep 1; done
 curl -fsS "http://$address/readyz" >/dev/null
 for config in Caddyfile Caddyfile.staging; do
- docker run --rm -e MEGA_HOSTNAME=game.test -e ACME_EMAIL=contact@antimatterinnovations.com -e "MEGA_PROXY_SECRET=$proxy" -v "$PWD/deploy:/etc/mega:ro" caddy:2-alpine caddy validate --config "/etc/mega/$config" --adapter caddyfile
+ docker run --rm -e MEGA_HOSTNAME=game.test -e ACME_EMAIL=contact@antimatterinnovations.com -e "MEGA_PROXY_SECRET=$proxy" -v "$PWD/deploy:/etc/mega:ro" "$caddy_image" caddy validate --config "/etc/mega/$config" --adapter caddyfile
 done
 node scripts/init-vps.js game.test "$work/config" staging >/dev/null
 MEGA_IMAGE="$image" MEGA_ROOT="$work/config" docker compose --env-file "$work/config/compose.env" -f deploy/compose.yaml config --quiet

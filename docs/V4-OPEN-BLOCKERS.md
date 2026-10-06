@@ -53,6 +53,10 @@ Repository-side work is implemented; external execution remains tracked below.
 
 - **Task 21 — real VPS capacity/degradation acceptance:** repository harness is `scripts/capacity-acceptance.js` with execution/evidence rules in `deploy/CAPACITY-RUNBOOK.md`. It uses disposable state, the production coordinator, real HTTP matchmaking/matches, auth contention and forced inflight saturation. Actual Oracle ARM evidence remains `EXT-31`.
 - **Task 22 — database growth and long-running safeguards:** private DB/WAL/aggregate telemetry, configurable growth warnings, guarded maintenance commands, a daily quick/foreign-key integrity check and `scripts/db-growth-smoke.js` are implemented. See `deploy/DATABASE-HEALTH-RUNBOOK.md`. Actual long-running Oracle/staging evidence remains `EXT-32`.
+- **Task 23 — client network resilience and maintenance UX:** shared account transport now classifies offline/maintenance/session-expiry/timeout states, retries transient reads, retries writes with one preserved idempotency key, prevents overlapping online polls, reconnects active matches and exposes a persistent player-safe connection surface. Live restart/network-transition acceptance remains `EXT-33`.
+- **Task 24 — accessibility release gate:** bottom sheets trap/restore focus and support Escape, background regions become inert, primary controls retain 44 px targets, game cells expose spoken board/cell/value labels, OS reduced-motion/forced-color behavior is covered, and Chromium CI checks keyboard use, 24 px minimum targets, 320 px reflow, 200% inherited control text and core contrast for all themes. Physical VoiceOver/TalkBack acceptance remains `EXT-34` and also feeds the broader `EXT-25` device matrix.
+- **Task 25 — support-grade diagnostics:** production requests receive opaque `MX-…` support IDs; a seven-day/5,000-row sanitized index stores only time/method/normalized-route/status/public-code; operators can resolve one ID without request bodies, queries, IPs or account identifiers; players can copy an allowlisted diagnostics report. See `deploy/SUPPORT-DIAGNOSTICS.md`. The live operator drill under `EXT-28` must include one real support-ID lookup.
+- **Task 26 — email/domain security posture:** production From is bound to `MEGA_EMAIL_DOMAIN`; `scripts/mail-domain-audit.js` checks MX, single-record SPF, configured provider DKIM publication, aligned return-path and DMARC coverage without printing keys. See `deploy/MAIL-DOMAIN-SECURITY.md`. Hostinger/Google Workspace/Resend publication and real-message authentication proof remain `EXT-35`.
 
 ## External action ledger
 
@@ -90,6 +94,9 @@ Repository-side work is implemented; external execution remains tracked below.
 | EXT-30 | Personal data export acceptance | BLOCKED | Live staging + real account/browser | Recently reauthenticated account downloads expected JSON; stale auth is rejected; no password/session/OTP/operator material appears; export rate limits proven. |
 | EXT-31 | Oracle ARM capacity/degradation acceptance | BLOCKED | Oracle VPS shell + immutable release-candidate image | Run `deploy/CAPACITY-RUNBOOK.md` on the actual ARM host at multiple client levels; record image digest, VM shape, p95/p99 route latency, event-loop p99, RSS, backpressure onset and the resulting production concurrency limits. |
 | EXT-32 | SQLite growth/integrity soak | BLOCKED | Staging/Oracle VPS + time to accumulate synthetic load | Run the growth benchmark at launch-scale history sizes, prove the daily integrity timer, observe DB/WAL/state growth during a multi-hour staging soak, perform guarded checkpoint/optimize in maintenance, and record backup/restore duration plus any threshold adjustments. |
+| EXT-33 | Client network/restart resilience acceptance | BLOCKED | Live staging + controllable network/service restart | On a real browser/device exercise offline→online, request timeout, maintenance enter/exit, expired session, queue reconnect and coordinator restart during a match; prove no duplicate command/grant, current match state recovers, offline modes remain available, and no internal diagnostics are exposed. |
+| EXT-34 | VoiceOver/TalkBack accessibility acceptance | BLOCKED | Physical iOS/Android devices | Complete keyboard-equivalent flows with VoiceOver and TalkBack: sign-in, navigation, settings/dialogs, game board destination rule, matchmaking/reconnect, wallet/store surfaces, errors/support codes and account deletion; record device/OS/build/results and remediate launch-blocking issues. |
+| EXT-35 | Mail-domain authentication and DNS posture | BLOCKED | Hostinger DNS + Google Workspace + Resend consoles + real mailbox headers | Using exact current provider DNS hostnames, `npm run mail:audit` passes for MX/SPF/DKIM/aligned return-path/approved DMARC policy; real Mega XO mail shows SPF/DKIM/DMARC PASS; Google Workspace mail continues to work. Do not record keys or full message headers. |
 
 ## Local-agent execution order
 
@@ -104,13 +111,15 @@ Repository-side work is implemented; external execution remains tracked below.
 9. Complete EXT-27 through EXT-30 before a V4.1 production tag: incident operations, operator access, moderation policy and live data-export acceptance are launch gates.
 10. Run EXT-31 on the real Oracle ARM host before freezing production concurrency limits; keep the harness on disposable state only.
 11. Complete EXT-32 before freezing database growth warning thresholds; do not normalize the persistence model without measured evidence.
+12. Complete EXT-33 and EXT-34 during staging/device release QA, and include one real MX support-code lookup in EXT-28.
+13. Complete EXT-35 before treating Resend domain verification as production mail-security approval.
 
 ## Completed external prerequisites
 
 - Resend account created.
-- `antimatterinnovations.com` verified for Resend sending with its required DNS records.
+- `antimatterinnovations.com` verified for Resend sending. This is a provider prerequisite only; full MX/SPF/DKIM/DMARC/return-path posture is independently gated by EXT-35.
 - Production Resend API key created and saved by the user. The value is intentionally not present in GitHub.
-- Existing Google Workspace mail DNS remains intact.
+- Existing Google Workspace mail DNS was previously reported intact; EXT-35 must re-prove coexistence after the final mail-authentication records/policy are frozen.
 
 ## Post-backend product gates
 

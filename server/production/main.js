@@ -56,7 +56,7 @@ async function createRuntime(config,{transport,log=()=>{}}={}) {
   recover(service);
   service.matchmaker.maxTickets=config.maxQueued||200;
   reads=new ReadContext(service.store);
-  telemetry=new Telemetry(log);passwords=new Passwords({concurrency:config.authWorkers});
+  telemetry=new Telemetry(log,service.store.db);passwords=new Passwords({concurrency:config.authWorkers});
   outbox=new MailOutbox(service.community,{secret:config.otpSecret,daily:config.mailDaily,monthly:config.mailMonthly,email:config.email,transport,log:value=>telemetry.event(value)});
   const emailAuth=new EmailAuth(service.community,{passwords,outbox,secret:config.otpSecret});
   const operatorService=new OperatorService(service,{secret:config.proxySecret});

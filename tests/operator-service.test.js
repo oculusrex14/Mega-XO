@@ -43,3 +43,34 @@ test('operator hold and recovery actions are explicit, audited and do not includ
 test('operator key is deterministic but never equal to the proxy secret itself',()=>{
  const secret='c'.repeat(64),key=operatorKey(secret);assert.match(key,/^[A-Za-z0-9_-]{43}$/);assert.notEqual(key,secret);assert.equal(key,operatorKey(secret));assert.notEqual(key,operatorKey('d'.repeat(64)));
 });
+
+test('incident lockdown revokes sessions, invalidates pending auth and remains in maintenance until explicitly cleared',t=>{
+ const f=fixture(t),now=Date.now();
+ f.store.db.prepare('INSERT INTO signin_attempts(state,session,provider,kind,intent,target,nonce,verifier,expires,used) VALUES(?,?,?,?,?,?,?,?,?,0)').run('incident-state','session-hash','google','web','login',null,'nonce','verifier',now+60000);
+ f.store.db.prepare('INSERT INTO email_challenges(id,session,email,purpose,actor,code_hash,created,expires,attempts,consumed) VALUES(?,?,?,?,?,?,?,?,0,0)').run('incident-otp','session-hash','incident@example.com','reset',f.actor,'hash',now,now+60000);
+ f.store.db.prepare('INSERT INTO v4_outbox(id,payload,kind,state,created,expires,next_at,lease_until,attempts) VALUES(?,?,?,?,?,?,?,?,0)').run('incident-mail','encrypted','otp','queued',now,now+60000,now,0);
+ const locked=f.ops.command({action:'incident-lockdown',operator:'security.lead',reason:'Credential exposure drill requires global containment'});
+ assert.equal(locked.lockedDown,true);assert.equal(locked.maintenance,true);assert.equal(f.c.session(f.issued.token),null);
+ assert.equal(f.store.db.prepare("SELECT used FROM signin_attempts WHERE state='incident-state'").get().used,1);
+ const otp=f.store.db.prepare("SELECT consumed,password_hash,password_salt FROM email_challenges WHERE id='incident-otp'").get();assert.equal(otp.consumed,1);assert.equal(otp.password_hash,null);assert.equal(otp.password_salt,null);
+ const mail=f.store.db.prepare("SELECT state,payload FROM v4_outbox WHERE id='incident-mail'").get();assert.equal(mail.state,'cancelled');assert.equal(mail.payload,null);
+ const cleared=f.ops.command({action:'incident-clear',operator:'security.lead',reason:'Containment drill completed and credentials validated'});
+ assert.equal(cleared.cleared,true);assert.equal(cleared.maintenance,true);
+ assert.equal(f.store.db.prepare('SELECT maintenance FROM v4_controls WHERE id=1').get().maintenance,1);
+ assert.equal(f.ops.verifyAudit().count,2);
+});
+test('incident lockdown is visible in status and cannot be cleared twice',t=>{
+ const f=fixture(t);
+ assert.equal(f.ops.command({action:'incident-status'}).lockdown,false);
+ f.ops.command({action:'incident-lockdown',operator:'ops.lead',reason:'Simulated session compromise containment drill'});
+ const status=f.ops.command({action:'incident-status'});assert.equal(status.lockdown,true);assert.equal(status.sessions,0);assert.equal(status.audit.valid,true);
+ f.ops.command({action:'incident-clear',operator:'ops.lead',reason:'Simulated incident validation completed safely'});
+ assert.throws(()=>f.ops.command({action:'incident-clear',operator:'ops.lead',reason:'Second clear should never be accepted'}),/INCIDENT_NOT_ACTIVE/);
+});
+test('secret rotation helper refuses direct Restic password replacement and requires lockdown for trust-root rotation',()=>{
+ const source=fs.readFileSync(path.join(__dirname,'..','deploy','rotate-secret.sh'),'utf8');
+ assert.ok(source.includes("restic_password) echo 'Do not rotate Restic encryption"));
+ assert.ok(source.includes('rotation requires an active audited incident lockdown first'));
+ assert.ok(source.includes("proxy_secret || \"$name\" = otp_secret"));
+ assert.ok(source.includes('Rotation failed; previous secret restored.'));
+});

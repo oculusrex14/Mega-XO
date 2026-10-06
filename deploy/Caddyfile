@@ -17,6 +17,7 @@
 }
 {$MEGA_HOSTNAME} {
  encode zstd gzip
+ header -Server
  header Strict-Transport-Security "max-age=31536000"
  @private path /internal/* /metrics /status /server/* /scripts/* /deploy/* /tests/* /.git/* /.env* /src/authority.js
  respond @private 404

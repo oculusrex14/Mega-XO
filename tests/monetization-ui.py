@@ -41,11 +41,13 @@ try:
   </script>'''
   page.set_content(html.replace('<body>','<body>'+shim),wait_until='domcontentloaded')
 
-  page.locator('[data-c="email-form"][data-id="signup"]').click(timeout=10000)
+  assert page.locator('[data-c="email-form"]').count()==1
+  assert page.locator('[data-c="email-form"][data-id="continue"]').inner_text()=='Continue with email'
+  page.locator('[data-c="email-form"][data-id="continue"]').click(timeout=10000)
   page.locator('#cEmailAddress').fill('alice@example.com')
   page.locator('#cEmailPassword').fill('correct-horse-42')
-  page.locator('#cEmailPasswordConfirm').fill('correct-horse-42')
-  page.locator('[data-c="email-submit"][data-id="signup"]').click()
+  assert page.locator('#cEmailPasswordConfirm').count()==0
+  page.locator('[data-c="email-submit"][data-id="continue"]').click()
   page.locator('#identityScreen.profile').wait_for(timeout=10000)
   assert page.locator('button[data-c="edit"]').count()==1
   page.locator('button[data-c="edit"]').click()
@@ -53,7 +55,7 @@ try:
   page.locator('#cDisplayName').fill('Alice')
   page.locator('[data-c="saveprofile"]').click()
   page.wait_for_function('document.querySelector("#identityScreen")?.innerText.includes("@alice_xo")')
-  checks.append('email signup creates a cloud profile and username can be edited from the self-profile UI')
+  checks.append('single Continue with email button creates a missing profile and username can be edited from the self-profile UI')
   page.locator('[data-c="dismiss"]').click()
 
   page.evaluate('MegaApp.goFriends()')

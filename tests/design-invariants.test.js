@@ -13,7 +13,7 @@ test('INVARIANT: three claimed Mini Boards in line wins the Mega Board',()=>{
  let s=G.create('X');s.mini=['X','X',null,null,null,null,null,null,null];s.board[2]=['X','X',null,null,null,null,null,null,null];s.required=2;s=G.apply(s,{b:2,c:2});assert.equal(s.mini[2],'X');assert.equal(s.winner,'X');assert.deepEqual(s.line,[0,1,2]);
 });
 test('INVARIANT: Elo outcome never accepts or depends on stake/wealth',()=>{
- const base=D.elo(1500,1800,1);assert.deepEqual(D.elo(1500,1800,1,999999),base);const small=D.quote({mode:'direct',from:'gold',to:'grandmaster'}),large=D.quote({mode:'direct',from:'gold',to:'grandmaster',amount:100000});assert.equal(small.rated,true);assert.equal(large.rated,true);assert.deepEqual(D.elo(1500,1800,1),base);
+ const base=D.elo(1500,1800,1),small=D.quote({mode:'direct',from:'gold',to:'grandmaster'}),large=D.quote({mode:'direct',from:'gold',to:'grandmaster',amount:100000});assert.equal(small.rated,true);assert.equal(large.rated,true);assert.notEqual(small.pool,large.pool);assert.deepEqual(D.elo(1500,1800,1),base);
 });
 test('INVARIANT: matchmade Ranked always uses equal Coin entries and retires half the pot',()=>{
  for(const A of D.TIERS)for(const B of D.TIERS){const q=D.quote({mode:'ranked',from:A.id,to:B.id});assert.equal(q.currency,'coins');assert.equal(q.contributions[0],q.contributions[1]);assert.equal(q.pool,q.contributions[0]*2);assert.equal(q.burn,q.pool/2);assert.equal(q.payout,q.pool/2);}

@@ -38,6 +38,7 @@ docker exec -e RESTIC_PASSWORD=ci-only-not-a-production-key "$name" sh -ec '
 docker stop -t 25 "$name" >/dev/null
 [[ $(docker inspect "$name" --format '{{.State.ExitCode}}') = 0 ]]
 docker start "$name" >/dev/null
+address=$(docker port "$name" 8080/tcp | head -1)
 for _ in $(seq 1 30); do if curl -fsS "http://$address/readyz" >/dev/null; then break; fi; sleep 1; done
 curl -fsS "http://$address/readyz" >/dev/null
 for config in Caddyfile Caddyfile.staging; do

@@ -1,4 +1,4 @@
-> **V3.5.1 patch:** Email/password signup/signin, Friends-page self-profile access, visible Cosmetic Credit balance, and the archived board-frame collection are governed by [V3.5.1-ACCOUNT-COSMETIC-PATCH.md](V3.5.1-ACCOUNT-COSMETIC-PATCH.md). It supersedes conflicting V3.5 frame-catalogue language.
+> **V3.5.1 patch:** Unified email/password continuation with OTP mailbox verification and recovery, Friends-page self-profile access, visible Cosmetic Credit balance, Antimatter Innovations developer identity, and the archived board-frame collection are governed by [V3.5.1-ACCOUNT-COSMETIC-PATCH.md](V3.5.1-ACCOUNT-COSMETIC-PATCH.md) and [V3.5.1-EMAIL-VERIFICATION.md](V3.5.1-EMAIL-VERIFICATION.md). They supersede conflicting earlier V3.5.1 email and V3.5 frame-catalogue language.
 
 > **V3.5 addendum:** The competitive rules below remain the V3.4 baseline. For the current additive purchase, cosmetic-credit and ad rules, use [V3.5-MONETISATION-IMPLEMENTATION.md](V3.5-MONETISATION-IMPLEMENTATION.md). That addendum governs V3.5 monetisation; it does not enable paid-entry operation or change Elo/tournament currency rules.
 

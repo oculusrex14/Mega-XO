@@ -9,6 +9,9 @@ const EMAIL=/^[a-z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?
 const normalizeEmail=value=>{if(typeof value!=='string')fail('INVALID_EMAIL');const email=value.trim().toLowerCase();if(email.length<6||email.length>254||!EMAIL.test(email))fail('INVALID_EMAIL');return email;};
 const validatePassword=value=>{if(typeof value!=='string'||value.length<10||value.length>128||!/[A-Za-z]/.test(value)||!/[0-9]/.test(value))fail('PASSWORD_WEAK');return value;};
 const passwordHash=(password,salt)=>crypto.scryptSync(password,Buffer.from(salt,'base64url'),32,{N:16384,r:8,p:1,maxmem:64*1024*1024}).toString('base64url');
+const OTP_TTL=10*60000,OTP_COOLDOWN=60000,OTP_ATTEMPTS=5;
+const otpCode=()=>String(crypto.randomInt(0,1000000)).padStart(6,'0');
+const maskEmail=email=>{const [local,domain]=email.split('@');return local.slice(0,1)+'***@'+domain;};
 const RESERVED=new Set(['admin','administrator','moderator','support','system','megaxo','mega_xo','official','deleted','anonymous']);
 const fail=code=>{throw Error(code);};
 const safeText=(value,max)=>typeof value==='string'&&value.trim().length>0&&[...value.trim()].length<=max&&!/[\u0000-\u001f\u007f<>]/.test(value);
@@ -30,21 +33,25 @@ function sanitizePractice(value){
  return clean;
 }
 class CommunityStore {
- constructor({store,origin,now=Date.now}={}){
-  if(!store?.db||!origin)fail('IDENTITY_STORE_REQUIRED');this.store=store;this.db=store.db;this.origin=new URL(origin).origin;this.now=now;
+ constructor({store,origin,now=Date.now,otpSecret=process.env.MEGA_OTP_SECRET}={}){
+  if(!store?.db||!origin)fail('IDENTITY_STORE_REQUIRED');this.store=store;this.db=store.db;this.origin=new URL(origin).origin;this.now=now;this.otpSecret=Buffer.from(otpSecret||crypto.randomBytes(32).toString('base64url'));
   this.db.exec(`CREATE TABLE IF NOT EXISTS profiles(actor TEXT PRIMARY KEY,tag TEXT NOT NULL UNIQUE,username TEXT NOT NULL UNIQUE,display_name TEXT NOT NULL,avatar TEXT NOT NULL DEFAULT 'board',stats_visibility TEXT NOT NULL DEFAULT 'friends',presence_visibility TEXT NOT NULL DEFAULT 'friends',created INTEGER NOT NULL,username_changed INTEGER NOT NULL DEFAULT 0,version INTEGER NOT NULL DEFAULT 1);
 CREATE TABLE IF NOT EXISTS identities(provider TEXT NOT NULL,subject TEXT NOT NULL,actor TEXT NOT NULL,created INTEGER NOT NULL,PRIMARY KEY(provider,subject),UNIQUE(actor,provider));
-CREATE TABLE IF NOT EXISTS email_credentials(email TEXT PRIMARY KEY COLLATE NOCASE,actor TEXT NOT NULL UNIQUE,salt TEXT NOT NULL,password_hash TEXT NOT NULL,created INTEGER NOT NULL);
+CREATE TABLE IF NOT EXISTS email_credentials(email TEXT PRIMARY KEY COLLATE NOCASE,actor TEXT NOT NULL UNIQUE,salt TEXT NOT NULL,password_hash TEXT NOT NULL,created INTEGER NOT NULL,verified_at INTEGER);
 CREATE TABLE IF NOT EXISTS account_sessions(token TEXT PRIMARY KEY,actor TEXT,csrf TEXT NOT NULL,created INTEGER NOT NULL,expires INTEGER NOT NULL,auth_at INTEGER NOT NULL DEFAULT 0);
 CREATE TABLE IF NOT EXISTS signin_attempts(state TEXT PRIMARY KEY,session TEXT NOT NULL,provider TEXT NOT NULL,kind TEXT NOT NULL,intent TEXT NOT NULL,target TEXT,nonce TEXT NOT NULL,verifier TEXT NOT NULL,expires INTEGER NOT NULL,used INTEGER NOT NULL DEFAULT 0);
 CREATE TABLE IF NOT EXISTS profile_saves(actor TEXT PRIMARY KEY,revision INTEGER NOT NULL,payload TEXT NOT NULL,updated INTEGER NOT NULL);
 CREATE TABLE IF NOT EXISTS session_presence(session TEXT PRIMARY KEY,actor TEXT NOT NULL,seen INTEGER NOT NULL,foreground INTEGER NOT NULL);
 CREATE TABLE IF NOT EXISTS social_operations(id TEXT PRIMARY KEY,fingerprint TEXT NOT NULL,result TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS community_limits(id TEXT PRIMARY KEY,hits INTEGER NOT NULL);
+CREATE TABLE IF NOT EXISTS email_challenges(id TEXT PRIMARY KEY,session TEXT NOT NULL,email TEXT NOT NULL COLLATE NOCASE,purpose TEXT NOT NULL,actor TEXT,code_hash TEXT NOT NULL,password_salt TEXT,password_hash TEXT,created INTEGER NOT NULL,expires INTEGER NOT NULL,attempts INTEGER NOT NULL DEFAULT 0,verified_at INTEGER,consumed INTEGER NOT NULL DEFAULT 0);
 CREATE INDEX IF NOT EXISTS session_actor ON account_sessions(actor);
 CREATE INDEX IF NOT EXISTS presence_actor ON session_presence(actor);
 CREATE INDEX IF NOT EXISTS identities_actor ON identities(actor);
-CREATE INDEX IF NOT EXISTS email_credentials_actor ON email_credentials(actor);`);
+CREATE INDEX IF NOT EXISTS email_credentials_actor ON email_credentials(actor);
+CREATE INDEX IF NOT EXISTS email_challenges_session ON email_challenges(session);
+CREATE INDEX IF NOT EXISTS email_challenges_email ON email_challenges(email);`);
+  const credentialColumns=this.db.prepare('PRAGMA table_info(email_credentials)').all();if(!credentialColumns.some(c=>c.name==='verified_at'))this.db.exec('ALTER TABLE email_credentials ADD COLUMN verified_at INTEGER');
  }
  tx(fn){this.db.exec('BEGIN IMMEDIATE');try{const r=fn();this.db.exec('COMMIT');return r;}catch(e){this.db.exec('ROLLBACK');throw e;}}
  rate(actor,bucket,limit,seconds=60){const id=bucket+':'+actor+':'+Math.floor(this.now()/1000/seconds);const row=this.db.prepare('INSERT INTO community_limits VALUES(?,1) ON CONFLICT(id) DO UPDATE SET hits=hits+1 RETURNING hits').get(id);if(row.hits>limit)fail('RATE_LIMITED');}
@@ -66,29 +73,51 @@ CREATE INDEX IF NOT EXISTS email_credentials_actor ON email_credentials(actor);`
  csrf(token,provided){const s=this.requireSession(token);if(!equal(s.csrf,provided))fail('CSRF_FAILED');return s;}
  identities(actor){return this.db.prepare('SELECT provider,created FROM identities WHERE actor=? ORDER BY provider').all(actor);}
  emailAddress(actor){return this.db.prepare('SELECT email FROM email_credentials WHERE actor=?').get(actor)?.email||null;}
+ emailVerified(actor){return !!this.db.prepare('SELECT verified_at FROM email_credentials WHERE actor=?').get(actor)?.verified_at;}
  _password(password,salt,expected){try{return equal(passwordHash(validatePassword(password),salt),expected);}catch{return false;}}
  _replaceSession(session,actor,created=false){this.db.prepare('DELETE FROM session_presence WHERE session=?').run(session.hash);this.db.prepare('DELETE FROM account_sessions WHERE token=?').run(session.hash);const issued=this._issue(actor,this.now()),others=this.db.prepare('SELECT token FROM account_sessions WHERE actor=? ORDER BY created DESC').all(actor).slice(5);for(const x of others){this.db.prepare('DELETE FROM account_sessions WHERE token=?').run(x.token);this.db.prepare('DELETE FROM session_presence WHERE session=?').run(x.token);}return {...issued,created,profile:this.profile(actor,actor)};}
- emailSignup(token,email,password){
-  const session=this.requireSession(token);if(session.actor)fail('ALREADY_LINKED');email=normalizeEmail(email);password=validatePassword(password);this.rate(session.hash,'email-signup',6,300);
-  return this.tx(()=>{if(this.db.prepare('SELECT actor FROM email_credentials WHERE email=?').get(email))fail('EMAIL_IN_USE');const authority=this.read(),actor='u_'+crypto.randomUUID();authority.addAccount(actor,{verified:true,createdAt:this.now()});this.ensureProfile(actor,authority);const salt=crypto.randomBytes(16).toString('base64url');this.db.prepare('INSERT INTO email_credentials VALUES(?,?,?,?,?)').run(email,actor,salt,passwordHash(password,salt),this.now());this.db.prepare('INSERT INTO identities VALUES(?,?,?,?)').run('email',email,actor,this.now());this.write(authority);return this._replaceSession(session,actor,true);});
- }
- emailSignin(token,email,password){
-  const session=this.requireSession(token);if(session.actor)fail('ALREADY_LINKED');email=normalizeEmail(email);this.rate(session.hash,'email-signin',10,300);const row=this.db.prepare('SELECT * FROM email_credentials WHERE email=?').get(email);
-  if(!row||!this._password(password,row.salt,row.password_hash))fail('INVALID_CREDENTIALS');this.requireAccount(row.actor);return this.tx(()=>this._replaceSession(session,row.actor,false));
+ _otpHash(id,email,purpose,code){return crypto.createHmac('sha256',this.otpSecret).update([id,email,purpose,code].join('|')).digest('base64url');}
+ _challenge(session,{email,purpose,actor=null,password=null}){
+  this.rate(session.hash,'email-otp-session',8,3600);this.rate(sha(email),'email-otp-address',6,3600);
+  const recent=this.db.prepare('SELECT created FROM email_challenges WHERE session=? AND email=? AND purpose=? AND created>? ORDER BY created DESC LIMIT 1').get(session.hash,email,purpose,this.now()-OTP_COOLDOWN);if(recent)fail('OTP_COOLDOWN');
+  const id=crypto.randomBytes(18).toString('base64url'),code=otpCode(),created=this.now(),expires=created+OTP_TTL;let salt=null,hash=null;
+  if(password!==null){password=validatePassword(password);salt=crypto.randomBytes(16).toString('base64url');hash=passwordHash(password,salt);}
+  this.db.prepare('UPDATE email_challenges SET consumed=1 WHERE session=? AND email=? AND purpose=? AND consumed=0').run(session.hash,email,purpose);
+  this.db.prepare('INSERT INTO email_challenges(id,session,email,purpose,actor,code_hash,password_salt,password_hash,created,expires) VALUES(?,?,?,?,?,?,?,?,?,?)').run(id,session.hash,email,purpose,actor,this._otpHash(id,email,purpose,code),salt,hash,created,expires);
+  return {verificationRequired:true,challengeId:id,email:maskEmail(email),expiresAt:expires,resendAt:created+OTP_COOLDOWN,delivery:{to:email,code,purpose,idempotencyKey:'mega-xo/'+purpose+'/'+id}};
  }
  emailContinue(token,email,password){
   const session=this.requireSession(token);if(session.actor)fail('ALREADY_LINKED');email=normalizeEmail(email);password=validatePassword(password);this.rate(session.hash,'email-continue',10,300);
-  return this.tx(()=>{const row=this.db.prepare('SELECT * FROM email_credentials WHERE email=?').get(email);
-   if(row){if(!this._password(password,row.salt,row.password_hash))fail('INVALID_CREDENTIALS');this.requireAccount(row.actor);return this._replaceSession(session,row.actor,false);}
-   const authority=this.read(),actor='u_'+crypto.randomUUID();authority.addAccount(actor,{verified:true,createdAt:this.now()});this.ensureProfile(actor,authority);const salt=crypto.randomBytes(16).toString('base64url');this.db.prepare('INSERT INTO email_credentials VALUES(?,?,?,?,?)').run(email,actor,salt,passwordHash(password,salt),this.now());this.db.prepare('INSERT INTO identities VALUES(?,?,?,?)').run('email',email,actor,this.now());this.write(authority);return this._replaceSession(session,actor,true);
+  const row=this.db.prepare('SELECT * FROM email_credentials WHERE email=?').get(email);
+  if(row){if(!this._password(password,row.salt,row.password_hash))fail('INVALID_CREDENTIALS');this.requireAccount(row.actor);if(row.verified_at)return this.tx(()=>this._replaceSession(session,row.actor,false));return this.tx(()=>this._challenge(session,{email,purpose:'verify-existing',actor:row.actor}));}
+  return this.tx(()=>this._challenge(session,{email,purpose:'signup',password}));
+ }
+ emailLinkStart(token,email,password){
+  const session=this.requireLinked(token);if(this.now()-session.authAt>15*60000)fail('REAUTH_REQUIRED');email=normalizeEmail(email);password=validatePassword(password);this.rate(session.hash,'email-link',5,300);
+  const found=this.db.prepare('SELECT actor FROM email_credentials WHERE email=?').get(email);if(found&&found.actor!==session.actor)fail('EMAIL_IN_USE');if(found)fail('EMAIL_ALREADY_LINKED');
+  return this.tx(()=>this._challenge(session,{email,purpose:'link',actor:session.actor,password}));
+ }
+ emailVerify(token,id,code){
+  const session=this.requireSession(token);if(typeof id!=='string'||id.length>64||typeof code!=='string'||!/^[0-9]{6}$/.test(code))fail('INVALID_OTP');this.rate(session.hash,'email-otp-verify',12,300);
+  return this.tx(()=>{const row=this.db.prepare('SELECT * FROM email_challenges WHERE id=? AND session=?').get(id,session.hash);if(!row||row.consumed)fail('INVALID_OTP');if(row.expires<=this.now()){this.db.prepare('UPDATE email_challenges SET consumed=1 WHERE id=?').run(id);fail('OTP_EXPIRED');}if(row.verified_at)fail('OTP_USED');if(row.attempts>=OTP_ATTEMPTS)fail('OTP_LOCKED');
+   if(!equal(this._otpHash(row.id,row.email,row.purpose,code),row.code_hash)){this.db.prepare('UPDATE email_challenges SET attempts=attempts+1 WHERE id=?').run(id);fail('INVALID_OTP');}
+   if(row.purpose==='reset'){if(!row.actor)fail('INVALID_OTP');this.db.prepare('UPDATE email_challenges SET verified_at=? WHERE id=?').run(this.now(),id);return {resetReady:true,challengeId:id};}
+   if(row.purpose==='signup'){if(this.db.prepare('SELECT actor FROM email_credentials WHERE email=?').get(row.email))fail('EMAIL_IN_USE');const authority=this.read(),actor='u_'+crypto.randomUUID();authority.addAccount(actor,{verified:true,createdAt:this.now()});this.ensureProfile(actor,authority);this.db.prepare('INSERT INTO email_credentials(email,actor,salt,password_hash,created,verified_at) VALUES(?,?,?,?,?,?)').run(row.email,actor,row.password_salt,row.password_hash,this.now(),this.now());this.db.prepare('INSERT INTO identities VALUES(?,?,?,?)').run('email',row.email,actor,this.now());this.write(authority);this.db.prepare('UPDATE email_challenges SET verified_at=?,consumed=1,actor=? WHERE id=?').run(this.now(),actor,id);return this._replaceSession(session,actor,true);}
+   if(row.purpose==='verify-existing'){const credential=this.db.prepare('SELECT actor FROM email_credentials WHERE email=?').get(row.email);if(!credential||credential.actor!==row.actor)fail('INVALID_OTP');this.db.prepare('UPDATE email_credentials SET verified_at=? WHERE email=?').run(this.now(),row.email);this.db.prepare('UPDATE email_challenges SET verified_at=?,consumed=1 WHERE id=?').run(this.now(),id);return this._replaceSession(session,row.actor,false);}
+   if(row.purpose==='link'){if(!session.actor||session.actor!==row.actor)fail('ACCOUNT_CHANGED');if(this.db.prepare('SELECT actor FROM email_credentials WHERE email=?').get(row.email))fail('EMAIL_IN_USE');this.db.prepare('INSERT INTO email_credentials(email,actor,salt,password_hash,created,verified_at) VALUES(?,?,?,?,?,?)').run(row.email,row.actor,row.password_salt,row.password_hash,this.now(),this.now());this.db.prepare('INSERT INTO identities VALUES(?,?,?,?)').run('email',row.email,row.actor,this.now());this.db.prepare('UPDATE email_challenges SET verified_at=?,consumed=1 WHERE id=?').run(this.now(),id);return {linked:true,profile:this.profile(row.actor,row.actor)};}
+   fail('INVALID_OTP');
   });
  }
- emailLink(token,email,password){
-  const session=this.requireLinked(token);if(this.now()-session.authAt>15*60000)fail('REAUTH_REQUIRED');email=normalizeEmail(email);password=validatePassword(password);this.rate(session.hash,'email-link',5,300);
-  return this.tx(()=>{const found=this.db.prepare('SELECT actor FROM email_credentials WHERE email=?').get(email);if(found&&found.actor!==session.actor)fail('EMAIL_IN_USE');if(found)fail('EMAIL_ALREADY_LINKED');const salt=crypto.randomBytes(16).toString('base64url');this.db.prepare('INSERT INTO email_credentials VALUES(?,?,?,?,?)').run(email,session.actor,salt,passwordHash(password,salt),this.now());this.db.prepare('INSERT INTO identities VALUES(?,?,?,?)').run('email',email,session.actor,this.now());return this.profile(session.actor,session.actor);});
+ emailResetStart(token,email){
+  const session=this.requireSession(token);email=normalizeEmail(email);this.rate(session.hash,'email-reset',5,3600);const credential=this.db.prepare('SELECT actor FROM email_credentials WHERE email=?').get(email);
+  return this.tx(()=>this._challenge(session,{email,purpose:'reset',actor:credential?.actor||null}));
+ }
+ emailResetComplete(token,id,password){
+  const session=this.requireSession(token);password=validatePassword(password);this.rate(session.hash,'email-reset-complete',6,300);
+  return this.tx(()=>{const row=this.db.prepare("SELECT * FROM email_challenges WHERE id=? AND session=? AND purpose='reset'").get(id,session.hash);if(!row||row.consumed||!row.verified_at||row.expires<=this.now()||!row.actor)fail('RESET_NOT_AUTHORIZED');const credential=this.db.prepare('SELECT email FROM email_credentials WHERE actor=?').get(row.actor);if(!credential||credential.email!==row.email)fail('RESET_NOT_AUTHORIZED');const salt=crypto.randomBytes(16).toString('base64url');this.db.prepare('UPDATE email_credentials SET salt=?,password_hash=?,verified_at=? WHERE actor=?').run(salt,passwordHash(password,salt),this.now(),row.actor);this.db.prepare('UPDATE email_challenges SET consumed=1 WHERE id=?').run(id);this.db.prepare('DELETE FROM session_presence WHERE actor=?').run(row.actor);this.db.prepare('DELETE FROM account_sessions WHERE actor=?').run(row.actor);return {...this._replaceSession(session,row.actor,false),passwordChangedEmail:row.email};});
  }
  emailReauth(token,email,password){
-  const session=this.requireLinked(token);email=normalizeEmail(email);this.rate(session.hash,'email-reauth',8,300);const row=this.db.prepare('SELECT * FROM email_credentials WHERE email=? AND actor=?').get(email,session.actor);if(!row||!this._password(password,row.salt,row.password_hash))fail('INVALID_CREDENTIALS');this.db.prepare('UPDATE account_sessions SET auth_at=? WHERE token=?').run(this.now(),session.hash);return this.profile(session.actor,session.actor);
+  const session=this.requireLinked(token);email=normalizeEmail(email);this.rate(session.hash,'email-reauth',8,300);const row=this.db.prepare('SELECT * FROM email_credentials WHERE email=? AND actor=? AND verified_at IS NOT NULL').get(email,session.actor);if(!row||!this._password(password,row.salt,row.password_hash))fail('INVALID_CREDENTIALS');this.db.prepare('UPDATE account_sessions SET auth_at=? WHERE token=?').run(this.now(),session.hash);return this.profile(session.actor,session.actor);
  }
  start(token,provider,intent='login',kind='web'){
   const session=this.requireSession(token);if(!['google','apple'].includes(provider)||!['login','link','reauth'].includes(intent)||!['web','native'].includes(kind))fail('INVALID_AUTH_REQUEST');
@@ -131,7 +160,7 @@ CREATE INDEX IF NOT EXISTS email_credentials_actor ON email_credentials(actor);`
  }
  heartbeat(token,foreground){const s=this.requireLinked(token);if(typeof foreground!=='boolean')fail('INVALID_PRESENCE');this.rate(s.hash,'presence',12,60);this.db.prepare('INSERT INTO session_presence VALUES(?,?,?,?) ON CONFLICT(session) DO UPDATE SET seen=excluded.seen,foreground=excluded.foreground').run(s.hash,s.actor,this.now(),foreground?1:0);return this.presence(s.actor,s.actor);}
  profile(viewer,actor){const a=this.read(),account=a.account(actor),p=this.profileRow(actor);if(!p||account.suspended||account.hold||this.relation(viewer,actor,a)==='blocked')fail('PROFILE_NOT_FOUND');const relation=this.relation(viewer,actor,a),show=viewer===actor||p.stats_visibility==='public'||p.stats_visibility==='friends'&&relation==='friend';
-  const season=a.seasonStatus(account);return {id:actor,tag:p.tag,friendCode:p.tag,username:p.username,name:p.display_name,displayName:p.display_name,avatar:p.avatar,rating:account.rating,games:account.games,tier:a.currentTier(account),season,relation,stats:show?this.stats(account):null,statsVisibility:p.stats_visibility,presence:this.presence(actor,viewer),...(viewer===actor?{providers:this.identities(actor).map(i=>i.provider),email:this.emailAddress(actor),presenceVisibility:p.presence_visibility,profileVersion:p.version,activeMatch:account.activeMatch,cloudRevision:this.db.prepare('SELECT revision FROM profile_saves WHERE actor=?').get(actor)?.revision||0,cosmeticCredits:account.monetization?.credits||0}: {})};
+  const season=a.seasonStatus(account);return {id:actor,tag:p.tag,friendCode:p.tag,username:p.username,name:p.display_name,displayName:p.display_name,avatar:p.avatar,rating:account.rating,games:account.games,tier:a.currentTier(account),season,relation,stats:show?this.stats(account):null,statsVisibility:p.stats_visibility,presence:this.presence(actor,viewer),...(viewer===actor?{providers:this.identities(actor).map(i=>i.provider),email:this.emailAddress(actor),emailVerified:this.emailVerified(actor),presenceVisibility:p.presence_visibility,profileVersion:p.version,activeMatch:account.activeMatch,cloudRevision:this.db.prepare('SELECT revision FROM profile_saves WHERE actor=?').get(actor)?.revision||0,cosmeticCredits:account.monetization?.credits||0}: {})};
  }
  search(actor,query){this.requireAccount(actor);this.rate(actor,'search',30);if(typeof query!=='string'||query.length>64)fail('INVALID_SEARCH');const q=query.trim().replace(/^#|^@/,'');if(q.length<3)fail('SEARCH_TOO_SHORT');let rows;
   if(q.toUpperCase().startsWith('MEGA-'))rows=this.db.prepare('SELECT actor FROM profiles WHERE tag=?').all(q.toUpperCase());else{const key=q.toLowerCase();if(!/^[a-z0-9_]+$/.test(key))return [];rows=this.db.prepare('SELECT actor FROM profiles WHERE username>=? AND username<? ORDER BY CASE WHEN username=? THEN 0 ELSE 1 END,username LIMIT 20').all(key,key+'\uffff',key);}
@@ -151,6 +180,6 @@ CREATE INDEX IF NOT EXISTS email_credentials_actor ON email_credentials(actor);`
  });}
  save(actor,expected,payload){this.requireAccount(actor);if(!Number.isSafeInteger(expected)||expected<0)fail('INVALID_REVISION');this.rate(actor,'save',20);const clean=sanitizePractice(payload);return this.tx(()=>{const row=this.db.prepare('SELECT revision FROM profile_saves WHERE actor=?').get(actor);if((row?.revision||0)!==expected)fail('SAVE_CONFLICT');const revision=expected+1;this.db.prepare('INSERT INTO profile_saves VALUES(?,?,?,?) ON CONFLICT(actor) DO UPDATE SET revision=excluded.revision,payload=excluded.payload,updated=excluded.updated').run(actor,revision,json(clean),this.now());return {revision,updated:this.now()};});}
  restore(actor){this.requireAccount(actor);const row=this.db.prepare('SELECT * FROM profile_saves WHERE actor=?').get(actor);return row?{revision:row.revision,updated:row.updated,practice:JSON.parse(row.payload)}:{revision:0,practice:null};}
- cleanup(){const now=this.now();this.db.prepare('DELETE FROM signin_attempts WHERE expires<?').run(now-3600000);this.db.prepare('DELETE FROM account_sessions WHERE expires<?').run(now);this.db.prepare('DELETE FROM session_presence WHERE seen<?').run(now-3600000);if(this.db.prepare('SELECT COUNT(*) n FROM community_limits').get().n>10000)this.db.prepare('DELETE FROM community_limits WHERE rowid IN (SELECT rowid FROM community_limits ORDER BY rowid LIMIT 1000)').run();}
+ cleanup(){const now=this.now();this.db.prepare('DELETE FROM signin_attempts WHERE expires<?').run(now-3600000);this.db.prepare('DELETE FROM email_challenges WHERE expires<? OR consumed=1 AND created<?').run(now-3600000,now-DAY);this.db.prepare('DELETE FROM account_sessions WHERE expires<?').run(now);this.db.prepare('DELETE FROM session_presence WHERE seen<?').run(now-3600000);if(this.db.prepare('SELECT COUNT(*) n FROM community_limits').get().n>10000)this.db.prepare('DELETE FROM community_limits WHERE rowid IN (SELECT rowid FROM community_limits ORDER BY rowid LIMIT 1000)').run();}
 }
 module.exports={CommunityStore,AVATARS,sanitizePractice};

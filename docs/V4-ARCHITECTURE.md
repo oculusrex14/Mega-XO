@@ -59,9 +59,9 @@ No new paid service is required by the baseline. Resend is already chosen; respe
 
 ## Acceptance gates
 
-Automate configuration rejection, proxy spoof protection, bounded bodies, auth and email recovery invariants, migrations from V3.5.1, singleton startup, recovery, health/maintenance, backup corruption/restore, all existing game tests, browser regression and local load evidence. Public `/opsz` is deliberately binary and sanitized; it combines application readiness, backup freshness and disk headroom for an external monitor, while detailed status stays loopback-only. A separate local systemd monitor checks backup/disk/container restart state and sends Resend transition alerts. Extend the existing validation workflow. Build both amd64/arm64 images in CI; publish only explicitly approved releases. A green build is not a live deployment.
+Automate configuration rejection, proxy spoof protection, bounded bodies, auth and email recovery invariants, migrations from V3.5.1, singleton startup, recovery, health/maintenance, backup corruption/restore, all existing game tests, browser regression and local load evidence. Public `/opsz` is deliberately binary and sanitized; it combines application readiness, backup freshness and disk headroom for an external monitor, while detailed status stays loopback-only. A separate local systemd monitor checks backup/disk/container restart state and sends Resend transition alerts. Extend the existing validation workflow. Build both amd64/arm64 images in CI; publish only explicitly approved releases. Production tags must match `package.json`, pass the blocker ledger gate, and publish one multi-arch GHCR image with provenance/SBOM; the VPS deploys only its immutable digest after `deploy/verify-release.sh` confirms revision/version/architecture. GitHub Action dependencies are pinned to immutable commits. A green build is not a live deployment.
 
-Production hostname is **`play.antimatterinnovations.com`**. The canonical unresolved-access ledger is [V4-OPEN-BLOCKERS.md](V4-OPEN-BLOCKERS.md). Before public launch: confirm actual VPS/OS/ports and public IP; create the Hostinger DNS record for that hostname; verify DNS/TLS; install secrets; send real signup/reset emails; test reboot/backup/restore and real-device network failures; settle privacy/account-deletion/retention requirements. Native billing, ad SDKs and paid-entry approval remain separate work.
+Production hostname is **`play.antimatterinnovations.com`**. The canonical unresolved-access ledger is [V4-OPEN-BLOCKERS.md](V4-OPEN-BLOCKERS.md). Before public launch: confirm actual VPS/OS/ports and public IP; create the Hostinger DNS record for that hostname; verify DNS/TLS; install secrets; send real signup/reset emails; test reboot/backup/restore and real-device network failures; settle privacy/account-deletion/retention requirements. Native billing, ad SDKs, privacy/account deletion, physical-device QA and paid-entry approval remain separate post-backend work governed by `docs/V4-P0-PLATFORM-READINESS.md`. V4.0 keeps purchases, ads and paid entry fail-closed until those independent gates are completed.
 
 ## Primary references reviewed
 
@@ -73,3 +73,16 @@ Production hostname is **`play.antimatterinnovations.com`**. The canonical unres
 - https://resend.com/docs/api-reference/emails/send-email - server-side email delivery contract.
 
 Numerical limits introduced by V4 are explicit starting budgets to validate, not measured industry optima.
+
+
+## Operational handoff documents
+
+- `docs/V4-OPEN-BLOCKERS.md` — canonical external-action/evidence ledger.
+- `deploy/VPS-RUNBOOK.md` — Oracle VPS and DNS bootstrap.
+- `deploy/R2-BACKUP-RUNBOOK.md` — encrypted off-box backup activation.
+- `deploy/STAGING-RUNBOOK.md` — isolated public-TLS staging.
+- `deploy/MONITORING-RUNBOOK.md` — external + local monitoring.
+- `deploy/RELEASE-RUNBOOK.md` — immutable tag/image production release.
+- `deploy/EMAIL-LIVE-ACCEPTANCE.md` — real Resend signup/reset proof.
+- `deploy/PERIMETER-RUNBOOK.md` — host and outside-in network proof.
+- `docs/V4-P0-PLATFORM-READINESS.md` — Google/Apple, native billing, ads, privacy/deletion, device QA and paid-entry gates.

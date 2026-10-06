@@ -28,7 +28,7 @@ async function fixture(t) {
 }
 test('production config is fail-closed and forbids ambiguous secrets or paid enablement',()=>{
  assert.equal(config(secrets).mailDaily,80);
- for(const patch of [{MEGA_ORIGIN:'http://game.test'},{MEGA_DB:'relative.db'},{MEGA_OTP_SECRET:'short'},{MEGA_PROXY_SECRET:'1'.repeat(64)},{MEGA_OTP_SECRET_FILE:'/tmp/key'},{MEGA_PAID_ENTRY_ENABLED:'true'},{MEGA_AD_MODE:'hybrid'},{PORT:'8080x'},{GOOGLE_CLIENT_ID:'incomplete'},{MEGA_MAIL_DAILY_LIMIT:'101'}])assert.throws(()=>config({...secrets,...patch}));
+ for(const patch of [{MEGA_ORIGIN:'http://game.test'},{MEGA_DB:'relative.db'},{MEGA_OTP_SECRET:'short'},{MEGA_PROXY_SECRET:'1'.repeat(64)},{MEGA_OTP_SECRET_FILE:'/tmp/key'},{MEGA_PAID_ENTRY_ENABLED:'true'},{MEGA_PURCHASES_ENABLED:'true'},{MEGA_AD_MODE:'hybrid'},{PORT:'8080x'},{GOOGLE_CLIENT_ID:'incomplete'},{MEGA_MAIL_DAILY_LIMIT:'101'}])assert.throws(()=>config({...secrets,...patch}));
 });
 test('production perimeter authenticates the proxy and never logs tokens or query values',async t=>{
  const f=await fixture(t),c=f.client();

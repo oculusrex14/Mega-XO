@@ -53,13 +53,15 @@ Before scaling to multiple coordinators: normalize account/match/ledger storage 
 
 One VPS is one failure domain, not high availability. The advisory's 99.5% availability, 15-minute RPO and four-hour RTO are targets requiring operational evidence. A 15-minute backup schedule is not a guaranteed 15-minute RPO if uploads fail. Surface backup age and test restores.
 
+The production browser/API origin is **`https://play.antimatterinnovations.com`**. Caddy terminates TLS for that host; the application and SQLite remain private behind it.
+
 No new paid service is required by the baseline. Resend is already chosen; respect its free sending allowance with an application budget. Off-box object storage is optional configuration, but mandatory operationally before inviting users. Use a verified free allowance, a dedicated backup prefix, a strict application quota and alerts; never assume free tiers are unlimited or that a budget notification stops billing. Keep independent copies outside the VPS/provider account where feasible.
 
 ## Acceptance gates
 
 Automate configuration rejection, proxy spoof protection, bounded bodies, auth and email recovery invariants, migrations from V3.5.1, singleton startup, recovery, health/maintenance, backup corruption/restore, all existing game tests, browser regression and local load evidence. Extend the existing validation workflow. Build both amd64/arm64 images in CI; publish only explicitly approved releases. A green build is not a live deployment.
 
-Before public launch: confirm actual VPS/OS/ports and hostname; DNS/TLS; install secrets; send real signup/reset emails; test reboot/backup/restore and real-device network failures; settle privacy/account-deletion/retention requirements. Native billing, ad SDKs and paid-entry approval remain separate work.
+Production hostname is **`play.antimatterinnovations.com`**. Before public launch: confirm actual VPS/OS/ports and public IP; create the Hostinger DNS record for that hostname; verify DNS/TLS; install secrets; send real signup/reset emails; test reboot/backup/restore and real-device network failures; settle privacy/account-deletion/retention requirements. Native billing, ad SDKs and paid-entry approval remain separate work.
 
 ## Primary references reviewed
 

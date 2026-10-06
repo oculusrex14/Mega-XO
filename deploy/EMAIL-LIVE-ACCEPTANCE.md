@@ -8,6 +8,7 @@ It must be run on staging before production and again after the first production
 
 ## Prerequisites
 
+- `npm run mail:audit` passes with the exact current Google Workspace/Resend public DNS hostnames described in `deploy/MAIL-DOMAIN-SECURITY.md`.
 - Resend sender domain verified.
 - Resend API key installed on the target deployment.
 - Target deployment is healthy over real HTTPS.
@@ -88,6 +89,8 @@ For both signup and reset emails, manually confirm:
 
 For the password-changed notification, confirm it arrives after reset and points users to the Antimatter Innovations support address if the change was unauthorized.
 
+For each real message, inspect the mailbox provider's authentication details or raw headers **without copying the full header block into GitHub**. Confirm SPF=PASS, DKIM=PASS with an organizationally aligned signing domain, DMARC=PASS, and that the observed return-path matches the approved aligned return-path design. See `deploy/MAIL-DOMAIN-SECURITY.md`.
+
 ## Failure handling
 
 If the API says the test email already exists, use a fresh mailbox alias. Do not delete production data merely to reuse a test address.
@@ -118,5 +121,7 @@ Recommended evidence:
 signup OTP delivered/verified;
 reset OTP delivered/verified;
 old password rejected;
-same player tag restored.
+same player tag restored;
+SPF/DKIM/DMARC passed on received transactional mail;
+Google Workspace mail remained functional.
 ```

@@ -15,6 +15,8 @@ install -d -m 700 -o root -g root "$ops"
 install -m 700 -o root -g root "$here/check-health.sh" "$ops/check-health.sh"
 install -m 700 -o root -g root "$here/host-health-monitor.sh" "$ops/host-health-monitor.sh"
 install -m 600 -o root -g root "$here/compose.yaml" "$ops/compose.yaml"
+install -m 600 -o root -g root "$here/Caddyfile" "$ops/Caddyfile"
+install -m 600 -o root -g root "$here/Caddyfile.staging" "$ops/Caddyfile.staging"
 
 service=/etc/systemd/system/mega-xo-health.service
 timer=/etc/systemd/system/mega-xo-health.timer

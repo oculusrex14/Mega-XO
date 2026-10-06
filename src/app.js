@@ -251,7 +251,7 @@ document.addEventListener('change',e=>{
  else if(el.id==='profileRegion'){data.profile.region=el.value;save();render();if(online.ready)NET.preferences({region:el.value},opId()).catch(()=>notify('Could not save the online preference.'));}else if(el.id==='wealthPublic'){data.profile.wealthPublic=el.checked;save();if(online.ready)NET.preferences({wealthPublic:el.checked},opId()).catch(()=>notify('Could not save the online preference.'));}else if(el.id.startsWith('challenge'))updateQuote(el.id==='challengeRated');else if(el.id.startsWith('exchange')){if(el.id==='exchangeFrom'){const coins=el.value==='coins';$('#exchangeAmount').step=coins?'10':'1';$('#exchangeAmount').min=coins?'10':'1';$('#exchangeAmount').value=coins?'10':'1';}updateExchange();}
 });
 for(const [id,name] of [['brandIcon','board'],['coinIcon','coin'],['notificationButton','bell'],['settingsButton','settings'],['sheetClose','close'],['backIcon','back'],['matchSettings','sliders'],['routeIcon','route'],['rulesIcon','help'],['restartIcon','refresh'],['statsIcon','chart']])$('#'+id).innerHTML=icon(name);
-refreshIcons();applyTheme();buildBoard();render();save();refreshOnline();
+refreshIcons();applyTheme();buildBoard();render();save();renderConnectivity(window.MegaAccount?.connectivity?.()||{state:navigator.onLine===false?'offline':'online'});refreshOnline();
 if(window.MegaBilling?.products)window.MegaBilling.products().then(items=>{online.products=items.filter(p=>D.CROWN_PACKS.some(q=>q.id===p.id));if(sheetKind==='wallet')wallet();}).catch(()=>{});
 
 // Explicit UI integration points; these never mutate a server wallet or server rating.

@@ -41,7 +41,7 @@ async function main(args=process.argv.slice(2)){
   if(auth.searchParams.get('redirect_uri')!==origin+'/auth/callback/'+provider)throw Error(provider.toUpperCase()+'_REDIRECT_INVALID');
   if(auth.searchParams.get('response_type')!=='code'||!auth.searchParams.get('state')||!auth.searchParams.get('nonce'))throw Error(provider.toUpperCase()+'_OAUTH_PARAMETERS_INVALID');
   if(provider==='google'){
-   if(auth.searchParams.get('scope')!=='openid'||auth.searchParams.get('code_challenge_method')!=='S256'||!auth.searchParams.get('code_challenge'))throw Error('GOOGLE_PKCE_INVALID');
+   const scopes=new Set((auth.searchParams.get('scope')||'').split(/\\s+/).filter(Boolean));if(!scopes.has('openid')||!scopes.has('profile')||scopes.has('email')||auth.searchParams.get('code_challenge_method')!=='S256'||!auth.searchParams.get('code_challenge'))throw Error('GOOGLE_PKCE_INVALID');
   }else if(auth.searchParams.get('response_mode')!=='query')throw Error('APPLE_RESPONSE_MODE_INVALID');
   console.log(provider+': authorization contract passed for '+origin+'/auth/callback/'+provider);
  }

@@ -49,6 +49,10 @@ Repository-side work is implemented; external execution remains tracked below.
 - **Task 23 — Apple StoreKit:** backend signed-transaction JWS verification, exact App Store certificate-profile/root validation, bundle/environment/product/account-token binding, Production App Store app-ID binding for Server Notifications V2, notification dedupe/refund/revocation handling and trusted-root deployment plumbing are implemented. The real StoreKit 2 client, App Store Connect products and Sandbox/TestFlight acceptance remain `EXT-23`.
 - **Task 24 — production ads and consent:** AdMob SSV verification is wired into production; rewarded tickets and interstitial permits are bound to the exact Android/iOS ad unit; production ad modes require approved privacy/deletion configuration, an explicit consent release version and complete native ad units. The browser never grants a reward from a local watched callback. Real Google Mobile Ads/UMP SDK integration and device/region acceptance remain `EXT-24`. Native integration contract: `native/COMMERCE-AND-ADS.md`.
 
+## Additional P0 hardening tasks 21-26
+
+- **Task 21 — real VPS capacity/degradation acceptance:** repository harness is `scripts/capacity-acceptance.js` with execution/evidence rules in `deploy/CAPACITY-RUNBOOK.md`. It uses disposable state, the production coordinator, real HTTP matchmaking/matches, auth contention and forced inflight saturation. Actual Oracle ARM evidence remains `EXT-31`.
+
 ## External action ledger
 
 | ID | Area | Status | Blocker / required access | Exact completion evidence |
@@ -83,6 +87,7 @@ Repository-side work is implemented; external execution remains tracked below.
 | EXT-28 | Operator access drill | BLOCKED | VPS/Tailscale operator access | Operator CLI works only through loopback/Tailscale administration; public admin route remains absent; lookup/session revoke/hold/audit verification drill passes. |
 | EXT-29 | Moderation and appeals policy | BLOCKED | Antimatter Innovations policy decision | Conduct policy, evidence thresholds, suspension/escalation rules, appeals/support path, report retention and authorized moderator roles are approved. |
 | EXT-30 | Personal data export acceptance | BLOCKED | Live staging + real account/browser | Recently reauthenticated account downloads expected JSON; stale auth is rejected; no password/session/OTP/operator material appears; export rate limits proven. |
+| EXT-31 | Oracle ARM capacity/degradation acceptance | BLOCKED | Oracle VPS shell + immutable release-candidate image | Run `deploy/CAPACITY-RUNBOOK.md` on the actual ARM host at multiple client levels; record image digest, VM shape, p95/p99 route latency, event-loop p99, RSS, backpressure onset and the resulting production concurrency limits. |
 
 ## Local-agent execution order
 
@@ -95,6 +100,7 @@ Repository-side work is implemented; external execution remains tracked below.
 7. After the backend release, execute EXT-18 through EXT-25 as independent product/platform tracks; do not enable billing or ads while their blocker remains open.
 8. Treat EXT-26 as a separate future compliance decision. Technical existence of paid-entry code is not approval to enable it.
 9. Complete EXT-27 through EXT-30 before a V4.1 production tag: incident operations, operator access, moderation policy and live data-export acceptance are launch gates.
+10. Run EXT-31 on the real Oracle ARM host before freezing production concurrency limits; keep the harness on disposable state only.
 
 ## Completed external prerequisites
 

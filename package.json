@@ -25,7 +25,8 @@
     "test:invariants": "node --test tests/design-invariants.test.js",
     "test:monetization": "node --test tests/monetization-*.test.js",
     "test:monetization-model": "node tests/monetization-model.js",
-    "test:monetization-ui": "python3 tests/monetization-ui.py"
+    "test:monetization-ui": "python3 tests/monetization-ui.py",
+    "test:capacity": "node scripts/capacity-acceptance.js"
   },
   "author": "Antimatter Innovations <contact@antimatterinnovations.com>"
 }

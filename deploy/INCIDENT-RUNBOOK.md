@@ -44,13 +44,11 @@ Supported names:
 resend_api_key
 google_client_secret
 apple_private_key
-backup_access_key
-backup_secret_key
 proxy_secret
 otp_secret
 ```
 
-The helper validates known formats, atomically replaces the VPS secret, recreates only affected services, restores the previous local value if validation/restart fails, and never prints either secret.
+The helper validates known formats, atomically replaces the VPS secret, recreates only affected services, restores the previous local value if validation/restart fails, and never prints either secret. R2 access credentials are intentionally excluded because they must be rotated as a pair.
 
 Proxy and OTP secret rotation require active audited incident lockdown. Proxy rotation changes the edge-to-app trust boundary and derived operator key. OTP rotation deliberately invalidates every pre-rotation OTP.
 
@@ -66,7 +64,13 @@ For Apple, create a new Sign in with Apple key, rotate `apple_private_key`, upda
 
 ## 6. R2 backup credentials
 
-Create a replacement R2 token scoped only to the backup bucket. Rotate `backup_access_key` and `backup_secret_key`, run the repository check, create/retrieve one fresh snapshot, then revoke the old R2 token. Do not delete backup history just because access credentials changed.
+Create a replacement R2 token scoped only to the backup bucket, then rotate the pair atomically:
+
+```bash
+sudo bash deploy/rotate-r2-credentials.sh /opt/mega-xo /root/new-r2-access /root/new-r2-secret
+```
+
+The helper replaces both values together, recreates the backup worker, runs a Restic repository check, and restores the previous pair if verification fails. Then create/retrieve one fresh snapshot and revoke the old R2 token. Do not delete backup history just because access credentials changed.
 
 ## 7. Restic encryption password
 

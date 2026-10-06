@@ -1,12 +1,12 @@
 # Mega XO - V3.5.1
 
-V3.5.1 builds on the V3.5 monetisation layer with first-party **email + password signup/signin**, clearer self-profile access from Friends, and a revised cosmetic direction. The V3.5 board-frame collection is archived; Cosmetic Credits remain account-bound and are reserved for future full-theme releases. **Live ads and purchases are still disabled by default.**
+V3.5.1 builds on the V3.5 monetisation layer with a single first-party **Continue with email** account flow, clearer self-profile access from Friends, and a revised cosmetic direction. The V3.5 board-frame collection is archived; Cosmetic Credits remain account-bound and are reserved for future full-theme releases. **Live ads and purchases are still disabled by default.**
 
 Current patch reference: [V3.5.1 account and cosmetic patch](docs/V3.5.1-ACCOUNT-COSMETIC-PATCH.md).
 
 Retained monetisation references: [Research](docs/V3.5-MONETISATION-RESEARCH.md), [Implementation and release contract](docs/V3.5-MONETISATION-IMPLEMENTATION.md), and [Validation evidence](docs/V3.5-TESTING.md). Where the V3.5 implementation document still describes the archived frame catalogue, the V3.5.1 patch takes precedence.
 
-Email/password accounts use salted scrypt password hashes and the same authoritative profile/cloud-save/session system as Google/Apple. This branch validates email syntax, but production mailbox ownership verification and password-reset delivery still require a transactional-email provider.
+`Continue with email` signs into the existing profile when that email/password matches one, otherwise it creates a new profile with those credentials. Passwords use salted scrypt hashes and the same authoritative profile/cloud-save/session system as Google/Apple. This branch validates email syntax, but production mailbox ownership verification and password-reset delivery still require a transactional-email provider.
 
 Run `npm test`, `npm run test:monetization`, `npm run test:monetization-model` and `npm run test:monetization-ui`. Browser tests require Python Playwright/Chromium and use isolated test providers, never live ad inventory or real payments.
 

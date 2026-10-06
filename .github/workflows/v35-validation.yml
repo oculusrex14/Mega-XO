@@ -1,34 +1,36 @@
-name: V3.5.x monetisation and account validation
+name: Mega XO validation
 on:
   push:
-    branches: [V3.5, V3.5.1]
+    branches: [V3.5, V3.5.1, V4]
+    tags: ['v4.*']
+  pull_request:
+    branches: [V4]
   workflow_dispatch:
 permissions:
   contents: read
 concurrency:
-  group: v35-${{ github.ref }}
+  group: validation-${{ github.ref }}
   cancel-in-progress: true
 jobs:
   validation:
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    defaults:
+      run:
+        shell: bash
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: '24'
       - name: Source checkpoint
         run: |
           mkdir -p .artifacts
           git archive --format=tar HEAD | gzip > .artifacts/v35-source.tar.gz
       - name: Full Node regression
-        run: |
-          set -o pipefail
-          npm test | tee .artifacts/node-tests.log
+        run: npm test 2>&1 | tee .artifacts/node-tests.log
       - name: Game design invariants
-        run: |
-          set -o pipefail
-          npm run test:invariants | tee .artifacts/invariants.log
+        run: npm run test:invariants 2>&1 | tee .artifacts/invariants.log
       - name: Ranked balance
         run: npm run test:balance
       - name: Population economy model
@@ -43,9 +45,7 @@ jobs:
           python3 -m pip install playwright==1.57.0
           python3 -m playwright install --with-deps chromium
       - name: Chromium monetisation flows
-        run: |
-          set -o pipefail
-          npm run test:monetization-ui | tee .artifacts/browser-tests.log
+        run: npm run test:monetization-ui 2>&1 | tee .artifacts/browser-tests.log
       - name: Collect browser evidence
         if: always()
         run: |
@@ -55,7 +55,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: v35-validation
+          name: v4-validation
           path: .artifacts/
           include-hidden-files: true
           if-no-files-found: error

@@ -1,4 +1,4 @@
-# Native identity integration (V3.3.3)
+# Native identity integration (V4)
 
 The repository is still a browser/Node project. The Kotlin and Swift files are adapters to add to a real Android/iOS application, not built APK/IPA targets. They were not compiled or tested on physical devices in this run. Web OAuth is implemented separately and works when configured.
 
@@ -29,7 +29,7 @@ Enable Sign in with Apple capability on the real App ID. Set the bundle ID in `A
 
 Web Apple sign-in requires a real registered HTTPS callback domain; localhost is not a valid production Apple return URL. The code-only, no-personal-scopes flow permits a query callback. Google/Apple subjects, not email addresses, are identity keys. Hide My Email does not create a new Mega XO account when the Apple subject stays the same.
 
-## Release checks still required
+## V4 release checks still required
 
 Real provider consent/cancellation, deep links/universal links, WebView origin restrictions, Keychain/Keystore or cookie-store lifecycle, Android Credential Manager UI, Swift concurrency/compiler compatibility, revoked-credential handling, Apple server notifications, account-deletion/revocation policy, backup/restore on real devices and native provider button branding. Provider-link changes must not be treated as account deletion. Do not ship a fake success bridge or the test fixture server.
 
@@ -40,3 +40,10 @@ Real provider consent/cancellation, deep links/universal links, WebView origin r
 - https://developers.google.com/identity/openid-connect/openid-connect
 - https://developer.apple.com/documentation/authenticationservices/implementing-user-authentication-with-sign-in-with-apple
 - https://developer.apple.com/documentation/signinwithapple/incorporating-sign-in-with-apple-into-other-platforms
+
+
+## V4 handoff
+
+Production and staging callback/audience configuration, billing/ad separation, privacy/account deletion gates, physical-device QA, and paid-entry compliance are governed by `docs/V4-P0-PLATFORM-READINESS.md`.
+
+Do not enable native purchases, ads, or paid entry merely because identity adapters compile. Each capability has an independent production acceptance gate in `docs/V4-OPEN-BLOCKERS.md`.

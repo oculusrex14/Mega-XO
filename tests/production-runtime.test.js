@@ -95,3 +95,14 @@ test('production ads require deletion privacy consent and complete platform unit
  assert.throws(()=>config({...base,MEGA_ACCOUNT_DELETION_ENABLED:'false',MEGA_AD_MODE:'rewarded'}),/ADS_REQUIRE_PRIVACY_RELEASE/);
  assert.throws(()=>config({...base,MEGA_AD_CONSENT_VERSION:'',MEGA_AD_MODE:'rewarded'}),/ADS_REQUIRE_CONSENT_RELEASE/);
 });
+
+
+test('MX support IDs correlate failures without storing request secrets',async t=>{
+ const f=await fixture(t),c=f.client();await c.call('/api/account/session');
+ const marker='DO_NOT_STORE_SUPPORT_SECRET';
+ const r=await c.call('/api/account/email?token='+marker,{action:'continue'},{Origin:'https://evil.test'});
+ assert.equal(r.status,403);assert.match(r.data.supportId,/^MX-[A-F0-9]{16}$/);assert.equal(r.headers.get('x-support-id'),r.data.supportId);
+ const row=f.runtime.service.store.db.prepare('SELECT id,at,method,route,status,code FROM v41_support_events WHERE id=?').get(r.data.supportId);
+ assert.equal(row.method,'POST');assert.equal(row.route,'/api/account/email');assert.equal(row.status,403);assert.equal(row.code,'ORIGIN_OR_CONTENT_TYPE');
+ assert.equal(JSON.stringify(row).includes(marker),false);assert.equal(JSON.stringify(f.logs).includes(marker),false);
+});

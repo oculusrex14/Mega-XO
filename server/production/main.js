@@ -41,7 +41,7 @@ async function createRuntime(config,{transport,log=()=>{}}={}) {
   outbox=new MailOutbox(service.community,{secret:config.otpSecret,daily:config.mailDaily,monthly:config.mailMonthly,email:config.email,transport,log:value=>telemetry.event(value)});
   const emailAuth=new EmailAuth(service.community,{passwords,outbox,secret:config.otpSecret});
   let lastWorker=Date.now(),workerError=false,maintenanceError=false;
-  const state={ready:false,draining:false,maintenance:()=>control(service.store.db),healthy:()=>{
+  const state={ready:false,draining:false,maintenance:()=>control(service.store.db),operational:()=>false,healthy:()=>{
    try {return state.ready&&!state.draining&&!state.maintenance()&&!workerError&&!maintenanceError&&Date.now()-lastWorker<30000&&service.store.db.prepare('SELECT 1 AS ok').get().ok===1;}catch{return false;}
   }};
   const fast=()=>{try{if(!state.maintenance())service.matchmaker.tick();service.rooms.tick();lastWorker=Date.now();workerError=false;}catch{workerError=true;telemetry.event({event:'game_worker_failed'});}outbox.tick();};
@@ -54,7 +54,9 @@ async function createRuntime(config,{transport,log=()=>{}}={}) {
   const backupStatus=()=>{
    try{const stat=fs.statSync(config.backupStatus);if(stat.size>8192)throw Error();const b=JSON.parse(fs.readFileSync(config.backupStatus,'utf8'));const age=Date.now()-b.completedAt;return {fresh:Number.isFinite(age)&&age>=0&&age<1800000,ageSeconds:Math.floor(age/1000)};}catch{return {fresh:false,ageSeconds:null};}
   };
-  const snapshot=()=>({ok:state.healthy(),maintenance:state.maintenance(),release:config.release,schema:inspect(service.store.db).length,uptimeSeconds:Math.floor(process.uptime()),...telemetry.snapshot(),requestReads:{reused:reads.hits,loaded:reads.misses},queued:service.matchmaker.tickets.size,backup:backupStatus(),mail:service.store.db.prepare('SELECT state,count(*) AS count FROM v4_outbox GROUP BY state').all()});
+  const diskStatus=()=>{try{const d=fs.statfsSync(path.dirname(config.file)),free=d.bavail*d.bsize,total=d.blocks*d.bsize,usedFraction=total>0?1-free/total:1;return {healthy:free>=1024*1024*1024&&usedFraction<0.9,freeBytes:free,usedFraction};}catch{return {healthy:false,freeBytes:null,usedFraction:null};}};
+  state.operational=()=>state.healthy()&&backupStatus().fresh&&diskStatus().healthy;
+  const snapshot=()=>({ok:state.healthy(),operational:state.operational(),maintenance:state.maintenance(),release:config.release,schema:inspect(service.store.db).length,uptimeSeconds:Math.floor(process.uptime()),...telemetry.snapshot(),requestReads:{reused:reads.hits,loaded:reads.misses},queued:service.matchmaker.tickets.size,backup:backupStatus(),disk:diskStatus(),mail:service.store.db.prepare('SELECT state,count(*) AS count FROM v4_outbox GROUP BY state').all()});
   // Never proxied by Caddy; Docker publishes this port to host loopback only.
   metrics=http.createServer((req,res)=>{if(req.method!=='GET')return json(res,405,{error:'METHOD_NOT_ALLOWED'});if(req.url!=='/status')return json(res,404,{error:'NOT_FOUND'});return json(res,200,snapshot());});
   await new Promise((resolve,reject)=>{service.server.once('error',reject);service.server.listen(config.port,config.host,resolve);});

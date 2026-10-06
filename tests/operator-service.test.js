@@ -78,3 +78,12 @@ test('secret rotation helper refuses direct Restic password replacement and requ
  assert.ok(r2.includes('R2 credential pair rotated and repository access verified.'));
  assert.ok(r2.includes('previous credential pair restored.'));
 });
+
+
+test('operator support lookup returns only sanitized request metadata',t=>{
+ const f=fixture(t),id='MX-A1B2C3D4E5F60708';
+ f.store.db.prepare('INSERT INTO v41_support_events(id,at,method,route,status,code) VALUES(?,?,?,?,?,?)').run(id,123456,'POST','/api/v1/move',409,'STALE_REVISION');
+ const value=f.ops.command({action:'support',query:id});
+ assert.deepEqual(value,{id,at:123456,method:'POST',route:'/api/v1/move',status:409,code:'STALE_REVISION'});
+ assert.equal('actor' in value,false);assert.equal('ip' in value,false);assert.throws(()=>f.ops.command({action:'support',query:'MX-not-valid'}),/INVALID_SUPPORT_ID/);
+});

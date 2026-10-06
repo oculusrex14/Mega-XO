@@ -38,9 +38,16 @@ class MailOutbox {
    if(row.hits>limit) throw Error('EMAIL_BUDGET_EXCEEDED');
   }
  }
+ assertCapacity() {
+  const day=new Date(this.now()).toISOString().slice(0,10);
+  for(const [period,limit]of [[day,this.daily],[day.slice(0,7),this.monthly]]) {
+   if((this.db.prepare('SELECT hits FROM v4_limits WHERE id=?').get('mail-budget:'+period)?.hits||0)>=limit)throw Error('EMAIL_BUDGET_EXCEEDED');
+  }
+  if(this.db.prepare("SELECT count(*) n FROM v4_outbox WHERE state IN ('queued','sending')").get().n>=200)throw Error('EMAIL_QUEUE_FULL');
+ }
  enqueue(id,message,expires,kind='otp') {
   if(!this.enabled()) throw Error('EMAIL_DELIVERY_NOT_CONFIGURED');
-  if(this.db.prepare("SELECT count(*) n FROM v4_outbox WHERE state IN ('queued','sending')").get().n>=200) throw Error('EMAIL_QUEUE_FULL');
+  this.assertCapacity();
   this.budget();
   this.db.prepare('INSERT INTO v4_outbox(id,payload,kind,state,created,expires,next_at) VALUES(?,?,?,?,?,?,?)').run(id,this.seal({...message,idempotencyKey:'mega-xo/v4/'+id}),kind,'queued',this.now(),expires,this.now());
  }

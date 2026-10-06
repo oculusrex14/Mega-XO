@@ -46,4 +46,6 @@ Real provider consent/cancellation, deep links/universal links, WebView origin r
 
 Production and staging callback/audience configuration, billing/ad separation, privacy/account deletion gates, physical-device QA, and paid-entry compliance are governed by `docs/V4-P0-PLATFORM-READINESS.md`.
 
+Native billing, StoreKit, Google Mobile Ads, UMP consent and AdMob SSV integration must follow `native/COMMERCE-AND-ADS.md`.
+
 Do not enable native purchases, ads, or paid entry merely because identity adapters compile. Each capability has an independent production acceptance gate in `docs/V4-OPEN-BLOCKERS.md`.

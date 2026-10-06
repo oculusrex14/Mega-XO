@@ -103,6 +103,13 @@ CREATE TABLE IF NOT EXISTS v41_store_notifications (
  received_at INTEGER NOT NULL,
  PRIMARY KEY(store,id)
 );
+`},
+ {id:7, name:'v41-ad-platform-ticket-context', sql:`
+CREATE TABLE IF NOT EXISTS v41_ad_ticket_context (
+ ticket TEXT PRIMARY KEY,
+ platform TEXT NOT NULL CHECK(platform IN ('android','ios','legacy')),
+ ad_unit TEXT NOT NULL
+);
 `}
 ]);
 const checksum = m => crypto.createHash('sha256').update(m.name + '\n' + m.sql).digest('hex');

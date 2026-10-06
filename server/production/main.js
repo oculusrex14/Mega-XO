@@ -51,11 +51,11 @@ async function createRuntime(config,{transport,log=()=>{}}={}) {
    try {return state.ready&&!state.draining&&!state.maintenance()&&!workerError&&!maintenanceError&&Date.now()-lastWorker<30000&&service.store.db.prepare('SELECT 1 AS ok').get().ok===1;}catch{return false;}
   }};
   const fast=()=>{try{if(!state.maintenance())service.matchmaker.tick();service.rooms.tick();lastWorker=Date.now();workerError=false;}catch{workerError=true;telemetry.event({event:'game_worker_failed'});}outbox.tick();};
-  const slow=()=>{try{maintenance(service.store);service.community.cleanup();outbox.cleanup();service.store.db.prepare('DELETE FROM v4_email_versions WHERE challenge NOT IN (SELECT id FROM email_challenges)').run();maintenanceError=false;}catch{maintenanceError=true;telemetry.event({event:'maintenance_failed'});}};
+  const slow=()=>{try{maintenance(service.store);service.community.cleanup();outbox.cleanup();service.store.db.prepare("DELETE FROM v4_limits WHERE id LIKE 'abuse:%' AND expires<?").run(Date.now());service.store.db.prepare('DELETE FROM v4_email_versions WHERE challenge NOT IN (SELECT id FROM email_challenges)').run();maintenanceError=false;}catch{maintenanceError=true;telemetry.event({event:'maintenance_failed'});}};
   slow();fast();timer=setInterval(fast,1000);timer.unref();slowTimer=setInterval(slow,15000);slowTimer.unref();
   const handler=createPerimeter({service,config,emailAuth,telemetry,state});
   service.server.removeAllListeners('request');service.server.on('request',(req,res)=>reads.run(()=>handler(req,res)));
-  Object.assign(service.server,{requestTimeout:10000,headersTimeout:10000,keepAliveTimeout:5000,maxRequestsPerSocket:500,maxHeadersCount:100});
+  Object.assign(service.server,{requestTimeout:10000,headersTimeout:10000,keepAliveTimeout:5000,maxRequestsPerSocket:250,maxHeadersCount:100,maxConnections:config.maxConnections});
   service.server.setTimeout(30000,socket=>socket.destroy());
   const backupStatus=()=>{
    try{const stat=fs.statSync(config.backupStatus);if(stat.size>8192)throw Error();const b=JSON.parse(fs.readFileSync(config.backupStatus,'utf8'));const age=Date.now()-b.completedAt;return {fresh:Number.isFinite(age)&&age>=0&&age<1800000,ageSeconds:Math.floor(age/1000)};}catch{return {fresh:false,ageSeconds:null};}

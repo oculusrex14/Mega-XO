@@ -42,8 +42,11 @@ docker start "$name" >/dev/null
 address=$(docker port "$name" 8080/tcp | head -1)
 for _ in $(seq 1 30); do if curl -fsS "http://$address/readyz" >/dev/null; then break; fi; sleep 1; done
 curl -fsS "http://$address/readyz" >/dev/null
+staging_hash=$(docker run --rm "$caddy_image" caddy hash-password --plaintext ci-only-staging-password)
 for config in Caddyfile Caddyfile.staging; do
- docker run --rm -e MEGA_HOSTNAME=game.test -e ACME_EMAIL=contact@antimatterinnovations.com -e "MEGA_PROXY_SECRET=$proxy" -v "$PWD/deploy:/etc/mega:ro" "$caddy_image" caddy validate --config "/etc/mega/$config" --adapter caddyfile
+ extra=()
+ if [[ "$config" = Caddyfile.staging ]]; then extra=(-e "MEGA_STAGING_PASSWORD_HASH=$staging_hash"); fi
+ docker run --rm -e MEGA_HOSTNAME=game.test -e ACME_EMAIL=contact@antimatterinnovations.com -e "MEGA_PROXY_SECRET=$proxy" "${extra[@]}" -v "$PWD/deploy:/etc/mega:ro" "$caddy_image" caddy validate --config "/etc/mega/$config" --adapter caddyfile
 done
 node scripts/init-vps.js game.test "$work/config" staging >/dev/null
 MEGA_IMAGE="$image" MEGA_ROOT="$work/config" docker compose --env-file "$work/config/compose.env" -f deploy/compose.yaml config --quiet

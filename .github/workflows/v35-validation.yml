@@ -41,7 +41,7 @@ jobs:
         run: npm run test:load 2>&1 | tee .artifacts/load-tests.log
       - name: Deployment shell syntax
         run: |
-          bash -n deploy/release.sh deploy/install-secrets.sh deploy/configure-r2-backup.sh deploy/enable-backups.sh scripts/image-smoke.sh scripts/vps-preflight.sh
+          bash -n deploy/release.sh deploy/install-secrets.sh deploy/configure-r2-backup.sh deploy/enable-backups.sh deploy/prepare-staging.sh scripts/image-smoke.sh scripts/vps-preflight.sh
           sh -n deploy/run.sh deploy/backup-loop.sh
       - uses: actions/setup-python@v5
         with:

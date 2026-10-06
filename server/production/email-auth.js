@@ -28,6 +28,7 @@ class EmailAuth {
   if(recent&&this.now()-recent.created<COOLDOWN)throw Error('OTP_COOLDOWN');
   return this.c.tx(()=>{
    const id=crypto.randomBytes(24).toString('base64url'),code=String(crypto.randomInt(1000000)).padStart(6,'0'),now=this.now();
+   this.db.prepare("UPDATE v4_outbox SET state='cancelled',payload=NULL WHERE state='queued' AND id IN (SELECT id FROM email_challenges WHERE session=? AND email=? AND purpose=?)").run(session.hash,address,purpose);
    this.db.prepare('UPDATE email_challenges SET consumed=1 WHERE session=? AND email=? AND purpose=?').run(session.hash,address,purpose);
    this.db.prepare('INSERT INTO email_challenges(id,session,email,purpose,actor,code_hash,password_salt,password_hash,created,expires) VALUES(?,?,?,?,?,?,?,?,?,?)').run(id,session.hash,address,purpose,actor,this.hashCode(id,address,purpose,code),password?.salt||null,password?.password_hash||null,now,now+TTL);
    this.db.prepare('INSERT INTO v4_email_versions VALUES(?,?)').run(id,stamp(credential));
@@ -102,6 +103,7 @@ class EmailAuth {
  forgot(token,address) {
   const session=this.c.requireSession(token);address=email(address);this.rate(session,address);
   if(!this.outbox.enabled())throw Error('EMAIL_DELIVERY_NOT_CONFIGURED');
+  this.outbox.assertCapacity(); // Same global availability result for known and unknown addresses.
   const row=this.credential(address);
   const result=this.challenge(session,address,'reset',{actor:row?.actor||null,credential:row,dummy:!row});
   // Delivery happens in the background outbox for BOTH response paths: no network

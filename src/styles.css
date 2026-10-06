@@ -691,3 +691,5 @@ body{font-family:'Space Grotesk',ui-sans-serif,system-ui,-apple-system,BlinkMacS
  .nav-button.active,.mode.active,.mini.active{outline:2px solid Highlight;outline-offset:0}
  .progress>span{background:Highlight}
 }
+
+.support-diagnostics{width:100%;min-height:230px;resize:vertical;border:1px solid var(--line);border-radius:12px;background:var(--raised);color:var(--ink);padding:12px;font:12px/1.5 'IBM Plex Mono',ui-monospace,SFMono-Regular,Consolas,monospace;white-space:pre;overflow:auto}

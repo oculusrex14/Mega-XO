@@ -33,6 +33,7 @@ function createCommunityHandler({community,providers,emailer,store,matchmaker,or
    if(req.method==='GET'){
     const s=mine(req),actor=s.actor;
     if(path==='/api/account/save')return send(res,200,community.restore(actor)),true;
+    if(path==='/api/account/sessions')return send(res,200,{sessions:community.sessions(token(req))}),true;
     if(path==='/api/community/friends')return send(res,200,community.friends(actor)),true;
     if(path==='/api/community/search')return send(res,200,community.search(actor,q.get('q')||'')),true;
     if(path.startsWith('/api/community/profile/')){const id=community.resolve(decodeURIComponent(path.slice('/api/community/profile/'.length)));return send(res,200,community.profile(actor,id)),true;}
@@ -61,6 +62,7 @@ function createCommunityHandler({community,providers,emailer,store,matchmaker,or
     }
     if(action==='verify'){
      const result=community.emailVerify(token(req),b.challengeId,b.code);
+     if(result.emailChanged){for(const to of [result.oldEmail,result.newEmail])emailer?.sendSecurityNotice?.({to,event:'email_changed',detail:'The email address used to sign in to your Mega XO profile was changed.',idempotencyKey:'mega-xo/email-changed/'+b.challengeId+'/'+to}).catch(()=>{});delete result.oldEmail;delete result.newEmail;}
      if(result.token){setCookie(res,result.token,14*86400);return send(res,200,{linked:true,csrf:result.csrf,profile:result.profile,created:result.created,verified:true}),true;}
      return send(res,200,result),true;
     }
@@ -82,6 +84,7 @@ function createCommunityHandler({community,providers,emailer,store,matchmaker,or
    if(path==='/api/account/native/challenge'){if(!providers.capabilities()[b.provider]?.native)throw Error('PROVIDER_NOT_CONFIGURED');const attempt=community.start(token(req),b.provider,b.intent||'login','native');return send(res,200,{state:attempt.state,nonce:attempt.nonce,expires:attempt.expires}),true;}
    if(path==='/api/account/native/finish'){const attempt=community.consume(token(req),b.state,b.provider,'native'),identity=await providers.verify(b.provider,b.idToken,attempt.nonce,'native'),logged=community.finishVerified(token(req),attempt,identity);setCookie(res,logged.token,14*86400);return send(res,200,{linked:true,csrf:logged.csrf,profile:logged.profile,created:logged.created}),true;}
    if(path==='/api/account/logout'){const result=community.logout(token(req),b.allDevices===true);setCookie(res,'',0);return send(res,200,result),true;}
+   if(path==='/api/account/sessions/revoke')return send(res,200,b.allOthers===true?community.revokeOtherSessions(token(req)):community.revokeSession(token(req),b.id)),true;
    const actor=mine(req).actor;
    if(path==='/api/account/unlink')return send(res,200,community.unlink(token(req),b.provider)),true;
    if(path==='/api/account/profile')return send(res,200,community.edit(actor,b)),true;

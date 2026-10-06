@@ -80,3 +80,18 @@ test('each theme owns a separate typography contract', () => {
 test('rank UI explains quarterly requalification and Elo continuity',()=>{const app=fs.readFileSync(path.join(ROOT,'src','app.js'),'utf8');assert.ok(app.includes('Season requalification'));assert.ok(app.includes('Quarterly seasons'));assert.ok(app.includes('Your Elo is never wiped'));assert.ok(app.includes('Direct ranked challenges count toward activity but are never mandatory'));});
 
 test('stats exposes aggregate tournament record without internal replay-roadmap copy',()=>{const app=fs.readFileSync(path.join(ROOT,'src','app.js'),'utf8'),community=fs.readFileSync(path.join(ROOT,'src','community.js'),'utf8');assert.ok(app.includes("['tournament','Tournaments']"));assert.ok(app.includes('Only completed public tournaments count'));assert.ok(!app.includes('Match history and replays are reserved for a future update'));assert.ok(community.includes("['tournament','Tournaments']"));});
+
+
+test('network resilience keeps write retries idempotent and exposes user-safe connection states',()=>{
+  const account=fs.readFileSync(path.join(ROOT,'src','account-client.js'),'utf8');
+  const app=fs.readFileSync(path.join(ROOT,'src','app.js'),'utf8');
+  const html=fs.readFileSync(path.join(ROOT,'index.html'),'utf8');
+  assert.ok(account.includes("const operationKey=body===undefined?null:(operation||id())"));
+  assert.ok(account.includes("'Idempotency-Key':operationKey"));
+  assert.ok(account.includes("attempts=body===undefined?3:2"));
+  assert.ok(account.includes("publish('reconnecting'"));
+  assert.ok(html.includes('id="networkStatus"'));
+  for(const state of ['offline','maintenance','auth','timeout','degraded','reconnecting'])assert.ok(app.includes(state+':'));
+  assert.ok(app.includes("if(onlinePollBusy)return;onlinePollBusy=true"));
+  assert.ok(app.includes("retrynetwork:()=>retryNetwork()"));
+});

@@ -14,6 +14,8 @@ test('live email acceptance masks mailbox and generates policy-compliant tempora
 test('live email acceptance never prints generated passwords or OTPs by design',()=>{
  const source=fs.readFileSync(path.join(__dirname,'..','scripts','live-email-acceptance.js'),'utf8');
  assert.ok(source.includes("code=''"));
+ assert.ok(source.includes('setRawMode(true)'));
+ assert.ok(source.includes("process.stdout.write('*')"));
  assert.equal(source.includes('console.log(first)'),false);
  assert.equal(source.includes('console.log(second)'),false);
  assert.equal(source.includes('console.log(code)'),false);

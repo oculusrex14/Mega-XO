@@ -667,3 +667,13 @@ body{font-family:'Space Grotesk',ui-sans-serif,system-ui,-apple-system,BlinkMacS
  :root[data-theme="paperclub"] .nav-button{font-size:11px}
  :root[data-theme="afterhours"] .nav-button{font-size:9.5px}
 }
+
+
+/* Connection state is persistent and readable without blocking offline play. */
+.network-status{margin:0 14px 8px;padding:11px 12px;display:flex;align-items:center;gap:10px;border:1px solid var(--line);border-radius:14px;background:var(--raised);box-shadow:var(--shadow);z-index:9}
+.network-status[data-state="offline"],.network-status[data-state="timeout"],.network-status[data-state="degraded"]{border-color:var(--border-strong)}
+.network-status[data-state="maintenance"]{background:var(--accent-soft);border-color:var(--accent-edge)}
+.network-status[data-state="auth"]{background:var(--danger-soft);border-color:var(--danger)}
+.network-status-copy{flex:1;min-width:0}.network-status-copy strong,.network-status-copy span{display:block}.network-status-copy strong{font-size:12px}.network-status-copy span{font-size:10.5px;color:var(--muted);line-height:1.4;margin-top:2px}
+.network-status-action{min-height:44px;min-width:86px;padding:8px 10px;font-size:11px;flex:none}
+@media(max-width:360px){.network-status{align-items:stretch;flex-direction:column}.network-status-action{width:100%}}

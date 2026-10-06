@@ -72,5 +72,9 @@ test('secret rotation helper refuses direct Restic password replacement and requ
  assert.ok(source.includes("restic_password) echo 'Do not rotate Restic encryption"));
  assert.ok(source.includes('rotation requires an active audited incident lockdown first'));
  assert.ok(source.includes("proxy_secret || \"$name\" = otp_secret"));
+ assert.ok(source.includes('R2 credentials must be rotated together'));
  assert.ok(source.includes('Rotation failed; previous secret restored.'));
+ const r2=fs.readFileSync(path.join(__dirname,'..','deploy','rotate-r2-credentials.sh'),'utf8');
+ assert.ok(r2.includes('R2 credential pair rotated and repository access verified.'));
+ assert.ok(r2.includes('previous credential pair restored.'));
 });

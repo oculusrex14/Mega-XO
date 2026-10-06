@@ -1,12 +1,13 @@
 /* Local test providers ONLY. No __test__ routes exist in production. */
 'use strict';
 const fs=require('node:fs'),os=require('node:os'),path=require('node:path'),crypto=require('node:crypto');
-const {buildService}=require('../server/community-server'),{IdentityProviders}=require('../server/identity-provider'),{jwk,sign}=require('./helpers/identity-fixture'),{createAdMobVerifier}=require('../server/admob-ssv');
+const {buildService}=require('../server/community-server'),{IdentityProviders}=require('../server/identity-provider'),{jwk,sign}=require('./helpers/identity-fixture'),{createAdMobVerifier}=require('../server/admob-ssv'),{migrate}=require('../server/production/migrations');
 const port=Number(process.argv[2]),origin='http://127.0.0.1:'+port,dir=fs.mkdtempSync(path.join(os.tmpdir(),'mega-v35-browser-')),receipts=new Map(),sent=[],keys=crypto.generateKeyPairSync('ec',{namedCurve:'prime256v1'});
 const providers=new IdentityProviders({config:{google:{nativeAudiences:['test-native']}},keysForTest:()=>[jwk]});
 const verifyAd=createAdMobVerifier({fetchKeys:async()=>({keys:[{keyId:1,pem:keys.publicKey.export({type:'spki',format:'pem'})}]})});
 const emailInstance={enabled:()=>true,sendOtp:async message=>{sent.push({...message,type:'otp'});return {id:'fixture-email'};},sendPasswordChanged:async message=>{sent.push({...message,type:'changed'});return {id:'fixture-changed'};}};
 const s=buildService({file:path.join(dir,'db'),origin,providerInstance:providers,emailInstance,allowLocalHttp:true,storeOptions:{otpSecret:'browser-test-otp'},monetizationOptions:{eligible:()=>true,purchasesEnabled:true,verifyPurchase:async token=>receipts.get(token),adMode:'hybrid',adUnits:{android:{rewarded:'fixture-android-rewarded',interstitial:'fixture-android-interstitial'}},verifyAd}});
+migrate(s.store.db);
 const original=s.request;s.server.removeAllListeners('request');s.server.on('request',async(req,res)=>{if(!req.url.startsWith('/__test__/'))return original(req,res);try{let text='';for await(const part of req)text+=part;const b=JSON.parse(text||'{}');let result;
  if(req.url==='/__test__/token')result={idToken:sign(b.provider,b.subject,b.nonce)};
  else if(req.url==='/__test__/buy'){const cookie=/mega_dev_session=([^;]+)/.exec(req.headers.cookie||'')?.[1],actor=s.community.requireLinked(cookie).actor,id=crypto.randomUUID();receipts.set(id,{valid:true,accountId:actor,store:'apple',transactionId:id,productId:b.productId});result={evidence:id};}

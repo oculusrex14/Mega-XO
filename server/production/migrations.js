@@ -110,6 +110,17 @@ CREATE TABLE IF NOT EXISTS v41_ad_ticket_context (
  platform TEXT NOT NULL CHECK(platform IN ('android','ios','legacy')),
  ad_unit TEXT NOT NULL
 );
+`},
+ {id:8, name:'v41-support-correlation', sql:`
+CREATE TABLE IF NOT EXISTS v41_support_events (
+ id TEXT PRIMARY KEY,
+ at INTEGER NOT NULL,
+ method TEXT NOT NULL,
+ route TEXT NOT NULL,
+ status INTEGER NOT NULL,
+ code TEXT NOT NULL DEFAULT ''
+);
+CREATE INDEX IF NOT EXISTS v41_support_events_at ON v41_support_events(at);
 `}
 ]);
 const checksum = m => crypto.createHash('sha256').update(m.name + '\n' + m.sql).digest('hex');

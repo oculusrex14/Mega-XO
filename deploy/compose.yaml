@@ -22,7 +22,9 @@ services:
       MEGA_OTP_SECRET_FILE: /run/secrets/otp_secret
       MEGA_PROXY_SECRET_FILE: /run/secrets/proxy_secret
       RESEND_API_KEY_FILE: /run/secrets/resend_api_key
-    secrets: [otp_secret, proxy_secret, resend_api_key]
+      GOOGLE_CLIENT_SECRET_FILE: /run/secrets/google_client_secret
+      APPLE_PRIVATE_KEY_FILE: /run/secrets/apple_private_key
+    secrets: [otp_secret, proxy_secret, resend_api_key, google_client_secret, apple_private_key]
     volumes:
       - ${MEGA_ROOT}/data:/data
       - ${MEGA_ROOT}/backup-status:/backup-status:ro
@@ -104,6 +106,8 @@ secrets:
   otp_secret: {file: '${MEGA_ROOT}/secrets/otp_secret'}
   proxy_secret: {file: '${MEGA_ROOT}/secrets/proxy_secret'}
   resend_api_key: {file: '${MEGA_ROOT}/secrets/resend_api_key'}
+  google_client_secret: {file: '${MEGA_ROOT}/secrets/google_client_secret'}
+  apple_private_key: {file: '${MEGA_ROOT}/secrets/apple_private_key'}
   restic_password: {file: '${MEGA_ROOT}/secrets/restic_password'}
   backup_access_key: {file: '${MEGA_ROOT}/secrets/backup_access_key'}
   backup_secret_key: {file: '${MEGA_ROOT}/secrets/backup_secret_key'}

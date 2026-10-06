@@ -11,6 +11,22 @@ CREATE TABLE IF NOT EXISTS v4_outbox (id TEXT PRIMARY KEY, payload TEXT, kind TE
 CREATE INDEX IF NOT EXISTS v4_outbox_due ON v4_outbox(state,next_at);
 CREATE TABLE IF NOT EXISTS v4_email_versions (challenge TEXT PRIMARY KEY, credential_hash TEXT);
 CREATE TABLE IF NOT EXISTS v4_runtime (key TEXT PRIMARY KEY, value TEXT NOT NULL);
+`},
+ {id:2, name:'v41-operator-audit', sql:`
+CREATE TABLE IF NOT EXISTS v41_operator_audit (
+ id TEXT PRIMARY KEY,
+ at INTEGER NOT NULL,
+ operator TEXT NOT NULL,
+ action TEXT NOT NULL,
+ actor TEXT,
+ reason TEXT NOT NULL,
+ detail TEXT NOT NULL,
+ prev_hash TEXT NOT NULL,
+ entry_hash TEXT NOT NULL UNIQUE
+);
+CREATE INDEX IF NOT EXISTS v41_operator_audit_actor ON v41_operator_audit(actor,at);
+CREATE TRIGGER IF NOT EXISTS v41_operator_audit_no_update BEFORE UPDATE ON v41_operator_audit BEGIN SELECT RAISE(ABORT,'AUDIT_IMMUTABLE'); END;
+CREATE TRIGGER IF NOT EXISTS v41_operator_audit_no_delete BEFORE DELETE ON v41_operator_audit BEGIN SELECT RAISE(ABORT,'AUDIT_IMMUTABLE'); END;
 `}
 ]);
 const checksum = m => crypto.createHash('sha256').update(m.name + '\n' + m.sql).digest('hex');

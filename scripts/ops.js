@@ -8,7 +8,7 @@ async function main(args=process.argv.slice(2)) {
   const response=await fetch('http://127.0.0.1:'+(process.env.MEGA_METRICS_PORT||9091)+'/status',{signal:AbortSignal.timeout(3000)});
   if(!response.ok)throw Error('SERVICE_UNAVAILABLE');const value=await response.json();
   const disk=fs.statfsSync(file);value.diskUsedFraction=1-disk.bavail/disk.blocks;
-  if(command==='health'&&(!value.ok||value.diskUsedFraction>0.8||(args.includes('--require-backup')&&!value.backup.fresh)))process.exitCode=2;
+  if(command==='health'&&(!value.ok||value.diskUsedFraction>0.8||value.storage?.warnings?.length||(args.includes('--require-backup')&&!value.backup.fresh)))process.exitCode=2;
   return value;
  }
  const db=new DatabaseSync(file,{readOnly:command!=='maintenance'});

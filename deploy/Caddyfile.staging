@@ -13,6 +13,7 @@
 }
 {$MEGA_HOSTNAME} {
  encode zstd gzip
+ header -Server
  header X-Robots-Tag "noindex, nofollow, noarchive"
  basic_auth {
   staging {$MEGA_STAGING_PASSWORD_HASH}

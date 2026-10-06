@@ -34,17 +34,28 @@ function fundCoins(p,amount,propensity,r){
  const convert=Math.min(p.crowns,crowns);p.crowns-=convert;const credit=convert*D.POLICY.coinsPerCrown;p.coins+=credit;p.crownToCoin+=credit;
  return p.coins>=amount;
 }
+function directQuote(t,r){
+ const roll=r(),delta=roll<.15?-1:roll<.60?0:roll<.90?1:2,target=D.TIERS[Math.max(0,Math.min(D.TIERS.length-1,t.index+delta))];
+ const minimum=D.quote({mode:'direct',kind:'leaderboard',from:t.id,to:target.id}).minimum,stakeRoll=r(),factor=stakeRoll<.70?1:stakeRoll<.90?1.5:2,amount=2*Math.ceil(minimum*factor/2);
+ return D.quote({mode:'direct',kind:'leaderboard',from:t.id,to:target.id,amount});
+}
+function weeklyPay(config,p){
+ const w=p.week;if(w.games<D.POLICY.weeklyGames||w.queueGames<D.POLICY.weeklyQueueGames||w.opponents<D.POLICY.weeklyOpponents||w.activeDays<D.POLICY.weeklyActiveDays||w.dailyTiers.length<3)return 0;
+ const indices=w.dailyTiers.map(id=>D.requireTier(id).index).sort((a,b)=>a-b),median=indices[Math.floor((indices.length-1)/2)],index=Math.min(p.a.tier,median);
+ return Math.floor(config.weekly[index]*w.dailyTiers.length/7);
+}
 function simulate(config,seed){
- const r=rng(seed),players=[];for(let i=0;i<N;i++){let n=r(),a=ARCH[0],sum=0;for(const x of ARCH){sum+=x.share;if(n<sum){a=x;break;}}players.push({a,coins:config.startingCoins,crowns:0,neededPurchase:false,purchased:false,below25:false,rankedBlocked:false,tournamentSkipped:false,minted:0,burned:0,tournamentEntries:0,directSpend:0,coinToCrown:0,crownToCoin:0});}
- for(let day=0;day<DAYS;day++){for(const p of players){const a=p.a,t=D.TIERS[a.tier],fee=t.fee,bonus=config.bonus(t);let rankedBonusPaid=0;
-  for(let g=0,n=poisson(a.ranked,r);g<n;g++){if(!fundCoins(p,fee,.35,r)){p.rankedBlocked=true;break;}p.coins-=fee;p.burned+=fee/2;if(r()<a.win){const pay=Math.min(bonus,Math.max(0,config.rankedBonusDailyCap-rankedBonusPaid));rankedBonusPaid+=pay;p.coins+=fee+pay;p.minted+=pay;}}
+ const r=rng(seed),players=[];for(let i=0;i<N;i++){let n=r(),a=ARCH[0],sum=0;for(const x of ARCH){sum+=x.share;if(n<sum){a=x;break;}}players.push({a,coins:config.startingCoins,crowns:0,neededPurchase:false,purchased:false,below25:false,rankedBlocked:false,tournamentSkipped:false,minted:0,burned:0,tournamentEntries:0,directSpend:0,coinToCrown:0,crownToCoin:0,week:{games:0,queueGames:0,opponents:0,activeDays:0,dailyTiers:[]}});}
+ for(let day=0;day<DAYS;day++){for(const p of players){const a=p.a,t=D.TIERS[a.tier],fee=t.fee,bonus=config.bonus(t);let rankedBonusPaid=0,ratedToday=false;
+  for(let g=0,n=poisson(a.ranked,r);g<n;g++){if(!fundCoins(p,fee,.35,r)){p.rankedBlocked=true;break;}p.coins-=fee;p.burned+=fee/2;p.week.games++;p.week.queueGames++;p.week.opponents++;ratedToday=true;if(r()<a.win){const pay=Math.min(bonus,Math.max(0,config.rankedBonusDailyCap-rankedBonusPaid));rankedBonusPaid+=pay;p.coins+=fee+pay;p.minted+=pay;}}
   for(const q of config.quest)if(r()<a.quest){p.coins+=q;p.minted+=q;}
   let botPaid=0,botValues=Object.values(config.bot);for(let b=0,n=Math.min(config.botWins,poisson(a.bot,r));b<n;b++){const value=botValues[Math.min(botValues.length-1,b+2)],pay=Math.min(value,Math.max(0,config.botCap-botPaid));botPaid+=pay;p.coins+=pay;p.minted+=pay;}
   if(r()<a.tournaments/7){const table=a.name==='light'?'low':a.name==='core'?'medium':(r()<.7?'medium':'high'),entry=config.tables[table];if(fundCoins(p,entry,.45,r)){p.coins-=entry;p.tournamentEntries+=entry;p.coins+=entry*10*SHARES[Math.floor(r()*10)];p.burned+=entry*.1;}else p.tournamentSkipped=true;}
-  if(r()<a.direct/7){const pot=Math.max(2,2*Math.ceil(t.fee/2));if(fundCrowns(p,pot,.55,r)){p.crowns-=pot;p.directSpend+=pot;if(r()<a.win)p.crowns+=pot/2;p.burned+=pot*D.POLICY.coinsPerCrown/2;}}
+  if(r()<a.direct/7){const q=directQuote(t,r),pot=q.fee;if(fundCrowns(p,pot,.55,r)){p.crowns-=pot;p.directSpend+=pot;p.week.games++;p.week.opponents++;ratedToday=true;if(r()<a.win)p.crowns+=q.payout;p.burned+=q.burn*D.POLICY.coinsPerCrown;}}
   if(r()<a.premium/30){const entry=config.tables.premium;if(fundCrowns(p,entry,.5,r)){p.crowns-=entry;p.tournamentEntries+=entry*D.POLICY.coinsPerCrown;p.crowns+=entry*10*SHARES[Math.floor(r()*10)];p.burned+=entry*D.POLICY.coinsPerCrown*.1;}}
+  if(ratedToday){p.week.activeDays++;p.week.dailyTiers.push(t.id);}
   if(p.coins<25)p.below25=true;
- }if(day%7===6)for(const p of players){if(r()<(p.a.name==='light'?.5:.8)){const pay=config.weekly[p.a.tier];p.coins+=pay;p.minted+=pay;}}}
+ }if(day%7===6)for(const p of players){const pay=weeklyPay(config,p);if(pay){p.coins+=pay;p.minted+=pay;}p.week={games:0,queueGames:0,opponents:0,activeDays:0,dailyTiers:[]};}}
  const wealth=players.map(p=>p.coins+p.crowns*D.POLICY.coinsPerCrown),sum=k=>players.reduce((n,p)=>n+p[k],0);
  return {players:N,days:DAYS,coinsGeneratedPerPlayerDay:sum('minted')/N/DAYS,coinsBurnedEquivalentPerPlayerDay:sum('burned')/N/DAYS,tournamentEntrySpendPerPlayer:sum('tournamentEntries')/N,directChallengeCrownsSpentPerPlayer:sum('directSpend')/N,coinToCrownConversionPerPlayer:sum('coinToCrown')/N,crownToCoinConversionPerPlayer:sum('crownToCoin')/N,wallet:{p10:percentile(wealth,.1),median:percentile(wealth,.5),p90:percentile(wealth,.9)},everBelow25Coins:players.filter(p=>p.below25).length/N,everBlockedFromRanked:players.filter(p=>p.rankedBlocked).length/N,everSkippedChosenTournament:players.filter(p=>p.tournamentSkipped).length/N,everNeededPurchase:players.filter(p=>p.neededPurchase).length/N,simulatedPurchaserShare:players.filter(p=>p.purchased).length/N};
 }

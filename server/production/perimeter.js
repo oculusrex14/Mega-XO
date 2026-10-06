@@ -13,8 +13,14 @@ function route(path) {
 }
 function json(res,status,value) {
  if(res.headersSent)return;
- res.writeHead(status,{'Content-Type':'application/json','Cache-Control':'no-store'});res.end(JSON.stringify(value));
+ let output=value;
+ if(value&&typeof value==='object'&&!Array.isArray(value)&&typeof value.error==='string'){
+  res._megaPublicCode=value.error;
+  if(res._megaSupportId&&!value.supportId)output={...value,supportId:res._megaSupportId};
+ }
+ res.writeHead(status,{'Content-Type':'application/json','Cache-Control':'no-store'});res.end(JSON.stringify(output));
 }
+const makeSupportId=()=> 'MX-'+crypto.randomBytes(8).toString('hex').toUpperCase();
 function body(req,limit) {
  return new Promise((resolve,reject)=>{
   const chunks=[];let bytes=0,done=false;
@@ -26,12 +32,21 @@ function body(req,limit) {
  });
 }
 class Telemetry {
- constructor(log=()=>{}) {this.log=log;this.inflight=0;this.requests=0;this.errors=0;this.busy=0;this.durations=[0,0,0,0,0,0];this.events={};this.loop=monitorEventLoopDelay({resolution:20});this.loop.enable();}
+ constructor(log=()=>{},db=null) {this.log=log;this.db=db;this.inflight=0;this.requests=0;this.errors=0;this.busy=0;this.durations=[0,0,0,0,0,0];this.events={};this.loop=monitorEventLoopDelay({resolution:20});this.loop.enable();}
  event(value) {const event=value.event;if(!/^[a-z_]{1,48}$/.test(event))return;this.events[event]=(this.events[event]||0)+1;this.log({event});}
- finish(id,method,label,status,start) {
+ finish(id,method,label,status,start,code='') {
   const ms=performance.now()-start;this.requests++;if(status>=500)this.errors++;
   [10,50,150,400,1000,Infinity].forEach((n,i)=>{if(ms<=n)this.durations[i]++;});
-  this.log({event:'http',requestId:id,method,route:label,status,durationMs:Math.round(ms*100)/100});
+  this.log({event:'http',supportId:id,method,route:label,status,durationMs:Math.round(ms*100)/100});
+  if(this.db)try{
+   const now=Date.now(),safeCode=/^[A-Z0-9_]{0,64}$/.test(code)?code:'';
+   this.db.prepare('INSERT OR REPLACE INTO v41_support_events(id,at,method,route,status,code) VALUES(?,?,?,?,?,?)').run(id,now,method,label,status,safeCode);
+   if(this.requests%100===0){
+    this.db.prepare('DELETE FROM v41_support_events WHERE at<?').run(now-7*86400000);
+    const count=Number(this.db.prepare('SELECT count(*) AS n FROM v41_support_events').get().n||0),extra=count-5000;
+    if(extra>0)this.db.prepare('DELETE FROM v41_support_events WHERE id IN (SELECT id FROM v41_support_events ORDER BY at ASC LIMIT ?)').run(extra);
+   }
+  }catch{this.event({event:'support_index_failed'});}
  }
  snapshot(){return {requests:this.requests,errors:this.errors,inflight:this.inflight,busy:this.busy,durationBuckets:this.durations,eventLoopP99Ms:Math.round(this.loop.percentile(99)/1e6),rssBytes:process.memoryUsage().rss,events:{...this.events}};}
  close(){this.loop.disable();}
@@ -39,11 +54,11 @@ class Telemetry {
 function createPerimeter({service,config,emailAuth,telemetry,state}) {
  const abuse=new AbuseGuard(service.store.db,{secret:config.proxySecret});
  return async(req,res)=>{
-  const id=crypto.randomUUID(),start=performance.now();let path='/',tracked=false;
-  res.setHeader('X-Request-ID',id);res.setHeader('X-Content-Type-Options','nosniff');res.setHeader('X-Frame-Options','DENY');res.setHeader('Referrer-Policy','no-referrer');
+  const id=makeSupportId(),start=performance.now();let path='/',tracked=false;
+  res._megaSupportId=id;res.setHeader('X-Request-ID',id);res.setHeader('X-Support-ID',id);res.setHeader('X-Content-Type-Options','nosniff');res.setHeader('X-Frame-Options','DENY');res.setHeader('Referrer-Policy','no-referrer');
   res.setHeader('Permissions-Policy','camera=(), microphone=(), geolocation=()');
   res.setHeader('Content-Security-Policy',"default-src 'self'; script-src 'self' https://unpkg.com/lucide@0.468.0/; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'; object-src 'none'");
-  res.once('finish',()=>{telemetry.finish(id,['GET','HEAD','POST'].includes(req.method)?req.method:'OTHER',route(path),res.statusCode,start);});
+  res.once('finish',()=>{telemetry.finish(id,['GET','HEAD','POST'].includes(req.method)?req.method:'OTHER',route(path),res.statusCode,start,res._megaPublicCode||'');});
   try {
    if(typeof req.url!=='string'||!req.url.startsWith('/')||req.url.length>8192)throw Error('BAD_REQUEST');
    path=new URL(req.url,config.origin).pathname;

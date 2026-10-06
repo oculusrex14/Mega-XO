@@ -77,8 +77,11 @@ if(require.main===module) {
   const config=loadConfig();
   if(process.argv.includes('--check-config')){log({event:'config_valid',stage:config.stage,origin:config.origin,emailEnabled:!!config.email.apiKey});return;}
   if(process.env.MEGA_COORDINATOR_LOCKED!=='1')throw Error('USE_PRODUCTION_LAUNCHER');
-  const runtime=await createRuntime(config,{log});let stopping=false;
-  for(const signal of ['SIGINT','SIGTERM'])process.on(signal,async()=>{if(stopping)return;stopping=true;await runtime.close();process.exit(0);});
+  let runtime=null,stopping=false;
+  const stop=async()=>{if(stopping)return;stopping=true;if(runtime){await runtime.close();process.exit(0);}};
+  for(const signal of ['SIGINT','SIGTERM'])process.on(signal,stop);
+  runtime=await createRuntime(config,{log});
+  if(stopping){await runtime.close();process.exit(0);}
  })().catch(error=>{log({event:'startup_failed',code:/^[A-Z0-9_]+$/.test(error.message)?error.message:'STARTUP_FAILED'});process.exitCode=1;});
 }
 module.exports={createRuntime,recover};

@@ -27,3 +27,14 @@ test('Linux production launcher rejects a second coordinator and releases lock a
  const exit=once(first,'exit');first.kill('SIGTERM');assert.equal((await exit)[0],0);
  const restarted=await start(),done=once(restarted,'exit');restarted.kill('SIGTERM');assert.equal((await done)[0],0);
 });
+
+test('production runtime dependencies are pinned by immutable multi-arch digest',()=>{
+ const dockerfile=fs.readFileSync(path.join(ROOT,'Dockerfile'),'utf8');
+ const compose=fs.readFileSync(path.join(ROOT,'deploy','compose.yaml'),'utf8');
+ const smoke=fs.readFileSync(path.join(ROOT,'scripts','image-smoke.sh'),'utf8');
+ assert.match(dockerfile,/ARG NODE_IMAGE=node@sha256:[a-f0-9]{64}/);
+ assert.match(compose,/CADDY_IMAGE:-caddy@sha256:[a-f0-9]{64}/);
+ assert.match(smoke,/caddy_image='caddy@sha256:[a-f0-9]{64}'/);
+ assert.equal(dockerfile.includes('ARG NODE_IMAGE=node:24-bookworm-slim'),false);
+ assert.equal(compose.includes('CADDY_IMAGE:-caddy:2-alpine'),false);
+});

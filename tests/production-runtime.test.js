@@ -106,3 +106,11 @@ test('MX support IDs correlate failures without storing request secrets',async t
  assert.equal(row.method,'POST');assert.equal(row.route,'/api/account/email');assert.equal(row.status,403);assert.equal(row.code,'ORIGIN_OR_CONTENT_TYPE');
  assert.equal(JSON.stringify(row).includes(marker),false);assert.equal(JSON.stringify(f.logs).includes(marker),false);
 });
+
+
+test('production sender domain is explicit and cannot drift from the From address',()=>{
+ assert.equal(config(secrets).email.domain,'antimatterinnovations.com');
+ assert.throws(()=>config({...secrets,MEGA_EMAIL_FROM:'Mega XO <contact@example.com>'}),/EMAIL_FROM_DOMAIN_MISMATCH/);
+ const custom=config({...secrets,MEGA_EMAIL_DOMAIN:'mail.example.com',MEGA_EMAIL_FROM:'Mega XO <contact@mail.example.com>'});
+ assert.equal(custom.email.domain,'mail.example.com');
+});

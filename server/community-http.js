@@ -54,8 +54,8 @@ function createCommunityHandler({community,providers,store,matchmaker,origin,all
    const b=await readBody(req),session=community.requireSession(token(req));
    if(path==='/api/account/email'){
     const action=b.action;
-    if(action==='signup'||action==='signin'){
-     const logged=action==='signup'?community.emailSignup(token(req),b.email,b.password):community.emailSignin(token(req),b.email,b.password);
+    if(action==='continue'){
+     const logged=community.emailContinue(token(req),b.email,b.password);
      setCookie(res,logged.token,14*86400);return send(res,200,{linked:true,csrf:logged.csrf,profile:logged.profile,created:logged.created}),true;
     }
     if(action==='link')return send(res,200,community.emailLink(token(req),b.email,b.password)),true;

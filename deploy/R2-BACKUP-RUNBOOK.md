@@ -69,10 +69,10 @@ After the command succeeds, securely remove the temporary credential files. The 
 The generated repository format is:
 
 ```text
-s3:https://<ACCOUNT_ID>.r2.cloudflarestorage.com/mega-xo-backups/mega-xo-v4
+s3:https://<ACCOUNT_ID>.r2.cloudflarestorage.com/mega-xo-backups/mega-xo-v4-production
 ```
 
-and `AWS_DEFAULT_REGION=auto`.
+and `AWS_DEFAULT_REGION=auto`. A staging root automatically uses the separate `mega-xo-v4-staging` prefix, so two environments can never share a Restic repository encrypted with different passwords.
 
 ## 4. Preserve the Restic recovery password outside the failure domain
 

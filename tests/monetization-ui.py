@@ -48,6 +48,11 @@ try:
   page.locator('#cEmailPassword').fill('correct-horse-42')
   assert page.locator('#cEmailPasswordConfirm').count()==0
   page.locator('[data-c="email-submit"][data-id="continue"]').click()
+  page.locator('#cEmailOtp').wait_for(timeout=10000)
+  otp=page.evaluate('fetch("/__test__/otp",{method:"POST",headers:{"Content-Type":"application/json"},body:"{}"}).then(r=>r.json())')
+  assert otp['purpose']=='signup' and otp['to']=='alice@example.com'
+  page.locator('#cEmailOtp').fill(otp['code'])
+  page.locator('[data-c="email-otp"]').click()
   page.locator('#identityScreen.profile').wait_for(timeout=10000)
   assert page.locator('button[data-c="edit"]').count()==1
   page.locator('button[data-c="edit"]').click()
@@ -55,7 +60,7 @@ try:
   page.locator('#cDisplayName').fill('Alice')
   page.locator('[data-c="saveprofile"]').click()
   page.wait_for_function('document.querySelector("#identityScreen")?.innerText.includes("@alice_xo")')
-  checks.append('single Continue with email button creates a missing profile and username can be edited from the self-profile UI')
+  checks.append('single Continue with email button sends OTP, verifies ownership, creates the profile and allows username editing')
   page.locator('[data-c="dismiss"]').click()
 
   page.evaluate('MegaApp.goFriends()')

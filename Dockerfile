@@ -1,6 +1,6 @@
 # Override NODE_IMAGE with a vetted digest for a reproducible release rebuild.
 # The deployed application image itself is always selected by immutable digest.
-ARG NODE_IMAGE=node:24-bookworm-slim
+ARG NODE_IMAGE=node@sha256:d6aa754f16b3197301076f047b5def2f02ea1dbbc2ca920407d46d7ec7f87b20
 FROM ${NODE_IMAGE}
 RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates util-linux restic \
     && rm -rf /var/lib/apt/lists/*

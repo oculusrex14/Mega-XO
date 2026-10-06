@@ -67,6 +67,42 @@ CREATE TABLE IF NOT EXISTS v41_deletion_receipts (
  policy_version TEXT NOT NULL,
  retained TEXT NOT NULL
 );
+`},
+ {id:6, name:'v41-store-purchase-boundaries', sql:`
+CREATE TABLE IF NOT EXISTS v41_store_bindings (
+ actor TEXT PRIMARY KEY,
+ google_id TEXT NOT NULL UNIQUE,
+ apple_token TEXT NOT NULL UNIQUE,
+ created INTEGER NOT NULL
+);
+CREATE TABLE IF NOT EXISTS v41_store_revocations (
+ store TEXT NOT NULL CHECK(store IN ('google','apple')),
+ transaction_id TEXT NOT NULL,
+ product_id TEXT,
+ occurred_at INTEGER NOT NULL,
+ reason TEXT NOT NULL,
+ PRIMARY KEY(store,transaction_id)
+);
+CREATE TABLE IF NOT EXISTS v41_store_finalize (
+ store TEXT NOT NULL CHECK(store='google'),
+ transaction_id TEXT NOT NULL,
+ product_id TEXT NOT NULL,
+ purchase_token TEXT NOT NULL,
+ kind TEXT NOT NULL CHECK(kind IN ('consume','acknowledge')),
+ state TEXT NOT NULL CHECK(state IN ('pending','done')),
+ attempts INTEGER NOT NULL DEFAULT 0,
+ next_at INTEGER NOT NULL,
+ created INTEGER NOT NULL,
+ updated INTEGER NOT NULL,
+ PRIMARY KEY(store,transaction_id)
+);
+CREATE INDEX IF NOT EXISTS v41_store_finalize_due ON v41_store_finalize(state,next_at);
+CREATE TABLE IF NOT EXISTS v41_store_notifications (
+ store TEXT NOT NULL CHECK(store IN ('google','apple')),
+ id TEXT NOT NULL,
+ received_at INTEGER NOT NULL,
+ PRIMARY KEY(store,id)
+);
 `}
 ]);
 const checksum = m => crypto.createHash('sha256').update(m.name + '\n' + m.sql).digest('hex');

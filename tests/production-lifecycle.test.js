@@ -103,3 +103,10 @@ test('release workflow is gated and emits an immutable release manifest',()=>{
  assert.ok(verify.includes('org.opencontainers.image.revision'));
  assert.ok(verify.includes('ghcr.io/oculusrex14/mega-xo@sha256:'));
 });
+
+test('GitHub release workflow uses immutable action revisions',()=>{
+ const workflow=fs.readFileSync(path.join(ROOT,'.github','workflows','v35-validation.yml'),'utf8');
+ const uses=workflow.split(/\r?\n/).map(line=>line.trim()).filter(line=>line.startsWith('- uses: '));
+ assert.ok(uses.length>=8);
+ for(const line of uses)assert.match(line,/^- uses: [A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+@[a-f0-9]{40}(?:\s+#\s+v\d+)?$/,'Mutable GitHub Action reference: '+line);
+});

@@ -86,6 +86,7 @@ function config(env = process.env) {
     mailDaily: integer(env, 'MEGA_MAIL_DAILY_LIMIT', 80, 1, 100),
     mailMonthly: integer(env, 'MEGA_MAIL_MONTHLY_LIMIT', 2400, 1, 3000),
     authWorkers: integer(env, 'MEGA_AUTH_WORKERS', 2, 1, 4),
+    storage: Object.freeze({dbWarnBytes:integer(env,'MEGA_DB_WARN_BYTES',1073741824,1048576,1099511627776),walWarnBytes:integer(env,'MEGA_WAL_WARN_BYTES',134217728,1048576,1099511627776),stateWarnBytes:integer(env,'MEGA_STATE_WARN_BYTES',67108864,1048576,1073741824)}),
     backupStatus: env.MEGA_BACKUP_STATUS || '/backup-status/last-success.json',
     release: /^[a-f0-9]{40}$/.test(env.MEGA_RELEASE || '') ? env.MEGA_RELEASE : 'local',
     email: {apiKey, from},

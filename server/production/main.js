@@ -5,6 +5,7 @@ const {buildService}=require('../community-server');
 const {maintenance}=require('../jobs');
 const {config:loadConfig}=require('./config');
 const {preflight,migrate,control,inspect}=require('./migrations');
+const {storageSnapshot}=require('./storage-health');
 const {Passwords}=require('./passwords');
 const {ReadContext}=require('./read-context');
 const {MailOutbox}=require('./mail-outbox');
@@ -81,7 +82,7 @@ async function createRuntime(config,{transport,log=()=>{}}={}) {
   };
   const diskStatus=()=>{try{const d=fs.statfsSync(path.dirname(config.file)),free=d.bavail*d.bsize,total=d.blocks*d.bsize,usedFraction=total>0?1-free/total:1;return {healthy:free>=1024*1024*1024&&usedFraction<0.9,freeBytes:free,usedFraction};}catch{return {healthy:false,freeBytes:null,usedFraction:null};}};
   state.operational=()=>state.healthy()&&backupStatus().fresh&&diskStatus().healthy;
-  const snapshot=()=>({ok:state.healthy(),operational:state.operational(),maintenance:state.maintenance(),release:config.release,schema:inspect(service.store.db).length,uptimeSeconds:Math.floor(process.uptime()),...telemetry.snapshot(),requestReads:{reused:reads.hits,loaded:reads.misses},queued:service.matchmaker.tickets.size,backup:backupStatus(),disk:diskStatus(),mail:service.store.db.prepare('SELECT state,count(*) AS count FROM v4_outbox GROUP BY state').all()});
+  const snapshot=()=>({ok:state.healthy(),operational:state.operational(),maintenance:state.maintenance(),release:config.release,schema:inspect(service.store.db).length,uptimeSeconds:Math.floor(process.uptime()),...telemetry.snapshot(),requestReads:{reused:reads.hits,loaded:reads.misses},queued:service.matchmaker.tickets.size,backup:backupStatus(),disk:diskStatus(),storage:storageSnapshot(service.store.db,config.file,config.storage),mail:service.store.db.prepare('SELECT state,count(*) AS count FROM v4_outbox GROUP BY state').all()});
   // Never proxied by Caddy; Docker publishes this port to host loopback only.
   metrics=http.createServer(async(req,res)=>{
    try{

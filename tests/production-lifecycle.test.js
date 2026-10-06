@@ -38,3 +38,16 @@ test('production runtime dependencies are pinned by immutable multi-arch digest'
  assert.equal(dockerfile.includes('ARG NODE_IMAGE=node:24-bookworm-slim'),false);
  assert.equal(compose.includes('CADDY_IMAGE:-caddy:2-alpine'),false);
 });
+
+test('VPS initialization and Compose keep provider credentials in secret files',()=>{
+ const init=fs.readFileSync(path.join(ROOT,'scripts','init-vps.js'),'utf8');
+ const compose=fs.readFileSync(path.join(ROOT,'deploy','compose.yaml'),'utf8');
+ const installer=fs.readFileSync(path.join(ROOT,'deploy','install-secrets.sh'),'utf8');
+ for(const name of ['resend_api_key','google_client_secret','apple_private_key'])assert.ok(init.includes(name));
+ assert.ok(compose.includes('GOOGLE_CLIENT_SECRET_FILE: /run/secrets/google_client_secret'));
+ assert.ok(compose.includes('APPLE_PRIVATE_KEY_FILE: /run/secrets/apple_private_key'));
+ assert.ok(compose.includes("google_client_secret: {file: '\${MEGA_ROOT}/secrets/google_client_secret'}"));
+ assert.ok(compose.includes("apple_private_key: {file: '\${MEGA_ROOT}/secrets/apple_private_key'}"));
+ assert.ok(installer.includes('No secret values were printed.'));
+ assert.equal(installer.includes('printf \'%s\\n\' "$resend"'),false);
+});

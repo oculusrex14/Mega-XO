@@ -67,7 +67,7 @@ class MailOutbox {
    if(!row)return;
    try {
     const message=this.open(row.payload);
-    if(row.kind==='changed')await this.transport.sendPasswordChanged(message);else await this.transport.sendOtp(message);
+    if(row.kind==='changed')await this.transport.sendPasswordChanged(message);else if(row.kind==='security')await this.transport.sendSecurityNotice(message);else await this.transport.sendOtp(message);
     this.db.prepare("UPDATE v4_outbox SET state='sent',payload=NULL,lease_until=0 WHERE id=?").run(row.id);
     this.log({event:'mail_sent'});
    } catch {

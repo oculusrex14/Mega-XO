@@ -46,12 +46,12 @@ services:
     mem_limit: 256m
     cpus: 0.5
     entrypoint: ['/bin/sh', '-ec']
-    command: ['export MEGA_PROXY_SECRET="$$(cat /run/secrets/proxy_secret)"; exec caddy run --config /etc/caddy/Caddyfile --adapter caddyfile']
+    command: ['export MEGA_PROXY_SECRET="$(cat /run/secrets/proxy_secret)"; export MEGA_STAGING_PASSWORD_HASH="$(cat /run/secrets/staging_password_hash 2>/dev/null || true)"; exec caddy run --config /etc/caddy/Caddyfile --adapter caddyfile']
     environment:
       MEGA_HOSTNAME: ${MEGA_HOSTNAME:?Set the public game hostname}
       ACME_EMAIL: contact@antimatterinnovations.com
       MEGA_TRUSTED_PROXIES: ${MEGA_TRUSTED_PROXIES:-127.0.0.1/32}
-    secrets: [proxy_secret]
+    secrets: [proxy_secret, staging_password_hash]
     volumes:
       - ./${MEGA_CADDY_FILE:-Caddyfile}:/etc/caddy/Caddyfile:ro
       - caddy-data:/data
@@ -105,6 +105,7 @@ volumes:
 secrets:
   otp_secret: {file: '${MEGA_ROOT}/secrets/otp_secret'}
   proxy_secret: {file: '${MEGA_ROOT}/secrets/proxy_secret'}
+  staging_password_hash: {file: '${MEGA_ROOT}/secrets/staging_password_hash'}
   resend_api_key: {file: '${MEGA_ROOT}/secrets/resend_api_key'}
   google_client_secret: {file: '${MEGA_ROOT}/secrets/google_client_secret'}
   apple_private_key: {file: '${MEGA_ROOT}/secrets/apple_private_key'}

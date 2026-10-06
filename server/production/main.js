@@ -34,15 +34,16 @@ async function createRuntime(config,{transport,log=()=>{}}={}) {
  try {
   migrate(service.store.db);service.rooms.db.exec('PRAGMA synchronous=FULL; PRAGMA foreign_keys=ON; PRAGMA busy_timeout=1000;');
   recover(service);
+  service.matchmaker.maxTickets=config.maxQueued||200;
   telemetry=new Telemetry(log);passwords=new Passwords({concurrency:config.authWorkers});
   outbox=new MailOutbox(service.community,{secret:config.otpSecret,daily:config.mailDaily,monthly:config.mailMonthly,email:config.email,transport,log:value=>telemetry.event(value)});
   const emailAuth=new EmailAuth(service.community,{passwords,outbox,secret:config.otpSecret});
-  let lastWorker=Date.now(),workerError=false;
+  let lastWorker=Date.now(),workerError=false,maintenanceError=false;
   const state={ready:false,draining:false,maintenance:()=>control(service.store.db),healthy:()=>{
-   try {return state.ready&&!state.draining&&!state.maintenance()&&!workerError&&Date.now()-lastWorker<30000&&service.store.db.prepare('SELECT 1 AS ok').get().ok===1;}catch{return false;}
+   try {return state.ready&&!state.draining&&!state.maintenance()&&!workerError&&!maintenanceError&&Date.now()-lastWorker<30000&&service.store.db.prepare('SELECT 1 AS ok').get().ok===1;}catch{return false;}
   }};
   const fast=()=>{try{if(!state.maintenance())service.matchmaker.tick();service.rooms.tick();lastWorker=Date.now();workerError=false;}catch{workerError=true;telemetry.event({event:'game_worker_failed'});}outbox.tick();};
-  const slow=()=>{try{maintenance(service.store);service.community.cleanup();outbox.cleanup();service.store.db.prepare('DELETE FROM v4_email_versions WHERE challenge NOT IN (SELECT id FROM email_challenges)').run();}catch{workerError=true;telemetry.event({event:'maintenance_failed'});}};
+  const slow=()=>{try{maintenance(service.store);service.community.cleanup();outbox.cleanup();service.store.db.prepare('DELETE FROM v4_email_versions WHERE challenge NOT IN (SELECT id FROM email_challenges)').run();maintenanceError=false;}catch{maintenanceError=true;telemetry.event({event:'maintenance_failed'});}};
   slow();fast();timer=setInterval(fast,1000);timer.unref();slowTimer=setInterval(slow,15000);slowTimer.unref();
   service.server.removeAllListeners('request');service.server.on('request',createPerimeter({service,config,emailAuth,telemetry,state}));
   Object.assign(service.server,{requestTimeout:10000,headersTimeout:10000,keepAliveTimeout:5000,maxRequestsPerSocket:500,maxHeadersCount:100});
@@ -75,6 +76,6 @@ if(require.main===module) {
   if(process.env.MEGA_COORDINATOR_LOCKED!=='1')throw Error('USE_PRODUCTION_LAUNCHER');
   const runtime=await createRuntime(config,{log});let stopping=false;
   for(const signal of ['SIGINT','SIGTERM'])process.on(signal,async()=>{if(stopping)return;stopping=true;await runtime.close();process.exit(0);});
- })().catch(()=>{log({event:'startup_failed'});process.exitCode=1;});
+ })().catch(error=>{log({event:'startup_failed',code:/^[A-Z0-9_]+$/.test(error.message)?error.message:'STARTUP_FAILED'});process.exitCode=1;});
 }
 module.exports={createRuntime,recover};

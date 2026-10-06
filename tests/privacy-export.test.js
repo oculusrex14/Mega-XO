@@ -49,10 +49,12 @@ test('account deletion remains fail closed until an approved privacy policy exis
  const base={MEGA_ENV:'staging',MEGA_ORIGIN:'https://staging.play.antimatterinnovations.com',MEGA_DB:path.join(dir,'db.sqlite'),MEGA_OTP_SECRET:'a'.repeat(64),MEGA_PROXY_SECRET:'b'.repeat(64),MEGA_PAID_ENTRY_ENABLED:'false',MEGA_PURCHASES_ENABLED:'false',MEGA_AD_MODE:'off'};
  assert.throws(()=>config({...base,MEGA_ACCOUNT_DELETION_ENABLED:'true'}),/ACCOUNT_DELETION_POLICY_NOT_APPROVED/);
  const ok=config({...base,MEGA_ACCOUNT_DELETION_ENABLED:'false'});assert.equal(ok.stage,'staging');
+ const enabled=config({...base,MEGA_ACCOUNT_DELETION_ENABLED:'true',MEGA_PRIVACY_POLICY_VERSION:'privacy-2026-10'});assert.equal(enabled.privacy.deletionEnabled,true);assert.equal(enabled.privacy.policyVersion,'privacy-2026-10');
 });
-test('privacy request migration exists without exposing a public deletion route',()=>{
+test('privacy deletion migrations and authenticated routes are present while policy enablement stays explicit',()=>{
  const migrations=require('../server/production/migrations').migrations;
- assert.equal(migrations.some(m=>m.name==='v41-privacy-requests'),true);
- const http=fs.readFileSync(path.join(__dirname,'..','server','community-http.js'),'utf8');
- assert.equal(http.includes('/api/account/delete'),false);assert.equal(http.includes('/api/account/deletion'),false);
+ assert.equal(migrations.some(m=>m.name==='v41-privacy-requests'),true);assert.equal(migrations.some(m=>m.name==='v41-account-deletion-receipts'),true);
+ const http=fs.readFileSync(path.join(__dirname,'..','server','community-http.js'),'utf8'),publicPage=fs.readFileSync(path.join(__dirname,'..','public','delete-account.html'),'utf8');
+ assert.equal(http.includes("path==='/api/account/delete'"),true);assert.equal(http.includes("path==='/api/account/deletion'"),true);
+ assert.match(publicPage,/Delete your Mega XO account/);assert.match(publicPage,/Permanently delete account|Delete account/);
 });

@@ -70,7 +70,7 @@ async function audit(options={}){
   ok:failures.length===0,
   generatedAt:new Date().toISOString(),
   domain,returnPath,
-  requirements:{apexSpfIncludes,returnSpfIncludes,mxSuffixes,minDmarcPolicy:minPolicy,requireRua,dkimHosts},
+  requirements:{apexSpfIncludes:apexIncludes,returnSpfIncludes:returnIncludes,mxSuffixes,minDmarcPolicy:minPolicy,requireRua,dkimHosts},
   observed:{apexSpfCount:apexSpf.length,returnPathSpfCount:returnSpf.length,workspaceMxCount:mx.length,returnPathMxCount:returnMx.length,dkim,dmarcCount:dmarcRecords.length,dmarcPolicy:dmarcPolicy||null,dmarcPct:Number.isFinite(pct)?pct:null,dmarcAdkim:dmarc.adkim||'r',dmarcAspf:dmarc.aspf||'r',dmarcRuaPresent:typeof dmarc.rua==='string'&&dmarc.rua.length>0},
   checks,failures
  };

@@ -23,8 +23,8 @@ function createMonetizationHandler({monetization,authenticate,guard,origin,store
     case '/api/v1/purchase':
     case '/api/monetization/purchase':result=await monetization.purchase(actor,key,b.evidence,false);break;
     case '/api/monetization/restore':result=await monetization.purchase(actor,key,b.evidence,true);break;
-    case '/api/monetization/reward-ticket':result=monetization.ticket(actor,key,b.kind);break;
-    case '/api/monetization/interstitial-permit':result=monetization.automaticPermit(actor,key);break;
+    case '/api/monetization/reward-ticket':result=monetization.ticket(actor,key,b.kind,b.platform);break;
+    case '/api/monetization/interstitial-permit':result=monetization.automaticPermit(actor,key,b.platform);break;
     default:return send(res,404,{error:'NOT_FOUND'}),true;
    }
    send(res,200,result);return true;

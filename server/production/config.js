@@ -67,12 +67,14 @@ function config(env = process.env) {
   const playParts=[playJson,playPackage,Object.keys(playProducts).length?1:'',playAudience,playPushEmail];if(playParts.some(Boolean)&&!playParts.every(Boolean))throw Error('INCOMPLETE_GOOGLE_PLAY_CONFIG');
   let playAccount=null;if(playJson)try{playAccount=JSON.parse(playJson);}catch{throw Error('INVALID_GOOGLE_PLAY_SERVICE_ACCOUNT');}
   if(playAccount&&(!/^[^@\s]+@[^@\s]+\.iam\.gserviceaccount\.com$/.test(playAccount.client_email||'')||typeof playAccount.private_key!=='string'||!playAccount.private_key.includes('BEGIN PRIVATE KEY')))throw Error('INVALID_GOOGLE_PLAY_SERVICE_ACCOUNT');
-  const rootsFile=env.APPLE_STORE_ROOTS_FILE||'',appleBundle=env.APPLE_STORE_BUNDLE_ID||'',appleEnvironment=env.APPLE_STORE_ENVIRONMENT||'',appleProducts=mapProducts('APPLE_STORE_PRODUCT_');let appleRoots=[];
-  const appleStoreParts=[rootsFile,appleBundle,appleEnvironment,Object.keys(appleProducts).length?1:''];if(appleStoreParts.some(Boolean)&&!appleStoreParts.every(Boolean))throw Error('INCOMPLETE_APPLE_STORE_CONFIG');
+  const rootsFile=env.APPLE_STORE_ROOTS_FILE||'',appleBundle=env.APPLE_STORE_BUNDLE_ID||'',appleEnvironment=env.APPLE_STORE_ENVIRONMENT||'',appleAppIdRaw=env.APPLE_STORE_APP_ID||'',appleProducts=mapProducts('APPLE_STORE_PRODUCT_');let appleRoots=[],appleAppId=null;
+  if(appleAppIdRaw){if(!/^[1-9]\d*$/.test(appleAppIdRaw))throw Error('INVALID_APPLE_STORE_APP_ID');appleAppId=Number(appleAppIdRaw);if(!Number.isSafeInteger(appleAppId))throw Error('INVALID_APPLE_STORE_APP_ID');}
+  const appleStoreParts=[rootsFile,appleBundle,appleEnvironment,Object.keys(appleProducts).length?1:''];if([...appleStoreParts,appleAppIdRaw].some(Boolean)&&!appleStoreParts.every(Boolean))throw Error('INCOMPLETE_APPLE_STORE_CONFIG');
   if(rootsFile){if(!path.isAbsolute(rootsFile))throw Error('ABSOLUTE_APPLE_ROOTS_PATH_REQUIRED');const stat=fs.statSync(rootsFile);if(!stat.isFile()||stat.size>65536)throw Error('INVALID_APPLE_ROOTS_FILE');const pem=fs.readFileSync(rootsFile,'utf8');appleRoots=pem.match(/-----BEGIN CERTIFICATE-----[\s\S]*?-----END CERTIFICATE-----/g)||[];if(!appleRoots.length)throw Error('INVALID_APPLE_ROOTS_FILE');}
   if(appleEnvironment&&!['Production','Sandbox'].includes(appleEnvironment))throw Error('INVALID_APPLE_STORE_ENVIRONMENT');
+  if(appleEnvironment==='Production'&&!appleAppId)throw Error('APPLE_STORE_APP_ID_REQUIRED');
   const googlePlay=playJson?{packageName:playPackage,serviceAccount:playAccount,products:playProducts,pubsubAudience:playAudience,pubsubServiceAccount:playPushEmail}:null;
-  const appleStore=rootsFile?{bundleId:appleBundle,environment:appleEnvironment,products:appleProducts,trustedRoots:appleRoots}:null;
+  const appleStore=rootsFile?{bundleId:appleBundle,environment:appleEnvironment,appAppleId:appleAppId,products:appleProducts,trustedRoots:appleRoots}:null;
   if(purchasesEnabled&&!googlePlay&&!appleStore)throw Error('STORE_PROVIDER_NOT_CONFIGURED');
   return Object.freeze({stage, origin: origin.origin, file, otpSecret, proxySecret,
     host: env.MEGA_BIND || '0.0.0.0', port: integer(env, 'PORT', 8080, 1024, 65535),

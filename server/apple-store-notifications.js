@@ -9,7 +9,7 @@ class AppleStoreNotifications{
  async handle(body){
   if(!body||typeof body.signedPayload!=='string')throw Error('INVALID_STORE_NOTIFICATION');
   let payload;try{payload=this.storeKit.verifyJws(body.signedPayload);}catch{throw Error('INVALID_STORE_NOTIFICATION');}
-  const id=payload.notificationUUID;if(!safeId(id)||payload.data?.bundleId!==this.storeKit.bundleId||payload.data?.environment!==this.storeKit.environment)throw Error('INVALID_STORE_NOTIFICATION');
+  const id=payload.notificationUUID,productionAppMismatch=this.storeKit.environment==='Production'&&payload.data?.appAppleId!==this.storeKit.appAppleId;if(!safeId(id)||payload.data?.bundleId!==this.storeKit.bundleId||payload.data?.environment!==this.storeKit.environment||productionAppMismatch)throw Error('INVALID_STORE_NOTIFICATION');
   if(this.db.prepare("SELECT 1 FROM v41_store_notifications WHERE store='apple' AND id=?").get(id))return {ok:true,duplicate:true};
   const signed=payload.data?.signedTransactionInfo;if(typeof signed!=='string')throw Error('INVALID_STORE_NOTIFICATION');
   let tx;try{tx=this.storeKit.inspectTransaction(this.storeKit.verifyJws(signed));}catch{throw Error('INVALID_STORE_NOTIFICATION');}

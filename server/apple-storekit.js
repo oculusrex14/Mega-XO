@@ -6,9 +6,11 @@ const certTime=(cert,at)=>{const from=Date.parse(cert.validFrom),to=Date.parse(c
 const APPLE_STORE_LEAF_OID='1.2.840.113635.100.6.11.1',APPLE_STORE_INTERMEDIATE_OID='1.2.840.113635.100.6.2.1';
 
 class AppleStoreKit{
- constructor(db,{bundleId,environment='Production',products={},trustedRoots=[],now=Date.now}={}){
-  this.db=db;this.bundleId=bundleId;this.environment=environment;this.products=Object.freeze({...products});this.now=now;
+ constructor(db,{bundleId,environment='Production',appAppleId=null,products={},trustedRoots=[],now=Date.now}={}){
+  this.db=db;this.bundleId=bundleId;this.environment=environment;this.appAppleId=appAppleId;this.products=Object.freeze({...products});this.now=now;
   if(!db||!safe(bundleId)||!['Production','Sandbox'].includes(environment)||!Object.keys(products).length)throw Error('APPLE_STORE_CONFIG');
+  if(appAppleId!==null&&(!Number.isSafeInteger(appAppleId)||appAppleId<1))throw Error('APPLE_STORE_CONFIG');
+  if(environment==='Production'&&!Number.isSafeInteger(appAppleId))throw Error('APPLE_STORE_CONFIG');
   this.roots=trustedRoots.map(pem=>new crypto.X509Certificate(pem));if(!this.roots.length)throw Error('APPLE_STORE_CONFIG');
   if(Object.values(products).some(v=>!['crowns_100','crowns_525','crowns_1100','remove_ads'].includes(v)))throw Error('APPLE_STORE_CONFIG');
  }

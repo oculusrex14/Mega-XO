@@ -184,9 +184,9 @@ Official references:
 - https://developer.apple.com/documentation/storekit/transaction
 - https://developer.apple.com/documentation/appstoreserverapi/get-transaction-info
 
-Repository-side backend work now verifies StoreKit signed transaction JWS values with ES256 and an Apple certificate chain anchored in configured trusted roots, then checks bundle ID, environment, product mapping, quantity, transaction ID, revocation state and the server-provided `appleAppAccountToken`. App Store Server Notifications V2 are independently verified/deduplicated and can revoke/refund prior grants.
+Repository-side backend work now verifies StoreKit signed transaction JWS values with ES256, the App Store certificate profile and a chain anchored in configured trusted roots, then checks bundle ID, environment, product mapping, quantity, transaction ID, revocation state and the server-provided `appleAppAccountToken`. App Store Server Notifications V2 are independently verified/deduplicated, bind Production notifications to the exact numeric App Store app ID, and can revoke/refund prior grants.
 
-Remaining production work is external/native: create products in App Store Connect, integrate StoreKit 2 in the real iOS target using the provided app-account token, configure server notifications and trusted roots/environment, then prove Sandbox/TestFlight purchase/cancel/pending/finish/restore/refund/revocation behavior on physical devices.
+Production configuration also requires `APPLE_STORE_APP_ID=<numeric App Store app ID>` so notification payloads cannot be accepted for another app sharing a trust chain. Remaining production work is external/native: create products in App Store Connect, integrate StoreKit 2 in the real iOS target using the provided app-account token, configure server notifications and trusted roots/environment/app ID, then prove Sandbox/TestFlight purchase/cancel/pending/finish/restore/refund/revocation behavior on physical devices.
 
 ### Product mapping
 

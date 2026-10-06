@@ -76,6 +76,13 @@ CREATE INDEX IF NOT EXISTS email_credentials_actor ON email_credentials(actor);`
   const session=this.requireSession(token);if(session.actor)fail('ALREADY_LINKED');email=normalizeEmail(email);this.rate(session.hash,'email-signin',10,300);const row=this.db.prepare('SELECT * FROM email_credentials WHERE email=?').get(email);
   if(!row||!this._password(password,row.salt,row.password_hash))fail('INVALID_CREDENTIALS');this.requireAccount(row.actor);return this.tx(()=>this._replaceSession(session,row.actor,false));
  }
+ emailContinue(token,email,password){
+  const session=this.requireSession(token);if(session.actor)fail('ALREADY_LINKED');email=normalizeEmail(email);password=validatePassword(password);this.rate(session.hash,'email-continue',10,300);
+  return this.tx(()=>{const row=this.db.prepare('SELECT * FROM email_credentials WHERE email=?').get(email);
+   if(row){if(!this._password(password,row.salt,row.password_hash))fail('INVALID_CREDENTIALS');this.requireAccount(row.actor);return this._replaceSession(session,row.actor,false);}
+   const authority=this.read(),actor='u_'+crypto.randomUUID();authority.addAccount(actor,{verified:true,createdAt:this.now()});this.ensureProfile(actor,authority);const salt=crypto.randomBytes(16).toString('base64url');this.db.prepare('INSERT INTO email_credentials VALUES(?,?,?,?,?)').run(email,actor,salt,passwordHash(password,salt),this.now());this.db.prepare('INSERT INTO identities VALUES(?,?,?,?)').run('email',email,actor,this.now());this.write(authority);return this._replaceSession(session,actor,true);
+  });
+ }
  emailLink(token,email,password){
   const session=this.requireLinked(token);if(this.now()-session.authAt>15*60000)fail('REAUTH_REQUIRED');email=normalizeEmail(email);password=validatePassword(password);this.rate(session.hash,'email-link',5,300);
   return this.tx(()=>{const found=this.db.prepare('SELECT actor FROM email_credentials WHERE email=?').get(email);if(found&&found.actor!==session.actor)fail('EMAIL_IN_USE');if(found)fail('EMAIL_ALREADY_LINKED');const salt=crypto.randomBytes(16).toString('base64url');this.db.prepare('INSERT INTO email_credentials VALUES(?,?,?,?,?)').run(email,session.actor,salt,passwordHash(password,salt),this.now());this.db.prepare('INSERT INTO identities VALUES(?,?,?,?)').run('email',email,session.actor,this.now());return this.profile(session.actor,session.actor);});

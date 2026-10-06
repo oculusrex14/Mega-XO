@@ -12,12 +12,14 @@ function secret(){
 }
 function args(argv){
  const values=[...argv],command=values.shift();if(!command)fail('Usage: node scripts/operator.js COMMAND ...');
- const out={command,operator:'',reason:'',limit:50,query:''};
+ const out={command,operator:'',reason:'',limit:50,query:'',state:'open',outcome:''};
  while(values.length){
   const v=values.shift();
   if(v==='--operator')out.operator=values.shift()||'';
   else if(v==='--reason')out.reason=values.shift()||'';
   else if(v==='--limit')out.limit=Number(values.shift());
+  else if(v==='--state')out.state=values.shift()||'';
+  else if(v==='--outcome')out.outcome=values.shift()||'';
   else if(!out.query)out.query=v;
   else fail('Unexpected argument: '+v);
  }
@@ -30,11 +32,12 @@ async function request(body){
  if(!r.ok)throw Error(data.error||'OPERATOR_FAILED');return data;
 }
 async function main(argv=process.argv.slice(2)){
- const a=args(argv),map={lookup:'lookup',audit:'audit','audit-verify':'audit-verify','sessions-revoke':'sessions-revoke',suspend:'suspend',unsuspend:'unsuspend','hold-on':'hold-on','hold-off':'hold-off','incident-status':'incident-status','incident-lockdown':'incident-lockdown','incident-clear':'incident-clear'},action=map[a.command];
+ const a=args(argv),map={lookup:'lookup',audit:'audit','audit-verify':'audit-verify','sessions-revoke':'sessions-revoke',suspend:'suspend',unsuspend:'unsuspend','hold-on':'hold-on','hold-off':'hold-off','incident-status':'incident-status','incident-lockdown':'incident-lockdown','incident-clear':'incident-clear','report-list':'report-list','report-resolve':'report-resolve'},action=map[a.command];
  if(!action)fail('Unknown operator command.');
- if(!['audit-verify','incident-status','incident-lockdown','incident-clear'].includes(action)&&!a.query&&action!=='audit')fail('Player lookup value required.');
- if(['sessions-revoke','suspend','unsuspend','hold-on','hold-off','incident-lockdown','incident-clear'].includes(action)&&(!a.operator||!a.reason))fail('Mutations require --operator and --reason.');
- const result=await request({action,query:a.query||undefined,operator:a.operator||undefined,reason:a.reason||undefined,limit:a.limit});
+ if(!['audit-verify','incident-status','incident-lockdown','incident-clear','report-list'].includes(action)&&!a.query&&action!=='audit')fail('Player/report lookup value required.');
+ if(['sessions-revoke','suspend','unsuspend','hold-on','hold-off','incident-lockdown','incident-clear','report-resolve'].includes(action)&&(!a.operator||!a.reason))fail('Mutations require --operator and --reason.');
+ if(action==='report-resolve'&&!a.outcome)fail('report-resolve requires --outcome no_action|action_taken|duplicate.');
+ const result=await request({action,query:a.query||undefined,operator:a.operator||undefined,reason:a.reason||undefined,limit:a.limit,state:a.state,outcome:a.outcome||undefined});
  console.log(JSON.stringify(result,null,2));
 }
 if(require.main===module)main().catch(e=>{console.error(e.message);process.exitCode=1;});

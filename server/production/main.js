@@ -40,6 +40,12 @@ async function createRuntime(config,{transport,log=()=>{}}={}) {
   telemetry=new Telemetry(log);passwords=new Passwords({concurrency:config.authWorkers});
   outbox=new MailOutbox(service.community,{secret:config.otpSecret,daily:config.mailDaily,monthly:config.mailMonthly,email:config.email,transport,log:value=>telemetry.event(value)});
   const emailAuth=new EmailAuth(service.community,{passwords,outbox,secret:config.otpSecret});
+  service.community.securityNotify=(actor,event,details={})=>{
+   const to=service.community.emailAddress(actor);if(!to)return;
+   const provider=typeof details.provider==='string'?details.provider:'',count=Number.isInteger(details.count)?details.count:null;
+   const detail=event==='provider_linked'?'A '+provider+' sign-in method was linked.':event==='provider_unlinked'?'The '+provider+' sign-in method was removed.':event==='other_sessions_revoked'?(count===null?'Other sessions were signed out.':count+' other session'+(count===1?' was':'s were')+' signed out.'):'A signed-in session was revoked.';
+   try{outbox.enqueue('security-'+crypto.randomUUID(),{to,event,detail},Date.now()+86400000,'security');}catch{telemetry?.event?.({event:'security_notice_not_queued'});}
+  };
   let lastWorker=Date.now(),workerError=false,maintenanceError=false;
   const state={ready:false,draining:false,maintenance:()=>control(service.store.db),operational:()=>false,healthy:()=>{
    try {return state.ready&&!state.draining&&!state.maintenance()&&!workerError&&!maintenanceError&&Date.now()-lastWorker<30000&&service.store.db.prepare('SELECT 1 AS ok').get().ok===1;}catch{return false;}

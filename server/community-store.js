@@ -241,6 +241,7 @@ CREATE INDEX IF NOT EXISTS email_challenges_email ON email_challenges(email);`);
    for(const m of authority.matches.values())if(m.players.includes(actor)){
     m.players=m.players.map(x=>x===actor?tombstone:x);m.accepted=(m.accepted||[]).map(x=>x===actor?tombstone:x);
     if(m.symbols){if(m.symbols.X===actor)m.symbols.X=tombstone;if(m.symbols.O===actor)m.symbols.O=tombstone;}
+    if(m.receipt?.winner===actor)m.receipt.winner=tombstone;
    }
    for(const r of authority.receipts.values())if(r.actor===actor)r.actor=tombstone;
    for(const snapshot of authority.snapshots.values())if(snapshot&&Object.hasOwn(snapshot,actor))delete snapshot[actor];
@@ -248,9 +249,12 @@ CREATE INDEX IF NOT EXISTS email_challenges_email ON email_challenges(email);`);
    for(const e of authority.journal)if(e.actor===actor)e.actor=tombstone;
    authority.accounts.delete(actor);this.write(authority);
    if(this.db.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name='v4_outbox'").get()&&sessions.length){const q=sessions.map(()=>'?').join(',');this.db.prepare(`UPDATE v4_outbox SET state='cancelled',payload=NULL WHERE state IN ('queued','sending') AND id IN (SELECT id FROM email_challenges WHERE session IN (${q}))`).run(...sessions);}
+   const email=this.db.prepare('SELECT email FROM email_credentials WHERE actor=?').get(actor)?.email||null;
    this.db.prepare('DELETE FROM session_presence WHERE actor=?').run(actor);this.db.prepare('DELETE FROM account_sessions WHERE actor=?').run(actor);this.db.prepare('DELETE FROM signin_attempts WHERE target=?').run(actor);
    for(const hash of sessions)this.db.prepare('DELETE FROM signin_attempts WHERE session=?').run(hash);
-   this.db.prepare('DELETE FROM email_challenges WHERE actor=?').run(actor);this.db.prepare('DELETE FROM identities WHERE actor=?').run(actor);this.db.prepare('DELETE FROM email_credentials WHERE actor=?').run(actor);this.db.prepare('DELETE FROM profile_saves WHERE actor=?').run(actor);this.db.prepare('DELETE FROM profiles WHERE actor=?').run(actor);
+   if(email)this.db.prepare('DELETE FROM email_challenges WHERE actor=? OR email=?').run(actor,email);else this.db.prepare('DELETE FROM email_challenges WHERE actor=?').run(actor);
+   if(this.db.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name='v4_email_versions'").get())this.db.prepare('DELETE FROM v4_email_versions WHERE challenge NOT IN (SELECT id FROM email_challenges)').run();
+   this.db.prepare('DELETE FROM identities WHERE actor=?').run(actor);this.db.prepare('DELETE FROM email_credentials WHERE actor=?').run(actor);this.db.prepare('DELETE FROM profile_saves WHERE actor=?').run(actor);this.db.prepare('DELETE FROM profiles WHERE actor=?').run(actor);
    this.db.prepare("DELETE FROM social_operations WHERE id LIKE ?").run(actor+':%');this.db.prepare("DELETE FROM community_limits WHERE id LIKE ?").run('%'+actor+'%');
    for(const table of ['v35_commands','v35_tickets','v35_casual','v35_events'])if(this.db.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name=?").get(table))this.db.prepare('DELETE FROM '+table+' WHERE actor=?').run(actor);
    this.db.prepare("DELETE FROM v41_reports WHERE reporter=?").run(actor);this.db.prepare("UPDATE v41_reports SET target=?,detail='' WHERE target=?").run(tombstone,actor);

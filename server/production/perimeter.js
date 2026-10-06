@@ -3,6 +3,7 @@ const crypto=require('node:crypto'),net=require('node:net');
 const {Readable}=require('node:stream');
 const {performance,monitorEventLoopDelay}=require('node:perf_hooks');
 const {equal}=require('./passwords');
+const {AbuseGuard}=require('./abuse-guard');
 const known=new Set(['/api/account/email','/api/account/session','/api/account/save','/api/account/logout','/api/account/profile','/api/account/start','/api/account/native/challenge','/api/account/native/finish','/api/account/unlink','/api/community/friends','/api/community/search','/api/community/presence','/api/community/friend','/api/community/challenges','/api/v1/profile','/api/v1/queue','/api/v1/cancel-queue','/api/v1/move','/api/v1/resign','/api/v1/offer','/api/v1/accept','/api/v1/decline','/api/v1/cancel','/api/v1/leaderboard','/api/v1/invitations','/api/v1/purchase','/api/v1/convert','/api/v1/quest','/api/party/command','/api/party/capabilities','/api/monetization/status','/api/monetization/purchase','/api/monetization/restore','/api/monetization/claim','/api/monetization/reward-ticket','/api/monetization/interstitial-permit','/api/monetization/admob-ssv']);
 function route(path) {
  if(known.has(path))return path;
@@ -36,12 +37,7 @@ class Telemetry {
  close(){this.loop.disable();}
 }
 function createPerimeter({service,config,emailAuth,telemetry,state}) {
- const limits=new Map();
- const consume=(ip,scope,max)=>{
-  const now=Date.now(),key=scope+':'+crypto.createHash('sha256').update(ip).digest('hex');let item=limits.get(key);
-  if(!item||item.until<=now){item={hits:0,until:now+60000};if(limits.size>=20000){for(const [k,v]of limits)if(v.until<=now)limits.delete(k);if(limits.size>=20000)return false;}limits.set(key,item);}
-  return ++item.hits<=max;
- };
+ const abuse=new AbuseGuard(service.store.db,{secret:config.proxySecret});
  return async(req,res)=>{
   const id=crypto.randomUUID(),start=performance.now();let path='/',tracked=false;
   res.setHeader('X-Request-ID',id);res.setHeader('X-Content-Type-Options','nosniff');res.setHeader('X-Frame-Options','DENY');res.setHeader('Referrer-Policy','no-referrer');
@@ -55,7 +51,7 @@ function createPerimeter({service,config,emailAuth,telemetry,state}) {
    if((path==='/livez'||path==='/readyz'||path==='/opsz')&&req.method==='GET'){const ok=path==='/livez'?true:path==='/readyz'?state.healthy():state.operational();return json(res,ok?200:503,{ok});}
    if(req.headers.host!==new URL(config.origin).host||!equal(String(req.headers['x-mega-proxy-key']||''),config.proxySecret))return json(res,403,{error:'FORBIDDEN'});
    const ip=String(req.headers['x-mega-client-ip']||'');if(!net.isIP(ip))return json(res,400,{error:'BAD_REQUEST'});
-   if(!consume(ip,'all',600)||((path.startsWith('/api/account/')&&req.method==='POST')&&!consume(ip,'auth',20))||(path==='/api/monetization/admob-ssv'&&!consume(ip,'ssv',120))) {res.setHeader('Retry-After','60');return json(res,429,{error:'RATE_LIMITED'});}
+   if(!abuse.coarse(ip,path,req.method)){res.setHeader('Retry-After','60');telemetry.event({event:'rate_limited'});return json(res,429,{error:'RATE_LIMITED'});}
    if(state.draining||telemetry.inflight>=config.maxInflight){telemetry.busy++;res.setHeader('Retry-After','5');return json(res,503,{error:'SERVICE_UNAVAILABLE'});}
    telemetry.inflight++;tracked=true;
    if(!['GET','HEAD','POST'].includes(req.method))return json(res,405,{error:'METHOD_NOT_ALLOWED'});
@@ -68,6 +64,7 @@ function createPerimeter({service,config,emailAuth,telemetry,state}) {
     if(!String(req.headers['content-type']||'').startsWith('application/json'))return json(res,415,{error:'INVALID_JSON'});
     try {parsed=JSON.parse(data.toString('utf8'));}catch {throw Error('BAD_REQUEST');}
     if(!parsed||typeof parsed!=='object'||Array.isArray(parsed))throw Error('BAD_REQUEST');
+    if(!abuse.sensitive(ip,path,req.method,parsed)){res.setHeader('Retry-After','60');telemetry.event({event:'sensitive_rate_limited'});return json(res,429,{error:'RATE_LIMITED'});}
    }
    const continued=new Set(['/api/v1/move','/api/v1/resign','/api/v1/decline','/api/v1/cancel','/api/v1/cancel-queue','/api/account/save','/api/account/logout','/api/community/presence']);
    const continuingParty=path==='/api/party/command'&&['move','resign','leave','cancel','pause'].includes(parsed?.type);
@@ -88,7 +85,7 @@ function createPerimeter({service,config,emailAuth,telemetry,state}) {
   } catch(error) {
    const code=error.message;
    if(code==='BODY_TOO_LARGE'||code==='REQUEST_TIMEOUT'){res.setHeader('Connection','close');res.once('finish',()=>req.destroy());return json(res,code==='BODY_TOO_LARGE'?413:408,{error:code});}
-   const publicErrors=new Set(['INVALID_EMAIL','PASSWORD_WEAK','INVALID_CREDENTIALS','INVALID_OTP','OTP_EXPIRED','OTP_LOCKED','OTP_USED','OTP_COOLDOWN','RESET_NOT_AUTHORIZED','ALREADY_LINKED','EMAIL_IN_USE','REAUTH_REQUIRED','LINK_ACCOUNT_REQUIRED','CSRF_FAILED','AUTH_REQUIRED','ACCOUNT_UNAVAILABLE','INVALID_AUTH_REQUEST']);
+   const publicErrors=new Set(['INVALID_EMAIL','PASSWORD_WEAK','INVALID_CREDENTIALS','INVALID_OTP','OTP_EXPIRED','OTP_LOCKED','OTP_USED','OTP_COOLDOWN','RESET_NOT_AUTHORIZED','ALREADY_LINKED','EMAIL_IN_USE','EMAIL_UNCHANGED','EMAIL_NOT_LINKED','REAUTH_REQUIRED','LINK_ACCOUNT_REQUIRED','CSRF_FAILED','AUTH_REQUIRED','ACCOUNT_UNAVAILABLE','INVALID_AUTH_REQUEST','SESSION_NOT_FOUND','CURRENT_SESSION']);
    if(publicErrors.has(code))return json(res,code==='AUTH_REQUIRED'?401:409,{error:code});
    if(code==='RATE_LIMITED'){res.setHeader('Retry-After','60');return json(res,429,{error:code});}
    if(['AUTH_BUSY','EMAIL_BUDGET_EXCEEDED','EMAIL_QUEUE_FULL','EMAIL_DELIVERY_NOT_CONFIGURED'].includes(code))return json(res,503,{error:'SERVICE_UNAVAILABLE'});

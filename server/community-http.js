@@ -29,7 +29,7 @@ function createCommunityHandler({community,providers,store,matchmaker,origin,all
   try{
    if(!['GET','POST'].includes(req.method))return send(res,405,{error:'METHOD_NOT_ALLOWED'}),true;
    if(req.method==='POST'){if(req.headers.origin!==origin||!String(req.headers['content-type']).startsWith('application/json'))throw Error('ORIGIN_OR_CONTENT_TYPE');community.csrf(token(req),req.headers['x-csrf-token']);}
-   if(path==='/api/account/session'&&req.method==='GET'){const boot=community.bootstrap(token(req));if(boot.token)setCookie(res,boot.token,boot.actor?14*86400:86400);return send(res,200,{linked:!!boot.actor,csrf:boot.csrf,providers:providers.capabilities(),profile:boot.actor?community.profile(boot.actor,boot.actor):null}),true;}
+   if(path==='/api/account/session'&&req.method==='GET'){const boot=community.bootstrap(token(req));if(boot.token)setCookie(res,boot.token,boot.actor?14*86400:86400);return send(res,200,{linked:!!boot.actor,csrf:boot.csrf,providers:{...providers.capabilities(),email:{web:true,native:false}},profile:boot.actor?community.profile(boot.actor,boot.actor):null}),true;}
    if(req.method==='GET'){
     const s=mine(req),actor=s.actor;
     if(path==='/api/account/save')return send(res,200,community.restore(actor)),true;
@@ -52,6 +52,16 @@ function createCommunityHandler({community,providers,store,matchmaker,origin,all
    }
    // Bodies are parsed exactly once. Known base mutations are reconstructed below.
    const b=await readBody(req),session=community.requireSession(token(req));
+   if(path==='/api/account/email'){
+    const action=b.action;
+    if(action==='signup'||action==='signin'){
+     const logged=action==='signup'?community.emailSignup(token(req),b.email,b.password):community.emailSignin(token(req),b.email,b.password);
+     setCookie(res,logged.token,14*86400);return send(res,200,{linked:true,csrf:logged.csrf,profile:logged.profile,created:logged.created}),true;
+    }
+    if(action==='link')return send(res,200,community.emailLink(token(req),b.email,b.password)),true;
+    if(action==='reauth')return send(res,200,community.emailReauth(token(req),b.email,b.password)),true;
+    throw Error('INVALID_AUTH_REQUEST');
+   }
    if(path==='/api/account/start'){
     const p=b.provider;if(!providers.enabled(p))throw Error('PROVIDER_NOT_CONFIGURED');const attempt=community.start(token(req),p,b.intent||'login','web');return send(res,200,{url:providers.authorization(p,attempt,origin+'/auth/callback/'+p)}),true;
    }

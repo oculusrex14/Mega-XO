@@ -8,18 +8,23 @@ const {IdentityProviders}=require('./identity-provider.js');
 const {QueueSession}=require('./queue-session.js');
 const {createCommunityHandler}=require('./community-http.js');
 const {RoomStore}=require('./rooms.js');
+const {MonetizationStore}=require('./monetization-store.js');
+const {createMonetizationHandler}=require('./monetization-http.js');
 const ROOT=path.resolve(__dirname,'..');
-function buildService({file,origin,providers:providerConfig={},providerInstance,storeOptions={},allowLocalHttp=false,networkContext=()=>({})}={}){
+function buildService({file,origin,providers:providerConfig={},providerInstance,storeOptions={},monetizationOptions={},allowLocalHttp=false,networkContext=()=>({})}={}){
  const store=new DurableStore(file,storeOptions),community=new CommunityStore({store,origin,now:storeOptions.now||Date.now}),providers=providerInstance||new IdentityProviders({config:providerConfig}),matchmaker=new QueueSession({store,now:storeOptions.now||Date.now}),accountHandler=createCommunityHandler({store,community,providers,matchmaker,origin,allowLocalHttp,networkContext});
  community.isQueued=actor=>matchmaker.busy(actor);
  const rooms=new RoomStore(file,{...storeOptions,lanOnly:false});
  const auth=async req=>accountHandler.authenticate(req);
+ const monetization=new MonetizationStore(store,{...monetizationOptions,busy:actor=>matchmaker.busy(actor)||rooms.active().some(r=>r.players.some(p=>p.id===actor))});
+ const monetizationHandler=createMonetizationHandler({monetization,authenticate:auth,guard:accountHandler.guard,origin});
  // The existing party router accepts principal resolution; no new guest-to-paid path.
  const {createPartyHandler:partyFactory}=require('./party-http.js');
  let partyHandler=partyFactory?partyFactory({store:rooms,rooms,authenticate:async req=>{const p=await auth(req);if(!p)return null;const row=community.profileRow(p.id);return {id:p.id,actor:p.id,name:row?.display_name||'Player'};},origin}):null;
  const networkLimits=new Map();
  const request=async(req,res)=>{try{
   if(req.url.startsWith('/api/')||req.url.startsWith('/auth/')){const ip=req.socket.remoteAddress||'local',minute=Math.floor(Date.now()/60000),old=networkLimits.get(ip),bucket=old?.minute===minute?old:{minute,hits:0};bucket.hits++;networkLimits.set(ip,bucket);if(networkLimits.size>4096)networkLimits.delete(networkLimits.keys().next().value);if(bucket.hits>1800){res.writeHead(429,{'Content-Type':'application/json','Retry-After':'60'});return res.end(JSON.stringify({error:'RATE_LIMITED'}));}}
+  if(await monetizationHandler(req,res))return;
   if(await accountHandler(req,res))return;
   if(req.url.startsWith('/api/party/')){accountHandler.guard(req);if(!partyHandler){res.writeHead(503);res.end();return;}return await partyHandler(req,res);}
   const raw=new URL(req.url,origin).pathname,relative=decodeURIComponent(raw==='/'?'/index.html':raw),target=path.resolve(ROOT,'.'+relative);
@@ -29,7 +34,7 @@ function buildService({file,origin,providers:providerConfig={},providerInstance,
   res.writeHead(200,{'Content-Type':types[path.extname(target)]||'application/octet-stream','Cache-Control':'no-cache','X-Content-Type-Options':'nosniff','Referrer-Policy':'same-origin','X-Frame-Options':'DENY'});if(req.method==='HEAD')return res.end();fs.createReadStream(target).pipe(res);
  }catch{if(!res.headersSent)res.writeHead(409,{'Content-Type':'application/json'});res.end(JSON.stringify({error:'REQUEST_FAILED'}));}};
  const server=http.createServer(request);let timer=null,closing=null;
- return {server,store,community,matchmaker,rooms,request,startWorkers(){if(timer)return;timer=setInterval(()=>{try{matchmaker.tick();rooms.tick();community.cleanup();}catch(e){console.error('Maintenance error:',e.message);}},1000);timer.unref();},close(){
+ return {server,store,community,matchmaker,rooms,monetization,request,startWorkers(){if(timer)return;timer=setInterval(()=>{try{matchmaker.tick();rooms.tick();community.cleanup();}catch(e){console.error('Maintenance error:',e.message);}},1000);timer.unref();},close(){
   if(closing)return closing;clearInterval(timer);timer=null;
   closing=(async()=>{try{server.closeIdleConnections?.();server.closeAllConnections?.();if(server.listening)await new Promise(resolve=>server.close(()=>resolve()));}finally{rooms.close();store.close();}})();
   return closing;

@@ -4,6 +4,7 @@ const {AsyncLocalStorage}=require('node:async_hooks');
 // state between requests, or a cache used by financial write transactions.
 class ReadContext {
  constructor(store){
+  if(typeof store.db.isTransaction!=='boolean')throw Error('SQLITE_TRANSACTION_STATE_REQUIRED');
   this.store=store;this.local=new AsyncLocalStorage();this.original=store.read.bind(store);this.hits=0;this.misses=0;
   const changes=store.db.prepare('SELECT total_changes() AS value'),version=store.db.prepare('PRAGMA data_version');
   store.read=()=>{

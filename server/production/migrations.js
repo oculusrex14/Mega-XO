@@ -27,6 +27,22 @@ CREATE TABLE IF NOT EXISTS v41_operator_audit (
 CREATE INDEX IF NOT EXISTS v41_operator_audit_actor ON v41_operator_audit(actor,at);
 CREATE TRIGGER IF NOT EXISTS v41_operator_audit_no_update BEFORE UPDATE ON v41_operator_audit BEGIN SELECT RAISE(ABORT,'AUDIT_IMMUTABLE'); END;
 CREATE TRIGGER IF NOT EXISTS v41_operator_audit_no_delete BEFORE DELETE ON v41_operator_audit BEGIN SELECT RAISE(ABORT,'AUDIT_IMMUTABLE'); END;
+`},
+ {id:3, name:'v41-player-reports', sql:`
+CREATE TABLE IF NOT EXISTS v41_reports (
+ id TEXT PRIMARY KEY,
+ reporter TEXT NOT NULL,
+ target TEXT NOT NULL,
+ category TEXT NOT NULL CHECK(category IN ('cheating','username','harassment','unsportsmanlike','other')),
+ detail TEXT NOT NULL DEFAULT '',
+ created INTEGER NOT NULL,
+ state TEXT NOT NULL DEFAULT 'open' CHECK(state IN ('open','reviewed')),
+ reviewed_at INTEGER,
+ reviewed_by TEXT,
+ outcome TEXT CHECK(outcome IS NULL OR outcome IN ('no_action','action_taken','duplicate'))
+);
+CREATE INDEX IF NOT EXISTS v41_reports_target_state ON v41_reports(target,state,created);
+CREATE INDEX IF NOT EXISTS v41_reports_reporter_created ON v41_reports(reporter,created);
 `}
 ]);
 const checksum = m => crypto.createHash('sha256').update(m.name + '\n' + m.sql).digest('hex');

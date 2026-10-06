@@ -11,6 +11,12 @@ const {MailOutbox}=require('./mail-outbox');
 const {EmailAuth}=require('./email-auth');
 const {createPerimeter,Telemetry,json}=require('./perimeter');
 const {OperatorService}=require('./operator-service');
+const {GooglePlayBilling}=require('../google-play-billing');
+const {GooglePushAuth}=require('../google-push-auth');
+const {GooglePlayNotifications}=require('../google-play-notifications');
+const {AppleStoreKit}=require('../apple-storekit');
+const {AppleStoreNotifications}=require('../apple-store-notifications');
+const {StorePurchaseProvider}=require('../store-purchase-provider');
 function recover(service) {
  const c=service.community;
  c.tx(()=>{
@@ -31,7 +37,16 @@ async function createRuntime(config,{transport,log=()=>{}}={}) {
  fs.mkdirSync(path.dirname(config.file),{recursive:true,mode:0o700});preflight(config.file);
  // Production never exposes the old process's synchronous email handler: the
  // perimeter owns the same email route and delegates to the isolated service.
- const service=buildService({file:config.file,origin:config.origin,providers:config.providers,storeOptions:{otpSecret:config.otpSecret,paidEntryEnabled:false},communityOptions:{deletionPolicy:{enabled:config.privacy.deletionEnabled,policyVersion:config.privacy.policyVersion}},emailInstance:{enabled:()=>false},monetizationOptions:{adMode:'off',purchasesEnabled:false}});
+ const storeConfigured=!!(config.purchases.googlePlay||config.purchases.appleStore);
+ const purchaseProviderFactory=storeConfigured?(store)=>{
+  const google=config.purchases.googlePlay?new GooglePlayBilling(store.db,config.purchases.googlePlay):null,apple=config.purchases.appleStore?new AppleStoreKit(store.db,config.purchases.appleStore):null;
+  return new StorePurchaseProvider({google,apple});
+ }:null;
+ const notificationFactory=storeConfigured?({store,monetization,purchaseProvider})=>({
+  google:purchaseProvider.google?new GooglePlayNotifications(store.db,{billing:purchaseProvider.google,auth:new GooglePushAuth({audience:config.purchases.googlePlay.pubsubAudience,email:config.purchases.googlePlay.pubsubServiceAccount}),monetization,packageName:config.purchases.googlePlay.packageName}):null,
+  apple:purchaseProvider.apple?new AppleStoreNotifications(store.db,{storeKit:purchaseProvider.apple,monetization}):null
+ }):null;
+ const service=buildService({file:config.file,origin:config.origin,providers:config.providers,storeOptions:{otpSecret:config.otpSecret,paidEntryEnabled:false},communityOptions:{deletionPolicy:{enabled:config.privacy.deletionEnabled,policyVersion:config.privacy.policyVersion}},emailInstance:{enabled:()=>false},monetizationOptions:{adMode:'off',purchasesEnabled:config.purchases.enabled,eligible:()=>true,purchaseProviderFactory,notificationFactory}});
  let telemetry,passwords,outbox,metrics,timer,slowTimer,reads,closed=false;
  try {
   migrate(service.store.db);service.rooms.db.exec('PRAGMA synchronous=FULL; PRAGMA foreign_keys=ON; PRAGMA busy_timeout=1000;');
@@ -52,7 +67,7 @@ async function createRuntime(config,{transport,log=()=>{}}={}) {
   const state={ready:false,draining:false,maintenance:()=>control(service.store.db),operational:()=>false,healthy:()=>{
    try {return state.ready&&!state.draining&&!state.maintenance()&&!workerError&&!maintenanceError&&Date.now()-lastWorker<30000&&service.store.db.prepare('SELECT 1 AS ok').get().ok===1;}catch{return false;}
   }};
-  const fast=()=>{try{if(!state.maintenance())service.matchmaker.tick();service.rooms.tick();lastWorker=Date.now();workerError=false;}catch{workerError=true;telemetry.event({event:'game_worker_failed'});}outbox.tick();};
+  const fast=()=>{try{if(!state.maintenance())service.matchmaker.tick();service.rooms.tick();lastWorker=Date.now();workerError=false;}catch{workerError=true;telemetry.event({event:'game_worker_failed'});}outbox.tick();service.monetization.processPurchaseFinalizations().catch(()=>telemetry.event({event:'purchase_finalization_retry'}));};
   const slow=()=>{try{maintenance(service.store);service.community.cleanup();outbox.cleanup();service.store.db.prepare("DELETE FROM v4_limits WHERE id LIKE 'abuse:%' AND expires<?").run(Date.now());service.store.db.prepare('DELETE FROM v4_email_versions WHERE challenge NOT IN (SELECT id FROM email_challenges)').run();maintenanceError=false;}catch{maintenanceError=true;telemetry.event({event:'maintenance_failed'});}};
   slow();fast();timer=setInterval(fast,1000);timer.unref();slowTimer=setInterval(slow,15000);slowTimer.unref();
   const handler=createPerimeter({service,config,emailAuth,telemetry,state});

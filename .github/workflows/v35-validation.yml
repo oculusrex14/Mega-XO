@@ -17,18 +17,34 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Full Node regression
-        run: npm test
-      - name: Game design invariants
-        run: npm run test:invariants
-      - name: Ranked balance
-        run: npm run test:balance
-      - name: Population economy model
-        run: npm run test:economy-sim
       - name: Source checkpoint
         run: |
           mkdir -p .artifacts
           git archive --format=tar HEAD | gzip > .artifacts/v35-source.tar.gz
+      - name: Full Node regression
+        run: npm test | tee .artifacts/node-tests.log
+      - name: Game design invariants
+        run: npm run test:invariants | tee .artifacts/invariants.log
+      - name: Ranked balance
+        run: npm run test:balance
+      - name: Population economy model
+        run: npm run test:economy-sim
+      - name: Monetisation sensitivity model
+        run: npm run test:monetization-model
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Browser test dependencies
+        run: |
+          python3 -m pip install playwright==1.57.0
+          python3 -m playwright install --with-deps chromium
+      - name: Chromium monetisation flows
+        run: npm run test:monetization-ui | tee .artifacts/browser-tests.log
+      - name: Collect browser evidence
+        if: always()
+        run: |
+          mkdir -p .artifacts/screenshots
+          if [ -d tests-output ]; then cp tests-output/v35-*.png .artifacts/screenshots/ 2>/dev/null || true; fi
       - name: Retain validation evidence
         if: always()
         uses: actions/upload-artifact@v4

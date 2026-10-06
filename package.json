@@ -1,6 +1,6 @@
 {
   "name": "mega-xo",
-  "version": "3.4.0",
+  "version": "3.5.0",
   "private": true,
   "engines": {
     "node": ">=22.13.0"
@@ -18,6 +18,9 @@
     "test:accounts": "node --test tests/community.test.js tests/community-http.test.js",
     "test:account-ui": "python3 tests/community-ui.py",
     "test:economy-sim": "node tests/economy-sim.js",
-    "test:invariants": "node --test tests/design-invariants.test.js"
+    "test:invariants": "node --test tests/design-invariants.test.js",
+    "test:monetization": "node --test tests/monetization-*.test.js",
+    "test:monetization-model": "node tests/monetization-model.js",
+    "test:monetization-ui": "python3 tests/monetization-ui.py"
   }
 }

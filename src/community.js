@@ -103,8 +103,8 @@ function editProfile(){const p=profile||session.profile;selectedAvatar=p.avatar;
 function connections(){
  const available=p=>session?.providers?.[p]?.web||window.MegaNativeIdentity&&session?.providers?.[p]?.native;
  const linked=session.profile.providers,emailLinked=linked.includes('email');
- const emailCard='<div class="profile-card"><b>Email & password</b><p>'+(emailLinked?'Linked'+(session.profile.email?' · '+esc(session.profile.email):''):'Not linked')+'</p>'+(emailLinked?
-  '<button class="button full quiet" data-c="email-form" data-id="reauth">Verify with email</button><button class="button full quiet" data-c="unlink" data-id="email" '+(linked.length<=1?'disabled':'')+'>Unlink</button>':
+ const emailCard='<div class="profile-card"><b>Email & password</b><p>'+(emailLinked?(session.profile.emailVerified?'Verified':'Verification required')+(session.profile.email?' · '+esc(session.profile.email):''):'Not linked')+'</p>'+(emailLinked?
+  '<button class="button full quiet" data-c="email-form" data-id="reauth">Re-authenticate with email</button><button class="button full quiet" data-c="unlink" data-id="email" '+(linked.length<=1?'disabled':'')+'>Unlink</button>':
   '<button class="button full quiet" data-c="email-form" data-id="link">Link email & password</button>')+'</div>';
  frame('Keep your progress','<p>Restore this profile with any linked sign-in method. Your player tag, friends and rank stay the same.</p>'+emailCard+['google','apple'].map(provider=>{
   const name=provider==='google'?'Google':'Apple',exists=linked.includes(provider);

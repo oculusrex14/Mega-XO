@@ -71,9 +71,11 @@ try:
   page.evaluate('MegaMonetizationUI.open()')
   page.locator('#sheet[data-kind="monetization"]').wait_for()
   assert page.locator('.mono-frame').count()==0
-  assert 'Board-frame collection archived' in page.locator('#sheetBody').inner_text()
+  assert 'Board-frame collection archived' not in page.locator('#sheetBody').inner_text()
+  assert 'V3.5.1' not in page.locator('#sheetBody').inner_text()
+  assert 'future theme' not in page.locator('#sheetBody').inner_text().lower()
   assert page.locator('.mono-balance strong').inner_text()=='0'
-  checks.append('Rewards & Themes shows Cosmetic Credit balance and no board-frame gallery')
+  checks.append('Rewards & Themes presents player-facing rewards with no archived-feature or roadmap commentary')
   output=ROOT/'tests-output';output.mkdir(exist_ok=True)
   for theme in ['vector','midnight','paperclub','afterhours']:
    page.evaluate('(theme)=>{const s=MegaApp.getSave();s.settings.theme=theme;MegaApp.applyPractice(s);}',theme)
@@ -92,7 +94,8 @@ try:
   assert page.evaluate('__ads')==1
   page.evaluate('MegaCommunity.openProfile()')
   page.wait_for_function('document.querySelector("#identityScreen")?.innerText.includes("Cosmetic Credits")')
-  assert '5 · saved for future themes' in page.locator('#identityScreen').inner_text()
+  assert page.locator('#identityScreen').inner_text().count('Cosmetic Credits')>=1
+  assert 'saved for future themes' not in page.locator('#identityScreen').inner_text()
   checks.append('verified rewarded ad grants 5 account-bound credits and self profile shows the same balance')
   page.locator('[data-c="dismiss"]').click()
 

@@ -16,8 +16,6 @@ function createMonetizationHandler({monetization,authenticate,guard,origin}){
    const b=await readBody(req,16384);if(!b||Array.isArray(b)||typeof b!=='object')throw Error('INVALID_COMMAND');const key=req.headers['idempotency-key'];let result;
    switch(path){
     case '/api/monetization/claim':result=monetization.claim(actor,key);break;
-    case '/api/monetization/redeem':result=monetization.cosmetic(actor,key,b.frame,false);break;
-    case '/api/monetization/equip':result=monetization.cosmetic(actor,key,b.frame,true);break;
     case '/api/v1/purchase':
     case '/api/monetization/purchase':result=await monetization.purchase(actor,key,b.evidence,false);break;
     case '/api/monetization/restore':result=await monetization.purchase(actor,key,b.evidence,true);break;

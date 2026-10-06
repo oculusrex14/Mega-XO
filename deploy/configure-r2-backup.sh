@@ -51,12 +51,12 @@ prompt_secret() {
 if [[ -n "$access_file" ]]; then write_from_file backup_access_key "$access_file"; else prompt_secret backup_access_key 'Paste R2 Access Key ID'; fi
 if [[ -n "$secret_file" ]]; then write_from_file backup_secret_key "$secret_file"; else prompt_secret backup_secret_key 'Paste R2 Secret Access Key'; fi
 
-endpoint="$account"
-[[ -z "$jurisdiction" ]] || endpoint="$account.$jurisdiction"
-repository="s3:https://$endpoint.r2.cloudflarestorage.com/$bucket/mega-xo-v4"
-
 stage=$(awk -F= '$1=="MEGA_ENV"{print $2}' "$root/app.env")
 [[ "$stage" = production || "$stage" = staging ]] || { echo 'Invalid deployment stage.' >&2; exit 65; }
+
+endpoint="$account"
+[[ -z "$jurisdiction" ]] || endpoint="$account.$jurisdiction"
+repository="s3:https://$endpoint.r2.cloudflarestorage.com/$bucket/mega-xo-v4-$stage"
 
 cat > "$root/backup.env.tmp" <<EOF
 RESTIC_REPOSITORY=$repository

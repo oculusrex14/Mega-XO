@@ -28,7 +28,8 @@
     "test:monetization-ui": "python3 tests/monetization-ui.py",
     "test:capacity": "node scripts/capacity-acceptance.js",
     "db:maintenance": "node scripts/db-maintenance.js",
-    "test:db-growth": "node scripts/db-growth-smoke.js"
+    "test:db-growth": "node scripts/db-growth-smoke.js",
+    "mail:audit": "node scripts/mail-domain-audit.js"
   },
   "author": "Antimatter Innovations <contact@antimatterinnovations.com>"
 }

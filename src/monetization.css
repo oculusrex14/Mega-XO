@@ -1,0 +1,12 @@
+/* Existing theme tokens only. Decorative surrounds do not change the board hit targets. */
+.mono-entry{margin:22px 0;padding:18px 0;border-top:1px solid var(--line)}
+.mono-hub{color:var(--ink);overflow-wrap:anywhere}.mono-hub p{line-height:1.6}.mono-kicker{font-size:11px;letter-spacing:.16em;font-weight:700;color:var(--muted)}
+.mono-hub h3{margin:22px 0 10px}.mono-balance{display:flex;align-items:center;gap:18px;padding:20px;background:var(--soft);border-radius:var(--radius);margin:20px 0}.mono-balance strong{font-size:36px}.mono-balance small{display:block;color:var(--muted);line-height:1.5;margin-top:6px}
+.mono-gallery{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.mono-frame{padding:16px;border:1px solid var(--line);border-radius:var(--radius);background:var(--raised)}.mono-frame h3{margin:14px 0 8px;font-size:16px}.mono-frame p{font-size:13px;color:var(--muted);min-height:42px}.mono-frame small{display:block;min-height:32px}.mono-button{min-height:44px;margin:6px 6px 6px 0;white-space:normal}.mono-frame .mono-button{width:100%;margin:8px 0 0}
+.mono-preview{display:grid;grid-template-columns:repeat(3,1fr);gap:3px;padding:10px;border:1px solid var(--border-strong);min-height:68px;background:var(--surface);color:var(--ink);text-align:center;align-items:center;font-size:26px;letter-spacing:.06em}.mono-preview span{border:1px solid var(--line);border-radius:4px}
+.mono-product{padding:14px 0;border-bottom:1px solid var(--line)}.mono-product h3{margin:0 0 8px}.mono-product p{font-size:13px;color:var(--muted);margin:0 0 8px}.mono-notice{padding:14px;border:1px solid var(--accent-edge);background:var(--accent-soft);border-radius:12px}.mono-footer{display:flex;gap:8px;flex-wrap:wrap;margin-top:24px}
+.mono-preview[data-frame="copper"],body[data-cosmetic-frame="copper"] #boardWrap{outline:3px double var(--border-strong);outline-offset:4px}
+.mono-preview[data-frame="orbit"],body[data-cosmetic-frame="orbit"] #boardWrap{outline:2px solid var(--accent-edge);outline-offset:5px;box-shadow:0 0 0 9px var(--accent-soft)}
+.mono-preview[data-frame="crown"],body[data-cosmetic-frame="crown"] #boardWrap{outline:4px double var(--ink);outline-offset:4px;box-shadow:0 0 0 8px var(--soft)}
+.mono-preview[data-frame="origin"],body[data-cosmetic-frame="origin"] #boardWrap{outline:2px dashed var(--accent-edge);outline-offset:5px}
+@media(max-width:359px){.mono-gallery{grid-template-columns:1fr}.mono-balance{padding:14px;gap:12px}}

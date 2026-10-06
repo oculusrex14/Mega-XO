@@ -6,6 +6,7 @@ const {maintenance}=require('../jobs');
 const {config:loadConfig}=require('./config');
 const {preflight,migrate,control,inspect}=require('./migrations');
 const {Passwords}=require('./passwords');
+const {ReadContext}=require('./read-context');
 const {MailOutbox}=require('./mail-outbox');
 const {EmailAuth}=require('./email-auth');
 const {createPerimeter,Telemetry,json}=require('./perimeter');
@@ -30,11 +31,12 @@ async function createRuntime(config,{transport,log=()=>{}}={}) {
  // Production never exposes the old process's synchronous email handler: the
  // perimeter owns the same email route and delegates to the isolated service.
  const service=buildService({file:config.file,origin:config.origin,providers:config.providers,storeOptions:{otpSecret:config.otpSecret,paidEntryEnabled:false},emailInstance:{enabled:()=>false},monetizationOptions:{adMode:'off',purchasesEnabled:false}});
- let telemetry,passwords,outbox,metrics,timer,slowTimer,closed=false;
+ let telemetry,passwords,outbox,metrics,timer,slowTimer,reads,closed=false;
  try {
   migrate(service.store.db);service.rooms.db.exec('PRAGMA synchronous=FULL; PRAGMA foreign_keys=ON; PRAGMA busy_timeout=1000;');
   recover(service);
   service.matchmaker.maxTickets=config.maxQueued||200;
+  reads=new ReadContext(service.store);
   telemetry=new Telemetry(log);passwords=new Passwords({concurrency:config.authWorkers});
   outbox=new MailOutbox(service.community,{secret:config.otpSecret,daily:config.mailDaily,monthly:config.mailMonthly,email:config.email,transport,log:value=>telemetry.event(value)});
   const emailAuth=new EmailAuth(service.community,{passwords,outbox,secret:config.otpSecret});
@@ -45,13 +47,14 @@ async function createRuntime(config,{transport,log=()=>{}}={}) {
   const fast=()=>{try{if(!state.maintenance())service.matchmaker.tick();service.rooms.tick();lastWorker=Date.now();workerError=false;}catch{workerError=true;telemetry.event({event:'game_worker_failed'});}outbox.tick();};
   const slow=()=>{try{maintenance(service.store);service.community.cleanup();outbox.cleanup();service.store.db.prepare('DELETE FROM v4_email_versions WHERE challenge NOT IN (SELECT id FROM email_challenges)').run();maintenanceError=false;}catch{maintenanceError=true;telemetry.event({event:'maintenance_failed'});}};
   slow();fast();timer=setInterval(fast,1000);timer.unref();slowTimer=setInterval(slow,15000);slowTimer.unref();
-  service.server.removeAllListeners('request');service.server.on('request',createPerimeter({service,config,emailAuth,telemetry,state}));
+  const handler=createPerimeter({service,config,emailAuth,telemetry,state});
+  service.server.removeAllListeners('request');service.server.on('request',(req,res)=>reads.run(()=>handler(req,res)));
   Object.assign(service.server,{requestTimeout:10000,headersTimeout:10000,keepAliveTimeout:5000,maxRequestsPerSocket:500,maxHeadersCount:100});
   service.server.setTimeout(30000,socket=>socket.destroy());
   const backupStatus=()=>{
    try{const stat=fs.statSync(config.backupStatus);if(stat.size>8192)throw Error();const b=JSON.parse(fs.readFileSync(config.backupStatus,'utf8'));const age=Date.now()-b.completedAt;return {fresh:Number.isFinite(age)&&age>=0&&age<1800000,ageSeconds:Math.floor(age/1000)};}catch{return {fresh:false,ageSeconds:null};}
   };
-  const snapshot=()=>({ok:state.healthy(),maintenance:state.maintenance(),release:config.release,schema:inspect(service.store.db).length,uptimeSeconds:Math.floor(process.uptime()),...telemetry.snapshot(),queued:service.matchmaker.tickets.size,backup:backupStatus(),mail:service.store.db.prepare('SELECT state,count(*) AS count FROM v4_outbox GROUP BY state').all()});
+  const snapshot=()=>({ok:state.healthy(),maintenance:state.maintenance(),release:config.release,schema:inspect(service.store.db).length,uptimeSeconds:Math.floor(process.uptime()),...telemetry.snapshot(),requestReads:{reused:reads.hits,loaded:reads.misses},queued:service.matchmaker.tickets.size,backup:backupStatus(),mail:service.store.db.prepare('SELECT state,count(*) AS count FROM v4_outbox GROUP BY state').all()});
   // Never proxied by Caddy; Docker publishes this port to host loopback only.
   metrics=http.createServer((req,res)=>{if(req.method!=='GET')return json(res,405,{error:'METHOD_NOT_ALLOWED'});if(req.url!=='/status')return json(res,404,{error:'NOT_FOUND'});return json(res,200,snapshot());});
   await new Promise((resolve,reject)=>{service.server.once('error',reject);service.server.listen(config.port,config.host,resolve);});
@@ -62,10 +65,10 @@ async function createRuntime(config,{transport,log=()=>{}}={}) {
    service.server.close();service.server.closeIdleConnections?.();metrics.close();metrics.closeIdleConnections?.();
    const until=Date.now()+config.drainMs;
    while((telemetry.inflight||outbox.active||passwords.active)&&Date.now()<until)await sleep(25);
-   metrics.closeAllConnections?.();await service.close();telemetry.event({event:'service_stopped'});telemetry.close();
+   metrics.closeAllConnections?.();reads.close();await service.close();telemetry.event({event:'service_stopped'});telemetry.close();
   }};
  } catch(error) {
-  clearInterval(timer);clearInterval(slowTimer);passwords?.close();outbox?.close();telemetry?.close();metrics?.close();await service.close();throw error;
+  clearInterval(timer);clearInterval(slowTimer);passwords?.close();outbox?.close();telemetry?.close();metrics?.close();reads?.close();await service.close();throw error;
  }
 }
 if(require.main===module) {

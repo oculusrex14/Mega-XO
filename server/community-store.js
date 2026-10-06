@@ -45,7 +45,7 @@ CREATE TABLE IF NOT EXISTS session_presence(session TEXT PRIMARY KEY,actor TEXT 
 CREATE TABLE IF NOT EXISTS social_operations(id TEXT PRIMARY KEY,fingerprint TEXT NOT NULL,result TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS community_limits(id TEXT PRIMARY KEY,hits INTEGER NOT NULL);
 CREATE TABLE IF NOT EXISTS email_challenges(id TEXT PRIMARY KEY,session TEXT NOT NULL,email TEXT NOT NULL COLLATE NOCASE,purpose TEXT NOT NULL,actor TEXT,code_hash TEXT NOT NULL,password_salt TEXT,password_hash TEXT,created INTEGER NOT NULL,expires INTEGER NOT NULL,attempts INTEGER NOT NULL DEFAULT 0,verified_at INTEGER,consumed INTEGER NOT NULL DEFAULT 0);
-CREATE TABLE IF NOT EXISTS v41_reports(id TEXT PRIMARY KEY,reporter TEXT NOT NULL,target TEXT NOT NULL,category TEXT NOT NULL,detail TEXT NOT NULL DEFAULT '',created INTEGER NOT NULL,state TEXT NOT NULL DEFAULT 'open',reviewed_at INTEGER,reviewed_by TEXT,outcome TEXT);
+CREATE TABLE IF NOT EXISTS v41_reports(id TEXT PRIMARY KEY,reporter TEXT NOT NULL,target TEXT NOT NULL,category TEXT NOT NULL CHECK(category IN ('cheating','username','harassment','unsportsmanlike','other')),detail TEXT NOT NULL DEFAULT '',created INTEGER NOT NULL,state TEXT NOT NULL DEFAULT 'open' CHECK(state IN ('open','reviewed')),reviewed_at INTEGER,reviewed_by TEXT,outcome TEXT CHECK(outcome IS NULL OR outcome IN ('no_action','action_taken','duplicate')));
 CREATE INDEX IF NOT EXISTS v41_reports_target_state ON v41_reports(target,state,created);
 CREATE INDEX IF NOT EXISTS v41_reports_reporter_created ON v41_reports(reporter,created);
 CREATE INDEX IF NOT EXISTS session_actor ON account_sessions(actor);

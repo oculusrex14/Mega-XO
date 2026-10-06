@@ -11,7 +11,8 @@ source=${3:?Absolute new secret file required}
 [[ -s "$source" ]] || { echo 'New secret file is empty.' >&2; exit 65; }
 
 case "$name" in
-  resend_api_key|google_client_secret|apple_private_key|backup_access_key|backup_secret_key|proxy_secret|otp_secret) ;;
+  resend_api_key|google_client_secret|apple_private_key|proxy_secret|otp_secret) ;;
+  backup_access_key|backup_secret_key) echo 'R2 credentials must be rotated together with rotate-r2-credentials.sh.' >&2; exit 64 ;;
   restic_password) echo 'Do not rotate Restic encryption by replacing its password file. Use the Restic key-rotation procedure in INCIDENT-RUNBOOK.md.' >&2; exit 64 ;;
   *) echo 'Unsupported secret name.' >&2; exit 64 ;;
 esac
@@ -67,7 +68,6 @@ restore(){
   set +e
   if [[ -f "$backup" ]]; then cp -- "$backup" "$target"; chmod 600 "$target"; fi
   case "$name" in
-    backup_access_key|backup_secret_key) dc --profile backup up -d --no-deps --force-recreate backup >/dev/null 2>&1 ;;
     proxy_secret) dc up -d --no-deps --force-recreate app edge >/dev/null 2>&1 ;;
     *) dc up -d --no-deps --force-recreate app >/dev/null 2>&1 ;;
   esac
@@ -89,10 +89,6 @@ wait_app(){
 }
 
 case "$name" in
-  backup_access_key|backup_secret_key)
-    dc --profile backup up -d --no-deps --force-recreate backup
-    dc --profile backup run --rm --no-deps backup node scripts/backup-run.js check
-    ;;
   proxy_secret)
     dc stop edge
     dc up -d --no-deps --force-recreate app

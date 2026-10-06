@@ -19,8 +19,10 @@ function buildService({file,origin,providers:providerConfig={},providerInstance,
  const rooms=new RoomStore(file,{...storeOptions,lanOnly:false});
  community.isDeletionBusy=actor=>rooms.active().some(r=>r.players.some(p=>p.id===actor));
  const auth=async req=>accountHandler.authenticate(req);
- const monetization=new MonetizationStore(store,{...monetizationOptions,busy:actor=>matchmaker.busy(actor)||rooms.active().some(r=>r.players.some(p=>p.id===actor))});
- const monetizationHandler=createMonetizationHandler({monetization,authenticate:auth,guard:accountHandler.guard,origin});
+ const {purchaseProviderFactory,notificationFactory,...monetizationConfig}=monetizationOptions,purchaseProvider=purchaseProviderFactory?purchaseProviderFactory(store):monetizationConfig.purchaseProvider;
+ const monetization=new MonetizationStore(store,{...monetizationConfig,purchaseProvider,busy:actor=>matchmaker.busy(actor)||rooms.active().some(r=>r.players.some(p=>p.id===actor))});
+ const storeNotifications=notificationFactory?notificationFactory({store,monetization,purchaseProvider}):{};
+ const monetizationHandler=createMonetizationHandler({monetization,authenticate:auth,guard:accountHandler.guard,origin,storeNotifications});
  // The existing party router accepts principal resolution; no new guest-to-paid path.
  const {createPartyHandler:partyFactory}=require('./party-http.js');
  let partyHandler=partyFactory?partyFactory({store:rooms,rooms,authenticate:async req=>{const p=await auth(req);if(!p)return null;const row=community.profileRow(p.id);return {id:p.id,actor:p.id,name:row?.display_name||'Player'};},origin}):null;
@@ -37,7 +39,7 @@ function buildService({file,origin,providers:providerConfig={},providerInstance,
   res.writeHead(200,{'Content-Type':types[path.extname(target)]||'application/octet-stream','Cache-Control':'no-cache','X-Content-Type-Options':'nosniff','Referrer-Policy':'same-origin','X-Frame-Options':'DENY'});if(req.method==='HEAD')return res.end();fs.createReadStream(target).pipe(res);
  }catch{if(!res.headersSent)res.writeHead(409,{'Content-Type':'application/json'});res.end(JSON.stringify({error:'REQUEST_FAILED'}));}};
  const server=http.createServer(request);let timer=null,closing=null;
- return {server,store,community,providers,emailer,matchmaker,rooms,monetization,request,startWorkers(){if(timer)return;timer=setInterval(()=>{try{matchmaker.tick();rooms.tick();community.cleanup();}catch(e){console.error('Maintenance error:',e.message);}},1000);timer.unref();},close(){
+ return {server,store,community,providers,emailer,matchmaker,rooms,monetization,storeNotifications,request,startWorkers(){if(timer)return;timer=setInterval(()=>{try{matchmaker.tick();rooms.tick();community.cleanup();monetization.processPurchaseFinalizations().catch(e=>console.error('Purchase finalization error:',e.message));}catch(e){console.error('Maintenance error:',e.message);}},1000);timer.unref();},close(){
   if(closing)return closing;clearInterval(timer);timer=null;
   closing=(async()=>{try{server.closeIdleConnections?.();server.closeAllConnections?.();if(server.listening)await new Promise(resolve=>server.close(()=>resolve()));}finally{rooms.close();store.close();}})();
   return closing;

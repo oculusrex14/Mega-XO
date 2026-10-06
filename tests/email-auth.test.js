@@ -41,7 +41,7 @@ test('OTP challenges expire, throttle resends and lock after repeated bad codes'
  const {community,advance}=fixture(t),boot=community.bootstrap(),first=community.emailContinue(boot.token,'user@example.com','correct-horse-42');
  assert.throws(()=>community.emailContinue(boot.token,'user@example.com','correct-horse-42'),/OTP_COOLDOWN/);
  advance(60001);const second=community.emailContinue(boot.token,'user@example.com','correct-horse-42');for(let i=0;i<5;i++)assert.throws(()=>community.emailVerify(boot.token,second.challengeId,'999999'),/INVALID_OTP/);
- assert.throws(()=>community.emailVerify(boot.token,second.challengeId,second.delivery.code),/OTP_LOCKED/);
+ assert.equal(community.db.prepare('SELECT attempts FROM email_challenges WHERE id=?').get(second.challengeId).attempts,5);assert.throws(()=>community.emailVerify(boot.token,second.challengeId,second.delivery.code),/OTP_LOCKED/);
  advance(60001);const third=community.emailContinue(boot.token,'user@example.com','correct-horse-42');advance(10*60000+1);assert.throws(()=>community.emailVerify(boot.token,third.challengeId,third.delivery.code),/OTP_EXPIRED/);
 });
 

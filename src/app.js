@@ -264,6 +264,6 @@ window.MegaApp=Object.freeze({
 });
 
 // Read-only diagnostics: no method can credit money, set rank or submit a server result.
-window.MegaXO=Object.freeze({version:'3.3.4-economy-1',getState:()=>match?structuredClone(match.state):null,getSettings:()=>({...data.settings})});
+window.MegaXO=Object.freeze({version:'3.4.0-economy-2',getState:()=>match?structuredClone(match.state):null,getSettings:()=>({...data.settings})});
 try{if(!window.MegaAccount&&!localStorage.getItem('mega_v32_tutorial_seen'))tutorial();}catch{}
 })();

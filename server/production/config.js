@@ -49,6 +49,7 @@ function config(env = process.env) {
     host: env.MEGA_BIND || '0.0.0.0', port: integer(env, 'PORT', 8080, 1024, 65535),
     adminPort: integer(env, 'MEGA_METRICS_PORT', 9091, 1024, 65535),
     maxInflight: integer(env, 'MEGA_MAX_INFLIGHT', 128, 8, 512),
+    maxQueued: integer(env, 'MEGA_MAX_QUEUED', 200, 20, 500),
     drainMs: integer(env, 'MEGA_DRAIN_MS', 15000, 1000, 30000),
     mailDaily: integer(env, 'MEGA_MAIL_DAILY_LIMIT', 80, 1, 100),
     mailMonthly: integer(env, 'MEGA_MAIL_MONTHLY_LIMIT', 2400, 1, 3000),

@@ -26,6 +26,13 @@ Repository-side work is implemented; external execution remains tracked below.
 - **Task 9 — staging acceptance:** `deploy/staging-smoke.sh` provides non-destructive live edge/security validation; the staging runbook defines real OTP, password reset, restart/reboot, and restore drills.
 - **Task 10 — monitoring:** public `/opsz` reports only `{"ok":...}` while incorporating readiness, backup freshness, and disk headroom; `deploy/install-monitoring.sh` installs local five-minute health checks and Resend state-change alerts; `deploy/MONITORING-RUNBOOK.md` defines the independent UptimeRobot monitors.
 
+## Repository readiness for tasks 11-14
+
+- **Task 11 — immutable production release:** `scripts/release-gate.js` blocks production tags until mandatory backend infrastructure gates are complete. Tagged releases rerun full validation, publish multi-arch GHCR with provenance/SBOM, retain `immutable-release.json`, and create a GitHub Release. `deploy/verify-release.sh` proves digest/revision/version/architecture before deployment. See `deploy/RELEASE-RUNBOOK.md`.
+- **Task 12 — real production email proof:** `scripts/live-email-acceptance.js` exercises actual signup OTP + password-reset OTP through the public edge without logging passwords/OTPs and proves old-password invalidation plus same-profile recovery. See `deploy/EMAIL-LIVE-ACCEPTANCE.md`.
+- **Task 13 — perimeter hardening:** Caddy suppresses its server fingerprint; `deploy/audit-perimeter.sh` inspects host/container/permission hardening; `scripts/external-perimeter-probe.js` proves 80/443 are the only public service ports and validates HTTPS/private-path behavior. See `deploy/PERIMETER-RUNBOOK.md`.
+- **Task 14 — remaining P0:** Google web OIDC now uses the supported minimum `openid profile` contract while still keying identity only by `sub`. `scripts/provider-web-smoke.js` validates live Google/Apple authorization contracts. Billing, ads and paid entry remain fail-closed until native/provider/legal gates are complete. Privacy/account deletion is intentionally blocked on an approved retention policy rather than guessed. See `docs/V4-P0-PLATFORM-READINESS.md`.
+
 ## External action ledger
 
 | ID | Area | Status | Blocker / required access | Exact completion evidence |
@@ -47,6 +54,15 @@ Repository-side work is implemented; external execution remains tracked below.
 | EXT-15 | External uptime monitor | BLOCKED | UptimeRobot account/email confirmation | Free HTTPS monitor checks the V4 operational endpoint every 5 minutes and sends a test alert to an Antimatter Innovations destination. |
 | EXT-16 | Backup/disk/restart alert path | BLOCKED | VPS + chosen alert destination | Local operational health failures and stale backup/disk/restart conditions generate a real alert outside the VPS. |
 | EXT-17 | Production release | BLOCKED | All launch gates above | Approved `v4.x` tag publishes a multi-arch GHCR image; deploy by immutable digest; HTTPS + backup + monitoring all green. |
+| EXT-18 | Google production identity | BLOCKED | Google Cloud console + staging/live browser | Exact production/staging redirect URIs registered; `provider-web-smoke.js` passes; real login, cancel, link, reauth and restore flows pass. |
+| EXT-19 | Apple production identity | BLOCKED | Apple Developer account + staging/live browser | Services ID/domain/return URLs and signing key configured; provider smoke passes; real login, cancel, link, reauth and restore flows pass. |
+| EXT-20 | Native identity | BLOCKED | Real Android/iOS projects + physical devices | Native challenge/nonce/token flow passes on physical devices; reinstall and revoked-credential behavior proven. |
+| EXT-21 | Privacy and account deletion | BLOCKED | Approved Antimatter Innovations privacy/retention policy + public web resource | Privacy Policy/Terms approved; in-app deletion and external deletion request implemented; retained-data rules disclosed; deletion tests pass. |
+| EXT-22 | Google Play Billing | BLOCKED | Play Console + Android app + backend purchase verifier | Real product IDs mapped; sandbox purchase/consume/acknowledge/refund/replay/restore tests pass; server verifier enabled only after proof. |
+| EXT-23 | Apple StoreKit billing | BLOCKED | App Store Connect + iOS app + backend JWS verifier | StoreKit products mapped; Sandbox/TestFlight purchase/restore/refund/revocation tests pass; App Store Server Notifications handled. |
+| EXT-24 | Production ads and consent | BLOCKED | AdMob + native SDK + privacy/consent configuration | Physical-device rewarded/SSV/replay/consent/Remove Ads acceptance passes before `MEGA_AD_MODE` can change from off. |
+| EXT-25 | Physical-device release QA | BLOCKED | iOS/Android devices/builds | Required OS/device matrix completes with no launch-blocking identity, network, purchase, ad, recovery or accessibility defects. |
+| EXT-26 | Paid-entry compliance | BLOCKED | Legal/platform/jurisdiction review | Written approved jurisdiction/age/store-policy design exists and server enforcement is implemented; until then paid entry remains false. |
 
 ## Local-agent execution order
 
@@ -55,7 +71,9 @@ Repository-side work is implemented; external execution remains tracked below.
 3. Configure the free-tier off-box backup target and complete EXT-07 through EXT-09.
 4. Deploy isolated staging and complete EXT-10 through EXT-14.
 5. Configure monitoring and alerting; complete EXT-15 and EXT-16.
-6. Do not create the production release/tag until all mandatory blockers are marked COMPLETE with non-secret evidence.
+6. Do not create the production release/tag until all mandatory backend blockers are marked COMPLETE with non-secret evidence.
+7. After the backend release, execute EXT-18 through EXT-25 as independent product/platform tracks; do not enable billing or ads while their blocker remains open.
+8. Treat EXT-26 as a separate future compliance decision. Technical existence of paid-entry code is not approval to enable it.
 
 ## Completed external prerequisites
 
@@ -71,4 +89,4 @@ Repository-side work is implemented; external execution remains tracked below.
 - Production ad SDK and consent integration.
 - Privacy policy, terms, account deletion, retention/legal decisions.
 - Paid-entry legal/platform approval.
-- Full physical-device release QA.
+- Full physical-device release QA is now tracked explicitly as EXT-25.

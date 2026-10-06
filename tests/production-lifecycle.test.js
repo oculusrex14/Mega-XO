@@ -51,3 +51,30 @@ test('VPS initialization and Compose keep provider credentials in secret files',
  assert.ok(installer.includes('No secret values were printed.'));
  assert.equal(installer.includes('printf \'%s\\n\' "$resend"'),false);
 });
+
+test('staging initialization uses real HTTPS and isolated access credentials',t=>{
+ const {init}=require('../scripts/init-vps');
+ const base=fs.mkdtempSync(path.join(os.tmpdir(),'v4-init-')),stage=path.join(base,'staging'),prod=path.join(base,'production');
+ t.after(()=>fs.rmSync(base,{recursive:true,force:true}));
+ const staged=init('staging.play.antimatterinnovations.com',stage,'staging');
+ assert.equal(staged.origin,'https://staging.play.antimatterinnovations.com');
+ const stageEnv=fs.readFileSync(path.join(stage,'compose.env'),'utf8');
+ assert.match(stageEnv,/MEGA_HTTP_PORT=80/);assert.match(stageEnv,/MEGA_HTTPS_PORT=443/);assert.match(stageEnv,/MEGA_CADDY_FILE=Caddyfile\.staging/);
+ assert.ok(fs.statSync(path.join(stage,'secrets','staging_access_password')).size>10);
+ assert.equal(fs.readFileSync(path.join(stage,'secrets','staging_password_hash'),'utf8'),'');
+ const produced=init('play.antimatterinnovations.com',prod,'production');
+ assert.equal(produced.origin,'https://play.antimatterinnovations.com');
+ assert.equal(fs.existsSync(path.join(prod,'secrets','staging_access_password')),false);
+ assert.equal(fs.existsSync(path.join(prod,'secrets','staging_password_hash')),true);
+});
+test('backup and monitoring assets preserve environment isolation and private diagnostics',()=>{
+ const r2=fs.readFileSync(path.join(ROOT,'deploy','configure-r2-backup.sh'),'utf8');
+ const monitor=fs.readFileSync(path.join(ROOT,'deploy','host-health-monitor.sh'),'utf8');
+ const staging=fs.readFileSync(path.join(ROOT,'deploy','Caddyfile.staging'),'utf8');
+ assert.ok(r2.includes('mega-xo-v4-$stage'));
+ assert.ok(r2.includes('MEGA_BACKUP_BUDGET_BYTES=2147483648'));
+ assert.ok(monitor.includes('RestartCount'));
+ assert.ok(monitor.includes('contact@antimatterinnovations.com'));
+ assert.ok(staging.includes('basic_auth'));
+ assert.ok(staging.includes('X-Robots-Tag'));
+});

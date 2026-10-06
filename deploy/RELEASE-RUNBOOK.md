@@ -2,7 +2,7 @@
 
 This runbook publishes and deploys the first V4 backend release only after the external launch gates are complete.
 
-The release signal is a signed-by-process Git tag such as **`v4.0.0`**. The tag must match `package.json.version` exactly.
+The release signal is a signed-by-process Git tag such as **`v4.1.0`**. The tag must match `package.json.version` exactly.
 
 ## 1. Mandatory release gates
 
@@ -11,6 +11,7 @@ Before creating a tag, update `docs/V4-OPEN-BLOCKERS.md` with non-secret evidenc
 ```text
 EXT-01 through EXT-05
 EXT-07 through EXT-16
+EXT-27 through EXT-30
 ```
 
 `EXT-06` (Google/Apple production credentials) is intentionally not a backend-release gate because V4 can launch with verified email only while those providers remain disabled. Enabling them later requires their own acceptance gates.
@@ -58,11 +59,11 @@ Do not tag an unvalidated follow-up commit.
 
 ## 3. Confirm version/tag
 
-For the first V4 release:
+For the V4.1 release:
 
 ```text
-package.json version = 4.0.0
-Git tag              = v4.0.0
+package.json version = 4.1.0
+Git tag              = v4.1.0
 ```
 
 Before later releases, bump `package.json.version` in a separate reviewed commit and rerun exact-head validation.
@@ -70,7 +71,7 @@ Before later releases, bump `package.json.version` in a separate reviewed commit
 Run the gate locally:
 
 ```bash
-GITHUB_REF_NAME=v4.0.0 \
+GITHUB_REF_NAME=v4.1.0 \
 GITHUB_SHA=$(git rev-parse HEAD) \
 node scripts/release-gate.js
 ```
@@ -86,8 +87,8 @@ Expected:
 Only after the gate succeeds:
 
 ```bash
-git tag -a v4.0.0 -m "Mega XO V4.0.0 production backend"
-git push origin v4.0.0
+git tag -a v4.1.0 -m "Mega XO V4.1.0 production backend"
+git push origin v4.1.0
 ```
 
 Do not retag or force-move a published production tag.
@@ -119,7 +120,7 @@ Never deploy:
 ```text
 :latest
 :V4
-:v4.0.0
+:v4.1.0
 :sha-...
 ```
 
@@ -133,7 +134,7 @@ From the V4 repository on the VPS:
 sudo bash deploy/verify-release.sh \
   ghcr.io/oculusrex14/mega-xo@sha256:IMAGE_DIGEST \
   TAGGED_GIT_SHA \
-  4.0.0
+  4.1.0
 ```
 
 The verifier checks:
@@ -235,7 +236,7 @@ Never put secret values or OTPs in the ledger.
 
 ## 10. Roll forward, do not mutate releases
 
-For any production correction after V4.0.0:
+For any production correction after V4.1.0:
 
 1. make a new source commit;
 2. bump patch version;

@@ -79,15 +79,15 @@ test('verified email change preserves actor, rejects collisions and revokes othe
  assert.equal(f.c.session(second.token),null);
  f.advance(61000);const oldAddress=await f.auth.continue(f.c.bootstrap().token,'old@example.com','correct-horse-42');assert.equal(oldAddress.verificationRequired,true);assert.equal(f.store.read().accounts.size,1);
  const restored=await f.auth.continue(f.c.bootstrap().token,'new@example.com','correct-horse-42');assert.equal(restored.actor,account.actor);
- await f.outbox.tick();await f.outbox.tick();
+ for(let i=0;i<4;i++)await f.outbox.tick();
  assert.equal(f.sent.filter(x=>x.kind==='security').length,2);
 });
 test('email change requires recent reauthentication and cannot take another profile email',async t=>{
  const f=fixture(t),a=await f.create('one@example.com');
  f.advance(16*60000);const b=await f.create('two@example.com');
- assert.throws(()=>f.auth.change(a.token,'fresh@example.com'),/REAUTH_REQUIRED/);
+ await assert.rejects(f.auth.change(a.token,'fresh@example.com'),/REAUTH_REQUIRED/);
  await f.auth.reauth(a.token,'one@example.com','correct-horse-42');
- assert.throws(()=>f.auth.change(a.token,'two@example.com'),/EMAIL_IN_USE/);
+ await assert.rejects(f.auth.change(a.token,'two@example.com'),/EMAIL_IN_USE/);
  const pending=await f.auth.change(a.token,'fresh@example.com');f.advance(16*60000);
  assert.throws(()=>f.auth.verify(a.token,pending.challengeId,f.pendingCode(pending.challengeId)),/OTP_EXPIRED/);
  assert.equal(f.c.emailAddress(a.actor),'one@example.com');assert.equal(f.c.emailAddress(b.actor),'two@example.com');

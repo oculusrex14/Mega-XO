@@ -91,6 +91,7 @@ function createCommunityHandler({community,providers,emailer,store,matchmaker,or
    if(path==='/api/account/save')return send(res,200,community.save(actor,b.revision,b.practice)),true;
    if(path==='/api/community/presence')return send(res,200,community.heartbeat(token(req),b.foreground)),true;
    if(path==='/api/community/friend')return send(res,200,community.social(actor,key(req),b.action,b.target)),true;
+   if(path==='/api/community/report')return send(res,200,community.report(actor,b.target,b.category,b.detail||'')),true;
    if(path==='/api/v1/friend')return send(res,200,community.social(actor,key(req),'request',b.target)),true;
    if(path==='/api/v1/accept-friend')return send(res,200,community.social(actor,key(req),'accept',b.from)),true;
    if(path==='/api/v1/queue')return send(res,200,matchmaker.enqueue(actor,b.mode,key(req),await networkContext(req,actor))),true;

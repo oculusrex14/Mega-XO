@@ -40,6 +40,17 @@ test('email signin restores the same profile and wrong credentials fail generica
  assert.throws(()=>community.emailSignin(community.bootstrap().token,'missing@example.com','wrong-password-9'),/INVALID_CREDENTIALS/);
 });
 
+test('single email continue creates a missing profile and signs into an existing one',t=>{
+ const {store,community}=fixture(t);
+ const first=community.emailContinue(community.bootstrap().token,' Player@Example.com ','correct-horse-42');
+ assert.equal(first.created,true);assert.equal(first.profile.email,'player@example.com');const count=store.read().accounts.size;
+ community.edit(first.actor,{username:'player_one',displayName:'Player One'});
+ const second=community.emailContinue(community.bootstrap().token,'PLAYER@example.com','correct-horse-42');
+ assert.equal(second.created,false);assert.equal(second.actor,first.actor);assert.equal(second.profile.username,'player_one');assert.equal(store.read().accounts.size,count);
+ assert.throws(()=>community.emailContinue(community.bootstrap().token,'player@example.com','wrong-password-9'),/INVALID_CREDENTIALS/);
+ assert.equal(store.read().accounts.size,count);
+});
+
 test('email can be linked to an existing provider account and counts as a recovery method',t=>{
  const {community}=fixture(t),google=googleLogin(community);
  const linked=community.emailLink(google.token,'linked@example.com','another-password-7');

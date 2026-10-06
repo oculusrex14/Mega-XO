@@ -12,9 +12,9 @@ const {RoomStore}=require('./rooms.js');
 const {MonetizationStore}=require('./monetization-store.js');
 const {createMonetizationHandler}=require('./monetization-http.js');
 const ROOT=path.resolve(__dirname,'..');
-function buildService({file,origin,providers:providerConfig={},providerInstance,emailOptions={},emailInstance,storeOptions={},monetizationOptions={},allowLocalHttp=false,networkContext=()=>({})}={}){
+function buildService({file,origin,providers:providerConfig={},providerInstance,emailOptions={},emailInstance,storeOptions={},communityOptions={},monetizationOptions={},allowLocalHttp=false,networkContext=()=>({})}={}){
  if(!emailInstance&&emailOptions.apiKey&&!storeOptions.otpSecret)throw Error('MEGA_OTP_SECRET_REQUIRED');
- const store=new DurableStore(file,storeOptions),community=new CommunityStore({store,origin,now:storeOptions.now||Date.now,otpSecret:storeOptions.otpSecret}),providers=providerInstance||new IdentityProviders({config:providerConfig}),emailer=emailInstance||new TransactionalEmail(emailOptions),matchmaker=new QueueSession({store,now:storeOptions.now||Date.now}),accountHandler=createCommunityHandler({store,community,providers,emailer,matchmaker,origin,allowLocalHttp,networkContext});
+ const store=new DurableStore(file,storeOptions),community=new CommunityStore({store,origin,now:storeOptions.now||Date.now,otpSecret:storeOptions.otpSecret,...communityOptions}),providers=providerInstance||new IdentityProviders({config:providerConfig}),emailer=emailInstance||new TransactionalEmail(emailOptions),matchmaker=new QueueSession({store,now:storeOptions.now||Date.now}),accountHandler=createCommunityHandler({store,community,providers,emailer,matchmaker,origin,allowLocalHttp,networkContext});
  community.isQueued=actor=>matchmaker.busy(actor);
  const rooms=new RoomStore(file,{...storeOptions,lanOnly:false});
  const auth=async req=>accountHandler.authenticate(req);

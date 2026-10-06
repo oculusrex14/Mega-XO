@@ -1,8 +1,9 @@
 'use strict';
-const crypto=require('node:crypto');
+const crypto=require('node:crypto'),{hasExtensionOid}=require('./x509-extensions');
 const safe=x=>typeof x==='string'&&/^[A-Za-z0-9._:-]{1,200}$/.test(x);
 const jsonPart=(value,max=65536)=>{const b=Buffer.from(value,'base64url');if(!b.length||b.length>max)throw Error('INVALID_RECEIPT');try{return JSON.parse(b.toString('utf8'));}catch{throw Error('INVALID_RECEIPT');}};
 const certTime=(cert,at)=>{const from=Date.parse(cert.validFrom),to=Date.parse(cert.validTo);return Number.isFinite(from)&&Number.isFinite(to)&&at>=from&&at<=to;};
+const APPLE_STORE_LEAF_OID='1.2.840.113635.100.6.11.1',APPLE_STORE_INTERMEDIATE_OID='1.2.840.113635.100.6.2.1';
 
 class AppleStoreKit{
  constructor(db,{bundleId,environment='Production',products={},trustedRoots=[],now=Date.now}={}){
@@ -12,12 +13,14 @@ class AppleStoreKit{
   if(Object.values(products).some(v=>!['crowns_100','crowns_525','crowns_1100','remove_ads'].includes(v)))throw Error('APPLE_STORE_CONFIG');
  }
  chain(header,at){
-  if(header?.alg!=='ES256'||!Array.isArray(header.x5c)||!header.x5c.length||header.x5c.length>5||header.jku||header.jwk||header.x5u||header.crit)throw Error('INVALID_RECEIPT');
+  if(header?.alg!=='ES256'||!Array.isArray(header.x5c)||header.x5c.length!==3||header.jku||header.jwk||header.x5u||header.crit)throw Error('INVALID_RECEIPT');
   let certs;try{certs=header.x5c.map(x=>{if(typeof x!=='string'||x.length>8192)throw Error();return new crypto.X509Certificate(Buffer.from(x,'base64'));});}catch{throw Error('INVALID_RECEIPT');}
   for(const cert of certs)if(!certTime(cert,at))throw Error('INVALID_RECEIPT');
-  for(let i=0;i<certs.length-1;i++){if(!certs[i].verify(certs[i+1].publicKey)||certs[i].checkIssued&&!certs[i].checkIssued(certs[i+1]))throw Error('INVALID_RECEIPT');}
-  const last=certs.at(-1),trusted=this.roots.some(root=>last.fingerprint256===root.fingerprint256||(certTime(root,at)&&last.verify(root.publicKey)&&(!last.checkIssued||last.checkIssued(root))));
-  if(!trusted)throw Error('INVALID_RECEIPT');return certs[0].publicKey;
+  const [leaf,intermediate,presentedRoot]=certs;if(leaf.ca||!intermediate.ca||!presentedRoot.ca)throw Error('INVALID_RECEIPT');
+  if(!hasExtensionOid(leaf.raw,APPLE_STORE_LEAF_OID)||!hasExtensionOid(intermediate.raw,APPLE_STORE_INTERMEDIATE_OID))throw Error('INVALID_RECEIPT');
+  if(!leaf.verify(intermediate.publicKey)||leaf.checkIssued&&!leaf.checkIssued(intermediate))throw Error('INVALID_RECEIPT');
+  const trusted=this.roots.find(root=>root.ca&&certTime(root,at)&&intermediate.verify(root.publicKey)&&(!intermediate.checkIssued||intermediate.checkIssued(root)));if(!trusted)throw Error('INVALID_RECEIPT');
+  return leaf.publicKey;
  }
  verifyJws(jws){
   if(typeof jws!=='string'||jws.length>65536)throw Error('INVALID_RECEIPT');const parts=jws.split('.');if(parts.length!==3)throw Error('INVALID_RECEIPT');

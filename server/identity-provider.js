@@ -18,7 +18,7 @@ class IdentityProviders {
  capabilities(){return Object.fromEntries(Object.keys(PROVIDERS).map(p=>[p,{web:this.enabled(p),native:!!this.config[p]?.nativeAudiences?.length}]));}
  audience(provider,kind){const c=this.config[provider];return kind==='native'?c?.nativeAudiences||[]:[c?.clientId].filter(Boolean);}
  authorization(provider,attempt,redirect){if(!this.enabled(provider))throw Error('PROVIDER_NOT_CONFIGURED');const p=PROVIDERS[provider],c=this.config[provider],u=new URL(p.authorize);u.search=new URLSearchParams({client_id:c.clientId,redirect_uri:redirect,response_type:'code',state:attempt.state,nonce:attempt.nonce});
-  if(provider==='google'){u.searchParams.set('scope','openid');u.searchParams.set('code_challenge',sha(attempt.verifier));u.searchParams.set('code_challenge_method','S256');u.searchParams.set('prompt','select_account');}
+  if(provider==='google'){u.searchParams.set('scope','openid profile');u.searchParams.set('code_challenge',sha(attempt.verifier));u.searchParams.set('code_challenge_method','S256');u.searchParams.set('prompt','select_account');}
   // No personal-name/email scopes required: a user chooses a game profile. Apple
   // allows a query callback for this code-only, no-scopes request (not form_post).
   else u.searchParams.set('response_mode','query');return u.href;

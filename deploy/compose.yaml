@@ -1,0 +1,109 @@
+name: ${MEGA_PROJECT:-mega-xo}
+services:
+  app:
+    image: ${MEGA_IMAGE:?Set an immutable tested image digest}
+    restart: unless-stopped
+    init: true
+    user: '1000:1000'
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    pids_limit: 256
+    mem_limit: 2g
+    cpus: 2.0
+    stop_grace_period: 40s
+    env_file: ${MEGA_ROOT:?Set the deployment directory}/app.env
+    environment:
+      MEGA_DB: /data/mega.sqlite
+      MEGA_BIND: 0.0.0.0
+      PORT: '8080'
+      MEGA_METRICS_PORT: '9091'
+      MEGA_BACKUP_STATUS: /backup-status/last-success.json
+      MEGA_OTP_SECRET_FILE: /run/secrets/otp_secret
+      MEGA_PROXY_SECRET_FILE: /run/secrets/proxy_secret
+      RESEND_API_KEY_FILE: /run/secrets/resend_api_key
+    secrets: [otp_secret, proxy_secret, resend_api_key]
+    volumes:
+      - ${MEGA_ROOT}/data:/data
+      - ${MEGA_ROOT}/backup-status:/backup-status:ro
+    tmpfs: ['/tmp:size=64m,mode=1777']
+    ports:
+      - '127.0.0.1:${MEGA_LOCAL_METRICS_PORT:-9091}:9091'
+    networks: [backend]
+    logging:
+      driver: json-file
+      options: {max-size: '10m', max-file: '3'}
+  edge:
+    image: ${CADDY_IMAGE:-caddy:2-alpine}
+    restart: unless-stopped
+    read_only: true
+    cap_drop: [ALL]
+    cap_add: [NET_BIND_SERVICE]
+    security_opt: [no-new-privileges:true]
+    pids_limit: 128
+    mem_limit: 256m
+    cpus: 0.5
+    entrypoint: ['/bin/sh', '-ec']
+    command: ['export MEGA_PROXY_SECRET="$$(cat /run/secrets/proxy_secret)"; exec caddy run --config /etc/caddy/Caddyfile --adapter caddyfile']
+    environment:
+      MEGA_HOSTNAME: ${MEGA_HOSTNAME:?Set the public game hostname}
+      ACME_EMAIL: contact@antimatterinnovations.com
+      MEGA_TRUSTED_PROXIES: ${MEGA_TRUSTED_PROXIES:-127.0.0.1/32}
+    secrets: [proxy_secret]
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    tmpfs: ['/tmp:size=16m,mode=1777']
+    ports: ['${MEGA_HTTP_BIND:-0.0.0.0}:${MEGA_HTTP_PORT:-80}:80', '${MEGA_HTTPS_BIND:-0.0.0.0}:${MEGA_HTTPS_PORT:-443}:443']
+    depends_on:
+      app: {condition: service_healthy}
+    networks: [backend]
+    logging:
+      driver: json-file
+      options: {max-size: '5m', max-file: '2'}
+  backup:
+    profiles: [backup]
+    image: ${MEGA_IMAGE}
+    restart: unless-stopped
+    init: true
+    user: '1000:1000'
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    pids_limit: 64
+    mem_limit: 512m
+    cpus: 0.5
+    healthcheck: {disable: true}
+    command: ['sh', 'deploy/backup-loop.sh']
+    env_file: ${MEGA_ROOT}/backup.env
+    environment:
+      MEGA_DB: /data/mega.sqlite
+      MEGA_BACKUP_STATUS: /backup-status/last-success.json
+      RESTIC_PASSWORD_FILE: /run/secrets/restic_password
+      AWS_ACCESS_KEY_ID_FILE: /run/secrets/backup_access_key
+      AWS_SECRET_ACCESS_KEY_FILE: /run/secrets/backup_secret_key
+      RESTIC_CACHE_DIR: /work/cache
+    secrets: [restic_password, backup_access_key, backup_secret_key]
+    volumes:
+      - ${MEGA_ROOT}/data:/data:ro
+      - ${MEGA_ROOT}/backup-work:/work
+      - ${MEGA_ROOT}/backup-status:/backup-status
+    tmpfs: ['/tmp:size=32m,mode=1777']
+    networks: [backend]
+    logging:
+      driver: json-file
+      options: {max-size: '5m', max-file: '2'}
+networks:
+  backend:
+    driver: bridge
+volumes:
+  caddy-data:
+  caddy-config:
+secrets:
+  otp_secret: {file: '${MEGA_ROOT}/secrets/otp_secret'}
+  proxy_secret: {file: '${MEGA_ROOT}/secrets/proxy_secret'}
+  resend_api_key: {file: '${MEGA_ROOT}/secrets/resend_api_key'}
+  restic_password: {file: '${MEGA_ROOT}/secrets/restic_password'}
+  backup_access_key: {file: '${MEGA_ROOT}/secrets/backup_access_key'}
+  backup_secret_key: {file: '${MEGA_ROOT}/secrets/backup_secret_key'}

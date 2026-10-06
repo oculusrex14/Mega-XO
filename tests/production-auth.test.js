@@ -10,7 +10,7 @@ function fixture(t){
  const dir=fs.mkdtempSync(path.join(os.tmpdir(),'mega-v4-auth-'));let now=Date.parse('2026-10-06T09:00:00Z');
  const store=new DurableStore(path.join(dir,'db'),{now:()=>now}),c=new CommunityStore({store,origin:'https://game.test',now:()=>now});migrate(store.db);
  const secret='a'.repeat(64),sent=[],passwords=new Passwords({concurrency:1});
- const transport={enabled:()=>true,sendOtp:async m=>{sent.push(m);},sendPasswordChanged:async m=>{sent.push(m);}};
+ const transport={enabled:()=>true,sendOtp:async m=>{sent.push({...m,kind:'otp'});},sendPasswordChanged:async m=>{sent.push({...m,kind:'changed'});},sendSecurityNotice:async m=>{sent.push({...m,kind:'security'});}};
  const outbox=new MailOutbox(c,{secret,transport,now:()=>now}),auth=new EmailAuth(c,{secret,passwords,outbox,now:()=>now});
  t.after(()=>{outbox.close();passwords.close();store.close();fs.rmSync(dir,{recursive:true,force:true});});
  const pendingCode=id=>outbox.open(store.db.prepare('SELECT payload FROM v4_outbox WHERE id=?').get(id).payload).code;
@@ -66,4 +66,36 @@ test('resending cancels queued superseded mail and never permits an old code',as
  assert.equal(f.store.db.prepare('SELECT state FROM v4_outbox WHERE id=?').get(old.challengeId).state,'cancelled');
  assert.throws(()=>f.auth.verify(g.token,old.challengeId,code),/INVALID_OTP/);
  const account=f.auth.verify(g.token,fresh.challengeId,f.pendingCode(fresh.challengeId));assert(account.actor);
+});
+
+test('verified email change preserves actor, rejects collisions and revokes other sessions',async t=>{
+ const f=fixture(t),account=await f.create('old@example.com');
+ await f.auth.reauth(account.token,'old@example.com','correct-horse-42');
+ const second=await f.auth.continue(f.c.bootstrap().token,'old@example.com','correct-horse-42');
+ assert.equal(second.actor,account.actor);
+ const pending=await f.auth.change(account.token,'new@example.com');
+ const changed=f.auth.verify(account.token,pending.challengeId,f.pendingCode(pending.challengeId));
+ assert.equal(changed.emailChanged,true);assert.equal(changed.profile.id,account.actor);assert.equal(changed.profile.email,'new@example.com');
+ assert.equal(f.c.session(second.token),null);
+ await assert.rejects(f.auth.continue(f.c.bootstrap().token,'old@example.com','correct-horse-42'),/INVALID_CREDENTIALS|EMAIL/);
+ const restored=await f.auth.continue(f.c.bootstrap().token,'new@example.com','correct-horse-42');assert.equal(restored.actor,account.actor);
+ await f.outbox.tick();await f.outbox.tick();
+ assert.equal(f.sent.filter(x=>x.kind==='security').length,2);
+});
+test('email change requires recent reauthentication and cannot take another profile email',async t=>{
+ const f=fixture(t),a=await f.create('one@example.com');
+ f.advance(61000);const b=await f.create('two@example.com');
+ assert.throws(()=>f.auth.change(a.token,'fresh@example.com'),/REAUTH_REQUIRED/);
+ await f.auth.reauth(a.token,'one@example.com','correct-horse-42');
+ assert.throws(()=>f.auth.change(a.token,'two@example.com'),/EMAIL_IN_USE/);
+ const pending=await f.auth.change(a.token,'fresh@example.com');f.advance(16*60000);
+ assert.throws(()=>f.auth.verify(a.token,pending.challengeId,f.pendingCode(pending.challengeId)),/REAUTH_REQUIRED/);
+ assert.equal(f.c.emailAddress(a.actor),'one@example.com');assert.equal(f.c.emailAddress(b.actor),'two@example.com');
+});
+test('session list exposes opaque ids and can revoke one or every other session',async t=>{
+ const f=fixture(t),a=await f.create('sessions@example.com'),b=await f.auth.continue(f.c.bootstrap().token,'sessions@example.com','correct-horse-42'),c=await f.auth.continue(f.c.bootstrap().token,'sessions@example.com','correct-horse-42');
+ let rows=f.c.sessions(a.token);assert.equal(rows.length,3);assert.equal(rows.filter(x=>x.current).length,1);assert(rows.every(x=>/^[a-f0-9]{24}$/.test(x.id)));
+ const target=rows.find(x=>!x.current);f.c.revokeSession(a.token,target.id);assert.equal(f.c.session(b.token)===null||f.c.session(c.token)===null,true);
+ rows=f.c.sessions(a.token);assert.equal(rows.length,2);assert.throws(()=>f.c.revokeSession(a.token,rows.find(x=>x.current).id),/CURRENT_SESSION/);
+ const all=f.c.revokeOtherSessions(a.token);assert.equal(all.revoked,1);assert.equal(f.c.sessions(a.token).length,1);assert(f.c.session(a.token));
 });

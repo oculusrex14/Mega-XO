@@ -63,6 +63,16 @@ test('maintenance stops new work but keeps liveness and rejects readiness',async
  const status=await fetch('http://127.0.0.1:'+f.runtime.metrics.address().port+'/status').then(r=>r.json());assert.equal(status.maintenance,true);assert.equal(status.backup.fresh,false);
  f.runtime.service.store.db.exec('UPDATE v4_controls SET maintenance=0');assert.equal((await fetch(f.url+'/readyz')).status,200);
 });
+test('public operational health is fail-closed on backup freshness without exposing diagnostics',async t=>{
+ const f=await fixture(t);
+ let r=await fetch(f.url+'/opsz');assert.equal(r.status,503);assert.deepEqual(await r.json(),{ok:false});
+ fs.writeFileSync(f.cfg.backupStatus,JSON.stringify({completedAt:Date.now(),snapshotId:'a'.repeat(64)})+'\n');
+ r=await fetch(f.url+'/opsz');assert.equal(r.status,200);assert.deepEqual(await r.json(),{ok:true});
+ const internal=await fetch('http://127.0.0.1:'+f.runtime.metrics.address().port+'/status').then(x=>x.json());
+ assert.equal(internal.operational,true);assert.equal(internal.backup.fresh,true);assert.equal(internal.disk.healthy,true);assert.equal(typeof internal.disk.freeBytes,'number');
+ f.runtime.service.store.db.exec('UPDATE v4_controls SET maintenance=1');
+ r=await fetch(f.url+'/opsz');assert.equal(r.status,503);assert.deepEqual(await r.json(),{ok:false});
+});
 test('backup contains committed WAL state and guarded restore rejects corruption',async t=>{
  const f=await fixture(t),db=f.runtime.service.store.db;
  db.exec("INSERT INTO v4_runtime VALUES('durable-test','42')");const destination=path.join(f.dir,'backup.sqlite');

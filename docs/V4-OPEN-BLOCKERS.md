@@ -10,7 +10,7 @@ Rules:
 
 ## Current release state
 
-- Branch: `V4`
+- Branch: `V4.1`
 - Production origin: `https://play.antimatterinnovations.com`
 - Production architecture: one authoritative Node coordinator + local SQLite WAL + Caddy TLS edge + encrypted off-box Restic backups.
 - Purchases, ads, and paid-entry competition remain disabled in the V4 production baseline.
@@ -32,6 +32,15 @@ Repository-side work is implemented; external execution remains tracked below.
 - **Task 12 — real production email proof:** `scripts/live-email-acceptance.js` exercises actual signup OTP + password-reset OTP through the public edge without logging passwords/OTPs and proves old-password invalidation plus same-profile recovery. See `deploy/EMAIL-LIVE-ACCEPTANCE.md`.
 - **Task 13 — perimeter hardening:** Caddy suppresses its server fingerprint; `deploy/audit-perimeter.sh` inspects host/container/permission hardening; `scripts/external-perimeter-probe.js` proves 80/443 are the only public service ports and validates HTTPS/private-path behavior. See `deploy/PERIMETER-RUNBOOK.md`.
 - **Task 14 — remaining P0:** Google web OIDC now uses the supported minimum `openid profile` contract while still keying identity only by `sub`. `scripts/provider-web-smoke.js` validates live Google/Apple authorization contracts. Billing, ads and paid entry remain fail-closed until native/provider/legal gates are complete. Privacy/account deletion is intentionally blocked on an approved retention policy rather than guessed. See `docs/V4-P0-PLATFORM-READINESS.md`.
+
+## Repository readiness for tasks 15-20
+
+- **Task 15 — account/session security:** verified email changes require recent reauthentication plus OTP verification of the new mailbox; other sessions are revoked after change; active sessions use opaque IDs and can be revoked individually or in bulk; security notices are queued through the encrypted mail path.
+- **Task 16 — anti-abuse/DoS:** HMAC-pseudonymized IP throttles protect expensive authentication/report/export actions across restarts; broad request limits remain memory-bounded; production sockets, headers, request time and concurrency are bounded.
+- **Task 17 — operator/support toolkit:** operator commands exist only on the loopback admin port, derive authentication from the proxy trust secret, expose masked diagnostics, and record every mutation in an immutable hash-chained audit table. There is no currency-grant command.
+- **Task 18 — incident response:** audited global lockdown revokes sessions, OAuth/OTP state and queued sensitive mail; guarded secret rotation and atomic paired R2 rotation are implemented. See `deploy/INCIDENT-RUNBOOK.md`.
+- **Task 19 — reporting/moderation:** player reports use fixed categories, duplicate/rate protection and no automatic punishment; operator review/resolution is separate and audited. See `deploy/MODERATION-RUNBOOK.md`.
+- **Task 20 — privacy/data export:** recently reauthenticated players can download an allowlisted JSON export. Credentials/operator internals/reports from others are excluded. Deletion state is scaffolded but remains fail-closed pending `EXT-21`. See `docs/V4.1-PRIVACY-DATA.md`.
 
 ## External action ledger
 
@@ -63,6 +72,10 @@ Repository-side work is implemented; external execution remains tracked below.
 | EXT-24 | Production ads and consent | BLOCKED | AdMob + native SDK + privacy/consent configuration | Physical-device rewarded/SSV/replay/consent/Remove Ads acceptance passes before `MEGA_AD_MODE` can change from off. |
 | EXT-25 | Physical-device release QA | BLOCKED | iOS/Android devices/builds | Required OS/device matrix completes with no launch-blocking identity, network, purchase, ad, recovery or accessibility defects. |
 | EXT-26 | Paid-entry compliance | BLOCKED | Legal/platform/jurisdiction review | Written approved jurisdiction/age/store-policy design exists and server enforcement is implemented; until then paid entry remains false. |
+| EXT-27 | Incident and secret-rotation drill | BLOCKED | Staging VPS + Resend/R2 credentials | Staging proves global lockdown/recovery, proxy + OTP rotation, Resend rotation, atomic R2 credential rotation and Restic key rotation with non-secret evidence. |
+| EXT-28 | Operator access drill | BLOCKED | VPS/Tailscale operator access | Operator CLI works only through loopback/Tailscale administration; public admin route remains absent; lookup/session revoke/hold/audit verification drill passes. |
+| EXT-29 | Moderation and appeals policy | BLOCKED | Antimatter Innovations policy decision | Conduct policy, evidence thresholds, suspension/escalation rules, appeals/support path, report retention and authorized moderator roles are approved. |
+| EXT-30 | Personal data export acceptance | BLOCKED | Live staging + real account/browser | Recently reauthenticated account downloads expected JSON; stale auth is rejected; no password/session/OTP/operator material appears; export rate limits proven. |
 
 ## Local-agent execution order
 
@@ -74,6 +87,7 @@ Repository-side work is implemented; external execution remains tracked below.
 6. Do not create the production release/tag until all mandatory backend blockers are marked COMPLETE with non-secret evidence.
 7. After the backend release, execute EXT-18 through EXT-25 as independent product/platform tracks; do not enable billing or ads while their blocker remains open.
 8. Treat EXT-26 as a separate future compliance decision. Technical existence of paid-entry code is not approval to enable it.
+9. Complete EXT-27 through EXT-30 before a V4.1 production tag: incident operations, operator access, moderation policy and live data-export acceptance are launch gates.
 
 ## Completed external prerequisites
 

@@ -113,7 +113,7 @@ CREATE INDEX IF NOT EXISTS email_challenges_email ON email_challenges(email);`);
  }
  emailResetStart(token,email){
   const session=this.requireSession(token);email=normalizeEmail(email);this.rate(session.hash,'email-reset',5,3600);const credential=this.db.prepare('SELECT actor FROM email_credentials WHERE email=?').get(email);
-  return this.tx(()=>this._challenge(session,{email,purpose:'reset',actor:credential?.actor||null}));
+  return this.tx(()=>{const challenge=this._challenge(session,{email,purpose:'reset',actor:credential?.actor||null});if(!credential)delete challenge.delivery;return challenge;});
  }
  emailResetComplete(token,id,password){
   const session=this.requireSession(token);password=validatePassword(password);this.rate(session.hash,'email-reset-complete',6,300);

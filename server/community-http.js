@@ -86,6 +86,7 @@ function createCommunityHandler({community,providers,emailer,store,matchmaker,or
    if(path==='/api/account/logout'){const result=community.logout(token(req),b.allDevices===true);setCookie(res,'',0);return send(res,200,result),true;}
    if(path==='/api/account/sessions/revoke')return send(res,200,b.allOthers===true?community.revokeOtherSessions(token(req)):community.revokeSession(token(req),b.id)),true;
    const actor=mine(req).actor;
+   if(path==='/api/account/export')return send(res,200,community.exportData(token(req))),true;
    if(path==='/api/account/unlink')return send(res,200,community.unlink(token(req),b.provider)),true;
    if(path==='/api/account/profile')return send(res,200,community.edit(actor,b)),true;
    if(path==='/api/account/save')return send(res,200,community.save(actor,b.revision,b.practice)),true;

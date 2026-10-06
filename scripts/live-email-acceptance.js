@@ -1,5 +1,5 @@
 'use strict';
-const fs=require('node:fs'),crypto=require('node:crypto'),readline=require('node:readline/promises');
+const fs=require('node:fs'),crypto=require('node:crypto');
 
 function usage(){
  console.error('Usage: node scripts/live-email-acceptance.js https://HOST TEST_EMAIL [--basic-password-file /absolute/file]');
@@ -9,12 +9,25 @@ function mask(email){const [a,b]=email.split('@');return (a?.slice(0,1)||'*')+'*
 function strongPassword(){return 'Mx9_'+crypto.randomBytes(24).toString('base64url');}
 function cookieFrom(headers){const raw=headers.getSetCookie?.()[0]||headers.get('set-cookie')||'';return raw.split(';')[0];}
 async function promptCode(label){
- const rl=readline.createInterface({input:process.stdin,output:process.stdout});
- try{
-  const code=(await rl.question(label)).trim();
-  if(!/^[0-9]{6}$/.test(code))throw Error('OTP_MUST_BE_6_DIGITS');
-  return code;
- }finally{rl.close();}
+ if(!process.stdin.isTTY||!process.stdout.isTTY)throw Error('TTY_REQUIRED_FOR_OTP');
+ process.stdout.write(label);
+ process.stdin.setRawMode(true);process.stdin.resume();process.stdin.setEncoding('utf8');
+ return new Promise((resolve,reject)=>{
+  let value='',done=false;
+  const finish=(error)=>{
+   if(done)return;done=true;process.stdin.off('data',onData);process.stdin.setRawMode(false);process.stdin.pause();process.stdout.write('\n');
+   if(error)reject(error);else resolve(value);
+  };
+  const onData=chunk=>{
+   for(const ch of chunk){
+    if(ch==='\u0003')return finish(Error('CANCELLED'));
+    if(ch==='\r'||ch==='\n')return finish(/^[0-9]{6}$/.test(value)?null:Error('OTP_MUST_BE_6_DIGITS'));
+    if(ch==='\u007f'||ch==='\b'){if(value){value=value.slice(0,-1);process.stdout.write('\b \b');}continue;}
+    if(/[0-9]/.test(ch)&&value.length<6){value+=ch;process.stdout.write('*');}
+   }
+  };
+  process.stdin.on('data',onData);
+ });
 }
 function client(origin,basic){
  let cookie='',csrf='';

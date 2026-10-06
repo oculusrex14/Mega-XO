@@ -31,7 +31,7 @@ async function createRuntime(config,{transport,log=()=>{}}={}) {
  fs.mkdirSync(path.dirname(config.file),{recursive:true,mode:0o700});preflight(config.file);
  // Production never exposes the old process's synchronous email handler: the
  // perimeter owns the same email route and delegates to the isolated service.
- const service=buildService({file:config.file,origin:config.origin,providers:config.providers,storeOptions:{otpSecret:config.otpSecret,paidEntryEnabled:false},emailInstance:{enabled:()=>false},monetizationOptions:{adMode:'off',purchasesEnabled:false}});
+ const service=buildService({file:config.file,origin:config.origin,providers:config.providers,storeOptions:{otpSecret:config.otpSecret,paidEntryEnabled:false},communityOptions:{deletionPolicy:{enabled:config.privacy.deletionEnabled,policyVersion:config.privacy.policyVersion}},emailInstance:{enabled:()=>false},monetizationOptions:{adMode:'off',purchasesEnabled:false}});
  let telemetry,passwords,outbox,metrics,timer,slowTimer,reads,closed=false;
  try {
   migrate(service.store.db);service.rooms.db.exec('PRAGMA synchronous=FULL; PRAGMA foreign_keys=ON; PRAGMA busy_timeout=1000;');

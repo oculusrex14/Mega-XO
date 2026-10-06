@@ -677,3 +677,17 @@ body{font-family:'Space Grotesk',ui-sans-serif,system-ui,-apple-system,BlinkMacS
 .network-status-copy{flex:1;min-width:0}.network-status-copy strong,.network-status-copy span{display:block}.network-status-copy strong{font-size:12px}.network-status-copy span{font-size:10.5px;color:var(--muted);line-height:1.4;margin-top:2px}
 .network-status-action{min-height:44px;min-width:86px;padding:8px 10px;font-size:11px;flex:none}
 @media(max-width:360px){.network-status{align-items:stretch;flex-direction:column}.network-status-action{width:100%}}
+
+
+/* Accessibility release invariants: 24px game targets, 44px primary controls,
+ * OS reduced-motion support, and forced-color affordances. */
+.sheet-head .icon-button,.match-top .icon-button{width:44px;height:44px;min-width:44px;min-height:44px}
+.board-wrap{min-width:min(240px,100%)}
+@media (prefers-reduced-motion:reduce){
+ *,*:before,*:after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;scroll-behavior:auto!important}
+}
+@media (forced-colors:active){
+ .button,.icon-button,.wallet-pill,.mode,.nav-button,.setting-row select,.field input,.field select,.network-status{border:1px solid ButtonText}
+ .nav-button.active,.mode.active,.mini.active{outline:2px solid Highlight;outline-offset:0}
+ .progress>span{background:Highlight}
+}

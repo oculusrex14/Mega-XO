@@ -4,7 +4,8 @@ const fs=require('node:fs'),path=require('node:path');
 const ROOT=path.resolve(__dirname,'..');
 const REQUIRED=Object.freeze([
  'EXT-01','EXT-02','EXT-03','EXT-04','EXT-05',
- 'EXT-07','EXT-08','EXT-09','EXT-10','EXT-11','EXT-12','EXT-13','EXT-14','EXT-15','EXT-16'
+ 'EXT-07','EXT-08','EXT-09','EXT-10','EXT-11','EXT-12','EXT-13','EXT-14','EXT-15','EXT-16',
+ 'EXT-27','EXT-28','EXT-29','EXT-30'
 ]);
 
 function parseLedger(text){

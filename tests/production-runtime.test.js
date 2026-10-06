@@ -3,7 +3,7 @@ const test=require('node:test'),assert=require('node:assert/strict'),fs=require(
 const {config}=require('../server/production/config');
 const {createRuntime}=require('../server/production/main');
 const {snapshot,verify,restore}=require('../server/production/backup');
-const {preflight}=require('../server/production/migrations');
+const {preflight,migrations}=require('../server/production/migrations');
 const {DatabaseSync}=require('node:sqlite');
 const http=require('node:http'),crypto=require('node:crypto');
 function httpFetch(url,options={}) {
@@ -76,7 +76,7 @@ test('public operational health is fail-closed on backup freshness without expos
 test('backup contains committed WAL state and guarded restore rejects corruption',async t=>{
  const f=await fixture(t),db=f.runtime.service.store.db;
  db.exec("INSERT INTO v4_runtime VALUES('durable-test','42')");const destination=path.join(f.dir,'backup.sqlite');
- await snapshot(f.cfg.file,destination);const manifest=await verify(destination);assert.equal(manifest.schema,1);
+ await snapshot(f.cfg.file,destination);const manifest=await verify(destination);assert.equal(manifest.schema,migrations.length);
  const copy=path.join(f.dir,'restored.sqlite');await restore(destination,copy,{confirm:true});
  const restored=new DatabaseSync(copy);assert.equal(restored.prepare("SELECT value FROM v4_runtime WHERE key='durable-test'").get().value,'42');restored.close();
  await assert.rejects(restore(destination,copy),/RESTORE_CONFIRMATION/);

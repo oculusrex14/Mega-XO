@@ -1,0 +1,40 @@
+name: V3.5 monetisation validation
+on:
+  push:
+    branches: [V3.5]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: v35-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  validation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Full Node regression
+        run: npm test
+      - name: Game design invariants
+        run: npm run test:invariants
+      - name: Ranked balance
+        run: npm run test:balance
+      - name: Population economy model
+        run: npm run test:economy-sim
+      - name: Source checkpoint
+        run: |
+          mkdir -p .artifacts
+          git archive --format=tar HEAD | gzip > .artifacts/v35-source.tar.gz
+      - name: Retain validation evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: v35-validation
+          path: .artifacts/
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 7

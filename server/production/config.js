@@ -41,7 +41,16 @@ function config(env = process.env) {
   const privacyPolicyVersion=env.MEGA_PRIVACY_POLICY_VERSION||'';
   if (deletionEnabled && !/^[A-Za-z0-9._-]{3,64}$/.test(privacyPolicyVersion)) throw Error('ACCOUNT_DELETION_POLICY_NOT_APPROVED');
   if (purchasesEnabled && !deletionEnabled) throw Error('STORE_RELEASE_REQUIRES_ACCOUNT_DELETION');
-  if (env.MEGA_AD_MODE && env.MEGA_AD_MODE !== 'off') throw Error('ADS_NOT_RELEASED');
+  const adMode=env.MEGA_AD_MODE||'off';if(!['off','rewarded','hybrid'].includes(adMode))throw Error('INVALID_AD_MODE');
+  const adUnit=value=>{if(!value)return '';if(!/^ca-app-pub-\d{16}\/\d{10}$/.test(value))throw Error('INVALID_ADMOB_UNIT');return value;};
+  const adPlatforms={};for(const platform of ['ANDROID','IOS']){const rewarded=adUnit(env['ADMOB_'+platform+'_REWARDED_UNIT']||''),interstitial=adUnit(env['ADMOB_'+platform+'_INTERSTITIAL_UNIT']||'');if(interstitial&&!rewarded)throw Error('ADMOB_REWARDED_UNIT_REQUIRED');if(rewarded||interstitial)adPlatforms[platform.toLowerCase()]={rewarded,interstitial};}
+  const consentVersion=env.MEGA_AD_CONSENT_VERSION||'';
+  if(adMode!=='off'){
+   if(!deletionEnabled||!/^[A-Za-z0-9._-]{3,64}$/.test(privacyPolicyVersion))throw Error('ADS_REQUIRE_PRIVACY_RELEASE');
+   if(!/^[A-Za-z0-9._-]{3,64}$/.test(consentVersion))throw Error('ADS_REQUIRE_CONSENT_RELEASE');
+   if(!Object.keys(adPlatforms).length)throw Error('ADMOB_UNITS_REQUIRED');
+   if(Object.values(adPlatforms).some(x=>!x.rewarded||(adMode==='hybrid'&&!x.interstitial)))throw Error('INCOMPLETE_ADMOB_UNITS');
+  }
   const apiKey = secret(env, 'RESEND_API_KEY');
   if (apiKey && !/^re_[A-Za-z0-9_-]+$/.test(apiKey)) throw Error('INVALID_RESEND_API_KEY');
   const from = env.MEGA_EMAIL_FROM || 'Mega XO by Antimatter Innovations <contact@antimatterinnovations.com>';
@@ -79,6 +88,7 @@ function config(env = process.env) {
     release: /^[a-f0-9]{40}$/.test(env.MEGA_RELEASE || '') ? env.MEGA_RELEASE : 'local',
     email: {apiKey, from},
     privacy: {deletionEnabled, policyVersion:privacyPolicyVersion},
+    ads: {mode:adMode,consentVersion,platforms:Object.freeze(adPlatforms)},
     purchases: {enabled:purchasesEnabled,googlePlay,appleStore},
     providers: {google: {clientId: googleId, clientSecret: googleSecret, nativeAudiences: (env.GOOGLE_NATIVE_AUDIENCES || '').split(',').filter(Boolean), authorizedParties: (env.GOOGLE_AUTHORIZED_PARTIES || '').split(',').filter(Boolean)}, apple}
   });

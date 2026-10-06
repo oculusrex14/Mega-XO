@@ -13,7 +13,7 @@ if(!['vector','midnight','paperclub','afterhours'].includes(data.settings.theme)
 let page='play',mode='bot',difficulty='Medium',first='X',onlineType='ranked',statsMode='bot',statsDifficulty='all',rankLeague='all',rankScope='global',rankMetric='rating';
 let online={ready:false,profile:null,rows:[],invitations:[],products:[]},target=null,pendingExchange=null,refreshSerial=0,onlinePoll=null,onlinePollBusy=false,onlinePending=false,waitingId=null,queueSubmission=null,queueCancelling=false,connectionState='online';
 const NET=window.MegaNetwork,opId=()=>globalThis.crypto?.randomUUID?.()||String(Date.now())+'-'+Math.random().toString(36).slice(2);
-let match=null,botTimer=null,toastTimer=null,ctx=null,ambient=null,sheetKind='',lastTick=performance.now(),lastInput=performance.now(),lastSave=0;
+let match=null,botTimer=null,toastTimer=null,ctx=null,ambient=null,sheetKind='',sheetReturnFocus=null,lastTick=performance.now(),lastInput=performance.now(),lastSave=0;
 const themeNames={vector:'Vector Light',midnight:'Midnight Club',paperclub:'Paper Club',afterhours:'After Hours'};
 const lightBadges=[['#ead9c5','#715234'],['#e3e8ed','#58646b'],['#dae3f0','#465c7d'],['#f4dfc6','#7c4b20'],['#e3edf4','#4a6276'],['#f5e7b2','#805b0c'],['#d7f0fa','#176d8a'],['#d7efdf','#23673f'],['#eed7f0','#784576'],['#e7defa','#644991'],['#faf0c7','#805b0c']];
 const darkBadges=[['#42372d','#e4c49c'],['#343f48','#d0dce5'],['#283b53','#b8d1f7'],['#4a3526','#f0bf91'],['#314455','#d6eafa'],['#4c4123','#f2d88d'],['#173e52','#9ce2f8'],['#233e31','#a5e4bf'],['#442e49','#e7b8ee'],['#362b51','#d9c2fc'],['#514224','#fff0aa']];
@@ -93,10 +93,11 @@ function quests(){const d=D.getDaily(data),remaining=Math.max(0,D.POLICY.botDail
  '<div class="section-heading"><h3>Bot rewards</h3><span class="pill">'+remaining+' / '+D.POLICY.botDailyCap+' left today</span></div>'+G.LEVELS.map(l=>'<div class="split"><span>'+l+'</span><span class="amount">'+D.BOT_PAY[l]+' Coins / win</span></div>').join('')+'<p class="caption">Up to '+D.POLICY.botWinsPerLevel+' rewarded wins per difficulty each day.</p>'+fullButton('Open wallet','wallet','',true);}
 function sheetOpen(){return !$('#sheet').hidden;}
 
+function sheetIsolation(active){for(const selector of ['.topbar','#networkStatus','#page','#gameScreen','#navigation']){const el=$(selector);if(el)el.inert=active;}}
 function open(title,html,kind='info'){
- clearTimeout(botTimer);botTimer=null;sheetKind=kind;$('#sheetTitle').textContent=title;$('#sheetBody').innerHTML=html;$('#sheet').dataset.kind=kind;$('#sheetBackdrop').hidden=false;$('#sheet').hidden=false;$('#sheet').scrollTop=0;lastTick=performance.now();refreshIcons();window.dispatchEvent(new Event('mega:sheet'));
+ clearTimeout(botTimer);botTimer=null;const sheet=$('#sheet'),wasHidden=sheet.hidden;if(wasHidden)sheetReturnFocus=document.activeElement;sheetKind=kind;$('#sheetTitle').textContent=title;$('#sheetBody').innerHTML=html;sheet.dataset.kind=kind;$('#sheetBackdrop').hidden=false;sheet.hidden=false;sheet.scrollTop=0;sheetIsolation(true);lastTick=performance.now();refreshIcons();window.dispatchEvent(new Event('mega:sheet'));requestAnimationFrame(()=>$('#sheetClose')?.focus());
 }
-function close(){const sheet=$('#sheet');if(sheet.hidden)return;sheet.hidden=true;sheet.removeAttribute('data-kind');$('#sheetBackdrop').hidden=true;sheetKind='';lastTick=performance.now();lastInput=lastTick;scheduleBot();}
+function close(){const sheet=$('#sheet');if(sheet.hidden)return;sheet.hidden=true;sheet.removeAttribute('data-kind');$('#sheetBackdrop').hidden=true;sheetIsolation(false);sheetKind='';lastTick=performance.now();lastInput=lastTick;const returnTo=sheetReturnFocus;sheetReturnFocus=null;if(returnTo?.isConnected&&!returnTo.inert)requestAnimationFrame(()=>returnTo.focus());scheduleBot();}
 
 function settings(){const s=data.settings;
  const toggle=(key,label,desc,disabled=false,child=false)=>'<div class="setting-row '+(child?'notification-child':'')+'"><label for="setting-'+key+'">'+label+'<small>'+desc+'</small></label><input class="switch" id="setting-'+key+'" data-setting="'+key+'" type="checkbox" '+(s[key]?'checked':'')+' '+(disabled?'disabled':'')+'></div>';
@@ -242,6 +243,7 @@ const actions={
  resignyes:()=>{if(match?.online){onlineResign();return;}close();match.state={...match.state,winner:match.mode==='bot'?'O':match.state.turn==='X'?'O':'X'};finish('resign');}
 };
 document.addEventListener('click',e=>{const el=e.target.closest('[data-action]');if(!el||el.disabled)return;const fn=actions[el.dataset.action];if(fn)fn(el.dataset.value||'');});
+document.addEventListener('keydown',e=>{const sheet=$('#sheet');if(sheet.hidden)return;if(e.key==='Escape'){e.preventDefault();actions.close();return;}if(e.key!=='Tab')return;const nodes=[...sheet.querySelectorAll('button:not([disabled]),input:not([disabled]),select:not([disabled]),a[href],[tabindex]:not([tabindex="-1"])')].filter(n=>n.getClientRects().length&&!n.inert);if(!nodes.length){e.preventDefault();sheet.focus();return;}const first=nodes[0],last=nodes.at(-1);if(e.shiftKey&&document.activeElement===first){e.preventDefault();last.focus();}else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first.focus();}});
 document.addEventListener('change',e=>{
  const el=e.target;if(el.dataset.setting){const key=el.dataset.setting,value=el.type==='checkbox'?el.checked:Number(el.value);
   if(key==='notifications'&&value){el.disabled=true;Promise.resolve(window.MegaCommunity?.requestNotificationPermission?.()??true).then(ok=>{data.settings.notifications=ok===true;save();settings();if(ok!==true)notify('Device notifications were not enabled. In-app activity remains under the bell.');}).catch(()=>{data.settings.notifications=false;save();settings();notify('Device notifications are unavailable here.');});return;}

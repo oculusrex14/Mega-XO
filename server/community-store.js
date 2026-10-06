@@ -9,7 +9,7 @@ const EMAIL=/^[a-z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?
 const normalizeEmail=value=>{if(typeof value!=='string')fail('INVALID_EMAIL');const email=value.trim().toLowerCase();if(email.length<6||email.length>254||!EMAIL.test(email))fail('INVALID_EMAIL');return email;};
 const validatePassword=value=>{if(typeof value!=='string'||value.length<10||value.length>128||!/[A-Za-z]/.test(value)||!/[0-9]/.test(value))fail('PASSWORD_WEAK');return value;};
 const passwordHash=(password,salt)=>crypto.scryptSync(password,Buffer.from(salt,'base64url'),32,{N:16384,r:8,p:1,maxmem:64*1024*1024}).toString('base64url');
-const OTP_TTL=10*60000,OTP_COOLDOWN=60000,OTP_ATTEMPTS=5;
+const OTP_TTL=10*60000,OTP_COOLDOWN=60000,OTP_ATTEMPTS=5,REPORT_CATEGORIES=new Set(['cheating','username','harassment','unsportsmanlike','other']);
 const otpCode=()=>String(crypto.randomInt(0,1000000)).padStart(6,'0');
 const maskEmail=email=>{const [local,domain]=email.split('@');return local.slice(0,1)+'***@'+domain;};
 const RESERVED=new Set(['admin','administrator','moderator','support','system','megaxo','mega_xo','official','deleted','anonymous']);
@@ -45,6 +45,9 @@ CREATE TABLE IF NOT EXISTS session_presence(session TEXT PRIMARY KEY,actor TEXT 
 CREATE TABLE IF NOT EXISTS social_operations(id TEXT PRIMARY KEY,fingerprint TEXT NOT NULL,result TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS community_limits(id TEXT PRIMARY KEY,hits INTEGER NOT NULL);
 CREATE TABLE IF NOT EXISTS email_challenges(id TEXT PRIMARY KEY,session TEXT NOT NULL,email TEXT NOT NULL COLLATE NOCASE,purpose TEXT NOT NULL,actor TEXT,code_hash TEXT NOT NULL,password_salt TEXT,password_hash TEXT,created INTEGER NOT NULL,expires INTEGER NOT NULL,attempts INTEGER NOT NULL DEFAULT 0,verified_at INTEGER,consumed INTEGER NOT NULL DEFAULT 0);
+CREATE TABLE IF NOT EXISTS v41_reports(id TEXT PRIMARY KEY,reporter TEXT NOT NULL,target TEXT NOT NULL,category TEXT NOT NULL,detail TEXT NOT NULL DEFAULT '',created INTEGER NOT NULL,state TEXT NOT NULL DEFAULT 'open',reviewed_at INTEGER,reviewed_by TEXT,outcome TEXT);
+CREATE INDEX IF NOT EXISTS v41_reports_target_state ON v41_reports(target,state,created);
+CREATE INDEX IF NOT EXISTS v41_reports_reporter_created ON v41_reports(reporter,created);
 CREATE INDEX IF NOT EXISTS session_actor ON account_sessions(actor);
 CREATE INDEX IF NOT EXISTS presence_actor ON session_presence(actor);
 CREATE INDEX IF NOT EXISTS identities_actor ON identities(actor);
@@ -184,6 +187,15 @@ CREATE INDEX IF NOT EXISTS email_challenges_email ON email_challenges(email);`);
  }
  resolve(query,a=this.read()){if(a.accounts.has(query))return query;const p=this.db.prepare('SELECT actor FROM profiles WHERE username=? OR tag=?').get(String(query).toLowerCase().replace(/^@/,''),String(query).toUpperCase().replace(/^#/,''));return p?.actor||fail('PROFILE_NOT_FOUND');}
  friends(actor){const a=this.read(),self=a.account(actor);const list=ids=>ids.flatMap(id=>{try{return [this.profile(actor,id)];}catch{return [];}});return {friends:list(self.friends).sort((x,y)=>Number(y.presence.online)-Number(x.presence.online)||x.username.localeCompare(y.username)),incoming:list(self.friendRequests),outgoing:list([...a.accounts.values()].filter(p=>p.friendRequests.includes(actor)).map(p=>p.id)),blocked:self.blocked.map(id=>({id,username:this.profileRow(id)?.username||'Player'}))};}
+ report(actor,target,category,detail=''){
+  this.requireAccount(actor);if(!REPORT_CATEGORIES.has(category))fail('INVALID_REPORT_CATEGORY');if(typeof detail!=='string')fail('INVALID_REPORT_DETAIL');
+  detail=detail.trim();if(detail&&(!safeText(detail,280)))fail('INVALID_REPORT_DETAIL');if(category==='other'&&detail.length<8)fail('REPORT_DETAIL_REQUIRED');
+  this.rate(actor,'report',5,86400);const a=this.read(),id=this.resolve(target,a);if(id===actor)fail('CANNOT_REPORT_SELF');a.account(id);
+  const existing=this.db.prepare("SELECT id FROM v41_reports WHERE reporter=? AND target=? AND category=? AND state='open' AND created>? ORDER BY created DESC LIMIT 1").get(actor,id,category,this.now()-DAY);
+  if(existing)return {reported:true,duplicate:true,id:existing.id};
+  const reportId='rp_'+crypto.randomUUID();this.db.prepare('INSERT INTO v41_reports(id,reporter,target,category,detail,created,state) VALUES(?,?,?,?,?,?,?)').run(reportId,actor,id,category,detail,this.now(),'open');
+  return {reported:true,duplicate:false,id:reportId};
+ }
  social(actor,key,command,target){if(!safeKey(key))fail('INVALID_OPERATION');this.requireAccount(actor);const fp=sha(json({command,target})),op=actor+':'+key;return this.tx(()=>{const existing=this.db.prepare('SELECT * FROM social_operations WHERE id=?').get(op);if(existing){if(existing.fingerprint!==fp)fail('IDEMPOTENCY_CONFLICT');return JSON.parse(existing.result);}this.rate(actor,'social',30);const a=this.read(),id=this.resolve(target,a),A=a.account(actor),B=a.account(id);if(id===actor)fail('SELF_REQUEST');const relation=this.relation(actor,id,a);
   if(!['request','accept','decline','cancel','remove','block','unblock'].includes(command))fail('INVALID_SOCIAL_ACTION');if(relation==='blocked'&&!['block','unblock'].includes(command))fail('PROFILE_NOT_FOUND');
   if(command==='request'){if(A.friends.length>=200||B.friendRequests.length>=50)fail('FRIEND_LIMIT');a.requestFriend(actor,id);}

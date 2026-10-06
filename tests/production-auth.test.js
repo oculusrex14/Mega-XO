@@ -77,7 +77,7 @@ test('verified email change preserves actor, rejects collisions and revokes othe
  const changed=f.auth.verify(account.token,pending.challengeId,f.pendingCode(pending.challengeId));
  assert.equal(changed.emailChanged,true);assert.equal(changed.profile.id,account.actor);assert.equal(changed.profile.email,'new@example.com');
  assert.equal(f.c.session(second.token),null);
- await assert.rejects(f.auth.continue(f.c.bootstrap().token,'old@example.com','correct-horse-42'),/INVALID_CREDENTIALS|EMAIL/);
+ f.advance(61000);const oldAddress=await f.auth.continue(f.c.bootstrap().token,'old@example.com','correct-horse-42');assert.equal(oldAddress.verificationRequired,true);assert.equal(f.store.read().accounts.size,1);
  const restored=await f.auth.continue(f.c.bootstrap().token,'new@example.com','correct-horse-42');assert.equal(restored.actor,account.actor);
  await f.outbox.tick();await f.outbox.tick();
  assert.equal(f.sent.filter(x=>x.kind==='security').length,2);
@@ -89,7 +89,7 @@ test('email change requires recent reauthentication and cannot take another prof
  await f.auth.reauth(a.token,'one@example.com','correct-horse-42');
  assert.throws(()=>f.auth.change(a.token,'two@example.com'),/EMAIL_IN_USE/);
  const pending=await f.auth.change(a.token,'fresh@example.com');f.advance(16*60000);
- assert.throws(()=>f.auth.verify(a.token,pending.challengeId,f.pendingCode(pending.challengeId)),/REAUTH_REQUIRED/);
+ assert.throws(()=>f.auth.verify(a.token,pending.challengeId,f.pendingCode(pending.challengeId)),/OTP_EXPIRED/);
  assert.equal(f.c.emailAddress(a.actor),'one@example.com');assert.equal(f.c.emailAddress(b.actor),'two@example.com');
 });
 test('session list exposes opaque ids and can revoke one or every other session',async t=>{

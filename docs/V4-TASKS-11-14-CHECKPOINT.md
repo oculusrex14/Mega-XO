@@ -16,7 +16,8 @@ Implemented:
 - explicit post-backend billing/ad/privacy/deletion/device/compliance gates;
 - pinned GitHub Actions;
 - pipefail-protected validation pipelines;
-- syntax validation for operator handoff tooling.
+- syntax validation for operator handoff tooling;
+- release-gate syntax/regex serialization covered by both unit tests and CI `node --check`.
 
 External execution and evidence remain in `docs/V4-OPEN-BLOCKERS.md`.
 

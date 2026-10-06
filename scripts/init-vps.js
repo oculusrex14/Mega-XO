@@ -9,7 +9,7 @@ function init(host,root,stage='production') {
  const write=(name,value)=>{const file=path.join(root,name);fs.writeFileSync(file,value,{flag:'wx',mode:0o600});files.push(file);};
  for(const dir of ['secrets','data','backup-work','backup-status','releases'])fs.mkdirSync(path.join(root,dir),{mode:0o700});
  for(const key of ['otp_secret','proxy_secret','restic_password'])write('secrets/'+key,crypto.randomBytes(32).toString('hex')+'\n');
- if(staging){write('secrets/staging_access_password',crypto.randomBytes(18).toString('base64url')+'\n');write('secrets/staging_password_hash','');}
+ write('secrets/staging_password_hash','');if(staging)write('secrets/staging_access_password',crypto.randomBytes(18).toString('base64url')+'\n');
  for(const key of ['resend_api_key','google_client_secret','apple_private_key','backup_access_key','backup_secret_key'])write('secrets/'+key,'');
  write('app.env',`MEGA_ENV=${stage}\nMEGA_ORIGIN=${origin}\nMEGA_EMAIL_FROM=Mega XO by Antimatter Innovations <contact@antimatterinnovations.com>\nMEGA_MAIL_DAILY_LIMIT=${staging?10:80}\nMEGA_MAIL_MONTHLY_LIMIT=${staging?100:2400}\nMEGA_AUTH_WORKERS=2\nMEGA_MAX_QUEUED=200\nMEGA_AD_MODE=off\nMEGA_PURCHASES_ENABLED=false\nMEGA_PAID_ENTRY_ENABLED=false\nGOOGLE_CLIENT_SECRET_FILE=/run/secrets/google_client_secret\nAPPLE_PRIVATE_KEY_FILE=/run/secrets/apple_private_key\n`);
  write('compose.env',`MEGA_PROJECT=mega-xo-${stage}\nMEGA_ROOT=${root}\nMEGA_HOSTNAME=${host}\nMEGA_LOCAL_METRICS_PORT=${staging?9092:9091}\nMEGA_HTTP_BIND=0.0.0.0\nMEGA_HTTPS_BIND=0.0.0.0\nMEGA_HTTP_PORT=80\nMEGA_HTTPS_PORT=443\nMEGA_CADDY_FILE=${staging?'Caddyfile.staging':'Caddyfile'}\n`);

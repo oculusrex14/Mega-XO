@@ -30,7 +30,7 @@ function buildService({file,origin,providers:providerConfig={},providerInstance,
   if(await monetizationHandler(req,res))return;
   if(await accountHandler(req,res))return;
   if(req.url.startsWith('/api/party/')){accountHandler.guard(req);if(!partyHandler){res.writeHead(503);res.end();return;}return await partyHandler(req,res);}
-  const raw=new URL(req.url,origin).pathname,relative=decodeURIComponent(raw==='/'?'/index.html':raw),target=path.resolve(ROOT,'.'+relative);
+  const raw=new URL(req.url,origin).pathname,relative=decodeURIComponent(raw==='/'?'/index.html':raw==='/delete-account'?'/public/delete-account.html':raw),target=path.resolve(ROOT,'.'+relative);
   const allowed=target===path.join(ROOT,'index.html')||target.startsWith(path.join(ROOT,'src')+path.sep)||target.startsWith(path.join(ROOT,'public')+path.sep);
   if(!allowed||!['GET','HEAD'].includes(req.method)||!fs.existsSync(target)||!fs.statSync(target).isFile()){res.writeHead(404);res.end('Not found');return;}
   const types={'.html':'text/html; charset=utf-8','.js':'text/javascript; charset=utf-8','.css':'text/css; charset=utf-8','.svg':'image/svg+xml','.png':'image/png'};

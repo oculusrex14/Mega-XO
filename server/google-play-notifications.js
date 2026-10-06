@@ -4,7 +4,7 @@ const safeId=x=>typeof x==='string'&&/^[A-Za-z0-9._:-]{1,200}$/.test(x);
 class GooglePlayNotifications{
  constructor(db,{billing,auth,monetization,packageName,now=Date.now}={}){if(!db||!billing||!auth||!monetization||!packageName)throw Error('GOOGLE_RTDN_CONFIG');Object.assign(this,{db,billing,auth,monetization,packageName,now});}
  revoke(transactionId,productId,reason){
-  this.db.prepare("INSERT OR IGNORE INTO v41_store_revocations(store,transaction_id,product_id,occurred_at,reason) VALUES('google',?,?,?,?,?)".replace('VALUES(\'google\',?,?,?,?,?)',"VALUES('google',?,?,?,?)")).run(transactionId,productId||null,this.now(),reason);
+  this.db.prepare("INSERT OR IGNORE INTO v41_store_revocations(store,transaction_id,product_id,occurred_at,reason) VALUES('google',?,?,?,?)").run(transactionId,productId||null,this.now(),reason);
   try{return this.monetization.refund('google',transactionId);}catch(e){if(e.message!=='UNKNOWN_RECEIPT')throw e;return {refunded:false,pending:false};}
  }
  async handle(authorization,envelope){

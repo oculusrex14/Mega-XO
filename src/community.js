@@ -125,6 +125,7 @@ function resumePrompt(id){frame('Your match is still running','<p>Reconnect to c
 async function presence(){if(!session?.linked)return;try{await API.request('/api/community/presence',{foreground:!document.hidden});lastPresence=Date.now();}catch{} }
 const actions={
  dismiss,guest:becomeGuest,login:()=>landing(),profile:id=>openProfile(id),edit:editProfile,connections,notifications:notificationCenter,
+ 'email-form':action=>emailForm(action),'email-submit':emailAuth,'email-back':()=>session?.linked?connections():landing(),
  signin:(id,el)=>signIn(id,el.dataset.intent||'login'),
  statsmode:id=>{profileMode=id;showProfile();},avatar:id=>{selectedAvatar=id;document.querySelectorAll('.avatar-choice').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.id===id)));},
  saveprofile:async()=>{const p=await API.request('/api/account/profile',{username:$('#cUsername').value,displayName:$('#cDisplayName').value,avatar:selectedAvatar,statsVisibility:$('#cStatsPrivacy').value,presenceVisibility:$('#cPresencePrivacy').value});session.profile=p;profile=p;APP.refresh();await refreshFriends();showProfile();},

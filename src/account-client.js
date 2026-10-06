@@ -5,10 +5,10 @@
 let session=null,loading=null;
 const id=()=>globalThis.crypto?.randomUUID?.()||Date.now().toString(36)+'-'+Math.random().toString(36).slice(2);
 const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
-let connectivity={state:root.navigator?.onLine===false?'offline':'online',code:'',at:Date.now()};
-function publish(state,code=''){
- if(connectivity.state===state&&connectivity.code===code)return;
- connectivity={state,code,at:Date.now()};
+let connectivity={state:root.navigator?.onLine===false?'offline':'online',code:'',supportId:'',at:Date.now()};
+function publish(state,code='',supportId=''){
+ if(connectivity.state===state&&connectivity.code===code&&connectivity.supportId===supportId)return;
+ connectivity={state,code,supportId:/^MX-[A-F0-9]{16}$/.test(supportId)?supportId:'',at:Date.now()};
  try{root.document?.dispatchEvent(new CustomEvent('mega:connectivity',{detail:{...connectivity}}));}catch{}
 }
 function classify(code){
@@ -23,9 +23,9 @@ async function once(path,body,operationKey,timeoutMs=8000){
  const ctrl=new AbortController(),timeout=setTimeout(()=>ctrl.abort(),timeoutMs);
  try{
   const headers=body===undefined?{}:{'Content-Type':'application/json','X-CSRF-Token':session?.csrf||'','Idempotency-Key':operationKey};
-  const res=await root.fetch(path,{credentials:'same-origin',method:body===undefined?'GET':'POST',signal:ctrl.signal,headers,body:body===undefined?undefined:JSON.stringify(body)});
-  let out;try{out=await res.json();}catch{throw Error('SERVICE_UNAVAILABLE');}
-  if(!res.ok){const error=Error(out?.error||'SERVICE_UNAVAILABLE');error.status=res.status;throw error;}
+  const res=await root.fetch(path,{credentials:'same-origin',method:body===undefined?'GET':'POST',signal:ctrl.signal,headers,body:body===undefined?undefined:JSON.stringify(body)}),supportId=String(res.headers?.get?.('X-Support-ID')||'');
+  let out;try{out=await res.json();}catch{const error=Error('SERVICE_UNAVAILABLE');error.supportId=supportId;throw error;}
+  if(!res.ok){const error=Error(out?.error||'SERVICE_UNAVAILABLE');error.status=res.status;error.supportId=String(out?.supportId||supportId);throw error;}
   return out;
  }catch(e){
   if(e?.name==='AbortError')throw Error('REQUEST_TIMEOUT');
@@ -46,8 +46,8 @@ async function call(path,body,operation){
    last=e;
    if(e.message==='AUTH_REQUIRED')session=null;
    const state=classify(e.message);
-   if(!transient(e.message)||state==='offline'||attempt===attempts-1){publish(state,e.message);throw e;}
-   publish('reconnecting',e.message);
+   if(!transient(e.message)||state==='offline'||attempt===attempts-1){publish(state,e.message,e.supportId||'');throw e;}
+   publish('reconnecting',e.message,e.supportId||'');
    await sleep(250*(attempt+1));
   }
  }
@@ -61,17 +61,17 @@ async function ensure(force=false){
   for(let attempt=0;attempt<2;attempt++){
    const ctrl=new AbortController(),timer=setTimeout(()=>ctrl.abort(),4500);
    try{
-    const res=await root.fetch('/api/account/session',{credentials:'same-origin',signal:ctrl.signal});
-    let out;try{out=await res.json();}catch{throw Error('SERVICE_UNAVAILABLE');}
-    if(!res.ok)throw Error(out?.error||'SERVICE_UNAVAILABLE');
+    const res=await root.fetch('/api/account/session',{credentials:'same-origin',signal:ctrl.signal}),supportId=String(res.headers?.get?.('X-Support-ID')||'');
+    let out;try{out=await res.json();}catch{const error=Error('SERVICE_UNAVAILABLE');error.supportId=supportId;throw error;}
+    if(!res.ok){const error=Error(out?.error||'SERVICE_UNAVAILABLE');error.supportId=String(out?.supportId||supportId);throw error;}
     if(!out||typeof out.csrf!=='string')throw Error('SERVICE_UNAVAILABLE');
     session=out;publish('online');return out;
    }catch(e){
     const code=e?.name==='AbortError'?'REQUEST_TIMEOUT':e?.message&&/^[A-Z0-9_]+$/.test(e.message)?e.message:(root.navigator?.onLine===false?'OFFLINE':'SERVICE_UNAVAILABLE');
-    last=Error(code);
+    last=Error(code);last.supportId=e?.supportId||'';
     const state=classify(code);
-    if(!transient(code)||state==='offline'||attempt===1){publish(state,code);throw last;}
-    publish('reconnecting',code);await sleep(250);
+    if(!transient(code)||state==='offline'||attempt===1){publish(state,code,last.supportId);throw last;}
+    publish('reconnecting',code,last.supportId);await sleep(250);
    }finally{clearTimeout(timer);}
   }
   throw last||Error('SERVICE_UNAVAILABLE');

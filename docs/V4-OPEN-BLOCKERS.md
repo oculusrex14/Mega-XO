@@ -14,7 +14,7 @@ Rules:
 - Production origin: `https://play.antimatterinnovations.com`
 - Production architecture: one authoritative Node coordinator + local SQLite WAL + Caddy TLS edge + encrypted off-box Restic backups.
 - Purchases, ads, and paid-entry competition remain disabled in the V4 production baseline.
-- Last fully green source + amd64/arm64 baseline before tasks 6-10: `c5fb98962a68cf3e7eaa9ff6c3dcdb9d055d875a`. The current tasks 6-10 head must pass final exact-head validation before release.
+- GitHub Actions is the authoritative source for code/container validation status. A green run never marks an external blocker complete automatically; external rows require the evidence described below.
 
 ## Repository readiness for tasks 6-10
 
@@ -82,7 +82,7 @@ Repository-side work is implemented; external execution remains tracked below.
 - Production Resend API key created and saved by the user. The value is intentionally not present in GitHub.
 - Existing Google Workspace mail DNS remains intact.
 
-## Deferred product gates not part of V4 tasks 6-10
+## Post-backend product gates
 
 - Real Google/Apple login production-console setup if those methods are enabled at launch.
 - Native App Store / Play billing and receipt-notification integration.

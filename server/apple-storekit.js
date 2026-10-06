@@ -25,11 +25,14 @@ class AppleStoreKit{
   const key=this.chain(header,at),signature=Buffer.from(parts[2],'base64url');if(signature.length!==64||!crypto.verify('sha256',Buffer.from(parts[0]+'.'+parts[1]),{key,dsaEncoding:'ieee-p1363'},signature))throw Error('INVALID_RECEIPT');
   return payload;
  }
+ inspectTransaction(payload){
+  if(payload.bundleId!==this.bundleId||payload.environment!==this.environment||!safe(String(payload.transactionId||''))||!safe(payload.productId)||Number(payload.quantity??1)!==1)throw Error('INVALID_RECEIPT');
+  const internal=this.products[payload.productId];if(!internal)throw Error('INVALID_RECEIPT');return {transactionId:String(payload.transactionId),productId:internal,providerProductId:payload.productId,appAccountToken:payload.appAccountToken,revoked:payload.revocationDate!=null,payload};
+ }
  validateTransaction(payload,actor,binding,{allowRevoked=false}={}){
-  if(payload.bundleId!==this.bundleId||payload.environment!==this.environment||payload.appAccountToken!==binding.appleAppAccountToken||!safe(String(payload.transactionId||''))||!safe(payload.productId)||Number(payload.quantity??1)!==1)throw Error('INVALID_RECEIPT');
-  const internal=this.products[payload.productId];if(!internal)throw Error('INVALID_RECEIPT');const transactionId=String(payload.transactionId),revoked=payload.revocationDate!=null||this.db.prepare("SELECT 1 FROM v41_store_revocations WHERE store='apple' AND transaction_id=?").get(transactionId);
-  if(revoked&&!allowRevoked)throw Error('RECEIPT_REFUNDED');
-  return {valid:!revoked,accountId:actor,store:'apple',transactionId,productId:internal,refunded:!!revoked,providerProductId:payload.productId,payload};
+  const tx=this.inspectTransaction(payload);if(!binding?.appleAppAccountToken||tx.appAccountToken!==binding.appleAppAccountToken)throw Error('INVALID_RECEIPT');
+  const revoked=tx.revoked||this.db.prepare("SELECT 1 FROM v41_store_revocations WHERE store='apple' AND transaction_id=?").get(tx.transactionId);if(revoked&&!allowRevoked)throw Error('RECEIPT_REFUNDED');
+  return {valid:!revoked,accountId:actor,store:'apple',transactionId:tx.transactionId,productId:tx.productId,refunded:!!revoked,providerProductId:tx.providerProductId,payload};
  }
  async verify(evidence,actor,binding){
   if(evidence?.store!=='apple'||typeof evidence.signedTransactionInfo!=='string'||!binding?.appleAppAccountToken)throw Error('INVALID_RECEIPT');

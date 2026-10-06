@@ -5,6 +5,10 @@ const crypto=require('node:crypto');
 const {sha,equal}=require('./identity-provider.js'),D=require('../src/domain.js');
 const DAY=86400000,MAX_SAVE_BYTES=262144,AVATARS=['cross','ring','board','rook','crown','star'];
 const NAME=/^[a-z][a-z0-9_]{2,19}$/;
+const EMAIL=/^[a-z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)+$/i;
+const normalizeEmail=value=>{if(typeof value!=='string')fail('INVALID_EMAIL');const email=value.trim().toLowerCase();if(email.length<6||email.length>254||!EMAIL.test(email))fail('INVALID_EMAIL');return email;};
+const validatePassword=value=>{if(typeof value!=='string'||value.length<10||value.length>128||!/[A-Za-z]/.test(value)||!/[0-9]/.test(value))fail('PASSWORD_WEAK');return value;};
+const passwordHash=(password,salt)=>crypto.scryptSync(password,Buffer.from(salt,'base64url'),32,{N:16384,r:8,p:1,maxmem:64*1024*1024}).toString('base64url');
 const RESERVED=new Set(['admin','administrator','moderator','support','system','megaxo','mega_xo','official','deleted','anonymous']);
 const fail=code=>{throw Error(code);};
 const safeText=(value,max)=>typeof value==='string'&&value.trim().length>0&&[...value.trim()].length<=max&&!/[\u0000-\u001f\u007f<>]/.test(value);
@@ -30,6 +34,7 @@ class CommunityStore {
   if(!store?.db||!origin)fail('IDENTITY_STORE_REQUIRED');this.store=store;this.db=store.db;this.origin=new URL(origin).origin;this.now=now;
   this.db.exec(`CREATE TABLE IF NOT EXISTS profiles(actor TEXT PRIMARY KEY,tag TEXT NOT NULL UNIQUE,username TEXT NOT NULL UNIQUE,display_name TEXT NOT NULL,avatar TEXT NOT NULL DEFAULT 'board',stats_visibility TEXT NOT NULL DEFAULT 'friends',presence_visibility TEXT NOT NULL DEFAULT 'friends',created INTEGER NOT NULL,username_changed INTEGER NOT NULL DEFAULT 0,version INTEGER NOT NULL DEFAULT 1);
 CREATE TABLE IF NOT EXISTS identities(provider TEXT NOT NULL,subject TEXT NOT NULL,actor TEXT NOT NULL,created INTEGER NOT NULL,PRIMARY KEY(provider,subject),UNIQUE(actor,provider));
+CREATE TABLE IF NOT EXISTS email_credentials(email TEXT PRIMARY KEY COLLATE NOCASE,actor TEXT NOT NULL UNIQUE,salt TEXT NOT NULL,password_hash TEXT NOT NULL,created INTEGER NOT NULL);
 CREATE TABLE IF NOT EXISTS account_sessions(token TEXT PRIMARY KEY,actor TEXT,csrf TEXT NOT NULL,created INTEGER NOT NULL,expires INTEGER NOT NULL,auth_at INTEGER NOT NULL DEFAULT 0);
 CREATE TABLE IF NOT EXISTS signin_attempts(state TEXT PRIMARY KEY,session TEXT NOT NULL,provider TEXT NOT NULL,kind TEXT NOT NULL,intent TEXT NOT NULL,target TEXT,nonce TEXT NOT NULL,verifier TEXT NOT NULL,expires INTEGER NOT NULL,used INTEGER NOT NULL DEFAULT 0);
 CREATE TABLE IF NOT EXISTS profile_saves(actor TEXT PRIMARY KEY,revision INTEGER NOT NULL,payload TEXT NOT NULL,updated INTEGER NOT NULL);
@@ -38,7 +43,8 @@ CREATE TABLE IF NOT EXISTS social_operations(id TEXT PRIMARY KEY,fingerprint TEX
 CREATE TABLE IF NOT EXISTS community_limits(id TEXT PRIMARY KEY,hits INTEGER NOT NULL);
 CREATE INDEX IF NOT EXISTS session_actor ON account_sessions(actor);
 CREATE INDEX IF NOT EXISTS presence_actor ON session_presence(actor);
-CREATE INDEX IF NOT EXISTS identities_actor ON identities(actor);`);
+CREATE INDEX IF NOT EXISTS identities_actor ON identities(actor);
+CREATE INDEX IF NOT EXISTS email_credentials_actor ON email_credentials(actor);`);
  }
  tx(fn){this.db.exec('BEGIN IMMEDIATE');try{const r=fn();this.db.exec('COMMIT');return r;}catch(e){this.db.exec('ROLLBACK');throw e;}}
  rate(actor,bucket,limit,seconds=60){const id=bucket+':'+actor+':'+Math.floor(this.now()/1000/seconds);const row=this.db.prepare('INSERT INTO community_limits VALUES(?,1) ON CONFLICT(id) DO UPDATE SET hits=hits+1 RETURNING hits').get(id);if(row.hits>limit)fail('RATE_LIMITED');}
@@ -59,6 +65,24 @@ CREATE INDEX IF NOT EXISTS identities_actor ON identities(actor);`);
  requireLinked(token){const s=this.requireSession(token);if(!s.actor)fail('LINK_ACCOUNT_REQUIRED');return s;}
  csrf(token,provided){const s=this.requireSession(token);if(!equal(s.csrf,provided))fail('CSRF_FAILED');return s;}
  identities(actor){return this.db.prepare('SELECT provider,created FROM identities WHERE actor=? ORDER BY provider').all(actor);}
+ emailAddress(actor){return this.db.prepare('SELECT email FROM email_credentials WHERE actor=?').get(actor)?.email||null;}
+ _password(password,salt,expected){try{return equal(passwordHash(validatePassword(password),salt),expected);}catch{return false;}}
+ _replaceSession(session,actor,created=false){this.db.prepare('DELETE FROM session_presence WHERE session=?').run(session.hash);this.db.prepare('DELETE FROM account_sessions WHERE token=?').run(session.hash);const issued=this._issue(actor,this.now()),others=this.db.prepare('SELECT token FROM account_sessions WHERE actor=? ORDER BY created DESC').all(actor).slice(5);for(const x of others){this.db.prepare('DELETE FROM account_sessions WHERE token=?').run(x.token);this.db.prepare('DELETE FROM session_presence WHERE session=?').run(x.token);}return {...issued,created,profile:this.profile(actor,actor)};}
+ emailSignup(token,email,password){
+  const session=this.requireSession(token);if(session.actor)fail('ALREADY_LINKED');email=normalizeEmail(email);password=validatePassword(password);this.rate(session.hash,'email-signup',6,300);
+  return this.tx(()=>{if(this.db.prepare('SELECT actor FROM email_credentials WHERE email=?').get(email))fail('EMAIL_IN_USE');const authority=this.read(),actor='u_'+crypto.randomUUID();authority.addAccount(actor,{verified:true,createdAt:this.now()});this.ensureProfile(actor,authority);const salt=crypto.randomBytes(16).toString('base64url');this.db.prepare('INSERT INTO email_credentials VALUES(?,?,?,?,?)').run(email,actor,salt,passwordHash(password,salt),this.now());this.db.prepare('INSERT INTO identities VALUES(?,?,?,?)').run('email',email,actor,this.now());this.write(authority);return this._replaceSession(session,actor,true);});
+ }
+ emailSignin(token,email,password){
+  const session=this.requireSession(token);if(session.actor)fail('ALREADY_LINKED');email=normalizeEmail(email);this.rate(session.hash,'email-signin',10,300);const row=this.db.prepare('SELECT * FROM email_credentials WHERE email=?').get(email);
+  if(!row||!this._password(password,row.salt,row.password_hash))fail('INVALID_CREDENTIALS');this.requireAccount(row.actor);return this.tx(()=>this._replaceSession(session,row.actor,false));
+ }
+ emailLink(token,email,password){
+  const session=this.requireLinked(token);if(this.now()-session.authAt>15*60000)fail('REAUTH_REQUIRED');email=normalizeEmail(email);password=validatePassword(password);this.rate(session.hash,'email-link',5,300);
+  return this.tx(()=>{const found=this.db.prepare('SELECT actor FROM email_credentials WHERE email=?').get(email);if(found&&found.actor!==session.actor)fail('EMAIL_IN_USE');if(found)fail('EMAIL_ALREADY_LINKED');const salt=crypto.randomBytes(16).toString('base64url');this.db.prepare('INSERT INTO email_credentials VALUES(?,?,?,?,?)').run(email,session.actor,salt,passwordHash(password,salt),this.now());this.db.prepare('INSERT INTO identities VALUES(?,?,?,?)').run('email',email,session.actor,this.now());return this.profile(session.actor,session.actor);});
+ }
+ emailReauth(token,email,password){
+  const session=this.requireLinked(token);email=normalizeEmail(email);this.rate(session.hash,'email-reauth',8,300);const row=this.db.prepare('SELECT * FROM email_credentials WHERE email=? AND actor=?').get(email,session.actor);if(!row||!this._password(password,row.salt,row.password_hash))fail('INVALID_CREDENTIALS');this.db.prepare('UPDATE account_sessions SET auth_at=? WHERE token=?').run(this.now(),session.hash);return this.profile(session.actor,session.actor);
+ }
  start(token,provider,intent='login',kind='web'){
   const session=this.requireSession(token);if(!['google','apple'].includes(provider)||!['login','link','reauth'].includes(intent)||!['web','native'].includes(kind))fail('INVALID_AUTH_REQUEST');
   if(intent==='reauth'&&!session.actor)fail('LINK_ACCOUNT_REQUIRED');
@@ -80,13 +104,11 @@ CREATE INDEX IF NOT EXISTS identities_actor ON identities(actor);`);
    const a=authority.account(actor);if(a.suspended||a.hold)fail('ACCOUNT_UNAVAILABLE');
    const prior=this.db.prepare('SELECT subject FROM identities WHERE actor=? AND provider=?').get(actor,provider);if(prior&&prior.subject!==subject)fail('PROVIDER_ALREADY_LINKED');
    this.ensureProfile(actor,authority);this.db.prepare('INSERT OR IGNORE INTO identities VALUES(?,?,?,?)').run(provider,subject,actor,this.now());this.write(authority);
-   this.db.prepare('DELETE FROM session_presence WHERE session=?').run(session.hash);this.db.prepare('DELETE FROM account_sessions WHERE token=?').run(session.hash);
-   const issued=this._issue(actor,this.now());const others=this.db.prepare('SELECT token FROM account_sessions WHERE actor=? ORDER BY created DESC').all(actor).slice(5);for(const x of others){this.db.prepare('DELETE FROM account_sessions WHERE token=?').run(x.token);this.db.prepare('DELETE FROM session_presence WHERE session=?').run(x.token);}
-   return {...issued,created,profile:this.profile(actor,actor)};
+   return this._replaceSession(session,actor,created);
   });
  }
  logout(token,all=false){const s=this.requireSession(token);return this.tx(()=>{if(all&&s.actor){this.db.prepare('DELETE FROM session_presence WHERE actor=?').run(s.actor);this.db.prepare('DELETE FROM account_sessions WHERE actor=?').run(s.actor);}else{this.db.prepare('DELETE FROM session_presence WHERE session=?').run(s.hash);this.db.prepare('DELETE FROM account_sessions WHERE token=?').run(s.hash);}return {signedOut:true};});}
- unlink(token,provider){const s=this.requireLinked(token);if(this.now()-s.authAt>15*60000)fail('REAUTH_REQUIRED');return this.tx(()=>{const list=this.identities(s.actor);if(list.length<=1)fail('LAST_LOGIN_METHOD');if(!list.some(i=>i.provider===provider))fail('PROVIDER_NOT_LINKED');this.db.prepare('DELETE FROM identities WHERE actor=? AND provider=?').run(s.actor,provider);return {providers:this.identities(s.actor)};});}
+ unlink(token,provider){const s=this.requireLinked(token);if(this.now()-s.authAt>15*60000)fail('REAUTH_REQUIRED');return this.tx(()=>{const list=this.identities(s.actor);if(list.length<=1)fail('LAST_LOGIN_METHOD');if(!list.some(i=>i.provider===provider))fail('PROVIDER_NOT_LINKED');this.db.prepare('DELETE FROM identities WHERE actor=? AND provider=?').run(s.actor,provider);if(provider==='email')this.db.prepare('DELETE FROM email_credentials WHERE actor=?').run(s.actor);return {providers:this.identities(s.actor)};});}
  edit(actor,changes){this.requireAccount(actor);this.rate(actor,'edit',15,300);return this.tx(()=>{const a=this.read(),p=this.ensureProfile(actor,a),username=typeof changes.username==='string'?changes.username.toLowerCase().trim():p.username,name=changes.displayName===undefined?p.display_name:(typeof changes.displayName==='string'?changes.displayName.trim():fail('INVALID_DISPLAY_NAME')),avatar=changes.avatar??p.avatar;
   if(!NAME.test(username)||RESERVED.has(username))fail('INVALID_USERNAME');if(!safeText(name,28))fail('INVALID_DISPLAY_NAME');if(!AVATARS.includes(avatar))fail('INVALID_AVATAR');
   if(username!==p.username&&p.username_changed&&this.now()-p.username_changed<7*DAY)fail('USERNAME_COOLDOWN');const other=this.db.prepare('SELECT actor FROM profiles WHERE username=?').get(username);if(other&&other.actor!==actor)fail('USERNAME_TAKEN');
@@ -102,7 +124,7 @@ CREATE INDEX IF NOT EXISTS identities_actor ON identities(actor);`);
  }
  heartbeat(token,foreground){const s=this.requireLinked(token);if(typeof foreground!=='boolean')fail('INVALID_PRESENCE');this.rate(s.hash,'presence',12,60);this.db.prepare('INSERT INTO session_presence VALUES(?,?,?,?) ON CONFLICT(session) DO UPDATE SET seen=excluded.seen,foreground=excluded.foreground').run(s.hash,s.actor,this.now(),foreground?1:0);return this.presence(s.actor,s.actor);}
  profile(viewer,actor){const a=this.read(),account=a.account(actor),p=this.profileRow(actor);if(!p||account.suspended||account.hold||this.relation(viewer,actor,a)==='blocked')fail('PROFILE_NOT_FOUND');const relation=this.relation(viewer,actor,a),show=viewer===actor||p.stats_visibility==='public'||p.stats_visibility==='friends'&&relation==='friend';
-  const season=a.seasonStatus(account);return {id:actor,tag:p.tag,friendCode:p.tag,username:p.username,name:p.display_name,displayName:p.display_name,avatar:p.avatar,rating:account.rating,games:account.games,tier:a.currentTier(account),season,relation,stats:show?this.stats(account):null,statsVisibility:p.stats_visibility,presence:this.presence(actor,viewer),...(viewer===actor?{providers:this.identities(actor).map(i=>i.provider),presenceVisibility:p.presence_visibility,profileVersion:p.version,activeMatch:account.activeMatch,cloudRevision:this.db.prepare('SELECT revision FROM profile_saves WHERE actor=?').get(actor)?.revision||0}: {})};
+  const season=a.seasonStatus(account);return {id:actor,tag:p.tag,friendCode:p.tag,username:p.username,name:p.display_name,displayName:p.display_name,avatar:p.avatar,rating:account.rating,games:account.games,tier:a.currentTier(account),season,relation,stats:show?this.stats(account):null,statsVisibility:p.stats_visibility,presence:this.presence(actor,viewer),...(viewer===actor?{providers:this.identities(actor).map(i=>i.provider),email:this.emailAddress(actor),presenceVisibility:p.presence_visibility,profileVersion:p.version,activeMatch:account.activeMatch,cloudRevision:this.db.prepare('SELECT revision FROM profile_saves WHERE actor=?').get(actor)?.revision||0}: {})};
  }
  search(actor,query){this.requireAccount(actor);this.rate(actor,'search',30);if(typeof query!=='string'||query.length>64)fail('INVALID_SEARCH');const q=query.trim().replace(/^#|^@/,'');if(q.length<3)fail('SEARCH_TOO_SHORT');let rows;
   if(q.toUpperCase().startsWith('MEGA-'))rows=this.db.prepare('SELECT actor FROM profiles WHERE tag=?').all(q.toUpperCase());else{const key=q.toLowerCase();if(!/^[a-z0-9_]+$/.test(key))return [];rows=this.db.prepare('SELECT actor FROM profiles WHERE username>=? AND username<? ORDER BY CASE WHEN username=? THEN 0 ELSE 1 END,username LIMIT 20').all(key,key+'\uffff',key);}

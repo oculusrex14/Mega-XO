@@ -4,7 +4,7 @@
 const MINUTE=60000,DAY=86400000;
 const POLICY=Object.freeze({version:'monetisation-1.1',firstAdAge:DAY,firstAdGames:5,gamesBetweenAds:3,activeTimeBetweenAds:8*MINUTE,fullScreenGap:8*MINUTE,interstitialSessionCap:2,interstitialDayCap:6,rewardedDayCap:4,rewardedGap:2*MINUTE,ticketLifetime:5*MINUTE,callbackGrace:24*60*MINUTE,rewardCredits:5,casualCredits:2,casualDayCap:10,boostDuration:10*MINUTE,boostDayCap:10,maxGameSeconds:86400});
 const FRAMES=Object.freeze([
- {id:'classic',name:'Classic',credits:0,description:'The standard Mega XO board surround. V3.5.1 archives purchasable board-frame cosmetics.'}
+ {id:'classic',name:'Classic',credits:0,description:'The standard Mega XO board surround.'}
 ].map(Object.freeze));
 const PRODUCTS=Object.freeze([
  ...D.CROWN_PACKS.map(p=>({...p,name:p.crowns+' Crowns',type:'consumable',once:false,frames:[],removeAds:false})),

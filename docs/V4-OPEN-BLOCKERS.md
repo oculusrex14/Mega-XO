@@ -99,16 +99,16 @@ Real distributed/adversarial staging acceptance and heuristic false-positive tun
 
 | ID | Area | Status | Blocker / required access | Exact completion evidence |
 | --- | --- | --- | --- | --- |
-| EXT-01 | Oracle VPS facts | BLOCKED | Oracle Cloud/VPS access | Record public IPv4, ARM64 result, OS, Tailscale identity, and successful `scripts/vps-preflight.sh` output. |
-| EXT-02 | Hostinger DNS: production | BLOCKED | Hostinger DNS + VPS public IPv4 | `play.antimatterinnovations.com` A record resolves to the VPS public IPv4. Do not add AAAA unless IPv6 is verified end-to-end. |
-| EXT-03 | Oracle/host firewall | BLOCKED | Oracle network + VPS root access | Internet can reach TCP 80/443 only; Node 8080, metrics 9091, Docker API, and SQLite are not public. |
-| EXT-04 | Production deployment directory | BLOCKED | VPS shell/root access | `/opt/mega-xo` initialized by `scripts/init-vps.js`; owner-only secrets; no production process started yet. |
-| EXT-05 | Resend production secret | BLOCKED | Saved Resend API key + VPS shell | `/opt/mega-xo/secrets/resend_api_key` installed with mode 600; config check reports email enabled without printing the key. |
+| EXT-01 | Oracle VPS facts | COMPLETE | Oracle Cloud access (done 2026-10-07) | Public IPv4 129.80.67.164; VM.Standard.A1.Flex 4 OCPU/24 GB (region iad); aarch64; Ubuntu 24.04.4 LTS; Docker 29.5.0; Tailscale `command`/100.64.128.46; `scripts/vps-preflight.sh` PASS, all lines OK, no FAIL. |
+| EXT-02 | Hostinger DNS: production | COMPLETE | Hostinger DNS + VPS public IPv4 (done 2026-10-07) | `play.antimatterinnovations.com` A -> 129.80.67.164 TTL 300 via hostinger CLI; dig + VPS getent confirm. No AAAA. Mail records untouched. |
+| EXT-03 | Oracle/host firewall | COMPLETE | Oracle network + VPS root access (done 2026-10-07) | Oracle ingress TCP 80+443 from 0.0.0.0/0 added; external probes return connection-refused (path open, nothing listening yet); ufw allows 80/tcp+443/tcp; SSH remains Tailscale-only. |
+| EXT-04 | Production deployment directory | COMPLETE | VPS shell/root access (done 2026-10-07) | `/opt/mega-xo` + `/opt/mega-xo-staging` initialized by `scripts/init-vps.js` (pinned node digest); all secret files mode 600; staging access hash prepared; no production process started. |
+| EXT-05 | Resend production secret | COMPLETE | Saved Resend API key + VPS shell (done 2026-10-07) | `resend_api_key` installed in both roots via `install-secrets.sh --resend-file`, mode 600, format-validated, sha256-verified identical; source shredded; key value never in history/logs. |
 | EXT-06 | Google/Apple production credentials | BLOCKED | Provider consoles + VPS shell | Credentials installed as secret files/environment values and production config check passes. Optional until those sign-in methods are enabled. |
 | EXT-07 | Cloudflare R2 backup account | BLOCKED | Cloudflare account | Standard-storage bucket created, dedicated S3-compatible token created with access limited to the backup bucket/prefix, account ID recorded. |
 | EXT-08 | Off-box backup activation | BLOCKED | R2 credentials + VPS shell | Restic repository initialized; first snapshot uploaded; `restic check` passes; a snapshot is retrieved and `server/production/backup.js verify` passes. |
 | EXT-09 | Backup recovery key custody | BLOCKED | Human/offline secret storage | Restic recovery password copied to a secure location outside the VPS and outside the Cloudflare account. Do not record the value here. |
-| EXT-10 | Staging DNS | BLOCKED | Hostinger DNS + VPS public IPv4 | Staging hostname chosen by the staging runbook resolves correctly. |
+| EXT-10 | Staging DNS | COMPLETE | Hostinger DNS + VPS public IPv4 (done 2026-10-07) | `staging.play.antimatterinnovations.com` A -> 129.80.67.164 TTL 300 via hostinger CLI; dig + VPS getent confirm. |
 | EXT-11 | Staging deployment | BLOCKED | VPS shell + DNS | Separate staging database/secrets deployed; real TLS works; native purchases/ads remain off until their gates pass; normal Ranked/direct/tournament gameplay is available for staging acceptance. |
 | EXT-12 | Real email acceptance | BLOCKED | Live staging + mailbox access | Signup OTP and forgot-password OTP received through Resend; both flows complete successfully on a real browser/device. |
 | EXT-13 | Restart/reboot acceptance | BLOCKED | VPS shell | Container restart and full VPS reboot recover cleanly; unfinished escrow follows refund policy exactly once. |

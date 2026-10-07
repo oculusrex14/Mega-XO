@@ -54,7 +54,7 @@ class Authority {
   const m={id,players:[a,b],terms:clean,quote:q,termsHash:fingerprint,accepted:queueSource?[]:[a],created:now,expires:now+(queueSource?15000:D.POLICY.offerMinutes*60000),status:'OFFERED',state:G.create(),symbols:null,revision:0,commands:new Map(),escrow:0,settled:false,riskFlags:q.mode==='direct'&&q.pool>=5000?['HIGH_VALUE_DIRECT_POT']:[]};
   this.matches.set(id,m);return this.view(id);
  }
- view(id){const m=this.matches.get(id);if(!m)throw Error('UNKNOWN_MATCH');const {commands,...rest}=m;return clone(rest);}
+ view(id){const m=this.matches.get(id);if(!m)throw Error('UNKNOWN_MATCH');const {commands,_moveTimings,_lastMoveAt,_riskActors,_pendingReason,...rest}=m;return clone(rest);}
  accept(id,actor,termsHash){
   const m=this.matches.get(id);if(!m||!m.players.includes(actor))throw Error('NOT_PARTICIPANT');if(m.termsHash!==termsHash)throw Error('TERMS_CHANGED');
   if(m.status==='PLAYING'&&m.accepted.includes(actor))return this.view(id);if(m.status!=='OFFERED')throw Error('NOT_OPEN');
@@ -66,7 +66,7 @@ class Authority {
   if(currency)players.forEach((p,i)=>{if(p[currency]<m.quote.contributions[i])throw Error('INSUFFICIENT_'+currency.toUpperCase());D.add(p[held],m.quote.contributions[i]);});
   // Preflight every write before modifying either account. DurableStore wraps the operation in one transaction.
   if(currency)players.forEach((p,i)=>{const amount=m.quote.contributions[i];p[currency]-=amount;p[held]+=amount;this._entry(id+':reserve:'+p.id,p.id,currency,-amount,'Reserved for match');});
-  m.accepted=[...accepted];m.escrow=m.quote.pool;m.status='PLAYING';m.started=this.now();m.preRatings=players.map(p=>p.rating);m.preTiers=players.map(p=>this.currentTier(p));
+  m.accepted=[...accepted];m.escrow=m.quote.pool;m.status='PLAYING';m.started=this.now();m._lastMoveAt=m.started;m._moveTimings=[];m.preRatings=players.map(p=>p.rating);m.preTiers=players.map(p=>this.currentTier(p));
   let swap;if(m.terms.source==='queue'){const bias=p=>(p.history||[]).filter(h=>h.queue&&h.symbol).slice(-8).reduce((n,h)=>n+(h.symbol==='X'?1:-1),0),aBias=bias(players[0]),bBias=bias(players[1]),normal=Math.abs(aBias+1)+Math.abs(bBias-1),flipped=Math.abs(aBias-1)+Math.abs(bBias+1);swap=flipped<normal?true:normal<flipped?false:this.random()===1;}else swap=this.random()===1;m.symbols={X:m.players[swap?1:0],O:m.players[swap?0:1]};m.deadline=m.terms.turnSeconds?this.now()+m.terms.turnSeconds*1000:null;
   for(const p of players)p.activeMatch=id;return this.view(id);
  }
@@ -78,7 +78,7 @@ class Authority {
   const fingerprint=hash({actor,revision,move});if(m.commands.has(key)){const old=m.commands.get(key);if(old.fingerprint!==fingerprint)throw Error('IDEMPOTENCY_CONFLICT');return clone(old.result);}
   if(m.status!=='PLAYING'||m.settled)throw Error('MATCH_CLOSED');if(m.revision!==revision)throw Error('STALE_REVISION');
   if(m.deadline!==null&&this.now()>=m.deadline)throw Error('TIMER_EXPIRED');if(actor!==m.symbols[m.state.turn])throw Error('NOT_YOUR_TURN');
-  this._players(...m.players);const next=G.apply(m.state,move);m.state=next;m.revision++;m.deadline=m.terms.turnSeconds?this.now()+m.terms.turnSeconds*1000:null;
+  const now=this.now();this._players(...m.players);const next=G.apply(m.state,move);m._moveTimings=m._moveTimings||[];m._moveTimings.push({actor,ms:Math.max(0,now-(m._lastMoveAt??m.started??now))});m._lastMoveAt=now;m.state=next;m.revision++;m.deadline=m.terms.turnSeconds?now+m.terms.turnSeconds*1000:null;
   if(next.winner)this._settle(m,next.winner,next.winner==='DRAW'?'draw':'line');
   const result={state:clone(m.state),revision:m.revision,receipt:clone(m.receipt||null)};m.commands.set(key,{fingerprint,result});return clone(result);
  }
@@ -93,7 +93,7 @@ class Authority {
  }
  _settle(m,winner,reason){
   if(m.settled)return clone(m.receipt);if(!['X','O','DRAW'].includes(winner))throw Error('INVALID_RESULT');
-  const now=this.now(),isDraw=winner==='DRAW',winnerId=isDraw?null:m.symbols[winner],players=m.players.map(id=>this.account(id));
+  const now=this.now(),isDraw=winner==='DRAW',winnerId=isDraw?null:m.symbols[winner],players=m.players.map(id=>this.account(id));m._pendingReason=reason;
   const elapsed=now-m.started,qualified=['line','draw'].includes(reason)&&m.state.moves.length>=D.POLICY.minRewardMoves&&elapsed>=D.POLICY.minRewardSeconds*1000,ratedActivity=m.quote.rated&&reason!=='no-show'&&m.state.moves.length>=D.POLICY.minRewardMoves&&elapsed>=D.POLICY.minRewardSeconds*1000;
   if(m.quote.mode==='direct'&&!qualified)m.riskFlags.push('SHORT_DIRECT_RESULT_REVIEW');
   const c=m.quote.currency,burn=isDraw?0:m.escrow/2,payout=isDraw?0:m.escrow-burn;
@@ -118,7 +118,7 @@ class Authority {
    if(qualified){const d=this._daily(a,now);d.finished++;d.seconds+=Math.min(900,(now-m.started)/1000);d.boards+=m.state.mini.filter(v=>v===(m.symbols.X===a.id?'X':'O')).length;d[mode]++;}
    a.activeMatch=null;
   });
-  m.state={...m.state,winner};m.receipt={winner:winnerId,reason,currency:c,payout,burn,bonus,refunded:isDraw?m.escrow:0,rating,at:now};m.escrow=0;m.settled=true;m.status='FINISHED';return clone(m.receipt);
+  m.state={...m.state,winner};m.receipt={winner:winnerId,reason,currency:c,payout,burn,bonus,refunded:isDraw?m.escrow:0,rating,at:now};const abuse=ABUSE.matchSignals(m,players,now);m.riskFlags=abuse.flags;m._riskActors=abuse.actors;delete m._pendingReason;m.escrow=0;m.settled=true;m.status='FINISHED';return clone(m.receipt);
  }
  _daily(a,now){const key=D.day(now);if(!a.daily[key])a.daily[key]={finished:0,seconds:0,boards:0,casual:0,friend:0,ranked:0,rankedBonus:0,claimed:[]};return a.daily[key];}
  convert(actor,from,amount,key){const a=this.account(actor);if(a.suspended||a.hold)throw Error('ACCOUNT_HELD');const fromKey=from==='coins'?'purchasedCoins':'purchasedCrowns',to=from==='coins'?'crowns':'coins',toKey=to==='coins'?'purchasedCoins':'purchasedCrowns',restrictedBefore=Math.min(a[fromKey]||0,amount);if(from==='coins'&&restrictedBefore% D.POLICY.coinsPerCrown)throw Error('RESTRICTED_PROVENANCE_INVARIANT');const result=D.convert({version:3.2,wallet:a},from,amount,key,this.now());if(!result.duplicate){a[fromKey]-=restrictedBefore;a[toKey]=D.add(a[toKey]||0,from==='coins'?restrictedBefore/D.POLICY.coinsPerCrown:restrictedBefore*D.POLICY.coinsPerCrown);this._entry(key+':out',actor,from,-result.debit,'Currency conversion','conversion');this._entry(key+':in',actor,result.to,result.credit,'Currency conversion','conversion');}return result;}

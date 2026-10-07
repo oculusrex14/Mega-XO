@@ -49,6 +49,13 @@ class AbuseGuard{
   if(path==='/api/account/export')return this.persistent(ip,'data-export',12,86400);
   if(path==='/api/account/delete')return this.persistent(ip,'account-delete',4,86400);
   if(path==='/api/monetization/google-play-rtdn'||path==='/api/monetization/apple-notifications')return this.persistent(ip,'store-notification',240,60);
+  if(path==='/api/v1/purchase'||path==='/api/monetization/purchase'||path==='/api/monetization/restore')return this.persistent(ip,'store-purchase',20,300);
+  if(path==='/api/monetization/reward-ticket')return this.persistent(ip,'reward-ticket',40,300);
+  if(path==='/api/v1/queue'||path==='/api/v1/cancel-queue')return this.persistent(ip,'matchmaking-mutation',120,300);
+  if(path==='/api/party/command'){
+   if(body?.type==='publicJoin')return this.persistent(ip,'tournament-join',30,300);
+   if(['ready','matchReady','resign'].includes(body?.type))return this.persistent(ip,'tournament-mutation',180,300);
+  }
   if(path==='/api/account/start'||path==='/api/account/native/challenge'||path==='/api/account/native/finish')return this.persistent(ip,'provider-auth',30,300);
   if(path==='/api/community/report')return this.persistent(ip,'player-report',20,3600);
   if(path==='/api/community/friend'||path==='/api/v1/offer')return this.persistent(ip,'social-mutation',90,300);

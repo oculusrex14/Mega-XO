@@ -81,9 +81,8 @@ Repository-side compliance hardening is implemented, but **paid entry remains pr
 - `server/competition-compliance.js` provides a default-deny policy engine for trusted jurisdiction, platform, verified-age and spend-limit decisions;
 - the engine's external compliance work must not create bought-vs-earned Crown gameplay classes; Crowns remain one closed-loop in-game currency;
 - India policy entries additionally require recognised-e-sport classification plus National Sports Governance Act recognition and OGAI registration identifiers;
-- verified Apple/Google Crown purchases carry provenance through Coin/Crown conversion so jurisdiction/platform policy can make a source-aware eligibility decision without changing the visible currency;
+- purchase provenance remains billing/refund audit metadata only; gameplay eligibility does not distinguish bought from earned Crowns or derived Coins;
 - direct and tournament eligibility use the normal player balance; Crown purchase source is not an eligibility input;
-- legacy purchase-influenced state without exact provenance is fail-closed for competition;
 - `npm run competition:audit` is a CI gate proving current Ranked Coin pots, direct Crown challenges and all public tournament tables remain classified as prohibited pooled-stake mechanics;
 - historical economy/design docs are marked superseded for production compliance;
 - the researched platform/India decision record and future registration-fee architecture are in `docs/legal/PAID-COMPETITION-COMPLIANCE.md`.

@@ -1,6 +1,6 @@
 > **V3.5.1 patch:** Unified email/password continuation with OTP mailbox verification and recovery, Friends-page self-profile access, visible Cosmetic Credit balance, Antimatter Innovations developer identity, and the archived board-frame collection are governed by [V3.5.1-ACCOUNT-COSMETIC-PATCH.md](V3.5.1-ACCOUNT-COSMETIC-PATCH.md) and [V3.5.1-EMAIL-VERIFICATION.md](V3.5.1-EMAIL-VERIFICATION.md). They supersede conflicting earlier V3.5.1 email and V3.5 frame-catalogue language.
 
-> **V3.5 addendum:** The competitive rules below remain the V3.4 baseline. For the current additive purchase, cosmetic-credit and ad rules, use [V3.5-MONETISATION-IMPLEMENTATION.md](V3.5-MONETISATION-IMPLEMENTATION.md). That addendum governs V3.5 monetisation; it does not enable paid-entry operation or change Elo/tournament currency rules.
+> **V4.1 clarification:** The competitive rules below remain the product baseline. [V3.5-MONETISATION-IMPLEMENTATION.md](V3.5-MONETISATION-IMPLEMENTATION.md) adds purchase, cosmetic-credit and ad rules without changing Elo/tournament currency rules. Bought and earned Crowns have identical gameplay utility.
 
 # Mega XO V3.4 — canonical product rules
 
@@ -189,7 +189,7 @@ No:
 - artificial currency expiration;
 - purchase-dependent elite qualification.
 
-Paid-entry operation remains gated behind deployment, platform and jurisdiction review.
+Ranked Coin entry, Crown challenges and public tournaments are active closed-loop gameplay. Coins/Crowns cannot be cashed out or redeemed from Mega XO for real-world money.
 
 ## Deferred from V3.4
 

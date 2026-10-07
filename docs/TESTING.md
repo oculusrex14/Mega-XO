@@ -99,7 +99,7 @@ See `V3.4-ECONOMY-RESULTS.md` for complete definitions and guardrails. Purchase 
 
 ## Browser and device validation
 
-The repository also retains browser functional suites for economy/UI, party flows and account/community flows. Their Python Playwright/Chromium environment requirements are separate from the mandatory V3.4 Node CI workflow.
+The repository retains browser functional suites for economy/UI, party, account/community, accessibility and monetisation flows. The V4.1 GitHub Actions workflow installs Chromium and runs the release accessibility/monetisation browser gates after the Node suites.
 
 Passing browser functional tests does not by itself establish:
 - pixel-equivalence to design references;
@@ -107,19 +107,19 @@ Passing browser functional tests does not by itself establish:
 - accessibility compliance;
 - native iOS/Android behavior;
 - ten-device hotspot/radio interoperability;
-- store approval or paid-entry legal clearance.
+- App Store/Play Console acceptance for native provider features.
 
 ## Still required before production release
 
-V3.4 automated correctness does not replace production validation. Remaining release work includes:
+V4.1 automated correctness does not replace production validation. Remaining release work includes:
 - production identity/provider configuration;
 - native Apple/Google billing sandbox and receipt lifecycle testing;
-- deployment/load/recovery testing under multi-process traffic;
-- paid-entry territory, age and platform review;
-- fraud/collusion/solver review;
+- live Oracle VPS deployment/load/recovery testing;
+- adversarial staging acceptance for credential/OTP/replay/collusion/bot heuristics;
 - native iOS/Android device testing;
-- real-font visual regression and accessibility review;
-- spending-protection and responsible-monetization review;
+- VoiceOver/TalkBack and real-device visual/network acceptance;
+- production privacy/retention/moderation approval;
+- native ad consent and store-purchase lifecycle acceptance;
 - beta telemetry to replace modeled economy assumptions.
 
 The SQLite implementation and deterministic simulations are engineering/design validation tools; they are not claims of production scale, profitability or user behavior.

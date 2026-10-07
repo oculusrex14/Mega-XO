@@ -9,11 +9,11 @@ const basePolicy={
  enabled:true,version:'competition-review-2026-10',approvalId:'legal-board-2026-10',
  effectiveAt:'2026-10-01T00:00:00Z',expiresAt:'2026-12-31T23:59:59Z',
  allowPurchasedCurrency:false,allowPooledStake:false,allowCashOut:false,allowRealWorldPrize:false,prizeFunding:'organizer',
- jurisdictions:[{country:'GB',platforms:['web','ios','android'],minAge:18,legalReviewId:'gb-review-2026-10',dailyEntryCap:100,dailyLossCap:100}]
+ jurisdictions:[{country:'GB',platforms:['web','ios','android'],minAge:18,legalReviewId:'gb-review-2026-10',maxEntryFee:50,dailyEntryCap:100,dailyLossCap:100}]
 };
-const age={verified:true,age:21,verifiedAt:'2026-09-01T00:00:00Z'};
+const age={verified:true,trusted:true,age:21,verifiedAt:'2026-09-01T00:00:00Z'};
 const location={trusted:true,country:'GB',subdivision:'',proxyRisk:false};
-const spend={entryToday:0,lossToday:0};
+const spend={entryToday:0,lossToday:0,selfExcluded:false,accountHold:false,coolingOffUntil:null};
 
 test('current direct Crown challenge is classified as pooled stake and denied',()=>{
  const q=D.quote({mode:'direct',kind:'friend',from:'gold',to:'gold',amount:20});
@@ -38,7 +38,7 @@ test('approved registration-fee model needs trusted geo age and spend context',(
  assert.equal(ok.allowed,true);assert.equal(ok.code,'APPROVED_REGISTRATION_FEE');
  assert.equal(assess({policy:basePolicy,entry,platform:'web',location:{country:'GB',trusted:false},age,spend,now:NOW}).code,'TRUSTED_COMPETITION_LOCATION_REQUIRED');
  assert.equal(assess({policy:basePolicy,entry,platform:'web',location,age:{verified:false,age:21},spend,now:NOW}).code,'COMPETITION_AGE_NOT_VERIFIED');
- assert.equal(assess({policy:basePolicy,entry,platform:'web',location,age,spend:{entryToday:95,lossToday:0},now:NOW}).code,'COMPETITION_DAILY_ENTRY_LIMIT');
+ assert.equal(assess({policy:basePolicy,entry,platform:'web',location,age,spend:{entryToday:95,lossToday:0,selfExcluded:false,accountHold:false,coolingOffUntil:null},now:NOW}).code,'COMPETITION_DAILY_ENTRY_LIMIT');
 });
 
 test('purchased currency, Apple IAP and real-world prizes fail closed',()=>{
@@ -49,7 +49,7 @@ test('purchased currency, Apple IAP and real-world prizes fail closed',()=>{
 });
 
 test('India can only appear in a candidate policy with explicit recognized-esport approvals',()=>{
- const candidate={...basePolicy,jurisdictions:[{country:'IN',platforms:['web'],minAge:18,legalReviewId:'india-review-2026-10',classification:'recognized_esport'}]};
+ const candidate={...basePolicy,jurisdictions:[{country:'IN',platforms:['web'],minAge:18,legalReviewId:'india-review-2026-10',classification:'recognized_esport',maxEntryFee:50,dailyEntryCap:100,dailyLossCap:100}]};
  assert.throws(()=>validatePolicy(candidate,{now:NOW}),/INDIA_REGULATORY_APPROVAL_REQUIRED/);
  const approved={...candidate,jurisdictions:[{...candidate.jurisdictions[0],ogaiRegistrationId:'ogai-registration-123',sportsRecognitionId:'sports-recognition-123'}]};
  assert.equal(validatePolicy(approved,{now:NOW}).jurisdictions[0].country,'IN');

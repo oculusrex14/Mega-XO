@@ -2,6 +2,8 @@
 
 This file is the canonical handoff ledger for V4 work that cannot be completed from repository-only access.
 
+Execution order for the VPS/provider takeover: `docs/V4.1-VPS-PROVIDER-HANDOFF.md`.
+
 Rules:
 - Keep this file current whenever a task becomes blocked, unblocked, completed externally, or needs user/local-agent action.
 - Never paste production secrets, private keys, passwords, OTPs, recovery keys, or raw database contents into this file.

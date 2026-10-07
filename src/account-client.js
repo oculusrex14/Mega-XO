@@ -13,6 +13,7 @@ function publish(state,code='',supportId=''){
 }
 function classify(code){
  if(code==='AUTH_REQUIRED')return 'auth';
+ if(code==='LINK_ACCOUNT_REQUIRED')return 'auth';
  if(code==='MAINTENANCE')return 'maintenance';
  if(code==='OFFLINE'||root.navigator?.onLine===false)return 'offline';
  if(code==='REQUEST_TIMEOUT')return 'timeout';

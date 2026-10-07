@@ -149,3 +149,10 @@ test('Crown-entry disclosures preserve bought-Crown utility without promising ca
   assert.ok(party.includes('Coins and Crowns have no cash value or cash-out.'));
   assert.ok(party.includes('cancelled or voided events refund automatically'));
 });
+
+test('signed-out sessions prompt sign-in instead of claiming an outage',()=>{
+  const account=fs.readFileSync(path.join(ROOT,'src','account-client.js'),'utf8');
+  const app=fs.readFileSync(path.join(ROOT,'src','app.js'),'utf8');
+  assert.ok(account.includes("if(code==='LINK_ACCOUNT_REQUIRED')return 'auth'"));
+  assert.ok(app.includes("LINK_ACCOUNT_REQUIRED:'Sign in to play online.'"));
+});

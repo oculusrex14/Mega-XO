@@ -2,6 +2,8 @@
 const test=require('node:test'),assert=require('node:assert/strict');
 const G=require('../src/game.js'),D=require('../src/domain.js'),T=require('../src/tournament.js'),MM=require('../server/matchmaking.js');
 const {Authority}=require('../src/authority.js');
+const {assess}=require('../server/competition-compliance.js');
+const {config}=require('../server/production/config.js');
 
 test('INVARIANT: chosen cell routes the next player to the matching Mini Board',()=>{
  let s=G.create('X');s=G.apply(s,{b:4,c:2});assert.equal(s.required,2);assert(G.legal(s).every(m=>m.b===2));
@@ -49,3 +51,15 @@ test('INVARIANT: player-facing direct API cannot choose a matchmade opponent',()
  const a=new Authority();a.addAccount('a',{verified:true,games:20});a.addAccount('b',{verified:true,games:20});assert.throws(()=>a.offer('x','a','b',{mode:'queue'}),/MATCHMAKER_REQUIRED/);
 });
 test('INVARIANT: tournament records are aggregates, not replay payloads',()=>{const x=D.tournamentStats({entered:2,wins:1,finishSum:3,bestFinish:1});assert.deepEqual(Object.keys(x).sort(),['averageFinish','bestFinish','entered','premiumWins','runnerUp','top3','top5','winRate','wins'].sort());});
+
+
+test('INVARIANT: current pooled competition mechanics cannot pass the P1-7 compliance baseline',()=>{
+ const policy={enabled:true,version:'invariant-policy',approvalId:'invariant-approval',effectiveAt:'2026-10-01T00:00:00Z',expiresAt:'2026-12-31T23:59:59Z',allowPurchasedCurrency:false,allowPooledStake:false,allowCashOut:false,allowRealWorldPrize:false,prizeFunding:'organizer',jurisdictions:[{country:'GB',platforms:['web'],minAge:18,legalReviewId:'invariant-gb-review'}]};
+ const context={policy,platform:'web',location:{trusted:true,country:'GB',proxyRisk:false},age:{verified:true,age:21,verifiedAt:'2026-10-01T00:00:00Z'},spend:{entryToday:0,lossToday:0},now:Date.parse('2026-11-01T00:00:00Z')};
+ for(const entry of [D.quote({mode:'ranked',from:'gold',to:'gold'}),D.quote({mode:'direct',kind:'friend',from:'gold',to:'gold',amount:20}),...Object.keys(T.TABLES).map(T.prize)])assert.equal(assess({...context,entry}).code,'POOLED_STAKE_PROHIBITED');
+});
+
+test('INVARIANT: production refuses the paid-entry feature flag until EXT-26 approval',()=>{
+ const base={MEGA_ENV:'production',MEGA_ORIGIN:'https://play.antimatterinnovations.com',MEGA_DB:'/data/mega.sqlite',MEGA_OTP_SECRET:'1'.repeat(64),MEGA_PROXY_SECRET:'2'.repeat(64)};
+ assert.throws(()=>config({...base,MEGA_PAID_ENTRY_ENABLED:'true'}),/PAID_FEATURES_NOT_RELEASED/);
+});

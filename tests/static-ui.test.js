@@ -90,9 +90,15 @@ test('network resilience keeps write retries idempotent and exposes user-safe co
   assert.ok(account.includes("'Idempotency-Key':operationKey"));
   assert.ok(account.includes("attempts=body===undefined?3:2"));
   assert.ok(account.includes("publish('reconnecting'"));
-  assert.ok(html.includes('id="networkStatus"'));
+  assert.ok(html.includes('id="contentScroll" class="content-scroll"'));
+  assert.ok(html.indexOf('id="contentScroll"')<html.indexOf('id="networkStatus"'));
+  assert.ok(html.indexOf('id="networkStatus"')<html.indexOf('id="page"'));
+  assert.ok(styles.includes('.content-scroll{flex:1;min-height:0;overflow:auto'));
+  assert.ok(styles.includes('#page{min-height:100%;padding:8px 18px 24px;overflow:visible}'));
+  for(const theme of ['vector','midnight','paperclub','afterhours'])assert.ok(styles.includes(':root[data-theme="'+theme+'"] .network-status'));
   for(const state of ['offline','maintenance','auth','timeout','degraded','reconnecting'])assert.ok(app.includes(state+':'));
   assert.ok(app.includes("if(onlinePollBusy)return;onlinePollBusy=true"));
+  assert.ok(app.includes("$('#contentScroll').scrollTop=0"));
   assert.ok(app.includes("retrynetwork:()=>retryNetwork()"));
 });
 

@@ -1,0 +1,1585 @@
+{
+  "schema_version": 1,
+  "status": "completed_inventory_native_delivery_not_verified",
+  "task_ids": [
+    "V5-00-06"
+  ],
+  "generated_at": "2026-10-07T19:18:32.253500+00:00",
+  "result": {
+    "executed": true,
+    "inventory_complete": true,
+    "native_application_build_verified": false,
+    "native_application_device_verified": false,
+    "native_store_verified": false,
+    "signing_operation_performed": false,
+    "provider_entitlements_verified": false
+  },
+  "scope": {
+    "program": "V5",
+    "production_v4": "untouched",
+    "owned_repo_artifact": "docs/v5/evidence/phase00-native-inventory.json",
+    "source_context": "NativeToolchainInventory read-only scout report; adapter-only target assessment is source-mapping evidence, not build execution.",
+    "forbidden_actions_performed": [],
+    "builds_tests_linters_formatters_run": false,
+    "device_pairing_trust_permission_changes": false,
+    "license_acceptance_install_download_requests": false,
+    "account_key_provider_mutations": false,
+    "incidental_metadata_effects": [
+      "ADB enumeration automatically started its existing local daemon on tcp:5037; no device was listed, paired or authorized.",
+      "sdkmanager --list_installed reported remote-repository metadata progress; no SDK package download/install was requested."
+    ]
+  },
+  "toolchain_state": {
+    "apple": {
+      "classification": "installed_selected_version_and_metadata_probes_succeeded",
+      "selected_developer_root": "/Applications/Xcode.app/Contents/Developer",
+      "xcode_version": "27.0",
+      "xcode_build": "27A266a",
+      "ios_sdk_version": "27.0",
+      "swift_version": "6.4",
+      "clang_version": "21.0.0",
+      "xcodegen_version": "2.46.0",
+      "license_prompt_encountered": false,
+      "installed_sdk_does_not_prove_build": true
+    },
+    "android": {
+      "classification": "installed_explicit_root_metadata_probes_succeeded_global_environment_unconfigured",
+      "explicit_probe_root": "/Users/oculus/Library/Android/sdk",
+      "root_selection_scope": "Only CLI arguments/absolute paths; no global environment or SDK configuration was changed.",
+      "sdkmanager_executable": "/Users/oculus/Library/Android/sdk/cmdline-tools/11076708/bin/sdkmanager",
+      "sdkmanager_version": "12.0",
+      "sdkmanager_warning_classification": "nonfatal_sdk_xml_v4_read_by_v3_aware_cli",
+      "adb_version": "1.0.41 / 37.0.1-15733141",
+      "installed_packages": [
+        {
+          "package": "build-tools;34.0.0",
+          "version": "34.0.0",
+          "description": "Android SDK Build-Tools 34",
+          "relative_location": "build-tools/34.0.0"
+        },
+        {
+          "package": "build-tools;35.0.0",
+          "version": "35.0.0",
+          "description": "Android SDK Build-Tools 35",
+          "relative_location": "build-tools/35.0.0"
+        },
+        {
+          "package": "ndk;27.0.12077973",
+          "version": "27.0.12077973",
+          "description": "NDK (Side by side) 27.0.12077973",
+          "relative_location": "ndk/27.0.12077973"
+        },
+        {
+          "package": "platform-tools",
+          "version": "37.0.1",
+          "description": "Android SDK Platform-Tools",
+          "relative_location": "platform-tools"
+        },
+        {
+          "package": "platforms;android-35",
+          "version": "2",
+          "description": "Android SDK Platform 35",
+          "relative_location": "platforms/android-35"
+        }
+      ],
+      "environment": {
+        "JAVA_HOME": null,
+        "ANDROID_HOME": null,
+        "ANDROID_SDK_ROOT": null,
+        "GRADLE_USER_HOME": null
+      },
+      "path_resolution": {
+        "java": "/usr/bin/java",
+        "gradle": null,
+        "xcodegen": "/opt/homebrew/bin/xcodegen",
+        "adb": null,
+        "sdkmanager": "/opt/homebrew/bin/sdkmanager"
+      },
+      "path_sdkmanager_realpath": "/opt/homebrew/share/android-commandlinetools/cmdline-tools/latest/bin/sdkmanager",
+      "competing_cli_root_note": "PATH sdkmanager resolves to the Homebrew command-line-tools root, different from the explicitly probed SDK root. Other root packages were not probed and are not conflated.",
+      "license_prompt_encountered": false
+    },
+    "java": {
+      "classification": "selected_temurin17_and_explicit_homebrew17_21_version_probes_succeeded",
+      "selected_home": "/Library/Java/JavaVirtualMachines/temurin-17.jdk/Contents/Home",
+      "selected_version": "17.0.20.1+1",
+      "homebrew17_version": "17.0.20+0",
+      "homebrew21_version": "21.0.12.1",
+      "global_JAVA_HOME_set": false
+    },
+    "gradle": {
+      "classification": "cached_distribution_executable_no_path_install_dependency_cache_cold",
+      "version": "8.9",
+      "executable": "/Users/oculus/.gradle/wrapper/dists/gradle-8.9-bin/90cnw93cvbtalezasaz0blq0a/gradle-8.9/bin/gradle",
+      "path_binary": null,
+      "dependency_cache_exists": false,
+      "offline_application_build_readiness": "unverified_no_dependency_cache_no_buildable_target",
+      "no_distribution_download_requested": true
+    }
+  },
+  "device_state": {
+    "ios_physical": {
+      "classification": "one_known_paired_physical_device_currently_disconnected",
+      "known_count": 1,
+      "connected_count": 0,
+      "devices": [
+        {
+          "fingerprint": "sha256:d38db05f088ef60b47527aafeb5f9dc0596649a899e9084005fe3601867337e1",
+          "product_type": "iPhone17,1",
+          "model": "D93AP",
+          "platform": "iOS",
+          "reality": null,
+          "os_version": "27.0.1",
+          "os_build": "24A446",
+          "connection_state": "disconnected",
+          "pairing_state": "paired",
+          "transport": "localNetwork",
+          "tunnel_state": "disconnected",
+          "ddi_services_available": false,
+          "boot_state": "booted",
+          "visibility_class": "default"
+        }
+      ],
+      "crosscheck": {
+        "online_host_count": 1,
+        "online_physical_mobile_count": 0,
+        "offline_physical_mobile_count": 1,
+        "simulator_count": 25,
+        "offline_mobile_devices": [
+          {
+            "fingerprint": "sha256:d38db05f088ef60b47527aafeb5f9dc0596649a899e9084005fe3601867337e1",
+            "os_version": "27.0.1"
+          }
+        ]
+      },
+      "cached_OS_boot_pairing_fields_are_not_live_attachment_proof": true
+    },
+    "ios_simulator": {
+      "classification": "actual_available_runtimes_and_existing_devices_enumerated",
+      "runtime_count": 2,
+      "runtimes": [
+        {
+          "identifier": "com.apple.CoreSimulator.SimRuntime.iOS-26-3",
+          "name": "iOS 26.3",
+          "version": "26.3.1",
+          "buildversion": "23D8133",
+          "platform": "iOS",
+          "isAvailable": true,
+          "supportedArchitectures": [
+            "arm64"
+          ]
+        },
+        {
+          "identifier": "com.apple.CoreSimulator.SimRuntime.iOS-26-5",
+          "name": "iOS 26.5",
+          "version": "26.5",
+          "buildversion": "23F77",
+          "platform": "iOS",
+          "isAvailable": true,
+          "supportedArchitectures": [
+            "arm64"
+          ]
+        }
+      ],
+      "device_count": 25,
+      "available_count": 25,
+      "booted_count": 3,
+      "shutdown_count": 22,
+      "booted_note": "Three simulators were already booted when enumerated; this inventory did not boot/shutdown any simulator.",
+      "ios27_runtime_present": false
+    },
+    "android_physical": {
+      "classification": "actual_adb_enumeration_empty",
+      "listed_count": 0,
+      "connected_authorized_count": 0,
+      "devices": [],
+      "no_enable_usb_debugging_or_trust_action_performed": true
+    },
+    "android_emulator": {
+      "classification": "none_in_selected_sdk_or_standard_local_avd_location",
+      "emulator_directory_exists": false,
+      "system_images_directory_exists": false,
+      "avd_directory_exists": false,
+      "other_locations_not_scanned": true
+    }
+  },
+  "signing_state": {
+    "apple": {
+      "classification": "zero_valid_local_codesigning_identities_team_membership_not_established",
+      "security_find_identity": {
+        "valid_count": 0,
+        "identities": [],
+        "type_counts": {}
+      },
+      "cached_team_metadata": {
+        "source": "/Users/oculus/Library/Preferences/com.apple.dt.Xcode.plist",
+        "exists": true,
+        "readable": true,
+        "team_ids": [
+          "D5TQJ76T44"
+        ],
+        "note": "Selected team identifier metadata only; no personal account rows read.",
+        "matched_key_names": [
+          "teamID"
+        ]
+      },
+      "profile_locations": {
+        "/Users/oculus/Library/MobileDevice/Provisioning Profiles": {
+          "exists": false,
+          "profile_count": 0
+        },
+        "/Users/oculus/Library/Developer/Xcode/UserData/Provisioning Profiles": {
+          "exists": false,
+          "profile_count": 0
+        }
+      },
+      "cached_team_id_is_not_program_membership_or_entitlement_proof": true,
+      "private_keys_exported": false,
+      "personal_account_database_rows_read": false
+    },
+    "android": {
+      "classification": "existing_debug_keystore_only_observed_no_release_or_play_upload_signing_proof",
+      "debug_keystore": {
+        "path": "/Users/oculus/.android/debug.keystore",
+        "exists": true,
+        "classification": "existing_debug_keystore_not_release_upload_proof"
+      },
+      "release_upload_keystore_inventory": "No release keystore was surfaced by scoped scout; no broad home scan/key inspection was performed, so global absence is not asserted.",
+      "keystore_values_read_or_printed": false
+    },
+    "provider": {
+      "classification": "unverified_requires_authenticated_owner_console_read",
+      "apple_developer_program_membership": "unverified",
+      "apple_app_id_entitlements": "unverified",
+      "app_store_connect_roles_products": "unverified",
+      "google_play_roles_upload_certificate_products": "unverified"
+    }
+  },
+  "storage_state": {
+    "classification": "actual_mount_filesystems_and_free_bytes_measured_no_relocation",
+    "measurements": [
+      {
+        "path": "/System/Volumes/Data",
+        "probe": "libc.statfs",
+        "return_code": 0,
+        "errno": null,
+        "filesystem_type": "apfs",
+        "mounted_on": "/System/Volumes/Data",
+        "is_local": true,
+        "readonly": false,
+        "block_size": 4096,
+        "total_bytes": 245107195904,
+        "free_bytes": 22243958784,
+        "available_bytes": 22243958784,
+        "build_cache_classification": "eligible_local_posix_filesystem_capacity_must_be_budgeted",
+        "capability_basis": "Filesystem-family semantics inferred from actual statfs filesystem type; no write/symlink/hardlink capability test was performed."
+      },
+      {
+        "path": "/Volumes/T9",
+        "probe": "libc.statfs",
+        "return_code": 0,
+        "errno": null,
+        "filesystem_type": "exfat",
+        "mounted_on": "/Volumes/T9",
+        "is_local": true,
+        "readonly": false,
+        "block_size": 131072,
+        "total_bytes": 2000333438976,
+        "free_bytes": 921743130624,
+        "available_bytes": 921743130624,
+        "build_cache_classification": "not_posix_capable_build_cache_filesystem",
+        "capability_basis": "Filesystem-family semantics inferred from actual statfs filesystem type; no write/symlink/hardlink capability test was performed."
+      },
+      {
+        "path": "/Volumes/DGX-Home",
+        "probe": "libc.statfs",
+        "return_code": 0,
+        "errno": null,
+        "filesystem_type": "smbfs",
+        "mounted_on": "/Volumes/DGX-Home",
+        "is_local": false,
+        "readonly": false,
+        "block_size": 1024,
+        "total_bytes": 4030802149376,
+        "free_bytes": 2332863447040,
+        "available_bytes": 2332863447040,
+        "build_cache_classification": "network_mount_not_local_build_cache",
+        "capability_basis": "Filesystem-family semantics inferred from actual statfs filesystem type; no write/symlink/hardlink capability test was performed."
+      }
+    ],
+    "eligible_existing_local_build_cache_option": "Internal APFS data volume; available bytes measured above. No claim of enough capacity for the whole V5 programme.",
+    "t9_option": "Mounted local exFAT: archival/log/artifact storage only for this programme, not POSIX-reliant SDK/build caches/worktrees.",
+    "dgx_option": "Mounted SMB share: capacity observed, but not a local POSIX build-cache filesystem; underlying DGX filesystem/runner/toolchain not probed.",
+    "owner_storage_authorization_scope": "Use T9/DGX if needed, not deletion/repair/reformat; no files moved/deleted."
+  },
+  "source_native_target_state": {
+    "classification": "adapter_sources_only_not_buildable_native_applications",
+    "source_mapping_evidence": "agent://NativeToolchainInventory/report",
+    "known_sources": [
+      "native/android/MegaGoogleIdentity.kt",
+      "native/ios/MegaAppleIdentity.swift"
+    ],
+    "buildable_android_or_xcode_project": "not present per exhaustive source mapping scout",
+    "application_compilation_install_purchase_ad_consent_proof": false
+  },
+  "prerequisites": [
+    {
+      "area": "native_targets",
+      "classification": "missing_buildable_application_targets",
+      "required": "Implement actual Android and iOS application targets with existing adapters/contracts before any compile/install/archive claim.",
+      "next_command": "No current application build command is runnable against adapter-only native/; after targets exist, discover iOS schemes with xcodebuild -list -project native/ios/MegaXO.xcodeproj and use the target checked-in Android wrapper.",
+      "permission_required": "Project implementation authorization; no account/device mutation needed for source creation."
+    },
+    {
+      "area": "android_root_and_cold_dependencies",
+      "classification": "explicit_sdk_root_works_but_dependency_cache_absent",
+      "required": "Use the explicitly inventoried SDK root/JDK17 for the later real target; first dependency resolution requires authorized network/package retrieval. Do not claim --offline readiness.",
+      "next_command": "After a real Gradle Android target and wrapper exist: JAVA_HOME=/Library/Java/JavaVirtualMachines/temurin-17.jdk/Contents/Home ANDROID_HOME=/Users/oculus/Library/Android/sdk ./native/android/gradlew --no-daemon --project-dir native/android :app:assembleDebug",
+      "permission_required": "Owner authorization for first dependency downloads and any additional license terms; none accepted here."
+    },
+    {
+      "area": "ios_physical",
+      "classification": "paired_device_offline_not_live_device_verified",
+      "required": "Owner attaches/reconnects the existing authorized iPhone17,1 (cached OS27.0.1); any trust/developer-mode prompt needs explicit approval. No automatic pairing/mount performed.",
+      "next_command": "xcrun devicectl list devices --json-output <private-output.json> && xcrun xctrace list devices",
+      "permission_required": "Physical connection and explicit approval for any new trust/developer-mode prompt, if required."
+    },
+    {
+      "area": "android_physical",
+      "classification": "no_device_listed",
+      "required": "Owner provides an authorized physical Android device with debugging enabled; any USB-debugging authorization requires explicit approval.",
+      "next_command": "/Users/oculus/Library/Android/sdk/platform-tools/adb devices -l",
+      "permission_required": "Physical connection; owner-controlled developer options/debugging/trust if not already authorized."
+    },
+    {
+      "area": "apple_signing_and_provider_team",
+      "classification": "zero_valid_local_identity_cached_team_only",
+      "required": "Authenticated owner read of Apple Developer Account Membership for cached TeamID D5TQJ76T44 and Certificates/Identifiers/Profiles; read App Store Connect Users and Access/App information to confirm current roles, app IDs and capabilities. Cached teamID alone is not entitlement evidence.",
+      "next_console": "developer.apple.com/account -> Membership details and Certificates, Identifiers & Profiles; appstoreconnect.apple.com -> Users and Access / relevant application.",
+      "next_command": "security find-identity -v -p codesigning (capture restricted; publish fingerprint/type/count only) after separately approved signing setup.",
+      "permission_required": "Authenticated read access is required; certificate creation/import/provisioning changes are separate owner-approved actions, not performed."
+    },
+    {
+      "area": "android_release_and_store",
+      "classification": "release_upload_signing_and_play_provider_access_unverified",
+      "required": "Owner-confirmed Play Console package/app access and App integrity upload-certificate metadata, plus authorized existing release/upload signing material or separately approved creation. Debug keystore is not release/upload proof.",
+      "next_console": "play.google.com/console -> relevant app -> Setup / App integrity; Users and permissions.",
+      "permission_required": "Authenticated owner read; no keystore creation/export or provider changes authorized by this inventory."
+    },
+    {
+      "area": "cache_storage",
+      "classification": "internal_apfs_eligible_capacity_requires_budget_t9_exfat_dgx_smb_not_local_cache",
+      "required": "Budget actual required build-cache/archive capacity on internal APFS, or owner-provided additional local POSIX-capable filesystem. Treat DGX as a separate candidate runner only after its actual filesystem/toolchain is probed.",
+      "next_command": "statfs(/System/Volumes/Data), statfs(/Volumes/T9), statfs(/Volumes/DGX-Home) before later cache placement; no move/repair/format performed.",
+      "permission_required": "Storage placement authorization exists for T9/DGX; does not authorize deleting unrelated work."
+    }
+  ],
+  "commands": [
+    {
+      "probe_id": "xcode_select",
+      "command": [
+        "/usr/bin/xcode-select",
+        "-p"
+      ],
+      "started_at": "2026-10-07T19:14:52.794191+00:00",
+      "ended_at": "2026-10-07T19:14:52.799275+00:00",
+      "exit_code": 0,
+      "executed": true,
+      "classification": "success",
+      "selected_output": {
+        "stdout": "/Applications/Xcode.app/Contents/Developer",
+        "stderr": ""
+      },
+      "raw_private_evidence_file": "xcode_select.json"
+    },
+    {
+      "probe_id": "java_home",
+      "command": [
+        "/usr/libexec/java_home",
+        "-V"
+      ],
+      "started_at": "2026-10-07T19:14:52.800400+00:00",
+      "ended_at": "2026-10-07T19:14:52.810299+00:00",
+      "exit_code": 0,
+      "executed": true,
+      "classification": "success",
+      "selected_output": {
+        "stdout": "/Library/Java/JavaVirtualMachines/temurin-17.jdk/Contents/Home",
+        "stderr": "Matching Java Virtual Machines (1):\n    17.0.20.1 (arm64) \"Eclipse Adoptium\" - \"OpenJDK 17.0.20.1\" /Library/Java/JavaVirtualMachines/temurin-17.jdk/Contents/Home"
+      },
+      "raw_private_evidence_file": "java_home.json"
+    },
+    {
+      "probe_id": "java_selected",
+      "command": [
+        "/usr/bin/java",
+        "-version"
+      ],
+      "started_at": "2026-10-07T19:14:52.797106+00:00",
+      "ended_at": "2026-10-07T19:14:52.921976+00:00",
+      "exit_code": 0,
+      "executed": true,
+      "classification": "success",
+      "selected_output": {
+        "stdout": "",
+        "stderr": "openjdk version \"17.0.20.1\" 2026-08-18\nOpenJDK Runtime Environment Temurin-17.0.20.1+1 (build 17.0.20.1+1)\nOpenJDK 64-Bit Server VM Temurin-17.0.20.1+1 (build 17.0.20.1+1, mixed mode, sharing)"
+      },
+      "raw_private_evidence_file": "java_selected.json"
+    },
+    {
+      "probe_id": "java_temurin17",
+      "command": [
+        "/Library/Java/JavaVirtualMachines/temurin-17.jdk/Contents/Home/bin/java",
+        "-version"
+      ],
+      "started_at": "2026-10-07T19:14:52.799162+00:00",
+      "ended_at": "2026-10-07T19:14:52.922048+00:00",
+      "exit_code": 0,
+      "executed": true,
+      "classification": "success",
+      "selected_output": {
+        "stdout": "",
+        "stderr": "openjdk version \"17.0.20.1\" 2026-08-18\nOpenJDK Runtime Environment Temurin-17.0.20.1+1 (build 17.0.20.1+1)\nOpenJDK 64-Bit Server VM Temurin-17.0.20.1+1 (build 17.0.20.1+1, mixed mode, sharing)"
+      },
+      "raw_private_evidence_file": "java_temurin17.json"
+    },
+    {
+      "probe_id": "xcodegen",
+      "command": [
+        "/opt/homebrew/bin/xcodegen",
+        "--version"
+      ],
+      "started_at": "2026-10-07T19:14:52.922345+00:00",
+      "ended_at": "2026-10-07T19:14:52.939192+00:00",
+      "exit_code": 0,
+      "executed": true,
+      "classification": "success",
+      "selected_output": {
+        "stdout": "Version: 2.46.0",
+        "stderr": ""
+      },
+      "raw_private_evidence_file": "xcodegen.json"
+    },
+    {
+      "probe_id": "java_homebrew17",
+      "command": [
+        "/opt/homebrew/opt/openjdk@17/bin/java",
+        "-version"
+      ],
+      "started_at": "2026-10-07T19:14:52.810543+00:00",
+      "ended_at": "2026-10-07T19:14:53.056904+00:00",
+      "exit_code": 0,
+      "executed": true,
+      "classification": "success",
+      "selected_output": {
+        "stdout": "",
+        "stderr": "openjdk version \"17.0.20\" 2026-07-21\nOpenJDK Runtime Environment Homebrew (build 17.0.20+0)\nOpenJDK 64-Bit Server VM Homebrew (build 17.0.20+0, mixed mode, sharing)"
+      },
+      "raw_private_evidence_file": "java_homebrew17.json"
+    },
+    {
+      "probe_id": "xcode_version",
+      "command": [
+        "/usr/bin/xcodebuild",
+        "-version"
+      ],
+      "started_at": "2026-10-07T19:14:52.794404+00:00",
+      "ended_at": "2026-10-07T19:14:53.096599+00:00",
+      "exit_code": 0,
+      "executed": true,
+      "classification": "success",
+      "selected_output": {
+        "stdout": "Xcode 27.0\nBuild version 27A266a",
+        "stderr": ""
+      },
+      "raw_private_evidence_file": "xcode_version.json"
+    },
+    {
+      "probe_id": "java_homebrew21",
+      "command": [
+        "/opt/homebrew/opt/openjdk@21/bin/java",
+        "-version"
+      ],
+      "started_at": "2026-10-07T19:14:52.922290+00:00",
+      "ended_at": "2026-10-07T19:14:53.124182+00:00",
+      "exit_code": 0,
+      "executed": true,
+      "classification": "success",
+      "selected_output": {
+        "stdout": "",
+        "stderr": "openjdk version \"21.0.12.1\" 2026-08-18\nOpenJDK Runtime Environment Homebrew (build 21.0.12.1)\nOpenJDK 64-Bit Server VM Homebrew (build 21.0.12.1, mixed mode, sharing)"
+      },
+      "raw_private_evidence_file": "java_homebrew21.json"
+    },
+    {
+      "probe_id": "gradle_cached",
+      "command": [
+        "/Users/oculus/.gradle/wrapper/dists/gradle-8.9-bin/90cnw93cvbtalezasaz0blq0a/gradle-8.9/bin/gradle",
+        "--version"
+      ],
+      "started_at": "2026-10-07T19:14:52.939488+00:00",
+      "ended_at": "2026-10-07T19:14:53.588784+00:00",
+      "exit_code": 0,
+      "executed": true,
+      "classification": "success",
+      "selected_output": {
+        "stdout": "------------------------------------------------------------\nGradle 8.9\n------------------------------------------------------------\n\nBuild time:    2024-07-11 14:37:41 UTC\nRevision:      d536ef36a19186ccc596d8817123e5445f30fef8\n\nKotlin:        1.9.23\nGroovy:        3.0.21\nAnt:           Apache Ant(TM) version 1.10.13 compiled on January 4 2023\nLauncher JVM:  17.0.20.1 (Eclipse Adoptium 17.0.20.1+1)\nDaemon JVM:    /Library/Java/JavaVirtualMachines/temurin-17.jdk/Contents/Home (no JDK specified, using current Java home)\nOS:            Mac OS X 26.6.2 aarch64",
+        "stderr": ""
+      },
+      "raw_private_evidence_file": "gradle_cached.json"
+    },
+    {
+      "probe_id": "xcode_sdks",
+      "command": [
+        "/usr/bin/xcodebuild",
+        "-showsdks"
+      ],
+      "started_at": "2026-10-07T19:14:52.795727+00:00",
+      "ended_at": "2026-10-07T19:14:54.155704+00:00",
+      "exit_code": 0,
+      "executed": true,
+      "classification": "success",
+      "selected_output": {
+        "stdout": "DriverKit SDKs:\n\tDriverKit 27.0                \t-sdk driverkit27.0\n\niOS SDKs:\n\tiOS 27.0                      \t-sdk iphoneos27.0\n\niOS Simulator SDKs:\n\tSimulator - iOS 27.0          \t-sdk iphonesimulator27.0\n\nmacOS SDKs:\n\tmacOS 27.0                    \t-sdk macosx27.0\n\tmacOS 27.0                    \t-sdk macosx27.0\n\ntvOS SDKs:\n\ttvOS 27.0                     \t-sdk appletvos27.0\n\ntvOS Simulator SDKs:\n\tSimulator - tvOS 27.0         \t-sdk appletvsimulator27.0\n\nvisionOS SDKs:\n\tvisionOS 27.0                 \t-sdk xros27.0\n\nvisionOS Simulator SDKs:\n\tSimulator - visionOS 27.0     \t-sdk xrsimulator27.0\n\nwatchOS SDKs:\n\twatchOS 27.0                  \t-sdk watchos27.0\n\nwatchOS Simulator SDKs:\n\tSimulator - watchOS 27.0      \t-sdk watchsimulator27.0",
+        "stderr": ""
+      },
+      "raw_private_evidence_file": "xcode_sdks.json"
+    },
+    {
+      "probe_id": "xcrun_find_swift",
+      "command": [
+        "/usr/bin/xcrun",
+        "--find",
+        "swift"
+      ],
+      "started_at": "2026-10-07T19:15:09.816569+00:00",
+      "ended_at": "2026-10-07T19:15:09.830281+00:00",
+      "exit_code": 0,
+      "executed": true,
+      "classification": "success",
+      "selected_output": {
+        "stdout": "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swift",
+        "stderr": ""
+      },
+      "raw_private_evidence_file": "xcrun_find_swift.json"
+    },
+    {
+      "probe_id": "xcrun_find_simctl",
+      "command": [
+        "/usr/bin/xcrun",
+        "--find",
+        "simctl"
+      ],
+      "started_at": "2026-10-07T19:15:09.816669+00:00",
+      "ended_at": "2026-10-07T19:15:09.833733+00:00",
+      "exit_code": 0,
+      "executed": true,
+      "classification": "success",
+      "selected_output": {
+        "stdout": "/Applications/Xcode.app/Contents/Developer/usr/bin/simctl",
+        "stderr": ""
+      },
+      "raw_private_evidence_file": "xcrun_find_simctl.json"
+    },
+    {
+      "probe_id": "xcrun_find_lipo",
+      "command": [
+        "/usr/bin/xcrun",
+        "--find",
+        "lipo"
+      ],
+      "started_at": "2026-10-07T19:15:09.830751+00:00",
+      "ended_at": "2026-10-07T19:15:09.842075+00:00",
+      "exit_code": 0,
+      "executed": true,
+      "classification": "success",
+      "selected_output": {
+        "stdout": "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/lipo",
+        "stderr": ""
+      },
+      "raw_private_evidence_file": "xcrun_find_lipo.json"
+    },
+    {
+      "probe_id": "xcrun_find_clang",
+      "command": [
+        "/usr/bin/xcrun",
+        "--find",
+        "clang"
+      ],
+      "started_at": "2026-10-07T19:15:09.816394+00:00",
+      "ended_at": "2026-10-07T19:15:09.844527+00:00",
+      "exit_code": 0,
+      "executed": true,
+      "classification": "success",
+      "selected_output": {
+        "stdout": "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang",
+        "stderr": ""
+      },
+      "raw_private_evidence_file": "xcrun_find_clang.json"
+    },
+    {
+      "probe_id": "ios_sdk_path",
+      "command": [
+        "/usr/bin/xcrun",
+        "--sdk",
+        "iphoneos",
+        "--show-sdk-path"
+      ],
+      "started_at": "2026-10-07T19:15:09.842562+00:00",
+      "ended_at": "2026-10-07T19:15:09.851355+00:00",
+      "exit_code": 0,
+      "executed": true,
+      "classification": "success",
+      "selected_output": {
+        "stdout": "/Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS27.0.sdk",
+        "stderr": ""
+      },
+      "raw_private_evidence_file": "ios_sdk_path.json"
+    },
+    {
+      "probe_id": "sim_runtimes",
+      "command": [
+        "/usr/bin/xcrun",
+        "simctl",
+        "list",
+        "runtimes",
+        "--json"
+      ],
+      "started_at": "2026-10-07T19:15:09.851878+00:00",
+      "ended_at": "2026-10-07T19:15:10.277403+00:00",
+      "exit_code": 0,
+      "executed": true,
+      "classification": "success",
+      "selected_output": {
+        "runtimes": [
+          {
+            "identifier": "com.apple.CoreSimulator.SimRuntime.iOS-26-3",
+            "name": "iOS 26.3",
+            "version": "26.3.1",
+            "buildversion": "23D8133",
+            "platform": "iOS",
+            "isAvailable": true,
+            "supportedArchitectures": [
+              "arm64"
+            ]
+          },
+          {
+            "identifier": "com.apple.CoreSimulator.SimRuntime.iOS-26-5",
+            "name": "iOS 26.5",
+            "version": "26.5",
+            "buildversion": "23F77",
+            "platform": "iOS",
+            "isAvailable": true,
+            "supportedArchitectures": [
+              "arm64"
+            ]
+          }
+        ]
+      },
+      "raw_private_evidence_file": "sim_runtimes.json"
+    },
+    {
+      "probe_id": "ios_sim_sdk_version",
+      "command": [
+        "/usr/bin/xcrun",
+        "--sdk",
+        "iphonesimulator",
+        "--show-sdk-version"
+      ],
+      "started_at": "2026-10-07T19:15:09.844799+00:00",
+      "ended_at": "2026-10-07T19:15:10.381901+00:00",
+      "exit_code": 0,
+      "executed": true,
+      "classification": "success",
+      "selected_output": {
+        "stdout": "27.0",
+        "stderr": ""
+      },
+      "raw_private_evidence_file": "ios_sim_sdk_version.json"
+    },
+    {
+      "probe_id": "xcrun_find_codesign",
+      "command": [
+        "/usr/bin/xcrun",
+        "--find",
+        "codesign"
+      ],
+      "started_at": "2026-10-07T19:15:09.826572+00:00",
+      "ended_at": "2026-10-07T19:15:10.406515+00:00",
+      "exit_code": 0,
+      "executed": true,
+      "classification": "success",
+      "selected_output": {
+        "stdout": "/usr/bin/codesign",
+        "stderr": ""
+      },
+      "raw_private_evidence_file": "xcrun_find_codesign.json"
+    },
+    {
+      "probe_id": "xcrun_find_actool",
+      "command": [
+        "/usr/bin/xcrun",
+        "--find",
+        "actool"
+      ],
+      "started_at": "2026-10-07T19:15:09.833976+00:00",
+      "ended_at": "2026-10-07T19:15:10.406648+00:00",
+      "exit_code": 0,
+      "executed": true,
+      "classification": "success",
+      "selected_output": {
+        "stdout": "/Applications/Xcode.app/Contents/Developer/usr/bin/actool",
+        "stderr": ""
+      },
+      "raw_private_evidence_file": "xcrun_find_actool.json"
+    },
+    {
+      "probe_id": "xcrun_find_xctrace",
+      "command": [
+        "/usr/bin/xcrun",
+        "--find",
+        "xctrace"
+      ],
+      "started_at": "2026-10-07T19:15:09.821131+00:00",
+      "ended_at": "2026-10-07T19:15:10.406701+00:00",
+      "exit_code": 0,
+      "executed": true,
+      "classification": "success",
+      "selected_output": {
+        "stdout": "/Applications/Xcode.app/Contents/Developer/usr/bin/xctrace",
+        "stderr": ""
+      },
+      "raw_private_evidence_file": "xcrun_find_xctrace.json"
+    },
+    {
+      "probe_id": "xcrun_find_devicectl",
+      "command": [
+        "/usr/bin/xcrun",
+        "--find",
+        "devicectl"
+      ],
+      "started_at": "2026-10-07T19:15:09.820849+00:00",
+      "ended_at": "2026-10-07T19:15:10.410661+00:00",
+      "exit_code": 0,
+      "executed": true,
+      "classification": "success",
+      "selected_output": {
+        "stdout": "/Applications/Xcode.app/Contents/Developer/usr/bin/devicectl",
+        "stderr": ""
+      },
+      "raw_private_evidence_file": "xcrun_find_devicectl.json"
+    },
+    {
+      "probe_id": "codesign_identities",
+      "command": [
+        "/usr/bin/security",
+        "find-identity",
+        "-v",
+        "-p",
+        "codesigning"
+      ],
+      "started_at": "2026-10-07T19:15:10.410521+00:00",
+      "ended_at": "2026-10-07T19:15:10.424454+00:00",
+      "exit_code": 0,
+      "executed": true,
+      "classification": "success",
+      "selected_output": {
+        "valid_count": 0,
+        "identities": [],
+        "type_counts": {}
+      },
+      "raw_private_evidence_file": "codesign_identities.json"
+    },
+    {
+      "probe_id": "sim_devices",
+      "command": [
+        "/usr/bin/xcrun",
+        "simctl",
+        "list",
+        "devices",
+        "--json"
+      ],
+      "started_at": "2026-10-07T19:15:10.278056+00:00",
+      "ended_at": "2026-10-07T19:15:10.432298+00:00",
+      "exit_code": 0,
+      "executed": true,
+      "classification": "success",
+      "selected_output": {
+        "device_count": 25,
+        "available_count": 25,
+        "booted_count": 3,
+        "devices": [
+          {
+            "fingerprint": "sha256:a98cb95a74c1f26c5861d945bc65b36b19a4efb3aa15f300a4745cd2f58daaab",
+            "model": "com.apple.CoreSimulator.SimDeviceType.iPhone-17-Pro",
+            "runtime": "com.apple.CoreSimulator.SimRuntime.iOS-26-5",
+            "state": "Shutdown",
+            "is_available": true
+          },
+          {
+            "fingerprint": "sha256:079aea0e87e0da4a8eb7fdfc836bc2282b5cb1828e1f3741bce3c865f7d1b377",
+            "model": "com.apple.CoreSimulator.SimDeviceType.iPhone-17-Pro-Max",
+            "runtime": "com.apple.CoreSimulator.SimRuntime.iOS-26-5",
+            "state": "Booted",
+            "is_available": true
+          },
+          {
+            "fingerprint": "sha256:1d52e76b657fd0cde77b755c2c29bcf1d0176fc98bfc1e3b236e7d8f5262ecf7",
+            "model": "com.apple.CoreSimulator.SimDeviceType.iPhone-17e",
+            "runtime": "com.apple.CoreSimulator.SimRuntime.iOS-26-5",
+            "state": "Shutdown",
+            "is_available": true
+          },
+          {
+            "fingerprint": "sha256:8dc23fd0b604b1f54b651a46d3eadcbc352e97a281ab0dc18e4de3b3d019a684",
+            "model": "com.apple.CoreSimulator.SimDeviceType.iPhone-Air",
+            "runtime": "com.apple.CoreSimulator.SimRuntime.iOS-26-5",
+            "state": "Shutdown",
+            "is_available": true
+          },
+          {
+            "fingerprint": "sha256:edd9bd93ce3e198248276779d98cfaa62b9cc51c7b7f315ad352abf1182ea851",
+            "model": "com.apple.CoreSimulator.SimDeviceType.iPhone-17",
+            "runtime": "com.apple.CoreSimulator.SimRuntime.iOS-26-5",
+            "state": "Shutdown",
+            "is_available": true
+          },
+          {
+            "fingerprint": "sha256:50f1431524aa569dfe4706138567d35d454e8e552f1b3a5b6a22f8a09fc06159",
+            "model": "com.apple.CoreSimulator.SimDeviceType.iPad-Pro-13-inch-M5-12GB",
+            "runtime": "com.apple.CoreSimulator.SimRuntime.iOS-26-5",
+            "state": "Shutdown",
+            "is_available": true
+          },
+          {
+            "fingerprint": "sha256:c275b1bb7362cd0167907d550e6d40bf4dc186bd69167ba463c7b130e2ecec1f",
+            "model": "com.apple.CoreSimulator.SimDeviceType.iPad-Pro-11-inch-M5-12GB",
+            "runtime": "com.apple.CoreSimulator.SimRuntime.iOS-26-5",
+            "state": "Shutdown",
+            "is_available": true
+          },
+          {
+            "fingerprint": "sha256:daa75c984dc0b55b98e7e735de2e99db685d924b04a986d94add42791170cef3",
+            "model": "com.apple.CoreSimulator.SimDeviceType.iPad-mini-A17-Pro",
+            "runtime": "com.apple.CoreSimulator.SimRuntime.iOS-26-5",
+            "state": "Shutdown",
+            "is_available": true
+          },
+          {
+            "fingerprint": "sha256:3e240f23ce46dab3b34d278ae07c986a7e01299ae8e72c7fd3af1640021964f1",
+            "model": "com.apple.CoreSimulator.SimDeviceType.iPad-Air-13-inch-M4",
+            "runtime": "com.apple.CoreSimulator.SimRuntime.iOS-26-5",
+            "state": "Shutdown",
+            "is_available": true
+          },
+          {
+            "fingerprint": "sha256:469e4ac132e3067fee5dbc6a2dd5d426e3037d58d3c762cca73197c2f6ec2923",
+            "model": "com.apple.CoreSimulator.SimDeviceType.iPad-Air-11-inch-M4",
+            "runtime": "com.apple.CoreSimulator.SimRuntime.iOS-26-5",
+            "state": "Shutdown",
+            "is_available": true
+          },
+          {
+            "fingerprint": "sha256:077ba593b8b2b35fc11c04f22358add59f6a89dfe762acdc25e4df19b22828ab",
+            "model": "com.apple.CoreSimulator.SimDeviceType.iPad-A16",
+            "runtime": "com.apple.CoreSimulator.SimRuntime.iOS-26-5",
+            "state": "Shutdown",
+            "is_available": true
+          },
+          {
+            "fingerprint": "sha256:a9d98bbe010d8db903f5247cf69930386a6d37a60244dde0e58f049e55a99d10",
+            "model": "com.apple.CoreSimulator.SimDeviceType.iPhone-17-Pro",
+            "runtime": "com.apple.CoreSimulator.SimRuntime.iOS-26-3",
+            "state": "Booted",
+            "is_available": true
+          },
+          {
+            "fingerprint": "sha256:dea843be3aa3d926b6b3a426bfb3ce5b0df285267872e50a1c6fcdc4a6e8eecb",
+            "model": "com.apple.CoreSimulator.SimDeviceType.iPhone-17-Pro-Max",
+            "runtime": "com.apple.CoreSimulator.SimRuntime.iOS-26-3",
+            "state": "Booted",
+            "is_available": true
+          },
+          {
+            "fingerprint": "sha256:1e5d9106ae03e9cd63cfc09afc145ab97e471ec77f7efbacd4be8c3aafe2fa2b",
+            "model": "com.apple.CoreSimulator.SimDeviceType.iPhone-17e",
+            "runtime": "com.apple.CoreSimulator.SimRuntime.iOS-26-3",
+            "state": "Shutdown",
+            "is_available": true
+          },
+          {
+            "fingerprint": "sha256:e5eeffaca4bb84c3265d4015562e1207284cfa4759e1eea1bdd0b552b61af654",
+            "model": "com.apple.CoreSimulator.SimDeviceType.iPhone-Air",
+            "runtime": "com.apple.CoreSimulator.SimRuntime.iOS-26-3",
+            "state": "Shutdown",
+            "is_available": true
+          },
+          {
+            "fingerprint": "sha256:b091399a66f2d841cad69ee1c11d5cdbc435626bad9d39515729f42cf50018d4",
+            "model": "com.apple.CoreSimulator.SimDeviceType.iPhone-17",
+            "runtime": "com.apple.CoreSimulator.SimRuntime.iOS-26-3",
+            "state": "Shutdown",
+            "is_available": true
+          },
+          {
+            "fingerprint": "sha256:6d177376492b85a57fd7c1e400132784e476478a530031f957644792bdde9787",
+            "model": "com.apple.CoreSimulator.SimDeviceType.iPhone-16e",
+            "runtime": "com.apple.CoreSimulator.SimRuntime.iOS-26-3",
+            "state": "Shutdown",
+            "is_available": true
+          },
+          {
+            "fingerprint": "sha256:7fe09d2f021934d5a7978f96a929c2ae446b146b260b034be488b2686fc3eef5",
+            "model": "com.apple.CoreSimulator.SimDeviceType.iPad-Pro-13-inch-M5-12GB",
+            "runtime": "com.apple.CoreSimulator.SimRuntime.iOS-26-3",
+            "state": "Shutdown",
+            "is_available": true
+          },
+          {
+            "fingerprint": "sha256:7ce6ca1e766a8cf4ca39984a4c3a9bba236a81c632c875e19403021da603e295",
+            "model": "com.apple.CoreSimulator.SimDeviceType.iPad-Pro-11-inch-M5-12GB",
+            "runtime": "com.apple.CoreSimulator.SimRuntime.iOS-26-3",
+            "state": "Shutdown",
+            "is_available": true
+          },
+          {
+            "fingerprint": "sha256:e7c52b69e294137ea6fe4bac3fe10f555a93720027dccb71ea7bfb4ee3ac75d7",
+            "model": "com.apple.CoreSimulator.SimDeviceType.iPad-mini-A17-Pro",
+            "runtime": "com.apple.CoreSimulator.SimRuntime.iOS-26-3",
+            "state": "Shutdown",
+            "is_available": true
+          },
+          {
+            "fingerprint": "sha256:62ec91c36ad7e2f6f983df68393120188957f00d1718304ec6d9b15d8d30f84a",
+            "model": "com.apple.CoreSimulator.SimDeviceType.iPad-Air-13-inch-M4",
+            "runtime": "com.apple.CoreSimulator.SimRuntime.iOS-26-3",
+            "state": "Shutdown",
+            "is_available": true
+          },
+          {
+            "fingerprint": "sha256:0b9b08d66573a1203792e60750574760c849d0379afa01b7c1353369fde2b2dc",
+            "model": "com.apple.CoreSimulator.SimDeviceType.iPad-Air-11-inch-M4",
+            "runtime": "com.apple.CoreSimulator.SimRuntime.iOS-26-3",
+            "state": "Shutdown",
+            "is_available": true
+          },
+          {
+            "fingerprint": "sha256:25ef72240ee7e28b70925e2b729ed95b79974c5ccf41c376a6272f71dda84d2a",
+            "model": "com.apple.CoreSimulator.SimDeviceType.iPad-A16",
+            "runtime": "com.apple.CoreSimulator.SimRuntime.iOS-26-3",
+            "state": "Shutdown",
+            "is_available": true
+          },
+          {
+            "fingerprint": "sha256:efddd48ffe06150a52ea6fd7485aa889f6a302607ba4b8dee56ffa6e00f5c3da",
+            "model": "com.apple.CoreSimulator.SimDeviceType.iPad-Air-13-inch-M3",
+            "runtime": "com.apple.CoreSimulator.SimRuntime.iOS-26-3",
+            "state": "Shutdown",
+            "is_available": true
+          },
+          {
+            "fingerprint": "sha256:d89f2cfd3fa2a2ca19ae0d290b5b9c4a74226e7fa955b9358cc9c9427dbf344b",
+            "model": "com.apple.CoreSimulator.SimDeviceType.iPad-Air-11-inch-M3",
+            "runtime": "com.apple.CoreSimulator.SimRuntime.iOS-26-3",
+            "state": "Shutdown",
+            "is_available": true
+          }
+        ]
+      },
+      "raw_private_evidence_file": "sim_devices.json"
+    },
+    {
+      "probe_id": "devicectl_devices",
+      "command": [
+        "/usr/bin/xcrun",
+        "devicectl",
+        "list",
+        "devices",
+        "--json-output",
+        "/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/v5-native-p00-c8jvshtx/devicectl-devices.json"
+      ],
+      "started_at": "2026-10-07T19:15:10.407304+00:00",
+      "ended_at": "2026-10-07T19:15:10.607706+00:00",
+      "exit_code": 0,
+      "executed": true,
+      "classification": "success",
+      "selected_output": {
+        "known_records_count": 8,
+        "physical_records_count": 1,
+        "connected_physical_count": 0,
+        "physical_devices": [
+          {
+            "fingerprint": "sha256:d38db05f088ef60b47527aafeb5f9dc0596649a899e9084005fe3601867337e1",
+            "product_type": "iPhone17,1",
+            "model": "D93AP",
+            "platform": "iOS",
+            "reality": null,
+            "os_version": "27.0.1",
+            "os_build": "24A446",
+            "connection_state": "disconnected",
+            "pairing_state": "paired",
+            "transport": "localNetwork",
+            "tunnel_state": "disconnected",
+            "ddi_services_available": false,
+            "boot_state": "booted",
+            "visibility_class": "default"
+          }
+        ],
+        "virtual_records_count": 7,
+        "virtual_devices": [
+          {
+            "fingerprint": "sha256:50f1431524aa569dfe4706138567d35d454e8e552f1b3a5b6a22f8a09fc06159",
+            "product_type": "iPad17,4",
+            "model": "iPad Pro 13-inch (M5)",
+            "platform": "iOS",
+            "reality": "simulated",
+            "os_version": "26.5",
+            "os_build": "23F77",
+            "connection_state": "disconnected",
+            "pairing_state": "paired",
+            "transport": "sameMachine",
+            "tunnel_state": "disconnected",
+            "ddi_services_available": false,
+            "boot_state": "shutdown",
+            "visibility_class": "simulators"
+          },
+          {
+            "fingerprint": "sha256:6d177376492b85a57fd7c1e400132784e476478a530031f957644792bdde9787",
+            "product_type": "iPhone17,5",
+            "model": "iPhone 16e",
+            "platform": "iOS",
+            "reality": "simulated",
+            "os_version": "26.3.1",
+            "os_build": "23D8133",
+            "connection_state": "disconnected",
+            "pairing_state": "paired",
+            "transport": "sameMachine",
+            "tunnel_state": "disconnected",
+            "ddi_services_available": false,
+            "boot_state": "shutdown",
+            "visibility_class": "simulators"
+          },
+          {
+            "fingerprint": "sha256:edd9bd93ce3e198248276779d98cfaa62b9cc51c7b7f315ad352abf1182ea851",
+            "product_type": "iPhone18,3",
+            "model": "iPhone 17",
+            "platform": "iOS",
+            "reality": "simulated",
+            "os_version": "26.5",
+            "os_build": "23F77",
+            "connection_state": "disconnected",
+            "pairing_state": "paired",
+            "transport": "sameMachine",
+            "tunnel_state": "disconnected",
+            "ddi_services_available": false,
+            "boot_state": "shutdown",
+            "visibility_class": "simulators"
+          },
+          {
+            "fingerprint": "sha256:a9d98bbe010d8db903f5247cf69930386a6d37a60244dde0e58f049e55a99d10",
+            "product_type": "iPhone18,1",
+            "model": "iPhone 17 Pro",
+            "platform": "iOS",
+            "reality": "simulated",
+            "os_version": "26.3.1",
+            "os_build": "23D8133",
+            "connection_state": "connected",
+            "pairing_state": "paired",
+            "transport": "sameMachine",
+            "tunnel_state": "connected",
+            "ddi_services_available": true,
+            "boot_state": "booted",
+            "visibility_class": "simulators"
+          },
+          {
+            "fingerprint": "sha256:a98cb95a74c1f26c5861d945bc65b36b19a4efb3aa15f300a4745cd2f58daaab",
+            "product_type": "iPhone18,1",
+            "model": "iPhone 17 Pro",
+            "platform": "iOS",
+            "reality": "simulated",
+            "os_version": "26.5",
+            "os_build": "23F77",
+            "connection_state": "disconnected",
+            "pairing_state": "paired",
+            "transport": "sameMachine",
+            "tunnel_state": "disconnected",
+            "ddi_services_available": false,
+            "boot_state": "shutdown",
+            "visibility_class": "simulators"
+          },
+          {
+            "fingerprint": "sha256:079aea0e87e0da4a8eb7fdfc836bc2282b5cb1828e1f3741bce3c865f7d1b377",
+            "product_type": "iPhone18,2",
+            "model": "iPhone 17 Pro Max",
+            "platform": "iOS",
+            "reality": "simulated",
+            "os_version": "26.5",
+            "os_build": "23F77",
+            "connection_state": "connected",
+            "pairing_state": "paired",
+            "transport": "sameMachine",
+            "tunnel_state": "connected",
+            "ddi_services_available": true,
+            "boot_state": "booted",
+            "visibility_class": "simulators"
+          },
+          {
+            "fingerprint": "sha256:dea843be3aa3d926b6b3a426bfb3ce5b0df285267872e50a1c6fcdc4a6e8eecb",
+            "product_type": "iPhone18,2",
+            "model": "iPhone 17 Pro Max",
+            "platform": "iOS",
+            "reality": "simulated",
+            "os_version": "26.3.1",
+            "os_build": "23D8133",
+            "connection_state": "connected",
+            "pairing_state": "paired",
+            "transport": "sameMachine",
+            "tunnel_state": "connected",
+            "ddi_services_available": true,
+            "boot_state": "booted",
+            "visibility_class": "simulators"
+          }
+        ]
+      },
+      "raw_private_evidence_file": "devicectl_devices.json"
+    },
+    {
+      "probe_id": "adb_version",
+      "command": [
+        "/Users/oculus/Library/Android/sdk/platform-tools/adb",
+        "version"
+      ],
+      "started_at": "2026-10-07T19:15:10.424764+00:00",
+      "ended_at": "2026-10-07T19:15:10.633595+00:00",
+      "exit_code": 0,
+      "executed": true,
+      "classification": "success",
+      "selected_output": {
+        "stdout": "Android Debug Bridge version 1.0.41\nVersion 37.0.1-15733141\nInstalled as /Users/oculus/Library/Android/sdk/platform-tools/adb\nRunning on Darwin 25.6.0 (arm64)",
+        "stderr": ""
+      },
+      "raw_private_evidence_file": "adb_version.json"
+    },
+    {
+      "probe_id": "disk_t9",
+      "command": [
+        "/usr/sbin/diskutil",
+        "info",
+        "-plist",
+        "/Volumes/T9"
+      ],
+      "started_at": "2026-10-07T19:15:10.633874+00:00",
+      "ended_at": "2026-10-07T19:15:10.742842+00:00",
+      "exit_code": 0,
+      "executed": true,
+      "classification": "success",
+      "selected_output": {
+        "BusProtocol": "USB",
+        "FilesystemName": "ExFAT",
+        "FilesystemType": "exfat",
+        "FreeSpace": 921743130624,
+        "GlobalPermissionsEnabled": false,
+        "MountPoint": "/Volumes/T9",
+        "TotalSize": 2000333438976,
+        "VolumeSize": 2000333438976,
+        "Writable": true
+      },
+      "raw_private_evidence_file": "disk_t9.json"
+    },
+    {
+      "probe_id": "disk_dgx",
+      "command": [
+        "/usr/sbin/diskutil",
+        "info",
+        "-plist",
+        "/Volumes/DGX-Home"
+      ],
+      "started_at": "2026-10-07T19:15:10.743132+00:00",
+      "ended_at": "2026-10-07T19:15:10.762386+00:00",
+      "exit_code": 1,
+      "executed": true,
+      "classification": "unsupported_for_network_filesystem",
+      "selected_output": {
+        "ErrorMessage": "Could not find disk: /Volumes/DGX-Home",
+        "note": "diskutil cannot inspect this network mount as a disk; successful statfs establishes smbfs, mountpoint and capacity."
+      },
+      "raw_private_evidence_file": "disk_dgx.json"
+    },
+    {
+      "probe_id": "adb_devices",
+      "command": [
+        "/Users/oculus/Library/Android/sdk/platform-tools/adb",
+        "devices",
+        "-l"
+      ],
+      "started_at": "2026-10-07T19:15:10.432576+00:00",
+      "ended_at": "2026-10-07T19:15:10.766309+00:00",
+      "exit_code": 0,
+      "executed": true,
+      "classification": "success",
+      "selected_output": {
+        "actual_list_count": 0,
+        "physical_connected_count": 0,
+        "emulator_connected_count": 0,
+        "devices": [],
+        "stderr_summary": "ADB daemon was not running and automatically started on tcp:5037 for the requested enumeration."
+      },
+      "raw_private_evidence_file": "adb_devices.json"
+    },
+    {
+      "probe_id": "disk_internal",
+      "command": [
+        "/usr/sbin/diskutil",
+        "info",
+        "-plist",
+        "/System/Volumes/Data"
+      ],
+      "started_at": "2026-10-07T19:15:10.607988+00:00",
+      "ended_at": "2026-10-07T19:15:10.769333+00:00",
+      "exit_code": 0,
+      "executed": true,
+      "classification": "success",
+      "selected_output": {
+        "BusProtocol": "Apple Fabric",
+        "FilesystemName": "APFS",
+        "FilesystemType": "apfs",
+        "FreeSpace": 0,
+        "GlobalPermissionsEnabled": true,
+        "MountPoint": "/System/Volumes/Data",
+        "TotalSize": 245107195904,
+        "VolumeSize": 0,
+        "Writable": true,
+        "note": "diskutil reports FreeSpace=0 for this APFS volume; available bytes are taken from successful statfs on the mounted data filesystem, not that field."
+      },
+      "raw_private_evidence_file": "disk_internal.json"
+    },
+    {
+      "probe_id": "mounts",
+      "command": [
+        "/sbin/mount"
+      ],
+      "started_at": "2026-10-07T19:15:10.762784+00:00",
+      "ended_at": "2026-10-07T19:15:10.770468+00:00",
+      "exit_code": 0,
+      "executed": true,
+      "classification": "success",
+      "selected_output": {
+        "selected_mounts": [
+          {
+            "path": "/System/Volumes/Data",
+            "mounted_on": "/System/Volumes/Data",
+            "filesystem_type": "apfs",
+            "is_local": true,
+            "readonly": false
+          },
+          {
+            "path": "/Volumes/T9",
+            "mounted_on": "/Volumes/T9",
+            "filesystem_type": "exfat",
+            "is_local": true,
+            "readonly": false
+          },
+          {
+            "path": "/Volumes/DGX-Home",
+            "mounted_on": "/Volumes/DGX-Home",
+            "filesystem_type": "smbfs",
+            "is_local": false,
+            "readonly": false
+          }
+        ],
+        "private_mount_sources_omitted": true
+      },
+      "raw_private_evidence_file": "mounts.json"
+    },
+    {
+      "probe_id": "devicectl_help",
+      "command": [
+        "/usr/bin/xcrun",
+        "devicectl",
+        "help",
+        "list",
+        "devices"
+      ],
+      "started_at": "2026-10-07T19:15:10.382373+00:00",
+      "ended_at": "2026-10-07T19:15:10.893542+00:00",
+      "exit_code": 0,
+      "executed": true,
+      "classification": "success",
+      "selected_output": {
+        "description": "Lists devices CoreDevice knows about, not exclusively currently attached physical devices."
+      },
+      "raw_private_evidence_file": "devicectl_help.json"
+    },
+    {
+      "probe_id": "sdkmanager_installed",
+      "command": [
+        "/Users/oculus/Library/Android/sdk/cmdline-tools/11076708/bin/sdkmanager",
+        "--sdk_root=/Users/oculus/Library/Android/sdk",
+        "--list_installed"
+      ],
+      "started_at": "2026-10-07T19:15:10.411633+00:00",
+      "ended_at": "2026-10-07T19:15:10.925780+00:00",
+      "exit_code": 0,
+      "executed": true,
+      "classification": "success_with_warning",
+      "selected_output": {
+        "installed_packages": [
+          {
+            "package": "build-tools;34.0.0",
+            "version": "34.0.0",
+            "description": "Android SDK Build-Tools 34",
+            "relative_location": "build-tools/34.0.0"
+          },
+          {
+            "package": "build-tools;35.0.0",
+            "version": "35.0.0",
+            "description": "Android SDK Build-Tools 35",
+            "relative_location": "build-tools/35.0.0"
+          },
+          {
+            "package": "ndk;27.0.12077973",
+            "version": "27.0.12077973",
+            "description": "NDK (Side by side) 27.0.12077973",
+            "relative_location": "ndk/27.0.12077973"
+          },
+          {
+            "package": "platform-tools",
+            "version": "37.0.1",
+            "description": "Android SDK Platform-Tools",
+            "relative_location": "platform-tools"
+          },
+          {
+            "package": "platforms;android-35",
+            "version": "2",
+            "description": "Android SDK Platform 35",
+            "relative_location": "platforms/android-35"
+          }
+        ],
+        "warning": "Warning: This version only understands SDK XML versions up to 3 but an SDK XML file of version 4 was encountered. This can happen if you use versions of Android Studio and the command-line tools that were released at different times.",
+        "note": "CLI reported fetch-remote-repository progress; no package installation or license acceptance was requested."
+      },
+      "raw_private_evidence_file": "sdkmanager_installed.json"
+    },
+    {
+      "probe_id": "xctrace_devices",
+      "command": [
+        "/usr/bin/xcrun",
+        "xctrace",
+        "list",
+        "devices"
+      ],
+      "started_at": "2026-10-07T19:15:10.407523+00:00",
+      "ended_at": "2026-10-07T19:15:12.839678+00:00",
+      "exit_code": 0,
+      "executed": true,
+      "classification": "success",
+      "selected_output": {
+        "online_host_count": 1,
+        "online_physical_mobile_count": 0,
+        "offline_physical_mobile_count": 1,
+        "simulator_count": 25,
+        "offline_mobile_devices": [
+          {
+            "fingerprint": "sha256:d38db05f088ef60b47527aafeb5f9dc0596649a899e9084005fe3601867337e1",
+            "os_version": "27.0.1"
+          }
+        ]
+      },
+      "raw_private_evidence_file": "xctrace_devices.json"
+    },
+    {
+      "probe_id": "devicectl_version",
+      "command": [
+        "/usr/bin/xcrun",
+        "devicectl",
+        "--version"
+      ],
+      "started_at": "2026-10-07T19:16:42.515828+00:00",
+      "ended_at": "2026-10-07T19:16:42.572279+00:00",
+      "exit_code": 0,
+      "executed": true,
+      "classification": "success",
+      "selected_output": {
+        "stdout": "642.16",
+        "stderr": ""
+      },
+      "raw_private_evidence_file": "devicectl_version.json"
+    },
+    {
+      "probe_id": "clang_version",
+      "command": [
+        "/usr/bin/xcrun",
+        "clang",
+        "--version"
+      ],
+      "started_at": "2026-10-07T19:16:42.512063+00:00",
+      "ended_at": "2026-10-07T19:16:42.651083+00:00",
+      "exit_code": 0,
+      "executed": true,
+      "classification": "success",
+      "selected_output": {
+        "stdout": "Apple clang version 21.0.0 (clang-2100.3.34.2)\nTarget: arm64-apple-darwin25.6.0\nThread model: posix\nInstalledDir: /Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin",
+        "stderr": ""
+      },
+      "raw_private_evidence_file": "clang_version.json"
+    },
+    {
+      "probe_id": "sdkmanager_version",
+      "command": [
+        "/Users/oculus/Library/Android/sdk/cmdline-tools/11076708/bin/sdkmanager",
+        "--sdk_root=/Users/oculus/Library/Android/sdk",
+        "--version"
+      ],
+      "started_at": "2026-10-07T19:16:42.512593+00:00",
+      "ended_at": "2026-10-07T19:16:42.937018+00:00",
+      "exit_code": 0,
+      "executed": true,
+      "classification": "success_with_warning",
+      "selected_output": {
+        "stdout": "12.0",
+        "stderr": "Warning: This version only understands SDK XML versions up to 3 but an SDK XML file of version 4 was encountered. This can happen if you use versions of Android Studio and the command-line tools that were released at different times."
+      },
+      "raw_private_evidence_file": "sdkmanager_version.json"
+    },
+    {
+      "probe_id": "swift_version",
+      "command": [
+        "/usr/bin/xcrun",
+        "swift",
+        "--version"
+      ],
+      "started_at": "2026-10-07T19:16:42.512432+00:00",
+      "ended_at": "2026-10-07T19:16:42.989595+00:00",
+      "exit_code": 0,
+      "executed": true,
+      "classification": "success",
+      "selected_output": {
+        "stdout": "Apple Swift version 6.4 (swiftlang-6.4.0.34.1 clang-2100.3.34.1)\nTarget: arm64-apple-macosx26.0",
+        "stderr": "swift-driver version: 1.168.6"
+      },
+      "raw_private_evidence_file": "swift_version.json"
+    }
+  ],
+  "api_probes": [
+    {
+      "probe_id": "mounted_filesystem_statfs",
+      "executed": true,
+      "method": "Darwin libc.statfs via ctypes",
+      "selected_output": [
+        {
+          "path": "/System/Volumes/Data",
+          "probe": "libc.statfs",
+          "return_code": 0,
+          "errno": null,
+          "filesystem_type": "apfs",
+          "mounted_on": "/System/Volumes/Data",
+          "is_local": true,
+          "readonly": false,
+          "block_size": 4096,
+          "total_bytes": 245107195904,
+          "free_bytes": 22243958784,
+          "available_bytes": 22243958784,
+          "build_cache_classification": "eligible_local_posix_filesystem_capacity_must_be_budgeted",
+          "capability_basis": "Filesystem-family semantics inferred from actual statfs filesystem type; no write/symlink/hardlink capability test was performed."
+        },
+        {
+          "path": "/Volumes/T9",
+          "probe": "libc.statfs",
+          "return_code": 0,
+          "errno": null,
+          "filesystem_type": "exfat",
+          "mounted_on": "/Volumes/T9",
+          "is_local": true,
+          "readonly": false,
+          "block_size": 131072,
+          "total_bytes": 2000333438976,
+          "free_bytes": 921743130624,
+          "available_bytes": 921743130624,
+          "build_cache_classification": "not_posix_capable_build_cache_filesystem",
+          "capability_basis": "Filesystem-family semantics inferred from actual statfs filesystem type; no write/symlink/hardlink capability test was performed."
+        },
+        {
+          "path": "/Volumes/DGX-Home",
+          "probe": "libc.statfs",
+          "return_code": 0,
+          "errno": null,
+          "filesystem_type": "smbfs",
+          "mounted_on": "/Volumes/DGX-Home",
+          "is_local": false,
+          "readonly": false,
+          "block_size": 1024,
+          "total_bytes": 4030802149376,
+          "free_bytes": 2332863447040,
+          "available_bytes": 2332863447040,
+          "build_cache_classification": "network_mount_not_local_build_cache",
+          "capability_basis": "Filesystem-family semantics inferred from actual statfs filesystem type; no write/symlink/hardlink capability test was performed."
+        }
+      ]
+    },
+    {
+      "probe_id": "cached_team_metadata",
+      "executed": true,
+      "method": "plistlib read of one existing com.apple.dt.Xcode.plist; only whitelisted TeamID values published",
+      "selected_output": {
+        "source": "/Users/oculus/Library/Preferences/com.apple.dt.Xcode.plist",
+        "exists": true,
+        "readable": true,
+        "team_ids": [
+          "D5TQJ76T44"
+        ],
+        "note": "Selected team identifier metadata only; no personal account rows read.",
+        "matched_key_names": [
+          "teamID"
+        ]
+      }
+    },
+    {
+      "probe_id": "scoped_local_cache_and_profile_metadata",
+      "executed": true,
+      "method": "Read-only path existence/scoped profile counts; no broad home scan",
+      "selected_output": {
+        "gradle_dependency_cache": {
+          "path": "/Users/oculus/.gradle/caches",
+          "exists": false
+        },
+        "android_debug_keystore": {
+          "path": "/Users/oculus/.android/debug.keystore",
+          "exists": true,
+          "classification": "existing_debug_keystore_not_release_upload_proof"
+        },
+        "selected_sdk_emulator_directory_exists": false,
+        "selected_sdk_system_images_directory_exists": false,
+        "android_avd_directory_exists": false,
+        "profile_directories": {
+          "/Users/oculus/Library/MobileDevice/Provisioning Profiles": {
+            "exists": false,
+            "profile_count": 0
+          },
+          "/Users/oculus/Library/Developer/Xcode/UserData/Provisioning Profiles": {
+            "exists": false,
+            "profile_count": 0
+          }
+        }
+      }
+    }
+  ],
+  "evidence_handling": {
+    "raw_evidence_directory": "/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/v5-native-p00-c8jvshtx",
+    "directory_mode": "0700",
+    "raw_file_mode": "0600",
+    "raw_device_names_ids_cert_subjects_mount_sources": "private_only_not_published",
+    "device_fingerprint_algorithm": "sha256 of existing UDID/device identifier",
+    "raw_device_identifiers_used_in_repo": false,
+    "raw_owner_names_emails_keys_or_passwords_in_repo": false,
+    "private_evidence_is_temporary_outside_repository": true
+  },
+  "claim_limits": [
+    "Version/SDK/root success is installation/configuration metadata, not application-build proof.",
+    "Simulator availability/boot state is not physical-device/store/purchase/ad-consent proof.",
+    "One paired iPhone record is disconnected; no current physical Apple or Android device was reachable.",
+    "No valid local signing identity is not a statement that Apple Developer Program membership is absent.",
+    "One cached TeamID is not a statement that current provider roles or entitlements are present.",
+    "Actual exFAT and SMB mounts replace the scout filesystem inferences; no relocation or capability write test performed.",
+    "No build, tests, lint, formatter, install, archive, export, store submission or provider mutation was performed."
+  ]
+}

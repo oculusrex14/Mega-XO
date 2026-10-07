@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "status": "VERIFIED_BRANCH_CHECKPOINT_CI_SUCCEEDED",
+  "task_ids": ["V5-00-03", "V5-00-06"],
+  "case_ids": ["A02"],
+  "environment": "local V5-platform and authenticated GitHub",
+  "base_sha": "455b8ec9ea4070b4410d78f9eea2aaa06d32c0b2",
+  "checkpoint_sha": "783ed22d39fa3a7182fd6c307eaa8f777a3e7336",
+  "integration_branch": "V5-platform",
+  "commands": [
+    {"command": "git switch -c V5-platform 455b8ec9ea4070b4410d78f9eea2aaa06d32c0b2", "exit_code": 0},
+    {"command": "git add explicitly approved goal/pack/source/progress/CI files; inspect staged path set", "exit_code": 0, "staged_files": 80},
+    {"command": "git commit -m 'V5 P00: pin v4.1.2 baseline and enable integration validation'", "exit_code": 0, "sha": "783ed22d39fa3a7182fd6c307eaa8f777a3e7336"},
+    {"command": "git push -u origin V5-platform", "exit_code": 0},
+    {"command": "gh api branch SHA and gh run list --branch V5-platform", "exit_code": 0}
+  ],
+  "ci": {"run_id": 37668446768, "head_sha": "783ed22d39fa3a7182fd6c307eaa8f777a3e7336", "url": "https://github.com/oculusrex14/Mega-XO/actions/runs/37668446768", "status_at_first_inspection": "in_progress", "conclusion_at_first_inspection": null, "verified_final_status": "completed", "verified_final_conclusion": "success", "watch_exit_code": 0, "validation_duration": "1m54s", "successful_steps": ["Full Node regression", "Game design invariants", "Ranked balance", "Population economy model", "Monetisation sensitivity model", "Seeded production workload", "P1-9 abuse acceptance", "Deployment tooling syntax", "Chromium accessibility gate", "Chromium monetisation flows"], "publish_job": "skipped", "images_job": "skipped"},
+  "result": {"executed": true, "exit_code": 0, "assertions": ["Branch created from pinned green source without V4 ref changes.", "Unchanged supplied goal, implementation pack and original handoff/architecture deliberately preserved in V5.", "Explicitly staged set contains no production data, env/auth files, signing credentials or private traces.", "Meaningful checkpoint pushed; first V5 validation run actually started.", "V4-era branch/tag validation and V4-only publishing conditions retained."]},
+  "carried_unrelated_work": [".agents/", "skills-lock.json"],
+  "not_claimed": ["complete provider/native inventory", "P00 exit gate passed", "any V5 production deployment"]
+}

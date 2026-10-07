@@ -1,0 +1,80 @@
+{
+  "schema_version": 1,
+  "status": "PASS",
+  "phase": "P00",
+  "gate": "G00",
+  "task_ids": [
+    "V5-00-01",
+    "V5-00-02",
+    "V5-00-03",
+    "V5-00-04",
+    "V5-00-05",
+    "V5-00-06"
+  ],
+  "case_ids": [
+    "A01",
+    "A02"
+  ],
+  "observed_at_utc": "2026-10-07T19:56:39.428414+00:00",
+  "source_sha": "455b8ec9ea4070b4410d78f9eea2aaa06d32c0b2",
+  "checkpoint_sha": "783ed22d39fa3a7182fd6c307eaa8f777a3e7336",
+  "environment": "pinned actual V4.1.2/source/CI/Oracle recovery plus isolated approved browser fixture and readonly provider/native inventories",
+  "evidence_refs": [
+    "docs/v5/evidence/setup.json",
+    "docs/v5/evidence/phase00-live-operations.json",
+    "docs/v5/evidence/phase00-branch-checkpoint.json",
+    "docs/v5/evidence/phase00-source-schema.json",
+    "docs/v5/evidence/phase00-ownership.json",
+    "docs/v5/evidence/phase00-source-baseline.json",
+    "docs/v5/evidence/phase00-visual-baseline.json",
+    "docs/v5/evidence/phase00-inventory-and-ci.json",
+    "docs/v5/evidence/progress-tool-smoke.json"
+  ],
+  "parent_integration_checks": {
+    "unchanged_approved_source_files": 21,
+    "actual_visual_png_and_metadata_sha256_checks": 696,
+    "parity_eligible_frames": 344,
+    "viewed_four_theme_frames": [
+      {
+        "theme": "vector",
+        "path": "/Users/oculus/Downloads/Mega-XO-private-evidence/v5-approved-visual-20261008/002-guest-home-vector-390x844.png"
+      },
+      {
+        "theme": "midnight",
+        "path": "/Users/oculus/Downloads/Mega-XO-private-evidence/v5-approved-visual-20261008/038-guest-home-bot-selection-midnight-320x568.png"
+      },
+      {
+        "theme": "paperclub",
+        "path": "/Users/oculus/Downloads/Mega-XO-private-evidence/v5-approved-visual-20261008/056-guest-home-bot-selection-paperclub-320x568.png"
+      },
+      {
+        "theme": "afterhours",
+        "path": "/Users/oculus/Downloads/Mega-XO-private-evidence/v5-approved-visual-20261008/072-guest-home-bot-selection-afterhours-320x568.png"
+      }
+    ],
+    "source_tables_owned": 35,
+    "serialized_source_roots_owned": 8,
+    "native_provider_inventories_executed": true,
+    "first_v5_ci_conclusion": "success"
+  },
+  "scoped_following_phase_prerequisites": [
+    "Vercel existing authentication/team/project/Marketplace inventory for P11/P06.",
+    "Neon effective quotas/compute/restore capabilities and actual regional RTT for P02.",
+    "UptimeRobot numeric IDs/state and authoritative GHCR package visibility.",
+    "Reconnect authorized physical iPhone and provide authorized Android device for P20.",
+    "Verify cached Apple team membership and create/use properly approved real signing/store configuration for P20."
+  ],
+  "result": {
+    "executed": true,
+    "exit_code": 0,
+    "assertions": [
+      "Exact green source/release provenance and meaningful V5 CI checkpoint recorded.",
+      "Scope/UI/game/economy/ownership frozen; P21 deferred and P20-to-P22 bypass explicit.",
+      "Actual environment inventory and classified contradictory/gapped provider statements recorded.",
+      "Exact encrypted V4 snapshot retrieved and restored byte-identically in isolation; production database untouched.",
+      "Four-theme/font/viewport/API/rule baseline is usable for later comparison without masking approved quirks or source changes.",
+      "No production migration/cutover or new native/provider acceptance claimed."
+    ]
+  },
+  "acceptance_case_scope": "Foundation baseline/CI proof only; full A01\u2013A40 end-to-end acceptance remains separately gated."
+}

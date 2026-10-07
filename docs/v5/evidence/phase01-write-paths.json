@@ -1,0 +1,61 @@
+{
+  "schema_version": 1,
+  "status": "PASS_SOURCE_INVENTORY",
+  "phase": "P01",
+  "task_ids": [
+    "V5-01-01"
+  ],
+  "case_ids": [
+    "A03",
+    "A06"
+  ],
+  "observed_at_utc": "2026-10-07T20:14:07.687006+00:00",
+  "source_sha": "455b8ec9ea4070b4410d78f9eea2aaa06d32c0b2",
+  "environment": "concrete source route/writer/constructor analysis plus exact restored readonly SQLite schema and actual baseline HTTP journeys",
+  "artifacts": [
+    "docs/v5/ROUTE-AND-DATA-INVENTORY.md",
+    "docs/v5/ARCHITECTURE.md"
+  ],
+  "evidence_refs": [
+    "docs/v5/evidence/phase00-source-schema.json",
+    "docs/v5/evidence/phase00-ownership.json",
+    "docs/v5/evidence/phase00-visual-baseline.json"
+  ],
+  "implementation_handoff": "local://v5-phase01-contract.md",
+  "writer_families": [
+    "DurableStore economic/competitive command transaction",
+    "CommunityStore signup/profile/social/deletion state and relational writes",
+    "Production EmailAuth signup/credential/challenge/version/mail transactions",
+    "RoomStore room/economy/reservation/settlement/outcome transaction on second shared-file connection",
+    "MonetizationStore grant/ticket/receipt/reward/outcome transactions",
+    "Provider notification revocation/refund/message boundaries and finalization prerequisites",
+    "Lazy permanent store bindings",
+    "Queue/status/busy/profile-presence implicit economic cleanup",
+    "Jobs snapshot/week payout/timeout/expire",
+    "Relational auth/presence/search/report/save/cleanup",
+    "Perimeter budgets/support telemetry",
+    "Mail outbox encrypted spending/lease/delivery",
+    "Private operator flags/audit/control/reports"
+  ],
+  "constructor_hazards": [
+    "Writable SQLite opens/PRAGMAs/schema/default state creation",
+    "Authority deserialization/season normalization with current clock",
+    "Room/production startup void/refund or pause recovery",
+    "Startup jobs/timers/mail/store-finalize/cleanup before serving"
+  ],
+  "result": {
+    "executed": true,
+    "exit_code": 0,
+    "assertions": [
+      "All35 actual source tables and eight serialized roots owned; full field/domain and route inventory retained.",
+      "Each discovered authority write, process Map/cache, hidden GET effect and stateful constructor classified.",
+      "Cross-owner relational/serialized writes and second-connection room atomicity are explicit extraction constraints.",
+      "Frozen concrete package/file-owner interface handoff permits safe independent implementation without premature gate completion."
+    ]
+  },
+  "not_claimed": [
+    "P01 implementation complete",
+    "PostgreSQL permission/transaction proof",
+    "distributed/native/provider acceptance"
+  ]
+}

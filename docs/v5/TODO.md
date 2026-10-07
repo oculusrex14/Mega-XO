@@ -2,31 +2,31 @@
 
 The mutable execution source is [progress.json](progress.json); this is its readable projection. Task actions, verification criteria and dependencies are retained in that JSON and the original [tasks.json](../../Mega-XO-V5-Implementation-Pack/tasks.json). Update both status projections after meaningful work; never tick a task without its required evidence.
 
-**Goal:** deliver the V5 hybrid platform and real Android/iOS apps, preserve the approved game and retained browser, defer the new website/browser product.
+**Goal:** Deliver the V5 hybrid platform and real Android/iOS applications with shared permanent actor/assets, preserved approved game and retained browser compatibility; do not build the new website/browser product.
 
-**Integration base:** `455b8ec9ea4070b4410d78f9eea2aaa06d32c0b2`. **Active phase/task:** P00 / V5-00-03 (IN_PROGRESS). Baseline/recovery task classifications verified; no full phase gate has passed.
+**Integration base:** `455b8ec9ea4070b4410d78f9eea2aaa06d32c0b2`. **Active phase/task:** P01 / V5-01-02 (IN_PROGRESS). **Progress:** 7/117 tasks terminal; 1/25 phase gates passed
 
-Run P00–P20, skip owner-deferred P21, proceed P22–P23, then measure P24. Foundation P00–P03 must pass before dependent distributed work. V5 CI starts in the foundation, not only P17.
+Required path: execute P00–P20, P22–P23; owner-deferred P21 executes nothing; P24 is measurement-gated; phase prerequisites are gates, not status assumptions, and a deferred or measurement-gated phase is never used as another phase prerequisite. The foundation gate P00–P03 passes before dependent distributed work, and V5 CI starts in the foundation rather than only at P17.
 
 ## P00 — Freeze baseline, scope and ownership
 
-Milestone: V5.0; status: `IN_PROGRESS`; prerequisites: none. [Phase contract](../../Mega-XO-V5-Implementation-Pack/phases/00-baseline-and-architecture.md).
+Milestone: V5.0; status: `COMPLETE`; prerequisites: none. [Phase contract](../../Mega-XO-V5-Implementation-Pack/phases/00-baseline-and-architecture.md).
 
 - [x] **V5-00-01 — Verify Git and carry local work** (`COMPLETE`).
 - [x] **V5-00-02 — Inspect live operations and reconcile handoff** (`COMPLETE`).
-- [ ] **V5-00-03 — Create or resume V5 integration branch** (`IN_PROGRESS`).
-- [ ] **V5-00-04 — Freeze product and future ownership** (`PLANNED`).
-- [ ] **V5-00-05 — Capture approved UI and rule baselines** (`PLANNED`).
-- [ ] **V5-00-06 — Enable immediate V5 CI and progress records** (`PLANNED`).
+- [x] **V5-00-03 — Create or resume V5 integration branch** (`COMPLETE`).
+- [x] **V5-00-04 — Freeze product and future ownership** (`COMPLETE`).
+- [x] **V5-00-05 — Capture approved UI and rule baselines** (`COMPLETE`).
+- [x] **V5-00-06 — Enable immediate V5 CI and progress records** (`COMPLETE`).
 
 **Exit gate:** G00: exact green baseline, scope freeze, environment inventory and initial CI exist; contradictory runtime claims have an evidence-based resolution or precisely scoped gap. No production data migration starts with unproven recovery.
 
 ## P01 — Extract clean service and repository boundaries
 
-Milestone: V5.0; status: `PLANNED`; prerequisites: P00. [Phase contract](../../Mega-XO-V5-Implementation-Pack/phases/01-service-boundaries.md).
+Milestone: V5.0; status: `IN_PROGRESS`; prerequisites: P00. [Phase contract](../../Mega-XO-V5-Implementation-Pack/phases/01-service-boundaries.md).
 
-- [ ] **V5-01-01 — Map write paths and implicit effects** (`PLANNED`).
-- [ ] **V5-01-02 — Introduce repository and transaction interfaces** (`PLANNED`).
+- [x] **V5-01-01 — Map write paths and implicit effects** (`COMPLETE`).
+- [ ] **V5-01-02 — Introduce repository and transaction interfaces** (`IN_PROGRESS`).
 - [ ] **V5-01-03 — Extract pure domain behavior without rebalance** (`PLANNED`).
 - [ ] **V5-01-04 — Freeze versioned contracts and adapters** (`PLANNED`).
 - [ ] **V5-01-05 — Add deterministic client packaging seam** (`PLANNED`).
@@ -263,7 +263,9 @@ Milestone: V5.7; status: `PLANNED`; prerequisites: P19. [Phase contract](../../M
 
 Milestone: V5.8; status: `DEFERRED_BY_OWNER`; prerequisites: none. [Phase contract](../../Mega-XO-V5-Implementation-Pack/phases/21-new-website-deferred.md).
 
-Owner exclusion: no new website/browser product; technical foundations remain required elsewhere. P22 depends on P20, not P21.
+Owner-deferred phase: 0 tasks. No phase lists P21 as a prerequisite.
+
+**Exit gate:** DEFERRED_BY_OWNER: no new website/browser product is built. Its infrastructure obligations are fulfilled in Phases 5, 11 and 20 and verified in 18/20.
 
 ## P22 — Execute final production authority transfer
 
@@ -301,6 +303,6 @@ Milestone: V5.10; status: `PLANNED`; prerequisites: P23. [Phase contract](../../
 
 ## Acceptance and evidence
 
-All 40 original acceptance cases A01–A40 are preserved as `NOT_RUN` in progress.json. [Acceptance contracts](../../Mega-XO-V5-Implementation-Pack/ACCEPTANCE.md) specify real integration/staging/device/provider proof; a planned checklist is not proof.
+All 40 original acceptance cases (A01–A40) are preserved in progress.json; current statuses: NOT_RUN 40. [Acceptance contracts](../../Mega-XO-V5-Implementation-Pack/ACCEPTANCE.md) specify real integration/staging/device/provider proof; a planned checklist is not proof.
 
 After each verified unit: record exact source SHA, command, target/environment, observed result, evidence reference and accurate evidence level; update PROGRESS/DECISIONS/OPEN-ITEMS and checkpoint on V5. Never mark uploads, submissions or reviews as approvals.

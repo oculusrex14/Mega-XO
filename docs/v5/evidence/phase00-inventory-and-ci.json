@@ -1,0 +1,45 @@
+{
+  "schema_version": 1,
+  "status": "PASS_INVENTORY_AND_EARLY_CI_ONLY",
+  "task_ids": [
+    "V5-00-06"
+  ],
+  "case_ids": [
+    "A02"
+  ],
+  "phase": "P00",
+  "observed_at_utc": "2026-10-07T19:56:39.427517+00:00",
+  "source_sha": "783ed22d39fa3a7182fd6c307eaa8f777a3e7336",
+  "environment": "actual existing GitHub/provider APIs, local native tools/devices and private-copy execution-ledger smoke",
+  "evidence_refs": [
+    "docs/v5/evidence/phase00-branch-checkpoint.json",
+    "docs/v5/evidence/phase00-provider-inventory.json",
+    "docs/v5/evidence/phase00-native-inventory.json",
+    "docs/v5/evidence/progress-tool-smoke.json"
+  ],
+  "verified_inventory": {
+    "neon": "Intended org org-wandering-sea-53820697 Free/admin/zero org projects; actual quota semantics beyond API fields still scoped for P02.",
+    "hostinger": "Authenticated owned domains/DNS/compute object lists; existing mail/DNS untouched.",
+    "github": "Source/branch/CI authenticated; read:packages metadata scope denied403, package visibility not claimed authoritatively.",
+    "vercel": "Actual unauthenticated CLI; cached team ID recorded, no resource-count/plan assumptions.",
+    "native": "Xcode27/Swift6.4/JDK17/SDK35/Gradle8.9 executed;25 available simulators; zero connected physical iPhones/Android devices; zero valid signing identities, cached TeamID only.",
+    "storage": "Local APFS22GB, local exFAT T9~922GB, DGX ext4 over SSH with SMB~2.33TB; no relocation/deletion."
+  },
+  "result": {
+    "executed": true,
+    "exit_code": 0,
+    "assertions": [
+      "First meaningful V5 checkpoint actually ran all original Node/browser CI successfully.",
+      "Actual provider/native commands and both successful and failed results recorded with IDs and precisely scoped unresolved permissions/quotas/devices.",
+      "No native/provider deployment or approval inferred from access.",
+      "Actual progress tool preserves117-task/25-phase graph, rejects premature completion/gap waivers and passes runtime regression after repaired starter schema."
+    ]
+  },
+  "not_claimed": [
+    "Vercel authentication restored",
+    "authoritative package visibility setting",
+    "current Apple membership/store entitlements",
+    "actual native app build/device/store approval",
+    "complete production-capacity/plan suitability"
+  ]
+}

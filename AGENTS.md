@@ -18,6 +18,8 @@ Owner-carried untracked inputs at entry: `.agents/`, `AGENT-GOAL.md`, `Mega-XO-V
 
 Update progress, evidence, decisions and open items after each meaningful unit. Every claimed verification records task/case IDs, exact SHA, command, target/environment, result and evidence location. Commit cohesive verified units on V5, push meaningful checkpoints and inspect CI. A template, code existence, tool presence or green CI is not device/provider/production proof.
 
+G00 is passed: all six P00 tasks accepted;783ed22 pushed with successful first V5 CI37668446768; full source ownership and344 eligible four-theme/font/viewport/API/offline captures recorded. Follow `docs/v5/evidence/phase00-gate.json`; begin P01 interfaces/extraction, not another baseline re-audit. Source pack remains unchanged; full native/provider/production acceptance is still pending.
+
 ## Current production correction
 
 v4.1.2 is shipped. Fix `79e56d6896ec372ddd585499475a045b3595f458`; release `f1e5577d42809fc3da889ba76b87ca6c87e68575`; ledger/base `455b8ec9ea4070b4410d78f9eea2aaa06d32c0b2`. Release image:
@@ -47,10 +49,10 @@ Preserve dedicated audit HMAC isolation, monitoring, private operator interfaces
 
 Discover actual authenticated Hostinger/Vercel/Neon/GitHub/Cloudflare/native accounts, objects, quotas and devices; availability is owner-authorized but not proof of a particular permission or provider approval. Use existing secret files/stdin/provider stores. Never print/commit secrets, tokens, OTPs, private keys, full env/auth files, raw player data, signing material or authenticated traces. Provider safety prompts/legal terms and high-impact actions still require appropriate owner confirmation; do not invent legal approval.
 
-At setup the Mac data volume had 22 GiB free; mounted `/Volumes/T9` had 858 GiB free. Owner permits T9 or DGX Spark storage when needed. Prefer T9 for bulky native build caches/artifacts after checking filesystem suitability and free space; discover the actual DGX SSH/storage target before use. No relocation/deletion was performed. Do not delete user files to recover space.
+Actual storage inventory: internal local APFS~22GB free; `/Volumes/T9` is local exFAT~922GB free, for finished artifact/log archival only, not native cache/SDK/git/DerivedData roots. DGX is verified Linux/ext4 via dgx-ts SSH with mounted SMB~2.33TB free; network SMB is not a local cache substitute. Owner permits overflow storage but not unrelated deletion/reformatting. No relocation/deletion performed.
 
 ## Delegation and completion
 
-One integration owner serializes schema, migration, identity and economic contracts. Parallelize independent work only once contracts are frozen; no concurrent shared-worktree edits to those contracts. Keep exact attempted actions and sanitized errors for genuine missing prerequisites; continue independent work rather than using generic external-blocker claims.
+Owner explicitly requested subagent orchestration. One parent integration owner freezes interfaces and serializes schema/migration/identity/economic contracts, assigns substantial independent file-owned slices together and integrates/verifies once after they finish. Avoid concurrent edits to shared files; implementation may run independent slices concurrently, but recorded acceptance follows actual task/phase prerequisites. Keep exact sanitized failures and continue reachable work.
 
 Distinguish implemented, locally tested, staging-verified, device-verified, uploaded, submitted, provider-approved and production-enabled. Final delivery must include service URLs/SHAs/digests, native artifact/build references, database identity, restore proof, UI/gameplay parity and genuine residual items. A task ledger setup is not a completed V5 phase or deployed platform.

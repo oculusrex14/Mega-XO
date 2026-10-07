@@ -33,7 +33,7 @@ These observations are accepted as owner-reported ground truth, corroborated whe
 
 Current durable authority remains V4 Node/SQLite; no V5 import, cutover epoch or first PostgreSQL application write. V5-platform was created without altering V4.1/main/tags, production services, DNS, credentials or ingress.
 
-Direct runtime/recovery evidence now supplements the historical release report: app digest/revision matches v4.1.2; livez/opsz healthy; exactly one edge owns 80/443; timers/co-hosted services preserved. The backup process still uses immutable v4.1.1, successfully checked/retrieved/restored. Snapshot `f884e43b` (471,040 bytes) restored byte-identically with integrity/schema verification to an isolated target, then only that owned temporary target was removed. Installed deployment path `/tmp/mega-release-f1e5577/deploy` was resolved from Compose labels; four deployed files match local hashes. [Live evidence](evidence/phase00-live-operations.json). Provider monitor/package visibility and native evidence remain separately scoped inventory work, not an asserted outage.
+Direct runtime/recovery evidence supplements the release report: app digest/revision matches v4.1.2; livez/opsz healthy; exactly one edge owns80/443; timers/co-hosted services preserved. Older immutable v4.1.1 backup process successfully checked/retrieved/restored snapshot f884e43b (471,040 bytes) byte-identically to an isolated target, then only that owned target removed. Installed `/tmp/mega-release-f1e5577/deploy` files match four local hashes. [Live evidence](evidence/phase00-live-operations.json). Actual provider/native inventories classify later permissions/quotas/devices; no V5 production migration has begun.
 
 ## Carried local work
 
@@ -43,6 +43,16 @@ Entry status contained only untracked additions: `.agents/`, `AGENT-GOAL.md`, `M
 
 `node --version`: `v26.8.2`; `python3 --version`: `3.14.4`. These are observed tools, not final V5 toolchain pins. Root package has no dependency lockfile at setup; do not assume `npm ci` is the baseline command.
 
-`df -h / /Volumes /Volumes/T9`: Mac data volume 22 GiB available, 90% used; T9 mounted at `/Volumes/T9`, 858 GiB available. T9 is an owner-authorized overflow candidate, not yet a configured build location. DGX Spark access/storage was authorized but not inspected; no guessed host/path or capacity claim.
+Actual native/provider inventory measured local APFS22,243,958,784 bytes available; `/Volumes/T9` is local exFAT with~922GB available, suitable for finished artifact/log archival, not native build caches. `/Volumes/DGX-Home` is SMB with~2.33TB available; configured dgx-ts BatchMode/strict-known-host SSH reached Linux/ext4. No relocation/deletion/reformatting or sustained-idle/runner suitability claim.
 
 Structured observations and exact commands: [evidence/setup.json](evidence/setup.json). Program status: [progress.json](progress.json).
+
+## Completed P00 baseline
+
+G00 passed with all six P00 tasks accepted. V5 checkpoint783ed22 is pushed; first run37668446768 passed original Node/browser/model validation, V4-only publishing retained. [Gate evidence](evidence/phase00-gate.json).
+
+Approved source/rule baseline protects21 unchanged application files. Actual isolated synthetic HTTP/SQLite browser capture covers four themes, original fonts/icons,320/390/tablet/desktop sizes, signed/guest/social/economic presentation, keyboard/motion and offline continuation:348 captures,344 eligible,696 PNG/metadata hashes verified. Random tags/times/bot/loader states,16 retained auth-transition401 messages and initial telemetry loss are explicit limitations, not masked failures. No physical-device/provider approval inferred. [Visual evidence](evidence/phase00-visual-baseline.json).
+
+Source-backed [ownership manifest](ROUTE-AND-DATA-INVENTORY.md) covers all35 exact restored source tables, eight authority roots, serialized/practice fields, mounted/standalone/test-only routes and implicit/startup writers. [Target architecture](ARCHITECTURE.md) freezes write owners and product/failure/cutover boundaries.
+
+Neon Free org/admin/zero projects and Hostinger owned domain/DNS/object reads are verified. Vercel CLI authentication, effective Neon quotas/capabilities, package metadata scope, monitor IDs, current Apple membership/signing/store entitlements and connected physical devices remain precisely scoped later prerequisites. [Provider](evidence/phase00-provider-inventory.json) / [native](evidence/phase00-native-inventory.json) inventories preserve actual commands and failures.

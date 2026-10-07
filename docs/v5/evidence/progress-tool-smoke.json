@@ -1,0 +1,74 @@
+{
+  "schema_version": 1,
+  "status": "PASS",
+  "task_ids": [
+    "V5-00-06"
+  ],
+  "case_ids": [
+    "A02"
+  ],
+  "observed_at_utc": "2026-10-07T19:52:58.875910+00:00",
+  "environment": "actual Node CLI over private copied source-matched ledger; no program acceptance inferred from simulated states",
+  "source_sha": "783ed22d39fa3a7182fd6c307eaa8f777a3e7336",
+  "checks": [
+    {
+      "scenario": "valid no-evidence IN_PROGRESS entry after reproduced initialization fix",
+      "exit_code": 0,
+      "errors": 0
+    },
+    {
+      "scenario": "IMPLEMENTED blocks dependent completion",
+      "exit_code": 1,
+      "error": "TASK_DEPENDENCY_NOT_TERMINAL"
+    },
+    {
+      "scenario": "P01 blocks before G00",
+      "exit_code": 1,
+      "error": "PHASE_GATE_NOT_PASSED"
+    },
+    {
+      "scenario": "EVIDENCE_GAP stays open and blocks dependency",
+      "exit_code": 1,
+      "error": "TASK_DEPENDENCY_NOT_TERMINAL"
+    },
+    {
+      "scenario": "gap cannot pass phase gate",
+      "exit_code": 1,
+      "error": "PHASE_TASKS_HAVE_EVIDENCE_GAPS"
+    },
+    {
+      "scenario": "no accept-gaps escape hatch",
+      "exit_code": 64,
+      "error": "UNKNOWN_OPTION"
+    },
+    {
+      "scenario": "P21 remains owner-deferred",
+      "exit_code": 1,
+      "error": "PHASE_DEFERRED_BY_OWNER"
+    },
+    {
+      "scenario": "117 tasks and25 phases render atomically",
+      "exit_code": 0,
+      "tasks": 117,
+      "phases": 25
+    }
+  ],
+  "initialization_regression": {
+    "before_observed_error": "TASK_EVIDENCE_REFS_INVALID: V5-00-05 after successful no-evidence record",
+    "after_command": "node --test tests/v5-progress.test.js",
+    "after_result": {
+      "pass": 1,
+      "fail": 0,
+      "exit_code": 0
+    },
+    "actual_entry_repaired": true,
+    "actual_inspect_errors": 0
+  },
+  "result": {
+    "executed": true,
+    "exit_code": 0,
+    "checks": 8,
+    "actual_ledger_unchanged_by_private_smoke": true,
+    "private_harness_removed": true
+  }
+}

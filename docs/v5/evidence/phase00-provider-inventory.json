@@ -1,0 +1,1079 @@
+{
+  "schema_version": 1,
+  "status": "EXECUTED_WITH_EVIDENCE_GAPS",
+  "task_id": "V5-00-06",
+  "case_ids": [],
+  "observed_at_utc": "2026-10-07T19:15:50.904954+00:00",
+  "source_sha": "783ed22d39fa3a7182fd6c307eaa8f777a3e7336",
+  "environment": "Existing authenticated local provider CLI/API reads on owner Mac; mounted T9/DGX and readonly BatchMode strict-known-host DGX SSH",
+  "target_ids": {
+    "github_user_id": 265397263,
+    "neon_org_id": "org-wandering-sea-53820697",
+    "neon_user_id": "2b5f39e6-027d-4c94-97fe-de7d6430b86c",
+    "vercel_cached_team_id": "team_wS9BpnXbYRZahs1DiSueN3SS",
+    "hostinger_domain_ids": [
+      35085193,
+      35133989
+    ]
+  },
+  "commands": [
+    {
+      "command": [
+        "/Users/oculus/.local/bin/node",
+        "/Users/oculus/.npm/_npx/7f657307477966ff/node_modules/neon/dist/cli.js",
+        "--profile",
+        "default",
+        "me",
+        "--output",
+        "json"
+      ],
+      "exit_code": 0,
+      "duration_seconds": 2.9,
+      "selected_output": {
+        "id": "2b5f39e6-027d-4c94-97fe-de7d6430b86c",
+        "name": "Oculus",
+        "login": "oculusrexai",
+        "plan": "free"
+      },
+      "classification": "VERIFIED_READONLY"
+    },
+    {
+      "command": [
+        "/Users/oculus/.local/bin/node",
+        "/Users/oculus/.npm/_npx/7f657307477966ff/node_modules/neon/dist/cli.js",
+        "--profile",
+        "default",
+        "orgs",
+        "list",
+        "--output",
+        "json"
+      ],
+      "exit_code": 0,
+      "duration_seconds": 1.61,
+      "selected_output": [
+        {
+          "id": "org-wandering-sea-53820697",
+          "name": "Antimatter Innovations",
+          "plan": "free",
+          "role": null
+        }
+      ],
+      "classification": "VERIFIED_READONLY"
+    },
+    {
+      "command": [
+        "/opt/homebrew/bin/vercel",
+        "whoami",
+        "--json"
+      ],
+      "exit_code": 1,
+      "duration_seconds": 1.29,
+      "selected_output": {
+        "result_classes": [
+          "UNAUTHENTICATED",
+          "LOGIN_PROMPT"
+        ],
+        "stdout_bytes": 0,
+        "stderr_bytes": 120,
+        "http_statuses": []
+      },
+      "classification": "VERIFIED_READONLY"
+    },
+    {
+      "command": [
+        "/Users/oculus/.local/bin/node",
+        "/Users/oculus/.npm/_npx/7f657307477966ff/node_modules/neon/dist/cli.js",
+        "--profile",
+        "default",
+        "projects",
+        "list",
+        "--org-id",
+        "org-wandering-sea-53820697",
+        "--output",
+        "json"
+      ],
+      "exit_code": 0,
+      "duration_seconds": 1.02,
+      "selected_output": [],
+      "classification": "VERIFIED_READONLY"
+    },
+    {
+      "command": [
+        "/Users/oculus/.local/bin/node",
+        "/Users/oculus/.npm/_npx/7f657307477966ff/node_modules/neon/dist/cli.js",
+        "--profile",
+        "default",
+        "api",
+        "/organizations/org-wandering-sea-53820697",
+        "--output",
+        "json"
+      ],
+      "exit_code": 0,
+      "duration_seconds": 1.54,
+      "selected_output": {
+        "id": "org-wandering-sea-53820697",
+        "name": "Antimatter Innovations",
+        "handle": "oculus-org-wandering-sea-53820697",
+        "plan": "free",
+        "managed_by": "console",
+        "require_mfa": false
+      },
+      "classification": "VERIFIED_READONLY"
+    },
+    {
+      "command": [
+        "/Users/oculus/.local/bin/node",
+        "/Users/oculus/.npm/_npx/7f657307477966ff/node_modules/neon/dist/cli.js",
+        "--profile",
+        "default",
+        "api",
+        "list",
+        "--output",
+        "json"
+      ],
+      "exit_code": 0,
+      "duration_seconds": 1.44,
+      "selected_output": {
+        "endpoint_count": 179,
+        "relevant_get_paths": [
+          "/users/me",
+          "/users/me/organizations",
+          "/organizations/{org_id}",
+          "/organizations/{org_id}/members",
+          "/regions"
+        ],
+        "org_quota_endpoint_not_exposed_in_list": true
+      },
+      "classification": "VERIFIED_READONLY"
+    },
+    {
+      "command": [
+        "/opt/homebrew/bin/hostinger",
+        "dns",
+        "records",
+        "list",
+        "megaxo.online",
+        "--format",
+        "json"
+      ],
+      "exit_code": 0,
+      "duration_seconds": 0.95,
+      "selected_output": {
+        "total_record_groups": 2,
+        "application_records": [
+          {
+            "name": "www",
+            "type": "CNAME",
+            "ttl": 300,
+            "records": [
+              {
+                "content": "megaxo.online.",
+                "is_disabled": false
+              }
+            ]
+          },
+          {
+            "name": "@",
+            "type": "A",
+            "ttl": 50,
+            "records": [
+              {
+                "content": "2.57.91.91",
+                "is_disabled": false
+              }
+            ]
+          }
+        ],
+        "mail_and_unrelated_content_omitted": true
+      },
+      "classification": "VERIFIED_READONLY"
+    },
+    {
+      "command": [
+        "/opt/homebrew/bin/hostinger",
+        "dns",
+        "records",
+        "list",
+        "antimatterinnovations.com",
+        "--format",
+        "json"
+      ],
+      "exit_code": 0,
+      "duration_seconds": 2.19,
+      "selected_output": {
+        "total_record_groups": 11,
+        "application_records": [
+          {
+            "name": "staging.play",
+            "type": "A",
+            "ttl": 300,
+            "records": [
+              {
+                "content": "129.80.67.164",
+                "is_disabled": false
+              }
+            ]
+          },
+          {
+            "name": "play",
+            "type": "A",
+            "ttl": 300,
+            "records": [
+              {
+                "content": "129.80.67.164",
+                "is_disabled": false
+              }
+            ]
+          }
+        ],
+        "mail_and_unrelated_content_omitted": true
+      },
+      "classification": "VERIFIED_READONLY"
+    },
+    {
+      "command": [
+        "/opt/homebrew/bin/hostinger",
+        "vps",
+        "virtual-machines",
+        "list",
+        "--format",
+        "json"
+      ],
+      "exit_code": 0,
+      "duration_seconds": 3.86,
+      "selected_output": {
+        "json_type": "list",
+        "keys": null,
+        "item_count": 0
+      },
+      "classification": "VERIFIED_READONLY"
+    },
+    {
+      "command": [
+        "/bin/df",
+        "-k",
+        "/Volumes/T9",
+        "/Volumes/DGX-Home"
+      ],
+      "exit_code": 0,
+      "duration_seconds": 0.02,
+      "selected_output": {
+        "units": "1024-byte blocks",
+        "mounts": [
+          {
+            "mount": "/Volumes/T9",
+            "total": 1953450624,
+            "used": 1053310848,
+            "available": 900139776,
+            "capacity_percent": 54
+          },
+          {
+            "mount": "/Volumes/DGX-Home",
+            "total": 3936330224,
+            "used": 1658143252,
+            "available": 2278186972,
+            "capacity_percent": 43
+          }
+        ]
+      },
+      "classification": "VERIFIED_READONLY"
+    },
+    {
+      "command": [
+        "/usr/bin/ssh",
+        "-o",
+        "BatchMode=yes",
+        "-o",
+        "StrictHostKeyChecking=yes",
+        "-o",
+        "ConnectTimeout=10",
+        "dgx-ts",
+        "df -k /; uname -srm; free -b"
+      ],
+      "exit_code": 0,
+      "duration_seconds": 0.84,
+      "selected_output": {
+        "root_filesystem": {
+          "total_kib": 3936330224,
+          "used_kib": 1458113868,
+          "available_kib": 2278186968,
+          "capacity_percent": 40
+        },
+        "os": "Linux",
+        "kernel": "7.0.0-1019-nvidia",
+        "architecture": "aarch64",
+        "memory_available_bytes": 18375032832
+      },
+      "classification": "VERIFIED_READONLY"
+    },
+    {
+      "command": [
+        "/opt/homebrew/bin/hostinger",
+        "domains",
+        "portfolio",
+        "list",
+        "--format",
+        "json"
+      ],
+      "exit_code": 0,
+      "duration_seconds": 0.51,
+      "selected_output": {
+        "total_domains": 8,
+        "relevant_domains": [
+          {
+            "id": 35085193,
+            "domain": "antimatterinnovations.com",
+            "status": "active",
+            "type": "domain"
+          },
+          {
+            "id": 35133989,
+            "domain": "megaxo.online",
+            "status": "active",
+            "type": "domain"
+          }
+        ]
+      },
+      "classification": "VERIFIED_READONLY"
+    },
+    {
+      "command": [
+        "/opt/homebrew/bin/hostinger",
+        "hosting",
+        "orders",
+        "list",
+        "--format",
+        "json"
+      ],
+      "exit_code": 0,
+      "duration_seconds": 0.39,
+      "selected_output": {
+        "visible_hosting_order_count": 0,
+        "pagination": {
+          "current_page": 1,
+          "per_page": 25,
+          "total": 0
+        }
+      },
+      "classification": "VERIFIED_READONLY"
+    },
+    {
+      "command": [
+        "/opt/homebrew/bin/vercel",
+        "teams",
+        "list",
+        "--json"
+      ],
+      "exit_code": 1,
+      "duration_seconds": 0.21,
+      "selected_output": {
+        "result_classes": [
+          "UNAUTHENTICATED",
+          "LOGIN_PROMPT"
+        ],
+        "stdout_bytes": 0,
+        "stderr_bytes": 172,
+        "http_statuses": [],
+        "sanitized_error": "No existing credentials found. Please run `vercel login` or pass \"--token\""
+      },
+      "classification": "VERIFIED_READONLY"
+    },
+    {
+      "command": [
+        "/opt/homebrew/bin/vercel",
+        "project",
+        "list",
+        "--scope",
+        "team_wS9BpnXbYRZahs1DiSueN3SS",
+        "--json"
+      ],
+      "exit_code": 1,
+      "duration_seconds": 0.13,
+      "selected_output": {
+        "result_classes": [
+          "UNAUTHENTICATED",
+          "LOGIN_PROMPT"
+        ],
+        "stdout_bytes": 0,
+        "stderr_bytes": 172,
+        "http_statuses": [],
+        "sanitized_error": "No existing credentials found. Please run `vercel login` or pass \"--token\""
+      },
+      "classification": "VERIFIED_READONLY"
+    },
+    {
+      "command": [
+        "/opt/homebrew/bin/vercel",
+        "domains",
+        "list",
+        "--scope",
+        "team_wS9BpnXbYRZahs1DiSueN3SS",
+        "--json"
+      ],
+      "exit_code": 1,
+      "duration_seconds": 0.15,
+      "selected_output": {
+        "result_classes": [
+          "UNAUTHENTICATED",
+          "LOGIN_PROMPT"
+        ],
+        "stdout_bytes": 0,
+        "stderr_bytes": 172,
+        "http_statuses": [],
+        "sanitized_error": "No existing credentials found. Please run `vercel login` or pass \"--token\""
+      },
+      "classification": "VERIFIED_READONLY"
+    },
+    {
+      "command": [
+        "/opt/homebrew/bin/vercel",
+        "integration",
+        "list",
+        "--all",
+        "--scope",
+        "team_wS9BpnXbYRZahs1DiSueN3SS",
+        "--json"
+      ],
+      "exit_code": 1,
+      "duration_seconds": 0.16,
+      "selected_output": {
+        "result_classes": [
+          "UNAUTHENTICATED",
+          "LOGIN_PROMPT"
+        ],
+        "stdout_bytes": 0,
+        "stderr_bytes": 172,
+        "http_statuses": [],
+        "sanitized_error": "No existing credentials found. Please run `vercel login` or pass \"--token\""
+      },
+      "classification": "VERIFIED_READONLY"
+    },
+    {
+      "command": [
+        "/Users/oculus/.local/bin/node",
+        "/Users/oculus/.npm/_npx/7f657307477966ff/node_modules/neon/dist/cli.js",
+        "--profile",
+        "default",
+        "api",
+        "/organizations/org-wandering-sea-53820697/members/2b5f39e6-027d-4c94-97fe-de7d6430b86c",
+        "--output",
+        "json"
+      ],
+      "exit_code": 1,
+      "duration_seconds": 2.33,
+      "selected_output": {
+        "result_classes": [
+          "NOT_FOUND"
+        ],
+        "stdout_bytes": 0,
+        "stderr_bytes": 24,
+        "http_statuses": []
+      },
+      "classification": "VERIFIED_READONLY"
+    },
+    {
+      "command": [
+        "/usr/sbin/diskutil",
+        "info",
+        "-plist",
+        "/Volumes/T9"
+      ],
+      "exit_code": 0,
+      "duration_seconds": 0.38,
+      "selected_output": {
+        "DeviceIdentifier": "disk6s1",
+        "FilesystemName": "ExFAT",
+        "FilesystemType": "exfat",
+        "FilesystemUserVisibleName": "ExFAT",
+        "MountPoint": "/Volumes/T9",
+        "Writable": true
+      },
+      "classification": "VERIFIED_READONLY"
+    },
+    {
+      "command": [
+        "/Users/oculus/.local/bin/node",
+        "/Users/oculus/.npm/_npx/7f657307477966ff/node_modules/neon/dist/cli.js",
+        "--profile",
+        "default",
+        "api",
+        "/users/me",
+        "--output",
+        "json"
+      ],
+      "exit_code": 0,
+      "duration_seconds": 2.17,
+      "selected_output": {
+        "id": "2b5f39e6-027d-4c94-97fe-de7d6430b86c",
+        "login": "oculusrexai",
+        "plan": "free",
+        "active_seconds_limit": 0,
+        "projects_limit": 0,
+        "branches_limit": 0,
+        "max_autoscaling_limit": 0
+      },
+      "classification": "VERIFIED_READONLY"
+    },
+    {
+      "command": [
+        "/Users/oculus/.local/bin/node",
+        "/Users/oculus/.npm/_npx/7f657307477966ff/node_modules/neon/dist/cli.js",
+        "--profile",
+        "default",
+        "api",
+        "/regions",
+        "--output",
+        "json"
+      ],
+      "exit_code": 0,
+      "duration_seconds": 2.67,
+      "selected_output": {
+        "regions": [
+          {
+            "region_id": "aws-us-east-2",
+            "name": "AWS US East 2 (Ohio)",
+            "default": false
+          },
+          {
+            "region_id": "azure-eastus2",
+            "name": "Azure East US 2 (Virginia)",
+            "default": false
+          },
+          {
+            "region_id": "aws-us-east-1",
+            "name": "AWS US East 1 (N. Virginia)",
+            "default": true
+          },
+          {
+            "region_id": "azure-westus3",
+            "name": "Azure West US 3 (Arizona)",
+            "default": false
+          },
+          {
+            "region_id": "azure-gwc",
+            "name": "Azure Germany West Central (Frankfurt)",
+            "default": false
+          },
+          {
+            "region_id": "aws-us-west-2",
+            "name": "AWS US West 2 (Oregon)",
+            "default": false
+          },
+          {
+            "region_id": "aws-eu-central-1",
+            "name": "AWS Europe Central 1 (Frankfurt)",
+            "default": false
+          },
+          {
+            "region_id": "aws-eu-west-2",
+            "name": "AWS Europe West 2 (London)",
+            "default": false
+          },
+          {
+            "region_id": "aws-ap-southeast-1",
+            "name": "AWS Asia Pacific 1 (Singapore)",
+            "default": false
+          },
+          {
+            "region_id": "aws-ap-southeast-2",
+            "name": "AWS Asia Pacific 2 (Sydney)",
+            "default": false
+          },
+          {
+            "region_id": "aws-sa-east-1",
+            "name": "AWS South America East 1 (S\u00e3o Paulo)",
+            "default": false
+          }
+        ]
+      },
+      "classification": "VERIFIED_READONLY"
+    },
+    {
+      "command": [
+        "/Users/oculus/.local/bin/node",
+        "/Users/oculus/.npm/_npx/7f657307477966ff/node_modules/neon/dist/cli.js",
+        "--profile",
+        "default",
+        "api",
+        "/organizations/org-wandering-sea-53820697/members",
+        "--output",
+        "json"
+      ],
+      "exit_code": 0,
+      "duration_seconds": 1.21,
+      "selected_output": {
+        "current_account_membership": [
+          {
+            "id": "da99339b-adbc-4b39-b80f-d8fd394a7720",
+            "user_id": "2b5f39e6-027d-4c94-97fe-de7d6430b86c",
+            "org_id": "org-wandering-sea-53820697",
+            "role": "admin"
+          }
+        ],
+        "total_members": 1
+      },
+      "classification": "VERIFIED_READONLY"
+    },
+    {
+      "command": [
+        "/Users/oculus/.local/bin/node",
+        "/Users/oculus/.npm/_npx/7f657307477966ff/node_modules/neon/dist/cli.js",
+        "--profile",
+        "default",
+        "api",
+        "/users/me/organizations",
+        "--output",
+        "json"
+      ],
+      "exit_code": 0,
+      "duration_seconds": 2.25,
+      "selected_output": {
+        "organizations": [
+          {
+            "id": "org-wandering-sea-53820697",
+            "name": "Antimatter Innovations",
+            "handle": "oculus-org-wandering-sea-53820697",
+            "plan": "free",
+            "managed_by": "console",
+            "require_mfa": false
+          }
+        ]
+      },
+      "classification": "VERIFIED_READONLY"
+    },
+    {
+      "command": [
+        "/opt/homebrew/bin/gh",
+        "api",
+        "user",
+        "--jq",
+        "{login,id}"
+      ],
+      "exit_code": 0,
+      "duration_seconds": 0.54,
+      "selected_output": {
+        "id": 265397263,
+        "login": "oculusrex14"
+      },
+      "classification": "VERIFIED_READONLY"
+    },
+    {
+      "command": [
+        "/usr/bin/ssh",
+        "-o",
+        "BatchMode=yes",
+        "-o",
+        "StrictHostKeyChecking=yes",
+        "-o",
+        "ConnectTimeout=10",
+        "dgx-ts",
+        "findmnt -no FSTYPE /; nvidia-smi --query-gpu=utilization.gpu --format=csv,noheader,nounits"
+      ],
+      "exit_code": 0,
+      "duration_seconds": 0.6,
+      "selected_output": {
+        "filesystem_type": "ext4",
+        "gpu_util_percent": [
+          "0"
+        ]
+      },
+      "classification": "VERIFIED_READONLY"
+    }
+  ],
+  "result": {
+    "executed": true,
+    "exit_code": null,
+    "exit_code_note": "Independent command exits are recorded individually; no aggregate pass is claimed.",
+    "assertions": [
+      "Neon API-key default profile authenticated and verified the intended org and own admin membership.",
+      "Hostinger readonly DNS/domain/compute listings succeeded; DNS/mail remained untouched.",
+      "Mounted storage and configured DGX SSH storage reads succeeded.",
+      "Vercel identity and four resource listings failed authentication; resources are unresolved, not empty.",
+      "No provider/native deployment, provider approval, provisioning or permission grant occurred."
+    ],
+    "unexplained_differences": null
+  },
+  "facts": {
+    "github": {
+      "classification": "VERIFIED_READONLY",
+      "identity": {
+        "login": "oculusrex14",
+        "id": 265397263
+      },
+      "package_visibility": {
+        "classification": "UNRESOLVED",
+        "package": "ghcr.io/oculusrex14/mega-xo",
+        "parent_executed_read": {
+          "classification": "VERIFIED_READONLY",
+          "command": "gh api user/packages/container/mega-xo",
+          "exit_code": 1,
+          "http_status": 403,
+          "error": "requires read:packages scope",
+          "origin": "Parent supplied exercised result; deliberately not retried here"
+        },
+        "anonymous_page_observations": {
+          "classification": "REPORTED",
+          "package_pages_http_status": 404,
+          "public_package_count": 0,
+          "interpretation": "Suggests restricted existing image; does not prove actual private setting."
+        },
+        "required_owner_action": "Provide an already-authorized read:packages credential reference or inspect exact package visibility in an existing authenticated GitHub package settings console. Do not change visibility or grant scopes automatically."
+      }
+    },
+    "neon": {
+      "classification": "VERIFIED_READONLY",
+      "cli_version": "8.0.12",
+      "profile": "default",
+      "org": {
+        "id": "org-wandering-sea-53820697",
+        "name": "Antimatter Innovations",
+        "handle": "oculus-org-wandering-sea-53820697",
+        "plan": "free",
+        "managed_by": "console",
+        "require_mfa": false
+      },
+      "own_membership": [
+        {
+          "id": "da99339b-adbc-4b39-b80f-d8fd394a7720",
+          "user_id": "2b5f39e6-027d-4c94-97fe-de7d6430b86c",
+          "org_id": "org-wandering-sea-53820697",
+          "role": "admin"
+        }
+      ],
+      "project_count_in_verified_org": 0,
+      "account": {
+        "id": "2b5f39e6-027d-4c94-97fe-de7d6430b86c",
+        "login": "oculusrexai",
+        "plan": "free",
+        "active_seconds_limit": 0,
+        "projects_limit": 0,
+        "branches_limit": 0,
+        "max_autoscaling_limit": 0
+      },
+      "region_catalog": [
+        {
+          "region_id": "aws-us-east-2",
+          "name": "AWS US East 2 (Ohio)",
+          "default": false
+        },
+        {
+          "region_id": "azure-eastus2",
+          "name": "Azure East US 2 (Virginia)",
+          "default": false
+        },
+        {
+          "region_id": "aws-us-east-1",
+          "name": "AWS US East 1 (N. Virginia)",
+          "default": true
+        },
+        {
+          "region_id": "azure-westus3",
+          "name": "Azure West US 3 (Arizona)",
+          "default": false
+        },
+        {
+          "region_id": "azure-gwc",
+          "name": "Azure Germany West Central (Frankfurt)",
+          "default": false
+        },
+        {
+          "region_id": "aws-us-west-2",
+          "name": "AWS US West 2 (Oregon)",
+          "default": false
+        },
+        {
+          "region_id": "aws-eu-central-1",
+          "name": "AWS Europe Central 1 (Frankfurt)",
+          "default": false
+        },
+        {
+          "region_id": "aws-eu-west-2",
+          "name": "AWS Europe West 2 (London)",
+          "default": false
+        },
+        {
+          "region_id": "aws-ap-southeast-1",
+          "name": "AWS Asia Pacific 1 (Singapore)",
+          "default": false
+        },
+        {
+          "region_id": "aws-ap-southeast-2",
+          "name": "AWS Asia Pacific 2 (Sydney)",
+          "default": false
+        },
+        {
+          "region_id": "aws-sa-east-1",
+          "name": "AWS South America East 1 (S\u00e3o Paulo)",
+          "default": false
+        }
+      ],
+      "resource_region": {
+        "classification": "UNRESOLVED",
+        "reason": "No projects exist in this org; available regions are not a selected/deployed project region."
+      },
+      "effective_org_deployment_quotas": {
+        "classification": "UNRESOLVED",
+        "observed_account_limit_fields": {
+          "active_seconds_limit": 0,
+          "projects_limit": 0,
+          "branches_limit": 0,
+          "max_autoscaling_limit": 0
+        },
+        "reason": "GET /users/me returns 0 for all four numeric account limit fields, while verified organization is Free. Org details/membership do not expose effective org quotas. These values are recorded verbatim, not interpreted as zero deployable capacity or Free production guarantees.",
+        "required_owner_action": "Inspect existing Neon organization console Plan/usage/limits for project/branch/storage/compute/connection caps and production no-suspend/restore-history support. Do not create projects or upgrade billing to probe."
+      },
+      "permissions": {
+        "classification": "VERIFIED_READONLY",
+        "observed_role": "admin",
+        "read_surfaces_succeeded": [
+          "identity",
+          "org details",
+          "org project list",
+          "member list",
+          "region list"
+        ],
+        "write_permission_tested": false
+      },
+      "failed_read": {
+        "member_detail_by_user_id": "ERROR: member not found; user ID is not member ID. Subsequent members list resolved actual own member ID and admin role."
+      }
+    },
+    "vercel": {
+      "classification": "UNRESOLVED",
+      "cli_version": "58.1.0",
+      "live_identity_verified": false,
+      "cached_identifiers": {
+        "classification": "REPORTED",
+        "currentTeam": "team_wS9BpnXbYRZahs1DiSueN3SS",
+        "userId": "Uu5Qpo3tLAugwH2Yc8cvVmuF",
+        "prior_stored_access_expiry": "2026-09-05T23:35Z",
+        "note": "Scout prior cached observations; not live entitlement proof. Targeted current config still contains same currentTeam; auth.json is now absent."
+      },
+      "actual_read_result": "whoami exit1 UNAUTHENTICATED; teams/project/domains/all marketplace integration lists exit1 no-credentials-found. No new login, OAuth grant or Marketplace terms accepted.",
+      "plan_resources_regions_quotas_permissions": "UNRESOLVED",
+      "required_owner_action": "Restore existing Vercel CLI authentication for the intended team via owner-operated vercel login or provide an already-authorized token reference, then repeat readonly identity/team/project/domain/integration lists. No automatic scopes/terms/billing change."
+    },
+    "hostinger": {
+      "classification": "VERIFIED_READONLY",
+      "cli_version": "3.25.4",
+      "account_identity": {
+        "classification": "UNRESOLVED",
+        "reason": "Selected readonly DNS/domain/VPS/hosting surfaces prove accessible objects, not an account ID; contact/billing data deliberately excluded."
+      },
+      "domain_count_visible": 8,
+      "relevant_domains": [
+        {
+          "id": 35085193,
+          "domain": "antimatterinnovations.com",
+          "status": "active",
+          "type": "domain"
+        },
+        {
+          "id": 35133989,
+          "domain": "megaxo.online",
+          "status": "active",
+          "type": "domain"
+        }
+      ],
+      "dns_zones": {
+        "megaxo.online": {
+          "total_record_groups": 2,
+          "application_records": [
+            {
+              "name": "www",
+              "type": "CNAME",
+              "ttl": 300,
+              "records": [
+                {
+                  "content": "megaxo.online.",
+                  "is_disabled": false
+                }
+              ]
+            },
+            {
+              "name": "@",
+              "type": "A",
+              "ttl": 50,
+              "records": [
+                {
+                  "content": "2.57.91.91",
+                  "is_disabled": false
+                }
+              ]
+            }
+          ],
+          "mail_and_unrelated_content_omitted": true
+        },
+        "antimatterinnovations.com": {
+          "total_record_groups": 11,
+          "application_records": [
+            {
+              "name": "staging.play",
+              "type": "A",
+              "ttl": 300,
+              "records": [
+                {
+                  "content": "129.80.67.164",
+                  "is_disabled": false
+                }
+              ]
+            },
+            {
+              "name": "play",
+              "type": "A",
+              "ttl": 300,
+              "records": [
+                {
+                  "content": "129.80.67.164",
+                  "is_disabled": false
+                }
+              ]
+            }
+          ],
+          "mail_and_unrelated_content_omitted": true
+        }
+      },
+      "megaxo_api_rt_explicit_record_groups": {
+        "api": false,
+        "rt": false
+      },
+      "visible_vps_count": 0,
+      "visible_hosting_order_count": 0,
+      "permission_scope": "Read access proven to these DNS zones/domain portfolio and list endpoints only; zero returned lists do not prove no resources in another account.",
+      "quotas": {
+        "classification": "UNRESOLVED",
+        "reason": "DNS/domain/VPS/hosting list responses do not expose account quota entitlements. Billing/contact/payment surfaces not queried.",
+        "required_owner_action": "Use existing hPanel resource/plan quota view to confirm intended hosting/VPS caps if Hostinger compute is needed. Keep all existing DNS/mail unchanged."
+      }
+    },
+    "managed_redis_valkey": {
+      "classification": "UNRESOLVED",
+      "actual_attempt": "vercel integration list --all --scope team_wS9BpnXbYRZahs1DiSueN3SS --json",
+      "exit_code": 1,
+      "error_class": "NO_EXISTING_CREDENTIALS",
+      "existence_regions_caps_permissions": "UNRESOLVED; no absence claim based on missing local CLI/token.",
+      "required_owner_action": "After existing Vercel authentication is restored, list current Marketplace resources for exact team. Alternatively owner supplies existing Redis/Valkey provider console or readonly credential reference; inspect service IDs/regions/TCP-TLS/pubsub/Lua/TTL/sorted-set/connection/eviction caps without installing or accepting Marketplace terms."
+    },
+    "uptimerobot": {
+      "classification": "UNRESOLVED",
+      "reported_monitors": {
+        "classification": "REPORTED",
+        "names": [
+          "mega-xo-livez",
+          "mega-xo-opsz"
+        ],
+        "interval_minutes": 5,
+        "source": "Original handoff and release ledger; not current monitor API state."
+      },
+      "numeric_ids_status_plan_quotas": "UNRESOLVED",
+      "credential_discovery": {
+        "classification": "VERIFIED_READONLY",
+        "environment_refs_present": {
+          "UPTIMEROBOT_API_KEY": false,
+          "UPTIME_ROBOT_API_KEY": false,
+          "UPTIMEROBOT_API_KEY_FILE": false
+        },
+        "targeted_uptime_config_filename_matches": 0,
+        "no_broad_home_scan": true,
+        "api_request_executed": false
+      },
+      "required_owner_action": "Supply an existing UptimeRobot readonly/monitor API key file or secret-store reference, or owner-open authenticated dashboard. Perform bounded getMonitors reads with logs=0, limit=50 and pagination only as needed, retain only the two existing friendly names and select id/friendly_name/url/status/interval; do not create monitors, reveal the key or infer monitor state from endpoint health."
+    },
+    "storage": {
+      "classification": "VERIFIED_READONLY",
+      "T9": {
+        "mounted": true,
+        "filesystem": "exfat",
+        "writable_flag": true,
+        "free_bytes": 921743130624,
+        "capacity_bytes": 2000333438976,
+        "write_test_performed": false,
+        "cache_suitability": {
+          "classification": "UNRESOLVED",
+          "note": "ExFAT lacks native POSIX permission/symlink semantics; measured free space alone is not proof it is suitable for native toolchain caches. No relocation or writes were performed."
+        },
+        "free_gib": 858.44
+      },
+      "DGX_Home": {
+        "mounted": true,
+        "protocol": "SMB",
+        "free_bytes": 2332863459328,
+        "capacity_bytes": 4030802149376,
+        "write_test_performed": false,
+        "free_gib": 2172.65
+      },
+      "DGX_SSH": {
+        "alias": "dgx-ts",
+        "BatchMode": true,
+        "StrictHostKeyChecking": true,
+        "read_success": true,
+        "os": "Linux",
+        "kernel": "7.0.0-1019-nvidia",
+        "architecture": "aarch64",
+        "root_filesystem": "ext4",
+        "root_free_bytes": 2332863455232,
+        "available_memory_bytes": 18375032832,
+        "gpu_utilization_percent_single_observation": 0,
+        "gpu_observation_note": "Earlier scout telemetry reported93%; direct nvidia-smi readonly read now returned0%. One sample is not sustained idle-capacity/service suitability proof. DGX remains storage-only in this slice."
+      }
+    },
+    "cloudflare_r2_oracle": {
+      "classification": "REPORTED",
+      "note": "Parent owns Oracle runtime and R2 live proof in phase00-live-operations.json; no Oracle/R2 access attempted in this slice."
+    },
+    "ci_provenance": {
+      "classification": "REPORTED",
+      "checkpoint": "783ed22d39fa3a7182fd6c307eaa8f777a3e7336",
+      "github_run_id": 37668446768,
+      "conclusion": "success",
+      "source": "Parent exercised checkpoint/CI evidence. V5 triggers were added by parent in783ed22, not attributed to base455b8ec."
+    }
+  },
+  "local_reference_probes": [
+    {
+      "tool": "eval Python",
+      "probe": "bool(os.environ.get(...)) for only three UptimeRobot reference names",
+      "executed": true,
+      "result": "all false; no values printed"
+    },
+    {
+      "tool": "glob",
+      "paths": [
+        "~/.config/*uptime*",
+        "~/.config/*Uptime*",
+        "~/Library/Application Support/*uptime*",
+        "~/Library/Application Support/*Uptime*"
+      ],
+      "executed": true,
+      "result": "No files found; not proof of no console access"
+    },
+    {
+      "tool": "eval Python",
+      "probe": "Targeted Vercel auth.json existence and currentTeam-only config selection",
+      "executed": true,
+      "result": {
+        "auth_file_present": false,
+        "currentTeam": "team_wS9BpnXbYRZahs1DiSueN3SS"
+      }
+    }
+  ],
+  "provider_state": {
+    "uploaded": false,
+    "submitted": false,
+    "approved": false,
+    "production_enabled": false,
+    "evidence_reference": null
+  },
+  "artifacts": [
+    "docs/v5/evidence/phase00-provider-inventory.json"
+  ],
+  "restricted_evidence_location": "/Users/oculus/Downloads/Mega-XO-private-evidence/provider-inventory/sanitized-command-evidence.json",
+  "sanitized_summary": "Live readonly inventory completed with precise authentication/quota/monitor/package visibility gaps. Installed/cached access was not treated as live entitlement. No deployment or approval claimed.",
+  "review_notes": [
+    "No application/package/workflow/ledger changes; source pack untouched.",
+    "Parent owns integration and task acceptance; this proof alone does not claim full V5-00-06 acceptance.",
+    "No secrets, emails, cookies, OTPs, player rows, payment/contact data, private keys or authenticated raw payloads written.",
+    "No builds/tests/linters/formatters run.",
+    "Provider CLI routine auth/cache behavior is not represented as provider provisioning; no explicit auth-store mutation issued."
+  ]
+}

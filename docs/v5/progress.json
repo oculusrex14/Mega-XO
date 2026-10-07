@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at_utc": "2026-10-07T18:00:40.127726+00:00",
+  "updated_at_utc": "2026-10-07T20:14:15.275+00:00",
   "goal": "Deliver the V5 hybrid platform and real Android/iOS applications with shared permanent actor/assets, preserved approved game and retained browser compatibility; do not build the new website/browser product.",
   "source": {
     "goal": "AGENT-GOAL.md",
@@ -46,16 +46,56 @@
     "installed_script_revision_status": "FOUR_INSTALLED_FILES_HASH_MATCH_SELECTED_CHECKOUT"
   },
   "current": {
-    "phase": "P00",
-    "active_task": "V5-00-03",
+    "phase": "P01",
+    "active_task": "V5-01-02",
     "next_action": "V5-platform created from the pinned green base; preserve/add original goal and pack at the initial verified checkpoint, then complete route/data ownership baseline.",
     "checkout_branch_at_setup": "V4.1",
     "integration_branch": "V5-platform",
     "integration_branch_exists_at_setup": false,
     "last_v5_commit": null,
     "last_pushed_v5_commit": null,
-    "completed_task_ids": ["V5-00-01", "V5-00-02"],
-    "passed_phase_gates": []
+    "completed_task_ids": [
+      "V5-00-01",
+      "V5-00-02",
+      "V5-00-03",
+      "V5-00-04",
+      "V5-00-05",
+      "V5-00-06",
+      "V5-01-01"
+    ],
+    "passed_phase_gates": [
+      {
+        "phase": "P00",
+        "gate": "G00",
+        "completed_at_utc": "2026-10-07T19:59:58.505+00:00",
+        "task_ids": [
+          "V5-00-01",
+          "V5-00-02",
+          "V5-00-03",
+          "V5-00-04",
+          "V5-00-05",
+          "V5-00-06"
+        ],
+        "task_statuses": {
+          "V5-00-01": "COMPLETE",
+          "V5-00-02": "COMPLETE",
+          "V5-00-03": "COMPLETE",
+          "V5-00-04": "COMPLETE",
+          "V5-00-05": "COMPLETE",
+          "V5-00-06": "COMPLETE"
+        },
+        "evidence_refs": [
+          "docs/v5/evidence/setup.json",
+          "docs/v5/evidence/phase00-live-operations.json",
+          "docs/v5/evidence/phase00-branch-checkpoint.json",
+          "docs/v5/evidence/phase00-ownership.json",
+          "docs/v5/evidence/phase00-visual-baseline.json",
+          "docs/v5/evidence/phase00-inventory-and-ci.json"
+        ],
+        "gate_evidence": "docs/v5/evidence/phase00-gate.json",
+        "note": "G00 exit met with exact green baseline, frozen ownership, actual classified environment inventory, initial successful V5 CI and byte-identical isolated V4 recovery; documentary Markdown pointer moved to artifact_refs rather than treated as executable JSON proof."
+      }
+    ]
   },
   "program": {
     "schema_version": 1,
@@ -112,7 +152,7 @@
           "V5-00-05",
           "V5-00-06"
         ],
-        "status": "IN_PROGRESS"
+        "status": "COMPLETE"
       },
       {
         "id": "P01",
@@ -145,7 +185,7 @@
           "V5-01-04",
           "V5-01-05"
         ],
-        "status": "PLANNED"
+        "status": "IN_PROGRESS"
       },
       {
         "id": "P02",
@@ -914,7 +954,7 @@
         "verification": "Branch ancestry and clean/carry-forward worktree state recorded; production branch and V4 tags untouched.",
         "id": "V5-00-03",
         "phase": "P00",
-        "status": "IN_PROGRESS",
+        "status": "COMPLETE",
         "depends_on_tasks": [
           "V5-00-02"
         ],
@@ -927,7 +967,7 @@
         "verification": "Every existing route/data domain has an owner; Phase 21 deferral and Phase 22 bypass are explicit.",
         "id": "V5-00-04",
         "phase": "P00",
-        "status": "PLANNED",
+        "status": "COMPLETE",
         "depends_on_tasks": [
           "V5-00-03"
         ],
@@ -940,7 +980,7 @@
         "verification": "Evidence permits before/after comparisons; failures are not hidden by re-baselining without explanation.",
         "id": "V5-00-05",
         "phase": "P00",
-        "status": "PLANNED",
+        "status": "COMPLETE",
         "depends_on_tasks": [
           "V5-00-04"
         ],
@@ -953,7 +993,7 @@
         "verification": "First meaningful V5 commit runs CI; no claim of native/provider verification based only on access.",
         "id": "V5-00-06",
         "phase": "P00",
-        "status": "PLANNED",
+        "status": "COMPLETE",
         "depends_on_tasks": [
           "V5-00-05"
         ],
@@ -966,7 +1006,7 @@
         "verification": "Route/data inventories include every discovered authority write and stateful constructor.",
         "id": "V5-01-01",
         "phase": "P01",
-        "status": "PLANNED",
+        "status": "COMPLETE",
         "depends_on_tasks": [],
         "requires_phase_gates": [
           "P00"
@@ -979,7 +1019,7 @@
         "verification": "Contract tests prove one transaction encompasses all economic effects; no hidden independently committed calls.",
         "id": "V5-01-02",
         "phase": "P01",
-        "status": "PLANNED",
+        "status": "IN_PROGRESS",
         "depends_on_tasks": [
           "V5-01-01"
         ],
@@ -2779,18 +2819,154 @@
         "Source SHA, running app/backup image revisions and actual installed deployment directory/hashes separately verified."
       ],
       "remaining": [],
+      "artifact_refs": [
+        "docs/v5/BASELINE.md"
+      ],
       "evidence_refs": [
-        "docs/v5/BASELINE.md",
         "docs/v5/evidence/setup.json",
         "docs/v5/evidence/phase00-live-operations.json"
       ]
     },
     "V5-00-02": {
       "status": "COMPLETE",
-      "completed_portions": ["Live app digest and health verified; sole public edge and private admin/monitors/cohosted services recorded.", "Existing Restic repository checked; exact encrypted snapshot retrieved and verified; isolated restore hash/schema matched and owned temporary target removed.", "Historical backup failure resolved as superseded by current successful evidence; no destructive repository initialization or production restore."],
+      "completed_portions": [
+        "Live app digest and health verified; sole public edge and private admin/monitors/cohosted services recorded.",
+        "Existing Restic repository checked; exact encrypted snapshot retrieved and verified; isolated restore hash/schema matched and owned temporary target removed.",
+        "Historical backup failure resolved as superseded by current successful evidence; no destructive repository initialization or production restore."
+      ],
       "remaining": [],
-      "evidence_refs": ["docs/v5/evidence/phase00-live-operations.json"],
+      "evidence_refs": [
+        "docs/v5/evidence/phase00-live-operations.json"
+      ],
       "review_notes": "Verification permits verified/reported/unresolved classification. Actual provider monitor/package visibility remains an explicitly scoped environment-inventory gap under V5-00-06, not an invented completed provider check."
+    },
+    "V5-00-03": {
+      "status": "COMPLETE",
+      "evidence_refs": [
+        "docs/v5/evidence/phase00-branch-checkpoint.json"
+      ],
+      "completed_portions": [],
+      "remaining": [],
+      "review_notes": "Created from pinned green 455b8ec; explicit source/goal/progress/CI checkpoint 783ed22 pushed; run 37668446768 success; V4 tags/runtime and carried unrelated skills preserved.",
+      "transitions": [
+        {
+          "at_utc": "2026-10-07T19:01:34.501+00:00",
+          "from": "IN_PROGRESS",
+          "to": "COMPLETE",
+          "evidence": "docs/v5/evidence/phase00-branch-checkpoint.json",
+          "note": "Created from pinned green 455b8ec; explicit source/goal/progress/CI checkpoint 783ed22 pushed; run 37668446768 success; V4 tags/runtime and carried unrelated skills preserved.",
+          "cleared_remaining": []
+        }
+      ]
+    },
+    "V5-00-04": {
+      "status": "COMPLETE",
+      "evidence_refs": [
+        "docs/v5/evidence/phase00-ownership.json"
+      ],
+      "completed_portions": [],
+      "remaining": [],
+      "review_notes": "Complete source route/writer/serialized-field inventory and all 35 exact snapshot tables owned; architecture scope frozen, four-theme/rules/economy preservation, Neon authority, P21 deferral/P22 bypass and process-vs-host HA explicit.",
+      "transitions": [
+        {
+          "at_utc": "2026-10-07T19:01:34.575+00:00",
+          "from": "PLANNED",
+          "to": "COMPLETE",
+          "evidence": "docs/v5/evidence/phase00-ownership.json",
+          "note": "Complete source route/writer/serialized-field inventory and all 35 exact snapshot tables owned; architecture scope frozen, four-theme/rules/economy preservation, Neon authority, P21 deferral/P22 bypass and process-vs-host HA explicit.",
+          "cleared_remaining": []
+        }
+      ]
+    },
+    "V5-00-05": {
+      "status": "COMPLETE",
+      "completed_portions": [],
+      "remaining": [],
+      "review_notes": "Actual four-theme/signed-guest/font/viewport/offline browser baseline underway on the existing isolated synthetic account server; no application edits or native/provider acceptance claims. No-evidence starter entry repaired by fixed CLI after reproduced TASK_EVIDENCE_REFS_INVALID; targeted runtime regression passed; actual visual capture now delivered for integration review. 344 eligible actual four-theme/font/viewport/guest-signed/offline baseline frames;696 PNG+metadata hashes verified,21 approved source files unchanged, original model/full CI baseline exercised; synthetic/device/provider limitations and approved quirks explicit.",
+      "transitions": [
+        {
+          "at_utc": "2026-10-07T19:17:08.038+00:00",
+          "from": "PLANNED",
+          "to": "IN_PROGRESS",
+          "note": "Actual four-theme/signed-guest/font/viewport/offline browser baseline underway on the existing isolated synthetic account server; no application edits or native/provider acceptance claims."
+        },
+        {
+          "at_utc": "2026-10-07T19:41:48.176+00:00",
+          "from": "IN_PROGRESS",
+          "to": "IN_PROGRESS",
+          "note": "No-evidence starter entry repaired by fixed CLI after reproduced TASK_EVIDENCE_REFS_INVALID; targeted runtime regression passed; actual visual capture now delivered for integration review."
+        },
+        {
+          "at_utc": "2026-10-07T19:57:13.085+00:00",
+          "from": "IN_PROGRESS",
+          "to": "COMPLETE",
+          "evidence": "docs/v5/evidence/phase00-visual-baseline.json",
+          "note": "344 eligible actual four-theme/font/viewport/guest-signed/offline baseline frames;696 PNG+metadata hashes verified,21 approved source files unchanged, original model/full CI baseline exercised; synthetic/device/provider limitations and approved quirks explicit.",
+          "cleared_remaining": []
+        }
+      ],
+      "evidence_refs": [
+        "docs/v5/evidence/phase00-visual-baseline.json"
+      ]
+    },
+    "V5-00-06": {
+      "status": "COMPLETE",
+      "evidence_refs": [
+        "docs/v5/evidence/phase00-inventory-and-ci.json"
+      ],
+      "completed_portions": [],
+      "remaining": [],
+      "review_notes": "First V5 checkpoint CI succeeded;117-task guarded progress CLI runtime proved; actual provider/native37-tool and25-provider reads with exact identifiers, quotas/devices/signing failures and unresolved entitlements classified without claiming approval.",
+      "transitions": [
+        {
+          "at_utc": "2026-10-07T19:57:13.165+00:00",
+          "from": "PLANNED",
+          "to": "COMPLETE",
+          "evidence": "docs/v5/evidence/phase00-inventory-and-ci.json",
+          "note": "First V5 checkpoint CI succeeded;117-task guarded progress CLI runtime proved; actual provider/native37-tool and25-provider reads with exact identifiers, quotas/devices/signing failures and unresolved entitlements classified without claiming approval.",
+          "cleared_remaining": []
+        }
+      ]
+    },
+    "V5-01-01": {
+      "status": "COMPLETE",
+      "evidence_refs": [
+        "docs/v5/evidence/phase01-write-paths.json"
+      ],
+      "completed_portions": [],
+      "remaining": [],
+      "review_notes": "Source-backed route/writer/35-table/eight-root/constructor inventory ready for concrete Phase1 extraction interface handoff. Full discovered authority writes/implicit GET/startup constructors and35-table/eight-root source inventory verified; concrete file-owned package/UoW/domain/contracts/client integration interfaces frozen.",
+      "transitions": [
+        {
+          "at_utc": "2026-10-07T19:59:58.603+00:00",
+          "from": "PLANNED",
+          "to": "IN_PROGRESS",
+          "note": "Source-backed route/writer/35-table/eight-root/constructor inventory ready for concrete Phase1 extraction interface handoff."
+        },
+        {
+          "at_utc": "2026-10-07T20:14:15.191+00:00",
+          "from": "IN_PROGRESS",
+          "to": "COMPLETE",
+          "evidence": "docs/v5/evidence/phase01-write-paths.json",
+          "note": "Full discovered authority writes/implicit GET/startup constructors and35-table/eight-root source inventory verified; concrete file-owned package/UoW/domain/contracts/client integration interfaces frozen.",
+          "cleared_remaining": []
+        }
+      ]
+    },
+    "V5-01-02": {
+      "status": "IN_PROGRESS",
+      "evidence_refs": [],
+      "completed_portions": [],
+      "remaining": [],
+      "review_notes": "Actual SQLite repository/shared-UoW transaction extraction proceeding under frozen interfaces; independent pure-policy/contract/client-bundle slices may implement concurrently but acceptance remains dependency ordered.",
+      "transitions": [
+        {
+          "at_utc": "2026-10-07T20:14:15.274+00:00",
+          "from": "PLANNED",
+          "to": "IN_PROGRESS",
+          "note": "Actual SQLite repository/shared-UoW transaction extraction proceeding under frozen interfaces; independent pure-policy/contract/client-bundle slices may implement concurrently but acceptance remains dependency ordered."
+        }
+      ]
     }
   },
   "known_observations": [

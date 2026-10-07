@@ -1,0 +1,90 @@
+{
+  "schema_version": 1,
+  "status": "VERIFIED_DOCUMENTARY_OWNERSHIP_FREEZE",
+  "task_ids": [
+    "V5-00-04"
+  ],
+  "case_ids": [
+    "A01",
+    "A03"
+  ],
+  "observed_at_utc": "2026-10-07T19:01:19.038929+00:00",
+  "source_sha": "455b8ec9ea4070b4410d78f9eea2aaa06d32c0b2",
+  "environment": "source-backed full route/writer/serialized-field manifest plus exact restored read-only SQLite snapshot",
+  "artifacts": {
+    "architecture": "docs/v5/ARCHITECTURE.md",
+    "route_data_manifest": "docs/v5/ROUTE-AND-DATA-INVENTORY.md",
+    "actual_schema": "docs/v5/evidence/phase00-source-schema.json"
+  },
+  "source_table_ownership": {
+    "commands": "GAME_CORE",
+    "party_commands": "GAME_CORE",
+    "party_rooms": "GAME_CORE",
+    "v35_commands": "GAME_CORE",
+    "v35_tickets": "GAME_CORE",
+    "v35_casual": "GAME_CORE",
+    "v35_events": "GAME_CORE",
+    "v41_ad_ticket_context": "GAME_CORE",
+    "v41_store_bindings": "GAME_CORE",
+    "v41_store_revocations": "GAME_CORE",
+    "profiles": "ACCOUNT_API",
+    "identities": "ACCOUNT_API",
+    "email_credentials": "ACCOUNT_API",
+    "account_sessions": "ACCOUNT_API",
+    "signin_attempts": "ACCOUNT_API",
+    "profile_saves": "ACCOUNT_API",
+    "email_challenges": "ACCOUNT_API",
+    "social_operations": "ACCOUNT_API",
+    "v4_email_versions": "ACCOUNT_API",
+    "session_presence": "EPHEMERAL",
+    "community_limits": "EPHEMERAL",
+    "party_guests": "EPHEMERAL",
+    "v4_outbox": "WORKER",
+    "v41_store_finalize": "WORKER",
+    "v41_store_notifications": "WORKER",
+    "v4_controls": "PRIVATE_OPERATOR",
+    "v4_runtime": "PRIVATE_OPERATOR",
+    "v41_operator_audit": "PRIVATE_OPERATOR",
+    "v41_support_events": "PRIVATE_OPERATOR",
+    "v4_schema": "MIGRATION_OWNER",
+    "v41_privacy_requests": "ACCOUNT_API_WORKER",
+    "v41_reports": "ACCOUNT_API_PRIVATE_OPERATOR",
+    "v41_deletion_receipts": "ACCOUNT_API_WORKER_PRIVATE_OPERATOR",
+    "v4_limits": "EPHEMERAL_WORKER_DURABLE_BUDGET",
+    "state": "MIXED_SOURCE_REQUIRES_NORMALIZATION"
+  },
+  "source_root_ownership": {
+    "accounts": "Account/API identity/social/preferences; Core assets/provenance/competition/rewards/monetization; authorized private eligibility administration",
+    "matches": "Game Core",
+    "receipts": "Game Core",
+    "snapshots": "Game Core",
+    "weeklyPaid": "Game Core",
+    "burned": "Game Core",
+    "journal": "Game Core",
+    "leagueWeek": "Game Core"
+  },
+  "scope": {
+    "approved_ui_and_rules": "UNCHANGED",
+    "managed_durable_database": "Neon PostgreSQL",
+    "phase21": "DEFERRED_BY_OWNER",
+    "phase22_dependency": "P20, not P21",
+    "initial_ha": "Two Core processes on the existing Oracle host are process failover, not host/edge HA"
+  },
+  "result": {
+    "executed": true,
+    "exit_code": 0,
+    "assertions": [
+      "All 35 actual snapshot tables have explicit source-domain write owners.",
+      "All eight actual serialized authority roots are in the source manifest and mapped to domain owners.",
+      "Mounted/standalone/test-only/static/private route distinctions and discovered writer families are recorded.",
+      "No UI/gameplay/economy change; future browser remains owner-deferred; P22 bypass explicit.",
+      "Read side effects, mixed-owner writers, constructor/time-rollover hazards and durable/ephemeral boundaries explicit."
+    ]
+  },
+  "not_claimed": [
+    "V5 runtime implemented",
+    "PostgreSQL roles/transactions exercised",
+    "historical JSON variants reconciled",
+    "P00 gate already passed"
+  ]
+}

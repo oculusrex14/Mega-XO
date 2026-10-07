@@ -1,0 +1,322 @@
+{
+  "schema_version": 1,
+  "status": "VERIFIED_RAW_SCHEMA_SNAPSHOT",
+  "task_ids": [
+    "V5-00-04",
+    "V5-01-01"
+  ],
+  "case_ids": [
+    "A06"
+  ],
+  "observed_at_utc": "2026-10-07T18:45:25.896201+00:00",
+  "source_sha": "455b8ec9ea4070b4410d78f9eea2aaa06d32c0b2",
+  "environment": "read-only exact restored Oracle snapshot f884e43b; no source constructors/time rollover",
+  "command": "SQLite read-only schema/types/indexes/triggers/counts and serialized root/account field-name enumeration; no row values output",
+  "result": {
+    "executed": true,
+    "exit_code": 0,
+    "tables": 35,
+    "constructors_invoked": false
+  },
+  "source": {
+    "snapshotId": "f884e43b",
+    "readOnly": true,
+    "tables": [
+      {
+        "name": "account_sessions",
+        "sql": "CREATE TABLE account_sessions(token TEXT PRIMARY KEY,actor TEXT,csrf TEXT NOT NULL,created INTEGER NOT NULL,expires INTEGER NOT NULL,auth_at INTEGER NOT NULL DEFAULT 0)"
+      },
+      {
+        "name": "commands",
+        "sql": "CREATE TABLE commands (id TEXT PRIMARY KEY, actor TEXT NOT NULL, fingerprint TEXT NOT NULL, response TEXT NOT NULL)"
+      },
+      {
+        "name": "community_limits",
+        "sql": "CREATE TABLE community_limits(id TEXT PRIMARY KEY,hits INTEGER NOT NULL)"
+      },
+      {
+        "name": "email_challenges",
+        "sql": "CREATE TABLE email_challenges(id TEXT PRIMARY KEY,session TEXT NOT NULL,email TEXT NOT NULL COLLATE NOCASE,purpose TEXT NOT NULL,actor TEXT,code_hash TEXT NOT NULL,password_salt TEXT,password_hash TEXT,created INTEGER NOT NULL,expires INTEGER NOT NULL,attempts INTEGER NOT NULL DEFAULT 0,verified_at INTEGER,consumed INTEGER NOT NULL DEFAULT 0)"
+      },
+      {
+        "name": "email_credentials",
+        "sql": "CREATE TABLE email_credentials(email TEXT PRIMARY KEY COLLATE NOCASE,actor TEXT NOT NULL UNIQUE,salt TEXT NOT NULL,password_hash TEXT NOT NULL,created INTEGER NOT NULL,verified_at INTEGER)"
+      },
+      {
+        "name": "identities",
+        "sql": "CREATE TABLE identities(provider TEXT NOT NULL,subject TEXT NOT NULL,actor TEXT NOT NULL,created INTEGER NOT NULL,PRIMARY KEY(provider,subject),UNIQUE(actor,provider))"
+      },
+      {
+        "name": "party_commands",
+        "sql": "CREATE TABLE party_commands(id TEXT PRIMARY KEY,fingerprint TEXT NOT NULL,response TEXT NOT NULL)"
+      },
+      {
+        "name": "party_guests",
+        "sql": "CREATE TABLE party_guests(token TEXT PRIMARY KEY,actor TEXT UNIQUE NOT NULL,name TEXT NOT NULL,expires INTEGER NOT NULL)"
+      },
+      {
+        "name": "party_rooms",
+        "sql": "CREATE TABLE party_rooms(id TEXT PRIMARY KEY,code TEXT UNIQUE NOT NULL,json TEXT NOT NULL)"
+      },
+      {
+        "name": "profile_saves",
+        "sql": "CREATE TABLE profile_saves(actor TEXT PRIMARY KEY,revision INTEGER NOT NULL,payload TEXT NOT NULL,updated INTEGER NOT NULL)"
+      },
+      {
+        "name": "profiles",
+        "sql": "CREATE TABLE profiles(actor TEXT PRIMARY KEY,tag TEXT NOT NULL UNIQUE,username TEXT NOT NULL UNIQUE,display_name TEXT NOT NULL,avatar TEXT NOT NULL DEFAULT 'board',stats_visibility TEXT NOT NULL DEFAULT 'friends',presence_visibility TEXT NOT NULL DEFAULT 'friends',created INTEGER NOT NULL,username_changed INTEGER NOT NULL DEFAULT 0,version INTEGER NOT NULL DEFAULT 1)"
+      },
+      {
+        "name": "session_presence",
+        "sql": "CREATE TABLE session_presence(session TEXT PRIMARY KEY,actor TEXT NOT NULL,seen INTEGER NOT NULL,foreground INTEGER NOT NULL)"
+      },
+      {
+        "name": "signin_attempts",
+        "sql": "CREATE TABLE signin_attempts(state TEXT PRIMARY KEY,session TEXT NOT NULL,provider TEXT NOT NULL,kind TEXT NOT NULL,intent TEXT NOT NULL,target TEXT,nonce TEXT NOT NULL,verifier TEXT NOT NULL,expires INTEGER NOT NULL,used INTEGER NOT NULL DEFAULT 0)"
+      },
+      {
+        "name": "social_operations",
+        "sql": "CREATE TABLE social_operations(id TEXT PRIMARY KEY,fingerprint TEXT NOT NULL,result TEXT NOT NULL)"
+      },
+      {
+        "name": "state",
+        "sql": "CREATE TABLE state (id INTEGER PRIMARY KEY CHECK(id=1), json TEXT NOT NULL)"
+      },
+      {
+        "name": "v35_casual",
+        "sql": "CREATE TABLE v35_casual(actor TEXT,match_id TEXT,base INTEGER,bonus INTEGER,PRIMARY KEY(actor,match_id))"
+      },
+      {
+        "name": "v35_commands",
+        "sql": "CREATE TABLE v35_commands(actor TEXT,key TEXT,fingerprint TEXT,response TEXT,PRIMARY KEY(actor,key))"
+      },
+      {
+        "name": "v35_events",
+        "sql": "CREATE TABLE v35_events(id INTEGER PRIMARY KEY,actor TEXT,kind TEXT,at INTEGER,value INTEGER)"
+      },
+      {
+        "name": "v35_tickets",
+        "sql": "CREATE TABLE v35_tickets(id TEXT PRIMARY KEY,actor TEXT,kind TEXT,issued INTEGER,expires INTEGER,day TEXT,settled INTEGER DEFAULT 0,transaction_id TEXT UNIQUE)"
+      },
+      {
+        "name": "v41_ad_ticket_context",
+        "sql": "CREATE TABLE v41_ad_ticket_context(ticket TEXT PRIMARY KEY,platform TEXT NOT NULL,ad_unit TEXT NOT NULL)"
+      },
+      {
+        "name": "v41_deletion_receipts",
+        "sql": "CREATE TABLE v41_deletion_receipts(id TEXT PRIMARY KEY,actor_hash TEXT NOT NULL UNIQUE,tombstone TEXT NOT NULL UNIQUE,completed_at INTEGER NOT NULL,policy_version TEXT NOT NULL,retained TEXT NOT NULL)"
+      },
+      {
+        "name": "v41_operator_audit",
+        "sql": "CREATE TABLE v41_operator_audit (\n id TEXT PRIMARY KEY,\n at INTEGER NOT NULL,\n operator TEXT NOT NULL,\n action TEXT NOT NULL,\n actor TEXT,\n reason TEXT NOT NULL,\n detail TEXT NOT NULL,\n prev_hash TEXT NOT NULL,\n entry_hash TEXT NOT NULL UNIQUE\n)"
+      },
+      {
+        "name": "v41_privacy_requests",
+        "sql": "CREATE TABLE v41_privacy_requests(id TEXT PRIMARY KEY,actor TEXT NOT NULL,kind TEXT NOT NULL,state TEXT NOT NULL,requested_at INTEGER NOT NULL,updated_at INTEGER NOT NULL,completed_at INTEGER,policy_version TEXT NOT NULL,note TEXT NOT NULL DEFAULT '')"
+      },
+      {
+        "name": "v41_reports",
+        "sql": "CREATE TABLE v41_reports(id TEXT PRIMARY KEY,reporter TEXT NOT NULL,target TEXT NOT NULL,category TEXT NOT NULL CHECK(category IN ('cheating','username','harassment','unsportsmanlike','other')),detail TEXT NOT NULL DEFAULT '',created INTEGER NOT NULL,state TEXT NOT NULL DEFAULT 'open' CHECK(state IN ('open','reviewed')),reviewed_at INTEGER,reviewed_by TEXT,outcome TEXT CHECK(outcome IS NULL OR outcome IN ('no_action','action_taken','duplicate')))"
+      },
+      {
+        "name": "v41_store_bindings",
+        "sql": "CREATE TABLE v41_store_bindings (\n actor TEXT PRIMARY KEY,\n google_id TEXT NOT NULL UNIQUE,\n apple_token TEXT NOT NULL UNIQUE,\n created INTEGER NOT NULL\n)"
+      },
+      {
+        "name": "v41_store_finalize",
+        "sql": "CREATE TABLE v41_store_finalize (\n store TEXT NOT NULL CHECK(store='google'),\n transaction_id TEXT NOT NULL,\n product_id TEXT NOT NULL,\n purchase_token TEXT NOT NULL,\n kind TEXT NOT NULL CHECK(kind IN ('consume','acknowledge')),\n state TEXT NOT NULL CHECK(state IN ('pending','done')),\n attempts INTEGER NOT NULL DEFAULT 0,\n next_at INTEGER NOT NULL,\n created INTEGER NOT NULL,\n updated INTEGER NOT NULL,\n PRIMARY KEY(store,transaction_id)\n)"
+      },
+      {
+        "name": "v41_store_notifications",
+        "sql": "CREATE TABLE v41_store_notifications (\n store TEXT NOT NULL CHECK(store IN ('google','apple')),\n id TEXT NOT NULL,\n received_at INTEGER NOT NULL,\n PRIMARY KEY(store,id)\n)"
+      },
+      {
+        "name": "v41_store_revocations",
+        "sql": "CREATE TABLE v41_store_revocations (\n store TEXT NOT NULL CHECK(store IN ('google','apple')),\n transaction_id TEXT NOT NULL,\n product_id TEXT,\n occurred_at INTEGER NOT NULL,\n reason TEXT NOT NULL,\n PRIMARY KEY(store,transaction_id)\n)"
+      },
+      {
+        "name": "v41_support_events",
+        "sql": "CREATE TABLE v41_support_events (\n id TEXT PRIMARY KEY,\n at INTEGER NOT NULL,\n method TEXT NOT NULL,\n route TEXT NOT NULL,\n status INTEGER NOT NULL,\n code TEXT NOT NULL DEFAULT ''\n)"
+      },
+      {
+        "name": "v4_controls",
+        "sql": "CREATE TABLE v4_controls (id INTEGER PRIMARY KEY CHECK(id=1), maintenance INTEGER NOT NULL DEFAULT 0)"
+      },
+      {
+        "name": "v4_email_versions",
+        "sql": "CREATE TABLE v4_email_versions (challenge TEXT PRIMARY KEY, credential_hash TEXT)"
+      },
+      {
+        "name": "v4_limits",
+        "sql": "CREATE TABLE v4_limits (id TEXT PRIMARY KEY, hits INTEGER NOT NULL, expires INTEGER NOT NULL)"
+      },
+      {
+        "name": "v4_outbox",
+        "sql": "CREATE TABLE v4_outbox (id TEXT PRIMARY KEY, payload TEXT, kind TEXT NOT NULL, state TEXT NOT NULL, created INTEGER NOT NULL, expires INTEGER NOT NULL, next_at INTEGER NOT NULL, lease_until INTEGER NOT NULL DEFAULT 0, attempts INTEGER NOT NULL DEFAULT 0)"
+      },
+      {
+        "name": "v4_runtime",
+        "sql": "CREATE TABLE v4_runtime (key TEXT PRIMARY KEY, value TEXT NOT NULL)"
+      },
+      {
+        "name": "v4_schema",
+        "sql": "CREATE TABLE v4_schema(id INTEGER PRIMARY KEY,name TEXT NOT NULL,checksum TEXT NOT NULL,applied_at INTEGER NOT NULL)"
+      }
+    ],
+    "indexes": [
+      {
+        "type": "index",
+        "name": "email_challenges_email",
+        "tbl_name": "email_challenges",
+        "sql": "CREATE INDEX email_challenges_email ON email_challenges(email)"
+      },
+      {
+        "type": "index",
+        "name": "email_challenges_session",
+        "tbl_name": "email_challenges",
+        "sql": "CREATE INDEX email_challenges_session ON email_challenges(session)"
+      },
+      {
+        "type": "index",
+        "name": "email_credentials_actor",
+        "tbl_name": "email_credentials",
+        "sql": "CREATE INDEX email_credentials_actor ON email_credentials(actor)"
+      },
+      {
+        "type": "index",
+        "name": "identities_actor",
+        "tbl_name": "identities",
+        "sql": "CREATE INDEX identities_actor ON identities(actor)"
+      },
+      {
+        "type": "index",
+        "name": "party_status",
+        "tbl_name": "party_rooms",
+        "sql": "CREATE INDEX party_status ON party_rooms(json_extract(json,'$.status'))"
+      },
+      {
+        "type": "index",
+        "name": "presence_actor",
+        "tbl_name": "session_presence",
+        "sql": "CREATE INDEX presence_actor ON session_presence(actor)"
+      },
+      {
+        "type": "index",
+        "name": "session_actor",
+        "tbl_name": "account_sessions",
+        "sql": "CREATE INDEX session_actor ON account_sessions(actor)"
+      },
+      {
+        "type": "index",
+        "name": "v41_operator_audit_actor",
+        "tbl_name": "v41_operator_audit",
+        "sql": "CREATE INDEX v41_operator_audit_actor ON v41_operator_audit(actor,at)"
+      },
+      {
+        "type": "index",
+        "name": "v41_privacy_requests_actor",
+        "tbl_name": "v41_privacy_requests",
+        "sql": "CREATE INDEX v41_privacy_requests_actor ON v41_privacy_requests(actor,requested_at)"
+      },
+      {
+        "type": "index",
+        "name": "v41_reports_reporter_created",
+        "tbl_name": "v41_reports",
+        "sql": "CREATE INDEX v41_reports_reporter_created ON v41_reports(reporter,created)"
+      },
+      {
+        "type": "index",
+        "name": "v41_reports_target_state",
+        "tbl_name": "v41_reports",
+        "sql": "CREATE INDEX v41_reports_target_state ON v41_reports(target,state,created)"
+      },
+      {
+        "type": "index",
+        "name": "v41_store_finalize_due",
+        "tbl_name": "v41_store_finalize",
+        "sql": "CREATE INDEX v41_store_finalize_due ON v41_store_finalize(state,next_at)"
+      },
+      {
+        "type": "index",
+        "name": "v41_support_events_at",
+        "tbl_name": "v41_support_events",
+        "sql": "CREATE INDEX v41_support_events_at ON v41_support_events(at)"
+      },
+      {
+        "type": "index",
+        "name": "v4_outbox_due",
+        "tbl_name": "v4_outbox",
+        "sql": "CREATE INDEX v4_outbox_due ON v4_outbox(state,next_at)"
+      }
+    ],
+    "triggers": [
+      {
+        "type": "trigger",
+        "name": "v41_operator_audit_no_delete",
+        "tbl_name": "v41_operator_audit",
+        "sql": "CREATE TRIGGER v41_operator_audit_no_delete BEFORE DELETE ON v41_operator_audit BEGIN SELECT RAISE(ABORT,'AUDIT_IMMUTABLE'); END"
+      },
+      {
+        "type": "trigger",
+        "name": "v41_operator_audit_no_update",
+        "tbl_name": "v41_operator_audit",
+        "sql": "CREATE TRIGGER v41_operator_audit_no_update BEFORE UPDATE ON v41_operator_audit BEGIN SELECT RAISE(ABORT,'AUDIT_IMMUTABLE'); END"
+      }
+    ],
+    "views": [],
+    "counts": {
+      "account_sessions": 8,
+      "commands": 1,
+      "community_limits": 0,
+      "email_challenges": 0,
+      "email_credentials": 0,
+      "identities": 0,
+      "party_commands": 0,
+      "party_guests": 0,
+      "party_rooms": 0,
+      "profile_saves": 0,
+      "profiles": 0,
+      "session_presence": 0,
+      "signin_attempts": 0,
+      "social_operations": 0,
+      "state": 1,
+      "v35_casual": 0,
+      "v35_commands": 0,
+      "v35_events": 0,
+      "v35_tickets": 0,
+      "v41_ad_ticket_context": 0,
+      "v41_deletion_receipts": 0,
+      "v41_operator_audit": 0,
+      "v41_privacy_requests": 0,
+      "v41_reports": 0,
+      "v41_store_bindings": 0,
+      "v41_store_finalize": 0,
+      "v41_store_notifications": 0,
+      "v41_store_revocations": 0,
+      "v41_support_events": 736,
+      "v4_controls": 1,
+      "v4_email_versions": 0,
+      "v4_limits": 0,
+      "v4_outbox": 0,
+      "v4_runtime": 0,
+      "v4_schema": 8
+    },
+    "stateRootFields": [
+      "accounts",
+      "burned",
+      "journal",
+      "leagueWeek",
+      "matches",
+      "receipts",
+      "snapshots",
+      "weeklyPaid"
+    ],
+    "accountFieldNames": [],
+    "constructorInvoked": false
+  },
+  "not_claimed": [
+    "complete source-to-PostgreSQL migration mapping",
+    "historical nested variant coverage",
+    "per-actor economic reconciliation"
+  ]
+}

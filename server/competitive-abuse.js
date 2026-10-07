@@ -40,7 +40,7 @@ function matchSignals(match,players=[],now=Date.now()){
   const ids=match.players;
   let repeat=false,forfeit=false;
   for(let i=0;i<2;i++){
-   const p=players[i],other=ids[1-i],recent=(p?.history||[]).filter(h=>h.rated&&h.opponent===other&&now-h.at>=0&&now-h.at<=POLICY.repeatPairWindow);
+   const p=players[i],other=ids[1-i],recent=(p?.history||[]).filter(h=>h.id!==match.id&&h.rated&&h.opponent===other&&now-h.at>=0&&now-h.at<=POLICY.repeatPairWindow);
    if(recent.length+1>=POLICY.repeatPairMatches)repeat=true;
    const forfeits=recent.filter(h=>['resign','timeout','no-show'].includes(h.reason)).length+(['resign','timeout','no-show'].includes(match.receipt?.reason||match._pendingReason)?1:0);
    if(forfeits>=POLICY.repeatPairForfeits)forfeit=true;

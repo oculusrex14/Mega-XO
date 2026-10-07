@@ -1,3 +1,5 @@
+> **V4.1 compliance supersession:** This file records the earlier economy model. Player-funded ranked/direct/tournament pots remain implemented only as dormant, tested legacy mechanics. They are not approved for production. Store-purchased Crown provenance is now segregated from competition funds, and any future paid competition must follow `docs/legal/PAID-COMPETITION-COMPLIANCE.md` rather than this document's paid/high-stake assumptions.
+
 # Delivered scope map: economy-1
 
 | Request | Implementation |

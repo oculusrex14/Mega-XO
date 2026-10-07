@@ -39,7 +39,7 @@ class RoomStore{
   for(const p of r.contributions){const a=this.account(e,p.id);if(a[held]<p.amount)err('ESCROW_MISMATCH');a[held]-=p.amount;if(a.activeMatch==='tournament:'+r.id)a.activeMatch=null;}
   for(const p of payouts){const a=this.account(e,p.id);a[c]+=p.amount;this.journal(e,r.id+(refund?':refund:':':payout:')+p.id,p.id,c,p.amount,refund?'Tournament entry refunded':'Tournament placement payout');}
   if(!refund){e.burned[c]+=q.burn;r.ranking.forEach((id,i)=>this.recordTournament(this.account(e,id),i+1,r.table));}r.receipt={currency:c,pool:r.escrow,burn:refund?0:q.burn,payouts,refunded:refund};r.escrow=0;r.settled=true;
-  r.riskFlags=[];if(!refund&&r.fixtures.filter(f=>f.reason==='resign'||f.reason==='no-show').length>4)r.riskFlags.push('HIGH_FORFEIT_RATE');
+  if(refund){r.riskFlags=[];delete r._riskActors;}else{const abuse=ABUSE.tournamentSignals(r);r.riskFlags=abuse.flags;r._riskActors=abuse.actors;}
  }
  view(id,actor){const r=this.get(id);if(!r.players.some(p=>p.id===actor))err('NOT_IN_ROOM');return T.view(r,this.now());}
  run(principal,key,command){

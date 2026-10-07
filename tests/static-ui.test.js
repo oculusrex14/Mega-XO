@@ -86,6 +86,7 @@ test('network resilience keeps write retries idempotent and exposes user-safe co
   const account=fs.readFileSync(path.join(ROOT,'src','account-client.js'),'utf8');
   const app=fs.readFileSync(path.join(ROOT,'src','app.js'),'utf8');
   const html=fs.readFileSync(path.join(ROOT,'index.html'),'utf8');
+  const styles=fs.readFileSync(path.join(ROOT,'src','styles.css'),'utf8');
   assert.ok(account.includes("const operationKey=body===undefined?null:(operation||id())"));
   assert.ok(account.includes("'Idempotency-Key':operationKey"));
   assert.ok(account.includes("attempts=body===undefined?3:2"));

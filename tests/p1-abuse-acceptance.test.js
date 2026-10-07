@@ -27,7 +27,7 @@ function authFixture(t){
 function moneyFixture(t){
  const dir=fs.mkdtempSync(path.join(os.tmpdir(),'mega-p1-abuse-money-'));let now=Date.parse('2026-10-07T10:00:00Z');
  const store=new DurableStore(path.join(dir,'db.sqlite'),{now:()=>now});migrate(store.db);const a=store.read();
- a.addAccount('alice',{verified:true,games:30,coins:1000,crowns:0});a.addAccount('bob',{verified:true,games:30,coins:1000,crowns:0});store.write(a);
+ a.addAccount('alice',{verified:true,games:30,coins:1000,crowns:0});a.addAccount('bob',{verified:true,games:30,coins:1000,crowns:0});store.db.prepare('UPDATE state SET json=? WHERE id=1').run(JSON.stringify(a.export()));
  const receipts=new Map([['real',{valid:true,accountId:'alice',store:'apple',transactionId:'tx-p1-9',productId:'crowns_100'}]]);
  const service=new MonetizationStore(store,{now:()=>now,purchasesEnabled:true,eligible:()=>true,verifyPurchase:async evidence=>receipts.get(evidence)||{valid:false},adMode:'rewarded',adUnit:'rewarded-unit',rewardItem:'cosmetic_reward',verifyAd:async event=>event});
  t.after(()=>{store.close();fs.rmSync(dir,{recursive:true,force:true});});

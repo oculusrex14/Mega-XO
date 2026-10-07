@@ -25,14 +25,18 @@ function validateJurisdiction(j){
  if(!unique(j.platforms)||!j.platforms.length||j.platforms.some(x=>!PLATFORM.has(x)))fail('INVALID_COMPETITION_PLATFORMS');
  if(!Number.isSafeInteger(j.minAge)||j.minAge<18||j.minAge>30)fail('INVALID_COMPETITION_MIN_AGE');
  if(!ID.test(j.legalReviewId||''))fail('COMPETITION_LEGAL_REVIEW_REQUIRED');
+ if(!unique(j.purchasedEntryPlatforms)||j.purchasedEntryPlatforms.some(x=>!j.platforms.includes(x)))fail('INVALID_PURCHASED_ENTRY_PLATFORMS');
+ if(j.purchasedEntryPlatforms.includes('ios')&&!ID.test(j.appleReviewId||''))fail('APPLE_COMPETITION_REVIEW_REQUIRED');
+ if(j.purchasedEntryPlatforms.includes('android')&&!ID.test(j.googleReviewId||''))fail('GOOGLE_COMPETITION_REVIEW_REQUIRED');
  for(const key of ['maxEntryFee','dailyEntryCap','dailyLossCap'])if(!Number.isSafeInteger(j[key])||j[key]<0)fail('COMPETITION_SPEND_LIMITS_REQUIRED');
  if(j.maxEntryFee===0||j.dailyEntryCap===0||j.dailyLossCap===0)fail('COMPETITION_SPEND_LIMITS_REQUIRED');
  if(j.subdivisions!==undefined&&(!unique(j.subdivisions)||j.subdivisions.some(x=>typeof x!=='string'||!/^[A-Z0-9-]{1,12}$/.test(x))))fail('INVALID_COMPETITION_SUBDIVISIONS');
  if(j.country==='IN'){
+  if(j.purchasedEntryPlatforms.length)fail('INDIA_PURCHASED_VIRTUAL_ENTRY_PROHIBITED');
   if(j.classification!=='recognized_esport')fail('INDIA_RECOGNIZED_ESPORT_REQUIRED');
   if(!ID.test(j.ogaiRegistrationId||'')||!ID.test(j.sportsRecognitionId||''))fail('INDIA_REGULATORY_APPROVAL_REQUIRED');
  }
- return {...j,platforms:[...j.platforms],subdivisions:j.subdivisions?[...j.subdivisions]:null};
+ return {...j,platforms:[...j.platforms],purchasedEntryPlatforms:[...j.purchasedEntryPlatforms],subdivisions:j.subdivisions?[...j.subdivisions]:null};
 }
 
 function validatePolicy(policy,{now=Date.now()}={}){
@@ -41,7 +45,6 @@ function validatePolicy(policy,{now=Date.now()}={}){
  if(!ID.test(policy.version||'')||!ID.test(policy.approvalId||''))fail('COMPETITION_POLICY_APPROVAL_REQUIRED');
  const effective=date(policy.effectiveAt,'INVALID_COMPETITION_EFFECTIVE_AT'),expires=date(policy.expiresAt,'INVALID_COMPETITION_EXPIRES_AT');
  if(expires<=effective||now<effective||now>=expires)fail('COMPETITION_POLICY_NOT_EFFECTIVE');
- if(policy.allowPurchasedCurrency!==false)fail('PURCHASED_COMPETITION_CURRENCY_PROHIBITED');
  if(policy.allowPooledStake!==false)fail('POOLED_STAKE_PROHIBITED');
  if(policy.allowCashOut!==false)fail('COMPETITION_CASHOUT_PROHIBITED');
  if(policy.allowRealWorldPrize!==false)fail('REAL_WORLD_PRIZE_REQUIRES_SEPARATE_APPROVAL');
@@ -61,12 +64,12 @@ function assess({policy,entry,platform,location,age,payment={},spend={},now=Date
  try{model=classify(entry);if(model==='free')return {allowed:true,code:'FREE_COMPETITION'};p=validatePolicy(policy,{now});j=locate(p,location);}catch(error){return {allowed:false,code:error.message};}
  if(!PLATFORM.has(platform)||!j.platforms.includes(platform))return {allowed:false,code:'COMPETITION_PLATFORM_DENIED'};
  if(model==='pooled_stake')return {allowed:false,code:'POOLED_STAKE_PROHIBITED'};
- if(entry?.purchasedCurrency===true||payment?.purchasedCurrency===true)return {allowed:false,code:'PURCHASED_COMPETITION_CURRENCY_PROHIBITED'};
+ const purchasedEntry=entry?.purchasedCurrency===true||payment?.purchasedCurrency===true;
+ if(purchasedEntry&&!j.purchasedEntryPlatforms.includes(platform))return {allowed:false,code:'PURCHASED_VIRTUAL_ENTRY_NOT_APPROVED'};
  if(entry?.cashOut===true)return {allowed:false,code:'COMPETITION_CASHOUT_PROHIBITED'};
  if(entry?.prizeRealWorldValue===true)return {allowed:false,code:'REAL_WORLD_PRIZE_REQUIRES_SEPARATE_APPROVAL'};
  if(!object(age)||age.verified!==true||age.trusted!==true||!Number.isSafeInteger(age.age)||age.age<j.minAge)return {allowed:false,code:'COMPETITION_AGE_NOT_VERIFIED'};
  if(age.verifiedAt&&now-date(age.verifiedAt,'INVALID_AGE_VERIFICATION_AT')>365*86400000)return {allowed:false,code:'COMPETITION_AGE_VERIFICATION_STALE'};
- if(platform==='ios'&&payment.source==='apple_iap')return {allowed:false,code:'APPLE_IAP_COMPETITION_CURRENCY_PROHIBITED'};
  if(platform==='android'&&payment.source==='play_billing'&&entry?.prizeRealWorldValue===true)return {allowed:false,code:'GOOGLE_PLAY_BILLING_REAL_MONEY_PROHIBITED'};
  if(location.proxyRisk===true)return {allowed:false,code:'COMPETITION_LOCATION_RISK'};
  const fee=Number(entry?.entry||0);if(!Number.isSafeInteger(fee)||fee<0)return {allowed:false,code:'INVALID_COMPETITION_ENTRY_FEE'};

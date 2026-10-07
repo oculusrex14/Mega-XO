@@ -31,9 +31,6 @@ secret_dir="$root/secrets"
 owner_args=()
 if [[ $(id -u) = 0 ]]; then owner_args=(-o 1000 -g 1000); fi
 
-# Audit secret first: existing roots predate it, and validation below requires it.
-if ! $verify_only && [[ -n "$audit_file" ]]; then write_secret audit_secret "$audit_file"; fi
-
 write_secret() {
   local name=$1 source=$2 tmp
   [[ "$source" = /* && -f "$source" ]] || { echo "Secret source for $name must be an absolute regular file." >&2; exit 64; }
@@ -47,6 +44,9 @@ write_secret() {
   mv -f -- "$tmp" "$secret_dir/$name"
   trap - RETURN
 }
+
+# Audit secret before validation: existing roots predate it, and validation below requires it.
+if ! $verify_only && [[ -n "$audit_file" ]]; then write_secret audit_secret "$audit_file"; fi
 
 prompt_resend() {
   local tmp value

@@ -33,7 +33,6 @@ function config(env = process.env) {
   const otpSecret = secret(env, 'MEGA_OTP_SECRET', true);
   const proxySecret = secret(env, 'MEGA_PROXY_SECRET', true);
   if (!/^[a-f0-9]{64}$/i.test(otpSecret) || !/^[a-f0-9]{64}$/i.test(proxySecret) || otpSecret === proxySecret) throw Error('INDEPENDENT_256_BIT_SECRETS_REQUIRED');
-  if (env.MEGA_PAID_ENTRY_ENABLED && env.MEGA_PAID_ENTRY_ENABLED !== 'false') throw Error('PAID_FEATURES_NOT_RELEASED');
   if (!['true','false'].includes(env.MEGA_PURCHASES_ENABLED||'false')) throw Error('INVALID_PURCHASES_FLAG');
   const purchasesEnabled=(env.MEGA_PURCHASES_ENABLED||'false')==='true';
   const deletionEnabled=(env.MEGA_ACCOUNT_DELETION_ENABLED||'false')==='true';

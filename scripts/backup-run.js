@@ -28,7 +28,7 @@ async function main(args=process.argv.slice(2)) {
   return {event:'backup_retention_applied'};
  }
  if(command==='retrieve') {
-  if(!/^[a-f0-9]{64}$/.test(args[1]||''))throw Error('EXPLICIT_SNAPSHOT_ID_REQUIRED');
+  if(!/^[a-f0-9]{8,64}$/.test(args[1]||''))throw Error('EXPLICIT_SNAPSHOT_ID_REQUIRED');
   const target=path.join(work,'recovery-'+args[1].slice(0,12));if(fs.existsSync(target))throw Error('RESTORE_TARGET_EXISTS');
   await restic(['restore',args[1],'--target',target],env);
   await verify(path.join(target,'work','mega.sqlite'));return {event:'backup_retrieved_and_verified',target};

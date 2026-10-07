@@ -29,7 +29,8 @@
     "test:capacity": "node scripts/capacity-acceptance.js",
     "db:maintenance": "node scripts/db-maintenance.js",
     "test:db-growth": "node scripts/db-growth-smoke.js",
-    "mail:audit": "node scripts/mail-domain-audit.js"
+    "mail:audit": "node scripts/mail-domain-audit.js",
+    "competition:audit": "node scripts/competition-compliance-audit.js"
   },
   "author": "Antimatter Innovations <contact@antimatterinnovations.com>"
 }

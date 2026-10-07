@@ -1,0 +1,117 @@
+{
+  "schema_version": 1,
+  "checked_at_utc": "2026-10-07T16:58:46.922170+00:00",
+  "scope": "Handoff-package and synthetic utility QA only; NOT Mega XO application/deployment/device acceptance.",
+  "passed": true,
+  "tests": [
+    {
+      "test": "fixture git init",
+      "passed": true,
+      "exit_code": 0,
+      "expected_exit_code": 0
+    },
+    {
+      "test": "fixture git add",
+      "passed": true,
+      "exit_code": 0,
+      "expected_exit_code": 0
+    },
+    {
+      "test": "fixture commit",
+      "passed": true,
+      "exit_code": 0,
+      "expected_exit_code": 0
+    },
+    {
+      "test": "baseline capture",
+      "passed": true,
+      "exit_code": 0,
+      "expected_exit_code": 0
+    },
+    {
+      "test": "unchanged protected files pass",
+      "passed": true,
+      "exit_code": 0,
+      "expected_exit_code": 0
+    },
+    {
+      "test": "unreviewed change rejected",
+      "passed": true,
+      "exit_code": 1,
+      "expected_exit_code": 1
+    },
+    {
+      "test": "exact hash exception accepted",
+      "passed": true,
+      "exit_code": 0,
+      "expected_exit_code": 0
+    },
+    {
+      "test": "stale exception rejected",
+      "passed": true,
+      "exit_code": 1,
+      "expected_exit_code": 1
+    },
+    {
+      "test": "manifest traversal rejected",
+      "passed": true,
+      "exit_code": 2,
+      "expected_exit_code": 2
+    },
+    {
+      "test": "local preflight without remote actions",
+      "passed": true,
+      "exit_code": 0,
+      "expected_exit_code": 0
+    },
+    {
+      "test": "preflight refuses overwrite",
+      "passed": true,
+      "exit_code": 2,
+      "expected_exit_code": 2
+    },
+    {
+      "test": "preflight refuses checkout evidence output",
+      "passed": true,
+      "exit_code": 2,
+      "expected_exit_code": 2
+    },
+    {
+      "test": "preflight rejects injected SSH alias",
+      "passed": true,
+      "exit_code": 2,
+      "expected_exit_code": 2
+    },
+    {
+      "test": "symlink asset refused for review",
+      "passed": true,
+      "exit_code": 1,
+      "expected_exit_code": 1
+    },
+    {
+      "test": "pack structure, JSON, sources and graph",
+      "passed": true,
+      "exit_code": 0,
+      "expected_exit_code": 0
+    }
+  ],
+  "structure_result": {
+    "ok": true,
+    "errors": [],
+    "files": 64,
+    "phases": 25,
+    "tasks": 117,
+    "acceptance_cases": 40,
+    "relative_links_checked": 210,
+    "checksums_verified": 0,
+    "source_integrity_checked": true,
+    "mode": "structure-only"
+  },
+  "not_run": [
+    "Live SSH or provider actions",
+    "Mega XO application tests in a cloned repository",
+    "Production migration/deployment",
+    "Native builds or device tests"
+  ],
+  "final_integrity_instruction": "Run tools/validate-pack.py on delivered pack to verify SHA256SUMS and original-source checksums."
+}

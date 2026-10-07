@@ -1,0 +1,52 @@
+{
+  "schema_version": 1,
+  "status": "PASS",
+  "observed_at_utc": "2026-10-07T18:12:52.741828+00:00",
+  "source_sha": "455b8ec9ea4070b4410d78f9eea2aaa06d32c0b2",
+  "environment": "local persisted V5 execution records",
+  "command": "Python Eval: load docs/v5/progress.json and TODO.md; compare original contracts; exercise task-eligibility/resumption and P21 bypass.",
+  "initial_attempt": {
+    "status": "HARNESS_ASSERTION_FAILED",
+    "detail": "The throwaway smoke supplied Gxx gate labels; the source task graph requires Pxx phase IDs. Corrected the smoke inputs, not the source or persisted ledger, and resumed at the failed assertion."
+  },
+  "result": {
+    "executed": true,
+    "exit_code": 0,
+    "assertions": [
+      "All 25 phases, 117 tasks and 40 acceptance cases retained.",
+      "Every source phase/task action, verification criterion, dependency, gate and rollback contract preserved exactly except recorded baseline/status corrections.",
+      "Acceptance contracts preserved without claiming unexecuted evidence.",
+      "Integration base consistently pins observed local/remote green V4.1 SHA.",
+      "Selected CI belongs to the observed successful current-head run.",
+      "Release image is the exact full immutable digest from GitHub, not a truncated or mutable tag.",
+      "P21 stays owner-deferred with no invented website implementation tasks.",
+      "Deferred website cannot block P22 or any other phase.",
+      "Task IDs are unique and dependency targets all exist.",
+      "Fresh resume exposes only V5-00-01; later foundations/runtime work cannot bypass prerequisites.",
+      "After baseline completion, the next executable gate is live operations/recovery inventory, not branch or distributed implementation.",
+      "Program can advance from accepted native phase to P22 without a website gate (source gate labels are phase IDs Pxx).",
+      "Setup makes no false completed-task/phase claims.",
+      "Shipped auth behavior and do-not-rerun known-failure instructions survive persisted resumption.",
+      "No runtime/ref/data-relocation operation is represented as performed.",
+      "Original input preserved: AGENT-GOAL.md.",
+      "Original input preserved: Mega-XO-V5-Implementation-Pack/tasks.json.",
+      "Original input preserved: Mega-XO-V5-Implementation-Pack/acceptance.json.",
+      "Original input preserved: Mega-XO-V5-Implementation-Pack/SHA256SUMS.",
+      "Readable checklist exposes every task exactly once and in source order."
+    ],
+    "initial_eligible_tasks": [
+      "V5-00-01"
+    ],
+    "eligible_after_baseline_completion": [
+      "V5-00-02"
+    ],
+    "eligible_after_native_acceptance": [
+      "V5-22-01"
+    ]
+  },
+  "not_claimed": [
+    "V5 phase completion",
+    "application test rerun",
+    "live restore/device/provider/production acceptance"
+  ]
+}

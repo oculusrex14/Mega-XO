@@ -1,0 +1,230 @@
+{
+  "schema_version": 1,
+  "status": "TEMPLATE_NOT_VERIFIED",
+  "environments": [
+    {
+      "name": "local",
+      "source_sha": null,
+      "durable_authority": null,
+      "writer_admission": "disabled-until-verified",
+      "vercel": {
+        "team_id": null,
+        "project_id": null,
+        "deployment_id": null,
+        "function_region": null,
+        "public_hosts": []
+      },
+      "neon": {
+        "org_id": null,
+        "project_id": null,
+        "branch_id": null,
+        "database": null,
+        "endpoint_id": null,
+        "region": null,
+        "postgres_version": null,
+        "plan_capabilities_verified": false,
+        "restore_history": null,
+        "scale_to_zero": null
+      },
+      "redis": {
+        "provider": null,
+        "resource_id": null,
+        "region": null,
+        "namespace": null,
+        "command_compatibility_evidence": null
+      },
+      "oracle": {
+        "ssh_alias": null,
+        "root": null,
+        "compose_project": null,
+        "core_instances": [],
+        "worker_instances": [],
+        "public_ingress_owner": null,
+        "private_admin_ports": [],
+        "failure_domains": []
+      },
+      "r2": {
+        "bucket_id": null,
+        "repository_prefix": null,
+        "encryption_key_custody_reference": null,
+        "last_restore_evidence": null
+      },
+      "credentials": {
+        "secret_references_only": [],
+        "runtime_roles": []
+      },
+      "resource_caps": {},
+      "monthly_cost_estimate": null,
+      "measured_rtt": {},
+      "evidence": []
+    },
+    {
+      "name": "preview",
+      "source_sha": null,
+      "durable_authority": null,
+      "writer_admission": "disabled-until-verified",
+      "vercel": {
+        "team_id": null,
+        "project_id": null,
+        "deployment_id": null,
+        "function_region": null,
+        "public_hosts": []
+      },
+      "neon": {
+        "org_id": null,
+        "project_id": null,
+        "branch_id": null,
+        "database": null,
+        "endpoint_id": null,
+        "region": null,
+        "postgres_version": null,
+        "plan_capabilities_verified": false,
+        "restore_history": null,
+        "scale_to_zero": null
+      },
+      "redis": {
+        "provider": null,
+        "resource_id": null,
+        "region": null,
+        "namespace": null,
+        "command_compatibility_evidence": null
+      },
+      "oracle": {
+        "ssh_alias": null,
+        "root": null,
+        "compose_project": null,
+        "core_instances": [],
+        "worker_instances": [],
+        "public_ingress_owner": null,
+        "private_admin_ports": [],
+        "failure_domains": []
+      },
+      "r2": {
+        "bucket_id": null,
+        "repository_prefix": null,
+        "encryption_key_custody_reference": null,
+        "last_restore_evidence": null
+      },
+      "credentials": {
+        "secret_references_only": [],
+        "runtime_roles": []
+      },
+      "resource_caps": {},
+      "monthly_cost_estimate": null,
+      "measured_rtt": {},
+      "evidence": []
+    },
+    {
+      "name": "staging",
+      "source_sha": null,
+      "durable_authority": null,
+      "writer_admission": "disabled-until-verified",
+      "vercel": {
+        "team_id": null,
+        "project_id": null,
+        "deployment_id": null,
+        "function_region": null,
+        "public_hosts": []
+      },
+      "neon": {
+        "org_id": null,
+        "project_id": null,
+        "branch_id": null,
+        "database": null,
+        "endpoint_id": null,
+        "region": null,
+        "postgres_version": null,
+        "plan_capabilities_verified": false,
+        "restore_history": null,
+        "scale_to_zero": null
+      },
+      "redis": {
+        "provider": null,
+        "resource_id": null,
+        "region": null,
+        "namespace": null,
+        "command_compatibility_evidence": null
+      },
+      "oracle": {
+        "ssh_alias": null,
+        "root": null,
+        "compose_project": null,
+        "core_instances": [],
+        "worker_instances": [],
+        "public_ingress_owner": null,
+        "private_admin_ports": [],
+        "failure_domains": []
+      },
+      "r2": {
+        "bucket_id": null,
+        "repository_prefix": null,
+        "encryption_key_custody_reference": null,
+        "last_restore_evidence": null
+      },
+      "credentials": {
+        "secret_references_only": [],
+        "runtime_roles": []
+      },
+      "resource_caps": {},
+      "monthly_cost_estimate": null,
+      "measured_rtt": {},
+      "evidence": []
+    },
+    {
+      "name": "production",
+      "source_sha": null,
+      "durable_authority": null,
+      "writer_admission": "disabled-until-verified",
+      "vercel": {
+        "team_id": null,
+        "project_id": null,
+        "deployment_id": null,
+        "function_region": null,
+        "public_hosts": []
+      },
+      "neon": {
+        "org_id": null,
+        "project_id": null,
+        "branch_id": null,
+        "database": null,
+        "endpoint_id": null,
+        "region": null,
+        "postgres_version": null,
+        "plan_capabilities_verified": false,
+        "restore_history": null,
+        "scale_to_zero": null
+      },
+      "redis": {
+        "provider": null,
+        "resource_id": null,
+        "region": null,
+        "namespace": null,
+        "command_compatibility_evidence": null
+      },
+      "oracle": {
+        "ssh_alias": null,
+        "root": null,
+        "compose_project": null,
+        "core_instances": [],
+        "worker_instances": [],
+        "public_ingress_owner": null,
+        "private_admin_ports": [],
+        "failure_domains": []
+      },
+      "r2": {
+        "bucket_id": null,
+        "repository_prefix": null,
+        "encryption_key_custody_reference": null,
+        "last_restore_evidence": null
+      },
+      "credentials": {
+        "secret_references_only": [],
+        "runtime_roles": []
+      },
+      "resource_caps": {},
+      "monthly_cost_estimate": null,
+      "measured_rtt": {},
+      "evidence": []
+    }
+  ]
+}

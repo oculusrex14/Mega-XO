@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "source_files": [
+    {
+      "path": "sources/HANDOFF-V5.md",
+      "bytes": 13254,
+      "sha256": "10c76a361c1e59ac175ccf3efeeda2ac16644668f7ad81b77d9b6455063b2776",
+      "origin": "User attachment; unmodified"
+    },
+    {
+      "path": "sources/NewArchitecture.md",
+      "bytes": 43415,
+      "sha256": "9fe442acc1f9cab358bfd2b6d1c61375e5cf8a821a9ae4025b5c950413ba0776",
+      "origin": "User attachment; unmodified"
+    }
+  ]
+}

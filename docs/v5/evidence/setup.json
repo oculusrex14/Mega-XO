@@ -1,0 +1,156 @@
+{
+  "schema_version": 1,
+  "status": "OBSERVED_SETUP_EVIDENCE",
+  "task_id": "V5-00-01",
+  "case_ids": [
+    "A02"
+  ],
+  "observed_at_utc": "2026-10-07T18:00:40.127726+00:00",
+  "source_sha": "455b8ec9ea4070b4410d78f9eea2aaa06d32c0b2",
+  "environment": "local checkout and authenticated GitHub read-only APIs",
+  "commands": [
+    {
+      "command": "git status --short --branch && git log -6 --format='%h %s' && git branch --list && git tag --list 'v4.1*'",
+      "result": "V4.1 at 455b8ec; only five owner-carried untracked path groups; no V5 local branch; v4.1.2 tag exists."
+    },
+    {
+      "command": "gh repo view --json nameWithOwner,defaultBranchRef",
+      "result": {
+        "nameWithOwner": "oculusrex14/Mega-XO",
+        "defaultBranchRef": {
+          "name": "main"
+        }
+      }
+    },
+    {
+      "command": "gh api repos/oculusrex14/Mega-XO/branches/V4.1 --jq '{name,sha:.commit.sha}'",
+      "result": {
+        "name": "V4.1",
+        "sha": "455b8ec9ea4070b4410d78f9eea2aaa06d32c0b2"
+      }
+    },
+    {
+      "command": "gh run list --branch V4.1 --limit 6 --json databaseId,headSha,name,status,conclusion,url",
+      "result": {
+        "selected_head_run_id": 37658524961,
+        "headSha": "455b8ec9ea4070b4410d78f9eea2aaa06d32c0b2",
+        "status": "completed",
+        "conclusion": "success",
+        "release_run_id": 37656024767,
+        "release_run_conclusion": "success"
+      }
+    },
+    {
+      "command": "git rev-parse HEAD 'v4.1.2^{commit}' && git ls-remote --heads origin V5-platform V4.1",
+      "result": {
+        "head_sha": "455b8ec9ea4070b4410d78f9eea2aaa06d32c0b2",
+        "peeled_tag_sha": "f1e5577d42809fc3da889ba76b87ca6c87e68575",
+        "remote_v41_sha": "455b8ec9ea4070b4410d78f9eea2aaa06d32c0b2",
+        "v5_remote_branch_present": false
+      }
+    },
+    {
+      "command": "gh release view v4.1.2 --repo oculusrex14/Mega-XO --json tagName,targetCommitish,url,body,assets",
+      "result": {
+        "tagName": "v4.1.2",
+        "targetCommitish": "main",
+        "url": "https://github.com/oculusrex14/Mega-XO/releases/tag/v4.1.2",
+        "body_explicit_git_sha": "f1e5577d42809fc3da889ba76b87ca6c87e68575",
+        "image": "ghcr.io/oculusrex14/mega-xo@sha256:71d33a1a9893a303c5ffcbdb090caefde22d9e7e054a8c2d6c494a44919b58e4",
+        "assets": []
+      }
+    },
+    {
+      "command": "git rev-parse 79e56d6",
+      "result": "79e56d6896ec372ddd585499475a045b3595f458"
+    },
+    {
+      "command": "gh api repos/oculusrex14/Mega-XO/actions/runs/37656024767/artifacts --jq '{artifacts:[.artifacts[]|{id,name,expired}]}'",
+      "result": {
+        "artifacts": [
+          {
+            "id": 11498975532,
+            "name": "v4-validation",
+            "expired": false
+          }
+        ]
+      }
+    },
+    {
+      "command": "df -h / /Volumes /Volumes/T9 && node --version && python3 --version",
+      "result": {
+        "local_available_gib": 22,
+        "local_data_used_percent": 90,
+        "t9_mount": "/Volumes/T9",
+        "t9_available_gib": 858,
+        "t9_used_percent": 54,
+        "node": "v26.8.2",
+        "python": "3.14.4"
+      }
+    },
+    {
+      "command": "python3 tools/validate-pack.py .",
+      "cwd": "Mega-XO-V5-Implementation-Pack",
+      "exit_code": 0,
+      "result": {
+        "ok": true,
+        "errors": [],
+        "files": 65,
+        "phases": 25,
+        "tasks": 117,
+        "acceptance_cases": 40,
+        "relative_links_checked": 210,
+        "checksums_verified": 64,
+        "source_integrity_checked": true,
+        "mode": "full"
+      }
+    }
+  ],
+  "owner_report": {
+    "accepted_as_ground_truth": true,
+    "release_tag": "v4.1.2",
+    "fix": "Auth state/banner and cleared poller for LINK_ACCOUNT_REQUIRED",
+    "tdd": "Failing-first tests/static-ui.test.js, two-line fix, reported 340/342; named pre-existing unrelated opsz backup-freshness failure on clean tree.",
+    "deployment_chain": [
+      "CI green",
+      "gate approved:true",
+      "v4.1.2 tag",
+      "multi-arch immutable GHCR image",
+      "verify-release.sh PASS",
+      "/opt/mega-xo digest release with pre-deploy snapshot",
+      "/, /livez, /opsz all 200 and strings live",
+      "455b8ec ledger"
+    ],
+    "freshly_executed_by_setup": false
+  },
+  "result": {
+    "executed": true,
+    "assertions": [
+      "Pinned latest green V4.1 integration source base.",
+      "Resolved full immutable release image without exposing secrets.",
+      "Preserved original input files and local work.",
+      "No code, Git refs or provider/runtime configuration changed."
+    ],
+    "implementation_phase_pass_claimed": false
+  },
+  "artifacts": [
+    "docs/v5/progress.json",
+    "docs/v5/TODO.md",
+    "AGENTS.md"
+  ],
+  "source_sha256": {
+    "AGENT-GOAL.md": "fe494d68c8a4d9fb396adb5918f6aeb666904d873f49a87f3c514f623b643ef2",
+    "Mega-XO-V5-Implementation-Pack/tasks.json": "41345cc1382368b293ae5de3312fabb02c189b37b7f7a1d234324244039fee2c",
+    "Mega-XO-V5-Implementation-Pack/acceptance.json": "6d933ee964afeed96b46aa4ab5dadf9bdeed6f028d5aa37bba518faa731ab51c",
+    "Mega-XO-V5-Implementation-Pack/SHA256SUMS": "275323455c2e2217e9bf2d5c837faf5904a6cf929c95d6543f29375902db35ed"
+  },
+  "unobserved": [
+    "running production image inspection",
+    "installed deployment-script revision",
+    "new backup retrieval/independent restore",
+    "provider/native toolchain/device/approval inventory",
+    "DGX access target and capacity"
+  ],
+  "restricted_evidence_location": null,
+  "sanitized_summary": "Setup-only evidence; full V5 implementation remains gated and uncompleted."
+}

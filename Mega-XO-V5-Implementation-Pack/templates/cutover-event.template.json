@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "status": "TEMPLATE_NOT_EXECUTED",
+  "cutover_id": null,
+  "event_utc": null,
+  "state": null,
+  "allowed_states": [
+    "PREPARED",
+    "DRAINING",
+    "FROZEN",
+    "IMPORTED_AND_VERIFIED",
+    "ARMED",
+    "V5_AUTHORITY",
+    "ACCEPTED",
+    "ABORTED_BEFORE_APPLICATION_WRITE",
+    "RECOVERING_WITH_POSTGRES"
+  ],
+  "source_sha": null,
+  "source_snapshot_hash": null,
+  "target_id": null,
+  "active_writer_authority": null,
+  "old_writer_fenced": false,
+  "post_import_application_write_accepted": false,
+  "first_application_write_reference": null,
+  "read_only_checks": [],
+  "gate_evidence": [],
+  "rollback_class": null,
+  "operator_or_agent_reference": null,
+  "notes": null
+}

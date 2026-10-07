@@ -1,0 +1,58 @@
+{
+  "schema_version": 1,
+  "status": "VERIFIED_LIVE_V4_BASELINE_RECOVERY",
+  "task_ids": ["V5-00-01", "V5-00-02"],
+  "case_ids": ["A02", "A03"],
+  "source_sha": "455b8ec9ea4070b4410d78f9eea2aaa06d32c0b2",
+  "environment": "Oracle production inspection over verified Tailscale SSH alias command; isolated restored target only",
+  "observations": {
+    "running_app": {"image": "ghcr.io/oculusrex14/mega-xo@sha256:71d33a1a9893a303c5ffcbdb090caefde22d9e7e054a8c2d6c494a44919b58e4", "revision": "f1e5577d42809fc3da889ba76b87ca6c87e68575", "healthy": true},
+    "running_backup": {"image": "ghcr.io/oculusrex14/mega-xo@sha256:225b93ccf8718e9fa4484cdcd920604a1535d86f35c6dfec9eae11777bd3df4f", "revision": "f31618d1fd3d7cb3d82b9ad90f4c689ebe36248e", "note": "Older immutable backup image remains running; verified repository/read/restore compatibility, not assumed identical to app."},
+    "recorded_current_image_matches_app": true,
+    "livez_ok": true,
+    "opsz_ok": true,
+    "monitor_timers": {"mega-xo-health.timer": "active", "mega-xo-db-integrity.timer": "active"},
+    "sole_public_ingress": "mega-xo-production-edge-1 owns host TCP 80/443",
+    "loopback_admin": "127.0.0.1:9091",
+    "cohosted_services_preserved": ["chrome-webui", "buildx_buildkit_multiarch0"],
+    "production_disk_available_kib": 121397184,
+    "installed_compose": "/tmp/mega-release-f1e5577/deploy/compose.yaml",
+    "installed_deployment_files": [
+      {"file": "release.sh", "sha256": "babfe511516cafdea1ad9995071b9b4a29783d03478d925680e95461a6f4318c", "matches_checkout": true},
+      {"file": "enable-backups.sh", "sha256": "223269d3b7d13a5e2798a4ac5193b795e23caa49673f5068ad68f87256c545dd", "matches_checkout": true},
+      {"file": "compose.yaml", "sha256": "cf92da6613505b49897031f10c7a16853de7348d6d72dfd282f08008b9983cab", "matches_checkout": true},
+      {"file": "Caddyfile", "sha256": "6205af3dbf18783beb8f38e9223838fd45fab702cc5e7c53cff9f6879fb1ba1d", "matches_checkout": true}
+    ]
+  },
+  "recovery": {
+    "snapshot_id": "f884e43b",
+    "snapshot_completed_at_unix_ms": 1791396602150,
+    "manifest_created_at_unix_ms": 1791396595015,
+    "bytes": 471040,
+    "sha256": "d2f8461b3c03a47a56512f91b93875ba4114d0815985a26628c0e75b8efd253a",
+    "restic_repository_check": "PASS",
+    "exact_r2_snapshot_retrieval_and_manifest_verification": "PASS",
+    "isolated_restore": "PASS",
+    "restored_file_hash_matches_retrieved_manifest": true,
+    "restored_integrity_and_schema_count": 8,
+    "temporary_isolated_restore_target_removed": true,
+    "production_database_untouched": true,
+    "existing_restic_repository_not_initialized": true,
+    "historical_conflict_resolution": "Earlier HANDOFF backup failure is historical and superseded by current healthy ops status plus successful repository check, exact encrypted retrieval and isolated restoration. No present defect was observed or hidden."
+  },
+  "commands": [
+    "ssh command: uname, filtered docker ps/inspect metadata, monitor timer state, ss listeners, df",
+    "read https://play.antimatterinnovations.com/livez and /opsz",
+    "ssh command: sudo docker exec mega-xo-production-backup-1 node scripts/backup-run.js check",
+    "ssh command: sudo docker exec mega-xo-production-backup-1 node scripts/backup-run.js retrieve f884e43b",
+    "ssh command: node backup.verify(source), backup.restore(source, isolated target, confirm:true), restored digest/schema check, remove only owned temporary isolated target",
+    "ssh command: sha256sum installed deployment files; compare local corresponding hashes"
+  ],
+  "attempted_path_resolution": [
+    {"action": "SSH URI reads of current-image/last-success", "result": "Permission denied; read the two nonsecret metadata files through existing sudo -n access instead."},
+    {"action": "Assumed /opt/mega-xo/deploy script hashes", "result": "No such file; resolved actual installed config location from filtered Compose labels to /tmp/mega-release-f1e5577/deploy."}
+  ],
+  "remaining_evidence": ["actual provider monitor/package visibility inventory", "provider/native environment inventory and complete UI/rule/ownership baseline"],
+  "not_claimed": ["new PostgreSQL restore acceptance", "V5 migration/cutover", "host redundancy", "native/device/store approval"],
+  "secrets_or_player_records_published": false
+}

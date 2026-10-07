@@ -1,0 +1,27 @@
+[
+  {
+    "url": "https://play.antimatterinnovations.com/",
+    "at_utc": "2026-10-07T16:35:21.218938+00:00",
+    "error": "HTTPSConnectionPool(host='play.antimatterinnovations.com', port=443): Max retries exceeded with url: / (Caused by NameResolutionError(\"HTTPSConnection(host='play.antimatterinnovations.com', port=443): Failed to resolve 'play.antimatterinnovations.com' ([Errno -3] Temporary failure in name resolution)\"))"
+  },
+  {
+    "url": "https://play.antimatterinnovations.com/livez",
+    "at_utc": "2026-10-07T16:35:21.219558+00:00",
+    "error": "HTTPSConnectionPool(host='play.antimatterinnovations.com', port=443): Max retries exceeded with url: /livez (Caused by NameResolutionError(\"HTTPSConnection(host='play.antimatterinnovations.com', port=443): Failed to resolve 'play.antimatterinnovations.com' ([Errno -3] Temporary failure in name resolution)\"))"
+  },
+  {
+    "url": "https://play.antimatterinnovations.com/opsz",
+    "at_utc": "2026-10-07T16:35:21.220318+00:00",
+    "error": "HTTPSConnectionPool(host='play.antimatterinnovations.com', port=443): Max retries exceeded with url: /opsz (Caused by NameResolutionError(\"HTTPSConnection(host='play.antimatterinnovations.com', port=443): Failed to resolve 'play.antimatterinnovations.com' ([Errno -3] Temporary failure in name resolution)\"))"
+  },
+  {
+    "url": "https://play.antimatterinnovations.com/metrics",
+    "at_utc": "2026-10-07T16:35:21.221030+00:00",
+    "error": "HTTPSConnectionPool(host='play.antimatterinnovations.com', port=443): Max retries exceeded with url: /metrics (Caused by NameResolutionError(\"HTTPSConnection(host='play.antimatterinnovations.com', port=443): Failed to resolve 'play.antimatterinnovations.com' ([Errno -3] Temporary failure in name resolution)\"))"
+  },
+  {
+    "url": "https://play.antimatterinnovations.com/server/production/main.js",
+    "at_utc": "2026-10-07T16:35:21.225206+00:00",
+    "error": "HTTPSConnectionPool(host='play.antimatterinnovations.com', port=443): Max retries exceeded with url: /server/production/main.js (Caused by NameResolutionError(\"HTTPSConnection(host='play.antimatterinnovations.com', port=443): Failed to resolve 'play.antimatterinnovations.com' ([Errno -3] Temporary failure in name resolution)\"))"
+  }
+]

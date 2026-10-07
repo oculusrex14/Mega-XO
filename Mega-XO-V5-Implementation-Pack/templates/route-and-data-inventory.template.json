@@ -1,0 +1,38 @@
+{
+  "schema_version": 1,
+  "status": "TEMPLATE_INCOMPLETE",
+  "coverage_complete": false,
+  "routes": [
+    {
+      "method": null,
+      "path": null,
+      "source_file": null,
+      "source_handler": null,
+      "current_auth": null,
+      "current_csrf": null,
+      "side_effects": [],
+      "future_owner": null,
+      "future_route": null,
+      "compatibility_policy": null,
+      "cache_class": null,
+      "operation_identity": null,
+      "timeout_retry_policy": null,
+      "test_ids": []
+    }
+  ],
+  "data": [
+    {
+      "source_table_or_json_path": null,
+      "observed_schema_version": null,
+      "data_owner": null,
+      "meaning": null,
+      "destination": null,
+      "transform": null,
+      "identity_preservation": null,
+      "retention_or_expiry": null,
+      "verification_query_reference": null,
+      "coverage_fixture": null
+    }
+  ],
+  "unclassified_sources": []
+}

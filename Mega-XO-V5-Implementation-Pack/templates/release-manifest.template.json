@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "status": "TEMPLATE_NOT_A_RELEASE",
+  "release_version": null,
+  "branch": "V5-platform",
+  "source_sha": null,
+  "created_at_utc": null,
+  "services": {
+    "api": {
+      "deployment_id": null,
+      "production_build": false,
+      "commit": null
+    },
+    "core": {
+      "image_digest": null,
+      "architecture": null
+    },
+    "worker": {
+      "image_digest": null,
+      "architecture": null
+    }
+  },
+  "native": {
+    "android": {
+      "package_id": null,
+      "version_name": null,
+      "version_code": null,
+      "aab_sha256": null,
+      "distribution_id": null
+    },
+    "ios": {
+      "bundle_id": null,
+      "version": null,
+      "build_number": null,
+      "archive_sha256": null,
+      "ipa_sha256": null,
+      "testflight_id": null
+    }
+  },
+  "client_asset_manifest_sha256": null,
+  "schema_versions": [],
+  "protocol_versions": [],
+  "configuration_fingerprint": null,
+  "target_inventory_reference": null,
+  "migration": {
+    "run_id": null,
+    "source_snapshot_sha256": null,
+    "target_id": null,
+    "reconciliation_reference": null,
+    "unexplained_difference_count": null
+  },
+  "authority": {
+    "epoch": null,
+    "previous_writer_fenced": false,
+    "first_post_import_application_write_at": null
+  },
+  "gates": [],
+  "backup_restore_evidence": null,
+  "previous_pg_compatible_release": null,
+  "provider_status": {},
+  "residual_items": [],
+  "scope_exclusions": [
+    "New megaxo.online website/browser product (Phase 21)"
+  ]
+}

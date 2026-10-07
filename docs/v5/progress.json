@@ -1,0 +1,2876 @@
+{
+  "schema_version": 1,
+  "updated_at_utc": "2026-10-07T18:00:40.127726+00:00",
+  "goal": "Deliver the V5 hybrid platform and real Android/iOS applications with shared permanent actor/assets, preserved approved game and retained browser compatibility; do not build the new website/browser product.",
+  "source": {
+    "goal": "AGENT-GOAL.md",
+    "pack": "Mega-XO-V5-Implementation-Pack",
+    "task_graph": "Mega-XO-V5-Implementation-Pack/tasks.json",
+    "phase_index": "Mega-XO-V5-Implementation-Pack/phases/INDEX.md",
+    "acceptance": "Mega-XO-V5-Implementation-Pack/acceptance.json",
+    "historical_baseline_sha": "8a77d3f4eb95e363fb967efe9b01f814a703dbae",
+    "sha256": {
+      "AGENT-GOAL.md": "fe494d68c8a4d9fb396adb5918f6aeb666904d873f49a87f3c514f623b643ef2",
+      "Mega-XO-V5-Implementation-Pack/tasks.json": "41345cc1382368b293ae5de3312fabb02c189b37b7f7a1d234324244039fee2c",
+      "Mega-XO-V5-Implementation-Pack/acceptance.json": "6d933ee964afeed96b46aa4ab5dadf9bdeed6f028d5aa37bba518faa731ab51c",
+      "Mega-XO-V5-Implementation-Pack/SHA256SUMS": "275323455c2e2217e9bf2d5c837faf5904a6cf929c95d6543f29375902db35ed"
+    },
+    "input_pack_validation": {
+      "ok": true,
+      "phases": 25,
+      "tasks": 117,
+      "acceptance_cases": 40,
+      "checksums_verified": 64,
+      "source_integrity_checked": true
+    }
+  },
+  "baseline": {
+    "selected_sha": "455b8ec9ea4070b4410d78f9eea2aaa06d32c0b2",
+    "selected_branch": "V4.1",
+    "local_sha": "455b8ec9ea4070b4410d78f9eea2aaa06d32c0b2",
+    "remote_sha": "455b8ec9ea4070b4410d78f9eea2aaa06d32c0b2",
+    "ci": {
+      "run_id": 37658524961,
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/oculusrex14/Mega-XO/actions/runs/37658524961"
+    },
+    "fix_sha": "79e56d6896ec372ddd585499475a045b3595f458",
+    "release_tag": "v4.1.2",
+    "release_application_sha": "f1e5577d42809fc3da889ba76b87ca6c87e68575",
+    "release_image": "ghcr.io/oculusrex14/mega-xo@sha256:71d33a1a9893a303c5ffcbdb090caefde22d9e7e054a8c2d6c494a44919b58e4",
+    "release_url": "https://github.com/oculusrex14/Mega-XO/releases/tag/v4.1.2",
+    "release_metadata_evidence": "OBSERVED_GITHUB_RELEASE_AND_PEELED_LOCAL_TAG",
+    "deployment_evidence": "OWNER_REPORTED_AND_NOW_DIRECTLY_VERIFIED_ORACLE_IMAGE_LIVEZ_OPSZ",
+    "installed_script_revision": "/tmp/mega-release-f1e5577/deploy",
+    "installed_script_revision_status": "FOUR_INSTALLED_FILES_HASH_MATCH_SELECTED_CHECKOUT"
+  },
+  "current": {
+    "phase": "P00",
+    "active_task": "V5-00-03",
+    "next_action": "V5-platform created from the pinned green base; preserve/add original goal and pack at the initial verified checkpoint, then complete route/data ownership baseline.",
+    "checkout_branch_at_setup": "V4.1",
+    "integration_branch": "V5-platform",
+    "integration_branch_exists_at_setup": false,
+    "last_v5_commit": null,
+    "last_pushed_v5_commit": null,
+    "completed_task_ids": ["V5-00-01", "V5-00-02"],
+    "passed_phase_gates": []
+  },
+  "program": {
+    "schema_version": 1,
+    "project": "Mega XO",
+    "prepared_date": "2026-10-07",
+    "baseline_sha": "455b8ec9ea4070b4410d78f9eea2aaa06d32c0b2",
+    "integration_branch": "V5-platform",
+    "scope": "Implementation and deployment plan; no V5 tasks were executed by preparation of this package.",
+    "status_vocabulary": [
+      "PLANNED",
+      "IN_PROGRESS",
+      "IMPLEMENTED",
+      "TESTED_LOCAL",
+      "VERIFIED_STAGING",
+      "DEVICE_VERIFIED",
+      "SUBMITTED",
+      "PROVIDER_APPROVED",
+      "PRODUCTION_ENABLED",
+      "COMPLETE",
+      "EVIDENCE_GAP",
+      "DEFERRED_BY_OWNER",
+      "NOT_TRIGGERED"
+    ],
+    "phase_gate_policy": "Phase prerequisites are gates, not status assumptions. Tasks are ordered within phase; independent work may be parallelized only with contract/integration ownership. P21 is intentionally not a P22 dependency.",
+    "phases": [
+      {
+        "id": "P00",
+        "number": 0,
+        "slug": "baseline-and-architecture",
+        "title": "Freeze baseline, scope and ownership",
+        "milestone": "V5.0",
+        "depends_on": [],
+        "specs": [
+          4,
+          6
+        ],
+        "deliverables": [
+          "docs/v5/BASELINE.md",
+          "docs/v5/ARCHITECTURE.md",
+          "docs/v5/PROGRESS.md",
+          "docs/v5/DECISIONS.md",
+          "docs/v5/OPEN-ITEMS.md",
+          "V5 branch CI trigger"
+        ],
+        "exit_gate": "G00: exact green baseline, scope freeze, environment inventory and initial CI exist; contradictory runtime claims have an evidence-based resolution or precisely scoped gap. No production data migration starts with unproven recovery.",
+        "rollback": "Only documentation, branch and nonproduction validation change. Any necessary operational repair has its own reversible runbook; V4 remains the live authority.",
+        "execution_mode": "EXECUTE",
+        "file": "phases/00-baseline-and-architecture.md",
+        "task_ids": [
+          "V5-00-01",
+          "V5-00-02",
+          "V5-00-03",
+          "V5-00-04",
+          "V5-00-05",
+          "V5-00-06"
+        ],
+        "status": "IN_PROGRESS"
+      },
+      {
+        "id": "P01",
+        "number": 1,
+        "slug": "service-boundaries",
+        "title": "Extract clean service and repository boundaries",
+        "milestone": "V5.0",
+        "depends_on": [
+          "P00"
+        ],
+        "specs": [
+          1,
+          2,
+          3
+        ],
+        "deliverables": [
+          "packages/domain",
+          "packages/contracts",
+          "repository and unit-of-work interfaces",
+          "legacy adapter compatibility tests"
+        ],
+        "exit_gate": "G01: existing UI and game behavior remain equivalent; pure domain and contract tests run independently of HTTP/SQLite; a transaction can span multiple repository operations.",
+        "rollback": "Retain the legacy adapter and compatibility shims; avoid a mass file move. Revert isolated extraction commits if parity fails.",
+        "execution_mode": "EXECUTE",
+        "file": "phases/01-service-boundaries.md",
+        "task_ids": [
+          "V5-01-01",
+          "V5-01-02",
+          "V5-01-03",
+          "V5-01-04",
+          "V5-01-05"
+        ],
+        "status": "PLANNED"
+      },
+      {
+        "id": "P02",
+        "number": 2,
+        "slug": "neon-and-schema",
+        "title": "Provision Neon and versioned PostgreSQL schema",
+        "milestone": "V5.0",
+        "depends_on": [
+          "P01"
+        ],
+        "specs": [
+          1,
+          4,
+          6
+        ],
+        "deliverables": [
+          "Neon production/staging/dev inventory",
+          "packages/db/migrations",
+          "database roles and connection policy",
+          "disposable PostgreSQL integration harness"
+        ],
+        "exit_gate": "G02: schema builds from zero solely through migrations; environments/roles are isolated; actual plan, TLS, region, pool and recovery settings are evidenced.",
+        "rollback": "Only new empty/nonserving resources are affected. Do not drop existing provider objects automatically; keep V4 production unchanged.",
+        "execution_mode": "EXECUTE",
+        "file": "phases/02-neon-and-schema.md",
+        "task_ids": [
+          "V5-02-01",
+          "V5-02-02",
+          "V5-02-03",
+          "V5-02-04",
+          "V5-02-05"
+        ],
+        "status": "PLANNED"
+      },
+      {
+        "id": "P03",
+        "number": 3,
+        "slug": "sqlite-import-and-reconciliation",
+        "title": "Build deterministic SQLite import and proof",
+        "milestone": "V5.0",
+        "depends_on": [
+          "P02"
+        ],
+        "specs": [
+          1,
+          7
+        ],
+        "deliverables": [
+          "source-to-target inventory",
+          "versioned importer",
+          "reconciler and difference reports",
+          "migration manifest",
+          "interruption/rerun fixtures"
+        ],
+        "exit_gate": "G03: representative V4 snapshots import with zero unexplained per-actor/data differences; reruns and interruption recovery preserve identical canonical state and all financial/identity invariants.",
+        "rollback": "Operate only on source copies and nonserving targets. Preserve immutable source snapshot; reset only explicitly identified disposable targets.",
+        "execution_mode": "EXECUTE",
+        "file": "phases/03-sqlite-import-and-reconciliation.md",
+        "task_ids": [
+          "V5-03-01",
+          "V5-03-02",
+          "V5-03-03",
+          "V5-03-04",
+          "V5-03-05",
+          "V5-03-06"
+        ],
+        "status": "PLANNED"
+      },
+      {
+        "id": "P04",
+        "number": 4,
+        "slug": "postgresql-runtime",
+        "title": "Replace production persistence with PostgreSQL adapters",
+        "milestone": "V5.1",
+        "depends_on": [
+          "P03"
+        ],
+        "specs": [
+          1,
+          3
+        ],
+        "deliverables": [
+          "PostgreSQL repositories",
+          "Core command transaction boundary",
+          "PG-backed account/social/store services",
+          "legacy-vs-PG parity suite"
+        ],
+        "exit_gate": "G04: the V5 production path has no SQLite dependency; concurrent spends/settlements/payouts and rollback tests pass with approved behavior.",
+        "rollback": "V4 stays live. Switch only isolated V5 targets; retain schema-compatible app fallback and additive migrations.",
+        "execution_mode": "EXECUTE",
+        "file": "phases/04-postgresql-runtime.md",
+        "task_ids": [
+          "V5-04-01",
+          "V5-04-02",
+          "V5-04-03",
+          "V5-04-04",
+          "V5-04-05"
+        ],
+        "status": "PLANNED"
+      },
+      {
+        "id": "P05",
+        "number": 5,
+        "slug": "cross-platform-identity",
+        "title": "Implement actor-centric sessions and credential lifecycle",
+        "milestone": "V5.2",
+        "depends_on": [
+          "P04"
+        ],
+        "specs": [
+          2,
+          6
+        ],
+        "deliverables": [
+          "asymmetric token/JWKS service",
+          "rotating refresh repository",
+          "browser/native auth adapters",
+          "one-use realtime ticket service",
+          "session migration decision"
+        ],
+        "exit_gate": "G05: browser-style, Android-style and iOS-style clients resolve to the same permanent actor; refresh, revocation, provider linking and ticket replay tests pass.",
+        "rollback": "Keep V4 sessions untouched in live production; stage the new credential system with isolated keys. Compatibility adapters must be versioned before activation.",
+        "execution_mode": "EXECUTE",
+        "file": "phases/05-cross-platform-identity.md",
+        "task_ids": [
+          "V5-05-01",
+          "V5-05-02",
+          "V5-05-03",
+          "V5-05-04",
+          "V5-05-05",
+          "V5-05-06"
+        ],
+        "status": "PLANNED"
+      },
+      {
+        "id": "P06",
+        "number": 6,
+        "slug": "managed-redis",
+        "title": "Introduce managed ephemeral coordination",
+        "milestone": "V5.3",
+        "depends_on": [
+          "P05"
+        ],
+        "specs": [
+          3,
+          4
+        ],
+        "deliverables": [
+          "managed Redis environment inventory",
+          "packages/redis adapter",
+          "key/TTL/limits contract",
+          "loss/degradation tests"
+        ],
+        "exit_gate": "G06: Redis loss is temporary disruption only; all player assets/results/identity remain durable and queues/caches recover.",
+        "rollback": "V5 staging alone changes; disable/rebuild ephemera without database rollback. Managed service removal never deletes durable player state.",
+        "execution_mode": "EXECUTE",
+        "file": "phases/06-managed-redis.md",
+        "task_ids": [
+          "V5-06-01",
+          "V5-06-02",
+          "V5-06-03",
+          "V5-06-04"
+        ],
+        "status": "PLANNED"
+      },
+      {
+        "id": "P07",
+        "number": 7,
+        "slug": "distributed-matchmaking",
+        "title": "Make matchmaking safe across multiple processes",
+        "milestone": "V5.3",
+        "depends_on": [
+          "P06"
+        ],
+        "specs": [
+          3
+        ],
+        "deliverables": [
+          "distributed queue adapter",
+          "durable occupancy/assignment constraints",
+          "matcher recovery tests"
+        ],
+        "exit_gate": "G07: multiple matchers cannot double-assign, double-charge or lose committed entrants; current matching and charge timing remain unchanged.",
+        "rollback": "Stop new V5 matcher work and rebuild ephemeral queues from durable assignments. Never refund/recharge automatically without the existing transaction policy.",
+        "execution_mode": "EXECUTE",
+        "file": "phases/07-distributed-matchmaking.md",
+        "task_ids": [
+          "V5-07-01",
+          "V5-07-02",
+          "V5-07-03",
+          "V5-07-04"
+        ],
+        "status": "PLANNED"
+      },
+      {
+        "id": "P08",
+        "number": 8,
+        "slug": "durable-realtime-core",
+        "title": "Deploy revision-based durable realtime Game Core",
+        "milestone": "V5.4",
+        "depends_on": [
+          "P07"
+        ],
+        "specs": [
+          2,
+          3,
+          4
+        ],
+        "deliverables": [
+          "apps/game-core realtime service",
+          "durable command/deadline/outbox implementation",
+          "HTTP fallback",
+          "reconnect/load tests"
+        ],
+        "exit_gate": "G08: acknowledged moves survive process death and resume from committed state on another process; no reset deadline, duplicate effect or split match.",
+        "rollback": "Drain staging sockets and deploy a schema-compatible previous Core. Database state is retained; no restart-void fallback for valid durable matches.",
+        "execution_mode": "EXECUTE",
+        "file": "phases/08-durable-realtime-core.md",
+        "task_ids": [
+          "V5-08-01",
+          "V5-08-02",
+          "V5-08-03",
+          "V5-08-04",
+          "V5-08-05"
+        ],
+        "status": "PLANNED"
+      },
+      {
+        "id": "P09",
+        "number": 9,
+        "slug": "durable-tournaments",
+        "title": "Make tournament and lobby execution durable",
+        "milestone": "V5.4",
+        "depends_on": [
+          "P08"
+        ],
+        "specs": [
+          1,
+          3
+        ],
+        "deliverables": [
+          "transactional tournament repositories",
+          "fixture/timer claim processing",
+          "exactly-once-effect settlement tests"
+        ],
+        "exit_gate": "G09: crash/concurrent workers cannot double-pay, double-refund or lose escrow; approved tournament and private lobby behavior remains.",
+        "rollback": "Pause/drain processing without changing player outcomes, deploy compatible code and resume fenced work from PostgreSQL.",
+        "execution_mode": "EXECUTE",
+        "file": "phases/09-durable-tournaments.md",
+        "task_ids": [
+          "V5-09-01",
+          "V5-09-02",
+          "V5-09-03",
+          "V5-09-04",
+          "V5-09-05"
+        ],
+        "status": "PLANNED"
+      },
+      {
+        "id": "P10",
+        "number": 10,
+        "slug": "durable-workers",
+        "title": "Extract reliable jobs, notifications and provider retries",
+        "milestone": "V5.4",
+        "depends_on": [
+          "P09"
+        ],
+        "specs": [
+          3,
+          6
+        ],
+        "deliverables": [
+          "apps/worker",
+          "job/outbox tables and producers",
+          "retry/DLQ operator tools",
+          "provider finalization/season tests"
+        ],
+        "exit_gate": "G10: unrelated jobs survive API/Core restarts; at-least-once delivery produces idempotent authorized effects and visible recoverable failures.",
+        "rollback": "Stop worker claims and deploy prior compatible worker; jobs remain in PostgreSQL with recoverable leases/fences.",
+        "execution_mode": "EXECUTE",
+        "file": "phases/10-durable-workers.md",
+        "task_ids": [
+          "V5-10-01",
+          "V5-10-02",
+          "V5-10-03",
+          "V5-10-04",
+          "V5-10-05"
+        ],
+        "status": "PLANNED"
+      },
+      {
+        "id": "P11",
+        "number": 11,
+        "slug": "vercel-control-plane",
+        "title": "Deploy Vercel account and stateless control plane",
+        "milestone": "V5.5",
+        "depends_on": [
+          "P10"
+        ],
+        "specs": [
+          2,
+          4,
+          7
+        ],
+        "deliverables": [
+          "apps/api Vercel project/config",
+          "route ownership manifest",
+          "service-authenticated Core gateway",
+          "retained-browser compatibility facade"
+        ],
+        "exit_gate": "G11: Vercel and Core serve the same staging actors with no overlapping economic authority; old client routes remain compatible.",
+        "rollback": "Roll back only the nonproduction API deployment or a PG-compatible production API. No database rollback accompanies Vercel domain changes.",
+        "execution_mode": "EXECUTE",
+        "file": "phases/11-vercel-control-plane.md",
+        "task_ids": [
+          "V5-11-01",
+          "V5-11-02",
+          "V5-11-03",
+          "V5-11-04",
+          "V5-11-05"
+        ],
+        "status": "PLANNED"
+      },
+      {
+        "id": "P12",
+        "number": 12,
+        "slug": "read-models-and-cache",
+        "title": "Introduce safe read models and caching",
+        "milestone": "V5.5",
+        "depends_on": [
+          "P11"
+        ],
+        "specs": [
+          2,
+          3
+        ],
+        "deliverables": [
+          "versioned read projections",
+          "cache classification/invalidation policy",
+          "privacy/staleness tests"
+        ],
+        "exit_gate": "G12: cache/projection loss affects speed, not correctness; private state is never shared-cached or used stale for economic authorization.",
+        "rollback": "Disable caches and serve correct primary reads; preserve source-of-truth state and rebuild projections.",
+        "execution_mode": "EXECUTE",
+        "file": "phases/12-read-models-and-cache.md",
+        "task_ids": [
+          "V5-12-01",
+          "V5-12-02",
+          "V5-12-03",
+          "V5-12-04"
+        ],
+        "status": "PLANNED"
+      },
+      {
+        "id": "P13",
+        "number": 13,
+        "slug": "service-security",
+        "title": "Harden distributed trust boundaries",
+        "milestone": "V5.5",
+        "depends_on": [
+          "P12"
+        ],
+        "specs": [
+          2,
+          4,
+          6
+        ],
+        "deliverables": [
+          "service credential and replay policy",
+          "database permission tests",
+          "private operator/audit migration",
+          "security acceptance report"
+        ],
+        "exit_gate": "G13: direct/internal/forged/replayed requests cannot bypass player and service authorization; existing security and gameplay decisions do not regress.",
+        "rollback": "Rotate/revoke isolated credentials or deploy prior compatible security code; never disable authority checks to restore service.",
+        "execution_mode": "EXECUTE",
+        "file": "phases/13-service-security.md",
+        "task_ids": [
+          "V5-13-01",
+          "V5-13-02",
+          "V5-13-03",
+          "V5-13-04",
+          "V5-13-05"
+        ],
+        "status": "PLANNED"
+      },
+      {
+        "id": "P14",
+        "number": 14,
+        "slug": "observability",
+        "title": "Unify traces, metrics and alert delivery",
+        "milestone": "V5.5",
+        "depends_on": [
+          "P13"
+        ],
+        "specs": [
+          6
+        ],
+        "deliverables": [
+          "cross-service telemetry",
+          "private operational dashboards",
+          "alert/runbook mappings",
+          "failure/recovery delivery evidence"
+        ],
+        "exit_gate": "G14: one player-safe support ID can be traced across API/Core/DB/worker without exposing secrets; critical failure and recovery alerts actually arrive.",
+        "rollback": "Telemetry failures must not corrupt business transactions; reduce sampling/log volume rather than expose raw data or disable authority checks.",
+        "execution_mode": "EXECUTE",
+        "file": "phases/14-observability.md",
+        "task_ids": [
+          "V5-14-01",
+          "V5-14-02",
+          "V5-14-03",
+          "V5-14-04"
+        ],
+        "status": "PLANNED"
+      },
+      {
+        "id": "P15",
+        "number": 15,
+        "slug": "backup-and-disaster-recovery",
+        "title": "Prove independent backups and disaster recovery",
+        "milestone": "V5.6",
+        "depends_on": [
+          "P14"
+        ],
+        "specs": [
+          1,
+          4,
+          6
+        ],
+        "deliverables": [
+          "Neon restore configuration",
+          "encrypted R2 PostgreSQL backup pipeline",
+          "restore/invariant runner",
+          "RPO/RTO/retention evidence"
+        ],
+        "exit_gate": "G15: independently encrypted material can reconstruct the service data in an isolated PostgreSQL target, including privacy/revocation controls, within measured recovery objectives.",
+        "rollback": "Never overwrite a live database during a drill. Preserve V4 backups and separate V5 prefixes/keys; restore only to a verified isolated target.",
+        "execution_mode": "EXECUTE",
+        "file": "phases/15-backup-and-disaster-recovery.md",
+        "task_ids": [
+          "V5-15-01",
+          "V5-15-02",
+          "V5-15-03",
+          "V5-15-04"
+        ],
+        "status": "PLANNED"
+      },
+      {
+        "id": "P16",
+        "number": 16,
+        "slug": "core-process-failover",
+        "title": "Add Core process redundancy and rolling drain",
+        "milestone": "V5.6",
+        "depends_on": [
+          "P15"
+        ],
+        "specs": [
+          3,
+          4,
+          6
+        ],
+        "deliverables": [
+          "Core A/B deployment",
+          "WebSocket-capable ingress health/drain config",
+          "rolling deployment/failover evidence",
+          "host-HA limitation record"
+        ],
+        "exit_gate": "G16: losing one Core process does not destroy a valid committed match; clients reconnect to the surviving process. Same-host deployment is accurately labeled process HA.",
+        "rollback": "Drain/revert one Core at a time to a compatible image; retain PostgreSQL authority and do not move all traffic to a failed process.",
+        "execution_mode": "EXECUTE",
+        "file": "phases/16-core-process-failover.md",
+        "task_ids": [
+          "V5-16-01",
+          "V5-16-02",
+          "V5-16-03",
+          "V5-16-04"
+        ],
+        "status": "PLANNED"
+      },
+      {
+        "id": "P17",
+        "number": 17,
+        "slug": "independent-ci-cd",
+        "title": "Complete independent component CI/CD and release gates",
+        "milestone": "V5.6",
+        "depends_on": [
+          "P16"
+        ],
+        "specs": [
+          4,
+          6,
+          7
+        ],
+        "deliverables": [
+          "component pipelines",
+          "immutable release manifests",
+          "schema compatibility matrix",
+          "trusted native signing pipelines",
+          "promotion/rollback rehearsal"
+        ],
+        "exit_gate": "G17: API/Core/worker and native artifacts can be built and released independently under schema/protocol compatibility and evidence gates.",
+        "rollback": "Use previous compatible images/deployments, not database downgrade. V4 tags/workflows remain retained; never overwrite an immutable release.",
+        "execution_mode": "EXECUTE",
+        "file": "phases/17-independent-ci-cd.md",
+        "task_ids": [
+          "V5-17-01",
+          "V5-17-02",
+          "V5-17-03",
+          "V5-17-04",
+          "V5-17-05"
+        ],
+        "status": "PLANNED"
+      },
+      {
+        "id": "P18",
+        "number": 18,
+        "slug": "full-staging-acceptance",
+        "title": "Complete the dedicated V5 staging platform",
+        "milestone": "V5.6",
+        "depends_on": [
+          "P17"
+        ],
+        "specs": [
+          1,
+          2,
+          3,
+          4,
+          7
+        ],
+        "deliverables": [
+          "integrated V5 staging manifest",
+          "end-to-end evidence",
+          "reconciliation and cutover rehearsal",
+          "UI/gameplay parity report"
+        ],
+        "exit_gate": "G18: all components function together on isolated realistic data; retained browser/client-style flows and rehearsed migration/abort paths pass without affecting V4.",
+        "rollback": "Only V5 staging is reset/redeployed. Production is never stopped to free staging ports or used as a test database.",
+        "execution_mode": "EXECUTE",
+        "file": "phases/18-full-staging-acceptance.md",
+        "task_ids": [
+          "V5-18-01",
+          "V5-18-02",
+          "V5-18-03",
+          "V5-18-04",
+          "V5-18-05"
+        ],
+        "status": "PLANNED"
+      },
+      {
+        "id": "P19",
+        "number": 19,
+        "slug": "load-chaos-and-capacity",
+        "title": "Measure load, failure recovery and safe degradation",
+        "milestone": "V5.6",
+        "depends_on": [
+          "P18"
+        ],
+        "specs": [
+          3,
+          6
+        ],
+        "deliverables": [
+          "capacity report",
+          "chaos results",
+          "launch envelope and alerts",
+          "resource/connection budget"
+        ],
+        "exit_gate": "G19: sustainable capacity, latency, headroom and failure behavior are measured at realistic history sizes; no integrity failure under retries, loss or concurrency.",
+        "rollback": "Stop isolated load clients, reduce admission and restore compatible V5 configuration; do not truncate real data or void games to hide overload.",
+        "execution_mode": "EXECUTE",
+        "file": "phases/19-load-chaos-and-capacity.md",
+        "task_ids": [
+          "V5-19-01",
+          "V5-19-02",
+          "V5-19-03",
+          "V5-19-04"
+        ],
+        "status": "PLANNED"
+      },
+      {
+        "id": "P20",
+        "number": 20,
+        "slug": "native-applications",
+        "title": "Build, sign and validate Android and iOS applications",
+        "milestone": "V5.7",
+        "depends_on": [
+          "P19"
+        ],
+        "specs": [
+          2,
+          5,
+          6
+        ],
+        "deliverables": [
+          "real native/android target",
+          "real native/ios target",
+          "signed APK/AAB and archive/IPA references",
+          "native provider/device acceptance",
+          "internal distribution/store status"
+        ],
+        "exit_gate": "G20: actual applications, not adapters alone, build and run the unchanged product against V5; required native/device/provider evidence and distribution status are explicit.",
+        "rollback": "Keep prior internal/native builds available and backend contracts backward compatible. Do not remove an approved UI feature to bypass a native integration defect.",
+        "execution_mode": "EXECUTE",
+        "file": "phases/20-native-applications.md",
+        "task_ids": [
+          "V5-20-01",
+          "V5-20-02",
+          "V5-20-03",
+          "V5-20-04",
+          "V5-20-05",
+          "V5-20-06",
+          "V5-20-07",
+          "V5-20-08"
+        ],
+        "status": "PLANNED"
+      },
+      {
+        "id": "P21",
+        "number": 21,
+        "slug": "new-website-deferred",
+        "title": "New megaxo.online website and browser product: deferred",
+        "milestone": "V5.8",
+        "depends_on": [],
+        "specs": [
+          2,
+          4,
+          7
+        ],
+        "deliverables": [
+          "explicit owner deferral record",
+          "future presentation integration contract"
+        ],
+        "exit_gate": "DEFERRED_BY_OWNER: no new website/browser product is built. Its infrastructure obligations are fulfilled in Phases 5, 11 and 20 and verified in 18/20.",
+        "rollback": "No product deployment to roll back. Keep dormant presentation boundary and retained-client compatibility.",
+        "execution_mode": "DEFERRED_BY_OWNER",
+        "file": "phases/21-new-website-deferred.md",
+        "task_ids": [],
+        "status": "DEFERRED_BY_OWNER"
+      },
+      {
+        "id": "P22",
+        "number": 22,
+        "slug": "production-transfer",
+        "title": "Execute final production authority transfer",
+        "milestone": "V5.9",
+        "depends_on": [
+          "P20"
+        ],
+        "specs": [
+          1,
+          4,
+          6,
+          7
+        ],
+        "deliverables": [
+          "final consistent V4 backup",
+          "zero-difference final reconciliation",
+          "cutover epoch/evidence",
+          "production release manifest",
+          "post-cutover backup/alerts/smoke"
+        ],
+        "exit_gate": "G22: V5 is the only live durable production application writer; existing and native clients share it; recovery and operational evidence is green. No dependency on deferred Phase 21.",
+        "rollback": "Before first post-import V5 application write, restore sole unchanged V4 authority if safe. After that boundary, keep PostgreSQL and forward-fix or deploy a compatible previous release.",
+        "execution_mode": "EXECUTE",
+        "file": "phases/22-production-transfer.md",
+        "task_ids": [
+          "V5-22-01",
+          "V5-22-02",
+          "V5-22-03",
+          "V5-22-04",
+          "V5-22-05",
+          "V5-22-06"
+        ],
+        "status": "PLANNED"
+      },
+      {
+        "id": "P23",
+        "number": 23,
+        "slug": "retire-v4-authority",
+        "title": "Retire obsolete V4 authority while retaining recovery evidence",
+        "milestone": "V5.9",
+        "depends_on": [
+          "P22"
+        ],
+        "specs": [
+          6,
+          7
+        ],
+        "deliverables": [
+          "V4 writer retirement record",
+          "archived SQLite/tag/migration evidence",
+          "updated runbooks/monitors",
+          "compatibility retirement criteria"
+        ],
+        "exit_gate": "G23: no production service depends on V4 SQLite. Required history/backups and supported-client/provider compatibility remain available under policy.",
+        "rollback": "Retirement does not authorize reinstating a stale V4 writer. Restore only documented compatible serving components while PostgreSQL remains authoritative.",
+        "execution_mode": "EXECUTE",
+        "file": "phases/23-retire-v4-authority.md",
+        "task_ids": [
+          "V5-23-01",
+          "V5-23-02",
+          "V5-23-03",
+          "V5-23-04"
+        ],
+        "status": "PLANNED"
+      },
+      {
+        "id": "P24",
+        "number": 24,
+        "slug": "evidence-led-scaling",
+        "title": "Set scaling triggers and act only on measured demand",
+        "milestone": "V5.10",
+        "depends_on": [
+          "P23"
+        ],
+        "specs": [
+          4,
+          6
+        ],
+        "deliverables": [
+          "capacity baseline and operating envelope",
+          "scale trigger/cost/rollback plan",
+          "postlaunch review schedule"
+        ],
+        "exit_gate": "G24: measured baseline and explicit scaling triggers are delivered. Additional infrastructure is conditional on evidence, not required speculative work.",
+        "rollback": "Scale down only within the measured safe envelope and compatible data/region ownership; never introduce multi-primary currency writers.",
+        "execution_mode": "MEASUREMENT_GATED",
+        "file": "phases/24-evidence-led-scaling.md",
+        "task_ids": [
+          "V5-24-01",
+          "V5-24-02",
+          "V5-24-03"
+        ],
+        "status": "PLANNED"
+      }
+    ],
+    "tasks": [
+      {
+        "title": "Verify Git and carry local work",
+        "action": "Inspect branch/status, remote head, CI and local approved changes; preserve untracked architecture and skills files. Record source, runtime and deployment-script revisions separately.",
+        "verification": "Baseline SHA/CI ID recorded; no discarded local files or overwritten release tags.",
+        "id": "V5-00-01",
+        "phase": "P00",
+        "status": "COMPLETE",
+        "depends_on_tasks": [],
+        "requires_phase_gates": [],
+        "evidence_required": true
+      },
+      {
+        "title": "Inspect live operations and reconcile handoff",
+        "action": "Use Tailscale SSH and provider reads to verify image, health, backups, R2 retrieval, ingress ownership, monitors and package visibility. Resolve conflicting backup and EXT statements using actual evidence, not blanket summaries.",
+        "verification": "Sanitized evidence classifies each fact verified/reported/unresolved; backup repair is tested if actually required.",
+        "id": "V5-00-02",
+        "phase": "P00",
+        "status": "COMPLETE",
+        "depends_on_tasks": [
+          "V5-00-01"
+        ],
+        "requires_phase_gates": [],
+        "evidence_required": true
+      },
+      {
+        "title": "Create or resume V5 integration branch",
+        "action": "Create V5-platform from the current green V4.1 baseline, or safely resume the existing branch. Add the unchanged source documents and this plan as references without committing local secrets.",
+        "verification": "Branch ancestry and clean/carry-forward worktree state recorded; production branch and V4 tags untouched.",
+        "id": "V5-00-03",
+        "phase": "P00",
+        "status": "IN_PROGRESS",
+        "depends_on_tasks": [
+          "V5-00-02"
+        ],
+        "requires_phase_gates": [],
+        "evidence_required": true
+      },
+      {
+        "title": "Freeze product and future ownership",
+        "action": "Inventory all routes, source tables/JSON keys and their owners. Record no-UI/gameplay-change rule, future-browser scope, managed database choice and process-vs-host HA boundary.",
+        "verification": "Every existing route/data domain has an owner; Phase 21 deferral and Phase 22 bypass are explicit.",
+        "id": "V5-00-04",
+        "phase": "P00",
+        "status": "PLANNED",
+        "depends_on_tasks": [
+          "V5-00-03"
+        ],
+        "requires_phase_gates": [],
+        "evidence_required": true
+      },
+      {
+        "title": "Capture approved UI and rule baselines",
+        "action": "Run baseline tests and capture four-theme/device screenshots, assets/rule hashes, API responses, economy and rank fixtures. Include any approved local changes newer than GitHub.",
+        "verification": "Evidence permits before/after comparisons; failures are not hidden by re-baselining without explanation.",
+        "id": "V5-00-05",
+        "phase": "P00",
+        "status": "PLANNED",
+        "depends_on_tasks": [
+          "V5-00-04"
+        ],
+        "requires_phase_gates": [],
+        "evidence_required": true
+      },
+      {
+        "title": "Enable immediate V5 CI and progress records",
+        "action": "Add V5 branch/PR validation, preserve V4 jobs and create task/evidence/decision/open-item records. Inventory all provider and native build access, identifiers and quotas.",
+        "verification": "First meaningful V5 commit runs CI; no claim of native/provider verification based only on access.",
+        "id": "V5-00-06",
+        "phase": "P00",
+        "status": "PLANNED",
+        "depends_on_tasks": [
+          "V5-00-05"
+        ],
+        "requires_phase_gates": [],
+        "evidence_required": true
+      },
+      {
+        "title": "Map write paths and implicit effects",
+        "action": "Trace state JSON updates, room/economy transactions, provider mutations and lazy GET side effects. Distinguish durable state from caches and process Maps.",
+        "verification": "Route/data inventories include every discovered authority write and stateful constructor.",
+        "id": "V5-01-01",
+        "phase": "P01",
+        "status": "PLANNED",
+        "depends_on_tasks": [],
+        "requires_phase_gates": [
+          "P00"
+        ],
+        "evidence_required": true
+      },
+      {
+        "title": "Introduce repository and transaction interfaces",
+        "action": "Define account/profile/session/save/wallet/ledger/match/tournament/purchase/job repositories and shared unit-of-work context. Keep SQLite adapters while behavior tests remain unchanged.",
+        "verification": "Contract tests prove one transaction encompasses all economic effects; no hidden independently committed calls.",
+        "id": "V5-01-02",
+        "phase": "P01",
+        "status": "PLANNED",
+        "depends_on_tasks": [
+          "V5-01-01"
+        ],
+        "requires_phase_gates": [],
+        "evidence_required": true
+      },
+      {
+        "title": "Extract pure domain behavior without rebalance",
+        "action": "Reuse game/rating/season/economy/tournament/abuse rules with injected clock/randomness. Preserve current constants and module compatibility.",
+        "verification": "Seeded differential tests and existing invariant/balance tests pass without changed expected product values.",
+        "id": "V5-01-03",
+        "phase": "P01",
+        "status": "PLANNED",
+        "depends_on_tasks": [
+          "V5-01-02"
+        ],
+        "requires_phase_gates": [],
+        "evidence_required": true
+      },
+      {
+        "title": "Freeze versioned contracts and adapters",
+        "action": "Capture existing /api/v1 and other routes, errors, idempotency, cookie behavior and native bridges. Define new realtime schema separately and add shared validators.",
+        "verification": "Existing clients remain contract-compatible; invalid payloads fail consistently.",
+        "id": "V5-01-04",
+        "phase": "P01",
+        "status": "PLANNED",
+        "depends_on_tasks": [
+          "V5-01-03"
+        ],
+        "requires_phase_gates": [],
+        "evidence_required": true
+      },
+      {
+        "title": "Add deterministic client packaging seam",
+        "action": "Create a client-only asset allowlist/build manifest without visual changes. Explicitly exclude server-only src/authority.js and unrelated repository files.",
+        "verification": "Bundle inspection and four-theme baseline test show correct assets and no server/secrets leakage.",
+        "id": "V5-01-05",
+        "phase": "P01",
+        "status": "PLANNED",
+        "depends_on_tasks": [
+          "V5-01-04"
+        ],
+        "requires_phase_gates": [],
+        "evidence_required": true
+      },
+      {
+        "title": "Resolve provider inventory and region",
+        "action": "Inspect actual Neon org/projects before creating production/nonproduction targets. Record region/RTT, version, plan and quotas; configure production no-suspend/restore history where supported.",
+        "verification": "Real IDs/settings and capability evidence recorded; no duplicate guessed projects or false Free-plan guarantees.",
+        "id": "V5-02-01",
+        "phase": "P02",
+        "status": "PLANNED",
+        "depends_on_tasks": [],
+        "requires_phase_gates": [
+          "P01"
+        ],
+        "evidence_required": true
+      },
+      {
+        "title": "Design normalized authority schema",
+        "action": "Map every durable source field to relational records or bounded immutable JSONB. Preserve text actor IDs, Elo hundredths, integer assets, store bindings and privacy tombstones.",
+        "verification": "Schema review plus source-coverage report; uniqueness/FK/check constraints match approved semantics.",
+        "id": "V5-02-02",
+        "phase": "P02",
+        "status": "PLANNED",
+        "depends_on_tasks": [
+          "V5-02-01"
+        ],
+        "requires_phase_gates": [],
+        "evidence_required": true
+      },
+      {
+        "title": "Implement migrations and role grants",
+        "action": "Add checksummed ordered SQL, single-runner lock, upgrade history, runtime no-DDL and distinct API/Core/worker/backup/migration grants.",
+        "verification": "Clean create/upgrade tests pass; forbidden direct writes fail for API/worker roles.",
+        "id": "V5-02-03",
+        "phase": "P02",
+        "status": "PLANNED",
+        "depends_on_tasks": [
+          "V5-02-02"
+        ],
+        "requires_phase_gates": [],
+        "evidence_required": true
+      },
+      {
+        "title": "Implement connection and environment guards",
+        "action": "Use pooled runtime and direct administrative connections appropriately; pin driver/PG versions, timeout/pool budgets and target-environment checks.",
+        "verification": "Interactive transaction and rollback tests run on actual selected connection modes; no secrets in output.",
+        "id": "V5-02-04",
+        "phase": "P02",
+        "status": "PLANNED",
+        "depends_on_tasks": [
+          "V5-02-03"
+        ],
+        "requires_phase_gates": [],
+        "evidence_required": true
+      },
+      {
+        "title": "Deploy nonserving schema to isolated staging",
+        "action": "Create disposable test databases/branches from sanitized seeds; suppress production outbound effects. Add DB integration CI and cleanup bounds.",
+        "verification": "PR credentials cannot access production; cleanup cannot delete production/staging objects.",
+        "id": "V5-02-05",
+        "phase": "P02",
+        "status": "PLANNED",
+        "depends_on_tasks": [
+          "V5-02-04"
+        ],
+        "requires_phase_gates": [],
+        "evidence_required": true
+      },
+      {
+        "title": "Capture consistent source snapshots",
+        "action": "Use proven SQLite backup/restore tooling including WAL consistency; record release/schema/hash and inventory actual relational and JSON data.",
+        "verification": "Restored source passes integrity checks and no table/key is unclassified.",
+        "id": "V5-03-01",
+        "phase": "P03",
+        "status": "PLANNED",
+        "depends_on_tasks": [],
+        "requires_phase_gates": [
+          "P02"
+        ],
+        "evidence_required": true
+      },
+      {
+        "title": "Implement pure deterministic extraction",
+        "action": "Read raw aggregate/room JSON without Authority.restore time effects, provisioning, random IDs or provider calls. Handle versioned legacy field variants explicitly.",
+        "verification": "Quarter rollover, non-UUID actor and legacy-variant fixtures produce unchanged source semantics.",
+        "id": "V5-03-02",
+        "phase": "P03",
+        "status": "PLANNED",
+        "depends_on_tasks": [
+          "V5-03-01"
+        ],
+        "requires_phase_gates": [],
+        "evidence_required": true
+      },
+      {
+        "title": "Import all durable account/game/economy state",
+        "action": "Migrate identities, passwords, profiles, graph, saves, assets/reservations, seasons, matches, tournaments, receipts, store bindings, revocations, grants, jobs, audit and privacy state.",
+        "verification": "Coverage manifest accounts for all source records; no duplicate actor, remint or regenerated purchase binding.",
+        "id": "V5-03-03",
+        "phase": "P03",
+        "status": "PLANNED",
+        "depends_on_tasks": [
+          "V5-03-02"
+        ],
+        "requires_phase_gates": [],
+        "evidence_required": true
+      },
+      {
+        "title": "Implement lossless accounting reconciliation",
+        "action": "Compare per-actor available/reserved assets, escrow representations, credit/inventory/entitlement/rank/history state and global totals; define legacy journal/accounting baseline without replaying old postings.",
+        "verification": "A balance swap between actors fails even when totals match; all unexplained differences are zero.",
+        "id": "V5-03-04",
+        "phase": "P03",
+        "status": "PLANNED",
+        "depends_on_tasks": [
+          "V5-03-03"
+        ],
+        "requires_phase_gates": [],
+        "evidence_required": true
+      },
+      {
+        "title": "Make reruns and resume safe",
+        "action": "Add target guard, source fingerprint, run identity, deterministic batches/checkpoints and import lock. Test retries and crash recovery; never truncate an unknown database.",
+        "verification": "Repeated import and each interrupted batch converge to the same canonical target state.",
+        "id": "V5-03-05",
+        "phase": "P03",
+        "status": "PLANNED",
+        "depends_on_tasks": [
+          "V5-03-04"
+        ],
+        "requires_phase_gates": [],
+        "evidence_required": true
+      },
+      {
+        "title": "Record foundation migration proof",
+        "action": "Import a realistic sanitized/restored V4 staging snapshot into isolated Neon, run all invariants, and retain restricted details plus sanitized signed/checksummed summary.",
+        "verification": "G03 evidence is complete before distributed runtime development proceeds.",
+        "id": "V5-03-06",
+        "phase": "P03",
+        "status": "PLANNED",
+        "depends_on_tasks": [
+          "V5-03-05"
+        ],
+        "requires_phase_gates": [],
+        "evidence_required": true
+      },
+      {
+        "title": "Implement account/social/save repositories",
+        "action": "Replace direct SQLite SQL for profiles, linked identities, credentials, sessions, graph, reports and revisioned practice saves through explicit repository adapters.",
+        "verification": "Parity fixtures preserve identity, case semantics, privacy and non-authoritative practice-wallet behavior.",
+        "id": "V5-04-01",
+        "phase": "P04",
+        "status": "PLANNED",
+        "depends_on_tasks": [],
+        "requires_phase_gates": [
+          "P03"
+        ],
+        "evidence_required": true
+      },
+      {
+        "title": "Implement Core-owned asset/ledger repositories",
+        "action": "Normalize wallets/reservations, journals, purchase grants and rating state with one transaction context and stable lock order.",
+        "verification": "Concurrent spend cannot overdraw or double-reserve; invalid mutation fully rolls back.",
+        "id": "V5-04-02",
+        "phase": "P04",
+        "status": "PLANNED",
+        "depends_on_tasks": [
+          "V5-04-01"
+        ],
+        "requires_phase_gates": [],
+        "evidence_required": true
+      },
+      {
+        "title": "Implement match/tournament/provider persistence",
+        "action": "Replace serialized-global authority writes with entity-specific durable mutations and constraints. Carry immutable quotes, operation outcomes and provider revocations.",
+        "verification": "Match/tournament/purchase tests compare to baseline and reject duplicates or conflicting occupancy.",
+        "id": "V5-04-03",
+        "phase": "P04",
+        "status": "PLANNED",
+        "depends_on_tasks": [
+          "V5-04-02"
+        ],
+        "requires_phase_gates": [],
+        "evidence_required": true
+      },
+      {
+        "title": "Move schema setup out of constructors",
+        "action": "Runtime boot verifies compatibility/readiness but never creates or alters tables or defaults that mint player state.",
+        "verification": "Fresh service boot on wrong schema fails clearly; runtime role has no DDL rights.",
+        "id": "V5-04-04",
+        "phase": "P04",
+        "status": "PLANNED",
+        "depends_on_tasks": [
+          "V5-04-03"
+        ],
+        "requires_phase_gates": [],
+        "evidence_required": true
+      },
+      {
+        "title": "Run differential and contention acceptance",
+        "action": "Use identical clocks/random seeds to compare source behavior; race spending, conversion, reward, refund and settlement paths across database clients.",
+        "verification": "Existing product tests plus new rollback/idempotency/economy invariants pass; SQLite remains only in importer/legacy reference tooling.",
+        "id": "V5-04-05",
+        "phase": "P04",
+        "status": "PLANNED",
+        "depends_on_tasks": [
+          "V5-04-04"
+        ],
+        "requires_phase_gates": [],
+        "evidence_required": true
+      },
+      {
+        "title": "Implement account readiness and linking semantics",
+        "action": "Preserve existing actor/provider/email ownership and add idempotent Core-owned wallet provisioning for new actors. Coordinate deletion and eligibility safely.",
+        "verification": "No duplicate actor/starting grant or wrong-account reauthentication under retries/races.",
+        "id": "V5-05-01",
+        "phase": "P05",
+        "status": "PLANNED",
+        "depends_on_tasks": [],
+        "requires_phase_gates": [
+          "P04"
+        ],
+        "evidence_required": true
+      },
+      {
+        "title": "Implement access signing and public verification",
+        "action": "Use strict issuer/audience/algorithm/key IDs and minimal claims; publish bounded JWKS and test rotation/old-key overlap.",
+        "verification": "Wrong audience/algorithm/issuer and retired or unknown keys fail; no wallet/rank authority in tokens.",
+        "id": "V5-05-02",
+        "phase": "P05",
+        "status": "PLANNED",
+        "depends_on_tasks": [
+          "V5-05-01"
+        ],
+        "requires_phase_gates": [],
+        "evidence_required": true
+      },
+      {
+        "title": "Implement refresh rotation and device revocation",
+        "action": "Persist hashed refresh families/session generation, single-flight clients, bounded legitimate retry handling and true-replay response.",
+        "verification": "Parallel refresh does not falsely log out legitimate clients; replay/revoke/all-device logout work.",
+        "id": "V5-05-03",
+        "phase": "P05",
+        "status": "PLANNED",
+        "depends_on_tasks": [
+          "V5-05-02"
+        ],
+        "requires_phase_gates": [],
+        "evidence_required": true
+      },
+      {
+        "title": "Implement browser and native credential paths",
+        "action": "Keep cookie/CSRF browser sessions and create explicit host-owned native bearer path. Preserve old MegaAccount response/error semantics through adapters.",
+        "verification": "Origin protections are not globally disabled; native APIs do not rely on WebView cookie availability.",
+        "id": "V5-05-04",
+        "phase": "P05",
+        "status": "PLANNED",
+        "depends_on_tasks": [
+          "V5-05-03"
+        ],
+        "requires_phase_gates": [],
+        "evidence_required": true
+      },
+      {
+        "title": "Issue durable one-use realtime tickets",
+        "action": "Bind actor/session/environment/audience/expiry and atomically redeem; apply admission limits and log redaction.",
+        "verification": "Ticket reuse across nodes or after Redis reset fails; unauthorized match subscriptions fail.",
+        "id": "V5-05-05",
+        "phase": "P05",
+        "status": "PLANNED",
+        "depends_on_tasks": [
+          "V5-05-04"
+        ],
+        "requires_phase_gates": [],
+        "evidence_required": true
+      },
+      {
+        "title": "Prove compatibility and session transition",
+        "action": "Test email/Google/Apple linking, recovery, session replacement, revoked WebSockets and legacy-origin continuity strategy.",
+        "verification": "Three client styles share identity and data; old cookie-domain boundaries are explicitly handled.",
+        "id": "V5-05-06",
+        "phase": "P05",
+        "status": "PLANNED",
+        "depends_on_tasks": [
+          "V5-05-05"
+        ],
+        "requires_phase_gates": [],
+        "evidence_required": true
+      },
+      {
+        "title": "Select and provision the actual managed service",
+        "action": "Validate region, access, plan, TCP/TLS/pubsub/Lua/TTL support and quotas; separate production and staging.",
+        "verification": "Provider IDs and command compatibility/load evidence recorded; no unclaimed temporary or same-host production replacement.",
+        "id": "V5-06-01",
+        "phase": "P06",
+        "status": "PLANNED",
+        "depends_on_tasks": [],
+        "requires_phase_gates": [
+          "P05"
+        ],
+        "evidence_required": true
+      },
+      {
+        "title": "Implement namespaced bounded primitives",
+        "action": "Provide tested presence/heartbeat, candidate queue, cache, rate-budget and routing operations with explicit TTLs and key versions.",
+        "verification": "No unbounded immortal keys, cross-environment credential access or client-visible Redis secrets.",
+        "id": "V5-06-02",
+        "phase": "P06",
+        "status": "PLANNED",
+        "depends_on_tasks": [
+          "V5-06-01"
+        ],
+        "requires_phase_gates": [],
+        "evidence_required": true
+      },
+      {
+        "title": "Remove local-only operational state",
+        "action": "Move distributed presence/cache/rate coordination from local Maps/SQLite while retaining PostgreSQL security/assignment truth.",
+        "verification": "Two API/Core processes observe consistent temporary state without owning permanent assets in Redis.",
+        "id": "V5-06-03",
+        "phase": "P06",
+        "status": "PLANNED",
+        "depends_on_tasks": [
+          "V5-06-02"
+        ],
+        "requires_phase_gates": [],
+        "evidence_required": true
+      },
+      {
+        "title": "Test full wipe and dependency failure",
+        "action": "Delete only staging Redis, restart subscriptions and recover from PostgreSQL/client rejoin; measure safe fallback/rate behavior.",
+        "verification": "Wallet/rank/purchases unchanged; no permanently stuck paid occupancy or unlimited auth retries.",
+        "id": "V5-06-04",
+        "phase": "P06",
+        "status": "PLANNED",
+        "depends_on_tasks": [
+          "V5-06-03"
+        ],
+        "requires_phase_gates": [],
+        "evidence_required": true
+      },
+      {
+        "title": "Port existing queue policy unchanged",
+        "action": "Reuse skill expansion, placement/recent-opponent rules, mode, anti-collusion and public tournament cohort behavior; preserve when entry is actually charged.",
+        "verification": "Baseline matching fixtures and product limits remain identical.",
+        "id": "V5-07-01",
+        "phase": "P07",
+        "status": "PLANNED",
+        "depends_on_tasks": [],
+        "requires_phase_gates": [
+          "P06"
+        ],
+        "evidence_required": true
+      },
+      {
+        "title": "Implement join/cancel/heartbeat/expire",
+        "action": "Version and deduplicate queue operations across devices; maintain bounded candidate indices and recover abandoned leases.",
+        "verification": "Duplicate joins, cancellation races and dead clients do not create phantom paid entries.",
+        "id": "V5-07-02",
+        "phase": "P07",
+        "status": "PLANNED",
+        "depends_on_tasks": [
+          "V5-07-01"
+        ],
+        "requires_phase_gates": [],
+        "evidence_required": true
+      },
+      {
+        "title": "Commit assignments transactionally",
+        "action": "Recheck actors/eligibility/occupancy/rating/terms/balance in PostgreSQL, create match/reservation under constraints, then notify clients.",
+        "verification": "Two matchers racing the same actors create at most one compatible assignment and one financial effect.",
+        "id": "V5-07-03",
+        "phase": "P07",
+        "status": "PLANNED",
+        "depends_on_tasks": [
+          "V5-07-02"
+        ],
+        "requires_phase_gates": [],
+        "evidence_required": true
+      },
+      {
+        "title": "Exercise distributed recovery",
+        "action": "Kill a matcher between Redis claim and database commit, wipe Redis after assignment, race direct invitations and tournaments with queue joins.",
+        "verification": "Every actor is recoverably queued, assigned or explicitly canceled; no inconsistent permanent state.",
+        "id": "V5-07-04",
+        "phase": "P07",
+        "status": "PLANNED",
+        "depends_on_tasks": [
+          "V5-07-03"
+        ],
+        "requires_phase_gates": [],
+        "evidence_required": true
+      },
+      {
+        "title": "Implement authenticated WSS transport",
+        "action": "Expose staging realtime through nonconflicting ingress, redeem one-use tickets, enforce subscription membership, message bounds and safe errors.",
+        "verification": "Unauthorized, expired, oversized and cross-actor subscription attempts are rejected without leaks.",
+        "id": "V5-08-01",
+        "phase": "P08",
+        "status": "PLANNED",
+        "depends_on_tasks": [],
+        "requires_phase_gates": [
+          "P07"
+        ],
+        "evidence_required": true
+      },
+      {
+        "title": "Implement command revision transactions",
+        "action": "Validate existing move rules, dedupe operation before stale-revision checks, lock/compare state and commit outcome/outbox atomically.",
+        "verification": "Lost-response retry returns the prior result; altered-payload reuse conflicts and rollback is complete.",
+        "id": "V5-08-02",
+        "phase": "P08",
+        "status": "PLANNED",
+        "depends_on_tasks": [
+          "V5-08-01"
+        ],
+        "requires_phase_gates": [],
+        "evidence_required": true
+      },
+      {
+        "title": "Implement durable clocks and scheduled expiry",
+        "action": "Persist absolute deadlines and revision-bound timeout identity; serialize move-vs-timeout races using a tested clock convention.",
+        "verification": "Reconnect/restart never extends the turn; old timer claims cannot settle a newer revision.",
+        "id": "V5-08-03",
+        "phase": "P08",
+        "status": "PLANNED",
+        "depends_on_tasks": [
+          "V5-08-02"
+        ],
+        "requires_phase_gates": [],
+        "evidence_required": true
+      },
+      {
+        "title": "Implement snapshot/delta recovery and polling",
+        "action": "Client resumes from last acknowledged revision, accepts bounded deltas or current snapshot; preserve HTTP command/snapshot compatibility.",
+        "verification": "Missed/out-of-order pubsub and socket disconnects recover without reapplying moves.",
+        "id": "V5-08-04",
+        "phase": "P08",
+        "status": "PLANNED",
+        "depends_on_tasks": [
+          "V5-08-03"
+        ],
+        "requires_phase_gates": [],
+        "evidence_required": true
+      },
+      {
+        "title": "Remove memory-authoritative restart recovery",
+        "action": "Replace V4 startup void logic on the V5 runtime with loading durable active state. Add drain, slow-client handling and multi-process routing.",
+        "verification": "Kill Core before/after commit/publish/response; latest committed game resumes on the surviving process.",
+        "id": "V5-08-05",
+        "phase": "P08",
+        "status": "PLANNED",
+        "depends_on_tasks": [
+          "V5-08-04"
+        ],
+        "requires_phase_gates": [],
+        "evidence_required": true
+      },
+      {
+        "title": "Persist complete room and fixture state",
+        "action": "Migrate ownership/code/roster/readiness/rules/fixtures/clocks/ranking/revisions/quotes/contributions/settlement records.",
+        "verification": "Full room snapshot survives service restart with no missing ownership or financial state.",
+        "id": "V5-09-01",
+        "phase": "P09",
+        "status": "PLANNED",
+        "depends_on_tasks": [],
+        "requires_phase_gates": [
+          "P08"
+        ],
+        "evidence_required": true
+      },
+      {
+        "title": "Preserve user lifecycle behavior",
+        "action": "Retain approved host-leave CANCELLED behavior, allowed transfer/pause/leave paths, public cohort/entry/payout rules and normal-Elo independence.",
+        "verification": "Existing party/tournament UI and rule fixtures remain unchanged.",
+        "id": "V5-09-02",
+        "phase": "P09",
+        "status": "PLANNED",
+        "depends_on_tasks": [
+          "V5-09-01"
+        ],
+        "requires_phase_gates": [],
+        "evidence_required": true
+      },
+      {
+        "title": "Implement fenced timer and progression claims",
+        "action": "Use transactional claims and current-fence completion for due fixtures/timeouts across workers; revalidate state before advancing.",
+        "verification": "A stale worker cannot act after a new owner has progressed the tournament.",
+        "id": "V5-09-03",
+        "phase": "P09",
+        "status": "PLANNED",
+        "depends_on_tasks": [
+          "V5-09-02"
+        ],
+        "requires_phase_gates": [],
+        "evidence_required": true
+      },
+      {
+        "title": "Make settlement/refund indivisible",
+        "action": "Lock room and affected actors/wallets in consistent order; record unique settlement and all ledger/escrow/record effects in one transaction.",
+        "verification": "Payout/refund/timeout races and mid-transaction crashes produce one correct result.",
+        "id": "V5-09-04",
+        "phase": "P09",
+        "status": "PLANNED",
+        "depends_on_tasks": [
+          "V5-09-03"
+        ],
+        "requires_phase_gates": [],
+        "evidence_required": true
+      },
+      {
+        "title": "Prove full multi-worker tournament recovery",
+        "action": "Run representative ten-player and private room flows while killing/restarting workers and duplicate-delivering commands.",
+        "verification": "No lost escrow, duplicate prize, unexpected host handover or restart-caused user leave.",
+        "id": "V5-09-05",
+        "phase": "P09",
+        "status": "PLANNED",
+        "depends_on_tasks": [
+          "V5-09-04"
+        ],
+        "requires_phase_gates": [],
+        "evidence_required": true
+      },
+      {
+        "title": "Implement durable job and outbox primitives",
+        "action": "Add typed/versioned payloads, business idempotency keys, claim/fence metadata, backoff, failure/dead-letter state and restricted inspection/retry.",
+        "verification": "Kill during claim/I/O/completion; job is recoverable and stale owners cannot complete new claims.",
+        "id": "V5-10-01",
+        "phase": "P10",
+        "status": "PLANNED",
+        "depends_on_tasks": [],
+        "requires_phase_gates": [
+          "P09"
+        ],
+        "evidence_required": true
+      },
+      {
+        "title": "Extract email/security/privacy work",
+        "action": "Move existing mail outbox, notifications, cleanup and approved privacy/deletion workflows out of the game process; preserve encryption/retention behavior.",
+        "verification": "Core restart does not drop jobs; restricted payloads/OTP values do not leak into logs.",
+        "id": "V5-10-02",
+        "phase": "P10",
+        "status": "PLANNED",
+        "depends_on_tasks": [
+          "V5-10-01"
+        ],
+        "requires_phase_gates": [],
+        "evidence_required": true
+      },
+      {
+        "title": "Extract provider notification and finalization work",
+        "action": "Persist verified callbacks, dedupe by provider identity/environment and invoke Core grants/refunds; finalize only after durable grant.",
+        "verification": "Duplicate/out-of-order/retried provider messages never remint; pending finalization is visible and recoverable.",
+        "id": "V5-10-03",
+        "phase": "P10",
+        "status": "PLANNED",
+        "depends_on_tasks": [
+          "V5-10-02"
+        ],
+        "requires_phase_gates": [],
+        "evidence_required": true
+      },
+      {
+        "title": "Extract season/leaderboard/maintenance scheduling",
+        "action": "Use stable UTC period identities and Core-owned competitive commands where applicable; do not fabricate missing legacy snapshots/rewards.",
+        "verification": "Two workers and downtime catch-up preserve exact approved weekly/quarterly behavior.",
+        "id": "V5-10-04",
+        "phase": "P10",
+        "status": "PLANNED",
+        "depends_on_tasks": [
+          "V5-10-03"
+        ],
+        "requires_phase_gates": [],
+        "evidence_required": true
+      },
+      {
+        "title": "Remove legacy duplicate schedulers",
+        "action": "Disable V5 production in-process copies of extracted jobs and document role-specific health/alerts.",
+        "verification": "Only one business effect occurs even when old/new-compatible processes overlap during a deploy.",
+        "id": "V5-10-05",
+        "phase": "P10",
+        "status": "PLANNED",
+        "depends_on_tasks": [
+          "V5-10-04"
+        ],
+        "requires_phase_gates": [],
+        "evidence_required": true
+      },
+      {
+        "title": "Create isolated Vercel API project and previews",
+        "action": "Verify team/project/root/env/region and repository integration; use protected previews/stable staging with correct nonproduction connections.",
+        "verification": "Deployment metadata matches commit/environment; no automatic production promotion or production secrets in PR builds.",
+        "id": "V5-11-01",
+        "phase": "P11",
+        "status": "PLANNED",
+        "depends_on_tasks": [],
+        "requires_phase_gates": [
+          "P10"
+        ],
+        "evidence_required": true
+      },
+      {
+        "title": "Move account/social/practice/read APIs",
+        "action": "Implement frozen route contracts using PostgreSQL ownership grants and privacy-aware views; retain auth/callback and account flows.",
+        "verification": "Same actor sees consistent profile/friends/save state through API and Core.",
+        "id": "V5-11-02",
+        "phase": "P11",
+        "status": "PLANNED",
+        "depends_on_tasks": [
+          "V5-11-01"
+        ],
+        "requires_phase_gates": [],
+        "evidence_required": true
+      },
+      {
+        "title": "Route competitive effects to Core",
+        "action": "Implement explicitly reachable HTTPS service ingress with signed request-bound credentials; handle timeouts/retries with stable operation keys.",
+        "verification": "API role cannot award currency or settle results; forged service/actor requests fail.",
+        "id": "V5-11-03",
+        "phase": "P11",
+        "status": "PLANNED",
+        "depends_on_tasks": [
+          "V5-11-02"
+        ],
+        "requires_phase_gates": [],
+        "evidence_required": true
+      },
+      {
+        "title": "Implement old-origin browser compatibility",
+        "action": "Keep the approved client and existing /api/v1 semantics with cookie/CSRF and callback continuity; audit lazy mutating GETs.",
+        "verification": "Retained client works against V5 staging without changing its UI or writing SQLite.",
+        "id": "V5-11-04",
+        "phase": "P11",
+        "status": "PLANNED",
+        "depends_on_tasks": [
+          "V5-11-03"
+        ],
+        "requires_phase_gates": [],
+        "evidence_required": true
+      },
+      {
+        "title": "Establish future website foundations only",
+        "action": "Reserve apex/www project/domain boundaries, exact origin/callback contracts and minimal association/legal technical resources; keep new product dormant.",
+        "verification": "Browser-style harness authenticates to the same platform; no new website/browser UI is built.",
+        "id": "V5-11-05",
+        "phase": "P11",
+        "status": "PLANNED",
+        "depends_on_tasks": [
+          "V5-11-04"
+        ],
+        "requires_phase_gates": [],
+        "evidence_required": true
+      },
+      {
+        "title": "Classify every read and sensitivity",
+        "action": "Assign strong-current, short-TTL, event-invalidated or public-cache behavior; explicitly exclude sessions/private wallet/account responses from shared caching.",
+        "verification": "Route manifest contains cache/privacy rules and stale-data tolerance for every read.",
+        "id": "V5-12-01",
+        "phase": "P12",
+        "status": "PLANNED",
+        "depends_on_tasks": [],
+        "requires_phase_gates": [
+          "P11"
+        ],
+        "evidence_required": true
+      },
+      {
+        "title": "Build versioned projections and indexes",
+        "action": "Materialize authorized public stats/leaderboards/history from committed events; index measured query paths without changing publication/rank rules.",
+        "verification": "Projection replay gives identical results and old events cannot overwrite newer versions.",
+        "id": "V5-12-02",
+        "phase": "P12",
+        "status": "PLANNED",
+        "depends_on_tasks": [
+          "V5-12-01"
+        ],
+        "requires_phase_gates": [],
+        "evidence_required": true
+      },
+      {
+        "title": "Add bounded cache invalidation",
+        "action": "Implement cache keys, TTLs, version handling and rebuild/fallback; propagate only sanitized public content to CDN caches.",
+        "verification": "Private response leakage tests pass; clearing all caches leaves correct gameplay and balances.",
+        "id": "V5-12-03",
+        "phase": "P12",
+        "status": "PLANNED",
+        "depends_on_tasks": [
+          "V5-12-02"
+        ],
+        "requires_phase_gates": [],
+        "evidence_required": true
+      },
+      {
+        "title": "Measure actual read-load reduction",
+        "action": "Compare query/latency/pool load with baseline under representative history size and mixed traffic.",
+        "verification": "Benefits and staleness observed are recorded, not assumed from installing a cache.",
+        "id": "V5-12-04",
+        "phase": "P12",
+        "status": "PLANNED",
+        "depends_on_tasks": [
+          "V5-12-03"
+        ],
+        "requires_phase_gates": [],
+        "evidence_required": true
+      },
+      {
+        "title": "Enforce service and player authentication boundaries",
+        "action": "Scope assertions by audience/method/path/request hash/actor context/expiry; strip forged forwarding headers and validate replay identities.",
+        "verification": "Direct URL knowledge, body alteration, token reuse and forged actor do not authorize a command.",
+        "id": "V5-13-01",
+        "phase": "P13",
+        "status": "PLANNED",
+        "depends_on_tasks": [],
+        "requires_phase_gates": [
+          "P12"
+        ],
+        "evidence_required": true
+      },
+      {
+        "title": "Enforce browser/native/perimeter isolation",
+        "action": "Implement exact origin/CORS/CSRF, credential-mode separation, body/message limits, rate fallback and safe support errors.",
+        "verification": "Native support does not weaken cookie-authenticated browser security or enable cross-origin bridge calls.",
+        "id": "V5-13-02",
+        "phase": "P13",
+        "status": "PLANNED",
+        "depends_on_tasks": [
+          "V5-13-01"
+        ],
+        "requires_phase_gates": [],
+        "evidence_required": true
+      },
+      {
+        "title": "Enforce least-privilege SQL and secrets",
+        "action": "Run negative permission tests and verify runtime no-DDL, secret references, TLS, environment isolation and signing-key rotation.",
+        "verification": "API/worker cannot mutate restricted economy; secrets are absent from assets/artifacts/logs.",
+        "id": "V5-13-03",
+        "phase": "P13",
+        "status": "PLANNED",
+        "depends_on_tasks": [
+          "V5-13-02"
+        ],
+        "requires_phase_gates": [],
+        "evidence_required": true
+      },
+      {
+        "title": "Preserve audit and private operations",
+        "action": "Migrate verifiable audit continuity with dedicated secret, safe concurrent append and private support/revoke tools; keep admin off public ingress.",
+        "verification": "Historical audit verifies, new concurrent entries verify, and external operator/metrics probes are rejected.",
+        "id": "V5-13-04",
+        "phase": "P13",
+        "status": "PLANNED",
+        "depends_on_tasks": [
+          "V5-13-03"
+        ],
+        "requires_phase_gates": [],
+        "evidence_required": true
+      },
+      {
+        "title": "Run adversarial staging acceptance",
+        "action": "Execute provider replay/account mismatch, session/ticket replay, queue manipulation and existing abuse tests without adding new gameplay gates.",
+        "verification": "Security flaws are fixed with evidence; review-only signals and purchased-Crown utility stay unchanged.",
+        "id": "V5-13-05",
+        "phase": "P13",
+        "status": "PLANNED",
+        "depends_on_tasks": [
+          "V5-13-04"
+        ],
+        "requires_phase_gates": [],
+        "evidence_required": true
+      },
+      {
+        "title": "Propagate sanitized request/trace/support identity",
+        "action": "Carry stable safe diagnostics through API/Core/database/outbox/worker, with explicit redaction and bounded cardinality.",
+        "verification": "A staged failure can be followed end-to-end without raw personal/provider/session data.",
+        "id": "V5-14-01",
+        "phase": "P14",
+        "status": "PLANNED",
+        "depends_on_tasks": [],
+        "requires_phase_gates": [
+          "P13"
+        ],
+        "evidence_required": true
+      },
+      {
+        "title": "Instrument role-specific health and metrics",
+        "action": "Separate live/ready/ops status and measure API, socket, transaction, queue, job, provider, host and backup health.",
+        "verification": "Backup freshness and worker backlog affect operational health appropriately, not just process liveness.",
+        "id": "V5-14-02",
+        "phase": "P14",
+        "status": "PLANNED",
+        "depends_on_tasks": [
+          "V5-14-01"
+        ],
+        "requires_phase_gates": [],
+        "evidence_required": true
+      },
+      {
+        "title": "Configure actionable alerts",
+        "action": "Reuse existing monitors/mail delivery and add V5 thresholds tied to measured limits and runbooks.",
+        "verification": "Forced staging dependency failure and recovery yield verified alerts at intended destinations.",
+        "id": "V5-14-03",
+        "phase": "P14",
+        "status": "PLANNED",
+        "depends_on_tasks": [
+          "V5-14-02"
+        ],
+        "requires_phase_gates": [],
+        "evidence_required": true
+      },
+      {
+        "title": "Document operational triage",
+        "action": "Provide private support lookup, component failure localization and alert response steps linked to release IDs.",
+        "verification": "Operator can investigate a real test support code and determine affected actor/action without public admin exposure.",
+        "id": "V5-14-04",
+        "phase": "P14",
+        "status": "PLANNED",
+        "depends_on_tasks": [
+          "V5-14-03"
+        ],
+        "requires_phase_gates": [],
+        "evidence_required": true
+      },
+      {
+        "title": "Freeze measured recovery policy",
+        "action": "Resolve actual Neon plan/history, independent RPO/RTO, retention, storage budget and off-host key custody.",
+        "verification": "Settings/cost/retention align with approved policy; free-tier or 2 GiB assumptions are not silently reused.",
+        "id": "V5-15-01",
+        "phase": "P15",
+        "status": "PLANNED",
+        "depends_on_tasks": [],
+        "requires_phase_gates": [
+          "P14"
+        ],
+        "evidence_required": true
+      },
+      {
+        "title": "Implement direct logical backup plus encryption",
+        "action": "Use compatible direct pg_dump, checksummed manifest, encryption before R2, scoped credentials, scheduler and freshness alerts.",
+        "verification": "Backup can be retrieved/verified; plaintext/temp files and credentials do not leak.",
+        "id": "V5-15-02",
+        "phase": "P15",
+        "status": "PLANNED",
+        "depends_on_tasks": [
+          "V5-15-01"
+        ],
+        "requires_phase_gates": [],
+        "evidence_required": true
+      },
+      {
+        "title": "Test Neon recovery and independent restore",
+        "action": "Run PITR and a separate R2-to-isolated-PostgreSQL restoration with role/config reconstruction and outbound effects disabled.",
+        "verification": "Identity, per-actor assets, escrow, purchases, audit and privacy/tombstone invariants pass.",
+        "id": "V5-15-03",
+        "phase": "P15",
+        "status": "PLANNED",
+        "depends_on_tasks": [
+          "V5-15-02"
+        ],
+        "requires_phase_gates": [],
+        "evidence_required": true
+      },
+      {
+        "title": "Schedule controlled recurring restore drills",
+        "action": "Implement runtime scheduling, evidence retention, target guards, cleanup and failure alerting for periodic restore verification.",
+        "verification": "One complete scheduled-style drill is executed and measured; upload success alone is not considered proof.",
+        "id": "V5-15-04",
+        "phase": "P15",
+        "status": "PLANNED",
+        "depends_on_tasks": [
+          "V5-15-03"
+        ],
+        "requires_phase_gates": [],
+        "evidence_required": true
+      },
+      {
+        "title": "Deploy two independently managed Core processes",
+        "action": "Provision bounded A/B instances with shared Neon/Redis, separate private health endpoints and compatible images.",
+        "verification": "Both can accept authorized clients without conflicting ownership or shared mutable memory.",
+        "id": "V5-16-01",
+        "phase": "P16",
+        "status": "PLANNED",
+        "depends_on_tasks": [],
+        "requires_phase_gates": [
+          "P15"
+        ],
+        "evidence_required": true
+      },
+      {
+        "title": "Implement health-aware routing and drain",
+        "action": "Use the single safe ingress, no new sessions on draining nodes, bounded socket shutdown and reconnect recovery.",
+        "verification": "Rolling update works without simultaneous service stop; sticky sessions are optional for correctness.",
+        "id": "V5-16-02",
+        "phase": "P16",
+        "status": "PLANNED",
+        "depends_on_tasks": [
+          "V5-16-01"
+        ],
+        "requires_phase_gates": [],
+        "evidence_required": true
+      },
+      {
+        "title": "Prove in-flight recovery",
+        "action": "Kill A during a live move/tournament and reconnect through B; include post-commit/pre-publish failure and session revocation.",
+        "verification": "No duplicated settlement, lost acknowledged revision or reset turn deadline.",
+        "id": "V5-16-03",
+        "phase": "P16",
+        "status": "PLANNED",
+        "depends_on_tasks": [
+          "V5-16-02"
+        ],
+        "requires_phase_gates": [],
+        "evidence_required": true
+      },
+      {
+        "title": "Document failure domains and measured limits",
+        "action": "Distinguish process failure from Oracle/edge/zone outage; specify what separate-host expansion would require if justified.",
+        "verification": "No claim of host HA when both instances share one VPS or public edge.",
+        "id": "V5-16-04",
+        "phase": "P16",
+        "status": "PLANNED",
+        "depends_on_tasks": [
+          "V5-16-03"
+        ],
+        "requires_phase_gates": [],
+        "evidence_required": true
+      },
+      {
+        "title": "Expand early V5 CI into full component gates",
+        "action": "Add path-aware tests with shared-package dependency coverage, migrations, Redis/PG/realtime, economy/security/browser/native compile and artifacts.",
+        "verification": "Changing a shared contract triggers all affected consumers; required tests cannot be bypassed by path filters.",
+        "id": "V5-17-01",
+        "phase": "P17",
+        "status": "PLANNED",
+        "depends_on_tasks": [],
+        "requires_phase_gates": [
+          "P16"
+        ],
+        "evidence_required": true
+      },
+      {
+        "title": "Publish independent immutable artifacts",
+        "action": "Build ARM64/AMD64 Core/worker with provenance and signed/hashable native outputs from exact reviewed commits.",
+        "verification": "Manifest identifies version/SHA/digest/config/schema/protocol and test evidence; private pull succeeds.",
+        "id": "V5-17-02",
+        "phase": "P17",
+        "status": "PLANNED",
+        "depends_on_tasks": [
+          "V5-17-01"
+        ],
+        "requires_phase_gates": [],
+        "evidence_required": true
+      },
+      {
+        "title": "Automate staged release and compatible rollback",
+        "action": "Stage production-configured Vercel build without domains, validate, promote exact target; roll Core/worker one component at a time.",
+        "verification": "Promotion/rollback rehearsal preserves correct configuration and PostgreSQL state.",
+        "id": "V5-17-03",
+        "phase": "P17",
+        "status": "PLANNED",
+        "depends_on_tasks": [
+          "V5-17-02"
+        ],
+        "requires_phase_gates": [],
+        "evidence_required": true
+      },
+      {
+        "title": "Protect release credentials and migration ownership",
+        "action": "Limit signing/provider/migration secrets to trusted contexts; implement environment locks and no concurrent migration/deploy races.",
+        "verification": "Untrusted PR cannot read secrets or release production; migrations run once under explicit authority.",
+        "id": "V5-17-04",
+        "phase": "P17",
+        "status": "PLANNED",
+        "depends_on_tasks": [
+          "V5-17-03"
+        ],
+        "requires_phase_gates": [],
+        "evidence_required": true
+      },
+      {
+        "title": "Document real release version policy",
+        "action": "Use milestone labels for planning, unique SemVer/build numbers for releases, tag/package equality where required and compatibility ranges for clients.",
+        "verification": "No reuse of V4 tag or accidental production publish from milestone documentation commits.",
+        "id": "V5-17-05",
+        "phase": "P17",
+        "status": "PLANNED",
+        "depends_on_tasks": [
+          "V5-17-04"
+        ],
+        "requires_phase_gates": [],
+        "evidence_required": true
+      },
+      {
+        "title": "Verify full environment isolation",
+        "action": "Audit Vercel/Neon/Redis/Core/worker/callback/secrets/endpoints against the environment inventory and outbound-effects controls.",
+        "verification": "Staging cannot read/write production or send copied users real provider/email events.",
+        "id": "V5-18-01",
+        "phase": "P18",
+        "status": "PLANNED",
+        "depends_on_tasks": [],
+        "requires_phase_gates": [
+          "P17"
+        ],
+        "evidence_required": true
+      },
+      {
+        "title": "Run account/social/save and cross-service journeys",
+        "action": "Create/login/link/recover, profile edit, friend/block/report, cloud save, session revoke/export/delete through existing client flows.",
+        "verification": "Same actor and privacy semantics hold across API/Core and browser/native-style test clients.",
+        "id": "V5-18-02",
+        "phase": "P18",
+        "status": "PLANNED",
+        "depends_on_tasks": [
+          "V5-18-01"
+        ],
+        "requires_phase_gates": [],
+        "evidence_required": true
+      },
+      {
+        "title": "Run economic and game journeys",
+        "action": "Exercise ranked/casual/direct/tournament entry/play/settlement/refund, receipts/SSV fixtures, reconnect and restart.",
+        "verification": "Per-actor assets/ratings/results agree across all components; no duplicate effect.",
+        "id": "V5-18-03",
+        "phase": "P18",
+        "status": "PLANNED",
+        "depends_on_tasks": [
+          "V5-18-02"
+        ],
+        "requires_phase_gates": [],
+        "evidence_required": true
+      },
+      {
+        "title": "Run visual and behavioral parity",
+        "action": "Compare four-theme screenshots and approved game/invariant fixtures; record only justified native/platform exceptions.",
+        "verification": "No unapproved layout, Crown utility, balance, archived-feature or ad-placement changes.",
+        "id": "V5-18-04",
+        "phase": "P18",
+        "status": "PLANNED",
+        "depends_on_tasks": [
+          "V5-18-03"
+        ],
+        "requires_phase_gates": [],
+        "evidence_required": true
+      },
+      {
+        "title": "Rehearse final transfer and both recovery classes",
+        "action": "Execute freeze/import/reconcile/read-only stage/first-write activation on copies; abort before write and recover after write with PostgreSQL authority.",
+        "verification": "Evidence proves no dual writer and no blind SQLite rollback after new application effects.",
+        "id": "V5-18-05",
+        "phase": "P18",
+        "status": "PLANNED",
+        "depends_on_tasks": [
+          "V5-18-04"
+        ],
+        "requires_phase_gates": [],
+        "evidence_required": true
+      },
+      {
+        "title": "Define forecast and measured load tiers",
+        "action": "Use actual expected launch traffic or an explicit unknown-forecast benchmark plan; include API/auth/socket/game/tournament/worker mix.",
+        "verification": "Reported capacity is a measured envelope, not an invented customer forecast or assumed 10x guarantee.",
+        "id": "V5-19-01",
+        "phase": "P19",
+        "status": "PLANNED",
+        "depends_on_tasks": [],
+        "requires_phase_gates": [
+          "P18"
+        ],
+        "evidence_required": true
+      },
+      {
+        "title": "Measure saturation and resource headroom",
+        "action": "Increase controlled load with realistic history, track p95/p99, pools/locks/event loop/CPU/RAM/storage and queue age; protect co-hosted services.",
+        "verification": "Safe admission limits, bottlenecks and resource caps have reproducible evidence.",
+        "id": "V5-19-02",
+        "phase": "P19",
+        "status": "PLANNED",
+        "depends_on_tasks": [
+          "V5-19-01"
+        ],
+        "requires_phase_gates": [],
+        "evidence_required": true
+      },
+      {
+        "title": "Run dependency and process chaos",
+        "action": "Slow/stop PostgreSQL, wipe Redis, lose pubsub/network, kill Core/worker and duplicate/reorder callbacks/commands.",
+        "verification": "No permanent asset/result/identity loss or double effect; each degraded behavior matches the architecture.",
+        "id": "V5-19-03",
+        "phase": "P19",
+        "status": "PLANNED",
+        "depends_on_tasks": [
+          "V5-19-02"
+        ],
+        "requires_phase_gates": [],
+        "evidence_required": true
+      },
+      {
+        "title": "Validate recovery and alert thresholds",
+        "action": "Measure failover/reconnect/job catch-up and fresh backups after incidents; tune alerts before the observed saturation cliff.",
+        "verification": "Recovery targets are met or accurately revised with rationale and recorded remaining risk.",
+        "id": "V5-19-04",
+        "phase": "P19",
+        "status": "PLANNED",
+        "depends_on_tasks": [
+          "V5-19-03"
+        ],
+        "requires_phase_gates": [],
+        "evidence_required": true
+      },
+      {
+        "title": "Freeze real native identity and build configuration",
+        "action": "Inspect current local targets and provider consoles; preserve package/bundle IDs, signing identities and approved assets. Pin supported toolchain/SDK/dependencies.",
+        "verification": "No competing accidental app IDs; reproducible debug/staging/release build settings exist.",
+        "id": "V5-20-01",
+        "phase": "P20",
+        "status": "PLANNED",
+        "depends_on_tasks": [],
+        "requires_phase_gates": [
+          "P19"
+        ],
+        "evidence_required": true
+      },
+      {
+        "title": "Build trusted bundled-client hosts",
+        "action": "Implement Kotlin WebViewAssetLoader and Swift WKWebView hosts, exact asset allowlist, origin/main-frame bridge controls, offline-first and lifecycle behavior.",
+        "verification": "Clean offline install works; bundle excludes server-only authority, credentials and repository internals.",
+        "id": "V5-20-02",
+        "phase": "P20",
+        "status": "PLANNED",
+        "depends_on_tasks": [
+          "V5-20-01"
+        ],
+        "requires_phase_gates": [],
+        "evidence_required": true
+      },
+      {
+        "title": "Implement secure session/network/realtime adapter",
+        "action": "Host owns refresh/access lifecycle, Android Keystore-encrypted storage/iOS Keychain, allowlisted API transport, one-use tickets and revision reconnect. Include actor/session-bound notification registration, revocation and safe return-to-game foundations without adding unapproved prompts or campaigns.",
+        "verification": "Logout/reinstall/refresh/process-kill/network-switch tests preserve same actor and safe credentials.",
+        "id": "V5-20-03",
+        "phase": "P20",
+        "status": "PLANNED",
+        "depends_on_tasks": [
+          "V5-20-02"
+        ],
+        "requires_phase_gates": [],
+        "evidence_required": true
+      },
+      {
+        "title": "Integrate real native Google/Apple identity",
+        "action": "Reuse existing nonce/audience/link/reauth semantics with actual SDK UI and correct app/server configuration.",
+        "verification": "Physical-device login/cancel/link/revoke/recovery tests pass; no fake token success bridge.",
+        "id": "V5-20-04",
+        "phase": "P20",
+        "status": "PLANNED",
+        "depends_on_tasks": [
+          "V5-20-03"
+        ],
+        "requires_phase_gates": [],
+        "evidence_required": true
+      },
+      {
+        "title": "Integrate four-product Play/StoreKit commerce",
+        "action": "Use persisted account bindings, localized products, pending/cancel/interruption/replay/refund and delivery-before-finalization; restore Remove Ads only.",
+        "verification": "Real sandbox device evidence proves one grant and no consumable remint across devices/platforms.",
+        "id": "V5-20-05",
+        "phase": "P20",
+        "status": "PLANNED",
+        "depends_on_tasks": [
+          "V5-20-04"
+        ],
+        "requires_phase_gates": [],
+        "evidence_required": true
+      },
+      {
+        "title": "Integrate ads/consent and approved privacy resources",
+        "action": "Implement UMP-before-requests, verified SSV-only rewards, approved interstitial caps/placement, Remove Ads and reachable association/deletion resources.",
+        "verification": "Physical-device consent/SSV replay/late callback tests pass; no ad during live play or new gameplay blocker.",
+        "id": "V5-20-06",
+        "phase": "P20",
+        "status": "PLANNED",
+        "depends_on_tasks": [
+          "V5-20-05"
+        ],
+        "requires_phase_gates": [],
+        "evidence_required": true
+      },
+      {
+        "title": "Complete actual device and cross-platform parity",
+        "action": "Run full themes/screens/accessibility/network/build matrix; play on Android, read same wallet/rank/purchases on iOS and retained browser-style client.",
+        "verification": "Device identities/builds/screenshots recorded; no separate mobile data model or unapproved UI changes.",
+        "id": "V5-20-07",
+        "phase": "P20",
+        "status": "PLANNED",
+        "depends_on_tasks": [
+          "V5-20-06"
+        ],
+        "requires_phase_gates": [],
+        "evidence_required": true
+      },
+      {
+        "title": "Build/sign/upload and report store state accurately",
+        "action": "Produce debug APK, signed release AAB, Xcode archive/signed IPA, internal Play/TestFlight uploads and accurate submission metadata using existing approvals.",
+        "verification": "Hashes/build numbers/track IDs and submitted/approved/enabled states are separate; pending provider review is not claimed complete.",
+        "id": "V5-20-08",
+        "phase": "P20",
+        "status": "PLANNED",
+        "depends_on_tasks": [
+          "V5-20-07"
+        ],
+        "requires_phase_gates": [],
+        "evidence_required": true
+      },
+      {
+        "title": "Revalidate go/no-go and actual release identity",
+        "action": "Confirm latest code/CI, source deployment, rollback assets, provider configurations, G00-G20 evidence and exact target environment.",
+        "verification": "No stale digest, unverified backup, unexplained reconciliation gap or missing supported-client compatibility.",
+        "id": "V5-22-01",
+        "phase": "P22",
+        "status": "PLANNED",
+        "depends_on_tasks": [],
+        "requires_phase_gates": [
+          "P20"
+        ],
+        "evidence_required": true
+      },
+      {
+        "title": "Stage production without admitting writes",
+        "action": "Prepare exact production-configured API/Core/worker, schema/roles/secrets/routes and backup/monitoring with all mutating jobs/routes disabled.",
+        "verification": "Only audited read-only health tests run; session/bootstrap or lazy GET cannot secretly cross the boundary.",
+        "id": "V5-22-02",
+        "phase": "P22",
+        "status": "PLANNED",
+        "depends_on_tasks": [
+          "V5-22-01"
+        ],
+        "requires_phase_gates": [],
+        "evidence_required": true
+      },
+      {
+        "title": "Drain and freeze every V4 writer",
+        "action": "Use existing maintenance behavior, preserve/drain valid games, stop mutation paths/jobs/operators/provider effects, and fence restart. Capture final consistent source snapshot.",
+        "verification": "Source checksum and no-writer proof recorded; callbacks are durably handled or safely retried, never falsely acknowledged.",
+        "id": "V5-22-03",
+        "phase": "P22",
+        "status": "PLANNED",
+        "depends_on_tasks": [
+          "V5-22-02"
+        ],
+        "requires_phase_gates": [],
+        "evidence_required": true
+      },
+      {
+        "title": "Import and reconcile final source",
+        "action": "Run the exact tested importer against intended nonserving production target; compare all per-actor/data categories and preserve pending effects/tombstones.",
+        "verification": "Final migration manifest shows zero unexplained differences and all invariants pass.",
+        "id": "V5-22-04",
+        "phase": "P22",
+        "status": "PLANNED",
+        "depends_on_tasks": [
+          "V5-22-03"
+        ],
+        "requires_phase_gates": [],
+        "evidence_required": true
+      },
+      {
+        "title": "Transfer authority and route clients",
+        "action": "Record epoch/first-write boundary, keep V4 fenced, enable Core/API/provider inbox/worker in controlled order, promote exact Vercel build and route legacy/native traffic.",
+        "verification": "No simultaneous independent writer even during DNS/cache propagation; old endpoints delegate to V5.",
+        "id": "V5-22-05",
+        "phase": "P22",
+        "status": "PLANNED",
+        "depends_on_tasks": [
+          "V5-22-04"
+        ],
+        "requires_phase_gates": [],
+        "evidence_required": true
+      },
+      {
+        "title": "Perform production smoke and recovery confirmation",
+        "action": "Run controlled supported-client flows, verify fresh backup/retrieval, ops/alerts/support lookup and actual error/latency/backlog health.",
+        "verification": "Exact URLs/digests/builds/schema/first-write evidence captured; any failure uses the correct recovery class.",
+        "id": "V5-22-06",
+        "phase": "P22",
+        "status": "PLANNED",
+        "depends_on_tasks": [
+          "V5-22-05"
+        ],
+        "requires_phase_gates": [],
+        "evidence_required": true
+      },
+      {
+        "title": "Permanently fence obsolete writers and schedulers",
+        "action": "Remove active V4 app mutation routes/jobs/restart paths, retain static/compatibility roles only if needed and label SQLite read-only archive.",
+        "verification": "Restart/host reboot cannot revive an independent V4 authority.",
+        "id": "V5-23-01",
+        "phase": "P23",
+        "status": "PLANNED",
+        "depends_on_tasks": [],
+        "requires_phase_gates": [
+          "P22"
+        ],
+        "evidence_required": true
+      },
+      {
+        "title": "Retain required artifacts and update operations",
+        "action": "Preserve immutable release tags, encrypted backups, migration manifests/audit keys and source history according to policy; update DNS/monitor/runbook inventory.",
+        "verification": "Recovery evidence is retrievable and old alarms or scripts do not target retired authority incorrectly.",
+        "id": "V5-23-02",
+        "phase": "P23",
+        "status": "PLANNED",
+        "depends_on_tasks": [
+          "V5-23-01"
+        ],
+        "requires_phase_gates": [],
+        "evidence_required": true
+      },
+      {
+        "title": "Retire compatibility only from usage/version evidence",
+        "action": "Keep old callbacks/client endpoints while supported users/providers need them; document sunset criteria and remove unused shims later.",
+        "verification": "No supported client or provider notification is broken merely to claim cleanup complete.",
+        "id": "V5-23-03",
+        "phase": "P23",
+        "status": "PLANNED",
+        "depends_on_tasks": [
+          "V5-23-02"
+        ],
+        "requires_phase_gates": [],
+        "evidence_required": true
+      },
+      {
+        "title": "Publish final delivery and residual-item report",
+        "action": "Report production/native states, scope exclusions, hashes/URLs, parity and recovery evidence, plus precise unresolved external/provider items.",
+        "verification": "Code-complete, device-verified, submitted, approved and enabled statuses are not conflated.",
+        "id": "V5-23-04",
+        "phase": "P23",
+        "status": "PLANNED",
+        "depends_on_tasks": [
+          "V5-23-03"
+        ],
+        "requires_phase_gates": [],
+        "evidence_required": true
+      },
+      {
+        "title": "Publish baseline and review cadence",
+        "action": "Carry forward Phase 19 capacity and production telemetry, identify query/pool/Core/worker/Redis bottlenecks and owner review cadence.",
+        "verification": "Metrics and unknowns are explicit; no fabricated real-user traffic is substituted for benchmarks.",
+        "id": "V5-24-01",
+        "phase": "P24",
+        "status": "PLANNED",
+        "depends_on_tasks": [],
+        "requires_phase_gates": [
+          "P23"
+        ],
+        "evidence_required": true
+      },
+      {
+        "title": "Define trigger-specific scaling runbooks",
+        "action": "For each bottleneck specify metric/duration threshold, smallest capacity/index/read-model action, cost, validation and rollback. Include separate-host Core/ingress design when reliability warrants it.",
+        "verification": "No generic Kubernetes/Kafka or global multi-primary plan; each action has a measured reason.",
+        "id": "V5-24-02",
+        "phase": "P24",
+        "status": "PLANNED",
+        "depends_on_tasks": [
+          "V5-24-01"
+        ],
+        "requires_phase_gates": [],
+        "evidence_required": true
+      },
+      {
+        "title": "Apply extra capacity only when justified",
+        "action": "Execute a trigger-backed change only after the threshold/cost/compatibility evidence exists; otherwise record NOT_TRIGGERED and retain the tested initial architecture.",
+        "verification": "No speculative resource creation and no false claim that host HA exists before a separate failure domain is tested.",
+        "id": "V5-24-03",
+        "phase": "P24",
+        "status": "PLANNED",
+        "depends_on_tasks": [
+          "V5-24-02"
+        ],
+        "requires_phase_gates": [],
+        "evidence_required": true,
+        "execution_condition": "Only if recorded metric/cost/compatibility trigger is met; otherwise NOT_TRIGGERED is correct."
+      }
+    ]
+  },
+  "acceptance_cases": [
+    {
+      "id": "A01",
+      "phases": "0-23",
+      "title": "Product/source freeze",
+      "exercise": "Compare approved rule/policy constants, differential game outcomes and four-theme screenshots on representative screens/devices.",
+      "expected": "No unapproved game/economy/visual/archived-feature change; justified native exceptions individually recorded.",
+      "evidence": "Commit-pinned hashes, screenshots, regression logs and exception register.",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "A02",
+      "phases": "0,17",
+      "title": "Baseline and CI",
+      "exercise": "Resolve actual green base and run V5 validation on meaningful commits.",
+      "expected": "V5 branch is covered; V4 pipeline/tags remain; no fake passed tests or secret artifacts.",
+      "evidence": "Git SHA, Actions run ID, commands/results and branch ancestry.",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "A03",
+      "phases": "0,15,22",
+      "title": "Reported backup conflict",
+      "exercise": "Inspect current ops status, actual backup repository and fresh restore; compare handoff and ledger.",
+      "expected": "Current fact is established; stale statement is explained; no destructive repository initialization.",
+      "evidence": "Snapshot/target IDs, timestamps, retrieval/checksum and restore result.",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "A04",
+      "phases": "2,13",
+      "title": "Environment and role isolation",
+      "exercise": "Use API/worker/preview credentials to attempt forbidden economic/DDL/production access.",
+      "expected": "Negative tests fail as designed; correct service role succeeds only on its authority.",
+      "evidence": "Role/grant tests and actual environment IDs without credentials.",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "A05",
+      "phases": "2,17",
+      "title": "Migration framework",
+      "exercise": "Create from zero and upgrade supported schemas under concurrent migrator attempts.",
+      "expected": "Only one migrator; checksums/history correct; runtime never alters schema.",
+      "evidence": "Migration IDs/checksums, create/upgrade logs and lock tests.",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "A06",
+      "phases": "3,22",
+      "title": "Complete source coverage",
+      "exercise": "Inventory SQLite relational schema and every serialized root/nested field variant; compare migration coverage.",
+      "expected": "All durable source data mapped or deliberately accounted for; unknowns not silently dropped.",
+      "evidence": "Coverage manifest and source snapshot/schema fingerprint.",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "A07",
+      "phases": "3,4,22",
+      "title": "Per-actor reconciliation",
+      "exercise": "Import accounts/identities/assets/ranks/receipts/history/social/privacy state; inject swapped-wallet test.",
+      "expected": "Exact per-actor/relationship values match; aggregate-only false success is detected.",
+      "evidence": "Restricted diff and sanitized zero-unexplained-difference summary.",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "A08",
+      "phases": "3",
+      "title": "Deterministic restartable import",
+      "exercise": "Repeat import, interrupt each batch and re-run near a quarterly boundary with non-UUID IDs.",
+      "expected": "No generated identities/default grants/time rollover; canonical target is equivalent.",
+      "evidence": "Rerun/interruption fixtures and canonical hashes.",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "A09",
+      "phases": "3,4",
+      "title": "Escrow and ledger",
+      "exercise": "Reconcile liquid/reserved/escrow and replay transaction fixtures including conversions/burn/grants.",
+      "expected": "No double counting or reapplication of legacy journal; postings match approved policy.",
+      "evidence": "Per-asset invariants, source-linked migration accounting baseline and transaction tests.",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "A10",
+      "phases": "4,7,9",
+      "title": "Concurrent spending",
+      "exercise": "Race entry, challenge, conversion and tournament reservation for the same actor.",
+      "expected": "No overspend, conflicting occupancy or changed charge timing; losing request has safe outcome.",
+      "evidence": "Parallel test trace, final wallet/reservation/operation rows, no PII in public output.",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "A11",
+      "phases": "4,8,9",
+      "title": "Atomic result and payout",
+      "exercise": "Inject failures between wallet/ledger/result/rating/outbox writes and race settlement/refund.",
+      "expected": "Everything commits once or rolls back; no duplicate result or payout.",
+      "evidence": "Transaction fault-injection logs and before/after invariants.",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "A12",
+      "phases": "5,20",
+      "title": "Shared actor identity",
+      "exercise": "Login/link supported email/Google/Apple across browser-style, Android and iOS clients.",
+      "expected": "Same actor and permanent bindings; no email-based merge or separate mobile account.",
+      "evidence": "Actor-hash comparison and real provider/device evidence, not raw tokens.",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "A13",
+      "phases": "5,13,20",
+      "title": "Refresh and revocation",
+      "exercise": "Race refresh, replay old refresh, revoke device/all devices, rotate keys with active sockets.",
+      "expected": "Legitimate parallel retry handled; real replay/revocation enforced; bounded documented revocation delay.",
+      "evidence": "Session-family/generation traces, key IDs and test outcomes.",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "A14",
+      "phases": "5,8",
+      "title": "One-use realtime tickets",
+      "exercise": "Redeem concurrently on two nodes, replay after Redis loss, try wrong session/env/audience.",
+      "expected": "Exactly one valid redemption; failures cannot join protected matches.",
+      "evidence": "Ticket-hash/redeem test result without ticket values.",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "A15",
+      "phases": "6,19",
+      "title": "Redis complete loss",
+      "exercise": "Wipe isolated staging Redis during queues, active games and pending effects.",
+      "expected": "Assets/results/identity intact; ephemeral state rebuilds or clients rejoin without losing money.",
+      "evidence": "Database before/after invariant report and recovery metrics.",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "A16",
+      "phases": "7",
+      "title": "Matcher concurrency",
+      "exercise": "Run multiple matchers with cancellation/heartbeat expiry/dead workers and conflicting entry paths.",
+      "expected": "At most one compatible durable assignment; no stranded paid reservation.",
+      "evidence": "Actor occupancy and assignment constraints tested under load.",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "A17",
+      "phases": "8,16",
+      "title": "Committed move recovery",
+      "exercise": "Kill Core before/after commit, publish and response; reconnect through other Core.",
+      "expected": "Latest acknowledged revision survives; duplicate retry returns prior result; no restart void.",
+      "evidence": "Operation/revision trace and recorded failover demonstration.",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "A18",
+      "phases": "8,9",
+      "title": "Clock correctness",
+      "exercise": "Race exact-deadline move/timeout and reconnect after process/clock disruptions.",
+      "expected": "Same accepted timer rule; no free extension, stale timer effect or double settlement.",
+      "evidence": "Deterministic clock boundary tests and durable deadline evidence.",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "A19",
+      "phases": "8,20",
+      "title": "Transport recovery",
+      "exercise": "Drop/reorder notifications, disconnect network, background/foreground app, use HTTP fallback.",
+      "expected": "Snapshot/revision reconciliation succeeds without speculative reapply or duplicate match.",
+      "evidence": "Network/device logs and match-state comparisons.",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "A20",
+      "phases": "9",
+      "title": "Tournament behavior",
+      "exercise": "Run public/private tournament lifecycle with host leave, concurrent timers and worker death.",
+      "expected": "Approved CANCELLED host-leave behavior; original cohort/payout/rank rules and escrow intact.",
+      "evidence": "Existing fixtures plus multi-worker end-to-end evidence.",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "A21",
+      "phases": "10",
+      "title": "Jobs and outbox",
+      "exercise": "Crash worker at claim/I/O/completion; deliver duplicates and exhaust retries.",
+      "expected": "Durable recovery, current fence required, idempotent effect and visible DLQ.",
+      "evidence": "Job state trace, provider idempotency evidence and private retry audit.",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "A22",
+      "phases": "10",
+      "title": "UTC scheduled economics",
+      "exercise": "Run duplicate workers and catch-up across week/quarter boundary.",
+      "expected": "Existing qualification, snapshot and payout rules; no fabricated missing reward periods.",
+      "evidence": "Seeded calendar tests and unique business-operation records.",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "A23",
+      "phases": "11,13",
+      "title": "Vercel/Core ownership",
+      "exercise": "Attempt direct wallet write and forged/replayed service assertion with altered actor/body.",
+      "expected": "API cannot grant; Core independently checks authorization/idempotency.",
+      "evidence": "Negative permission/security tests and sanitized distributed request trace.",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "A24",
+      "phases": "11,18,22",
+      "title": "Retained browser compatibility",
+      "exercise": "Run approved old-origin client against V5 facade and callback/session continuity.",
+      "expected": "Existing UI/contracts work; no shared-cookie-domain fiction or residual SQLite writer.",
+      "evidence": "Old-client E2E, CSRF/callback checks and authority-path evidence.",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "A25",
+      "phases": "12",
+      "title": "Cache correctness and privacy",
+      "exercise": "Clear caches, deliver old projection events, request private data across accounts.",
+      "expected": "Correct fallback, no old-version overwrite or shared-cache leakage; caches never authorize spending.",
+      "evidence": "Projection/cache replay and isolation test report.",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "A26",
+      "phases": "13",
+      "title": "Private operations and audit",
+      "exercise": "Probe public metrics/operator/server paths, verify migrated/new audit chain under concurrency.",
+      "expected": "Private surfaces inaccessible publicly; audit uses dedicated key and preserves historical verification.",
+      "evidence": "External/private probe results and audit verification without keys.",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "A27",
+      "phases": "14",
+      "title": "Operational diagnosis and alerting",
+      "exercise": "Force a staging failure/recovery and trace its support ID across services.",
+      "expected": "Alerts actually arrive; safe diagnosis possible; ops reflects backup/backlog not just liveness.",
+      "evidence": "Delivered alert references, trace sample and endpoint observations.",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "A28",
+      "phases": "15",
+      "title": "Independent restore",
+      "exercise": "Restore encrypted R2 logical backup to isolated PostgreSQL outside original project; run all invariants.",
+      "expected": "Data/config prerequisites reconstructable; privacy/deletion/revocation protections applied before service.",
+      "evidence": "Measured RPO/RTO, hashes, target IDs, invariant results and cleanup record.",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "A29",
+      "phases": "16",
+      "title": "Process vs host availability",
+      "exercise": "Stop one Core during active games and separately document shared host/edge failure impact.",
+      "expected": "Process failover works; same-host test not mislabeled host HA.",
+      "evidence": "Topology diagram and measured process outage/reconnect result.",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "A30",
+      "phases": "17",
+      "title": "Immutable release compatibility",
+      "exercise": "Deploy components in supported skew order and roll to prior PostgreSQL-compatible build.",
+      "expected": "Exact tested image/deployment used; migrations compatible; no data rollback hidden in app rollback.",
+      "evidence": "Release manifests, digest verification and rollout/recovery logs.",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "A31",
+      "phases": "18,19",
+      "title": "Capacity and degradation",
+      "exercise": "Run realistic mixed traffic/history tiers and dependency saturation/failure.",
+      "expected": "Measured safe envelope and backpressure; durable invariants remain true under overload.",
+      "evidence": "Reproducible load profile, p95/p99/resource metrics, recovery/alert outcomes.",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "A32",
+      "phases": "20",
+      "title": "Real native artifacts and offline bundle",
+      "exercise": "Compile/install genuine Android/iOS targets; inspect asset bundles; launch clean install offline.",
+      "expected": "Approved offline game works without new website; no server code/secrets or fake native target.",
+      "evidence": "APK/AAB/archive/IPA hashes where applicable; manifest and install/launch evidence.",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "A33",
+      "phases": "20",
+      "title": "Native bridge security",
+      "exercise": "Attempt untrusted-frame/navigation/request-path injection and inspect storage/backups.",
+      "expected": "Host tokens not exposed to arbitrary content; only trusted allowed operations; secure persistence.",
+      "evidence": "Bridge negative tests and storage/backup inspection without token values.",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "A34",
+      "phases": "20",
+      "title": "Native purchases and restore",
+      "exercise": "Run real sandbox pending/cancel/success/crash/replay/refund and cross-platform entitlement read.",
+      "expected": "One backend-verified grant; stored bindings preserved; finish/consume after delivery; no consumable remint.",
+      "evidence": "Device/build/store transaction references hashed or sanitized; grant/finalization evidence.",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "A35",
+      "phases": "20",
+      "title": "Ads and consent",
+      "exercise": "Test UMP state/forms before preload, reward callback delay/replay and interstitial entry conditions.",
+      "expected": "No premature ad requests, no client-only grant, no ads during prohibited gameplay; Remove Ads works.",
+      "evidence": "Device recording and SSV/ticket assertions with sensitive values removed.",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "A36",
+      "phases": "20",
+      "title": "Native accessibility and parity",
+      "exercise": "Exercise all four themes, keyboard/notch/small screen, VoiceOver/TalkBack and network lifecycle.",
+      "expected": "Approved layout/controls/game behavior preserved; unavoidable platform adjustments documented.",
+      "evidence": "Real device/OS/build matrix and before/after screenshots.",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "A37",
+      "phases": "20",
+      "title": "Distribution and review truthfulness",
+      "exercise": "Build/sign/upload with real authorized identities and inspect provider state.",
+      "expected": "Uploaded/submitted/reviewed/approved/enabled reported separately, no inferred approval.",
+      "evidence": "Version code/build number, track/TestFlight/submission IDs and provider status.",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "A38",
+      "phases": "22",
+      "title": "Single writer and first-write fence",
+      "exercise": "Rehearse all writer shutdown, exact import, read-only checks, epoch transfer, old endpoint/DNS overlap.",
+      "expected": "No dual authority; first post-import application write logged; stale V4 cannot resume.",
+      "evidence": "Cutover state/evidence timeline, source hash and mutating-path inventory.",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "A39",
+      "phases": "22",
+      "title": "Rollback classes",
+      "exercise": "Abort before first application write; fail after session/provider write and recover via PG-compatible build.",
+      "expected": "Only pre-write case may restore unchanged SQLite authority; post-write preserves PostgreSQL effects.",
+      "evidence": "Both rehearsals and actual release-compatible rollback references.",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "A40",
+      "phases": "23,24",
+      "title": "Retirement and scaling discipline",
+      "exercise": "Audit current writers/endpoints/archives and proposed scale actions against real metrics.",
+      "expected": "V4 not a dependency; retained evidence intact; only justified capacity added; website remains deferred.",
+      "evidence": "Final inventory, residual items, metrics/trigger/cost/rollback plan.",
+      "status": "NOT_RUN"
+    }
+  ],
+  "task_evidence": {
+    "V5-00-01": {
+      "status": "COMPLETE",
+      "completed_portions": [
+        "Entry checkout, remote V4.1 head, exact-head successful CI and peeled release tag inspected.",
+        "Full immutable release digest and application SHA resolved from authenticated GitHub release.",
+        "Owner-carried untracked additions recorded; no user files discarded or rewritten.",
+        "Complete phase/task/case ledger and persistent goal/resumption guidance initialized.",
+        "Source SHA, running app/backup image revisions and actual installed deployment directory/hashes separately verified."
+      ],
+      "remaining": [],
+      "evidence_refs": [
+        "docs/v5/BASELINE.md",
+        "docs/v5/evidence/setup.json",
+        "docs/v5/evidence/phase00-live-operations.json"
+      ]
+    },
+    "V5-00-02": {
+      "status": "COMPLETE",
+      "completed_portions": ["Live app digest and health verified; sole public edge and private admin/monitors/cohosted services recorded.", "Existing Restic repository checked; exact encrypted snapshot retrieved and verified; isolated restore hash/schema matched and owned temporary target removed.", "Historical backup failure resolved as superseded by current successful evidence; no destructive repository initialization or production restore."],
+      "remaining": [],
+      "evidence_refs": ["docs/v5/evidence/phase00-live-operations.json"],
+      "review_notes": "Verification permits verified/reported/unresolved classification. Actual provider monitor/package visibility remains an explicitly scoped environment-inventory gap under V5-00-06, not an invented completed provider check."
+    }
+  },
+  "known_observations": [
+    {
+      "id": "V4_1_2_GUEST_AUTH",
+      "provenance": "OWNER_REPORTED_CORROBORATED_BY_LEDGER",
+      "behavior": "LINK_ACCOUNT_REQUIRED maps to auth with Sign in to play online action; auth clears poller and prevents the pointless 401 re-poll loop.",
+      "regression_path": "tests/static-ui.test.js",
+      "preserve": true
+    },
+    {
+      "id": "PREEXISTING_OPSZ_BACKUP_FRESHNESS",
+      "provenance": "OWNER_REPORTED",
+      "reported_suite": "340/342; the named opsz backup-freshness failure occurs on the clean tree too.",
+      "rerun_to_confirm": false,
+      "do_not_suppress_or_redefine_ops_health": true
+    }
+  ],
+  "carried_local_work": {
+    "entry_untracked_paths": [
+      ".agents/",
+      "AGENT-GOAL.md",
+      "Mega-XO-V5-Implementation-Pack/",
+      "docs/Handoff/",
+      "skills-lock.json"
+    ],
+    "tracked_changes_at_entry": [],
+    "preservation_action": "Left untouched; no reset, clean, stash, overwrite, relocation or blanket staging."
+  },
+  "production_safety": {
+    "durable_authority": "V4 Node/SQLite until gated P22",
+    "origin": "https://play.antimatterinnovations.com",
+    "ssh_alias": "command",
+    "production_root": "/opt/mega-xo",
+    "old_staging_root": "/opt/mega-xo-staging",
+    "runtime_changes_during_setup": false,
+    "provider_changes_during_setup": false,
+    "git_ref_changes_during_setup": false,
+    "postgres_import_performed": false,
+    "first_post_import_application_write": null,
+    "cutover_epoch": null,
+    "current_backup_restore_proof_status": "OWNER_AND_HISTORICAL_LEDGER_EVIDENCE_ONLY_NEW_INSPECTION_PENDING",
+    "rollback_rule": "After the first post-import production application write, retain PostgreSQL authority and forward-fix or deploy a tested PostgreSQL-compatible previous build."
+  },
+  "storage": {
+    "authorized_targets": [
+      "Mac mini",
+      "T9",
+      "DGX Spark"
+    ],
+    "local_data_volume_available_gib_observed": 22,
+    "local_data_volume_used_percent_observed": 90,
+    "t9": {
+      "mount": "/Volumes/T9",
+      "available_gib_observed": 858,
+      "used_percent_observed": 54,
+      "build_filesystem_suitability": "NOT_INSPECTED"
+    },
+    "dgx_spark": {
+      "access_target": null,
+      "storage_path": null,
+      "capacity": null,
+      "status": "OWNER_AUTHORIZED_NOT_INSPECTED"
+    },
+    "data_relocated": false,
+    "decision": "Prefer mounted T9 overflow for bulky caches/artifacts if needed after checking suitability; discover the actual DGX target before use."
+  },
+  "references": {
+    "baseline": "docs/v5/BASELINE.md",
+    "human_todos": "docs/v5/TODO.md",
+    "progress": "docs/v5/PROGRESS.md",
+    "decisions": "docs/v5/DECISIONS.md",
+    "open_items": "docs/v5/OPEN-ITEMS.md",
+    "setup_evidence": "docs/v5/evidence/setup.json"
+  },
+  "setup": {
+    "status": "INITIALIZED_AND_VALIDATED",
+    "scope": "Goal, complete todos, baseline corrections, persistent guidance and evidence records; no claim that V5 implementation phases are complete.",
+    "verification_evidence": "docs/v5/evidence/ledger-smoke.json",
+    "committed": false,
+    "pushed": false
+  }
+}

@@ -1,0 +1,177 @@
+{
+  "schema_version": 1,
+  "status": "VERIFIED_BASELINE_PORTIONS",
+  "task_ids": [
+    "V5-00-03",
+    "V5-00-05",
+    "V5-00-06"
+  ],
+  "case_ids": [
+    "A01",
+    "A02"
+  ],
+  "observed_at_utc": "2026-10-07T18:38:31.277139+00:00",
+  "source_sha": "455b8ec9ea4070b4410d78f9eea2aaa06d32c0b2",
+  "environment": "local V5-platform checkout; actual approved browser client on isolated localhost account service",
+  "source_manifest": {
+    "schema_version": 1,
+    "base_sha": "455b8ec9ea4070b4410d78f9eea2aaa06d32c0b2",
+    "purpose": "Approved source-change review; not visual equivalence proof.",
+    "files": [
+      {
+        "path": "index.html",
+        "sha256": "f36d7e7ded7bd8d291133de3e1aa7325ea4d93bee6eae324851ffff9283bd8d5",
+        "bytes": 5768
+      },
+      {
+        "path": "public/delete-account.html",
+        "sha256": "ee4b178da26b1ff510f757671d30eda6cf5434b62db2e2cab9bf444ccac14892",
+        "bytes": 2788
+      },
+      {
+        "path": "public/legal.css",
+        "sha256": "7403ff953f368282182e371c45badc2550fb1da26e346ca4e3af4d9fdfd390a4",
+        "bytes": 1969
+      },
+      {
+        "path": "public/privacy-choices.html",
+        "sha256": "e93d12810f9da54fb1c9e0c135a78f11d2f59d1030abf0b4fead5f451eb6d9c0",
+        "bytes": 2811
+      },
+      {
+        "path": "public/privacy.html",
+        "sha256": "511a43b49eb988217b84a241d53a19ecb4531905424da54723d136740b8e70e1",
+        "bytes": 8438
+      },
+      {
+        "path": "public/support.html",
+        "sha256": "4db52b6adbc93de636ba07c484da6b436a9e4240fbc75bdab05b0ea5bb07d0ae",
+        "bytes": 2669
+      },
+      {
+        "path": "public/terms.html",
+        "sha256": "0f42b27d7767dfd3fc0ab0d6f84445adc2602473d3285f828bb8ed060683d031",
+        "bytes": 5845
+      },
+      {
+        "path": "src/app.js",
+        "sha256": "50258f18fb49f2aca1326ebbec17c6973edf3d32e2b5a89132eaeb2c8a6bd26a",
+        "bytes": 73859
+      },
+      {
+        "path": "src/community.css",
+        "sha256": "1d2b1d2bba4ef163c2bcbdc4913b5c0a42ff45005374a2e965c4b8bf17f7a438",
+        "bytes": 19722
+      },
+      {
+        "path": "src/community.js",
+        "sha256": "3966d5d9c177685ae7de7d2037a999fa230bfd73876950ae98ccad5ce23c233c",
+        "bytes": 53221
+      },
+      {
+        "path": "src/domain.js",
+        "sha256": "5c4bf7e41c61ea7db152d1e53ebe2b8f30421fba7261dc03bc9724a02cc7c8a4",
+        "bytes": 16543
+      },
+      {
+        "path": "src/game.js",
+        "sha256": "f5b6829111a9b748569db0623f797115f77c0b35f3d041a9c53dace532cf1947",
+        "bytes": 4349
+      },
+      {
+        "path": "src/icons.js",
+        "sha256": "f7e77ee0cd3b1fdec5aa4414c1367a9b77203f80e90a7e61788fb9736dc9a24b",
+        "bytes": 3096
+      },
+      {
+        "path": "src/lan-icons.js",
+        "sha256": "f3cc4fd205187e4da205011770ce6576471b1c9685d65d758ede8934690a5709",
+        "bytes": 2586
+      },
+      {
+        "path": "src/monetization-ui.js",
+        "sha256": "3f398501a973858c97d07c03eacf2567664224af62caa39c43488827893083a3",
+        "bytes": 15815
+      },
+      {
+        "path": "src/monetization.css",
+        "sha256": "0d9a99911775cd591b3059346a220724415a5034724bfc4ffe36e1af3499c456",
+        "bytes": 4935
+      },
+      {
+        "path": "src/monetization.js",
+        "sha256": "a7f754cbf455de6f790452dba0085320b987057909b873bf594726611d2e6b77",
+        "bytes": 5825
+      },
+      {
+        "path": "src/party-ui.js",
+        "sha256": "72f91a571591b30d21d1baf9c86ca5c2a868b9028f17c4bac6c8f8beb8585c1c",
+        "bytes": 28923
+      },
+      {
+        "path": "src/party.css",
+        "sha256": "f884f2296dd5c0fbd579fb7cf24731a9b0ba0648db896159ddd1e6c49dcec4b5",
+        "bytes": 13208
+      },
+      {
+        "path": "src/styles.css",
+        "sha256": "8e5224898f6d699bbd7aebdae8cea3059bc7f712b5b087921a945e49df48035b",
+        "bytes": 76781
+      },
+      {
+        "path": "src/tournament.js",
+        "sha256": "3ac1298855cb8664dac54dde66fd465b81ecfc64f3e4f5b849e1e7840155f7ad",
+        "bytes": 13275
+      }
+    ]
+  },
+  "commands": [
+    {
+      "command": "npm run test:invariants",
+      "exit_code": 0,
+      "result": {
+        "tests": 16,
+        "pass": 16,
+        "fail": 0
+      }
+    },
+    {
+      "command": "npm run test:balance",
+      "exit_code": 0,
+      "result": "Approved league fees, payouts and Elo example model emitted without assertion failures."
+    },
+    {
+      "command": "npm run test:economy-sim",
+      "exit_code": 0,
+      "result": "Seeded 5000-player/90-day pressure model completed; not a production traffic/revenue forecast."
+    },
+    {
+      "command": "Python Eval checkpoint smoke: parse persisted ledger; compare V5 branch/PR triggers and retain V4-only publish conditions",
+      "exit_code": 0,
+      "result": "117 original task contracts and 40 acceptance cases retained; V5 validation enabled, V4 publishing unchanged."
+    }
+  ],
+  "visual_baseline": {
+    "status": "IN_PROGRESS",
+    "captures_so_far": 18,
+    "four_theme_actual_surface_proof": true,
+    "full_screen_and_signed_account_matrix_complete": false,
+    "restricted_screenshot_root": "/Users/oculus/Downloads/Mega-XO-private-evidence"
+  },
+  "result": {
+    "executed": true,
+    "exit_code": 0,
+    "assertions": [
+      "Selected green baseline source hashes captured before application changes.",
+      "Existing invariant/balance/economy models exercised.",
+      "Actual four-theme home/settings/commerce surfaces captured with no horizontal overflow.",
+      "Known opsz failure not rerun to confirm.",
+      "Full visual/provider/native gates remain unclaimed."
+    ]
+  },
+  "not_claimed": [
+    "full P00 completion",
+    "new provider/device acceptance",
+    "V5 production deployment"
+  ]
+}

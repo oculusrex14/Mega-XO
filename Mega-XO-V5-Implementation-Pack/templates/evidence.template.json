@@ -1,0 +1,35 @@
+{
+  "schema_version": 1,
+  "status": "TEMPLATE_NOT_EXECUTED",
+  "task_id": null,
+  "case_ids": [],
+  "observed_at_utc": null,
+  "source_sha": null,
+  "environment": null,
+  "target_ids": {},
+  "commands": [],
+  "result": {
+    "executed": false,
+    "exit_code": null,
+    "assertions": [],
+    "unexplained_differences": null
+  },
+  "device": {
+    "platform": null,
+    "model": null,
+    "os": null,
+    "build_id": null,
+    "physical": null
+  },
+  "provider_state": {
+    "uploaded": false,
+    "submitted": false,
+    "approved": false,
+    "production_enabled": false,
+    "evidence_reference": null
+  },
+  "artifacts": [],
+  "restricted_evidence_location": null,
+  "sanitized_summary": null,
+  "review_notes": null
+}

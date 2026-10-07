@@ -1,0 +1,365 @@
+{
+  "schema_version": 1,
+  "cases": [
+    {
+      "id": "A01",
+      "phases": "0-23",
+      "title": "Product/source freeze",
+      "exercise": "Compare approved rule/policy constants, differential game outcomes and four-theme screenshots on representative screens/devices.",
+      "expected": "No unapproved game/economy/visual/archived-feature change; justified native exceptions individually recorded.",
+      "evidence": "Commit-pinned hashes, screenshots, regression logs and exception register.",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "A02",
+      "phases": "0,17",
+      "title": "Baseline and CI",
+      "exercise": "Resolve actual green base and run V5 validation on meaningful commits.",
+      "expected": "V5 branch is covered; V4 pipeline/tags remain; no fake passed tests or secret artifacts.",
+      "evidence": "Git SHA, Actions run ID, commands/results and branch ancestry.",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "A03",
+      "phases": "0,15,22",
+      "title": "Reported backup conflict",
+      "exercise": "Inspect current ops status, actual backup repository and fresh restore; compare handoff and ledger.",
+      "expected": "Current fact is established; stale statement is explained; no destructive repository initialization.",
+      "evidence": "Snapshot/target IDs, timestamps, retrieval/checksum and restore result.",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "A04",
+      "phases": "2,13",
+      "title": "Environment and role isolation",
+      "exercise": "Use API/worker/preview credentials to attempt forbidden economic/DDL/production access.",
+      "expected": "Negative tests fail as designed; correct service role succeeds only on its authority.",
+      "evidence": "Role/grant tests and actual environment IDs without credentials.",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "A05",
+      "phases": "2,17",
+      "title": "Migration framework",
+      "exercise": "Create from zero and upgrade supported schemas under concurrent migrator attempts.",
+      "expected": "Only one migrator; checksums/history correct; runtime never alters schema.",
+      "evidence": "Migration IDs/checksums, create/upgrade logs and lock tests.",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "A06",
+      "phases": "3,22",
+      "title": "Complete source coverage",
+      "exercise": "Inventory SQLite relational schema and every serialized root/nested field variant; compare migration coverage.",
+      "expected": "All durable source data mapped or deliberately accounted for; unknowns not silently dropped.",
+      "evidence": "Coverage manifest and source snapshot/schema fingerprint.",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "A07",
+      "phases": "3,4,22",
+      "title": "Per-actor reconciliation",
+      "exercise": "Import accounts/identities/assets/ranks/receipts/history/social/privacy state; inject swapped-wallet test.",
+      "expected": "Exact per-actor/relationship values match; aggregate-only false success is detected.",
+      "evidence": "Restricted diff and sanitized zero-unexplained-difference summary.",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "A08",
+      "phases": "3",
+      "title": "Deterministic restartable import",
+      "exercise": "Repeat import, interrupt each batch and re-run near a quarterly boundary with non-UUID IDs.",
+      "expected": "No generated identities/default grants/time rollover; canonical target is equivalent.",
+      "evidence": "Rerun/interruption fixtures and canonical hashes.",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "A09",
+      "phases": "3,4",
+      "title": "Escrow and ledger",
+      "exercise": "Reconcile liquid/reserved/escrow and replay transaction fixtures including conversions/burn/grants.",
+      "expected": "No double counting or reapplication of legacy journal; postings match approved policy.",
+      "evidence": "Per-asset invariants, source-linked migration accounting baseline and transaction tests.",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "A10",
+      "phases": "4,7,9",
+      "title": "Concurrent spending",
+      "exercise": "Race entry, challenge, conversion and tournament reservation for the same actor.",
+      "expected": "No overspend, conflicting occupancy or changed charge timing; losing request has safe outcome.",
+      "evidence": "Parallel test trace, final wallet/reservation/operation rows, no PII in public output.",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "A11",
+      "phases": "4,8,9",
+      "title": "Atomic result and payout",
+      "exercise": "Inject failures between wallet/ledger/result/rating/outbox writes and race settlement/refund.",
+      "expected": "Everything commits once or rolls back; no duplicate result or payout.",
+      "evidence": "Transaction fault-injection logs and before/after invariants.",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "A12",
+      "phases": "5,20",
+      "title": "Shared actor identity",
+      "exercise": "Login/link supported email/Google/Apple across browser-style, Android and iOS clients.",
+      "expected": "Same actor and permanent bindings; no email-based merge or separate mobile account.",
+      "evidence": "Actor-hash comparison and real provider/device evidence, not raw tokens.",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "A13",
+      "phases": "5,13,20",
+      "title": "Refresh and revocation",
+      "exercise": "Race refresh, replay old refresh, revoke device/all devices, rotate keys with active sockets.",
+      "expected": "Legitimate parallel retry handled; real replay/revocation enforced; bounded documented revocation delay.",
+      "evidence": "Session-family/generation traces, key IDs and test outcomes.",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "A14",
+      "phases": "5,8",
+      "title": "One-use realtime tickets",
+      "exercise": "Redeem concurrently on two nodes, replay after Redis loss, try wrong session/env/audience.",
+      "expected": "Exactly one valid redemption; failures cannot join protected matches.",
+      "evidence": "Ticket-hash/redeem test result without ticket values.",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "A15",
+      "phases": "6,19",
+      "title": "Redis complete loss",
+      "exercise": "Wipe isolated staging Redis during queues, active games and pending effects.",
+      "expected": "Assets/results/identity intact; ephemeral state rebuilds or clients rejoin without losing money.",
+      "evidence": "Database before/after invariant report and recovery metrics.",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "A16",
+      "phases": "7",
+      "title": "Matcher concurrency",
+      "exercise": "Run multiple matchers with cancellation/heartbeat expiry/dead workers and conflicting entry paths.",
+      "expected": "At most one compatible durable assignment; no stranded paid reservation.",
+      "evidence": "Actor occupancy and assignment constraints tested under load.",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "A17",
+      "phases": "8,16",
+      "title": "Committed move recovery",
+      "exercise": "Kill Core before/after commit, publish and response; reconnect through other Core.",
+      "expected": "Latest acknowledged revision survives; duplicate retry returns prior result; no restart void.",
+      "evidence": "Operation/revision trace and recorded failover demonstration.",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "A18",
+      "phases": "8,9",
+      "title": "Clock correctness",
+      "exercise": "Race exact-deadline move/timeout and reconnect after process/clock disruptions.",
+      "expected": "Same accepted timer rule; no free extension, stale timer effect or double settlement.",
+      "evidence": "Deterministic clock boundary tests and durable deadline evidence.",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "A19",
+      "phases": "8,20",
+      "title": "Transport recovery",
+      "exercise": "Drop/reorder notifications, disconnect network, background/foreground app, use HTTP fallback.",
+      "expected": "Snapshot/revision reconciliation succeeds without speculative reapply or duplicate match.",
+      "evidence": "Network/device logs and match-state comparisons.",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "A20",
+      "phases": "9",
+      "title": "Tournament behavior",
+      "exercise": "Run public/private tournament lifecycle with host leave, concurrent timers and worker death.",
+      "expected": "Approved CANCELLED host-leave behavior; original cohort/payout/rank rules and escrow intact.",
+      "evidence": "Existing fixtures plus multi-worker end-to-end evidence.",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "A21",
+      "phases": "10",
+      "title": "Jobs and outbox",
+      "exercise": "Crash worker at claim/I/O/completion; deliver duplicates and exhaust retries.",
+      "expected": "Durable recovery, current fence required, idempotent effect and visible DLQ.",
+      "evidence": "Job state trace, provider idempotency evidence and private retry audit.",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "A22",
+      "phases": "10",
+      "title": "UTC scheduled economics",
+      "exercise": "Run duplicate workers and catch-up across week/quarter boundary.",
+      "expected": "Existing qualification, snapshot and payout rules; no fabricated missing reward periods.",
+      "evidence": "Seeded calendar tests and unique business-operation records.",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "A23",
+      "phases": "11,13",
+      "title": "Vercel/Core ownership",
+      "exercise": "Attempt direct wallet write and forged/replayed service assertion with altered actor/body.",
+      "expected": "API cannot grant; Core independently checks authorization/idempotency.",
+      "evidence": "Negative permission/security tests and sanitized distributed request trace.",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "A24",
+      "phases": "11,18,22",
+      "title": "Retained browser compatibility",
+      "exercise": "Run approved old-origin client against V5 facade and callback/session continuity.",
+      "expected": "Existing UI/contracts work; no shared-cookie-domain fiction or residual SQLite writer.",
+      "evidence": "Old-client E2E, CSRF/callback checks and authority-path evidence.",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "A25",
+      "phases": "12",
+      "title": "Cache correctness and privacy",
+      "exercise": "Clear caches, deliver old projection events, request private data across accounts.",
+      "expected": "Correct fallback, no old-version overwrite or shared-cache leakage; caches never authorize spending.",
+      "evidence": "Projection/cache replay and isolation test report.",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "A26",
+      "phases": "13",
+      "title": "Private operations and audit",
+      "exercise": "Probe public metrics/operator/server paths, verify migrated/new audit chain under concurrency.",
+      "expected": "Private surfaces inaccessible publicly; audit uses dedicated key and preserves historical verification.",
+      "evidence": "External/private probe results and audit verification without keys.",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "A27",
+      "phases": "14",
+      "title": "Operational diagnosis and alerting",
+      "exercise": "Force a staging failure/recovery and trace its support ID across services.",
+      "expected": "Alerts actually arrive; safe diagnosis possible; ops reflects backup/backlog not just liveness.",
+      "evidence": "Delivered alert references, trace sample and endpoint observations.",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "A28",
+      "phases": "15",
+      "title": "Independent restore",
+      "exercise": "Restore encrypted R2 logical backup to isolated PostgreSQL outside original project; run all invariants.",
+      "expected": "Data/config prerequisites reconstructable; privacy/deletion/revocation protections applied before service.",
+      "evidence": "Measured RPO/RTO, hashes, target IDs, invariant results and cleanup record.",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "A29",
+      "phases": "16",
+      "title": "Process vs host availability",
+      "exercise": "Stop one Core during active games and separately document shared host/edge failure impact.",
+      "expected": "Process failover works; same-host test not mislabeled host HA.",
+      "evidence": "Topology diagram and measured process outage/reconnect result.",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "A30",
+      "phases": "17",
+      "title": "Immutable release compatibility",
+      "exercise": "Deploy components in supported skew order and roll to prior PostgreSQL-compatible build.",
+      "expected": "Exact tested image/deployment used; migrations compatible; no data rollback hidden in app rollback.",
+      "evidence": "Release manifests, digest verification and rollout/recovery logs.",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "A31",
+      "phases": "18,19",
+      "title": "Capacity and degradation",
+      "exercise": "Run realistic mixed traffic/history tiers and dependency saturation/failure.",
+      "expected": "Measured safe envelope and backpressure; durable invariants remain true under overload.",
+      "evidence": "Reproducible load profile, p95/p99/resource metrics, recovery/alert outcomes.",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "A32",
+      "phases": "20",
+      "title": "Real native artifacts and offline bundle",
+      "exercise": "Compile/install genuine Android/iOS targets; inspect asset bundles; launch clean install offline.",
+      "expected": "Approved offline game works without new website; no server code/secrets or fake native target.",
+      "evidence": "APK/AAB/archive/IPA hashes where applicable; manifest and install/launch evidence.",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "A33",
+      "phases": "20",
+      "title": "Native bridge security",
+      "exercise": "Attempt untrusted-frame/navigation/request-path injection and inspect storage/backups.",
+      "expected": "Host tokens not exposed to arbitrary content; only trusted allowed operations; secure persistence.",
+      "evidence": "Bridge negative tests and storage/backup inspection without token values.",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "A34",
+      "phases": "20",
+      "title": "Native purchases and restore",
+      "exercise": "Run real sandbox pending/cancel/success/crash/replay/refund and cross-platform entitlement read.",
+      "expected": "One backend-verified grant; stored bindings preserved; finish/consume after delivery; no consumable remint.",
+      "evidence": "Device/build/store transaction references hashed or sanitized; grant/finalization evidence.",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "A35",
+      "phases": "20",
+      "title": "Ads and consent",
+      "exercise": "Test UMP state/forms before preload, reward callback delay/replay and interstitial entry conditions.",
+      "expected": "No premature ad requests, no client-only grant, no ads during prohibited gameplay; Remove Ads works.",
+      "evidence": "Device recording and SSV/ticket assertions with sensitive values removed.",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "A36",
+      "phases": "20",
+      "title": "Native accessibility and parity",
+      "exercise": "Exercise all four themes, keyboard/notch/small screen, VoiceOver/TalkBack and network lifecycle.",
+      "expected": "Approved layout/controls/game behavior preserved; unavoidable platform adjustments documented.",
+      "evidence": "Real device/OS/build matrix and before/after screenshots.",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "A37",
+      "phases": "20",
+      "title": "Distribution and review truthfulness",
+      "exercise": "Build/sign/upload with real authorized identities and inspect provider state.",
+      "expected": "Uploaded/submitted/reviewed/approved/enabled reported separately, no inferred approval.",
+      "evidence": "Version code/build number, track/TestFlight/submission IDs and provider status.",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "A38",
+      "phases": "22",
+      "title": "Single writer and first-write fence",
+      "exercise": "Rehearse all writer shutdown, exact import, read-only checks, epoch transfer, old endpoint/DNS overlap.",
+      "expected": "No dual authority; first post-import application write logged; stale V4 cannot resume.",
+      "evidence": "Cutover state/evidence timeline, source hash and mutating-path inventory.",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "A39",
+      "phases": "22",
+      "title": "Rollback classes",
+      "exercise": "Abort before first application write; fail after session/provider write and recover via PG-compatible build.",
+      "expected": "Only pre-write case may restore unchanged SQLite authority; post-write preserves PostgreSQL effects.",
+      "evidence": "Both rehearsals and actual release-compatible rollback references.",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "A40",
+      "phases": "23,24",
+      "title": "Retirement and scaling discipline",
+      "exercise": "Audit current writers/endpoints/archives and proposed scale actions against real metrics.",
+      "expected": "V4 not a dependency; retained evidence intact; only justified capacity added; website remains deferred.",
+      "evidence": "Final inventory, residual items, metrics/trigger/cost/rollback plan.",
+      "status": "NOT_RUN"
+    }
+  ]
+}

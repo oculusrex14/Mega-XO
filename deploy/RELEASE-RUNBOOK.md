@@ -28,10 +28,10 @@ The CI release gate in `scripts/release-gate.js` refuses a tag when:
 
 ## 2. Freeze the release commit
 
-On the V4 branch:
+On the V4.1 branch:
 
 ```bash
-git switch V4
+git switch V4.1
 git pull --ff-only
 git status --short
 ```
@@ -128,7 +128,7 @@ Those tags can help humans discover an image but the VPS deployment reference is
 
 ## 6. Verify the published image on the Oracle VPS
 
-From the V4 repository on the VPS:
+From the V4.1 repository on the VPS:
 
 ```bash
 sudo bash deploy/verify-release.sh \

@@ -19,6 +19,7 @@ Review and approve:
 - [ ] `docs/legal/DATA-INVENTORY-RETENTION.md`
 - [ ] `docs/legal/COOKIE-AND-CONSENT.md`
 - [ ] `docs/legal/STORE-PRIVACY-DECLARATIONS.md`
+- [ ] `docs/legal/MODERATION-POLICY-DRAFT.md`
 
 After approval:
 
@@ -45,8 +46,6 @@ The final documents must resolve:
 - [ ] virtual-currency treatment and expiry/refund rules;
 - [ ] suspension/moderation appeal process;
 - [ ] notice/acceptance process for future Terms/Privacy changes.
-
-Paid-entry competition remains outside this approval package and stays disabled under EXT-26.
 
 ## C. Retention approval
 

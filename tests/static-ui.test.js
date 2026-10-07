@@ -95,3 +95,14 @@ test('network resilience keeps write retries idempotent and exposes user-safe co
   assert.ok(app.includes("if(onlinePollBusy)return;onlinePollBusy=true"));
   assert.ok(app.includes("retrynetwork:()=>retryNetwork()"));
 });
+
+
+test('Crown-entry disclosures preserve bought-Crown utility without promising cash value',()=>{
+  const app=fs.readFileSync(path.join(ROOT,'src','app.js'),'utf8');
+  const party=fs.readFileSync(path.join(ROOT,'src','party-ui.js'),'utf8');
+  assert.ok(app.includes('Bought and earned Crowns are treated the same where ranked Crown challenges are available.'));
+  assert.ok(app.includes('Crowns have no cash value or cash-out.'));
+  assert.ok(party.includes('Bought and earned virtual currency are treated the same where this table is available.'));
+  assert.ok(party.includes('Coins and Crowns have no cash value or cash-out.'));
+  assert.ok(party.includes('cancelled or voided events refund automatically'));
+});

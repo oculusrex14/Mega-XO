@@ -9,10 +9,10 @@ work=$(mktemp -d)
 cleanup() { docker rm -f "$name" >/dev/null 2>&1 || true; docker volume rm "$volume" >/dev/null 2>&1 || true; rm -rf "$work"; }
 trap cleanup EXIT
 # Test values only. No account keys, live ads, payments or production mail.
-otp=$(printf 'a%.0s' {1..64}); proxy=$(printf 'b%.0s' {1..64})
+otp=$(printf 'a%.0s' {1..64}); proxy=$(printf 'b%.0s' {1..64}); audit=$(printf 'c%.0s' {1..64})
 docker volume create "$volume" >/dev/null
 docker run --rm --platform "$platform" --user 0 -v "$volume:/data" --entrypoint sh "$image" -c 'chown 1000:1000 /data'
-args=(--platform "$platform" --read-only --cap-drop ALL --security-opt no-new-privileges --tmpfs /tmp:size=128m,mode=1777 -v "$volume:/data" -e MEGA_ORIGIN=https://game.test -e "MEGA_OTP_SECRET=$otp" -e "MEGA_PROXY_SECRET=$proxy")
+args=(--platform "$platform" --read-only --cap-drop ALL --security-opt no-new-privileges --tmpfs /tmp:size=128m,mode=1777 -v "$volume:/data" -e MEGA_ORIGIN=https://game.test -e "MEGA_OTP_SECRET=$otp" -e "MEGA_PROXY_SECRET=$proxy" -e "MEGA_AUDIT_SECRET=$audit")
 docker run -d --name "$name" "${args[@]}" -p 127.0.0.1::8080 "$image" >/dev/null
 address=$(docker port "$name" 8080/tcp | head -1)
 for _ in $(seq 1 40); do if curl -fsS "http://$address/readyz" > /dev/null; then break; fi; sleep 1; done

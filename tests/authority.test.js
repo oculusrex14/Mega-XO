@@ -52,7 +52,7 @@ test('store-bought Crown value works like earned value after conversion',()=>{
 });
 
 test('store-bought Crowns may fund a direct Crown challenge',()=>{
- const verifyPurchase=(e,actor)=>({...e,valid:true,accountId:actor}),a=new Authority({paidEntryEnabled:true,eligibility:()=>true,verifyPurchase,random:()=>0});
+ const verifyPurchase=(e,actor)=>({...e,valid:true,accountId:actor}),a=new Authority({verifyPurchase,random:()=>0});
  a.addAccount('buyer',{coins:0,crowns:0,rating:1500,games:30,verified:true});
  a.addAccount('friend',{coins:0,crowns:0,rating:1500,games:30,verified:true});
  a.account('buyer').friends=['friend'];a.account('friend').friends=['buyer'];

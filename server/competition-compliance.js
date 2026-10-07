@@ -42,6 +42,7 @@ function validatePolicy(policy,{now=Date.now()}={}){
  if(policy.allowPurchasedCurrency!==false)fail('PURCHASED_COMPETITION_CURRENCY_PROHIBITED');
  if(policy.allowPooledStake!==false)fail('POOLED_STAKE_PROHIBITED');
  if(policy.allowCashOut!==false)fail('COMPETITION_CASHOUT_PROHIBITED');
+ if(policy.allowRealWorldPrize!==false)fail('REAL_WORLD_PRIZE_REQUIRES_SEPARATE_APPROVAL');
  if(policy.prizeFunding!=='organizer')fail('ORGANIZER_FUNDED_PRIZE_REQUIRED');
  if(!Array.isArray(policy.jurisdictions)||!policy.jurisdictions.length)fail('COMPETITION_JURISDICTION_ALLOWLIST_REQUIRED');
  return {...policy,effective,expires,jurisdictions:policy.jurisdictions.map(validateJurisdiction)};
@@ -53,16 +54,16 @@ function locate(policy,location){
  return policy.jurisdictions.find(j=>j.country===location.country&&(!j.subdivisions||!j.subdivisions.length||j.subdivisions.includes(subdivision)))||fail('COMPETITION_JURISDICTION_DENIED');
 }
 
-function assess({policy,entry,platform,location,age,payment={},spend={}}={}){
+function assess({policy,entry,platform,location,age,payment={},spend={},now=Date.now()}={}){
  let p,j,model;
- try{p=validatePolicy(policy);model=classify(entry);j=locate(p,location);}catch(error){return {allowed:false,code:error.message};}
+ try{model=classify(entry);if(model==='free')return {allowed:true,code:'FREE_COMPETITION'};p=validatePolicy(policy,{now});j=locate(p,location);}catch(error){return {allowed:false,code:error.message};}
  if(!PLATFORM.has(platform)||!j.platforms.includes(platform))return {allowed:false,code:'COMPETITION_PLATFORM_DENIED'};
- if(model==='free')return {allowed:true,code:'FREE_COMPETITION',policyVersion:p.version,jurisdiction:j.country};
  if(model==='pooled_stake')return {allowed:false,code:'POOLED_STAKE_PROHIBITED'};
  if(entry?.purchasedCurrency===true||payment?.purchasedCurrency===true)return {allowed:false,code:'PURCHASED_COMPETITION_CURRENCY_PROHIBITED'};
- if(entry?.cashOut===true||entry?.prizeRealWorldValue===true&&entry?.cashOut!==false)return {allowed:false,code:'COMPETITION_CASHOUT_PROHIBITED'};
+ if(entry?.cashOut===true)return {allowed:false,code:'COMPETITION_CASHOUT_PROHIBITED'};
+ if(entry?.prizeRealWorldValue===true)return {allowed:false,code:'REAL_WORLD_PRIZE_REQUIRES_SEPARATE_APPROVAL'};
  if(!object(age)||age.verified!==true||!Number.isSafeInteger(age.age)||age.age<j.minAge)return {allowed:false,code:'COMPETITION_AGE_NOT_VERIFIED'};
- if(age.verifiedAt&&Date.now()-date(age.verifiedAt,'INVALID_AGE_VERIFICATION_AT')>365*86400000)return {allowed:false,code:'COMPETITION_AGE_VERIFICATION_STALE'};
+ if(age.verifiedAt&&now-date(age.verifiedAt,'INVALID_AGE_VERIFICATION_AT')>365*86400000)return {allowed:false,code:'COMPETITION_AGE_VERIFICATION_STALE'};
  if(platform==='ios'&&payment.source==='apple_iap')return {allowed:false,code:'APPLE_IAP_COMPETITION_CURRENCY_PROHIBITED'};
  if(platform==='android'&&payment.source==='play_billing'&&entry?.prizeRealWorldValue===true)return {allowed:false,code:'GOOGLE_PLAY_BILLING_REAL_MONEY_PROHIBITED'};
  if(location.proxyRisk===true)return {allowed:false,code:'COMPETITION_LOCATION_RISK'};

@@ -28,3 +28,36 @@ test('no late invented snapshot, no reward for unplaced or inactive players',()=
 
 test('season rollover archives the prior quarter without resetting Elo',()=>{const {a,setTime}=fixture(),alice=a.account('alice'),before=alice.rating;alice.season={id:'2026-Q4',startedAt:Date.parse('2026-10-01T00:00:00Z'),games:8,queueGames:5,opponents:['b','c','d'],wins:5,losses:2,draws:1,peakRating:before+30,lastRatedAt:Date.parse('2026-12-20T00:00:00Z'),qualifiedAt:Date.parse('2026-10-03T00:00:00Z')};setTime(Date.parse('2027-01-01T00:00:00Z'));const status=a.seasonStatus(alice);assert.equal(status.id,'2027-Q1');assert.equal(status.qualified,false);assert.equal(status.games,0);assert.equal(alice.rating,before);assert.equal(alice.seasonHistory.at(-1).id,'2026-Q4');assert.equal(alice.seasonHistory.at(-1).finishRating,before);});
 test('season result counters use wins losses and draws fields',()=>{const {a}=fixture(),alice=a.account('alice');const s=a._season(alice);s.losses=2;const key={win:'wins',loss:'losses',draw:'draws'}.loss;s[key]++;assert.equal(s.losses,3);assert.equal(s.losss,undefined);});
+
+
+test('verified store Crowns keep purchased provenance through currency conversion',()=>{
+ const {a}=fixture({verifyPurchase:(e,actor)=>({...e,valid:true,accountId:actor})});
+ const before=a.account('alice');assert.equal(before.purchasedCrowns,0);assert.equal(before.purchasedCoins,0);
+ a.purchase('alice',{store:'apple',transactionId:'prov1',productId:'crowns_100'});
+ assert.equal(a.account('alice').crowns,1100);assert.equal(a.account('alice').purchasedCrowns,100);
+ a.convert('alice','crowns',50,'prov-convert');
+ assert.equal(a.account('alice').purchasedCrowns,50);assert.equal(a.account('alice').purchasedCoins,500);
+ assert.equal(a.account('alice').crowns,1050);assert.equal(a.account('alice').coins,1500);
+});
+
+test('money-purchased currency cannot fund competitive entry even after Crown to Coin conversion',()=>{
+ const verifyPurchase=(e,actor)=>({...e,valid:true,accountId:actor}),a=new Authority({paidEntryEnabled:true,eligibility:()=>true,verifyPurchase,random:()=>0});
+ a.addAccount('buyer',{coins:0,crowns:0,rating:1500,games:30,verified:true});
+ a.addAccount('earned',{coins:1000,crowns:0,rating:1500,games:30,verified:true});
+ a.purchase('buyer',{store:'google',transactionId:'restricted-entry',productId:'crowns_100'});
+ a.convert('buyer','crowns',100,'restricted-convert');
+ assert.equal(a.account('buyer').coins,1000);assert.equal(a.account('buyer').purchasedCoins,1000);
+ assert.throws(()=>a.offerQueue('restricted','buyer','earned'),/COMPETITION_FUNDS_RESTRICTED/);
+});
+
+test('purchased balance may coexist with separately earned competitive funds without laundering',()=>{
+ const verifyPurchase=(e,actor)=>({...e,valid:true,accountId:actor}),a=new Authority({paidEntryEnabled:true,eligibility:()=>true,verifyPurchase,random:()=>0});
+ a.addAccount('mixed',{coins:100,crowns:0,rating:1500,games:30,verified:true});
+ a.addAccount('earned',{coins:100,crowns:0,rating:1500,games:30,verified:true});
+ a.purchase('mixed',{store:'apple',transactionId:'mixed-entry',productId:'crowns_100'});
+ a.convert('mixed','crowns',100,'mixed-convert');
+ const q=a.offerQueue('allowed-earned','mixed','earned');a.accept(q.id,'mixed',q.termsHash);a.accept(q.id,'earned',q.termsHash);
+ assert.equal(a.account('mixed').purchasedCoins,1000);
+ assert.equal(a.account('mixed').coins,1088);
+ assert.equal(a.account('mixed').reservedCoins,12);
+});

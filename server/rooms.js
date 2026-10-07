@@ -17,7 +17,7 @@ class RoomStore{
  get(id){const row=this.db.prepare('SELECT json FROM party_rooms WHERE id=? OR code=?').get(id,id);if(!row)err('ROOM_NOT_FOUND');return JSON.parse(row.json);}
  save(r){this.db.prepare('INSERT INTO party_rooms VALUES(?,?,?) ON CONFLICT(id) DO UPDATE SET json=excluded.json').run(r.id,r.code,JSON.stringify(r));}
  economy(){const exists=this.db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='state'").get();if(!exists)err('ACCOUNT_SERVICE_REQUIRED');return JSON.parse(this.db.prepare('SELECT json FROM state WHERE id=1').get().json);}
- competitionAvailable(a,currency){if(a.legacyCompetitionRestricted)return 0;const restricted=currency==='coins'?(a.purchasedCoins||0):currency==='crowns'?(a.purchasedCrowns||0):0;return a[currency]-restricted;}
+ competitionAvailable(a,currency){if(a.legacyCompetitionRestricted||a.purchaseInfluenced===true&&(!Number.isSafeInteger(a.purchasedCoins)||!Number.isSafeInteger(a.purchasedCrowns)))return 0;const restricted=currency==='coins'?(a.purchasedCoins||0):currency==='crowns'?(a.purchasedCrowns||0):0;return a[currency]-restricted;}
  account(e,id){return e.accounts.find(([key])=>key===id)?.[1]||err('ACCOUNT_REQUIRED');}
  writeEconomy(e){this.db.prepare('UPDATE state SET json=? WHERE id=1').run(JSON.stringify(e));}
  eligible(e,id,q){const a=this.account(e,id);if(a.verified!==true||a.suspended||a.hold||a.games<10)err('INELIGIBLE');if(this.paidEntryEnabled!==true||this.eligibility(clone(a),clone(q))!==true)err('PAID_ENTRY_UNAVAILABLE');return a;}

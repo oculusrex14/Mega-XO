@@ -1,7 +1,7 @@
 /* V3.3 party authority. Use the SAME SQLite path as DurableStore for paid events.
    Authentication/eligibility belong to the deployment, never player JSON. */
 'use strict';
-const MM=require('./matchmaking.js');
+const MM=require('./matchmaking.js'),ABUSE=require('./competitive-abuse.js');
 const {DatabaseSync}=require('node:sqlite'),crypto=require('node:crypto'),T=require('../src/tournament.js');
 const clone=x=>structuredClone(x),hash=x=>crypto.createHash('sha256').update(typeof x==='string'?x:JSON.stringify(x)).digest('hex');
 const err=s=>{throw Error(s);}, safe=n=>{if(!Number.isSafeInteger(n)||n<0)err('INVALID_BALANCE');return n;};

@@ -38,8 +38,9 @@ function config(env = process.env) {
   const purchasesEnabled=(env.MEGA_PURCHASES_ENABLED||'false')==='true';
   const deletionEnabled=(env.MEGA_ACCOUNT_DELETION_ENABLED||'false')==='true';
   if (!['true','false'].includes(env.MEGA_ACCOUNT_DELETION_ENABLED||'false')) throw Error('INVALID_ACCOUNT_DELETION_FLAG');
-  const privacyPolicyVersion=env.MEGA_PRIVACY_POLICY_VERSION||'';
+  const privacyPolicyVersion=env.MEGA_PRIVACY_POLICY_VERSION||'',retentionPolicyVersion=env.MEGA_RETENTION_POLICY_VERSION||'';
   if (deletionEnabled && !/^[A-Za-z0-9._-]{3,64}$/.test(privacyPolicyVersion)) throw Error('ACCOUNT_DELETION_POLICY_NOT_APPROVED');
+  if (deletionEnabled && !/^[A-Za-z0-9._-]{3,64}$/.test(retentionPolicyVersion)) throw Error('ACCOUNT_DELETION_RETENTION_NOT_APPROVED');
   if (purchasesEnabled && !deletionEnabled) throw Error('STORE_RELEASE_REQUIRES_ACCOUNT_DELETION');
   const adMode=env.MEGA_AD_MODE||'off';if(!['off','rewarded','hybrid'].includes(adMode))throw Error('INVALID_AD_MODE');
   const adUnit=value=>{if(!value)return '';if(!/^ca-app-pub-\d{16}\/\d{10}$/.test(value))throw Error('INVALID_ADMOB_UNIT');return value;};
@@ -94,7 +95,7 @@ function config(env = process.env) {
     backupStatus: env.MEGA_BACKUP_STATUS || '/backup-status/last-success.json',
     release: /^[a-f0-9]{40}$/.test(env.MEGA_RELEASE || '') ? env.MEGA_RELEASE : 'local',
     email: {apiKey, from, domain:emailDomain},
-    privacy: {deletionEnabled, policyVersion:privacyPolicyVersion},
+    privacy: {deletionEnabled, policyVersion:privacyPolicyVersion, retentionVersion:retentionPolicyVersion},
     ads: {mode:adMode,consentVersion,platforms:Object.freeze(adPlatforms)},
     purchases: {enabled:purchasesEnabled,googlePlay,appleStore},
     providers: {google: {clientId: googleId, clientSecret: googleSecret, nativeAudiences: (env.GOOGLE_NATIVE_AUDIENCES || '').split(',').filter(Boolean), authorizedParties: (env.GOOGLE_AUTHORIZED_PARTIES || '').split(',').filter(Boolean)}, apple}

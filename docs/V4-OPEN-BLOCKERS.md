@@ -13,7 +13,7 @@ Rules:
 - Branch: `V4.1`
 - Production origin: `https://play.antimatterinnovations.com`
 - Production architecture: one authoritative Node coordinator + local SQLite WAL + Caddy TLS edge + encrypted off-box Restic backups.
-- Purchases, ads, and paid-entry competition remain disabled in the V4 production baseline.
+- Native purchases and ads remain disabled until their provider/device release gates are complete. Ranked Coin entry, Crown challenges and public tournaments are core closed-loop gameplay and are enabled by the game authority.
 - GitHub Actions is the authoritative source for code/container validation status. A green run never marks an external blocker complete automatically; external rows require the evidence described below.
 
 ## Repository readiness for tasks 6-10
@@ -31,7 +31,7 @@ Repository-side work is implemented; external execution remains tracked below.
 - **Task 11 — immutable production release:** `scripts/release-gate.js` blocks production tags until mandatory backend infrastructure gates are complete. Tagged releases rerun full validation, publish multi-arch GHCR with provenance/SBOM, retain `immutable-release.json`, and create a GitHub Release. `deploy/verify-release.sh` proves digest/revision/version/architecture before deployment. See `deploy/RELEASE-RUNBOOK.md`.
 - **Task 12 — real production email proof:** `scripts/live-email-acceptance.js` exercises actual signup OTP + password-reset OTP through the public edge without logging passwords/OTPs and proves old-password invalidation plus same-profile recovery. See `deploy/EMAIL-LIVE-ACCEPTANCE.md`.
 - **Task 13 — perimeter hardening:** Caddy suppresses its server fingerprint; `deploy/audit-perimeter.sh` inspects host/container/permission hardening; `scripts/external-perimeter-probe.js` proves 80/443 are the only public service ports and validates HTTPS/private-path behavior. See `deploy/PERIMETER-RUNBOOK.md`.
-- **Task 14 — remaining P0:** Google web OIDC uses the supported minimum `openid profile` contract while keying identity only by `sub`. `scripts/provider-web-smoke.js` validates live Google/Apple authorization contracts. Billing, ads and paid entry remain fail-closed until their independent native/provider/legal gates are complete. See `docs/V4-P0-PLATFORM-READINESS.md`.
+- **Task 14 — remaining P0:** Google web OIDC uses the supported minimum `openid profile` contract while keying identity only by `sub`. `scripts/provider-web-smoke.js` validates live Google/Apple authorization contracts. Native billing and ads remain fail-closed until their independent provider/device gates are complete. Closed-loop Ranked/direct/tournament entry is normal gameplay. See `docs/V4-P0-PLATFORM-READINESS.md`.
 
 ## Repository readiness for tasks 15-20
 
@@ -73,21 +73,6 @@ Repository-side drafting and enforcement work is complete:
 
 This is **draft/implementation complete, not legal approval**. The public Privacy Policy and Terms remain explicitly marked draft/not effective and `noindex`. Formal entity/age/jurisdiction/governing-law/retention/vendor/privacy-rights decisions and store submissions remain `EXT-21` plus the relevant store/device acceptance rows.
 
-
-## P1-7 paid competition compliance package
-
-Repository-side compliance hardening is implemented, but **paid entry remains prohibited**:
-
-- `server/competition-compliance.js` provides a default-deny policy engine for trusted jurisdiction, platform, verified-age and spend-limit decisions;
-- the engine's external compliance work must not create bought-vs-earned Crown gameplay classes; Crowns remain one closed-loop in-game currency;
-- India policy entries additionally require recognised-e-sport classification plus National Sports Governance Act recognition and OGAI registration identifiers;
-- purchase provenance remains billing/refund audit metadata only; gameplay eligibility does not distinguish bought from earned Crowns or derived Coins;
-- direct and tournament eligibility use the normal player balance; Crown purchase source is not an eligibility input;
-- `npm run competition:audit` is a CI gate proving current Ranked Coin pots, direct Crown challenges and all public tournament tables remain classified as prohibited pooled-stake mechanics;
-- historical economy/design docs are marked superseded for production compliance;
-- the researched platform/India decision record and future registration-fee architecture are in `docs/legal/PAID-COMPETITION-COMPLIANCE.md`.
-
-The approved future baseline is **fixed registration fee + organizer-funded fixed prize schedule**, never entrant-pooled prize funding. It is still external/legal work to decide whether that model may be offered in any jurisdiction/platform and to obtain required recognition/licences/registrations, age/geo verification, payment-provider approval, tax/KYC/AML treatment, official rules and responsible-spending policy.
 
 ## P1-9 security and abuse acceptance
 
@@ -137,7 +122,6 @@ Real distributed/adversarial staging acceptance and heuristic false-positive tun
 | EXT-23 | Apple StoreKit billing | BLOCKED | App Store Connect + real iOS target/physical device | StoreKit products map to the four server catalogue IDs; trusted Apple roots/environment and the numeric Production App Store app ID are configured; Sandbox/TestFlight purchase/cancel/pending/finish/restore/refund/revocation tests pass and Server Notifications V2 with the expected app ID reach the implemented callback. |
 | EXT-24 | Production ads and consent | BLOCKED | AdMob + Google Mobile Ads/UMP in real Android/iOS targets | Real rewarded/interstitial unit IDs and consent release version configured; UMP blocks requests until allowed and exposes privacy options; rewarded SSV grants exactly once; wrong/replayed ticket/account/unit is rejected; Remove Ads and no-ad-during-live-play behavior pass on physical devices before `MEGA_AD_MODE` changes from off. |
 | EXT-25 | Physical-device release QA | BLOCKED | iOS/Android devices/builds | Required OS/device matrix completes with no launch-blocking identity, network, purchase, ad, recovery or accessibility defects. |
-| EXT-26 | Paid-entry competition compliance | BLOCKED | Specialist legal counsel + Apple/Google review where applicable + jurisdiction regulators/OGAI + age/geo/payment providers | Approve the exact non-pooled registration-fee model; for every allowed country/state record legal review ID, minimum age, platform allowlist, trusted geolocation standard, regulator/licence/registration IDs, approved payment rail, prize type, spend/loss/self-exclusion rules, refund/void policy, KYC/AML/tax obligations and official-rules version. India requires the required recognised-e-sport/National Sports Governance/OGAI pathway. Apple/Google distribution approval must match the actual model. Only after server integration and live staging proof may a future reviewed code change remove the production `MEGA_PAID_ENTRY_ENABLED=false` hard stop. |
 | EXT-27 | Incident and secret-rotation drill | BLOCKED | Staging VPS + Resend/R2 credentials | Staging proves global lockdown/recovery, proxy + OTP rotation, Resend rotation, atomic R2 credential rotation and Restic key rotation with non-secret evidence. |
 | EXT-28 | Operator access drill | BLOCKED | VPS/Tailscale operator access | Operator CLI works only through loopback/Tailscale administration; public admin route remains absent; lookup/session revoke/hold/audit verification drill passes. |
 | EXT-29 | Moderation and appeals policy | BLOCKED | Antimatter Innovations policy decision | Conduct policy, evidence thresholds, suspension/escalation rules, appeals/support path, report retention and authorized moderator roles are approved. |
@@ -158,13 +142,12 @@ Real distributed/adversarial staging acceptance and heuristic false-positive tun
 5. Configure monitoring and alerting; complete EXT-15 and EXT-16.
 6. Do not create the production release/tag until all mandatory backend blockers are marked COMPLETE with non-secret evidence.
 7. After the backend release, execute EXT-18 through EXT-25 as independent product/platform tracks; do not enable billing or ads while their blocker remains open.
-8. Treat EXT-26 as a separate future compliance decision. Current pooled-stake mechanics are mechanically denied by `npm run competition:audit`. Bought and earned Crowns are gameplay-equivalent. Any unresolved market/platform issue belongs to the competition feature itself, not the Crown source. Do not enable paid entry until the competition model and jurisdiction/platform controls are approved.
-9. Complete EXT-27 through EXT-30 before a V4.1 production tag: incident operations, operator access, moderation policy and live data-export acceptance are launch gates.
-10. Run EXT-31 on the real Oracle ARM host before freezing production concurrency limits; keep the harness on disposable state only.
-11. Complete EXT-32 before freezing database growth warning thresholds; do not normalize the persistence model without measured evidence.
-12. Complete EXT-33 and EXT-34 during staging/device release QA, and include one real MX support-code lookup in EXT-28.
-13. Complete EXT-35 before treating Resend domain verification as production mail-security approval.
-14. Complete EXT-36 on live staging before the serious public-launch gate is considered closed; tune review heuristics from evidence without changing core gameplay rules.
+8. Complete EXT-27 through EXT-30 before a V4.1 production tag: incident operations, operator access, moderation policy and live data-export acceptance are launch gates.
+9. Run EXT-31 on the real Oracle ARM host before freezing production concurrency limits; keep the harness on disposable state only.
+10. Complete EXT-32 before freezing database growth warning thresholds; do not normalize the persistence model without measured evidence.
+11. Complete EXT-33 and EXT-34 during staging/device release QA, and include one real MX support-code lookup in EXT-28.
+12. Complete EXT-35 before treating Resend domain verification as production mail-security approval.
+13. Complete EXT-36 on live staging before the serious public-launch gate is considered closed; tune review heuristics from evidence without changing core gameplay rules.
 
 ## Completed external prerequisites
 
@@ -179,5 +162,4 @@ Real distributed/adversarial staging acceptance and heuristic false-positive tun
 - Native App Store / Play billing and receipt-notification integration.
 - Production ad SDK and consent integration.
 - Privacy policy, terms, account deletion, retention/legal decisions.
-- Paid-entry legal/platform approval.
 - Full physical-device release QA is now tracked explicitly as EXT-25.

@@ -46,7 +46,7 @@ For each competition class disclose:
 - cancellation/refund deadline;
 - whether the fee covers administration/participation only;
 - statement that entrant fees do **not** form the prize pool;
-- statement that purchased Mega XO Crowns/derived Coins are not accepted for competition entry.
+- statement explaining whether purchased Mega XO Crowns/derived Coins are accepted in that jurisdiction/platform; where accepted, state that Crowns remain closed-loop and have no cash-out or real-world redemption.
 
 No side bets, variable stakes, challenger-created pots, auto-re-entry or auto-top-up are permitted.
 
@@ -80,7 +80,7 @@ Define:
 - event schedule;
 - technical pause/resume policy.
 
-No outcome may depend on amount paid or purchased currency.
+No outcome may depend on how the participant obtained the permitted virtual currency or on the amount paid to acquire it.
 
 ## 5. Fair play
 

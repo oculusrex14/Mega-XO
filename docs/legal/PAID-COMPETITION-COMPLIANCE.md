@@ -18,7 +18,7 @@ Current Apple App Review Guideline 5.3 says, among other things:
 
 Official source: https://developer.apple.com/app-store/review/guidelines/
 
-Technical consequence for Mega XO: Apple only creates this IAP prohibition when the feature is classified as **real-money gaming**. Mega XO Crowns have no cash-out or real-world redemption, so the repository no longer applies a blanket purchased-Crown ban. Instead, iOS purchased-Crown entry is allowed only when the approved jurisdiction policy explicitly includes `ios` in `purchasedEntryPlatforms` and records an Apple review/approval reference. A real-money-prize model remains separately prohibited.
+Product rule for Mega XO: Crowns are closed-loop virtual currency with no cash-out or real-world redemption. Gameplay does not distinguish bought Crowns from earned Crowns. Any Apple review applies to the competition feature as a whole; it must not silently introduce a separate bought-Crown gameplay balance.
 
 ### Google Play
 
@@ -28,7 +28,7 @@ For other real-money games, contests and tournament apps, Google says it does no
 
 Official source: https://support.google.com/googleplay/android-developer/answer/9877032
 
-Technical consequence for Mega XO: Google Play's quoted prohibition is tied to obtaining a **prize of real-world monetary value**. Closed-loop Crowns with no cash-out are not treated by the repository as automatically prohibited. Android purchased-Crown entry still requires explicit jurisdiction/platform approval in `purchasedEntryPlatforms`; any real-world-prize model remains a separate Google approval/legal path.
+Product rule for Mega XO: Google Play review does not create a separate gameplay class for bought Crowns. Bought and earned Crowns remain interchangeable in Mega XO. Any real-world-prize or cash-out feature would be a separate product/legal decision.
 
 ### India
 
@@ -93,27 +93,19 @@ Production status: **disabled**.
 
 The CI command `npm run competition:audit` mechanically asserts that all of these remain classified as pooled stakes and remain denied by the future-compliance baseline.
 
-## 3. Purchased-currency provenance and policy control
+## 3. Crown source is not a gameplay rule
 
-P1-7 keeps explicit server-side provenance for money-purchased virtual currency, but provenance is no longer a global eligibility blocker.
+Mega XO treats Crowns as one closed-loop premium currency. A Crown has the same gameplay value whether it was earned, bought, or received through an allowed in-game conversion.
 
-New account fields:
+Implementation consequences:
 
-- `purchasedCrowns`
-- `purchasedCoins`
-- `legacyCompetitionRestricted`
+1. Competitive entry checks the player's actual Coin/Crown balance and the ordinary account/competition eligibility rules.
+2. The match and tournament code does not receive or branch on "purchased balance" metadata.
+3. The 200-Crown Premium Tournament and Crown-funded direct challenges therefore accept bought and earned Crowns identically whenever those features are available.
+4. Crowns cannot be cashed out or redeemed by Mega XO for real-world money.
+5. Purchase receipts may still exist for billing/refund integrity; that accounting metadata must not change game eligibility.
 
-Behavior:
-
-1. Apple/Google Crown purchases increase both the visible Crown balance and `purchasedCrowns`.
-2. Crown -> Coin and Coin -> Crown conversion carries purchased provenance with it.
-3. Spending updates the tracked provenance so the service can tell how much of a balance originated from store purchases.
-4. Ranked/direct/tournament eligibility receives that funding context and the **jurisdiction/platform eligibility policy** decides whether purchased value is accepted.
-5. Where a market approves purchased virtual entry, bought and earned Crowns are treated the same for entry purposes.
-6. Where a market does not approve it, the policy denies the entry before funds move.
-7. India is deliberately configured as a no-purchased-virtual-entry jurisdiction until product-specific legal/OGAI approval resolves the statutory `other stakes` issue.
-
-This preserves the product value of Crowns without making a single global legal assumption.
+Any future legal/platform concern should be handled as an explicit review of the competition feature or its market availability, not by quietly reducing the utility of purchased Crowns.
 
 ## 4. Approved future model: registration fee, never pooled stake
 
@@ -193,7 +185,7 @@ Policy is platform-specific.
 
 ### iOS
 
-- iOS purchased virtual entry is allowed only when that jurisdiction explicitly lists `ios` in `purchasedEntryPlatforms` and provides the required Apple review identifier. This is separate from any real-money-prize approval.
+- iOS uses the same bought/earned Crown balance. Any Apple restriction must be resolved at the competition-feature/distribution level, not by splitting the currency.
 - Any feature Apple treats as real-money gaming requires the Apple licensing/geo/free-app conditions in addition to local law.
 - Contest rules must be available in-app and state Apple's non-involvement.
 - Do not assume an approved web model is automatically App-Store compliant.
@@ -295,6 +287,6 @@ MEGA_PAID_ENTRY_ENABLED=false
 
 remains mandatory.
 
-Store purchases, once enabled under their own P0 gates, **may** fund Crown/derived-Coin competition entry in jurisdictions/platforms whose approved policy explicitly permits purchased virtual entry. This does not override the separate pooled-stake, age, geo, or India restrictions.
+Store purchases, once enabled under their own P0 gates, fund the same Crown balance used elsewhere in the game, including Crown-entry tournaments/challenges when those features are available. There is no bought-vs-earned gameplay restriction.
 
 The existence of dormant stake mechanics is not authorization to expose them.

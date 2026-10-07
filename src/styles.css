@@ -693,3 +693,7 @@ body{font-family:'Space Grotesk',ui-sans-serif,system-ui,-apple-system,BlinkMacS
 }
 
 .support-diagnostics{width:100%;min-height:230px;resize:vertical;border:1px solid var(--line);border-radius:12px;background:var(--raised);color:var(--ink);padding:12px;font:12px/1.5 'IBM Plex Mono',ui-monospace,SFMono-Regular,Consolas,monospace;white-space:pre;overflow:auto}
+
+.legal-links{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:10px}
+.legal-link{display:flex;align-items:center;justify-content:center;min-height:44px;text-align:center;text-decoration:none}
+@media(max-width:360px){.legal-links{grid-template-columns:1fr}}

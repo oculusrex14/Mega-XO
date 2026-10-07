@@ -44,7 +44,7 @@ Real provider consent/cancellation, deep links/universal links, WebView origin r
 
 ## V4 handoff
 
-Production and staging callback/audience configuration, billing/ad separation, privacy/account deletion gates, physical-device QA, and paid-entry compliance are governed by `docs/V4-P0-PLATFORM-READINESS.md`.
+Production and staging callback/audience configuration, billing/ad separation, privacy/account deletion gates, and physical-device QA are governed by `docs/V4-P0-PLATFORM-READINESS.md`. Closed-loop competitive currency mechanics do not have a separate native purchase-source gate.
 
 Native billing, StoreKit, Google Mobile Ads, UMP consent and AdMob SSV integration must follow `native/COMMERCE-AND-ADS.md`.
 

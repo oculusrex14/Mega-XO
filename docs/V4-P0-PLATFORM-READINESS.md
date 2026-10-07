@@ -319,55 +319,22 @@ Minimum matrix before native release:
 
 Record device/OS/build/result without recording account secrets.
 
-## 8. Paid-entry compliance gate
+## 8. Closed-loop competitive economy
 
-Paid-entry competitive functionality remains hard-disabled in V4 production.
+Ranked Coin entry, direct Crown challenges and public tournaments are part of the normal Mega XO game economy.
 
-Do not enable it because technical wallet/tournament code exists.
+Release rules:
 
-Before enabling any real-money-purchased currency in an entry/stake/prize loop, obtain a documented review covering:
+- Coins and Crowns are closed-loop in-game currency.
+- Bought and earned Crowns have identical gameplay utility.
+- The Premium Tournament keeps its 200-Crown entry.
+- Direct Crown challenges use the configured Crown pot rules.
+- Matchmade Ranked uses the configured Coin entry.
+- Coins/Crowns cannot be cashed out or redeemed from Mega XO for real-world money.
+- Store purchase verification, refunds/revocations, escrow, idempotency and abuse controls remain server-authoritative.
+- Currency source never changes Elo or matchmaking skill calculations.
 
-- Apple App Store rules;
-- Google Play rules;
-- applicable contest/gambling laws;
-- countries/states/territories where participation is allowed;
-- age restrictions;
-- geofencing/eligibility;
-- refund/chargeback treatment;
-- purchase and loss limits;
-- anti-collusion/fraud controls;
-- tax/prize reporting where applicable;
-- responsible spending protections.
-
-The resulting jurisdiction policy must be enforceable by the server, not a client checkbox.
-
-Until then:
-
-```text
-MEGA_PAID_ENTRY_ENABLED=false
-```
-
-is mandatory and the production config refuses any attempt to turn it on.
-
-### V4.1 P1-7 update — current legal/platform posture
-
-As of 2026-10-07 the repository treats the original pooled-stake design as a **non-production legacy model**.
-
-Current external rules materially change the old assumption that purchased Crowns could fund high-stake play:
-
-- Apple App Review Guideline 5.3.3 bars IAP-purchased credit/currency from real-money gaming, while 5.3.1-5.3.4 require developer-sponsored official rules and, for real-money gaming, applicable licensing/georestriction/free distribution.
-- Google Play's Real-Money Gambling, Games and Contests policy restricts real-money contests/tournaments and disallows Play Billing for approved real-money gambling apps; purchased in-app items cannot be used to enter prohibited real-money prize loops.
-- India's Promotion and Regulation of Online Gaming Act, 2025 came into force on 1 May 2026. Purchased credits/coins/tokens can be "other stakes"; recognised e-sports may use genuine registration/participation fees and performance-based prize money but may not involve bets/wagers/stakes and require the prescribed recognition/registration pathway.
-
-Repository response:
-
-- verified store currency is provenance-tagged through Coin/Crown conversion;
-- bought and earned Crowns are gameplay-equivalent closed-loop currency; competition eligibility does not branch on purchase source;
-- current ranked/direct/tournament pools are classified as pooled stakes and are denied by `server/competition-compliance.js`;
-- CI runs `npm run competition:audit`;
-- any future production compliance work must preserve the bought/earned Crown equivalence and address restrictions at the competition-feature/distribution level instead of weakening premium currency utility.
-
-See `docs/legal/PAID-COMPETITION-COMPLIANCE.md` and EXT-26.
+There is no separate production feature flag for these game-economy mechanics. Native billing itself remains independently disabled until its Apple/Google release gates are complete.
 
 ## 9. Sequencing
 
@@ -381,7 +348,6 @@ Recommended sequence after V4 backend launch:
 6. configure/test the implemented Google Play Billing backend with the Android client;
 7. configure/test the implemented Apple StoreKit backend with the iOS client;
 8. integrate native Google Mobile Ads/UMP and prove the implemented SSV boundary;
-9. store submission data/privacy declarations;
-10. paid-entry review as a separate later decision.
+9. store submission data/privacy declarations.
 
-Do not make billing, ads, account deletion, and paid-entry one giant rollout.
+Do not make billing, ads, account deletion and provider activation one giant rollout.

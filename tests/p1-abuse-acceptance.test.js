@@ -76,7 +76,7 @@ test('P1-9 ad-reward replay: duplicate signed reward is idempotent and cannot gr
 });
 
 test('P1-9 challenge collusion: rapid rated win-trading is bounded and short direct results are flagged',()=>{
- let now=Date.parse('2026-10-07T10:00:00Z');const a=new Authority({paidEntryEnabled:true,eligibility:()=>true,now:()=>now,random:()=>0});
+ let now=Date.parse('2026-10-07T10:00:00Z');const a=new Authority({now:()=>now,random:()=>0});
  a.addAccount('a',{verified:true,games:30,rating:1500,crowns:100});a.addAccount('b',{verified:true,games:30,rating:1500,crowns:100});a.account('a').friends=['b'];a.account('b').friends=['a'];
  const q=a.offer('d1','a','b',{kind:'friend',amount:2});a.accept('d1','b',q.termsHash);a.resign('d1','b');
  assert(a.view('d1').riskFlags.includes('SHORT_DIRECT_RESULT_REVIEW'));assert.throws(()=>a.offer('d2','a','b',{kind:'friend',amount:2}),/RATED_PAIR_LIMIT/);
@@ -97,14 +97,14 @@ test('P1-9 leaderboard boosting: friends/recent opponents cannot farm ranked que
  const now=Date.parse('2026-10-07T10:00:00Z'),A=account('a',1500,{friends:['b']}),B=account('b',1510,{friends:['a']});
  assert.equal(MM.compatibility(A,B,ticket('a',now-10000),ticket('b',now-10000),'ranked',now).reason,'FRIEND_QUEUE_BLOCK');
  A.friends=[];B.friends=[];A.history=[{id:'recent',opponent:'b',queue:true,rated:true,at:now-1000}];assert.equal(MM.compatibility(A,B,ticket('a',now-10000),ticket('b',now-10000),'ranked',now).reason,'RECENT_OPPONENT');
- let clock=now;const authority=new Authority({paidEntryEnabled:true,eligibility:()=>true,now:()=>clock,random:()=>0});authority.addAccount('x',{verified:true,games:30,rating:1500,crowns:100});authority.addAccount('y',{verified:true,games:30,rating:1500,crowns:100});authority.account('x').friends=['y'];authority.account('y').friends=['x'];
+ let clock=now;const authority=new Authority({now:()=>clock,random:()=>0});authority.addAccount('x',{verified:true,games:30,rating:1500,crowns:100});authority.addAccount('y',{verified:true,games:30,rating:1500,crowns:100});authority.account('x').friends=['y'];authority.account('y').friends=['x'];
  const q=authority.offer('short','x','y',{kind:'friend',amount:2});authority.accept('short','y',q.termsHash);authority.resign('short','y');
  assert.equal(authority.account('x').history.at(-1).activityQualified,false);assert.equal(authority.seasonStatus(authority.account('x')).games,0);assert.equal(D.skillLeaderboardEligible(authority.account('x'),clock),false);
 });
 
 test('P1-9 bot/solver abuse: clients cannot forge results and extreme automated cadence is surfaced for review',()=>{
  const fast=[...Array(10)].map((_,i)=>({actor:'botlike',ms:i<3?50:180}));assert.deepEqual(ABUSE.automationActors(fast),['botlike']);
- const a=new Authority({paidEntryEnabled:true,eligibility:()=>true,random:()=>0});a.addAccount('a',{verified:true,games:30,rating:1500,crowns:100});a.addAccount('b',{verified:true,games:30,rating:1500,crowns:100});a.account('a').friends=['b'];a.account('b').friends=['a'];
+ const a=new Authority({random:()=>0});a.addAccount('a',{verified:true,games:30,rating:1500,crowns:100});a.addAccount('b',{verified:true,games:30,rating:1500,crowns:100});a.account('a').friends=['b'];a.account('b').friends=['a'];
  const q=a.offer('m','a','b',{kind:'friend',amount:2});a.accept('m','b',q.termsHash);const m=a.matches.get('m'),wrong=m.symbols.X==='a'?'b':'a';
  assert.throws(()=>a.move('m',wrong,0,'wrong-turn',{b:0,c:0}),/NOT_YOUR_TURN/);assert.equal(a.view('m').receipt,undefined);
  assert.equal(typeof a.result,'undefined');

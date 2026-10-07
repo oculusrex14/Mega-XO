@@ -9,9 +9,9 @@ const candidate={
  enabled:true,version:'audit-policy-v1',approvalId:'audit-approval-v1',
  effectiveAt:'2026-10-01T00:00:00Z',expiresAt:'2026-12-31T23:59:59Z',
  allowPurchasedCurrency:false,allowPooledStake:false,allowCashOut:false,allowRealWorldPrize:false,prizeFunding:'organizer',
- jurisdictions:[{country:'GB',platforms:['web'],minAge:18,legalReviewId:'audit-gb-review',dailyEntryCap:1000,dailyLossCap:1000}]
+ jurisdictions:[{country:'GB',platforms:['web'],minAge:18,legalReviewId:'audit-gb-review',maxEntryFee:100,dailyEntryCap:1000,dailyLossCap:1000}]
 };
-const context={policy:candidate,platform:'web',location:{trusted:true,country:'GB',proxyRisk:false},age:{verified:true,age:21,verifiedAt:'2026-10-01T00:00:00Z'},spend:{entryToday:0,lossToday:0},now};
+const context={policy:candidate,platform:'web',location:{trusted:true,country:'GB',proxyRisk:false},age:{verified:true,trusted:true,age:21,verifiedAt:'2026-10-01T00:00:00Z'},spend:{entryToday:0,lossToday:0,selfExcluded:false,accountHold:false,coolingOffUntil:null},now};
 
 function assert(condition,code){if(!condition)throw Error(code);}
 function denied(name,entry){

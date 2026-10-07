@@ -15,7 +15,7 @@ This checklist is the evidence package required before EXT-26 can move from BLOC
 - [ ] Confirm Antimatter Innovations or an approved sponsor funds the prize schedule.
 - [ ] Confirm no side bets, player-created stakes, variable pots or winner-takes-other-player-funds behavior.
 - [ ] Confirm Mega XO currency has no cash-out, transfer-to-user or redemption for real-world value in the approved baseline.
-- [ ] Confirm store-purchased Crowns/derived Coins are ineligible for competition entry.
+- [ ] For each jurisdiction/platform, explicitly decide whether store-purchased Crowns/derived Coins may fund closed-loop virtual-currency entry; missing approval means deny.
 - [ ] Approve cancellation, technical-failure, no-show, disqualification and refund rules.
 
 ## Jurisdiction matrix
@@ -65,7 +65,7 @@ Until all rows pass, India remains denied.
 - [ ] official competition rules available inside the app;
 - [ ] rules name Antimatter Innovations as sponsor/organizer;
 - [ ] rules expressly state Apple is not a sponsor or involved;
-- [ ] Apple IAP currency is not accepted for competition funding;
+- [ ] if iOS purchased-Crown entry is intended, obtain product-specific Apple review/legal approval for the closed-loop model and record the review identifier; never use IAP currency with a real-money-prize model;
 - [ ] if Apple classifies the model as real-money gaming, obtain every required licence/permission and configure runtime georestriction;
 - [ ] confirm app remains free if required by the applicable Apple rule;
 - [ ] App Review notes contain the model, jurisdiction controls and supporting documents;
@@ -135,7 +135,8 @@ Before server integration, create a reviewed policy artifact satisfying `server/
 - [ ] approval ID;
 - [ ] effective timestamp;
 - [ ] expiry/re-review timestamp;
-- [ ] `allowPurchasedCurrency=false`;
+- [ ] explicit `purchasedEntryPlatforms` per jurisdiction (empty where not approved);
+- [ ] Apple/Google review identifiers when iOS/Android purchased virtual entry is listed;
 - [ ] `allowPooledStake=false`;
 - [ ] `allowCashOut=false`;
 - [ ] `allowRealWorldPrize=false` for the baseline implementation;
@@ -145,7 +146,7 @@ Before server integration, create a reviewed policy artifact satisfying `server/
 - [ ] minimum age and spend limits;
 - [ ] India regulatory IDs if India is present.
 
-A later proposal to enable cash/real-world prizes, player pools or purchased-currency entry requires a **new legal review and reviewed code change**, not a more permissive JSON value.
+A later proposal to enable cash/real-world prizes or player-funded pools requires a **new legal review and reviewed code change**. Purchased closed-loop virtual entry is already modeled as a jurisdiction/platform policy decision.
 
 ## Live staging acceptance
 
@@ -156,7 +157,7 @@ Before a future enablement change:
 - [ ] VPN/location-risk condition denied;
 - [ ] underage/unverified age denied;
 - [ ] stale age verification denied;
-- [ ] purchased currency denied before reservation;
+- [ ] purchased virtual currency follows the jurisdiction/platform funding policy before reservation;
 - [ ] insufficient earned funds denied distinctly;
 - [ ] entry cap denied;
 - [ ] loss cap denied;

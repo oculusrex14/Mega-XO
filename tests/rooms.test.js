@@ -22,3 +22,13 @@ test('LAN guests use persistent secret tokens, not room codes',()=>{const e=env(
 test('Public account match command cannot forge the winner or balance',()=>{const e=env();try{const r=readyAll(e,publicLobby(e));assert.throws(()=>cmd(e.store,'p0',{type:'result',id:r.id,winner:'p0',coins:999999}),/UNKNOWN_COMMAND/);assert.equal(e.store.get(r.id).ranking,null);}finally{e.clean();}});
 test('Money account hold blocks settlement; operator can refund review',()=>{const e=env();try{let r=readyAll(e,publicLobby(e));const state=e.store.economy();state.accounts[0][1].hold=true;e.store.writeEconomy(state);let iterations=0;while(r.status==='RUNNING'&&iterations++<60){e.time(e.now()+16000);for(const f of r.fixtures.filter(f=>f.status==='READY'&&f.opens<=e.now())){cmd(e.store,f.players[0],{type:'matchReady',id:r.id,fixture:f.id});cmd(e.store,f.players[1],{type:'matchReady',id:r.id,fixture:f.id});r=cmd(e.store,f.players.slice().sort().at(-1),{type:'resign',id:r.id,fixture:f.id});}r=e.store.get(r.id);}assert.equal(r.status,'REVIEW');assert.equal(account(e.store,'p0').reservedCoins,100);r=e.store.run({actor:'operator',scope:'operator'},'void',{type:'cancel',id:r.id});assert(r.receipt.refunded);assert.equal(account(e.store,'p0').coins,10000);}finally{e.clean();}});
 test('eligibility must explicitly return true, not an async promise or truthy config',()=>{const e=env();try{e.store.eligibility=()=>Promise.resolve(true);assert.throws(()=>publicLobby(e),/PAID_ENTRY_UNAVAILABLE/);e.store.eligibility=()=>true;e.store.paidEntryEnabled='false';assert.throws(()=>publicLobby(e),/PAID_ENTRY_UNAVAILABLE/);}finally{e.clean();}});
+
+
+test('purchased virtual currency cannot fund public tournament entry',()=>{
+ const e=env({balance:0});try{
+  const state=e.store.economy(),p0=state.accounts.find(([id])=>id==='p0')[1];
+  p0.coins=100;p0.purchasedCoins=100;p0.purchasedCrowns=0;p0.legacyCompetitionRestricted=false;e.store.writeEconomy(state);
+  assert.throws(()=>cmd(e.store,'p0',{type:'publicJoin',table:'low'}),/COMPETITION_FUNDS_RESTRICTED/);
+  assert.equal(account(e.store,'p0').coins,100);
+ }finally{e.clean();}
+});

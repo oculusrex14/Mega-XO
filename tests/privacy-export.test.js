@@ -46,7 +46,7 @@ test('personal export requires recent reauthentication and is rate limited',t=>{
 });
 test('account deletion remains fail closed until an approved privacy policy exists',t=>{
  const dir=fs.mkdtempSync(path.join(os.tmpdir(),'mega-config-privacy-'));t.after(()=>fs.rmSync(dir,{recursive:true,force:true}));
- const base={MEGA_ENV:'staging',MEGA_ORIGIN:'https://staging.play.antimatterinnovations.com',MEGA_DB:path.join(dir,'db.sqlite'),MEGA_OTP_SECRET:'a'.repeat(64),MEGA_PROXY_SECRET:'b'.repeat(64),MEGA_PAID_ENTRY_ENABLED:'false',MEGA_PURCHASES_ENABLED:'false',MEGA_AD_MODE:'off'};
+ const base={MEGA_ENV:'staging',MEGA_ORIGIN:'https://staging.play.antimatterinnovations.com',MEGA_DB:path.join(dir,'db.sqlite'),MEGA_OTP_SECRET:'a'.repeat(64),MEGA_PROXY_SECRET:'b'.repeat(64),MEGA_AUDIT_SECRET:'c'.repeat(64),MEGA_PAID_ENTRY_ENABLED:'false',MEGA_PURCHASES_ENABLED:'false',MEGA_AD_MODE:'off'};
  assert.throws(()=>config({...base,MEGA_ACCOUNT_DELETION_ENABLED:'true'}),/ACCOUNT_DELETION_POLICY_NOT_APPROVED/);
  assert.throws(()=>config({...base,MEGA_ACCOUNT_DELETION_ENABLED:'true',MEGA_PRIVACY_POLICY_VERSION:'privacy-2026-10'}),/ACCOUNT_DELETION_RETENTION_NOT_APPROVED/);
  const ok=config({...base,MEGA_ACCOUNT_DELETION_ENABLED:'false'});assert.equal(ok.stage,'staging');

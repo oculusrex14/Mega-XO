@@ -21,12 +21,13 @@ services:
       MEGA_BACKUP_STATUS: /backup-status/last-success.json
       MEGA_OTP_SECRET_FILE: /run/secrets/otp_secret
       MEGA_PROXY_SECRET_FILE: /run/secrets/proxy_secret
+      MEGA_AUDIT_SECRET_FILE: /run/secrets/audit_secret
       RESEND_API_KEY_FILE: /run/secrets/resend_api_key
       GOOGLE_CLIENT_SECRET_FILE: /run/secrets/google_client_secret
       GOOGLE_PLAY_SERVICE_ACCOUNT_JSON_FILE: /run/secrets/google_play_service_account
       APPLE_STORE_ROOTS_FILE: /run/secrets/apple_store_roots
       APPLE_PRIVATE_KEY_FILE: /run/secrets/apple_private_key
-    secrets: [otp_secret, proxy_secret, resend_api_key, google_client_secret, apple_private_key, google_play_service_account, apple_store_roots]
+    secrets: [otp_secret, proxy_secret, audit_secret, resend_api_key, google_client_secret, apple_private_key, google_play_service_account, apple_store_roots]
     volumes:
       - ${MEGA_ROOT}/data:/data
       - ${MEGA_ROOT}/backup-status:/backup-status:ro
@@ -107,6 +108,7 @@ volumes:
 secrets:
   otp_secret: {file: '${MEGA_ROOT}/secrets/otp_secret'}
   proxy_secret: {file: '${MEGA_ROOT}/secrets/proxy_secret'}
+  audit_secret: {file: '${MEGA_ROOT}/secrets/audit_secret'}
   staging_password_hash: {file: '${MEGA_ROOT}/secrets/staging_password_hash'}
   resend_api_key: {file: '${MEGA_ROOT}/secrets/resend_api_key'}
   google_client_secret: {file: '${MEGA_ROOT}/secrets/google_client_secret'}

@@ -59,7 +59,7 @@ async function createRuntime(config,{transport,log=()=>{}}={}) {
   telemetry=new Telemetry(log,service.store.db);passwords=new Passwords({concurrency:config.authWorkers});
   outbox=new MailOutbox(service.community,{secret:config.otpSecret,daily:config.mailDaily,monthly:config.mailMonthly,email:config.email,transport,log:value=>telemetry.event(value)});
   const emailAuth=new EmailAuth(service.community,{passwords,outbox,secret:config.otpSecret});
-  const operatorService=new OperatorService(service,{secret:config.proxySecret});
+  const operatorService=new OperatorService(service,{secret:config.auditSecret});
   service.community.securityNotify=(actor,event,details={})=>{
    const to=service.community.emailAddress(actor);if(!to)return;
    const provider=typeof details.provider==='string'?details.provider:'',count=Number.isInteger(details.count)?details.count:null;

@@ -9,7 +9,7 @@ const http=require('node:http'),crypto=require('node:crypto');
 function httpFetch(url,options={}) {
  return new Promise((resolve,reject)=>{const req=http.request(url,{method:options.method,headers:options.headers},res=>{const chunks=[];res.on('data',c=>chunks.push(c));res.on('end',()=>resolve({status:res.statusCode,headers:new Headers(Object.entries(res.headers).map(([k,v])=>[k,Array.isArray(v)?v.join('; '):v])),text:async()=>Buffer.concat(chunks).toString('utf8')}));});req.on('error',reject);req.end(options.body);});
 }
-const secrets={MEGA_ORIGIN:'https://game.test',MEGA_OTP_SECRET:'1'.repeat(64),MEGA_PROXY_SECRET:'2'.repeat(64)};
+const secrets={MEGA_ORIGIN:'https://game.test',MEGA_OTP_SECRET:'1'.repeat(64),MEGA_PROXY_SECRET:'2'.repeat(64),MEGA_AUDIT_SECRET:'3'.repeat(64)};
 async function fixture(t) {
  const dir=fs.mkdtempSync(path.join(os.tmpdir(),'mega-production-')),logs=[],sent=[];
  const cfg={...config(secrets),file:path.join(dir,'db.sqlite'),host:'127.0.0.1',port:0,adminPort:0,backupStatus:path.join(dir,'backup.json'),authWorkers:1};
@@ -28,7 +28,7 @@ async function fixture(t) {
 }
 test('production config is fail-closed for secrets and unreleased provider features',()=>{
  assert.equal(config(secrets).mailDaily,80);
- for(const patch of [{MEGA_ORIGIN:'http://game.test'},{MEGA_DB:'relative.db'},{MEGA_OTP_SECRET:'short'},{MEGA_PROXY_SECRET:'1'.repeat(64)},{MEGA_OTP_SECRET_FILE:'/tmp/key'},{MEGA_PURCHASES_ENABLED:'true'},{MEGA_AD_MODE:'hybrid'},{PORT:'8080x'},{GOOGLE_CLIENT_ID:'incomplete'},{MEGA_MAIL_DAILY_LIMIT:'101'}])assert.throws(()=>config({...secrets,...patch}));
+  for(const patch of [{MEGA_ORIGIN:'http://game.test'},{MEGA_DB:'relative.db'},{MEGA_OTP_SECRET:'short'},{MEGA_PROXY_SECRET:'1'.repeat(64)},{MEGA_OTP_SECRET_FILE:'/tmp/key'},{MEGA_AUDIT_SECRET:'2'.repeat(64)},{MEGA_PURCHASES_ENABLED:'true'},{MEGA_AD_MODE:'hybrid'},{PORT:'8080x'},{GOOGLE_CLIENT_ID:'incomplete'},{MEGA_MAIL_DAILY_LIMIT:'101'}])assert.throws(()=>config({...secrets,...patch}));
 });
 test('empty Apple roots placeholder keeps disabled stores bootable but partial stores fail closed',t=>{
   const dir=fs.mkdtempSync(path.join(os.tmpdir(),'mega-roots-'));t.after(()=>fs.rmSync(dir,{recursive:true,force:true}));

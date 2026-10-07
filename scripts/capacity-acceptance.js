@@ -14,8 +14,8 @@ const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 async function run(){
  const clients=int('MEGA_CAPACITY_CLIENTS',24,8,96),accounts=int('MEGA_CAPACITY_ACCOUNTS',2000,clients,20000),rounds=int('MEGA_CAPACITY_ROUNDS',12,2,100),maxInflight=int('MEGA_CAPACITY_MAX_INFLIGHT',32,8,128);
  if(clients%2)throw Error('MEGA_CAPACITY_CLIENTS_MUST_BE_EVEN');
- const dir=fs.mkdtempSync(path.join(os.tmpdir(),'mega-capacity-')),secret='b'.repeat(64),otp='a'.repeat(64),db=path.join(dir,'mega.sqlite');
- const cfg={...config({MEGA_ENV:'staging',MEGA_ORIGIN:'https://capacity.invalid',MEGA_DB:db,MEGA_OTP_SECRET:otp,MEGA_PROXY_SECRET:secret}),host:'127.0.0.1',port:0,adminPort:0,file:db,maxInflight,maxConnections:Math.max(128,maxInflight*3),maxQueued:Math.max(200,clients*2),authWorkers:2};
+ const dir=fs.mkdtempSync(path.join(os.tmpdir(),'mega-capacity-')),secret='b'.repeat(64),otp='a'.repeat(64),audit='c'.repeat(64),db=path.join(dir,'mega.sqlite');
+ const cfg={...config({MEGA_ENV:'staging',MEGA_ORIGIN:'https://capacity.invalid',MEGA_DB:db,MEGA_OTP_SECRET:otp,MEGA_PROXY_SECRET:secret,MEGA_AUDIT_SECRET:audit}),host:'127.0.0.1',port:0,adminPort:0,file:db,maxInflight,maxConnections:Math.max(128,maxInflight*3),maxQueued:Math.max(200,clients*2),authWorkers:2};
  const runtime=await createRuntime(cfg),measurements=[],unexpected=[],expectedBackpressure=[];
  let agent=new http.Agent({keepAlive:true,maxSockets:Math.max(32,clients*2)});
  try{

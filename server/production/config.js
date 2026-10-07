@@ -32,7 +32,8 @@ function config(env = process.env) {
   if (!path.isAbsolute(file) || file === ':memory:') throw Error('ABSOLUTE_DATABASE_PATH_REQUIRED');
   const otpSecret = secret(env, 'MEGA_OTP_SECRET', true);
   const proxySecret = secret(env, 'MEGA_PROXY_SECRET', true);
-  if (!/^[a-f0-9]{64}$/i.test(otpSecret) || !/^[a-f0-9]{64}$/i.test(proxySecret) || otpSecret === proxySecret) throw Error('INDEPENDENT_256_BIT_SECRETS_REQUIRED');
+  const auditSecret = secret(env, 'MEGA_AUDIT_SECRET', true);
+  if (!/^[a-f0-9]{64}$/i.test(otpSecret) || !/^[a-f0-9]{64}$/i.test(proxySecret) || !/^[a-f0-9]{64}$/i.test(auditSecret) || new Set([otpSecret, proxySecret, auditSecret]).size !== 3) throw Error('INDEPENDENT_256_BIT_SECRETS_REQUIRED');
   if (!['true','false'].includes(env.MEGA_PURCHASES_ENABLED||'false')) throw Error('INVALID_PURCHASES_FLAG');
   const purchasesEnabled=(env.MEGA_PURCHASES_ENABLED||'false')==='true';
   const deletionEnabled=(env.MEGA_ACCOUNT_DELETION_ENABLED||'false')==='true';
@@ -87,7 +88,7 @@ function config(env = process.env) {
   const googlePlay=playJson?{packageName:playPackage,serviceAccount:playAccount,products:playProducts,pubsubAudience:playAudience,pubsubServiceAccount:playPushEmail}:null;
   const appleStore=rootsFile?{bundleId:appleBundle,environment:appleEnvironment,appAppleId:appleAppId,products:appleProducts,trustedRoots:appleRoots}:null;
   if(purchasesEnabled&&!googlePlay&&!appleStore)throw Error('STORE_PROVIDER_NOT_CONFIGURED');
-  return Object.freeze({stage, origin: origin.origin, file, otpSecret, proxySecret,
+  return Object.freeze({stage, origin: origin.origin, file, otpSecret, proxySecret, auditSecret,
     host: env.MEGA_BIND || '0.0.0.0', port: integer(env, 'PORT', 8080, 1024, 65535),
     adminPort: integer(env, 'MEGA_METRICS_PORT', 9091, 1024, 65535),
     maxInflight: integer(env, 'MEGA_MAX_INFLIGHT', 128, 8, 512),

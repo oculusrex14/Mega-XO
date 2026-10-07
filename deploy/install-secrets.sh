@@ -7,6 +7,7 @@ shift
 [[ "$root" = /* && "$root" != / && -d "$root/secrets" && -f "$root/app.env" ]] || { echo 'Initialize the deployment directory first.' >&2; exit 64; }
 
 resend_file=''
+audit_file=''
 google_file=''
 apple_file=''
 google_play_file=''
@@ -16,6 +17,7 @@ verify_only=false
 while (($#)); do
   case "$1" in
     --resend-file) resend_file=${2:?Missing path}; shift 2 ;;
+    --audit-file) audit_file=${2:?Missing path}; shift 2 ;;
     --google-file) google_file=${2:?Missing path}; shift 2 ;;
     --apple-file) apple_file=${2:?Missing path}; shift 2 ;;
     --google-play-file) google_play_file=${2:?Missing path}; shift 2 ;;
@@ -74,11 +76,14 @@ validate_permissions() {
 
 validate_hex_secret otp_secret
 validate_hex_secret proxy_secret
+validate_hex_secret audit_secret
 validate_hex_secret restic_password
 [[ "$(tr -d '\r\n' < "$secret_dir/otp_secret")" != "$(tr -d '\r\n' < "$secret_dir/proxy_secret")" ]] || { echo 'OTP and proxy secrets must be independent.' >&2; exit 65; }
+[[ "$(tr -d '\r\n' < "$secret_dir/audit_secret")" != "$(tr -d '\r\n' < "$secret_dir/otp_secret")" && "$(tr -d '\r\n' < "$secret_dir/audit_secret")" != "$(tr -d '\r\n' < "$secret_dir/proxy_secret")" ]] || { echo 'Audit secret must be independent.' >&2; exit 65; }
 
 if ! $verify_only; then
   if [[ -n "$resend_file" ]]; then write_secret resend_api_key "$resend_file"; else prompt_resend; fi
+  [[ -z "$audit_file" ]] || write_secret audit_secret "$audit_file"
   [[ -z "$google_file" ]] || write_secret google_client_secret "$google_file"
   [[ -z "$apple_file" ]] || write_secret apple_private_key "$apple_file"
   [[ -z "$google_play_file" ]] || write_secret google_play_service_account "$google_play_file"
@@ -102,7 +107,7 @@ if [[ -s "$secret_dir/apple_private_key" ]]; then
   grep -q -- '-----BEGIN PRIVATE KEY-----' "$secret_dir/apple_private_key" || { echo 'Apple private key does not look like a PEM private key.' >&2; exit 65; }
 fi
 
-for file in otp_secret proxy_secret restic_password resend_api_key google_client_secret apple_private_key google_play_service_account apple_store_roots; do
+for file in otp_secret proxy_secret audit_secret restic_password resend_api_key google_client_secret apple_private_key google_play_service_account apple_store_roots; do
   [[ -e "$secret_dir/$file" ]] || continue
   chmod 600 "$secret_dir/$file"
   if ((${#owner_args[@]})); then chown 1000:1000 "$secret_dir/$file"; fi

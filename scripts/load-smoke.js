@@ -8,7 +8,7 @@ const D=require('../src/domain'),G=require('../src/game');
 const percentile=(xs,p)=>{const a=xs.slice().sort((x,y)=>x-y);return Math.round((a[Math.min(a.length-1,Math.floor(a.length*p))]||0)*100)/100;};
 async function scenario(accounts,authContention){
  const dir=fs.mkdtempSync(path.join(os.tmpdir(),'mega-load-')),secret='b'.repeat(64);
- const cfg={...config({MEGA_ORIGIN:'https://game.test',MEGA_OTP_SECRET:'a'.repeat(64),MEGA_PROXY_SECRET:secret}),host:'127.0.0.1',port:0,adminPort:0,file:path.join(dir,'db')};
+ const cfg={...config({MEGA_ORIGIN:'https://game.test',MEGA_OTP_SECRET:'a'.repeat(64),MEGA_PROXY_SECRET:secret,MEGA_AUDIT_SECRET:'c'.repeat(64)}),host:'127.0.0.1',port:0,adminPort:0,file:path.join(dir,'db')};
  const runtime=await createRuntime(cfg),measurements=[],errors=[];
  try {
   const c=runtime.service.community,actorCount=8,tokens=[];

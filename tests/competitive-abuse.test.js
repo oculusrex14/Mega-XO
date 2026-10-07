@@ -40,7 +40,7 @@ test('tournament flags concentrated forfeits and fast automated cadence for revi
 });
 
 test('private timing evidence never appears in normal match or tournament views',()=>{
- let now=1000;const a=new Authority({paidEntryEnabled:true,eligibility:()=>true,now:()=>now,random:()=>0});
+ let now=1000;const a=new Authority({now:()=>now,random:()=>0});
  a.addAccount('alice',{crowns:20,rating:1500,games:30,verified:true});a.addAccount('bob',{crowns:20,rating:1500,games:30,verified:true});
  a.account('alice').friends=['bob'];a.account('bob').friends=['alice'];
  const q=a.offer('m','alice','bob',{kind:'friend',amount:2});a.accept('m','bob',q.termsHash);

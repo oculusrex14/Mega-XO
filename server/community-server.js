@@ -1,5 +1,5 @@
-/* Runnable same-origin account/social/game service. Paid entry is OFF by default.
- * Use a TLS reverse proxy and configured Google/Apple clients for production. */
+/* Runnable same-origin account/social/game service.
+ * Competitive entry is part of the core closed-loop game economy; use a TLS reverse proxy and configured providers in production. */
 'use strict';
 const http=require('node:http'),fs=require('node:fs'),path=require('node:path');
 const {DurableStore}=require('./economy-store.js');

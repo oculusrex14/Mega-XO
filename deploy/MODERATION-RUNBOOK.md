@@ -70,18 +70,13 @@ node scripts/operator.js audit-verify
 
 The operator audit table is append-only in normal operation; database triggers reject update/delete attempts and each entry is chained to the previous record with an HMAC-backed hash.
 
-## Policy blocker
+## Policy approval
 
-Before public moderation operations are considered complete, Antimatter Innovations must approve:
+A complete proposed conduct/evidence/action/appeal policy is drafted at `docs/legal/MODERATION-POLICY-DRAFT.md`.
 
-- a short player conduct policy;
-- what evidence is sufficient for warnings, holds and suspensions;
-- suspension duration/escalation rules;
-- appeals/support path;
-- report retention period;
-- who is authorized to use operator moderation commands.
+Before public moderation operations are considered complete, Antimatter Innovations must approve that draft (or an edited replacement), including suspension durations, appeal handling, retention periods and authorized operator roles. Record an immutable policy version when approved.
 
-This is tracked in `docs/V4-OPEN-BLOCKERS.md`. The code must not invent punishment policy.
+This approval remains tracked in `docs/V4-OPEN-BLOCKERS.md`; repository code does not silently convert the draft into an effective punishment policy.
 
 ## Privacy
 

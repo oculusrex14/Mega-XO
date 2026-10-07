@@ -3,6 +3,7 @@
 Status: **OPEN — do not enable paid entry**  
 Owner: Antimatter Innovations  
 Technical reference: `docs/legal/PAID-COMPETITION-COMPLIANCE.md`
+Rules drafting reference: `docs/legal/COMPETITION-RULES-TEMPLATE.md`
 
 This checklist is the evidence package required before EXT-26 can move from BLOCKED.
 

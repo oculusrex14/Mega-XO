@@ -9,7 +9,7 @@ function createPartyHandler({store,authenticate,origin,allowedHosts=null}){
    if(allowedHosts&&!allowedHosts.has(req.headers.host))throw Error('BAD_HOST');
    if(req.headers.origin&&req.headers.origin!==(origin||'http://'+req.headers.host))throw Error('BAD_ORIGIN');
    const address=req.socket.remoteAddress||'',now=Date.now(),limit=limits.get(address)||{time:now,count:0};if(now-limit.time>60000){limit.time=now;limit.count=0;}if(++limit.count>2400)throw Error('RATE_LIMIT');limits.set(address,limit);if(limits.size>1000)limits.delete(limits.keys().next().value);
-   if(req.method==='GET'&&path==='/api/party/capabilities'){send(200,{lan:store.lanOnly,online:!store.lanOnly,publicEnabled:!store.lanOnly&&store.paidEntryEnabled,tables:Object.keys(T.TABLES).map(T.prize)});return true;}
+   if(req.method==='GET'&&path==='/api/party/capabilities'){send(200,{lan:store.lanOnly,online:!store.lanOnly,publicEnabled:!store.lanOnly,tables:Object.keys(T.TABLES).map(T.prize)});return true;}
    let body={};if(req.method==='POST'){if(!String(req.headers['content-type']).startsWith('application/json'))throw Error('BAD_CONTENT_TYPE');let text='';for await(const part of req){text+=part;if(Buffer.byteLength(text)>16384)throw Error('BODY_TOO_LARGE');}body=JSON.parse(text||'{}');}
    if(req.method==='POST'&&path==='/api/party/session'){if(!store.lanOnly)throw Error('AUTH_REQUIRED');send(200,store.guest(body.name));return true;}
    const identity=store.lanOnly?store.authenticate((req.headers.authorization||'').replace(/^Bearer /,'')):await authenticate?.(req);

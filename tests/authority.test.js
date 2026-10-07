@@ -1,6 +1,6 @@
 'use strict';
 const test=require('node:test'),assert=require('node:assert/strict'),{Authority}=require('../src/authority.js'),D=require('../src/domain.js'),G=require('../src/game.js');
-function fixture(extra={}){let now=Date.parse('2026-10-05T12:00:00Z');const a=new Authority({paidEntryEnabled:true,eligibility:()=>true,now:()=>now,random:()=>0,...extra});a.addAccount('alice',{coins:1000,crowns:1000,rating:1500,games:30,verified:true});a.addAccount('bob',{coins:1000,crowns:1000,rating:2700,games:60,verified:true});a.account('alice').friends=['bob'];a.account('bob').friends=['alice'];return {a,advance:ms=>now+=ms,setTime:t=>now=t};}
+function fixture(extra={}){let now=Date.parse('2026-10-05T12:00:00Z');const a=new Authority({now:()=>now,random:()=>0,...extra});a.addAccount('alice',{coins:1000,crowns:1000,rating:1500,games:30,verified:true});a.addAccount('bob',{coins:1000,crowns:1000,rating:2700,games:60,verified:true});a.account('alice').friends=['bob'];a.account('bob').friends=['alice'];return {a,advance:ms=>now+=ms,setTime:t=>now=t};}
 const total=a=>[...a.accounts.values()].reduce((n,p)=>n+D.wealth(p),0);
 function startDirect(a,id='m',terms={}){const q=a.offer(id,'alice','bob',{kind:'friend',amount:20,...terms});a.accept(id,'bob',q.termsHash);return a.matches.get(id);}
 function finish(a,advance,id='m'){while(!a.matches.get(id).state.winner){const m=a.matches.get(id),move=G.legal(m.state)[0];advance(2000);a.move(id,m.symbols[m.state.turn],m.revision,'move:'+m.revision,move);}return a.matches.get(id).receipt;}
@@ -13,8 +13,8 @@ test('reject/cancel/expire do not charge anything',()=>{for(const end of ['decli
 test('funds and eligibility are checked again at acceptance',()=>{const {a}=fixture();const q=a.offer('m','alice','bob',{kind:'friend',amount:20});a.account('alice').crowns=1;assert.throws(()=>a.accept('m','bob',q.termsHash),/INSUFFICIENT/);assert.equal(a.account('bob').crowns,1000);assert.equal(a.matches.get('m').escrow,0);});
 test('counterfeit tiers ignored; funding and clock terms cannot silently change',()=>{const {a}=fixture();const q=a.offer('m','alice','bob',{kind:'leaderboard',from:'grandmaster',to:'wood'});assert.equal(q.terms.from,'gold');assert.equal(q.terms.to,'emerald');assert.throws(()=>a.accept('m','bob','wrong'),/TERMS_CHANGED/);a.account('alice').rating=1510;assert.throws(()=>a.accept('m','bob',q.termsHash),/REQUOTE/);});
 test('only matchmaker can choose queued ranked pairings',()=>{const {a}=fixture();assert.throws(()=>a.offer('m','alice','bob',{mode:'queue'}),/MATCHMAKER_REQUIRED/);});
-test('production defaults deny paid entries, allow free play',()=>{const {a}=fixture({paidEntryEnabled:false});assert.throws(()=>a.offerQueue('m','alice','bob'),/PAID_ENTRY/);assert.equal(a.offer('free','alice','bob',{rated:false}).quote.pool,0);});
-test('jurisdiction/account gate independent of currency source and paid-entry flag',()=>{const {a}=fixture({eligibility:()=>false});assert.throws(()=>a.offer('m','alice','bob',{kind:'friend',amount:2}),/PAID_ENTRY/);});
+test('closed-loop competitive entry is core gameplay while free play remains free',()=>{const {a}=fixture();assert.equal(a.offerQueue('m','alice','bob').quote.currency,'coins');assert.equal(a.offer('free','alice','bob',{rated:false}).quote.pool,0);});
+test('competitive entry still requires normal server-side account eligibility',()=>{const {a}=fixture();a.account('alice').verified=false;assert.throws(()=>a.offer('m','alice','bob',{kind:'friend',amount:2}),/INELIGIBLE/);});
 test('one active match, no self challenge, blocked recipients and placements protected',()=>{const {a}=fixture();assert.throws(()=>a.offer('self','alice','alice',{}));a.account('alice').blocked.push('bob');assert.throws(()=>a.offer('blocked','alice','bob',{}));a.account('alice').blocked=[];a.account('alice').games=9;assert.throws(()=>a.offer('unplaced','alice','bob',{}),/PLACEMENTS/);a.account('alice').games=30;startDirect(a);a.addAccount('charlie',{verified:true,games:20});assert.throws(()=>a.offer('other','alice','charlie',{rated:false}),/ALREADY/);});
 test('first-turn ownership and replay safety',()=>{const {a}=fixture();startDirect(a);assert.throws(()=>a.move('m','bob',0,'x',{b:4,c:2}),/NOT_YOUR_TURN/);const one=a.move('m','alice',0,'a',{b:4,c:2});assert.deepEqual(a.move('m','alice',0,'a',{b:4,c:2}),one);assert.equal(a.matches.get('m').revision,1);assert.throws(()=>a.move('m','alice',0,'a',{b:4,c:3}),/IDEMPOTENCY/);assert.throws(()=>a.move('m','bob',0,'b',{b:2,c:0}),/STALE/);});
 test('stale/replayed terminal settlement cannot double-credit',()=>{const {a}=fixture();const m=startDirect(a);const r=a.resign('m','alice'),state=JSON.stringify(a.export());assert.deepEqual(a._settle(m,'O','resign'),r);assert.equal(JSON.stringify(a.export()),state);});
@@ -41,7 +41,7 @@ test('verified store Crowns keep purchased provenance through currency conversio
 });
 
 test('store-bought Crown value works like earned value after conversion',()=>{
- const verifyPurchase=(e,actor)=>({...e,valid:true,accountId:actor}),a=new Authority({paidEntryEnabled:true,eligibility:()=>true,verifyPurchase,random:()=>0});
+ const verifyPurchase=(e,actor)=>({...e,valid:true,accountId:actor}),a=new Authority({verifyPurchase,random:()=>0});
  a.addAccount('buyer',{coins:0,crowns:0,rating:1500,games:30,verified:true});
  a.addAccount('earned',{coins:1000,crowns:0,rating:1500,games:30,verified:true});
  a.purchase('buyer',{store:'google',transactionId:'approved-entry',productId:'crowns_100'});

@@ -1,0 +1,59 @@
+{
+  "schema_version": 1,
+  "status": "PASS",
+  "phase": "P01",
+  "gate": "G01",
+  "task_ids": [
+    "V5-01-01",
+    "V5-01-02",
+    "V5-01-03",
+    "V5-01-04",
+    "V5-01-05"
+  ],
+  "case_ids": [
+    "A01",
+    "A02",
+    "A03"
+  ],
+  "observed_at_utc": "2026-10-07T20:59:05.828527+00:00",
+  "source_sha": "af11caae8966f529f62afce663ea1ab54aef286d",
+  "environment": "local integration over isolated synthetic fixture; V4 production untouched",
+  "evidence_refs": [
+    "docs/v5/evidence/phase01-write-paths.json",
+    "docs/v5/evidence/phase01-repositories.json",
+    "docs/v5/evidence/phase01-domain.json",
+    "docs/v5/evidence/phase01-contracts.json",
+    "docs/v5/evidence/phase01-client-packaging.json",
+    "docs/v5/evidence/phase00-visual-baseline.json",
+    "docs/v5/evidence/progress-tool-smoke.json"
+  ],
+  "suite": {
+    "command": "node --test --test-force-exit tests/*.test.js",
+    "tests": 397,
+    "pass": 395,
+    "skipped": 1,
+    "fail": 1,
+    "only_failure": "pre-existing owner-reported opsz backup-freshness; reproduced pristine HEAD; not rerun to confirm; not suppressed"
+  },
+  "live_proof": {
+    "signup_and_convert_over_p01_stack": true,
+    "replay_conflict_missing_key_guard": true,
+    "packages_static_probe": "404",
+    "offline_bundle": "four themes zero remote requests",
+    "client_source_bytes": "unchanged (protected manifest 21 files verified at capture; src/game.js hash equals baseline)"
+  },
+  "result": {
+    "executed": true,
+    "exit_code": 0,
+    "assertions": [
+      "UI and game behavior equivalent; pure domain and contract tests run independently of HTTP/SQLite; one transaction spans multiple repository operations.",
+      "Deterministic client packaging seam with vendor licenses and no leakage."
+    ]
+  },
+  "not_claimed": [
+    "PostgreSQL/Neon deployment",
+    "realtime WSS server",
+    "native apps",
+    "production cutover"
+  ]
+}

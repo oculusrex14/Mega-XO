@@ -4,7 +4,7 @@ The mutable execution source is [progress.json](progress.json); this is its read
 
 **Goal:** Deliver the V5 hybrid platform and real Android/iOS applications with shared permanent actor/assets, preserved approved game and retained browser compatibility; do not build the new website/browser product.
 
-**Integration base:** `455b8ec9ea4070b4410d78f9eea2aaa06d32c0b2`. **Active phase/task:** P01 / V5-01-02 (IN_PROGRESS). **Progress:** 7/117 tasks terminal; 1/25 phase gates passed
+**Integration base:** `455b8ec9ea4070b4410d78f9eea2aaa06d32c0b2`. **Active phase/task:** P02 / V5-02-01 (PLANNED). **Progress:** 11/117 tasks terminal; 2/25 phase gates passed
 
 Required path: execute P00–P20, P22–P23; owner-deferred P21 executes nothing; P24 is measurement-gated; phase prerequisites are gates, not status assumptions, and a deferred or measurement-gated phase is never used as another phase prerequisite. The foundation gate P00–P03 passes before dependent distributed work, and V5 CI starts in the foundation rather than only at P17.
 
@@ -23,13 +23,13 @@ Milestone: V5.0; status: `COMPLETE`; prerequisites: none. [Phase contract](../..
 
 ## P01 — Extract clean service and repository boundaries
 
-Milestone: V5.0; status: `IN_PROGRESS`; prerequisites: P00. [Phase contract](../../Mega-XO-V5-Implementation-Pack/phases/01-service-boundaries.md).
+Milestone: V5.0; status: `COMPLETE`; prerequisites: P00. [Phase contract](../../Mega-XO-V5-Implementation-Pack/phases/01-service-boundaries.md).
 
 - [x] **V5-01-01 — Map write paths and implicit effects** (`COMPLETE`).
-- [ ] **V5-01-02 — Introduce repository and transaction interfaces** (`IN_PROGRESS`).
-- [ ] **V5-01-03 — Extract pure domain behavior without rebalance** (`PLANNED`).
-- [ ] **V5-01-04 — Freeze versioned contracts and adapters** (`PLANNED`).
-- [ ] **V5-01-05 — Add deterministic client packaging seam** (`PLANNED`).
+- [x] **V5-01-02 — Introduce repository and transaction interfaces** (`COMPLETE`).
+- [x] **V5-01-03 — Extract pure domain behavior without rebalance** (`COMPLETE`).
+- [x] **V5-01-04 — Freeze versioned contracts and adapters** (`COMPLETE`).
+- [x] **V5-01-05 — Add deterministic client packaging seam** (`COMPLETE`).
 
 **Exit gate:** G01: existing UI and game behavior remain equivalent; pure domain and contract tests run independently of HTTP/SQLite; a transaction can span multiple repository operations.
 

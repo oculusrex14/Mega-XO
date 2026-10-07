@@ -1,0 +1,11 @@
+{
+  "name": "@mega-xo/contracts",
+  "version": "5.0.0-p01",
+  "private": true,
+  "description": "Versioned shared validators/DTO contracts for legacy HTTP adapters, native bridges and the future realtime/v1 protocol. No HTTP/SQLite dependency.",
+  "main": "index.js",
+  "engines": {
+    "node": ">=24.0.0"
+  },
+  "license": "UNLICENSED"
+}

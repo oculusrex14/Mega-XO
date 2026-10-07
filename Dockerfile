@@ -13,6 +13,7 @@ COPY --chown=node:node src/ ./src/
 COPY --chown=node:node server/ ./server/
 COPY --chown=node:node deploy/ ./deploy/
 COPY --chown=node:node scripts/ ./scripts/
+COPY --chown=node:node packages/ ./packages/
 USER node
 EXPOSE 8080 9091
 HEALTHCHECK --interval=30s --timeout=3s --start-period=30s --retries=3 \

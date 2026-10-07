@@ -1,6 +1,6 @@
 /* Invoke from the server worker. No browser can mint weekly rewards or run these jobs. */
 'use strict';
-const D=require('../src/domain.js');
+const {domain:D}=require('../packages/domain');
 function maintenance(store,now=Date.now()){
  const principal={actor:'maintenance',scope:'operator'},today=D.day(now);
  store.run(principal,'snapshot:'+today,{type:'snapshot'});

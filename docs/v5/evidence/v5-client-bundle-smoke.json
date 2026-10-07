@@ -1,0 +1,131 @@
+{
+  "schema_version": 1,
+  "status": "PASS",
+  "task_ids": [
+    "V5-01-05"
+  ],
+  "case_ids": [
+    "A01"
+  ],
+  "observed_at_utc": "2026-10-07T20:44:31.099612+00:00",
+  "source_sha": "af11caae8966f529f62afce663ea1ab54aef286d",
+  "environment": "actual built bundle served from private directory by throwaway static server; managed Chromium tab restricted to exact host127.0.0.1:8499 (all other hosts aborted)",
+  "artifacts": {
+    "builder": "scripts/v5/build-client.js",
+    "config": "native/client/bundle.config.json",
+    "vendor": "assets/vendor/**",
+    "regression": "tests/v5-client-bundle.test.js"
+  },
+  "commands": [
+    {
+      "command": "node scripts/v5/build-client.js --output <a> --json && same --output <b> --json",
+      "exit_code": 0,
+      "bundle_hash": "a41ef156e0ddab72b7c06fd0ba0fd4b871bca5bc0cbff5c8cfc13dbff4899fcb",
+      "files": 71,
+      "bytes": 1284836
+    },
+    {
+      "command": "node scripts/v5/build-client.js --output <b> --check --json",
+      "exit_code": 0,
+      "result": "identical bundle hash across rebuild"
+    },
+    {
+      "command": "node --test tests/v5-client-bundle.test.js",
+      "exit_code": 0,
+      "result": {
+        "tests": 12,
+        "pass": 12,
+        "fail": 0
+      }
+    }
+  ],
+  "offline_launch": {
+    "guest_home_rendered": true,
+    "nav": [
+      "Play",
+      "Friends",
+      "Rank",
+      "Stats",
+      "Quests"
+    ],
+    "wallet": "Coins150",
+    "network_status_degradation_banner_observed": true,
+    "remoteRequestsAcrossEntireSmoke": [],
+    "lucide_vendor_status_200_bytes": 357796,
+    "lucide_global_matches_original_4180": "window.lucide undefined on both original and bundle (icons render on both; no regression)",
+    "theme_matrix": [
+      {
+        "theme": "vector",
+        "sheetOpened": true,
+        "tileClicked": true,
+        "renderedTheme": "vector",
+        "bodyBg": "rgb(233, 236, 239)",
+        "noHorizontalOverflow": true,
+        "loadedFontFamilies": [
+          "IBM Plex Mono",
+          "Space Grotesk"
+        ]
+      },
+      {
+        "theme": "midnight",
+        "sheetOpened": true,
+        "tileClicked": true,
+        "renderedTheme": "midnight",
+        "bodyBg": "rgba(0, 0, 0, 0)",
+        "noHorizontalOverflow": true,
+        "loadedFontFamilies": [
+          "IBM Plex Mono",
+          "Space Grotesk"
+        ]
+      },
+      {
+        "theme": "paperclub",
+        "sheetOpened": true,
+        "tileClicked": true,
+        "renderedTheme": "paperclub",
+        "bodyBg": "rgb(185, 171, 143)",
+        "noHorizontalOverflow": true,
+        "loadedFontFamilies": [
+          "Caveat",
+          "IBM Plex Mono",
+          "Patrick Hand",
+          "Space Grotesk"
+        ]
+      },
+      {
+        "theme": "afterhours",
+        "sheetOpened": true,
+        "tileClicked": true,
+        "renderedTheme": "afterhours",
+        "bodyBg": "rgb(7, 3, 15)",
+        "noHorizontalOverflow": true,
+        "loadedFontFamilies": [
+          "Caveat",
+          "Chakra Petch",
+          "IBM Plex Mono",
+          "Orbitron",
+          "Patrick Hand",
+          "Share Tech Mono",
+          "Space Grotesk"
+        ]
+      }
+    ],
+    "screenshots_taken": true,
+    "harness_cleanup": "tabs closed; static server stopped; throwaway server script and outputs remain in private evidence dir only"
+  },
+  "result": {
+    "executed": true,
+    "exit_code": 0,
+    "assertions": [
+      "Deterministic double build plus --check passed with identical hash.",
+      "Manifest contains only approved client/legal/vendor files; authority/server/tests/deploy absent.",
+      "All12 prepared boundary regressions pass offline.",
+      "Four themes applied through real Settings sheet tiles with distinct computed backgrounds and vendored woff2 fonts loaded.",
+      "Zero non-loopback network requests during full guest/theme smoke."
+    ],
+    "limitations": [
+      "Guest/offline smoke only; signed API journeys belong to P11/P18 parity against the deployed control plane.",
+      "Deployment serving shape (Dockerfile COPY / static allowlist) is parent integration pending."
+    ]
+  }
+}

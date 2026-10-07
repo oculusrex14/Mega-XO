@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at_utc": "2026-10-07T20:14:15.275+00:00",
+  "updated_at_utc": "2026-10-07T20:59:24.059+00:00",
   "goal": "Deliver the V5 hybrid platform and real Android/iOS applications with shared permanent actor/assets, preserved approved game and retained browser compatibility; do not build the new website/browser product.",
   "source": {
     "goal": "AGENT-GOAL.md",
@@ -46,8 +46,8 @@
     "installed_script_revision_status": "FOUR_INSTALLED_FILES_HASH_MATCH_SELECTED_CHECKOUT"
   },
   "current": {
-    "phase": "P01",
-    "active_task": "V5-01-02",
+    "phase": "P02",
+    "active_task": "V5-02-01",
     "next_action": "V5-platform created from the pinned green base; preserve/add original goal and pack at the initial verified checkpoint, then complete route/data ownership baseline.",
     "checkout_branch_at_setup": "V4.1",
     "integration_branch": "V5-platform",
@@ -61,7 +61,11 @@
       "V5-00-04",
       "V5-00-05",
       "V5-00-06",
-      "V5-01-01"
+      "V5-01-01",
+      "V5-01-02",
+      "V5-01-03",
+      "V5-01-04",
+      "V5-01-05"
     ],
     "passed_phase_gates": [
       {
@@ -94,6 +98,34 @@
         ],
         "gate_evidence": "docs/v5/evidence/phase00-gate.json",
         "note": "G00 exit met with exact green baseline, frozen ownership, actual classified environment inventory, initial successful V5 CI and byte-identical isolated V4 recovery; documentary Markdown pointer moved to artifact_refs rather than treated as executable JSON proof."
+      },
+      {
+        "phase": "P01",
+        "gate": "G01",
+        "completed_at_utc": "2026-10-07T20:59:24.057+00:00",
+        "task_ids": [
+          "V5-01-01",
+          "V5-01-02",
+          "V5-01-03",
+          "V5-01-04",
+          "V5-01-05"
+        ],
+        "task_statuses": {
+          "V5-01-01": "COMPLETE",
+          "V5-01-02": "COMPLETE",
+          "V5-01-03": "COMPLETE",
+          "V5-01-04": "COMPLETE",
+          "V5-01-05": "COMPLETE"
+        },
+        "evidence_refs": [
+          "docs/v5/evidence/phase01-write-paths.json",
+          "docs/v5/evidence/phase01-repositories.json",
+          "docs/v5/evidence/phase01-domain.json",
+          "docs/v5/evidence/phase01-contracts.json",
+          "docs/v5/evidence/phase01-client-packaging.json"
+        ],
+        "gate_evidence": "docs/v5/evidence/phase01-gate.json",
+        "note": "G01 met: 397-test suite at integration shows only the pre-existing opsz failure; pure domain/contract independence, single-owner transactions, unchanged approved client bytes and deterministic leak-free packaging all actually exercised."
       }
     ]
   },
@@ -185,7 +217,7 @@
           "V5-01-04",
           "V5-01-05"
         ],
-        "status": "IN_PROGRESS"
+        "status": "COMPLETE"
       },
       {
         "id": "P02",
@@ -1019,7 +1051,7 @@
         "verification": "Contract tests prove one transaction encompasses all economic effects; no hidden independently committed calls.",
         "id": "V5-01-02",
         "phase": "P01",
-        "status": "IN_PROGRESS",
+        "status": "COMPLETE",
         "depends_on_tasks": [
           "V5-01-01"
         ],
@@ -1032,7 +1064,7 @@
         "verification": "Seeded differential tests and existing invariant/balance tests pass without changed expected product values.",
         "id": "V5-01-03",
         "phase": "P01",
-        "status": "PLANNED",
+        "status": "COMPLETE",
         "depends_on_tasks": [
           "V5-01-02"
         ],
@@ -1045,7 +1077,7 @@
         "verification": "Existing clients remain contract-compatible; invalid payloads fail consistently.",
         "id": "V5-01-04",
         "phase": "P01",
-        "status": "PLANNED",
+        "status": "COMPLETE",
         "depends_on_tasks": [
           "V5-01-03"
         ],
@@ -1058,7 +1090,7 @@
         "verification": "Bundle inspection and four-theme baseline test show correct assets and no server/secrets leakage.",
         "id": "V5-01-05",
         "phase": "P01",
-        "status": "PLANNED",
+        "status": "COMPLETE",
         "depends_on_tasks": [
           "V5-01-04"
         ],
@@ -2954,17 +2986,98 @@
       ]
     },
     "V5-01-02": {
-      "status": "IN_PROGRESS",
-      "evidence_refs": [],
+      "status": "COMPLETE",
+      "evidence_refs": [
+        "docs/v5/evidence/phase01-repositories.json"
+      ],
       "completed_portions": [],
       "remaining": [],
-      "review_notes": "Actual SQLite repository/shared-UoW transaction extraction proceeding under frozen interfaces; independent pure-policy/contract/client-bundle slices may implement concurrently but acceptance remains dependency ordered.",
+      "review_notes": "Actual SQLite repository/shared-UoW transaction extraction proceeding under frozen interfaces; independent pure-policy/contract/client-bundle slices may implement concurrently but acceptance remains dependency ordered. Shared UoW with single commit owner adopted across economic/room/monetization/email/outbox writers; 11 UoW behavior tests plus 24 room/party tests and live replay/conflict/missing-key convert proof.",
       "transitions": [
         {
           "at_utc": "2026-10-07T20:14:15.274+00:00",
           "from": "PLANNED",
           "to": "IN_PROGRESS",
           "note": "Actual SQLite repository/shared-UoW transaction extraction proceeding under frozen interfaces; independent pure-policy/contract/client-bundle slices may implement concurrently but acceptance remains dependency ordered."
+        },
+        {
+          "at_utc": "2026-10-07T20:59:23.567+00:00",
+          "from": "IN_PROGRESS",
+          "to": "COMPLETE",
+          "evidence": "docs/v5/evidence/phase01-repositories.json",
+          "note": "Shared UoW with single commit owner adopted across economic/room/monetization/email/outbox writers; 11 UoW behavior tests plus 24 room/party tests and live replay/conflict/missing-key convert proof."
+        }
+      ]
+    },
+    "V5-01-03": {
+      "status": "COMPLETE",
+      "evidence_refs": [
+        "docs/v5/evidence/phase01-domain.json"
+      ],
+      "completed_portions": [],
+      "remaining": [],
+      "review_notes": "Delivered via PurePolicy slice; integration verifying. packages/domain identity re-exports, verbatim chooseSymbols, pure matchmaking policy and executeCommand extraction; 13 differential/clock tests vs 455b8ec; no product values changed.",
+      "transitions": [
+        {
+          "at_utc": "2026-10-07T20:59:23.637+00:00",
+          "from": "PLANNED",
+          "to": "IN_PROGRESS",
+          "note": "Delivered via PurePolicy slice; integration verifying."
+        },
+        {
+          "at_utc": "2026-10-07T20:59:23.709+00:00",
+          "from": "IN_PROGRESS",
+          "to": "COMPLETE",
+          "evidence": "docs/v5/evidence/phase01-domain.json",
+          "note": "packages/domain identity re-exports, verbatim chooseSymbols, pure matchmaking policy and executeCommand extraction; 13 differential/clock tests vs 455b8ec; no product values changed."
+        }
+      ]
+    },
+    "V5-01-04": {
+      "status": "COMPLETE",
+      "evidence_refs": [
+        "docs/v5/evidence/phase01-contracts.json"
+      ],
+      "completed_portions": [],
+      "remaining": [],
+      "review_notes": "Delivered via SharedContracts slice; integration verifying. validateInvocation byte-parity single call; four routers share guards; 79-entry frozen route manifest; realtime/v1 and native/v1 library validators; 16+33+20 consumer boundary tests.",
+      "transitions": [
+        {
+          "at_utc": "2026-10-07T20:59:23.785+00:00",
+          "from": "PLANNED",
+          "to": "IN_PROGRESS",
+          "note": "Delivered via SharedContracts slice; integration verifying."
+        },
+        {
+          "at_utc": "2026-10-07T20:59:23.853+00:00",
+          "from": "IN_PROGRESS",
+          "to": "COMPLETE",
+          "evidence": "docs/v5/evidence/phase01-contracts.json",
+          "note": "validateInvocation byte-parity single call; four routers share guards; 79-entry frozen route manifest; realtime/v1 and native/v1 library validators; 16+33+20 consumer boundary tests."
+        }
+      ]
+    },
+    "V5-01-05": {
+      "status": "COMPLETE",
+      "evidence_refs": [
+        "docs/v5/evidence/phase01-client-packaging.json"
+      ],
+      "completed_portions": [],
+      "remaining": [],
+      "review_notes": "Delivered via ClientBundle slice; parent ran actual double build, regressions and offline four-theme launch. Deterministic bundle a41ef156 (71 files) with licenses; 12 boundary tests; actual offline launch rendered four themes from vendored assets with zero remote requests.",
+      "transitions": [
+        {
+          "at_utc": "2026-10-07T20:59:23.921+00:00",
+          "from": "PLANNED",
+          "to": "IN_PROGRESS",
+          "note": "Delivered via ClientBundle slice; parent ran actual double build, regressions and offline four-theme launch."
+        },
+        {
+          "at_utc": "2026-10-07T20:59:23.988+00:00",
+          "from": "IN_PROGRESS",
+          "to": "COMPLETE",
+          "evidence": "docs/v5/evidence/phase01-client-packaging.json",
+          "note": "Deterministic bundle a41ef156 (71 files) with licenses; 12 boundary tests; actual offline launch rendered four themes from vendored assets with zero remote requests."
         }
       ]
     }

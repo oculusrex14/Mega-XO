@@ -1,0 +1,47 @@
+{
+  "schema_version": 1,
+  "status": "PASS",
+  "task_ids": [
+    "V5-01-04"
+  ],
+  "case_ids": [
+    "A01",
+    "A02",
+    "A03"
+  ],
+  "observed_at_utc": "2026-10-07T20:59:05.828527+00:00",
+  "checkpoint_parent": "af11caae8966f529f62afce663ea1ab54aef286d",
+  "environment": "isolated synthetic HTTP/SQLite fixture (tests/monetization-browser-server.js) and local Node v26.8.2 runner; V4 production untouched",
+  "implementation": "packages/contracts 9 files incl routes(79)/guards(43)/commands/invocation/native-bridge/realtime; server http/community-http/party-http/monetization-http rewired to shared guards; tests/v5-contracts.test.js",
+  "verified": [
+    {
+      "command": "node --test --test-force-exit tests/v5-contracts.test.js",
+      "exit_code": 0,
+      "result": "16 pass over real HTTP: mounted/standalone/LAN/provider surfaces, auth precedence, CSRF order, key grammar per mount, body limits, idempotency/revision, provider callback codes"
+    },
+    {
+      "command": "combined tests/http.test.js tests/monetization-http.test.js tests/community-http.test.js",
+      "exit_code": 0,
+      "result": "33 pass; 20 pass with tests/party-http.test.js"
+    },
+    {
+      "command": "validateInvocation parity + static probe",
+      "exit_code": 0,
+      "result": "called exactly once as first statement of DurableStore.run; byte-equivalent guards order/scopes/160 ceiling; GET /packages/db/index.js -> 404"
+    }
+  ],
+  "result": {
+    "executed": true,
+    "exit_code": 0,
+    "assertions": [
+      "Existing clients remain contract-compatible; invalid payloads fail with preserved status/error surfaces.",
+      "LINK_ACCOUNT_REQUIRED auth-state and poller behavior untouched.",
+      "realtime/v1 and native/v1 are validated library contracts only; no deployed socket or stub endpoint."
+    ]
+  },
+  "browser_note": "in-page custom Origin probe inconclusive because Chromium silently drops the forbidden header; origin enforcement is proven transport-side by the contract suite",
+  "not_claimed": [
+    "realtime server deployment (P08)",
+    "native bridge runtime (P20)"
+  ]
+}

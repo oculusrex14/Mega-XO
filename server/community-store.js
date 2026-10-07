@@ -3,6 +3,8 @@
 'use strict';
 const crypto=require('node:crypto');
 const {sha,equal}=require('./identity-provider.js'),D=require('../src/domain.js');
+const {contextFor,currentScope,getContext,repositoriesOf,runInScope}=require('../packages/db/context');
+const {SOCIAL_OPERATIONS}=require('../packages/db/scopes');
 const DAY=86400000,MAX_SAVE_BYTES=262144,AVATARS=['cross','ring','board','rook','crown','star'];
 const NAME=/^[a-z][a-z0-9_]{2,19}$/;
 const EMAIL=/^[a-z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)+$/i;
@@ -58,12 +60,19 @@ CREATE INDEX IF NOT EXISTS email_challenges_session ON email_challenges(session)
 CREATE INDEX IF NOT EXISTS email_challenges_email ON email_challenges(email);`);
   const credentialColumns=this.db.prepare('PRAGMA table_info(email_credentials)').all();if(!credentialColumns.some(c=>c.name==='verified_at'))this.db.exec('ALTER TABLE email_credentials ADD COLUMN verified_at INTEGER');
  }
- tx(fn){this.db.exec('BEGIN IMMEDIATE');try{const r=fn();this.db.exec('COMMIT');return r;}catch(e){this.db.exec('ROLLBACK');throw e;}}
- rate(actor,bucket,limit,seconds=60){const id=bucket+':'+actor+':'+Math.floor(this.now()/1000/seconds);const row=this.db.prepare('INSERT INTO community_limits VALUES(?,1) ON CONFLICT(id) DO UPDATE SET hits=hits+1 RETURNING hits').get(id);if(row.hits>limit)fail('RATE_LIMITED');}
+ /* Existing account/social transaction seam: the store's OWN connection scope.
+  * Nested calls borrow it, so signup/social/deletion effects (identity, graph,
+  * outcomes) commit as one unit and never independently. */
+ tx(fn){return runInScope(this.db,{now:this.now,origin:'community',begin:'BEGIN IMMEDIATE'},fn);}
+ /* Current live scope repositories when one is open, else the connection-bound set. */
+ repositories(){const scope=currentScope(this.db);if(scope)return repositoriesOf(scope.context);const context=getContext(this.db);return repositoriesOf(context||contextFor(this.db,{now:this.now,begin:'BEGIN IMMEDIATE'}));}
+ rate(actor,bucket,limit,seconds=60){const hits=this.repositories().community.count(bucket+':'+actor+':'+Math.floor(this.now()/1000/seconds));if(hits>limit)fail('RATE_LIMITED');}
  read(){return this.store.read();}
- write(a){this.db.prepare('UPDATE state SET json=? WHERE id=1').run(json(a.export()));}
+ /* Never persist the economic graph while it is owned by another store's open
+  * unit of work; that scope commits it. Outside a scope this writes atomically. */
+ write(a){const scope=currentScope(this.db);if(scope&&scope.origin!=='community')throw Error('NESTED_ECONOMY_WRITE');this.db.prepare('UPDATE state SET json=? WHERE id=1').run(json(a.export()));const context=getContext(this.db);if(context)context.graph=null;}
  requireAccount(actor){const a=this.read().account(actor);if(a.suspended||a.hold||!a.verified)fail('ACCOUNT_UNAVAILABLE');return a;}
- profileRow(actor){return this.db.prepare('SELECT * FROM profiles WHERE actor=?').get(actor)||null;}
+ profileRow(actor){return this.repositories().profiles.for(actor);}
  ensureProfile(actor,a){let row=this.profileRow(actor);if(row)return row;const account=a.account(actor);let tag=account.friendCode;
   if(!tag||this.db.prepare('SELECT actor FROM profiles WHERE tag=?').get(tag))do{tag='MEGA-'+crypto.randomBytes(6).toString('hex').toUpperCase();}while(this.db.prepare('SELECT actor FROM profiles WHERE tag=?').get(tag));
   let username;do{username='player_'+crypto.randomBytes(5).toString('hex');}while(this.db.prepare('SELECT actor FROM profiles WHERE username=?').get(username));
@@ -71,7 +80,7 @@ CREATE INDEX IF NOT EXISTS email_challenges_email ON email_challenges(email);`);
  }
  _issue(actor=null,authAt=0){const token=crypto.randomBytes(32).toString('base64url'),csrf=crypto.randomBytes(24).toString('base64url'),created=this.now(),expires=created+(actor?14*DAY:DAY);this.db.prepare('INSERT INTO account_sessions VALUES(?,?,?,?,?,?)').run(sha(token),actor,csrf,created,expires,authAt);return {token,csrf,actor,expires,authAt};}
  bootstrap(token){const s=this.session(token);if(s)return {...s,token:null};return this.tx(()=>this._issue());}
- session(token){if(typeof token!=='string'||token.length>128)return null;const s=this.db.prepare('SELECT * FROM account_sessions WHERE token=? AND expires>?').get(sha(token),this.now());if(!s)return null;
+ session(token){if(typeof token!=='string'||token.length>128)return null;const s=this.repositories().sessions.live(sha(token),this.now());if(!s)return null;
   if(s.actor){try{this.requireAccount(s.actor);}catch{return null;}}return {hash:s.token,actor:s.actor,csrf:s.csrf,expires:s.expires,authAt:s.auth_at};}
  requireSession(token){return this.session(token)||fail('AUTH_REQUIRED');}
  requireLinked(token){const s=this.requireSession(token);if(!s.actor)fail('LINK_ACCOUNT_REQUIRED');return s;}
@@ -82,10 +91,10 @@ CREATE INDEX IF NOT EXISTS email_challenges_email ON email_challenges(email);`);
  _security(actor,event,details={}){try{this.securityNotify(actor,event,details);}catch{}}
  _sessionId(hash){return crypto.createHash('sha256').update(hash).digest('hex').slice(0,24);}
  sessions(token){const current=this.requireLinked(token),rows=this.db.prepare('SELECT token,created,expires,auth_at FROM account_sessions WHERE actor=? AND expires>? ORDER BY created DESC').all(current.actor,this.now());return rows.map(r=>({id:this._sessionId(r.token),current:r.token===current.hash,created:r.created,expires:r.expires,recentlyVerified:this.now()-r.auth_at<=15*60000}));}
- revokeSession(token,id){const current=this.requireLinked(token);if(typeof id!=='string'||!/^[a-f0-9]{24}$/.test(id))fail('INVALID_SESSION');const row=this.db.prepare('SELECT token FROM account_sessions WHERE actor=? AND expires>?').all(current.actor,this.now()).find(r=>this._sessionId(r.token)===id);if(!row)fail('SESSION_NOT_FOUND');if(row.token===current.hash)fail('CURRENT_SESSION');return this.tx(()=>{this.db.prepare('DELETE FROM session_presence WHERE session=?').run(row.token);this.db.prepare('DELETE FROM account_sessions WHERE token=? AND actor=?').run(row.token,current.actor);this._security(current.actor,'session_revoked');return {revoked:true};});}
- revokeOtherSessions(token){const current=this.requireLinked(token);return this.tx(()=>{this.db.prepare('DELETE FROM session_presence WHERE actor=? AND session<>?').run(current.actor,current.hash);const count=this.db.prepare('DELETE FROM account_sessions WHERE actor=? AND token<>? RETURNING token').all(current.actor,current.hash).length;this._security(current.actor,'other_sessions_revoked',{count});return {revoked:count};});}
+ revokeSession(token,id){const current=this.requireLinked(token);if(typeof id!=='string'||!/^[a-f0-9]{24}$/.test(id))fail('INVALID_SESSION');const row=this.db.prepare('SELECT token FROM account_sessions WHERE actor=? AND expires>?').all(current.actor,this.now()).find(r=>this._sessionId(r.token)===id);if(!row)fail('SESSION_NOT_FOUND');if(row.token===current.hash)fail('CURRENT_SESSION');return this.tx(()=>{const repositories=this.repositories();repositories.sessions.clearPresence(row.token);repositories.sessions.revoke(current.actor,row.token);this._security(current.actor,'session_revoked');return {revoked:true};});}
+ revokeOtherSessions(token){const current=this.requireLinked(token);return this.tx(()=>{const repositories=this.repositories();repositories.sessions.clearOtherPresence(current.actor,current.hash);const count=repositories.sessions.revokeOthers(current.actor,current.hash).length;this._security(current.actor,'other_sessions_revoked',{count});return {revoked:count};});}
  _password(password,salt,expected){try{return equal(passwordHash(validatePassword(password),salt),expected);}catch{return false;}}
- _replaceSession(session,actor,created=false){this.db.prepare('DELETE FROM session_presence WHERE session=?').run(session.hash);this.db.prepare('DELETE FROM account_sessions WHERE token=?').run(session.hash);const issued=this._issue(actor,this.now()),others=this.db.prepare('SELECT token FROM account_sessions WHERE actor=? ORDER BY created DESC').all(actor).slice(5);for(const x of others){this.db.prepare('DELETE FROM account_sessions WHERE token=?').run(x.token);this.db.prepare('DELETE FROM session_presence WHERE session=?').run(x.token);}return {...issued,created,profile:this.profile(actor,actor)};}
+ _replaceSession(session,actor,created=false){const repositories=this.repositories();repositories.sessions.clearPresence(session.hash);repositories.sessions.rotate(session.hash);const issued=this._issue(actor,this.now()),others=this.db.prepare('SELECT token FROM account_sessions WHERE actor=? ORDER BY created DESC').all(actor).slice(5);for(const x of others){repositories.sessions.revoke(actor,x.token);repositories.sessions.clearPresence(x.token);}return {...issued,created,profile:this.profile(actor,actor)};}
  _otpHash(id,email,purpose,code){return crypto.createHmac('sha256',this.otpSecret).update([id,email,purpose,code].join('|')).digest('base64url');}
  _challenge(session,{email,purpose,actor=null,password=null}){
   this.rate(session.hash,'email-otp-session',8,3600);this.rate(sha(email),'email-otp-address',6,3600);
@@ -164,7 +173,7 @@ CREATE INDEX IF NOT EXISTS email_challenges_email ON email_challenges(email);`);
    return this._replaceSession(session,actor,created);
   });
  }
- logout(token,all=false){const s=this.requireSession(token);return this.tx(()=>{if(all&&s.actor){this.db.prepare('DELETE FROM session_presence WHERE actor=?').run(s.actor);this.db.prepare('DELETE FROM account_sessions WHERE actor=?').run(s.actor);}else{this.db.prepare('DELETE FROM session_presence WHERE session=?').run(s.hash);this.db.prepare('DELETE FROM account_sessions WHERE token=?').run(s.hash);}return {signedOut:true};});}
+ logout(token,all=false){const s=this.requireSession(token);return this.tx(()=>{const repositories=this.repositories();if(all&&s.actor){repositories.sessions.clearActorPresence(s.actor);repositories.sessions.revokeAll(s.actor);}else{repositories.sessions.clearPresence(s.hash);repositories.sessions.rotate(s.hash);}return {signedOut:true};});}
  unlink(token,provider){const s=this.requireLinked(token);if(this.now()-s.authAt>15*60000)fail('REAUTH_REQUIRED');return this.tx(()=>{const list=this.identities(s.actor);if(list.length<=1)fail('LAST_LOGIN_METHOD');if(!list.some(i=>i.provider===provider))fail('PROVIDER_NOT_LINKED');this.db.prepare('DELETE FROM identities WHERE actor=? AND provider=?').run(s.actor,provider);if(provider==='email')this.db.prepare('DELETE FROM email_credentials WHERE actor=?').run(s.actor);this._security(s.actor,'provider_unlinked',{provider});return {providers:this.identities(s.actor)};});}
  edit(actor,changes){this.requireAccount(actor);this.rate(actor,'edit',15,300);return this.tx(()=>{const a=this.read(),p=this.ensureProfile(actor,a),username=typeof changes.username==='string'?changes.username.toLowerCase().trim():p.username,name=changes.displayName===undefined?p.display_name:(typeof changes.displayName==='string'?changes.displayName.trim():fail('INVALID_DISPLAY_NAME')),avatar=changes.avatar??p.avatar;
   if(!NAME.test(username)||RESERVED.has(username))fail('INVALID_USERNAME');if(!safeText(name,28))fail('INVALID_DISPLAY_NAME');if(!AVATARS.includes(avatar))fail('INVALID_AVATAR');
@@ -175,7 +184,7 @@ CREATE INDEX IF NOT EXISTS email_challenges_email ON email_challenges(email);`);
  relation(actor,target,a=this.read()){const A=a.account(actor),B=a.account(target);if(A.blocked.includes(target)||B.blocked.includes(actor))return 'blocked';if(A.friends.includes(target)&&B.friends.includes(actor))return 'friend';if(A.friendRequests.includes(target))return 'incoming';if(B.friendRequests.includes(actor))return 'outgoing';return actor===target?'self':'none';}
  stats(a){const out={};for(const mode of ['ranked','casual','friend']){const rows=(a.history||[]).filter(r=>r.mode===mode&&['win','loss','draw'].includes(r.result)),wins=rows.filter(r=>r.result==='win').length,losses=rows.filter(r=>r.result==='loss').length,seconds=rows.reduce((s,r)=>s+(Number.isFinite(r.activeSeconds)?Math.max(0,r.activeSeconds):0),0);out[mode]={games:rows.length,wins,losses,draws:rows.length-wins-losses,winRate:rows.length?wins/rows.length:null,averageSeconds:rows.length?seconds/rows.length:null,hours:seconds/3600};}out.tournament=D.tournamentStats(a.tournamentRecord);return out;}
  presence(actor,viewer){const authority=this.read(),p=this.profileRow(actor);if(!p||actor!==viewer&&(p.presence_visibility==='hidden'||this.relation(actor,viewer,authority)!=='friend'))return {state:'hidden',online:false};
-  const rows=this.db.prepare('SELECT p.seen,p.foreground FROM session_presence p JOIN account_sessions s ON s.token=p.session WHERE p.actor=? AND p.seen>? AND s.expires>?').all(actor,this.now()-45000,this.now());if(!rows.length)return {state:'offline',online:false};if(!rows.some(r=>r.foreground))return {state:'away',online:false};
+  const rows=this.repositories().sessions.presence(actor,this.now()-45000,this.now());if(!rows.length)return {state:'offline',online:false};if(!rows.some(r=>r.foreground))return {state:'away',online:false};
   const a=authority.account(actor);let state=a.activeMatch?'in-match':this.isQueued?.(actor)?'queued':'online';const table=this.db.prepare("SELECT name FROM sqlite_master WHERE name='party_rooms'").get();if(state==='online'&&table){const rooms=this.db.prepare("SELECT json FROM party_rooms WHERE json_extract(json,'$.status') IN ('LOBBY','RUNNING','PAUSED')").all();if(rooms.some(r=>JSON.parse(r.json).players.some(p=>p.id===actor)))state='in-lobby';}
   return {state,online:true};
  }
@@ -198,7 +207,7 @@ CREATE INDEX IF NOT EXISTS email_challenges_email ON email_challenges(email);`);
   const reportId='rp_'+crypto.randomUUID();this.db.prepare('INSERT INTO v41_reports(id,reporter,target,category,detail,created,state) VALUES(?,?,?,?,?,?,?)').run(reportId,actor,id,category,detail,this.now(),'open');
   return {reported:true,duplicate:false,id:reportId};
  }
- social(actor,key,command,target){if(!safeKey(key))fail('INVALID_OPERATION');this.requireAccount(actor);const fp=sha(json({command,target})),op=actor+':'+key;return this.tx(()=>{const existing=this.db.prepare('SELECT * FROM social_operations WHERE id=?').get(op);if(existing){if(existing.fingerprint!==fp)fail('IDEMPOTENCY_CONFLICT');return JSON.parse(existing.result);}this.rate(actor,'social',30);const a=this.read(),id=this.resolve(target,a),A=a.account(actor),B=a.account(id);if(id===actor)fail('SELF_REQUEST');const relation=this.relation(actor,id,a);
+ social(actor,key,command,target){if(!safeKey(key))fail('INVALID_OPERATION');this.requireAccount(actor);const fp=sha(json({command,target})),op=actor+':'+key;return this.tx(()=>{const repositories=this.repositories(),existing=repositories.outcomes.find(SOCIAL_OPERATIONS,op);if(existing){if(existing.fingerprint!==fp)fail('IDEMPOTENCY_CONFLICT');return JSON.parse(existing.result);}this.rate(actor,'social',30);const a=this.read(),id=this.resolve(target,a),A=a.account(actor),B=a.account(id);if(id===actor)fail('SELF_REQUEST');const relation=this.relation(actor,id,a);
   if(!['request','accept','decline','cancel','remove','block','unblock'].includes(command))fail('INVALID_SOCIAL_ACTION');if(relation==='blocked'&&!['block','unblock'].includes(command))fail('PROFILE_NOT_FOUND');
   if(command==='request'){if(A.friends.length>=200||B.friendRequests.length>=50)fail('FRIEND_LIMIT');a.requestFriend(actor,id);}
   if(command==='accept'){if(A.friends.length>=200||B.friends.length>=200)fail('FRIEND_LIMIT');a.acceptFriend(actor,id);A.friendRequests=A.friendRequests.filter(x=>x!==id);B.friendRequests=B.friendRequests.filter(x=>x!==actor);}
@@ -206,7 +215,7 @@ CREATE INDEX IF NOT EXISTS email_challenges_email ON email_challenges(email);`);
   if(command==='cancel')B.friendRequests=B.friendRequests.filter(x=>x!==actor);
   if(['remove','block'].includes(command)){A.friends=A.friends.filter(x=>x!==id);B.friends=B.friends.filter(x=>x!==actor);A.friendRequests=A.friendRequests.filter(x=>x!==id);B.friendRequests=B.friendRequests.filter(x=>x!==actor);for(const m of a.matches.values())if(m.status==='OFFERED'&&m.players.includes(actor)&&m.players.includes(id))m.status='CANCELLED';}
   if(command==='block'&&!A.blocked.includes(id))A.blocked.push(id);if(command==='unblock')A.blocked=A.blocked.filter(x=>x!==id);
-  this.write(a);const result={ok:true};this.db.prepare('INSERT INTO social_operations VALUES(?,?,?)').run(op,fp,json(result));return result;
+  this.write(a);const result={ok:true};repositories.outcomes.save(SOCIAL_OPERATIONS,op,fp,json(result));return result;
  });}
  exportData(token){
   const session=this.requireLinked(token);if(this.now()-session.authAt>15*60000)fail('REAUTH_REQUIRED');this.rate(session.actor,'data-export',3,86400);
@@ -250,7 +259,7 @@ CREATE INDEX IF NOT EXISTS email_challenges_email ON email_challenges(email);`);
    authority.accounts.delete(actor);this.write(authority);
    if(this.db.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name='v4_outbox'").get()&&sessions.length){const q=sessions.map(()=>'?').join(',');this.db.prepare(`UPDATE v4_outbox SET state='cancelled',payload=NULL WHERE state IN ('queued','sending') AND id IN (SELECT id FROM email_challenges WHERE session IN (${q}))`).run(...sessions);}
    const email=this.db.prepare('SELECT email FROM email_credentials WHERE actor=?').get(actor)?.email||null;
-   this.db.prepare('DELETE FROM session_presence WHERE actor=?').run(actor);this.db.prepare('DELETE FROM account_sessions WHERE actor=?').run(actor);this.db.prepare('DELETE FROM signin_attempts WHERE target=?').run(actor);
+   const repositories=this.repositories();repositories.sessions.clearActorPresence(actor);repositories.sessions.revokeAll(actor);this.db.prepare('DELETE FROM signin_attempts WHERE target=?').run(actor);
    for(const hash of sessions)this.db.prepare('DELETE FROM signin_attempts WHERE session=?').run(hash);
    if(email)this.db.prepare('DELETE FROM email_challenges WHERE actor=? OR email=?').run(actor,email);else this.db.prepare('DELETE FROM email_challenges WHERE actor=?').run(actor);
    if(this.db.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name='v4_email_versions'").get())this.db.prepare('DELETE FROM v4_email_versions WHERE challenge NOT IN (SELECT id FROM email_challenges)').run();
@@ -264,8 +273,8 @@ CREATE INDEX IF NOT EXISTS email_challenges_email ON email_challenges(email);`);
    return {deleted:true,receiptId,policyVersion};
   });
  }
- save(actor,expected,payload){this.requireAccount(actor);if(!Number.isSafeInteger(expected)||expected<0)fail('INVALID_REVISION');this.rate(actor,'save',20);const clean=sanitizePractice(payload);return this.tx(()=>{const row=this.db.prepare('SELECT revision FROM profile_saves WHERE actor=?').get(actor);if((row?.revision||0)!==expected)fail('SAVE_CONFLICT');const revision=expected+1;this.db.prepare('INSERT INTO profile_saves VALUES(?,?,?,?) ON CONFLICT(actor) DO UPDATE SET revision=excluded.revision,payload=excluded.payload,updated=excluded.updated').run(actor,revision,json(clean),this.now());return {revision,updated:this.now()};});}
- restore(actor){this.requireAccount(actor);const row=this.db.prepare('SELECT * FROM profile_saves WHERE actor=?').get(actor);return row?{revision:row.revision,updated:row.updated,practice:JSON.parse(row.payload)}:{revision:0,practice:null};}
+ save(actor,expected,payload){this.requireAccount(actor);if(!Number.isSafeInteger(expected)||expected<0)fail('INVALID_REVISION');this.rate(actor,'save',20);const clean=sanitizePractice(payload);return this.tx(()=>{const current=this.repositories().saves.revisionOf(actor);if(current!==expected)fail('SAVE_CONFLICT');const revision=expected+1;this.db.prepare('INSERT INTO profile_saves VALUES(?,?,?,?) ON CONFLICT(actor) DO UPDATE SET revision=excluded.revision,payload=excluded.payload,updated=excluded.updated').run(actor,revision,json(clean),this.now());return {revision,updated:this.now()};});}
+ restore(actor){this.requireAccount(actor);const row=this.repositories().saves.for(actor);return row?{revision:row.revision,updated:row.updated,practice:JSON.parse(row.payload)}:{revision:0,practice:null};}
  cleanup(){const now=this.now();this.db.prepare('DELETE FROM signin_attempts WHERE expires<?').run(now-3600000);this.db.prepare('DELETE FROM email_challenges WHERE expires<? OR consumed=1 AND created<?').run(now-3600000,now-DAY);this.db.prepare('DELETE FROM account_sessions WHERE expires<?').run(now);this.db.prepare('DELETE FROM session_presence WHERE seen<?').run(now-3600000);if(this.db.prepare('SELECT COUNT(*) n FROM community_limits').get().n>10000)this.db.prepare('DELETE FROM community_limits WHERE rowid IN (SELECT rowid FROM community_limits ORDER BY rowid LIMIT 1000)').run();}
 }
 module.exports={CommunityStore,AVATARS,sanitizePractice};

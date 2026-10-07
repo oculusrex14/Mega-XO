@@ -1,0 +1,45 @@
+{
+  "schema_version": 1,
+  "status": "PASS",
+  "task_ids": [
+    "V5-01-05"
+  ],
+  "case_ids": [
+    "A01",
+    "A02",
+    "A03"
+  ],
+  "observed_at_utc": "2026-10-07T20:59:05.828527+00:00",
+  "checkpoint_parent": "af11caae8966f529f62afce663ea1ab54aef286d",
+  "environment": "isolated synthetic HTTP/SQLite fixture (tests/monetization-browser-server.js) and local Node v26.8.2 runner; V4 production untouched",
+  "implementation": "scripts/v5/build-client.js; native/client/bundle.config.json; assets/vendor (Lucide 0.468.0 ISC + 38 pinned woff2 + 7 OFL + rewritten fonts.css); tests/v5-client-bundle.test.js; sibling detail evidence docs/v5/evidence/v5-client-bundle-smoke.json",
+  "verified": [
+    {
+      "command": "node scripts/v5/build-client.js double build + --check",
+      "exit_code": 0,
+      "result": "bundle_hash a41ef156e0ddab72b7c06fd0ba0fd4b871bca5bc0cbff5c8cfc13dbff4899fcb identical across independent builds; 71 files 1284836 bytes"
+    },
+    {
+      "command": "node --test --test-force-exit tests/v5-client-bundle.test.js",
+      "exit_code": 0,
+      "result": "12 pass: manifest digests, hash sensitivity, authority/server/tests/deploy/docs/metadata refusal, traversal/symlink/nonregular refusal, unvendored-font and remote-URL refusal, protected-output refusal"
+    },
+    {
+      "command": "actual offline launch smoke (static server + browser tab restricted to loopback)",
+      "exit_code": 0,
+      "result": "guest home and nav rendered; four themes applied through real Settings tiles with distinct computed backgrounds; vendored fonts loaded per theme (paperclub Caveat/Patrick Hand; afterhours Chakra Petch/Orbitron/Share Tech Mono); zero non-loopback requests; window.lucide absence matches original 4180 (parity)"
+    }
+  ],
+  "result": {
+    "executed": true,
+    "exit_code": 0,
+    "assertions": [
+      "Deterministic allowlisted client bundle with provenance and licenses; no server authority, credentials or tests included.",
+      "Server-side packages/ added to image via Dockerfile COPY in same checkpoint."
+    ]
+  },
+  "not_claimed": [
+    "native app shells (P20)",
+    "store/Play/SDK integration"
+  ]
+}

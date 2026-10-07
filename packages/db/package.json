@@ -1,0 +1,13 @@
+{
+  "name": "@mega-xo/db",
+  "version": "5.0.0",
+  "private": true,
+  "description": "Shared SQLite unit of work and repository boundaries for Mega XO V5 (P01 temporary adapter).",
+  "main": "index.js",
+  "exports": {
+    ".": "./index.js",
+    "./context": "./context.js",
+    "./repositories": "./repositories.js",
+    "./scopes": "./scopes.js"
+  }
+}

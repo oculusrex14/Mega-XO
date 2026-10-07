@@ -1,0 +1,99 @@
+{
+  "schema_version": 1,
+  "description": "Allowlisted client bundle graph consumed by scripts/v5/build-client.js. Only paths listed here (and files under vendor_root with known pinned provenance) may enter a bundle. Server authority, credentials, tests, deploy tooling and repository metadata are never bundle inputs.",
+  "bundle_index": "bundle-index.html",
+  "manifest": "client-bundle.manifest.json",
+  "web_index": "index.html",
+  "client_scripts": [
+    "src/game.js",
+    "src/domain.js",
+    "src/monetization.js",
+    "src/lan-icons.js",
+    "src/icons.js",
+    "src/account-client.js",
+    "src/network.js",
+    "src/app.js",
+    "src/tournament.js",
+    "src/party-ui.js",
+    "src/community.js",
+    "src/monetization-ui.js"
+  ],
+  "client_styles": [
+    "src/styles.css",
+    "src/party.css",
+    "src/community.css",
+    "src/monetization.css"
+  ],
+  "legal_pages": [
+    { "source": "public/privacy.html", "destination": "privacy.html" },
+    { "source": "public/terms.html", "destination": "terms.html" },
+    { "source": "public/support.html", "destination": "support.html" },
+    { "source": "public/privacy-choices.html", "destination": "privacy-choices.html" },
+    { "source": "public/delete-account.html", "destination": "delete-account.html" }
+  ],
+  "legal_styles": [
+    { "source": "public/legal.css", "destination": "legal.css" }
+  ],
+  "vendor_root": "assets/vendor",
+  "vendor_exclude": ["assets/vendor/fonts/google-fonts.source.css"],
+  "vendor_font_css": "assets/vendor/fonts/google-fonts.source.css",
+  "vendor_font_css_url": "https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600&family=Space+Grotesk:wght@500;600;700&family=Caveat:wght@600;700&family=Patrick+Hand&family=Orbitron:wght@600;800&family=Chakra+Petch:wght@400;500;600;700&family=Share+Tech+Mono&display=swap",
+  "vendor_licenses": [
+    { "path": "assets/vendor/lucide/LICENSE", "url": "https://unpkg.com/lucide@0.468.0/LICENSE", "name": "Lucide", "spdx": "ISC" },
+    { "path": "assets/vendor/fonts/caveat/OFL.txt", "url": "https://raw.githubusercontent.com/google/fonts/main/ofl/caveat/OFL.txt", "name": "Caveat", "spdx": "OFL-1.1" },
+    { "path": "assets/vendor/fonts/chakrapetch/OFL.txt", "url": "https://raw.githubusercontent.com/google/fonts/main/ofl/chakrapetch/OFL.txt", "name": "Chakra Petch", "spdx": "OFL-1.1" },
+    { "path": "assets/vendor/fonts/ibmplexmono/OFL.txt", "url": "https://raw.githubusercontent.com/google/fonts/main/ofl/ibmplexmono/OFL.txt", "name": "IBM Plex Mono", "spdx": "OFL-1.1" },
+    { "path": "assets/vendor/fonts/orbitron/OFL.txt", "url": "https://raw.githubusercontent.com/google/fonts/main/ofl/orbitron/OFL.txt", "name": "Orbitron", "spdx": "OFL-1.1" },
+    { "path": "assets/vendor/fonts/patrickhand/OFL.txt", "url": "https://raw.githubusercontent.com/google/fonts/main/ofl/patrickhand/OFL.txt", "name": "Patrick Hand", "spdx": "OFL-1.1" },
+    { "path": "assets/vendor/fonts/sharetechmono/OFL.txt", "url": "https://raw.githubusercontent.com/google/fonts/main/ofl/sharetechmono/OFL.txt", "name": "Share Tech Mono", "spdx": "OFL-1.1" },
+    { "path": "assets/vendor/fonts/spacegrotesk/OFL.txt", "url": "https://raw.githubusercontent.com/google/fonts/main/ofl/spacegrotesk/OFL.txt", "name": "Space Grotesk", "spdx": "OFL-1.1" }
+  ],
+  "vendor_scripts": [
+    { "source": "assets/vendor/lucide/lucide.min.js", "destination": "vendor/lucide/lucide.min.js", "url": "https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js", "name": "lucide", "version": "0.468.0" }
+  ],
+  "index_rewrites": {
+    "https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js": "vendor/lucide/lucide.min.js",
+    "https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600&family=Space+Grotesk:wght@500;600;700&family=Caveat:wght@600;700&family=Patrick+Hand&family=Orbitron:wght@600;800&family=Chakra+Petch:wght@400;500;600;700&family=Share+Tech+Mono&display=swap": "vendor/fonts/fonts.css"
+  },
+  "index_dependency_links": [
+    { "rel": "preconnect", "href": "https://fonts.googleapis.com" },
+    { "rel": "preconnect", "href": "https://fonts.gstatic.com" }
+  ],
+  "local_route_rewrites": [
+    { "from": "/privacy-choices", "to": "privacy-choices.html" },
+    { "from": "/delete-account", "to": "delete-account.html" },
+    { "from": "/privacy", "to": "privacy.html" },
+    { "from": "/support", "to": "support.html" },
+    { "from": "/terms", "to": "terms.html" },
+    { "from": "/public/legal.css", "to": "legal.css" },
+    { "from": "/", "to": "bundle-index.html" }
+  ],
+  "allowed_source_prefixes": ["index.html", "src/", "public/", "assets/vendor/"],
+  "forbidden_source_prefixes": [
+    "src/authority.js",
+    "server/",
+    "tests/",
+    "deploy/",
+    "scripts/",
+    "docs/",
+    "native/",
+    ".git/",
+    ".github/",
+    ".agents/",
+    ".artifacts/",
+    "Mega-XO-V5-Implementation-Pack/"
+  ],
+  "forbidden_source_names": [
+    ".env",
+    ".env.example",
+    "package.json",
+    "package-lock.json",
+    "Dockerfile",
+    ".dockerignore",
+    ".gitignore",
+    "AGENTS.md",
+    "AGENT-GOAL.md",
+    "README.md"
+  ],
+  "forbidden_destination_segments": ["authority", "server", "credential", "secret", ".git", ".env"]
+}

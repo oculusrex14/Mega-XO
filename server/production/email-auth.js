@@ -13,6 +13,11 @@ const stamp=row=>row?crypto.createHash('sha256').update(row.actor+'|'+row.passwo
 const mask=value=>value[0]+'***@'+value.split('@')[1];
 class EmailAuth {
  constructor(community,{passwords,outbox,secret,now=Date.now}) {Object.assign(this,{c:community,db:community.db,passwords,outbox,secret,now});}
+ /* Email/credential/mail-cancellation effects join the shared unit of work that the
+  * account store owns on this connection: the challenge, its mail row and any
+  * credential/session/opening-wallet change commit (or roll back) as one unit, and
+  * nested seams borrow the open scope instead of beginning a second transaction. */
+ uow(fn){return this.c.tx(fn);}
  rate(session,address) {
   hit(this.db,this.secret,'auth-session',session.hash,12,300,this.now());
   hit(this.db,this.secret,'auth-address',address,30,3600,this.now());
@@ -26,7 +31,7 @@ class EmailAuth {
   hit(this.db,this.secret,'otp-address',address,6,3600,this.now());
   const recent=this.db.prepare('SELECT created FROM email_challenges WHERE email=? AND purpose=? ORDER BY created DESC LIMIT 1').get(address,purpose);
   if(recent&&this.now()-recent.created<COOLDOWN)throw Error('OTP_COOLDOWN');
-  return this.c.tx(()=>{
+  return this.uow(()=>{
    const id=crypto.randomBytes(24).toString('base64url'),code=String(crypto.randomInt(1000000)).padStart(6,'0'),now=this.now();
    this.db.prepare("UPDATE v4_outbox SET state='cancelled',payload=NULL WHERE state='queued' AND id IN (SELECT id FROM email_challenges WHERE session=? AND email=? AND purpose=?)").run(session.hash,address,purpose);
    this.db.prepare('UPDATE email_challenges SET consumed=1 WHERE session=? AND email=? AND purpose=?').run(session.hash,address,purpose);
@@ -47,7 +52,7 @@ class EmailAuth {
    if(!row.verified_at)return this.challenge(session,address,'verify-existing',{actor:row.actor,credential:row});
    // Upgrade legacy work factor only after successful verification, outside a DB lock.
    const upgraded=row.password_hash.startsWith('scrypt-v1$')?null:await this.passwords.hash(password);
-   return this.c.tx(()=>{
+   return this.uow(()=>{
     this.requireCurrent(token,session.hash);
     if(stamp(this.credential(address))!==stamp(row))throw Error('INVALID_CREDENTIALS');
     if(upgraded)this.db.prepare('UPDATE email_credentials SET salt=?,password_hash=? WHERE email=?').run(upgraded.salt,upgraded.password_hash,address);
@@ -71,7 +76,7 @@ class EmailAuth {
   const session=this.c.requireSession(token);
   hit(this.db,this.secret,'otp-verify',session.hash,20,300,this.now());
   if(typeof id!=='string'||id.length>64||typeof code!=='string'||!/^\d{6}$/.test(code))throw Error('INVALID_OTP');
-  const result=this.c.tx(()=>{
+  const result=this.uow(()=>{
    const row=this.db.prepare('SELECT e.*,v.credential_hash FROM email_challenges e JOIN v4_email_versions v ON v.challenge=e.id WHERE e.id=? AND e.session=?').get(id,session.hash);
    if(!row||row.consumed||row.verified_at)return {error:'INVALID_OTP'};
    if(row.expires<=this.now()){this.db.prepare('UPDATE email_challenges SET consumed=1 WHERE id=?').run(id);return {error:'OTP_EXPIRED'};}
@@ -113,7 +118,7 @@ class EmailAuth {
   });
   if(result.error)throw Error(result.error);
   if(result.emailChanged){
-   for(const to of [result.oldEmail,result.newEmail])try{this.c.tx(()=>this.outbox.enqueue('security-email-'+crypto.randomUUID(),{to,event:'email_changed',detail:'The email address used to sign in to your Mega XO profile was changed.'},this.now()+86400000,'security'));}catch{}
+   for(const to of [result.oldEmail,result.newEmail])try{this.uow(()=>this.outbox.enqueue('security-email-'+crypto.randomUUID(),{to,event:'email_changed',detail:'The email address used to sign in to your Mega XO profile was changed.'},this.now()+86400000,'security'));}catch{}
    delete result.oldEmail;delete result.newEmail;
   }
   return result;
@@ -141,7 +146,7 @@ class EmailAuth {
   const session=this.c.requireSession(token);validate(password);
   hit(this.db,this.secret,'reset-complete',session.hash,6,300,this.now());
   const hashed=await this.passwords.hash(password);
-  const result=this.c.tx(()=>{
+  const result=this.uow(()=>{
    this.requireCurrent(token,session.hash);
    const row=this.db.prepare("SELECT e.*,v.credential_hash FROM email_challenges e JOIN v4_email_versions v ON v.challenge=e.id WHERE e.id=? AND e.session=? AND e.purpose='reset'").get(id,session.hash);
    if(!row||row.consumed||!row.verified_at||row.expires<=this.now()||!row.actor||stamp(this.credential(row.email))!==row.credential_hash)throw Error('RESET_NOT_AUTHORIZED');
@@ -151,7 +156,7 @@ class EmailAuth {
    this.db.prepare('DELETE FROM session_presence WHERE actor=?').run(row.actor);this.db.prepare('DELETE FROM account_sessions WHERE actor=?').run(row.actor);
    return {...this.c._replaceSession(session,row.actor,false),changed:row.email};
   });
-  try {this.c.tx(()=>this.outbox.enqueue('changed-'+id,{to:result.changed},this.now()+86400000,'changed'));}catch {this.outbox.log({event:'password_notice_not_queued'});}
+  try {this.uow(()=>this.outbox.enqueue('changed-'+id,{to:result.changed},this.now()+86400000,'changed'));}catch {this.outbox.log({event:'password_notice_not_queued'});}
   delete result.changed;return {...result,passwordChanged:true};
  }
  async reauth(token,address,password) {

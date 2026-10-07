@@ -1,0 +1,45 @@
+{
+  "schema_version": 1,
+  "status": "PASS",
+  "task_ids": [
+    "V5-01-03"
+  ],
+  "case_ids": [
+    "A01",
+    "A02",
+    "A03"
+  ],
+  "observed_at_utc": "2026-10-07T20:59:05.828527+00:00",
+  "checkpoint_parent": "af11caae8966f529f62afce663ea1ab54aef286d",
+  "environment": "isolated synthetic HTTP/SQLite fixture (tests/monetization-browser-server.js) and local Node v26.8.2 runner; V4 production untouched",
+  "implementation": "packages/domain/{package.json,index.js,commands.js,matchmaking.js,abuse.js}; chooseSymbols extracted verbatim; pure matchmaking policy; src/game.js clock seam; server/competitive-abuse re-export shim; tests/v5-domain.test.js",
+  "verified": [
+    {
+      "command": "node --test --test-force-exit tests/v5-domain.test.js",
+      "exit_code": 0,
+      "result": "13 pass: seeded differential vs original 455b8ec rules; identity re-export of game/domain/tournament/monetization/Authority; executeCommand legacy switch parity incl quest-0 and role gates; vm clock proof (default performance.now; injected replaces every read; Beginner 0 reads; frozen clock identical moves AND identical call count)"
+    },
+    {
+      "command": "node --test --test-force-exit tests/*.test.js",
+      "exit_code": 0,
+      "result": "397 tests: 395 pass, 1 skipped, 1 pre-existing opsz backup-freshness failure (owner-reported; reproduced on pristine HEAD by slice owner; not rerun to confirm; not suppressed)"
+    },
+    {
+      "command": "sha256 src/game.js",
+      "exit_code": 0,
+      "result": "e6e14c258b4db439eedf28090ebafd0962867bab5e64709d0d4438cb145b31e0 equals protected baseline manifest"
+    }
+  ],
+  "result": {
+    "executed": true,
+    "exit_code": 0,
+    "assertions": [
+      "No policy constants duplicated; identity equality enforced by tests.",
+      "Product values, Elo hundredths, integer currencies, tiers, quests, monetisation and tournament rules unchanged."
+    ]
+  },
+  "not_claimed": [
+    "any rebalance or new gameplay",
+    "UI changes"
+  ]
+}

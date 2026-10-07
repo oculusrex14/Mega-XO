@@ -3,14 +3,15 @@
 'use strict';
 const {createHandler}=require('./http.js');
 const D=require('../src/domain.js');
-const safeError=e=>/^[A-Z][A-Z0-9_]+$/.test(e.message)?e.message:'REQUEST_FAILED';
-const key=req=>{const k=req.headers['idempotency-key'];if(typeof k!=='string'||!/^[A-Za-z0-9:_-]{1,160}$/.test(k))throw Error('IDEMPOTENCY_KEY_REQUIRED');return k;};
-const send=(res,status,value)=>{res.writeHead(status,{'Content-Type':'application/json','Cache-Control':'no-store','X-Content-Type-Options':'nosniff','Referrer-Policy':'no-referrer'});res.end(JSON.stringify(value));};
-async function readBody(req,limit=300000){let text='';for await(const part of req){text+=part;if(Buffer.byteLength(text)>limit)throw Error('BODY_TOO_LARGE');}try{return JSON.parse(text||'{}');}catch{throw Error('INVALID_JSON');}}
-function cookies(req){const out={};for(const pair of String(req.headers.cookie||'').split(';')){const at=pair.indexOf('=');if(at>0)out[pair.slice(0,at).trim()]=pair.slice(at+1).trim();}return out;}
+const C=require('../packages/contracts');
+const safeError=e=>C.guards.publicCode(e.message);
+const key=C.guards.operationKey;
+const send=(res,status,value)=>C.guards.writeJson(res,status,value,{noReferrer:true});
+const readBody=(req,limit=300000)=>C.guards.readJsonBody(req,limit);
+const cookies=C.guards.cookies;
 function createCommunityHandler({community,providers,emailer,store,matchmaker,origin,allowLocalHttp=false,networkContext=()=>({})}){
  const url=new URL(origin),secure=url.protocol==='https:';if(!secure&&(!allowLocalHttp||!['localhost','127.0.0.1','[::1]'].includes(url.hostname)))throw Error('HTTPS_REQUIRED');
- const cookieName=secure?'__Host-mega_session':'mega_dev_session',token=req=>cookies(req)[cookieName];
+ const cookieName=secure?'__Host-mega_session':'mega_dev_session',token=req=>C.guards.sessionToken(req,cookieName);
  const setCookie=(res,value,age)=>res.setHeader('Set-Cookie',cookieName+'='+value+'; Path=/; HttpOnly; SameSite=Lax; Max-Age='+age+(secure?'; Secure':''));
  const authenticate=async req=>{const s=community.session(token(req));return s?.actor?{id:s.actor}:null;};
  const base=createHandler({store,authenticate,origin,matchmaker});
@@ -28,7 +29,7 @@ function createCommunityHandler({community,providers,emailer,store,matchmaker,or
   if(!path.startsWith('/api/account')&&!path.startsWith('/api/community')&&!path.startsWith('/api/v1'))return false;
   try{
    if(!['GET','POST'].includes(req.method))return send(res,405,{error:'METHOD_NOT_ALLOWED'}),true;
-   if(req.method==='POST'){if(req.headers.origin!==origin||!String(req.headers['content-type']).startsWith('application/json'))throw Error('ORIGIN_OR_CONTENT_TYPE');community.csrf(token(req),req.headers['x-csrf-token']);}
+   if(req.method==='POST'){C.guards.requireSameOriginJson(req,origin);community.csrf(token(req),req.headers['x-csrf-token']);}
    if(path==='/api/account/session'&&req.method==='GET'){const boot=community.bootstrap(token(req));if(boot.token)setCookie(res,boot.token,boot.actor?14*86400:86400);return send(res,200,{linked:!!boot.actor,csrf:boot.csrf,providers:{...providers.capabilities(),email:{web:true,native:false}},profile:boot.actor?community.profile(boot.actor,boot.actor):null}),true;}
    if(req.method==='GET'){
     const s=mine(req),actor=s.actor;
@@ -103,23 +104,23 @@ function createCommunityHandler({community,providers,emailer,store,matchmaker,or
     case '/api/v1/offer':{
      const target=community.resolve(b.opponent);if(b.terms?.kind==='friend'&&community.relation(actor,target)!=='friend')throw Error('FRIENDSHIP_REQUIRED');
      if(matchmaker.busy(actor)||matchmaker.busy(target))throw Error('ALREADY_QUEUED');
-     community.rate(actor,'challenges',20,3600);cmd={type:'offer',id:b.id,opponent:target,terms:{mode:'direct',kind:b.terms?.kind,rated:b.terms?.rated===true,amount:b.terms?.amount,turnSeconds:b.terms?.rated===true?30:60}};break;
+     community.rate(actor,'challenges',20,3600);cmd=C.commands.offer(b,target);break;
     }
-    case '/api/v1/accept':{const m=store.read().view(b.id);if(m.terms.kind==='friend'&&community.relation(...m.players)!=='friend')throw Error('FRIENDSHIP_REQUIRED');cmd={type:'accept',id:b.id,termsHash:b.termsHash};break;}
-    case '/api/v1/decline':cmd={type:'decline',id:b.id};break;
-    case '/api/v1/cancel':cmd={type:'cancel',id:b.id};break;
-    case '/api/v1/move':cmd={type:'move',id:b.id,revision:b.revision,move:b.move};break;
-    case '/api/v1/resign':cmd={type:'resign',id:b.id};break;
-    case '/api/v1/convert':cmd={type:'convert',from:b.from,amount:b.amount};break;
-    case '/api/v1/quest':cmd={type:'quest',quest:b.quest};break;
-    case '/api/v1/preferences':cmd={type:'preferences',changes:{wealthPublic:b.changes?.wealthPublic,region:b.changes?.region}};break;
-    case '/api/v1/cosmetic':cmd={type:'cosmetic',name:b.name};break;
-    case '/api/v1/purchase':cmd={type:'purchase',evidence:b.evidence};break;
+    case '/api/v1/accept':{const m=store.read().view(b.id);if(m.terms.kind==='friend'&&community.relation(...m.players)!=='friend')throw Error('FRIENDSHIP_REQUIRED');cmd=C.commands.accept(b);break;}
+    case '/api/v1/decline':cmd=C.commands.decline(b);break;
+    case '/api/v1/cancel':cmd=C.commands.cancel(b);break;
+    case '/api/v1/move':cmd=C.commands.move(b);break;
+    case '/api/v1/resign':cmd=C.commands.resign(b);break;
+    case '/api/v1/convert':cmd=C.commands.convert(b);break;
+    case '/api/v1/quest':cmd=C.commands.quest(b);break;
+    case '/api/v1/preferences':cmd=C.commands.preferences(b);break;
+    case '/api/v1/cosmetic':cmd=C.commands.cosmetic(b);break;
+    case '/api/v1/purchase':cmd=C.commands.purchase(b);break;
     default:return send(res,404,{error:'NOT_FOUND'}),true;
    }
    const result=store.run({actor,scope:'player'},key(req),cmd);return send(res,200,result?.players?display(result,actor):result),true;
-  }catch(e){return send(res,['AUTH_REQUIRED','LINK_ACCOUNT_REQUIRED'].includes(e.message)?401:e.message==='RATE_LIMITED'?429:409,{error:safeError(e)}),true;}
+  }catch(e){return send(res,C.guards.accountStatus(e.message),{error:safeError(e)}),true;}
  }
- handler.authenticate=authenticate;handler.token=token;handler.guard=req=>{if(req.method==='POST'){if(req.headers.origin!==origin)throw Error('ORIGIN_OR_CONTENT_TYPE');community.csrf(token(req),req.headers['x-csrf-token']);}};return handler;
+ handler.authenticate=authenticate;handler.token=token;handler.guard=req=>{if(req.method==='POST'){C.guards.requireExactOrigin(req,origin);community.csrf(token(req),req.headers['x-csrf-token']);}};return handler;
 }
 module.exports={createCommunityHandler,readBody,cookies};

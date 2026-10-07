@@ -1,4 +1,5 @@
-/* Queue lifecycle and bounded ephemeral state. Policy remains in matchmaking.js. */
+/* Queue lifecycle and bounded ephemeral state. Matchmaker state lives in matchmaking.js; the pure
+   policy it consumes is the single definition in packages/domain/matchmaking.js. */
 'use strict';
 const {Matchmaker}=require('./matchmaking.js');
 class QueueSession extends Matchmaker {

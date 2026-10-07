@@ -1,0 +1,59 @@
+{
+  "schema_version": 1,
+  "status": "PASS",
+  "task_ids": [
+    "V5-01-02"
+  ],
+  "case_ids": [
+    "A01",
+    "A02",
+    "A03"
+  ],
+  "observed_at_utc": "2026-10-07T20:59:05.828527+00:00",
+  "checkpoint_parent": "af11caae8966f529f62afce663ea1ab54aef286d",
+  "environment": "isolated synthetic HTTP/SQLite fixture (tests/monetization-browser-server.js) and local Node v26.8.2 runner; V4 production untouched",
+  "implementation": "packages/db/{package.json,index.js,context.js,repositories.js,scopes.js}; DurableStore/RoomStore/MonetizationStore/CommunityStore/EmailAuth/MailOutbox adopt shared UoW; tests/v5-uow.test.js",
+  "verified": [
+    {
+      "command": "node --test --test-force-exit tests/v5-uow.test.js",
+      "exit_code": 0,
+      "result": "11 pass: multi-repository monetary success, rollback on failure, outcome/idempotency, nested borrowing, escaped-context rejection"
+    },
+    {
+      "command": "node --test --test-force-exit tests/party-http.test.js tests/rooms.test.js",
+      "exit_code": 0,
+      "result": "24 pass after RoomStore.save borrow-only-when-scoped fix; standalone autocommit legacy seam preserved"
+    },
+    {
+      "command": "live signed fixture journey: email OTP signup then POST /api/v1/convert idempotency-key v5-integration-convert-1 amount 100",
+      "exit_code": 0,
+      "result": {
+        "first_http": 200,
+        "body": {
+          "debit": 100,
+          "credit": 10
+        },
+        "replay_identical": true,
+        "changed_payload_same_key": 409,
+        "missing_key": 409,
+        "wallet_after": {
+          "coins": 40,
+          "crowns": 11
+        },
+        "ledger_entry": "conversion journal appended"
+      }
+    }
+  ],
+  "result": {
+    "executed": true,
+    "exit_code": 0,
+    "assertions": [
+      "One transaction spans state+commands+outcomes atomically with a single commit owner.",
+      "Legacy externally-borrowed transaction compatibility preserved including standalone save/rate autocommit."
+    ]
+  },
+  "not_claimed": [
+    "PostgreSQL adapters, roles or contention proof (P02-P04)",
+    "production deployment"
+  ]
+}

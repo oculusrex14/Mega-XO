@@ -77,6 +77,20 @@ test('each theme owns a separate typography contract', () => {
   assert.ok(styles.includes(':root[data-theme="paperclub"] .setup-chip{border:1.5px solid var(--ink);font-size:12px'));
 });
 
+
+test('V4.1 home and rank polish exposes both currencies and concrete ranked entry cost',()=>{
+  const html=fs.readFileSync(path.join(ROOT,'index.html'),'utf8');
+  const app=fs.readFileSync(path.join(ROOT,'src','app.js'),'utf8');
+  const styles=fs.readFileSync(path.join(ROOT,'src','styles.css'),'utf8');
+  assert.ok(html.includes('id="walletAmount"'));
+  assert.ok(html.includes('id="walletCrownAmount"'));
+  assert.ok(app.includes('The Ultimate Tic-tac-toe.'));
+  assert.ok(app.includes("Entry cost: '+rankFee+' Coins"));
+  assert.ok(app.includes('rank-season-progress'));
+  assert.ok(styles.includes('.content-scroll,.bottom-sheet{scrollbar-width:none'));
+  assert.ok(styles.includes('.content-scroll::-webkit-scrollbar,.bottom-sheet::-webkit-scrollbar'));
+});
+
 test('rank UI explains quarterly requalification and Elo continuity',()=>{const app=fs.readFileSync(path.join(ROOT,'src','app.js'),'utf8');assert.ok(app.includes('Season requalification'));assert.ok(app.includes('Quarterly seasons'));assert.ok(app.includes('Your Elo is never wiped'));assert.ok(app.includes('Direct ranked challenges count toward activity but are never mandatory'));});
 
 test('stats exposes aggregate tournament record without internal replay-roadmap copy',()=>{const app=fs.readFileSync(path.join(ROOT,'src','app.js'),'utf8'),community=fs.readFileSync(path.join(ROOT,'src','community.js'),'utf8');assert.ok(app.includes("['tournament','Tournaments']"));assert.ok(app.includes('Only completed public tournaments count'));assert.ok(!app.includes('Match history and replays are reserved for a future update'));assert.ok(community.includes("['tournament','Tournaments']"));});

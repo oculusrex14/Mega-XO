@@ -71,7 +71,14 @@ function config(env = process.env) {
   const playParts=[playJson,playPackage,Object.keys(playProducts).length?1:'',playAudience,playPushEmail];if(playParts.some(Boolean)&&!playParts.every(Boolean))throw Error('INCOMPLETE_GOOGLE_PLAY_CONFIG');
   let playAccount=null;if(playJson)try{playAccount=JSON.parse(playJson);}catch{throw Error('INVALID_GOOGLE_PLAY_SERVICE_ACCOUNT');}
   if(playAccount&&(!/^[^@\s]+@[^@\s]+\.iam\.gserviceaccount\.com$/.test(playAccount.client_email||'')||typeof playAccount.private_key!=='string'||!playAccount.private_key.includes('BEGIN PRIVATE KEY')))throw Error('INVALID_GOOGLE_PLAY_SERVICE_ACCOUNT');
-  const rootsFile=env.APPLE_STORE_ROOTS_FILE||'',appleBundle=env.APPLE_STORE_BUNDLE_ID||'',appleEnvironment=env.APPLE_STORE_ENVIRONMENT||'',appleAppIdRaw=env.APPLE_STORE_APP_ID||'',appleProducts=mapProducts('APPLE_STORE_PRODUCT_');let appleRoots=[],appleAppId=null;
+  const rootsPath=env.APPLE_STORE_ROOTS_FILE||'',appleBundle=env.APPLE_STORE_BUNDLE_ID||'',appleEnvironment=env.APPLE_STORE_ENVIRONMENT||'',appleAppIdRaw=env.APPLE_STORE_APP_ID||'',appleProducts=mapProducts('APPLE_STORE_PRODUCT_');let appleRoots=[],appleAppId=null;
+  let rootsFile='';
+  if(rootsPath){
+    let usable=false;
+    try{const rootsStat=fs.statSync(rootsPath);usable=rootsStat.isFile()&&rootsStat.size>0;}catch{usable=false;}
+    const siblingSet=[appleBundle,appleEnvironment,Object.keys(appleProducts).length?1:'',appleAppIdRaw].some(Boolean);
+    rootsFile=(usable||siblingSet)?rootsPath:'';
+  }
   if(appleAppIdRaw){if(!/^[1-9]\d*$/.test(appleAppIdRaw))throw Error('INVALID_APPLE_STORE_APP_ID');appleAppId=Number(appleAppIdRaw);if(!Number.isSafeInteger(appleAppId))throw Error('INVALID_APPLE_STORE_APP_ID');}
   const appleStoreParts=[rootsFile,appleBundle,appleEnvironment,Object.keys(appleProducts).length?1:''];if([...appleStoreParts,appleAppIdRaw].some(Boolean)&&!appleStoreParts.every(Boolean))throw Error('INCOMPLETE_APPLE_STORE_CONFIG');
   if(rootsFile){if(!path.isAbsolute(rootsFile))throw Error('ABSOLUTE_APPLE_ROOTS_PATH_REQUIRED');const stat=fs.statSync(rootsFile);if(!stat.isFile()||stat.size>65536)throw Error('INVALID_APPLE_ROOTS_FILE');const pem=fs.readFileSync(rootsFile,'utf8');appleRoots=pem.match(/-----BEGIN CERTIFICATE-----[\s\S]*?-----END CERTIFICATE-----/g)||[];if(!appleRoots.length)throw Error('INVALID_APPLE_ROOTS_FILE');}

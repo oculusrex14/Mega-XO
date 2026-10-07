@@ -30,6 +30,13 @@ test('production config is fail-closed for secrets and unreleased provider featu
  assert.equal(config(secrets).mailDaily,80);
  for(const patch of [{MEGA_ORIGIN:'http://game.test'},{MEGA_DB:'relative.db'},{MEGA_OTP_SECRET:'short'},{MEGA_PROXY_SECRET:'1'.repeat(64)},{MEGA_OTP_SECRET_FILE:'/tmp/key'},{MEGA_PURCHASES_ENABLED:'true'},{MEGA_AD_MODE:'hybrid'},{PORT:'8080x'},{GOOGLE_CLIENT_ID:'incomplete'},{MEGA_MAIL_DAILY_LIMIT:'101'}])assert.throws(()=>config({...secrets,...patch}));
 });
+test('empty Apple roots placeholder keeps disabled stores bootable but partial stores fail closed',t=>{
+  const dir=fs.mkdtempSync(path.join(os.tmpdir(),'mega-roots-'));t.after(()=>fs.rmSync(dir,{recursive:true,force:true}));
+  const empty=path.join(dir,'roots.pem');fs.writeFileSync(empty,'');
+  assert.equal(config({...secrets,APPLE_STORE_ROOTS_FILE:empty}).purchases.appleStore,null);
+  assert.throws(()=>config({...secrets,APPLE_STORE_ROOTS_FILE:empty,APPLE_STORE_BUNDLE_ID:'com.example.game'}),/INCOMPLETE_APPLE_STORE_CONFIG/);
+  assert.throws(()=>config({...secrets,APPLE_STORE_BUNDLE_ID:'com.example.game'}),/INCOMPLETE_APPLE_STORE_CONFIG/);
+});
 test('production perimeter authenticates the proxy and never logs tokens or query values',async t=>{
  const f=await fixture(t),c=f.client();
  assert.equal((await fetch(f.url+'/livez')).status,200);

@@ -79,11 +79,11 @@ This is **draft/implementation complete, not legal approval**. The public Privac
 Repository-side compliance hardening is implemented, but **paid entry remains prohibited**:
 
 - `server/competition-compliance.js` provides a default-deny policy engine for trusted jurisdiction, platform, verified-age and spend-limit decisions;
-- the engine refuses pooled stakes, store-purchased competition currency, player-funded prize pools, cash-out and real-world prizes in the baseline model;
+- the engine refuses pooled stakes, player-funded prize pools, cash-out and real-world prizes in the baseline model; purchased virtual-currency entry is a jurisdiction/platform allowlist decision rather than a global ban;
 - India policy entries additionally require recognised-e-sport classification plus National Sports Governance Act recognition and OGAI registration identifiers;
-- Apple-IAP-funded competition entry is explicitly denied;
-- verified Apple/Google Crown purchases now carry provenance through Coin/Crown conversion, preventing store funds from being laundered into ranked/direct/tournament entry;
-- public tournament entry applies the same purchased-fund firewall;
+- iOS/Android purchased virtual-currency entry requires explicit platform review identifiers before the jurisdiction policy can allow it;
+- verified Apple/Google Crown purchases carry provenance through Coin/Crown conversion so jurisdiction/platform policy can make a source-aware eligibility decision without changing the visible currency;
+- direct and tournament eligibility receive purchased-balance provenance so the jurisdiction/platform policy can allow or deny that source before funds move;
 - legacy purchase-influenced state without exact provenance is fail-closed for competition;
 - `npm run competition:audit` is a CI gate proving current Ranked Coin pots, direct Crown challenges and all public tournament tables remain classified as prohibited pooled-stake mechanics;
 - historical economy/design docs are marked superseded for production compliance;
@@ -140,7 +140,7 @@ The approved future baseline is **fixed registration fee + organizer-funded fixe
 5. Configure monitoring and alerting; complete EXT-15 and EXT-16.
 6. Do not create the production release/tag until all mandatory backend blockers are marked COMPLETE with non-secret evidence.
 7. After the backend release, execute EXT-18 through EXT-25 as independent product/platform tracks; do not enable billing or ads while their blocker remains open.
-8. Treat EXT-26 as a separate future compliance decision. Current pooled-stake mechanics are mechanically denied by `npm run competition:audit`; store-purchased currency is segregated from competition funding. Do not enable paid entry until the approved replacement registration-fee model and all jurisdiction/platform controls are implemented.
+8. Treat EXT-26 as a separate future compliance decision. Current pooled-stake mechanics are mechanically denied by `npm run competition:audit`. Bought Crowns are **not globally blocked**: approved jurisdiction/platform policy may accept them, while markets that do not approve purchased virtual entry deny them before reservation. Do not enable paid entry until the competition model and jurisdiction/platform controls are approved.
 9. Complete EXT-27 through EXT-30 before a V4.1 production tag: incident operations, operator access, moderation policy and live data-export acceptance are launch gates.
 10. Run EXT-31 on the real Oracle ARM host before freezing production concurrency limits; keep the harness on disposable state only.
 11. Complete EXT-32 before freezing database growth warning thresholds; do not normalize the persistence model without measured evidence.

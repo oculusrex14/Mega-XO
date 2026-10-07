@@ -1,4 +1,4 @@
-> **V4.1 compliance supersession:** This file records the earlier economy model. Player-funded ranked/direct/tournament pots remain implemented only as dormant, tested mechanics and are not yet production-approved. Bought and earned Crowns are economically and mechanically interchangeable; purchase-source metadata is not a gameplay eligibility rule. See `docs/legal/PAID-COMPETITION-COMPLIANCE.md`.
+> **V4.1 clarification:** the ranked/direct/tournament economy below is active product design. Bought and earned Crowns are economically and mechanically interchangeable, and Crowns remain closed-loop game currency with no cash-out or real-world redemption.
 
 # Delivered scope map: economy-1
 
@@ -19,4 +19,4 @@
 | Anti-cheat/abuse | server moves, persistence, idempotency, payer validation, repeated-pair checks, flags, receipt binding |
 | Preserve themes/restored UI | CSS, icons.js and game.js excluded from changes |
 
-The requested model is coded and tested. Production identity, a live matchmaker, native store integrations, legal eligibility and verified offline-to-account rewards are not supplied by this run. Those boundaries are explicit in README/SECURITY, not replaced by fake game data.
+The requested economy model is coded and tested. Native store/provider activation and live deployment acceptance remain separate release work; they do not change the in-game value or eligibility of bought versus earned Crowns.

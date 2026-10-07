@@ -31,6 +31,9 @@ secret_dir="$root/secrets"
 owner_args=()
 if [[ $(id -u) = 0 ]]; then owner_args=(-o 1000 -g 1000); fi
 
+# Audit secret first: existing roots predate it, and validation below requires it.
+if ! $verify_only && [[ -n "$audit_file" ]]; then write_secret audit_secret "$audit_file"; fi
+
 write_secret() {
   local name=$1 source=$2 tmp
   [[ "$source" = /* && -f "$source" ]] || { echo "Secret source for $name must be an absolute regular file." >&2; exit 64; }
@@ -83,7 +86,6 @@ validate_hex_secret restic_password
 
 if ! $verify_only; then
   if [[ -n "$resend_file" ]]; then write_secret resend_api_key "$resend_file"; else prompt_resend; fi
-  [[ -z "$audit_file" ]] || write_secret audit_secret "$audit_file"
   [[ -z "$google_file" ]] || write_secret google_client_secret "$google_file"
   [[ -z "$apple_file" ]] || write_secret apple_private_key "$apple_file"
   [[ -z "$google_play_file" ]] || write_secret google_play_service_account "$google_play_file"

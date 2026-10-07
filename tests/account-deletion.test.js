@@ -25,6 +25,7 @@ function fixture(t,{enabled=true}={}){
  c.write(a);
  c.report(actor,other,'cheating','Submitted report should be erased with reporter');
  c.report(friend,actor,'username','Reporter free text about deleted profile must not survive');
+ store.db.prepare('INSERT INTO commands(id,actor,fingerprint,response) VALUES(?,?,?,?)').run('delete-command',actor,'fp',JSON.stringify({actor,ok:true}));
  const session=c._issue(actor,now);
  t.after(()=>{store.close();fs.rmSync(dir,{recursive:true,force:true});});
  return {store,c,actor,friend,other,profile,session,now:()=>now,advance:ms=>now+=ms};
@@ -48,6 +49,7 @@ test('permanent deletion revokes identity and scrubs profile/social/cloud data w
  assert.equal(f.store.db.prepare('SELECT * FROM identities WHERE actor=?').get(f.actor),undefined);
  assert.equal(f.store.db.prepare('SELECT * FROM email_credentials WHERE actor=?').get(f.actor),undefined);
  assert.equal(f.store.db.prepare('SELECT * FROM profile_saves WHERE actor=?').get(f.actor),undefined);
+ assert.equal(f.store.db.prepare('SELECT * FROM commands WHERE actor=?').get(f.actor),undefined);
  const a=f.store.read();assert.equal(a.accounts.has(f.actor),false);
  assert.equal(a.account(f.friend).friends.includes(f.actor),false);assert.equal(a.account(f.friend).blocked.includes(f.actor),false);assert.equal(a.account(f.other).friendRequests.includes(f.actor),false);
  const opponent=a.account(f.friend).history[0].opponent;assert.match(opponent,/^deleted_[a-f0-9]+$/);assert.notEqual(opponent,f.actor);

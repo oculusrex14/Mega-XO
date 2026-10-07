@@ -674,7 +674,7 @@ body{font-family:'Space Grotesk',ui-sans-serif,system-ui,-apple-system,BlinkMacS
 .network-status[data-state="offline"],.network-status[data-state="timeout"],.network-status[data-state="degraded"]{border-color:var(--border-strong)}
 .network-status[data-state="maintenance"]{background:var(--accent-soft);border-color:var(--accent-edge)}
 .network-status[data-state="auth"]{background:var(--danger-soft);border-color:var(--danger)}
-.network-status-copy{flex:1;min-width:0}.network-status-copy strong,.network-status-copy span{display:block}.network-status-copy strong{font-size:12px}.network-status-copy span{font-size:10.5px;color:var(--muted);line-height:1.4;margin-top:2px}
+.network-status-copy{flex:1;min-width:0}.network-status-copy strong,.network-status-copy span{display:block}.network-status-copy strong{font-size:12px}.network-status-copy span{font-size:10.5px;color:var(--ink);line-height:1.4;margin-top:2px}
 .network-status-action{min-height:44px;min-width:86px;padding:8px 10px;font-size:11px;flex:none}
 :root[data-theme="vector"] .network-status{box-shadow:0 8px 24px rgba(21,24,28,.08)}
 :root[data-theme="midnight"] .network-status{box-shadow:inset 0 1px 0 rgba(255,255,255,.04),0 10px 28px rgba(0,0,0,.28)}

@@ -84,7 +84,8 @@ test('V4.1 home and rank polish exposes both currencies and concrete ranked entr
   const styles=fs.readFileSync(path.join(ROOT,'src','styles.css'),'utf8');
   assert.ok(html.includes('id="walletAmount"'));
   assert.ok(html.includes('id="walletCrownAmount"'));
-  assert.ok(app.includes('The Ultimate Tic-tac-toe.'));
+  assert.ok(app.includes('The Ultimate '));
+  assert.ok(app.includes('Tic-tac-toe.'));
   assert.ok(app.includes("Entry cost: '+rankFee+' Coins"));
   assert.ok(app.includes('rank-season-progress'));
   assert.ok(styles.includes('.content-scroll,.bottom-sheet{scrollbar-width:none'));

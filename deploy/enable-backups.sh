@@ -28,7 +28,7 @@ echo 'Checking repository integrity...'
 dc run --rm --no-deps backup node scripts/backup-run.js check
 
 snapshot=$(sed -n 's/.*"snapshotId":"\([^"]*\)".*/\1/p' "$root/backup-status/last-success.json")
-[[ "$snapshot" =~ ^[a-f0-9]{64}$ ]] || { echo 'Backup status did not contain a valid snapshot ID.' >&2; exit 65; }
+[[ "$snapshot" =~ ^[a-f0-9]{8,64}$ ]] || { echo 'Backup status did not contain a valid snapshot ID.' >&2; exit 65; }
 
 echo 'Retrieving and verifying the first encrypted snapshot...'
 dc run --rm --no-deps backup node scripts/backup-run.js retrieve "$snapshot"

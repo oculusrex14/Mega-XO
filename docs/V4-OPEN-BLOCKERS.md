@@ -74,6 +74,23 @@ Repository-side drafting and enforcement work is complete:
 This is **draft/implementation complete, not legal approval**. The public Privacy Policy and Terms remain explicitly marked draft/not effective and `noindex`. Formal entity/age/jurisdiction/governing-law/retention/vendor/privacy-rights decisions and store submissions remain `EXT-21` plus the relevant store/device acceptance rows.
 
 
+## P1-7 paid competition compliance package
+
+Repository-side compliance hardening is implemented, but **paid entry remains prohibited**:
+
+- `server/competition-compliance.js` provides a default-deny policy engine for trusted jurisdiction, platform, verified-age and spend-limit decisions;
+- the engine refuses pooled stakes, store-purchased competition currency, player-funded prize pools, cash-out and real-world prizes in the baseline model;
+- India policy entries additionally require recognised-e-sport classification plus National Sports Governance Act recognition and OGAI registration identifiers;
+- Apple-IAP-funded competition entry is explicitly denied;
+- verified Apple/Google Crown purchases now carry provenance through Coin/Crown conversion, preventing store funds from being laundered into ranked/direct/tournament entry;
+- public tournament entry applies the same purchased-fund firewall;
+- legacy purchase-influenced state without exact provenance is fail-closed for competition;
+- `npm run competition:audit` is a CI gate proving current Ranked Coin pots, direct Crown challenges and all public tournament tables remain classified as prohibited pooled-stake mechanics;
+- historical economy/design docs are marked superseded for production compliance;
+- the researched platform/India decision record and future registration-fee architecture are in `docs/legal/PAID-COMPETITION-COMPLIANCE.md`.
+
+The approved future baseline is **fixed registration fee + organizer-funded fixed prize schedule**, never entrant-pooled prize funding. It is still external/legal work to decide whether that model may be offered in any jurisdiction/platform and to obtain required recognition/licences/registrations, age/geo verification, payment-provider approval, tax/KYC/AML treatment, official rules and responsible-spending policy.
+
 ## External action ledger
 
 | ID | Area | Status | Blocker / required access | Exact completion evidence |
@@ -103,7 +120,7 @@ This is **draft/implementation complete, not legal approval**. The public Privac
 | EXT-23 | Apple StoreKit billing | BLOCKED | App Store Connect + real iOS target/physical device | StoreKit products map to the four server catalogue IDs; trusted Apple roots/environment and the numeric Production App Store app ID are configured; Sandbox/TestFlight purchase/cancel/pending/finish/restore/refund/revocation tests pass and Server Notifications V2 with the expected app ID reach the implemented callback. |
 | EXT-24 | Production ads and consent | BLOCKED | AdMob + Google Mobile Ads/UMP in real Android/iOS targets | Real rewarded/interstitial unit IDs and consent release version configured; UMP blocks requests until allowed and exposes privacy options; rewarded SSV grants exactly once; wrong/replayed ticket/account/unit is rejected; Remove Ads and no-ad-during-live-play behavior pass on physical devices before `MEGA_AD_MODE` changes from off. |
 | EXT-25 | Physical-device release QA | BLOCKED | iOS/Android devices/builds | Required OS/device matrix completes with no launch-blocking identity, network, purchase, ad, recovery or accessibility defects. |
-| EXT-26 | Paid-entry compliance | BLOCKED | Legal/platform/jurisdiction review | Written approved jurisdiction/age/store-policy design exists and server enforcement is implemented; until then paid entry remains false. |
+| EXT-26 | Paid-entry competition compliance | BLOCKED | Specialist legal counsel + Apple/Google review where applicable + jurisdiction regulators/OGAI + age/geo/payment providers | Approve the exact non-pooled registration-fee model; for every allowed country/state record legal review ID, minimum age, platform allowlist, trusted geolocation standard, regulator/licence/registration IDs, approved payment rail, prize type, spend/loss/self-exclusion rules, refund/void policy, KYC/AML/tax obligations and official-rules version. India requires the required recognised-e-sport/National Sports Governance/OGAI pathway. Apple/Google distribution approval must match the actual model. Only after server integration and live staging proof may a future reviewed code change remove the production `MEGA_PAID_ENTRY_ENABLED=false` hard stop. |
 | EXT-27 | Incident and secret-rotation drill | BLOCKED | Staging VPS + Resend/R2 credentials | Staging proves global lockdown/recovery, proxy + OTP rotation, Resend rotation, atomic R2 credential rotation and Restic key rotation with non-secret evidence. |
 | EXT-28 | Operator access drill | BLOCKED | VPS/Tailscale operator access | Operator CLI works only through loopback/Tailscale administration; public admin route remains absent; lookup/session revoke/hold/audit verification drill passes. |
 | EXT-29 | Moderation and appeals policy | BLOCKED | Antimatter Innovations policy decision | Conduct policy, evidence thresholds, suspension/escalation rules, appeals/support path, report retention and authorized moderator roles are approved. |
@@ -123,7 +140,7 @@ This is **draft/implementation complete, not legal approval**. The public Privac
 5. Configure monitoring and alerting; complete EXT-15 and EXT-16.
 6. Do not create the production release/tag until all mandatory backend blockers are marked COMPLETE with non-secret evidence.
 7. After the backend release, execute EXT-18 through EXT-25 as independent product/platform tracks; do not enable billing or ads while their blocker remains open.
-8. Treat EXT-26 as a separate future compliance decision. Technical existence of paid-entry code is not approval to enable it.
+8. Treat EXT-26 as a separate future compliance decision. Current pooled-stake mechanics are mechanically denied by `npm run competition:audit`; store-purchased currency is segregated from competition funding. Do not enable paid entry until the approved replacement registration-fee model and all jurisdiction/platform controls are implemented.
 9. Complete EXT-27 through EXT-30 before a V4.1 production tag: incident operations, operator access, moderation policy and live data-export acceptance are launch gates.
 10. Run EXT-31 on the real Oracle ARM host before freezing production concurrency limits; keep the harness on disposable state only.
 11. Complete EXT-32 before freezing database growth warning thresholds; do not normalize the persistence model without measured evidence.

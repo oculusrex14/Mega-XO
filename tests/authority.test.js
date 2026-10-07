@@ -40,24 +40,25 @@ test('verified store Crowns keep purchased provenance through currency conversio
  assert.equal(a.account('alice').crowns,1050);assert.equal(a.account('alice').coins,1500);
 });
 
-test('money-purchased currency cannot fund competitive entry even after Crown to Coin conversion',()=>{
- const verifyPurchase=(e,actor)=>({...e,valid:true,accountId:actor}),a=new Authority({paidEntryEnabled:true,eligibility:()=>true,verifyPurchase,random:()=>0});
+test('approved eligibility policy may accept store-bought Crown value after conversion',()=>{
+ const seen=[],verifyPurchase=(e,actor)=>({...e,valid:true,accountId:actor}),a=new Authority({paidEntryEnabled:true,eligibility:(account,quote)=>{seen.push({actor:account.id,funding:quote.funding});return true;},verifyPurchase,random:()=>0});
  a.addAccount('buyer',{coins:0,crowns:0,rating:1500,games:30,verified:true});
  a.addAccount('earned',{coins:1000,crowns:0,rating:1500,games:30,verified:true});
- a.purchase('buyer',{store:'google',transactionId:'restricted-entry',productId:'crowns_100'});
- a.convert('buyer','crowns',100,'restricted-convert');
+ a.purchase('buyer',{store:'google',transactionId:'approved-entry',productId:'crowns_100'});
+ a.convert('buyer','crowns',100,'approved-convert');
  assert.equal(a.account('buyer').coins,1000);assert.equal(a.account('buyer').purchasedCoins,1000);
- assert.throws(()=>a.offerQueue('restricted','buyer','earned'),/COMPETITION_FUNDS_RESTRICTED/);
+ const q=a.offerQueue('approved','buyer','earned');a.accept(q.id,'buyer',q.termsHash);a.accept(q.id,'earned',q.termsHash);
+ assert.equal(a.account('buyer').coins,988);assert.equal(a.account('buyer').reservedCoins,12);
+ assert(seen.some(x=>x.actor==='buyer'&&x.funding.currency==='coins'&&x.funding.purchasedBalance===1000));
 });
 
-test('purchased balance may coexist with separately earned competitive funds without laundering',()=>{
- const verifyPurchase=(e,actor)=>({...e,valid:true,accountId:actor}),a=new Authority({paidEntryEnabled:true,eligibility:()=>true,verifyPurchase,random:()=>0});
- a.addAccount('mixed',{coins:100,crowns:0,rating:1500,games:30,verified:true});
- a.addAccount('earned',{coins:100,crowns:0,rating:1500,games:30,verified:true});
- a.purchase('mixed',{store:'apple',transactionId:'mixed-entry',productId:'crowns_100'});
- a.convert('mixed','crowns',100,'mixed-convert');
- const q=a.offerQueue('allowed-earned','mixed','earned');a.accept(q.id,'mixed',q.termsHash);a.accept(q.id,'earned',q.termsHash);
- assert.equal(a.account('mixed').purchasedCoins,1000);
- assert.equal(a.account('mixed').coins,1088);
- assert.equal(a.account('mixed').reservedCoins,12);
+test('store-bought Crowns may fund an approved direct Crown challenge',()=>{
+ const seen=[],verifyPurchase=(e,actor)=>({...e,valid:true,accountId:actor}),a=new Authority({paidEntryEnabled:true,eligibility:(account,quote)=>{seen.push({actor:account.id,funding:quote.funding});return true;},verifyPurchase,random:()=>0});
+ a.addAccount('buyer',{coins:0,crowns:0,rating:1500,games:30,verified:true});
+ a.addAccount('friend',{coins:0,crowns:0,rating:1500,games:30,verified:true});
+ a.account('buyer').friends=['friend'];a.account('friend').friends=['buyer'];
+ a.purchase('buyer',{store:'apple',transactionId:'crown-challenge',productId:'crowns_100'});
+ const q=a.offer('crown-entry','buyer','friend',{kind:'friend',amount:20});a.accept(q.id,'friend',q.termsHash);
+ assert.equal(a.account('buyer').crowns,80);assert.equal(a.account('buyer').reservedCrowns,20);
+ assert(seen.some(x=>x.actor==='buyer'&&x.funding.currency==='crowns'&&x.funding.purchasedBalance===100));
 });

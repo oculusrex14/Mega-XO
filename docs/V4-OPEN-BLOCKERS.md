@@ -90,6 +90,25 @@ Repository-side compliance hardening is implemented, but **paid entry remains pr
 
 The approved future baseline is **fixed registration fee + organizer-funded fixed prize schedule**, never entrant-pooled prize funding. It is still external/legal work to decide whether that model may be offered in any jurisdiction/platform and to obtain required recognition/licences/registrations, age/geo verification, payment-provider approval, tax/KYC/AML treatment, official rules and responsible-spending policy.
 
+## P1-9 security and abuse acceptance
+
+Repository-side P1-9 work is implemented and CI-gated:
+
+- `npm run abuse:audit` explicitly covers credential stuffing, OTP abuse, account enumeration, purchase replay, ad-reward replay, challenge collusion, tournament collusion, leaderboard boosting and bot/solver abuse;
+- sensitive auth, purchase/reward, matchmaking and tournament-churn surfaces have bounded production abuse budgets;
+- persistent edge-limit subjects are HMAC pseudonyms rather than raw IP addresses;
+- forgot-password remains existence-neutral in production;
+- purchase and rewarded-ad replay remain exactly-once/account-bound;
+- direct rated pair limits, friend/recent-opponent Ranked matchmaking rules and season-activity qualification limit simple win trading;
+- public tournaments separate friends and now add concentrated/repeated-forfeit review signals;
+- extreme move cadence adds a private `AUTOMATION_SPEED_REVIEW` signal only after a conservative sample threshold;
+- behavioral signals are **review-only** and do not automatically ban, de-rank, cancel a valid result or change the intended Crown/economy rules;
+- operator lookup exposes sanitized competitive-risk summaries without returning private move-timing samples.
+
+The detailed contract is `docs/V4.1-P1-9-ABUSE-ACCEPTANCE.md`.
+
+Real distributed/adversarial staging acceptance and heuristic false-positive tuning remain `EXT-36`.
+
 ## External action ledger
 
 | ID | Area | Status | Blocker / required access | Exact completion evidence |
@@ -129,6 +148,7 @@ The approved future baseline is **fixed registration fee + organizer-funded fixe
 | EXT-33 | Client network/restart resilience acceptance | BLOCKED | Live staging + controllable network/service restart | On a real browser/device exercise offline→online, request timeout, maintenance enter/exit, expired session, queue reconnect and coordinator restart during a match; prove no duplicate command/grant, current match state recovers, offline modes remain available, and no internal diagnostics are exposed. |
 | EXT-34 | VoiceOver/TalkBack accessibility acceptance | BLOCKED | Physical iOS/Android devices | Complete keyboard-equivalent flows with VoiceOver and TalkBack: sign-in, navigation, settings/dialogs, game board destination rule, matchmaking/reconnect, wallet/store surfaces, errors/support codes and account deletion; record device/OS/build/results and remediate launch-blocking issues. |
 | EXT-35 | Mail-domain authentication and DNS posture | BLOCKED | Hostinger DNS + Google Workspace + Resend consoles + real mailbox headers | Using exact current provider DNS hostnames, `npm run mail:audit` passes for MX/SPF/DKIM/aligned return-path/approved DMARC policy; real Mega XO mail shows SPF/DKIM/DMARC PASS; Google Workspace mail continues to work. Do not record keys or full message headers. |
+| EXT-36 | Adversarial abuse staging acceptance | BLOCKED | Live staging + controlled multi-account clients/source IPs + real mobile sandbox integrations where applicable | Run `docs/V4.1-P1-9-ABUSE-ACCEPTANCE.md` live: multi-source credential/OTP bursts, known-vs-unknown recovery comparison, sandbox purchase/ad replay, challenge/tournament win-trading, queue boosting and scripted fast-move behavior; prove review signals reach operator lookup, exactly-once grants hold, and ordinary legitimate play is not blocked. Reuse EXT-22/23/24 evidence for real store/ad callbacks. |
 
 ## Local-agent execution order
 
@@ -145,6 +165,7 @@ The approved future baseline is **fixed registration fee + organizer-funded fixe
 11. Complete EXT-32 before freezing database growth warning thresholds; do not normalize the persistence model without measured evidence.
 12. Complete EXT-33 and EXT-34 during staging/device release QA, and include one real MX support-code lookup in EXT-28.
 13. Complete EXT-35 before treating Resend domain verification as production mail-security approval.
+14. Complete EXT-36 on live staging before the serious public-launch gate is considered closed; tune review heuristics from evidence without changing core gameplay rules.
 
 ## Completed external prerequisites
 

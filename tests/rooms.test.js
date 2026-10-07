@@ -32,3 +32,12 @@ test('purchased virtual currency cannot fund public tournament entry',()=>{
   assert.equal(account(e.store,'p0').coins,100);
  }finally{e.clean();}
 });
+
+
+test('legacy purchase-influenced tournament state without exact provenance fails closed',()=>{
+ const e=env({balance:100});try{
+  const state=e.store.economy(),p0=state.accounts.find(([id])=>id==='p0')[1];
+  p0.purchaseInfluenced=true;delete p0.purchasedCoins;delete p0.purchasedCrowns;e.store.writeEconomy(state);
+  assert.throws(()=>cmd(e.store,'p0',{type:'publicJoin',table:'low'}),/COMPETITION_FUNDS_RESTRICTED/);
+ }finally{e.clean();}
+});

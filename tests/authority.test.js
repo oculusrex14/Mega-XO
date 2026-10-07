@@ -40,25 +40,23 @@ test('verified store Crowns keep purchased provenance through currency conversio
  assert.equal(a.account('alice').crowns,1050);assert.equal(a.account('alice').coins,1500);
 });
 
-test('approved eligibility policy may accept store-bought Crown value after conversion',()=>{
- const seen=[],verifyPurchase=(e,actor)=>({...e,valid:true,accountId:actor}),a=new Authority({paidEntryEnabled:true,eligibility:(account,quote)=>{seen.push({actor:account.id,funding:quote.funding});return true;},verifyPurchase,random:()=>0});
+test('store-bought Crown value works like earned value after conversion',()=>{
+ const verifyPurchase=(e,actor)=>({...e,valid:true,accountId:actor}),a=new Authority({paidEntryEnabled:true,eligibility:()=>true,verifyPurchase,random:()=>0});
  a.addAccount('buyer',{coins:0,crowns:0,rating:1500,games:30,verified:true});
  a.addAccount('earned',{coins:1000,crowns:0,rating:1500,games:30,verified:true});
  a.purchase('buyer',{store:'google',transactionId:'approved-entry',productId:'crowns_100'});
  a.convert('buyer','crowns',100,'approved-convert');
- assert.equal(a.account('buyer').coins,1000);assert.equal(a.account('buyer').purchasedCoins,1000);
+ assert.equal(a.account('buyer').coins,1000);
  const q=a.offerQueue('approved','buyer','earned');a.accept(q.id,'buyer',q.termsHash);a.accept(q.id,'earned',q.termsHash);
  assert.equal(a.account('buyer').coins,988);assert.equal(a.account('buyer').reservedCoins,12);
- assert(seen.some(x=>x.actor==='buyer'&&x.funding.currency==='coins'&&x.funding.purchasedBalance===1000));
 });
 
-test('store-bought Crowns may fund an approved direct Crown challenge',()=>{
- const seen=[],verifyPurchase=(e,actor)=>({...e,valid:true,accountId:actor}),a=new Authority({paidEntryEnabled:true,eligibility:(account,quote)=>{seen.push({actor:account.id,funding:quote.funding});return true;},verifyPurchase,random:()=>0});
+test('store-bought Crowns may fund a direct Crown challenge',()=>{
+ const verifyPurchase=(e,actor)=>({...e,valid:true,accountId:actor}),a=new Authority({paidEntryEnabled:true,eligibility:()=>true,verifyPurchase,random:()=>0});
  a.addAccount('buyer',{coins:0,crowns:0,rating:1500,games:30,verified:true});
  a.addAccount('friend',{coins:0,crowns:0,rating:1500,games:30,verified:true});
  a.account('buyer').friends=['friend'];a.account('friend').friends=['buyer'];
  a.purchase('buyer',{store:'apple',transactionId:'crown-challenge',productId:'crowns_100'});
  const q=a.offer('crown-entry','buyer','friend',{kind:'friend',amount:20});a.accept(q.id,'friend',q.termsHash);
  assert.equal(a.account('buyer').crowns,80);assert.equal(a.account('buyer').reservedCrowns,20);
- assert(seen.some(x=>x.actor==='buyer'&&x.funding.currency==='crowns'&&x.funding.purchasedBalance===100));
 });

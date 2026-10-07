@@ -200,17 +200,17 @@ test('game.choose keeps legacy 3-argument behavior and honours the injected cloc
   const move=game.choose(state,level);
   assert(game.legal(state).some(x=>x.b===move.b&&x.c===move.c),level);
  }
- // The approved loop reads its time source once for the deadline and again on every node-counted
- // re-check. The open board is deep enough to trip those re-checks, so the injected clock must see
- // several calls; a single read would mean the deadline was never re-evaluated through the seam.
- let ticks=0;
- const medium=game.choose(state,'Medium',()=>0.5,{clock:()=>{ticks++;return 0;}});
- assert(ticks>1);
+ // The approved loop reads its time source once for the deadline and once on the first node-counted
+ // re-check after 128 nodes. A scripted clock (never the wall clock) makes that count exact and
+ // machine independent: it returns 0 once, then +Infinity, so the budget expires on the second read
+ // and no later depth or slower CI CPU can add another read.
+ const reads=()=>{let n=0;return {clock:()=>(++n)===1?0:Infinity,count:()=>n};};
+ const first=reads(),medium=game.choose(state,'Medium',()=>0.5,{clock:first.clock});
+ assert.equal(first.count(),2); // deadline read + exactly one 128-node re-check, CPU-speed independent
  assert(game.legal(state).some(x=>x.b===medium.b&&x.c===medium.c));
- // Identical inputs must produce an identical clock call pattern, not just an identical move.
- let again=0;
- game.choose(state,'Medium',()=>0.5,{clock:()=>{again++;return 0;}});
- assert.equal(again,ticks);
+ const second=reads();
+ assert.deepEqual(game.choose(state,'Medium',()=>0.5,{clock:second.clock}),{b:medium.b,c:medium.c});
+ assert.equal(second.count(),first.count()); // identical inputs -> identical clock call pattern
  // The legacy 4th-argument-less call still prefers performance.now, while an injected clock replaces
  // every time read: a sandbox whose Date.now/performance.now throw still chooses only via the seam.
  const vm=require('node:vm'),fs=require('node:fs');
@@ -231,7 +231,10 @@ test('game.choose keeps legacy 3-argument behavior and honours the injected cloc
 });
 
 test('approved first-player choice draws exactly once and prefers the unbiased side',()=>{
- const {chooseSymbols}=require('../src/authority.js');
+ const {chooseSymbols}=D;
+ // The rule lives in the approved src module but is published through the package entry, so this also
+ // proves the package exposes it rather than yielding a partially initialized destructure.
+ assert.equal(chooseSymbols,require('../src/authority.js').chooseSymbols);
  const biased=(symbols=[])=>({history:symbols.map(symbol=>({queue:true,symbol}))});
  const eightX=biased(['X','X','X','X','X','X','X','X']),none=biased([]);
  // A clear bias resolves without consuming the injected RNG at all.

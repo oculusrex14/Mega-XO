@@ -14,7 +14,7 @@ const game=require('../../src/game.js');
 const domain=require('../../src/domain.js');
 const tournament=require('../../src/tournament.js');
 const monetization=require('../../src/monetization.js');
-const {Authority}=require('../../src/authority.js');
+const {Authority,chooseSymbols}=require('../../src/authority.js');
 const matchmaking=require('./matchmaking.js');
 const abuse=require('./abuse.js');
 const commands=require('./commands.js');
@@ -28,6 +28,7 @@ module.exports={
  abuse,
  matchmaking,
  Authority,
+ chooseSymbols,
  executeCommand:commands.executeCommand,
  COMMAND_ROLES:commands.COMMAND_ROLES,
  PRINCIPAL_SCOPES:commands.PRINCIPAL_SCOPES,

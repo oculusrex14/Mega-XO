@@ -25,18 +25,14 @@ function validateJurisdiction(j){
  if(!unique(j.platforms)||!j.platforms.length||j.platforms.some(x=>!PLATFORM.has(x)))fail('INVALID_COMPETITION_PLATFORMS');
  if(!Number.isSafeInteger(j.minAge)||j.minAge<18||j.minAge>30)fail('INVALID_COMPETITION_MIN_AGE');
  if(!ID.test(j.legalReviewId||''))fail('COMPETITION_LEGAL_REVIEW_REQUIRED');
- if(!unique(j.purchasedEntryPlatforms)||j.purchasedEntryPlatforms.some(x=>!j.platforms.includes(x)))fail('INVALID_PURCHASED_ENTRY_PLATFORMS');
- if(j.purchasedEntryPlatforms.includes('ios')&&!ID.test(j.appleReviewId||''))fail('APPLE_COMPETITION_REVIEW_REQUIRED');
- if(j.purchasedEntryPlatforms.includes('android')&&!ID.test(j.googleReviewId||''))fail('GOOGLE_COMPETITION_REVIEW_REQUIRED');
  for(const key of ['maxEntryFee','dailyEntryCap','dailyLossCap'])if(!Number.isSafeInteger(j[key])||j[key]<0)fail('COMPETITION_SPEND_LIMITS_REQUIRED');
  if(j.maxEntryFee===0||j.dailyEntryCap===0||j.dailyLossCap===0)fail('COMPETITION_SPEND_LIMITS_REQUIRED');
  if(j.subdivisions!==undefined&&(!unique(j.subdivisions)||j.subdivisions.some(x=>typeof x!=='string'||!/^[A-Z0-9-]{1,12}$/.test(x))))fail('INVALID_COMPETITION_SUBDIVISIONS');
  if(j.country==='IN'){
-  if(j.purchasedEntryPlatforms.length)fail('INDIA_PURCHASED_VIRTUAL_ENTRY_PROHIBITED');
   if(j.classification!=='recognized_esport')fail('INDIA_RECOGNIZED_ESPORT_REQUIRED');
   if(!ID.test(j.ogaiRegistrationId||'')||!ID.test(j.sportsRecognitionId||''))fail('INDIA_REGULATORY_APPROVAL_REQUIRED');
  }
- return {...j,platforms:[...j.platforms],purchasedEntryPlatforms:[...j.purchasedEntryPlatforms],subdivisions:j.subdivisions?[...j.subdivisions]:null};
+ return {...j,platforms:[...j.platforms],subdivisions:j.subdivisions?[...j.subdivisions]:null};
 }
 
 function validatePolicy(policy,{now=Date.now()}={}){
@@ -64,8 +60,6 @@ function assess({policy,entry,platform,location,age,payment={},spend={},now=Date
  try{model=classify(entry);if(model==='free')return {allowed:true,code:'FREE_COMPETITION'};p=validatePolicy(policy,{now});j=locate(p,location);}catch(error){return {allowed:false,code:error.message};}
  if(!PLATFORM.has(platform)||!j.platforms.includes(platform))return {allowed:false,code:'COMPETITION_PLATFORM_DENIED'};
  if(model==='pooled_stake')return {allowed:false,code:'POOLED_STAKE_PROHIBITED'};
- const purchasedEntry=entry?.purchasedCurrency===true||payment?.purchasedCurrency===true;
- if(purchasedEntry&&!j.purchasedEntryPlatforms.includes(platform))return {allowed:false,code:'PURCHASED_VIRTUAL_ENTRY_NOT_APPROVED'};
  if(entry?.cashOut===true)return {allowed:false,code:'COMPETITION_CASHOUT_PROHIBITED'};
  if(entry?.prizeRealWorldValue===true)return {allowed:false,code:'REAL_WORLD_PRIZE_REQUIRES_SEPARATE_APPROVAL'};
  if(!object(age)||age.verified!==true||age.trusted!==true||!Number.isSafeInteger(age.age)||age.age<j.minAge)return {allowed:false,code:'COMPETITION_AGE_NOT_VERIFIED'};

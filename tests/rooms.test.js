@@ -34,11 +34,11 @@ test('premium tournament accepts store-bought Crowns when eligibility policy app
  }finally{e.clean();}
 });
 
-test('funding provenance is available to jurisdiction eligibility policy without a global ban',()=>{
+test('tournament eligibility does not branch on how Crowns were obtained',()=>{
  const e=env({balance:200});try{
   const state=e.store.economy(),p0=state.accounts.find(([id])=>id==='p0')[1];p0.purchasedCrowns=200;p0.purchaseInfluenced=true;e.store.writeEconomy(state);
-  let observed=null;e.store.eligibility=(account,quote)=>{if(account.id==='p0')observed=quote.funding;return account.id!=='p0';};
-  assert.throws(()=>cmd(e.store,'p0',{type:'publicJoin',table:'premium'}),/PAID_ENTRY_UNAVAILABLE/);
-  assert.deepEqual(observed,{currency:'crowns',amount:200,purchasedBalance:200,legacyPurchaseInfluenced:false});
+  let observed=null;e.store.eligibility=(account,quote)=>{if(account.id==='p0')observed=quote;return true;};
+  const room=cmd(e.store,'p0',{type:'publicJoin',table:'premium'});
+  assert.equal(room.table,'premium');assert.equal(observed.currency,'crowns');assert.equal(observed.entry,200);assert.equal(observed.funding,undefined);
  }finally{e.clean();}
 });

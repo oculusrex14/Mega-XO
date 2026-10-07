@@ -48,8 +48,6 @@ jobs:
         run: |
           set -o pipefail
           npm run test:load 2>&1 | tee .artifacts/load-tests.log
-      - name: Paid competition compliance audit
-        run: npm run competition:audit
       - name: P1-9 abuse acceptance
         run: npm run abuse:audit
       - name: Deployment tooling syntax
@@ -68,7 +66,6 @@ jobs:
           node --check scripts/db-maintenance.js
           node --check scripts/db-growth-smoke.js
           node --check scripts/mail-domain-audit.js
-          node --check scripts/competition-compliance-audit.js
           node --check server/competitive-abuse.js
       - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
         with:

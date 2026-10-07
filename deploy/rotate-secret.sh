@@ -35,7 +35,7 @@ unset value
 
 if [[ "$name" = proxy_secret || "$name" = otp_secret ]]; then
   status=$(dc exec -T app node scripts/operator.js incident-status)
-  node -e 'const x=JSON.parse(process.argv[1]);if(!x.lockdown)process.exit(1)' "$status" || {
+  printf '%s' "$status" | docker run --rm -i --platform linux/arm64 node@sha256:d6aa754f16b3197301076f047b5def2f02ea1dbbc2ca920407d46d7ec7f87b20 node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{if(!JSON.parse(s).lockdown)process.exit(1)})' || {
     echo "$name rotation requires an active audited incident lockdown first." >&2
     echo "Run: docker compose ... exec -T app node scripts/operator.js incident-lockdown --operator NAME --reason '...'" >&2
     exit 65

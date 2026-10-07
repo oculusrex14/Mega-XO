@@ -2,7 +2,7 @@
  * Use DurableStore for transactional persistence; bind actor IDs to server-authenticated sessions.
  * No payments or paid-entry online mode are enabled by default. */
 'use strict';
-const crypto=require('node:crypto'),G=require('./game.js'),D=require('./domain.js');
+const crypto=require('node:crypto'),G=require('./game.js'),D=require('./domain.js'),ABUSE=require('../server/competitive-abuse.js');
 const clone=x=>structuredClone(x),hash=x=>crypto.createHash('sha256').update(JSON.stringify(x)).digest('hex');
 const validId=id=>typeof id==='string'&&/^[A-Za-z0-9][A-Za-z0-9:_-]{0,159}$/.test(id);
 class Authority {

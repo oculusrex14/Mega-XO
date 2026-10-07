@@ -26,7 +26,9 @@ function evaluate(s,p){if(s.winner)return s.winner==='DRAW'?0:s.winner===p?10000
 }
 function order(s,m,p){const n=step(s,m);let v=evaluate(n,p);if(n.winner)return v;if(n.mini[m.b]===p)v+=150;v+=m.c===4?4:0;return v;}
 /* Iterative deepening, no arbitrary removal of legal moves. A time/node budget keeps input responsive. */
-function choose(s,level='Medium',rng=Math.random){
+/* `clock` is the injected monotonic time source used for the search budget. Its default keeps the
+   original browser/node reading, so existing callers and the shipped client behave identically. */
+function choose(s,level='Medium',rng=Math.random,{clock=()=>typeof performance!=='undefined'?performance.now():Date.now()}={}){
  const ms=legal(s);if(!ms.length)return null;const p=s.turn,o=p==='X'?'O':'X';
  if(level==='Beginner')return ms[Math.floor(rng()*ms.length)];
  if(level==='Easy'){
@@ -38,7 +40,7 @@ function choose(s,level='Medium',rng=Math.random){
  const ranked=ms.map(m=>({m,v:order(s,m,p)})).sort((a,b)=>b.v-a.v);
  if(ranked[0].v>=1000000)return ranked[0].m;
  const cfg={Medium:{depth:2,nodes:4000,ms:55},Hard:{depth:4,nodes:22000,ms:140},Expert:{depth:6,nodes:85000,ms:320}}[level]||{depth:2,nodes:4000,ms:55};
- const now=()=>typeof performance!=='undefined'?performance.now():Date.now(),end=now()+cfg.ms;
+ const now=clock,end=now()+cfg.ms;
  let nodes=0,best=ranked[0].m;const STOP={};
  function search(t,d,a,b){if(++nodes>cfg.nodes||((nodes&127)===0&&now()>end))throw STOP;if(!d||t.winner)return evaluate(t,p);
   const list=legal(t).map(m=>({m,v:order(t,m,t.turn)})).sort((x,y)=>y.v-x.v);let v=t.turn===p?-Infinity:Infinity;

@@ -2,9 +2,21 @@
  * Use DurableStore for transactional persistence; bind actor IDs to server-authenticated sessions.
  * Competitive entry is normal closed-loop game economy behavior; store payments remain separately gated. */
 'use strict';
-const crypto=require('node:crypto'),G=require('./game.js'),D=require('./domain.js'),ABUSE=require('../server/competitive-abuse.js');
+const crypto=require('node:crypto'),G=require('./game.js'),D=require('./domain.js'),ABUSE=require('../packages/domain/abuse.js');
 const clone=x=>structuredClone(x),hash=x=>crypto.createHash('sha256').update(JSON.stringify(x)).digest('hex');
 const validId=id=>typeof id==='string'&&/^[A-Za-z0-9][A-Za-z0-9:_-]{0,159}$/.test(id);
+/* Approved first-player choice, extracted unchanged from Authority.accept: queue pairing balances
+   recent symbol bias and only falls back to `random` on an exact tie (single draw); every other
+   source draws once. Kept pure so server/realtime callers can reuse one definition. */
+function chooseSymbols(players,source,random){
+ if(source==='queue'){
+  const bias=p=>(p.history||[]).filter(h=>h.queue&&h.symbol).slice(-8).reduce((n,h)=>n+(h.symbol==='X'?1:-1),0),
+   aBias=bias(players[0]),bBias=bias(players[1]),
+   normal=Math.abs(aBias+1)+Math.abs(bBias-1),flipped=Math.abs(aBias-1)+Math.abs(bBias+1);
+  return flipped<normal?true:normal<flipped?false:random()===1;
+ }
+ return random()===1;
+}
 class Authority {
  constructor({verifyPurchase=null,now=()=>Date.now(),random=()=>crypto.randomInt(2),state=null}={}){
   this.verifyPurchase=verifyPurchase;this.now=now;this.random=random;
@@ -67,7 +79,7 @@ class Authority {
   // Preflight every write before modifying either account. DurableStore wraps the operation in one transaction.
   if(currency)players.forEach((p,i)=>{const amount=m.quote.contributions[i];p[currency]-=amount;p[held]+=amount;this._entry(id+':reserve:'+p.id,p.id,currency,-amount,'Reserved for match');});
   m.accepted=[...accepted];m.escrow=m.quote.pool;m.status='PLAYING';m.started=this.now();m._lastMoveAt=m.started;m._moveTimings=[];m.preRatings=players.map(p=>p.rating);m.preTiers=players.map(p=>this.currentTier(p));
-  let swap;if(m.terms.source==='queue'){const bias=p=>(p.history||[]).filter(h=>h.queue&&h.symbol).slice(-8).reduce((n,h)=>n+(h.symbol==='X'?1:-1),0),aBias=bias(players[0]),bBias=bias(players[1]),normal=Math.abs(aBias+1)+Math.abs(bBias-1),flipped=Math.abs(aBias-1)+Math.abs(bBias+1);swap=flipped<normal?true:normal<flipped?false:this.random()===1;}else swap=this.random()===1;m.symbols={X:m.players[swap?1:0],O:m.players[swap?0:1]};m.deadline=m.terms.turnSeconds?this.now()+m.terms.turnSeconds*1000:null;
+  const swap=chooseSymbols(players,m.terms.source,this.random);m.symbols={X:m.players[swap?1:0],O:m.players[swap?0:1]};m.deadline=m.terms.turnSeconds?this.now()+m.terms.turnSeconds*1000:null;
   for(const p of players)p.activeMatch=id;return this.view(id);
  }
  decline(id,actor){const m=this.matches.get(id);if(!m||!m.players.includes(actor)||m.status!=='OFFERED')throw Error('CANNOT_DECLINE');m.status='DECLINED';return this.view(id);}
@@ -161,4 +173,4 @@ class Authority {
  }
  leaderboard(options={}){const now=this.now();return clone(D.leaderboard([...this.accounts.values()].map(a=>{this._season(a,now);return {...a,tier:this.currentTier(a)};}),{...options,now}));}
 }
-module.exports={Authority};
+module.exports={Authority,chooseSymbols};

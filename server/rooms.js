@@ -1,13 +1,13 @@
-/* V3.3 party authority. Use the SAME SQLite path as DurableStore for paid events.
-   Authentication/eligibility belong to the deployment, never player JSON. */
+/* V3.3 party authority. Use the SAME SQLite path as DurableStore for competitive events.
+   Authentication and account eligibility are server-authoritative, never player JSON. */
 'use strict';
 const MM=require('./matchmaking.js'),ABUSE=require('./competitive-abuse.js');
 const {DatabaseSync}=require('node:sqlite'),crypto=require('node:crypto'),T=require('../src/tournament.js');
 const clone=x=>structuredClone(x),hash=x=>crypto.createHash('sha256').update(typeof x==='string'?x:JSON.stringify(x)).digest('hex');
 const err=s=>{throw Error(s);}, safe=n=>{if(!Number.isSafeInteger(n)||n<0)err('INVALID_BALANCE');return n;};
 class RoomStore{
- constructor(path,{lanOnly=false,paidEntryEnabled=false,eligibility=()=>false,now=()=>Date.now()}={}){
-  this.lanOnly=lanOnly;this.paidEntryEnabled=paidEntryEnabled;this.eligibility=eligibility;this.now=now;
+ constructor(path,{lanOnly=false,now=()=>Date.now()}={}){
+  this.lanOnly=lanOnly;this.now=now;
   this.db=new DatabaseSync(path);this.db.exec('PRAGMA journal_mode=WAL; PRAGMA busy_timeout=5000; CREATE TABLE IF NOT EXISTS party_rooms(id TEXT PRIMARY KEY,code TEXT UNIQUE NOT NULL,json TEXT NOT NULL); CREATE TABLE IF NOT EXISTS party_commands(id TEXT PRIMARY KEY,fingerprint TEXT NOT NULL,response TEXT NOT NULL); CREATE TABLE IF NOT EXISTS party_guests(token TEXT PRIMARY KEY,actor TEXT UNIQUE NOT NULL,name TEXT NOT NULL,expires INTEGER NOT NULL); CREATE INDEX IF NOT EXISTS party_status ON party_rooms(json_extract(json,\'$.status\'));');
  }
  guest(name){if(!this.lanOnly)err('GUESTS_NOT_ALLOWED');if(typeof name!=='string'||!name.trim()||name.length>32)err('INVALID_NAME');const token=crypto.randomBytes(32).toString('base64url'),actor=crypto.randomUUID();this.db.prepare('DELETE FROM party_guests WHERE expires<?').run(this.now());if(this.db.prepare('SELECT COUNT(*) n FROM party_guests').get().n>=200)err('SESSION_LIMIT');this.db.prepare('INSERT INTO party_guests VALUES(?,?,?,?)').run(hash(token),actor,name.trim(),this.now()+86400000);return {token,actor,name:name.trim()};}
@@ -19,7 +19,7 @@ class RoomStore{
  economy(){const exists=this.db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='state'").get();if(!exists)err('ACCOUNT_SERVICE_REQUIRED');return JSON.parse(this.db.prepare('SELECT json FROM state WHERE id=1').get().json);}
  account(e,id){return e.accounts.find(([key])=>key===id)?.[1]||err('ACCOUNT_REQUIRED');}
  writeEconomy(e){this.db.prepare('UPDATE state SET json=? WHERE id=1').run(JSON.stringify(e));}
- eligible(e,id,q){const a=this.account(e,id);if(a.verified!==true||a.suspended||a.hold||a.games<10)err('INELIGIBLE');if(this.paidEntryEnabled!==true||this.eligibility(clone(a),clone(q))!==true)err('PAID_ENTRY_UNAVAILABLE');return a;}
+ eligible(e,id,q){const a=this.account(e,id);if(a.verified!==true||a.suspended||a.hold||a.games<10)err('INELIGIBLE');return a;}
  code(){let c;do{c=crypto.randomBytes(5).toString('hex').toUpperCase();}while(this.db.prepare('SELECT id FROM party_rooms WHERE code=?').get(c));return c;}
  shuffle(ids){const a=ids.slice();for(let i=a.length-1;i>0;i--){const j=crypto.randomInt(i+1);[a[i],a[j]]=[a[j],a[i]];}return a;}
  journal(e,id,actor,currency,amount,reason){e.journal.push({id,actor,currency,amount,reason,source:'tournament',at:this.now()});}

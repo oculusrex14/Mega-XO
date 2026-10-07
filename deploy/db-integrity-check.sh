@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 umask 077
-root=\${1:?Pass the deployment directory}
+root=${1:?Pass the deployment directory}
 [[ "$root" = /* && "$root" != / && -f "$root/current-image" && -f "$root/compose.env" ]] || { echo 'Invalid deployment root.' >&2; exit 64; }
 here=$(cd "$(dirname "$0")" && pwd)
 export MEGA_ROOT="$root" MEGA_IMAGE

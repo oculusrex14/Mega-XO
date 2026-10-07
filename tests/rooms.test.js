@@ -24,20 +24,21 @@ test('Money account hold blocks settlement; operator can refund review',()=>{con
 test('eligibility must explicitly return true, not an async promise or truthy config',()=>{const e=env();try{e.store.eligibility=()=>Promise.resolve(true);assert.throws(()=>publicLobby(e),/PAID_ENTRY_UNAVAILABLE/);e.store.eligibility=()=>true;e.store.paidEntryEnabled='false';assert.throws(()=>publicLobby(e),/PAID_ENTRY_UNAVAILABLE/);}finally{e.clean();}});
 
 
-test('purchased virtual currency cannot fund public tournament entry',()=>{
- const e=env({balance:0});try{
-  const state=e.store.economy(),p0=state.accounts.find(([id])=>id==='p0')[1];
-  p0.coins=100;p0.purchasedCoins=100;p0.purchasedCrowns=0;p0.legacyCompetitionRestricted=false;e.store.writeEconomy(state);
-  assert.throws(()=>cmd(e.store,'p0',{type:'publicJoin',table:'low'}),/COMPETITION_FUNDS_RESTRICTED/);
-  assert.equal(account(e.store,'p0').coins,100);
+test('premium tournament accepts store-bought Crowns when eligibility policy approves them',()=>{
+ const e=env({balance:200});try{
+  const state=e.store.economy();for(const [,a] of state.accounts){a.purchasedCrowns=200;a.purchasedCoins=0;a.purchaseInfluenced=true;}e.store.writeEconomy(state);
+  let r=publicLobby(e,'premium');
+  for(const p of r.players)r=cmd(e.store,p.id,{type:'ready',id:r.id,value:true,rulesVersion:r.rulesVersion});
+  assert.equal(r.status,'RUNNING');assert.equal(r.quote.entry,200);assert.equal(r.quote.currency,'crowns');
+  assert.equal(account(e.store,'p0').crowns,0);assert.equal(account(e.store,'p0').reservedCrowns,200);
  }finally{e.clean();}
 });
 
-
-test('legacy purchase-influenced tournament state without exact provenance fails closed',()=>{
- const e=env({balance:100});try{
-  const state=e.store.economy(),p0=state.accounts.find(([id])=>id==='p0')[1];
-  p0.purchaseInfluenced=true;delete p0.purchasedCoins;delete p0.purchasedCrowns;e.store.writeEconomy(state);
-  assert.throws(()=>cmd(e.store,'p0',{type:'publicJoin',table:'low'}),/COMPETITION_FUNDS_RESTRICTED/);
+test('funding provenance is available to jurisdiction eligibility policy without a global ban',()=>{
+ const e=env({balance:200});try{
+  const state=e.store.economy(),p0=state.accounts.find(([id])=>id==='p0')[1];p0.purchasedCrowns=200;p0.purchaseInfluenced=true;e.store.writeEconomy(state);
+  let observed=null;e.store.eligibility=(account,quote)=>{if(account.id==='p0')observed=quote.funding;return account.id!=='p0';};
+  assert.throws(()=>cmd(e.store,'p0',{type:'publicJoin',table:'premium'}),/PAID_ENTRY_UNAVAILABLE/);
+  assert.deepEqual(observed,{currency:'crowns',amount:200,purchasedBalance:200,legacyPurchaseInfluenced:false});
  }finally{e.clean();}
 });

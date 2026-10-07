@@ -45,8 +45,21 @@ test('private timing evidence never appears in normal match or tournament views'
  a.account('alice').friends=['bob'];a.account('bob').friends=['alice'];
  const q=a.offer('m','alice','bob',{kind:'friend',amount:2});a.accept('m','bob',q.termsHash);
  const m=a.matches.get('m'),actor=m.symbols[m.state.turn];now+=50;a.move('m',actor,0,'move-1',require('../src/game.js').legal(m.state)[0]);
+ assert.equal(m._moveTimings.length,1);assert.equal(m._moveTimings[0].actor,actor);assert.equal(m._moveTimings[0].ms,50);
  const publicMatch=a.view('m');assert.equal(publicMatch._moveTimings,undefined);assert.equal(publicMatch._lastMoveAt,undefined);assert.equal(publicMatch._riskActors,undefined);
 
  const room={status:'RUNNING',clock:180,groups:[],_riskActors:{AUTOMATION_SPEED_REVIEW:['alice']},fixtures:[{id:'g1',status:'PLAYING',players:['alice','bob'],state:{turn:'X'},banks:{alice:180,bob:180},turnAt:1000,_moveTimings:[{actor:'alice',ms:50}],_lastMoveAt:1050}]};
  const publicRoom=T.view(room,1100);assert.equal(publicRoom._riskActors,undefined);assert.equal(publicRoom.fixtures[0]._moveTimings,undefined);assert.equal(publicRoom.fixtures[0]._lastMoveAt,undefined);
+});
+
+
+test('live match settlement emits automation review signal without changing result',()=>{
+ let now=2000;const a=new Authority({now:()=>now,random:()=>0});
+ a.addAccount('alice',{crowns:20,rating:1500,games:30,verified:true});a.addAccount('bob',{crowns:20,rating:1500,games:30,verified:true});
+ a.account('alice').friends=['bob'];a.account('bob').friends=['alice'];
+ const q=a.offer('risk-live','alice','bob',{kind:'friend',amount:2});a.accept('risk-live','bob',q.termsHash);
+ const m=a.matches.get('risk-live');m._moveTimings=[...Array(10)].map((_,i)=>({actor:'alice',ms:i<3?60:180}));
+ const receipt=a.resign('risk-live','bob'),view=a.view('risk-live');
+ assert.equal(receipt.winner,'alice');assert(view.riskFlags.includes('AUTOMATION_SPEED_REVIEW'));
+ assert.equal(view._riskActors,undefined);assert.equal(view._moveTimings,undefined);
 });

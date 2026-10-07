@@ -2,7 +2,7 @@
 
 These are contract rules, not balancing suggestions. `tests/design-invariants.test.js` must stay green before a change is accepted.
 
-**V4.1 compliance note:** invariants 5, 6, 8 and 9 describe the deterministic math of dormant pooled-stake mechanics. They are retained for migration/audit safety only and are **not production-approved**. P1-7 requires `MEGA_PAID_ENTRY_ENABLED=false`; bought and earned virtual currency are treated identically by gameplay; `npm run competition:audit` must continue to classify the current ranked/direct/tournament pools as prohibited pooled stakes.
+**V4.1 product rule:** ranked entries, direct Crown challenges and public tournaments are active closed-loop game-economy mechanics. Bought and earned Crowns have identical gameplay utility. Coins and Crowns have no cash-out or real-world redemption.
 
 1. A cell position routes the next player to the Mini Board at the same position.
 2. If that destination is resolved, the next player gets a Free Route to any unresolved Mini Board.
@@ -12,14 +12,13 @@ These are contract rules, not balancing suggestions. `tests/design-invariants.te
 6. Ranked direct challenges are funded entirely by the challenger; the invited player pays zero. The pot is split 50/50 between payout and retirement.
 7. Coin/Crown conversion is 10:1 both ways with no wealth spread; conversion never creates a weaker class of Crown or Coin for gameplay.
 8. Public tournament prizes conserve the 10-player pool, retire 10%, and make fifth place break even.
-9. Paid public tournament cohorts never exceed a 200-Elo spread.
+9. Public tournament cohorts never exceed a 200-Elo spread.
 10. Quarterly requalification requires five meaningful rated games, including three matchmade games against at least three unique opponents.
 11. Direct ranked challenges can contribute to activity but can never replace the required matchmade games.
-12. Elite seats require continuing recent rated/matchmade activity; paid direct challenges are not mandatory. Weekly publication must release an inactive elite seat without deleting the player's Elo.
+12. Elite seats require continuing recent rated/matchmade activity; direct challenges are not mandatory. Weekly publication must release an inactive elite seat without deleting the player's Elo.
 13. Online results and matchmade opponents remain server-authoritative.
 14. Tournament stats are aggregate records. Match-history/replay data remains a future feature.
 15. Store-bought and earned Crowns/derived Coins have identical gameplay utility, including tournament and direct-challenge entry.
-16. A future paid competition approval cannot reuse player-funded payout pools: the approved baseline is a fixed registration fee with organizer-funded prizes, trusted geo/age checks and jurisdiction/platform allowlisting.
-17. The production config must continue to reject any attempt to set `MEGA_PAID_ENTRY_ENABLED=true` until EXT-26 is completed.
+16. Coins and Crowns are game currency only: they cannot be cashed out, transferred to another player as money, or redeemed from Mega XO for real-world value.
 
 If a product decision intentionally changes one of these, update the design specification, tests and migration together in one reviewed change.

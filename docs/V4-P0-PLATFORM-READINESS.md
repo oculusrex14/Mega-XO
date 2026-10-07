@@ -2,7 +2,7 @@
 
 This document governs the work that follows the first secure V4 backend deployment.
 
-The first backend release may operate with verified email accounts only. Google/Apple buttons remain disabled unless their complete production configuration is present. V4.1 contains guarded backend implementations for account deletion, Google Play Billing, Apple StoreKit and AdMob SSV, but purchases and ads remain disabled until their separate provider/native/privacy gates below are complete. Paid-entry competition remains hard-disabled.
+The first backend release may operate with verified email accounts only. Google/Apple buttons remain disabled unless their complete production configuration is present. V4.1 contains guarded backend implementations for account deletion, Google Play Billing, Apple StoreKit and AdMob SSV, but native purchases and ads remain disabled until their separate provider/native/privacy gates below are complete. Ranked Coin entry, Crown challenges and public tournaments remain normal closed-loop gameplay.
 
 ## 1. Google web and native identity
 

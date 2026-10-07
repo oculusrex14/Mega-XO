@@ -46,7 +46,7 @@ For each competition class disclose:
 - cancellation/refund deadline;
 - whether the fee covers administration/participation only;
 - statement that entrant fees do **not** form the prize pool;
-- statement explaining whether purchased Mega XO Crowns/derived Coins are accepted in that jurisdiction/platform; where accepted, state that Crowns remain closed-loop and have no cash-out or real-world redemption.
+- statement that Mega XO Crowns are closed-loop, have no cash-out or real-world redemption, and are treated the same whether bought or earned.
 
 No side bets, variable stakes, challenger-created pots, auto-re-entry or auto-top-up are permitted.
 

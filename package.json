@@ -30,7 +30,6 @@
     "db:maintenance": "node scripts/db-maintenance.js",
     "test:db-growth": "node scripts/db-growth-smoke.js",
     "mail:audit": "node scripts/mail-domain-audit.js",
-    "competition:audit": "node scripts/competition-compliance-audit.js",
     "abuse:audit": "node --test tests/p1-abuse-acceptance.test.js tests/competitive-abuse.test.js tests/abuse-guard.test.js"
   },
   "author": "Antimatter Innovations <contact@antimatterinnovations.com>"

@@ -88,7 +88,7 @@ test('migration preflight refuses future schemas before application constructors
 });
 
 test('production ads require deletion privacy consent and complete platform units',()=>{
- const base={...secrets,MEGA_ACCOUNT_DELETION_ENABLED:'true',MEGA_PRIVACY_POLICY_VERSION:'privacy-2026-10',MEGA_AD_CONSENT_VERSION:'ump-2026-10',ADMOB_ANDROID_REWARDED_UNIT:'ca-app-pub-1234567890123456/1234567890'};
+ const base={...secrets,MEGA_ACCOUNT_DELETION_ENABLED:'true',MEGA_PRIVACY_POLICY_VERSION:'privacy-2026-10',MEGA_RETENTION_POLICY_VERSION:'retention-2026-10',MEGA_AD_CONSENT_VERSION:'ump-2026-10',ADMOB_ANDROID_REWARDED_UNIT:'ca-app-pub-1234567890123456/1234567890'};
  const rewarded=config({...base,MEGA_AD_MODE:'rewarded'});assert.equal(rewarded.ads.mode,'rewarded');assert.equal(rewarded.ads.platforms.android.rewarded,'ca-app-pub-1234567890123456/1234567890');
  assert.throws(()=>config({...base,MEGA_AD_MODE:'hybrid'}),/INCOMPLETE_ADMOB_UNITS/);
  const hybrid=config({...base,MEGA_AD_MODE:'hybrid',ADMOB_ANDROID_INTERSTITIAL_UNIT:'ca-app-pub-1234567890123456/0987654321'});assert.equal(hybrid.ads.platforms.android.interstitial,'ca-app-pub-1234567890123456/0987654321');

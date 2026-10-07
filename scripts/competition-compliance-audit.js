@@ -8,8 +8,8 @@ const now=Date.parse('2026-10-07T00:00:00Z');
 const candidate={
  enabled:true,version:'audit-policy-v1',approvalId:'audit-approval-v1',
  effectiveAt:'2026-10-01T00:00:00Z',expiresAt:'2026-12-31T23:59:59Z',
- allowPurchasedCurrency:false,allowPooledStake:false,allowCashOut:false,allowRealWorldPrize:false,prizeFunding:'organizer',
- jurisdictions:[{country:'GB',platforms:['web'],minAge:18,legalReviewId:'audit-gb-review',maxEntryFee:100,dailyEntryCap:1000,dailyLossCap:1000}]
+ allowPooledStake:false,allowCashOut:false,allowRealWorldPrize:false,prizeFunding:'organizer',
+ jurisdictions:[{country:'GB',platforms:['web'],purchasedEntryPlatforms:['web'],minAge:18,legalReviewId:'audit-gb-review',maxEntryFee:100,dailyEntryCap:1000,dailyLossCap:1000}]
 };
 const context={policy:candidate,platform:'web',location:{trusted:true,country:'GB',proxyRisk:false},age:{verified:true,trusted:true,age:21,verifiedAt:'2026-10-01T00:00:00Z'},spend:{entryToday:0,lossToday:0,selfExcluded:false,accountHold:false,coolingOffUntil:null},now};
 
@@ -31,7 +31,7 @@ function audit(){
  assert(hardDisabled,'PRODUCTION_PAID_ENTRY_MUST_BE_HARD_DISABLED');
  const free=assess({entry:{model:'free'},platform:'web'});
  assert(free.allowed&&free.code==='FREE_COMPETITION','FREE_COMPETITION_MUST_REMAIN_AVAILABLE');
- return {ok:true,productionPaidEntryHardDisabled:true,purchasedCurrencyAllowed:false,pooledStakeAllowed:false,cashOutAllowed:false,realWorldPrizeAllowed:false,checks};
+ return {ok:true,productionPaidEntryHardDisabled:true,fundingSourcePolicy:'jurisdiction-controlled',pooledStakeAllowed:false,cashOutAllowed:false,realWorldPrizeAllowed:false,checks};
 }
 if(require.main===module){try{process.stdout.write(JSON.stringify(audit(),null,2)+'\n');}catch(error){console.error('COMPETITION_COMPLIANCE_AUDIT_FAILED: '+error.message);process.exitCode=1;}}
 module.exports={audit};

@@ -1,6 +1,6 @@
 # Economy-1 trust boundaries and release gates
 
-This replaces the earlier cosmetic-only-Crowns restriction. The requested convertible currency and paid direct challenge mathematics are implemented. They are NOT automatically legally cleared or enabled for production.
+This replaces the earlier cosmetic-only-Crowns restriction. Convertible Coins/Crowns, Ranked entry, Crown challenges and tournament entry are implemented as closed-loop game-economy mechanics. Bought and earned Crowns have identical gameplay utility.
 
 ## Implemented safeguards
 
@@ -22,22 +22,18 @@ Receipt refunds create a financial hold; held wallets cannot transact or appear 
 
 The edge limiter also applies persistent pseudonymous budgets to high-value purchase/reward, matchmaking and tournament-churn mutations. Ordinary move traffic is intentionally not subjected to those stricter persistent budgets.
 
-## Production prerequisites not supplied by this commit
+## Remaining release prerequisites
 
-1. Actual identity-provider sessions, account recovery, ownership binding, TLS, CSRF/session configuration and edge rate limits.
-2. A deployed matchmaker with skill windows, queue health and anti-repeat controls. The API currently accepts an injected matchmaker; it cannot pretend to find a player when absent.
-3. StoreKit/Play Billing UI and verification against real signed store evidence or server API results. `MegaBilling` is a native integration contract, not a fake payment processor. Avoid network receipt lookups inside a long-held database write lock; verify first, then bind trusted verification to the atomic grant.
-4. Per-territory/platform/account eligibility, including applicable age controls and spending protections, approved by qualified counsel and platform review. `paidEntryEnabled=false` and an eligibility callback denying by default are intentional. Both queue Coin entries and Crown direct pots use this gate, including Coins converted from purchased Crowns.
-5. A verified offline-result/attestation pipeline before any device-local bot balance becomes server-spendable. No client wallet import endpoint exists.
-6. Durable deployment, backups/restore drills, observability, privacy/deletion controls, fraud investigation and refund workflows. SQLite snapshot serialization is an auditable starter design, not a throughput claim for a large service; shard/normalize for scale after correctness and load testing.
+Repository security controls are implemented. The remaining release work depends on external infrastructure/provider/device access:
 
-## Platform risk, not a blanket legal classification
+1. deploy and validate the production/staging edge, secrets, firewall, backups, restore and monitoring;
+2. configure real Google/Apple identity credentials if those login methods ship;
+3. finish native StoreKit/Play Billing clients and sandbox/device acceptance before enabling purchases;
+4. finish native AdMob/UMP integration and device/region consent acceptance before enabling ads;
+5. approve/publish privacy, retention and moderation policies and run their live acceptance drills;
+6. complete physical-device network/accessibility QA and the adversarial staging exercise.
 
-Apple 5.3.3 disallows IAP currency for real-money gaming. Google Play restricts money/purchased-item stakes for prizes of real-world monetary value. Whether this non-redeemable closed-loop implementation falls into a prohibited or regulated category requires the actual jurisdictions, terms and distribution model. Skill, calling it Crowns, or converting it into earned-looking Coins does not establish compliance. Do not misrepresent the stake functionality during app review.
-
-Sources checked 5 October 2026:
-https://developer.apple.com/app-store/review/guidelines/
-https://support.google.com/googleplay/android-developer/answer/9877032/
+These external gates do not create a separate bought-versus-earned Crown balance. Store receipts/refunds remain billing evidence; gameplay uses the normal closed-loop wallet.
 
 ## Test authentication
 

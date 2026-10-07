@@ -31,7 +31,7 @@ class Authority {
  currentTier(a){this._season(a);if(D.seasonQualified(a,this.now())&&this.leagueWeek===D.week(this.now())&&D.tier(a.tier).index>=8)return a.tier;return D.basicTier(a.rating).id;}
  _players(a,b){const A=this.account(a),B=this.account(b);if(a===b)throw Error('SELF_CHALLENGE');if(!A.verified||!B.verified||A.suspended||B.suspended||A.hold||B.hold||A.blocked.includes(b)||B.blocked.includes(a))throw Error('INELIGIBLE');return [A,B];}
  _spendNonCompetition(a,currency,amount){const key=currency==='coins'?'purchasedCoins':'purchasedCrowns';const restricted=Math.min(a[key]||0,amount);a[key]-=restricted;return restricted;}
- _paidAllowed(players,q){if(!q.pool)return;if(!this.paidEntryEnabled||!players.every((p,i)=>this.eligibility(clone(p),{...clone(q),funding:{currency:q.currency,amount:q.contributions?.[i]||0,purchasedBalance:q.currency==='coins'?(p.purchasedCoins||0):q.currency==='crowns'?(p.purchasedCrowns||0):0,legacyPurchaseInfluenced:!!p.legacyCompetitionRestricted}})))throw Error('PAID_ENTRY_UNAVAILABLE');}
+ _paidAllowed(players,q){if(!q.pool)return;if(!this.paidEntryEnabled||!players.every(p=>this.eligibility(clone(p),clone(q))))throw Error('PAID_ENTRY_UNAVAILABLE');}
  _pairLimit(a,b,q){if(!q.rated)return;const now=this.now(),start=D.weekStart(D.week(now));const completed=[...this.matches.values()].filter(m=>m.quote.rated&&m.status!=='VOID'&&m.started!==undefined&&m.players.includes(a)&&m.players.includes(b));
   if(q.mode==='direct'){
    const direct=completed.filter(m=>m.quote.mode==='direct');if(direct.filter(m=>now-m.started< D.DAY).length>=D.POLICY.directPairDaily||direct.filter(m=>m.started>=start).length>=D.POLICY.directPairWeekly)throw Error('RATED_PAIR_LIMIT');

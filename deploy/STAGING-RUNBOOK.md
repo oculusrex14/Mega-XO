@@ -2,7 +2,7 @@
 
 Staging origin: **https://staging.play.antimatterinnovations.com**
 
-Staging is a separate deployment root, SQLite database, OTP/proxy secrets, Basic Auth credential, mail budget, and backup repository. Purchases, ads, and paid-entry competition remain disabled.
+Staging is a separate deployment root, SQLite database, OTP/proxy secrets, Basic Auth credential, mail budget, and backup repository. Native purchases and ads remain disabled until their provider/device gates are complete; the normal closed-loop Ranked/direct/tournament economy remains available for staging acceptance.
 
 On the single-VPS launch architecture, pre-production staging temporarily owns public ports 80/443. Stop staging before starting the production edge.
 

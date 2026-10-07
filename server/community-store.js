@@ -256,6 +256,7 @@ CREATE INDEX IF NOT EXISTS email_challenges_email ON email_challenges(email);`);
    if(this.db.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name='v4_email_versions'").get())this.db.prepare('DELETE FROM v4_email_versions WHERE challenge NOT IN (SELECT id FROM email_challenges)').run();
    this.db.prepare('DELETE FROM identities WHERE actor=?').run(actor);this.db.prepare('DELETE FROM email_credentials WHERE actor=?').run(actor);this.db.prepare('DELETE FROM profile_saves WHERE actor=?').run(actor);this.db.prepare('DELETE FROM profiles WHERE actor=?').run(actor);if(this.db.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name='v41_store_bindings'").get())this.db.prepare('DELETE FROM v41_store_bindings WHERE actor=?').run(actor);
    this.db.prepare("DELETE FROM social_operations WHERE id LIKE ?").run(actor+':%');this.db.prepare("DELETE FROM community_limits WHERE id LIKE ?").run('%'+actor+'%');
+   this.db.prepare('DELETE FROM commands WHERE actor=?').run(actor);
    for(const table of ['v35_commands','v35_tickets','v35_casual','v35_events'])if(this.db.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name=?").get(table))this.db.prepare('DELETE FROM '+table+' WHERE actor=?').run(actor);
    this.db.prepare("DELETE FROM v41_reports WHERE reporter=?").run(actor);this.db.prepare("UPDATE v41_reports SET target=?,detail='' WHERE target=?").run(tombstone,actor);
    this.db.prepare('UPDATE v41_privacy_requests SET actor=?,state=?,updated_at=?,completed_at=?,note=? WHERE id=?').run(tombstone,'completed',now,now,'',receiptId);

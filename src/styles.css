@@ -711,3 +711,22 @@ body{font-family:'Space Grotesk',ui-sans-serif,system-ui,-apple-system,BlinkMacS
 .wallet-balance{display:flex;align-items:center;gap:4px;min-width:0}.wallet-balance .icon{width:17px;height:17px}.wallet-divider{width:1px;height:18px;background:var(--line);flex:none}
 .rank-season-card{margin:10px 0 14px;padding:16px}.rank-season-head{display:flex;align-items:flex-start;justify-content:space-between;gap:14px}.rank-season-title{min-width:0;display:grid;gap:5px}.rank-season-title .eyebrow{line-height:1.25}.rank-season-title strong{font-size:14px;line-height:1.35}.rank-season-score{font-size:14px;line-height:1.35;white-space:nowrap;font-variant-numeric:tabular-nums}.rank-season-progress{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;margin:14px 0 10px}.rank-season-progress span{display:grid;gap:2px;padding:9px 8px;background:var(--soft);border:1px solid var(--line);border-radius:10px;color:var(--muted);font-size:9px;line-height:1.3;text-align:center}.rank-season-progress b{color:var(--ink);font-size:11px;font-variant-numeric:tabular-nums}.rank-season-copy{margin:10px 0 0;color:var(--muted);font-size:11px;line-height:1.55}
 @media(max-width:350px){.wallet-pill{gap:5px;padding:7px 8px}.wallet-balance{gap:3px}.wallet-balance .icon{width:15px;height:15px}.wallet-divider{height:16px}.rank-season-head{gap:8px}.rank-season-progress{grid-template-columns:1fr;gap:5px}.rank-season-progress span{display:flex;justify-content:space-between;text-align:left}}
+
+
+/* V4.1 home-title fit: reclaim Paper Club notebook gutter and keep the game name intact. */
+:root[data-theme="paperclub"] .app::before{
+ width:34px;
+ background:linear-gradient(90deg,transparent 23px,rgba(194,58,46,.45) 23px,rgba(194,58,46,.45) 24.5px,transparent 24.5px),linear-gradient(90deg,rgba(39,34,27,.09),transparent 9px)
+}
+:root[data-theme="paperclub"] :is(.topbar,#page){padding-left:40px}
+:root[data-theme="paperclub"] .bottom-nav{left:42px}
+:root[data-theme="paperclub"] .bottom-sheet{padding-left:40px}
+:root[data-theme="paperclub"] .home-hero h1{font-size:40px;max-width:none}
+:root[data-theme="paperclub"] .home-game-name{white-space:nowrap}
+@media(min-width:400px){:root[data-theme="paperclub"] .home-title-main{white-space:nowrap}}
+:root[data-theme="afterhours"] .home-hero h1{max-width:none}
+:root[data-theme="afterhours"] .home-game-name{white-space:nowrap}
+@media(max-width:365px){
+ :root[data-theme="paperclub"] :is(.topbar,#page,.bottom-sheet){padding-left:14px}
+ :root[data-theme="paperclub"] .bottom-nav{left:8px}
+}

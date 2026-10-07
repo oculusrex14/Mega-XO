@@ -101,6 +101,17 @@ test('Rewards & Themes is routed as page content instead of the bottom sheet',()
   assert.ok(!monetization.includes("APP.open('Rewards & Themes'"));
 });
 
+test('Paper Club and After Hours home titles avoid awkward Tic-tac-toe wrapping',()=>{
+  const app=fs.readFileSync(path.join(ROOT,'src','app.js'),'utf8');
+  const styles=fs.readFileSync(path.join(ROOT,'src','styles.css'),'utf8');
+  assert.ok(app.includes('class="home-title-main"'));
+  assert.ok(app.includes('class="home-game-name"'));
+  assert.ok(styles.includes(':root[data-theme="paperclub"] .home-hero h1{font-size:40px;max-width:none}'));
+  assert.ok(styles.includes(':root[data-theme="paperclub"] .home-game-name{white-space:nowrap}'));
+  assert.ok(styles.includes(':root[data-theme="afterhours"] .home-hero h1{max-width:none}'));
+  assert.ok(styles.includes(':root[data-theme="afterhours"] .home-game-name{white-space:nowrap}'));
+});
+
 test('rank UI explains quarterly requalification and Elo continuity',()=>{const app=fs.readFileSync(path.join(ROOT,'src','app.js'),'utf8');assert.ok(app.includes('Season requalification'));assert.ok(app.includes('Quarterly seasons'));assert.ok(app.includes('Your Elo is never wiped'));assert.ok(app.includes('Direct ranked challenges count toward activity but are never mandatory'));});
 
 test('stats exposes aggregate tournament record without internal replay-roadmap copy',()=>{const app=fs.readFileSync(path.join(ROOT,'src','app.js'),'utf8'),community=fs.readFileSync(path.join(ROOT,'src','community.js'),'utf8');assert.ok(app.includes("['tournament','Tournaments']"));assert.ok(app.includes('Only completed public tournaments count'));assert.ok(!app.includes('Match history and replays are reserved for a future update'));assert.ok(community.includes("['tournament','Tournaments']"));});

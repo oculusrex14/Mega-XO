@@ -39,3 +39,24 @@ test('email-change and password-recovery have stricter independent IP windows',t
  for(let i=0;i<12;i++)assert(f.guard.sensitive(ip,'/api/account/email','POST',{action:'forgot'}));
  assert.equal(f.guard.sensitive(ip,'/api/account/email','POST',{action:'forgot'}),false);
 });
+
+
+test('store purchase replay and reward-ticket surfaces have persistent IP budgets',t=>{
+ const f=fixture(t),ip='198.51.100.90';
+ for(let i=0;i<20;i++)assert(f.guard.sensitive(ip,'/api/monetization/purchase','POST',{}));
+ assert.equal(f.guard.sensitive(ip,'/api/monetization/purchase','POST',{}),false);
+ for(let i=0;i<40;i++)assert(f.guard.sensitive(ip,'/api/monetization/reward-ticket','POST',{kind:'credits'}));
+ assert.equal(f.guard.sensitive(ip,'/api/monetization/reward-ticket','POST',{kind:'credits'}),false);
+ const ids=f.db.prepare('SELECT id FROM v4_limits ORDER BY id').all().map(x=>x.id);
+ assert(ids.some(id=>id.includes('store-purchase')));assert(ids.some(id=>id.includes('reward-ticket')));
+ assert(ids.every(id=>!id.includes(ip)));
+});
+
+test('tournament join churn and matchmaking mutation are bounded without limiting ordinary moves',t=>{
+ const f=fixture(t),ip='203.0.113.91';
+ for(let i=0;i<30;i++)assert(f.guard.sensitive(ip,'/api/party/command','POST',{type:'publicJoin'}));
+ assert.equal(f.guard.sensitive(ip,'/api/party/command','POST',{type:'publicJoin'}),false);
+ for(let i=0;i<120;i++)assert(f.guard.sensitive(ip,'/api/v1/queue','POST',{mode:'ranked'}));
+ assert.equal(f.guard.sensitive(ip,'/api/v1/queue','POST',{mode:'ranked'}),false);
+ for(let i=0;i<500;i++)assert.equal(f.guard.sensitive(ip,'/api/v1/move','POST',{id:'m'}),true);
+});

@@ -4,7 +4,7 @@ const {operatorKey}=require('../server/production/operator-service');
 
 function fail(message){console.error(message);process.exit(64);}
 function secret(){
- const direct=process.env.MEGA_PROXY_SECRET||'',file=process.env.MEGA_PROXY_SECRET_FILE||'';
+ const direct=process.env.MEGA_AUDIT_SECRET||'',file=process.env.MEGA_AUDIT_SECRET_FILE||'';
  if(direct&&file)throw Error('AMBIGUOUS_OPERATOR_SECRET');
  if(direct)return direct;
  if(file){if(!file.startsWith('/')||!fs.statSync(file).isFile())throw Error('INVALID_OPERATOR_SECRET_FILE');return fs.readFileSync(file,'utf8').trim();}

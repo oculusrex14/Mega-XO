@@ -13,7 +13,7 @@ async function run(){
  const dir=fs.mkdtempSync(path.join(os.tmpdir(),'mega-growth-')),file=path.join(dir,'growth.sqlite');
  let store=null;
  try{
-  store=new DurableStore(file,{paidEntryEnabled:false,eligibility:()=>true});migrate(store.db);
+  store=new DurableStore(file);migrate(store.db);
   const authority=store.read(),seedStart=performance.now();
   for(let i=0;i<accounts;i++){
    const id='growth-'+i;authority.addAccount(id,{verified:true,coins:1000,crowns:100,rating:1200+(i%600),games:historyPerAccount});

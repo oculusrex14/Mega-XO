@@ -75,7 +75,7 @@ Private room/LAN implementation history is documented in [V3.3 parties](docs/V3.
 
 ## Run and validate
 
-Node 22.13+ is required for the Node services.
+Node 24+ is required for the Node services.
 
 - `npm start`: static browser app.
 - `npm run start:lan`: free same-Wi-Fi party host on port 8081.
@@ -86,17 +86,16 @@ Node 22.13+ is required for the Node services.
 - `npm run test:invariants`: executable game-design invariant contract.
 - `npm run test:ui`, `npm run test:party-ui`, `npm run test:account-ui`: browser functional suites where their environment dependencies are available.
 
-The V3.4 GitHub Actions workflow runs the Node regression, invariant suite, balance report and population simulation on every push to `V3.4`.
+The V4.1 GitHub Actions workflow runs the full Node regression, game-design invariants, balance/economy models, seeded workload, P1-9 abuse acceptance, deployment syntax, Chromium accessibility and monetisation browser flows on every push to `V4.1`.
 
 ## Release boundaries
 
 This repository contains implemented development code. It does not claim:
 - production deployment or store approval;
-- legal clearance for paid-entry operation in every jurisdiction;
 - native phone-hosted Bluetooth/Nearby transport;
 - real-user retention/conversion/revenue validation.
 
-Paid-entry operation remains disabled unless the server is explicitly configured with the required identity, eligibility, platform and jurisdiction controls.
+Ranked Coin entry, Crown challenges and public tournaments are closed-loop game-economy mechanics. Bought and earned Crowns have identical gameplay utility; Mega XO does not provide Crown cash-out or real-world redemption.
 
 ## Current design references
 

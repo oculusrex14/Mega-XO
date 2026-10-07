@@ -38,6 +38,31 @@ def main():
             page.locator('#page').wait_for(timeout=3000)
             assert page.evaluate('1+1')==2
 
+            # The connection card belongs to the page scroll flow, not the fixed header.
+            page.set_viewport_size({'width':390,'height':520})
+            for theme in ['vector','midnight','paperclub','afterhours']:
+                page.evaluate("""theme=>{const s=MegaApp.getSave();s.settings.theme=theme;MegaApp.applyPractice(s);}""",theme)
+                page.evaluate("""()=>document.dispatchEvent(new CustomEvent('mega:connectivity',{detail:{state:'degraded'}}))""")
+                page.locator('#networkStatus').wait_for(state='visible')
+                page.eval_on_selector('#contentScroll','el=>el.scrollTop=0')
+                page.wait_for_timeout(30)
+                header_before=page.locator('.topbar').bounding_box()
+                banner_before=page.locator('#networkStatus').bounding_box()
+                action=page.locator('#networkStatusAction').bounding_box()
+                assert action['height']>=44,(theme,action)
+                assert banner_before['x']>=page.locator('.app').bounding_box()['x'],(theme,banner_before)
+                page.eval_on_selector('#contentScroll','el=>el.scrollTop=140')
+                page.wait_for_timeout(30)
+                header_after=page.locator('.topbar').bounding_box()
+                banner_after=page.locator('#networkStatus').bounding_box()
+                assert page.eval_on_selector('#contentScroll','el=>el.scrollTop')>0,theme
+                assert banner_after['y']<banner_before['y']-40,(theme,banner_before,banner_after)
+                assert abs(header_after['y']-header_before['y'])<1,(theme,header_before,header_after)
+                assert page.evaluate('document.documentElement.scrollWidth<=innerWidth'),theme
+            page.evaluate("""()=>document.dispatchEvent(new CustomEvent('mega:connectivity',{detail:{state:'online'}}))""")
+            page.set_viewport_size({'width':390,'height':844})
+            page.eval_on_selector('#contentScroll','el=>el.scrollTop=0')
+
             # Theme-specific readability audit at phone width. Thresholds differ because
             # the four font families have very different apparent sizes.
             minimum={'vector':9.0,'midnight':9.5,'paperclub':11.0,'afterhours':10.0}

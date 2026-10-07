@@ -19,7 +19,7 @@ class RoomStore{
  economy(){const exists=this.db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='state'").get();if(!exists)err('ACCOUNT_SERVICE_REQUIRED');return JSON.parse(this.db.prepare('SELECT json FROM state WHERE id=1').get().json);}
  account(e,id){return e.accounts.find(([key])=>key===id)?.[1]||err('ACCOUNT_REQUIRED');}
  writeEconomy(e){this.db.prepare('UPDATE state SET json=? WHERE id=1').run(JSON.stringify(e));}
- eligible(e,id,q){const a=this.account(e,id);if(a.verified!==true||a.suspended||a.hold||a.games<10)err('INELIGIBLE');const enriched={...clone(q),funding:{currency:q.currency,amount:q.entry||0,purchasedBalance:q.currency==='coins'?(a.purchasedCoins||0):q.currency==='crowns'?(a.purchasedCrowns||0):0,legacyPurchaseInfluenced:!!a.legacyCompetitionRestricted}};if(this.paidEntryEnabled!==true||this.eligibility(clone(a),enriched)!==true)err('PAID_ENTRY_UNAVAILABLE');return a;}
+ eligible(e,id,q){const a=this.account(e,id);if(a.verified!==true||a.suspended||a.hold||a.games<10)err('INELIGIBLE');if(this.paidEntryEnabled!==true||this.eligibility(clone(a),clone(q))!==true)err('PAID_ENTRY_UNAVAILABLE');return a;}
  code(){let c;do{c=crypto.randomBytes(5).toString('hex').toUpperCase();}while(this.db.prepare('SELECT id FROM party_rooms WHERE code=?').get(c));return c;}
  shuffle(ids){const a=ids.slice();for(let i=a.length-1;i>0;i--){const j=crypto.randomInt(i+1);[a[i],a[j]]=[a[j],a[i]];}return a;}
  journal(e,id,actor,currency,amount,reason){e.journal.push({id,actor,currency,amount,reason,source:'tournament',at:this.now()});}

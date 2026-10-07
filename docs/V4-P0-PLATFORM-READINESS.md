@@ -362,10 +362,10 @@ Current external rules materially change the old assumption that purchased Crown
 Repository response:
 
 - verified store currency is provenance-tagged through Coin/Crown conversion;
-- purchased/derived currency cannot fund ranked, direct-stake or public-tournament entry;
+- purchased/derived currency is tracked and passed into the competition eligibility policy; approved jurisdiction/platform policy may accept bought Crowns for closed-loop virtual-currency entry, while disallowed markets reject that funding source before reservation;
 - current ranked/direct/tournament pools are classified as pooled stakes and are denied by `server/competition-compliance.js`;
 - CI runs `npm run competition:audit`;
-- any future approved model must be a separately reviewed fixed registration fee with organizer-funded prizes, trusted age/geolocation, jurisdiction/platform allowlists and explicit spending/refund controls.
+- any future production model still requires trusted age/geolocation, jurisdiction/platform allowlists and explicit spending/refund controls. Purchased virtual entry is no longer a global prohibition; it is an explicit per-market/per-platform decision.
 
 See `docs/legal/PAID-COMPETITION-COMPLIANCE.md` and EXT-26.
 

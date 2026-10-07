@@ -1,13 +1,13 @@
 /* Server-only economy/game authority. Never load this file into the client.
  * Use DurableStore for transactional persistence; bind actor IDs to server-authenticated sessions.
- * No payments or paid-entry online mode are enabled by default. */
+ * Competitive entry is normal closed-loop game economy behavior; store payments remain separately gated. */
 'use strict';
 const crypto=require('node:crypto'),G=require('./game.js'),D=require('./domain.js'),ABUSE=require('../server/competitive-abuse.js');
 const clone=x=>structuredClone(x),hash=x=>crypto.createHash('sha256').update(JSON.stringify(x)).digest('hex');
 const validId=id=>typeof id==='string'&&/^[A-Za-z0-9][A-Za-z0-9:_-]{0,159}$/.test(id);
 class Authority {
- constructor({paidEntryEnabled=false,eligibility=()=>false,verifyPurchase=null,now=()=>Date.now(),random=()=>crypto.randomInt(2),state=null}={}){
-  this.paidEntryEnabled=paidEntryEnabled;this.eligibility=eligibility;this.verifyPurchase=verifyPurchase;this.now=now;this.random=random;
+ constructor({verifyPurchase=null,now=()=>Date.now(),random=()=>crypto.randomInt(2),state=null}={}){
+  this.verifyPurchase=verifyPurchase;this.now=now;this.random=random;
   this.accounts=new Map();this.matches=new Map();this.receipts=new Map();this.snapshots=new Map();this.weeklyPaid=new Map();this.burned={coins:0,crowns:0};this.journal=[];this.leagueWeek=null;
   if(state)this.restore(state);
  }
@@ -31,7 +31,6 @@ class Authority {
  currentTier(a){this._season(a);if(D.seasonQualified(a,this.now())&&this.leagueWeek===D.week(this.now())&&D.tier(a.tier).index>=8)return a.tier;return D.basicTier(a.rating).id;}
  _players(a,b){const A=this.account(a),B=this.account(b);if(a===b)throw Error('SELF_CHALLENGE');if(!A.verified||!B.verified||A.suspended||B.suspended||A.hold||B.hold||A.blocked.includes(b)||B.blocked.includes(a))throw Error('INELIGIBLE');return [A,B];}
  _spendNonCompetition(a,currency,amount){const key=currency==='coins'?'purchasedCoins':'purchasedCrowns';const restricted=Math.min(a[key]||0,amount);a[key]-=restricted;return restricted;}
- _paidAllowed(players,q){if(!q.pool)return;if(!this.paidEntryEnabled||!players.every(p=>this.eligibility(clone(p),clone(q))))throw Error('PAID_ENTRY_UNAVAILABLE');}
  _pairLimit(a,b,q){if(!q.rated)return;const now=this.now(),start=D.weekStart(D.week(now));const completed=[...this.matches.values()].filter(m=>m.quote.rated&&m.status!=='VOID'&&m.started!==undefined&&m.players.includes(a)&&m.players.includes(b));
   if(q.mode==='direct'){
    const direct=completed.filter(m=>m.quote.mode==='direct');if(direct.filter(m=>now-m.started< D.DAY).length>=D.POLICY.directPairDaily||direct.filter(m=>m.started>=start).length>=D.POLICY.directPairWeekly)throw Error('RATED_PAIR_LIMIT');
@@ -48,7 +47,7 @@ class Authority {
   const queueSource=terms.source==='queue',q=D.quote({...terms,from:this.currentTier(players[0]),to:this.currentTier(players[1])});
   if(q.rated&&q.kind==='friend'&&(!players[0].friends.includes(b)||!players[1].friends.includes(a)))throw Error('FRIENDSHIP_REQUIRED');
   if(q.mode==='direct'&&players.some(p=>p.games<D.POLICY.placements))throw Error('COMPLETE_PLACEMENTS');
-  this._paidAllowed(players,q);this._pairLimit(a,b,q);
+  this._pairLimit(a,b,q);
   const turnSeconds=terms.turnSeconds??(q.rated?30:60);if(q.rated?turnSeconds!==30:![0,30,60].includes(turnSeconds))throw Error('INVALID_CLOCK');
   const clean={source:queueSource?'queue':'direct',mode:q.mode,kind:q.kind||terms.kind||(queueSource?(q.rated?'ranked':'casual'):'friend'),rated:q.rated,amount:q.pool,currency:q.currency,turnSeconds,from:this.currentTier(players[0]),to:this.currentTier(players[1]),ratings:players.map(p=>p.rating)};
   const fingerprint=hash({players:[a,b],terms:clean,quote:q});
@@ -59,7 +58,7 @@ class Authority {
  accept(id,actor,termsHash){
   const m=this.matches.get(id);if(!m||!m.players.includes(actor))throw Error('NOT_PARTICIPANT');if(m.termsHash!==termsHash)throw Error('TERMS_CHANGED');
   if(m.status==='PLAYING'&&m.accepted.includes(actor))return this.view(id);if(m.status!=='OFFERED')throw Error('NOT_OPEN');
-  if(this.now()>=m.expires)throw Error('OFFER_EXPIRED');const players=this._players(...m.players);this._paidAllowed(players,m.quote);this._pairLimit(...m.players,m.quote);
+  if(this.now()>=m.expires)throw Error('OFFER_EXPIRED');const players=this._players(...m.players);this._pairLimit(...m.players,m.quote);
   if(players.some(p=>p.activeMatch))throw Error('ALREADY_IN_MATCH');
   if(players.some((p,i)=>p.rating!==m.terms.ratings[i]||this.currentTier(p)!==[m.terms.from,m.terms.to][i]))throw Error('REQUOTE_REQUIRED');
   const accepted=new Set([...m.accepted,actor]);if(accepted.size<2){m.accepted=[...accepted];return this.view(id);}

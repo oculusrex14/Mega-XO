@@ -36,7 +36,7 @@ Production composition lives separately from the game rules. `server/production/
 - WAL is local storage only; `synchronous=FULL`; migration history is ordered and checksummed. Refuse unknown future schema versions instead of guessing.
 - Runtime startup: validate configuration, acquire process lock, migrate, construct stores, recover unresolved work once, start jobs, then become ready.
 - Runtime shutdown: fail readiness, stop accepting new work, drain bounded in-flight HTTP requests, stop jobs, then close database handles. Interrupted matches follow the explicit restart/refund policy.
-- Never trust client currency, Elo, account IDs, paid flags, ad completions or unverified store evidence. Ads, purchases and paid-entry competition stay disabled in this production baseline.
+- Never trust client currency, Elo, account IDs, ad completions or unverified store evidence. Native ads and purchases stay disabled until their provider/device gates pass; closed-loop Ranked/direct/tournament entry remains server-authoritative core gameplay.
 - Secrets are mounted files or server environment values, never committed, baked into images, exposed by health checks, or returned by diagnostics.
 - No raw URLs/query strings, OTPs, emails, passwords, cookies, tokens, receipt bodies or arbitrary exception text in access logs.
 - API/callback responses are not cached. Static content is same-origin, bounded and protected by security headers. No arbitrary proxy endpoint.
@@ -61,7 +61,7 @@ No new paid service is required by the baseline. Resend is already chosen; respe
 
 Automate configuration rejection, proxy spoof protection, bounded bodies, auth and email recovery invariants, migrations from V3.5.1, singleton startup, recovery, health/maintenance, backup corruption/restore, all existing game tests, browser regression and local load evidence. Public `/opsz` is deliberately binary and sanitized; it combines application readiness, backup freshness and disk headroom for an external monitor, while detailed status stays loopback-only. A separate local systemd monitor checks backup/disk/container restart state and sends Resend transition alerts. Extend the existing validation workflow. Build both amd64/arm64 images in CI; publish only explicitly approved releases. Production tags must match `package.json`, pass the blocker ledger gate, and publish one multi-arch GHCR image with provenance/SBOM; the VPS deploys only its immutable digest after `deploy/verify-release.sh` confirms revision/version/architecture. GitHub Action dependencies are pinned to immutable commits. A green build is not a live deployment.
 
-Production hostname is **`play.antimatterinnovations.com`**. The canonical unresolved-access ledger is [V4-OPEN-BLOCKERS.md](V4-OPEN-BLOCKERS.md). Before public launch: confirm actual VPS/OS/ports and public IP; create the Hostinger DNS record for that hostname; verify DNS/TLS; install secrets; send real signup/reset emails; test reboot/backup/restore and real-device network failures; settle privacy/account-deletion/retention requirements. Native billing, ad SDKs, privacy/account deletion, physical-device QA and paid-entry approval remain separate post-backend work governed by `docs/V4-P0-PLATFORM-READINESS.md`. V4.0 keeps purchases, ads and paid entry fail-closed until those independent gates are completed.
+Production hostname is **`play.antimatterinnovations.com`**. The canonical unresolved-access ledger is [V4-OPEN-BLOCKERS.md](V4-OPEN-BLOCKERS.md). Before public launch: confirm actual VPS/OS/ports and public IP; create the Hostinger DNS record for that hostname; verify DNS/TLS; install secrets; send real signup/reset emails; test reboot/backup/restore and real-device network failures; settle privacy/account-deletion/retention requirements. Native billing, ad SDKs, privacy/account deletion and physical-device QA remain separate post-backend work governed by `docs/V4-P0-PLATFORM-READINESS.md`. V4.1 keeps purchases and ads fail-closed until those independent gates are completed.
 
 ## Primary references reviewed
 
@@ -85,4 +85,4 @@ Numerical limits introduced by V4 are explicit starting budgets to validate, not
 - `deploy/RELEASE-RUNBOOK.md` — immutable tag/image production release.
 - `deploy/EMAIL-LIVE-ACCEPTANCE.md` — real Resend signup/reset proof.
 - `deploy/PERIMETER-RUNBOOK.md` — host and outside-in network proof.
-- `docs/V4-P0-PLATFORM-READINESS.md` — Google/Apple, native billing, ads, privacy/deletion, device QA and paid-entry gates.
+- `docs/V4-P0-PLATFORM-READINESS.md` — Google/Apple identity, native billing, ads, privacy/deletion and device-QA gates.

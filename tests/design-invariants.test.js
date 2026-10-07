@@ -54,7 +54,7 @@ test('INVARIANT: tournament records are aggregates, not replay payloads',()=>{co
 
 
 test('INVARIANT: current pooled competition mechanics cannot pass the P1-7 compliance baseline',()=>{
- const policy={enabled:true,version:'invariant-policy',approvalId:'invariant-approval',effectiveAt:'2026-10-01T00:00:00Z',expiresAt:'2026-12-31T23:59:59Z',allowPurchasedCurrency:false,allowPooledStake:false,allowCashOut:false,allowRealWorldPrize:false,prizeFunding:'organizer',jurisdictions:[{country:'GB',platforms:['web'],minAge:18,legalReviewId:'invariant-gb-review',maxEntryFee:100,dailyEntryCap:1000,dailyLossCap:1000}]};
+ const policy={enabled:true,version:'invariant-policy',approvalId:'invariant-approval',effectiveAt:'2026-10-01T00:00:00Z',expiresAt:'2026-12-31T23:59:59Z',allowPooledStake:false,allowCashOut:false,allowRealWorldPrize:false,prizeFunding:'organizer',jurisdictions:[{country:'GB',platforms:['web'],purchasedEntryPlatforms:['web'],minAge:18,legalReviewId:'invariant-gb-review',maxEntryFee:100,dailyEntryCap:1000,dailyLossCap:1000}]};
  const context={policy,platform:'web',location:{trusted:true,country:'GB',proxyRisk:false},age:{verified:true,trusted:true,age:21,verifiedAt:'2026-10-01T00:00:00Z'},spend:{entryToday:0,lossToday:0,selfExcluded:false,accountHold:false,coolingOffUntil:null},now:Date.parse('2026-11-01T00:00:00Z')};
  for(const entry of [D.quote({mode:'ranked',from:'gold',to:'gold'}),D.quote({mode:'direct',kind:'friend',from:'gold',to:'gold',amount:20}),...Object.keys(T.TABLES).map(T.prize)])assert.equal(assess({...context,entry}).code,'POOLED_STAKE_PROHIBITED');
 });

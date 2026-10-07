@@ -19,7 +19,7 @@ function join(r,id,name,now=Date.now()){
  r.players.push({id,name:name.trim(),ready:false,withdrawn:false});r.revision++;
 }
 function ready(r,id,value,version){if(r.status!=='LOBBY'||version!==r.rulesVersion||typeof value!=='boolean')fail('RULES_CHANGED');member(r,id).ready=value;r.revision++;}
-function leave(r,id){member(r,id);if(r.status!=='LOBBY')fail('TOURNAMENT_STARTED');r.players=r.players.filter(p=>p.id!==id);if(r.owner===id)r.owner=r.players[0]?.id||null;if(!r.players.length)r.status='CANCELLED';r.revision++;}
+function leave(r,id){member(r,id);if(r.status!=='LOBBY')fail('TOURNAMENT_STARTED');const hostQuits=r.owner===id;r.players=r.players.filter(p=>p.id!==id);if(hostQuits||!r.players.length)r.status='CANCELLED';r.revision++;}
 function configure(r,id,changes){if(r.owner!==id||r.status!=='LOBBY'||r.table)fail('HOST_ONLY');const next=create({id:r.id,owner:id,...{format:r.format,clock:r.clock,increment:r.increment},...changes});if(r.players.length>next.capacity)fail('TOO_MANY_PLAYERS');for(const k of ['format','clock','increment','capacity'])r[k]=next[k];r.rulesVersion++;r.players.forEach(p=>p.ready=false);r.revision++;}
 function slot(r,s){if(typeof s==='string')return s;const f=r.fixtures.find(f=>f.id===s.match);return f?.status==='DONE'?(s.result==='win'?f.winner:f.players.find(p=>p!==f.winner)):null;}
 function ref(f,result){return {match:f.id,result};}

@@ -25,6 +25,8 @@ function validateJurisdiction(j){
  if(!unique(j.platforms)||!j.platforms.length||j.platforms.some(x=>!PLATFORM.has(x)))fail('INVALID_COMPETITION_PLATFORMS');
  if(!Number.isSafeInteger(j.minAge)||j.minAge<18||j.minAge>30)fail('INVALID_COMPETITION_MIN_AGE');
  if(!ID.test(j.legalReviewId||''))fail('COMPETITION_LEGAL_REVIEW_REQUIRED');
+ for(const key of ['maxEntryFee','dailyEntryCap','dailyLossCap'])if(!Number.isSafeInteger(j[key])||j[key]<0)fail('COMPETITION_SPEND_LIMITS_REQUIRED');
+ if(j.maxEntryFee===0||j.dailyEntryCap===0||j.dailyLossCap===0)fail('COMPETITION_SPEND_LIMITS_REQUIRED');
  if(j.subdivisions!==undefined&&(!unique(j.subdivisions)||j.subdivisions.some(x=>typeof x!=='string'||!/^[A-Z0-9-]{1,12}$/.test(x))))fail('INVALID_COMPETITION_SUBDIVISIONS');
  if(j.country==='IN'){
   if(j.classification!=='recognized_esport')fail('INDIA_RECOGNIZED_ESPORT_REQUIRED');
@@ -62,14 +64,19 @@ function assess({policy,entry,platform,location,age,payment={},spend={},now=Date
  if(entry?.purchasedCurrency===true||payment?.purchasedCurrency===true)return {allowed:false,code:'PURCHASED_COMPETITION_CURRENCY_PROHIBITED'};
  if(entry?.cashOut===true)return {allowed:false,code:'COMPETITION_CASHOUT_PROHIBITED'};
  if(entry?.prizeRealWorldValue===true)return {allowed:false,code:'REAL_WORLD_PRIZE_REQUIRES_SEPARATE_APPROVAL'};
- if(!object(age)||age.verified!==true||!Number.isSafeInteger(age.age)||age.age<j.minAge)return {allowed:false,code:'COMPETITION_AGE_NOT_VERIFIED'};
+ if(!object(age)||age.verified!==true||age.trusted!==true||!Number.isSafeInteger(age.age)||age.age<j.minAge)return {allowed:false,code:'COMPETITION_AGE_NOT_VERIFIED'};
  if(age.verifiedAt&&now-date(age.verifiedAt,'INVALID_AGE_VERIFICATION_AT')>365*86400000)return {allowed:false,code:'COMPETITION_AGE_VERIFICATION_STALE'};
  if(platform==='ios'&&payment.source==='apple_iap')return {allowed:false,code:'APPLE_IAP_COMPETITION_CURRENCY_PROHIBITED'};
  if(platform==='android'&&payment.source==='play_billing'&&entry?.prizeRealWorldValue===true)return {allowed:false,code:'GOOGLE_PLAY_BILLING_REAL_MONEY_PROHIBITED'};
  if(location.proxyRisk===true)return {allowed:false,code:'COMPETITION_LOCATION_RISK'};
- if(!Number.isSafeInteger(spend.entryToday||0)||!Number.isSafeInteger(spend.lossToday||0))return {allowed:false,code:'COMPETITION_SPEND_CONTEXT_REQUIRED'};
- if(Number.isSafeInteger(j.dailyEntryCap)&&spend.entryToday+Number(entry?.entry||0)>j.dailyEntryCap)return {allowed:false,code:'COMPETITION_DAILY_ENTRY_LIMIT'};
- if(Number.isSafeInteger(j.dailyLossCap)&&spend.lossToday+Number(entry?.entry||0)>j.dailyLossCap)return {allowed:false,code:'COMPETITION_DAILY_LOSS_LIMIT'};
+ const fee=Number(entry?.entry||0);if(!Number.isSafeInteger(fee)||fee<0)return {allowed:false,code:'INVALID_COMPETITION_ENTRY_FEE'};
+ if(!object(spend)||!Number.isSafeInteger(spend.entryToday)||spend.entryToday<0||!Number.isSafeInteger(spend.lossToday)||spend.lossToday<0||typeof spend.selfExcluded!=='boolean'||typeof spend.accountHold!=='boolean'||!(spend.coolingOffUntil===null||typeof spend.coolingOffUntil==='string'))return {allowed:false,code:'COMPETITION_SPEND_CONTEXT_REQUIRED'};
+ if(spend.selfExcluded)return {allowed:false,code:'COMPETITION_SELF_EXCLUDED'};
+ if(spend.accountHold)return {allowed:false,code:'COMPETITION_ACCOUNT_HELD'};
+ if(spend.coolingOffUntil!==null&&date(spend.coolingOffUntil,'INVALID_COMPETITION_COOLING_OFF')>now)return {allowed:false,code:'COMPETITION_COOLING_OFF'};
+ if(fee>j.maxEntryFee)return {allowed:false,code:'COMPETITION_ENTRY_LIMIT'};
+ if(spend.entryToday+fee>j.dailyEntryCap)return {allowed:false,code:'COMPETITION_DAILY_ENTRY_LIMIT'};
+ if(spend.lossToday+fee>j.dailyLossCap)return {allowed:false,code:'COMPETITION_DAILY_LOSS_LIMIT'};
  return {allowed:true,code:'APPROVED_REGISTRATION_FEE',policyVersion:p.version,jurisdiction:j.country,legalReviewId:j.legalReviewId};
 }
 

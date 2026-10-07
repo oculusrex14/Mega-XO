@@ -13,10 +13,11 @@
   "case_ids": [
     "A01",
     "A02",
-    "A03"
+    "A03",
+    "A06"
   ],
   "observed_at_utc": "2026-10-07T20:59:05.828527+00:00",
-  "source_sha": "af11caae8966f529f62afce663ea1ab54aef286d",
+  "source_sha": "c60c0a973ce8a651170ea30e99fedc2275e8e145",
   "environment": "local integration over isolated synthetic fixture; V4 production untouched",
   "evidence_refs": [
     "docs/v5/evidence/phase01-write-paths.json",
@@ -55,5 +56,28 @@
     "realtime WSS server",
     "native apps",
     "production cutover"
-  ]
+  ],
+  "ci_history": {
+    "note": "honest multi-run history",
+    "failed_runs": [
+      {
+        "run": 37686226703,
+        "head": "0c4302f",
+        "cause": "parent omitted src/game.js and src/authority.js seams from the checkpoint; CI correctly ran pristine sources and rejected the package-entry/behavior gaps"
+      },
+      {
+        "run": 37686937861,
+        "head": "7c77f48",
+        "cause": "same omitted src files plus real PurePolicy defects fixed in-round (package entry missing chooseSymbols export; wall-clock dependent assertion replaced by scripted 0/Infinity clock with exact count 2)"
+      }
+    ],
+    "fix_commit": "c60c0a9 (src seams e6e14c25/d2e74d78 plus package.json + package-lock.json for pg@8.23.1)",
+    "final_run": {
+      "run": 37687636723,
+      "head": "c60c0a973ce8a651170ea30e99fedc2275e8e145",
+      "conclusion": "success",
+      "duration": "4m1s",
+      "steps": "all incl Full Node regression, model suites, both Chromium gates; publish/images correctly skipped"
+    }
+  }
 }

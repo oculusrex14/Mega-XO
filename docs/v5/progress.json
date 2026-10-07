@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at_utc": "2026-10-07T20:59:24.059+00:00",
+  "updated_at_utc": "2026-10-07T21:00:51.856+00:00",
   "goal": "Deliver the V5 hybrid platform and real Android/iOS applications with shared permanent actor/assets, preserved approved game and retained browser compatibility; do not build the new website/browser product.",
   "source": {
     "goal": "AGENT-GOAL.md",
@@ -250,7 +250,7 @@
           "V5-02-04",
           "V5-02-05"
         ],
-        "status": "PLANNED"
+        "status": "IN_PROGRESS"
       },
       {
         "id": "P03",
@@ -1103,7 +1103,7 @@
         "verification": "Real IDs/settings and capability evidence recorded; no duplicate guessed projects or false Free-plan guarantees.",
         "id": "V5-02-01",
         "phase": "P02",
-        "status": "PLANNED",
+        "status": "IN_PROGRESS",
         "depends_on_tasks": [],
         "requires_phase_gates": [
           "P01"
@@ -3078,6 +3078,21 @@
           "to": "COMPLETE",
           "evidence": "docs/v5/evidence/phase01-client-packaging.json",
           "note": "Deterministic bundle a41ef156 (71 files) with licenses; 12 boundary tests; actual offline launch rendered four themes from vendored assets with zero remote requests."
+        }
+      ]
+    },
+    "V5-02-01": {
+      "status": "IN_PROGRESS",
+      "evidence_refs": [],
+      "completed_portions": [],
+      "remaining": [],
+      "review_notes": "Live Neon capability/region verification and schema/role implementation starting on stored designs; no provisioning until migrations are gated.",
+      "transitions": [
+        {
+          "at_utc": "2026-10-07T21:00:51.854+00:00",
+          "from": "PLANNED",
+          "to": "IN_PROGRESS",
+          "note": "Live Neon capability/region verification and schema/role implementation starting on stored designs; no provisioning until migrations are gated."
         }
       ]
     }

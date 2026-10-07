@@ -4,7 +4,7 @@ The mutable execution source is [progress.json](progress.json); this is its read
 
 **Goal:** Deliver the V5 hybrid platform and real Android/iOS applications with shared permanent actor/assets, preserved approved game and retained browser compatibility; do not build the new website/browser product.
 
-**Integration base:** `455b8ec9ea4070b4410d78f9eea2aaa06d32c0b2`. **Active phase/task:** P02 / V5-02-01 (PLANNED). **Progress:** 11/117 tasks terminal; 2/25 phase gates passed
+**Integration base:** `455b8ec9ea4070b4410d78f9eea2aaa06d32c0b2`. **Active phase/task:** P02 / V5-02-01 (IN_PROGRESS). **Progress:** 11/117 tasks terminal; 2/25 phase gates passed
 
 Required path: execute P00–P20, P22–P23; owner-deferred P21 executes nothing; P24 is measurement-gated; phase prerequisites are gates, not status assumptions, and a deferred or measurement-gated phase is never used as another phase prerequisite. The foundation gate P00–P03 passes before dependent distributed work, and V5 CI starts in the foundation rather than only at P17.
 
@@ -35,9 +35,9 @@ Milestone: V5.0; status: `COMPLETE`; prerequisites: P00. [Phase contract](../../
 
 ## P02 — Provision Neon and versioned PostgreSQL schema
 
-Milestone: V5.0; status: `PLANNED`; prerequisites: P01. [Phase contract](../../Mega-XO-V5-Implementation-Pack/phases/02-neon-and-schema.md).
+Milestone: V5.0; status: `IN_PROGRESS`; prerequisites: P01. [Phase contract](../../Mega-XO-V5-Implementation-Pack/phases/02-neon-and-schema.md).
 
-- [ ] **V5-02-01 — Resolve provider inventory and region** (`PLANNED`).
+- [ ] **V5-02-01 — Resolve provider inventory and region** (`IN_PROGRESS`).
 - [ ] **V5-02-02 — Design normalized authority schema** (`PLANNED`).
 - [ ] **V5-02-03 — Implement migrations and role grants** (`PLANNED`).
 - [ ] **V5-02-04 — Implement connection and environment guards** (`PLANNED`).

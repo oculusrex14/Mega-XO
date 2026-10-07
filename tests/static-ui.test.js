@@ -91,6 +91,16 @@ test('V4.1 home and rank polish exposes both currencies and concrete ranked entr
   assert.ok(styles.includes('.content-scroll::-webkit-scrollbar,.bottom-sheet::-webkit-scrollbar'));
 });
 
+test('Rewards & Themes is routed as page content instead of the bottom sheet',()=>{
+  const app=fs.readFileSync(path.join(ROOT,'src','app.js'),'utf8');
+  const monetization=fs.readFileSync(path.join(ROOT,'src','monetization-ui.js'),'utf8');
+  assert.ok(app.includes('rewards:rewards'));
+  assert.ok(app.includes("page='rewards'"));
+  assert.ok(monetization.includes('function pageMarkup()'));
+  assert.ok(monetization.includes('Cosmetic Credits can be used for future cosmetic releases.'));
+  assert.ok(!monetization.includes("APP.open('Rewards & Themes'"));
+});
+
 test('rank UI explains quarterly requalification and Elo continuity',()=>{const app=fs.readFileSync(path.join(ROOT,'src','app.js'),'utf8');assert.ok(app.includes('Season requalification'));assert.ok(app.includes('Quarterly seasons'));assert.ok(app.includes('Your Elo is never wiped'));assert.ok(app.includes('Direct ranked challenges count toward activity but are never mandatory'));});
 
 test('stats exposes aggregate tournament record without internal replay-roadmap copy',()=>{const app=fs.readFileSync(path.join(ROOT,'src','app.js'),'utf8'),community=fs.readFileSync(path.join(ROOT,'src','community.js'),'utf8');assert.ok(app.includes("['tournament','Tournaments']"));assert.ok(app.includes('Only completed public tournaments count'));assert.ok(!app.includes('Match history and replays are reserved for a future update'));assert.ok(community.includes("['tournament','Tournaments']"));});

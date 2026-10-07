@@ -43,7 +43,7 @@ function seasonName(s){return s?.id?s.id.replace('-', ' '):'Current season';}
 function render(){
  renderWalletSummary();
  $('#navigation').innerHTML=[['play','Play','board'],['friends','Friends','users'],['rank','Rank','trophy'],['stats','Stats','chart'],['quests','Quests','quest']].map(([id,name,symbol])=>'<button class="nav-button '+(id===page?'active':'')+'" data-action="nav" data-value="'+id+'" '+(id===page?'aria-current="page"':'')+'>'+icon(symbol)+'<span>'+name+'</span></button>').join('');
- $('#page').innerHTML=({play:home,friends:friends,rank:ranks,stats:statsView,quests:quests})[page]();refreshIcons();
+ $('#page').innerHTML=({play:home,friends:friends,rank:ranks,stats:statsView,quests:quests,rewards:rewards})[page]();refreshIcons();
 }
 function home(){
  const chip=(label,action,value,active)=>'<button class="setup-chip '+(active?'active':'')+'" data-action="'+action+'" data-value="'+value+'" aria-pressed="'+active+'">'+label+'</button>';
@@ -60,6 +60,7 @@ function home(){
  '<button class="learn" data-action="tutorial">'+icon('tutorial')+'<span><strong>New to Mega XO?</strong><small>Learn the rules in under a minute</small></span>'+icon('arrow')+'</button>'+
  '<div class="home-quests"><span><b>Daily quests</b><small>Earn coins through play.</small></span>'+button('View quests','nav','quests',true)+'</div>';
 }
+function rewards(){return window.MegaMonetizationUI?.pageMarkup?.()||'<div class="mono-page"><div class="mono-page-head"><p class="mono-kicker">STYLE &amp; REWARDS</p><h2>Rewards &amp; Themes</h2><p class="caption">Loading your rewards...</p></div></div>';}
 function friends(){if(window.MegaCommunity?.friendsMarkup)return window.MegaCommunity.friendsMarkup();return '<div class="panel-head friends-head"><div class="eyebrow">Social</div><h2>Friends</h2><p>Challenge people you know, or add someone you just played.</p></div>'+
  '<div class="friend-search"><div class="friend-search-wrap">'+icon('search')+'<input id="friendName" aria-label="Search username" placeholder="Search username" maxlength="30" autocomplete="off"></div><button class="friend-add" data-action="findfriend">'+icon('userPlus')+'<span>Add</span></button></div>'+
  '<div class="friend-code-card"><div><span>YOUR FRIEND CODE</span><div class="friend-code">'+escape(online.profile?.friendCode||'Sign in')+'</div></div><button class="copy-friend" data-action="copyfriend" aria-label="Copy friend code">'+icon('copy')+'</button></div>'+
@@ -230,7 +231,7 @@ const actions={
  acceptfriend:async id=>{try{await NET.acceptFriend(id,opId());await refreshOnline();render();}catch(e){notify(friendlyError(e));}},
  cancelqueue:async()=>{if(queueCancelling)return;queueCancelling=true;clearInterval(onlinePoll);waitingId=null;try{if(queueSubmission)await queueSubmission.catch(()=>{});const r=await NET.cancelQueue(opId());if(r.state==='playing'){beginOnline(await NET.match(r.matchId));return;}}catch{notify('Cancellation could not be confirmed. Reconnect to check the match.');}finally{queueCancelling=false;}close();},
  cancelinvite:async()=>{const id=waitingId;if(!id)return;try{await NET.cancel(id,opId());clearInterval(onlinePoll);waitingId=null;close();}catch(e){notify(friendlyError(e));}},
- close:()=>{if(sheetKind==='queue')return actions.cancelqueue();if(sheetKind==='waiting'&&waitingId)return $('#sheet [data-action="cancelqueue"]')?actions.cancelqueue():actions.cancelinvite();close();},theme:v=>{if(!themeNames[v])return;data.settings.theme=v;applyTheme();save();const top=$('#sheet').scrollTop;settings();$('#sheet').scrollTop=top;render();paint();},
+ close:()=>{if(sheetKind==='queue')return actions.cancelqueue();if(sheetKind==='waiting'&&waitingId)return $('#sheet [data-action="cancelqueue"]')?actions.cancelqueue():actions.cancelinvite();close();},theme:v=>{if(!themeNames[v])return;data.settings.theme=v;applyTheme();save();if(sheetKind==='settings'){const top=$('#sheet').scrollTop;settings();$('#sheet').scrollTop=top;}render();paint();},
  statmode:v=>{statsMode=v;statsDifficulty='all';render();},metric:v=>{rankMetric=v;online.rows=[];render();refreshOnline();},league:v=>{rankLeague=v;online.rows=[];render();refreshOnline();},challenge,friendchallenge:v=>challenge(v,'friend'),sendchallenge:sendChallenge,reviewinvite:reviewInvite,
  acceptinvite:async v=>{const m=online.invitations.find(x=>x.id===v);if(!m)return;try{const accepted=await NET.accept(v,m.termsHash,opId());window.MegaCommunity?.refresh?.(false);if(accepted.status==='PLAYING')beginOnline(accepted);else watchInvitation(accepted.id,accepted.terms?.source==='queue'?'queue':'challenge',accepted);}catch(e){if(['REQUOTE_REQUIRED','OFFER_EXPIRED','TERMS_CHANGED'].includes(e?.message)){close();refreshOnline();window.MegaCommunity?.refresh?.(false);}notify(friendlyError(e));}},
  declineinvite:async v=>{try{await NET.decline(v,opId());close();await refreshOnline();window.MegaCommunity?.refresh?.(false);}catch(e){notify(friendlyError(e));}},
@@ -264,6 +265,7 @@ if(window.MegaBilling?.products)window.MegaBilling.products().then(items=>{onlin
 // Explicit UI integration points; these never mutate a server wallet or server rating.
 window.MegaApp=Object.freeze({
  render,refresh:refreshOnline,notify,open,close,tutorial,openSettings:settings,
+ goRewards:()=>{close();page='rewards';render();$('#contentScroll').scrollTop=0;},
  getContext:()=>({page,mode,onlineType,sheetKind,playing:!!match&&!match.state.winner,onlineMatch:!!match?.online,waitingId}),
  getSave:()=>structuredClone(data),
  applyPractice:value=>{if(match&&!match.state.winner)throw Error('MATCH_ACTIVE');data=D.migrate(structuredClone(value));data.playSeconds=data.playSeconds||{};data.profile=data.profile||{};applyTheme();save();render();},

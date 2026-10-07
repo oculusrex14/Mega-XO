@@ -69,20 +69,23 @@ try:
   checks.append('Friends page exposes the signed-in self profile as a view/edit destination')
 
   page.evaluate('MegaMonetizationUI.open()')
-  page.locator('#sheet[data-kind="monetization"]').wait_for()
+  page.wait_for_function('MegaApp.getContext().page === "rewards"')
+  page.locator('.mono-page').wait_for()
   assert page.locator('.mono-frame').count()==0
-  assert 'Board-frame collection archived' not in page.locator('#sheetBody').inner_text()
-  assert 'V3.5.1' not in page.locator('#sheetBody').inner_text()
-  assert 'future theme' not in page.locator('#sheetBody').inner_text().lower()
+  assert 'Board-frame collection archived' not in page.locator('#page').inner_text()
+  assert 'V3.5.1' not in page.locator('#page').inner_text()
+  assert 'future theme' not in page.locator('#page').inner_text().lower()
+  assert 'future cosmetic releases' in page.locator('#page').inner_text().lower()
   assert page.locator('.mono-balance strong').inner_text()=='0'
-  checks.append('Rewards & Themes presents player-facing rewards with no archived-feature or roadmap commentary')
+  assert page.locator('.mono-theme-card').count()==4
+  checks.append('Rewards & Themes is a full page with cosmetic balance, earning paths and all four themes')
   output=ROOT/'tests-output';output.mkdir(exist_ok=True)
   for theme in ['vector','midnight','paperclub','afterhours']:
    page.evaluate('(theme)=>{const s=MegaApp.getSave();s.settings.theme=theme;MegaApp.applyPractice(s);}',theme)
    for width in [320,390,768]:
     page.set_viewport_size({'width':width,'height':844})
     assert page.evaluate('document.documentElement.scrollWidth<=innerWidth')
-    assert page.evaluate('document.querySelector("#sheet").scrollWidth<=document.querySelector("#sheet").clientWidth+1')
+    assert page.evaluate('document.querySelector("#page").scrollWidth<=document.querySelector("#page").clientWidth+1')
    page.set_viewport_size({'width':390,'height':844});page.screenshot(path=str(output/('v351-'+theme+'.png')))
   checks.append('Rewards & Themes stays responsive across all four retained themes')
 

@@ -101,6 +101,33 @@ with sync_playwright() as p:
   contrast[theme]={k:round(v,2) for k,v in ratios.items()}
  results.append('all four themes reflow at 320 CSS px and retain >=4.5:1 core text/control contrast')
 
+ # Connection state is page content, not a second sticky header. Verify all four themes.
+ page.set_viewport_size({'width':320,'height':520})
+ for theme in themes:
+  page.evaluate("(theme)=>{const s=MegaApp.getSave();s.settings.theme=theme;MegaApp.applyPractice(s);}",theme)
+  page.evaluate("""()=>document.dispatchEvent(new CustomEvent('mega:connectivity',{detail:{state:'degraded'}}))""")
+  page.locator('#networkStatus').wait_for(state='visible')
+  page.eval_on_selector('#contentScroll','el=>el.scrollTop=0')
+  page.wait_for_timeout(20)
+  header_before=page.locator('.topbar').bounding_box()
+  status_before=page.locator('#networkStatus').bounding_box()
+  action=page.locator('#networkStatusAction').bounding_box()
+  assert action['height']>=44,(theme,action)
+  colors=page.evaluate("""()=>{const card=getComputedStyle(document.querySelector('#networkStatus'));const copy=getComputedStyle(document.querySelector('#networkStatusText'));return {fg:copy.color,bg:card.backgroundColor};}""")
+  assert contrast_ratio(page,colors['fg'],colors['bg'])>=4.5,(theme,colors)
+  page.eval_on_selector('#contentScroll','el=>el.scrollTop=140')
+  page.wait_for_timeout(20)
+  header_after=page.locator('.topbar').bounding_box()
+  status_after=page.locator('#networkStatus').bounding_box()
+  assert page.eval_on_selector('#contentScroll','el=>el.scrollTop')>0,theme
+  assert status_after['y']<status_before['y']-40,(theme,status_before,status_after)
+  assert abs(header_after['y']-header_before['y'])<1,(theme,header_before,header_after)
+  assert page.evaluate("document.documentElement.scrollWidth<=innerWidth"),theme
+ page.evaluate("""()=>document.dispatchEvent(new CustomEvent('mega:connectivity',{detail:{state:'online'}}))""")
+ page.set_viewport_size({'width':320,'height':844})
+ page.eval_on_selector('#contentScroll','el=>el.scrollTop=0')
+ results.append('connection status scrolls with page content, stays readable and reflows in all four themes')
+
  # Simulate enlarged default text while retaining the 320px reflow requirement.
  page.add_style_tag(content='html{font-size:200%!important} body,button,input,select{font-size:1rem!important}')
  assert page.evaluate("document.documentElement.scrollWidth<=innerWidth")

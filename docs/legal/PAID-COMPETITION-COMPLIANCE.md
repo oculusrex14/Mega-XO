@@ -18,7 +18,7 @@ Current Apple App Review Guideline 5.3 says, among other things:
 
 Official source: https://developer.apple.com/app-store/review/guidelines/
 
-Technical consequence for Mega XO: **Apple-IAP-purchased Crowns must never be accepted as competition entry/stake value.**
+Technical consequence for Mega XO: Apple only creates this IAP prohibition when the feature is classified as **real-money gaming**. Mega XO Crowns have no cash-out or real-world redemption, so the repository no longer applies a blanket purchased-Crown ban. Instead, iOS purchased-Crown entry is allowed only when the approved jurisdiction policy explicitly includes `ios` in `purchasedEntryPlatforms` and records an Apple review/approval reference. A real-money-prize model remains separately prohibited.
 
 ### Google Play
 
@@ -28,7 +28,7 @@ For other real-money games, contests and tournament apps, Google says it does no
 
 Official source: https://support.google.com/googleplay/android-developer/answer/9877032
 
-Technical consequence for Mega XO: **Play-Billing-purchased Crowns must not enter a real-money prize loop, and real-world-prize competition requires a separate Google/platform approval path rather than the ordinary game billing path.**
+Technical consequence for Mega XO: Google Play's quoted prohibition is tied to obtaining a **prize of real-world monetary value**. Closed-loop Crowns with no cash-out are not treated by the repository as automatically prohibited. Android purchased-Crown entry still requires explicit jurisdiction/platform approval in `purchasedEntryPlatforms`; any real-world-prize model remains a separate Google approval/legal path.
 
 ### India
 
@@ -93,9 +93,9 @@ Production status: **disabled**.
 
 The CI command `npm run competition:audit` mechanically asserts that all of these remain classified as pooled stakes and remain denied by the future-compliance baseline.
 
-## 3. Purchased-currency firewall
+## 3. Purchased-currency provenance and policy control
 
-P1-7 adds explicit server-side provenance for money-purchased virtual currency.
+P1-7 keeps explicit server-side provenance for money-purchased virtual currency, but provenance is no longer a global eligibility blocker.
 
 New account fields:
 
@@ -107,16 +107,13 @@ Behavior:
 
 1. Apple/Google Crown purchases increase both the visible Crown balance and `purchasedCrowns`.
 2. Crown -> Coin and Coin -> Crown conversion carries purchased provenance with it.
-3. Spending on non-competition uses can consume purchased provenance.
-4. Competitive entry may use only the non-purchased portion of the relevant balance.
-5. A legacy state that was already marked purchase-influenced but lacks exact provenance is fail-closed with `legacyCompetitionRestricted=true`.
-6. Tournament entry uses the same restriction.
+3. Spending updates the tracked provenance so the service can tell how much of a balance originated from store purchases.
+4. Ranked/direct/tournament eligibility receives that funding context and the **jurisdiction/platform eligibility policy** decides whether purchased value is accepted.
+5. Where a market approves purchased virtual entry, bought and earned Crowns are treated the same for entry purposes.
+6. Where a market does not approve it, the policy denies the entry before funds move.
+7. India is deliberately configured as a no-purchased-virtual-entry jurisdiction until product-specific legal/OGAI approval resolves the statutory `other stakes` issue.
 
-This prevents the laundering path:
-
-`store purchase -> Crowns -> Coins -> ranked/tournament entry`.
-
-It also means future legal approval cannot accidentally make store-bought Crowns eligible merely by flipping the paid-entry feature flag.
+This preserves the product value of Crowns without making a single global legal assumption.
 
 ## 4. Approved future model: registration fee, never pooled stake
 
@@ -130,7 +127,6 @@ Any future P1-7 implementation should use a separate **registration-fee competit
 - prizes are funded by Antimatter Innovations/sponsor budget, not entrant stakes;
 - no player can increase the prize by staking more;
 - no side bets, challenger-funded pots or head-to-head stakes;
-- no store-purchased virtual currency can fund the fee;
 - no cash-out or transfer of Mega XO virtual currency;
 - real-world/cash prizes remain disabled unless a separate platform/legal implementation is approved;
 - refunds, cancellations, voids and technical failures have explicit rules;
@@ -139,7 +135,6 @@ Any future P1-7 implementation should use a separate **registration-fee competit
 The current `server/competition-compliance.js` deliberately approves only this narrow registration-fee shape. It refuses:
 
 - pooled stakes;
-- purchased currency;
 - player-funded prize pools;
 - cash-out;
 - real-world prizes in the baseline implementation.
@@ -198,7 +193,7 @@ Policy is platform-specific.
 
 ### iOS
 
-- Apple-IAP currency is always rejected as competition funding.
+- iOS purchased virtual entry is allowed only when that jurisdiction explicitly lists `ios` in `purchasedEntryPlatforms` and provides the required Apple review identifier. This is separate from any real-money-prize approval.
 - Any feature Apple treats as real-money gaming requires the Apple licensing/geo/free-app conditions in addition to local law.
 - Contest rules must be available in-app and state Apple's non-involvement.
 - Do not assume an approved web model is automatically App-Store compliant.
@@ -300,6 +295,6 @@ MEGA_PAID_ENTRY_ENABLED=false
 
 remains mandatory.
 
-Store purchases, if later enabled under their own P0 gates, may not be used for ranked/direct/tournament entry through the purchased-currency firewall.
+Store purchases, once enabled under their own P0 gates, **may** fund Crown/derived-Coin competition entry in jurisdictions/platforms whose approved policy explicitly permits purchased virtual entry. This does not override the separate pooled-stake, age, geo, or India restrictions.
 
 The existence of dormant stake mechanics is not authorization to expose them.

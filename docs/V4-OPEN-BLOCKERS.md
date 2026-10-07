@@ -58,6 +58,22 @@ Repository-side work is implemented; external execution remains tracked below.
 - **Task 25 — support-grade diagnostics:** production requests receive opaque `MX-…` support IDs; a seven-day/5,000-row sanitized index stores only time/method/normalized-route/status/public-code; operators can resolve one ID without request bodies, queries, IPs or account identifiers; players can copy an allowlisted diagnostics report. See `deploy/SUPPORT-DIAGNOSTICS.md`. The live operator drill under `EXT-28` must include one real support-ID lookup.
 - **Task 26 — email/domain security posture:** production From is bound to `MEGA_EMAIL_DOMAIN`; `scripts/mail-domain-audit.js` checks MX, single-record SPF, configured provider DKIM publication, aligned return-path and DMARC coverage without printing keys. See `deploy/MAIL-DOMAIN-SECURITY.md`. Hostinger/Google Workspace/Resend publication and real-message authentication proof remain `EXT-35`.
 
+## P1-6 privacy/legal package
+
+Repository-side drafting and enforcement work is complete:
+
+- public draft Privacy Policy, Terms, Support and Privacy choices pages exist at clean routes and are linked from in-app Settings;
+- the existing external account-deletion page is cross-linked to the privacy/legal surfaces;
+- `docs/legal/DATA-INVENTORY-RETENTION.md` inventories first-party data, implemented short-lived lifetimes, deletion behavior and unresolved retained-record durations;
+- `docs/legal/COOKIE-AND-CONSENT.md` records the strictly functional web cookie/local-storage baseline and native advertising consent gate;
+- `docs/legal/STORE-PRIVACY-DECLARATIONS.md` is the Apple App Privacy / Google Play Data safety working sheet;
+- `docs/legal/LEGAL-APPROVAL-CHECKLIST.md` is the formal sign-off handoff;
+- account deletion now also purges generic idempotency command residue for the deleted actor;
+- production account deletion is fail-closed until both `MEGA_PRIVACY_POLICY_VERSION` and `MEGA_RETENTION_POLICY_VERSION` identify approved documents.
+
+This is **draft/implementation complete, not legal approval**. The public Privacy Policy and Terms remain explicitly marked draft/not effective and `noindex`. Formal entity/age/jurisdiction/governing-law/retention/vendor/privacy-rights decisions and store submissions remain `EXT-21` plus the relevant store/device acceptance rows.
+
+
 ## External action ledger
 
 | ID | Area | Status | Blocker / required access | Exact completion evidence |
@@ -82,7 +98,7 @@ Repository-side work is implemented; external execution remains tracked below.
 | EXT-18 | Google production identity | BLOCKED | Google Cloud console + staging/live browser | Exact production/staging redirect URIs registered; `provider-web-smoke.js` passes; real login, cancel, link, reauth and restore flows pass. |
 | EXT-19 | Apple production identity | BLOCKED | Apple Developer account + staging/live browser | Services ID/domain/return URLs and signing key configured; provider smoke passes; real login, cancel, link, reauth and restore flows pass. |
 | EXT-20 | Native identity | BLOCKED | Real Android/iOS projects + physical devices | Native challenge/nonce/token flow passes on physical devices; reinstall and revoked-credential behavior proven. |
-| EXT-21 | Privacy and account deletion | BLOCKED | Approved Antimatter Innovations privacy/retention policy/Terms | Privacy Policy/Terms and retention durations/legal basis approved and published; configured policy version matches the approved documents; live in-app deletion + `/delete-account` acceptance passes without restoring the deleted profile. |
+| EXT-21 | Privacy/legal/account deletion | BLOCKED | Antimatter Innovations legal/privacy approval + final store disclosures | Approve and publish the drafted Privacy Policy/Terms; resolve legal entity/address, launch jurisdictions, age/parental position, governing law/consumer terms, processor/transfer terms and concrete retention durations including backups; assign `MEGA_PRIVACY_POLICY_VERSION` + `MEGA_RETENTION_POLICY_VERSION`; finalize Apple App Privacy/Google Play Data safety; live in-app deletion + `/delete-account` acceptance passes without restoring the deleted profile. |
 | EXT-22 | Google Play Billing | BLOCKED | Play Console + real Android target/physical device | Real product IDs map to the four server catalogue IDs; Play service account/RTDN are configured; sandbox purchase/cancel/pending/consume/acknowledge/refund/replay/Remove Ads restore tests pass against the implemented backend verifier. |
 | EXT-23 | Apple StoreKit billing | BLOCKED | App Store Connect + real iOS target/physical device | StoreKit products map to the four server catalogue IDs; trusted Apple roots/environment and the numeric Production App Store app ID are configured; Sandbox/TestFlight purchase/cancel/pending/finish/restore/refund/revocation tests pass and Server Notifications V2 with the expected app ID reach the implemented callback. |
 | EXT-24 | Production ads and consent | BLOCKED | AdMob + Google Mobile Ads/UMP in real Android/iOS targets | Real rewarded/interstitial unit IDs and consent release version configured; UMP blocks requests until allowed and exposes privacy options; rewarded SSV grants exactly once; wrong/replayed ticket/account/unit is rejected; Remove Ads and no-ad-during-live-play behavior pass on physical devices before `MEGA_AD_MODE` changes from off. |

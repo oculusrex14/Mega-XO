@@ -87,3 +87,17 @@ test('operator support lookup returns only sanitized request metadata',t=>{
  assert.deepEqual(value,{id,at:123456,method:'POST',route:'/api/v1/move',status:409,code:'STALE_REVISION'});
  assert.equal('actor' in value,false);assert.equal('ip' in value,false);assert.throws(()=>f.ops.command({action:'support',query:'MX-not-valid'}),/INVALID_SUPPORT_ID/);
 });
+
+
+test('operator lookup surfaces sanitized competitive abuse review flags',t=>{
+ const f=fixture(t),authority=f.c.read(),other='u_'+crypto.randomUUID();authority.addAccount(other,{verified:true,rating:1500,games:30});
+ authority.matches.set('risk-match',{id:'risk-match',players:[f.actor,other],status:'FINISHED',riskFlags:['AUTOMATION_SPEED_REVIEW'],_riskActors:{AUTOMATION_SPEED_REVIEW:[f.actor]},receipt:{at:12345},commands:new Map()});
+ f.c.write(authority);
+ f.store.db.exec("CREATE TABLE IF NOT EXISTS party_rooms(id TEXT PRIMARY KEY,code TEXT UNIQUE NOT NULL,json TEXT NOT NULL)");
+ const room={id:'risk-room',code:'RISKROOM',table:'premium',status:'COMPLETE',ended:23456,players:[{id:f.actor},{id:other}],riskFlags:['CONCENTRATED_FORFEITS_REVIEW'],_riskActors:{CONCENTRATED_FORFEITS_REVIEW:[other]}};
+ f.store.db.prepare('INSERT INTO party_rooms VALUES(?,?,?)').run(room.id,room.code,JSON.stringify(room));
+ const value=f.ops.command({action:'lookup',query:f.actor});
+ assert.equal(value.competitiveRisk.matches[0].id,'risk-match');assert.deepEqual(value.competitiveRisk.matches[0].flags,['AUTOMATION_SPEED_REVIEW']);
+ assert.equal(value.competitiveRisk.tournaments[0].id,'risk-room');assert.deepEqual(value.competitiveRisk.tournaments[0].flags,['CONCENTRATED_FORFEITS_REVIEW']);
+ assert.equal(JSON.stringify(value).includes('_moveTimings'),false);
+});

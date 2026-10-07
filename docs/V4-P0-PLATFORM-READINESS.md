@@ -349,6 +349,26 @@ MEGA_PAID_ENTRY_ENABLED=false
 
 is mandatory and the production config refuses any attempt to turn it on.
 
+### V4.1 P1-7 update — current legal/platform posture
+
+As of 2026-10-07 the repository treats the original pooled-stake design as a **non-production legacy model**.
+
+Current external rules materially change the old assumption that purchased Crowns could fund high-stake play:
+
+- Apple App Review Guideline 5.3.3 bars IAP-purchased credit/currency from real-money gaming, while 5.3.1-5.3.4 require developer-sponsored official rules and, for real-money gaming, applicable licensing/georestriction/free distribution.
+- Google Play's Real-Money Gambling, Games and Contests policy restricts real-money contests/tournaments and disallows Play Billing for approved real-money gambling apps; purchased in-app items cannot be used to enter prohibited real-money prize loops.
+- India's Promotion and Regulation of Online Gaming Act, 2025 came into force on 1 May 2026. Purchased credits/coins/tokens can be "other stakes"; recognised e-sports may use genuine registration/participation fees and performance-based prize money but may not involve bets/wagers/stakes and require the prescribed recognition/registration pathway.
+
+Repository response:
+
+- verified store currency is provenance-tagged through Coin/Crown conversion;
+- purchased/derived currency cannot fund ranked, direct-stake or public-tournament entry;
+- current ranked/direct/tournament pools are classified as pooled stakes and are denied by `server/competition-compliance.js`;
+- CI runs `npm run competition:audit`;
+- any future approved model must be a separately reviewed fixed registration fee with organizer-funded prizes, trusted age/geolocation, jurisdiction/platform allowlists and explicit spending/refund controls.
+
+See `docs/legal/PAID-COMPETITION-COMPLIANCE.md` and EXT-26.
+
 ## 9. Sequencing
 
 Recommended sequence after V4 backend launch:

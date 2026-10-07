@@ -17,17 +17,16 @@ class RoomStore{
  get(id){const row=this.db.prepare('SELECT json FROM party_rooms WHERE id=? OR code=?').get(id,id);if(!row)err('ROOM_NOT_FOUND');return JSON.parse(row.json);}
  save(r){this.db.prepare('INSERT INTO party_rooms VALUES(?,?,?) ON CONFLICT(id) DO UPDATE SET json=excluded.json').run(r.id,r.code,JSON.stringify(r));}
  economy(){const exists=this.db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='state'").get();if(!exists)err('ACCOUNT_SERVICE_REQUIRED');return JSON.parse(this.db.prepare('SELECT json FROM state WHERE id=1').get().json);}
- competitionAvailable(a,currency){if(a.legacyCompetitionRestricted||a.purchaseInfluenced===true&&(!Number.isSafeInteger(a.purchasedCoins)||!Number.isSafeInteger(a.purchasedCrowns)))return 0;const restricted=currency==='coins'?(a.purchasedCoins||0):currency==='crowns'?(a.purchasedCrowns||0):0;return a[currency]-restricted;}
  account(e,id){return e.accounts.find(([key])=>key===id)?.[1]||err('ACCOUNT_REQUIRED');}
  writeEconomy(e){this.db.prepare('UPDATE state SET json=? WHERE id=1').run(JSON.stringify(e));}
- eligible(e,id,q){const a=this.account(e,id);if(a.verified!==true||a.suspended||a.hold||a.games<10)err('INELIGIBLE');if(this.paidEntryEnabled!==true||this.eligibility(clone(a),clone(q))!==true)err('PAID_ENTRY_UNAVAILABLE');return a;}
+ eligible(e,id,q){const a=this.account(e,id);if(a.verified!==true||a.suspended||a.hold||a.games<10)err('INELIGIBLE');const enriched={...clone(q),funding:{currency:q.currency,amount:q.entry||0,purchasedBalance:q.currency==='coins'?(a.purchasedCoins||0):q.currency==='crowns'?(a.purchasedCrowns||0):0,legacyPurchaseInfluenced:!!a.legacyCompetitionRestricted}};if(this.paidEntryEnabled!==true||this.eligibility(clone(a),enriched)!==true)err('PAID_ENTRY_UNAVAILABLE');return a;}
  code(){let c;do{c=crypto.randomBytes(5).toString('hex').toUpperCase();}while(this.db.prepare('SELECT id FROM party_rooms WHERE code=?').get(c));return c;}
  shuffle(ids){const a=ids.slice();for(let i=a.length-1;i>0;i--){const j=crypto.randomInt(i+1);[a[i],a[j]]=[a[j],a[i]];}return a;}
  journal(e,id,actor,currency,amount,reason){e.journal.push({id,actor,currency,amount,reason,source:'tournament',at:this.now()});}
  recordTournament(a,place,table){const t=a.tournamentRecord||(a.tournamentRecord={entered:0,wins:0,runnerUp:0,top3:0,top5:0,bestFinish:null,finishSum:0,premiumWins:0});t.entered=safe(t.entered+1);t.finishSum=safe(t.finishSum+place);if(place===1){t.wins=safe(t.wins+1);if(table==='premium')t.premiumWins=safe(t.premiumWins+1);}if(place===2)t.runnerUp=safe(t.runnerUp+1);if(place<=3)t.top3=safe(t.top3+1);if(place<=5)t.top5=safe(t.top5+1);t.bestFinish=t.bestFinish===null||t.bestFinish===undefined?place:Math.min(t.bestFinish,place);}
  reserve(r,e){const q=clone(r.quote),held=q.currency==='coins'?'reservedCoins':'reservedCrowns',players=r.players.map(p=>this.eligible(e,p.id,q));
   if(players.some(p=>p.activeMatch))err('ALREADY_IN_MATCH');if(Math.max(...players.map(p=>p.rating))-Math.min(...players.map(p=>p.rating))>MM.CONFIG.tournament.hardMax)err('SKILL_WINDOW_CHANGED');
-  for(const p of players){if(p[q.currency]<q.entry)err('INSUFFICIENT_'+q.currency.toUpperCase());if(this.competitionAvailable(p,q.currency)<q.entry)err('COMPETITION_FUNDS_RESTRICTED');safe(p[held]+q.entry);}
+  for(const p of players){if(p[q.currency]<q.entry)err('INSUFFICIENT_'+q.currency.toUpperCase());safe(p[held]+q.entry);}
   r.escrow=q.pool;r.quote=q;r.settled=false;r.contributions=players.map(p=>({id:p.id,amount:q.entry}));
   for(const p of players){p[q.currency]-=q.entry;p[held]+=q.entry;p.activeMatch='tournament:'+r.id;this.journal(e,r.id+':reserve:'+p.id,p.id,q.currency,-q.entry,'Tournament entry reserved');}
  }
@@ -52,7 +51,7 @@ class RoomStore{
     if(active.filter(r=>r.owner===actor).length>=3)err('ROOM_LIMIT');r=T.create({id:crypto.randomUUID(),code:this.code(),owner:actor,name:cmd.name,format:cmd.format,clock:cmd.clock??180,increment:cmd.increment??2,now});T.join(r,actor,principal.name||actor,now);
    }else if(cmd.type==='publicJoin'){
     if(this.lanOnly)err('FREE_PRIVATE_ONLY');const q=T.prize(cmd.table);e=this.economy();const a=this.eligible(e,actor,q);if(a.activeMatch)err('ALREADY_IN_MATCH');
-    if(active.some(r=>r.table&&r.players.some(p=>p.id===actor)))err('ALREADY_QUEUED');if(a[q.currency]<q.entry)err('INSUFFICIENT_'+q.currency.toUpperCase());if(this.competitionAvailable(a,q.currency)<q.entry)err('COMPETITION_FUNDS_RESTRICTED');
+    if(active.some(r=>r.table&&r.players.some(p=>p.id===actor)))err('ALREADY_QUEUED');if(a[q.currency]<q.entry)err('INSUFFICIENT_'+q.currency.toUpperCase());
     r=MM.selectTournamentRoom(active,e,actor,cmd.table,now);
     if(!r)r=T.create({id:crypto.randomUUID(),code:this.code(),owner:'service',name:q.name+' table',table:cmd.table,now});T.join(r,actor,principal.name||a.id,now);
    }else{

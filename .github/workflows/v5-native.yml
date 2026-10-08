@@ -2,9 +2,11 @@ name: V5 native host build verification
 # P20 co-development: compile unsigned debug/simulator hosts from the same
 # immutable allowlisted client revision. No provider secrets, signing, uploads
 # to stores, native commerce/ad SDK or production project access.
+# Run once per PR (plus after integration to V5); not once on both
+# co-dev branch push and its PR, which duplicates macOS build minutes.
 on:
   push:
-    branches: [V5-platform, 'co-dev/v5-native-*']
+    branches: [V5-platform]
     paths:
       - 'native/**'
       - 'scripts/v5/build-client.js'

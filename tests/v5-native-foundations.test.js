@@ -192,3 +192,15 @@ test('iOS UMP and GoogleMobileAds SDKs are pinned and enforce SSV-only rewards',
   assert.match(code, /rewardAmount == 1/);
   assert.doesNotMatch(code, /grantCredit|mintCrowns|localReward/);
 });
+
+test('native CI includes actual emulator/simulator launch smoke separate from compiler checks', () => {
+  const workflow = read('.github/workflows/v5-native.yml');
+  assert.match(workflow, /android-emulator-smoke:/);
+  assert.match(workflow, /reactivecircus\/android-emulator-runner@v2/);
+  assert.match(workflow, /xcrun simctl install/);
+  assert.match(workflow, /xcrun simctl io/);
+  const android = read('scripts/v5/native-smoke-android.sh');
+  assert.match(android, /adb install -r/);
+  assert.match(android, /adb shell pidof/);
+  assert.match(android, /screencap -p/);
+});

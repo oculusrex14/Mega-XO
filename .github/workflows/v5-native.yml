@@ -35,7 +35,7 @@ concurrency:
 jobs:
   source-and-android:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
@@ -109,3 +109,63 @@ jobs:
           test -s "$app/MegaClient/client-bundle.manifest.json"
           test ! -e "$app/MegaClient/src/authority.js"
           shasum -a 256 "$app/MegaClient/client-bundle.manifest.json"
+      - name: Boot iOS Simulator and capture offline first-launch screenshot
+        shell: bash
+        run: |
+          set -euo pipefail
+          app="$RUNNER_TEMP/mega-xo-ios/Build/Products/Debug-iphonesimulator/MegaXO.app"
+          xcrun simctl list devices available --json > "$RUNNER_TEMP/mega-simulator-devices.json"
+          udid="$(node - "$RUNNER_TEMP/mega-simulator-devices.json" <<'JS'
+          const fs = require('node:fs');
+          const devices = Object.values(JSON.parse(fs.readFileSync(process.argv[2], 'utf8')).devices).flat();
+          const device = devices.find(d => d.isAvailable && /^iPhone/.test(d.name));
+          if (!device) process.exit(5);
+          process.stdout.write(device.udid);
+          JS
+          )"
+          xcrun simctl boot "$udid"
+          xcrun simctl bootstatus "$udid" -b
+          xcrun simctl install "$udid" "$app"
+          xcrun simctl launch "$udid" online.megaxo.prototype
+          sleep 6
+          mkdir -p "$RUNNER_TEMP/mega-ios-smoke"
+          xcrun simctl io "$udid" screenshot "$RUNNER_TEMP/mega-ios-smoke/first-launch.png"
+          test -s "$RUNNER_TEMP/mega-ios-smoke/first-launch.png"
+          xcrun simctl shutdown "$udid"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mega-xo-ios-simulator-smoke
+          path: ${{ runner.temp }}/mega-ios-smoke/
+          retention-days: 7
+          if-no-files-found: warn
+
+  android-emulator-smoke:
+    name: Android emulator offline first-launch
+    needs: source-and-android
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: mega-xo-android-debug
+          path: ${{ runner.temp }}/mega-apk
+      - name: Enable KVM acceleration when available
+        run: |
+          if [ -e /dev/kvm ]; then sudo chmod 666 /dev/kvm; fi
+      - uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          disable-animations: true
+          script: |
+            APK_PATH="$RUNNER_TEMP/mega-apk/app-debug.apk" SCREENSHOT_DIR="$RUNNER_TEMP/mega-android-smoke" bash scripts/v5/native-smoke-android.sh
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mega-xo-android-emulator-smoke
+          path: ${{ runner.temp }}/mega-android-smoke/
+          retention-days: 7
+          if-no-files-found: warn

@@ -213,6 +213,12 @@
       "name": "0035_audit_genesis_prev_hash",
       "file": "migrations/0035_audit_genesis_prev_hash.sql",
       "sha256": "58d17eb66645d3049b0152a2b039b17234bd36641aede9d858eb151ddf5a80da"
+    },
+    {
+      "id": 36,
+      "name": "0036_v5_migration_bookkeeping",
+      "file": "migrations/0036_v5_migration_bookkeeping.sql",
+      "sha256": "064cba03d1c7a9017c67b082bab9714c9b97c604b9f797f95b1551e5738729c1"
     }
   ]
 }

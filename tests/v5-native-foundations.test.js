@@ -109,3 +109,11 @@ test('offline Android host has OS-level network-denial until native transport is
   const manifest = read('native/android/app/src/main/AndroidManifest.xml');
   assert.doesNotMatch(manifest, /<uses-permission[^>]+android\.permission\.INTERNET/);
 });
+
+test('iOS blocks HTTP(S) subresources before loading signed local HTML', () => {
+  const host = read('native/ios/MegaXO/MegaXOApplication.swift');
+  assert.match(host, /WKContentRuleListStore\.default\(\)\.compileContentRuleList/);
+  assert.match(host, /url-filter/);
+  assert.match(host, /https\?/);
+  assert.match(host, /webView\.configuration\.userContentController\.add\(rule\)/);
+});

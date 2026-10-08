@@ -73,8 +73,25 @@ final class MegaXOGameController: UIViewController, WKNavigationDelegate, WKUIDe
             webView.trailingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.trailingAnchor)
         ])
         game = webView
-        // WebKit is permitted to read only this signed bundle directory.
-        webView.loadFileURL(entry, allowingReadAccessTo: root)
+        // WKNavigationDelegate only governs frame navigations, not fetch/img/script
+        // subresources. Refuse all network URLs with a WebKit content-blocking
+        // rule before loading any of the bundled HTML.
+        let offlineRules = #"[{"trigger":{"url-filter":"^https?://"},"action":{"type":"block"}}]"#
+        WKContentRuleListStore.default().compileContentRuleList(
+            forIdentifier: "MegaXOOfflineNetworkDenyV1",
+            encodedContentRuleList: offlineRules
+        ) { [weak self, weak webView] rule, error in
+            DispatchQueue.main.async {
+                guard let self, let webView, let rule, error == nil else {
+                    // Fail closed: a rules compilation failure cannot turn the
+                    // signed offline game into a remote-content browser.
+                    self?.showMissingBundle()
+                    return
+                }
+                webView.configuration.userContentController.add(rule)
+                webView.loadFileURL(entry, allowingReadAccessTo: root)
+            }
+        }
     }
 
     private func showMissingBundle() {

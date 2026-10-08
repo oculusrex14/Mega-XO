@@ -336,3 +336,19 @@ test('iOS simulator smoke rejects SpringBoard screenshots after app launch', () 
   assert.match(verifier, /fraction < 0\.15/);
   assert.match(verifier, /SpringBoard/);
 });
+
+test('Android emulator must assert signed JS UI readiness, not merely a running activity', () => {
+  const smoke = read('scripts/v5/native-smoke-android.sh');
+  const probe = read('native/android/app/src/main/java/online/megaxo/prototype/MegaNativeRenderProbe.kt');
+  const activity = read('native/android/app/src/main/java/online/megaxo/prototype/MegaXOActivity.kt');
+  assert.match(probe, /\.home-hero/);
+  assert.match(probe, /\.mode-list/);
+  assert.match(probe, /nav >= 5/);
+  assert.match(probe, /READY game_initialized=true/);
+  assert.match(probe, /SCRIPT_ERROR type=/);
+  assert.match(activity, /onPageFinished\(view: WebView, url: String\?\)/);
+  assert.match(activity, /startupProbe\.start\(view\)/);
+  assert.match(smoke, /READY game_initialized=true/);
+  assert.match(smoke, /if \[ "\$ready" != 1 \]/);
+  assert.match(smoke, /startup-log\.txt/);
+});

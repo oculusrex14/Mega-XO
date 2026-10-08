@@ -10,6 +10,7 @@ import android.view.View
 import android.view.WindowInsets
 import android.webkit.CookieManager
 import android.webkit.WebChromeClient
+import android.webkit.ConsoleMessage
 import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
 import android.webkit.WebSettings
@@ -27,8 +28,10 @@ class MegaXOActivity : Activity() {
     private lateinit var game: WebView
     private var notifications: MegaAndroidLocalNotifications? = null
     private var identityBridge: MegaAndroidIdentityBridge? = null
+    private val startupProbe = MegaNativeRenderProbe()
     private val assetHost = "appassets.androidplatform.net"
     private val assetPrefix = "/assets/mega/"
+    private val gameEntry get() = "https://$assetHost${assetPrefix}bundle-index.html"
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -51,8 +54,22 @@ class MegaXOActivity : Activity() {
             setSupportZoom(false)
         }
         CookieManager.getInstance().setAcceptThirdPartyCookies(game, false)
-        game.webChromeClient = WebChromeClient()
+        game.webChromeClient = object : WebChromeClient() {
+            override fun onConsoleMessage(message: ConsoleMessage): Boolean {
+                if (BuildConfig.DEBUG && message.messageLevel() == ConsoleMessage.MessageLevel.ERROR) {
+                    val category = Regex("(?:SyntaxError|ReferenceError|TypeError|RangeError|SecurityError)")
+                        .find(message.message())?.value ?: "OtherError"
+                    startupProbe.jsError(message.sourceId(), message.lineNumber(), category)
+                }
+                return super.onConsoleMessage(message)
+            }
+        }
         game.webViewClient = object : WebViewClient() {
+            override fun onPageFinished(view: WebView, url: String?) {
+                super.onPageFinished(view, url)
+                if (url == gameEntry) startupProbe.start(view)
+            }
+
             override fun shouldInterceptRequest(view: WebView, request: WebResourceRequest): WebResourceResponse? {
                 val url = request.url
                 // data: favicon and blob: local exports are handled internally by WebView.
@@ -91,7 +108,6 @@ class MegaXOActivity : Activity() {
             insets
         }
         setContentView(game)
-        val gameEntry = "https://$assetHost${assetPrefix}bundle-index.html"
         notifications = MegaAndroidLocalNotifications.install(this, game, gameEntry)
         identityBridge = MegaAndroidIdentityBridge.install(
             this, game, gameEntry, BuildConfig.MEGA_GOOGLE_SERVER_CLIENT_ID)
@@ -123,6 +139,7 @@ class MegaXOActivity : Activity() {
     }
 
     override fun onDestroy() {
+        startupProbe.close()
         notifications?.close()
         notifications = null
         identityBridge?.close()

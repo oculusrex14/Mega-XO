@@ -1,0 +1,180 @@
+{
+  "schema_version": 1,
+  "phase": "P02",
+  "task_id": "V5-02-01",
+  "case_ids": [],
+  "status": "EXECUTED_ACCEPTANCE",
+  "recorded_at_utc": "2026-10-08T06:13:53.455Z",
+  "source_sha": "fe21e2beeaeb1a59d63f404c27e3e3bb2d0704aa",
+  "source_state": "Provider inventory acceptance only. P02 implementation remains uncommitted and is not represented by this source SHA.",
+  "environment": "Antimatter Innovations / org-wandering-sea-53820697",
+  "evidence_refs": [
+    "docs/v5/evidence/phase02-neon.json",
+    "docs/v5/evidence/phase02-provider-target.json",
+    "docs/v5/evidence/phase02-console.json"
+  ],
+  "inventory_refs": [
+    "docs/v5/environments/dev.json",
+    "docs/v5/environments/staging.json",
+    "docs/v5/environments/production.json"
+  ],
+  "commands": [
+    {
+      "command": "neon projects list --org-id org-wandering-sea-53820697 --output json --no-secrets",
+      "exit_code": 0,
+      "result": "Installed, owner-authorized CLI lists exactly the three intended IDs; all report aws-us-east-1, PostgreSQL16 and21600-second history. Raw response/secrets were not emitted."
+    },
+    {
+      "command": "Native Brave authenticated Neon Console Projects and Billing inspection",
+      "result": "Current Free plan and per-project inclusions verified; no provider configuration/payment/security/legal action."
+    },
+    {
+      "command": "Oracle host readonly IMDS and direct/pooled endpoint TCP RTT probes",
+      "result": "Oracle region iad / US-ASHBURN-AD-1; direct3.4ms, pooled3.5ms median. Historical full samples and methods retained in phase02-neon.json."
+    }
+  ],
+  "observed": {
+    "targets": [
+      {
+        "environment": "dev",
+        "version": 1,
+        "projectId": "silent-unit-55400508",
+        "branchId": "br-misty-base-b7zadxba",
+        "endpointId": "ep-super-breeze-b7lgtrdg",
+        "host": "ep-super-breeze-b7lgtrdg.c-13.us-east-1.aws.neon.tech",
+        "database": "mega_xo_v5_dev",
+        "pgMajor": 16,
+        "nonserving": true,
+        "roleConnectionLimits": {
+          "api_runtime": 16,
+          "core_runtime": 8,
+          "worker_runtime": 4,
+          "backup_reader": 2,
+          "audit_runtime": 2
+        },
+        "compute": {
+          "minCu": 0.25,
+          "maxCu": 0.25,
+          "suspendTimeoutSeconds": 0
+        },
+        "historyRetentionSeconds": 21600,
+        "outbound": {
+          "email": "disabled",
+          "storeNotifications": "disabled",
+          "adRewards": "disabled"
+        }
+      },
+      {
+        "environment": "staging",
+        "version": 1,
+        "projectId": "lively-shadow-52629967",
+        "branchId": "br-falling-resonance-b87qm6iz",
+        "endpointId": "ep-red-waterfall-b880jir8",
+        "host": "ep-red-waterfall-b880jir8.c-14.us-east-1.aws.neon.tech",
+        "database": "mega_xo_v5_staging",
+        "pgMajor": 16,
+        "nonserving": true,
+        "roleConnectionLimits": {
+          "api_runtime": 16,
+          "core_runtime": 8,
+          "worker_runtime": 4,
+          "backup_reader": 2,
+          "audit_runtime": 2
+        },
+        "compute": {
+          "minCu": 0.25,
+          "maxCu": 0.25,
+          "suspendTimeoutSeconds": 0
+        },
+        "historyRetentionSeconds": 21600,
+        "outbound": {
+          "email": "disabled",
+          "storeNotifications": "disabled",
+          "adRewards": "disabled"
+        }
+      },
+      {
+        "environment": "production",
+        "version": 1,
+        "projectId": "blue-sun-85454968",
+        "branchId": "br-dawn-dawn-b8f9n7zq",
+        "endpointId": "ep-mute-surf-b8v94ksa",
+        "host": "ep-mute-surf-b8v94ksa.c-14.us-east-1.aws.neon.tech",
+        "database": "mega_xo_v5_production",
+        "pgMajor": 16,
+        "nonserving": true,
+        "roleConnectionLimits": {
+          "api_runtime": 16,
+          "core_runtime": 8,
+          "worker_runtime": 4,
+          "backup_reader": 2,
+          "audit_runtime": 2
+        },
+        "compute": {
+          "minCu": 0.25,
+          "maxCu": 0.25,
+          "suspendTimeoutSeconds": 0
+        },
+        "historyRetentionSeconds": 21600,
+        "outbound": {
+          "email": "disabled",
+          "storeNotifications": "disabled",
+          "adRewards": "disabled"
+        }
+      }
+    ],
+    "region": "aws-us-east-1",
+    "pg_major": 16,
+    "actual_server_version": "16.15 (9e87aff)",
+    "plan": "Free",
+    "included_per_project": {
+      "storage_gb_displayed": 1,
+      "autoscaling_max_cu_displayed": 2,
+      "compute_hours_displayed": 100,
+      "branches_displayed": 10
+    },
+    "org_usage_snapshot": {
+      "compute_cu_hours": 0.23,
+      "storage_gb": 0.1,
+      "history_gb": 0.01,
+      "network_transfer_gb": 0
+    },
+    "usage_freshness": "Metrics may be delayed by an hour and are not updated for inactive projects.",
+    "branch_logical_cap_bytes": 536870912,
+    "endpoint_fixed_cu": 0.25,
+    "default_idle_suspend_seconds": 300,
+    "history_retention_seconds": 21600
+  },
+  "decisions": {
+    "region": "Same metro as latency-critical Oracle Core; region is immutable at creation. The owner Mac is not the critical database caller.",
+    "storage": "Keep the independently observed512MiB branch logical cap and1GB/project included UI value distinct; conservatively budget against the smaller bound.",
+    "connections": "Staging actual max_connections112; declare runtime limits16/8/4/2/2(total32), leaving80 measured server slots outside this runtime budget. Dev/production inventory limits are future declarations, not provisioned runtime LOGIN claims.",
+    "production": "Separate empty dormant project exists, but no production schema/application/writer has been enabled. Free cannot supply configured always-on or a longer window; require supported capacity/recovery plan approval before production activation."
+  },
+  "classified_limits": {
+    "account_aggregate_caps": "Not exposed by inspected Free API/Console; no unlimited or legacy-zero interpretation.",
+    "compute_selector": "UI advertises2CU autoscaling maximum; created endpoints actually fixed0.25CU. No uninspected selector or paid guarantee claimed.",
+    "vercel_rtt": "Unmeasured until actual Vercel placement/authentication in P11; not substituted with owner-Mac RTT.",
+    "extensions": "Actual parent SQL pg_available_extensions observed citext1.6/pgcrypto1.3/pg_stat_statements1.10. Availability is not installed/preloaded status; migrations require no extension."
+  },
+  "result": {
+    "executed": true,
+    "ok": true,
+    "assertions": [
+      "Exact dev/staging/production identifiers and actual region/version/settings recorded without duplicate resources.",
+      "Authenticated current-plan limits replace unusable legacy-zero entitlement fields for inspected dimensions.",
+      "Unsupported always-on/extended-history capabilities and remaining later-placement/aggregate-cap unknowns classified explicitly.",
+      "No paid upgrade, production app/schema activation, DNS/V4 runtime/store/signing/legal/security setting or authority transfer."
+    ]
+  },
+  "not_claimed": [
+    "G02/G03 acceptance",
+    "Production suitability or always-on",
+    "Account-wide quotas absent from inspected surfaces",
+    "PITR/restore proof",
+    "Vercel database RTT",
+    "Runtime LOGIN roles in empty dev/production",
+    "Outbound suppression by an undeployed worker",
+    "Guarded direct/pooled transaction acceptance"
+  ]
+}

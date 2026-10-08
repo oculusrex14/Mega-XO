@@ -1,0 +1,76 @@
+{
+  "schema_version": 1,
+  "phase": "P02",
+  "task_ids": ["V5-02-01"],
+  "case_ids": [],
+  "source_sha": "fe21e2beeaeb1a59d63f404c27e3e3bb2d0704aa",
+  "source_state": "P02 implementation is uncommitted; this record proves provider observations, not that the implementation is present in the source SHA.",
+  "observed_at_utc": "2026-10-08T05:37:33.172174+00:00",
+  "status": "EXECUTED_READONLY",
+  "environment": "Antimatter Innovations / org-wandering-sea-53820697",
+  "commands": [
+    {
+      "command": "Native computer helpers: Brave File -> New tab -> Open Location -> https://console.neon.tech/; fresh AX and window screenshot",
+      "target": "New dedicated tab in the owner's Brave Browser",
+      "result": "Authenticated Neon Console, intended organization and exactly three expected projects observed. No credentials submitted."
+    },
+    {
+      "command": "Read Projects usage panel; navigate Billing with the observed native window link; fresh AX and screenshot",
+      "target": "Neon Console organization Projects and Billing pages",
+      "result": "Current Free plan and per-project included limits verified. No Upgrade, payment, invoice, legal, security or configuration control activated."
+    },
+    {
+      "command": "neon projects list --org-id org-wandering-sea-53820697 --output json --no-secrets",
+      "target": "Installed and owner-authorized Neon CLI, intended organization",
+      "result": "Exit 0; exact dev/staging/production IDs match the inventories, all aws-us-east-1, PostgreSQL 16, history_retention_seconds 21600. Secret-bearing output was not emitted.",
+      "project_ids": ["silent-unit-55400508", "blue-sun-85454968", "lively-shadow-52629967"]
+    }
+  ],
+  "observed": {
+    "plan": "Free",
+    "displayed_monthly_price_usd": 0,
+    "included_per_project": {
+      "storage_gb_displayed": 1,
+      "autoscaling_max_cu_displayed": 2,
+      "compute_hours_displayed": 100,
+      "branches_displayed": 10
+    },
+    "organization_usage_since": "2026-10-05",
+    "organization_usage_displayed": {
+      "compute_cu_hours": 0.23,
+      "storage_gb": 0.1,
+      "history_gb": 0.01,
+      "network_transfer_gb": 0
+    },
+    "usage_freshness_notice": "Metrics may be delayed by an hour and are not updated for inactive projects.",
+    "projects": [
+      {"environment": "dev", "project_id": "silent-unit-55400508", "name": "mega-xo-v5-dev", "region_displayed": "AWS US East 1 (N. Virginia)", "branches_displayed": 1, "storage_mb_displayed": 30.92},
+      {"environment": "production", "project_id": "blue-sun-85454968", "name": "mega-xo-v5-production", "region_displayed": "AWS US East 1 (N. Virginia)", "branches_displayed": 1, "storage_mb_displayed": 30.92},
+      {"environment": "staging", "project_id": "lively-shadow-52629967", "name": "mega-xo-v5-staging", "region_displayed": "AWS US East 1 (N. Virginia)", "branches_displayed": 1, "storage_mb_displayed": 34.05}
+    ],
+    "paid_launch_features_displayed_not_purchased": ["Always-on compute", "Longer point-in-time restore"]
+  },
+  "reconciliation": {
+    "api_legacy_zero_limit_fields": "Not treated as unlimited or usable quota values; authenticated current-plan UI replaces those fields for the limits shown above.",
+    "branch_storage_discrepancy": "The earlier authenticated project API reports branch_logical_size_limit 512 MiB / 536870912 bytes while current Billing displays 1 GB storage per project. These are recorded independently; identical enforcement or an automatic increase is not claimed. Use the observed smaller target limit conservatively until the discrepancy is resolved.",
+    "account_aggregate_limits": "No account-wide project-count, aggregate storage or allowed network-transfer ceiling was visible in this inspection. Published values are not promoted to account-specific guarantees.",
+    "production_capabilities": "Existing endpoints remain fixed 0.25 CU with provider-default five-minute idle suspension and 21600-second history. No production always-on or longer recovery window was enabled. A supported plan and owner approval remain prerequisites before production activation.",
+    "earlier_report": "phase02-neon.json records historical API-only gaps before this authenticated UI inspection and before production/dev creation; its original observations are retained, not silently rewritten."
+  },
+  "restricted_evidence": {
+    "path": "/Users/oculus/Downloads/Mega-XO-private-evidence/p02-console/free-plan-current.png",
+    "sha256": "949a405bad6d1a92b3b25ef8b3841bc1cf615e312457c56c5ecf45ec0b2fb6d2",
+    "mode": "0600",
+    "scope": "Cropped current-plan card only; credentials, payment details, personal data and other browser tabs excluded."
+  },
+  "result": {
+    "executed": true,
+    "ok": true,
+    "assertions": [
+      "Intended organization and all three exact nonserving targets observed.",
+      "Current Free plan, included per-project limits and displayed current usage recorded from the authenticated Console.",
+      "No paid plan, account/security/legal setting, compute/history setting, production application, DNS, V4 runtime or store state changed."
+    ]
+  },
+  "not_claimed": ["G02/G03 acceptance", "Account-wide quotas absent from the inspected UI", "Fresh real-time usage", "Paid entitlement or production suitability", "Vercel-to-Neon RTT", "PITR or restore proof", "Pool-wrapper transactions"]
+}

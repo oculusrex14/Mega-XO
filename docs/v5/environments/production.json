@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "environment": "production",
+  "projectId": "blue-sun-85454968",
+  "branchId": "br-dawn-dawn-b8f9n7zq",
+  "endpointId": "ep-mute-surf-b8v94ksa",
+  "host": "ep-mute-surf-b8v94ksa.c-14.us-east-1.aws.neon.tech",
+  "database": "mega_xo_v5_production",
+  "pgMajor": 16,
+  "nonserving": true,
+  "roleConnectionLimits": {
+    "api_runtime": 16,
+    "core_runtime": 8,
+    "worker_runtime": 4,
+    "backup_reader": 2,
+    "audit_runtime": 2
+  },
+  "compute": {
+    "minCu": 0.25,
+    "maxCu": 0.25,
+    "suspendTimeoutSeconds": 0
+  },
+  "historyRetentionSeconds": 21600,
+  "outbound": {
+    "email": "disabled",
+    "storeNotifications": "disabled",
+    "adRewards": "disabled"
+  }
+}

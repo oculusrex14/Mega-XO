@@ -18,7 +18,7 @@ Owner-carried untracked inputs at entry: `.agents/`, `AGENT-GOAL.md`, `Mega-XO-V
 
 Update progress, evidence, decisions and open items after each meaningful unit. Every claimed verification records task/case IDs, exact SHA, command, target/environment, result and evidence location. Commit cohesive verified units on V5, push meaningful checkpoints and inspect CI. A template, code existence, tool presence or green CI is not device/provider/production proof.
 
-G00 is passed: all six P00 tasks accepted;783ed22 pushed with successful first V5 CI37668446768; full source ownership and344 eligible four-theme/font/viewport/API/offline captures recorded. Follow `docs/v5/evidence/phase00-gate.json`; begin P01 interfaces/extraction, not another baseline re-audit. Source pack remains unchanged; full native/provider/production acceptance is still pending.
+G00 and G01 are passed: all six P00 and five P01 tasks accepted. Latest pushed checkpoint `fe21e2beeaeb1a59d63f404c27e3e3bb2d0704aa` has successful Actions run `37711063513`. P02 provider inventory is accepted: installed authorized Neon CLI and authenticated Brave Console prove three separate nonserving Free-plan targets. Staging has 26 applied migrations and five runtime LOGIN roles; dev/production remain empty. Resume P02 schema review, actual guarded direct/pooled transaction integration and zero-skip database CI; G02 is not passed. Follow the ledger and named evidence, not another baseline re-audit or P01 extraction; full native/provider/production acceptance remains pending.
 
 ## Current production correction
 

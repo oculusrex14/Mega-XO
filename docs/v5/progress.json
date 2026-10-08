@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at_utc": "2026-10-08T00:44:32.881+00:00",
+  "updated_at_utc": "2026-10-08T06:14:15.814+00:00",
   "goal": "Deliver the V5 hybrid platform and real Android/iOS applications with shared permanent actor/assets, preserved approved game and retained browser compatibility; do not build the new website/browser product.",
   "source": {
     "goal": "AGENT-GOAL.md",
@@ -47,13 +47,13 @@
   },
   "current": {
     "phase": "P02",
-    "active_task": "V5-02-01",
-    "next_action": "V5-platform created from the pinned green base; preserve/add original goal and pack at the initial verified checkpoint, then complete route/data ownership baseline.",
+    "active_task": "V5-02-02",
+    "next_action": "Finish P02 schema, role provisioning and connection-guard integration; run the owned PG16 smoke and zero-skip suites, then actual Neon direct migrations and pooled runtime proofs. Source-only P03 preparation is independent; G02 remains required before import acceptance.",
     "checkout_branch_at_setup": "V4.1",
     "integration_branch": "V5-platform",
     "integration_branch_exists_at_setup": false,
-    "last_v5_commit": null,
-    "last_pushed_v5_commit": null,
+    "last_v5_commit": "fe21e2beeaeb1a59d63f404c27e3e3bb2d0704aa",
+    "last_pushed_v5_commit": "fe21e2beeaeb1a59d63f404c27e3e3bb2d0704aa",
     "completed_task_ids": [
       "V5-00-01",
       "V5-00-02",
@@ -65,7 +65,8 @@
       "V5-01-02",
       "V5-01-03",
       "V5-01-04",
-      "V5-01-05"
+      "V5-01-05",
+      "V5-02-01"
     ],
     "passed_phase_gates": [
       {
@@ -1103,7 +1104,7 @@
         "verification": "Real IDs/settings and capability evidence recorded; no duplicate guessed projects or false Free-plan guarantees.",
         "id": "V5-02-01",
         "phase": "P02",
-        "status": "IN_PROGRESS",
+        "status": "COMPLETE",
         "depends_on_tasks": [],
         "requires_phase_gates": [
           "P01"
@@ -3082,13 +3083,14 @@
       ]
     },
     "V5-02-01": {
-      "status": "IN_PROGRESS",
+      "status": "COMPLETE",
       "evidence_refs": [
-        "docs/v5/evidence/phase02-provider-target.json"
+        "docs/v5/evidence/phase02-provider-target.json",
+        "docs/v5/evidence/phase02-provider-inventory.json"
       ],
       "completed_portions": [],
       "remaining": [],
-      "review_notes": "Live Neon capability/region verification and schema/role implementation starting on stored designs; no provisioning until migrations are gated. Created exact empty nonserving Free-plan Neon staging project; direct verified TLS catalog probe succeeded. Full regional capability report, schema and pooled runtime smoke pending; no production change or paid upgrade.",
+      "review_notes": "Live Neon capability/region verification and schema/role implementation starting on stored designs; no provisioning until migrations are gated. Created exact empty nonserving Free-plan Neon staging project; direct verified TLS catalog probe succeeded. Full regional capability report, schema and pooled runtime smoke pending; no production change or paid upgrade. Exact three nonserving Neon inventories, PG16.15/aws-us-east-1 settings, Core-IAD RTT, authenticated Free-plan limits and installed CLI use proven. Unsupported always-on/longer history and unexposed aggregate limits classified without guarantees; production remains empty and requires approved supported capacity/recovery before activation.",
       "transitions": [
         {
           "at_utc": "2026-10-07T21:00:51.854+00:00",
@@ -3102,6 +3104,14 @@
           "to": "IN_PROGRESS",
           "evidence": "docs/v5/evidence/phase02-provider-target.json",
           "note": "Created exact empty nonserving Free-plan Neon staging project; direct verified TLS catalog probe succeeded. Full regional capability report, schema and pooled runtime smoke pending; no production change or paid upgrade."
+        },
+        {
+          "at_utc": "2026-10-08T06:14:15.812+00:00",
+          "from": "IN_PROGRESS",
+          "to": "COMPLETE",
+          "evidence": "docs/v5/evidence/phase02-provider-inventory.json",
+          "note": "Exact three nonserving Neon inventories, PG16.15/aws-us-east-1 settings, Core-IAD RTT, authenticated Free-plan limits and installed CLI use proven. Unsupported always-on/longer history and unexposed aggregate limits classified without guarantees; production remains empty and requires approved supported capacity/recovery before activation.",
+          "cleared_remaining": []
         }
       ]
     },

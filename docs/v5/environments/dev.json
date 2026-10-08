@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "environment": "dev",
+  "projectId": "silent-unit-55400508",
+  "branchId": "br-misty-base-b7zadxba",
+  "endpointId": "ep-super-breeze-b7lgtrdg",
+  "host": "ep-super-breeze-b7lgtrdg.c-13.us-east-1.aws.neon.tech",
+  "database": "mega_xo_v5_dev",
+  "pgMajor": 16,
+  "nonserving": true,
+  "roleConnectionLimits": {
+    "api_runtime": 16,
+    "core_runtime": 8,
+    "worker_runtime": 4,
+    "backup_reader": 2,
+    "audit_runtime": 2
+  },
+  "compute": {
+    "minCu": 0.25,
+    "maxCu": 0.25,
+    "suspendTimeoutSeconds": 0
+  },
+  "historyRetentionSeconds": 21600,
+  "outbound": {
+    "email": "disabled",
+    "storeNotifications": "disabled",
+    "adRewards": "disabled"
+  }
+}

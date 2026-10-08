@@ -27,3 +27,7 @@ Keep the WebView security policy when the native API bridge is added; only a typ
 ## Compiled provider adapters (not activated)
 
 The existing `native/android/MegaGoogleIdentity.kt` is copied into generated Kotlin sources and compiled against the current stable Credential Manager 1.6.0 / Google ID 1.2.1 libraries. The provider must still use a real server-issued nonce and registered server client ID, and no JavaScript/native credential bridge is enabled until P05's secure transport exists. A green build does not imply live Google sign-in or Play account approval.
+
+## Existing opt-in local notifications
+
+The signed main-frame game now receives the existing `MegaNativeNotifications.requestPermission/notify` contract on supported Android WebView versions. It uses `WebViewCompat.addWebMessageListener` (exact app-assets HTTPS origin, `isMainFrame`, and exact signed entry URL), and document-start injection. Android 13+ asks for `POST_NOTIFICATIONS` **only** after the player uses the existing settings action; local alerts are emitted only with OS permission while the app is not foregrounded. Notification taps return safely to the existing game activity. This is not FCM/APNs, backend actor-linked push, or proof of device notification delivery; no such feature is enabled until P05 identity, provider credentials and explicit consent are integrated.

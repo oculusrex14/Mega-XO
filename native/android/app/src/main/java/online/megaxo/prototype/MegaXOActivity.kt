@@ -25,6 +25,7 @@ import java.io.ByteArrayInputStream
  */
 class MegaXOActivity : Activity() {
     private lateinit var game: WebView
+    private var notifications: MegaAndroidLocalNotifications? = null
     private val assetHost = "appassets.androidplatform.net"
     private val assetPrefix = "/assets/mega/"
 
@@ -89,7 +90,9 @@ class MegaXOActivity : Activity() {
             insets
         }
         setContentView(game)
-        game.loadUrl("https://$assetHost${assetPrefix}bundle-index.html")
+        val gameEntry = "https://$assetHost${assetPrefix}bundle-index.html"
+        notifications = MegaAndroidLocalNotifications.install(this, game, gameEntry)
+        game.loadUrl(gameEntry)
     }
 
     private fun blocked(): WebResourceResponse = WebResourceResponse(
@@ -109,7 +112,16 @@ class MegaXOActivity : Activity() {
         if (game.canGoBack()) game.goBack() else moveTaskToBack(true)
     }
 
+    override fun onRequestPermissionsResult(
+        requestCode: Int, permissions: Array<out String>, grantResults: IntArray
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        notifications?.onPermissionResult(requestCode, grantResults)
+    }
+
     override fun onDestroy() {
+        notifications?.close()
+        notifications = null
         game.stopLoading()
         game.destroy()
         super.onDestroy()

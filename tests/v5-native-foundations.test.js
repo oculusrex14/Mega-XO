@@ -232,3 +232,19 @@ test('iOS optional local notifications are exact-main-frame only and opt-in', ()
   assert.match(project, /MegaLocalNotifications\.swift in Sources/);
   assert.doesNotMatch(code, /registerForRemoteNotifications|deviceToken|apnsToken/);
 });
+
+test('Android opt-in local alerts require verified main-frame HTTPS app-assets origin', () => {
+  const service = read('native/android/app/src/main/java/online/megaxo/prototype/MegaAndroidLocalNotifications.kt');
+  const activity = read('native/android/app/src/main/java/online/megaxo/prototype/MegaXOActivity.kt');
+  const manifest = read('native/android/app/src/main/AndroidManifest.xml');
+  assert.match(service, /WebViewCompat\.addWebMessageListener/);
+  assert.match(service, /WebViewCompat\.addDocumentStartJavaScript/);
+  assert.match(service, /mainFrame && origin\.scheme == "https"/);
+  assert.match(service, /view\.url == entryUrl/);
+  assert.match(service, /requestPermissions\(arrayOf\(Manifest\.permission\.POST_NOTIFICATIONS\)/);
+  assert.match(service, /activity\.hasWindowFocus\(\)/);
+  assert.match(service, /requestPermission: \(\) => send\('permission'\)/);
+  assert.match(activity, /MegaAndroidLocalNotifications\.install\(this, game, gameEntry\)/);
+  assert.match(manifest, /android\.permission\.POST_NOTIFICATIONS/);
+  assert.doesNotMatch(service, /FirebaseMessaging|FCM_TOKEN|registerForRemoteNotifications/);
+});

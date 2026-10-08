@@ -300,3 +300,22 @@ test('iOS Apple sign-in adapter is disabled by default and only callable from si
   assert.match(pbx, /MEGA_APPLE_NATIVE_ENABLED = NO/);
   assert.doesNotMatch(code, /mintCrowns|createActor|signInComplete/);
 });
+
+test('Play Billing completes pending and mismatched-account callbacks without granting currency', () => {
+  const code = read('native/android/app/src/main/java/online/megaxo/prototype/MegaPlayBilling.kt');
+  assert.match(code, /Purchase\.PurchaseState\.PENDING/);
+  assert.match(code, /IllegalStateException\("STORE_PENDING"\)/);
+  assert.match(code, /IllegalStateException\("STORE_ACCOUNT_MISMATCH"\)/);
+  assert.match(code, /pending = null/);
+  assert.match(code, /relevant\.purchaseToken\.isBlank\(\)/);
+  assert.match(code, /onUnsolicitedEvidence\(mapOf/);
+  assert.doesNotMatch(code, /grantCrowns|grantCredits|consumeAsync|acknowledgePurchase/);
+});
+test('StoreKit finish safely tolerates already-finalized delivery without a second grant', () => {
+  const code = read('native/ios/MegaXO/MegaStoreKit.swift');
+  assert.match(code, /guard serverDeliveryConfirmed else/);
+  assert.match(code, /Transaction\.unfinished/);
+  assert.match(code, /await transaction\.finish\(\)/);
+  assert.doesNotMatch(code, /throw StoreError\.notFound/);
+  assert.doesNotMatch(code, /mintCrowns|grantCredits/);
+});

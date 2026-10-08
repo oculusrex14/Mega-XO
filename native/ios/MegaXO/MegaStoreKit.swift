@@ -15,7 +15,6 @@ final class MegaStoreKit {
         case cancelled
         case unavailable
         case notDelivered
-        case notFound
     }
 
     /// Store identifiers must be configured from the approved App Store
@@ -117,8 +116,10 @@ final class MegaStoreKit {
                 return
             }
         }
-        // Already finished can be an idempotent replay. Do not finish any
-        // different transaction or make a local grant to repair a mismatch.
-        throw StoreError.notFound
+        // The backend already committed delivery for this *exact* evidence.
+        // Finishing a consumed/previously finished transaction is idempotent:
+        // there is no remaining unfinished entry to act on. Returning here
+        // never grants local currency, ownership or account identity.
+        return
     }
 }

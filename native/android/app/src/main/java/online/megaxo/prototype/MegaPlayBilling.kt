@@ -108,33 +108,55 @@ internal class MegaPlayBilling(
     }
 
     override fun onPurchasesUpdated(result: BillingResult, purchases: MutableList<Purchase>?) {
-        val old = pending
+        val attempt = pending
         if (result.responseCode == BillingClient.BillingResponseCode.USER_CANCELED) {
             pending = null
-            old?.second?.invoke(Result.failure(IllegalStateException("STORE_CANCELLED")))
+            activeAccount = null
+            attempt?.second?.invoke(Result.failure(IllegalStateException("STORE_CANCELLED")))
             return
         }
         if (result.responseCode != BillingClient.BillingResponseCode.OK || purchases.isNullOrEmpty()) {
             pending = null
-            old?.second?.invoke(Result.failure(IllegalStateException("STORE_UNAVAILABLE")))
+            activeAccount = null
+            attempt?.second?.invoke(Result.failure(IllegalStateException("STORE_UNAVAILABLE")))
             return
         }
-        for (purchase in purchases) {
-            // Pending/unverified state is NOT a grant or consumable finish.
-            if (purchase.purchaseState != Purchase.PurchaseState.PURCHASED) continue
-            if (activeAccount != null &&
-                purchase.accountIdentifiers?.obfuscatedAccountId != activeAccount) continue
-            val id = old?.first
-            val matched = id != null && mapping[id] in purchase.products
-            val evidence = mapOf("store" to "google", "purchaseToken" to purchase.purchaseToken)
-            if (matched) {
-                pending = null
-                old.second.invoke(Result.success(evidence))
-            } else if (id == null && purchase.products.any { it in mapping.values }) {
-                // Future native P05 transport will enqueue these for backend
-                // verification. The host never consumes or mints here.
-                onUnsolicitedEvidence(evidence)
+
+        // A Google Play PENDING purchase is never a wallet grant. Complete the
+        // UI callback with an explicit pending outcome rather than hanging it
+        // forever while Play waits for delayed external payment approval.
+        if (attempt != null) {
+            val expected = mapping[attempt.first]
+            val relevant = purchases.firstOrNull { expected != null && expected in it.products }
+            val account = activeAccount
+            pending = null
+            activeAccount = null
+            when {
+                relevant == null ->
+                    attempt.second.invoke(Result.failure(IllegalStateException("STORE_UNAVAILABLE")))
+                relevant.purchaseState == Purchase.PurchaseState.PENDING ->
+                    attempt.second.invoke(Result.failure(IllegalStateException("STORE_PENDING")))
+                relevant.purchaseState != Purchase.PurchaseState.PURCHASED ->
+                    attempt.second.invoke(Result.failure(IllegalStateException("STORE_UNAVAILABLE")))
+                relevant.accountIdentifiers?.obfuscatedAccountId != account ->
+                    attempt.second.invoke(Result.failure(IllegalStateException("STORE_ACCOUNT_MISMATCH")))
+                relevant.purchaseToken.isBlank() ->
+                    attempt.second.invoke(Result.failure(IllegalStateException("STORE_UNAVAILABLE")))
+                else ->
+                    attempt.second.invoke(Result.success(
+                        mapOf("store" to "google", "purchaseToken" to relevant.purchaseToken)))
             }
+            return
+        }
+
+        // Recovery of provider-delayed callbacks is evidence-only. The future
+        // native session adapter must bind the actor before submitting each
+        // token; Core will validate Play's real purchase/account identity.
+        for (purchase in purchases) {
+            if (purchase.purchaseState != Purchase.PurchaseState.PURCHASED ||
+                purchase.purchaseToken.isBlank() ||
+                purchase.products.none { it in mapping.values }) continue
+            onUnsolicitedEvidence(mapOf("store" to "google", "purchaseToken" to purchase.purchaseToken))
         }
     }
 

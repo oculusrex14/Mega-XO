@@ -80,7 +80,7 @@ function boundedLoopbackEnvironment(env) {
   if(ephemeral.protocol!=='redis:' ||
      !['127.0.0.1','localhost','[::1]'].includes(ephemeral.hostname) ||
      !ephemeral.port || ephemeral.username || ephemeral.password ||
-     ephemeral.search || ephemeral.hash || ephemeral.pathname!=='/') {
+     ephemeral.search || ephemeral.hash || !['', '/'].includes(ephemeral.pathname)) {
     refuse('Redis must be an unauthenticated disposable loopback service');
   }
   return address;

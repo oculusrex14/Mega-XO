@@ -849,12 +849,18 @@ test('0034 upgrade regression: plain keys (including a quote-prefixed one) canon
       const up = runMigrate(['--execute', '--json', '--migrations-dir', scratch, '--database-url', dbUrl(database)], confirmEnv(database));
       assert.equal(up.status, 0, `0034/0035 resume failed: ${up.stdout}${up.stderr}`);
       assert.equal(up.json.appliedCount, 2);
-      const expected = plainKeys.map((k) => ({ enc: JSON.stringify(k), dec: k })).sort((a, b) => (a.enc < b.enc ? -1 : 1));
+      const expected = plainKeys.map((k) => ({ enc: JSON.stringify(k), dec: k }));
       for (const tbl of ['economy.command_outcomes', 'tournament.command_outcomes']) {
-        const rows = await c.query(`SELECT "key" FROM ${tbl} WHERE actor_id='u_canon' ORDER BY "key"`);
+        const rows = await c.query(`SELECT "key" FROM ${tbl} WHERE actor_id='u_canon'`);
         assert.equal(rows.rows.length, 3, `${tbl}: all three rows survive the upgrade`);
-        assert.deepEqual(rows.rows.map((r) => r.key), expected.map((e) => e.enc), `${tbl}: stored bytes are EXACTLY JSON.stringify(logical) for every key, once`);
-        assert.deepEqual(rows.rows.map((r) => JSON.parse(r.key)), expected.map((e) => e.dec), `${tbl}: decoded logical identity (DB readback, not mock echo)`);
+        // Order-independent (and stronger than an array compare): per-key containment plus the
+        // decoded identity of the DB-returned bytes. ORDER BY would compare under the DATABASE
+        // collation, which differs across platforms while the stored values are identical.
+        const stored = new Map(rows.rows.map((r) => [r.key, JSON.parse(r.key)]));
+        for (const e of expected) {
+          assert.ok(stored.has(e.enc), `${tbl}: stored bytes are EXACTLY JSON.stringify(logical) for ${JSON.stringify(e.dec)}`);
+          assert.equal(stored.get(e.enc), e.dec, `${tbl}: decoded logical identity for ${JSON.stringify(e.dec)}`);
+        }
       }
     } finally { await c.end(); }
   } finally { fs.rmSync(scratch, { recursive: true, force: true }); await dropTracked(database); }
@@ -927,8 +933,11 @@ test('runner refuses unconfirmed, pooler, weak-TLS, bad-binding and unprivileged
     assert.equal(unk.json.code, 'TARGET_ENVIRONMENT_UNRECOGNIZED');
     // Production-looking names classify as production with NO override (the gate-input
     // contract P22 relies on); the consumer-safety refusal is the CONFLICTING staging hint.
+    // Hermetic: CI exports V5_TARGET (workflow env), so the ambient value must be REMOVED for
+    // the no-override expectation, then set explicitly for the downgrade refusal.
     const priorTarget = process.env.V5_TARGET;
     try {
+      delete process.env.V5_TARGET;
       assert.equal(classifyTarget('v5_production_main', '127.0.0.1').kind, 'production',
         'production-looking name classifies as production without an env override');
       process.env.V5_TARGET = 'staging';

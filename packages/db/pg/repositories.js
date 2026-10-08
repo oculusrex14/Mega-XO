@@ -54,6 +54,7 @@
 const { ContextError } = require('../context');
 const { currentPgScope } = require('./pool');
 const { ROLE_GRANT_SCHEMAS } = require('./guards');
+const { lockTransactionIdentity } = require('./locks');
 const { Authority } = require('../../../src/authority.js');
 const { COMMANDS, PARTY_COMMANDS, SOCIAL_OPERATIONS, V35_COMMANDS } = require('../scopes');
 
@@ -63,6 +64,11 @@ const { COMMANDS, PARTY_COMMANDS, SOCIAL_OPERATIONS, V35_COMMANDS } = require('.
 const CAP = Object.freeze({
  actors: 20000, matches: 5000, rooms: 2000, children: 20000,
  recentLedger: 2000, snapshots: 5000, weeklyPaid: 20000, receipts: 5000, outcomes: 20000,
+ /* A per-actor WALLET OPERATION set (`economy.wallet_operations`) is bounded by the number of
+  * idempotent conversions an actor performed - it is not global, and it is the ONLY durable copy of
+  * an operation fingerprint/result, so under-reading it silently disables conversion deduplication.
+  * The bound sits far above the production shape; overflow fails the load closed. */
+ operationKeys: 20000,
 });
 
 /* ------------------------------------------------------------------ scope */
@@ -110,11 +116,54 @@ function sqlSchemas(text) {
  while ((match = SCHEMA_OF_SQL.exec(text)) !== null) out.add(match[1]);
  return out;
 }
+const TABLE_OF_SQL = /\bFROM\s+([a-z_]+\.[a-z_]+)/i;
+function primaryTable(text) {
+ const match = TABLE_OF_SQL.exec(text);
+ return match ? match[1] : null;
+}
+/* The tables whose ROWS are identity-bound: a create must never replace an existing aggregate and an
+ * update must go through the intended path. `match.matches`/`match.participants` (a match id and its
+ * seats) and `monetization.receipts` (a store transaction id) are exactly that set. */
+const IMMUTABLE_TABLES = Object.freeze(new Set([
+ 'match.matches', 'match.participants', 'monetization.receipts',
+]));
+/* The aggregate tables whose reads are GLOBAL histories that NO rule decision consults: the global
+ * journal is display-only, and `monetization.receipts` is now read through targeted identity/actor
+ * statements for every grant, refund and ownership decision. A read that overflows one of these
+ * cannot answer "which row is absent" for the delete pass, so it suppresses deletion for that table
+ * alone. EVERY OTHER bounded read is a decision input (accounts, wallets, ratings, season, match
+ * history, per-match commands, snapshots, payouts), and an overflow there makes the aggregate
+ * unwritable/undecidable rather than silently partial - `state.read()` reports it and the command
+ * boundaries fail closed with `STATE_TRUNCATED`. */
+const HISTORY_TABLES = Object.freeze(new Set([
+ 'economy.ledger', 'monetization.receipts',
+]));
+/* A bounded global-history read suppresses the delete pass for its table; the rest of the diff
+ * (upserts of the locked/live entities) stays exact. */
+function persistFlags(graph) {
+ const skipDelete = new Set(graph.historyTables || []);
+ return { truncated: graph.truncated === true, unreadable: graph.unreadable, skipDelete };
+}
 /* The aggregate lives at most once per transaction, cached on the pool's own scope object, so it
  * dies with the transaction exactly like the legacy `context.graph` cache did. */
 function invalidate(context) {
  const scope = context.client ? currentPgScope(context.client) : null;
  if (scope) { scope.aggregate = null; scope.aggregateState = null; }
+}
+
+/* The actors this transaction holds FOR UPDATE locks on, recorded on the scope by `wallets.lock`.
+ * The maintenance before-image uses it to decide whose normalization may be persisted (see
+ * `composeBaseline`). A scope that never locked anything records nobody, so an unlocked whole-graph
+ * write persists nothing but a genuine caller delta. */
+function recordLocked(context, actors) {
+ const scope = context.client ? currentPgScope(context.client) : null;
+ if (!scope) return;
+ if (!scope.lockedIds) scope.lockedIds = new Set();
+ for (const actor of actors) scope.lockedIds.add(String(actor));
+}
+function isActorLocked(context, actor) {
+ const scope = context.client ? currentPgScope(context.client) : null;
+ return !!(scope && scope.lockedIds && scope.lockedIds.has(String(actor)));
 }
 
 /* ------------------------------------------------------------ value codecs */
@@ -212,6 +261,18 @@ function insertSql(table, columns, conflict, updateColumns) {
  return `INSERT INTO ${table} (${names}) VALUES (${placeholders}) ON CONFLICT (${target}) ${clause}`;
 }
 function deleteSql(table, pk) { return `DELETE FROM ${table} WHERE ${pk.map((c, i) => `"${c}" = $${i + 1}`).join(' AND ')}`; }
+/* A genuine INSERT: no ON CONFLICT, so a duplicate key raises 23505 and the whole transaction
+ * aborts. Used for an IMMUTABLE identity (a new match / receipt) where a silent replace would
+ * destroy an existing aggregate while its outcome stayed committed. */
+function createSql(table, columns) {
+ return `INSERT INTO ${table} (${columns.map((c) => `"${c}"`).join(', ')}) VALUES (${columns.map((_, i) => `$${i + 1}`).join(', ')})`;
+}
+/* The intended UPDATE path for an EXISTING row (same key), by primary key. */
+function updateSql(table, columns, pk) {
+ const sets = columns.map((c, i) => `"${c}" = $${i + 1}`);
+ const where = pk.map((c, i) => `"${c}" = $${columns.length + i + 1}`);
+ return `UPDATE ${table} SET ${sets.join(', ')} WHERE ${where.join(' AND ')}`;
+}
 /* Which runtime role may WRITE each table, read off the grants the checksummed chain actually
  * ships (0020 api, 0021 core, 0022 worker, 0037 grant gaps). The ownership register is why these
  * are not all-schema grants: the API owns actor/profile/social/rate state, Core owns the economic
@@ -374,6 +435,7 @@ function pgRepositoriesFor(context) {
    }
    const occupancy = await q('SELECT actor_id FROM core.actor_occupancy WHERE actor_id = ANY($1::text[]) ORDER BY actor_id FOR UPDATE', [sorted]);
    const locked = await q('SELECT actor_id FROM economy.wallets WHERE actor_id = ANY($1::text[]) ORDER BY actor_id FOR UPDATE', [sorted]);
+   recordLocked(context, sorted);
    return { actors: sorted, occupancy: occupancy.rows.length, wallets: locked.rows.length };
   },
  };
@@ -447,7 +509,13 @@ function pgRepositoriesFor(context) {
   },
  };
 
- const purchases = {
+ /* TARGETED, authoritative reads for the protected store/monetization decision inputs. The whole
+ * aggregate hydrates only the first `CAP.receipts` receipts GLOBALLY, so an absence in
+ * `graph.receipts` cannot be read as "this receipt does not exist" - the receipt-identity and
+ * receipt-set facts a grant/refund/ownership decision depends on must come from these actor- or
+ * identity-scoped statements instead. Both are complete-or-fail: a saturated read throws
+ * STATE_TRUNCATED rather than returning a partial list a caller could mistake for the whole truth. */
+const purchases = {
   async receipt(store, transactionId) {
    const r = await sql(context)(
     `SELECT store, transaction_id, actor_id, product_id, crowns, refunded, ${msColumn('purchased_at', 'at')} FROM monetization.receipts WHERE store = $1 AND transaction_id = $2`,
@@ -459,6 +527,21 @@ function pgRepositoriesFor(context) {
     actor: row.actor_id, productId: row.product_id, crowns: Number(row.crowns),
     refunded: row.refunded === true, at: msOrNullColumn(row.at, 'receipts.purchased_at'),
    };
+  },
+  /* Every receipt for ONE actor - the decision input for a `once` product (already-owned /
+   * previously-refunded) and for the `owned()` product projection. The actor-scoped set is tiny in
+   * production, and the global receipt cap cannot be used to answer it: a saturated actor read
+   * fails closed instead of silently dropping an owned-once or refunded product. */
+  async forActor(actor) {
+   const r = await sql(context)(
+    `SELECT store, transaction_id, actor_id, product_id, crowns, refunded, ${msColumn('purchased_at', 'at')} FROM monetization.receipts WHERE actor_id = $1 ORDER BY store, transaction_id LIMIT $2`,
+    [actor, CAP.receipts + 1]);
+   if (r.rows.length > CAP.receipts) throw ctxError('STATE_TRUNCATED', `receipts for ${actor} reached the bounded-read cap`);
+   return r.rows.map((row) => ({
+    id: `${row.store}:${row.transaction_id}`, store: row.store, transactionId: row.transaction_id,
+    actor: row.actor_id, productId: row.product_id, crowns: Number(row.crowns),
+    refunded: row.refunded === true, at: msOrNullColumn(row.at, 'receipts.purchased_at'),
+   }));
   },
   /* Permanent refund tombstone (0015); no runtime role receives DELETE here. */
   async revoked(store, transactionId) {
@@ -485,6 +568,18 @@ function pgRepositoriesFor(context) {
    await sql(context)(insertSql(family.table, ['actor_id', 'key', 'fingerprint', family.resultColumn, 'committed_at'], ['actor_id', 'key'], []),
     [actor, keyOut(key, family.name), fingerprint, result, iso(clockOf(context), 'outcomes.committed_at')]);
    return values;
+  },
+  /* STRICT claim of an operation key: `true` only when this statement actually inserted the row.
+   * A caller that already holds the logical operation mutex uses this instead of `save` so a
+   * conflict caused by a foreign writer (one that bypassed the mutex) ABORTS its transaction rather
+   * than committing a second business effect behind one outcome row. */
+  async claim(scope, ...values) {
+   const family = familyOf(scope);
+   const { actor, key, fingerprint, result } = family.writeShape(values);
+   const r = await sql(context)(`INSERT INTO ${family.table} (actor_id, "key", fingerprint, ${family.resultColumn}, committed_at)`
+    + ' VALUES ($1, $2, $3, $4, $5) ON CONFLICT (actor_id, "key") DO NOTHING',
+    [actor, keyOut(key, family.name), fingerprint, result, iso(clockOf(context), 'outcomes.committed_at')]);
+   return r.rowCount === 1;
   },
  };
 
@@ -539,13 +634,24 @@ function pgRepositoriesFor(context) {
   * and adopts the caller's value as the new in-scope aggregate. */
  const state = {
   async read() { return (await hydrate(context)).authority.export(); },
+  /* Whether the in-scope aggregate read was COMPLETE for decision purposes: no bounded
+  * decision-input read exceeded its cap. A caller that is about to authorize a whole-graph economic
+  * write - `server/rooms.js` reads `state.read()`, mutates it, then calls `state.write` - must ask
+  * this before treating an absent entity as absent truth. */
+  async complete() { return (await hydrate(context)).complete; },
   async write(value) {
    if (!value || typeof value !== 'object') throw new ContextError('INVALID_STATE');
    const scope = scopeOf(context);
    const graph = scope.aggregate ? await hydrate(context) : null;
-   if (graph && graph.truncated) throw ctxError('STATE_TRUNCATED', 'the aggregate read hit a bounded-read cap; a whole-aggregate write could not prove which rows are absent');
-   const stats = await persistAggregate(context, value, graph ? graph.snapshot : null, graph ? { truncated: graph.truncated, unreadable: graph.unreadable } : {});
-   const next = graphFor(context, value, graph ? graph.rooms : new Map());
+   if (graph) {
+    if (graph.truncated === true) throw ctxError('STATE_TRUNCATED', 'a decision-input read was truncated; a whole-aggregate write could not prove which rows are absent');
+    await graph.writeDocument(value, (id) => isActorLocked(context, id));
+    scope.aggregateState = graph;
+    scope.aggregate = Promise.resolve(graph);
+    return value;
+   }
+   await persistAggregate(context, value, null, {});
+   const next = graphFor(context, value, new Map());
    scope.aggregateState = next;
    scope.aggregate = Promise.resolve(next);
    return value;
@@ -559,8 +665,8 @@ function pgRepositoriesFor(context) {
   /* Persist the shared aggregate through the unit of work's connection. Only the entities that
    * changed since hydration (or the last commit) are written, entity-wise - there is no whole-graph
    * row and no `state` table. Timestamps come from context.clock or the caller's object; nothing is
-   * minted. */
-  async commitDomain() { return (await hydrate(context)).commit(); },
+   * minted. Domain normalization is persisted only for the actors this transaction LOCKED. */
+  async commitDomain() { return (await hydrate(context)).commit((id) => isActorLocked(context, id)); },
  });
 }
 
@@ -651,18 +757,31 @@ function outcomeRow(family, row) {
   * its entries; `authority.export()` renders `commands` as an entry array, which both sides of the
   * diff can read. */
  function snapshotOf(authority) { return JSON.stringify(authority.export()); }
- function graphFor(context, value, rooms) {
-  const authority = authorityFor(context, value);
-  return new DomainGraph(context, authority, snapshotOf(authority), value, rooms);
- }
+function graphFor(context, value, rooms) {
+ const authority = authorityFor(context, value);
+ return new DomainGraph(context, authority, snapshotOf(authority), value, rooms);
+}
 
  class DomainGraph {
-  constructor(context, authority, snapshot, stateValue, rooms) {
+  constructor(context, authority, snapshot, stateValue, rooms, rawAccountsJson = null) {
    this.context = context;
    this.authority = authority;
    this.snapshot = snapshot;
    this.stateValue = stateValue;
    this.rooms = rooms;
+   /* The RAW durable account projection captured BEFORE the domain model was constructed, so the
+    * maintenance before-image can restore it for UNLOCKED actors (see `composeBaseline`). */
+   this.rawAccountsJson = rawAccountsJson;
+   /* The actors this transaction actually holds a row lock on; normalization is persisted for them
+    * and hidden for everyone else. Empty for an unlocked read, which therefore writes nothing but a
+    * genuine caller delta. */
+   this.lockedIds = new Set();
+   this.truncated = false;
+   this.historyTables = [];
+   this.unreadable = [];
+   /* Default: a graph built from a caller-supplied value (state.write) is over a document the
+    * caller owns, so it is complete by construction until the hydrator says otherwise. */
+   this.complete = true;
   }
   get accounts() { return this.authority.accounts; }
   get matches() {
@@ -681,13 +800,38 @@ function outcomeRow(family, row) {
   }
   export() { return this.authority.export(); }
   /* Entity-wise persist of exactly what changed since the snapshot. `current` IS the exported
-   * form, so it is also the representation the next diff's "before" image must carry. */
-  async commit() {
-   const current = this.authority.export();
-   const stats = await persistAggregate(this.context, current, this.snapshot, { truncated: this.truncated, unreadable: this.unreadable });
+   * form, so it is also the representation the next diff's "before" image must carry.
+   *
+   * SCOPED NORMALIZATION. The baseline is composed from the normalized snapshot and the RAW durable
+   * accounts: a LOCKED actor keeps its raw durable account (so `restore()`'s quarter archive, seeded
+   * rows and clamps are persisted), and every other actor keeps its normalized account (so its
+   * normalization is invisible). A maintenance transaction that locks no actor therefore writes
+   * nothing but the delta its caller actually made. */
+  async persistDocument(current, isLocked) {
+   const normalizedJson = this.snapshot;
+   const lockedIds = lockedAccountIds(current, isLocked);
+   const baseline = normalizedJson === null ? null : composeBaseline(normalizedJson, this.rawAccountsJson, lockedIds);
+   const stats = await persistAggregate(this.context, current, baseline === null ? null : jsonOf(baseline), persistFlags(this));
    this.stateValue = current;
-   this.snapshot = JSON.stringify(current);
+   /* After a commit the durable rows equal `current`, so the next diff's baseline advances too. */
+   if (normalizedJson !== null) this.snapshot = jsonOf(current);
+   /* Normalization for the locked actors is now DURABLE, so it must not be re-persisted by a later
+    * commit of the same transaction: their raw baseline becomes their committed account. */
+   const raw = accountMap(this.rawAccountsJson ? JSON.parse(this.rawAccountsJson) : null);
+   for (const [id, account] of current.accounts) if (lockedIds.has(id)) raw.set(id, account);
+   this.rawAccountsJson = jsonOf([...raw]);
    return stats;
+  }
+  async commit(isLocked = () => false) {
+   return this.persistDocument(this.authority.export(), isLocked);
+  }
+  /* Adopt a caller-supplied document (the legacy whole-aggregate seam, server/rooms.js). The
+    * persisted diff uses the composed baseline, so normalization is written only for the actors this
+    * transaction locked. */
+  async writeDocument(value, isLocked = () => false) {
+   await this.persistDocument(value, isLocked);
+   this.stateValue = value;
+   this.authority = authorityFor(this.context, value);
   }
  }
 
@@ -857,39 +1001,56 @@ const MATCH_SQL = 'SELECT match_id, source, mode, kind, rated, amount, currency,
   };
  }
 
- async function buildAggregate(context, scope) {
-  const q = sql(context);
-  const caps = capabilities(context);
-  const unreadable = new Set();
-  /* A statement whose tables live in a schema this role cannot read is SKIPPED rather than run:
+async function buildAggregate(context, scope) {
+ const q = sql(context);
+ const caps = capabilities(context);
+ const unreadable = new Set();
+ /* A statement whose tables live in a schema this role cannot read is SKIPPED rather than run:
   * the guarded roles genuinely do not share every schema (core has no social.*, api has no
   * economy.*), and issuing the query would raise 42501 and fail an otherwise valid unit of work.
   * The skip is recorded on the graph so the persist pass can refuse to write a schema it was never
   * able to read. */
-  let truncated = false;
-  const read = async (text, params, cap) => {
-   if (caps) {
-    let blocked = null;
-    for (const schema of sqlSchemas(text)) if (!caps.has(schema)) { blocked = schema; break; }
-    if (blocked) { unreadable.add(blocked); return []; }
-   }
-   const rows = (await q(text, params)).rows;
-   if (cap !== undefined && rows.length >= cap) truncated = true;
-   return rows;
-  };
-  const stateValue = { accounts: [], matches: [], receipts: [], snapshots: [], weeklyPaid: [], burned: { coins: 0, crowns: 0 }, journal: [], leagueWeek: null };
-  const accountsById = new Map();
-  for (const row of await read(accountSql({ economy: !caps || caps.has('economy'), core: !caps || caps.has('core') }), [CAP.actors], CAP.actors)) {
-   const account = accountFromRow(row);
-   accountsById.set(account.id, account);
-   stateValue.accounts.push([account.id, account]);
+ let truncated = false;
+ const historyTables = new Set();
+ const read = async (text, params, cap) => {
+  if (caps) {
+   let blocked = null;
+   for (const schema of sqlSchemas(text)) if (!caps.has(schema)) { blocked = schema; break; }
+   if (blocked) { unreadable.add(blocked); return []; }
   }
-  const ids = [...accountsById.keys()];
-  if (ids.length) {
-   for (const row of await read(`SELECT actor_id, currency, entry_id, operation_id, amount, reason, ${msColumn('at', 'at')} FROM economy.wallet_ledger_entries WHERE actor_id = ANY($1::text[]) ORDER BY actor_id, at, entry_id LIMIT $2`, [ids, CAP.children], CAP.children)) {
-    accountsById.get(row.actor_id).ledger.push({ id: row.entry_id, operation: row.operation_id, currency: row.currency, amount: Number(row.amount), reason: row.reason, at: msOrNullColumn(row.at, 'wallet_ledger.at') });
-   }
-   for (const row of await read('SELECT actor_id, "key", fingerprint, result FROM economy.wallet_operations WHERE actor_id = ANY($1::text[]) ORDER BY actor_id, "key" LIMIT $2', [ids, CAP.children], CAP.children)) {
+  const rows = (await q(text, params)).rows;
+  /* `rows.length === cap` is NOT evidence of truncation: an exactly-cap-sized population is a
+   * complete read. One extra row beyond the cap proves the read missed data, so every bounded read
+   * requests `cap + 1` and the extra row is dropped here. An overflow is then classified: a GLOBAL
+   * history table (HISTORY_TABLES) merely suppresses the delete pass for that table, while a
+   * decision input (accounts, wallets, matches, season, eligibility-scoped history) makes the whole
+   * aggregate unwritable - the decision could not be proved from it. */
+  if (cap !== undefined && rows.length > cap) {
+   const table = primaryTable(text);
+   if (table !== null && HISTORY_TABLES.has(table)) historyTables.add(table); else truncated = true;
+   rows.length = cap;
+  }
+  return rows;
+ };
+ const stateValue = { accounts: [], matches: [], receipts: [], snapshots: [], weeklyPaid: [], burned: { coins: 0, crowns: 0 }, journal: [], leagueWeek: null };
+ /* Whether the aggregate read was COMPLETE for DECISION purposes: no bounded decision-input read was
+ * truncated. An unreadable schema is a different fact - the ownership register deliberately deprives
+ * a role of another role's tables, and the persist pass refuses to write what it could not read - so
+ * it never makes an otherwise-complete aggregate undecidable. */
+ const complete = () => !truncated;
+ const accountRowsRead = await read(accountSql({ economy: !caps || caps.has('economy'), core: !caps || caps.has('core') }), [CAP.actors + 1], CAP.actors);
+ const accountsById = new Map();
+ for (const row of accountRowsRead) {
+  const account = accountFromRow(row);
+  accountsById.set(account.id, account);
+  stateValue.accounts.push([account.id, account]);
+ }
+ const ids = [...accountsById.keys()];
+ if (ids.length) {
+  for (const row of await read(`SELECT actor_id, currency, entry_id, operation_id, amount, reason, ${msColumn('at', 'at')} FROM economy.wallet_ledger_entries WHERE actor_id = ANY($1::text[]) ORDER BY actor_id, at, entry_id LIMIT $2`, [ids, CAP.children + 1], CAP.children)) {
+   accountsById.get(row.actor_id).ledger.push({ id: row.entry_id, operation: row.operation_id, currency: row.currency, amount: Number(row.amount), reason: row.reason, at: msOrNullColumn(row.at, 'wallet_ledger.at') });
+  }
+  for (const row of await read('SELECT actor_id, "key", fingerprint, result FROM economy.wallet_operations WHERE actor_id = ANY($1::text[]) ORDER BY actor_id, "key" LIMIT $2', [ids, CAP.operationKeys + 1], CAP.operationKeys)) {
     /* SOURCE SHAPE (src/domain.js:88-92): `operations[id] = {fingerprint, result}`, where `fingerprint`
      * is the exact quote TEXT (`JSON.stringify(conversion(...))`, compared byte-for-byte by `convert`
      * before it returns `{...result, duplicate:true}`) and `result` is the quote OBJECT. Both columns
@@ -902,26 +1063,26 @@ const MATCH_SQL = 'SELECT match_id, source, mode, kind, rated, amount, currency,
     * bucket by the session TimeZone instead of the source `YYYY-MM-DD` - a claim would then write a
     * SECOND key and the diff's delete pass would zero the pre-existing day row. The render is done
     * in SQL, exactly as the P03 loader does it (tools/v5-migration/ledger.js:92-96). */
-   for (const row of await read("SELECT actor_id, to_char(day, 'YYYY-MM-DD') AS day, finished, seconds, boards, casual, friend, ranked, ranked_bonus, claimed FROM economy.daily_progress WHERE actor_id = ANY($1::text[]) ORDER BY actor_id, day LIMIT $2", [ids, CAP.children], CAP.children)) {
+   for (const row of await read("SELECT actor_id, to_char(day, 'YYYY-MM-DD') AS day, finished, seconds, boards, casual, friend, ranked, ranked_bonus, claimed FROM economy.daily_progress WHERE actor_id = ANY($1::text[]) ORDER BY actor_id, day LIMIT $2", [ids, CAP.children + 1], CAP.children)) {
     accountsById.get(row.actor_id).daily[String(row.day)] = {
      finished: Number(row.finished), seconds: Number(row.seconds), boards: Number(row.boards), casual: Number(row.casual),
      friend: Number(row.friend), ranked: Number(row.ranked), rankedBonus: Number(row.ranked_bonus), claimed: row.claimed || [],
     };
    }
-   for (const row of await read(`SELECT actor_id, season_id, ${msColumn('started_at', 'started_at')}, games, queue_games, opponents, wins, losses, draws, peak_rating, ${msColumn('last_rated_at', 'last_rated_at')}, ${msColumn('qualified_at', 'qualified_at')} FROM economy.season_state WHERE actor_id = ANY($1::text[]) ORDER BY actor_id LIMIT $2`, [ids, CAP.actors], CAP.actors)) {
+   for (const row of await read(`SELECT actor_id, season_id, ${msColumn('started_at', 'started_at')}, games, queue_games, opponents, wins, losses, draws, peak_rating, ${msColumn('last_rated_at', 'last_rated_at')}, ${msColumn('qualified_at', 'qualified_at')} FROM economy.season_state WHERE actor_id = ANY($1::text[]) ORDER BY actor_id LIMIT $2`, [ids, CAP.actors + 1], CAP.actors)) {
     accountsById.get(row.actor_id).season = seasonFromRow(row);
    }
-   for (const row of await read(`SELECT actor_id, season_id, ${msColumn('started_at', 'started_at')}, games, queue_games, opponents, wins, losses, draws, peak_rating, ${msColumn('last_rated_at', 'last_rated_at')}, ${msColumn('qualified_at', 'qualified_at')}, finish_rating, finish_tier, ${msColumn('ended_at', 'ended_at')} FROM economy.season_history WHERE actor_id = ANY($1::text[]) ORDER BY actor_id, seq LIMIT $2`, [ids, CAP.children], CAP.children)) {
+   for (const row of await read(`SELECT actor_id, season_id, ${msColumn('started_at', 'started_at')}, games, queue_games, opponents, wins, losses, draws, peak_rating, ${msColumn('last_rated_at', 'last_rated_at')}, ${msColumn('qualified_at', 'qualified_at')}, finish_rating, finish_tier, ${msColumn('ended_at', 'ended_at')} FROM economy.season_history WHERE actor_id = ANY($1::text[]) ORDER BY actor_id, seq LIMIT $2`, [ids, CAP.children + 1], CAP.children)) {
     accountsById.get(row.actor_id).seasonHistory.push({ ...seasonFromRow(row), finishRating: numOrNull(row.finish_rating), finishTier: row.finish_tier, endedAt: msOrNullColumn(row.ended_at, 'season_history.ended_at') });
    }
-   for (const row of await read('SELECT actor_id, entered, wins, runner_up, top3, top5, best_finish, finish_sum, premium_wins FROM economy.tournament_records WHERE actor_id = ANY($1::text[]) ORDER BY actor_id LIMIT $2', [ids, CAP.actors], CAP.actors)) {
+   for (const row of await read('SELECT actor_id, entered, wins, runner_up, top3, top5, best_finish, finish_sum, premium_wins FROM economy.tournament_records WHERE actor_id = ANY($1::text[]) ORDER BY actor_id LIMIT $2', [ids, CAP.actors + 1], CAP.actors)) {
     accountsById.get(row.actor_id).tournamentRecord = {
      entered: Number(row.entered), wins: Number(row.wins), runnerUp: Number(row.runner_up), top3: Number(row.top3),
      top5: Number(row.top5), bestFinish: row.best_finish === null ? null : Number(row.best_finish),
      finishSum: Number(row.finish_sum), premiumWins: Number(row.premium_wins),
     };
    }
-   for (const row of await read(`SELECT actor_id, match_id, ${msColumn('at', 'at')}, opponent, mode, queue, symbol, rated, qualified, activity_qualified, result, reason, active_seconds, rating_delta, casual_delta FROM economy.match_history WHERE actor_id = ANY($1::text[]) ORDER BY actor_id, seq LIMIT $2`, [ids, CAP.children], CAP.children)) {
+   for (const row of await read(`SELECT actor_id, match_id, ${msColumn('at', 'at')}, opponent, mode, queue, symbol, rated, qualified, activity_qualified, result, reason, active_seconds, rating_delta, casual_delta FROM economy.match_history WHERE actor_id = ANY($1::text[]) ORDER BY actor_id, seq LIMIT $2`, [ids, CAP.children + 1], CAP.children)) {
     accountsById.get(row.actor_id).history.push({
      id: row.match_id, at: msOrNullColumn(row.at, 'match_history.at'), opponent: row.opponent, mode: row.mode,
      queue: row.queue === true, symbol: row.symbol, rated: row.rated === true, qualified: row.qualified === true,
@@ -929,48 +1090,48 @@ const MATCH_SQL = 'SELECT match_id, source, mode, kind, rated, amount, currency,
      activeSeconds: numOrNull(row.active_seconds), ratingDelta: numOrNull(row.rating_delta), casualDelta: numOrNull(row.casual_delta),
     });
    }
-   for (const row of await read('SELECT actor_a, actor_b FROM social.friendships WHERE actor_a = ANY($1::text[]) OR actor_b = ANY($1::text[]) ORDER BY actor_a, actor_b LIMIT $2', [ids, CAP.children], CAP.children)) {
+   for (const row of await read('SELECT actor_a, actor_b FROM social.friendships WHERE actor_a = ANY($1::text[]) OR actor_b = ANY($1::text[]) ORDER BY actor_a, actor_b LIMIT $2', [ids, CAP.children + 1], CAP.children)) {
     accountsById.get(row.actor_a)?.friends.push(row.actor_b);
     accountsById.get(row.actor_b)?.friends.push(row.actor_a);
    }
-   for (const row of await read('SELECT from_id, to_id FROM social.friend_requests WHERE from_id = ANY($1::text[]) OR to_id = ANY($1::text[]) ORDER BY from_id, to_id LIMIT $2', [ids, CAP.children], CAP.children)) {
+   for (const row of await read('SELECT from_id, to_id FROM social.friend_requests WHERE from_id = ANY($1::text[]) OR to_id = ANY($1::text[]) ORDER BY from_id, to_id LIMIT $2', [ids, CAP.children + 1], CAP.children)) {
     accountsById.get(row.from_id)?.friendRequests.push(row.to_id);
    }
-   for (const row of await read('SELECT blocker_id, blocked_id FROM social.blocks WHERE blocker_id = ANY($1::text[]) OR blocked_id = ANY($1::text[]) ORDER BY blocker_id, blocked_id LIMIT $2', [ids, CAP.children], CAP.children)) {
+   for (const row of await read('SELECT blocker_id, blocked_id FROM social.blocks WHERE blocker_id = ANY($1::text[]) OR blocked_id = ANY($1::text[]) ORDER BY blocker_id, blocked_id LIMIT $2', [ids, CAP.children + 1], CAP.children)) {
     accountsById.get(row.blocker_id)?.blocked.push(row.blocked_id);
    }
-   for (const row of await read(`SELECT actor_id, credit_balance, equipped_frame, ${msColumn('last_ad_at', 'last_ad_at')}, ${msColumn('last_reward_start', 'last_reward_start')} FROM monetization.credits WHERE actor_id = ANY($1::text[]) ORDER BY actor_id LIMIT $2`, [ids, CAP.actors], CAP.actors)) {
+   for (const row of await read(`SELECT actor_id, credit_balance, equipped_frame, ${msColumn('last_ad_at', 'last_ad_at')}, ${msColumn('last_reward_start', 'last_reward_start')} FROM monetization.credits WHERE actor_id = ANY($1::text[]) ORDER BY actor_id LIMIT $2`, [ids, CAP.actors + 1], CAP.actors)) {
     const account = accountsById.get(row.actor_id);
     account.monetization.credits = Number(row.credit_balance);
     if (row.equipped_frame !== null) account.monetization.equipped = row.equipped_frame;
     account.monetization.lastAdAt = msOrNullColumn(row.last_ad_at, 'credits.last_ad_at');
     account.monetization.lastRewardStart = msOrNullColumn(row.last_reward_start, 'credits.last_reward_start');
    }
-   for (const row of await read('SELECT actor_id, frame FROM monetization.redeemed_frames WHERE actor_id = ANY($1::text[]) ORDER BY actor_id, frame LIMIT $2', [ids, CAP.children], CAP.children)) {
+   for (const row of await read('SELECT actor_id, frame FROM monetization.redeemed_frames WHERE actor_id = ANY($1::text[]) ORDER BY actor_id, frame LIMIT $2', [ids, CAP.children + 1], CAP.children)) {
     accountsById.get(row.actor_id).monetization.redeemed.push(row.frame);
    }
-   for (const row of await read(`SELECT actor_id, boost_seq, ${msColumn('started_at', 'started_at')}, ${msColumn('ends_at', 'ends_at')} FROM monetization.boosts WHERE actor_id = ANY($1::text[]) ORDER BY actor_id, boost_seq LIMIT $2`, [ids, CAP.children], CAP.children)) {
+   for (const row of await read(`SELECT actor_id, boost_seq, ${msColumn('started_at', 'started_at')}, ${msColumn('ends_at', 'ends_at')} FROM monetization.boosts WHERE actor_id = ANY($1::text[]) ORDER BY actor_id, boost_seq LIMIT $2`, [ids, CAP.children + 1], CAP.children)) {
     accountsById.get(row.actor_id).monetization.boosts.push({ startedAt: msOrNullColumn(row.started_at, 'boosts.started_at'), endsAt: msOrNullColumn(row.ends_at, 'boosts.ends_at') });
    }
-   for (const row of await read("SELECT actor_id, to_char(day, 'YYYY-MM-DD') AS day, base, bonus, automatic FROM monetization.reward_daily WHERE actor_id = ANY($1::text[]) ORDER BY actor_id, day LIMIT $2", [ids, CAP.children], CAP.children)) {
+   for (const row of await read("SELECT actor_id, to_char(day, 'YYYY-MM-DD') AS day, base, bonus, automatic FROM monetization.reward_daily WHERE actor_id = ANY($1::text[]) ORDER BY actor_id, day LIMIT $2", [ids, CAP.children + 1], CAP.children)) {
     accountsById.get(row.actor_id).monetization.daily[String(row.day)] = { base: Number(row.base), bonus: Number(row.bonus), automatic: Number(row.automatic) };
    }
-   for (const row of await read('SELECT actor_id, item FROM cosmetics.owned_items WHERE actor_id = ANY($1::text[]) ORDER BY actor_id, item LIMIT $2', [ids, CAP.children], CAP.children)) {
+   for (const row of await read('SELECT actor_id, item FROM cosmetics.owned_items WHERE actor_id = ANY($1::text[]) ORDER BY actor_id, item LIMIT $2', [ids, CAP.children + 1], CAP.children)) {
     accountsById.get(row.actor_id).owned.push(row.item);
    }
   }
   const matches = new Map();
-  for (const row of await read(MATCH_SQL, [CAP.matches], CAP.matches)) {
+  for (const row of await read(MATCH_SQL, [CAP.matches + 1], CAP.matches)) {
    const match = matchFromRow(row);
    matches.set(match.id, match);
    stateValue.matches.push([match.id, match]);
   }
   if (matches.size) {
    const matchIds = [...matches.keys()];
-   for (const row of await read('SELECT match_id, seat, actor_id, accepted FROM match.participants WHERE match_id = ANY($1::text[]) ORDER BY match_id, seat LIMIT $2', [matchIds, CAP.children], CAP.children)) {
+   for (const row of await read('SELECT match_id, seat, actor_id, accepted FROM match.participants WHERE match_id = ANY($1::text[]) ORDER BY match_id, seat LIMIT $2', [matchIds, CAP.children + 1], CAP.children)) {
     matches.get(row.match_id).participants.push(row);
    }
-   for (const row of await read('SELECT match_id, "key", fingerprint, result FROM match.move_outcomes WHERE match_id = ANY($1::text[]) ORDER BY match_id, "key" LIMIT $2', [matchIds, CAP.outcomes], CAP.outcomes)) {
+   for (const row of await read('SELECT match_id, "key", fingerprint, result FROM match.move_outcomes WHERE match_id = ANY($1::text[]) ORDER BY match_id, "key" LIMIT $2', [matchIds, CAP.outcomes + 1], CAP.outcomes)) {
     matches.get(row.match_id).commands.set(row.key, { fingerprint: row.fingerprint, result: decodeJsonText(row.result, null, 'move_outcomes.result') });
    }
    for (const match of matches.values()) {
@@ -981,39 +1142,46 @@ const MATCH_SQL = 'SELECT match_id, source, mode, kind, rated, amount, currency,
    }
   }
   const rooms = new Map();
-  for (const row of await read(ROOM_SQL, [CAP.rooms], CAP.rooms)) rooms.set(row.room_id, roomFromRow(row));
+  for (const row of await read(ROOM_SQL, [CAP.rooms + 1], CAP.rooms)) rooms.set(row.room_id, roomFromRow(row));
   if (rooms.size) {
    const roomIds = [...rooms.keys()];
-   for (const row of await read(`SELECT room_id, actor_id, name, ready, withdrawn, ordinal FROM tournament.room_players WHERE room_id = ANY($1::text[]) ORDER BY room_id, ordinal LIMIT $2`, [roomIds, CAP.children], CAP.children)) {
+   for (const row of await read(`SELECT room_id, actor_id, name, ready, withdrawn, ordinal FROM tournament.room_players WHERE room_id = ANY($1::text[]) ORDER BY room_id, ordinal LIMIT $2`, [roomIds, CAP.children + 1], CAP.children)) {
     rooms.get(row.room_id).players.push({ id: row.actor_id, name: decodeJson(row.name, undefined), ready: row.ready === true, withdrawn: row.withdrawn === true });
    }
-   for (const row of await read('SELECT room_id, actor_id, amount FROM tournament.escrow_contributions WHERE room_id = ANY($1::text[]) ORDER BY room_id, actor_id LIMIT $2', [roomIds, CAP.children], CAP.children)) {
+   for (const row of await read('SELECT room_id, actor_id, amount FROM tournament.escrow_contributions WHERE room_id = ANY($1::text[]) ORDER BY room_id, actor_id LIMIT $2', [roomIds, CAP.children + 1], CAP.children)) {
     rooms.get(row.room_id).contributions.push({ id: row.actor_id, amount: Number(row.amount) });
    }
-   for (const row of await read(FIXTURE_SQL, [roomIds, CAP.outcomes], CAP.outcomes)) rooms.get(row.room_id).fixtures.push(fixtureFromRow(row));
+   for (const row of await read(FIXTURE_SQL, [roomIds, CAP.outcomes + 1], CAP.outcomes)) rooms.get(row.room_id).fixtures.push(fixtureFromRow(row));
   }
-  for (const row of await read(`SELECT store, transaction_id, actor_id, product_id, crowns, refunded, ${msColumn('purchased_at', 'at')} FROM monetization.receipts ORDER BY store, transaction_id LIMIT $1`, [CAP.receipts], CAP.receipts)) {
+  for (const row of await read(`SELECT store, transaction_id, actor_id, product_id, crowns, refunded, ${msColumn('purchased_at', 'at')} FROM monetization.receipts ORDER BY store, transaction_id LIMIT $1`, [CAP.receipts + 1], CAP.receipts)) {
    stateValue.receipts.push([`${row.store}:${row.transaction_id}`, { actor: row.actor_id, productId: row.product_id, crowns: Number(row.crowns), refunded: row.refunded === true, at: msOrNullColumn(row.at, 'receipts.purchased_at') }]);
   }
   const days = new Map();
-  for (const row of await read("SELECT to_char(day, 'YYYY-MM-DD') AS day, actor_id, tier FROM season.day_snapshots ORDER BY day, actor_id LIMIT $1", [CAP.snapshots], CAP.snapshots)) {
+  for (const row of await read("SELECT to_char(day, 'YYYY-MM-DD') AS day, actor_id, tier FROM season.day_snapshots ORDER BY day, actor_id LIMIT $1", [CAP.snapshots + 1], CAP.snapshots)) {
    if (!days.has(row.day)) days.set(row.day, {});
    days.get(row.day)[row.actor_id] = row.tier;
   }
   for (const [day, tiers] of days) stateValue.snapshots.push([day, tiers]);
-  for (const row of await read("SELECT payout_id, to_char(week, 'YYYY-MM-DD') AS week, actor_id, amount, tier, eligible, days FROM season.weekly_payouts ORDER BY payout_id LIMIT $1", [CAP.weeklyPaid], CAP.weeklyPaid)) {
+  for (const row of await read("SELECT payout_id, to_char(week, 'YYYY-MM-DD') AS week, actor_id, amount, tier, eligible, days FROM season.weekly_payouts ORDER BY payout_id LIMIT $1", [CAP.weeklyPaid + 1], CAP.weeklyPaid)) {
    stateValue.weeklyPaid.push([row.payout_id, { id: row.payout_id, account: row.actor_id, week: row.week, amount: Number(row.amount), tier: row.tier, eligible: row.eligible === true, days: numOrNull(row.days) }]);
   }
   const burns = (await read('SELECT coins, crowns FROM economy.system_burns WHERE id = 1', []))[0];
   if (burns) stateValue.burned = { coins: Number(burns.coins), crowns: Number(burns.crowns) };
   const league = (await read("SELECT to_char(week, 'YYYY-MM-DD') AS week FROM season.league_week WHERE id = 1", []))[0];
   stateValue.leagueWeek = league ? league.week : null;
-  for (const row of await read(`SELECT entry_id, actor_id, currency, amount, reason, source, ${msColumn('at', 'at')} FROM economy.ledger ORDER BY at, entry_id LIMIT $1`, [CAP.recentLedger], CAP.recentLedger)) {
+  for (const row of await read(`SELECT entry_id, actor_id, currency, amount, reason, source, ${msColumn('at', 'at')} FROM economy.ledger ORDER BY at, entry_id LIMIT $1`, [CAP.recentLedger + 1], CAP.recentLedger)) {
    stateValue.journal.push({ id: row.entry_id, actor: row.actor_id, currency: row.currency, amount: Number(row.amount), reason: row.reason, source: row.source, at: msOrNullColumn(row.at, 'ledger.at') });
   }
+  /* The RAW durable account projection, captured BEFORE the domain model is constructed: the
+   * maintenance before-image restores it for the actors whose normalization must stay invisible
+   * (see `composeBaseline`). It is the exact document `accountFromRow` produced - the same document
+   * the persist pass projects - so an unchanged actor contributes no diff. */
+  const rawAccountsJson = JSON.stringify(stateValue.accounts);
   const graphAuthority = authorityFor(context, stateValue);
-  const graph = new DomainGraph(context, graphAuthority, snapshotOf(graphAuthority), stateValue, rooms);
+  const graph = new DomainGraph(context, graphAuthority, snapshotOf(graphAuthority), stateValue, rooms, rawAccountsJson);
   graph.truncated = truncated;
+  graph.historyTables = [...historyTables].sort();
+  graph.complete = complete();
   graph.unreadable = [...unreadable].sort();
   scope.aggregateState = graph;
   return graph;
@@ -1337,11 +1505,58 @@ function commandEntries(commands) {
   return row;
  }
 
- async function persistAggregate(context, stateValue, beforeJson, flags = {}) {
+/* ---------------------------------------------------- maintenance before-image */
+
+/* The before-image used by EVERY persist: normalization is visible only for the actors this
+ * transaction actually LOCKED.
+ *
+ * `Authority.restore()` mutates the document it hydrates - it rolls a quarter, seeds defaults and
+ * clamps counters - so a baseline taken after hydration would make that work look like the caller's
+ * change and persist it for EVERY actor the aggregate carries, including actors this transaction
+ * never locked. The hydrator therefore captures the RAW durable account projection BEFORE the domain
+ * model is constructed (`graph.rawAccountsJson`), and the baseline is composed from both:
+ *
+ *   - a LOCKED actor takes its raw durable account, so its normalization (the quarter archive, the
+ *     seeded season/record rows, the clamp) is part of the diff and IS persisted;
+ *   - every other actor keeps the normalized account, so its normalization is invisible and nothing
+ *     is written for an actor this transaction never locked.
+ *
+ * Every non-account member (matches, receipts, journal, burns, snapshots, weekly payouts) is carried
+ * verbatim: `restore()` does not normalize any of them. */
+function accountMap(accounts) {
+ const out = new Map();
+ for (const [id, account] of accounts || []) out.set(id, account);
+ return out;
+}
+function composeBaseline(normalizedJson, rawAccountsJson, lockedIds) {
+ const merged = JSON.parse(normalizedJson);
+ const raw = accountMap(rawAccountsJson ? JSON.parse(rawAccountsJson) : null);
+ merged.accounts = merged.accounts.map(([id, account]) => [id, lockedIds.has(id) && raw.has(id) ? raw.get(id) : account]);
+ return merged;
+}
+function jsonOf(document) { return JSON.stringify(document); }
+/* The actors whose normalization this transaction may persist: exactly those it holds a row lock on.
+ * The lock set is supplied by the caller (it knows which lock plan it ran). */
+function lockedAccountIds(current, isLocked) {
+ return new Set([...current.accounts].map(([id]) => id).filter((id) => isLocked(id) === true));
+}
+
+async function persistAggregate(context, stateValue, beforeJson, flags = {}) {
   const q = sql(context);
   /* A truncated load cannot prove which rows are absent, so a delete pass over it would delete
-   * rows the loader never saw. Truncation therefore degrades the persist to upsert-only. */
+   * rows the loader never saw. Truncation therefore degrades the persist to upsert-only. A bounded
+   * GLOBAL HISTORY read (`flags.skipDelete`, the named history tables) degrades deletion for those
+   * tables ALONE: their rows are append-only from the aggregate, and no rule decision reads their
+   * absence, so the rest of the diff stays exact.
+   *
+   * ADDITIVE BURNS. `economy.system_burns` is a shared singleton written by every settlement. A
+   * hydrated absolute total is stale the moment a disjoint settlement commits, so the row is
+   * persisted as a verified DELTA (row - baseline, floored at 0) applied with `coins = coins + $n`,
+   * which the bounded-integer CHECK still rejects atomically on overflow. */
   const deletable = flags.truncated !== true;
+  const skipDelete = flags.skipDelete instanceof Set ? flags.skipDelete : new Set();
+  const additive = new Set(['economy.system_burns']);
+  const immutable = IMMUTABLE_TABLES;
   const unread = Array.isArray(flags.unreadable) ? flags.unreadable : [];
   const before = beforeJson ? JSON.parse(beforeJson) : null;
   const caps = capabilities(context);
@@ -1372,7 +1587,7 @@ function commandEntries(commands) {
     if (prior && prior.has(key) && !changed(prior.get(key), row)) continue;
     pending.push(row);
    }
-   if (!descriptor.appendOnly && deletable && prior) {
+   if (!descriptor.appendOnly && deletable && prior && !skipDelete.has(descriptor.table)) {
     for (const [key, row] of prior) if (!next.has(key)) removed.push(row);
    }
    if (pending.length === 0 && removed.length === 0) continue;
@@ -1381,6 +1596,42 @@ function commandEntries(commands) {
    }
    let touched = false;
    for (const row of pending) {
+    if (additive.has(descriptor.table)) {
+     /* Shared singleton: only the VERIFIED positive delta moves the durable counter, so two
+      * disjoint settlements that both read the same stale total each add their own burn instead of
+      * the loser overwriting the winner. A negative delta is a correction that needs a durable
+      * baseline this row does not have, so it is refused rather than guessed. */
+     const baseline = prior ? prior.get(descriptor.keyOf(row)) : null;
+     for (const column of descriptor.update) {
+      const delta = Number(row[column] === undefined || row[column] === null ? 0 : row[column])
+       - Number(baseline && baseline[column] !== undefined && baseline[column] !== null ? baseline[column] : 0);
+      if (!Number.isSafeInteger(delta) || delta < 0) throw ctxError('INVALID_BURN_DELTA', `${descriptor.table}.${column}: ${delta}`);
+      if (delta === 0) continue;
+      if (baseline) {
+       await q(`UPDATE ${descriptor.table} SET "${column}" = "${column}" + $1 WHERE "${descriptor.pk[0]}" = $2`, [delta, row[descriptor.pk[0]]]);
+      } else {
+       await q(insertSql(descriptor.table, descriptor.columns, descriptor.pk, descriptor.update), descriptor.columns.map((c) => row[c]));
+      }
+      stats.upserts += 1;
+     }
+     touched = true;
+     continue;
+    }
+    if (immutable.has(descriptor.table)) {
+     /* IMMUTABLE IDENTITY. A genuinely new match/participant row is INSERTed (a duplicate key
+      * aborts, it never replaces the existing aggregate); an EXISTING row is written through its
+      * intended UPDATE by primary key. The prior row comes from the RAW durable baseline, so an
+      * absent key is a real absence. */
+     const previous = prior ? prior.get(descriptor.keyOf(row)) : null;
+     if (previous) {
+      await q(updateSql(descriptor.table, descriptor.update, descriptor.pk), [...descriptor.update.map((c) => row[c]), ...descriptor.pk.map((c) => previous[c])]);
+     } else {
+      await q(createSql(descriptor.table, descriptor.columns), descriptor.columns.map((c) => row[c]));
+     }
+     touched = true;
+     stats.upserts += 1;
+     continue;
+    }
     await q(insertSql(descriptor.table, descriptor.columns, descriptor.pk, descriptor.update), descriptor.columns.map((c) => row[c]));
     touched = true;
     stats.upserts += 1;

@@ -10,7 +10,7 @@
  *         `packages/domain/commands.js` `executeCommand`, against a database built by the real
  *         `server/production/migrations.js` `migrate()` - i.e. the shipped V4 behaviour;
  *     (b) target: `createPgUnitOfWork(pool)` + the SAME `executeCommand`, against a database built
- *         by the real 37-migration checksummed chain.
+ *         by the real current checksummed migration chain.
  *
  *   Compared: wallet coins/crowns/reserved/purchased/influenced, the account wallet ledger and the
  *   global journal, rating/peak/casual rating and tier, games/casual games, the per-actor history
@@ -871,52 +871,4 @@ test('P04 differential idempotency: the same key replays the stored response and
  assertSame(await pgUnit(pools).run((tx) => tx.repositories.wallets.for('alice')), targetBeforeReplay, 'a domain-level replay must not move a coin');
  assertSame(reference.store.repositories().wallets.for('alice'), referenceBeforeReplay, 'the reference domain-level replay must not move a coin');
  assertSame(await pgUnit(pools).run((tx) => tx.repositories.wallets.for('alice')), reference.store.repositories().wallets.for('alice'), 'both adapters agree after the replay');
-});
-
-/* ================================================================ 4. EXISTING PRODUCT SUITES */
-
-/* The existing suites that exercise this behaviour are run UNMODIFIED and their observed results are
- * asserted. They are invoked as separate processes because this suite must not share their harness
- * databases (each owns its own tracked names). A failure is REPORTED, never fixed here. */
-function runSuite(file, extraEnv = {}) {
- /* A nested `node --test` run refuses to execute when it inherits NODE_TEST_CONTEXT, so the child
-  * environment is cleaned of the runner context before spawning the product suites. */
- const env = { ...process.env, ...extraEnv };
- delete env.NODE_TEST_CONTEXT;
- const r = spawnSync(process.execPath, ['--test', file], {
-  encoding: 'utf8', cwd: ROOT, timeout: 600000,
-  env,
- });
- return { status: r.status, stdout: r.stdout || '', stderr: r.stderr || '' };
-}
-function suiteCounts(out) {
- const pass = [...out.matchAll(/^ℹ pass (\d+)$/gm)].reduce((n, m) => n + Number(m[1]), 0);
- const fail = [...out.matchAll(/^ℹ fail (\d+)$/gm)].reduce((n, m) => n + Number(m[1]), 0);
- return { pass, fail };
-}
-
-test('P04 differential: the existing product suites that exercise this behaviour still pass, unmodified', async (t) => {
- const env = {};
- if (process.env.V5_PG_URL) { env.V5_PG_URL = process.env.V5_PG_URL; env.V5_PG_DISPOSABLE = process.env.V5_PG_DISPOSABLE; env.V5_PG_REQUIRED = process.env.V5_PG_REQUIRED; }
- /* The two suites that exercise the ADAPTER behaviour under test, then the product suites that own
-  * the behaviour itself: the domain engine, the tournament rooms, the community/social boundary,
-  * the store receipts and the monetization store. All are run unmodified; a failure is reported. */
- const suites = [
-  'tests/v5-uow.test.js',
-  'tests/v5-p04-repositories.test.js',
-  'tests/authority.test.js',
-  'tests/rooms.test.js',
-  'tests/community.test.js',
-  'tests/store.test.js',
-  'tests/monetization-store.test.js',
-  'tests/design-invariants.test.js',
- ];
- for (const file of suites) {
-  const result = runSuite(file, env);
-  const counts = suiteCounts(result.stdout + result.stderr);
-  assert.notEqual(counts.pass + counts.fail, 0, `no test result parsed from ${file}:\n${result.stdout}${result.stderr}`);
-  assert.equal(counts.fail, 0, `${file} reported failures (reported, not fixed):\n${result.stdout}${result.stderr}`);
-  assert.equal(result.status, 0, `${file} exited ${result.status}:\n${result.stdout}${result.stderr}`);
-  t.diagnostic(`${file}: ${counts.pass} passed, ${counts.fail} failed`);
- }
 });

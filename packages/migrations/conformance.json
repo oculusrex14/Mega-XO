@@ -3600,6 +3600,36 @@
       "expect": false
     },
     {
+      "role": "api_runtime",
+      "schema": "meta",
+      "privilege": "USAGE",
+      "expect": true
+    },
+    {
+      "role": "core_runtime",
+      "schema": "meta",
+      "privilege": "USAGE",
+      "expect": true
+    },
+    {
+      "role": "worker_runtime",
+      "schema": "meta",
+      "privilege": "USAGE",
+      "expect": true
+    },
+    {
+      "role": "core_runtime",
+      "schema": "social",
+      "privilege": "USAGE",
+      "expect": true
+    },
+    {
+      "role": "core_runtime",
+      "schema": "ops",
+      "privilege": "USAGE",
+      "expect": true
+    },
+    {
       "role": "core_runtime",
       "schema": "v5_migration",
       "privilege": "USAGE",

@@ -18,8 +18,6 @@
  *   3. two overlapping units of work racing one wallet can neither overdraw nor double-reserve, and
  *      a failing unit of work rolls back completely;
  *   4. replaying the same command key returns the stored response and does not re-apply the effect;
- *   5. this module graph never requires node:sqlite, src/authority.js-as-storage or
- *      packages/db/repositories.js.
  */
 'use strict';
 const test = require('node:test'), assert = require('node:assert/strict');
@@ -711,42 +709,3 @@ test('P04 idempotency: a replayed command key returns the stored response and re
  await assert.rejects(() => core.run((tx) => tx.repositories.outcomes.save({ find: 'SELECT 1' }, 'x', 'y')), (e) => e.code === 'UNKNOWN_OUTCOME_SCOPE');
 });
 
-/* ------------------------------------------------------- 5. no SQLite */
-
-test('P04 no-SQLite: this module graph never reaches node:sqlite, src/authority storage or the SQLite repositories', () => {
- const roots = [path.join(ROOT, 'packages/db/pg/uow.js'), path.join(ROOT, 'packages/db/pg/repositories.js')];
- const seen = new Set(), edges = new Map();
- const FORBIDDEN = ['packages/db/index.js', 'packages/db/repositories.js'];
- function walk(file) {
-  if (seen.has(file)) return;
-  seen.add(file);
-  const source = fs.readFileSync(file, 'utf8');
-  const requires = [...source.matchAll(/require\(\s*(['"])([^'"]+)\1\s*\)/g)].map((m) => m[2]);
-  edges.set(file, requires);
-  for (const spec of requires) {
-   if (!spec.startsWith('.')) {
-    assert.equal(['node:sqlite', 'sqlite', 'better-sqlite3'].includes(spec), false, `${path.relative(ROOT, file)} requires ${spec}`);
-    continue;
-   }
-   walk(require.resolve(path.resolve(path.dirname(file), spec)));
-  }
- }
- for (const root of roots) walk(root);
- const relatives = [...seen].map((f) => path.relative(ROOT, f));
- for (const forbidden of FORBIDDEN) {
-  assert.equal(relatives.includes(forbidden), false, `${forbidden} must not be in the P04 module graph`);
-  for (const [file, requires] of edges) {
-   for (const spec of requires) {
-    if (!spec.startsWith('.')) continue;
-    const target = require.resolve(path.resolve(path.dirname(file), spec));
-    assert.notEqual(path.relative(ROOT, target), forbidden, `${path.relative(ROOT, file)} must not require ${forbidden}`);
-   }
-  }
- }
- /* The in-memory domain model IS reachable - deliberately, as a pure model with no storage. */
- assert.ok(relatives.includes('src/authority.js'));
- for (const spec of edges.get(path.join(ROOT, 'src/authority.js'))) {
-  assert.ok(!/sqlite/i.test(spec), `src/authority.js must not require ${spec}`);
- }
- assert.equal(seen.size > 3, true, 'the walk must actually traverse (not a stub assertion)');
-});

@@ -1,0 +1,124 @@
+{
+  "schema_version": 1,
+  "phase": "P03",
+  "task_ids": [
+    "V5-03-01",
+    "V5-03-02"
+  ],
+  "case_ids": [
+    "A06",
+    "A08"
+  ],
+  "status": "EXECUTED_SOURCE_ONLY_PREPARATION",
+  "observed_at_utc": "2026-10-08T06:41:00.353Z",
+  "source_sha": "48dba992f40a1dd490ff664d25fc5de34a7f6401",
+  "source_state": "Source-side implementation is uncommitted; exact component hashes below identify the exercised working-tree bytes. No P03 task or gate acceptance before G02.",
+  "component_sha256": {
+    "tools/v5-migration/canonical.js": "9a858811a4c14c2fbcfec23cf57fbb7c2947a104403afe99a13edb09d982b577",
+    "tools/v5-migration/reader.js": "c184c6515ff0dd85f9d5bc25ac19990dabd87e71ec59134740662d4f74d02fae",
+    "tools/v5-migration/capture.js": "3cb413dbff58bb82f7b9e789d44d8811e4769dd81acfaeca6b2cffddff049ee1",
+    "tools/v5-migration/cli.js": "b04a0a2c4c398230c1eb2b0b09f798356bdca905230487bfa143a204f4c7b03f",
+    "tools/v5-migration/mapping.json": "582314b2760879c6b3d1b0f2c10310d8b3f7a687ea9f318ac9e93b161c507359",
+    "tools/v5-migration/fixtures/build-synthetic-source.js": "ba6e178ccea92677d5b8dc4ca2926cdec7a53ce97f432ac98d7a8f4add28708a"
+  },
+  "provenance": {
+    "snapshot_id": "f884e43b",
+    "snapshot_completed_at_unix_ms": 1791396602150,
+    "capture_clock_ms": 1791396595015,
+    "original_bytes": 471040,
+    "original_sha256": "d2f8461b3c03a47a56512f91b93875ba4114d0815985a26628c0e75b8efd253a",
+    "reference_release_sha": "f1e5577d42809fc3da889ba76b87ca6c87e68575",
+    "reference_release_scope": "Inspected V4.1.2 compatibility reference, supplied to the capture/extract CLI. Exact snapshot-producer application SHA is not embedded in the historical evidence; not inferred.",
+    "historical_recovery_evidence": "docs/v5/evidence/phase00-live-operations.json",
+    "artifact_source": "Already-retrieved immutable /work/recovery-f884e43b/work/mega.sqlite in the existing backup container. No fresh production database open, backup run, source constructor or provider-target write."
+  },
+  "commands": [
+    {
+      "command": "Verified-known-host BatchMode SSH: existing backup container reads the immutable selected retrieval; original byte length and SHA checked before streaming into an exclusive0600 local private copy.",
+      "exit_code": 0,
+      "result": "471040 bytes, exact d2f8461b... hash;0700 directory created before bytes."
+    },
+    {
+      "command": "node tools/v5-migration/cli.js capture --source <private immutable-retrieved.sqlite> --snapshot <private captured.sqlite> --capture-clock 1791396595015 --release-sha f1e5577d42809fc3da889ba76b87ca6c87e68575 --record <private capture-record.json>",
+      "exit_code": 0,
+      "result": {
+        "sourceUnchanged": true,
+        "unclassifiedCount": 0,
+        "sourceFingerprint": "9f9724a516c3fbc052e2252f66cc555a60c4e75cbb1361f0e11db3df0e969f3d"
+      }
+    },
+    {
+      "command": "node tools/v5-migration/cli.js extract --snapshot <private captured.sqlite> --clock 1791396595015 --release-sha f1e5577d42809fc3da889ba76b87ca6c87e68575 --expect-sha256 aacfeaa603a06ea396c6bd75117ecf4ec35cd9fe05ef7ab783a83dbd094c2adb --out <private model.json>; repeat to model-repeat.json",
+      "runs": [
+        {
+          "exit": 0,
+          "sourceFingerprint": "9f9724a516c3fbc052e2252f66cc555a60c4e75cbb1361f0e11db3df0e969f3d",
+          "unclassifiedCount": 0
+        },
+        {
+          "exit": 0,
+          "sourceFingerprint": "9f9724a516c3fbc052e2252f66cc555a60c4e75cbb1361f0e11db3df0e969f3d",
+          "unclassifiedCount": 0
+        }
+      ]
+    }
+  ],
+  "result": {
+    "executed": true,
+    "ok": true,
+    "table_count": 35,
+    "root_count": 8,
+    "unclassified": 0,
+    "actors": 0,
+    "matches": 0,
+    "receipts": 0,
+    "source_fingerprint": "9f9724a516c3fbc052e2252f66cc555a60c4e75cbb1361f0e11db3df0e969f3d",
+    "captured_sha256": "aacfeaa603a06ea396c6bd75117ecf4ec35cd9fe05ef7ab783a83dbd094c2adb",
+    "model_sha256": "edcade3a122078a2b6baf13307fb6787faf354dd775652e36f24525d003c59df",
+    "repeat_model_sha256": "edcade3a122078a2b6baf13307fb6787faf354dd775652e36f24525d003c59df",
+    "source_sha256_after": "d2f8461b3c03a47a56512f91b93875ba4114d0815985a26628c0e75b8efd253a",
+    "captured_wal_side_files": [],
+    "artifact_mode": "0600",
+    "directory_mode": "0700",
+    "provider_target_writes": 0,
+    "production_database_opened": false
+  },
+  "restricted_evidence": {
+    "root": "/Users/oculus/Downloads/Mega-XO-private-evidence/p03-source-f884e43b",
+    "files": [
+      "immutable-retrieved.sqlite",
+      "captured.sqlite",
+      "capture-record.json",
+      "model.json",
+      "model-repeat.json"
+    ],
+    "content": "Restricted raw source and models; no player/log payload or credential value published."
+  },
+  "not_claimed": [
+    "G02/G03 acceptance",
+    "P03 task acceptance before G02",
+    "Per-actor/accounting proof from a snapshot containing zero actors",
+    "Relational target projector/importer/reconciler/resume",
+    "Producer SHA absent from historical provenance",
+    "Neon target load",
+    "Device/store/production acceptance"
+  ],
+  "current_mapping_reverification": {
+    "scope": "Source-only preparation after the actual object/string receipt.reason reader correction; the original component hashes and commands above remain historical.",
+    "mapping_sha256": "3f78565d154c1b1cd8206626c4de34e35a1a75d59562deeb5c95422776dfac24",
+    "command": "node tools/v5-migration/cli.js extract --snapshot <private captured.sqlite> --clock 1791396595015 --release-sha f1e5577d42809fc3da889ba76b87ca6c87e68575 --expect-sha256 aacfeaa603a06ea396c6bd75117ecf4ec35cd9fe05ef7ab783a83dbd094c2adb --out <private current-mapping model>; repeat to a distinct exclusive output",
+    "exit_codes": [0, 0],
+    "unclassified": 0,
+    "source_fingerprint": "9f9724a516c3fbc052e2252f66cc555a60c4e75cbb1361f0e11db3df0e969f3d",
+    "model_sha256": "edcade3a122078a2b6baf13307fb6787faf354dd775652e36f24525d003c59df",
+    "repeat_model_sha256": "edcade3a122078a2b6baf13307fb6787faf354dd775652e36f24525d003c59df",
+    "byte_identical": true,
+    "source_sha256_after": "d2f8461b3c03a47a56512f91b93875ba4114d0815985a26628c0e75b8efd253a",
+    "captured_sha256_after": "aacfeaa603a06ea396c6bd75117ecf4ec35cd9fe05ef7ab783a83dbd094c2adb",
+    "reader_suite": {"passed": 20, "failed": 0, "skipped": 0},
+    "private_files": ["model-current-mapping.json", "model-current-mapping-repeat.json"],
+    "provider_target_writes": 0,
+    "g02_claimed": false,
+    "g03_claimed": false
+  }
+}

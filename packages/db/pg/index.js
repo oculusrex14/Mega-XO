@@ -76,6 +76,7 @@ module.exports = {
  // P04 unit of work + repository set (aggregate persistence over the normalized schema)
  createPgUnitOfWork: require('./uow').createPgUnitOfWork,
  pgRepositoriesFor: require('./repositories').pgRepositoriesFor,
+ verifyRuntimeSchema: require('./readiness').verifyRuntimeSchema,
  poolBudgetSnapshot: pool.poolBudgetSnapshot,
  BOUNDS: pool.BOUNDS,
  DEFAULTS: pool.DEFAULTS,

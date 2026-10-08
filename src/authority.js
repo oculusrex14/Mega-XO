@@ -17,6 +17,41 @@ function chooseSymbols(players,source,random){
  }
  return random()===1;
 }
+/* The pure season-maintenance step, extracted from Authority._season: on quarter rollover the prior
+   season is archived with its finish values and the archive is trimmed to the approved limit, then
+   the current season is (re)initialized. PURE: it returns new season/history values and mutates NOTHING,
+   so the read-only API can project the approved CURRENT-season status without a durable write while the
+   instance keeps its exact V4 mutation behaviour by assigning the returned values back. */
+function advanceSeason(season,seasonHistory,now,competitive){
+ const current=D.season(now);
+ const rating=competitive&&Number.isFinite(competitive.rating)?competitive.rating:0;
+ let next=season?{...season}:null;
+ let history=Array.isArray(seasonHistory)?seasonHistory.slice():[];
+ if(!next||next.id!==current.id){
+  if(next){
+   history.push({...next,finishRating:rating||next.peakRating,finishTier:competitive?competitive.tier:null,endedAt:current.start});
+   if(history.length>D.POLICY.seasonHistoryLimit)history.splice(0,history.length-D.POLICY.seasonHistoryLimit);
+  }
+  next={id:current.id,startedAt:current.start,games:0,queueGames:0,opponents:[],wins:0,losses:0,draws:0,peakRating:rating,lastRatedAt:null,qualifiedAt:null};
+ }
+ return {season:next,seasonHistory:history};
+}
+/* The APPROVED read-only competitive-season projection, extracted verbatim from
+   Authority.seasonStatus so the API can publish the identical shape from the persisted season
+   columns (economy.season_state via profile.account_state) without duplicating or weakening the
+   rule. It advances the supplied season/history PURELY (archive + init, exactly `_season`) before
+   projecting, so the API returns the current-season status and the prior archived season even in
+   the window before Core has touched the actor. Authority.seasonStatus delegates here;
+   season-maintenance stays on the instance because it mutates Core-owned state. `competitive`
+   supplies {rating,tier,games} (finish values for a virtual archive entry); this function is PURE and
+   never mutates its arguments. */
+function seasonStatusOf(season,competitive,seasonHistory,now){
+ const advanced=advanceSeason(season,seasonHistory,now,competitive);
+ const s=advanced.season;
+ const previous=advanced.seasonHistory.length?advanced.seasonHistory[advanced.seasonHistory.length-1]:null;
+ const info=D.season(now);
+ return {id:s.id,start:info.start,end:info.end,qualified:D.seasonQualified({season:s,games:competitive&&Number.isFinite(competitive.games)?competitive.games:0},now),games:s.games,queueGames:s.queueGames,uniqueOpponents:new Set(s.opponents||[]).size,qualifiedAt:s.qualifiedAt,peakRating:s.peakRating,lastRatedAt:s.lastRatedAt,requirements:{games:D.POLICY.seasonPlacementGames,queueGames:D.POLICY.seasonPlacementQueueGames,uniqueOpponents:D.POLICY.seasonPlacementOpponents},previous};
+}
 class Authority {
  constructor({verifyPurchase=null,now=()=>Date.now(),random=()=>crypto.randomInt(2),state=null}={}){
   this.verifyPurchase=verifyPurchase;this.now=now;this.random=random;
@@ -26,8 +61,8 @@ class Authority {
  export(){return clone({accounts:[...this.accounts],matches:[...this.matches].map(([id,m])=>[id,{...m,commands:[...m.commands]}]),receipts:[...this.receipts],snapshots:[...this.snapshots],weeklyPaid:[...this.weeklyPaid],burned:this.burned,journal:this.journal,leagueWeek:this.leagueWeek});}
  restore(s){this.accounts=new Map(s.accounts);for(const a of this.accounts.values()){if(!Number.isSafeInteger(a.purchasedCoins)||a.purchasedCoins<0||!Number.isSafeInteger(a.purchasedCrowns)||a.purchasedCrowns<0){a.legacyCompetitionRestricted=!!a.purchaseInfluenced;a.purchasedCoins=0;a.purchasedCrowns=0;}else a.legacyCompetitionRestricted=!!a.legacyCompetitionRestricted;if(a.purchasedCoins>a.coins)a.purchasedCoins=a.coins;if(a.purchasedCrowns>a.crowns)a.purchasedCrowns=a.crowns;if(!Number.isFinite(a.casualRating))a.casualRating=a.games>=D.POLICY.placements?a.rating:1000;if(!Number.isSafeInteger(a.casualGames))a.casualGames=0;a.tournamentRecord=a.tournamentRecord||{entered:0,wins:0,runnerUp:0,top3:0,top5:0,bestFinish:null,finishSum:0,premiumWins:0};a.seasonHistory=a.seasonHistory||[];this._season(a,this.now());}this.matches=new Map(s.matches.map(([id,m])=>[id,{...m,commands:new Map(m.commands)}]));this.receipts=new Map(s.receipts);this.snapshots=new Map(s.snapshots);this.weeklyPaid=new Map(s.weeklyPaid);this.burned=s.burned;this.journal=s.journal;this.leagueWeek=s.leagueWeek;}
  account(id){const a=this.accounts.get(id);if(!a)throw Error('UNKNOWN_ACCOUNT');return a;}
- _season(a,now=this.now()){const current=D.season(now);a.seasonHistory=a.seasonHistory||[];if(!a.season||a.season.id!==current.id){if(a.season){a.seasonHistory.push({...clone(a.season),finishRating:a.rating,finishTier:a.tier,endedAt:current.start});if(a.seasonHistory.length>D.POLICY.seasonHistoryLimit)a.seasonHistory.splice(0,a.seasonHistory.length-D.POLICY.seasonHistoryLimit);}a.season={id:current.id,startedAt:current.start,games:0,queueGames:0,opponents:[],wins:0,losses:0,draws:0,peakRating:a.rating,lastRatedAt:null,qualifiedAt:null};}return a.season;}
- seasonStatus(a){const s=this._season(a),info=D.season(this.now()),opponents=new Set(s.opponents||[]).size;return {id:s.id,start:info.start,end:info.end,qualified:D.seasonQualified(a,this.now()),games:s.games,queueGames:s.queueGames,uniqueOpponents:opponents,qualifiedAt:s.qualifiedAt,peakRating:s.peakRating,lastRatedAt:s.lastRatedAt,requirements:{games:D.POLICY.seasonPlacementGames,queueGames:D.POLICY.seasonPlacementQueueGames,uniqueOpponents:D.POLICY.seasonPlacementOpponents},previous:a.seasonHistory.at(-1)||null};}
+ _season(a,now=this.now()){const advanced=advanceSeason(a.season,a.seasonHistory,now,{rating:a.rating,tier:a.tier});a.season=advanced.season;a.seasonHistory=advanced.seasonHistory;return a.season;}
+ seasonStatus(a){const s=this._season(a);return seasonStatusOf(s,{rating:s.peakRating,games:a.games},a.seasonHistory,this.now());}
  _entry(id,actor,currency,amount,reason,source='game'){this.journal.push({id,actor,currency,amount,reason,source,at:this.now()});}
  /* Provisioning is a trusted server operation, never a user-supplied balance import. */
  addAccount(id,{coins=D.POLICY.startingCoins,crowns=0,rating=600,games=0,verified=false,createdAt=this.now(),region='',wealthPublic=false}={}){
@@ -173,4 +208,4 @@ class Authority {
  }
  leaderboard(options={}){const now=this.now();return clone(D.leaderboard([...this.accounts.values()].map(a=>{this._season(a,now);return {...a,tier:this.currentTier(a)};}),{...options,now}));}
 }
-module.exports={Authority,chooseSymbols};
+module.exports={Authority,chooseSymbols,seasonStatusOf};

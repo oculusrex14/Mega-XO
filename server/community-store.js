@@ -5,35 +5,11 @@ const crypto=require('node:crypto');
 const {sha,equal}=require('./identity-provider.js'),D=require('../src/domain.js');
 const {contextFor,currentScope,getContext,repositoriesOf,runInScope}=require('../packages/db/context');
 const {SOCIAL_OPERATIONS}=require('../packages/db/scopes');
-const DAY=86400000,MAX_SAVE_BYTES=262144,AVATARS=['cross','ring','board','rook','crown','star'];
-const NAME=/^[a-z][a-z0-9_]{2,19}$/;
-const EMAIL=/^[a-z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)+$/i;
-const normalizeEmail=value=>{if(typeof value!=='string')fail('INVALID_EMAIL');const email=value.trim().toLowerCase();if(email.length<6||email.length>254||!EMAIL.test(email))fail('INVALID_EMAIL');return email;};
-const validatePassword=value=>{if(typeof value!=='string'||value.length<10||value.length>128||!/[A-Za-z]/.test(value)||!/[0-9]/.test(value))fail('PASSWORD_WEAK');return value;};
-const passwordHash=(password,salt)=>crypto.scryptSync(password,Buffer.from(salt,'base64url'),32,{N:16384,r:8,p:1,maxmem:64*1024*1024}).toString('base64url');
-const OTP_TTL=10*60000,OTP_COOLDOWN=60000,OTP_ATTEMPTS=5,REPORT_CATEGORIES=new Set(['cheating','username','harassment','unsportsmanlike','other']);
-const otpCode=()=>String(crypto.randomInt(0,1000000)).padStart(6,'0');
-const maskEmail=email=>{const [local,domain]=email.split('@');return local.slice(0,1)+'***@'+domain;};
-const RESERVED=new Set(['admin','administrator','moderator','support','system','megaxo','mega_xo','official','deleted','anonymous']);
-const fail=code=>{throw Error(code);};
-const safeText=(value,max)=>typeof value==='string'&&value.trim().length>0&&[...value.trim()].length<=max&&!/[\u0000-\u001f\u007f<>]/.test(value);
+/* The approved validators/constants live in packages/domain/account-policy.js and are imported
+ * here so the live V4 path and the V5 PostgreSQL account service share ONE definition. Same
+ * values, same failure codes, same behaviour - this file no longer declares them. */
+const {DAY,AVATARS,NAME,normalizeEmail,validatePassword,passwordHash,OTP_TTL,OTP_COOLDOWN,OTP_ATTEMPTS,REPORT_CATEGORIES,otpCode,maskEmail,RESERVED,fail,safeText,safeKey,sanitizePractice}=require('../packages/domain/account-policy.js');
 const json=x=>JSON.stringify(x);
-const safeKey=k=>typeof k==='string'&&/^[A-Za-z0-9:_-]{1,160}$/.test(k);
-function sanitizePractice(value){
- if(!value||typeof value!=='object'||Array.isArray(value)||value.version!==3.2)fail('INVALID_SAVE');
- const text=json(value);if(Buffer.byteLength(text)>MAX_SAVE_BYTES)fail('SAVE_TOO_LARGE');
- const clean=JSON.parse(text,(k,v)=>{if(['__proto__','constructor','prototype'].includes(k))fail('INVALID_SAVE');return v;});
- const allowed=['version','economyVersion','settings','records','processed','playSeconds','wallet','daily','weekly','legacy','profile','offlineMatch'];
- for(const k of Object.keys(clean))if(!allowed.includes(k))delete clean[k];
- if(!Array.isArray(clean.records)||clean.records.length>2000||!clean.settings||!clean.wallet)fail('INVALID_SAVE');
- clean.records=clean.records.filter(r=>r?.mode==='bot'&&['win','loss','draw'].includes(r.result)&&typeof r.id==='string'&&r.id.length<160&&Number.isFinite(r.activeSeconds)&&r.activeSeconds>=0&&r.activeSeconds<=86400);
- const themes=['vector','midnight','paperclub','afterhours'];if(!themes.includes(clean.settings.theme))fail('INVALID_SAVE');
- for(const key of ['coins','crowns'])if(!Number.isSafeInteger(clean.wallet[key])||clean.wallet[key]<0)fail('INVALID_SAVE');
- if(!Array.isArray(clean.wallet.ledger)||!Array.isArray(clean.wallet.owned)||!Array.isArray(clean.processed))fail('INVALID_SAVE');
- if(clean.offlineMatch&&(!Array.isArray(clean.offlineMatch.moves)||clean.offlineMatch.moves.length>81))fail('INVALID_SAVE');
- // The archive is untrusted practice data. It is never read by economy settlement.
- return clean;
-}
 class CommunityStore {
  constructor({store,origin,now=Date.now,otpSecret=process.env.MEGA_OTP_SECRET,securityNotify=()=>{},deletionPolicy={}}={}){
   if(!store?.db||!origin)fail('IDENTITY_STORE_REQUIRED');this.store=store;this.db=store.db;this.origin=new URL(origin).origin;this.now=now;this.otpSecret=Buffer.from(otpSecret||crypto.randomBytes(32).toString('base64url'));this.securityNotify=securityNotify;this.deletionPolicy={enabled:deletionPolicy.enabled===true,policyVersion:typeof deletionPolicy.policyVersion==='string'?deletionPolicy.policyVersion:''};

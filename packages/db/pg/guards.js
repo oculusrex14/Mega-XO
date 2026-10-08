@@ -35,17 +35,16 @@ const PRIVILEGED_ROLES = Object.freeze([PG_ROLES.MIGRATION_OWNER, PG_ROLES.V5_OW
 const ROLE_NAMES = Object.freeze(Object.values(PG_ROLES));
 
 /* Default USAGE sanity lists, mirrored from the checksummed migration chain
- * (0002/0020-0023 as of this checkpoint; the chain is authoritative - callers
+ * (0002/0020-0023/0038; the chain is authoritative - callers
  * pass explicit options.schemas whenever a deployment diverges). Runtime roles
  * must additionally hold NO CREATE; privileged roles must hold CREATE
  * somewhere in their list, otherwise the grant set is broken and the session
- * sanity check fails closed. The chain grants meta USAGE only to
- * migration_owner, so it never belongs in a runtime default here. */
+ * sanity check fails closed. Runtime meta access is SELECT-only for boot readiness. */
 const ALL_SCHEMAS = Object.freeze(['meta', 'identity', 'profile', 'social', 'economy', 'core', 'match', 'tournament', 'monetization', 'cosmetics', 'season', 'privacy', 'audit', 'support', 'runtime', 'ops']);
 const ROLE_GRANT_SCHEMAS = Object.freeze({
- api_runtime: Object.freeze(['identity', 'profile', 'social', 'privacy', 'support', 'ops', 'runtime']),
- core_runtime: Object.freeze(['economy', 'core', 'match', 'tournament', 'monetization', 'season', 'cosmetics', 'identity', 'runtime']),
- worker_runtime: Object.freeze(['ops', 'monetization', 'privacy', 'support', 'runtime']),
+ api_runtime: Object.freeze(['meta', 'identity', 'profile', 'social', 'privacy', 'support', 'ops', 'runtime']),
+ core_runtime: Object.freeze(['meta', 'economy', 'core', 'match', 'tournament', 'monetization', 'season', 'cosmetics', 'identity', 'runtime', 'social', 'ops']),
+ worker_runtime: Object.freeze(['meta', 'ops', 'monetization', 'privacy', 'support', 'runtime']),
  audit_runtime: Object.freeze(['audit']),
  backup_reader: ALL_SCHEMAS,
  migration_owner: ALL_SCHEMAS,

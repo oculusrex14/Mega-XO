@@ -1,0 +1,68 @@
+{
+  "schema_version": 1,
+  "status": "EXECUTED",
+  "phase": "P04",
+  "task_ids": ["V5-04-05"],
+  "case_ids": ["A01", "A07", "A10"],
+  "observed_at_utc": "2026-10-08T16:00:00Z",
+  "source_sha": "2be5413",
+  "environment": "Owner Mac (macOS 25.6.0 arm64, node 26.8.2). PostgreSQL work runs against exclusively-owned PG16.15 databases on loopback built by the real 37-migration chain; the SQLite reference path runs on a temp database built by the real server/production/migrations.js schema. Production is untouched.",
+  "commands": [
+    {
+      "action": "Differential, contention and idempotency acceptance between the two adapters",
+      "command": "node --test tests/v5-p04-differential.test.js",
+      "exit_code": 0,
+      "result": {"tests": 5, "pass": 5, "fail": 0, "skipped": 0, "stableAcrossRuns": true}
+    },
+    {
+      "action": "PostgreSQL repository suite including the new match and daily-progress regression cases",
+      "command": "node --test tests/v5-p04-repositories.test.js",
+      "exit_code": 0,
+      "result": {"tests": 7, "pass": 7, "fail": 0, "skipped": 0}
+    },
+    {
+      "action": "Existing product suites, run unmodified",
+      "result": {
+        "authority": "26/26", "rooms": "20/20", "community": "18/18", "store": "5/5",
+        "monetization-store": "13/13", "design-invariants": "16/16", "v5-uow (SQLite reference)": "11/11", "v5-pg-guards": "25/25"
+      }
+    },
+    {
+      "action": "Drive domain() against the real imported target (read-only)",
+      "result": {"ok": true, "hydrated": "2 accounts, 2 matches, 1 room, 4 journal rows, 36 move outcomes on the finished match, daily keyed 2026-10-08, no error"}
+    }
+  ],
+  "result": {
+    "executed": true,
+    "exit_code": 0,
+    "assertions": [
+      "The same command script, the same injected clock and the same seeded random stream produce identical observable state on the SQLite reference path and the PostgreSQL path, compared with a recursive diff that reports every divergence rather than normalising one away.",
+      "The compared surface covers wallets (coins/crowns/reserved/purchased/influenced), the account ledger and the global journal row sets, rating/peak/casual rating/tier/games, per-actor match history, match rows with participants and receipts, tournament records, daily progress with claimed quests, operation outcomes and receipts.",
+      "Two separate database scopes racing one wallet produce exactly one winner and never overdraw; the loser raises INSUFFICIENT_COINS and commits nothing.",
+      "Reward claim, refund and match void/settlement cannot double-apply across scopes: a terminal settlement happens exactly once, escrow is released once, a pre-existing daily-progress row is preserved and the claim is recorded once, and a refunded receipt is observed as already refunded by the second scope.",
+      "A failing unit of work rolls back the wallet change, the ledger append and the outcome row together.",
+      "The same command key replayed on both adapters returns the stored response and applies its effect exactly once; a changed payload raises IDEMPOTENCY_CONFLICT on both; and a domain-level replay bypassing the outcome row returns duplicate without moving a coin on either adapter.",
+      "The V5 PostgreSQL path has no SQLite dependency: it never requires node:sqlite or the SQLite repository set, and there is no whole-graph state table anywhere in the schema.",
+      "domain() hydrates the REAL imported target without error, which the earlier suite could not show because its harness seeded no match rows.",
+      "The pre-existing product suites continue to pass unmodified, so the new adapter did not change approved behaviour."
+    ],
+    "unexplained_differences": []
+  },
+  "defects_found_and_fixed_by_execution": [
+    "The match read path pushed participants into a field the row mapper never created, so domain() threw on any database holding a match row, including the real target.",
+    "The hydrated Authority dropped the injected clock, random source and purchase verifier, so journal timestamps used the host clock, symbol draws were unseeded and purchase/refund threw STORE_UNAVAILABLE - a non-deterministic divergence.",
+    "DATE day columns were read as a timezone-shifted locale string, so a quest claim wrote a second key and the aggregate commit then zeroed the pre-existing day row.",
+    "JSON-TEXT outcome columns passed malformed raw text through instead of validating it.",
+    "The before-image snapshot serialized a Map-rendered field to {}, losing the comparison baseline.",
+    "The derived account name read the display name rather than the canonical profile column."
+  ],
+  "not_claimed": [
+    "G04 acceptance (the phase gate) is recorded separately",
+    "Rewiring the production call sites (the seam serves them unchanged; the cutover belongs to later phases)",
+    "Production writes or cutover",
+    "Provider, device or store acceptance"
+  ],
+  "restricted_evidence_location": "Owned disposable databases under the OS temp area and temp SQLite files, all removed after each run. No private source data is reproduced in this record.",
+  "sanitized_summary": "Running the unchanged production dispatcher through both the SQLite reference and the PostgreSQL adapter with one clock and one seed yields identical observable state, and racing spending, reward, refund and settlement across database scopes cannot overdraw, double-reserve or double-apply. Writing the acceptance exposed six real defects in the PostgreSQL adapter, all fixed and covered by new regression cases, and the adapter now hydrates the real imported target without error.",
+  "review_notes": "Only counts and structural facts are recorded. The SQLite reference adapter, the pure domain dispatcher and the migrations were not modified; the defects were fixed in the PostgreSQL repository module by its owner."
+}

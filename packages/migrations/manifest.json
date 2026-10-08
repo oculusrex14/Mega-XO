@@ -225,6 +225,30 @@
       "name": "0037_runtime_grant_gaps",
       "file": "migrations/0037_runtime_grant_gaps.sql",
       "sha256": "6b1f7b5df5e5b121cd1af8d3fe9f79b47bf1048c552701fb611a20db5475adfb"
+    },
+    {
+      "id": 38,
+      "name": "0038_runtime_service_boundaries",
+      "file": "migrations/0038_runtime_service_boundaries.sql",
+      "sha256": "d056a134a31a6a416d52dde1824d26bc6fb21a9e3a44fc0c66aa1ca597b3e424"
+    },
+    {
+      "id": 39,
+      "name": "0039_api_service_reads",
+      "file": "migrations/0039_api_service_reads.sql",
+      "sha256": "849399be73e533c69054cc85e2e44d8e97de6d15cc5f13b2a946d5444f34a08e"
+    },
+    {
+      "id": 40,
+      "name": "0040_api_privacy_reads",
+      "file": "migrations/0040_api_privacy_reads.sql",
+      "sha256": "e0afe6343dd1f55385879f8548adca5a523960edee98b380dad537313b795131"
+    },
+    {
+      "id": 41,
+      "name": "0041_challenge_stamp_enforcement",
+      "file": "migrations/0041_challenge_stamp_enforcement.sql",
+      "sha256": "3063b5f8c5c7334970a5ccbd4c81ada80e94e4c4e9d64b98da0c9733203f9635"
     }
   ]
 }

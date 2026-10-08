@@ -107,6 +107,18 @@ jobs:
           set -o pipefail
           mkdir -p .evidence-logs
           node --test --test-reporter=tap --test-force-exit --test-concurrency=1 tests/v5-pg-guards.test.js 2>&1 | tee .evidence-logs/v5-pg-guards.tap
+      - name: PostgreSQL repository behavior
+        run: |
+          set -o pipefail
+          node --test --test-reporter=tap --test-concurrency=1 tests/v5-p04-repositories.test.js 2>&1 | tee .evidence-logs/v5-p04-repositories.tap
+      - name: SQLite reference versus PostgreSQL behavior
+        run: |
+          set -o pipefail
+          node --test --test-reporter=tap --test-concurrency=1 tests/v5-p04-differential.test.js 2>&1 | tee .evidence-logs/v5-p04-differential.tap
+      - name: PostgreSQL service behavior and boot safety
+        run: |
+          set -o pipefail
+          node --test --test-reporter=tap --test-concurrency=1 tests/v5-p04-services.test.js 2>&1 | tee .evidence-logs/v5-p04-services.tap
       - name: Enforce executed database coverage
         # A green run that quietly skipped the database suites is a failure, not a pass: every
         # suite must report assertions against the live service and report zero skips.
@@ -117,6 +129,9 @@ jobs:
           const suites = [
             { file: 'tests/v5-migrations.test.js', log: '.evidence-logs/v5-migrations.tap' },
             { file: 'tests/v5-pg-guards.test.js', log: '.evidence-logs/v5-pg-guards.tap' },
+            { file: 'tests/v5-p04-repositories.test.js', log: '.evidence-logs/v5-p04-repositories.tap' },
+            { file: 'tests/v5-p04-differential.test.js', log: '.evidence-logs/v5-p04-differential.tap' },
+            { file: 'tests/v5-p04-services.test.js', log: '.evidence-logs/v5-p04-services.tap' },
           ];
           const report = { tool: 'v5-pg-coverage', suites: [] };
           let failed = false;

@@ -110,3 +110,24 @@ P06 suite: bounded/isolated namespaces, concurrency/locks,
 ticket + revocation consistency, loss/wipe and byte-stable
 PostgreSQL wallet/rating truth. A green result remains a
 synthetic disposable environment test, not G18 staging execution.
+
+## P18-01 operator-only public-staging liveness canary
+
+The script scripts/v5/p18/staging-public-head.js can inspect one explicit
+nonsecret, source-SHA-matched integrated staging topology (inside .artifacts).
+The default --plan mode makes ZERO network requests. The --probe mode requires
+--authorize-public-head and sends exactly one unauthenticated HEAD /livez
+to the declared production-unassigned *.vercel.app staging origin.
+It never sends cookies, user tokens, provider keys, GET/POST sessions, or
+redirect requests, and never requests Core/worker private admin endpoints.
+
+Example after the owner actually provisions staged infrastructure:
+
+    node scripts/v5/p18/staging-public-head.js --plan --file .artifacts/staging-topology.json --sha EXACT_COMMIT
+    node scripts/v5/p18/staging-public-head.js --probe --file .artifacts/staging-topology.json --sha EXACT_COMMIT --authorize-public-head
+
+A 200/204 HEAD only proves HTTPS staging /livez responds. It does NOT prove
+the deployment ID, release SHA, schema, Core/worker health, provider
+egress sandbox, cross-service journey or G18. Vercel was read-only inspected
+on 2026-10-08 and no Mega XO project existed on the connected Hobby team;
+the project needs an owner-approved staging deployment before this can be run.

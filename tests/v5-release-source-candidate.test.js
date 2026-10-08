@@ -12,6 +12,7 @@ test('candidate is grounded in checked-in schema, protocol and source asset hash
   const result=candidate(root,fakeSha);
   assert.equal(result.gitSha,fakeSha);
   assert.equal(result.schemaEvidence.highestMigrationId,result.schemaEvidence.migrationCount);
+  assert.equal(JSON.parse(fs.readFileSync(path.join(root,FILES[0]),'utf8')).algorithm, "sha256(name + '\\n' + sql)");
   assert.ok(result.schemaEvidence.migrationCount>=35);
   assert.equal(result.protocolEvidence.realtime,'realtime/v1');
   assert.ok(result.sourceHashes[FILES[0]].length===64);

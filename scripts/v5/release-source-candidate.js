@@ -32,7 +32,11 @@ function loadSources(root) {
     assert(typeof row.file === 'string' && /^migrations\/[0-9]{4}_[a-z0-9_]+\.sql$/.test(row.file),
       'migration file name invalid');
     const body=fs.readFileSync(path.join(root,'packages/migrations',row.file));
-    assert(sha256(body) === row.sha256,'migration file hash mismatch: '+row.file);
+    // Match scripts/v5/migrate.js:migrationChecksum exactly. Raw SQL bytes
+    // alone are not the authoritative checksum; the logical migration name
+    // and newline are also included to prevent file/name substitution.
+    const signed=Buffer.concat([Buffer.from(row.name+'\n','utf8'),body]);
+    assert(sha256(signed) === row.sha256,'migration checksum mismatch: '+row.file);
   }
   const proto=bytes.get(FILES[1]).toString('utf8').match(/\bconst PROTOCOL = '([^']+)'/);
   assert(proto && proto[1] === 'realtime/v1','realtime protocol version not frozen/recognized');

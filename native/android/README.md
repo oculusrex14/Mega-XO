@@ -10,7 +10,7 @@ With Android SDK 35, JDK 17, Node 24 and Gradle 8.13 installed, from `native/and
 gradle :app:assembleDebug
 ```
 
-The `generateMegaClient` task runs `scripts/v5/build-client.js` from the repository root. The generated bundle is a build output, never committed. `app/build/outputs/apk/debug/app-debug.apk` is the unsigned-development/testing artifact (Gradle debug-signed).
+The `stageMegaClient` task runs `scripts/v5/build-client.js` from the repository root. It stages under Gradle user-home (outside the protected repository), then `generateMegaClient` syncs into `app/build/generated/megaAssets/mega`. The generated bundle is a build output, never committed. `app/build/outputs/apk/debug/app-debug.apk` is the unsigned-development/testing artifact (Gradle debug-signed).
 
 The temporary `online.megaxo.prototype` application ID is **not** an approved Play package or signing identity. No live OAuth, backend, store, ad or permission surfaces are configured by this commit. Real package/signing identifiers must be verified from authorized provider configuration before release. A Gradle wrapper binary and signed AAB remain separate follow-up requirements.
 

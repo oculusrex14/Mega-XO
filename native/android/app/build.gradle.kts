@@ -1,4 +1,7 @@
 import org.gradle.api.tasks.Exec
+import org.gradle.api.tasks.Sync
+import java.io.File
+import java.security.MessageDigest
 
 plugins {
     id("com.android.application")
@@ -7,20 +10,32 @@ plugins {
 
 val repoRoot = rootProject.projectDir.resolve("../..").canonicalFile
 val generatedAssets = layout.buildDirectory.dir("generated/megaAssets")
-val generateMegaClient = tasks.register<Exec>("generateMegaClient") {
-    description = "Package only approved Mega XO client assets for offline Android gameplay"
+// The shared P01 bundler correctly REFUSES all writes under native/. Stage
+// outside the checkout, then let Gradle Sync own the disposable build/ copy.
+val workspaceKey = MessageDigest.getInstance("SHA-256")
+    .digest(repoRoot.absolutePath.toByteArray(Charsets.UTF_8))
+    .take(12).joinToString("") { "%02x".format(it) }
+val externalBundle = File(gradle.gradleUserHomeDir, "mega-xo/v5-android-bundles/$workspaceKey/mega")
+val stageMegaClient = tasks.register<Exec>("stageMegaClient") {
+    description = "Generate the allowlisted client outside the protected checkout"
     group = "build"
-    val bundleDir = generatedAssets.get().asFile.resolve("mega")
     inputs.file(repoRoot.resolve("native/client/bundle.config.json"))
     inputs.file(repoRoot.resolve("index.html"))
     inputs.files(fileTree(repoRoot.resolve("src")), fileTree(repoRoot.resolve("public")), fileTree(repoRoot.resolve("assets/vendor")))
-    outputs.dir(bundleDir)
+    outputs.dir(externalBundle)
     commandLine(
         "node",
         repoRoot.resolve("scripts/v5/build-client.js").absolutePath,
         "--root", repoRoot.absolutePath,
-        "--output", bundleDir.absolutePath
+        "--output", externalBundle.absolutePath
     )
+}
+val generateMegaClient = tasks.register<Sync>("generateMegaClient") {
+    description = "Copy the generated client into disposable Android build assets"
+    group = "build"
+    dependsOn(stageMegaClient)
+    from(externalBundle)
+    into(generatedAssets.get().asFile.resolve("mega"))
 }
 
 android {

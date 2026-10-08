@@ -84,3 +84,11 @@ test('device refresh credentials use nonexportable Android keys and ThisDeviceOn
   assert.doesNotMatch(android, /addJavascriptInterface\s*\(/);
   assert.doesNotMatch(ios, /addScriptMessageHandler/);
 });
+
+test('Android bundle staging respects the generator protected-path refusal without disabling it', () => {
+  const gradle = read('native/android/app/build.gradle.kts');
+  assert.match(gradle, /gradle\.gradleUserHomeDir/);
+  assert.match(gradle, /tasks\.register<Exec>\("stageMegaClient"\)/);
+  assert.match(gradle, /tasks\.register<Sync>\("generateMegaClient"\)/);
+  assert.match(gradle, /dependsOn\(stageMegaClient\)/);
+});

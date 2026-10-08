@@ -1,0 +1,57 @@
+{
+  "schema_version": 1,
+  "status": "PASS",
+  "phase": "P02",
+  "gate": "G02",
+  "task_ids": ["V5-02-01", "V5-02-02", "V5-02-03", "V5-02-04", "V5-02-05"],
+  "case_ids": ["A04", "A05"],
+  "observed_at_utc": "2026-10-08T10:16:30Z",
+  "source_sha": "6a145082657c860cdb21fc0cffcd6c1e516d3658",
+  "environment": "Owner Mac (macOS 25.6.0 arm64, node 26.8.2) with exclusively-owned PostgreSQL 16.15 clusters on loopback, the isolated nonserving Neon staging target, and GitHub Actions ubuntu-24.04.5 (Azure westus3) for the exact-checkpoint CI runs. No production target, provider activation, credential disclosure or serving V5 activation.",
+  "evidence_refs": [
+    "docs/v5/evidence/phase02-provider-inventory.json",
+    "docs/v5/evidence/phase02-provider-target.json",
+    "docs/v5/evidence/phase02-neon.json",
+    "docs/v5/evidence/phase02-console.json",
+    "docs/v5/evidence/phase02-schema-and-guards.json"
+  ],
+  "gate_conditions": {
+    "schema_builds_from_zero_solely_through_migrations": {
+      "met": true,
+      "evidence": "Owned PG16.15 clean create from zero through all 35 checksummed migrations, idempotent re-run, contiguous ledger, and presence-based catalog conformance all pass (tests/v5-migrations.test.js 11/11). The isolated staging target reached ledger head 35 with 16 schemas, 65 tables, 329 constraints and 57 indexes after `migrate.js --execute` applied the nine prepared migrations and `--verify` reported checked 35 with no failures."
+    },
+    "environments_and_roles_are_isolated": {
+      "met": true,
+      "evidence": "Three distinct nonserving Free-plan projects (dev/production empty, staging applied); five exact runtime LOGIN identities provisioned separately, verified NOT LOGIN and NOT INHERIT in the chain, with zero elevated cluster attributes; the guarded direct+pooled proof returned 42501 for TEMP/DDL/credential/wallet/elevation attempts on all five roles; the CI harness declares no provider or production credential at all."
+    },
+    "plan_TLS_region_pool_and_recovery_settings_evidenced": {
+      "met": true,
+      "evidence": "Plan Free / 0.25 CU fixed / suspend_timeout 0 / history_retention 21600 s recorded with the authenticated Console and CLI; region aws-us-east-1 chosen from measured RTT (3.3 ms from the authoritative Core host versus 235.7 ms for the nearest APAC option); client transport observed as TLSv1.3 encrypted+authorized under sslmode=verify-full with an explicit root CA and SCRAM-SHA-256-PLUS channel binding enforced; pool budgets, transaction-local timeout pins (5 s/2 s/15 s) and shared direct/pooled accounting proven live.",
+      "residual": "Supported production capacity/recovery above the Free limits is not evidenced and needs owner approval before any production activation; it is not a dependency of this gate's non-production condition."
+    },
+    "pr_credentials_cannot_access_production_and_cleanup_cannot_delete_staging_or_production": {
+      "met": true,
+      "evidence": "The PR/push workflow holds no provider token, store credential, production secret or Neon endpoint (its only database is the ephemeral service container GitHub destroys with the job); the suites create only uniquely-owned v5_test_<family>_... databases, the control database is never dropped, truncated or mutated, and the cleanup step fails the job if any owned test database survives."
+    }
+  },
+  "result": {
+    "executed": true,
+    "exit_code": 0,
+    "assertions": [
+      "Exact-checkpoint CI on 6a145082657c860cdb21fc0cffcd6c1e516d3658: V5 PostgreSQL integration (run 37762093147) success, including the migration smoke, migration CLI integration tests and the live connection guard runtime tests; Mega XO validation (run 37762093048) success with the original Node/browser/model gates intact and publish/images correctly skipped.",
+      "Owned PG16.15 suites at this head: migrations 11/11, runtime guards 23/23, pristine smoke ok with 35 applied/35 verified/5 runtime roles/80 role-schema probes, source-side extraction+purity 20/20 — zero skips.",
+      "Isolated staging: nine prepared migrations applied (ids 27-35) and verified (checked 35, no failures) under observed and enforced SCRAM-SHA-256-PLUS.",
+      "Guarded direct+pooled runtime proof passed for all five roles with commit-visible writes, rollback undo, one-execution idempotency replay, budget release, tampered-target refusal and missing-CA refusal."
+    ],
+    "unexplained_differences": []
+  },
+  "not_claimed": [
+    "Production schema deployment, production capacity/recovery approval or any production application write",
+    "P03/G03 import, projector, loader, reconstruction, reconciliation or resume",
+    "The new website/browser product",
+    "Provider/store/device acceptance",
+    "Aggregate account-wide quota measurement"
+  ],
+  "sanitized_summary": "G02 conditions are met for the nonserving, isolated scope this gate covers: the schema is built from zero solely through 35 checksummed migrations (proven on owned PG16 and applied+verified on isolated staging), environments and roles are isolated with least-privilege denials proven live in both direct and pooled modes, and plan/TLS/region/pool/recovery settings are evidenced from the real target. Both exact-checkpoint CI workflows pass. Production remains empty and dormant; no production or provider claim is made.",
+  "review_notes": "Every statement above was executed and observed in this session by the parent; nothing is inferred from files or checkboxes. The two Linux-only CI defects found at the first pushed checkpoint (database-collation ordering in the upgrade regression and an ambient V5_TARGET leak in the classifyTarget block) plus a missing Debian PG16 binary path were fixed and re-verified before this gate. The residual production capacity/recovery approval is recorded as an open item, not as a gate waiver."
+}

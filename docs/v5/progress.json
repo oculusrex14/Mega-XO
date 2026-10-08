@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at_utc": "2026-10-08T10:04:59.320+00:00",
+  "updated_at_utc": "2026-10-08T10:19:34.288+00:00",
   "goal": "Deliver the V5 hybrid platform and real Android/iOS applications with shared permanent actor/assets, preserved approved game and retained browser compatibility; do not build the new website/browser product.",
   "source": {
     "goal": "AGENT-GOAL.md",
@@ -46,8 +46,8 @@
     "installed_script_revision_status": "FOUR_INSTALLED_FILES_HASH_MATCH_SELECTED_CHECKOUT"
   },
   "current": {
-    "phase": "P02",
-    "active_task": null,
+    "phase": "P03",
+    "active_task": "V5-03-01",
     "next_action": "Complete P02 source-coverage/schema review; fix observed migration harness failures and required guard-suite skip bug; prove guarded Neon direct/pooled transaction pinning after actual timeout drift. Native 26-migration smoke and staging migration/provisioning already executed. Require zero-skip database CI and G02 before import acceptance; distributed runtime remains gated on G03.",
     "checkout_branch_at_setup": "V4.1",
     "integration_branch": "V5-platform",
@@ -131,6 +131,32 @@
         ],
         "gate_evidence": "docs/v5/evidence/phase01-gate.json",
         "note": "G01 met: 397-test suite at integration shows only the pre-existing opsz failure; pure domain/contract independence, single-owner transactions, unchanged approved client bytes and deterministic leak-free packaging all actually exercised."
+      },
+      {
+        "phase": "P02",
+        "gate": "G02",
+        "completed_at_utc": "2026-10-08T10:19:34.287+00:00",
+        "task_ids": [
+          "V5-02-01",
+          "V5-02-02",
+          "V5-02-03",
+          "V5-02-04",
+          "V5-02-05"
+        ],
+        "task_statuses": {
+          "V5-02-01": "COMPLETE",
+          "V5-02-02": "COMPLETE",
+          "V5-02-03": "COMPLETE",
+          "V5-02-04": "COMPLETE",
+          "V5-02-05": "COMPLETE"
+        },
+        "evidence_refs": [
+          "docs/v5/evidence/phase02-provider-target.json",
+          "docs/v5/evidence/phase02-provider-inventory.json",
+          "docs/v5/evidence/phase02-schema-and-guards.json"
+        ],
+        "gate_evidence": "docs/v5/evidence/phase02-gate.json",
+        "note": "G02 accepted for the nonserving isolated scope: 35 checksummed migrations build from zero on owned PG16.15 and applied+verified on the isolated staging target; the five runtime roles are NOLOGIN/NOT INHERIT with live 42501 denials in direct and pooled modes; plan/TLS/region/pool/recovery settings evidenced from the real target; exact-checkpoint CI 37762093147 and 37762093048 both success. Production remains empty and dormant."
       }
     ]
   },
@@ -255,7 +281,7 @@
           "V5-02-04",
           "V5-02-05"
         ],
-        "status": "IN_PROGRESS"
+        "status": "COMPLETE"
       },
       {
         "id": "P03",
@@ -2518,7 +2544,7 @@
       "exercise": "Use API/worker/preview credentials to attempt forbidden economic/DDL/production access.",
       "expected": "Negative tests fail as designed; correct service role succeeds only on its authority.",
       "evidence": "Role/grant tests and actual environment IDs without credentials.",
-      "status": "NOT_RUN"
+      "status": "PASS"
     },
     {
       "id": "A05",
@@ -2527,7 +2553,7 @@
       "exercise": "Create from zero and upgrade supported schemas under concurrent migrator attempts.",
       "expected": "Only one migrator; checksums/history correct; runtime never alters schema.",
       "evidence": "Migration IDs/checksums, create/upgrade logs and lock tests.",
-      "status": "NOT_RUN"
+      "status": "PASS"
     },
     {
       "id": "A06",

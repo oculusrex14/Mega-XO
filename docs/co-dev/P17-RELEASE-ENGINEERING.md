@@ -22,3 +22,21 @@ images, Vercel production-configured staged deploys, real compatibility
 and schema migrations under an owner-held lock, trustworthy per-component
 CI, staging rollback rehearsals and owner-approved secret-scoped release
 contexts before G17 acceptance. No production action is enabled here.
+
+## Early P17 compatibility policy (not release authorization)
+
+- scripts/v5/release-compatibility.js reads only named .artifacts JSON
+  operator-observation and contract-range files, and makes a DRY-RUN decision.
+  It rejects unknown authority, unfenced V4 writers, schema/protocol mismatch,
+  release-version reuse and non-compatible PostgreSQL rollback.
+- A successful decision always says COMPATIBLE_CONTRACTS_ONLY with
+  authorizesDeployment=false. It neither proves the operator observation,
+  nor stages/promotes Vercel, applies a migration or transfers authority.
+- scripts/v5/ci-safety-audit.js ensures this PR-only source CI is read-only
+  with exact action SHA pins, no provider secrets and bounded artifacts.
+  Do not apply its PR-only rules to the separate historical V4 tag publisher.
+
+Later P17 integration must verify actual service digests, exact production
+Vercel build, approved environment reviewer policy, schema/wire compatibility,
+stable CLI pins and a prior compatible PostgreSQL fallback. No live resource,
+credentials, signed store artifact or provider approval was invented here.

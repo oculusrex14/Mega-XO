@@ -33,8 +33,12 @@ jobs:
         run: |
           set -euo pipefail
           node --check scripts/v5/ci-impact.js
+          node --check scripts/v5/ci-safety-audit.js
           node --check scripts/v5/release-source-candidate.js
-          node --test tests/v5-ci-impact.test.js tests/v5-release-source-candidate.test.js
+          node --check scripts/v5/release-compatibility.js
+          node scripts/v5/ci-safety-audit.js
+          node --test tests/v5-ci-impact.test.js tests/v5-ci-safety-audit.test.js \
+            tests/v5-release-source-candidate.test.js tests/v5-release-compatibility.test.js
       - name: Classify change impact without skipping baseline gates
         env:
           V5_DIFF_BASE: ${{ github.event.pull_request.base.sha || github.event.before }}

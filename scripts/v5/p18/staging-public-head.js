@@ -25,7 +25,7 @@ function endpoint(topology,root,sourceSha) {
   const host=origin.hostname.toLowerCase();
   if(origin.protocol!=='https:'||origin.port||
      host==='vercel.app'||!host.endsWith('.vercel.app') ||
-     !/^(?:[a-z0-9-]+\.)+[a-z0-9-]+\.vercel\.app$/.test(host)) {
+     !/^[a-z0-9-]+(?:\.[a-z0-9-]+)*\.vercel\.app$/.test(host)) {
     refuse('only fully scoped HTTPS Vercel staging deployment hostname is allowed');
   }
   // URL path is constant, NEVER read from untrusted manifest or shell input.

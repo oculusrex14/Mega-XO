@@ -42,7 +42,13 @@ test -d "$archive/Products/Applications/MegaXO.app" || {
   echo "Signed iOS app archive missing" >&2; exit 3;
 }
 printf 'P20 signed iOS archive (NOT TestFlight submission):\n'
-/usr/bin/find "$archive/Products/Applications/MegaXO.app" -maxdepth 2 -type f -name 'MegaXO' -exec shasum -a 256 {} \;
+app="$archive/Products/Applications/MegaXO.app"
+binary="$app/MegaXO"
+test -s "$binary" || { echo "Archived iOS executable missing" >&2; exit 3; }
+codesign --verify --strict --deep "$app" || {
+  echo "Archived iOS signature verification failed" >&2; exit 3;
+}
+shasum -a 256 "$binary"
 if [[ -n "${MEGA_IOS_EXPORT_OPTIONS_PLIST:-}" ]]; then
   test -f "$MEGA_IOS_EXPORT_OPTIONS_PLIST" || {
     echo "Owner-supplied exportOptions.plist missing" >&2; exit 2;

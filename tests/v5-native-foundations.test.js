@@ -402,3 +402,10 @@ test('native signing scripts fail closed without owner identities or credentials
   assert.match(b, /xcodebuild -exportArchive/);
   assert.match(b, /MEGA_IOS_EXPORT_OPTIONS_PLIST/);
 });
+
+test('iOS release archive uses portable macOS codesign verification and direct executable hash', () => {
+  const code=read('scripts/v5/native-release-ios.sh');
+  assert.doesNotMatch(code, /-maxdepth/);
+  assert.match(code, /codesign --verify --strict --deep/);
+  assert.ok(code.includes('shasum -a 256 "$binary"'));
+});

@@ -56,3 +56,7 @@ about an image digest or a CI run ID; the owner must independently verify
 GHCR manifest/pull availability, signed provenance, GitHub CI conclusions,
 Vercel project/environment and a compatible PostgreSQL fallback before any
 deployment, promotion or rollback. PR jobs have no credentials to do so.
+
+## Read-only remote CI evidence
+
+`scripts/v5/release-verify-github-ci.js` optionally fetches the three exact GitHub Actions run IDs from the GitHub API, rejects other SHA/repo/workflow/event, pending or failed results, and still refuses to authorize deployment. It is not invoked on a source-only PR because no real service artifact descriptor exists yet. Unit tests use injected offline API fixtures. Remote GHCR, Vercel and protected environment checks remain separate future work.

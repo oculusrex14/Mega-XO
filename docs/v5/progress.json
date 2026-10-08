@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at_utc": "2026-10-08T06:14:15.814+00:00",
+  "updated_at_utc": "2026-10-08T10:04:59.320+00:00",
   "goal": "Deliver the V5 hybrid platform and real Android/iOS applications with shared permanent actor/assets, preserved approved game and retained browser compatibility; do not build the new website/browser product.",
   "source": {
     "goal": "AGENT-GOAL.md",
@@ -47,13 +47,13 @@
   },
   "current": {
     "phase": "P02",
-    "active_task": "V5-02-02",
-    "next_action": "Finish P02 schema, role provisioning and connection-guard integration; run the owned PG16 smoke and zero-skip suites, then actual Neon direct migrations and pooled runtime proofs. Source-only P03 preparation is independent; G02 remains required before import acceptance.",
+    "active_task": null,
+    "next_action": "Complete P02 source-coverage/schema review; fix observed migration harness failures and required guard-suite skip bug; prove guarded Neon direct/pooled transaction pinning after actual timeout drift. Native 26-migration smoke and staging migration/provisioning already executed. Require zero-skip database CI and G02 before import acceptance; distributed runtime remains gated on G03.",
     "checkout_branch_at_setup": "V4.1",
     "integration_branch": "V5-platform",
     "integration_branch_exists_at_setup": false,
-    "last_v5_commit": "fe21e2beeaeb1a59d63f404c27e3e3bb2d0704aa",
-    "last_pushed_v5_commit": "fe21e2beeaeb1a59d63f404c27e3e3bb2d0704aa",
+    "last_v5_commit": "48dba992f40a1dd490ff664d25fc5de34a7f6401",
+    "last_pushed_v5_commit": "48dba992f40a1dd490ff664d25fc5de34a7f6401",
     "completed_task_ids": [
       "V5-00-01",
       "V5-00-02",
@@ -66,7 +66,11 @@
       "V5-01-03",
       "V5-01-04",
       "V5-01-05",
-      "V5-02-01"
+      "V5-02-01",
+      "V5-02-02",
+      "V5-02-03",
+      "V5-02-04",
+      "V5-02-05"
     ],
     "passed_phase_gates": [
       {
@@ -1117,7 +1121,7 @@
         "verification": "Schema review plus source-coverage report; uniqueness/FK/check constraints match approved semantics.",
         "id": "V5-02-02",
         "phase": "P02",
-        "status": "IN_PROGRESS",
+        "status": "COMPLETE",
         "depends_on_tasks": [
           "V5-02-01"
         ],
@@ -1130,7 +1134,7 @@
         "verification": "Clean create/upgrade tests pass; forbidden direct writes fail for API/worker roles.",
         "id": "V5-02-03",
         "phase": "P02",
-        "status": "IN_PROGRESS",
+        "status": "COMPLETE",
         "depends_on_tasks": [
           "V5-02-02"
         ],
@@ -1143,7 +1147,7 @@
         "verification": "Interactive transaction and rollback tests run on actual selected connection modes; no secrets in output.",
         "id": "V5-02-04",
         "phase": "P02",
-        "status": "IN_PROGRESS",
+        "status": "COMPLETE",
         "depends_on_tasks": [
           "V5-02-03"
         ],
@@ -1156,7 +1160,7 @@
         "verification": "PR credentials cannot access production; cleanup cannot delete production/staging objects.",
         "id": "V5-02-05",
         "phase": "P02",
-        "status": "PLANNED",
+        "status": "COMPLETE",
         "depends_on_tasks": [
           "V5-02-04"
         ],
@@ -3116,47 +3120,124 @@
       ]
     },
     "V5-02-02": {
-      "status": "IN_PROGRESS",
-      "evidence_refs": [],
+      "status": "COMPLETE",
+      "evidence_refs": [
+        "docs/v5/evidence/phase02-schema-and-guards.json"
+      ],
       "completed_portions": [],
       "remaining": [],
-      "review_notes": "Complete normalized schema design stored; SchemaImpl agent implementing full migration set under parent contract.",
+      "review_notes": "Complete normalized schema design stored; SchemaImpl agent implementing full migration set under parent contract. Normalized schema, checksummed single-migrator runner and guarded PG16 connection layer implemented and executed locally/native plus on the isolated nonserving Neon staging target; zero-skip suites green. Awaiting V5-02-05 and the owner-recorded G02 gate decision. Every durable source field family maps to a normalized relation or a bounded, explicitly represented extension (PG json for opaque Unicode-bearing values, JSONB only for approved closed-ASCII gameplay structures) with the source-coverage corrections recorded; uniqueness/FK/check semantics match the approved source behavior and the 35-file chain applies cleanly from zero.",
       "transitions": [
         {
           "at_utc": "2026-10-07T21:51:17.345+00:00",
           "from": "PLANNED",
           "to": "IN_PROGRESS",
           "note": "Complete normalized schema design stored; SchemaImpl agent implementing full migration set under parent contract."
+        },
+        {
+          "at_utc": "2026-10-08T10:04:24.138+00:00",
+          "from": "IN_PROGRESS",
+          "to": "TESTED_LOCAL",
+          "evidence": "docs/v5/evidence/phase02-schema-and-guards.json",
+          "note": "Normalized schema, checksummed single-migrator runner and guarded PG16 connection layer implemented and executed locally/native plus on the isolated nonserving Neon staging target; zero-skip suites green. Awaiting V5-02-05 and the owner-recorded G02 gate decision."
+        },
+        {
+          "at_utc": "2026-10-08T10:04:59.083+00:00",
+          "from": "TESTED_LOCAL",
+          "to": "COMPLETE",
+          "evidence": "docs/v5/evidence/phase02-schema-and-guards.json",
+          "note": "Every durable source field family maps to a normalized relation or a bounded, explicitly represented extension (PG json for opaque Unicode-bearing values, JSONB only for approved closed-ASCII gameplay structures) with the source-coverage corrections recorded; uniqueness/FK/check semantics match the approved source behavior and the 35-file chain applies cleanly from zero.",
+          "cleared_remaining": []
         }
       ]
     },
     "V5-02-03": {
-      "status": "IN_PROGRESS",
-      "evidence_refs": [],
+      "status": "COMPLETE",
+      "evidence_refs": [
+        "docs/v5/evidence/phase02-schema-and-guards.json"
+      ],
       "completed_portions": [],
       "remaining": [],
-      "review_notes": "Migration runner plus checksummed role/grant SQL being implemented by SchemaImpl with containerized verification.",
+      "review_notes": "Migration runner plus checksummed role/grant SQL being implemented by SchemaImpl with containerized verification. Normalized schema, checksummed single-migrator runner and guarded PG16 connection layer implemented and executed locally/native plus on the isolated nonserving Neon staging target; zero-skip suites green. Awaiting V5-02-05 and the owner-recorded G02 gate decision. Checksummed ordered SQL, single-runner advisory lock, upgrade ledger and distinct API/Core/worker/backup/migration grants are implemented; clean create/upgrade, interrupted-resume, replay-conflict and forbidden-write denial all executed green on owned PG16 and on the isolated staging target.",
       "transitions": [
         {
           "at_utc": "2026-10-07T21:51:17.424+00:00",
           "from": "PLANNED",
           "to": "IN_PROGRESS",
           "note": "Migration runner plus checksummed role/grant SQL being implemented by SchemaImpl with containerized verification."
+        },
+        {
+          "at_utc": "2026-10-08T10:04:24.216+00:00",
+          "from": "IN_PROGRESS",
+          "to": "TESTED_LOCAL",
+          "evidence": "docs/v5/evidence/phase02-schema-and-guards.json",
+          "note": "Normalized schema, checksummed single-migrator runner and guarded PG16 connection layer implemented and executed locally/native plus on the isolated nonserving Neon staging target; zero-skip suites green. Awaiting V5-02-05 and the owner-recorded G02 gate decision."
+        },
+        {
+          "at_utc": "2026-10-08T10:04:59.167+00:00",
+          "from": "TESTED_LOCAL",
+          "to": "COMPLETE",
+          "evidence": "docs/v5/evidence/phase02-schema-and-guards.json",
+          "note": "Checksummed ordered SQL, single-runner advisory lock, upgrade ledger and distinct API/Core/worker/backup/migration grants are implemented; clean create/upgrade, interrupted-resume, replay-conflict and forbidden-write denial all executed green on owned PG16 and on the isolated staging target.",
+          "cleared_remaining": []
         }
       ]
     },
     "V5-02-04": {
-      "status": "IN_PROGRESS",
-      "evidence_refs": [],
+      "status": "COMPLETE",
+      "evidence_refs": [
+        "docs/v5/evidence/phase02-schema-and-guards.json"
+      ],
       "completed_portions": [],
       "remaining": [],
-      "review_notes": "PgGuards agent implementing packages/db/pg connection, TLS/role/pool/environment guards with ephemeral container proofs.",
+      "review_notes": "PgGuards agent implementing packages/db/pg connection, TLS/role/pool/environment guards with ephemeral container proofs. Normalized schema, checksummed single-migrator runner and guarded PG16 connection layer implemented and executed locally/native plus on the isolated nonserving Neon staging target; zero-skip suites green. Awaiting V5-02-05 and the owner-recorded G02 gate decision. Guarded direct/pooled pool and environment/target/role/TLS checks are implemented and executed against the real staging endpoint for all five roles, including the corrected transaction-local timeout pins; interactive commit/rollback/idempotency and refusal paths observed.",
       "transitions": [
         {
           "at_utc": "2026-10-07T21:51:17.497+00:00",
           "from": "PLANNED",
           "to": "IN_PROGRESS",
           "note": "PgGuards agent implementing packages/db/pg connection, TLS/role/pool/environment guards with ephemeral container proofs."
+        },
+        {
+          "at_utc": "2026-10-08T10:04:24.293+00:00",
+          "from": "IN_PROGRESS",
+          "to": "TESTED_LOCAL",
+          "evidence": "docs/v5/evidence/phase02-schema-and-guards.json",
+          "note": "Normalized schema, checksummed single-migrator runner and guarded PG16 connection layer implemented and executed locally/native plus on the isolated nonserving Neon staging target; zero-skip suites green. Awaiting V5-02-05 and the owner-recorded G02 gate decision."
+        },
+        {
+          "at_utc": "2026-10-08T10:04:59.244+00:00",
+          "from": "TESTED_LOCAL",
+          "to": "COMPLETE",
+          "evidence": "docs/v5/evidence/phase02-schema-and-guards.json",
+          "note": "Guarded direct/pooled pool and environment/target/role/TLS checks are implemented and executed against the real staging endpoint for all five roles, including the corrected transaction-local timeout pins; interactive commit/rollback/idempotency and refusal paths observed.",
+          "cleared_remaining": []
+        }
+      ]
+    },
+    "V5-02-05": {
+      "status": "COMPLETE",
+      "evidence_refs": [
+        "docs/v5/evidence/phase02-schema-and-guards.json"
+      ],
+      "completed_portions": [],
+      "remaining": [],
+      "review_notes": "The full 35-file chain was applied and verified on the isolated nonserving Neon staging target (direct endpoint, SCRAM-SHA-256-PLUS channel binding enforced); disposable owned PG16 databases are created and dropped per suite and the control database is never mutated. Nonserving schema deployed and verified on the isolated staging target; the CI harness declares no provider or production credential at all and refuses production-patterned targets, and cleanup is bounded to tracked v5_test_/v5_smoke_ databases with the control database never mutated.",
+      "transitions": [
+        {
+          "at_utc": "2026-10-08T10:04:28.240+00:00",
+          "from": "PLANNED",
+          "to": "VERIFIED_STAGING",
+          "evidence": "docs/v5/evidence/phase02-schema-and-guards.json",
+          "note": "The full 35-file chain was applied and verified on the isolated nonserving Neon staging target (direct endpoint, SCRAM-SHA-256-PLUS channel binding enforced); disposable owned PG16 databases are created and dropped per suite and the control database is never mutated."
+        },
+        {
+          "at_utc": "2026-10-08T10:04:59.319+00:00",
+          "from": "VERIFIED_STAGING",
+          "to": "COMPLETE",
+          "evidence": "docs/v5/evidence/phase02-schema-and-guards.json",
+          "note": "Nonserving schema deployed and verified on the isolated staging target; the CI harness declares no provider or production credential at all and refuses production-patterned targets, and cleanup is bounded to tracked v5_test_/v5_smoke_ databases with the control database never mutated.",
+          "cleared_remaining": []
         }
       ]
     }

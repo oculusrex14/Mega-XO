@@ -1,0 +1,102 @@
+{
+  "version": 1,
+  "phase": "P02",
+  "tasks": ["V5-02-02", "V5-02-03"],
+  "status": "EXECUTED_SOURCE_AND_BEFORE_TARGET_PROOFS_CORRECTIONS_PENDING",
+  "evidenceLevel": "actual-public-source-producers-on-isolated-synthetic-SQLite-and-owned-native-PostgreSQL-16",
+  "productionAuthority": "V4.1.2 unchanged; no production mutation or serving V5 activation",
+  "targetSchemaAtBeforeProbes": 26,
+  "appliedFrozenRange": "0001-0026",
+  "unappliedSourcePreparedRange": "0027 onward; not an accepted migration gate",
+  "findings": [
+    {
+      "name": "cancelled-mail-outbox",
+      "source": ["server/production/email-auth.js:36,103", "server/community-store.js:260"],
+      "sourceState": "cancelled with payload NULL",
+      "beforeTarget": {"sqlstate": "23514", "constraint": "outbox_state_check"},
+      "decision": "Admit the source-written terminal state without changing sealed-payload admission."
+    },
+    {
+      "name": "guest-and-historical-room-membership",
+      "source": ["server/rooms.js:23,74-82", "src/tournament.js:16-19"],
+      "beforeTarget": {"sqlstate": "23503", "constraint": "room_players_actor_id_fkey"},
+      "decision": "Soft actor reference, retain room FK and explicit source array ordinal; guests are not invented platform actors."
+    },
+    {
+      "name": "length-only-operation-keys",
+      "source": ["packages/contracts/invocation.js:16-21", "packages/contracts/http-guards.js:46-63"],
+      "beforeTarget": {"families": ["economy.command_outcomes", "tournament.command_outcomes"], "sqlstate": "23514", "constraint": "command_outcomes_key_check"},
+      "additionalExecutedSourceInputs": ["space/punctuation", "NUL", "isolated UTF-16 surrogate"],
+      "nulDecodedTargetSqlstate": "22021",
+      "proposedRepresentationExecuted": {"canonicalJsonStringText": true, "bothCodepointRoundtripsExact": true},
+      "decision": "Canonical JSON-string TEXT for these two indexed key families; keep raw logical keys at the application boundary and keep the other ASCII-validated families unchanged."
+    },
+    {
+      "name": "legacy-social-key-collision-domain",
+      "beforeTarget": {"acceptedRows": 2, "distinctActorColonKeyIds": 1},
+      "decision": "Unique legacy actor-colon-key expression; P03 must retain the combined domain and report ambiguous splits rather than guess."
+    },
+    {
+      "name": "room-version-and-order",
+      "beforeTarget": {"shapeVersionColumnPresent": false, "memberOrdinalColumnPresent": false, "existingRoomPlayers": 0},
+      "decision": "Retain source version separately from numeric rules_version and retain ordered membership without fabricated timestamps or ordinal backfill."
+    },
+    {
+      "name": "purchased-provenance-during-public-tournament-reservation",
+      "sourceProducer": "Public purchase, conversion, party publicJoin and ready; ten-player RUNNING Coins table",
+      "rawAtRest": {"coins": 800, "purchasedCoins": 1000, "reservedCoins": 1200},
+      "sourceHydrate": {"coins": 800, "purchasedCoins": 800},
+      "capturedReader": {"coins": 800, "purchasedCoins": 1000, "unclassified": 0, "sourceHydrateDeltaReportedNotApplied": true},
+      "beforeTarget": {"sqlstate": "23514", "constraint": "wallets_purchased_coins_bound_ck"},
+      "decision": "Retain raw safe-integer provenance without any at-rest cross-column ratio, clamp, burn or allocation. One counterexample does not establish a replacement ratio."
+    },
+    {
+      "name": "opaque-practice-save-bytes",
+      "sourceProducer": "CommunityStore.save through sanitizePractice",
+      "sourceCases": [{"name": "escaped-NUL", "accepted": true, "storedBytes": 444, "bytesExact": true}, {"name": "isolated-surrogate", "accepted": true, "storedBytes": 444, "bytesExact": true}],
+      "beforeTargetJsonbSqlstates": ["22P05", "22P02"],
+      "executedRawJsonObjectPredicate": {"bothAccepted": true},
+      "executedJsonMetadataFunctions": {"bothFailDecoding": true, "sqlstates": ["22P05", "22P02"]},
+      "decision": "Single authoritative payload_text, raw JSON-object grammar and byte cap in PostgreSQL; existing source/P03 validation enforces version and record count. No duplicate JSONB cache or special-case parser."
+    },
+    {
+      "name": "serialized-free-text-code-units",
+      "executedSourceCases": ["preferences region NUL and isolated surrogate", "private room name NUL and isolated surrogate", "47 ASCII code units plus emoji sliced into a lone high surrogate", "LAN guest NUL persisted and reauthenticated", "unranked offer kind NUL and isolated surrogate"],
+      "sourceRawSqliteBindDistinction": "LAN lone surrogate becomes U+FFFD before room serialization; serialized region/room/kind retains the original escaped code units.",
+      "beforeDecodedRegion": {"nulSqlstate": "22021", "isolatedSurrogateAcceptedButCodeUnitsChanged": true},
+      "proposedJsonScalarAndDocumentRoundtrips": {"nulExact": true, "isolatedSurrogateExact": true},
+      "decision": "JSON scalar strings and open JSON documents where source serializes arbitrary values; do not change closed ASCII gameplay JSONB."
+    },
+    {
+      "name": "operator-void-json-valued-reason",
+      "sourceProducer": "DurableStore operator void dispatched to Authority.voidByOperator",
+      "sourceObjectAndStringAccepted": true,
+      "beforeReader": {"configuration": "prior reason=str schema in a process-local mapping override; no repository rollback", "accepted": false, "code": "INVALID_FIELD_TYPE", "locator": "state.matches[v-obj].receipt.reason"},
+      "afterReader": {"mappingKind": "any", "captureAccepted": true, "objectPreserved": true, "stringEscapePreserved": true, "rawReceiptSha256Prefixes": ["729a73dc46144542", "f03ad9a972cca0e1"]},
+      "decision": "Receipt reason is an arbitrary serializable JSON value, not a coerced string."
+    },
+    {
+      "name": "explicitly-sanctioned-opaque-extensions",
+      "storageSeam": "Synthetic serialized state/room writes; not generic player patch access",
+      "withoutRule": {"accepted": false, "code": "COVERAGE_INCOMPLETE"},
+      "rules": ["state.accounts[].legacyNote", "state.accounts[].monetization.legacyCreditTag", "party_rooms[].legacyRoomTag", "party_rooms[].fixtures[].legacyFixtureTag"],
+      "withRules": {"accepted": true, "unclassified": 0, "allFourValuesPreserved": true},
+      "decision": "Use JSON document storage for approved opaque extensions; explicit coverage approval remains mandatory."
+    },
+    {
+      "name": "audit-genesis-and-raw-detail",
+      "sourceProducer": "OperatorService.append with valid ASCII reason and escaped opaque detail",
+      "source": {"verifyAuditPassed": true, "prevHash": "GENESIS", "detailEqualsOriginalJsonStringify": true, "detailSha256Prefix": "6709fc9377c932f0"},
+      "beforeTarget": {"sqlstate": "23514", "constraint": "operator_audit_prev_hash_check"},
+      "decision": "prev_hash TEXT admits GENESIS or 64 hex characters without CHAR padding; retain original detail TEXT and original HMAC hashes."
+    },
+    {
+      "name": "profile-account-name-mirror-divergence",
+      "sourceProducer": "CommunityStore.edit displayName isolated surrogate",
+      "observed": {"profileDisplayNameCodeUnit": "fffd", "serializedAccountNameCodeUnit": "d800", "mirrorsEqual": false},
+      "decision": "P03 retains both raw source mirrors and reports the verification-only mismatch; no silent derivation or invented actor."
+    }
+  ],
+  "currentExecutedSuites": {"extractAndPurity": {"tests": 20, "passed": 20, "failed": 0, "skipped": 0}, "nativeRuntimeGuards": {"tests": 23, "passed": 23, "failed": 0, "skipped": 0}, "nativeMigrationApplied26Chain": {"tests": 9, "passed": 9, "failed": 0, "skipped": 0}},
+  "notClaimed": ["Corrected new schema head applied or verified", "G02 or task-02 acceptance", "G03 import/loader/reconstruction/reconciliation/resume acceptance", "External provider issuance of NUL subjects", "Production enablement or production-data migration"]
+}

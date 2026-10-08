@@ -1,0 +1,15 @@
+-- 0031: tournament.rooms shape_version column (SourceGate M5, parent-proven dropped-semantics
+-- defect: the mapped value had nowhere to live).
+-- SOURCE TRUTH (agent://SourceConstraintGate/report M5): src/tournament.js:4 declares
+-- const VERSION = 'tournament-2' and src/tournament.js:13 create() writes version:VERSION into
+-- EVERY room JSON, persisted verbatim by server/rooms.js via repositories.tournaments.save.
+-- tools/v5-migration/mapping.json:517-518 declares rooms.root "version" as a MAPPED "text"
+-- field, so it never reaches the rooms.extra JSONB (which per design 5.6 and 0013:57,169-170
+-- only receives UNMAPPED keys) - the only per-room shape discriminator was silently dropped,
+-- contradicting 5.6 "nothing is silently dropped" and denying P03 a shape check across releases.
+-- [D] parent ruling: add nullable shape_version TEXT with NO invented backfill (the current
+-- target holds 0 rows; the importer writes each room's own stored version text verbatim). This
+-- is DISTINCT from rules_version (0013:25 SMALLINT), which carries the numeric rules lineage;
+-- shape lineage must round-trip independently of it. The alternative reclassification (route
+-- "version" into extra) was rejected: mapping.json is already curated to treat it as mapped.
+ALTER TABLE tournament.rooms ADD COLUMN IF NOT EXISTS shape_version TEXT;

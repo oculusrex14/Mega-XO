@@ -1,0 +1,179 @@
+name: V5 PostgreSQL integration
+# P02-05: disposable synthetic PostgreSQL 16 integration proof for the V5 authority schema.
+#
+# Scope: V5-platform pushes and pull requests only. This workflow is separate from
+# v35-validation.yml: that file gained one V5-only conditional `npm ci` step, but its released V4
+# validation/publishing behavior is unchanged (V4 release behavior unchanged, not file bytes).
+# It holds no provider token, store credential, production secret or Neon endpoint: the database
+# under test is the ephemeral service container below, which GitHub destroys with the job.
+#
+# Harness contract (frozen at local://v5-p02-pg-harness-contract.md, shared with
+# tests/v5-migrations.test.js and tests/v5-pg-guards.test.js):
+#   V5_PG_URL        postgres://postgres@127.0.0.1:5432/postgres  (loopback, control DB postgres)
+#   V5_PG_DISPOSABLE 1  - the caller declares the cluster exclusively owned synthetic capacity
+#   V5_PG_REQUIRED   1  - a missing/incoherent target is a hard failure, never a silent skip
+# The suites create only uniquely-owned v5_test_<family>_... databases, enable the exact runtime
+# LOGIN roles in their owned database, and drop only what they track; the control database is
+# never dropped, truncated or mutated.
+on:
+  push:
+    branches: [V5-platform]
+  pull_request:
+    branches: [V5-platform]
+permissions:
+  contents: read
+concurrency:
+  group: v5-postgresql-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  postgres-v5:
+    name: PostgreSQL 16 schema and runtime guards
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        shell: bash
+    env:
+      V5_PG_URL: postgres://postgres@127.0.0.1:5432/postgres
+      V5_PG_DISPOSABLE: '1'
+      V5_PG_REQUIRED: '1'
+      V5_TARGET: test
+      V5_MIGRATE_ALLOW_INSECURE_LOOPBACK: '1'
+    services:
+      postgres:
+        # postgres:16 digest resolved with a daemon-free registry inspect on 2026-10-08; the
+        # multi-arch index (linux/amd64 for ubuntu-latest) is pinned so the server major cannot
+        # float. The exact patch version is recorded at smoke time.
+        image: postgres:16@sha256:ca0bd484cb98bf4b24eb1010e73fb3fcbd6714d240fbc1a10eea5b7dbecb641d
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_DB: postgres
+          POSTGRES_HOST_AUTH_METHOD: trust
+        ports:
+          - 127.0.0.1:5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -q"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 24
+          --health-start-period 10s
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '24'
+      - name: Install from the root pg lockfile
+        run: npm ci
+      - name: Record service version and schema hashes
+        run: |
+          set -euo pipefail
+          mkdir -p .artifacts
+          node - <<'NODE'
+          const fs = require('node:fs');
+          const crypto = require('node:crypto');
+          const { Client } = require('pg');
+          (async () => {
+            const client = new Client({ host: '127.0.0.1', port: 5432, database: 'postgres', user: 'postgres', ssl: false, connectionTimeoutMillis: 10000 });
+            await client.connect();
+            const row = (await client.query("SELECT current_setting('server_version') AS version, current_setting('server_version_num') AS num")).rows[0];
+            await client.end();
+            const manifestRaw = fs.readFileSync('packages/migrations/manifest.json');
+            const manifest = JSON.parse(manifestRaw.toString('utf8'));
+            const aggregate = crypto.createHash('sha256').update(manifest.migrations.map((m) => `${m.id} ${m.name} ${m.sha256}`).join('\n')).digest('hex');
+            const evidence = {
+              tool: 'v5-pg-service',
+              serverVersion: row.version,
+              serverMajor: Math.floor(Number(row.num) / 10000),
+              migrations: manifest.migrations.length,
+              migrationsAggregateSha256: aggregate,
+              manifestSha256: crypto.createHash('sha256').update(manifestRaw).digest('hex'),
+            };
+            if (evidence.serverMajor !== 16) throw new Error(`expected PostgreSQL major 16, got ${row.version}`);
+            fs.writeFileSync('.artifacts/pg-service.json', JSON.stringify(evidence, null, 2) + '\n');
+            console.log(`PostgreSQL ${row.version} (${evidence.migrations} checksummed migrations)`);
+          })().catch((error) => { console.error(error.message); process.exit(1); });
+          NODE
+      - name: Migration runner integration smoke (zero -> verify -> transaction/denial posture)
+        run: |
+          set -o pipefail
+          node scripts/v5/pg-smoke.js --json | tee .artifacts/pg-smoke.json
+      - name: Migration CLI integration tests
+        run: |
+          set -o pipefail
+          mkdir -p .evidence-logs
+          node --test --test-reporter=tap --test-concurrency=1 tests/v5-migrations.test.js 2>&1 | tee .evidence-logs/v5-migrations.tap
+      - name: Connection guard runtime tests
+        run: |
+          set -o pipefail
+          mkdir -p .evidence-logs
+          node --test --test-reporter=tap --test-force-exit --test-concurrency=1 tests/v5-pg-guards.test.js 2>&1 | tee .evidence-logs/v5-pg-guards.tap
+      - name: Enforce executed database coverage
+        # A green run that quietly skipped the database suites is a failure, not a pass: every
+        # suite must report assertions against the live service and report zero skips.
+        run: |
+          set -euo pipefail
+          node - <<'NODE'
+          const fs = require('node:fs');
+          const suites = [
+            { file: 'tests/v5-migrations.test.js', log: '.evidence-logs/v5-migrations.tap' },
+            { file: 'tests/v5-pg-guards.test.js', log: '.evidence-logs/v5-pg-guards.tap' },
+          ];
+          const report = { tool: 'v5-pg-coverage', suites: [] };
+          let failed = false;
+          for (const suite of suites) {
+            const text = fs.readFileSync(suite.log, 'utf8');
+            const count = (label) => {
+              const hits = [...text.matchAll(new RegExp(`^# ${label} (\\d+)$`, 'gm'))];
+              return hits.length ? Number(hits[hits.length - 1][1]) : null;
+            };
+            const pass = count('pass');
+            const fail = count('fail');
+            const skipped = count('skipped');
+            const entry = { file: suite.file, pass, fail, skipped };
+            report.suites.push(entry);
+            if (pass === null || pass === 0 || fail === null || fail !== 0 || skipped === null || skipped !== 0) failed = true;
+          }
+          report.ok = !failed;
+          fs.writeFileSync('.artifacts/pg-coverage.json', JSON.stringify(report, null, 2) + '\n');
+          console.log(JSON.stringify(report));
+          if (failed) { console.error('database coverage did not execute cleanly (skips or non-zero failures)'); process.exit(1); }
+          NODE
+      - name: Verify owned-object cleanup on the disposable service
+        # The role LOGIN/password change this harness performs is cluster-wide; the cluster here
+        # is the ephemeral service container GitHub tears down with the job. Everything the
+        # suites create inside it must already be gone, and nothing outside their tracked names
+        # is ever touched.
+        if: always()
+        run: |
+          set -euo pipefail
+          mkdir -p .artifacts
+          node - <<'NODE'
+          const fs = require('node:fs');
+          const { Client } = require('pg');
+          (async () => {
+            const client = new Client({ host: '127.0.0.1', port: 5432, database: 'postgres', user: 'postgres', ssl: false, connectionTimeoutMillis: 10000 });
+            await client.connect();
+            const leftover = (await client.query("SELECT datname FROM pg_database WHERE datname LIKE 'v5_test_%' OR datname LIKE 'v5_smoke_%' ORDER BY datname")).rows.map((r) => r.datname);
+            const control = (await client.query("SELECT count(*)::int AS n FROM pg_database WHERE datname = 'postgres'")).rows[0].n;
+            await client.end();
+            const evidence = { tool: 'v5-pg-cleanup', leftover, controlDatabasePresent: control === 1 };
+            fs.writeFileSync('.artifacts/pg-cleanup.json', JSON.stringify(evidence, null, 2) + '\n');
+            if (leftover.length) { console.error(`owned test databases survived: ${leftover.join(', ')}`); process.exit(1); }
+            if (control !== 1) { console.error('the supplied control database is gone'); process.exit(1); }
+            console.log('no owned test databases remain; control database intact');
+          })().catch((error) => { console.error(error.message); process.exit(1); });
+          NODE
+      - name: Retain sanitized evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: v5-postgresql-evidence
+          # Sanitized command results, coverage counters, schema hashes and the recorded server
+          # version only: no raw rows, passwords, env dumps or connection strings.
+          path: |
+            .artifacts/pg-service.json
+            .artifacts/pg-smoke.json
+            .artifacts/pg-coverage.json
+            .artifacts/pg-cleanup.json
+          if-no-files-found: error
+          retention-days: 7

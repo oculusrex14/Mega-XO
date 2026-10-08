@@ -8,6 +8,7 @@
     ".": "./index.js",
     "./context": "./context.js",
     "./repositories": "./repositories.js",
-    "./scopes": "./scopes.js"
+    "./scopes": "./scopes.js",
+    "./pg": "./pg/index.js"
   }
 }

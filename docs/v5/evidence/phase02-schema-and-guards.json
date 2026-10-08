@@ -1,0 +1,140 @@
+{
+  "schema_version": 1,
+  "status": "EXECUTED_VERIFIED_ON_ISOLATED_NONSERVING_TARGETS",
+  "phase": "P02",
+  "task_ids": ["V5-02-02", "V5-02-03", "V5-02-04", "V5-02-05"],
+  "case_ids": ["A05"],
+  "observed_at_utc": "2026-10-08T10:04:10Z",
+  "source_sha": "48dba992f40a1dd490ff664d25fc5de34a7f6401",
+  "environment": "Owner Mac (macOS 25.6.0 arm64, node 26.8.2) driving two exclusively-owned PostgreSQL 16.15 clusters on loopback plus the isolated nonserving Neon staging target. No production target, provider, credential disclosure or serving V5 activation was touched. V4.1.2 remains the only production authority.",
+  "production_authority": {
+    "v4_running": "V4.1.2 / f1e5577d42809fc3da889ba76b87ca6c87e68575, untouched",
+    "v5_serving": false,
+    "production_neon_writes": 0,
+    "first_post_import_application_write": false
+  },
+  "target_ids": {
+    "neon_org_id": "org-wandering-sea-53820697",
+    "staging_project_id": "lively-shadow-52629967",
+    "staging_branch_id": "br-falling-resonance-b87qm6iz",
+    "staging_endpoint_id": "ep-red-waterfall-b880jir8",
+    "staging_host": "ep-red-waterfall-b880jir8.c-14.us-east-1.aws.neon.tech",
+    "staging_database": "mega_xo_v5_staging",
+    "staging_server_version": "16.15 (9e87aff)",
+    "dev_project_id": "silent-unit-55400508",
+    "production_project_id": "blue-sun-85454968"
+  },
+  "commands": [
+    {
+      "action": "Apply the nine pending migrations to the isolated staging target (direct, unpooled)",
+      "command": "node scripts/v5/migrate.js --execute --json",
+      "exit_code": 0,
+      "result": {
+        "appliedCount": 9,
+        "applied_ids": [27, 28, 29, 30, 31, 32, 33, 34, 35],
+        "channelBinding": {"requested": "require", "enableChannelBinding": true, "observedMechanism": "SCRAM-SHA-256-PLUS", "enforced": true}
+      }
+    },
+    {
+      "action": "Checksum + catalog conformance verification of the full chain on staging",
+      "command": "node scripts/v5/migrate.js --verify --json",
+      "exit_code": 0,
+      "result": {"ok": true, "checked": 35, "failures": [], "channelBinding": {"requested": "require", "enableChannelBinding": true, "observedMechanism": "SCRAM-SHA-256-PLUS", "enforced": true}}
+    },
+    {
+      "action": "Read-only deployed catalog capture on staging",
+      "exit_code": 0,
+      "result": {"serverVersion": "16.15 (9e87aff)", "database": "mega_xo_v5_staging", "ledgerHead": 35, "ledgerRows": 35, "schemaCount": 16, "tables": 65, "constraints": 329, "indexes": 57, "runtime_logins": ["api_runtime", "core_runtime", "worker_runtime", "backup_reader", "audit_runtime"], "runtime_logins_nologin_in_chain": true, "runtime_roles_cluster_attributes_false": true}
+    },
+    {
+      "action": "Guarded direct + pooled runtime proof on the same staging target (all five roles)",
+      "exit_code": 0,
+      "result": {
+        "ok": true,
+        "modes": ["direct", "pooled"],
+        "principalExact": true,
+        "tempDdlDenied": "42501",
+        "schemaDdlDenied": "42501",
+        "walletWriteDenied": "42501",
+        "credentialReadDenied": "42501",
+        "setRoleElevationDenied": "42501",
+        "tls": "TLSv1.3",
+        "encrypted": true,
+        "authorized": true,
+        "pinnedGucs": {"statement": "5s", "lock": "2s", "idleInTransaction": "15s"},
+        "pooledRawSessionLeaseRefused": "POOLED_SESSION_UNSUPPORTED",
+        "commitVisible": true,
+        "rollbackUndoesWrite": true,
+        "borrowedKeyReplayedOnce": true,
+        "applicationWrites": 4,
+        "fixtureCleanup": {"trackedActors": 2, "remaining": 0},
+        "sharedDirectPooledBudget": true,
+        "tamperedTargetRefused": true,
+        "missingCaRefused": true,
+        "poolClaimsReleased": true
+      }
+    },
+    {
+      "action": "Owned native PG16.15 full migration suite at the final chain head (zero skips)",
+      "command": "node --test --test-concurrency=1 --test-force-exit tests/v5-migrations.test.js",
+      "exit_code": 0,
+      "result": {"tests": 11, "pass": 11, "fail": 0, "skipped": 0}
+    },
+    {
+      "action": "Owned native PG16.15 runtime guard suite (live target)",
+      "command": "node --test --test-concurrency=1 --test-force-exit tests/v5-pg-guards.test.js",
+      "exit_code": 0,
+      "result": {"tests": 23, "pass": 23, "fail": 0, "skipped": 0}
+    },
+    {
+      "action": "Pristine owned PG16.15 zero-to-verify smoke",
+      "command": "node scripts/v5/pg-smoke.js --json",
+      "exit_code": 0,
+      "result": {"ok": true, "code": "OK", "steps": ["server-major", "create-owned-db", "migrate-execute=35", "migrate-verify=35", "migrate-dry-run", "runtime-roles-nologin=5", "runtime-schema-usage=80"], "schema": {"migrations": 35, "aggregateSha256": "86dc9d8d0690e4c130e106d509fcce4fce95f8e2cce92f48b5b8aa2143d3c03e"}}
+    },
+    {
+      "action": "Source-side extraction and purity suites (unchanged P03 preparation)",
+      "command": "node --test --test-concurrency=1 --test-force-exit tests/v5-migration-extract.test.js tests/v5-migration-purity.test.js",
+      "exit_code": 0,
+      "result": {"tests": 20, "pass": 20, "fail": 0, "skipped": 0}
+    }
+  ],
+  "result": {
+    "executed": true,
+    "exit_code": 0,
+    "assertions": [
+      "The chain applies from zero through all 35 checksummed migrations, and re-applies idempotently on the same ledger.",
+      "Concurrent migrator attempts are serialized by the advisory lock: the loser exits MIGRATOR_BUSY and writes nothing.",
+      "A failed file rolls back its whole transaction and the run resumes cleanly from the ledger.",
+      "A replay conflict on edited migration bytes aborts; a self-consistent scratch manifest is still refused on checksum mismatch.",
+      "verify detects catalog drift and ledger tampering and refuses.",
+      "The runner refuses unconfirmed, pooler, weak-TLS, bad-binding and unprivileged invocations before any write.",
+      "Runtime roles cannot create TEMP or permanent schema objects, cannot read credentials, cannot write wallets outside their grants, and cannot SET ROLE upward.",
+      "The pooled endpoint refuses a raw session lease; transaction-local pins hold; commits are visible, rollbacks undo writes, and a borrowed idempotency key executes exactly once.",
+      "The isolated staging target reaches ledger head 35 with 16 schemas, 65 tables, 329 constraints and 57 indexes, all five runtime LOGIN identities provisioned and verified.",
+      "The final SQL head applies and verifies on the isolated staging target with SCRAM-SHA-256-PLUS channel binding observed and enforced."
+    ],
+    "unexplained_differences": []
+  },
+  "artifact_hashes": {
+    "packages/migrations/manifest.json": "2795eea3cd9cd4e56e626c16372770d351d03e04c3dba1ebbdf0274030cd3549",
+    "packages/migrations/conformance.json": "740745769f8d76785c2164ffae119601ecbdf03871f352a0fe92ce9a3411c1d7",
+    "scripts/v5/migrate.js": "be5d0152e1682a3234fd3c0a393d61f2951bc8d8558ba2599c804846d544ccd8",
+    "scripts/v5/pg-smoke.js": "5832e63bcd9d30a56d4e783ebbedd85c5cb9afef3c6a34ea4d8762d28f329088",
+    "packages/db/pg/pool.js": "5c88bb50bc71d5ff3586de6bd698c42587789ad7e7ea7d7f900f5b7e571f90f9",
+    "tests/v5-migrations.test.js": "8ed4ac3fc31dc4bf8d7d78d525978cfea45fd3b01429fb4fffa41bda415ae185",
+    ".github/workflows/v5-postgresql.yml": "56c0ac151fc2b19ee986ac90b991b9c6c95f065e36ed78d013549c12c96d8e12",
+    "migrations_aggregate_sha256": "86dc9d8d0690e4c130e106d509fcce4fce95f8e2cce92f48b5b8aa2143d3c03e"
+  },
+  "provider_state": {"uploaded": false, "submitted": false, "approved": false, "production_enabled": false, "evidence_reference": null},
+  "restricted_evidence_location": "Local private directories outside Git: generated staging runtime-role credential envelope and root CA under /Users/oculus/Downloads/Mega-XO-private-evidence/v5-neon-staging/ (0600); owned cluster data in the OS temp area, removed after use.",
+  "sanitized_summary": "P02 is implemented and executed: 35 checksummed migrations build the schema from zero on an isolated nonserving Neon staging target under SCRAM-SHA-256-PLUS channel binding, the runner serializes on an advisory lock and fails closed on checksum/target/TLS drift, and the guarded direct/pooled PostgreSQL pool enforces exact runtime principals, no-DDL, no credential read, no economic write outside grants and transaction-local pins. All local suites pass with zero skips. No G02, G03, restore, provider or production claim is made here.",
+  "not_claimed": [
+    "G02 phase acceptance (owner-recorded gate decision)",
+    "P03/G03 import, projector, loader, reconstruction, reconciliation or resume",
+    "Any production write, provider activation or paid-capacity change",
+    "The new website/browser product",
+    "Aggregate account-wide quota measurement"
+  ],
+  "review_notes": "All statements above were executed and observed by the parent in this session. Two isolated PG16.15 clusters and one nonserving Neon staging target were used; the owned cluster was stopped and removed afterwards. No credential, connection URL, player row or secret value appears in this record or in any committed artifact. V4.1.2 production data was not read or written."
+}

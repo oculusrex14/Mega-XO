@@ -1,0 +1,218 @@
+{
+  "tool": "v5-migrate-manifest",
+  "version": 1,
+  "algorithm": "sha256(name + '\\n' + sql)",
+  "advisoryLockKey": 7202050231,
+  "migrations": [
+    {
+      "id": 1,
+      "name": "0001_roles_bootstrap",
+      "file": "migrations/0001_roles_bootstrap.sql",
+      "sha256": "c9c851114b8aa4af53d86b08a0b53e66ff430e466119232108830a5506026851"
+    },
+    {
+      "id": 2,
+      "name": "0002_schemas",
+      "file": "migrations/0002_schemas.sql",
+      "sha256": "2f7f1dc884584023e3ef5786122645f7f8eb134f7b521ccb1430d5f2c5d94bf5"
+    },
+    {
+      "id": 3,
+      "name": "0003_meta_ledger",
+      "file": "migrations/0003_meta_ledger.sql",
+      "sha256": "58c7d87bd58eee7f4ead29673b6c3bff67928deea9b8b549b2a270a3e08d8429"
+    },
+    {
+      "id": 4,
+      "name": "0004_identity_accounts",
+      "file": "migrations/0004_identity_accounts.sql",
+      "sha256": "150e588162ee207963a6a24d9ab69a6b67ac68086b2d5c98a833a0dbba32da79"
+    },
+    {
+      "id": 5,
+      "name": "0005_identity_auth",
+      "file": "migrations/0005_identity_auth.sql",
+      "sha256": "c239e419f29dd6bbe15764ec34d06aa5ffa2b53f919c65758624ce5ea9ce531c"
+    },
+    {
+      "id": 6,
+      "name": "0006_profile_archive",
+      "file": "migrations/0006_profile_archive.sql",
+      "sha256": "c08a8a434462fb03049b6e15d48d23f8728f18cbf0e5738d79adfed414baf698"
+    },
+    {
+      "id": 7,
+      "name": "0007_social_graph",
+      "file": "migrations/0007_social_graph.sql",
+      "sha256": "9cedb23f26913c68a5871f9ba00c72875705ab428de9d81f684937c9ad8949f6"
+    },
+    {
+      "id": 8,
+      "name": "0008_economy_wallets",
+      "file": "migrations/0008_economy_wallets.sql",
+      "sha256": "e86eccbf128d12b41d740a68483578fe672debca7c17de68e51e2895953b604d"
+    },
+    {
+      "id": 9,
+      "name": "0009_economy_commands",
+      "file": "migrations/0009_economy_commands.sql",
+      "sha256": "6e278367da846894641138d8cd22b77cf395a26a794b7a71befce047225ef3a1"
+    },
+    {
+      "id": 10,
+      "name": "0010_economy_history",
+      "file": "migrations/0010_economy_history.sql",
+      "sha256": "a3f22b35b2dcece9e9c7e6ae8f6fff27911b7d80f1963f87834e27b1ca986eda"
+    },
+    {
+      "id": 11,
+      "name": "0011_core_occupancy",
+      "file": "migrations/0011_core_occupancy.sql",
+      "sha256": "2c9364a587df6ae09d8e9edcf2e99eac1092248c0dd9402eecd7230574f5e555"
+    },
+    {
+      "id": 12,
+      "name": "0012_match",
+      "file": "migrations/0012_match.sql",
+      "sha256": "d9f7d11662ded24d10ef01a82db822fe19a4fd12d06b8c30ddf6b2734b1ea98d"
+    },
+    {
+      "id": 13,
+      "name": "0013_tournament",
+      "file": "migrations/0013_tournament.sql",
+      "sha256": "08bec8d2d21df86b88a4c919c8eec9c5b23b774e2aec7feb940ee6967e98e568"
+    },
+    {
+      "id": 14,
+      "name": "0014_monetization_credits",
+      "file": "migrations/0014_monetization_credits.sql",
+      "sha256": "aca0bb76104cbc47688cd9a3c26b55479bc640bbadeb2bdfc2185672b5dda963"
+    },
+    {
+      "id": 15,
+      "name": "0015_monetization_store",
+      "file": "migrations/0015_monetization_store.sql",
+      "sha256": "cc50ca7a30ef54df7986f98e681483935b4495f954ebe37d5404fbece2abddf3"
+    },
+    {
+      "id": 16,
+      "name": "0016_cosmetics_season",
+      "file": "migrations/0016_cosmetics_season.sql",
+      "sha256": "fc3cdb1dcc782cb55ba3750b62c1776f45142d6a2234d515b71d8656097134ef"
+    },
+    {
+      "id": 17,
+      "name": "0017_privacy_support_audit",
+      "file": "migrations/0017_privacy_support_audit.sql",
+      "sha256": "dae7878bf1db9771c16815e830fba234ec56999f3b15f91caa1b72b1b436f2ed"
+    },
+    {
+      "id": 18,
+      "name": "0018_runtime_ops",
+      "file": "migrations/0018_runtime_ops.sql",
+      "sha256": "c723d210be9771125095ad6047bd375c04112a8203d013b4445efe37a23e1296"
+    },
+    {
+      "id": 19,
+      "name": "0019_hardened_defaults",
+      "file": "migrations/0019_hardened_defaults.sql",
+      "sha256": "01d9d1981b73f7d0f72888b43b1ba07e611d4f8eb9ccae3326c70e94adcc7a03"
+    },
+    {
+      "id": 20,
+      "name": "0020_grants_api",
+      "file": "migrations/0020_grants_api.sql",
+      "sha256": "5b64d6fd6d6263a4183730e0dfbf8302fdbd8a195d44f513432f8298dbc6dacf"
+    },
+    {
+      "id": 21,
+      "name": "0021_grants_core",
+      "file": "migrations/0021_grants_core.sql",
+      "sha256": "db7f1668d81b2af6282155cade87d199bbb8e12c77adae098396c4f67193d727"
+    },
+    {
+      "id": 22,
+      "name": "0022_grants_worker",
+      "file": "migrations/0022_grants_worker.sql",
+      "sha256": "62fd08a037ce88bb4b81b6031999741f0c2badc4f5e69c7bf9e6b81afdf2d7c7"
+    },
+    {
+      "id": 23,
+      "name": "0023_grants_backup_audit",
+      "file": "migrations/0023_grants_backup_audit.sql",
+      "sha256": "473e71d701ea47ca13f1abc974042779463abceb8e8d6a378342f28574f49999"
+    },
+    {
+      "id": 24,
+      "name": "0024_seed_singletons",
+      "file": "migrations/0024_seed_singletons.sql",
+      "sha256": "eeb09957fab4e05bf86b5310d22a13c3f730049880b88e25b86133f3995b1cf5"
+    },
+    {
+      "id": 25,
+      "name": "0025_harden_db_privileges_and_archive_fidelity",
+      "file": "migrations/0025_harden_db_privileges_and_archive_fidelity.sql",
+      "sha256": "1a574a5ae9a9adf9884ae5f0d3d131bf2570fd50751b30f2e6d168895e45ed82"
+    },
+    {
+      "id": 26,
+      "name": "0026_backup_reader_explicit_read_grants",
+      "file": "migrations/0026_backup_reader_explicit_read_grants.sql",
+      "sha256": "33f2657be088880d6ab86320632ee5733f736e5f75a217553b66d8fb5d29941b"
+    },
+    {
+      "id": 27,
+      "name": "0027_outbox_cancelled_state",
+      "file": "migrations/0027_outbox_cancelled_state.sql",
+      "sha256": "16252747e95a9c575311b21f93c82419aa585b51a899eb865fb51d09c0f6babf"
+    },
+    {
+      "id": 28,
+      "name": "0028_room_players_soft_membership_and_ordinal",
+      "file": "migrations/0028_room_players_soft_membership_and_ordinal.sql",
+      "sha256": "7fc98a8fd75d7927f56add6cabc4847cc2c18e5203b1b16c8b8f2762034f3425"
+    },
+    {
+      "id": 29,
+      "name": "0029_command_key_source_domain",
+      "file": "migrations/0029_command_key_source_domain.sql",
+      "sha256": "048a903debf36d61181ed86a9300bd8def89959e77df8cbc422a8099b6001795"
+    },
+    {
+      "id": 30,
+      "name": "0030_social_legacy_id_uniqueness",
+      "file": "migrations/0030_social_legacy_id_uniqueness.sql",
+      "sha256": "310ff235fa01f69d66ada92197f64aa27a67f7959a8feb54860b358840ced665"
+    },
+    {
+      "id": 31,
+      "name": "0031_rooms_shape_version",
+      "file": "migrations/0031_rooms_shape_version.sql",
+      "sha256": "c1b540c387ea6adb1b1dc5fa59d618afc99bc66ca4ccc0f2230692a03c6b39e4"
+    },
+    {
+      "id": 32,
+      "name": "0032_wallets_purchased_bounds_only",
+      "file": "migrations/0032_wallets_purchased_bounds_only.sql",
+      "sha256": "93e62b8a72ff950ef9f4d9e8e4c9edeb22ec1d4a4e857001916f7c31d9dded94"
+    },
+    {
+      "id": 33,
+      "name": "0033_profile_saves_opaque_archive",
+      "file": "migrations/0033_profile_saves_opaque_archive.sql",
+      "sha256": "92a363518b9f61a7850f065d5144e52662ea195ccc40c8cac7f224871cdf4dfa"
+    },
+    {
+      "id": 34,
+      "name": "0034_unicode_json_representation",
+      "file": "migrations/0034_unicode_json_representation.sql",
+      "sha256": "48384f9a4b8d56afc3db4964c1b7a5fafd0ae0132109c0661dc6408fd27421bd"
+    },
+    {
+      "id": 35,
+      "name": "0035_audit_genesis_prev_hash",
+      "file": "migrations/0035_audit_genesis_prev_hash.sql",
+      "sha256": "58d17eb66645d3049b0152a2b039b17234bd36641aede9d858eb151ddf5a80da"
+    }
+  ]
+}

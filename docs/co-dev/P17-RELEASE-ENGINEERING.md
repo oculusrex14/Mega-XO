@@ -40,3 +40,19 @@ Later P17 integration must verify actual service digests, exact production
 Vercel build, approved environment reviewer policy, schema/wire compatibility,
 stable CLI pins and a prior compatible PostgreSQL fallback. No live resource,
 credentials, signed store artifact or provider approval was invented here.
+
+## Immutable artifact references (structural only, no production action)
+
+The source-only candidate is not a deployable release. When P08-P11 publish
+actual independent API/Core/worker artifacts, the owner can use
+scripts/v5/release-artifact-references.js to validate the reference envelope.
+It requires: an actual-looking production-configured Vercel deployment ID
+staged without domain assignment, distinct immutable GHCR digests with
+linux/amd64 and linux/arm64 for Core and worker, the SAME exact source
+commit for each component, and three named CI run references at that commit.
+
+This validation is deliberately labeled structural only. JSON can lie
+about an image digest or a CI run ID; the owner must independently verify
+GHCR manifest/pull availability, signed provenance, GitHub CI conclusions,
+Vercel project/environment and a compatible PostgreSQL fallback before any
+deployment, promotion or rollback. PR jobs have no credentials to do so.

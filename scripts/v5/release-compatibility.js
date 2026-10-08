@@ -23,8 +23,8 @@ function parseVersion(version){
   if(typeof version!=='string') refuse('missing semantic release version');
   const m=version.match(RX_VERSION);
   if(!m) refuse('unsupported V5 release SemVer');
-  const variant=m[4]||'stable',order={dev:0,beta:1,rc:2,stable:3};
-  const label=m[5]||'';
+  const variant=m[3]||'stable',order={dev:0,beta:1,rc:2,stable:3};
+  const label=m[4]||'';
   if (label && /^\d+$/.test(label) && label.length>1 && label[0]==='0') refuse('leading-zero prerelease');
   return [5,Number(m[1]),Number(m[2]),order[variant],/^\d+$/.test(label)?Number(label):label];
 }

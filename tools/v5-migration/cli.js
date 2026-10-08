@@ -55,6 +55,11 @@ const {canonical, hashText} = require('./canonical.js');
 const {readSnapshot, READER_VERSION} = require('./reader.js');
 const {capture, CAPTURE_VERSION, assertRawDestinationBound} = require('./capture.js');
 
+/* Boolean flags take NO value: a bare `--flag` is accepted, and an explicit `--flag=1|true`
+ * is accepted too, but `--flag <token>` never consumes the next token (that silently ate the
+ * following option and was reported by the loader smoke). */
+const BOOLEAN_OPTIONS = new Set(['adopt-existing']);
+
 function parseArguments(argv) {
   const options = {allowUnclassified: {}};
   for (let index = 0; index < argv.length; index++) {
@@ -62,6 +67,13 @@ function parseArguments(argv) {
     if (!token.startsWith('--')) throw cliError('UNKNOWN_ARGUMENT', token);
     const equals = token.indexOf('=');
     const name = equals === -1 ? token.slice(2) : token.slice(2, equals);
+    if (BOOLEAN_OPTIONS.has(name)) {
+      if (equals === -1) { options[name.replace(/-([a-z])/g, (_, c) => c.toUpperCase())] = true; continue; }
+      const raw = token.slice(equals + 1);
+      if (!['1', 'true', 'yes'].includes(raw.toLowerCase())) throw cliError('BOOLEAN_FLAG_INVALID', name);
+      options[name.replace(/-([a-z])/g, (_, c) => c.toUpperCase())] = true;
+      continue;
+    }
     let value = equals === -1 ? argv[++index] : token.slice(equals + 1);
     if (value === undefined) throw cliError('ARGUMENT_VALUE_REQUIRED', name);
     switch (name) {
@@ -71,7 +83,6 @@ function parseArguments(argv) {
       case 'expect-sha256': options.expectSha256 = value; break;
       case 'release-sha': options.releaseSha = value; break;
       case 'batch-size': options.batchSize = value; break;
-      case 'adopt-existing': options.adoptExisting = true; break;
       case 'allow-unclassified': {
         const split = value.lastIndexOf('=');
         if (split <= 1) throw cliError('ALLOW_UNCLASSIFIED_FORMAT', value);

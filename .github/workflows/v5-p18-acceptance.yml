@@ -30,6 +30,8 @@ jobs:
           node --check scripts/v5/p18/acceptance-registry.js
           node --check scripts/v5/p18/stage-evidence.js
           node --check scripts/v5/p18/disposable-service-journeys.js
+          node --check scripts/v5/p18/cutover-state-model.js
+          node --check scripts/v5/p18/visual-baseline.js
           node --test tests/v5-p18-*.test.js
       - name: Emit nonauthoritative preparation evidence
         run: |
@@ -38,11 +40,13 @@ jobs:
           node scripts/v5/p18/staging-isolation.js > .artifacts/p18-static-isolation.json
           node scripts/v5/p18/acceptance-registry.js > .artifacts/p18-acceptance-plan.json
           node scripts/v5/p18/disposable-service-journeys.js --list > .artifacts/p18-disposable-plan.json
+          node scripts/v5/p18/visual-baseline.js --source-freeze > .artifacts/p18-source-freeze.json
           node - <<'NODE'
           const fs = require('node:fs');
-          for(const name of ['p18-static-isolation','p18-acceptance-plan','p18-disposable-plan']) {
+          for(const name of ['p18-static-isolation','p18-acceptance-plan','p18-disposable-plan','p18-source-freeze']) {
             const result=JSON.parse(fs.readFileSync('.artifacts/'+name+'.json','utf8'));
-            if(result.g18Accepted!==false || result.stageExecutionAuthorized===true) {
+            if(result.g18Accepted!==false || result.stageExecutionAuthorized===true ||
+               result.sourceBytesIdenticalToP00===false) {
               throw Error('source-only test cannot mark live staging accepted');
             }
           }
@@ -57,6 +61,7 @@ jobs:
             .artifacts/p18-static-isolation.json
             .artifacts/p18-acceptance-plan.json
             .artifacts/p18-disposable-plan.json
+            .artifacts/p18-source-freeze.json
           retention-days: 7
           if-no-files-found: error
   p18-disposable-services:

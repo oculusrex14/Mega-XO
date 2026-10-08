@@ -47,3 +47,22 @@ authoritative docs/v5/progress.json remain owned by the integration agent.
 
 P21 website remains deferred. Co-dev never edits P04+ runtime service paths,
 docs/v5/progress.json, payment/ad policy, or any production service.
+
+## P18-04 source and private visual evidence
+
+- The approved P00 source baseline already enumerates 21 real client
+  files/hashes/sizes. scripts/v5/p18/visual-baseline.js --source-freeze
+  checks that no approved code, gameplay, currency utility, theme or legal
+  page content has changed without review.
+- Private visual captures remain in the owner's restricted evidence store.
+  compareCaptures() verifies actual PNG file bytes, file hashes, dimensions,
+  complete four-theme screen coverage and distinguishes matching bytes from
+  unreviewed visual differences. A screenshot hash match is not proof of
+  usability, native accessibility or device parity; real screenshots and
+  platform exceptions require independent review.
+- scripts/v5/p18/cutover-state-model.js exercises the source-authoritative
+  PREPARED -> FROZEN -> IMPORTED -> ARMED -> V5_AUTHORITY process in synthetic
+  event traces. It rejects dual writers, changing frozen snapshot hashes,
+  nonzero reconciliation differences, post-first-write SQLite rollback and
+  missing first-write evidence. These are **model tests**, not a live cutover
+  or a permission to activate the staging/production writer.

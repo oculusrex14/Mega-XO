@@ -131,3 +131,17 @@ test('StoreKit2 implements backend-verified four-product evidence and consumable
   assert.match(code, /Transaction\.unfinished/);
   assert.doesNotMatch(code, /grantCrowns|mintCrowns|localGrant/);
 });
+
+test('Android Play Billing 9 uses obfuscated actor binding and delegates all delivery/finalization', () => {
+  const code = read('native/android/app/src/main/java/online/megaxo/prototype/MegaPlayBilling.kt');
+  const gradle = read('native/android/app/build.gradle.kts');
+  assert.match(gradle, /billing:9\.1\.0/);
+  assert.match(code, /enablePendingPurchases/);
+  assert.match(code, /queryProductDetailsAsync/);
+  assert.match(code, /setObfuscatedAccountId/);
+  assert.match(code, /purchase\.purchaseToken/);
+  assert.match(code, /purchase\.purchaseState != Purchase\.PurchaseState\.PURCHASED/);
+  assert.match(code, /it\.products\.contains\(mapping\["remove_ads"\]\)/);
+  assert.match(code, /backendCommitted/);
+  assert.doesNotMatch(code, /\.consumeAsync\(|\.acknowledgePurchase\(/);
+});

@@ -268,3 +268,19 @@ test('native manifest parity verifier rejects cross-platform drift and forbidden
   ]}));
   assert.throws(() => verify(left, right), /forbidden client file/);
 });
+
+test('Android native Google login bridge requires explicit registered server audience and trusted frame', () => {
+  const host = read('native/android/app/src/main/java/online/megaxo/prototype/MegaAndroidIdentityBridge.kt');
+  const activity = read('native/android/app/src/main/java/online/megaxo/prototype/MegaXOActivity.kt');
+  const build = read('native/android/app/build.gradle.kts');
+  assert.match(host, /configuredServerClientId\.isBlank\(\)/);
+  assert.match(host, /WebViewCompat\.addWebMessageListener/);
+  assert.match(host, /isMainFrame && origin\.scheme == "https"/);
+  assert.match(host, /view\.url == entryUrl/);
+  assert.match(host, /provider\.getCredential\(nonce\)/);
+  assert.match(host, /getCredential: \(\{provider, nonce\} = \{\}\)/);
+  assert.match(build, /megaGoogleServerClientId/);
+  assert.match(build, /MEGA_GOOGLE_SERVER_CLIENT_ID/);
+  assert.match(activity, /MegaAndroidIdentityBridge\.install/);
+  assert.doesNotMatch(host, /grantCrowns|addJavascriptInterface|storeIdToken|MegaNativeHttpClient\(/);
+});

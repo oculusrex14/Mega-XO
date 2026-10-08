@@ -26,6 +26,7 @@ import java.io.ByteArrayInputStream
 class MegaXOActivity : Activity() {
     private lateinit var game: WebView
     private var notifications: MegaAndroidLocalNotifications? = null
+    private var identityBridge: MegaAndroidIdentityBridge? = null
     private val assetHost = "appassets.androidplatform.net"
     private val assetPrefix = "/assets/mega/"
 
@@ -92,6 +93,8 @@ class MegaXOActivity : Activity() {
         setContentView(game)
         val gameEntry = "https://$assetHost${assetPrefix}bundle-index.html"
         notifications = MegaAndroidLocalNotifications.install(this, game, gameEntry)
+        identityBridge = MegaAndroidIdentityBridge.install(
+            this, game, gameEntry, BuildConfig.MEGA_GOOGLE_SERVER_CLIENT_ID)
         game.loadUrl(gameEntry)
     }
 
@@ -122,6 +125,8 @@ class MegaXOActivity : Activity() {
     override fun onDestroy() {
         notifications?.close()
         notifications = null
+        identityBridge?.close()
+        identityBridge = null
         game.stopLoading()
         game.destroy()
         super.onDestroy()

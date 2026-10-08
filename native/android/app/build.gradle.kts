@@ -10,6 +10,12 @@ plugins {
 
 val repoRoot = rootProject.projectDir.resolve("../..").canonicalFile
 val generatedAssets = layout.buildDirectory.dir("generated/megaAssets")
+val googleNativeServerClientId = providers.gradleProperty("megaGoogleServerClientId").orNull ?: ""
+require(googleNativeServerClientId.isEmpty() ||
+    Regex("^[a-zA-Z0-9_-]+\\.apps\\.googleusercontent\\.com$").matches(googleNativeServerClientId)) {
+    "The native Google server audience must be an exact registered Google OAuth Web client ID"
+}
+
 // The shared P01 bundler correctly REFUSES all writes under native/. Stage
 // outside the checkout, then let Gradle Sync own the disposable build/ copy.
 val workspaceKey = MessageDigest.getInstance("SHA-256")
@@ -55,6 +61,7 @@ android {
         targetSdk = 35
         versionCode = 1
         versionName = "0.1.0-native-dev"
+        buildConfigField("String", "MEGA_GOOGLE_SERVER_CLIENT_ID", "\"$googleNativeServerClientId\"")
         // Official test app ID for a non-distributing, offline prototype.
         // Real releases require an owner-verified AdMob registration.
         manifestPlaceholders["megaAdMobAppId"] =
@@ -100,6 +107,7 @@ dependencies {
     implementation("androidx.credentials:credentials:1.6.0")
     implementation("androidx.credentials:credentials-play-services-auth:1.6.0")
     implementation("com.google.android.libraries.identity.googleid:googleid:1.2.1")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2")
     implementation("com.android.billingclient:billing:9.1.0")
     implementation("com.google.android.ump:user-messaging-platform:4.0.0")
     implementation("com.google.android.libraries.ads.mobile.sdk:ads-mobile-sdk:1.4.0")

@@ -2,7 +2,7 @@
 'use strict';
 
 /**
- * Run already-existing P04/P05 REAL-service acceptance suites on a caller-owned
+ * Run already-existing P03/P04/P05 REAL-service acceptance suites on a caller-owned
  * disposable LOOPBACK PostgreSQL 16 instance only. This reuses the P04/P05
  * guarded service factories and SQL migrations; it does not test real Vercel,
  * Oracle, Neon staging, provider credentials or production players.
@@ -16,6 +16,24 @@ const crypto = require('node:crypto');
 const { spawnSync } = require('node:child_process');
 
 const SUITES = Object.freeze([
+  Object.freeze({
+    id: 'sqlite-snapshot-to-postgres-import',
+    file: 'tests/v5-migration-load.test.js',
+    areas: Object.freeze(['immutable-capture','complete-import','restart','rerun-no-op']),
+    cases: Object.freeze(['A06','A08'])
+  }),
+  Object.freeze({
+    id: 'postgres-per-actor-reconciliation',
+    file: 'tests/v5-migration-reconcile.test.js',
+    areas: Object.freeze(['per-actor-ledger','swapped-wallet-detection','source-target-delta']),
+    cases: Object.freeze(['A07','A09'])
+  }),
+  Object.freeze({
+    id: 'sqlite-postgres-game-economy-parity',
+    file: 'tests/v5-p04-differential.test.js',
+    areas: Object.freeze(['ranked','direct','settlement','ratings','replay','wallet']),
+    cases: Object.freeze(['A01','A09','A10','A11'])
+  }),
   Object.freeze({
     id: 'pg-services-social-economy',
     file: 'tests/v5-p04-services.test.js',
@@ -83,10 +101,13 @@ function run({root=process.cwd(),env=process.env,spawn=spawnSync}={}) {
       refuse('real PostgreSQL service suite failed or timed out: ' + spec.id);
     }
     const counts=parseTap(result.stdout,spec.id);
+    if(result.stderr && /(?:error:|fatal:|not ok\b)/i.test(result.stderr)) {
+      refuse('unexpected test runner error on stderr: ' + spec.id);
+    }
     const bytes=fs.readFileSync(file);
     reports.push({suiteId:spec.id,file:spec.file,
       sourceSha256:crypto.createHash('sha256').update(bytes).digest('hex'),
-      casesCoveredAsFixtures:[...spec.cases],assertionCounters:counts,status:'DISPOSABLE_SERVICE_TEST_PASSED'});
+      caseSlicesExercisedInSyntheticFixtures:[...spec.cases],assertionCounters:counts,status:'DISPOSABLE_SERVICE_TEST_PASSED'});
   }
   return {
     format:'mega-v5-p18-disposable-service-evidence/v1',

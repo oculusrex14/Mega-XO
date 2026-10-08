@@ -16,7 +16,10 @@ test('existing real PostgreSQL account/economy and P05 actor suites are register
  const p=list();
  assert.equal(p.executionStatus,'NOT_EXECUTED');
  assert.equal(p.g18Accepted,false);
- assert.equal(p.suites.length,2);
+ assert.equal(p.suites.length,5);
+ assert.ok(p.suites.some(s=>s.cases.includes('A07')));
+ assert.ok(p.suites.some(s=>s.cases.includes('A08')));
+ assert.ok(p.suites.some(s=>s.cases.includes('A01')));
  assert.ok(p.suites.some(s=>s.cases.includes('A11')));
  assert.ok(p.suites.some(s=>s.cases.includes('A13')));
  assert.ok(p.suites.every(s=>s.file.startsWith('tests/v5-')));
@@ -58,13 +61,26 @@ test('synthetic injected runner verifies actual suite files and produces nonstag
    assert.equal(opts.env.DATABASE_URL,undefined);
    return {status:0,stdout:'# tests 4\n# pass 4\n# fail 0\n# skipped 0\n'};
  }});
- assert.equal(calls,2);
- assert.equal(report.suites.length,2);
+ assert.equal(calls,5);
+ assert.equal(report.suites.length,5);
  assert.equal(report.liveStagingVerified,false);
  assert.equal(report.g18Accepted,false);
  assert.ok(report.suites.every(s=>s.sourceSha256.length===64));
+ assert.ok(report.suites.every(s=>s.caseSlicesExercisedInSyntheticFixtures.length>0));
 });
 test('zero-coverage or failing real subprocess is a hard failure, never mock-green',()=>{
  assert.throws(()=>run({root,env:safe(),spawn:()=>({status:0,stdout:'# tests 0\n# pass 0\n# fail 0\n# skipped 0\n'})}),/P18_DISPOSABLE_REFUSED/);
  assert.throws(()=>run({root,env:safe(),spawn:()=>({status:1,stderr:'',stdout:''})}),/P18_DISPOSABLE_REFUSED/);
+});
+
+test('P18 audit includes real SQL import, reconciliation, differential, account and actor suites',()=>{
+ const ids=list().suites.map(s=>s.id);
+ assert.deepEqual(ids,[
+  'sqlite-snapshot-to-postgres-import',
+  'postgres-per-actor-reconciliation',
+  'sqlite-postgres-game-economy-parity',
+  'pg-services-social-economy',
+  'pg-session-actor-coherence'
+ ]);
+ assert.ok(ids.every((id)=>/^[a-z0-9-]+$/.test(id)));
 });

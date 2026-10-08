@@ -77,3 +77,28 @@ test('writes and verifies a 0600 candidate in a scoped .artifacts directory',t=>
   fs.writeFileSync(p,JSON.stringify(tampered));
   assert.throws(()=>run(['verify','--sha',fakeSha,'--file',output],temp),/V5_CANDIDATE_REFUSED/);
 });
+
+test('candidate rejects unlisted SQL and rows whose ID/name/file no longer agree',t=>{
+  const tmp=fs.mkdtempSync(path.join(os.tmpdir(),'mega-source-ledger-'));
+  t.after(()=>fs.rmSync(tmp,{recursive:true,force:true}));
+  for(const file of FILES){
+    const dest=path.join(tmp,file);
+    fs.mkdirSync(path.dirname(dest),{recursive:true});
+    fs.copyFileSync(path.join(root,file),dest);
+  }
+  const chain=JSON.parse(fs.readFileSync(path.join(root,FILES[0]),'utf8'));
+  for(const row of chain.migrations){
+    const rel=path.join('packages/migrations',row.file);
+    const dest=path.join(tmp,rel);
+    fs.mkdirSync(path.dirname(dest),{recursive:true});
+    fs.copyFileSync(path.join(root,rel),dest);
+  }
+  assert.equal(candidate(tmp,fakeSha).schemaEvidence.migrationCount,chain.migrations.length);
+  const unexpected=path.join(tmp,'packages/migrations/migrations/9999_untracked.sql');
+  fs.writeFileSync(unexpected,'SELECT 1;');
+  assert.throws(()=>candidate(tmp,fakeSha),/unlisted, missing or duplicate migration SQL/);
+  fs.unlinkSync(unexpected);
+  chain.migrations[0].name='0001_different_name';
+  fs.writeFileSync(path.join(tmp,FILES[0]),JSON.stringify(chain));
+  assert.throws(()=>candidate(tmp,fakeSha),/migration ID\/name\/file disagree/);
+});

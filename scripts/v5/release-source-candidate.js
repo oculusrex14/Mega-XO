@@ -26,9 +26,19 @@ function loadSources(root) {
   for (const file of FILES) bytes.set(file,fs.readFileSync(path.join(root,file)));
   const migrations = JSON.parse(bytes.get(FILES[0]).toString('utf8'));
   assert(Array.isArray(migrations.migrations) && migrations.migrations.length >= 1, 'migration ledger missing');
+  assert(migrations.tool === 'v5-migrate-manifest' && migrations.version === 1 &&
+    migrations.algorithm === "sha256(name + '\\n' + sql)",'unrecognized migration checksum format');
+  const migrationDir=path.join(root,'packages/migrations/migrations');
+  const actual=fs.readdirSync(migrationDir).filter(f=>f.endsWith('.sql')).sort();
+  const claimed=migrations.migrations.map(row=>path.posix.basename(row.file || '')).sort();
+  assert(JSON.stringify(actual) === JSON.stringify(claimed),
+    'unlisted, missing or duplicate migration SQL found');
   for (let i=0;i<migrations.migrations.length;i++) {
     const row=migrations.migrations[i];
     assert(row && row.id === i + 1 && SHA64.test(row.sha256), 'migration chain not consecutive');
+    assert(row.file === 'migrations/' + row.name + '.sql' &&
+      row.name.startsWith(String(row.id).padStart(4, '0') + '_'),
+      'migration ID/name/file disagree');
     assert(typeof row.file === 'string' && /^migrations\/[0-9]{4}_[a-z0-9_]+\.sql$/.test(row.file),
       'migration file name invalid');
     const body=fs.readFileSync(path.join(root,'packages/migrations',row.file));

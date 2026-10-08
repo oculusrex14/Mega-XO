@@ -380,3 +380,25 @@ test('Android release requires owner package/version and secret-backed signing, 
   assert.ok(gradle.includes('nativeVersionCode > 0'));
   assert.ok(!gradle.includes('storePassword = "'));
 });
+
+test('native signing scripts fail closed without owner identities or credentials', () => {
+  const { spawnSync } = require('node:child_process');
+  const android = path.join(root, 'scripts/v5/native-release-android.sh');
+  const ios = path.join(root, 'scripts/v5/native-release-ios.sh');
+  for (const script of [android, ios]) {
+    assert.equal(spawnSync('bash', ['-n', script]).status, 0);
+    const result = spawnSync('bash', [script], {
+      env: {PATH: process.env.PATH, HOME: process.env.HOME}, encoding: 'utf8'
+    });
+    assert.notEqual(result.status, 0);
+    assert.doesNotMatch(result.stdout, /P20 signed/);
+  }
+  const a = read('scripts/v5/native-release-android.sh');
+  const b = read('scripts/v5/native-release-ios.sh');
+  assert.match(a, /:app:bundleRelease/);
+  assert.match(a, /jarsigner -verify/);
+  assert.match(a, /sha256sum/);
+  assert.match(b, /CODE_SIGNING_ALLOWED=YES/);
+  assert.match(b, /xcodebuild -exportArchive/);
+  assert.match(b, /MEGA_IOS_EXPORT_OPTIONS_PLIST/);
+});

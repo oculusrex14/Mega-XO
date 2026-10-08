@@ -1830,6 +1830,11 @@ test('P04 account service: a forced Core admission during deletion yields either
  const tag = (await accounts.self('svc_bob')).tag;
  const admission = core.run({ actor: 'svc_alice', scope: 'player' }, 'adm-offer', { type: 'offer', id: 'match-adm', opponent: 'svc_bob', terms: { kind: 'leaderboard', amount: 40 } });
  const deletion = accounts.deleteAccount(bobSession.token, tag);
+ /* Both contenders may legitimately reject (Core INELIGIBLE / API ACCOUNT_BUSY); mark them handled
+  * NOW so an early rejection during the barrier wait is not an unhandledRejection, while
+  * Promise.allSettled still observes the settled results below. */
+ admission.catch(() => {});
+ deletion.catch(() => {});
  /* The deletion contends with Core's actor/eligibility locks while Core is blocked on the gate.
   * (If the API's lock order lets it proceed without contending, the invariant below still governs.) */
  const contended = await waitForLockWaiter(admin, 4000);

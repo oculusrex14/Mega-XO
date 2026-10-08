@@ -27,6 +27,11 @@
  */
 
 const {hash, canonical} = require('./canonical.js');
+const ledger = require('./ledger.js');
+const {
+  rowHash: ledgerRowHash, pkHash: ledgerPkHash, normalizeRow: ledgerNormalizeRow,
+  locatorOf: ledgerLocatorOf, tableParts: ledgerTableParts
+} = ledger;
 
 const LOADER_VERSION = 1;
 const DEFAULT_BATCH_SIZE = 500;
@@ -125,6 +130,10 @@ function fail(code, detail) {
 }
 function q(name) { return '"' + String(name).replace(/"/g, '""') + '"'; }
 function cmp(a, b) { return a < b ? -1 : a > b ? 1 : 0; }
+/* The canonical locator form for an INDEX/ORDINAL component: zero-padded to 6 digits, so a locator
+ * is byte-identical between the loader and any independent reader (reconcile.js binds to the same
+ * rule). Applied uniformly to every index-derived key part. */
+function ordinalKey(index) { return String(index).padStart(6, '0'); }
 function present(object, key) { return object !== null && typeof object === 'object' && Object.prototype.hasOwnProperty.call(object, key); }
 function pick(object, key, fallback) { return present(object, key) ? object[key] : fallback; }
 
@@ -171,18 +180,21 @@ function asBoolean(value) { return value === true || value === 1; }
 
 function columnList(columns) { return columns.map(q).join(', '); }
 function placeholderList(columns) { return columns.map((_, index) => '$' + (index + 1)).join(', '); }
-function rowHashExpression(alias) {
-  return `encode(sha256(convert_to(to_jsonb(${alias})::text, 'UTF8')), 'hex')`;
+/* The output column list, built through ledger.js's `selectExpression` so a `date` column is
+ * rendered by SQL as 'YYYY-MM-DD' instead of the driver's local-midnight Date (which would make the
+ * row hash depend on the session TimeZone). It covers EVERY destination column, so the Node-side
+ * hash is computed over exactly the column set an independent reader hashes. */
+function outputList(columns) {
+  return columns.map((column) => `${ledger.selectExpression(column)}`).join(', ');
 }
-function pkHashExpression(columns, alias) {
-  const pairs = columns.map((column) => `'${column}', ${alias}.${q(column)}`).join(', ');
-  return `encode(sha256(convert_to(jsonb_build_object(${pairs})::text, 'UTF8')), 'hex')`;
-}
-function pkWhere(columns, alias, firstParam) {
-  return columns.map((column, index) => `${alias}.${q(column)} = $${firstParam + index}`).join(' AND ');
+function pkWhere(pkColumns, alias, firstParam) {
+  return pkColumns.map((column, index) => `${alias}.${q(column)} = $${firstParam + index}`).join(' AND ');
 }
 
-function insertSql(spec) {
+/* The row_hash / target_pk_hash are computed in NODE (ledger.js) from the stored row - never
+ * Postgres-side from `to_jsonb(t)`, whose timestamptz rendering depends on the session TimeZone and
+ * would make the same committed row hash differently under a different session. */
+function insertSql(spec, columns) {
   return [
     `INSERT INTO ${spec.table} AS t (${columnList(spec.columns)})`,
     spec.overridingSystemValue ? 'OVERRIDING SYSTEM VALUE' : null,
@@ -190,20 +202,54 @@ function insertSql(spec) {
     `ON CONFLICT (${columnList(spec.pk)}) ${spec.singleton
       ? 'DO UPDATE SET ' + spec.columns.map((column) => `${q(column)} = EXCLUDED.${q(column)}`).join(', ')
       : 'DO NOTHING'}`,
-    `RETURNING ${rowHashExpression('t')} AS row_hash, ${pkHashExpression(spec.pk, 't')} AS target_pk_hash`
+    `RETURNING ${outputList(columns)}`
   ].filter(Boolean).join('\n');
 }
-function selectSql(spec) {
-  return `SELECT ${rowHashExpression('t')} AS row_hash, ${pkHashExpression(spec.pk, 't')} AS target_pk_hash `
-    + `FROM ${spec.table} AS t WHERE ${pkWhere(spec.pk, 't', 1)}`;
+function selectSql(spec, columns) {
+  return `SELECT ${outputList(columns)} FROM ${spec.table} AS t WHERE ${pkWhere(spec.pk, 't', 1)}`;
 }
 /* monetization.store_finalize carries no unique constraint in the frozen destination DDL (a real
  * finding: the source PK (store,transaction_id) has no target counterpart), so ON CONFLICT cannot
  * arbitrate. For that table the write is a row-scoped existence check plus the run's own
  * row_ledger, which is the same "verify, never overwrite" contract under the run's advisory lock. */
-function insertPlainSql(spec) {
+function insertPlainSql(spec, columns) {
   return `INSERT INTO ${spec.table} AS t (${columnList(spec.columns)}) VALUES (${placeholderList(spec.columns)}) `
-    + `RETURNING ${rowHashExpression('t')} AS row_hash, ${pkHashExpression(spec.pk, 't')} AS target_pk_hash`;
+    + `RETURNING ${outputList(columns)}`;
+}
+
+/* The destination column metadata (data_type/udt_name) ledger.js needs to normalize a row. Read once
+ * per table from information_schema and cached: this is schema metadata, not row data. */
+const columnMetadataCache = new Map();
+async function columnMetadata(client, table) {
+  if (columnMetadataCache.has(table)) return columnMetadataCache.get(table);
+  const {schema, table: name} = ledgerTableParts(table);
+  const columns = (await client.query(
+    `SELECT column_name, data_type, udt_name FROM information_schema.columns
+      WHERE table_schema = $1 AND table_name = $2 ORDER BY ordinal_position`, [schema, name])).rows;
+  if (!columns.length) throw fail('TARGET_TABLE_MISSING', table);
+  columnMetadataCache.set(table, columns);
+  return columns;
+}
+/* Every column of the destination table, in ordinal order. The row hash MUST cover the same column
+ * set an independent reader (ledger.readHashedTable, and therefore reconcile.js) hashes, otherwise
+ * the ledger hash is a hash over a SUBSET and every comparison is a false mismatch. The loader
+ * writes only `spec.columns`; the remaining columns take their frozen DDL defaults and are included
+ * in the hash here exactly as the target stored them. */
+async function specColumns(client, spec) {
+  const metadata = await columnMetadata(client, spec.table);
+  const present = new Set(metadata.map((column) => column.column_name));
+  for (const name of spec.columns) {
+    if (!present.has(name)) throw fail('TARGET_COLUMN_MISSING', spec.table + '.' + name);
+  }
+  return metadata;
+}
+function rowHashes(spec, columns, raw) {
+  const row = {};
+  for (const column of columns) row[column.column_name] = raw[column.column_name];
+  return {
+    row_hash: ledgerRowHash(columns, row),
+    target_pk_hash: ledgerPkHash(spec.pk, ledgerNormalizeRow(columns, row))
+  };
 }
 
 /* ------------------------------------------------------------------ plan */
@@ -729,7 +775,7 @@ function buildPlan(ctx) {
         const history = pair[1].seasonHistory || [];
         for (let index = 0; index < history.length; index++) {
           const entry = history[index];
-          rows.push({key: actor + '\u001f' + String(index).padStart(6, '0'), values: {
+          rows.push({key: actor + '\u001f' + ordinalKey(index), values: {
             actor_id: actor, seq: index, season_id: entry.id,
             started_at: timestamptz(entry.startedAt, 'seasonHistory.startedAt'),
             games: entry.games, queue_games: entry.queueGames,
@@ -783,7 +829,7 @@ function buildPlan(ctx) {
           if (!present(entry, 'casualDelta')) note('economy.match_history.casual_delta');
           if (!present(entry, 'activityQualified')) note('economy.match_history.activity_qualified');
           if (!present(entry, 'reason')) note('economy.match_history.reason');
-          rows.push({key: actor + '\u001f' + String(index).padStart(6, '0'), values: {
+          rows.push({key: actor + '\u001f' + ordinalKey(index), values: {
             actor_id: actor, seq: index, match_id: entry.id,
             at: timestamptz(entry.at, 'history.at'), opponent: entry.opponent, mode: entry.mode,
             queue: entry.queue === true, symbol: entry.symbol, rated: entry.rated === true,
@@ -871,7 +917,7 @@ function buildPlan(ctx) {
         const matchId = String(pair[0]);
         const accepted = pair[1].accepted || [];
         (pair[1].players || []).forEach((actor, seat) => {
-          rows.push({key: matchId + '\u001f' + seat, values: {
+          rows.push({key: matchId + '\u001f' + ordinalKey(seat), values: {
             match_id: matchId, seat, actor_id: String(actor), accepted: accepted.includes(actor)
           }});
         });
@@ -892,7 +938,7 @@ function buildPlan(ctx) {
         const contributions = (pair[1].quote || {}).contributions || [];
         for (let seat = 0; seat < players.length && seat < contributions.length; seat++) {
           if (!(contributions[seat] > 0)) continue;
-          rows.push({key: matchId + '\u001f' + seat, values: {
+          rows.push({key: matchId + '\u001f' + ordinalKey(seat), values: {
             match_id: matchId, actor_id: String(players[seat]), amount: contributions[seat]
           }});
         }
@@ -938,7 +984,7 @@ function buildPlan(ctx) {
       const rows = [];
       for (const room of ctx.model.rooms) {
         (room.parsed.players || []).forEach((player, ordinal) => {
-          rows.push({key: String(room.id) + '\u001f' + String(ordinal).padStart(6, '0'), values: {
+          rows.push({key: String(room.id) + '\u001f' + ordinalKey(ordinal), values: {
             room_id: String(room.id), actor_id: String(player.id),
             name: player.name === undefined ? null : JSON.stringify(player.name),
             ready: player.ready === true, withdrawn: player.withdrawn === true,
@@ -960,7 +1006,7 @@ function buildPlan(ctx) {
       const rows = [];
       for (const room of ctx.model.rooms) {
         (room.parsed.contributions || []).forEach((item, index) => {
-          rows.push({key: String(room.id) + '\u001f' + String(index).padStart(6, '0'), values: {
+          rows.push({key: String(room.id) + '\u001f' + ordinalKey(index), values: {
             room_id: String(room.id), actor_id: String(item.id), amount: item.amount
           }});
         });
@@ -1049,7 +1095,7 @@ function buildPlan(ctx) {
         const actor = String(pair[0]);
         const boosts = (pair[1].monetization || {}).boosts || [];
         boosts.forEach((boost, index) => {
-          rows.push({key: actor + '\u001f' + String(index).padStart(6, '0'), values: {
+          rows.push({key: actor + '\u001f' + ordinalKey(index), values: {
             actor_id: actor, boost_seq: index,
             started_at: timestamptz(boost.startedAt, 'boosts.startedAt'),
             ends_at: timestamptz(boost.endsAt, 'boosts.endsAt')
@@ -1816,26 +1862,32 @@ async function runBatches(client, args) {
   return results;
 }
 
-async function selectRowHashes(client, spec, row) {
-  const values = spec.pk.map((column) => row.values[column]);
-  const result = await client.query(selectSql(spec), values);
-  return result.rows[0] || null;
+function locatorOf(spec, key) { return ledgerLocatorOf(spec.table, key); }
+
+/* Reads one target row by its primary key and hashes it in Node with the shared ledger contract. */
+async function selectRowHashes(client, spec, columns, pkValues) {
+  const result = await client.query(selectSql(spec, columns), pkValues);
+  if (!result.rows.length) return null;
+  return rowHashes(spec, columns, result.rows[0]);
 }
 
-/* A committed batch on a resumed or repeated run is re-verified against the database's own
- * rendering of the stored row and the ledger hash it wrote; no target row is written. */
+/* A committed batch on a resumed or repeated run is re-verified by RECOMPUTING the row hash in Node
+ * from the stored row and comparing it with the ledger entry this run wrote; no target row is
+ * written. The Node-side hash is independent of session, TimeZone and jsonb rendering. */
 async function verifyCommittedBatch(client, runId, batch) {
   const spec = batch.spec;
-  const ledger = new Map((await client.query(
+  const entries = new Map((await client.query(
     `SELECT source_locator, row_hash, target_pk_hash FROM v5_migration.row_ledger
       WHERE run_id = $1 AND batch_ordinal = $2 ORDER BY source_locator`, [runId, batch.ordinal])).rows
     .map((row) => [row.source_locator, row]));
   await withTransaction(client, async (phase) => {
     await phase.data();
+    const columns = await specColumns(client, spec);
     for (const row of batch.rows) {
-      const entry = ledger.get(locatorOf(spec, row.key));
+      const entry = entries.get(locatorOf(spec, row.key));
       if (!entry) throw fail('ROW_LEDGER_MISSING', spec.table + ':' + row.key);
-      const actual = await selectRowHashes(client, spec, row);
+      const pkValues = spec.pk.map((column) => row.values[column]);
+      const actual = await selectRowHashes(client, spec, columns, pkValues);
       if (!actual) throw fail('COMMITTED_ROW_MISSING', spec.table + ':' + row.key);
       if (actual.row_hash !== entry.row_hash || actual.target_pk_hash !== entry.target_pk_hash) {
         throw fail('COMMITTED_ROW_MISMATCH', spec.table + ':' + row.key);
@@ -1849,19 +1901,9 @@ async function verifyCommittedBatch(client, runId, batch) {
   };
 }
 
-function locatorOf(spec, key) { return spec.table + '#' + key; }
-
-async function selectRowHashes(client, spec, row) {
-  const values = spec.pk.map((column) => row.values[column]);
-  const result = await client.query(selectSql(spec), values);
-  return result.rows[0] || null;
-}
-
 async function runBatch(client, args) {
   const {runId, batch, sourceFingerprint} = args;
   const spec = batch.spec;
-  const insertStatement = insertSql(spec);
-  const selectStatement = selectSql(spec);
   const attempts = await startBatch(client, runId, batch);
   let written = 0;
   let verifiedRows = 0;
@@ -1879,6 +1921,9 @@ async function runBatch(client, args) {
     await withTransaction(client, async (phase) => {
       /* Phase 1: the target family rows, as v5_owner. */
       await phase.data();
+      const columns = await specColumns(client, spec);
+      const insertStatement = insertSql(spec, columns);
+      const plainStatement = insertPlainSql(spec, columns);
       const ledgerEntries = [];
       let insertedRows = 0;
       for (const row of batch.rows) {
@@ -1886,25 +1931,25 @@ async function runBatch(client, args) {
         const pkValues = spec.pk.map((column) => row.values[column]);
         let hashes = null;
         if (spec.uniqueKey === false) {
-          const existing = await client.query(selectSql(spec), pkValues);
-          if (existing.rows.length > 1) throw fail('TARGET_DUPLICATE_ROW', spec.table + ':' + row.key);
-          if (existing.rows.length) hashes = existing.rows[0];
+          hashes = await selectRowHashes(client, spec, columns, pkValues);
+          const duplicates = await client.query(selectSql(spec, columns), pkValues);
+          if (duplicates.rows.length > 1) throw fail('TARGET_DUPLICATE_ROW', spec.table + ':' + row.key);
         }
         if (!hashes) {
           const inserted = await client.query(
-            spec.uniqueKey === false ? insertPlainSql(spec) : insertStatement,
+            spec.uniqueKey === false ? plainStatement : insertStatement,
             parameterValues(spec, row));
-          if (inserted.rows && inserted.rows.length) {
-            hashes = inserted.rows[0];
+          if (inserted.rows.length) {
+            /* Hash the row this statement actually produced, in Node, from the explicit column list. */
+            hashes = rowHashes(spec, columns, inserted.rows[0]);
             insertedRows += 1;
           } else {
             /* ON CONFLICT DO NOTHING: the row already exists. It may only be a row a same-fingerprint
              * import already wrote; a collision with foreign or diverging state is a hard refusal,
              * never an overwrite. */
             if (!provenance.has(locator)) throw fail('ROW_NOT_CREATED_BY_RUN', spec.table + ':' + row.key);
-            const selected = await client.query(selectSql(spec), pkValues);
-            if (!selected.rows.length) throw fail('COMMITTED_ROW_MISSING', spec.table + ':' + row.key);
-            hashes = selected.rows[0];
+            hashes = await selectRowHashes(client, spec, columns, pkValues);
+            if (!hashes) throw fail('COMMITTED_ROW_MISSING', spec.table + ':' + row.key);
             verifiedRows += 1;
           }
         } else {

@@ -1,0 +1,721 @@
+{
+  "version": 1,
+  "id": "mega-xo-v5-p03-source-mapping",
+  "description": "Source-to-target mapping manifest for the P03 read-only extraction of the V4.1.2 SQLite source. Every source locator carries an owner, a disposition, a destination and a validation kind. The extraction fails on any path that is not described here unless mapping.rules records an explicit preserve rule for it. Source behaviour is truth; where a documented design claim disagrees with the source, the correction is recorded in this file and in the P03 report.",
+  "sourceRelease": {
+    "sha": "455b8ec9ea4070b4410d78f9eea2aaa06d32c0b2",
+    "schemaEvidence": "docs/v5/evidence/phase00-source-schema.json",
+    "inventory": "docs/v5/ROUTE-AND-DATA-INVENTORY.md",
+    "tables": 35,
+    "indexes": [
+      "email_challenges_email",
+      "email_challenges_session",
+      "email_credentials_actor",
+      "identities_actor",
+      "party_status",
+      "presence_actor",
+      "session_actor",
+      "v41_operator_audit_actor",
+      "v41_privacy_requests_actor",
+      "v41_reports_reporter_created",
+      "v41_reports_target_state",
+      "v41_store_finalize_due",
+      "v41_support_events_at",
+      "v4_outbox_due"
+    ],
+    "triggers": [
+      "v41_operator_audit_no_delete",
+      "v41_operator_audit_no_update"
+    ],
+    "views": 0
+  },
+  "owners": {
+    "A": "Account/API",
+    "C": "Game Core",
+    "W": "Worker",
+    "P": "private operator/operations",
+    "E": "ephemeral: deliberate expiry or rebuild, never a silent upgrade"
+  },
+  "dispositions": {
+    "V": "verbatim copy of the raw source value",
+    "N": "raw copy plus a reported normalization delta computed under the injected capture clock; the raw value is never rewritten",
+    "E": "ephemeral/non-import with a recorded expiry or rebuild policy",
+    "O": "opaque payload carried verbatim without recomputation",
+    "Q": "quarantine record, never materialised as a platform actor"
+  },
+  "kinds": {
+    "uint": "safe non-negative integer (currency, counters, ids-as-int)",
+    "int": "safe integer, any sign",
+    "num": "finite number; fractional values are preserved exactly as JSON",
+    "ms": "finite non-negative epoch-millisecond value; source clocks are injected, so a fractional clock is legal",
+    "hundredths": "finite number exactly representable in hundredths (Elo and ratio fields stored as units/100)",
+    "bool": "JSON boolean",
+    "str": "string",
+    "text": "string that may be empty",
+    "id": "string matching the source authority grammar /^[A-Za-z0-9][A-Za-z0-9:_-]{0,159}$/ (src/authority.js:6 validId)",
+    "ref": "string that is either an actor id or an occupancy reference 'tournament:<roomId>' (server/rooms.js reserve)",
+    "key": "string matching the source operation-key grammar [A-Za-z0-9:_-]{1,160}",
+    "opaque": "carried verbatim, never parsed, never recomputed",
+    "any": "any JSON value, preserved verbatim",
+    "json-opaque": "strict JSON text that is parsed for duplicate/prototype keys, with the parsed payload then treated as opaque",
+    "nullable": "union with null",
+    "enum": "string restricted to a recorded value set",
+    "union": "first matching branch",
+    "object": "JSON object; fields enumerated, unknown keys fail unless extra names a preserve rule",
+    "array": "JSON array, source order preserved; set=true also computes a sorted set hash",
+    "entries": "array of [key, value] pairs (the Authority.export() map encoding), source order preserved",
+    "map": "JSON object used as a keyed map, keys sorted when hashing"
+  },
+  "rules": {
+    "opaque-json-root": "The source itself stores this payload opaquely (only its own JSON text is authoritative). Syntax and duplicate-key integrity are enforced, the parsed value is preserved in full, and nested keys are not enumerated because no source code enumerates them. Because these payloads are legitimate legacy metadata (not classified money), an integral number beyond the safe asset range is accepted and each such path is recorded in hashes.opaqueUnsafeNumbers; the exact literal remains authoritative in the preserved raw text. Classified money/counter columns keep the strict safe-integer rule.",
+    "prototype-named-data-keys": "A data key literally named `__proto__`, `constructor` or `prototype` is legitimate source data (conversion operation keys, snapshot/audit payloads). It is preserved as an own enumerable data property without invoking a prototype setter, and source-keyed hash dictionaries hold it, so no id is lost. Duplicate-key detection applies unchanged.",
+    "opaque-practice-root": "profile_saves.payload is the client practice archive. server/community-store.js:34-45 allowlists root names and keeps arbitrary nested data, so a listed root is preserved verbatim. An unlisted root fails coverage.",
+    "opaque-store-identifier": "Permanent provider identifiers (google_id/apple_token) are copied byte-for-byte and never regenerated (contrast server/store-bindings.js:6-16).",
+    "ephemeral-expiry-policy": "Rows are reported as a count plus a content hash plus the recorded policy; the reader never re-issues, upgrades, refreshes or extends them.",
+    "lan-guest-quarantine": "party_guests actors are random LAN bearer identities (server/rooms.js:12). They are quarantined and never materialised as platform actors.",
+    "source-json-root": "The serialized aggregate. Field dispositions follow docs/v5/designs/p03-extraction-design.md section 2.3.",
+    "transient-settlement-field": "Written only while a settlement is in flight and removed before the transaction commits (src/authority.js _settle); preserved verbatim when present."
+  },
+  "ephemeral": {
+    "account_sessions": {"policy": "expire", "note": "token column is already sha256 base64url of the bearer token (server/identity-provider.js:12); replay is impossible, so no active session is imported"},
+    "signin_attempts": {"policy": "expire", "note": "one-use provider attempt state; expires/used preserved for audit only"},
+    "session_presence": {"policy": "rebuild", "note": "TTL presence window (45s at server/community-store.js:187); rebuilt from live sessions"},
+    "email_challenges": {"policy": "expire", "note": "code_hash is HMAC-bound to a possibly ephemeral MEGA_OTP_SECRET (server/community-store.js:39); no challenge becomes verifiable"},
+    "v4_email_versions": {"policy": "expire", "note": "stale-credential guard keyed to a challenge that expires"},
+    "community_limits": {"policy": "rebuild", "note": "search/social rate buckets; coordination state, not identity or economy truth"},
+    "v4_limits": {"policy": "split-by-prefix (durable mail-budget:<period> rows are migrated verbatim, never rebuilt; abuse:* rows are ephemeral and rebuilt)", "tableDisposition": "V", "note": "see tables.v4_limits"},
+    "party_guests": {"policy": "quarantine", "note": "LAN bearer guests, 24h expiry; never platform actors"},
+    "v4_outbox": {"policy": "drained", "note": "encrypted mail payload; the reader records state/attempts/expiry and preserves the ciphertext verbatim, and never re-sends or duplicates mail"}
+  },
+  "operationFamilies": {
+    "commands": {"table": "commands", "key": "JSON.stringify([actor,key])", "fingerprint": "sha256(JSON.stringify({principal,cmd}))", "class": "OPAQUE_BINDINGS", "source": "server/economy-store.js:22"},
+    "party_commands": {"table": "party_commands", "key": "JSON.stringify([actor,key])", "fingerprint": "sha256(JSON.stringify(cmd))", "class": "OPAQUE_VERBATIM", "replaySemantics": "current-view", "source": "server/rooms.js:71,102"},
+    "social_operations": {"table": "social_operations", "key": "actor+':'+key", "fingerprint": "sha256 base64url of JSON.stringify({command,target})", "class": "SCHEMA_CONSISTENT", "source": "server/community-store.js:210; server/identity-provider.js:12"},
+    "v35_commands": {"table": "v35_commands", "key": "(actor,key)", "fingerprint": "sha256(JSON.stringify(command))", "class": "SCHEMA_CONSISTENT, ssv:* OPAQUE_VERBATIM", "source": "server/monetization-store.js:22-23"},
+    "match_commands": {"path": "state.matches[].commands", "key": "operation key", "fingerprint": "sha256(JSON.stringify({actor,revision,move}))", "class": "RECOMPUTABLE_PROBE", "source": "src/authority.js:90,95"}
+  },
+  "tables": {
+    "state": {
+      "owner": "C", "disposition": "V", "kind": "source-json-root", "required": true, "cardinality": "singleton",
+      "destination": "actors/wallets/competition/daily/monetization, matches, receipts, snapshots, weeklyPaid, journal, burned, leagueWeek",
+      "columns": {"id": {"kind": "uint", "note": "CHECK(id=1)"}, "json": {"kind": "source-roots"}}
+    },
+    "commands": {
+      "owner": "C", "disposition": "O", "kind": "operation-outcome", "required": true,
+      "destination": "operation_outcome family economy",
+      "columns": {"id": "text", "actor": "id", "fingerprint": "text", "response": "json-opaque"}
+    },
+    "party_rooms": {
+      "owner": "C", "disposition": "V", "kind": "room-root", "required": true,
+      "destination": "rooms/tournaments/fixtures/escrow/contributions/receipts",
+      "columns": {"id": "id", "code": "text", "json": {"kind": "room-roots"}}
+    },
+    "party_commands": {
+      "owner": "C", "disposition": "O", "kind": "operation-outcome", "required": true,
+      "destination": "operation_outcome family party, replay_semantics=current-view",
+      "columns": {"id": "text", "fingerprint": "text", "response": "json-opaque"}
+    },
+    "party_guests": {
+      "owner": "E", "disposition": "E", "kind": "ephemeral", "required": true,
+      "rule": "lan-guest-quarantine",
+      "columns": {"token": "opaque", "actor": "id", "name": "str", "expires": "ms"}
+    },
+    "profiles": {
+      "owner": "A", "disposition": "V", "kind": "durable", "required": true,
+      "columns": {
+        "actor": "id", "tag": "str", "username": "str", "display_name": "str", "avatar": "str",
+        "stats_visibility": "str", "presence_visibility": "str", "created": "ms",
+        "username_changed": "ms", "version": "uint"
+      }
+    },
+    "identities": {
+      "owner": "A", "disposition": "V", "kind": "durable", "required": true,
+      "columns": {"provider": "str", "subject": "text", "actor": "id", "created": "ms"}
+    },
+    "email_credentials": {
+      "owner": "A", "disposition": "V", "kind": "durable", "required": true,
+      "note": "email is stored verbatim; the source column is PRIMARY KEY COLLATE NOCASE, so case-insensitive uniqueness is already in force",
+      "columns": {"email": "text", "actor": "id", "salt": "opaque", "password_hash": "opaque", "created": "ms", "verified_at": {"type": "nullable", "of": "ms"}}
+    },
+    "profile_saves": {
+      "owner": "A", "disposition": "V", "kind": "practice-archive", "required": true,
+      "note": "untrusted practice archive; never a competitive wallet",
+      "columns": {"actor": "id", "revision": "uint", "payload": {"kind": "practice-roots"}, "updated": "ms"}
+    },
+    "account_sessions": {
+      "owner": "E", "disposition": "E", "kind": "ephemeral", "required": true,
+      "columns": {"token": "opaque", "actor": {"type": "nullable", "of": "id"}, "csrf": "opaque", "created": "ms", "expires": "ms", "auth_at": "ms"}
+    },
+    "signin_attempts": {
+      "owner": "E", "disposition": "E", "kind": "ephemeral", "required": true,
+      "columns": {"state": "opaque", "session": "opaque", "provider": "str", "kind": "str", "intent": "str", "target": {"type": "nullable", "of": "text"}, "nonce": "opaque", "verifier": "opaque", "expires": "ms", "used": "uint"}
+    },
+    "session_presence": {
+      "owner": "E", "disposition": "E", "kind": "ephemeral", "required": true,
+      "columns": {"session": "opaque", "actor": "id", "seen": "ms", "foreground": "uint"}
+    },
+    "email_challenges": {
+      "owner": "E", "disposition": "E", "kind": "ephemeral", "required": true,
+      "columns": {
+        "id": "opaque", "session": "opaque", "email": "text", "purpose": "str",
+        "actor": {"type": "nullable", "of": "id"}, "code_hash": "opaque",
+        "password_salt": {"type": "nullable", "of": "opaque"}, "password_hash": {"type": "nullable", "of": "opaque"},
+        "created": "ms", "expires": "ms", "attempts": "uint", "verified_at": {"type": "nullable", "of": "ms"}, "consumed": "uint"
+      }
+    },
+    "v4_email_versions": {
+      "owner": "E", "disposition": "E", "kind": "ephemeral", "required": true,
+      "columns": {"challenge": "opaque", "credential_hash": {"type": "nullable", "of": "opaque"}}
+    },
+    "community_limits": {
+      "owner": "E", "disposition": "E", "kind": "ephemeral", "required": true,
+      "columns": {"id": "text", "hits": "uint"}
+    },
+    "v4_limits": {
+      "owner": "W", "disposition": "V", "kind": "durable", "required": true,
+      "note": "SOURCE CORRECTION: this table mixes two meanings. Rows whose id starts with 'mail-budget:' are durable worker spend counters (server/production/mail-outbox.js:37,44) and must be migrated verbatim so a monthly budget is never silently reset. Rows under the 'abuse:' prefix are ephemeral rate buckets (server/production/abuse-guard.js). Every row is copied verbatim here; the destination split between ops.rate_buckets and the durable budget store is the importer's decision, recorded per row by prefix, never a silent rebuild.",
+      "columns": {"id": "text", "hits": "uint", "expires": "ms"}
+    },
+    "social_operations": {
+      "owner": "A", "disposition": "O", "kind": "operation-outcome", "required": true,
+      "destination": "operation_outcome family social",
+      "columns": {"id": "text", "fingerprint": "text", "result": "json-opaque"}
+    },
+    "v41_reports": {
+      "owner": "A", "disposition": "V", "kind": "durable", "required": true,
+      "columns": {
+        "id": "text", "reporter": "id", "target": "id", "category": "enum:cheating|username|harassment|unsportsmanlike|other",
+        "detail": "text", "created": "ms", "state": "enum:open|reviewed",
+        "reviewed_at": {"type": "nullable", "of": "ms"}, "reviewed_by": {"type": "nullable", "of": "text"},
+        "outcome": {"type": "nullable", "of": "enum:no_action|action_taken|duplicate"}
+      }
+    },
+    "v41_privacy_requests": {
+      "owner": "A", "disposition": "V", "kind": "durable", "required": true,
+      "columns": {
+        "id": "text", "actor": "id", "kind": "str", "state": "str", "requested_at": "ms",
+        "updated_at": "ms", "completed_at": {"type": "nullable", "of": "ms"}, "policy_version": "str", "note": "text"
+      }
+    },
+    "v41_deletion_receipts": {
+      "owner": "A", "disposition": "V", "kind": "durable", "required": true,
+      "columns": {
+        "id": "text", "actor_hash": "opaque", "tombstone": "id", "completed_at": "ms",
+        "policy_version": "str", "retained": "json-opaque"
+      }
+    },
+    "v41_operator_audit": {
+      "owner": "P", "disposition": "V", "kind": "durable", "required": true,
+      "note": "append-only HMAC chain; prev_hash/entry_hash preserved verbatim and never recomputed (the HMAC secret is not part of the snapshot)",
+      "columns": {
+        "id": "text", "at": "ms", "operator": "str", "action": "str", "actor": {"type": "nullable", "of": "id"},
+        "reason": "str", "detail": "json-opaque", "prev_hash": "opaque", "entry_hash": "opaque"
+      }
+    },
+    "v35_commands": {
+      "owner": "C", "disposition": "O", "kind": "operation-outcome", "required": true,
+      "destination": "operation_outcome family v35",
+      "columns": {"actor": "id", "key": "key", "fingerprint": "text", "response": "json-opaque"}
+    },
+    "v35_tickets": {
+      "owner": "C", "disposition": "V", "kind": "durable", "required": true,
+      "columns": {
+        "id": "text", "actor": "id", "kind": "str", "issued": "ms", "expires": "ms", "day": "text",
+        "settled": "uint", "transaction_id": {"type": "nullable", "of": "opaque"}
+      }
+    },
+    "v35_casual": {
+      "owner": "C", "disposition": "V", "kind": "durable", "required": true,
+      "columns": {"actor": "id", "match_id": "text", "base": "uint", "bonus": "uint"}
+    },
+    "v35_events": {
+      "owner": "C", "disposition": "V", "kind": "durable", "required": true,
+      "columns": {"id": "uint", "actor": "id", "kind": "str", "at": "ms", "value": "int"}
+    },
+    "v41_ad_ticket_context": {
+      "owner": "C", "disposition": "V", "kind": "durable", "required": true,
+      "columns": {"ticket": "opaque", "platform": "enum:android|ios|legacy", "ad_unit": "text"}
+    },
+    "v41_store_bindings": {
+      "owner": "C", "disposition": "V", "kind": "durable", "required": true,
+      "rule": "opaque-store-identifier",
+      "columns": {"actor": "id", "google_id": "opaque", "apple_token": "opaque", "created": "ms"}
+    },
+    "v41_store_revocations": {
+      "owner": "C", "disposition": "V", "kind": "durable", "required": true,
+      "note": "permanent refund tombstones; imported even without a matching receipt",
+      "columns": {
+        "store": "enum:google|apple", "transaction_id": "opaque", "product_id": {"type": "nullable", "of": "text"},
+        "occurred_at": "ms", "reason": "str"
+      }
+    },
+    "v41_store_finalize": {
+      "owner": "W", "disposition": "V", "kind": "durable", "required": true,
+      "columns": {
+        "store": "enum:google", "transaction_id": "opaque", "product_id": "text", "purchase_token": "opaque",
+        "kind": "enum:consume|acknowledge", "state": "enum:pending|done", "attempts": "uint",
+        "next_at": "ms", "created": "ms", "updated": "ms"
+      }
+    },
+    "v41_store_notifications": {
+      "owner": "W", "disposition": "V", "kind": "durable", "required": true,
+      "columns": {"store": "enum:google|apple", "id": "opaque", "received_at": "ms"}
+    },
+    "v41_support_events": {
+      "owner": "P", "disposition": "E", "kind": "ephemeral", "required": true,
+      "note": "retention-bounded diagnostics; 7-day prune at server/production/main.js:74",
+      "columns": {"id": "text", "at": "ms", "method": "str", "route": "text", "status": "uint", "code": "text"}
+    },
+    "v4_controls": {
+      "owner": "P", "disposition": "V", "kind": "durable", "required": true,
+      "note": "imported as an inert control row; maintenance is never auto-enabled",
+      "columns": {"id": {"kind": "uint", "note": "CHECK(id=1)"}, "maintenance": "uint"}
+    },
+    "v4_runtime": {
+      "owner": "P", "disposition": "V", "kind": "durable", "required": true,
+      "note": "incident control continuity; imported inert",
+      "columns": {"key": "text", "value": "opaque"}
+    },
+    "v4_outbox": {
+      "owner": "W", "disposition": "E", "kind": "ephemeral", "required": true,
+      "rule": "ephemeral-expiry-policy",
+      "columns": {
+        "id": "text", "payload": {"type": "nullable", "of": "opaque"}, "kind": "str", "state": "str",
+        "created": "ms", "expires": "ms", "next_at": "ms", "lease_until": "ms", "attempts": "uint"
+      }
+    },
+    "v4_schema": {
+      "owner": "P", "disposition": "V", "kind": "provenance", "required": true,
+      "note": "migration-owner history; checksums are recomputed with the source rule sha256(name+'\\n'+sql) (server/production/migrations.js:126) and never rewritten as target history",
+      "columns": {"id": "uint", "name": "str", "checksum": "text", "applied_at": "ms"}
+    }
+  },
+  "state": {
+    "roots": {
+      "accounts": {"kind": "entries", "of": "account", "required": true, "set": true, "orderMeaningful": true},
+      "matches": {"kind": "entries", "of": "match", "required": true, "set": true, "orderMeaningful": true},
+      "receipts": {"kind": "entries", "of": "purchaseReceipt", "required": true, "set": true, "orderMeaningful": false},
+      "snapshots": {"kind": "entries", "of": "dailySnapshot", "required": true, "set": true, "orderMeaningful": false},
+      "weeklyPaid": {"kind": "entries", "of": "weeklyPayment", "required": true, "set": true, "orderMeaningful": false},
+      "burned": {"kind": "map", "of": "uint", "required": true, "note": "keys coins,crowns"},
+      "journal": {"kind": "array", "of": "journalEntry", "required": true, "orderMeaningful": true},
+      "leagueWeek": {"kind": "nullable", "of": "text", "required": true}
+    },
+    "types": {
+      "account": {
+        "type": "object",
+        "fields": {
+          "id": "id",
+          "friendCode": "str",
+          "coins": "uint",
+          "crowns": "uint",
+          "purchasedCoins": {"type": "uint", "optional": true, "disposition": "N", "note": "SOURCE CORRECTION: Authority.restore() tolerates absence or a non-safe-integer/negative value, zeroing it and setting legacyCompetitionRestricted, then clamps it to coins (src/authority.js:27). Optional because the source itself defaults it; the raw value is preserved and the delta is reported."},
+          "purchasedCrowns": {"type": "uint", "optional": true, "disposition": "N", "note": "same restore() rule as purchasedCoins, clamped to crowns"},
+          "legacyCompetitionRestricted": {"type": "bool", "optional": true, "disposition": "N", "note": "restore() coerces an absent or non-boolean value with !!, so absence normalizes to false; reported, never written"},
+          "reservedCoins": "uint",
+          "reservedCrowns": "uint",
+          "rating": "hundredths",
+          "peak": "hundredths",
+          "games": "uint",
+          "tier": "str",
+          "casualRating": {"type": "hundredths", "optional": true, "disposition": "N", "note": "restore() defaults a non-finite or absent value to rating once placements are complete, else 1000"},
+          "casualGames": {"type": "uint", "optional": true, "disposition": "N", "note": "restore() defaults an absent or non-safe-integer value to 0"},
+          "verified": "bool",
+          "createdAt": "ms",
+          "region": "text",
+          "wealthPublic": "bool",
+          "suspended": "bool",
+          "hold": "bool",
+          "blocked": {"type": "array", "of": "id", "set": true},
+          "friends": {"type": "array", "of": "id", "set": true},
+          "friendRequests": {"type": "array", "of": "id", "set": true},
+          "activeMatch": {"type": "nullable", "of": "ref", "note": "null, a match id, or 'tournament:<roomId>' (server/rooms.js reserve)"},
+          "history": {"type": "array", "of": "historyEntry", "orderMeaningful": true},
+          "daily": {"type": "map", "of": "dailyBucket"},
+          "operations": {"type": "map", "of": "accountOperation"},
+          "ledger": {"type": "array", "of": "ledgerEntry", "orderMeaningful": true},
+          "owned": {"type": "array", "of": "str", "set": true, "note": "cosmetic display names, e.g. 'Copper edge'; archived names are preserved"},
+          "purchaseInfluenced": {"type": "bool", "optional": true, "note": "SOURCE CORRECTION: pre-V3.5 accounts lack this field and Authority.restore() coerces absence with !!; optional, preserved absent, delta reported"},
+          "tournamentRecord": {"type": "object", "optional": true, "disposition": "N", "note": "restore() supplies the all-zero record when absent (src/authority.js:27); the raw account keeps no key and the delta is reported", "fields": {
+            "entered": "uint", "wins": "uint", "runnerUp": "uint", "top3": "uint", "top5": "uint",
+            "bestFinish": {"type": "nullable", "of": "uint"}, "finishSum": "uint", "premiumWins": "uint"
+          }},
+          "season": {"type": "nullable", "of": "seasonRecord", "optional": true, "note": "restore() calls _season(), which replaces a non-current quarter and pushes the raw season into seasonHistory; the raw value is preserved untouched and the delta is reported"},
+          "seasonHistory": {"type": "array", "of": "seasonHistoryEntry", "optional": true, "disposition": "N", "orderMeaningful": true, "note": "restore() defaults it to [] and truncates it to POLICY.seasonHistoryLimit=8 after a roll; the raw array is preserved exactly"},
+          "name": {"type": "str", "optional": true, "note": "written by CommunityStore.ensureProfile (server/community-store.js:79)"},
+          "reachedAt": {"type": "ms", "optional": true, "note": "written by Authority._settle"},
+          "lastRatedAt": {"type": "ms", "optional": true, "note": "written by Authority._settle"},
+          "monetization": {"type": "object", "optional": true, "of": "monetizationRoot", "note": "created lazily by MonetizationStore.state (server/monetization-store.js:8)"}
+        }
+      },
+      "dailyBucket": {
+        "type": "object",
+        "fields": {
+          "finished": "uint", "seconds": {"type": "num", "note": "source accumulates Math.min(900,(now-started)/1000), so this is fractional"}, "boards": "uint",
+          "casual": "uint", "friend": "uint", "ranked": "uint", "rankedBonus": "uint",
+          "claimed": {"type": "array", "of": "id", "set": true, "note": "SOURCE CORRECTION: values are quest ids from D.QUESTS (src/domain.js), e.g. finish/three/time/boards/casual/friend/ranked, not operation keys"}
+        }
+      },
+      "accountOperation": {
+        "type": "object",
+        "fields": {
+          "fingerprint": "text",
+          "result": {"type": "object", "fields": {
+            "from": "enum:coins|crowns", "to": "enum:coins|crowns", "debit": "uint", "credit": "uint", "id": "id"
+          }}
+        }
+      },
+      "ledgerEntry": {
+        "type": "object",
+        "fields": {
+          "id": "text", "operation": "id", "currency": "enum:coins|crowns", "amount": "int", "reason": "text", "at": "ms"
+        }
+      },
+      "historyEntry": {
+        "type": "object",
+        "fields": {
+          "id": "id", "at": "ms", "opponent": "id", "mode": "enum:ranked|friend|casual",
+          "queue": "bool", "symbol": "enum:X|O", "rated": "bool", "qualified": "bool", "activityQualified": "bool",
+          "result": "enum:win|loss|draw", "reason": "str", "activeSeconds": "uint",
+          "ratingDelta": "hundredths", "casualDelta": "hundredths"
+        }
+      },
+      "seasonRecord": {
+        "type": "object",
+        "fields": {
+          "id": "text", "startedAt": "ms", "games": "uint", "queueGames": "uint",
+          "opponents": {"type": "array", "of": "id", "set": true},
+          "wins": "uint", "losses": "uint", "draws": "uint", "peakRating": "hundredths",
+          "lastRatedAt": {"type": "nullable", "of": "ms"}, "qualifiedAt": {"type": "nullable", "of": "ms"}
+        }
+      },
+      "seasonHistoryEntry": {
+        "type": "object",
+        "fields": {
+          "id": "text", "startedAt": "ms", "games": "uint", "queueGames": "uint",
+          "opponents": {"type": "array", "of": "id", "set": true},
+          "wins": "uint", "losses": "uint", "draws": "uint", "peakRating": "hundredths",
+          "lastRatedAt": {"type": "nullable", "of": "ms"}, "qualifiedAt": {"type": "nullable", "of": "ms"},
+          "finishRating": "hundredths", "finishTier": "str", "endedAt": "ms"
+        }
+      },
+      "monetizationRoot": {
+        "type": "object",
+        "fields": {
+          "credits": "int",
+          "redeemed": {"type": "array", "of": "str", "set": true},
+          "equipped": "str",
+          "boosts": {"type": "array", "of": "boost", "orderMeaningful": true},
+          "daily": {"type": "map", "of": "monetizationDay"},
+          "lastAdAt": "ms",
+          "lastRewardStart": "ms"
+        }
+      },
+      "boost": {"type": "object", "fields": {"startedAt": "ms", "endsAt": "ms"}},
+      "monetizationDay": {"type": "object", "fields": {"base": "uint", "bonus": "uint", "automatic": "uint"}},
+      "match": {
+        "type": "object",
+        "fields": {
+          "id": "id",
+          "players": {"type": "array", "of": "id", "note": "participant slots, index-parallel with quote.contributions"},
+          "terms": {"type": "object", "fields": {
+            "source": "enum:direct|queue", "mode": "enum:queue|direct|unranked", "kind": "enum:friend|leaderboard|ranked|casual",
+            "rated": "bool", "amount": "uint", "currency": {"type": "nullable", "of": "enum:coins|crowns"},
+            "turnSeconds": "uint", "from": "str", "to": "str", "ratings": {"type": "array", "of": "hundredths"}
+          }},
+          "quote": "quote",
+          "termsHash": "text",
+          "accepted": {"type": "array", "of": "id", "set": true},
+          "created": "ms", "expires": "ms",
+          "status": "enum:OFFERED|PLAYING|DECLINED|CANCELLED|EXPIRED|VOID|FINISHED",
+          "state": "gameState",
+          "symbols": {"type": "nullable", "of": "symbols"},
+          "revision": "uint",
+          "commands": {"type": "entries", "of": "matchCommand"},
+          "escrow": "uint", "settled": "bool",
+          "riskFlags": {"type": "array", "of": "str", "set": true},
+          "started": {"type": "ms", "optional": true},
+          "_lastMoveAt": {"type": "ms", "optional": true},
+          "_moveTimings": {"type": "array", "of": "moveTiming", "optional": true, "orderMeaningful": true},
+          "preRatings": {"type": "array", "of": "hundredths", "optional": true},
+          "preTiers": {"type": "array", "of": "str", "optional": true},
+          "deadline": {"type": "nullable", "of": "ms", "optional": true},
+          "receipt": {"type": "nullable", "of": "matchReceipt", "optional": true},
+          "_riskActors": {"type": "map", "of": {"type": "array", "of": "id"}, "optional": true},
+          "_pendingReason": {"type": "str", "optional": true, "disposition": "E", "rule": "transient-settlement-field"}
+        }
+      },
+      "quote": {
+        "type": "object",
+        "fields": {
+          "version": "text", "mode": "enum:unranked|queue|direct", "rated": "bool",
+          "currency": {"type": "nullable", "of": "enum:coins|crowns"},
+          "minimum": "uint", "ceiling": {"type": "nullable", "of": "uint"}, "fee": "uint",
+          "contributions": {"type": "array", "of": "uint", "orderMeaningful": true},
+          "pool": "uint", "burn": "uint", "payout": "uint", "bonus": "uint", "netWin": "int",
+          "kind": {"type": "enum", "values": ["friend", "leaderboard"], "optional": true},
+          "gap": {"type": "uint", "optional": true}
+        }
+      },
+      "gameState": {
+        "type": "object",
+        "fields": {
+          "board": {"type": "array", "of": {"type": "array", "of": {"type": "nullable", "of": "enum:X|O"}}},
+          "mini": {"type": "array", "of": {"type": "nullable", "of": "enum:X|O|DRAW"}},
+          "turn": "enum:X|O",
+          "required": {"type": "nullable", "of": "uint"},
+          "winner": {"type": "nullable", "of": "enum:X|O|DRAW"},
+          "line": {"type": "nullable", "of": {"type": "array", "of": "uint"}},
+          "moves": {"type": "array", "of": "move", "orderMeaningful": true}
+        }
+      },
+      "move": {"type": "object", "fields": {"b": "uint", "c": "uint", "player": "enum:X|O"}},
+      "moveTiming": {"type": "object", "fields": {"actor": "id", "ms": "num"}},
+      "symbols": {"type": "object", "fields": {"X": "id", "O": "id"}},
+      "matchReceipt": {
+        "type": "object",
+        "fields": {
+          "reason": {"kind": "any", "note": "SOURCE CORRECTION (observed, not inferred): Authority.voidByOperator (src/authority.js:101-104) has no reason validator and stores the caller's value verbatim, so a trusted operator 'void' command can persist an arbitrary JSON value (a string, an object such as {note:...}, a number, ...). The reader's previous 'str' declaration refused a producer-accepted object with INVALID_FIELD_TYPE at state.matches[<id>].receipt.reason. The nested value is preserved verbatim as a JSON value; a raw JSON *text* column would instead use the 'json-opaque' kind."},
+          "refunded": "uint", "burn": "uint", "payout": "uint",
+          "winner": {"type": "nullable", "of": "id", "optional": true},
+          "currency": {"type": "nullable", "of": "enum:coins|crowns", "optional": true},
+          "bonus": {"type": "uint", "optional": true},
+          "rating": {"type": "nullable", "of": "ratingResult", "optional": true},
+          "at": {"type": "ms", "optional": true}
+        },
+        "note": "Authority voidByOperator stores {reason,refunded,burn,payout,rating} without winner/currency/bonus/at"
+      },
+      "ratingResult": {
+        "type": "object",
+        "fields": {
+          "a": "hundredths", "b": "hundredths", "delta": "hundredths",
+          "expectedA": {"type": "num", "note": "SOURCE CORRECTION: this is the raw 1/(1+10**((b-a)/400)) probability (src/domain.js:52), a full-precision value in [0,1], not a hundredths value"},
+          "k": "uint"
+        }
+      },
+      "matchCommand": {
+        "type": "object",
+        "fields": {
+          "fingerprint": "text",
+          "result": {"type": "object", "fields": {
+            "state": "gameState", "revision": "uint",
+            "receipt": {"type": "nullable", "of": "matchReceipt"}
+          }}
+        }
+      },
+      "purchaseReceipt": {
+        "type": "object",
+        "fields": {"actor": "id", "productId": "str", "crowns": "uint", "refunded": "bool", "at": "ms"}
+      },
+      "dailySnapshot": {"type": "map", "of": "str", "note": "value is a tier id"},
+      "weeklyPayment": {
+        "type": "object",
+        "fields": {"id": "text", "account": "id", "week": "text", "amount": "uint", "tier": "str", "eligible": "bool", "days": "uint"}
+      },
+      "journalEntry": {
+        "type": "object",
+        "fields": {
+          "id": "text", "actor": "id", "currency": "enum:coins|crowns", "amount": "int", "reason": "text",
+          "source": "enum:game|provisioning|mint|spend|conversion|verified-store|tournament", "at": "ms"
+        }
+      }
+    }
+  },
+  "rooms": {
+    "root": {
+      "type": "object",
+      "fields": {
+        "version": "text", "id": "id", "code": "text", "owner": "id", "name": "str",
+        "format": "enum:duel|league|knockout|mixed",
+        "table": {"type": "nullable", "of": "enum:low|medium|high|premium"},
+        "sequential": "bool",
+        "quote": {"type": "nullable", "of": "roomQuote"},
+        "clock": {"type": "enum", "values": [0, 120, 180, 300]},
+        "increment": "uint", "capacity": "uint", "rulesVersion": "uint",
+        "players": {"type": "array", "of": "roomPlayer", "orderMeaningful": true},
+        "status": "enum:LOBBY|RUNNING|PAUSED|COMPLETE|VOID|CANCELLED|REVIEW",
+        "created": "ms", "expires": "ms",
+        "fixtures": {"type": "array", "of": "roomFixture", "orderMeaningful": true},
+        "groups": {"type": "array", "of": "roomGroup", "orderMeaningful": true},
+        "ranking": {"type": "nullable", "of": {"type": "array", "of": "id"}},
+        "finalRefs": {"type": "nullable", "of": {"type": "array", "of": "slotRef"}},
+        "started": {"type": "nullable", "of": "ms"},
+        "revision": "uint", "roundDelay": "uint",
+        "seed": {"type": "array", "of": "id", "optional": true},
+        "deadline": {"type": "ms", "optional": true},
+        "ended": {"type": "ms", "optional": true},
+        "reason": {"type": "str", "optional": true},
+        "pausedAt": {"type": "ms", "optional": true},
+        "drawGame": {"type": "str", "optional": true},
+        "escrow": {"type": "uint", "optional": true},
+        "settled": {"type": "bool", "optional": true},
+        "contributions": {"type": "array", "of": "contribution", "optional": true, "orderMeaningful": true},
+        "receipt": {"type": "nullable", "of": "roomReceipt", "optional": true},
+        "riskFlags": {"type": "array", "of": "str", "set": true, "optional": true},
+        "_riskActors": {"type": "map", "of": {"type": "array", "of": "id"}, "optional": true}
+      }
+    },
+    "types": {
+      "roomPlayer": {"type": "object", "fields": {"id": "id", "name": "str", "ready": "bool", "withdrawn": "bool"}},
+      "roomQuote": {
+        "type": "object",
+        "fields": {
+          "name": "str", "currency": "enum:coins|crowns", "entry": "uint", "table": "enum:low|medium|high|premium",
+          "seats": "uint", "pool": "uint", "burn": "uint",
+          "payouts": {"type": "array", "of": "uint", "orderMeaningful": true},
+          "net": {"type": "array", "of": "int", "orderMeaningful": true}
+        }
+      },
+      "roomGroup": {
+        "type": "object",
+        "fields": {
+          "id": "text", "name": "str",
+          "players": {"type": "array", "of": "id", "orderMeaningful": true},
+          "refs": {"type": "nullable", "of": {"type": "array", "of": "slotRef"}}
+        }
+      },
+      "slotRef": {"type": "union", "of": [{"type": "object", "fields": {"match": "str", "result": "enum:win|lose"}}, "id"], "note": "SOURCE CORRECTION: src/tournament.js ref() puts {match,result} objects into slots/finalRefs and bracket()/groupRanks() put plain player ids there too, so the object branch must be tried first"},
+      "roomFixture": {
+        "type": "object",
+        "fields": {
+          "id": "str", "slots": {"type": "array", "of": "slotRef", "orderMeaningful": true}, "label": "str",
+          "round": "uint", "group": {"type": "nullable", "of": "text"}, "decisive": "bool",
+          "status": "enum:BLOCKED|READY|PLAYING|DONE",
+          "players": {"type": "nullable", "of": {"type": "array", "of": "id"}},
+          "ready": {"type": "array", "of": "id", "set": true},
+          "state": {"type": "nullable", "of": "gameState"},
+          "winner": {"type": "nullable", "of": "id"},
+          "attempt": "uint",
+          "mini": {"type": "map", "of": "int"},
+          "history": {"type": "array", "of": "fixtureHistory", "optional": true, "orderMeaningful": true},
+          "opens": {"type": "ms", "optional": true},
+          "expires": {"type": "ms", "optional": true},
+          "readyDeadline": {"type": "ms", "optional": true},
+          "banks": {"type": "map", "of": "num", "optional": true},
+          "turnAt": {"type": "ms", "optional": true},
+          "_lastMoveAt": {"type": "ms", "optional": true},
+          "_moveTimings": {"type": "array", "of": "moveTiming", "optional": true, "orderMeaningful": true},
+          "reason": {"type": "str", "optional": true},
+          "finished": {"type": "ms", "optional": true}
+        }
+      },
+      "fixtureHistory": {
+        "type": "object",
+        "fields": {
+          "players": {"type": "array", "of": "id", "orderMeaningful": true},
+          "moves": {"type": "array", "of": "move", "orderMeaningful": true},
+          "winner": {"type": "nullable", "of": "id"},
+          "reason": "str"
+        }
+      },
+      "contribution": {"type": "object", "fields": {"id": "id", "amount": "uint"}},
+      "roomReceipt": {
+        "type": "object",
+        "fields": {
+          "currency": "enum:coins|crowns", "pool": "uint", "burn": "uint",
+          "payouts": {"type": "array", "of": "contribution", "orderMeaningful": true},
+          "refunded": "bool"
+        }
+      }
+    }
+  },
+  "practiceSave": {
+    "roots": {
+      "version": "num", "economyVersion": "str", "settings": "opaque", "records": "opaque",
+      "processed": "opaque", "playSeconds": "opaque", "wallet": "opaque", "daily": "opaque",
+      "weekly": "opaque", "legacy": "opaque", "profile": "opaque", "offlineMatch": "opaque"
+    },
+    "rootRule": "opaque-practice-root",
+    "source": "server/community-store.js:20-45"
+  },
+  "corrections": [
+    {
+      "id": "expectedA-not-hundredths",
+      "designClaim": "docs/v5/designs/p03-extraction-design.md section 3.1 puts receipt.rating.expectedA on the closed hundredths allowlist",
+      "source": "src/domain.js:52 - elo() returns expectedA: expected = 1/(1+10**((b-a)/400)), an unrounded probability",
+      "correction": "expectedA is validated as a finite number, not as hundredths. a/b/delta remain hundredths because they are computed as units/100."
+    },
+    {
+      "id": "daily-seconds-fractional",
+      "designClaim": "state.accounts[].daily[date].seconds is treated as an integer counter",
+      "source": "src/authority.js _settle - d.seconds += Math.min(900,(now-m.started)/1000)",
+      "correction": "daily[date].seconds is a finite non-negative fractional number and is preserved exactly; it must not be rounded to an integer."
+    },
+    {
+      "id": "move-timings-ms-fractional",
+      "designClaim": "match.quote is the only fractional-value carrier",
+      "source": "src/authority.js move - _moveTimings[].ms = Math.max(0, now-_lastMoveAt)",
+      "correction": "_moveTimings[].ms and tournament fixture banks values are finite non-negative numbers, preserved exactly."
+    },
+    {
+      "id": "quote-ceiling-null",
+      "designClaim": "quote.ceiling is an integer ceiling",
+      "source": "src/domain.js quote() - ceiling: kind==='friend' ? POLICY.friendPotCap : null",
+      "correction": "quote.ceiling is nullable; a leaderboard direct quote stores null."
+    },
+    {
+      "id": "void-receipt-shape",
+      "designClaim": "every match receipt has winner/currency/bonus/at",
+      "source": "src/authority.js voidByOperator - m.receipt={reason,refunded,burn:0,payout:0,rating:null}",
+      "correction": "an operator void receipt omits winner/currency/bonus/at, so those receipt fields are optional."
+    },
+    {
+      "id": "room-fixture-optional-clocks",
+      "designClaim": "every fixture always carries opens/expires/readyDeadline",
+      "source": "src/tournament.js fixture() creates fixtures without opens/expires; resume() deletes readyDeadline",
+      "correction": "opens/expires/readyDeadline are optional per fixture and are preserved verbatim when present."
+    },
+    {
+      "id": "room-slot-union-object-first",
+      "designClaim": "docs/v5/designs/p03-extraction-design.md section 2.3 types a fixture slot as an id",
+      "source": "src/tournament.js ref()/bracket()/groupRanks() place {match,result} objects in fixtures[].slots, groups[].refs and finalRefs while also placing plain player ids (slot() resolves both)",
+      "correction": "rooms.types.slotRef is a union tried object-first: {match,result} then id."
+    },
+    {
+      "id": "claimed-quest-ids",
+      "designClaim": "daily[date].claimed[] holds operation keys",
+      "source": "src/authority.js claimQuest -> claimed.push(id) where id is a D.QUESTS id (src/domain.js QUESTS: finish/three/time/boards/casual/friend/ranked)",
+      "correction": "claimed[] is validated as identifier text, not as the operation-key grammar."
+    },
+    {
+      "id": "room-fixture-shared-types",
+      "designClaim": "rooms and state types are independent namespaces",
+      "source": "src/game.js game state is used by both src/authority.js matches and src/tournament.js fixtures; the same move/moveTiming shapes appear in each",
+      "correction": "A mapping type name may resolve in either the state or rooms domain; the name sets are disjoint and the reader resolves the current domain first."
+    },
+    {
+      "id": "restore-defaulted-account-fields-optional",
+      "designClaim": "every account field listed in section 2.3 is always present",
+      "source": "src/authority.js restore() defensively defaults purchasedCoins/purchasedCrowns/legacyCompetitionRestricted/casualRating/casualGames/tournamentRecord/seasonHistory/season and server/monetization-store.js:8 creates a.monetization lazily",
+      "correction": "Those fields are optional; an absent value is preserved absent and the default the source would apply is reported as a normalization delta, never written."
+    },
+    {
+      "id": "v4-limits-mail-budget-durable",
+      "designClaim": "docs/v5/designs/p03-extraction-design.md section 4.1 groups v4_limits with the ephemeral rate tables",
+      "source": "server/production/mail-outbox.js:37,44 uses v4_limits rows with a 'mail-budget:<period>' id as the durable monthly email spend counter, while server/production/abuse-guard.js uses the 'abuse:' prefix for ephemeral rate buckets",
+      "correction": "v4_limits is disposition V (verbatim). The reader copies every row and records the prefix; the importer splits durable spend counters (migrated verbatim, never reset) from ephemeral buckets (rebuilt)."
+    },
+    {
+      "id": "prototype-named-data-keys-preserved",
+      "designClaim": "the design treats constructor/prototype/__proto__ keys as invalid payload",
+      "source": "conversion operations, snapshot/audit payloads and opaque practice archives may legitimately use those names as data keys; the source's own sanitizer only rejects them inside the client-supplied practice payload (server/community-store.js:26)",
+      "correction": "canonical/parseStrictJson preserve such a key as an own enumerable data property (no prototype mutation) and source-keyed hash dictionaries hold it; duplicate detection is unchanged."
+    },
+    {
+      "id": "opaque-text-legacy-large-numbers",
+      "designClaim": "no source number exceeds the safe integer range",
+      "source": "opaque TEXT payloads (practice archives, command responses, audit detail) are unenumerated legacy metadata; a value such as legacy.importedTicks = 1e20 is admitted by V4 and is not a currency amount",
+      "correction": "opaque TEXT is syntax/duplicate-scanned without asset-number semantics, each accepted unsafe path is recorded in hashes.opaqueUnsafeNumbers, and the exact literal stays authoritative in the preserved raw string. Classified money/counter fields keep strict safe-integer checks."
+    },
+    {
+      "id": "snapshot-artifact-normalized",
+      "designClaim": "the reader consumes the copied file directly",
+      "source": "node:sqlite backup() preserves the source journal_mode, so the copy stayed in WAL mode and a read-only open recreated -shm/-wal side files",
+      "correction": "capture() normalizes its own artifact to journal_mode=DELETE (a write to the artifact, never the source) so the immutable snapshot needs no side files and the reader provably creates none."
+    }
+  ],
+  "unclassifiedPolicy": {
+    "default": "fail",
+    "escape": "--allow-unclassified=<locator>=<rule-id> records the exception in the coverage manifest; the value is still preserved, never discarded"
+  }
+}

@@ -27,6 +27,7 @@ const {canonical} = require(path.join(ROOT, 'tools/v5-migration/canonical.js'));
 const {capture} = require(path.join(ROOT, 'tools/v5-migration/capture.js'));
 const {readSnapshot} = require(path.join(ROOT, 'tools/v5-migration/reader.js'));
 const {load, KIND_ORDER} = require(path.join(ROOT, 'tools/v5-migration/loader.js'));
+const ledgerLib = require(path.join(ROOT, 'tools/v5-migration/ledger.js'));
 const {buildSyntheticSource} = require(path.join(ROOT, 'tools/v5-migration/fixtures/build-synthetic-source.js'));
 const CHAIN_LENGTH = require(path.join(ROOT, 'packages/migrations/manifest.json')).migrations.length;
 
@@ -218,7 +219,7 @@ test('the representative fixture imports every durable family exactly, and rerun
     assert.equal(first.counters.rowsWritten > 0, true);
     assert.equal(first.targetGuard.database, target.name);
 
-    await verifyTarget(client, model);
+    await verifyTarget(client, model, 'run-load-v5-1');
     const rowsAfterFirst = await totalRowCount(client);
     const digestAfterFirst = await targetDigest(client);
 
@@ -246,7 +247,7 @@ test('the representative fixture imports every durable family exactly, and rerun
     assert.equal(third.counters.rowsVerified, rowsAfterFirst - singletons);
     assert.equal(await totalRowCount(client), rowsAfterFirst);
     assert.equal(await targetDigest(client), digestAfterFirst, 'a fresh run id must converge to identical rows');
-    await verifyTarget(client, model);
+    await verifyTarget(client, model, 'run-load-v5-1');
 
     /* The extractor release binds the run identity: a different one is refused. */
     await assert.rejects(() => load({
@@ -324,7 +325,7 @@ test('an interrupted batch resumes from its last committed cursor to the identic
     assert.equal(resumed.batches[interruptAt + 1].cursor !== null, true,
       'a resumed batch records its last committed canonical key as its cursor');
     const rowsAfterResume = await totalRowCount(client);
-    await verifyTarget(client, model);
+    await verifyTarget(client, model, 'run-resume-1');
     const resumedDigest = await targetDigest(client);
 
     /* The identical row set is reached by a clean load of the same model into a third run id. */
@@ -336,7 +337,7 @@ test('an interrupted batch resumes from its last committed cursor to the identic
     assert.equal(clean.counters.rowsVerified, rowsAfterResume - await singletonRowCount(client));
     assert.equal(await totalRowCount(client), rowsAfterResume);
     assert.equal(await targetDigest(client), resumedDigest, 'a fresh run id must converge to identical rows');
-    await verifyTarget(client, model);
+    await verifyTarget(client, model, 'run-resume-2');
   } finally {
     await client.end();
   }
@@ -396,7 +397,7 @@ async function totalRowCount(client) {
   return Number(rows[0].n);
 }
 
-async function verifyTarget(client, model) {
+async function verifyTarget(client, model, runId) {
   const q = async (sql, params) => (await client.query(sql, params)).rows;
   const accounts = new Map(model.state.parsed.accounts);
   const matches = new Map(model.state.parsed.matches);
@@ -833,6 +834,33 @@ async function verifyTarget(client, model) {
   }
   const batches = await q('SELECT count(DISTINCT kind)::int AS n FROM v5_migration.batch');
   assert.equal(batches[0].n, KIND_ORDER.length, 'every kind must have at least one batch');
+  /* Independent recomputation: for EVERY table, hash each stored row with the shared ledger contract
+   * over the table's FULL destination column list and require the result to be the hash this run's
+   * row_ledger recorded. This is the property a reconciler depends on, and it is the check that
+   * caught the earlier subset-hashing defect (the loader hashed only the columns it wrote, while a
+   * reader hashes every column). */
+  let recomputed = 0;
+  for (const table of new Set(KIND_ORDER.map((kind) => kind.split('#')[0]))) {
+    const read = await ledgerLib.readHashedTable(client, table, []);
+    assert.equal(read.present, true, 'target table missing: ' + table);
+    const stored = await q('SELECT row_hash FROM v5_migration.row_ledger WHERE target_table = $1 AND run_id = $2', [table, runId]);
+    assert.equal(stored.length, read.hashed.length, 'ledger/row count differs for ' + table + ': ledger=' + stored.length + ' rows=' + read.hashed.length);
+    const storedHashes = new Set(stored.map((row) => row.row_hash));
+    for (const hashed of read.hashed) {
+      assert.ok(storedHashes.has(hashed.rowHash),
+        'recomputed hash does not match the ledger for ' + table + ' (session/column-set dependent hashing)');
+      recomputed += 1;
+    }
+  }
+  assert.equal(recomputed > 0, true, 'the recomputation must cover rows');
+  /* The four tables the parent reported as false mismatches on the pre-fix ledger. They are covered
+   * by the loop above; assert explicitly that each has ledger entries so the fix cannot silently
+   * stop covering them. */
+  for (const table of ['tournament.rooms', 'season.league_week', 'economy.daily_progress', 'ops.outbox']) {
+    assert.equal((await q('SELECT count(*)::int AS n FROM v5_migration.row_ledger WHERE target_table = $1 AND run_id = $2', [table, runId]))[0].n > 0, true,
+      'no ledger entries for ' + table);
+  }
+
   /* coverage: every source locator classified, none unclassified */
   const coverage = await q(
     `SELECT classification, count(*)::int AS n FROM v5_migration.coverage

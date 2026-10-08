@@ -31,3 +31,7 @@ The existing `native/ios/MegaAppleIdentity.swift` is included directly in the Xc
 ## Existing optional local notifications
 
 The approved user-enabled notification preference now has a guarded `MegaNativeNotifications` implementation on iOS. The handler accepts calls only from the app-signed **main** `bundle-index.html`, requests system permission only when the existing UI calls `requestPermission()`, and posts validated local alerts only while the app is not active and permission exists. This is not APNs registration or proof of background push delivery; those depend on backend identity/device-token registration and approved provider configuration. No new notification campaign or unsolicited system prompt is introduced.
+
+## Native Apple sign-in UI bridge (configured App IDs only)
+
+The real `MegaAppleIdentity` SDK helper now serves `MegaNativeIdentity.getCredential({provider:'apple',nonce})` through `WKScriptMessageHandlerWithReply` restricted to the **exact signed main** `bundle-index.html`. It remains off with `MEGA_APPLE_NATIVE_ENABLED=NO` until the owner verifies the bundle/App ID, Apple Sign in capability and server-side native audience/challenge flow. An ID token is only provider evidence; the app does not create a new account or grant a success result until the common backend authenticates the permanent actor. Neither this feature flag nor an iOS Simulator build proves live Apple sign-in.

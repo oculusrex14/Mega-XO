@@ -11,6 +11,8 @@
 <key>CFBundleShortVersionString</key><string>$(MARKETING_VERSION)</string>
 <key>CFBundleVersion</key><string>$(CURRENT_PROJECT_VERSION)</string>
 <!-- Development test app ID only. Signed distribution requires exact owner's AdMob registration. -->
+<!-- Enable only on the real Apple App ID with Sign in with Apple capability. -->
+<key>MegaAppleNativeEnabled</key><string>$(MEGA_APPLE_NATIVE_ENABLED)</string>
 <key>GADApplicationIdentifier</key><string>$(MEGA_ADMOB_APP_ID)</string>
 <key>LSRequiresIPhoneOS</key><true/>
 <key>UIApplicationSceneManifest</key><dict>

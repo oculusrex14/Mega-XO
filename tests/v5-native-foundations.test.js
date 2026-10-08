@@ -284,3 +284,19 @@ test('Android native Google login bridge requires explicit registered server aud
   assert.match(activity, /MegaAndroidIdentityBridge\.install/);
   assert.doesNotMatch(host, /grantCrowns|addJavascriptInterface|storeIdToken|MegaNativeHttpClient\(/);
 });
+
+test('iOS Apple sign-in adapter is disabled by default and only callable from signed entry', () => {
+  const code = read('native/ios/MegaXO/MegaIOSIdentityBridge.swift');
+  const host = read('native/ios/MegaXO/MegaXOApplication.swift');
+  const pbx = read('native/ios/MegaXO.xcodeproj/project.pbxproj');
+  assert.match(code, /WKScriptMessageHandlerWithReply/);
+  assert.match(code, /message\.frameInfo\.isMainFrame/);
+  assert.match(code, /standardizedFileURL\.resolvingSymlinksInPath\(\) == trustedEntry/);
+  assert.match(code, /apple\.getCredential\(nonce: nonce, window: window\)/);
+  assert.match(code, /replyHandler\(\["idToken": token\], nil\)/);
+  assert.match(host, /if appleEnabled \{/);
+  assert.match(host, /forMainFrameOnly: true/);
+  assert.match(pbx, /MegaIOSIdentityBridge\.swift in Sources/);
+  assert.match(pbx, /MEGA_APPLE_NATIVE_ENABLED = NO/);
+  assert.doesNotMatch(code, /mintCrowns|createActor|signInComplete/);
+});

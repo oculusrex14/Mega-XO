@@ -39,6 +39,7 @@ final class MegaXOGameController: UIViewController, WKNavigationDelegate, WKUIDe
     private var game: WKWebView?
     private var clientRoot: URL?
     private var nativeNotifications: MegaLocalNotifications?
+    private var identityBridge: MegaIOSIdentityBridge?
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -68,6 +69,19 @@ final class MegaXOGameController: UIViewController, WKNavigationDelegate, WKUIDe
         configuration.userContentController.addUserScript(
             WKUserScript(source: MegaLocalNotifications.bootstrap,
                          injectionTime: .atDocumentStart, forMainFrameOnly: true))
+        // Real native Apple sign-in must use the registered bundle/entitlement.
+        // Default is disabled until authorized App ID and P05 API handshake.
+        let appleEnabled = (Bundle.main.object(forInfoDictionaryKey: "MegaAppleNativeEnabled")
+                            as? String)?.uppercased() == "YES"
+        if appleEnabled {
+            let bridge = MegaIOSIdentityBridge(controller: self, entry: entry)
+            identityBridge = bridge
+            configuration.userContentController.addScriptMessageHandler(
+                bridge, contentWorld: .page, name: "megaNativeIdentity")
+            configuration.userContentController.addUserScript(
+                WKUserScript(source: MegaIOSIdentityBridge.bootstrap,
+                             injectionTime: .atDocumentStart, forMainFrameOnly: true))
+        }
         let webView = WKWebView(frame: .zero, configuration: configuration)
         webView.navigationDelegate = self
         webView.uiDelegate = self

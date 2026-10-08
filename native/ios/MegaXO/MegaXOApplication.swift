@@ -38,6 +38,7 @@ final class MegaXOSceneDelegate: UIResponder, UIWindowSceneDelegate {
 final class MegaXOGameController: UIViewController, WKNavigationDelegate, WKUIDelegate {
     private var game: WKWebView?
     private var clientRoot: URL?
+    private var nativeNotifications: MegaLocalNotifications?
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -58,6 +59,15 @@ final class MegaXOGameController: UIViewController, WKNavigationDelegate, WKUIDe
         configuration.websiteDataStore = .default()
         configuration.defaultWebpagePreferences.allowsContentJavaScript = true
         configuration.preferences.javaScriptCanOpenWindowsAutomatically = false
+        // The message receiver checks main-frame identity and the exact
+        // signed entry file; no other bundled legal or nested frame can send.
+        let notifications = MegaLocalNotifications(entry: entry)
+        nativeNotifications = notifications
+        configuration.userContentController.addScriptMessageHandler(
+            notifications, contentWorld: .page, name: "megaNativeNotifications")
+        configuration.userContentController.addUserScript(
+            WKUserScript(source: MegaLocalNotifications.bootstrap,
+                         injectionTime: .atDocumentStart, forMainFrameOnly: true))
         let webView = WKWebView(frame: .zero, configuration: configuration)
         webView.navigationDelegate = self
         webView.uiDelegate = self

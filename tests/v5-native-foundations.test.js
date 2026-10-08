@@ -216,3 +216,19 @@ test('native API transports reject redirects, non-success statuses and unsafe pa
   assert.match(android, /instanceFollowRedirects = false/);
   assert.match(android, /status !in 300\.\.399/);
 });
+
+test('iOS optional local notifications are exact-main-frame only and opt-in', () => {
+  const code = read('native/ios/MegaXO/MegaLocalNotifications.swift');
+  const host = read('native/ios/MegaXO/MegaXOApplication.swift');
+  const project = read('native/ios/MegaXO.xcodeproj/project.pbxproj');
+  assert.match(code, /WKScriptMessageHandlerWithReply/);
+  assert.match(code, /message\.frameInfo\.isMainFrame/);
+  assert.match(code, /standardizedFileURL\.resolvingSymlinksInPath\(\) == entry/);
+  assert.match(code, /requestAuthorization\(options:/);
+  assert.match(code, /authorizationStatus == \.authorized/);
+  assert.match(code, /UIApplication\.shared\.applicationState != \.active/);
+  assert.match(code, /requestPermission:/);
+  assert.match(host, /forMainFrameOnly: true/);
+  assert.match(project, /MegaLocalNotifications\.swift in Sources/);
+  assert.doesNotMatch(code, /registerForRemoteNotifications|deviceToken|apnsToken/);
+});

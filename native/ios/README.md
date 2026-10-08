@@ -27,3 +27,7 @@ No store upload, real device execution, login, purchasing or notification delive
 ## Compiled Apple provider adapter (not activated)
 
 The existing `native/ios/MegaAppleIdentity.swift` is included directly in the Xcode target. It uses Apple's real AuthenticationServices request and a server-issued nonce, but has no configured App ID capability or connected JS/Keychain session exchange yet. Successful compilation is not Apple provider verification or an App Store entitlement.
+
+## Existing optional local notifications
+
+The approved user-enabled notification preference now has a guarded `MegaNativeNotifications` implementation on iOS. The handler accepts calls only from the app-signed **main** `bundle-index.html`, requests system permission only when the existing UI calls `requestPermission()`, and posts validated local alerts only while the app is not active and permission exists. This is not APNs registration or proof of background push delivery; those depend on backend identity/device-token registration and approved provider configuration. No new notification campaign or unsolicited system prompt is introduced.

@@ -2,8 +2,18 @@
   "schema_version": 1,
   "status": "FAILURES_REPRODUCED",
   "phase": "P04",
-  "task_ids": ["V5-04-01", "V5-04-02", "V5-04-03", "V5-04-04", "V5-04-05"],
-  "case_ids": ["A07", "A09", "A10"],
+  "task_ids": [
+    "V5-04-01",
+    "V5-04-02",
+    "V5-04-03",
+    "V5-04-04",
+    "V5-04-05"
+  ],
+  "case_ids": [
+    "A07",
+    "A09",
+    "A10"
+  ],
   "recorded_at_utc": "2026-10-08T16:05:39Z",
   "source_sha": "2be541319107fcca72fae715877b91f9099610dd",
   "source_state": "UNCOMMITTED_WORKTREE_AFTER_SOURCE_SHA; hashes below identify the reproduced implementation, not a verified commit",
@@ -12,17 +22,32 @@
     {
       "command": "env V5_PG_URL=postgres://postgres@127.0.0.1:50709/postgres V5_PG_DISPOSABLE=1 V5_PG_REQUIRED=1 node --test --test-reporter=tap --test-concurrency=1 tests/v5-p04-repositories.test.js tests/v5-p04-differential.test.js tests/v5-p04-services.test.js",
       "evidence_location": "artifact://3590",
-      "result": {"tests": 24, "pass": 10, "fail": 14, "skipped": 0},
+      "result": {
+        "tests": 24,
+        "pass": 10,
+        "fail": 14,
+        "skipped": 0
+      },
       "classification": "Repository6 and differential4 passed. All service cases initially failed in fixtures: unused SQL parameter42P18 or absent-schema snapshot42P01. Fixtures repaired without weakening behavior assertions. Failed cleanup also exposed pool-before-database-drop ordering."
     },
     {
       "command": "env V5_PG_URL=postgres://postgres@127.0.0.1:50709/postgres V5_PG_DISPOSABLE=1 V5_PG_REQUIRED=1 node --test --test-reporter=tap --test-concurrency=1 tests/v5-p04-services.test.js",
-      "result": {"tests": 14, "pass": 10, "fail": 4, "skipped": 0},
+      "result": {
+        "tests": 14,
+        "pass": 10,
+        "fail": 4,
+        "skipped": 0
+      },
       "classification": "Real account reads reparsed already-decoded JSON region strings and failed INVALID_JSON. Typed JSON handling fixed; JSONnull/false/0 preserved rather than coerced."
     },
     {
       "command": "env V5_PG_URL=postgres://postgres@127.0.0.1:50709/postgres V5_PG_DISPOSABLE=1 V5_PG_REQUIRED=1 node --test --test-reporter=tap --test-concurrency=1 tests/v5-p04-services.test.js",
-      "result": {"tests": 14, "pass": 12, "fail": 2, "skipped": 0},
+      "result": {
+        "tests": 14,
+        "pass": 12,
+        "fail": 2,
+        "skipped": 0
+      },
       "classification": "Only anchored Error.toString regex assertions failed despite correct SAVE_CONFLICT/IDEMPOTENCY_CONFLICT messages. Assertions changed to consumer message predicates, not source error suppression. No all-pass claim yet."
     },
     {
@@ -36,22 +61,62 @@
       "exit_code": 0,
       "classification": "Diagnostic command exited0 while reporting failing-before behavior, not acceptance. Only synthetic credentials/claims; no token, password, OTP or provider subject printed.",
       "observations": {
-        "production_password": {"accepted_by_original_production_password_verifier": true, "accepted_by_pg_service": false, "error": "INVALID_CREDENTIALS"},
-        "otp_failure_accounting": {"wrong_attempts_sent": 5, "durable_attempts": 0, "credential_version_rows": 0},
-        "password_recovery": {"correct_code_verified": true, "reset_completed": false, "error": "RESET_NOT_AUTHORIZED"},
-        "same_owner_provider_reauth": {"accepted": false, "error": "REAUTH_ACCOUNT_MISMATCH"},
-        "same_source_bearer_race": {"login_attempts": 2, "replacement_sessions_issued": 2},
-        "private_profile": {"stats_hidden": true, "current_season_opponents_exposed": true, "raw_wins_exposed": true, "approved_start_field_present": false},
-        "deletion_disabled_profile": {"pending_deletion_acknowledged": true, "still_publicly_retrievable": true},
-        "last_login_method_race": {"calls": 2, "successful_unlinks": 2, "remaining_login_methods": 0},
-        "provider_subject_race": {"calls": 2, "returned_distinct_actors": 1, "created_actors": 1, "qualification": "This scheduling did not force absent-row interleaving; it does not refute the reviewed race. A deterministic DB barrier regression is required."},
+        "production_password": {
+          "accepted_by_original_production_password_verifier": true,
+          "accepted_by_pg_service": false,
+          "error": "INVALID_CREDENTIALS"
+        },
+        "otp_failure_accounting": {
+          "wrong_attempts_sent": 5,
+          "durable_attempts": 0,
+          "credential_version_rows": 0
+        },
+        "password_recovery": {
+          "correct_code_verified": true,
+          "reset_completed": false,
+          "error": "RESET_NOT_AUTHORIZED"
+        },
+        "same_owner_provider_reauth": {
+          "accepted": false,
+          "error": "REAUTH_ACCOUNT_MISMATCH"
+        },
+        "same_source_bearer_race": {
+          "login_attempts": 2,
+          "replacement_sessions_issued": 2
+        },
+        "private_profile": {
+          "stats_hidden": true,
+          "current_season_opponents_exposed": true,
+          "raw_wins_exposed": true,
+          "approved_start_field_present": false
+        },
+        "deletion_disabled_profile": {
+          "pending_deletion_acknowledged": true,
+          "still_publicly_retrievable": true
+        },
+        "last_login_method_race": {
+          "calls": 2,
+          "successful_unlinks": 2,
+          "remaining_login_methods": 0
+        },
+        "provider_subject_race": {
+          "calls": 2,
+          "returned_distinct_actors": 1,
+          "created_actors": 1,
+          "qualification": "This scheduling did not force absent-row interleaving; it does not refute the reviewed race. A deterministic DB barrier regression is required."
+        },
         "export_probe": "Root-key probe was insufficient because the approved categories are nested under account. Export incompleteness is source-reviewed, not proven by that root-only observation."
       }
     },
     {
       "command": "node --test --test-reporter=tap --test-concurrency=1 tests/community.test.js tests/email-auth.test.js tests/production-auth.test.js tests/account-deletion.test.js tests/privacy-export.test.js tests/reporting.test.js tests/operator-service.test.js tests/authority.test.js tests/rooms.test.js tests/store.test.js tests/monetization-store.test.js tests/invariants.test.js tests/v5-uow.test.js",
       "evidence_location": "artifact://3617",
-      "result": {"tests": 130, "pass": 130, "fail": 0, "skipped": 0},
+      "result": {
+        "tests": 130,
+        "pass": 130,
+        "fail": 0,
+        "skipped": 0
+      },
       "classification": "Retained-product targeted checks after pure helper extraction. The known owner-reported opsz failure was not rerun. This does not verify the new PG authentication/commerce implementation."
     }
   ],
@@ -73,37 +138,68 @@
     "core": "agent://P04CoreReview (8 evidence-backed findings; unexercised race consequences labeled INFERENCE)",
     "repair_contract": "local://p04-runtime-safety-contract.md"
   },
-  "gate_decision": "G04 repair proof RECORDED 2026-10-08: the reproduced defects are closed on the real 41-migration chain (see passing_after). Final G04 acceptance still requires the pushed checkpoint's zero-skip CI run plus completed A07/A09/A10 ledger acceptance.",
+  "gate_decision": "G04 PASSED 2026-10-08: all reproduced defects closed on the real 41-migration chain (passing_after); pushed checkpoint ef5c5fe with successful zero-skip CI runs 37817609452 (v5-postgresql-evidence artifact) and 37817609564; ledger records all five P04 tasks COMPLETE and the G04 gate.",
   "passing_after": [
     {
       "command": "env V5_PG_URL=postgres://postgres@127.0.0.1:50709/postgres V5_PG_DISPOSABLE=1 V5_PG_REQUIRED=1 node --test --test-reporter=tap --test-concurrency=1 tests/v5-p04-repositories.test.js tests/v5-p04-differential.test.js tests/v5-p04-services.test.js",
       "evidence_location": "artifact://3833 (41/46 before final G9/fixture repairs) then full green run logged to .evidence-logs in the checkpoint commit workflow",
-      "result": {"tests": 47, "pass": 47, "fail": 0, "skipped": 0},
+      "result": {
+        "tests": 47,
+        "pass": 47,
+        "fail": 0,
+        "skipped": 0
+      },
       "classification": "All repaired account/auth/privacy, Core durability, commerce and provisioning behavior on disposable PG16 databases; zero skips. Includes the forced same-subject race, deletion/Core admission contention and stampless-challenge refusals."
     },
     {
       "command": "node local://p04-service-smoke.cjs (separate API/Core processes, SQLite import forbidden)",
       "evidence_location": "artifact://3832",
-      "result": {"ok": true, "migrations": 40, "forbiddenSqliteLoads": 0},
+      "result": {
+        "ok": true,
+        "migrations": 40,
+        "forbiddenSqliteLoads": 0
+      },
       "classification": "Distinct-process API identity creation, Core 150-Coin provisioning, wallet-ready season 2026-Q4, cross-process spend race with exact lost-response replay, Core-owned offer/cancel, economic rollback, purchase/refund tombstone. Recorded at schema head 40 before SQL41; SQL41 changes no runtime behavior exercised here."
     },
     {
       "command": "node local://p04-auth-repro.cjs (rewritten as passing-after real-service proof)",
       "evidence_location": "artifact://3876",
-      "result": {"ok": true, "migrations": 41, "forbiddenSqliteLoads": 0},
+      "result": {
+        "ok": true,
+        "migrations": 41,
+        "forbiddenSqliteLoads": 0
+      },
       "classification": "Production-format and legacy passwords accepted; five wrong OTPs persist to OTP_LOCKED with a durable stamp row; reset verify-without-consume plus one-shot completion, replay refusal and old-password refusal; imported unverified credential verifies BOTH credential and eligibility halves with no second opening grant; same-owner provider reauth with durable consumed attempt; two concurrent same-subject creations yield exactly one actor; one winner in the same-bearer race; private stats/opponents hidden with approved season bounds; complete schemaVersion1 export with real opening/conversion journal and authoritative 140 coins; deletion pending acknowledgment with hidden public profile; one successful unlink of two concurrent with one method remaining. All synthetic fixtures; no provider/device proof."
     },
     {
       "command": "node --test --test-force-exit tests/v5-migrations.test.js tests/v5-pg-guards.test.js",
-      "result": {"tests": 36, "pass": 36, "fail": 0, "skipped": 0},
+      "result": {
+        "tests": 36,
+        "pass": 36,
+        "fail": 0,
+        "skipped": 0
+      },
       "classification": "41-file checksummed chain (SQL41 included) and role guards green on disposable PG16."
     },
     {
       "command": "node --test tests/community.test.js tests/email-auth.test.js tests/production-auth.test.js tests/account-deletion.test.js tests/privacy-export.test.js tests/authority.test.js tests/reporting.test.js tests/operator-service.test.js tests/rooms.test.js tests/store.test.js tests/monetization-store.test.js tests/invariants.test.js tests/v5-uow.test.js",
-      "result": {"tests": 130, "pass": 130, "fail": 0, "skipped": 0},
+      "result": {
+        "tests": 130,
+        "pass": 130,
+        "fail": 0,
+        "skipped": 0
+      },
       "classification": "Retained-product suites unchanged after src/authority season-projection extraction and all service repairs; the known owner-reported opsz failure was not rerun."
     }
   ],
-  "next_action": "Commit the repaired runtime with SQL41, push, require the zero-skip CI database suites on that exact SHA, then record G04 and P04 task acceptance in the ledger only after that CI run succeeds.",
-  "not_claimed": ["G04", "Neon40-chain application", "provider authentication or store approval", "device acceptance", "V5 production enablement", "completed native apps", "completed account erasure worker", "full A01-A40 acceptance"]
+  "next_action": "P05 sessions/access/realtime is the executable phase; its design map is corrected read-only preparation. No Neon, provider, device or V5 production claim is made.",
+  "not_claimed": [
+    "Neon application",
+    "provider authentication or store approval",
+    "device acceptance",
+    "V5 production enablement",
+    "completed native apps",
+    "completed account erasure worker",
+    "full A01-A40 acceptance"
+  ]
 }

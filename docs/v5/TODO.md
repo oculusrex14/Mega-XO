@@ -4,7 +4,7 @@ The mutable execution source is [progress.json](progress.json); this is its read
 
 **Goal:** Deliver the V5 hybrid platform and real Android/iOS applications with shared permanent actor/assets, preserved approved game and retained browser compatibility; do not build the new website/browser product.
 
-**Integration base:** `455b8ec9ea4070b4410d78f9eea2aaa06d32c0b2`. **Active phase/task:** P04 / V5-04-01 (IN_PROGRESS). **Progress:** 22/117 tasks terminal; 4/25 phase gates passed
+**Integration base:** `455b8ec9ea4070b4410d78f9eea2aaa06d32c0b2`. **Active phase/task:** P05 / V5-05-01 (PLANNED). **Progress:** 27/117 tasks terminal; 5/25 phase gates passed
 
 Required path: execute P00–P20, P22–P23; owner-deferred P21 executes nothing; P24 is measurement-gated; phase prerequisites are gates, not status assumptions, and a deferred or measurement-gated phase is never used as another phase prerequisite. The foundation gate P00–P03 passes before dependent distributed work, and V5 CI starts in the foundation rather than only at P17.
 
@@ -60,13 +60,13 @@ Milestone: V5.0; status: `COMPLETE`; prerequisites: P02. [Phase contract](../../
 
 ## P04 — Replace production persistence with PostgreSQL adapters
 
-Milestone: V5.1; status: `IN_PROGRESS`; prerequisites: P03. [Phase contract](../../Mega-XO-V5-Implementation-Pack/phases/04-postgresql-runtime.md).
+Milestone: V5.1; status: `COMPLETE`; prerequisites: P03. [Phase contract](../../Mega-XO-V5-Implementation-Pack/phases/04-postgresql-runtime.md).
 
-- [ ] **V5-04-01 — Implement account/social/save repositories** (`IN_PROGRESS`).
-- [ ] **V5-04-02 — Implement Core-owned asset/ledger repositories** (`IN_PROGRESS`).
-- [ ] **V5-04-03 — Implement match/tournament/provider persistence** (`IN_PROGRESS`).
-- [ ] **V5-04-04 — Move schema setup out of constructors** (`IN_PROGRESS`).
-- [ ] **V5-04-05 — Run differential and contention acceptance** (`IN_PROGRESS`).
+- [x] **V5-04-01 — Implement account/social/save repositories** (`COMPLETE`).
+- [x] **V5-04-02 — Implement Core-owned asset/ledger repositories** (`COMPLETE`).
+- [x] **V5-04-03 — Implement match/tournament/provider persistence** (`COMPLETE`).
+- [x] **V5-04-04 — Move schema setup out of constructors** (`COMPLETE`).
+- [x] **V5-04-05 — Run differential and contention acceptance** (`COMPLETE`).
 
 **Exit gate:** G04: the V5 production path has no SQLite dependency; concurrent spends/settlements/payouts and rollback tests pass with approved behavior.
 

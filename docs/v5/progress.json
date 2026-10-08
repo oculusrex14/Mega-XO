@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at_utc": "2026-10-08T15:46:13.897+00:00",
+  "updated_at_utc": "2026-10-08T17:36:47.869+00:00",
   "goal": "Deliver the V5 hybrid platform and real Android/iOS applications with shared permanent actor/assets, preserved approved game and retained browser compatibility; do not build the new website/browser product.",
   "source": {
     "goal": "AGENT-GOAL.md",
@@ -46,8 +46,8 @@
     "installed_script_revision_status": "FOUR_INSTALLED_FILES_HASH_MATCH_SELECTED_CHECKOUT"
   },
   "current": {
-    "phase": "P04",
-    "active_task": "V5-04-01",
+    "phase": "P05",
+    "active_task": "V5-05-01",
     "next_action": "Finish all five reopened P04 runtime tasks: integrate the account-auth/privacy and Core durability repairs, SQL40 narrow activity/export reads and real behavior regressions; prove actual same-database PG service paths, read-only boot, parity/contention/rollback and zero-skip CI before G04. P05 has read-only preparation only. V4 production remains untouched.",
     "checkout_branch_at_setup": "V4.1",
     "integration_branch": "V5-platform",
@@ -76,7 +76,12 @@
       "V5-03-03",
       "V5-03-04",
       "V5-03-05",
-      "V5-03-06"
+      "V5-03-06",
+      "V5-04-01",
+      "V5-04-02",
+      "V5-04-03",
+      "V5-04-04",
+      "V5-04-05"
     ],
     "passed_phase_gates": [
       {
@@ -194,6 +199,32 @@
         ],
         "gate_evidence": "docs/v5/evidence/phase03-gate.json",
         "note": "G03 accepted for the isolated nonserving scope: a representative REAL live production snapshot imported into the isolated staging target with zero unexplained per-actor differences and every row hash verified; reruns and interruption recovery preserve identical canonical state including across differing server timezones; all financial and identity invariants hold; restricted details retained and a sanitized checksummed summary published. Production remains the untouched V4.1.2 authority."
+      },
+      {
+        "phase": "P04",
+        "gate": "G04",
+        "completed_at_utc": "2026-10-08T17:36:47.867+00:00",
+        "task_ids": [
+          "V5-04-01",
+          "V5-04-02",
+          "V5-04-03",
+          "V5-04-04",
+          "V5-04-05"
+        ],
+        "task_statuses": {
+          "V5-04-01": "COMPLETE",
+          "V5-04-02": "COMPLETE",
+          "V5-04-03": "COMPLETE",
+          "V5-04-04": "COMPLETE",
+          "V5-04-05": "COMPLETE"
+        },
+        "evidence_refs": [
+          "docs/v5/evidence/phase04-repositories.json",
+          "docs/v5/evidence/phase04-runtime-defects.json",
+          "docs/v5/evidence/phase04-differential.json"
+        ],
+        "gate_evidence": "docs/v5/evidence/phase04-runtime-defects.json",
+        "note": "G04 PASSED: actual PG-backed account/social/save and Core/commerce service paths exercised end to end on the 41-migration chain. 47/47 behavior suites, 36/36 migrations+guards, 130/130 retained-product suites, two distinct-process smokes (artifact://3832, artifact://3876), zero skips, all on disposable PG16. Pushed checkpoint ef5c5fe with successful zero-skip CI 37817609452 (v5-postgresql-evidence artifact) and 37817609564. No Neon/production/provider/device claim."
       }
     ]
   },
@@ -384,7 +415,7 @@
           "V5-04-04",
           "V5-04-05"
         ],
-        "status": "IN_PROGRESS"
+        "status": "COMPLETE"
       },
       {
         "id": "P05",
@@ -1314,7 +1345,7 @@
         "verification": "Parity fixtures preserve identity, case semantics, privacy and non-authoritative practice-wallet behavior.",
         "id": "V5-04-01",
         "phase": "P04",
-        "status": "IN_PROGRESS",
+        "status": "COMPLETE",
         "depends_on_tasks": [],
         "requires_phase_gates": [
           "P03"
@@ -1327,7 +1358,7 @@
         "verification": "Concurrent spend cannot overdraw or double-reserve; invalid mutation fully rolls back.",
         "id": "V5-04-02",
         "phase": "P04",
-        "status": "IN_PROGRESS",
+        "status": "COMPLETE",
         "depends_on_tasks": [
           "V5-04-01"
         ],
@@ -1340,7 +1371,7 @@
         "verification": "Match/tournament/purchase tests compare to baseline and reject duplicates or conflicting occupancy.",
         "id": "V5-04-03",
         "phase": "P04",
-        "status": "IN_PROGRESS",
+        "status": "COMPLETE",
         "depends_on_tasks": [
           "V5-04-02"
         ],
@@ -1353,7 +1384,7 @@
         "verification": "Fresh service boot on wrong schema fails clearly; runtime role has no DDL rights.",
         "id": "V5-04-04",
         "phase": "P04",
-        "status": "IN_PROGRESS",
+        "status": "COMPLETE",
         "depends_on_tasks": [
           "V5-04-03"
         ],
@@ -1366,7 +1397,7 @@
         "verification": "Existing product tests plus new rollback/idempotency/economy invariants pass; SQLite remains only in importer/legacy reference tooling.",
         "id": "V5-04-05",
         "phase": "P04",
-        "status": "IN_PROGRESS",
+        "status": "COMPLETE",
         "depends_on_tasks": [
           "V5-04-04"
         ],
@@ -3419,13 +3450,14 @@
       ]
     },
     "V5-04-01": {
-      "status": "IN_PROGRESS",
+      "status": "COMPLETE",
       "evidence_refs": [
-        "docs/v5/evidence/phase04-repositories.json"
+        "docs/v5/evidence/phase04-repositories.json",
+        "docs/v5/evidence/phase04-runtime-defects.json"
       ],
       "completed_portions": [],
       "remaining": [],
-      "review_notes": "PostgreSQL repository set implemented over the normalized schema with the frozen member contract and entity-wise aggregate persistence; the unchanged production dispatcher runs on it with no whole-graph blob. Parity per family, a two-scope race with no overdraw or double reservation, full rollback, idempotent replay and a no-SQLite module graph are executed and green (5/5). Cross-owner provisioning fails closed rather than writing half an effect. Resume correction: the repository mirror is verified, but API account/social/save mutations are not connected to a PG-backed service. Preserve prior adapter evidence; finish actual service behavior before acceptance.",
+      "review_notes": "PostgreSQL repository set implemented over the normalized schema with the frozen member contract and entity-wise aggregate persistence; the unchanged production dispatcher runs on it with no whole-graph blob. Parity per family, a two-scope race with no overdraw or double reservation, full rollback, idempotent replay and a no-SQLite module graph are executed and green (5/5). Cross-owner provisioning fails closed rather than writing half an effect. Resume correction: the repository mirror is verified, but API account/social/save mutations are not connected to a PG-backed service. Preserve prior adapter evidence; finish actual service behavior before acceptance. PostgreSQL account/social/save service path + read-only readiness verified: 47/47 suites, distinct-process smoke, CI 37817609452 zero-skip on ef5c5fe",
       "transitions": [
         {
           "at_utc": "2026-10-08T14:00:17.454+00:00",
@@ -3440,17 +3472,25 @@
           "from": "COMPLETE",
           "to": "IN_PROGRESS",
           "note": "Resume correction: the repository mirror is verified, but API account/social/save mutations are not connected to a PG-backed service. Preserve prior adapter evidence; finish actual service behavior before acceptance."
+        },
+        {
+          "at_utc": "2026-10-08T17:36:36.428+00:00",
+          "from": "IN_PROGRESS",
+          "to": "COMPLETE",
+          "evidence": "docs/v5/evidence/phase04-runtime-defects.json",
+          "note": "PostgreSQL account/social/save service path + read-only readiness verified: 47/47 suites, distinct-process smoke, CI 37817609452 zero-skip on ef5c5fe"
         }
       ]
     },
     "V5-04-02": {
-      "status": "IN_PROGRESS",
+      "status": "COMPLETE",
       "evidence_refs": [
-        "docs/v5/evidence/phase04-repositories.json"
+        "docs/v5/evidence/phase04-repositories.json",
+        "docs/v5/evidence/phase04-runtime-defects.json"
       ],
       "completed_portions": [],
       "remaining": [],
-      "review_notes": "PostgreSQL repository set implemented over the normalized schema with the frozen member contract and entity-wise aggregate persistence; the unchanged production dispatcher runs on it with no whole-graph blob. Parity per family, a two-scope race with no overdraw or double reservation, full rollback, idempotent replay and a no-SQLite module graph are executed and green (5/5). Cross-owner provisioning fails closed rather than writing half an effect. Resume correction: actual service smoke and source review exposed suppressed initial-season creation/archival, readiness gaps and unlocked shared burn/outcome effects. Prior wallet adapter checks remain evidence but do not accept the complete Core transaction boundary.",
+      "review_notes": "PostgreSQL repository set implemented over the normalized schema with the frozen member contract and entity-wise aggregate persistence; the unchanged production dispatcher runs on it with no whole-graph blob. Parity per family, a two-scope race with no overdraw or double reservation, full rollback, idempotent replay and a no-SQLite module graph are executed and green (5/5). Cross-owner provisioning fails closed rather than writing half an effect. Resume correction: actual service smoke and source review exposed suppressed initial-season creation/archival, readiness gaps and unlocked shared burn/outcome effects. Prior wallet adapter checks remain evidence but do not accept the complete Core transaction boundary. Economy/Core durable commands, provisioning and commerce paths verified on 41-chain; rollback/contention/parity green; CI 37817609452",
       "transitions": [
         {
           "at_utc": "2026-10-08T14:00:17.527+00:00",
@@ -3465,17 +3505,25 @@
           "from": "COMPLETE",
           "to": "IN_PROGRESS",
           "note": "Resume correction: actual service smoke and source review exposed suppressed initial-season creation/archival, readiness gaps and unlocked shared burn/outcome effects. Prior wallet adapter checks remain evidence but do not accept the complete Core transaction boundary."
+        },
+        {
+          "at_utc": "2026-10-08T17:36:36.502+00:00",
+          "from": "IN_PROGRESS",
+          "to": "COMPLETE",
+          "evidence": "docs/v5/evidence/phase04-runtime-defects.json",
+          "note": "Economy/Core durable commands, provisioning and commerce paths verified on 41-chain; rollback/contention/parity green; CI 37817609452"
         }
       ]
     },
     "V5-04-03": {
-      "status": "IN_PROGRESS",
+      "status": "COMPLETE",
       "evidence_refs": [
-        "docs/v5/evidence/phase04-repositories.json"
+        "docs/v5/evidence/phase04-repositories.json",
+        "docs/v5/evidence/phase04-runtime-defects.json"
       ],
       "completed_portions": [],
       "remaining": [],
-      "review_notes": "PostgreSQL repository set implemented over the normalized schema with the frozen member contract and entity-wise aggregate persistence; the unchanged production dispatcher runs on it with no whole-graph blob. Parity per family, a two-scope race with no overdraw or double reservation, full rollback, idempotent replay and a no-SQLite module graph are executed and green (5/5). Cross-owner provisioning fails closed rather than writing half an effect. Resume correction: immutable aggregate creation, receipt-cap replay and refund-before-grant revocation were not covered by prior mirror tests. Close these actual entity-persistence paths before accepting G04.",
+      "review_notes": "PostgreSQL repository set implemented over the normalized schema with the frozen member contract and entity-wise aggregate persistence; the unchanged production dispatcher runs on it with no whole-graph blob. Parity per family, a two-scope race with no overdraw or double reservation, full rollback, idempotent replay and a no-SQLite module graph are executed and green (5/5). Cross-owner provisioning fails closed rather than writing half an effect. Resume correction: immutable aggregate creation, receipt-cap replay and refund-before-grant revocation were not covered by prior mirror tests. Close these actual entity-persistence paths before accepting G04. Authentication/privacy repairs proven: durable OTP accounting, stamps, CAS, locks, privacy projection; artifact://3876 passing-after smoke",
       "transitions": [
         {
           "at_utc": "2026-10-08T14:00:17.595+00:00",
@@ -3490,17 +3538,25 @@
           "from": "COMPLETE",
           "to": "IN_PROGRESS",
           "note": "Resume correction: immutable aggregate creation, receipt-cap replay and refund-before-grant revocation were not covered by prior mirror tests. Close these actual entity-persistence paths before accepting G04."
+        },
+        {
+          "at_utc": "2026-10-08T17:36:36.569+00:00",
+          "from": "IN_PROGRESS",
+          "to": "COMPLETE",
+          "evidence": "docs/v5/evidence/phase04-runtime-defects.json",
+          "note": "Authentication/privacy repairs proven: durable OTP accounting, stamps, CAS, locks, privacy projection; artifact://3876 passing-after smoke"
         }
       ]
     },
     "V5-04-04": {
-      "status": "IN_PROGRESS",
+      "status": "COMPLETE",
       "evidence_refs": [
-        "docs/v5/evidence/phase04-repositories.json"
+        "docs/v5/evidence/phase04-repositories.json",
+        "docs/v5/evidence/phase04-runtime-defects.json"
       ],
       "completed_portions": [],
       "remaining": [],
-      "review_notes": "PostgreSQL repository set implemented over the normalized schema with the frozen member contract and entity-wise aggregate persistence; the unchanged production dispatcher runs on it with no whole-graph blob. Parity per family, a two-scope race with no overdraw or double reservation, full rollback, idempotent replay and a no-SQLite module graph are executed and green (5/5). Cross-owner provisioning fails closed rather than writing half an effect. Resume correction: runtime constructors do not perform DDL in the PG package, but wrong-schema service boot/readiness was not exercised. Complete the real readiness path and negative boot proof.",
+      "review_notes": "PostgreSQL repository set implemented over the normalized schema with the frozen member contract and entity-wise aggregate persistence; the unchanged production dispatcher runs on it with no whole-graph blob. Parity per family, a two-scope race with no overdraw or double reservation, full rollback, idempotent replay and a no-SQLite module graph are executed and green (5/5). Cross-owner provisioning fails closed rather than writing half an effect. Resume correction: runtime constructors do not perform DDL in the PG package, but wrong-schema service boot/readiness was not exercised. Complete the real readiness path and negative boot proof. Core durability repairs proven: identity/aggregate/receipt mutexes, additive burns, truncation classification, immutable identities",
       "transitions": [
         {
           "at_utc": "2026-10-08T14:00:17.663+00:00",
@@ -3515,17 +3571,25 @@
           "from": "COMPLETE",
           "to": "IN_PROGRESS",
           "note": "Resume correction: runtime constructors do not perform DDL in the PG package, but wrong-schema service boot/readiness was not exercised. Complete the real readiness path and negative boot proof."
+        },
+        {
+          "at_utc": "2026-10-08T17:36:36.633+00:00",
+          "from": "IN_PROGRESS",
+          "to": "COMPLETE",
+          "evidence": "docs/v5/evidence/phase04-runtime-defects.json",
+          "note": "Core durability repairs proven: identity/aggregate/receipt mutexes, additive burns, truncation classification, immutable identities"
         }
       ]
     },
     "V5-04-05": {
-      "status": "IN_PROGRESS",
+      "status": "COMPLETE",
       "evidence_refs": [
-        "docs/v5/evidence/phase04-differential.json"
+        "docs/v5/evidence/phase04-differential.json",
+        "docs/v5/evidence/phase04-runtime-defects.json"
       ],
       "completed_portions": [],
       "remaining": [],
-      "review_notes": "Differential, contention and idempotency acceptance is executed: one clock and one seed through the SQLite reference and the PostgreSQL adapter yield identical per-actor and per-entity observable state; racing spending, reward, refund and match settlement/void across separate database scopes cannot overdraw, double-reserve or double-apply, and a failing unit rolls back fully. Writing it exposed six real adapter defects, all fixed with regression cases, and domain() now hydrates the real imported target without error. Suites: p04-repositories 7/7, p04-differential 5/5, uow 11/11, guards 25/25, and the unmodified product suites authority 26/26, rooms 20/20, community 18/18, store 5/5, monetization-store 13/13, design-invariants 16/16. Resume correction: differential and contention adapter checks passed; SQLite-free actual V5 account/social/store service path remains missing. G04 stays unpassed until that path is exercised.",
+      "review_notes": "Differential, contention and idempotency acceptance is executed: one clock and one seed through the SQLite reference and the PostgreSQL adapter yield identical per-actor and per-entity observable state; racing spending, reward, refund and match settlement/void across separate database scopes cannot overdraw, double-reserve or double-apply, and a failing unit rolls back fully. Writing it exposed six real adapter defects, all fixed with regression cases, and domain() now hydrates the real imported target without error. Suites: p04-repositories 7/7, p04-differential 5/5, uow 11/11, guards 25/25, and the unmodified product suites authority 26/26, rooms 20/20, community 18/18, store 5/5, monetization-store 13/13, design-invariants 16/16. Resume correction: differential and contention adapter checks passed; SQLite-free actual V5 account/social/store service path remains missing. G04 stays unpassed until that path is exercised. 36 behavioral regressions added for all critical findings incl. forced races; 47/47 zero-skip on CI 37817609452",
       "transitions": [
         {
           "at_utc": "2026-10-08T14:32:59.007+00:00",
@@ -3540,6 +3604,13 @@
           "from": "COMPLETE",
           "to": "IN_PROGRESS",
           "note": "Resume correction: differential and contention adapter checks passed; SQLite-free actual V5 account/social/store service path remains missing. G04 stays unpassed until that path is exercised."
+        },
+        {
+          "at_utc": "2026-10-08T17:36:36.699+00:00",
+          "from": "IN_PROGRESS",
+          "to": "COMPLETE",
+          "evidence": "docs/v5/evidence/phase04-runtime-defects.json",
+          "note": "36 behavioral regressions added for all critical findings incl. forced races; 47/47 zero-skip on CI 37817609452"
         }
       ]
     }

@@ -104,3 +104,8 @@ test('real Google and Apple provider helpers are compiled, not stubbed or export
   assert.match(read('native/ios/MegaAppleIdentity.swift'), /ASAuthorizationAppleIDProvider/);
   assert.match(read('native/android/MegaGoogleIdentity.kt'), /CredentialManager/);
 });
+
+test('offline Android host has OS-level network-denial until native transport is integrated', () => {
+  const manifest = read('native/android/app/src/main/AndroidManifest.xml');
+  assert.doesNotMatch(manifest, /<uses-permission[^>]+android\.permission\.INTERNET/);
+});

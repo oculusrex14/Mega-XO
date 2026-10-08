@@ -18,7 +18,7 @@ The temporary `online.megaxo.prototype` application ID is **not** an approved Pl
 
 - Main frame: only `https://appassets.androidplatform.net/assets/mega/*` is rendered internally.
 - All HTTPS/HTTP remote subresources and unknown app-assets paths are refused. Only user-initiated external HTTPS links open in a system handler.
-- All `/api/*` requests currently return `503 ONLINE_UNAVAILABLE`, without fabricated sessions or grants, pending P05/P20-03 authenticated transport.
+- GET requests to `/api/*` currently return `503 ONLINE_UNAVAILABLE`. **The APK has no INTERNET permission yet**: WebView interception does not cover POST, so OS-level egress denial is essential until P05/P20-03 adds the authenticated native API transport. Nothing fabricates sessions or grants.
 - No JS bridge exists yet: no `addJavascriptInterface`, ID tokens, payment receipts, ad completion, or native notifications are simulated.
 - Local assets are signed as part of the APK; server authority, secrets and test code are omitted by the shared deterministic bundle builder.
 

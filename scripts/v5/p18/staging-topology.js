@@ -21,6 +21,9 @@ function noSecrets(value,level=0){
  if(level>12)deny('manifest nested too deeply');
  if(value&&typeof value==='object'){
   for(const [name,v] of Object.entries(value)){
+   // This bounded boolean safety assertion is a declared policy, not an
+   // embedded secret. Every other credential-like field remains forbidden.
+   if(name==='productionSecretsAbsent' && typeof v==='boolean') continue;
    if(/(?:password|secret|token|apiKey|cookie|receipt|privateKey|connectionString|credential)/i.test(name)) {
      deny('sensitive field included in topology');
    }

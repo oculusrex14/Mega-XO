@@ -161,3 +161,17 @@ test('native transport is bearer-only, host/path bound and refuses redirects', (
   assert.match(ios, /Idempotency-Key/);
   assert.doesNotMatch(ios, /refreshCredential.*Authorization/);
 });
+
+test('Android UMP and Next-Gen ads never grant rewards or bypass SDK consent', () => {
+  const code = read('native/android/app/src/main/java/online/megaxo/prototype/MegaAndroidAds.kt');
+  const gradle = read('native/android/app/build.gradle.kts');
+  assert.match(gradle, /user-messaging-platform:4\.0\.0/);
+  assert.match(gradle, /ads-mobile-sdk:1\.4\.0/);
+  assert.match(code, /requestConsentInfoUpdate/);
+  assert.match(code, /loadAndShowConsentFormIfRequired/);
+  assert.match(code, /consent\.canRequestAds/);
+  assert.match(code, /ServerSideVerificationOptions\(actor, ticket\)/);
+  assert.match(code, /rewardItem != "cosmetic_reward"/);
+  assert.match(code, /rewardAmount != 1/);
+  assert.doesNotMatch(code, /grantCredits|mintCrowns|setBalance/);
+});

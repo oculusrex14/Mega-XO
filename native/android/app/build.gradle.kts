@@ -55,6 +55,11 @@ android {
         targetSdk = 35
         versionCode = 1
         versionName = "0.1.0-native-dev"
+        // Official test app ID for a non-distributing, offline prototype.
+        // Real releases require an owner-verified AdMob registration.
+        manifestPlaceholders["megaAdMobAppId"] =
+            providers.gradleProperty("megaAdMobAppId").orNull
+                ?: "ca-app-pub-3940256099942544~3347511713"
     }
 
     buildFeatures {
@@ -96,4 +101,6 @@ dependencies {
     implementation("androidx.credentials:credentials-play-services-auth:1.6.0")
     implementation("com.google.android.libraries.identity.googleid:googleid:1.2.1")
     implementation("com.android.billingclient:billing:9.1.0")
+    implementation("com.google.android.ump:user-messaging-platform:4.0.0")
+    implementation("com.google.android.libraries.ads.mobile.sdk:ads-mobile-sdk:1.4.0")
 }

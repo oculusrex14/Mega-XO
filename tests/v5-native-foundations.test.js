@@ -352,3 +352,17 @@ test('Android emulator must assert signed JS UI readiness, not merely a running 
   assert.match(smoke, /if \[ "\$ready" != 1 \]/);
   assert.match(smoke, /startup-log\.txt/);
 });
+
+test('Android emulator also exercises real guest-to-bot gameplay using debug-only CDP', () => {
+  const code = read('scripts/v5/native-smoke-gameplay.cjs');
+  const launch = read('scripts/v5/native-smoke-android.sh');
+  assert.ok(code.includes('Runtime.evaluate'));
+  assert.ok(code.includes('appassets.androidplatform.net/assets/mega/bundle-index.html'));
+  assert.ok(code.includes('data-c=guest'));
+  assert.ok(code.includes('data-action=start'));
+  assert.ok(code.includes("'#board .cell'"));
+  assert.ok(code.includes("length === 81"));
+  assert.ok(code.includes("dataset.mark === 'X'"));
+  assert.ok(launch.includes('webview_devtools_remote_$pid'));
+  assert.ok(launch.includes('android-bot-first-move.png'));
+});

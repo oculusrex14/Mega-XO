@@ -197,6 +197,9 @@ jobs:
         with:
           name: mega-xo-android-debug
           path: ${{ runner.temp }}/mega-apk
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '24'
       - name: Enable KVM acceleration when available
         run: |
           if [ -e /dev/kvm ]; then sudo chmod 666 /dev/kvm; fi

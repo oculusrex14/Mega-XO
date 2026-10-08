@@ -30,3 +30,12 @@ if [ "$ready" != 1 ] || [ -z "$pid" ]; then
   exit 1
 fi
 echo "P20 emulator first-launch: signed offline game UI initialized (not device/provider acceptance)"
+
+# Only the DEBUG WebView exposes DevTools. Exercise the existing approved
+# game controllers as a guest; no production bridge or signed source changes.
+adb forward tcp:9222 "localabstract:webview_devtools_remote_$pid"
+trap 'adb forward --remove tcp:9222 >/dev/null 2>&1 || true' EXIT
+node scripts/v5/native-smoke-gameplay.cjs
+adb exec-out screencap -p > "$SCREENSHOT_DIR/android-bot-first-move.png"
+test -s "$SCREENSHOT_DIR/android-bot-first-move.png"
+echo "P20 Android functional smoke: real offline X move committed"

@@ -145,3 +145,19 @@ test('Android Play Billing 9 uses obfuscated actor binding and delegates all del
   assert.match(code, /backendCommitted/);
   assert.doesNotMatch(code, /\.consumeAsync\(|\.acknowledgePurchase\(/);
 });
+
+test('native transport is bearer-only, host/path bound and refuses redirects', () => {
+  const android = read('native/android/app/src/main/java/online/megaxo/prototype/MegaNativeHttpClient.kt');
+  const ios = read('native/ios/MegaXO/MegaNativeHTTP.swift');
+  assert.match(android, /URL\(host, path\)/);
+  assert.match(android, /instanceFollowRedirects = false/);
+  assert.match(android, /requestMethod = method/);
+  assert.match(android, /Authorization", "Bearer/);
+  assert.match(android, /accessToken == null/);
+  assert.match(ios, /URLSessionConfiguration\.ephemeral/);
+  assert.match(ios, /httpShouldSetCookies = false/);
+  assert.match(ios, /NoRedirectDelegate/);
+  assert.match(ios, /private var accessToken: String\?/);
+  assert.match(ios, /Idempotency-Key/);
+  assert.doesNotMatch(ios, /refreshCredential.*Authorization/);
+});

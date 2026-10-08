@@ -1,0 +1,52 @@
+{
+  "schema_version": 1,
+  "status": "EXECUTED",
+  "phase": "P03",
+  "task_ids": ["V5-03-02"],
+  "case_ids": ["A06", "A08"],
+  "observed_at_utc": "2026-10-08T11:20:00Z",
+  "source_sha": "699be8b",
+  "environment": "Owner Mac (macOS 25.6.0 arm64, node 26.8.2). The extractor reads only an immutable snapshot; no live service, provider or production database is touched.",
+  "commands": [
+    {
+      "action": "Extract the strict raw-plus-parsed model from the live production snapshot under a fixed clock",
+      "command": "node tools/v5-migration/cli.js extract --snapshot <private captured.sqlite> --clock 1791454203642 --release-sha f1e5577d42809fc3da889ba76b87ca6c87e68575",
+      "exit_code": 0,
+      "result": {"ok": true, "tables": 35, "rowsTotal": 5235, "rooms": 1, "fieldsClassified": 37409, "unclassifiedCount": 0, "acceptedCount": 0, "normalizationCount": 2}
+    },
+    {
+      "action": "Repeat the extraction and compare the canonical models byte-for-byte",
+      "exit_code": 0,
+      "result": {"identical": true, "modelSha256": "602435339cbef7f1e17802b29759dc3bcb85a599e6b659a18b6a962794767d9f"}
+    },
+    {
+      "action": "Source-side behaviour suites",
+      "command": "node --test tests/v5-migration-extract.test.js tests/v5-migration-purity.test.js",
+      "exit_code": 0,
+      "result": {"tests": 20, "pass": 20, "fail": 0, "skipped": 0}
+    }
+  ],
+  "result": {
+    "executed": true,
+    "exit_code": 0,
+    "assertions": [
+      "The reader opens exactly one read-only SQLite handle and performs no provider call, HTTP request, wall-clock read or randomness; a missing capture clock is refused rather than defaulted.",
+      "No store or authority constructor is reachable from the reader's require graph, so no time-sensitive season rollover, default minting or random id generation can occur during extraction.",
+      "Duplicate JSON object keys are refused before any value can be overwritten, while legitimate __proto__/constructor/prototype data keys are preserved as own enumerable properties.",
+      "Opaque TEXT metadata may legitimately carry a large legacy integral value while classified money and counters stay strictly safe-integer.",
+      "A quarter boundary is not rolled: a stale stored season is reported as a delta, never written, and the raw bytes stay authoritative.",
+      "Non-UUID and legacy text actor ids, linked providers and bought-Crown reservations survive verbatim.",
+      "Every table and every one of the 37,409 classified fields is accounted for on the real live source: 0 unclassified, 0 accepted-unknown, 0 grammar drift.",
+      "Repeated extraction of the same snapshot under the same clock produces a byte-identical canonical model."
+    ],
+    "unexplained_differences": []
+  },
+  "not_claimed": [
+    "G03 acceptance or any import/reconciliation behaviour",
+    "Production writes or production restore",
+    "Provider, device or store acceptance"
+  ],
+  "restricted_evidence_location": "/Users/oculus/Downloads/Mega-XO-private-evidence/p03-live-production/ (snapshot, model.json, model-again.json; 0600, outside Git)",
+  "sanitized_summary": "The pure extraction layer reads an immutable snapshot with one read-only handle and no constructor, provider call, wall-clock or randomness. On the real live production snapshot it classified all 37,409 fields with zero unclassified and zero accepted entries, reported zero grammar drift, and produced a byte-identical canonical model on repeat. The source-side behaviour suites pass 20/20 with zero skips.",
+  "review_notes": "No value from the source is reproduced in this record; only counts, hashes and structural facts."
+}

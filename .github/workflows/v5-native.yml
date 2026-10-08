@@ -41,11 +41,15 @@ jobs:
           node-version: '24'
       - name: Validate source and host boundaries
         run: node --test tests/v5-native-foundations.test.js tests/v5-client-bundle.test.js
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '17'
       - uses: android-actions/setup-android@v3
+        with:
+          # The action's historic default includes the retired "tools" package,
+          # which sdkmanager refuses on current GitHub Linux runners.
+          packages: platform-tools
       - name: Install SDK 35
         run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
       - uses: gradle/actions/setup-gradle@v4

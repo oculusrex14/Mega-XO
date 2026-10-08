@@ -284,9 +284,45 @@ function prepareOutput(outputRoot, config) {
       } catch {
         previous = null;
       }
-      if (!previous || previous.generator !== GENERATOR) {
-        throw refuse('output directory is not empty and was not written by ' + GENERATOR + ': ' + outputRoot);
+      if (!previous || previous.generator !== GENERATOR || !Array.isArray(previous.files)
+          || previous.manifest_file !== config.manifest || typeof previous.bundle_hash !== 'string') {
+        throw refuse('output directory is not a verified generated bundle: ' + outputRoot);
       }
+      // A forged/stale generator field is not permission to remove user files.
+      // Verify every declared file, reject extra files and reject links anywhere
+      // beneath the output before recursive replacement.
+      const expected = new Set([normalizeBundlePath(config.manifest, 'manifest')]);
+      for (const file of previous.files) {
+        if (!file || typeof file.path !== 'string' || !/^[a-f0-9]{64}$/.test(file.sha256)
+            || !Number.isSafeInteger(file.bytes) || file.bytes < 0) throw refuse('invalid previous bundle inventory');
+        const relative = normalizeBundlePath(file.path, 'previous bundle path');
+        if (expected.has(relative)) throw refuse('duplicate previous bundle path: ' + relative);
+        expected.add(relative);
+        const absolute = path.join(outputRoot, relative);
+        const stat = fs.lstatSync(absolute);
+        if (!stat.isFile() || stat.isSymbolicLink() || stat.size !== file.bytes
+            || sha256(fs.readFileSync(absolute)) !== file.sha256) {
+          throw refuse('previous bundle file changed: ' + relative);
+        }
+      }
+      const actual = new Set();
+      const walk = (dir, prefix = '') => {
+        for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+          if (entry.isSymbolicLink()) throw refuse('previous bundle contains a symlink');
+          const relative = prefix ? prefix + '/' + entry.name : entry.name;
+          if (entry.isDirectory()) walk(path.join(dir, entry.name), relative);
+          else if (entry.isFile()) actual.add(relative);
+          else throw refuse('previous bundle contains an unexpected entry');
+        }
+      };
+      walk(outputRoot);
+      if (expected.size !== actual.size || [...actual].some(file => !expected.has(file))) {
+        throw refuse('previous bundle contains untracked files');
+      }
+      const actualHash = hashParts(previous.files
+        .map(file => file.path + '\u0000' + file.bytes + '\u0000' + file.sha256)
+        .sort());
+      if (actualHash !== previous.bundle_hash) throw refuse('previous bundle manifest hash mismatch');
       fs.rmSync(outputRoot, { recursive: true, force: true });
     }
   }

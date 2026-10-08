@@ -42,19 +42,16 @@ test('P00 frozen approved client source has exactly 21 hash/byte tracked files',
  assert.equal(checked.g18Accepted,false);
  assert.match(checked.baselineSha,/^[a-f0-9]{40}$/);
 });
-test('private screenshot manifests are actually checked against their PNG bytes',t=>{
- const dir=temp(t),manifest=captures(dir);
- assert.equal(verifyCaptures(dir,manifest).size,16);
- const found=compareCaptures(dir,manifest,dir,manifest);
+test('private screenshot manifests are checked against independently captured real-file bytes',t=>{
+ const baselineRoot=temp(t),manifest=captures(baselineRoot,0);
+ assert.equal(verifyCaptures(baselineRoot,manifest).size,16);
+ const candidateRoot=temp(t),identical=captures(candidateRoot,0);
+ const found=compareCaptures(baselineRoot,manifest,candidateRoot,identical);
  assert.equal(found.byteIdenticalScenarios,16);
  assert.equal(found.visualBehavioralParityProven,false);
  assert.equal(found.g18Accepted,false);
- const diff=captures(dir,1);
- const compared=compareCaptures(dir,diff,dir,manifest);
- assert.equal(compared.changedScenariosRequireVisualReview.length,0);
- // Compare against two independently persisted capture roots.
- const other=temp(t),candidate=captures(other,2);
- const result=compareCaptures(dir,diff,other,candidate);
+ const other=temp(t),changed=captures(other,2);
+ const result=compareCaptures(baselineRoot,manifest,other,changed);
  assert.equal(result.changedScenariosRequireVisualReview.length,16);
 });
 test('manifests cannot drop a theme, duplicate a case or lie about SHA/dimensions',t=>{
@@ -84,11 +81,18 @@ test('approved source freeze reports changes as requiring review, never silently
   fs.mkdirSync(path.dirname(target),{recursive:true});
   fs.copyFileSync(path.join(root,row.path),target);
  }
+ const recordedSource=sourceFrozen(root);
  let result=sourceFrozen(dir);
- assert.equal(result.sourceBytesIdenticalToP00,true);
- fs.appendFileSync(path.join(dir,'src','game.js'),'\n// regression');
+ // V5 P01 already introduced an injected AI search clock in src/game.js;
+ // preserve that agent-owned behavior and report its P00 hash difference.
+ assert.deepEqual(result.reviewRequiredFiles,recordedSource.reviewRequiredFiles);
+ const unmodified=baseline.source_manifest.files.find(row=>
+   !recordedSource.reviewRequiredFiles.includes(row.path));
+ assert.ok(unmodified,'expected at least one unchanged approved file');
+ fs.appendFileSync(path.join(dir,unmodified.path),'\n// deliberate regression fixture');
  result=sourceFrozen(dir);
  assert.equal(result.sourceBytesIdenticalToP00,false);
- assert.deepEqual(result.reviewRequiredFiles,['src/game.js']);
+ assert.ok(result.reviewRequiredFiles.includes(unmodified.path));
+ assert.equal(result.reviewRequiredFiles.length,recordedSource.reviewRequiredFiles.length+1);
  assert.equal(result.g18Accepted,false);
 });

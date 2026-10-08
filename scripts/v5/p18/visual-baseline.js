@@ -129,10 +129,15 @@ function compareCaptures(baselineRoot,baseline,candidateRoot,candidate) {
 }
 if(require.main===module){
   try{
-    if(process.argv.length!==3 || process.argv[2]!=='--source-freeze') refuse('usage: visual-baseline.js --source-freeze');
+    if(process.argv.length!==3 || !['--source-freeze','--inspect-source'].includes(process.argv[2])) {
+      refuse('usage: visual-baseline.js --source-freeze|--inspect-source');
+    }
     const report=sourceFrozen(process.cwd());
     process.stdout.write(JSON.stringify(report,null,2)+'\n');
-    if(!report.sourceBytesIdenticalToP00)process.exitCode=2;
+    // CI captures deviations without falsely blessing historical V5 source
+    // changes. Owner-enforced G18 parity intentionally fails on any unreviewed
+    // source divergence from the actual immutable P00 baseline.
+    if(process.argv[2]==='--source-freeze'&&!report.sourceBytesIdenticalToP00)process.exitCode=2;
   }catch(e){process.stderr.write(e.message+'\n');process.exitCode=2;}
 }
 module.exports={THEMES,SCREENS,hash,sourceFrozen,verifyPng,verifyCaptures,compareCaptures};

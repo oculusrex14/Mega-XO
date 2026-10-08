@@ -66,3 +66,14 @@ docs/v5/progress.json, payment/ad policy, or any production service.
   nonzero reconciliation differences, post-first-write SQLite rollback and
   missing first-write evidence. These are **model tests**, not a live cutover
   or a permission to activate the staging/production writer.
+
+## Source deviations requiring deliberate G18 review
+
+The current V5 branch contains a prior agent-owned source change to
+src/game.js: the AI search clock can be injected while its default preserves
+the browser/Node time reading. The P00 source-byte hash therefore differs.
+The P18 PR records this in p18-source-freeze.json via --inspect-source and
+does NOT silently rewrite P00 hashes, revert agent code, or call it approved.
+The later owner G18 visual/gameplay parity decision must review this as a
+concrete behavior-equivalence case with actual tests/screenshots.
+--source-freeze remains the strict command that fails when bytes diverge.

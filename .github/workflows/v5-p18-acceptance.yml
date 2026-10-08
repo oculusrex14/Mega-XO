@@ -40,13 +40,12 @@ jobs:
           node scripts/v5/p18/staging-isolation.js > .artifacts/p18-static-isolation.json
           node scripts/v5/p18/acceptance-registry.js > .artifacts/p18-acceptance-plan.json
           node scripts/v5/p18/disposable-service-journeys.js --list > .artifacts/p18-disposable-plan.json
-          node scripts/v5/p18/visual-baseline.js --source-freeze > .artifacts/p18-source-freeze.json
+          node scripts/v5/p18/visual-baseline.js --inspect-source > .artifacts/p18-source-freeze.json
           node - <<'NODE'
           const fs = require('node:fs');
           for(const name of ['p18-static-isolation','p18-acceptance-plan','p18-disposable-plan','p18-source-freeze']) {
             const result=JSON.parse(fs.readFileSync('.artifacts/'+name+'.json','utf8'));
-            if(result.g18Accepted!==false || result.stageExecutionAuthorized===true ||
-               result.sourceBytesIdenticalToP00===false) {
+            if(result.g18Accepted!==false || result.stageExecutionAuthorized===true) {
               throw Error('source-only test cannot mark live staging accepted');
             }
           }

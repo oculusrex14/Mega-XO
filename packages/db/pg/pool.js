@@ -309,6 +309,15 @@ function createPgPool(input = {}) {
  let ended = false;
  let checkedOut = 0;
  let queued = 0;
+ // pg-pool emits 'error' on the POOL for an idle backend death and on a leased client for a
+ // mid-lease backend death; an unhandled 'error' event throws ERR_UNHANDLED_ERROR and kills
+ // the process (pg-pool/index.js idle handler). Record it as a non-secret diagnostic and
+ // never let it escape as an uncaught process error.
+ let lastPoolError = null;
+ raw.on('error', (error) => {
+  const message = String((error && error.message) || error);
+  lastPoolError = (error && error.code) ? `${error.code}: ${message}` : message;
+ });
  // Synchronous accepted-request reservation. Covers the whole lifecycle -
  // acquiring + leased + queued + RELEASING - from before the first await in
  // acquire() until the actual raw.release/sanitize completes. The gate is
@@ -354,11 +363,23 @@ function createPgPool(input = {}) {
   if (gateQueued) queued = Math.max(0, queued - 1); // leased now; the reservation persists through the lease
   let released = false;
   client[RELEASED] = false;
+  // pg-pool removes its own error listener at acquire time, so a backend killed mid-lease
+  // would otherwise emit 'error' with no listener (uncaught, process-fatal). This no-op
+  // handler keeps the emission non-fatal: the next statement on the dead client rejects
+  // normally and the caller's UoW/transaction path reports it as a failed operation.
+  const leasedErrorGuard = (error) => {
+   const message = String((error && error.message) || error);
+   lastPoolError = (error && error.code) ? `${error.code}: ${message}` : message;
+  };
+  client.on('error', leasedErrorGuard);
   const release = async (failure) => {
    if (released) return;
    released = true;
    checkedOut -= 1;
    client[RELEASED] = true;
+   // Detach the lease-scoped guard first: pg-pool only removes its OWN idle listener, so a
+   // guard left attached would accumulate one per acquire/release cycle.
+   client.removeListener('error', leasedErrorGuard);
    try {
     // POOLED: no session cleanup is verifiable - the same backend is not
     // guaranteed after COMMIT and the pooler owns server reset.
@@ -411,7 +432,7 @@ function createPgPool(input = {}) {
   connect,
   withTransaction,
   query,
-  stats: () => ({ total: raw.totalCount, idle: raw.idleCount, waiting: raw.waitingCount, checkedOut, queued }),
+  stats: () => ({ total: raw.totalCount, idle: raw.idleCount, waiting: raw.waitingCount, checkedOut, queued, lastPoolError }),
   describe: () => ({
    host: resolved.host, port: resolved.port, database: resolved.database, user: resolved.user, role: resolved.role,
    service: resolved.service, revision: resolved.revision, label: resolved.label, applicationName: resolved.applicationName,

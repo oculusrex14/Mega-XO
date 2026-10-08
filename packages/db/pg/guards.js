@@ -432,12 +432,24 @@ async function checkCrossRoleMemberships(client, expectedRole, options = {}) {
  const list = forbidden.map((r) => "'" + String(r).replace(/'/g, "''") + "'").join(',');
  let result;
  try {
+  // CATALOG-DERIVED fail-closed probe: the enumerated list is only a belt-and-braces
+  // companion (pg_has_role for the predefined/admin names). The authoritative check is
+  // ANY edge present for this session in pg_auth_members - pg_signal_backend, pg_monitor,
+  // pg_checkpoint, pg_maintain, pg_read_all_settings, pg_read_all_stats,
+  // pg_stat_scan_tables, pg_use_reserved_connections, pg_create_subscription and any
+  // future predefined/provider role are all refused, whether or not they are enumerated.
+  // PG16 stores no self-edge, so r.oid <> current_user::regrole excludes only self.
+  const anyEdge = await client.query("SELECT r.rolname AS role FROM pg_catalog.pg_roles r WHERE r.oid <> current_user::regrole AND pg_catalog.pg_has_role(current_user, r.oid, 'MEMBER') ORDER BY 1");
+  if (anyEdge && anyEdge.rows && anyEdge.rows.length > 0) {
+   throw new PgGuardError('ROLE_MISMATCH', { expected: expectedRole, role: anyEdge.rows[0].role, roles: anyEdge.rows.map((r) => r.role), reason: 'cross-role-membership', ...(options && options.phase ? { phase: options.phase } : {}) }, 'runtime sessions may not hold any other runtime/owner/migrator/superuser principal');
+  }
   // pg_has_role() RAISES SQLSTATE 42704 for names absent from pg_roles, so
   // the list is existence-filtered first (an absent name cannot be held =>
   // not a member => pass). The predefined pg_* roles DO exist on every PG16
   // and stay banned; only provider-specific names like neon_superuser vary.
   result = await client.query("SELECT pg_catalog.jsonb_object_agg(x.nm, CASE WHEN pr.rolname IS NOT NULL THEN pg_catalog.pg_has_role(current_user, x.nm, 'MEMBER') ELSE false END) AS role_memberships FROM pg_catalog.unnest(ARRAY[" + list + "]::text[]) AS x(nm) LEFT JOIN pg_catalog.pg_roles pr ON pr.rolname = x.nm");
  } catch (error) {
+  if (error instanceof PgGuardError) throw error;
   throw new PgGuardError('ROLE_CHECK_FAILED', { reason: 'cross-membership-probe-failed', message: error && error.message }, error);
  }
  const entries = (result && result.rows && result.rows[0] && result.rows[0].role_memberships) || {};

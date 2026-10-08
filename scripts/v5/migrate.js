@@ -178,7 +178,10 @@ function parseAndGuardUrl(rawUrl, opts = {}) {
   // An empty password is refused for any real endpoint; the loopback CI escape (explicitly
   // opted in via V5_MIGRATE_ALLOW_INSECURE_LOOPBACK below) may use local trust auth.
   const loopbackHost = LOOPBACK_HOSTS.has(u.hostname);
-  const insecureLoopback = loopbackHost && process.env.V5_MIGRATE_ALLOW_INSECURE_LOOPBACK === '1';
+  // The loopback plaintext/password escape is for OWNED SYNTHETIC clusters only and never
+  // applies to a production classification: opts.production comes from the caller's target
+  // classification, so a production-looking database can never be downgraded over loopback.
+  const insecureLoopback = loopbackHost && process.env.V5_MIGRATE_ALLOW_INSECURE_LOOPBACK === '1' && opts.production !== true;
   if (u.username && password === '' && !insecureLoopback) fail(EXIT.CONFIG, 'DATABASE_URL_INVALID', 'empty password with a username is refused');
   const port = u.port ? Number(u.port) : 5432;
   if (!Number.isInteger(port) || port < 1 || port > 65535) fail(EXIT.CONFIG, 'DATABASE_URL_INVALID', 'illegal port');
@@ -264,7 +267,7 @@ async function withClient(cfg, fn) {
   const wantsBinding = cfg.channelBinding === 'require' || cfg.channelBinding === 'prefer';
   const client = new Client({
     host: cfg.host, port: cfg.port, database: cfg.database,
-    user: cfg.user, password: cfg.password, ssl: cfg.ssl || undefined,
+    user: cfg.user, password: cfg.password, ssl: cfg.ssl === false ? false : (cfg.ssl || undefined),
     // pg 8.23.1 has no hard-'require' channel binding mode: enableChannelBinding makes the
     // client OFFER/PREFER SCRAM-SHA-256-PLUS when the server advertises it (libpq prefer
     // semantics). channel_binding=require is therefore ENFORCED by the runner: a pinned,

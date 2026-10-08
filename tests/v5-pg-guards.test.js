@@ -323,6 +323,10 @@ test('assertSessionRole fails closed on a mismatched or broken session without t
     const names = [...sql.matchAll(/'([a-z0-9_]+)'/g)].map((m) => m[1]).filter((n) => n !== 'USAGE');
     return { rows: [{ role_memberships: Object.fromEntries(names.map((n) => [n, (opts.crossMembers || []).includes(n)])) }] };
    }
+   // Catalog-derived zero-edge probe (F1): any membership edge present for the session.
+   if (sql.includes('pg_catalog.pg_roles r')) {
+    return { rows: (opts.crossMembers || []).map((role) => ({ role })) };
+   }
    return { rows: [rows] };
   },
  });
@@ -1182,4 +1186,54 @@ test('plain pool queries enforce their timeout even after a reused session disab
   assert.equal(recovered.current_user, PG_ROLES.API_RUNTIME);
   assert.equal(recovered.session_user, PG_ROLES.API_RUNTIME);
  } finally { await pool.end(); }
+});
+
+/* ------------------------------------------------------------------ F1/F3 regressions (P02 post-verification defects) */
+
+test('any catalog MEMBERSHIP edge is refused, including unenumerated predefined roles (F1)', { skip: SKIP }, async () => {
+ await schemaFixture();
+ const admin = await roleLogin(process.env.V5_PG_ADMIN_USER || 'postgres');
+ const pool = createPgPool(ownedConfig({ user: PG_ROLES.API_RUNTIME, role: PG_ROLES.API_RUNTIME, roleSchemas: ['meta'] }));
+ try {
+  // pg_signal_backend is NOT in the enumerated deny list - before the fix the guard
+  // returned ACCEPTED (parent repro); the catalog-derived probe must refuse it.
+  await admin.query(`GRANT pg_signal_backend TO ${PG_ROLES.API_RUNTIME}`);
+  await assert.rejects(pool.connect(), code('ROLE_MISMATCH'), 'an unenumerated predefined-role edge must fail closed');
+  await admin.query(`REVOKE pg_signal_backend FROM ${PG_ROLES.API_RUNTIME}`);
+  const { client, release } = await pool.connect();
+  try {
+   const any = await client.query("SELECT r.rolname FROM pg_catalog.pg_roles r WHERE r.oid <> current_user::regrole AND pg_catalog.pg_has_role(current_user, r.oid, 'MEMBER')");
+   assert.equal(any.rows.length, 0, 'the zero-edge rule holds after revocation');
+  } finally { await release(); }
+ } finally {
+  await admin.query(`REVOKE pg_signal_backend FROM ${PG_ROLES.API_RUNTIME}`).catch(() => {});
+  await admin.end().catch(() => {});
+  await pool.end();
+ }
+});
+
+test('a pool records backend death as lastPoolError instead of an unhandled error event (F3)', { skip: SKIP }, async () => {
+ await schemaFixture();
+ const pool = createPgPool(ownedConfig({ user: PG_ROLES.API_RUNTIME, role: PG_ROLES.API_RUNTIME, roleSchemas: ['meta'], pool: { max: 1, idleTimeoutMillis: 60000 } }));
+ const admin = await roleLogin(process.env.V5_PG_ADMIN_USER || 'postgres');
+ try {
+  const borrowed = await pool.connect();
+  let pid;
+  try { pid = (await borrowed.client.query('SELECT pg_backend_pid() AS pid')).rows[0].pid; } finally { await borrowed.release(); }
+  assert.equal(pool.stats().lastPoolError, null, 'clean pool records no error');
+  // Kill the idle backend server-side: pg-pool emits 'error' on the pool; without the
+  // handler this is ERR_UNHANDLED_ERROR and kills the process.
+  await admin.query('SELECT pg_terminate_backend($1)', [pid]);
+  await new Promise((resolve) => setTimeout(resolve, 300));
+  const stats = pool.stats();
+  assert.ok(stats.lastPoolError && /57P01|terminat|connection/i.test(stats.lastPoolError), `backend death must be recorded as lastPoolError, got ${stats.lastPoolError}`);
+  // The pool is expected to self-heal (pg-pool discards the dead idle client and opens a fresh
+  // one), so a subsequent query SUCCEEDING is correct behaviour - the invariant under test is
+  // that the death was recorded and never surfaced as an uncaught 'error' event.
+  const healed = await pool.query('SELECT 1 AS ok');
+  assert.equal(healed.rows[0].ok, 1, 'the pool recovers a healthy backend after the recorded death');
+ } finally {
+  await admin.end().catch(() => {});
+  await pool.end();
+ }
 });

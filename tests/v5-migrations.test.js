@@ -32,7 +32,7 @@ const crypto = require('node:crypto');
 const ROOT = path.join(__dirname, '..');
 const MIGRATIONS_DIR = path.join(ROOT, 'packages', 'migrations');
 const RUNNER = path.join(ROOT, 'scripts', 'v5', 'migrate.js');
-const { ADVISORY_LOCK_KEY, migrationChecksum, classifyTarget } = require(RUNNER);
+const { ADVISORY_LOCK_KEY, migrationChecksum, classifyTarget, parseAndGuardUrl } = require(RUNNER);
 const pg = require('pg');
 /* Chain length is read from the committed manifest (single source of truth): counts below
    derive from it instead of hard-coding a number that must be re-pinned every migration. */
@@ -828,12 +828,15 @@ test('0034 upgrade regression: plain keys (including a quote-prefixed one) canon
   const plainKeys = ['party setup v1', '"quoted-prefix"', 'invite#7']; // quote-prefixed logical key, NUL-free
   try {
     fs.cpSync(MIGRATIONS_DIR, scratch, { recursive: true });
-    fs.rmSync(path.join(scratch, 'migrations', '0034_unicode_json_representation.sql'));
-    fs.rmSync(path.join(scratch, 'migrations', '0035_audit_genesis_prev_hash.sql'));
+    // Head-0033 database: keep only files up to the 0034 boundary, whatever the chain length is.
+    const files = fs.readdirSync(path.join(scratch, 'migrations')).filter((f) => /^\d{4}_.*\.sql$/.test(f)).sort();
+    const boundary = files.findIndex((f) => f.startsWith('0034_'));
+    assert.ok(boundary > 0, 'the 0034 boundary exists in the chain');
+    for (const f of files.slice(boundary)) fs.rmSync(path.join(scratch, 'migrations', f));
     runMigrate(['--make-manifest', '--json', '--migrations-dir', scratch]);
     const head = runMigrate(['--execute', '--json', '--migrations-dir', scratch, '--database-url', dbUrl(database)], confirmEnv(database));
     assert.equal(head.status, 0, `head apply failed: ${head.stdout}${head.stderr}`);
-    assert.equal(head.json.appliedCount, CHAIN_LENGTH - 2);
+    assert.equal(head.json.appliedCount, boundary);
     const c = await connectAdmin(database);
     try {
       await c.query("SET ROLE v5_owner; INSERT INTO identity.actors(actor_id, created_at) VALUES ('u_canon', now())");
@@ -900,7 +903,10 @@ test('runner refuses unconfirmed, pooler, weak-TLS, bad-binding and unprivileged
     const cases = [
       [['--execute', '--json', '--database-url', good], {}, 2, 'CONFIRMATION_REQUIRED', 'missing confirm'],
       [['--execute', '--json', '--database-url', good], { MIGRATE_CONFIRM: 'nope', V5_TARGET: 'test' }, 2, 'CONFIRMATION_REQUIRED', 'wrong confirm'],
-      [['--execute', '--json', '--database-url', good.replace(/v5_test[a-z0-9_]*/, 'v5_production_refusal_probe')], { MIGRATE_CONFIRM: 'v5_production_refusal_probe', V5_TARGET: 'production' }, 2, 'PRODUCTION_CONFIRMATION_REQUIRED', 'production without second flag'],
+      // F2: a production classification is refused at PARSE time over plaintext loopback (the
+      // loopback escape never applies to production), so this case asserts that refusal; the
+      // second-approval gate is exercised separately below with a TLS-valid production URL.
+      [['--execute', '--json', '--database-url', good.replace(/v5_test[a-z0-9_]*/, 'v5_production_refusal_probe')], { MIGRATE_CONFIRM: 'v5_production_refusal_probe', V5_TARGET: 'production' }, 2, 'DATABASE_URL_INVALID', 'production classification refuses the plaintext loopback escape'],
       [['--execute', '--json', '--database-url', good.replace('127.0.0.1', 'pooler-host-pooler.example')], { MIGRATE_CONFIRM: database, V5_TARGET: 'test' }, 2, 'DATABASE_URL_INVALID', 'pooler host'],
       [['--execute', '--json', '--database-url', extDb() + '?sslmode=verify-ca'], { MIGRATE_CONFIRM: 'v5db' }, 2, 'DATABASE_URL_INVALID', 'verify-ca off-loopback'],
       [['--execute', '--json', '--database-url', extDb() + '?sslmode=no-verify'], { MIGRATE_CONFIRM: 'v5db' }, 2, 'DATABASE_URL_INVALID', 'no-verify'],
@@ -946,6 +952,31 @@ test('runner refuses unconfirmed, pooler, weak-TLS, bad-binding and unprivileged
       if (priorTarget === undefined) delete process.env.V5_TARGET;
       else process.env.V5_TARGET = priorTarget;
     }
+    // F2 (parent repro): the loopback plaintext escape must NEVER apply to a production
+    // classification, and a deliberate no-TLS decision must survive into the client config
+    // (ssl:false was being converted to undefined, letting pg fall back to the environment).
+    const priorEsc = process.env.V5_MIGRATE_ALLOW_INSECURE_LOOPBACK;
+    process.env.V5_MIGRATE_ALLOW_INSECURE_LOOPBACK = '1';
+    try {
+      // production classification: plaintext loopback is refused for both the implicit and
+      // explicit forms, while a staging classification still admits it on an owned cluster.
+      assert.throws(() => parseAndGuardUrl('postgresql://postgres@127.0.0.1:50709/v5_production_repro', { production: true }),
+        (e) => e && e.code === 'DATABASE_URL_INVALID', 'production classification must not be downgraded over loopback (implicit)');
+      assert.throws(() => parseAndGuardUrl('postgresql://postgres@127.0.0.1:50709/v5_production_repro?sslmode=disable', { production: true }),
+        (e) => e && e.code === 'DATABASE_URL_INVALID', 'production classification must not be downgraded over loopback (sslmode=disable)');
+      const stagingOk = parseAndGuardUrl('postgresql://postgres@127.0.0.1:50709/v5_test_repro', { production: false });
+      assert.equal(stagingOk.ssl, false, 'staging loopback escape keeps the explicit no-TLS decision');
+    } finally {
+      if (priorEsc === undefined) delete process.env.V5_MIGRATE_ALLOW_INSECURE_LOOPBACK;
+      else process.env.V5_MIGRATE_ALLOW_INSECURE_LOOPBACK = priorEsc;
+    }
+    // The production second-approval gate is still reachable with a TLS-valid production URL:
+    // with the correct confirm echo but no --confirm-production, the runner refuses with
+    // PRODUCTION_CONFIRMATION_REQUIRED (exit 2) before any connection.
+    const prodTls = runMigrate(['--execute', '--json', '--database-url', 'postgresql://postgres:v5probe@ep-db.example.neon.tech:5432/v5_production_probe?sslmode=verify-full'],
+      { MIGRATE_CONFIRM: 'v5_production_probe', V5_TARGET: 'production' });
+    assert.equal(prodTls.status, 2, prodTls.stdout + prodTls.stderr);
+    assert.equal(prodTls.json.code, 'PRODUCTION_CONFIRMATION_REQUIRED', 'production requires the second approval flag');
     // secrets never appear in output
     const leak = runMigrate(['--verify', '--json', '--database-url', 'postgres://postgres:SUP3RSECRET@db.example.com:5432/v5x?sslmode=disable']);
     assert.equal(leak.status, 2);

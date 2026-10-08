@@ -1,0 +1,60 @@
+{
+  "schema_version": 1,
+  "status": "PASS",
+  "phase": "P03",
+  "gate": "G03",
+  "task_ids": ["V5-03-01", "V5-03-02", "V5-03-03", "V5-03-04", "V5-03-05", "V5-03-06"],
+  "case_ids": ["A06", "A07", "A08", "A09"],
+  "observed_at_utc": "2026-10-08T14:10:00Z",
+  "source_sha": "2b47185",
+  "environment": "Owner Mac (macOS 25.6.0 arm64, node 26.8.2) plus exclusively-owned PostgreSQL 16.15 databases on loopback and the isolated nonserving Neon staging target. The live V4.1.2 production database was used only as an offline retrieved copy; it was never opened for write.",
+  "evidence_refs": [
+    "docs/v5/evidence/phase03-source-capture.json",
+    "docs/v5/evidence/phase03-pure-extraction.json",
+    "docs/v5/evidence/phase03-import-coverage.json",
+    "docs/v5/evidence/phase03-reconciliation.json",
+    "docs/v5/evidence/phase03-rerun-resume.json",
+    "docs/v5/evidence/phase03-foundation-proof.json"
+  ],
+  "gate_conditions": {
+    "representative_v4_snapshots_import_with_zero_unexplained_per_actor_data_differences": {
+      "met": true,
+      "evidence": "The REAL live V4.1.2 production model (2 actors, 2 matches, 1 tournament room, 48 economy and 7 party command outcomes, 4 journal rows, 5000 support events; not a synthetic fixture and not the empty historical artifact) was captured, extracted and imported into the isolated staging target, then reconciled independently: unexplained 0, with all 5272 committed row hashes recomputed and matching and all nine conservation equations C1-C9 passing. The A07 swapped-wallet fault is DETECTED even when the global total is provably unchanged (307 before and after), so an aggregate-only comparison cannot yield a false success."
+    },
+    "reruns_and_interruption_recovery_preserve_identical_canonical_state": {
+      "met": true,
+      "evidence": "A repeated import under the same run id writes zero rows and verifies every previously committed row; a fresh run id converges, writing only the three singleton rows that are legitimately re-adopted. A client aborted mid-batch leaves the committed batches intact and the interrupted batch re-executes from its last committed canonical key to a target digest identical to an uninterrupted run. Row and primary-key hashes are computed in Node from an explicit column list, so two databases whose server timezones differ produce byte-identical 5272-entry ledger digests (e126fee026ddb2f545b711e61f236ffefa4e56f9f9a21fe093b3e94b87440581)."
+    },
+    "all_financial_and_identity_invariants_preserved": {
+      "met": true,
+      "evidence": "Per-actor wallets (150 and 157 coins, zero reserved and zero crowns), the four journal rows that explain those balances exactly, both identities, both email credentials with salt and hash verbatim, both profiles, both matches with their receipts, the tournament room with its shape version, and every rating/eligibility/visibility field round-trip exactly. The importer generates no identifier, grants nothing by default, rolls no season forward and applies no historical journal posting."
+    },
+    "unknown_source_state_never_silently_dropped": {
+      "met": true,
+      "evidence": "Coverage records 5245 locators with their dispositions (5222 verbatim, 21 ephemeral, 2 opaque) and zero unclassified on the real target; an unclassified locator fails the run and an unknown target is refused rather than created. The 37,409 classified source fields produced zero unclassified and zero accepted-unknown entries."
+    },
+    "restricted_details_retained_and_sanitized_checksummed_summary_published": {
+      "met": true,
+      "evidence": "Row-level differences and the migration manifest are retained outside Git at 0600 under the owner's private evidence directory, and a sanitized checksummed summary (counts, hashes and category names only) is published as docs/v5/evidence/phase03-foundation-proof.json with manifest checksum 50ba026b85a377161420ad4829384c36c8006f0bed3dc7e71aa53a36c7ed1ce6."
+    }
+  },
+  "result": {
+    "executed": true,
+    "exit_code": 0,
+    "assertions": [
+      "G03 is satisfied on the isolated, nonserving scope it covers: a representative real production snapshot imports with zero unexplained per-actor differences, reruns and interruption recovery preserve identical canonical state, and all financial and identity invariants hold.",
+      "Both exact-checkpoint CI workflows pass at the recorded head.",
+      "The complete P03 toolkit (capture, reader, mapping, ledger, loader, reconciler and their suites) is committed: extract+purity 20/20, load 2/2, reconcile 9/9, all with zero skips.",
+      "No production write, provider activation, credential disclosure or serving V5 path was touched."
+    ],
+    "unexplained_differences": []
+  },
+  "not_claimed": [
+    "Production schema deployment, production import or authority cutover (P22)",
+    "Semantic command replay through the V5 runtime path (P04/P08)",
+    "The new website/browser product",
+    "Provider, device or store acceptance"
+  ],
+  "sanitized_summary": "G03 conditions are met for the isolated nonserving scope this gate covers. A real live V4.1.2 production snapshot was captured, extracted, imported into the isolated Neon staging target and independently reconciled with zero unexplained differences, every row hash verified and all nine conservation equations passing; reruns and interruption recovery converge to identical canonical state, and two databases with different server timezones produce byte-identical ledger digests. Coverage accounts for every durable source locator with none unclassified, restricted details are retained outside Git and a sanitized checksummed summary is published. Production remains the untouched V4.1.2 authority.",
+  "review_notes": "Every statement was executed and observed in this session; nothing is inferred from files or checkboxes. Defects found by executing were fixed and re-verified rather than worked around, including three reproduced P02 guard defects, a timezone-dependent row-hash rule, a subset-column hashing rule, U+0000-corrupted composite locators and a raw date read path in the reconciler."
+}

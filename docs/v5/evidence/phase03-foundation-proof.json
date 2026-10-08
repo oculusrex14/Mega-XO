@@ -1,0 +1,74 @@
+{
+  "schema_version": 1,
+  "status": "EXECUTED",
+  "phase": "P03",
+  "task_ids": ["V5-03-06"],
+  "case_ids": ["A06", "A07", "A08", "A09"],
+  "observed_at_utc": "2026-10-08T14:00:00Z",
+  "source_sha": "2b47185",
+  "environment": "Owner Mac (macOS 25.6.0 arm64, node 26.8.2) importing into the isolated, nonserving Neon staging target over a direct TLS connection. V4.1.2 production authority and its data were never read for write and never modified.",
+  "target_ids": {
+    "neon_org_id": "org-wandering-sea-53820697",
+    "staging_project_id": "lively-shadow-52629967",
+    "staging_branch_id": "br-falling-resonance-b87qm6iz",
+    "staging_endpoint_id": "ep-red-waterfall-b880jir8",
+    "staging_host": "ep-red-waterfall-b880jir8.c-14.us-east-1.aws.neon.tech",
+    "staging_database": "mega_xo_v5_staging",
+    "staging_server_version": "16.15 (9e87aff)"
+  },
+  "commands": [
+    {
+      "action": "Apply the 36th migration (the import bookkeeping namespace) to the isolated staging target",
+      "command": "node scripts/v5/migrate.js --execute --json",
+      "exit_code": 0,
+      "result": {"appliedCount": 1, "applied": [36], "channelBinding": {"requested": "require", "enableChannelBinding": true, "observedMechanism": "SCRAM-SHA-256-PLUS", "enforced": true}}
+    },
+    {
+      "action": "Import the real live-production model into the isolated staging target",
+      "exit_code": 0,
+      "result": {"runId": "staging-live-1", "batches": 70, "rowsWritten": 5145, "coverageLocators": 5245, "status": "committed"}
+    },
+    {
+      "action": "Independently reconcile the staging target against the source model",
+      "exit_code": 0,
+      "result": {"unexplainedCount": 0, "explainedCount": 6, "byCategory": {"restore-normalization": 2, "drained-outbox": 2, "expired-session": 1, "ephemeral-rebuild": 1}, "hashConventions": {"canonical": 5272}, "equations": "C1..C9 all pass"}
+    },
+    {
+      "action": "Retain the restricted difference/summary set and produce a sanitized checksummed manifest",
+      "exit_code": 0,
+      "result": {"rowLedgerEntries": 5272, "differences": 6, "manifestChecksum": "50ba026b85a377161420ad4829384c36c8006f0bed3dc7e71aa53a36c7ed1ce6", "sanitizedChecksum": "4e06b3fcb53b6144f3b39c884fa9e77d1ca3a5fbaa4114d66c3d310c94dae640"}
+    }
+  ],
+  "result": {
+    "executed": true,
+    "exit_code": 0,
+    "assertions": [
+      "A representative real V4 snapshot (the live production model, not a synthetic fixture and not the empty historical artifact) imported into the isolated nonserving staging target with the run recorded as committed.",
+      "Reconciliation of that target against the source reports zero unexplained differences, with all 5272 committed row hashes independently recomputed and matching.",
+      "Every conservation equation C1-C9 passes on the staging target: per-actor available/reserved identity, reserved closure, burn composition, conversion pairing, tournament pool algebra, wealth cross-check, occupancy single-valuedness, relationship symmetry and principal referential classes.",
+      "Coverage is complete on the real target: 5245 source locators recorded with dispositions (5222 verbatim, 21 ephemeral, 2 opaque) and zero unclassified.",
+      "Target row counts match the source: 2 actors, 2 profiles, 2 identities, 2 email credentials, 2 practice saves, 1 friendship, 2 wallets, 4 journal entries, 55 command outcomes, 2 matches with 4 participants and 36 moves, 1 tournament room, 136 rate buckets, 2 outbox rows, 5000 support events, and the league-week, system-burns and runtime-controls singletons.",
+      "The six explained differences are exactly the closed-category kinds the source justifies (two restore-normalization deltas, the drained outbox rows, an expired session and a rebuilt presence row); none is classified as unexplained.",
+      "The restricted difference set and the migration manifest are retained outside Git at 0600, and a sanitized checksummed summary is produced containing counts, hashes and category names only - no actor id, email address, credential or raw row.",
+      "The import ran over a direct TLS connection with an explicit root CA, and the migration observed and enforced SCRAM-SHA-256-PLUS channel binding; no production target, provider secret or serving V5 path was touched."
+    ],
+    "unexplained_differences": []
+  },
+  "artifacts": [
+    "docs/v5/evidence/phase03-foundation-proof.json (this record)",
+    "docs/v5/evidence/phase03-import-coverage.json",
+    "docs/v5/evidence/phase03-reconciliation.json",
+    "docs/v5/evidence/phase03-rerun-resume.json",
+    "docs/v5/evidence/phase03-pure-extraction.json",
+    "docs/v5/evidence/phase03-source-capture.json"
+  ],
+  "restricted_evidence_location": "/Users/oculus/Downloads/Mega-XO-private-evidence/p03-staging-proof/ (differences.jsonl, migration-manifest.json, foundation-proof-sanitized.json; 0600, outside Git)",
+  "sanitized_summary": "A real live-production snapshot was imported into the isolated nonserving Neon staging target and independently reconciled: zero unexplained per-actor differences, every committed row hash verified, and all nine conservation equations passing. Coverage accounts for every durable source locator. The restricted row-level differences and the migration manifest are retained outside Git, and a sanitized checksummed summary is published. Production remains the untouched V4.1.2 authority.",
+  "not_claimed": [
+    "G03 phase-gate acceptance itself is recorded separately by the gate-evidence record",
+    "Production schema deployment, production import or cutover",
+    "Semantic command replay through the V5 runtime path (P04/P08)",
+    "Provider, device or store acceptance"
+  ],
+  "review_notes": "The import, verification and manifest production were all executed in this session and observed by the parent. Nothing in this record reproduces an actor id, email address, credential value or raw player row. The staging target is nonserving; the production database was never opened for write."
+}

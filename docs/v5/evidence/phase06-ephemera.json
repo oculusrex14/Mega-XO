@@ -12,7 +12,7 @@
     "A15"
   ],
   "recorded_at_utc": "2026-10-08T20:53:03.772Z",
-  "source_state": "Verified worktree based on c9a97e0156fc3a8d25f7c02d74d701129cdcabe4; exercised source SHA256 manifest below pins exact bytes; checkpoint SHA is recorded after commit.",
+  "source_state": "Local acceptance and TLS smoke exercised the exact source bytes in verified_source_sha256 immediately before committing code checkpoint e51a82bb1c85cddfa1f9474a68f664561fffd65a. The original selected integration base remains455b8ec9ea4070b4410d78f9eea2aaa06d32c0b2 (see BASELINE.md for authoritative full SHA). Both exact-checkpoint CI workflows completed successfully; runtime acceptance remains limited to the recorded local/CI adapter scope.",
   "environment": "Owner macOS workstation; owned PostgreSQL16 loopback 127.0.0.1:50709 and a local disposable Redis 8.10.2 on 127.0.0.1:50710 (no persistence, owned by this session). No production, Neon, provider-console, browser account or device mutation.",
   "implemented": {
     "service": "packages/services/ephemera.js: namespaced bounded Redis primitives. Every key is mx:<env>:<keyVersion>:<family>:<parts> with an allowlisted family and validated parts, so environments cannot read or write each other. Every write carries an explicit positive TTL (refused, never defaulted) or is a sorted set with key TTL plus score trimming; the auditUnboundedKeys() SCAN proves no immortal keys. Values are bounded 4 KiB opaque strings. Families: presence/heartbeat, candidate queues, cache, non-security rate budgets (security-class budgets remain ops.rate_buckets in PostgreSQL), single-flight locks (compare-and-delete release), revocation/limit hints, socket routing, pubsub.",
@@ -78,7 +78,7 @@
       "classification": "Real separate Node adapter processes share heartbeat/cache/route/pubsub and admit exactly8 of12 rate hits; stale lock token cannot release new owner; all children exit naturally. Complete durable-row snapshots across ten tables are content-identical after namespace wipe and total loss. Paid receipt, redeemed ticket and revoked family survive; rejoin repopulates ephemeral queue/presence. Includes constructor/TTL refusals, atomic queue expiry, bounded loss and active/down subscriber shutdown."
     },
     {
-      "command": "Bun.spawn node -e read(local://p06-tls-smoke.cjs), EPHEMERA_MODULE=packages/services/ephemera.js P06_TLS_CA_FILE=<owned temporary public CA> P06_TLS_PORT=63161; owned redis-server --port0 --tls-port63161 --tls-auth-clients no --save empty --appendonly no",
+      "command": "var tlsSmokeSource = await read('local://p06-tls-smoke.cjs'); var tlsSmokeProc = Bun.spawn(['node','-e',tlsSmokeSource],{cwd:'/Users/oculus/Downloads/Test XO',env:{...process.env,EPHEMERA_MODULE:'/Users/oculus/Downloads/Test XO/packages/services/ephemera.js',P06_TLS_CA_FILE:tlsSmokeDir+'/server.crt',P06_TLS_PORT:String(tlsSmokePort)},stdout:'pipe',stderr:'pipe'}); var tlsSmokeOutput = await Promise.all([new Response(tlsSmokeProc.stdout).text(),new Response(tlsSmokeProc.stderr).text(),tlsSmokeProc.exited]); display({exit:tlsSmokeOutput[2],stdout:tlsSmokeOutput[0],stderr:tlsSmokeOutput[1]});",
       "environment": "Owned loopback TLS Redis8.10.2 with one-day self-signed CA, real TLS through delayed TCP proxy, no provider claim",
       "result": {
         "exit": 0,
@@ -91,7 +91,23 @@
         "natural_exit": true,
         "stderr": ""
       },
-      "classification": "Actual trusted/untrusted TLS connection and real publish/subscribe. Main+duplicate are closed before delayed TLS handshakes finish; both network sockets drain and the process exits without force-exit. Throwaway fixture removed after recording."
+      "classification": "Actual trusted/untrusted TLS connection and real publish/subscribe. Main+duplicate are closed before delayed TLS handshakes finish; both network sockets drain and the process exits without force-exit. Throwaway fixture removed after recording.",
+      "script_sha256": "e818834faf101fab1e5e96fe310ddedb3107e4b73f1acc2f3af56d45a1cf1423",
+      "fixture_command": "/opt/homebrew/opt/redis/bin/redis-server --bind 127.0.0.1 --port 0 --tls-port 63161 --tls-cert-file /tmp/mega-v5-p06-tls-PetgFZ/server.crt --tls-key-file /tmp/mega-v5-p06-tls-PetgFZ/server.key --tls-ca-cert-file /tmp/mega-v5-p06-tls-PetgFZ/server.crt --tls-auth-clients no --save \"\" --appendonly no"
+    },
+    {
+      "command": "gh run watch 37843277291 --exit-status --interval 30; gh run watch 37843277317 --exit-status --interval 30; gh run download 37843277291 --name v5-postgresql-evidence --dir /var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/mega-v5-p06-ci-HP3HVs",
+      "environment": "GitHub Actions ubuntu-latest, PostgreSQL16.15 disposable service plus pinned Redis7.4 container, Node24; exact code checkpoint e51a82bb1c85cddfa1f9474a68f664561fffd65a",
+      "result": {
+        "postgresql": "SUCCESS",
+        "validation": "SUCCESS",
+        "p06_primitives": 3,
+        "p06_lifecycle": 5,
+        "p06_skips": 0,
+        "cleanup_leftover": [],
+        "control_database_present": true
+      },
+      "classification": "Actual completed exact-SHA CI, artifact retrieved and parsed. Original browser/game/economy/abuse/deployment checks passed; V4 publish/images skipped as intended. Not managed-provider, device or production proof."
     }
   ],
   "task_outcomes": {
@@ -126,11 +142,139 @@
       "parent wrote fd3 while child read stdin: EPHEMERA_CHILD_TIMEOUT:call/shutdown",
       "node-redis outstanding60000ms reconnect sleeps delayed natural runner exit"
     ],
-    "resolution": "Matched IPC input/output; exercised invalid key with valid family; capped reconnect/connect delays and used assignment-aware drain. Removed duplicate zero-window row: zero/negative/fractional/NaN cases remain covered by pre-I/O refusal test."
+    "resolution": "Matched IPC input/output; exercised invalid key with valid family; capped reconnect/connect delays and used assignment-aware drain. Removed duplicate zero-window row: zero/negative/fractional/NaN cases remain covered by pre-I/O refusal test.",
+    "source_state": "Base c9a97e0156fc3a8d25f7c02d74d701129cdcabe4 with in-flight uncommitted fixture/service edits; exact failing source bytes were not separately hashed, so no failing-commit claim."
   },
   "review": {
     "agent": "P06FinalReview",
     "result": "No high-priority consumer-visible findings in read-only source review",
     "runtime_checks_by_reviewer": false
+  },
+  "verified_code_checkpoint_sha": "e51a82bb1c85cddfa1f9474a68f664561fffd65a",
+  "checkpoint_ci": [
+    {
+      "id": 37843277291,
+      "name": "V5 PostgreSQL integration",
+      "sha": "e51a82bb1c85cddfa1f9474a68f664561fffd65a",
+      "status": "SUCCESS",
+      "url": "https://github.com/oculusrex14/Mega-XO/actions/runs/37843277291"
+    },
+    {
+      "id": 37843277317,
+      "name": "Mega XO validation",
+      "sha": "e51a82bb1c85cddfa1f9474a68f664561fffd65a",
+      "status": "SUCCESS",
+      "url": "https://github.com/oculusrex14/Mega-XO/actions/runs/37843277317"
+    }
+  ],
+  "ledger_smoke": {
+    "command": "node scripts/v5/progress.js inspect && node scripts/v5/progress.js render --check",
+    "result": {
+      "exit": 0,
+      "contract_match": true,
+      "tasks": 117,
+      "terminal": 33,
+      "phase_gates_passed": 6,
+      "eligible": [
+        "V5-06-01"
+      ],
+      "blocked": 83,
+      "errors": 0,
+      "warnings": 0,
+      "todo": "up to date"
+    },
+    "classification": "Actual corrected resume CLI; no gate bypass or phase acceptance inferred"
+  },
+  "ci_artifact": {
+    "id": 11578438429,
+    "name": "v5-postgresql-evidence",
+    "run": 37843277291,
+    "sha": "e51a82bb1c85cddfa1f9474a68f664561fffd65a",
+    "coverage": {
+      "tool": "v5-pg-coverage",
+      "suites": [
+        {
+          "file": "tests/v5-migrations.test.js",
+          "pass": 11,
+          "fail": 0,
+          "skipped": 0
+        },
+        {
+          "file": "tests/v5-pg-guards.test.js",
+          "pass": 25,
+          "fail": 0,
+          "skipped": 0
+        },
+        {
+          "file": "tests/v5-p04-repositories.test.js",
+          "pass": 6,
+          "fail": 0,
+          "skipped": 0
+        },
+        {
+          "file": "tests/v5-p04-differential.test.js",
+          "pass": 4,
+          "fail": 0,
+          "skipped": 0
+        },
+        {
+          "file": "tests/v5-p04-services.test.js",
+          "pass": 37,
+          "fail": 0,
+          "skipped": 0
+        },
+        {
+          "file": "tests/v5-p05-access.test.js",
+          "pass": 28,
+          "fail": 0,
+          "skipped": 0
+        },
+        {
+          "file": "tests/v5-p05-refresh.test.js",
+          "pass": 28,
+          "fail": 0,
+          "skipped": 0
+        },
+        {
+          "file": "tests/v5-p05-tickets.test.js",
+          "pass": 28,
+          "fail": 0,
+          "skipped": 0
+        },
+        {
+          "file": "tests/v5-p05-integration.test.js",
+          "pass": 28,
+          "fail": 0,
+          "skipped": 0
+        },
+        {
+          "file": "tests/v5-p06-ephemera.test.js",
+          "pass": 3,
+          "fail": 0,
+          "skipped": 0
+        },
+        {
+          "file": "tests/v5-p06-lifecycle.test.js",
+          "pass": 5,
+          "fail": 0,
+          "skipped": 0
+        }
+      ],
+      "ok": true
+    },
+    "cleanup": {
+      "tool": "v5-pg-cleanup",
+      "leftover": [],
+      "controlDatabasePresent": true
+    },
+    "service": {
+      "tool": "v5-pg-service",
+      "serverVersion": "16.15 (Debian 16.15-1.pgdg13+2)",
+      "serverMajor": 16,
+      "migrations": 42,
+      "migrationsAggregateSha256": "32103e36960bc972059738bd246a50f976b7c2d7c92e9c0ee5998d03946dbd55",
+      "manifestSha256": "dfbff4ad3114c99c9c43034499f1ce1eb871b29552348504a3142d08405f1dca"
+    },
+    "coverage_note": "The four P05 entries repeat their shared28-test aggregate; do not sum them four times. P06 executes3 primitive/wipe tests and5 lifecycle tests, zero failures/skips. Disposable DB cleanup has no leftovers and the supplied control database remains."
   }
 }

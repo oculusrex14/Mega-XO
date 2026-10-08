@@ -53,14 +53,14 @@ const OWNED_DB_PREFIX = 'v5_smoke_';
 const PRODUCTION_TOKENS = /(^|[^a-z0-9])(prod|production|live)([^a-z0-9]|$)/i;
 
 /* Login roles the synthetic harness enables, and the schemas each runtime role is granted in
- * the checksummed chain (0001 roles, 0020 api, 0021 core, 0022 worker, 0023 backup/audit).
- * The lists are read off the migration files, not from the guard defaults, because a migration
- * smoke must assert the grants the chain actually ships. */
+ * the checksummed chain (0001 roles, 0020 api, 0021 core, 0022 worker, 0023 backup/audit, 0038
+ * runtime service boundaries + meta boot-readiness). The lists are read off the migration files,
+ * not from the guard defaults, because a migration smoke must assert the grants the chain ships. */
 const RUNTIME_LOGIN_ROLES = ['api_runtime', 'core_runtime', 'worker_runtime', 'backup_reader', 'audit_runtime'];
 const ROLE_SCHEMAS = Object.freeze({
-  api_runtime: ['identity', 'profile', 'social', 'privacy', 'support', 'ops', 'runtime'],
-  core_runtime: ['economy', 'core', 'match', 'tournament', 'monetization', 'season', 'cosmetics', 'identity', 'runtime'],
-  worker_runtime: ['ops', 'monetization', 'privacy', 'support', 'runtime'],
+  api_runtime: ['meta', 'identity', 'profile', 'social', 'privacy', 'support', 'ops', 'runtime'],
+  core_runtime: ['meta', 'economy', 'core', 'match', 'tournament', 'monetization', 'season', 'cosmetics', 'identity', 'runtime', 'social', 'ops'],
+  worker_runtime: ['meta', 'ops', 'monetization', 'privacy', 'support', 'runtime'],
   backup_reader: ['meta', 'identity', 'profile', 'social', 'economy', 'core', 'match', 'tournament',
     'monetization', 'cosmetics', 'season', 'privacy', 'audit', 'support', 'runtime', 'ops'],
   audit_runtime: ['audit'],

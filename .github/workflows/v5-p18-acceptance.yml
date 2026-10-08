@@ -65,7 +65,7 @@ jobs:
           retention-days: 7
           if-no-files-found: error
   p18-disposable-services:
-    name: P18 disposable import/reconciliation/economy/identity journeys
+    name: P18 disposable import/economy/Redis-loss/actor journeys
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
@@ -74,6 +74,9 @@ jobs:
       V5_PG_REQUIRED: '1'
       V5_TARGET: test
       V5_MIGRATE_ALLOW_INSECURE_LOOPBACK: '1'
+      REDIS_URL: redis://127.0.0.1:6379
+      V5_REDIS_REQUIRED: '1'
+      V5_REDIS_DISPOSABLE: '1'
     services:
       postgres:
         image: postgres:16@sha256:ca0bd484cb98bf4b24eb1010e73fb3fcbd6714d240fbc1a10eea5b7dbecb641d
@@ -89,6 +92,17 @@ jobs:
           --health-timeout 5s
           --health-retries 24
           --health-start-period 10s
+      redis:
+        # Same pinned real Redis 7.4 image as V5's disposable P06 CI.
+        # This isolated container never resolves production Redis.
+        image: redis:7.4@sha256:cd745595f143052dd6a743bc5651d3ce4b03979fe5c99c7fcfab73461f6f217b
+        ports:
+          - 127.0.0.1:6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 24
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
@@ -98,7 +112,7 @@ jobs:
           node-version: '24'
       - name: Install locked PostgreSQL dependencies
         run: npm ci --ignore-scripts
-      - name: Execute real V4 SQLite import, PG reconciliation, economic parity and actor journeys
+      - name: Execute real V4 import, PG economic parity, Redis loss and actor journeys
         run: |
           set -euo pipefail
           mkdir -p .artifacts
@@ -107,7 +121,8 @@ jobs:
           const fs=require('node:fs');
           const result=JSON.parse(fs.readFileSync('.artifacts/p18-disposable-services.json','utf8'));
           if(result.g18Accepted!==false || result.liveStagingVerified!==false ||
-             result.serviceEndpointClass!=='OWNED_LOOPBACK_ONLY') throw Error('disposable result misrepresented as G18');
+             result.serviceEndpointClass!=='OWNED_LOOPBACK_ONLY' ||
+             result.ephemeralEndpointClass!=='OWNED_LOOPBACK_ONLY') throw Error('disposable result misrepresented as G18');
           const {SUITES}=require('./scripts/v5/p18/disposable-service-journeys.js');
           if(result.suites.length!==SUITES.length ||
              result.suites.some((s,i)=>s.suiteId!==SUITES[i].id) ||

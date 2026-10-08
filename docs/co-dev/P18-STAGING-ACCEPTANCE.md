@@ -99,3 +99,14 @@ negative cases, V4 SQLite-vs-V5 PostgreSQL game/economy differential, full P04
 account/economy services, and P05 cross-client session/revocation composition.
 Every suite must report passing TAP assertions and zero failures/skips.
 This does NOT exercise provider-hosted staging or production authority.
+
+## P18-03 controlled complete Redis loss
+
+The P18 disposable job now starts the same digest-pinned Redis 7.4
+service used by the current V5 P06 integration workflow. The executor
+rejects anything except an explicitly owned loopback Redis endpoint,
+and supplies mandatory no-skip flags. It runs the existing real
+P06 suite: bounded/isolated namespaces, concurrency/locks,
+ticket + revocation consistency, loss/wipe and byte-stable
+PostgreSQL wallet/rating truth. A green result remains a
+synthetic disposable environment test, not G18 staging execution.

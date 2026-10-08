@@ -376,9 +376,26 @@ function build(options) {
   if (!options.output) throw usage('--output <directory> is required');
   const outputRoot = path.resolve(process.cwd(), options.output);
   assertOutputLocation(outputRoot, root);
-  const realOutput = prepareOutput(outputRoot, config);
-
+  // Validate the entire source plan before replacing an already valid bundle.
+  // The previous output must survive a missing/forbidden input or failed HTML
+  // localization; otherwise an unsuccessful rebuild removes the last good client.
   const plan = buildPlan(root, config);
+  const manifestPreflight = normalizeBundlePath(config.manifest, 'manifest');
+  if (plan.entries.some((entry) => entry.destination === manifestPreflight)) {
+    throw refuse('manifest path collides with a bundle file: ' + manifestPreflight);
+  }
+  for (const entry of plan.entries) {
+    if (entry.generatedAsset) continue;
+    const absolute = resolveSource(root, entry.source, entry.kind + ' source');
+    if (entry.kind === 'index' || entry.kind === 'legal') {
+      localizeHtml(fs.readFileSync(absolute, 'utf8'), config, { requireDependencyLinks: entry.kind === 'index' });
+    }
+  }
+  for (const relative of config.vendor_exclude || []) {
+    resolveSource(root, relative, 'vendor capture');
+  }
+
+  const realOutput = prepareOutput(outputRoot, config);
   const files = [];
   const sourceCaptures = [];
   let totalBytes = 0;

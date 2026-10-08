@@ -303,3 +303,30 @@ test('the repository root is not a permitted output and reads no mutable state',
   // The default config path exists and is a real regular file in the repository.
   assert.ok(fs.statSync(path.resolve(REPO_ROOT, builder.DEFAULT_CONFIG)).isFile());
 });
+
+
+test('invalid rebuild inputs preserve the previous verified client bundle', (t) => {
+  const { root, write, configPath } = fixture(t);
+  const output = outDir('preserve-previous');
+  t.after(() => fs.rmSync(output, { recursive: true, force: true }));
+  const first = buildIn(root, { output, config: configPath });
+  const indexPath = path.join(output, 'bundle-index.html');
+  const manifestPath = path.join(output, 'client-bundle.manifest.json');
+  const indexBefore = fs.readFileSync(indexPath);
+  const manifestBefore = fs.readFileSync(manifestPath);
+
+  // The original implementation deleted the prior bundle and then discovered
+  // the bad remote dependency while copying this legal page.
+  write('public/privacy.html', '<!doctype html><img src="https://unapproved.example.test/pixel.png">');
+  assert.throws(() => buildIn(root, { output, config: configPath }), /REFUSAL/);
+  assert.deepEqual(fs.readFileSync(indexPath), indexBefore);
+  assert.deepEqual(fs.readFileSync(manifestPath), manifestBefore);
+
+  // A missing source and a manifest/file collision must also fail before cleanup.
+  const bad = JSON.parse(fs.readFileSync(path.join(root, configPath), 'utf8'));
+  bad.client_scripts.push('src/does-not-exist.js');
+  write('native/client/missing.config.json', JSON.stringify(bad));
+  assert.throws(() => buildIn(root, { output, config: 'native/client/missing.config.json' }), /REFUSAL/);
+  assert.deepEqual(fs.readFileSync(manifestPath), manifestBefore);
+  assert.equal(first.manifest.bundle_file, 'bundle-index.html');
+});

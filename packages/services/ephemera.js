@@ -88,17 +88,17 @@ class EphemeraService {
 
   async #op(fn, loss) {
     if (this.closed) return loss;
-    try {
-      /* Every operation is deadline-bounded: a slow/half-open Redis resolves to the conservative
-       * fallback instead of hanging the caller. */
-      const result = await Promise.race([
-        Promise.resolve(this.connected).then(() => fn(this.client)),
-        EphemeraService.#deadline(2000),
-      ]);
-      if (result === Symbol.for('ephemera.deadline')) { this.lastError = 'DEADLINE'; return loss; }
-      this.lastError = null;
-      return result;
-    } catch (error) { this.lastError = error && error.message; return loss; }
+    /* The in-flight work must never become an unhandled rejection — neither when its deadline
+     * wins the race (client closed underneath it) nor when it rejects outright: both resolve to
+     * the documented conservative fallback. */
+    const work = Promise.resolve(this.connected)
+      .then(() => fn(this.client))
+      .catch((error) => { this.lastError = error && error.message; return Symbol.for('ephemera.lost'); });
+    const result = await Promise.race([work, EphemeraService.#deadline(2000)]);
+    if (result === Symbol.for('ephemera.deadline')) { work.catch(() => {}); this.lastError = 'DEADLINE'; return loss; }
+    if (result === Symbol.for('ephemera.lost')) return loss;
+    this.lastError = null;
+    return result;
   }
 
   static #bounded(value, ttlMs, what) {
@@ -291,10 +291,13 @@ class EphemeraService {
   async close() {
     if (this.closed) return;
     this.closed = true;
-    /* quit() can wait on a reconnect backoff; destroy() is unconditional. A bounded quit is best
-     * effort - closing may never hang the caller. */
+    /* quit() can wait on a reconnect backoff and destroy() does not exist on this client version;
+     * disconnect() is the supported hard close and clears the reconnect scheduler. Closing may
+     * never hang the caller, so the graceful quit stays deadline-bounded. */
     try { await Promise.race([this.client.quit(), new Promise((resolve) => setTimeout(resolve, 1000))]); } catch { /* already gone */ }
-    try { this.client.destroy(); } catch { /* already gone */ }
+    /* disconnect() returns a rejected promise when the socket is already gone; it MUST be
+     * awaited (or attached) inside this try, or the rejection surfaces unhandled later. */
+    try { await this.client.disconnect(); } catch { /* already gone */ }
   }
 }
 

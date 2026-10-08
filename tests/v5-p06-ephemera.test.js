@@ -34,6 +34,9 @@ const withRedis = async (t, environment, options = {}) => {
 
 /* A real Redis is a shared fixture: every environment uses its own namespace; wipe after. */
 test.after(async () => {
+  /* Only clean a namespace we actually own (an explicit REDIS_URL). The default loopback URL is
+   * a local convenience, not an owned fixture, and a closed client must never schedule work. */
+  if (!process.env.REDIS_URL) return;
   try {
     const s = await createEphemeraService({ url: REDIS_URL, environment: 'test' });
     await s.wipeNamespace();

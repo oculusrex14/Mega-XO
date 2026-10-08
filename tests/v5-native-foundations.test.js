@@ -366,3 +366,17 @@ test('Android emulator also exercises real guest-to-bot gameplay using debug-onl
   assert.ok(launch.includes('webview_devtools_remote_$pid'));
   assert.ok(launch.includes('android-bot-first-move.png'));
 });
+
+test('Android release requires owner package/version and secret-backed signing, without affecting debug', () => {
+  const gradle = read('native/android/app/build.gradle.kts');
+  assert.ok(gradle.includes('MEGA_ANDROID_RELEASE_KEYSTORE_PATH'));
+  assert.ok(gradle.includes('MEGA_ANDROID_RELEASE_STORE_PASSWORD'));
+  assert.ok(gradle.includes('MEGA_ANDROID_RELEASE_KEY_ALIAS'));
+  assert.ok(gradle.includes('MEGA_ANDROID_RELEASE_KEY_PASSWORD'));
+  assert.ok(gradle.includes('create("v5Release")'));
+  assert.ok(gradle.includes('signingConfig = signingConfigs.getByName("v5Release")'));
+  assert.ok(gradle.includes('packageRelease'));
+  assert.ok(gradle.includes('online.megaxo.prototype'));
+  assert.ok(gradle.includes('nativeVersionCode > 0'));
+  assert.ok(!gradle.includes('storePassword = "'));
+});

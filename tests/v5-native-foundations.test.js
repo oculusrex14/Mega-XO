@@ -175,3 +175,19 @@ test('Android UMP and Next-Gen ads never grant rewards or bypass SDK consent', (
   assert.match(code, /rewardAmount != 1/);
   assert.doesNotMatch(code, /grantCredits|mintCrowns|setBalance/);
 });
+
+test('iOS UMP and GoogleMobileAds SDKs are pinned and enforce SSV-only rewards', () => {
+  const project = read('native/ios/MegaXO.xcodeproj/project.pbxproj');
+  const code = read('native/ios/MegaXO/MegaIOSAds.swift');
+  assert.match(project, /MegaIOSAds\.swift in Sources/);
+  assert.match(project, /swift-package-manager-google-mobile-ads\.git/);
+  assert.match(project, /swift-package-manager-google-user-messaging-platform\.git/);
+  assert.match(project, /version = "13\.2\.0"/);
+  assert.match(code, /requestConsentInfoUpdate/);
+  assert.match(code, /ConsentForm\.loadAndPresentIfRequired/);
+  assert.match(code, /ServerSideVerificationOptions\(\)/);
+  assert.match(code, /options\.userIdentifier = actor/);
+  assert.match(code, /options\.customRewardString = ticket/);
+  assert.match(code, /rewardAmount == 1/);
+  assert.doesNotMatch(code, /grantCredit|mintCrowns|localReward/);
+});

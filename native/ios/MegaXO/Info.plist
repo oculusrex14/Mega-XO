@@ -10,6 +10,8 @@
 <key>CFBundlePackageType</key><string>APPL</string>
 <key>CFBundleShortVersionString</key><string>$(MARKETING_VERSION)</string>
 <key>CFBundleVersion</key><string>$(CURRENT_PROJECT_VERSION)</string>
+<!-- Development test app ID only. Signed distribution requires exact owner's AdMob registration. -->
+<key>GADApplicationIdentifier</key><string>$(MEGA_ADMOB_APP_ID)</string>
 <key>LSRequiresIPhoneOS</key><true/>
 <key>UIApplicationSceneManifest</key><dict>
  <key>UIApplicationSupportsMultipleScenes</key><false/>

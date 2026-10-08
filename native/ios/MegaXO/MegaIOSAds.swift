@@ -98,7 +98,7 @@ final class MegaIOSAds {
         rewarded = nil
         let options = ServerSideVerificationOptions()
         options.userIdentifier = actor
-        options.customRewardString = ticket
+        options.customRewardText = ticket
         ad.serverSideVerificationOptions = options
         ad.present(from: controller, userDidEarnRewardHandler: {
             // No client-side cosmetic grant: only backend-verified AdMob SSV.

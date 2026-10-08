@@ -188,7 +188,7 @@ test('iOS UMP and GoogleMobileAds SDKs are pinned and enforce SSV-only rewards',
   assert.match(code, /ConsentForm\.loadAndPresentIfRequired/);
   assert.match(code, /ServerSideVerificationOptions\(\)/);
   assert.match(code, /options\.userIdentifier = actor/);
-  assert.match(code, /options\.customRewardString = ticket/);
+  assert.match(code, /options\.customRewardText = ticket/);
   assert.match(code, /rewardAmount == 1/);
   assert.doesNotMatch(code, /grantCredit|mintCrowns|localReward/);
 });

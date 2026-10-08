@@ -31,10 +31,18 @@ test('rejects privileged triggers, mutable actions and secret-bearing release st
   }
 });
 
-test('refuses unexpected artifact capture paths',()=>{
-  for(const text of [
-    workflow.replace('.artifacts/v5-ci-impact.json','.artifacts/*'),
-    workflow.replace('.artifacts/v5-source-candidate.json','.env'),
-    workflow.replace('          path: |\n','          path: .\n')
-  ])assert.throws(()=>audit(text),/V5_CI_PERIMETER/);
+test('refuses unexpected artifact capture paths, not just filenames in run commands',()=>{
+  const attacks=[
+    workflow.replace('            .artifacts/v5-ci-impact.json','            .artifacts/*'),
+    workflow.replace('            .artifacts/v5-source-candidate.json','            .env'),
+    workflow.replace('          path: |\n','          path: .\n'),
+    workflow.replace('            .artifacts/v5-source-candidate.json',
+       '            .artifacts/v5-source-candidate.json\n            .env'),
+    workflow.replace('            .artifacts/v5-ci-impact.json',
+       '            .artifacts/v5-ci-impact.json\n            .artifacts/**')
+  ];
+  for(const text of attacks) {
+    assert.notEqual(text,workflow);
+    assert.throws(()=>audit(text),/V5_CI_PERIMETER/);
+  }
 });

@@ -33,11 +33,23 @@ function audit(text) {
      /scripts\/v5\/migrate\.js\s+--execute/.test(text)) {
     reject('a publish/migration command appeared in source-only CI');
   }
-  const artifactPaths=[...text.matchAll(/^\s+\.artifacts\/([a-z0-9._-]+)\s*$/gm)].map(m=>m[1]);
-  if(artifactPaths.length!==2 || !artifactPaths.includes('v5-ci-impact.json') ||
-      !artifactPaths.includes('v5-source-candidate.json')) reject('sanitized artifact allowlist drift');
+  // Inspect the actual actions/upload-artifact path block, rather than
+  // matching filename mentions in a preceding shell command or comment.
+  const lines=text.split('\n');
+  const nameIndex=lines.findIndex(line=>line.trim()==='name: v5-release-source-evidence');
+  if(nameIndex<0) reject('sanitized artifact upload action missing');
+  const pathIndex=lines.findIndex((line,index)=>index>nameIndex && line.trim()==='path: |');
+  if(pathIndex<0) reject('sanitized evidence path block missing');
+  const entries=[];
+  for(let i=pathIndex+1;i<lines.length && /^ {12}\S/.test(lines[i]);i++){
+    entries.push(lines[i].trim());
+  }
+  const allowed=['.artifacts/v5-ci-impact.json','.artifacts/v5-source-candidate.json'];
+  if(entries.length!==2 || entries.sort().join('\0')!==allowed.sort().join('\0')) {
+    reject('actual upload block contains missing, private or extra artifact path');
+  }
   if(/^\s+(?:path|include-hidden-files):\s+(?:\*|true|\.)\s*$/m.test(text)) reject('unsafe artifact glob');
-  return {readOnly:true,actionCount:actions.length,artifacts:artifactPaths.sort()};
+  return {readOnly:true,actionCount:actions.length,artifacts:entries.map(x=>x.slice('.artifacts/'.length))};
 }
 function run(root=process.cwd()){
   return audit(fs.readFileSync(path.join(root,'.github/workflows/v5-release-engineering.yml'),'utf8'));

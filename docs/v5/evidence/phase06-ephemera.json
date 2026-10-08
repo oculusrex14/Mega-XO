@@ -2,8 +2,15 @@
   "schema_version": 1,
   "status": "IMPLEMENTED_AND_VERIFIED_LOCAL",
   "phase": "P06",
-  "task_ids": ["V5-06-01", "V5-06-02", "V5-06-03", "V5-06-04"],
-  "case_ids": ["A15"],
+  "task_ids": [
+    "V5-06-01",
+    "V5-06-02",
+    "V5-06-03",
+    "V5-06-04"
+  ],
+  "case_ids": [
+    "A15"
+  ],
   "recorded_at_utc": "2026-10-09T00:35:00Z",
   "source_state": "UNCOMMITTED_WORKTREE_AT_RECORDING; the checkpoint commit and CI run finalize this record",
   "environment": "Owner macOS workstation; owned PostgreSQL16 loopback 127.0.0.1:50709 and a local disposable Redis 8.10.2 on 127.0.0.1:50710 (no persistence, owned by this session). No production, Neon, provider-console, browser account or device mutation.",
@@ -16,13 +23,42 @@
   "commands": [
     {
       "command": "env V5_PG_URL=... V5_PG_DISPOSABLE=1 V5_PG_REQUIRED=1 REDIS_URL=redis://127.0.0.1:50710 node --test --test-force-exit --test-concurrency=1 tests/v5-p05-access.test.js tests/v5-p05-refresh.test.js tests/v5-p05-tickets.test.js tests/v5-p05-integration.test.js tests/v5-p06-ephemera.test.js tests/v5-p04-repositories.test.js tests/v5-p04-differential.test.js tests/v5-p04-services.test.js",
-      "result": {"tests": 78, "pass": 78, "fail": 0, "skipped": 0},
+      "result": {
+        "tests": 78,
+        "pass": 78,
+        "fail": 0,
+        "skipped": 0
+      },
       "classification": "Full PG regression batch plus the new ephemera suite on the real 42-chain: env separation, mandatory TTLs with expiry proof, refusal shapes, atomic rate window (exactly 8 of 12 parallel admitted), cross-process single-flight lock, namespace wipe + total loss leaving wallets/ratings/tickets/families byte-identical and conservative fallbacks under 10 s."
     },
     {
       "command": "env ... node --test --test-force-exit tests/v5-migrations.test.js tests/v5-pg-guards.test.js; node --test --test-force-exit tests/v5-contracts.test.js; node --test <retained batch>",
-      "result": {"migrations_guards": {"tests": 36, "pass": 36, "fail": 0}, "contracts": {"tests": 16, "pass": 16, "fail": 0}, "retained": {"tests": 130, "pass": 130, "fail": 0}},
+      "result": {
+        "migrations_guards": {
+          "tests": 36,
+          "pass": 36,
+          "fail": 0
+        },
+        "contracts": {
+          "tests": 16,
+          "pass": 16,
+          "fail": 0
+        },
+        "retained": {
+          "tests": 130,
+          "pass": 130,
+          "fail": 0
+        }
+      },
       "classification": "No regression anywhere; the retained opsz failure was not rerun."
+    },
+    {
+      "command": "pushed checkpoint 66e5b37: CI 37838155791 (V5 PostgreSQL integration incl. redis:7.4 service container, P06 suite zero-skip, coverage enforcement) and 37838155840 (validation, 375s, hang fixed)",
+      "result": {
+        "pg": "success",
+        "validation": "success"
+      },
+      "classification": "Real-Redis CI execution proven; the earlier validation timeout was the P06 after-hook leaving a reconnecting default-URL client alive (destroy() undefined in node-redis 4.x) - fixed by awaited disconnect() and owned-namespace-only cleanup."
     }
   ],
   "task_outcomes": {
@@ -31,5 +67,10 @@
     "V5-06-03": "COMPLETE (service level): the ephemera service is the coordination tier replacing local Maps for distributed presence/queue/cache/rate; the retained V4 server keeps its local state untouched (V4 stays live), and the V5 account service already refuses presence ownership (PRESENCE_OWNED_BY_P06). Two-process consistency proven on real Redis.",
     "V5-06-04": "COMPLETE (code-level): namespace wipe and total-loss tests prove wallet/rank rows unchanged, a redeemed ticket stays TICKET_REDEEMED, a revoked family stays revoked, security budgets remain PostgreSQL, and loss fallbacks deny quickly."
   },
-  "not_claimed": ["actual managed provider selection or provisioning", "production Redis endpoints or credentials", "V5 production enablement", "realtime server deployment (P08)"]
+  "not_claimed": [
+    "actual managed provider selection or provisioning",
+    "production Redis endpoints or credentials",
+    "V5 production enablement",
+    "realtime server deployment (P08)"
+  ]
 }

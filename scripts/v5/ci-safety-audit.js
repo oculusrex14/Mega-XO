@@ -29,7 +29,7 @@ function audit(text) {
   for(const use of actions) {
     if(!/^[a-zA-Z0-9_.-]+\/[a-zA-Z0-9_.-]+@[0-9a-f]{40}$/.test(use)) reject('unpinned CI action');
   }
-  if(/^\s*(?:vercel\s+(?:deploy|promote|rollback)|docker\s+push|gh\s+release\s+create|npm\s+publish|git\s+push)\b/m.test(text) ||
+  if(/^\s*(?:run:\s*)?(?:vercel\s+(?:deploy|promote|rollback)|docker\s+push|gh\s+release\s+create|npm\s+publish|git\s+push)\b/m.test(text) ||
      /scripts\/v5\/migrate\.js\s+--execute/.test(text)) {
     reject('a publish/migration command appeared in source-only CI');
   }

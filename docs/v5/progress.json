@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at_utc": "2026-10-08T18:37:07.140+00:00",
+  "updated_at_utc": "2026-10-08T19:09:30.159+00:00",
   "goal": "Deliver the V5 hybrid platform and real Android/iOS applications with shared permanent actor/assets, preserved approved game and retained browser compatibility; do not build the new website/browser product.",
   "source": {
     "goal": "AGENT-GOAL.md",
@@ -512,7 +512,7 @@
           "V5-06-03",
           "V5-06-04"
         ],
-        "status": "PLANNED"
+        "status": "IN_PROGRESS"
       },
       {
         "id": "P07",
@@ -1520,7 +1520,7 @@
         "verification": "Provider IDs and command compatibility/load evidence recorded; no unclaimed temporary or same-host production replacement.",
         "id": "V5-06-01",
         "phase": "P06",
-        "status": "PLANNED",
+        "status": "IN_PROGRESS",
         "depends_on_tasks": [],
         "requires_phase_gates": [
           "P05"
@@ -1533,7 +1533,7 @@
         "verification": "No unbounded immortal keys, cross-environment credential access or client-visible Redis secrets.",
         "id": "V5-06-02",
         "phase": "P06",
-        "status": "PLANNED",
+        "status": "IMPLEMENTED",
         "depends_on_tasks": [
           "V5-06-01"
         ],
@@ -1546,7 +1546,7 @@
         "verification": "Two API/Core processes observe consistent temporary state without owning permanent assets in Redis.",
         "id": "V5-06-03",
         "phase": "P06",
-        "status": "PLANNED",
+        "status": "IMPLEMENTED",
         "depends_on_tasks": [
           "V5-06-02"
         ],
@@ -1559,7 +1559,7 @@
         "verification": "Wallet/rank/purchases unchanged; no permanently stuck paid occupancy or unlimited auth retries.",
         "id": "V5-06-04",
         "phase": "P06",
-        "status": "PLANNED",
+        "status": "IMPLEMENTED",
         "depends_on_tasks": [
           "V5-06-03"
         ],
@@ -3758,6 +3758,78 @@
           "to": "COMPLETE",
           "evidence": "docs/v5/evidence/phase05-foundations.json",
           "note": "Compatibility proven code-level: one permanent actor and one shared save store across email/Google/Apple styles with independent families (integration suite); live provider/device A12 evidence remains phase-20 acceptance"
+        }
+      ]
+    },
+    "V5-06-01": {
+      "status": "IN_PROGRESS",
+      "evidence_refs": [
+        "docs/v5/evidence/phase06-ephemera.json"
+      ],
+      "completed_portions": [],
+      "remaining": [],
+      "review_notes": "Provider selection/provisioning gated on owner-authorized Redis/Valkey credentials (V5-O009); durable-side implementation, local real-Redis verification and CI service-container verification complete and independent",
+      "transitions": [
+        {
+          "at_utc": "2026-10-08T19:09:12.758+00:00",
+          "from": "PLANNED",
+          "to": "IN_PROGRESS",
+          "evidence": "docs/v5/evidence/phase06-ephemera.json",
+          "note": "Provider selection/provisioning gated on owner-authorized Redis/Valkey credentials (V5-O009); durable-side implementation, local real-Redis verification and CI service-container verification complete and independent"
+        }
+      ]
+    },
+    "V5-06-02": {
+      "status": "IMPLEMENTED",
+      "evidence_refs": [
+        "docs/v5/evidence/phase06-ephemera.json"
+      ],
+      "completed_portions": [],
+      "remaining": [],
+      "review_notes": "Namespaced bounded primitives verified on real Redis (local 8.10.2 + CI 7.4 service container): explicit TTLs enforced, env separation, no immortal keys, no secrets, conservative loss fallbacks. Closes only after V5-06-01 records the real provider.",
+      "transitions": [
+        {
+          "at_utc": "2026-10-08T19:09:29.996+00:00",
+          "from": "PLANNED",
+          "to": "IMPLEMENTED",
+          "evidence": "docs/v5/evidence/phase06-ephemera.json",
+          "note": "Namespaced bounded primitives verified on real Redis (local 8.10.2 + CI 7.4 service container): explicit TTLs enforced, env separation, no immortal keys, no secrets, conservative loss fallbacks. Closes only after V5-06-01 records the real provider."
+        }
+      ]
+    },
+    "V5-06-03": {
+      "status": "IMPLEMENTED",
+      "evidence_refs": [
+        "docs/v5/evidence/phase06-ephemera.json"
+      ],
+      "completed_portions": [],
+      "remaining": [],
+      "review_notes": "Distributed presence/queue/cache/rate coordination via the ephemera tier; retained V4 local state untouched; two-process consistency proven; PRESENCE_OWNED_BY_P06 already refuses durable presence",
+      "transitions": [
+        {
+          "at_utc": "2026-10-08T19:09:30.080+00:00",
+          "from": "PLANNED",
+          "to": "IMPLEMENTED",
+          "evidence": "docs/v5/evidence/phase06-ephemera.json",
+          "note": "Distributed presence/queue/cache/rate coordination via the ephemera tier; retained V4 local state untouched; two-process consistency proven; PRESENCE_OWNED_BY_P06 already refuses durable presence"
+        }
+      ]
+    },
+    "V5-06-04": {
+      "status": "IMPLEMENTED",
+      "evidence_refs": [
+        "docs/v5/evidence/phase06-ephemera.json"
+      ],
+      "completed_portions": [],
+      "remaining": [],
+      "review_notes": "Wipe and total-loss contract proven: durable wallets/ratings byte-identical, redeemed ticket stays redeemed, revoked family stays revoked, security budgets remain PostgreSQL, loss fallbacks deny in bounded time",
+      "transitions": [
+        {
+          "at_utc": "2026-10-08T19:09:30.157+00:00",
+          "from": "PLANNED",
+          "to": "IMPLEMENTED",
+          "evidence": "docs/v5/evidence/phase06-ephemera.json",
+          "note": "Wipe and total-loss contract proven: durable wallets/ratings byte-identical, redeemed ticket stays redeemed, revoked family stays revoked, security budgets remain PostgreSQL, loss fallbacks deny in bounded time"
         }
       ]
     }

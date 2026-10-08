@@ -34,6 +34,7 @@
   },
   "author": "Antimatter Innovations <contact@antimatterinnovations.com>",
   "dependencies": {
-    "pg": "^8.23.1"
+    "pg": "^8.23.1",
+    "redis": "4.7.0"
   }
 }

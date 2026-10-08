@@ -57,6 +57,19 @@ jobs:
           --health-timeout 5s
           --health-retries 24
           --health-start-period 10s
+      redis:
+        # P06 ephemera tier: a real Redis for the namespaced-bounded-primitives suite. The
+        # container is ephemeral job capacity exactly like the PostgreSQL one; it holds no
+        # secret, no persistence and no production endpoint. Digest resolved with a daemon-free
+        # registry inspect on 2026-10-09 (linux/amd64 child of the redis:7.4 multi-arch index).
+        image: redis:7.4@sha256:cd745595f143052dd6a743bc5651d3ce4b03979fe5c99c7fcfab73461f6f217b
+        ports:
+          - 127.0.0.1:6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 24
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
@@ -119,6 +132,16 @@ jobs:
         run: |
           set -o pipefail
           node --test --test-reporter=tap --test-concurrency=1 tests/v5-p04-services.test.js 2>&1 | tee .evidence-logs/v5-p04-services.tap
+      - name: P05 access, refresh and realtime foundations
+        run: |
+          set -o pipefail
+          node --test --test-reporter=tap --test-concurrency=1 --test-force-exit tests/v5-p05-access.test.js tests/v5-p05-refresh.test.js tests/v5-p05-tickets.test.js tests/v5-p05-integration.test.js 2>&1 | tee .evidence-logs/v5-p05-foundations.tap
+      - name: P06 Redis ephemera primitives and wipe contract
+        env:
+          REDIS_URL: redis://127.0.0.1:6379
+        run: |
+          set -o pipefail
+          node --test --test-reporter=tap --test-concurrency=1 --test-force-exit tests/v5-p06-ephemera.test.js 2>&1 | tee .evidence-logs/v5-p06-ephemera.tap
       - name: Enforce executed database coverage
         # A green run that quietly skipped the database suites is a failure, not a pass: every
         # suite must report assertions against the live service and report zero skips.
@@ -132,6 +155,11 @@ jobs:
             { file: 'tests/v5-p04-repositories.test.js', log: '.evidence-logs/v5-p04-repositories.tap' },
             { file: 'tests/v5-p04-differential.test.js', log: '.evidence-logs/v5-p04-differential.tap' },
             { file: 'tests/v5-p04-services.test.js', log: '.evidence-logs/v5-p04-services.tap' },
+            { file: 'tests/v5-p05-access.test.js', log: '.evidence-logs/v5-p05-foundations.tap' },
+            { file: 'tests/v5-p05-refresh.test.js', log: '.evidence-logs/v5-p05-foundations.tap' },
+            { file: 'tests/v5-p05-tickets.test.js', log: '.evidence-logs/v5-p05-foundations.tap' },
+            { file: 'tests/v5-p05-integration.test.js', log: '.evidence-logs/v5-p05-foundations.tap' },
+            { file: 'tests/v5-p06-ephemera.test.js', log: '.evidence-logs/v5-p06-ephemera.tap' },
           ];
           const report = { tool: 'v5-pg-coverage', suites: [] };
           let failed = false;

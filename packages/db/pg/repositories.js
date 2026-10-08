@@ -160,6 +160,16 @@ function jsonText(value, what) {
 function decodeJson(value, fallback) {
  return value === null || value === undefined ? fallback : value;
 }
+/* The outcome/operation columns are declared `TEXT ... CHECK (x IS JSON)` - a json/jsonb column
+ * would have come back decoded, but TEXT does not, so the value arrives as the serialized document
+ * and `decodeJson` would pass the raw string through. A parse failure is surfaced with the offending
+ * column, never as a silent fallback: a row that is not valid JSON means the schema gate was bypassed
+ * and the caller must not be handed a half object. */
+function decodeJsonText(value, fallback, what) {
+ if (value === null || value === undefined) return fallback;
+ if (typeof value !== 'string') return value;
+ try { return JSON.parse(value); } catch { throw ctxError('INVALID_JSON', `${what}: ${String(value).slice(0, 48)}`); }
+}
 
 /* SESSION TOKEN HASHES. SOURCE TRUTH: the legacy adapter stores sha256(bearer) as base64url
  * (43 chars, server/identity-provider.js:12); the V5 column is 64 lowercase hex with a CHECK
@@ -605,11 +615,13 @@ function pgRepositoriesFor(context) {
   if (cut <= 0) throw new ContextError('INVALID_OPERATION');
   return { actor: text.slice(0, cut), key: text.slice(cut + 1) };
  }
- function outcomeRow(family, row) {
+function outcomeRow(family, row) {
   const out = { actor: row.actor_id, key: keyIn(row.key, family.name), fingerprint: row.fingerprint };
-  out[family.resultColumn] = row[family.resultColumn];
+  /* The four outcome tables store the response as JSON TEXT (R2), so it must be parsed here exactly
+   * as `store.save()` returns it to `executeCommand` (an object, never a serialized string). */
+  out[family.resultColumn] = decodeJsonText(row[family.resultColumn], null, `${family.table}.${family.resultColumn}`);
   return out;
- }
+}
 
  /* ------------------------------------------------------- aggregate hydrator */
 
@@ -625,8 +637,23 @@ function pgRepositoriesFor(context) {
   for (const room of rooms) if (room.code === code) return room;
   return null;
  }
+ /* The domain model is constructed with the SAME injected options the SQLite reference adapter
+  * passes (`{...(options || context.options), state}`, packages/db/repositories.js hydrate): `now`
+  * is the unit of work's sampled clock and `random`/`verifyPurchase` come from the caller's options.
+  * Dropping them would journal with the host clock, pair queue opponents with crypto.randomInt
+  * instead of the seeded random, and make `purchase`/`refund` throw STORE_UNAVAILABLE. */
+ function authorityFor(context, state) {
+  const options = (context && context.options) || {};
+  return new Authority({ ...options, now: () => clockOf(context), state });
+ }
+ /* A snapshot is ALWAYS taken in the exported form. `JSON.stringify(stateValue)` would turn a Map
+  * member (a match's `commands`) into `{}`, and the "before" image of the diff would silently lose
+  * its entries; `authority.export()` renders `commands` as an entry array, which both sides of the
+  * diff can read. */
+ function snapshotOf(authority) { return JSON.stringify(authority.export()); }
  function graphFor(context, value, rooms) {
-  return new DomainGraph(context, new Authority({ state: value }), JSON.stringify(value), value, rooms);
+  const authority = authorityFor(context, value);
+  return new DomainGraph(context, authority, snapshotOf(authority), value, rooms);
  }
 
  class DomainGraph {
@@ -653,7 +680,8 @@ function pgRepositoriesFor(context) {
    return account;
   }
   export() { return this.authority.export(); }
-  /* Entity-wise persist of exactly what changed since the snapshot. */
+  /* Entity-wise persist of exactly what changed since the snapshot. `current` IS the exported
+   * form, so it is also the representation the next diff's "before" image must carry. */
   async commit() {
    const current = this.authority.export();
    const stats = await persistAggregate(this.context, current, this.snapshot, { truncated: this.truncated, unreadable: this.unreadable });
@@ -739,7 +767,7 @@ const MATCH_SQL = 'SELECT match_id, source, mode, kind, rated, amount, currency,
  }
  function accountFromRow(row) {
   return {
-   id: row.actor_id, friendCode: row.tag === null ? undefined : row.tag, name: row.display_name === null ? undefined : row.display_name,
+   id: row.actor_id, friendCode: row.tag === null ? undefined : row.tag, name: row.username === null ? undefined : row.username,
    coins: Number(row.coins || 0), crowns: Number(row.crowns || 0),
    purchasedCoins: Number(row.purchased_coins || 0), purchasedCrowns: Number(row.purchased_crowns || 0),
    legacyCompetitionRestricted: row.legacy_competition_restricted === true,
@@ -761,18 +789,22 @@ const MATCH_SQL = 'SELECT match_id, source, mode, kind, rated, amount, currency,
   };
  }
  function matchFromRow(row) {
-  const receiptReason = decodeJson(row.receipt_reason, null);
   const state = decodeJson(row.state_json, {});
   const symbols = row.symbol_x === null && row.symbol_y === null ? null : { X: row.symbol_x, O: row.symbol_y };
-  const winnerSymbol = state && typeof state === 'object' && typeof state.winner === 'string' ? state.winner : null;
   const receipt = row.receipt_json === null ? undefined : {
-   winner: winnerSymbol && symbols ? (winnerSymbol === 'X' ? symbols.X : winnerSymbol === 'O' ? symbols.O : null) : null,
-   reason: receiptReason, currency: row.currency, payout: Number(row.receipt_payout || 0), burn: Number(row.receipt_burn || 0),
-   bonus: Number(row.receipt_bonus || 0), refunded: Number(row.receipt_refunded || 0), rating: null,
-   at: msOrNullColumn(row.receipt_at, 'matches.receipt_at'),
+   /* `receipt_json` holds the source receipt VERBATIM (the loader and the reconciler both treat it
+    * as the authoritative document; 0034 keeps it as `json`). The V4 writers produce different key
+    * sets - `_settle` writes winner/reason/currency/payout/burn/bonus/refunded/rating/at, while
+    * `voidByOperator` writes only reason/refunded/burn/payout/rating - so the object is returned as
+    * stored: a key the source omitted must stay omitted rather than be invented as null/0. */
+   ...decodeJson(row.receipt_json, {}),
+   rating: null,
   };
   const out = {
-   id: row.match_id, players: [], accepted: [],
+   /* `participants` is the hydrate accumulator for match.participants rows; `players`/`accepted`
+    * are derived from it once those rows are in, and it is deleted before the object reaches the
+    * Authority state, so `Authority.export()`/`restore()` never see it. */
+   id: row.match_id, players: [], accepted: [], participants: [],
    terms: decodeJson(row.terms_json, {}), quote: decodeJson(row.quote_json, {}), termsHash: row.terms_hash,
    created: msOrNullColumn(row.created_at, 'matches.created_at'), expires: msOrNullColumn(row.expires_at, 'matches.expires_at'),
    status: row.status, state, symbols, revision: Number(row.revision), commands: new Map(), escrow: Number(row.escrow),
@@ -858,9 +890,19 @@ const MATCH_SQL = 'SELECT match_id, source, mode, kind, rated, amount, currency,
     accountsById.get(row.actor_id).ledger.push({ id: row.entry_id, operation: row.operation_id, currency: row.currency, amount: Number(row.amount), reason: row.reason, at: msOrNullColumn(row.at, 'wallet_ledger.at') });
    }
    for (const row of await read('SELECT actor_id, "key", fingerprint, result FROM economy.wallet_operations WHERE actor_id = ANY($1::text[]) ORDER BY actor_id, "key" LIMIT $2', [ids, CAP.children], CAP.children)) {
-    accountsById.get(row.actor_id).operations[row.key] = { fingerprint: row.fingerprint, result: row.result };
+    /* SOURCE SHAPE (src/domain.js:88-92): `operations[id] = {fingerprint, result}`, where `fingerprint`
+     * is the exact quote TEXT (`JSON.stringify(conversion(...))`, compared byte-for-byte by `convert`
+     * before it returns `{...result, duplicate:true}`) and `result` is the quote OBJECT. Both columns
+     * are JSON TEXT, so the fingerprint is taken VERBATIM and only the result is parsed. Unlike the
+     * economy OUTCOME keys, this key keeps its plain grammar: 0034 re-encoded command_outcomes only,
+     * as wallet_operations_key_check attests. */
+    accountsById.get(row.actor_id).operations[row.key] = { fingerprint: row.fingerprint, result: decodeJsonText(row.result, null, 'wallet_operations.result') };
    }
-   for (const row of await read('SELECT actor_id, day, finished, seconds, boards, casual, friend, ranked, ranked_bonus, claimed FROM economy.daily_progress WHERE actor_id = ANY($1::text[]) ORDER BY actor_id, day LIMIT $2', [ids, CAP.children], CAP.children)) {
+   /* `day` is DATE: the driver would hand back a LOCAL-midnight Date and `String(...)` would key the
+    * bucket by the session TimeZone instead of the source `YYYY-MM-DD` - a claim would then write a
+    * SECOND key and the diff's delete pass would zero the pre-existing day row. The render is done
+    * in SQL, exactly as the P03 loader does it (tools/v5-migration/ledger.js:92-96). */
+   for (const row of await read("SELECT actor_id, to_char(day, 'YYYY-MM-DD') AS day, finished, seconds, boards, casual, friend, ranked, ranked_bonus, claimed FROM economy.daily_progress WHERE actor_id = ANY($1::text[]) ORDER BY actor_id, day LIMIT $2", [ids, CAP.children], CAP.children)) {
     accountsById.get(row.actor_id).daily[String(row.day)] = {
      finished: Number(row.finished), seconds: Number(row.seconds), boards: Number(row.boards), casual: Number(row.casual),
      friend: Number(row.friend), ranked: Number(row.ranked), rankedBonus: Number(row.ranked_bonus), claimed: row.claimed || [],
@@ -910,7 +952,7 @@ const MATCH_SQL = 'SELECT match_id, source, mode, kind, rated, amount, currency,
    for (const row of await read(`SELECT actor_id, boost_seq, ${msColumn('started_at', 'started_at')}, ${msColumn('ends_at', 'ends_at')} FROM monetization.boosts WHERE actor_id = ANY($1::text[]) ORDER BY actor_id, boost_seq LIMIT $2`, [ids, CAP.children], CAP.children)) {
     accountsById.get(row.actor_id).monetization.boosts.push({ startedAt: msOrNullColumn(row.started_at, 'boosts.started_at'), endsAt: msOrNullColumn(row.ends_at, 'boosts.ends_at') });
    }
-   for (const row of await read('SELECT actor_id, day, base, bonus, automatic FROM monetization.reward_daily WHERE actor_id = ANY($1::text[]) ORDER BY actor_id, day LIMIT $2', [ids, CAP.children], CAP.children)) {
+   for (const row of await read("SELECT actor_id, to_char(day, 'YYYY-MM-DD') AS day, base, bonus, automatic FROM monetization.reward_daily WHERE actor_id = ANY($1::text[]) ORDER BY actor_id, day LIMIT $2", [ids, CAP.children], CAP.children)) {
     accountsById.get(row.actor_id).monetization.daily[String(row.day)] = { base: Number(row.base), bonus: Number(row.bonus), automatic: Number(row.automatic) };
    }
    for (const row of await read('SELECT actor_id, item FROM cosmetics.owned_items WHERE actor_id = ANY($1::text[]) ORDER BY actor_id, item LIMIT $2', [ids, CAP.children], CAP.children)) {
@@ -929,12 +971,13 @@ const MATCH_SQL = 'SELECT match_id, source, mode, kind, rated, amount, currency,
     matches.get(row.match_id).participants.push(row);
    }
    for (const row of await read('SELECT match_id, "key", fingerprint, result FROM match.move_outcomes WHERE match_id = ANY($1::text[]) ORDER BY match_id, "key" LIMIT $2', [matchIds, CAP.outcomes], CAP.outcomes)) {
-    matches.get(row.match_id).commands.set(row.key, { fingerprint: row.fingerprint, result: decodeJson(row.result, null) });
+    matches.get(row.match_id).commands.set(row.key, { fingerprint: row.fingerprint, result: decodeJsonText(row.result, null, 'move_outcomes.result') });
    }
    for (const match of matches.values()) {
     const seats = match.participants.sort((a, b) => a.seat - b.seat);
     match.players = seats.map((r) => r.actor_id);
     match.accepted = seats.filter((r) => r.accepted === true).map((r) => r.actor_id);
+    delete match.participants;
    }
   }
   const rooms = new Map();
@@ -968,7 +1011,8 @@ const MATCH_SQL = 'SELECT match_id, source, mode, kind, rated, amount, currency,
   for (const row of await read(`SELECT entry_id, actor_id, currency, amount, reason, source, ${msColumn('at', 'at')} FROM economy.ledger ORDER BY at, entry_id LIMIT $1`, [CAP.recentLedger], CAP.recentLedger)) {
    stateValue.journal.push({ id: row.entry_id, actor: row.actor_id, currency: row.currency, amount: Number(row.amount), reason: row.reason, source: row.source, at: msOrNullColumn(row.at, 'ledger.at') });
   }
-  const graph = new DomainGraph(context, new Authority({ state: stateValue }), JSON.stringify(stateValue), stateValue, rooms);
+  const graphAuthority = authorityFor(context, stateValue);
+  const graph = new DomainGraph(context, graphAuthority, snapshotOf(graphAuthority), stateValue, rooms);
   graph.truncated = truncated;
   graph.unreadable = [...unreadable].sort();
   scope.aggregateState = graph;
@@ -1008,6 +1052,13 @@ const MATCH_SQL = 'SELECT match_id, source, mode, kind, rated, amount, currency,
  function accountRows(state) { return state.accounts; }
  function pairsOf(list) { return list || []; }
  function seqKey(actorSeqs) { return `${actorSeqs[0]}\u001f${actorSeqs[1]}`; }
+/* A match's `commands` is a Map from the hydrator and an ENTRY ARRAY after `Authority.export()`;
+ * both reach the diff, so the write path accepts either. An absent value iterates as empty rather
+ * than throwing or inventing an entry. */
+function commandEntries(commands) {
+ if (!commands) return [];
+ return commands instanceof Map ? [...commands] : commands;
+}
 
  const TABLES = [
   {
@@ -1069,7 +1120,7 @@ const MATCH_SQL = 'SELECT match_id, source, mode, kind, rated, amount, currency,
   {
    table: 'economy.wallet_operations', pk: ['actor_id', 'key'], columns: WALLET_OPERATION_COLUMNS, update: [], appendOnly: true,
    rows: (state) => accountRows(state).flatMap(([id, a]) => Object.keys(a.operations || {}).map((key) => ({
-    actor_id: id, key, fingerprint: jsonText(a.operations[key].fingerprint, 'operations.fingerprint'), result: jsonText(a.operations[key].result, 'operations.result'),
+    actor_id: id, key, fingerprint: a.operations[key].fingerprint, result: jsonText(a.operations[key].result, 'operations.result'),
    }))),
    keyOf: (r) => seqKey([r.actor_id, r.key]),
   },
@@ -1209,7 +1260,10 @@ const MATCH_SQL = 'SELECT match_id, source, mode, kind, rated, amount, currency,
   },
   {
    table: 'match.move_outcomes', pk: ['match_id', 'key'], columns: MOVE_OUTCOME_COLUMNS, update: [], appendOnly: true,
-   rows: (state) => pairsOf(state.matches).flatMap(([id, m]) => [...(m.commands || new Map())].map(([key, entry]) => ({
+   /* `commands` is a Map on a freshly hydrated match and an ENTRY ARRAY after `Authority.export()`
+    * (src/authority.js:26 maps each match to `{...m, commands:[...m.commands]}`), and both shapes
+    * reach the diff. Iterate either, so a whole-aggregate `state.write` path cannot throw. */
+   rows: (state) => pairsOf(state.matches).flatMap(([id, m]) => commandEntries(m.commands).map(([key, entry]) => ({
     match_id: String(id), key, fingerprint: entry.fingerprint, result: jsonText(entry.result, 'move.result'),
    }))),
    keyOf: (r) => seqKey([r.match_id, r.key]),
@@ -1267,13 +1321,16 @@ const MATCH_SQL = 'SELECT match_id, source, mode, kind, rated, amount, currency,
    deadline: iso(m.deadline, 'matches.deadline'),
    move_timings: m._moveTimings === undefined ? null : jsonText(m._moveTimings, 'matches.move_timings'),
    pre_ratings: m.preRatings === undefined ? null : m.preRatings.map(String), pre_tiers: m.preTiers === undefined ? null : m.preTiers,
+   /* `receipt_json` and its side columns are ONE source document: the side columns exist for indexed
+    * reporting, and a key the source omitted must stay NULL rather than become `0`/now. `receipt_at`
+    * is written from the document itself for the same reason. */
    receipt_json: receipt === null ? null : jsonText(receipt, 'matches.receipt_json'),
-   receipt_at: receipt === null ? null : iso(receipt.at, 'matches.receipt_at'),
-   receipt_reason: receipt === null ? null : jsonText(receipt.reason === undefined ? null : receipt.reason, 'matches.receipt_reason'),
-   receipt_payout: receipt === null ? null : integer(receipt.payout || 0, 'matches.receipt_payout'),
-   receipt_burn: receipt === null ? null : integer(receipt.burn || 0, 'matches.receipt_burn'),
-   receipt_bonus: receipt === null ? null : integer(receipt.bonus || 0, 'matches.receipt_bonus'),
-   receipt_refunded: receipt === null ? null : integer(receipt.refunded || 0, 'matches.receipt_refunded'),
+   receipt_at: receipt === null || receipt.at === undefined ? null : iso(receipt.at, 'matches.receipt_at'),
+   receipt_reason: receipt === null || receipt.reason === undefined ? null : jsonText(receipt.reason, 'matches.receipt_reason'),
+   receipt_payout: receipt === null || receipt.payout === undefined ? null : integer(receipt.payout, 'matches.receipt_payout'),
+   receipt_burn: receipt === null || receipt.burn === undefined ? null : integer(receipt.burn, 'matches.receipt_burn'),
+   receipt_bonus: receipt === null || receipt.bonus === undefined ? null : integer(receipt.bonus, 'matches.receipt_bonus'),
+   receipt_refunded: receipt === null || receipt.refunded === undefined ? null : integer(receipt.refunded, 'matches.receipt_refunded'),
    risk_flags: m.riskFlags || [], risk_actors: jsonText(m._riskActors || {}, 'matches.risk_actors'),
    extra: null,
   };

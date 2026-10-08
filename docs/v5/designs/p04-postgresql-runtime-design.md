@@ -147,7 +147,10 @@ the pool's own transaction scope, so it lives and dies with the transaction exac
 `context.graph` [D]. `hydrate()` is a **one-shot per transaction**; it is deliberately not an
 invalidation-based cache, because the diff in `commitDomain()` uses the loaded snapshot as its
 "before" image and a second hydration of a mutated database would silently absorb another writer's
-change [D].
+change [D]. That snapshot is always taken in the **exported** form (`JSON.stringify(authority.export())`,
+never of the raw state value): `Authority.export()` renders a match's `commands` Map as an entry
+array, whereas the raw map serializes to `{}`, so a raw-form snapshot would hand the diff an empty
+"before" image and re-write every move outcome on every commit [F].
 
 **`src/authority.js` is required, deliberately.** Its require graph is exactly `node:crypto`,
 `src/game.js`, `src/domain.js` and `packages/domain/abuse.js` [F, walked by the no-SQLite case], so it
@@ -161,7 +164,10 @@ database-ready projection of every row, then:
 
 1. upsert only rows whose projection changed (`INSERT … ON CONFLICT (pk) DO UPDATE SET …`, bounded
    single row);
-2. delete only rows that disappeared, and only for tables that are not append-only;
+2. delete only rows that disappeared, and only for tables that are not append-only. No deletion is
+   ever inferred from a representation gap: `commandEntries()` accepts a match's `commands` as
+   either the hydrator's `Map` or the exported entry array, so a shape difference between the two
+   diff sides can never be read as "the outcome disappeared" [F];
 3. skip a table when its `appendOnly` flag is set (ledger, wallet ledger entries, wallet operations,
    season history, match history, move outcomes — the domain never removes them);
 4. skip a schema the role has no USAGE on, and **fail closed** when a table the role may not write
@@ -285,20 +291,83 @@ needs no privileged connection and no widened grant.
 6. **[D] `profile.profile_saves` keeps the legacy `payload` name over `payload_text`**, and
    `tournaments.save` replaces the bounded dependent sets wholesale because 0028's
    `UNIQUE (room_id, ordinal)` makes positional updates unsafe.
+7. **[F] The first version of this adapter threw `TypeError: … (reading 'push')` on any database
+   that actually held a match aggregate.** `buildAggregate` pushed participant rows onto
+   `match.participants`, but `matchFromRow` never produced that accumulator — it produced
+   `players`/`accepted`. The suite could not see it because its harness seeded no match rows; the
+   realistic target has two. Closed by creating the accumulator in `matchFromRow` and deleting it
+   once `players`/`accepted` are derived, so it can never reach `Authority.export()`. The regression
+   case seeds a match with participants and drives `domain()` over it.
+8. **[F] The hydrated `Authority` was built with `state` alone**, dropping the caller's injected
+   `now`/`random`/`verifyPurchase` that the SQLite reference threads through
+   (`new Authority({...(options || context.options), state})`). Effect: journal instants fell back to
+   the host clock, symbol draws to `crypto.randomInt`, and `purchase` threw `STORE_UNAVAILABLE`.
+   Closed by `authorityFor()`, which passes `context.options` through and binds `now` to the unit of
+   work's sampled clock. Two regression cases assert the clock on a journal instant and the verifier
+   on a real purchase.
+9. **[F] DATE columns were read as `String(row.day)`.** The driver returns a LOCAL-midnight `Date`,
+   so the bucket key became a TimeZone-shifted locale string; a claim then wrote a second, correctly
+   formatted key and the diff's delete pass zeroed the pre-existing day row. Closed by rendering
+   `to_char(day,'YYYY-MM-DD')` in SQL, exactly as the P03 loader does.
+10. **[F] The JSON-TEXT outcome columns were never parsed.** `economy.command_outcomes.response` and
+    its three siblings, `economy.wallet_operations.result`/`fingerprint`, and
+    `match.move_outcomes.result` are `TEXT … CHECK (x IS JSON)`, not `json`/`jsonb`: the driver hands
+    them back as serialized documents, so `find()` returned a string where the V4 reference returns
+    the object, and a domain-level replay diverged. Closed by `decodeJsonText()`, which parses and
+    surfaces a malformed row as `INVALID_JSON` rather than passing the raw text through.
+11. **[F] `matchFromRow` rebuilt a WIDER receipt than the source wrote.** The V4 writers produce
+    different key sets (`_settle` writes winner/reason/currency/payout/burn/bonus/refunded/rating/at;
+    `voidByOperator` writes only reason/refunded/burn/payout/rating), so a key the source omitted
+    must stay absent rather than be invented as `null`/`0`. Closed by returning `receipt_json`
+    verbatim (filling only `rating`) and writing the side columns as NULL when the document omits
+    them.
+12. **[F] `economy.wallet_operations` is not part of 0034's canonical-key set.** Its `fingerprint`
+    column holds the source's quote TEXT verbatim and must never be re-rendered, and its `"key"`
+    keeps the plain grammar — 0034 re-encoded `command_outcomes` only
+    (`wallet_operations_key_check` attests). Closed by taking the fingerprint verbatim and writing
+    the key unchanged.
+13. **[F] The derived `account.name` was taken from `identity.profiles.display_name`.** The source
+    sets it from the **username** (`server/community-store.js:79` `account.name = username`; `:182`
+    `name` is the new username), and `identity.profiles` is canonical, so the derived copy must read
+    the username and is not persisted back.
 
 ## 9. Evidence
 
 Executed against an owned PostgreSQL 16.15 cluster (loopback, `V5_PG_URL` + `V5_PG_DISPOSABLE=1` +
-`V5_PG_REQUIRED=1`), on a fresh uniquely-named owned database migrated by the real runner to 37/37:
+`V5_PG_REQUIRED=1`), on a fresh uniquely-named owned database migrated by the real runner to the full
+checksummed chain:
 
 ```
-node --test tests/v5-p04-repositories.test.js
+V5_PG_URL=postgres://postgres@127.0.0.1:50709/postgres V5_PG_DISPOSABLE=1 V5_PG_REQUIRED=1 \
+  node --test tests/v5-p04-repositories.test.js
   ✔ P04 parity: every repository member answers over the migrated normalized schema
   ✔ P04 aggregate seam: the unchanged production dispatcher runs over the normalized tables
+  ✔ P04 regression: a seeded match hydrates, a DATE day keys by its source text, and the injected
+      clock/random reach the domain
+  ✔ P04 regression: the caller-supplied random and purchase verifier are threaded into the hydrated domain
   ✔ P04 concurrency: two scopes cannot overdraw or double-reserve, and a failed unit rolls back
   ✔ P04 idempotency: a replayed command key returns the stored response and re-applies nothing
   ✔ P04 no-SQLite: this module graph never reaches node:sqlite, src/authority storage or the SQLite repositories
+  ℹ tests 7  ℹ pass 7  ℹ fail 0
+
+V5_PG_REQUIRED=1 node --test tests/v5-p04-differential.test.js
+  ✔ differential: identical clock, seed and command script give identical observable state on both adapters
+  ✔ contention: two separate scopes racing one wallet produce exactly one winner and never overdraw
+  ✔ contention: reward claim, refund and match void cannot double-apply across scopes, and a failed unit rolls back
+  ✔ differential idempotency: the same key replays the stored response and applies once on both adapters
+  ✔ differential: the existing product suites that exercise this behaviour still pass, unmodified
   ℹ tests 5  ℹ pass 5  ℹ fail 0
+```
+
+**The already-imported realistic target.** `postgres://postgres@127.0.0.1:50709/v5_e2e` (read-only, run
+`e2e-run`) hydrates without error under `core_runtime`: 2 accounts, 2 matches, 1 room, 4 journal rows,
+36 move outcomes on the finished match, `daily` keys rendered as `2026-10-08`. That is the case the
+first suite could not see — a match aggregate with real participant and outcome rows.
+
+```
+node -e "…createPgPool({database:'v5_e2e'…}); uow.run(tx => tx.repositories.domain())"
+  {"accounts":[2],"matches":["75972568-…","queue:91ba4017-…"],"journal":4,
+   "rooms":["4946086c-…"],"outcomes":36,"daily":[["2026-10-08"]]}
 ```
 
 Regression checks run in the same session: `tests/v5-uow.test.js` 11/11 (the SQLite reference

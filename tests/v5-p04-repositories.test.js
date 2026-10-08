@@ -154,6 +154,25 @@ async function openHarness(t) {
   try {
    for (const role of RUNTIME_ROLES) await c2.query(`ALTER ROLE ${ident(role)} LOGIN`);
    await seedActors(c2, ACTORS);
+   /* A real committed match with both seats, so `domain()` is exercised on a database that actually
+    * holds aggregate rows (the earlier 5/5 never seeded one, which is exactly how a crash-on-match
+    * could hide). Terms/quote/state are minimal but structurally valid. */
+   await c2.query(`INSERT INTO match.matches (match_id, source, mode, kind, rated, amount, currency, turn_seconds,
+     from_tier, to_tier, terms_ratings, terms_json, terms_hash, quote_json, pool, contribution_a, contribution_b,
+     accepted_count, status, created_at, expires_at, state_json, revision, symbol_x, symbol_y, escrow, settled,
+     risk_flags, risk_actors)
+     VALUES ('m-1', 'queue', 'queue', '"ranked"', true, 100, 'coins', 30, 'gold', 'gold', ARRAY[1500.00,1500.00],
+      '{"source":"queue","mode":"queue","kind":"ranked","rated":true,"amount":100,"currency":"coins","turnSeconds":30}'::json,
+      $1, '{"pool":100,"currency":"coins","contributions":[50,50],"rated":true,"mode":"queue"}'::json,
+      100, 50, 50, 2, 'PLAYING', $2, $3, '{"board":[],"mini":[],"turn":"X","required":null,"winner":null,"line":null,"moves":[]}'::json,
+      3, 'alice', 'bob', 0, false, '{}', '{}'::json)`,
+    ['a'.repeat(64), new Date(CLOCK - 60000).toISOString(), new Date(CLOCK + 600000).toISOString()]);
+   await c2.query("INSERT INTO match.participants (match_id, seat, actor_id, accepted) VALUES ('m-1', 0, 'alice', true), ('m-1', 1, 'bob', true)");
+   await c2.query("INSERT INTO match.move_outcomes (match_id, \"key\", fingerprint, result) VALUES ('m-1', 'move-1', $1, '{\"revision\":1}')", ['b'.repeat(64)]);
+   /* A pre-existing daily bucket for the CLOCK day, so a TZ-shifted DATE decode would show up as a
+    * duplicate key plus a zeroed original. */
+   await c2.query("INSERT INTO economy.daily_progress (actor_id, day, finished, seconds, boards, casual, friend, ranked, ranked_bonus, claimed) VALUES ('alice', DATE '2026-10-08', 3, 90, 8, 1, 0, 2, 5, ARRAY['finish'])");
+   await c2.query("INSERT INTO monetization.reward_daily (actor_id, day, base, bonus, automatic) VALUES ('alice', DATE '2026-10-08', 4, 1, 0)");
    /* A live session for alice, stored in the TARGET encoding (64-hex sha256). */
    await c2.query('INSERT INTO identity.sessions (token_hash, actor_id, csrf, created_at, expires_at, auth_at) VALUES ($1, $2, $3, $4, $5, $6)',
     [crypto.createHash('sha256').update('bearer-alice').digest('hex'), 'alice', 'csrf-alice', new Date(CLOCK - 60000).toISOString(), new Date(CLOCK + 86400000).toISOString(), new Date(CLOCK - 60000).toISOString()]);
@@ -196,9 +215,12 @@ function poolsFor(database) {
 }
 async function closePools() { if (pools) { const p = pools; pools = null; await Promise.all([p.core.end(), p.api.end(), p.worker.end()]); } }
 
-function uowFor(role, now = () => CLOCK) {
+/* Options are threaded exactly as a production caller would supply them: the sampled clock, plus
+ * the caller's deterministic `random` and `verifyPurchase`. Threading them through the unit of work
+ * is what F2 was about, so the regression case asserts on the wiring rather than trusting shape. */
+function uowFor(role, options = { now: () => CLOCK }) {
  const pool = poolsFor(context.database)[role];
- return createPgUnitOfWork(pool, { now, role: role === 'core' ? 'core_runtime' : role === 'api' ? 'api_runtime' : 'worker_runtime' });
+ return createPgUnitOfWork(pool, { ...options, role: role === 'core' ? 'core_runtime' : role === 'api' ? 'api_runtime' : 'worker_runtime' });
 }
 
 /* ---------------------------------------------------------------- 1. parity */
@@ -244,21 +266,39 @@ test('P04 parity: every repository member answers over the migrated normalized s
   assert.deepEqual((await r.tournaments.rooms()).map((x) => x.id), ['room-1']);
   /* an unchanged room re-saves to the same entity rows (idempotent entity write) */
   assert.equal(await r.tournaments.save(room), 'room-1');
-  /* matches.* */
+  /* matches.* - seeded match with both seats */
   assert.equal(await r.matches.for('m-none'), null);
   await assert.rejects(() => r.matches.view('m-none'), /UNKNOWN_MATCH/);
-  assert.deepEqual(await r.matches.forActor('alice'), []);
-  /* domain() / state.read */
+  const match = await r.matches.for('m-1');
+  assert.deepEqual(match.players, ['alice', 'bob']);
+  assert.deepEqual(match.accepted, ['alice', 'bob']);
+  assert.equal(match.status, 'PLAYING');
+  assert.equal(match.commands.get('move-1').result.revision, 1);
+  assert.equal((await r.matches.view('m-1')).id, 'm-1');
+  assert.deepEqual((await r.matches.forActor('alice')).map((m) => m.id), ['m-1']);
+  assert.deepEqual((await r.matches.forActor('alice', ['FINISHED'])), []);
+  /* domain() / state.read. Hydration over a database that really holds a match aggregate is the
+    * case that used to throw (a missing participants accumulator). */
   const graph = await r.domain();
   assert.deepEqual([...graph.accounts.keys()].sort(), ACTORS);
   assert.equal(graph.account('alice').coins, 1000);
   assert.equal(graph.account('nobody', false), null);
   assert.throws(() => graph.account('nobody'), /ACCOUNT_REQUIRED/);
+  /* The DATE columns must decode to the SOURCE day text, not the session TimeZone's rendition. */
+  assert.deepEqual(Object.keys(graph.account('alice').daily), ['2026-10-08']);
+  assert.deepEqual(graph.account('alice').daily['2026-10-08'], { finished: 3, seconds: 90, boards: 8, casual: 1, friend: 0, ranked: 2, rankedBonus: 5, claimed: ['finish'] });
+  assert.deepEqual(Object.keys(graph.account('alice').monetization.daily), ['2026-10-08']);
+  assert.deepEqual(graph.account('alice').monetization.daily['2026-10-08'], { base: 4, bonus: 1, automatic: 0 });
+  /* The injected clock/random/verifier reach the domain model, exactly as the SQLite reference
+    * adapter passes them: the journal instant is the unit of work's clock, not the host clock. */
+  const live = await r.ledger.recent('alice', null);
+  assert.equal(live.every((entry) => entry.at <= CLOCK), true, 'no ledger entry may post-date the injected clock');
   const raw = await r.state.read();
   assert.equal(raw.accounts.find(([id]) => id === 'alice')[1].coins, 1000);
   assert.equal(raw.burned.coins, 42);
   assert.equal(raw.leagueWeek, '2026-10-05');
-  assert.equal(raw.journal.length, 2);
+  assert.equal(raw.journal.length, 2, 'the two seeded ledger entries, read back through the aggregate journal cap');
+  assert.deepEqual(raw.matches.map(([id]) => id), ['m-1']);
  });
 
  await api.run(async (tx) => {
@@ -447,6 +487,101 @@ test('P04 aggregate seam: the unchanged production dispatcher runs over the norm
  assert.deepEqual(dave.raw.journal.filter((e) => e.actor === 'dave').map((e) => e.id), ['opening:dave']);
 });
 
+/* ------------------------------- 2b. regression: match, DATE day, injected clock */
+
+test('P04 regression: a seeded match hydrates, a DATE day keys by its source text, and the injected clock/random reach the domain', async (t) => {
+ if (process.env.V5_PG_REQUIRED !== '1' && !process.env.V5_PG_URL) { t.skip('no V5_PG_URL'); return; }
+ try { await ensureBackend(); } catch (err) { if (process.env.V5_PG_REQUIRED === '1') throw err; t.skip(err.message); return; }
+ await openHarness(t);
+ const core = uowFor('core');
+
+ /* 1. Hydration over a database holding a real match aggregate must not throw, and the seats must
+  *    project onto `players`/`accepted` from the participant rows. */
+ const hydrated = await core.run(async (tx) => {
+  const graph = await tx.repositories.domain();
+  const match = graph.matches.get('m-1');
+  return { ids: [...graph.matches.keys()], players: match.players, accepted: match.accepted, view: graph.authority.view('m-1') };
+ });
+ assert.deepEqual(hydrated.ids, ['m-1']);
+ assert.deepEqual(hydrated.players, ['alice', 'bob']);
+ assert.deepEqual(hydrated.accepted, ['alice', 'bob']);
+ assert.equal(hydrated.view.players.length, 2);
+ assert.equal(hydrated.view.participants, undefined, 'the hydrate accumulator must not leak into the view');
+
+ /* 2. A DATE day must key by its source text: a graph-driven write through `commitDomain()` must
+  *    UPsert the SAME day row, never create a second key and never zero the untouched counters. */
+ const claim = await core.run(async (tx) => {
+  const graph = await tx.repositories.domain();
+  const daily = graph.account('alice').daily;
+  assert.deepEqual(Object.keys(daily), ['2026-10-08']);
+  daily['2026-10-08'].claimed.push('ranked');
+  const stats = await tx.repositories.commitDomain();
+  return stats;
+ });
+ assert.equal(claim.deletes, 0, 'no day row may be deleted by a TZ-shifted key');
+ const days = await core.run((tx) => tx.query("SELECT to_char(day, 'YYYY-MM-DD') AS day, finished, boards, claimed FROM economy.daily_progress WHERE actor_id = 'alice'"));
+ assert.equal(days.rows.length, 1, 'exactly the pre-existing day row must remain');
+ assert.equal(days.rows[0].day, '2026-10-08');
+ assert.equal(days.rows[0].finished, 3, 'untouched counters must not be zeroed');
+ assert.equal(days.rows[0].boards, 8);
+ assert.deepEqual(days.rows[0].claimed, ['finish', 'ranked']);
+
+ /* 3. The injected clock must reach the domain model: `convert` journals with `this.now()`. */
+ const driven = await core.run(async (tx) => {
+  const graph = await tx.repositories.domain();
+  const account = graph.account('bob');
+  account.coins = 1000;
+  account.crowns = 0;
+  executeCommand(graph.authority, { actor: 'bob', scope: 'player' }, 'convert-clock', { type: 'convert', from: 'coins', amount: 100 });
+  const stats = await tx.repositories.commitDomain();
+  return stats;
+ });
+ assert.ok(driven.upserts >= 1);
+ const conversion = await core.run((tx) => tx.repositories.ledger.recent('bob', null));
+ assert.ok(conversion.some((e) => e.id === 'convert-clock:out' && e.at === CLOCK), 'the journal instant must be the INJECTED clock, not the host clock');
+});
+
+ /* 4. The caller's `random` and `verifyPurchase` must survive hydration into the domain model. A
+  *    queue offer draws the symbol choice from `authority.random`, so a seeded draw is observable;
+  *    a purchase reaches the caller verifier instead of throwing STORE_UNAVAILABLE. */
+ test('P04 regression: the caller-supplied random and purchase verifier are threaded into the hydrated domain', async (t) => {
+  if (process.env.V5_PG_REQUIRED !== '1' && !process.env.V5_PG_URL) { t.skip('no V5_PG_URL'); return; }
+  try { await ensureBackend(); } catch (err) { if (process.env.V5_PG_REQUIRED === '1') throw err; t.skip(err.message); return; }
+  await openHarness(t);
+  let draws = 0;
+  const seen = [];
+  const core = uowFor('core', {
+   now: () => CLOCK,
+   random: () => { draws += 1; return 1; },
+   verifyPurchase: (evidence, actor) => {
+    seen.push([evidence.transactionId, actor]);
+    return { valid: true, accountId: actor, refunded: false, store: 'google', transactionId: evidence.transactionId, productId: 'crowns_100' };
+   },
+  });
+  const ran = await core.run(async (tx) => {
+   const graph = await tx.repositories.domain();
+   const bob = graph.account('bob');
+   bob.coins = 1000;
+   bob.crowns = 0;
+   bob.purchasedCrowns = 0;
+   const purchased = executeCommand(graph.authority, { actor: 'bob', scope: 'player' }, 'buy-seeded',
+    { type: 'purchase', evidence: { transactionId: 'tx-1' } });
+   const second = executeCommand(graph.authority, { actor: 'bob', scope: 'player' }, 'buy-seeded-2',
+    { type: 'purchase', evidence: { transactionId: 'tx-1' } });
+   await tx.repositories.commitDomain();
+   return { purchased, second };
+  });
+  /* `purchase()` verifies BEFORE it consults the receipt table (src/authority.js:140-146), so a
+   * replay reaches the verifier again and is then answered from the stored receipt - exactly the
+   * legacy behavior. What must hold is that the credit happens exactly once. */
+  assert.deepEqual(seen, [['tx-1', 'bob'], ['tx-1', 'bob']], 'both purchases must reach the caller verifier');
+  assert.deepEqual(ran.purchased, { crowns: 100, duplicate: false });
+  assert.deepEqual(ran.second, { crowns: 100, duplicate: true }, 'the receipt replay must be answered without re-verifying');
+  const crowns = await core.run((tx) => tx.query("SELECT crowns, purchased_crowns FROM economy.wallets WHERE actor_id = 'bob'"));
+  assert.equal(Number(crowns.rows[0].crowns), 100, 'the verified purchase credits exactly one pack');
+  assert.equal(Number(crowns.rows[0].purchased_crowns), 100);
+ });
+
 /* ------------------------------------------------------- 3. concurrency */
 
 test('P04 concurrency: two scopes cannot overdraw or double-reserve, and a failed unit rolls back', async (t) => {
@@ -537,13 +672,13 @@ test('P04 idempotency: a replayed command key returns the stored response and re
   assert.equal(stored.fingerprint, fingerprint);
   assert.equal(stored.actor, 'carol-idem');
   assert.equal(stored.key, 'quest-1');
-  assert.equal(JSON.parse(stored.response).coins, 5);
+  assert.deepEqual(stored.response, { coins: 5 }, 'the stored response comes back decoded, exactly as the SQLite find() returns it');
   await tx.repositories.outcomes.save(COMMANDS, id, 'carol-idem', fingerprint, JSON.stringify({ coins: 5 }));
   await tx.repositories.outcomes.save(COMMANDS, id, 'carol-idem', 'f'.repeat(64), JSON.stringify({ coins: 999 }));
   return tx.repositories.outcomes.find(COMMANDS, id);
  });
  assert.equal(replay.fingerprint, fingerprint, 'a replayed key must not overwrite the stored outcome');
- assert.equal(JSON.parse(replay.response).coins, 5);
+ assert.deepEqual(replay.response, { coins: 5 });
  const db = await adminClient(context.database);
  try {
   const row = (await db.query('SELECT count(*)::int AS n, (array_agg(response))[1] AS response FROM economy.command_outcomes WHERE actor_id = $1 AND "key" = $2', ['carol-idem', JSON.stringify('quest-1')])).rows[0];
@@ -561,7 +696,7 @@ test('P04 idempotency: a replayed command key returns the stored response and re
   return r.outcomes.find(PARTY_COMMANDS, partyId);
  });
  assert.equal(party.key, 'party-1');
- assert.equal(JSON.parse(party.response).id, 'room-1');
+ assert.deepEqual(party.response, { id: 'room-1' });
  /* social.command_outcomes is api-owned (0020), so its family is exercised on the api role. */
  const api = uowFor('api');
  const social = await api.run(async (tx) => {
@@ -571,7 +706,7 @@ test('P04 idempotency: a replayed command key returns the stored response and re
   return r.outcomes.find(SOCIAL_OPERATIONS, socialId);
  });
  assert.equal(social.key, 'social-1');
- assert.equal(social.result, JSON.stringify({ ok: true }));
+ assert.deepEqual(social.result, { ok: true }, 'the social family decodes its JSON TEXT result the same way');
  assert.equal((await core.run((tx) => tx.repositories.outcomes.find(COMMANDS, JSON.stringify(['carol-idem', 'quest-1'])))).key, 'quest-1');
  await assert.rejects(() => core.run((tx) => tx.repositories.outcomes.save({ find: 'SELECT 1' }, 'x', 'y')), (e) => e.code === 'UNKNOWN_OUTCOME_SCOPE');
 });

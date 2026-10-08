@@ -153,7 +153,7 @@ test('native transport is bearer-only, host/path bound and refuses redirects', (
   assert.match(android, /instanceFollowRedirects = false/);
   assert.match(android, /requestMethod = method/);
   assert.match(android, /Authorization", "Bearer/);
-  assert.match(android, /accessToken == null/);
+  assert.match(android, /host == null \\|\\| token == null/);
   assert.match(ios, /URLSessionConfiguration\.ephemeral/);
   assert.match(ios, /httpShouldSetCookies = false/);
   assert.match(ios, /NoRedirectDelegate/);

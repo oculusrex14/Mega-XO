@@ -92,3 +92,15 @@ test('Android bundle staging respects the generator protected-path refusal witho
   assert.match(gradle, /tasks\.register<Sync>\("generateMegaClient"\)/);
   assert.match(gradle, /dependsOn\(stageMegaClient\)/);
 });
+
+test('real Google and Apple provider helpers are compiled, not stubbed or exported to web content', () => {
+  const gradle = read('native/android/app/build.gradle.kts');
+  const iosProject = read('native/ios/MegaXO.xcodeproj/project.pbxproj');
+  assert.match(gradle, /MegaGoogleIdentity\.kt/);
+  assert.match(gradle, /stageGoogleIdentitySource/);
+  assert.match(gradle, /credentials:1\.6\.0/);
+  assert.match(gradle, /googleid:googleid:1\.2\.1/);
+  assert.match(iosProject, /MegaAppleIdentity\.swift in Sources/);
+  assert.match(read('native/ios/MegaAppleIdentity.swift'), /ASAuthorizationAppleIDProvider/);
+  assert.match(read('native/android/MegaGoogleIdentity.kt'), /CredentialManager/);
+});

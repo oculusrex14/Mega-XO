@@ -30,6 +30,13 @@ val stageMegaClient = tasks.register<Exec>("stageMegaClient") {
         "--output", externalBundle.absolutePath
     )
 }
+// Compile the existing reviewed V4 native Google provider helper verbatim.
+// It is NOT exposed as a browser bridge until P05 owns nonce/session exchange.
+val identitySources = layout.buildDirectory.dir("generated/identitySources")
+val stageGoogleIdentitySource = tasks.register<Sync>("stageGoogleIdentitySource") {
+    from(rootProject.projectDir.resolve("MegaGoogleIdentity.kt"))
+    into(identitySources.get().asFile.resolve("com/megaxo/identity"))
+}
 val generateMegaClient = tasks.register<Sync>("generateMegaClient") {
     description = "Copy the generated client into disposable Android build assets"
     group = "build"
@@ -65,6 +72,7 @@ android {
     }
 
     sourceSets.getByName("main").assets.srcDir(generatedAssets)
+    sourceSets.getByName("main").java.srcDir(identitySources)
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
@@ -74,10 +82,18 @@ android {
     }
 }
 
+tasks.matching { it.name.startsWith("compile") && it.name.endsWith("Kotlin") }.configureEach {
+    dependsOn(stageGoogleIdentitySource)
+}
+
 tasks.matching { it.name.startsWith("merge") && it.name.endsWith("Assets") }.configureEach {
     dependsOn(generateMegaClient)
 }
 
 dependencies {
     implementation("androidx.webkit:webkit:1.13.0")
+    // Latest verified stable Credential Manager and Google ID versions (Oct 2026).
+    implementation("androidx.credentials:credentials:1.6.0")
+    implementation("androidx.credentials:credentials-play-services-auth:1.6.0")
+    implementation("com.google.android.libraries.identity.googleid:googleid:1.2.1")
 }

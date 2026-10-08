@@ -23,3 +23,7 @@ The Xcode shell phase invokes the shared deterministic `scripts/v5/build-client.
 - The shared asset manifest must match Android's bundle hash for the same source revision.
 
 No store upload, real device execution, login, purchasing or notification delivery is claimed here.
+
+## Compiled Apple provider adapter (not activated)
+
+The existing `native/ios/MegaAppleIdentity.swift` is included directly in the Xcode target. It uses Apple's real AuthenticationServices request and a server-issued nonce, but has no configured App ID capability or connected JS/Keychain session exchange yet. Successful compilation is not Apple provider verification or an App Store entitlement.

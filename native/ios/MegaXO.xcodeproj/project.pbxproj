@@ -6,12 +6,14 @@
  objects = {
   EE1000000000000000000009 /* MegaXOApplication.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE1000000000000000000007 /* MegaXOApplication.swift */; };
   EE1000000000000000000020 /* MegaNativeSecretVault.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE1000000000000000000019 /* MegaNativeSecretVault.swift */; };
+  EE1000000000000000000022 /* MegaAppleIdentity.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE1000000000000000000021 /* MegaAppleIdentity.swift */; };
   EE1000000000000000000006 /* MegaXO.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MegaXO.app; sourceTree = BUILT_PRODUCTS_DIR; };
   EE1000000000000000000007 /* MegaXOApplication.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MegaXOApplication.swift; sourceTree = "<group>"; };
   EE1000000000000000000019 /* MegaNativeSecretVault.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MegaNativeSecretVault.swift; sourceTree = "<group>"; };
+  EE1000000000000000000021 /* MegaAppleIdentity.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ../MegaAppleIdentity.swift; sourceTree = "<group>"; };
   EE1000000000000000000008 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
   EE1000000000000000000003 = {isa = PBXGroup; children = (EE1000000000000000000004, EE1000000000000000000005); sourceTree = "<group>"; };
-  EE1000000000000000000004 /* MegaXO */ = {isa = PBXGroup; children = (EE1000000000000000000007, EE1000000000000000000019, EE1000000000000000000008); path = MegaXO; sourceTree = "<group>"; };
+  EE1000000000000000000004 /* MegaXO */ = {isa = PBXGroup; children = (EE1000000000000000000007, EE1000000000000000000019, EE1000000000000000000021, EE1000000000000000000008); path = MegaXO; sourceTree = "<group>"; };
   EE1000000000000000000005 /* Products */ = {isa = PBXGroup; children = (EE1000000000000000000006); name = Products; sourceTree = "<group>"; };
   EE1000000000000000000002 /* MegaXO */ = {
    isa = PBXNativeTarget;
@@ -38,7 +40,7 @@
    projectRoot = "";
    targets = (EE1000000000000000000002);
   };
-  EE1000000000000000000010 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (EE1000000000000000000009, EE1000000000000000000020); runOnlyForDeploymentPostprocessing = 0; };
+  EE1000000000000000000010 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (EE1000000000000000000009, EE1000000000000000000020, EE1000000000000000000022); runOnlyForDeploymentPostprocessing = 0; };
   EE1000000000000000000011 /* Resources */ = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
   EE1000000000000000000012 /* Bundle approved client */ = {
    isa = PBXShellScriptBuildPhase;

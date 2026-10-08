@@ -23,3 +23,7 @@ The temporary `online.megaxo.prototype` application ID is **not** an approved Pl
 - Local assets are signed as part of the APK; server authority, secrets and test code are omitted by the shared deterministic bundle builder.
 
 Keep the WebView security policy when the native API bridge is added; only a typed, main-frame, origin-allowlisted authenticated transport may replace the current fail-closed API response.
+
+## Compiled provider adapters (not activated)
+
+The existing `native/android/MegaGoogleIdentity.kt` is copied into generated Kotlin sources and compiled against the current stable Credential Manager 1.6.0 / Google ID 1.2.1 libraries. The provider must still use a real server-issued nonce and registered server client ID, and no JavaScript/native credential bridge is enabled until P05's secure transport exists. A green build does not imply live Google sign-in or Play account approval.

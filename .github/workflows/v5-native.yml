@@ -1,0 +1,98 @@
+name: V5 native host build verification
+# P20 co-development: compile unsigned debug/simulator hosts from the same
+# immutable allowlisted client revision. No provider secrets, signing, uploads
+# to stores, native commerce/ad SDK or production project access.
+on:
+  push:
+    branches: [V5-platform, 'co-dev/v5-native-*']
+    paths:
+      - 'native/**'
+      - 'scripts/v5/build-client.js'
+      - 'tests/v5-native-foundations.test.js'
+      - 'src/**'
+      - 'public/**'
+      - 'assets/vendor/**'
+      - 'index.html'
+      - '.github/workflows/v5-native.yml'
+  pull_request:
+    branches: [V5-platform]
+    paths:
+      - 'native/**'
+      - 'scripts/v5/build-client.js'
+      - 'tests/v5-native-foundations.test.js'
+      - 'src/**'
+      - 'public/**'
+      - 'assets/vendor/**'
+      - 'index.html'
+      - '.github/workflows/v5-native.yml'
+permissions:
+  contents: read
+concurrency:
+  group: v5-native-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  source-and-android:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '24'
+      - name: Validate source and host boundaries
+        run: node --test tests/v5-native-foundations.test.js tests/v5-client-bundle.test.js
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+      - name: Install SDK 35
+        run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.13'
+      - name: Compile signed-by-debug-key Android APK
+        run: gradle -p native/android :app:assembleDebug --no-daemon --stacktrace
+      - name: Assert bundled game and hash APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          apk=native/android/app/build/outputs/apk/debug/app-debug.apk
+          test -s "$apk"
+          unzip -l "$apk" | grep -F 'assets/mega/bundle-index.html'
+          unzip -l "$apk" | grep -F 'assets/mega/client-bundle.manifest.json'
+          sha256sum "$apk"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mega-xo-android-debug
+          path: native/android/app/build/outputs/apk/debug/app-debug.apk
+          retention-days: 7
+          if-no-files-found: error
+
+  ios-simulator:
+    runs-on: macos-15
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '24'
+      - name: Verify project configuration
+        run: |
+          xcodebuild -list -project native/ios/MegaXO.xcodeproj
+          plutil -lint native/ios/MegaXO/Info.plist
+      - name: Compile unsigned iOS Simulator app
+        run: |
+          xcodebuild -project native/ios/MegaXO.xcodeproj -scheme MegaXO \
+            -configuration Debug -sdk iphonesimulator \
+            -derivedDataPath "$RUNNER_TEMP/mega-xo-ios" \
+            CODE_SIGNING_ALLOWED=NO build
+      - name: Assert signed-source game assets included in built app
+        shell: bash
+        run: |
+          set -euo pipefail
+          app="$RUNNER_TEMP/mega-xo-ios/Build/Products/Debug-iphonesimulator/MegaXO.app"
+          test -s "$app/MegaClient/bundle-index.html"
+          test -s "$app/MegaClient/client-bundle.manifest.json"
+          test ! -e "$app/MegaClient/src/authority.js"
+          shasum -a 256 "$app/MegaClient/client-bundle.manifest.json"

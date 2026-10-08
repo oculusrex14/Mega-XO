@@ -1,3472 +1,3678 @@
 {
- "tool": "v5-migrate-conformance",
- "version": 1,
- "_provenance": "Curated expected-state manifest for scripts/v5/migrate.js --verify. Derived from a clean apply of packages/migrations/migrations  0032 economy.wallets purchased columns keep ONLY the independent 0..MAX_SAFE_INTEGER bounds - no cross-column ratio at rest, raw UInt provenance retained, hydrate clamp report-only (SourceGate scenario-A, parent final numeric-admission contract), 0033 profile.profile_saves clean opaque-archive cutover: payload_text sole authoritative document, JSONB cache column + jsonb-derived checks dropped, IS JSON OBJECT + raw byte cap retained (scenario-B) (35 files: 0034 Unicode-safe JSON-type representation for the parent-proven encoding-gate classes (region/scalars JSON string w/ encoded caps, receipt_reason JSON any value, five opaque extras + terms/receipt docs JSON with name-preserving root gates, op-key canonical JSON.stringify form for economy/tournament only via CASE-guarded named check), 0035 audit.operator_audit.prev_hash TEXT genesis-or-hex64 no padding/repair, frozen 0001-0026, 0027 ops.outbox terminal cancelled state (parent-proven supersede/tombstone writers), 0028 room_players soft actor reference per design 5.5 + source-order ordinal per mapping orderMeaningful (SourceGate M1), 0029 economy/tournament operation-key domain equal to the real source validators length 1..160 with names preserved (M3), 0030 social legacy combined-id uniqueness index over actor||':'||key, PK untouched (M4), 0031 rooms.shape_version nullable mapped discriminator distinct from rules_version (M5)) on PostgreSQL 16; expectations mirror the checksummed DDL. When adding a migration, extend this file in the same commit; --verify is presence-based, so extra catalog objects from later expand migrations do not break older expectations.",
- "postgres": {
-  "major": 16
- },
- "schemas": {
-  "meta": {
-   "owner": "v5_owner",
-   "tables": {
-    "migrations": {
-     "columns": {
-      "id": {
-       "t": "integer",
-       "nn": true
-      },
-      "name": {
-       "t": "text",
-       "nn": true
-      },
-      "checksum": {
-       "t": "character(64)",
-       "nn": true
-      },
-      "applied_at": {
-       "t": "timestamp with time zone",
-       "nn": true
-      },
-      "runner": {
-       "t": "text",
-       "nn": true
-      },
-      "duration_ms": {
-       "t": "integer"
-      },
-      "schema_version": {
-       "t": "integer",
-       "nn": true
-      }
-     },
-     "constraints": [
-      "migrations_checksum_hex_ck",
-      "migrations_duration_ck",
-      "migrations_name_ck",
-      "migrations_name_key",
-      "migrations_pkey",
-      "migrations_schema_version_ck"
-     ],
-     "indexes": [
-      "migrations_name_key",
-      "migrations_pkey"
-     ]
-    }
-   }
+  "tool": "v5-migrate-conformance",
+  "version": 1,
+  "_provenance": "Curated expected-state manifest for scripts/v5/migrate.js --verify. Derived from a clean apply of packages/migrations/migrations  0032 economy.wallets purchased columns keep ONLY the independent 0..MAX_SAFE_INTEGER bounds - no cross-column ratio at rest, raw UInt provenance retained, hydrate clamp report-only (SourceGate scenario-A, parent final numeric-admission contract), 0033 profile.profile_saves clean opaque-archive cutover: payload_text sole authoritative document, JSONB cache column + jsonb-derived checks dropped, IS JSON OBJECT + raw byte cap retained (scenario-B) (35 files: 0034 Unicode-safe JSON-type representation for the parent-proven encoding-gate classes (region/scalars JSON string w/ encoded caps, receipt_reason JSON any value, five opaque extras + terms/receipt docs JSON with name-preserving root gates, op-key canonical JSON.stringify form for economy/tournament only via CASE-guarded named check), 0035 audit.operator_audit.prev_hash TEXT genesis-or-hex64 no padding/repair, frozen 0001-0026, 0027 ops.outbox terminal cancelled state (parent-proven supersede/tombstone writers), 0028 room_players soft actor reference per design 5.5 + source-order ordinal per mapping orderMeaningful (SourceGate M1), 0029 economy/tournament operation-key domain equal to the real source validators length 1..160 with names preserved (M3), 0030 social legacy combined-id uniqueness index over actor||':'||key, PK untouched (M4), 0031 rooms.shape_version nullable mapped discriminator distinct from rules_version (M5)) on PostgreSQL 16; expectations mirror the checksummed DDL. When adding a migration, extend this file in the same commit; --verify is presence-based, so extra catalog objects from later expand migrations do not break older expectations. | 0036 v5_migration bookkeeping namespace (7 tables) recorded; 0037 runtime grant gaps closed additively (api_runtime eligibility INSERT + verified column UPDATE, email_credential_versions INSERT/DELETE; worker_runtime rate_buckets INSERT/UPDATE) with the three runtime identities holding no USAGE on v5_migration. | 0036 v5_migration import-bookkeeping namespace created (7 tables) and 0037 runtime grant gaps closed additively; the three runtime identities hold no USAGE on v5_migration (asserted by privilegeChecks), and the namespace is excluded from the backup-read contract because it is import provenance, not player data.",
+  "postgres": {
+    "major": 16
   },
-  "identity": {
-   "owner": "v5_owner",
-   "tables": {
-    "actors": {
-     "columns": {
-      "actor_id": {
-       "t": "text",
-       "nn": true
-      },
-      "region": {
-       "t": "json",
-       "nn": true
-      },
-      "wealth_public": {
-       "t": "boolean",
-       "nn": true
-      },
-      "created_at": {
-       "t": "timestamp with time zone",
-       "nn": true
+  "schemas": {
+    "meta": {
+      "owner": "v5_owner",
+      "tables": {
+        "migrations": {
+          "columns": {
+            "id": {
+              "t": "integer",
+              "nn": true
+            },
+            "name": {
+              "t": "text",
+              "nn": true
+            },
+            "checksum": {
+              "t": "character(64)",
+              "nn": true
+            },
+            "applied_at": {
+              "t": "timestamp with time zone",
+              "nn": true
+            },
+            "runner": {
+              "t": "text",
+              "nn": true
+            },
+            "duration_ms": {
+              "t": "integer"
+            },
+            "schema_version": {
+              "t": "integer",
+              "nn": true
+            }
+          },
+          "constraints": [
+            "migrations_checksum_hex_ck",
+            "migrations_duration_ck",
+            "migrations_name_ck",
+            "migrations_name_key",
+            "migrations_pkey",
+            "migrations_schema_version_ck"
+          ],
+          "indexes": [
+            "migrations_name_key",
+            "migrations_pkey"
+          ]
+        }
       }
-     },
-     "constraints": [
-      "actors_actor_id_grammar_ck",
-      "actors_pkey",
-      "actors_region_json_string_ck"
-     ],
-     "indexes": [
-      "actors_pkey"
-     ]
     },
-    "eligibility": {
-     "columns": {
-      "actor_id": {
-       "t": "text",
-       "nn": true
-      },
-      "verified": {
-       "t": "boolean",
-       "nn": true
-      },
-      "suspended": {
-       "t": "boolean",
-       "nn": true
-      },
-      "security_hold": {
-       "t": "boolean",
-       "nn": true
+    "identity": {
+      "owner": "v5_owner",
+      "tables": {
+        "actors": {
+          "columns": {
+            "actor_id": {
+              "t": "text",
+              "nn": true
+            },
+            "region": {
+              "t": "json",
+              "nn": true
+            },
+            "wealth_public": {
+              "t": "boolean",
+              "nn": true
+            },
+            "created_at": {
+              "t": "timestamp with time zone",
+              "nn": true
+            }
+          },
+          "constraints": [
+            "actors_actor_id_grammar_ck",
+            "actors_pkey",
+            "actors_region_json_string_ck"
+          ],
+          "indexes": [
+            "actors_pkey"
+          ]
+        },
+        "eligibility": {
+          "columns": {
+            "actor_id": {
+              "t": "text",
+              "nn": true
+            },
+            "verified": {
+              "t": "boolean",
+              "nn": true
+            },
+            "suspended": {
+              "t": "boolean",
+              "nn": true
+            },
+            "security_hold": {
+              "t": "boolean",
+              "nn": true
+            }
+          },
+          "constraints": [
+            "eligibility_actor_id_fkey",
+            "eligibility_pkey"
+          ],
+          "indexes": [
+            "eligibility_pkey"
+          ]
+        },
+        "email_challenges": {
+          "columns": {
+            "challenge_id": {
+              "t": "text",
+              "nn": true
+            },
+            "session_hash": {
+              "t": "text",
+              "nn": true
+            },
+            "email": {
+              "t": "text",
+              "nn": true
+            },
+            "purpose": {
+              "t": "text",
+              "nn": true
+            },
+            "actor_id": {
+              "t": "text"
+            },
+            "code_hash": {
+              "t": "text",
+              "nn": true
+            },
+            "password_salt": {
+              "t": "text"
+            },
+            "password_hash": {
+              "t": "text"
+            },
+            "created_at": {
+              "t": "timestamp with time zone",
+              "nn": true
+            },
+            "expires_at": {
+              "t": "timestamp with time zone",
+              "nn": true
+            },
+            "attempts": {
+              "t": "integer",
+              "nn": true
+            },
+            "verified_at": {
+              "t": "timestamp with time zone"
+            },
+            "consumed": {
+              "t": "boolean",
+              "nn": true
+            }
+          },
+          "constraints": [
+            "email_challenges_attempts_check",
+            "email_challenges_pkey",
+            "email_challenges_purpose_check"
+          ],
+          "indexes": [
+            "email_challenges_email_idx",
+            "email_challenges_expires_idx",
+            "email_challenges_lookup_idx",
+            "email_challenges_pkey"
+          ]
+        },
+        "email_credential_versions": {
+          "columns": {
+            "challenge_id": {
+              "t": "text",
+              "nn": true
+            },
+            "credential_hash": {
+              "t": "text"
+            }
+          },
+          "constraints": [
+            "email_credential_versions_challenge_id_fkey",
+            "email_credential_versions_pkey"
+          ],
+          "indexes": [
+            "email_credential_versions_pkey"
+          ]
+        },
+        "email_credentials": {
+          "columns": {
+            "email": {
+              "t": "text",
+              "nn": true
+            },
+            "actor_id": {
+              "t": "text",
+              "nn": true
+            },
+            "salt": {
+              "t": "text",
+              "nn": true
+            },
+            "password_hash": {
+              "t": "text",
+              "nn": true
+            },
+            "created_at": {
+              "t": "timestamp with time zone",
+              "nn": true
+            },
+            "verified_at": {
+              "t": "timestamp with time zone"
+            }
+          },
+          "constraints": [
+            "email_credentials_actor_id_fkey",
+            "email_credentials_actor_id_key",
+            "email_credentials_pkey"
+          ],
+          "indexes": [
+            "email_credentials_actor_id_key",
+            "email_credentials_lower_email_uniq",
+            "email_credentials_pkey"
+          ]
+        },
+        "identities": {
+          "columns": {
+            "provider": {
+              "t": "text",
+              "nn": true
+            },
+            "subject": {
+              "t": "text",
+              "nn": true
+            },
+            "actor_id": {
+              "t": "text",
+              "nn": true
+            },
+            "created_at": {
+              "t": "timestamp with time zone",
+              "nn": true
+            }
+          },
+          "constraints": [
+            "identities_actor_id_fkey",
+            "identities_actor_provider_key",
+            "identities_pkey",
+            "identities_provider_check",
+            "identities_subject_check"
+          ],
+          "indexes": [
+            "identities_actor_idx",
+            "identities_actor_provider_key",
+            "identities_pkey"
+          ]
+        },
+        "profiles": {
+          "columns": {
+            "actor_id": {
+              "t": "text",
+              "nn": true
+            },
+            "tag": {
+              "t": "text",
+              "nn": true
+            },
+            "username": {
+              "t": "text",
+              "nn": true
+            },
+            "display_name": {
+              "t": "text",
+              "nn": true
+            },
+            "avatar": {
+              "t": "text",
+              "nn": true
+            },
+            "stats_visibility": {
+              "t": "text",
+              "nn": true
+            },
+            "presence_visibility": {
+              "t": "text",
+              "nn": true
+            },
+            "created_at": {
+              "t": "timestamp with time zone",
+              "nn": true
+            },
+            "username_changed": {
+              "t": "timestamp with time zone"
+            },
+            "version": {
+              "t": "integer",
+              "nn": true
+            }
+          },
+          "constraints": [
+            "profiles_actor_id_fkey",
+            "profiles_pkey",
+            "profiles_presence_visibility_check",
+            "profiles_stats_visibility_check",
+            "profiles_tag_check",
+            "profiles_tag_key",
+            "profiles_username_key",
+            "profiles_username_nonempty_ck",
+            "profiles_version_check"
+          ],
+          "indexes": [
+            "profiles_pkey",
+            "profiles_tag_key",
+            "profiles_username_key",
+            "profiles_username_pattern_idx"
+          ]
+        },
+        "sessions": {
+          "columns": {
+            "token_hash": {
+              "t": "character(64)",
+              "nn": true
+            },
+            "actor_id": {
+              "t": "text"
+            },
+            "csrf": {
+              "t": "text",
+              "nn": true
+            },
+            "created_at": {
+              "t": "timestamp with time zone",
+              "nn": true
+            },
+            "expires_at": {
+              "t": "timestamp with time zone",
+              "nn": true
+            },
+            "auth_at": {
+              "t": "timestamp with time zone",
+              "nn": true
+            }
+          },
+          "constraints": [
+            "sessions_actor_id_fkey",
+            "sessions_pkey",
+            "sessions_token_hash_hex_ck"
+          ],
+          "indexes": [
+            "sessions_actor_idx",
+            "sessions_expires_idx",
+            "sessions_pkey"
+          ]
+        },
+        "signin_attempts": {
+          "columns": {
+            "state_hash": {
+              "t": "text",
+              "nn": true
+            },
+            "session_hash": {
+              "t": "text",
+              "nn": true
+            },
+            "provider": {
+              "t": "text",
+              "nn": true
+            },
+            "kind": {
+              "t": "text",
+              "nn": true
+            },
+            "intent": {
+              "t": "text",
+              "nn": true
+            },
+            "target_actor": {
+              "t": "text"
+            },
+            "nonce": {
+              "t": "text"
+            },
+            "verifier": {
+              "t": "text"
+            },
+            "expires_at": {
+              "t": "timestamp with time zone",
+              "nn": true
+            },
+            "used": {
+              "t": "boolean",
+              "nn": true
+            }
+          },
+          "constraints": [
+            "signin_attempts_intent_check",
+            "signin_attempts_kind_check",
+            "signin_attempts_pkey",
+            "signin_attempts_provider_check"
+          ],
+          "indexes": [
+            "signin_attempts_expires_idx",
+            "signin_attempts_pkey",
+            "signin_attempts_session_idx"
+          ]
+        }
       }
-     },
-     "constraints": [
-      "eligibility_actor_id_fkey",
-      "eligibility_pkey"
-     ],
-     "indexes": [
-      "eligibility_pkey"
-     ]
     },
-    "email_challenges": {
-     "columns": {
-      "challenge_id": {
-       "t": "text",
-       "nn": true
-      },
-      "session_hash": {
-       "t": "text",
-       "nn": true
-      },
-      "email": {
-       "t": "text",
-       "nn": true
-      },
-      "purpose": {
-       "t": "text",
-       "nn": true
-      },
-      "actor_id": {
-       "t": "text"
-      },
-      "code_hash": {
-       "t": "text",
-       "nn": true
-      },
-      "password_salt": {
-       "t": "text"
-      },
-      "password_hash": {
-       "t": "text"
-      },
-      "created_at": {
-       "t": "timestamp with time zone",
-       "nn": true
-      },
-      "expires_at": {
-       "t": "timestamp with time zone",
-       "nn": true
-      },
-      "attempts": {
-       "t": "integer",
-       "nn": true
-      },
-      "verified_at": {
-       "t": "timestamp with time zone"
-      },
-      "consumed": {
-       "t": "boolean",
-       "nn": true
+    "profile": {
+      "owner": "v5_owner",
+      "tables": {
+        "profile_saves": {
+          "columns": {
+            "actor_id": {
+              "t": "text",
+              "nn": true
+            },
+            "revision": {
+              "t": "bigint",
+              "nn": true
+            },
+            "payload_text": {
+              "t": "text",
+              "nn": true
+            },
+            "updated_at": {
+              "t": "timestamp with time zone",
+              "nn": true
+            }
+          },
+          "constraints": [
+            "profile_saves_payload_text_is_json_object_ck",
+            "profile_saves_payload_text_size_ck",
+            "profile_saves_pkey",
+            "profile_saves_revision_check"
+          ],
+          "indexes": [
+            "profile_saves_pkey"
+          ]
+        }
       }
-     },
-     "constraints": [
-      "email_challenges_attempts_check",
-      "email_challenges_pkey",
-      "email_challenges_purpose_check"
-     ],
-     "indexes": [
-      "email_challenges_email_idx",
-      "email_challenges_expires_idx",
-      "email_challenges_lookup_idx",
-      "email_challenges_pkey"
-     ]
     },
-    "email_credential_versions": {
-     "columns": {
-      "challenge_id": {
-       "t": "text",
-       "nn": true
-      },
-      "credential_hash": {
-       "t": "text"
+    "social": {
+      "owner": "v5_owner",
+      "tables": {
+        "blocks": {
+          "columns": {
+            "blocker_id": {
+              "t": "text",
+              "nn": true
+            },
+            "blocked_id": {
+              "t": "text",
+              "nn": true
+            }
+          },
+          "constraints": [
+            "blocks_not_self_ck",
+            "blocks_pkey"
+          ],
+          "indexes": [
+            "blocks_blocked_idx",
+            "blocks_pkey"
+          ]
+        },
+        "command_outcomes": {
+          "columns": {
+            "actor_id": {
+              "t": "text",
+              "nn": true
+            },
+            "key": {
+              "t": "text",
+              "nn": true
+            },
+            "fingerprint": {
+              "t": "text",
+              "nn": true
+            },
+            "result": {
+              "t": "text",
+              "nn": true
+            },
+            "committed_at": {
+              "t": "timestamp with time zone"
+            }
+          },
+          "constraints": [
+            "command_outcomes_fingerprint_check",
+            "command_outcomes_key_check",
+            "command_outcomes_pkey",
+            "command_outcomes_result_check"
+          ],
+          "indexes": [
+            "command_outcomes_pkey",
+            "social_command_outcomes_legacy_id_uniq"
+          ]
+        },
+        "friend_requests": {
+          "columns": {
+            "from_id": {
+              "t": "text",
+              "nn": true
+            },
+            "to_id": {
+              "t": "text",
+              "nn": true
+            }
+          },
+          "constraints": [
+            "friend_requests_not_self_ck",
+            "friend_requests_pkey"
+          ],
+          "indexes": [
+            "friend_requests_pkey",
+            "friend_requests_to_idx"
+          ]
+        },
+        "friendships": {
+          "columns": {
+            "actor_a": {
+              "t": "text",
+              "nn": true
+            },
+            "actor_b": {
+              "t": "text",
+              "nn": true
+            }
+          },
+          "constraints": [
+            "friendships_canonical_order_ck",
+            "friendships_pkey"
+          ],
+          "indexes": [
+            "friendships_actor_b_idx",
+            "friendships_pkey"
+          ]
+        }
       }
-     },
-     "constraints": [
-      "email_credential_versions_challenge_id_fkey",
-      "email_credential_versions_pkey"
-     ],
-     "indexes": [
-      "email_credential_versions_pkey"
-     ]
     },
-    "email_credentials": {
-     "columns": {
-      "email": {
-       "t": "text",
-       "nn": true
-      },
-      "actor_id": {
-       "t": "text",
-       "nn": true
-      },
-      "salt": {
-       "t": "text",
-       "nn": true
-      },
-      "password_hash": {
-       "t": "text",
-       "nn": true
-      },
-      "created_at": {
-       "t": "timestamp with time zone",
-       "nn": true
-      },
-      "verified_at": {
-       "t": "timestamp with time zone"
+    "economy": {
+      "owner": "v5_owner",
+      "tables": {
+        "actor_legacy_extra": {
+          "columns": {
+            "actor_id": {
+              "t": "text",
+              "nn": true
+            },
+            "extra": {
+              "t": "json",
+              "nn": true
+            }
+          },
+          "constraints": [
+            "actor_legacy_extra_extra_check",
+            "actor_legacy_extra_pkey"
+          ],
+          "indexes": [
+            "actor_legacy_extra_pkey"
+          ]
+        },
+        "command_outcomes": {
+          "columns": {
+            "actor_id": {
+              "t": "text",
+              "nn": true
+            },
+            "key": {
+              "t": "text",
+              "nn": true
+            },
+            "fingerprint": {
+              "t": "character(64)",
+              "nn": true
+            },
+            "response": {
+              "t": "text",
+              "nn": true
+            },
+            "committed_at": {
+              "t": "timestamp with time zone"
+            }
+          },
+          "constraints": [
+            "command_outcomes_fingerprint_check",
+            "command_outcomes_key_check",
+            "command_outcomes_pkey",
+            "command_outcomes_response_check"
+          ],
+          "indexes": [
+            "command_outcomes_pkey"
+          ]
+        },
+        "daily_progress": {
+          "columns": {
+            "actor_id": {
+              "t": "text",
+              "nn": true
+            },
+            "day": {
+              "t": "date",
+              "nn": true
+            },
+            "finished": {
+              "t": "integer",
+              "nn": true
+            },
+            "seconds": {
+              "t": "numeric",
+              "nn": true
+            },
+            "boards": {
+              "t": "integer",
+              "nn": true
+            },
+            "casual": {
+              "t": "integer",
+              "nn": true
+            },
+            "friend": {
+              "t": "integer",
+              "nn": true
+            },
+            "ranked": {
+              "t": "integer",
+              "nn": true
+            },
+            "ranked_bonus": {
+              "t": "integer",
+              "nn": true
+            },
+            "claimed": {
+              "t": "text[]",
+              "nn": true
+            }
+          },
+          "constraints": [
+            "daily_progress_actor_id_fkey",
+            "daily_progress_boards_check",
+            "daily_progress_casual_check",
+            "daily_progress_claimed_check",
+            "daily_progress_finished_check",
+            "daily_progress_friend_check",
+            "daily_progress_pkey",
+            "daily_progress_ranked_bonus_check",
+            "daily_progress_ranked_check",
+            "daily_progress_seconds_check"
+          ],
+          "indexes": [
+            "daily_progress_pkey"
+          ]
+        },
+        "ledger": {
+          "columns": {
+            "entry_id": {
+              "t": "text",
+              "nn": true
+            },
+            "actor_id": {
+              "t": "text",
+              "nn": true
+            },
+            "currency": {
+              "t": "text",
+              "nn": true
+            },
+            "amount": {
+              "t": "bigint",
+              "nn": true
+            },
+            "reason": {
+              "t": "text",
+              "nn": true
+            },
+            "source": {
+              "t": "text",
+              "nn": true
+            },
+            "at": {
+              "t": "timestamp with time zone",
+              "nn": true
+            }
+          },
+          "constraints": [
+            "ledger_amount_check",
+            "ledger_currency_check",
+            "ledger_pkey",
+            "ledger_source_check"
+          ],
+          "indexes": [
+            "ledger_actor_at_idx",
+            "ledger_at_idx",
+            "ledger_pkey",
+            "ledger_source_at_idx"
+          ]
+        },
+        "match_history": {
+          "columns": {
+            "actor_id": {
+              "t": "text",
+              "nn": true
+            },
+            "seq": {
+              "t": "integer",
+              "nn": true
+            },
+            "match_id": {
+              "t": "text",
+              "nn": true
+            },
+            "at": {
+              "t": "timestamp with time zone",
+              "nn": true
+            },
+            "opponent": {
+              "t": "text",
+              "nn": true
+            },
+            "mode": {
+              "t": "text",
+              "nn": true
+            },
+            "queue": {
+              "t": "boolean",
+              "nn": true
+            },
+            "symbol": {
+              "t": "text",
+              "nn": true
+            },
+            "rated": {
+              "t": "boolean",
+              "nn": true
+            },
+            "qualified": {
+              "t": "boolean",
+              "nn": true
+            },
+            "activity_qualified": {
+              "t": "boolean",
+              "nn": true
+            },
+            "result": {
+              "t": "text",
+              "nn": true
+            },
+            "reason": {
+              "t": "text"
+            },
+            "active_seconds": {
+              "t": "integer"
+            },
+            "rating_delta": {
+              "t": "numeric(9,2)"
+            },
+            "casual_delta": {
+              "t": "numeric(9,2)"
+            }
+          },
+          "constraints": [
+            "match_history_active_seconds_check",
+            "match_history_actor_id_fkey",
+            "match_history_actor_match_key",
+            "match_history_mode_check",
+            "match_history_pkey",
+            "match_history_result_check",
+            "match_history_seq_ck",
+            "match_history_symbol_check"
+          ],
+          "indexes": [
+            "match_history_actor_at_idx",
+            "match_history_actor_match_key",
+            "match_history_pkey"
+          ]
+        },
+        "ratings": {
+          "columns": {
+            "actor_id": {
+              "t": "text",
+              "nn": true
+            },
+            "rating": {
+              "t": "numeric(9,2)",
+              "nn": true
+            },
+            "peak": {
+              "t": "numeric(9,2)",
+              "nn": true
+            },
+            "casual_rating": {
+              "t": "numeric(9,2)",
+              "nn": true
+            },
+            "games": {
+              "t": "integer",
+              "nn": true
+            },
+            "casual_games": {
+              "t": "integer",
+              "nn": true
+            },
+            "tier": {
+              "t": "text",
+              "nn": true
+            },
+            "reached_at": {
+              "t": "timestamp with time zone"
+            },
+            "last_rated_at": {
+              "t": "timestamp with time zone"
+            }
+          },
+          "constraints": [
+            "ratings_actor_id_fkey",
+            "ratings_casual_games_check",
+            "ratings_casual_rating_check",
+            "ratings_games_check",
+            "ratings_peak_check",
+            "ratings_pkey",
+            "ratings_rating_check",
+            "ratings_tier_check"
+          ],
+          "indexes": [
+            "ratings_pkey",
+            "ratings_rating_idx"
+          ]
+        },
+        "season_history": {
+          "columns": {
+            "actor_id": {
+              "t": "text",
+              "nn": true
+            },
+            "seq": {
+              "t": "smallint",
+              "nn": true
+            },
+            "season_id": {
+              "t": "text",
+              "nn": true
+            },
+            "started_at": {
+              "t": "timestamp with time zone",
+              "nn": true
+            },
+            "games": {
+              "t": "integer",
+              "nn": true
+            },
+            "queue_games": {
+              "t": "integer",
+              "nn": true
+            },
+            "opponents": {
+              "t": "text[]",
+              "nn": true
+            },
+            "wins": {
+              "t": "integer",
+              "nn": true
+            },
+            "losses": {
+              "t": "integer",
+              "nn": true
+            },
+            "draws": {
+              "t": "integer",
+              "nn": true
+            },
+            "peak_rating": {
+              "t": "numeric(9,2)"
+            },
+            "last_rated_at": {
+              "t": "timestamp with time zone"
+            },
+            "qualified_at": {
+              "t": "timestamp with time zone"
+            },
+            "finish_rating": {
+              "t": "numeric(9,2)"
+            },
+            "finish_tier": {
+              "t": "text"
+            },
+            "ended_at": {
+              "t": "timestamp with time zone"
+            }
+          },
+          "constraints": [
+            "season_history_actor_id_fkey",
+            "season_history_draws_check",
+            "season_history_finish_rating_check",
+            "season_history_games_check",
+            "season_history_losses_check",
+            "season_history_peak_rating_check",
+            "season_history_pkey",
+            "season_history_queue_games_check",
+            "season_history_season_id_check",
+            "season_history_seq_ck",
+            "season_history_wins_check"
+          ],
+          "indexes": [
+            "season_history_pkey"
+          ]
+        },
+        "season_state": {
+          "columns": {
+            "actor_id": {
+              "t": "text",
+              "nn": true
+            },
+            "season_id": {
+              "t": "text",
+              "nn": true
+            },
+            "started_at": {
+              "t": "timestamp with time zone",
+              "nn": true
+            },
+            "games": {
+              "t": "integer",
+              "nn": true
+            },
+            "queue_games": {
+              "t": "integer",
+              "nn": true
+            },
+            "opponents": {
+              "t": "text[]",
+              "nn": true
+            },
+            "wins": {
+              "t": "integer",
+              "nn": true
+            },
+            "losses": {
+              "t": "integer",
+              "nn": true
+            },
+            "draws": {
+              "t": "integer",
+              "nn": true
+            },
+            "peak_rating": {
+              "t": "numeric(9,2)"
+            },
+            "last_rated_at": {
+              "t": "timestamp with time zone"
+            },
+            "qualified_at": {
+              "t": "timestamp with time zone"
+            }
+          },
+          "constraints": [
+            "season_state_actor_id_fkey",
+            "season_state_draws_check",
+            "season_state_games_check",
+            "season_state_losses_check",
+            "season_state_peak_rating_check",
+            "season_state_pkey",
+            "season_state_queue_games_check",
+            "season_state_season_id_check",
+            "season_state_wins_check"
+          ],
+          "indexes": [
+            "season_state_pkey",
+            "season_state_season_actor_idx"
+          ]
+        },
+        "system_burns": {
+          "columns": {
+            "id": {
+              "t": "smallint",
+              "nn": true
+            },
+            "coins": {
+              "t": "bigint",
+              "nn": true
+            },
+            "crowns": {
+              "t": "bigint",
+              "nn": true
+            },
+            "updated_at": {
+              "t": "timestamp with time zone",
+              "nn": true
+            }
+          },
+          "constraints": [
+            "system_burns_coins_check",
+            "system_burns_crowns_check",
+            "system_burns_id_check",
+            "system_burns_pkey"
+          ],
+          "indexes": [
+            "system_burns_pkey"
+          ]
+        },
+        "tournament_records": {
+          "columns": {
+            "actor_id": {
+              "t": "text",
+              "nn": true
+            },
+            "entered": {
+              "t": "integer",
+              "nn": true
+            },
+            "wins": {
+              "t": "integer",
+              "nn": true
+            },
+            "runner_up": {
+              "t": "integer",
+              "nn": true
+            },
+            "top3": {
+              "t": "integer",
+              "nn": true
+            },
+            "top5": {
+              "t": "integer",
+              "nn": true
+            },
+            "best_finish": {
+              "t": "smallint"
+            },
+            "finish_sum": {
+              "t": "integer",
+              "nn": true
+            },
+            "premium_wins": {
+              "t": "integer",
+              "nn": true
+            }
+          },
+          "constraints": [
+            "tournament_records_actor_id_fkey",
+            "tournament_records_best_finish_check",
+            "tournament_records_entered_check",
+            "tournament_records_finish_sum_check",
+            "tournament_records_pkey",
+            "tournament_records_premium_wins_check",
+            "tournament_records_runner_up_check",
+            "tournament_records_top3_check",
+            "tournament_records_top5_check",
+            "tournament_records_wins_check"
+          ],
+          "indexes": [
+            "tournament_records_pkey"
+          ]
+        },
+        "wallet_ledger_entries": {
+          "columns": {
+            "actor_id": {
+              "t": "text",
+              "nn": true
+            },
+            "entry_id": {
+              "t": "text",
+              "nn": true
+            },
+            "operation_id": {
+              "t": "text"
+            },
+            "currency": {
+              "t": "text",
+              "nn": true
+            },
+            "amount": {
+              "t": "bigint",
+              "nn": true
+            },
+            "reason": {
+              "t": "text",
+              "nn": true
+            },
+            "at": {
+              "t": "timestamp with time zone",
+              "nn": true
+            }
+          },
+          "constraints": [
+            "wallet_ledger_entries_amount_check",
+            "wallet_ledger_entries_currency_check",
+            "wallet_ledger_entries_pkey"
+          ],
+          "indexes": [
+            "wallet_ledger_entries_actor_at_idx",
+            "wallet_ledger_entries_pkey"
+          ]
+        },
+        "wallet_operations": {
+          "columns": {
+            "actor_id": {
+              "t": "text",
+              "nn": true
+            },
+            "key": {
+              "t": "text",
+              "nn": true
+            },
+            "fingerprint": {
+              "t": "text",
+              "nn": true
+            },
+            "result": {
+              "t": "text",
+              "nn": true
+            },
+            "committed_at": {
+              "t": "timestamp with time zone"
+            }
+          },
+          "constraints": [
+            "wallet_operations_fingerprint_check",
+            "wallet_operations_key_check",
+            "wallet_operations_pkey",
+            "wallet_operations_result_check"
+          ],
+          "indexes": [
+            "wallet_operations_pkey"
+          ]
+        },
+        "wallets": {
+          "columns": {
+            "actor_id": {
+              "t": "text",
+              "nn": true
+            },
+            "coins": {
+              "t": "bigint",
+              "nn": true
+            },
+            "crowns": {
+              "t": "bigint",
+              "nn": true
+            },
+            "reserved_coins": {
+              "t": "bigint",
+              "nn": true
+            },
+            "reserved_crowns": {
+              "t": "bigint",
+              "nn": true
+            },
+            "purchased_coins": {
+              "t": "bigint",
+              "nn": true
+            },
+            "purchased_crowns": {
+              "t": "bigint",
+              "nn": true
+            },
+            "purchase_influenced": {
+              "t": "boolean",
+              "nn": true
+            },
+            "legacy_competition_restricted": {
+              "t": "boolean",
+              "nn": true
+            }
+          },
+          "constraints": [
+            "wallets_actor_id_fkey",
+            "wallets_coins_bound_ck",
+            "wallets_crowns_bound_ck",
+            "wallets_pkey",
+            "wallets_purchased_coins_bound_ck",
+            "wallets_purchased_crowns_bound_ck",
+            "wallets_reserved_coins_bound_ck",
+            "wallets_reserved_crowns_bound_ck"
+          ],
+          "indexes": [
+            "wallets_pkey",
+            "wallets_wealth_idx"
+          ]
+        }
       }
-     },
-     "constraints": [
-      "email_credentials_actor_id_fkey",
-      "email_credentials_actor_id_key",
-      "email_credentials_pkey"
-     ],
-     "indexes": [
-      "email_credentials_actor_id_key",
-      "email_credentials_lower_email_uniq",
-      "email_credentials_pkey"
-     ]
     },
-    "identities": {
-     "columns": {
-      "provider": {
-       "t": "text",
-       "nn": true
-      },
-      "subject": {
-       "t": "text",
-       "nn": true
-      },
-      "actor_id": {
-       "t": "text",
-       "nn": true
-      },
-      "created_at": {
-       "t": "timestamp with time zone",
-       "nn": true
+    "core": {
+      "owner": "v5_owner",
+      "tables": {
+        "actor_occupancy": {
+          "columns": {
+            "actor_id": {
+              "t": "text",
+              "nn": true
+            },
+            "kind": {
+              "t": "text",
+              "nn": true
+            },
+            "ref_id": {
+              "t": "text",
+              "nn": true
+            },
+            "claimed_at": {
+              "t": "timestamp with time zone",
+              "nn": true
+            }
+          },
+          "constraints": [
+            "actor_occupancy_actor_id_fkey",
+            "actor_occupancy_kind_check",
+            "actor_occupancy_pkey",
+            "actor_occupancy_ref_id_grammar_ck"
+          ],
+          "indexes": [
+            "actor_occupancy_kind_ref_idx",
+            "actor_occupancy_pkey"
+          ]
+        }
       }
-     },
-     "constraints": [
-      "identities_actor_id_fkey",
-      "identities_actor_provider_key",
-      "identities_pkey",
-      "identities_provider_check",
-      "identities_subject_check"
-     ],
-     "indexes": [
-      "identities_actor_idx",
-      "identities_actor_provider_key",
-      "identities_pkey"
-     ]
     },
-    "profiles": {
-     "columns": {
-      "actor_id": {
-       "t": "text",
-       "nn": true
-      },
-      "tag": {
-       "t": "text",
-       "nn": true
-      },
-      "username": {
-       "t": "text",
-       "nn": true
-      },
-      "display_name": {
-       "t": "text",
-       "nn": true
-      },
-      "avatar": {
-       "t": "text",
-       "nn": true
-      },
-      "stats_visibility": {
-       "t": "text",
-       "nn": true
-      },
-      "presence_visibility": {
-       "t": "text",
-       "nn": true
-      },
-      "created_at": {
-       "t": "timestamp with time zone",
-       "nn": true
-      },
-      "username_changed": {
-       "t": "timestamp with time zone"
-      },
-      "version": {
-       "t": "integer",
-       "nn": true
+    "match": {
+      "owner": "v5_owner",
+      "tables": {
+        "escrow_contributions": {
+          "columns": {
+            "match_id": {
+              "t": "text",
+              "nn": true
+            },
+            "actor_id": {
+              "t": "text",
+              "nn": true
+            },
+            "amount": {
+              "t": "bigint",
+              "nn": true
+            }
+          },
+          "constraints": [
+            "escrow_contributions_amount_check",
+            "escrow_contributions_match_id_fkey",
+            "escrow_contributions_pkey"
+          ],
+          "indexes": [
+            "escrow_contributions_pkey"
+          ]
+        },
+        "matches": {
+          "columns": {
+            "match_id": {
+              "t": "text",
+              "nn": true
+            },
+            "source": {
+              "t": "text",
+              "nn": true
+            },
+            "mode": {
+              "t": "text",
+              "nn": true
+            },
+            "kind": {
+              "t": "json"
+            },
+            "rated": {
+              "t": "boolean",
+              "nn": true
+            },
+            "amount": {
+              "t": "bigint"
+            },
+            "currency": {
+              "t": "text"
+            },
+            "turn_seconds": {
+              "t": "integer"
+            },
+            "from_tier": {
+              "t": "text"
+            },
+            "to_tier": {
+              "t": "text"
+            },
+            "terms_ratings": {
+              "t": "numeric(9,2)[]"
+            },
+            "terms_json": {
+              "t": "json",
+              "nn": true
+            },
+            "terms_hash": {
+              "t": "character(64)",
+              "nn": true
+            },
+            "quote_json": {
+              "t": "jsonb",
+              "nn": true
+            },
+            "pool": {
+              "t": "bigint",
+              "nn": true
+            },
+            "contribution_a": {
+              "t": "bigint",
+              "nn": true
+            },
+            "contribution_b": {
+              "t": "bigint",
+              "nn": true
+            },
+            "accepted_count": {
+              "t": "smallint",
+              "nn": true
+            },
+            "status": {
+              "t": "text",
+              "nn": true
+            },
+            "created_at": {
+              "t": "timestamp with time zone",
+              "nn": true
+            },
+            "expires_at": {
+              "t": "timestamp with time zone",
+              "nn": true
+            },
+            "state_json": {
+              "t": "jsonb",
+              "nn": true
+            },
+            "revision": {
+              "t": "bigint",
+              "nn": true
+            },
+            "symbol_x": {
+              "t": "text"
+            },
+            "symbol_y": {
+              "t": "text"
+            },
+            "escrow": {
+              "t": "bigint",
+              "nn": true
+            },
+            "settled": {
+              "t": "boolean",
+              "nn": true
+            },
+            "started_at": {
+              "t": "timestamp with time zone"
+            },
+            "last_move_at": {
+              "t": "timestamp with time zone"
+            },
+            "deadline": {
+              "t": "timestamp with time zone"
+            },
+            "move_timings": {
+              "t": "jsonb"
+            },
+            "pre_ratings": {
+              "t": "numeric(9,2)[]"
+            },
+            "pre_tiers": {
+              "t": "text[]"
+            },
+            "receipt_json": {
+              "t": "json"
+            },
+            "receipt_at": {
+              "t": "timestamp with time zone"
+            },
+            "receipt_reason": {
+              "t": "json"
+            },
+            "receipt_payout": {
+              "t": "bigint"
+            },
+            "receipt_burn": {
+              "t": "bigint"
+            },
+            "receipt_bonus": {
+              "t": "bigint"
+            },
+            "receipt_refunded": {
+              "t": "bigint"
+            },
+            "risk_flags": {
+              "t": "text[]",
+              "nn": true
+            },
+            "risk_actors": {
+              "t": "jsonb",
+              "nn": true
+            },
+            "extra": {
+              "t": "json"
+            }
+          },
+          "constraints": [
+            "matches_accepted_count_check",
+            "matches_amount_check",
+            "matches_contribution_a_check",
+            "matches_contribution_b_check",
+            "matches_contributions_sum_ck",
+            "matches_currency_check",
+            "matches_deadline_ck",
+            "matches_escrow_check",
+            "matches_extra_object_ck",
+            "matches_from_tier_check",
+            "matches_match_id_grammar_ck",
+            "matches_mode_check",
+            "matches_move_timings_bound_ck",
+            "matches_pkey",
+            "matches_pool_check",
+            "matches_quote_json_object_ck",
+            "matches_receipt_bonus_check",
+            "matches_receipt_burn_check",
+            "matches_receipt_json_object_ck",
+            "matches_receipt_payout_check",
+            "matches_receipt_refunded_check",
+            "matches_revision_check",
+            "matches_risk_actors_map_ck",
+            "matches_source_check",
+            "matches_state_json_object_ck",
+            "matches_status_check",
+            "matches_terms_hash_hex_ck",
+            "matches_terms_json_object_ck",
+            "matches_terms_ratings_check",
+            "matches_to_tier_check",
+            "matches_turn_seconds_check"
+          ],
+          "indexes": [
+            "matches_offered_expires_idx",
+            "matches_pkey",
+            "matches_playing_deadline_idx"
+          ]
+        },
+        "move_outcomes": {
+          "columns": {
+            "match_id": {
+              "t": "text",
+              "nn": true
+            },
+            "key": {
+              "t": "text",
+              "nn": true
+            },
+            "fingerprint": {
+              "t": "character(64)",
+              "nn": true
+            },
+            "result": {
+              "t": "text",
+              "nn": true
+            },
+            "committed_at": {
+              "t": "timestamp with time zone"
+            }
+          },
+          "constraints": [
+            "move_outcomes_fingerprint_check",
+            "move_outcomes_key_check",
+            "move_outcomes_match_id_fkey",
+            "move_outcomes_pkey",
+            "move_outcomes_result_check"
+          ],
+          "indexes": [
+            "move_outcomes_match_committed_idx",
+            "move_outcomes_pkey"
+          ]
+        },
+        "participants": {
+          "columns": {
+            "match_id": {
+              "t": "text",
+              "nn": true
+            },
+            "seat": {
+              "t": "smallint",
+              "nn": true
+            },
+            "actor_id": {
+              "t": "text",
+              "nn": true
+            },
+            "accepted": {
+              "t": "boolean",
+              "nn": true
+            }
+          },
+          "constraints": [
+            "participants_match_actor_key",
+            "participants_match_id_fkey",
+            "participants_pkey",
+            "participants_seat_check"
+          ],
+          "indexes": [
+            "participants_actor_idx",
+            "participants_match_actor_key",
+            "participants_pkey"
+          ]
+        }
       }
-     },
-     "constraints": [
-      "profiles_actor_id_fkey",
-      "profiles_pkey",
-      "profiles_presence_visibility_check",
-      "profiles_stats_visibility_check",
-      "profiles_tag_check",
-      "profiles_tag_key",
-      "profiles_username_key",
-      "profiles_username_nonempty_ck",
-      "profiles_version_check"
-     ],
-     "indexes": [
-      "profiles_pkey",
-      "profiles_tag_key",
-      "profiles_username_key",
-      "profiles_username_pattern_idx"
-     ]
     },
-    "sessions": {
-     "columns": {
-      "token_hash": {
-       "t": "character(64)",
-       "nn": true
-      },
-      "actor_id": {
-       "t": "text"
-      },
-      "csrf": {
-       "t": "text",
-       "nn": true
-      },
-      "created_at": {
-       "t": "timestamp with time zone",
-       "nn": true
-      },
-      "expires_at": {
-       "t": "timestamp with time zone",
-       "nn": true
-      },
-      "auth_at": {
-       "t": "timestamp with time zone",
-       "nn": true
+    "tournament": {
+      "owner": "v5_owner",
+      "tables": {
+        "command_outcomes": {
+          "columns": {
+            "actor_id": {
+              "t": "text",
+              "nn": true
+            },
+            "key": {
+              "t": "text",
+              "nn": true
+            },
+            "room_id": {
+              "t": "text"
+            },
+            "fingerprint": {
+              "t": "character(64)",
+              "nn": true
+            },
+            "response": {
+              "t": "text",
+              "nn": true
+            },
+            "committed_at": {
+              "t": "timestamp with time zone"
+            }
+          },
+          "constraints": [
+            "command_outcomes_fingerprint_check",
+            "command_outcomes_key_check",
+            "command_outcomes_pkey",
+            "command_outcomes_response_check"
+          ],
+          "indexes": [
+            "command_outcomes_pkey",
+            "command_outcomes_room_idx"
+          ]
+        },
+        "escrow_contributions": {
+          "columns": {
+            "room_id": {
+              "t": "text",
+              "nn": true
+            },
+            "actor_id": {
+              "t": "text",
+              "nn": true
+            },
+            "amount": {
+              "t": "bigint",
+              "nn": true
+            }
+          },
+          "constraints": [
+            "escrow_contributions_amount_check",
+            "escrow_contributions_pkey",
+            "escrow_contributions_room_id_fkey"
+          ],
+          "indexes": [
+            "escrow_contributions_pkey"
+          ]
+        },
+        "fixtures": {
+          "columns": {
+            "room_id": {
+              "t": "text",
+              "nn": true
+            },
+            "fixture_id": {
+              "t": "text",
+              "nn": true
+            },
+            "label": {
+              "t": "text"
+            },
+            "round": {
+              "t": "integer"
+            },
+            "group_id": {
+              "t": "text"
+            },
+            "decisive": {
+              "t": "boolean"
+            },
+            "slots_json": {
+              "t": "jsonb"
+            },
+            "players": {
+              "t": "text[]",
+              "nn": true
+            },
+            "ready": {
+              "t": "text[]",
+              "nn": true
+            },
+            "status": {
+              "t": "text",
+              "nn": true
+            },
+            "state_json": {
+              "t": "jsonb"
+            },
+            "mini_json": {
+              "t": "jsonb"
+            },
+            "winner": {
+              "t": "text"
+            },
+            "attempt": {
+              "t": "smallint"
+            },
+            "opens_at": {
+              "t": "timestamp with time zone"
+            },
+            "expires_at": {
+              "t": "timestamp with time zone"
+            },
+            "ready_deadline": {
+              "t": "timestamp with time zone"
+            },
+            "turn_at": {
+              "t": "timestamp with time zone"
+            },
+            "finished_at": {
+              "t": "timestamp with time zone"
+            },
+            "banks_json": {
+              "t": "jsonb"
+            },
+            "last_move_at": {
+              "t": "timestamp with time zone"
+            },
+            "move_timings": {
+              "t": "jsonb"
+            },
+            "reason": {
+              "t": "text"
+            },
+            "history_json": {
+              "t": "jsonb"
+            },
+            "revision": {
+              "t": "bigint",
+              "nn": true
+            },
+            "lease_owner": {
+              "t": "text"
+            },
+            "lease_epoch": {
+              "t": "bigint"
+            },
+            "lease_until": {
+              "t": "timestamp with time zone"
+            },
+            "extra": {
+              "t": "json"
+            }
+          },
+          "constraints": [
+            "fixtures_attempt_ck",
+            "fixtures_banks_json_object_ck",
+            "fixtures_extra_object_ck",
+            "fixtures_history_json_object_ck",
+            "fixtures_lease_epoch_check",
+            "fixtures_lease_tuple_ck",
+            "fixtures_mini_json_object_ck",
+            "fixtures_move_timings_array_ck",
+            "fixtures_pkey",
+            "fixtures_revision_check",
+            "fixtures_room_id_fkey",
+            "fixtures_round_ck",
+            "fixtures_slots_json_array_ck",
+            "fixtures_state_json_object_ck",
+            "fixtures_status_check"
+          ],
+          "indexes": [
+            "fixtures_lease_until_idx",
+            "fixtures_pkey",
+            "fixtures_ready_deadline_idx",
+            "fixtures_room_status_idx",
+            "fixtures_status_turn_idx"
+          ]
+        },
+        "room_players": {
+          "columns": {
+            "room_id": {
+              "t": "text",
+              "nn": true
+            },
+            "actor_id": {
+              "t": "text",
+              "nn": true
+            },
+            "name": {
+              "t": "json"
+            },
+            "ready": {
+              "t": "boolean",
+              "nn": true
+            },
+            "withdrawn": {
+              "t": "boolean",
+              "nn": true
+            },
+            "joined_at": {
+              "t": "timestamp with time zone"
+            },
+            "ordinal": {
+              "t": "integer",
+              "nn": true
+            }
+          },
+          "constraints": [
+            "room_players_name_json_string_ck",
+            "room_players_ordinal_check",
+            "room_players_pkey",
+            "room_players_room_id_fkey",
+            "room_players_room_id_ordinal_key"
+          ],
+          "indexes": [
+            "room_players_actor_idx",
+            "room_players_pkey",
+            "room_players_room_id_ordinal_key"
+          ]
+        },
+        "rooms": {
+          "columns": {
+            "room_id": {
+              "t": "text",
+              "nn": true
+            },
+            "code": {
+              "t": "text",
+              "nn": true
+            },
+            "owner_id": {
+              "t": "text",
+              "nn": true
+            },
+            "name": {
+              "t": "json"
+            },
+            "format": {
+              "t": "text"
+            },
+            "table_kind": {
+              "t": "text"
+            },
+            "sequential": {
+              "t": "boolean"
+            },
+            "quote_json": {
+              "t": "jsonb"
+            },
+            "quote_currency": {
+              "t": "text"
+            },
+            "entry": {
+              "t": "bigint"
+            },
+            "pool": {
+              "t": "bigint"
+            },
+            "burn": {
+              "t": "bigint"
+            },
+            "clock_seconds": {
+              "t": "integer"
+            },
+            "increment_seconds": {
+              "t": "integer"
+            },
+            "capacity": {
+              "t": "smallint"
+            },
+            "rules_version": {
+              "t": "smallint"
+            },
+            "status": {
+              "t": "text",
+              "nn": true
+            },
+            "created_at": {
+              "t": "timestamp with time zone",
+              "nn": true
+            },
+            "expires_at": {
+              "t": "timestamp with time zone"
+            },
+            "started_at": {
+              "t": "timestamp with time zone"
+            },
+            "ended_at": {
+              "t": "timestamp with time zone"
+            },
+            "deadline": {
+              "t": "timestamp with time zone"
+            },
+            "paused_at": {
+              "t": "timestamp with time zone"
+            },
+            "reason": {
+              "t": "text"
+            },
+            "draw_game": {
+              "t": "text"
+            },
+            "revision": {
+              "t": "bigint",
+              "nn": true
+            },
+            "round_delay_ms": {
+              "t": "integer"
+            },
+            "groups_json": {
+              "t": "jsonb"
+            },
+            "final_refs_json": {
+              "t": "jsonb"
+            },
+            "seed_json": {
+              "t": "jsonb"
+            },
+            "ranking": {
+              "t": "text[]",
+              "nn": true
+            },
+            "receipt_json": {
+              "t": "jsonb"
+            },
+            "risk_flags": {
+              "t": "text[]",
+              "nn": true
+            },
+            "risk_actors": {
+              "t": "jsonb",
+              "nn": true
+            },
+            "escrow": {
+              "t": "bigint",
+              "nn": true
+            },
+            "settled": {
+              "t": "boolean",
+              "nn": true
+            },
+            "settled_at": {
+              "t": "timestamp with time zone"
+            },
+            "timer_lease_owner": {
+              "t": "text"
+            },
+            "timer_lease_epoch": {
+              "t": "bigint"
+            },
+            "timer_lease_until": {
+              "t": "timestamp with time zone"
+            },
+            "extra": {
+              "t": "json"
+            },
+            "shape_version": {
+              "t": "text"
+            }
+          },
+          "constraints": [
+            "rooms_burn_check",
+            "rooms_capacity_check",
+            "rooms_clock_seconds_check",
+            "rooms_code_grammar_ck",
+            "rooms_code_key",
+            "rooms_entry_check",
+            "rooms_escrow_check",
+            "rooms_extra_object_ck",
+            "rooms_final_refs_json_ck",
+            "rooms_format_check",
+            "rooms_groups_json_array_ck",
+            "rooms_increment_seconds_check",
+            "rooms_name_json_string_ck",
+            "rooms_pkey",
+            "rooms_pool_check",
+            "rooms_quote_currency_check",
+            "rooms_quote_json_object_ck",
+            "rooms_receipt_json_object_ck",
+            "rooms_revision_check",
+            "rooms_risk_actors_map_ck",
+            "rooms_room_id_grammar_ck",
+            "rooms_round_delay_ms_check",
+            "rooms_seed_json_array_ck",
+            "rooms_status_check",
+            "rooms_timer_lease_epoch_check",
+            "rooms_timer_lease_tuple_ck"
+          ],
+          "indexes": [
+            "rooms_code_key",
+            "rooms_owner_idx",
+            "rooms_pkey",
+            "rooms_status_expires_idx",
+            "rooms_timer_lease_idx"
+          ]
+        }
       }
-     },
-     "constraints": [
-      "sessions_actor_id_fkey",
-      "sessions_pkey",
-      "sessions_token_hash_hex_ck"
-     ],
-     "indexes": [
-      "sessions_actor_idx",
-      "sessions_expires_idx",
-      "sessions_pkey"
-     ]
     },
-    "signin_attempts": {
-     "columns": {
-      "state_hash": {
-       "t": "text",
-       "nn": true
-      },
-      "session_hash": {
-       "t": "text",
-       "nn": true
-      },
-      "provider": {
-       "t": "text",
-       "nn": true
-      },
-      "kind": {
-       "t": "text",
-       "nn": true
-      },
-      "intent": {
-       "t": "text",
-       "nn": true
-      },
-      "target_actor": {
-       "t": "text"
-      },
-      "nonce": {
-       "t": "text"
-      },
-      "verifier": {
-       "t": "text"
-      },
-      "expires_at": {
-       "t": "timestamp with time zone",
-       "nn": true
-      },
-      "used": {
-       "t": "boolean",
-       "nn": true
+    "monetization": {
+      "owner": "v5_owner",
+      "tables": {
+        "ad_ticket_context": {
+          "columns": {
+            "ticket_id": {
+              "t": "text",
+              "nn": true
+            },
+            "platform": {
+              "t": "text",
+              "nn": true
+            },
+            "ad_unit": {
+              "t": "text",
+              "nn": true
+            }
+          },
+          "constraints": [
+            "ad_ticket_context_pkey",
+            "ad_ticket_context_platform_check",
+            "ad_ticket_context_ticket_id_fkey"
+          ],
+          "indexes": [
+            "ad_ticket_context_pkey"
+          ]
+        },
+        "boosts": {
+          "columns": {
+            "actor_id": {
+              "t": "text",
+              "nn": true
+            },
+            "boost_seq": {
+              "t": "integer",
+              "nn": true
+            },
+            "started_at": {
+              "t": "timestamp with time zone",
+              "nn": true
+            },
+            "ends_at": {
+              "t": "timestamp with time zone",
+              "nn": true
+            }
+          },
+          "constraints": [
+            "boosts_actor_id_fkey",
+            "boosts_boost_seq_check",
+            "boosts_pkey",
+            "boosts_window_ck"
+          ],
+          "indexes": [
+            "boosts_actor_ends_idx",
+            "boosts_pkey"
+          ]
+        },
+        "casual_rewards": {
+          "columns": {
+            "actor_id": {
+              "t": "text",
+              "nn": true
+            },
+            "match_id": {
+              "t": "text",
+              "nn": true
+            },
+            "base": {
+              "t": "integer",
+              "nn": true
+            },
+            "bonus": {
+              "t": "integer",
+              "nn": true
+            }
+          },
+          "constraints": [
+            "casual_rewards_base_check",
+            "casual_rewards_bonus_check",
+            "casual_rewards_pkey"
+          ],
+          "indexes": [
+            "casual_rewards_pkey"
+          ]
+        },
+        "command_outcomes": {
+          "columns": {
+            "actor_id": {
+              "t": "text",
+              "nn": true
+            },
+            "key": {
+              "t": "text",
+              "nn": true
+            },
+            "fingerprint": {
+              "t": "character(64)",
+              "nn": true
+            },
+            "response": {
+              "t": "text",
+              "nn": true
+            },
+            "committed_at": {
+              "t": "timestamp with time zone"
+            }
+          },
+          "constraints": [
+            "command_outcomes_fingerprint_check",
+            "command_outcomes_key_check",
+            "command_outcomes_pkey",
+            "command_outcomes_response_check"
+          ],
+          "indexes": [
+            "command_outcomes_pkey"
+          ]
+        },
+        "credits": {
+          "columns": {
+            "actor_id": {
+              "t": "text",
+              "nn": true
+            },
+            "credit_balance": {
+              "t": "bigint",
+              "nn": true
+            },
+            "equipped_frame": {
+              "t": "text"
+            },
+            "last_ad_at": {
+              "t": "timestamp with time zone"
+            },
+            "last_reward_start": {
+              "t": "timestamp with time zone"
+            },
+            "extra": {
+              "t": "json"
+            }
+          },
+          "constraints": [
+            "credits_actor_id_fkey",
+            "credits_credit_balance_check",
+            "credits_extra_object_ck",
+            "credits_pkey"
+          ],
+          "indexes": [
+            "credits_pkey"
+          ]
+        },
+        "receipts": {
+          "columns": {
+            "store": {
+              "t": "text",
+              "nn": true
+            },
+            "transaction_id": {
+              "t": "text",
+              "nn": true
+            },
+            "actor_id": {
+              "t": "text",
+              "nn": true
+            },
+            "product_id": {
+              "t": "text",
+              "nn": true
+            },
+            "crowns": {
+              "t": "bigint",
+              "nn": true
+            },
+            "refunded": {
+              "t": "boolean",
+              "nn": true
+            },
+            "purchased_at": {
+              "t": "timestamp with time zone",
+              "nn": true
+            }
+          },
+          "constraints": [
+            "receipts_crowns_check",
+            "receipts_pkey",
+            "receipts_store_check"
+          ],
+          "indexes": [
+            "receipts_actor_purchased_idx",
+            "receipts_pkey",
+            "receipts_store_refunded_idx"
+          ]
+        },
+        "redeemed_frames": {
+          "columns": {
+            "actor_id": {
+              "t": "text",
+              "nn": true
+            },
+            "frame": {
+              "t": "text",
+              "nn": true
+            },
+            "redeemed_at": {
+              "t": "timestamp with time zone"
+            }
+          },
+          "constraints": [
+            "redeemed_frames_actor_id_fkey",
+            "redeemed_frames_pkey"
+          ],
+          "indexes": [
+            "redeemed_frames_pkey"
+          ]
+        },
+        "reward_daily": {
+          "columns": {
+            "actor_id": {
+              "t": "text",
+              "nn": true
+            },
+            "day": {
+              "t": "date",
+              "nn": true
+            },
+            "base": {
+              "t": "integer",
+              "nn": true
+            },
+            "bonus": {
+              "t": "integer",
+              "nn": true
+            },
+            "automatic": {
+              "t": "integer",
+              "nn": true
+            }
+          },
+          "constraints": [
+            "reward_daily_actor_id_fkey",
+            "reward_daily_automatic_check",
+            "reward_daily_base_check",
+            "reward_daily_bonus_check",
+            "reward_daily_pkey"
+          ],
+          "indexes": [
+            "reward_daily_pkey"
+          ]
+        },
+        "reward_events": {
+          "columns": {
+            "event_id": {
+              "t": "bigint",
+              "nn": true
+            },
+            "actor_id": {
+              "t": "text",
+              "nn": true
+            },
+            "kind": {
+              "t": "text",
+              "nn": true
+            },
+            "at": {
+              "t": "timestamp with time zone",
+              "nn": true
+            },
+            "value": {
+              "t": "bigint"
+            }
+          },
+          "constraints": [
+            "reward_events_pkey",
+            "reward_events_value_check"
+          ],
+          "indexes": [
+            "reward_events_actor_at_idx",
+            "reward_events_kind_at_idx",
+            "reward_events_pkey"
+          ]
+        },
+        "reward_tickets": {
+          "columns": {
+            "ticket_id": {
+              "t": "text",
+              "nn": true
+            },
+            "actor_id": {
+              "t": "text",
+              "nn": true
+            },
+            "kind": {
+              "t": "text",
+              "nn": true
+            },
+            "issued_at": {
+              "t": "timestamp with time zone",
+              "nn": true
+            },
+            "expires_at": {
+              "t": "timestamp with time zone"
+            },
+            "day": {
+              "t": "date",
+              "nn": true
+            },
+            "settled": {
+              "t": "boolean",
+              "nn": true
+            },
+            "transaction_id": {
+              "t": "text"
+            }
+          },
+          "constraints": [
+            "reward_tickets_actor_id_fkey",
+            "reward_tickets_kind_check",
+            "reward_tickets_pkey",
+            "reward_tickets_transaction_id_key"
+          ],
+          "indexes": [
+            "reward_tickets_actor_day_idx",
+            "reward_tickets_actor_issued_idx",
+            "reward_tickets_pending_idx",
+            "reward_tickets_pkey",
+            "reward_tickets_transaction_id_key"
+          ]
+        },
+        "store_bindings": {
+          "columns": {
+            "actor_id": {
+              "t": "text",
+              "nn": true
+            },
+            "google_id": {
+              "t": "text",
+              "nn": true
+            },
+            "apple_token": {
+              "t": "text",
+              "nn": true
+            },
+            "created_at": {
+              "t": "timestamp with time zone",
+              "nn": true
+            }
+          },
+          "constraints": [
+            "store_bindings_actor_id_fkey",
+            "store_bindings_apple_token_key",
+            "store_bindings_google_id_key",
+            "store_bindings_pkey"
+          ],
+          "indexes": [
+            "store_bindings_apple_token_key",
+            "store_bindings_google_id_key",
+            "store_bindings_pkey"
+          ]
+        },
+        "store_finalize": {
+          "columns": {
+            "store": {
+              "t": "text",
+              "nn": true
+            },
+            "transaction_id": {
+              "t": "text",
+              "nn": true
+            },
+            "product_id": {
+              "t": "text",
+              "nn": true
+            },
+            "purchase_token": {
+              "t": "text",
+              "nn": true
+            },
+            "kind": {
+              "t": "text",
+              "nn": true
+            },
+            "state": {
+              "t": "text",
+              "nn": true
+            },
+            "attempts": {
+              "t": "integer",
+              "nn": true
+            },
+            "next_at": {
+              "t": "timestamp with time zone",
+              "nn": true
+            },
+            "created_at": {
+              "t": "timestamp with time zone",
+              "nn": true
+            },
+            "updated_at": {
+              "t": "timestamp with time zone",
+              "nn": true
+            },
+            "lease_owner": {
+              "t": "text"
+            },
+            "lease_token": {
+              "t": "bigint"
+            },
+            "lease_until": {
+              "t": "timestamp with time zone"
+            }
+          },
+          "constraints": [
+            "store_finalize_attempts_check",
+            "store_finalize_kind_check",
+            "store_finalize_lease_token_check",
+            "store_finalize_lease_tuple_ck",
+            "store_finalize_state_check",
+            "store_finalize_store_check"
+          ],
+          "indexes": [
+            "store_finalize_state_next_idx"
+          ]
+        },
+        "store_notifications": {
+          "columns": {
+            "store": {
+              "t": "text",
+              "nn": true
+            },
+            "notification_id": {
+              "t": "text",
+              "nn": true
+            },
+            "received_at": {
+              "t": "timestamp with time zone",
+              "nn": true
+            },
+            "state": {
+              "t": "text",
+              "nn": true
+            },
+            "attempts": {
+              "t": "integer",
+              "nn": true
+            },
+            "next_at": {
+              "t": "timestamp with time zone",
+              "nn": true
+            },
+            "processed_at": {
+              "t": "timestamp with time zone"
+            },
+            "last_error": {
+              "t": "text"
+            },
+            "lease_owner": {
+              "t": "text"
+            },
+            "lease_token": {
+              "t": "bigint"
+            },
+            "lease_until": {
+              "t": "timestamp with time zone"
+            }
+          },
+          "constraints": [
+            "store_notifications_attempts_check",
+            "store_notifications_last_error_check",
+            "store_notifications_lease_token_check",
+            "store_notifications_lease_tuple_ck",
+            "store_notifications_pkey",
+            "store_notifications_processed_ck",
+            "store_notifications_state_check",
+            "store_notifications_store_check"
+          ],
+          "indexes": [
+            "store_notifications_pkey",
+            "store_notifications_stale_lease_idx",
+            "store_notifications_state_next_idx"
+          ]
+        },
+        "store_revocations": {
+          "columns": {
+            "store": {
+              "t": "text",
+              "nn": true
+            },
+            "transaction_id": {
+              "t": "text",
+              "nn": true
+            },
+            "product_id": {
+              "t": "text"
+            },
+            "occurred_at": {
+              "t": "timestamp with time zone",
+              "nn": true
+            },
+            "reason": {
+              "t": "text",
+              "nn": true
+            }
+          },
+          "constraints": [
+            "store_revocations_pkey",
+            "store_revocations_store_check"
+          ],
+          "indexes": [
+            "store_revocations_pkey"
+          ]
+        }
       }
-     },
-     "constraints": [
-      "signin_attempts_intent_check",
-      "signin_attempts_kind_check",
-      "signin_attempts_pkey",
-      "signin_attempts_provider_check"
-     ],
-     "indexes": [
-      "signin_attempts_expires_idx",
-      "signin_attempts_pkey",
-      "signin_attempts_session_idx"
-     ]
+    },
+    "cosmetics": {
+      "owner": "v5_owner",
+      "tables": {
+        "owned_items": {
+          "columns": {
+            "actor_id": {
+              "t": "text",
+              "nn": true
+            },
+            "item": {
+              "t": "text",
+              "nn": true
+            },
+            "acquired_at": {
+              "t": "timestamp with time zone"
+            }
+          },
+          "constraints": [
+            "owned_items_actor_id_fkey",
+            "owned_items_pkey"
+          ],
+          "indexes": [
+            "owned_items_pkey"
+          ]
+        }
+      }
+    },
+    "season": {
+      "owner": "v5_owner",
+      "tables": {
+        "day_snapshots": {
+          "columns": {
+            "day": {
+              "t": "date",
+              "nn": true
+            },
+            "actor_id": {
+              "t": "text",
+              "nn": true
+            },
+            "tier": {
+              "t": "text",
+              "nn": true
+            }
+          },
+          "constraints": [
+            "day_snapshots_pkey"
+          ],
+          "indexes": [
+            "day_snapshots_actor_day_idx",
+            "day_snapshots_pkey"
+          ]
+        },
+        "league_week": {
+          "columns": {
+            "id": {
+              "t": "smallint",
+              "nn": true
+            },
+            "week": {
+              "t": "date"
+            },
+            "published_at": {
+              "t": "timestamp with time zone"
+            }
+          },
+          "constraints": [
+            "league_week_id_check",
+            "league_week_pkey"
+          ],
+          "indexes": [
+            "league_week_pkey"
+          ]
+        },
+        "weekly_payouts": {
+          "columns": {
+            "payout_id": {
+              "t": "text",
+              "nn": true
+            },
+            "week": {
+              "t": "date",
+              "nn": true
+            },
+            "actor_id": {
+              "t": "text",
+              "nn": true
+            },
+            "amount": {
+              "t": "bigint",
+              "nn": true
+            },
+            "tier": {
+              "t": "text"
+            },
+            "eligible": {
+              "t": "boolean"
+            },
+            "days": {
+              "t": "smallint"
+            },
+            "created_at": {
+              "t": "timestamp with time zone"
+            }
+          },
+          "constraints": [
+            "weekly_payouts_amount_check",
+            "weekly_payouts_days_check",
+            "weekly_payouts_pkey",
+            "weekly_payouts_week_actor_key"
+          ],
+          "indexes": [
+            "weekly_payouts_actor_week_idx",
+            "weekly_payouts_pkey",
+            "weekly_payouts_week_actor_key"
+          ]
+        }
+      }
+    },
+    "privacy": {
+      "owner": "v5_owner",
+      "tables": {
+        "deletion_receipts": {
+          "columns": {
+            "receipt_id": {
+              "t": "text",
+              "nn": true
+            },
+            "actor_hash": {
+              "t": "text",
+              "nn": true
+            },
+            "tombstone": {
+              "t": "text",
+              "nn": true
+            },
+            "completed_at": {
+              "t": "timestamp with time zone",
+              "nn": true
+            },
+            "policy_version": {
+              "t": "text",
+              "nn": true
+            },
+            "retained": {
+              "t": "jsonb",
+              "nn": true
+            }
+          },
+          "constraints": [
+            "deletion_receipts_actor_hash_key",
+            "deletion_receipts_pkey",
+            "deletion_receipts_retained_array_ck",
+            "deletion_receipts_tombstone_key"
+          ],
+          "indexes": [
+            "deletion_receipts_actor_hash_key",
+            "deletion_receipts_pkey",
+            "deletion_receipts_tombstone_key"
+          ]
+        },
+        "reports": {
+          "columns": {
+            "report_id": {
+              "t": "text",
+              "nn": true
+            },
+            "reporter_id": {
+              "t": "text",
+              "nn": true
+            },
+            "target_id": {
+              "t": "text",
+              "nn": true
+            },
+            "category": {
+              "t": "text",
+              "nn": true
+            },
+            "detail": {
+              "t": "text",
+              "nn": true
+            },
+            "created_at": {
+              "t": "timestamp with time zone",
+              "nn": true
+            },
+            "state": {
+              "t": "text",
+              "nn": true
+            },
+            "reviewed_at": {
+              "t": "timestamp with time zone"
+            },
+            "reviewed_by": {
+              "t": "text"
+            },
+            "outcome": {
+              "t": "text"
+            }
+          },
+          "constraints": [
+            "reports_category_check",
+            "reports_detail_check",
+            "reports_outcome_check",
+            "reports_pkey",
+            "reports_state_check"
+          ],
+          "indexes": [
+            "reports_pkey",
+            "reports_reporter_created_idx",
+            "reports_target_state_created_idx"
+          ]
+        },
+        "requests": {
+          "columns": {
+            "request_id": {
+              "t": "text",
+              "nn": true
+            },
+            "actor_id": {
+              "t": "text",
+              "nn": true
+            },
+            "kind": {
+              "t": "text",
+              "nn": true
+            },
+            "state": {
+              "t": "text",
+              "nn": true
+            },
+            "requested_at": {
+              "t": "timestamp with time zone",
+              "nn": true
+            },
+            "updated_at": {
+              "t": "timestamp with time zone",
+              "nn": true
+            },
+            "completed_at": {
+              "t": "timestamp with time zone"
+            },
+            "policy_version": {
+              "t": "text",
+              "nn": true
+            },
+            "note": {
+              "t": "text",
+              "nn": true
+            }
+          },
+          "constraints": [
+            "requests_kind_check",
+            "requests_pkey",
+            "requests_state_check"
+          ],
+          "indexes": [
+            "requests_actor_requested_idx",
+            "requests_pkey",
+            "requests_state_updated_idx"
+          ]
+        }
+      }
+    },
+    "audit": {
+      "owner": "v5_owner",
+      "tables": {
+        "operator_audit": {
+          "columns": {
+            "audit_id": {
+              "t": "text",
+              "nn": true
+            },
+            "at": {
+              "t": "timestamp with time zone",
+              "nn": true
+            },
+            "operator": {
+              "t": "text",
+              "nn": true
+            },
+            "action": {
+              "t": "text",
+              "nn": true
+            },
+            "actor_id": {
+              "t": "text"
+            },
+            "reason": {
+              "t": "text",
+              "nn": true
+            },
+            "detail": {
+              "t": "text",
+              "nn": true
+            },
+            "prev_hash": {
+              "t": "text",
+              "nn": true
+            },
+            "entry_hash": {
+              "t": "character(64)",
+              "nn": true
+            }
+          },
+          "constraints": [
+            "operator_audit_entry_hash_check",
+            "operator_audit_entry_hash_key",
+            "operator_audit_pkey",
+            "operator_audit_prev_hash_check"
+          ],
+          "indexes": [
+            "operator_audit_actor_at_idx",
+            "operator_audit_entry_hash_key",
+            "operator_audit_pkey"
+          ]
+        }
+      }
+    },
+    "support": {
+      "owner": "v5_owner",
+      "tables": {
+        "events": {
+          "columns": {
+            "event_id": {
+              "t": "text",
+              "nn": true
+            },
+            "at": {
+              "t": "timestamp with time zone",
+              "nn": true
+            },
+            "method": {
+              "t": "text",
+              "nn": true
+            },
+            "route": {
+              "t": "text",
+              "nn": true
+            },
+            "status": {
+              "t": "integer",
+              "nn": true
+            },
+            "code": {
+              "t": "text",
+              "nn": true
+            }
+          },
+          "constraints": [
+            "events_pkey"
+          ],
+          "indexes": [
+            "events_at_idx",
+            "events_pkey"
+          ]
+        }
+      }
+    },
+    "runtime": {
+      "owner": "v5_owner",
+      "tables": {
+        "controls": {
+          "columns": {
+            "id": {
+              "t": "smallint",
+              "nn": true
+            },
+            "maintenance": {
+              "t": "boolean",
+              "nn": true
+            },
+            "updated_at": {
+              "t": "timestamp with time zone",
+              "nn": true
+            }
+          },
+          "constraints": [
+            "controls_id_check",
+            "controls_pkey"
+          ],
+          "indexes": [
+            "controls_pkey"
+          ]
+        },
+        "state": {
+          "columns": {
+            "key": {
+              "t": "text",
+              "nn": true
+            },
+            "value": {
+              "t": "text",
+              "nn": true
+            }
+          },
+          "constraints": [
+            "state_pkey"
+          ],
+          "indexes": [
+            "state_pkey"
+          ]
+        }
+      }
+    },
+    "ops": {
+      "owner": "v5_owner",
+      "tables": {
+        "outbox": {
+          "columns": {
+            "outbox_id": {
+              "t": "text",
+              "nn": true
+            },
+            "payload": {
+              "t": "text"
+            },
+            "kind": {
+              "t": "text",
+              "nn": true
+            },
+            "state": {
+              "t": "text",
+              "nn": true
+            },
+            "created_at": {
+              "t": "timestamp with time zone",
+              "nn": true
+            },
+            "expires_at": {
+              "t": "timestamp with time zone",
+              "nn": true
+            },
+            "next_at": {
+              "t": "timestamp with time zone",
+              "nn": true
+            },
+            "lease_until": {
+              "t": "timestamp with time zone",
+              "nn": true
+            },
+            "attempts": {
+              "t": "integer",
+              "nn": true
+            },
+            "lease_owner": {
+              "t": "text"
+            },
+            "lease_token": {
+              "t": "bigint"
+            }
+          },
+          "constraints": [
+            "outbox_attempts_check",
+            "outbox_pkey",
+            "outbox_sealed_payload_ck",
+            "outbox_state_check"
+          ],
+          "indexes": [
+            "outbox_pkey",
+            "outbox_state_next_idx"
+          ]
+        },
+        "rate_buckets": {
+          "columns": {
+            "bucket_id": {
+              "t": "text",
+              "nn": true
+            },
+            "hits": {
+              "t": "bigint",
+              "nn": true
+            },
+            "expires_at": {
+              "t": "timestamp with time zone"
+            }
+          },
+          "constraints": [
+            "rate_buckets_hits_check",
+            "rate_buckets_pkey"
+          ],
+          "indexes": [
+            "rate_buckets_expires_idx",
+            "rate_buckets_pkey"
+          ]
+        }
+      }
+    },
+    "v5_migration": {
+      "owner": "v5_owner",
+      "tables": {
+        "run": {
+          "columns": {
+            "run_id": {
+              "t": "text",
+              "nn": true
+            },
+            "source_fingerprint": {
+              "t": "character(64)",
+              "nn": true
+            },
+            "extractor_release": {
+              "t": "character(64)",
+              "nn": true
+            },
+            "status": {
+              "t": "text",
+              "nn": true
+            },
+            "schema_head": {
+              "t": "integer",
+              "nn": true
+            },
+            "started_at": {
+              "t": "timestamp with time zone",
+              "nn": true
+            },
+            "counters": {
+              "t": "jsonb",
+              "nn": true
+            }
+          }
+        },
+        "target_guard": {
+          "columns": {
+            "target_system_id": {
+              "t": "text",
+              "nn": true
+            },
+            "target_environment": {
+              "t": "text",
+              "nn": true
+            },
+            "target_database": {
+              "t": "text",
+              "nn": true
+            },
+            "schema_head": {
+              "t": "integer",
+              "nn": true
+            },
+            "created_by_run": {
+              "t": "text",
+              "nn": true
+            },
+            "created_at": {
+              "t": "timestamp with time zone",
+              "nn": true
+            }
+          }
+        },
+        "batch": {
+          "columns": {
+            "run_id": {
+              "t": "text",
+              "nn": true
+            },
+            "ordinal": {
+              "t": "integer",
+              "nn": true
+            },
+            "kind": {
+              "t": "text",
+              "nn": true
+            },
+            "definition_hash": {
+              "t": "character(64)",
+              "nn": true
+            },
+            "status": {
+              "t": "text",
+              "nn": true
+            }
+          }
+        },
+        "row_ledger": {
+          "columns": {
+            "run_id": {
+              "t": "text",
+              "nn": true
+            },
+            "source_locator": {
+              "t": "text",
+              "nn": true
+            },
+            "target_table": {
+              "t": "text",
+              "nn": true
+            },
+            "target_pk_hash": {
+              "t": "character(64)",
+              "nn": true
+            },
+            "row_hash": {
+              "t": "character(64)",
+              "nn": true
+            }
+          }
+        },
+        "operation_outcome": {
+          "columns": {
+            "run_id": {
+              "t": "text",
+              "nn": true
+            },
+            "family": {
+              "t": "text",
+              "nn": true
+            },
+            "op_key": {
+              "t": "text",
+              "nn": true
+            },
+            "fingerprint": {
+              "t": "text",
+              "nn": true
+            },
+            "response_hash": {
+              "t": "character(64)",
+              "nn": true
+            }
+          }
+        },
+        "coverage": {
+          "columns": {
+            "run_id": {
+              "t": "text",
+              "nn": true
+            },
+            "locator_kind": {
+              "t": "text",
+              "nn": true
+            },
+            "name": {
+              "t": "text",
+              "nn": true
+            },
+            "key": {
+              "t": "text",
+              "nn": true
+            },
+            "classification": {
+              "t": "text",
+              "nn": true
+            }
+          }
+        },
+        "difference": {
+          "columns": {
+            "run_id": {
+              "t": "text",
+              "nn": true
+            },
+            "category": {
+              "t": "text",
+              "nn": true
+            },
+            "locator": {
+              "t": "text",
+              "nn": true
+            },
+            "field_path": {
+              "t": "text",
+              "nn": true
+            },
+            "severity": {
+              "t": "text",
+              "nn": true
+            }
+          }
+        }
+      }
     }
-   }
   },
-  "profile": {
-   "owner": "v5_owner",
-   "tables": {
-    "profile_saves": {
-     "columns": {
-      "actor_id": {
-       "t": "text",
-       "nn": true
-      },
-      "revision": {
-       "t": "bigint",
-       "nn": true
-      },
-      "payload_text": {
-       "t": "text",
-       "nn": true
-      },
-      "updated_at": {
-       "t": "timestamp with time zone",
-       "nn": true
-      }
-     },
-     "constraints": [
-      "profile_saves_payload_text_is_json_object_ck",
-      "profile_saves_payload_text_size_ck",
-      "profile_saves_pkey",
-      "profile_saves_revision_check"
-     ],
-     "indexes": [
-      "profile_saves_pkey"
-     ]
+  "roles": [
+    "v5_owner",
+    "migration_owner",
+    "api_runtime",
+    "core_runtime",
+    "worker_runtime",
+    "backup_reader",
+    "audit_runtime"
+  ],
+  "privilegeChecks": [
+    {
+      "role": "api_runtime",
+      "schema": "meta",
+      "privilege": "CREATE",
+      "expect": false
+    },
+    {
+      "role": "api_runtime",
+      "schema": "identity",
+      "privilege": "CREATE",
+      "expect": false
+    },
+    {
+      "role": "api_runtime",
+      "schema": "profile",
+      "privilege": "CREATE",
+      "expect": false
+    },
+    {
+      "role": "api_runtime",
+      "schema": "social",
+      "privilege": "CREATE",
+      "expect": false
+    },
+    {
+      "role": "api_runtime",
+      "schema": "economy",
+      "privilege": "CREATE",
+      "expect": false
+    },
+    {
+      "role": "api_runtime",
+      "schema": "core",
+      "privilege": "CREATE",
+      "expect": false
+    },
+    {
+      "role": "api_runtime",
+      "schema": "match",
+      "privilege": "CREATE",
+      "expect": false
+    },
+    {
+      "role": "api_runtime",
+      "schema": "tournament",
+      "privilege": "CREATE",
+      "expect": false
+    },
+    {
+      "role": "api_runtime",
+      "schema": "monetization",
+      "privilege": "CREATE",
+      "expect": false
+    },
+    {
+      "role": "api_runtime",
+      "schema": "cosmetics",
+      "privilege": "CREATE",
+      "expect": false
+    },
+    {
+      "role": "api_runtime",
+      "schema": "season",
+      "privilege": "CREATE",
+      "expect": false
+    },
+    {
+      "role": "api_runtime",
+      "schema": "privacy",
+      "privilege": "CREATE",
+      "expect": false
+    },
+    {
+      "role": "api_runtime",
+      "schema": "audit",
+      "privilege": "CREATE",
+      "expect": false
+    },
+    {
+      "role": "api_runtime",
+      "schema": "support",
+      "privilege": "CREATE",
+      "expect": false
+    },
+    {
+      "role": "api_runtime",
+      "schema": "runtime",
+      "privilege": "CREATE",
+      "expect": false
+    },
+    {
+      "role": "api_runtime",
+      "schema": "ops",
+      "privilege": "CREATE",
+      "expect": false
+    },
+    {
+      "role": "core_runtime",
+      "schema": "meta",
+      "privilege": "CREATE",
+      "expect": false
+    },
+    {
+      "role": "core_runtime",
+      "schema": "identity",
+      "privilege": "CREATE",
+      "expect": false
+    },
+    {
+      "role": "core_runtime",
+      "schema": "profile",
+      "privilege": "CREATE",
+      "expect": false
+    },
+    {
+      "role": "core_runtime",
+      "schema": "social",
+      "privilege": "CREATE",
+      "expect": false
+    },
+    {
+      "role": "core_runtime",
+      "schema": "economy",
+      "privilege": "CREATE",
+      "expect": false
+    },
+    {
+      "role": "core_runtime",
+      "schema": "core",
+      "privilege": "CREATE",
+      "expect": false
+    },
+    {
+      "role": "core_runtime",
+      "schema": "match",
+      "privilege": "CREATE",
+      "expect": false
+    },
+    {
+      "role": "core_runtime",
+      "schema": "tournament",
+      "privilege": "CREATE",
+      "expect": false
+    },
+    {
+      "role": "core_runtime",
+      "schema": "monetization",
+      "privilege": "CREATE",
+      "expect": false
+    },
+    {
+      "role": "core_runtime",
+      "schema": "cosmetics",
+      "privilege": "CREATE",
+      "expect": false
+    },
+    {
+      "role": "core_runtime",
+      "schema": "season",
+      "privilege": "CREATE",
+      "expect": false
+    },
+    {
+      "role": "core_runtime",
+      "schema": "privacy",
+      "privilege": "CREATE",
+      "expect": false
+    },
+    {
+      "role": "core_runtime",
+      "schema": "audit",
+      "privilege": "CREATE",
+      "expect": false
+    },
+    {
+      "role": "core_runtime",
+      "schema": "support",
+      "privilege": "CREATE",
+      "expect": false
+    },
+    {
+      "role": "core_runtime",
+      "schema": "runtime",
+      "privilege": "CREATE",
+      "expect": false
+    },
+    {
+      "role": "core_runtime",
+      "schema": "ops",
+      "privilege": "CREATE",
+      "expect": false
+    },
+    {
+      "role": "worker_runtime",
+      "schema": "meta",
+      "privilege": "CREATE",
+      "expect": false
+    },
+    {
+      "role": "worker_runtime",
+      "schema": "identity",
+      "privilege": "CREATE",
+      "expect": false
+    },
+    {
+      "role": "worker_runtime",
+      "schema": "profile",
+      "privilege": "CREATE",
+      "expect": false
+    },
+    {
+      "role": "worker_runtime",
+      "schema": "social",
+      "privilege": "CREATE",
+      "expect": false
+    },
+    {
+      "role": "worker_runtime",
+      "schema": "economy",
+      "privilege": "CREATE",
+      "expect": false
+    },
+    {
+      "role": "worker_runtime",
+      "schema": "core",
+      "privilege": "CREATE",
+      "expect": false
+    },
+    {
+      "role": "worker_runtime",
+      "schema": "match",
+      "privilege": "CREATE",
+      "expect": false
+    },
+    {
+      "role": "worker_runtime",
+      "schema": "tournament",
+      "privilege": "CREATE",
+      "expect": false
+    },
+    {
+      "role": "worker_runtime",
+      "schema": "monetization",
+      "privilege": "CREATE",
+      "expect": false
+    },
+    {
+      "role": "worker_runtime",
+      "schema": "cosmetics",
+      "privilege": "CREATE",
+      "expect": false
+    },
+    {
+      "role": "worker_runtime",
+      "schema": "season",
+      "privilege": "CREATE",
+      "expect": false
+    },
+    {
+      "role": "worker_runtime",
+      "schema": "privacy",
+      "privilege": "CREATE",
+      "expect": false
+    },
+    {
+      "role": "worker_runtime",
+      "schema": "audit",
+      "privilege": "CREATE",
+      "expect": false
+    },
+    {
+      "role": "worker_runtime",
+      "schema": "support",
+      "privilege": "CREATE",
+      "expect": false
+    },
+    {
+      "role": "worker_runtime",
+      "schema": "runtime",
+      "privilege": "CREATE",
+      "expect": false
+    },
+    {
+      "role": "worker_runtime",
+      "schema": "ops",
+      "privilege": "CREATE",
+      "expect": false
+    },
+    {
+      "role": "audit_runtime",
+      "schema": "meta",
+      "privilege": "CREATE",
+      "expect": false
+    },
+    {
+      "role": "audit_runtime",
+      "schema": "identity",
+      "privilege": "CREATE",
+      "expect": false
+    },
+    {
+      "role": "audit_runtime",
+      "schema": "profile",
+      "privilege": "CREATE",
+      "expect": false
+    },
+    {
+      "role": "audit_runtime",
+      "schema": "social",
+      "privilege": "CREATE",
+      "expect": false
+    },
+    {
+      "role": "audit_runtime",
+      "schema": "economy",
+      "privilege": "CREATE",
+      "expect": false
+    },
+    {
+      "role": "audit_runtime",
+      "schema": "core",
+      "privilege": "CREATE",
+      "expect": false
+    },
+    {
+      "role": "audit_runtime",
+      "schema": "match",
+      "privilege": "CREATE",
+      "expect": false
+    },
+    {
+      "role": "audit_runtime",
+      "schema": "tournament",
+      "privilege": "CREATE",
+      "expect": false
+    },
+    {
+      "role": "audit_runtime",
+      "schema": "monetization",
+      "privilege": "CREATE",
+      "expect": false
+    },
+    {
+      "role": "audit_runtime",
+      "schema": "cosmetics",
+      "privilege": "CREATE",
+      "expect": false
+    },
+    {
+      "role": "audit_runtime",
+      "schema": "season",
+      "privilege": "CREATE",
+      "expect": false
+    },
+    {
+      "role": "audit_runtime",
+      "schema": "privacy",
+      "privilege": "CREATE",
+      "expect": false
+    },
+    {
+      "role": "audit_runtime",
+      "schema": "audit",
+      "privilege": "CREATE",
+      "expect": false
+    },
+    {
+      "role": "audit_runtime",
+      "schema": "support",
+      "privilege": "CREATE",
+      "expect": false
+    },
+    {
+      "role": "audit_runtime",
+      "schema": "runtime",
+      "privilege": "CREATE",
+      "expect": false
+    },
+    {
+      "role": "audit_runtime",
+      "schema": "ops",
+      "privilege": "CREATE",
+      "expect": false
+    },
+    {
+      "role": "backup_reader",
+      "schema": "meta",
+      "privilege": "CREATE",
+      "expect": false
+    },
+    {
+      "role": "backup_reader",
+      "schema": "identity",
+      "privilege": "CREATE",
+      "expect": false
+    },
+    {
+      "role": "backup_reader",
+      "schema": "profile",
+      "privilege": "CREATE",
+      "expect": false
+    },
+    {
+      "role": "backup_reader",
+      "schema": "social",
+      "privilege": "CREATE",
+      "expect": false
+    },
+    {
+      "role": "backup_reader",
+      "schema": "economy",
+      "privilege": "CREATE",
+      "expect": false
+    },
+    {
+      "role": "backup_reader",
+      "schema": "core",
+      "privilege": "CREATE",
+      "expect": false
+    },
+    {
+      "role": "backup_reader",
+      "schema": "match",
+      "privilege": "CREATE",
+      "expect": false
+    },
+    {
+      "role": "backup_reader",
+      "schema": "tournament",
+      "privilege": "CREATE",
+      "expect": false
+    },
+    {
+      "role": "backup_reader",
+      "schema": "monetization",
+      "privilege": "CREATE",
+      "expect": false
+    },
+    {
+      "role": "backup_reader",
+      "schema": "cosmetics",
+      "privilege": "CREATE",
+      "expect": false
+    },
+    {
+      "role": "backup_reader",
+      "schema": "season",
+      "privilege": "CREATE",
+      "expect": false
+    },
+    {
+      "role": "backup_reader",
+      "schema": "privacy",
+      "privilege": "CREATE",
+      "expect": false
+    },
+    {
+      "role": "backup_reader",
+      "schema": "audit",
+      "privilege": "CREATE",
+      "expect": false
+    },
+    {
+      "role": "backup_reader",
+      "schema": "support",
+      "privilege": "CREATE",
+      "expect": false
+    },
+    {
+      "role": "backup_reader",
+      "schema": "runtime",
+      "privilege": "CREATE",
+      "expect": false
+    },
+    {
+      "role": "backup_reader",
+      "schema": "ops",
+      "privilege": "CREATE",
+      "expect": false
+    },
+    {
+      "role": "api_runtime",
+      "schema": "v5_migration",
+      "privilege": "USAGE",
+      "expect": false
+    },
+    {
+      "role": "worker_runtime",
+      "schema": "v5_migration",
+      "privilege": "USAGE",
+      "expect": false
+    },
+    {
+      "role": "core_runtime",
+      "schema": "v5_migration",
+      "privilege": "USAGE",
+      "expect": false
     }
-   }
-  },
-  "social": {
-   "owner": "v5_owner",
-   "tables": {
-    "blocks": {
-     "columns": {
-      "blocker_id": {
-       "t": "text",
-       "nn": true
-      },
-      "blocked_id": {
-       "t": "text",
-       "nn": true
-      }
-     },
-     "constraints": [
-      "blocks_not_self_ck",
-      "blocks_pkey"
-     ],
-     "indexes": [
-      "blocks_blocked_idx",
-      "blocks_pkey"
-     ]
+  ],
+  "databasePrivilegeChecks": [
+    {
+      "role": "api_runtime",
+      "privilege": "CREATE",
+      "expect": false
     },
-    "command_outcomes": {
-     "columns": {
-      "actor_id": {
-       "t": "text",
-       "nn": true
-      },
-      "key": {
-       "t": "text",
-       "nn": true
-      },
-      "fingerprint": {
-       "t": "text",
-       "nn": true
-      },
-      "result": {
-       "t": "text",
-       "nn": true
-      },
-      "committed_at": {
-       "t": "timestamp with time zone"
-      }
-     },
-     "constraints": [
-      "command_outcomes_fingerprint_check",
-      "command_outcomes_key_check",
-      "command_outcomes_pkey",
-      "command_outcomes_result_check"
-     ],
-     "indexes": [
-      "command_outcomes_pkey",
-      "social_command_outcomes_legacy_id_uniq"
-     ]
+    {
+      "role": "api_runtime",
+      "privilege": "TEMPORARY",
+      "expect": false
     },
-    "friend_requests": {
-     "columns": {
-      "from_id": {
-       "t": "text",
-       "nn": true
-      },
-      "to_id": {
-       "t": "text",
-       "nn": true
-      }
-     },
-     "constraints": [
-      "friend_requests_not_self_ck",
-      "friend_requests_pkey"
-     ],
-     "indexes": [
-      "friend_requests_pkey",
-      "friend_requests_to_idx"
-     ]
+    {
+      "role": "core_runtime",
+      "privilege": "CREATE",
+      "expect": false
     },
-    "friendships": {
-     "columns": {
-      "actor_a": {
-       "t": "text",
-       "nn": true
-      },
-      "actor_b": {
-       "t": "text",
-       "nn": true
-      }
-     },
-     "constraints": [
-      "friendships_canonical_order_ck",
-      "friendships_pkey"
-     ],
-     "indexes": [
-      "friendships_actor_b_idx",
-      "friendships_pkey"
-     ]
+    {
+      "role": "core_runtime",
+      "privilege": "TEMPORARY",
+      "expect": false
+    },
+    {
+      "role": "worker_runtime",
+      "privilege": "CREATE",
+      "expect": false
+    },
+    {
+      "role": "worker_runtime",
+      "privilege": "TEMPORARY",
+      "expect": false
+    },
+    {
+      "role": "audit_runtime",
+      "privilege": "CREATE",
+      "expect": false
+    },
+    {
+      "role": "audit_runtime",
+      "privilege": "TEMPORARY",
+      "expect": false
+    },
+    {
+      "role": "backup_reader",
+      "privilege": "CREATE",
+      "expect": false
+    },
+    {
+      "role": "backup_reader",
+      "privilege": "TEMPORARY",
+      "expect": false
+    },
+    {
+      "role": "migration_owner",
+      "privilege": "TEMPORARY",
+      "expect": true
+    },
+    {
+      "role": "v5_owner",
+      "privilege": "TEMPORARY",
+      "expect": true
     }
-   }
-  },
-  "economy": {
-   "owner": "v5_owner",
-   "tables": {
-    "actor_legacy_extra": {
-     "columns": {
-      "actor_id": {
-       "t": "text",
-       "nn": true
-      },
-      "extra": {
-       "t": "json",
-       "nn": true
-      }
-     },
-     "constraints": [
-      "actor_legacy_extra_extra_check",
-      "actor_legacy_extra_pkey"
-     ],
-     "indexes": [
-      "actor_legacy_extra_pkey"
-     ]
-    },
-    "command_outcomes": {
-     "columns": {
-      "actor_id": {
-       "t": "text",
-       "nn": true
-      },
-      "key": {
-       "t": "text",
-       "nn": true
-      },
-      "fingerprint": {
-       "t": "character(64)",
-       "nn": true
-      },
-      "response": {
-       "t": "text",
-       "nn": true
-      },
-      "committed_at": {
-       "t": "timestamp with time zone"
-      }
-     },
-     "constraints": [
-      "command_outcomes_fingerprint_check",
-      "command_outcomes_key_check",
-      "command_outcomes_pkey",
-      "command_outcomes_response_check"
-     ],
-     "indexes": [
-      "command_outcomes_pkey"
-     ]
-    },
-    "daily_progress": {
-     "columns": {
-      "actor_id": {
-       "t": "text",
-       "nn": true
-      },
-      "day": {
-       "t": "date",
-       "nn": true
-      },
-      "finished": {
-       "t": "integer",
-       "nn": true
-      },
-      "seconds": {
-       "t": "numeric",
-       "nn": true
-      },
-      "boards": {
-       "t": "integer",
-       "nn": true
-      },
-      "casual": {
-       "t": "integer",
-       "nn": true
-      },
-      "friend": {
-       "t": "integer",
-       "nn": true
-      },
-      "ranked": {
-       "t": "integer",
-       "nn": true
-      },
-      "ranked_bonus": {
-       "t": "integer",
-       "nn": true
-      },
-      "claimed": {
-       "t": "text[]",
-       "nn": true
-      }
-     },
-     "constraints": [
-      "daily_progress_actor_id_fkey",
-      "daily_progress_boards_check",
-      "daily_progress_casual_check",
-      "daily_progress_claimed_check",
-      "daily_progress_finished_check",
-      "daily_progress_friend_check",
-      "daily_progress_pkey",
-      "daily_progress_ranked_bonus_check",
-      "daily_progress_ranked_check",
-      "daily_progress_seconds_check"
-     ],
-     "indexes": [
-      "daily_progress_pkey"
-     ]
-    },
-    "ledger": {
-     "columns": {
-      "entry_id": {
-       "t": "text",
-       "nn": true
-      },
-      "actor_id": {
-       "t": "text",
-       "nn": true
-      },
-      "currency": {
-       "t": "text",
-       "nn": true
-      },
-      "amount": {
-       "t": "bigint",
-       "nn": true
-      },
-      "reason": {
-       "t": "text",
-       "nn": true
-      },
-      "source": {
-       "t": "text",
-       "nn": true
-      },
-      "at": {
-       "t": "timestamp with time zone",
-       "nn": true
-      }
-     },
-     "constraints": [
-      "ledger_amount_check",
-      "ledger_currency_check",
-      "ledger_pkey",
-      "ledger_source_check"
-     ],
-     "indexes": [
-      "ledger_actor_at_idx",
-      "ledger_at_idx",
-      "ledger_pkey",
-      "ledger_source_at_idx"
-     ]
-    },
-    "match_history": {
-     "columns": {
-      "actor_id": {
-       "t": "text",
-       "nn": true
-      },
-      "seq": {
-       "t": "integer",
-       "nn": true
-      },
-      "match_id": {
-       "t": "text",
-       "nn": true
-      },
-      "at": {
-       "t": "timestamp with time zone",
-       "nn": true
-      },
-      "opponent": {
-       "t": "text",
-       "nn": true
-      },
-      "mode": {
-       "t": "text",
-       "nn": true
-      },
-      "queue": {
-       "t": "boolean",
-       "nn": true
-      },
-      "symbol": {
-       "t": "text",
-       "nn": true
-      },
-      "rated": {
-       "t": "boolean",
-       "nn": true
-      },
-      "qualified": {
-       "t": "boolean",
-       "nn": true
-      },
-      "activity_qualified": {
-       "t": "boolean",
-       "nn": true
-      },
-      "result": {
-       "t": "text",
-       "nn": true
-      },
-      "reason": {
-       "t": "text"
-      },
-      "active_seconds": {
-       "t": "integer"
-      },
-      "rating_delta": {
-       "t": "numeric(9,2)"
-      },
-      "casual_delta": {
-       "t": "numeric(9,2)"
-      }
-     },
-     "constraints": [
-      "match_history_active_seconds_check",
-      "match_history_actor_id_fkey",
-      "match_history_actor_match_key",
-      "match_history_mode_check",
-      "match_history_pkey",
-      "match_history_result_check",
-      "match_history_seq_ck",
-      "match_history_symbol_check"
-     ],
-     "indexes": [
-      "match_history_actor_at_idx",
-      "match_history_actor_match_key",
-      "match_history_pkey"
-     ]
-    },
-    "ratings": {
-     "columns": {
-      "actor_id": {
-       "t": "text",
-       "nn": true
-      },
-      "rating": {
-       "t": "numeric(9,2)",
-       "nn": true
-      },
-      "peak": {
-       "t": "numeric(9,2)",
-       "nn": true
-      },
-      "casual_rating": {
-       "t": "numeric(9,2)",
-       "nn": true
-      },
-      "games": {
-       "t": "integer",
-       "nn": true
-      },
-      "casual_games": {
-       "t": "integer",
-       "nn": true
-      },
-      "tier": {
-       "t": "text",
-       "nn": true
-      },
-      "reached_at": {
-       "t": "timestamp with time zone"
-      },
-      "last_rated_at": {
-       "t": "timestamp with time zone"
-      }
-     },
-     "constraints": [
-      "ratings_actor_id_fkey",
-      "ratings_casual_games_check",
-      "ratings_casual_rating_check",
-      "ratings_games_check",
-      "ratings_peak_check",
-      "ratings_pkey",
-      "ratings_rating_check",
-      "ratings_tier_check"
-     ],
-     "indexes": [
-      "ratings_pkey",
-      "ratings_rating_idx"
-     ]
-    },
-    "season_history": {
-     "columns": {
-      "actor_id": {
-       "t": "text",
-       "nn": true
-      },
-      "seq": {
-       "t": "smallint",
-       "nn": true
-      },
-      "season_id": {
-       "t": "text",
-       "nn": true
-      },
-      "started_at": {
-       "t": "timestamp with time zone",
-       "nn": true
-      },
-      "games": {
-       "t": "integer",
-       "nn": true
-      },
-      "queue_games": {
-       "t": "integer",
-       "nn": true
-      },
-      "opponents": {
-       "t": "text[]",
-       "nn": true
-      },
-      "wins": {
-       "t": "integer",
-       "nn": true
-      },
-      "losses": {
-       "t": "integer",
-       "nn": true
-      },
-      "draws": {
-       "t": "integer",
-       "nn": true
-      },
-      "peak_rating": {
-       "t": "numeric(9,2)"
-      },
-      "last_rated_at": {
-       "t": "timestamp with time zone"
-      },
-      "qualified_at": {
-       "t": "timestamp with time zone"
-      },
-      "finish_rating": {
-       "t": "numeric(9,2)"
-      },
-      "finish_tier": {
-       "t": "text"
-      },
-      "ended_at": {
-       "t": "timestamp with time zone"
-      }
-     },
-     "constraints": [
-      "season_history_actor_id_fkey",
-      "season_history_draws_check",
-      "season_history_finish_rating_check",
-      "season_history_games_check",
-      "season_history_losses_check",
-      "season_history_peak_rating_check",
-      "season_history_pkey",
-      "season_history_queue_games_check",
-      "season_history_season_id_check",
-      "season_history_seq_ck",
-      "season_history_wins_check"
-     ],
-     "indexes": [
-      "season_history_pkey"
-     ]
-    },
-    "season_state": {
-     "columns": {
-      "actor_id": {
-       "t": "text",
-       "nn": true
-      },
-      "season_id": {
-       "t": "text",
-       "nn": true
-      },
-      "started_at": {
-       "t": "timestamp with time zone",
-       "nn": true
-      },
-      "games": {
-       "t": "integer",
-       "nn": true
-      },
-      "queue_games": {
-       "t": "integer",
-       "nn": true
-      },
-      "opponents": {
-       "t": "text[]",
-       "nn": true
-      },
-      "wins": {
-       "t": "integer",
-       "nn": true
-      },
-      "losses": {
-       "t": "integer",
-       "nn": true
-      },
-      "draws": {
-       "t": "integer",
-       "nn": true
-      },
-      "peak_rating": {
-       "t": "numeric(9,2)"
-      },
-      "last_rated_at": {
-       "t": "timestamp with time zone"
-      },
-      "qualified_at": {
-       "t": "timestamp with time zone"
-      }
-     },
-     "constraints": [
-      "season_state_actor_id_fkey",
-      "season_state_draws_check",
-      "season_state_games_check",
-      "season_state_losses_check",
-      "season_state_peak_rating_check",
-      "season_state_pkey",
-      "season_state_queue_games_check",
-      "season_state_season_id_check",
-      "season_state_wins_check"
-     ],
-     "indexes": [
-      "season_state_pkey",
-      "season_state_season_actor_idx"
-     ]
-    },
-    "system_burns": {
-     "columns": {
-      "id": {
-       "t": "smallint",
-       "nn": true
-      },
-      "coins": {
-       "t": "bigint",
-       "nn": true
-      },
-      "crowns": {
-       "t": "bigint",
-       "nn": true
-      },
-      "updated_at": {
-       "t": "timestamp with time zone",
-       "nn": true
-      }
-     },
-     "constraints": [
-      "system_burns_coins_check",
-      "system_burns_crowns_check",
-      "system_burns_id_check",
-      "system_burns_pkey"
-     ],
-     "indexes": [
-      "system_burns_pkey"
-     ]
-    },
-    "tournament_records": {
-     "columns": {
-      "actor_id": {
-       "t": "text",
-       "nn": true
-      },
-      "entered": {
-       "t": "integer",
-       "nn": true
-      },
-      "wins": {
-       "t": "integer",
-       "nn": true
-      },
-      "runner_up": {
-       "t": "integer",
-       "nn": true
-      },
-      "top3": {
-       "t": "integer",
-       "nn": true
-      },
-      "top5": {
-       "t": "integer",
-       "nn": true
-      },
-      "best_finish": {
-       "t": "smallint"
-      },
-      "finish_sum": {
-       "t": "integer",
-       "nn": true
-      },
-      "premium_wins": {
-       "t": "integer",
-       "nn": true
-      }
-     },
-     "constraints": [
-      "tournament_records_actor_id_fkey",
-      "tournament_records_best_finish_check",
-      "tournament_records_entered_check",
-      "tournament_records_finish_sum_check",
-      "tournament_records_pkey",
-      "tournament_records_premium_wins_check",
-      "tournament_records_runner_up_check",
-      "tournament_records_top3_check",
-      "tournament_records_top5_check",
-      "tournament_records_wins_check"
-     ],
-     "indexes": [
-      "tournament_records_pkey"
-     ]
-    },
-    "wallet_ledger_entries": {
-     "columns": {
-      "actor_id": {
-       "t": "text",
-       "nn": true
-      },
-      "entry_id": {
-       "t": "text",
-       "nn": true
-      },
-      "operation_id": {
-       "t": "text"
-      },
-      "currency": {
-       "t": "text",
-       "nn": true
-      },
-      "amount": {
-       "t": "bigint",
-       "nn": true
-      },
-      "reason": {
-       "t": "text",
-       "nn": true
-      },
-      "at": {
-       "t": "timestamp with time zone",
-       "nn": true
-      }
-     },
-     "constraints": [
-      "wallet_ledger_entries_amount_check",
-      "wallet_ledger_entries_currency_check",
-      "wallet_ledger_entries_pkey"
-     ],
-     "indexes": [
-      "wallet_ledger_entries_actor_at_idx",
-      "wallet_ledger_entries_pkey"
-     ]
-    },
-    "wallet_operations": {
-     "columns": {
-      "actor_id": {
-       "t": "text",
-       "nn": true
-      },
-      "key": {
-       "t": "text",
-       "nn": true
-      },
-      "fingerprint": {
-       "t": "text",
-       "nn": true
-      },
-      "result": {
-       "t": "text",
-       "nn": true
-      },
-      "committed_at": {
-       "t": "timestamp with time zone"
-      }
-     },
-     "constraints": [
-      "wallet_operations_fingerprint_check",
-      "wallet_operations_key_check",
-      "wallet_operations_pkey",
-      "wallet_operations_result_check"
-     ],
-     "indexes": [
-      "wallet_operations_pkey"
-     ]
-    },
-    "wallets": {
-     "columns": {
-      "actor_id": {
-       "t": "text",
-       "nn": true
-      },
-      "coins": {
-       "t": "bigint",
-       "nn": true
-      },
-      "crowns": {
-       "t": "bigint",
-       "nn": true
-      },
-      "reserved_coins": {
-       "t": "bigint",
-       "nn": true
-      },
-      "reserved_crowns": {
-       "t": "bigint",
-       "nn": true
-      },
-      "purchased_coins": {
-       "t": "bigint",
-       "nn": true
-      },
-      "purchased_crowns": {
-       "t": "bigint",
-       "nn": true
-      },
-      "purchase_influenced": {
-       "t": "boolean",
-       "nn": true
-      },
-      "legacy_competition_restricted": {
-       "t": "boolean",
-       "nn": true
-      }
-     },
-     "constraints": [
-      "wallets_actor_id_fkey",
-      "wallets_coins_bound_ck",
-      "wallets_crowns_bound_ck",
-      "wallets_pkey",
-      "wallets_purchased_coins_bound_ck",
-      "wallets_purchased_crowns_bound_ck",
-      "wallets_reserved_coins_bound_ck",
-      "wallets_reserved_crowns_bound_ck"
-     ],
-     "indexes": [
-      "wallets_pkey",
-      "wallets_wealth_idx"
-     ]
-    }
-   }
-  },
-  "core": {
-   "owner": "v5_owner",
-   "tables": {
-    "actor_occupancy": {
-     "columns": {
-      "actor_id": {
-       "t": "text",
-       "nn": true
-      },
-      "kind": {
-       "t": "text",
-       "nn": true
-      },
-      "ref_id": {
-       "t": "text",
-       "nn": true
-      },
-      "claimed_at": {
-       "t": "timestamp with time zone",
-       "nn": true
-      }
-     },
-     "constraints": [
-      "actor_occupancy_actor_id_fkey",
-      "actor_occupancy_kind_check",
-      "actor_occupancy_pkey",
-      "actor_occupancy_ref_id_grammar_ck"
-     ],
-     "indexes": [
-      "actor_occupancy_kind_ref_idx",
-      "actor_occupancy_pkey"
-     ]
-    }
-   }
-  },
-  "match": {
-   "owner": "v5_owner",
-   "tables": {
-    "escrow_contributions": {
-     "columns": {
-      "match_id": {
-       "t": "text",
-       "nn": true
-      },
-      "actor_id": {
-       "t": "text",
-       "nn": true
-      },
-      "amount": {
-       "t": "bigint",
-       "nn": true
-      }
-     },
-     "constraints": [
-      "escrow_contributions_amount_check",
-      "escrow_contributions_match_id_fkey",
-      "escrow_contributions_pkey"
-     ],
-     "indexes": [
-      "escrow_contributions_pkey"
-     ]
-    },
-    "matches": {
-     "columns": {
-      "match_id": {
-       "t": "text",
-       "nn": true
-      },
-      "source": {
-       "t": "text",
-       "nn": true
-      },
-      "mode": {
-       "t": "text",
-       "nn": true
-      },
-      "kind": {
-       "t": "json"
-      },
-      "rated": {
-       "t": "boolean",
-       "nn": true
-      },
-      "amount": {
-       "t": "bigint"
-      },
-      "currency": {
-       "t": "text"
-      },
-      "turn_seconds": {
-       "t": "integer"
-      },
-      "from_tier": {
-       "t": "text"
-      },
-      "to_tier": {
-       "t": "text"
-      },
-      "terms_ratings": {
-       "t": "numeric(9,2)[]"
-      },
-      "terms_json": {
-       "t": "json",
-       "nn": true
-      },
-      "terms_hash": {
-       "t": "character(64)",
-       "nn": true
-      },
-      "quote_json": {
-       "t": "jsonb",
-       "nn": true
-      },
-      "pool": {
-       "t": "bigint",
-       "nn": true
-      },
-      "contribution_a": {
-       "t": "bigint",
-       "nn": true
-      },
-      "contribution_b": {
-       "t": "bigint",
-       "nn": true
-      },
-      "accepted_count": {
-       "t": "smallint",
-       "nn": true
-      },
-      "status": {
-       "t": "text",
-       "nn": true
-      },
-      "created_at": {
-       "t": "timestamp with time zone",
-       "nn": true
-      },
-      "expires_at": {
-       "t": "timestamp with time zone",
-       "nn": true
-      },
-      "state_json": {
-       "t": "jsonb",
-       "nn": true
-      },
-      "revision": {
-       "t": "bigint",
-       "nn": true
-      },
-      "symbol_x": {
-       "t": "text"
-      },
-      "symbol_y": {
-       "t": "text"
-      },
-      "escrow": {
-       "t": "bigint",
-       "nn": true
-      },
-      "settled": {
-       "t": "boolean",
-       "nn": true
-      },
-      "started_at": {
-       "t": "timestamp with time zone"
-      },
-      "last_move_at": {
-       "t": "timestamp with time zone"
-      },
-      "deadline": {
-       "t": "timestamp with time zone"
-      },
-      "move_timings": {
-       "t": "jsonb"
-      },
-      "pre_ratings": {
-       "t": "numeric(9,2)[]"
-      },
-      "pre_tiers": {
-       "t": "text[]"
-      },
-      "receipt_json": {
-       "t": "json"
-      },
-      "receipt_at": {
-       "t": "timestamp with time zone"
-      },
-      "receipt_reason": {
-       "t": "json"
-      },
-      "receipt_payout": {
-       "t": "bigint"
-      },
-      "receipt_burn": {
-       "t": "bigint"
-      },
-      "receipt_bonus": {
-       "t": "bigint"
-      },
-      "receipt_refunded": {
-       "t": "bigint"
-      },
-      "risk_flags": {
-       "t": "text[]",
-       "nn": true
-      },
-      "risk_actors": {
-       "t": "jsonb",
-       "nn": true
-      },
-      "extra": {
-       "t": "json"
-      }
-     },
-     "constraints": [
-      "matches_accepted_count_check",
-      "matches_amount_check",
-      "matches_contribution_a_check",
-      "matches_contribution_b_check",
-      "matches_contributions_sum_ck",
-      "matches_currency_check",
-      "matches_deadline_ck",
-      "matches_escrow_check",
-      "matches_extra_object_ck",
-      "matches_from_tier_check",
-      "matches_match_id_grammar_ck",
-      "matches_mode_check",
-      "matches_move_timings_bound_ck",
-      "matches_pkey",
-      "matches_pool_check",
-      "matches_quote_json_object_ck",
-      "matches_receipt_bonus_check",
-      "matches_receipt_burn_check",
-      "matches_receipt_json_object_ck",
-      "matches_receipt_payout_check",
-      "matches_receipt_refunded_check",
-      "matches_revision_check",
-      "matches_risk_actors_map_ck",
-      "matches_source_check",
-      "matches_state_json_object_ck",
-      "matches_status_check",
-      "matches_terms_hash_hex_ck",
-      "matches_terms_json_object_ck",
-      "matches_terms_ratings_check",
-      "matches_to_tier_check",
-      "matches_turn_seconds_check"
-     ],
-     "indexes": [
-      "matches_offered_expires_idx",
-      "matches_pkey",
-      "matches_playing_deadline_idx"
-     ]
-    },
-    "move_outcomes": {
-     "columns": {
-      "match_id": {
-       "t": "text",
-       "nn": true
-      },
-      "key": {
-       "t": "text",
-       "nn": true
-      },
-      "fingerprint": {
-       "t": "character(64)",
-       "nn": true
-      },
-      "result": {
-       "t": "text",
-       "nn": true
-      },
-      "committed_at": {
-       "t": "timestamp with time zone"
-      }
-     },
-     "constraints": [
-      "move_outcomes_fingerprint_check",
-      "move_outcomes_key_check",
-      "move_outcomes_match_id_fkey",
-      "move_outcomes_pkey",
-      "move_outcomes_result_check"
-     ],
-     "indexes": [
-      "move_outcomes_match_committed_idx",
-      "move_outcomes_pkey"
-     ]
-    },
-    "participants": {
-     "columns": {
-      "match_id": {
-       "t": "text",
-       "nn": true
-      },
-      "seat": {
-       "t": "smallint",
-       "nn": true
-      },
-      "actor_id": {
-       "t": "text",
-       "nn": true
-      },
-      "accepted": {
-       "t": "boolean",
-       "nn": true
-      }
-     },
-     "constraints": [
-      "participants_match_actor_key",
-      "participants_match_id_fkey",
-      "participants_pkey",
-      "participants_seat_check"
-     ],
-     "indexes": [
-      "participants_actor_idx",
-      "participants_match_actor_key",
-      "participants_pkey"
-     ]
-    }
-   }
-  },
-  "tournament": {
-   "owner": "v5_owner",
-   "tables": {
-    "command_outcomes": {
-     "columns": {
-      "actor_id": {
-       "t": "text",
-       "nn": true
-      },
-      "key": {
-       "t": "text",
-       "nn": true
-      },
-      "room_id": {
-       "t": "text"
-      },
-      "fingerprint": {
-       "t": "character(64)",
-       "nn": true
-      },
-      "response": {
-       "t": "text",
-       "nn": true
-      },
-      "committed_at": {
-       "t": "timestamp with time zone"
-      }
-     },
-     "constraints": [
-      "command_outcomes_fingerprint_check",
-      "command_outcomes_key_check",
-      "command_outcomes_pkey",
-      "command_outcomes_response_check"
-     ],
-     "indexes": [
-      "command_outcomes_pkey",
-      "command_outcomes_room_idx"
-     ]
-    },
-    "escrow_contributions": {
-     "columns": {
-      "room_id": {
-       "t": "text",
-       "nn": true
-      },
-      "actor_id": {
-       "t": "text",
-       "nn": true
-      },
-      "amount": {
-       "t": "bigint",
-       "nn": true
-      }
-     },
-     "constraints": [
-      "escrow_contributions_amount_check",
-      "escrow_contributions_pkey",
-      "escrow_contributions_room_id_fkey"
-     ],
-     "indexes": [
-      "escrow_contributions_pkey"
-     ]
-    },
-    "fixtures": {
-     "columns": {
-      "room_id": {
-       "t": "text",
-       "nn": true
-      },
-      "fixture_id": {
-       "t": "text",
-       "nn": true
-      },
-      "label": {
-       "t": "text"
-      },
-      "round": {
-       "t": "integer"
-      },
-      "group_id": {
-       "t": "text"
-      },
-      "decisive": {
-       "t": "boolean"
-      },
-      "slots_json": {
-       "t": "jsonb"
-      },
-      "players": {
-       "t": "text[]",
-       "nn": true
-      },
-      "ready": {
-       "t": "text[]",
-       "nn": true
-      },
-      "status": {
-       "t": "text",
-       "nn": true
-      },
-      "state_json": {
-       "t": "jsonb"
-      },
-      "mini_json": {
-       "t": "jsonb"
-      },
-      "winner": {
-       "t": "text"
-      },
-      "attempt": {
-       "t": "smallint"
-      },
-      "opens_at": {
-       "t": "timestamp with time zone"
-      },
-      "expires_at": {
-       "t": "timestamp with time zone"
-      },
-      "ready_deadline": {
-       "t": "timestamp with time zone"
-      },
-      "turn_at": {
-       "t": "timestamp with time zone"
-      },
-      "finished_at": {
-       "t": "timestamp with time zone"
-      },
-      "banks_json": {
-       "t": "jsonb"
-      },
-      "last_move_at": {
-       "t": "timestamp with time zone"
-      },
-      "move_timings": {
-       "t": "jsonb"
-      },
-      "reason": {
-       "t": "text"
-      },
-      "history_json": {
-       "t": "jsonb"
-      },
-      "revision": {
-       "t": "bigint",
-       "nn": true
-      },
-      "lease_owner": {
-       "t": "text"
-      },
-      "lease_epoch": {
-       "t": "bigint"
-      },
-      "lease_until": {
-       "t": "timestamp with time zone"
-      },
-      "extra": {
-       "t": "json"
-      }
-     },
-     "constraints": [
-      "fixtures_attempt_ck",
-      "fixtures_banks_json_object_ck",
-      "fixtures_extra_object_ck",
-      "fixtures_history_json_object_ck",
-      "fixtures_lease_epoch_check",
-      "fixtures_lease_tuple_ck",
-      "fixtures_mini_json_object_ck",
-      "fixtures_move_timings_array_ck",
-      "fixtures_pkey",
-      "fixtures_revision_check",
-      "fixtures_room_id_fkey",
-      "fixtures_round_ck",
-      "fixtures_slots_json_array_ck",
-      "fixtures_state_json_object_ck",
-      "fixtures_status_check"
-     ],
-     "indexes": [
-      "fixtures_lease_until_idx",
-      "fixtures_pkey",
-      "fixtures_ready_deadline_idx",
-      "fixtures_room_status_idx",
-      "fixtures_status_turn_idx"
-     ]
-    },
-    "room_players": {
-     "columns": {
-      "room_id": {
-       "t": "text",
-       "nn": true
-      },
-      "actor_id": {
-       "t": "text",
-       "nn": true
-      },
-      "name": {
-       "t": "json"
-      },
-      "ready": {
-       "t": "boolean",
-       "nn": true
-      },
-      "withdrawn": {
-       "t": "boolean",
-       "nn": true
-      },
-      "joined_at": {
-       "t": "timestamp with time zone"
-      },
-      "ordinal": {
-       "t": "integer",
-       "nn": true
-      }
-     },
-     "constraints": [
-      "room_players_name_json_string_ck",
-      "room_players_ordinal_check",
-      "room_players_pkey",
-      "room_players_room_id_fkey",
-      "room_players_room_id_ordinal_key"
-     ],
-     "indexes": [
-      "room_players_actor_idx",
-      "room_players_pkey",
-      "room_players_room_id_ordinal_key"
-     ]
-    },
-    "rooms": {
-     "columns": {
-      "room_id": {
-       "t": "text",
-       "nn": true
-      },
-      "code": {
-       "t": "text",
-       "nn": true
-      },
-      "owner_id": {
-       "t": "text",
-       "nn": true
-      },
-      "name": {
-       "t": "json"
-      },
-      "format": {
-       "t": "text"
-      },
-      "table_kind": {
-       "t": "text"
-      },
-      "sequential": {
-       "t": "boolean"
-      },
-      "quote_json": {
-       "t": "jsonb"
-      },
-      "quote_currency": {
-       "t": "text"
-      },
-      "entry": {
-       "t": "bigint"
-      },
-      "pool": {
-       "t": "bigint"
-      },
-      "burn": {
-       "t": "bigint"
-      },
-      "clock_seconds": {
-       "t": "integer"
-      },
-      "increment_seconds": {
-       "t": "integer"
-      },
-      "capacity": {
-       "t": "smallint"
-      },
-      "rules_version": {
-       "t": "smallint"
-      },
-      "status": {
-       "t": "text",
-       "nn": true
-      },
-      "created_at": {
-       "t": "timestamp with time zone",
-       "nn": true
-      },
-      "expires_at": {
-       "t": "timestamp with time zone"
-      },
-      "started_at": {
-       "t": "timestamp with time zone"
-      },
-      "ended_at": {
-       "t": "timestamp with time zone"
-      },
-      "deadline": {
-       "t": "timestamp with time zone"
-      },
-      "paused_at": {
-       "t": "timestamp with time zone"
-      },
-      "reason": {
-       "t": "text"
-      },
-      "draw_game": {
-       "t": "text"
-      },
-      "revision": {
-       "t": "bigint",
-       "nn": true
-      },
-      "round_delay_ms": {
-       "t": "integer"
-      },
-      "groups_json": {
-       "t": "jsonb"
-      },
-      "final_refs_json": {
-       "t": "jsonb"
-      },
-      "seed_json": {
-       "t": "jsonb"
-      },
-      "ranking": {
-       "t": "text[]",
-       "nn": true
-      },
-      "receipt_json": {
-       "t": "jsonb"
-      },
-      "risk_flags": {
-       "t": "text[]",
-       "nn": true
-      },
-      "risk_actors": {
-       "t": "jsonb",
-       "nn": true
-      },
-      "escrow": {
-       "t": "bigint",
-       "nn": true
-      },
-      "settled": {
-       "t": "boolean",
-       "nn": true
-      },
-      "settled_at": {
-       "t": "timestamp with time zone"
-      },
-      "timer_lease_owner": {
-       "t": "text"
-      },
-      "timer_lease_epoch": {
-       "t": "bigint"
-      },
-      "timer_lease_until": {
-       "t": "timestamp with time zone"
-      },
-      "extra": {
-       "t": "json"
-      },
-      "shape_version": {
-       "t": "text"
-      }
-     },
-     "constraints": [
-      "rooms_burn_check",
-      "rooms_capacity_check",
-      "rooms_clock_seconds_check",
-      "rooms_code_grammar_ck",
-      "rooms_code_key",
-      "rooms_entry_check",
-      "rooms_escrow_check",
-      "rooms_extra_object_ck",
-      "rooms_final_refs_json_ck",
-      "rooms_format_check",
-      "rooms_groups_json_array_ck",
-      "rooms_increment_seconds_check",
-      "rooms_name_json_string_ck",
-      "rooms_pkey",
-      "rooms_pool_check",
-      "rooms_quote_currency_check",
-      "rooms_quote_json_object_ck",
-      "rooms_receipt_json_object_ck",
-      "rooms_revision_check",
-      "rooms_risk_actors_map_ck",
-      "rooms_room_id_grammar_ck",
-      "rooms_round_delay_ms_check",
-      "rooms_seed_json_array_ck",
-      "rooms_status_check",
-      "rooms_timer_lease_epoch_check",
-      "rooms_timer_lease_tuple_ck"
-     ],
-     "indexes": [
-      "rooms_code_key",
-      "rooms_owner_idx",
-      "rooms_pkey",
-      "rooms_status_expires_idx",
-      "rooms_timer_lease_idx"
-     ]
-    }
-   }
-  },
-  "monetization": {
-   "owner": "v5_owner",
-   "tables": {
-    "ad_ticket_context": {
-     "columns": {
-      "ticket_id": {
-       "t": "text",
-       "nn": true
-      },
-      "platform": {
-       "t": "text",
-       "nn": true
-      },
-      "ad_unit": {
-       "t": "text",
-       "nn": true
-      }
-     },
-     "constraints": [
-      "ad_ticket_context_pkey",
-      "ad_ticket_context_platform_check",
-      "ad_ticket_context_ticket_id_fkey"
-     ],
-     "indexes": [
-      "ad_ticket_context_pkey"
-     ]
-    },
-    "boosts": {
-     "columns": {
-      "actor_id": {
-       "t": "text",
-       "nn": true
-      },
-      "boost_seq": {
-       "t": "integer",
-       "nn": true
-      },
-      "started_at": {
-       "t": "timestamp with time zone",
-       "nn": true
-      },
-      "ends_at": {
-       "t": "timestamp with time zone",
-       "nn": true
-      }
-     },
-     "constraints": [
-      "boosts_actor_id_fkey",
-      "boosts_boost_seq_check",
-      "boosts_pkey",
-      "boosts_window_ck"
-     ],
-     "indexes": [
-      "boosts_actor_ends_idx",
-      "boosts_pkey"
-     ]
-    },
-    "casual_rewards": {
-     "columns": {
-      "actor_id": {
-       "t": "text",
-       "nn": true
-      },
-      "match_id": {
-       "t": "text",
-       "nn": true
-      },
-      "base": {
-       "t": "integer",
-       "nn": true
-      },
-      "bonus": {
-       "t": "integer",
-       "nn": true
-      }
-     },
-     "constraints": [
-      "casual_rewards_base_check",
-      "casual_rewards_bonus_check",
-      "casual_rewards_pkey"
-     ],
-     "indexes": [
-      "casual_rewards_pkey"
-     ]
-    },
-    "command_outcomes": {
-     "columns": {
-      "actor_id": {
-       "t": "text",
-       "nn": true
-      },
-      "key": {
-       "t": "text",
-       "nn": true
-      },
-      "fingerprint": {
-       "t": "character(64)",
-       "nn": true
-      },
-      "response": {
-       "t": "text",
-       "nn": true
-      },
-      "committed_at": {
-       "t": "timestamp with time zone"
-      }
-     },
-     "constraints": [
-      "command_outcomes_fingerprint_check",
-      "command_outcomes_key_check",
-      "command_outcomes_pkey",
-      "command_outcomes_response_check"
-     ],
-     "indexes": [
-      "command_outcomes_pkey"
-     ]
-    },
-    "credits": {
-     "columns": {
-      "actor_id": {
-       "t": "text",
-       "nn": true
-      },
-      "credit_balance": {
-       "t": "bigint",
-       "nn": true
-      },
-      "equipped_frame": {
-       "t": "text"
-      },
-      "last_ad_at": {
-       "t": "timestamp with time zone"
-      },
-      "last_reward_start": {
-       "t": "timestamp with time zone"
-      },
-      "extra": {
-       "t": "json"
-      }
-     },
-     "constraints": [
-      "credits_actor_id_fkey",
-      "credits_credit_balance_check",
-      "credits_extra_object_ck",
-      "credits_pkey"
-     ],
-     "indexes": [
-      "credits_pkey"
-     ]
-    },
-    "receipts": {
-     "columns": {
-      "store": {
-       "t": "text",
-       "nn": true
-      },
-      "transaction_id": {
-       "t": "text",
-       "nn": true
-      },
-      "actor_id": {
-       "t": "text",
-       "nn": true
-      },
-      "product_id": {
-       "t": "text",
-       "nn": true
-      },
-      "crowns": {
-       "t": "bigint",
-       "nn": true
-      },
-      "refunded": {
-       "t": "boolean",
-       "nn": true
-      },
-      "purchased_at": {
-       "t": "timestamp with time zone",
-       "nn": true
-      }
-     },
-     "constraints": [
-      "receipts_crowns_check",
-      "receipts_pkey",
-      "receipts_store_check"
-     ],
-     "indexes": [
-      "receipts_actor_purchased_idx",
-      "receipts_pkey",
-      "receipts_store_refunded_idx"
-     ]
-    },
-    "redeemed_frames": {
-     "columns": {
-      "actor_id": {
-       "t": "text",
-       "nn": true
-      },
-      "frame": {
-       "t": "text",
-       "nn": true
-      },
-      "redeemed_at": {
-       "t": "timestamp with time zone"
-      }
-     },
-     "constraints": [
-      "redeemed_frames_actor_id_fkey",
-      "redeemed_frames_pkey"
-     ],
-     "indexes": [
-      "redeemed_frames_pkey"
-     ]
-    },
-    "reward_daily": {
-     "columns": {
-      "actor_id": {
-       "t": "text",
-       "nn": true
-      },
-      "day": {
-       "t": "date",
-       "nn": true
-      },
-      "base": {
-       "t": "integer",
-       "nn": true
-      },
-      "bonus": {
-       "t": "integer",
-       "nn": true
-      },
-      "automatic": {
-       "t": "integer",
-       "nn": true
-      }
-     },
-     "constraints": [
-      "reward_daily_actor_id_fkey",
-      "reward_daily_automatic_check",
-      "reward_daily_base_check",
-      "reward_daily_bonus_check",
-      "reward_daily_pkey"
-     ],
-     "indexes": [
-      "reward_daily_pkey"
-     ]
-    },
-    "reward_events": {
-     "columns": {
-      "event_id": {
-       "t": "bigint",
-       "nn": true
-      },
-      "actor_id": {
-       "t": "text",
-       "nn": true
-      },
-      "kind": {
-       "t": "text",
-       "nn": true
-      },
-      "at": {
-       "t": "timestamp with time zone",
-       "nn": true
-      },
-      "value": {
-       "t": "bigint"
-      }
-     },
-     "constraints": [
-      "reward_events_pkey",
-      "reward_events_value_check"
-     ],
-     "indexes": [
-      "reward_events_actor_at_idx",
-      "reward_events_kind_at_idx",
-      "reward_events_pkey"
-     ]
-    },
-    "reward_tickets": {
-     "columns": {
-      "ticket_id": {
-       "t": "text",
-       "nn": true
-      },
-      "actor_id": {
-       "t": "text",
-       "nn": true
-      },
-      "kind": {
-       "t": "text",
-       "nn": true
-      },
-      "issued_at": {
-       "t": "timestamp with time zone",
-       "nn": true
-      },
-      "expires_at": {
-       "t": "timestamp with time zone"
-      },
-      "day": {
-       "t": "date",
-       "nn": true
-      },
-      "settled": {
-       "t": "boolean",
-       "nn": true
-      },
-      "transaction_id": {
-       "t": "text"
-      }
-     },
-     "constraints": [
-      "reward_tickets_actor_id_fkey",
-      "reward_tickets_kind_check",
-      "reward_tickets_pkey",
-      "reward_tickets_transaction_id_key"
-     ],
-     "indexes": [
-      "reward_tickets_actor_day_idx",
-      "reward_tickets_actor_issued_idx",
-      "reward_tickets_pending_idx",
-      "reward_tickets_pkey",
-      "reward_tickets_transaction_id_key"
-     ]
-    },
-    "store_bindings": {
-     "columns": {
-      "actor_id": {
-       "t": "text",
-       "nn": true
-      },
-      "google_id": {
-       "t": "text",
-       "nn": true
-      },
-      "apple_token": {
-       "t": "text",
-       "nn": true
-      },
-      "created_at": {
-       "t": "timestamp with time zone",
-       "nn": true
-      }
-     },
-     "constraints": [
-      "store_bindings_actor_id_fkey",
-      "store_bindings_apple_token_key",
-      "store_bindings_google_id_key",
-      "store_bindings_pkey"
-     ],
-     "indexes": [
-      "store_bindings_apple_token_key",
-      "store_bindings_google_id_key",
-      "store_bindings_pkey"
-     ]
-    },
-    "store_finalize": {
-     "columns": {
-      "store": {
-       "t": "text",
-       "nn": true
-      },
-      "transaction_id": {
-       "t": "text",
-       "nn": true
-      },
-      "product_id": {
-       "t": "text",
-       "nn": true
-      },
-      "purchase_token": {
-       "t": "text",
-       "nn": true
-      },
-      "kind": {
-       "t": "text",
-       "nn": true
-      },
-      "state": {
-       "t": "text",
-       "nn": true
-      },
-      "attempts": {
-       "t": "integer",
-       "nn": true
-      },
-      "next_at": {
-       "t": "timestamp with time zone",
-       "nn": true
-      },
-      "created_at": {
-       "t": "timestamp with time zone",
-       "nn": true
-      },
-      "updated_at": {
-       "t": "timestamp with time zone",
-       "nn": true
-      },
-      "lease_owner": {
-       "t": "text"
-      },
-      "lease_token": {
-       "t": "bigint"
-      },
-      "lease_until": {
-       "t": "timestamp with time zone"
-      }
-     },
-     "constraints": [
-      "store_finalize_attempts_check",
-      "store_finalize_kind_check",
-      "store_finalize_lease_token_check",
-      "store_finalize_lease_tuple_ck",
-      "store_finalize_state_check",
-      "store_finalize_store_check"
-     ],
-     "indexes": [
-      "store_finalize_state_next_idx"
-     ]
-    },
-    "store_notifications": {
-     "columns": {
-      "store": {
-       "t": "text",
-       "nn": true
-      },
-      "notification_id": {
-       "t": "text",
-       "nn": true
-      },
-      "received_at": {
-       "t": "timestamp with time zone",
-       "nn": true
-      },
-      "state": {
-       "t": "text",
-       "nn": true
-      },
-      "attempts": {
-       "t": "integer",
-       "nn": true
-      },
-      "next_at": {
-       "t": "timestamp with time zone",
-       "nn": true
-      },
-      "processed_at": {
-       "t": "timestamp with time zone"
-      },
-      "last_error": {
-       "t": "text"
-      },
-      "lease_owner": {
-       "t": "text"
-      },
-      "lease_token": {
-       "t": "bigint"
-      },
-      "lease_until": {
-       "t": "timestamp with time zone"
-      }
-     },
-     "constraints": [
-      "store_notifications_attempts_check",
-      "store_notifications_last_error_check",
-      "store_notifications_lease_token_check",
-      "store_notifications_lease_tuple_ck",
-      "store_notifications_pkey",
-      "store_notifications_processed_ck",
-      "store_notifications_state_check",
-      "store_notifications_store_check"
-     ],
-     "indexes": [
-      "store_notifications_pkey",
-      "store_notifications_stale_lease_idx",
-      "store_notifications_state_next_idx"
-     ]
-    },
-    "store_revocations": {
-     "columns": {
-      "store": {
-       "t": "text",
-       "nn": true
-      },
-      "transaction_id": {
-       "t": "text",
-       "nn": true
-      },
-      "product_id": {
-       "t": "text"
-      },
-      "occurred_at": {
-       "t": "timestamp with time zone",
-       "nn": true
-      },
-      "reason": {
-       "t": "text",
-       "nn": true
-      }
-     },
-     "constraints": [
-      "store_revocations_pkey",
-      "store_revocations_store_check"
-     ],
-     "indexes": [
-      "store_revocations_pkey"
-     ]
-    }
-   }
-  },
-  "cosmetics": {
-   "owner": "v5_owner",
-   "tables": {
-    "owned_items": {
-     "columns": {
-      "actor_id": {
-       "t": "text",
-       "nn": true
-      },
-      "item": {
-       "t": "text",
-       "nn": true
-      },
-      "acquired_at": {
-       "t": "timestamp with time zone"
-      }
-     },
-     "constraints": [
-      "owned_items_actor_id_fkey",
-      "owned_items_pkey"
-     ],
-     "indexes": [
-      "owned_items_pkey"
-     ]
-    }
-   }
-  },
-  "season": {
-   "owner": "v5_owner",
-   "tables": {
-    "day_snapshots": {
-     "columns": {
-      "day": {
-       "t": "date",
-       "nn": true
-      },
-      "actor_id": {
-       "t": "text",
-       "nn": true
-      },
-      "tier": {
-       "t": "text",
-       "nn": true
-      }
-     },
-     "constraints": [
-      "day_snapshots_pkey"
-     ],
-     "indexes": [
-      "day_snapshots_actor_day_idx",
-      "day_snapshots_pkey"
-     ]
-    },
-    "league_week": {
-     "columns": {
-      "id": {
-       "t": "smallint",
-       "nn": true
-      },
-      "week": {
-       "t": "date"
-      },
-      "published_at": {
-       "t": "timestamp with time zone"
-      }
-     },
-     "constraints": [
-      "league_week_id_check",
-      "league_week_pkey"
-     ],
-     "indexes": [
-      "league_week_pkey"
-     ]
-    },
-    "weekly_payouts": {
-     "columns": {
-      "payout_id": {
-       "t": "text",
-       "nn": true
-      },
-      "week": {
-       "t": "date",
-       "nn": true
-      },
-      "actor_id": {
-       "t": "text",
-       "nn": true
-      },
-      "amount": {
-       "t": "bigint",
-       "nn": true
-      },
-      "tier": {
-       "t": "text"
-      },
-      "eligible": {
-       "t": "boolean"
-      },
-      "days": {
-       "t": "smallint"
-      },
-      "created_at": {
-       "t": "timestamp with time zone"
-      }
-     },
-     "constraints": [
-      "weekly_payouts_amount_check",
-      "weekly_payouts_days_check",
-      "weekly_payouts_pkey",
-      "weekly_payouts_week_actor_key"
-     ],
-     "indexes": [
-      "weekly_payouts_actor_week_idx",
-      "weekly_payouts_pkey",
-      "weekly_payouts_week_actor_key"
-     ]
-    }
-   }
-  },
-  "privacy": {
-   "owner": "v5_owner",
-   "tables": {
-    "deletion_receipts": {
-     "columns": {
-      "receipt_id": {
-       "t": "text",
-       "nn": true
-      },
-      "actor_hash": {
-       "t": "text",
-       "nn": true
-      },
-      "tombstone": {
-       "t": "text",
-       "nn": true
-      },
-      "completed_at": {
-       "t": "timestamp with time zone",
-       "nn": true
-      },
-      "policy_version": {
-       "t": "text",
-       "nn": true
-      },
-      "retained": {
-       "t": "jsonb",
-       "nn": true
-      }
-     },
-     "constraints": [
-      "deletion_receipts_actor_hash_key",
-      "deletion_receipts_pkey",
-      "deletion_receipts_retained_array_ck",
-      "deletion_receipts_tombstone_key"
-     ],
-     "indexes": [
-      "deletion_receipts_actor_hash_key",
-      "deletion_receipts_pkey",
-      "deletion_receipts_tombstone_key"
-     ]
-    },
-    "reports": {
-     "columns": {
-      "report_id": {
-       "t": "text",
-       "nn": true
-      },
-      "reporter_id": {
-       "t": "text",
-       "nn": true
-      },
-      "target_id": {
-       "t": "text",
-       "nn": true
-      },
-      "category": {
-       "t": "text",
-       "nn": true
-      },
-      "detail": {
-       "t": "text",
-       "nn": true
-      },
-      "created_at": {
-       "t": "timestamp with time zone",
-       "nn": true
-      },
-      "state": {
-       "t": "text",
-       "nn": true
-      },
-      "reviewed_at": {
-       "t": "timestamp with time zone"
-      },
-      "reviewed_by": {
-       "t": "text"
-      },
-      "outcome": {
-       "t": "text"
-      }
-     },
-     "constraints": [
-      "reports_category_check",
-      "reports_detail_check",
-      "reports_outcome_check",
-      "reports_pkey",
-      "reports_state_check"
-     ],
-     "indexes": [
-      "reports_pkey",
-      "reports_reporter_created_idx",
-      "reports_target_state_created_idx"
-     ]
-    },
-    "requests": {
-     "columns": {
-      "request_id": {
-       "t": "text",
-       "nn": true
-      },
-      "actor_id": {
-       "t": "text",
-       "nn": true
-      },
-      "kind": {
-       "t": "text",
-       "nn": true
-      },
-      "state": {
-       "t": "text",
-       "nn": true
-      },
-      "requested_at": {
-       "t": "timestamp with time zone",
-       "nn": true
-      },
-      "updated_at": {
-       "t": "timestamp with time zone",
-       "nn": true
-      },
-      "completed_at": {
-       "t": "timestamp with time zone"
-      },
-      "policy_version": {
-       "t": "text",
-       "nn": true
-      },
-      "note": {
-       "t": "text",
-       "nn": true
-      }
-     },
-     "constraints": [
-      "requests_kind_check",
-      "requests_pkey",
-      "requests_state_check"
-     ],
-     "indexes": [
-      "requests_actor_requested_idx",
-      "requests_pkey",
-      "requests_state_updated_idx"
-     ]
-    }
-   }
-  },
-  "audit": {
-   "owner": "v5_owner",
-   "tables": {
-    "operator_audit": {
-     "columns": {
-      "audit_id": {
-       "t": "text",
-       "nn": true
-      },
-      "at": {
-       "t": "timestamp with time zone",
-       "nn": true
-      },
-      "operator": {
-       "t": "text",
-       "nn": true
-      },
-      "action": {
-       "t": "text",
-       "nn": true
-      },
-      "actor_id": {
-       "t": "text"
-      },
-      "reason": {
-       "t": "text",
-       "nn": true
-      },
-      "detail": {
-       "t": "text",
-       "nn": true
-      },
-      "prev_hash": {
-       "t": "text",
-       "nn": true
-      },
-      "entry_hash": {
-       "t": "character(64)",
-       "nn": true
-      }
-     },
-     "constraints": [
-      "operator_audit_entry_hash_check",
-      "operator_audit_entry_hash_key",
-      "operator_audit_pkey",
-      "operator_audit_prev_hash_check"
-     ],
-     "indexes": [
-      "operator_audit_actor_at_idx",
-      "operator_audit_entry_hash_key",
-      "operator_audit_pkey"
-     ]
-    }
-   }
-  },
-  "support": {
-   "owner": "v5_owner",
-   "tables": {
-    "events": {
-     "columns": {
-      "event_id": {
-       "t": "text",
-       "nn": true
-      },
-      "at": {
-       "t": "timestamp with time zone",
-       "nn": true
-      },
-      "method": {
-       "t": "text",
-       "nn": true
-      },
-      "route": {
-       "t": "text",
-       "nn": true
-      },
-      "status": {
-       "t": "integer",
-       "nn": true
-      },
-      "code": {
-       "t": "text",
-       "nn": true
-      }
-     },
-     "constraints": [
-      "events_pkey"
-     ],
-     "indexes": [
-      "events_at_idx",
-      "events_pkey"
-     ]
-    }
-   }
-  },
-  "runtime": {
-   "owner": "v5_owner",
-   "tables": {
-    "controls": {
-     "columns": {
-      "id": {
-       "t": "smallint",
-       "nn": true
-      },
-      "maintenance": {
-       "t": "boolean",
-       "nn": true
-      },
-      "updated_at": {
-       "t": "timestamp with time zone",
-       "nn": true
-      }
-     },
-     "constraints": [
-      "controls_id_check",
-      "controls_pkey"
-     ],
-     "indexes": [
-      "controls_pkey"
-     ]
-    },
-    "state": {
-     "columns": {
-      "key": {
-       "t": "text",
-       "nn": true
-      },
-      "value": {
-       "t": "text",
-       "nn": true
-      }
-     },
-     "constraints": [
-      "state_pkey"
-     ],
-     "indexes": [
-      "state_pkey"
-     ]
-    }
-   }
-  },
-  "ops": {
-   "owner": "v5_owner",
-   "tables": {
-    "outbox": {
-     "columns": {
-      "outbox_id": {
-       "t": "text",
-       "nn": true
-      },
-      "payload": {
-       "t": "text"
-      },
-      "kind": {
-       "t": "text",
-       "nn": true
-      },
-      "state": {
-       "t": "text",
-       "nn": true
-      },
-      "created_at": {
-       "t": "timestamp with time zone",
-       "nn": true
-      },
-      "expires_at": {
-       "t": "timestamp with time zone",
-       "nn": true
-      },
-      "next_at": {
-       "t": "timestamp with time zone",
-       "nn": true
-      },
-      "lease_until": {
-       "t": "timestamp with time zone",
-       "nn": true
-      },
-      "attempts": {
-       "t": "integer",
-       "nn": true
-      },
-      "lease_owner": {
-       "t": "text"
-      },
-      "lease_token": {
-       "t": "bigint"
-      }
-     },
-     "constraints": [
-      "outbox_attempts_check",
-      "outbox_pkey",
-      "outbox_sealed_payload_ck",
-      "outbox_state_check"
-     ],
-     "indexes": [
-      "outbox_pkey",
-      "outbox_state_next_idx"
-     ]
-    },
-    "rate_buckets": {
-     "columns": {
-      "bucket_id": {
-       "t": "text",
-       "nn": true
-      },
-      "hits": {
-       "t": "bigint",
-       "nn": true
-      },
-      "expires_at": {
-       "t": "timestamp with time zone"
-      }
-     },
-     "constraints": [
-      "rate_buckets_hits_check",
-      "rate_buckets_pkey"
-     ],
-     "indexes": [
-      "rate_buckets_expires_idx",
-      "rate_buckets_pkey"
-     ]
-    }
-   }
+  ],
+  "backupReadContract": {
+    "role": "backup_reader",
+    "expectPgReadAllDataMembership": false,
+    "excludeSchemas": [
+      "v5_migration"
+    ]
   }
- },
- "roles": [
-  "v5_owner",
-  "migration_owner",
-  "api_runtime",
-  "core_runtime",
-  "worker_runtime",
-  "backup_reader",
-  "audit_runtime"
- ],
- "privilegeChecks": [
-  {
-   "role": "api_runtime",
-   "schema": "meta",
-   "privilege": "CREATE",
-   "expect": false
-  },
-  {
-   "role": "api_runtime",
-   "schema": "identity",
-   "privilege": "CREATE",
-   "expect": false
-  },
-  {
-   "role": "api_runtime",
-   "schema": "profile",
-   "privilege": "CREATE",
-   "expect": false
-  },
-  {
-   "role": "api_runtime",
-   "schema": "social",
-   "privilege": "CREATE",
-   "expect": false
-  },
-  {
-   "role": "api_runtime",
-   "schema": "economy",
-   "privilege": "CREATE",
-   "expect": false
-  },
-  {
-   "role": "api_runtime",
-   "schema": "core",
-   "privilege": "CREATE",
-   "expect": false
-  },
-  {
-   "role": "api_runtime",
-   "schema": "match",
-   "privilege": "CREATE",
-   "expect": false
-  },
-  {
-   "role": "api_runtime",
-   "schema": "tournament",
-   "privilege": "CREATE",
-   "expect": false
-  },
-  {
-   "role": "api_runtime",
-   "schema": "monetization",
-   "privilege": "CREATE",
-   "expect": false
-  },
-  {
-   "role": "api_runtime",
-   "schema": "cosmetics",
-   "privilege": "CREATE",
-   "expect": false
-  },
-  {
-   "role": "api_runtime",
-   "schema": "season",
-   "privilege": "CREATE",
-   "expect": false
-  },
-  {
-   "role": "api_runtime",
-   "schema": "privacy",
-   "privilege": "CREATE",
-   "expect": false
-  },
-  {
-   "role": "api_runtime",
-   "schema": "audit",
-   "privilege": "CREATE",
-   "expect": false
-  },
-  {
-   "role": "api_runtime",
-   "schema": "support",
-   "privilege": "CREATE",
-   "expect": false
-  },
-  {
-   "role": "api_runtime",
-   "schema": "runtime",
-   "privilege": "CREATE",
-   "expect": false
-  },
-  {
-   "role": "api_runtime",
-   "schema": "ops",
-   "privilege": "CREATE",
-   "expect": false
-  },
-  {
-   "role": "core_runtime",
-   "schema": "meta",
-   "privilege": "CREATE",
-   "expect": false
-  },
-  {
-   "role": "core_runtime",
-   "schema": "identity",
-   "privilege": "CREATE",
-   "expect": false
-  },
-  {
-   "role": "core_runtime",
-   "schema": "profile",
-   "privilege": "CREATE",
-   "expect": false
-  },
-  {
-   "role": "core_runtime",
-   "schema": "social",
-   "privilege": "CREATE",
-   "expect": false
-  },
-  {
-   "role": "core_runtime",
-   "schema": "economy",
-   "privilege": "CREATE",
-   "expect": false
-  },
-  {
-   "role": "core_runtime",
-   "schema": "core",
-   "privilege": "CREATE",
-   "expect": false
-  },
-  {
-   "role": "core_runtime",
-   "schema": "match",
-   "privilege": "CREATE",
-   "expect": false
-  },
-  {
-   "role": "core_runtime",
-   "schema": "tournament",
-   "privilege": "CREATE",
-   "expect": false
-  },
-  {
-   "role": "core_runtime",
-   "schema": "monetization",
-   "privilege": "CREATE",
-   "expect": false
-  },
-  {
-   "role": "core_runtime",
-   "schema": "cosmetics",
-   "privilege": "CREATE",
-   "expect": false
-  },
-  {
-   "role": "core_runtime",
-   "schema": "season",
-   "privilege": "CREATE",
-   "expect": false
-  },
-  {
-   "role": "core_runtime",
-   "schema": "privacy",
-   "privilege": "CREATE",
-   "expect": false
-  },
-  {
-   "role": "core_runtime",
-   "schema": "audit",
-   "privilege": "CREATE",
-   "expect": false
-  },
-  {
-   "role": "core_runtime",
-   "schema": "support",
-   "privilege": "CREATE",
-   "expect": false
-  },
-  {
-   "role": "core_runtime",
-   "schema": "runtime",
-   "privilege": "CREATE",
-   "expect": false
-  },
-  {
-   "role": "core_runtime",
-   "schema": "ops",
-   "privilege": "CREATE",
-   "expect": false
-  },
-  {
-   "role": "worker_runtime",
-   "schema": "meta",
-   "privilege": "CREATE",
-   "expect": false
-  },
-  {
-   "role": "worker_runtime",
-   "schema": "identity",
-   "privilege": "CREATE",
-   "expect": false
-  },
-  {
-   "role": "worker_runtime",
-   "schema": "profile",
-   "privilege": "CREATE",
-   "expect": false
-  },
-  {
-   "role": "worker_runtime",
-   "schema": "social",
-   "privilege": "CREATE",
-   "expect": false
-  },
-  {
-   "role": "worker_runtime",
-   "schema": "economy",
-   "privilege": "CREATE",
-   "expect": false
-  },
-  {
-   "role": "worker_runtime",
-   "schema": "core",
-   "privilege": "CREATE",
-   "expect": false
-  },
-  {
-   "role": "worker_runtime",
-   "schema": "match",
-   "privilege": "CREATE",
-   "expect": false
-  },
-  {
-   "role": "worker_runtime",
-   "schema": "tournament",
-   "privilege": "CREATE",
-   "expect": false
-  },
-  {
-   "role": "worker_runtime",
-   "schema": "monetization",
-   "privilege": "CREATE",
-   "expect": false
-  },
-  {
-   "role": "worker_runtime",
-   "schema": "cosmetics",
-   "privilege": "CREATE",
-   "expect": false
-  },
-  {
-   "role": "worker_runtime",
-   "schema": "season",
-   "privilege": "CREATE",
-   "expect": false
-  },
-  {
-   "role": "worker_runtime",
-   "schema": "privacy",
-   "privilege": "CREATE",
-   "expect": false
-  },
-  {
-   "role": "worker_runtime",
-   "schema": "audit",
-   "privilege": "CREATE",
-   "expect": false
-  },
-  {
-   "role": "worker_runtime",
-   "schema": "support",
-   "privilege": "CREATE",
-   "expect": false
-  },
-  {
-   "role": "worker_runtime",
-   "schema": "runtime",
-   "privilege": "CREATE",
-   "expect": false
-  },
-  {
-   "role": "worker_runtime",
-   "schema": "ops",
-   "privilege": "CREATE",
-   "expect": false
-  },
-  {
-   "role": "audit_runtime",
-   "schema": "meta",
-   "privilege": "CREATE",
-   "expect": false
-  },
-  {
-   "role": "audit_runtime",
-   "schema": "identity",
-   "privilege": "CREATE",
-   "expect": false
-  },
-  {
-   "role": "audit_runtime",
-   "schema": "profile",
-   "privilege": "CREATE",
-   "expect": false
-  },
-  {
-   "role": "audit_runtime",
-   "schema": "social",
-   "privilege": "CREATE",
-   "expect": false
-  },
-  {
-   "role": "audit_runtime",
-   "schema": "economy",
-   "privilege": "CREATE",
-   "expect": false
-  },
-  {
-   "role": "audit_runtime",
-   "schema": "core",
-   "privilege": "CREATE",
-   "expect": false
-  },
-  {
-   "role": "audit_runtime",
-   "schema": "match",
-   "privilege": "CREATE",
-   "expect": false
-  },
-  {
-   "role": "audit_runtime",
-   "schema": "tournament",
-   "privilege": "CREATE",
-   "expect": false
-  },
-  {
-   "role": "audit_runtime",
-   "schema": "monetization",
-   "privilege": "CREATE",
-   "expect": false
-  },
-  {
-   "role": "audit_runtime",
-   "schema": "cosmetics",
-   "privilege": "CREATE",
-   "expect": false
-  },
-  {
-   "role": "audit_runtime",
-   "schema": "season",
-   "privilege": "CREATE",
-   "expect": false
-  },
-  {
-   "role": "audit_runtime",
-   "schema": "privacy",
-   "privilege": "CREATE",
-   "expect": false
-  },
-  {
-   "role": "audit_runtime",
-   "schema": "audit",
-   "privilege": "CREATE",
-   "expect": false
-  },
-  {
-   "role": "audit_runtime",
-   "schema": "support",
-   "privilege": "CREATE",
-   "expect": false
-  },
-  {
-   "role": "audit_runtime",
-   "schema": "runtime",
-   "privilege": "CREATE",
-   "expect": false
-  },
-  {
-   "role": "audit_runtime",
-   "schema": "ops",
-   "privilege": "CREATE",
-   "expect": false
-  },
-  {
-   "role": "backup_reader",
-   "schema": "meta",
-   "privilege": "CREATE",
-   "expect": false
-  },
-  {
-   "role": "backup_reader",
-   "schema": "identity",
-   "privilege": "CREATE",
-   "expect": false
-  },
-  {
-   "role": "backup_reader",
-   "schema": "profile",
-   "privilege": "CREATE",
-   "expect": false
-  },
-  {
-   "role": "backup_reader",
-   "schema": "social",
-   "privilege": "CREATE",
-   "expect": false
-  },
-  {
-   "role": "backup_reader",
-   "schema": "economy",
-   "privilege": "CREATE",
-   "expect": false
-  },
-  {
-   "role": "backup_reader",
-   "schema": "core",
-   "privilege": "CREATE",
-   "expect": false
-  },
-  {
-   "role": "backup_reader",
-   "schema": "match",
-   "privilege": "CREATE",
-   "expect": false
-  },
-  {
-   "role": "backup_reader",
-   "schema": "tournament",
-   "privilege": "CREATE",
-   "expect": false
-  },
-  {
-   "role": "backup_reader",
-   "schema": "monetization",
-   "privilege": "CREATE",
-   "expect": false
-  },
-  {
-   "role": "backup_reader",
-   "schema": "cosmetics",
-   "privilege": "CREATE",
-   "expect": false
-  },
-  {
-   "role": "backup_reader",
-   "schema": "season",
-   "privilege": "CREATE",
-   "expect": false
-  },
-  {
-   "role": "backup_reader",
-   "schema": "privacy",
-   "privilege": "CREATE",
-   "expect": false
-  },
-  {
-   "role": "backup_reader",
-   "schema": "audit",
-   "privilege": "CREATE",
-   "expect": false
-  },
-  {
-   "role": "backup_reader",
-   "schema": "support",
-   "privilege": "CREATE",
-   "expect": false
-  },
-  {
-   "role": "backup_reader",
-   "schema": "runtime",
-   "privilege": "CREATE",
-   "expect": false
-  },
-  {
-   "role": "backup_reader",
-   "schema": "ops",
-   "privilege": "CREATE",
-   "expect": false
-  }
- ],
- "databasePrivilegeChecks": [
-  {
-   "role": "api_runtime",
-   "privilege": "CREATE",
-   "expect": false
-  },
-  {
-   "role": "api_runtime",
-   "privilege": "TEMPORARY",
-   "expect": false
-  },
-  {
-   "role": "core_runtime",
-   "privilege": "CREATE",
-   "expect": false
-  },
-  {
-   "role": "core_runtime",
-   "privilege": "TEMPORARY",
-   "expect": false
-  },
-  {
-   "role": "worker_runtime",
-   "privilege": "CREATE",
-   "expect": false
-  },
-  {
-   "role": "worker_runtime",
-   "privilege": "TEMPORARY",
-   "expect": false
-  },
-  {
-   "role": "audit_runtime",
-   "privilege": "CREATE",
-   "expect": false
-  },
-  {
-   "role": "audit_runtime",
-   "privilege": "TEMPORARY",
-   "expect": false
-  },
-  {
-   "role": "backup_reader",
-   "privilege": "CREATE",
-   "expect": false
-  },
-  {
-   "role": "backup_reader",
-   "privilege": "TEMPORARY",
-   "expect": false
-  },
-  {
-   "role": "migration_owner",
-   "privilege": "TEMPORARY",
-   "expect": true
-  },
-  {
-   "role": "v5_owner",
-   "privilege": "TEMPORARY",
-   "expect": true
-  }
- ],
- "backupReadContract": {
-  "role": "backup_reader",
-  "expectPgReadAllDataMembership": false
- }
 }

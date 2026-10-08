@@ -470,6 +470,10 @@ async function verifyConformance(client, conformancePath) {
     }
     if (!roleSet.has(role)) failures.push(`backup contract: role ${role} is absent (catalog drift)`);
     else for (const [schemaName, spec] of Object.entries(doc.schemas || {})) {
+      // A schema may be explicitly excluded from the backup-read contract when it holds import
+      // provenance rather than player data: backup_reader must not be granted read on it. The
+      // exclusion is declared in the conformance document, never inferred.
+      if (Array.isArray(brc.excludeSchemas) && brc.excludeSchemas.includes(schemaName)) continue;
       // Catalog drift must be REPORTED (exit VERIFY), not crash the probe: has_schema_privilege
       // and has_table_privilege RAISE on absent objects, so resolve through the reg* functions
       // first and classify an absent object as a conformance failure.

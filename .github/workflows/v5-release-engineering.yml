@@ -1,0 +1,75 @@
+name: V5 release engineering
+# P17 foundation: additive non-secret evidence on V5 PRs and commits.
+# Existing full validation and PostgreSQL integration stay mandatory.
+on:
+  push:
+    branches: [V5-platform]
+  pull_request:
+    branches: [V5-platform]
+permissions:
+  contents: read
+concurrency:
+  group: v5-release-engineering-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+jobs:
+  source-provenance-and-impact:
+    name: Source provenance and conservative impact
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af683 # v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '24'
+      - name: Install locked dependencies
+        run: npm ci --ignore-scripts
+      - name: Validate P17 source and release contracts
+        run: |
+          set -euo pipefail
+          node --check scripts/v5/ci-impact.js
+          node --check scripts/v5/release-source-candidate.js
+          node --test tests/v5-ci-impact.test.js tests/v5-release-source-candidate.test.js
+      - name: Classify change impact without skipping baseline gates
+        env:
+          V5_DIFF_BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
+        run: |
+          set -euo pipefail
+          mkdir -p .artifacts
+          base="${V5_DIFF_BASE:-}"
+          if [ -z "$base" ] || ! git cat-file -e "$base^{commit}" 2>/dev/null; then
+            base="$(git rev-parse HEAD^)"
+          fi
+          git diff --name-only -z "$base" HEAD | node scripts/v5/ci-impact.js --stdin0 > .artifacts/v5-ci-impact.json
+          node - <<'NODE'
+          const fs = require('node:fs');
+          const plan = JSON.parse(fs.readFileSync('.artifacts/v5-ci-impact.json','utf8'));
+          for (const required of ['Mega XO validation','V5 PostgreSQL integration','V5 release engineering']) {
+            if (!plan.requiredWorkflows.includes(required)) throw new Error('missing required gate: '+required);
+          }
+          console.log('Conservative CI impact: ' + plan.affected.join(', '));
+          console.log('Full regression and PostgreSQL gates remain independent of the advisory impact map');
+          NODE
+      - name: Build and reverify NONDEPLOYABLE source candidate
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          node scripts/v5/release-source-candidate.js create \
+            --sha "$GITHUB_SHA" --output .artifacts/v5-source-candidate.json
+          node scripts/v5/release-source-candidate.js verify \
+            --sha "$GITHUB_SHA" --file .artifacts/v5-source-candidate.json
+      - name: Retain sanitized source-only evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: v5-release-source-evidence
+          path: |
+            .artifacts/v5-ci-impact.json
+            .artifacts/v5-source-candidate.json
+          if-no-files-found: error
+          retention-days: 7

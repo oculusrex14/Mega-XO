@@ -117,3 +117,17 @@ test('iOS blocks HTTP(S) subresources before loading signed local HTML', () => {
   assert.match(host, /https\?/);
   assert.match(host, /webView\.configuration\.userContentController\.add\(rule\)/);
 });
+
+test('StoreKit2 implements backend-verified four-product evidence and consumable-safe restore', () => {
+  const code = read('native/ios/MegaXO/MegaStoreKit.swift');
+  const project = read('native/ios/MegaXO.xcodeproj/project.pbxproj');
+  assert.match(project, /MegaStoreKit\.swift in Sources/);
+  assert.match(code, /Product\.products\(for:/);
+  assert.match(code, /\.appAccountToken\(token\)/);
+  assert.match(code, /verified\.jwsRepresentation/);
+  assert.match(code, /Transaction\.currentEntitlements/);
+  assert.match(code, /transaction\.productID == removeAds/);
+  assert.match(code, /serverDeliveryConfirmed/);
+  assert.match(code, /Transaction\.unfinished/);
+  assert.doesNotMatch(code, /grantCrowns|mintCrowns|localGrant/);
+});

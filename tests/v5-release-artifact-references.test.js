@@ -67,3 +67,11 @@ test('fingerprint is independent of CI entry order but identifies artifact diffe
  b.worker.image='ghcr.io/oculusrex14/mega-xo-worker@sha256:'+'d'.repeat(64);
  assert.notEqual(verifyRefs(a,sha).fingerprint,verifyRefs(b,sha).fingerprint);
 });
+
+test('CI evidence cannot reuse a run ID across independently required workflows',()=>{
+ denied(x=>{x.ciEvidence[1].runId=x.ciEvidence[0].runId;return x;});
+});
+
+test('GHCR image reference cannot include nested repository paths',()=>{
+ denied(x=>{x.core.image='ghcr.io/oculusrex14/other/core@sha256:'+'a'.repeat(64);return x;});
+});

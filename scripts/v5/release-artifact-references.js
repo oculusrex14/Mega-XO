@@ -10,7 +10,7 @@ const crypto=require('node:crypto');
 const {parseVersion}=require('./release-compatibility.js');
 const FORMAT='mega-v5-artifact-references/v1';
 const SHA40=/^[a-f0-9]{40}$/;
-const DIGEST=/^ghcr\.io\/oculusrex14\/[a-z0-9][a-z0-9._/-]*@sha256:[a-f0-9]{64}$/;
+const DIGEST=/^ghcr\.io\/oculusrex14\/[a-z0-9][a-z0-9._-]*@sha256:[a-f0-9]{64}$/;
 const CI_NAMES=[
   'Mega XO validation','V5 PostgreSQL integration','V5 release engineering'
 ];
@@ -58,6 +58,8 @@ function verifyRefs(record,expectedSha) {
     shape(entry,['workflow','runId','sourceSha'],'CI evidence reference');
     assert(CI_NAMES.includes(entry.workflow) && !names.has(entry.workflow),'missing/duplicate required CI name');
     assert(Number.isSafeInteger(entry.runId) && entry.runId>0,'CI run ID invalid');
+    assert(!record.ciEvidence.some(other => other!==entry && other.runId===entry.runId),
+      'CI run IDs must be independent');
     assert(entry.sourceSha===record.sourceSha,'CI result belongs to another SHA');
     names.add(entry.workflow);
   }

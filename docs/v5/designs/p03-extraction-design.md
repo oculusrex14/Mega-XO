@@ -84,8 +84,112 @@ The reader emits raw values plus a per-field disposition. Disposition codes: **V
 | monetization (C) | `credits, redeemed[], equipped, boosts[{startedAt,endsAt}], daily[date]{base,bonus,automatic}, lastAdAt, lastRewardStart` | V (archived frames: `owned[]`/`redeemed[]`/`equipped` may reference ids outside the current catalogue and are preserved verbatim; `src/monetization.js:6-8` currently has only `classic`) |
 | unknown keys | any field not listed above | **fail coverage review** with the exact path; an explicit `--allow-unclassified=<path>=<rule-id>` may accept it and is recorded in the coverage manifest (never a silent drop) |
 
-[…103ln elided…]
+
+`state.matches[id]` (VERIFIED from `docs/v5/ROUTE-AND-DATA-INVENTORY.md` section 3 and `src/authority.js` offer/accept/move/settle): `players[]` (V, order = participant slots, index-parallel with `quote.contributions`), `terms{source,mode,kind,rated,amount,currency,turnSeconds,from,to,ratings[]}` (V - immutable accepted terms, never repriced), `quote` (O - verbatim function output), `termsHash` (V), `accepted[]` (V), `created/expires/status/state/symbols/revision/escrow/settled/riskFlags[]` (V), `commands` entry-array (O/classified, section 4.6), and later `started,_lastMoveAt,_moveTimings[{actor,ms}],preRatings[],preTiers[],deadline,receipt,_riskActors` (V; `_pendingReason` is transient and, when present, is classified `transient-settlement-field` - it is the only field the source itself deletes at settle time).
+
+`party_rooms` (VERIFIED from `docs/v5/ROUTE-AND-DATA-INVENTORY.md` section 3 and `src/tournament.js:11-13`): root fields `version,id,code,owner,name,format,table,sequential,quote,clock,increment,capacity,rulesVersion,players,status,created,expires,fixtures,groups,ranking,finalRefs,started,revision,roundDelay` plus later `seed[],deadline,ended,reason,pausedAt,drawGame,escrow,settled,contributions[{id,amount}],receipt,riskFlags,_riskActors`; all V, with `payouts[]/net[]/ready[]/fixture slots[]` order-preserving. `party_commands.response` is `{id:roomId}` only (`server/rooms.js` run) and replay returns the *current* room view (or `{id,status:'LEFT'}`), so the target must store the room id plus a `replay_semantics='current-view'` marker (O with an explicit semantic marker, section 4.6).
+
+Ephemeral/deliberate-expiry dispositions (E): `account_sessions` (token is `sha(token)` base64url, `server/identity-provider.js:12`, so raw tokens are unrecoverable and replay is impossible), `signin_attempts`, `email_challenges` (+ `v4_email_versions`), `session_presence`, `community_limits`, `v4_limits`, `party_guests` (LAN bearer, random `crypto.randomUUID()` actor, `server/rooms.js:12`), `v4_outbox` (encrypted payload; migrate drained/expired state explicitly, never duplicate sensitive mail), `v4_controls`/`v4_runtime` (operator continuity; import as inert policy/control rows, never auto-enable maintenance), `v41_support_events` (retention-bounded diagnostics). Each E row is imported as a count + hash + recorded policy, or migrated as an explicitly inert row, and is reported in the coverage manifest with the rule id that justifies it (`specs/01` section 1 mapping seeds: "deliberate compatibility migration or documented expiry policy").
+
+## 3. Determinism contract
+
+### 3.1 Canonical serializer (DESIGN)
+
+- Objects: keys sorted by UTF-16 code unit order; serialized as `{k:v,...}` with no whitespace; duplicate keys rejected; `undefined` rejected.
+- Arrays: order preserved by default; set-valued arrays additionally hashed sorted (section 1.3).
+- Strings: `JSON.stringify` (JSON escaping only; no Unicode normalization).
+- Numbers: only `Number.isSafeInteger` for currency/ids/counters; fractional numbers allowed only on the closed hundredths allowlist (`rating, peak, casualRating, season.peakRating, seasonHistory[].finishRating, history[].ratingDelta, history[].casualDelta, receipt.rating.{a,b,delta,expectedA}`, and no quote/pool value - those are integers) and encoded as scaled integers (`Math.round(x*100)`), matching the source's own hundredths arithmetic (`src/domain.js:57`). `NaN`, `Infinity`, `-0`, unsafe integers and BigInt are errors, never silently rounded (`specs/01` section 3).
+- Booleans/null literal. No re-serialization through `structuredClone` (which would silently drop `undefined` and reorder nothing but normalizes class instances) is used on raw text.
+
+### 3.2 Stable IDs preserved verbatim (DESIGN)
+
+- Actor/match/operation ids keep their exact text. The source's own validity grammar is reused for validation, not for rewriting: `validId=/^[A-Za-z0-9][A-Za-z0-9:_-]{0,159}$/` (`src/authority.js:6`), store/binding key grammar `/^[A-Za-z0-9:_-]{1,160}$/` (`server/monetization-store.js:5`, `server/community-store.js:34`), community mutation key grammar in `server/community-http.js:7`.
+- Non-UUID actor ids (e.g. `u_<uuid>`, `p0..p11` in fixtures, or arbitrary legacy text) are stored as `text`, never cast to UUID (`specs/01` section 1).
+- Tags (`MEGA-XXXXXXXX`) are never regenerated; `profiles.tag` and `accounts.friendCode` are copied verbatim and their equality/inconsistency is reconciled explicitly (the source writes `account.friendCode = tag` in `ensureProfile`, so a mismatch is a real historical variant, not a fixable inconsistency).
+- Emails: preserve the stored value verbatim plus a normalized lowercase key; report collisions under PostgreSQL's case-insensitive uniqueness equivalent (`specs/01` section 1; source column is `COLLATE NOCASE`, VERIFIED DDL). Identities are never merged by email.
+- Store bindings: `google_id`/`apple_token` copied byte-for-byte (contrast `server/store-bindings.js:6-16`, which mints them on first read).
+
+### 3.3 Fixed clock injection (DESIGN)
+
+- The single clock is the capture clock `captureClockMs = snapshot manifest.createdAt` (VERIFIED field; for `f884e43b` it is 1791396595015). The restic `snapshot_completed_at` (1791396602150) is recorded as provenance but not used as the semantic clock, because the manifest is created before the file is renamed into place by `snapshot()` (`server/production/backup.js:17-29`).
+- Every derived classification ("is this OFFERED match expired at capture", "is this ticket settled/expired", "is this boost active", "which week/quarter does this journal row belong to", "is this season id the current quarter") is computed with `captureClockMs`, never `Date.now()`. Derived values are never written into raw-copy fields; they are recorded in the reconciler's derived report with `asOf = captureClockMs`.
+- Cross-run determinism therefore requires equal `captureClockMs`; a run with a different clock must record the reason and any classification differences become explained-category `clock-different` rows, not silent passes.
+
+### 3.4 Versioned extractor release hash (DESIGN)
+
+`extractor_release = sha256(canon({extractorVersion, canonicalizerSpec, normalizationTables, mappingManifest, reconciliationRules, sourceRelease:{source_sha, running_image_digest, installed_script_hashes}}))`. The source-side provenance values are taken from the existing evidence (`docs/v5/evidence/phase00-live-operations.json` observations; baseline `455b8ec9ea4070b4410d78f9eea2aaa06d32c0b2` per `docs/v5/BASELINE.md`). Any change to a mapping row, a normalization disposition or a reconciliation rule changes `extractor_release` and therefore the run identity; a reused run id with a different release is refused (section 3.5).
+
+### 3.5 Idempotence, ledger and interrupted-batch recovery (DESIGN)
+
+PostgreSQL migration namespace `v5_migration`, owned by the migration role, created by the P02 checksummed migration chain (runtime roles cannot DDL, `docs/v5/ARCHITECTURE.md` item 7):
+
+- `run(run_id, source_fingerprint, extractor_release, target_environment_id, schema_head, lock_token, lease_until, status, started_at, finished_at, counters)` where `source_fingerprint = sha256(canon({snapshot_id,file_sha256,bytes,captureClockMs,table_hashes,state_root_hashes,actor_hashes_root}))`.
+- `target_guard(target_system_id, target_database, environment_id, schema_head, created_by_run, adopted_existing_tables[])` - one row; mismatch is a hard refusal.
+- `batch(run_id, ordinal, kind, definition_hash, key_range_low, key_range_high, status, cursor, committed_row_hash, rows_written, attempt_count, error_code)` with a unique `(run_id, ordinal, definition_hash)`.
+- `row_ledger(run_id, source_locator, target_table, target_pk_hash, row_hash, batch_ordinal)` unique on `(run_id, source_locator)`.
+- `operation_outcome(run_id, family, op_id_hash, source_fingerprint_hash, response_hash, replay_class, replay_semantics)`.
+- `coverage(run_id, locator_kind, name, key, classification, rule_id, note)`.
+- `difference(run_id, category, actor_hash, locator, field_path, expected_hash, actual_hash, rule_id, severity)`.
+
+Rules (DESIGN, each mapping to a normative requirement):
+
+1. Refuse an unknown target: `target_guard` absent is *not* an implicit "create"; a target must be declared (nonserving, explicitly identified), and the guard binds `system_identifier`-equivalent identity, database name and environment id (`specs/01` section 2 "require an explicit environment ID ... refuse an unknown target").
+2. Refuse a reused run id with a different `source_fingerprint` or `extractor_release` (`specs/01` section 2 "Refuse ... a reused run with a different source hash").
+3. Refuse an active production writer: an allowlist of target databases plus a check that no non-namespace table has rows created after `run.started_at` by a foreign `created_by_run` (and no `pg_stat_activity` session with the production application name while the import transaction is open) (`specs/01` section 2).
+4. Advisory lock on a **direct** (non-pooled) TLS connection: session-level `pg_advisory_lock` keyed by `hashtext('v5-migration:'||run_id)`, held for the run; the design must not assume session locks on transaction pooling (`docs/v5/ARCHITECTURE.md` item 8; P02-04 owns the connection policy).
+5. Batching: fixed `batchSize` (default 500) with a deterministic total order per kind (sorted canonical source key), and cursors expressed as the last committed canonical key, never an offset, so a resumed run re-derives exactly the same row set; `definition_hash = sha256(canon({kind, source_locator, filter, order_by, batchSize}))`.
+6. Write pattern: `INSERT ... ON CONFLICT (<stable target key>) DO NOTHING` followed by a hash comparison against the existing row; each batch commits in its own transaction (`specs/01` section 5 "deterministic batches with recorded checkpoints"); no unbounded single transaction.
+7. Resume: `committed` batches verify `row_ledger` hashes against the target and are skipped; `running` with a stale lease is re-executed (PostgreSQL aborts the interrupted transaction on disconnect); `failed` is re-executed after `attempt_count` is incremented; a hash mismatch on a previously committed row is a hard failure, never an overwrite.
+8. No destructive operations on anything not created by this run: `TRUNCATE`/`DROP` require `created_by_run = run_id` and an explicit `--confirm-destroy=<schema>` and are refused for any other object (`pack phases/03`: "never truncate an unknown database").
+9. Rerun convergence is asserted, not assumed: `load` twice (and once after killing the process between batches in each kind) must produce identical `run.counters`, identical `state_root_hashes`, identical `actor_hashes_root` and identical `row_ledger` hashes (`pack phases/03` V5-03-05 verification).
+
+### 3.6 Proofs that a rerun never mints or re-grants
+
+Each proof is an executed assertion in the rerun test; the invariants are quoted from `specs/01`:
+
+- "Duplicate settlement, callback, import or retry adds no extra posting or entitlement" (section 4) - proven by: journal row count and per-actor `opening:` count unchanged across two runs; `receipts` key set and `refunded` flags unchanged; `v35_tickets.settled`/`transaction_id` unchanged; `v41_store_bindings` byte-identical.
+- "Reserved holdings and escrow are two representations of the same encumbrance" (section 4) - proven by the reserved-closure equation R2 (section 4.3) holding on both runs with identical residuals.
+- "Import historical entries with immutable source references; do not replay them against balances that were already loaded" (section 4) - proven by: legacy journal postings are inserted as `origin='legacy-journal'` rows only, never as balance-affecting postings; the only balance-bearing row per actor/currency is the labeled `origin='migration-opening-balance'` baseline, whose amount equals the captured available+reserved encumbrance total and whose count is exactly one per actor/currency.
+- "Migration twice must produce equivalent canonical state and the same source mapping" (section 5) and "no repeated batch can mint funds or duplicate identity/purchase records" (section 5) - proven by the byte-identical canonical target hash across reruns and across interrupted-batch recovery, plus zero new rows in identity/purchase/entitlement tables on the second run.
+- Conservation equations C1-C9 (section 4.3) hold exactly (no tolerance) on the first import and identically on every rerun.
+
+## 4. Mapping and reconciliation algebra
+
+### 4.1 Source-to-target mapping manifest (DESIGN; one row per source locator)
+
+Each row has: source locator, data owner (A/C/W/P/E as per `docs/v5/ROUTE-AND-DATA-INVENTORY.md` section 2-4), meaning, destination, conversion, idempotency key, retention decision, verification query, coverage fixture. Dispositions for the 35 VERIFIED tables (`docs/v5/evidence/phase00-source-schema.json`):
+
+| Table | Destination / disposition |
+|---|---|
+| `state(id,json)` | split into actors/wallets/provenance/competition/daily/monetization, matches+terms+quote+outcomes, receipts/entitlements, snapshots, weeklyPaid, journal (legacy rows), burned, leagueWeek |
+| `commands(id,actor,fingerprint,response)` | `operation_outcome` family `economy`, OPAQUE_BINDINGS class (payload not persisted), response JSON hash + fingerprint verbatim |
+| `party_rooms(id,code,json)` | rooms/tournaments/fixtures/escrow/contributions/receipts; `code` unique preserved |
+| `party_commands(id,fingerprint,response)` | `operation_outcome` family `party`, response `{id}` + `replay_semantics='current-view'` |
+| `party_guests(token,actor,name,expires)` | E: LAN-scope quarantine (token hash, never a platform actor) |
+| `profiles`, `identities`, `email_credentials`, `profile_saves` | actors/profile, provider subjects, exact salt+hash+verified_at, revisioned practice archive (non-authoritative wallet fields preserved as opaque practice data) |
+| `account_sessions`, `signin_attempts`, `session_presence` | E: documented expiry policy with counts/hashes |
+| `email_challenges`, `v4_email_versions` | E: opaque code_hash; expired-consume classification |
+| `community_limits`, `v4_limits` | E: rate coordination rebuilt |
+| `social_operations` | `operation_outcome` family `social` (SCHEMA_CONSISTENT) + canonical relationship state from `state` |
+| `v41_reports`, `v41_privacy_requests`, `v41_deletion_receipts` | P/A policy-bound rows, tombstones and receipts verbatim |
+| `v41_operator_audit` | P: append-only import preserving `prev_hash`/`entry_hash` chain verbatim; immutability triggers must be re-created by the target schema (source triggers VERIFIED) |
+| `v41_store_bindings`, `v41_store_revocations`, `v41_store_notifications`, `v41_store_finalize` | C/W permanent bindings, refund tombstones (imported even without a matching receipt), message dedupe, retry state |
+| `v35_commands`, `v35_tickets`, `v35_casual`, `v35_events`, `v41_ad_ticket_context` | C monetization idempotency/tickets/credits/ticket-context |
+| `v4_controls`, `v4_runtime` | P: inert control/policy migration (never auto-enable maintenance) |
+| `v4_outbox` | W: durable job state or explicit drained/expired state, encrypted payload preserved only where policy requires |
+| `v4_schema` | migration-owner history; target records source schema head + per-migration checksums as provenance, never as target history |
+| `v41_support_events` | P: retention-bounded diagnostics, row count + hash |
+| 14 indexes, 2 triggers | re-created by the target schema per P02; source definitions recorded as provenance |
+
+### 4.2 Per-actor currency totals (DESIGN)
+
+For each actor `a` and currency `c`: `available_c(a) = a.coins | a.crowns`, `reserved_c(a) = a.reservedCoins | a.reservedCrowns`, `purchased_c(a) = a.purchasedCoins | a.purchasedCrowns`, `credits(a) = a.monetization.credits`, `owned(a)`, `equipped(a)`, active/expired `boosts` at `captureClockMs`. Equality is per-actor and per-currency, never aggregate-only (A07 swapped-wallet rule: exchanging `coins` between two actors leaves the global total unchanged but must fail because `available_c` differs per actor).
+
+### 4.3 Conservation equations (each asserted exactly; source citations)
+
+- **C1 available/reserved identity**: `target.available_c(a) == source.available_c(a)` and `target.reserved_c(a) == source.reserved_c(a)` (`specs/01` section 4; `src/authority.js:24` field set).
 - **C2 reserved-closure**: for each `a,c`: `reserved_c(a) == Σ_{m open} contribution_m(a) + Σ_{r open} contribution_r(a)` where "open" = `escrow > 0 && !settled`; match contributions are `m.quote.contributions[i]` indexed by `m.players` position with currency `m.quote.currency` (`src/authority.js` accept: `m.escrow = m.quote.pool` and both players' `held` incremented; the earlier `D.add` loop is a pure safe-integer preflight, not a mutation, VERIFIED `src/domain.js:19`); room contributions are `r.contributions[{id,amount}]` with `r.escrow = q.pool` (`server/rooms.js` reserve). Residual must be exactly 0 (`specs/01` section 4 "Separately reconcile each escrow and its contributions to the reserved total").
+
 - **C3 burn composition**: `state.burned[c] == Σ settled match receipt.burn + Σ settled room receipt.burn`. This is deliberately *not* `-Σ journal{reason='Currency retired'}`: match burns are journaled under actor `system` with reason `Currency retired` (`src/authority.js` `_settle`), while tournament burns update `e.burned[c]` with **no** journal row (`server/rooms.js` settle). The journal-based subset is reported as a distribution, never used as the balance equation - this is the concrete "do not double count" rule required by A09 and `specs/01` section 4.
 - **C4 conversion fidelity**: for every conversion operation key, exactly two `account.ledger` rows (`<key>:out`, `<key>:in`) and exactly two journal rows with `source='conversion'`; the 10:1 rule re-checked with the pure `D.conversion` (`src/domain.js:72-76`) and `amount % coinsPerCrown == 0` for Coin->Crown. No repricing (`docs/v5/ROUTE-AND-DATA-INVENTORY.md` section 3 "Extract function output verbatim; no repricing").
 - **C5 tournament pool algebra**: per public table `pool == entry*10`, `burn == pool/10`, `Σ payouts + burn == pool`, `payouts[4] == entry` (VERIFIED `tests/design-invariants.test.js:29-31`; `src/tournament.js:4-9`).
@@ -167,6 +271,3 @@ Proposed new paths, deliberately outside every current P01 owner's file set (the
 Open design questions the parent should decide explicitly before implementation: (a) whether imported `v4_outbox` rows are migrated as inert rows or recorded as drained (both are permitted; the choice must be recorded in the mapping manifest); (b) whether `account_sessions` are imported as forensic revoked rows or only counted (the token column is already a hash, so either is safe, but the choice affects the A12/P05 session-continuity design); (c) whether the `matches[].commands` RECOMPUTABLE probe stays RECOMPUTABLE after the first fixture run or degrades to OPAQUE_VERBATIM (the decision must be data-driven from the fixture and recorded, never guessed); (d) whether the A07 swapped-wallet fixture lives in the P03 suite or is shared with P04's differential suite (P04 re-runs A07 per `acceptance.json`).
 
 Residual risks: the require-graph purity assertion can be defeated by a future transitive import added inside an allowed module (mitigation: assert on the full `require.cache` key set, not just direct requires); `pg_advisory_lock` semantics under the chosen pooling mode need live confirmation (mitigation: use a direct connection as `docs/v5/ARCHITECTURE.md` item 8 mandates); and the empty production snapshot means the first real per-actor evidence will come from fixtures, so the mapping manifest's legacy-variant rows must be treated as hypotheses until a representative capture exists.
-
-
-[Showing lines 1-86 and 190-272 of 272; 103 middle lines (16.1KB) elided. Read artifact://547 for full output]

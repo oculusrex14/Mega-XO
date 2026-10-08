@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at_utc": "2026-10-07T21:00:51.856+00:00",
+  "updated_at_utc": "2026-10-08T00:44:32.881+00:00",
   "goal": "Deliver the V5 hybrid platform and real Android/iOS applications with shared permanent actor/assets, preserved approved game and retained browser compatibility; do not build the new website/browser product.",
   "source": {
     "goal": "AGENT-GOAL.md",
@@ -1116,7 +1116,7 @@
         "verification": "Schema review plus source-coverage report; uniqueness/FK/check constraints match approved semantics.",
         "id": "V5-02-02",
         "phase": "P02",
-        "status": "PLANNED",
+        "status": "IN_PROGRESS",
         "depends_on_tasks": [
           "V5-02-01"
         ],
@@ -1129,7 +1129,7 @@
         "verification": "Clean create/upgrade tests pass; forbidden direct writes fail for API/worker roles.",
         "id": "V5-02-03",
         "phase": "P02",
-        "status": "PLANNED",
+        "status": "IN_PROGRESS",
         "depends_on_tasks": [
           "V5-02-02"
         ],
@@ -1142,7 +1142,7 @@
         "verification": "Interactive transaction and rollback tests run on actual selected connection modes; no secrets in output.",
         "id": "V5-02-04",
         "phase": "P02",
-        "status": "PLANNED",
+        "status": "IN_PROGRESS",
         "depends_on_tasks": [
           "V5-02-03"
         ],
@@ -3083,16 +3083,70 @@
     },
     "V5-02-01": {
       "status": "IN_PROGRESS",
-      "evidence_refs": [],
+      "evidence_refs": [
+        "docs/v5/evidence/phase02-provider-target.json"
+      ],
       "completed_portions": [],
       "remaining": [],
-      "review_notes": "Live Neon capability/region verification and schema/role implementation starting on stored designs; no provisioning until migrations are gated.",
+      "review_notes": "Live Neon capability/region verification and schema/role implementation starting on stored designs; no provisioning until migrations are gated. Created exact empty nonserving Free-plan Neon staging project; direct verified TLS catalog probe succeeded. Full regional capability report, schema and pooled runtime smoke pending; no production change or paid upgrade.",
       "transitions": [
         {
           "at_utc": "2026-10-07T21:00:51.854+00:00",
           "from": "PLANNED",
           "to": "IN_PROGRESS",
           "note": "Live Neon capability/region verification and schema/role implementation starting on stored designs; no provisioning until migrations are gated."
+        },
+        {
+          "at_utc": "2026-10-08T00:44:32.879+00:00",
+          "from": "IN_PROGRESS",
+          "to": "IN_PROGRESS",
+          "evidence": "docs/v5/evidence/phase02-provider-target.json",
+          "note": "Created exact empty nonserving Free-plan Neon staging project; direct verified TLS catalog probe succeeded. Full regional capability report, schema and pooled runtime smoke pending; no production change or paid upgrade."
+        }
+      ]
+    },
+    "V5-02-02": {
+      "status": "IN_PROGRESS",
+      "evidence_refs": [],
+      "completed_portions": [],
+      "remaining": [],
+      "review_notes": "Complete normalized schema design stored; SchemaImpl agent implementing full migration set under parent contract.",
+      "transitions": [
+        {
+          "at_utc": "2026-10-07T21:51:17.345+00:00",
+          "from": "PLANNED",
+          "to": "IN_PROGRESS",
+          "note": "Complete normalized schema design stored; SchemaImpl agent implementing full migration set under parent contract."
+        }
+      ]
+    },
+    "V5-02-03": {
+      "status": "IN_PROGRESS",
+      "evidence_refs": [],
+      "completed_portions": [],
+      "remaining": [],
+      "review_notes": "Migration runner plus checksummed role/grant SQL being implemented by SchemaImpl with containerized verification.",
+      "transitions": [
+        {
+          "at_utc": "2026-10-07T21:51:17.424+00:00",
+          "from": "PLANNED",
+          "to": "IN_PROGRESS",
+          "note": "Migration runner plus checksummed role/grant SQL being implemented by SchemaImpl with containerized verification."
+        }
+      ]
+    },
+    "V5-02-04": {
+      "status": "IN_PROGRESS",
+      "evidence_refs": [],
+      "completed_portions": [],
+      "remaining": [],
+      "review_notes": "PgGuards agent implementing packages/db/pg connection, TLS/role/pool/environment guards with ephemeral container proofs.",
+      "transitions": [
+        {
+          "at_utc": "2026-10-07T21:51:17.497+00:00",
+          "from": "PLANNED",
+          "to": "IN_PROGRESS",
+          "note": "PgGuards agent implementing packages/db/pg connection, TLS/role/pool/environment guards with ephemeral container proofs."
         }
       ]
     }

@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "environment": "staging",
+  "projectId": "lively-shadow-52629967",
+  "branchId": "br-falling-resonance-b87qm6iz",
+  "endpointId": "ep-red-waterfall-b880jir8",
+  "host": "ep-red-waterfall-b880jir8.c-14.us-east-1.aws.neon.tech",
+  "database": "mega_xo_v5_staging",
+  "pgMajor": 16,
+  "nonserving": true,
+  "roleConnectionLimits": {
+    "api_runtime": 16,
+    "core_runtime": 8,
+    "worker_runtime": 4,
+    "backup_reader": 2,
+    "audit_runtime": 2
+  },
+  "compute": {
+    "minCu": 0.25,
+    "maxCu": 0.25,
+    "suspendTimeoutSeconds": 0
+  },
+  "historyRetentionSeconds": 21600,
+  "outbound": {
+    "email": "disabled",
+    "storeNotifications": "disabled",
+    "adRewards": "disabled"
+  }
+}

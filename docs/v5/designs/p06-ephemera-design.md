@@ -148,6 +148,7 @@ mx:staging:v1:bus:revoke:<actor>                   PUBSUB channel
 | `queue.prune(maxQueued)` | Remove index members with no ticket HASH; enforce cap; drop expired terminals | Unbounded index growth |
 | `due.claim(kind,nowMs,limit,leaseMs,fence)` | `ZRANGEBYSCORE 0 now LIMIT 0 K` then `ZADD GT now+leaseMs`; return `{id,revision,deadlineMs,fence}` | Two Cores settling the same timeout revision |
 | `due.complete` / `due.release` | `ZREM` on completion (revision-guarded member) / re-arm on failure | Repeated settle loops |
+
 | `presence.touch(actor,sessRef,foreground,seenMs)` | `ZADD GT` + window prune + rank cap + `PEXPIRE 60s`; `foreground=false` moves the member to the bg set | Presence rows accumulating forever (today: deleted after 1 h [V]) |
 | `cache.putIfNewer(shape,key,version,asOf,payload,ttlMs)` | Store only when incoming `version > stored.version` | Old projection event overwriting a newer one (A-cache requirement) |
 | `lock.release(key,token)` | Compare-and-delete by token | Releasing another worker's single-flight lock |
@@ -164,7 +165,107 @@ Scripts are loaded once per process (`SCRIPT LOAD`) with `EVALSHA` + `NOSCRIPT` 
 
 **I3 - No paid occupancy can be permanently stuck.** Entry is charged only inside the Core transaction that creates the match reservation (today's `accept`/`_offer` semantics, inventory §4.1-2). A wiped claim lease therefore cannot strand funds; escrow is only released by the approved settle/refund path. Test: count reserve/payout/refund journal rows per actor before/after wipe + matcher kill.
 
-[…101ln elided…]
+**I4 - Timers rebuild from durable deadlines.** `due:*` is derived from committed `expires`/`deadline` columns. A rebuild job (`SELECT id, revision, deadline FROM matches WHERE status='PLAYING' AND deadline IS NOT NULL`, plus OFFERED `expires`) repopulates the ZSET after wipe/dependency-down, watermark-advanced, idempotent by `(id,revision)`. Redis loss ⇒ at most one rebuild interval of delay, never a lost timeout (PG slow scan via `jobs.js` remains the backstop).
+
+**I5 - Security facts survive.** One-use tickets, OTP challenges, session generations and revocations are PG rows (spec 02 §6). Redis holds only hints; a wiped hint cache means "fail closed and check PG", not "trust the token". Test A14: redeem concurrently on two nodes and replay after wipe ⇒ exactly one redemption.
+
+**I6 - Rate budgets degrade honestly, never open.** With Redis down, the adapter switches to the **same-value local bucket** (`memoryBuckets` semantics: 600/60 all, 30/60 account-post, plus the specific scope limit) with a hard local cap and **conservative rejection** when the local cap is exhausted (today's `memory()` already returns `false` at `maxMemory`). Security-sensitive attempts additionally stay bound by durable PG attempt counters (`email_challenges.attempts`, `v4_email_versions`). No code path may turn a Redis error into "allow".
+
+**I7 - Presence may be temporarily unknown, never wrong-permanently.** Degraded presence renders the existing `{state:'offline',online:false}` shape (the shape already produced when the 45 s window has no rows) and self-heals within one heartbeat. No client contract change and no fabricated `hidden`/`online` [D].
+
+**I8 - No permanent product-policy change from ephemera.** Nothing derived from Redis may write suspension/hold, ban, reward policy or tier eligibility (spec 03 §2). Enforcement: the Redis package is imported only by transport/coordination modules; a static test asserts no `packages/redis` import inside `packages/db/*` and no Redis call inside a transaction body.
+
+**I9 - Caches are never an authorization source.** No wallet/session/eligibility/occupancy decision reads a cache; the classification function refuses `strong-current` route classes (§9.3).
+
+---
+
+## 5. Failure modes
+
+### 5.1 Full wipe (`FLUSHDB`) — expected behaviour
+
+| Affected | Immediate observable | Recovery |
+|---|---|---|
+| Queue indices/tickets/claims | Queue status becomes `idle`/rebuild; matcher has no candidates | Clients rejoin (`POST /api/v1/queue`) with a fresh op key; PG-unassigned players are recoverable by definition |
+| Matched-result cache | `status` recomputed from PG matches | none needed |
+| Presence | Everyone reads `offline` until next heartbeat (≤15 s client cadence, ≤60 s worst case) | automatic |
+| Rate counters | Windows reset ⇒ one free window | Accepted, documented, bounded by PG attempt counters for security scopes; add a wipe-detected alert (P14) |
+| Due queue | Timers delayed up to one rebuild interval | rebuild from PG |
+| Caches/projections | Cold; PG read load spike | single-flight locks + short TTL + admission cap |
+| Pub/sub | Subscribers see nothing; live matches rely on polling until resubscribe | resubscribe + snapshot (§7.2) |
+
+Explicitly **not** affected: everything in §1.2.
+
+### 5.2 Dependency down (connection refused / timeout / auth failure)
+
+Per-operation degradation table (required by spec 03 §2 "Document degradation by operation"):
+
+| Operation | Redis down behaviour | Client-visible result |
+|---|---|---|
+| Presence heartbeat | record locally, retry with bounded backoff; serve from last known local view | previous shape; no 5xx |
+| Presence read | `{state:'offline',online:false}` for non-friend/hidden paths unchanged; `online` unknown ⇒ offline | same shape |
+| Queue join | **refuse** (`SERVICE_UNAVAILABLE`/queue-specific code) rather than claim queueing without an index | fail closed; no phantom entrant |
+| Queue cancel | best-effort Redis delete + always attempt PG decline for an OFFERED match (PG path authoritative) | `cancelled` / `playing` unchanged |
+| Queue heartbeat/status | local view, then rebuild once Redis returns | `searching` may flip to `idle`; rejoin supported |
+| Matching tick | **pause** new pairing (no new offers) | existing matches unaffected |
+| Match move/settle | unaffected (PG) but pub/sub fan-out falls back to polling | revision delivered by poll |
+| Timers | PG backstop scan (existing `jobs.js` semantics) | timeout still fires |
+| Rate budgets | local fallback at ≤ the configured limit; conservative rejection at local cap | 429 preserved |
+| One-use ticket redeem | PG (never Redis) | unchanged; A14 |
+| Routing hints | each Core serves its own connections only (sticky) | new connections still admissible via API-issued PG ticket |
+| Caches | miss ⇒ PG | slow, correct |
+
+Adapter requirements: `connectTimeoutMs` ≈ 250, `commandTimeoutMs` ≈ 200, max 1 retry for idempotent reads only, no retry for queue joins/cancels, circuit-breaker per primitive with a `failMode` config value (`local-budget` | `pause` | `conservative`) — spec 03 §2 forbids "unlimited credential attempts", so `conservative` is the default for security scopes [D].
+
+### 5.3 Dual-Core during P16 ("split-brain-ish", no host HA)
+
+Both Cores share PG and Redis (pack ARCHITECTURE: two same-host Cores = process failover only [V]). Hazards and the designed answers:
+
+1. **Two matchers pair the same actor** → single-slot `queue.claim` CAS + PG unique occupancy constraint; the loser's `pair:` command hits `ALREADY_IN_MATCH` (already handled in `sweep()`'s catch list [V]) and its claim is released.
+2. **Duplicate timeout/expire settle** → timer identity is `(id, revision)`; the claim carries `fence`; PG CAS on expected revision means a stale claim no-ops ("a duplicate expired-timer claim for an old revision does nothing", spec 03 §4).
+3. **Duplicate publish** → harmless; consumers dedupe by `revision` and fall back to snapshot when a gap is seen.
+4. **Lease expiry vs commit** → `claimTtlMs` strictly greater than the PG statement/lock timeout budget; a claim that expires mid-transaction loses only the advisory claim; PG constraint still yields one effect.
+5. **Redis partition with Redis-up-but-unreachable-to-one-Core** → that Core's primitives degrade (§5.2); it must not fabricate queue membership locally beyond the bounded fallback.
+6. **Split Redis (two different services configured by mistake)** → prevented by env-equal namespace check + separate credentials + startup probe asserting the expected service fingerprint (region/version/uptime reported by `INFO server`), recorded in the environment inventory [D].
+
+---
+
+## 6. Removal plan for local-only operational state (V5-06-03)
+
+Order matters: build primitives, dual-run/compare, then delete. Every removal is product-behaviour preserving, and the corresponding durable path is unchanged.
+
+| Step | Remove | Replace with | Precondition / parity check |
+|---|---|---|---|
+| R1 | `server/community-server.js` `networkLimits` Map | `rate.spend('http:ip', hmac(ip), 1800, 60)` + local fallback | Same 60 s fixed window and 429/`Retry-After: 60` surface |
+| R2 | `server/monetization-http.js` `rates` Map | `rate.spend('monetization:actor', actor, 60, 60)` | Same 429 body |
+| R3 | `server/party-http.js` `limits` Map | `rate.spend('party:addr', hmac(addr), 2400, 60)`; **keep local bucket when `store.lanOnly`** | LAN standalone must not require Redis |
+| R4 | `AbuseGuard.memoryBuckets` as the primary path | `rate.spend('abuse:<scope>', hmac(ip), limit, seconds)`; keep the Map as `failMode` fallback | Same limits/scopes list; `maxMemory` conservative rejection kept as the fallback cap |
+| R5 | `community_limits` live use by `CommunityStore.rate()` | Redis counters with TTL | Counters keyed identically (`bucket:subject:windowIdx`) so tests that assert `RATE_LIMITED` timing stay valid; keep the table dropped/migrated out (no durable meaning) |
+| R6 | `session_presence` live use (`heartbeat`, `presence`, repository `presence`/`clear*Presence`) | Redis presence ZSETs + `route.conn` hints | Keep an explicit `presence.clear(actor)` effect invoked from the same revocation points (`production/email-auth.js:104,156`, `production/main.js:27`, logout/revoke routes) so revocation still clears presence after commit |
+| R7 | `Matchmaker.tickets` / `results` | Redis queue index/ticket/claim + result cache | Preserve `maxTickets` global cap, `QUEUE_FULL`, 15 s queue offer window, `status`/`cancel`/`consume` shapes |
+| R8 | `QueueSession.seen` / `terminal` / `terminalAt` | Redis ticket lease TTL + terminal STRING | Preserve 45 s disconnect and 300 s terminal retention |
+| R9 | `QueueSession.pendingTickets` | nothing | Dead state [V] - delete outright |
+| R10 | `presence()` cross-store read of `party_rooms` and in-process `isQueued` | Redis queue membership + room-occupancy query owned by the room service | Removes "profile GET can trigger queue writes" hidden effect; expiry still happens in Core tick |
+| R11 | `jobs.js`/`main.js` full-state 15 s scan (keep as backstop only) | Redis due-queue + PG indexed queries | Only when P04/P07 PG indexing exists; backstop retained for wipe recovery |
+| R12 | Nothing about `ReadContext` | unchanged | Per-request cache must not become cross-request (P12 replaces it with versioned projections) |
+| R13 | Nothing about `Passwords` queue, `party_guests`, room timer tick | unchanged | Local resource/LAN/durable concerns |
+
+Verification for V5-06-03 (from the phase file): two API/Core processes observe consistent temporary state. Concrete check: run two Cores, join from Core A, observe `searching`/`queued` presence and `ALREADY_QUEUED` from Core B; heartbeat on A, disconnect, observe B's sweep expires the ticket within 45 s; assert no `session_presence`/`community_limits` row is written by either process.
+
+---
+
+## 7. Provider selection decision matrix (V5-06-01)
+
+Reality check first: **no Redis/Valkey service is known to exist for this account.** `docs/v5/evidence/phase00-provider-inventory.json` classifies `managed_redis_valkey` as `UNRESOLVED` (attempt was `vercel integration list --all --scope team_wS9BpnXbYRZahs1DiSueN3SS --json`, exit 1, no credentials) [V], and `docs/v5/OPEN-ITEMS.md:13` (V5-O009) records the same. Nothing below is a provisioning claim.
+
+### 7.1 Candidate matrix
+
+| Candidate | Access path | Protocol needs (TCP+TLS / pub-sub / Lua / TTL / ZSET) | Region pairing | Auth/ACL | Free-tier viability | Cost guardrails | Status |
+|---|---|---|---|---|---|---|---|
+| **Upstash Redis** (Vercel Marketplace integration / direct account) | Marketplace (blocked today) or direct account console/API | TCP (RESP) **and** HTTPS REST both supported; `EVAL/EVAL_RO/EVALSHA` documented and usable over REST; `PUBLISH`/`SUBSCRIBE` present over REST (`/publish`, `/subscribe`) [V-doc https://upstash.com/docs/redis/overall/compatibility.md, /features/restapi, /commands/scripting/eval]; **blocking commands unsupported over REST** [V-doc /features/restapi] | AWS first region is `AWS-US-EAST-1 (Virginia)`; GCP `us-central1`; also Fly.io [V-doc FAQ] → aligns with Neon default `aws-us-east-1` [V] | TLS always on [V-doc /features/security]; **ACL only on paid databases**; VPC peering / Private Link Pro-only; encryption-at-rest Prod pack; IP allowlist workable for Oracle but not for Vercel functions [V-doc] | Free: **256 MB, 500K commands/month, one free database per account** [V-doc /pricing/redis, /howto/upgradedatabase] — one free DB cannot host both staging and production | Per-command billing ⇒ instrument a command counter; keep Core subscriptions on TCP not REST; cache hits must be single-flight to avoid fan-out multiplies | Capability [V-doc]; **existence/plan/quota [P]** |
+| **Vercel KV** | first-party | **Sunset** — `@vercel/kv` deprecated and the product page says Vercel KV has been sunset in favour of Marketplace stores [V-doc https://vercel.com/changelog/vercel-kv, https://www.npmjs.com/package/@vercel/kv] | n/a | n/a | n/a | n/a | **Rejected** (avoid building on a sunset product) |
+| **Redis Cloud (Essentials)** | direct account | Full Redis command set incl. Lua and pub/sub (Redis 7.x) | Regions across AWS/GCP/Azure; choose nearest to Neon/Oracle | TLS; per-database credentials; ACL/roles available on paid tiers | Free: **30 MB, 30 connections, ~100 ops/s** shared [V-doc redis.io pricing/support KB] | Ops/sec cap makes it viable only for API-side budgets + tiny cache | Capability [V-doc]; **plan/region/eviction-policy config [P]** |
+| **Aiven for Valkey** | direct account/CLI | Valkey with **Lua scripting supported** [V-doc aiven.io/docs/products/valkey/concepts/lua-scripts]; pub/sub inherent to Valkey | Many clouds/regions; pick closest to Core | TLS + service user/password (valkey-cli/`ioredis` guides) [V-doc] | Free tier: single node, 1 CPU, **1 GB RAM, maxmemory 50%**, monitoring+backups included; **no VPC/static IP/integrations, no SLA, one free service per org, may be powered off for inactivity and its region may be changed by Aiven** [V-doc aiven.io/docs/products/valkey/concepts/valkey-free-tier] | Best capability for $0 but **not production-viable** (availability + region stability) | Capability [V-doc]; **actual plan/service listing [P]** |
+| **OCI Cache with Redis** (Oracle) | direct OCI tenancy | Redis-compatible managed service | Same OCI region as the Core host ⇒ best RTT for Core | TLS; IAM/ACL model | Unknown pricing/free allowance | Requires verifying the tenancy exists and that a managed service is not banned as "same-host replacement" (spec 04 §5 forbids a *production Redis process on the same Oracle host*; a managed separate service in the same region is a different question that must be answered explicitly) | **Existence [P]** — no evidence in repo |
 | **AWS ElastiCache (Valkey/Redis)** | AWS account | Full compatibility | us-east-1 aligns with Neon default | TLS + auth token; VPC/security groups | No free tier for ElastiCache (Serverless has minimum cost) | Needs an AWS account and VPC reasoning that this project does not otherwise have | **Account existence unknown [P]**; defer to P24 measured scaling |
 | **Self-hosted Valkey container** | Compose | Full | staging private network | Password/ACL via file | $0 | **Allowed for local/CI only**; spec 04 §4 forbids silently using it as the production replacement, and V5-06-01 verification forbids "unclaimed temporary or same-host production replacement" | Explicitly **not** a production answer |
 
@@ -198,6 +299,7 @@ New config keys [D], validated like existing ones: `MEGA_REDIS_URL|_FILE`, `MEGA
 | C6 | RTT Core→candidate, Vercel→candidate, Neon→candidate | Requires a provisioned target | After C1-C5 |
 | C7 | Command-support probe result recorded per primitive (§3.2 list) as the V5-06-01 verification artefact | Adapter probe, output sanitized (no URL/credential) | Implementable now with a local container; provider run after C2/C3/C4 |
 | C8 | Neon region/quota confirmation (V5-O006) - the pairing target | Neon console/CLI read | Parallel P02 owner |
+
 
 Recommended ledger entries (parent owns the ledger): a new open item "managed Redis/Valkey selection + capability probe" tied to V5-06-01, blocked by V5-O009 (Vercel/marketplace auth) and V5-O006 (Neon region), with C1-C7 as its check list. [D]
 
@@ -330,5 +432,3 @@ Each of L1-L7 records: task/case IDs (A14/A15/A16 + the P12 cache case), exact S
 - Source-read and provider-doc-read only. No test, build, container, provider call, credential read, or file modification was performed.
 - Provider capability statements marked [V-doc] come from the current public pages cited inline; they prove what the products document, not what this account has. Everything requiring an authenticated read is listed in §7.5 and marked [P].
 - Zero claims of a provisioned Redis/Valkey service; the repo's own evidence and open items (V5-O009, V5-O006) are the authoritative statement that selection and provisioning are still open, which is exactly why V5-06-01 cannot be marked complete yet and why V5-06-02's adapter must be buildable and testable against a local container first.
-
-[Showing lines 1-166 and 268-432 of 432; 101 middle lines (13.5KB) elided. Read artifact://765 for full output]

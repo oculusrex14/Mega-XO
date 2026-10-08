@@ -98,6 +98,7 @@ Provisioning handshake [D]: the API creates actor + identities + readiness(pendi
 | deletion races provisioning | either order | deletion_pending wins; provisioning aborts; ledger entry deleted only under the approved deletion policy | lock order: actor_row then readiness then wallet |
 Deletion coordination [D]: the API sets deletion_pending + blocks admission; Core performs the economic/occupancy/reference effects in one transaction (P02 s7 R10); worker completes the policy-bound remainder. The existing deleteAccount does all of this in one API-owned transaction [V] and must be split rather than copied.
 
+
 B1.2 Linking semantics and transition tables.
 Rule set [V preserved + D additions]:
 1. (provider,subject) -> exactly one actor. Two actors can never share a subject; conflicting link answers ACCOUNT_LINKED_ELSEWHERE and never merges wallets.
@@ -125,13 +126,80 @@ B2.1 Concrete algorithm and key choices [D].
 - TTLs: access token 300 s; realtime ticket 10 s; API->Core service assertion 15 s; refresh lives in the family table, not a JWT [D, numbers in Part F].
 
 B2.2 Public verification path [D].
-[…67ln elided…]
+- GET /.well-known/jwks.json (and /api/account/jwks for the compatibility facade) served by the API from identity.signing_keys. Response is bounded: at most 8 keys and 16 KiB, Cache-Control: public, max-age=300, s-maxage=300 plus an ETag/X-JWKS-Version. Never no-store for the public key set; always no-store for private account responses.
+- Verification rules for consumers: fetch JWKS over TLS to the exact issuer host, cache with the published max-age and a hard ceiling; require kid; allowlist alg; reject crit/jku/x5u/alg:none and any token whose header alg differs from the allowlist; on unknown kid refresh once with a >=60 s minimum interval; never fall back to a shared secret.
+- Key lifecycle table [D]:
+| State | Servable in JWKS | Signs | Min residence |
+|---|---|---|---|
+| staging | yes | no | >=24 h before activation |
+| active | yes | yes | until replaced |
+| retiring | yes | no | >= 360 s (access TTL 300 s + 60 s skew) and >= 15 min operationally |
+| retired | no | no | - |
+Rotation is operator/CI-driven with a runbook; an emergency rotation path exists for a suspected key compromise (immediate retire + short forced overlap). Test hooks: wrong alg, wrong issuer, wrong audience, unknown kid, retired kid, expired/nbf-in-future, and JWKS unavailability while a valid cached key exists [A13].
+- Revocation reality stated explicitly: local signature validation cannot revoke immediately. Maximum revocation delay for read-only projections = the access token TTL (300 s) [D]; for sensitive operations (export, delete, unlink, any economic command, realtime subscribe) the authority must check durable session/account status, so those are effectively immediate [D].
+
+--- V5-05-03 REFRESH ROTATION AND DEVICE REVOCATION ---
+
+B3.1 Tables [D] (see Part C for why they are identity.*, not a new schema).
+identity.refresh_families(family_id PK, actor_id, session_id, device_id NULL, created_at, absolute_expires_at, state CHECK IN ('active','revoked','expired'), generation bigint NOT NULL DEFAULT 0, reused_in_grace int NOT NULL DEFAULT 0, revoked_at NULL, revoke_reason NULL).
+identity.refresh_tokens(token_hash PK, family_id FK, generation bigint, state CHECK IN ('active','rotated','revoked','expired'), issued_at, valid_until, rotate_at NULL, grace_until NULL, first_seen_ip_hash NULL, user_agent_hash NULL).
+identity.devices(device_id PK, actor_id, platform CHECK IN ('android','ios','browser'), label NULL, created_at, last_seen_at, revoked_at NULL).
+identity.session_generations(actor_id PK, generation bigint NOT NULL DEFAULT 1, updated_at) - the durable revocation counter the access token's gen claim is checked against [D].
+
+B3.2 Rotation algorithm WITHOUT re-issuing a secret (the key correctness point).
+Because only hashes are stored, a server can never hand a lagging client the same refresh secret again. Therefore the accepted 'same rotated outcome' is implemented as a bounded acceptance window, not as secret replay [D]:
+- A presented token whose generation equals the family's current generation rotates normally: the presented row becomes 'rotated' and a NEW row is inserted with generation+1; the new secret is returned once.
+- A presented token one generation behind, whose rotate_at is within grace_until (10 s default), is treated as a legitimate parallel retry: the family generation does NOT advance, the row is marked 'rotated' with reused_in_grace+1, and the response carries a fresh ACCESS token for the same session/gen plus no new refresh secret (the client already holds the current one). Cap reused_in_grace at 3 per family, after which the request is answered with the standard replay path [D].
+- Any token two or more generations behind, any 'revoked'/'expired' row, any token whose family absolute_expires_at passed, or any token presented after the grace window is a TRUE REPLAY: revoke the whole family, bump identity.session_generations, emit a security notice and an audit append, and answer SESSION_REVOKED [D]. This satisfies spec 02 s2 exactly: ordinary parallel requests never revoke a family; an out-of-contract replay does.
+- Single-flight: the client (browser adapter and each native host) coalesces concurrent refreshes behind one in-flight promise keyed by family id [D]. Server-side, a Redis key mx:<env>:v1:refreshlock:<family_id> with a 5 s TTL serialises refresh attempts, and is explicitly only a hint: if it is lost, the database generation logic above still produces the correct outcome and can never resurrect a revoked family [D].
+
+B3.3 Revocation surfaces [D].
+| Action | Effect |
+|---|---|
+| revoke one device | revoke families for device_id, bump session generation, retain device row with revoked_at |
+| revoke one session | revoke that session's family, bump its generation |
+| log out current | delete/rotate the presenting session, revoke its family |
+| log out all devices | revoke all families + all sessions for the actor, bump session_generations, clear presence |
+| provider unlink | revoke families whose session was created by that provider's amr |
+| password reset / change | revoke ALL families + sessions for the actor [V today's semantics] and consume outstanding challenges [V] |
+| suspend / hold | revoke all families + sessions and block admission [V today's semantics] |
+State table [D]: active -> rotated | revoked | expired; rotated -> revoked (on family replay); revoked and expired are terminal. No transition ever returns to active for the same generation. Expiry sweeps delete rows only after absolute_expires_at + a retention margin, and the revocation decision is always re-derived from families/sessions rather than from a cache [D].
+
+--- V5-05-04 BROWSER AND NATIVE CREDENTIAL PATHS ---
+
+B4.1 Browser path (preserve the retained client) [D].
+- Cookie names kept exactly: __Host-mega_session on https, mega_dev_session on loopback. Attributes kept: Path=/; HttpOnly; SameSite=Lax; Secure (https only); Max-Age=1209600 for a linked session, 86400 for an anonymous one. SameSite must stay Lax rather than Strict because the Google/Apple callback is an inbound top-level navigation that must still carry the session cookie for state binding [V flow from community-http.js:24-26].
+- Optional split (design decision, not required for the retained client): a second cookie __Host-mega_rt carrying only the refresh handle, scoped Path=/api/account/refresh, SameSite=Strict, HttpOnly, Secure, so the long-lived credential is not transmitted on every request. Because it is host-only and the retained client is same-origin through the compatibility facade, no cross-domain cookie is ever needed.
+- CSRF unchanged: the session GET returns the csrf value in JSON; POSTs send x-csrf-token; the server compares constant-time; Origin is checked exactly and the JSON content type is required. Cache-Control: no-store on all private account/session responses [V].
+- Every POST that changes credentials additionally requires the 15-min recent-auth window exactly as today [V].
+
+B4.2 Native path [D].
+- No cookies at all. The host authenticates with Authorization: Bearer <access token>; the refresh secret never leaves the platform secure store (Android Keystore-encrypted blob; iOS Keychain with a device-only accessibility policy), and access tokens live in host memory.
+- New endpoints (add to packages/contracts/routes.js, owner A): POST /api/account/native/token (challenge+finish or refresh grant), POST /api/account/native/refresh, POST /api/account/native/logout. The existing cookie-based /api/account/native/challenge and /finish remain as a compatibility path for the shipped bridge until the retained browser build retires [V current behaviour].
+- Credential resolution must be unambiguous: a request presenting BOTH a session cookie and a bearer header is rejected with a new AMBIGUOUS_CREDENTIAL code rather than guessed [D]. A browser Origin header is NOT evidence of a genuine app; native endpoints therefore require the bearer credential plus a client-class header, and device attestation is explicitly out of scope and must not be claimed as proof [D per spec 02 s3].
+- Origin/CSRF protections are never globally disabled to make native work; the browser surface keeps strict Origin and CSRF, and native simply has no cookie path to protect [D].
+- Reinstall/restore: a missing secure-store entry means the app must re-run the provider flow; the server must never mint a new actor for a lost credential [V rule, D enforcement].
+
+--- V5-05-05 DURABLE ONE-USE REALTIME TICKETS ---
+
+B5.1 Ticket table [D]. identity.realtime_tickets(ticket_hash PK, actor_id NOT NULL, session_id NOT NULL, generation bigint NOT NULL, environment text NOT NULL, audience text NOT NULL, match_scope text NULL, connection_class text NOT NULL, issued_at timestamptz NOT NULL, expires_at timestamptz NOT NULL, redeemed_at timestamptz NULL, redeemed_by text NULL, redeem_connection_id text NULL, redeem_ip_hash text NULL). Indexes: (actor_id, expires_at), partial (expires_at) WHERE redeemed_at IS NULL for the sweep, (redeemed_by, redeemed_at).
+B5.2 Issuance [D]. POST /api/v1/realtime/ticket (authenticated browser session+CSRF, or bearer): body allowlist {match_id?, connection_class}; the server mints a 32-byte random ticket, stores only sha256-base64url, binds actor + session id + generation + environment + audience + optional match scope + expiry, and returns {ticket, expires_in, environment, audience}. The ticket is at most 43 characters, comfortably inside the envelope's 512-character ceiling [V realtime.js]. The ticket is NEVER placed in a query string or URL; packages/contracts/realtime.js already forbids that in validateEnvelopeTransport and provides redactTicket(value) -> '[redacted:N]', which every proxy, access-log and error serializer must use [V].
+B5.3 Redemption (durability and exactly-once) [D]. Core redeems with a single statement: UPDATE identity.realtime_tickets SET redeemed_at=now(), redeemed_by=:core_node, redeem_connection_id=:conn WHERE ticket_hash=:h AND redeemed_at IS NULL AND expires_at>now() RETURNING actor_id, session_id, generation, environment, audience, match_scope; zero rows means TICKET_INVALID / TICKET_EXPIRED / TICKET_REDEEMED (disambiguated by a follow-up read). Because the state is a durable row with a WHERE redeemed_at IS NULL predicate, exactly one of two racing nodes wins, and the outcome survives process death and total Redis loss [A14]. The actor used for authorization is ALWAYS the redeemed row's actor_id; the envelope's actor field is cross-checked against it and a mismatch is FORBIDDEN [V realtime.js validateEnvelope guarded by authenticatedActor]. subscribe may carry a ticket only on a connection that has not yet redeemed; the ticket is consumed once either way [D].
+B5.4 Admission limits [D]: at most 3 outstanding unredeemed tickets per actor; at most 4 concurrently redeemed (live) connections per actor; per-IP issuance budget; a global in-flight cap. Counts are evaluated against the durable table for the authoritative decision, with an ephemeral Redis counter used only as a fast rejection path; losing Redis can therefore only make admission more conservative, never less.
+B5.5 Lifecycle table [D]: issued -> redeemed (atomic; terminal for replay) | expired (sweep; TICKET_EXPIRED on use) | revoked (session/account revocation before redemption; TICKET_INVALID). A redeemed ticket is never reusable; reconnecting requires a new ticket. Connection lifetime is bounded by min(access token TTL, session generation validity); a ping/pong heartbeat detects a dead socket and a revoked session closes subscriptions on the next authoritative check.
+
+--- V5-05-06 COMPATIBILITY AND TRANSITION PROOFS ---
+
+B6.1 Preserve v4.1.2 LINK_ACCOUNT_REQUIRED exactly. The shipped client classifies LINK_ACCOUNT_REQUIRED as an auth state (not an outage), shows "Sign in to play online." and stops the poller; tests/static-ui.test.js:156-157 and tests/v5-contracts.test.js:243 pin it, and AGENTS.md forbids regression [V]. Therefore: an anonymous/unlinked session calling an online competitive route MUST still receive HTTP 401 with error LINK_ACCOUNT_REQUIRED; the status table in packages/contracts/http-guards.js already encodes ACCOUNT_STATUS[LINK_ACCOUNT_REQUIRED]=401 and must not be re-mapped [V]. No new 403/503 may replace it, and guest bootstrap must still be able to create an anonymous session - with the operational caveat that GET /api/account/session WRITES a row, so ARMED-mode read-only smoke must not call it [V spec 07 s5E].
+B6.2 Cookie-domain boundary. The retained client stays same-origin behind a V5 compatibility facade on its existing host, so the host-only __Host-mega_session continues to work with no domain widening and no session exchange [D, preferred]. Only if the client must be moved to a different origin is a bounded one-time session exchange permitted: POST /api/account/session/exchange on the old origin mints a single-use durable code bound to actor+session+30 s expiry, redeemed once at the new origin; it is never a broad cookie domain and never creates an actor [D].
+B6.3 Three-client proofs. Same actor resolves through email, Google and Apple across a browser-style harness, Android and iOS, including cancel, bad nonce/state, wrong audience, already-linked identity, wrong-account reauth, expired refresh, concurrent refresh, session revoke, reinstall and provider revocation [A12]. Friend graph, saves, wallet, purchases and ranks must be current across all three without platform-specific sync jobs [A12].
 B6.4 Migration-session decision (required output). Recommendation [D]: do NOT import live sessions as V5 credentials. Instead keep V4 sessions valid only through the compatibility facade during the window, and at cutover either (a) import the stored token_hash and csrf verbatim with a CHECK that accepts BOTH the legacy 43-char base64url digest and the new format, or (b) deliberately expire all V4 sessions and require one re-authentication. Option (a) is cheaper for users but forces the schema to carry two hash encodings forever, because a hash of a hash cannot be recomputed from the new format; option (b) is the boring, auditable choice and is recommended unless the owner requires seamless session continuity. Either way: never mint a new actor to compensate for a lost cookie [V].
 B6.5 Compatibility adapters are versioned before activation; V4 sessions in live production stay untouched; new credential keys are staged in isolation [V phase 05 abort boundary].
 
 =====================================================================
 PART C - P02 SCHEMA MAPPING (local://v5-p02-schema-design.md, read successfully)
 =====================================================================
+
 Gaps are named G1..G10; each is a migration addition P02 must record before P05 implementation.
 
 G1. identity.sessions - token_hash representation mismatch. P02 states 'token_hash TEXT PK = sha256 hex of the bearer (64-char CHECK)'. Actual source stores base64url(sha256) (43 chars) [V community-store.js:81 + identity-provider.js:9]. Fix: either relax the CHECK to ^[A-Za-z0-9_-]{43}$ plus a 64-hex alternative, or normalize at import (impossible for a hash-of-a-hash) or force re-login. Also add columns: kind ('browser'|'native'), device_id, generation bigint NOT NULL DEFAULT 1, amr text[], refresh_family_id, revoked_at, state. New index (actor_id) WHERE revoked_at IS NULL.
@@ -252,5 +320,3 @@ R2. G1 (token_hash encoding) is the one place where P02's written schema contrad
 R3. Splitting deleteAccount into API-intake + Core-effect + worker-completion changes client-visible timing; the response shape and error codes must stay identical, and the existing tests (tests/account-deletion.test.js) pin the current single-transaction behaviour.
 R4. Adding identity.devices introduces a device identity the shipped client does not send; the retained browser client must keep working with device_id NULL and a browser-class session, so device revocation is native-only until the browser adapter emits one.
 R5. The realtime ticket route must be added to packages/contracts/routes.js (and a realtime ticket DTO added next to the existing ticket validators), otherwise it becomes an undocumented route that the compatibility coverage test cannot see.
-
-[Showing lines 1-127 and 195-320 of 320; 67 middle lines (13.2KB) elided. Read artifact://768 for full output]

@@ -2,7 +2,7 @@
 
 ## Current state
 
-**Full V5 execution active. G00 and G01 passed.** P00 (6/6) and P01 (5/5) accepted with executed evidence. P02 starts with the stored schema design; V4.1.2 remains the only production authority. Latest pushed checkpoint was `af11caa` (P00 evidence, run `37681523230` success); the P01 boundary extraction follows in the next commit on `V5-platform`.
+**Full V5 execution active. G00 and G01 passed.** P00 (6/6) and P01 (5/5) accepted with executed evidence. Latest pushed checkpoint is `7f6b41f79a53a67990d9052277f6466ffd65c381`; [Actions run 37698242572](https://github.com/oculusrex14/Mega-XO/actions/runs/37698242572) passed. P02 migrations, guarded connections, disposable database CI and runtime-role provisioning are in implementation/integration. The empty nonserving Neon staging project exists; schema deployment and G02 acceptance remain pending. V4.1.2 remains the only production authority.
 
 - Goal: V5 hybrid platform plus genuine Android/iOS applications; approved game/retained browser preserved; new website/browser product deferred.
 - Selected integration base: `455b8ec9ea4070b4410d78f9eea2aaa06d32c0b2`, exact-head [Actions run 37658524961](https://github.com/oculusrex14/Mega-XO/actions/runs/37658524961), completed/success.
@@ -35,13 +35,13 @@ Owner-reported 340/342 and pre-existing opsz backup-freshness failure remain gro
 - Current v4.1.2 running app digest/revision and public livez/opsz ok:true directly verified. Older immutable v4.1.1 backup image is still running; successful repository/read/restore proves compatibility, not an assumed app-version match.
 - Installed deployment directory is `/tmp/mega-release-f1e5577/deploy`; release.sh, enable-backups.sh, compose.yaml and Caddyfile hashes match the selected checkout. Snapshot f884e43b retrieved/verified and restored to an isolated owned temporary target, with byte hash/schema match; production DB untouched, temporary target removed.
 - One public ingress owns 80/443. Preserve production/co-hosted services, monitoring and dedicated audit key.
-- No provider object/DNS/signing/credential/legal/account changes. No commits/ref changes to V4.1/main. Supplied originals deliberately preserved in783ed22; unrelated `.agents/` and skill lock remain carried. New verification/CLI records enter an explicitly scoped V5 checkpoint.
+- One empty nonserving Free-plan Neon staging project was created under the verified organization: `lively-shadow-52629967`, branch `br-falling-resonance-b87qm6iz`, database `mega_xo_v5_staging`, PostgreSQL16 in `aws-us-east-1`, fixed0.25CU, six-hour history. Credentials remain0600 outside Git; a direct certificate-verified connection established actual managed-role/version metadata. No paid upgrade, production/DNS/store/signing/legal/account change, or V4.1/main ref change. Supplied originals and unrelated local skills remain preserved.
 
 ## Next executable gates
 
-Begin P02: live Neon capability verification (V5-02-01), normalized schema implementation from stored design `local://v5-p02-schema-design.md`, checksummed migrations/role grants, connection guards, then the nonserving isolated-staging deploy. P03 has a complete extraction design (`local://v5-p03-extraction-design.md`) but no import runs until its gates. Vercel authentication remains a concrete owner-side prerequisite before P11.
+Integrate P02 schema/migration, PG guard, runtime-login provisioning and disposable-CI slices, then prove clean creation, permissions, direct/pooled TLS transactions and target isolation on the actual staging target. Provider capability/RTT investigation remains active. Source-only P03 snapshot reader and representative synthetic fixtures are preparing independently; import acceptance waits for G02, and distributed runtime development waits for G03. Recovered complete P03/P05/P06 design inputs are under `docs/v5/designs/`.
 
-Actual later prerequisites: Vercel CLI authentication missing; GitHub package metadata403 requires read:packages; UptimeRobot numeric IDs/access unresolved; Neon effective quotas/always-on/restore capability must be verified for P02. Native tools execute, but zero physical devices connected and zero valid signing identities; cached Apple team is not membership/approval. T9 is exFAT archival-only, not a native cache root. Continue reachable foundations; obtain only specific mandatory approvals/access when needed.
+Actual later prerequisites: Vercel CLI authentication missing; GitHub package metadata403 requires read:packages; UptimeRobot numeric IDs/access unresolved. Neon Free fixes idle suspension and supplies six-hour history in the new staging target; production always-on/recovery requirements need an approved supported plan before production enablement, not a silent keepalive or assumed Free guarantee. Docker's reported vmnetd/admin-dialog failure is bypassed locally with isolated Homebrew PG16; no agent answers the security dialog. Native zero connected physical devices/valid signing identities remain factual prerequisites. T9 remains exFAT archival-only. Continue reachable foundations and request only mandatory specific approvals/access.
 
 ## Restart protocol
 

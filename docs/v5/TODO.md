@@ -38,9 +38,9 @@ Milestone: V5.0; status: `COMPLETE`; prerequisites: P00. [Phase contract](../../
 Milestone: V5.0; status: `IN_PROGRESS`; prerequisites: P01. [Phase contract](../../Mega-XO-V5-Implementation-Pack/phases/02-neon-and-schema.md).
 
 - [ ] **V5-02-01 — Resolve provider inventory and region** (`IN_PROGRESS`).
-- [ ] **V5-02-02 — Design normalized authority schema** (`PLANNED`).
-- [ ] **V5-02-03 — Implement migrations and role grants** (`PLANNED`).
-- [ ] **V5-02-04 — Implement connection and environment guards** (`PLANNED`).
+- [ ] **V5-02-02 — Design normalized authority schema** (`IN_PROGRESS`).
+- [ ] **V5-02-03 — Implement migrations and role grants** (`IN_PROGRESS`).
+- [ ] **V5-02-04 — Implement connection and environment guards** (`IN_PROGRESS`).
 - [ ] **V5-02-05 — Deploy nonserving schema to isolated staging** (`PLANNED`).
 
 **Exit gate:** G02: schema builds from zero solely through migrations; environments/roles are isolated; actual plan, TLS, region, pool and recovery settings are evidenced.

@@ -1,0 +1,77 @@
+{
+  "schema_version": 1,
+  "task_id": "V5-02-01",
+  "case_ids": [
+    "A04",
+    "A05"
+  ],
+  "status": "IN_PROGRESS",
+  "observed_at_utc": "2026-10-08T00:43:09.913420+00:00",
+  "source_sha": "7f6b41f79a53a67990d9052277f6466ffd65c381",
+  "commands": [
+    {
+      "action": "projects list",
+      "org": "org-wandering-sea-53820697",
+      "result": "zero objects before create"
+    },
+    {
+      "action": "projects create",
+      "name": "mega-xo-v5-staging",
+      "region": "aws-us-east-1",
+      "pg_version": 16,
+      "database": "mega_xo_v5_staging",
+      "role": "migration_owner",
+      "cu": 0.25,
+      "secrets_in_output": false
+    },
+    {
+      "action": "direct TLS catalog probe",
+      "result": {
+        "ok": true,
+        "tls_verification": true,
+        "database": "mega_xo_v5_staging",
+        "principal": "migration_owner",
+        "server_version": "16.15 (9e87aff)",
+        "neon_admin": true,
+        "superuser": false,
+        "createrole": true,
+        "ssl": false,
+        "migration_ledger": null
+      }
+    }
+  ],
+  "target_ids": {
+    "org": "org-wandering-sea-53820697",
+    "project": "lively-shadow-52629967",
+    "branch": "br-falling-resonance-b87qm6iz",
+    "endpoint": "ep-red-waterfall-b880jir8",
+    "host": "ep-red-waterfall-b880jir8.c-14.us-east-1.aws.neon.tech",
+    "database": "mega_xo_v5_staging"
+  },
+  "result": {
+    "executed": true,
+    "production_changed": false,
+    "nonserving": true,
+    "plan": "free",
+    "history_retention_seconds": 21600,
+    "endpoint_settings": {
+      "minCu": 0.25,
+      "maxCu": 0.25,
+      "suspendTimeoutSeconds": 0
+    },
+    "note": "Neon default suspend setting is not always-on; backend pg_stat_ssl false is not client TLS measurement. Parent live client-transport assertion and schema deployment still pending."
+  },
+  "secret_references": {
+    "migration_credentials": "/Users/oculus/Downloads/Mega-XO-private-evidence/v5-neon-staging/credentials.json",
+    "root_ca": "/Users/oculus/Downloads/Mega-XO-private-evidence/v5-neon-staging/ca.pem"
+  },
+  "not_claimed": [
+    "G02 passed",
+    "schema deployed",
+    "production always-on",
+    "runtime roles provisioned",
+    "measured regional RTT",
+    "pooled runtime behavior",
+    "provider/device/store acceptance"
+  ]
+}

@@ -71,3 +71,16 @@ test('native host version IDs are explicit nonproduction placeholders and offlin
   assert.doesNotMatch(read('native/android/app/src/main/java/online/megaxo/prototype/MegaXOActivity.kt'), /https:\/\/megaxo\.online/);
   assert.doesNotMatch(read('native/ios/MegaXO/MegaXOApplication.swift'), /https:\/\/megaxo\.online/);
 });
+
+test('device refresh credentials use nonexportable Android keys and ThisDeviceOnly iOS Keychain items', () => {
+  const android = read('native/android/app/src/main/java/online/megaxo/prototype/MegaSecureSessionVault.kt');
+  const ios = read('native/ios/MegaXO/MegaNativeSecretVault.swift');
+  assert.match(android, /AndroidKeyStore/);
+  assert.match(android, /AES\/GCM\/NoPadding/);
+  assert.match(android, /store\.deleteEntry/);
+  assert.match(ios, /kSecAttrAccessibleWhenUnlockedThisDeviceOnly/);
+  assert.match(ios, /kSecAttrSynchronizable/);
+  assert.match(ios, /clearForFreshInstallIfRequired/);
+  assert.doesNotMatch(android, /addJavascriptInterface\s*\(/);
+  assert.doesNotMatch(ios, /addScriptMessageHandler/);
+});

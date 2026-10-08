@@ -20,6 +20,10 @@ final class MegaXOSceneDelegate: UIResponder, UIWindowSceneDelegate {
                options connectionOptions: UIScene.ConnectionOptions) {
         guard let scene = scene as? UIWindowScene else { return }
         let window = UIWindow(windowScene: scene)
+        // Fresh reinstall must not resurrect an old Keychain refresh credential.
+        // Not an active login path: credentials are issued only by future P05 APIs.
+        do { try MegaNativeSecretVault().clearForFreshInstallIfRequired() }
+        catch { assertionFailure("Native credential storage unavailable") }
         window.rootViewController = MegaXOGameController()
         window.makeKeyAndVisible()
         self.window = window

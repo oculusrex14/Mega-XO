@@ -41,6 +41,12 @@ const SUITES = Object.freeze([
     cases: Object.freeze(['A09','A10','A11','A12'])
   }),
   Object.freeze({
+    id: 'redis-loss-preserves-postgres-authority',
+    file: 'tests/v5-p06-ephemera.test.js',
+    areas: Object.freeze(['redis-namespace-isolation','total-ephemera-loss','wallet-and-rating-integrity','ticket-persistence']),
+    cases: Object.freeze(['A14','A15'])
+  }),
+  Object.freeze({
     id: 'pg-session-actor-coherence',
     file: 'tests/v5-p05-integration.test.js',
     areas: Object.freeze(['native-browser-actor', 'revocation', 'refresh']),
@@ -64,6 +70,18 @@ function boundedLoopbackEnvironment(env) {
   for (const key of ['DATABASE_URL', 'NEON_DATABASE_URL', 'PRODUCTION_DATABASE_URL',
     'VERCEL_TOKEN', 'SMTP_PASSWORD', 'GOOGLE_APPLICATION_CREDENTIALS']) {
     if (env[key]) refuse('provider or production environment variable is prohibited');
+  }
+  if(env.V5_REDIS_REQUIRED!=='1' || env.V5_REDIS_DISPOSABLE!=='1' ||
+      typeof env.REDIS_URL!=='string') {
+    refuse('explicit owned synthetic Redis fixture required');
+  }
+  let ephemeral;
+  try {ephemeral=new URL(env.REDIS_URL);} catch {refuse('invalid isolated Redis URL');}
+  if(ephemeral.protocol!=='redis:' ||
+     !['127.0.0.1','localhost','[::1]'].includes(ephemeral.hostname) ||
+     !ephemeral.port || ephemeral.username || ephemeral.password ||
+     ephemeral.search || ephemeral.hash || ephemeral.pathname!=='/') {
+    refuse('Redis must be an unauthenticated disposable loopback service');
   }
   return address;
 }
@@ -94,7 +112,8 @@ function run({root=process.cwd(),env=process.env,spawn=spawnSync}={}) {
         env:{
           PATH:env.PATH,HOME:env.HOME,CI:'true',NODE_ENV:'test',
           V5_PG_URL:env.V5_PG_URL,V5_PG_DISPOSABLE:'1',V5_PG_REQUIRED:'1',
-          V5_TARGET:'test',V5_MIGRATE_ALLOW_INSECURE_LOOPBACK:'1'
+          V5_TARGET:'test',V5_MIGRATE_ALLOW_INSECURE_LOOPBACK:'1',
+          REDIS_URL:env.REDIS_URL,V5_REDIS_REQUIRED:'1',V5_REDIS_DISPOSABLE:'1'
         }
       });
     if(result.status!==0 || result.signal || result.error) {
@@ -113,6 +132,7 @@ function run({root=process.cwd(),env=process.env,spawn=spawnSync}={}) {
     format:'mega-v5-p18-disposable-service-evidence/v1',
     executionLevel:'REAL_POSTGRESQL_DISPOSABLE_SYNTHETIC',
     serviceEndpointClass:'OWNED_LOOPBACK_ONLY',
+    ephemeralEndpointClass:'OWNED_LOOPBACK_ONLY',
     providerEffects:'NOT_CONNECTED',
     g18Accepted:false,
     liveStagingVerified:false,

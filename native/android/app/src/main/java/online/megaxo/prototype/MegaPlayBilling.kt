@@ -90,10 +90,12 @@ internal class MegaPlayBilling(
         if (offer == null) { complete(Result.failure(IllegalStateException("STORE_UNAVAILABLE"))); return }
         activeAccount = obfuscatedAccountId
         pending = id to complete
-        val item = BillingFlowParams.ProductDetailsParams.newBuilder()
+        val itemBuilder = BillingFlowParams.ProductDetailsParams.newBuilder()
             .setProductDetails(product)
-            .setOfferToken(offer.offerToken)
-            .build()
+        // Billing 9 may return a null token for a basic one-time offer.
+        // Optional offer tokens must not force invalid builder input.
+        offer.offerToken?.let { itemBuilder.setOfferToken(it) }
+        val item = itemBuilder.build()
         val params = BillingFlowParams.newBuilder()
             .setProductDetailsParamsList(listOf(item))
             .setObfuscatedAccountId(obfuscatedAccountId)

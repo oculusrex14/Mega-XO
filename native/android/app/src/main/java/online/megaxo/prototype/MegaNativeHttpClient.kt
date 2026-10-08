@@ -46,6 +46,7 @@ internal class MegaNativeHttpClient(apiOrigin: String?) {
         }
         if (method !in listOf("GET", "POST") ||
             !path.startsWith("/api/") || path.length > 512 ||
+            path.any { it.code !in 33..126 || it == '\\' } ||
             listOf("..", "//", "%", "#", "?").any { path.contains(it) } ||
             prefixes.none { path.startsWith(it) } ||
             (method == "GET" && body != null) ||

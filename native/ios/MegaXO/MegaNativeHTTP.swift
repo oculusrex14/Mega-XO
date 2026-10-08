@@ -7,6 +7,7 @@ actor MegaNativeHTTP {
     enum RequestError: Error {
         case unavailable, invalidPath, invalidMethod, invalidBody
         case tooLarge, responseInvalid, redirected, unauthorized
+        case httpFailure(Int)
     }
 
     private let origin: URL?
@@ -82,9 +83,17 @@ actor MegaNativeHTTP {
         let (data, response) = try await session.data(for: request)
         guard data.count <= 524288 else { throw RequestError.tooLarge }
         guard let http = response as? HTTPURLResponse,
-              (200...599).contains(http.statusCode),
-              http.mimeType == "application/json" else { throw RequestError.responseInvalid }
+              http.url?.scheme == "https",
+              http.url?.host == origin.host,
+              http.url?.port == origin.port else { throw RequestError.responseInvalid }
+        // NoRedirectDelegate opts out of following redirects. A 30x must not
+        // be mistaken for a successful account/game command.
+        if (300...399).contains(http.statusCode) { throw RequestError.redirected }
         if http.statusCode == 401 { throw RequestError.unauthorized }
+        guard http.mimeType == "application/json" else { throw RequestError.responseInvalid }
+        guard (200...299).contains(http.statusCode) else {
+            throw RequestError.httpFailure(http.statusCode)
+        }
         return data
     }
 }

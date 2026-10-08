@@ -73,6 +73,9 @@ module.exports = {
  withIdempotentTransaction: pool.withIdempotentTransaction,
  currentPgScope: pool.currentPgScope,
  requirePgScope: pool.requirePgScope,
+ // P04 unit of work + repository set (aggregate persistence over the normalized schema)
+ createPgUnitOfWork: require('./uow').createPgUnitOfWork,
+ pgRepositoriesFor: require('./repositories').pgRepositoriesFor,
  poolBudgetSnapshot: pool.poolBudgetSnapshot,
  BOUNDS: pool.BOUNDS,
  DEFAULTS: pool.DEFAULTS,

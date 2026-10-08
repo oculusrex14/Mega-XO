@@ -326,3 +326,13 @@ test('iOS offline launch does not assert/crash if Keychain is unavailable', () =
   assert.match(host, /offline play continues/);
   assert.doesNotMatch(host, /assertionFailure\("Native credential storage unavailable"\)/);
 });
+
+test('iOS simulator smoke rejects SpringBoard screenshots after app launch', () => {
+  const workflow = read('.github/workflows/v5-native.yml');
+  const verifier = read('scripts/v5/verify-ios-launch.swift');
+  assert.match(workflow, /home-before-launch\.png/);
+  assert.match(workflow, /verify-ios-launch\.swift/);
+  assert.match(verifier, /NSBitmapImageRep/);
+  assert.match(verifier, /fraction < 0\.15/);
+  assert.match(verifier, /SpringBoard/);
+});

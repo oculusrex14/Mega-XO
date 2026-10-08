@@ -141,11 +141,18 @@ jobs:
           xcrun simctl boot "$udid"
           xcrun simctl bootstatus "$udid" -b
           xcrun simctl install "$udid" "$app"
-          xcrun simctl launch "$udid" online.megaxo.prototype
-          sleep 6
           mkdir -p "$RUNNER_TEMP/mega-ios-smoke"
+          # Capture the home screen first. A mere nonempty screenshot would
+          # falsely PASS if Mega XO crashes and returns to SpringBoard.
+          sleep 2
+          xcrun simctl io "$udid" screenshot "$RUNNER_TEMP/mega-ios-smoke/home-before-launch.png"
+          xcrun simctl launch "$udid" online.megaxo.prototype
+          sleep 7
           xcrun simctl io "$udid" screenshot "$RUNNER_TEMP/mega-ios-smoke/first-launch.png"
           test -s "$RUNNER_TEMP/mega-ios-smoke/first-launch.png"
+          swift scripts/v5/verify-ios-launch.swift \
+            "$RUNNER_TEMP/mega-ios-smoke/home-before-launch.png" \
+            "$RUNNER_TEMP/mega-ios-smoke/first-launch.png"
           xcrun simctl shutdown "$udid"
       - uses: actions/upload-artifact@v4
         if: always()

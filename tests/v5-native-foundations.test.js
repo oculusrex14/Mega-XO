@@ -248,3 +248,23 @@ test('Android opt-in local alerts require verified main-frame HTTPS app-assets o
   assert.match(manifest, /android\.permission\.POST_NOTIFICATIONS/);
   assert.doesNotMatch(service, /FirebaseMessaging|FCM_TOKEN|registerForRemoteNotifications/);
 });
+
+test('native manifest parity verifier rejects cross-platform drift and forbidden payload', t => {
+  const { verify } = require('../scripts/v5/verify-native-bundle-parity.js');
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'mega-bundle-parity-'));
+  t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
+  const manifest = { bundle_hash: 'a'.repeat(64), files: [
+    { path: 'bundle-index.html', sha256: 'b'.repeat(64), bytes: 14 },
+    { path: 'src/app.js', sha256: 'c'.repeat(64), bytes: 21 }
+  ] };
+  const left = path.join(dir, 'android.json'), right = path.join(dir, 'ios.json');
+  fs.writeFileSync(left, JSON.stringify(manifest));
+  fs.writeFileSync(right, JSON.stringify(manifest));
+  assert.equal(verify(left, right).fileCount, 2);
+  fs.writeFileSync(right, JSON.stringify({...manifest, bundle_hash: 'd'.repeat(64)}));
+  assert.throws(() => verify(left, right), /NATIVE_BUNDLE_PARITY/);
+  fs.writeFileSync(right, JSON.stringify({...manifest, files: [
+    ...manifest.files, { path: 'src/authority.js', sha256: 'e'.repeat(64), bytes: 20 }
+  ]}));
+  assert.throws(() => verify(left, right), /forbidden client file/);
+});

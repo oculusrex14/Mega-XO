@@ -74,7 +74,15 @@ jobs:
             echo "Offline P20 host unexpectedly has network or advertising ID permissions" >&2
             exit 1
           fi
+          unzip -p "$apk" 'assets/mega/client-bundle.manifest.json' > "$RUNNER_TEMP/mega-native-android-manifest.json"
+          test -s "$RUNNER_TEMP/mega-native-android-manifest.json"
           sha256sum "$apk"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mega-xo-android-bundle-manifest
+          path: ${{ runner.temp }}/mega-native-android-manifest.json
+          retention-days: 7
+          if-no-files-found: error
       - uses: actions/upload-artifact@v4
         with:
           name: mega-xo-android-debug
@@ -108,7 +116,14 @@ jobs:
           test -s "$app/MegaClient/bundle-index.html"
           test -s "$app/MegaClient/client-bundle.manifest.json"
           test ! -e "$app/MegaClient/src/authority.js"
-          shasum -a 256 "$app/MegaClient/client-bundle.manifest.json"
+          cp "$app/MegaClient/client-bundle.manifest.json" "$RUNNER_TEMP/mega-native-ios-manifest.json"
+          shasum -a 256 "$RUNNER_TEMP/mega-native-ios-manifest.json"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mega-xo-ios-bundle-manifest
+          path: ${{ runner.temp }}/mega-native-ios-manifest.json
+          retention-days: 7
+          if-no-files-found: error
       - name: Boot iOS Simulator and capture offline first-launch screenshot
         shell: bash
         run: |
@@ -139,6 +154,30 @@ jobs:
           path: ${{ runner.temp }}/mega-ios-smoke/
           retention-days: 7
           if-no-files-found: warn
+
+  bundled-client-parity:
+    name: Verify exact Android/iOS client bytes
+    needs: [source-and-android, ios-simulator]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '24'
+      - uses: actions/download-artifact@v4
+        with:
+          name: mega-xo-android-bundle-manifest
+          path: ${{ runner.temp }}/mega-bundle-parity
+      - uses: actions/download-artifact@v4
+        with:
+          name: mega-xo-ios-bundle-manifest
+          path: ${{ runner.temp }}/mega-bundle-parity
+      - name: Validate byte-identical manifest and asset revision
+        run: |
+          node scripts/v5/verify-native-bundle-parity.js \
+            "$RUNNER_TEMP/mega-bundle-parity/mega-native-android-manifest.json" \
+            "$RUNNER_TEMP/mega-bundle-parity/mega-native-ios-manifest.json"
 
   android-emulator-smoke:
     name: Android emulator offline first-launch

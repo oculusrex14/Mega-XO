@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at_utc": "2026-10-08T10:19:34.288+00:00",
+  "updated_at_utc": "2026-10-08T10:23:12.751+00:00",
   "goal": "Deliver the V5 hybrid platform and real Android/iOS applications with shared permanent actor/assets, preserved approved game and retained browser compatibility; do not build the new website/browser product.",
   "source": {
     "goal": "AGENT-GOAL.md",
@@ -47,7 +47,7 @@
   },
   "current": {
     "phase": "P03",
-    "active_task": "V5-03-01",
+    "active_task": "V5-03-02",
     "next_action": "Complete P02 source-coverage/schema review; fix observed migration harness failures and required guard-suite skip bug; prove guarded Neon direct/pooled transaction pinning after actual timeout drift. Native 26-migration smoke and staging migration/provisioning already executed. Require zero-skip database CI and G02 before import acceptance; distributed runtime remains gated on G03.",
     "checkout_branch_at_setup": "V4.1",
     "integration_branch": "V5-platform",
@@ -70,7 +70,8 @@
       "V5-02-02",
       "V5-02-03",
       "V5-02-04",
-      "V5-02-05"
+      "V5-02-05",
+      "V5-03-01"
     ],
     "passed_phase_gates": [
       {
@@ -315,7 +316,7 @@
           "V5-03-05",
           "V5-03-06"
         ],
-        "status": "PLANNED"
+        "status": "IN_PROGRESS"
       },
       {
         "id": "P04",
@@ -1199,7 +1200,7 @@
         "verification": "Restored source passes integrity checks and no table/key is unclassified.",
         "id": "V5-03-01",
         "phase": "P03",
-        "status": "PLANNED",
+        "status": "COMPLETE",
         "depends_on_tasks": [],
         "requires_phase_gates": [
           "P02"
@@ -3263,6 +3264,25 @@
           "to": "COMPLETE",
           "evidence": "docs/v5/evidence/phase02-schema-and-guards.json",
           "note": "Nonserving schema deployed and verified on the isolated staging target; the CI harness declares no provider or production credential at all and refuses production-patterned targets, and cleanup is bounded to tracked v5_test_/v5_smoke_ databases with the control database never mutated.",
+          "cleared_remaining": []
+        }
+      ]
+    },
+    "V5-03-01": {
+      "status": "COMPLETE",
+      "evidence_refs": [
+        "docs/v5/evidence/phase03-source-capture.json"
+      ],
+      "completed_portions": [],
+      "remaining": [],
+      "review_notes": "WAL-consistent snapshot taken from an independently retrieved copy of the live V4.1.2 production database after verifying that copy against its own manifest and the backup container's last-success record. Source provably unchanged; snapshot side-file-free at 0600; quick_check ok with zero FK violations; 35 tables/14 indexes/2 triggers inventory drift-free; 37,409 fields classified with 0 unclassified; second capture byte-identical. The snapshot holds the real production shape (2 accounts, identities, credentials, saves, 48 economy + 7 party commands, 1 party room, outbox jobs, support events), not an empty fixture.",
+      "transitions": [
+        {
+          "at_utc": "2026-10-08T10:23:12.750+00:00",
+          "from": "PLANNED",
+          "to": "COMPLETE",
+          "evidence": "docs/v5/evidence/phase03-source-capture.json",
+          "note": "WAL-consistent snapshot taken from an independently retrieved copy of the live V4.1.2 production database after verifying that copy against its own manifest and the backup container's last-success record. Source provably unchanged; snapshot side-file-free at 0600; quick_check ok with zero FK violations; 35 tables/14 indexes/2 triggers inventory drift-free; 37,409 fields classified with 0 unclassified; second capture byte-identical. The snapshot holds the real production shape (2 accounts, identities, credentials, saves, 48 economy + 7 party commands, 1 party room, outbox jobs, support events), not an empty fixture.",
           "cleared_remaining": []
         }
       ]

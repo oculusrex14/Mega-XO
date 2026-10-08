@@ -1,0 +1,100 @@
+{
+  "schema_version": 1,
+  "status": "EXECUTED",
+  "phase": "P03",
+  "task_ids": ["V5-03-01"],
+  "case_ids": ["A06"],
+  "observed_at_utc": "2026-10-08T10:30:00Z",
+  "source_sha": "cff248ef2d931339fd1ad171d95ea02034176e51",
+  "environment": "Owner Mac (macOS 25.6.0 arm64, node 26.8.2) reading an offline copy of the live V4.1.2 production database plus the previously retrieved immutable f884e43b artifact. Both inputs are read-only; the live production database and the running service were not modified, opened for write, or stopped.",
+  "inputs": {
+    "live_production_backup": {
+      "snapshot_id": "d551d798",
+      "retrieved_from": "the production backup container's own verified backup artefact (byte length and SHA checked against its adjacent manifest and the container's last-success record before use)",
+      "bytes": 1110016,
+      "sha256": "43f4c057ce5aca47206c5f3dd583fa75732440e8ad41e55ca3612ac30e886b83",
+      "source_schema_head": 8,
+      "manifest_created_at_unix_ms": 1791454195733,
+      "backup_completed_at_unix_ms": 1791454203642
+    },
+    "immutable_historical_artifact": {
+      "snapshot_id": "f884e43b",
+      "bytes": 471040,
+      "sha256": "d2f8461b3c03a47a56512f91b93875ba4114d0815985a26628c0e75b8efd253a",
+      "source_schema_head": 8
+    }
+  },
+  "commands": [
+    {
+      "action": "Retrieve the live production backup artefact and verify it against its own manifest and last-success record",
+      "exit_code": 0,
+      "result": {"computed_sha256_matches_manifest": true, "computed_sha256_matches_last_success": true, "bytes_match_manifest": true}
+    },
+    {
+      "action": "Capture a WAL-consistent snapshot from the live backup artefact (fixed clock 1791454203642, release f1e5577d)",
+      "command": "node tools/v5-migration/cli.js capture --source <private live backup> --snapshot <private captured.sqlite> --capture-clock 1791454203642 --release-sha f1e5577d42809fc3da889ba76b87ca6c87e68575 --record <private record>",
+      "exit_code": 0,
+      "result": {
+        "sourceUnchanged": true,
+        "snapshotMode": "0600",
+        "snapshotBytes": 1110016,
+        "tables": 35,
+        "indexes": 14,
+        "triggers": 2,
+        "views": 0,
+        "rowsTotal": 5235,
+        "schemaHead": 8,
+        "unclassifiedCount": 0
+      }
+    },
+    {
+      "action": "Extract the strict raw-plus-parsed model with a fixed clock",
+      "command": "node tools/v5-migration/cli.js extract --snapshot <private captured.sqlite> --out <private model.json> --clock 1791454203642 --release-sha f1e5577d42809fc3da889ba76b87ca6c87e68575",
+      "exit_code": 0,
+      "result": {"ok": true, "tables": 35, "rowsTotal": 5235, "rooms": 1, "fieldsClassified": 37409, "unclassifiedCount": 0, "normalizationCount": 2}
+    },
+    {
+      "action": "Repeat capture from the same immutable input to prove snapshot determinism",
+      "exit_code": 0,
+      "result": {"secondSnapshotSha256EqualsFirst": true, "sourceSha256UnchangedAfterBothCaptures": true}
+    }
+  ],
+  "result": {
+    "executed": true,
+    "exit_code": 0,
+    "assertions": [
+      "The retrieved live production backup matched its own manifest SHA-256 and byte length and the container's recorded last-success SHA-256 before any use.",
+      "The capture recorded the source unchanged across the whole operation (identical before/after SHA-256, main file not modified during capture).",
+      "The produced snapshot carries no WAL side files, is 0600 and opens in journal_mode=delete.",
+      "Restored-source integrity checks pass: PRAGMA quick_check ok, zero foreign-key violations, page count and freelist recorded, application/data/user versions recorded.",
+      "Schema inventory is complete and drift-free: 35 tables, 14 indexes, 2 triggers, no missing or extra objects, schema head 8.",
+      "Every table and every field is classified: 37,409 fields classified, 0 unclassified, 0 accepted-unknown; source fingerprint b202ff21... binds the reader version, fixed clock, file hash, schema head and all eight state roots / 35 table roots.",
+      "The live source contains the real V4 shape rather than the empty fixture: 2 accounts with wallets/ratings/history, 2 linked identities, 2 email credentials, 2 profile saves, 2 social command outcomes, 48 economy commands, 7 party commands, 1 party room, 20 sessions, 1 presence row, 3 mail-budget buckets, 2 sent outbox jobs, 5,000 support events and the 8-row source migration ledger.",
+      "A second capture from the unchanged input produced a byte-identical snapshot, so the capture step is deterministic."
+    ],
+    "unexplained_differences": []
+  },
+  "inventory_summary": {
+    "tables": 35,
+    "indexes": 14,
+    "triggers": 2,
+    "state_roots": 8,
+    "state_root_shapes": {"accounts": 2, "matches": 2, "receipts": 0, "snapshots": 2, "weeklyPaid": 0, "journal": 4, "burned": 2, "leagueWeek": "week-string"},
+    "non_empty_tables": 18,
+    "empty_tables": 17,
+    "notes": "Several target families are legitimately empty in the live source (tournaments, store bindings/revocations/finalize/notifications, ad context, tickets, reports, privacy requests, audit, deletion receipts, email challenges, sign-in attempts). Empty is a recorded source fact, not an absence of schema coverage."
+  },
+  "artifacts": [
+    "Restricted raw snapshots, models and capture records stay outside Git under the owner's private evidence directory at mode 0600.",
+    "docs/v5/evidence/phase03-source-copy.json records the earlier historical-artifact capture and its re-verification."
+  ],
+  "restricted_evidence_location": "/Users/oculus/Downloads/Mega-XO-private-evidence/p03-live-production/ (live-production snapshot, captured.sqlite, captured-again.sqlite, model.json, capture records; 0600, outside Git)",
+  "sanitized_summary": "A WAL-consistent snapshot was taken from an independently retrieved copy of the live V4.1.2 production database after that copy's hash and length were verified against its own manifest and the backup container's last-success record. The source was provably unmodified by the capture; the snapshot is side-file-free at 0600; PRAGMA quick_check passes with zero foreign-key violations; the schema inventory shows 35 tables, 14 indexes, 2 triggers and no drift; and all 37,409 classified fields are accounted for with zero unclassified entries. The snapshot contains the real production shape (accounts, identites, credentials, saves, social/economy commands, a party room, outbox jobs and support events), so later import proofs run against representative data rather than an empty fixture.",
+  "not_claimed": [
+    "G03 or any P03 task acceptance beyond the capture step",
+    "Import, projection, reconciliation or resume behaviour (not yet implemented)",
+    "Production writes, production restore or service interruption",
+    "Provider, device or store acceptance"
+  ],
+  "review_notes": "The live database was never opened by the agent: only an offline byte copy retrieved through the existing backup container, with the copy verified against its manifest before use. No credential, connection string, actor id, email address, password material or raw player row is reproduced in this record. The production service, its data directory and the running containers were untouched."
+}

@@ -107,7 +107,8 @@ test('real Google and Apple provider helpers are compiled, not stubbed or export
 
 test('offline Android host has OS-level network-denial until native transport is integrated', () => {
   const manifest = read('native/android/app/src/main/AndroidManifest.xml');
-  assert.doesNotMatch(manifest, /<uses-permission[^>]+android\.permission\.INTERNET/);
+  assert.match(manifest, /android\.permission\.INTERNET" tools:node="remove"/);
+  assert.match(manifest, /com\.google\.android\.gms\.permission\.AD_ID" tools:node="remove"/);
 });
 
 test('iOS blocks HTTP(S) subresources before loading signed local HTML', () => {

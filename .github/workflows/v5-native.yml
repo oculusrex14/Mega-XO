@@ -67,6 +67,13 @@ jobs:
           test -s "$apk"
           unzip -l "$apk" | grep -F 'assets/mega/bundle-index.html'
           unzip -l "$apk" | grep -F 'assets/mega/client-bundle.manifest.json'
+          # AAR manifests can silently re-add INTERNET/AD_ID even when our
+          # app manifest omits them. Assert effective installed APK permissions.
+          aapt="$ANDROID_HOME/build-tools/35.0.0/aapt"
+          if "$aapt" dump permissions "$apk" | grep -E 'android.permission.INTERNET|com.google.android.gms.permission.AD_ID'; then
+            echo "Offline P20 host unexpectedly has network or advertising ID permissions" >&2
+            exit 1
+          fi
           sha256sum "$apk"
       - uses: actions/upload-artifact@v4
         with:

@@ -319,3 +319,10 @@ test('StoreKit finish safely tolerates already-finalized delivery without a seco
   assert.doesNotMatch(code, /throw StoreError\.notFound/);
   assert.doesNotMatch(code, /mintCrowns|grantCredits/);
 });
+
+test('iOS offline launch does not assert/crash if Keychain is unavailable', () => {
+  const host = read('native/ios/MegaXO/MegaXOApplication.swift');
+  assert.match(host, /clearForFreshInstallIfRequired/);
+  assert.match(host, /offline play continues/);
+  assert.doesNotMatch(host, /assertionFailure\("Native credential storage unavailable"\)/);
+});

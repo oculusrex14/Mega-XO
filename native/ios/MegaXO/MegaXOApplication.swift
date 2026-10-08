@@ -23,7 +23,13 @@ final class MegaXOSceneDelegate: UIResponder, UIWindowSceneDelegate {
         // Fresh reinstall must not resurrect an old Keychain refresh credential.
         // Not an active login path: credentials are issued only by future P05 APIs.
         do { try MegaNativeSecretVault().clearForFreshInstallIfRequired() }
-        catch { assertionFailure("Native credential storage unavailable") }
+        catch {
+            // A simulator, protected-data lock or temporarily unavailable
+            // Keychain must not crash the offline game. Native sign-in remains
+            // unavailable until a verified P05 exchange can use secure storage.
+            // Never log raw credentials or the Keychain error's private context.
+            NSLog("Mega XO: native credential storage unavailable; offline play continues")
+        }
         window.rootViewController = MegaXOGameController()
         window.makeKeyAndVisible()
         self.window = window

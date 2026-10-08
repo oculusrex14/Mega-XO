@@ -77,3 +77,15 @@ does NOT silently rewrite P00 hashes, revert agent code, or call it approved.
 The later owner G18 visual/gameplay parity decision must review this as a
 concrete behavior-equivalence case with actual tests/screenshots.
 --source-freeze remains the strict command that fails when bytes diverge.
+
+## P18 integrated staging topology intake
+
+When the agent provides an actual isolated Vercel/Redis/Core/worker staging
+inventory, scripts/v5/p18/staging-topology.js --file .artifacts/name.json
+validates it against the committed exact staging Neon IDs, the V5 player
+audiences, an unassigned staging-only Vercel deployment and sandboxed
+email/store/ad callbacks. Any production resource overlap or embedded
+credential is refused. The validator has NO network side effects and never
+marks the remote inventory actually observed. The owner must subsequently
+verify provider-side IAM, callback routing, Tailscale/private-network
+isolation and outbound delivery controls from real staging observations.

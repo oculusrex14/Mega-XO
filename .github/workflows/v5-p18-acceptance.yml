@@ -32,6 +32,7 @@ jobs:
           node --check scripts/v5/p18/disposable-service-journeys.js
           node --check scripts/v5/p18/cutover-state-model.js
           node --check scripts/v5/p18/visual-baseline.js
+          node --check scripts/v5/p18/staging-topology.js
           node --test tests/v5-p18-*.test.js
       - name: Emit nonauthoritative preparation evidence
         run: |

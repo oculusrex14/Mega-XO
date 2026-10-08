@@ -89,3 +89,13 @@ credential is refused. The validator has NO network side effects and never
 marks the remote inventory actually observed. The owner must subsequently
 verify provider-side IAM, callback routing, Tailscale/private-network
 isolation and outbound delivery controls from real staging observations.
+
+## Executed synthetic data-transfer and economy parity coverage
+
+The owned-loopback PostgreSQL job now executes five complete existing real
+implementation suites instead of two: immutable SQLite snapshot import and
+restart/replay, per-actor PostgreSQL reconciliation including swapped-wallet
+negative cases, V4 SQLite-vs-V5 PostgreSQL game/economy differential, full P04
+account/economy services, and P05 cross-client session/revocation composition.
+Every suite must report passing TAP assertions and zero failures/skips.
+This does NOT exercise provider-hosted staging or production authority.

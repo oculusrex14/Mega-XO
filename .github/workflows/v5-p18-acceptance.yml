@@ -65,9 +65,9 @@ jobs:
           retention-days: 7
           if-no-files-found: error
   p18-disposable-services:
-    name: P18 disposable PostgreSQL account/economy/actor journeys
+    name: P18 disposable import/reconciliation/economy/identity journeys
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
     env:
       V5_PG_URL: postgres://postgres@127.0.0.1:5432/postgres
       V5_PG_DISPOSABLE: '1'
@@ -98,7 +98,7 @@ jobs:
           node-version: '24'
       - name: Install locked PostgreSQL dependencies
         run: npm ci --ignore-scripts
-      - name: Execute real PostgreSQL-backed account/economy/identity fixture suites
+      - name: Execute real V4 SQLite import, PG reconciliation, economic parity and actor journeys
         run: |
           set -euo pipefail
           mkdir -p .artifacts
@@ -108,9 +108,12 @@ jobs:
           const result=JSON.parse(fs.readFileSync('.artifacts/p18-disposable-services.json','utf8'));
           if(result.g18Accepted!==false || result.liveStagingVerified!==false ||
              result.serviceEndpointClass!=='OWNED_LOOPBACK_ONLY') throw Error('disposable result misrepresented as G18');
-          if(result.suites.length!==2 || result.suites.some(s=>s.assertionCounters.pass<1 ||
+          const {SUITES}=require('./scripts/v5/p18/disposable-service-journeys.js');
+          if(result.suites.length!==SUITES.length ||
+             result.suites.some((s,i)=>s.suiteId!==SUITES[i].id) ||
+             result.suites.some(s=>s.assertionCounters.pass<1 ||
             s.assertionCounters.fail!==0 || s.assertionCounters.skipped!==0)) throw Error('SQL suite not executed cleanly');
-          console.log('P18 disposable SQL service journeys executed; live V5 staging NOT tested');
+          console.log('P18 '+result.suites.length+' real SQL-backed suites passed; integrated staging NOT tested');
           NODE
       - name: Save sanitized disposable PostgreSQL counters
         if: always()

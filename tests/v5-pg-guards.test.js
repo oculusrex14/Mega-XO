@@ -369,7 +369,10 @@ test('withIdempotentTransaction input guards share the packages/db/context.js er
 
 const IMAGE = 'postgres:16';
 const REQUIRED = process.env.V5_PG_REQUIRED === '1';
-const BIN_DIRS = ['/opt/homebrew/opt/postgresql@16/bin', '/usr/local/opt/postgresql@16/bin', '/opt/homebrew/bin'];
+/* Homebrew paths (macOS) plus the Debian/Ubuntu packages path (GitHub's ubuntu-latest
+ * image ships postgresql-16 there; without it the external-mode TLS scenario finds no
+ * binary and no docker daemon inside the runner's job container). */
+const BIN_DIRS = ['/opt/homebrew/opt/postgresql@16/bin', '/usr/local/opt/postgresql@16/bin', '/opt/homebrew/bin', '/usr/lib/postgresql/16/bin'];
 function pgBin() {
  for (const dir of BIN_DIRS) {
   const tools = ['pg_ctl', 'initdb', 'psql', 'pg_isready'];

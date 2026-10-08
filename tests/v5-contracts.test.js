@@ -581,8 +581,15 @@ test('frozen surface distinction: mounted, standalone, LAN and provider routes s
  assert.equal(C.routes.routeById('account.callback').csrf, false);
  assert.equal(C.routes.routeById('community.friend').key, C.routes.KEY.REQUIRED);
  assert.equal(C.routes.routeById('party.capabilities').auth, C.routes.AUTH.PUBLIC);
- // no route advertises a cacheable private response
- for (const route of C.routes.ROUTES) assert.equal(route.cache, 'no-store');
+ // no route advertises a cacheable response EXCEPT the public JWKS key set, which is deliberately
+ // cacheable (design B2.2) and carries only public key material.
+ const publicRoutes = C.routes.ROUTES.filter(route => route.id === 'account.jwks' || route.path === '/.well-known/jwks.json');
+ assert.equal(publicRoutes.length > 0, true, 'the public JWKS route must be declared');
+ for (const route of publicRoutes) assert.equal(route.cache, C.routes.CACHE_PUBLIC);
+ for (const route of C.routes.ROUTES) {
+  if (publicRoutes.includes(route)) continue;
+  assert.equal(route.cache, 'no-store');
+ }
  // request projection never accepts an actor/balance/outcome from the body
  const projected = C.commands.convert({ from: 'coins', amount: 10, actor: 'bob', balance: 1e12, rating: 3000 });
  assert.deepEqual(projected, { type: 'convert', from: 'coins', amount: 10 });

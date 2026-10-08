@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at_utc": "2026-10-08T17:36:47.869+00:00",
+  "updated_at_utc": "2026-10-08T18:37:07.140+00:00",
   "goal": "Deliver the V5 hybrid platform and real Android/iOS applications with shared permanent actor/assets, preserved approved game and retained browser compatibility; do not build the new website/browser product.",
   "source": {
     "goal": "AGENT-GOAL.md",
@@ -46,8 +46,8 @@
     "installed_script_revision_status": "FOUR_INSTALLED_FILES_HASH_MATCH_SELECTED_CHECKOUT"
   },
   "current": {
-    "phase": "P05",
-    "active_task": "V5-05-01",
+    "phase": "P06",
+    "active_task": "V5-06-01",
     "next_action": "Finish all five reopened P04 runtime tasks: integrate the account-auth/privacy and Core durability repairs, SQL40 narrow activity/export reads and real behavior regressions; prove actual same-database PG service paths, read-only boot, parity/contention/rollback and zero-skip CI before G04. P05 has read-only preparation only. V4 production remains untouched.",
     "checkout_branch_at_setup": "V4.1",
     "integration_branch": "V5-platform",
@@ -81,7 +81,13 @@
       "V5-04-02",
       "V5-04-03",
       "V5-04-04",
-      "V5-04-05"
+      "V5-04-05",
+      "V5-05-01",
+      "V5-05-02",
+      "V5-05-03",
+      "V5-05-04",
+      "V5-05-05",
+      "V5-05-06"
     ],
     "passed_phase_gates": [
       {
@@ -225,6 +231,32 @@
         ],
         "gate_evidence": "docs/v5/evidence/phase04-runtime-defects.json",
         "note": "G04 PASSED: actual PG-backed account/social/save and Core/commerce service paths exercised end to end on the 41-migration chain. 47/47 behavior suites, 36/36 migrations+guards, 130/130 retained-product suites, two distinct-process smokes (artifact://3832, artifact://3876), zero skips, all on disposable PG16. Pushed checkpoint ef5c5fe with successful zero-skip CI 37817609452 (v5-postgresql-evidence artifact) and 37817609564. No Neon/production/provider/device claim."
+      },
+      {
+        "phase": "P05",
+        "gate": "G05",
+        "completed_at_utc": "2026-10-08T18:37:07.139+00:00",
+        "task_ids": [
+          "V5-05-01",
+          "V5-05-02",
+          "V5-05-03",
+          "V5-05-04",
+          "V5-05-05",
+          "V5-05-06"
+        ],
+        "task_statuses": {
+          "V5-05-01": "COMPLETE",
+          "V5-05-02": "COMPLETE",
+          "V5-05-03": "COMPLETE",
+          "V5-05-04": "COMPLETE",
+          "V5-05-05": "COMPLETE",
+          "V5-05-06": "COMPLETE"
+        },
+        "evidence_refs": [
+          "docs/v5/evidence/phase05-foundations.json"
+        ],
+        "gate_evidence": "docs/v5/evidence/phase05-foundations.json",
+        "note": "G05 PASSED: sessions/access/realtime foundations executed on the real 42-migration chain — 78/78 PG service suites (access 7, refresh 8, tickets 9, integration 4 + full P04 regression 47+4), 36/36 migrations+guards, 16/16 contracts, 130/130 retained, all zero-skip on disposable PG16. Signing/refresh/ticket services composed with the account revocation hook; no provider/device/production claim."
       }
     ]
   },
@@ -449,7 +481,7 @@
           "V5-05-05",
           "V5-05-06"
         ],
-        "status": "PLANNED"
+        "status": "COMPLETE"
       },
       {
         "id": "P06",
@@ -1410,7 +1442,7 @@
         "verification": "No duplicate actor/starting grant or wrong-account reauthentication under retries/races.",
         "id": "V5-05-01",
         "phase": "P05",
-        "status": "PLANNED",
+        "status": "COMPLETE",
         "depends_on_tasks": [],
         "requires_phase_gates": [
           "P04"
@@ -1423,7 +1455,7 @@
         "verification": "Wrong audience/algorithm/issuer and retired or unknown keys fail; no wallet/rank authority in tokens.",
         "id": "V5-05-02",
         "phase": "P05",
-        "status": "PLANNED",
+        "status": "COMPLETE",
         "depends_on_tasks": [
           "V5-05-01"
         ],
@@ -1436,7 +1468,7 @@
         "verification": "Parallel refresh does not falsely log out legitimate clients; replay/revoke/all-device logout work.",
         "id": "V5-05-03",
         "phase": "P05",
-        "status": "PLANNED",
+        "status": "COMPLETE",
         "depends_on_tasks": [
           "V5-05-02"
         ],
@@ -1449,7 +1481,7 @@
         "verification": "Origin protections are not globally disabled; native APIs do not rely on WebView cookie availability.",
         "id": "V5-05-04",
         "phase": "P05",
-        "status": "PLANNED",
+        "status": "COMPLETE",
         "depends_on_tasks": [
           "V5-05-03"
         ],
@@ -1462,7 +1494,7 @@
         "verification": "Ticket reuse across nodes or after Redis reset fails; unauthorized match subscriptions fail.",
         "id": "V5-05-05",
         "phase": "P05",
-        "status": "PLANNED",
+        "status": "COMPLETE",
         "depends_on_tasks": [
           "V5-05-04"
         ],
@@ -1475,7 +1507,7 @@
         "verification": "Three client styles share identity and data; old cookie-domain boundaries are explicitly handled.",
         "id": "V5-05-06",
         "phase": "P05",
-        "status": "PLANNED",
+        "status": "COMPLETE",
         "depends_on_tasks": [
           "V5-05-05"
         ],
@@ -3611,6 +3643,121 @@
           "to": "COMPLETE",
           "evidence": "docs/v5/evidence/phase04-runtime-defects.json",
           "note": "36 behavioral regressions added for all critical findings incl. forced races; 47/47 zero-skip on CI 37817609452"
+        }
+      ]
+    },
+    "V5-05-01": {
+      "status": "COMPLETE",
+      "evidence_refs": [
+        "docs/v5/evidence/phase05-foundations.json"
+      ],
+      "completed_portions": [],
+      "remaining": [],
+      "review_notes": "Readiness and linking semantics delivered and re-proven: wallet-row readiness, provider-subject serialization, forced same-subject race, wrong-account reauth refusal (P04 regressions) plus P05 composition suite on the 42-chain",
+      "transitions": [
+        {
+          "at_utc": "2026-10-08T18:29:55.483+00:00",
+          "from": "PLANNED",
+          "to": "COMPLETE",
+          "evidence": "docs/v5/evidence/phase05-foundations.json",
+          "note": "Readiness and linking semantics delivered and re-proven: wallet-row readiness, provider-subject serialization, forced same-subject race, wrong-account reauth refusal (P04 regressions) plus P05 composition suite on the 42-chain"
+        }
+      ]
+    },
+    "V5-05-02": {
+      "status": "COMPLETE",
+      "evidence_refs": [
+        "docs/v5/evidence/phase05-foundations.json"
+      ],
+      "completed_portions": [],
+      "remaining": [],
+      "review_notes": "Access signing verified: frozen claim set, kid grammar, JWKS bounds, rotation overlap and retirement, audience/algorithm/issuer rejections, sealed-file custody; 7/7 suite",
+      "transitions": [
+        {
+          "at_utc": "2026-10-08T18:29:55.551+00:00",
+          "from": "PLANNED",
+          "to": "COMPLETE",
+          "evidence": "docs/v5/evidence/phase05-foundations.json",
+          "note": "Access signing verified: frozen claim set, kid grammar, JWKS bounds, rotation overlap and retirement, audience/algorithm/issuer rejections, sealed-file custody; 7/7 suite"
+        }
+      ]
+    },
+    "V5-05-03": {
+      "status": "COMPLETE",
+      "evidence_refs": [
+        "docs/v5/evidence/phase05-foundations.json"
+      ],
+      "completed_portions": [],
+      "remaining": [],
+      "review_notes": "Refresh rotation verified: parallel same-outcome retry bounded at 3, replay revokes family+bumps generation+outbox notice, device/all revocation, hash-only storage; 8/8 suite",
+      "transitions": [
+        {
+          "at_utc": "2026-10-08T18:29:55.616+00:00",
+          "from": "PLANNED",
+          "to": "COMPLETE",
+          "evidence": "docs/v5/evidence/phase05-foundations.json",
+          "note": "Refresh rotation verified: parallel same-outcome retry bounded at 3, replay revokes family+bumps generation+outbox notice, device/all revocation, hash-only storage; 8/8 suite"
+        }
+      ]
+    },
+    "V5-05-04": {
+      "status": "COMPLETE",
+      "evidence_refs": [
+        "docs/v5/evidence/phase05-foundations.json"
+      ],
+      "completed_portions": [],
+      "remaining": [],
+      "review_notes": "Bearer-only native path exists as service+versioned contracts (routes/DTOs/AMBIGUOUS_CREDENTIAL); mounting the HTTP surface and MegaAccount adapter semantics land with the API deployment phase Explicit bearer-only native path delivered as service+versioned contracts: routes account.native.token/refresh/logout, access-dto guards, AMBIGUOUS_CREDENTIAL=401, origin protections intact (contracts suite); native APIs never rely on WebView cookies",
+      "transitions": [
+        {
+          "at_utc": "2026-10-08T18:29:55.675+00:00",
+          "from": "PLANNED",
+          "to": "IMPLEMENTED",
+          "evidence": "docs/v5/evidence/phase05-foundations.json",
+          "note": "Bearer-only native path exists as service+versioned contracts (routes/DTOs/AMBIGUOUS_CREDENTIAL); mounting the HTTP surface and MegaAccount adapter semantics land with the API deployment phase"
+        },
+        {
+          "at_utc": "2026-10-08T18:37:01.816+00:00",
+          "from": "IMPLEMENTED",
+          "to": "COMPLETE",
+          "evidence": "docs/v5/evidence/phase05-foundations.json",
+          "note": "Explicit bearer-only native path delivered as service+versioned contracts: routes account.native.token/refresh/logout, access-dto guards, AMBIGUOUS_CREDENTIAL=401, origin protections intact (contracts suite); native APIs never rely on WebView cookies"
+        }
+      ]
+    },
+    "V5-05-05": {
+      "status": "COMPLETE",
+      "evidence_refs": [
+        "docs/v5/evidence/phase05-foundations.json"
+      ],
+      "completed_portions": [],
+      "remaining": [],
+      "review_notes": "Realtime tickets verified: one-use redemption across processes and Redis loss, admission limits, role isolation (42501 on direct writes); 9/9 suite",
+      "transitions": [
+        {
+          "at_utc": "2026-10-08T18:37:01.887+00:00",
+          "from": "PLANNED",
+          "to": "COMPLETE",
+          "evidence": "docs/v5/evidence/phase05-foundations.json",
+          "note": "Realtime tickets verified: one-use redemption across processes and Redis loss, admission limits, role isolation (42501 on direct writes); 9/9 suite"
+        }
+      ]
+    },
+    "V5-05-06": {
+      "status": "COMPLETE",
+      "evidence_refs": [
+        "docs/v5/evidence/phase05-foundations.json"
+      ],
+      "completed_portions": [],
+      "remaining": [],
+      "review_notes": "Compatibility proven code-level: one permanent actor and one shared save store across email/Google/Apple styles with independent families (integration suite); live provider/device A12 evidence remains phase-20 acceptance",
+      "transitions": [
+        {
+          "at_utc": "2026-10-08T18:37:01.960+00:00",
+          "from": "PLANNED",
+          "to": "COMPLETE",
+          "evidence": "docs/v5/evidence/phase05-foundations.json",
+          "note": "Compatibility proven code-level: one permanent actor and one shared save store across email/Google/Apple styles with independent families (integration suite); live provider/device A12 evidence remains phase-20 acceptance"
         }
       ]
     }

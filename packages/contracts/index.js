@@ -21,6 +21,7 @@ const commands = require('./commands.js');
 const routes = require('./routes.js');
 const nativeBridge = require('./native-bridge.js');
 const realtime = require('./realtime.js');
+const access = require('./access-dto.js');
 
 module.exports = {
  // failure primitive
@@ -36,5 +37,7 @@ module.exports = {
  // native/v1 host bridge DTO contracts
  nativeBridge,
  // separately versioned realtime/v1 envelope contract
- realtime
+ realtime,
+ // P05 native-credential + realtime-ticket DTO contracts
+ access
 };

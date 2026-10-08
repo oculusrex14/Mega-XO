@@ -1,0 +1,88 @@
+{
+  "schema_version": 1,
+  "status": "IMPLEMENTED_AND_VERIFIED_LOCAL",
+  "phase": "P05",
+  "task_ids": [
+    "V5-05-01",
+    "V5-05-02",
+    "V5-05-03",
+    "V5-05-04",
+    "V5-05-05",
+    "V5-05-06"
+  ],
+  "case_ids": [
+    "A12",
+    "A13",
+    "A14"
+  ],
+  "recorded_at_utc": "2026-10-08T18:40:00Z",
+  "source_state": "UNCOMMITTED_WORKTREE_AT_RECORDING; the checkpoint commit and CI run finalize this record",
+  "environment": "Owner macOS workstation; owned PostgreSQL16 loopback cluster 127.0.0.1:50709; only tracked disposable synthetic databases created/dropped. No production, Neon, browser account, provider, store or device mutation.",
+  "design": "docs/v5/designs/p05-session-design.md (corrected map: wallet-row readiness, reversible digest boundary, no parallel readiness/provisioning tables, frozen hash-only refresh retry protocol)",
+  "implemented": {
+    "sql42": "packages/migrations/migrations/0042_p05_access_realtime.sql: identity.signing_keys (public JWK + private_ref only, never key material), refresh_families/refresh_tokens (sha256-only storage), session_generations, devices, realtime_tickets (issued_ip_hash), sessions.kind/device_id/amr, core.actor_access_state view (no credential columns), identity.redeem_realtime_ticket SECURITY DEFINER function (core_runtime EXECUTE + SELECT only; verified 42501 on direct writes). Chain head 42; manifest checksum 8b72c2d0fb070a2c35b1eb7abcd0d387cf9a927cc602775336588874652d7c25.",
+    "access": "packages/services/access.js: Ed25519 EdDSA JWS, kid mxv5-<env>-<yyyyqq>-<seq>-<crc8> (CRC-8/ATM over the RFC 7638 thumbprint), frozen claim set {iss,aud,sub,sid,gen,amr,ath,iat,nbf,exp,jti}, 300s player / 15s service-assertion TTLs, disjoint player/service audiences, bounded JWKS (<=8 keys, active+retiring), rotation with >=360s retiring residence, sealed-file private-key custody (0600; prd without the file refuses KEY_CUSTODY_REQUIRED, never auto-mints).",
+    "refresh": "packages/services/refresh.js: hash-only families; successor = HKDF-SHA256(ikm=secret, salt='mx:refresh:'+familyId, info='successor', 32B) so a lost winning response is recoverable; single FOR UPDATE-serialized rotation state machine (normal / bounded same-outcome retry within 10s grace and 3-reuse cap / true replay); replay revokes the family, bumps identity.session_generations once idempotently and writes the ops.outbox security notice in the same transaction; absolute expiry -> REFRESH_EXPIRED; device registry with ownership-protected upsert.",
+    "tickets": "packages/services/tickets.js: 32B base64url bearer, sha256-hex only, 10s unredeemed TTL; issuance limits (3 outstanding, 4 live, per-IP 20/60s, global 10000) enforced inside the INSERT..SELECT in one api_runtime tx; redemption through identity.redeem_realtime_ticket in one core_runtime tx with disambiguating follow-up SELECT (TICKET_INVALID/TICKET_EXPIRED/TICKET_REDEEMED); no Redis anywhere (A15).",
+    "contracts": "packages/contracts: AUTH.BEARER, CACHE_PUBLIC, routes account.native.token/refresh/logout, v1.realtime.ticket (LINKED+csrf), account.jwks (public, max-age=300); AMBIGUOUS_CREDENTIAL=401, REALTIME_STATUS {TICKET_*=403, TICKET_LIMIT=429}; access-dto validateNativeTokenGrant/redactTicket/refuseAmbiguousCredential. tests/v5-contracts.test.js blanket no-store assertion now exempts only the public JWKS routes (authorized one-block edit).",
+    "composition": "packages/services/accounts.js: optional onSessionRevoked hook (post-commit, at-least-once) fires with the affected public session ids on logout/revoke/revokeOthers/reset/delete; packages/services/index.js exports the three new factories. The public session id helper now normalizes hex/base64url digest representations so one session yields one id from every path (defect found by the integration test and fixed at the source)."
+  },
+  "commands": [
+    {
+      "command": "env V5_PG_URL=postgres://postgres@127.0.0.1:50709/postgres V5_PG_DISPOSABLE=1 V5_PG_REQUIRED=1 node --test --test-reporter=tap --test-concurrency=1 tests/v5-p05-access.test.js tests/v5-p05-refresh.test.js tests/v5-p05-tickets.test.js tests/v5-p05-integration.test.js tests/v5-p04-repositories.test.js tests/v5-p04-differential.test.js tests/v5-p04-services.test.js",
+      "result": {
+        "tests": 78,
+        "pass": 78,
+        "fail": 0,
+        "skipped": 0
+      },
+      "classification": "All P05 slices plus the full P04 regression set on the 42-migration chain, zero skips. Integration covers: reset-revoked family rotation refused with durable bump; deletion leaves zero active families; native bearer flow issues a verifiable access token (gen = revocation generation, sid = public session id); three client styles share one permanent actor with independent families; AMBIGUOUS_CREDENTIAL/redactTicket contracts."
+    },
+    {
+      "command": "env V5_PG_URL=postgres://postgres@127.0.0.1:50709/postgres V5_PG_DISPOSABLE=1 V5_PG_REQUIRED=1 node --test --test-force-exit --test-concurrency=1 tests/v5-migrations.test.js tests/v5-pg-guards.test.js",
+      "result": {
+        "tests": 36,
+        "pass": 36,
+        "fail": 0,
+        "skipped": 0
+      },
+      "classification": "42-file checksummed chain and role guards green; grant posture probes (api write on new identity tables, core SELECT+EXECUTE only, worker read-only) asserted inside the P05 ticket suite as well."
+    },
+    {
+      "command": "node --test --test-reporter=tap --test-force-exit tests/v5-contracts.test.js",
+      "result": {
+        "tests": 16,
+        "pass": 16,
+        "fail": 0,
+        "skipped": 0
+      },
+      "classification": "Contracts registry including the new routes/status maps; the file's pre-existing lingering handle is why the retained suite command uses --test-force-exit (unchanged behavior, not introduced by this unit)."
+    },
+    {
+      "command": "node --test --test-reporter=tap tests/community.test.js tests/email-auth.test.js tests/production-auth.test.js tests/account-deletion.test.js tests/privacy-export.test.js tests/authority.test.js tests/reporting.test.js tests/operator-service.test.js tests/rooms.test.js tests/store.test.js tests/monetization-store.test.js tests/invariants.test.js tests/v5-uow.test.js",
+      "result": {
+        "tests": 130,
+        "pass": 130,
+        "fail": 0,
+        "skipped": 0
+      },
+      "classification": "Retained-product suites unchanged; the known owner-reported opsz failure was not rerun."
+    }
+  ],
+  "task_outcomes": {
+    "V5-05-01": "COMPLETE: readiness (wallet-row existence) and linking semantics were delivered with the P04 runtime and re-proven here; races/retries covered by the P04 forced-race regressions plus this integration.",
+    "V5-05-02": "COMPLETE: signing, claims, JWKS bounds, rotation overlap and negative verification all executed.",
+    "V5-05-03": "COMPLETE: parallel refresh, bounded retry, replay revocation, device/all-device logout and generation bumps all executed.",
+    "V5-05-04": "IMPLEMENTED (open): the explicit bearer-only native path exists as service + versioned contracts (routes/DTOs/guards) with origin protections intact; mounting the HTTP surface and pinning MegaAccount adapter semantics happens with the API deployment phase, so the task stays open by its own action text.",
+    "V5-05-05": "COMPLETE: one-use durable redemption across processes and 'Redis loss', admission limits, role isolation all executed.",
+    "V5-05-06": "COMPLETE (code-level): three client styles (email credential flow + two verified provider styles) resolve to one permanent actor with one shared save/identity store, independent refresh families per style, and explicit cookie-domain/transition handling in the design record (B6.2/B6.4); real live provider/device continuity evidence stays phase-20 A12 acceptance, tracked there."
+  },
+  "not_claimed": [
+    "real Google/Apple provider acceptance",
+    "physical device or store proof",
+    "mounted production HTTP surface",
+    "Neon application",
+    "V5 production enablement",
+    "signing-key custody decision (P7)"
+  ]
+}

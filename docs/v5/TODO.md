@@ -4,7 +4,7 @@ The mutable execution source is [progress.json](progress.json); this is its read
 
 **Goal:** Deliver the V5 hybrid platform and real Android/iOS applications with shared permanent actor/assets, preserved approved game and retained browser compatibility; do not build the new website/browser product.
 
-**Integration base:** `455b8ec9ea4070b4410d78f9eea2aaa06d32c0b2`. **Active phase/task:** P05 / V5-05-01 (PLANNED). **Progress:** 27/117 tasks terminal; 5/25 phase gates passed
+**Integration base:** `455b8ec9ea4070b4410d78f9eea2aaa06d32c0b2`. **Active phase/task:** P06 / V5-06-01 (PLANNED). **Progress:** 33/117 tasks terminal; 6/25 phase gates passed
 
 Required path: execute P00–P20, P22–P23; owner-deferred P21 executes nothing; P24 is measurement-gated; phase prerequisites are gates, not status assumptions, and a deferred or measurement-gated phase is never used as another phase prerequisite. The foundation gate P00–P03 passes before dependent distributed work, and V5 CI starts in the foundation rather than only at P17.
 
@@ -72,14 +72,14 @@ Milestone: V5.1; status: `COMPLETE`; prerequisites: P03. [Phase contract](../../
 
 ## P05 — Implement actor-centric sessions and credential lifecycle
 
-Milestone: V5.2; status: `PLANNED`; prerequisites: P04. [Phase contract](../../Mega-XO-V5-Implementation-Pack/phases/05-cross-platform-identity.md).
+Milestone: V5.2; status: `COMPLETE`; prerequisites: P04. [Phase contract](../../Mega-XO-V5-Implementation-Pack/phases/05-cross-platform-identity.md).
 
-- [ ] **V5-05-01 — Implement account readiness and linking semantics** (`PLANNED`).
-- [ ] **V5-05-02 — Implement access signing and public verification** (`PLANNED`).
-- [ ] **V5-05-03 — Implement refresh rotation and device revocation** (`PLANNED`).
-- [ ] **V5-05-04 — Implement browser and native credential paths** (`PLANNED`).
-- [ ] **V5-05-05 — Issue durable one-use realtime tickets** (`PLANNED`).
-- [ ] **V5-05-06 — Prove compatibility and session transition** (`PLANNED`).
+- [x] **V5-05-01 — Implement account readiness and linking semantics** (`COMPLETE`).
+- [x] **V5-05-02 — Implement access signing and public verification** (`COMPLETE`).
+- [x] **V5-05-03 — Implement refresh rotation and device revocation** (`COMPLETE`).
+- [x] **V5-05-04 — Implement browser and native credential paths** (`COMPLETE`).
+- [x] **V5-05-05 — Issue durable one-use realtime tickets** (`COMPLETE`).
+- [x] **V5-05-06 — Prove compatibility and session transition** (`COMPLETE`).
 
 **Exit gate:** G05: browser-style, Android-style and iOS-style clients resolve to the same permanent actor; refresh, revocation, provider linking and ticket replay tests pass.
 

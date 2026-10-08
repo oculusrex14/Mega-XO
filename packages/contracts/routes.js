@@ -13,12 +13,20 @@
 
 const CONTRACT_VERSION = 'api/v1';
 const CACHE_NO_STORE = 'no-store';
+/* The ONE deliberately cacheable public response: the JWKS key set (design B2.2). It carries only
+ * public key material, and consumers are told to cache it for the published max-age. Every private
+ * account/session/ticket response stays `no-store`. */
+const CACHE_PUBLIC = 'public, max-age=300, s-maxage=300';
 
 /* auth classes, matching the source inventory's G/S/L/V/B/P shorthand */
 const AUTH = Object.freeze({
  PUBLIC: 'public',
  SESSION: 'session',
  LINKED: 'linked',
+ /* Cookie-free native transport (design B4.2): the host presents Authorization: Bearer and never a
+  * session cookie. Distinct from PUBLIC because the credential IS required, and from SESSION/LAN_BEARER
+  * because there is no cookie jar and no LAN shared secret. */
+ BEARER: 'bearer',
  VERIFIED_PROVIDER: 'verified-provider',
  LAN_BEARER: 'lan-bearer',
  OPERATOR: 'operator'
@@ -46,6 +54,13 @@ const ACCOUNT = Object.freeze([
  route('account.callback', 'GET', '/auth/callback/:provider', { auth: AUTH.SESSION, csrf: false, origin: ORIGIN.NONE, owner: 'A', note: 'state/nonce/PKCE bound; no CSRF header, redirects 303' }),
  route('account.native.challenge', 'POST', '/api/account/native/challenge', { csrf: true, bodyLimit: 300000 }),
  route('account.native.finish', 'POST', '/api/account/native/finish', { csrf: true, bodyLimit: 300000 }),
+ /* Cookie-free native credential path (design B4.2/C5). No Origin/CSRF because there is no cookie to
+  * protect; the bearer credential (or the provider challenge+finish) is the authentication. */
+ route('account.native.token', 'POST', '/api/account/native/token', { auth: AUTH.BEARER, origin: ORIGIN.NONE, csrf: false, bodyLimit: 300000, owner: 'A', note: 'challenge+finish or refresh grant; cookie+bearer together is AMBIGUOUS_CREDENTIAL' }),
+ route('account.native.refresh', 'POST', '/api/account/native/refresh', { auth: AUTH.BEARER, origin: ORIGIN.NONE, csrf: false, bodyLimit: 16384, owner: 'A', note: 'single-flight family rotation; rotates access + refresh' }),
+ route('account.native.logout', 'POST', '/api/account/native/logout', { auth: AUTH.BEARER, origin: ORIGIN.NONE, csrf: false, bodyLimit: 16384, owner: 'A', note: 'revokes the presenting family; no cookie is ever set' }),
+ /* Public key set (design B2.2): unauthenticated, cacheable, never no-store. */
+ route('account.jwks', 'GET', '/.well-known/jwks.json', { auth: AUTH.PUBLIC, origin: ORIGIN.NONE, csrf: false, cache: CACHE_PUBLIC, owner: 'A', note: 'public signing keys only; bounded <=8 keys, active+retiring' }),
  route('account.logout', 'POST', '/api/account/logout', { csrf: true, bodyLimit: 300000 }),
  route('account.sessions.revoke', 'POST', '/api/account/sessions/revoke', { auth: AUTH.LINKED, csrf: true, bodyLimit: 300000 }),
  route('account.export', 'POST', '/api/account/export', { auth: AUTH.LINKED, csrf: true, bodyLimit: 300000 }),
@@ -72,6 +87,9 @@ const COMPETITIVE = Object.freeze([
  route('v1.queue.status', 'GET', '/api/v1/queue', { auth: AUTH.LINKED, owner: 'C', note: 'sweeps queue and may commit paired offers' }),
  route('v1.queue.join', 'POST', '/api/v1/queue', { auth: AUTH.LINKED, csrf: true, key: KEY.REQUIRED, bodyLimit: 300000, owner: 'C', note: 'ephemeral ticket key in the queue process Map' }),
  route('v1.cancel-queue', 'POST', '/api/v1/cancel-queue', { auth: AUTH.LINKED, csrf: true, key: KEY.REQUIRED, bodyLimit: 300000, owner: 'C' }),
+ /* One-use realtime ticket issuance (design B5.2/R5): authenticated browser session+CSRF or bearer.
+  * The body allowlist is {match_id?, connection_class}; the ticket itself is never a URL/query value. */
+ route('v1.realtime.ticket', 'POST', '/api/v1/realtime/ticket', { auth: AUTH.LINKED, csrf: true, bodyLimit: 16384, owner: 'A', note: 'mints a bounded one-use ticket; stores only sha256-base64url' }),
  route('v1.friend', 'POST', '/api/v1/friend', { auth: AUTH.LINKED, csrf: true, key: KEY.REQUIRED, bodyLimit: 300000, owner: 'A', note: 'compatibility alias of community.friend' }),
  route('v1.accept-friend', 'POST', '/api/v1/accept-friend', { auth: AUTH.LINKED, csrf: true, key: KEY.REQUIRED, bodyLimit: 300000, owner: 'A' }),
  route('v1.offer', 'POST', '/api/v1/offer', { auth: AUTH.LINKED, csrf: true, key: KEY.REQUIRED, bodyLimit: 300000, owner: 'C' }),
@@ -159,4 +177,4 @@ function routeMatches(id, method, path) {
  return path === expected;
 }
 
-module.exports = { CONTRACT_VERSION, CACHE_NO_STORE, AUTH, ORIGIN, KEY, SURFACE, ROUTES, ACCOUNT, COMPETITIVE, MONETIZATION, PARTY, STANDALONE, routeById, routesForOwner, routesForSurface, routeMatches };
+module.exports = { CONTRACT_VERSION, CACHE_NO_STORE, CACHE_PUBLIC, AUTH, ORIGIN, KEY, SURFACE, ROUTES, ACCOUNT, COMPETITIVE, MONETIZATION, PARTY, STANDALONE, routeById, routesForOwner, routesForSurface, routeMatches };

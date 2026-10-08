@@ -185,8 +185,16 @@ const partyPublicCode = message => (PARTY_ERROR_PREFIXES.some(prefix => message.
 /* Each frozen table reproduces one router's existing mapping exactly. A future adapter
  * must pick the table belonging to the surface it replaces; they are deliberately not
  * merged, because the same code maps differently on different mounts. */
-const ACCOUNT_STATUS = Object.freeze({ AUTH_REQUIRED: 401, LINK_ACCOUNT_REQUIRED: 401, RATE_LIMITED: 429 });
+/* AMBIGUOUS_CREDENTIAL is an authentication failure (design B4.2): a request presenting BOTH a
+ * session cookie and a bearer header is refused rather than guessed, exactly like a missing one. */
+const ACCOUNT_STATUS = Object.freeze({ AUTH_REQUIRED: 401, LINK_ACCOUNT_REQUIRED: 401, RATE_LIMITED: 429, AMBIGUOUS_CREDENTIAL: 401 });
 const accountStatus = code => ACCOUNT_STATUS[code] || 409;
+
+/* Realtime ticket issuance/redeem edge mapping (design B5.4/B5.5, P05Tickets contract): the four
+ * ticket codes are already realtime/v1 PUBLIC_CODES; this is the HTTP status half. A ticket is a
+ * credential, so an invalid/expired/redeemed one is 403, and the per-actor admission ceiling is 429. */
+const REALTIME_STATUS = Object.freeze({ AUTH_REQUIRED: 401, LINK_ACCOUNT_REQUIRED: 401, TICKET_INVALID: 403, TICKET_EXPIRED: 403, TICKET_REDEEMED: 403, TICKET_LIMIT: 429 });
+const realtimeStatus = code => REALTIME_STATUS[code] || 409;
 
 const MONETIZATION_STATUS = Object.freeze({ AUTH_REQUIRED: 401, LINK_ACCOUNT_REQUIRED: 401, INVALID_PUSH_AUTH: 401, STORE_UNAVAILABLE: 503, PUSH_AUTH_UNAVAILABLE: 503, INVALID_STORE_NOTIFICATION: 400 });
 const monetizationStatus = code => MONETIZATION_STATUS[code] || 409;
@@ -243,6 +251,8 @@ module.exports = {
  partyPublicCode,
  ACCOUNT_STATUS,
  accountStatus,
+ REALTIME_STATUS,
+ realtimeStatus,
  MONETIZATION_STATUS,
  monetizationStatus,
  standaloneStatus,

@@ -93,7 +93,16 @@ const DELETION_RETAINED = Object.freeze(['purchase_replay_records', 'operator_se
 const fail = (code) => { throw Error(code); };
 const json = (value) => JSON.stringify(value);
 const safeInt = (value) => Number.isSafeInteger(value) && value >= 0;
-const sessionId = (tokenHash) => crypto.createHash('sha256').update(tokenHash).digest('hex').slice(0, 24);
+/* The public session id (source semantics): sha256 of the 43-char base64url digest, hex, first
+ * 24 chars. Repository rows carry EITHER representation (list/revokeOthers return the hex
+ * column; live reads return base64url), so the input is normalized to base64url first — the
+ * same session must yield the same public id from every path. */
+const sessionId = (tokenHash) => {
+ const b64 = typeof tokenHash === 'string' && /^[0-9a-f]{64}$/.test(tokenHash)
+  ? Buffer.from(tokenHash, 'hex').toString('base64url')
+  : tokenHash;
+ return crypto.createHash('sha256').update(b64).digest('hex').slice(0, 24);
+};
 /* The shared logical-identity advisory locks (packages/db/pg/locks.js). THE canonical auth lock
  * order, applied by every session/identity mutation:
  *   1. the source-bearer LOGICAL key (its sha256, never the raw bearer),
@@ -165,6 +174,15 @@ async function createAccountService(pool, options = {}) {
  const provisionActor = typeof options.provisionActor === 'function' ? options.provisionActor : null;
  const cancelSocialOffers = typeof options.cancelSocialOffers === 'function' ? options.cancelSocialOffers : null;
  const completeDeletion = typeof options.completeDeletion === 'function' ? options.completeDeletion : null;
+ /* P05 integration point: refresh families are bound to a public session id; when this service
+  * revokes sessions the owner of those families must revoke them too. The callback is awaited
+  * AFTER the commit (at-least-once; the durable family state stays authoritative) and is optional
+  * so this service has no dependency on the refresh factory. */
+ const onSessionRevoked = typeof options.onSessionRevoked === 'function' ? options.onSessionRevoked : null;
+ const afterRevocation = async (publicIds) => {
+  if (!onSessionRevoked || !Array.isArray(publicIds) || publicIds.length === 0) return;
+  try { await onSessionRevoked(publicIds); } catch { /* best effort; durable state decides */ }
+ };
  const options_ = Object.freeze({ ...options, role });
  const uow = createPgUnitOfWork(pool, { now: clock, role });
  /* The shared format-aware bounded password verifier (one bounded worker per service instance). It
@@ -797,6 +815,7 @@ async function createAccountService(pool, options = {}) {
     if (match.hash === current.hash) fail('CURRENT_SESSION');
     await repositories.sessions.revoke(current.actor, match.hash);
     notify(current.actor, 'session_revoked');
+    await afterRevocation([sessionId(match.hash)]);
     return { revoked: true };
    });
   },
@@ -805,21 +824,28 @@ async function createAccountService(pool, options = {}) {
     const current = await sessionGuard(repositories, token, { linked: true });
     const revoked = await repositories.sessions.revokeOthers(current.actor, current.hash, clock());
     notify(current.actor, 'other_sessions_revoked', { count: revoked.length });
+    await afterRevocation(revoked.map((hash) => sessionId(hash)));
     return { revoked: revoked.length };
    });
   },
   async logout(token, all = false) {
-   return run(async (repositories) => {
+   const result = await run(async (repositories) => {
     /* Mutating: actor auth mutex first, then the live row is re-read under it. `all` revokes every
       * session (including this one); the single form consumes exactly this bearer. */
     const session = await sessionGuard(repositories, token);
-    if (session.actor && all) await repositories.sessions.revokeAll(session.actor);
-    else {
+    let revokedIds = null;
+    if (session.actor && all) {
+     revokedIds = (await repositories.sessions.list(session.actor, clock())).map((row) => sessionId(row.hash));
+     await repositories.sessions.revokeAll(session.actor);
+    } else {
      const consumed = await repositories.sessions.rotate(session.hash);
      if (consumed !== 1) fail('AUTH_REQUIRED');
+     revokedIds = [sessionId(session.hash)];
     }
-    return { signedOut: true };
+    return { signedOut: true, revokedIds };
    });
+   await afterRevocation(result.revokedIds);
+   return { signedOut: true };
   },
   /* Presence is the managed-Redis tier's (P06). The method is preserved so callers need no new
     * code path, and it refuses explicitly instead of fabricating a durable presence row. */
@@ -1038,6 +1064,7 @@ async function createAccountService(pool, options = {}) {
   async emailResetComplete(token, id, password) {
    policy.validatePassword(password);
    const hashed = await hashStoredPassword(password);
+   const capturedRevokedIds = [];
    const outcome = await run(async (repositories) => {
     const session = await sessionGuard(repositories, token);
     await rate(repositories, session.hash, 'email-reset-complete', 6, 300);
@@ -1064,11 +1091,14 @@ async function createAccountService(pool, options = {}) {
     /* A password reset invalidates any OTHER pending reset/verification authorization, then kills
       * every existing session and issues one for this caller. */
     await repositories.challenges.consumePending(row.email, 'reset');
+    const revokedIds = (await repositories.sessions.list(row.actor, clock())).map((r) => sessionId(r.hash));
+    capturedRevokedIds.push(...revokedIds);
     await repositories.sessions.revokeAll(row.actor);
     const issued = await issue(repositories, row.actor, clock());
     return { result: { ...issued, created: false, profile: await selfProfile(repositories, row.actor), passwordChangedEmail: row.email } };
    });
    if (outcome.deny) fail(outcome.deny);
+   await afterRevocation(capturedRevokedIds);
    return outcome.result;
   },
   async emailReauth(token, email, password) {
@@ -1328,6 +1358,7 @@ async function createAccountService(pool, options = {}) {
     * completed the state machine the only honest answer is a pending acknowledgment. No economic
     * row is touched here. */
   async deleteAccount(token, confirmation) {
+   const capturedRevokedIds = [];
    const result = await run(async (repositories) => {
     const session = await linkedRow(repositories, token);
     if (!deletionPolicy.enabled || !deletionPolicy.policyVersion) fail('ACCOUNT_DELETION_UNAVAILABLE');
@@ -1354,6 +1385,7 @@ async function createAccountService(pool, options = {}) {
     const actorHash = crypto.createHash('sha256').update(`mega-xo-deleted-account:${actor}`).digest('base64url');
     await repositories.deletion.insertRequest({ id: receiptId, actor, kind: 'deletion', state: 'requested', requestedAt: now, updatedAt: now, policyVersion: deletionPolicy.policyVersion, note: 'api-initiated coordinated deletion' });
     await repositories.accounts.setUnverified(actor);
+    capturedRevokedIds.push(...(await repositories.sessions.list(actor, clock())).map((r) => sessionId(r.hash)));
     await repositories.sessions.revokeAll(actor);
     await repositories.signin.cancelForActor(actor);
     await repositories.challenges.consumeAllFor(actor);
@@ -1374,6 +1406,7 @@ async function createAccountService(pool, options = {}) {
     * outbox row already makes it durable; a supplied hook just runs it inline. Completion is the
     * worker's to record, so this method always reports PENDING. */
    if (completeDeletion) await afterCommit(() => completeDeletion({ ...result }));
+   await afterRevocation(capturedRevokedIds);
    return { deletionPending: true, receiptId: result.receiptId, policyVersion: result.policyVersion };
   },
 

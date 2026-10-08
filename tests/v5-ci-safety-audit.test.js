@@ -19,6 +19,7 @@ test('rejects privileged triggers, mutable actions and secret-bearing release st
     workflow.replace('  pull_request:\n','  pull_request_target:\n'),
     workflow.replace('  contents: read','  contents: write'),
     workflow.replace('      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020','      - uses: actions/setup-node@v4'),
+    workflow.replace('        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02','        uses: actions/upload-artifact@v4'),
     workflow.replace('          persist-credentials: false','          persist-credentials: true'),
     workflow.replace('    timeout-minutes: 10','    environment: production\n    timeout-minutes: 10'),
     workflow.replace('          retention-days: 7','          retention-days: 7\n      - name: Bad deploy\n        run: vercel deploy --prod'),

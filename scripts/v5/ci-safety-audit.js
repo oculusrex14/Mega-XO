@@ -24,7 +24,7 @@ function audit(text) {
     reject('checkout must disable token persistence and fetch reviewed history');
   }
   if(/^\s*environment:\s*(?:production|staging)\s*$/m.test(text)) reject('untrusted PR cannot claim a release environment');
-  const actions=[...text.matchAll(/^\s*-\s*uses:\s*([^\s#]+)/gm)].map(m=>m[1]);
+  const actions=[...text.matchAll(/^\s*(?:-\s*)?uses:\s*([^\s#]+)/gm)].map(m=>m[1]);
   if(actions.length<3) reject('expected checkout, node and evidence upload actions');
   for(const use of actions) {
     if(!/^[a-zA-Z0-9_.-]+\/[a-zA-Z0-9_.-]+@[0-9a-f]{40}$/.test(use)) reject('unpinned CI action');

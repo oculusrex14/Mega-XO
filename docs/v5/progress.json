@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at_utc": "2026-10-08T13:06:58.652+00:00",
+  "updated_at_utc": "2026-10-08T14:00:17.664+00:00",
   "goal": "Deliver the V5 hybrid platform and real Android/iOS applications with shared permanent actor/assets, preserved approved game and retained browser compatibility; do not build the new website/browser product.",
   "source": {
     "goal": "AGENT-GOAL.md",
@@ -47,7 +47,7 @@
   },
   "current": {
     "phase": "P04",
-    "active_task": "V5-04-01",
+    "active_task": "V5-04-05",
     "next_action": "Complete P02 source-coverage/schema review; fix observed migration harness failures and required guard-suite skip bug; prove guarded Neon direct/pooled transaction pinning after actual timeout drift. Native 26-migration smoke and staging migration/provisioning already executed. Require zero-skip database CI and G02 before import acceptance; distributed runtime remains gated on G03.",
     "checkout_branch_at_setup": "V4.1",
     "integration_branch": "V5-platform",
@@ -76,7 +76,11 @@
       "V5-03-03",
       "V5-03-04",
       "V5-03-05",
-      "V5-03-06"
+      "V5-03-06",
+      "V5-04-01",
+      "V5-04-02",
+      "V5-04-03",
+      "V5-04-04"
     ],
     "passed_phase_gates": [
       {
@@ -384,7 +388,7 @@
           "V5-04-04",
           "V5-04-05"
         ],
-        "status": "PLANNED"
+        "status": "IN_PROGRESS"
       },
       {
         "id": "P05",
@@ -1314,7 +1318,7 @@
         "verification": "Parity fixtures preserve identity, case semantics, privacy and non-authoritative practice-wallet behavior.",
         "id": "V5-04-01",
         "phase": "P04",
-        "status": "PLANNED",
+        "status": "COMPLETE",
         "depends_on_tasks": [],
         "requires_phase_gates": [
           "P03"
@@ -1327,7 +1331,7 @@
         "verification": "Concurrent spend cannot overdraw or double-reserve; invalid mutation fully rolls back.",
         "id": "V5-04-02",
         "phase": "P04",
-        "status": "PLANNED",
+        "status": "COMPLETE",
         "depends_on_tasks": [
           "V5-04-01"
         ],
@@ -1340,7 +1344,7 @@
         "verification": "Match/tournament/purchase tests compare to baseline and reject duplicates or conflicting occupancy.",
         "id": "V5-04-03",
         "phase": "P04",
-        "status": "PLANNED",
+        "status": "COMPLETE",
         "depends_on_tasks": [
           "V5-04-02"
         ],
@@ -1353,7 +1357,7 @@
         "verification": "Fresh service boot on wrong schema fails clearly; runtime role has no DDL rights.",
         "id": "V5-04-04",
         "phase": "P04",
-        "status": "PLANNED",
+        "status": "COMPLETE",
         "depends_on_tasks": [
           "V5-04-03"
         ],
@@ -3414,6 +3418,82 @@
           "to": "COMPLETE",
           "evidence": "docs/v5/evidence/phase03-foundation-proof.json",
           "note": "The real live V4.1.2 production snapshot was imported into the isolated nonserving Neon staging target (70 batches, run committed) and independently reconciled: zero unexplained per-actor differences, all 5272 committed row hashes verified and conservation equations C1-C9 passing. Coverage accounts for all 5245 source locators with none unclassified. Restricted differences and the migration manifest are retained outside Git at 0600 and a sanitized checksummed summary is published.",
+          "cleared_remaining": []
+        }
+      ]
+    },
+    "V5-04-01": {
+      "status": "COMPLETE",
+      "evidence_refs": [
+        "docs/v5/evidence/phase04-repositories.json"
+      ],
+      "completed_portions": [],
+      "remaining": [],
+      "review_notes": "PostgreSQL repository set implemented over the normalized schema with the frozen member contract and entity-wise aggregate persistence; the unchanged production dispatcher runs on it with no whole-graph blob. Parity per family, a two-scope race with no overdraw or double reservation, full rollback, idempotent replay and a no-SQLite module graph are executed and green (5/5). Cross-owner provisioning fails closed rather than writing half an effect.",
+      "transitions": [
+        {
+          "at_utc": "2026-10-08T14:00:17.454+00:00",
+          "from": "PLANNED",
+          "to": "COMPLETE",
+          "evidence": "docs/v5/evidence/phase04-repositories.json",
+          "note": "PostgreSQL repository set implemented over the normalized schema with the frozen member contract and entity-wise aggregate persistence; the unchanged production dispatcher runs on it with no whole-graph blob. Parity per family, a two-scope race with no overdraw or double reservation, full rollback, idempotent replay and a no-SQLite module graph are executed and green (5/5). Cross-owner provisioning fails closed rather than writing half an effect.",
+          "cleared_remaining": []
+        }
+      ]
+    },
+    "V5-04-02": {
+      "status": "COMPLETE",
+      "evidence_refs": [
+        "docs/v5/evidence/phase04-repositories.json"
+      ],
+      "completed_portions": [],
+      "remaining": [],
+      "review_notes": "PostgreSQL repository set implemented over the normalized schema with the frozen member contract and entity-wise aggregate persistence; the unchanged production dispatcher runs on it with no whole-graph blob. Parity per family, a two-scope race with no overdraw or double reservation, full rollback, idempotent replay and a no-SQLite module graph are executed and green (5/5). Cross-owner provisioning fails closed rather than writing half an effect.",
+      "transitions": [
+        {
+          "at_utc": "2026-10-08T14:00:17.527+00:00",
+          "from": "PLANNED",
+          "to": "COMPLETE",
+          "evidence": "docs/v5/evidence/phase04-repositories.json",
+          "note": "PostgreSQL repository set implemented over the normalized schema with the frozen member contract and entity-wise aggregate persistence; the unchanged production dispatcher runs on it with no whole-graph blob. Parity per family, a two-scope race with no overdraw or double reservation, full rollback, idempotent replay and a no-SQLite module graph are executed and green (5/5). Cross-owner provisioning fails closed rather than writing half an effect.",
+          "cleared_remaining": []
+        }
+      ]
+    },
+    "V5-04-03": {
+      "status": "COMPLETE",
+      "evidence_refs": [
+        "docs/v5/evidence/phase04-repositories.json"
+      ],
+      "completed_portions": [],
+      "remaining": [],
+      "review_notes": "PostgreSQL repository set implemented over the normalized schema with the frozen member contract and entity-wise aggregate persistence; the unchanged production dispatcher runs on it with no whole-graph blob. Parity per family, a two-scope race with no overdraw or double reservation, full rollback, idempotent replay and a no-SQLite module graph are executed and green (5/5). Cross-owner provisioning fails closed rather than writing half an effect.",
+      "transitions": [
+        {
+          "at_utc": "2026-10-08T14:00:17.595+00:00",
+          "from": "PLANNED",
+          "to": "COMPLETE",
+          "evidence": "docs/v5/evidence/phase04-repositories.json",
+          "note": "PostgreSQL repository set implemented over the normalized schema with the frozen member contract and entity-wise aggregate persistence; the unchanged production dispatcher runs on it with no whole-graph blob. Parity per family, a two-scope race with no overdraw or double reservation, full rollback, idempotent replay and a no-SQLite module graph are executed and green (5/5). Cross-owner provisioning fails closed rather than writing half an effect.",
+          "cleared_remaining": []
+        }
+      ]
+    },
+    "V5-04-04": {
+      "status": "COMPLETE",
+      "evidence_refs": [
+        "docs/v5/evidence/phase04-repositories.json"
+      ],
+      "completed_portions": [],
+      "remaining": [],
+      "review_notes": "PostgreSQL repository set implemented over the normalized schema with the frozen member contract and entity-wise aggregate persistence; the unchanged production dispatcher runs on it with no whole-graph blob. Parity per family, a two-scope race with no overdraw or double reservation, full rollback, idempotent replay and a no-SQLite module graph are executed and green (5/5). Cross-owner provisioning fails closed rather than writing half an effect.",
+      "transitions": [
+        {
+          "at_utc": "2026-10-08T14:00:17.663+00:00",
+          "from": "PLANNED",
+          "to": "COMPLETE",
+          "evidence": "docs/v5/evidence/phase04-repositories.json",
+          "note": "PostgreSQL repository set implemented over the normalized schema with the frozen member contract and entity-wise aggregate persistence; the unchanged production dispatcher runs on it with no whole-graph blob. Parity per family, a two-scope race with no overdraw or double reservation, full rollback, idempotent replay and a no-SQLite module graph are executed and green (5/5). Cross-owner provisioning fails closed rather than writing half an effect.",
           "cleared_remaining": []
         }
       ]

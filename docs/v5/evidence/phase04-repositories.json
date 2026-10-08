@@ -1,0 +1,58 @@
+{
+  "schema_version": 1,
+  "status": "EXECUTED",
+  "phase": "P04",
+  "task_ids": ["V5-04-01", "V5-04-02", "V5-04-03", "V5-04-04"],
+  "case_ids": ["A04", "A07", "A10"],
+  "observed_at_utc": "2026-10-08T15:00:00Z",
+  "source_sha": "5d32312",
+  "environment": "Owner Mac (macOS 25.6.0 arm64, node 26.8.2) against exclusively-owned PostgreSQL 16.15 databases on loopback, built by running the real 37-migration chain. Production is untouched and was never opened for write.",
+  "commands": [
+    {
+      "action": "Build the schema by running the real migration chain",
+      "command": "node scripts/v5/migrate.js --execute --json --database-url <owned>",
+      "exit_code": 0,
+      "result": {"ok": true, "appliedCount": 37}
+    },
+    {
+      "action": "PostgreSQL repository parity, aggregate seam, concurrency, idempotency and no-SQLite suites",
+      "command": "node --test tests/v5-p04-repositories.test.js",
+      "exit_code": 0,
+      "result": {"tests": 5, "pass": 5, "fail": 0, "skipped": 0}
+    },
+    {
+      "action": "SQLite reference adapter and connection-guard regressions",
+      "command": "node --test tests/v5-uow.test.js tests/v5-pg-guards.test.js",
+      "exit_code": 0,
+      "result": {"uow": {"pass": 11, "fail": 0}, "guards": {"pass": 25, "fail": 0}}
+    }
+  ],
+  "result": {
+    "executed": true,
+    "exit_code": 0,
+    "assertions": [
+      "Account, social and save families are served over the normalized tables: actors/eligibility/profiles/identities/email_credentials/profile_saves, the social graph and outcomes, the wallet/ledger/rating/progress families, matches with participants and move outcomes, tournament rooms with their players and fixtures, purchases and revocations, the job outbox, and the rate-bucket counters. Each was exercised against a real migrated database, not a mock.",
+      "The profile member returns exactly the fields community-store consumes, and the session member maps the source's base64url token to the target's 64-hex column in both directions rather than copying bytes.",
+      "The practice save returns the authoritative payload_text document (the JSONB cache column is gone under 0033).",
+      "The UNCHANGED production dispatcher (packages/domain/commands.js executeCommand) runs over PostgreSQL with no rewrite: a conversion moves 100 Coins to 10 Crowns and persists the wallet change and both ledger rows entity-wise.",
+      "No whole-graph blob exists: the only table named state in the schema is runtime.state(key,value), and there is no serialized room table. The aggregate persistence is entity-wise, and an unchanged aggregate rewrites nothing (a second commit reports upserts 0, deletes 0, tables 0).",
+      "The documented lock order (core.actor_occupancy then economy.wallets, actor ids ascending) serializes two racing units of work: exactly one 60-Coin reservation commits from a 100-Coin wallet, the loser fails INSUFFICIENT_COINS, and the final row shows no overdraw and no double reservation.",
+      "A failing unit of work rolls back every entity it touched, including a ledger append, leaving the prior row intact.",
+      "A replayed command key returns the stored response and re-applies nothing, per family, refusing a fingerprint conflict as IDEMPOTENCY_CONFLICT.",
+      "The module graph reaches neither node:sqlite nor the SQLite repository set, so the V5 path has no SQLite dependency.",
+      "No identifier, timestamp or binding is generated: a missing actor is ACCOUNT_REQUIRED, no opening balance is minted, no friend code is generated and no store binding is regenerated.",
+      "Cross-owner provisioning fails closed rather than dropping half a business effect: one whole-aggregate commit cannot span API-owned identity and Core-owned economy, so driving provision on core_runtime raises ROLE_CAPABILITY_REQUIRED naming identity.actors and leaves no partial actor, no wallet and no ledger row. The replacement is the P05 two-role handshake, recorded as a finding.",
+      "Three runtime write grants that the port proved necessary were closed by the additive migration 0037 with column-level precision (api_runtime may update only the verified flag on eligibility, not a suspension or a security hold)."
+    ],
+    "unexplained_differences": []
+  },
+  "not_claimed": [
+    "G04 acceptance (the phase gate) or the differential/contention acceptance task",
+    "Rewiring the production call sites (the seam serves them unchanged; the cutover belongs to the later phases)",
+    "Production writes, production restore or cutover",
+    "Provider, device or store acceptance"
+  ],
+  "restricted_evidence_location": "Owned disposable databases under the OS temp area, removed after each run. No private source data is reproduced in this record.",
+  "sanitized_summary": "The PostgreSQL unit of work and repository set mirror the frozen SQLite member contract over the normalized schema, and the unchanged production command dispatcher runs on top of it with entity-wise persistence and no whole-graph blob. Parity per family, a two-scope race with no overdraw or double reservation, full rollback, idempotent replay and a no-SQLite module graph are all executed and green. Cross-owner provisioning fails closed rather than writing half an effect.",
+  "review_notes": "Only counts and structural facts are recorded; no actor id, email address, credential or raw row appears. The SQLite reference adapter and its suite are unchanged, and the production target was never touched."
+}

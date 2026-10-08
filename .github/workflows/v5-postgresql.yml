@@ -141,7 +141,13 @@ jobs:
           REDIS_URL: redis://127.0.0.1:6379
         run: |
           set -o pipefail
-          node --test --test-reporter=tap --test-concurrency=1 --test-force-exit tests/v5-p06-ephemera.test.js 2>&1 | tee .evidence-logs/v5-p06-ephemera.tap
+          node --test --test-reporter=tap --test-concurrency=1 tests/v5-p06-ephemera.test.js 2>&1 | tee .evidence-logs/v5-p06-ephemera.tap
+      - name: P06 Redis lifecycle and failure deadlines
+        env:
+          REDIS_URL: redis://127.0.0.1:6379
+        run: |
+          set -o pipefail
+          node --test --test-reporter=tap --test-concurrency=1 tests/v5-p06-lifecycle.test.js 2>&1 | tee .evidence-logs/v5-p06-lifecycle.tap
       - name: Enforce executed database coverage
         # A green run that quietly skipped the database suites is a failure, not a pass: every
         # suite must report assertions against the live service and report zero skips.
@@ -160,6 +166,7 @@ jobs:
             { file: 'tests/v5-p05-tickets.test.js', log: '.evidence-logs/v5-p05-foundations.tap' },
             { file: 'tests/v5-p05-integration.test.js', log: '.evidence-logs/v5-p05-foundations.tap' },
             { file: 'tests/v5-p06-ephemera.test.js', log: '.evidence-logs/v5-p06-ephemera.tap' },
+            { file: 'tests/v5-p06-lifecycle.test.js', log: '.evidence-logs/v5-p06-lifecycle.tap' },
           ];
           const report = { tool: 'v5-pg-coverage', suites: [] };
           let failed = false;

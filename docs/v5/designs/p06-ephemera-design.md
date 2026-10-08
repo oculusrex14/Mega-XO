@@ -4,6 +4,8 @@ Read-only design report. Classification tags: **[V]** verified from repository s
 
 Scope guard: no provisioning, no provider API call with credentials, no secrets/tokens/OTP/connection strings/player data appear in this document. No statement below claims a Redis/Valkey resource exists. The repository's own provider evidence marks `managed_redis_valkey` **UNRESOLVED** and Vercel authentication **UNAUTHENTICATED** (`docs/v5/evidence/phase00-provider-inventory.json:852,949-955`) [V].
 
+Implementation boundary: this remains a proposal, not a completion inventory. The current adapter is `packages/services/ephemera.js`, using exact-pinned node-redis 4.7.0; the proposed `packages/redis/` package, REST client, provider guards/probes and full API/Core consumers below do not exist yet. Verified TLS uses platform trust or an explicitly supplied CA; plaintext requires `allowPlaintext: true` for owned local/CI fixtures. Actual managed targets, credential/ACL separation, region/plan/quotas and two real API/Core-process integration remain unverified. [Execution evidence](../evidence/phase06-ephemera.json) records the narrower adapter proof; G06 stays open.
+
 ---
 
 ## 1. Operational-state inventory
@@ -273,7 +275,7 @@ Reality check first: **no Redis/Valkey service is known to exist for this accoun
 
 Verified anchor: `packages/db/pg/guards.js` role/schema design and `docs/v5/evidence/phase00-provider-inventory.json` show the Neon region catalog with **default `aws-us-east-1` (N. Virginia)** and other options (`aws-us-east-2`, `azure-eastus2`, `aws-us-west-2`, EU, AP, SA) [V]. Pack guidance: keep Oracle Core, Neon primary, Redis primary and Vercel compute close to IAD/US-East initially, and treat same-named regions across clouds as unproven until RTT is measured [V]. Therefore: prefer the candidate's AWS `us-east-1` presence; measure Core→Redis, Vercel→Redis and Neon→Redis RTT before signing off (cannot be done until a target exists ⇒ [P], V5-06-01 stays open with V5-O006/V5-O009).
 
-### 7.3 TLS / ACL / auth requirements (non-negotiable, enforced in `packages/redis/guards.js`)
+### 7.3 Proposed TLS / ACL / auth requirements (provider guards not yet implemented)
 
 Mirroring `packages/db/pg/guards.js` exactly [V]: mandatory TLS (`rediss://` or `tls:true`), explicit root CA (`MEGA_REDIS_CA_FILE`, PEM-validated, never `rejectUnauthorized:false`), refusal of `ssl:false`/`no-verify`, `ENVIRONMENT_MISMATCH` when a `local` label is used outside dev, host/stage allowlist check from the config, `CLIENT SETNAME` = `role/service/revision`, `redactUrl()` (never log a credential-bearing URL), a startup probe (`HELLO`/`INFO server` → engine name/version/uptime/role), a command-support probe (`COMMAND INFO` for the §3.2 list, fail closed with `COMMAND_UNSUPPORTED`), and, where the plan provides ACL, `ACL WHOAMI` to assert the expected user. Credential handling follows `production/config.js` discipline: `MEGA_REDIS_URL` / `MEGA_REDIS_URL_FILE` (ambiguous ⇒ `AMBIGUOUS_*`), never in Git, never in client bundles (extend `tests/v5-client-bundle.test.js` with a scan for `rediss://`/`REDIS_` tokens). No public Redis port; API/Core/worker use separate credentials; staging credentials cannot reach production (and vice versa) — tested (L7).
 

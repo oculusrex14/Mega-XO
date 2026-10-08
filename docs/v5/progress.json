@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at_utc": "2026-10-08T19:09:30.159+00:00",
+  "updated_at_utc": "2026-10-08T20:55:41.612+00:00",
   "goal": "Deliver the V5 hybrid platform and real Android/iOS applications with shared permanent actor/assets, preserved approved game and retained browser compatibility; do not build the new website/browser product.",
   "source": {
     "goal": "AGENT-GOAL.md",
@@ -48,12 +48,12 @@
   "current": {
     "phase": "P06",
     "active_task": "V5-06-01",
-    "next_action": "Finish all five reopened P04 runtime tasks: integrate the account-auth/privacy and Core durability repairs, SQL40 narrow activity/export reads and real behavior regressions; prove actual same-database PG service paths, read-only boot, parity/contention/rollback and zero-skip CI before G04. P05 has read-only preparation only. V4 production remains untouched.",
+    "next_action": "P06 adapter repair is locally verified (8/8 no-force-exit tests plus actual trusted/untrusted TLS/pubsub/pending-socket drain). Obtain authorized managed Redis/Valkey access for V5-06-01, then prove separated targets, provider guards/capabilities and actual API/Core consumers before G06. P07 acceptance requires G06. Native preparation requires verified application identifiers; do not invent IDs or infer device/signing approval. V4 production remains untouched.",
     "checkout_branch_at_setup": "V4.1",
     "integration_branch": "V5-platform",
     "integration_branch_exists_at_setup": false,
-    "last_v5_commit": "2be541319107fcca72fae715877b91f9099610dd",
-    "last_pushed_v5_commit": "2be541319107fcca72fae715877b91f9099610dd",
+    "last_v5_commit": "c9a97e0156fc3a8d25f7c02d74d701129cdcabe4",
+    "last_pushed_v5_commit": "c9a97e0156fc3a8d25f7c02d74d701129cdcabe4",
     "completed_task_ids": [
       "V5-00-01",
       "V5-00-02",
@@ -3768,7 +3768,7 @@
       ],
       "completed_portions": [],
       "remaining": [],
-      "review_notes": "Provider selection/provisioning gated on owner-authorized Redis/Valkey credentials (V5-O009); durable-side implementation, local real-Redis verification and CI service-container verification complete and independent",
+      "review_notes": "Provider selection/provisioning gated on owner-authorized Redis/Valkey credentials (V5-O009); durable-side implementation, local real-Redis verification and CI service-container verification complete and independent Resume proof: Vercel CLI has no existing credentials; owner Brave/CDP Vercel and Upstash sessions redirect to sign-in. Managed target selection/provisioning, separated access and capability/plan/region/quotas remain pending; G06 open.",
       "transitions": [
         {
           "at_utc": "2026-10-08T19:09:12.758+00:00",
@@ -3776,6 +3776,13 @@
           "to": "IN_PROGRESS",
           "evidence": "docs/v5/evidence/phase06-ephemera.json",
           "note": "Provider selection/provisioning gated on owner-authorized Redis/Valkey credentials (V5-O009); durable-side implementation, local real-Redis verification and CI service-container verification complete and independent"
+        },
+        {
+          "at_utc": "2026-10-08T20:55:41.409+00:00",
+          "from": "IN_PROGRESS",
+          "to": "IN_PROGRESS",
+          "evidence": "docs/v5/evidence/phase06-ephemera.json",
+          "note": "Resume proof: Vercel CLI has no existing credentials; owner Brave/CDP Vercel and Upstash sessions redirect to sign-in. Managed target selection/provisioning, separated access and capability/plan/region/quotas remain pending; G06 open."
         }
       ]
     },
@@ -3786,7 +3793,7 @@
       ],
       "completed_portions": [],
       "remaining": [],
-      "review_notes": "Namespaced bounded primitives verified on real Redis (local 8.10.2 + CI 7.4 service container): explicit TTLs enforced, env separation, no immortal keys, no secrets, conservative loss fallbacks. Closes only after V5-06-01 records the real provider.",
+      "review_notes": "Namespaced bounded primitives verified on real Redis (local 8.10.2 + CI 7.4 service container): explicit TTLs enforced, env separation, no immortal keys, no secrets, conservative loss fallbacks. Closes only after V5-06-01 records the real provider. Repaired adapter locally verified: verified TLS, atomic queue TTL, bounded reconnect/connect and assignment-aware natural shutdown; 8/8 no-force-exit zero-skip tests plus actual delayed-TLS socket-drain smoke. Actual managed target still pending.",
       "transitions": [
         {
           "at_utc": "2026-10-08T19:09:29.996+00:00",
@@ -3794,6 +3801,13 @@
           "to": "IMPLEMENTED",
           "evidence": "docs/v5/evidence/phase06-ephemera.json",
           "note": "Namespaced bounded primitives verified on real Redis (local 8.10.2 + CI 7.4 service container): explicit TTLs enforced, env separation, no immortal keys, no secrets, conservative loss fallbacks. Closes only after V5-06-01 records the real provider."
+        },
+        {
+          "at_utc": "2026-10-08T20:55:41.481+00:00",
+          "from": "IMPLEMENTED",
+          "to": "IMPLEMENTED",
+          "evidence": "docs/v5/evidence/phase06-ephemera.json",
+          "note": "Repaired adapter locally verified: verified TLS, atomic queue TTL, bounded reconnect/connect and assignment-aware natural shutdown; 8/8 no-force-exit zero-skip tests plus actual delayed-TLS socket-drain smoke. Actual managed target still pending."
         }
       ]
     },
@@ -3804,7 +3818,7 @@
       ],
       "completed_portions": [],
       "remaining": [],
-      "review_notes": "Distributed presence/queue/cache/rate coordination via the ephemera tier; retained V4 local state untouched; two-process consistency proven; PRESENCE_OWNED_BY_P06 already refuses durable presence",
+      "review_notes": "Distributed presence/queue/cache/rate coordination via the ephemera tier; retained V4 local state untouched; two-process consistency proven; PRESENCE_OWNED_BY_P06 already refuses durable presence CORRECTION: earlier two clients were not two processes. New proof uses actual independent adapter processes, not API/Core consumers. Consumer integration, REST/provider guards and real service-process proof remain pending; not COMPLETE.",
       "transitions": [
         {
           "at_utc": "2026-10-08T19:09:30.080+00:00",
@@ -3812,6 +3826,13 @@
           "to": "IMPLEMENTED",
           "evidence": "docs/v5/evidence/phase06-ephemera.json",
           "note": "Distributed presence/queue/cache/rate coordination via the ephemera tier; retained V4 local state untouched; two-process consistency proven; PRESENCE_OWNED_BY_P06 already refuses durable presence"
+        },
+        {
+          "at_utc": "2026-10-08T20:55:41.545+00:00",
+          "from": "IMPLEMENTED",
+          "to": "IMPLEMENTED",
+          "evidence": "docs/v5/evidence/phase06-ephemera.json",
+          "note": "CORRECTION: earlier two clients were not two processes. New proof uses actual independent adapter processes, not API/Core consumers. Consumer integration, REST/provider guards and real service-process proof remain pending; not COMPLETE."
         }
       ]
     },
@@ -3822,7 +3843,7 @@
       ],
       "completed_portions": [],
       "remaining": [],
-      "review_notes": "Wipe and total-loss contract proven: durable wallets/ratings byte-identical, redeemed ticket stays redeemed, revoked family stays revoked, security budgets remain PostgreSQL, loss fallbacks deny in bounded time",
+      "review_notes": "Wipe and total-loss contract proven: durable wallets/ratings byte-identical, redeemed ticket stays redeemed, revoked family stays revoked, security budgets remain PostgreSQL, loss fallbacks deny in bounded time Complete durable-row snapshots across ten tables are content-identical after adapter wipe/total loss; paid receipt, one-use ticket and revocation remain unchanged. Full managed staging wipe/restart/service recovery remains pending; no G06/A15 acceptance.",
       "transitions": [
         {
           "at_utc": "2026-10-08T19:09:30.157+00:00",
@@ -3830,6 +3851,13 @@
           "to": "IMPLEMENTED",
           "evidence": "docs/v5/evidence/phase06-ephemera.json",
           "note": "Wipe and total-loss contract proven: durable wallets/ratings byte-identical, redeemed ticket stays redeemed, revoked family stays revoked, security budgets remain PostgreSQL, loss fallbacks deny in bounded time"
+        },
+        {
+          "at_utc": "2026-10-08T20:55:41.610+00:00",
+          "from": "IMPLEMENTED",
+          "to": "IMPLEMENTED",
+          "evidence": "docs/v5/evidence/phase06-ephemera.json",
+          "note": "Complete durable-row snapshots across ten tables are content-identical after adapter wipe/total loss; paid receipt, one-use ticket and revocation remain unchanged. Full managed staging wipe/restart/service recovery remains pending; no G06/A15 acceptance."
         }
       ]
     }
@@ -3914,5 +3942,5 @@
     "committed": false,
     "pushed": false
   },
-  "next_action": "Push the repaired P04 runtime (41-migration chain) and require the zero-skip V5 PostgreSQL suites plus validation on that exact SHA before recording G04 and A07/A09/A10 acceptance; P05 stays read-only preparation; V4 production untouched."
+  "next_action": "Resolve V5-06-01 provider authentication and actual separated managed targets; retain G06 as open. Repaired P06 adapter proof is recorded; require exact-checkpoint CI and actual provider/API-Core consumer evidence before terminal acceptance. P00-P05 remain accepted; V4 production untouched."
 }

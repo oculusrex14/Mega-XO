@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "status": "IMPLEMENTED_AND_VERIFIED_LOCAL",
+  "status": "ADAPTER_LOCALLY_VERIFIED_PROVIDER_AND_CONSUMERS_PENDING",
   "phase": "P06",
   "task_ids": [
     "V5-06-01",
@@ -11,14 +11,16 @@
   "case_ids": [
     "A15"
   ],
-  "recorded_at_utc": "2026-10-09T00:35:00Z",
-  "source_state": "UNCOMMITTED_WORKTREE_AT_RECORDING; the checkpoint commit and CI run finalize this record",
+  "recorded_at_utc": "2026-10-08T20:53:03.772Z",
+  "source_state": "Verified worktree based on c9a97e0156fc3a8d25f7c02d74d701129cdcabe4; exercised source SHA256 manifest below pins exact bytes; checkpoint SHA is recorded after commit.",
   "environment": "Owner macOS workstation; owned PostgreSQL16 loopback 127.0.0.1:50709 and a local disposable Redis 8.10.2 on 127.0.0.1:50710 (no persistence, owned by this session). No production, Neon, provider-console, browser account or device mutation.",
   "implemented": {
     "service": "packages/services/ephemera.js: namespaced bounded Redis primitives. Every key is mx:<env>:<keyVersion>:<family>:<parts> with an allowlisted family and validated parts, so environments cannot read or write each other. Every write carries an explicit positive TTL (refused, never defaulted) or is a sorted set with key TTL plus score trimming; the auditUnboundedKeys() SCAN proves no immortal keys. Values are bounded 4 KiB opaque strings. Families: presence/heartbeat, candidate queues, cache, non-security rate budgets (security-class budgets remain ops.rate_buckets in PostgreSQL), single-flight locks (compare-and-delete release), revocation/limit hints, socket routing, pubsub.",
-    "loss": "Every operation is deadline-bounded and resolves to a documented CONSERVATIVE fallback when Redis is unreachable or slow (presence miss, cache miss, rate deny, lock busy): losing Redis can delay or deny, never grant/admit/authenticate. A rejected connect is never an unhandled rejection and close() can never hang.",
+    "loss": "Operation deadlines return conservative fallback; connect timeout capped at 3000ms and numeric reconnect backoff at 2000ms. Hard close waits for pending socket assignment before disconnecting; pending main/subscriber TLS sockets drained in the actual smoke. Owned subscription cancellation prevents late subscribe after a deadline. Shutdown is not a force-exit.",
     "wipe": "wipeNamespace() deletes only the caller's own environment+version keys via SCAN; durable PostgreSQL truth is untouched.",
-    "dependency": "node-redis 4.7.0 added (exact-pinned); the only new runtime dependency. Lua windows/lock-release use sendCommand EVAL with explicit KEY/ARGV counts (the typed eval variants mangled the split)."
+    "dependency": "node-redis 4.7.0 added (exact-pinned); the only new runtime dependency. Lua windows/lock-release use sendCommand EVAL with explicit KEY/ARGV counts (the typed eval variants mangled the split).",
+    "transport": "rediss:// verifies certificates using platform trust or provided CA. redis:// requires explicit allowPlaintext:true for owned local/CI targets. rejectUnauthorized:false, custom checkServerIdentity and secure TLS disabling overrides are refused.",
+    "queue": "ZADD, score trim and PEXPIRE execute in one Lua script; nonpositive/noninteger TTL/window/limit and nonfinite weight are refused before network I/O."
   },
   "commands": [
     {
@@ -29,7 +31,7 @@
         "fail": 0,
         "skipped": 0
       },
-      "classification": "Full PG regression batch plus the new ephemera suite on the real 42-chain: env separation, mandatory TTLs with expiry proof, refusal shapes, atomic rate window (exactly 8 of 12 parallel admitted), cross-process single-flight lock, namespace wipe + total loss leaving wallets/ratings/tickets/families byte-identical and conservative fallbacks under 10 s."
+      "classification": "Historical regression batch. CORRECTION: its two-client test did NOT prove separate OS processes; force-exit did NOT prove lifecycle drain. New evidence below supersedes those claims, without changing the historical observed counts."
     },
     {
       "command": "env ... node --test --test-force-exit tests/v5-migrations.test.js tests/v5-pg-guards.test.js; node --test --test-force-exit tests/v5-contracts.test.js; node --test <retained batch>",
@@ -50,7 +52,7 @@
           "fail": 0
         }
       },
-      "classification": "No regression anywhere; the retained opsz failure was not rerun."
+      "classification": "Historical exercised regression counts; known retained opsz failure was not rerun. Not an assertion that every unexercised path has no regression."
     },
     {
       "command": "pushed checkpoint 66e5b37: CI 37838155791 (V5 PostgreSQL integration incl. redis:7.4 service container, P06 suite zero-skip, coverage enforcement) and 37838155840 (validation, 375s, hang fixed)",
@@ -59,18 +61,76 @@
         "validation": "success"
       },
       "classification": "Real-Redis CI execution proven; the earlier validation timeout was the P06 after-hook leaving a reconnecting default-URL client alive (destroy() undefined in node-redis 4.x) - fixed by awaited disconnect() and owned-namespace-only cleanup."
+    },
+    {
+      "command": "env V5_PG_URL=postgres://postgres@127.0.0.1:50709/postgres V5_PG_DISPOSABLE=1 V5_PG_REQUIRED=1 REDIS_URL=redis://127.0.0.1:50710 node --test --test-reporter=tap --test-concurrency=1 tests/v5-p06-ephemera.test.js tests/v5-p06-lifecycle.test.js",
+      "environment": "Owned macOS PostgreSQL16 + disposable Redis8.10.2, synthetic test actors, no production/provider mutation",
+      "result": {
+        "tests": 8,
+        "pass": 8,
+        "fail": 0,
+        "skipped": 0,
+        "cancelled": 0,
+        "exit": 0,
+        "duration_ms": 13853.483208,
+        "force_exit": false
+      },
+      "classification": "Real separate Node adapter processes share heartbeat/cache/route/pubsub and admit exactly8 of12 rate hits; stale lock token cannot release new owner; all children exit naturally. Complete durable-row snapshots across ten tables are content-identical after namespace wipe and total loss. Paid receipt, redeemed ticket and revoked family survive; rejoin repopulates ephemeral queue/presence. Includes constructor/TTL refusals, atomic queue expiry, bounded loss and active/down subscriber shutdown."
+    },
+    {
+      "command": "Bun.spawn node -e read(local://p06-tls-smoke.cjs), EPHEMERA_MODULE=packages/services/ephemera.js P06_TLS_CA_FILE=<owned temporary public CA> P06_TLS_PORT=63161; owned redis-server --port0 --tls-port63161 --tls-auth-clients no --save empty --appendonly no",
+      "environment": "Owned loopback TLS Redis8.10.2 with one-day self-signed CA, real TLS through delayed TCP proxy, no provider claim",
+      "result": {
+        "exit": 0,
+        "trusted_ca": "accepted",
+        "absent_ca": "refused",
+        "pubsub": "delivered",
+        "pending_handshake_sockets": 2,
+        "drained": 2,
+        "close_ms": 303,
+        "natural_exit": true,
+        "stderr": ""
+      },
+      "classification": "Actual trusted/untrusted TLS connection and real publish/subscribe. Main+duplicate are closed before delayed TLS handshakes finish; both network sockets drain and the process exits without force-exit. Throwaway fixture removed after recording."
     }
   ],
   "task_outcomes": {
-    "V5-06-01": "OPEN (provider-gated): selecting and provisioning the actual managed Redis/Valkey requires owner-authorized credentials and console access (V5-O009: no authenticated Vercel/Redis provider inventory; V5-O011-adjacent provider approvals). The durable-side implementation, local real-Redis verification and CI service-container verification are complete and do not depend on it. Region/plan/TCP-TLS-pubsub-Lua-TTL/quotas evidence is recorded only when the owner authorizes provider access.",
-    "V5-06-02": "COMPLETE (code-level, verified against a real local Redis and CI's real Redis service container): namespaced bounded primitives with explicit TTLs, env separation, no unbounded keys, no client-visible secrets, conservative loss.",
-    "V5-06-03": "COMPLETE (service level): the ephemera service is the coordination tier replacing local Maps for distributed presence/queue/cache/rate; the retained V4 server keeps its local state untouched (V4 stays live), and the V5 account service already refuses presence ownership (PRESENCE_OWNED_BY_P06). Two-process consistency proven on real Redis.",
-    "V5-06-04": "COMPLETE (code-level): namespace wipe and total-loss tests prove wallet/rank rows unchanged, a redeemed ticket stays TICKET_REDEEMED, a revoked family stays revoked, security budgets remain PostgreSQL, and loss fallbacks deny quickly."
+    "V5-06-01": "OPEN: Vercel CLI has no existing credentials; Vercel and Upstash Brave/CDP sessions redirect to sign-in. No authorized managed resource/credential reference discovered. Need existing authorized provider session or scoped credential reference, then separate staging/production inventory/provisioning and real capability/plan/region/quotas/ACL evidence. No provider approval invented.",
+    "V5-06-02": "IMPLEMENTED and LOCALLY_VERIFIED: finite namespaced primitives plus verified local TLS, genuine adapter-process sharing and natural lifecycle drain. Managed target verification remains pending; no terminal acceptance before01.",
+    "V5-06-03": "IMPLEMENTED ADAPTER ONLY: separate adapter processes share Redis; actual API/Core consumers have not been integrated or proven. Retained V4 local state remains untouched. Earlier COMPLETE/service-level/two-process claims were overbroad and are corrected here.",
+    "V5-06-04": "IMPLEMENTED and LOCALLY_VERIFIED for adapter wipe/total-loss/content preservation; full managed staging wipe/restart and actual service recovery matrix remain pending."
   },
   "not_claimed": [
-    "actual managed provider selection or provisioning",
-    "production Redis endpoints or credentials",
-    "V5 production enablement",
-    "realtime server deployment (P08)"
-  ]
+    "actual managed provider selection/provisioning or separate environment credentials",
+    "managed TLS/ACL/region/plan/quotas/load evidence",
+    "two actual API/Core consumer processes, full queue matcher/realtime recovery or REST client",
+    "G06/A15 full staging acceptance",
+    "native application/signing/device/store acceptance",
+    "V5 production enablement or production Redis endpoint"
+  ],
+  "verified_source_sha256": {
+    "packages/services/ephemera.js": "adc60ffe72b87bfa477f79a228e293c99ff4815dbd9333ac78a9ef116af782e7",
+    "tests/v5-p06-ephemera.test.js": "2f5726c014ffa8c3a349f59bf050695b984d870aae5ca6e9230e2eee44264ceb",
+    "tests/v5-p06-lifecycle.test.js": "11a8679ce8f65f9b68b732fbf93f5a1ed573906a1f1aade8d2705c623c12b495",
+    "tests/helpers/v5-ephemera-process.js": "9f38e13eca7f4d62eecbaecf20166b8d48d7f79c61e31df4352fe9ce03548746",
+    ".github/workflows/v5-postgresql.yml": "aa6457da1bafcbe8351e785324d5bccc3231b9e3c27e35058be05f37730f4014"
+  },
+  "failed_before": {
+    "tests": 9,
+    "pass": 6,
+    "fail": 3,
+    "skipped": 0,
+    "duration_ms": 129442.908375,
+    "failures": [
+      "invalid key test supplied invalid FAMILY: UNKNOWN_FAMILY rather than INVALID_KEY_PART",
+      "parent wrote fd3 while child read stdin: EPHEMERA_CHILD_TIMEOUT:call/shutdown",
+      "node-redis outstanding60000ms reconnect sleeps delayed natural runner exit"
+    ],
+    "resolution": "Matched IPC input/output; exercised invalid key with valid family; capped reconnect/connect delays and used assignment-aware drain. Removed duplicate zero-window row: zero/negative/fractional/NaN cases remain covered by pre-I/O refusal test."
+  },
+  "review": {
+    "agent": "P06FinalReview",
+    "result": "No high-priority consumer-visible findings in read-only source review",
+    "runtime_checks_by_reviewer": false
+  }
 }

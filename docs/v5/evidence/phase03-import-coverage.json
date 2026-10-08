@@ -1,0 +1,57 @@
+{
+  "schema_version": 1,
+  "status": "EXECUTED",
+  "phase": "P03",
+  "task_ids": ["V5-03-03"],
+  "case_ids": ["A06", "A07"],
+  "observed_at_utc": "2026-10-08T12:10:00Z",
+  "source_sha": "1ea15f8",
+  "environment": "Owner Mac (macOS 25.6.0 arm64, node 26.8.2) writing to an exclusively-owned PostgreSQL 16.15 database on loopback. The real live production model is the input; production itself is untouched.",
+  "commands": [
+    {
+      "action": "Apply the 36-migration chain to a fresh owned database",
+      "command": "node scripts/v5/migrate.js --execute --json --database-url postgresql://postgres@127.0.0.1:50709/v5_e2e",
+      "exit_code": 0,
+      "result": {"ok": true, "appliedCount": 36}
+    },
+    {
+      "action": "Import the real live production model",
+      "command": "node tools/v5-migration/cli.js load --model <private live model> --run e2e-run --database-url postgresql://postgres@127.0.0.1:50709/v5_e2e --environment test --adopt-existing",
+      "exit_code": 0,
+      "result": {"ok": true, "batchCount": 70, "rowsWritten": 5272}
+    },
+    {
+      "action": "Import the same model a second time under the same run id",
+      "exit_code": 0,
+      "result": {"rowsWritten": 0, "rowsVerified": 5272}
+    },
+    {
+      "action": "Import under a fresh run id into the same target",
+      "exit_code": 0,
+      "result": {"rowsWritten": 3, "note": "only the three seeded singletons are re-adopted via ON CONFLICT DO UPDATE; every other row already exists and is verified"}
+    }
+  ],
+  "result": {
+    "executed": true,
+    "exit_code": 0,
+    "assertions": [
+      "Every durable family is imported: 2 actors, 2 eligibility rows, 2 profiles, 2 identities, 2 email credentials, 2 profile saves, the friendship edge and 2 social outcomes, 2 wallets, 2 ratings, 48 economy command outcomes, 4 wallet ledger entries, 2 matches with 4 participants and 36 move outcomes, 1 tournament room with 7 party command outcomes, 136 rate buckets, 2 outbox rows, 5000 support events, the league week singleton and the system-burns singleton.",
+      "Per-actor currency is exact: the two wallets carry 150 and 157 coins with zero reserved and zero crowns, matching the live source.",
+      "The four journal rows are imported verbatim and reconcile exactly to those balances (opening 150 per actor, plus mints of 2 and 5 for one actor), so no invented migration-baseline row was required.",
+      "Identity and profile state is exact: both tags, usernames, display names, avatars and version counters, with the email credential salt and hash preserved verbatim.",
+      "Both FINISHED matches keep their status, escrow 0, settled flag, accepted count 2, receipt payout/burn 0 and their receipt reasons; the tournament room keeps its CANCELLED status, owner, escrow and its tournament-2 shape version.",
+      "Coverage is complete: 5245 source locators recorded with their dispositions and zero unclassified, and 5272 row-ledger entries.",
+      "The importer writes no TRUNCATE, DROP, DELETE or ALTER statement; an unknown target is refused and a row not created by a same-fingerprint run is a hard refusal rather than an overwrite.",
+      "A second import under the same run id writes nothing and verifies all 5272 rows; a fresh run id converges, writing only the three singleton rows that are re-adopted."
+    ],
+    "unexplained_differences": []
+  },
+  "not_claimed": [
+    "G03 acceptance or reconciliation (separate task)",
+    "Production writes, production restore or cutover",
+    "Provider, device or store acceptance"
+  ],
+  "restricted_evidence_location": "/Users/oculus/Downloads/Mega-XO-private-evidence/p03-live-production/ (source model; 0600, outside Git)",
+  "sanitized_summary": "The importer projects the complete live production model into the normalized schema in 70 deterministic batches across 61 durable families, with a coverage row for every source locator and a hash ledger for every written row. Per-actor wallets, journal, identities, profiles, matches, receipts and the tournament room all match the source exactly, zero locators are unclassified, and a repeated import is a verified no-op while a fresh run id converges.",
+  "review_notes": "Only counts, hashes and structural facts are recorded here; no actor id, email address, credential value or raw row is reproduced. Production was never opened for write."
+}

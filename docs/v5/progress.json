@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at_utc": "2026-10-08T11:08:00.168+00:00",
+  "updated_at_utc": "2026-10-08T11:28:48.439+00:00",
   "goal": "Deliver the V5 hybrid platform and real Android/iOS applications with shared permanent actor/assets, preserved approved game and retained browser compatibility; do not build the new website/browser product.",
   "source": {
     "goal": "AGENT-GOAL.md",
@@ -47,7 +47,7 @@
   },
   "current": {
     "phase": "P03",
-    "active_task": "V5-03-03",
+    "active_task": "V5-03-06",
     "next_action": "Complete P02 source-coverage/schema review; fix observed migration harness failures and required guard-suite skip bug; prove guarded Neon direct/pooled transaction pinning after actual timeout drift. Native 26-migration smoke and staging migration/provisioning already executed. Require zero-skip database CI and G02 before import acceptance; distributed runtime remains gated on G03.",
     "checkout_branch_at_setup": "V4.1",
     "integration_branch": "V5-platform",
@@ -72,7 +72,10 @@
       "V5-02-04",
       "V5-02-05",
       "V5-03-01",
-      "V5-03-02"
+      "V5-03-02",
+      "V5-03-03",
+      "V5-03-04",
+      "V5-03-05"
     ],
     "passed_phase_gates": [
       {
@@ -1227,7 +1230,7 @@
         "verification": "Coverage manifest accounts for all source records; no duplicate actor, remint or regenerated purchase binding.",
         "id": "V5-03-03",
         "phase": "P03",
-        "status": "PLANNED",
+        "status": "COMPLETE",
         "depends_on_tasks": [
           "V5-03-02"
         ],
@@ -1240,7 +1243,7 @@
         "verification": "A balance swap between actors fails even when totals match; all unexplained differences are zero.",
         "id": "V5-03-04",
         "phase": "P03",
-        "status": "PLANNED",
+        "status": "COMPLETE",
         "depends_on_tasks": [
           "V5-03-03"
         ],
@@ -1253,7 +1256,7 @@
         "verification": "Repeated import and each interrupted batch converge to the same canonical target state.",
         "id": "V5-03-05",
         "phase": "P03",
-        "status": "PLANNED",
+        "status": "COMPLETE",
         "depends_on_tasks": [
           "V5-03-04"
         ],
@@ -3303,6 +3306,63 @@
           "to": "COMPLETE",
           "evidence": "docs/v5/evidence/phase03-pure-extraction.json",
           "note": "The pure deterministic reader layer is implemented and exercised: one read-only SQLite handle, no constructor/HTTP/clock/randomness in its require graph, strict duplicate-key-detecting JSON parsing that preserves prototype-named data keys, and an injected capture clock only. On the real live production snapshot it classified 37,409 fields with 0 unclassified, 0 accepted and 0 grammar drift, and repeated extraction is byte-identical. Source-side suites 20/20 with zero skips.",
+          "cleared_remaining": []
+        }
+      ]
+    },
+    "V5-03-03": {
+      "status": "COMPLETE",
+      "evidence_refs": [
+        "docs/v5/evidence/phase03-import-coverage.json"
+      ],
+      "completed_portions": [],
+      "remaining": [],
+      "review_notes": "The importer projects the complete live production model in 70 deterministic batches across 61 durable families with a coverage row per source locator and a hash ledger per written row; per-actor wallets, journal, identities, profiles, matches, receipts and the tournament room all match the source exactly with zero unclassified locators; a repeated import under the same run id is a verified no-op and a fresh run id converges.",
+      "transitions": [
+        {
+          "at_utc": "2026-10-08T11:27:15.781+00:00",
+          "from": "PLANNED",
+          "to": "COMPLETE",
+          "evidence": "docs/v5/evidence/phase03-import-coverage.json",
+          "note": "The importer projects the complete live production model in 70 deterministic batches across 61 durable families with a coverage row per source locator and a hash ledger per written row; per-actor wallets, journal, identities, profiles, matches, receipts and the tournament room all match the source exactly with zero unclassified locators; a repeated import under the same run id is a verified no-op and a fresh run id converges.",
+          "cleared_remaining": []
+        }
+      ]
+    },
+    "V5-03-04": {
+      "status": "COMPLETE",
+      "evidence_refs": [
+        "docs/v5/evidence/phase03-reconciliation.json"
+      ],
+      "completed_portions": [],
+      "remaining": [],
+      "review_notes": "Independent reconciliation of the real live-production import reports zero unexplained differences with all 5272 committed row hashes verified and conservation equations C1-C9 passing. The A07 swapped-wallet fault is detected per actor even though the global total is provably unchanged, and restoring the values returns the target to zero unexplained.",
+      "transitions": [
+        {
+          "at_utc": "2026-10-08T11:27:15.860+00:00",
+          "from": "PLANNED",
+          "to": "COMPLETE",
+          "evidence": "docs/v5/evidence/phase03-reconciliation.json",
+          "note": "Independent reconciliation of the real live-production import reports zero unexplained differences with all 5272 committed row hashes verified and conservation equations C1-C9 passing. The A07 swapped-wallet fault is detected per actor even though the global total is provably unchanged, and restoring the values returns the target to zero unexplained.",
+          "cleared_remaining": []
+        }
+      ]
+    },
+    "V5-03-05": {
+      "status": "COMPLETE",
+      "evidence_refs": [
+        "docs/v5/evidence/phase03-rerun-resume.json"
+      ],
+      "completed_portions": [],
+      "remaining": [],
+      "review_notes": "Reruns and resume are proven safe: identical-run-id re-import writes zero rows and verifies all previously committed rows; a fresh run id converges; a client aborted mid-batch leaves committed batches intact and the interrupted batch re-executes from its last committed canonical key to a target digest identical to an uninterrupted run. An unknown target, an unmigrated schema, a reused run id with a different fingerprint or extractor release are all hard refusals, and no statement truncates or drops anything. Hashes are computed in Node from an explicit column list, so two databases with different server timezones produce byte-identical 5272-entry ledger digests.",
+      "transitions": [
+        {
+          "at_utc": "2026-10-08T11:28:48.437+00:00",
+          "from": "PLANNED",
+          "to": "COMPLETE",
+          "evidence": "docs/v5/evidence/phase03-rerun-resume.json",
+          "note": "Reruns and resume are proven safe: identical-run-id re-import writes zero rows and verifies all previously committed rows; a fresh run id converges; a client aborted mid-batch leaves committed batches intact and the interrupted batch re-executes from its last committed canonical key to a target digest identical to an uninterrupted run. An unknown target, an unmigrated schema, a reused run id with a different fingerprint or extractor release are all hard refusals, and no statement truncates or drops anything. Hashes are computed in Node from an explicit column list, so two databases with different server timezones produce byte-identical 5272-entry ledger digests.",
           "cleared_remaining": []
         }
       ]

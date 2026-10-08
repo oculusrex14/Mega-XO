@@ -1,0 +1,71 @@
+{
+  "schema_version": 1,
+  "status": "EXECUTED",
+  "phase": "P03",
+  "task_ids": ["V5-03-04"],
+  "case_ids": ["A07", "A09"],
+  "observed_at_utc": "2026-10-08T12:20:00Z",
+  "source_sha": "1ea15f8",
+  "environment": "Owner Mac (macOS 25.6.0 arm64, node 26.8.2) reading an exclusively-owned PostgreSQL 16.15 database on loopback that holds a real live-production import. Production itself is untouched and was never opened for write.",
+  "commands": [
+    {
+      "action": "Reconcile the imported target against the source model",
+      "command": "node tools/v5-migration/cli.js verify --model <private live model> --run e2e-run --database-url postgresql://postgres@127.0.0.1:50709/v5_e2e --environment test",
+      "exit_code": 0,
+      "result": {
+        "ok": true,
+        "unexplainedCount": 0,
+        "explainedCount": 6,
+        "byCategory": {"restore-normalization": 2, "drained-outbox": 2, "expired-session": 1, "ephemeral-rebuild": 1},
+        "hashConventions": {"canonical": 5272},
+        "equations": {"C1": "pass", "C2": "pass", "C3": "pass", "C4": "pass", "C5": "pass", "C6": "pass", "C7": "pass", "C8": "pass", "C9": "pass"}
+      }
+    },
+    {
+      "action": "A07 injected fault: exchange the two actors' coin balances, leaving the global total unchanged",
+      "result": {
+        "before": {"actorA": 150, "actorB": 157},
+        "after": {"actorA": 157, "actorB": 150},
+        "globalTotalBefore": 307,
+        "globalTotalAfter": 307,
+        "totalsIdentical": true,
+        "reconcile": {"ok": false, "detected": "both actors reported as unexplained"},
+        "evidence": "each actor's economy.wallets.coins field hash is reported with the other actor's expected hash as the actual value, i.e. an exact cross-swap, plus a per-row committed-hash mismatch for both wallets"
+      }
+    },
+    {
+      "action": "Restore the two balances and re-reconcile",
+      "exit_code": 0,
+      "result": {"ok": true, "unexplainedCount": 0}
+    },
+    {
+      "action": "Reconciliation suite",
+      "command": "node --test tests/v5-migration-reconcile.test.js",
+      "exit_code": 0,
+      "result": {"tests": 9, "pass": 9, "fail": 0, "skipped": 0}
+    }
+  ],
+  "result": {
+    "executed": true,
+    "exit_code": 0,
+    "assertions": [
+      "Per-actor currency reconciliation is exact for available, reserved, purchased and credit values; the live source's 150 and 157 coin wallets match, as do the 4 journal rows that explain them.",
+      "The A07 swapped-wallet fault is DETECTED even though the global total is provably unchanged (307 before and after): both actors are flagged, so an aggregate-only comparison would have produced a false success.",
+      "A restored target returns to zero unexplained differences, proving the detection is a real comparison and not a sticky failure.",
+      "Every one of the 5272 committed row hashes recomputes to its committed value, so no clean row is falsely reported as tampered.",
+      "The reserved-closure equation C2 holds (each actor's reserved equals the open match and room contributions), and the burn composition C3 holds without conflating the journal subset with the receipt-derived burn totals.",
+      "The conversion, tournament-pool, wealth, occupancy, relationship-symmetry and principal-referential equations C4-C9 all pass.",
+      "Differences are classified exactly once as match, explained(category,rule_id) or unexplained, using only the closed explained-category set; the six explained differences on the real source are two restore-normalization deltas, the two drained-outbox rows, one expired session and one rebuilt presence row.",
+      "A missing target row and an extra target row are each reported, and a single-column mutation is still reported, so the comparison detects absence, surplus and tampering."
+    ],
+    "unexplained_differences": []
+  },
+  "not_claimed": [
+    "G03 acceptance (the phase gate) or the Neon staging import",
+    "Semantic replay of a command through the V5 runtime path (P04/P08)",
+    "Production writes, production restore or cutover"
+  ],
+  "restricted_evidence_location": "/Users/oculus/Downloads/Mega-XO-private-evidence/p03-live-production/ (source model; 0600, outside Git)",
+  "sanitized_summary": "Independent reconciliation of a real live-production import reports zero unexplained differences, with every committed row hash verified and all nine conservation equations passing. The A07 swapped-wallet fault is detected even when the global total is unchanged, and restoring the values returns the target to zero unexplained.",
+  "review_notes": "The difference output carries locators, field paths and hashes only - no actor id, email address, credential value or raw row appears in it. Production was never opened for write; the fault injection was performed on an owned disposable database and reverted."
+}

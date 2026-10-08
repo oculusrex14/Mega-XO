@@ -4,7 +4,7 @@ The mutable execution source is [progress.json](progress.json); this is its read
 
 **Goal:** Deliver the V5 hybrid platform and real Android/iOS applications with shared permanent actor/assets, preserved approved game and retained browser compatibility; do not build the new website/browser product.
 
-**Integration base:** `455b8ec9ea4070b4410d78f9eea2aaa06d32c0b2`. **Active phase/task:** P03 / V5-03-03 (PLANNED). **Progress:** 18/117 tasks terminal; 3/25 phase gates passed
+**Integration base:** `455b8ec9ea4070b4410d78f9eea2aaa06d32c0b2`. **Active phase/task:** P03 / V5-03-06 (PLANNED). **Progress:** 21/117 tasks terminal; 3/25 phase gates passed
 
 Required path: execute P00–P20, P22–P23; owner-deferred P21 executes nothing; P24 is measurement-gated; phase prerequisites are gates, not status assumptions, and a deferred or measurement-gated phase is never used as another phase prerequisite. The foundation gate P00–P03 passes before dependent distributed work, and V5 CI starts in the foundation rather than only at P17.
 
@@ -51,9 +51,9 @@ Milestone: V5.0; status: `IN_PROGRESS`; prerequisites: P02. [Phase contract](../
 
 - [x] **V5-03-01 — Capture consistent source snapshots** (`COMPLETE`).
 - [x] **V5-03-02 — Implement pure deterministic extraction** (`COMPLETE`).
-- [ ] **V5-03-03 — Import all durable account/game/economy state** (`PLANNED`).
-- [ ] **V5-03-04 — Implement lossless accounting reconciliation** (`PLANNED`).
-- [ ] **V5-03-05 — Make reruns and resume safe** (`PLANNED`).
+- [x] **V5-03-03 — Import all durable account/game/economy state** (`COMPLETE`).
+- [x] **V5-03-04 — Implement lossless accounting reconciliation** (`COMPLETE`).
+- [x] **V5-03-05 — Make reruns and resume safe** (`COMPLETE`).
 - [ ] **V5-03-06 — Record foundation migration proof** (`PLANNED`).
 
 **Exit gate:** G03: representative V4 snapshots import with zero unexplained per-actor/data differences; reruns and interruption recovery preserve identical canonical state and all financial/identity invariants.

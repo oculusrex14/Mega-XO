@@ -1,6 +1,6 @@
 # P09 post-gate tournament fencing and co-dev integration review
 
-**Status:** post-G09 source hardening on `co-dev/v5-integration`; **original owner G09 remains accepted** at `f2863ab1b60fdc9fabce0193d486bc118acb2514` (21/21 original real PostgreSQL16 tests). **Main agent:** P10. **Production:** V4 remains sole live authority; no host, database, Redis, DNS, billing or player data touched.
+**Status:** post-G09 source hardening on `co-dev/v5-integration`; **original owner G09 remains accepted** at `f2863ab1b60fdc9fabce0193d486bc118acb2514` (21/21 original real PostgreSQL16 tests). **Main agent:** G10 accepted and P11 active. **Production:** V4 remains sole live authority; no host, database, Redis, DNS, billing or player data touched.
 
 ## Merge and contract preservation
 
@@ -31,6 +31,32 @@ G09 implements the existing pure `src/tournament.js` game/tournament rule machin
 **Fix:** Timer `UPDATE` now stamps `timer_lease_epoch = revision` atomically and, when the caller supplies an epoch, requires it to equal the current revision. Missing epochs derive from durable current revision. An outdated worker attempting a stale-epoch renewal receives null without modifying ownership.
 
 **Test:** A real PostgreSQL regression covers a forged future epoch, a valid omitted-epoch claim, a valid renewal and rejection after the durable room revision advances.
+
+## Bug 4: in-command terminal settlement committed no outbox delivery
+
+**Fault:** The normal, player-driven terminal path `run(... resign/move/cancel)` executes `settleRoom`, then writes wallets/ledgers/receipt and finishes. Only the separate `settle(roomId)` service path called `emitSettlement`. When the normal path settled first, later workers correctly saw `settled:true` and returned without writing any event. **Result:** financially correct payouts/refunds could be invisible to the durable P10 outbox consumer.
+
+**Fix:** Only if `settleRoom` actually performed a payout or refund, `run` now queues the exact same deterministic `tournament.settle:<roomId>` ID and minimal routing payload before the encompassing transaction commits. The unique outbox ID and `ON CONFLICT DO NOTHING` prevent duplicate events; any event insertion error rolls back the room and financial changes together. Completed/replayed settlements do not enqueue additional events. The event carries no wallet amounts, balance snapshot or receipt body.
+
+**Real-PG regression:** `tests/v5-p09-recovery.test.js` now checks payout and cancellation/refund through ordinary game commands, verifies the committed outbox event exists with the correct `refunded` flag, and proves an entire worker restart, command replay and standalone `settle()` replay never rewrite the event.
+
+## Bug 5: public table join could overwrite a finalized room snapshot
+
+**Fault:** `publicJoin` read all active rooms while holding only the **room-set advisory lock**. Standalone `settle` does not take that advisory lock, and can commit terminal status while the join is running. The join previously obtained the candidate from the old snapshot, took wallet locks, then overwrote the room by saving that old document. It skipped the row lock acquired before wallet changes by other room commands and by settlement.
+
+**Fix:** When an existing public room is selected, take its **room-row `FOR UPDATE` lock before actor wallet locks**, then reload the room under that lock. A room that became terminal, changed table or filled up while waiting is **not overwritten**; normal public matchmaking creates a fresh lobby instead. No participation, entry-fee or cohort rule changed.
+
+**Real-PG regression:** `tests/v5-p09-lifecycle.test.js` now holds the selected room row in an independently-owned admin transaction while another real Core pool attempts a join; the admin transaction closes the room, and the join must create a different lobby without resurrecting the terminal status, changing the original roster or holding phantom escrow.
+
+## Bug 6: pre-lock publicJoin balance was treated as authoritative
+
+**Fault:** `publicJoin` needed a read-only economy snapshot to choose a cohort and reject obviously unfunded joins, **before** locking actor wallets. The aggregate cache was then reused for `state.write` and any debit, even if a different transaction had changed a player's wallet while the join was blocked. The intended wallet lock only protects reads and writes **after** acquiring it, not the earlier selection snapshot.
+
+**Fix:** Added the explicit, internal `tx.repositories.state.refresh()` operation in `packages/db/pg/repositories.js`, which clears the **current transaction's** unmodified cached aggregate and rehydrates from PostgreSQL. `publicJoin` calls it **after** room/actor locks; it then rechecks live verified eligibility, active occupancy and affordability before any financial write. All other commands retain their existing scoped read; previously mutated documents are never refreshed/discarded. The refresh is not an HTTP endpoint, never contacts production, and preserves all original balance/pricing rules.
+
+**Real-PG regression:** A player begins a funded join from the selected room; a separate transaction holds the room lock and reduces that player's test-wallet balance to zero before releasing it. The waiting join must refuse `INSUFFICIENT_COINS`, leaving the locked wallet balance, room roster, reservation and operation ledger unchanged.
+
+**Verification boundary:** The original G09 gate is still accepted by the owner for its original source. These newer co-dev changes are **NOT** automatically gate-accepted. Run the existing `v5-postgresql.yml` P09 suite (five source files, strict nonzero passes / zero skipped), full cross-phase P08/P10 worker tests, and the exact-head 11 Actions workflows. Neither production financial writes nor the primary G09/G10 evidence were changed here.
 
 ## Integration caveats and next checks
 

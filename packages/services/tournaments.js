@@ -553,7 +553,7 @@ function createTournamentService(options = {}) {
       * like settle(). Re-hydrate the live state under that lock: never save
       * an earlier activeRooms() snapshot over a terminal settlement. */
      await lockRoomRow(tx, candidate.id);
-     const latest = await repositories.tournaments.room(candidate.id);
+     const latest = await repositories.tournaments.freshRoom(candidate.id);
      if (latest && latest.status === 'LOBBY' && latest.table === cmd.table
       && latest.players.length < latest.capacity) room = latest;
     }

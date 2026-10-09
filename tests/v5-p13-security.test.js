@@ -259,6 +259,24 @@ test('3. Credential separation: hybrid rejected, CSRF enforced for cookies, bear
     (err) => err.code === 'CSRF_REJECTED' && err.status === 403
   );
 
+  // 3.5b Explicit Origin takes precedence over an allowed Referer.
+  for (const origin of ['https://attacker.invalid', 'bad-origin', '']) {
+    assert.throws(
+      () => validateCredentials({
+        cookie: '__Host-mega_session=sess-mutating-cookie',
+        method: 'POST',
+        origin,
+        referer: 'https://play.antimatterinnovations.com/game',
+      }),
+      (err) => err.code === 'CSRF_REJECTED' && err.status === 403
+    );
+  }
+  assert.equal(validateCredentials({
+    cookie: '__Host-mega_session=sess-mutating-cookie',
+    method: 'POST',
+    referer: 'https://play.antimatterinnovations.com/game',
+  }).mode, 'cookie');
+
   // 3.6 Cookie credentials with mutating method (POST) from allowed origin -> succeeds
   const cookieAllowedResult = validateCredentials({
     cookie: '__Host-mega_session=sess-mutating-cookie',

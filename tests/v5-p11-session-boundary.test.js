@@ -339,3 +339,42 @@ test('P11 money safety: missing or malformed operation keys never forward econom
   assert.equal(forwarded.length, 1);
   assert.equal(forwarded[0].opKey, 'stable-client-operation-001');
 });
+
+test('P13: conflicting or malformed Origin always outranks an allowed Referer', async () => {
+  const { handler, forwarded } = fixture();
+  const allowedReferer = 'https://play.antimatterinnovations.com/game';
+  for (const origin of ['https://attacker.invalid', 'not-a-valid-origin', '']) {
+    const res = await request(handler, {
+      method: 'POST',
+      url: '/api/v1/convert',
+      headers: {
+        cookie: '__Host-mega_session=alice-session',
+        origin,
+        referer: allowedReferer,
+        'idempotency-key': 'p13-conflicting-origin-' + origin.length,
+      },
+      body: { from: 'coins', amount: 100 },
+    });
+    assert.equal(res.status, 403, 'disallowed presented Origin must fail even with approved Referer');
+    assert.equal(res.data.error, 'ORIGIN_OR_CONTENT_TYPE');
+  }
+  assert.equal(forwarded.length, 0, 'conflicting/invalid provenance cannot spend currency');
+  const refererOnly = await request(handler, {
+    method: 'POST',
+    url: '/api/v1/convert',
+    headers: {
+      cookie: '__Host-mega_session=alice-session',
+      referer: allowedReferer,
+      'idempotency-key': 'p13-legitimate-old-referer',
+    },
+    body: { from: 'coins', amount: 100 },
+  });
+  assert.equal(refererOnly.status, 200, 'genuinely absent Origin supports old-origin Referer fallback');
+  assert.equal(forwarded.length, 1);
+
+  const { checkCsrf } = require('../apps/api/middleware/csrf.js');
+  const requestHeaders = { cookie: '__Host-mega_session=alice-session', referer: allowedReferer };
+  assert.equal(checkCsrf({ method: 'POST', headers: requestHeaders }), true);
+  assert.equal(checkCsrf({ method: 'POST', headers: { ...requestHeaders, origin: 'https://attacker.invalid' } }), false);
+  assert.equal(checkCsrf({ method: 'POST', headers: { ...requestHeaders, origin: '' } }), false);
+});

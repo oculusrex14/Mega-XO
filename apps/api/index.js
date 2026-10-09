@@ -46,7 +46,7 @@ function createApiHandler(options = {}) {
       // 3. Credential separation & CSRF enforcement
       // Only browser-controlled Origin and Referer are admissible CSRF signals.
       // X-Forwarded-Origin is a client-settable header, not proof of origin.
-      const originHeader = req.headers?.origin || null;
+      const originHeader = req.headers?.origin ?? null;
       const refererHeader = req.headers?.referer || req.headers?.referrer || null;
       const cookieHeader = req.headers?.cookie || null;
       const authHeader = req.headers?.authorization || null;

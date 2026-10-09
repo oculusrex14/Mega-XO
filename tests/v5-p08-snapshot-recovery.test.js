@@ -210,6 +210,10 @@ const isSnapshotPath = (target) => {
  *     snapshot paths.
  * Everything else is a plain 404 from this test's own handler. */
 async function serve(h, t) {
+  /* In a real deployment the API verifies the actual cookie/bearer, including
+   * revocation. This disposable host models that boundary with opaque test-only
+   * bearer credentials; neither actor query nor X-Actor is authority. */
+  const httpTokens = new Map();
   const server = http.createServer((req, res) => {
     if (res.headersSent || res.writableEnded) return;
     if (isSnapshotPath(req.url)) {
@@ -221,6 +225,10 @@ async function serve(h, t) {
   const beforeRequest = server.listenerCount('request');
   const transport = loadTransportFactory()({
     server, pool: h.pools.core, core: h.core, ephemera: h.ephemera, now: () => clock,
+    authenticateHttp: async (req) => {
+      const actor = httpTokens.get(req.headers.authorization);
+      return actor ? { actor } : null;
+    },
   });
   assert.equal(transport.ingressPath, INGRESS, 'the transport answers exactly the staged ingress');
   const ownsRequests = server.listenerCount('request') > beforeRequest;
@@ -235,14 +243,22 @@ async function serve(h, t) {
     if (server.listening) await new Promise((resolve) => server.close(() => resolve()));
   };
   t.after(close);
-  return { server, transport, port, close, url: (path) => `ws://127.0.0.1:${port}${path}` };
+  return {
+    server, transport, port, close, url: (path) => `ws://127.0.0.1:${port}${path}`,
+    authorization(actor) {
+      const secret = 'Bearer ' + crypto.randomBytes(32).toString('hex');
+      httpTokens.set(secret, actor);
+      return secret;
+    },
+  };
 }
 
 /* One plain HTTP GET, decoded as JSON when the body is JSON. Bounded so a fallback that never
  * answers fails the assertion instead of hanging the suite. */
-function httpGet(port, path) {
+function httpGet(port, path, authorization = null) {
   return new Promise((resolve, reject) => {
-    const req = http.get({ host: '127.0.0.1', port, path, timeout: 6000 }, (res) => {
+    const headers = authorization === null ? {} : { authorization };
+    const req = http.get({ host: '127.0.0.1', port, path, headers, timeout: 6000 }, (res) => {
       let body = '';
       res.setEncoding('utf8');
       res.on('data', (chunk) => { body += chunk; });
@@ -501,15 +517,26 @@ test('V5-08-04 recovery: the HTTP snapshot fallback returns the authoritative du
   assert.equal(committed.revision, 1, 'the HTTP fixture match is at revision 1');
 
   const query = `match_id=${encodeURIComponent(matchId)}&actor=${encodeURIComponent(playerA)}`;
+  const authA = s.authorization(playerA);
 
-  /* The documented fallback: GET /realtime/v1/snapshot?match_id=..&actor=.. */
-  const primary = await httpGet(s.port, `${SNAPSHOT_PATH}?${query}`);
+  /* A client-chosen actor query without a verified session is NOT a credential. */
+  const forged = await httpGet(s.port, `${SNAPSHOT_PATH}?${query}`);
+  assert.equal(forged.status, 401, 'query-only actor impersonation cannot read the match');
+  const wrongBearer = await httpGet(s.port, `${SNAPSHOT_PATH}?${query}`, 'Bearer forged');
+  assert.equal(wrongBearer.status, 401);
+  const wrongActor = await httpGet(s.port,
+    `${SNAPSHOT_PATH}?match_id=${encodeURIComponent(matchId)}&actor=${encodeURIComponent(playerB)}`, authA);
+  assert.equal(wrongActor.status, 403, 'a valid Alice credential cannot borrow Bob query identity');
+
+  /* Historical ?actor= is only a compatibility assertion; actual identity is
+   * the authenticated host principal. */
+  const primary = await httpGet(s.port, `${SNAPSHOT_PATH}?${query}`, authA);
   assert.equal(primary.status, 200, 'the snapshot route answers 200');
   assert.match(String(primary.headers['content-type'] || ''), /application\/json/, 'the fallback is served as application/json');
   assert.deepEqual(viewOf(primary.json), committed, 'the HTTP snapshot is byte-equal to the independent oracle');
 
   /* The match-addressed alias: GET /realtime/v1/match/:id?actor=.. */
-  const alias = await httpGet(s.port, `${MATCH_PREFIX}${matchId}?actor=${encodeURIComponent(playerA)}`);
+  const alias = await httpGet(s.port, `${MATCH_PREFIX}${matchId}?actor=${encodeURIComponent(playerA)}`, authA);
   assert.equal(alias.status, 200, 'the /realtime/v1/match/:id alias answers 200');
   assert.match(String(alias.headers['content-type'] || ''), /application\/json/, 'the alias is served as application/json');
   assert.deepEqual(viewOf(alias.json), committed, 'the alias returns the same durable view');
@@ -519,13 +546,15 @@ test('V5-08-04 recovery: the HTTP snapshot fallback returns the authoritative du
     `move:${matchId}:2`, { type: 'move', id: matchId, revision: committed.revision, move: { b: 0, c: 1 } });
   const advanced = await oracle(h, playerA, matchId);
   assert.equal(advanced.revision, 2, 'a second real move committed revision 2');
-  const after = await httpGet(s.port, `${SNAPSHOT_PATH}?${query}`);
+  const after = await httpGet(s.port, `${SNAPSHOT_PATH}?${query}`, authA);
   assert.equal(after.status, 200, 'the fallback still answers after a further commit');
   assert.deepEqual(viewOf(after.json), advanced, 'the fallback returns the CURRENT durable view, not a cached one');
 
   /* A non-participant asking for the same match is refused (never served the state), and the test's
    * own unrelated routes are untouched by the fallback. */
-  const foreign = await httpGet(s.port, `${SNAPSHOT_PATH}?match_id=${encodeURIComponent(matchId)}&actor=${encodeURIComponent('svc_p08r00')}`);
+  const foreign = await httpGet(s.port,
+    `${SNAPSHOT_PATH}?match_id=${encodeURIComponent(matchId)}&actor=${encodeURIComponent('svc_p08r00')}`,
+    s.authorization('svc_p08r00'));
   assert.notEqual(foreign.status, 200, 'a non-participant is not served the match state');
   const unrelated = await httpGet(s.port, '/healthz');
   assert.equal(unrelated.status, 404, 'the fallback does not claim unrelated paths');

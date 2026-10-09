@@ -2,7 +2,7 @@
 'use strict';
 /*
  * P16 read-only CI perimeter. This is a conservative source audit of OUR
- * isolated workflow, not a replacement for the host's protected environments.
+ * source-only workflows on both V5 pushes and PRs, not a replacement for protected environments.
  * Never trust PR-controlled workflows with provider or release credentials.
  */
 const fs = require('node:fs');
@@ -13,8 +13,17 @@ function refuse(reason) { throw Error('P16_CI_REFUSED:' + reason); }
 function auditWorkflow(text) {
   if (typeof text !== 'string' || text.length < 500) refuse('ABSENT');
   if (!/^name: V5 P16 process failover foundations\s*$/m.test(text)) refuse('IDENTITY');
-  if (!/^on:\n  pull_request:\n    branches: \[V5-platform\]/m.test(text)) refuse('TRIGGER');
-  if (/^\s*(?:push|pull_request_target|workflow_run|workflow_dispatch|repository_dispatch|schedule):/m.test(text)) refuse('PR_ONLY');
+  if (!/^on:\n  push:\n    branches: \[V5-platform\]/m.test(text) ||
+      !/^  pull_request:\n    branches: \[V5-platform\]/m.test(text)) refuse('TRIGGER');
+  if (/^\s*(?:pull_request_target|workflow_run|workflow_dispatch|repository_dispatch|schedule):/m.test(text)) {
+    refuse('UNTRUSTED_EVENT');
+  }
+  const events = text.slice(text.indexOf('on:\n') + 4, text.indexOf('\npermissions:'));
+  const pushes = events.match(/^  push:\n(?: {4,}.*\n)+/m)?.[0];
+  const reviews = events.match(/^  pull_request:\n(?: {4,}.*\n)+/m)?.[0];
+  if (!pushes || !reviews || pushes.replace('  push:', '  pull_request:') !== reviews) {
+    refuse('EVENT_DEPENDENCY_DRIFT');
+  }
   if (!/^permissions:\n  contents: read$/m.test(text)) refuse('READ_ONLY');
   if (/^\s*(?:id-token|actions|packages|checks|deployments|issues|contents): write\s*$/m.test(text)
       || /\$\{\{\s*secrets\./.test(text)

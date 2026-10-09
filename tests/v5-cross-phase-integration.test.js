@@ -52,7 +52,7 @@ test('P08 HTTP identity and socket queue safeguards stay in zero-skip PG integra
   ]) {
     assert.ok(yaml.includes('node --test') && yaml.includes(suite),
       suite + ' must execute on disposable PG/Redis CI');
-    assert.match(yaml, new RegExp(String.raw`\\{ file: '` + suite.replaceAll('.', String.raw`\\.`) + String.raw`', log: '\\.evidence-logs/`),
+    assert.ok(yaml.includes("{ file: '" + suite + "', log: '.evidence-logs/"),
       suite + ' must be present in zero-skip coverage register');
   }
   assert.match(yaml, /if \(pass === null \|\| pass === 0 \|\| fail === null \|\| fail !== 0 \|\| skipped === null \|\| skipped !== 0\)/);

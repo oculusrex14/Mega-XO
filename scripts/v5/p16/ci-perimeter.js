@@ -25,6 +25,8 @@ function auditWorkflow(text) {
   if (uses.length !== 4 || uses.some(x => !/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+@[a-f0-9]{40}$/.test(x))) {
     refuse('PINNED_ACTIONS');
   }
+  const checkouts = [...text.matchAll(/^\s*- uses: actions\/checkout@[a-f0-9]{40} # v4\n\s+with:\n\s+persist-credentials: false$/gm)];
+  if (checkouts.length !== 2) refuse('CHECKOUT_CREDENTIALS');
   if (!/^  core-drain:\n/m.test(text) || !/^  core-failure-recovery:\n/m.test(text)
       || !/tests\/v5-p16-real-sockets\.test\.js/.test(text)
       || !/tests\/v5-p16-process-failover\.test\.js/.test(text)) refuse('OWNED_SUITES');

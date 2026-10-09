@@ -31,7 +31,7 @@ function classify(record, expectedSha) {
       !HASH.test(record.v4LatestSnapshotSha256) ||
       (record.v4FencingEvidenceRef !== null &&
         (typeof record.v4FencingEvidenceRef !== 'string' ||
-         !EVIDENCE.test(record.v4FencingEvidenceRef))) ||
+         (!EVIDENCE.test(record.v4FencingEvidenceRef) || record.v4FencingEvidenceRef.includes('..')))) ||
       typeof record.allV5WritePathsProvenDisabled !== 'boolean' ||
       typeof record.pgCompatibleReleaseVerified !== 'boolean') refuse('INVALID_SCOPE');
   const observed = record.applicationWriteState === 'OBSERVED';

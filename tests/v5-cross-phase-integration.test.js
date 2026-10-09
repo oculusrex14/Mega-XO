@@ -42,24 +42,30 @@ function requiredPaths(yaml, event, expected) {
 
 test('P16 Core recovery runs when P08/P06 runtime, shared protocol, schema or fixture changes', () => {
   const yaml = workflow('v5-p16-core-failover.yml');
-  requiredPaths(yaml, 'pull_request', [
+  const required = [
     'packages/services/**','packages/contracts/**','packages/db/**',
     'packages/migrations/**','src/domain.js','scripts/v5/p16/**',
     'tests/v5-p16-*.test.js','tests/v5-pg-lab.js',
     'tests/helpers/v5-presence-service-process.js',
-  ]);
+  ];
+  requiredPaths(yaml, 'pull_request', required);
+  requiredPaths(yaml, 'push', required);
+  assert.deepEqual(eventPaths(yaml,'push'), eventPaths(yaml,'pull_request'));
   assert.match(yaml, /^permissions:\n  contents: read$/m);
   assert.doesNotMatch(yaml, /^  (?:pull_request_target|workflow_run|workflow_dispatch):/m);
 });
 
 test('P22 go/no-go is re-evaluated when owner gate evidence, economy, migrations and clients change', () => {
   const yaml = workflow('v5-p22-cutover-readiness.yml');
-  requiredPaths(yaml, 'pull_request', [
+  const required = [
     'docs/v5/progress.json','docs/v5/evidence/**','packages/**',
     'tools/v5-migration/**','src/**','native/**',
     'scripts/v5/release-*','scripts/v5/build-client.js',
     'scripts/v5/p22/**','scripts/v5/p18/**','tests/v5-p22-*.test.js',
-  ]);
+  ];
+  requiredPaths(yaml, 'pull_request', required);
+  requiredPaths(yaml, 'push', required);
+  assert.deepEqual(eventPaths(yaml,'push'), eventPaths(yaml,'pull_request'));
   assert.match(yaml, /^permissions:\n  contents: read$/m);
   assert.match(yaml, /group: v5-p22-\$\{\{/);
   assert.doesNotMatch(yaml, /group: v5-p22-\\\$\{\{/);

@@ -44,7 +44,8 @@ test('P16 Core recovery runs when P08/P06 runtime, shared protocol, schema or fi
   const yaml = workflow('v5-p16-core-failover.yml');
   const required = [
     'packages/services/**','packages/contracts/**','packages/db/**',
-    'packages/migrations/**','src/domain.js','scripts/v5/p16/**',
+    'packages/migrations/**','apps/game-core/**','apps/worker/**','deploy/**',
+    'src/domain.js','scripts/v5/p16/**',
     'tests/v5-p16-*.test.js','tests/v5-pg-lab.js',
     'tests/helpers/v5-presence-service-process.js',
   ];
@@ -59,7 +60,8 @@ test('P22 go/no-go is re-evaluated when owner gate evidence, economy, migrations
   const yaml = workflow('v5-p22-cutover-readiness.yml');
   const required = [
     'docs/v5/progress.json','docs/v5/evidence/**','packages/**',
-    'tools/v5-migration/**','src/**','native/**',
+    'tools/v5-migration/**','apps/**','server/**','deploy/**',
+    'src/**','native/**',
     'scripts/v5/release-*','scripts/v5/build-client.js',
     'scripts/v5/p22/**','scripts/v5/p18/**','tests/v5-p22-*.test.js',
   ];

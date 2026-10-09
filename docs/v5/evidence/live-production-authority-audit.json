@@ -1,0 +1,106 @@
+{
+  "schema_version": 1,
+  "audit_type": "LIVE_PRODUCTION_AUTHORITY_AND_CUTOVER_RECONCILIATION",
+  "priority": "P0_CRITICAL",
+  "audited_at_utc": "2026-10-09T22:50:00.000Z",
+  "status": "ONE_VERIFIED_PRODUCTION_AUTHORITY_NO_CONFLICTING_WRITERS",
+  "verdict": {
+    "active_production_authority": "V4_SQLITE",
+    "conflicting_writers": false,
+    "v5_postgresql_production_written_bytes": 0,
+    "cutover_reconciliation_summary": "P22/P23/P24 test suites verified cutover state models, retirement contracts, and scaling triggers in synthetic rehearsal harnesses (cutover-state-model.js). Live production infrastructure was NOT cut over and remains 100% on V4.1.2 / SQLite. Contradictory records in ledger and progress documentation are formally reconciled."
+  },
+  "live_production_oracle_host": {
+    "host_alias": "command",
+    "tailscale_ip": "100.64.128.46",
+    "public_ip": "129.80.67.164",
+    "hostname": "openclaw-host",
+    "os_uptime": "up 2 days, 10:13, load average: 0.12, 0.08, 0.02",
+    "app_container": {
+      "name": "mega-xo-production-app-1",
+      "image": "ghcr.io/oculusrex14/mega-xo@sha256:71d33a1a9893a303c5ffcbdb090caefde22d9e7e054a8c2d6c494a44919b58e4",
+      "version": "4.1.2",
+      "git_base_sha": "455b8ec9ea4070b4410d78f9eea2aaa06d32c0b2",
+      "status": "Up 2 days (healthy)",
+      "ports": ["8080/tcp", "127.0.0.1:9091->9091/tcp"],
+      "env_db": "MEGA_DB=/data/mega.sqlite",
+      "env_origin": "MEGA_ORIGIN=https://play.antimatterinnovations.com"
+    },
+    "edge_container": {
+      "name": "mega-xo-production-edge-1",
+      "status": "Up 2 days",
+      "ports": ["0.0.0.0:80->80/tcp", "0.0.0.0:443->443/tcp"],
+      "reverse_proxy_target": "app:8080"
+    },
+    "backup_container": {
+      "name": "mega-xo-production-backup-1",
+      "status": "Up 2 days"
+    },
+    "systemd_timers": [
+      { "unit": "mega-xo-health.timer", "status": "active" },
+      { "unit": "mega-xo-db-integrity.timer", "status": "active" }
+    ],
+    "sqlite_database": {
+      "host_path": "/opt/mega-xo/data/mega.sqlite",
+      "container_path": "/data/mega.sqlite",
+      "size_bytes": 1122304,
+      "wal_size_bytes": 4301312,
+      "wal_last_modified_utc": "2026-10-09T22:45:00.000Z",
+      "maintenance_state": { "id": 1, "maintenance": 0 },
+      "table_counts": {
+        "account_sessions": 5,
+        "commands": 49,
+        "community_limits": 138,
+        "email_credentials": 2,
+        "identities": 2,
+        "party_commands": 7,
+        "party_rooms": 1,
+        "profile_saves": 2,
+        "profiles": 2,
+        "v41_support_events": 5056,
+        "v4_controls": 1,
+        "v4_limits": 3,
+        "v4_outbox": 2,
+        "v4_schema": 8
+      }
+    }
+  },
+  "neon_production_database": {
+    "org_id": "org-wandering-sea-53820697",
+    "project_id": "blue-sun-85454968",
+    "project_name": "mega-xo-v5-production",
+    "region_id": "aws-us-east-1",
+    "pg_version": 16,
+    "endpoint_id": "ep-mute-surf-b8v94ksa",
+    "endpoint_host": "ep-mute-surf-b8v94ksa.c-14.us-east-1.aws.neon.tech",
+    "endpoint_state": "idle",
+    "suspended_at": "2026-10-08T02:00:31Z",
+    "written_data_bytes": 0,
+    "user_tables_count": 0,
+    "status": "DORMANT_ZERO_BYTES_WRITTEN"
+  },
+  "public_endpoints": {
+    "play_antimatterinnovations_com": {
+      "ip": "129.80.67.164",
+      "root_status": 200,
+      "livez_status": 200,
+      "livez_body": "{\"ok\":true}",
+      "opsz_status": 200,
+      "opsz_body": "{\"ok\":true}"
+    },
+    "api_megaxo_online": {
+      "dns_records": [],
+      "status": "UNROUTED"
+    },
+    "megaxo_online": {
+      "dns_records": ["2.57.91.91"],
+      "status": "HOSTINGER_PARKED"
+    }
+  },
+  "reconciliation_actions": [
+    "Confirmed live production authority is V4.1.2 on SQLite (/opt/mega-xo/data/mega.sqlite).",
+    "Confirmed zero conflicting writers: V5 PostgreSQL production has written 0 bytes.",
+    "Reconciled ledger and progress documentation to clearly classify P22/P23 as REHEARSAL_VERIFIED, removing false claims that live V4 was permanently retired.",
+    "Affirmed that live authority cutover requires an explicit operator cutover window."
+  ]
+}

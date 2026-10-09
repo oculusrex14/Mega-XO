@@ -10,7 +10,7 @@
   ],
   "case_ids": [],
   "recorded_at_utc": "2026-10-10T07:00:00.000Z",
-  "status": "PASSED",
+  "status": "REHEARSAL_VERIFIED_LIVE_AUTHORITY_REMAINS_V4_SQLITE",
   "source_state": {
     "base_sha": "76165cf0fc3779789b31689a83a8c8695d96ca2b",
     "target_branch": "V5-platform",

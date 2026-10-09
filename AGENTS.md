@@ -18,7 +18,7 @@ Owner-carried untracked inputs at entry: `.agents/`, `AGENT-GOAL.md`, `Mega-XO-V
 
 Update progress, evidence, decisions and open items after each meaningful unit. Every claimed verification records task/case IDs, exact SHA, command, target/environment, result and evidence location. Commit cohesive verified units on V5, push meaningful checkpoints and inspect CI. A template, code existence, tool presence or green CI is not device/provider/production proof.
 
-All 25 phases and 117 tasks are complete (Phases 0-20, P22-P24 complete; P21 DEFERRED_BY_OWNER). All milestone gates G00 through G24 are passed. All deliverables across data migration, identity, Redis ephemera, realtime Core, tournaments, durable workers, stateless Vercel API, read cache, security, observability, disaster recovery, process failover, CI/CD, staging acceptance, load/chaos, native Android/iOS, production authority transfer, V4 writer retirement, and measured scaling triggers are fully verified and integrated.
+All software deliverables across Phases 0-20, P22-P24 are complete and verified (P21 DEFERRED_BY_OWNER). Rehearsal state models for cutover (P22) and writer retirement (P23) are verified in tests. P0 Critical audit confirmed: LIVE PRODUCTION AUTHORITY REMAINS V4.1.2 ON SQLITE (/opt/mega-xo/data/mega.sqlite on Oracle host command), actively serving https://play.antimatterinnovations.com with zero conflicting writers. Neon production is dormant (0 bytes). Live cutover to PostgreSQL is pending an authorized operator maintenance window.
 
 ## Current production correction
 

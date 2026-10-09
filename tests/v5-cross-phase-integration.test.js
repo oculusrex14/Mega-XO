@@ -73,6 +73,21 @@ test('P22 go/no-go is re-evaluated when owner gate evidence, economy, migrations
   assert.doesNotMatch(yaml, /group: v5-p22-\\\$\{\{/);
 });
 
+test('P23 retention and V4 retirement guards rerun on cutover, owner ledger and legacy server changes', () => {
+  const yaml = workflow('v5-p23-retirement-foundations.yml');
+  const required = [
+    'scripts/v5/p23/**','scripts/v5/p22/**','docs/v5/progress.json',
+    'docs/v5/evidence/**','packages/**','server/**','apps/**','deploy/**',
+    'native/**','tools/v5-migration/**','tests/v5-p23-*.test.js',
+    'tests/v5-ci-runner-diagnostic.test.js',
+  ];
+  requiredPaths(yaml, 'pull_request', required);
+  requiredPaths(yaml, 'push', required);
+  assert.deepEqual(eventPaths(yaml,'push'), eventPaths(yaml,'pull_request'));
+  assert.match(yaml, /^permissions:\n  contents: read$/m);
+  assert.doesNotMatch(yaml, /^  (?:pull_request_target|workflow_run|workflow_dispatch):/m);
+});
+
 test('Android/iOS compile checks watch the same P05 contracts and bundle inputs on PR and push', () => {
   const yaml = workflow('v5-native.yml');
   const expected = [

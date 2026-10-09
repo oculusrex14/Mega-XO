@@ -429,3 +429,45 @@ test('V5-07-02 queue: the candidate index is bounded by maxTickets and reclaims 
 
   await expectCode(() => queue.join({ actor: 'svc_erin', mode: 'ranked', opKey: 'bd-4', region: 'iad', latencyMs: 40 }), 'QUEUE_FULL');
 });
+
+
+/* Post-gate regression: Redis claim TTL is shorter than a blocked PG transaction.
+ * Once the lease lapses, a second matcher can own the SAME queue seat. The old
+ * matcher must not delete the new claim or the candidate (even with requeue:false).
+ * Real Redis, real adapter, actual Lua compare-and-delete. */
+test('P07 co-dev regression: a stale claim cannot release a successor claim or remove its FIFO seat', { skip: GATE }, async (t) => {
+  const h = await harness(t, { keyVersion: 'q702-cas' });
+  if (!h) return;
+  const { queue, ephemera } = h;
+  const joined = await queue.join({ actor: 'svc_alice', mode: 'ranked', opKey: 'cas-join', region: 'iad', latencyMs: 40 });
+  const prior = await queue.claimCandidates({ mode: 'ranked', limit: 1, matcherId: 'slow-matcher', leaseMs: 250 });
+  assert.equal(prior.length, 1);
+  assert.equal(prior[0].actor, 'svc_alice');
+
+  await lab.sleep(350); // wait for the Redis claim lock's *real* TTL, not the fixture clock
+  const successor = await queue.claimCandidates({ mode: 'ranked', limit: 1, matcherId: 'healthy-matcher', leaseMs: 30000 });
+  assert.equal(successor.length, 1);
+  assert.notEqual(successor[0].claimId, prior[0].claimId);
+
+  const key = ephemera.key('queue', 'claim', 'svc_alice');
+  assert.equal(await ephemera.client.get(key), successor[0].claimId);
+  assert.equal(await queue.releaseClaim({ mode: 'ranked', actor: 'svc_alice',
+    claimId: prior[0].claimId, requeue: false }), false, 'expired worker cannot drop a successor seat');
+  assert.equal(await queue.releaseClaim({ mode: 'ranked', actor: 'svc_alice',
+    claimId: prior[0].claimId, requeue: true }), false, 'expired worker cannot touch successor gauge');
+  await expectCode(() => queue.releaseClaim({ mode: 'ranked', actor: 'svc_alice', requeue: false }),
+    'INVALID_CLAIM_ID');
+
+  assert.equal(await ephemera.client.get(key), successor[0].claimId, 'new lock survives stale deletes');
+  assert.deepEqual(await index(ephemera, 'ranked'), ['svc_alice'], 'FIFO seat was not removed');
+  assert.equal((await queue.status('svc_alice')).joinedAt, joined.joinedAt);
+
+  assert.equal(await queue.releaseClaim({ mode: 'ranked', actor: 'svc_alice',
+    claimId: successor[0].claimId, requeue: true }), true, 'actual owner can release');
+  const reclaimed = await queue.claimCandidates({ mode: 'ranked', limit: 1, matcherId: 'next-worker', leaseMs: 30000 });
+  assert.equal(reclaimed.length, 1);
+  assert.equal(reclaimed[0].joinedAt, joined.joinedAt, 'original FIFO time survives the claim handoff');
+  assert.equal(await queue.releaseClaim({ mode: 'ranked', actor: 'svc_alice',
+    claimId: reclaimed[0].claimId, requeue: false }), true);
+  assert.deepEqual(await index(ephemera, 'ranked'), []);
+});

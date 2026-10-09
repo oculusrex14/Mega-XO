@@ -112,6 +112,8 @@ function run(args, root = process.cwd()) {
   let packet = null;
   if (args.length === 4) {
     if (args[3] !== '.artifacts/p22-readiness.json') refuse('SCOPED_PACKET_PATH_ONLY');
+    const artifactDir = fs.lstatSync(path.join(root, '.artifacts'));
+    if (!artifactDir.isDirectory() || artifactDir.isSymbolicLink()) refuse('ARTIFACT_DIRECTORY_REFUSED');
     const p = path.join(root, args[3]);
     const stat = fs.lstatSync(p);
     if (!stat.isFile() || stat.isSymbolicLink() || stat.size > 65536) refuse('PACKET_FILE_REFUSED');

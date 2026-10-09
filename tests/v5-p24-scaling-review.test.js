@@ -151,3 +151,20 @@ test('P21 intentionally deferred: a genuine G23 lineage still allows nonauthoriz
  assert.equal(a.ledger.current.passed_phase_gates.some(x=>x.gate==='G21'),false);
  assert.equal(reviewScale(a).reviewCandidates.length,1);
 });
+
+
+test('a year-old or future baseline cannot certify current capacity even with fresh windows',()=>{
+ const old=args();
+ old.baseline.periodStartUtc='2026-01-01T00:00:00Z';
+ old.baseline.periodEndUtc='2026-01-02T00:00:00Z';
+ old.baseline.capturedAtUtc='2026-01-02T00:01:00Z';
+ const stale=reviewScale(old);
+ assert.equal(stale.status,'NOT_TRIGGERED_NO_VERIFIED_PRODUCTION_BASELINE');
+ assert.equal(stale.baselineStatus,'STALE_OR_FUTURE_BASELINE');
+ assert.deepEqual(stale.reviewCandidates,[]);
+ const future=args();
+ future.baseline.periodStartUtc='2026-10-10T00:00:00Z';
+ future.baseline.periodEndUtc='2026-10-11T00:00:00Z';
+ future.baseline.capturedAtUtc='2026-10-11T00:01:00Z';
+ assert.equal(reviewScale(future).baselineStatus,'STALE_OR_FUTURE_BASELINE');
+});

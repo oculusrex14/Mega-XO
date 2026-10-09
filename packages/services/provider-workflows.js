@@ -633,9 +633,15 @@ function createProviderWorkflow(options = {}) {
    const reason = input.reason === undefined ? 'refund' : requireReason(input.reason);
    const at = clock();
    await gate;
+   const invoked = typeof input.revokeFn === 'function';
+   /* An already-granted purchase needs a Core-owned receipt freeze and wallet
+    * adjustment. Never report a recorded refund with no Core seam available
+    * while the granted asset would remain untouched. Unknown transactions may
+    * still be tombstoned first, preventing an out-of-order future mint. */
+   const existing = (await oneShot(RECEIPT_SQL, [store, transactionId])).rows;
+   if (existing.length > 0 && !invoked) fail('REFUND_CORE_SEAM_REQUIRED');
    const recorded = (await oneShot(INSERT_REVOCATION_SQL,
     [store, transactionId, productId, atMs(at), reason])).rowCount === 1;
-   const invoked = typeof input.revokeFn === 'function';
    const refund = invoked ? await input.revokeFn({ store, transactionId, productId, reason }) : null;
    return { recorded, duplicate: !recorded, invoked, refund };
   },

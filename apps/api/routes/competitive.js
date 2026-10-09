@@ -86,7 +86,7 @@ function resolveOpKey(req, body) {
     throw err;
   }
   // Bounded and printable before logging, signing or storing at Core.
-  if (typeof key !== 'string' || !/^[\\x21-\\x7e]{1,200}$/.test(key)) {
+  if (typeof key !== 'string' || !/^[!-~]{1,200}$/.test(key)) {
     const err = new Error('INVALID_IDEMPOTENCY_KEY');
     err.status = 400;
     throw err;

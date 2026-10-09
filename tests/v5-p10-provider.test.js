@@ -747,3 +747,49 @@ test('P10 hardening: provider exceptions cannot persist receipt tokens or player
  assert.equal((await h.notification(STORE, id)).last_error, 'PROVIDER_RATE_LIMITED',
   'an allowlisted fault preserves useful classification without leaking the raw message');
 });
+test('P10 retry fences remain monotonic for re-used notification worker IDs', { skip: GATE }, async (t) => {
+ const h = await open(t);
+ if (!h) return;
+ const id = 'notification:reuse-owner';
+ await h.ingestNotification({ store: STORE, notificationId: id });
+ const first = await h.claimDueNotifications({ workerId: WORKER_A, limit: 1, leaseMs: 1000 });
+ assert.equal(first.length, 1);
+ const firstFence = fenceOf(first[0]);
+ const failed = await h.failNotification({ store: STORE, notificationId: id, workerId: WORKER_A,
+  fence: firstFence, error: { code: 'PROVIDER_UNAVAILABLE' } });
+ assert.equal(failed.retried, true);
+ h.advance(1001);
+ const next = await h.claimDueNotifications({ workerId: WORKER_A, limit: 1, leaseMs: 1000 });
+ assert.equal(next.length, 1);
+ assert.ok(fenceOf(next[0]) > firstFence, 'null lease tuple must not reset fence generation');
+ assert.equal(await h.completeNotification({ store: STORE, notificationId: id, workerId: WORKER_A, fence: firstFence }), false);
+ assert.equal(await h.completeNotification({ store: STORE, notificationId: id, workerId: WORKER_A, fence: fenceOf(next[0]) }), true);
+});
+
+test('P10 finalization retries preserve fences and attempts under repeated verification', { skip: GATE }, async (t) => {
+ const h = await open(t);
+ if (!h) return;
+ const tx = 'tx:retry-owner';
+ const token = 'opaque-token-retry';
+ await h.enqueueFinalization({ store: STORE, transactionId: tx, productId: PRODUCT, purchaseToken: token, kind: 'consume' });
+ const first = await h.claimDueFinalizations({ workerId: WORKER_A, limit: 1, leaseMs: 1000 });
+ assert.equal(first.length, 1);
+ const beforeFence = fenceOf(first[0]);
+ const noGrant = recordingProvider();
+ const deferred = await h.completeFinalization({ store: STORE, transactionId: tx, workerId: WORKER_A, fence: beforeFence, finalizeProvider: noGrant });
+ assert.equal(deferred.pendingGrant, true);
+ assert.equal(noGrant.calls.length, 0);
+ h.advance(1001);
+ await h.enqueueFinalization({ store: STORE, transactionId: tx, productId: PRODUCT, purchaseToken: token, kind: 'consume' });
+ await h.grant(STORE, tx);
+ const next = await h.claimDueFinalizations({ workerId: WORKER_A, limit: 1, leaseMs: 1000 });
+ assert.equal(next.length, 1);
+ assert.equal(Number(next[0].attempts), 2, 'duplicate enqueue must preserve durable attempt history');
+ assert.ok(fenceOf(next[0]) > beforeFence, 'reused worker ID must receive fresh fence after backoff');
+ const provider = recordingProvider();
+ const stale = await h.completeFinalization({ store: STORE, transactionId: tx, workerId: WORKER_A, fence: beforeFence, finalizeProvider: provider });
+ assert.equal(stale.fenceLost, true);
+ assert.equal(provider.calls.length, 0, 'stale generation cannot reach external Google API');
+ assert.equal((await h.completeFinalization({ store: STORE, transactionId: tx, workerId: WORKER_A, fence: fenceOf(next[0]), finalizeProvider: provider })).completed, true);
+ assert.equal(provider.calls.length, 1);
+});

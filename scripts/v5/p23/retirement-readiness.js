@@ -70,8 +70,9 @@ function assessRetirement(ledger, expectedSha, declaration = null) {
       declaration.sourceSha !== expectedSha || !SHA.test(declaration.v4ReleaseSha) ||
       !HASH.test(declaration.sqliteFinalSnapshotSha256) ||
       !/^v5:[0-9]{13}:[0-9a-f]{16,64}$/.test(declaration.authorityEpoch || '') ||
-      !evidence(declaration.firstV5ApplicationWriteRef) ||
-      !declaration.firstV5ApplicationWriteRef.startsWith('artifact://v5/p23/first-write/') ||
+      typeof declaration.firstV5ApplicationWriteRef !== 'string' ||
+      !/^artifact:\/\/v5\/p22\/first-write\/[a-z0-9][a-z0-9._/-]{7,119}$/.test(declaration.firstV5ApplicationWriteRef) ||
+      declaration.firstV5ApplicationWriteRef.includes('..') ||
       declaration.sqliteArchiveReadOnly !== true ||
       declaration.v5OnlyPostgresWriter !== true ||
       !['STATIC_ONLY','FACADE_TO_V5_ONLY','OFFLINE_ARCHIVE_ONLY'].includes(declaration.v4LegacyRole)) {
@@ -81,8 +82,7 @@ function assessRetirement(ledger, expectedSha, declaration = null) {
   if (fence.phase !== 'V5_EXCLUSIVE' ||
       declaration.writerFence.v4ReleaseSha !== declaration.v4ReleaseSha ||
       declaration.writerFence.v4FrozenSnapshotSha256 !== declaration.sqliteFinalSnapshotSha256 ||
-      !evidence(declaration.writerFence.firstV5ApplicationWriteRef.replace(
-        'artifact://v5/p22/', 'artifact://v5/p23/'))) {
+      declaration.writerFence.firstV5ApplicationWriteRef !== declaration.firstV5ApplicationWriteRef) {
     fail('P22_POSTWRITE_FENCE_REQUIRED');
   }
 

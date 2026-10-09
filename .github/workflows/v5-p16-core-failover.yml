@@ -8,6 +8,7 @@ on:
       - '.github/workflows/v5-p16-core-failover.yml'
       - 'packages/services/core-instance-lifecycle.js'
       - 'packages/services/core-drain-connections.js'
+      - 'scripts/v5/p16/**'
       - 'tests/v5-p16-*.test.js'
       - 'docs/v5/co-dev/P16-CORE-FAILOVER-FOUNDATIONS.md'
 permissions:
@@ -33,7 +34,8 @@ jobs:
           node --test --test-reporter=tap --test-concurrency=1 \
             tests/v5-p16-lifecycle.test.js \
             tests/v5-p16-connections.test.js \
-            tests/v5-p16-real-sockets.test.js > p16-tap.log
+            tests/v5-p16-real-sockets.test.js \
+            tests/v5-p16-topology.test.js > p16-tap.log
           cat p16-tap.log
           grep -Eq '^# tests [1-9][0-9]*$' p16-tap.log
           grep -Eq '^# pass [1-9][0-9]*$' p16-tap.log

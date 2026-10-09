@@ -149,12 +149,16 @@ async function run(args,env=process.env){
    args[8]!=='--confirm-owner-scoped-v5-r2') {
   refuse('usage: --target R2.json --manifest BACKUP.manifest.json --archive BACKUP.mxb --receipt PRIVATE.json --confirm-owner-scoped-v5-r2');
  }
- const t=readTarget(args[1]);
- const result=await transfer({r2:t,manifestPath:args[3],archivePath:args[5],env});
+ // Validate the receipt destination BEFORE any irreversible R2 PutObject,
+ // so a typo/path traversal cannot publish two immutable objects and only
+ // then discover there is nowhere to record their identities.
  const receipt=args[7];
  if(typeof receipt!=='string'||!path.isAbsolute(receipt)||
    path.dirname(receipt)!==path.dirname(args[5])||
-   !/\.r2-receipt\.json$/.test(receipt))refuse('private receipt must be adjacent to archive');
+   !/\.r2-receipt\.json$/.test(receipt)||
+   fs.existsSync(receipt))refuse('private new receipt must be adjacent to archive');
+ const t=readTarget(args[1]);
+ const result=await transfer({r2:t,manifestPath:args[3],archivePath:args[5],env});
  const fd=fs.openSync(receipt,fs.constants.O_WRONLY|fs.constants.O_CREAT|
   fs.constants.O_EXCL|fs.constants.O_NOFOLLOW,0o600);
  try{fs.writeFileSync(fd,JSON.stringify(result,null,2)+'\n');fs.fsyncSync(fd);}

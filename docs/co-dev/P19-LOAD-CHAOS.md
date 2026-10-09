@@ -67,3 +67,24 @@ chaos and resource/alert reporting without assuming production targets.
 - CI uploads only sanitized scenario IDs, durations, equality fingerprints
   and unresolved scenarios; neither raw identities nor provider secrets
   are retained. A passing synthetic test is never called a G19 acceptance.
+
+
+## P19-04: evidence-only capacity and alert readiness report
+
+- capacity-report.js ingests exact-commit small-fixture load measurements
+  and the four actually executed/hashed local chaos results. It refuses
+  incomplete or invented operations, impossible percentiles, mismatched
+  source commits, fabricated Oracle/Vercel measurements, missing outbox/
+  ledger rows, unverified full-staging failures and G19 acceptance claims.
+- Its *real* observed rate, p95, p99, peak in-flight and Node RSS are
+  explicitly local GitHub-CPU+PG/Redis adapter measurements, not V5
+  production capacity. A 3-actor/80-call smoke is not a saturation test
+  and the peak tier is never labeled the maximal sustainable envelope.
+- The current P05 lab's declared role-budget is 12 Core + 12 API + 4
+  worker reserved against 30 total, leaving 2 **in that lab only**.
+  This is not a Neon plan, Oracle headroom or production release budget.
+- Alert signal categories cover API, socket, queue, PostgreSQL, Redis,
+  worker retries/dead letters, purchases/SSV, backup freshness and host
+  metrics. All numeric production alert thresholds remain NULL and
+  deliveryVerified=false until actual multi-service staging load and
+  incident notification proof exists. No made-up p99 SLO or 10x guarantee.

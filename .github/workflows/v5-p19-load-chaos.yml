@@ -30,7 +30,8 @@ jobs:
           node --check scripts/v5/p19/metrics.js
           node --check scripts/v5/p19/disposable-adapters.js
           node --check scripts/v5/p19/chaos-contract.js
-          node --test tests/v5-p19-workload-profile.test.js tests/v5-p19-metrics.test.js tests/v5-p19-disposable-adapters.test.js tests/v5-p19-chaos-contract.test.js
+          node --check scripts/v5/p19/capacity-report.js
+          node --test tests/v5-p19-workload-profile.test.js tests/v5-p19-metrics.test.js tests/v5-p19-disposable-adapters.test.js tests/v5-p19-chaos-contract.test.js tests/v5-p19-capacity-report.test.js
       - name: Produce clearly unexecuted launch-profile plan
         run: |
           set -euo pipefail
@@ -137,6 +138,22 @@ jobs:
           }
           console.log('P19: 4 tiny real disposable PG/Redis tiers + 4 local fault drills passed; G19 open');
           NODE
+          node scripts/v5/p19/capacity-report.js \
+            --load .artifacts/p19-real-disposable.json \
+            --chaos .artifacts/p19-chaos-disposable.json \
+            --sha "$GITHUB_SHA" \
+            --output .artifacts/p19-capacity-local-only.json
+          node - <<'NODE'
+          const fs=require('node:fs');
+          const a=JSON.parse(fs.readFileSync('.artifacts/p19-capacity-local-only.json','utf8'));
+          if(a.g19Accepted!==false || a.sustainableLaunchPlayerLimit!==null ||
+             a.realStagingCapacityMeasured!==false ||
+             a.productionAlertThresholdsApproved!==false ||
+             a.pendingMonitorSignals.some(x=>x.threshold!==null)) {
+            throw Error('cannot promote disposable measurements into real launch thresholds');
+          }
+          console.log('P19 capacity report: '+a.totalObservedLocalCalls+' controlled local calls; 0 certified real-stage capacity');
+          NODE
       - name: Retain sanitized actual small-fixture measurements
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
@@ -145,5 +162,6 @@ jobs:
           path: |
             .artifacts/p19-real-disposable.json
             .artifacts/p19-chaos-disposable.json
+            .artifacts/p19-capacity-local-only.json
           if-no-files-found: error
           retention-days: 7

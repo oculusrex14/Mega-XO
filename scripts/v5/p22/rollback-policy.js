@@ -44,7 +44,11 @@ function classify(record, expectedSha) {
 
   let recovery;
   if (maybeV4) recovery = 'V4_SOLE_WRITER_RECOVERY_CANDIDATE_OPERATOR_REVIEW';
-  else if (observed || afterTransfer) recovery = record.pgCompatibleReleaseVerified
+  else if (missing || (afterTransfer && !observed)) {
+    // Once PostgreSQL transfer is attempted, absence/unknown first-write evidence
+    // can NEVER be interpreted as proof of safety to restore SQLite.
+    recovery = afterTransfer ? 'QUARANTINE_AND_RECONCILE_POSTGRES' : 'QUARANTINE_UNPROVEN_FIRST_WRITE';
+  } else if (observed) recovery = record.pgCompatibleReleaseVerified
     ? 'POSTGRES_COMPATIBLE_RELEASE_OR_FORWARD_FIX'
     : 'QUARANTINE_AND_RECONCILE_POSTGRES';
   else recovery = 'QUARANTINE_UNPROVEN_FIRST_WRITE';

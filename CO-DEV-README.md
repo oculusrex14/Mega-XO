@@ -21,7 +21,28 @@
 
 Audited all 95 previously changed JS/CJS files for parse errors and tracked relative imports (none found), native Gradle/Xcode source inclusion, source-only backup/release/staging/load/cutover boundaries and merge ancestry. **Found and fixed three cross-phase CI trigger defects:** P16 did not watch P08 Core/schema or direct pushes, P22 missed gate/import/client and direct-push changes, and native host builds missed shared contracts/bundle tooling. Updated read-only trusted push/PR scopes and added `tests/v5-cross-phase-integration.test.js` to mandatory P17 source CI. Together with P16/P22 CI security tests, **11/11** exact fetched test bodies passed source-level V8 + Node stubs; **NOT** live Actions or native/PG evidence.
 
-**CI currently blocked:** At audited source `66065ac92fef`, all nine PR workflows failed before runner allocation; all job steps were zero (downstream jobs skipped). Owner must resolve GitHub Actions runner/account/service and rerun **exact-head** tests before merging. This is not a code-test failure or success claim. Source-level and native/device phase acceptance remain dependent on actual CI/providers.
+**Former CI runner blocker: resolved while repository is PUBLIC.** At the older private checkpoint `66065ac92fef`, all nine workflows failed with no runner allocation. After temporary public visibility, real GitHub-hosted jobs ran. **All 11 workflows passed on code SHA `9bc6f9f1398092aa8f5b7d7c553103a90525fae0`** with real disposable PostgreSQL/Redis, Core A/B failover, Node/Chromium and Android/iOS simulator builds. The private-repository account/billing/root-cause setting is not independently verified; re-privatizing may revive the problem. New documentation-only commits create a newer HEAD and require their own exact-head CI verification. Passing CI is not authority to accept G15-G24 or deploy production.
+## Executed real GitHub Actions CI — 2026-10-09
+
+**Last fully green CODE source SHA:** `9bc6f9f1398092aa8f5b7d7c553103a90525fae0`. After the repository was made **temporarily PUBLIC** by its owner, 11/11 GitHub-hosted workflows ran and succeeded, with zero failed or unfinished workflows. These are actual runner-executed tests, **not** the previous V8 stubbed checks. The following run IDs are pinned to that source:
+
+| Workflow | Executed run | Result |
+|---|---|---|
+| Main Node / Chromium / monetisation validation | [37936762265](https://github.com/oculusrex14/Mega-XO/actions/runs/37936762265) | PASS |
+| Disposable PostgreSQL16 + Redis integration (P02–P08) | [37936762385](https://github.com/oculusrex14/Mega-XO/actions/runs/37936762385) | PASS |
+| P15 encrypted backup and isolated restore | [37936762400](https://github.com/oculusrex14/Mega-XO/actions/runs/37936762400) | PASS |
+| P16 Core A SIGKILL / Core B recovery and socket drain | [37936762339](https://github.com/oculusrex14/Mega-XO/actions/runs/37936762339) | PASS |
+| P17 release engineering | [37936762420](https://github.com/oculusrex14/Mega-XO/actions/runs/37936762420) | PASS |
+| P18 disposable migration/economic parity/Redis-loss journeys | [37936762241](https://github.com/oculusrex14/Mega-XO/actions/runs/37936762241) | PASS |
+| P19 real disposable PG/Redis workload + chaos | [37936762307](https://github.com/oculusrex14/Mega-XO/actions/runs/37936762307) | PASS |
+| P20 Android build/emulator and iOS simulator first-launch + byte parity | [37936762369](https://github.com/oculusrex14/Mega-XO/actions/runs/37936762369) | PASS |
+| P22 cutover deny/preflight (source-only) | [37936762287](https://github.com/oculusrex14/Mega-XO/actions/runs/37936762287) | PASS |
+| P23 retirement deny/preflight (source-only) | [37936762230](https://github.com/oculusrex14/Mega-XO/actions/runs/37936762230) | PASS |
+| P24 scaling deny/preflight (source-only) | [37936762232](https://github.com/oculusrex14/Mega-XO/actions/runs/37936762232) | PASS |
+
+**Real runner-discovered regressions fixed in separate commits:** P04 mixed frozen test clock with wall-clock DB seeding (`05269728`); P08 HTTP security test wrongly expected an unauthorised Core membership read (`a59ec482`); P19 obsolete P06 Redis presence method names (`eb4fd995`, `52240d30`); three P07 test Redis namespace versions and one P08 timer version violated P06's key grammar (`1814a1d6`, `c40d2fac`); and P08 slow-client test's previous ~1.2 MiB stimulus was too small for hosted Linux send buffers (`9bc6f9f1`, now bounded ~8 MiB). No skips, relaxed gates or production application/economy changes were introduced to make these tests green.
+
+**Still NOT accepted:** Formal G15–G20, G22–G24, real offsite R2/Neon/Vercel/VPS acceptance, signed Play/App Store releases and production cutover. Temporary PUBLIC visibility is an operational workaround; the account owner should review the repo's secret/history exposure and private-repo Actions budget/permissions before returning it to PRIVATE. See [runner incident and recovery](docs/co-dev/CI-RUNNER-INCIDENT-2026-10-09.md).
 ### Integration manifest (2026-10-09)
 
 | Unit | Original PR (superseded) | Original source head | Unified merge commit | Diff |
@@ -158,6 +179,9 @@ node scripts/v5/p22/readiness.js --sha "$(git rev-parse HEAD)" # must report BLO
 Every PR update must verify the exact source head CI. Keep V5 retained regressions, economy and four-theme UI checks. A green synthetic test is not authority to deploy, purchase anything, activate email/billing, rotate operational keys, change V4 DNS/edge or tick a gate.
 
 ## Chronological co-dev checkpoint log
+
+- **2026-10-09 PUBLIC repo restores CI — 11/11 real workflows PASSED:** On tested code SHA `9bc6f9f1` all GitHub-hosted jobs completed successfully, including real disposable PG16/Redis7, P16 SIGKILL recovery, P15 encrypted restore, P18 synthetic migration, P19 real disposable load, Node/Chromium and Android/iOS emulator/simulator first launches. Commits: P04 clock `05269728`; P08 test `a59ec482`; P19 P06 Redis API `eb4fd995`/`52240d30`; P07/P08 test namespace versions `1814a1d6`/`c40d2fac`; P08 slow-peer 8 MiB test `9bc6f9f1`. Details and run links in [executed CI section](#executed-real-github-actions-ci--2026-10-09). No provider releases or formal gate acceptance; private-repo billing/runner eligibility remains unresolved.
+
 
 - **2026-10-09 P24 latest-head CI status:** Fetched and checked all 11 workflows at source `d2f8f59370c2`; all failed with zero job steps, including new P24 run `37930690645` (no allocated runner). Rechecked source-only P24 tests **36/36**, P17 cross-phase **7/7**. Real Node24/PG/Redis/prod evidence unexecuted; G24 remains OPEN. [CI incident](docs/co-dev/CI-RUNNER-INCIDENT-2026-10-09.md).
 

@@ -50,14 +50,26 @@ function createApiHandler(options = {}) {
       const authHeader = req.headers?.authorization || null;
 
       // Validates credential separation & CSRF (throws AMBIGUOUS_CREDENTIAL 401 or CSRF_REJECTED 403)
-      const credResult = security.validateCredentials({
-        cookie: cookieHeader,
-        authorization: authHeader,
-        origin: originHeader,
-        referer: refererHeader,
-        method: req.method,
-        allowedOrigins: context.allowedOrigins || []
-      });
+      let credResult;
+      try {
+        credResult = security.validateCredentials({
+          cookie: cookieHeader,
+          authorization: authHeader,
+          origin: originHeader,
+          referer: refererHeader,
+          method: req.method,
+          allowedOrigins: context.allowedOrigins || []
+        });
+      } catch (error) {
+        // G13 keeps its internal CSRF_REJECTED signal, but the existing
+        // browser/client HTTP contract is ORIGIN_OR_CONTENT_TYPE (403).
+        // Preserve old-origin clients without allowing the request through.
+        if (error?.code === 'CSRF_REJECTED') {
+          sendJson(res, 403, { error: 'ORIGIN_OR_CONTENT_TYPE' });
+          return;
+        }
+        throw error;
+      }
       req.credentialMode = credResult.mode;
 
       // CSRF legacy middleware compat check (if not bearer exempt)

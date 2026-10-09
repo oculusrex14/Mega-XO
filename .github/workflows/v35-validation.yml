@@ -26,6 +26,8 @@ jobs:
       - name: Install locked Node dependencies
         if: ${{ hashFiles('package-lock.json') != '' }}
         run: npm ci
+      - name: P11 session authority without database containers
+        run: node --test --test-reporter=tap tests/v5-p11-session-boundary.test.js
       - name: Production tag gate
         if: startsWith(github.ref, 'refs/tags/v4.')
         run: node scripts/release-gate.js

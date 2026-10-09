@@ -670,3 +670,39 @@ test.after(async () => {
   try { await h.ephemera.wipeNamespace(); } catch { /* only this suite's namespace */ }
   try { await h.ephemera.close(); } catch { /* best effort */ }
 });
+
+
+/* Co-dev post-G08 regression: Redis's due:timeout is a SHARED ZSET. Scheduling
+ * a near deadline must not expire the entire set before a different match's
+ * much later deadline. This verifies the real Lua PTTL/PEXPIRE monotonicity,
+ * not a mocked redis command. PostgreSQL remains the authority if Redis dies. */
+test('V5-08 co-dev: nearer timeout registration never shortens an existing later Redis due hint', { skip: GATE }, async (t) => {
+  const h=await session(t);
+  if(!h)return;
+  const ephemera=await createEphemeraService({
+    ...ephemeraOptions(),keyVersion:'tmp08monotone',
+  });
+  t.after(async()=>{
+    try{await ephemera.wipeNamespace()}catch{}
+    await ephemera.close();
+  });
+  assert.equal(await ephemera.healthy(),true,'owned isolated Redis namespace is ready');
+  const timers=loadTimerFactory()({
+    pool:h.pools.core,
+    core:{run:async()=>{throw Error('NO_TIMER_SETTLEMENT_EXPECTED')}},
+    ephemera,now:()=>START,
+  });
+  t.after(()=>timers.close());
+  const key=ephemera.key('due','timeout');
+  const distant=await timers.scheduleTimeout('match:p08-later-deadline',0,START+7200000);
+  assert.equal(distant.registered,true);
+  const longTtl=await ephemera.client.pTTL(key);
+  assert.ok(longTtl>7000000,'the distant deadline is initially retained');
+  const near=await timers.scheduleTimeout('match:p08-near-deadline',0,START+5000);
+  assert.equal(near.registered,true);
+  const after=await ephemera.client.pTTL(key);
+  assert.ok(after>=longTtl-5000,
+    'registering an earlier due member must not destroy later hints on the same key');
+  assert.ok(await ephemera.client.zScore(key,distant.member)!==null,
+    'the later due identity remains in the Redis index after the near registration');
+});

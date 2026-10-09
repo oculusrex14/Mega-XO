@@ -65,7 +65,7 @@ For every suggested upgrade, the owner must record a provider quote or official 
 **Source:** `scripts/v5/p24/scaling-review.js` · **Tests:** `tests/v5-p24-scaling-review.test.js`.
 
 An observed threshold only reaches **`REVIEW_CANDIDATE`** after all of:
-1. G23 with accepted prerequisite lineage, a complete declared real-production baseline, and a configured budget/rollback/owner-approved rule;
+1. G23 with accepted prerequisite lineage, a complete declared real-production baseline **no more than 30 days old and not from the future**, and a configured budget/rollback/owner-approved rule;
 2. at least **three adjacent** source- and scope-matched real-production metric windows at/above the threshold for the rule's minimum continuous duration;
 3. complete metric inventory, each signal's reported sample count at least 20, and **no telemetry gaps** during that sustained period;
 4. most recent interval ending within **15 minutes** of the supplied review instant, with no overlapping/future timestamps, forged references, synthetic substitution or source mismatch.

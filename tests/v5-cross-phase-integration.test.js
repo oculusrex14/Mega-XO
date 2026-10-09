@@ -60,6 +60,29 @@ test('P24 source scaling review watches actual P19 measurement, owner ledger and
   assert.doesNotMatch(yaml,/^  (?:pull_request_target|workflow_run|workflow_dispatch):/m);
 });
 
+test('P09 post-gate fencing and settlement remain real PG zero-skip acceptance coverage', () => {
+  const yaml = workflow('v5-postgresql.yml');
+  assert.match(yaml, /^  push:\n    branches: \[V5-platform\]/m);
+  assert.match(yaml, /^  pull_request:\n    branches: \[V5-platform\]/m);
+  const suites = [
+    'tests/v5-p09-persistence.test.js',
+    'tests/v5-p09-lifecycle.test.js',
+    'tests/v5-p09-fencing.test.js',
+    'tests/v5-p09-settlement.test.js',
+    'tests/v5-p09-recovery.test.js',
+  ];
+  for (const suite of suites) {
+    assert.ok(yaml.includes('node --test') && yaml.includes(suite),
+      suite + ' requires the owned PostgreSQL suite');
+    assert.ok(yaml.includes("{ file: '" + suite + "', log: '.evidence-logs/v5-p09-tournaments.tap' }"),
+      suite + ' must be registered in the zero-skip, nonzero-pass coverage audit');
+  }
+  for (const suite of ['v5-p08-http-auth.test.js', 'v5-p08-ingress-bounds.test.js'])
+    assert.ok(yaml.includes(suite), suite + ' must not disappear when G09 is merged');
+  assert.match(yaml,/if \(pass === null \|\| pass === 0 \|\| fail === null \|\| fail !== 0 \|\| skipped === null \|\| skipped !== 0\)/);
+  assert.doesNotMatch(yaml, /--test-skip-pattern/);
+});
+
 test('P08 HTTP identity and socket queue safeguards stay in zero-skip PG integration checks', () => {
   const yaml = workflow('v5-postgresql.yml');
   assert.match(yaml, /^  push:\n    branches: \[V5-platform\]/m);

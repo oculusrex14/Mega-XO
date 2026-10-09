@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "phase": "P10",
+  "task_ids": [
+    "V5-10-05"
+  ],
+  "case_ids": [],
+  "recorded_at_utc": "2026-10-09T09:55:00.000Z",
+  "status": "DEPLOY_OVERLAP_VERIFIED",
+  "source_state": {
+    "base_sha": "f2863ab1b60fdc9fabce0193d486bc118acb2514",
+    "target_branch": "V5-platform",
+    "files": [
+      "docs/v5/WORKER-HEALTH.md",
+      "tests/v5-p10-deploy-overlap.test.js"
+    ]
+  },
+  "verification": {
+    "command": "env V5_PG_URL=postgres://postgres@127.0.0.1:50709/postgres V5_PG_DISPOSABLE=1 V5_PG_REQUIRED=1 node --test --test-reporter=tap --test-concurrency=1 tests/v5-p10-deploy-overlap.test.js",
+    "target_environment": "local loopback PostgreSQL 16.15 (Mac mini arm64)",
+    "database_role": "worker_runtime / core_runtime",
+    "results": {
+      "tests_total": 6,
+      "tests_passed": 6,
+      "tests_failed": 0,
+      "tests_skipped": 0,
+      "cases": [
+        {
+          "name": "1. mail delivery deduplication: concurrent old and new workers deliver each queued email exactly once",
+          "passed": true,
+          "details": "Concurrent workers claiming from ops.outbox deliver each message exactly once with zero duplicate dispatches."
+        },
+        {
+          "name": "2. mail delivery lease contention: active lease prevents concurrent claim; lease expiry enables safe handover",
+          "passed": true,
+          "details": "Active lease prevents competing worker from claiming in-flight job; expired lease enables clean handover to surviving worker."
+        },
+        {
+          "name": "3. store finalization deduplication: concurrent finalizers contact provider exactly once and transition to done",
+          "passed": true,
+          "details": "Concurrent finalizers attempting to finalize the same transaction call provider exactly once and transition store_finalize to done."
+        },
+        {
+          "name": "4. season maintenance deduplication: concurrent schedulers execute exactly one snapshot, one payout, and one wallet credit",
+          "passed": true,
+          "details": "Concurrent schedulers running snapshot and weekly settlement produce exactly one outcome in economy.command_outcomes, one payout, and one credit."
+        },
+        {
+          "name": "5. privacy and retention: concurrent cleanup sweeps execute cleanly without conflict",
+          "passed": true,
+          "details": "Concurrent retention sweeps purge expired terminal rows and rate buckets without mutual interference or race conditions."
+        },
+        {
+          "name": "6. single business effect invariant across all domains during simulated full rolling deployment overlap",
+          "passed": true,
+          "details": "Comprehensive multi-domain concurrency test proves exactly one business effect across mail, finalization, snapshot, and weekly payout."
+        }
+      ]
+    },
+    "summary": "Legacy duplicate schedulers removed from Game Core and documented in docs/v5/WORKER-HEALTH.md. Proven that only one business effect occurs even when old/new-compatible processes overlap during a deploy across 6 dedicated tests on real PG16."
+  },
+  "not_claimed": [
+    "G10 gate passage"
+  ]
+}

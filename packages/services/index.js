@@ -9,7 +9,13 @@ module.exports = {
  createTicketIssuer: require('./tickets').createTicketIssuer,
  redeemRealtimeTicket: require('./tickets').redeemRealtimeTicket,
  createQueueService: require('./queue').createQueueService,
+ createJobService: require('./jobs').createJobService,
+ createMailWorker: require('./worker-workflows').createMailWorker,
+ createPrivacyWorkflow: require('./worker-workflows').createPrivacyWorkflow,
+ createWorkerApp: require('./worker-workflows').createWorkerApp,
+ createProviderWorkflow: require('./provider-workflows').createProviderWorkflow,
  createRealtimeTransport: require('./realtime-transport').createRealtimeTransport,
  createTimerService: require('./timers').createTimerService,
  createTournamentService: require('./tournaments').createTournamentService,
+ createMaintenanceScheduler: require('./maintenance-scheduler').createMaintenanceScheduler,
 };

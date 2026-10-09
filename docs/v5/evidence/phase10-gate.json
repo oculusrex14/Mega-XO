@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "phase": "P10",
+  "gate": "G10",
+  "task_ids": [
+    "V5-10-01",
+    "V5-10-02",
+    "V5-10-03",
+    "V5-10-04",
+    "V5-10-05"
+  ],
+  "case_ids": [],
+  "recorded_at_utc": "2026-10-09T10:00:00.000Z",
+  "status": "PASSED",
+  "source_state": {
+    "base_sha": "f2863ab1b60fdc9fabce0193d486bc118acb2514",
+    "target_branch": "V5-platform",
+    "files": [
+      "packages/services/jobs.js",
+      "packages/services/worker-workflows.js",
+      "packages/services/provider-workflows.js",
+      "packages/services/maintenance-scheduler.js",
+      "apps/worker/index.js",
+      "docs/v5/WORKER-HEALTH.md",
+      "packages/migrations/migrations/0043_worker_provider_state.sql",
+      "packages/migrations/manifest.json",
+      "packages/migrations/conformance.json",
+      "tests/v5-p10-jobs.test.js",
+      "tests/v5-p10-workflows.test.js",
+      "tests/v5-p10-provider.test.js",
+      "tests/v5-p10-scheduling.test.js",
+      "tests/v5-p10-deploy-overlap.test.js"
+    ]
+  },
+  "gate_criteria": {
+    "description": "Background work is driven by durable jobs and outbox events with bounded retries and DLQ; no duplicate emails, grants, season resets or dropped tasks",
+    "verified_points": [
+      "Durable job and outbox primitives in packages/services/jobs.js (createJobService) supporting typed/versioned envelopes, transactional producer enqueues, claim/lease metadata with monotonic fence tokens, stale worker rejection, exponential backoff, dead-letter state (state='failed'), and operator retry tools.",
+      "Email outbox, notifications, cleanup and privacy/deletion workflows extracted into apps/worker and packages/services/worker-workflows.js. Preserves HKDF AES-256-GCM encryption format, proves zero OTP/secret leaks into logs, proves jobs survive Core restarts, and verifies privacy cancellation and retention purge.",
+      "Provider notification and store finalization workflows extracted into packages/services/provider-workflows.js with migration 0043 providing primary key on monetization.store_finalize. Proves ingest deduplication, finalization strictly after durable receipt grant, duplicate/retried callbacks never remint, refund revocations, and crash recovery.",
+      "Season, leaderboard, and maintenance scheduling extracted into packages/services/maintenance-scheduler.js using stable UTC period identities (snapshot:<day>, weekly:<week>:<today>) and Core-owned operator commands. Proves two concurrent workers produce exactly one business effect, verifies downtime catch-up across multiple days and closed weeks, and enforces zero fabricated rewards.",
+      "Legacy duplicate schedulers removed from Game Core and documented in docs/v5/WORKER-HEALTH.md. Proven that only one business effect occurs even when old/new-compatible processes overlap during a deploy across mail, store finalization, daily snapshots, and weekly payouts."
+    ]
+  },
+  "verification": {
+    "command": "env V5_PG_URL=postgres://postgres@127.0.0.1:50709/postgres V5_PG_DISPOSABLE=1 V5_PG_REQUIRED=1 node --test --test-reporter=tap --test-concurrency=1 tests/v5-p10-jobs.test.js tests/v5-p10-workflows.test.js tests/v5-p10-provider.test.js tests/v5-p10-scheduling.test.js tests/v5-p10-deploy-overlap.test.js",
+    "target_environment": "local loopback PostgreSQL 16.15 (Mac mini arm64)",
+    "database_roles": ["worker_runtime", "core_runtime", "api_runtime"],
+    "results": {
+      "suites_total": 5,
+      "suites_passed": 5,
+      "tests_total": 30,
+      "tests_passed": 30,
+      "tests_failed": 0,
+      "tests_skipped": 0
+    }
+  },
+  "evidence_dependencies": [
+    "docs/v5/evidence/phase10-jobs.json",
+    "docs/v5/evidence/phase10-workflows.json",
+    "docs/v5/evidence/phase10-provider.json",
+    "docs/v5/evidence/phase10-scheduling.json",
+    "docs/v5/evidence/phase10-deploy-overlap.json"
+  ]
+}

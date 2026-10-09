@@ -4,7 +4,7 @@ The mutable execution source is [progress.json](progress.json); this is its read
 
 **Goal:** Deliver the V5 hybrid platform and real Android/iOS applications with shared permanent actor/assets, preserved approved game and retained browser compatibility; do not build the new website/browser product.
 
-**Integration base:** `455b8ec9ea4070b4410d78f9eea2aaa06d32c0b2`. **Active phase/task:** P10 / V5-10-01 (PLANNED). **Progress:** 51/117 tasks terminal; 10/25 phase gates passed
+**Integration base:** `455b8ec9ea4070b4410d78f9eea2aaa06d32c0b2`. **Active phase/task:** P11 / V5-11-01 (PLANNED). **Progress:** 56/117 tasks terminal; 11/25 phase gates passed
 
 Required path: execute P00–P20, P22–P23; owner-deferred P21 executes nothing; P24 is measurement-gated; phase prerequisites are gates, not status assumptions, and a deferred or measurement-gated phase is never used as another phase prerequisite. The foundation gate P00–P03 passes before dependent distributed work, and V5 CI starts in the foundation rather than only at P17.
 
@@ -131,13 +131,13 @@ Milestone: V5.4; status: `COMPLETE`; prerequisites: P08. [Phase contract](../../
 
 ## P10 — Extract reliable jobs, notifications and provider retries
 
-Milestone: V5.4; status: `PLANNED`; prerequisites: P09. [Phase contract](../../Mega-XO-V5-Implementation-Pack/phases/10-durable-workers.md).
+Milestone: V5.4; status: `COMPLETE`; prerequisites: P09. [Phase contract](../../Mega-XO-V5-Implementation-Pack/phases/10-durable-workers.md).
 
-- [ ] **V5-10-01 — Implement durable job and outbox primitives** (`PLANNED`).
-- [ ] **V5-10-02 — Extract email/security/privacy work** (`PLANNED`).
-- [ ] **V5-10-03 — Extract provider notification and finalization work** (`PLANNED`).
-- [ ] **V5-10-04 — Extract season/leaderboard/maintenance scheduling** (`PLANNED`).
-- [ ] **V5-10-05 — Remove legacy duplicate schedulers** (`PLANNED`).
+- [x] **V5-10-01 — Implement durable job and outbox primitives** (`COMPLETE`).
+- [x] **V5-10-02 — Extract email/security/privacy work** (`COMPLETE`).
+- [x] **V5-10-03 — Extract provider notification and finalization work** (`COMPLETE`).
+- [x] **V5-10-04 — Extract season/leaderboard/maintenance scheduling** (`COMPLETE`).
+- [x] **V5-10-05 — Remove legacy duplicate schedulers** (`COMPLETE`).
 
 **Exit gate:** G10: unrelated jobs survive API/Core restarts; at-least-once delivery produces idempotent authorized effects and visible recoverable failures.
 

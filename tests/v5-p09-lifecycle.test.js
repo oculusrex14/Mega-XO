@@ -550,3 +550,37 @@ test('P09 co-dev: concurrent publicJoin never resurrects a terminal room after w
   if(pending)await Promise.allSettled([pending]);
  }
 });
+
+
+test('P09 co-dev: a publicJoin waiting for room/actor locks rechecks the latest wallet before admitting', {skip:GATE,timeout:60000}, async t=>{
+ const h=await open(t,ROSTER.slice(0,2));
+ if(!h)return;
+ const first=await send(h,ROSTER[0],'post9-funds-first',{type:'publicJoin',table:'low'});
+ const admin=await lab.adminClient(h.database);
+ let released=false,pending=null;
+ try{
+  await admin.query('BEGIN');
+  await admin.query('SET LOCAL statement_timeout = 5000');
+  await admin.query('SELECT 1 FROM tournament.rooms WHERE room_id = $1 FOR UPDATE',[first.id]);
+  pending=send(h,ROSTER[1],'post9-funds-second',{type:'publicJoin',table:'low'});
+  assert.equal(await lab.waitForLockWaiter(admin,12000),true,
+   'join is blocked by the tournament aggregate, before acquiring wallet locks');
+  await admin.query('UPDATE economy.wallets SET coins = 0 WHERE actor_id = $1',[ROSTER[1]]);
+  await admin.query('COMMIT');
+  released=true;
+  await assert.rejects(pending,e=>e.message==='INSUFFICIENT_COINS',
+   'a pre-lock cached 1000-coin balance may not override current zero coins');
+  const wallet=await h.row('SELECT coins, reserved_coins FROM economy.wallets WHERE actor_id = $1',[ROSTER[1]]);
+  assert.equal(Number(wallet.coins),0,'the concurrent wallet change is preserved');
+  assert.equal(Number(wallet.reserved_coins),0,'the unauthorized join reserved no currency');
+  const members=await h.rows('SELECT actor_id FROM tournament.room_players WHERE room_id = $1 ORDER BY ordinal',[first.id]);
+  assert.deepEqual(members.map(x=>x.actor_id),[ROSTER[0]],
+   'the stale join and its operation outcome must roll back completely');
+  const result=await h.row('SELECT count(*)::int AS n FROM tournament.command_outcomes WHERE actor_id = $1',[ROSTER[1]]);
+  assert.equal(result.n,0);
+ }finally{
+  if(!released)await admin.query('ROLLBACK').catch(()=>{});
+  await admin.end();
+  if(pending)await Promise.allSettled([pending]);
+ }
+});

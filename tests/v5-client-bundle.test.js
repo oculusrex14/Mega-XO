@@ -303,3 +303,77 @@ test('the repository root is not a permitted output and reads no mutable state',
   // The default config path exists and is a real regular file in the repository.
   assert.ok(fs.statSync(path.resolve(REPO_ROOT, builder.DEFAULT_CONFIG)).isFile());
 });
+
+
+test('invalid rebuild inputs preserve the previous verified client bundle', (t) => {
+  const { root, write, configPath } = fixture(t);
+  const output = outDir('preserve-previous');
+  t.after(() => fs.rmSync(output, { recursive: true, force: true }));
+  const first = buildIn(root, { output, config: configPath });
+  const indexPath = path.join(output, 'bundle-index.html');
+  const manifestPath = path.join(output, 'client-bundle.manifest.json');
+  const indexBefore = fs.readFileSync(indexPath);
+  const manifestBefore = fs.readFileSync(manifestPath);
+
+  // The original implementation deleted the prior bundle and then discovered
+  // the bad remote dependency while copying this legal page.
+  write('public/privacy.html', '<!doctype html><img src="https://unapproved.example.test/pixel.png">');
+  assert.throws(() => buildIn(root, { output, config: configPath }), /REFUSAL/);
+  assert.deepEqual(fs.readFileSync(indexPath), indexBefore);
+  assert.deepEqual(fs.readFileSync(manifestPath), manifestBefore);
+
+  // A missing source and a manifest/file collision must also fail before cleanup.
+  const bad = JSON.parse(fs.readFileSync(path.join(root, configPath), 'utf8'));
+  bad.client_scripts.push('src/does-not-exist.js');
+  write('native/client/missing.config.json', JSON.stringify(bad));
+  assert.throws(() => buildIn(root, { output, config: 'native/client/missing.config.json' }), /REFUSAL/);
+  assert.deepEqual(fs.readFileSync(manifestPath), manifestBefore);
+  assert.equal(first.manifest.bundle_file, 'bundle-index.html');
+});
+
+
+test('refuses to overwrite a bundle with unexpected, changed or linked contents', (t) => {
+  const { root, configPath } = fixture(t);
+  const cases = [
+    {
+      name: 'extra',
+      mutate(output) { fs.writeFileSync(path.join(output, 'unrelated-notes.txt'), 'keep me'); },
+      preserved(output) { assert.equal(fs.readFileSync(path.join(output, 'unrelated-notes.txt'), 'utf8'), 'keep me'); },
+    },
+    {
+      name: 'changed',
+      mutate(output) { fs.writeFileSync(path.join(output, 'src', 'app.js'), 'overwritten outside generator'); },
+      preserved(output) { assert.equal(fs.readFileSync(path.join(output, 'src', 'app.js'), 'utf8'), 'overwritten outside generator'); },
+    },
+    {
+      name: 'link',
+      mutate(output) { fs.symlinkSync(path.join(output, 'src', 'app.js'), path.join(output, 'shortcut.js')); },
+      preserved(output) { assert.ok(fs.lstatSync(path.join(output, 'shortcut.js')).isSymbolicLink()); },
+    },
+    {
+      name: 'forged-marker',
+      mutate(output) {
+        const manifest = path.join(output, 'client-bundle.manifest.json');
+        fs.writeFileSync(manifest, JSON.stringify({ generator: builder.GENERATOR, files: [], manifest_file: 'client-bundle.manifest.json', bundle_hash: 'fake' }));
+      },
+      preserved(output) { assert.ok(fs.existsSync(path.join(output, 'bundle-index.html'))); },
+    },
+  ];
+  for (const item of cases) {
+    const output = outDir(item.name);
+    t.after(() => fs.rmSync(output, { recursive: true, force: true }));
+    buildIn(root, { output, config: configPath });
+    item.mutate(output);
+    assert.throws(() => buildIn(root, { output, config: configPath }), /REFUSAL/, item.name);
+    item.preserved(output);
+  }
+});
+
+test('a valid generated bundle can be rebuilt in place', (t) => {
+  const { root, configPath } = fixture(t);
+  const output = outDir('valid-rebuild');
+  t.after(() => fs.rmSync(output, { recursive: true, force: true }));
+  const before = buildIn(root, { output, config: configPath });
+  const after = buildIn(root, { output, config: configPath });
+  assert.equal(after.manifest.bundle_hash, before.manifest.bundle_hash);
+});

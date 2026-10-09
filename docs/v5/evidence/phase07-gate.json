@@ -1,0 +1,69 @@
+{
+  "schema_version": 1,
+  "phase": "P07",
+  "gate": "G07",
+  "task_ids": [
+    "V5-07-01",
+    "V5-07-02",
+    "V5-07-03",
+    "V5-07-04"
+  ],
+  "case_ids": [],
+  "recorded_at_utc": "2026-10-09T08:20:00.000Z",
+  "status": "PASSED",
+  "source_state": {
+    "base_sha": "42db7e0ec4014c266b4ca726f4d0f2d9038ce131",
+    "verified_source_sha256": {
+      "packages/domain/matchmaking.js": "cbcc47764724e52dd00523db43232bb82f715aa313c4983088b9cfa5c26b5275",
+      "packages/services/queue.js": "82e4f014e7a68e82a3c74900da0ea996b72a6b252069bdaaa7632607147b3096",
+      "packages/services/core.js": "9ea54466f623f6cfd3b64178d1a1c61433658139857526573fae187a1d2f5d74",
+      "packages/services/index.js": "7ea8ae01c778401311029c21f76f77754d9c7921ba57917c60e34c9c7f66a2cb",
+      "tests/v5-p07-policy.test.js": "a79493f0b2f5b66d7ad5f50ef2b7c4b4fba3f938f42ef4df07973752e008fa9e",
+      "tests/v5-p07-queue.test.js": "2a9791ea8ea466a9c1e7a57a15a81ca55a3064b3fe3f5188bf27e04f0578efda",
+      "tests/v5-p07-match.test.js": "632b5ea91216b3f208c909ea1c2a1fa0d950ec44b2dfae93141f237ef5df7834",
+      "tests/v5-p07-recovery.test.js": "a7b32cfa0271569485bb3ea267ea043c8ce3c5bbbb3b15ad090333beee1cf51f"
+    }
+  },
+  "required_outputs": {
+    "distributed_queue_adapter": {
+      "path": "packages/services/queue.js",
+      "exported": "createQueueService in packages/services/index.js",
+      "verified": true
+    },
+    "durable_occupancy_assignment_constraints": {
+      "tables": ["core.actor_occupancy", "match.matches", "match.participants", "economy.command_outcomes", "ops.outbox"],
+      "authority": "PostgreSQL transaction boundary via core.run",
+      "verified": true
+    },
+    "matcher_recovery_tests": {
+      "path": "tests/v5-p07-recovery.test.js",
+      "tests": 5,
+      "assertions": 164,
+      "verified": true
+    }
+  },
+  "gate_criteria_verification": {
+    "criterion": "G07: multiple matchers cannot double-assign, double-charge or lose committed entrants; current matching and charge timing remain unchanged.",
+    "no_double_assign": "Two concurrent matchers racing the same actors produce at most one assignment and 0 double-seated players across 3 rounds",
+    "no_double_charge": "Zero charges or reservations occur at queue offer or match creation time; reservations encumber only on second acceptance; void refunds exact contributions",
+    "no_lost_entrants": "Every actor is either assigned, queued, or explicitly cancelled; un-paired candidates retain original FIFO joinedAt score",
+    "matching_policy_unchanged": "Pure matchmaking policy from packages/domain/matchmaking.js identical to baseline; search windows, placements, latency, friends block, recent opponent, tournament cohort cap 200, and deterministic seeding preserved",
+    "charge_timing_unchanged": "offerQueue sets OFFERED with escrow 0; first accept leaves OFFERED with escrow 0; second accept commits PLAYING and transfers equal contributions to escrow; void refunds exact balance"
+  },
+  "test_execution_summary": {
+    "v5_p07_policy_test": {"pass": 9, "fail": 0, "skipped": 0},
+    "v5_p07_queue_test": {"pass": 6, "fail": 0, "skipped": 0},
+    "v5_p07_match_test": {"pass": 6, "fail": 0, "skipped": 0},
+    "v5_p07_recovery_test": {"pass": 5, "fail": 0, "skipped": 0},
+    "total_p07_tests": 26,
+    "total_pass": 26,
+    "total_fail": 0,
+    "total_skipped": 0
+  },
+  "task_evidence_records": [
+    "docs/v5/evidence/phase07-policy.json",
+    "docs/v5/evidence/phase07-queue.json",
+    "docs/v5/evidence/phase07-assignment.json",
+    "docs/v5/evidence/phase07-recovery.json"
+  ]
+}

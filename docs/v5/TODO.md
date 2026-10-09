@@ -4,7 +4,7 @@ The mutable execution source is [progress.json](progress.json); this is its read
 
 **Goal:** Deliver the V5 hybrid platform and real Android/iOS applications with shared permanent actor/assets, preserved approved game and retained browser compatibility; do not build the new website/browser product.
 
-**Integration base:** `455b8ec9ea4070b4410d78f9eea2aaa06d32c0b2`. **Active phase/task:** P07 / V5-07-01 (PLANNED). **Progress:** 37/117 tasks terminal; 7/25 phase gates passed
+**Integration base:** `455b8ec9ea4070b4410d78f9eea2aaa06d32c0b2`. **Active phase/task:** P08 / V5-08-01 (PLANNED). **Progress:** 41/117 tasks terminal; 8/25 phase gates passed
 
 Required path: execute P00–P20, P22–P23; owner-deferred P21 executes nothing; P24 is measurement-gated; phase prerequisites are gates, not status assumptions, and a deferred or measurement-gated phase is never used as another phase prerequisite. The foundation gate P00–P03 passes before dependent distributed work, and V5 CI starts in the foundation rather than only at P17.
 
@@ -96,12 +96,12 @@ Milestone: V5.3; status: `COMPLETE`; prerequisites: P05. [Phase contract](../../
 
 ## P07 — Make matchmaking safe across multiple processes
 
-Milestone: V5.3; status: `PLANNED`; prerequisites: P06. [Phase contract](../../Mega-XO-V5-Implementation-Pack/phases/07-distributed-matchmaking.md).
+Milestone: V5.3; status: `COMPLETE`; prerequisites: P06. [Phase contract](../../Mega-XO-V5-Implementation-Pack/phases/07-distributed-matchmaking.md).
 
-- [ ] **V5-07-01 — Port existing queue policy unchanged** (`PLANNED`).
-- [ ] **V5-07-02 — Implement join/cancel/heartbeat/expire** (`PLANNED`).
-- [ ] **V5-07-03 — Commit assignments transactionally** (`PLANNED`).
-- [ ] **V5-07-04 — Exercise distributed recovery** (`PLANNED`).
+- [x] **V5-07-01 — Port existing queue policy unchanged** (`COMPLETE`).
+- [x] **V5-07-02 — Implement join/cancel/heartbeat/expire** (`COMPLETE`).
+- [x] **V5-07-03 — Commit assignments transactionally** (`COMPLETE`).
+- [x] **V5-07-04 — Exercise distributed recovery** (`COMPLETE`).
 
 **Exit gate:** G07: multiple matchers cannot double-assign, double-charge or lose committed entrants; current matching and charge timing remain unchanged.
 

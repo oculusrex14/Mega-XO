@@ -1,0 +1,103 @@
+{
+  "schema_version": 1,
+  "phase": "P07",
+  "task_ids": [
+    "V5-07-01"
+  ],
+  "case_ids": [],
+  "recorded_at_utc": "2026-10-09T07:46:00.000Z",
+  "status": "POLICY_VERIFIED_UNCHANGED",
+  "source_state": {
+    "base_sha": "42db7e0ec4014c266b4ca726f4d0f2d9038ce131",
+    "verified_source_sha256": {
+      "packages/domain/matchmaking.js": "cbcc47764724e52dd00523db43232bb82f715aa313c4983088b9cfa5c26b5275",
+      "server/matchmaking.js": "73c683b52d6a59bc8bbd3c13bb1e54460f38bdf69a531777b72db5a882a17f69",
+      "src/authority.js": "48b64b1ea9ca3c9db6fa3faae55da25c4ef6aa5d8789d6e8e8954714dbf55a12",
+      "src/domain.js": "557a7bc9e05fa22cbcc3ae3dff567781b0a88b5ea3f40f35368a6234fa3cfce8",
+      "tests/v5-p07-policy.test.js": "a79493f0b2f5b66d7ad5f50ef2b7c4b4fba3f938f42ef4df07973752e008fa9e",
+      "tests/matchmaking.test.js": "ec2d334e2fb95b1e604f56f18fe3cf1cb1b0f5c1285e78326dbdfec54457e51c"
+    }
+  },
+  "policy_verification": {
+    "module": "packages/domain/matchmaking.js",
+    "parity_with_server_matchmaking": {
+      "CONFIG": true,
+      "expected": true,
+      "quality": true,
+      "casualSkill": true,
+      "skill": true,
+      "searchWindow": true,
+      "sec": true,
+      "normalizedRegion": true,
+      "compatibility": true,
+      "tournamentWindow": true,
+      "selectTournamentRoom": true,
+      "tournamentSeed": true
+    },
+    "search_window_invariants": {
+      "ranked_provisional": "100 (<10s), 125 (<25s), 150 (<45s), 200 (>=45s)",
+      "ranked_standard": "50 (<10s), 100 (<25s), 150 (<45s), 200 (<75s), 200 hardMax",
+      "ranked_elite_2200_plus": "eliteMax 250 (>=75s)",
+      "casual": "100 (<6s), 175 (<15s), 250 (<30s), 350 hardMax (>=30s)"
+    },
+    "compatibility_invariants": {
+      "ineligibility": "refuses activeMatch, suspended, hold, unverified",
+      "blocking": "refuses mutual or one-way blocks",
+      "friend_queue_block": "refuses friends in ranked queue; allows friends in casual queue",
+      "skill_window": "refuses when gap > windowA or gap > windowB",
+      "placement_pool": "provisional vs placed refused if wait < 30s or gap > 100",
+      "region_wait": "cross-region wait enforced (35s ranked, 12s casual); global matches immediately",
+      "latency_limit": "refuses when either latency > 350ms",
+      "recent_opponent": "refuses recent matchmade opponent within 60s (ranked) or 18s (casual)"
+    },
+    "tournament_cohort_invariants": {
+      "cohort_cap": "hardMax 200 rating diff between players in room",
+      "seeding": "deterministic sort: rating DESC, games DESC, id ASC"
+    },
+    "charge_timing_invariants": {
+      "offerQueue": "status OFFERED, escrow 0, participant balances and reservations untouched",
+      "first_acceptance": "status OFFERED, participant balances and reservations untouched",
+      "second_acceptance": "status PLAYING, charges approved equal contributions per D.quote, escrow holds full pot, reservations encumbered",
+      "operator_void": "status VOID, refunds exact contributions, clears reservations, settles zero payouts"
+    }
+  },
+  "test_execution": {
+    "v5_p07_policy_test": {
+      "command": "node --test tests/v5-p07-policy.test.js",
+      "tests": 9,
+      "pass": 9,
+      "fail": 0,
+      "skipped": 0
+    },
+    "matchmaking_test": {
+      "command": "node --test tests/matchmaking.test.js",
+      "tests": 7,
+      "pass": 7,
+      "fail": 0,
+      "skipped": 0
+    },
+    "design_invariants_test": {
+      "command": "node --test tests/design-invariants.test.js",
+      "tests": 16,
+      "pass": 16,
+      "fail": 0,
+      "skipped": 0
+    },
+    "tournament_and_rooms_test": {
+      "command": "node --test tests/tournament.test.js tests/rooms.test.js",
+      "tests": 74,
+      "pass": 74,
+      "fail": 0,
+      "skipped": 0
+    }
+  },
+  "task_outcomes": {
+    "V5-07-01": "COMPLETE: pure matchmaking policy in packages/domain/matchmaking.js verified identical to approved legacy baseline. Search windows, placements, friends block (ranked vs casual), cross-region, latency, recent opponent, tournament cohort cap 200, deterministic seeding, and charge timing (zero on offer, zero on first accept, exact equal on second accept, full refund on void) all verified by 9 dedicated tests and 97 existing domain tests."
+  },
+  "not_claimed": [
+    "distributed candidate indices or Redis leases (V5-07-02)",
+    "transactional assignment commits (V5-07-03)",
+    "distributed matcher recovery (V5-07-04)",
+    "G07 gate passage"
+  ]
+}

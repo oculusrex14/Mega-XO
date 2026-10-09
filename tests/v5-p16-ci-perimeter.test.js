@@ -25,6 +25,7 @@ test('privileged events, write token or provider secret references are refused',
 test('unreviewed actions, external services and public port binding are refused', () => {
   const inputs = [
     workflow.replace(/actions\/checkout@[0-9a-f]{40}/, 'actions/checkout@v4'),
+    workflow.replace('persist-credentials: false', 'persist-credentials: true'),
     workflow.replace('postgres://postgres@127.0.0.1:5432/postgres', 'postgres://admin@prod.example.net:5432/db'),
     workflow.replace("'127.0.0.1:6379:6379'", "'0.0.0.0:6379:6379'"),
     workflow.replace(/redis:7\.4@sha256:[0-9a-f]{64}/, 'redis:latest'),

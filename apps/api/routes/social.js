@@ -110,13 +110,15 @@ async function searchProfiles(context, req, res) {
 
   const url = new URL(req.url, 'http://localhost');
   const query = url.searchParams.get('q') || req.query?.q || '';
+  // Search results depend on the viewer's blocks and profile relationships.
+  // Public caching would let a CDN replay one player's results to another.
   if (!query || query.trim().length === 0) {
-    return sendJson(res, 200, []);
+    return sendJson(res, 200, [], { 'Cache-Control': CACHE_CONTROL_POLICIES.PRIVATE_NO_STORE });
   }
 
   const results = await accounts.search(actor, query);
   return sendJson(res, 200, results, {
-    'Cache-Control': CACHE_CONTROL_POLICIES.PUBLIC_SEARCH,
+    'Cache-Control': CACHE_CONTROL_POLICIES.PRIVATE_NO_STORE,
   });
 }
 

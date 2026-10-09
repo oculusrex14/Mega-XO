@@ -244,3 +244,35 @@ test('P11/P12: private friends always re-read authority after external block, ig
   assert.deepEqual(second.data.friends, []);
   assert.equal(reads, 2, 'never trust cross-worker stale friend lists');
 });
+
+test('P12: viewer-specific search results never become public CDN cache entries', async () => {
+  const queried = [];
+  const accounts = {
+    async requireLinked(token) {
+      const actor = { alice: 'svc_alice', bob: 'svc_bob' }[token];
+      if (!actor) throw new Error('AUTH_REQUIRED');
+      return { actor };
+    },
+    async search(actor, query) {
+      queried.push([actor, query]);
+      return actor === 'svc_alice' ? [{ id: 'svc_carol' }] : [];
+    },
+  };
+  const handler = createApiHandler({ accounts });
+  for (const [token, expected] of [['alice', ['svc_carol']], ['bob', []]]) {
+    const res = await request(handler, {
+      method: 'GET', url: '/api/community/search?q=car',
+      headers: { authorization: 'Bearer ' + token },
+    });
+    assert.equal(res.status, 200);
+    assert.equal(res.headers['cache-control'], 'private, no-store');
+    assert.deepEqual(res.data.map(x => x.id), expected);
+  }
+  const empty = await request(handler, {
+    method: 'GET', url: '/api/community/search',
+    headers: { authorization: 'Bearer alice' },
+  });
+  assert.equal(empty.status, 200);
+  assert.equal(empty.headers['cache-control'], 'private, no-store');
+  assert.deepEqual(queried, [['svc_alice', 'car'], ['svc_bob', 'car']]);
+});

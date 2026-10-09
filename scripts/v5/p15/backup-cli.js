@@ -65,6 +65,9 @@ async function backup({source,recipientPublicPem,outputDirectory,env=process.env
   child.once('error',()=>reject(Error('PG_DUMP_PROCESS_FAILED')));
   child.once('close',code=>code===0?resolve():reject(Error('PG_DUMP_FAILED')));
  });
+ // A failing pg_dump can close before the asynchronous encryption pipeline
+ // has drained. Attach rejection handling immediately; await below still fails.
+ exit.catch(()=>{});
  let finalCreated=false;
  try{
   const sealed=await sealStream(child.stdout,recipientPublicPem,partial,{

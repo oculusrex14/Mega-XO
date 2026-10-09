@@ -546,8 +546,21 @@ function createTournamentService(options = {}) {
     if (account.activeMatch) fail('ALREADY_IN_MATCH');
     if (active.some((r) => r.table && r.players.some((p) => p.id === actor))) fail('ALREADY_QUEUED');
     if (account[quote.currency] < quote.entry) fail(`INSUFFICIENT_${quote.currency.toUpperCase()}`);
-    room = MM.selectTournamentRoom(active, economy, actor, cmd.table, now)
-     || T.create({ id: crypto.randomUUID(), code: await generateCode(tx), owner: 'service', name: `${quote.name} table`, table: cmd.table, now });
+    const candidate = MM.selectTournamentRoom(active, economy, actor, cmd.table, now);
+    if (candidate) {
+     /* Room-set locking serializes commands, but NOT a standalone settle().
+      * Lock the selected room row BEFORE wallets.lock/state.write, exactly
+      * like settle(). Re-hydrate the live state under that lock: never save
+      * an earlier activeRooms() snapshot over a terminal settlement. */
+     await lockRoomRow(tx, candidate.id);
+     const latest = await repositories.tournaments.room(candidate.id);
+     if (latest && latest.status === 'LOBBY' && latest.table === cmd.table
+      && latest.players.length < latest.capacity) room = latest;
+    }
+    if (!room) {
+     room = T.create({ id: crypto.randomUUID(), code: await generateCode(tx),
+      owner: 'service', name: `${quote.name} table`, table: cmd.table, now });
+    }
     T.join(room, actor, principal.name || account.id, now);
    } else {
     /* THE ROOM AGGREGATE ROW, FIRST (V5-09-04 global order, design 3.7): every command that names an

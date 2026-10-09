@@ -309,3 +309,99 @@ test('V5-09-03: the room timer lease grants once, refuses a second owner, expire
  const afterRelease = await h.claim.claimTimerLease(roomId, { owner: WORKER_A, leaseMs, epoch: revision });
  assertLiveLease(afterRelease, { owner: WORKER_A, leaseMs, now: h.now() });
 });
+
+
+/* POST-G09 independent regression. The old lease predicate compared an incumbent's
+ * expiry to the REQUESTED NEW expiry, so B could steal healthy A merely by
+ * requesting a longer duration. Test both row types with the real PG clock. */
+test('P09 co-dev: longer lease duration cannot steal a live timer or fixture claim', { skip: GATE }, async t => {
+ const h = await open(t);
+ if (!h) return;
+ const { roomId, fixtureId, revision } = await seatRoomWithFixture(h, { keyBase: 'longer' });
+ const firstFixture = await h.claim.claimFixture(roomId, fixtureId, { owner: WORKER_A, leaseMs: 20000 });
+ assertLiveLease(firstFixture, { owner: WORKER_A, leaseMs: 20000, epoch: revision, now: h.now() });
+ const firstTimer = await h.claim.claimTimerLease(roomId, { owner: WORKER_A, leaseMs: 20000, epoch: revision });
+ assertLiveLease(firstTimer, { owner: WORKER_A, leaseMs: 20000, epoch: revision, now: h.now() });
+ /* Before expiry a 4x longer lease must never become a substitute for ownership. */
+ assert.equal(await h.claim.claimFixture(roomId, fixtureId, { owner: WORKER_B, leaseMs: 80000 }),
+  null, 'longer requested fixture TTL cannot bypass active-owner fence');
+ assert.equal(await h.claim.claimTimerLease(roomId, { owner: WORKER_B, leaseMs: 80000, epoch: revision }),
+  null, 'longer requested timer TTL cannot bypass active-owner fence');
+ h.advance(15000);
+ assert.equal(await h.claim.claimFixture(roomId, fixtureId, { owner: WORKER_B, leaseMs: 80000 }),
+  null, 'fixture stays with A while its old TTL remains live');
+ assert.equal(await h.claim.claimTimerLease(roomId, { owner: WORKER_B, leaseMs: 80000, epoch: revision }),
+  null, 'timer stays with A while its old TTL remains live');
+ h.advance(5000);
+ assertLiveLease(await h.claim.claimFixture(roomId, fixtureId, { owner: WORKER_B, leaseMs: 80000 }),
+  { owner: WORKER_B, leaseMs: 80000, epoch: revision, now: h.now() });
+ assertLiveLease(await h.claim.claimTimerLease(roomId, { owner: WORKER_B, leaseMs: 80000, epoch: revision }),
+  { owner: WORKER_B, leaseMs: 80000, epoch: revision, now: h.now() });
+});
+
+/* A stale caller that still knows the owner string and epoch has no authority
+ * after its lease expires, even if no successor has acquired the row yet. */
+test('P09 co-dev: expired fixture leases cannot complete; DONE cannot be claimed twice', { skip: GATE }, async t => {
+ const h = await open(t);
+ if (!h) return;
+ const { roomId, fixtureId, revision } = await seatRoomWithFixture(h, { keyBase: 'expired' });
+ const first = await h.claim.claimFixture(roomId, fixtureId, { owner: WORKER_A, leaseMs: 20000 });
+ assert.equal(first.epoch, revision);
+ h.advance(20001);
+ assert.equal(await h.claim.completeFixture(roomId, fixtureId, { owner: WORKER_A, epoch: first.epoch }),
+  false, 'expired original worker cannot complete despite matching its former owner/epoch');
+ let row = await h.row('SELECT status, lease_owner FROM tournament.fixtures WHERE room_id = $1 AND fixture_id = $2',
+  [roomId, fixtureId]);
+ assert.notEqual(row.status, 'DONE');
+ assert.equal(row.lease_owner, WORKER_A, 'failed stale completion does not mutate row');
+ const successor = await h.claim.claimFixture(roomId, fixtureId, { owner: WORKER_B, leaseMs: 30000 });
+ assert.equal(successor.epoch, revision);
+ assert.equal(await h.claim.completeFixture(roomId, fixtureId, { owner: WORKER_B, epoch: successor.epoch }), true);
+ row = await h.row('SELECT status, lease_owner, revision FROM tournament.fixtures WHERE room_id = $1 AND fixture_id = $2',
+  [roomId, fixtureId]);
+ assert.equal(row.status, 'DONE');
+ const terminalRevision = Number(row.revision);
+ assert.equal(await h.claim.claimFixture(roomId, fixtureId, { owner: WORKER_A, leaseMs: 20000 }),
+  null, 'a terminal fixture cannot be reopened by claiming a fresh lease');
+ assert.equal(await h.claim.completeFixture(roomId, fixtureId, { owner: WORKER_B, epoch: successor.epoch }),
+  false, 'the settlement transition has no replay window');
+ assert.equal(Number((await h.row('SELECT revision FROM tournament.fixtures WHERE room_id = $1 AND fixture_id = $2',
+  [roomId, fixtureId])).revision), terminalRevision, 'terminal fixture revision cannot advance twice');
+});
+
+/* Clients are not allowed to request a fake future or old timer epoch: the
+ * database's live room revision is the only timer fence. Omitted epoch is still
+ * accepted, but the returned fence MUST be the actual committed room revision. */
+test('P09 co-dev: room timer lease stamps durable revision and rejects stale or forged epochs', { skip: GATE }, async t => {
+ const h = await open(t);
+ if (!h) return;
+ const { roomId, revision } = await seatRoomWithFixture(h, { keyBase: 'epoch' });
+ assert.equal(await h.claim.claimTimerLease(roomId,
+  { owner: WORKER_A, leaseMs: 30000, epoch: revision + 1 }), null,
+ 'caller cannot mint a future fence value');
+ const empty = await h.row('SELECT timer_lease_owner FROM tournament.rooms WHERE room_id = $1', [roomId]);
+ assert.equal(empty.timer_lease_owner, null, 'refused epoch made no persistent lease');
+ const real = await h.claim.claimTimerLease(roomId, { owner: WORKER_A, leaseMs: 30000 });
+ assert.equal(real.epoch, revision, 'omitted epoch is derived only from the durable room');
+ const renewed = await h.claim.claimTimerLease(roomId, { owner: WORKER_A, leaseMs: 30000, epoch: revision });
+ assert.equal(renewed.epoch, revision);
+ await h.pools.core.query('UPDATE tournament.rooms SET revision = revision + 1 WHERE room_id = $1',[roomId]);
+ assert.equal(await h.claim.claimTimerLease(roomId, { owner: WORKER_A, leaseMs: 30000, epoch: revision }),
+  null,'stale owner epoch cannot renew across changed room revision');
+});
+
+/* Timer and fixture claims are only meaningful for active rooms; finalized
+ * tables must never sprout new background work when a worker retries. */
+test('P09 co-dev: terminal room cannot admit timer or fixture claims', { skip: GATE }, async t => {
+ const h = await open(t);
+ if (!h) return;
+ const { roomId, fixtureId, revision } = await seatRoomWithFixture(h, { keyBase: 'terminal' });
+ await h.pools.core.query("UPDATE tournament.rooms SET status = 'COMPLETE' WHERE room_id = $1", [roomId]);
+ assert.equal(await h.claim.claimTimerLease(roomId, { owner: WORKER_A, leaseMs: 30000, epoch: revision }),
+  null, 'completed table cannot gain a new timer worker');
+ assert.equal(await h.claim.claimFixture(roomId, fixtureId, { owner: WORKER_A, leaseMs: 30000 }),
+  null, 'completed table cannot gain a new fixture worker');
+ const row = await h.row('SELECT lease_owner FROM tournament.fixtures WHERE room_id = $1 AND fixture_id = $2',
+  [roomId, fixtureId]);
+ assert.equal(row.lease_owner, null, 'terminal guard left fixture unclaimed');
+});

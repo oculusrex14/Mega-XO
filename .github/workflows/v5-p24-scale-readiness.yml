@@ -18,6 +18,13 @@ on:
       - 'packages/services/**'
       - 'apps/**'
       - 'deploy/**'
+      - 'infra/**'
+      - 'server/**'
+      - 'native/**'
+      - 'packages/migrations/**'
+      - '.github/workflows/v5-p19-load-chaos.yml'
+      - '.github/workflows/v5-p23-retirement-foundations.yml'
+      - 'docs/co-dev/P19-LOAD-CHAOS.md'
       - 'docs/v5/designs/**'
   pull_request:
     branches: [V5-platform]
@@ -35,6 +42,13 @@ on:
       - 'packages/services/**'
       - 'apps/**'
       - 'deploy/**'
+      - 'infra/**'
+      - 'server/**'
+      - 'native/**'
+      - 'packages/migrations/**'
+      - '.github/workflows/v5-p19-load-chaos.yml'
+      - '.github/workflows/v5-p23-retirement-foundations.yml'
+      - 'docs/co-dev/P19-LOAD-CHAOS.md'
       - 'docs/v5/designs/**'
 permissions:
   contents: read

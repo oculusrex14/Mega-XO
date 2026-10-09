@@ -9,4 +9,6 @@ module.exports = {
  createTicketIssuer: require('./tickets').createTicketIssuer,
  redeemRealtimeTicket: require('./tickets').redeemRealtimeTicket,
  createQueueService: require('./queue').createQueueService,
+ createRealtimeTransport: require('./realtime-transport').createRealtimeTransport,
+ createTimerService: require('./timers').createTimerService,
 };

@@ -1,0 +1,58 @@
+{
+  "schema_version": 1,
+  "phase": "P08",
+  "task_ids": [
+    "V5-08-05"
+  ],
+  "case_ids": [],
+  "recorded_at_utc": "2026-10-09T08:55:00.000Z",
+  "status": "RESTART_RECOVERY_VERIFIED",
+  "source_state": {
+    "base_sha": "045d5f94a13485486d5e5ab6a3dd5f8616604008",
+    "verified_source_sha256": {
+      "packages/services/realtime-transport.js": "732049e397551fa0dff573fe73fc94c0346cbbffcc9cfec718fa093c4bb9fa33",
+      "apps/game-core/realtime.js": "6cf6dfeb81e05d97f2613d7350cb4a2b992167d5326a0be9e9dd305db3d1d575",
+      "tests/v5-p08-restart-recovery.test.js": "cb87635c5970c3ba50c388bc6253c0d8329606112048fc224cf65b53059ef3b9"
+    }
+  },
+  "restart_recovery_verification": {
+    "durable_state_loading": {
+      "no_void_on_boot": "V4 startup void loop completely removed; on boot or restart, active matches load directly from PostgreSQL without voiding; match remains PLAYING with identical revision, turn, deadline, and escrow",
+      "surviving_process_resume": "Surviving or newly booted Core process loads committed match state via core.readMatch"
+    },
+    "kill_core_before_commit": {
+      "scenario": "Core aborted before PostgreSQL transaction commit",
+      "outcome": "Transaction rolls back completely; zero move outcomes, zero outbox events, revision unchanged; surviving Core resumes game at previous revision"
+    },
+    "kill_core_after_commit": {
+      "scenario": "Core dies after commit before response/publish",
+      "outcome": "Client retries with same operation_id on surviving Core; returns prior ack and snapshot idempotently; move outcome count is exactly 1"
+    },
+    "slow_client_backpressure": {
+      "mechanism": "sendFrame checks socket.bufferSize > maxBufferBytes (65536 B); stalled socket closed with close code 1008 (CLOSE_POLICY) instead of buffering unbounded frames",
+      "recovery": "Stalled client reconnects and catches up cleanly via snapshot/delta recovery (V5-08-04)"
+    },
+    "multi_process_routing": {
+      "mechanism": "Transport subscribes to core-match pubsub channel; when Core A commits a move, Core B subscribers receive broadcast snapshot via Redis hint",
+      "fault_isolation": "Termination or drain of Core A leaves Core B clients connected and unaffected"
+    },
+    "graceful_drain": {
+      "mechanism": "transport.beginDrain() refuses new ingress with HTTP 503, drains live sockets with close code 1000, and releases pubsub subscriptions"
+    }
+  },
+  "test_execution": {
+    "command": "env -u NODE_OPTIONS V5_PG_URL=postgres://postgres@127.0.0.1:50709/postgres V5_PG_DISPOSABLE=1 V5_PG_REQUIRED=1 REDIS_URL=redis://127.0.0.1:50710 node --test --test-reporter=tap --test-concurrency=1 tests/v5-p08-restart-recovery.test.js",
+    "environment": "owned loopback PostgreSQL 16.15 + real loopback Redis 127.0.0.1:50710",
+    "tests": 6,
+    "assertions": 121,
+    "pass": 6,
+    "fail": 0,
+    "skipped": 0
+  },
+  "task_outcomes": {
+    "V5-08-05": "COMPLETE: memory-authoritative restart recovery removed. V4 startup void logic replaced with loading durable active state from PostgreSQL; kill Core before commit rolls back cleanly; kill Core after commit retries idempotently on surviving process; slow-client backpressure closes stalled sockets with 1008; multi-process routing synchronizes state across Cores over Redis hints; graceful drain implemented across 6 dedicated tests and 121 assertions on real PG16 + Redis."
+  },
+  "not_claimed": [
+    "G08 gate passage"
+  ]
+}

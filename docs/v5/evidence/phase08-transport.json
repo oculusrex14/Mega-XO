@@ -1,0 +1,63 @@
+{
+  "schema_version": 1,
+  "phase": "P08",
+  "task_ids": [
+    "V5-08-01"
+  ],
+  "case_ids": [],
+  "recorded_at_utc": "2026-10-09T08:25:00.000Z",
+  "status": "TRANSPORT_VERIFIED",
+  "source_state": {
+    "base_sha": "045d5f94a13485486d5e5ab6a3dd5f8616604008",
+    "verified_source_sha256": {
+      "packages/services/realtime-transport.js": "766a2632bf80b2bf83f2a83262ad01d3688b14e3eb1da2cb003b879a96e1b4b2",
+      "apps/game-core/realtime.js": "6cf6dfeb81e05d97f2613d7350cb4a2b992167d5326a0be9e9dd305db3d1d575",
+      "packages/services/index.js": "cb87e07a6ca44855ad5f1a5ba857502e6d5ca0f2257bb1842fa2b83447385412",
+      "tests/v5-p08-transport.test.js": "3e9b110ba1b223d6a695b7fe2b9f33bfcf67ddab9eec1e7c53d9e84615a995e8"
+    }
+  },
+  "transport_verification": {
+    "service": "packages/services/realtime-transport.js",
+    "app_export": "apps/game-core/realtime.js",
+    "ingress": {
+      "path": "/realtime/v1",
+      "rfc6455_handshake": "Verified 101 Switching Protocols with Sec-WebSocket-Accept digest sha1(key + GUID); version mismatch returns 400 with Sec-WebSocket-Version: 13",
+      "nonconflicting": "Normal HTTP requests (e.g. /healthz) served without interference; other upgrade paths co-hosted or drained cleanly"
+    },
+    "framing_and_bounds": {
+      "rfc6455_compliance": "Fin/opcode/mask/7-16-64 bit lengths; client masking enforced (unmasked client frames fail 1002); ping/pong frames handled",
+      "max_envelope_bytes": "Frames exceeding 8192 bytes (or accumulated fragments exceeding 8192 bytes) close with 1009 (Message Too Big) without memory leaks"
+    },
+    "ticket_redemption": {
+      "atomic_redemption": "One-use ticket redeemed in PostgreSQL via redeemRealtimeTicket(core_runtime pool)",
+      "rejections": "Replayed tickets fail TICKET_REDEEMED and close 1008; expired tickets fail TICKET_EXPIRED and close 1008; invalid tickets fail TICKET_INVALID and close 1008"
+    },
+    "subscription_membership": {
+      "membership_check": "Subscription requests verify authenticated actor is in match.participants for match_id in PostgreSQL",
+      "rejections": "Pre-auth subscription fails AUTH_REQUIRED; scope mismatch fails FORBIDDEN; non-participant fails NOT_PARTICIPANT; missing match fails UNKNOWN_MATCH",
+      "safe_errors": "All error frames carry bare PUBLIC_CODES from packages/contracts/realtime.js"
+    },
+    "leak_free_lifecycle": {
+      "teardown": "Socket destroy/end immediately clears connection tracking; close() sends 1000 to all sockets and drains registry; Redis route keys released; zero lingering timers"
+    }
+  },
+  "test_execution": {
+    "command": "env V5_PG_URL=postgres://postgres@127.0.0.1:50709/postgres V5_PG_DISPOSABLE=1 V5_PG_REQUIRED=1 REDIS_URL=redis://127.0.0.1:50710 node --test --test-reporter=tap --test-concurrency=1 tests/v5-p08-transport.test.js",
+    "environment": "owned loopback PostgreSQL 16.15 + real loopback Redis 127.0.0.1:50710",
+    "tests": 10,
+    "assertions": 85,
+    "pass": 10,
+    "fail": 0,
+    "skipped": 0
+  },
+  "task_outcomes": {
+    "V5-08-01": "COMPLETE: authenticated WSS transport implemented in packages/services/realtime-transport.js and exposed via apps/game-core/realtime.js. Nonconflicting ingress on /realtime/v1, one-use ticket redemption in PostgreSQL (redeemRealtimeTicket), subscription membership enforcement (match.participants), message bounds (8192 B), and safe PUBLIC_CODES errors verified across 10 dedicated tests and 85 assertions on real PG16 + Redis with zero leaks."
+  },
+  "not_claimed": [
+    "command revision transactions (V5-08-02)",
+    "durable clocks and scheduled expiry (V5-08-03)",
+    "snapshot/delta recovery (V5-08-04)",
+    "removal of memory-authoritative restart recovery (V5-08-05)",
+    "G08 gate passage"
+  ]
+}

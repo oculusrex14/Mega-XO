@@ -500,3 +500,28 @@ test('P07 co-dev regression: a poisoned match hint cannot disclose another actor
   assert.equal(Object.hasOwn(status, 'matchId'), false, 'the protected match id was not returned');
   assert.equal(await ephemera.client.get(attackerKey), null, 'a rejected hint is evicted');
 });
+
+
+test('P07 co-dev regression: PostgreSQL hydration failure releases every owned claim without losing FIFO', { skip: GATE }, async (t) => {
+  const h = await harness(t, { keyVersion: 'q702-pg-fault' });
+  if (!h) return;
+  const { queue, core, ephemera, now } = h;
+  const first = await queue.join({ actor: 'svc_alice', mode: 'ranked', opKey: 'fail-join-a' });
+  const second = await queue.join({ actor: 'svc_bob', mode: 'ranked', opKey: 'fail-join-b' });
+  const { createQueueService } = require('../packages/services/queue.js');
+  const broken = createQueueService({ ephemera, core, now,
+    pool: { withTransaction: async () => { throw Error('SIMULATED_DATABASE_READ_FAILURE'); } },
+  });
+  t.after(() => broken.close());
+  await assert.rejects(() => broken.matchTick({ mode: 'ranked', matcherId: 'pg-fail-worker', limit: 2 }),
+    /SIMULATED_DATABASE_READ_FAILURE/);
+  const reclaimed = await queue.claimCandidates({ mode: 'ranked', limit: 2,
+    matcherId: 'healthy-worker', leaseMs: 30000 });
+  assert.deepEqual(reclaimed.map((c) => c.actor), ['svc_alice', 'svc_bob'],
+    'no live entrant is stranded waiting for its old 15s Redis claim expiry');
+  assert.deepEqual(reclaimed.map((c) => c.joinedAt), [first.joinedAt, second.joinedAt],
+    'failed hydration preserves FIFO position');
+  for (const candidate of reclaimed) assert.equal(await queue.releaseClaim({
+    mode: 'ranked', actor: candidate.actor, claimId: candidate.claimId, requeue: true,
+  }), true);
+});

@@ -11,7 +11,7 @@ function inspect(text){
     !/^on:\n  push:\n    branches: \[V5-platform\]/m.test(text) ||
     !/^  pull_request:\n    branches: \[V5-platform\]/m.test(text) ||
     /^\s*(?:pull_request_target|workflow_run|workflow_dispatch|repository_dispatch|schedule):/m.test(text))bad('EVENT');
-  const eventSpec=text.slice(text.indexOf('on:\n')+4,text.indexOf('\npermissions:'));
+  const eventSpec=text.slice(text.indexOf('on:\n')+4,text.indexOf('\npermissions:'))+'\n';
   const push=eventSpec.match(/^  push:\n(?: {4,}.*\n)+/m)?.[0];
   const pr=eventSpec.match(/^  pull_request:\n(?: {4,}.*\n)+/m)?.[0];
   if(!push||!pr||push.replace('  push:','  pull_request:')!==pr)bad('TRIGGER_DRIFT');

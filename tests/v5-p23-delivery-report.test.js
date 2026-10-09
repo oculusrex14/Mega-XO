@@ -4,7 +4,7 @@ const assert=require('node:assert/strict');
 const {PLATFORM,STAGES,createDeliveryReport}=require('../scripts/v5/p23/delivery-report');
 const SHA='a'.repeat(40),ref=x=>'artifact://v5/p23/'+x+'/completed-20261009';
 function ledger(g22=false){
-  const ids=Array.from({length:g22?23:8},(_,i)=>i);
+  const ids=g22?[...Array(21).keys(),22]:[...Array(8).keys()];
   return {schema_version:1,current:{
     integration_branch:'V5-platform',
     passed_phase_gates:ids.map(i=>({

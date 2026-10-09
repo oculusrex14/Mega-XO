@@ -8,8 +8,13 @@ const actual=fs.readFileSync(location,'utf8');
 function inspect(text){
   const bad=(reason)=>{throw Error('P22_CI_REFUSED:'+reason);};
   if(!/^name: V5 P22 cutover readiness safeguards$/m.test(text) ||
-    !/^on:\n  pull_request:\n    branches: \[V5-platform\]/m.test(text) ||
-    /^\s*(?:push|pull_request_target|workflow_run|workflow_dispatch|repository_dispatch|schedule):/m.test(text))bad('EVENT');
+    !/^on:\n  push:\n    branches: \[V5-platform\]/m.test(text) ||
+    !/^  pull_request:\n    branches: \[V5-platform\]/m.test(text) ||
+    /^\s*(?:pull_request_target|workflow_run|workflow_dispatch|repository_dispatch|schedule):/m.test(text))bad('EVENT');
+  const eventSpec=text.slice(text.indexOf('on:\n')+4,text.indexOf('\npermissions:'));
+  const push=eventSpec.match(/^  push:\n(?: {4,}.*\n)+/m)?.[0];
+  const pr=eventSpec.match(/^  pull_request:\n(?: {4,}.*\n)+/m)?.[0];
+  if(!push||!pr||push.replace('  push:','  pull_request:')!==pr)bad('TRIGGER_DRIFT');
   if(!/^permissions:\n  contents: read$/m.test(text) ||
     /^\s+[a-z-]+: write$/m.test(text) ||
     /\$\{\{\s*secrets\./.test(text))bad('TOKEN');
@@ -29,12 +34,15 @@ function inspect(text){
   }
   return {readOnly:true,execution:'STATIC_ONLY',suiteCount:6};
 }
-test('the actual PR P22 workflow is read-only, source-only and insists on zero skips',()=>{
+test('the actual push/PR P22 workflow is read-only, source-only and insists on zero skips',()=>{
   assert.deepEqual(inspect(actual),{readOnly:true,execution:'STATIC_ONLY',suiteCount:6});
 });
 test('privileged triggers, write tokens, secret access and mutable actions fail',()=>{
   for(const text of [
     actual.replace('  pull_request:', '  pull_request_target:'),
+    actual.replace('  push:', '  workflow_dispatch:'),
+    actual.replace('    branches: [V5-platform]', '    branches: [main]'),
+    actual.replace("      - 'packages/**'", "      - 'packages/services/only.js'"),
     actual.replace('  contents: read','  contents: write'),
     actual.replace(/actions\/checkout@[a-f0-9]{40}/,'actions/checkout@v4'),
     actual.replace('persist-credentials: false','persist-credentials: true'),

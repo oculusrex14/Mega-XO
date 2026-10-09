@@ -33,7 +33,7 @@ function trace(postWrite=false) {
       ['ABORTED_BEFORE_APPLICATION_WRITE'])];
   return {format:STATE_FORMAT,sourceSha:SHA,environment:'isolated-synthetic-copy',
     scenario:postWrite?'recover-on-postgresql-after-first-write':'abort-before-first-application-write',
-    events:states.map(event)};
+    events:states.map((state, i) => event(state, i))};
 }
 
 test('prewrite rollback candidate requires all independent no-first-write and unchanged V4 proofs',()=>{

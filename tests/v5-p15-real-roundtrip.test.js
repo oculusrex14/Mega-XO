@@ -63,6 +63,17 @@ test('P15 separate PostgreSQL16 containers: encrypted backup, authenticated rest
  const seeded=await lab.adminClient(sourceDb);
  try{
   const now=new Date(lab.CLOCK).toISOString();
+  // Some P04 match operations persist the reservation in the aggregate
+  // rather than emitting historical contribution rows. For backup schema
+  // coverage we explicitly seed the two synthetic contribution rows if
+  // absent. This tests restoration of that table, not P04 allocation logic.
+  const match=(await seeded.query("SELECT escrow,accepted_count FROM match.matches WHERE match_id='p15-match-offer-fixture'")).rows[0];
+  assert.ok(match && Number(match.accepted_count)===2);
+  const contributionRows=(await seeded.query(
+    "SELECT count(*)::int AS n FROM match.escrow_contributions WHERE match_id='p15-match-offer-fixture'")).rows[0].n;
+  if(contributionRows===0){
+   await seeded.query("INSERT INTO match.escrow_contributions (match_id,actor_id,amount) VALUES ('p15-match-offer-fixture','svc_alice',40),('p15-match-offer-fixture','svc_bob',40)");
+  }
   // A second escrow graph fixture, intentionally synthetic and limited to
   // restore fidelity: not a claim about actual future P09 room orchestration.
   await seeded.query("INSERT INTO tournament.rooms (room_id,code,owner_id,status,created_at,escrow) VALUES ('p15-room-fixture','P15ROOMFIXTURE','svc_carol','RUNNING',$1,40)",[now]);

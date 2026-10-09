@@ -9,8 +9,17 @@ on:
       - '.github/workflows/v5-p16-core-failover.yml'
       - 'packages/services/core-instance-lifecycle.js'
       - 'packages/services/core-drain-connections.js'
+      # P08 Core, P06 Redis and PG/contract evolution can break the real
+      # two-Core SIGKILL rehearsal without changing a P16-owned file.
+      - 'packages/services/**'
+      - 'packages/contracts/**'
+      - 'packages/db/**'
+      - 'packages/migrations/**'
+      - 'src/domain.js'
       - 'scripts/v5/p16/**'
       - 'tests/v5-p16-*.test.js'
+      - 'tests/v5-pg-lab.js'
+      - 'tests/helpers/v5-presence-service-process.js'
       - 'docs/v5/co-dev/P16-CORE-FAILOVER-FOUNDATIONS.md'
 permissions:
   contents: read

@@ -254,19 +254,10 @@ async function handleGetMatch(context, req, res, matchId) {
     return sendJson(res, 400, { error: 'INVALID_MATCH_ID' });
   }
 
+  // This route is participant-authenticated for every match state. Even
+  // completed results may differ by viewer and require fresh entitlement;
+  // neither CDN/public nor actor-blind shared cache may bypass Core/PG.
   let match = null;
-  const readCache = context?.readCache || defaultReadCache;
-  const cacheKey = `match:${matchId}`;
-
-  // Fast-path: check cache for completed match projection
-  const cachedMatch = readCache.get(cacheKey, { allowStale: true });
-  if (cachedMatch) {
-    if (Array.isArray(cachedMatch.players) && cachedMatch.players.includes(actor)) {
-      return sendJson(res, 200, cachedMatch, {
-        'Cache-Control': CACHE_CONTROL_POLICIES.PUBLIC_PROJECTED_MEDIUM,
-      });
-    }
-  }
   // 1. Core service readMatch
   const coreSvc = context?.core || context?.coreService;
   if (coreSvc && typeof coreSvc.readMatch === 'function') {
@@ -337,17 +328,8 @@ async function handleGetMatch(context, req, res, matchId) {
 
   const classification = classifyRoute('/api/v1/match/' + matchId, {
     matchStatus: match.status,
-    isPrivateMatch: match.kind === 'direct' && match.status !== 'COMPLETED',
+    isPrivateMatch: true,
   });
-
-  if (classification.category === CATEGORIES.PUBLIC_PROJECTED) {
-    readCache.set(cacheKey, displayed, {
-      ttlMs: 300000,
-      staleToleranceMs: 600000,
-      tags: ['match', `match:${matchId}`],
-      category: CATEGORIES.PUBLIC_PROJECTED,
-    });
-  }
 
   return sendJson(res, 200, displayed, {
     'Cache-Control': classification.cacheControl,

@@ -52,7 +52,7 @@ async function request(handler, {
       end(text = '') {
         let data;
         try { data = JSON.parse(text); } catch { data = text; }
-        resolve({ status: this.statusCode, data });
+        resolve({ status: this.statusCode, data, headers: this.headers });
       },
     };
     Promise.resolve(handler(req, res)).catch(reject);
@@ -156,4 +156,55 @@ test('P11: API will not boot OTP or Core gateway using default public secrets', 
       else process.env[name] = value;
     }
   }
+});
+
+test('P12 privacy: cached completed match never bypasses fresh participant access', async () => {
+  const { createReadCache, CATEGORIES } = require('../packages/services/read-cache.js');
+  const readCache = createReadCache();
+  readCache.set('match:m-private', {
+    id: 'm-private',
+    status: 'COMPLETED',
+    players: ['svc_alice', 'svc_bob'],
+    personalSecret: 'must-not-leak',
+  }, { category: CATEGORIES.PUBLIC_PROJECTED, ttlMs: 300000 });
+
+  const checked = [];
+  const handler = createApiHandler({
+    readCache,
+    accounts: {
+      async requireLinked(token) {
+        if (token === 'alice-session') return { actor: 'svc_alice' };
+        if (token === 'bob-session') return { actor: 'svc_bob' };
+        throw Error('AUTH_REQUIRED');
+      },
+    },
+    core: {
+      async readMatch(actor) {
+        checked.push(actor);
+        if (actor === 'svc_bob') throw Error('NOT_PARTICIPANT');
+        return {
+          id: 'm-private',
+          status: 'COMPLETED',
+          players: ['svc_alice', 'svc_bob'],
+          terms: { kind: 'standard' },
+        };
+      },
+    },
+  });
+  const bob = await request(handler, {
+    method: 'GET', url: '/api/v1/match/m-private',
+    headers: { authorization: 'Bearer bob-session' },
+  });
+  assert.equal(bob.status, 403, 'rejected viewer cannot see a stale shared snapshot');
+  assert.equal(bob.data.error, 'NOT_PARTICIPANT');
+
+  const alice = await request(handler, {
+    method: 'GET', url: '/api/v1/match/m-private',
+    headers: { authorization: 'Bearer alice-session' },
+  });
+  assert.equal(alice.status, 200);
+  assert.equal(alice.headers['cache-control'], 'private, no-store',
+    'participant-scoped results must never be public CDN cacheable');
+  assert.equal(alice.data.personalSecret, undefined);
+  assert.deepEqual(checked, ['svc_bob', 'svc_alice']);
 });

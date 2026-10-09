@@ -1,0 +1,87 @@
+name: V5 P23 legacy retirement foundations
+# Source-only trusted V5 PR/push checks: NO SSH, provider secrets, deployment,
+# DNS changes, SQLite writer fencing, artifact cleanup or acceptance grants.
+on:
+  push:
+    branches: [V5-platform]
+    paths:
+      - '.github/workflows/v5-p23-retirement-foundations.yml'
+      - 'scripts/v5/p23/**'
+      - 'scripts/v5/p22/**'
+      - 'scripts/v5/ci-runner-diagnostic.js'
+      - 'tests/v5-p23-*.test.js'
+      - 'tests/v5-ci-runner-diagnostic.test.js'
+      - 'docs/v5/progress.json'
+      - 'docs/v5/evidence/**'
+      - 'packages/**'
+      - 'server/**'
+      - 'apps/**'
+      - 'deploy/**'
+      - 'native/**'
+      - 'tools/v5-migration/**'
+      - 'docs/co-dev/P23-RETIREMENT-HANDOFF.md'
+  pull_request:
+    branches: [V5-platform]
+    paths:
+      - '.github/workflows/v5-p23-retirement-foundations.yml'
+      - 'scripts/v5/p23/**'
+      - 'scripts/v5/p22/**'
+      - 'scripts/v5/ci-runner-diagnostic.js'
+      - 'tests/v5-p23-*.test.js'
+      - 'tests/v5-ci-runner-diagnostic.test.js'
+      - 'docs/v5/progress.json'
+      - 'docs/v5/evidence/**'
+      - 'packages/**'
+      - 'server/**'
+      - 'apps/**'
+      - 'deploy/**'
+      - 'native/**'
+      - 'tools/v5-migration/**'
+      - 'docs/co-dev/P23-RETIREMENT-HANDOFF.md'
+permissions:
+  contents: read
+concurrency:
+  group: v5-p23-\${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  p23-source:
+    name: V4 retirement, archive continuity, compatibility and delivery negative tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '24'
+      - name: Install locked dependencies
+        run: npm ci
+      - name: Execute P23 and runnerless CI negative suites with no skips
+        run: |
+          set -euo pipefail
+          node --test --test-reporter=tap --test-concurrency=1 \
+            tests/v5-p23-retirement-readiness.test.js \
+            tests/v5-p23-retention-manifest.test.js \
+            tests/v5-p23-compatibility-sunset.test.js \
+            tests/v5-p23-delivery-report.test.js \
+            tests/v5-ci-runner-diagnostic.test.js \
+            tests/v5-p23-workflow.test.js > p23-source.tap
+          cat p23-source.tap
+          grep -Eq '^# tests [1-9][0-9]*$' p23-source.tap
+          grep -Eq '^# pass [1-9][0-9]*$' p23-source.tap
+          grep -Eq '^# fail 0$' p23-source.tap
+          grep -Eq '^# skipped 0$' p23-source.tap
+      - name: Assert current owner ledger cannot authorize V4 retirement from source
+        run: |
+          node - <<'NODE'
+          const ledger = require('./docs/v5/progress.json');
+          const {assessRetirement} = require('./scripts/v5/p23/retirement-readiness');
+          const report = assessRetirement(ledger, process.env.GITHUB_SHA);
+          if (report.v4RetirementAuthorized !== false || report.g23Accepted !== false ||
+              report.productionMutationAllowed !== false ||
+              report.ownerEvidenceIndependentlyVerified !== false) {
+            throw new Error('P23_SOURCE_CANNOT_AUTHORIZE_RETIREMENT');
+          }
+          console.log('P23 read-only owner-gate assessment:', report.status);
+          NODE

@@ -1,0 +1,61 @@
+{
+  "schema_version": 1,
+  "phase": "P08",
+  "task_ids": [
+    "V5-08-03"
+  ],
+  "case_ids": [],
+  "recorded_at_utc": "2026-10-09T08:45:00.000Z",
+  "status": "DURABLE_CLOCKS_VERIFIED",
+  "source_state": {
+    "base_sha": "045d5f94a13485486d5e5ab6a3dd5f8616604008",
+    "verified_source_sha256": {
+      "packages/services/timers.js": "73d74c05ea5815eb5b01851e36093ff9a5ba5e039474775d04ca9826a80ec6ef",
+      "packages/services/core.js": "9ea54466f623f6cfd3b64178d1a1c61433658139857526573fae187a1d2f5d74",
+      "packages/services/ephemera.js": "2a9f243ae7cbfd8a4e8d35f58c426e855fc8289454890635e808c105553e414c",
+      "packages/services/index.js": "37756fdf1ee73c437a3c3aa32f2fe8295b2866cb314d1877dc11352cbb983e2f",
+      "tests/v5-p08-timers.test.js": "d2ad4f7cbe807e37e96b86dcf2941544a4ae9594f877feaa1fe72c846bf4fc91"
+    }
+  },
+  "durable_clocks_verification": {
+    "service": "packages/services/timers.js",
+    "absolute_deadline_persistence": {
+      "storage": "Deadlines are persisted as absolute timestamps in PostgreSQL (match.matches.deadline)",
+      "persistence": "Reconnecting, re-reading with core.readMatch, or reading from a fresh Core service returns the exact same absolute timestamp; elapsed time reduces remaining time and never grants a fresh turn duration"
+    },
+    "premature_timeout_rejection": {
+      "enforcement": "Calling timeout before deadline throws NOT_TIMED_OUT and rolls back completely; leaves zero outcome rows, zero outbox events, and match status remains PLAYING"
+    },
+    "due_timeout_settlement": {
+      "key_convention": "Deterministic revision-bound key: timeout:<matchId>:<revision>",
+      "settlement": "Past deadline, checkTimeouts executes core.run; match settles with reason 'timeout', winner awarded to opponent of current turn, receipt emitted, outbox event enqueued; operates correctly even after total Redis namespace wipe"
+    },
+    "move_vs_timeout_race_serialization": {
+      "serialization": "A move committed near deadline advances revision to N+1 and resets deadline to now + turnSeconds*1000; a timeout claim for revision N throws NOT_TIMED_OUT or MATCH_CLOSED and cannot settle the new revision",
+      "concurrency": "Concurrent move and timeout commit exactly one effect under aggregate identity and actor locks; match is never split or double-settled"
+    },
+    "idempotent_timeout_replay": {
+      "replay": "Same timeout key returns the stored settlement receipt without duplicate payouts, double burns, or outbox duplication"
+    },
+    "offer_expiry": {
+      "mechanism": "reapDueRooms expires OFFERED matches past their offer window using deterministic expire:<matchId> command"
+    }
+  },
+  "test_execution": {
+    "command": "env V5_PG_URL=postgres://postgres@127.0.0.1:50709/postgres V5_PG_DISPOSABLE=1 V5_PG_REQUIRED=1 REDIS_URL=redis://127.0.0.1:50710 node --test --test-reporter=tap --test-concurrency=1 tests/v5-p08-timers.test.js",
+    "environment": "owned loopback PostgreSQL 16.15 + real loopback Redis 127.0.0.1:50710",
+    "tests": 7,
+    "assertions": 121,
+    "pass": 7,
+    "fail": 0,
+    "skipped": 0
+  },
+  "task_outcomes": {
+    "V5-08-03": "COMPLETE: durable clocks and scheduled expiry implemented in packages/services/timers.js. Absolute deadlines persisted in PostgreSQL; reconnect/restart never extends turn duration; deterministic revision-bound keys (timeout:<matchId>:<revision>) serialize move-vs-timeout races; old timer claims cannot settle newer revisions; premature timeouts roll back completely; idempotent replays return stored receipt; offer expiration verified across 7 dedicated tests and 121 assertions on real PG16 + Redis."
+  },
+  "not_claimed": [
+    "snapshot/delta recovery (V5-08-04)",
+    "removal of memory-authoritative restart recovery (V5-08-05)",
+    "G08 gate passage"
+  ]
+}

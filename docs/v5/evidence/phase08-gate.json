@@ -1,0 +1,73 @@
+{
+  "schema_version": 1,
+  "phase": "P08",
+  "gate": "G08",
+  "task_ids": [
+    "V5-08-01",
+    "V5-08-02",
+    "V5-08-03",
+    "V5-08-04",
+    "V5-08-05"
+  ],
+  "case_ids": [],
+  "recorded_at_utc": "2026-10-09T08:58:00.000Z",
+  "status": "PASSED",
+  "source_state": {
+    "base_sha": "045d5f94a13485486d5e5ab6a3dd5f8616604008",
+    "verified_source_sha256": {
+      "packages/services/realtime-transport.js": "732049e397551fa0dff573fe73fc94c0346cbbffcc9cfec718fa093c4bb9fa33",
+      "packages/services/timers.js": "73d74c05ea5815eb5b01851e36093ff9a5ba5e039474775d04ca9826a80ec6ef",
+      "apps/game-core/realtime.js": "6cf6dfeb81e05d97f2613d7350cb4a2b992167d5326a0be9e9dd305db3d1d575",
+      "packages/services/index.js": "37756fdf1ee73c437a3c3aa32f2fe8295b2866cb314d1877dc11352cbb983e2f",
+      "tests/v5-p08-transport.test.js": "3e9b110ba1b223d6a695b7fe2b9f33bfcf67ddab9eec1e7c53d9e84615a995e8",
+      "tests/v5-p08-commands.test.js": "3df7395c1c8ba65fa8a2a5f7823fca0dff1712a32c253b2661aa019a187ddaa7",
+      "tests/v5-p08-timers.test.js": "d2ad4f7cbe807e37e96b86dcf2941544a4ae9594f877feaa1fe72c846bf4fc91",
+      "tests/v5-p08-snapshot-recovery.test.js": "c33fefdf4138a3d6ebef5607316773a466487e35b71c2ee146f3289053cbb62e",
+      "tests/v5-p08-restart-recovery.test.js": "cb87635c5970c3ba50c388bc6253c0d8329606112048fc224cf65b53059ef3b9"
+    }
+  },
+  "required_outputs": {
+    "realtime_service": {
+      "path": "apps/game-core/realtime.js",
+      "service": "packages/services/realtime-transport.js",
+      "exported": "createRealtimeTransport in packages/services/index.js",
+      "verified": true
+    },
+    "durable_clock_scheduler": {
+      "path": "packages/services/timers.js",
+      "exported": "createTimerService in packages/services/index.js",
+      "verified": true
+    },
+    "failover_kill_integration_tests": {
+      "path": "tests/v5-p08-restart-recovery.test.js",
+      "tests": 6,
+      "assertions": 121,
+      "verified": true
+    }
+  },
+  "gate_criteria_verification": {
+    "criterion": "G08: Live game moves serialize transactionally, survive process restarts and socket reconnections; timers enforce persisted deadlines without loss.",
+    "move_transaction_serialization": "Existing move rules validated; operation deduplicated before stale-revision checks; state locked, compared and committed atomically with outcome and outbox in PostgreSQL; lost-response retries return prior ack; altered-payload reuses conflict and roll back completely",
+    "survive_process_restarts": "Active matches are never voided on boot; committed matches survive Core shutdown and are loaded with status PLAYING and identical revision/deadline/escrow; surviving Core resumes games after process kills before or after commit",
+    "survive_socket_reconnections": "Client reconnects, redeems fresh one-use ticket, and resumes from last acknowledged revision, receiving bounded deltas or full snapshot without reapplying moves; slow clients are disconnected cleanly with 1008 and recover on reconnect",
+    "timers_enforce_persisted_deadlines": "Deadlines are persisted as absolute timestamps in PostgreSQL; reconnect/restart never grants fresh turn duration; revision-bound keys (timeout:<matchId>:<revision>) serialize move-vs-timeout races; old timer claims cannot settle newer revisions; due timeouts settle under authority"
+  },
+  "test_execution_summary": {
+    "v5_p08_transport_test": {"pass": 10, "fail": 0, "skipped": 0},
+    "v5_p08_commands_test": {"pass": 8, "fail": 0, "skipped": 0},
+    "v5_p08_timers_test": {"pass": 7, "fail": 0, "skipped": 0},
+    "v5_p08_snapshot_recovery_test": {"pass": 5, "fail": 0, "skipped": 0},
+    "v5_p08_restart_recovery_test": {"pass": 6, "fail": 0, "skipped": 0},
+    "total_p08_tests": 36,
+    "total_pass": 36,
+    "total_fail": 0,
+    "total_skipped": 0
+  },
+  "task_evidence_records": [
+    "docs/v5/evidence/phase08-transport.json",
+    "docs/v5/evidence/phase08-commands.json",
+    "docs/v5/evidence/phase08-timers.json",
+    "docs/v5/evidence/phase08-recovery.json",
+    "docs/v5/evidence/phase08-restart-recovery.json"
+  ]
+}

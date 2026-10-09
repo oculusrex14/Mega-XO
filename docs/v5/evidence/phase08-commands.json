@@ -1,0 +1,64 @@
+{
+  "schema_version": 1,
+  "phase": "P08",
+  "task_ids": [
+    "V5-08-02"
+  ],
+  "case_ids": [],
+  "recorded_at_utc": "2026-10-09T08:35:00.000Z",
+  "status": "COMMAND_REVISION_TRANSACTIONS_VERIFIED",
+  "source_state": {
+    "base_sha": "045d5f94a13485486d5e5ab6a3dd5f8616604008",
+    "verified_source_sha256": {
+      "packages/services/realtime-transport.js": "732049e397551fa0dff573fe73fc94c0346cbbffcc9cfec718fa093c4bb9fa33",
+      "packages/services/core.js": "9ea54466f623f6cfd3b64178d1a1c61433658139857526573fae187a1d2f5d74",
+      "apps/game-core/realtime.js": "6cf6dfeb81e05d97f2613d7350cb4a2b992167d5326a0be9e9dd305db3d1d575",
+      "tests/v5-p08-commands.test.js": "3df7395c1c8ba65fa8a2a5f7823fca0dff1712a32c253b2661aa019a187ddaa7"
+    }
+  },
+  "command_revision_verification": {
+    "move_validation": {
+      "rules": "Coordinates validated via packages/contracts/realtime.js:validateCommand and validateMove (integer b: 0..8, c: 0..8); move legality applied by game.apply",
+      "rejections": "Out-of-range, negative, non-integer, and missing coordinates rejected with INVALID_MOVE before database transaction"
+    },
+    "deduplication_before_stale_revision": {
+      "mechanism": "Operation deduplication via Authority.move / core.run checks m.commands.has(key) BEFORE m.revision !== revision check",
+      "lost_response_retry": "Sending identical command with same operation_id and old expected_revision returns prior ack and prior snapshot without STALE_REVISION error; state unchanged"
+    },
+    "altered_payload_reuse_conflict": {
+      "mechanism": "Same operation_id with altered move payload detects fingerprint mismatch and throws IDEMPOTENCY_CONFLICT",
+      "rollback": "Complete PostgreSQL transaction rollback: board state, revision, move outcomes, outcome rows, and outbox rows remain byte-identical"
+    },
+    "stale_revision_rejection": {
+      "mechanism": "Fresh operation_id with expected_revision < current revision rejected with STALE_REVISION, writes nothing"
+    },
+    "turn_and_rules_enforcement": {
+      "turn_order": "Moving out of turn throws NOT_YOUR_TURN and commits nothing",
+      "occupied_cell": "Occupied cell throws INVALID_MOVE (engine ILLEGAL_MOVE normalized to contract code)",
+      "match_closed": "Move on settled/finished match throws MATCH_CLOSED",
+      "resignation": "Resign command settles match, sets status FINISHED, emits receipt, releases escrow, and broadcasts terminal snapshot"
+    },
+    "atomic_commit_and_broadcast": {
+      "transaction_scope": "State transition, command outcome in economy.command_outcomes, move outcome in match.move_outcomes, and ops.outbox event commit in ONE PostgreSQL transaction",
+      "ack_and_fanout": "Sender receives ack with ack_revision; all connections subscribed to match_id receive snapshot with updated state"
+    }
+  },
+  "test_execution": {
+    "command": "env V5_PG_URL=postgres://postgres@127.0.0.1:50709/postgres V5_PG_DISPOSABLE=1 V5_PG_REQUIRED=1 REDIS_URL=redis://127.0.0.1:50710 node --test --test-reporter=tap --test-concurrency=1 tests/v5-p08-commands.test.js",
+    "environment": "owned loopback PostgreSQL 16.15 + real loopback Redis 127.0.0.1:50710",
+    "tests": 8,
+    "assertions": 122,
+    "pass": 8,
+    "fail": 0,
+    "skipped": 0
+  },
+  "task_outcomes": {
+    "V5-08-02": "COMPLETE: command revision transactions implemented in packages/services/realtime-transport.js and core.run. Existing move rules validated; operation deduplicated before stale-revision checks; state locked, compared and committed atomically with outcome and outbox in PostgreSQL; lost-response retries return prior ack; altered-payload reuses conflict with IDEMPOTENCY_CONFLICT and roll back completely; sender receives ack and subscribers receive broadcast snapshots across 8 dedicated tests and 122 assertions on real PG16 + Redis."
+  },
+  "not_claimed": [
+    "durable clocks and scheduled expiry (V5-08-03)",
+    "snapshot/delta recovery (V5-08-04)",
+    "removal of memory-authoritative restart recovery (V5-08-05)",
+    "G08 gate passage"
+  ]
+}

@@ -27,8 +27,10 @@
  *    override and a custom `checkServerIdentity` are refused. Plaintext `redis://` is refused
  *    unless the caller explicitly chooses it with `allowPlaintext: true`, so a managed endpoint
  *    can never be contacted in plaintext by accident.
- *  - NO PERMANENT ASSETS. Presence, queues, caches, hints, locks and routes are the only
- *    families; wallet/rank/purchase/ticket/revocation truth is never written here.
+ *  - NO PERMANENT ASSETS. Presence, queues, caches, hints, locks, routes and due registrations are
+ *    the only families; wallet/rank/purchase/ticket/revocation truth is never written here. A `due`
+ *    registration is a derived, TTL-bounded timer hint rebuilt from committed deadlines, never a
+ *    schedule of record.
  */
 'use strict';
 const crypto = require('node:crypto');
@@ -65,7 +67,10 @@ const PRESENCE_WINDOW_MS = 45000;
 const PRESENCE_CAP = 16;
 /* The key part for a session-revocation hint (see presenceSetRevoked). */
 const PRESENCE_HINT_KIND = 'session-revoked';
-const FAMILIES = new Set(['presence', 'queue', 'cache', 'rate', 'route', 'hint', 'lock', 'negcache']);
+/* `due` is the V5 P08 timer registration set (`mx:<env>:<ver>:due:<kind>`, design p06 key matrix):
+ * a derived, TTL-bounded sorted set rebuilt from committed deadlines, added here rather than in a
+ * second key vocabulary so one allowlist keeps owning the namespace. No other invariant changes. */
+const FAMILIES = new Set(['presence', 'queue', 'cache', 'rate', 'route', 'hint', 'lock', 'negcache', 'due']);
 const ENVIRONMENTS = new Set(['stg', 'prd', 'test']);
 /* A key part is a durable text identifier. Its BOUNDS come from the preserved identity grammar
  * (`[A-Za-z0-9:_-]{1,160}` - `src/authority.js:7` validId, `packages/contracts/http-guards.js`

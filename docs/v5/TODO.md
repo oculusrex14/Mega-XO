@@ -4,7 +4,7 @@ The mutable execution source is [progress.json](progress.json); this is its read
 
 **Goal:** Deliver the V5 hybrid platform and real Android/iOS applications with shared permanent actor/assets, preserved approved game and retained browser compatibility; do not build the new website/browser product.
 
-**Integration base:** `455b8ec9ea4070b4410d78f9eea2aaa06d32c0b2`. **Active phase/task:** P08 / V5-08-01 (PLANNED). **Progress:** 41/117 tasks terminal; 8/25 phase gates passed
+**Integration base:** `455b8ec9ea4070b4410d78f9eea2aaa06d32c0b2`. **Active phase/task:** P09 / V5-09-01 (PLANNED). **Progress:** 46/117 tasks terminal; 9/25 phase gates passed
 
 Required path: execute P00–P20, P22–P23; owner-deferred P21 executes nothing; P24 is measurement-gated; phase prerequisites are gates, not status assumptions, and a deferred or measurement-gated phase is never used as another phase prerequisite. The foundation gate P00–P03 passes before dependent distributed work, and V5 CI starts in the foundation rather than only at P17.
 
@@ -107,13 +107,13 @@ Milestone: V5.3; status: `COMPLETE`; prerequisites: P06. [Phase contract](../../
 
 ## P08 — Deploy revision-based durable realtime Game Core
 
-Milestone: V5.4; status: `PLANNED`; prerequisites: P07. [Phase contract](../../Mega-XO-V5-Implementation-Pack/phases/08-durable-realtime-core.md).
+Milestone: V5.4; status: `COMPLETE`; prerequisites: P07. [Phase contract](../../Mega-XO-V5-Implementation-Pack/phases/08-durable-realtime-core.md).
 
-- [ ] **V5-08-01 — Implement authenticated WSS transport** (`PLANNED`).
-- [ ] **V5-08-02 — Implement command revision transactions** (`PLANNED`).
-- [ ] **V5-08-03 — Implement durable clocks and scheduled expiry** (`PLANNED`).
-- [ ] **V5-08-04 — Implement snapshot/delta recovery and polling** (`PLANNED`).
-- [ ] **V5-08-05 — Remove memory-authoritative restart recovery** (`PLANNED`).
+- [x] **V5-08-01 — Implement authenticated WSS transport** (`COMPLETE`).
+- [x] **V5-08-02 — Implement command revision transactions** (`COMPLETE`).
+- [x] **V5-08-03 — Implement durable clocks and scheduled expiry** (`COMPLETE`).
+- [x] **V5-08-04 — Implement snapshot/delta recovery and polling** (`COMPLETE`).
+- [x] **V5-08-05 — Remove memory-authoritative restart recovery** (`COMPLETE`).
 
 **Exit gate:** G08: acknowledged moves survive process death and resume from committed state on another process; no reset deadline, duplicate effect or split match.
 

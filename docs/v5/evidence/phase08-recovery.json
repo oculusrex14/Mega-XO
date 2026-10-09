@@ -1,0 +1,50 @@
+{
+  "schema_version": 1,
+  "phase": "P08",
+  "task_ids": [
+    "V5-08-04"
+  ],
+  "case_ids": [],
+  "recorded_at_utc": "2026-10-09T08:50:00.000Z",
+  "status": "SNAPSHOT_DELTA_RECOVERY_VERIFIED",
+  "source_state": {
+    "base_sha": "045d5f94a13485486d5e5ab6a3dd5f8616604008",
+    "verified_source_sha256": {
+      "packages/services/realtime-transport.js": "732049e397551fa0dff573fe73fc94c0346cbbffcc9cfec718fa093c4bb9fa33",
+      "apps/game-core/realtime.js": "6cf6dfeb81e05d97f2613d7350cb4a2b992167d5326a0be9e9dd305db3d1d575",
+      "tests/v5-p08-snapshot-recovery.test.js": "c33fefdf4138a3d6ebef5607316773a466487e35b71c2ee146f3289053cbb62e"
+    }
+  },
+  "recovery_verification": {
+    "service": "packages/services/realtime-transport.js",
+    "resume_operation": {
+      "in_sync": "Resume at current revision answers ack with the durable revision; no redundant delta or snapshot sent",
+      "missed_moves": "Resume after disconnect with missed moves returns bounded delta (moves slice) and authoritative snapshot; synchronizes state without reapplying moves",
+      "corrupted_ack_revision": "Out-of-order or future ack_revision corrected with full authoritative snapshot at true revision; invalid delta not computed"
+    },
+    "http_snapshot_fallback": {
+      "routes": "GET /realtime/v1/snapshot?match_id=...&actor=... and GET /realtime/v1/match/:id?actor=...",
+      "content_type": "application/json",
+      "authorization": "Requires participant actor; non-participants rejected with 403; returns authoritative durable match view",
+      "nonconflicting": "Unrelated HTTP paths (e.g. /healthz) untouched by the fallback handler"
+    },
+    "leak_free_lifecycle": {
+      "teardown": "Recovered sockets close cleanly; transport close removes request and upgrade listeners, empties connection registry, and releases advisory Redis routes"
+    }
+  },
+  "test_execution": {
+    "command": "env V5_PG_URL=postgres://postgres@127.0.0.1:50709/postgres V5_PG_DISPOSABLE=1 V5_PG_REQUIRED=1 REDIS_URL=redis://127.0.0.1:50710 node --test --test-reporter=tap --test-concurrency=1 tests/v5-p08-snapshot-recovery.test.js",
+    "environment": "owned loopback PostgreSQL 16.15 + real loopback Redis 127.0.0.1:50710",
+    "tests": 5,
+    "pass": 5,
+    "fail": 0,
+    "skipped": 0
+  },
+  "task_outcomes": {
+    "V5-08-04": "COMPLETE: snapshot/delta recovery and polling implemented in packages/services/realtime-transport.js. Client resumes from last acknowledged revision, receiving bounded deltas or current snapshot; missed pubsub during disconnects recovers without reapplying moves; corrupted ack_revisions corrected with full snapshot; HTTP snapshot fallback preserves HTTP compatibility across 5 dedicated tests on real PG16 + Redis."
+  },
+  "not_claimed": [
+    "removal of memory-authoritative restart recovery (V5-08-05)",
+    "G08 gate passage"
+  ]
+}

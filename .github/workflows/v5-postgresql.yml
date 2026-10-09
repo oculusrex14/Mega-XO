@@ -227,6 +227,18 @@ jobs:
         run: |
           set -o pipefail
           node --test --test-reporter=tap --test-concurrency=1 tests/v5-p11-vercel-config.test.js tests/v5-p11-account-social.test.js tests/v5-p11-core-gateway.test.js tests/v5-p11-browser-compat.test.js tests/v5-p11-website-foundations.test.js 2>&1 | tee .evidence-logs/v5-p11-api.tap
+      - name: P12 real PostgreSQL read-cache and privacy projections
+        run: |
+          set -o pipefail
+          node --test --test-reporter=tap --test-concurrency=1 tests/v5-p12-read-cache.test.js 2>&1 | tee .evidence-logs/v5-p12-read-cache.tap
+      - name: P13 real PostgreSQL security and ingress boundaries
+        run: |
+          set -o pipefail
+          node --test --test-reporter=tap --test-concurrency=1 tests/v5-p13-security.test.js 2>&1 | tee .evidence-logs/v5-p13-security.tap
+      - name: P14 real PostgreSQL health and observability
+        run: |
+          set -o pipefail
+          node --test --test-reporter=tap --test-concurrency=1 tests/v5-p14-observability.test.js 2>&1 | tee .evidence-logs/v5-p14-observability.tap
       - name: Enforce executed database coverage
         # A green run that quietly skipped the database suites is a failure, not a pass: every
         # suite must report assertions against the live service and report zero skips.
@@ -279,6 +291,9 @@ jobs:
             { file: 'tests/v5-p11-core-gateway.test.js', log: '.evidence-logs/v5-p11-api.tap' },
             { file: 'tests/v5-p11-browser-compat.test.js', log: '.evidence-logs/v5-p11-api.tap' },
             { file: 'tests/v5-p11-website-foundations.test.js', log: '.evidence-logs/v5-p11-api.tap' },
+            { file: 'tests/v5-p12-read-cache.test.js', log: '.evidence-logs/v5-p12-read-cache.tap' },
+            { file: 'tests/v5-p13-security.test.js', log: '.evidence-logs/v5-p13-security.tap' },
+            { file: 'tests/v5-p14-observability.test.js', log: '.evidence-logs/v5-p14-observability.tap' },
           ];
           const report = { tool: 'v5-pg-coverage', suites: [] };
           let failed = false;

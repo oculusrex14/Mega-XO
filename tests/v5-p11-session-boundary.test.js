@@ -208,3 +208,39 @@ test('P12 privacy: cached completed match never bypasses fresh participant acces
   assert.equal(alice.data.personalSecret, undefined);
   assert.deepEqual(checked, ['svc_bob', 'svc_alice']);
 });
+
+test('P11/P12: private friends always re-read authority after external block, ignoring stale cache', async () => {
+  const { createReadCache, CATEGORIES } = require('../packages/services/read-cache.js');
+  const readCache = createReadCache();
+  // Preload an older API worker's snapshot; invalidation is not broadcast
+  // across processes. This should never authorize stale social visibility.
+  readCache.set('friends:svc_alice', { friends: [{ id: 'svc_bob' }] }, {
+    category: CATEGORIES.PRIVATE_NO_CACHE,
+    shared: false,
+    ttlMs: 30000,
+  });
+  let blocked = false;
+  let reads = 0;
+  const accounts = {
+    async requireLinked(token) {
+      if (token !== 'alice-session') throw new Error('AUTH_REQUIRED');
+      return { actor: 'svc_alice' };
+    },
+    async friends(actor) {
+      assert.equal(actor, 'svc_alice');
+      reads++;
+      return { friends: blocked ? [] : [{ id: 'svc_bob' }], incoming: [], outgoing: [], blocked: [] };
+    },
+  };
+  const handler = createApiHandler({ accounts, readCache });
+  const opts = { method: 'GET', url: '/api/community/friends',
+    headers: { authorization: 'Bearer alice-session' } };
+  const first = await request(handler, opts);
+  assert.equal(first.status, 200);
+  assert.deepEqual(first.data.friends.map(x => x.id), ['svc_bob']);
+  blocked = true; // A separate process committed a durable block.
+  const second = await request(handler, opts);
+  assert.equal(second.status, 200);
+  assert.deepEqual(second.data.friends, []);
+  assert.equal(reads, 2, 'never trust cross-worker stale friend lists');
+});

@@ -62,22 +62,11 @@ async function getFriends(context, req, res) {
     throw err;
   }
 
-  const readCache = context?.readCache || defaultReadCache;
-  const cacheKey = `friends:${actor}`;
-  const cached = readCache.get(cacheKey);
-  if (cached) {
-    return sendJson(res, 200, cached, {
-      'Cache-Control': CACHE_CONTROL_POLICIES.PRIVATE_NO_STORE,
-    });
-  }
-
+  // Friends and incoming requests are viewer-specific authority decisions.
+  // A local cache has no cross-instance invalidation: a block/unfriend on
+  // another API worker must take effect on the very next request.
+  // Read PostgreSQL on every request and disallow CDN/shared cache storage.
   const result = await accounts.friends(actor);
-  readCache.set(cacheKey, result, {
-    ttlMs: 30000,
-    tags: [`friends:${actor}`],
-    category: CATEGORIES.PRIVATE_NO_CACHE,
-    shared: false,
-  });
   return sendJson(res, 200, result, {
     'Cache-Control': CACHE_CONTROL_POLICIES.PRIVATE_NO_STORE,
   });

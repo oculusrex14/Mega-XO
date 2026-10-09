@@ -14,6 +14,10 @@ At source SHA `6ef81396346411cbe72e35f3c97016cc5be0113c`, the 2026-10-09 10:17:3
 
 The previous full integration audit also found **all nine** current-head workflows affected. A check-run/job-log lookup was insufficient to establish the initiating provider/account failure. GitHub repository Actions settings endpoints were not accessible through the available connector. These observations are **not executed tests** and neither prove nor disprove Node, schema, Kotlin, Swift or Redis correctness.
 
+## Current-head recheck (after P23)
+
+At source `41177477377e5f2412326a314cbe8a0eeaf589c6`, **10/10** triggered workflows on PR #9 concluded `failure`. Every job in each workflow had **zero executed steps** and **no runner name**, with downstream jobs skipped. In particular, the new [P23 run 37920357542](https://github.com/oculusrex14/Mega-XO/actions/runs/37920357542) and [release-engineering run 37920357484](https://github.com/oculusrex14/Mega-XO/actions/runs/37920357484) both failed before source checks began. This independently reproduces the prior incident on the newest code. **No completed P23 Node24 suite has run.**
+
 ## Most useful owner checks, in order
 
 1. Open any failed run directly in GitHub Actions, inspect the job banner, notices, annotations, and repository/org activity/limits. If a billing/usage lock, spending limit, GitHub-hosted runner entitlement or payment issue exists, resolve it through the account owner; **do not** publish credentials or billing data here.

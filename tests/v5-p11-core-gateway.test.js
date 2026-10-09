@@ -677,6 +677,23 @@ test('7. Competitive API routes: /api/v1/convert routes through coreGateway to C
     await lab.closeDatabasePools(db);
   });
 
+  // A0. A browser can forge actor headers, but they must never become a Core principal.
+  for (const headers of [
+    { 'x-actor-id': 'svc_alice' },
+    { 'x-test-actor': 'svc_alice' },
+    { 'x-actor-id': 'svc_alice', authorization: 'Bearer invalid-token' },
+  ]) {
+    const forged = await apiRequest(handler, '/api/v1/convert', {
+      method: 'POST',
+      headers,
+      body: { from: 'coins', amount: 100 },
+    });
+    assert.equal(forged.status, 401, 'unverified headers cannot authorize economic commands');
+    assert.equal(forged.data.error, 'AUTH_REQUIRED');
+  }
+  assert.equal(Number(await lab.scalar(db, "SELECT coins FROM economy.wallets WHERE actor_id = 'svc_alice'")), 1000,
+    'forged requests did not change the wallet');
+
   // A. Unauthenticated request rejected
   {
     const res = await apiRequest(handler, '/api/v1/convert', {

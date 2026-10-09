@@ -32,7 +32,9 @@ jobs:
           node --check scripts/v5/p15/direct-target.js
           node --check scripts/v5/p15/backup-cli.js
           node --check scripts/v5/p15/archive-manifest.js
-          node --test tests/v5-p15-recovery-policy.test.js tests/v5-p15-sealed-archive.test.js tests/v5-p15-direct-target.test.js tests/v5-p15-backup-cli.test.js tests/v5-p15-archive-manifest.test.js
+          node --check scripts/v5/p15/data-integrity.js
+          node --check scripts/v5/p15/restore-cli.js
+          node --test tests/v5-p15-recovery-policy.test.js tests/v5-p15-sealed-archive.test.js tests/v5-p15-direct-target.test.js tests/v5-p15-backup-cli.test.js tests/v5-p15-archive-manifest.test.js tests/v5-p15-data-integrity.test.js tests/v5-p15-restore-cli.test.js
       - name: Record nonaccepted, evidence-gated recovery plan
         run: |
           set -euo pipefail
@@ -52,5 +54,122 @@ jobs:
         with:
           name: p15-proposed-recovery-policy
           path: .artifacts/p15-UNAPPROVED-policy.json
+          retention-days: 7
+          if-no-files-found: error
+
+  p15-independent-restore:
+    name: P15 real encrypted copy to second isolated PostgreSQL16
+    runs-on: ubuntu-latest
+    timeout-minutes: 24
+    env:
+      V5_PG_URL: postgres://postgres@127.0.0.1:5432/postgres
+      V5_PG_DISPOSABLE: '1'
+      V5_PG_REQUIRED: '1'
+      V5_TARGET: test
+      V5_MIGRATE_ALLOW_INSECURE_LOOPBACK: '1'
+      V5_P15_DISPOSABLE: '1'
+      V5_P15_QUARANTINE: '1'
+      P15_RESTORE_JOBS_DISABLED: '1'
+      P15_RESTORE_PROVIDER_CALLBACKS_DISABLED: '1'
+      P15_REAL_DISPOSABLE: '1'
+      P15_SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+      P15_EVIDENCE_OUTPUT: .artifacts/p15-disposable-restore.json
+    services:
+      source_pg:
+        image: postgres:16@sha256:ca0bd484cb98bf4b24eb1010e73fb3fcbd6714d240fbc1a10eea5b7dbecb641d
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_DB: postgres
+          POSTGRES_HOST_AUTH_METHOD: trust
+        ports:
+          - 127.0.0.1:5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -q"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 24
+          --health-start-period 10s
+      recovery_pg:
+        image: postgres:16@sha256:ca0bd484cb98bf4b24eb1010e73fb3fcbd6714d240fbc1a10eea5b7dbecb641d
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_DB: postgres
+          POSTGRES_HOST_AUTH_METHOD: trust
+        ports:
+          - 127.0.0.1:5433:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -q"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 24
+          --health-start-period 10s
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '24'
+      - name: Install locked PG client and exact major 16 CLI tools
+        run: |
+          set -euo pipefail
+          npm ci --ignore-scripts
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq postgresql-client-16
+          pg_dump --version
+          pg_restore --version
+          node - <<'NODE'
+          const {execFileSync}=require('node:child_process');
+          for(const bin of ['pg_dump','pg_restore']){
+            const text=execFileSync(bin,['--version'],{encoding:'utf8'});
+            if(!new RegExp('^'+bin+' \\(PostgreSQL\\) 16\\.').test(text.trim())) {
+              throw Error('P15 requires exactly PostgreSQL16 client tools');
+            }
+          }
+          console.log('P15 compatible direct PostgreSQL16 tools ready');
+          NODE
+      - name: Execute actual streaming encrypted source/independent restore
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$P15_SOURCE_SHA"
+          mkdir -p .artifacts
+          node --test --test-concurrency=1 --test-reporter=tap tests/v5-p15-real-roundtrip.test.js \
+            > .artifacts/p15-disposable-integration.tap 2>&1 || {
+            tail -n 70 .artifacts/p15-disposable-integration.tap
+            exit 1
+          }
+          node - <<'NODE'
+          const fs=require('node:fs');
+          const log=fs.readFileSync('.artifacts/p15-disposable-integration.tap','utf8');
+          const count=k=>{
+            const matches=[...log.matchAll(new RegExp('^# '+k+' (\\d+)$','gm'))];
+            if(matches.length!==1)throw Error('incomplete P15 TAP evidence: '+k);
+            return Number(matches[0][1]);
+          };
+          if(count('pass')<1||count('fail')!==0||count('skipped')!==0) {
+            throw Error('independent restore never silently skips');
+          }
+          const p=JSON.parse(fs.readFileSync('.artifacts/p15-disposable-restore.json','utf8'));
+          if(p.sourceSha!==process.env.P15_SOURCE_SHA||
+             p.g15Accepted!==false||p.neonPitrObserved!==false||
+             p.archiveRetrievedFromR2!==false||p.actualEncryptedArchiveVerified!==true||
+             p.sourceAndRestoredDigestEqual!==true||p.recoveryTargetCleaned!==true||
+             p.roleAndExternalSecretsReconstructed!==false||
+             p.sourceAndRestoredTables<19||p.sourceAndRestoredRows<42) {
+            throw Error('P15 restored data proof incomplete or falsely claims G15');
+          }
+          const text=JSON.stringify(p);
+          if(/(?:postgres:\/\/|PRIVATE KEY|svc_alice|gmail\.com|@example\.)/.test(text)) {
+            throw Error('restricted row/user/key material in sanitized CI evidence');
+          }
+          console.log('P15 two-cluster authenticated restore and exact durable-data comparison passed; G15 open');
+          NODE
+      - name: Retain only sanitized separate-cluster restore proof
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: v5-p15-owned-twin-pg-restore-evidence
+          path: .artifacts/p15-disposable-restore.json
           retention-days: 7
           if-no-files-found: error

@@ -52,3 +52,26 @@ does not satisfy G15.
    with real freshness/incident notification and cleanup evidence.
 6. Mark G15 only after actual provider/source/target proof; co-dev retains
    docs/v5/progress.json untouched.
+
+
+## V5-15-03 executed disposable two-cluster restore test
+
+- The dedicated P15 CI job runs two independent PostgreSQL16 service
+  containers. A real migration-built source DB holds three synthetic actors,
+  actual Core conversion and accepted match, a synthetic tournament escrow,
+  a store receipt/revocation, completed privacy deletion and an audit entry.
+- The real pg_dump custom archive streams directly through authenticated
+  encryption into a private ciphertext file; it emits no plaintext dump.
+  The ephemeral RSA private recovery key never enters committed files or
+  uploaded CI artifacts.
+- restore-cli.js verifies source hashes and the entire AES-GCM tag before
+  attempting a second PostgreSQL instance, then decrypts straight into one
+  pg_restore transaction in a newly created, previously empty database.
+  It never uses clean, create, destructive migrations or auth bypass flags.
+- data-integrity.js hashes every application table in a repeatable-read
+  cursor, compares actual source/restored per-row content and counts,
+  checks migration digests, wallet bounds and immutable audit triggers.
+  The test drops only its exact temporary target database after measuring.
+- This is actual two-PostgreSQL-cluster *synthetic* encrypted restoration,
+  not an observed R2 retrieval, Neon PITR, role/key reconstruction or
+  production RPO/RTO. G15 remains OPEN.

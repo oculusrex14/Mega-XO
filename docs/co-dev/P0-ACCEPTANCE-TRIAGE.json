@@ -157,7 +157,7 @@
       "proof_scope": "PROVIDER_DEVICE_PENDING",
       "lead": "main-agent",
       "evidence_refs": [
-        "docs/v5/evidence/phase05-gate.json",
+        "docs/v5/evidence/phase05-foundations.json",
         "docs/v5/evidence/phase20-gate.json"
       ],
       "remaining_proof": "Exercise real email, Google and Apple sign-in/linking on old browser and physical Android/iOS; prove stable actor hash across platforms."
@@ -169,7 +169,7 @@
       "proof_scope": "CI_PROVEN_SCOPE",
       "lead": "main-agent",
       "evidence_refs": [
-        "docs/v5/evidence/phase05-gate.json",
+        "docs/v5/evidence/phase05-foundations.json",
         "docs/v5/evidence/phase13-gate.json"
       ],
       "remaining_proof": "Exercise real device refresh races, old-token replay, revocation and active socket/key rotation under configured provider sessions."
@@ -181,7 +181,7 @@
       "proof_scope": "CI_PROVEN_SCOPE",
       "lead": "joint",
       "evidence_refs": [
-        "docs/v5/evidence/phase05-gate.json",
+        "docs/v5/evidence/phase05-foundations.json",
         "docs/v5/evidence/phase08-gate.json"
       ],
       "remaining_proof": "Record dual-Core one-use ticket redemption and negative wrong-session/env/audience outcomes in integrated staging."

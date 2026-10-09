@@ -1,0 +1,173 @@
+name: V5 P19 disposable load and chaos foundations
+# Synthetic controlled tiers ONLY on job-owned PostgreSQL16/Redis7.
+# No Vercel/Neon/Oracle/public targets, secret access, or production traffic.
+on:
+  push:
+    branches: [V5-platform]
+  pull_request:
+    branches: [V5-platform]
+permissions:
+  contents: read
+concurrency:
+  group: v5-p19-disposable-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+jobs:
+  p19-plans-and-metrics:
+    name: P19 bounded workload and measurement guards
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '24'
+      - name: Run P19 pure and adversarial tests
+        run: |
+          set -euo pipefail
+          node --check scripts/v5/p19/workload-profile.js
+          node --check scripts/v5/p19/metrics.js
+          node --check scripts/v5/p19/disposable-adapters.js
+          node --check scripts/v5/p19/chaos-contract.js
+          node --check scripts/v5/p19/capacity-report.js
+          node --check scripts/v5/p19/ci-perimeter.js
+          node scripts/v5/p19/ci-perimeter.js
+          node --test tests/v5-p19-workload-profile.test.js tests/v5-p19-metrics.test.js tests/v5-p19-disposable-adapters.test.js tests/v5-p19-chaos-contract.test.js tests/v5-p19-capacity-report.test.js tests/v5-p19-ci-perimeter.test.js
+      - name: Produce clearly unexecuted launch-profile plan
+        run: |
+          set -euo pipefail
+          mkdir -p .artifacts
+          node scripts/v5/p19/workload-profile.js --plan > .artifacts/p19-unexecuted-workload.json
+          node - <<'NODE'
+          const fs=require('node:fs');
+          const p=JSON.parse(fs.readFileSync('.artifacts/p19-unexecuted-workload.json'));
+          if(p.g19Accepted!==false || p.executionPermitted!==false ||
+             p.sourceTrafficForecast!=='UNKNOWN' || p.status!=='UNEXECUTED_PROFILE_NOT_CAPACITY') {
+            throw Error('P19 illustrative plan cannot be called measured launch capacity');
+          }
+          console.log('P19 bounded illustrative mix: forecast unknown, G19 open');
+          NODE
+      - name: Retain nonauthoritative workload plan
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: v5-p19-illustrative-workload
+          path: .artifacts/p19-unexecuted-workload.json
+          retention-days: 7
+          if-no-files-found: error
+  p19-disposable-measured:
+    name: P19 real disposable PG/Redis tiny load and integrity
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    env:
+      V5_PG_URL: postgres://postgres@127.0.0.1:5432/postgres
+      V5_PG_DISPOSABLE: '1'
+      V5_PG_REQUIRED: '1'
+      V5_TARGET: test
+      V5_MIGRATE_ALLOW_INSECURE_LOOPBACK: '1'
+      REDIS_URL: redis://127.0.0.1:6379
+      V5_REDIS_REQUIRED: '1'
+      V5_REDIS_DISPOSABLE: '1'
+      V5_P19_DISPOSABLE: '1'
+      P19_EVIDENCE_OUTPUT: .artifacts/p19-real-disposable.json
+      P19_CHAOS_EVIDENCE_OUTPUT: .artifacts/p19-chaos-disposable.json
+      P19_SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+    services:
+      postgres:
+        image: postgres:16@sha256:ca0bd484cb98bf4b24eb1010e73fb3fcbd6714d240fbc1a10eea5b7dbecb641d
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_DB: postgres
+          POSTGRES_HOST_AUTH_METHOD: trust
+        ports:
+          - 127.0.0.1:5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -q"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 24
+          --health-start-period 10s
+      redis:
+        image: redis:7.4@sha256:cd745595f143052dd6a743bc5651d3ce4b03979fe5c99c7fcfab73461f6f217b
+        ports:
+          - 127.0.0.1:6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 24
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '24'
+      - name: Install exact locked dependencies
+        run: npm ci --ignore-scripts
+      - name: Run real service latency tiers and audit durable Crown effects
+        run: |
+          set -euo pipefail
+          mkdir -p .artifacts
+          test "$(git rev-parse HEAD)" = "$P19_SOURCE_SHA"
+          node --test --test-concurrency=1 --test-reporter=tap tests/v5-p19-real-services.test.js tests/v5-p19-real-chaos.test.js \
+            > .artifacts/p19-measured.tap 2>&1 || {
+            tail -n 60 .artifacts/p19-measured.tap
+            exit 1
+          }
+          node - <<'NODE'
+          const fs=require('node:fs');
+          const tap=fs.readFileSync('.artifacts/p19-measured.tap','utf8');
+          const count=k=>{
+            const hits=[...tap.matchAll(new RegExp('^# '+k+' (\\d+)$','gm'))];
+            if(hits.length!==1)throw Error('missing or ambiguous TAP count: '+k);
+            return Number(hits[0][1]);
+          };
+          if(count('pass')<1 || count('fail')!==0 || count('skipped')!==0) {
+            throw Error('real P19 benchmark missing or skipped');
+          }
+          const e=JSON.parse(fs.readFileSync('.artifacts/p19-real-disposable.json','utf8'));
+          if(e.g19Accepted!==false || e.limits.launchEnvelopeKnown!==false ||
+             e.limits.measuredVercel!==false || e.limits.measuredOracleHost!==false ||
+             e.tiers.length!==4 || e.tiers.some(t=>t.executedOperations<1||t.failedOperations!==0)) {
+            throw Error('unsafe P19 capacity claims or incomplete real measurement');
+          }
+          const chaos=JSON.parse(fs.readFileSync('.artifacts/p19-chaos-disposable.json','utf8'));
+          if(chaos.g19Accepted!==false || chaos.localScenarioCount!==4 ||
+             chaos.unexecutedScenarioCount!==5 || chaos.independentlyObservedOnRealStaging!==false ||
+             chaos.scenarioMeasurements.some(x=>
+               x.status==='LOCAL_MEASURED' && (x.beforeDigest!==x.afterDigest||x.durationMs<0))) {
+            throw Error('unsafe P19 chaos claim or missing disposable execution proof');
+          }
+          console.log('P19: 4 tiny real disposable PG/Redis tiers + 4 local fault drills passed; G19 open');
+          NODE
+          node scripts/v5/p19/capacity-report.js \
+            --load .artifacts/p19-real-disposable.json \
+            --chaos .artifacts/p19-chaos-disposable.json \
+            --sha "$P19_SOURCE_SHA" \
+            --output .artifacts/p19-capacity-local-only.json
+          node - <<'NODE'
+          const fs=require('node:fs');
+          const a=JSON.parse(fs.readFileSync('.artifacts/p19-capacity-local-only.json','utf8'));
+          if(a.g19Accepted!==false || a.sustainableLaunchPlayerLimit!==null ||
+             a.realStagingCapacityMeasured!==false ||
+             a.productionAlertThresholdsApproved!==false ||
+             a.pendingMonitorSignals.some(x=>x.threshold!==null)) {
+            throw Error('cannot promote disposable measurements into real launch thresholds');
+          }
+          console.log('P19 capacity report: '+a.totalObservedLocalCalls+' controlled local calls; 0 certified real-stage capacity');
+          NODE
+      - name: Retain sanitized actual small-fixture measurements
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: v5-p19-disposable-load-evidence
+          path: |
+            .artifacts/p19-real-disposable.json
+            .artifacts/p19-chaos-disposable.json
+            .artifacts/p19-capacity-local-only.json
+          if-no-files-found: error
+          retention-days: 7

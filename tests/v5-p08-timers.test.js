@@ -683,8 +683,8 @@ test('V5-08 co-dev: nearer timeout registration never shortens an existing later
     ...ephemeraOptions(),keyVersion:'tmp08monotone',
   });
   t.after(async()=>{
-    try{await ephemera.wipeNamespace()}catch{}
-    await ephemera.close();
+    try { await ephemera.wipeNamespace(); }
+    finally { await ephemera.close(); }
   });
   assert.equal(await ephemera.healthy(),true,'owned isolated Redis namespace is ready');
   const timers=loadTimerFactory()({

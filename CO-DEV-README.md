@@ -5,7 +5,7 @@
 **Owner:** independent co-developer; **status:** preparatory implementation, NOT formal phase acceptance  
 **Started:** 2026-10-09 UTC  
 **Pinned starting V5 base:** `e8d049bf50862897f546e531def12715a36c670c` (other agent's latest P06 checkpoint when branch was created)  
-**Upstream sync:** `dc579856d8c4` includes accepted G06 (`42db7e0`); `41190f99feaa` includes accepted G07 (`045d5f94a134`). Both were conflict-free two-parent merges into THIS branch; the primary `V5-platform` branch was not edited. Current primary online work starts at P08.
+**Upstream sync:** accepted G06 (`42db7e0`) merged via `dc579856d8c4`; accepted G07 (`045d5f94a134`) via `41190f99feaa`; accepted G08 (`a09c1578e8dc`) via `1638ab671c66` (22 primary-owned files, zero path overlap). These are conflict-free two-parent merges into THIS branch; `V5-platform` was not edited. **Current primary phase P09**, with G00–G08 accepted (46/117 tasks).
 **Work policy:** only this branch receives new co-development commits. Do not ask the integration agent to inspect/merge individual phase PRs.
 
 ## Quick start for the primary agent
@@ -17,7 +17,7 @@
 
 ## Latest full integration audit — 2026-10-09
 
-**Read the [complete 25-phase cross-agent audit](docs/co-dev/V5-FULL-INTEGRATION-SWEEP-2026-10-09.md) before merging.** The user-supplied implementation pack passed its full integrity validator (25 phases, 117 tasks, 40 acceptance cases). Primary owner ledger: **41/117 tasks completed and G00–G07 accepted, P08 active**, with V4 SQLite still the sole live authority. G15–G20/G22 are **NOT** accepted.
+**Read the [complete 25-phase cross-agent audit](docs/co-dev/V5-FULL-INTEGRATION-SWEEP-2026-10-09.md) before merging.** The user-supplied implementation pack passed its full integrity validator (25 phases, 117 tasks, 40 acceptance cases). At the audit's original checkpoint: **41/117 tasks and G00–G07 accepted, P08 active**. **Now:** G08 accepted, 46/117 tasks, P09 active; V4 SQLite remains the sole live authority. G15–G20/G22 are **NOT** accepted.
 
 Audited all 95 previously changed JS/CJS files for parse errors and tracked relative imports (none found), native Gradle/Xcode source inclusion, source-only backup/release/staging/load/cutover boundaries and merge ancestry. **Found and fixed three cross-phase CI trigger defects:** P16 did not watch P08 Core/schema or direct pushes, P22 missed gate/import/client and direct-push changes, and native host builds missed shared contracts/bundle tooling. Updated read-only trusted push/PR scopes and added `tests/v5-cross-phase-integration.test.js` to mandatory P17 source CI. Together with P16/P22 CI security tests, **11/11** exact fetched test bodies passed source-level V8 + Node stubs; **NOT** live Actions or native/PG evidence.
 
@@ -40,7 +40,7 @@ Audited all 95 previously changed JS/CJS files for parse errors and tracked rela
 
 ## Ownership, dependencies and safety
 
-- The **primary agent** has accepted G06/G07 and owns online platform P08–P14; follow its live task ledger, provider evidence and exact service interfaces. This branch **does edit P07 `packages/services/queue.js`** for documented claim/hint/failure-path fixes; the primary agent MUST review the updated `releaseClaim({claimId})` contract and rerun integration tests. It does **not** rewrite the primary agent's `packages/services/core.js`, `packages/services/ephemera.js`, schema/migrations, environment inventories, `deploy/compose.yaml`, production Caddyfile, or `docs/v5/progress.json`.
+- The **primary agent** has accepted G00–G08 and owns P09–P14 online work; follow its gate ledger, provider evidence and exact interfaces. This branch **edits P07 `packages/services/queue.js`** (claim/hint/race fixes) and **P08 `packages/services/realtime-transport.js`, `packages/services/timers.js`** (HTTP auth, backlog and Redis TTL fixes) plus matching tests and workflow. Review these exact API changes before integrating. The co-dev branch does not rewrite the primary agent's `packages/services/core.js`, `packages/services/ephemera.js`, schema/migrations, live environment inventories, `deploy/compose.yaml`, Caddyfile or `docs/v5/progress.json`.
 - The **co-developer** maintains P15–P20 and P22–P23 preparation, client-bundle safety, reviewed P07 queue corrections and cross-phase CI compatibility audits. All future work lands on this one branch, with small, meaningful commits and an updated README.
 - **No V4 changes**, no current production authority transfer, no modifying R2/Neon/Redis/provider objects, no store submission, no new external ports, and no credentials in Git.
 - P21 (new website/browser product) is **explicitly owner-deferred**; do not start it. P22 depends on P20 rather than the deferred website. P24 is measurement-gated.
@@ -54,6 +54,13 @@ Three real-Redis/PG regressions were added to `tests/v5-p07-queue.test.js`; exis
 
 Exact P07 source/tests passed syntax parsing and stubbed queue.js demonstrated actor-isolated hints and claim-ID forwarding. **This is not the real Redis Lua and PG suite.** Rerun existing P07 disposable-service CI with zero skips, and review P08 consumers before merge. Historic G07 evidence is not proof of this new queue SHA.
 
+## P08 post-gate hardening (G08 remains owner-accepted; new co-dev SHA needs CI)
+
+Accepted primary G08 at `a09c1578e8dc` is preserved, merged conflict-free into this branch. Post-gate review found and fixed three independent P08 risks: **(1)** HTTP snapshot polling previously trusted a caller's query `actor`; now requires a real host-provided `authenticateHttp(req)` verified principal and fails closed 401 without it, **(2)** one socket could queue unlimited pending transaction/envelope tasks; now 64 pending operations maximum with close 1008, **(3)** scheduling a near timer could shorten a shared Redis due-index TTL and drop later hints; now Lua preserves the maximum TTL. Approved matchmaking, game clocks, 4-theme UI and Coins/Crowns rules unchanged.
+
+**Critical host integration:** Production P09–P11 must wire a real P05 session/bearer verifier to `authenticateHttp` for HTTP polling; `?actor=` is **never** a credential. Without the hook private polling intentionally remains 401. **Further review:** already-redeemed WebSocket session revocation/generation must be checked before sensitive later commands; the new HTTP hook does not solve long-lived socket authorization. See [P08-POST-GATE-HARDENING.md](docs/co-dev/P08-POST-GATE-HARDENING.md).
+
+Tests added: real local HTTP and masked-TCP ingress regressions (`tests/v5-p08-http-auth.test.js`, `tests/v5-p08-ingress-bounds.test.js`), updated real PG+Redis HTTP snapshot fixtures, a new real Redis 2-hour-then-5-second TTL regression, and mandatory no-skip coverage in `v5-postgresql.yml`. The exact source's HTTP decision logic and 96-frame close policy passed V8 fake-Node behavior checks; P17 cross-phase CI guard 6/6 passed V8 tests. **These are not real Node24, PG/Redis or Actions runs** on the changed source. G08 original 36 real PG/Redis tests are only evidence for the original owner SHA; rerun current-head CI before merging.
 ## What each unit actually contains
 
 ### P15 — encrypted PostgreSQL backup, isolated DR
@@ -128,6 +135,7 @@ node --test tests/v5-release-*.test.js tests/v5-ci-*.test.js
 node --test tests/v5-p15-archive-manifest.test.js tests/v5-p15-sealed-archive.test.js tests/v5-p15-recovery-policy.test.js
 node --test tests/v5-p18-acceptance-registry.test.js tests/v5-p18-isolation.test.js tests/v5-p18-stage-evidence.test.js
 node --test tests/v5-p19-workload-profile.test.js tests/v5-p19-metrics.test.js
+node --test tests/v5-p08-http-auth.test.js tests/v5-p08-ingress-bounds.test.js # local Node, no providers
 node --test tests/v5-p22-*.test.js
 node --test tests/v5-p23-*.test.js tests/v5-ci-runner-diagnostic.test.js
 node scripts/v5/p22/readiness.js --sha "$(git rev-parse HEAD)" # must report BLOCKED until all owner gates and observed evidence are proven
@@ -140,6 +148,9 @@ node scripts/v5/p22/readiness.js --sha "$(git rev-parse HEAD)" # must report BLO
 Every PR update must verify the exact source head CI. Keep V5 retained regressions, economy and four-theme UI checks. A green synthetic test is not authority to deploy, purchase anything, activate email/billing, rotate operational keys, change V4 DNS/edge or tick a gate.
 
 ## Chronological co-dev checkpoint log
+
+- **2026-10-09 G08 sync and P08 hardening:** Merged accepted primary G08 `a09c1578e8dc` in two-parent `1638ab671c66` (22 files, zero overlap), leaving the owner branch/ledger unchanged. Corrected URL-actor HTTP snapshot disclosure (`99bd99d`), bounded socket pending envelopes to 64 (`c759950`), made Redis due-index TTL monotonic (`222652c`), updated authenticated real-PG recovery fixtures and added standalone HTTP/TCP/real Redis regressions and zero-skip CI coverage. Source-level HTTP decisions and 96-frame 1008 close reproduced in V8 stubs, P17 cross-phase tests 6/6. **Current-head Node24 PG+Redis CI still unexecuted.** Host must wire an actual authenticated HTTP principal; [P08 handoff](docs/co-dev/P08-POST-GATE-HARDENING.md).
+
 
 - **2026-10-09 P23 preparation:** Added 4 separate source-only modules and negative suites: retirement/G22 lineage + P22 first-write and six reboot vectors (`2ee9ce9`, `3808b95`, `eb7f998`); immutable V4/PG archives and legacy monitors (`1696804`, `7d63f7d`); 90-day, provider-safe old-client/callback sunset advisory (`f0d3c2c`, `12ba54c`); truthful delivery milestones (`49ec22d`, `9d00bbd`). G21 remains deferred, no V4 teardown.
 - **2026-10-09 P23 final QA:** Repaired an escaped GitHub concurrency expression in the new workflow (`89bcb7a`), added a regression denying that malformed expression (`db488be`), and reran its actual fetched workflow guard (3/3 source-level tests passed). Exact GitHub runner execution remains blocked; no change to P22/G23 authority.

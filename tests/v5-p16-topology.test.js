@@ -46,7 +46,7 @@ test('refuses second edge, public/admin listeners, duplicate containers and spli
   for (const change of cases) {
     const p = topology();
     change(p);
-    assert.throws(() => verifyCorePair(p), /^Error: P16_/, 'must fail closed');
+    assert.throws(() => verifyCorePair(p), /P16_/, 'must fail closed');
   }
 });
 

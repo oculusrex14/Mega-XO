@@ -1,0 +1,54 @@
+name: V5 P15 isolated backup and recovery
+# PR CI is NEVER a real Neon PITR, R2 or V4/production restoration.
+# It contains no provider credentials or plaintext/private-key artifacts.
+on:
+  push:
+    branches: [V5-platform]
+  pull_request:
+    branches: [V5-platform]
+permissions:
+  contents: read
+concurrency:
+  group: v5-p15-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+jobs:
+  p15-contracts:
+    name: P15 policy, authenticated encryption and target safety
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '24'
+      - name: Check P15 code and adversarial policy tests
+        run: |
+          set -euo pipefail
+          node --check scripts/v5/p15/recovery-policy.js
+          node --check scripts/v5/p15/sealed-archive.js
+          node --check scripts/v5/p15/direct-target.js
+          node --test tests/v5-p15-recovery-policy.test.js tests/v5-p15-sealed-archive.test.js tests/v5-p15-direct-target.test.js
+      - name: Record nonaccepted, evidence-gated recovery plan
+        run: |
+          set -euo pipefail
+          mkdir -p .artifacts
+          node scripts/v5/p15/recovery-policy.js --plan > .artifacts/p15-UNAPPROVED-policy.json
+          node - <<'NODE'
+          const p=require('./.artifacts/p15-UNAPPROVED-policy.json');
+          if(p.g15Accepted!==false || p.realR2RecoveryVerified!==false ||
+             p.allTargetsProvisional!==true || p.actualProductionRtoMinutes!==null) {
+            throw Error('P15 policy must never silently approve production recovery');
+          }
+          console.log('P15 policy remains proposed; no provider restoration occurred');
+          NODE
+      - name: Retain only sanitized unapproved target plan
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: p15-proposed-recovery-policy
+          path: .artifacts/p15-UNAPPROVED-policy.json
+          retention-days: 7
+          if-no-files-found: error

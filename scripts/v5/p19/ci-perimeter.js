@@ -41,7 +41,7 @@ function inspect(text){
  }
  if(!/image: postgres:16@sha256:[a-f0-9]{64}/.test(text)||
     !/image: redis:7\.4@sha256:[a-f0-9]{64}/.test(text))deny('mutable disposable database image');
- if(/^\s*(?:run: )?(?:vercel deploy|vercel promote|docker push|git push|curl https:\/\/|wget https:\/\/)/m.test(text)) {
+ if(/^\s*(?:-\s*)?(?:run:\s*)?(?:vercel deploy|vercel promote|docker push|git push|curl https:\/\/|wget https:\/\/)/m.test(text)) {
   deny('network release or public probe forbidden in PR load job');
  }
  const lines=text.split('\n'),captures=[];

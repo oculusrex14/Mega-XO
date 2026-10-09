@@ -5,6 +5,7 @@
 **Owner:** independent co-developer; **status:** preparatory implementation, NOT formal phase acceptance  
 **Started:** 2026-10-09 UTC  
 **Pinned starting V5 base:** `e8d049bf50862897f546e531def12715a36c670c` (other agent's latest P06 checkpoint when branch was created)  
+**Upstream sync:** `dc579856d8c4` includes the primary agent's exact G06-passed `V5-platform` head `42db7e0ec401` with zero changed-path overlap. P07 changes remain primary-agent owned.
 **Work policy:** only this branch receives new co-development commits. Do not ask the integration agent to inspect/merge individual phase PRs.
 
 ## Quick start for the primary agent
@@ -49,11 +50,12 @@
 
 ### P16 — Core process admission, drain and failover
 
-- Delivered: `packages/services/core-instance-lifecycle.js` (BOOTING/READY/DRAINING/STOPPED, bounded admission and monotonic drain); `packages/services/core-drain-connections.js` (transport-neutral socket identity, one reconnect notice, explicit release, deadline-gated force-close requests); `scripts/v5/p16/core-failover-plan.js` (private immutable-image A/B topology plus fail-closed readiness selector).
-- Tests: `tests/v5-p16-lifecycle.test.js`, `tests/v5-p16-connections.test.js`, `tests/v5-p16-real-sockets.test.js` (real loopback TCP), `tests/v5-p16-topology.test.js`. Read-only PR job: `.github/workflows/v5-p16-core-failover.yml`. **These are source-level/runtime-independent tests, not a multi-Core durable failover run.**
-- Integration notes: [P16-CORE-FAILOVER-FOUNDATIONS.md](docs/v5/co-dev/P16-CORE-FAILOVER-FOUNDATIONS.md) and [P16-OPERATIONS-AND-ACCEPTANCE.md](docs/v5/co-dev/P16-OPERATIONS-AND-ACCEPTANCE.md) contain the safe Core wiring seams, shared-edge process-only availability limits, exact fault matrix, evidence requirements and rollback procedure.
-- **Next dependent work:** wire callback release and private readiness into the actual P08 runtime; deploy isolated A/B after P15/P08 prerequisites; execute the killed-A/live-revision and tournament/socket/session-revocation tests with real PG state. Do not invent acknowledgement/timer recovery from a local simulation.
-- **Not done:** actual Core A/B deployment or ingress routing, production host or zone HA, executed in-flight recovery, G16.
+- **Implemented:** `packages/services/core-instance-lifecycle.js` (bounded readiness/drain), `packages/services/core-drain-connections.js` (socket lifecycle, sync-only callbacks, no false release), `scripts/v5/p16/core-failover-plan.js` (private Core A/B and ready-only routing) and `scripts/v5/p16/ci-perimeter.js` (two-job fail-closed CI scope). No P07 matchmaking or production service edits.
+- **Real disposable-service harness committed:** `tests/v5-p16-process-failover.test.js` boots two genuine P06 Core OS processes on an owned PostgreSQL16/Redis7.4, creates/accepts a paid match, commits and ACKs a move, sends SIGKILL to Core A, replays safely through B without extra wallet/outbox effects, continues the match, wipes Redis and reads the unchanged truth from fresh Core C. **CI currently cannot execute due runnerless failures; do not count this harness as a passing test.**
+- **Pure/transport coverage:** `tests/v5-p16-lifecycle.test.js`, `tests/v5-p16-connections.test.js`, `tests/v5-p16-real-sockets.test.js`, `tests/v5-p16-topology.test.js`, `tests/v5-p16-ci-perimeter.test.js`. The behavior of four selected lifecycle/topology/TCP checks and the async-callback rejection contract was independently re-created on local Node22 and passed; this is not exact-branch test evidence.
+- **CI:** `.github/workflows/v5-p16-core-failover.yml` has PR-only Node24 no-skip jobs, with pinned disposable PG16/Redis, loopback ports, no provider credentials, nonpersistent checkout tokens, and a regression-tested full-workflow perimeter.
+- **Operator handoff:** [P16-CORE-FAILOVER-FOUNDATIONS.md](docs/v5/co-dev/P16-CORE-FAILOVER-FOUNDATIONS.md) and [P16-OPERATIONS-AND-ACCEPTANCE.md](docs/v5/co-dev/P16-OPERATIONS-AND-ACCEPTANCE.md) describe the integration contract, real failover exercise, single-edge routing, process-only HA scope, rollback, evidence matrix and untested cases.
+- **Dependent G16 work still OPEN:** P08–P10 real Core WebSocket/ticket/durable turn and tournament runtimes, separate staging A/B processes with private health-aware ingress, kill during post-commit/pre-publish and mid-transaction windows, real client reconnect plus deadline arbitration, provider/device/revocation scenarios and measured failover time. Nothing here proves those or authorizes live deployment.
 
 ### P17 — independent release engineering
 
@@ -89,7 +91,7 @@
 
 ```sh
 npm ci
-node --test tests/v5-p16-lifecycle.test.js tests/v5-p16-connections.test.js tests/v5-p16-real-sockets.test.js tests/v5-p16-topology.test.js
+node --test tests/v5-p16-lifecycle.test.js tests/v5-p16-connections.test.js tests/v5-p16-real-sockets.test.js tests/v5-p16-topology.test.js tests/v5-p16-ci-perimeter.test.js
 node --test tests/v5-native-foundations.test.js tests/v5-client-bundle.test.js
 node --test tests/v5-release-*.test.js tests/v5-ci-*.test.js
 node --test tests/v5-p15-archive-manifest.test.js tests/v5-p15-sealed-archive.test.js tests/v5-p15-recovery-policy.test.js
@@ -97,11 +99,18 @@ node --test tests/v5-p18-acceptance-registry.test.js tests/v5-p18-isolation.test
 node --test tests/v5-p19-workload-profile.test.js tests/v5-p19-metrics.test.js
 ```
 
+**P16 process-kill integration (CI-managed disposable-only):** `tests/v5-p16-process-failover.test.js` requires `V5_PG_URL`, `V5_PG_DISPOSABLE=1`, `V5_PG_REQUIRED=1`, `V5_REDIS_REQUIRED=1`, and a *loopback* `REDIS_URL`. The dedicated P16 workflow supplies these; never run against Neon/managed production Redis. The test is not accepted until it actually runs with zero skips.
+
 **Disposable-only:** `tests/v5-p15-real-roundtrip.test.js`, `tests/v5-p18-disposable-journeys.test.js`, `tests/v5-p19-real-services.test.js`, `tests/v5-p19-real-chaos.test.js` require owned isolated PostgreSQL16 and/or Redis with their workflow's exact environment guards. Use their dedicated CI workflows and read the test files before local execution. **Never** point a disposable harness at a live Neon branch or managed production Redis.
 
 Every PR update must verify the exact source head CI. Keep V5 retained regressions, economy and four-theme UI checks. A green synthetic test is not authority to deploy, purchase anything, activate email/billing, rotate operational keys, change V4 DNS/edge or tick a gate.
 
 ## Chronological co-dev checkpoint log
+
+- **2026-10-09 P06 synchronization:** Two-parent merge `dc579856d8c4` integrated the actual G06-passed Core match-observer interfaces from `V5-platform` at `42db7e0ec401` without a conflict or primary branch edit. G06 is accepted in the primary ledger; its exact-head GitHub runs `37900949040` and `37900949132` failed before any runner steps, so there is no claim of new exact-head green CI.
+- **2026-10-09 P16 service crash proof and CI:** Added genuine disposable Core A SIGKILL/B resume/C Redis-wipe harness `d1f5cf7194af`; expanded P16 workflow to a pinned PG16/Redis 7.4 second job `2484f43997`. Tests are committed but **not executed** in current runnerless GitHub Actions.
+- **2026-10-09 P16 correctness/security:** Fixed rejected Promise-valued transport drain callbacks `ccb8d4934` and added regression `b60237fa2`; introduced full dual-job CI perimeter `e4490864ad`, replacing earlier partial self-audit `125aa1cc9c`, negative tests `c5af24feff`, mandatory nonpersistent checkout `ce7d532048`, guard and tests `2d02eac120`, `1439b0de0b`, test job inclusion `fc91fcbd4e`. Current CI jobs remain blocked before running; no G16 claim.
+
 
 - **2026-10-09:** Created the unified branch from pinned P06 head; integrated P20, P17, P18, P19, P15 and initial P16 in six separate two-parent merge commits; integrated nonconflicting client bundle safety as a seventh merge commit. Original commits/history preserved.
 - **2026-10-09:** Added this consolidated agent handoff and opened [unified PR #9](https://github.com/oculusrex14/Mega-XO/pull/9). Marked old PRs #2–#8 as superseded and closed them; `ops/main-ci-guard` #1 remains separate because it targets `main`.

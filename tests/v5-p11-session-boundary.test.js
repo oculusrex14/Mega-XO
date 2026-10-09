@@ -129,6 +129,7 @@ test('P11: API will not boot OTP or Core gateway using default public secrets', 
   const names = [
     'MEGA_OTP_SECRET', 'OTP_SECRET', 'CORE_SECRET', 'SERVICE_SECRET',
     'MEGA_CORE_URL', 'CORE_SERVICE_URL', 'CORE_URL', 'GAME_CORE_URL',
+    'MEGA_PROXY_SECRET', 'PROXY_SECRET',
   ];
   const saved = new Map(names.map((name) => [name, process.env[name]]));
   try {
@@ -150,6 +151,14 @@ test('P11: API will not boot OTP or Core gateway using default public secrets', 
       coreSecret: 'unique-test-secret-do-not-deploy',
     });
     assert.equal(explicitlyConfigured.baseUrl, 'https://core.example.org');
+    const validatedConfigAlias = resolveGateway({
+      coreUrl: 'https://core.example.org',
+      proxySecret: 'configured-proxy-secret-do-not-deploy',
+    });
+    assert.equal(validatedConfigAlias.baseUrl, 'https://core.example.org');
+    process.env.MEGA_PROXY_SECRET = 'configured-env-proxy-secret-do-not-deploy';
+    const envConfiguredGateway = resolveGateway({ coreUrl: 'https://core.example.org' });
+    assert.equal(envConfiguredGateway.baseUrl, 'https://core.example.org');
   } finally {
     for (const [name, value] of saved) {
       if (value === undefined) delete process.env[name];

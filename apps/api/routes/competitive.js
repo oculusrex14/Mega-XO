@@ -21,7 +21,9 @@ function resolveGateway(context) {
   // A production API must never sign Core commands with a published fallback
   // secret, nor silently aim economic requests at an arbitrary local service.
   const coreUrl = context?.coreUrl || process.env.MEGA_CORE_URL || process.env.CORE_SERVICE_URL || process.env.CORE_URL || process.env.GAME_CORE_URL;
-  const secret = context?.coreSecret || context?.secret || process.env.CORE_SECRET || process.env.SERVICE_SECRET;
+  // Use the same deployment-owned signing key accepted by the validated Vercel API config.
+  // Core ingress must hold this identical key; no hard-coded defaults are permitted.
+  const secret = context?.coreSecret || context?.proxySecret || context?.secret || process.env.MEGA_PROXY_SECRET || process.env.PROXY_SECRET || process.env.CORE_SECRET || process.env.SERVICE_SECRET;
   if (!coreUrl || typeof coreUrl !== 'string') {
     const error = new Error('CORE_URL_REQUIRED');
     error.status = 503;

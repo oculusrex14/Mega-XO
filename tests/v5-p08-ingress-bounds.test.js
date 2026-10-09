@@ -85,16 +85,22 @@ test('one masked-message burst cannot accumulate unbounded pending asynchronous 
   /* One TCP write guarantees all frames are parsed before Promise microtasks
    * are serviced, even if a normal DB or Core task were to hang indefinitely. */
   const closure=new Promise((resolve,reject)=>{
-    const parts=[],limit=setTimeout(()=>reject(Error('PENDING_QUEUE_LIMIT_MISSING')),3000);
+    const parts=[];
+    let settled=false;
+    const finish=(error,data)=>{
+      if(settled)return;
+      settled=true;
+      clearTimeout(limit);
+      if(error)reject(error);else resolve(data);
+    };
+    const limit=setTimeout(()=>finish(Error('PENDING_QUEUE_LIMIT_MISSING')),3000);
     socket.on('data',chunk=>{
       parts.push(chunk);
       const data=Buffer.concat(parts);
-      if(data.includes(Buffer.from([0x88,0x02,0x03,0xf0]))){
-        clearTimeout(limit);resolve(data);
-      }
+      if(data.includes(Buffer.from([0x88,0x02,0x03,0xf0])))finish(null,data);
     });
-    socket.on('close',()=>{clearTimeout(limit);});
-    socket.on('error',reject);
+    socket.on('close',()=>finish(Error('SOCKET_CLOSED_WITHOUT_POLICY_1008')));
+    socket.on('error',err=>finish(err));
   });
   socket.write(batch);
   const result=await closure;

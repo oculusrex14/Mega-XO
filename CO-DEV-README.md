@@ -13,7 +13,7 @@
 1. Review the **single unified PR** from `co-dev/v5-integration` to `V5-platform`. Its commits preserve the entire incremental history from the original branches via two-parent Git merges, rather than dropping previous work into one squash.
 2. Read this file, then the phase-specific notes linked below. This file is updated whenever a meaningful co-dev work unit lands.
 3. Run read-only PR CI and isolated tests. **Merge only after current `V5-platform` contracts and tests pass** and dependent P06–P14 changes are accounted for. Pull in changes via Git only; no live staging or production rollout is implied by merge.
-4. Do **not** close G15/G16/G17/G18/G19/G20/G22/G23 based solely on this source. The master ledger `docs/v5/progress.json`, its generated `TODO.md`, and runtime/Neon/Redis credentials remain the primary agent's authority.
+4. Do **not** close G15/G16/G17/G18/G19/G20/G22/G23/G24 based solely on this source. The master ledger `docs/v5/progress.json`, its generated `TODO.md`, and runtime/Neon/Redis credentials remain the primary agent's authority.
 
 ## Latest full integration audit — 2026-10-09
 
@@ -41,7 +41,7 @@ Audited all 95 previously changed JS/CJS files for parse errors and tracked rela
 ## Ownership, dependencies and safety
 
 - The **primary agent** has accepted G00–G08 and owns P09–P14 online work; follow its gate ledger, provider evidence and exact interfaces. This branch **edits P07 `packages/services/queue.js`** (claim/hint/race fixes) and **P08 `packages/services/realtime-transport.js`, `packages/services/timers.js`** (HTTP auth, backlog and Redis TTL fixes) plus matching tests and workflow. Review these exact API changes before integrating. The co-dev branch does not rewrite the primary agent's `packages/services/core.js`, `packages/services/ephemera.js`, schema/migrations, live environment inventories, `deploy/compose.yaml`, Caddyfile or `docs/v5/progress.json`.
-- The **co-developer** maintains P15–P20 and P22–P23 preparation, client-bundle safety, reviewed P07 queue corrections and cross-phase CI compatibility audits. All future work lands on this one branch, with small, meaningful commits and an updated README.
+- The **co-developer** maintains P15–P20 and P22–P24 preparation, client-bundle safety, reviewed P07 queue corrections and cross-phase CI compatibility audits. All future work lands on this one branch, with small, meaningful commits and an updated README.
 - **No V4 changes**, no current production authority transfer, no modifying R2/Neon/Redis/provider objects, no store submission, no new external ports, and no credentials in Git.
 - P21 (new website/browser product) is **explicitly owner-deferred**; do not start it. P22 depends on P20 rather than the deferred website. P24 is measurement-gated.
 - Formal proof comes from **executed** CI/staging/device/provider runs attached to the exact integrated source SHA. Standalone local/CI tests do not automatically transfer G-phase acceptance to a newer integration head.
@@ -119,6 +119,14 @@ Tests added: real local HTTP and masked-TCP ingress regressions (`tests/v5-p08-h
 - **CI diagnostics:** `scripts/v5/ci-runner-diagnostic.js` distinguishes real test failures from zero-step unallocated jobs without inventing a root cause. `tests/v5-ci-runner-diagnostic.test.js` plus `tests/v5-p23-*.test.js` cover negative cases. `.github/workflows/v5-p23-retirement-foundations.yml` is read-only, pinned, no-secrets, zero-skip and watches both trusted V5 pushes and review PRs. P17's cross-phase CI test also watches P23 dependency triggers.
 - **Verification:** 34/34 exact fetched P23/CI test bodies plus 5/5 cross-phase trigger assertions passed a V8 harness with stubbed Node APIs. **Not** Node24 Actions, host reboot, backup retrieval, native build, provider callback or production evidence. GitHub Actions remains blocked before runner allocation.
 - **Full handoff:** [P23-RETIREMENT-HANDOFF.md](docs/co-dev/P23-RETIREMENT-HANDOFF.md) and [CI-RUNNER-INCIDENT-2026-10-09.md](docs/co-dev/CI-RUNNER-INCIDENT-2026-10-09.md). No V4 service stop, SQLite deletion, DNS/Vercel/Neon/Oracle/R2 mutation or provider deregistration performed. G23 OPEN.
+### P24 — evidence-led capacity/scale reviews (MEASUREMENT-GATED PREPARATION ONLY)
+
+- **Phase picked:** P24 is the next independent remaining phase while the primary agent works through P09–P14. **Hard prerequisite:** real G23 accepted; in the current owner ledger, only G00–G08 are accepted and V4 remains live authority.
+- **Baseline:** `scripts/v5/p24/capacity-baseline.js` tracks ten typed aggregate signals across API, Core/WebSocket, matchmaking, PG, worker, Redis and Oracle. Unknowns stay `null`, and P19 synthetic disposable measurements are explicitly not production capacity. No invented player forecast, p95 SLO, or server/price threshold.
+- **Costed triggers:** `scripts/v5/p24/scale-policy.js` defines ten conservative, fixed first-remedy actions; every numeric trigger needs a sustained duration, metric-query proof, monthly incremental cost estimate and rollback reference. Owners must approve the policy. Same-host Core A/B does **not** count as host HA; no Kubernetes/Kafka or multi-primary Crown writers.
+- **No speculative changes:** `scripts/v5/p24/scaling-review.js` requires G23, declared complete real production observations, at least three adjacent fresh windows above the threshold, and owner-reviewed budget/rollback before returning a **review candidate only**. All outputs explicitly deny production mutation and G24 acceptance. `scripts/v5/p24/review-cli.js` prints unknown/NULL templates and reads only sanitized local `.artifacts/p24-review.json` plus checked-out owner ledger; no provider actions.
+- **CI/tests:** `.github/workflows/v5-p24-scale-readiness.yml` is read-only, pinned exact-PR-source SHA, no secrets/deployment and zero-skip on V5 push/PR with P19/P23/PG/Core/topology watchlists. Five test suites plus P17 cross-phase guard. **35/35 P24 and 7/7 cross-phase fetched test bodies passed V8 with stubbed Node modules/virtual FS; NOT real Node24 CI.** GitHub Actions still fails before runner assignment; current-head run and real telemetry/cost/staging gates remain unverified.
+- **Owner reference:** [P24-SCALING-HANDOFF.md](docs/co-dev/P24-SCALING-HANDOFF.md) provides the ten-signal capacity inventory, action/validation/rollback plan, recommended weekly owner review, CLI usage and open G24 blockers. **No infrastructure upgrades, resizing, paid services or production changes.**
 ### Client bundle safety (separate two-file review)
 
 - `scripts/v5/build-client.js` and `tests/v5-client-bundle.test.js` now preflight invalid dependency sources and reject occupied/unexpected/changed output before destructive rebuild. Both upstream base blobs were matched before this review was consolidated; this is not a gameplay/UI change.
@@ -138,6 +146,8 @@ node --test tests/v5-p19-workload-profile.test.js tests/v5-p19-metrics.test.js
 node --test tests/v5-p08-http-auth.test.js tests/v5-p08-ingress-bounds.test.js # local Node, no providers
 node --test tests/v5-p22-*.test.js
 node --test tests/v5-p23-*.test.js tests/v5-ci-runner-diagnostic.test.js
+node --test tests/v5-p24-*.test.js # pure/offline, no PG, Redis or provider secrets
+node scripts/v5/p24/review-cli.js --templates "$(git rev-parse HEAD)" # unknown metric values, NULL thresholds
 node scripts/v5/p22/readiness.js --sha "$(git rev-parse HEAD)" # must report BLOCKED until all owner gates and observed evidence are proven
 ```
 
@@ -148,6 +158,9 @@ node scripts/v5/p22/readiness.js --sha "$(git rev-parse HEAD)" # must report BLO
 Every PR update must verify the exact source head CI. Keep V5 retained regressions, economy and four-theme UI checks. A green synthetic test is not authority to deploy, purchase anything, activate email/billing, rotate operational keys, change V4 DNS/edge or tick a gate.
 
 ## Chronological co-dev checkpoint log
+
+- **2026-10-09 P24 capacity/scale:** Picked the final measurement-gated phase, built offline ten-signal observed baseline (`76f4227`), strict budget/rollback/approval policy (`1e9e6f6`), G23-prerequisite sustained-demand review (`bac8382`), safe local source-scoped CLI (`be4424e`) and no-skip read-only CI (`9365a2f`). Five negative-test suites, and P17 cross-phase compatibility watcher (`f03e95d`). **35/35 P24 + 7/7 cross-phase source-level V8/stub checks passed; NOT GitHub/Node24/actual provider evidence.** G24 OPEN, no production capacity provisioned. [P24 handoff](docs/co-dev/P24-SCALING-HANDOFF.md).
+
 
 - **2026-10-09 G08 sync and P08 hardening:** Merged accepted primary G08 `a09c1578e8dc` in two-parent `1638ab671c66` (22 files, zero overlap), leaving the owner branch/ledger unchanged. Corrected URL-actor HTTP snapshot disclosure (`99bd99d`), bounded socket pending envelopes to 64 (`c759950`), made Redis due-index TTL monotonic (`222652c`), updated authenticated real-PG recovery fixtures and added standalone HTTP/TCP/real Redis regressions and zero-skip CI coverage. Source-level HTTP decisions and 96-frame 1008 close reproduced in V8 stubs, P17 cross-phase tests 6/6. **Current-head Node24 PG+Redis CI still unexecuted.** Host must wire an actual authenticated HTTP principal; [P08 handoff](docs/co-dev/P08-POST-GATE-HARDENING.md).
 

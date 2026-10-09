@@ -378,7 +378,7 @@ test('V5-07-02 queue: concurrent matchers claim atomically and a released claim 
 
   /* A failed match releases its claim: the entrant returns, is re-claimable, and keeps its ORIGINAL
    * FIFO score rather than being appended at the tail. */
-  await queue.releaseClaim({ mode: 'ranked', actor: 'svc_alice', requeue: true });
+  await queue.releaseClaim({ mode: 'ranked', actor: 'svc_alice', claimId: claimed.find((c) => c.actor === 'svc_alice').claimId, requeue: true });
   assert.equal((await index(ephemera, 'ranked'))[0], 'svc_alice', 'the requeued entrant keeps its FIFO head position');
 
   const reclaimed = await queue.claimCandidates({ mode: 'ranked', limit: 1, matcherId: 'matcher-3', leaseMs: 30000 });
@@ -387,7 +387,7 @@ test('V5-07-02 queue: concurrent matchers claim atomically and a released claim 
   assert.equal(reclaimed[0].joinedAt, a.joinedAt, 'the original join time survives the release/claim cycle');
 
   /* `requeue:false` drops the entrant entirely. */
-  await queue.releaseClaim({ mode: 'ranked', actor: 'svc_alice', requeue: false });
+  await queue.releaseClaim({ mode: 'ranked', actor: 'svc_alice', claimId: reclaimed[0].claimId, requeue: false });
   assert.equal((await index(ephemera, 'ranked')).includes('svc_alice'), false, 'requeue:false removes the candidate from the index');
   const after = await queue.claimCandidates({ mode: 'ranked', limit: 16, matcherId: 'matcher-4', leaseMs: 30000 });
   assert.equal(after.some((cand) => cand.actor === 'svc_alice'), false, 'a dropped candidate is never re-claimable');

@@ -8,11 +8,13 @@ const STATUS_MAP = Object.freeze({
   LINK_ACCOUNT_REQUIRED: 401,
   AMBIGUOUS_CREDENTIAL: 401,
   REAUTH_REQUIRED: 401,
+  CSRF_REJECTED: 403,
+  PRIVATE_OPERATOR_ROUTE: 403,
   PROFILE_NOT_FOUND: 404,
   NOT_FOUND: 404,
+  BODY_TOO_LARGE: 413,
   RATE_LIMITED: 429,
   INVALID_JSON: 409,
-  BODY_TOO_LARGE: 409,
   IDEMPOTENCY_KEY_REQUIRED: 409,
   SAVE_CONFLICT: 409,
   LAST_LOGIN_METHOD: 409,
@@ -46,12 +48,14 @@ function parseCookies(cookieHeader) {
   return out;
 }
 
-async function parseJsonBody(req, limit = 300000) {
+async function parseJsonBody(req, limit = 100 * 1024) {
   if (req.body !== undefined && req.body !== null) {
-    if (typeof req.body === 'object' && !Buffer.isBuffer(req.body)) {
-      return req.body;
-    }
     if (typeof req.body === 'string') {
+      if (Buffer.byteLength(req.body, 'utf8') > limit) {
+        const err = new Error('BODY_TOO_LARGE');
+        err.status = 413;
+        throw err;
+      }
       try {
         return JSON.parse(req.body);
       } catch {
@@ -61,6 +65,11 @@ async function parseJsonBody(req, limit = 300000) {
       }
     }
     if (Buffer.isBuffer(req.body)) {
+      if (req.body.length > limit) {
+        const err = new Error('BODY_TOO_LARGE');
+        err.status = 413;
+        throw err;
+      }
       try {
         return JSON.parse(req.body.toString('utf8'));
       } catch {
@@ -69,8 +78,15 @@ async function parseJsonBody(req, limit = 300000) {
         throw err;
       }
     }
+    if (typeof req.body === 'object') {
+      if (Buffer.byteLength(JSON.stringify(req.body), 'utf8') > limit) {
+        const err = new Error('BODY_TOO_LARGE');
+        err.status = 413;
+        throw err;
+      }
+      return req.body;
+    }
   }
-
   // Stream read
   return new Promise((resolve, reject) => {
     let bytes = 0;
@@ -79,7 +95,7 @@ async function parseJsonBody(req, limit = 300000) {
       bytes += chunk.length;
       if (bytes > limit) {
         const err = new Error('BODY_TOO_LARGE');
-        err.status = 409;
+        err.status = 413;
         reject(err);
         req.destroy();
         return;
@@ -108,11 +124,23 @@ async function parseJsonBody(req, limit = 300000) {
   });
 }
 
-function sendJson(res, statusCode, data) {
+function sendJson(res, statusCode, data, headers = {}) {
   res.statusCode = statusCode;
   if (typeof res.setHeader === 'function') {
     res.setHeader('Content-Type', 'application/json; charset=utf-8');
-    res.setHeader('Cache-Control', 'no-store');
+    const existingCacheControl = typeof res.getHeader === 'function'
+      ? (res.getHeader('Cache-Control') || res.getHeader('cache-control'))
+      : null;
+    if (headers && (headers['Cache-Control'] || headers['cache-control'])) {
+      res.setHeader('Cache-Control', headers['Cache-Control'] || headers['cache-control']);
+    } else if (!existingCacheControl) {
+      res.setHeader('Cache-Control', 'no-store');
+    }
+    if (headers && typeof headers === 'object') {
+      for (const [k, v] of Object.entries(headers)) {
+        if (k.toLowerCase() !== 'cache-control') res.setHeader(k, v);
+      }
+    }
   }
   if (typeof res.status === 'function') {
     res.status(statusCode);

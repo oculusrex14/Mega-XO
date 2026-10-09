@@ -4,7 +4,7 @@ The mutable execution source is [progress.json](progress.json); this is its read
 
 **Goal:** Deliver the V5 hybrid platform and real Android/iOS applications with shared permanent actor/assets, preserved approved game and retained browser compatibility; do not build the new website/browser product.
 
-**Integration base:** `455b8ec9ea4070b4410d78f9eea2aaa06d32c0b2`. **Active phase/task:** P12 / V5-12-01 (PLANNED). **Progress:** 61/117 tasks terminal; 12/25 phase gates passed
+**Integration base:** `455b8ec9ea4070b4410d78f9eea2aaa06d32c0b2`. **Active phase/task:** P15 / V5-15-01 (PLANNED). **Progress:** 74/117 tasks terminal; 15/25 phase gates passed
 
 Required path: execute P00–P20, P22–P23; owner-deferred P21 executes nothing; P24 is measurement-gated; phase prerequisites are gates, not status assumptions, and a deferred or measurement-gated phase is never used as another phase prerequisite. The foundation gate P00–P03 passes before dependent distributed work, and V5 CI starts in the foundation rather than only at P17.
 
@@ -155,35 +155,35 @@ Milestone: V5.5; status: `COMPLETE`; prerequisites: P10. [Phase contract](../../
 
 ## P12 — Introduce safe read models and caching
 
-Milestone: V5.5; status: `PLANNED`; prerequisites: P11. [Phase contract](../../Mega-XO-V5-Implementation-Pack/phases/12-read-models-and-cache.md).
+Milestone: V5.5; status: `COMPLETE`; prerequisites: P11. [Phase contract](../../Mega-XO-V5-Implementation-Pack/phases/12-read-models-and-cache.md).
 
-- [ ] **V5-12-01 — Classify every read and sensitivity** (`PLANNED`).
-- [ ] **V5-12-02 — Build versioned projections and indexes** (`PLANNED`).
-- [ ] **V5-12-03 — Add bounded cache invalidation** (`PLANNED`).
-- [ ] **V5-12-04 — Measure actual read-load reduction** (`PLANNED`).
+- [x] **V5-12-01 — Classify every read and sensitivity** (`COMPLETE`).
+- [x] **V5-12-02 — Build versioned projections and indexes** (`COMPLETE`).
+- [x] **V5-12-03 — Add bounded cache invalidation** (`COMPLETE`).
+- [x] **V5-12-04 — Measure actual read-load reduction** (`COMPLETE`).
 
 **Exit gate:** G12: cache/projection loss affects speed, not correctness; private state is never shared-cached or used stale for economic authorization.
 
 ## P13 — Harden distributed trust boundaries
 
-Milestone: V5.5; status: `PLANNED`; prerequisites: P12. [Phase contract](../../Mega-XO-V5-Implementation-Pack/phases/13-service-security.md).
+Milestone: V5.5; status: `COMPLETE`; prerequisites: P12. [Phase contract](../../Mega-XO-V5-Implementation-Pack/phases/13-service-security.md).
 
-- [ ] **V5-13-01 — Enforce service and player authentication boundaries** (`PLANNED`).
-- [ ] **V5-13-02 — Enforce browser/native/perimeter isolation** (`PLANNED`).
-- [ ] **V5-13-03 — Enforce least-privilege SQL and secrets** (`PLANNED`).
-- [ ] **V5-13-04 — Preserve audit and private operations** (`PLANNED`).
-- [ ] **V5-13-05 — Run adversarial staging acceptance** (`PLANNED`).
+- [x] **V5-13-01 — Enforce service and player authentication boundaries** (`COMPLETE`).
+- [x] **V5-13-02 — Enforce browser/native/perimeter isolation** (`COMPLETE`).
+- [x] **V5-13-03 — Enforce least-privilege SQL and secrets** (`COMPLETE`).
+- [x] **V5-13-04 — Preserve audit and private operations** (`COMPLETE`).
+- [x] **V5-13-05 — Run adversarial staging acceptance** (`COMPLETE`).
 
 **Exit gate:** G13: direct/internal/forged/replayed requests cannot bypass player and service authorization; existing security and gameplay decisions do not regress.
 
 ## P14 — Unify traces, metrics and alert delivery
 
-Milestone: V5.5; status: `PLANNED`; prerequisites: P13. [Phase contract](../../Mega-XO-V5-Implementation-Pack/phases/14-observability.md).
+Milestone: V5.5; status: `COMPLETE`; prerequisites: P13. [Phase contract](../../Mega-XO-V5-Implementation-Pack/phases/14-observability.md).
 
-- [ ] **V5-14-01 — Propagate sanitized request/trace/support identity** (`PLANNED`).
-- [ ] **V5-14-02 — Instrument role-specific health and metrics** (`PLANNED`).
-- [ ] **V5-14-03 — Configure actionable alerts** (`PLANNED`).
-- [ ] **V5-14-04 — Document operational triage** (`PLANNED`).
+- [x] **V5-14-01 — Propagate sanitized request/trace/support identity** (`COMPLETE`).
+- [x] **V5-14-02 — Instrument role-specific health and metrics** (`COMPLETE`).
+- [x] **V5-14-03 — Configure actionable alerts** (`COMPLETE`).
+- [x] **V5-14-04 — Document operational triage** (`COMPLETE`).
 
 **Exit gate:** G14: one player-safe support ID can be traced across API/Core/DB/worker without exposing secrets; critical failure and recovery alerts actually arrive.
 

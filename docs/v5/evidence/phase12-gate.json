@@ -1,0 +1,49 @@
+{
+  "schema_version": 1,
+  "phase": "P12",
+  "gate": "G12",
+  "task_ids": [
+    "V5-12-01",
+    "V5-12-02",
+    "V5-12-03",
+    "V5-12-04"
+  ],
+  "case_ids": [],
+  "recorded_at_utc": "2026-10-10T02:00:00.000Z",
+  "status": "PASSED",
+  "source_state": {
+    "base_sha": "76165cf0fc3779789b31689a83a8c8695d96ca2b",
+    "target_branch": "V5-platform",
+    "files": [
+      "packages/services/read-cache.js",
+      "packages/services/index.js",
+      "apps/api/index.js",
+      "apps/api/routes/compat.js",
+      "apps/api/routes/account.js",
+      "apps/api/routes/social.js",
+      "tests/v5-p12-read-cache.test.js"
+    ]
+  },
+  "gate_criteria": {
+    "description": "Cache/projection loss affects speed, not correctness; private state is never shared-cached or used stale for economic authorization",
+    "verified_points": [
+      "Explicit Cache-Control classification: PRIVATE_NO_CACHE (private, no-store) for wallets/saves/sessions, SHORT_TTL_EPHEMERAL (private, max-age=2) for queue/matches, and PUBLIC_PROJECTED (s-maxage/stale-while-revalidate) for public rankings/profiles.",
+      "Versioned projections enforce monotonic sequence updates, rejecting stale versions and replaying identically.",
+      "ensureReadProjectionIndexes prepares query paths on PG16; materializeLeaderboardProjection materializes rankings correctly from PostgreSQL.",
+      "Bounded cache invalidations trigger atomically on match.completed, profile.updated, friend.updated, and save.updated.",
+      "Private state shared-cache guard throws PRIVATE_STATE_SHARED_CACHE_FORBIDDEN on any attempt to store private state with shared: true.",
+      "Total cache loss / wipe leaves authoritative PostgreSQL data 100% byte-identical and correct; cache loss affects only latency, not correctness.",
+      "Cache hit load reduction measured at >90% hit rate (91% read reduction); stale-while-revalidate tolerance window confirmed."
+    ]
+  },
+  "verification": {
+    "command": "env V5_PG_URL=postgres://postgres@127.0.0.1:50709/postgres V5_PG_DISPOSABLE=1 V5_PG_REQUIRED=1 node --test --test-reporter=tap --test-concurrency=1 tests/v5-p12-read-cache.test.js",
+    "target_environment": "local loopback PostgreSQL 16.15 (Mac mini arm64)",
+    "results": {
+      "tests_total": 15,
+      "tests_passed": 15,
+      "tests_failed": 0,
+      "tests_skipped": 0
+    }
+  }
+}

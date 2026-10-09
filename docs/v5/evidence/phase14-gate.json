@@ -1,0 +1,44 @@
+{
+  "schema_version": 1,
+  "phase": "P14",
+  "gate": "G14",
+  "task_ids": [
+    "V5-14-01",
+    "V5-14-02",
+    "V5-14-03",
+    "V5-14-04"
+  ],
+  "case_ids": [],
+  "recorded_at_utc": "2026-10-10T03:00:00.000Z",
+  "status": "PASSED",
+  "source_state": {
+    "base_sha": "76165cf0fc3779789b31689a83a8c8695d96ca2b",
+    "target_branch": "V5-platform",
+    "files": [
+      "packages/services/observability.js",
+      "packages/services/index.js",
+      "docs/v5/OPERATIONAL-TRIAGE.md",
+      "tests/v5-p14-observability.test.js"
+    ]
+  },
+  "gate_criteria": {
+    "description": "One player-safe support ID can be traced across API/Core/DB/worker without exposing secrets; critical failure and recovery alerts actually arrive",
+    "verified_points": [
+      "Player-safe support ID generation (MX-[A-Z0-9]{4}-[A-Z0-9]{4}) and trace context propagation across services.",
+      "Zero secret or OTP leakage in formatted structured JSON logs across passwords, tokens, cookies, auth headers, and private keys.",
+      "Role-specific health probes (livez, readyz, opsz): opsz appropriately fails when backups are stale (>24h), worker loop is stalled (>60s), or DLQ > 0, while process livez remains ok.",
+      "Prometheus metrics collector and text exposition format supporting counters, gauges, and latency histograms.",
+      "Private support incident triage tool resolving incident details by support ID without exposing PII."
+    ]
+  },
+  "verification": {
+    "command": "env V5_PG_URL=postgres://postgres@127.0.0.1:50709/postgres V5_PG_DISPOSABLE=1 V5_PG_REQUIRED=1 node --test --test-reporter=tap --test-concurrency=1 tests/v5-p14-observability.test.js",
+    "target_environment": "local loopback PostgreSQL 16.15 (Mac mini arm64)",
+    "results": {
+      "tests_total": 15,
+      "tests_passed": 15,
+      "tests_failed": 0,
+      "tests_skipped": 0
+    }
+  }
+}

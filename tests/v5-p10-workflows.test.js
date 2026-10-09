@@ -544,9 +544,14 @@ test('V5-10-02 worker app: start arms a real interval, tick drains the extracted
  const firedBy = Date.now() + 4000;
  while (transport.calls.length < 2 && Date.now() < firedBy) await lab.sleep(25);
  assert.equal(transport.calls.length, 2, 'start() schedules real periodic work: the queued job is drained with no explicit tick');
- assert.equal((await h.raw(second)).state, 'sent', 'the periodic tick completes the job it delivered');
 
+ // A transport call is observed BEFORE its fenced PostgreSQL completion commits.
+ // stop() is the production drain barrier: it clears the timer and awaits that
+ // in-flight tick. Only after it settles can we assert durable delivery.
  await periodic.stop();
+ const periodicDone = await h.raw(second);
+ assert.equal(periodicDone.state, 'sent', 'stop() waits for the periodic tick to complete the job durably');
+ assert.equal(periodicDone.payload, null, 'the periodic delivery seals the payload before shutdown');
  /* Let any tick that was already scheduled settle BEFORE the post-stop job exists, so nothing is
   * in flight when the new row appears: the only thing that could drain it is an interval that outlived
   * `stop()`. */

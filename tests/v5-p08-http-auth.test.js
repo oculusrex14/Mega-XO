@@ -141,5 +141,5 @@ test('unsafe nonfunction HTTP auth configuration is rejected at construction',()
     core:{readMatch:async()=>({revision:0}),run:async()=>{}},
     authenticateHttp:'svc_alice',
   }),/HTTP_AUTHENTICATOR_INVALID/);
-  server.close();
+  /* This server never listened and owns no resources to close. */
 });

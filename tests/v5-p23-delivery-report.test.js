@@ -26,7 +26,7 @@ function sample(){
   };
 }
 function set(p,key){
-  p.states[key]=true;p.evidenceRefs[key]=ref(key);
+  p.states[key]=true;p.evidenceRefs[key]=ref(key.replace(/[A-Z]/g,x=>'-'+x.toLowerCase()));
 }
 function denies(edit,g22=false){const x=sample();edit(x);
   assert.throws(()=>createDeliveryReport(ledger(g22),SHA,x),/P23_DELIVERY_REFUSED/);}

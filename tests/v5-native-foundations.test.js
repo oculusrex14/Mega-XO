@@ -1,0 +1,411 @@
+'use strict';
+const test = require('node:test');
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
+const os = require('node:os');
+const { build } = require('../scripts/v5/build-client.js');
+
+const root = path.resolve(__dirname, '..');
+const read = relative => fs.readFileSync(path.join(root, relative), 'utf8');
+
+test('Android and iOS hosts derive their assets from exactly one frozen allowlist', t => {
+  const android = read('native/android/app/build.gradle.kts');
+  const ios = read('native/ios/MegaXO.xcodeproj/project.pbxproj');
+  assert.match(android, /scripts\/v5\/build-client\.js/);
+  assert.match(ios, /scripts\/v5\/build-client\.js/);
+  const config = JSON.parse(read('native/client/bundle.config.json'));
+  assert.ok(config.client_scripts.includes('src/app.js'));
+  assert.ok(config.client_scripts.includes('src/community.js'));
+  assert.ok(!config.client_scripts.includes('src/authority.js'));
+  const output = fs.mkdtempSync(path.join(os.tmpdir(), 'mega-native-source-'));
+  t.after(() => fs.rmSync(output, { recursive: true, force: true }));
+  const result = build({ root, output });
+  assert.equal(result.manifest.bundle_file, 'bundle-index.html');
+  for (const file of result.manifest.files) {
+    assert.ok(!file.path.includes('authority.js'));
+    assert.ok(!file.path.startsWith('server/'));
+    assert.ok(!file.path.startsWith('docs/'));
+    assert.ok(!file.path.startsWith('tests/'));
+  }
+  for (const name of ['src/app.js', 'src/community.js', 'src/styles.css']) {
+    assert.ok(fs.existsSync(path.join(output, name)));
+  }
+  assert.match(read('src/styles.css'), /paperclub/);
+  assert.match(read('src/styles.css'), /afterhours/);
+});
+
+test('Android enforces local HTTPS app assets, no insecure file access and no injected bridge', () => {
+  const code = read('native/android/app/src/main/java/online/megaxo/prototype/MegaXOActivity.kt');
+  const manifest = read('native/android/app/src/main/AndroidManifest.xml');
+  assert.match(code, /WebViewAssetLoader/);
+  assert.match(code, /appassets\.androidplatform\.net/);
+  assert.match(code, /allowFileAccess\s*=\s*false/);
+  assert.match(code, /allowUniversalAccessFromFileURLs\s*=\s*false/);
+  assert.match(code, /MIXED_CONTENT_NEVER_ALLOW/);
+  assert.match(code, /ONLINE_UNAVAILABLE/);
+  assert.doesNotMatch(code, /\.addJavascriptInterface\s*\(/);
+  assert.match(manifest, /android:usesCleartextTraffic="false"/);
+  assert.match(manifest, /android:allowBackup="false"/);
+});
+
+test('iOS restricts the loaded signed file bundle and does not expose a bridge', () => {
+  const swift = read('native/ios/MegaXO/MegaXOApplication.swift');
+  const project = read('native/ios/MegaXO.xcodeproj/project.pbxproj');
+  assert.match(swift, /loadFileURL\(entry, allowingReadAccessTo: root\)/);
+  assert.match(swift, /standardizedFileURL\.resolvingSymlinksInPath/);
+  assert.match(swift, /frame\.isMainFrame/);
+  assert.match(swift, /navigationResponse\.isForMainFrame/);
+  assert.match(swift, /navigationType == \.linkActivated/);
+  assert.doesNotMatch(swift, /\.add\(.*name:/);
+  assert.match(project, /CODE_SIGNING_ALLOWED = NO/);
+  assert.match(project, /MegaClient/);
+  assert.ok(fs.existsSync(path.join(root, 'native/ios/MegaXO.xcodeproj/xcshareddata/xcschemes/MegaXO.xcscheme')));
+});
+
+test('native host version IDs are explicit nonproduction placeholders and offline UI is preserved', () => {
+  const gradle = read('native/android/gradle.properties');
+  const project = read('native/ios/MegaXO.xcodeproj/project.pbxproj');
+  assert.match(gradle, /megaApplicationId=online\.megaxo\.prototype/);
+  assert.match(project, /PRODUCT_BUNDLE_IDENTIFIER = online\.megaxo\.prototype/);
+  assert.doesNotMatch(read('native/android/app/src/main/java/online/megaxo/prototype/MegaXOActivity.kt'), /https:\/\/megaxo\.online/);
+  assert.doesNotMatch(read('native/ios/MegaXO/MegaXOApplication.swift'), /https:\/\/megaxo\.online/);
+});
+
+test('device refresh credentials use nonexportable Android keys and ThisDeviceOnly iOS Keychain items', () => {
+  const android = read('native/android/app/src/main/java/online/megaxo/prototype/MegaSecureSessionVault.kt');
+  const ios = read('native/ios/MegaXO/MegaNativeSecretVault.swift');
+  assert.match(android, /AndroidKeyStore/);
+  assert.match(android, /AES\/GCM\/NoPadding/);
+  assert.match(android, /store\.deleteEntry/);
+  assert.match(ios, /kSecAttrAccessibleWhenUnlockedThisDeviceOnly/);
+  assert.match(ios, /kSecAttrSynchronizable/);
+  assert.match(ios, /clearForFreshInstallIfRequired/);
+  assert.doesNotMatch(android, /addJavascriptInterface\s*\(/);
+  assert.doesNotMatch(ios, /addScriptMessageHandler/);
+});
+
+test('Android bundle staging respects the generator protected-path refusal without disabling it', () => {
+  const gradle = read('native/android/app/build.gradle.kts');
+  assert.match(gradle, /gradle\.gradleUserHomeDir/);
+  assert.match(gradle, /tasks\.register<Exec>\("stageMegaClient"\)/);
+  assert.match(gradle, /tasks\.register<Sync>\("generateMegaClient"\)/);
+  assert.match(gradle, /dependsOn\(stageMegaClient\)/);
+});
+
+test('real Google and Apple provider helpers are compiled, not stubbed or exported to web content', () => {
+  const gradle = read('native/android/app/build.gradle.kts');
+  const iosProject = read('native/ios/MegaXO.xcodeproj/project.pbxproj');
+  assert.match(gradle, /MegaGoogleIdentity\.kt/);
+  assert.match(gradle, /stageGoogleIdentitySource/);
+  assert.match(gradle, /credentials:1\.6\.0/);
+  assert.match(gradle, /googleid:googleid:1\.2\.1/);
+  assert.match(iosProject, /MegaAppleIdentity\.swift in Sources/);
+  assert.match(read('native/ios/MegaAppleIdentity.swift'), /ASAuthorizationAppleIDProvider/);
+  assert.match(read('native/android/MegaGoogleIdentity.kt'), /CredentialManager/);
+});
+
+test('offline Android host has OS-level network-denial until native transport is integrated', () => {
+  const manifest = read('native/android/app/src/main/AndroidManifest.xml');
+  assert.match(manifest, /android\.permission\.INTERNET" tools:node="remove"/);
+  assert.match(manifest, /com\.google\.android\.gms\.permission\.AD_ID" tools:node="remove"/);
+});
+
+test('iOS blocks HTTP(S) subresources before loading signed local HTML', () => {
+  const host = read('native/ios/MegaXO/MegaXOApplication.swift');
+  assert.match(host, /WKContentRuleListStore\.default\(\)\.compileContentRuleList/);
+  assert.match(host, /url-filter/);
+  assert.match(host, /https\?/);
+  assert.match(host, /webView\.configuration\.userContentController\.add\(rule\)/);
+});
+
+test('StoreKit2 implements backend-verified four-product evidence and consumable-safe restore', () => {
+  const code = read('native/ios/MegaXO/MegaStoreKit.swift');
+  const project = read('native/ios/MegaXO.xcodeproj/project.pbxproj');
+  assert.match(project, /MegaStoreKit\.swift in Sources/);
+  assert.match(code, /Product\.products\(for:/);
+  assert.match(code, /\.appAccountToken\(token\)/);
+  assert.match(code, /verified\.jwsRepresentation/);
+  assert.match(code, /Transaction\.currentEntitlements/);
+  assert.match(code, /transaction\.productID == removeAds/);
+  assert.match(code, /serverDeliveryConfirmed/);
+  assert.match(code, /Transaction\.unfinished/);
+  assert.doesNotMatch(code, /grantCrowns|mintCrowns|localGrant/);
+});
+
+test('Android Play Billing 9 uses obfuscated actor binding and delegates all delivery/finalization', () => {
+  const code = read('native/android/app/src/main/java/online/megaxo/prototype/MegaPlayBilling.kt');
+  const gradle = read('native/android/app/build.gradle.kts');
+  assert.match(gradle, /billing:9\.1\.0/);
+  assert.match(code, /enablePendingPurchases/);
+  assert.match(code, /queryProductDetailsAsync/);
+  assert.match(code, /setObfuscatedAccountId/);
+  assert.match(code, /purchase\.purchaseToken/);
+  assert.match(code, /purchase\.purchaseState != Purchase\.PurchaseState\.PURCHASED/);
+  assert.match(code, /it\.products\.contains\(mapping\["remove_ads"\]\)/);
+  assert.match(code, /backendCommitted/);
+  assert.doesNotMatch(code, /\.consumeAsync\(|\.acknowledgePurchase\(/);
+});
+
+test('native transport is bearer-only, host/path bound and refuses redirects', () => {
+  const android = read('native/android/app/src/main/java/online/megaxo/prototype/MegaNativeHttpClient.kt');
+  const ios = read('native/ios/MegaXO/MegaNativeHTTP.swift');
+  assert.match(android, /URL\(host, path\)/);
+  assert.match(android, /instanceFollowRedirects = false/);
+  assert.match(android, /requestMethod = method/);
+  assert.match(android, /Authorization", "Bearer/);
+  assert.match(android, /host == null.*token == null/);
+  assert.match(ios, /URLSessionConfiguration\.ephemeral/);
+  assert.match(ios, /httpShouldSetCookies = false/);
+  assert.match(ios, /NoRedirectDelegate/);
+  assert.match(ios, /private var accessToken: String\?/);
+  assert.match(ios, /Idempotency-Key/);
+  assert.doesNotMatch(ios, /refreshCredential.*Authorization/);
+});
+
+test('Android UMP and Next-Gen ads never grant rewards or bypass SDK consent', () => {
+  const code = read('native/android/app/src/main/java/online/megaxo/prototype/MegaAndroidAds.kt');
+  const gradle = read('native/android/app/build.gradle.kts');
+  assert.match(gradle, /user-messaging-platform:4\.0\.0/);
+  assert.match(gradle, /ads-mobile-sdk:1\.4\.0/);
+  assert.match(code, /requestConsentInfoUpdate/);
+  assert.match(code, /loadAndShowConsentFormIfRequired/);
+  assert.match(code, /consent\.canRequestAds/);
+  assert.match(code, /ServerSideVerificationOptions\(actor, ticket\)/);
+  assert.match(code, /rewardItem != "cosmetic_reward"/);
+  assert.match(code, /rewardAmount != 1/);
+  assert.doesNotMatch(code, /grantCredits|mintCrowns|setBalance/);
+});
+
+test('iOS UMP and GoogleMobileAds SDKs are pinned and enforce SSV-only rewards', () => {
+  const project = read('native/ios/MegaXO.xcodeproj/project.pbxproj');
+  const code = read('native/ios/MegaXO/MegaIOSAds.swift');
+  assert.match(project, /MegaIOSAds\.swift in Sources/);
+  assert.match(project, /swift-package-manager-google-mobile-ads\.git/);
+  assert.match(project, /swift-package-manager-google-user-messaging-platform\.git/);
+  assert.match(project, /version = "13\.2\.0"/);
+  assert.match(code, /requestConsentInfoUpdate/);
+  assert.match(code, /ConsentForm\.loadAndPresentIfRequired/);
+  assert.match(code, /ServerSideVerificationOptions\(\)/);
+  assert.match(code, /options\.userIdentifier = actor/);
+  assert.match(code, /options\.customRewardText = ticket/);
+  assert.match(code, /rewardAmount == 1/);
+  assert.doesNotMatch(code, /grantCredit|mintCrowns|localReward/);
+});
+
+test('native CI includes actual emulator/simulator launch smoke separate from compiler checks', () => {
+  const workflow = read('.github/workflows/v5-native.yml');
+  assert.match(workflow, /android-emulator-smoke:/);
+  assert.match(workflow, /reactivecircus\/android-emulator-runner@v2/);
+  assert.match(workflow, /xcrun simctl install/);
+  assert.match(workflow, /xcrun simctl io/);
+  const android = read('scripts/v5/native-smoke-android.sh');
+  assert.match(android, /adb install -r/);
+  assert.match(android, /adb shell pidof/);
+  assert.match(android, /screencap -p/);
+});
+
+test('native API transports reject redirects, non-success statuses and unsafe path bytes', () => {
+  const ios = read('native/ios/MegaXO/MegaNativeHTTP.swift');
+  const android = read('native/android/app/src/main/java/online/megaxo/prototype/MegaNativeHttpClient.kt');
+  assert.match(ios, /case httpFailure\(Int\)/);
+  assert.match(ios, /\(300\.\.\.399\)\.contains\(http\.statusCode\)/);
+  assert.match(ios, /\(200\.\.\.299\)\.contains\(http\.statusCode\)/);
+  assert.match(ios, /http\.url\?\.host == origin\.host/);
+  assert.match(android, /path\.any \{ it\.code !in 33\.\.126/);
+  assert.match(android, /instanceFollowRedirects = false/);
+  assert.match(android, /status !in 300\.\.399/);
+});
+
+test('iOS optional local notifications are exact-main-frame only and opt-in', () => {
+  const code = read('native/ios/MegaXO/MegaLocalNotifications.swift');
+  const host = read('native/ios/MegaXO/MegaXOApplication.swift');
+  const project = read('native/ios/MegaXO.xcodeproj/project.pbxproj');
+  assert.match(code, /WKScriptMessageHandlerWithReply/);
+  assert.match(code, /message\.frameInfo\.isMainFrame/);
+  assert.match(code, /standardizedFileURL\.resolvingSymlinksInPath\(\) == entry/);
+  assert.match(code, /requestAuthorization\(options:/);
+  assert.match(code, /authorizationStatus == \.authorized/);
+  assert.match(code, /UIApplication\.shared\.applicationState != \.active/);
+  assert.match(code, /requestPermission:/);
+  assert.match(host, /forMainFrameOnly: true/);
+  assert.match(project, /MegaLocalNotifications\.swift in Sources/);
+  assert.doesNotMatch(code, /registerForRemoteNotifications|deviceToken|apnsToken/);
+});
+
+test('Android opt-in local alerts require verified main-frame HTTPS app-assets origin', () => {
+  const service = read('native/android/app/src/main/java/online/megaxo/prototype/MegaAndroidLocalNotifications.kt');
+  const activity = read('native/android/app/src/main/java/online/megaxo/prototype/MegaXOActivity.kt');
+  const manifest = read('native/android/app/src/main/AndroidManifest.xml');
+  assert.match(service, /WebViewCompat\.addWebMessageListener/);
+  assert.match(service, /WebViewCompat\.addDocumentStartJavaScript/);
+  assert.match(service, /mainFrame && origin\.scheme == "https"/);
+  assert.match(service, /view\.url == entryUrl/);
+  assert.match(service, /requestPermissions\(arrayOf\(Manifest\.permission\.POST_NOTIFICATIONS\)/);
+  assert.match(service, /activity\.hasWindowFocus\(\)/);
+  assert.match(service, /requestPermission: \(\) => send\('permission'\)/);
+  assert.match(activity, /MegaAndroidLocalNotifications\.install\(this, game, gameEntry\)/);
+  assert.match(manifest, /android\.permission\.POST_NOTIFICATIONS/);
+  assert.doesNotMatch(service, /FirebaseMessaging|FCM_TOKEN|registerForRemoteNotifications/);
+});
+
+test('native manifest parity verifier rejects cross-platform drift and forbidden payload', t => {
+  const { verify } = require('../scripts/v5/verify-native-bundle-parity.js');
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'mega-bundle-parity-'));
+  t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
+  const manifest = { bundle_hash: 'a'.repeat(64), files: [
+    { path: 'bundle-index.html', sha256: 'b'.repeat(64), bytes: 14 },
+    { path: 'src/app.js', sha256: 'c'.repeat(64), bytes: 21 }
+  ] };
+  const left = path.join(dir, 'android.json'), right = path.join(dir, 'ios.json');
+  fs.writeFileSync(left, JSON.stringify(manifest));
+  fs.writeFileSync(right, JSON.stringify(manifest));
+  assert.equal(verify(left, right).fileCount, 2);
+  fs.writeFileSync(right, JSON.stringify({...manifest, bundle_hash: 'd'.repeat(64)}));
+  assert.throws(() => verify(left, right), /NATIVE_BUNDLE_PARITY/);
+  fs.writeFileSync(right, JSON.stringify({...manifest, files: [
+    ...manifest.files, { path: 'src/authority.js', sha256: 'e'.repeat(64), bytes: 20 }
+  ]}));
+  assert.throws(() => verify(left, right), /forbidden client file/);
+});
+
+test('Android native Google login bridge requires explicit registered server audience and trusted frame', () => {
+  const host = read('native/android/app/src/main/java/online/megaxo/prototype/MegaAndroidIdentityBridge.kt');
+  const activity = read('native/android/app/src/main/java/online/megaxo/prototype/MegaXOActivity.kt');
+  const build = read('native/android/app/build.gradle.kts');
+  assert.match(host, /configuredServerClientId\.isBlank\(\)/);
+  assert.match(host, /WebViewCompat\.addWebMessageListener/);
+  assert.match(host, /isMainFrame && origin\.scheme == "https"/);
+  assert.match(host, /view\.url == entryUrl/);
+  assert.match(host, /provider\.getCredential\(nonce\)/);
+  assert.match(host, /getCredential: \(\{provider, nonce\} = \{\}\)/);
+  assert.match(build, /megaGoogleServerClientId/);
+  assert.match(build, /MEGA_GOOGLE_SERVER_CLIENT_ID/);
+  assert.match(activity, /MegaAndroidIdentityBridge\.install/);
+  assert.doesNotMatch(host, /grantCrowns|addJavascriptInterface|storeIdToken|MegaNativeHttpClient\(/);
+});
+
+test('iOS Apple sign-in adapter is disabled by default and only callable from signed entry', () => {
+  const code = read('native/ios/MegaXO/MegaIOSIdentityBridge.swift');
+  const host = read('native/ios/MegaXO/MegaXOApplication.swift');
+  const pbx = read('native/ios/MegaXO.xcodeproj/project.pbxproj');
+  assert.match(code, /WKScriptMessageHandlerWithReply/);
+  assert.match(code, /message\.frameInfo\.isMainFrame/);
+  assert.match(code, /standardizedFileURL\.resolvingSymlinksInPath\(\) == trustedEntry/);
+  assert.match(code, /apple\.getCredential\(nonce: nonce, window: window\)/);
+  assert.match(code, /replyHandler\(\["idToken": token\], nil\)/);
+  assert.match(host, /if appleEnabled \{/);
+  assert.match(host, /forMainFrameOnly: true/);
+  assert.match(pbx, /MegaIOSIdentityBridge\.swift in Sources/);
+  assert.match(pbx, /MEGA_APPLE_NATIVE_ENABLED = NO/);
+  assert.doesNotMatch(code, /mintCrowns|createActor|signInComplete/);
+});
+
+test('Play Billing completes pending and mismatched-account callbacks without granting currency', () => {
+  const code = read('native/android/app/src/main/java/online/megaxo/prototype/MegaPlayBilling.kt');
+  assert.match(code, /Purchase\.PurchaseState\.PENDING/);
+  assert.match(code, /IllegalStateException\("STORE_PENDING"\)/);
+  assert.match(code, /IllegalStateException\("STORE_ACCOUNT_MISMATCH"\)/);
+  assert.match(code, /pending = null/);
+  assert.match(code, /relevant\.purchaseToken\.isBlank\(\)/);
+  assert.match(code, /onUnsolicitedEvidence\(mapOf/);
+  assert.doesNotMatch(code, /grantCrowns|grantCredits|consumeAsync|acknowledgePurchase/);
+});
+test('StoreKit finish safely tolerates already-finalized delivery without a second grant', () => {
+  const code = read('native/ios/MegaXO/MegaStoreKit.swift');
+  assert.match(code, /guard serverDeliveryConfirmed else/);
+  assert.match(code, /Transaction\.unfinished/);
+  assert.match(code, /await transaction\.finish\(\)/);
+  assert.doesNotMatch(code, /throw StoreError\.notFound/);
+  assert.doesNotMatch(code, /mintCrowns|grantCredits/);
+});
+
+test('iOS offline launch does not assert/crash if Keychain is unavailable', () => {
+  const host = read('native/ios/MegaXO/MegaXOApplication.swift');
+  assert.match(host, /clearForFreshInstallIfRequired/);
+  assert.match(host, /offline play continues/);
+  assert.doesNotMatch(host, /assertionFailure\("Native credential storage unavailable"\)/);
+});
+
+test('iOS simulator smoke rejects SpringBoard screenshots after app launch', () => {
+  const workflow = read('.github/workflows/v5-native.yml');
+  const verifier = read('scripts/v5/verify-ios-launch.swift');
+  assert.match(workflow, /home-before-launch\.png/);
+  assert.match(workflow, /verify-ios-launch\.swift/);
+  assert.match(verifier, /NSBitmapImageRep/);
+  assert.match(verifier, /fraction < 0\.15/);
+  assert.match(verifier, /SpringBoard/);
+});
+
+test('Android emulator must assert signed JS UI readiness, not merely a running activity', () => {
+  const smoke = read('scripts/v5/native-smoke-android.sh');
+  const probe = read('native/android/app/src/main/java/online/megaxo/prototype/MegaNativeRenderProbe.kt');
+  const activity = read('native/android/app/src/main/java/online/megaxo/prototype/MegaXOActivity.kt');
+  assert.match(probe, /\.home-hero/);
+  assert.match(probe, /\.mode-list/);
+  assert.match(probe, /nav >= 5/);
+  assert.match(probe, /READY game_initialized=true/);
+  assert.match(probe, /SCRIPT_ERROR type=/);
+  assert.match(activity, /onPageFinished\(view: WebView, url: String\?\)/);
+  assert.match(activity, /startupProbe\.start\(view\)/);
+  assert.match(smoke, /READY game_initialized=true/);
+  assert.match(smoke, /if \[ "\$ready" != 1 \]/);
+  assert.match(smoke, /startup-log\.txt/);
+});
+
+test('Android emulator also exercises real guest-to-bot gameplay using debug-only CDP', () => {
+  const code = read('scripts/v5/native-smoke-gameplay.cjs');
+  const launch = read('scripts/v5/native-smoke-android.sh');
+  assert.ok(code.includes('Runtime.evaluate'));
+  assert.ok(code.includes('appassets.androidplatform.net/assets/mega/bundle-index.html'));
+  assert.ok(code.includes('data-c=guest'));
+  assert.ok(code.includes('data-action=start'));
+  assert.ok(code.includes("'#board .cell'"));
+  assert.ok(code.includes("length === 81"));
+  assert.ok(code.includes("dataset.mark === 'X'"));
+  assert.ok(launch.includes('webview_devtools_remote_$pid'));
+  assert.ok(launch.includes('android-bot-first-move.png'));
+});
+
+test('Android release requires owner package/version and secret-backed signing, without affecting debug', () => {
+  const gradle = read('native/android/app/build.gradle.kts');
+  assert.ok(gradle.includes('MEGA_ANDROID_RELEASE_KEYSTORE_PATH'));
+  assert.ok(gradle.includes('MEGA_ANDROID_RELEASE_STORE_PASSWORD'));
+  assert.ok(gradle.includes('MEGA_ANDROID_RELEASE_KEY_ALIAS'));
+  assert.ok(gradle.includes('MEGA_ANDROID_RELEASE_KEY_PASSWORD'));
+  assert.ok(gradle.includes('create("v5Release")'));
+  assert.ok(gradle.includes('signingConfig = signingConfigs.getByName("v5Release")'));
+  assert.ok(gradle.includes('packageRelease'));
+  assert.ok(gradle.includes('online.megaxo.prototype'));
+  assert.ok(gradle.includes('nativeVersionCode > 0'));
+  assert.ok(!gradle.includes('storePassword = "'));
+});
+
+test('native signing scripts fail closed without owner identities or credentials', () => {
+  const { spawnSync } = require('node:child_process');
+  const android = path.join(root, 'scripts/v5/native-release-android.sh');
+  const ios = path.join(root, 'scripts/v5/native-release-ios.sh');
+  for (const script of [android, ios]) {
+    assert.equal(spawnSync('bash', ['-n', script]).status, 0);
+    const result = spawnSync('bash', [script], {
+      env: {PATH: process.env.PATH, HOME: process.env.HOME}, encoding: 'utf8'
+    });
+    assert.notEqual(result.status, 0);
+    assert.doesNotMatch(result.stdout, /P20 signed/);
+  }
+  const a = read('scripts/v5/native-release-android.sh');
+  const b = read('scripts/v5/native-release-ios.sh');
+  assert.match(a, /:app:bundleRelease/);
+  assert.match(a, /jarsigner -verify/);
+  assert.match(a, /sha256sum/);
+  assert.match(b, /CODE_SIGNING_ALLOWED=YES/);
+  assert.match(b, /xcodebuild -exportArchive/);
+  assert.match(b, /MEGA_IOS_EXPORT_OPTIONS_PLIST/);
+});
+
+test('iOS release archive uses portable macOS codesign verification and direct executable hash', () => {
+  const code=read('scripts/v5/native-release-ios.sh');
+  assert.doesNotMatch(code, /-maxdepth/);
+  assert.match(code, /codesign --verify --strict --deep/);
+  assert.ok(code.includes('shasum -a 256 "$binary"'));
+});

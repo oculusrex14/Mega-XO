@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp" android:height="24dp"
+    android:viewportWidth="24" android:viewportHeight="24">
+    <!-- Monochrome X/O glyph derived from the existing game's symbols. -->
+    <path android:strokeColor="#FFFFFFFF" android:strokeWidth="2.5"
+        android:strokeLineCap="round" android:fillColor="@android:color/transparent"
+        android:pathData="M2.5,6 L9.5,13 M9.5,6 L2.5,13 M17,5.5 C20.5,5.5 22.5,8.5 22.5,12 C22.5,15.5 20.5,18.5 17,18.5 C13.5,18.5 11.5,15.5 11.5,12 C11.5,8.5 13.5,5.5 17,5.5 Z"/>
+</vector>

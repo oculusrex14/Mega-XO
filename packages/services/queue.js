@@ -742,7 +742,18 @@ function createQueueService(options = {}) {
      * re-read keeps its seat instead of being destroyed on an absence of evidence. */
     const remaining = claimed.slice();
     const at = clock();
-    const accounts = await readAccounts(claimed.map((candidate) => candidate.actor), at);
+    let accounts;
+    try {
+      accounts = await readAccounts(claimed.map((candidate) => candidate.actor), at);
+    } catch (error) {
+      /* No Core command was sent yet. Return the still-owned claims immediately
+       * instead of needlessly holding live entrants until the claim TTL if the
+       * database read fails. A stale claimId cannot affect a new matcher. */
+      await Promise.allSettled(claimed.map((candidate) => releaseClaim({
+        mode, actor: candidate.actor, claimId: candidate.claimId, requeue: true,
+      })));
+      throw error;
+    }
     const pairings = [];
     const refusedPairs = new Set();
 

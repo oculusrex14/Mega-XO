@@ -112,8 +112,8 @@ test('P19 actual disposable Redis wipe, Core reopen/idempotent retry and bounded
   }finally{await admin.end();}
   record(rows,'postgres_bounded_read_stall',beforeStall,await truthDigest(db),startStall);
 
-  const sha=/^[a-f0-9]{40}$/.test(process.env.GITHUB_SHA||'')
-   ?process.env.GITHUB_SHA:'c'.repeat(40);
+  const sha=process.env.P19_SOURCE_SHA;
+  assert.match(sha,/^[a-f0-9]{40}$/,'real chaos evidence must use exact checked-out source SHA');
   const reviewed=assess({sourceSha:sha,observations:rows});
   assert.equal(reviewed.localScenarioCount,4);
   assert.equal(reviewed.unexecutedScenarioCount,5);

@@ -129,7 +129,7 @@ test('P19 real disposable load: persistent wallet/Crown effects are exactly once
 
   const evidence={
    format:'mega-v5-p19-real-disposable-measurement/v1',
-   sourceSha:/^[a-f0-9]{40}$/.test(process.env.GITHUB_SHA||'')?process.env.GITHUB_SHA:null,
+   sourceSha:/^[a-f0-9]{40}$/.test(process.env.P19_SOURCE_SHA||'')?process.env.P19_SOURCE_SHA:null,
    runClass:'REAL_POSTGRESQL_AND_REDIS_SMALL_SYNTHETIC_FIXTURE',
    nodeVersion:process.versions.node,
    postgresMajor:16,redisMajor:7,
@@ -152,6 +152,7 @@ test('P19 real disposable load: persistent wallet/Crown effects are exactly once
    },
    g19Accepted:false
   };
+  assert.match(evidence.sourceSha,/^[a-f0-9]{40}$/,'source identity must use the exact checked-out PR branch head');
   assert.equal(evidence.auditedEffects.ledgerRows,expectedOps*2);
   assert.equal(evidence.g19Accepted,false);
   if(process.env.P19_EVIDENCE_OUTPUT){

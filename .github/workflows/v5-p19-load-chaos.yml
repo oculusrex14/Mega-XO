@@ -19,6 +19,7 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
           persist-credentials: false
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
@@ -70,6 +71,7 @@ jobs:
       V5_P19_DISPOSABLE: '1'
       P19_EVIDENCE_OUTPUT: .artifacts/p19-real-disposable.json
       P19_CHAOS_EVIDENCE_OUTPUT: .artifacts/p19-chaos-disposable.json
+      P19_SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
     services:
       postgres:
         image: postgres:16@sha256:ca0bd484cb98bf4b24eb1010e73fb3fcbd6714d240fbc1a10eea5b7dbecb641d
@@ -97,6 +99,7 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
           persist-credentials: false
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
@@ -107,6 +110,7 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p .artifacts
+          test "$(git rev-parse HEAD)" = "$P19_SOURCE_SHA"
           node --test --test-concurrency=1 --test-reporter=tap tests/v5-p19-real-services.test.js tests/v5-p19-real-chaos.test.js \
             > .artifacts/p19-measured.tap 2>&1 || {
             tail -n 60 .artifacts/p19-measured.tap
@@ -141,7 +145,7 @@ jobs:
           node scripts/v5/p19/capacity-report.js \
             --load .artifacts/p19-real-disposable.json \
             --chaos .artifacts/p19-chaos-disposable.json \
-            --sha "$GITHUB_SHA" \
+            --sha "$P19_SOURCE_SHA" \
             --output .artifacts/p19-capacity-local-only.json
           node - <<'NODE'
           const fs=require('node:fs');

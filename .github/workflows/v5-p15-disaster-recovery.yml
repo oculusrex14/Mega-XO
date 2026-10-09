@@ -30,7 +30,9 @@ jobs:
           node --check scripts/v5/p15/recovery-policy.js
           node --check scripts/v5/p15/sealed-archive.js
           node --check scripts/v5/p15/direct-target.js
-          node --test tests/v5-p15-recovery-policy.test.js tests/v5-p15-sealed-archive.test.js tests/v5-p15-direct-target.test.js
+          node --check scripts/v5/p15/backup-cli.js
+          node --check scripts/v5/p15/archive-manifest.js
+          node --test tests/v5-p15-recovery-policy.test.js tests/v5-p15-sealed-archive.test.js tests/v5-p15-direct-target.test.js tests/v5-p15-backup-cli.test.js tests/v5-p15-archive-manifest.test.js
       - name: Record nonaccepted, evidence-gated recovery plan
         run: |
           set -euo pipefail

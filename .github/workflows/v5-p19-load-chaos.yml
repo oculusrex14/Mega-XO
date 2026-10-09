@@ -76,7 +76,7 @@ jobs:
       P19_SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
     services:
       postgres:
-        image: public.ecr.aws/docker/library/postgres:16@sha256:ca0bd484cb98bf4b24eb1010e73fb3fcbd6714d240fbc1a10eea5b7dbecb641d
+        image: mirror.gcr.io/library/postgres:16@sha256:ca0bd484cb98bf4b24eb1010e73fb3fcbd6714d240fbc1a10eea5b7dbecb641d
         env:
           POSTGRES_USER: postgres
           POSTGRES_DB: postgres
@@ -90,7 +90,7 @@ jobs:
           --health-retries 24
           --health-start-period 10s
       redis:
-        image: public.ecr.aws/docker/library/redis:7.4@sha256:4fa24486b8bcca8eec45ee0eb166edc674795e53a2b53d1a9ef263eecebaac85
+        image: mirror.gcr.io/library/redis:7.4@sha256:4fa24486b8bcca8eec45ee0eb166edc674795e53a2b53d1a9ef263eecebaac85
         ports:
           - 127.0.0.1:6379:6379
         options: >-

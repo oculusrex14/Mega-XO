@@ -172,13 +172,21 @@ function testHttpFetch(url, options = {}) {
 /**
  * Issues a request to the Vercel API handler.
  */
-function apiRequest(target, routePath, { method = 'GET', actor = null, token = null, body = null, headers = {} } = {}) {
+async function apiRequest(target, routePath, { method = 'GET', actor = null, token = null, body = null, headers = {} } = {}) {
   const handler = (target && typeof target === 'object' && target.handler) ? target.handler : target;
   const req = new EventEmitter();
   req.method = method;
   req.url = routePath;
   req.headers = { ...headers };
-  if (actor) req.headers['x-actor-id'] = actor;
+  // P11 gateway tests obtain a real session, never a spoofable actor header.
+  if (actor && !token) {
+    if (!target?._testAccounts?.issue) throw new Error('TEST_AUTHORITY_REQUIRED');
+    target._testSessions ||= new Map();
+    if (!target._testSessions.has(actor)) {
+      target._testSessions.set(actor, target._testAccounts.issue(actor, Date.now()));
+    }
+    token = (await target._testSessions.get(actor)).token;
+  }
   if (token) req.headers['authorization'] = `Bearer ${token}`;
   req.body = body;
 
@@ -660,6 +668,7 @@ test('7. Competitive API routes: /api/v1/convert routes through coreGateway to C
     accounts,
     coreGateway: gateway,
   });
+  handler._testAccounts = accounts;
 
   t.after(async () => {
     await ingressServer.close();

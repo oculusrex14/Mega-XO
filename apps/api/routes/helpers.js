@@ -149,20 +149,18 @@ async function resolveService(context) {
   throw new Error('NO_DATABASE_POOL_OR_ACCOUNTS_SERVICE');
 }
 
+// HTTP requests must prove the actor by presenting a live linked session.
+// Request properties and x-actor-* headers are untrusted client input, even
+// when passed through a proxy. Never mint sessions here from an actor ID.
 async function resolveAuth(context, req) {
   const accounts = await resolveService(context);
 
-  // 1. Direct actor (test injection / upstream middleware)
-  let actor = req.actor || req.user?.actor || req.user?.id || req.headers?.['x-actor-id'] || req.headers?.['x-test-actor'] || null;
-
-  // 2. Token from Authorization header, custom header, or cookie
   let token = req.token || req.sessionToken || null;
-  if (!token && req.headers?.authorization) {
-    const auth = req.headers.authorization;
-    if (auth.startsWith('Bearer ')) token = auth.slice(7).trim();
-    else if (auth.startsWith('bearer ')) token = auth.slice(7).trim();
+  const authorization = req.headers?.authorization;
+  if (!token && typeof authorization === 'string' && /^Bearer /i.test(authorization)) {
+    token = authorization.slice(7).trim();
   }
-  if (!token && req.headers?.['x-session-token']) {
+  if (!token && typeof req.headers?.['x-session-token'] === 'string') {
     token = req.headers['x-session-token'];
   }
   if (!token && req.headers?.cookie) {
@@ -170,23 +168,22 @@ async function resolveAuth(context, req) {
     token = cookies['__Host-mega_session'] || cookies['mega_dev_session'] || cookies['session'] || cookies['token'] || null;
   }
 
-  // 3. Resolve session from token if actor not pre-set
-  if (token && !actor) {
-    const session = await accounts.requireLinked(token);
-    actor = session.actor;
+  if (!token) return { actor: null, token: null, accounts };
+  let session;
+  try {
+    session = await accounts.requireLinked(token);
+  } catch {
+    // Do not expose expiry, revocation or account state to the caller.
+    const error = new Error('AUTH_REQUIRED');
+    error.status = 401;
+    throw error;
   }
-
-  // 4. If actor is set but token is not, issue a valid session for token-requiring endpoints
-  if (actor && !token) {
-    try {
-      const issued = await accounts.issue(actor, Date.now());
-      token = issued.token;
-    } catch {
-      // Best-effort session issuance
-    }
+  if (!session || typeof session.actor !== 'string' || !session.actor) {
+    const error = new Error('AUTH_REQUIRED');
+    error.status = 401;
+    throw error;
   }
-
-  return { actor, token, accounts };
+  return { actor: session.actor, token, accounts };
 }
 
 module.exports = {

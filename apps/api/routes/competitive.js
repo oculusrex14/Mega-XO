@@ -42,16 +42,10 @@ function resolveGateway(context) {
  * @returns {Promise<string>} actor ID
  */
 async function resolveActor(context, req) {
-  let actor = req.actor || req.user?.actor || req.user?.id || req.headers?.['x-actor-id'] || req.headers?.['x-test-actor'] || null;
-  if (actor) return actor;
-
-  try {
-    const auth = await resolveAuth(context, req);
-    if (auth?.actor) return auth.actor;
-  } catch {
-    // If resolveAuth fails (e.g. no pool/accounts service attached), fall through
-  }
-
+  // Core signs and executes this actor's economic commands. Only the linked,
+  // server-verified session may supply that identity; never request headers.
+  const { actor } = await resolveAuth(context, req);
+  if (typeof actor === 'string' && actor) return actor;
   const err = new Error('AUTH_REQUIRED');
   err.status = 401;
   err.code = 'AUTH_REQUIRED';

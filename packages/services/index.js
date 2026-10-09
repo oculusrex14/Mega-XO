@@ -18,4 +18,8 @@ module.exports = {
  createTimerService: require('./timers').createTimerService,
  createTournamentService: require('./tournaments').createTournamentService,
  createMaintenanceScheduler: require('./maintenance-scheduler').createMaintenanceScheduler,
+ createCoreGateway: require('./core-gateway').createCoreGateway,
+ createCoreServiceIngress: require('./core-gateway').createCoreServiceIngress,
+ createBrowserAuthHarness: require('./browser-harness').createBrowserAuthHarness,
+ MemoryCookieJar: require('./browser-harness').MemoryCookieJar,
 };

@@ -1,0 +1,69 @@
+{
+  "schema_version": 1,
+  "phase": "P11",
+  "task_ids": [
+    "V5-11-02"
+  ],
+  "case_ids": [],
+  "recorded_at_utc": "2026-10-09T10:20:00.000Z",
+  "status": "ACCOUNT_SOCIAL_APIS_VERIFIED",
+  "source_state": {
+    "base_sha": "ca789f9cca8ead3587726733ed4ccf1f6ed46c8c",
+    "target_branch": "V5-platform",
+    "files": [
+      "apps/api/routes/account.js",
+      "apps/api/routes/social.js",
+      "apps/api/routes/helpers.js",
+      "apps/api/index.js",
+      "tests/v5-p11-account-social.test.js"
+    ]
+  },
+  "verification": {
+    "command": "env V5_PG_URL=postgres://postgres@127.0.0.1:50709/postgres V5_PG_DISPOSABLE=1 V5_PG_REQUIRED=1 node --test --test-reporter=tap --test-concurrency=1 tests/v5-p11-account-social.test.js",
+    "target_environment": "local loopback PostgreSQL 16.15 (Mac mini arm64)",
+    "database_role": "api_runtime",
+    "results": {
+      "tests_total": 6,
+      "tests_passed": 6,
+      "tests_failed": 0,
+      "tests_skipped": 0,
+      "cases": [
+        {
+          "name": "1. Profile view & edit: updating profile through API persists to PostgreSQL and is visible to Core",
+          "passed": true,
+          "details": "Profile update via POST /api/account/profile persists to PostgreSQL identity.profiles and is immediately and consistently read by Core via core.read."
+        },
+        {
+          "name": "2. Practice cloud save: monotonic save revisions through API persist to profile.profile_saves and survive round-trips",
+          "passed": true,
+          "details": "Cloud practice saves advance revision monotonically (0 -> 1 -> 2) in profile.profile_saves; stale revisions reject with 409 SAVE_CONFLICT; payloads round-trip intact."
+        },
+        {
+          "name": "3. Privacy-aware visibility: public vs friends vs private profiles hide/show stats appropriately",
+          "passed": true,
+          "details": "Privacy visibility matrix enforced: self sees full stats; stranger sees public stats; non-friend receives hidden stats for friends-only and private profiles; blocked players return 404 PROFILE_NOT_FOUND."
+        },
+        {
+          "name": "4. Friend graph: friend request, accept, search, and list friends work correctly in PostgreSQL social tables",
+          "passed": true,
+          "details": "Friendship lifecycle (request, accept, list, search by prefix/tag, remove) works correctly in social.friend_requests and social.friendships."
+        },
+        {
+          "name": "5. Cross-service consistency between API and Core: same actor ID queries identical database state and api_runtime respects grants",
+          "passed": true,
+          "details": "Core service and API observe identical database rows for profiles and friends; api_runtime role strictly enforces least privilege (direct economic writes fail with 42501)."
+        },
+        {
+          "name": "6. Account export, deletion status, deletion tag check, and unlink last-method safety",
+          "passed": true,
+          "details": "Export returns profile/identities/saves/wallet views; deletion status returns policy version; delete requires exact tag confirmation; unlink rejects removing last authentication method (409 LAST_LOGIN_METHOD)."
+        }
+      ]
+    },
+    "summary": "Account, social, practice, and read APIs implemented in apps/api using api_runtime role. Privacy-aware visibility rules enforced; cross-service data consistency between Vercel API and Game Core proven across 6 dedicated tests on real PG16."
+  },
+  "not_claimed": [
+    "V5-11-03 competitive effects routing to Core",
+    "G11 gate passage"
+  ]
+}

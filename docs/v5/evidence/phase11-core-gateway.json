@@ -1,0 +1,79 @@
+{
+  "schema_version": 1,
+  "phase": "P11",
+  "task_ids": [
+    "V5-11-03"
+  ],
+  "case_ids": [],
+  "recorded_at_utc": "2026-10-09T10:30:00.000Z",
+  "status": "CORE_GATEWAY_VERIFIED",
+  "source_state": {
+    "base_sha": "ca789f9cca8ead3587726733ed4ccf1f6ed46c8c",
+    "target_branch": "V5-platform",
+    "files": [
+      "packages/services/core-gateway.js",
+      "packages/services/index.js",
+      "apps/api/routes/competitive.js",
+      "apps/api/index.js",
+      "tests/v5-p11-core-gateway.test.js"
+    ]
+  },
+  "verification": {
+    "command": "env V5_PG_URL=postgres://postgres@127.0.0.1:50709/postgres V5_PG_DISPOSABLE=1 V5_PG_REQUIRED=1 node --test --test-reporter=tap --test-concurrency=1 tests/v5-p11-core-gateway.test.js",
+    "target_environment": "local loopback PostgreSQL 16.15 (Mac mini arm64)",
+    "database_roles": ["api_runtime", "core_runtime"],
+    "results": {
+      "tests_total": 8,
+      "tests_passed": 8,
+      "tests_failed": 0,
+      "tests_skipped": 0,
+      "cases": [
+        {
+          "name": "1. Module exports",
+          "passed": true,
+          "details": "createCoreGateway and createCoreServiceIngress exported from packages/services/core-gateway.js and index.js."
+        },
+        {
+          "name": "2. Signed command execution",
+          "passed": true,
+          "details": "API gateway signs forwardCommand with HMAC-SHA256 headers; Core ingress verifies signature and executes convert command (coins debited, crowns credited, durable ledger appended)."
+        },
+        {
+          "name": "3. Forgery and tampering rejection",
+          "passed": true,
+          "details": "Tampered payload, forged actor ID header, wrong secret, corrupted signature, and missing signature rejected with 403 INVALID_SERVICE_SIGNATURE with zero database mutation."
+        },
+        {
+          "name": "4. Timestamp drift rejection",
+          "passed": true,
+          "details": "Stale (>30s) and future (>30s) timestamps rejected with 401 REQUEST_EXPIRED with zero database mutation."
+        },
+        {
+          "name": "5. OpKey idempotency",
+          "passed": true,
+          "details": "Replayed forwardCommand with same opKey returns cached outcome without duplicate debit; conflicting payload on same opKey rejects with IDEMPOTENCY_CONFLICT (409)."
+        },
+        {
+          "name": "6. Ticket ingress",
+          "passed": true,
+          "details": "Signed requestTicket to /ingress/ticket verified and fulfilled."
+        },
+        {
+          "name": "7. Competitive API routes",
+          "passed": true,
+          "details": "createApiHandler routes POST /api/v1/convert to Core via coreGateway, enforces auth, forwards idempotency key, and caches duplicate requests."
+        },
+        {
+          "name": "8. Strict database least privilege",
+          "passed": true,
+          "details": "api_runtime pool direct UPDATE, INSERT, and DELETE on economy.wallets and economy.ledger throw PostgreSQL 42501 permission denied."
+        }
+      ]
+    },
+    "summary": "Core service gateway and authenticated ingress implemented in packages/services/core-gateway.js and apps/api/routes/competitive.js. Request signing, forge protection, drift check, opKey idempotency, and strict database least privilege (API role cannot mutate economic tables) proven across 8 dedicated tests on real PG16."
+  },
+  "not_claimed": [
+    "V5-11-04 old-origin browser compatibility",
+    "G11 gate passage"
+  ]
+}

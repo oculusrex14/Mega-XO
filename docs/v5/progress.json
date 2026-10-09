@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at_utc": "2026-10-09T15:05:31.706+00:00",
+  "updated_at_utc": "2026-10-09T18:17:50.069+00:00",
   "goal": "Deliver the V5 hybrid platform and real Android/iOS applications with shared permanent actor/assets, preserved approved game and retained browser compatibility; do not build the new website/browser product.",
   "source": {
     "goal": "AGENT-GOAL.md",
@@ -46,9 +46,9 @@
     "installed_script_revision_status": "FOUR_INSTALLED_FILES_HASH_MATCH_SELECTED_CHECKOUT"
   },
   "current": {
-    "phase": "P11",
-    "active_task": "V5-11-01",
-    "next_action": "G10 passed (56 tasks accepted across P00-P10). Phase 11 (Stateless Vercel API) is active: create isolated Vercel API project and previews (V5-11-01), implement account and social endpoints (V5-11-02), implement auth and session middleware (V5-11-03), implement public read routes and caching (V5-11-04), and verify stateless API under failover (V5-11-05). Keep economic authority in PostgreSQL; Free tiers only; V4 production untouched.",
+    "phase": "P12",
+    "active_task": "V5-12-01",
+    "next_action": "G11 passed (61 tasks accepted across P00-P11). Phase 12 (Read Models and Cache) is active: classify every read and sensitivity (V5-12-01), isolate hot read queries (V5-12-02), add cache headers and invalidations (V5-12-03), and verify read models under failover (V5-12-04). Keep economic authority in PostgreSQL; Free tiers only; V4 production untouched.",
     "checkout_branch_at_setup": "V4.1",
     "integration_branch": "V5-platform",
     "integration_branch_exists_at_setup": false,
@@ -110,7 +110,12 @@
       "V5-10-02",
       "V5-10-03",
       "V5-10-04",
-      "V5-10-05"
+      "V5-10-05",
+      "V5-11-01",
+      "V5-11-02",
+      "V5-11-03",
+      "V5-11-04",
+      "V5-11-05"
     ],
     "passed_phase_gates": [
       {
@@ -412,6 +417,34 @@
         ],
         "gate_evidence": "docs/v5/evidence/phase10-gate.json",
         "note": "G10 PASSED: Background work is driven by durable jobs and outbox events with bounded retries and DLQ; no duplicate emails, grants, season resets or dropped tasks. Durable job and outbox primitives in packages/services/jobs.js (createJobService); email outbox, security notifications, cleanup and privacy/deletion workflows extracted into apps/worker and packages/services/worker-workflows.js with AES-256-GCM encryption and sanitized logging; provider notification ingest and store finalization extracted into packages/services/provider-workflows.js with migration 0043 providing store_finalize primary key; season, leaderboard, and maintenance scheduling extracted into packages/services/maintenance-scheduler.js with stable UTC period identities; legacy duplicate schedulers removed from Game Core and documented in docs/v5/WORKER-HEALTH.md. All 30 tests pass across 5 P10 suites with zero skips/failures on real PG16."
+      },
+      {
+        "phase": "P11",
+        "gate": "G11",
+        "completed_at_utc": "2026-10-09T18:17:50.067+00:00",
+        "task_ids": [
+          "V5-11-01",
+          "V5-11-02",
+          "V5-11-03",
+          "V5-11-04",
+          "V5-11-05"
+        ],
+        "task_statuses": {
+          "V5-11-01": "COMPLETE",
+          "V5-11-02": "COMPLETE",
+          "V5-11-03": "COMPLETE",
+          "V5-11-04": "COMPLETE",
+          "V5-11-05": "COMPLETE"
+        },
+        "evidence_refs": [
+          "docs/v5/evidence/phase11-vercel-config.json",
+          "docs/v5/evidence/phase11-account-social.json",
+          "docs/v5/evidence/phase11-core-gateway.json",
+          "docs/v5/evidence/phase11-browser-compat.json",
+          "docs/v5/evidence/phase11-website-foundations.json"
+        ],
+        "gate_evidence": "docs/v5/evidence/phase11-gate.json",
+        "note": "G11 PASSED: Vercel and Core serve the same staging actors with no overlapping economic authority; old client routes remain compatible. Isolated Vercel API project in apps/api/vercel.json (region iad1 adjacent to Neon aws-us-east-1 and Oracle IAD) with preview secret isolation in apps/api/config.js and full 65-route manifest in docs/v5/ROUTE-MANIFEST.md; account, social, practice, and read APIs implemented using api_runtime role with monotonic CAS revisions and privacy-aware views; service-authenticated Core gateway in packages/services/core-gateway.js and apps/api/routes/competitive.js with HMAC-SHA256 request signing, 30s drift check, opKey idempotency, and strict least privilege (API role cannot mutate economic tables); old-origin browser compatibility facade in apps/api/middleware/cors.js, csrf.js, and routes/compat.js supporting play.antimatterinnovations.com, cookie auth continuity, CSRF enforcement, genuinely read-only GETs, legacy profile shape, and zero SQLite writes; future website foundations established in apps/api/routes/well-known.js and packages/services/browser-harness.js strictly preserving zero new website UI invariant. All 44 tests pass across 5 P11 suites on real PG16."
       }
     ]
   },
@@ -825,7 +858,7 @@
           "V5-11-04",
           "V5-11-05"
         ],
-        "status": "PLANNED"
+        "status": "COMPLETE"
       },
       {
         "id": "P12",
@@ -1974,7 +2007,7 @@
         "verification": "Deployment metadata matches commit/environment; no automatic production promotion or production secrets in PR builds.",
         "id": "V5-11-01",
         "phase": "P11",
-        "status": "PLANNED",
+        "status": "COMPLETE",
         "depends_on_tasks": [],
         "requires_phase_gates": [
           "P10"
@@ -1987,7 +2020,7 @@
         "verification": "Same actor sees consistent profile/friends/save state through API and Core.",
         "id": "V5-11-02",
         "phase": "P11",
-        "status": "PLANNED",
+        "status": "COMPLETE",
         "depends_on_tasks": [
           "V5-11-01"
         ],
@@ -2000,7 +2033,7 @@
         "verification": "API role cannot award currency or settle results; forged service/actor requests fail.",
         "id": "V5-11-03",
         "phase": "P11",
-        "status": "PLANNED",
+        "status": "COMPLETE",
         "depends_on_tasks": [
           "V5-11-02"
         ],
@@ -2013,7 +2046,7 @@
         "verification": "Retained client works against V5 staging without changing its UI or writing SQLite.",
         "id": "V5-11-04",
         "phase": "P11",
-        "status": "PLANNED",
+        "status": "COMPLETE",
         "depends_on_tasks": [
           "V5-11-03"
         ],
@@ -2026,7 +2059,7 @@
         "verification": "Browser-style harness authenticates to the same platform; no new website/browser UI is built.",
         "id": "V5-11-05",
         "phase": "P11",
-        "status": "PLANNED",
+        "status": "COMPLETE",
         "depends_on_tasks": [
           "V5-11-04"
         ],
@@ -4403,6 +4436,96 @@
           "note": "legacy duplicate schedulers removed from Game Core and documented in docs/v5/WORKER-HEALTH.md. Proven that only one business effect occurs even when old/new-compatible processes overlap during a deploy across mail delivery, store finalization, daily snapshots, and weekly payouts across 6 dedicated tests on real PG16."
         }
       ]
+    },
+    "V5-11-01": {
+      "status": "COMPLETE",
+      "evidence_refs": [
+        "docs/v5/evidence/phase11-vercel-config.json"
+      ],
+      "completed_portions": [],
+      "remaining": [],
+      "review_notes": "isolated Vercel API project configuration created in apps/api/vercel.json (region iad1, team team_wS9BpnXbYRZahs1DiSueN3SS, functions compute 1024MB/15s), package manifest, environment validator with strict preview secret isolation in apps/api/config.js, and complete 65-route ownership manifest in docs/v5/ROUTE-MANIFEST.md. Confirms zero economic authority in Vercel API across 17 dedicated tests.",
+      "transitions": [
+        {
+          "at_utc": "2026-10-09T16:53:59.871+00:00",
+          "from": "PLANNED",
+          "to": "COMPLETE",
+          "evidence": "docs/v5/evidence/phase11-vercel-config.json",
+          "note": "isolated Vercel API project configuration created in apps/api/vercel.json (region iad1, team team_wS9BpnXbYRZahs1DiSueN3SS, functions compute 1024MB/15s), package manifest, environment validator with strict preview secret isolation in apps/api/config.js, and complete 65-route ownership manifest in docs/v5/ROUTE-MANIFEST.md. Confirms zero economic authority in Vercel API across 17 dedicated tests."
+        }
+      ]
+    },
+    "V5-11-02": {
+      "status": "COMPLETE",
+      "evidence_refs": [
+        "docs/v5/evidence/phase11-account-social.json"
+      ],
+      "completed_portions": [],
+      "remaining": [],
+      "review_notes": "account, social, practice, and read APIs implemented in apps/api/routes/account.js, apps/api/routes/social.js, and apps/api/index.js using api_runtime role. Enforces monotonic cloud save CAS revisions, privacy-aware profile visibility (public/friends/private/blocked), and friendship graphs. Proves identical profile, friend, and save state is observed across Vercel API and Game Core across 6 dedicated tests on real PG16.",
+      "transitions": [
+        {
+          "at_utc": "2026-10-09T17:33:23.605+00:00",
+          "from": "PLANNED",
+          "to": "COMPLETE",
+          "evidence": "docs/v5/evidence/phase11-account-social.json",
+          "note": "account, social, practice, and read APIs implemented in apps/api/routes/account.js, apps/api/routes/social.js, and apps/api/index.js using api_runtime role. Enforces monotonic cloud save CAS revisions, privacy-aware profile visibility (public/friends/private/blocked), and friendship graphs. Proves identical profile, friend, and save state is observed across Vercel API and Game Core across 6 dedicated tests on real PG16."
+        }
+      ]
+    },
+    "V5-11-03": {
+      "status": "COMPLETE",
+      "evidence_refs": [
+        "docs/v5/evidence/phase11-core-gateway.json"
+      ],
+      "completed_portions": [],
+      "remaining": [],
+      "review_notes": "service-authenticated Core gateway and ingress implemented in packages/services/core-gateway.js and apps/api/routes/competitive.js. Uses HMAC-SHA256 request signing, 30s drift rejection, opKey idempotency, and strict least privilege. Verified signed command execution, forgery rejection, drift check, idempotency, and API role economic write denial (42501) across 8 dedicated tests on real PG16.",
+      "transitions": [
+        {
+          "at_utc": "2026-10-09T17:51:26.954+00:00",
+          "from": "PLANNED",
+          "to": "COMPLETE",
+          "evidence": "docs/v5/evidence/phase11-core-gateway.json",
+          "note": "service-authenticated Core gateway and ingress implemented in packages/services/core-gateway.js and apps/api/routes/competitive.js. Uses HMAC-SHA256 request signing, 30s drift rejection, opKey idempotency, and strict least privilege. Verified signed command execution, forgery rejection, drift check, idempotency, and API role economic write denial (42501) across 8 dedicated tests on real PG16."
+        }
+      ]
+    },
+    "V5-11-04": {
+      "status": "COMPLETE",
+      "evidence_refs": [
+        "docs/v5/evidence/phase11-browser-compat.json"
+      ],
+      "completed_portions": [],
+      "remaining": [],
+      "review_notes": "old-origin browser compatibility facade implemented in apps/api/middleware/cors.js, csrf.js, and routes/compat.js. Supports CORS and credentials for play.antimatterinnovations.com, cookie auth continuity, CSRF enforcement, audited genuinely read-only GETs, legacy profile JSON shape, and zero SQLite writes across 7 dedicated tests on real PG16.",
+      "transitions": [
+        {
+          "at_utc": "2026-10-09T18:03:49.059+00:00",
+          "from": "PLANNED",
+          "to": "COMPLETE",
+          "evidence": "docs/v5/evidence/phase11-browser-compat.json",
+          "note": "old-origin browser compatibility facade implemented in apps/api/middleware/cors.js, csrf.js, and routes/compat.js. Supports CORS and credentials for play.antimatterinnovations.com, cookie auth continuity, CSRF enforcement, audited genuinely read-only GETs, legacy profile JSON shape, and zero SQLite writes across 7 dedicated tests on real PG16."
+        }
+      ]
+    },
+    "V5-11-05": {
+      "status": "COMPLETE",
+      "evidence_refs": [
+        "docs/v5/evidence/phase11-website-foundations.json"
+      ],
+      "completed_portions": [],
+      "remaining": [],
+      "review_notes": "future website foundations established in apps/api/routes/well-known.js and packages/services/browser-harness.js. Serves Android App Links and iOS Universal Links association files, legal endpoints, and OAuth callback contracts. Proves browser harness authenticates to the same platform while strictly preserving zero new website UI invariant across 6 dedicated tests on real PG16.",
+      "transitions": [
+        {
+          "at_utc": "2026-10-09T18:17:30.266+00:00",
+          "from": "PLANNED",
+          "to": "COMPLETE",
+          "evidence": "docs/v5/evidence/phase11-website-foundations.json",
+          "note": "future website foundations established in apps/api/routes/well-known.js and packages/services/browser-harness.js. Serves Android App Links and iOS Universal Links association files, legal endpoints, and OAuth callback contracts. Proves browser harness authenticates to the same platform while strictly preserving zero new website UI invariant across 6 dedicated tests on real PG16."
+        }
+      ]
     }
   },
   "known_observations": [
@@ -4485,5 +4608,5 @@
     "committed": false,
     "pushed": false
   },
-  "next_action": "Resume V5-11-01 isolated Vercel API project on the P11 head. G00-G10 passed (56 tasks accepted); P11 stateless Vercel API active. Free tiers only; Neon sole durable authority; V4 production untouched."
+  "next_action": "Resume V5-12-01 read classification on the P12 head. G00-G11 passed (61 tasks accepted); P12 read models and cache active. Free tiers only; Neon sole durable authority; V4 production untouched."
 }

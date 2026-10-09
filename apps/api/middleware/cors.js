@@ -37,6 +37,13 @@ function isAllowedOrigin(origin, extraOrigins = null) {
     if (normalized === allowed.toLowerCase()) return true;
   }
 
+  // In production, loopback must be denied even if an explicit
+  // extra-origin list accidentally contains it.
+  if (LOCAL_ORIGIN_REGEX.test(normalized) &&
+      (process.env.NODE_ENV === 'production' || process.env.VERCEL_ENV === 'production')) {
+    return false;
+  }
+
   // 2. Check extra custom origins from context / options
   if (Array.isArray(extraOrigins)) {
     for (const extra of extraOrigins) {
@@ -46,9 +53,12 @@ function isAllowedOrigin(origin, extraOrigins = null) {
     }
   }
 
-  // 3. Check local development origins
+  // 3. Loopback is a development-only convenience. A credentialed
+  // production API must not reflect http://localhost origins from arbitrary
+  // browser processes, even when an extra origin was configured by mistake.
   if (LOCAL_ORIGIN_REGEX.test(normalized)) {
-    return true;
+    return process.env.NODE_ENV !== 'production' &&
+      process.env.VERCEL_ENV !== 'production';
   }
 
   return false;

@@ -378,3 +378,38 @@ test('P13: conflicting or malformed Origin always outranks an allowed Referer', 
   assert.equal(checkCsrf({ method: 'POST', headers: { ...requestHeaders, origin: 'https://attacker.invalid' } }), false);
   assert.equal(checkCsrf({ method: 'POST', headers: { ...requestHeaders, origin: '' } }), false);
 });
+
+test('P13: loopback is development-only, never credentialed production CORS/CSRF', () => {
+  const { isAllowedOrigin } = require('../apps/api/middleware/cors.js');
+  const { checkCsrf } = require('../apps/api/middleware/csrf.js');
+  const headers = {
+    cookie: '__Host-mega_session=alice-session',
+    origin: 'http://localhost:4200',
+  };
+  const request = { method: 'POST', headers };
+  const oldNode = process.env.NODE_ENV;
+  const oldVercel = process.env.VERCEL_ENV;
+  try {
+    delete process.env.NODE_ENV;
+    delete process.env.VERCEL_ENV;
+    assert.equal(isAllowedOrigin(headers.origin), true, 'local development remains supported');
+
+    process.env.NODE_ENV = 'production';
+    assert.equal(isAllowedOrigin(headers.origin), false);
+    assert.equal(isAllowedOrigin(headers.origin, [headers.origin]), false,
+      'an extra-origin override must not weaken live credentialed ingress');
+    assert.equal(checkCsrf(request, { allowedOrigins: [headers.origin] }), false);
+    assert.equal(isAllowedOrigin('https://play.antimatterinnovations.com'), true,
+      'existing browser origin remains authorized');
+
+    delete process.env.NODE_ENV;
+    process.env.VERCEL_ENV = 'production';
+    assert.equal(isAllowedOrigin('http://127.0.0.1:3000'), false);
+    assert.equal(isAllowedOrigin('http://[::1]:3000'), false);
+  } finally {
+    if (oldNode === undefined) delete process.env.NODE_ENV;
+    else process.env.NODE_ENV = oldNode;
+    if (oldVercel === undefined) delete process.env.VERCEL_ENV;
+    else process.env.VERCEL_ENV = oldVercel;
+  }
+});

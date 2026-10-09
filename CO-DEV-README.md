@@ -15,6 +15,16 @@
 3. Run read-only PR CI and isolated tests. **Merge only after current `V5-platform` contracts and tests pass** and dependent P06–P14 changes are accounted for. Pull in changes via Git only; no live staging or production rollout is implied by merge.
 4. Do **not** close G15/G16/G17/G18/G19/G20/G22/G23/G24 based solely on this source. The master ledger `docs/v5/progress.json`, its generated `TODO.md`, and runtime/Neon/Redis credentials remain the primary agent's authority.
 
+## P09 second hardening pass — runtime tournament settlement, lock order and live wallet truth
+
+The primary agent's G09 remains accepted at `f2863ab1b60f`, and G10 was separately accepted at `ca789f9cca8e`; its P11 work remains owner-controlled. The prior P09 co-dev corrections for active-lease theft, expired fixture completion and forged timer epochs remain intact. This second pass addresses three new independently discovered cases **without changing approved gameplay rules, Coins/Crowns fees, prize shares or normal Elo**.
+
+- **Missing notification after player-command settlement:** a move/resign/cancel could atomically finish a tournament without enqueuing the `tournament.settle:<room>` event. `run` now calls the same deterministic transactional outbox writer as standalone `settle` **only when it commits a new payout or refund**. The worker's replay cannot double-write the event.
+- **Stale public-room overwrite and lock inversion:** `publicJoin` selected a lobby under only the global room-set lock; standalone settlement did not participate in that lock. Joining an existing table now **locks its individual room row first**, reloads the live state under that lock, and opens a new public lobby if the earlier candidate has closed or filled. Room -> actor wallet order now matches standalone settlement.
+- **Cached pre-lock economy:** public matchmaking pre-read a full economy snapshot for cohort choice before taking wallets; if another transaction changed the joining actor's balance while blocked, that stale snapshot could authorize a join. An explicit repository `state.refresh()` is invoked after acquiring the wallet locks, followed by eligibility/occupancy/funds revalidation. Only `publicJoin` uses this private scoped refresh, before any mutations.
+
+**Executed-proof requirement:** Two new real PostgreSQL race tests in `tests/v5-p09-lifecycle.test.js` cover a room closing during publicJoin and an actor losing funds while that join is blocked. `tests/v5-p09-recovery.test.js` now verifies exactly one committed payout/refund outbox event before and after restarts/replays. Updated source/test files parse in V8, but this is **not** a substitute for executed exact-head Node24/PG16 results. The five original P09 suite files are still compulsory zero-skip coverage in `.github/workflows/v5-postgresql.yml`. Review [P09-POST-GATE-HARDENING.md](docs/co-dev/P09-POST-GATE-HARDENING.md) and the newest exact-head Actions before merging. No owner evidence/progress or real production infrastructure changed.
+
 ## P10 accepted upstream, co-dev hardening on one branch — 2026-10-09
 
 The primary agent passed **G10** at `ca789f9cca8e` (56/117 accepted tasks; P11 now active). We incorporated its 26 owner files without altering their original blobs using two-parent merge [`ba1be63b`](https://github.com/oculusrex14/Mega-XO/commit/ba1be63b3b17eb02a79022f56f0ae0eb220456d2) and unioned all five P10 PostgreSQL suites with the P07–P09 co-dev security/recovery suites and mandatory zero-skip checks. The primary `V5-platform` branch remains untouched.
@@ -199,6 +209,9 @@ node scripts/v5/p22/readiness.js --sha "$(git rev-parse HEAD)" # must report BLO
 Every PR update must verify the exact source head CI. Keep V5 retained regressions, economy and four-theme UI checks. A green synthetic test is not authority to deploy, purchase anything, activate email/billing, rotate operational keys, change V4 DNS/edge or tick a gate.
 
 ## Chronological co-dev checkpoint log
+
+- **2026-10-09 P09 second post-gate QA:** Patched automatically settled command outbox emission (`036c948`), selected-room row lock + rehydration (`82b1e12`), explicit post-lock aggregate refresh (`3cf866f`) and cached-wallet affordability revalidation (`39b3e08`); extended owned-PG room-finalization/zero-funds races (`8afcbc1`, `84ae685`) and payout/refund event replay checks (`cdc2c6b`). All 4 edited JS files parse. **Latest exact-head PG/Actions proof required** before claiming these new patches passed; G09/G10 owner's original gates remain unchanged. [P09 detailed review](docs/co-dev/P09-POST-GATE-HARDENING.md).
+
 
 - **2026-10-09 G09 actual integrated acceptance:** GitHub Actions run [`37944786000`](https://github.com/oculusrex14/Mega-XO/actions/runs/37944786000) verified **25/25 P09 tests** (original 21 + four lease/epoch/expired/terminal cases), **0 skipped/0 failed**; full zero-skip PG registry and cleanup succeeded. All **11/11** workflows on exact code SHA `3c9c90c855` passed, including Android/iOS and browser. This is the latest source verification; subsequent handoff-only commits require their own exact-head status check. G09 remains the primary agent's accepted gate; G10 currently active and G15–G24 formal gates unchanged.
 

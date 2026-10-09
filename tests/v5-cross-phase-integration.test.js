@@ -40,6 +40,25 @@ function requiredPaths(yaml, event, expected) {
   assert.equal(new Set(actual).size, actual.length, 'duplicate trigger paths create review noise');
 }
 
+test('P08 HTTP identity and socket queue safeguards stay in zero-skip PG integration checks', () => {
+  const yaml = workflow('v5-postgresql.yml');
+  assert.match(yaml, /^  push:\n    branches: \[V5-platform\]/m);
+  assert.match(yaml, /^  pull_request:\n    branches: \[V5-platform\]/m);
+  for (const suite of [
+    'tests/v5-p08-http-auth.test.js',
+    'tests/v5-p08-ingress-bounds.test.js',
+    'tests/v5-p08-snapshot-recovery.test.js',
+    'tests/v5-p08-timers.test.js',
+  ]) {
+    assert.ok(yaml.includes('node --test') && yaml.includes(suite),
+      suite + ' must execute on disposable PG/Redis CI');
+    assert.match(yaml, new RegExp(String.raw`\\{ file: '` + suite.replaceAll('.', String.raw`\\.`) + String.raw`', log: '\\.evidence-logs/`),
+      suite + ' must be present in zero-skip coverage register');
+  }
+  assert.match(yaml, /if \(pass === null \|\| pass === 0 \|\| fail === null \|\| fail !== 0 \|\| skipped === null \|\| skipped !== 0\)/);
+  assert.doesNotMatch(yaml, /--test-skip-pattern/);
+});
+
 test('P16 Core recovery runs when P08/P06 runtime, shared protocol, schema or fixture changes', () => {
   const yaml = workflow('v5-p16-core-failover.yml');
   const required = [

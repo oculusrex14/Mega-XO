@@ -1,0 +1,100 @@
+name: V5 P24 evidence-led scaling foundations
+# READ-ONLY review of post-G23 scaling evidence. Never provision, deploy,
+# autoscale, change DB/write authority, call providers, or touch production.
+on:
+  push:
+    branches: [V5-platform]
+    paths:
+      - '.github/workflows/v5-p24-scale-readiness.yml'
+      - 'scripts/v5/p24/**'
+      - 'tests/v5-p24-*.test.js'
+      - 'docs/co-dev/P24-SCALING-HANDOFF.md'
+      - 'scripts/v5/p19/**'
+      - 'scripts/v5/p23/**'
+      - 'tests/v5-p19-*.test.js'
+      - 'docs/v5/progress.json'
+      - 'docs/v5/evidence/**'
+      - 'packages/db/**'
+      - 'packages/services/**'
+      - 'apps/**'
+      - 'deploy/**'
+      - 'docs/v5/designs/**'
+  pull_request:
+    branches: [V5-platform]
+    paths:
+      - '.github/workflows/v5-p24-scale-readiness.yml'
+      - 'scripts/v5/p24/**'
+      - 'tests/v5-p24-*.test.js'
+      - 'docs/co-dev/P24-SCALING-HANDOFF.md'
+      - 'scripts/v5/p19/**'
+      - 'scripts/v5/p23/**'
+      - 'tests/v5-p19-*.test.js'
+      - 'docs/v5/progress.json'
+      - 'docs/v5/evidence/**'
+      - 'packages/db/**'
+      - 'packages/services/**'
+      - 'apps/**'
+      - 'deploy/**'
+      - 'docs/v5/designs/**'
+permissions:
+  contents: read
+concurrency:
+  group: v5-p24-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  p24-proof:
+    name: Capacity provenance, budgeted triggers and no-autoscale safety
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      P24_SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '24'
+      - name: Check exact immutable source and pure P24 modules
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$P24_SOURCE_SHA"
+          node --check scripts/v5/p24/capacity-baseline.js
+          node --check scripts/v5/p24/scale-policy.js
+          node --check scripts/v5/p24/scaling-review.js
+          node --check scripts/v5/p24/review-cli.js
+      - name: Execute no-skip capacity and CI perimeter tests
+        run: |
+          set -euo pipefail
+          mkdir -p .artifacts
+          node --test --test-reporter=tap --test-concurrency=1 \
+            tests/v5-p24-capacity-baseline.test.js \
+            tests/v5-p24-scale-policy.test.js \
+            tests/v5-p24-scaling-review.test.js \
+            tests/v5-p24-review-cli.test.js \
+            tests/v5-p24-workflow.test.js > .artifacts/p24-source.tap
+          cat .artifacts/p24-source.tap
+          grep -Eq '^# tests [1-9][0-9]*$' .artifacts/p24-source.tap
+          grep -Eq '^# pass [1-9][0-9]*$' .artifacts/p24-source.tap
+          grep -Eq '^# fail 0$' .artifacts/p24-source.tap
+          grep -Eq '^# skipped 0$' .artifacts/p24-source.tap
+      - name: Current owner gate must not authorize a scale
+        run: |
+          set -euo pipefail
+          node - <<'NODE'
+          const ledger=require('./docs/v5/progress.json');
+          const {reviewScale}=require('./scripts/v5/p24/scaling-review');
+          const result=reviewScale({
+            ledger,sourceSha:process.env.P24_SOURCE_SHA,
+            nowUtc:new Date().toISOString(),
+          });
+          if(result.productionMutationAuthorized!==false ||
+             result.actualScaleApplied!==false ||
+             result.g24Accepted!==false ||
+             result.independentHostHAProven!==false ||
+             result.reviewCandidates.length!==0) {
+            throw Error('P24_SOURCE_MUST_NOT_SCALE_PRODUCTION');
+          }
+          console.log('P24 evidence-only:',result.status);
+          NODE

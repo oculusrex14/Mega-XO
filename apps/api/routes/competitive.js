@@ -19,8 +19,20 @@ function resolveGateway(context) {
   if (context?.coreGateway) return context.coreGateway;
   if (context?._coreGateway) return context._coreGateway;
 
-  const coreUrl = context?.coreUrl || process.env.CORE_URL || process.env.GAME_CORE_URL || 'http://127.0.0.1:4000';
-  const secret = context?.secret || context?.coreSecret || process.env.CORE_SECRET || process.env.SERVICE_SECRET || 'mega-xo-v5-core-default-secret';
+  // A production API must never sign Core commands with a published fallback
+  // secret, nor silently aim economic requests at an arbitrary local service.
+  const coreUrl = context?.coreUrl || process.env.MEGA_CORE_URL || process.env.CORE_SERVICE_URL || process.env.CORE_URL || process.env.GAME_CORE_URL;
+  const secret = context?.coreSecret || context?.secret || process.env.CORE_SECRET || process.env.SERVICE_SECRET;
+  if (!coreUrl || typeof coreUrl !== 'string') {
+    const error = new Error('CORE_URL_REQUIRED');
+    error.status = 503;
+    throw error;
+  }
+  if (!secret || typeof secret !== 'string' || secret.length < 16) {
+    const error = new Error('GATEWAY_SECRET_REQUIRED');
+    error.status = 503;
+    throw error;
+  }
   const timeoutMs = context?.timeoutMs || 5000;
   const fetcher = context?.fetcher || (typeof fetch === 'function' ? fetch : globalThis.fetch);
   const now = context?.now || Date.now;

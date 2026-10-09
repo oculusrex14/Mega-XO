@@ -1,6 +1,8 @@
 'use strict';
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
 const { REQUIRED_GATES, CHECKS, assess } = require('../scripts/v5/p22/readiness');
 const SHA = 'a'.repeat(40), HASH = 'b'.repeat(64);
 const TIME = '2026-10-09T09:00:00Z';
@@ -81,6 +83,38 @@ test('G22/G23 cannot claim a live cutover while production safety still records 
     () => evaluate(l),
     /P22_READINESS_REFUSED: OWNER_PRODUCTION_AUTHORITY_CONTRADICTION/,
   );
+});
+
+test('checked-in ledger cannot claim live G22/G23/G24 while V4 remains authoritative', () => {
+  const actual = JSON.parse(fs.readFileSync(path.join(__dirname, '../docs/v5/progress.json'), 'utf8'));
+  const accepted = new Set(actual.current.passed_phase_gates.map(entry => entry.gate));
+  const safety = actual.production_safety;
+  const v4Live = /V4|SQLite/i.test(String(safety.durable_authority)) &&
+    safety.postgres_import_performed === false &&
+    safety.cutover_epoch === null &&
+    safety.first_post_import_application_write === null;
+  if (v4Live) {
+    for (const g of ['G22','G23','G24']) assert.equal(accepted.has(g), false,
+      g + ' cannot be accepted from a rehearsal while production still uses SQLite');
+    const tasks = actual.program.tasks.filter(t => /^V5-(22|23|24)-/.test(t.id));
+    assert.equal(tasks.length, 13);
+    assert.ok(tasks.every(t => !['COMPLETE','PRODUCTION_ENABLED'].includes(t.status)),
+      'unperformed live tasks are never marked complete or production enabled');
+    for (const phase of ['P22','P23','P24']) {
+      assert.notEqual(actual.program.phases.find(p => p.id === phase).status, 'COMPLETE');
+    }
+    const report = evaluate(actual);
+    assert.equal(report.status, 'BLOCKED');
+    assert.ok(report.blockers.includes('OPERATOR_EVIDENCE_PACKET_MISSING'));
+    assert.equal(report.cutoverAuthorized, false);
+    assert.equal(report.productionWritesPermitted, false);
+  } else {
+    // Actual cutover must update the authority snapshot and independent proofs
+    // together. This preflight never authorizes writes, even after a rollout.
+    const report = assess(actual, SHA);
+    assert.equal(report.cutoverAuthorized, false);
+    assert.equal(report.productionWritesPermitted, false);
+  }
 });
 
 test('malformed or duplicate owner-ledger gate entries refuse instead of silently passing', () => {

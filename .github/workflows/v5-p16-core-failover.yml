@@ -1,6 +1,7 @@
-name: V5 P16 Core drain foundations
+name: V5 P16 process failover foundations
 # PR-only, read-only and disposable: no production Core, Oracle, provider or secret access.
-# These suites validate transport admission/drain only, NOT G16 or realtime recovery.
+# Validate local drain plus a real two-process acknowledged-move kill/recovery.
+# Still NOT G16: no production, real WebSocket routing, or post-commit/pre-publish kill proof.
 on:
   pull_request:
     branches: [V5-platform]
@@ -53,3 +54,54 @@ jobs:
           }
           console.log('P16 read-only CI boundary verified');
           NODE
+
+  core-failure-recovery:
+    name: Real Core A kill and B durable PG/Redis recovery
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      V5_PG_URL: postgres://postgres@127.0.0.1:5432/postgres
+      V5_PG_REQUIRED: '1'
+      V5_PG_DISPOSABLE: '1'
+      V5_TARGET: test
+      V5_MIGRATE_ALLOW_INSECURE_LOOPBACK: '1'
+      V5_REDIS_REQUIRED: '1'
+      REDIS_URL: redis://127.0.0.1:6379
+    services:
+      postgres:
+        image: postgres:16@sha256:ca0bd484cb98bf4b24eb1010e73fb3fcbd6714d240fbc1a10eea5b7dbecb641d
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_DB: postgres
+          POSTGRES_HOST_AUTH_METHOD: trust
+        ports: ['127.0.0.1:5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres -q"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 24
+          --health-start-period 10s
+      redis:
+        image: redis:7.4@sha256:cd745595f143052dd6a743bc5651d3ce4b03979fe5c99c7fcfab73461f6f217b
+        ports: ['127.0.0.1:6379:6379']
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 24
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '24'
+      - name: Install locked runtime dependencies
+        run: npm ci
+      - name: Kill A after committed paid move, recover B and restart C after Redis loss
+        run: |
+          set -euo pipefail
+          node --test --test-reporter=tap --test-concurrency=1 tests/v5-p16-process-failover.test.js > p16-real-failover.tap
+          cat p16-real-failover.tap
+          grep -Eq '^# tests 1$' p16-real-failover.tap
+          grep -Eq '^# pass 1$' p16-real-failover.tap
+          grep -Eq '^# fail 0$' p16-real-failover.tap
+          grep -Eq '^# skipped 0$' p16-real-failover.tap

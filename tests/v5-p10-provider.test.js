@@ -614,3 +614,72 @@ test('V5-10-03 recovery: a pending finalization is listed, and a crashed finaliz
  const after = await h.listPendingFinalizations({ limit: 50 });
  assert.equal(after.some((r) => txOf(r) === tx), false, 'a done finalization is no longer pending');
 });
+
+/* P10 post-gate hardening: a repeated purchase notification must not steal a
+ * provider call in progress by clearing its lease, and an expired worker must
+ * not call Google merely because another worker has not yet reclaimed it. */
+test('P10 hardening: duplicate enqueue preserves active finalization and operator listing redacts purchase token', { skip: GATE }, async (t) => {
+ const h = await open(t);
+ if (!h) return;
+ const tx = 'tx-active-requeue';
+ const token = 'opaque-sensitive-purchase-token';
+ await h.enqueueFinalization({ store: STORE, transactionId: tx, productId: PRODUCT, purchaseToken: token, kind: 'consume' });
+ await h.grant(STORE, tx);
+ const listed = await h.listPendingFinalizations({ limit: 10 });
+ const row = listed.find((x) => txOf(x) === tx);
+ assert.ok(row, 'operator can see the outstanding finalization');
+ assert.equal(row.hasPurchaseToken, true, 'operator may see whether a token is present');
+ assert.equal(row.purchaseToken, undefined, 'operator must never receive a raw provider purchase token');
+ assert.equal(JSON.stringify(row).includes(token), false, 'even serializing the operator response cannot expose the token');
+
+ const first = await h.claimDueFinalizations({ workerId: WORKER_A, limit: 10, leaseMs: 5000 });
+ assert.equal(first.length, 1);
+ const fence = fenceOf(first[0]);
+ const before = await h.finalize(STORE, tx);
+ const replay = await h.enqueueFinalization({
+  store: STORE, transactionId: tx, productId: PRODUCT,
+  purchaseToken: 'forged-replayed-token', kind: 'acknowledge',
+ });
+ assert.equal(replay.enqueued, false);
+ const after = await h.finalize(STORE, tx);
+ assert.equal(after.state, 'pending');
+ assert.equal(after.lease_owner, WORKER_A, 'replay must not clear live claim ownership');
+ assert.equal(Number(after.lease_token), fence, 'replay must not replace the fence');
+ assert.equal(msOf(after.lease_until, 'lease_until'), msOf(before.lease_until, 'lease_until'));
+ assert.equal(Number(after.attempts), 1, 'replay must not reset live attempt count');
+ assert.equal(after.purchase_token, token, 'replay must not replace the in-flight purchase token');
+ assert.equal(after.kind, 'consume', 'replay must not change an in-flight provider operation');
+ assert.equal((await h.claimDueFinalizations({ workerId: WORKER_B, limit: 10, leaseMs: 5000 })).length, 0,
+  'another worker cannot race an ongoing provider call after a replay');
+
+ const finalize = recordingProvider();
+ assert.equal((await h.completeFinalization({
+  store: STORE, transactionId: tx, workerId: WORKER_A, fence, finalizeProvider: finalize,
+ })).completed, true);
+ assert.equal(finalize.calls.length, 1);
+ assert.equal(finalize.calls[0].purchaseToken, token);
+});
+
+test('P10 hardening: a finalizer with an elapsed lease never contacts provider before takeover', { skip: GATE }, async (t) => {
+ const h = await open(t);
+ if (!h) return;
+ const tx = 'tx-expired-before-provider';
+ await h.enqueueFinalization({ store: STORE, transactionId: tx, productId: PRODUCT, purchaseToken: 'tok-expired', kind: 'consume' });
+ await h.grant(STORE, tx);
+ const first = await h.claimDueFinalizations({ workerId: WORKER_A, limit: 10, leaseMs: 1000 });
+ assert.equal(first.length, 1);
+ h.advance(1001);
+ const provider = recordingProvider();
+ const stale = await h.completeFinalization({
+  store: STORE, transactionId: tx, workerId: WORKER_A, fence: fenceOf(first[0]), finalizeProvider: provider,
+ });
+ assert.equal(stale.completed, false);
+ assert.equal(stale.fenceLost, true);
+ assert.equal(provider.calls.length, 0, 'the provider call must never start after the lease expired');
+ const next = await h.claimDueFinalizations({ workerId: WORKER_B, limit: 10, leaseMs: 1000 });
+ assert.equal(next.length, 1);
+ assert.equal((await h.completeFinalization({
+  store: STORE, transactionId: tx, workerId: WORKER_B, fence: fenceOf(next[0]), finalizeProvider: provider,
+ })).completed, true);
+ assert.equal(provider.calls.length, 1, 'only the live owner contacts the provider');
+});

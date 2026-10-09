@@ -619,8 +619,20 @@ function createTournamentService(options = {}) {
      reserveRoom(room, economy, now);
      T.start(room, 'service', MM.tournamentSeed(room.players.map((p) => p.id), economy), now);
     }
-    settleRoom(room, economy, now);
+    /* A terminal public game normally settles INSIDE this command, not via
+     * the separate settle() worker. Publish the SAME deterministic outbox
+     * identity as settle() in this very transaction; otherwise a committed
+     * payout/refund never notifies P10 consumers, and settle() sees the room
+     * already settled so it cannot backfill the missing event. */
+    const settledHere = settleRoom(room, economy, now);
     await repositories.state.write(economy);
+    if (settledHere) {
+     await emitSettlement(tx, room.id, {
+      roomId: room.id, table: room.table, refunded: room.receipt.refunded === true,
+      actor: 'service', reason: room.reason ?? (room.receipt.refunded ? 'CANCELLED' : 'EVENT_COMPLETE'),
+      key: null,
+     }, now);
+    }
    }
    requireRoom(room);
    await repositories.tournaments.save(room);

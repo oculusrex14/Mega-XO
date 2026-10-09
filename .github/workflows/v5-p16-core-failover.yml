@@ -1,0 +1,55 @@
+name: V5 P16 Core drain foundations
+# PR-only, read-only and disposable: no production Core, Oracle, provider or secret access.
+# These suites validate transport admission/drain only, NOT G16 or realtime recovery.
+on:
+  pull_request:
+    branches: [V5-platform]
+    paths:
+      - '.github/workflows/v5-p16-core-failover.yml'
+      - 'packages/services/core-instance-lifecycle.js'
+      - 'packages/services/core-drain-connections.js'
+      - 'scripts/v5/p16/**'
+      - 'tests/v5-p16-*.test.js'
+      - 'docs/v5/co-dev/P16-CORE-FAILOVER-FOUNDATIONS.md'
+permissions:
+  contents: read
+concurrency:
+  group: v5-p16-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  core-drain:
+    name: Bounded Core admission and real loopback socket drain
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '24'
+      - name: Restore exact locked dependencies
+        run: npm ci
+      - name: Execute all owned P16 suites without skip or force-exit
+        run: |
+          set -euo pipefail
+          node --test --test-reporter=tap --test-concurrency=1 \
+            tests/v5-p16-lifecycle.test.js \
+            tests/v5-p16-connections.test.js \
+            tests/v5-p16-real-sockets.test.js \
+            tests/v5-p16-topology.test.js > p16-tap.log
+          cat p16-tap.log
+          grep -Eq '^# tests [1-9][0-9]*$' p16-tap.log
+          grep -Eq '^# pass [1-9][0-9]*$' p16-tap.log
+          grep -Eq '^# fail 0$' p16-tap.log
+          grep -Eq '^# skipped 0$' p16-tap.log
+      - name: Prevent privileged actions or external host exposure in P16 workflow
+        run: |
+          node - <<'NODE'
+          const fs = require('node:fs');
+          const body = fs.readFileSync('.github/workflows/v5-p16-core-failover.yml', 'utf8');
+          if (!/permissions:\s*\n\s+contents: read/.test(body)) throw Error('P16_CI_PERMISSIONS');
+          const scope = body.split('      - name: Prevent privileged actions')[0];
+          for (const forbidden of ['pull_request_target:', 'workflow_run:', 'id-token: write', 'secrets.', 'docker login', 'kubectl ', 'ssh ', 'vercel deploy', 'gh release create']) {
+            if (scope.includes(forbidden)) throw Error('P16_CI_FORBIDDEN:' + forbidden);
+          }
+          console.log('P16 read-only CI boundary verified');
+          NODE

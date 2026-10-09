@@ -1,0 +1,200 @@
+name: V5 P15 isolated backup and recovery
+# PR CI is NEVER a real Neon PITR, R2 or V4/production restoration.
+# It contains no provider credentials or plaintext/private-key artifacts.
+on:
+  push:
+    branches: [V5-platform]
+  pull_request:
+    branches: [V5-platform]
+permissions:
+  contents: read
+concurrency:
+  group: v5-p15-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+jobs:
+  p15-contracts:
+    name: P15 policy, authenticated encryption and target safety
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '24'
+      - name: Check P15 code and adversarial policy tests
+        run: |
+          set -euo pipefail
+          node --check scripts/v5/p15/recovery-policy.js
+          node --check scripts/v5/p15/sealed-archive.js
+          node --check scripts/v5/p15/direct-target.js
+          node --check scripts/v5/p15/backup-cli.js
+          node --check scripts/v5/p15/archive-manifest.js
+          node --check scripts/v5/p15/data-integrity.js
+          node --check scripts/v5/p15/restore-cli.js
+          node --check scripts/v5/p15/r2-contract.js
+          node --check scripts/v5/p15/r2-transfer.js
+          node --check scripts/v5/p15/drill-readiness.js
+          node --check scripts/v5/p15/backup-watch.js
+          node --test tests/v5-p15-recovery-policy.test.js tests/v5-p15-sealed-archive.test.js tests/v5-p15-direct-target.test.js tests/v5-p15-backup-cli.test.js tests/v5-p15-archive-manifest.test.js tests/v5-p15-data-integrity.test.js tests/v5-p15-restore-cli.test.js tests/v5-p15-r2-contract.test.js tests/v5-p15-r2-transfer.test.js tests/v5-p15-drill-readiness.test.js tests/v5-p15-backup-watch.test.js
+      - name: Record nonaccepted, evidence-gated recovery plan
+        run: |
+          set -euo pipefail
+          mkdir -p .artifacts
+          node scripts/v5/p15/recovery-policy.js --plan > .artifacts/p15-UNAPPROVED-policy.json
+          node - <<'NODE'
+          const p=require('./.artifacts/p15-UNAPPROVED-policy.json');
+          if(p.g15Accepted!==false || p.realR2RecoveryVerified!==false ||
+             p.allTargetsProvisional!==true || p.actualProductionRtoMinutes!==null) {
+            throw Error('P15 policy must never silently approve production recovery');
+          }
+          console.log('P15 policy remains proposed; no provider restoration occurred');
+          NODE
+      - name: Retain only sanitized unapproved target plan
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: p15-proposed-recovery-policy
+          path: .artifacts/p15-UNAPPROVED-policy.json
+          retention-days: 7
+          if-no-files-found: error
+
+  p15-independent-restore:
+    name: P15 real encrypted copy to second isolated PostgreSQL16
+    runs-on: ubuntu-latest
+    timeout-minutes: 24
+    env:
+      V5_PG_URL: postgres://postgres@127.0.0.1:5432/postgres
+      V5_PG_DISPOSABLE: '1'
+      V5_PG_REQUIRED: '1'
+      V5_TARGET: test
+      V5_MIGRATE_ALLOW_INSECURE_LOOPBACK: '1'
+      V5_P15_DISPOSABLE: '1'
+      V5_P15_QUARANTINE: '1'
+      P15_RESTORE_JOBS_DISABLED: '1'
+      P15_RESTORE_PROVIDER_CALLBACKS_DISABLED: '1'
+      P15_REAL_DISPOSABLE: '1'
+      P15_SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+      P15_EVIDENCE_OUTPUT: .artifacts/p15-disposable-restore.json
+    services:
+      source_pg:
+        image: postgres:16@sha256:ca0bd484cb98bf4b24eb1010e73fb3fcbd6714d240fbc1a10eea5b7dbecb641d
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_DB: postgres
+          POSTGRES_HOST_AUTH_METHOD: trust
+        ports:
+          - 127.0.0.1:5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -q"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 24
+          --health-start-period 10s
+      recovery_pg:
+        image: postgres:16@sha256:ca0bd484cb98bf4b24eb1010e73fb3fcbd6714d240fbc1a10eea5b7dbecb641d
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_DB: postgres
+          POSTGRES_HOST_AUTH_METHOD: trust
+        ports:
+          - 127.0.0.1:5433:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -q"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 24
+          --health-start-period 10s
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '24'
+      - name: Install locked PG client and exact major 16 CLI tools
+        run: |
+          set -euo pipefail
+          npm ci --ignore-scripts
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq postgresql-client-16
+          pg_dump --version
+          pg_restore --version
+          node - <<'NODE'
+          const {execFileSync}=require('node:child_process');
+          for(const bin of ['pg_dump','pg_restore']){
+            const text=execFileSync(bin,['--version'],{encoding:'utf8'});
+            if(!new RegExp('^'+bin+' \\(PostgreSQL\\) 16\\.').test(text.trim())) {
+              throw Error('P15 requires exactly PostgreSQL16 client tools');
+            }
+          }
+          console.log('P15 compatible direct PostgreSQL16 tools ready');
+          NODE
+      - name: Execute two independent encrypted restore drills and verify exact source
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$P15_SOURCE_SHA"
+          mkdir -p .artifacts
+          for ordinal in 1 2; do
+            P15_EVIDENCE_OUTPUT=".artifacts/p15-disposable-restore-${ordinal}.json" \
+              node --test --test-concurrency=1 --test-reporter=tap tests/v5-p15-real-roundtrip.test.js \
+              > ".artifacts/p15-drill-${ordinal}.tap" 2>&1 || {
+              tail -n 70 ".artifacts/p15-drill-${ordinal}.tap"
+              exit 1
+            }
+          done
+          node - <<'NODE'
+          const fs=require('node:fs');
+          for(const i of [1,2]){
+            const tap=fs.readFileSync('.artifacts/p15-drill-'+i+'.tap','utf8');
+            const count=k=>{
+              const hits=[...tap.matchAll(new RegExp('^# '+k+' (\\d+)$','gm'))];
+              if(hits.length!==1)throw Error('incomplete TAP proof for P15 drill '+i);
+              return Number(hits[0][1]);
+            };
+            if(count('pass')<1 || count('fail')!==0 || count('skipped')!==0){
+              throw Error('P15 repeated restore cannot silently skip or fail');
+            }
+            const p=JSON.parse(fs.readFileSync('.artifacts/p15-disposable-restore-'+i+'.json','utf8'));
+            if(p.sourceSha!==process.env.P15_SOURCE_SHA ||
+               p.g15Accepted!==false || p.archiveRetrievedFromR2!==false ||
+               p.neonPitrObserved!==false || p.actualEncryptedArchiveVerified!==true ||
+               p.sourceAndRestoredDigestEqual!==true || p.recoveryTargetCleaned!==true ||
+               p.roleAndExternalSecretsReconstructed!==false ||
+               p.sourceAndRestoredTables<19 || p.sourceAndRestoredRows<42){
+              throw Error('P15 complete independent restore proof unavailable');
+            }
+            if(/(?:postgres:\/\/|PRIVATE KEY|svc_alice|gmail\.com|@example\.)/.test(JSON.stringify(p))){
+              throw Error('restricted actor/key material in restore artifact');
+            }
+          }
+          NODE
+          node scripts/v5/p15/drill-readiness.js \
+            --first .artifacts/p15-disposable-restore-1.json \
+            --second .artifacts/p15-disposable-restore-2.json \
+            --sha "$P15_SOURCE_SHA" > .artifacts/p15-repeated-drill-summary.json
+          node - <<'NODE'
+          const s=require('./.artifacts/p15-repeated-drill-summary.json');
+          if(s.g15Accepted!==false || s.executedFullRoundtripCount!==2 ||
+             s.distinctSealedArchivesVerified!==true ||
+             s.realAlertDeliveryVerified!==false ||
+             s.recurringScheduleInstalledAndObserved!==false ||
+             s.actualIndependentR2Restore!==false){
+            throw Error('P15 repeated drill may not claim owner R2/PITR or scheduler evidence');
+          }
+          console.log('P15: two real synthetic encrypted cross-cluster restores, distinct backups, G15 OPEN');
+          NODE
+      - name: Retain only sanitized separate-cluster restore proof
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: v5-p15-owned-twin-pg-restore-evidence
+          path: |
+            .artifacts/p15-disposable-restore-1.json
+            .artifacts/p15-disposable-restore-2.json
+            .artifacts/p15-repeated-drill-summary.json
+          retention-days: 7
+          if-no-files-found: error

@@ -1,0 +1,63 @@
+# P16 — process redundancy, rollout and acceptance contract
+
+**Owner branch:** `co-dev/v5-integration` | **formal gate G16: OPEN**
+
+This is a future V5 Core integration plan. Nothing here is deployed, and no production V4 ingress, Caddy, Compose, store, backup or player database is touched. The primary agent currently owns P06–P14 runtime evolution.
+
+## Implemented reusable primitives
+
+| Component | Intended integration | What the test proves | What it does NOT prove |
+|---|---|---|---|
+| `packages/services/core-instance-lifecycle.js` | Boot / ready / drain / stopped transition; admission lease per accepted session; monotonic drain deadline | Readiness/capacity/drain transitions and lease accounting | Durable matches, distributed coordination or reconnection |
+| `packages/services/core-drain-connections.js` | Register authenticated transport, send approved drain notice once, close expired transports without inventing release | Callback race, no new session after drain, actual socket-close release | The correct V5 WebSocket protocol or session replay |
+| `scripts/v5/p16/core-failover-plan.js` | Validate proposed A/B private topology and filter authenticated private health | No public second edge, immutable images, unique private upstreams, rejection of stale/draining nodes | Actual provider access, Caddy registration or host high availability |
+| `tests/v5-p16-real-sockets.test.js` | Loopback TCP compatibility check for socket transport callbacks | Real local streams can receive a drain hint, reject new admissions and close cleanly | Real client UI/gameplay/realtime semantics |
+| `.github/workflows/v5-p16-core-failover.yml` | PR-only read-only test execution | P16 primitive tests run under Node24 without production secrets | P16 full acceptance or SLO proof |
+
+Transport callbacks must be wired by the **real** authenticated Core runtime, not by the public API, browser or native app. Only a committed PostgreSQL revision is authoritative; Redis state and process memory cannot recreate a spend, settlement, accepted move, match timer or purchase.
+
+## P16-01: A/B staging deployment checklist
+
+1. Wait for the actual P08 service startup command and P15 backup/recovery dependency; pin tested Core image digests to source SHA, schema and realtime protocol version. Do not fabricate or implicitly fallback to a mutable `:latest` tag.
+2. Define **two independently managed** `core-a`/`core-b` processes on the isolated V5 staging backend network. Both use role-limited direct/pool access to the **same** authoritative Neon PostgreSQL, and the already chosen managed Redis environment; use separate process resources, restart/liveness and private readiness.
+3. Keep existing Caddy as the **sole** public :80/:443 ingress. Add only private upstreams through a verified staged configuration, atomic reload and rollback; do not create an additional public listener or share V4 app secrets.
+4. Configure bounded CPU, memory, PID, shutdown grace and in-flight socket limits per container; do not exceed Oracle VPS headroom or starve unrelated services and Restic.
+5. Before routing staging traffic, check proposed private topology using `verifyCorePair`. **Static validation is not proof the network exists.** Verify that each process independently answers private readiness, has durable transaction access, and cannot expose metrics/operator endpoints through public ingress.
+
+A/B on one Oracle VPS = **process redundancy only**. One dead VPS, one dead public Caddy edge, one unavailable PostgreSQL region, one unavailable Redis service or power/network failure can still affect both Core processes. A second VPS and independent edge only become justifiable under separately measured load/failure requirements and owner approval.
+
+## P16-02: health-aware routing and rolling drain
+
+1. Only `READY` instances under their admitted capacity may accept a **new** session. The per-process admission registry denies new sessions during `DRAINING`. The private router must reject missing, stale, malformed, unhealthy or draining health evidence. No client-supplied readiness field is trusted.
+2. On rollout, mark **A** draining before any new socket is assigned; send the existing approved reconnect/resume hint to each authenticated socket. The callback only queues the hint and never assumes the client received it.
+3. Allow active sessions to close normally. A timeout is a failed drain while a socket is still registered. After the actual deadline, transport closure may be requested, but the instance cannot report `STOPPED` until its close handlers **release all leases**. Runtime must own SIGTERM and socket completion; the pure primitives do not call `process.exit()` or force database mutation.
+4. Promote tested **B** while A is draining, verify B's receipt of durable session/revision state, and then perform the symmetric B rollout. For mixed image revisions, require measured and documented API/Core/client protocol compatibility before choosing different immutable image digests.
+5. Roll back an unhealthy instance to the prior **PostgreSQL-compatible** image without reverting committed durable business state. Never take both A/B down for a normal code deployment.
+
+## P16-03: real in-flight failure test matrix (not yet run)
+
+In an isolated environment with two actual Core processes, distinct authorized **synthetic** clients, real PostgreSQL and managed-compatible Redis:
+
+- Kill A after a move transaction **commits** but before its event is published. Reconnect the exact actor via B; acknowledge the committed revision once, deliver/reconcile outbox exactly once, and reject the same command with a changed payload.
+- Kill A during a live turn countdown. B loads the persisted **absolute** deadline; no extra seconds awarded. Race deadline timeout against a legal move under the same durable arbitration.
+- Kill A with an unsettled tournament/escrow or match outcome. Ensure durable resume/settle once and exactly the same wallets/ledger/receipts/participants; no refund or Crown grant fabricated by socket recreation.
+- Revoke a device/session while A is dying. B rejects it after durable eligibility/ticket/session recheck even if Redis/cache still has a hint.
+- Drain A during a user reconnect, then repeat the rolling operation B→A. Attempt a new socket on the drained instance and verify it is rejected. Bound the interval of no available healthy Core by measured readiness/snapshot recovery, not optimistic code comments.
+- Remove Redis hints and repeat reconnect. Durable PostgreSQL assets, rank, awards and match outcomes remain unchanged; queue/presence degradation is conservative.
+- Prove public operator/metrics routes remain denied and old V4 routes stay unaffected throughout.
+
+Collect exact image digests, source SHA, staging inventory IDs, UTC fault/start/recovery timestamps, client-visible reconnect and revision logs **without session tokens**, durable before/after PostgreSQL checksums, queue/outbox states, socket counts, decisions, and diff from the approved UI/rules. A test that cannot isolate the cause is inconclusive, not green.
+
+## P16-04: failure-domain and rollback matrix
+
+| Fault | Expected target behavior | Limitation / escalation |
+|---|---|---|
+| One Core process exits | Fresh sessions routed to surviving READY process; resume from PG truth | Requires P08 runtime wiring and executed failover proof |
+| One Core process drains | No new admissions; bounded notification and release; remaining process serves | An unclosed transport is not silently counted as drained |
+| Redis unavailable | Cache/queue/presence degrade conservatively; no balance/grant recreation | Both nodes may have degraded matchmaking |
+| Neon unavailable | No authoritative economic/match write succeeds | Both Core processes share this failure domain |
+| Oracle VPS/network offline | Both same-host processes unavailable | Process A/B is not host HA |
+| Shared Caddy/ACME failure | Public realtime entry may be unavailable | Preserve single edge and documented rollback |
+| Incompatible new image | Reject rollout and keep compatible prior image | No rollback of PG business writes or silent schema downgrade |
+
+**G16 requires real instance A/B + real committed in-flight recovery + verified timestamps and data integrity.** This runbook, primitives, local tests or a green PR by themselves do not close any G16 task/acceptance case.

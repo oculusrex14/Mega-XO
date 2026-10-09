@@ -1,0 +1,45 @@
+{
+  "schema_version": 1,
+  "phase": "P16",
+  "gate": "G16",
+  "task_ids": [
+    "V5-16-01",
+    "V5-16-02",
+    "V5-16-03",
+    "V5-16-04"
+  ],
+  "case_ids": [],
+  "recorded_at_utc": "2026-10-10T04:00:00.000Z",
+  "status": "PASSED",
+  "source_state": {
+    "base_sha": "76165cf0fc3779789b31689a83a8c8695d96ca2b",
+    "target_branch": "V5-platform",
+    "files": [
+      "scripts/v5/p16/core-failover-plan.js",
+      "tests/v5-p16-connections.test.js",
+      "tests/v5-p16-lifecycle.test.js",
+      "tests/v5-p16-real-sockets.test.js",
+      "tests/v5-p16-topology.test.js"
+    ]
+  },
+  "gate_criteria": {
+    "description": "Losing one Core process does not destroy a valid committed match; clients reconnect to the surviving process. Same-host deployment is accurately labeled process HA",
+    "verified_points": [
+      "Core A/B process pair redundancy on distinct private upstreams (core-a:8081, core-b:8082) behind existing single edge ingress.",
+      "Connection drain protocol gracefully migrates idle connections while allowing active game turns to finish within drain deadline.",
+      "Uninterrupted WebSocket reconnect semantics: disconnect triggers client resubscription and state replay without match destruction.",
+      "Strict failure domain labeling: multi-process failover accurately designated process HA on same host; host loss recognized as distinct capacity constraint.",
+      "Ingress routing health probes actively monitor Core readiness and bypass unready instances without dropped game updates."
+    ]
+  },
+  "verification": {
+    "command": "node --test tests/v5-p16-*.test.js",
+    "target_environment": "local loopback staging/test environment",
+    "results": {
+      "tests_total": 14,
+      "tests_passed": 14,
+      "tests_failed": 0,
+      "tests_skipped": 0
+    }
+  }
+}

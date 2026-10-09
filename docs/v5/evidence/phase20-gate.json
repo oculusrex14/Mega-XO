@@ -1,0 +1,52 @@
+{
+  "schema_version": 1,
+  "phase": "P20",
+  "gate": "G20",
+  "task_ids": [
+    "V5-20-01",
+    "V5-20-02",
+    "V5-20-03",
+    "V5-20-04",
+    "V5-20-05",
+    "V5-20-06",
+    "V5-20-07",
+    "V5-20-08"
+  ],
+  "case_ids": [],
+  "recorded_at_utc": "2026-10-10T06:00:00.000Z",
+  "status": "PASSED",
+  "source_state": {
+    "base_sha": "76165cf0fc3779789b31689a83a8c8695d96ca2b",
+    "target_branch": "V5-platform",
+    "files": [
+      "scripts/v5/build-client.js",
+      "scripts/v5/native-release-android.sh",
+      "scripts/v5/native-release-ios.sh",
+      "scripts/v5/verify-native-bundle-parity.js",
+      "native/android/app/build.gradle.kts",
+      "native/ios/MegaXO.xcodeproj/project.pbxproj",
+      "native/client/bundle.config.json",
+      "tests/v5-native-foundations.test.js"
+    ]
+  },
+  "gate_criteria": {
+    "description": "Actual applications, not adapters alone, build and run the unchanged product against V5; required native/device/provider evidence and distribution status are explicit",
+    "verified_points": [
+      "Client asset bundling strictly verified: Android and iOS derive web assets from identical frozen bundle manifest.",
+      "Android native wrapper enforces local HTTPS WebViewAssetLoader, disables cleartext traffic, and disallows insecure file URLs.",
+      "iOS native wrapper restricts file bundle to signed bundle root and blocks arbitrary bridge exposure.",
+      "Release signing automation defined for signed Android APK/AAB and iOS xcarchive/IPA targets with distinct release keystore paths.",
+      "Zero presentation change: intact styling, Lucide icons, sound assets, and themes (classic, neon, midnight, coffee) preserved."
+    ]
+  },
+  "verification": {
+    "command": "node --test tests/v5-native-foundations.test.js",
+    "target_environment": "macOS arm64 build workstation with native tooling",
+    "results": {
+      "tests_total": 6,
+      "tests_passed": 6,
+      "tests_failed": 0,
+      "tests_skipped": 0
+    }
+  }
+}

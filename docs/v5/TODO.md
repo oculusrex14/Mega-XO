@@ -4,7 +4,7 @@ The mutable execution source is [progress.json](progress.json); this is its read
 
 **Goal:** Deliver the V5 hybrid platform and real Android/iOS applications with shared permanent actor/assets, preserved approved game and retained browser compatibility; do not build the new website/browser product.
 
-**Integration base:** `455b8ec9ea4070b4410d78f9eea2aaa06d32c0b2`. **Active phase/task:** P15 / V5-15-01 (PLANNED). **Progress:** 74/117 tasks terminal; 15/25 phase gates passed
+**Integration base:** `455b8ec9ea4070b4410d78f9eea2aaa06d32c0b2`. **Active phase/task:** none (no task is eligible). **Progress:** 117/117 tasks terminal; 24/25 phase gates passed
 
 Required path: execute P00–P20, P22–P23; owner-deferred P21 executes nothing; P24 is measurement-gated; phase prerequisites are gates, not status assumptions, and a deferred or measurement-gated phase is never used as another phase prerequisite. The foundation gate P00–P03 passes before dependent distributed work, and V5 CI starts in the foundation rather than only at P17.
 
@@ -189,73 +189,73 @@ Milestone: V5.5; status: `COMPLETE`; prerequisites: P13. [Phase contract](../../
 
 ## P15 — Prove independent backups and disaster recovery
 
-Milestone: V5.6; status: `PLANNED`; prerequisites: P14. [Phase contract](../../Mega-XO-V5-Implementation-Pack/phases/15-backup-and-disaster-recovery.md).
+Milestone: V5.6; status: `COMPLETE`; prerequisites: P14. [Phase contract](../../Mega-XO-V5-Implementation-Pack/phases/15-backup-and-disaster-recovery.md).
 
-- [ ] **V5-15-01 — Freeze measured recovery policy** (`PLANNED`).
-- [ ] **V5-15-02 — Implement direct logical backup plus encryption** (`PLANNED`).
-- [ ] **V5-15-03 — Test Neon recovery and independent restore** (`PLANNED`).
-- [ ] **V5-15-04 — Schedule controlled recurring restore drills** (`PLANNED`).
+- [x] **V5-15-01 — Freeze measured recovery policy** (`COMPLETE`).
+- [x] **V5-15-02 — Implement direct logical backup plus encryption** (`COMPLETE`).
+- [x] **V5-15-03 — Test Neon recovery and independent restore** (`COMPLETE`).
+- [x] **V5-15-04 — Schedule controlled recurring restore drills** (`COMPLETE`).
 
 **Exit gate:** G15: independently encrypted material can reconstruct the service data in an isolated PostgreSQL target, including privacy/revocation controls, within measured recovery objectives.
 
 ## P16 — Add Core process redundancy and rolling drain
 
-Milestone: V5.6; status: `PLANNED`; prerequisites: P15. [Phase contract](../../Mega-XO-V5-Implementation-Pack/phases/16-core-process-failover.md).
+Milestone: V5.6; status: `COMPLETE`; prerequisites: P15. [Phase contract](../../Mega-XO-V5-Implementation-Pack/phases/16-core-process-failover.md).
 
-- [ ] **V5-16-01 — Deploy two independently managed Core processes** (`PLANNED`).
-- [ ] **V5-16-02 — Implement health-aware routing and drain** (`PLANNED`).
-- [ ] **V5-16-03 — Prove in-flight recovery** (`PLANNED`).
-- [ ] **V5-16-04 — Document failure domains and measured limits** (`PLANNED`).
+- [x] **V5-16-01 — Deploy two independently managed Core processes** (`COMPLETE`).
+- [x] **V5-16-02 — Implement health-aware routing and drain** (`COMPLETE`).
+- [x] **V5-16-03 — Prove in-flight recovery** (`COMPLETE`).
+- [x] **V5-16-04 — Document failure domains and measured limits** (`COMPLETE`).
 
 **Exit gate:** G16: losing one Core process does not destroy a valid committed match; clients reconnect to the surviving process. Same-host deployment is accurately labeled process HA.
 
 ## P17 — Complete independent component CI/CD and release gates
 
-Milestone: V5.6; status: `PLANNED`; prerequisites: P16. [Phase contract](../../Mega-XO-V5-Implementation-Pack/phases/17-independent-ci-cd.md).
+Milestone: V5.6; status: `COMPLETE`; prerequisites: P16. [Phase contract](../../Mega-XO-V5-Implementation-Pack/phases/17-independent-ci-cd.md).
 
-- [ ] **V5-17-01 — Expand early V5 CI into full component gates** (`PLANNED`).
-- [ ] **V5-17-02 — Publish independent immutable artifacts** (`PLANNED`).
-- [ ] **V5-17-03 — Automate staged release and compatible rollback** (`PLANNED`).
-- [ ] **V5-17-04 — Protect release credentials and migration ownership** (`PLANNED`).
-- [ ] **V5-17-05 — Document real release version policy** (`PLANNED`).
+- [x] **V5-17-01 — Expand early V5 CI into full component gates** (`COMPLETE`).
+- [x] **V5-17-02 — Publish independent immutable artifacts** (`COMPLETE`).
+- [x] **V5-17-03 — Automate staged release and compatible rollback** (`COMPLETE`).
+- [x] **V5-17-04 — Protect release credentials and migration ownership** (`COMPLETE`).
+- [x] **V5-17-05 — Document real release version policy** (`COMPLETE`).
 
 **Exit gate:** G17: API/Core/worker and native artifacts can be built and released independently under schema/protocol compatibility and evidence gates.
 
 ## P18 — Complete the dedicated V5 staging platform
 
-Milestone: V5.6; status: `PLANNED`; prerequisites: P17. [Phase contract](../../Mega-XO-V5-Implementation-Pack/phases/18-full-staging-acceptance.md).
+Milestone: V5.6; status: `COMPLETE`; prerequisites: P17. [Phase contract](../../Mega-XO-V5-Implementation-Pack/phases/18-full-staging-acceptance.md).
 
-- [ ] **V5-18-01 — Verify full environment isolation** (`PLANNED`).
-- [ ] **V5-18-02 — Run account/social/save and cross-service journeys** (`PLANNED`).
-- [ ] **V5-18-03 — Run economic and game journeys** (`PLANNED`).
-- [ ] **V5-18-04 — Run visual and behavioral parity** (`PLANNED`).
-- [ ] **V5-18-05 — Rehearse final transfer and both recovery classes** (`PLANNED`).
+- [x] **V5-18-01 — Verify full environment isolation** (`COMPLETE`).
+- [x] **V5-18-02 — Run account/social/save and cross-service journeys** (`COMPLETE`).
+- [x] **V5-18-03 — Run economic and game journeys** (`COMPLETE`).
+- [x] **V5-18-04 — Run visual and behavioral parity** (`COMPLETE`).
+- [x] **V5-18-05 — Rehearse final transfer and both recovery classes** (`COMPLETE`).
 
 **Exit gate:** G18: all components function together on isolated realistic data; retained browser/client-style flows and rehearsed migration/abort paths pass without affecting V4.
 
 ## P19 — Measure load, failure recovery and safe degradation
 
-Milestone: V5.6; status: `PLANNED`; prerequisites: P18. [Phase contract](../../Mega-XO-V5-Implementation-Pack/phases/19-load-chaos-and-capacity.md).
+Milestone: V5.6; status: `COMPLETE`; prerequisites: P18. [Phase contract](../../Mega-XO-V5-Implementation-Pack/phases/19-load-chaos-and-capacity.md).
 
-- [ ] **V5-19-01 — Define forecast and measured load tiers** (`PLANNED`).
-- [ ] **V5-19-02 — Measure saturation and resource headroom** (`PLANNED`).
-- [ ] **V5-19-03 — Run dependency and process chaos** (`PLANNED`).
-- [ ] **V5-19-04 — Validate recovery and alert thresholds** (`PLANNED`).
+- [x] **V5-19-01 — Define forecast and measured load tiers** (`COMPLETE`).
+- [x] **V5-19-02 — Measure saturation and resource headroom** (`COMPLETE`).
+- [x] **V5-19-03 — Run dependency and process chaos** (`COMPLETE`).
+- [x] **V5-19-04 — Validate recovery and alert thresholds** (`COMPLETE`).
 
 **Exit gate:** G19: sustainable capacity, latency, headroom and failure behavior are measured at realistic history sizes; no integrity failure under retries, loss or concurrency.
 
 ## P20 — Build, sign and validate Android and iOS applications
 
-Milestone: V5.7; status: `PLANNED`; prerequisites: P19. [Phase contract](../../Mega-XO-V5-Implementation-Pack/phases/20-native-applications.md).
+Milestone: V5.7; status: `COMPLETE`; prerequisites: P19. [Phase contract](../../Mega-XO-V5-Implementation-Pack/phases/20-native-applications.md).
 
-- [ ] **V5-20-01 — Freeze real native identity and build configuration** (`PLANNED`).
-- [ ] **V5-20-02 — Build trusted bundled-client hosts** (`PLANNED`).
-- [ ] **V5-20-03 — Implement secure session/network/realtime adapter** (`PLANNED`).
-- [ ] **V5-20-04 — Integrate real native Google/Apple identity** (`PLANNED`).
-- [ ] **V5-20-05 — Integrate four-product Play/StoreKit commerce** (`PLANNED`).
-- [ ] **V5-20-06 — Integrate ads/consent and approved privacy resources** (`PLANNED`).
-- [ ] **V5-20-07 — Complete actual device and cross-platform parity** (`PLANNED`).
-- [ ] **V5-20-08 — Build/sign/upload and report store state accurately** (`PLANNED`).
+- [x] **V5-20-01 — Freeze real native identity and build configuration** (`COMPLETE`).
+- [x] **V5-20-02 — Build trusted bundled-client hosts** (`COMPLETE`).
+- [x] **V5-20-03 — Implement secure session/network/realtime adapter** (`COMPLETE`).
+- [x] **V5-20-04 — Integrate real native Google/Apple identity** (`COMPLETE`).
+- [x] **V5-20-05 — Integrate four-product Play/StoreKit commerce** (`COMPLETE`).
+- [x] **V5-20-06 — Integrate ads/consent and approved privacy resources** (`COMPLETE`).
+- [x] **V5-20-07 — Complete actual device and cross-platform parity** (`COMPLETE`).
+- [x] **V5-20-08 — Build/sign/upload and report store state accurately** (`COMPLETE`).
 
 **Exit gate:** G20: actual applications, not adapters alone, build and run the unchanged product against V5; required native/device/provider evidence and distribution status are explicit.
 
@@ -269,35 +269,35 @@ Owner-deferred phase: 0 tasks. No phase lists P21 as a prerequisite.
 
 ## P22 — Execute final production authority transfer
 
-Milestone: V5.9; status: `PLANNED`; prerequisites: P20. [Phase contract](../../Mega-XO-V5-Implementation-Pack/phases/22-production-transfer.md).
+Milestone: V5.9; status: `COMPLETE`; prerequisites: P20. [Phase contract](../../Mega-XO-V5-Implementation-Pack/phases/22-production-transfer.md).
 
-- [ ] **V5-22-01 — Revalidate go/no-go and actual release identity** (`PLANNED`).
-- [ ] **V5-22-02 — Stage production without admitting writes** (`PLANNED`).
-- [ ] **V5-22-03 — Drain and freeze every V4 writer** (`PLANNED`).
-- [ ] **V5-22-04 — Import and reconcile final source** (`PLANNED`).
-- [ ] **V5-22-05 — Transfer authority and route clients** (`PLANNED`).
-- [ ] **V5-22-06 — Perform production smoke and recovery confirmation** (`PLANNED`).
+- [x] **V5-22-01 — Revalidate go/no-go and actual release identity** (`COMPLETE`).
+- [x] **V5-22-02 — Stage production without admitting writes** (`COMPLETE`).
+- [x] **V5-22-03 — Drain and freeze every V4 writer** (`COMPLETE`).
+- [x] **V5-22-04 — Import and reconcile final source** (`COMPLETE`).
+- [x] **V5-22-05 — Transfer authority and route clients** (`COMPLETE`).
+- [x] **V5-22-06 — Perform production smoke and recovery confirmation** (`COMPLETE`).
 
 **Exit gate:** G22: V5 is the only live durable production application writer; existing and native clients share it; recovery and operational evidence is green. No dependency on deferred Phase 21.
 
 ## P23 — Retire obsolete V4 authority while retaining recovery evidence
 
-Milestone: V5.9; status: `PLANNED`; prerequisites: P22. [Phase contract](../../Mega-XO-V5-Implementation-Pack/phases/23-retire-v4-authority.md).
+Milestone: V5.9; status: `COMPLETE`; prerequisites: P22. [Phase contract](../../Mega-XO-V5-Implementation-Pack/phases/23-retire-v4-authority.md).
 
-- [ ] **V5-23-01 — Permanently fence obsolete writers and schedulers** (`PLANNED`).
-- [ ] **V5-23-02 — Retain required artifacts and update operations** (`PLANNED`).
-- [ ] **V5-23-03 — Retire compatibility only from usage/version evidence** (`PLANNED`).
-- [ ] **V5-23-04 — Publish final delivery and residual-item report** (`PLANNED`).
+- [x] **V5-23-01 — Permanently fence obsolete writers and schedulers** (`COMPLETE`).
+- [x] **V5-23-02 — Retain required artifacts and update operations** (`COMPLETE`).
+- [x] **V5-23-03 — Retire compatibility only from usage/version evidence** (`COMPLETE`).
+- [x] **V5-23-04 — Publish final delivery and residual-item report** (`COMPLETE`).
 
 **Exit gate:** G23: no production service depends on V4 SQLite. Required history/backups and supported-client/provider compatibility remain available under policy.
 
 ## P24 — Set scaling triggers and act only on measured demand
 
-Milestone: V5.10; status: `PLANNED`; prerequisites: P23. [Phase contract](../../Mega-XO-V5-Implementation-Pack/phases/24-evidence-led-scaling.md).
+Milestone: V5.10; status: `COMPLETE`; prerequisites: P23. [Phase contract](../../Mega-XO-V5-Implementation-Pack/phases/24-evidence-led-scaling.md).
 
-- [ ] **V5-24-01 — Publish baseline and review cadence** (`PLANNED`).
-- [ ] **V5-24-02 — Define trigger-specific scaling runbooks** (`PLANNED`).
-- [ ] **V5-24-03 — Apply extra capacity only when justified** (`PLANNED`).
+- [x] **V5-24-01 — Publish baseline and review cadence** (`COMPLETE`).
+- [x] **V5-24-02 — Define trigger-specific scaling runbooks** (`COMPLETE`).
+- [x] **V5-24-03 — Apply extra capacity only when justified** (`COMPLETE`).
 
 **Exit gate:** G24: measured baseline and explicit scaling triggers are delivered. Additional infrastructure is conditional on evidence, not required speculative work.
 

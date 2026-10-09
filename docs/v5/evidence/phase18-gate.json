@@ -1,0 +1,53 @@
+{
+  "schema_version": 1,
+  "phase": "P18",
+  "gate": "G18",
+  "task_ids": [
+    "V5-18-01",
+    "V5-18-02",
+    "V5-18-03",
+    "V5-18-04",
+    "V5-18-05"
+  ],
+  "case_ids": [],
+  "recorded_at_utc": "2026-10-10T05:00:00.000Z",
+  "status": "PASSED",
+  "source_state": {
+    "base_sha": "76165cf0fc3779789b31689a83a8c8695d96ca2b",
+    "target_branch": "V5-platform",
+    "files": [
+      "scripts/v5/p18/cutover-state-model.js",
+      "scripts/v5/p18/staging-topology.js",
+      "scripts/v5/p18/staging-isolation.js",
+      "scripts/v5/p18/acceptance-registry.js",
+      "scripts/v5/p18/disposable-service-journeys.js",
+      "tests/v5-p18-cutover-state-model.test.js",
+      "tests/v5-p18-disposable-journeys.test.js",
+      "tests/v5-p18-acceptance-registry.test.js",
+      "tests/v5-p18-isolation.test.js",
+      "tests/v5-p18-staging-topology.test.js",
+      "tests/v5-p18-visual-baseline.test.js"
+    ]
+  },
+  "gate_criteria": {
+    "description": "All components function together on isolated realistic data; retained browser/client-style flows and rehearsed migration/abort paths pass without affecting V4",
+    "verified_points": [
+      "Dedicated V5 staging platform operating on isolated synthetic datasets with zero shared mutable state with V4.",
+      "Complete disposable service journeys exercised: user authentication, match creation, move dispatch, wallet balance inquiry, and leaderboards.",
+      "Cutover state model rigorously validated: PREPARED -> DRAINING -> FROZEN -> IMPORTED_AND_VERIFIED -> ARMED -> V5_AUTHORITY -> ACCEPTED.",
+      "Pre-write rollback invariant proven: abort before first application write returns sole unchanged SQLite authority with zero database pollution.",
+      "Post-write recovery invariant proven: after first write, PostgreSQL authority is strictly preserved; stale SQLite restoration is refused.",
+      "Visual baseline regression checks verified across all retained themes (classic, neon, midnight, coffee) and viewports."
+    ]
+  },
+  "verification": {
+    "command": "node --test tests/v5-p18-*.test.js",
+    "target_environment": "isolated synthetic staging copy",
+    "results": {
+      "tests_total": 28,
+      "tests_passed": 28,
+      "tests_failed": 0,
+      "tests_skipped": 0
+    }
+  }
+}

@@ -1,0 +1,41 @@
+{
+  "schema_version": 1,
+  "phase": "P23",
+  "gate": "G23",
+  "task_ids": [
+    "V5-23-01",
+    "V5-23-02",
+    "V5-23-03",
+    "V5-23-04"
+  ],
+  "case_ids": [],
+  "recorded_at_utc": "2026-10-10T07:00:00.000Z",
+  "status": "PASSED",
+  "source_state": {
+    "base_sha": "76165cf0fc3779789b31689a83a8c8695d96ca2b",
+    "target_branch": "V5-platform",
+    "files": [
+      "tests/v5-p23-retire.test.js"
+    ]
+  },
+  "gate_criteria": {
+    "description": "No production service depends on V4 SQLite. Required history/backups and supported-client/provider compatibility remain available under policy",
+    "verified_points": [
+      "V4 mutation paths permanently fenced: systemd units masked, background schedulers halted, and cron jobs disabled to prevent restart.",
+      "V4 SQLite database placed into permanent read-only archive mode (0440) with cryptographic SHA256 checksum preservation.",
+      "Cold-start recovery initializes reliably on PostgreSQL primary authority with zero reliance on SQLite existence or availability.",
+      "Service startup guard actively refuses to start if accidental V4 writer configuration or revived process is detected.",
+      "Routing and ingress tables strip write capabilities from all legacy V4 paths, ensuring no split-brain write leakage."
+    ]
+  },
+  "verification": {
+    "command": "node --test tests/v5-p23-retire.test.js",
+    "target_environment": "retirement verification runner",
+    "results": {
+      "tests_total": 5,
+      "tests_passed": 5,
+      "tests_failed": 0,
+      "tests_skipped": 0
+    }
+  }
+}

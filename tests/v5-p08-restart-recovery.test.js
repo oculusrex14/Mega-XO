@@ -684,9 +684,16 @@ test('V5-08-05 restart: a stalled client is closed 1008 and recovers the latest 
    * full, `socket.bufferSize` exceeds `maxBufferBytes` and the transport must close it 1008 rather
    * than hold unbounded frames in memory. The flood is CPU-bound (no database work), so the trip
    * happens while the client is still paused. */
-  const PINGS = 9000;
+  /* A 1.2 MiB burst can fit entirely in a GitHub-hosted Linux TCP send
+   * buffer, so the previous 9000-frame test could time out without ever
+   * exercising the transport's userland buffer limit. Send up to 8 MiB
+   * in bounded 1 MiB blocks: enough to exceed normal loopback kernel
+   * buffering, without an unbounded generator or production traffic. */
+  const PINGS_PER_BLOCK = 8192;
+  const BLOCKS = 8;
   const ping = clientFrame(0x9, Buffer.alloc(125, 0x70));
-  slow.socket.write(Buffer.concat(Array.from({ length: PINGS }, () => ping)));
+  const block = Buffer.concat(Array.from({ length: PINGS_PER_BLOCK }, () => ping));
+  for (let i = 0; i < BLOCKS; i += 1) slow.socket.write(block);
 
   /* Bounded wait for the transport to process the flood and trip the bound. The assertion that
    * matters is the close code below - if the bound were not enforced, no close frame would arrive

@@ -1,0 +1,50 @@
+{
+  "schema_version": 1,
+  "phase": "P09",
+  "task_ids": [
+    "V5-09-03"
+  ],
+  "case_ids": [],
+  "recorded_at_utc": "2026-10-09T09:10:00.000Z",
+  "status": "FENCED_CLAIMS_VERIFIED",
+  "source_state": {
+    "base_sha": "a09c1578e8dc788207b47da0fb999c1345b97aaf",
+    "verified_source_sha256": {
+      "packages/services/tournaments.js": "cefa0f937ec8be872ec573fc03e390c50d754ff9cb01e4ec914614138e6cecf1",
+      "packages/migrations/migrations/0013_tournament.sql": "df7084eb8268846c92ba3db00318021d723798cf856b37fc9aee5e7b57a41ec5",
+      "tests/v5-p09-fencing.test.js": "7ad67140f25e982187f54c96ea2083cf4c053c8c7f53f31cf3182b8b933d1c16"
+    }
+  },
+  "fenced_claims_verification": {
+    "service_methods": {
+      "claimTimerLease": "Atomically updates tournament.rooms SET timer_lease_owner, timer_lease_epoch, timer_lease_until; returns claim object or null on refusal",
+      "releaseTimerLease": "Clears timer lease tuple if and only if caller matches current timer_lease_owner; returns boolean",
+      "claimFixture": "Atomically sets lease_owner, lease_until and stamps lease_epoch from current room revision; returns claim object or null",
+      "completeFixture": "Atomically marks fixture DONE, advances revision, and clears lease if and only if caller is current lease_owner AND lease_epoch equals live room revision"
+    },
+    "stale_worker_rejection": {
+      "mechanism": "completeFixture revalidates lease_epoch against live room revision via UPDATE ... FROM tournament.rooms r WHERE f.lease_epoch = r.revision",
+      "outcome": "Worker fenced at epoch N attempting to complete after room revision reached N+1 is rejected (returns false); fixture row untouched; fresh owner at epoch N+1 completes successfully"
+    },
+    "lease_takeover_and_expiry": {
+      "fixture_lease": "Concurrent claim by different owner refused while lease alive; same holder can renew; expired lease can be taken over",
+      "room_timer_lease": "Concurrent claim refused while alive; expired lease taken over; stale owner cannot release taken-over lease"
+    }
+  },
+  "test_execution": {
+    "command": "env V5_PG_URL=postgres://postgres@127.0.0.1:50709/postgres V5_PG_DISPOSABLE=1 V5_PG_REQUIRED=1 node --test --test-reporter=tap --test-concurrency=1 tests/v5-p09-fencing.test.js",
+    "environment": "owned loopback PostgreSQL 16.15",
+    "tests": 3,
+    "pass": 3,
+    "fail": 0,
+    "skipped": 0
+  },
+  "task_outcomes": {
+    "V5-09-03": "COMPLETE: fenced timer and progression claims implemented in packages/services/tournaments.js. Room timer leases and fixture progression leases use transactional PostgreSQL claims; fence epoch stamps current room revision; completeFixture validates epoch against live room revision; stale workers cannot act after a newer owner has progressed the tournament; lease expiry and owner-scoped release verified across 3 dedicated tests on real PG16."
+  },
+  "not_claimed": [
+    "indivisible settlement and refund (V5-09-04)",
+    "full multi-worker tournament recovery (V5-09-05)",
+    "G09 gate passage"
+  ]
+}

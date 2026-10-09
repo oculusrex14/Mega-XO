@@ -1,0 +1,70 @@
+{
+  "schema_version": 1,
+  "phase": "P09",
+  "gate": "G09",
+  "task_ids": [
+    "V5-09-01",
+    "V5-09-02",
+    "V5-09-03",
+    "V5-09-04",
+    "V5-09-05"
+  ],
+  "case_ids": [],
+  "recorded_at_utc": "2026-10-09T09:22:00.000Z",
+  "status": "PASSED",
+  "source_state": {
+    "base_sha": "a09c1578e8dc788207b47da0fb999c1345b97aaf",
+    "verified_source_sha256": {
+      "packages/services/tournaments.js": "73c683b52d6a59bc8bbd3c13bb1e54460f38bdf69a531777b72db5a882a17f69",
+      "packages/services/index.js": "7ea8ae01c778401311029c21f76f77754d9c7921ba57917c60e34c9c7f66a2cb",
+      "tests/v5-p09-persistence.test.js": "29199d25c150bcfd7d5d2ec7521ad014aaeeea60c915f013d2f9df8828e6783c",
+      "tests/v5-p09-lifecycle.test.js": "a7b32cfa0271569485bb3ea267ea043c8ce3c5bbbb3b15ad090333beee1cf51f",
+      "tests/v5-p09-fencing.test.js": "7ad67140f25e982187f54c96ea2083cf4c053c8c7f53f31cf3182b8b933d1c16",
+      "tests/v5-p09-settlement.test.js": "82e4f014e7a68e82a3c74900da0ea996b72a6b252069bdaaa7632607147b3096",
+      "tests/v5-p09-recovery.test.js": "cf31821998541c02bfcba6cdab4fee99613b21ddf22036b82e1bb43567c73980"
+    }
+  },
+  "required_outputs": {
+    "transactional_tournament_repositories": {
+      "path": "packages/services/tournaments.js",
+      "exported": "createTournamentService in packages/services/index.js",
+      "verified": true
+    },
+    "fixture_timer_claim_processing": {
+      "methods": ["claimTimerLease", "releaseTimerLease", "claimFixture", "completeFixture"],
+      "authority": "PostgreSQL core_runtime pool with monotonic fence epoch checks",
+      "verified": true
+    },
+    "exactly_once_effect_settlement_tests": {
+      "path": "tests/v5-p09-settlement.test.js",
+      "tests": 4,
+      "verified": true
+    }
+  },
+  "gate_criteria_verification": {
+    "criterion": "G09: crash/concurrent workers cannot double-pay, double-refund or lose escrow; approved tournament and private lobby behavior remains.",
+    "no_double_pay": "Concurrent settlement workers serialize on room lock; exactly one payout committed per seat; wallets credited once; burn recorded once",
+    "no_double_refund": "Cancelled/voided tournaments refund entries once; second settle call or replay returns existing receipt with zero second effect",
+    "no_lost_escrow": "Escrow equals sum of entry contributions at start; zeroed on settlement; payouts + burn equals pool; refunds equal pool; no stranded funds",
+    "approved_tournament_behavior": "Ten seats required on public tables; automatic start only; 200-Elo cohort cap; 10% burn and 5th-place break-even; normal Elo completely independent",
+    "approved_private_lobby_behavior": "Host-leave in LOBBY transitions to CANCELLED; guest-leave preserves room; host transfer hands ownership; pause freezes clocks without gift; restarts do not cause user leave"
+  },
+  "test_execution_summary": {
+    "v5_p09_persistence_test": {"pass": 4, "fail": 0, "skipped": 0},
+    "v5_p09_lifecycle_test": {"pass": 6, "fail": 0, "skipped": 0},
+    "v5_p09_fencing_test": {"pass": 3, "fail": 0, "skipped": 0},
+    "v5_p09_settlement_test": {"pass": 4, "fail": 0, "skipped": 0},
+    "v5_p09_recovery_test": {"pass": 4, "fail": 0, "skipped": 0},
+    "total_p09_tests": 21,
+    "total_pass": 21,
+    "total_fail": 0,
+    "total_skipped": 0
+  },
+  "task_evidence_records": [
+    "docs/v5/evidence/phase09-persistence.json",
+    "docs/v5/evidence/phase09-lifecycle.json",
+    "docs/v5/evidence/phase09-fencing.json",
+    "docs/v5/evidence/phase09-settlement.json",
+    "docs/v5/evidence/phase09-recovery.json"
+  ]
+}

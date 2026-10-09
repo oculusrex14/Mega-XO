@@ -1,0 +1,50 @@
+{
+  "schema_version": 1,
+  "phase": "P09",
+  "task_ids": [
+    "V5-09-05"
+  ],
+  "case_ids": [],
+  "recorded_at_utc": "2026-10-09T09:20:00.000Z",
+  "status": "MULTI_WORKER_RECOVERY_VERIFIED",
+  "source_state": {
+    "base_sha": "a09c1578e8dc788207b47da0fb999c1345b97aaf",
+    "verified_source_sha256": {
+      "packages/services/tournaments.js": "73c683b52d6a59bc8bbd3c13bb1e54460f38bdf69a531777b72db5a882a17f69",
+      "tests/v5-p09-recovery.test.js": "cf31821998541c02bfcba6cdab4fee99613b21ddf22036b82e1bb43567c73980"
+    }
+  },
+  "recovery_verification": {
+    "ten_player_public_recovery": {
+      "auto_start": "10 players join public table, ready, auto-starts with 10 contributions and 1000 pool in escrow",
+      "restart_invariance": "Worker restarted mid-event; full room document deep-equal pre/post restart; status RUNNING, 10 players seated, escrow 1000, 20 fixtures intact",
+      "duplicate_delivery": "Every resign command delivered twice under same idempotency key; replay returns stored response; revision unchanged; zero duplicate moves",
+      "settlement": "Settles COMPLETE: exactly 10 payouts equal to frozen shares, burn recorded once, zero lost escrow, zero duplicate prizes"
+    },
+    "private_room_restart_isolation": {
+      "host_handover": "Worker restart does NOT cause unexpected host handover: host ownership remains with original host",
+      "user_leave": "Worker restart does NOT act like a user leaving: room status does not become CANCELLED, all players remain seated and room remains live"
+    },
+    "no_lost_escrow_on_void": {
+      "refund": "Public table voided mid-tournament refunds every entry fee exactly once across worker restart and retry; escrow zeroed; zero duplicate refunds"
+    },
+    "duplicate_command_delivery": {
+      "idempotency": "Replaying create, join, ready, configure, start, matchReady, move, resign, pause, resume, cancel returns stored outcomes without side effects"
+    }
+  },
+  "test_execution": {
+    "command": "env V5_PG_URL=postgres://postgres@127.0.0.1:50709/postgres V5_PG_DISPOSABLE=1 V5_PG_REQUIRED=1 node --test --test-reporter=tap --test-concurrency=1 tests/v5-p09-recovery.test.js",
+    "environment": "owned loopback PostgreSQL 16.15",
+    "tests": 4,
+    "assertions": 185,
+    "pass": 4,
+    "fail": 0,
+    "skipped": 0
+  },
+  "task_outcomes": {
+    "V5-09-05": "COMPLETE: full multi-worker tournament recovery proven across ten-player public tables and private rooms. Simulated worker restarts, duplicate command delivery, and mid-event crashes produce zero lost escrow, zero duplicate prizes, no unexpected host handover, and no restart-caused user leave across 4 dedicated tests and 185 assertions on real PG16."
+  },
+  "not_claimed": [
+    "G09 gate passage"
+  ]
+}

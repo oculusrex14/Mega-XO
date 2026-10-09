@@ -4,7 +4,7 @@ The mutable execution source is [progress.json](progress.json); this is its read
 
 **Goal:** Deliver the V5 hybrid platform and real Android/iOS applications with shared permanent actor/assets, preserved approved game and retained browser compatibility; do not build the new website/browser product.
 
-**Integration base:** `455b8ec9ea4070b4410d78f9eea2aaa06d32c0b2`. **Active phase/task:** P09 / V5-09-01 (PLANNED). **Progress:** 46/117 tasks terminal; 9/25 phase gates passed
+**Integration base:** `455b8ec9ea4070b4410d78f9eea2aaa06d32c0b2`. **Active phase/task:** P10 / V5-10-01 (PLANNED). **Progress:** 51/117 tasks terminal; 10/25 phase gates passed
 
 Required path: execute P00–P20, P22–P23; owner-deferred P21 executes nothing; P24 is measurement-gated; phase prerequisites are gates, not status assumptions, and a deferred or measurement-gated phase is never used as another phase prerequisite. The foundation gate P00–P03 passes before dependent distributed work, and V5 CI starts in the foundation rather than only at P17.
 
@@ -119,13 +119,13 @@ Milestone: V5.4; status: `COMPLETE`; prerequisites: P07. [Phase contract](../../
 
 ## P09 — Make tournament and lobby execution durable
 
-Milestone: V5.4; status: `PLANNED`; prerequisites: P08. [Phase contract](../../Mega-XO-V5-Implementation-Pack/phases/09-durable-tournaments.md).
+Milestone: V5.4; status: `COMPLETE`; prerequisites: P08. [Phase contract](../../Mega-XO-V5-Implementation-Pack/phases/09-durable-tournaments.md).
 
-- [ ] **V5-09-01 — Persist complete room and fixture state** (`PLANNED`).
-- [ ] **V5-09-02 — Preserve user lifecycle behavior** (`PLANNED`).
-- [ ] **V5-09-03 — Implement fenced timer and progression claims** (`PLANNED`).
-- [ ] **V5-09-04 — Make settlement/refund indivisible** (`PLANNED`).
-- [ ] **V5-09-05 — Prove full multi-worker tournament recovery** (`PLANNED`).
+- [x] **V5-09-01 — Persist complete room and fixture state** (`COMPLETE`).
+- [x] **V5-09-02 — Preserve user lifecycle behavior** (`COMPLETE`).
+- [x] **V5-09-03 — Implement fenced timer and progression claims** (`COMPLETE`).
+- [x] **V5-09-04 — Make settlement/refund indivisible** (`COMPLETE`).
+- [x] **V5-09-05 — Prove full multi-worker tournament recovery** (`COMPLETE`).
 
 **Exit gate:** G09: crash/concurrent workers cannot double-pay, double-refund or lose escrow; approved tournament and private lobby behavior remains.
 

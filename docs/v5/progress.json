@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at_utc": "2026-10-09T11:36:41.170+00:00",
+  "updated_at_utc": "2026-10-09T13:46:09.448+00:00",
   "goal": "Deliver the V5 hybrid platform and real Android/iOS applications with shared permanent actor/assets, preserved approved game and retained browser compatibility; do not build the new website/browser product.",
   "source": {
     "goal": "AGENT-GOAL.md",
@@ -46,9 +46,9 @@
     "installed_script_revision_status": "FOUR_INSTALLED_FILES_HASH_MATCH_SELECTED_CHECKOUT"
   },
   "current": {
-    "phase": "P09",
-    "active_task": "V5-09-01",
-    "next_action": "G08 passed (46 tasks accepted across P00-P08). Phase 9 (Durable Tournaments) is active: persist complete room and fixture state (V5-09-01), preserve user lifecycle behavior (V5-09-02), implement fenced timer and progression claims (V5-09-03), make settlement/refund indivisible (V5-09-04), and prove full multi-worker tournament recovery (V5-09-05). Keep economic authority in PostgreSQL; Free tiers only; V4 production untouched.",
+    "phase": "P10",
+    "active_task": "V5-10-01",
+    "next_action": "G09 passed (51 tasks accepted across P00-P09). Phase 10 (Durable Workers) is active: implement durable job and outbox primitives (V5-10-01), extract email/security/privacy work (V5-10-02), extract provider notification and finalization (V5-10-03), extract season/leaderboard/maintenance scheduling (V5-10-04), and remove legacy duplicate schedulers (V5-10-05). Keep economic authority in PostgreSQL; Free tiers only; V4 production untouched.",
     "checkout_branch_at_setup": "V4.1",
     "integration_branch": "V5-platform",
     "integration_branch_exists_at_setup": false,
@@ -100,7 +100,12 @@
       "V5-08-02",
       "V5-08-03",
       "V5-08-04",
-      "V5-08-05"
+      "V5-08-05",
+      "V5-09-01",
+      "V5-09-02",
+      "V5-09-03",
+      "V5-09-04",
+      "V5-09-05"
     ],
     "passed_phase_gates": [
       {
@@ -346,6 +351,34 @@
         ],
         "gate_evidence": "docs/v5/evidence/phase08-gate.json",
         "note": "G08 PASSED: Live game moves serialize transactionally, survive process restarts and socket reconnections; timers enforce persisted deadlines without loss. Realtime transport implemented on /realtime/v1 with RFC 6455 native framing, one-use ticket redemption, subscription membership checks, command revision transactions, durable clocks/scheduled expiry, snapshot/delta recovery, and removal of memory-authoritative restart recovery. All 36 tests pass across 5 P08 suites with zero skips/failures on real PG16 + Redis."
+      },
+      {
+        "phase": "P09",
+        "gate": "G09",
+        "completed_at_utc": "2026-10-09T13:46:09.446+00:00",
+        "task_ids": [
+          "V5-09-01",
+          "V5-09-02",
+          "V5-09-03",
+          "V5-09-04",
+          "V5-09-05"
+        ],
+        "task_statuses": {
+          "V5-09-01": "COMPLETE",
+          "V5-09-02": "COMPLETE",
+          "V5-09-03": "COMPLETE",
+          "V5-09-04": "COMPLETE",
+          "V5-09-05": "COMPLETE"
+        },
+        "evidence_refs": [
+          "docs/v5/evidence/phase09-persistence.json",
+          "docs/v5/evidence/phase09-lifecycle.json",
+          "docs/v5/evidence/phase09-fencing.json",
+          "docs/v5/evidence/phase09-settlement.json",
+          "docs/v5/evidence/phase09-recovery.json"
+        ],
+        "gate_evidence": "docs/v5/evidence/phase09-gate.json",
+        "note": "G09 PASSED: Crash/concurrent workers cannot double-pay, double-refund or lose escrow; approved tournament and private lobby behavior remains. Complete room/fixture state persisted in PostgreSQL; user lifecycle rules preserved (host-leave CANCELLED, transfer, pause/resume, 200-Elo cohort cap, normal-Elo independence); fenced timer and progression claims prevent stale worker completion; settlement and refund made indivisible with strict global lock order; full multi-worker recovery proven across ten-player and private room flows. All 21 tests pass across 5 P09 suites with zero skips/failures on real PG16."
       }
     ]
   },
@@ -694,7 +727,7 @@
           "V5-09-04",
           "V5-09-05"
         ],
-        "status": "PLANNED"
+        "status": "COMPLETE"
       },
       {
         "id": "P10",
@@ -1778,7 +1811,7 @@
         "verification": "Full room snapshot survives service restart with no missing ownership or financial state.",
         "id": "V5-09-01",
         "phase": "P09",
-        "status": "PLANNED",
+        "status": "COMPLETE",
         "depends_on_tasks": [],
         "requires_phase_gates": [
           "P08"
@@ -1791,7 +1824,7 @@
         "verification": "Existing party/tournament UI and rule fixtures remain unchanged.",
         "id": "V5-09-02",
         "phase": "P09",
-        "status": "PLANNED",
+        "status": "COMPLETE",
         "depends_on_tasks": [
           "V5-09-01"
         ],
@@ -1804,7 +1837,7 @@
         "verification": "A stale worker cannot act after a new owner has progressed the tournament.",
         "id": "V5-09-03",
         "phase": "P09",
-        "status": "PLANNED",
+        "status": "COMPLETE",
         "depends_on_tasks": [
           "V5-09-02"
         ],
@@ -1817,7 +1850,7 @@
         "verification": "Payout/refund/timeout races and mid-transaction crashes produce one correct result.",
         "id": "V5-09-04",
         "phase": "P09",
-        "status": "PLANNED",
+        "status": "COMPLETE",
         "depends_on_tasks": [
           "V5-09-03"
         ],
@@ -1830,7 +1863,7 @@
         "verification": "No lost escrow, duplicate prize, unexpected host handover or restart-caused user leave.",
         "id": "V5-09-05",
         "phase": "P09",
-        "status": "PLANNED",
+        "status": "COMPLETE",
         "depends_on_tasks": [
           "V5-09-04"
         ],
@@ -4157,6 +4190,96 @@
           "note": "memory-authoritative restart recovery removed. V4 startup void logic replaced with loading durable active state from PostgreSQL; kill Core before commit rolls back cleanly; kill Core after commit retries idempotently on surviving process; slow-client backpressure closes stalled sockets with 1008; multi-process routing synchronizes state across Cores over Redis hints; graceful drain implemented across 6 dedicated tests and 121 assertions on real PG16 + Redis."
         }
       ]
+    },
+    "V5-09-01": {
+      "status": "COMPLETE",
+      "evidence_refs": [
+        "docs/v5/evidence/phase09-persistence.json"
+      ],
+      "completed_portions": [],
+      "remaining": [],
+      "review_notes": "complete room and fixture state persisted in transactional PostgreSQL repositories via packages/services/tournaments.js. Ownership, code, roster, readiness, rules, fixtures, clocks, ranking, revisions, quotes, contributions, and settlement records all verified to survive service restart with 100% deep-equality across 4 dedicated tests on real PG16.",
+      "transitions": [
+        {
+          "at_utc": "2026-10-09T12:00:00.662+00:00",
+          "from": "PLANNED",
+          "to": "COMPLETE",
+          "evidence": "docs/v5/evidence/phase09-persistence.json",
+          "note": "complete room and fixture state persisted in transactional PostgreSQL repositories via packages/services/tournaments.js. Ownership, code, roster, readiness, rules, fixtures, clocks, ranking, revisions, quotes, contributions, and settlement records all verified to survive service restart with 100% deep-equality across 4 dedicated tests on real PG16."
+        }
+      ]
+    },
+    "V5-09-02": {
+      "status": "COMPLETE",
+      "evidence_refs": [
+        "docs/v5/evidence/phase09-lifecycle.json"
+      ],
+      "completed_portions": [],
+      "remaining": [],
+      "review_notes": "user lifecycle behavior preserved. Approved host-leave CANCELLED behavior, allowed transfer/pause/leave paths, public cohort/entry/payout rules, and normal-Elo independence all verified across 6 dedicated tests and 140 assertions on real PG16, plus 74 retained tournament/rooms rule tests with zero edits to approved source.",
+      "transitions": [
+        {
+          "at_utc": "2026-10-09T12:35:33.885+00:00",
+          "from": "PLANNED",
+          "to": "COMPLETE",
+          "evidence": "docs/v5/evidence/phase09-lifecycle.json",
+          "note": "user lifecycle behavior preserved. Approved host-leave CANCELLED behavior, allowed transfer/pause/leave paths, public cohort/entry/payout rules, and normal-Elo independence all verified across 6 dedicated tests and 140 assertions on real PG16, plus 74 retained tournament/rooms rule tests with zero edits to approved source."
+        }
+      ]
+    },
+    "V5-09-03": {
+      "status": "COMPLETE",
+      "evidence_refs": [
+        "docs/v5/evidence/phase09-fencing.json"
+      ],
+      "completed_portions": [],
+      "remaining": [],
+      "review_notes": "fenced timer and progression claims implemented in packages/services/tournaments.js. Room timer leases and fixture progression leases use transactional PostgreSQL claims; fence epoch stamps current room revision; completeFixture validates epoch against live room revision; stale workers cannot act after a newer owner has progressed the tournament; lease expiry and owner-scoped release verified across 3 dedicated tests on real PG16.",
+      "transitions": [
+        {
+          "at_utc": "2026-10-09T12:48:44.359+00:00",
+          "from": "PLANNED",
+          "to": "COMPLETE",
+          "evidence": "docs/v5/evidence/phase09-fencing.json",
+          "note": "fenced timer and progression claims implemented in packages/services/tournaments.js. Room timer leases and fixture progression leases use transactional PostgreSQL claims; fence epoch stamps current room revision; completeFixture validates epoch against live room revision; stale workers cannot act after a newer owner has progressed the tournament; lease expiry and owner-scoped release verified across 3 dedicated tests on real PG16."
+        }
+      ]
+    },
+    "V5-09-04": {
+      "status": "COMPLETE",
+      "evidence_refs": [
+        "docs/v5/evidence/phase09-settlement.json"
+      ],
+      "completed_portions": [],
+      "remaining": [],
+      "review_notes": "settlement and refund made indivisible via tournaments.settle and core global lock order. Room aggregate locked first, followed by wallets.lock on sorted actors, then atomic commit of room, wallets, ledger, burns, tournament records, occupancy release, and outbox event in one transaction; racing workers produce exactly one financial effect; mid-transaction crashes roll back completely across 4 dedicated tests on real PG16.",
+      "transitions": [
+        {
+          "at_utc": "2026-10-09T13:20:47.239+00:00",
+          "from": "PLANNED",
+          "to": "COMPLETE",
+          "evidence": "docs/v5/evidence/phase09-settlement.json",
+          "note": "settlement and refund made indivisible via tournaments.settle and core global lock order. Room aggregate locked first, followed by wallets.lock on sorted actors, then atomic commit of room, wallets, ledger, burns, tournament records, occupancy release, and outbox event in one transaction; racing workers produce exactly one financial effect; mid-transaction crashes roll back completely across 4 dedicated tests on real PG16."
+        }
+      ]
+    },
+    "V5-09-05": {
+      "status": "COMPLETE",
+      "evidence_refs": [
+        "docs/v5/evidence/phase09-recovery.json"
+      ],
+      "completed_portions": [],
+      "remaining": [],
+      "review_notes": "full multi-worker tournament recovery proven across ten-player public tables and private rooms. Simulated worker restarts, duplicate command delivery, and mid-event crashes produce zero lost escrow, zero duplicate prizes, no unexpected host handover, and no restart-caused user leave across 4 dedicated tests and 185 assertions on real PG16.",
+      "transitions": [
+        {
+          "at_utc": "2026-10-09T13:45:46.475+00:00",
+          "from": "PLANNED",
+          "to": "COMPLETE",
+          "evidence": "docs/v5/evidence/phase09-recovery.json",
+          "note": "full multi-worker tournament recovery proven across ten-player public tables and private rooms. Simulated worker restarts, duplicate command delivery, and mid-event crashes produce zero lost escrow, zero duplicate prizes, no unexpected host handover, and no restart-caused user leave across 4 dedicated tests and 185 assertions on real PG16."
+        }
+      ]
     }
   },
   "known_observations": [
@@ -4239,5 +4362,5 @@
     "committed": false,
     "pushed": false
   },
-  "next_action": "Resume V5-09-01 room and fixture persistence on the P09 head. G00-G08 passed (46 tasks accepted); P09 durable tournaments active. Free tiers only; Neon sole durable authority; V4 production untouched."
+  "next_action": "Resume V5-10-01 durable job and outbox primitives on the P10 head. G00-G09 passed (51 tasks accepted); P10 durable workers active. Free tiers only; Neon sole durable authority; V4 production untouched."
 }

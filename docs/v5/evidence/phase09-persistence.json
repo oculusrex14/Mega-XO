@@ -1,0 +1,52 @@
+{
+  "schema_version": 1,
+  "phase": "P09",
+  "task_ids": [
+    "V5-09-01"
+  ],
+  "case_ids": [],
+  "recorded_at_utc": "2026-10-09T09:00:00.000Z",
+  "status": "ROOM_FIXTURE_STATE_PERSISTED",
+  "source_state": {
+    "base_sha": "a09c1578e8dc788207b47da0fb999c1345b97aaf",
+    "verified_source_sha256": {
+      "packages/services/tournaments.js": "cefa0f937ec8be872ec573fc03e390c50d754ff9cb01e4ec914614138e6cecf1",
+      "packages/services/index.js": "73c683b52d6a59bc8bbd3c13bb1e54460f38bdf69a531777b72db5a882a17f69",
+      "tests/v5-p09-persistence.test.js": "29199d25c150bcfd7d5d2ec7521ad014aaeeea60c915f013d2f9df8828e6783c"
+    }
+  },
+  "room_persistence_verification": {
+    "service": "packages/services/tournaments.js",
+    "exported_factory": "createTournamentService({ pool, core, ephemera, now }) in packages/services/index.js",
+    "durable_schema": "tournament.rooms, tournament.room_players, tournament.escrow_contributions, tournament.fixtures (migration 0013_tournament.sql)",
+    "complete_state_persisted": {
+      "room_attributes": "room_id, code, owner_id, name, format, table_kind, sequential, quote_json, quote_currency, entry, pool, burn, clock_seconds, increment_seconds, capacity, rules_version, status, created_at, expires_at, started_at, ended_at, deadline, paused_at, reason, draw_game, revision, round_delay_ms, groups_json, final_refs_json, seed_json, ranking, receipt_json, risk_flags, risk_actors, escrow, settled, settled_at",
+      "roster_attributes": "10 player rows in tournament.room_players with actor_id, name, ready, withdrawn, ordinal",
+      "escrow_contributions": "10 contribution rows in tournament.escrow_contributions each matching entry fee, summing to total room escrow",
+      "fixture_graph": "20 fixture rows in tournament.fixtures with fixture_id, label, round, decisive, slots_json, players, ready, status (DONE, PLAYING, READY, BLOCKED), state_json (mini boards), clocks, banks, deadlines, revisions"
+    },
+    "service_restart_survival": {
+      "restart_mechanism": "Tournament service instance closed; fresh createTournamentService booted over the same database",
+      "equality": "Full room snapshot read back from PostgreSQL is 100% deep-equal to the snapshot taken before service restart",
+      "no_missing_state": "Zero missing ownership, roster, rules, fixtures, clocks, or financial state (escrow, contributions, quote, receipt)"
+    }
+  },
+  "test_execution": {
+    "command": "env V5_PG_URL=postgres://postgres@127.0.0.1:50709/postgres V5_PG_DISPOSABLE=1 V5_PG_REQUIRED=1 node --test --test-reporter=tap --test-concurrency=1 tests/v5-p09-persistence.test.js",
+    "environment": "owned loopback PostgreSQL 16.15",
+    "tests": 4,
+    "pass": 4,
+    "fail": 0,
+    "skipped": 0
+  },
+  "task_outcomes": {
+    "V5-09-01": "COMPLETE: complete room and fixture state persisted in transactional PostgreSQL repositories via packages/services/tournaments.js. Ownership, code, roster, readiness, rules, fixtures, clocks, ranking, revisions, quotes, contributions, and settlement records all verified to survive service restart with 100% deep-equality across 4 dedicated tests on real PG16."
+  },
+  "not_claimed": [
+    "user lifecycle behavior preservation (V5-09-02)",
+    "fenced timer and progression claims (V5-09-03)",
+    "indivisible settlement and refund (V5-09-04)",
+    "full multi-worker tournament recovery (V5-09-05)",
+    "G09 gate passage"
+  ]
+}

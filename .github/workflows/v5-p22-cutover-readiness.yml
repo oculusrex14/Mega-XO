@@ -1,6 +1,25 @@
 name: V5 P22 cutover readiness safeguards
 # Source-only CI: never authorizes, rehearses, or initiates a production cutover.
 on:
+  push:
+    branches: [V5-platform]
+    paths:
+      - '.github/workflows/v5-p22-cutover-readiness.yml'
+      - 'scripts/v5/p22/**'
+      - 'scripts/v5/p18/**'
+      - 'tests/v5-p22-*.test.js'
+      # Every authority, final-import, client and gate-ledger edit must
+      # re-evaluate the no-cutover preflight, not only P22-owned files.
+      - 'docs/v5/progress.json'
+      - 'docs/v5/evidence/**'
+      - 'packages/**'
+      - 'tools/v5-migration/**'
+      - 'src/**'
+      - 'native/**'
+      - 'scripts/v5/release-*'
+      - 'scripts/v5/build-client.js'
+      - 'tests/v5-p18-*.test.js'
+      - 'docs/co-dev/P22-CUTOVER-READINESS.md'
   pull_request:
     branches: [V5-platform]
     paths:

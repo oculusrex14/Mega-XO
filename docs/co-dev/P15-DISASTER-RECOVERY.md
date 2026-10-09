@@ -89,3 +89,22 @@ does not satisfy G15.
 - The fake AWS CLI unit runner is always labeled MOCK_NOT_PROVIDER_PROOF;
   actual R2 IAM, account, retention, backup retrieval and restore have
   not been externally verified. No live secrets are present in PR CI.
+
+## V5-15-04 repeated complete disposable restore drill and freshness controls
+
+CI now runs two separately created, sealed and decrypted real PG16 archive
+roundtrips against an isolated second PostgreSQL16 instance, in sequence.
+Each invocation creates distinct random archive identities and keys,
+verifies all durable application tables, migrations, wallets, privacy
+tombstones, refunds and audit triggers, and drops only its owned target.
+The ordered evidence is checked by drill-readiness.js; any missing
+second receipt, repeated ciphertext, incomplete cleanup, skipped test or
+unverified restored digest fails closed. Both executions happen in ONE
+CI run: they are not evidence of actual weekly scheduled provider drills.
+
+The same module evaluates freshness against the V5 specification's
+15-minute proposed age and 60-minute proposed restore objectives without
+approving either production threshold. A missing/stale independent backup
+requires an alert. Its report NEVER claims that alert delivery occurred.
+Production scheduling, real incident alert delivery, R2 readback restore,
+Neon PITR, external key custody and approved owner retention remain open.

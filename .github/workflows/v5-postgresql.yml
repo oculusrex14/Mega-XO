@@ -44,7 +44,7 @@ jobs:
         # postgres:16 digest resolved with a daemon-free registry inspect on 2026-10-08; the
         # multi-arch index (linux/amd64 for ubuntu-latest) is pinned so the server major cannot
         # float. The exact patch version is recorded at smoke time.
-        image: postgres:16@sha256:ca0bd484cb98bf4b24eb1010e73fb3fcbd6714d240fbc1a10eea5b7dbecb641d
+        image: public.ecr.aws/docker/library/postgres:16@sha256:ca0bd484cb98bf4b24eb1010e73fb3fcbd6714d240fbc1a10eea5b7dbecb641d
         env:
           POSTGRES_USER: postgres
           POSTGRES_DB: postgres
@@ -61,8 +61,8 @@ jobs:
         # P06 ephemera tier: a real Redis for the namespaced-bounded-primitives suite. The
         # container is ephemeral job capacity exactly like the PostgreSQL one; it holds no
         # secret, no persistence and no production endpoint. Digest resolved with a daemon-free
-        # registry inspect on 2026-10-09 (linux/amd64 child of the redis:7.4 multi-arch index).
-        image: redis:7.4@sha256:cd745595f143052dd6a743bc5651d3ce4b03979fe5c99c7fcfab73461f6f217b
+        # ECR digest verified by CI 37994788789 (Redis 7.4.11 amd64).
+        image: public.ecr.aws/docker/library/redis:7.4@sha256:4fa24486b8bcca8eec45ee0eb166edc674795e53a2b53d1a9ef263eecebaac85
         ports:
           - 127.0.0.1:6379:6379
         options: >-

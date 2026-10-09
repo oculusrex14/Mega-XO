@@ -80,7 +80,7 @@ jobs:
       P15_EVIDENCE_OUTPUT: .artifacts/p15-disposable-restore.json
     services:
       source_pg:
-        image: postgres:16@sha256:ca0bd484cb98bf4b24eb1010e73fb3fcbd6714d240fbc1a10eea5b7dbecb641d
+        image: public.ecr.aws/docker/library/postgres:16@sha256:ca0bd484cb98bf4b24eb1010e73fb3fcbd6714d240fbc1a10eea5b7dbecb641d
         env:
           POSTGRES_USER: postgres
           POSTGRES_DB: postgres
@@ -94,7 +94,7 @@ jobs:
           --health-retries 24
           --health-start-period 10s
       recovery_pg:
-        image: postgres:16@sha256:ca0bd484cb98bf4b24eb1010e73fb3fcbd6714d240fbc1a10eea5b7dbecb641d
+        image: public.ecr.aws/docker/library/postgres:16@sha256:ca0bd484cb98bf4b24eb1010e73fb3fcbd6714d240fbc1a10eea5b7dbecb641d
         env:
           POSTGRES_USER: postgres
           POSTGRES_DB: postgres

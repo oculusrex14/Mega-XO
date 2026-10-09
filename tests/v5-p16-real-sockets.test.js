@@ -46,6 +46,7 @@ test('real loopback connections receive drain notice, reject newcomers, and rele
       return;
     }
     accepted.add(socket);
+    socket.resume(); // Consume FIN so the server-side close event releases the lease.
     socket.once('close', () => {
       accepted.delete(socket);
       handle.release();

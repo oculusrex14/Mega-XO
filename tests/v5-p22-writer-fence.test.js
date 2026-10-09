@@ -65,6 +65,7 @@ test('inventory incomplete, extra class, duplicate or contradictory snapshot rej
   denied(m=>{m.entries[1].class='undocumented-legacy-authority'});
   denied(m=>{m.v4FrozenSnapshotSha256=null});
   denied(m=>{m.v4RebootFenceTestRef='https://github.com/example'});
+  denied(m=>{m.v4RebootFenceTestRef='artifact://v5/p22/fence/../other-audit'});
   denied(m=>{m.firstV5ApplicationWriteRef='artifact://v5/p22/first-write/already-committed'});
   denied(m=>{m.productionReady=true});
   denied(m=>{m.sourceSha='d'.repeat(40)});

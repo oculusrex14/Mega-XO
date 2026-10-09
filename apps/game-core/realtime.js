@@ -7,7 +7,11 @@
  *   const http = require('node:http');
  *   const { createRealtimeTransport } = require('./realtime.js');
  *   const server = http.createServer(app);
- *   const transport = createRealtimeTransport({ server, pool, core, ephemera, now });
+ *   // authenticateHttp MUST validate the real cookie/bearer, revocation and actor
+ *   // against the durable session authority. Never derive it from ?actor=.
+ *   const transport = createRealtimeTransport({
+ *     server, pool, core, ephemera, now, authenticateHttp: verifyExistingSession,
+ *   });
  *   server.listen(port);
  *   ...
  *   await transport.close();   // drain sockets, keep the server/pool/core/ephemera caller-owned
@@ -16,6 +20,12 @@
  * `GET /realtime/v1/snapshot?match_id=..&actor=..` and `GET /realtime/v1/match/:id?actor=..`; an app
  * handler must therefore YIELD those two paths (its answer lands a database round-trip later, so a
  * `res.headersSent` check alone races it) and handles every other request unchanged.
+ * These private reads FAIL CLOSED with HTTP 401 without the caller-owned
+ * authenticateHttp(req) hook. The hook must return { actor: verifiedActorId }
+ * only AFTER checking session expiry/revocation/eligibility, never from the
+ * unauthenticated query string; the legacy ?actor= parameter is at most a
+ * mismatch check. Do not mount the fallback behind a cache or public proxy
+ * that strips auth credentials.
  *
  * It is a re-export, not a second implementation: the wire contract, the one-use ticket redemption
  * and the durable membership check all live in packages/services/realtime-transport.js, next to the

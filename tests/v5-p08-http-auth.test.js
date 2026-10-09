@@ -118,8 +118,15 @@ test('revoked/invalid sessions and failed authentication backend fail closed',as
     const observed=await request(s.port,url,{authorization:token});
     assert.equal(observed.status,status,token);
   }
+  /* A valid Bob session paired with an Alice query must be refused by the
+   * transport before Core is called; the query never grants actor identity.
+   * Omitting the hint then delegates actual match membership to durable Core. */
+  assert.deepEqual(s.reads,[],'mismatched query is rejected before any Core read');
+  const nonParticipant=await request(s.port,
+    '/realtime/v1/match/match:test-001',{authorization:'Bearer unrelated'});
+  assert.equal(nonParticipant.status,403);
   assert.deepEqual(s.reads,[{actor:'svc_bob',id:'match:test-001'}],
-    'Core checks participant authorization after valid host-authenticated identity');
+    'Core enforces match membership for a correctly authenticated actor');
 });
 
 test('HEAD fallback stays authenticated and unrelated host routes remain unchanged',async t=>{

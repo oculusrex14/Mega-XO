@@ -36,7 +36,8 @@ jobs:
             tests/v5-p16-lifecycle.test.js \
             tests/v5-p16-connections.test.js \
             tests/v5-p16-real-sockets.test.js \
-            tests/v5-p16-topology.test.js > p16-tap.log
+            tests/v5-p16-topology.test.js \
+            tests/v5-p16-ci-perimeter.test.js > p16-tap.log
           cat p16-tap.log
           grep -Eq '^# tests [1-9][0-9]*$' p16-tap.log
           grep -Eq '^# pass [1-9][0-9]*$' p16-tap.log

@@ -5,9 +5,15 @@
 **Owner:** independent co-developer; **status:** preparatory implementation, NOT formal phase acceptance  
 **Started:** 2026-10-09 UTC  
 **Pinned starting V5 base:** `e8d049bf50862897f546e531def12715a36c670c` (other agent's latest P06 checkpoint when branch was created)  
-**Upstream sync:** accepted G06 (`42db7e0`) merged via `dc579856d8c4`; accepted G07 (`045d5f94a134`) via `41190f99feaa`; accepted G08 (`a09c1578e8dc`) via `1638ab671c66` (22 files, zero overlap); **accepted G09** (`f2863ab1b60f`) via two-parent merge **`cff167f8b163`** (18 byte-identical owner files + dedicated CI union `e40b149839c1`). Main branch was not edited. **Current primary phase P11**, with G00–G10 accepted (56/117 tasks).
+**Upstream sync:** accepted G06 (`42db7e0`) merged via `dc579856d8c4`; accepted G07 (`045d5f94a134`) via `41190f99feaa`; accepted G08 (`a09c1578e8dc`) via `1638ab671c66` (22 files, zero overlap); **accepted G09** (`f2863ab1b60f`) via two-parent merge **`cff167f8b163`** (18 byte-identical owner files + dedicated CI union `e40b149839c1`). Main branch was not edited. **G10** (`ca789f9cca8e`) merged at `ba1be63b`; **G11** (`76165cf0fc37`) merged at `8ad58c5d` after reconciling P11 CI with the existing co-dev tests in `63295320`. **Current primary phase P12**, with G00–G11 accepted (61/117 tasks).
 **Work policy:** only this branch receives new co-development commits. Do not ask the integration agent to inspect/merge individual phase PRs.
 
+## Current short-task checkpoint — G11 synchronization
+
+- **Saved separately:** `63295320` adds the owner's five P11 API test suites and zero-skip evidence checks to the co-dev PostgreSQL workflow **without dropping** P08 HTTP security, P09 tournament or P10 worker hardening tests.
+- **Preserved both agents:** two-parent merge `8ad58c5d` imports all 32 other P11-owned source, route, evidence and owner-ledger changes from accepted primary SHA `76165cf0fc37`. This branch is now **zero commits behind** that owner checkpoint. No changes were made to `V5-platform`.
+- **Prior CI proof:** before this synchronization, all **11/11** workflows at co-dev SHA `d2435735bdda` were green (full PostgreSQL, browser, native and staging). **Do not inherit those pass marks** for the new combined SHA. New exact-head runs are in progress; review them before merging.
+- **Next bounded task (separate request):** review P11 API/compat/gateway contracts and harden one concrete issue at a time with one fix, one regression test and a README update. Do not start a large multi-phase sweep in this task.
 ## Quick start for the primary agent
 
 1. Review the **single unified PR** from `co-dev/v5-integration` to `V5-platform`. Its commits preserve the entire incremental history from the original branches via two-parent Git merges, rather than dropping previous work into one squash.
@@ -84,7 +90,7 @@ Audited all 95 previously changed JS/CJS files for parse errors and tracked rela
 
 ## Ownership, dependencies and safety
 
-- The **primary agent** has accepted G00–G10 and owns P11–P14 online work; follow its gate ledger, provider evidence and exact interfaces. This branch **edits P07 `packages/services/queue.js`** (claim/hint/race fixes), **P08 `packages/services/realtime-transport.js`, `packages/services/timers.js`** (HTTP auth, backlog and Redis TTL fixes), and **P09 `packages/services/tournaments.js`** (lease expiry/fencing correction) plus matching tests and unified CI. Review these contracts before integrating. The co-dev branch does not rewrite the primary agent's `packages/services/core.js`, `packages/services/ephemera.js`, schema/migrations, live environment inventories, `deploy/compose.yaml`, Caddyfile or `docs/v5/progress.json`.
+- The **primary agent** has accepted G00–G11 and owns P12–P14 online work; follow its gate ledger, provider evidence and exact interfaces. This branch **edits P07 `packages/services/queue.js`** (claim/hint/race fixes), **P08 `packages/services/realtime-transport.js`, `packages/services/timers.js`** (HTTP auth, backlog and Redis TTL fixes), and **P09 `packages/services/tournaments.js`** (lease expiry/fencing correction) plus matching tests and unified CI. Review these contracts before integrating. The co-dev branch does not rewrite the primary agent's `packages/services/core.js`, `packages/services/ephemera.js`, schema/migrations, live environment inventories, `deploy/compose.yaml`, Caddyfile or `docs/v5/progress.json`.
 - The **co-developer** maintains P15–P20 and P22–P24 preparation, client-bundle safety, reviewed P07/P08/P09 corrections and cross-phase CI compatibility audits. All future work lands on this one branch, with small, meaningful commits and an updated README.
 - **No V4 changes**, no current production authority transfer, no modifying R2/Neon/Redis/provider objects, no store submission, no new external ports, and no credentials in Git.
 - P21 (new website/browser product) is **explicitly owner-deferred**; do not start it. P22 depends on P20 rather than the deferred website. P24 is measurement-gated.
@@ -209,6 +215,9 @@ node scripts/v5/p22/readiness.js --sha "$(git rev-parse HEAD)" # must report BLO
 Every PR update must verify the exact source head CI. Keep V5 retained regressions, economy and four-theme UI checks. A green synthetic test is not authority to deploy, purchase anything, activate email/billing, rotate operational keys, change V4 DNS/edge or tick a gate.
 
 ## Chronological co-dev checkpoint log
+
+- **2026-10-09 G11 short sync:** Primary G11 `76165cf0fc37` accepted (owner now P12, 61/117 tasks). Reconciled 5 P11 PostgreSQL API suites while preserving all co-dev P08–P10 suites (`63295320`), then merged the remaining 32 owner file changes via two-parent `8ad58c5d` with **no owner-branch modifications**. Prior head CI 11/11 green; exact new head CI in progress. Separate future work for P11 hardening, as one small task per commit.
+
 
 - **2026-10-09 P09 cache-hygiene extension:** The stale cached-room bug also affected non-publicJoin commands because they queried `activeRooms()` before the addressed row lock. All existing-room commands now use `tournaments.freshRoom()` after locking, and ALL public-table commands refresh the economy after wallet locks (`44f6648`). Added a third real-PG race proof: late `ready` must not revive an already closed room (`5061bfd`). This extends—not weakens—the unchanged gameplay/financial semantics. **Final exact-head CI pending.**
 

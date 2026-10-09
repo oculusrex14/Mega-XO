@@ -102,6 +102,9 @@ const DEFAULT_RETENTION_MS = 7 * DAY_MS;
 /* One deletion can leave at most this many undelivered mail rows behind; the sweep is bounded so a
  * pathological actor cannot turn a privacy request into an unbounded transaction. */
 const CANCEL_SCAN_LIMIT = 256;
+/* Each iteration takes one bounded scan; an exceptionally large/deleted actor is
+ * explicitly escalated instead of silently leaving undelivered mail after row 256. */
+const CANCEL_MAX_BATCHES = 64;
 const IDENT_MAX = 200;
 /* Control characters (including NUL) never belong in an identifier or a log line. */
 const CONTROL_CHAR = /[\u0000-\u001F\u007F]/;
@@ -471,13 +474,20 @@ function createPrivacyWorkflow(options = {}) {
    requireOpen();
    const id = requireActorId(actor);
    const pattern = 'mail:' + escapeLike(id) + ':%';
-   const rows = (await runner(clientOrPool)(ACTOR_OUTBOX_SQL, [pattern, CANCEL_SCAN_LIMIT])).rows;
+   const scan = runner(clientOrPool);
    let cancelled = 0;
-   for (const row of rows) {
-    const outboxId = requireOutboxId(String(row.outbox_id));
-    if (await jobService.cancelJob({ id: outboxId })) cancelled += 1;
+   for (let batch = 0; batch < CANCEL_MAX_BATCHES; batch += 1) {
+    const rows = (await scan(ACTOR_OUTBOX_SQL, [pattern, CANCEL_SCAN_LIMIT])).rows;
+    if (rows.length === 0) return cancelled;
+    for (const row of rows) {
+     const outboxId = requireOutboxId(String(row.outbox_id));
+     if (await jobService.cancelJob({ id: outboxId })) cancelled += 1;
+    }
+    if (rows.length < CANCEL_SCAN_LIMIT) return cancelled;
    }
-   return cancelled;
+   /* Never present a partial privacy sweep as a completed cancellation. A
+    * caller can retry idempotently after reviewing the unusually large backlog. */
+   fail('ACTOR_CANCEL_LIMIT_REACHED', { batches: CANCEL_MAX_BATCHES, batchLimit: CANCEL_SCAN_LIMIT });
   },
 
   /* Delete terminal outbox rows that are older than the retention window. Delivered, failed, expired

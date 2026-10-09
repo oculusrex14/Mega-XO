@@ -7,9 +7,9 @@ const SHA = 'a'.repeat(40), V4 = 'b'.repeat(40), HASH = 'c'.repeat(64);
 const FIRST = 'artifact://v5/p22/first-write/verified-first-write-01';
 const ref = name => 'artifact://v5/p23/' + name + '/operator-test-evidence-001';
 function ledger(accepted = false) {
-  const count = accepted ? 23 : 8;
+  const ids = accepted ? [...Array(21).keys(),22] : [...Array(8).keys()];
   return { schema_version:1, current:{ integration_branch:'V5-platform',
-    passed_phase_gates:Array.from({length:count},(_,i)=>({
+    passed_phase_gates:ids.map(i=>({
       phase:'P'+String(i).padStart(2,'0'), gate:'G'+String(i).padStart(2,'0'),
       evidence_refs:['docs/v5/evidence/phase-gate.json'],
     })),
@@ -103,4 +103,14 @@ test('unknown or duplicated owner gate entries are not trusted',()=>{
   assert.throws(()=>assessRetirement(l,SHA),/P23_RETIREMENT_REFUSED:INVALID_GATE_LEDGER/);
   const x=ledger(true);x.current.integration_branch='main';
   assert.throws(()=>assessRetirement(x,SHA),/P23_RETIREMENT_REFUSED:OWNER_LEDGER_REQUIRED/);
+});
+
+
+test('accepted G22 cannot bypass required G00-G20 lineage and does not require deferred G21',()=>{
+  const valid=ledger(true);
+  assert.equal(valid.current.passed_phase_gates.some(x=>x.gate==='G21'),false);
+  assert.equal(assessRetirement(valid,SHA,declaration()).acceptedG22,true);
+  const lost={...valid,current:{...valid.current,
+    passed_phase_gates:valid.current.passed_phase_gates.filter(x=>x.gate!=='G14')}};
+  assert.equal(assessRetirement(lost,SHA,declaration()).status,'BLOCKED_G22_NOT_ACCEPTED');
 });

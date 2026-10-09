@@ -17,6 +17,7 @@ const path=require('node:path');
 const crypto=require('node:crypto');
 const {spawnSync}=require('node:child_process');
 const {inspectPair}=require('./archive-manifest.js');
+const {digestFile}=require('./sealed-archive.js');
 const {assertTarget,plan}=require('./r2-contract.js');
 const {checkFile,privateDirectory}=require('./direct-target.js');
 
@@ -67,10 +68,6 @@ function callAws(runner,args,env,profile){
 function sharedFlags(t){
  return ['--endpoint-url',t.endpoint,'--region','auto','--bucket',t.bucket];
 }
-function digestFileSync(file){
- const buf=fs.readFileSync(file);
- return crypto.createHash('sha256').update(buf).digest('hex');
-}
 async function transfer({r2,manifestPath,archivePath,env=process.env,
  runner=spawnSync}){
  const target=assertTarget(r2);
@@ -99,7 +96,7 @@ async function transfer({r2,manifestPath,archivePath,env=process.env,
   // NEVER delete a possibly recoverable copy as a "cleanup" response.
   put(keys.ciphertextKey,archivePath,'application/octet-stream',
    'sha256='+manifest.ciphertextSha256);
-  const expectedManifestSha=digestFileSync(manifestPath);
+  const expectedManifestSha=await digestFile(manifestPath);
   put(keys.manifestKey,manifestPath,'application/json','sha256='+expectedManifestSha);
 
   const head=callAws(runner,['s3api','head-object',...common,
@@ -118,8 +115,8 @@ async function transfer({r2,manifestPath,archivePath,env=process.env,
    '--key',keys.manifestKey,tempManifest,'--output','json'],env,READER);
   const stat=fs.lstatSync(tempCipher);
   if(!stat.isFile()||stat.isSymbolicLink()||stat.size!==manifest.ciphertextBytes||
-    digestFileSync(tempCipher)!==manifest.ciphertextSha256||
-    digestFileSync(tempManifest)!==expectedManifestSha) {
+    await digestFile(tempCipher)!==manifest.ciphertextSha256||
+    await digestFile(tempManifest)!==expectedManifestSha) {
    refuse('retrieved R2 ciphertext/manifest bytes differ from upload');
   }
   const providerObserved=runner===spawnSync;

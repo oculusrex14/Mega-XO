@@ -102,5 +102,7 @@ test('malformed or stolen evidence cannot silently make a rollback decision',()=
   const y=record();y.productionPermission=true;
   assert.throws(()=>classify(y,SHA),/P22_ROLLBACK_REFUSED/);
   const z=record();z.v4FencingEvidenceRef='https://attacker.example/redirect';
+  const pathTraversal=record();pathTraversal.v4FencingEvidenceRef='artifact://v5/p22/fence/../fakeproof';
+  assert.throws(()=>classify(pathTraversal,SHA),/P22_ROLLBACK_REFUSED/);
   assert.throws(()=>classify(z,SHA),/P22_ROLLBACK_REFUSED/);
 });

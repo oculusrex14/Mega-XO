@@ -626,8 +626,19 @@ function createTournamentService(options = {}) {
     const actors = new Set(room.players.map((p) => p.id));
     for (const contribution of (room.contributions || [])) actors.add(contribution.id);
     if (actors.size > 0) await repositories.wallets.lock([...actors], { aggregate: { kind: 'tournament', id: room.id } });
-    /* Already-read for matchmaking, or read now; one hydrate per transaction either way. */
-    economy = economy || await repositories.state.read();
+    /* The pre-lock publicJoin aggregate was only for lobby selection, NEVER
+     * an authoritative balance: another transaction could have changed the
+     * actor's wallet while this join waited on the room/occupancy locks.
+     * Invalidate and rehydrate under wallet locks before any debit or write.
+     * Existing-room commands never read economy before these locks. */
+    economy = cmd.type === 'publicJoin' ? await repositories.state.refresh()
+     : economy || await repositories.state.read();
+    if (cmd.type === 'publicJoin') {
+     const funded = eligibleAccount(lookupAccount(economy, actor));
+     const quote = T.prize(cmd.table);
+     if (funded.activeMatch) fail('ALREADY_IN_MATCH');
+     if (funded[quote.currency] < quote.entry) fail(`INSUFFICIENT_${quote.currency.toUpperCase()}`);
+    }
     if (room.status === 'LOBBY' && room.players.length === 10 && room.players.every((p) => p.ready)) {
      reserveRoom(room, economy, now);
      T.start(room, 'service', MM.tournamentSeed(room.players.map((p) => p.id), economy), now);

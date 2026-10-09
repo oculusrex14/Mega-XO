@@ -8,6 +8,13 @@
 **Upstream sync:** accepted G06 (`42db7e0`) merged via `dc579856d8c4`; accepted G07 (`045d5f94a134`) via `41190f99feaa`; accepted G08 (`a09c1578e8dc`) via `1638ab671c66` (22 files, zero overlap); **accepted G09** (`f2863ab1b60f`) via two-parent merge **`cff167f8b163`** (18 byte-identical owner files + dedicated CI union `e40b149839c1`). Main branch was not edited. **G10** (`ca789f9cca8e`) merged at `ba1be63b`; **G11** (`76165cf0fc37`) merged at `8ad58c5d` after reconciling P11 CI with the existing co-dev tests in `63295320`. **Current primary phase P12**, with G00–G11 accepted (61/117 tasks).
 **Work policy:** only this branch receives new co-development commits. Do not ask the integration agent to inspect/merge individual phase PRs.
 
+## P11 post-gate security hardening — 2026-10-10
+
+- **Critical identity boundary:** the owner G11 HTTP helpers treated `x-actor-id`, `x-test-actor` and request `actor/user` properties as proof of linked identity, then minted sessions from arbitrary actor IDs. The competitive Core gateway additionally accepted forged headers without consulting authentication. A browser could therefore impersonate accounts and issue economic commands.
+- **Commits:** `50669051` removes all actor-header trust and implicit session minting from the API helper, and makes competitive Core forwarding resolve a linked token through the same authoritative account service. `07eec31f` adds forged-header-to-wallet negative regressions. Existing P11 synthetic requests now issue real linked sessions in their test harnesses, with no special production bypass.
+- **CI status:** the preceding `0294c70a` PR-head jobs for PostgreSQL/P15/P16/P18/P19 failed during GitHub-hosted service initialization, before application tests. Logs show Docker Hub unauthenticated `toomanyrequests` for pinned PostgreSQL 16, sometimes token endpoint timeouts. These are external image-acquisition failures, not proof of clean database tests or code regressions. Do not mark the new head green until an executed exact-head PG16/Redis run completes with zero skips.
+- **Unchanged architecture:** owner `V5-platform` and acceptance ledger are untouched; P9/P10 economy, tournament and worker rules remain unchanged. A production Core command must have an authenticated, currently linked session. Review browser cookie/session continuity before deployment.
+
 ## Current short-task checkpoint — G11 synchronization
 
 - **Saved separately:** `63295320` adds the owner's five P11 API test suites and zero-skip evidence checks to the co-dev PostgreSQL workflow **without dropping** P08 HTTP security, P09 tournament or P10 worker hardening tests.

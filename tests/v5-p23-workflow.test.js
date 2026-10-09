@@ -26,6 +26,7 @@ function audit(src){
     /^\s*[a-z-]+: write$/m.test(src)||
     /\$\{\{\s*secrets\./.test(src)||
     /persist-credentials: true/.test(src))fail('SECRET_OR_WRITE_TOKEN');
+  if(!/group: v5-p23-\$\{\{/.test(src) || /group: v5-p23-\\\$\{\{/.test(src))fail('ESCAPED_CONCURRENCY_EXPRESSION');
   const uses=[...src.matchAll(/^\s*- uses: ([^\s#]+)/gm)].map(x=>x[1]);
   if(uses.length!==2||uses.some(x=>!/^[-\w.]+\/[-\w.]+@[0-9a-f]{40}$/.test(x))||
     !src.includes('persist-credentials: false'))fail('UNPINNED_ACTION_OR_GIT_CREDS');
@@ -53,6 +54,7 @@ test('privileged events, service accounts and unsafe checkout are rejected',()=>
     x=>x.replace('  pull_request:', '  pull_request_target:'),
     x=>x.replace('  contents: read', '  contents: write'),
     x=>x.replace('persist-credentials: false','persist-credentials: true'),
+    x=>x.replace('group: v5-p23-${{','group: v5-p23-\\${{'),
     x=>x.replace(/actions\/checkout@[0-9a-f]{40}/,'actions/checkout@v4'),
     x=>x.replace('    branches: [V5-platform]', '    branches: [main]'),
   ])assert.throws(()=>audit(mutate(workflow)),/P23_CI_REFUSED/);

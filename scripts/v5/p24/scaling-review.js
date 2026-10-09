@@ -75,15 +75,21 @@ function reviewScale({ledger,sourceSha,nowUtc,baseline=null,policy=null,interval
  const observed=assessBaseline(baseline,sourceSha);
  const rules=assessPolicy(policy,sourceSha);
  const windows=inspectIntervals(intervals,sourceSha,now);
+ /* A perfect old baseline cannot certify new hardware, releases or market
+  * demand. Historical P19 and staging reports remain diagnostic only. */
+ const baselineEnd=baseline===null?null:epoch(baseline.periodEndUtc);
+ const baselineFresh=baselineEnd!==null&&baselineEnd<=now&&
+   now-baselineEnd<=30*86400000;
  const empty={format:'mega-v5-p24-scale-review/v1',sourceSha,acceptedG23:true,
   reviewCandidates:[],ownerApprovalPending:[],
   baselineIndependentlyVerified:false,telemetryIndependentlyVerified:false,
   actualScaleApplied:false,productionMutationAuthorized:false,
   independentHostHAProven:false,g24Accepted:false,
  };
- if(observed.status!=='PRODUCTION_CLAIM_NEEDS_INDEPENDENT_VERIFICATION') {
+ if(observed.status!=='PRODUCTION_CLAIM_NEEDS_INDEPENDENT_VERIFICATION'||!baselineFresh) {
   return Object.freeze({...empty,status:'NOT_TRIGGERED_NO_VERIFIED_PRODUCTION_BASELINE',
-   baselineStatus:observed.status,windowsObserved:windows.length});
+   baselineStatus:!baselineFresh&&baseline!==null?'STALE_OR_FUTURE_BASELINE':observed.status,
+   windowsObserved:windows.length});
  }
  if(rules.configuredTriggers===0)return Object.freeze({
   ...empty,status:'NOT_TRIGGERED_NO_APPROVED_THRESHOLDS',windowsObserved:windows.length,

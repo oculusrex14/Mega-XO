@@ -203,7 +203,7 @@ const CLAIM_NOTIFICATIONS_KEYS_SQL = 'SELECT store, notification_id FROM monetiz
  * other worker can race the increment. `RETURNING` reads back the fence and the post-increment attempt
  * count the caller must present to `completeNotification`/`failNotification`. */
 const CLAIM_NOTIFICATIONS_TAKE_SQL = 'UPDATE monetization.store_notifications'
- + " SET state = 'processing', lease_owner = $2, lease_token = COALESCE(lease_token, 0) + 1,"
+ + " SET state = 'processing', lease_owner = $2, lease_token = attempts + 1,"
  + ' lease_until = $3, attempts = attempts + 1'
  + ' WHERE (store, notification_id) IN (SELECT * FROM unnest($1::text[], $4::text[]))'
  + ' RETURNING store, notification_id, received_at, attempts, lease_token, last_error';
@@ -253,7 +253,7 @@ const ENQUEUE_FINALIZE_SQL = 'INSERT INTO monetization.store_finalize'
   finalizeSet('purchase_token', 'EXCLUDED.purchase_token'),
   finalizeSet('kind', 'EXCLUDED.kind'),
   finalizeSet('state', "'pending'"),
-  finalizeSet('attempts', '0'),
+  finalizeSet('attempts', 'monetization.store_finalize.attempts'),
   finalizeSet('next_at', 'EXCLUDED.next_at'),
   finalizeSet('lease_owner', 'NULL'),
   finalizeSet('lease_token', 'NULL'),
@@ -277,7 +277,7 @@ const CLAIM_FINALIZE_KEYS_SQL = 'SELECT store, transaction_id FROM monetization.
  + ' FOR UPDATE SKIP LOCKED';
 
 const CLAIM_FINALIZE_TAKE_SQL = 'UPDATE monetization.store_finalize'
- + ' SET lease_owner = $2, lease_token = COALESCE(lease_token, 0) + 1, lease_until = $3,'
+ + ' SET lease_owner = $2, lease_token = attempts + 1, lease_until = $3,'
  + ' attempts = attempts + 1, updated_at = $4'
  + ' WHERE (store, transaction_id) IN (SELECT * FROM unnest($1::text[], $5::text[]))'
  + ' RETURNING store, transaction_id, product_id, purchase_token, kind, attempts, lease_token, created_at';

@@ -34,7 +34,7 @@ function validContext(c){
 }
 function publicRecipient(key){
  let pub;
- try{pub=crypto.createPublicKey(key);}catch{refuse('invalid public recovery key');}
+ try{pub=key && key.type==='public' ? key : crypto.createPublicKey(key);}catch{refuse('invalid public recovery key');}
  if(pub.asymmetricKeyType!=='rsa'||pub.asymmetricKeyDetails?.modulusLength<3072) {
   refuse('recovery recipient must be RSA-3072 or stronger');
  }

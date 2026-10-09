@@ -61,3 +61,15 @@ test('deadline never reports a partial green result',async()=>{
    /P19_METRICS_REFUSED/
  );
 });
+
+test('disposable reality labels cannot masquerade as unbuilt realtime/service transport',async()=>{
+ const {REAL_DISPOSABLE_OPERATIONS}=require('../scripts/v5/p19/metrics.js');
+ assert.deepEqual(REAL_DISPOSABLE_OPERATIONS,[
+  'api_account_read','core_currency_conversion','redis_presence','redis_rate_window'
+ ]);
+ const report=await measure({work:REAL_DISPOSABLE_OPERATIONS,concurrency:2,perform:async()=>{}});
+ assert.equal(report.executedOperations,4);
+ assert.equal(report.g19Accepted,false);
+ assert.equal(report.launchEnvelopeProven,false);
+ assert.ok(report.operationGroups.redis_rate_window);
+});

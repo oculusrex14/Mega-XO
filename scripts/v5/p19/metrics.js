@@ -11,6 +11,9 @@
  */
 const {performance}=require('node:perf_hooks');
 const {MAX_CLIENTS,MAX_OPS,OPERATIONS}=require('./workload-profile.js');
+const REAL_DISPOSABLE_OPERATIONS=Object.freeze([
+  'api_account_read','core_currency_conversion','redis_presence','redis_rate_window'
+]);
 const KNOWN_ERRORS=new Set(['BUSY','TIMEOUT','CONFLICT','RATE_LIMITED','UNAVAILABLE','REJECTED','ERROR']);
 function refuse(why){throw Error('P19_METRICS_REFUSED: '+why);}
 function numeric(n){return typeof n==='number'&&Number.isFinite(n);}
@@ -39,7 +42,7 @@ async function measure({work,concurrency,perform,deadlineMs=60000,clock=()=>perf
     !Number.isSafeInteger(concurrency)||concurrency<1||concurrency>MAX_CLIENTS||
     typeof perform!=='function'||typeof clock!=='function'||
     !Number.isSafeInteger(deadlineMs)||deadlineMs<1||deadlineMs>60000)refuse('invalid synthetic workload bounds');
- const allowed=new Set(OPERATIONS.map(o=>o.name));
+ const allowed=new Set([...OPERATIONS.map(o=>o.name),...REAL_DISPOSABLE_OPERATIONS]);
  for(const task of work) {
    if(typeof task!=='string'||!allowed.has(task))refuse('unrecognized operation class');
  }
@@ -72,10 +75,10 @@ async function measure({work,concurrency,perform,deadlineMs=60000,clock=()=>perf
    refuse('incomplete or invalid measurement');
  }
  const errors={},byOp={};
- for(const o of OPERATIONS){
-   const rows=results.filter(r=>r.op===o.name);
+ for(const o of [...OPERATIONS.map(x=>x.name),...REAL_DISPOSABLE_OPERATIONS]){
+   const rows=results.filter(r=>r.op===o);
    if(!rows.length)continue;
-   byOp[o.name]={
+   byOp[o]={
      attempted:rows.length,ok:rows.filter(r=>r.ok).length,
      failures:rows.filter(r=>!r.ok).length,
      latency:summary(rows.map(r=>r.ms))
@@ -109,4 +112,4 @@ async function measure({work,concurrency,perform,deadlineMs=60000,clock=()=>perf
      'Oracle host capacity','sustainable player forecast','P18 staging acceptance']
  };
 }
-module.exports={KNOWN_ERRORS,safeError,summary,measure};
+module.exports={REAL_DISPOSABLE_OPERATIONS,KNOWN_ERRORS,safeError,summary,measure};

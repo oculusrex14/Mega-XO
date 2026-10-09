@@ -634,6 +634,12 @@ const purchases = {
   * and adopts the caller's value as the new in-scope aggregate. */
  const state = {
   async read() { return (await hydrate(context)).authority.export(); },
+  /* Explicit post-lock refresh for commands that needed a read-only
+   * selection snapshot before acquiring actor wallets. The scope-cached
+   * aggregate must not authorize debits after another transaction changed
+   * a wallet while we waited for FOR UPDATE. Call before mutating the new
+   * document; this never discards earlier in-scope writes. */
+  async refresh() { invalidate(context); return (await hydrate(context)).authority.export(); },
   /* Whether the in-scope aggregate read was COMPLETE for decision purposes: no bounded
   * decision-input read exceeded its cap. A caller that is about to authorize a whole-graph economic
   * write - `server/rooms.js` reads `state.read()`, mutates it, then calls `state.write` - must ask

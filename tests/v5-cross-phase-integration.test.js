@@ -40,6 +40,26 @@ function requiredPaths(yaml, event, expected) {
   assert.equal(new Set(actual).size, actual.length, 'duplicate trigger paths create review noise');
 }
 
+test('P24 source scaling review watches actual P19 measurement, owner ledger and production topology changes', () => {
+  const yaml = workflow('v5-p24-scale-readiness.yml');
+  const required = [
+    '.github/workflows/v5-p24-scale-readiness.yml',
+    '.github/workflows/v5-p19-load-chaos.yml',
+    '.github/workflows/v5-p23-retirement-foundations.yml',
+    'scripts/v5/p24/**','scripts/v5/p19/**','scripts/v5/p23/**',
+    'tests/v5-p24-*.test.js','docs/v5/progress.json',
+    'docs/v5/evidence/**','packages/db/**','packages/services/**',
+    'packages/migrations/**','apps/**','deploy/**','server/**','infra/**','native/**',
+  ];
+  requiredPaths(yaml,'pull_request',required);
+  requiredPaths(yaml,'push',required);
+  assert.deepEqual(eventPaths(yaml,'push'),eventPaths(yaml,'pull_request'));
+  assert.match(yaml,/^permissions:\n  contents: read$/m);
+  assert.ok(yaml.includes('result.productionMutationAuthorized!==false'));
+  assert.ok(yaml.includes('result.g24Accepted!==false'));
+  assert.doesNotMatch(yaml,/^  (?:pull_request_target|workflow_run|workflow_dispatch):/m);
+});
+
 test('P08 HTTP identity and socket queue safeguards stay in zero-skip PG integration checks', () => {
   const yaml = workflow('v5-postgresql.yml');
   assert.match(yaml, /^  push:\n    branches: \[V5-platform\]/m);

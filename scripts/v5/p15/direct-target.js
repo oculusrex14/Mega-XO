@@ -46,7 +46,7 @@ function assertTarget(value,operation,env=process.env){
   'disposable-source':operation==='backup'&&value.environment==='test'&&
    env.V5_P15_DISPOSABLE==='1'&&env.V5_PG_DISPOSABLE==='1'&&
    value.host==='127.0.0.1'&&value.port===5432&&
-   /^v5_test_p15_source_[a-z0-9_]{6,48}$/.test(value.database)&&
+   /^v5_test_(?:p15_source|p05lab_p15_source)_[a-z0-9_]{6,48}$/.test(value.database)&&
    value.projectId==='disposable-source-pg16'&&value.user==='postgres'&&
    value.sslMode==='disable',
   'disposable-restore':operation==='restore'&&value.environment==='test'&&

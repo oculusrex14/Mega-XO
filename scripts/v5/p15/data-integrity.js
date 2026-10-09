@@ -11,7 +11,7 @@
 const crypto=require('node:crypto');
 const manifest=require('../../../packages/migrations/manifest.json');
 const SCHEMAS=new Set(['meta','identity','profile','social','economy','core','match',
- 'tournament','monetization','privacy','support','audit','runtime','ops','v5_migration']);
+ 'tournament','monetization','cosmetics','season','privacy','support','audit','runtime','ops','v5_migration']);
 const REQUIRED=[
  'meta.migrations','identity.actors','identity.eligibility','identity.profiles',
  'economy.wallets','economy.ratings','economy.ledger','economy.command_outcomes',

@@ -20,6 +20,8 @@ test('P15 source and target are separate local PG16 clusters with narrow roles',
  const a=assertTarget(source(),'backup',env());
  const b=assertTarget(restore(),'restore',env());
  assert.notEqual(fingerprint(a),fingerprint(b));
+ const labSource={...source(),database:'v5_test_p05lab_p15_source_500_abcdef'};
+ assert.equal(assertTarget(labSource,'backup',env()).kind,'disposable-source');
  assert.equal(buildPgEnv(b,env()).PGPORT,'5433');
  assert.equal(buildPgEnv(a,env()).PGSSLMODE,'disable');
  assert.deepEqual(Object.keys(buildPgEnv(a,env())).filter(x=>x.includes('PASSWORD')),[]);

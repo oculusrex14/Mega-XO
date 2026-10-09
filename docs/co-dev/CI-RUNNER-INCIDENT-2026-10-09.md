@@ -2,8 +2,15 @@
 
 **Owner:** GitHub repository administrator / primary execution agent.  
 **Affected branch:** `co-dev/v5-integration` (single [draft PR #9](https://github.com/oculusrex14/Mega-XO/pull/9)).  
-**Status:** OPEN; root cause **not established**; code-only workaround not justified.
+**Status:** **RUNNER-ALLOCATION SYMPTOM RESOLVED WHILE REPO IS PUBLIC** (2026-10-09); private repository Actions entitlement/billing root cause remains **UNVERIFIED**. This document preserves historical zero-step failures; they do NOT describe current PUBLIC-repo CI.
 
+## Observed recovery after temporary PUBLIC visibility — 2026-10-09
+
+The repository owner switched `oculusrex14/Mega-XO` from PRIVATE to PUBLIC. GitHub-hosted Actions immediately accepted rerun requests; actual Ubuntu and macOS runners executed commands, PostgreSQL/Redis services and native emulator/simulator boots. This strongly implicates a **private-repo account/runner eligibility, billing or spending limitation**, but the exact private-repo settings/annotations were not accessible; do not represent the specific cause as proved.
+
+Re-run and fix cycle produced **11/11 PASS** at code SHA `9bc6f9f1398092aa8f5b7d7c553103a90525fae0`. [Full exact-source workflow/run ledger](../../CO-DEV-README.md#executed-real-github-actions-ci--2026-10-09). There were initial *genuine* failing source tests once runners started (P04 frozen-time fixture, P08 auth assertion and backpressure fixture, P19 retired P06 Redis method names, P07/P08 invalid namespace versions); those were repaired with small commits and the full set rerun, not skipped or overridden.
+
+**Previous incidents in sections below are historical evidence only.** Keep the repo public solely under the owner's explicit temporary decision; review public history for credentials or unintended player data, assess private repo Actions spending/limits, and re-privatize only with a verified plan to preserve CI. Never claim the public switch repaired the private-runner entitlement itself. A later documentation-only commit changes HEAD; its current-head CI status must be verified separately, even though the code SHA above was fully green.
 ## Observed facts (not guesses)
 
 At source SHA `6ef81396346411cbe72e35f3c97016cc5be0113c`, the 2026-10-09 10:17:34Z PR workflow runs ended `failure` within roughly four seconds, with **no GitHub-hosted runner name and no executed steps**. For example:
@@ -45,6 +52,6 @@ node scripts/v5/ci-runner-diagnostic.js .artifacts/v5-ci-runs.json
 node --test tests/v5-ci-runner-diagnostic.test.js
 ```
 
-The classification `FAILED_BEFORE_RUNNER_OR_TEST_STEPS` is deliberately **not** `CODE_TEST_FAILURE` or `GATE_PASSED`. It reports `rootCauseVerified:false` and `releaseAuthorized:false`. The source-level checks for this diagnostic passed in a V8 stubbed Node environment; real Node24 CI still requires a working runner.
+The classification `FAILED_BEFORE_RUNNER_OR_TEST_STEPS` is deliberately **not** `CODE_TEST_FAILURE` or `GATE_PASSED`. It reports `rootCauseVerified:false` and `releaseAuthorized:false`. This diagnostic and its regression checks have now also **executed on actual GitHub-hosted Node24 runners** as part of the 11 green workflows. A private-repo runner problem can recur if the repository is made private again without understanding its Actions entitlement.
 
 **Do not change live V4, delete artifacts, disable GitHub branch protection or start P22/P23 production work to make these workflows look healthy.**

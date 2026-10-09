@@ -88,7 +88,8 @@ function applyCorsHeaders(res, origin, isAllowed = true) {
  * @returns {Promise<boolean>} True if request was handled (e.g. OPTIONS preflight), false to continue
  */
 async function handleCors(context, req, res) {
-  const originHeader = req.headers?.origin || req.headers?.['x-forwarded-origin'] || null;
+  // Never echo a client-forged forwarded origin as a credentialed CORS origin.
+  const originHeader = req.headers?.origin || null;
   const extraOrigins = context?.allowedOrigins || [];
   const originAllowed = originHeader ? isAllowedOrigin(originHeader, extraOrigins) : false;
 

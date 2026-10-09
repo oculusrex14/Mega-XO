@@ -276,3 +276,31 @@ test('P12: viewer-specific search results never become public CDN cache entries'
   assert.equal(empty.headers['cache-control'], 'private, no-store');
   assert.deepEqual(queried, [['svc_alice', 'car'], ['svc_bob', 'car']]);
 });
+
+test('P13: forged X-Forwarded-Origin cannot authorize cookie spending or CORS', async () => {
+  const { handler, forwarded } = fixture();
+  const forged = await request(handler, {
+    method: 'POST', url: '/api/v1/convert',
+    headers: {
+      cookie: '__Host-mega_session=alice-session',
+      'x-forwarded-origin': 'https://play.antimatterinnovations.com',
+    },
+    body: { from: 'coins', amount: 100 },
+  });
+  assert.equal(forged.status, 403);
+  assert.equal(forged.data.error, 'ORIGIN_OR_CONTENT_TYPE');
+  assert.equal(forged.headers['access-control-allow-origin'], undefined);
+  assert.equal(forwarded.length, 0, 'spoofed headers cannot authorize economic mutation');
+
+  const accepted = await request(handler, {
+    method: 'POST', url: '/api/v1/convert',
+    headers: {
+      cookie: '__Host-mega_session=alice-session',
+      origin: 'https://play.antimatterinnovations.com',
+      'x-forwarded-origin': 'https://attacker.invalid',
+    },
+    body: { from: 'coins', amount: 100 },
+  });
+  assert.equal(accepted.status, 200, 'approved actual legacy Origin remains functional');
+  assert.equal(forwarded.length, 1);
+});

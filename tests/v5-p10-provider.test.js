@@ -695,8 +695,20 @@ test('P10 hardening: refund tombstone blocks provider consume before Core receip
  });
  /* Emulate the legitimate short interval where the worker has stored the provider
   * refund but the separate Core authorization has not yet marked the receipt refunded. */
- const refund = await h.handleRefundNotification({ store: STORE, transactionId: tx, productId: PRODUCT, reason: 'refund' });
- assert.equal(refund.recorded, true);
+ await assert.rejects(
+  () => h.handleRefundNotification({ store: STORE, transactionId: tx, productId: PRODUCT, reason: 'refund' }),
+  (error) => error.code === 'REFUND_CORE_SEAM_REQUIRED',
+  'a known, previously granted purchase cannot be refunded without its Core reversal handler',
+ );
+ assert.equal(await h.revocation(STORE, tx), null, 'the invalid callback made no partial tombstone write');
+ /* A trusted provider ingress can record the refund while the downstream
+  * Core callback has not yet frozen the receipt. Exercise that legitimate
+  * post-ingest/pre-Core interval directly in the isolated database. */
+ await h.exec(
+  'INSERT INTO monetization.store_revocations (store, transaction_id, product_id, occurred_at, reason)'
+  + ' VALUES ($1, $2, $3, $4, $5)',
+  [STORE, tx, PRODUCT, new Date(h.now()), 'refund'],
+ );
  assert.equal((await h.receipt(STORE, tx)).refunded, false, 'Core receipt reversal is still pending');
  const claimed = await h.claimDueFinalizations({ workerId: WORKER_A, limit: 10, leaseMs: 5000 });
  assert.equal(claimed.length, 1);

@@ -680,7 +680,7 @@ test('V5-08 co-dev: nearer timeout registration never shortens an existing later
   const h=await session(t);
   if(!h)return;
   const ephemera=await createEphemeraService({
-    ...ephemeraOptions(),keyVersion:'tmp08monotone',
+    ...ephemeraOptions(),keyVersion:'t08mono',
   });
   t.after(async()=>{
     try { await ephemera.wipeNamespace(); }

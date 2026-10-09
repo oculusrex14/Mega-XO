@@ -86,6 +86,8 @@ test('P15 R2 uploads sealed bytes conditionally and verifies independent-read-pr
  assert.equal(result.mockedCallsOnly,true);
  assert.equal(result.realProviderUploadAndIndependentReadbackObserved,false);
  assert.equal(result.ciphertextAndManifestReadbackMatching,true);
+ assert.equal(result.backupCreatedAtUtc,'2026-10-09T04:00:00.000Z');
+ assert.match(result.readbackCheckedAtUtc,/^\d{4}-\d\d-\d\dT/);
  assert.equal(result.g15Accepted,false);
  assert.equal(result.separateWriterReaderProfilesUsed,true);
  assert.equal(mock.records.filter(r=>r.command==='put-object').length,2);

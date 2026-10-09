@@ -123,6 +123,8 @@ async function transfer({r2,manifestPath,archivePath,env=process.env,
   return {
    format:'mega-v5-p15-r2-upload-readback/v1',
    backupId:manifest.backupId,sourceSha:manifest.sourceSha,
+   backupCreatedAtUtc:manifest.createdAtUtc,
+   readbackCheckedAtUtc:new Date().toISOString(),
    r2Bucket:target.bucket,r2AccountId:target.accountId,
    objectKey:keys.ciphertextKey,manifestObjectKey:keys.manifestKey,
    ciphertextSha256:manifest.ciphertextSha256,

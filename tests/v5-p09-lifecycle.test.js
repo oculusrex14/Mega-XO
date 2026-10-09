@@ -584,3 +584,36 @@ test('P09 co-dev: a publicJoin waiting for room/actor locks rechecks the latest 
   if(pending)await Promise.allSettled([pending]);
  }
 });
+
+
+test('P09 co-dev: ready command blocked on room lock cannot revive a terminal tournament', {skip:GATE,timeout:60000},async t=>{
+ const h=await open(t,ROSTER.slice(0,1));
+ if(!h)return;
+ const first=await send(h,ROSTER[0],'post9-ready-first',{type:'publicJoin',table:'low'});
+ assert.equal(first.status,'LOBBY');
+ const admin=await lab.adminClient(h.database);
+ let committed=false,pending=null;
+ try{
+  await admin.query('BEGIN');
+  await admin.query('SELECT 1 FROM tournament.rooms WHERE room_id = $1 FOR UPDATE',[first.id]);
+  pending=send(h,ROSTER[0],'post9-ready-after-closure',{
+   type:'ready',id:first.id,value:true,rulesVersion:first.rulesVersion,
+  });
+  assert.equal(await lab.waitForLockWaiter(admin,12000),true,
+   'the existing room command must wait on the same row as settlement');
+  await admin.query("UPDATE tournament.rooms SET status='VOID', reason='CANCELLED', revision=revision+1 WHERE room_id = $1",[first.id]);
+  await admin.query('COMMIT');
+  committed=true;
+  await lab.throwsCode(pending,'RULES_CHANGED');
+  const live=await h.row('SELECT status, revision FROM tournament.rooms WHERE room_id = $1',[first.id]);
+  assert.equal(live.status,'VOID');
+  const member=await h.row('SELECT ready FROM tournament.room_players WHERE room_id = $1 AND actor_id = $2',[first.id,ROSTER[0]]);
+  assert.equal(member.ready,false,'stale ready command never updates a terminal room');
+  const durable=await h.row('SELECT count(*)::int AS n FROM tournament.command_outcomes WHERE actor_id = $1',[ROSTER[0]]);
+  assert.equal(durable.n,1,'only the first admitted publicJoin has an idempotency outcome');
+ }finally{
+  if(!committed)await admin.query('ROLLBACK').catch(()=>{});
+  await admin.end();
+  if(pending)await Promise.allSettled([pending]);
+ }
+});

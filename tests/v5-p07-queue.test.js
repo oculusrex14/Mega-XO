@@ -436,7 +436,7 @@ test('V5-07-02 queue: the candidate index is bounded by maxTickets and reclaims 
  * matcher must not delete the new claim or the candidate (even with requeue:false).
  * Real Redis, real adapter, actual Lua compare-and-delete. */
 test('P07 co-dev regression: a stale claim cannot release a successor claim or remove its FIFO seat', { skip: GATE }, async (t) => {
-  const h = await harness(t, { keyVersion: 'q702-cas' });
+  const h = await harness(t, { keyVersion: 'q702cas' });
   if (!h) return;
   const { queue, ephemera } = h;
   const joined = await queue.join({ actor: 'svc_alice', mode: 'ranked', opKey: 'cas-join', region: 'iad', latencyMs: 40 });
@@ -477,7 +477,7 @@ test('P07 co-dev regression: a stale claim cannot release a successor claim or r
  * an actor-mismatched hint straight into the OWN test Redis namespace and
  * proves PostgreSQL participant membership must still authorize the read. */
 test('P07 co-dev regression: a poisoned match hint cannot disclose another actor match', { skip: GATE }, async (t) => {
-  const h = await harness(t, { keyVersion: 'q702-hint' });
+  const h = await harness(t, { keyVersion: 'q702hint' });
   if (!h) return;
   const { queue, core, ephemera } = h;
   const offer = await core.run({ actor: 'matchmaker', scope: 'matchmaker' }, 'hint-offer', {
@@ -503,7 +503,7 @@ test('P07 co-dev regression: a poisoned match hint cannot disclose another actor
 
 
 test('P07 co-dev regression: PostgreSQL hydration failure releases every owned claim without losing FIFO', { skip: GATE }, async (t) => {
-  const h = await harness(t, { keyVersion: 'q702-pg-fault' });
+  const h = await harness(t, { keyVersion: 'q702pgf' });
   if (!h) return;
   const { queue, core, ephemera, now } = h;
   const first = await queue.join({ actor: 'svc_alice', mode: 'ranked', opKey: 'fail-join-a' });

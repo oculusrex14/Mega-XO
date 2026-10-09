@@ -142,6 +142,7 @@ test('P15 separate PostgreSQL16 containers: encrypted backup, authenticated rest
   report={
    format:'mega-v5-p15-disposable-restore-evidence/v1',
    sourceSha:process.env.P15_SOURCE_SHA,
+   backupId:createdBackup.manifest.backupId,
    sourceKind:'ACTUAL_PG16_DISPOSABLE_INSTANCE',
    restoreKind:'SECOND_INDEPENDENT_PG16_DISPOSABLE_INSTANCE',
    syntheticOnly:true,quarantineAndNoProviderEffectsDeclared:true,
@@ -182,7 +183,11 @@ test('P15 separate PostgreSQL16 containers: encrypted backup, authenticated rest
  }finally{await confirm.end();}
  report.recoveryTargetCleaned=true;
  if(process.env.P15_EVIDENCE_OUTPUT){
-  assert.equal(process.env.P15_EVIDENCE_OUTPUT,'.artifacts/p15-disposable-restore.json');
+  assert.ok(['.artifacts/p15-disposable-restore.json',
+   '.artifacts/p15-disposable-restore-1.json',
+   '.artifacts/p15-disposable-restore-2.json'].includes(process.env.P15_EVIDENCE_OUTPUT));
+  // Unique exact paths mean no successful drill can overwrite a previous
+  // attempt or silently masquerade as one of the scheduled-style checks.
   fs.mkdirSync('.artifacts',{recursive:true});
   fs.writeFileSync(process.env.P15_EVIDENCE_OUTPUT,JSON.stringify(report,null,2)+'\n',
    {mode:0o600,flag:'wx'});

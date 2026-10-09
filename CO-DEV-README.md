@@ -44,15 +44,16 @@
 
 - Sources: `scripts/v5/p15/` and `tests/v5-p15-*.test.js`.
 - Full encrypted pg_dump streaming without a plaintext archive, recipient-key separation, verified ciphertext manifests, checksums and R2 write-once/readback contracts. Exact environment/context receipts, independent-restore evidence, freshness/watch logic, negative failure tests and executable synthetic round-trip drills.
-- ` .github/workflows/v5-p15-disaster-recovery.yml` (remove this paragraph's leading display space when entering the path) supplies tightly scoped disposable CI. Detailed record: [P15-DISASTER-RECOVERY.md](docs/co-dev/P15-DISASTER-RECOVERY.md).
+- `.github/workflows/v5-p15-disaster-recovery.yml` supplies tightly scoped disposable CI. Detailed record: [P15-DISASTER-RECOVERY.md](docs/co-dev/P15-DISASTER-RECOVERY.md).
 - **Not done:** owner-approved recovery/retention targets, tested live off-host key custody/provider R2, actual Neon PITR plan entitlement, measured production RPO/RTO, scheduled drill delivery, G15. The suggested 15-minute freshness / 60-minute recovery values are *candidate policy*, not established SLAs.
 
 ### P16 — Core process admission, drain and failover
 
-- Current sources: `packages/services/core-instance-lifecycle.js`, `tests/v5-p16-lifecycle.test.js`, [P16-CORE-FAILOVER-FOUNDATIONS.md](docs/v5/co-dev/P16-CORE-FAILOVER-FOUNDATIONS.md).
-- Process-local BOOTING/READY/DRAINING/STOPPED, bounded connection capacity, no new admissions while draining, idempotent release and explicit drain deadlines, no false success on active sessions.
-- **Next additive units on this same branch:** transport-neutral socket drain coordinator with tested socket close/reconnect signaling; private A/B topology and health-routing contracts; failure-domain/rollout runbook; real dual-Core failover harness once P08 durable protocols exist. Do not invent acknowledged move or tournament recovery without executing it.
-- **Not done:** runtime Core A/B integration, private ingress routing, actual killed-process/surviving-process proof, G16. Same-host A/B is **process availability only**, never Oracle/edge/zone HA.
+- Delivered: `packages/services/core-instance-lifecycle.js` (BOOTING/READY/DRAINING/STOPPED, bounded admission and monotonic drain); `packages/services/core-drain-connections.js` (transport-neutral socket identity, one reconnect notice, explicit release, deadline-gated force-close requests); `scripts/v5/p16/core-failover-plan.js` (private immutable-image A/B topology plus fail-closed readiness selector).
+- Tests: `tests/v5-p16-lifecycle.test.js`, `tests/v5-p16-connections.test.js`, `tests/v5-p16-real-sockets.test.js` (real loopback TCP), `tests/v5-p16-topology.test.js`. Read-only PR job: `.github/workflows/v5-p16-core-failover.yml`. **These are source-level/runtime-independent tests, not a multi-Core durable failover run.**
+- Integration notes: [P16-CORE-FAILOVER-FOUNDATIONS.md](docs/v5/co-dev/P16-CORE-FAILOVER-FOUNDATIONS.md) and [P16-OPERATIONS-AND-ACCEPTANCE.md](docs/v5/co-dev/P16-OPERATIONS-AND-ACCEPTANCE.md) contain the safe Core wiring seams, shared-edge process-only availability limits, exact fault matrix, evidence requirements and rollback procedure.
+- **Next dependent work:** wire callback release and private readiness into the actual P08 runtime; deploy isolated A/B after P15/P08 prerequisites; execute the killed-A/live-revision and tournament/socket/session-revocation tests with real PG state. Do not invent acknowledgement/timer recovery from a local simulation.
+- **Not done:** actual Core A/B deployment or ingress routing, production host or zone HA, executed in-flight recovery, G16.
 
 ### P17 — independent release engineering
 
@@ -88,7 +89,7 @@
 
 ```sh
 npm ci
-node --test tests/v5-p16-lifecycle.test.js
+node --test tests/v5-p16-lifecycle.test.js tests/v5-p16-connections.test.js tests/v5-p16-real-sockets.test.js tests/v5-p16-topology.test.js
 node --test tests/v5-native-foundations.test.js tests/v5-client-bundle.test.js
 node --test tests/v5-release-*.test.js tests/v5-ci-*.test.js
 node --test tests/v5-p15-archive-manifest.test.js tests/v5-p15-sealed-archive.test.js tests/v5-p15-recovery-policy.test.js
@@ -103,7 +104,9 @@ Every PR update must verify the exact source head CI. Keep V5 retained regressio
 ## Chronological co-dev checkpoint log
 
 - **2026-10-09:** Created the unified branch from pinned P06 head; integrated P20, P17, P18, P19, P15 and initial P16 in six separate two-parent merge commits; integrated nonconflicting client bundle safety as a seventh merge commit. Original commits/history preserved.
-- **2026-10-09:** Added this consolidated agent handoff. Subsequent P16 units and measured CI outcomes will be appended here, with exact commits and outstanding limitations.
+- **2026-10-09:** Added this consolidated agent handoff and opened [unified PR #9](https://github.com/oculusrex14/Mega-XO/pull/9). Marked old PRs #2–#8 as superseded and closed them; `ops/main-ci-guard` #1 remains separate because it targets `main`.
+- **2026-10-09 P16:** Added transport drain registry `9028554f4`, callback/lease tests `eaff8513a`, real local TCP test `626007866`, isolated P16 CI `9bb75de4b` and self-audit correction `8bab7a90f`, private A/B readiness and topology validator `3ced88335` with tests `974f52c08`, workflow coverage `28cb1e3fd`, socket FIN handling `dbc712c4e`, portable error-code assertion `9651fd9fd`, and execution/rollback runbook `7cbdfb78a`. All committed on the single branch.
+- **2026-10-09 CI access warning (NOT a source-test pass):** GitHub Actions jobs at head `9651fd9fd` across the eight PR workflows ended `failure` **with zero executed steps and an empty runner name**, e.g. [P16 run 37895373477](https://github.com/oculusrex14/Mega-XO/actions/runs/37895373477) job `113705409649`; logs could not be downloaded (404 missing log blob). The same symptom also appeared at `7cbdfb78a`. Earlier [P17 run 37895127616](https://github.com/oculusrex14/Mega-XO/actions/runs/37895127616) completed successfully at an older source head. **Do not label integrated CI green or diagnose a code failure from jobs that never received a runner.** Ask the repository owner to inspect GitHub Actions billing/runner availability/account notices and rerun current-head PR CI; root cause remains unverified.
 
 ## Minimum handoff / merge criteria
 

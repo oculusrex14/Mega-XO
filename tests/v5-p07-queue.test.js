@@ -471,3 +471,32 @@ test('P07 co-dev regression: a stale claim cannot release a successor claim or r
     claimId: reclaimed[0].claimId, requeue: false }), true);
   assert.deepEqual(await index(ephemera, 'ranked'), []);
 });
+
+
+/* A Redis match hint is a cache, not an access grant. This regression writes
+ * an actor-mismatched hint straight into the OWN test Redis namespace and
+ * proves PostgreSQL participant membership must still authorize the read. */
+test('P07 co-dev regression: a poisoned match hint cannot disclose another actor match', { skip: GATE }, async (t) => {
+  const h = await harness(t, { keyVersion: 'q702-hint' });
+  if (!h) return;
+  const { queue, core, ephemera } = h;
+  const offer = await core.run({ actor: 'matchmaker', scope: 'matchmaker' }, 'hint-offer', {
+    type: 'queue', id: 'match-hint-security', a: 'svc_alice', b: 'svc_bob', mode: 'casual',
+  });
+  assert.equal(offer.status, 'OFFERED');
+  assert.equal((await queue.status('svc_alice')).matchId, 'match-hint-security',
+    'a real participant still sees their durable offer');
+  assert.equal((await queue.status('svc_bob')).matchId, 'match-hint-security');
+
+  const attackerKey = ephemera.key('queue', 'match', 'svc_carol');
+  await ephemera.client.set(attackerKey, JSON.stringify({
+    state: 'matched', mode: 'casual', matchId: 'match-hint-security',
+    termsHash: offer.termsHash, expires: offer.expires,
+  }), { PX: 60000 });
+  assert.notEqual(await ephemera.client.get(attackerKey), null, 'fixture inserted a cache hint for a nonparticipant');
+
+  const status = await queue.status('svc_carol');
+  assert.equal(status.state, 'idle', 'the unrelated actor cannot resolve or see this match');
+  assert.equal(Object.hasOwn(status, 'matchId'), false, 'the protected match id was not returned');
+  assert.equal(await ephemera.client.get(attackerKey), null, 'a rejected hint is evicted');
+});

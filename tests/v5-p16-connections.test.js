@@ -102,3 +102,32 @@ test('invalid socket callbacks and lifecycle shape fail before admission', () =>
   assert.throws(() => sockets.register({ socket: {}, notifyDrain() {} }), /SOCKET_CALLBACKS_REQUIRED/);
   assert.equal(sockets.status().active, 0);
 });
+
+
+test('promise-valued transport callbacks fail closed and never count pending work as drained', async () => {
+  let now = 0;
+  const lifecycle = createCoreInstanceLifecycle({ drainTimeoutMs: 10, now: () => now });
+  lifecycle.markReady();
+  const registry = createCoreConnectionDrain(lifecycle);
+  const errors = [];
+  const onUnhandled = (error) => errors.push(error);
+  process.on('unhandledRejection', onUnhandled);
+  try {
+    const handle = registry.register({
+      socket: {},
+      notifyDrain: () => Promise.reject(new Error('private notification failure')),
+      forceClose: () => Promise.reject(new Error('private socket close failure')),
+    });
+    assert.equal(registry.beginDrain().noticeFailures, 1);
+    assert.equal(registry.status().active, 1);
+    now = 11;
+    assert.equal(registry.forceCloseExpired().closureFailures, 1);
+    assert.equal(registry.finishStop(), false, 'a rejected async close never releases the lease');
+    await new Promise((resolve) => setImmediate(resolve));
+    assert.deepEqual(errors, [], 'handled callback rejections never escape to Node');
+    assert.equal(handle.release(), true);
+    assert.equal(registry.finishStop(), true);
+  } finally {
+    process.off('unhandledRejection', onUnhandled);
+  }
+});

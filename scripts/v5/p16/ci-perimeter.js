@@ -39,8 +39,8 @@ function auditWorkflow(text) {
   if (!/^  core-drain:\n/m.test(text) || !/^  core-failure-recovery:\n/m.test(text)
       || !/tests\/v5-p16-real-sockets\.test\.js/.test(text)
       || !/tests\/v5-p16-process-failover\.test\.js/.test(text)) refuse('OWNED_SUITES');
-  if (!/image: postgres:16@sha256:[a-f0-9]{64}/.test(text) ||
-      !/image: redis:7\.4@sha256:[a-f0-9]{64}/.test(text) ||
+  if (!/^[ \t]*image: (?:postgres|public\.ecr\.aws\/docker\/library\/postgres|mirror\.gcr\.io\/library\/postgres):16@sha256:[a-f0-9]{64}$/m.test(text) ||
+      !/^[ \t]*image: (?:redis|public\.ecr\.aws\/docker\/library\/redis|mirror\.gcr\.io\/library\/redis):7\.4@sha256:[a-f0-9]{64}$/m.test(text) ||
       !/V5_PG_URL: postgres:\/\/postgres@127\.0\.0\.1:5432\/postgres/.test(text) ||
       !/REDIS_URL: redis:\/\/127\.0\.0\.1:6379/.test(text) ||
       !/V5_PG_DISPOSABLE: '1'/.test(text) ||

@@ -32,6 +32,8 @@ test('unreviewed actions, external services and public port binding are refused'
     workflow.replace('postgres://postgres@127.0.0.1:5432/postgres', 'postgres://admin@prod.example.net:5432/db'),
     workflow.replace("'127.0.0.1:6379:6379'", "'0.0.0.0:6379:6379'"),
     workflow.replace(/redis:7\.4@sha256:[0-9a-f]{64}/, 'redis:latest'),
+    workflow.replace(/image: [^\n]*postgres:16@sha256:[a-f0-9]{64}/,
+      'image: evil.invalid/library/postgres:16@sha256:' + 'a'.repeat(64)),
   ];
   for (const body of inputs) assert.throws(() => auditWorkflow(body), /P16_CI_REFUSED/);
 });

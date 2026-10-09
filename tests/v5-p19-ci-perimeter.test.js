@@ -33,7 +33,9 @@ test('privileged event, mutable action or accidental PR merge SHA fails the audi
 test('public Redis, provider token, secret or extra evidence cannot be uploaded',()=>{
  for(const change of [
   s=>s.replace('127.0.0.1:6379:6379','6379:6379'),
-  s=>s.replace('redis:7.4@sha256:cd745595f143052dd6a743bc5651d3ce4b03979fe5c99c7fcfab73461f6f217b','redis:latest'),
+  s=>s.replace(/image: [^\n]*redis:7\.4@sha256:[a-f0-9]{64}/,'image: redis:latest'),
+  s=>s.replace(/image: [^\n]*postgres:16@sha256:[a-f0-9]{64}/,
+    'image: evil.invalid/library/postgres:16@sha256:' + 'a'.repeat(64)),
   s=>s.replace('            .artifacts/p19-chaos-disposable.json','            .env'),
   s=>s.replace('            .artifacts/p19-chaos-disposable.json','            .artifacts/p19-chaos-disposable.json\n            .env'),
   s=>s.replace('      P19_EVIDENCE_OUTPUT:', '      VERCEL_TOKEN: '+'$'+'{{ secrets.VERCEL_TOKEN }}'+'\n      P19_EVIDENCE_OUTPUT:'),

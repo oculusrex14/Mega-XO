@@ -18,8 +18,11 @@ A two-parent commit `ba1be63b` imported all 26 P10-owned files from primary unch
 7. **Privacy cancellation beyond the first batch (`worker-workflows.js`).** The old `cancelActorOutbox` scanned at most 256 queued/sending rows and silently returned success while more actor mail remained. Cancellation now repeats bounded scans until clear, with an explicit failure if the protective 64-batch ceiling is exhausted (so partial cancellation is never falsely reported as complete).
 8. **Known-receipt refund handler (`provider-workflows.js`).** A refund for a transaction with a committed receipt now requires the authorized Core reversal callback. Without it, the worker rejects the request before inserting a tombstone; an out-of-order refund for a transaction not previously granted may still be permanently tombstoned without fabricating a Core receipt.
 
+9. **Provider lease generations across retries.** The provider tables require `lease_token` to become NULL when no lease owner exists. The previous nullable-token increment recycled fence 1 on later retries; if a process reused its worker ID, a stale completion could match a new lease. Both notification and finalization claims now use `attempts + 1`, which advances durably across retries; duplicate finalization enqueue no longer resets historical attempts. New real-PG tests confirm stale same-worker-ID completions are rejected before provider I/O.
+
 ## Evidence and tests
 
+- Real PostgreSQL same-worker-ID retry regressions now prove monotonic notification and finalization fences, including repeated purchase verification.
 - Additional real PostgreSQL cases in `tests/v5-p10-provider.test.js`: duplicate enqueue cannot invalidate a live provider lease, operator pending-list token redaction, expired claim cannot contact provider, refund tombstone blocks consume before Core reversal, and raw provider error strings are never persisted.
 - Original real PostgreSQL `tests/v5-p10-workflows.test.js` now proves a 257-message actor backlog is fully cancelled, sealed and actor-isolated.
 - Refund tests assert that a known grant cannot proceed without a Core reversal seam and that a separately recorded tombstone blocks finalization before Core finishes reversal.

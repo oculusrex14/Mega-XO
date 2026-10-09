@@ -1,0 +1,74 @@
+{
+  "schema_version": 1,
+  "phase": "P10",
+  "task_ids": [
+    "V5-10-02"
+  ],
+  "case_ids": [],
+  "recorded_at_utc": "2026-10-09T09:40:00.000Z",
+  "status": "WORKER_WORKFLOWS_VERIFIED",
+  "source_state": {
+    "base_sha": "f2863ab1b60fdc9fabce0193d486bc118acb2514",
+    "target_branch": "V5-platform",
+    "files": [
+      "packages/services/worker-workflows.js",
+      "apps/worker/index.js",
+      "packages/services/jobs.js",
+      "packages/services/index.js",
+      "tests/v5-p10-workflows.test.js"
+    ]
+  },
+  "verification": {
+    "command": "env V5_PG_URL=postgres://postgres@127.0.0.1:50709/postgres V5_PG_DISPOSABLE=1 V5_PG_REQUIRED=1 node --test --test-reporter=tap --test-concurrency=1 tests/v5-p10-workflows.test.js",
+    "target_environment": "local loopback PostgreSQL 16.15 (Mac mini arm64)",
+    "database_role": "worker_runtime",
+    "results": {
+      "tests_total": 7,
+      "tests_passed": 7,
+      "tests_failed": 0,
+      "tests_skipped": 0,
+      "cases": [
+        {
+          "name": "1. mail: sealed OTP job claimed, opened, delivered, payload sealed",
+          "passed": true,
+          "details": "Job enqueued with AES-256-GCM sealed payload via HKDF-SHA256 key; claimed, opened, and delivered via sendOtp; completed with state='sent' and payload sealed to NULL."
+        },
+        {
+          "name": "2. mail: each documented kind routes to its transport method and terminal rows are sealed",
+          "passed": true,
+          "details": "Routes kinds 'otp'->sendOtp, 'changed'->sendPasswordChanged, 'security'->sendSecurityNotice, and 'mail'->sendMail with decrypted payloads; all completed terminal rows are sealed."
+        },
+        {
+          "name": "3. logging: no OTP, secret, address or ciphertext ever reaches the log",
+          "passed": true,
+          "details": "Exercised mail delivery and logged events; verified that OTP codes, recipient addresses, mail secrets, and ciphertext never leak into any log record."
+        },
+        {
+          "name": "4. restart: job enqueued before a restart is claimed and delivered by the new worker",
+          "passed": true,
+          "details": "Core restart simulation: job enqueued before process restart survives and is picked up by a fresh worker instance, delivered, and sealed without dropping."
+        },
+        {
+          "name": "5. privacy: cancellation supersedes the deleting actor's jobs and seals them",
+          "passed": true,
+          "details": "cancelActorOutbox supersedes pending queued and in-flight sending jobs for the deleted actor and seals payloads to NULL, while control actor jobs are untouched."
+        },
+        {
+          "name": "6. retention: old terminal rows and expired buckets are purged, active and recent rows survive",
+          "passed": true,
+          "details": "purgeExpiredRetention removes terminal rows older than 7 days while preserving active and recent jobs; purgeExpiredRateBuckets cleans expired rate limits."
+        },
+        {
+          "name": "7. worker app: start arms a real interval, tick drains the extracted work, stop() silences it",
+          "passed": true,
+          "details": "createWorkerApp orchestrates periodic ticks via setInterval; tick processes mail, expires due jobs, and runs retention cleanup; stop() disarms interval cleanly."
+        }
+      ]
+    },
+    "summary": "Email outbox, notifications, cleanup and approved privacy/deletion workflows extracted out of the game process into apps/worker and packages/services/worker-workflows.js. AES-256-GCM encryption preserved; zero OTP/secret log leakage verified; Core restart job survival proven; privacy cancellation and retention cleanup verified across 7 dedicated tests on real PG16."
+  },
+  "not_claimed": [
+    "V5-10-03 provider notification extraction",
+    "G10 gate passage"
+  ]
+}

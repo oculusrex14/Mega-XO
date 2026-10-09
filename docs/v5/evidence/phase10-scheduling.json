@@ -1,0 +1,62 @@
+{
+  "schema_version": 1,
+  "phase": "P10",
+  "task_ids": [
+    "V5-10-04"
+  ],
+  "case_ids": [],
+  "recorded_at_utc": "2026-10-09T09:50:00.000Z",
+  "status": "SCHEDULING_WORKFLOWS_VERIFIED",
+  "source_state": {
+    "base_sha": "f2863ab1b60fdc9fabce0193d486bc118acb2514",
+    "target_branch": "V5-platform",
+    "files": [
+      "packages/services/maintenance-scheduler.js",
+      "packages/services/index.js",
+      "tests/v5-p10-scheduling.test.js"
+    ]
+  },
+  "verification": {
+    "command": "env V5_PG_URL=postgres://postgres@127.0.0.1:50709/postgres V5_PG_DISPOSABLE=1 V5_PG_REQUIRED=1 node --test --test-reporter=tap --test-concurrency=1 tests/v5-p10-scheduling.test.js",
+    "target_environment": "local loopback PostgreSQL 16.15 (Mac mini arm64)",
+    "database_role": "worker_runtime / core_runtime",
+    "results": {
+      "tests_total": 5,
+      "tests_passed": 5,
+      "tests_failed": 0,
+      "tests_skipped": 0,
+      "cases": [
+        {
+          "name": "1. stable UTC period identities: snapshot:<day> and weekly:<week>:<today>",
+          "passed": true,
+          "details": "Verified exact stable keys snapshot:YYYY-MM-DD and weekly:YYYY-MM-DD:YYYY-MM-DD; daily snapshot and weekly payout execute once; repeated tick replays without new effects."
+        },
+        {
+          "name": "2. two concurrent workers produce exactly one business effect per stable key",
+          "passed": true,
+          "details": "Two concurrent schedulers ticking for the same period result in exactly one outcome in economy.command_outcomes, one payout, and one wallet credit."
+        },
+        {
+          "name": "3. downtime catch-up processes elapsed UTC days in order and settles the closed week",
+          "passed": true,
+          "details": "Simulated downtime across multiple days and closed week: catchUp iterates missed days in strict chronological order and settles the closed week without double-crediting."
+        },
+        {
+          "name": "4. unplaced and weekly-ineligible accounts receive zero fabricated rewards",
+          "passed": true,
+          "details": "Unplaced and weekly-ineligible players receive zero weekly payouts, zero ledger entries, and zero coin modifications."
+        },
+        {
+          "name": "5. close() is idempotent and never closes the borrowed Core",
+          "passed": true,
+          "details": "Scheduler close is idempotent and releases scheduler state without closing the borrowed Core service."
+        }
+      ]
+    },
+    "summary": "Season, leaderboard, and maintenance scheduling extracted into packages/services/maintenance-scheduler.js. Uses stable UTC period identities (snapshot:YYYY-MM-DD and weekly:YYYY-MM-DD:YYYY-MM-DD) and Core-owned operator commands; proves two concurrent workers produce exactly one business effect; verifies downtime catch-up and zero fabricated rewards across 5 dedicated tests on real PG16."
+  },
+  "not_claimed": [
+    "V5-10-05 duplicate scheduler removal",
+    "G10 gate passage"
+  ]
+}

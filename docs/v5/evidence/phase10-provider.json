@@ -1,0 +1,70 @@
+{
+  "schema_version": 1,
+  "phase": "P10",
+  "task_ids": [
+    "V5-10-03"
+  ],
+  "case_ids": [],
+  "recorded_at_utc": "2026-10-09T09:45:00.000Z",
+  "status": "PROVIDER_WORKFLOWS_VERIFIED",
+  "source_state": {
+    "base_sha": "f2863ab1b60fdc9fabce0193d486bc118acb2514",
+    "target_branch": "V5-platform",
+    "files": [
+      "packages/services/provider-workflows.js",
+      "packages/services/index.js",
+      "packages/migrations/migrations/0043_worker_provider_state.sql",
+      "packages/migrations/manifest.json",
+      "packages/migrations/conformance.json",
+      "tests/v5-p10-provider.test.js"
+    ]
+  },
+  "verification": {
+    "command": "env V5_PG_URL=postgres://postgres@127.0.0.1:50709/postgres V5_PG_DISPOSABLE=1 V5_PG_REQUIRED=1 node --test --test-reporter=tap --test-concurrency=1 tests/v5-p10-provider.test.js",
+    "target_environment": "local loopback PostgreSQL 16.15 (Mac mini arm64)",
+    "database_role": "worker_runtime",
+    "results": {
+      "tests_total": 6,
+      "tests_passed": 6,
+      "tests_failed": 0,
+      "tests_skipped": 0,
+      "cases": [
+        {
+          "name": "1. ingest: a provider callback is persisted once per (store, notification_id) and a redelivery dedupes",
+          "passed": true,
+          "details": "Callback is inserted into monetization.store_notifications; subsequent redelivery is deduplicated via ON CONFLICT DO NOTHING with ingested=false."
+        },
+        {
+          "name": "2. notifications: a claimed callback is leased, a stale owner cannot apply it, and a failure retries with a bounded error",
+          "passed": true,
+          "details": "Notification claimed with lease and monotonic fence token; stale owner completion rejected; failure retries with exponential backoff and error sanitized <= 280 chars."
+        },
+        {
+          "name": "3. finalize: Google consume/acknowledge runs only once the granted receipt is committed",
+          "passed": true,
+          "details": "completeFinalization checks monetization.receipts first; without a durable grant, provider is never called and finalization remains pending; once grant is committed, provider is called and row transitions to state='done'."
+        },
+        {
+          "name": "4. remint: a duplicate or retried purchase callback for an already-granted transaction never grants again",
+          "passed": true,
+          "details": "handlePurchaseNotification detects existing receipt or revocation tombstone and returns without calling grantFn (duplicate=true, reminted=false)."
+        },
+        {
+          "name": "5. refund: a trusted refund writes the permanent revocation tombstone, flags the receipt, and blocks finalization",
+          "passed": true,
+          "details": "Refund notification writes permanent tombstone to monetization.store_revocations, marks receipt refunded=true, and blocks store finalization."
+        },
+        {
+          "name": "6. recovery: a pending finalization is listed, and a crashed finalizer is reclaimed after its lease and completed",
+          "passed": true,
+          "details": "listPendingFinalizations exposes pending rows; worker dying mid-lease is reclaimed by peer after lease_until with higher fence; dead worker receives fenceLost."
+        }
+      ]
+    },
+    "summary": "Provider notification and finalization work extracted into packages/services/provider-workflows.js. Deduplication by provider identity/environment verified; finalization runs strictly after durable receipt grant; duplicate/retried callbacks never remint; refund revocations and worker lease recovery verified across 6 dedicated tests on real PG16."
+  },
+  "not_claimed": [
+    "V5-10-04 season scheduling extraction",
+    "G10 gate passage"
+  ]
+}

@@ -1,0 +1,67 @@
+{
+  "schema_version": 1,
+  "phase": "P10",
+  "task_ids": [
+    "V5-10-01"
+  ],
+  "case_ids": [],
+  "recorded_at_utc": "2026-10-09T09:35:00.000Z",
+  "status": "DURABLE_JOBS_VERIFIED",
+  "source_state": {
+    "base_sha": "f2863ab1b60fdc9fabce0193d486bc118acb2514",
+    "target_branch": "V5-platform",
+    "files": [
+      "packages/services/jobs.js",
+      "packages/services/index.js",
+      "tests/v5-p10-jobs.test.js"
+    ]
+  },
+  "verification": {
+    "command": "env V5_PG_URL=postgres://postgres@127.0.0.1:50709/postgres V5_PG_DISPOSABLE=1 V5_PG_REQUIRED=1 node --test --test-reporter=tap --test-concurrency=1 tests/v5-p10-jobs.test.js",
+    "target_environment": "local loopback PostgreSQL 16.15 (Mac mini arm64)",
+    "database_role": "worker_runtime",
+    "results": {
+      "tests_total": 6,
+      "tests_passed": 6,
+      "tests_failed": 0,
+      "tests_skipped": 0,
+      "cases": [
+        {
+          "name": "1. round trip (versioned payload, fence, sealed completion)",
+          "passed": true,
+          "details": "Job enqueued with versioned envelope {version:2, businessKey:'welcome:p-1', payload}; claimed with worker lease and monotonic fence token; completed with state='sent' and payload sealed to NULL."
+        },
+        {
+          "name": "2. transactional producer",
+          "passed": true,
+          "details": "Enqueue within outer business transaction; aborted transaction rolls back job row completely; committed transaction persists durable queued job."
+        },
+        {
+          "name": "3. crash during I/O: lease expiry then recovery",
+          "passed": true,
+          "details": "Worker A dies holding lease; worker B cannot claim before lease expiry; after clock advances past lease_until, worker B claims the job with incremented attempt count (2) and monotonic fence (2)."
+        },
+        {
+          "name": "4. stale worker rejected after takeover",
+          "passed": true,
+          "details": "Worker A holding fence 1 attempts to complete after worker B has taken over with fence 2; worker A completeJob returns false and row remains in sending state; worker B completes with fence 2 successfully."
+        },
+        {
+          "name": "5. exponential backoff and dead-letter transition",
+          "passed": true,
+          "details": "Failures back off exponentially (1000ms, 2000ms); the attempt reaching maxAttempts (3) transitions to state='failed' (dead letter) with payload sealed to NULL."
+        },
+        {
+          "name": "6. operator dead-letter listing and retry",
+          "passed": true,
+          "details": "Operator listDeadLetters returns failed jobs sorted newest-first; retryDeadLetter resets state to 'queued' and attempts to 0; worker reclaims and completes to 'sent'."
+        }
+      ]
+    },
+    "summary": "Durable job and outbox primitives verified on real PostgreSQL 16: typed and versioned payloads, business idempotency keys, claim and fence metadata with stale worker rejection, exponential backoff, dead-letter state, and operator inspection/retry tools across 6 dedicated tests."
+  },
+  "not_claimed": [
+    "V5-10-02 email/security extraction",
+    "G10 gate passage"
+  ]
+}

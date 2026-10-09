@@ -255,6 +255,12 @@
       "name": "0042_p05_access_realtime",
       "file": "migrations/0042_p05_access_realtime.sql",
       "sha256": "8b72c2d0fb070a2c35b1eb7abcd0d387cf9a927cc602775336588874652d7c25"
+    },
+    {
+      "id": 43,
+      "name": "0043_worker_provider_state",
+      "file": "migrations/0043_worker_provider_state.sql",
+      "sha256": "d3e80d1e5eeaf7c423482648f35ed4d6ef609f31c692bfaedd89a41eaa881f24"
     }
   ]
 }

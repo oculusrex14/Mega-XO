@@ -215,6 +215,10 @@ jobs:
         run: |
           set -o pipefail
           node --test --test-reporter=tap --test-concurrency=1 tests/v5-p09-persistence.test.js tests/v5-p09-lifecycle.test.js tests/v5-p09-fencing.test.js tests/v5-p09-settlement.test.js tests/v5-p09-recovery.test.js 2>&1 | tee .evidence-logs/v5-p09-tournaments.tap
+      - name: P10 durable workers and background jobs
+        run: |
+          set -o pipefail
+          node --test --test-reporter=tap --test-concurrency=1 tests/v5-p10-jobs.test.js tests/v5-p10-workflows.test.js tests/v5-p10-provider.test.js tests/v5-p10-scheduling.test.js tests/v5-p10-deploy-overlap.test.js 2>&1 | tee .evidence-logs/v5-p10-workers.tap
       - name: Enforce executed database coverage
         # A green run that quietly skipped the database suites is a failure, not a pass: every
         # suite must report assertions against the live service and report zero skips.
@@ -256,6 +260,11 @@ jobs:
             { file: 'tests/v5-p09-fencing.test.js', log: '.evidence-logs/v5-p09-tournaments.tap' },
             { file: 'tests/v5-p09-settlement.test.js', log: '.evidence-logs/v5-p09-tournaments.tap' },
             { file: 'tests/v5-p09-recovery.test.js', log: '.evidence-logs/v5-p09-tournaments.tap' },
+            { file: 'tests/v5-p10-jobs.test.js', log: '.evidence-logs/v5-p10-workers.tap' },
+            { file: 'tests/v5-p10-workflows.test.js', log: '.evidence-logs/v5-p10-workers.tap' },
+            { file: 'tests/v5-p10-provider.test.js', log: '.evidence-logs/v5-p10-workers.tap' },
+            { file: 'tests/v5-p10-scheduling.test.js', log: '.evidence-logs/v5-p10-workers.tap' },
+            { file: 'tests/v5-p10-deploy-overlap.test.js', log: '.evidence-logs/v5-p10-workers.tap' },
           ];
           const report = { tool: 'v5-pg-coverage', suites: [] };
           let failed = false;

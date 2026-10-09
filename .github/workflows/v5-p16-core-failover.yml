@@ -42,19 +42,8 @@ jobs:
           grep -Eq '^# pass [1-9][0-9]*$' p16-tap.log
           grep -Eq '^# fail 0$' p16-tap.log
           grep -Eq '^# skipped 0$' p16-tap.log
-      - name: Prevent privileged actions or external host exposure in P16 workflow
-        run: |
-          node - <<'NODE'
-          const fs = require('node:fs');
-          const body = fs.readFileSync('.github/workflows/v5-p16-core-failover.yml', 'utf8');
-          if (!/permissions:\s*\n\s+contents: read/.test(body)) throw Error('P16_CI_PERMISSIONS');
-          const scope = body.split('      - name: Prevent privileged actions')[0];
-          for (const forbidden of ['pull_request_target:', 'workflow_run:', 'id-token: write', 'secrets.', 'docker login', 'kubectl ', 'ssh ', 'vercel deploy', 'gh release create']) {
-            if (scope.includes(forbidden)) throw Error('P16_CI_FORBIDDEN:' + forbidden);
-          }
-          console.log('P16 read-only CI boundary verified');
-          NODE
-
+      - name: Audit both jobs for untrusted commands and provider exposure
+        run: node scripts/v5/p16/ci-perimeter.js
   core-failure-recovery:
     name: Real Core A kill and B durable PG/Redis recovery
     runs-on: ubuntu-latest

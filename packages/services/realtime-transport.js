@@ -133,6 +133,10 @@ const MATCH_CHANNEL = 'core-match';
  * authority produces them reconnects and catches up through `resume`/snapshot recovery instead of
  * pinning unbounded frames in memory. A policy bound, not a durable one. */
 const DEFAULT_MAX_BUFFER_BYTES = 65536;
+/* A client may pipeline bounded envelopes, but may not queue unbounded
+ * transactional/authorization work behind a slow PostgreSQL operation.
+ * The count includes the in-flight operation and every pending frame. */
+const MAX_PENDING_ENVELOPES = 64;
 /* How long a closing socket may linger for its close frame/FIN to flush before it is destroyed. */
 const CLOSE_GRACE_MS = 5000;
 /* RFC 6455 §5.5: a control frame payload never exceeds 125 bytes. */
@@ -614,7 +618,20 @@ function createRealtimeTransport(options = {}) {
   /* One connection, one ordered queue: an awaited ticket redemption or membership probe can never
    * be overtaken by the next frame, and a rejected task never becomes an unhandled rejection. */
   function enqueue(conn, task) {
-    conn.chain = conn.chain.then(task).catch(() => {});
+    /* Backpressure belongs at enqueue, BEFORE creating another pending Promise.
+     * Otherwise one valid socket can pile unlimited memory/database work behind
+     * a blocked transaction, even though each individual frame fits 8 KiB. */
+    if (conn.pendingEnvelopes >= MAX_PENDING_ENVELOPES) {
+      closeSocket(conn, CLOSE_POLICY, true);
+      return;
+    }
+    conn.pendingEnvelopes += 1;
+    conn.chain = conn.chain.then(() => {
+      if (conn.destroyed || conn.closing) return;
+      return task();
+    }).catch(() => {}).finally(() => {
+      conn.pendingEnvelopes -= 1;
+    });
   }
 
   /* A whole text message, already bounded by the frame parser. Malformed JSON and a shape the frozen
@@ -1098,6 +1115,7 @@ function createRealtimeTransport(options = {}) {
       matchScope: null,
       subscriptions: new Set(),
       chain: Promise.resolve(),
+      pendingEnvelopes: 0,
       buffer: EMPTY,
       fragments: null,
       authTimer: null,

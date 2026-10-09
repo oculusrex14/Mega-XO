@@ -28,7 +28,7 @@ function record(v, fields, label) {
 }
 function utc(v) {
   if (typeof v !== 'string' || !UTC.test(v) || !Number.isFinite(Date.parse(v)) ||
-      new Date(v).toISOString() !== v.replace(/\.000Z$/, 'Z')) refuse('UTC_REQUIRED');
+      new Date(v).toISOString().replace(/\.000Z$/, 'Z') !== v.replace(/\.000Z$/, 'Z')) refuse('UTC_REQUIRED');
   return Date.parse(v);
 }
 function assess(ledger, expectedSha, packet = null, checkedAtUtc = new Date().toISOString()) {

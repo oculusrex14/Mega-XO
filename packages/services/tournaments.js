@@ -775,22 +775,29 @@ function createTournamentService(options = {}) {
   if (!input || typeof input !== 'object') fail('INVALID_CLAIM');
   const owner = requireLeaseOwner(input.owner);
   const leaseMs = requireLeaseMs(input.leaseMs);
-  const epoch = input.epoch === undefined ? 0 : requireEpoch(input.epoch);
+  /* A requested epoch is a consistency check; only the live room revision is authority. */
+  const epoch = input.epoch === undefined ? null : requireEpoch(input.epoch);
   await gate;
   return uow.run(async (tx) => {
    const now = tx.clock();
    const until = now + leaseMs;
-   const updated = (await tx.query(
-    'UPDATE tournament.rooms SET timer_lease_owner = $1, timer_lease_epoch = $2, timer_lease_until = $3'
-    + ' WHERE room_id = $4 AND (timer_lease_owner IS NULL OR timer_lease_until < $3 OR timer_lease_owner = $1)',
-    [owner, epoch, atMs(until), roomId])).rowCount;
+   /* Expiry MUST compare against the current clock, not the NEW requested expiry:
+    * asking for a longer lease cannot steal a healthy worker's active claim.
+    * The fence is always the current durable revision, not an arbitrary epoch. */
+   const rows = (await tx.query(
+    'UPDATE tournament.rooms SET timer_lease_owner = $1, timer_lease_epoch = revision, timer_lease_until = $2'
+    + " WHERE room_id = $3 AND status IN ('RUNNING', 'PAUSED')"
+    + ' AND ($4::bigint IS NULL OR revision = $4)'
+    + ' AND (timer_lease_owner IS NULL OR timer_lease_until <= $5 OR timer_lease_owner = $1)'
+    + ' RETURNING timer_lease_epoch',
+    [owner, atMs(until), roomId, epoch, atMs(now)])).rows;
    /* Zero rows means one of two things: a live lease owned by someone else (refused), or no such
     * room. Only the second is an error - a refusal is the normal, expected answer. */
-   if (updated === 0) {
+   if (rows.length === 0) {
     if ((await roomRevision(tx, roomId)) === null) fail('ROOM_NOT_FOUND');
     return null;
    }
-   return { owner, epoch, until };
+   return { owner, epoch: Number(rows[0].timer_lease_epoch), until };
   });
  }
  /* Give the sweep back early (a worker shutting down cleanly). Owner-scoped: a worker that lost the
@@ -832,9 +839,11 @@ function createTournamentService(options = {}) {
     'UPDATE tournament.fixtures SET lease_owner = $1,'
     + ' lease_epoch = (SELECT revision FROM tournament.rooms WHERE room_id = $4), lease_until = $2'
     + ' WHERE room_id = $4 AND fixture_id = $3'
-    + ' AND (lease_owner IS NULL OR lease_until < $2 OR lease_owner = $1)'
+    + " AND status IN ('READY', 'PLAYING')"
+    + " AND EXISTS (SELECT 1 FROM tournament.rooms r WHERE r.room_id = $4 AND r.status IN ('RUNNING', 'PAUSED'))"
+    + ' AND (lease_owner IS NULL OR lease_until <= $5 OR lease_owner = $1)'
     + ' RETURNING lease_epoch',
-    [owner, atMs(until), fixtureId, roomId])).rows;
+    [owner, atMs(until), fixtureId, roomId, atMs(now)])).rows;
    if (!rows.length) { await requireFixtureRow(tx, roomId, fixtureId); return null; }
    return { owner, epoch: Number(rows[0].lease_epoch), until };
   });
@@ -860,8 +869,10 @@ function createTournamentService(options = {}) {
     + ' lease_until = NULL, revision = f.revision + 1'
     + ' FROM tournament.rooms r'
     + ' WHERE f.room_id = $1 AND f.fixture_id = $2 AND f.lease_owner = $3 AND f.lease_epoch = $4'
-    + ' AND f.lease_epoch = r.revision AND r.room_id = f.room_id',
-    [roomId, fixtureId, owner, epoch])).rowCount;
+    + ' AND f.lease_epoch = r.revision AND r.room_id = f.room_id'
+    + " AND r.status IN ('RUNNING', 'PAUSED') AND f.status IN ('READY', 'PLAYING')"
+    + ' AND f.lease_until > $5',
+    [roomId, fixtureId, owner, epoch, atMs(tx.clock())])).rowCount;
    return updated === 1;
   });
  }

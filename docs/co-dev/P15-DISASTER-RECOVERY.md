@@ -108,3 +108,24 @@ approving either production threshold. A missing/stale independent backup
 requires an alert. Its report NEVER claims that alert delivery occurred.
 Production scheduling, real incident alert delivery, R2 readback restore,
 Neon PITR, external key custody and approved owner retention remain open.
+
+## P15 operator backup-age watch (read-only, no alerts sent)
+
+backup-watch.js can read a real first-party encrypted R2 upload/readback
+receipt from an operator-held 0600 file under a 0700 directory. With
+an explicit owner scope confirmation, it reports a measured local age
+against the spec's PROPOSED fifteen-minute target; it exits nonzero for
+stale, future-dated, missing, mock, unowned or unauthenticated receipts.
+Output has no actor IDs, encrypted private key, personal data or AWS
+credential. `realAlertDeliveryObserved` and `g15Accepted` always remain
+false. Its green candidate age is not provider IAM, PITR, independent
+restore or a verified production monitoring/notification system.
+
+Example once an owner has actually provisioned R2 + the backup pipeline:
+
+    P15_OWNER_CONFIRMS_R2_RECEIPT_SCOPE=1 node scripts/v5/p15/backup-watch.js --receipt /owner/private/v5-last.r2-receipt.json --sha SOURCE_COMMIT --now YYYY-MM-DDTHH:MM:SSZ
+
+The actual recurring systemd/cron job, off-host alert delivery, retention
+and operational runbooks must be activated only by the authorized operator
+after P14, actual R2/Neon proof, private key custody and policy approval.
+No timer, webhook or production alert destination is installed in this PR.

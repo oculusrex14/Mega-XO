@@ -31,6 +31,7 @@ At the pinned repo checkpoint, the primary agent's structured ledger reports **4
 | P21 / P23 / P24 | Owner scope/sequence | Website deferred; V4 retirement **only after** P22; capacity purchases **only with measurement** |
 | Source/load security | Recursive branch tree; high-risk binary/credential extension scan | No tracked APK/AAB/IPA/SQLite dump/keystore/signing certificate; tracked `.env.example` and Apple test-fixture PEMs are expected, not runtime release credentials |
 | Build and source graph | All **95 JS/CJS files** in the pre-audit co-dev delta (including inherited P07 changes) | All parse as JavaScript modules and all static relative `require('...')` imports resolve to tracked paths. **Syntax/graph only**, not Node24 compile, Redis Lua execution, native SDK build or real PostgreSQL acceptance |
+| Approved product/authority change perimeter | Compared all diff paths against `src/**`, `public/**`, `index.html`, `packages/domain/**`, `packages/migrations/**`, `deploy/**`, and `docs/v5/progress.json` | **Zero modifications or additions** in those owner/product paths; 6 modified base files are the P07 queue + three tests and client bundle script + test. This is evidence of unchanged source paths, **not** four-theme screenshot/device parity |
 | Git ancestry | Primary head and single co-dev branch comparison | Draft #9 is mergeable, **zero commits behind** at audited base; only co-dev branch changed, not `V5-platform` |
 
 ## Compatibility defects found, fixed and regression-guarded
@@ -73,6 +74,8 @@ At audited head `66065ac92fef034a5a79d441de2f667e07839080`:
 - Every inspected failing job had **no runner assigned** and **zero executed steps**. Certain dependent jobs were skipped after their preceding job failed; they likewise executed no steps. Example: [P16 Actions run 37916225060](https://github.com/oculusrex14/Mega-XO/actions/runs/37916225060) and [P22 run 37916224970](https://github.com/oculusrex14/Mega-XO/actions/runs/37916224970).
 - This is a runner/workflow scheduling or account/service problem **whose cause was not verified**. It is **not evidence that code tests failed** and most emphatically **not a passing test run**.
 - Repo owner: inspect GitHub Actions account billing/minutes/runner eligibility, organization/repository Actions policy and any service notices; rerun exact-current-head PR tests. Once runner is available, require real Node24 unit suites, locked deps, disposable PG16/Redis Lua tests, source bundle parity, Android compile, iOS simulator compile, source-only security guards and P07/P08 integration checks. Do not quietly disable checks, remove target isolation or treat skipped tests as success.
+
+**Additional source-level check:** After the P17 source-only CI test command was amended, its exact workflow passed the `ci-safety-audit.js` read-only/pinned-artifact inspection and **3/3** P17 audit test bodies under V8 with stubbed Node fs/path. This adds regression confidence to the 11/11 P16/P22/cross-phase check results, but it remains **not** a GitHub Actions/Node24 run.
 
 ## Additional risks and explicit owner actions
 

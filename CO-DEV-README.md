@@ -5,7 +5,7 @@
 **Owner:** independent co-developer; **status:** preparatory implementation, NOT formal phase acceptance  
 **Started:** 2026-10-09 UTC  
 **Pinned starting V5 base:** `e8d049bf50862897f546e531def12715a36c670c` (other agent's latest P06 checkpoint when branch was created)  
-**Upstream sync:** accepted G06 (`42db7e0`) merged via `dc579856d8c4`; accepted G07 (`045d5f94a134`) via `41190f99feaa`; accepted G08 (`a09c1578e8dc`) via `1638ab671c66` (22 files, zero overlap); **accepted G09** (`f2863ab1b60f`) via two-parent merge **`cff167f8b163`** (18 byte-identical owner files + dedicated CI union `e40b149839c1`). Main branch was not edited. **Current primary phase P10**, with G00–G09 accepted (51/117 tasks).
+**Upstream sync:** accepted G06 (`42db7e0`) merged via `dc579856d8c4`; accepted G07 (`045d5f94a134`) via `41190f99feaa`; accepted G08 (`a09c1578e8dc`) via `1638ab671c66` (22 files, zero overlap); **accepted G09** (`f2863ab1b60f`) via two-parent merge **`cff167f8b163`** (18 byte-identical owner files + dedicated CI union `e40b149839c1`). Main branch was not edited. **Current primary phase P11**, with G00–G10 accepted (56/117 tasks).
 **Work policy:** only this branch receives new co-development commits. Do not ask the integration agent to inspect/merge individual phase PRs.
 
 ## Quick start for the primary agent
@@ -15,9 +15,17 @@
 3. Run read-only PR CI and isolated tests. **Merge only after current `V5-platform` contracts and tests pass** and dependent P06–P14 changes are accounted for. Pull in changes via Git only; no live staging or production rollout is implied by merge.
 4. Do **not** close G15/G16/G17/G18/G19/G20/G22/G23/G24 based solely on this source. The master ledger `docs/v5/progress.json`, its generated `TODO.md`, and runtime/Neon/Redis credentials remain the primary agent's authority.
 
+## P10 accepted upstream, co-dev hardening on one branch — 2026-10-09
+
+The primary agent passed **G10** at `ca789f9cca8e` (56/117 accepted tasks; P11 now active). We incorporated its 26 owner files without altering their original blobs using two-parent merge [`ba1be63b`](https://github.com/oculusrex14/Mega-XO/commit/ba1be63b3b17eb02a79022f56f0ae0eb220456d2) and unioned all five P10 PostgreSQL suites with the P07–P09 co-dev security/recovery suites and mandatory zero-skip checks. The primary `V5-platform` branch remains untouched.
+
+**Hardening:** cap mail claims to the remaining budget; await in-flight delivery during worker stop; preserve active provider finalization lease/token/purchase fields on duplicate enqueue; refuse provider contact on already-expired finalizer leases or refund tombstones; remove purchase credentials from operator listings and free-form provider errors from database diagnostics; forbid payload-free dead-letter retries (operator must explicitly supply a new body and expiry). Added real-PG tests and the mandatory independent worker budget/shutdown test.
+
+**Operator compatibility note:** `retryDeadLetter({id})` now throws `RETRY_REQUIRES_PAYLOAD`; callers must provide a newly authorized `payload` to avoid silently consuming NULL mail. **Full handoff:** [P10-POST-GATE-HARDENING.md](docs/co-dev/P10-POST-GATE-HARDENING.md). Source additions do not yet establish live worker/provider/store deployment or formal acceptance of these post-gate corrections. Verify **exact current co-dev HEAD CI** before merging to the main agent's branch.
+
 ## Latest full integration audit — 2026-10-09
 
-**Read the [complete 25-phase cross-agent audit](docs/co-dev/V5-FULL-INTEGRATION-SWEEP-2026-10-09.md) before merging.** The user-supplied implementation pack passed its full integrity validator (25 phases, 117 tasks, 40 acceptance cases). At the audit's original checkpoint: **41/117 tasks and G00–G07 accepted, P08 active**. **Now:** G09 accepted, 51/117 tasks, P10 active; V4 SQLite remains the sole live authority. G15–G20/G22 are **NOT** accepted.
+**Read the [complete 25-phase cross-agent audit](docs/co-dev/V5-FULL-INTEGRATION-SWEEP-2026-10-09.md) before merging.** The user-supplied implementation pack passed its full integrity validator (25 phases, 117 tasks, 40 acceptance cases). At the audit's original checkpoint: **41/117 tasks and G00–G07 accepted, P08 active**. **Now:** G10 accepted, 56/117 tasks, P11 active; V4 SQLite remains the sole live authority. G15–G20/G22 are **NOT** accepted.
 
 Audited all 95 previously changed JS/CJS files for parse errors and tracked relative imports (none found), native Gradle/Xcode source inclusion, source-only backup/release/staging/load/cutover boundaries and merge ancestry. **Found and fixed three cross-phase CI trigger defects:** P16 did not watch P08 Core/schema or direct pushes, P22 missed gate/import/client and direct-push changes, and native host builds missed shared contracts/bundle tooling. Updated read-only trusted push/PR scopes and added `tests/v5-cross-phase-integration.test.js` to mandatory P17 source CI. Together with P16/P22 CI security tests, **11/11** exact fetched test bodies passed source-level V8 + Node stubs; **NOT** live Actions or native/PG evidence.
 
@@ -66,7 +74,7 @@ Audited all 95 previously changed JS/CJS files for parse errors and tracked rela
 
 ## Ownership, dependencies and safety
 
-- The **primary agent** has accepted G00–G09 and owns P10–P14 online work; follow its gate ledger, provider evidence and exact interfaces. This branch **edits P07 `packages/services/queue.js`** (claim/hint/race fixes), **P08 `packages/services/realtime-transport.js`, `packages/services/timers.js`** (HTTP auth, backlog and Redis TTL fixes), and **P09 `packages/services/tournaments.js`** (lease expiry/fencing correction) plus matching tests and unified CI. Review these contracts before integrating. The co-dev branch does not rewrite the primary agent's `packages/services/core.js`, `packages/services/ephemera.js`, schema/migrations, live environment inventories, `deploy/compose.yaml`, Caddyfile or `docs/v5/progress.json`.
+- The **primary agent** has accepted G00–G10 and owns P11–P14 online work; follow its gate ledger, provider evidence and exact interfaces. This branch **edits P07 `packages/services/queue.js`** (claim/hint/race fixes), **P08 `packages/services/realtime-transport.js`, `packages/services/timers.js`** (HTTP auth, backlog and Redis TTL fixes), and **P09 `packages/services/tournaments.js`** (lease expiry/fencing correction) plus matching tests and unified CI. Review these contracts before integrating. The co-dev branch does not rewrite the primary agent's `packages/services/core.js`, `packages/services/ephemera.js`, schema/migrations, live environment inventories, `deploy/compose.yaml`, Caddyfile or `docs/v5/progress.json`.
 - The **co-developer** maintains P15–P20 and P22–P24 preparation, client-bundle safety, reviewed P07/P08/P09 corrections and cross-phase CI compatibility audits. All future work lands on this one branch, with small, meaningful commits and an updated README.
 - **No V4 changes**, no current production authority transfer, no modifying R2/Neon/Redis/provider objects, no store submission, no new external ports, and no credentials in Git.
 - P21 (new website/browser product) is **explicitly owner-deferred**; do not start it. P22 depends on P20 rather than the deferred website. P24 is measurement-gated.

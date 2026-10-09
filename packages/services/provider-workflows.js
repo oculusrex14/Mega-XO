@@ -233,34 +233,32 @@ const RETRY_NOTIFICATION_SQL = 'UPDATE monetization.store_notifications'
  + ' WHERE store = $1 AND notification_id = $2 AND lease_owner = $3 AND lease_token = $4'
  + " AND state = 'processing'";
 
-/* Enqueue is an UPSERT keyed by the durable provider transaction identity. A re-verified purchase must
- * not create a second finalization row, and it must NEVER reopen a row whose consume/acknowledge
- * already succeeded - that would present the provider a second consume. A non-`done` row is refreshed
- * to a fresh due attempt (attempts reset, lease cleared) so a re-verification after an abandoned or
- * failed attempt is serviced again. */
+/* A duplicate provider callback must never reset the lease of an in-flight finalizer.
+ * In particular, resetting lease_owner/token while the first worker calls Google
+ * allows a second worker to claim and double-contact the external provider.
+ * Keep *all* fields unchanged for done rows and for unexpired leases. An
+ * unleased/expired/abandoned row may be refreshed for recovery. */
+const FINALIZE_PROTECTED_SQL = "(monetization.store_finalize.state = 'done' OR "
+ + "(monetization.store_finalize.lease_owner IS NOT NULL "
+ + "AND monetization.store_finalize.lease_until > EXCLUDED.updated_at))";
+const finalizeSet = (column, otherwise) => ' ' + column + ' = CASE WHEN ' + FINALIZE_PROTECTED_SQL
+ + ' THEN monetization.store_finalize.' + column + ' ELSE ' + otherwise + ' END';
 const ENQUEUE_FINALIZE_SQL = 'INSERT INTO monetization.store_finalize'
  + ' (store, transaction_id, product_id, purchase_token, kind, state, attempts, next_at, created_at, updated_at)'
  + " VALUES ($1, $2, $3, $4, $5, 'pending', 0, $6, $6, $6)"
  + ' ON CONFLICT (store, transaction_id) DO UPDATE SET'
- + ' product_id = EXCLUDED.product_id,'
- + ' purchase_token = CASE WHEN monetization.store_finalize.state = \'done\''
- + ' THEN monetization.store_finalize.purchase_token ELSE EXCLUDED.purchase_token END,'
- + ' kind = EXCLUDED.kind,'
- + " state = CASE WHEN monetization.store_finalize.state = 'done' THEN 'done' ELSE 'pending' END,"
- + ' attempts = CASE WHEN monetization.store_finalize.state = \'done\''
- + ' THEN monetization.store_finalize.attempts ELSE 0 END,'
- + ' next_at = CASE WHEN monetization.store_finalize.state = \'done\''
- + ' THEN monetization.store_finalize.next_at ELSE EXCLUDED.next_at END,'
- + ' lease_owner = CASE WHEN monetization.store_finalize.state = \'done\''
- + ' THEN monetization.store_finalize.lease_owner ELSE NULL END,'
- + ' lease_token = CASE WHEN monetization.store_finalize.state = \'done\''
- + ' THEN monetization.store_finalize.lease_token ELSE NULL END,'
- + ' lease_until = CASE WHEN monetization.store_finalize.state = \'done\''
- + ' THEN monetization.store_finalize.lease_until ELSE NULL END,'
- + ' updated_at = EXCLUDED.updated_at'
- /* `xmax = 0` is the PostgreSQL convention for "this row was INSERTed by this command, not updated by
-  * it": it distinguishes a first enqueue from a refresh of a row that already existed, which a plain
-  * row count cannot (an upsert reports one affected row either way). */
+ + [
+  finalizeSet('product_id', 'EXCLUDED.product_id'),
+  finalizeSet('purchase_token', 'EXCLUDED.purchase_token'),
+  finalizeSet('kind', 'EXCLUDED.kind'),
+  finalizeSet('state', "'pending'"),
+  finalizeSet('attempts', '0'),
+  finalizeSet('next_at', 'EXCLUDED.next_at'),
+  finalizeSet('lease_owner', 'NULL'),
+  finalizeSet('lease_token', 'NULL'),
+  finalizeSet('lease_until', 'NULL'),
+  finalizeSet('updated_at', 'EXCLUDED.updated_at'),
+ ].join(',')
  + ' RETURNING (xmax = 0) AS inserted, state';
 
 /* The due finalization set, locked. UNLIKE the notification machine, a finalization row keeps
@@ -293,7 +291,7 @@ const FINALIZE_STATE_SQL = 'SELECT f.product_id, f.purchase_token, f.kind, f.cre
  + ' LEFT JOIN monetization.receipts r'
  + ' ON r.store = f.store AND r.transaction_id = f.transaction_id'
  + " WHERE f.store = $1 AND f.transaction_id = $2 AND f.state = 'pending'"
- + ' AND f.lease_owner = $3 AND f.lease_token = $4'
+ + ' AND f.lease_owner = $3 AND f.lease_token = $4 AND f.lease_until > $5'
  + ' FOR UPDATE OF f';
 
 /* Terminal completion: the provider op succeeded, so the purchase token is CLEARED in the same UPDATE
@@ -341,7 +339,7 @@ const RECEIPT_SQL = 'SELECT refunded FROM monetization.receipts'
 const REVOCATION_SQL = 'SELECT 1 AS present FROM monetization.store_revocations'
  + ' WHERE store = $1 AND transaction_id = $2';
 
-const PENDING_FINALIZATIONS_SQL = 'SELECT store, transaction_id, product_id, purchase_token, kind, state,'
+const PENDING_FINALIZATIONS_SQL = 'SELECT store, transaction_id, product_id, kind, state,'
  + ' attempts, next_at, created_at, updated_at, lease_owner, lease_token, lease_until'
  + ' FROM monetization.store_finalize'
  + " WHERE state = 'pending'"
@@ -552,7 +550,7 @@ function createProviderWorkflow(options = {}) {
    const finalizeProvider = requireFn(input.finalizeProvider, 'FINALIZE_PROVIDER_REQUIRED');
    const at = clock();
    await gate;
-   const rows = (await oneShot(FINALIZE_STATE_SQL, [store, transactionId, workerId, fence])).rows;
+   const rows = (await oneShot(FINALIZE_STATE_SQL, [store, transactionId, workerId, fence, atMs(at)])).rows;
    if (rows.length !== 1) return { completed: false, pendingGrant: false, fenceLost: true };
    const row = rows[0];
    const refunded = row.receipt_refunded === true;
@@ -637,6 +635,7 @@ function createProviderWorkflow(options = {}) {
   },
 
   /* The restricted operator surface: the finalizations still waiting on a grant, soonest first,
+    * returns only a boolean token-presence hint, never the purchase credential itself.
     * bounded. A row here is a purchase that is granted-or-waiting but not yet consumed/acknowledged -
     * the "pending finalization is visible" half of the task's verification. */
   async listPendingFinalizations(input = {}) {
@@ -649,7 +648,7 @@ function createProviderWorkflow(options = {}) {
     store: row.store,
     transactionId: String(row.transaction_id),
     productId: row.product_id,
-    purchaseToken: row.purchase_token,
+    hasPurchaseToken: Boolean(row.purchase_token),
     kind: row.kind,
     state: row.state,
     attempts: Number(row.attempts),

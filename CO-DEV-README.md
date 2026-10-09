@@ -159,6 +159,9 @@ Every PR update must verify the exact source head CI. Keep V5 retained regressio
 
 ## Chronological co-dev checkpoint log
 
+- **2026-10-09 P24 latest-head CI status:** Fetched and checked all 11 workflows at source `d2f8f59370c2`; all failed with zero job steps, including new P24 run `37930690645` (no allocated runner). Rechecked source-only P24 tests **36/36**, P17 cross-phase **7/7**. Real Node24/PG/Redis/prod evidence unexecuted; G24 remains OPEN. [CI incident](docs/co-dev/CI-RUNNER-INCIDENT-2026-10-09.md).
+
+
 - **2026-10-09 P24 capacity/scale:** Picked the final measurement-gated phase, built offline ten-signal observed baseline (`76f4227`), strict budget/rollback/approval policy (`1e9e6f6`), G23-prerequisite sustained-demand review (`bac8382`), safe local source-scoped CLI (`be4424e`) and no-skip read-only CI (`9365a2f`). Five negative-test suites, and P17 cross-phase compatibility watcher (`f03e95d`). **36/36 P24 + 7/7 cross-phase source-level V8/stub checks passed; NOT GitHub/Node24/actual provider evidence.** G24 OPEN, no production capacity provisioned. [P24 handoff](docs/co-dev/P24-SCALING-HANDOFF.md).
 
 

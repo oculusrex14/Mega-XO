@@ -7,7 +7,7 @@ const { auditWorkflow } = require('../scripts/v5/p16/ci-perimeter');
 
 const workflow = fs.readFileSync(path.join(__dirname, '../.github/workflows/v5-p16-core-failover.yml'), 'utf8');
 
-test('actual P16 dual-job workflow is PR-only, read-only, pinned and disposable', () => {
+test('actual P16 dual-job workflow watches identical V5 push/PR dependencies with read-only credentials', () => {
   assert.deepEqual(auditWorkflow(workflow), {
     readOnly: true, serviceLocality: 'loopback', jobs: 2, noSkip: true,
   });
@@ -16,6 +16,9 @@ test('actual P16 dual-job workflow is PR-only, read-only, pinned and disposable'
 test('privileged events, write token or provider secret references are refused', () => {
   const inputs = [
     workflow.replace('  pull_request:', '  pull_request_target:'),
+    workflow.replace('  push:', '  workflow_dispatch:'),
+    workflow.replace('    branches: [V5-platform]', '    branches: [main]'),
+    workflow.replace("      - 'packages/services/**'", "      - 'packages/services/not-all.js'"),
     workflow.replace('  contents: read', '  contents: write'),
     workflow.replace('permissions:', 'env:\n  GH_TOKEN: unexpected\npermissions:'),
   ];

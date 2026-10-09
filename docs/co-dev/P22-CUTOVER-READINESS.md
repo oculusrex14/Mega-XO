@@ -15,7 +15,7 @@ This report implements *static, offline and synthetic* safeguards before the P22
 | V5-22-04 | scripts/v5/p22/import-reconciliation.js | Frozen source/run/schema equality, zero unknown/differences/invariant faults and 12 durable-family hashes |
 | V5-22-05 | scripts/v5/p22/rollback-policy.js | P18 cutover-state integration; even a session or provider inbox write makes V4 rollback unsafe; UNKNOWN is quarantine |
 | V5-22-05 | scripts/v5/p22/compatibility-map.js | Retained browser/native and old callback mapping through one PostgreSQL authority; old-domain cookie continuity |
-| V5-22-06 | .github/workflows/v5-p22-cutover-readiness.yml and tests/v5-p22-*.test.js | PR-only read-only CI, pinned checkout, zero-skip suites; no provider access |
+| V5-22-06 | .github/workflows/v5-p22-cutover-readiness.yml and tests/v5-p22-*.test.js | Read-only V5 push/PR CI, pinned checkout, zero-skip suites; no provider access |
 
 **Important:** all operator packets are declarations, not independently authenticated observations. Every result has cutoverAuthorized:false or an equivalent denial. Do not wire an assessment into runtime write admission. No production authorizer, migrator or deployer has been added.
 
@@ -63,7 +63,7 @@ After authorized transfer, verify real old-client/native identity and wallet/ran
 
 ## Development checks and blockers
 
-Run node --test tests/v5-p22-*.test.js and node scripts/v5/p22/readiness.js --sha EXACT_SHA. The PR workflow requires **zero failures and zero skips**. An exact fetched-code V8 harness with Node stubs executed 31/31 P22 pure test bodies without failure at co-dev SHA a04f623e1aa8; this is not Node24 CI, provider or actual staging evidence. The current P08 owner ledger (G00–G07 passed; G08–G20 missing) MUST produce BLOCKED; that is the expected safe result, not authorization.
+Run node --test tests/v5-p22-*.test.js and node scripts/v5/p22/readiness.js --sha EXACT_SHA. Both trusted V5-push and PR workflow executions require **zero failures and zero skips**. An exact fetched-code V8 harness with Node stubs executed 31/31 P22 pure test bodies without failure at co-dev SHA a04f623e1aa8; this is not Node24 CI, provider or actual staging evidence. The current P08 owner ledger (G00–G07 passed; G08–G20 missing) MUST produce BLOCKED; that is the expected safe result, not authorization.
 
 - G08–G20 (including G20 real native device/store evidence) are not accepted; the primary agent must finish them independently.
 - Actual V4 restart fence, live no-write proof, final production import, old-domain cookie/legacy callback routing, first-write epoch, production smoke and backup/alerts are **NOT_EXECUTED** here.

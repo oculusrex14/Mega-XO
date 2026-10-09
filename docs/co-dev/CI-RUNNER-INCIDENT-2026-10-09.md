@@ -22,6 +22,10 @@ At source `41177477377e5f2412326a314cbe8a0eeaf589c6`, **10/10** triggered workfl
 
 After accepted G08 (`a09c1578e8dc`) was merged into co-dev and the realtime hardening tests were added, the [PostgreSQL workflow 37928384012](https://github.com/oculusrex14/Mega-XO/actions/runs/37928384012) and [release-engineering workflow 37928384048](https://github.com/oculusrex14/Mega-XO/actions/runs/37928384048) again ended **failure with zero steps and no runner assigned**. This applies to the new HTTP authentication, masked-TCP backlog and Redis due-TTL regressions as well: their Node24 tests were **not executed**. It remains a scheduling/account/platform symptom, not proof of application-test failures or passes. See [P08 co-dev review](P08-POST-GATE-HARDENING.md) for exact integration requirements.
 
+## P24 final source review (2026-10-09)
+
+At source `d2f8f59370c2287dd90d300e4969fdafe5c0d809`, **all 11/11** triggered workflows ended in failure with **zero executed job steps**. The new [P24 evidence-led scaling run 37930690645](https://github.com/oculusrex14/Mega-XO/actions/runs/37930690645) had a failed job with **no runner name and no steps**; [PostgreSQL run 37930691065](https://github.com/oculusrex14/Mega-XO/actions/runs/37930691065) and [release run 37930690633](https://github.com/oculusrex14/Mega-XO/actions/runs/37930690633) were likewise zero-step failures. These are not executed Node24 tests or P24 acceptance evidence. The actual cause remains unverified; see [P24 handoff](P24-SCALING-HANDOFF.md).
+
 ## Most useful owner checks, in order
 
 1. Open any failed run directly in GitHub Actions, inspect the job banner, notices, annotations, and repository/org activity/limits. If a billing/usage lock, spending limit, GitHub-hosted runner entitlement or payment issue exists, resolve it through the account owner; **do not** publish credentials or billing data here.

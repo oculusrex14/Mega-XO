@@ -137,11 +137,19 @@ async function resolveService(context) {
   if (context?._accountsPromise) return context._accountsPromise;
   if (typeof context?.getAccounts === 'function') return context.getAccounts();
   if (context?.pool) {
+    // OTP hashes must use one deployment-owned secret, shared by every API
+    // instance. A built-in fallback would make live codes predictable.
+    const otpSecret = context.otpSecret || process.env.MEGA_OTP_SECRET || process.env.OTP_SECRET;
+    if (typeof otpSecret !== 'string' || otpSecret.length < 16) {
+      const error = new Error('OTP_SECRET_REQUIRED');
+      error.status = 503;
+      throw error;
+    }
     context._accountsPromise = createAccountService(context.pool, {
       now: context.now || (() => Date.now()),
-      otpSecret: context.otpSecret || 'mega-xo-v5-api-default-otp-secret-key',
       deletionPolicy: context.deletionPolicy || { enabled: true, policyVersion: 'v5-policy-v1' },
       ...context,
+      otpSecret,
     });
     context.accounts = await context._accountsPromise;
     return context.accounts;

@@ -87,7 +87,7 @@ function plan({seed=1919,tiers=TIERS}={}){
 }
 if(require.main===module){
   try{
-    if(process.argv.length!==2||process.argv[1]!=='--plan')reject('usage: workload-profile.js --plan');
+    if(process.argv.length!==3||process.argv[2]!=='--plan')reject('usage: workload-profile.js --plan');
     process.stdout.write(JSON.stringify(plan(),null,2)+'\n');
   }catch(e){process.stderr.write(e.message+'\n');process.exitCode=2;}
 }

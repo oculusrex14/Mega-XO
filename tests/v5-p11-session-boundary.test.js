@@ -122,3 +122,38 @@ test('P11: old-origin cookie sessions work, revoked sessions never forward', asy
   assert.equal(missingOrigin.status, 403);
   assert.equal(missingOrigin.data.error, 'ORIGIN_OR_CONTENT_TYPE');
 });
+
+test('P11: API will not boot OTP or Core gateway using default public secrets', async () => {
+  const { resolveService } = require('../apps/api/routes/helpers.js');
+  const { resolveGateway } = require('../apps/api/routes/competitive.js');
+  const names = [
+    'MEGA_OTP_SECRET', 'OTP_SECRET', 'CORE_SECRET', 'SERVICE_SECRET',
+    'MEGA_CORE_URL', 'CORE_SERVICE_URL', 'CORE_URL', 'GAME_CORE_URL',
+  ];
+  const saved = new Map(names.map((name) => [name, process.env[name]]));
+  try {
+    for (const name of names) delete process.env[name];
+    await assert.rejects(
+      resolveService({ pool: {} }),
+      (error) => error.message === 'OTP_SECRET_REQUIRED' && error.status === 503,
+    );
+    assert.throws(
+      () => resolveGateway({}),
+      (error) => error.message === 'CORE_URL_REQUIRED' && error.status === 503,
+    );
+    assert.throws(
+      () => resolveGateway({ coreUrl: 'https://core.example.org' }),
+      (error) => error.message === 'GATEWAY_SECRET_REQUIRED' && error.status === 503,
+    );
+    const explicitlyConfigured = resolveGateway({
+      coreUrl: 'https://core.example.org',
+      coreSecret: 'unique-test-secret-do-not-deploy',
+    });
+    assert.equal(explicitlyConfigured.baseUrl, 'https://core.example.org');
+  } finally {
+    for (const [name, value] of saved) {
+      if (value === undefined) delete process.env[name];
+      else process.env[name] = value;
+    }
+  }
+});

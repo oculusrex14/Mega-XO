@@ -37,6 +37,14 @@ function hasAcceptedGate(ledger, gate) {
         !Array.isArray(e.evidence_refs) || e.evidence_refs.length === 0) fail('INVALID_GATE_LEDGER');
     seen.add(e.gate);
   }
+  // P21 is owner-DEFERRED, not a prerequisite. G22 nevertheless requires
+  // the full accepted G00-G20 lineage; a lone forged G22 cannot enable review.
+  if (gate === 'G22' || gate === 'G23') {
+    for (let i=0; i<=20; i++) {
+      if (!seen.has('G'+String(i).padStart(2,'0'))) return false;
+    }
+  }
+  if (gate === 'G23' && !seen.has('G22')) return false;
   return seen.has(gate);
 }
 

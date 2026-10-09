@@ -63,9 +63,9 @@ After authorized transfer, verify real old-client/native identity and wallet/ran
 
 ## Development checks and blockers
 
-Run node --test tests/v5-p22-*.test.js and node scripts/v5/p22/readiness.js --sha EXACT_SHA. The PR workflow requires **zero failures and zero skips**. The current P07 owner ledger MUST produce BLOCKED; that is the expected safe result, not authorization.
+Run node --test tests/v5-p22-*.test.js and node scripts/v5/p22/readiness.js --sha EXACT_SHA. The PR workflow requires **zero failures and zero skips**. An exact fetched-code V8 harness with Node stubs executed 31/31 P22 pure test bodies without failure at co-dev SHA a04f623e1aa8; this is not Node24 CI, provider or actual staging evidence. The current P08 owner ledger (G00–G07 passed; G08–G20 missing) MUST produce BLOCKED; that is the expected safe result, not authorization.
 
-- G07–G20 (including G20 real native device/store evidence) are not accepted; the local agent must finish them independently.
+- G08–G20 (including G20 real native device/store evidence) are not accepted; the primary agent must finish them independently.
 - Actual V4 restart fence, live no-write proof, final production import, old-domain cookie/legacy callback routing, first-write epoch, production smoke and backup/alerts are **NOT_EXECUTED** here.
 - GitHub Actions on PR #9 has been failing before runner allocation (0 executed steps). Root cause requires owner GitHub Actions runner/billing/service investigation. No exact-head green CI claim until jobs run.
 - No V4 stop, Neon/Redis/R2/Vercel provider mutation, paid upgrade, domain change, deployment or store submission was made by this P22 work.

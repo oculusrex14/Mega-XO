@@ -1,3 +1,17 @@
+## Current P0 checkpoint — operator handoff (2026-10-10)
+
+**Scope:** All co-dev source/security/P04-P14/P19 hardening on the single `co-dev/v5-integration` branch; **DO NOT MERGE YET** until the owner finishes provider/live acceptance and the user requests the final merge. [PR #9](https://github.com/oculusrex14/Mega-XO/pull/9) remains draft. Owner branch `V5-platform` and production are untouched.
+
+- Verified **12/12 exact-head workflows green** at the immutable pre-audit checkpoint [`dc88e7a`](https://github.com/oculusrex14/Mega-XO/commit/dc88e7a6a4cb46061543ed450fe28173e9528d2c), including real disposable PostgreSQL/Redis, source validation/browser, P15/P16/P18/P19, and Android/iOS host build jobs. CI proves code/source/build checks; **not live V5 staging, signed physical devices, store receipts or production cutover**.
+- The accepted owner authority audit [`cb54985`](https://github.com/oculusrex14/Mega-XO/commit/cb54985a2f1d5c6c68d1af9c151a0189f7f9f27b) directly verified exactly one **V4.1.2/SQLite** production writer and zero V5 writes. Two-parent co-dev sync `facca8f` kept both histories. No database, DNS, VPS, provider, store or production configuration mutated by co-dev.
+- Reconciled 13 falsely completed P22–P24 live tasks; current ledger: **104/117 terminal, G00–G20 accepted, G22–G24 open, P21 owner-deferred, 2/40 original acceptance cases PASS, 38 NOT_RUN**. Preserved synthetic rehearsal proof as rehearsal only, not live cutover.
+- The executable case-by-case inventory is [P0-ACCEPTANCE-TRIAGE.json](docs/co-dev/P0-ACCEPTANCE-TRIAGE.json) with 40 unique IDs, actual owner ledger status, existing evidence paths, remaining proof and responsible lead. Mandatory Node validation `tests/v5-p0-acceptance-triage.test.js` refuses unsupported promotion, lost cases and false-live gate claims. The triage is **not** a pass on behalf of the owner.
+- **Operator handoff / go-no-go dependencies:** [P0-PREMERGE-ENGINEERING-HANDOFF.md](docs/co-dev/P0-PREMERGE-ENGINEERING-HANDOFF.md). The next run of 12 workflows on the latest exact SHA must finish green; historical CI is not inherited automatically.
+- Previously fixed account impersonation, OTP/Core signing defaults, idempotency keys, privacy/cache, forwarded origin spoofing, worker shutdown and cross-phase CI are preserved. Approved gameplay, fees, Coins/Crowns, monetization and existing V4 deployment stay unchanged.
+
+**Historical phase-specific sections below are snapshots from earlier development and may quote an obsolete then-current phase. This checkpoint and the owner `progress.json` supersede those temporal claims.**
+
+---
 # Mega XO V5 — unified co-development handoff
 
 **Canonical branch:** `co-dev/v5-integration`  

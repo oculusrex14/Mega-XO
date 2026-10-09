@@ -1,0 +1,17 @@
+{
+  "name": "@mega-xo/api",
+  "version": "5.0.0",
+  "private": true,
+  "description": "Stateless control plane and Vercel API facade for Mega XO V5.",
+  "main": "config.js",
+  "exports": {
+    ".": "./config.js",
+    "./config": "./config.js"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "dependencies": {
+    "pg": "^8.23.1"
+  }
+}

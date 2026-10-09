@@ -1,0 +1,63 @@
+{
+  "schema_version": 1,
+  "phase": "P11",
+  "task_ids": [
+    "V5-11-01"
+  ],
+  "case_ids": [],
+  "recorded_at_utc": "2026-10-09T10:10:00.000Z",
+  "status": "VERCEL_PROJECT_CONFIG_VERIFIED",
+  "source_state": {
+    "base_sha": "ca789f9cca8ead3587726733ed4ccf1f6ed46c8c",
+    "target_branch": "V5-platform",
+    "files": [
+      "apps/api/vercel.json",
+      "apps/api/package.json",
+      "apps/api/config.js",
+      "docs/v5/ROUTE-MANIFEST.md",
+      "tests/v5-p11-vercel-config.test.js"
+    ]
+  },
+  "verification": {
+    "command": "node --test --test-reporter=tap --test-concurrency=1 tests/v5-p11-vercel-config.test.js",
+    "target_environment": "local Mac mini arm64 (Vercel CLI authenticated team_wS9BpnXbYRZahs1DiSueN3SS)",
+    "results": {
+      "tests_total": 17,
+      "tests_passed": 17,
+      "tests_failed": 0,
+      "tests_skipped": 0,
+      "cases": [
+        {
+          "name": "1. vercel.json structure and project metadata",
+          "passed": true,
+          "details": "Verified project name 'mega-xo-api', team 'team_wS9BpnXbYRZahs1DiSueN3SS', functions compute constraints (1024MB, 15s maxDuration, nodejs22.x), perimeter security headers, and clean rewrites."
+        },
+        {
+          "name": "2. strict region placement to iad1",
+          "passed": true,
+          "details": "Region strictly configured to iad1 (US East, adjacent to Neon aws-us-east-1 and Oracle IAD Core host) per Spec 04 latency budget."
+        },
+        {
+          "name": "3. preview environment validation and strict secret isolation",
+          "passed": true,
+          "details": "Config validator verifies that preview/nonproduction environments strictly reject production database connections, production hostnames, and production secrets."
+        },
+        {
+          "name": "4. route manifest completeness",
+          "passed": true,
+          "details": "Catalogues all 65 routes from V4 perimeter and community HTTP with exact method, auth, owner, economic authority, and cache class."
+        },
+        {
+          "name": "5. zero economic authority in Vercel API",
+          "passed": true,
+          "details": "Verified that Vercel API owns exactly 0 economic mutation routes (0.0%); all 19 currency minting and game settlement routes belong strictly to Game Core."
+        }
+      ]
+    },
+    "summary": "Isolated Vercel API project configuration, package manifest, environment validator, and complete route ownership manifest created. Strict iad1 region placement, preview secret isolation, and zero economic authority verified across 17 tests."
+  },
+  "not_claimed": [
+    "V5-11-02 account/social API implementation",
+    "G11 gate passage"
+  ]
+}

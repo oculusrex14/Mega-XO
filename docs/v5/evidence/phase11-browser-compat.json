@@ -1,0 +1,74 @@
+{
+  "schema_version": 1,
+  "phase": "P11",
+  "task_ids": [
+    "V5-11-04"
+  ],
+  "case_ids": [],
+  "recorded_at_utc": "2026-10-09T10:40:00.000Z",
+  "status": "BROWSER_COMPAT_VERIFIED",
+  "source_state": {
+    "base_sha": "ca789f9cca8ead3587726733ed4ccf1f6ed46c8c",
+    "target_branch": "V5-platform",
+    "files": [
+      "apps/api/middleware/cors.js",
+      "apps/api/middleware/csrf.js",
+      "apps/api/routes/compat.js",
+      "apps/api/index.js",
+      "tests/v5-p11-browser-compat.test.js"
+    ]
+  },
+  "verification": {
+    "command": "env V5_PG_URL=postgres://postgres@127.0.0.1:50709/postgres V5_PG_DISPOSABLE=1 V5_PG_REQUIRED=1 node --test --test-reporter=tap --test-concurrency=1 tests/v5-p11-browser-compat.test.js",
+    "target_environment": "local loopback PostgreSQL 16.15 (Mac mini arm64)",
+    "database_role": "api_runtime",
+    "results": {
+      "tests_total": 7,
+      "tests_passed": 7,
+      "tests_failed": 0,
+      "tests_skipped": 0,
+      "cases": [
+        {
+          "name": "1. CORS: verifies old-origin headers, preflight OPTIONS, allowed list, and disallowed rejection",
+          "passed": true,
+          "details": "play.antimatterinnovations.com receives Access-Control-Allow-Origin and Access-Control-Allow-Credentials: true; preflight OPTIONS returns 204."
+        },
+        {
+          "name": "2. Cookie auth continuity: resolves session via __Host-mega_session and dev session cookies",
+          "passed": true,
+          "details": "__Host-mega_session cookie resolves correctly via accounts.requireLinked to caller profile."
+        },
+        {
+          "name": "3. CSRF: cookie-authenticated mutating requests require allowed Origin/Referer or 403 ORIGIN_OR_CONTENT_TYPE",
+          "passed": true,
+          "details": "Cookie-authenticated POST from forged/unauthorized origin rejected with 403 ORIGIN_OR_CONTENT_TYPE."
+        },
+        {
+          "name": "4. Genuinely read-only GETs: /api/v1/queue, /api/v1/match/:id, and /api/v1/invitations mutate zero DB state",
+          "passed": true,
+          "details": "GET /api/v1/queue and GET /api/v1/match/:id return status without performing lazy database writes or mutations."
+        },
+        {
+          "name": "5. Legacy /api/v1/profile compatibility: returns exact expected JSON shape with wallet, tier, and history",
+          "passed": true,
+          "details": "Returns exact legacy JSON shape { id, friendCode, name, rating, games, tier, wallet, records, daily, friends } from PostgreSQL."
+        },
+        {
+          "name": "6. Zero SQLite writes: asserts zero SQLite files created or modified during PostgreSQL operations",
+          "passed": true,
+          "details": "Verified that zero SQLite files (*.sqlite, *.sqlite3, *.db) are created or modified during tests."
+        },
+        {
+          "name": "7. Teardown & handle management: harness cleanly drops loopback servers and connection pools",
+          "passed": true,
+          "details": "Harness closes server connections and connection pools cleanly without lingering handles."
+        }
+      ]
+    },
+    "summary": "Old-origin browser client compatibility facade implemented in apps/api/middleware/cors.js, csrf.js, and routes/compat.js. Verified CORS for play.antimatterinnovations.com, cookie auth continuity, CSRF enforcement, genuinely read-only GETs, legacy profile shape, and zero SQLite writes across 7 dedicated tests on real PG16."
+  },
+  "not_claimed": [
+    "V5-11-05 future website foundations",
+    "G11 gate passage"
+  ]
+}

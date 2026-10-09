@@ -1,0 +1,70 @@
+{
+  "schema_version": 1,
+  "phase": "P11",
+  "gate": "G11",
+  "task_ids": [
+    "V5-11-01",
+    "V5-11-02",
+    "V5-11-03",
+    "V5-11-04",
+    "V5-11-05"
+  ],
+  "case_ids": [],
+  "recorded_at_utc": "2026-10-09T11:00:00.000Z",
+  "status": "PASSED",
+  "source_state": {
+    "base_sha": "ca789f9cca8ead3587726733ed4ccf1f6ed46c8c",
+    "target_branch": "V5-platform",
+    "files": [
+      "apps/api/vercel.json",
+      "apps/api/package.json",
+      "apps/api/config.js",
+      "apps/api/index.js",
+      "apps/api/routes/account.js",
+      "apps/api/routes/social.js",
+      "apps/api/routes/competitive.js",
+      "apps/api/routes/compat.js",
+      "apps/api/routes/well-known.js",
+      "apps/api/middleware/cors.js",
+      "apps/api/middleware/csrf.js",
+      "packages/services/core-gateway.js",
+      "packages/services/browser-harness.js",
+      "docs/v5/ROUTE-MANIFEST.md",
+      "tests/v5-p11-vercel-config.test.js",
+      "tests/v5-p11-account-social.test.js",
+      "tests/v5-p11-core-gateway.test.js",
+      "tests/v5-p11-browser-compat.test.js",
+      "tests/v5-p11-website-foundations.test.js"
+    ]
+  },
+  "gate_criteria": {
+    "description": "Vercel and Core serve the same staging actors with no overlapping economic authority; old client routes remain compatible",
+    "verified_points": [
+      "Isolated Vercel API project configuration in apps/api/vercel.json (region iad1 adjacent to Neon aws-us-east-1 and Oracle IAD) with preview secret isolation in apps/api/config.js and full 65-route ownership manifest in docs/v5/ROUTE-MANIFEST.md confirming zero economic mutation routes in API.",
+      "Account, social, practice, and read APIs implemented in apps/api using api_runtime role with monotonic cloud save CAS revisions, privacy-aware profile views (public/friends/private/blocked), and cross-service data consistency between API and Game Core.",
+      "Service-authenticated Core gateway in packages/services/core-gateway.js and apps/api/routes/competitive.js with HMAC-SHA256 signing, 30s drift check, opKey idempotency, and strict database least privilege (API role cannot mutate economic tables).",
+      "Old-origin browser compatibility facade in apps/api/middleware/cors.js, csrf.js, and routes/compat.js supporting play.antimatterinnovations.com, cookie auth continuity, CSRF enforcement, genuinely read-only GETs, legacy profile shape, and zero SQLite writes.",
+      "Future website foundations established in apps/api/routes/well-known.js and packages/services/browser-harness.js with association files, legal endpoints, callback contracts, and browser harness authentication, strictly preserving zero new website UI invariant."
+    ]
+  },
+  "verification": {
+    "command": "env V5_PG_URL=postgres://postgres@127.0.0.1:50709/postgres V5_PG_DISPOSABLE=1 V5_PG_REQUIRED=1 node --test --test-reporter=tap --test-concurrency=1 tests/v5-p11-vercel-config.test.js tests/v5-p11-account-social.test.js tests/v5-p11-core-gateway.test.js tests/v5-p11-browser-compat.test.js tests/v5-p11-website-foundations.test.js",
+    "target_environment": "local loopback PostgreSQL 16.15 (Mac mini arm64)",
+    "database_roles": ["api_runtime", "core_runtime"],
+    "results": {
+      "suites_total": 5,
+      "suites_passed": 5,
+      "tests_total": 44,
+      "tests_passed": 44,
+      "tests_failed": 0,
+      "tests_skipped": 0
+    }
+  },
+  "evidence_dependencies": [
+    "docs/v5/evidence/phase11-vercel-config.json",
+    "docs/v5/evidence/phase11-account-social.json",
+    "docs/v5/evidence/phase11-core-gateway.json",
+    "docs/v5/evidence/phase11-browser-compat.json",
+    "docs/v5/evidence/phase11-website-foundations.json"
+  ]
+}

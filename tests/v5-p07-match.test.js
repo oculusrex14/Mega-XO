@@ -442,7 +442,7 @@ test('V5-07-03 match: an actor occupied mid-tick fails ALREADY_IN_MATCH, rolls b
   const reclaimed = await queue.claimCandidates({ mode: 'ranked', limit: 4, matcherId: 'matcher-verify', leaseMs: 30000 });
   assert.deepEqual(reclaimed.map((c) => c.actor), ['svc_bob'], 'the requeued partner is claimable again with a released claim');
   assert.equal(reclaimed[0].joinedAt, bob.joinedAt, 'the partner keeps its ORIGINAL FIFO join time');
-  await queue.releaseClaim({ mode: 'ranked', actor: 'svc_bob', requeue: true });
+  await queue.releaseClaim({ mode: 'ranked', actor: 'svc_bob', claimId: reclaimed[0].claimId, requeue: true });
   assert.deepEqual(await index(ephemera, 'ranked'), ['svc_bob'], 'the partner survives the release');
 
   /* The occupied actor is refused a re-join from durable truth, and reports its real match. */
@@ -569,7 +569,7 @@ test('V5-07-03 match: unpaired candidates keep their original FIFO score and `li
   assert.deepEqual(reclaimed.map((c) => c.actor), ['svc_alice', 'svc_bob', 'svc_erin'], 'the released candidates are claimable again in the same FIFO order');
   assert.deepEqual(reclaimed.map((c) => c.joinedAt), joined.map((j) => j.joinedAt), 'every released candidate kept its ORIGINAL join time as its index score');
   assert.equal(new Set(reclaimed.map((c) => c.claimId)).size, 3, 'each candidate carries its own fresh claim');
-  for (const actor of ['svc_alice', 'svc_bob', 'svc_erin']) await queue.releaseClaim({ mode: 'ranked', actor, requeue: true });
+  for (const actor of ['svc_alice', 'svc_bob', 'svc_erin']) await queue.releaseClaim({ mode: 'ranked', actor, claimId: reclaimed.find((c) => c.actor === actor).claimId, requeue: true });
 
   /* LIMIT: a bounded tick claims the OLDEST candidates only; the untouched tail keeps its score. */
   const tail = [];

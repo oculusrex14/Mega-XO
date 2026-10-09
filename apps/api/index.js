@@ -8,6 +8,9 @@ const socialRoutes = require('./routes/social');
 const competitiveRoutes = require('./routes/competitive');
 const wellKnownRoutes = require('./routes/well-known');
 const { sendError, sendJson } = require('./routes/helpers');
+const path = require('node:path');
+const { createReadCache } = require(path.join(__dirname, '../../packages/services/read-cache.js'));
+const security = require(path.join(__dirname, '../../packages/services/security.js'));
 
 /**
  * Creates an HTTP request handler for the API control plane.
@@ -16,16 +19,57 @@ const { sendError, sendJson } = require('./routes/helpers');
  */
 function createApiHandler(options = {}) {
   const context = { ...options };
+  if (!context.readCache) {
+    context.readCache = createReadCache(context.readCacheOptions || {});
+  }
 
   return async function handler(req, res) {
     try {
-      // 1. CORS middleware: handles preflight OPTIONS and sets CORS headers
+      // 0. Operator protection: public Vercel API ingress rejects operator/admin/metrics routes
+      const parsedUrl = new URL(req.url || '/', 'http://127.0.0.1');
+      if (security.isOperatorRoute(parsedUrl.pathname)) {
+        sendJson(res, 403, { error: 'PRIVATE_OPERATOR_ROUTE' });
+        return;
+      }
+
+      // 1. Header sanitizer: untrusted callers cannot spoof internal actor headers
+      if (req.headers) {
+        req.headers = security.sanitizeHeaders(req.headers, {
+          isInternalGateway: Boolean(context.isInternalGateway || req.isInternalGateway)
+        });
+      }
+
+      // 2. CORS middleware: handles preflight OPTIONS and sets CORS headers
       const handledCors = await corsMiddleware.handleCors(context, req, res);
       if (handledCors) return;
 
-      // 2. CSRF middleware: origin check for cookie-authenticated mutating requests
-      const csrfPassed = await csrfMiddleware.handleCsrf(context, req, res);
-      if (!csrfPassed) return;
+      // 3. Credential separation & CSRF enforcement
+      const originHeader = req.headers?.origin || req.headers?.['x-forwarded-origin'] || null;
+      const refererHeader = req.headers?.referer || req.headers?.referrer || null;
+      const cookieHeader = req.headers?.cookie || null;
+      const authHeader = req.headers?.authorization || null;
+
+      // Validates credential separation & CSRF (throws AMBIGUOUS_CREDENTIAL 401 or CSRF_REJECTED 403)
+      const credResult = security.validateCredentials({
+        cookie: cookieHeader,
+        authorization: authHeader,
+        origin: originHeader,
+        referer: refererHeader,
+        method: req.method,
+        allowedOrigins: context.allowedOrigins || []
+      });
+      req.credentialMode = credResult.mode;
+
+      // CSRF legacy middleware compat check (if not bearer exempt)
+      if (!credResult.csrfExempt) {
+        const csrfPassed = await csrfMiddleware.handleCsrf(context, req, res);
+        if (!csrfPassed) return;
+      }
+
+      // 4. Body size limit (100KB)
+      if (req.body !== undefined && req.body !== null) {
+        security.enforceBodyLimit(req.body, 100 * 1024);
+      }
       // 3. Try Well-known & technical foundation routes (app links, health, legal, callback)
       const handledWellKnown = await wellKnownRoutes.handleWellKnownRoute(context, req, res);
       if (handledWellKnown) return;
@@ -94,6 +138,7 @@ defaultHandler.account = accountRoutes;
 defaultHandler.social = socialRoutes;
 defaultHandler.competitive = competitiveRoutes;
 defaultHandler.wellKnown = wellKnownRoutes;
+defaultHandler.security = security;
 module.exports = defaultHandler;
 module.exports.createApiHandler = createApiHandler;
 module.exports.handleRequest = handleRequest;
@@ -104,4 +149,5 @@ module.exports.account = accountRoutes;
 module.exports.social = socialRoutes;
 module.exports.competitive = competitiveRoutes;
 module.exports.wellKnown = wellKnownRoutes;
+module.exports.security = security;
 module.exports.default = defaultHandler;

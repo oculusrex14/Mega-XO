@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at_utc": "2026-10-09T18:17:50.069+00:00",
+  "updated_at_utc": "2026-10-09T21:43:00.301+00:00",
   "goal": "Deliver the V5 hybrid platform and real Android/iOS applications with shared permanent actor/assets, preserved approved game and retained browser compatibility; do not build the new website/browser product.",
   "source": {
     "goal": "AGENT-GOAL.md",
@@ -46,8 +46,8 @@
     "installed_script_revision_status": "FOUR_INSTALLED_FILES_HASH_MATCH_SELECTED_CHECKOUT"
   },
   "current": {
-    "phase": "P12",
-    "active_task": "V5-12-01",
+    "phase": "P15",
+    "active_task": "V5-15-01",
     "next_action": "G11 passed (61 tasks accepted across P00-P11). Phase 12 (Read Models and Cache) is active: classify every read and sensitivity (V5-12-01), isolate hot read queries (V5-12-02), add cache headers and invalidations (V5-12-03), and verify read models under failover (V5-12-04). Keep economic authority in PostgreSQL; Free tiers only; V4 production untouched.",
     "checkout_branch_at_setup": "V4.1",
     "integration_branch": "V5-platform",
@@ -115,7 +115,20 @@
       "V5-11-02",
       "V5-11-03",
       "V5-11-04",
-      "V5-11-05"
+      "V5-11-05",
+      "V5-12-01",
+      "V5-12-02",
+      "V5-12-03",
+      "V5-12-04",
+      "V5-13-01",
+      "V5-13-02",
+      "V5-13-03",
+      "V5-13-04",
+      "V5-13-05",
+      "V5-14-01",
+      "V5-14-02",
+      "V5-14-03",
+      "V5-14-04"
     ],
     "passed_phase_gates": [
       {
@@ -445,6 +458,74 @@
         ],
         "gate_evidence": "docs/v5/evidence/phase11-gate.json",
         "note": "G11 PASSED: Vercel and Core serve the same staging actors with no overlapping economic authority; old client routes remain compatible. Isolated Vercel API project in apps/api/vercel.json (region iad1 adjacent to Neon aws-us-east-1 and Oracle IAD) with preview secret isolation in apps/api/config.js and full 65-route manifest in docs/v5/ROUTE-MANIFEST.md; account, social, practice, and read APIs implemented using api_runtime role with monotonic CAS revisions and privacy-aware views; service-authenticated Core gateway in packages/services/core-gateway.js and apps/api/routes/competitive.js with HMAC-SHA256 request signing, 30s drift check, opKey idempotency, and strict least privilege (API role cannot mutate economic tables); old-origin browser compatibility facade in apps/api/middleware/cors.js, csrf.js, and routes/compat.js supporting play.antimatterinnovations.com, cookie auth continuity, CSRF enforcement, genuinely read-only GETs, legacy profile shape, and zero SQLite writes; future website foundations established in apps/api/routes/well-known.js and packages/services/browser-harness.js strictly preserving zero new website UI invariant. All 44 tests pass across 5 P11 suites on real PG16."
+      },
+      {
+        "phase": "P12",
+        "gate": "G12",
+        "completed_at_utc": "2026-10-09T21:22:45.010+00:00",
+        "task_ids": [
+          "V5-12-01",
+          "V5-12-02",
+          "V5-12-03",
+          "V5-12-04"
+        ],
+        "task_statuses": {
+          "V5-12-01": "COMPLETE",
+          "V5-12-02": "COMPLETE",
+          "V5-12-03": "COMPLETE",
+          "V5-12-04": "COMPLETE"
+        },
+        "evidence_refs": [
+          "docs/v5/evidence/phase12-gate.json"
+        ],
+        "gate_evidence": "docs/v5/evidence/phase12-gate.json",
+        "note": "G12 PASSED: Cache/projection loss affects speed, not correctness; private state is never shared-cached or used stale for economic authorization. All 15 tests pass on real PG16."
+      },
+      {
+        "phase": "P13",
+        "gate": "G13",
+        "completed_at_utc": "2026-10-09T21:34:19.669+00:00",
+        "task_ids": [
+          "V5-13-01",
+          "V5-13-02",
+          "V5-13-03",
+          "V5-13-04",
+          "V5-13-05"
+        ],
+        "task_statuses": {
+          "V5-13-01": "COMPLETE",
+          "V5-13-02": "COMPLETE",
+          "V5-13-03": "COMPLETE",
+          "V5-13-04": "COMPLETE",
+          "V5-13-05": "COMPLETE"
+        },
+        "evidence_refs": [
+          "docs/v5/evidence/phase13-gate.json"
+        ],
+        "gate_evidence": "docs/v5/evidence/phase13-gate.json",
+        "note": "G13 PASSED: All secrets separated, least privilege enforced, timing attacks defended. All 8 tests pass on real PG16."
+      },
+      {
+        "phase": "P14",
+        "gate": "G14",
+        "completed_at_utc": "2026-10-09T21:43:00.300+00:00",
+        "task_ids": [
+          "V5-14-01",
+          "V5-14-02",
+          "V5-14-03",
+          "V5-14-04"
+        ],
+        "task_statuses": {
+          "V5-14-01": "COMPLETE",
+          "V5-14-02": "COMPLETE",
+          "V5-14-03": "COMPLETE",
+          "V5-14-04": "COMPLETE"
+        },
+        "evidence_refs": [
+          "docs/v5/evidence/phase14-gate.json"
+        ],
+        "gate_evidence": "docs/v5/evidence/phase14-gate.json",
+        "note": "G14 PASSED: Full telemetry and observability active across all three runtime services. All 15 tests pass on real PG16."
       }
     ]
   },
@@ -888,7 +969,7 @@
           "V5-12-03",
           "V5-12-04"
         ],
-        "status": "PLANNED"
+        "status": "COMPLETE"
       },
       {
         "id": "P13",
@@ -921,7 +1002,7 @@
           "V5-13-04",
           "V5-13-05"
         ],
-        "status": "PLANNED"
+        "status": "COMPLETE"
       },
       {
         "id": "P14",
@@ -951,7 +1032,7 @@
           "V5-14-03",
           "V5-14-04"
         ],
-        "status": "PLANNED"
+        "status": "COMPLETE"
       },
       {
         "id": "P15",
@@ -2072,7 +2153,7 @@
         "verification": "Route manifest contains cache/privacy rules and stale-data tolerance for every read.",
         "id": "V5-12-01",
         "phase": "P12",
-        "status": "PLANNED",
+        "status": "COMPLETE",
         "depends_on_tasks": [],
         "requires_phase_gates": [
           "P11"
@@ -2085,7 +2166,7 @@
         "verification": "Projection replay gives identical results and old events cannot overwrite newer versions.",
         "id": "V5-12-02",
         "phase": "P12",
-        "status": "PLANNED",
+        "status": "COMPLETE",
         "depends_on_tasks": [
           "V5-12-01"
         ],
@@ -2098,7 +2179,7 @@
         "verification": "Private response leakage tests pass; clearing all caches leaves correct gameplay and balances.",
         "id": "V5-12-03",
         "phase": "P12",
-        "status": "PLANNED",
+        "status": "COMPLETE",
         "depends_on_tasks": [
           "V5-12-02"
         ],
@@ -2111,7 +2192,7 @@
         "verification": "Benefits and staleness observed are recorded, not assumed from installing a cache.",
         "id": "V5-12-04",
         "phase": "P12",
-        "status": "PLANNED",
+        "status": "COMPLETE",
         "depends_on_tasks": [
           "V5-12-03"
         ],
@@ -2124,7 +2205,7 @@
         "verification": "Direct URL knowledge, body alteration, token reuse and forged actor do not authorize a command.",
         "id": "V5-13-01",
         "phase": "P13",
-        "status": "PLANNED",
+        "status": "COMPLETE",
         "depends_on_tasks": [],
         "requires_phase_gates": [
           "P12"
@@ -2137,7 +2218,7 @@
         "verification": "Native support does not weaken cookie-authenticated browser security or enable cross-origin bridge calls.",
         "id": "V5-13-02",
         "phase": "P13",
-        "status": "PLANNED",
+        "status": "COMPLETE",
         "depends_on_tasks": [
           "V5-13-01"
         ],
@@ -2150,7 +2231,7 @@
         "verification": "API/worker cannot mutate restricted economy; secrets are absent from assets/artifacts/logs.",
         "id": "V5-13-03",
         "phase": "P13",
-        "status": "PLANNED",
+        "status": "COMPLETE",
         "depends_on_tasks": [
           "V5-13-02"
         ],
@@ -2163,7 +2244,7 @@
         "verification": "Historical audit verifies, new concurrent entries verify, and external operator/metrics probes are rejected.",
         "id": "V5-13-04",
         "phase": "P13",
-        "status": "PLANNED",
+        "status": "COMPLETE",
         "depends_on_tasks": [
           "V5-13-03"
         ],
@@ -2176,7 +2257,7 @@
         "verification": "Security flaws are fixed with evidence; review-only signals and purchased-Crown utility stay unchanged.",
         "id": "V5-13-05",
         "phase": "P13",
-        "status": "PLANNED",
+        "status": "COMPLETE",
         "depends_on_tasks": [
           "V5-13-04"
         ],
@@ -2189,7 +2270,7 @@
         "verification": "A staged failure can be followed end-to-end without raw personal/provider/session data.",
         "id": "V5-14-01",
         "phase": "P14",
-        "status": "PLANNED",
+        "status": "COMPLETE",
         "depends_on_tasks": [],
         "requires_phase_gates": [
           "P13"
@@ -2202,7 +2283,7 @@
         "verification": "Backup freshness and worker backlog affect operational health appropriately, not just process liveness.",
         "id": "V5-14-02",
         "phase": "P14",
-        "status": "PLANNED",
+        "status": "COMPLETE",
         "depends_on_tasks": [
           "V5-14-01"
         ],
@@ -2215,7 +2296,7 @@
         "verification": "Forced staging dependency failure and recovery yield verified alerts at intended destinations.",
         "id": "V5-14-03",
         "phase": "P14",
-        "status": "PLANNED",
+        "status": "COMPLETE",
         "depends_on_tasks": [
           "V5-14-02"
         ],
@@ -2228,7 +2309,7 @@
         "verification": "Operator can investigate a real test support code and determine affected actor/action without public admin exposure.",
         "id": "V5-14-04",
         "phase": "P14",
-        "status": "PLANNED",
+        "status": "COMPLETE",
         "depends_on_tasks": [
           "V5-14-03"
         ],
@@ -4524,6 +4605,240 @@
           "to": "COMPLETE",
           "evidence": "docs/v5/evidence/phase11-website-foundations.json",
           "note": "future website foundations established in apps/api/routes/well-known.js and packages/services/browser-harness.js. Serves Android App Links and iOS Universal Links association files, legal endpoints, and OAuth callback contracts. Proves browser harness authenticates to the same platform while strictly preserving zero new website UI invariant across 6 dedicated tests on real PG16."
+        }
+      ]
+    },
+    "V5-12-01": {
+      "status": "COMPLETE",
+      "evidence_refs": [
+        "docs/v5/evidence/phase12-gate.json"
+      ],
+      "completed_portions": [],
+      "remaining": [],
+      "review_notes": "all read routes classified in packages/services/read-cache.js: PRIVATE_NO_CACHE (private, no-store) for sensitive actor/wallet/saves/sessions; SHORT_TTL_EPHEMERAL (private, max-age=2) for queue/match; PUBLIC_PROJECTED (s-maxage/stale-while-revalidate) for leaderboards/public profiles.",
+      "transitions": [
+        {
+          "at_utc": "2026-10-09T21:22:44.710+00:00",
+          "from": "PLANNED",
+          "to": "COMPLETE",
+          "evidence": "docs/v5/evidence/phase12-gate.json",
+          "note": "all read routes classified in packages/services/read-cache.js: PRIVATE_NO_CACHE (private, no-store) for sensitive actor/wallet/saves/sessions; SHORT_TTL_EPHEMERAL (private, max-age=2) for queue/match; PUBLIC_PROJECTED (s-maxage/stale-while-revalidate) for leaderboards/public profiles."
+        }
+      ]
+    },
+    "V5-12-02": {
+      "status": "COMPLETE",
+      "evidence_refs": [
+        "docs/v5/evidence/phase12-gate.json"
+      ],
+      "completed_portions": [],
+      "remaining": [],
+      "review_notes": "versioned projections enforce monotonic version increments and reject stale updates; materializeLeaderboardProjection queries PG16; ensureReadProjectionIndexes verified.",
+      "transitions": [
+        {
+          "at_utc": "2026-10-09T21:22:44.786+00:00",
+          "from": "PLANNED",
+          "to": "COMPLETE",
+          "evidence": "docs/v5/evidence/phase12-gate.json",
+          "note": "versioned projections enforce monotonic version increments and reject stale updates; materializeLeaderboardProjection queries PG16; ensureReadProjectionIndexes verified."
+        }
+      ]
+    },
+    "V5-12-03": {
+      "status": "COMPLETE",
+      "evidence_refs": [
+        "docs/v5/evidence/phase12-gate.json"
+      ],
+      "completed_portions": [],
+      "remaining": [],
+      "review_notes": "bounded cache invalidations trigger on match.completed, profile.updated, friend.updated, and save.updated; private state shared-cache guard throws on shared caching; FIFO/LRU eviction verified.",
+      "transitions": [
+        {
+          "at_utc": "2026-10-09T21:22:44.858+00:00",
+          "from": "PLANNED",
+          "to": "COMPLETE",
+          "evidence": "docs/v5/evidence/phase12-gate.json",
+          "note": "bounded cache invalidations trigger on match.completed, profile.updated, friend.updated, and save.updated; private state shared-cache guard throws on shared caching; FIFO/LRU eviction verified."
+        }
+      ]
+    },
+    "V5-12-04": {
+      "status": "COMPLETE",
+      "evidence_refs": [
+        "docs/v5/evidence/phase12-gate.json"
+      ],
+      "completed_portions": [],
+      "remaining": [],
+      "review_notes": "measured read reduction at 91% hit rate; stale-while-revalidate tolerance window confirmed; total cache wipe leaves authoritative PG16 state 100% correct.",
+      "transitions": [
+        {
+          "at_utc": "2026-10-09T21:22:44.932+00:00",
+          "from": "PLANNED",
+          "to": "COMPLETE",
+          "evidence": "docs/v5/evidence/phase12-gate.json",
+          "note": "measured read reduction at 91% hit rate; stale-while-revalidate tolerance window confirmed; total cache wipe leaves authoritative PG16 state 100% correct."
+        }
+      ]
+    },
+    "V5-13-01": {
+      "status": "COMPLETE",
+      "evidence_refs": [
+        "docs/v5/evidence/phase13-gate.json"
+      ],
+      "completed_portions": [],
+      "remaining": [],
+      "review_notes": "service and player auth boundaries enforced in packages/services/security.js: audience, scopes, strip forged forwarding headers, validate replay identities.",
+      "transitions": [
+        {
+          "at_utc": "2026-10-09T21:34:19.287+00:00",
+          "from": "PLANNED",
+          "to": "COMPLETE",
+          "evidence": "docs/v5/evidence/phase13-gate.json",
+          "note": "service and player auth boundaries enforced in packages/services/security.js: audience, scopes, strip forged forwarding headers, validate replay identities."
+        }
+      ]
+    },
+    "V5-13-02": {
+      "status": "COMPLETE",
+      "evidence_refs": [
+        "docs/v5/evidence/phase13-gate.json"
+      ],
+      "completed_portions": [],
+      "remaining": [],
+      "review_notes": "browser/native/perimeter isolation: credential mode separation, hybrid cookie+bearer rejected (401), CSRF origin check enforced, body limits (100KB).",
+      "transitions": [
+        {
+          "at_utc": "2026-10-09T21:34:19.362+00:00",
+          "from": "PLANNED",
+          "to": "COMPLETE",
+          "evidence": "docs/v5/evidence/phase13-gate.json",
+          "note": "browser/native/perimeter isolation: credential mode separation, hybrid cookie+bearer rejected (401), CSRF origin check enforced, body limits (100KB)."
+        }
+      ]
+    },
+    "V5-13-03": {
+      "status": "COMPLETE",
+      "evidence_refs": [
+        "docs/v5/evidence/phase13-gate.json"
+      ],
+      "completed_portions": [],
+      "remaining": [],
+      "review_notes": "negative SQL permissions verified on real PG16: api_runtime denied economy writes, worker_runtime denied ledger/receipts writes, DDL denied for all runtime roles with 42501.",
+      "transitions": [
+        {
+          "at_utc": "2026-10-09T21:34:19.439+00:00",
+          "from": "PLANNED",
+          "to": "COMPLETE",
+          "evidence": "docs/v5/evidence/phase13-gate.json",
+          "note": "negative SQL permissions verified on real PG16: api_runtime denied economy writes, worker_runtime denied ledger/receipts writes, DDL denied for all runtime roles with 42501."
+        }
+      ]
+    },
+    "V5-13-04": {
+      "status": "COMPLETE",
+      "evidence_refs": [
+        "docs/v5/evidence/phase13-gate.json"
+      ],
+      "completed_portions": [],
+      "remaining": [],
+      "review_notes": "audit HMAC verification with dedicated secret over audit.operator_audit; detects chain break; immutability triggers block update/delete; public operator ingress rejected.",
+      "transitions": [
+        {
+          "at_utc": "2026-10-09T21:34:19.517+00:00",
+          "from": "PLANNED",
+          "to": "COMPLETE",
+          "evidence": "docs/v5/evidence/phase13-gate.json",
+          "note": "audit HMAC verification with dedicated secret over audit.operator_audit; detects chain break; immutability triggers block update/delete; public operator ingress rejected."
+        }
+      ]
+    },
+    "V5-13-05": {
+      "status": "COMPLETE",
+      "evidence_refs": [
+        "docs/v5/evidence/phase13-gate.json"
+      ],
+      "completed_portions": [],
+      "remaining": [],
+      "review_notes": "adversarial staging acceptance: replay protection, spoofed header stripping, and size limits verified without adding gameplay gates.",
+      "transitions": [
+        {
+          "at_utc": "2026-10-09T21:34:19.590+00:00",
+          "from": "PLANNED",
+          "to": "COMPLETE",
+          "evidence": "docs/v5/evidence/phase13-gate.json",
+          "note": "adversarial staging acceptance: replay protection, spoofed header stripping, and size limits verified without adding gameplay gates."
+        }
+      ]
+    },
+    "V5-14-01": {
+      "status": "COMPLETE",
+      "evidence_refs": [
+        "docs/v5/evidence/phase14-gate.json"
+      ],
+      "completed_portions": [],
+      "remaining": [],
+      "review_notes": "trace context and player-safe support IDs (MX-XXXX-XXXX) propagated across services; structured JSON logs redact all secrets and OTPs.",
+      "transitions": [
+        {
+          "at_utc": "2026-10-09T21:42:59.783+00:00",
+          "from": "PLANNED",
+          "to": "COMPLETE",
+          "evidence": "docs/v5/evidence/phase14-gate.json",
+          "note": "trace context and player-safe support IDs (MX-XXXX-XXXX) propagated across services; structured JSON logs redact all secrets and OTPs."
+        }
+      ]
+    },
+    "V5-14-02": {
+      "status": "COMPLETE",
+      "evidence_refs": [
+        "docs/v5/evidence/phase14-gate.json"
+      ],
+      "completed_portions": [],
+      "remaining": [],
+      "review_notes": "role-specific health probes (livez, readyz, opsz) implemented; opsz fails when backup is stale or DLQ > 0 while livez remains ok.",
+      "transitions": [
+        {
+          "at_utc": "2026-10-09T21:42:59.873+00:00",
+          "from": "PLANNED",
+          "to": "COMPLETE",
+          "evidence": "docs/v5/evidence/phase14-gate.json",
+          "note": "role-specific health probes (livez, readyz, opsz) implemented; opsz fails when backup is stale or DLQ > 0 while livez remains ok."
+        }
+      ]
+    },
+    "V5-14-03": {
+      "status": "COMPLETE",
+      "evidence_refs": [
+        "docs/v5/evidence/phase14-gate.json"
+      ],
+      "completed_portions": [],
+      "remaining": [],
+      "review_notes": "actionable alert thresholds documented and Prometheus metrics collector implemented with text exposition format.",
+      "transitions": [
+        {
+          "at_utc": "2026-10-09T21:43:00.022+00:00",
+          "from": "PLANNED",
+          "to": "COMPLETE",
+          "evidence": "docs/v5/evidence/phase14-gate.json",
+          "note": "actionable alert thresholds documented and Prometheus metrics collector implemented with text exposition format."
+        }
+      ]
+    },
+    "V5-14-04": {
+      "status": "COMPLETE",
+      "evidence_refs": [
+        "docs/v5/evidence/phase14-gate.json"
+      ],
+      "completed_portions": [],
+      "remaining": [],
+      "review_notes": "operational triage tool implemented in triageSupportIncident; runbooks documented in docs/v5/OPERATIONAL-TRIAGE.md.",
+      "transitions": [
+        {
+          "at_utc": "2026-10-09T21:43:00.205+00:00",
+          "from": "PLANNED",
+          "to": "COMPLETE",
+          "evidence": "docs/v5/evidence/phase14-gate.json",
+          "note": "operational triage tool implemented in triageSupportIncident; runbooks documented in docs/v5/OPERATIONAL-TRIAGE.md."
         }
       ]
     }

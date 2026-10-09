@@ -1,10 +1,17 @@
 'use strict';
 
+const path = require('node:path');
 const {
   parseJsonBody,
   sendJson,
   resolveAuth,
 } = require('./helpers');
+const {
+  classifyRoute,
+  defaultReadCache,
+  CATEGORIES,
+  CACHE_CONTROL_POLICIES,
+} = require(path.join(__dirname, '../../../packages/services/read-cache.js'));
 
 /**
  * GET /api/community/profile/:id
@@ -35,8 +42,38 @@ async function getProfile(context, req, res, targetId) {
     throw err;
   }
 
+  const readCache = context?.readCache || defaultReadCache;
+  const isSelf = actor === resolvedTarget;
+  const cacheKey = `public_profile:${resolvedTarget}`;
+
+  if (!isSelf) {
+    const cached = readCache.get(cacheKey, { allowStale: true });
+    if (cached && (cached.statsVisibility === 'public' || cached.stats_visibility === 'public')) {
+      return sendJson(res, 200, cached, {
+        'Cache-Control': CACHE_CONTROL_POLICIES.PUBLIC_PROJECTED_MEDIUM,
+      });
+    }
+  }
+
   const profile = await accounts.view(actor, resolvedTarget);
-  return sendJson(res, 200, profile);
+  const visibility = profile?.statsVisibility || profile?.stats_visibility || 'private';
+  const classification = classifyRoute('/api/community/profile/' + resolvedTarget, {
+    isSelf,
+    visibility,
+  });
+
+  if (!isSelf && classification.category === CATEGORIES.PUBLIC_PROJECTED) {
+    readCache.set(cacheKey, profile, {
+      ttlMs: 60000,
+      staleToleranceMs: 120000,
+      tags: ['profile', `profile:${resolvedTarget}`],
+      category: CATEGORIES.PUBLIC_PROJECTED,
+    });
+  }
+
+  return sendJson(res, 200, profile, {
+    'Cache-Control': classification.cacheControl,
+  });
 }
 
 /**
@@ -51,8 +88,25 @@ async function getFriends(context, req, res) {
     throw err;
   }
 
+  const readCache = context?.readCache || defaultReadCache;
+  const cacheKey = `friends:${actor}`;
+  const cached = readCache.get(cacheKey);
+  if (cached) {
+    return sendJson(res, 200, cached, {
+      'Cache-Control': CACHE_CONTROL_POLICIES.PRIVATE_NO_STORE,
+    });
+  }
+
   const result = await accounts.friends(actor);
-  return sendJson(res, 200, result);
+  readCache.set(cacheKey, result, {
+    ttlMs: 30000,
+    tags: [`friends:${actor}`],
+    category: CATEGORIES.PRIVATE_NO_CACHE,
+    shared: false,
+  });
+  return sendJson(res, 200, result, {
+    'Cache-Control': CACHE_CONTROL_POLICIES.PRIVATE_NO_STORE,
+  });
 }
 
 /**
@@ -62,6 +116,7 @@ async function getFriends(context, req, res) {
 async function handleFriendAction(context, req, res) {
   const { actor, accounts } = await resolveAuth(context, req);
   if (!actor) {
+    const err = new Error('AUTH_REQUIRED');
     err.status = 401;
     throw err;
   }
@@ -72,6 +127,9 @@ async function handleFriendAction(context, req, res) {
   const key = req.headers?.['x-operation-key'] || body.key || `social:${actor}:${action}:${target}:${Date.now()}`;
 
   const outcome = await accounts.social(actor, key, action, target);
+
+  const readCache = context?.readCache || defaultReadCache;
+  readCache.invalidate('friend.updated', { actor, target });
   return sendJson(res, 200, outcome);
 }
 
@@ -94,7 +152,9 @@ async function searchProfiles(context, req, res) {
   }
 
   const results = await accounts.search(actor, query);
-  return sendJson(res, 200, results);
+  return sendJson(res, 200, results, {
+    'Cache-Control': CACHE_CONTROL_POLICIES.PUBLIC_SEARCH,
+  });
 }
 
 /**

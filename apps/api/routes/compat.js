@@ -14,11 +14,20 @@
  * - Backed entirely by PostgreSQL api_runtime or Core services. Zero SQLite writes.
  */
 
+const path = require('node:path');
 const {
   sendJson,
   sendError,
   resolveAuth,
 } = require('./helpers');
+const {
+  classifyRoute,
+  defaultReadCache,
+  CATEGORIES,
+  CACHE_CONTROL_POLICIES,
+  createVersionedProjection,
+  materializeLeaderboardProjection,
+} = require(path.join(__dirname, '../../../packages/services/read-cache.js'));
 
 /**
  * Formats match data for participant display without leaking opponent secrets during queue matching.
@@ -176,7 +185,7 @@ async function handleGetProfile(context, req, res) {
     wealthPublic: self.wealthPublic !== false,
     activeMatch: competitive.activeMatch || self.activeMatch || null,
     avatar: self.avatar || null,
-  });
+  }, { 'Cache-Control': CACHE_CONTROL_POLICIES.PRIVATE_NO_STORE });
 }
 
 /**
@@ -195,7 +204,7 @@ async function handleGetQueue(context, req, res) {
   if (context?.queue && typeof context.queue.status === 'function') {
     try {
       const qStatus = await context.queue.status(actor);
-      if (qStatus) return sendJson(res, 200, qStatus);
+      if (qStatus) return sendJson(res, 200, qStatus, { 'Cache-Control': CACHE_CONTROL_POLICIES.EPHEMERAL_SHORT });
     } catch {}
   }
 
@@ -203,7 +212,7 @@ async function handleGetQueue(context, req, res) {
   if (typeof context?.getQueueStatus === 'function') {
     try {
       const qStatus = await context.getQueueStatus(actor);
-      if (qStatus) return sendJson(res, 200, qStatus);
+      if (qStatus) return sendJson(res, 200, qStatus, { 'Cache-Control': CACHE_CONTROL_POLICIES.EPHEMERAL_SHORT });
     } catch {}
   }
 
@@ -220,13 +229,13 @@ async function handleGetQueue(context, req, res) {
           state: 'matched',
           matchId: occ.ref_id,
           mode: occ.kind || 'ranked',
-        });
+        }, { 'Cache-Control': CACHE_CONTROL_POLICIES.EPHEMERAL_SHORT });
       }
     } catch {}
   }
 
   // 4. Default: player is idle
-  return sendJson(res, 200, { state: 'idle' });
+  return sendJson(res, 200, { state: 'idle' }, { 'Cache-Control': CACHE_CONTROL_POLICIES.EPHEMERAL_SHORT });
 }
 
 /**
@@ -246,7 +255,18 @@ async function handleGetMatch(context, req, res, matchId) {
   }
 
   let match = null;
+  const readCache = context?.readCache || defaultReadCache;
+  const cacheKey = `match:${matchId}`;
 
+  // Fast-path: check cache for completed match projection
+  const cachedMatch = readCache.get(cacheKey, { allowStale: true });
+  if (cachedMatch) {
+    if (Array.isArray(cachedMatch.players) && cachedMatch.players.includes(actor)) {
+      return sendJson(res, 200, cachedMatch, {
+        'Cache-Control': CACHE_CONTROL_POLICIES.PUBLIC_PROJECTED_MEDIUM,
+      });
+    }
+  }
   // 1. Core service readMatch
   const coreSvc = context?.core || context?.coreService;
   if (coreSvc && typeof coreSvc.readMatch === 'function') {
@@ -314,9 +334,25 @@ async function handleGetMatch(context, req, res, matchId) {
 
   const nowMs = typeof context.now === 'function' ? context.now() : Date.now();
   const displayed = formatMatchDisplay(match, actor, nowMs);
-  return sendJson(res, 200, displayed);
-}
 
+  const classification = classifyRoute('/api/v1/match/' + matchId, {
+    matchStatus: match.status,
+    isPrivateMatch: match.kind === 'direct' && match.status !== 'COMPLETED',
+  });
+
+  if (classification.category === CATEGORIES.PUBLIC_PROJECTED) {
+    readCache.set(cacheKey, displayed, {
+      ttlMs: 300000,
+      staleToleranceMs: 600000,
+      tags: ['match', `match:${matchId}`],
+      category: CATEGORIES.PUBLIC_PROJECTED,
+    });
+  }
+
+  return sendJson(res, 200, displayed, {
+    'Cache-Control': classification.cacheControl,
+  });
+}
 /**
  * GET /api/v1/invitations
  * Pending match invitations for caller.
@@ -367,9 +403,61 @@ async function handleGetInvitations(context, req, res) {
 
   const nowMs = typeof context.now === 'function' ? context.now() : Date.now();
   const formatted = (invitations || []).map((inv) => formatMatchDisplay(inv, actor, nowMs));
-  return sendJson(res, 200, formatted);
+  return sendJson(res, 200, formatted, {
+    'Cache-Control': CACHE_CONTROL_POLICIES.PRIVATE_NO_STORE,
+  });
 }
 
+/**
+ * GET /api/v1/leaderboard
+ * Public ranked and wealth leaderboard rankings.
+ */
+async function handleGetLeaderboard(context, req, res) {
+  const url = new URL(req.url, 'http://localhost');
+  const metric = url.searchParams.get('metric') || 'rating';
+  const scope = url.searchParams.get('scope') || 'global';
+  const league = url.searchParams.get('league') || 'all';
+  const region = url.searchParams.get('region') || '';
+
+  const readCache = context?.readCache || defaultReadCache;
+  const cacheKey = `leaderboard:${metric}:${scope}:${league}:${region}`;
+
+  const cached = readCache.get(cacheKey, { allowStale: true });
+  if (cached) {
+    const data = (cached && cached.data !== undefined) ? cached.data : cached;
+    return sendJson(res, 200, data, {
+      'Cache-Control': CACHE_CONTROL_POLICIES.PUBLIC_LEADERBOARD,
+    });
+  }
+
+  let projection = null;
+  const pool = context?.corePool || context?.pool;
+  if (pool) {
+    try {
+      projection = await materializeLeaderboardProjection(pool, { metric, limit: 50 });
+    } catch {}
+  }
+  if (!projection && typeof context?.leaderboard === 'function') {
+    try {
+      const rows = await context.leaderboard({ metric, scope, league, region });
+      projection = createVersionedProjection(1, rows);
+    } catch {}
+  }
+  if (!projection) {
+    projection = createVersionedProjection(1, []);
+  }
+
+  readCache.set(cacheKey, projection, {
+    ttlMs: 60000,
+    staleToleranceMs: 300000,
+    tags: ['leaderboard'],
+    category: CATEGORIES.PUBLIC_PROJECTED,
+  });
+
+  return sendJson(res, 200, projection.data, {
+    'Cache-Control': CACHE_CONTROL_POLICIES.PUBLIC_LEADERBOARD,
+  });
+}
 /**
  * Dispatches /api/v1 compatibility routes.
  * Returns true if handled, false otherwise.
@@ -424,6 +512,15 @@ async function handleCompatRoute(context, req, res) {
     return true;
   }
 
+  if (pathname === '/api/v1/leaderboard') {
+    if (method !== 'GET') {
+      sendJson(res, 405, { error: 'METHOD_NOT_ALLOWED' });
+      return true;
+    }
+    await handleGetLeaderboard(context, req, res);
+    return true;
+  }
+
   return false;
 }
 
@@ -433,6 +530,7 @@ handleCompatRoute.handleGetQueue = handleGetQueue;
 handleCompatRoute.handleGetMatch = handleGetMatch;
 handleCompatRoute.handleGetInvitations = handleGetInvitations;
 handleCompatRoute.formatMatchDisplay = formatMatchDisplay;
+handleCompatRoute.handleGetLeaderboard = handleGetLeaderboard;
 
 module.exports = handleCompatRoute;
 module.exports.handleCompatRoute = handleCompatRoute;
@@ -441,3 +539,4 @@ module.exports.handleGetQueue = handleGetQueue;
 module.exports.handleGetMatch = handleGetMatch;
 module.exports.handleGetInvitations = handleGetInvitations;
 module.exports.formatMatchDisplay = formatMatchDisplay;
+module.exports.handleGetLeaderboard = handleGetLeaderboard;

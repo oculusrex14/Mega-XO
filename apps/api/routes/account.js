@@ -1,10 +1,15 @@
 'use strict';
 
+const path = require('node:path');
 const {
   parseJsonBody,
   sendJson,
   resolveAuth,
 } = require('./helpers');
+const {
+  defaultReadCache,
+  CACHE_CONTROL_POLICIES,
+} = require(path.join(__dirname, '../../../packages/services/read-cache.js'));
 
 /**
  * GET /api/account/profile
@@ -43,7 +48,7 @@ async function getProfile(context, req, res) {
     email: profile.email,
     emailVerified: profile.emailVerified,
     walletReady: profile.walletReady,
-  });
+  }, { 'Cache-Control': CACHE_CONTROL_POLICIES.PRIVATE_NO_STORE });
 }
 
 /**
@@ -67,6 +72,9 @@ async function updateProfile(context, req, res) {
     username: body.username,
   });
 
+  const readCache = context?.readCache || defaultReadCache;
+  readCache.invalidate('profile.updated', { actor });
+
   return sendJson(res, 200, updated);
 }
 
@@ -87,7 +95,7 @@ async function getSave(context, req, res) {
     revision: save ? save.revision : 0,
     updated: save ? save.updated : null,
     practice: save ? save.practice : null,
-  });
+  }, { 'Cache-Control': CACHE_CONTROL_POLICIES.PRIVATE_NO_STORE });
 }
 
 /**
@@ -107,6 +115,9 @@ async function postSave(context, req, res) {
   const practice = body.practice;
 
   const result = await accounts.save(actor, revision, practice);
+  const readCache = context?.readCache || defaultReadCache;
+  readCache.invalidate('save.updated', { actor });
+
   return sendJson(res, 200, {
     revision: result.revision,
     updated: result.updated,
@@ -140,7 +151,7 @@ async function getExport(context, req, res) {
     identities: exportData.account?.identities,
     saves: exportData.account?.practiceSave,
     wallet: exportData.account?.wallet,
-  });
+  }, { 'Cache-Control': CACHE_CONTROL_POLICIES.PRIVATE_NO_STORE });
 }
 
 /**
@@ -222,7 +233,7 @@ async function getDeletionStatus(context, req, res) {
     status = await accounts.deletionStatus(session.token);
   }
 
-  return sendJson(res, 200, status);
+  return sendJson(res, 200, status, { 'Cache-Control': CACHE_CONTROL_POLICIES.PRIVATE_NO_STORE });
 }
 
 /**

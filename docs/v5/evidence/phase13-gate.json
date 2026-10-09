@@ -1,0 +1,46 @@
+{
+  "schema_version": 1,
+  "phase": "P13",
+  "gate": "G13",
+  "task_ids": [
+    "V5-13-01",
+    "V5-13-02",
+    "V5-13-03",
+    "V5-13-04",
+    "V5-13-05"
+  ],
+  "case_ids": [],
+  "recorded_at_utc": "2026-10-10T02:30:00.000Z",
+  "status": "PASSED",
+  "source_state": {
+    "base_sha": "76165cf0fc3779789b31689a83a8c8695d96ca2b",
+    "target_branch": "V5-platform",
+    "files": [
+      "packages/services/security.js",
+      "packages/services/index.js",
+      "apps/api/index.js",
+      "tests/v5-p13-security.test.js"
+    ]
+  },
+  "gate_criteria": {
+    "description": "All secrets separated, least privilege enforced, timing attacks defended",
+    "verified_points": [
+      "Negative SQL permission boundaries on PG16: api_runtime denied economy writes (wallets, ledger), worker_runtime denied ledger & receipts writes, DDL (CREATE/DROP) denied for all runtime roles with 42501.",
+      "Credential mode separation: hybrid cookie+bearer rejected (401 AMBIGUOUS_CREDENTIAL), mutating cookie requests enforce Origin/Referer (403 CSRF_REJECTED), bearer bypasses CSRF.",
+      "Header sanitizer: untrusted callers stripped of x-actor-id, x-test-actor, x-forwarded-for; internal gateway preserved.",
+      "Body size limit enforcement: request bodies > 100KB rejected with 413 BODY_TOO_LARGE.",
+      "Audit HMAC verification: dedicated HMAC-SHA256 signature chain over audit.operator_audit; detects chain breaks and tampering; DB immutability triggers block mutations.",
+      "Operator protection: /admin/*, /metrics, /operator/* rejected on public ingress with 403 PRIVATE_OPERATOR_ROUTE."
+    ]
+  },
+  "verification": {
+    "command": "env V5_PG_URL=postgres://postgres@127.0.0.1:50709/postgres V5_PG_DISPOSABLE=1 V5_PG_REQUIRED=1 node --test --test-reporter=tap --test-concurrency=1 tests/v5-p13-security.test.js",
+    "target_environment": "local loopback PostgreSQL 16.15 (Mac mini arm64)",
+    "results": {
+      "tests_total": 8,
+      "tests_passed": 8,
+      "tests_failed": 0,
+      "tests_skipped": 0
+    }
+  }
+}

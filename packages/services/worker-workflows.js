@@ -332,8 +332,13 @@ function createMailWorker(options = {}) {
    if (!transportEnabled()) return defer('transport_disabled');
    /* The spend guard is consulted BEFORE the claim, so a process with no allowance left does not take a
     * lease on work it will not deliver (that would only park the row until the lease lapsed). */
-   if (budgetRemaining(budget, requireClock(now), dailyLimit, monthlyLimit) < 1) return defer('budget');
-   const claimed = await jobService.claimJobs({ workerId, kinds: MAIL_KINDS, limit, leaseMs });
+   const remaining = budgetRemaining(budget, requireClock(now), dailyLimit, monthlyLimit);
+   if (remaining < 1) return defer('budget');
+   /* The claim itself must fit the remaining UTC allowance: checking for a positive
+    * balance but taking an entire batch could exceed the daily/monthly cap. */
+   const claimed = await jobService.claimJobs({
+    workerId, kinds: MAIL_KINDS, limit: Math.min(limit, remaining), leaseMs,
+   });
    /* Reserve the whole batch up front: the allowance is charged against the work this tick is about to
     * deliver, and the batch size then caps out naturally once the day's (or month's) spend is reached.
     * A reservation that a crash never delivers stays charged - conservative, exactly as the legacy
@@ -594,9 +599,14 @@ function createWorkerApp(options = {}) {
   async stop() {
    if (timer !== null) { clearInterval(timer); timer = null; }
    closed = true;
-   inFlight = null;
-   mailWorker.close();
-   privacy.close();
+   /* Stop is a drain barrier: an already-claimed delivery must settle before the
+    * caller may close the pool or terminate this worker process. */
+   try {
+    if (inFlight !== null) await inFlight;
+   } finally {
+    mailWorker.close();
+    privacy.close();
+   }
    return { stopped: true };
   },
  });

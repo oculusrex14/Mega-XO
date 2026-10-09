@@ -49,3 +49,21 @@ Do not run tests on V4 production, on non-isolated Oracle resources or
 against a public domain. Production data may not be modified, purged or
 used to fill fake history. Later independent P19 commits can add isolated
 chaos and resource/alert reporting without assuming production targets.
+
+
+## P19-03: actually executed disposable failure scenarios
+
+- chaos-contract.js lists nine specific P19 faults with separate status and
+  G19 refusal. Four can be exercised today on the real PG/Redis adapters;
+  the remaining five (full PG outage, Core A/B death/WebSocket reconnect,
+  worker crash/catch-up, reordered provider callbacks and pubsub backpressure)
+  are NOT EXECUTED until P18 staging has the corresponding real services.
+- tests/v5-p19-real-chaos.test.js performs an ACTUAL owned Redis namespace
+  wipe, Core service instance reopen and durable retry, duplicate concurrent
+  same-key economic commands, and an intentional 75 ms PG read stall. It
+  hashes every canonical row across 10 durable tables before/after each
+  fault and refuses any mutation. It does NOT kill a process/host, stop PG,
+  test network partitions or claim an alert delivery result.
+- CI uploads only sanitized scenario IDs, durations, equality fingerprints
+  and unresolved scenarios; neither raw identities nor provider secrets
+  are retained. A passing synthetic test is never called a G19 acceptance.

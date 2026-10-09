@@ -29,7 +29,8 @@ jobs:
           node --check scripts/v5/p19/workload-profile.js
           node --check scripts/v5/p19/metrics.js
           node --check scripts/v5/p19/disposable-adapters.js
-          node --test tests/v5-p19-workload-profile.test.js tests/v5-p19-metrics.test.js tests/v5-p19-disposable-adapters.test.js
+          node --check scripts/v5/p19/chaos-contract.js
+          node --test tests/v5-p19-workload-profile.test.js tests/v5-p19-metrics.test.js tests/v5-p19-disposable-adapters.test.js tests/v5-p19-chaos-contract.test.js
       - name: Produce clearly unexecuted launch-profile plan
         run: |
           set -euo pipefail
@@ -67,6 +68,7 @@ jobs:
       V5_REDIS_DISPOSABLE: '1'
       V5_P19_DISPOSABLE: '1'
       P19_EVIDENCE_OUTPUT: .artifacts/p19-real-disposable.json
+      P19_CHAOS_EVIDENCE_OUTPUT: .artifacts/p19-chaos-disposable.json
     services:
       postgres:
         image: postgres:16@sha256:ca0bd484cb98bf4b24eb1010e73fb3fcbd6714d240fbc1a10eea5b7dbecb641d
@@ -104,7 +106,7 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p .artifacts
-          node --test --test-concurrency=1 --test-reporter=tap tests/v5-p19-real-services.test.js \
+          node --test --test-concurrency=1 --test-reporter=tap tests/v5-p19-real-services.test.js tests/v5-p19-real-chaos.test.js \
             > .artifacts/p19-measured.tap 2>&1 || {
             tail -n 60 .artifacts/p19-measured.tap
             exit 1
@@ -126,13 +128,22 @@ jobs:
              e.tiers.length!==4 || e.tiers.some(t=>t.executedOperations<1||t.failedOperations!==0)) {
             throw Error('unsafe P19 capacity claims or incomplete real measurement');
           }
-          console.log('P19: 4 tiny real disposable PG/Redis tiers measured, G19 open');
+          const chaos=JSON.parse(fs.readFileSync('.artifacts/p19-chaos-disposable.json','utf8'));
+          if(chaos.g19Accepted!==false || chaos.localScenarioCount!==4 ||
+             chaos.unexecutedScenarioCount!==5 || chaos.independentlyObservedOnRealStaging!==false ||
+             chaos.scenarioMeasurements.some(x=>
+               x.status==='LOCAL_MEASURED' && (x.beforeDigest!==x.afterDigest||x.durationMs<0))) {
+            throw Error('unsafe P19 chaos claim or missing disposable execution proof');
+          }
+          console.log('P19: 4 tiny real disposable PG/Redis tiers + 4 local fault drills passed; G19 open');
           NODE
       - name: Retain sanitized actual small-fixture measurements
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: v5-p19-disposable-load-evidence
-          path: .artifacts/p19-real-disposable.json
+          path: |
+            .artifacts/p19-real-disposable.json
+            .artifacts/p19-chaos-disposable.json
           if-no-files-found: error
           retention-days: 7

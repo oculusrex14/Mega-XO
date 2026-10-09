@@ -214,35 +214,30 @@ test('V5-12-01: Route manifest comprehensively classifies all read endpoints', (
   }
 });
 
-test('V5-12-01: Dynamic classification handles contextual match and profile states', () => {
-  // 1. Match states
-  const liveMatch = classifyRoute('/api/v1/match/m123', { matchStatus: 'PLAYING' });
-  assert.equal(liveMatch.category, CATEGORIES.SHORT_TTL_EPHEMERAL);
-  assert.equal(liveMatch.cacheControl, CACHE_CONTROL_POLICIES.EPHEMERAL_SHORT);
-  assert.equal(liveMatch.sharedCacheAllowed, false);
-
-  const completedMatch = classifyRoute('/api/v1/match/m123', { matchStatus: 'COMPLETED' });
-  assert.equal(completedMatch.category, CATEGORIES.PUBLIC_PROJECTED);
-  assert.equal(completedMatch.cacheControl, CACHE_CONTROL_POLICIES.PUBLIC_PROJECTED_MEDIUM);
-  assert.equal(completedMatch.sharedCacheAllowed, true);
-
-  const privateMatch = classifyRoute('/api/v1/match/m123', { isPrivateMatch: true });
-  assert.equal(privateMatch.category, CATEGORIES.PRIVATE_NO_CACHE);
-  assert.equal(privateMatch.cacheControl, CACHE_CONTROL_POLICIES.PRIVATE_NO_STORE);
-  assert.equal(privateMatch.sharedCacheAllowed, false);
-
-  // 2. Profile states
-  const selfProfile = classifyRoute('/api/community/profile/alice', { isSelf: true });
-  assert.equal(selfProfile.category, CATEGORIES.PRIVATE_NO_CACHE);
-  assert.equal(selfProfile.cacheControl, CACHE_CONTROL_POLICIES.PRIVATE_NO_STORE);
-
-  const publicStranger = classifyRoute('/api/community/profile/alice', { isSelf: false, visibility: 'public' });
-  assert.equal(publicStranger.category, CATEGORIES.PUBLIC_PROJECTED);
-  assert.equal(publicStranger.cacheControl, CACHE_CONTROL_POLICIES.PUBLIC_PROJECTED_MEDIUM);
-
-  const privateStranger = classifyRoute('/api/community/profile/alice', { isSelf: false, visibility: 'private' });
-  assert.equal(privateStranger.category, CATEGORIES.PRIVATE_NO_CACHE);
-  assert.equal(privateStranger.cacheControl, CACHE_CONTROL_POLICIES.PRIVATE_NO_STORE);
+test('V5-12-01: participant match and viewer-specific profiles cannot become public through classification', () => {
+  const cases = [
+    ['/api/v1/match/m123', { matchStatus: 'PLAYING' }],
+    ['/api/v1/match/m123', { matchStatus: 'COMPLETED' }],
+    ['/api/v1/match/m123', { isPrivateMatch: true }],
+    ['/api/v1/match/m123', {}],
+    ['/api/community/profile/alice', { isSelf: true }],
+    ['/api/community/profile/alice', { isSelf: false, visibility: 'public' }],
+    ['/api/community/profile/alice', { isSelf: false, visibility: 'private' }],
+    ['/api/community/profile/alice', {}],
+  ];
+  for (const [route, options] of cases) {
+    const entry = classifyRoute(route, options);
+    assert.equal(entry.category, CATEGORIES.PRIVATE_NO_CACHE, route);
+    assert.equal(entry.cacheControl, CACHE_CONTROL_POLICIES.PRIVATE_NO_STORE, route);
+    assert.equal(entry.sharedCacheAllowed, false, route);
+    assert.equal(entry.defaultTtlMs, 0, route);
+    assert.equal(entry.staleToleranceMs, 0, route);
+  }
+  for (const name of ['/api/v1/match/:id', '/api/community/profile/:id', '/api/community/search']) {
+    const entry = ROUTE_MANIFEST.find((route) => route.path === name);
+    assert.equal(entry.sharedCacheAllowed, false, name);
+    assert.equal(entry.cacheControl, CACHE_CONTROL_POLICIES.PRIVATE_NO_STORE, name);
+  }
 });
 
 test('V5-12-01: HTTP control plane returns explicit Cache-Control headers', async (t) => {

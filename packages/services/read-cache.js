@@ -140,14 +140,14 @@ const ROUTE_MANIFEST = Object.freeze([
   {
     path: '/api/v1/match/:id',
     pattern: /^\/api\/v1\/match\/[^\/]+$/,
-    category: CATEGORIES.PUBLIC_PROJECTED, // Default when completed; dynamic for live/private
-    cacheControl: CACHE_CONTROL_POLICIES.PUBLIC_PROJECTED_MEDIUM,
-    defaultTtlMs: 300000,
-    staleToleranceMs: 600000,
-    sensitivity: SENSITIVITIES.PUBLIC_PROJECTED_RECORD,
-    sharedCacheAllowed: true,
+    category: CATEGORIES.PRIVATE_NO_CACHE,
+    cacheControl: CACHE_CONTROL_POLICIES.PRIVATE_NO_STORE,
+    defaultTtlMs: 0,
+    staleToleranceMs: 0,
+    sensitivity: SENSITIVITIES.PRIVATE_AUTHENTICATED,
+    sharedCacheAllowed: false,
     invalidationEvents: ['match.move', 'match.completed'],
-    description: 'Match state and move history view',
+    description: 'Participant-authorized match state and move history',
   },
   {
     path: '/api/v1/leaderboard',
@@ -164,14 +164,14 @@ const ROUTE_MANIFEST = Object.freeze([
   {
     path: '/api/community/profile/:id',
     pattern: /^\/api\/community\/profile\/[^\/]+$/,
-    category: CATEGORIES.PUBLIC_PROJECTED,
-    cacheControl: CACHE_CONTROL_POLICIES.PUBLIC_PROJECTED_MEDIUM,
-    defaultTtlMs: 60000,
-    staleToleranceMs: 120000,
-    sensitivity: SENSITIVITIES.PUBLIC_PROJECTED_RECORD,
-    sharedCacheAllowed: true,
-    invalidationEvents: ['profile.updated', 'match.completed'],
-    description: 'Public player profile lookup with privacy controls',
+    category: CATEGORIES.PRIVATE_NO_CACHE,
+    cacheControl: CACHE_CONTROL_POLICIES.PRIVATE_NO_STORE,
+    defaultTtlMs: 0,
+    staleToleranceMs: 0,
+    sensitivity: SENSITIVITIES.PRIVATE_SOCIAL_GRAPH,
+    sharedCacheAllowed: false,
+    invalidationEvents: ['profile.updated', 'friend.updated', 'match.completed'],
+    description: 'Viewer-specific profile with blocks and relationship visibility',
   },
   {
     path: '/api/community/friends',
@@ -258,83 +258,15 @@ const ROUTE_MANIFEST = Object.freeze([
 function classifyRoute(pathname, options = {}) {
   const cleanPath = (typeof pathname === 'string' ? pathname.split('?')[0].replace(/\/+$/, '') || '/' : '/');
 
-  // Match /api/v1/match/:id
+  // Both endpoints are authenticated, actor-relative projections.
+  // A completed match still needs participant authorization; a "public"
+  // player profile still depends on the viewer's current blocks/privacy.
+  // Never treat an optional classification flag as permission to share-cache.
   if (cleanPath.startsWith('/api/v1/match/')) {
-    const isCompleted = options.matchStatus === 'COMPLETED' || options.matchStatus === 'CANCELLED' || options.matchStatus === 'RESIGNED' || options.matchStatus === 'TIMEOUT';
-    const isLive = options.matchStatus === 'PLAYING' || options.matchStatus === 'OFFERED';
-    const isPrivate = Boolean(options.isPrivateMatch);
-
-    if (isPrivate) {
-      return {
-        path: '/api/v1/match/:id',
-        category: CATEGORIES.PRIVATE_NO_CACHE,
-        cacheControl: CACHE_CONTROL_POLICIES.PRIVATE_NO_STORE,
-        defaultTtlMs: 0,
-        staleToleranceMs: 0,
-        sensitivity: SENSITIVITIES.PRIVATE_AUTHENTICATED,
-        sharedCacheAllowed: false,
-        invalidationEvents: ['match.move', 'match.completed'],
-        description: 'Private unlisted match view',
-      };
-    }
-
-    if (isLive) {
-      return {
-        path: '/api/v1/match/:id',
-        category: CATEGORIES.SHORT_TTL_EPHEMERAL,
-        cacheControl: CACHE_CONTROL_POLICIES.EPHEMERAL_SHORT,
-        defaultTtlMs: 2000,
-        staleToleranceMs: 2000,
-        sensitivity: SENSITIVITIES.EPHEMERAL_STATE,
-        sharedCacheAllowed: false,
-        invalidationEvents: ['match.move', 'match.completed'],
-        description: 'Live active match status',
-      };
-    }
-
-    return {
-      path: '/api/v1/match/:id',
-      category: CATEGORIES.PUBLIC_PROJECTED,
-      cacheControl: CACHE_CONTROL_POLICIES.PUBLIC_PROJECTED_MEDIUM,
-      defaultTtlMs: 300000,
-      staleToleranceMs: 600000,
-      sensitivity: SENSITIVITIES.PUBLIC_PROJECTED_RECORD,
-      sharedCacheAllowed: true,
-      invalidationEvents: ['match.completed'],
-      description: 'Completed historical match view',
-    };
+    return { ...ROUTE_MANIFEST.find((entry) => entry.path === '/api/v1/match/:id') };
   }
-
-  // Match /api/community/profile/:id
   if (cleanPath.startsWith('/api/community/profile/')) {
-    const isSelf = Boolean(options.isSelf);
-    const visibility = options.visibility || 'public';
-
-    if (isSelf || visibility === 'private') {
-      return {
-        path: '/api/community/profile/:id',
-        category: CATEGORIES.PRIVATE_NO_CACHE,
-        cacheControl: CACHE_CONTROL_POLICIES.PRIVATE_NO_STORE,
-        defaultTtlMs: 0,
-        staleToleranceMs: 0,
-        sensitivity: SENSITIVITIES.PRIVATE_AUTHENTICATED,
-        sharedCacheAllowed: false,
-        invalidationEvents: ['profile.updated'],
-        description: 'Private or self profile lookup',
-      };
-    }
-
-    return {
-      path: '/api/community/profile/:id',
-      category: CATEGORIES.PUBLIC_PROJECTED,
-      cacheControl: CACHE_CONTROL_POLICIES.PUBLIC_PROJECTED_MEDIUM,
-      defaultTtlMs: 60000,
-      staleToleranceMs: 120000,
-      sensitivity: SENSITIVITIES.PUBLIC_PROJECTED_RECORD,
-      sharedCacheAllowed: true,
-      invalidationEvents: ['profile.updated', 'match.completed'],
-      description: 'Public player profile lookup',
-    };
+    return { ...ROUTE_MANIFEST.find((entry) => entry.path === '/api/community/profile/:id') };
   }
 
   // Find exact or pattern match from manifest

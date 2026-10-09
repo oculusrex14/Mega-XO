@@ -435,8 +435,12 @@ test('8. End-to-end ingress integration: hybrid rejected (401), actor spoof stri
   await lab.seedActors(db, SEED_ACTORS);
 
   const pools = lab.poolsFor(db);
+  // Even rejected ingress requests must use the actual configured API
+  // account authority; a missing OTP secret is a deployment failure.
+  const accounts = await lab.accountsFor(db);
   const handler = createApiHandler({
     pool: pools.api,
+    accounts,
     allowedOrigins: ['https://megaxo.com']
   });
 

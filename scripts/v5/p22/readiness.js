@@ -37,6 +37,21 @@ function assess(ledger, expectedSha, packet = null, checkedAtUtc = new Date().to
   if (!ledger || ledger.schema_version !== 1 || !ledger.current ||
       ledger.current.integration_branch !== 'V5-platform' ||
       !Array.isArray(ledger.current.passed_phase_gates)) refuse('OWNER_LEDGER_REQUIRED');
+  // Owner-authored gate labels are not provider/cutover evidence. Detect
+  // contradictory G22/G23 claims before treating those entries as invalid
+  // prereq labels, so CI reports the actual production blocker clearly.
+  const claimedLiveGates = ledger.current.passed_phase_gates.some(
+    (entry) => entry && (entry.gate === 'G22' || entry.gate === 'G23')
+  );
+  if (claimedLiveGates) {
+    const safety = ledger.production_safety || {};
+    const v4Authority = typeof safety.durable_authority === 'string' &&
+      /V4|SQLite/i.test(safety.durable_authority);
+    const noCutover = !safety.cutover_epoch || !safety.first_post_import_application_write;
+    if (v4Authority || noCutover || safety.postgres_import_performed === false) {
+      refuse('OWNER_PRODUCTION_AUTHORITY_CONTRADICTION');
+    }
+  }
   const passed = new Set();
   for (const gate of ledger.current.passed_phase_gates) {
     if (!gate || typeof gate.gate !== 'string' || !REQUIRED_GATES.includes(gate.gate) ||

@@ -68,6 +68,21 @@ test('missing gate, failed check or withheld proof always blocks', () => {
   assert.equal(evaluate(ledger(21),p).status,'BLOCKED');
 });
 
+test('G22/G23 cannot claim a live cutover while production safety still records V4', () => {
+  const l = ledger(21);
+  l.current.passed_phase_gates.push(gate(22), gate(23));
+  l.production_safety = {
+    durable_authority: 'V4 Node/SQLite until gated P22',
+    postgres_import_performed: false,
+    first_post_import_application_write: null,
+    cutover_epoch: null,
+  };
+  assert.throws(
+    () => evaluate(l),
+    /P22_READINESS_REFUSED: OWNER_PRODUCTION_AUTHORITY_CONTRADICTION/,
+  );
+});
+
 test('malformed or duplicate owner-ledger gate entries refuse instead of silently passing', () => {
   const l=ledger(21);
   l.current.passed_phase_gates.push(gate(0));

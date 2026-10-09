@@ -363,8 +363,13 @@ test('V5-10-01: an operator lists dead letters newest-first and retries one to a
  assert.ok(times.every((v) => Number.isFinite(v)), 'every dead letter carries a real created_at');
  for (let i = 1; i < times.length; i += 1) assert.ok(times[i - 1] >= times[i], 'the listing is ordered by created_at DESC');
 
- assert.equal(await h.retryDeadLetter({ id: 'job:no-such-id' }), false, 'retrying a job that is not a dead letter is a no-op');
- assert.equal(await h.retryDeadLetter({ id: older }), true, 'the operator retries the dead letter');
+ assert.equal(await h.retryDeadLetter({ id: 'job:no-such-id', payload: { task: 'operator-retry' } }), false, 'retrying a job that is not a dead letter is a no-op');
+ await assert.rejects(() => h.retryDeadLetter({ id: older }), (error) => error.code === 'RETRY_REQUIRES_PAYLOAD',
+  'a terminal job cannot be requeued without a deliberately supplied replacement body');
+ assert.equal((await h.raw(older)).state, 'failed', 'refusing the empty retry preserves dead-letter state');
+ const replacement = { task: 'operator-resend', reason: 'newly-authorized' };
+ assert.equal(await h.retryDeadLetter({ id: older, payload: replacement, businessKey: 'retry:older' }), true,
+  'the operator retries with an explicit replacement business body');
  const reset = await h.raw(older);
  assert.equal(reset.state, 'queued', 'a retried job returns to the queue');
  assert.equal(Number(reset.attempts), 0, 'a retried job gets a fresh attempt budget');
@@ -375,8 +380,10 @@ test('V5-10-01: an operator lists dead letters newest-first and retries one to a
  assert.equal(reclaimed.length, 1, 'the retried job is claimable again');
  assert.equal(reclaimed[0].id, older, 'the operator retried the job under test');
  assert.equal(Number(reclaimed[0].attempts), 1, 'the fresh budget starts at attempt one');
+ assert.deepEqual(reclaimed[0].payload, replacement, 'the retried job carries the replacement body, not NULL');
+ assert.equal(reclaimed[0].businessKey, 'retry:older', 'the operator may specify fresh business identity');
  assert.equal(await h.completeJob({ id: older, workerId: WORKER_B, fence: reclaimed[0].fence }), true,
   'the retried job completes normally');
  assert.equal((await h.raw(older)).state, 'sent');
- assert.equal(await h.retryDeadLetter({ id: newer }), true, 'the other dead letter is independently retryable');
+ assert.equal(await h.retryDeadLetter({ id: newer, payload: { task: 'operator-newer' } }), true, 'the other dead letter is independently retryable');
 });

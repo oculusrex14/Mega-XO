@@ -15,6 +15,13 @@
 3. Run read-only PR CI and isolated tests. **Merge only after current `V5-platform` contracts and tests pass** and dependent P06–P14 changes are accounted for. Pull in changes via Git only; no live staging or production rollout is implied by merge.
 4. Do **not** close G15/G16/G17/G18/G19/G20 based solely on this source. The master ledger `docs/v5/progress.json`, its generated `TODO.md`, and runtime/Neon/Redis credentials remain the primary agent's authority.
 
+## Latest full integration audit — 2026-10-09
+
+**Read the [complete 25-phase cross-agent audit](docs/co-dev/V5-FULL-INTEGRATION-SWEEP-2026-10-09.md) before merging.** The user-supplied implementation pack passed its full integrity validator (25 phases, 117 tasks, 40 acceptance cases). Primary owner ledger: **41/117 tasks completed and G00–G07 accepted, P08 active**, with V4 SQLite still the sole live authority. G15–G20/G22 are **NOT** accepted.
+
+Audited all 95 previously changed JS/CJS files for parse errors and tracked relative imports (none found), native Gradle/Xcode source inclusion, source-only backup/release/staging/load/cutover boundaries and merge ancestry. **Found and fixed three cross-phase CI trigger defects:** P16 did not watch P08 Core/schema or direct pushes, P22 missed gate/import/client and direct-push changes, and native host builds missed shared contracts/bundle tooling. Updated read-only trusted push/PR scopes and added `tests/v5-cross-phase-integration.test.js` to mandatory P17 source CI. Together with P16/P22 CI security tests, **11/11** exact fetched test bodies passed source-level V8 + Node stubs; **NOT** live Actions or native/PG evidence.
+
+**CI currently blocked:** At audited source `66065ac92fef`, all nine PR workflows failed before runner allocation; all job steps were zero (downstream jobs skipped). Owner must resolve GitHub Actions runner/account/service and rerun **exact-head** tests before merging. This is not a code-test failure or success claim. Source-level and native/device phase acceptance remain dependent on actual CI/providers.
 ### Integration manifest (2026-10-09)
 
 | Unit | Original PR (superseded) | Original source head | Unified merge commit | Diff |
@@ -33,8 +40,8 @@
 
 ## Ownership, dependencies and safety
 
-- The **primary agent** has accepted G06/G07 and owns subsequent online platform P08–P14; follow its live task ledger, provider evidence and exact service interfaces. This branch never overwrites the primary agent's `packages/services/core.js`, `packages/services/queue.js`, `packages/services/ephemera.js`, schema/migrations, environment inventories, `deploy/compose.yaml`, production Caddyfile, or `docs/v5/progress.json`.
-- The **co-developer** owns additive, phase-scoped P15–P20 foundations plus client bundle build safety. All future work lands on this one branch, with small, meaningful commits and an updated README.
+- The **primary agent** has accepted G06/G07 and owns online platform P08–P14; follow its live task ledger, provider evidence and exact service interfaces. This branch **does edit P07 `packages/services/queue.js`** for documented claim/hint/failure-path fixes; the primary agent MUST review the updated `releaseClaim({claimId})` contract and rerun integration tests. It does **not** rewrite the primary agent's `packages/services/core.js`, `packages/services/ephemera.js`, schema/migrations, environment inventories, `deploy/compose.yaml`, production Caddyfile, or `docs/v5/progress.json`.
+- The **co-developer** maintains P15–P20 and P22 preparation, client-bundle safety, reviewed P07 queue corrections and cross-phase CI compatibility audits. All future work lands on this one branch, with small, meaningful commits and an updated README.
 - **No V4 changes**, no current production authority transfer, no modifying R2/Neon/Redis/provider objects, no store submission, no new external ports, and no credentials in Git.
 - P21 (new website/browser product) is **explicitly owner-deferred**; do not start it. P22 depends on P20 rather than the deferred website. P24 is measurement-gated.
 - Formal proof comes from **executed** CI/staging/device/provider runs attached to the exact integrated source SHA. Standalone local/CI tests do not automatically transfer G-phase acceptance to a newer integration head.
@@ -46,6 +53,7 @@ The primary agent passed G07 at `045d5f94a134`. This branch preserves that check
 Three real-Redis/PG regressions were added to `tests/v5-p07-queue.test.js`; existing P07 queue/match/recovery tests now supply the mandatory `claimId` to `releaseClaim`. **Caller contract change:** any new matcher must release with its own returned claim ID, never reread the latest claim ID to force a release. See [P07-POST-GATE-HARDENING.md](docs/co-dev/P07-POST-GATE-HARDENING.md).
 
 Exact P07 source/tests passed syntax parsing and stubbed queue.js demonstrated actor-isolated hints and claim-ID forwarding. **This is not the real Redis Lua and PG suite.** Rerun existing P07 disposable-service CI with zero skips, and review P08 consumers before merge. Historic G07 evidence is not proof of this new queue SHA.
+
 ## What each unit actually contains
 
 ### P15 — encrypted PostgreSQL backup, isolated DR
@@ -124,6 +132,9 @@ node scripts/v5/p22/readiness.js --sha "$(git rev-parse HEAD)" # must report BLO
 Every PR update must verify the exact source head CI. Keep V5 retained regressions, economy and four-theme UI checks. A green synthetic test is not authority to deploy, purchase anything, activate email/billing, rotate operational keys, change V4 DNS/edge or tick a gate.
 
 ## Chronological co-dev checkpoint log
+
+- **2026-10-09 full integration sweep:** Verified the uploaded original implementation pack's 25-phase/117-task/40-acceptance matrix; reviewed co-dev source graph (95 pre-audit JS/CJS files without syntax or relative-import errors), native Android/iOS source membership, P00–P07 owner state and phase 15–20/22 foundations. Fixed P16/P22/native CI dependency scopes (including real Core/PG changes and direct V5 pushes), added 4 cross-phase regression tests and wired to P17 source CI. **11/11** P16/P22/CI tests passed V8 source evaluation with Node stubs, not Actions. [Detailed audit](docs/co-dev/V5-FULL-INTEGRATION-SWEEP-2026-10-09.md). Observed **9/9** current-head workflows failing at zero runner steps; no production or G-gate completion claimed.
+
 
 - **2026-10-09 P22 preparation:** Created fail-closed readiness (`031d292`, tests `230c0ebe`), writer catalogue/restart fence (`3808daa`, tests `80c64bfe`), UNKNOWN-first-write-safe rollback classifier (`c1ef7b1`, corrected `69233a9f`, tests `a0250b15`), frozen-source/P03 per-family reconciliation (`0f2041a`, tests `7fb18a34`), retained browser/native/callback compatibility (`8139739`, tests `e629c3db`), PR-only zero-skip workflow (`481f2fb3`, guard tests `43bff773`), and full operator runbook (`da73f4cf`). Later safety fixes refuse parent-traversal evidence refs and symlinked artifact directories. No live service changes.
 - **2026-10-09 P22 source verification:** 31/31 exact fetched pure source/test assertions passed with a V8/Node-module-stub harness after repairing three test/policy failures. Not Node24 CI execution or provider evidence. G22 OPEN; missing G08–G20 and runtime cutover.

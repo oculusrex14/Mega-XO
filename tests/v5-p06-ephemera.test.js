@@ -75,7 +75,10 @@ const durableSnapshot = async (database) => {
   const admin = await lab.adminClient(database);
   try {
     const snapshot = {};
-    for (const table of DURABLE_TABLES) snapshot[table] = (await admin.query(`SELECT * FROM ${table} ORDER BY 1, 2`)).rows;
+    for (const table of DURABLE_TABLES) {
+      const result = await admin.query(`SELECT row_to_json(t) AS record FROM ${table} t ORDER BY row_to_json(t)::text COLLATE "C"`);
+      snapshot[table] = result.rows.map((row) => row.record);
+    }
     return snapshot;
   } finally { await admin.end(); }
 };
@@ -85,7 +88,7 @@ test('P06 ephemera: every write is namespaced, bounded by an explicit TTL, and e
   const stg = await serviceFor('stg');
   const prd = await serviceFor('prd');
   try {
-    await stg.heartbeat('actor_a', 'sess_1', 60000);
+    await stg.presenceTouch('actor_a', 'sess_1', true, 60000);
     await stg.cacheSet('cache', 'k', 'v', 60000);
     await stg.setHint('revoked', 'sess_1', 60000);
     await stg.enqueueCandidate('casual', 'ticket_1', 0, { windowMs: 600000, keyTtlMs: 600000 });
@@ -97,8 +100,8 @@ test('P06 ephemera: every write is namespaced, bounded by an explicit TTL, and e
 
     /* Environment separation: a prd-named client cannot see a stg key and vice versa. */
     await prd.cacheSet('cache', 'survivor', 'prd-keep', 60000);
-    const prdView = await prd.lookupPresence('actor_a');
-    assert.equal(prdView.value, null, 'a different environment must not see the presence');
+    const prdView = await prd.presenceRead('actor_a');
+    assert.deepEqual(prdView.sessions, [], 'a different environment must not see the presence');
     await prd.cacheSet('cache', 'k', 'prd-value', 60000);
     assert.notEqual((await stg.cacheGet('cache', 'k')).value, 'prd-value', 'cross-environment cache reads are impossible');
 
@@ -111,15 +114,16 @@ test('P06 ephemera: every write is namespaced, bounded by an explicit TTL, and e
     const wiped = await stg.wipeNamespace();
     assert.equal(wiped.available, true, 'the wipe reports its bounded result');
     assert.ok(wiped.deleted >= 1, 'the wipe deleted this environment keys');
-    assert.equal((await stg.lookupPresence('actor_a')).value, null, 'the stg presence is gone');
+    assert.deepEqual((await stg.presenceRead('actor_a')).sessions, [], 'the stg presence is gone');
     assert.equal((await prd.cacheGet('cache', 'survivor')).value, 'prd-keep', 'an unrelated environment namespace is untouched');
     await prd.wipeNamespace();
 
-    /* Refusals: no TTL, bad parts, oversize values, unknown family. */
+    /* Refusals: no TTL, bad parts, oversize values, unknown family. A space-bearing part is a VALID
+     * durable text id under the P06 key contract; a genuinely invalid part (empty) is used here. */
     await assert.rejects(() => stg.cacheSet('cache', 'k', 'v', 0), (e) => e.message === 'TTL_REQUIRED');
     await assert.rejects(() => stg.cacheSet('cache', 'k', 'v', -5), (e) => e.message === 'TTL_REQUIRED');
-    await assert.rejects(() => stg.cacheSet('cache', 'bad part', 'v', 1000), (e) => e.message === 'INVALID_KEY_PART');
-    await assert.rejects(() => stg.heartbeat('actor_a', 'x'.repeat(5000), 60000), (e) => e.message === 'VALUE_TOO_LARGE');
+    await assert.rejects(() => stg.cacheSet('cache', '', 'v', 1000), (e) => e.message === 'INVALID_KEY_PART');
+    await assert.rejects(() => stg.cacheSet('cache', 'k', 'x'.repeat(5000), 1000), (e) => e.message === 'VALUE_TOO_LARGE');
     await assert.rejects(() => stg.cacheSet('wallets', 'k', 'v', 1000), (e) => e.message === 'UNKNOWN_FAMILY');
   } finally { await stg.close(); await prd.close(); }
 });
@@ -135,8 +139,8 @@ test('P06 ephemera: real separate processes share presence/cache/route/pubsub an
   assert.equal(a.fatal, null);
 
   /* Cross-process presence, cache and routing: B reads facts A committed. */
-  await a.call('heartbeat', ['proc_alpha', 'sess-A', 60000]);
-  assert.equal((await b.call('lookupPresence', ['proc_alpha'])).value, 'sess-A', 'process B observes process A heartbeat');
+  await a.call('presenceTouch', ['proc_alpha', 'sess-A', true, 60000]);
+  assert.deepEqual((await b.call('presenceRead', ['proc_alpha'])).sessions.map((s) => s.ref), ['sess-A'], 'process B observes process A presence touch');
   await a.call('cacheSet', ['cache', 'shared', 'v-from-A', 60000]);
   assert.equal((await b.call('cacheGet', ['cache', 'shared'])).value, 'v-from-A', 'process B reads process A cache value');
   await a.call('registerRoute', ['conn-A', '{"node":"n1"}', 30000]);
@@ -183,6 +187,7 @@ test('P06 ephemera: a namespace wipe and total loss leave durable PostgreSQL tru
   const db = await lab.createDatabase('ephwipedur');
   await lab.seedActors(db, lab.seedFor(['svc_alice', 'svc_bob']));
   const ephemera = await serviceFor('test');
+  await ephemera.wipeNamespace();
   const issuer = await createTicketIssuer(lab.poolsFor(db).api, { now: () => lab.CLOCK, environment: 'test' });
   const refresh = await createRefreshService(lab.poolsFor(db).api, {
     now: () => lab.CLOCK, mintAccess: async () => 'synthetic-access-token',
@@ -206,17 +211,17 @@ test('P06 ephemera: a namespace wipe and total loss leave durable PostgreSQL tru
   assert.equal(grant.crowns, 100);
 
   /* Populate genuine ephemeral state, then prove the wipe actually removed it. */
-  await ephemera.heartbeat('svc_alice', 'sess-ephemeral', 60000);
+  await ephemera.presenceTouch('svc_alice', 'sess-ephemeral', true, 60000);
   await ephemera.cacheSet('cache', 'offer', 'ephemeral', 60000);
   await ephemera.setHint('revoked', 'sess-hint', 60000);
   await ephemera.registerRoute('conn-eph', '{"node":"n1"}', 60000);
   await ephemera.enqueueCandidate('ranked', 'ticket-eph', 0, { windowMs: 600000, keyTtlMs: 600000 });
-  assert.equal((await ephemera.lookupPresence('svc_alice')).value, 'sess-ephemeral');
+  assert.deepEqual((await ephemera.presenceRead('svc_alice')).sessions.map((s) => s.ref), ['sess-ephemeral']);
   assert.deepEqual((await ephemera.peekCandidates('ranked')).candidates, ['ticket-eph']);
 
   const before = await durableSnapshot(db);
 
-  /* 1. Namespace wipe: every mx:test:v1 key is gone, the durable content is byte-identical, and the
+  /* 1. Namespace wipe: every mx:test:v2 key is gone, the durable content is byte-identical, and the
    * durable decisions still hold with ALL ephemera gone (the A15 property). */
   const wiped = await ephemera.wipeNamespace();
   assert.equal(wiped.available, true, 'the wipe reports its bounded result');
@@ -224,7 +229,7 @@ test('P06 ephemera: a namespace wipe and total loss leave durable PostgreSQL tru
   const audit = await ephemera.auditUnboundedKeys();
   assert.equal(audit.available, true);
   assert.deepEqual(audit.unbounded, []);
-  assert.equal((await ephemera.lookupPresence('svc_alice')).value, null, 'presence is gone after the wipe');
+  assert.deepEqual((await ephemera.presenceRead('svc_alice')).sessions, [], 'presence is gone after the wipe');
   assert.equal((await ephemera.cacheGet('cache', 'offer')).value, null, 'cache is gone after the wipe');
   assert.equal((await ephemera.checkHint('revoked', 'sess-hint')).present, false, 'hint is gone after the wipe');
   assert.equal((await ephemera.locateRoute('conn-eph')).value, null, 'route is gone after the wipe');
@@ -242,10 +247,10 @@ test('P06 ephemera: a namespace wipe and total loss leave durable PostgreSQL tru
   assert.equal(await lab.scalar(db, 'SELECT state FROM identity.refresh_families WHERE family_id = $1', [familyId]), 'revoked', 'a wiped cache cannot resurrect a revoked family');
   assert.equal(Number(await lab.scalar(db, "SELECT count(*)::int FROM monetization.receipts WHERE store = 'google' AND transaction_id = 'p06-tx-1'")), 1, 'the purchase receipt survives the wipe');
 
-  /* A wiped client can rejoin: the ephemeral state is rebuildable from a fresh heartbeat/queue join. */
-  await ephemera.heartbeat('svc_alice', 'sess-rejoined', 60000);
+  /* A wiped client can rejoin: the ephemeral state is rebuildable from a fresh per-session touch/queue join. */
+  await ephemera.presenceTouch('svc_alice', 'sess-rejoined', true, 60000);
   await ephemera.enqueueCandidate('ranked', 'ticket-rejoin', 0, { windowMs: 600000, keyTtlMs: 600000 });
-  assert.equal((await ephemera.lookupPresence('svc_alice')).value, 'sess-rejoined', 'a client recovers its presence after the wipe');
+  assert.deepEqual((await ephemera.presenceRead('svc_alice')).sessions.map((s) => s.ref), ['sess-rejoined'], 'a client recovers its presence after the wipe');
   assert.deepEqual((await ephemera.peekCandidates('ranked')).candidates, ['ticket-rejoin'], 'a client recovers its queue position after the wipe');
 
   /* 2. Total loss: an unreachable Redis resolves conservatively and bounded for EVERY operation,

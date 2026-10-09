@@ -13,7 +13,20 @@
  *   await core.read((tx) => tx.repositories.wallets.for(actor));
  *   await core.read();                                             // whole exported aggregate
  *   await core.provisionActor(actor);
+ *   await core.readMatch(actor, matchId);                          // durable membership + view DTO
+ *   const watch = await core.watchMatch(actor, matchId, onSnapshot); // post-commit match hints
+ *   await watch.refresh();                                         // always a strong current read
+ *   watch.unsubscribe();
  *   core.close();                                                  // closes the UoW, NOT the pool
+ *
+ * MATCH UPDATES (P06). `run` and `cancelSocialOffers` publish a bounded post-commit hint
+ * (`{matchId}` only, channel `core-match`) through the CALLER-OWNED optional `options.ephemera`
+ * adapter: a real committed match change nudges other Cores, which then reread PostgreSQL.
+ * `readMatch` is the durable-membership selector and `watchMatch` subscribes FIRST, then reads, so
+ * no commit can fall between read and subscribe. Hints and the subscription are rebuildable fan-out:
+ * without an adapter (or with Redis down) `watchMatch` reports `available:false` yet `refresh()`
+ * still returns committed truth, a lost hint only delays, and a rollback publishes nothing. The
+ * borrowed adapter is never created, reconfigured or closed here.
  *
  * BOOT CONTRACT (`createCoreService` is async)
  *  - `pool.describe().role` MUST be `core_runtime`. Core is the sole competitive/economic writer
@@ -128,6 +141,14 @@ const OUTBOX_EXPIRY_MS = 7 * DAY;
 const SOCIAL_CANCEL_KIND = 'social.cancel-offers';
 const SOCIAL_CANCEL_LIMIT = 200;
 
+/* P06 Core match hints. `core-match` is the ONE match-change channel: a post-commit nudge carrying
+ * ONLY the changed match id - never an actor, a session, a token, a wallet or a match document. A
+ * hint is rebuildable fan-out coordination, never authority; every observer rereads PostgreSQL. The
+ * TTL is the ephemera adapter's required positive value bound for `publish` (a pub/sub message has
+ * no TTL of its own; the value is opaque and never interpreted). */
+const MATCH_CHANNEL = 'core-match';
+const MATCH_HINT_TTL_MS = 30000;
+
 /* --------------------------------------------------------------- value helpers */
 
 function sha256hex(value) { return crypto.createHash('sha256').update(value).digest('hex'); }
@@ -160,6 +181,25 @@ async function emitOutbox(tx, { id, kind, event, now }) {
   + ' ON CONFLICT (outbox_id) DO NOTHING',
   [id, JSON.stringify(event), kind, iso(now), iso(now + OUTBOX_EXPIRY_MS)]);
  return id;
+}
+
+/* --------------------------------------------------------------- match hints */
+
+/* The bounded hint payload: the changed match id and NOTHING else. No actor, session, token, wallet
+ * or match document ever reaches Redis - the authoritative document already lives in PostgreSQL, so
+ * a hint carries only the routing fact an observer needs to pick the right row to reread. */
+function matchHintText(matchId) {
+ return JSON.stringify({ matchId: String(matchId) });
+}
+
+/* The exact-matchId filter, applied to the RAW string the ephemera subscriber delivers. A malformed,
+ * truncated or spoofed payload parses to `null` and is ignored: an observer can only ever reread
+ * PostgreSQL for the match it is already watching, so no hint can invent state or redirect a read. */
+function matchHintId(text) {
+ try {
+  const parsed = JSON.parse(text);
+  return parsed && typeof parsed.matchId === 'string' ? parsed.matchId : null;
+ } catch { return null; }
 }
 
 /* --------------------------------------------------------------- lock planning */
@@ -324,6 +364,36 @@ async function createCoreService(pool, options = {}) {
   verifyPurchase: options.verifyPurchase,
  });
 
+ /* P06 match hints: a CALLER-OWNED ephemera adapter (packages/services/ephemera.js) used ONLY for
+  * the post-commit `core-match` publish and the `watchMatch` subscription. This service NEVER
+  * constructs, reconfigures or closes it; without an adapter (or with Redis down) hints are simply
+  * unavailable and every observer falls back to a strong PostgreSQL read. The capability check keeps
+  * a partial/incompatible object from being mistaken for a working adapter. */
+ const ephemera = options.ephemera
+  && typeof options.ephemera.publish === 'function'
+  && typeof options.ephemera.subscribe === 'function'
+  ? options.ephemera : null;
+
+ /* Publishes ONE bounded committed match-change hint. Called ONLY after `uow.run` has RESOLVED, so
+  * the change it reports is durably committed; a rollback never reaches this call. Redis is
+  * best-effort coordination: a failed/deadline-missed publish is swallowed and can never turn a
+  * committed success into a failure, replace PostgreSQL truth or drop the durable outbox. A replayed
+  * command may republish harmlessly (observers reread PostgreSQL, never trust a hint). No Redis I/O
+  * ever runs inside the transaction. */
+ async function publishMatchHint(matchId) {
+  if (!ephemera) return { published: false, available: false, conservative: true };
+  try {
+   const out = await ephemera.publish(MATCH_CHANNEL, matchHintText(matchId), MATCH_HINT_TTL_MS);
+   return out && typeof out === 'object' ? out : { published: false, available: false };
+  } catch { return { published: false, available: false, conservative: true }; }
+ }
+
+ /* Live `watchMatch` teardown handles. `close()` runs each SYNCHRONOUSLY (fire-and-forget) so it can
+  * still close the owning UoW immediately and keep its synchronous contract, while a watch stops
+  * receiving callbacks at once and its owned subscription is released best-effort. Each handle
+  * removes itself. */
+ const activeWatches = new Set();
+
  /* The replay path: the stored response is already the decoded document (the adapter parses the
   * JSON-TEXT outcome column), and the source boundary returned exactly that object. An explicit hit
   * flag keeps a legitimately falsy stored response (an unmet quest claim stores `0`) distinguishable
@@ -342,7 +412,7 @@ async function createCoreService(pool, options = {}) {
   if (COMMERCE_OWNED_COMMANDS.includes(command.type)) throw Error('COMMERCE_OWNED_COMMAND');
   if (command.type === 'provision') throw Error('PROVISION_REQUIRES_PROVISION_ACTOR');
   const fingerprint = commandFingerprint(principal, command);
-  return uow.run(async (tx) => {
+  const outcome = await uow.run(async (tx) => {
    const repositories = tx.repositories;
    /* LOGICAL IDENTITIES, then the aggregate/receipt ROWS, then eligibility/occupancy/wallets
     * (design 3.7). The operation identity is taken FIRST and unconditionally, so two commands that
@@ -350,7 +420,9 @@ async function createCoreService(pool, options = {}) {
     * loser re-reads the winner's committed outcome instead of applying a second business effect. */
    const plan = await lockTargets(tx, principal, command, key);
    const replayed = await replayOrNull(tx, principal, key, fingerprint);
-   if (replayed.hit) return replayed.response;
+   /* A REPLAY commits nothing new: the stored response is returned unchanged and NO hint is
+    * published, because no match change happened in this invocation. */
+   if (replayed.hit) return { response: replayed.response, hintIds: [] };
    /* WALLET READINESS (P05). `economy.wallets` row existence is the durable readiness fact, and
     * `core.provisionActor` is the only wallet creator. An account the API has handed to Core without
     * a wallet is PENDING: it may not play or claim, because a casual queue finish would otherwise
@@ -393,8 +465,20 @@ async function createCoreService(pool, options = {}) {
      now: tx.clock(),
     });
    }
-   return response;
+   /* The hint is reported to the CALLER, not published here: the publish happens after this
+    * transaction has COMMITTED (see `run`), so a rollback cannot publish a change that never landed.
+    * Only a named MATCH command that actually changed a row AND carries a match id is reportable;
+    * the flag is computed per invocation, never from a shared global. */
+   const hintIds = stats.upserts + stats.deletes > 0
+    && MATCH_COMMANDS.includes(command.type)
+    && typeof command.id === 'string' && command.id
+    ? [command.id] : [];
+   return { response, hintIds };
   });
+  /* POST-COMMIT, BEST-EFFORT. Every reported id is a real committed match change; the hint is
+    * rebuildable fan-out and a failure here never alters the committed response. */
+  for (const matchId of outcome.hintIds) await publishMatchHint(matchId);
+  return outcome.response;
  }
 
  /* Strong current read. `read(fn)` evaluates the caller's selector inside ONE read-only transaction,
@@ -488,7 +572,7 @@ async function createCoreService(pool, options = {}) {
   * Social removal is what authorizes the cancel; the current durable truth decides. */
  async function cancelSocialOffers(actor, target) {
   if (typeof actor !== 'string' || !actor || typeof target !== 'string' || !target || actor === target) throw Error('INVALID_SOCIAL_PAIR');
-  return uow.run(async (tx) => {
+  const outcome = await uow.run(async (tx) => {
    const repositories = tx.repositories;
    const candidates = await tx.query(
     "SELECT m.match_id FROM match.matches m WHERE m.status = 'OFFERED'"
@@ -497,7 +581,7 @@ async function createCoreService(pool, options = {}) {
     + ' ORDER BY m.match_id LIMIT $3',
     [actor, target, SOCIAL_CANCEL_LIMIT]);
    const ids = candidates.rows.map((row) => row.match_id);
-   if (ids.length === 0) return { ok: true, cancelled: [] };
+   if (ids.length === 0) return { result: { ok: true, cancelled: [] }, hintIds: [] };
    /* A saturated candidate read cannot prove which offers remain; cancelling the first 200 and
     * reporting completion would leave live offers behind while claiming the pair's offers are
     * settled. The bounded-read convention applies: fail closed instead. */
@@ -515,7 +599,7 @@ async function createCoreService(pool, options = {}) {
    const blockFrom = await tx.query('SELECT 1 FROM social.blocks WHERE blocker_id = $1 AND blocked_id = $2', [actor, target]);
    const blockTo = await tx.query('SELECT 1 FROM social.blocks WHERE blocker_id = $1 AND blocked_id = $2', [target, actor]);
    const stillConnected = friendship.rows.length > 0 && blockFrom.rows.length === 0 && blockTo.rows.length === 0;
-   if (stillConnected) return { ok: true, cancelled: [] };
+   if (stillConnected) return { result: { ok: true, cancelled: [] }, hintIds: [] };
    /* Re-read the aggregate UNDER the locks: the cancel decision is made on committed truth, not on
     * the pre-lock candidate list. */
    const graph = await repositories.domain();
@@ -524,7 +608,7 @@ async function createCoreService(pool, options = {}) {
     const match = graph.matches.get(id);
     if (match && match.status === 'OFFERED') { match.status = 'CANCELLED'; cancelled.push(id); }
    }
-   if (cancelled.length === 0) return { ok: true, cancelled: [] };
+   if (cancelled.length === 0) return { result: { ok: true, cancelled: [] }, hintIds: [] };
    await repositories.commitDomain();
    for (const id of cancelled) {
     await emitOutbox(tx, {
@@ -534,7 +618,157 @@ async function createCoreService(pool, options = {}) {
      now: tx.clock(),
     });
    }
-   return { ok: true, cancelled };
+   /* Each reported id is a match whose status ACTUALLY changed to CANCELLED and committed in this
+    * transaction; the hint is published by the caller AFTER the commit. */
+   return { result: { ok: true, cancelled }, hintIds: cancelled };
+  });
+  for (const matchId of outcome.hintIds) await publishMatchHint(matchId);
+  return outcome.result;
+ }
+
+ /* The DURABLE membership selector an internal authenticated gateway uses to resolve one match.
+  * Same approved `Authority.view` DTO as `read(selector => tx.repositories.matches.view(id))` - no
+  * cached aggregate, no second view shape - but membership is enforced on EVERY read from the
+  * committed `match.participants` rows: an absent match is `UNKNOWN_MATCH` and a caller that is not
+  * one of the seated players is `NOT_PARTICIPANT`. It adds no gameplay/auth gate. A truncated
+  * aggregate read cannot prove a match absent, so it fails closed (`STATE_TRUNCATED`) rather than
+  * reporting a false `UNKNOWN_MATCH`. */
+ async function readMatch(actor, matchId) {
+  if (typeof actor !== 'string' || !actor) throw Error('INVALID_ACTOR');
+  if (typeof matchId !== 'string' || !matchId) throw Error('UNKNOWN_MATCH');
+  return uow.run(async (tx) => {
+   await tx.query('SET TRANSACTION READ ONLY');
+   const graph = await tx.repositories.domain();
+   if (graph.complete !== true) throw Error('STATE_TRUNCATED');
+   const view = graph.authority.view(matchId); /* UNKNOWN_MATCH when the row is absent */
+   if (!Array.isArray(view.players) || !view.players.includes(actor)) throw Error('NOT_PARTICIPANT');
+   return view;
+  });
+ }
+
+ /* Structural facts that END a watch rather than being retried: the match does not exist, this
+  * actor is not a participant, or the owning unit of work is closed. Every other read fault is
+  * transient and simply leaves the last delivered/returned snapshot in force until the next hint. */
+ const TERMINAL_WATCH_CODES = Object.freeze(['UNKNOWN_MATCH', 'NOT_PARTICIPANT', 'UNIT_OF_WORK_CLOSED']);
+ const isTerminalWatchError = (error) => TERMINAL_WATCH_CODES.includes(error && typeof error.message === 'string' ? error.message : '');
+
+ /* Subscribe to committed match-change hints for ONE match, then read durable truth.
+  *
+  * Subscription OPENS FIRST and the initial durable read follows, so a commit that lands between
+  * the two is still observed (a hint arriving before the initial read completes is coalesced into
+  * exactly one follow-up reread). The result is:
+  *   - `available`: whether live hints could be opened. Without a caller adapter, or with Redis
+  *     down, it is `false` - the conservative shape - and `refresh` is still a strong PostgreSQL read.
+  *   - `snapshot`: the initial durable DTO (membership enforced; the same errors `readMatch` raises).
+  *   - `refresh()`: ALWAYS a fresh strong-current read, independent of the hint channel.
+  *   - `unsubscribe()`: stops callbacks IMMEDIATELY and releases the owned subscription (never the
+  *     caller's adapter or pool).
+  * `onSnapshot` fires ONLY for post-initial notifications, and only after a hint whose exact matchId
+  * matches AND a successful durable reread re-establishes membership. A malformed/spoofed hint
+  * parses to null and is ignored. Hint bursts coalesce into at most one in-flight plus one pending
+  * reread, so there is no unbounded queue; the listener is AWAITED one delivery at a time and a
+  * listener fault (sync or async) is swallowed, never an unhandled rejection. */
+ async function watchMatch(actor, matchId, onSnapshot) {
+  if (typeof actor !== 'string' || !actor) throw Error('INVALID_ACTOR');
+  if (typeof matchId !== 'string' || !matchId) throw Error('UNKNOWN_MATCH');
+  if (typeof onSnapshot !== 'function') throw Error('LISTENER_REQUIRED');
+
+  let closed = false;        /* set the instant unsubscribe()/terminal cleanup runs */
+  let ready = false;         /* the initial durable read completed */
+  let inFlight = false;      /* one PostgreSQL reread in flight at a time */
+  let pending = false;       /* at most one queued reread while in flight */
+  let subscription = null;   /* the owned adapter subscription, if one could be opened */
+
+  /* Releases the OWNED subscription (never the caller's adapter/pool) and stops callbacks at once.
+   * Idempotent and bounded; a failing unsubscribe is swallowed. Deregisters from the close-time
+   * teardown registry so a closed service holds no live watch. */
+  function stop() {
+   closed = true;
+   activeWatches.delete(handle);
+   const sub = subscription;
+   subscription = null;
+   if (!sub) return Promise.resolve();
+   try {
+    const result = typeof sub.unsubscribe === 'function' ? sub.unsubscribe() : undefined;
+    if (result && typeof result.then === 'function') return result.then(() => {}, () => {});
+   } catch { /* releasing an owned subscription is best-effort */ }
+   return Promise.resolve();
+  }
+  const handle = { stop };
+  /* Registered BEFORE the subscription opens so a `close()` racing the initial read tears the watch
+    * down too (stop() deregisters it again). */
+  activeWatches.add(handle);
+
+  /* The bounded reread loop. A hint while a reread is running sets `pending` (one slot, no queue);
+  * the running loop drains it before finishing. */
+  async function drain() {
+   if (inFlight || closed || !ready) return;
+   inFlight = true;
+   try {
+    do {
+     pending = false;
+     if (closed || !ready) break;
+     let snapshot;
+     try { snapshot = await readMatch(actor, matchId); }
+     catch (error) {
+      /* A structural denial ends the watch (releasing the subscription); a transient fault keeps
+       * the watch alive for the next hint. Either way nothing is thrown into an unhandled context. */
+      if (isTerminalWatchError(error)) { await stop(); break; }
+      break;
+     }
+     if (closed) break;
+     /* ONE in-flight listener delivery. The pump AWAITS the listener's (possibly async) work with a
+      * rejection handler before it considers the next pending reread, so slow listeners cannot accrete
+      * unbounded outstanding delivery work: at most one listener call is outstanding at a time. A
+      * listener fault - synchronous throw or rejected thenable - is swallowed and never escapes. */
+     try { await Promise.resolve(onSnapshot(snapshot)); } catch { /* listener fault is not fatal */ }
+    } while (pending && !closed);
+   } finally { inFlight = false; }
+  }
+
+  /* The raw hint text is filtered by EXACT matchId; before the initial read completes a matching
+  * hint only records that a reread is owed, so no callback can precede the returned snapshot. A
+  * matching hint ALWAYS sets the one-slot `pending` flag first, so a burst that arrives while a
+  * reread is already running coalesces into exactly one further reread instead of being lost. */
+  const listener = (text) => {
+   if (closed) return;
+   if (matchHintId(text) !== matchId) return;
+   pending = true;
+   if (ready) drain();
+  };
+
+  /* Open hints first. A subscribe fault (or an absent adapter) degrades to `available:false` while
+  * the durable initial read below still runs. */
+  let available = false;
+  if (ephemera) {
+   try {
+    const opened = await ephemera.subscribe(MATCH_CHANNEL, listener);
+    if (opened && opened.available === true) { subscription = opened; available = true; }
+    else if (opened && typeof opened === 'object') subscription = opened; /* conservative no-op handle */
+   } catch { subscription = null; available = false; }
+  }
+
+  let snapshot;
+  try {
+   snapshot = await readMatch(actor, matchId);
+  } catch (error) {
+   /* A failed initial membership read (unknown match, wrong participant, closed UoW) must not leak
+    * an opened subscription. */
+   await stop();
+   throw error;
+  }
+  if (closed) { await stop(); return Object.freeze({ available: false, snapshot, refresh: () => readMatch(actor, matchId), unsubscribe: stop }); }
+  ready = true;
+  /* A hint that matched while the initial read was running now triggers the deferred post-initial
+    * notification (never a callback for the initial snapshot itself). */
+  if (pending) drain();
+
+  return Object.freeze({
+   available,
+   snapshot,
+   /* Always strong current PostgreSQL truth; unaffected by Redis state or by unsubscribe. */
+   refresh: () => readMatch(actor, matchId),
+   unsubscribe: stop,
   });
  }
 
@@ -543,11 +777,20 @@ async function createCoreService(pool, options = {}) {
   readiness,
   run,
   read,
+  readMatch,
+  watchMatch,
   provisionActor,
   cancelSocialOffers,
   /* Releases this service's unit-of-work state only. The pool is caller-owned (it carries a
-    * cluster-wide connection-budget claim) and is NEVER closed here. */
-  close() { uow.close(); },
+    * cluster-wide connection-budget claim) and is NEVER closed here. Every live `watchMatch` is torn
+    * down FIRST (callbacks stop, owned subscriptions release best-effort, the borrowed ephemera
+    * adapter and the pool are never touched); closing the UoW then makes further reads fail fast
+    * with UNIT_OF_WORK_CLOSED. The close call itself remains synchronous. */
+  close() {
+   for (const watch of [...activeWatches]) { try { watch.stop(); } catch { /* best-effort teardown */ } }
+   activeWatches.clear();
+   uow.close();
+  },
  });
 }
 

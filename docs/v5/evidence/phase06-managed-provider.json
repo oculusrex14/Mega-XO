@@ -11,7 +11,7 @@
     "A15"
   ],
   "recorded_at_utc": "2026-10-09T05:49:06.751Z",
-  "status": "MANAGED_PROVIDERS_AND_API_CONSUMERS_VERIFIED_G06_OPEN",
+  "status": "MANAGED_PROVIDERS_AND_ALL_CONSUMERS_VERIFIED_G06_READY",
   "source_state": {
     "base_sha": "ddc8765d9aef8b0397fe5fec76c541d57c833457",
     "branch": "V5-platform",
@@ -19,20 +19,53 @@
     "verification": "Implementation hashes below identify checkpoint928851ae86a458c6d59c67e49fde1b5b796f9558, including its original mixed manifests. Actual managed/local proof is retained; CI caught the closed-PG-manifest integration defect, corrected separately below without weakening guards.",
     "verified_source_sha256": {
       "packages/services/accounts.js": "012dbfba2eff1d5159425e2ee43a2d6d4c69e8be04230fd44744e472643f5e39",
-      "packages/services/ephemera.js": "198f73bbab7660f005db4e60a0c4f29fdb78d890a6cf78dfad685f0dc253e4f0",
+      "packages/services/core.js": "9ea54466f623f6cfd3b64178d1a1c61433658139857526573fae187a1d2f5d74",
+      "packages/services/ephemera.js": "b53977fc63584153e50bf19cfdb956938b48d22ba1775ab6b8b29b80f38b4d76",
       "packages/services/managed-ephemera.js": "9f11e74a169552bd500384e8fe5aea80e89f6b1d0e5ea5090ad3fc6791fed7fc",
-      "tests/helpers/v5-presence-service-process.js": "1c015c9d19b9cd22b92b462bc847dadf5df21b1e9d5f537644e5e5c9c376cacf",
+      "tests/helpers/v5-presence-service-process.js": "40a7f9388b87c2ad9250239eade3364175887ed5ca9535bc600415971d54fa83",
+      "tests/helpers/v5-ephemera-process.js": "05200fba0b4539f341827c0b6e1a0d7232120563467074fe406638d23909ee74",
       "tests/v5-p06-presence.test.js": "3ab7b2c85d9154f23a2db4f947b8784dd41e5b886aa1cd5512d0ec1889555cb1",
       "tests/v5-p06-consumers.test.js": "fd67328dc9f60b6558805c2bd3c04498972143b856c65bf34775f3251cf669a5",
-      "tests/v5-p06-managed-guard.test.js": "e386d34f8572b2933581e833bd6e6a959ea2c3e0fe21d7e589cbd96e033af379",
-      "tests/v5-p06-ephemera.test.js": "fa05a42b2a5665f87686b75f40839df4448e0ddb79650549f617a4e36b286413",
-      ".github/workflows/v5-postgresql.yml": "fb8ec88c5e0cdf173f310407ef344a7a08f4ebe900516442349cafed6c8da83e",
-      "docs/v5/environments/staging.json": "c1ee01ad7bbb799922b9d984f38a1334280b0088a83ca9efbacacac4300b1876",
-      "docs/v5/environments/production.json": "2df82616786f97f1e0fc581cab9aba7cb544b6ea8537bbcb32b06a0f52ac4015"
+      "tests/v5-p06-managed-guard.test.js": "8acfbd431e5d70100a99c10c2ffa62156147fc22bfedee475b7286d5473dc49a",
+      "tests/v5-p06-ephemera.test.js": "ba1079a5ecd62e70797e1ab34ed846b36d7ec88ab8c9aa840eabad5d8aff42aa",
+      "tests/v5-p06-lifecycle.test.js": "e270b514255b596bf31e950db67e7e1d8d14dfb2f12b0f1d9b92564c72e0f628",
+      "tests/v5-p06-core-updates.test.js": "93794537c890b6e65d520b1f254946d5e0cab9ed9ab4624cfd5d7201bd99cbd7",
+      "tests/v5-p06-loss.test.js": "5c798b08a418ed988aab1e9ddbf9f198fd79544ccb695642519380fbd69c3a9c",
+      "tests/v5-p06-key-identifiers.test.js": "ea8eda35518ef1fb8f39a34a16fc497bbad4fcaf238a1b180eda43f08ea6cd48",
+      ".github/workflows/v5-postgresql.yml": "fdf2ded6cf83906dbad8796a142aee0b0edfd9499545f0fc067fa6418453a84e",
+      "docs/v5/environments/staging.json": "18600ac5b097b05bd282e56bbb9a354c64d03bcca6ef55327286a99e7c9c6674",
+      "docs/v5/environments/production.json": "414f719beea7e78267d62a02c719cb0e0dbe0b9a3843cd8d883fcf110b988721",
+      "docs/v5/environments/redis-staging.json": "c94ec4d736bdba8dc1a069f470d1e268b8e7d6bae39b9668bbb48b2da637593c",
+      "docs/v5/environments/redis-production.json": "620584382862a16bda80fe42d809d0f752e1c34ca9c151bca34a17a59a27094f"
     }
   },
   "inventory_boundary_correction": {
     "base_sha": "928851ae86a458c6d59c67e49fde1b5b796f9558",
+    "verified_checkpoint_sha": "e8d049bf50862897f546e531def12715a36c670c",
+    "successful_ci": [
+      {"id": 37892826073, "workflow": "V5 PostgreSQL integration", "head_sha": "e8d049bf50862897f546e531def12715a36c670c", "status": "completed", "conclusion": "success", "url": "https://github.com/oculusrex14/Mega-XO/actions/runs/37892826073"},
+      {"id": 37892826082, "workflow": "Mega XO validation", "head_sha": "e8d049bf50862897f546e531def12715a36c670c", "status": "completed", "conclusion": "success", "url": "https://github.com/oculusrex14/Mega-XO/actions/runs/37892826082"}
+    ],
+    "retrieved_database_artifact": {
+      "id": 11598952545,
+      "name": "v5-postgresql-evidence",
+      "size_bytes": 2020,
+      "command": "gh run download 37892826073 --name v5-postgresql-evidence --dir /Users/oculus/Downloads/Mega-XO-private-evidence/p06-ci-e8d049b",
+      "location": "/Users/oculus/Downloads/Mega-XO-private-evidence/p06-ci-e8d049b",
+      "coverage_ok": true,
+      "p06_suites": [
+        {"file": "tests/v5-p06-ephemera.test.js", "pass": 3, "fail": 0, "skipped": 0},
+        {"file": "tests/v5-p06-lifecycle.test.js", "pass": 5, "fail": 0, "skipped": 0},
+        {"file": "tests/v5-p06-presence.test.js", "pass": 7, "fail": 0, "skipped": 0},
+        {"file": "tests/v5-p06-consumers.test.js", "pass": 9, "fail": 0, "skipped": 0},
+        {"file": "tests/v5-p06-managed-guard.test.js", "pass": 8, "fail": 0, "skipped": 0}
+      ],
+      "guard_suite": {"pass": 25, "fail": 0, "skipped": 0},
+      "all_reported_database_suites": {"fail": 0, "skipped": 0},
+      "cleanup": {"leftover": [], "controlDatabasePresent": true},
+      "service": {"serverVersion": "16.15 (Debian 16.15-1.pgdg13+2)", "migrations": 42, "migrationsAggregateSha256": "32103e36960bc972059738bd246a50f976b7c2d7c92e9c0ee5998d03946dbd55", "manifestSha256": "dfbff4ad3114c99c9c43034499f1ce1eb871b29552348504a3142d08405f1dca"},
+      "coverage_note": "The four P05 rows repeat their shared28-test aggregate; do not sum four times. P06 has32 executed cases here, no Core watcher/loss-matrix acceptance is inferred from this pre-integration checkpoint."
+    },
     "problem": "Both checkpoint CI workflows rejected the new redis key in the closed PostgreSQL target manifests with TARGET_FILE_INVALID; this was a real integration defect, not an auth/provider failure.",
     "failed_ci": [
       {"id": 37891643804, "workflow": "V5 PostgreSQL integration", "conclusion": "failure", "url": "https://github.com/oculusrex14/Mega-XO/actions/runs/37891643804", "guard_tests": {"pass": 24, "fail": 1, "skipped": 0}},
@@ -435,8 +468,85 @@
       },
       "prior_failure": "Rejoin heartbeat returned offline with eight sequential presence Redis operations under one1000ms deadline. A socket interruption could also strand a newly created key before expiry.",
       "fix": "One frozen Lua touch atomically mutates/trims/sets TTL; real lost-response/expiry regression passed. Final managed API/Core/purchase smoke is artifact://4596."
+    },
+    {
+      "reproducer": "eval Bun.spawn node reproducer (retained in transcript)",
+      "command": "presenceTouch(\"legacy actor/'[]\", 'session', true)",
+      "prior_failure": "INVALID_KEY_PART thrown on valid legacy text/Unicode IDs due to ASCII-only SAFE_PART regex; key('hint', 'a:b', 'c') === key('hint', 'a', 'b:c') was true (separator injection collision).",
+      "fix": "encodePart: canonical injective percent-encoding over UTF-8 bytes ([A-Za-z0-9_.~-] literal), key schema version bumped to v2, PART_MAX_UNITS=160; obsolete single-slot presence removed; 4/4 key-identifier regression tests pass."
     }
   ],
+  "core_operational_coordination": {
+    "channel": "core-match",
+    "payload": "bounded JSON text {matchId: string} only - no player, token, wallet or match state carried",
+    "publisher": "Core.run and Core.cancelSocialOffers publish ONLY after PostgreSQL transaction commit; rollbacks publish nothing; replays publish nothing; Redis failures never alter the committed response",
+    "readMatch": "internal authenticated-gateway selector returning Authority.view DTO with match.participants membership enforced on every read",
+    "watchMatch": "subscribes before initial durable read; exact matchId filtering; coalesced 1-in-flight + 1-pending reread; awaited single-in-flight listener delivery; sync/async listener faults swallowed; terminal denial subscription cleanup; synchronous Core.close stops live watches without closing borrowed adapter or pool",
+    "oracle_parity": "independent quote oracle from src/domain.js verified on queued ranked match (contributions [12, 12], pool 24) and direct match (contributions [40, 0])",
+    "no_redis_in_tx": true
+  },
+  "loss_and_recovery_verification": {
+    "local_suites": {
+      "total_suites": 8,
+      "total_tests": 46,
+      "pass": 46,
+      "fail": 0,
+      "skipped": 0,
+      "suites": [
+        {"file": "tests/v5-p06-ephemera.test.js", "pass": 3, "fail": 0, "skipped": 0},
+        {"file": "tests/v5-p06-lifecycle.test.js", "pass": 5, "fail": 0, "skipped": 0},
+        {"file": "tests/v5-p06-presence.test.js", "pass": 7, "fail": 0, "skipped": 0},
+        {"file": "tests/v5-p06-consumers.test.js", "pass": 9, "fail": 0, "skipped": 0},
+        {"file": "tests/v5-p06-managed-guard.test.js", "pass": 8, "fail": 0, "skipped": 0},
+        {"file": "tests/v5-p06-core-updates.test.js", "pass": 7, "fail": 0, "skipped": 0},
+        {"file": "tests/v5-p06-loss.test.js", "pass": 3, "fail": 0, "skipped": 0},
+        {"file": "tests/v5-p06-key-identifiers.test.js", "pass": 4, "fail": 0, "skipped": 0}
+      ]
+    },
+    "actual_managed_staging_core_smoke": {
+      "evidence_file": "/Users/oculus/Downloads/Mega-XO-private-evidence/p06-core-managed-smoke-result.json",
+      "target": "Managed Upstash Free staging Redis (d03707cc-028d-4d2d-9395-43f6752b7ec4, us-east-1, stg namespace) + owned local PostgreSQL16/schema42",
+      "core_processes": 4,
+      "observed_committed_paid_transition": true,
+      "approved_contributions": [12, 12],
+      "escrow": 24,
+      "namespace_wipe": {
+        "deleted_ephemeral_keys": 5,
+        "durable_tables_checked": 78,
+        "durable_sha256": "bee3924345d67c1a729a97cb635a16dc9a47603ecaeb0ff25c8c81f40498164b",
+        "all_durable_content_identical": true
+      },
+      "down_dependency": {
+        "commit_and_ack": true,
+        "move_replay_single_outbox": true,
+        "strong_pg_refresh": true,
+        "resumed_notice_revision": 2
+      },
+      "sensitive_auth": {
+        "attempts_across_wipe_and_loss": 10,
+        "additional_denials": 3,
+        "approved_error": "RATE_LIMITED",
+        "durable_hits": 10
+      },
+      "lawful_paid_release": {
+        "refund": 24,
+        "remaining_occupancy": 0,
+        "refund_entries_per_actor": 1,
+        "replay_no_double_refund": true
+      },
+      "presence_rejoined": true,
+      "purchase": {
+        "nonempty_synthetic_receipt": true,
+        "store_provider_verification_claimed": false
+      },
+      "natural_exits": [
+        {"pid": 96856, "code": 0, "signal": null},
+        {"pid": 96854, "code": 0, "signal": null},
+        {"pid": 96896, "code": 0, "signal": null},
+        {"pid": 96912, "code": 0, "signal": null}
+      ]
+    }
+  },
   "review": {
     "agent": "ManagedPresenceReview",
     "finding_count": 0,
@@ -444,9 +554,9 @@
   },
   "task_outcomes": {
     "V5-06-01": "COMPLETE: separated managed Free targets, actual identity/region/plan/quotas/eviction/native compatibility/atomic load and cross-credential denial proven. No same-host production Redis or activation.",
-    "V5-06-02": "COMPLETE: finite namespaced/versioned primitives, native TLS/Free/environment guards, atomic presence TTLs and conservative loss verified locally and on managed targets.",
-    "V5-06-03": "IMPLEMENTED; actual API presence locally and managed-smoke verified: two real API processes share temporary state. API/Core factories and durable ticket authority exercised separately. Remaining Core operational coordination must be mapped/integrated, not counted as an adapter echo.",
-    "V5-06-04": "PARTIAL: managed staging namespace wipe, subscription restart, rejoin and nonempty purchase/wallet/rank/all-table preservation proven. Full paid-occupancy/auth-retry dependency-loss acceptance and eventual A15 queued/active-game/pending-effect scenario remain unaccepted."
+    "V5-06-02": "COMPLETE: finite namespaced/versioned primitives, native TLS/Free/environment guards, atomic presence TTLs, injective key encoding (v2) and conservative loss verified locally and on managed targets.",
+    "V5-06-03": "COMPLETE: real API presence and Core match coordination verified: two API processes share presence with durable session fencing; two distinct Core processes observe committed transitions via post-commit hints with independent policy oracle contributions; absent/dead adapter still commits/acks and refresh reads PG; synchronous Core.close tears down watches without touching borrowed dependencies. 46/46 tests pass across 8 P06 suites; managed Upstash staging smoke verified with four natural-exit Core child processes.",
+    "V5-06-04": "COMPLETE: namespace wipe, down-adapter dependency loss and recovery tested across paid occupancy, nonempty synthetic receipts, sensitive-auth lockout and ticket admission budgets. All 78 durable PG tables byte-identical after wipe; paid occupancy blocks incompatible admission while Redis is gone; lawful operator release refunds exactly once; replay never double-refunds; all 4 managed child processes exit naturally (code: 0, signal: null)."
   },
   "not_claimed": [
     "G06/A15 complete acceptance",

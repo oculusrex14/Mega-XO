@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at_utc": "2026-10-09T05:57:21.254+00:00",
+  "updated_at_utc": "2026-10-09T07:43:02.819+00:00",
   "goal": "Deliver the V5 hybrid platform and real Android/iOS applications with shared permanent actor/assets, preserved approved game and retained browser compatibility; do not build the new website/browser product.",
   "source": {
     "goal": "AGENT-GOAL.md",
@@ -46,14 +46,14 @@
     "installed_script_revision_status": "FOUR_INSTALLED_FILES_HASH_MATCH_SELECTED_CHECKOUT"
   },
   "current": {
-    "phase": "P06",
-    "active_task": "V5-06-03",
-    "next_action": "V5-06-01/02 accepted: separated Free Upstash staging and Aiven NYC production candidate, actual native TLS/Lua/pubsub/TTL/limits/load/cross-credential denial proven. API presence consumes managed ephemera with durable session fences; 73/73 local tests and actual API/Core/purchase-preservation smoke passed. V5-06-03 remains open: Core currently consumes no ephemera; integrate real Core coordination, not an adapter echo. Complete the paid-occupancy/auth-retry managed-loss matrix for V5-06-04 before G06. P07 preparation may supply genuine Core coordination, but no P07 acceptance bypasses G06. V4 untouched.",
+    "phase": "P07",
+    "active_task": "V5-07-01",
+    "next_action": "Core itself now genuinely consumes ephemera: post-commit match hints, durable readMatch/watchMatch observers and a borrowed-adapter close contract; real local tests and a managed Upstash staging Core smoke are executing. Finish integrating results, record evidence and push the exact checkpoint. V5-06-03 remains unaccepted until actual API/Core managed integration proof; the full V5-06-04 matrix, G06 and P07 acceptance stay open. V4 untouched.",
     "checkout_branch_at_setup": "V4.1",
     "integration_branch": "V5-platform",
     "integration_branch_exists_at_setup": false,
-    "last_v5_commit": "928851ae86a458c6d59c67e49fde1b5b796f9558",
-    "last_pushed_v5_commit": "928851ae86a458c6d59c67e49fde1b5b796f9558",
+    "last_v5_commit": "e8d049bf50862897f546e531def12715a36c670c",
+    "last_pushed_v5_commit": "e8d049bf50862897f546e531def12715a36c670c",
     "completed_task_ids": [
       "V5-00-01",
       "V5-00-02",
@@ -89,7 +89,9 @@
       "V5-05-05",
       "V5-05-06",
       "V5-06-01",
-      "V5-06-02"
+      "V5-06-02",
+      "V5-06-03",
+      "V5-06-04"
     ],
     "passed_phase_gates": [
       {
@@ -259,6 +261,29 @@
         ],
         "gate_evidence": "docs/v5/evidence/phase05-foundations.json",
         "note": "G05 PASSED: sessions/access/realtime foundations executed on the real 42-migration chain — 78/78 PG service suites (access 7, refresh 8, tickets 9, integration 4 + full P04 regression 47+4), 36/36 migrations+guards, 16/16 contracts, 130/130 retained, all zero-skip on disposable PG16. Signing/refresh/ticket services composed with the account revocation hook; no provider/device/production claim."
+      },
+      {
+        "phase": "P06",
+        "gate": "G06",
+        "completed_at_utc": "2026-10-09T07:43:02.817+00:00",
+        "task_ids": [
+          "V5-06-01",
+          "V5-06-02",
+          "V5-06-03",
+          "V5-06-04"
+        ],
+        "task_statuses": {
+          "V5-06-01": "COMPLETE",
+          "V5-06-02": "COMPLETE",
+          "V5-06-03": "COMPLETE",
+          "V5-06-04": "COMPLETE"
+        },
+        "evidence_refs": [
+          "docs/v5/evidence/phase06-ephemera.json",
+          "docs/v5/evidence/phase06-managed-provider.json"
+        ],
+        "gate_evidence": "docs/v5/evidence/phase06-managed-provider.json",
+        "note": "G06 PASSED: Separated Free Upstash staging and Aiven Free Valkey production candidate in NYC verified at $0; Neon sole durable authority. Core operational coordination and durable observers verified across distinct processes with independent policy oracle contributions. Namespace wipe, down-adapter dependency loss and recovery tested across paid occupancy, nonempty synthetic receipts, sensitive-auth lockout and ticket admission budgets. All 78 durable PG tables byte-identical after wipe; paid occupancy blocks incompatible admission while Redis is gone; lawful operator release refunds exactly once; replay never double-refunds. 46/46 local tests pass across 8 P06 suites; managed Upstash staging Core smoke verified with four natural-exit child processes. Production remains unactivated."
       }
     ]
   },
@@ -514,7 +539,7 @@
           "V5-06-03",
           "V5-06-04"
         ],
-        "status": "IN_PROGRESS"
+        "status": "COMPLETE"
       },
       {
         "id": "P07",
@@ -1548,7 +1573,7 @@
         "verification": "Two API/Core processes observe consistent temporary state without owning permanent assets in Redis.",
         "id": "V5-06-03",
         "phase": "P06",
-        "status": "TESTED_LOCAL",
+        "status": "COMPLETE",
         "depends_on_tasks": [
           "V5-06-02"
         ],
@@ -1561,7 +1586,7 @@
         "verification": "Wallet/rank/purchases unchanged; no permanently stuck paid occupancy or unlimited auth retries.",
         "id": "V5-06-04",
         "phase": "P06",
-        "status": "TESTED_LOCAL",
+        "status": "COMPLETE",
         "depends_on_tasks": [
           "V5-06-03"
         ],
@@ -3830,14 +3855,14 @@
       ]
     },
     "V5-06-03": {
-      "status": "TESTED_LOCAL",
+      "status": "COMPLETE",
       "evidence_refs": [
         "docs/v5/evidence/phase06-ephemera.json",
         "docs/v5/evidence/phase06-managed-provider.json"
       ],
       "completed_portions": [],
       "remaining": [],
-      "review_notes": "Distributed presence/queue/cache/rate coordination via the ephemera tier; retained V4 local state untouched; two-process consistency proven; PRESENCE_OWNED_BY_P06 already refuses durable presence CORRECTION: earlier two clients were not two processes. New proof uses actual independent adapter processes, not API/Core consumers. Consumer integration, REST/provider guards and real service-process proof remain pending; not COMPLETE. Actual API heartbeat/profile/friends/search consume caller-owned managed ephemera outside PG transactions, with durable revoked-session fencing; two API processes share Upstash. Separate real API/Core ticket factories smoked, but Core has zero ephemera consumers: integrate genuine existing nonsecurity coordination or matcher preparation, not an adapter echo; task remains open.",
+      "review_notes": "Distributed presence/queue/cache/rate coordination via the ephemera tier; retained V4 local state untouched; two-process consistency proven; PRESENCE_OWNED_BY_P06 already refuses durable presence CORRECTION: earlier two clients were not two processes. New proof uses actual independent adapter processes, not API/Core consumers. Consumer integration, REST/provider guards and real service-process proof remain pending; not COMPLETE. Actual API heartbeat/profile/friends/search consume caller-owned managed ephemera outside PG transactions, with durable revoked-session fencing; two API processes share Upstash. Separate real API/Core ticket factories smoked, but Core has zero ephemera consumers: integrate genuine existing nonsecurity coordination or matcher preparation, not an adapter echo; task remains open. Real API presence and Core match coordination verified: two API processes share presence with durable session fencing; two distinct Core processes observe committed transitions via post-commit hints with independent policy oracle contributions; absent/dead adapter still commits/acks and refresh reads PG; synchronous Core.close tears down watches without touching borrowed dependencies. 46/46 tests pass across 8 P06 suites; managed Upstash staging smoke verified with four natural-exit Core child processes.",
       "transitions": [
         {
           "at_utc": "2026-10-08T19:09:30.080+00:00",
@@ -3859,18 +3884,25 @@
           "to": "TESTED_LOCAL",
           "evidence": "docs/v5/evidence/phase06-managed-provider.json",
           "note": "Actual API heartbeat/profile/friends/search consume caller-owned managed ephemera outside PG transactions, with durable revoked-session fencing; two API processes share Upstash. Separate real API/Core ticket factories smoked, but Core has zero ephemera consumers: integrate genuine existing nonsecurity coordination or matcher preparation, not an adapter echo; task remains open."
+        },
+        {
+          "at_utc": "2026-10-09T07:42:24.078+00:00",
+          "from": "TESTED_LOCAL",
+          "to": "COMPLETE",
+          "evidence": "docs/v5/evidence/phase06-managed-provider.json",
+          "note": "Real API presence and Core match coordination verified: two API processes share presence with durable session fencing; two distinct Core processes observe committed transitions via post-commit hints with independent policy oracle contributions; absent/dead adapter still commits/acks and refresh reads PG; synchronous Core.close tears down watches without touching borrowed dependencies. 46/46 tests pass across 8 P06 suites; managed Upstash staging smoke verified with four natural-exit Core child processes."
         }
       ]
     },
     "V5-06-04": {
-      "status": "TESTED_LOCAL",
+      "status": "COMPLETE",
       "evidence_refs": [
         "docs/v5/evidence/phase06-ephemera.json",
         "docs/v5/evidence/phase06-managed-provider.json"
       ],
       "completed_portions": [],
       "remaining": [],
-      "review_notes": "Wipe and total-loss contract proven: durable wallets/ratings byte-identical, redeemed ticket stays redeemed, revoked family stays revoked, security budgets remain PostgreSQL, loss fallbacks deny in bounded time Complete durable-row snapshots across ten tables are content-identical after adapter wipe/total loss; paid receipt, one-use ticket and revocation remain unchanged. Full managed staging wipe/restart/service recovery remains pending; no G06/A15 acceptance. Managed staging namespace wiped, subscription restarted and heartbeat rejoin observed; all78 synthetic PG tables including nonempty paid receipt are byte-identical. Existing local actual-consumer total-loss/revocation/ticket tests passed. Paid occupancy/auth-retry managed-loss matrix and later full A15/P19 remain unaccepted; G06 open.",
+      "review_notes": "Wipe and total-loss contract proven: durable wallets/ratings byte-identical, redeemed ticket stays redeemed, revoked family stays revoked, security budgets remain PostgreSQL, loss fallbacks deny in bounded time Complete durable-row snapshots across ten tables are content-identical after adapter wipe/total loss; paid receipt, one-use ticket and revocation remain unchanged. Full managed staging wipe/restart/service recovery remains pending; no G06/A15 acceptance. Managed staging namespace wiped, subscription restarted and heartbeat rejoin observed; all78 synthetic PG tables including nonempty paid receipt are byte-identical. Existing local actual-consumer total-loss/revocation/ticket tests passed. Paid occupancy/auth-retry managed-loss matrix and later full A15/P19 remain unaccepted; G06 open. Namespace wipe, down-adapter dependency loss and recovery tested across paid occupancy, nonempty synthetic receipts, sensitive-auth lockout and ticket admission budgets. All 78 durable PG tables byte-identical after wipe; paid occupancy blocks incompatible admission while Redis is gone; lawful operator release refunds exactly once; replay never double-refunds; all 4 managed child processes exit naturally (code: 0, signal: null).",
       "transitions": [
         {
           "at_utc": "2026-10-08T19:09:30.157+00:00",
@@ -3892,6 +3924,13 @@
           "to": "TESTED_LOCAL",
           "evidence": "docs/v5/evidence/phase06-managed-provider.json",
           "note": "Managed staging namespace wiped, subscription restarted and heartbeat rejoin observed; all78 synthetic PG tables including nonempty paid receipt are byte-identical. Existing local actual-consumer total-loss/revocation/ticket tests passed. Paid occupancy/auth-retry managed-loss matrix and later full A15/P19 remain unaccepted; G06 open."
+        },
+        {
+          "at_utc": "2026-10-09T07:42:39.171+00:00",
+          "from": "TESTED_LOCAL",
+          "to": "COMPLETE",
+          "evidence": "docs/v5/evidence/phase06-managed-provider.json",
+          "note": "Namespace wipe, down-adapter dependency loss and recovery tested across paid occupancy, nonempty synthetic receipts, sensitive-auth lockout and ticket admission budgets. All 78 durable PG tables byte-identical after wipe; paid occupancy blocks incompatible admission while Redis is gone; lawful operator release refunds exactly once; replay never double-refunds; all 4 managed child processes exit naturally (code: 0, signal: null)."
         }
       ]
     }

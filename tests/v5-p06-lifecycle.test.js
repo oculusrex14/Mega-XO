@@ -104,8 +104,8 @@ test('P06 ephemera lifecycle: every operation on an unavailable Redis is bounded
   const lost = await createEphemeraService({ url: DEAD_URL, environment: 'test', allowPlaintext: true, socket: { connectTimeout: 300, reconnectStrategy: () => 60000 } });
   try {
     const ops = {
-      heartbeat: () => lost.heartbeat('a', 's', 60000),
-      lookupPresence: () => lost.lookupPresence('a'),
+      presenceTouch: () => lost.presenceTouch('a', 's', true, 60000),
+      presenceRead: () => lost.presenceRead('a'),
       cacheGet: () => lost.cacheGet('cache', 'k'),
       rateHit: () => lost.rateHit('b', 5, 60000),
       acquireLock: () => lost.acquireLock('l', 5000),
@@ -124,8 +124,8 @@ test('P06 ephemera lifecycle: every operation on an unavailable Redis is bounded
       assert.ok(ms < 3000, `${name} must resolve within its deadline (took ${ms} ms)`);
     }
     assert.ok(total < 6000, `the whole loss surface resolves quickly (took ${total} ms)`);
-    assert.equal(seen.heartbeat.stored, false);
-    assert.equal(seen.lookupPresence.value, null);
+    assert.equal(seen.presenceTouch.stored, false);
+    assert.deepEqual(seen.presenceRead.sessions, []);
     assert.equal(seen.cacheGet.value, null);
     assert.equal(seen.rateHit.allowed, false);
     assert.equal(seen.rateHit.conservative, true);

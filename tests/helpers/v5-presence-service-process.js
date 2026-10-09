@@ -100,18 +100,32 @@ async function childMain() {
   const pool = createPgPool(poolConfigFromUrl(payload.databaseUrl, role, `p06consumer-${role}`));
 
   /* `redis` null => NO ephemera option at all (the conservative absent default). A `redis.url` of
-   * DEAD_URL => a real adapter against an unreachable endpoint (dependency unavailable). */
+   * DEAD_URL => a real adapter against an unreachable endpoint (dependency unavailable). The parent
+   * may target a MANAGED namespace by setting `keyVersion` (the canonical adapter option) and
+   * `environment`, and may pass native `rediss://` (verified TLS is never weakened: no
+   * `rejectUnauthorized:false`, no custom identity check). The plaintext opt-in is derived from the
+   * URL scheme unless the caller states it explicitly. */
   let ephemera = null;
   if (payload.redis) {
+    const { socket, allowPlaintext, ...redisOptions } = payload.redis;
+    const url = redisOptions.url || '';
     ephemera = await createEphemeraService({
       environment: 'test',
-      allowPlaintext: true,
-      ...payload.redis,
-      socket: { connectTimeout: 3000 },
+      allowPlaintext: allowPlaintext !== undefined ? allowPlaintext : !String(url).startsWith('rediss://'),
+      ...redisOptions,
+      socket: { connectTimeout: 3000, ...(socket || {}) },
     });
   }
 
   let accounts = null, core = null, issuer = null, refresh = null;
+  /* Live `watchMatch` handles opened by the parent and the seq counter for their notifications. The
+   * child OWNS these subscriptions (they run on the caller-owned adapter), so it unsubscribes every
+   * one of them during shutdown; a leaked subscriber would keep the event loop alive. */
+  const watches = new Map();
+  /* Deferred-listener gates (one per armed watchId); released at shutdown so a held listener can
+   * never block the natural drain. */
+  const listGates = new Map();
+  let watchSeq = 0;
   try {
     if (role === 'api_runtime') {
       accounts = await createAccountService(pool, {
@@ -121,7 +135,10 @@ async function childMain() {
       issuer = await createTicketIssuer(pool, { now: clock, environment: payload.environment || 'test' });
       refresh = await createRefreshService(pool, { now: clock, mintAccess: async () => 'synthetic-access-token' });
     } else {
-      core = await createCoreService(pool, { now: clock });
+      /* The Core factory BORROWS the caller-owned adapter (never creates/closes it): only when the
+       * parent asked for one is `options.ephemera` supplied, so `redis:null` is the true absent
+       * default and a dead endpoint is a genuine (present) unavailable dependency. */
+      core = await createCoreService(pool, { now: clock, ...(ephemera ? { ephemera } : {}) });
     }
   } catch (error) {
     /* A failed boot must still clean up the pool it opened before reporting fatal. */
@@ -149,8 +166,69 @@ async function childMain() {
     revokeFamily: (a) => refresh.revokeFamily(...(a || [])),
     redeemTicket: (a) => redeemRealtimeTicket(pool, { ...((a && a[0]) || {}), now: clock }),
     coreRun: (a) => core.run(...(a || [])),
+    /* Real Core match observer surfaces (the P06 changed path). `readMatch` is the durable
+     * membership selector and `watchMatch` opens a real subscription on the child's OWN Core
+     * service. The child keeps the returned handle and pushes the initial snapshot back to the
+     * parent plus every POST-initial notification delivered on the `core-match` channel. */
+    readMatch: (a) => core.readMatch(...(a || [])),
+    watchMatch: async (a) => {
+      const [actor, matchId] = a || [];
+      const started = Date.now();
+      watchSeq += 1;
+      const watchId = `w${watchSeq}`;
+      /* A REAL deferred-async listener: the parent can gate the first callback so it blocks until
+       * released, letting a test commit several changes while the listener is held and observe that
+       * the coalescing pump delivers only ONE follow-up (the latest PG revision) afterwards. The
+       * listener still awaits durable truth (the snapshot passed in is a real PostgreSQL read); the
+       * gate only delays the child's acknowledgement, exactly like a slow consumer. */
+      const handle = await core.watchMatch(actor, matchId, async (snapshot) => {
+        const gate = listGates.get(watchId);
+        if (gate) { gate.seen += 1; await gate.promise; }
+        childSend({ t: 'matchUpdate', watchId, snapshot });
+      });
+      watches.set(watchId, handle);
+      return { watchId, available: handle.available, snapshot: handle.snapshot, openedMs: Date.now() - started };
+    },
+    /* A strong current PG read through the live handle (never a cached aggregate), independent of
+     * whether the subscription/hints are available. */
+    watchRefresh: (a) => watches.get((a || [])[0]).refresh(),
+    /* Closes ONE owned subscription (the caller's adapter/pool are untouched). Synchronous stop: it
+     * suppresses later callbacks immediately, without waiting for a listener already deferred. */
+    watchUnsubscribe: (a) => {
+      const watchId = (a || [])[0];
+      const handle = watches.get(watchId);
+      watches.delete(watchId);
+      if (handle) handle.unsubscribe();
+      return { closed: true };
+    },
+    /* Arm a deferred gate on the NEXT delivery for watchId (and count deliveries). The gate holds the
+     * real listener until releaseGate resolves it, so the parent deterministically controls timing. */
+    armDeferredListener: (a) => {
+      const watchId = (a || [])[0];
+      let release;
+      const promise = new Promise((resolve) => { release = resolve; });
+      listGates.set(watchId, { promise, release, seen: 0 });
+      return { armed: true };
+    },
+    /* Report the current deferred-gate state for a watch so a test can wait until the real listener
+     * is actually blocked (seen>=1) before committing further changes. */
+    deferredState: (a) => {
+      const watchId = (a || [])[0];
+      const gate = listGates.get(watchId);
+      return { armed: listGates.has(watchId), seen: gate ? gate.seen : null };
+    },
+    /* Resolve the armed gate (optionally after a short delay) and report how many deliveries occurred
+     * while it was held. The delay lets in-flight hint bursts coalesce before the listener releases. */
+    releaseDeferredListener: async (a) => {
+      const watchId = (a || [])[0];
+      const delayMs = Number((a || [])[1] || 0);
+      const gate = listGates.get(watchId);
+      if (delayMs > 0) await new Promise((resolve) => setTimeout(resolve, delayMs));
+      if (gate) { listGates.delete(watchId); gate.release(); }
+      return { seen: gate ? gate.seen : 0 };
+    },
     /* The caller-owned adapter's own bounded operations, used to prove the wipe/rejoin contract at
-     * the transport the API uses (never a mock): the API process owns this adapter instance. */
+     * the transport the API/Core uses (never a mock). */
     wipeNamespace: () => ephemera.wipeNamespace(),
     auditUnboundedKeys: () => ephemera.auditUnboundedKeys(),
     presenceRead: (a) => ephemera.presenceRead(...(a || [])),
@@ -158,9 +236,12 @@ async function childMain() {
      * directly (never a mock) so a test can simulate a delayed write and observe the hint set. */
     presenceTouch: (a) => ephemera.presenceTouch(...(a || [])),
     presenceCheckRevoked: (a) => ephemera.presenceCheckRevoked(...(a || [])),
-    /* Closes ONLY the API/Core service (never the pool or the caller-owned adapter). The follow-up
+    /* Publishes a RAW string on the match channel through the child's OWN caller-owned adapter, so a
+     * test can prove a forged/malformed hint cannot fabricate a snapshot. `args` is [text]. */
+    publishRaw: (a) => ephemera.publish('core-match', (a || [])[0], 30000),
+    /* Closes ONLY the API service (never the pool or the caller-owned adapter). The follow-up
      * `ephemeraHealthy` proves the adapter survived it: the API must never close caller state. */
-    closeApi: async () => { if (accounts) await accounts.close(); return { closed: true }; },
+    closeApi: async () => { if (accounts) await settleClose(() => accounts.close()); return { closed: true }; },
     ephemeraHealthy: async () => ({ healthy: ephemera ? await ephemera.healthy() : null, present: ephemera !== null }),
     describe: () => {
       const svc = accounts || core || issuer;
@@ -172,6 +253,15 @@ async function childMain() {
     /* Order: consumers first, then the CALLER-owned ephemera adapter, then the pool. Every close is
      * idempotent; a SYNCHRONOUS close (core.close / the ticket issuer's close) returns undefined, so
      * each is awaited through settleClose rather than chained with `.catch`, which would throw. */
+    /* Release any armed deferred-listener gate BEFORE tearing watches down, so a held listener
+     * cannot keep the process from draining. */
+    for (const [, gate] of listGates) gate.release();
+    listGates.clear();
+    /* Release every observer subscription this child opened BEFORE the adapter it runs on is closed:
+     * a live subscriber is a real client that would otherwise keep the event loop alive, so the
+     * natural-exit assertion is the leak proof for the owned subscriptions too. */
+    for (const [, handle] of watches) await settleClose(() => handle.unsubscribe());
+    watches.clear();
     if (accounts) await settleClose(() => accounts.close());
     if (issuer) await settleClose(() => issuer.close());
     if (refresh) await settleClose(() => refresh.close());
@@ -234,6 +324,10 @@ class PresenceChild extends EventEmitter {
     this.stderr = '';
     this.fatal = null;
     this.exited = false;
+    /* POST-initial `watchMatch` notifications pushed by the child, keyed by the child's watchId. A
+     * test consumes them with `nextMatchUpdate` so it never polls or races a fixed sleep. */
+    this.matchUpdates = new Map();
+    this.matchWaiters = [];
     this.exit = new Promise((resolve) => {
       child.once('exit', (code, signal) => { this.exited = true; resolve({ code, signal }); });
     });
@@ -263,6 +357,15 @@ class PresenceChild extends EventEmitter {
           this.fatal = message.error;
           this.rejectReady(Error('PRESENCE_CHILD_FATAL:' + message.error));
           break;
+        case 'matchUpdate': {
+          /* A real post-initial snapshot delivered by the child's `watchMatch` listener. Hand it to
+           * the first matching waiter, else queue it for the next `nextMatchUpdate` call. */
+          const update = { watchId: message.watchId, snapshot: message.snapshot };
+          const idx = this.matchWaiters.findIndex((w) => w.watchId === message.watchId);
+          if (idx >= 0) { const w = this.matchWaiters.splice(idx, 1)[0]; clearTimeout(w.timer); w.resolve(update); }
+          else { if (!this.matchUpdates.has(message.watchId)) this.matchUpdates.set(message.watchId, []); this.matchUpdates.get(message.watchId).push(update); }
+          break;
+        }
         case 'reply': {
           const pending = this.replies.get(message.id);
           if (!pending) break;
@@ -280,7 +383,24 @@ class PresenceChild extends EventEmitter {
       if (this.pid === null) this.rejectReady(Error(`PRESENCE_CHILD_EARLY_EXIT:${code}:${this.stderr.trim()}`));
       for (const [, pending] of this.replies) { clearTimeout(pending.timer); pending.reject(Error('PRESENCE_CHILD_EXITED')); }
       this.replies.clear();
+      for (const w of this.matchWaiters) { clearTimeout(w.timer); w.reject(Error('PRESENCE_CHILD_EXITED')); }
+      this.matchWaiters = [];
       this.emit('exit', { code });
+    });
+  }
+
+  /* Resolve with the next POST-initial `watchMatch` notification for `watchId` (or reject on
+   * timeout). A queued update resolves immediately, so no polling or fixed sleep is needed. */
+  nextMatchUpdate(watchId, timeout = 8000) {
+    const queue = this.matchUpdates.get(watchId);
+    if (queue && queue.length) return Promise.resolve(queue.shift());
+    return new Promise((resolve, reject) => {
+      const timer = setTimeout(() => {
+        const idx = this.matchWaiters.findIndex((w) => w.watchId === watchId);
+        if (idx >= 0) this.matchWaiters.splice(idx, 1);
+        reject(Error(`PRESENCE_CHILD_NO_MATCH_UPDATE:${watchId}`));
+      }, timeout);
+      this.matchWaiters.push({ watchId, resolve, reject, timer });
     });
   }
 

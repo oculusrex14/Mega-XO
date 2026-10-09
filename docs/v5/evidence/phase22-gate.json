@@ -40,5 +40,7 @@
       "tests_failed": 0,
       "tests_skipped": 0
     }
-  }
+  },
+  "acceptance_state": "G22_OPEN_ACTUAL_PRODUCTION_CUTOVER_NOT_EXECUTED",
+  "proof_scope": "SYNTHETIC_CUTOVER_STATE_REHEARSAL_ONLY"
 }

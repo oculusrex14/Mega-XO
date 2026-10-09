@@ -142,6 +142,7 @@ Every PR update must verify the exact source head CI. Keep V5 retained regressio
 ## Chronological co-dev checkpoint log
 
 - **2026-10-09 P23 preparation:** Added 4 separate source-only modules and negative suites: retirement/G22 lineage + P22 first-write and six reboot vectors (`2ee9ce9`, `3808b95`, `eb7f998`); immutable V4/PG archives and legacy monitors (`1696804`, `7d63f7d`); 90-day, provider-safe old-client/callback sunset advisory (`f0d3c2c`, `12ba54c`); truthful delivery milestones (`49ec22d`, `9d00bbd`). G21 remains deferred, no V4 teardown.
+- **2026-10-09 P23 final QA:** Repaired an escaped GitHub concurrency expression in the new workflow (`89bcb7a`), added a regression denying that malformed expression (`db488be`), and reran its actual fetched workflow guard (3/3 source-level tests passed). Exact GitHub runner execution remains blocked; no change to P22/G23 authority.
 - **2026-10-09 CI resilience:** Added offline zero-step GitHub Actions triage (`e8f913f`, `0cfa8cf`); new protected P23 CI workflow and guard (`9b45e98`, `53620e4`), source-G22 boundary and cross-phase release CI watch (`0f0c8da`). Verified 34/34 P23+CI and 5/5 cross-phase fetched source test bodies in V8 with Node stubs, **not executed Node24 GitHub CI**. [Incident](docs/co-dev/CI-RUNNER-INCIDENT-2026-10-09.md): zero allocated runners, zero steps, 0ms billed at observed workflow run; account/policy/service root cause unverified.
 
 

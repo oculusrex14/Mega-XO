@@ -1,6 +1,5 @@
 'use strict';
 
-const crypto = require('node:crypto');
 const path = require('node:path');
 const {
   parseJsonBody,
@@ -71,15 +70,28 @@ async function resolveActor(context, req) {
  * @returns {string} opKey
  */
 function resolveOpKey(req, body) {
-  return (
+  // Never generate a fresh key on the API tier. Retrying a request after an
+  // ambiguous network timeout must reuse the CLIENT'S durable operation ID,
+  // otherwise the same economic action can settle twice.
+  const key =
     req.headers?.['idempotency-key'] ||
     req.headers?.['x-opkey'] ||
     req.headers?.['x-idempotency-key'] ||
     body?.opKey ||
     body?.idempotencyKey ||
-    body?.key ||
-    crypto.randomUUID()
-  );
+    body?.key;
+  if (key === undefined || key === null || key === '') {
+    const err = new Error('IDEMPOTENCY_KEY_REQUIRED');
+    err.status = 400;
+    throw err;
+  }
+  // Bounded and printable before logging, signing or storing at Core.
+  if (typeof key !== 'string' || !/^[\\x21-\\x7e]{1,200}$/.test(key)) {
+    const err = new Error('INVALID_IDEMPOTENCY_KEY');
+    err.status = 400;
+    throw err;
+  }
+  return key;
 }
 
 /**

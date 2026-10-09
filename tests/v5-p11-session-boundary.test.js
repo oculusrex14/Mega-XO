@@ -89,7 +89,7 @@ test('P11: linked bearer token wins over forged actor headers for profile and Co
     'x-actor-id': 'svc_bob',
     'x-test-actor': 'svc_bob',
   };
-  const res = await request(handler, { headers, actor: 'svc_bob', user: { id: 'svc_bob' } });
+  const res = await request(handler, { headers: { ...headers, 'idempotency-key': 'p11-actor-verified' }, actor: 'svc_bob', user: { id: 'svc_bob' } });
   assert.equal(res.status, 200);
   assert.equal(res.data.actor, 'svc_alice');
   assert.equal(forwarded.length, 1);
@@ -107,7 +107,7 @@ test('P11: old-origin cookie sessions work, revoked sessions never forward', asy
     cookie: '__Host-mega_session=bob-session',
     'x-actor-id': 'svc_alice',
   };
-  const good = await request(handler, { headers });
+  const good = await request(handler, { headers: { ...headers, 'idempotency-key': 'p11-cookie-success' } });
   assert.equal(good.status, 200);
   assert.equal(good.data.actor, 'svc_bob');
   live.delete('bob-session');
@@ -298,9 +298,35 @@ test('P13: forged X-Forwarded-Origin cannot authorize cookie spending or CORS', 
       cookie: '__Host-mega_session=alice-session',
       origin: 'https://play.antimatterinnovations.com',
       'x-forwarded-origin': 'https://attacker.invalid',
+      'idempotency-key': 'p13-real-origin',
     },
     body: { from: 'coins', amount: 100 },
   });
   assert.equal(accepted.status, 200, 'approved actual legacy Origin remains functional');
   assert.equal(forwarded.length, 1);
+});
+test('P11 money safety: missing or malformed operation keys never forward economic commands', async () => {
+  const { handler, forwarded } = fixture();
+  const auth = { authorization: 'Bearer alice-session' };
+  const missing = await request(handler, { headers: auth, body: { from: 'coins', amount: 100 } });
+  assert.equal(missing.status, 400);
+  assert.equal(missing.data.error, 'IDEMPOTENCY_KEY_REQUIRED');
+
+  for (const key of ['invalid key with spaces', 'x'.repeat(201)]) {
+    const response = await request(handler, {
+      headers: { ...auth, 'idempotency-key': key },
+      body: { from: 'coins', amount: 100 },
+    });
+    assert.equal(response.status, 400);
+    assert.equal(response.data.error, 'INVALID_IDEMPOTENCY_KEY');
+  }
+  assert.equal(forwarded.length, 0, 'invalid operations must not reach Core');
+
+  const valid = await request(handler, {
+    headers: { ...auth, 'idempotency-key': 'stable-client-operation-001' },
+    body: { from: 'coins', amount: 100 },
+  });
+  assert.equal(valid.status, 200);
+  assert.equal(forwarded.length, 1);
+  assert.equal(forwarded[0].opKey, 'stable-client-operation-001');
 });

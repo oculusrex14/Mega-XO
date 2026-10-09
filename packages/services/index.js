@@ -11,4 +11,5 @@ module.exports = {
  createQueueService: require('./queue').createQueueService,
  createRealtimeTransport: require('./realtime-transport').createRealtimeTransport,
  createTimerService: require('./timers').createTimerService,
+ createTournamentService: require('./tournaments').createTournamentService,
 };

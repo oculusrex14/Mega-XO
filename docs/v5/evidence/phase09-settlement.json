@@ -1,0 +1,54 @@
+{
+  "schema_version": 1,
+  "phase": "P09",
+  "task_ids": [
+    "V5-09-04"
+  ],
+  "case_ids": [],
+  "recorded_at_utc": "2026-10-09T09:15:00.000Z",
+  "status": "INDIVISIBLE_SETTLEMENT_VERIFIED",
+  "source_state": {
+    "base_sha": "a09c1578e8dc788207b47da0fb999c1345b97aaf",
+    "verified_source_sha256": {
+      "packages/services/tournaments.js": "73c683b52d6a59bc8bbd3c13bb1e54460f38bdf69a531777b72db5a882a17f69",
+      "tests/v5-p09-settlement.test.js": "82e4f014e7a68e82a3c74900da0ea996b72a6b252069bdaaa7632607147b3096"
+    }
+  },
+  "settlement_verification": {
+    "service_method": "tournaments.settle(roomId, { reason, actor, key }) in packages/services/tournaments.js",
+    "global_lock_order": {
+      "step_1_room_aggregate": "Lock room row first via lockRoomRow: SELECT 1 FROM tournament.rooms WHERE room_id=$1 OR code=$1 FOR UPDATE",
+      "step_2_plan_check": "Inspect settled/receipt under lock; if already settled, return existing receipt immediately with zero wallet locks",
+      "step_3_wallets_lock": "Lock affected actors in ascending order via wallets.lock(sortedActors, { aggregate: { kind: 'tournament', id: room.id } })",
+      "step_4_atomic_commit": "Commit room update, wallet credits/debits, ledger entries, burns, tournament records, occupancy release, and outbox event in ONE transaction"
+    },
+    "indivisible_completion_settlement": {
+      "result": "COMPLETE table settles: 10 payouts credited to wallets, escrow zeroed, exactly 10 ledger entries (<roomId>:payout:<actor>), burn recorded, 10 tournament records updated, occupancy released, outbox event enqueued",
+      "idempotent_replay": "Replay returns stored receipt with zero duplicate payouts, zero burns, and zero new ledger rows"
+    },
+    "indivisible_refund": {
+      "result": "VOID/CANCELLED table refunds all 10 entrants: entry fees returned to wallets, escrow zeroed, 10 refund entries (<roomId>:refund:<actor>), 0 burned, 0 placement records, occupancy released, outbox event enqueued"
+    },
+    "racing_settlers_atomicity": {
+      "result": "Two concurrent settlement workers (Promise.all) serialize on room lock; exactly ONE financial effect committed; wallets paid once, ledger written once, burn recorded once"
+    },
+    "mid_transaction_crash_rollback": {
+      "result": "Forced failure before commit triggers complete rollback (zero wallets touched, zero ledger rows written, room remains unsettled); subsequent retry commits cleanly once"
+    }
+  },
+  "test_execution": {
+    "command": "env V5_PG_URL=postgres://postgres@127.0.0.1:50709/postgres V5_PG_DISPOSABLE=1 V5_PG_REQUIRED=1 node --test --test-reporter=tap --test-concurrency=1 tests/v5-p09-settlement.test.js",
+    "environment": "owned loopback PostgreSQL 16.15",
+    "tests": 4,
+    "pass": 4,
+    "fail": 0,
+    "skipped": 0
+  },
+  "task_outcomes": {
+    "V5-09-04": "COMPLETE: settlement and refund made indivisible via tournaments.settle and core global lock order. Room aggregate locked first, followed by wallets.lock on sorted actors, then atomic commit of room, wallets, ledger, burns, tournament records, occupancy release, and outbox event in one transaction; racing workers produce exactly one financial effect; mid-transaction crashes roll back completely across 4 dedicated tests on real PG16."
+  },
+  "not_claimed": [
+    "full multi-worker tournament recovery (V5-09-05)",
+    "G09 gate passage"
+  ]
+}

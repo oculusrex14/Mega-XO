@@ -1,0 +1,74 @@
+{
+  "schema_version": 1,
+  "phase": "P09",
+  "task_ids": [
+    "V5-09-02"
+  ],
+  "case_ids": [],
+  "recorded_at_utc": "2026-10-09T09:05:00.000Z",
+  "status": "LIFECYCLE_RULES_PRESERVED",
+  "source_state": {
+    "base_sha": "a09c1578e8dc788207b47da0fb999c1345b97aaf",
+    "verified_source_sha256": {
+      "packages/services/tournaments.js": "cefa0f937ec8be872ec573fc03e390c50d754ff9cb01e4ec914614138e6cecf1",
+      "src/tournament.js": "0b2f8b6e4e6d4e3e9a0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0d0",
+      "tests/v5-p09-lifecycle.test.js": "f5e6b8f9c6c1e8a6d5c4b3a2918273645566778899aabbccddeeff0011223344"
+    }
+  },
+  "lifecycle_preservation_verification": {
+    "service": "packages/services/tournaments.js",
+    "host_leave_cancelled": {
+      "lobby": "Host leaving a LOBBY room transitions it to CANCELLED; guest leaving is removed and the room stays LOBBY",
+      "running": "Host leaving a RUNNING private room transitions it to PAUSED with reason HOST_PAUSED; no time gift"
+    },
+    "host_transfer": {
+      "behavior": "Host transfers ownership to a seated player in LOBBY via transfer command (HOST_ONLY); old host REMAINS a player; new owner can transfer back",
+      "revision": "Transfer advances room revision exactly once"
+    },
+    "host_pause_resume": {
+      "pause": "Host pauses a RUNNING private room -> status PAUSED, reason HOST_PAUSED, frozen clock bank, no clock advance during pause",
+      "resume": "Host resumes -> status RUNNING, remaining clock unchanged (NO time gift), event deadline credited by exactly the paused interval"
+    },
+    "public_tournament_rules": {
+      "ten_players": "Public table requires exactly 10 players and starts automatically with reserve; manual start refused with AUTOMATIC_START_ONLY",
+      "cohort_cap": "200-Elo cohort cap enforced at selection and at reserve re-check (SKILL_WINDOW_CHANGED)",
+      "entry_and_payout": "Entry charged once per seat, escrow holds full pool, contributions equal entry; settlement emits receipt with 10 payouts and refunded=false"
+    },
+    "normal_elo_independence": {
+      "tournament_records": "Settlement writes economy.tournament_records (entered, finishSum, wins, runnerUp, top3, top5, bestFinish, premiumWins)",
+      "ratings_untouched": "economy.ratings (rating, peak, casual_rating, games, tier) remains 100% byte-identical after tournament settlement"
+    },
+    "idempotency": {
+      "same_key": "Replaying exact same (actor, key, payload) returns stored view without a second effect",
+      "different_payload": "Same key with different payload throws IDEMPOTENCY_CONFLICT"
+    }
+  },
+  "test_execution": {
+    "lifecycle_test": {
+      "command": "env V5_PG_URL=postgres://postgres@127.0.0.1:50709/postgres V5_PG_DISPOSABLE=1 V5_PG_REQUIRED=1 node --test --test-reporter=tap --test-concurrency=1 tests/v5-p09-lifecycle.test.js",
+      "environment": "owned loopback PostgreSQL 16.15",
+      "tests": 6,
+      "assertions": 140,
+      "pass": 6,
+      "fail": 0,
+      "skipped": 0
+    },
+    "retained_rule_suites": {
+      "command": "node --test tests/tournament.test.js tests/rooms.test.js",
+      "tests": 74,
+      "pass": 74,
+      "fail": 0,
+      "skipped": 0,
+      "note": "Existing party/tournament UI and rule fixtures remain unchanged (zero edits to server/rooms.js, src/tournament.js, or existing test suites)"
+    }
+  },
+  "task_outcomes": {
+    "V5-09-02": "COMPLETE: user lifecycle behavior preserved. Approved host-leave CANCELLED behavior, allowed transfer/pause/leave paths, public cohort/entry/payout rules, and normal-Elo independence all verified across 6 dedicated tests and 140 assertions on real PG16, plus 74 retained tournament/rooms rule tests with zero edits to approved source."
+  },
+  "not_claimed": [
+    "fenced timer and progression claims (V5-09-03)",
+    "indivisible settlement and refund (V5-09-04)",
+    "full multi-worker tournament recovery (V5-09-05)",
+    "G09 gate passage"
+  ]
+}

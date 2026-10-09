@@ -157,16 +157,17 @@ function msOf(value) {
 }
 const atMs = (ms) => new Date(ms);
 
-/* A failure diagnostic is REPORTED, never trusted: it is reduced to a single bounded, control-free
- * line so it satisfies the `length(last_error) <= 280` CHECK and can never carry a newline, a NUL or a
- * purchase token echoed whole into durable state. A non-string, non-Error diagnostic collapses to a
- * fixed token rather than being stringified into whatever it holds. */
+/* Provider exceptions can quote receipt IDs, bearer tokens and purchase tokens.
+ * Persist only recognized, identifier-free categories, never raw error messages. */
+const SAFE_PROVIDER_ERRORS = new Set([
+ 'PROVIDER_UNAVAILABLE', 'PROVIDER_TIMEOUT', 'PROVIDER_RATE_LIMITED',
+ 'PROVIDER_AUTH_FAILED', 'SIGNATURE_INVALID', 'UPSTREAM_429',
+ 'UPSTREAM_5XX', 'UNKNOWN_FAULT',
+]);
 function sanitizeError(value) {
- const raw = value && typeof value === 'object' && typeof value.message === 'string' ? value.message
-  : typeof value === 'string' ? value : '';
- const clean = raw.replace(/[\u0000-\u001F\u007F]/g, ' ').trim();
- if (!clean) return UNKNOWN_FAULT;
- return clean.length > LAST_ERROR_MAX ? clean.slice(0, LAST_ERROR_MAX) : clean;
+ const category = value && typeof value === 'object' ? value.code : null;
+ return typeof category === 'string' && SAFE_PROVIDER_ERRORS.has(category)
+  ? category : UNKNOWN_FAULT;
 }
 
 /* Exponential backoff, deterministic (the repository convention - `jobs.js` does the same), capped by
@@ -286,10 +287,13 @@ const CLAIM_FINALIZE_TAKE_SQL = 'UPDATE monetization.store_finalize'
  * decision and the fence it was taken under are read from ONE consistent snapshot, and it reads the
  * receipt's OWN row (never a capped hydration) exactly as `commerce.purchase` does. */
 const FINALIZE_STATE_SQL = 'SELECT f.product_id, f.purchase_token, f.kind, f.created_at, f.attempts,'
- + ' r.refunded AS receipt_refunded, r.transaction_id AS receipt_present'
+ + ' r.refunded AS receipt_refunded, r.transaction_id AS receipt_present,'
+ + ' rv.transaction_id AS revocation_present'
  + ' FROM monetization.store_finalize f'
  + ' LEFT JOIN monetization.receipts r'
  + ' ON r.store = f.store AND r.transaction_id = f.transaction_id'
+ + ' LEFT JOIN monetization.store_revocations rv'
+ + ' ON rv.store = f.store AND rv.transaction_id = f.transaction_id'
  + " WHERE f.store = $1 AND f.transaction_id = $2 AND f.state = 'pending'"
  + ' AND f.lease_owner = $3 AND f.lease_token = $4 AND f.lease_until > $5'
  + ' FOR UPDATE OF f';
@@ -553,7 +557,8 @@ function createProviderWorkflow(options = {}) {
    const rows = (await oneShot(FINALIZE_STATE_SQL, [store, transactionId, workerId, fence, atMs(at)])).rows;
    if (rows.length !== 1) return { completed: false, pendingGrant: false, fenceLost: true };
    const row = rows[0];
-   const refunded = row.receipt_refunded === true;
+   const refunded = row.receipt_refunded === true
+    || (row.revocation_present !== null && row.revocation_present !== undefined);
    const granted = row.receipt_present !== null && row.receipt_present !== undefined && !refunded;
    if (!granted) {
     /* No durable grant: the provider is not contacted. After the abandonment horizon the row becomes

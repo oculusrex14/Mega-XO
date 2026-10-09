@@ -4,7 +4,7 @@ The mutable execution source is [progress.json](progress.json); this is its read
 
 **Goal:** Deliver the V5 hybrid platform and real Android/iOS applications with shared permanent actor/assets, preserved approved game and retained browser compatibility; do not build the new website/browser product.
 
-**Integration base:** `455b8ec9ea4070b4410d78f9eea2aaa06d32c0b2`. **Active phase/task:** none (no task is eligible). **Progress:** 117/117 tasks terminal; 24/25 phase gates passed
+**Integration base:** `455b8ec9ea4070b4410d78f9eea2aaa06d32c0b2`. **Active phase/task:** P22 / V5-22-01 (IMPLEMENTED). **Progress:** 104/117 tasks terminal; 21/25 phase gates passed
 
 Required path: execute P00–P20, P22–P23; owner-deferred P21 executes nothing; P24 is measurement-gated; phase prerequisites are gates, not status assumptions, and a deferred or measurement-gated phase is never used as another phase prerequisite. The foundation gate P00–P03 passes before dependent distributed work, and V5 CI starts in the foundation rather than only at P17.
 
@@ -269,35 +269,35 @@ Owner-deferred phase: 0 tasks. No phase lists P21 as a prerequisite.
 
 ## P22 — Execute final production authority transfer
 
-Milestone: V5.9; status: `COMPLETE`; prerequisites: P20. [Phase contract](../../Mega-XO-V5-Implementation-Pack/phases/22-production-transfer.md).
+Milestone: V5.9; status: `IN_PROGRESS`; prerequisites: P20. [Phase contract](../../Mega-XO-V5-Implementation-Pack/phases/22-production-transfer.md).
 
-- [x] **V5-22-01 — Revalidate go/no-go and actual release identity** (`COMPLETE`).
-- [x] **V5-22-02 — Stage production without admitting writes** (`COMPLETE`).
-- [x] **V5-22-03 — Drain and freeze every V4 writer** (`COMPLETE`).
-- [x] **V5-22-04 — Import and reconcile final source** (`COMPLETE`).
-- [x] **V5-22-05 — Transfer authority and route clients** (`COMPLETE`).
-- [x] **V5-22-06 — Perform production smoke and recovery confirmation** (`COMPLETE`).
+- [ ] **V5-22-01 — Revalidate go/no-go and actual release identity** (`IMPLEMENTED`).
+- [ ] **V5-22-02 — Stage production without admitting writes** (`PLANNED`).
+- [ ] **V5-22-03 — Drain and freeze every V4 writer** (`PLANNED`).
+- [ ] **V5-22-04 — Import and reconcile final source** (`PLANNED`).
+- [ ] **V5-22-05 — Transfer authority and route clients** (`PLANNED`).
+- [ ] **V5-22-06 — Perform production smoke and recovery confirmation** (`PLANNED`).
 
 **Exit gate:** G22: V5 is the only live durable production application writer; existing and native clients share it; recovery and operational evidence is green. No dependency on deferred Phase 21.
 
 ## P23 — Retire obsolete V4 authority while retaining recovery evidence
 
-Milestone: V5.9; status: `COMPLETE`; prerequisites: P22. [Phase contract](../../Mega-XO-V5-Implementation-Pack/phases/23-retire-v4-authority.md).
+Milestone: V5.9; status: `PLANNED`; prerequisites: P22. [Phase contract](../../Mega-XO-V5-Implementation-Pack/phases/23-retire-v4-authority.md).
 
-- [x] **V5-23-01 — Permanently fence obsolete writers and schedulers** (`COMPLETE`).
-- [x] **V5-23-02 — Retain required artifacts and update operations** (`COMPLETE`).
-- [x] **V5-23-03 — Retire compatibility only from usage/version evidence** (`COMPLETE`).
-- [x] **V5-23-04 — Publish final delivery and residual-item report** (`COMPLETE`).
+- [ ] **V5-23-01 — Permanently fence obsolete writers and schedulers** (`PLANNED`).
+- [ ] **V5-23-02 — Retain required artifacts and update operations** (`PLANNED`).
+- [ ] **V5-23-03 — Retire compatibility only from usage/version evidence** (`PLANNED`).
+- [ ] **V5-23-04 — Publish final delivery and residual-item report** (`PLANNED`).
 
 **Exit gate:** G23: no production service depends on V4 SQLite. Required history/backups and supported-client/provider compatibility remain available under policy.
 
 ## P24 — Set scaling triggers and act only on measured demand
 
-Milestone: V5.10; status: `COMPLETE`; prerequisites: P23. [Phase contract](../../Mega-XO-V5-Implementation-Pack/phases/24-evidence-led-scaling.md).
+Milestone: V5.10; status: `PLANNED`; prerequisites: P23. [Phase contract](../../Mega-XO-V5-Implementation-Pack/phases/24-evidence-led-scaling.md).
 
-- [x] **V5-24-01 — Publish baseline and review cadence** (`COMPLETE`).
-- [x] **V5-24-02 — Define trigger-specific scaling runbooks** (`COMPLETE`).
-- [x] **V5-24-03 — Apply extra capacity only when justified** (`COMPLETE`).
+- [ ] **V5-24-01 — Publish baseline and review cadence** (`IMPLEMENTED`).
+- [ ] **V5-24-02 — Define trigger-specific scaling runbooks** (`IMPLEMENTED`).
+- [ ] **V5-24-03 — Apply extra capacity only when justified** (`IMPLEMENTED`).
 
 **Exit gate:** G24: measured baseline and explicit scaling triggers are delivered. Additional infrastructure is conditional on evidence, not required speculative work.
 

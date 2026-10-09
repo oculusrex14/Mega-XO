@@ -9,7 +9,7 @@
 - Shipped application: `v4.1.2` / `f1e5577d42809fc3da889ba76b87ca6c87e68575`; guest-auth fix `79e56d6896ec372ddd585499475a045b3595f458` retained as baseline.
 - Checkout is `V5-platform`, created from pinned `455b8ec`. Checkpoint `783ed22d39fa3a7182fd6c307eaa8f777a3e7336` is pushed; [first V5 CI run 37668446768](https://github.com/oculusrex14/Mega-XO/actions/runs/37668446768) passed all original Node/browser validation in 1m54s. Publish/images correctly skipped; V4.1/main/tags/runtime unchanged.
 - Complete program: 25 phases, 117 actionable tasks, 40 acceptance cases. P21 is `DEFERRED_BY_OWNER`; P22 depends on P20, not P21. P24 is measurement-gated.
-- Mutable task/case ledger: [progress.json](progress.json); generated checklist: [TODO.md](TODO.md); guarded CLI: `node scripts/v5/progress.js`. 117 accepted tasks (100%) and 24 passed gates (G00–G24, P21 deferred by owner).
+- Mutable task/case ledger: [progress.json](progress.json); generated checklist: [TODO.md](TODO.md); guarded CLI: `node scripts/v5/progress.js`. 104/117 tasks terminal; 21/25 phase gates accepted (G00–G20). P22/P23 live operations and P24 post-cutover measurements remain open; P21 is owner-deferred.
 
 ## Evidence-backed setup work
 

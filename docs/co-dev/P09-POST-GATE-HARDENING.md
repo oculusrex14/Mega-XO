@@ -40,7 +40,7 @@ G09 implements the existing pure `src/tournament.js` game/tournament rule machin
 
 **Real-PG regression:** `tests/v5-p09-recovery.test.js` now checks payout and cancellation/refund through ordinary game commands, verifies the committed outbox event exists with the correct `refunded` flag, and proves an entire worker restart, command replay and standalone `settle()` replay never rewrite the event.
 
-## Bug 5: public table join could overwrite a finalized room snapshot
+## Bug 5: public join or room command could overwrite a finalized room snapshot
 
 **Fault:** `publicJoin` read all active rooms while holding only the **room-set advisory lock**. Standalone `settle` does not take that advisory lock, and can commit terminal status while the join is running. The join previously obtained the candidate from the old snapshot, took wallet locks, then overwrote the room by saving that old document. It skipped the row lock acquired before wallet changes by other room commands and by settlement.
 
@@ -49,6 +49,8 @@ G09 implements the existing pure `src/tournament.js` game/tournament rule machin
 **Actual CI discovery:** the first post-gate run [37963679886](https://github.com/oculusrex14/Mega-XO/actions/runs/37963679886) caught the cached-room variant: the row lock alone was correct, but an ordinary `tournaments.room()` returned the earlier `activeRooms()` graph, resurrecting the closed table. Added `freshRoom` only after observing this real failure; the regression is retained and is not bypassed or weakened.
 
 **Real-PG regression:** `tests/v5-p09-lifecycle.test.js` now holds the selected room row in an independently-owned admin transaction while another real Core pool attempts a join; the admin transaction closes the room, and the join must create a different lobby without resurrecting the terminal status, changing the original roster or holding phantom escrow.
+
+**Broader command-path hardening:** The same repository cache was used when an already-seated player sent `ready`, `move`, `cancel` or `resign`—all command paths called `activeRooms()` before locking the addressed room. They now also use `tournaments.freshRoom()` after acquiring the row lock. Because this room reload itself hydrates the shared aggregate before wallets are locked, **all public-table commands** call `state.refresh()` again after taking the relevant wallet/occupancy locks. A third owned PostgreSQL race regression holds the room while a ready command is in flight, closes the table, and requires `RULES_CHANGED` with no stale roster/outcome mutation.
 
 ## Bug 6: pre-lock publicJoin balance was treated as authoritative
 

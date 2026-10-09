@@ -75,3 +75,17 @@ does not satisfy G15.
 - This is actual two-PostgreSQL-cluster *synthetic* encrypted restoration,
   not an observed R2 retrieval, Neon PITR, role/key reconstruction or
   production RPO/RTO. G15 remains OPEN.
+
+## V5-15-02 operator-only R2 transfer (not executed on provider)
+
+- r2-contract.js requires a V5-only R2 bucket and immutable namespace
+  megaxo/v5/pg16-encrypted/v1/. Existing V4 Restic is not modified.
+- r2-transfer.js accepts real encrypted nonserving staging backups,
+  uses a write-once If-None-Match precondition and a different reader
+  identity to retrieve encrypted ciphertext and manifest for SHA checks.
+  Partial failures do not automatically delete uploaded recovery objects.
+- Ciphertext readback hashes are streamed instead of buffering an entire
+  multi-gigabyte archive in memory. Private scratch files are removed.
+- The fake AWS CLI unit runner is always labeled MOCK_NOT_PROVIDER_PROOF;
+  actual R2 IAM, account, retention, backup retrieval and restore have
+  not been externally verified. No live secrets are present in PR CI.

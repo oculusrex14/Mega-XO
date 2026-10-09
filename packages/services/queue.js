@@ -611,12 +611,17 @@ function createQueueService(options = {}) {
     return row;
   }
   const clearMatchHint = (actor) => callRedis((client) => client.del(matchKey(actor)));
-  const MATCH_BY_ID_SQL = 'SELECT status, source, mode, kind, terms_hash, expires_at'
-    + ' FROM match.matches WHERE match_id = $1';
-  async function readMatchById(matchId) {
+  /* Redis hints are not authorization. A client can only resolve a hinted
+   * match if PostgreSQL confirms the requesting actor occupies one of its
+   * durable participant seats. Checking match_id alone leaks an unrelated
+   * live match when Redis contains a stale or malformed actor hint. */
+  const MATCH_BY_ID_SQL = 'SELECT m.status, m.source, m.mode, m.kind, m.terms_hash, m.expires_at'
+    + ' FROM match.matches m JOIN match.participants p ON p.match_id = m.match_id'
+    + ' WHERE m.match_id = $1 AND p.actor_id = $2';
+  async function readMatchById(matchId, actor) {
     return pool.withTransaction(async (tx) => {
       await tx.query('SET TRANSACTION READ ONLY');
-      const row = (await tx.query(MATCH_BY_ID_SQL, [matchId])).rows[0];
+      const row = (await tx.query(MATCH_BY_ID_SQL, [matchId, actor])).rows[0];
       if (!row) return null;
       return {
         matchId,
@@ -912,7 +917,7 @@ function createQueueService(options = {}) {
      * hint the durable store does not confirm as live is discarded. */
     const hint = await readMatchHint(id);
     if (hint !== null) {
-      const confirmed = await readMatchById(hint.matchId);
+      const confirmed = await readMatchById(hint.matchId, id);
       if (confirmed !== null && (confirmed.status === 'OFFERED' || confirmed.status === 'PLAYING')) {
         return { state: 'matched', mode: confirmed.mode, matchId: confirmed.matchId, termsHash: confirmed.termsHash, expires: confirmed.expires };
       }

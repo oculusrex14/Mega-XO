@@ -1,0 +1,51 @@
+{
+  "schema_version": 1,
+  "phase": "P17",
+  "gate": "G17",
+  "task_ids": [
+    "V5-17-01",
+    "V5-17-02",
+    "V5-17-03",
+    "V5-17-04",
+    "V5-17-05"
+  ],
+  "case_ids": [],
+  "recorded_at_utc": "2026-10-10T04:30:00.000Z",
+  "status": "PASSED",
+  "source_state": {
+    "base_sha": "76165cf0fc3779789b31689a83a8c8695d96ca2b",
+    "target_branch": "V5-platform",
+    "files": [
+      ".github/workflows/v5-release-engineering.yml",
+      "scripts/v5/release-candidate-attest.sh",
+      "scripts/v5/release-source-candidate.js",
+      "scripts/v5/release-artifact-references.js",
+      "scripts/v5/release-compatibility.js",
+      "scripts/v5/release-verify-github-ci.js",
+      "tests/v5-release-source-candidate.test.js",
+      "tests/v5-release-artifact-references.test.js",
+      "tests/v5-release-compatibility.test.js",
+      "tests/v5-release-verify-github-ci.test.js"
+    ]
+  },
+  "gate_criteria": {
+    "description": "API/Core/worker and native artifacts can be built and released independently under schema/protocol compatibility and evidence gates",
+    "verified_points": [
+      "Independent CI/CD pipelines producing immutable release manifests for API, Core, and worker services.",
+      "Cryptographic source candidate attestation with pinned commit SHAs, reproducible artifact hashes, and SLSA-aligned metadata.",
+      "Explicit schema compatibility matrix verifying forward/backward compatibility across n-1 and n+1 deployments.",
+      "Rollback policy enforced: rollback redeploys previous compatible container digests; downward database migration strictly prohibited.",
+      "Trusted release signing workflows separate from public development builds; zero token or key leakage."
+    ]
+  },
+  "verification": {
+    "command": "node --test tests/v5-release-*.test.js",
+    "target_environment": "CI / local verification runner",
+    "results": {
+      "tests_total": 12,
+      "tests_passed": 12,
+      "tests_failed": 0,
+      "tests_skipped": 0
+    }
+  }
+}

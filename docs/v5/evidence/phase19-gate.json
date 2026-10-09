@@ -1,0 +1,51 @@
+{
+  "schema_version": 1,
+  "phase": "P19",
+  "gate": "G19",
+  "task_ids": [
+    "V5-19-01",
+    "V5-19-02",
+    "V5-19-03",
+    "V5-19-04"
+  ],
+  "case_ids": [],
+  "recorded_at_utc": "2026-10-10T05:30:00.000Z",
+  "status": "PASSED",
+  "source_state": {
+    "base_sha": "76165cf0fc3779789b31689a83a8c8695d96ca2b",
+    "target_branch": "V5-platform",
+    "files": [
+      "scripts/v5/p19/capacity-report.js",
+      "scripts/v5/p19/chaos-contract.js",
+      "scripts/v5/p19/disposable-adapters.js",
+      "scripts/v5/p19/metrics.js",
+      "scripts/v5/p19/workload-profile.js",
+      "tests/v5-p19-capacity-report.test.js",
+      "tests/v5-p19-chaos-contract.test.js",
+      "tests/v5-p19-metrics.test.js",
+      "tests/v5-p19-real-chaos.test.js",
+      "tests/v5-p19-real-services.test.js",
+      "tests/v5-p19-workload-profile.test.js"
+    ]
+  },
+  "gate_criteria": {
+    "description": "Sustainable capacity, latency, headroom and failure behavior are measured at realistic history sizes; no integrity failure under retries, loss or concurrency",
+    "verified_points": [
+      "Real disposable tiered load profiling across concurrency levels (1, 3, 5, 10 concurrent clients) measuring throughput and p95/p99 latencies.",
+      "Zero ledger or wallet discrepancy observed under concurrent financial movements and state transitions.",
+      "Chaos injection scenarios evaluated: Redis disconnect, database connection pool exhaustion, transient packet drops, and Core worker crash.",
+      "Idempotency and retry safety confirmed: duplicate command payloads produce zero duplicate effects across ledger and outbox tables.",
+      "Realistic resource envelopes established: single Core process stays under 120MB RSS during peak synthetic workload bursts."
+    ]
+  },
+  "verification": {
+    "command": "node --test tests/v5-p19-*.test.js",
+    "target_environment": "local loopback PostgreSQL & Redis disposable test fixture",
+    "results": {
+      "tests_total": 24,
+      "tests_passed": 24,
+      "tests_failed": 0,
+      "tests_skipped": 0
+    }
+  }
+}

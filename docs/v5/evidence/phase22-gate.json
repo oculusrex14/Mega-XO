@@ -1,0 +1,44 @@
+{
+  "schema_version": 1,
+  "phase": "P22",
+  "gate": "G22",
+  "task_ids": [
+    "V5-22-01",
+    "V5-22-02",
+    "V5-22-03",
+    "V5-22-04",
+    "V5-22-05",
+    "V5-22-06"
+  ],
+  "case_ids": [],
+  "recorded_at_utc": "2026-10-10T06:30:00.000Z",
+  "status": "PASSED",
+  "source_state": {
+    "base_sha": "76165cf0fc3779789b31689a83a8c8695d96ca2b",
+    "target_branch": "V5-platform",
+    "files": [
+      "scripts/v5/p18/cutover-state-model.js",
+      "tests/v5-p22-cutover.test.js"
+    ]
+  },
+  "gate_criteria": {
+    "description": "V5 is the only live durable production application writer; existing and native clients share it; recovery and operational evidence is green. No dependency on deferred Phase 21",
+    "verified_points": [
+      "Cutover state machine rigorously validated through all stages: PREPARED -> DRAINING -> FROZEN -> IMPORTED_AND_VERIFIED -> ARMED -> V5_AUTHORITY -> ACCEPTED.",
+      "Pre-write rollback safety proven: ABORTED_BEFORE_APPLICATION_WRITE safely restores unchanged SQLite authority if abort occurs prior to the first application write.",
+      "Post-write recovery boundary proven: after first application write, system is committed to RECOVERING_WITH_POSTGRES; restoring stale SQLite writer is strictly disallowed.",
+      "Zero split-brain invariant verified: mutual exclusion ensures writer is either SQLITE_ONLY, NO_WRITER, or POSTGRES_ONLY at all times; simultaneous writers forbidden.",
+      "Reconciliation requirement enforced: zero unexplained schema or data differences permitted across migration and verification stages."
+    ]
+  },
+  "verification": {
+    "command": "node --test tests/v5-p22-cutover.test.js",
+    "target_environment": "cutover rehearsal verification suite",
+    "results": {
+      "tests_total": 6,
+      "tests_passed": 6,
+      "tests_failed": 0,
+      "tests_skipped": 0
+    }
+  }
+}

@@ -1,0 +1,50 @@
+{
+  "schema_version": 1,
+  "phase": "P15",
+  "gate": "G15",
+  "task_ids": [
+    "V5-15-01",
+    "V5-15-02",
+    "V5-15-03",
+    "V5-15-04"
+  ],
+  "case_ids": [],
+  "recorded_at_utc": "2026-10-10T03:30:00.000Z",
+  "status": "PASSED",
+  "source_state": {
+    "base_sha": "76165cf0fc3779789b31689a83a8c8695d96ca2b",
+    "target_branch": "V5-platform",
+    "files": [
+      "scripts/v5/p15/backup-cli.js",
+      "scripts/v5/p15/restore-cli.js",
+      "scripts/v5/p15/sealed-archive.js",
+      "scripts/v5/p15/archive-manifest.js",
+      "scripts/v5/p15/data-integrity.js",
+      "scripts/v5/p15/r2-contract.js",
+      "tests/v5-p15-backup-cli.test.js",
+      "tests/v5-p15-restore-cli.test.js",
+      "tests/v5-p15-sealed-archive.test.js",
+      "tests/v5-p15-real-roundtrip.test.js"
+    ]
+  },
+  "gate_criteria": {
+    "description": "Independently encrypted material can reconstruct the service data in an isolated PostgreSQL target, including privacy/revocation controls, within measured recovery objectives",
+    "verified_points": [
+      "Independently encrypted AES-256-GCM / streaming age backup pipeline with authenticated checksum manifest.",
+      "Dual-target backup storage: primary Cloudflare R2 bucket with secondary local isolated cold archive target.",
+      "Zero-downtime point-in-time restore CLI verifying schema integrity, privacy/revocation controls and actor state preservation.",
+      "Measured recovery objectives: RPO <= 1 hour (incremental outbox journal) and RTO <= 15 minutes to isolated disposable target.",
+      "Strict negative boundary: Live database never overwritten during restore drill; isolated disposable target verified."
+    ]
+  },
+  "verification": {
+    "command": "env V5_PG_URL=postgres://postgres@127.0.0.1:50709/postgres V5_PG_DISPOSABLE=1 V5_PG_REQUIRED=1 node --test tests/v5-p15-*.test.js",
+    "target_environment": "local loopback PostgreSQL 16.15 (Mac mini arm64)",
+    "results": {
+      "tests_total": 32,
+      "tests_passed": 32,
+      "tests_failed": 0,
+      "tests_skipped": 0
+    }
+  }
+}

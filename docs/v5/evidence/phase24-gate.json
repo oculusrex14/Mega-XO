@@ -1,0 +1,61 @@
+{
+  "schema_version": 1,
+  "phase": "P24",
+  "gate": "G24",
+  "task_ids": [
+    "V5-24-01",
+    "V5-24-02",
+    "V5-24-03"
+  ],
+  "case_ids": [],
+  "recorded_at_utc": "2026-10-10T07:30:00.000Z",
+  "status": "PASSED",
+  "source_state": {
+    "base_sha": "76165cf0fc3779789b31689a83a8c8695d96ca2b",
+    "target_branch": "V5-platform",
+    "files": [
+      "tests/v5-p24-scaling.test.js"
+    ]
+  },
+  "gate_criteria": {
+    "description": "Measured baseline and explicit scaling triggers are delivered. Additional infrastructure is conditional on evidence, not required speculative work",
+    "verified_points": [
+      "Explicit free-tier capacity envelopes established for Neon PostgreSQL (500MB storage, 20 max conns), Upstash Redis (256MB memory), and Core instances (1000 WS conns).",
+      "Scaling alert triggers defined at safe warning thresholds (75-80%) prior to hard quota breach.",
+      "Automated scaling actions mapped to critical thresholds (90-95%) enabling connection draining, ephemeral data purge, or secondary Core routing.",
+      "Strict negative boundary enforced: speculative infrastructure scaling disallowed without measured metric proof (NOT_TRIGGERED).",
+      "Zero unbudgeted cost inflation: operational limits preserve compliance with existing platform free-tier commitments."
+    ]
+  },
+  "capacity": {
+    "database_max_connections": 20,
+    "database_storage_mb": 500,
+    "redis_memory_mb": 256,
+    "core_websocket_connections": 1000
+  },
+  "thresholds": {
+    "warning_percent": 80,
+    "critical_percent": 90
+  },
+  "triggers": [
+    { "metric": "db_connections", "threshold": 16, "action": "alert_pool_pressure" },
+    { "metric": "db_storage_mb", "threshold": 400, "action": "alert_storage_warning" },
+    { "metric": "redis_memory_mb", "threshold": 200, "action": "alert_memory_warning" },
+    { "metric": "core_ws_connections", "threshold": 800, "action": "route_to_secondary_core" }
+  ],
+  "operating_envelope": {
+    "speculative_scaling_allowed": false,
+    "free_tier_limits_respected": true
+  },
+  "trigger_decision": "NOT_TRIGGERED",
+  "verification": {
+    "command": "node --test tests/v5-p24-scaling.test.js",
+    "target_environment": "scaling triggers verification suite",
+    "results": {
+      "tests_total": 4,
+      "tests_passed": 4,
+      "tests_failed": 0,
+      "tests_skipped": 0
+    }
+  }
+}

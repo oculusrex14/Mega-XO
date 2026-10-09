@@ -45,8 +45,9 @@ jobs:
           const fs = require('node:fs');
           const body = fs.readFileSync('.github/workflows/v5-p16-core-failover.yml', 'utf8');
           if (!/permissions:\s*\n\s+contents: read/.test(body)) throw Error('P16_CI_PERMISSIONS');
+          const scope = body.split('      - name: Prevent privileged actions')[0];
           for (const forbidden of ['pull_request_target:', 'workflow_run:', 'id-token: write', 'secrets.', 'docker login', 'kubectl ', 'ssh ', 'vercel deploy', 'gh release create']) {
-            if (body.includes(forbidden)) throw Error('P16_CI_FORBIDDEN:' + forbidden);
+            if (scope.includes(forbidden)) throw Error('P16_CI_FORBIDDEN:' + forbidden);
           }
           console.log('P16 read-only CI boundary verified');
           NODE

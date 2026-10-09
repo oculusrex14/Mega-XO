@@ -32,7 +32,9 @@ jobs:
           node --check scripts/v5/p19/disposable-adapters.js
           node --check scripts/v5/p19/chaos-contract.js
           node --check scripts/v5/p19/capacity-report.js
-          node --test tests/v5-p19-workload-profile.test.js tests/v5-p19-metrics.test.js tests/v5-p19-disposable-adapters.test.js tests/v5-p19-chaos-contract.test.js tests/v5-p19-capacity-report.test.js
+          node --check scripts/v5/p19/ci-perimeter.js
+          node scripts/v5/p19/ci-perimeter.js
+          node --test tests/v5-p19-workload-profile.test.js tests/v5-p19-metrics.test.js tests/v5-p19-disposable-adapters.test.js tests/v5-p19-chaos-contract.test.js tests/v5-p19-capacity-report.test.js tests/v5-p19-ci-perimeter.test.js
       - name: Produce clearly unexecuted launch-profile plan
         run: |
           set -euo pipefail

@@ -88,3 +88,15 @@ chaos and resource/alert reporting without assuming production targets.
   metrics. All numeric production alert thresholds remain NULL and
   deliveryVerified=false until actual multi-service staging load and
   incident notification proof exists. No made-up p99 SLO or 10x guarantee.
+
+
+## Provenance and CI safety (PR-only lane)
+
+Every P19 GitHub job checks out the exact *source branch head*, not
+GitHub's synthetic pull-request merge commit. The measured tests require
+P19_SOURCE_SHA to match that checked-out revision, and the capacity manifest
+must use the same SHA. The new ci-perimeter.js adversarial tests reject
+head/merge identity substitution, production/provider secrets, non-readonly
+actions, privileged PR triggers, public service ports, unpinned container
+images and extra/unbounded artifact paths. This is static defense-in-depth;
+GitHub required checks and protected environment policy are separate.

@@ -344,6 +344,7 @@ const REVOCATION_SQL = 'SELECT 1 AS present FROM monetization.store_revocations'
  + ' WHERE store = $1 AND transaction_id = $2';
 
 const PENDING_FINALIZATIONS_SQL = 'SELECT store, transaction_id, product_id, kind, state,'
+ + " (purchase_token IS NOT NULL AND purchase_token <> '') AS has_purchase_token,"
  + ' attempts, next_at, created_at, updated_at, lease_owner, lease_token, lease_until'
  + ' FROM monetization.store_finalize'
  + " WHERE state = 'pending'"
@@ -653,7 +654,7 @@ function createProviderWorkflow(options = {}) {
     store: row.store,
     transactionId: String(row.transaction_id),
     productId: row.product_id,
-    hasPurchaseToken: Boolean(row.purchase_token),
+    hasPurchaseToken: row.has_purchase_token === true,
     kind: row.kind,
     state: row.state,
     attempts: Number(row.attempts),

@@ -1,0 +1,124 @@
+'use strict';
+
+/**
+ * P11 HTTP principal regression: these are intentionally database-free checks
+ * so a registry outage cannot mask an exposed Core actor impersonation defect.
+ * Real PG16 token expiry/revocation semantics remain covered by P05 and P11 suites.
+ */
+const test = require('node:test');
+const assert = require('node:assert/strict');
+const { EventEmitter } = require('node:events');
+const { createApiHandler } = require('../apps/api/index.js');
+
+function fixture() {
+  const forwarded = [];
+  const profileReads = [];
+  const live = new Map([
+    ['alice-session', 'svc_alice'],
+    ['bob-session', 'svc_bob'],
+  ]);
+  const accounts = {
+    async requireLinked(token) {
+      const actor = live.get(token);
+      if (!actor) throw new Error('AUTH_REQUIRED');
+      return { actor };
+    },
+    async self(actor) {
+      profileReads.push(actor);
+      return { id: actor, name: actor, tag: 'MEGA-TEST', walletReady: true };
+    },
+  };
+  const coreGateway = {
+    async forwardCommand(request) {
+      forwarded.push(request);
+      return { ok: true, actor: request.actor };
+    },
+  };
+  return { handler: createApiHandler({ accounts, coreGateway }), forwarded, profileReads, live };
+}
+
+async function request(handler, {
+  method = 'POST', url = '/api/v1/convert', headers = {}, body = { amount: 100 },
+  actor, user, token, sessionToken,
+} = {}) {
+  const req = new EventEmitter();
+  Object.assign(req, { method, url, headers, body, actor, user, token, sessionToken });
+  return new Promise((resolve, reject) => {
+    const res = {
+      statusCode: 200,
+      headers: {},
+      setHeader(name, value) { this.headers[name.toLowerCase()] = value; },
+      status(code) { this.statusCode = code; return this; },
+      end(text = '') {
+        let data;
+        try { data = JSON.parse(text); } catch { data = text; }
+        resolve({ status: this.statusCode, data });
+      },
+    };
+    Promise.resolve(handler(req, res)).catch(reject);
+  });
+}
+
+test('P11: never accept request actor, user, or spoofed HTTP headers as Core principals', async () => {
+  const { handler, forwarded, profileReads } = fixture();
+  const attacks = [
+    { headers: { 'x-actor-id': 'svc_alice' } },
+    { headers: { 'x-test-actor': 'svc_alice' } },
+    { actor: 'svc_alice' },
+    { user: { id: 'svc_alice', actor: 'svc_alice' } },
+    { headers: { 'x-actor-id': 'svc_alice', authorization: 'Bearer fake-session' } },
+  ];
+  for (const attack of attacks) {
+    const core = await request(handler, attack);
+    assert.equal(core.status, 401);
+    assert.equal(core.data.error, 'AUTH_REQUIRED');
+    const account = await request(handler, {
+      ...attack, method: 'GET', url: '/api/account/profile',
+    });
+    assert.equal(account.status, 401);
+    assert.equal(account.data.error, 'AUTH_REQUIRED');
+  }
+  assert.equal(forwarded.length, 0);
+  assert.equal(profileReads.length, 0);
+});
+
+test('P11: linked bearer token wins over forged actor headers for profile and Core', async () => {
+  const { handler, forwarded, profileReads } = fixture();
+  const headers = {
+    authorization: 'Bearer alice-session',
+    'x-actor-id': 'svc_bob',
+    'x-test-actor': 'svc_bob',
+  };
+  const res = await request(handler, { headers, actor: 'svc_bob', user: { id: 'svc_bob' } });
+  assert.equal(res.status, 200);
+  assert.equal(res.data.actor, 'svc_alice');
+  assert.equal(forwarded.length, 1);
+  assert.equal(forwarded[0].actor, 'svc_alice');
+  const account = await request(handler, { method: 'GET', url: '/api/account/profile', headers });
+  assert.equal(account.status, 200);
+  assert.equal(account.data.id, 'svc_alice');
+  assert.deepEqual(profileReads, ['svc_alice']);
+});
+
+test('P11: old-origin cookie sessions work, revoked sessions never forward', async () => {
+  const { handler, forwarded, live } = fixture();
+  const headers = {
+    origin: 'https://play.antimatterinnovations.com',
+    cookie: '__Host-mega_session=bob-session',
+    'x-actor-id': 'svc_alice',
+  };
+  const good = await request(handler, { headers });
+  assert.equal(good.status, 200);
+  assert.equal(good.data.actor, 'svc_bob');
+  live.delete('bob-session');
+  const revoked = await request(handler, { headers });
+  assert.equal(revoked.status, 401);
+  assert.equal(revoked.data.error, 'AUTH_REQUIRED');
+  assert.equal(forwarded.length, 1);
+
+  const missingOrigin = await request(handler, {
+    headers: { cookie: '__Host-mega_session=alice-session' },
+  });
+  assert.equal(missingOrigin.status, 403);
+  assert.equal(missingOrigin.data.error, 'ORIGIN_OR_CONTENT_TYPE');
+});

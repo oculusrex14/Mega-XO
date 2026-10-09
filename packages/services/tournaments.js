@@ -571,7 +571,11 @@ function createTournamentService(options = {}) {
      * room and therefore take nothing here; their serialization point is the room-set identity. */
     await lockRoomRow(tx, cmd.id);
     requireRoomCommandId(cmd.id);
-    room = await repositories.tournaments.room(cmd.id);
+    /* activeRooms() hydrated the aggregate BEFORE the room-row lock.
+     * An independent settlement can finalize the room while this
+     * command waits; using room() would return the cached old snapshot
+     * even after FOR UPDATE and resurrect completed financial state. */
+    room = await repositories.tournaments.freshRoom(cmd.id);
     if (!room) fail('ROOM_NOT_FOUND');
     if (cmd.type === 'join') {
      if (room.table) fail('USE_PUBLIC_QUEUE');
@@ -631,8 +635,11 @@ function createTournamentService(options = {}) {
      * actor's wallet while this join waited on the room/occupancy locks.
      * Invalidate and rehydrate under wallet locks before any debit or write.
      * Existing-room commands never read economy before these locks. */
-    economy = cmd.type === 'publicJoin' ? await repositories.state.refresh()
-     : economy || await repositories.state.read();
+    /* Any public command may have hydrated the aggregate before wallets
+     * were locked (publicJoin for selection, other room commands through
+     * freshRoom). Refresh ALL public command economy views under the
+     * acquired wallet locks before debiting/reserving/settling. */
+    economy = await repositories.state.refresh();
     if (cmd.type === 'publicJoin') {
      const funded = eligibleAccount(lookupAccount(economy, actor));
      const quote = T.prize(cmd.table);

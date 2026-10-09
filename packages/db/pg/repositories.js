@@ -490,6 +490,15 @@ function pgRepositoriesFor(context) {
    const graph = await hydrate(context);
    return graph.rooms.get(String(id)) || findRoomByCode(graph.rooms.values(), id);
   },
+  /* An active-room selection predated its row lock. A separate settlement
+   * or maintenance worker can commit in between without touching the
+   * command-wide room-set mutex. Rehydrate after the lock, never return
+   * the pre-lock aggregate snapshot as if it were current. */
+  async freshRoom(id) {
+   invalidate(context);
+   const graph = await hydrate(context);
+   return graph.rooms.get(String(id)) || findRoomByCode(graph.rooms.values(), id);
+  },
   async rooms() { return [...(await hydrate(context)).rooms.values()]; },
   async activeRooms() {
    const graph = await hydrate(context);

@@ -18,7 +18,7 @@ function auditWorkflow(text) {
   if (/^\s*(?:pull_request_target|workflow_run|workflow_dispatch|repository_dispatch|schedule):/m.test(text)) {
     refuse('UNTRUSTED_EVENT');
   }
-  const events = text.slice(text.indexOf('on:\n') + 4, text.indexOf('\npermissions:'));
+  const events = text.slice(text.indexOf('on:\n') + 4, text.indexOf('\npermissions:')) + '\n';
   const pushes = events.match(/^  push:\n(?: {4,}.*\n)+/m)?.[0];
   const reviews = events.match(/^  pull_request:\n(?: {4,}.*\n)+/m)?.[0];
   if (!pushes || !reviews || pushes.replace('  push:', '  pull_request:') !== reviews) {

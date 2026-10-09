@@ -206,6 +206,11 @@ jobs:
         run: |
           set -o pipefail
           node --test --test-reporter=tap --test-concurrency=1 tests/v5-p08-snapshot-recovery.test.js tests/v5-p08-restart-recovery.test.js 2>&1 | tee .evidence-logs/v5-p08-recovery.tap
+      - name: P08 post-gate HTTP principal and pipelined ingress security
+        run: |
+          set -o pipefail
+          node --test --test-reporter=tap --test-concurrency=1 tests/v5-p08-http-auth.test.js 2>&1 | tee .evidence-logs/v5-p08-http-auth.tap
+          node --test --test-reporter=tap --test-concurrency=1 tests/v5-p08-ingress-bounds.test.js 2>&1 | tee .evidence-logs/v5-p08-ingress-bounds.tap
       - name: Enforce executed database coverage
         # A green run that quietly skipped the database suites is a failure, not a pass: every
         # suite must report assertions against the live service and report zero skips.
@@ -240,6 +245,8 @@ jobs:
             { file: 'tests/v5-p08-timers.test.js', log: '.evidence-logs/v5-p08-core.tap' },
             { file: 'tests/v5-p08-snapshot-recovery.test.js', log: '.evidence-logs/v5-p08-recovery.tap' },
             { file: 'tests/v5-p08-restart-recovery.test.js', log: '.evidence-logs/v5-p08-recovery.tap' },
+            { file: 'tests/v5-p08-http-auth.test.js', log: '.evidence-logs/v5-p08-http-auth.tap' },
+            { file: 'tests/v5-p08-ingress-bounds.test.js', log: '.evidence-logs/v5-p08-ingress-bounds.tap' },
           ];
           const report = { tool: 'v5-pg-coverage', suites: [] };
           let failed = false;

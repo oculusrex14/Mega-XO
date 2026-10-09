@@ -41,7 +41,7 @@ on:
 permissions:
   contents: read
 concurrency:
-  group: v5-p23-\${{ github.event.pull_request.number || github.ref }}
+  group: v5-p23-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 jobs:
   p23-source:

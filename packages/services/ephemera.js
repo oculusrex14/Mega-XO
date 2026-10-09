@@ -48,6 +48,14 @@ const RECONNECT_CAP_MS = 2000;
  * this long before flipping the socket's isOpen, because flipping it while the socket is still
  * unassigned is exactly what makes a late-completing socket impossible to destroy. */
 const CONNECT_SETTLE_MS = CONNECT_DEADLINE_MS + RECONNECT_CAP_MS;
+/* Per-session presence (V5 P06) mirrors the legacy session_presence semantics: a session counts as
+ * live for 45 s after its last heartbeat, and at most 16 sessions per actor are tracked. The key
+ * TTL (60 s) is refreshed on every touch, so a wiped/expired actor self-heals on the next
+ * heartbeat and no presence key is ever immortal. */
+const PRESENCE_WINDOW_MS = 45000;
+const PRESENCE_CAP = 16;
+/* The key part for a session-revocation hint (see presenceSetRevoked). */
+const PRESENCE_HINT_KIND = 'session-revoked';
 const FAMILIES = new Set(['presence', 'queue', 'cache', 'rate', 'route', 'hint', 'lock', 'negcache']);
 const ENVIRONMENTS = new Set(['stg', 'prd', 'test']);
 const SAFE_PART = /^[A-Za-z0-9_.:@-]{1,128}$/;
@@ -59,6 +67,26 @@ const COMPARE_DEL_LUA = "if redis.call('GET', KEYS[1]) == ARGV[1] then return re
  * impossible when they are the same atomic unit, so a queue key can never become an immortal
  * sorted set. PEXPIRE keeps exact milliseconds. */
 const QUEUE_ENQUEUE_LUA = "redis.call('ZADD', KEYS[1], ARGV[1], ARGV[2]); redis.call('ZREMRANGEBYSCORE', KEYS[1], '-inf', ARGV[3]); redis.call('PEXPIRE', KEYS[1], ARGV[4]); return 1;";
+/* One presence touch in ONE script. The previous shape issued eight sequential commands under a
+ * single operation deadline, which both paid eight network round trips and left a real crash window:
+ * a Core/API process dying after the member ZADD but before the key PEXPIREs could persist a
+ * member-carrying sorted set with NO expiry, and nothing would ever revisit it. A single atomic
+ * script has no such boundary - the client's timeout or a process death can only leave the key
+ * entirely untouched or fully written with its TTL. Each key's PEXPIRE immediately follows the
+ * command that can create it (so a later error such as a wrong-type refusal cannot strand a
+ * freshly created key), and the trims stay ordered score-prune-then-rank-cap exactly as before.
+ * KEYS: 1 presence:all:<actor>, 2 presence:fg:<actor>.
+ * ARGV: 1 now ms, 2 session ref, 3 window floor ms, 4 foreground '1'/'0', 5 ttlMs, 6 negative rank
+ * stop. Frozen and never derived from caller input, so the EVAL cache cannot be polluted. */
+const PRESENCE_TOUCH_LUA = "redis.call('ZADD', KEYS[1], 'GT', ARGV[1], ARGV[2]); "
+  + "redis.call('PEXPIRE', KEYS[1], ARGV[5]); "
+  + "if ARGV[4] == '1' then redis.call('ZADD', KEYS[2], 'GT', ARGV[1], ARGV[2]) else redis.call('ZREM', KEYS[2], ARGV[2]) end; "
+  + "redis.call('PEXPIRE', KEYS[2], ARGV[5]); "
+  + "redis.call('ZREMRANGEBYSCORE', KEYS[1], 0, ARGV[3]); "
+  + "redis.call('ZREMRANGEBYRANK', KEYS[1], 0, ARGV[6]); "
+  + "redis.call('ZREMRANGEBYSCORE', KEYS[2], 0, ARGV[3]); "
+  + "redis.call('ZREMRANGEBYRANK', KEYS[2], 0, ARGV[6]); "
+  + "return 1;";
 
 const fail = (code) => { throw Error(code); };
 
@@ -224,9 +252,120 @@ class EphemeraService {
     const k = this.key('presence', actor);
     return this.#op(async (c) => ({ value: await c.get(k), available: true }), LOSS.present);
   }
+  /* Drop every live session for one actor (revokeAll / logout-all / account deletion). */
   async dropPresence(actor) {
     const k = this.key('presence', actor);
     return this.#op((c) => c.del(k).then(() => ({ dropped: true, available: true })), { dropped: false, available: false, conservative: true });
+  }
+
+  /* ---- per-session presence (V5 P06 API consumer). Two bounded ZSETs per actor: every tracked
+   * session in `all`, the foreground subset in `fg`. The score is the last `seen` ms, so the read
+   * window (45 s) is the same one the legacy session_presence row used and a member that stops
+   * heartbeating simply ages out of the window and then off the key. `sessionRef` is a NON-secret
+   * derived id (the public 24-hex session id), never the bearer, so the value allowlist and the
+   * 4 KiB bound are respected and no credential reaches Redis. ---- */
+  async presenceTouch(actor, sessionRef, foreground, ttlMs = 60000) {
+    const ref = validatePart(sessionRef, 'session');
+    if (typeof foreground !== 'boolean') fail('INVALID_PRESENCE');
+    if (!Number.isSafeInteger(ttlMs) || ttlMs <= 0) fail('TTL_REQUIRED');
+    const all = this.key('presence', 'all', actor);
+    const fg = this.key('presence', 'fg', actor);
+    const now = Date.now();
+    const floor = now - PRESENCE_WINDOW_MS;
+    return this.#op(async (c) => {
+      /* ONE atomic script: member GT add, key TTL refresh and both bounded trims. The client can
+       * time out or the process can die, but the whole mutation either happened with a TTL already in
+       * place or did not happen - a member-carrying key can never be left immortal. `GT` still means
+       * a stale/earlier heartbeat can never move a session backwards in time; the rank stop is the
+       * same -(PRESENCE_CAP + 1) the sequential version used, so at most PRESENCE_CAP members survive. */
+      await c.sendCommand(['EVAL', PRESENCE_TOUCH_LUA, '2', all, fg,
+        String(now), ref, String(floor), foreground ? '1' : '0', String(ttlMs), String(-(PRESENCE_CAP + 1))]);
+      return { stored: true, available: true };
+    }, { stored: false, available: false, conservative: true });
+  }
+  /* Read every still-live session for one actor. A member outside the 45 s window is filtered out
+   * (it ages off the key entirely on the next touch) so a stale score is never reported live. An
+   * unavailable Redis is the conservative empty result with `available:false`; the caller then
+   * renders the actor offline, never online. */
+  async presenceRead(actor) {
+    const all = this.key('presence', 'all', actor);
+    const fg = this.key('presence', 'fg', actor);
+    const now = Date.now();
+    const floor = now - PRESENCE_WINDOW_MS;
+    return this.#op(async (c) => {
+      const [allRows, fgRows] = await Promise.all([
+        c.zRangeByScoreWithScores(all, floor, '+inf'),
+        c.zRangeByScoreWithScores(fg, floor, '+inf'),
+      ]);
+      const foreground = new Set(fgRows.map((r) => r.value));
+      return { sessions: allRows.map((r) => ({ ref: r.value, foreground: foreground.has(r.value), seen: Number(r.score) })), available: true };
+    }, { sessions: [], available: false, conservative: true });
+  }
+  async presenceDrop(actor, sessionRef) {
+    const ref = validatePart(sessionRef, 'session');
+    const all = this.key('presence', 'all', actor);
+    const fg = this.key('presence', 'fg', actor);
+    return this.#op(async (c) => {
+      await c.zRem(all, ref);
+      await c.zRem(fg, ref);
+      return { dropped: true, available: true };
+    }, { dropped: false, available: false, conservative: true });
+  }
+  async presenceDropActor(actor) {
+    const all = this.key('presence', 'all', actor);
+    const fg = this.key('presence', 'fg', actor);
+    return this.#op((c) => c.del([all, fg]).then(() => ({ dropped: true, available: true })), { dropped: false, available: false, conservative: true });
+  }
+  /* Revocation hints: ONE bounded key per revoked session ref, whose TTL outlives any in-flight
+  * heartbeat. The API writes them post-commit so a delayed heartbeat can fence itself, and reads
+  * them so a stale member is never projected online. Advisory only - the durable session row decides;
+  * a lost hint can only make behaviour MORE conservative. */
+  async presenceSetRevoked(refs, ttlMs = 300000) {
+    if (!Array.isArray(refs)) fail('INVALID_PRESENCE');
+    if (!Number.isSafeInteger(ttlMs) || ttlMs <= 0) fail('TTL_REQUIRED');
+    const list = [...new Set(refs.filter((r) => typeof r === 'string' && r))].slice(0, 256);
+    if (!list.length) return { stored: true, available: true };
+    return this.#op(async (c) => {
+      const pipeline = c.multi();
+      for (const ref of list) pipeline.set(this.key('hint', PRESENCE_HINT_KIND, validatePart(ref, 'session')), '1', { PX: ttlMs });
+      await pipeline.exec(true);
+      return { stored: true, available: true };
+    }, { stored: false, available: false, conservative: true });
+  }
+  async presenceCheckRevoked(refs) {
+    const list = [...new Set((Array.isArray(refs) ? refs : []).filter((r) => typeof r === 'string' && r))].slice(0, 512);
+    if (!list.length) return { revoked: [], available: true };
+    return this.#op(async (c) => {
+      const pipeline = c.multi();
+      for (const ref of list) pipeline.get(this.key('hint', PRESENCE_HINT_KIND, validatePart(ref, 'session')));
+      const replies = await pipeline.exec(true);
+      const revoked = list.filter((_, i) => replies[i] !== null && replies[i] !== undefined);
+      return { revoked, available: true };
+    }, { revoked: [], available: false, conservative: true });
+  }
+  /* Bounded multi-actor read for a LIST projection (friends). ONE pipelined round trip instead of N
+   * sequential reads, with `max` capping the fan-out; a caller that lists more actors than the cap
+   * gets the conservative empty per-actor result for the overflow, never an unbounded pipeline. */
+  async presenceReadMany(actors, { max = 512 } = {}) {
+    if (!Number.isSafeInteger(max) || max <= 0) fail('INVALID_LIMIT');
+    const list = [...new Set(actors.filter((a) => a !== undefined && a !== null).map(String))].slice(0, max);
+    if (!list.length) return { presence: [], available: true };
+    const floor = Date.now() - PRESENCE_WINDOW_MS;
+    return this.#op(async (c) => {
+      const pipeline = c.multi();
+      for (const actor of list) {
+        pipeline.zRangeByScoreWithScores(this.key('presence', 'all', actor), floor, '+inf');
+        pipeline.zRangeByScoreWithScores(this.key('presence', 'fg', actor), floor, '+inf');
+      }
+      const replies = await pipeline.exec(true);
+      const presence = list.map((actor, i) => {
+        const allRows = replies[i * 2] || [];
+        const fgRows = replies[i * 2 + 1] || [];
+        const foreground = new Set(fgRows.map((r) => r.value));
+        return { actor, foreground: fgRows.length > 0, sessions: allRows.map((r) => ({ ref: r.value, foreground: foreground.has(r.value), seen: Number(r.score) })) };
+      });
+      return { presence, available: true };
+    }, { presence: [], available: false, conservative: true });
   }
 
   /* ---- bounded cache ---- */

@@ -28,8 +28,10 @@
  *
  * Legacy names and argument ORDER are preserved; every method returns a Promise because
  * PostgreSQL I/O cannot be synchronous. Exceptions to a 1:1 port, each deliberate:
- *   - `heartbeat` refuses with PRESENCE_OWNED_BY_P06: presence is the managed-Redis tier's
- *     (V5 P06), and a durable presence row would be a second source of truth for an ephemeral fact.
+ *   - `heartbeat` writes per-session presence through the CALLER-OWNED `options.ephemera` adapter
+ *     (V5 P06) after the durable session/rate work commits; no durable presence row exists because
+ *     that would be a second source of truth for an ephemeral fact. Without an adapter the
+ *     projection stays conservatively hidden and heartbeat reports offline.
  *   - `deleteAccount` performs the API's real disable (sessions/challenges/identities/credential
  *     removal, profile tombstone, unverified account) plus a durable privacy request, receipt and
  *     Core hand-off outbox row. The economic/competitive erasure is Core's, so no economic row is
@@ -77,6 +79,16 @@ const SESSION_LINKED_TTL = 14 * DAY;
 const SESSION_ANON_TTL = DAY;
 const SESSION_KEEP = 5;
 const SIGNIN_TTL = 5 * 60000;
+/* Per-session presence (P06 manager Redis). The lease TTL follows the client heartbeat cadence
+ * (15 s) with comfortable slack; the read window is the legacy 45 s. Both are internal to this
+ * manager - the ephemera adapter owns the Redis side, this service never speaks Redis. */
+const PRESENCE_TTL = 60000;
+/* A revoked session must be unfencable by a delayed heartbeat. Because PostgreSQL and Redis cannot
+ * commit atomically, revocation is ALSO recorded as a bounded Redis HINT whose TTL comfortably
+ * outlives any in-flight heartbeat: a heartbeat checks the hint before writing and re-checks after,
+ * dropping its own write and refusing if the session was revoked meanwhile. The hint is advisory -
+ * the durable session row still decides - and a lost hint only makes the system MORE conservative. */
+const PRESENCE_HINT_TTL = 5 * 60000;
 /* Approved social limits (unchanged policy values from the V4 store) and the bounded page size for
  * the friends LIST reads. Authorization uses exact pair reads and complete COUNTs; only the
  * user-facing lists are paged, and a full page reports `truncated` instead of pretending completeness. */
@@ -179,9 +191,91 @@ async function createAccountService(pool, options = {}) {
   * AFTER the commit (at-least-once; the durable family state stays authoritative) and is optional
   * so this service has no dependency on the refresh factory. */
  const onSessionRevoked = typeof options.onSessionRevoked === 'function' ? options.onSessionRevoked : null;
+ /* P06 presence: a CALLER-OWNED ephemera adapter (packages/services/ephemera.js). This service
+  * NEVER constructs, closes or reconfigures it; without one, every presence projection stays the
+  * conservative frozen default (hidden) and heartbeat is a no-op. An unavailable adapter yields the
+  * same conservative result - a lost Redis can only make presence more conservative, never fake an
+  * online actor. Optional: absence is a supported deployment, not a stub. */
+ const ephemera = options.ephemera && typeof options.ephemera.presenceTouch === 'function' && typeof options.ephemera.presenceRead === 'function'
+  ? options.ephemera : null;
  const afterRevocation = async (publicIds) => {
   if (!onSessionRevoked || !Array.isArray(publicIds) || publicIds.length === 0) return;
   try { await onSessionRevoked(publicIds); } catch { /* best effort; durable state decides */ }
+ };
+ /* Presence is ephemeral Redis coordination and MUST run OUTSIDE any PostgreSQL transaction (the
+  * adapter is a sibling package; a Redis call inside a transaction body would pin the connection on
+  * external I/O). These helpers are therefore called only before `run` (pre-reads) or after it has
+  * committed (post-commit drops). A lost/unavailable adapter resolves to the conservative shape and
+  * is never thrown into a request path that already committed. */
+ const presenceAvailable = () => ephemera !== null;
+ /* Raw adapter read for one actor: the raw live-session set. This is PRESENCE SOURCE ONLY - it is NOT
+  * trusted as authentication. Every projection validates each ref against the durable identity.sessions
+  * rows inside its own transaction (see loadProfile), so a stale/hint-less member can never render a
+  * session present, and the foreground bit is read PER MEMBER only after that validation. Returns null
+  * when the adapter is absent or its answer is unavailable, so the caller keeps the conservative default. */
+ const presenceFor = async (actor) => {
+  if (!ephemera) return null;
+  let out;
+  try { out = await ephemera.presenceRead(String(actor)); } catch { return null; }
+  if (!out || out.available !== true) return null;
+  return { sessions: Array.isArray(out.sessions) ? out.sessions : [] };
+ };
+ /* The same read for a bounded LIST projection (friends/search). Returns `null` when the adapter is
+  * absent/unavailable (so every entry renders conservatively); otherwise a Map of actor -> { sessions }.
+  * One pipelined round trip when the adapter supports it. The durable per-actor validation (and the
+  * foreground decision) happens in each projection, not here. */
+ const presenceMapFor = async (actors) => {
+  if (!ephemera) return null;
+  const ids = [...new Set(actors.map(String))];
+  if (!ids.length) return new Map();
+  try {
+   if (typeof ephemera.presenceReadMany === 'function') {
+    const out = await ephemera.presenceReadMany(ids);
+    if (!out || out.available !== true) return null;
+    const map = new Map();
+    for (const entry of out.presence) {
+     map.set(String(entry.actor), { sessions: Array.isArray(entry.sessions) ? entry.sessions : [] });
+    }
+    return map;
+   }
+   const map = new Map();
+   for (const id of ids) map.set(id, await presenceFor(id));
+   return map;
+  } catch { return null; }
+ };
+ /* Post-commit best-effort presence removal for a single session (logout/revoke) - never throws. */
+ const dropSessionPresence = async (actor, ref) => {
+  if (!ephemera || !actor || typeof ref !== 'string') return;
+  try { await ephemera.presenceDrop(String(actor), ref); } catch { /* best effort */ }
+ };
+ /* Post-commit best-effort presence removal for every session of an actor (logout-all/revocation
+  * that clears the actor). Falls back to per-session drops when the adapter lacks the actor-wide
+  * method, so a partial adapter still degrades safely. */
+ const dropActorPresence = async (actor, refs = []) => {
+  if (!ephemera || !actor) return;
+  try {
+   if (typeof ephemera.presenceDropActor === 'function') await ephemera.presenceDropActor(String(actor));
+   else for (const ref of refs) await ephemera.presenceDrop(String(actor), ref);
+  } catch { /* best effort */ }
+ };
+ /* The revocation hint (SECONDARY fence). `setRevocationHints` is written post-commit by every
+  * revoker; a heartbeat checks it before and after its write so a delayed write is not made once the
+  * session is known revoked. It is only a fast-path optimization: the PRIMARY fences are the durable
+  * re-read in heartbeat and the durable validation in loadProfile, so a LOST hint (wiped Redis) still
+  * cannot resurrect a revoked session. The adapter methods are OPTIONAL; when absent behaviour stays
+  * conservative. */
+ const setRevocationHints = async (refs) => {
+  if (!ephemera || typeof ephemera.presenceSetRevoked !== 'function') return;
+  const list = [...new Set((refs || []).filter((r) => typeof r === 'string' && r))];
+  if (!list.length) return;
+  try { await ephemera.presenceSetRevoked(list, PRESENCE_HINT_TTL); } catch { /* best effort; the durable row already decided */ }
+ };
+ const presenceRevoked = async (ref) => {
+  if (!ephemera || typeof ephemera.presenceCheckRevoked !== 'function' || typeof ref !== 'string') return false;
+  try {
+   const out = await ephemera.presenceCheckRevoked([ref]);
+   return Array.isArray(out && out.revoked) && out.revoked.includes(ref);
+  } catch { return false; }
  };
  const options_ = Object.freeze({ ...options, role });
  const uow = createPgUnitOfWork(pool, { now: clock, role });
@@ -293,13 +387,19 @@ async function createAccountService(pool, options = {}) {
   if (await repositories.social.pairRequest(actor, target)) return 'outgoing';
   return actor === target ? 'self' : 'none';
  };
- /* The public profile projection. Visibility is decided by the account flags, the EXACT pair
+ /* The durable session authority as a Set of public ids. A Redis presence member is admissible ONLY
+  * when its ref still has a live row in identity.sessions, so both presence projections - loadProfile's
+  * read-side validation and heartbeat's post-write fence - filter through this exact derivation and a
+  * wiped revocation hint, or a delayed write for an already-revoked session, can never render an actor
+  * present. MUST be called inside a PostgreSQL transaction (identity.sessions is the sole authority). */
+ const liveSessionIds = async (repositories, actor) => new Set((await repositories.sessions.list(actor, clock())).map((row) => sessionId(row.hash)));
+/* The public profile projection. Visibility is decided by the account flags, the EXACT pair
   * relation and the durable deletion state: a deletion-pending actor is hidden from every OTHER
   * viewer (its own self-view still resolves for the receipt/status surfaces). The published
   * competitive season is the APPROVED read-only projection (src/authority.js seasonStatusOf), not the
   * raw persisted season row - the raw row carries opponent IDs and win/loss counters that V4 never
   * published, and it lacks the approved start/end/uniqueOpponents/requirements/previous fields. */
- const loadProfile = async (repositories, viewer, actor, account, activity = null) => {
+ const loadProfile = async (repositories, viewer, actor, account, activity = null, presence = undefined) => {
   const row = await repositories.profiles.for(actor);
   if (!account || !row) fail('PROFILE_NOT_FOUND');
   if (viewer !== actor) {
@@ -310,6 +410,40 @@ async function createAccountService(pool, options = {}) {
   if (account.suspended || account.hold || relation === 'blocked') fail('PROFILE_NOT_FOUND');
   const state = await accountState(repositories, actor);
   const show = viewer === actor || row.stats_visibility === 'public' || (row.stats_visibility === 'friends' && relation === 'friend');
+  /* Presence visibility (the legacy pair rule): the viewer sees the actor's presence only on its own
+   * view or on a friend view of a 'friends'-visibility profile. presence_visibility is restricted to
+   * ('friends','hidden') by product policy AND the schema CHECK, so 'public' is neither approved nor
+   * reachable; a 'hidden' profile hides even a friend, and a blocked relation already threw above. */
+  const visible = viewer === actor || (row.presence_visibility === 'friends' && relation === 'friend');
+  let presenceProjection = { state: 'hidden', online: false };
+  if (visible) {
+   /* `presence` is the adapter read taken by the caller OUTSIDE this transaction. `null` means the
+    * adapter is unavailable, `undefined` means the caller could not take a read (e.g. a read taken
+    * inside `run`, which must not reach Redis). BOTH are the conservative offline, never a
+    * fabricated online; an ABSENT adapter stays hidden (the frozen default). */
+   if (!presenceAvailable()) presenceProjection = { state: 'hidden', online: false };
+   else if (!presence) presenceProjection = { state: 'offline', online: false };
+   else {
+    /* DURABLE VALIDATION - the read-side authority. Redis is only the presence SOURCE; PostgreSQL is
+     * the sole authentication/revocation authority, so a Redis member is admissible ONLY when a
+     * matching session is still live in identity.sessions. The public session id is derived here
+     * (sessionId(hash), exactly as the heartbeat wrote it), so a wiped/lost revocation hint - or a
+     * delayed write for an already-revoked session - can never resurrect presence: any ref with no
+     * durable live session is dropped inside this transaction and cannot render the actor present. */
+    const liveIds = await liveSessionIds(repositories, actor);
+    const sessions = presence.sessions.filter((s) => liveIds.has(s.ref));
+    const foreground = sessions.some((s) => s.foreground === true);
+    if (foreground) {
+     /* The approved legacy state precedence: a foreground session in a committed match reads
+      * `in-match` (source: `a.activeMatch ? 'in-match' : ... 'online'`). `activeMatch` IS the
+      * API-derivable competitive projection (profile.account_state), so parity is preserved. The
+      * `queued` and `in-lobby` states depend on live queue membership (P07) and party-room
+      * membership (P08) - inputs this API role cannot read - and are therefore NOT synthesized. */
+     presenceProjection = state.competitive.activeMatch ? { state: 'in-match', online: true } : { state: 'online', online: true };
+    } else if (sessions.length === 0) presenceProjection = { state: 'offline', online: false };
+    else presenceProjection = { state: 'away', online: false };
+   }
+  }
   return {
    id: actor, tag: row.tag, friendCode: row.tag, username: row.username, name: row.display_name, displayName: row.display_name,
    avatar: row.avatar,
@@ -319,16 +453,14 @@ async function createAccountService(pool, options = {}) {
     * never a synthesized zero season. */
    season: state.season ? seasonStatusOf(state.season, state.competitive, state.seasonHistory, clock()) : null,
    relation, stats: show ? statsOf(state) : null, statsVisibility: row.stats_visibility,
-   /* Presence lives in the managed-Redis tier (P06); a durable row would be a second source of
-    * truth for an ephemeral fact, so the projection is reported as hidden rather than invented. */
-   presence: { state: 'hidden', online: false },
+   presence: presenceProjection,
    walletReady: state.walletReady === true,
   };
  };
- const selfProfile = async (repositories, actor) => {
+ const selfProfile = async (repositories, actor, presence = undefined) => {
   const account = await repositories.accounts.for(actor);
   if (!account) fail('PROFILE_NOT_FOUND');
-  const base = await loadProfile(repositories, actor, actor, account);
+  const base = await loadProfile(repositories, actor, actor, account, null, presence);
   const row = await repositories.profiles.for(actor);
   const state = await accountState(repositories, actor);
   const identities = await repositories.identities.list(actor);
@@ -523,10 +655,10 @@ async function createAccountService(pool, options = {}) {
 
  /* ---------------------------------------------------------------- service */
 
- async function viewWith(repositories, viewer, actor) {
+ async function viewWith(repositories, viewer, actor, presence = undefined) {
   const account = await repositories.accounts.for(actor);
   if (!account) fail('PROFILE_NOT_FOUND');
-  return loadProfile(repositories, viewer, actor, account);
+  return loadProfile(repositories, viewer, actor, account, null, presence);
  }
 
  const service = {
@@ -577,10 +709,21 @@ async function createAccountService(pool, options = {}) {
   },
 
   /* --- profiles --- */
-  async view(viewer, actor) { return run((repositories) => viewWith(repositories, viewer, actor)); },
-  async self(actor) { return run((repositories) => selfProfile(repositories, actor)); },
+  async view(viewer, actor) {
+   /* Presence is read from the caller-owned adapter BEFORE the transaction: the adapter is a sibling
+    * package and its I/O must never run inside a PostgreSQL scope. A null read is the conservative
+    * unavailable result and can never fabricate an online actor. */
+   const presence = await presenceFor(actor);
+   return run((repositories) => viewWith(repositories, viewer, actor, presence));
+  },
+  async self(actor) {
+   const presence = await presenceFor(actor);
+   return run((repositories) => selfProfile(repositories, actor, presence));
+  },
   async edit(actor, changes) {
    const input = changes || {};
+   /* Presence is decorated into the returned profile exactly like view/self, read OUTSIDE the tx. */
+   const presence = await presenceFor(actor);
    return run(async (repositories) => {
     /* Profile editing is identity work, not economic: a pending-provisioning actor may still
       * manage its profile (legacy requireAccount gated on verified/suspended/hold only). */
@@ -611,11 +754,16 @@ async function createAccountService(pool, options = {}) {
      if (error && error.code === '23505') fail('USERNAME_TAKEN');
      throw error;
     }
-    return selfProfile(repositories, actor);
+    return selfProfile(repositories, actor, presence);
    });
   },
   async search(actor, query) {
-   return run(async (repositories) => {
+   /* Two transactions around the bounded presence read: the FIRST resolves the candidate ids (with
+    * the eligibility guard, the durable rate spend and validation, in the approved order); the
+    * presence reads for the matches then run OUTSIDE any transaction; the SECOND decorates each
+    * profile. This is the same pattern as friends() - every public profile-producing surface shows
+    * the ACTUAL presence, never an arbitrary in-transaction default. */
+   const probe = await run(async (repositories) => {
     /* A read: a pending-provisioning actor may still search (only economic/account mutations are
       * gated on readiness). */
     await verifiedRow(repositories, actor);
@@ -623,20 +771,21 @@ async function createAccountService(pool, options = {}) {
     if (typeof query !== 'string' || query.length > policy.SEARCH_MAX) fail('INVALID_SEARCH');
     const q = query.trim().replace(/^#|^@/, '');
     if (q.length < policy.SEARCH_MIN) fail('SEARCH_TOO_SHORT');
-    let ids;
     if (q.toUpperCase().startsWith('MEGA-')) {
      const id = await repositories.profiles.byTag(q.toUpperCase());
-     ids = id ? [id] : [];
-    } else {
-     const key = q.toLowerCase();
-     if (!/^[a-z0-9_]+$/.test(key)) return [];
-     ids = await repositories.profiles.prefix(key, 20);
+     return id ? [id] : [];
     }
+    const key = q.toLowerCase();
+    if (!/^[a-z0-9_]+$/.test(key)) return [];
+    return repositories.profiles.prefix(key, 20);
+   });
+   const candidates = probe.filter((id) => id !== actor);
+   const presenceMap = await presenceMapFor(candidates);
+   return run(async (repositories) => {
     const out = [];
-    for (const id of ids) {
-     if (id === actor) continue;
+    for (const id of candidates) {
      try {
-      const profile = await viewWith(repositories, actor, id);
+      const profile = await viewWith(repositories, actor, id, presenceMap ? presenceMap.get(String(id)) : null);
       delete profile.stats;
       out.push(profile);
      } catch { /* blocked/held/suspended targets are simply absent */ }
@@ -645,11 +794,24 @@ async function createAccountService(pool, options = {}) {
    });
   },
   async friends(actor) {
+   /* Pages are resolved first so the (bounded, pipelined) presence reads for every listed actor run
+    * OUTSIDE the transaction; the projection itself re-reads eligibility under the scope. */
+   const pages = await run(async (repositories) => {
+    const account = await repositories.accounts.for(actor);
+    if (!account || account.suspended || account.hold || !account.verified) fail('ACCOUNT_UNAVAILABLE');
+    return {
+     friend: await repositories.social.friendIds(actor, FRIEND_LIST_LIMIT),
+     incoming: await repositories.social.incomingIds(actor, FRIEND_LIST_LIMIT),
+     outgoing: await repositories.social.outgoingIds(actor, FRIEND_LIST_LIMIT),
+     blocked: await repositories.social.blockedIds(actor, FRIEND_LIST_LIMIT),
+    };
+   });
+   const presenceMap = await presenceMapFor([...pages.friend.ids, ...pages.incoming.ids, ...pages.outgoing.ids]);
    return run(async (repositories) => {
     const account = await repositories.accounts.for(actor);
     if (!account || account.suspended || account.hold || !account.verified) fail('ACCOUNT_UNAVAILABLE');
     const view = async (id) => {
-     try { return await loadProfile(repositories, actor, id, await repositories.accounts.for(id)); } catch { return null; }
+     try { return await loadProfile(repositories, actor, id, await repositories.accounts.for(id), null, presenceMap ? presenceMap.get(String(id)) : null); } catch { return null; }
     };
     /* Bounded LISTS (never a silent truncation: a full page reports hasMore). Visibility of each
       * target is decided by the SAME projection as view/search, so a deletion-pending actor is
@@ -659,22 +821,18 @@ async function createAccountService(pool, options = {}) {
      for (const id of page.ids) { const profile = await view(id); if (profile) out.push(profile); }
      return out;
     };
-    const friendPage = await repositories.social.friendIds(actor, FRIEND_LIST_LIMIT);
-    const incomingPage = await repositories.social.incomingIds(actor, FRIEND_LIST_LIMIT);
-    const outgoingPage = await repositories.social.outgoingIds(actor, FRIEND_LIST_LIMIT);
-    const blockedPage = await repositories.social.blockedIds(actor, FRIEND_LIST_LIMIT);
-    const friends = await load(friendPage);
+    const friends = await load(pages.friend);
     friends.sort((x, y) => Number(y.presence.online) - Number(x.presence.online) || x.username.localeCompare(y.username));
-    const incoming = await load(incomingPage);
-    const outgoing = await load(outgoingPage);
+    const incoming = await load(pages.incoming);
+    const outgoing = await load(pages.outgoing);
     const blocked = [];
-    for (const id of blockedPage.ids) {
+    for (const id of pages.blocked.ids) {
      const row = await repositories.profiles.for(id);
      blocked.push({ id, username: row ? row.username : 'Player' });
     }
     return {
      friends, incoming, outgoing, blocked,
-     truncated: friendPage.hasMore || incomingPage.hasMore || outgoingPage.hasMore || blockedPage.hasMore,
+     truncated: pages.friend.hasMore || pages.incoming.hasMore || pages.outgoing.hasMore || pages.blocked.hasMore,
     };
    });
   },
@@ -808,7 +966,7 @@ async function createAccountService(pool, options = {}) {
   },
   async revokeSession(token, id) {
    if (typeof id !== 'string' || !/^[a-f0-9]{24}$/.test(id)) fail('INVALID_SESSION');
-   return run(async (repositories) => {
+   const result = await run(async (repositories) => {
     const current = await sessionGuard(repositories, token, { linked: true });
     const match = (await repositories.sessions.list(current.actor, clock())).find((row) => sessionId(row.hash) === id);
     if (!match) fail('SESSION_NOT_FOUND');
@@ -816,17 +974,26 @@ async function createAccountService(pool, options = {}) {
     await repositories.sessions.revoke(current.actor, match.hash);
     notify(current.actor, 'session_revoked');
     await afterRevocation([sessionId(match.hash)]);
-    return { revoked: true };
+    return { revoked: true, actor: current.actor, refs: [id] };
    });
+   /* Post-commit, per-session: only the revoked session's presence is dropped, so a sibling
+    * foreground session keeps the actor online. The revocation HINT is written first so an in-flight
+    * heartbeat for this session is fenced (and undoes its write). */
+   await setRevocationHints(result.refs);
+   await dropSessionPresence(result.actor, result.refs[0]);
+   return { revoked: true };
   },
   async revokeOtherSessions(token) {
-   return run(async (repositories) => {
+   const result = await run(async (repositories) => {
     const current = await sessionGuard(repositories, token, { linked: true });
     const revoked = await repositories.sessions.revokeOthers(current.actor, current.hash, clock());
     notify(current.actor, 'other_sessions_revoked', { count: revoked.length });
     await afterRevocation(revoked.map((hash) => sessionId(hash)));
-    return { revoked: revoked.length };
+    return { revoked: revoked.length, actor: current.actor, refs: revoked.map((hash) => sessionId(hash)) };
    });
+   await setRevocationHints(result.refs);
+   for (const ref of result.refs) await dropSessionPresence(result.actor, ref);
+   return { revoked: result.revoked };
   },
   async logout(token, all = false) {
    const result = await run(async (repositories) => {
@@ -842,16 +1009,80 @@ async function createAccountService(pool, options = {}) {
      if (consumed !== 1) fail('AUTH_REQUIRED');
      revokedIds = [sessionId(session.hash)];
     }
-    return { signedOut: true, revokedIds };
+    return { signedOut: true, revokedIds, actor: session.actor, all };
    });
    await afterRevocation(result.revokedIds);
+   /* Post-commit presence cleanup. The revocation hints are written FIRST so any in-flight heartbeat
+    * for these sessions is fenced; `all` cleared every session, so the actor-wide drop is exact; the
+    * single form drops exactly the presented session and leaves the actor's other live sessions
+    * (including a foreground one) online. */
+   await setRevocationHints(result.revokedIds);
+   if (result.actor && result.all) await dropActorPresence(result.actor, result.revokedIds);
+   else if (result.actor) for (const ref of result.revokedIds) await dropSessionPresence(result.actor, ref);
    return { signedOut: true };
   },
-  /* Presence is the managed-Redis tier's (P06). The method is preserved so callers need no new
-    * code path, and it refuses explicitly instead of fabricating a durable presence row. */
+  /* Presence is the managed-Redis tier's (P06). The adapter is read for the projection BEFORE the
+    * transaction and the heartbeat is WRITTEN only AFTER the transaction commits, so external I/O
+    * never runs inside a PostgreSQL scope. The durable rate spend stays in PostgreSQL, exactly like
+    * every other budgeted method; a wiped Redis therefore cannot bypass it, and the session row
+    * (never the bearer/token) remains the PostgreSQL authority.
+    *
+    * RACE FENCE. Between the committed PG read and the Redis write a concurrent logout/revoke could
+    * delete the session and its presence, so a naive write would resurrect it. The PRIMARY guard is
+    * the post-write DURABLE re-read of the session rows: PostgreSQL is the sole revocation authority
+    * and is reachable on this path, so a logout/revoke that committed at ANY time before that check
+    * is always detected and the heartbeat drops its own write and refuses - even if Redis is down, the
+    * revocation hint was lost, or the read was raced. That SAME durable read feeds the returned
+    * projection, which is filtered exactly like loadProfile, so a delayed revoked foreground ghost in
+    * Redis cannot make the caller report online while only a background sibling is live. The SECONDARY
+    * guard is the Redis revocation HINT (checked before the write so no write is made for a session
+    * already known revoked, and again after). A revoked or expired bearer is refused at the durable
+    * row (AUTH_REQUIRED) and writes nothing. Absent adapter => conservative frozen offline, never
+    * online. */
   async heartbeat(token, foreground) {
    if (typeof foreground !== 'boolean') fail('INVALID_PRESENCE');
-   return run(async (repositories) => { await linkedRow(repositories, token); fail('PRESENCE_OWNED_BY_P06'); });
+   const session = await run(async (repositories) => {
+    /* The durable session row is the authority (legacy requireLinked semantics): a revoked/expired/
+      * suspended/unverified bearer is refused HERE and nothing is written. The rate spend is durable
+      * in PostgreSQL, so a wiped Redis cannot bypass it. */
+    const live = await linkedRow(repositories, token);
+    await rate(repositories, live.hash, 'presence', 12, 60);
+    return { actor: live.actor, hash: live.hash };
+   });
+   const ref = sessionId(session.hash);
+   if (!ephemera) return { state: 'offline', online: false };
+   /* (1a) A revoker that committed before this point left a hint: do not write at all. */
+   if (await presenceRevoked(ref)) return { state: 'offline', online: false };
+   let stored;
+   try { stored = await ephemera.presenceTouch(String(session.actor), ref, foreground, PRESENCE_TTL); } catch { stored = { stored: false, available: false, conservative: true }; }
+   if (!stored || stored.available !== true) return { state: 'offline', online: false };
+   /* (1b) A revoker that committed WHILE the write was in flight: its hint is visible now, so undo
+    * the write we just made - the revoked session's presence is NOT resurrected. */
+   if (await presenceRevoked(ref)) {
+    await dropSessionPresence(session.actor, ref);
+    return { state: 'offline', online: false };
+   }
+   /* (1c) The AUTHORITATIVE fence: re-read the DURABLE session rows after the Redis write, in ONE
+    * transaction. PostgreSQL is the sole revocation authority and is always reachable on this path,
+    * so a logout/revoke that committed at any point between the first read and here is detected
+    * independently of Redis (and thus even if the Redis hint write failed because Redis was
+    * momentarily down). The SAME read yields the actor's live public ids, which the projection below
+    * filters through EXACTLY like loadProfile; a row that is gone or expired means this heartbeat must
+    * not leave presence behind: drop what we wrote and refuse. */
+   const liveIds = await run((repositories) => liveSessionIds(repositories, session.actor));
+   if (!liveIds.has(ref)) {
+    await dropSessionPresence(session.actor, ref);
+    return { state: 'offline', online: false };
+   }
+   /* (2) Re-read the actor's presence (its OWN view, never privacy-filtered), then drop every raw
+    * member with no durable live session - the same durable validation as loadProfile - so the caller
+    * gets the projection it actually wrote and a delayed revoked foreground ghost can never render the
+    * actor online while only a background sibling is live. A failed read degrades conservatively. */
+   const presence = await presenceFor(session.actor);
+   if (!presence) return { state: 'offline', online: false };
+   const live = presence.sessions.filter((s) => liveIds.has(s.ref));
+   if (live.some((s) => s.foreground === true)) return { state: 'online', online: true };
+   return live.length ? { state: 'away', online: false } : { state: 'offline', online: false };
   },
 
   /* --- linked identities --- */
@@ -1359,11 +1590,13 @@ async function createAccountService(pool, options = {}) {
     * row is touched here. */
   async deleteAccount(token, confirmation) {
    const capturedRevokedIds = [];
+   let deletedActor = null;
    const result = await run(async (repositories) => {
     const session = await linkedRow(repositories, token);
     if (!deletionPolicy.enabled || !deletionPolicy.policyVersion) fail('ACCOUNT_DELETION_UNAVAILABLE');
     if (clock() - session.authAt > REAUTH_WINDOW) fail('REAUTH_REQUIRED');
     const actor = session.actor;
+    deletedActor = actor;
     const row = await repositories.profiles.for(actor);
     if (!row || confirmation !== row.tag) fail('DELETE_CONFIRMATION_REQUIRED');
     await rate(repositories, actor, 'account-delete', 2, 86400);
@@ -1407,6 +1640,11 @@ async function createAccountService(pool, options = {}) {
     * worker's to record, so this method always reports PENDING. */
    if (completeDeletion) await afterCommit(() => completeDeletion({ ...result }));
    await afterRevocation(capturedRevokedIds);
+   /* Post-commit: the revocation hints fence any in-flight heartbeat, then the deleted actor's
+    * presence is cleared for good, so a stale heartbeat cannot resurrect it (heartbeat itself rejects
+    * the now-absent session and writes nothing). */
+   await setRevocationHints(capturedRevokedIds);
+   await dropActorPresence(deletedActor, capturedRevokedIds);
    return { deletionPending: true, receiptId: result.receiptId, policyVersion: result.policyVersion };
   },
 

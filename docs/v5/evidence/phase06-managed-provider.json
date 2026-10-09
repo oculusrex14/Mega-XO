@@ -1,0 +1,437 @@
+{
+  "schema_version": 1,
+  "phase": "P06",
+  "task_ids": [
+    "V5-06-01",
+    "V5-06-02",
+    "V5-06-03",
+    "V5-06-04"
+  ],
+  "case_ids": [
+    "A15"
+  ],
+  "recorded_at_utc": "2026-10-09T05:49:06.751Z",
+  "status": "MANAGED_PROVIDERS_AND_API_CONSUMERS_VERIFIED_G06_OPEN",
+  "source_state": {
+    "base_sha": "ddc8765d9aef8b0397fe5fec76c541d57c833457",
+    "branch": "V5-platform",
+    "verification": "Source hashes identify the verified integration bytes; exact code checkpoint SHA/CI are appended after committing.",
+    "verified_source_sha256": {
+      "packages/services/accounts.js": "012dbfba2eff1d5159425e2ee43a2d6d4c69e8be04230fd44744e472643f5e39",
+      "packages/services/ephemera.js": "198f73bbab7660f005db4e60a0c4f29fdb78d890a6cf78dfad685f0dc253e4f0",
+      "packages/services/managed-ephemera.js": "9f11e74a169552bd500384e8fe5aea80e89f6b1d0e5ea5090ad3fc6791fed7fc",
+      "tests/helpers/v5-presence-service-process.js": "1c015c9d19b9cd22b92b462bc847dadf5df21b1e9d5f537644e5e5c9c376cacf",
+      "tests/v5-p06-presence.test.js": "3ab7b2c85d9154f23a2db4f947b8784dd41e5b886aa1cd5512d0ec1889555cb1",
+      "tests/v5-p06-consumers.test.js": "fd67328dc9f60b6558805c2bd3c04498972143b856c65bf34775f3251cf669a5",
+      "tests/v5-p06-managed-guard.test.js": "e386d34f8572b2933581e833bd6e6a959ea2c3e0fe21d7e589cbd96e033af379",
+      "tests/v5-p06-ephemera.test.js": "fa05a42b2a5665f87686b75f40839df4448e0ddb79650549f617a4e36b286413",
+      ".github/workflows/v5-postgresql.yml": "fb8ec88c5e0cdf173f310407ef344a7a08f4ebe900516442349cafed6c8da83e",
+      "docs/v5/environments/staging.json": "c1ee01ad7bbb799922b9d984f38a1334280b0088a83ca9efbacacac4300b1876",
+      "docs/v5/environments/production.json": "2df82616786f97f1e0fc581cab9aba7cb544b6ea8537bbcb32b06a0f52ac4015"
+    }
+  },
+  "free_only": {
+    "owner_instruction": true,
+    "paid_plans_requested": false,
+    "force_flag_used": false,
+    "paid_fallback": false,
+    "upstash_auto_upgrade": false,
+    "aiven_auto_upgrade": "Forbidden owner/config policy; provider reports free-1 price0 but no auto-upgrade flag"
+  },
+  "providers": {
+    "upstash": {
+      "environment": "staging",
+      "service_id": "d03707cc-028d-4d2d-9395-43f6752b7ec4",
+      "name": "mega-xo-v5-staging",
+      "host": "humble-duckling-214728.upstash.io",
+      "port": 6379,
+      "region": "us-east-1",
+      "plan": "free",
+      "state": "active",
+      "tls": true,
+      "eviction": false,
+      "created_from_empty_authorized_inventory": true,
+      "api_limits": {
+        "disk_bytes": 268435456,
+        "memory_bytes": 67108864,
+        "max_clients": 30000,
+        "max_commands_per_second": 10000,
+        "monthly_bandwidth_gb": 10
+      },
+      "documented_monthly_command_limit": 500000,
+      "private_envelope_mode": "0600"
+    },
+    "aiven": {
+      "environment": "production candidate, NONSERVING",
+      "project": "mega-xo",
+      "service_id": "mega-xo/valkey-463b5ea",
+      "host": "valkey-463b5ea-mega-xo.i.aivencloud.com",
+      "port": 14329,
+      "plan": "free-1",
+      "price_usd": 0,
+      "state": "RUNNING",
+      "cloud": "do-nyc",
+      "previous_cloud": "do-blr",
+      "adopted_existing": true,
+      "existing_keys_before_region_change": 0,
+      "nodes": 1,
+      "cpu_per_node": 1,
+      "ram_mb_per_node": 1024,
+      "private_envelope_mode": "0600",
+      "identity": {
+        "usual_owner_email": "oculusrexai@gmail.com",
+        "verified_via": "GET /v1/me user.user"
+      },
+      "availability_limits": [
+        "single node",
+        "no SLA",
+        "provider may power off for inactivity",
+        "provider may change region/configuration"
+      ],
+      "region_actions": [
+        {
+          "command": "avn service update --project mega-xo --cloud aws-us-east-1 --plan free-1 valkey-463b5ea",
+          "exit": 1,
+          "error": "Migrating free services to aws-us-east-1 is not possible. Free plans are available in cloud(s): DigitalOcean,UpCloud.",
+          "paid_fallback": false
+        },
+        {
+          "command": "avn service update --project mega-xo --cloud do-nyc --plan free-1 valkey-463b5ea",
+          "exit": 0,
+          "paid_plan_requested": false,
+          "force_flag": false
+        },
+        {
+          "command": "avn service wait --project mega-xo --timeout 600 valkey-463b5ea",
+          "exit": 0,
+          "state": "RUNNING",
+          "cloud": "do-nyc",
+          "price_usd": 0
+        }
+      ],
+      "secret_handling": "Default CLI/API GET responses redact secrets. Authorized GET include_secrets=true retrieved the runtime URI privately; no reset/rotation or value output."
+    },
+    "layerbase": {
+      "cli_version": "2.1.0",
+      "command": "layerbase cloud ls --json",
+      "authenticated_inventory": "empty",
+      "provisioned": false,
+      "role": "optional Free dev/preview ephemera only",
+      "documented_free_limits": {
+        "primary_databases": 2,
+        "storage_gb": 5,
+        "concurrent_connections": 20
+      },
+      "limits": [
+        "sleep on idle",
+        "wake on connection",
+        "native TLS routing requires SNI"
+      ],
+      "durable_database_provisioned": false
+    },
+    "vercel": {
+      "cli_version": "58.1.0",
+      "team": "team_wS9BpnXbYRZahs1DiSueN3SS",
+      "slug": "oculusrex14s-projects",
+      "plan": "Hobby",
+      "authenticated": true,
+      "mega_xo_project_created": false,
+      "remaining": "Hobby commercial-use restrictions must be resolved before production API deployment; no paid upgrade."
+    }
+  },
+  "native_operational_limits": {
+    "ok": true,
+    "targets": [
+      {
+        "provider": "upstash",
+        "environment": "staging",
+        "fields": {
+          "maxmemory": "67108864",
+          "maxmemory_policy": "noeviction",
+          "connected_clients": "1",
+          "maxclients": "30000"
+        }
+      },
+      {
+        "provider": "aiven",
+        "environment": "production",
+        "fields": {
+          "maxmemory": "312475648",
+          "maxmemory_policy": "noeviction",
+          "connected_clients": "4",
+          "maxclients": "3104"
+        }
+      }
+    ]
+  },
+  "core_latency_before_region_change": {
+    "source": "verified Oracle IAD Core host via Tailscale ssh command",
+    "targets": [
+      {
+        "provider": "upstash",
+        "environment": "staging",
+        "serviceId": "d03707cc-028d-4d2d-9395-43f6752b7ec4",
+        "verifiedTls": true,
+        "authenticated": true,
+        "luaReadOnly": true,
+        "tcpIncludingDnsMs": 230.66,
+        "tlsHandshakeMs": 35.19,
+        "pingMedianMs": 1.9,
+        "pingMaxMs": 2.02,
+        "samples": 12,
+        "writes": 0
+      },
+      {
+        "provider": "aiven",
+        "environment": "production",
+        "serviceId": "mega-xo/valkey-463b5ea",
+        "verifiedTls": true,
+        "authenticated": true,
+        "luaReadOnly": true,
+        "tcpIncludingDnsMs": 336.32,
+        "tlsHandshakeMs": 297.58,
+        "pingMedianMs": 267.39,
+        "pingMaxMs": 845.36,
+        "samples": 12,
+        "writes": 0
+      }
+    ],
+    "writes": 0
+  },
+  "core_latency_after_region_change": {
+    "source": "verified Oracle IAD Core host via Tailscale ssh command",
+    "targets": [
+      {
+        "provider": "upstash",
+        "environment": "staging",
+        "serviceId": "d03707cc-028d-4d2d-9395-43f6752b7ec4",
+        "verifiedTls": true,
+        "authenticated": true,
+        "luaReadOnly": true,
+        "tcpIncludingDnsMs": 74.95,
+        "tlsHandshakeMs": 35.63,
+        "pingMedianMs": 1.73,
+        "pingMaxMs": 1.78,
+        "samples": 12,
+        "writes": 0
+      },
+      {
+        "provider": "aiven",
+        "environment": "production",
+        "serviceId": "mega-xo/valkey-463b5ea",
+        "verifiedTls": true,
+        "authenticated": true,
+        "luaReadOnly": true,
+        "tcpIncludingDnsMs": 141.27,
+        "tlsHandshakeMs": 37.83,
+        "pingMedianMs": 7.29,
+        "pingMaxMs": 7.52,
+        "samples": 12,
+        "writes": 0
+      }
+    ],
+    "writes": 0
+  },
+  "cross_environment_data_plane": {
+    "source": "Oracle IAD via verified Tailscale ssh command",
+    "targets": [
+      {
+        "provider": "upstash",
+        "environment": "staging",
+        "verifiedTls": true,
+        "crossCredential": "AUTH_REJECTED",
+        "applicationWrites": 0
+      },
+      {
+        "provider": "aiven",
+        "environment": "production",
+        "verifiedTls": true,
+        "crossCredential": "AUTH_REJECTED",
+        "applicationWrites": 0
+      }
+    ]
+  },
+  "readonly_core_probe_command": {
+    "argv": [
+      "ssh",
+      "-o",
+      "BatchMode=yes",
+      "-o",
+      "StrictHostKeyChecking=yes",
+      "command",
+      "python3 -c 'import json,socket,ssl,time,statistics,sys,urllib.parse\npayload=json.load(sys.stdin)\nresults=[]\ndef command(stream,args):\n data=b'\\''*'\\''+str(len(args)).encode()+b'\\''\\r\\n'\\''\n for arg in args:\n  part=str(arg).encode();data+=b'\\''$'\\''+str(len(part)).encode()+b'\\''\\r\\n'\\''+part+b'\\''\\r\\n'\\''\n stream.write(data);stream.flush();line=stream.readline()\n if not line or line[:1]!=b'\\''+'\\'':raise RuntimeError('\\''PROTOCOL_OR_AUTH_REFUSAL'\\'')\n return line[1:-2].decode()\nfor item in payload:\n stage='\\''connect'\\'';raw=None;conn=None;stream=None\n try:\n  u=urllib.parse.urlparse(item['\\''url'\\'']);start=time.perf_counter();raw=socket.create_connection((u.hostname,u.port),timeout=5);tcp=(time.perf_counter()-start)*1000\n  stage='\\''tls'\\'';start=time.perf_counter();conn=ssl.create_default_context().wrap_socket(raw,server_hostname=u.hostname);tls=(time.perf_counter()-start)*1000;stream=conn.makefile('\\''rwb'\\'',buffering=0)\n  stage='\\''auth'\\'';assert command(stream,['\\''AUTH'\\'',urllib.parse.unquote(u.username or '\\''default'\\''),urllib.parse.unquote(u.password)])=='\\''OK'\\''\n  stage='\\''ping'\\'';times=[]\n  for i in range(12):\n   start=time.perf_counter();assert command(stream,['\\''PING'\\''])=='\\''PONG'\\'';times.append((time.perf_counter()-start)*1000)\n  stage='\\''lua_readonly'\\'';assert command(stream,['\\''EVAL'\\'',\"return redis.call('\\''PING'\\'')\",'\\''0'\\''])=='\\''PONG'\\''\n  times.sort();results.append({'\\''provider'\\'':item['\\''provider'\\''],'\\''environment'\\'':item['\\''environment'\\''],'\\''serviceId'\\'':item['\\''serviceId'\\''],'\\''verifiedTls'\\'':True,'\\''authenticated'\\'':True,'\\''luaReadOnly'\\'':True,'\\''tcpIncludingDnsMs'\\'':round(tcp,2),'\\''tlsHandshakeMs'\\'':round(tls,2),'\\''pingMedianMs'\\'':round(statistics.median(times),2),'\\''pingMaxMs'\\'':round(max(times),2),'\\''samples'\\'':12,'\\''writes'\\'':0})\n except Exception as e:results.append({'\\''provider'\\'':item['\\''provider'\\''],'\\''status'\\'':'\\''FAIL'\\'','\\''stage'\\'':stage,'\\''category'\\'':type(e).__name__})\n finally:\n  if stream:stream.close()\n  if conn:conn.close()\n  elif raw:raw.close()\nprint(json.dumps({'\\''source'\\'':'\\''verified Oracle IAD Core host via Tailscale ssh command'\\'','\\''targets'\\'':results,'\\''writes'\\'':0}))\n'"
+    ],
+    "stdin": "Private runtime URLs sent over encrypted stdin, omitted from public evidence",
+    "writes": 0
+  },
+  "cross_credential_probe_command": {
+    "argv": [
+      "ssh",
+      "-o",
+      "BatchMode=yes",
+      "-o",
+      "StrictHostKeyChecking=yes",
+      "command",
+      "python3 -c 'import json,socket,ssl,sys,urllib.parse\nresults=[]\nfor item in json.load(sys.stdin):\n conn=None;stream=None;stage='\\''connect'\\''\n try:\n  u=urllib.parse.urlparse(item['\\''url'\\'']);raw=socket.create_connection((u.hostname,u.port),timeout=5);stage='\\''tls'\\'';conn=ssl.create_default_context().wrap_socket(raw,server_hostname=u.hostname);stream=conn.makefile('\\''rwb'\\'',buffering=0);stage='\\''auth'\\''\n  args=['\\''AUTH'\\'',urllib.parse.unquote(u.username or '\\''default'\\''),urllib.parse.unquote(u.password)];data=b'\\''*3\\r\\n'\\''\n  for arg in args:\n   b=arg.encode();data+=b'\\''$'\\''+str(len(b)).encode()+b'\\''\\r\\n'\\''+b+b'\\''\\r\\n'\\''\n  stream.write(data);stream.flush();reply=stream.readline();assert reply.startswith(b'\\''-'\\'') and (b'\\''pass'\\'' in reply.lower() or b'\\''auth'\\'' in reply.lower())\n  results.append({'\\''provider'\\'':item['\\''provider'\\''],'\\''environment'\\'':item['\\''environment'\\''],'\\''verifiedTls'\\'':True,'\\''crossCredential'\\'':'\\''AUTH_REJECTED'\\'','\\''applicationWrites'\\'':0})\n except Exception as e:results.append({'\\''provider'\\'':item['\\''provider'\\''],'\\''status'\\'':'\\''FAIL'\\'','\\''stage'\\'':stage,'\\''category'\\'':type(e).__name__})\n finally:\n  if stream:stream.close()\n  if conn:conn.close()\nprint(json.dumps({'\\''source'\\'':'\\''Oracle IAD via verified Tailscale ssh command'\\'','\\''targets'\\'':results}))\n'"
+    ],
+    "stdin": "Private cross-target credential combinations over encrypted stdin, omitted from public evidence",
+    "application_writes": 0
+  },
+  "managed_consumer_smoke": {
+    "command": "env MEGA_XO_ROOT=\"/Users/oculus/Downloads/Test XO\" V5_PG_URL=postgres://postgres@127.0.0.1:50709/postgres V5_PG_DISPOSABLE=1 V5_PG_REQUIRED=1 node \"/Users/oculus/.omp/agent/sessions/-Downloads-Test XO/2026-10-07T17-37-12-568Z_01a11770-d378-7049-8fbd-f3e1464221ce/local/p06-managed-consumer-smoke.cjs\"",
+    "script_sha256": "77272fcfdbef916956d5a703b2c9a7b40983cc2570c0520b89e37aa3b001d8bc",
+    "artifact": "artifact://4596",
+    "exit": 0,
+    "duration_seconds": 22.32,
+    "result": {
+      "ok": true,
+      "target": "managed TLS Redis + owned synthetic PostgreSQL16",
+      "productionEnabled": false,
+      "namespaceVersion": "p0d80b1",
+      "crossEnvironmentCredentialRejected": true,
+      "productionCompatibility": {
+        "provider": "aiven",
+        "region": "do-nyc",
+        "tlsPing": true,
+        "nativePubsub": true,
+        "luaReadOnly": true,
+        "atomicPresence": true,
+        "sortedSetQueue": true,
+        "fiveSyntheticKeysExpired": true,
+        "versions": {
+          "redis_version": "7.2.4",
+          "valkey_version": "9.1.2"
+        },
+        "workstationPingMedianMs": 207.28,
+        "workstationPingMaxMs": 306.26,
+        "writes": "unique short-lived synthetic ephemera only",
+        "productionWipePerformed": false,
+        "productionAppEnabled": false
+      },
+      "apiCoreServiceSmoke": {
+        "apiPid": 57823,
+        "corePid": 57825,
+        "apiRole": "api_runtime",
+        "coreRole": "core_runtime",
+        "ephemera": true,
+        "heartbeatState": "online",
+        "presenceState": "online",
+        "presenceOnline": true,
+        "ticketActor": "svc_bob",
+        "ticketReplay": "TICKET_REDEEMED",
+        "naturalExit": true
+      },
+      "purchasePreservationFixture": {
+        "nonemptyReceipt": true,
+        "syntheticTrustedVerifier": true,
+        "storeProviderVerificationClaimed": false
+      },
+      "staging": {
+        "provider": "upstash",
+        "verifiedTls": true,
+        "nativePubsub": true,
+        "atomicRateAllowed": 8,
+        "concurrentAttempts": 16,
+        "sortedSetQueue": true,
+        "unboundedKeys": 0,
+        "apiPids": [
+          57813,
+          57816
+        ],
+        "apiRoles": [
+          "api_runtime",
+          "api_runtime"
+        ],
+        "schemaHead": 42,
+        "onlineBeforeWipe": true,
+        "offlineAfterWipe": true,
+        "recoveredAfterHeartbeat": true,
+        "durableSnapshot": {
+          "tables": 78,
+          "sha256": "9f52f3a932795b0b399120891c70d1178e38911461607eb2c934486dabdeb443"
+        },
+        "wipedNamespaceOnly": true
+      },
+      "naturalChildExit": true
+    },
+    "scope": "Managed staging coordination + OWNED synthetic loopback PostgreSQL16, not a deployed Neon/API/Core platform. All78 discovered base tables, including a nonempty synthetic trusted-verifier purchase receipt, were content-identical across the staging namespace wipe. Subscription restarted and delivered post-wipe fanout. No live store verification."
+  },
+  "local_suite": {
+    "command": "env V5_PG_URL=postgres://postgres@127.0.0.1:50709/postgres V5_PG_DISPOSABLE=1 V5_PG_REQUIRED=1 REDIS_URL=redis://127.0.0.1:50710 node --test --test-reporter=tap --test-concurrency=1 tests/v5-p06-ephemera.test.js tests/v5-p06-lifecycle.test.js tests/v5-p06-presence.test.js tests/v5-p06-consumers.test.js tests/v5-p06-managed-guard.test.js tests/v5-p04-services.test.js tests/v5-p05-integration.test.js",
+    "artifact": "artifact://4591",
+    "tests": 73,
+    "pass": 73,
+    "fail": 0,
+    "skipped": 0,
+    "force_exit": false,
+    "duration_seconds": 70.76,
+    "source_note": "Later changes removed schema/type-only assertions, corrected an eight-round-trip comment, and strengthened separate smoke natural-exit cleanup. The changed helper passed the managed smoke; exact checkpoint CI covers final bytes."
+  },
+  "failed_before": [
+    {
+      "artifact": "artifact://4497",
+      "tests": 71,
+      "pass": 59,
+      "fail": 12,
+      "causes": [
+        "sync close incorrectly treated as Promise",
+        "guard fixture environment mismatch",
+        "hint-only revoked-session projection"
+      ]
+    },
+    {
+      "probe": "managed envelope preflight",
+      "error": "Aiven project/service id rejected by overly narrow identity character set",
+      "fix": "allow slash in identity comparison; endpoint remains independently bound and verified"
+    },
+    {
+      "probe": "Aiven runtime authentication",
+      "error": "default GET redacts runtime password",
+      "fix": "authorized include_secrets=true retrieval; no rotation"
+    },
+    {
+      "probe": "managed wipe/rejoin",
+      "stdout": {
+        "ok": false,
+        "code": "ERR_ASSERTION",
+        "assertionLine": "73",
+        "assertion": "Expected values to be strictly equal:"
+      },
+      "prior_failure": "Rejoin heartbeat returned offline with eight sequential presence Redis operations under one1000ms deadline. A socket interruption could also strand a newly created key before expiry.",
+      "fix": "One frozen Lua touch atomically mutates/trims/sets TTL; real lost-response/expiry regression passed. Final managed API/Core/purchase smoke is artifact://4596."
+    }
+  ],
+  "review": {
+    "agent": "ManagedPresenceReview",
+    "finding_count": 0,
+    "scope": "source-only P0/P1 review; no reviewer runtime claims"
+  },
+  "task_outcomes": {
+    "V5-06-01": "COMPLETE: separated managed Free targets, actual identity/region/plan/quotas/eviction/native compatibility/atomic load and cross-credential denial proven. No same-host production Redis or activation.",
+    "V5-06-02": "COMPLETE: finite namespaced/versioned primitives, native TLS/Free/environment guards, atomic presence TTLs and conservative loss verified locally and on managed targets.",
+    "V5-06-03": "IMPLEMENTED; actual API presence locally and managed-smoke verified: two real API processes share temporary state. API/Core factories and durable ticket authority exercised separately. Remaining Core operational coordination must be mapped/integrated, not counted as an adapter echo.",
+    "V5-06-04": "PARTIAL: managed staging namespace wipe, subscription restart, rejoin and nonempty purchase/wallet/rank/all-table preservation proven. Full paid-occupancy/auth-retry dependency-loss acceptance and eventual A15 queued/active-game/pending-effect scenario remain unaccepted."
+  },
+  "not_claimed": [
+    "G06/A15 complete acceptance",
+    "full deployed Neon staging/API/Core platform",
+    "actual store/provider/device/signing approval",
+    "V5 production enablement or first production PostgreSQL write",
+    "Free-tier SLA or guaranteed availability",
+    "Layerbase resource provisioning",
+    "Vercel-to-provider latency or production traffic capacity",
+    "an API REST client; native bounded API access is permitted by the actual P06 spec"
+  ],
+  "references": [
+    "https://aiven.io/docs/products/valkey/concepts/valkey-free-tier",
+    "https://aiven.io/docs/products/valkey/howto/manage-ssl-connectivity",
+    "https://aiven.io/docs/tools/api/secret-redaction",
+    "https://upstash.com/docs/redis/overall/billing.md",
+    "https://layerbase.com/pricing",
+    "https://layerbase.com/docs/cloud/connecting/redis",
+    "https://redis.io/docs/latest/operate/rc/security/database-security/tls-ssl/",
+    "Mega-XO-V5-Implementation-Pack/phases/06-managed-redis.md",
+    "Mega-XO-V5-Implementation-Pack/specs/04-INFRASTRUCTURE-AND-PROVISIONING.md",
+    "docs/v5/DECISIONS.md"
+  ]
+}

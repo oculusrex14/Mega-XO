@@ -1,6 +1,8 @@
 {
   "schema_version": 1,
   "status": "ADAPTER_LOCALLY_VERIFIED_PROVIDER_AND_CONSUMERS_PENDING",
+  "historical_scope": "Status, nonclaims and outcomes in this record describe the exact e51a82bb1c85cddfa1f9474a68f664561fffd65a adapter checkpoint, not current provider access or task acceptance.",
+  "subsequent_managed_evidence": "docs/v5/evidence/phase06-managed-provider.json",
   "phase": "P06",
   "task_ids": [
     "V5-06-01",

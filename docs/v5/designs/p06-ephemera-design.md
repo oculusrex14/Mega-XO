@@ -257,7 +257,7 @@ Verification for V5-06-03 (from the phase file): two API/Core processes observe 
 
 ## 7. Provider selection decision matrix (V5-06-01)
 
-Reality check first: **no Redis/Valkey service is known to exist for this account.** `docs/v5/evidence/phase00-provider-inventory.json` classifies `managed_redis_valkey` as `UNRESOLVED` (attempt was `vercel integration list --all --scope team_wS9BpnXbYRZahs1DiSueN3SS --json`, exit 1, no credentials) [V], and `docs/v5/OPEN-ITEMS.md:13` (V5-O009) records the same. Nothing below is a provisioning claim.
+Historical proposal below predates authorized inventory; it is not a current provisioning or account-eligibility claim. Current selection is verified in `docs/v5/evidence/phase06-managed-provider.json`: isolated Upstash Free staging, Aiven Free do-nyc production candidate, Layerbase optional dev/preview only. Native TLS/Lua/pubsub/TTL/quotas/load, actual Oracle-IAD latency and cross-credential denials are exercised. No paid plans or production activation. Use observed runtime limits separately from documented plan RAM; G06 remains open for genuine Core coordination and the full loss matrix.
 
 ### 7.1 Candidate matrix
 
@@ -361,7 +361,7 @@ queue.size()                                          -> {ranked, casual, claime
 queue.rebuildFromPg(occupancyRows)                    -> {adopted}
 ```
 
-Invariants: `maxQueued` global cap parity with today's `tickets.size >= maxTickets` [V]; ordering by `joinedAt` (ZSCORE) so FIFO fairness is preserved; claim TTL > PG statement timeout; claims are advisory and may be dropped without asset loss; **the pairing decision and the `pair:` commit stay in PG inside one transaction that rechecks eligibility, occupancy, rating/terms and balance** (spec 03 §3); `queue.join` must be callable by the API plane (Vercel) via REST mode while the matcher consumes via TCP mode.
+Invariants: `maxQueued` global cap parity with today's `tickets.size >= maxTickets` [V]; ordering by `joinedAt` (ZSCORE) so FIFO fairness is preserved; claim TTL > PG statement timeout; claims are advisory and may be dropped without asset loss; **the pairing decision and the `pair:` commit stay in PG inside one transaction that rechecks eligibility, occupancy, rating/terms and balance** (spec 03 §3); the API plane may use bounded verified native TCP/TLS. REST was a proposal, not a required transport; do not introduce a second REST convention for the selected providers.
 
 Policy surfaces that must not change (V5-07-01): `CONFIG` windows, `searchWindow`, `compatibility`, placements pool rules, recent-opponent/friend exclusions, region/latency penalties, `selectTournamentRoom` cohort rules, `tournamentSeed` [V - `packages/domain/matchmaking.js`].
 

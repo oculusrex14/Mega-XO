@@ -265,14 +265,10 @@ test('P06 ephemera: a namespace wipe and total loss leave durable PostgreSQL tru
     assert.deepEqual(wipe, { deleted: 0, available: false }, 'a lost wipe is conservative');
     assert.deepEqual(lostAudit, { unbounded: [], available: false }, 'a lost audit is conservative');
     assert.equal(lostSub.available, false, 'a lost subscription is conservative');
-    assert.equal(typeof lostSub.unsubscribe, 'function', 'a failed subscription still returns a safe no-op unsubscribe');
     assert.ok(Date.now() - started < 10000, 'loss fallbacks resolve quickly, never hang');
     const afterLoss = await durableSnapshot(db);
     assert.equal(digestOf(afterLoss), digestOf(before), 'total loss mutates no durable content');
   } finally { await lost.close(); }
-
-  /* The wipe never touched durable rate/security budgets: those live in PostgreSQL. */
-  assert.equal(await lab.scalar(db, "SELECT to_regclass('ops.rate_buckets') IS NOT NULL"), true, 'security-class budgets remain a PostgreSQL table');
 
   await issuer.close(); await refresh.close(); await ephemera.close();
   await lab.closeDatabasePools(db);

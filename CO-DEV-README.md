@@ -39,6 +39,13 @@
 - P21 (new website/browser product) is **explicitly owner-deferred**; do not start it. P22 depends on P20 rather than the deferred website. P24 is measurement-gated.
 - Formal proof comes from **executed** CI/staging/device/provider runs attached to the exact integrated source SHA. Standalone local/CI tests do not automatically transfer G-phase acceptance to a newer integration head.
 
+## P07 post-gate review (pending current-head integration CI)
+
+The primary agent passed G07 at `045d5f94a134`. This branch preserves that checkpoint and adds three isolated `packages/services/queue.js` safeguards: claim release must compare the exact opaque `claimId` before deleting Redis state; Redis match hints require requesting-actor participation in PostgreSQL; and failed PG matcher hydration releases still-owned claims without losing FIFO position. No frozen matchmaking rules, Crown economics, four-theme UI, or P08 Core authority changed.
+
+Three real-Redis/PG regressions were added to `tests/v5-p07-queue.test.js`; existing P07 queue/match/recovery tests now supply the mandatory `claimId` to `releaseClaim`. **Caller contract change:** any new matcher must release with its own returned claim ID, never reread the latest claim ID to force a release. See [P07-POST-GATE-HARDENING.md](docs/co-dev/P07-POST-GATE-HARDENING.md).
+
+Exact P07 source/tests passed syntax parsing and stubbed queue.js demonstrated actor-isolated hints and claim-ID forwarding. **This is not the real Redis Lua and PG suite.** Rerun existing P07 disposable-service CI with zero skips, and review P08 consumers before merge. Historic G07 evidence is not proof of this new queue SHA.
 ## What each unit actually contains
 
 ### P15 — encrypted PostgreSQL backup, isolated DR
@@ -121,6 +128,7 @@ Every PR update must verify the exact source head CI. Keep V5 retained regressio
 - **2026-10-09 P22 preparation:** Created fail-closed readiness (`031d292`, tests `230c0ebe`), writer catalogue/restart fence (`3808daa`, tests `80c64bfe`), UNKNOWN-first-write-safe rollback classifier (`c1ef7b1`, corrected `69233a9f`, tests `a0250b15`), frozen-source/P03 per-family reconciliation (`0f2041a`, tests `7fb18a34`), retained browser/native/callback compatibility (`8139739`, tests `e629c3db`), PR-only zero-skip workflow (`481f2fb3`, guard tests `43bff773`), and full operator runbook (`da73f4cf`). Later safety fixes refuse parent-traversal evidence refs and symlinked artifact directories. No live service changes.
 - **2026-10-09 P22 source verification:** 31/31 exact fetched pure source/test assertions passed with a V8/Node-module-stub harness after repairing three test/policy failures. Not Node24 CI execution or provider evidence. G22 OPEN; missing G08–G20 and runtime cutover.
 - **2026-10-09 G07 synchronization:** Merged G07-accepted upstream source SHA `045d5f94a134` into this branch at `41190f99feaa`; 17 files, zero co-dev conflicts, primary branch unchanged.
+- **2026-10-09 P07 co-dev hardening:** Fixed Redis claim ABA stale-delete (`a0e6e9e4e6`), actor-scoped match hints (`4a71df36cf`) and PG hydration release (`18362c96da`), updated P07 integration caller IDs and added 3 real-provider regressions. [Handoff](docs/co-dev/P07-POST-GATE-HARDENING.md). Await real source-head Redis/PG CI and P08 compatibility review.
 
 
 - **2026-10-09 P06 synchronization:** Two-parent merge `dc579856d8c4` integrated the actual G06-passed Core match-observer interfaces from `V5-platform` at `42db7e0ec401` without a conflict or primary branch edit. G06 is accepted in the primary ledger; its exact-head GitHub runs `37900949040` and `37900949132` failed before any runner steps, so there is no claim of new exact-head green CI.

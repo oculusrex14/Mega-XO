@@ -7,9 +7,11 @@
  * (identity.*, monetization.*, economy.*).
  *
  * Invariants enforced by this module:
- *  - NAMESPACING. Every key is `mx:<environment>:<keyVersion>:<family>:<parts...>`; the family
- *    is allowlisted and parts are validated, so one environment's client can neither read nor
- *    write another's keys and an unbounded key universe cannot accrete.
+ *  - NAMESPACING. Every key is `mx:<environment>:<keyVersion>:<family>:<encoded parts...>`; the family
+ *    is allowlisted and every part is validated against the durable identity grammar and then
+ *    canonically percent-encoded (see encodePart), so one environment's client can neither read nor
+ *    write another's keys, an unbounded key universe cannot accrete, and two distinct part tuples can
+ *    never collide on one key.
  *  - BOUNDEDNESS. Every write carries an explicit positive TTL (or is a sorted set whose whole
  *    key has one, set atomically in the same script as the member add, with entries trimmed by
  *    score). A write without a TTL is refused, not defaulted: there are no immortal keys. Every
@@ -32,7 +34,14 @@
 const crypto = require('node:crypto');
 const redis = require('redis');
 
-const KEY_VERSION = 'v1';
+/* The key schema is `v2`: v1 joined raw parts with structural `:` separators, so two DIFFERENT
+ * (family, part...) tuples could render the SAME key - `key('hint','a:b','c')` and
+ * `key('hint','a','b:c')` both produced `…:hint:a:b:c` - and a single part could impersonate the
+ * namespace/version prefix. v2 encodes every part reversibly (see encodePart), so the tuple is
+ * recoverable from the key and collisions are impossible. Nothing durable lives in Redis, so the
+ * old v1 ephemera may simply expire and rejoin; `wipeNamespace`/the reconnect paths are version
+ * scoped, so a v2 service never touches a v1 key (or another environment's). */
+const KEY_VERSION = 'v2';
 const MAX_VALUE_BYTES = 4096;
 /* Every operation (including subscribe and the scan-based wipe/audit) must resolve within this
  * deadline; the connect phase is allowed the client's own budget before operations start
@@ -58,7 +67,54 @@ const PRESENCE_CAP = 16;
 const PRESENCE_HINT_KIND = 'session-revoked';
 const FAMILIES = new Set(['presence', 'queue', 'cache', 'rate', 'route', 'hint', 'lock', 'negcache']);
 const ENVIRONMENTS = new Set(['stg', 'prd', 'test']);
-const SAFE_PART = /^[A-Za-z0-9_.:@-]{1,128}$/;
+/* A key part is a durable text identifier. Its BOUNDS come from the preserved identity grammar
+ * (`[A-Za-z0-9:_-]{1,160}` - `src/authority.js:7` validId, `packages/contracts/http-guards.js`
+ * OPERATION_ID/OPERATION_KEY, `identity.actors.actor_id` CHECK in 0004:8-11): a string of at most
+ * 160 units. Its CHARSET is deliberately the whole well-formed printable/Unicode space, NOT that
+ * ASCII subset, because the durable tier PRESERVES legacy text ids verbatim even when they drift
+ * from the grammar (P03: "the exact text is preserved (never recast, never regenerated)" and the
+ * drift is only REPORTED, `tools/v5-migration/reader.js` noteGrammar), so refusing punctuation,
+ * spaces, slashes, brackets or Unicode here would deny a genuinely valid identity. The only
+ * exclusions are non-text: a non-string, an empty string, an over-bound value, a lone surrogate
+ * (not well-formed UTF-8 text) and C0/DEL control characters (not identity text, and unsafe as a
+ * Redis key / Lua argv). Namespace safety does NOT depend on the charset: every part is
+ * canonically encoded (encodePart) so ':' can never appear inside a part. */
+const PART_MAX_UNITS = 160;
+const CONTROL_CHAR = /[\u0000-\u001F\u007F]/;
+/* The single canonical, REVERSIBLE per-part encoding used to build every key: `[A-Za-z0-9_.~-]` are
+ * kept literally and every other byte (structurally: the ':' separator, '%' itself and any control /
+ * non-ASCII byte) is percent-escaped as `%XX` over its UTF-8 bytes. It is injective, so distinct
+ * part tuples can never render the same key; '%' is always escaped, so no part can spell another
+ * part's escape or the `mx:<env>:<version>:` prefix (a literal ':' becomes '%3A', a literal '%'
+ * becomes '%25'). Safe for Lua / pub-sub channel names (no space/control) and inert to Redis glob in
+ * the wipe prefix match. */
+const UNRESERVED = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_.~-';
+const KEEP_BYTE = new Uint8Array(256);
+for (let i = 0; i < UNRESERVED.length; i += 1) KEEP_BYTE[UNRESERVED.charCodeAt(i)] = 1;
+const HEX = '0123456789ABCDEF';
+function encodePart(part) {
+  const bytes = Buffer.from(part, 'utf8');
+  let out = '';
+  for (const byte of bytes) {
+    if (KEEP_BYTE[byte]) { out += String.fromCharCode(byte); continue; }
+    out += '%' + HEX[byte >> 4] + HEX[byte & 15];
+  }
+  return out;
+}
+
+/* One key part: bounded (string, 1..160 units, well-formed text without control bytes). This is the
+ * VALIDATION half, used both for key parts and for raw member values (session refs, ticket ids,
+ * candidate ids) that are stored as sorted-set members or Lua argv and never encoded. */
+function assertPart(part) {
+  if (typeof part !== 'string' || part.length < 1 || part.length > PART_MAX_UNITS) fail('INVALID_KEY_PART');
+  if (CONTROL_CHAR.test(part) || !part.isWellFormed()) fail('INVALID_KEY_PART');
+  return part;
+}
+/* The KEY-PART half: validate, then canonically encode. Only key construction uses this; a raw
+ * member value must never be encoded (that would store a different id than the caller wrote). */
+function validatePart(part) {
+  return encodePart(assertPart(part));
+}
 /* Frozen Lua: the rate window is INCR + first-hit PEXPIRE (never slides); the lock release is a
  * compare-and-delete so a stale holder cannot free someone else's lock. */
 const RATE_WINDOW_LUA = "local n = redis.call('INCR', KEYS[1]); if n == 1 then redis.call('PEXPIRE', KEYS[1], ARGV[1]); end; return n;";
@@ -93,16 +149,10 @@ const fail = (code) => { throw Error(code); };
 /* Conservative fallbacks. `conservative: true` tells the caller the answer is a refusal born of
  * lost coordination, not a positive fact. */
 const LOSS = Object.freeze({
-  present: { value: null, available: false, conservative: true },
   cacheHit: { value: null, available: false, conservative: true },
   rateDeny: { allowed: false, available: false, conservative: true },
   lockBusy: { acquired: false, available: false, conservative: true },
 });
-
-function validatePart(part, what = 'key part') {
-  if (typeof part !== 'string' || !SAFE_PART.test(part)) fail('INVALID_KEY_PART');
-  return part;
-}
 
 /* Resolves `fn`/promise outcome or a timeout within `ms`, always clearing the deadline timer so a
  * completed operation leaves no leftover timer behind. Attaches rejection handlers immediately,
@@ -129,7 +179,8 @@ class EphemeraService {
    * @param {object} options
    * @param {string} options.url `rediss://` (verified TLS) or `redis://` (plaintext, opt-in only)
    * @param {string} options.environment 'stg'|'prd'|'test' - hard namespace boundary
-   * @param {string} [options.keyVersion='v1'] bump to invalidate every family at once
+   * @param {string} [options.keyVersion='v2'] bump to invalidate every family at once (v1 keys are
+   *   never read/wiped by a v2 service: the schemaVersion is a strict part of the prefix)
    * @param {object} [options.socket] connect/read timeouts; a slow Redis must fail fast
    * @param {string|Buffer|Array} [options.ca] PEM root CA for verified TLS (never a bypass)
    * @param {boolean} [options.tls] force TLS on a `redis://` URL
@@ -215,6 +266,10 @@ class EphemeraService {
   }
 
   /* ---- naming ---- */
+  /* `mx:<env>:<keyVersion>:<family>:<encoded parts...>`. Every part is validated against the durable
+   * identity grammar and then canonically percent-encoded, so the ':' joiner is unambiguous: two
+   * different (family, parts...) tuples always yield distinct keys and no part can inject a separator
+   * or impersonate the fixed prefix. A simple ASCII id such as `actor_1` still renders unchanged. */
   key(family, ...parts) {
     if (!FAMILIES.has(family)) fail('UNKNOWN_FAMILY');
     return ['mx', this.environment, this.keyVersion, family, ...parts.map((p) => validatePart(p))].join(':');
@@ -242,22 +297,6 @@ class EphemeraService {
     return text;
   }
 
-  /* ---- presence/heartbeat (ephemeral by definition; the durable tier is identity.sessions) ---- */
-  async heartbeat(actor, sessionId, ttlMs = 60000) {
-    const value = EphemeraService.#bounded(sessionId, ttlMs, 'presence');
-    const k = this.key('presence', actor);
-    return this.#op((c) => c.set(k, value, { PX: ttlMs }).then(() => ({ stored: true, available: true })), { stored: false, available: false, conservative: true });
-  }
-  async lookupPresence(actor) {
-    const k = this.key('presence', actor);
-    return this.#op(async (c) => ({ value: await c.get(k), available: true }), LOSS.present);
-  }
-  /* Drop every live session for one actor (revokeAll / logout-all / account deletion). */
-  async dropPresence(actor) {
-    const k = this.key('presence', actor);
-    return this.#op((c) => c.del(k).then(() => ({ dropped: true, available: true })), { dropped: false, available: false, conservative: true });
-  }
-
   /* ---- per-session presence (V5 P06 API consumer). Two bounded ZSETs per actor: every tracked
    * session in `all`, the foreground subset in `fg`. The score is the last `seen` ms, so the read
    * window (45 s) is the same one the legacy session_presence row used and a member that stops
@@ -265,7 +304,7 @@ class EphemeraService {
    * derived id (the public 24-hex session id), never the bearer, so the value allowlist and the
    * 4 KiB bound are respected and no credential reaches Redis. ---- */
   async presenceTouch(actor, sessionRef, foreground, ttlMs = 60000) {
-    const ref = validatePart(sessionRef, 'session');
+    const ref = assertPart(sessionRef);
     if (typeof foreground !== 'boolean') fail('INVALID_PRESENCE');
     if (!Number.isSafeInteger(ttlMs) || ttlMs <= 0) fail('TTL_REQUIRED');
     const all = this.key('presence', 'all', actor);
@@ -302,7 +341,7 @@ class EphemeraService {
     }, { sessions: [], available: false, conservative: true });
   }
   async presenceDrop(actor, sessionRef) {
-    const ref = validatePart(sessionRef, 'session');
+    const ref = assertPart(sessionRef);
     const all = this.key('presence', 'all', actor);
     const fg = this.key('presence', 'fg', actor);
     return this.#op(async (c) => {
@@ -327,7 +366,7 @@ class EphemeraService {
     if (!list.length) return { stored: true, available: true };
     return this.#op(async (c) => {
       const pipeline = c.multi();
-      for (const ref of list) pipeline.set(this.key('hint', PRESENCE_HINT_KIND, validatePart(ref, 'session')), '1', { PX: ttlMs });
+      for (const ref of list) pipeline.set(this.key('hint', PRESENCE_HINT_KIND, assertPart(ref)), '1', { PX: ttlMs });
       await pipeline.exec(true);
       return { stored: true, available: true };
     }, { stored: false, available: false, conservative: true });
@@ -337,7 +376,7 @@ class EphemeraService {
     if (!list.length) return { revoked: [], available: true };
     return this.#op(async (c) => {
       const pipeline = c.multi();
-      for (const ref of list) pipeline.get(this.key('hint', PRESENCE_HINT_KIND, validatePart(ref, 'session')));
+      for (const ref of list) pipeline.get(this.key('hint', PRESENCE_HINT_KIND, assertPart(ref)));
       const replies = await pipeline.exec(true);
       const revoked = list.filter((_, i) => replies[i] !== null && replies[i] !== undefined);
       return { revoked, available: true };
@@ -385,7 +424,7 @@ class EphemeraService {
 
   /* ---- non-security rate budget. Security-class budgets stay in ops.rate_buckets (PostgreSQL). ---- */
   async rateHit(bucket, limit, windowMs) {
-    validatePart(bucket);
+    assertPart(bucket);
     if (!Number.isSafeInteger(limit) || limit <= 0) fail('INVALID_LIMIT');
     if (!Number.isSafeInteger(windowMs) || windowMs <= 0) fail('INVALID_WINDOW');
     const key = this.key('rate', bucket);
@@ -400,7 +439,7 @@ class EphemeraService {
 
   /* ---- single-flight locks (a lost lock sends callers to the DB-authoritative path) ---- */
   async acquireLock(name, ttlMs = 5000) {
-    validatePart(name);
+    assertPart(name);
     if (!Number.isSafeInteger(ttlMs) || ttlMs <= 0) fail('TTL_REQUIRED');
     const token = crypto.randomBytes(16).toString('base64url');
     const k = this.key('lock', name);
@@ -409,7 +448,7 @@ class EphemeraService {
       : { acquired: false, available: true })), LOSS.lockBusy);
   }
   async releaseLock(name, token) {
-    validatePart(name);
+    assertPart(name);
     if (typeof token !== 'string') return { released: false };
     const k = this.key('lock', name);
     return this.#op(async (c) => {
@@ -420,7 +459,7 @@ class EphemeraService {
 
   /* ---- revocation/limit HINTS. Hints only make the system more conservative; PostgreSQL decides. ---- */
   async setHint(kind, id, ttlMs) {
-    validatePart(kind);
+    assertPart(kind);
     const value = EphemeraService.#bounded('1', ttlMs, 'hint');
     const k = this.key('hint', kind, id);
     return this.#op((c) => c.set(k, value, { PX: ttlMs }).then(() => ({ stored: true, available: true })), { stored: false, available: false, conservative: true });
@@ -432,7 +471,7 @@ class EphemeraService {
 
   /* ---- socket routing registry (P08 consumer; TTL-refreshed, never permanent) ---- */
   async registerRoute(connectionId, payload, ttlMs = 30000) {
-    validatePart(connectionId);
+    assertPart(connectionId);
     const value = EphemeraService.#bounded(payload, ttlMs, 'route');
     const k = this.key('route', connectionId);
     return this.#op((c) => c.set(k, value, { PX: ttlMs }).then(() => ({ stored: true, available: true })), { stored: false, available: false, conservative: true });
@@ -445,7 +484,7 @@ class EphemeraService {
   /* ---- candidate queue index: a sorted set whose members age out by score and whose KEY has a
    * TTL set atomically with the add (see QUEUE_ENQUEUE_LUA). ---- */
   async enqueueCandidate(mode, ticketId, weight = 0, { windowMs = 300000, keyTtlMs = 3600000 } = {}) {
-    validatePart(mode); validatePart(ticketId);
+    assertPart(mode); assertPart(ticketId);
     if (!Number.isFinite(Number(weight))) fail('INVALID_WEIGHT');
     if (!Number.isSafeInteger(windowMs) || windowMs <= 0) fail('INVALID_WINDOW');
     if (!Number.isSafeInteger(keyTtlMs) || keyTtlMs <= 0) fail('TTL_REQUIRED');
@@ -459,7 +498,7 @@ class EphemeraService {
     }, { queued: false, available: false, conservative: true });
   }
   async peekCandidates(mode, { max = 16, windowMs = 300000 } = {}) {
-    validatePart(mode);
+    assertPart(mode);
     if (!Number.isSafeInteger(max) || max <= 0) fail('INVALID_LIMIT');
     if (!Number.isSafeInteger(windowMs) || windowMs <= 0) fail('INVALID_WINDOW');
     const key = this.key('queue', mode);
@@ -470,14 +509,14 @@ class EphemeraService {
     }, { candidates: [], available: false, conservative: true });
   }
   async dropCandidate(mode, ticketId) {
-    validatePart(mode); validatePart(ticketId);
+    assertPart(mode); assertPart(ticketId);
     const key = this.key('queue', mode);
     return this.#op((c) => c.zRem(key, ticketId).then(() => ({ dropped: true, available: true })), { dropped: false, available: false, conservative: true });
   }
 
   /* ---- pub/sub notifications (rebuildable fan-out; durable notices live in ops.outbox) ---- */
   async publish(channel, message, ttlMs = 30000) {
-    validatePart(channel);
+    assertPart(channel);
     const text = EphemeraService.#bounded(message, ttlMs, 'pubsub');
     const key = this.key('cache', 'ch', channel);
     return this.#op((c) => c.publish(key, text).then(() => ({ published: true, available: true })), { published: false, available: false, conservative: true });
@@ -487,7 +526,7 @@ class EphemeraService {
    * settle first) - its duplicate has reconnect disabled, so no reconnect work is ever leaked - and a
    * conservative `available:false` result is returned. The listener ignores messages once closed. */
   async subscribe(channel, onMessage) {
-    validatePart(channel);
+    assertPart(channel);
     if (typeof onMessage !== 'function') fail('LISTENER_REQUIRED');
     if (this.closed) return { available: false, conservative: true, unsubscribe: () => {} };
     const key = this.key('cache', 'ch', channel);

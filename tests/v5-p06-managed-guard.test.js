@@ -169,7 +169,8 @@ test('P06 managed guard: the factory refuses before Redis I/O and degrades conse
     environment: 'staging',
     credentialFile: writeEnvelope(envelope({ url: `rediss://default:${SECRET}@127.0.0.1:1` })),
   });
-  const presence = await service.lookupPresence('synthetic-actor');
+  const presence = await service.presenceRead('synthetic-actor');
+  assert.deepEqual(presence.sessions, []);
   assert.equal(presence.available, false);
   assert.equal(presence.conservative, true);
   await service.close();

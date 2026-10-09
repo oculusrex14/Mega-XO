@@ -5,8 +5,8 @@
  * instance as the test process. Two `createEphemeraService` objects inside one process share one
  * event loop, one client library and one GC; they cannot prove cross-process behaviour. This
  * fixture spawns genuine separate OS processes with distinct PIDs and a private newline-delimited
- * JSON channel on fd 3, so heartbeat/cache/route/pub-sub sharing, the atomic cross-process rate
- * window and lock fencing are exercised against independent processes.
+ * JSON channel on fd 3, so per-session presence/cache/route/pub-sub sharing, the atomic cross-process
+ * rate window and lock fencing are exercised against independent processes.
  *
  * The child owns NO test framework: it is inert when imported (`require.main !== module`), so the
  * test runner's own subprocess loading of a test file never starts a second service. It exits
@@ -43,7 +43,7 @@ const EPHEMERA = path.join(__dirname, '..', '..', 'packages', 'services', 'ephem
 const CHANNEL = 3;
 const DEAD_URL = 'redis://127.0.0.1:59999';
 const CALLABLE = new Set([
-  'heartbeat', 'lookupPresence', 'dropPresence', 'cacheSet', 'cacheGet', 'cacheDel',
+  'presenceTouch', 'presenceRead', 'presenceDrop', 'presenceDropActor', 'cacheSet', 'cacheGet', 'cacheDel',
   'rateHit', 'acquireLock', 'releaseLock', 'setHint', 'checkHint', 'registerRoute',
   'locateRoute', 'enqueueCandidate', 'peekCandidates', 'dropCandidate', 'publish',
   'healthy', 'auditUnboundedKeys', 'wipeNamespace',

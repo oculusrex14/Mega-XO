@@ -164,6 +164,24 @@ jobs:
         run: |
           set -o pipefail
           node --test --test-reporter=tap --test-concurrency=1 tests/v5-p06-managed-guard.test.js 2>&1 | tee .evidence-logs/v5-p06-managed-guard.tap
+      - name: P06 committed Core notifications and observer recovery
+        env:
+          REDIS_URL: redis://127.0.0.1:6379
+        run: |
+          set -o pipefail
+          node --test --test-reporter=tap --test-concurrency=1 tests/v5-p06-core-updates.test.js 2>&1 | tee .evidence-logs/v5-p06-core-updates.tap
+      - name: P06 paid occupancy and durable security under loss
+        env:
+          REDIS_URL: redis://127.0.0.1:6379
+        run: |
+          set -o pipefail
+          node --test --test-reporter=tap --test-concurrency=1 tests/v5-p06-loss.test.js 2>&1 | tee .evidence-logs/v5-p06-loss.tap
+      - name: P06 key encoding, identifier bounds and namespace isolation
+        env:
+          REDIS_URL: redis://127.0.0.1:6379
+        run: |
+          set -o pipefail
+          node --test --test-reporter=tap --test-concurrency=1 tests/v5-p06-key-identifiers.test.js 2>&1 | tee .evidence-logs/v5-p06-key-identifiers.tap
       - name: Enforce executed database coverage
         # A green run that quietly skipped the database suites is a failure, not a pass: every
         # suite must report assertions against the live service and report zero skips.
@@ -186,6 +204,9 @@ jobs:
             { file: 'tests/v5-p06-presence.test.js', log: '.evidence-logs/v5-p06-presence.tap' },
             { file: 'tests/v5-p06-consumers.test.js', log: '.evidence-logs/v5-p06-consumers.tap' },
             { file: 'tests/v5-p06-managed-guard.test.js', log: '.evidence-logs/v5-p06-managed-guard.tap' },
+            { file: 'tests/v5-p06-core-updates.test.js', log: '.evidence-logs/v5-p06-core-updates.tap' },
+            { file: 'tests/v5-p06-loss.test.js', log: '.evidence-logs/v5-p06-loss.tap' },
+            { file: 'tests/v5-p06-key-identifiers.test.js', log: '.evidence-logs/v5-p06-key-identifiers.tap' },
           ];
           const report = { tool: 'v5-pg-coverage', suites: [] };
           let failed = false;

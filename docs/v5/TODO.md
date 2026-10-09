@@ -4,7 +4,7 @@ The mutable execution source is [progress.json](progress.json); this is its read
 
 **Goal:** Deliver the V5 hybrid platform and real Android/iOS applications with shared permanent actor/assets, preserved approved game and retained browser compatibility; do not build the new website/browser product.
 
-**Integration base:** `455b8ec9ea4070b4410d78f9eea2aaa06d32c0b2`. **Active phase/task:** P06 / V5-06-03 (TESTED_LOCAL). **Progress:** 35/117 tasks terminal; 6/25 phase gates passed
+**Integration base:** `455b8ec9ea4070b4410d78f9eea2aaa06d32c0b2`. **Active phase/task:** P07 / V5-07-01 (PLANNED). **Progress:** 37/117 tasks terminal; 7/25 phase gates passed
 
 Required path: execute P00–P20, P22–P23; owner-deferred P21 executes nothing; P24 is measurement-gated; phase prerequisites are gates, not status assumptions, and a deferred or measurement-gated phase is never used as another phase prerequisite. The foundation gate P00–P03 passes before dependent distributed work, and V5 CI starts in the foundation rather than only at P17.
 
@@ -85,12 +85,12 @@ Milestone: V5.2; status: `COMPLETE`; prerequisites: P04. [Phase contract](../../
 
 ## P06 — Introduce managed ephemeral coordination
 
-Milestone: V5.3; status: `IN_PROGRESS`; prerequisites: P05. [Phase contract](../../Mega-XO-V5-Implementation-Pack/phases/06-managed-redis.md).
+Milestone: V5.3; status: `COMPLETE`; prerequisites: P05. [Phase contract](../../Mega-XO-V5-Implementation-Pack/phases/06-managed-redis.md).
 
 - [x] **V5-06-01 — Select and provision the actual managed service** (`COMPLETE`).
 - [x] **V5-06-02 — Implement namespaced bounded primitives** (`COMPLETE`).
-- [ ] **V5-06-03 — Remove local-only operational state** (`TESTED_LOCAL`).
-- [ ] **V5-06-04 — Test full wipe and dependency failure** (`TESTED_LOCAL`).
+- [x] **V5-06-03 — Remove local-only operational state** (`COMPLETE`).
+- [x] **V5-06-04 — Test full wipe and dependency failure** (`COMPLETE`).
 
 **Exit gate:** G06: Redis loss is temporary disruption only; all player assets/results/identity remain durable and queues/caches recover.
 

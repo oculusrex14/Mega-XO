@@ -7,9 +7,7 @@ const {
   resolveAuth,
 } = require('./helpers');
 const {
-  classifyRoute,
   defaultReadCache,
-  CATEGORIES,
   CACHE_CONTROL_POLICIES,
 } = require(path.join(__dirname, '../../../packages/services/read-cache.js'));
 
@@ -42,37 +40,13 @@ async function getProfile(context, req, res, targetId) {
     throw err;
   }
 
-  const readCache = context?.readCache || defaultReadCache;
-  const isSelf = actor === resolvedTarget;
-  const cacheKey = `public_profile:${resolvedTarget}`;
-
-  if (!isSelf) {
-    const cached = readCache.get(cacheKey, { allowStale: true });
-    if (cached && (cached.statsVisibility === 'public' || cached.stats_visibility === 'public')) {
-      return sendJson(res, 200, cached, {
-        'Cache-Control': CACHE_CONTROL_POLICIES.PUBLIC_PROJECTED_MEDIUM,
-      });
-    }
-  }
-
+  // This is an actor-relative projection, even when the target has public
+  // stats: block status, friendship, relation and visibility depend on the
+  // requesting actor. A shared/stale target-only cache bypasses those checks.
+  // Always consult the PostgreSQL account service for this private endpoint.
   const profile = await accounts.view(actor, resolvedTarget);
-  const visibility = profile?.statsVisibility || profile?.stats_visibility || 'private';
-  const classification = classifyRoute('/api/community/profile/' + resolvedTarget, {
-    isSelf,
-    visibility,
-  });
-
-  if (!isSelf && classification.category === CATEGORIES.PUBLIC_PROJECTED) {
-    readCache.set(cacheKey, profile, {
-      ttlMs: 60000,
-      staleToleranceMs: 120000,
-      tags: ['profile', `profile:${resolvedTarget}`],
-      category: CATEGORIES.PUBLIC_PROJECTED,
-    });
-  }
-
   return sendJson(res, 200, profile, {
-    'Cache-Control': classification.cacheControl,
+    'Cache-Control': CACHE_CONTROL_POLICIES.PRIVATE_NO_STORE,
   });
 }
 

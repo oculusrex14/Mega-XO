@@ -102,13 +102,21 @@ async function setupApiServer(database, options = {}) {
   return harness;
 }
 
-function apiRequest(target, routePath, { method = 'GET', actor = null, token = null, body = null, headers = {} } = {}) {
+async function apiRequest(target, routePath, { method = 'GET', actor = null, token = null, body = null, headers = {} } = {}) {
   const handler = (target && typeof target === 'object' && target.handler) ? target.handler : target;
   const req = new EventEmitter();
   req.method = method;
   req.url = routePath;
   req.headers = { ...headers };
-  if (actor) req.headers['x-actor-id'] = actor;
+  // Use linked sessions; actor ID headers are not authentication on P11+.
+  if (actor && !token) {
+    if (!target?.accounts?.issue) throw new Error('TEST_AUTHORITY_REQUIRED');
+    target._testSessions ||= new Map();
+    if (!target._testSessions.has(actor)) {
+      target._testSessions.set(actor, target.accounts.issue(actor, Date.now()));
+    }
+    token = (await target._testSessions.get(actor)).token;
+  }
   if (token) req.headers['authorization'] = `Bearer ${token}`;
   req.body = body;
 
@@ -284,10 +292,11 @@ test('V5-12-01: HTTP control plane returns explicit Cache-Control headers', asyn
     assert.equal(resLb.headers['cache-control'], CACHE_CONTROL_POLICIES.PUBLIC_LEADERBOARD);
 
     // 8. GET /api/community/profile/:id
-    // Stranger viewing public profile -> public cache
+    // Viewer-specific relationship and block rules make this private,
+    // even if the target's stats are public.
     const resStranger = await apiRequest(server, '/api/community/profile/svc_alice', { actor: 'svc_bob' });
     assert.equal(resStranger.status, 200);
-    assert.equal(resStranger.headers['cache-control'], CACHE_CONTROL_POLICIES.PUBLIC_PROJECTED_MEDIUM);
+    assert.equal(resStranger.headers['cache-control'], CACHE_CONTROL_POLICIES.PRIVATE_NO_STORE);
 
     // Self viewing own profile -> private no-store
     const resSelf = await apiRequest(server, '/api/community/profile/svc_alice', { actor: 'svc_alice' });
@@ -689,4 +698,32 @@ test('V5-12-04: API route mutations invalidate cached reads through HTTP server'
   } finally {
     await server.close();
   }
+});
+
+test('P12 privacy: stale public profile cache cannot override a cross-process block', async (t) => {
+  if (!(await lab.boot(t))) return;
+  const db = await lab.createDatabase('p12_profile_block_cache');
+  await lab.seedActors(db, ACTORS);
+  const server = await setupApiServer(db);
+  t.after(async () => { await server.close(); });
+
+  const before = await apiRequest(server, '/api/community/profile/svc_alice', { actor: 'svc_bob' });
+  assert.equal(before.status, 200);
+  assert.equal(before.headers['cache-control'], CACHE_CONTROL_POLICIES.PRIVATE_NO_STORE);
+
+  // Simulate a stale shared result from an older API instance. Another
+  // process writes the block directly, so no in-process invalidation occurs.
+  server.readCache.set('public_profile:svc_alice', {
+    ...before.data,
+    statsVisibility: 'public',
+  }, {
+    ttlMs: 60000,
+    staleToleranceMs: 120000,
+    category: CATEGORIES.PUBLIC_PROJECTED,
+  });
+  await server.accounts.social('svc_alice', 'p12-block-bob-after-cache', 'block', 'svc_bob');
+
+  const after = await apiRequest(server, '/api/community/profile/svc_alice', { actor: 'svc_bob' });
+  assert.equal(after.status, 404, 'fresh durable block wins over stale target cache');
+  assert.equal(after.data.error, 'PROFILE_NOT_FOUND');
 });

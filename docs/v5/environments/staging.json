@@ -21,29 +21,6 @@
     "suspendTimeoutSeconds": 0
   },
   "historyRetentionSeconds": 21600,
-  "redis": {
-    "provider": "upstash",
-    "serviceId": "d03707cc-028d-4d2d-9395-43f6752b7ec4",
-    "name": "mega-xo-v5-staging",
-    "host": "humble-duckling-214728.upstash.io",
-    "port": 6379,
-    "region": "us-east-1",
-    "plan": "free",
-    "tls": true,
-    "autoUpgrade": false,
-    "eviction": false,
-    "nonserving": true,
-    "credentialFile": "/Users/oculus/Downloads/Mega-XO-private-evidence/p06-provider-credentials/upstash-staging.json",
-    "providerLimits": {
-      "diskBytes": 268435456,
-      "memoryBytes": 67108864,
-      "maxClients": 30000,
-      "maxCommandsPerSecond": 10000,
-      "monthlyBandwidthGb": 10
-    },
-    "documentedMonthlyCommandLimit": 500000,
-    "evidence": "docs/v5/evidence/phase06-managed-provider.json"
-  },
   "outbound": {
     "email": "disabled",
     "storeNotifications": "disabled",

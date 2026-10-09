@@ -15,7 +15,8 @@
   "source_state": {
     "base_sha": "ddc8765d9aef8b0397fe5fec76c541d57c833457",
     "branch": "V5-platform",
-    "verification": "Source hashes identify the verified integration bytes; exact code checkpoint SHA/CI are appended after committing.",
+    "verified_code_checkpoint_sha": "928851ae86a458c6d59c67e49fde1b5b796f9558",
+    "verification": "Implementation hashes below identify checkpoint928851ae86a458c6d59c67e49fde1b5b796f9558, including its original mixed manifests. Actual managed/local proof is retained; CI caught the closed-PG-manifest integration defect, corrected separately below without weakening guards.",
     "verified_source_sha256": {
       "packages/services/accounts.js": "012dbfba2eff1d5159425e2ee43a2d6d4c69e8be04230fd44744e472643f5e39",
       "packages/services/ephemera.js": "198f73bbab7660f005db4e60a0c4f29fdb78d890a6cf78dfad685f0dc253e4f0",
@@ -29,6 +30,41 @@
       "docs/v5/environments/staging.json": "c1ee01ad7bbb799922b9d984f38a1334280b0088a83ca9efbacacac4300b1876",
       "docs/v5/environments/production.json": "2df82616786f97f1e0fc581cab9aba7cb544b6ea8537bbcb32b06a0f52ac4015"
     }
+  },
+  "inventory_boundary_correction": {
+    "base_sha": "928851ae86a458c6d59c67e49fde1b5b796f9558",
+    "problem": "Both checkpoint CI workflows rejected the new redis key in the closed PostgreSQL target manifests with TARGET_FILE_INVALID; this was a real integration defect, not an auth/provider failure.",
+    "failed_ci": [
+      {"id": 37891643804, "workflow": "V5 PostgreSQL integration", "conclusion": "failure", "url": "https://github.com/oculusrex14/Mega-XO/actions/runs/37891643804", "guard_tests": {"pass": 24, "fail": 1, "skipped": 0}},
+      {"id": 37891643718, "workflow": "Mega XO validation", "conclusion": "failure", "url": "https://github.com/oculusrex14/Mega-XO/actions/runs/37891643718", "node_tests": {"pass": 454, "fail": 1, "skipped": 116}}
+    ],
+    "failure": {"test": "tests/v5-pg-guards.test.js:202", "code": "TARGET_FILE_INVALID", "detail": {"key": "redis", "source": "MEGA_PG_TARGET_FILE"}, "cause": "target manifests are closed allow-lists (also blocks secret smuggling through manifest keys)", "log_evidence": "artifact://4611"},
+    "decision": "Keep PostgreSQL target guards and regression test unchanged; extract exact redis objects into purpose-owned redis-staging.json and redis-production.json. No source-code API changes, permissive keys or bypass.",
+    "guard_unchanged": true,
+    "managed_factory_unchanged": true,
+    "source_sha256": {
+      "docs/v5/environments/staging.json": "18600ac5b097b05bd282e56bbb9a354c64d03bcca6ef55327286a99e7c9c6674",
+      "docs/v5/environments/production.json": "414f719beea7e78267d62a02c719cb0e0dbe0b9a3843cd8d883fcf110b988721",
+      "docs/v5/environments/redis-staging.json": "c94ec4d736bdba8dc1a069f470d1e268b8e7d6bae39b9668bbb48b2da637593c",
+      "docs/v5/environments/redis-production.json": "620584382862a16bda80fe42d809d0f752e1c34ca9c151bca34a17a59a27094f"
+    },
+    "local_verification": {
+      "command": "env V5_PG_URL=postgres://postgres@127.0.0.1:50709/postgres V5_PG_DISPOSABLE=1 V5_PG_REQUIRED=1 node --test --test-reporter=tap --test-concurrency=1 tests/v5-pg-guards.test.js tests/v5-p06-managed-guard.test.js",
+      "target": "Owned local PG16 and guarded native ephemera",
+      "result": {"pass": 33, "fail": 0, "skipped": 0, "exit": 0, "natural_exit": true},
+      "duration_ms": 6888.83675
+    },
+    "actual_managed_configuration_smoke": {
+      "runner": "node -e via eval Bun.spawn; unchanged createManagedEphemera loads both purpose-owned inventories and their private 0600 credential references, healthy() then native EVAL return redis.call('PING'), finally close()",
+      "argv": ["node", "-e", "const fs=require('node:fs');const {createManagedEphemera}=require('./packages/services/managed-ephemera');(async()=>{const results=[];for(const environment of ['staging','production']){const inventory=JSON.parse(fs.readFileSync('docs/v5/environments/redis-'+environment+'.json','utf8'));let service;try{service=await createManagedEphemera({inventory,environment,credentialFile:inventory.redis.credentialFile});const healthy=await service.healthy();const lua=await service.client.sendCommand(['EVAL',\"return redis.call('PING')\",'0']);if(!healthy||lua!=='PONG')throw Error('MANAGED_SMOKE_FAILED');results.push({environment,provider:inventory.redis.provider,serviceId:inventory.redis.serviceId,region:inventory.redis.region,verifiedTls:inventory.redis.tls,ping:healthy,lua,applicationWrites:0});}finally{if(service)await service.close();}}console.log(JSON.stringify({ok:true,purposeOwnedInventories:true,productionAppEnabled:false,results}));})().catch(e=>{console.error(e.code||'SMOKE_FAILED');process.exitCode=1;});"],
+      "result": {"exit": 0, "stderr": "", "purpose_owned_inventories": true, "production_app_enabled": false},
+      "targets": [
+        {"environment": "staging", "provider": "upstash", "service_id": "d03707cc-028d-4d2d-9395-43f6752b7ec4", "region": "us-east-1", "verified_tls": true, "ping": true, "lua": "PONG", "application_writes": 0},
+        {"environment": "production", "provider": "aiven", "service_id": "mega-xo/valkey-463b5ea", "region": "do-nyc", "verified_tls": true, "ping": true, "lua": "PONG", "application_writes": 0}
+      ]
+    },
+    "redis_inventories": ["docs/v5/environments/redis-staging.json", "docs/v5/environments/redis-production.json"],
+    "production_enabled": false
   },
   "free_only": {
     "owner_instruction": true,

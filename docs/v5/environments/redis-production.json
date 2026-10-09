@@ -1,0 +1,28 @@
+{
+  "schema_version": 1,
+  "environment": "production",
+  "redis": {
+    "provider": "aiven",
+    "serviceId": "mega-xo/valkey-463b5ea",
+    "project": "mega-xo",
+    "name": "valkey-463b5ea",
+    "host": "valkey-463b5ea-mega-xo.i.aivencloud.com",
+    "port": 14329,
+    "region": "do-nyc",
+    "plan": "free",
+    "providerPlan": "free-1",
+    "providerPriceUsd": 0,
+    "tls": true,
+    "autoUpgrade": false,
+    "autoUpgradePolicy": "Forbidden by owner; free-1 price is verified, no provider auto-upgrade flag is returned",
+    "nonserving": true,
+    "adoptedExisting": true,
+    "credentialFile": "/Users/oculus/Downloads/Mega-XO-private-evidence/p06-provider-credentials/aiven-production.json",
+    "providerLimits": {
+      "nodes": 1,
+      "cpuPerNode": 1,
+      "ramMbPerNode": 1024
+    },
+    "evidence": "docs/v5/evidence/phase06-managed-provider.json"
+  }
+}

@@ -56,7 +56,8 @@ function verifyFence(manifest, sourceSha) {
   } else {
     if (!SHA64.test(manifest.v4FrozenSnapshotSha256) ||
         typeof manifest.v4RebootFenceTestRef !== 'string' ||
-        !/^artifact:\/\/v5\/p22\/[a-z0-9._/-]{8,110}$/.test(manifest.v4RebootFenceTestRef)) {
+        (!/^artifact:\/\/v5\/p22\/[a-z0-9._/-]{8,110}$/.test(manifest.v4RebootFenceTestRef) ||
+          manifest.v4RebootFenceTestRef.includes('..'))) {
       refuse('SOURCE_SNAPSHOT_AND_REBOOT_FENCE_PROOF');
     }
     if (manifest.phase === 'V4_FROZEN' && manifest.firstV5ApplicationWriteRef !== null) {

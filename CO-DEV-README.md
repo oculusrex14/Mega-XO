@@ -5,7 +5,7 @@
 **Owner:** independent co-developer; **status:** preparatory implementation, NOT formal phase acceptance  
 **Started:** 2026-10-09 UTC  
 **Pinned starting V5 base:** `e8d049bf50862897f546e531def12715a36c670c` (other agent's latest P06 checkpoint when branch was created)  
-**Upstream sync:** `dc579856d8c4` includes the primary agent's exact G06-passed `V5-platform` head `42db7e0ec401` with zero changed-path overlap. P07 changes remain primary-agent owned.
+**Upstream sync:** `dc579856d8c4` includes accepted G06 (`42db7e0`); `41190f99feaa` includes accepted G07 (`045d5f94a134`). Both were conflict-free two-parent merges into THIS branch; the primary `V5-platform` branch was not edited. Current primary online work starts at P08.
 **Work policy:** only this branch receives new co-development commits. Do not ask the integration agent to inspect/merge individual phase PRs.
 
 ## Quick start for the primary agent
@@ -33,7 +33,7 @@
 
 ## Ownership, dependencies and safety
 
-- The **primary agent** currently owns P06 (managed Redis/Core integration) and subsequent online platform P07–P14; follow its task ledger, real provider evidence and exact service interfaces. This branch never overwrites the primary agent's `packages/services/core.js`, `packages/services/ephemera.js`, schema/migrations, environment inventories, `deploy/compose.yaml`, production Caddyfile, or `docs/v5/progress.json`.
+- The **primary agent** has accepted G06/G07 and owns subsequent online platform P08–P14; follow its live task ledger, provider evidence and exact service interfaces. This branch never overwrites the primary agent's `packages/services/core.js`, `packages/services/queue.js`, `packages/services/ephemera.js`, schema/migrations, environment inventories, `deploy/compose.yaml`, production Caddyfile, or `docs/v5/progress.json`.
 - The **co-developer** owns additive, phase-scoped P15–P20 foundations plus client bundle build safety. All future work lands on this one branch, with small, meaningful commits and an updated README.
 - **No V4 changes**, no current production authority transfer, no modifying R2/Neon/Redis/provider objects, no store submission, no new external ports, and no credentials in Git.
 - P21 (new website/browser product) is **explicitly owner-deferred**; do not start it. P22 depends on P20 rather than the deferred website. P24 is measurement-gated.
@@ -81,6 +81,15 @@
 - Android Kotlin and iOS Swift host shells package the approved same-hash offline game client, origin-bound native identity bridge, encrypted local session storage, native network policy, ads/consent and store billing flows, emulator/simulator/device smoke scripts, and signed-artifact operator procedures.
 - Detail: [native/README.md](native/README.md) and [RELEASE-OPERATIONS.md](native/RELEASE-OPERATIONS.md). **Not done:** authorized physical device/store provisioning, final application bundle IDs/team/keystores, real purchase and Sign in with Apple/Google acceptance, native visual parity and G20. Never grant player Crowns locally on a store callback; backend verifies and commits first.
 
+### P22 — production cutover readiness safeguards (PREPARATION ONLY)
+
+- **Scope:** G22 is OPEN. No production authority transfer, frozen V4 writer, provider mutation or deploy was performed. P22 requires P20 completed and all appropriate G00–G20 production/device/recovery evidence. The new P21 website remains deferred.
+- **Code and tests:** `scripts/v5/p22/readiness.js` (G00–G20 missing gates, pinned artifact/owner evidence, cannot self-authorize); `writer-fence.js` (16 minimum mutation classes, frozen V4/disabled V5 and retryable no-ACK callback policy); `import-reconciliation.js` (frozen P03 model/run/schema and 12-family digest/count parity); `rollback-policy.js` (P18 pre/post-write cases, UNKNOWN quarantines, no stale SQLite restore); `compatibility-map.js` (retained old-origin browser, origin-bound cookies, old callbacks, Android/iOS and one PG authority). Regression suites: `tests/v5-p22-*.test.js`.
+- **CI:** `.github/workflows/v5-p22-cutover-readiness.yml` is PR-only, read-only, pinned checkout with no credentials persisted, zero-skip Node24 tests and the actual owner-ledger no-cutover check. No external provider access.
+- **Verification performed:** 31/31 exact fetched pure JavaScript test bodies passed a temporary V8 harness with Node module stubs, **not** an actual Node24/GitHub Actions run. The harness found and prompted fixes to the UNKNOWN-first-write classification and malformed event fixture before rerun; exact-head CI remains required. No G22 acceptance inferred.
+- **Detailed handoff:** [P22-CUTOVER-READINESS.md](docs/co-dev/P22-CUTOVER-READINESS.md), covering all V5-22-01 through 06, writer inventory, final consistent-source capture, P03 real importer/reconcile run, historical actor continuity, first-write epoch, rollback classes and post-cutover checks.
+- **Remaining owner-executed tasks:** real freeze with tested V4 restart fence, final production snapshot/zero-difference import, actual nonserving deployment, supported-client cookie/callback forwarding, first-write authority transfer, real provider/PG failover, backup/alert delivery and G22 sign-off.
+
 ### Client bundle safety (separate two-file review)
 
 - `scripts/v5/build-client.js` and `tests/v5-client-bundle.test.js` now preflight invalid dependency sources and reject occupied/unexpected/changed output before destructive rebuild. Both upstream base blobs were matched before this review was consolidated; this is not a gameplay/UI change.
@@ -97,6 +106,8 @@ node --test tests/v5-release-*.test.js tests/v5-ci-*.test.js
 node --test tests/v5-p15-archive-manifest.test.js tests/v5-p15-sealed-archive.test.js tests/v5-p15-recovery-policy.test.js
 node --test tests/v5-p18-acceptance-registry.test.js tests/v5-p18-isolation.test.js tests/v5-p18-stage-evidence.test.js
 node --test tests/v5-p19-workload-profile.test.js tests/v5-p19-metrics.test.js
+node --test tests/v5-p22-*.test.js
+node scripts/v5/p22/readiness.js --sha "$(git rev-parse HEAD)" # must report BLOCKED until all owner gates and observed evidence are proven
 ```
 
 **P16 process-kill integration (CI-managed disposable-only):** `tests/v5-p16-process-failover.test.js` requires `V5_PG_URL`, `V5_PG_DISPOSABLE=1`, `V5_PG_REQUIRED=1`, `V5_REDIS_REQUIRED=1`, and a *loopback* `REDIS_URL`. The dedicated P16 workflow supplies these; never run against Neon/managed production Redis. The test is not accepted until it actually runs with zero skips.
@@ -106,6 +117,11 @@ node --test tests/v5-p19-workload-profile.test.js tests/v5-p19-metrics.test.js
 Every PR update must verify the exact source head CI. Keep V5 retained regressions, economy and four-theme UI checks. A green synthetic test is not authority to deploy, purchase anything, activate email/billing, rotate operational keys, change V4 DNS/edge or tick a gate.
 
 ## Chronological co-dev checkpoint log
+
+- **2026-10-09 P22 preparation:** Created fail-closed readiness (`031d292`, tests `230c0ebe`), writer catalogue/restart fence (`3808daa`, tests `80c64bfe`), UNKNOWN-first-write-safe rollback classifier (`c1ef7b1`, corrected `69233a9f`, tests `a0250b15`), frozen-source/P03 per-family reconciliation (`0f2041a`, tests `7fb18a34`), retained browser/native/callback compatibility (`8139739`, tests `e629c3db`), PR-only zero-skip workflow (`481f2fb3`, guard tests `43bff773`), and full operator runbook (`da73f4cf`). Later safety fixes refuse parent-traversal evidence refs and symlinked artifact directories. No live service changes.
+- **2026-10-09 P22 source verification:** 31/31 exact fetched pure source/test assertions passed with a V8/Node-module-stub harness after repairing three test/policy failures. Not Node24 CI execution or provider evidence. G22 OPEN; missing G08–G20 and runtime cutover.
+- **2026-10-09 G07 synchronization:** Merged G07-accepted upstream source SHA `045d5f94a134` into this branch at `41190f99feaa`; 17 files, zero co-dev conflicts, primary branch unchanged.
+
 
 - **2026-10-09 P06 synchronization:** Two-parent merge `dc579856d8c4` integrated the actual G06-passed Core match-observer interfaces from `V5-platform` at `42db7e0ec401` without a conflict or primary branch edit. G06 is accepted in the primary ledger; its exact-head GitHub runs `37900949040` and `37900949132` failed before any runner steps, so there is no claim of new exact-head green CI.
 - **2026-10-09 P16 service crash proof and CI:** Added genuine disposable Core A SIGKILL/B resume/C Redis-wipe harness `d1f5cf7194af`; expanded P16 workflow to a pinned PG16/Redis 7.4 second job `2484f43997`. Tests are committed but **not executed** in current runnerless GitHub Actions.

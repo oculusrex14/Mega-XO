@@ -683,3 +683,55 @@ test('P10 hardening: a finalizer with an elapsed lease never contacts provider b
  })).completed, true);
  assert.equal(provider.calls.length, 1, 'only the live owner contacts the provider');
 });
+
+test('P10 hardening: refund tombstone blocks provider consume before Core receipt reversal', { skip: GATE }, async (t) => {
+ const h = await open(t);
+ if (!h) return;
+ const tx = 'tx-reversal-pending';
+ await h.grant(STORE, tx);
+ await h.enqueueFinalization({
+  store: STORE, transactionId: tx, productId: PRODUCT,
+  purchaseToken: 'token-reversal-pending', kind: 'consume',
+ });
+ /* Emulate the legitimate short interval where the worker has stored the provider
+  * refund but the separate Core authorization has not yet marked the receipt refunded. */
+ const refund = await h.handleRefundNotification({ store: STORE, transactionId: tx, productId: PRODUCT, reason: 'refund' });
+ assert.equal(refund.recorded, true);
+ assert.equal((await h.receipt(STORE, tx)).refunded, false, 'Core receipt reversal is still pending');
+ const claimed = await h.claimDueFinalizations({ workerId: WORKER_A, limit: 10, leaseMs: 5000 });
+ assert.equal(claimed.length, 1);
+ const provider = recordingProvider();
+ const result = await h.completeFinalization({
+  store: STORE, transactionId: tx, workerId: WORKER_A,
+  fence: fenceOf(claimed[0]), finalizeProvider: provider,
+ });
+ assert.equal(result.completed, false);
+ assert.equal(result.refunded, true, 'the permanent tombstone acts immediately');
+ assert.equal(provider.calls.length, 0, 'no token from a refunded purchase may be consumed/acknowledged');
+});
+
+test('P10 hardening: provider exceptions cannot persist receipt tokens or player identifiers', { skip: GATE }, async (t) => {
+ const h = await open(t);
+ if (!h) return;
+ const id = 'rtdn:error-redaction';
+ await h.ingestNotification({ store: STORE, notificationId: id });
+ const first = await h.claimDueNotifications({ workerId: WORKER_A, limit: 1, leaseMs: 5000 });
+ assert.equal(first.length, 1);
+ const secret = 'private-token-and-user-address-should-not-enter-database';
+ await h.failNotification({
+  store: STORE, notificationId: id, workerId: WORKER_A,
+  fence: fenceOf(first[0]), error: 'Provider HTTP 503 for ' + secret,
+ });
+ const row = await h.notification(STORE, id);
+ assert.equal(row.last_error, 'UNKNOWN_FAULT', 'untrusted exception text is replaced by a safe category');
+ assert.equal(JSON.stringify(row).includes(secret), false);
+ h.advance(5000);
+ const next = await h.claimDueNotifications({ workerId: WORKER_B, limit: 1, leaseMs: 5000 });
+ assert.equal(next.length, 1);
+ await h.failNotification({
+  store: STORE, notificationId: id, workerId: WORKER_B, fence: fenceOf(next[0]),
+  error: { code: 'PROVIDER_RATE_LIMITED', message: secret },
+ });
+ assert.equal((await h.notification(STORE, id)).last_error, 'PROVIDER_RATE_LIMITED',
+  'an allowlisted fault preserves useful classification without leaking the raw message');
+});

@@ -1,0 +1,59 @@
+{
+  "schema_version": 1,
+  "phase": "P07",
+  "task_ids": [
+    "V5-07-03"
+  ],
+  "case_ids": [],
+  "recorded_at_utc": "2026-10-09T08:16:00.000Z",
+  "status": "ASSIGNMENTS_TRANSACTIONALLY_COMMITTED",
+  "source_state": {
+    "base_sha": "42db7e0ec4014c266b4ca726f4d0f2d9038ce131",
+    "verified_source_sha256": {
+      "packages/services/queue.js": "82e4f014e7a68e82a3c74900da0ea996b72a6b252069bdaaa7632607147b3096",
+      "packages/services/core.js": "9ea54466f623f6cfd3b64178d1a1c61433658139857526573fae187a1d2f5d74",
+      "tests/v5-p07-match.test.js": "632b5ea91216b3f208c909ea1c2a1fa0d950ec44b2dfae93141f237ef5df7834"
+    }
+  },
+  "transactional_assignment_verification": {
+    "service_method": "queue.matchTick({ mode, matcherId, limit, now, makeId }) in packages/services/queue.js",
+    "durable_atomicity": {
+      "transaction_boundary": "core.run({ actor: 'matchmaker', scope: 'matchmaker' }, 'pair:' + matchId, { type: 'queue', id: matchId, a, b, mode, turnSeconds })",
+      "lock_order": "Operation identity mutex -> aggregate identity -> actor occupancy and eligibility in global sorted order -> wallets",
+      "committed_facts": "Match row with OFFERED status, match.participants seated, idempotency outcome in economy.command_outcomes, and ops.outbox event committed in the same PostgreSQL transaction"
+    },
+    "racing_matchers_concurrency": {
+      "result": "Two matchers racing the same actors create AT MOST ONE compatible assignment and AT MOST ONE financial effect",
+      "mutual_exclusion": "Claim locks in Redis serialize candidate claiming; PostgreSQL row locks on aggregate and actors serialize concurrent commits",
+      "loser_outcome": "Loser encounters ALREADY_IN_MATCH or IDEMPOTENCY_CONFLICT, rolls back completely, and leaves zero phantom match or outbox rows"
+    },
+    "occupancy_collision_and_rollback": {
+      "result": "An actor occupied in PostgreSQL fails with ALREADY_IN_MATCH; transaction rolls back completely",
+      "durable_integrity": "Zero match.matches or match.participants rows created for the failed pair; zero ops.outbox events created",
+      "queue_remediation": "Occupied actor dropped from queue (requeue: false); innocent partner requeued with original joinedAt score (requeue: true)"
+    },
+    "ranked_fee_requirement": {
+      "result": "Ranked queue requires both players have sufficient coins (>= quote fee) before pairing",
+      "enforcement": "Under-funded players skipped during ranked matching; casual queue pairs freely with 0 fee"
+    },
+    "fifo_fairness": {
+      "result": "Older candidate (earlier joinedAt) selected over newer candidate when both are compatible; seat 0 assigned to older entrant",
+      "unpaired_release": "Unpaired candidates released with requeue: true, preserving original FIFO joinedAt score"
+    }
+  },
+  "test_execution": {
+    "command": "env V5_PG_URL=postgres://postgres@127.0.0.1:50709/postgres V5_PG_DISPOSABLE=1 V5_PG_REQUIRED=1 REDIS_URL=redis://127.0.0.1:50710 node --test --test-reporter=tap --test-concurrency=1 tests/v5-p07-match.test.js",
+    "environment": "owned loopback PostgreSQL 16.15 + real loopback Redis 127.0.0.1:50710",
+    "tests": 6,
+    "pass": 6,
+    "fail": 0,
+    "skipped": 0
+  },
+  "task_outcomes": {
+    "V5-07-03": "COMPLETE: transactional assignment implemented via queue.matchTick and core.run. PostgreSQL rechecks actors, eligibility, occupancy, rating and balance inside the command transaction; creates match under constraints; commits outbox event; two racing matchers create at most one assignment and one financial effect with zero phantom state; occupied collisions roll back cleanly and requeue innocent partners; FIFO fairness and ranked coin requirements verified across 6 dedicated tests on real PG16 + Redis."
+  },
+  "not_claimed": [
+    "distributed matcher recovery under crashes and Redis wipes (V5-07-04)",
+    "G07 gate passage"
+  ]
+}

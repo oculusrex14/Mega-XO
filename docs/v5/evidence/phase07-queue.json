@@ -1,0 +1,67 @@
+{
+  "schema_version": 1,
+  "phase": "P07",
+  "task_ids": [
+    "V5-07-02"
+  ],
+  "case_ids": [],
+  "recorded_at_utc": "2026-10-09T07:55:00.000Z",
+  "status": "QUEUE_OPERATIONS_VERIFIED",
+  "source_state": {
+    "base_sha": "42db7e0ec4014c266b4ca726f4d0f2d9038ce131",
+    "verified_source_sha256": {
+      "packages/services/queue.js": "82e4f014e7a68e82a3c74900da0ea996b72a6b252069bdaaa7632607147b3096",
+      "packages/services/index.js": "7ea8ae01c778401311029c21f76f77754d9c7921ba57917c60e34c9c7f66a2cb",
+      "tests/v5-p07-queue.test.js": "2a9791ea8ea466a9c1e7a57a15a81ca55a3064b3fe3f5188bf27e04f0578efda"
+    }
+  },
+  "queue_operations_verification": {
+    "service": "packages/services/queue.js",
+    "atomicity": "7 Lua scripts (JOIN/TOUCH/CANCEL/CLAIM/RELEASE/EXPIRE/SIZE) with fully declared KEYS; transitions execute via atomic EVAL with 2s deadline and no timers left behind",
+    "cross_device_deduplication": {
+      "same_op_key": "Returns deepEqual identical cached response across devices/service instances",
+      "idempotent_rejoin": "Same mode with new opKey preserves original joinedAt score, recomputes wait time, and leaves exactly one index member",
+      "conflicting_mode": "Throws ALREADY_QUEUED when attempting to join other mode while queued"
+    },
+    "eligibility_enforcement": {
+      "durable_checks": "Direct PostgreSQL re-read of identity.eligibility and core.actor_occupancy",
+      "rejections": "Unverified, suspended, security-hold, and occupied actors are refused with INELIGIBLE; no index member created; occupied actor reports matched"
+    },
+    "cancellation_races": {
+      "before_match": "Cancels cleanly, removes candidate from index, sets status to idle, idempotent on opKey",
+      "offered_match": "Reports matched with termsHash/expires; cancel declines offer in Core via {type: 'decline'} and sets status to cancelled",
+      "playing_match": "Cancel returns {state: 'playing', matchId} and leaves match in PLAYING status without disturbance"
+    },
+    "heartbeat_and_lease_recovery": {
+      "active_heartbeat": "Refreshes 45s lease and ticket TTL, keeps searching state, preserves original joinedAt",
+      "abandoned_lease": "Client stopping heartbeats loses lease; expireAbandoned returns count and purges index member",
+      "no_phantom_entries": "Dead client leaves 0 match participants and 0 occupancy rows in PostgreSQL",
+      "disconnected_state": "Lapsed client reads {state: 'disconnected'} and its stale member is purged"
+    },
+    "claim_and_release": {
+      "atomic_claim": "Concurrent claimCandidates calls produce disjoint candidate sets with distinct non-empty claim IDs",
+      "requeue_preservation": "releaseClaim with requeue: true re-queues candidate at original FIFO joinedAt score; requeue: false removes permanently"
+    },
+    "bounded_candidate_indices": {
+      "global_cap": "maxTickets cap enforced across ranked and casual modes; excess attempts reject with QUEUE_FULL without indexing",
+      "capacity_reclamation": "Expired candidates reclaimed by expireAbandoned restore available slots; auditUnboundedKeys returns empty array"
+    }
+  },
+  "test_execution": {
+    "command": "env V5_PG_URL=postgres://postgres@127.0.0.1:50709/postgres V5_PG_DISPOSABLE=1 V5_PG_REQUIRED=1 REDIS_URL=redis://127.0.0.1:50710 node --test --test-reporter=tap --test-concurrency=1 tests/v5-p07-queue.test.js",
+    "environment": "owned loopback PostgreSQL 16.15 + real loopback Redis 127.0.0.1:50710",
+    "tests": 6,
+    "assertions": 91,
+    "pass": 6,
+    "fail": 0,
+    "skipped": 0
+  },
+  "task_outcomes": {
+    "V5-07-02": "COMPLETE: join/cancel/heartbeat/expire implemented in packages/services/queue.js. Cross-device deduplication via opKey, 45s heartbeat lease and ticket TTL refresh, bounded candidate indices (maxTickets), atomic claims with FIFO preservation, and dead-client lease recovery without phantom paid entries verified across 6 dedicated tests and 91 assertions on real PG16 + Redis."
+  },
+  "not_claimed": [
+    "transactional assignment commits (V5-07-03)",
+    "distributed matcher recovery (V5-07-04)",
+    "G07 gate passage"
+  ]
+}

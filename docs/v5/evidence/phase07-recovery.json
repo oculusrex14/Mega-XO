@@ -1,0 +1,58 @@
+{
+  "schema_version": 1,
+  "phase": "P07",
+  "task_ids": [
+    "V5-07-04"
+  ],
+  "case_ids": [],
+  "recorded_at_utc": "2026-10-09T08:18:00.000Z",
+  "status": "RECOVERY_VERIFIED",
+  "source_state": {
+    "base_sha": "42db7e0ec4014c266b4ca726f4d0f2d9038ce131",
+    "verified_source_sha256": {
+      "packages/services/queue.js": "82e4f014e7a68e82a3c74900da0ea996b72a6b252069bdaaa7632607147b3096",
+      "packages/services/core.js": "9ea54466f623f6cfd3b64178d1a1c61433658139857526573fae187a1d2f5d74",
+      "tests/v5-p07-recovery.test.js": "a7b32cfa0271569485bb3ea267ea043c8ce3c5bbbb3b15ad090333beee1cf51f"
+    }
+  },
+  "recovery_verification": {
+    "matcher_crash_between_claim_and_commit": {
+      "scenario": "A matcher worker claims candidates via claimCandidates and dies before committing core.run",
+      "zero_premature_charges": "Zero matches, zero participants, zero outbox, zero reservations, and zero ledger rows created at claim time",
+      "claim_expiry_and_recovery": "Once the claim lease lapses, subsequent matcher claims the survivors and commits the match cleanly, or clients continue searching; both accept and fund the pot exactly once"
+    },
+    "redis_wipe_after_assignment": {
+      "scenario": "Entire Redis namespace wiped (ephemera.wipeNamespace()) after match assignment commits in PostgreSQL",
+      "durable_integrity": "Match row, participants, and outbox rows remain byte-identical before and after wipe",
+      "reconstruction": "Both players' queue.status(actor) reconstructs {state: 'matched', mode, matchId, termsHash, expires} from PostgreSQL without needing Redis",
+      "acceptance_integrity": "Both players accept; game transitions to PLAYING and reserves funds normally without double-charges or stranded players"
+    },
+    "direct_challenge_race": {
+      "scenario": "Queued player accepts a competing direct challenge while queue assignment is in flight",
+      "outcome": "Queue assignment fails ALREADY_IN_MATCH under PostgreSQL aggregate identity mutex lock; queue transaction rolls back with 0 rows; direct match preserved; innocent partner requeued with original join time"
+    },
+    "tournament_occupancy_race": {
+      "scenario": "Queued player occupies a tournament table while queue assignment is in flight",
+      "outcome": "Queue assignment fails ALREADY_IN_MATCH; tournament occupancy preserved; innocent partner requeued with original join time"
+    },
+    "recovery_invariants": {
+      "zero_ghosts": "No participant without a match, no occupancy without a backing aggregate, no match with torn seat set, no actor in two live matches, no escrow discrepancy",
+      "clean_partition": "Every actor is either queued, assigned, or explicitly cancelled; money matches state exactly"
+    }
+  },
+  "test_execution": {
+    "command": "env V5_PG_URL=postgres://postgres@127.0.0.1:50709/postgres V5_PG_DISPOSABLE=1 V5_PG_REQUIRED=1 REDIS_URL=redis://127.0.0.1:50710 node --test --test-reporter=tap --test-concurrency=1 tests/v5-p07-recovery.test.js",
+    "environment": "owned loopback PostgreSQL 16.15 + real loopback Redis 127.0.0.1:50710",
+    "tests": 5,
+    "assertions": 164,
+    "pass": 5,
+    "fail": 0,
+    "skipped": 0
+  },
+  "task_outcomes": {
+    "V5-07-04": "COMPLETE: distributed recovery exercised across matcher crashes between claim and commit, total Redis wipes after assignment, direct challenge races, and tournament occupancy races. Verified that zero premature charges occur, assignments reconstruct from PostgreSQL on Redis loss, transactions roll back with zero phantom rows on occupancy collision, and every actor is recoverably queued, assigned or explicitly canceled across 5 dedicated tests and 164 assertions on real PG16 + Redis."
+  },
+  "not_claimed": [
+    "G07 gate passage"
+  ]
+}

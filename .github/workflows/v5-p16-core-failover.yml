@@ -1,15 +1,49 @@
-name: V5 P16 Core drain foundations
+name: V5 P16 process failover foundations
 # PR-only, read-only and disposable: no production Core, Oracle, provider or secret access.
-# These suites validate transport admission/drain only, NOT G16 or realtime recovery.
+# Validate local drain plus a real two-process acknowledged-move kill/recovery.
+# Still NOT G16: no production, real WebSocket routing, or post-commit/pre-publish kill proof.
 on:
+  push:
+    branches: [V5-platform]
+    paths:
+      - '.github/workflows/v5-p16-core-failover.yml'
+      - 'packages/services/core-instance-lifecycle.js'
+      - 'packages/services/core-drain-connections.js'
+      # P08 Core, P06 Redis and PG/contract evolution can break the real
+      # two-Core SIGKILL rehearsal without changing a P16-owned file.
+      - 'packages/services/**'
+      - 'packages/contracts/**'
+      - 'packages/db/**'
+      - 'packages/migrations/**'
+      - 'apps/game-core/**'
+      - 'apps/worker/**'
+      - 'deploy/**'
+      - 'src/domain.js'
+      - 'scripts/v5/p16/**'
+      - 'tests/v5-p16-*.test.js'
+      - 'tests/v5-pg-lab.js'
+      - 'tests/helpers/v5-presence-service-process.js'
+      - 'docs/v5/co-dev/P16-CORE-FAILOVER-FOUNDATIONS.md'
   pull_request:
     branches: [V5-platform]
     paths:
       - '.github/workflows/v5-p16-core-failover.yml'
       - 'packages/services/core-instance-lifecycle.js'
       - 'packages/services/core-drain-connections.js'
+      # P08 Core, P06 Redis and PG/contract evolution can break the real
+      # two-Core SIGKILL rehearsal without changing a P16-owned file.
+      - 'packages/services/**'
+      - 'packages/contracts/**'
+      - 'packages/db/**'
+      - 'packages/migrations/**'
+      - 'apps/game-core/**'
+      - 'apps/worker/**'
+      - 'deploy/**'
+      - 'src/domain.js'
       - 'scripts/v5/p16/**'
       - 'tests/v5-p16-*.test.js'
+      - 'tests/v5-pg-lab.js'
+      - 'tests/helpers/v5-presence-service-process.js'
       - 'docs/v5/co-dev/P16-CORE-FAILOVER-FOUNDATIONS.md'
 permissions:
   contents: read
@@ -23,6 +57,8 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: '24'
@@ -35,21 +71,64 @@ jobs:
             tests/v5-p16-lifecycle.test.js \
             tests/v5-p16-connections.test.js \
             tests/v5-p16-real-sockets.test.js \
-            tests/v5-p16-topology.test.js > p16-tap.log
+            tests/v5-p16-topology.test.js \
+            tests/v5-p16-ci-perimeter.test.js > p16-tap.log
           cat p16-tap.log
           grep -Eq '^# tests [1-9][0-9]*$' p16-tap.log
           grep -Eq '^# pass [1-9][0-9]*$' p16-tap.log
           grep -Eq '^# fail 0$' p16-tap.log
           grep -Eq '^# skipped 0$' p16-tap.log
-      - name: Prevent privileged actions or external host exposure in P16 workflow
+      - name: Audit both jobs for untrusted commands and provider exposure
+        run: node scripts/v5/p16/ci-perimeter.js
+  core-failure-recovery:
+    name: Real Core A kill and B durable PG/Redis recovery
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      V5_PG_URL: postgres://postgres@127.0.0.1:5432/postgres
+      V5_PG_REQUIRED: '1'
+      V5_PG_DISPOSABLE: '1'
+      V5_TARGET: test
+      V5_MIGRATE_ALLOW_INSECURE_LOOPBACK: '1'
+      V5_REDIS_REQUIRED: '1'
+      REDIS_URL: redis://127.0.0.1:6379
+    services:
+      postgres:
+        image: mirror.gcr.io/library/postgres:16@sha256:ca0bd484cb98bf4b24eb1010e73fb3fcbd6714d240fbc1a10eea5b7dbecb641d
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_DB: postgres
+          POSTGRES_HOST_AUTH_METHOD: trust
+        ports: ['127.0.0.1:5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres -q"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 24
+          --health-start-period 10s
+      redis:
+        image: mirror.gcr.io/library/redis:7.4@sha256:4fa24486b8bcca8eec45ee0eb166edc674795e53a2b53d1a9ef263eecebaac85
+        ports: ['127.0.0.1:6379:6379']
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 24
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '24'
+      - name: Install locked runtime dependencies
+        run: npm ci
+      - name: Kill A after committed paid move, recover B and restart C after Redis loss
         run: |
-          node - <<'NODE'
-          const fs = require('node:fs');
-          const body = fs.readFileSync('.github/workflows/v5-p16-core-failover.yml', 'utf8');
-          if (!/permissions:\s*\n\s+contents: read/.test(body)) throw Error('P16_CI_PERMISSIONS');
-          const scope = body.split('      - name: Prevent privileged actions')[0];
-          for (const forbidden of ['pull_request_target:', 'workflow_run:', 'id-token: write', 'secrets.', 'docker login', 'kubectl ', 'ssh ', 'vercel deploy', 'gh release create']) {
-            if (scope.includes(forbidden)) throw Error('P16_CI_FORBIDDEN:' + forbidden);
-          }
-          console.log('P16 read-only CI boundary verified');
-          NODE
+          set -euo pipefail
+          node --test --test-reporter=tap --test-concurrency=1 tests/v5-p16-process-failover.test.js > p16-real-failover.tap
+          cat p16-real-failover.tap
+          grep -Eq '^# tests 1$' p16-real-failover.tap
+          grep -Eq '^# pass 1$' p16-real-failover.tap
+          grep -Eq '^# fail 0$' p16-real-failover.tap
+          grep -Eq '^# skipped 0$' p16-real-failover.tap

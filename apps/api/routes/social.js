@@ -7,9 +7,7 @@ const {
   resolveAuth,
 } = require('./helpers');
 const {
-  classifyRoute,
   defaultReadCache,
-  CATEGORIES,
   CACHE_CONTROL_POLICIES,
 } = require(path.join(__dirname, '../../../packages/services/read-cache.js'));
 
@@ -42,37 +40,13 @@ async function getProfile(context, req, res, targetId) {
     throw err;
   }
 
-  const readCache = context?.readCache || defaultReadCache;
-  const isSelf = actor === resolvedTarget;
-  const cacheKey = `public_profile:${resolvedTarget}`;
-
-  if (!isSelf) {
-    const cached = readCache.get(cacheKey, { allowStale: true });
-    if (cached && (cached.statsVisibility === 'public' || cached.stats_visibility === 'public')) {
-      return sendJson(res, 200, cached, {
-        'Cache-Control': CACHE_CONTROL_POLICIES.PUBLIC_PROJECTED_MEDIUM,
-      });
-    }
-  }
-
+  // This is an actor-relative projection, even when the target has public
+  // stats: block status, friendship, relation and visibility depend on the
+  // requesting actor. A shared/stale target-only cache bypasses those checks.
+  // Always consult the PostgreSQL account service for this private endpoint.
   const profile = await accounts.view(actor, resolvedTarget);
-  const visibility = profile?.statsVisibility || profile?.stats_visibility || 'private';
-  const classification = classifyRoute('/api/community/profile/' + resolvedTarget, {
-    isSelf,
-    visibility,
-  });
-
-  if (!isSelf && classification.category === CATEGORIES.PUBLIC_PROJECTED) {
-    readCache.set(cacheKey, profile, {
-      ttlMs: 60000,
-      staleToleranceMs: 120000,
-      tags: ['profile', `profile:${resolvedTarget}`],
-      category: CATEGORIES.PUBLIC_PROJECTED,
-    });
-  }
-
   return sendJson(res, 200, profile, {
-    'Cache-Control': classification.cacheControl,
+    'Cache-Control': CACHE_CONTROL_POLICIES.PRIVATE_NO_STORE,
   });
 }
 
@@ -88,22 +62,11 @@ async function getFriends(context, req, res) {
     throw err;
   }
 
-  const readCache = context?.readCache || defaultReadCache;
-  const cacheKey = `friends:${actor}`;
-  const cached = readCache.get(cacheKey);
-  if (cached) {
-    return sendJson(res, 200, cached, {
-      'Cache-Control': CACHE_CONTROL_POLICIES.PRIVATE_NO_STORE,
-    });
-  }
-
+  // Friends and incoming requests are viewer-specific authority decisions.
+  // A local cache has no cross-instance invalidation: a block/unfriend on
+  // another API worker must take effect on the very next request.
+  // Read PostgreSQL on every request and disallow CDN/shared cache storage.
   const result = await accounts.friends(actor);
-  readCache.set(cacheKey, result, {
-    ttlMs: 30000,
-    tags: [`friends:${actor}`],
-    category: CATEGORIES.PRIVATE_NO_CACHE,
-    shared: false,
-  });
   return sendJson(res, 200, result, {
     'Cache-Control': CACHE_CONTROL_POLICIES.PRIVATE_NO_STORE,
   });
@@ -147,13 +110,15 @@ async function searchProfiles(context, req, res) {
 
   const url = new URL(req.url, 'http://localhost');
   const query = url.searchParams.get('q') || req.query?.q || '';
+  // Search results depend on the viewer's blocks and profile relationships.
+  // Public caching would let a CDN replay one player's results to another.
   if (!query || query.trim().length === 0) {
-    return sendJson(res, 200, []);
+    return sendJson(res, 200, [], { 'Cache-Control': CACHE_CONTROL_POLICIES.PRIVATE_NO_STORE });
   }
 
   const results = await accounts.search(actor, query);
   return sendJson(res, 200, results, {
-    'Cache-Control': CACHE_CONTROL_POLICIES.PUBLIC_SEARCH,
+    'Cache-Control': CACHE_CONTROL_POLICIES.PRIVATE_NO_STORE,
   });
 }
 

@@ -614,3 +614,182 @@ test('V5-10-03 recovery: a pending finalization is listed, and a crashed finaliz
  const after = await h.listPendingFinalizations({ limit: 50 });
  assert.equal(after.some((r) => txOf(r) === tx), false, 'a done finalization is no longer pending');
 });
+
+/* P10 post-gate hardening: a repeated purchase notification must not steal a
+ * provider call in progress by clearing its lease, and an expired worker must
+ * not call Google merely because another worker has not yet reclaimed it. */
+test('P10 hardening: duplicate enqueue preserves active finalization and operator listing redacts purchase token', { skip: GATE }, async (t) => {
+ const h = await open(t);
+ if (!h) return;
+ const tx = 'tx-active-requeue';
+ const token = 'opaque-sensitive-purchase-token';
+ await h.enqueueFinalization({ store: STORE, transactionId: tx, productId: PRODUCT, purchaseToken: token, kind: 'consume' });
+ await h.grant(STORE, tx);
+ const listed = await h.listPendingFinalizations({ limit: 10 });
+ const row = listed.find((x) => txOf(x) === tx);
+ assert.ok(row, 'operator can see the outstanding finalization');
+ assert.equal(row.hasPurchaseToken, true, 'operator may see whether a token is present');
+ assert.equal(row.purchaseToken, undefined, 'operator must never receive a raw provider purchase token');
+ assert.equal(JSON.stringify(row).includes(token), false, 'even serializing the operator response cannot expose the token');
+
+ const first = await h.claimDueFinalizations({ workerId: WORKER_A, limit: 10, leaseMs: 5000 });
+ assert.equal(first.length, 1);
+ const fence = fenceOf(first[0]);
+ const before = await h.finalize(STORE, tx);
+ const replay = await h.enqueueFinalization({
+  store: STORE, transactionId: tx, productId: PRODUCT,
+  purchaseToken: 'forged-replayed-token', kind: 'acknowledge',
+ });
+ assert.equal(replay.enqueued, false);
+ const after = await h.finalize(STORE, tx);
+ assert.equal(after.state, 'pending');
+ assert.equal(after.lease_owner, WORKER_A, 'replay must not clear live claim ownership');
+ assert.equal(Number(after.lease_token), fence, 'replay must not replace the fence');
+ assert.equal(msOf(after.lease_until, 'lease_until'), msOf(before.lease_until, 'lease_until'));
+ assert.equal(Number(after.attempts), 1, 'replay must not reset live attempt count');
+ assert.equal(after.purchase_token, token, 'replay must not replace the in-flight purchase token');
+ assert.equal(after.kind, 'consume', 'replay must not change an in-flight provider operation');
+ assert.equal((await h.claimDueFinalizations({ workerId: WORKER_B, limit: 10, leaseMs: 5000 })).length, 0,
+  'another worker cannot race an ongoing provider call after a replay');
+
+ const finalize = recordingProvider();
+ assert.equal((await h.completeFinalization({
+  store: STORE, transactionId: tx, workerId: WORKER_A, fence, finalizeProvider: finalize,
+ })).completed, true);
+ assert.equal(finalize.calls.length, 1);
+ assert.equal(finalize.calls[0].purchaseToken, token);
+});
+
+test('P10 hardening: a finalizer with an elapsed lease never contacts provider before takeover', { skip: GATE }, async (t) => {
+ const h = await open(t);
+ if (!h) return;
+ const tx = 'tx-expired-before-provider';
+ await h.enqueueFinalization({ store: STORE, transactionId: tx, productId: PRODUCT, purchaseToken: 'tok-expired', kind: 'consume' });
+ await h.grant(STORE, tx);
+ const first = await h.claimDueFinalizations({ workerId: WORKER_A, limit: 10, leaseMs: 1000 });
+ assert.equal(first.length, 1);
+ h.advance(1001);
+ const provider = recordingProvider();
+ const stale = await h.completeFinalization({
+  store: STORE, transactionId: tx, workerId: WORKER_A, fence: fenceOf(first[0]), finalizeProvider: provider,
+ });
+ assert.equal(stale.completed, false);
+ assert.equal(stale.fenceLost, true);
+ assert.equal(provider.calls.length, 0, 'the provider call must never start after the lease expired');
+ const next = await h.claimDueFinalizations({ workerId: WORKER_B, limit: 10, leaseMs: 1000 });
+ assert.equal(next.length, 1);
+ assert.equal((await h.completeFinalization({
+  store: STORE, transactionId: tx, workerId: WORKER_B, fence: fenceOf(next[0]), finalizeProvider: provider,
+ })).completed, true);
+ assert.equal(provider.calls.length, 1, 'only the live owner contacts the provider');
+});
+
+test('P10 hardening: refund tombstone blocks provider consume before Core receipt reversal', { skip: GATE }, async (t) => {
+ const h = await open(t);
+ if (!h) return;
+ const tx = 'tx-reversal-pending';
+ await h.grant(STORE, tx);
+ await h.enqueueFinalization({
+  store: STORE, transactionId: tx, productId: PRODUCT,
+  purchaseToken: 'token-reversal-pending', kind: 'consume',
+ });
+ /* Emulate the legitimate short interval where the worker has stored the provider
+  * refund but the separate Core authorization has not yet marked the receipt refunded. */
+ await assert.rejects(
+  () => h.handleRefundNotification({ store: STORE, transactionId: tx, productId: PRODUCT, reason: 'refund' }),
+  (error) => error.code === 'REFUND_CORE_SEAM_REQUIRED',
+  'a known, previously granted purchase cannot be refunded without its Core reversal handler',
+ );
+ assert.equal(await h.revocation(STORE, tx), null, 'the invalid callback made no partial tombstone write');
+ /* A trusted provider ingress can record the refund while the downstream
+  * Core callback has not yet frozen the receipt. Exercise that legitimate
+  * post-ingest/pre-Core interval directly in the isolated database. */
+ await h.exec(
+  'INSERT INTO monetization.store_revocations (store, transaction_id, product_id, occurred_at, reason)'
+  + ' VALUES ($1, $2, $3, $4, $5)',
+  [STORE, tx, PRODUCT, new Date(h.now()), 'refund'],
+ );
+ assert.equal((await h.receipt(STORE, tx)).refunded, false, 'Core receipt reversal is still pending');
+ const claimed = await h.claimDueFinalizations({ workerId: WORKER_A, limit: 10, leaseMs: 5000 });
+ assert.equal(claimed.length, 1);
+ const provider = recordingProvider();
+ const result = await h.completeFinalization({
+  store: STORE, transactionId: tx, workerId: WORKER_A,
+  fence: fenceOf(claimed[0]), finalizeProvider: provider,
+ });
+ assert.equal(result.completed, false);
+ assert.equal(result.refunded, true, 'the permanent tombstone acts immediately');
+ assert.equal(provider.calls.length, 0, 'no token from a refunded purchase may be consumed/acknowledged');
+});
+
+test('P10 hardening: provider exceptions cannot persist receipt tokens or player identifiers', { skip: GATE }, async (t) => {
+ const h = await open(t);
+ if (!h) return;
+ const id = 'rtdn:error-redaction';
+ await h.ingestNotification({ store: STORE, notificationId: id });
+ const first = await h.claimDueNotifications({ workerId: WORKER_A, limit: 1, leaseMs: 5000 });
+ assert.equal(first.length, 1);
+ const secret = 'private-token-and-user-address-should-not-enter-database';
+ await h.failNotification({
+  store: STORE, notificationId: id, workerId: WORKER_A,
+  fence: fenceOf(first[0]), error: 'Provider HTTP 503 for ' + secret,
+ });
+ const row = await h.notification(STORE, id);
+ assert.equal(row.last_error, 'UNKNOWN_FAULT', 'untrusted exception text is replaced by a safe category');
+ assert.equal(JSON.stringify(row).includes(secret), false);
+ h.advance(5000);
+ const next = await h.claimDueNotifications({ workerId: WORKER_B, limit: 1, leaseMs: 5000 });
+ assert.equal(next.length, 1);
+ await h.failNotification({
+  store: STORE, notificationId: id, workerId: WORKER_B, fence: fenceOf(next[0]),
+  error: { code: 'PROVIDER_RATE_LIMITED', message: secret },
+ });
+ assert.equal((await h.notification(STORE, id)).last_error, 'PROVIDER_RATE_LIMITED',
+  'an allowlisted fault preserves useful classification without leaking the raw message');
+});
+test('P10 retry fences remain monotonic for re-used notification worker IDs', { skip: GATE }, async (t) => {
+ const h = await open(t);
+ if (!h) return;
+ const id = 'notification:reuse-owner';
+ await h.ingestNotification({ store: STORE, notificationId: id });
+ const first = await h.claimDueNotifications({ workerId: WORKER_A, limit: 1, leaseMs: 1000 });
+ assert.equal(first.length, 1);
+ const firstFence = fenceOf(first[0]);
+ const failed = await h.failNotification({ store: STORE, notificationId: id, workerId: WORKER_A,
+  fence: firstFence, error: { code: 'PROVIDER_UNAVAILABLE' } });
+ assert.equal(failed.retried, true);
+ h.advance(1001);
+ const next = await h.claimDueNotifications({ workerId: WORKER_A, limit: 1, leaseMs: 1000 });
+ assert.equal(next.length, 1);
+ assert.ok(fenceOf(next[0]) > firstFence, 'null lease tuple must not reset fence generation');
+ assert.equal(await h.completeNotification({ store: STORE, notificationId: id, workerId: WORKER_A, fence: firstFence }), false);
+ assert.equal(await h.completeNotification({ store: STORE, notificationId: id, workerId: WORKER_A, fence: fenceOf(next[0]) }), true);
+});
+
+test('P10 finalization retries preserve fences and attempts under repeated verification', { skip: GATE }, async (t) => {
+ const h = await open(t);
+ if (!h) return;
+ const tx = 'tx:retry-owner';
+ const token = 'opaque-token-retry';
+ await h.enqueueFinalization({ store: STORE, transactionId: tx, productId: PRODUCT, purchaseToken: token, kind: 'consume' });
+ const first = await h.claimDueFinalizations({ workerId: WORKER_A, limit: 1, leaseMs: 1000 });
+ assert.equal(first.length, 1);
+ const beforeFence = fenceOf(first[0]);
+ const noGrant = recordingProvider();
+ const deferred = await h.completeFinalization({ store: STORE, transactionId: tx, workerId: WORKER_A, fence: beforeFence, finalizeProvider: noGrant });
+ assert.equal(deferred.pendingGrant, true);
+ assert.equal(noGrant.calls.length, 0);
+ h.advance(1001);
+ await h.enqueueFinalization({ store: STORE, transactionId: tx, productId: PRODUCT, purchaseToken: token, kind: 'consume' });
+ await h.grant(STORE, tx);
+ const next = await h.claimDueFinalizations({ workerId: WORKER_A, limit: 1, leaseMs: 1000 });
+ assert.equal(next.length, 1);
+ assert.equal(Number(next[0].attempts), 2, 'duplicate enqueue must preserve durable attempt history');
+ assert.ok(fenceOf(next[0]) > beforeFence, 'reused worker ID must receive fresh fence after backoff');
+ const provider = recordingProvider();
+ const stale = await h.completeFinalization({ store: STORE, transactionId: tx, workerId: WORKER_A, fence: beforeFence, finalizeProvider: provider });
+ assert.equal(stale.fenceLost, true);
+ assert.equal(provider.calls.length, 0, 'stale generation cannot reach external Google API');
+ assert.equal((await h.completeFinalization({ store: STORE, transactionId: tx, workerId: WORKER_A, fence: fenceOf(next[0]), finalizeProvider: provider })).completed, true);
+ assert.equal(provider.calls.length, 1);
+});

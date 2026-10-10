@@ -172,13 +172,21 @@ function testHttpFetch(url, options = {}) {
 /**
  * Issues a request to the Vercel API handler.
  */
-function apiRequest(target, routePath, { method = 'GET', actor = null, token = null, body = null, headers = {} } = {}) {
+async function apiRequest(target, routePath, { method = 'GET', actor = null, token = null, body = null, headers = {} } = {}) {
   const handler = (target && typeof target === 'object' && target.handler) ? target.handler : target;
   const req = new EventEmitter();
   req.method = method;
   req.url = routePath;
   req.headers = { ...headers };
-  if (actor) req.headers['x-actor-id'] = actor;
+  // P11 gateway tests obtain a real session, never a spoofable actor header.
+  if (actor && !token) {
+    if (!target?._testAccounts?.issue) throw new Error('TEST_AUTHORITY_REQUIRED');
+    target._testSessions ||= new Map();
+    if (!target._testSessions.has(actor)) {
+      target._testSessions.set(actor, target._testAccounts.issue(actor, Date.now()));
+    }
+    token = (await target._testSessions.get(actor)).token;
+  }
   if (token) req.headers['authorization'] = `Bearer ${token}`;
   req.body = body;
 
@@ -660,6 +668,7 @@ test('7. Competitive API routes: /api/v1/convert routes through coreGateway to C
     accounts,
     coreGateway: gateway,
   });
+  handler._testAccounts = accounts;
 
   t.after(async () => {
     await ingressServer.close();
@@ -667,6 +676,23 @@ test('7. Competitive API routes: /api/v1/convert routes through coreGateway to C
     await core.close();
     await lab.closeDatabasePools(db);
   });
+
+  // A0. A browser can forge actor headers, but they must never become a Core principal.
+  for (const headers of [
+    { 'x-actor-id': 'svc_alice' },
+    { 'x-test-actor': 'svc_alice' },
+    { 'x-actor-id': 'svc_alice', authorization: 'Bearer invalid-token' },
+  ]) {
+    const forged = await apiRequest(handler, '/api/v1/convert', {
+      method: 'POST',
+      headers,
+      body: { from: 'coins', amount: 100 },
+    });
+    assert.equal(forged.status, 401, 'unverified headers cannot authorize economic commands');
+    assert.equal(forged.data.error, 'AUTH_REQUIRED');
+  }
+  assert.equal(Number(await lab.scalar(db, "SELECT coins FROM economy.wallets WHERE actor_id = 'svc_alice'")), 1000,
+    'forged requests did not change the wallet');
 
   // A. Unauthenticated request rejected
   {

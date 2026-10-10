@@ -1,6 +1,5 @@
 'use strict';
 
-const crypto = require('node:crypto');
 const path = require('node:path');
 const {
   parseJsonBody,
@@ -19,8 +18,22 @@ function resolveGateway(context) {
   if (context?.coreGateway) return context.coreGateway;
   if (context?._coreGateway) return context._coreGateway;
 
-  const coreUrl = context?.coreUrl || process.env.CORE_URL || process.env.GAME_CORE_URL || 'http://127.0.0.1:4000';
-  const secret = context?.secret || context?.coreSecret || process.env.CORE_SECRET || process.env.SERVICE_SECRET || 'mega-xo-v5-core-default-secret';
+  // A production API must never sign Core commands with a published fallback
+  // secret, nor silently aim economic requests at an arbitrary local service.
+  const coreUrl = context?.coreUrl || process.env.MEGA_CORE_URL || process.env.CORE_SERVICE_URL || process.env.CORE_URL || process.env.GAME_CORE_URL;
+  // Use the same deployment-owned signing key accepted by the validated Vercel API config.
+  // Core ingress must hold this identical key; no hard-coded defaults are permitted.
+  const secret = context?.coreSecret || context?.proxySecret || context?.secret || process.env.MEGA_PROXY_SECRET || process.env.PROXY_SECRET || process.env.CORE_SECRET || process.env.SERVICE_SECRET;
+  if (!coreUrl || typeof coreUrl !== 'string') {
+    const error = new Error('CORE_URL_REQUIRED');
+    error.status = 503;
+    throw error;
+  }
+  if (!secret || typeof secret !== 'string' || secret.length < 16) {
+    const error = new Error('GATEWAY_SECRET_REQUIRED');
+    error.status = 503;
+    throw error;
+  }
   const timeoutMs = context?.timeoutMs || 5000;
   const fetcher = context?.fetcher || (typeof fetch === 'function' ? fetch : globalThis.fetch);
   const now = context?.now || Date.now;
@@ -42,16 +55,10 @@ function resolveGateway(context) {
  * @returns {Promise<string>} actor ID
  */
 async function resolveActor(context, req) {
-  let actor = req.actor || req.user?.actor || req.user?.id || req.headers?.['x-actor-id'] || req.headers?.['x-test-actor'] || null;
-  if (actor) return actor;
-
-  try {
-    const auth = await resolveAuth(context, req);
-    if (auth?.actor) return auth.actor;
-  } catch {
-    // If resolveAuth fails (e.g. no pool/accounts service attached), fall through
-  }
-
+  // Core signs and executes this actor's economic commands. Only the linked,
+  // server-verified session may supply that identity; never request headers.
+  const { actor } = await resolveAuth(context, req);
+  if (typeof actor === 'string' && actor) return actor;
   const err = new Error('AUTH_REQUIRED');
   err.status = 401;
   err.code = 'AUTH_REQUIRED';
@@ -65,15 +72,28 @@ async function resolveActor(context, req) {
  * @returns {string} opKey
  */
 function resolveOpKey(req, body) {
-  return (
+  // Never generate a fresh key on the API tier. Retrying a request after an
+  // ambiguous network timeout must reuse the CLIENT'S durable operation ID,
+  // otherwise the same economic action can settle twice.
+  const key =
     req.headers?.['idempotency-key'] ||
     req.headers?.['x-opkey'] ||
     req.headers?.['x-idempotency-key'] ||
     body?.opKey ||
     body?.idempotencyKey ||
-    body?.key ||
-    crypto.randomUUID()
-  );
+    body?.key;
+  if (key === undefined || key === null || key === '') {
+    const err = new Error('IDEMPOTENCY_KEY_REQUIRED');
+    err.status = 400;
+    throw err;
+  }
+  // Bounded and printable before logging, signing or storing at Core.
+  if (typeof key !== 'string' || !/^[!-~]{1,200}$/.test(key)) {
+    const err = new Error('INVALID_IDEMPOTENCY_KEY');
+    err.status = 400;
+    throw err;
+  }
+  return key;
 }
 
 /**

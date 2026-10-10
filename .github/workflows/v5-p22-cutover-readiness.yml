@@ -1,0 +1,97 @@
+name: V5 P22 cutover readiness safeguards
+# Source-only CI: never authorizes, rehearses, or initiates a production cutover.
+on:
+  push:
+    branches: [V5-platform]
+    paths:
+      - '.github/workflows/v5-p22-cutover-readiness.yml'
+      - 'scripts/v5/p22/**'
+      - 'scripts/v5/p18/**'
+      - 'tests/v5-p22-*.test.js'
+      # Every authority, final-import, client and gate-ledger edit must
+      # re-evaluate the no-cutover preflight, not only P22-owned files.
+      - 'docs/v5/progress.json'
+      - 'docs/v5/evidence/**'
+      - 'packages/**'
+      - 'tools/v5-migration/**'
+      - 'apps/**'
+      - 'server/**'
+      - 'deploy/**'
+      - 'src/**'
+      - 'native/**'
+      - 'scripts/v5/release-*'
+      - 'scripts/v5/build-client.js'
+      - 'tests/v5-p18-*.test.js'
+      - 'docs/co-dev/P22-CUTOVER-READINESS.md'
+  pull_request:
+    branches: [V5-platform]
+    paths:
+      - '.github/workflows/v5-p22-cutover-readiness.yml'
+      - 'scripts/v5/p22/**'
+      - 'scripts/v5/p18/**'
+      - 'tests/v5-p22-*.test.js'
+      # Every authority, final-import, client and gate-ledger edit must
+      # re-evaluate the no-cutover preflight, not only P22-owned files.
+      - 'docs/v5/progress.json'
+      - 'docs/v5/evidence/**'
+      - 'packages/**'
+      - 'tools/v5-migration/**'
+      - 'apps/**'
+      - 'server/**'
+      - 'deploy/**'
+      - 'src/**'
+      - 'native/**'
+      - 'scripts/v5/release-*'
+      - 'scripts/v5/build-client.js'
+      - 'tests/v5-p18-*.test.js'
+      - 'docs/co-dev/P22-CUTOVER-READINESS.md'
+permissions:
+  contents: read
+concurrency:
+  group: v5-p22-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  static-safety:
+    name: Pure cutover state, writer-fence and negative tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '24'
+      - name: Install locked dependencies
+        run: npm ci
+      - name: Validate P22 offline safety tests with zero skips
+        run: |
+          set -euo pipefail
+          node --test --test-concurrency=1 --test-reporter=tap \
+            tests/v5-p22-readiness.test.js \
+            tests/v5-p22-writer-fence.test.js \
+            tests/v5-p22-rollback-policy.test.js \
+            tests/v5-p22-import-reconciliation.test.js \
+            tests/v5-p22-compatibility-map.test.js \
+            tests/v5-p22-workflow.test.js > p22-tests.tap
+          cat p22-tests.tap
+          grep -Eq '^# tests [1-9][0-9]*$' p22-tests.tap
+          grep -Eq '^# pass [1-9][0-9]*$' p22-tests.tap
+          grep -Eq '^# fail 0$' p22-tests.tap
+          grep -Eq '^# skipped 0$' p22-tests.tap
+      - name: Confirm actual current ledger cannot self-authorize production
+        run: |
+          set -euo pipefail
+          node scripts/v5/p22/readiness.js --sha "$GITHUB_SHA" > p22-ledger-preflight.json
+          node - <<'NODE'
+          const fs = require('node:fs');
+          const report = JSON.parse(fs.readFileSync('p22-ledger-preflight.json','utf8'));
+          if (report.cutoverAuthorized !== false ||
+              report.productionWritesPermitted !== false ||
+              report.g22Accepted !== false ||
+              report.liveProviderAndCiVerified !== false ||
+              report.missingGates.some(x => x === 'G21')) {
+            throw Error('P22_FALSE_CUTOVER_PERMISSION');
+          }
+          console.log('P22 preflight cannot authorize production; review required');
+          NODE

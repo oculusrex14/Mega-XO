@@ -12,7 +12,8 @@ This is a future V5 Core integration plan. Nothing here is deployed, and no prod
 | `packages/services/core-drain-connections.js` | Register authenticated transport, send approved drain notice once, close expired transports without inventing release | Callback race, no new session after drain, actual socket-close release | The correct V5 WebSocket protocol or session replay |
 | `scripts/v5/p16/core-failover-plan.js` | Validate proposed A/B private topology and filter authenticated private health | No public second edge, immutable images, unique private upstreams, rejection of stale/draining nodes | Actual provider access, Caddy registration or host high availability |
 | `tests/v5-p16-real-sockets.test.js` | Loopback TCP compatibility check for socket transport callbacks | Real local streams can receive a drain hint, reject new admissions and close cleanly | Real client UI/gameplay/realtime semantics |
-| `.github/workflows/v5-p16-core-failover.yml` | PR-only read-only test execution | P16 primitive tests run under Node24 without production secrets | P16 full acceptance or SLO proof |
+| `.github/workflows/v5-p16-core-failover.yml` | Read-only tests on V5 push and PR | Separate owned local lifecycle and disposable PG16/Redis 7.4 integration jobs (zero-skip required) | P16 full acceptance or SLO proof |
+| `tests/v5-p16-process-failover.test.js` | Real P06 factories in 2 independent Core child processes, then SIGKILL A and resume B, restart C after Redis wipe | In disposable CI, ACKed paid-match move, durable revision/deadline/occupancy/outbox and dedupe are asserted across failure | Actual V5 WebSocket ingress, post-commit/pre-publish crash, production recovery time |
 
 Transport callbacks must be wired by the **real** authenticated Core runtime, not by the public API, browser or native app. Only a committed PostgreSQL revision is authoritative; Redis state and process memory cannot recreate a spend, settlement, accepted move, match timer or purchase.
 
@@ -34,7 +35,12 @@ A/B on one Oracle VPS = **process redundancy only**. One dead VPS, one dead publ
 4. Promote tested **B** while A is draining, verify B's receipt of durable session/revision state, and then perform the symmetric B rollout. For mixed image revisions, require measured and documented API/Core/client protocol compatibility before choosing different immutable image digests.
 5. Roll back an unhealthy instance to the prior **PostgreSQL-compatible** image without reverting committed durable business state. Never take both A/B down for a normal code deployment.
 
-## P16-03: real in-flight failure test matrix (not yet run)
+## P16-03: real in-flight failure test matrix (partially implemented; not accepted)
+
+**Added source-level disposable integration:** `tests/v5-p16-process-failover.test.js` uses real P06 Core child factories with distinct PIDs on a single owned PostgreSQL 16 and Redis 7.4 service. It creates a paid direct match through the frozen commands, receives a committed move acknowledgement, kills Core A with SIGKILL, verifies Core B sees the acknowledged revision and unchanged absolute deadline, replays the identical operation with one outcome/outbox, rejects a changed retry, commits another legal move, wipes Redis and verifies a freshly booted Core C still sees the exact durable occupancy and escrow. A read-only P16 CI job provisions disposable loopback services and rejects skips. **The job has not executed successfully on GitHub: GitHub Actions reports failure before runner allocation (zero job steps). These assertions are NOT recorded as passing integrated evidence.**
+
+**What this does not test yet:** an unacknowledged transaction interrupted mid-commit, a post-commit/pre-publish crash before the publisher gets a chance to emit a hint, a Core socket transport or reconnecting real client, timed turn expiration arbitrated by the worker, a tournament close/payout, actual two-instance edge deployment, or a measured 10-second reconnect objective. Those depend on the real P08–P10 runtime and qualified staging.
+
 
 In an isolated environment with two actual Core processes, distinct authorized **synthetic** clients, real PostgreSQL and managed-compatible Redis:
 
@@ -59,5 +65,7 @@ Collect exact image digests, source SHA, staging inventory IDs, UTC fault/start/
 | Oracle VPS/network offline | Both same-host processes unavailable | Process A/B is not host HA |
 | Shared Caddy/ACME failure | Public realtime entry may be unavailable | Preserve single edge and documented rollback |
 | Incompatible new image | Reject rollout and keep compatible prior image | No rollback of PG business writes or silent schema downgrade |
+
+**Execution status (2026-10-09):** No G16 acceptance claimed. The pure admission/loopback contract was exercised in an isolated Node 22 re-creation (4/4 checks) and the async-rejection failure contract was exercised separately; this is not a test of the exact GitHub branch. The actual PG16/Redis SIGKILL test is committed but GitHub Actions jobs have shown zero executed steps/no runner assignment, including the parent P06 workflows. Obtain true source-head CI execution first.
 
 **G16 requires real instance A/B + real committed in-flight recovery + verified timestamps and data integrity.** This runbook, primitives, local tests or a green PR by themselves do not close any G16 task/acceptance case.

@@ -513,3 +513,107 @@ test('V5-09-02: a played-out public tournament settles into tournament_records a
  /* A DIFFERENT command under the SAME key is a conflict, never a second effect. */
  await lab.throwsCode(send(h, played.last.actor, played.last.key, { type: 'leave', id: roomId }), 'IDEMPOTENCY_CONFLICT');
 });
+
+
+/* Post-G09 race: publicJoin reads a candidate from the active-room set, but
+ * standalone settlement/admin workers do NOT take its coarse room-set mutex.
+ * Prove the join waits on the individual row, reloads the latest state and
+ * never overwrites a terminal room with its older LOBBY snapshot. */
+test('P09 co-dev: concurrent publicJoin never resurrects a terminal room after waiting for its row lock', { skip: GATE, timeout: 60000 }, async t => {
+ const h=await open(t,ROSTER.slice(0,2));
+ if(!h)return;
+ const first=await send(h,ROSTER[0],'post9-race-first',{type:'publicJoin',table:'low'});
+ assert.equal(first.status,'LOBBY');
+ const admin=await lab.adminClient(h.database);
+ let released=false,pending=null;
+ try{
+  await admin.query('BEGIN');
+  await admin.query('SELECT 1 FROM tournament.rooms WHERE room_id = $1 FOR UPDATE',[first.id]);
+  pending=send(h,ROSTER[1],'post9-race-second',{type:'publicJoin',table:'low'});
+  const waiting=await lab.waitForLockWaiter(admin,12000);
+  assert.equal(waiting,true,'a join to an existing public table must acquire its row lock');
+  /* Simulate another authorized worker closing the table while the join was
+   * awaiting its row. The terminal transition and join must not interleave. */
+  await admin.query("UPDATE tournament.rooms SET status = 'VOID', reason = 'CANCELLED', revision = revision + 1 WHERE room_id = $1",[first.id]);
+  await admin.query('COMMIT');
+  released=true;
+  const second=await pending;
+  assert.notEqual(second.id,first.id,'the joining player is seated at a new lobby, not a closed table');
+  assert.equal(second.status,'LOBBY');
+  const original=await h.row('SELECT status, revision FROM tournament.rooms WHERE room_id = $1',[first.id]);
+  assert.equal(original.status,'VOID','a stale public lobby snapshot never overwrites a terminal transition');
+  const roster=await h.rows('SELECT actor_id FROM tournament.room_players WHERE room_id = $1',[first.id]);
+  assert.deepEqual(roster.map(x=>x.actor_id),[ROSTER[0]],'a closing tournament cannot acquire a phantom seat');
+ }finally{
+  if(!released)await admin.query('ROLLBACK').catch(()=>{});
+  await admin.end();
+  if(pending)await Promise.allSettled([pending]);
+ }
+});
+
+
+test('P09 co-dev: a publicJoin waiting for room/actor locks rechecks the latest wallet before admitting', {skip:GATE,timeout:60000}, async t=>{
+ const h=await open(t,ROSTER.slice(0,2));
+ if(!h)return;
+ const first=await send(h,ROSTER[0],'post9-funds-first',{type:'publicJoin',table:'low'});
+ const admin=await lab.adminClient(h.database);
+ let released=false,pending=null;
+ try{
+  await admin.query('BEGIN');
+  await admin.query('SET LOCAL statement_timeout = 5000');
+  await admin.query('SELECT 1 FROM tournament.rooms WHERE room_id = $1 FOR UPDATE',[first.id]);
+  pending=send(h,ROSTER[1],'post9-funds-second',{type:'publicJoin',table:'low'});
+  assert.equal(await lab.waitForLockWaiter(admin,12000),true,
+   'join is blocked by the tournament aggregate, before acquiring wallet locks');
+  await admin.query('UPDATE economy.wallets SET coins = 0 WHERE actor_id = $1',[ROSTER[1]]);
+  await admin.query('COMMIT');
+  released=true;
+  await assert.rejects(pending,e=>e.message==='INSUFFICIENT_COINS',
+   'a pre-lock cached 1000-coin balance may not override current zero coins');
+  const wallet=await h.row('SELECT coins, reserved_coins FROM economy.wallets WHERE actor_id = $1',[ROSTER[1]]);
+  assert.equal(Number(wallet.coins),0,'the concurrent wallet change is preserved');
+  assert.equal(Number(wallet.reserved_coins),0,'the unauthorized join reserved no currency');
+  const members=await h.rows('SELECT actor_id FROM tournament.room_players WHERE room_id = $1 ORDER BY ordinal',[first.id]);
+  assert.deepEqual(members.map(x=>x.actor_id),[ROSTER[0]],
+   'the stale join and its operation outcome must roll back completely');
+  const result=await h.row('SELECT count(*)::int AS n FROM tournament.command_outcomes WHERE actor_id = $1',[ROSTER[1]]);
+  assert.equal(result.n,0);
+ }finally{
+  if(!released)await admin.query('ROLLBACK').catch(()=>{});
+  await admin.end();
+  if(pending)await Promise.allSettled([pending]);
+ }
+});
+
+
+test('P09 co-dev: ready command blocked on room lock cannot revive a terminal tournament', {skip:GATE,timeout:60000},async t=>{
+ const h=await open(t,ROSTER.slice(0,1));
+ if(!h)return;
+ const first=await send(h,ROSTER[0],'post9-ready-first',{type:'publicJoin',table:'low'});
+ assert.equal(first.status,'LOBBY');
+ const admin=await lab.adminClient(h.database);
+ let committed=false,pending=null;
+ try{
+  await admin.query('BEGIN');
+  await admin.query('SELECT 1 FROM tournament.rooms WHERE room_id = $1 FOR UPDATE',[first.id]);
+  pending=send(h,ROSTER[0],'post9-ready-after-closure',{
+   type:'ready',id:first.id,value:true,rulesVersion:first.rulesVersion,
+  });
+  assert.equal(await lab.waitForLockWaiter(admin,12000),true,
+   'the existing room command must wait on the same row as settlement');
+  await admin.query("UPDATE tournament.rooms SET status='VOID', reason='CANCELLED', revision=revision+1 WHERE room_id = $1",[first.id]);
+  await admin.query('COMMIT');
+  committed=true;
+  await lab.throwsCode(pending,'RULES_CHANGED');
+  const live=await h.row('SELECT status, revision FROM tournament.rooms WHERE room_id = $1',[first.id]);
+  assert.equal(live.status,'VOID');
+  const member=await h.row('SELECT ready FROM tournament.room_players WHERE room_id = $1 AND actor_id = $2',[first.id,ROSTER[0]]);
+  assert.equal(member.ready,false,'stale ready command never updates a terminal room');
+  const durable=await h.row('SELECT count(*)::int AS n FROM tournament.command_outcomes WHERE actor_id = $1',[ROSTER[0]]);
+  assert.equal(durable.n,1,'only the first admitted publicJoin has an idempotency outcome');
+ }finally{
+  if(!committed)await admin.query('ROLLBACK').catch(()=>{});
+  await admin.end();
+  if(pending)await Promise.allSettled([pending]);
+ }
+});

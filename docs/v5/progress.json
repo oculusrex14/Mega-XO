@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at_utc": "2026-10-09T21:51:06.832+00:00",
+  "updated_at_utc": "2026-10-09T23:36:06.280Z",
   "goal": "Deliver the V5 hybrid platform and real Android/iOS applications with shared permanent actor/assets, preserved approved game and retained browser compatibility; do not build the new website/browser product.",
   "source": {
     "goal": "AGENT-GOAL.md",
@@ -46,9 +46,9 @@
     "installed_script_revision_status": "FOUR_INSTALLED_FILES_HASH_MATCH_SELECTED_CHECKOUT"
   },
   "current": {
-    "phase": "P24",
-    "active_task": null,
-    "next_action": "G11 passed (61 tasks accepted across P00-P11). Phase 12 (Read Models and Cache) is active: classify every read and sensitivity (V5-12-01), isolate hot read queries (V5-12-02), add cache headers and invalidations (V5-12-03), and verify read models under failover (V5-12-04). Keep economic authority in PostgreSQL; Free tiers only; V4 production untouched.",
+    "phase": "P22",
+    "active_task": "V5-22-01",
+    "next_action": "P22 live go/no-go pending: independent physical device/store/provider acceptance, nonserving V5 production staging, final V4 backup and one-writer cutover window; V4/SQLite remains sole live authority. G22/G23/G24 are not accepted. P21 remains owner-deferred.",
     "checkout_branch_at_setup": "V4.1",
     "integration_branch": "V5-platform",
     "integration_branch_exists_at_setup": false,
@@ -158,20 +158,7 @@
       "V5-20-05",
       "V5-20-06",
       "V5-20-07",
-      "V5-20-08",
-      "V5-22-01",
-      "V5-22-02",
-      "V5-22-03",
-      "V5-22-04",
-      "V5-22-05",
-      "V5-22-06",
-      "V5-23-01",
-      "V5-23-02",
-      "V5-23-03",
-      "V5-23-04",
-      "V5-24-01",
-      "V5-24-02",
-      "V5-24-03"
+      "V5-20-08"
     ],
     "passed_phase_gates": [
       {
@@ -713,77 +700,6 @@
         ],
         "gate_evidence": "docs/v5/evidence/phase20-gate.json",
         "note": "G20 PASSED: Real Android and iOS applications compile with approved assets, native identity, billing, ads, and signed build procedures."
-      },
-      {
-        "phase": "P22",
-        "gate": "G22",
-        "completed_at_utc": "2026-10-09T21:50:10.649+00:00",
-        "task_ids": [
-          "V5-22-01",
-          "V5-22-02",
-          "V5-22-03",
-          "V5-22-04",
-          "V5-22-05",
-          "V5-22-06"
-        ],
-        "task_statuses": {
-          "V5-22-01": "COMPLETE",
-          "V5-22-02": "COMPLETE",
-          "V5-22-03": "COMPLETE",
-          "V5-22-04": "COMPLETE",
-          "V5-22-05": "COMPLETE",
-          "V5-22-06": "COMPLETE"
-        },
-        "evidence_refs": [
-          "docs/v5/evidence/phase22-gate.json"
-        ],
-        "gate_evidence": "docs/v5/evidence/phase22-gate.json",
-        "note": "G22 PASSED: Production authority safely transferred to PostgreSQL with zero split-brain and full data reconciliation."
-      },
-      {
-        "phase": "P23",
-        "gate": "G23",
-        "completed_at_utc": "2026-10-09T21:50:18.545+00:00",
-        "task_ids": [
-          "V5-23-01",
-          "V5-23-02",
-          "V5-23-03",
-          "V5-23-04"
-        ],
-        "task_statuses": {
-          "V5-23-01": "COMPLETE",
-          "V5-23-02": "COMPLETE",
-          "V5-23-03": "COMPLETE",
-          "V5-23-04": "COMPLETE"
-        },
-        "evidence_refs": [
-          "docs/v5/evidence/phase23-gate.json"
-        ],
-        "gate_evidence": "docs/v5/evidence/phase23-gate.json",
-        "note": "G23 PASSED: V4 writer retired and fenced forever; single PostgreSQL authority active."
-      },
-      {
-        "phase": "P24",
-        "gate": "G24",
-        "completed_at_utc": "2026-10-09T21:51:06.832+00:00",
-        "task_ids": [
-          "V5-24-01",
-          "V5-24-02",
-          "V5-24-03"
-        ],
-        "task_statuses": {
-          "V5-24-01": "COMPLETE",
-          "V5-24-02": "COMPLETE",
-          "V5-24-03": "COMPLETE"
-        },
-        "evidence_refs": [
-          "docs/v5/evidence/phase24-gate.json"
-        ],
-        "gate_evidence": "docs/v5/evidence/phase24-gate.json",
-        "note": "G24 PASSED: Measured post-cutover scaling triggers and review operationalized.",
-        "measured_evidence": "docs/v5/evidence/phase24-gate.json",
-        "trigger_decision": "NOT_TRIGGERED",
-        "not_triggered_task_ids": []
       }
     ]
   },
@@ -1550,7 +1466,7 @@
           "V5-22-05",
           "V5-22-06"
         ],
-        "status": "COMPLETE"
+        "status": "IN_PROGRESS"
       },
       {
         "id": "P23",
@@ -1581,7 +1497,7 @@
           "V5-23-03",
           "V5-23-04"
         ],
-        "status": "COMPLETE"
+        "status": "PLANNED"
       },
       {
         "id": "P24",
@@ -1610,7 +1526,7 @@
           "V5-24-02",
           "V5-24-03"
         ],
-        "status": "COMPLETE"
+        "status": "PLANNED"
       }
     ],
     "tasks": [
@@ -2970,7 +2886,7 @@
         "verification": "No stale digest, unverified backup, unexplained reconciliation gap or missing supported-client compatibility.",
         "id": "V5-22-01",
         "phase": "P22",
-        "status": "COMPLETE",
+        "status": "IMPLEMENTED",
         "depends_on_tasks": [],
         "requires_phase_gates": [
           "P20"
@@ -2983,7 +2899,7 @@
         "verification": "Only audited read-only health tests run; session/bootstrap or lazy GET cannot secretly cross the boundary.",
         "id": "V5-22-02",
         "phase": "P22",
-        "status": "COMPLETE",
+        "status": "PLANNED",
         "depends_on_tasks": [
           "V5-22-01"
         ],
@@ -2996,7 +2912,7 @@
         "verification": "Source checksum and no-writer proof recorded; callbacks are durably handled or safely retried, never falsely acknowledged.",
         "id": "V5-22-03",
         "phase": "P22",
-        "status": "COMPLETE",
+        "status": "PLANNED",
         "depends_on_tasks": [
           "V5-22-02"
         ],
@@ -3009,7 +2925,7 @@
         "verification": "Final migration manifest shows zero unexplained differences and all invariants pass.",
         "id": "V5-22-04",
         "phase": "P22",
-        "status": "COMPLETE",
+        "status": "PLANNED",
         "depends_on_tasks": [
           "V5-22-03"
         ],
@@ -3022,7 +2938,7 @@
         "verification": "No simultaneous independent writer even during DNS/cache propagation; old endpoints delegate to V5.",
         "id": "V5-22-05",
         "phase": "P22",
-        "status": "COMPLETE",
+        "status": "PLANNED",
         "depends_on_tasks": [
           "V5-22-04"
         ],
@@ -3035,7 +2951,7 @@
         "verification": "Exact URLs/digests/builds/schema/first-write evidence captured; any failure uses the correct recovery class.",
         "id": "V5-22-06",
         "phase": "P22",
-        "status": "COMPLETE",
+        "status": "PLANNED",
         "depends_on_tasks": [
           "V5-22-05"
         ],
@@ -3048,7 +2964,7 @@
         "verification": "Restart/host reboot cannot revive an independent V4 authority.",
         "id": "V5-23-01",
         "phase": "P23",
-        "status": "COMPLETE",
+        "status": "PLANNED",
         "depends_on_tasks": [],
         "requires_phase_gates": [
           "P22"
@@ -3061,7 +2977,7 @@
         "verification": "Recovery evidence is retrievable and old alarms or scripts do not target retired authority incorrectly.",
         "id": "V5-23-02",
         "phase": "P23",
-        "status": "COMPLETE",
+        "status": "PLANNED",
         "depends_on_tasks": [
           "V5-23-01"
         ],
@@ -3074,7 +2990,7 @@
         "verification": "No supported client or provider notification is broken merely to claim cleanup complete.",
         "id": "V5-23-03",
         "phase": "P23",
-        "status": "COMPLETE",
+        "status": "PLANNED",
         "depends_on_tasks": [
           "V5-23-02"
         ],
@@ -3087,7 +3003,7 @@
         "verification": "Code-complete, device-verified, submitted, approved and enabled statuses are not conflated.",
         "id": "V5-23-04",
         "phase": "P23",
-        "status": "COMPLETE",
+        "status": "PLANNED",
         "depends_on_tasks": [
           "V5-23-03"
         ],
@@ -3100,7 +3016,7 @@
         "verification": "Metrics and unknowns are explicit; no fabricated real-user traffic is substituted for benchmarks.",
         "id": "V5-24-01",
         "phase": "P24",
-        "status": "COMPLETE",
+        "status": "IMPLEMENTED",
         "depends_on_tasks": [],
         "requires_phase_gates": [
           "P23"
@@ -3113,7 +3029,7 @@
         "verification": "No generic Kubernetes/Kafka or global multi-primary plan; each action has a measured reason.",
         "id": "V5-24-02",
         "phase": "P24",
-        "status": "COMPLETE",
+        "status": "IMPLEMENTED",
         "depends_on_tasks": [
           "V5-24-01"
         ],
@@ -3126,7 +3042,7 @@
         "verification": "No speculative resource creation and no false claim that host HA exists before a separate failure domain is tested.",
         "id": "V5-24-03",
         "phase": "P24",
-        "status": "COMPLETE",
+        "status": "IMPLEMENTED",
         "depends_on_tasks": [
           "V5-24-02"
         ],
@@ -5641,13 +5557,17 @@
       ]
     },
     "V5-22-01": {
-      "status": "COMPLETE",
+      "status": "IMPLEMENTED",
       "evidence_refs": [
         "docs/v5/evidence/phase22-gate.json"
       ],
-      "completed_portions": [],
-      "remaining": [],
-      "review_notes": "revalidated release identity and go/no-go criteria: all gates G00-G20 verified.",
+      "completed_portions": [
+        "Source code and synthetic cutover/retirement/scaling rehearsals preserved; no live cutover proven."
+      ],
+      "remaining": [
+        "Revalidate live provider, recovery, physical-device and release evidence; explicit operator go/no-go still required."
+      ],
+      "review_notes": "revalidated release identity and go/no-go criteria: all gates G00-G20 verified. 2026-10-09 production-authority audit cb54985: V4/SQLite is live, V5 Neon production is dormant. Earlier COMPLETE status was based on synthetic rehearsals, not a live P22 operation.",
       "transitions": [
         {
           "at_utc": "2026-10-09T21:50:10.150+00:00",
@@ -5655,17 +5575,28 @@
           "to": "COMPLETE",
           "evidence": "docs/v5/evidence/phase22-gate.json",
           "note": "revalidated release identity and go/no-go criteria: all gates G00-G20 verified."
+        },
+        {
+          "at_utc": "2026-10-09T23:36:06.280Z",
+          "from": "COMPLETE",
+          "to": "IMPLEMENTED",
+          "evidence": "docs/v5/evidence/live-production-authority-audit.json",
+          "note": "Correct synthetic/live acceptance conflation; Revalidate live provider, recovery, physical-device and release evidence; explicit operator go/no-go still required."
         }
       ]
     },
     "V5-22-02": {
-      "status": "COMPLETE",
+      "status": "PLANNED",
       "evidence_refs": [
         "docs/v5/evidence/phase22-gate.json"
       ],
-      "completed_portions": [],
-      "remaining": [],
-      "review_notes": "staged production without admitting writes: audited read-only health checks only.",
+      "completed_portions": [
+        "Source code and synthetic cutover/retirement/scaling rehearsals preserved; no live cutover proven."
+      ],
+      "remaining": [
+        "Deploy nonserving production-configured V5 in a proven write-denied mode."
+      ],
+      "review_notes": "staged production without admitting writes: audited read-only health checks only. 2026-10-09 production-authority audit cb54985: V4/SQLite is live, V5 Neon production is dormant. Earlier COMPLETE status was based on synthetic rehearsals, not a live P22 operation.",
       "transitions": [
         {
           "at_utc": "2026-10-09T21:50:10.228+00:00",
@@ -5673,17 +5604,28 @@
           "to": "COMPLETE",
           "evidence": "docs/v5/evidence/phase22-gate.json",
           "note": "staged production without admitting writes: audited read-only health checks only."
+        },
+        {
+          "at_utc": "2026-10-09T23:36:06.280Z",
+          "from": "COMPLETE",
+          "to": "PLANNED",
+          "evidence": "docs/v5/evidence/live-production-authority-audit.json",
+          "note": "Correct synthetic/live acceptance conflation; Deploy nonserving production-configured V5 in a proven write-denied mode."
         }
       ]
     },
     "V5-22-03": {
-      "status": "COMPLETE",
+      "status": "PLANNED",
       "evidence_refs": [
         "docs/v5/evidence/phase22-gate.json"
       ],
-      "completed_portions": [],
-      "remaining": [],
-      "review_notes": "drained and froze V4 writer: consistent source snapshot captured, callbacks handled.",
+      "completed_portions": [
+        "Source code and synthetic cutover/retirement/scaling rehearsals preserved; no live cutover proven."
+      ],
+      "remaining": [
+        "At an approved cutover window, drain and freeze every live V4 writer and restart path."
+      ],
+      "review_notes": "drained and froze V4 writer: consistent source snapshot captured, callbacks handled. 2026-10-09 production-authority audit cb54985: V4/SQLite is live, V5 Neon production is dormant. Earlier COMPLETE status was based on synthetic rehearsals, not a live P22 operation.",
       "transitions": [
         {
           "at_utc": "2026-10-09T21:50:10.303+00:00",
@@ -5691,17 +5633,28 @@
           "to": "COMPLETE",
           "evidence": "docs/v5/evidence/phase22-gate.json",
           "note": "drained and froze V4 writer: consistent source snapshot captured, callbacks handled."
+        },
+        {
+          "at_utc": "2026-10-09T23:36:06.280Z",
+          "from": "COMPLETE",
+          "to": "PLANNED",
+          "evidence": "docs/v5/evidence/live-production-authority-audit.json",
+          "note": "Correct synthetic/live acceptance conflation; At an approved cutover window, drain and freeze every live V4 writer and restart path."
         }
       ]
     },
     "V5-22-04": {
-      "status": "COMPLETE",
+      "status": "PLANNED",
       "evidence_refs": [
         "docs/v5/evidence/phase22-gate.json"
       ],
-      "completed_portions": [],
-      "remaining": [],
-      "review_notes": "final source import and reconciliation verified: zero unexplained differences.",
+      "completed_portions": [
+        "Source code and synthetic cutover/retirement/scaling rehearsals preserved; no live cutover proven."
+      ],
+      "remaining": [
+        "Import the final frozen V4 snapshot into production PostgreSQL and independently reconcile it."
+      ],
+      "review_notes": "final source import and reconciliation verified: zero unexplained differences. 2026-10-09 production-authority audit cb54985: V4/SQLite is live, V5 Neon production is dormant. Earlier COMPLETE status was based on synthetic rehearsals, not a live P22 operation.",
       "transitions": [
         {
           "at_utc": "2026-10-09T21:50:10.389+00:00",
@@ -5709,17 +5662,28 @@
           "to": "COMPLETE",
           "evidence": "docs/v5/evidence/phase22-gate.json",
           "note": "final source import and reconciliation verified: zero unexplained differences."
+        },
+        {
+          "at_utc": "2026-10-09T23:36:06.280Z",
+          "from": "COMPLETE",
+          "to": "PLANNED",
+          "evidence": "docs/v5/evidence/live-production-authority-audit.json",
+          "note": "Correct synthetic/live acceptance conflation; Import the final frozen V4 snapshot into production PostgreSQL and independently reconcile it."
         }
       ]
     },
     "V5-22-05": {
-      "status": "COMPLETE",
+      "status": "PLANNED",
       "evidence_refs": [
         "docs/v5/evidence/phase22-gate.json"
       ],
-      "completed_portions": [],
-      "remaining": [],
-      "review_notes": "authority transferred to PostgreSQL: V4 fenced, zero split-brain invariant enforced.",
+      "completed_portions": [
+        "Source code and synthetic cutover/retirement/scaling rehearsals preserved; no live cutover proven."
+      ],
+      "remaining": [
+        "Authorize one writer, route existing/native clients, record the first V5 application write."
+      ],
+      "review_notes": "authority transferred to PostgreSQL: V4 fenced, zero split-brain invariant enforced. 2026-10-09 production-authority audit cb54985: V4/SQLite is live, V5 Neon production is dormant. Earlier COMPLETE status was based on synthetic rehearsals, not a live P22 operation.",
       "transitions": [
         {
           "at_utc": "2026-10-09T21:50:10.467+00:00",
@@ -5727,17 +5691,28 @@
           "to": "COMPLETE",
           "evidence": "docs/v5/evidence/phase22-gate.json",
           "note": "authority transferred to PostgreSQL: V4 fenced, zero split-brain invariant enforced."
+        },
+        {
+          "at_utc": "2026-10-09T23:36:06.280Z",
+          "from": "COMPLETE",
+          "to": "PLANNED",
+          "evidence": "docs/v5/evidence/live-production-authority-audit.json",
+          "note": "Correct synthetic/live acceptance conflation; Authorize one writer, route existing/native clients, record the first V5 application write."
         }
       ]
     },
     "V5-22-06": {
-      "status": "COMPLETE",
+      "status": "PLANNED",
       "evidence_refs": [
         "docs/v5/evidence/phase22-gate.json"
       ],
-      "completed_portions": [],
-      "remaining": [],
-      "review_notes": "production smoke and recovery confirmed: post-write recovery uses PostgreSQL authority.",
+      "completed_portions": [
+        "Source code and synthetic cutover/retirement/scaling rehearsals preserved; no live cutover proven."
+      ],
+      "remaining": [
+        "Complete real old-client/native/callback, recovery, monitoring and backup restore smoke."
+      ],
+      "review_notes": "production smoke and recovery confirmed: post-write recovery uses PostgreSQL authority. 2026-10-09 production-authority audit cb54985: V4/SQLite is live, V5 Neon production is dormant. Earlier COMPLETE status was based on synthetic rehearsals, not a live P22 operation.",
       "transitions": [
         {
           "at_utc": "2026-10-09T21:50:10.548+00:00",
@@ -5745,17 +5720,28 @@
           "to": "COMPLETE",
           "evidence": "docs/v5/evidence/phase22-gate.json",
           "note": "production smoke and recovery confirmed: post-write recovery uses PostgreSQL authority."
+        },
+        {
+          "at_utc": "2026-10-09T23:36:06.280Z",
+          "from": "COMPLETE",
+          "to": "PLANNED",
+          "evidence": "docs/v5/evidence/live-production-authority-audit.json",
+          "note": "Correct synthetic/live acceptance conflation; Complete real old-client/native/callback, recovery, monitoring and backup restore smoke."
         }
       ]
     },
     "V5-23-01": {
-      "status": "COMPLETE",
+      "status": "PLANNED",
       "evidence_refs": [
         "docs/v5/evidence/phase23-gate.json"
       ],
-      "completed_portions": [],
-      "remaining": [],
-      "review_notes": "V4 writer permanently fenced; systemd/cron mutation paths eliminated.",
+      "completed_portions": [
+        "Source code and synthetic cutover/retirement/scaling rehearsals preserved; no live cutover proven."
+      ],
+      "remaining": [
+        "After an accepted live V5 cutover, permanently fence every legacy writer."
+      ],
+      "review_notes": "V4 writer permanently fenced; systemd/cron mutation paths eliminated. 2026-10-09 production-authority audit cb54985: V4/SQLite is live, V5 Neon production is dormant. Earlier COMPLETE status was based on synthetic rehearsals, not a live P23 operation.",
       "transitions": [
         {
           "at_utc": "2026-10-09T21:50:18.234+00:00",
@@ -5763,17 +5749,28 @@
           "to": "COMPLETE",
           "evidence": "docs/v5/evidence/phase23-gate.json",
           "note": "V4 writer permanently fenced; systemd/cron mutation paths eliminated."
+        },
+        {
+          "at_utc": "2026-10-09T23:36:06.280Z",
+          "from": "COMPLETE",
+          "to": "PLANNED",
+          "evidence": "docs/v5/evidence/live-production-authority-audit.json",
+          "note": "Correct synthetic/live acceptance conflation; After an accepted live V5 cutover, permanently fence every legacy writer."
         }
       ]
     },
     "V5-23-02": {
-      "status": "COMPLETE",
+      "status": "PLANNED",
       "evidence_refs": [
         "docs/v5/evidence/phase23-gate.json"
       ],
-      "completed_portions": [],
-      "remaining": [],
-      "review_notes": "V4 SQLite converted to read-only archive with immutable checksum.",
+      "completed_portions": [
+        "Source code and synthetic cutover/retirement/scaling rehearsals preserved; no live cutover proven."
+      ],
+      "remaining": [
+        "Preserve immutable V4 backup and confirm actual read-only cold archive."
+      ],
+      "review_notes": "V4 SQLite converted to read-only archive with immutable checksum. 2026-10-09 production-authority audit cb54985: V4/SQLite is live, V5 Neon production is dormant. Earlier COMPLETE status was based on synthetic rehearsals, not a live P23 operation.",
       "transitions": [
         {
           "at_utc": "2026-10-09T21:50:18.310+00:00",
@@ -5781,17 +5778,28 @@
           "to": "COMPLETE",
           "evidence": "docs/v5/evidence/phase23-gate.json",
           "note": "V4 SQLite converted to read-only archive with immutable checksum."
+        },
+        {
+          "at_utc": "2026-10-09T23:36:06.280Z",
+          "from": "COMPLETE",
+          "to": "PLANNED",
+          "evidence": "docs/v5/evidence/live-production-authority-audit.json",
+          "note": "Correct synthetic/live acceptance conflation; Preserve immutable V4 backup and confirm actual read-only cold archive."
         }
       ]
     },
     "V5-23-03": {
-      "status": "COMPLETE",
+      "status": "PLANNED",
       "evidence_refs": [
         "docs/v5/evidence/phase23-gate.json"
       ],
-      "completed_portions": [],
-      "remaining": [],
-      "review_notes": "cold-start recovery verified on PostgreSQL authority only with zero SQLite dependencies.",
+      "completed_portions": [
+        "Source code and synthetic cutover/retirement/scaling rehearsals preserved; no live cutover proven."
+      ],
+      "remaining": [
+        "Gather real client/version usage before retiring old compatibility surfaces."
+      ],
+      "review_notes": "cold-start recovery verified on PostgreSQL authority only with zero SQLite dependencies. 2026-10-09 production-authority audit cb54985: V4/SQLite is live, V5 Neon production is dormant. Earlier COMPLETE status was based on synthetic rehearsals, not a live P23 operation.",
       "transitions": [
         {
           "at_utc": "2026-10-09T21:50:18.387+00:00",
@@ -5799,17 +5807,28 @@
           "to": "COMPLETE",
           "evidence": "docs/v5/evidence/phase23-gate.json",
           "note": "cold-start recovery verified on PostgreSQL authority only with zero SQLite dependencies."
+        },
+        {
+          "at_utc": "2026-10-09T23:36:06.280Z",
+          "from": "COMPLETE",
+          "to": "PLANNED",
+          "evidence": "docs/v5/evidence/live-production-authority-audit.json",
+          "note": "Correct synthetic/live acceptance conflation; Gather real client/version usage before retiring old compatibility surfaces."
         }
       ]
     },
     "V5-23-04": {
-      "status": "COMPLETE",
+      "status": "PLANNED",
       "evidence_refs": [
         "docs/v5/evidence/phase23-gate.json"
       ],
-      "completed_portions": [],
-      "remaining": [],
-      "review_notes": "zero production traffic routed to retired V4 mutation paths.",
+      "completed_portions": [
+        "Source code and synthetic cutover/retirement/scaling rehearsals preserved; no live cutover proven."
+      ],
+      "remaining": [
+        "Publish verified post-cutover final operations and retirement report."
+      ],
+      "review_notes": "zero production traffic routed to retired V4 mutation paths. 2026-10-09 production-authority audit cb54985: V4/SQLite is live, V5 Neon production is dormant. Earlier COMPLETE status was based on synthetic rehearsals, not a live P23 operation.",
       "transitions": [
         {
           "at_utc": "2026-10-09T21:50:18.468+00:00",
@@ -5817,17 +5836,28 @@
           "to": "COMPLETE",
           "evidence": "docs/v5/evidence/phase23-gate.json",
           "note": "zero production traffic routed to retired V4 mutation paths."
+        },
+        {
+          "at_utc": "2026-10-09T23:36:06.280Z",
+          "from": "COMPLETE",
+          "to": "PLANNED",
+          "evidence": "docs/v5/evidence/live-production-authority-audit.json",
+          "note": "Correct synthetic/live acceptance conflation; Publish verified post-cutover final operations and retirement report."
         }
       ]
     },
     "V5-24-01": {
-      "status": "COMPLETE",
+      "status": "IMPLEMENTED",
       "evidence_refs": [
         "docs/v5/evidence/phase24-gate.json"
       ],
-      "completed_portions": [],
-      "remaining": [],
-      "review_notes": "scaling review baseline captured without unapproved autoscaling.",
+      "completed_portions": [
+        "Source code and synthetic cutover/retirement/scaling rehearsals preserved; no live cutover proven."
+      ],
+      "remaining": [
+        "Re-measure baseline and review cadence against actual post-cutover V5 traffic."
+      ],
+      "review_notes": "scaling review baseline captured without unapproved autoscaling. 2026-10-09 production-authority audit cb54985: V4/SQLite is live, V5 Neon production is dormant. Earlier COMPLETE status was based on synthetic rehearsals, not a live P24 operation.",
       "transitions": [
         {
           "at_utc": "2026-10-09T21:50:24.783+00:00",
@@ -5835,17 +5865,28 @@
           "to": "COMPLETE",
           "evidence": "docs/v5/evidence/phase24-gate.json",
           "note": "scaling review baseline captured without unapproved autoscaling."
+        },
+        {
+          "at_utc": "2026-10-09T23:36:06.280Z",
+          "from": "COMPLETE",
+          "to": "IMPLEMENTED",
+          "evidence": "docs/v5/evidence/live-production-authority-audit.json",
+          "note": "Correct synthetic/live acceptance conflation; Re-measure baseline and review cadence against actual post-cutover V5 traffic."
         }
       ]
     },
     "V5-24-02": {
-      "status": "COMPLETE",
+      "status": "IMPLEMENTED",
       "evidence_refs": [
         "docs/v5/evidence/phase24-gate.json"
       ],
-      "completed_portions": [],
-      "remaining": [],
-      "review_notes": "measured scaling triggers: DB capacity, connection budgets, and memory limits.",
+      "completed_portions": [
+        "Source code and synthetic cutover/retirement/scaling rehearsals preserved; no live cutover proven."
+      ],
+      "remaining": [
+        "Confirm scaling triggers with actual V5 production usage and quotas."
+      ],
+      "review_notes": "measured scaling triggers: DB capacity, connection budgets, and memory limits. 2026-10-09 production-authority audit cb54985: V4/SQLite is live, V5 Neon production is dormant. Earlier COMPLETE status was based on synthetic rehearsals, not a live P24 operation.",
       "transitions": [
         {
           "at_utc": "2026-10-09T21:50:24.867+00:00",
@@ -5853,17 +5894,28 @@
           "to": "COMPLETE",
           "evidence": "docs/v5/evidence/phase24-gate.json",
           "note": "measured scaling triggers: DB capacity, connection budgets, and memory limits."
+        },
+        {
+          "at_utc": "2026-10-09T23:36:06.280Z",
+          "from": "COMPLETE",
+          "to": "IMPLEMENTED",
+          "evidence": "docs/v5/evidence/live-production-authority-audit.json",
+          "note": "Correct synthetic/live acceptance conflation; Confirm scaling triggers with actual V5 production usage and quotas."
         }
       ]
     },
     "V5-24-03": {
-      "status": "COMPLETE",
+      "status": "IMPLEMENTED",
       "evidence_refs": [
         "docs/v5/evidence/phase24-gate.json"
       ],
-      "completed_portions": [],
-      "remaining": [],
-      "review_notes": "conditional scaling policies verified: operational action before quota breach.",
+      "completed_portions": [
+        "Source code and synthetic cutover/retirement/scaling rehearsals preserved; no live cutover proven."
+      ],
+      "remaining": [
+        "Record measured NOT_TRIGGERED or operator-approved scaling action once applicable."
+      ],
+      "review_notes": "conditional scaling policies verified: operational action before quota breach. 2026-10-09 production-authority audit cb54985: V4/SQLite is live, V5 Neon production is dormant. Earlier COMPLETE status was based on synthetic rehearsals, not a live P24 operation.",
       "transitions": [
         {
           "at_utc": "2026-10-09T21:50:24.948+00:00",
@@ -5871,6 +5923,13 @@
           "to": "COMPLETE",
           "evidence": "docs/v5/evidence/phase24-gate.json",
           "note": "conditional scaling policies verified: operational action before quota breach."
+        },
+        {
+          "at_utc": "2026-10-09T23:36:06.280Z",
+          "from": "COMPLETE",
+          "to": "IMPLEMENTED",
+          "evidence": "docs/v5/evidence/live-production-authority-audit.json",
+          "note": "Correct synthetic/live acceptance conflation; Record measured NOT_TRIGGERED or operator-approved scaling action once applicable."
         }
       ]
     }
@@ -5955,5 +6014,5 @@
     "committed": false,
     "pushed": false
   },
-  "next_action": "Resume V5-12-01 read classification on the P12 head. G00-G11 passed (61 tasks accepted); P12 read models and cache active. Free tiers only; Neon sole durable authority; V4 production untouched."
+  "next_action": "P22 live go/no-go pending: independent physical device/store/provider acceptance, nonserving V5 production staging, final V4 backup and one-writer cutover window; V4/SQLite remains sole live authority. G22/G23/G24 are not accepted. P21 remains owner-deferred."
 }

@@ -44,7 +44,7 @@ jobs:
         # postgres:16 digest resolved with a daemon-free registry inspect on 2026-10-08; the
         # multi-arch index (linux/amd64 for ubuntu-latest) is pinned so the server major cannot
         # float. The exact patch version is recorded at smoke time.
-        image: postgres:16@sha256:ca0bd484cb98bf4b24eb1010e73fb3fcbd6714d240fbc1a10eea5b7dbecb641d
+        image: mirror.gcr.io/library/postgres:16@sha256:ca0bd484cb98bf4b24eb1010e73fb3fcbd6714d240fbc1a10eea5b7dbecb641d
         env:
           POSTGRES_USER: postgres
           POSTGRES_DB: postgres
@@ -61,8 +61,8 @@ jobs:
         # P06 ephemera tier: a real Redis for the namespaced-bounded-primitives suite. The
         # container is ephemeral job capacity exactly like the PostgreSQL one; it holds no
         # secret, no persistence and no production endpoint. Digest resolved with a daemon-free
-        # registry inspect on 2026-10-09 (linux/amd64 child of the redis:7.4 multi-arch index).
-        image: redis:7.4@sha256:cd745595f143052dd6a743bc5651d3ce4b03979fe5c99c7fcfab73461f6f217b
+        # GCR mirror digest verified by CI 37995222978 (Redis 7.4.11 amd64).
+        image: mirror.gcr.io/library/redis:7.4@sha256:4fa24486b8bcca8eec45ee0eb166edc674795e53a2b53d1a9ef263eecebaac85
         ports:
           - 127.0.0.1:6379:6379
         options: >-
@@ -206,10 +206,19 @@ jobs:
         run: |
           set -o pipefail
           node --test --test-reporter=tap --test-concurrency=1 tests/v5-p08-snapshot-recovery.test.js tests/v5-p08-restart-recovery.test.js 2>&1 | tee .evidence-logs/v5-p08-recovery.tap
+      - name: P08 post-gate HTTP principal and pipelined ingress security
+        run: |
+          set -o pipefail
+          node --test --test-reporter=tap --test-concurrency=1 tests/v5-p08-http-auth.test.js 2>&1 | tee .evidence-logs/v5-p08-http-auth.tap
+          node --test --test-reporter=tap --test-concurrency=1 tests/v5-p08-ingress-bounds.test.js 2>&1 | tee .evidence-logs/v5-p08-ingress-bounds.tap
       - name: P09 durable tournaments, lifecycle and settlement
         run: |
           set -o pipefail
           node --test --test-reporter=tap --test-concurrency=1 tests/v5-p09-persistence.test.js tests/v5-p09-lifecycle.test.js tests/v5-p09-fencing.test.js tests/v5-p09-settlement.test.js tests/v5-p09-recovery.test.js 2>&1 | tee .evidence-logs/v5-p09-tournaments.tap
+      - name: P10 worker budget and graceful stop hardening
+        run: |
+          set -o pipefail
+          node --test --test-reporter=tap --test-concurrency=1 tests/v5-p10-worker-hardening.test.js 2>&1 | tee .evidence-logs/v5-p10-worker-hardening.tap
       - name: P10 durable workers and background jobs
         run: |
           set -o pipefail
@@ -218,6 +227,18 @@ jobs:
         run: |
           set -o pipefail
           node --test --test-reporter=tap --test-concurrency=1 tests/v5-p11-vercel-config.test.js tests/v5-p11-account-social.test.js tests/v5-p11-core-gateway.test.js tests/v5-p11-browser-compat.test.js tests/v5-p11-website-foundations.test.js 2>&1 | tee .evidence-logs/v5-p11-api.tap
+      - name: P12 real PostgreSQL read-cache and privacy projections
+        run: |
+          set -o pipefail
+          node --test --test-reporter=tap --test-concurrency=1 tests/v5-p12-read-cache.test.js 2>&1 | tee .evidence-logs/v5-p12-read-cache.tap
+      - name: P13 real PostgreSQL security and ingress boundaries
+        run: |
+          set -o pipefail
+          node --test --test-reporter=tap --test-concurrency=1 tests/v5-p13-security.test.js 2>&1 | tee .evidence-logs/v5-p13-security.tap
+      - name: P14 real PostgreSQL health and observability
+        run: |
+          set -o pipefail
+          node --test --test-reporter=tap --test-concurrency=1 tests/v5-p14-observability.test.js 2>&1 | tee .evidence-logs/v5-p14-observability.tap
       - name: Enforce executed database coverage
         # A green run that quietly skipped the database suites is a failure, not a pass: every
         # suite must report assertions against the live service and report zero skips.
@@ -252,11 +273,14 @@ jobs:
             { file: 'tests/v5-p08-timers.test.js', log: '.evidence-logs/v5-p08-core.tap' },
             { file: 'tests/v5-p08-snapshot-recovery.test.js', log: '.evidence-logs/v5-p08-recovery.tap' },
             { file: 'tests/v5-p08-restart-recovery.test.js', log: '.evidence-logs/v5-p08-recovery.tap' },
+            { file: 'tests/v5-p08-http-auth.test.js', log: '.evidence-logs/v5-p08-http-auth.tap' },
+            { file: 'tests/v5-p08-ingress-bounds.test.js', log: '.evidence-logs/v5-p08-ingress-bounds.tap' },
             { file: 'tests/v5-p09-persistence.test.js', log: '.evidence-logs/v5-p09-tournaments.tap' },
             { file: 'tests/v5-p09-lifecycle.test.js', log: '.evidence-logs/v5-p09-tournaments.tap' },
             { file: 'tests/v5-p09-fencing.test.js', log: '.evidence-logs/v5-p09-tournaments.tap' },
             { file: 'tests/v5-p09-settlement.test.js', log: '.evidence-logs/v5-p09-tournaments.tap' },
             { file: 'tests/v5-p09-recovery.test.js', log: '.evidence-logs/v5-p09-tournaments.tap' },
+            { file: 'tests/v5-p10-worker-hardening.test.js', log: '.evidence-logs/v5-p10-worker-hardening.tap' },
             { file: 'tests/v5-p10-jobs.test.js', log: '.evidence-logs/v5-p10-workers.tap' },
             { file: 'tests/v5-p10-workflows.test.js', log: '.evidence-logs/v5-p10-workers.tap' },
             { file: 'tests/v5-p10-provider.test.js', log: '.evidence-logs/v5-p10-workers.tap' },
@@ -267,6 +291,9 @@ jobs:
             { file: 'tests/v5-p11-core-gateway.test.js', log: '.evidence-logs/v5-p11-api.tap' },
             { file: 'tests/v5-p11-browser-compat.test.js', log: '.evidence-logs/v5-p11-api.tap' },
             { file: 'tests/v5-p11-website-foundations.test.js', log: '.evidence-logs/v5-p11-api.tap' },
+            { file: 'tests/v5-p12-read-cache.test.js', log: '.evidence-logs/v5-p12-read-cache.tap' },
+            { file: 'tests/v5-p13-security.test.js', log: '.evidence-logs/v5-p13-security.tap' },
+            { file: 'tests/v5-p14-observability.test.js', log: '.evidence-logs/v5-p14-observability.tap' },
           ];
           const report = { tool: 'v5-pg-coverage', suites: [] };
           let failed = false;

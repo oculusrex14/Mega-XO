@@ -415,7 +415,7 @@ test('V5-07-04 recovery: a direct challenge accepted under a parked queue assign
     const reclaimed = await queue.claimCandidates({ mode: 'ranked', limit: 4, matcherId: 'rc-verify', leaseMs: 30000 });
     assert.deepEqual(reclaimed.map((candidate) => candidate.actor), ['svc_bob'], 'the requeued partner is claimable again with a released claim');
     assert.equal(reclaimed[0].joinedAt, bob.joinedAt, 'the partner keeps its ORIGINAL FIFO join time');
-    await queue.releaseClaim({ mode: 'ranked', actor: 'svc_bob', requeue: true });
+    await queue.releaseClaim({ mode: 'ranked', actor: 'svc_bob', claimId: reclaimed[0].claimId, requeue: true });
     assert.deepEqual(await index(ephemera, 'ranked'), ['svc_bob'], 'the partner survives the release');
 
     /* THE CODE ITSELF: replaying the exact command proves the cause while alice stays occupied. */
@@ -501,7 +501,7 @@ test('V5-07-04 recovery: a tournament occupancy taken under a parked queue assig
     const reclaimed = await queue.claimCandidates({ mode: 'ranked', limit: 4, matcherId: 'rd-verify', leaseMs: 30000 });
     assert.deepEqual(reclaimed.map((candidate) => candidate.actor), ['svc_bob'], 'the requeued partner is claimable again');
     assert.equal(reclaimed[0].joinedAt, bob.joinedAt, 'the partner keeps its ORIGINAL FIFO join time');
-    await queue.releaseClaim({ mode: 'ranked', actor: 'svc_bob', requeue: true });
+    await queue.releaseClaim({ mode: 'ranked', actor: 'svc_bob', claimId: reclaimed[0].claimId, requeue: true });
 
     /* The code itself, replayed on the deterministic assignment id. */
     await assert.rejects(
@@ -620,7 +620,7 @@ test('V5-07-04 recovery: every actor ends recoverably queued, assigned or explic
   assert.deepEqual(reclaimed.map((candidate) => candidate.actor), ['svc_dave'], 'the still-queued actor is claimable again');
   assert.equal(reclaimed[0].joinedAt, dave.joinedAt, 'the queued actor keeps its original FIFO score');
   assert.equal(new Set(reclaimed.map((candidate) => candidate.claimId)).size, 1, 'the reclaimed seat carries a fresh claim');
-  await queue.releaseClaim({ mode: 'ranked', actor: 'svc_dave', requeue: true });
+  await queue.releaseClaim({ mode: 'ranked', actor: 'svc_dave', claimId: reclaimed[0].claimId, requeue: true });
   assert.equal(await queue.expireAbandoned({ mode: 'ranked', now: h.now() }), 0, 'no live client is reclaimed as abandoned');
   assert.deepEqual(await index(ephemera, 'ranked'), ['svc_dave'], 'the queued actor survives the sweep');
 

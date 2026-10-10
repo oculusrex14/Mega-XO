@@ -1,0 +1,47 @@
+name: V5 CI official service image provenance
+on:
+  pull_request:
+    branches: [V5-platform]
+    paths:
+      - '.github/workflows/v5-ci-image-probe.yml'
+      - '.github/workflows/v5-postgresql.yml'
+      - '.github/workflows/v5-p15-disaster-recovery.yml'
+      - '.github/workflows/v5-p16-core-failover.yml'
+      - '.github/workflows/v5-p18-acceptance.yml'
+      - '.github/workflows/v5-p19-load-chaos.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  official-images:
+    name: Probe Google's official Docker Hub cache for PG16 and Redis 7.4
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - name: Pull official images and report mirror image digests for immutable service pinning
+        shell: bash
+        run: |
+          set -euo pipefail
+          for image in mirror.gcr.io/library/postgres:16@sha256:ca0bd484cb98bf4b24eb1010e73fb3fcbd6714d240fbc1a10eea5b7dbecb641d mirror.gcr.io/library/redis:7.4@sha256:4fa24486b8bcca8eec45ee0eb166edc674795e53a2b53d1a9ef263eecebaac85; do
+            docker pull "$image"
+            docker image inspect --format '{{join .RepoDigests "\\n"}}' "$image"
+          done
+          docker image inspect --format 'postgres os/arch={{.Os}}/{{.Architecture}}' mirror.gcr.io/library/postgres:16@sha256:ca0bd484cb98bf4b24eb1010e73fb3fcbd6714d240fbc1a10eea5b7dbecb641d
+          docker image inspect --format 'redis os/arch={{.Os}}/{{.Architecture}}' mirror.gcr.io/library/redis:7.4@sha256:4fa24486b8bcca8eec45ee0eb166edc674795e53a2b53d1a9ef263eecebaac85
+      - name: Prove local service startup and cleanup
+        shell: bash
+        run: |
+          set -euo pipefail
+          trap 'docker rm -f v5-probe-postgres v5-probe-redis >/dev/null 2>&1 || true' EXIT
+          docker run -d --name v5-probe-postgres -e POSTGRES_HOST_AUTH_METHOD=trust mirror.gcr.io/library/postgres:16@sha256:ca0bd484cb98bf4b24eb1010e73fb3fcbd6714d240fbc1a10eea5b7dbecb641d
+          docker run -d --name v5-probe-redis mirror.gcr.io/library/redis:7.4@sha256:4fa24486b8bcca8eec45ee0eb166edc674795e53a2b53d1a9ef263eecebaac85
+          for attempt in $(seq 1 30); do
+            if docker exec v5-probe-postgres pg_isready -U postgres >/dev/null 2>&1 && docker exec v5-probe-redis redis-cli ping | grep -qx PONG; then
+              docker exec v5-probe-postgres psql -U postgres -tAc 'SHOW server_version;'
+              docker exec v5-probe-redis redis-server --version
+              exit 0
+            fi
+            sleep 1
+          done
+          echo 'Official image smoke did not start' >&2
+          exit 1

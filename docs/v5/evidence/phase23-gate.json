@@ -21,11 +21,11 @@
   "gate_criteria": {
     "description": "No production service depends on V4 SQLite. Required history/backups and supported-client/provider compatibility remain available under policy",
     "verified_points": [
-      "V4 mutation paths permanently fenced: systemd units masked, background schedulers halted, and cron jobs disabled to prevent restart.",
-      "V4 SQLite database placed into permanent read-only archive mode (0440) with cryptographic SHA256 checksum preservation.",
-      "Cold-start recovery initializes reliably on PostgreSQL primary authority with zero reliance on SQLite existence or availability.",
-      "Service startup guard actively refuses to start if accidental V4 writer configuration or revived process is detected.",
-      "Routing and ingress tables strip write capabilities from all legacy V4 paths, ensuring no split-brain write leakage."
+      "Synthetic test verifies the planned writer-fencing model; no live systemd, cron, Caddy or V4 process was fenced.",
+      "Synthetic test specifies read-only SQLite archive/checksum rules; the live SQLite WAL remains active.",
+      "Rehearsal exercises a PostgreSQL-only cold-start recovery path; live production has NOT switched to PostgreSQL.",
+      "Rehearsal exercises the startup rejection guard for a revived old writer; no real Oracle reboot/fencing acceptance performed.",
+      "Rehearsal tests prohibit legacy write routing and split-brain; actual production routing remains V4 by design."
     ]
   },
   "verification": {
@@ -37,5 +37,7 @@
       "tests_failed": 0,
       "tests_skipped": 0
     }
-  }
+  },
+  "acceptance_state": "G23_OPEN_LIVE_V4_RETIRED_FALSE",
+  "proof_scope": "SYNTHETIC_V4_RETIREMENT_REHEARSAL_ONLY"
 }

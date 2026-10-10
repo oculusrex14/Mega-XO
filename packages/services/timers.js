@@ -83,7 +83,13 @@ const DUE_PARTS = Object.freeze(['timeout']);
 const RACE_CODES = Object.freeze(['NOT_TIMED_OUT', 'MATCH_CLOSED', 'NOT_EXPIRED', 'NOT_OPEN', 'UNKNOWN_MATCH']);
 /* ZADD the member at the deadline score and PEXPIRE the whole key in ONE script, so a crash between
  * the add and the TTL is impossible and a due key can never become an immortal sorted set. */
-const SCHEDULE_LUA = "redis.call('ZADD', KEYS[1], ARGV[1], ARGV[2]); redis.call('PEXPIRE', KEYS[1], ARGV[3]); return 1;";
+/* One sorted set contains MANY matches. Replacing its TTL with a nearer
+ * deadline can drop later due hints prematurely. Atomically keep the maximum
+ * remaining TTL instead; PostgreSQL remains the deadline authority either way. */
+const SCHEDULE_LUA = "redis.call('ZADD', KEYS[1], ARGV[1], ARGV[2]); "
+ + "local ttl = redis.call('PTTL', KEYS[1]); "
+ + "if ttl < 0 or ttl < tonumber(ARGV[3]) then redis.call('PEXPIRE', KEYS[1], ARGV[3]); end; "
+ + "return 1;";
 
 /* Bounded, indexed reads. Both predicates repeat the EXACT partial-index predicate
  * (`matches_playing_deadline_idx`, `matches_offered_expires_idx`) so the sweep is served by the index

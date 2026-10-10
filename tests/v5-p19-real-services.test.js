@@ -85,7 +85,7 @@ test('P19 real disposable load: persistent wallet/Crown effects are exactly once
     },
     redis_presence:async(index,{tier:phase})=>{
       const actor=TEST_ACTORS[index%TEST_ACTORS.length];
-      const stored=await redis.heartbeat(actor,'p19-'+phase+'-'+index,60000);
+      const stored=await redis.presenceTouch(actor,'p19-'+phase+'-'+index,true,60000);
       assert.equal(stored.stored,true,'real Redis owned presence write');
       assert.equal(stored.available,true);
     },

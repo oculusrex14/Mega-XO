@@ -1,0 +1,488 @@
+{
+  "schema_version": 1,
+  "format": "mega-xo-v5-acceptance-triage/v1",
+  "reviewed_source_sha": "dc88e7a6a4cb46061543ed450fe28173e9528d2c",
+  "owner_audit_sha": "cb54985a2f1d5c6c68d1af9c151a0189f7f9f27b",
+  "interpretation": "Source/CI test success is not full contract acceptance. This is an evidence gap inventory, not a change to the owner ledger. PASS only means the owner ledger already marked A04/A05 PASS. All other cases keep their NOT_RUN status until real evidence and independent acceptance review.",
+  "production_authority": "V4_SQLITE",
+  "v5_live_cutover_executed": false,
+  "cutover_authorized": false,
+  "recorded_gates": "G00-G20",
+  "g22_g23_g24": "OPEN",
+  "p21": "DEFERRED_BY_OWNER",
+  "evidence_baseline": {
+    "github_actions_repository": "https://github.com/oculusrex14/Mega-XO/actions",
+    "head_sha": "dc88e7a6a4cb46061543ed450fe28173e9528d2c",
+    "required_workflows": 12,
+    "passed_workflows": 12,
+    "failed_workflows": 0,
+    "disclaimer": "Real disposable-service CI and native source builds, not proof of production staging, signed physical devices, providers or cutover."
+  },
+  "cases": [
+    {
+      "id": "A01",
+      "title": "Product/source freeze",
+      "ledger_status": "NOT_RUN",
+      "proof_scope": "MIXED_EXTERNAL",
+      "lead": "joint",
+      "evidence_refs": [
+        "docs/v5/evidence/phase00-gate.json",
+        "docs/v5/evidence/phase00-visual-baseline.json"
+      ],
+      "remaining_proof": "Run approved four-theme and accessibility/device screenshots against the final V5 native and browser builds; publish exact difference/exception register."
+    },
+    {
+      "id": "A02",
+      "title": "Baseline and CI",
+      "ledger_status": "NOT_RUN",
+      "proof_scope": "CI_PROVEN_SCOPE",
+      "lead": "co-dev",
+      "evidence_refs": [
+        "docs/v5/evidence/phase17-gate.json"
+      ],
+      "remaining_proof": "Review final merged SHA and V4 protected tags against exact-head Node, PostgreSQL, native and all 12 workflow reports; sign off the original A02 contract."
+    },
+    {
+      "id": "A03",
+      "title": "Reported backup conflict",
+      "ledger_status": "NOT_RUN",
+      "proof_scope": "REPORTED_OWNER_PROOF",
+      "lead": "main-agent",
+      "evidence_refs": [
+        "docs/v5/evidence/phase00-live-operations.json",
+        "docs/v5/evidence/live-production-authority-audit.json"
+      ],
+      "remaining_proof": "Independently inspect the latest V4 encrypted backup, perform a fresh isolated restore and compare current backup freshness/status to the earlier outage."
+    },
+    {
+      "id": "A04",
+      "title": "Environment and role isolation",
+      "ledger_status": "PASS",
+      "proof_scope": "LEDGER_PASS",
+      "lead": "joint",
+      "evidence_refs": [
+        "docs/v5/evidence/phase02-gate.json",
+        "docs/v5/evidence/phase13-gate.json"
+      ],
+      "remaining_proof": "Already PASS in owner ledger; preserve verified separate service roles and regressions at release SHA."
+    },
+    {
+      "id": "A05",
+      "title": "Migration framework",
+      "ledger_status": "PASS",
+      "proof_scope": "LEDGER_PASS",
+      "lead": "joint",
+      "evidence_refs": [
+        "docs/v5/evidence/phase02-gate.json",
+        "docs/v5/evidence/phase17-gate.json"
+      ],
+      "remaining_proof": "Already PASS in owner ledger; retain checksummed migrations, exclusive migrator and no-DDL runtime validation."
+    },
+    {
+      "id": "A06",
+      "title": "Complete source coverage",
+      "ledger_status": "NOT_RUN",
+      "proof_scope": "REPORTED_OWNER_PROOF",
+      "lead": "main-agent",
+      "evidence_refs": [
+        "docs/v5/evidence/phase03-gate.json",
+        "docs/v5/evidence/live-production-authority-audit.json"
+      ],
+      "remaining_proof": "Re-inventory live SQLite source immediately before cutover, capture final schema/root fingerprint and classify any new durable source fields."
+    },
+    {
+      "id": "A07",
+      "title": "Per-actor reconciliation",
+      "ledger_status": "NOT_RUN",
+      "proof_scope": "REPORTED_OWNER_PROOF",
+      "lead": "main-agent",
+      "evidence_refs": [
+        "docs/v5/evidence/phase03-gate.json",
+        "docs/v5/evidence/phase04-runtime-defects.json"
+      ],
+      "remaining_proof": "Repeat exact per-actor wallet, receipt, identity, privacy and relationship reconciliation on the FINAL frozen source; retain negative swapped-wallet check."
+    },
+    {
+      "id": "A08",
+      "title": "Deterministic restartable import",
+      "ledger_status": "NOT_RUN",
+      "proof_scope": "CI_PROVEN_SCOPE",
+      "lead": "main-agent",
+      "evidence_refs": [
+        "docs/v5/evidence/phase03-gate.json"
+      ],
+      "remaining_proof": "Confirm interrupted and repeated final import is deterministic with real frozen production snapshot, time boundary and non-UUID source IDs."
+    },
+    {
+      "id": "A09",
+      "title": "Escrow and ledger",
+      "ledger_status": "NOT_RUN",
+      "proof_scope": "CI_PROVEN_SCOPE",
+      "lead": "joint",
+      "evidence_refs": [
+        "docs/v5/evidence/phase03-gate.json",
+        "docs/v5/evidence/phase04-runtime-defects.json"
+      ],
+      "remaining_proof": "Review source-linked per-actor liquid/reserved/escrow accounting and replay legacy journal in final import; preserve zero unexplained differences."
+    },
+    {
+      "id": "A10",
+      "title": "Concurrent spending",
+      "ledger_status": "NOT_RUN",
+      "proof_scope": "CI_PROVEN_SCOPE",
+      "lead": "joint",
+      "evidence_refs": [
+        "docs/v5/evidence/phase04-runtime-defects.json",
+        "docs/v5/evidence/phase07-gate.json",
+        "docs/v5/evidence/phase09-gate.json"
+      ],
+      "remaining_proof": "Review P04/P07/P09 concurrency and same-actor reservation races against deployed final Core/PG; verify no double charge or altered timing."
+    },
+    {
+      "id": "A11",
+      "title": "Atomic result and payout",
+      "ledger_status": "NOT_RUN",
+      "proof_scope": "CI_PROVEN_SCOPE",
+      "lead": "joint",
+      "evidence_refs": [
+        "docs/v5/evidence/phase09-gate.json",
+        "docs/v5/evidence/phase19-gate.json"
+      ],
+      "remaining_proof": "Review fault-injection and final wallet/result/rating/outbox traces with deployed final Core; confirm exactly-once payout and rollback."
+    },
+    {
+      "id": "A12",
+      "title": "Shared actor identity",
+      "ledger_status": "NOT_RUN",
+      "proof_scope": "PROVIDER_DEVICE_PENDING",
+      "lead": "main-agent",
+      "evidence_refs": [
+        "docs/v5/evidence/phase05-foundations.json",
+        "docs/v5/evidence/phase20-gate.json"
+      ],
+      "remaining_proof": "Exercise real email, Google and Apple sign-in/linking on old browser and physical Android/iOS; prove stable actor hash across platforms."
+    },
+    {
+      "id": "A13",
+      "title": "Refresh and revocation",
+      "ledger_status": "NOT_RUN",
+      "proof_scope": "CI_PROVEN_SCOPE",
+      "lead": "main-agent",
+      "evidence_refs": [
+        "docs/v5/evidence/phase05-foundations.json",
+        "docs/v5/evidence/phase13-gate.json"
+      ],
+      "remaining_proof": "Exercise real device refresh races, old-token replay, revocation and active socket/key rotation under configured provider sessions."
+    },
+    {
+      "id": "A14",
+      "title": "One-use realtime tickets",
+      "ledger_status": "NOT_RUN",
+      "proof_scope": "CI_PROVEN_SCOPE",
+      "lead": "joint",
+      "evidence_refs": [
+        "docs/v5/evidence/phase05-foundations.json",
+        "docs/v5/evidence/phase08-gate.json"
+      ],
+      "remaining_proof": "Record dual-Core one-use ticket redemption and negative wrong-session/env/audience outcomes in integrated staging."
+    },
+    {
+      "id": "A15",
+      "title": "Redis complete loss",
+      "ledger_status": "NOT_RUN",
+      "proof_scope": "REPORTED_OWNER_PROOF",
+      "lead": "main-agent",
+      "evidence_refs": [
+        "docs/v5/evidence/phase06-managed-provider.json",
+        "docs/v5/evidence/phase19-gate.json"
+      ],
+      "remaining_proof": "Wipe isolated stage Redis during active match, paid queue and pending effects; capture PG hashes before/after plus rejoin and latency metrics."
+    },
+    {
+      "id": "A16",
+      "title": "Matcher concurrency",
+      "ledger_status": "NOT_RUN",
+      "proof_scope": "CI_PROVEN_SCOPE",
+      "lead": "joint",
+      "evidence_refs": [
+        "docs/v5/evidence/phase07-gate.json"
+      ],
+      "remaining_proof": "Capture final staging multi-matcher, heartbeat expiry and dead-worker races; verify durable assignment and reserved Crowns."
+    },
+    {
+      "id": "A17",
+      "title": "Committed move recovery",
+      "ledger_status": "NOT_RUN",
+      "proof_scope": "CI_PROVEN_SCOPE",
+      "lead": "main-agent",
+      "evidence_refs": [
+        "docs/v5/evidence/phase08-gate.json",
+        "docs/v5/evidence/phase16-gate.json"
+      ],
+      "remaining_proof": "Kill one real Core before/after commit/publish/ACK and reconnect via the other live process; capture revision and outage duration."
+    },
+    {
+      "id": "A18",
+      "title": "Clock correctness",
+      "ledger_status": "NOT_RUN",
+      "proof_scope": "CI_PROVEN_SCOPE",
+      "lead": "joint",
+      "evidence_refs": [
+        "docs/v5/evidence/phase08-gate.json",
+        "docs/v5/evidence/phase09-gate.json"
+      ],
+      "remaining_proof": "Run exact deadline move/timeout and restart/reconnect boundary on the deployed Core/PG clock source."
+    },
+    {
+      "id": "A19",
+      "title": "Transport recovery",
+      "ledger_status": "NOT_RUN",
+      "proof_scope": "PROVIDER_DEVICE_PENDING",
+      "lead": "main-agent",
+      "evidence_refs": [
+        "docs/v5/evidence/phase08-gate.json",
+        "docs/v5/evidence/phase20-gate.json"
+      ],
+      "remaining_proof": "Test real Android/iOS backgrounding, offline/reconnect, reordered notifications and HTTP fallback against staging."
+    },
+    {
+      "id": "A20",
+      "title": "Tournament behavior",
+      "ledger_status": "NOT_RUN",
+      "proof_scope": "CI_PROVEN_SCOPE",
+      "lead": "joint",
+      "evidence_refs": [
+        "docs/v5/evidence/phase09-gate.json"
+      ],
+      "remaining_proof": "Exercise full public/private tournaments through real stage workers including host-leave cancel, dead-worker recovery and payout/escrow parity."
+    },
+    {
+      "id": "A21",
+      "title": "Jobs and outbox",
+      "ledger_status": "NOT_RUN",
+      "proof_scope": "CI_PROVEN_SCOPE",
+      "lead": "main-agent",
+      "evidence_refs": [
+        "docs/v5/evidence/phase10-gate.json"
+      ],
+      "remaining_proof": "Run actual provider I/O crash/retry/DLQ failure scenarios with workers in integrated staging; record idempotent external effects."
+    },
+    {
+      "id": "A22",
+      "title": "UTC scheduled economics",
+      "ledger_status": "NOT_RUN",
+      "proof_scope": "CI_PROVEN_SCOPE",
+      "lead": "joint",
+      "evidence_refs": [
+        "docs/v5/evidence/phase10-gate.json"
+      ],
+      "remaining_proof": "Record duplicate scheduler and UTC week/quarter catch-up through staging and check unique business operations and approved reward periods."
+    },
+    {
+      "id": "A23",
+      "title": "Vercel/Core ownership",
+      "ledger_status": "NOT_RUN",
+      "proof_scope": "CI_PROVEN_SCOPE",
+      "lead": "main-agent",
+      "evidence_refs": [
+        "docs/v5/evidence/phase11-gate.json",
+        "docs/v5/evidence/phase13-gate.json"
+      ],
+      "remaining_proof": "Attempt forbidden API/worker wallet writes and forged service HMAC/actor assertions against REAL deployed Vercel/Core staging."
+    },
+    {
+      "id": "A24",
+      "title": "Retained browser compatibility",
+      "ledger_status": "NOT_RUN",
+      "proof_scope": "PROVIDER_DEVICE_PENDING",
+      "lead": "main-agent",
+      "evidence_refs": [
+        "docs/v5/evidence/phase11-gate.json",
+        "docs/v5/evidence/phase18-gate.json"
+      ],
+      "remaining_proof": "Exercise shipped old-origin browser cookie, account session exchange, callback routing, CSRF and match/economic flows on real V5 staging."
+    },
+    {
+      "id": "A25",
+      "title": "Cache correctness and privacy",
+      "ledger_status": "NOT_RUN",
+      "proof_scope": "CI_PROVEN_SCOPE",
+      "lead": "joint",
+      "evidence_refs": [
+        "docs/v5/evidence/phase12-gate.json"
+      ],
+      "remaining_proof": "Verify real cross-worker block/invalidation, stale read projections, Redis wipe and actor-separated cache headers; no authorization from caches."
+    },
+    {
+      "id": "A26",
+      "title": "Private operations and audit",
+      "ledger_status": "NOT_RUN",
+      "proof_scope": "PROVIDER_ENV_PENDING",
+      "lead": "main-agent",
+      "evidence_refs": [
+        "docs/v5/evidence/phase13-gate.json"
+      ],
+      "remaining_proof": "Probe public/private ops and audit endpoints from outside actual staging and verify dedicated-key audit chain under concurrency."
+    },
+    {
+      "id": "A27",
+      "title": "Operational diagnosis and alerting",
+      "ledger_status": "NOT_RUN",
+      "proof_scope": "PROVIDER_ENV_PENDING",
+      "lead": "main-agent",
+      "evidence_refs": [
+        "docs/v5/evidence/phase14-gate.json"
+      ],
+      "remaining_proof": "Inject a staging fault and verify end-to-end support trace and DELIVERED alert, not just simulated telemetry or liveness."
+    },
+    {
+      "id": "A28",
+      "title": "Independent restore",
+      "ledger_status": "NOT_RUN",
+      "proof_scope": "PROVIDER_ENV_PENDING",
+      "lead": "main-agent",
+      "evidence_refs": [
+        "docs/v5/evidence/phase15-gate.json"
+      ],
+      "remaining_proof": "Restore real encrypted off-host R2 backup into independent PostgreSQL project; measure RPO/RTO, hashes, revocations and cleanup."
+    },
+    {
+      "id": "A29",
+      "title": "Process vs host availability",
+      "ledger_status": "NOT_RUN",
+      "proof_scope": "PROVIDER_ENV_PENDING",
+      "lead": "main-agent",
+      "evidence_refs": [
+        "docs/v5/evidence/phase16-gate.json"
+      ],
+      "remaining_proof": "Prove real active-game Core process failover, then separately document same-host edge/power failure and true RTO."
+    },
+    {
+      "id": "A30",
+      "title": "Immutable release compatibility",
+      "ledger_status": "NOT_RUN",
+      "proof_scope": "PROVIDER_ENV_PENDING",
+      "lead": "main-agent",
+      "evidence_refs": [
+        "docs/v5/evidence/phase17-gate.json"
+      ],
+      "remaining_proof": "Deploy immutable components in allowed skew sequence, verify image digests and perform PostgreSQL-compatible application rollback on staging."
+    },
+    {
+      "id": "A31",
+      "title": "Capacity and degradation",
+      "ledger_status": "NOT_RUN",
+      "proof_scope": "PROVIDER_ENV_PENDING",
+      "lead": "main-agent",
+      "evidence_refs": [
+        "docs/v5/evidence/phase18-gate.json",
+        "docs/v5/evidence/phase19-gate.json"
+      ],
+      "remaining_proof": "Run realistic mixed traffic on deployed topology; record p95/p99, connection/storage budgets, backpressure, recovery and alerts."
+    },
+    {
+      "id": "A32",
+      "title": "Real native artifacts and offline bundle",
+      "ledger_status": "NOT_RUN",
+      "proof_scope": "PROVIDER_DEVICE_PENDING",
+      "lead": "main-agent",
+      "evidence_refs": [
+        "docs/v5/evidence/phase20-gate.json"
+      ],
+      "remaining_proof": "Build, SIGN and install real Android/iOS artifacts; offline cold launch and inspect assets, bridge manifest and hashes."
+    },
+    {
+      "id": "A33",
+      "title": "Native bridge security",
+      "ledger_status": "NOT_RUN",
+      "proof_scope": "CI_PROVEN_SCOPE",
+      "lead": "main-agent",
+      "evidence_refs": [
+        "docs/v5/evidence/phase20-gate.json"
+      ],
+      "remaining_proof": "Execute native untrusted-frame/navigation and storage/backup extraction attempts on physical devices; inspect real token exposure."
+    },
+    {
+      "id": "A34",
+      "title": "Native purchases and restore",
+      "ledger_status": "NOT_RUN",
+      "proof_scope": "PROVIDER_DEVICE_PENDING",
+      "lead": "main-agent",
+      "evidence_refs": [
+        "docs/v5/evidence/phase20-gate.json"
+      ],
+      "remaining_proof": "Exercise all four Crown products with sandbox purchase/cancel/pending/replay/refund/restore and backend ledger grant proof."
+    },
+    {
+      "id": "A35",
+      "title": "Ads and consent",
+      "ledger_status": "NOT_RUN",
+      "proof_scope": "PROVIDER_DEVICE_PENDING",
+      "lead": "main-agent",
+      "evidence_refs": [
+        "docs/v5/evidence/phase20-gate.json"
+      ],
+      "remaining_proof": "Run real UMP/consent and ad SDK tests, reward SSV replay/delay and prohibited-screen checks on device."
+    },
+    {
+      "id": "A36",
+      "title": "Native accessibility and parity",
+      "ledger_status": "NOT_RUN",
+      "proof_scope": "PROVIDER_DEVICE_PENDING",
+      "lead": "main-agent",
+      "evidence_refs": [
+        "docs/v5/evidence/phase00-gate.json",
+        "docs/v5/evidence/phase20-gate.json"
+      ],
+      "remaining_proof": "Capture 4 themes, TalkBack/VoiceOver, keyboard/notch/small-screen and real network lifecycle on both device families."
+    },
+    {
+      "id": "A37",
+      "title": "Distribution and review truthfulness",
+      "ledger_status": "NOT_RUN",
+      "proof_scope": "PROVIDER_DEVICE_PENDING",
+      "lead": "main-agent",
+      "evidence_refs": [
+        "docs/v5/evidence/phase20-gate.json"
+      ],
+      "remaining_proof": "Verify real authorized signing and provider consoles; preserve uploaded/submitted/reviewed/approved/enabled as separate states."
+    },
+    {
+      "id": "A38",
+      "title": "Single writer and first-write fence",
+      "ledger_status": "NOT_RUN",
+      "proof_scope": "PRODUCTION_CUTOVER_PENDING",
+      "lead": "main-agent",
+      "evidence_refs": [
+        "docs/v5/evidence/phase22-gate.json",
+        "docs/v5/evidence/live-production-authority-audit.json"
+      ],
+      "remaining_proof": "During APPROVED cutover window fence all V4 writers, reconcile final import, record exact epoch and first V5 application write, prove no split-brain."
+    },
+    {
+      "id": "A39",
+      "title": "Rollback classes",
+      "ledger_status": "NOT_RUN",
+      "proof_scope": "PRODUCTION_CUTOVER_PENDING",
+      "lead": "main-agent",
+      "evidence_refs": [
+        "docs/v5/evidence/phase22-gate.json",
+        "docs/v5/evidence/live-production-authority-audit.json"
+      ],
+      "remaining_proof": "Run documented pre-write abort and post-write PG-compatible recovery on actual release topology; attach immutable operator artifacts."
+    },
+    {
+      "id": "A40",
+      "title": "Retirement and scaling discipline",
+      "ledger_status": "NOT_RUN",
+      "proof_scope": "PRODUCTION_CUTOVER_PENDING",
+      "lead": "main-agent",
+      "evidence_refs": [
+        "docs/v5/evidence/phase23-gate.json",
+        "docs/v5/evidence/phase24-gate.json",
+        "docs/v5/evidence/live-production-authority-audit.json"
+      ],
+      "remaining_proof": "AFTER real G22, verify irreversible V4 writer retirement, preserved archives/client compatibility and measured capacity triggers."
+    }
+  ]
+}

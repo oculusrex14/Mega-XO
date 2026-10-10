@@ -32,9 +32,9 @@ contexts before G17 acceptance. No production action is enabled here.
 - A successful decision always says COMPATIBLE_CONTRACTS_ONLY with
   authorizesDeployment=false. It neither proves the operator observation,
   nor stages/promotes Vercel, applies a migration or transfers authority.
-- scripts/v5/ci-safety-audit.js ensures this PR-only source CI is read-only
+- scripts/v5/ci-safety-audit.js ensures this PR-safe push/PR source CI is read-only
   with exact action SHA pins, no provider secrets and bounded artifacts.
-  Do not apply its PR-only rules to the separate historical V4 tag publisher.
+  Do not apply its untrusted-PR restrictions to the separate historical V4 tag publisher.
 
 Later P17 integration must verify actual service digests, exact production
 Vercel build, approved environment reviewer policy, schema/wire compatibility,

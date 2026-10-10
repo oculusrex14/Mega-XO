@@ -56,8 +56,8 @@
  * `maxAttempts` the job leaves the queue: it is moved to the `failed` (dead-letter) state, its payload
  * is sealed to NULL and it becomes visible to the restricted operator surface (`listDeadLetters`)
  * and re-enterable with `retryDeadLetter`, which resets the attempt budget instead of editing history.
- * The seal is ONE WAY by design: a dead-lettered row's body is gone, so an operator requeue returns the
- * id to the queue with a fresh budget but NO payload and the producer must re-enqueue the body. Keeping
+ * The seal is ONE WAY by design: a dead-lettered row's old body is gone, so an operator must
+ * provide a NEW explicit payload for requeue. A payload-free retry would silently lose real mail. Keeping
  * a readable copy on a terminal row would mean either widening `outbox_sealed_payload_ck` or stashing
  * the body in a side table, and both re-create exactly the retention the sealed-payload rule exists to
  * prevent.
@@ -300,8 +300,10 @@ const ATTEMPTS_SQL = 'SELECT attempts FROM ops.outbox'
 const DEAD_LETTERS_SQL = 'SELECT outbox_id, kind, attempts, created_at, expires_at FROM ops.outbox'
  + " WHERE state = 'failed' ORDER BY created_at DESC, outbox_id DESC LIMIT $1";
 
+/* A failed row is sealed: explicit replacement payload is mandatory to requeue. */
 const RETRY_DEAD_SQL = 'UPDATE ops.outbox'
- + " SET state = 'queued', attempts = 0, next_at = $2, lease_owner = NULL, lease_until = '" + LEASE_EPOCH + "'"
+ + " SET state = 'queued', attempts = 0, payload = $3, expires_at = $4,"
+ + " next_at = $2, lease_owner = NULL, lease_until = '" + LEASE_EPOCH + "'"
  + " WHERE outbox_id = $1 AND state = 'failed'";
 
 /* Cancel is ownerless and terminal: it supersedes work that has NOT been delivered. A delivered,
@@ -491,15 +493,26 @@ function createJobService(options = {}) {
    }));
   },
 
-  /* Operator requeue: a dead-lettered job gets a FRESH attempt budget and is due immediately. Only a
+  /* Operator requeue: supply a new payload for a FRESH attempt budget. Only a
     * `failed` row is re-enterable; anything else matches nothing and is refused. */
   async retryDeadLetter(input = {}) {
    requireOpen();
    if (!input || typeof input !== 'object') fail('INVALID_RETRY');
    const id = requireOutboxId(input.id);
+   if (!Object.prototype.hasOwnProperty.call(input, 'payload') || input.payload === null
+       || input.payload === undefined) fail('RETRY_REQUIRES_PAYLOAD');
+   const payload = requirePayload(input.payload);
+   const version = requireVersion(input.version);
+   const businessKey = requireBusinessKey(input.businessKey);
    const at = clock();
+   const expiresAt = requireInstant(input.expiresAt, 'INVALID_EXPIRES_AT');
+   const expires = expiresAt === null ? at + DEFAULT_EXPIRY_MS : expiresAt;
+   if (!Number.isFinite(expires) || expires <= at) fail('INVALID_EXPIRES_AT');
+   const envelope = JSON.stringify({ version, payload, businessKey });
+   if (typeof envelope !== 'string') fail('INVALID_PAYLOAD');
    await gate;
-   const rowCount = (await oneShot(RETRY_DEAD_SQL, [id, atMs(at)])).rowCount;
+   const rowCount = (await oneShot(RETRY_DEAD_SQL,
+    [id, atMs(at), envelope, atMs(expires)])).rowCount;
    return rowCount === 1;
   },
 

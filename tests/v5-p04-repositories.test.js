@@ -352,7 +352,9 @@ test('P04 parity: every repository member answers over the migrated normalized s
   assert.equal(await r.jobs.expireDue('v4_outbox', CLOCK - 86400000), 0);
   await assert.rejects(() => Promise.resolve(r.jobs.due('v9_none', CLOCK)), (e) => e.code === 'UNKNOWN_JOB_QUEUE');
   /* An expired queued row is sealed: the state and the NULLed payload land in one UPDATE. */
-  await tx.query("INSERT INTO ops.outbox (outbox_id, payload, kind, state, created_at, expires_at, next_at) VALUES ('mail-old', 'sealed', 'otp', 'queued', now() - interval '2 days', now() - interval '1 day', now() - interval '2 days')");
+  /* The unit-of-work clock is frozen at CLOCK. Seeding expiry from wall-clock
+   * now() made this test fail after UTC advanced beyond the fixture instant. */
+  await tx.query("INSERT INTO ops.outbox (outbox_id, payload, kind, state, created_at, expires_at, next_at) VALUES ('mail-old', 'sealed', 'otp', 'queued', $1::timestamptz - interval '2 days', $1::timestamptz - interval '1 day', $1::timestamptz - interval '2 days')", [new Date(CLOCK).toISOString()]);
   assert.equal(await r.jobs.expireDue('v4_outbox', CLOCK), 1);
   const expired = (await tx.query("SELECT state, payload FROM ops.outbox WHERE outbox_id = 'mail-old'")).rows[0];
   assert.equal(expired.state, 'expired');

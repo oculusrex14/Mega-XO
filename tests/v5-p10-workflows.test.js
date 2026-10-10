@@ -544,9 +544,14 @@ test('V5-10-02 worker app: start arms a real interval, tick drains the extracted
  const firedBy = Date.now() + 4000;
  while (transport.calls.length < 2 && Date.now() < firedBy) await lab.sleep(25);
  assert.equal(transport.calls.length, 2, 'start() schedules real periodic work: the queued job is drained with no explicit tick');
- assert.equal((await h.raw(second)).state, 'sent', 'the periodic tick completes the job it delivered');
 
+ // A transport call is observed BEFORE its fenced PostgreSQL completion commits.
+ // stop() is the production drain barrier: it clears the timer and awaits that
+ // in-flight tick. Only after it settles can we assert durable delivery.
  await periodic.stop();
+ const periodicDone = await h.raw(second);
+ assert.equal(periodicDone.state, 'sent', 'stop() waits for the periodic tick to complete the job durably');
+ assert.equal(periodicDone.payload, null, 'the periodic delivery seals the payload before shutdown');
  /* Let any tick that was already scheduled settle BEFORE the post-stop job exists, so nothing is
   * in flight when the new row appears: the only thing that could drain it is an interval that outlived
   * `stop()`. */
@@ -559,4 +564,35 @@ test('V5-10-02 worker app: start arms a real interval, tick drains the extracted
  const parked = await h.raw(third);
  assert.equal(parked.state, 'queued', 'the post-stop job stays durably queued for the next deployment');
  assert.notEqual(parked.payload, null, 'and it keeps its sealed payload, ready to be drained later');
+});
+
+test('P10 hardening: actor deletion cancels the entire mail backlog beyond one 256-row scan', { skip: GATE }, async (t) => {
+ const h = await open(t);
+ if (!h) return;
+ const { methods } = privacyFor(h, t);
+ const total = 257;
+ /* Use the owned disposable database to seed a deterministic 257-row backlog in
+  * one statement. Delivery is not under test; no provider is contacted. */
+ await h.exec(
+  "INSERT INTO ops.outbox (outbox_id, payload, kind, state, created_at, expires_at, next_at, lease_until, attempts)"
+  + " SELECT 'mail:' || $1::text || ':otp:bulk:' || n::text, $2::text, 'otp', 'queued',"
+  + " $3::timestamptz, $4::timestamptz, $3::timestamptz, '1970-01-01'::timestamptz, 0"
+  + " FROM generate_series(1, 257) n",
+  [ALICE, 'synthetic-sealed-body', new Date(h.clock()), new Date(h.clock() + DAY)],
+ );
+ const bob = `mail:${BOB}:otp:keep-after-sweep`;
+ await h.enqueueSealed(bob, 'otp', { to: 'bob@example.test', code: '0000', purpose: 'test', idempotencyKey: 'bob:untouched' });
+ assert.equal(await methods.cancelActorOutbox(ALICE), total,
+  'a deletion must not silently stop after the first 256 undelivered jobs');
+ const counts = (await h.exec(
+  "SELECT state, count(*)::int AS n FROM ops.outbox WHERE outbox_id LIKE 'mail:svc_alice:otp:bulk:%' GROUP BY state",
+ )).rows;
+ assert.deepEqual(counts.map(({ state, n }) => ({ state, n: Number(n) })),
+  [{ state: 'cancelled', n: total }], 'all 257 rows were cancelled and their payloads sealed');
+ const leaked = await h.exec(
+  "SELECT count(*)::int AS n FROM ops.outbox WHERE outbox_id LIKE 'mail:svc_alice:otp:bulk:%' AND payload IS NOT NULL",
+ );
+ assert.equal(Number(leaked.rows[0].n), 0, 'not one actor payload remains after cancellation');
+ assert.equal((await h.raw(bob)).state, 'queued', 'a different actor retains their queued work');
+ assert.equal(await methods.cancelActorOutbox(ALICE), 0, 'a repeat deletion is idempotent');
 });

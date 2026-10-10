@@ -157,16 +157,17 @@ function msOf(value) {
 }
 const atMs = (ms) => new Date(ms);
 
-/* A failure diagnostic is REPORTED, never trusted: it is reduced to a single bounded, control-free
- * line so it satisfies the `length(last_error) <= 280` CHECK and can never carry a newline, a NUL or a
- * purchase token echoed whole into durable state. A non-string, non-Error diagnostic collapses to a
- * fixed token rather than being stringified into whatever it holds. */
+/* Provider exceptions can quote receipt IDs, bearer tokens and purchase tokens.
+ * Persist only recognized, identifier-free categories, never raw error messages. */
+const SAFE_PROVIDER_ERRORS = new Set([
+ 'PROVIDER_UNAVAILABLE', 'PROVIDER_TIMEOUT', 'PROVIDER_RATE_LIMITED',
+ 'PROVIDER_AUTH_FAILED', 'SIGNATURE_INVALID', 'UPSTREAM_429',
+ 'UPSTREAM_5XX', 'UNKNOWN_FAULT',
+]);
 function sanitizeError(value) {
- const raw = value && typeof value === 'object' && typeof value.message === 'string' ? value.message
-  : typeof value === 'string' ? value : '';
- const clean = raw.replace(/[\u0000-\u001F\u007F]/g, ' ').trim();
- if (!clean) return UNKNOWN_FAULT;
- return clean.length > LAST_ERROR_MAX ? clean.slice(0, LAST_ERROR_MAX) : clean;
+ const category = value && typeof value === 'object' ? value.code : null;
+ return typeof category === 'string' && SAFE_PROVIDER_ERRORS.has(category)
+  ? category : UNKNOWN_FAULT;
 }
 
 /* Exponential backoff, deterministic (the repository convention - `jobs.js` does the same), capped by
@@ -202,7 +203,7 @@ const CLAIM_NOTIFICATIONS_KEYS_SQL = 'SELECT store, notification_id FROM monetiz
  * other worker can race the increment. `RETURNING` reads back the fence and the post-increment attempt
  * count the caller must present to `completeNotification`/`failNotification`. */
 const CLAIM_NOTIFICATIONS_TAKE_SQL = 'UPDATE monetization.store_notifications'
- + " SET state = 'processing', lease_owner = $2, lease_token = COALESCE(lease_token, 0) + 1,"
+ + " SET state = 'processing', lease_owner = $2, lease_token = attempts + 1,"
  + ' lease_until = $3, attempts = attempts + 1'
  + ' WHERE (store, notification_id) IN (SELECT * FROM unnest($1::text[], $4::text[]))'
  + ' RETURNING store, notification_id, received_at, attempts, lease_token, last_error';
@@ -233,34 +234,32 @@ const RETRY_NOTIFICATION_SQL = 'UPDATE monetization.store_notifications'
  + ' WHERE store = $1 AND notification_id = $2 AND lease_owner = $3 AND lease_token = $4'
  + " AND state = 'processing'";
 
-/* Enqueue is an UPSERT keyed by the durable provider transaction identity. A re-verified purchase must
- * not create a second finalization row, and it must NEVER reopen a row whose consume/acknowledge
- * already succeeded - that would present the provider a second consume. A non-`done` row is refreshed
- * to a fresh due attempt (attempts reset, lease cleared) so a re-verification after an abandoned or
- * failed attempt is serviced again. */
+/* A duplicate provider callback must never reset the lease of an in-flight finalizer.
+ * In particular, resetting lease_owner/token while the first worker calls Google
+ * allows a second worker to claim and double-contact the external provider.
+ * Keep *all* fields unchanged for done rows and for unexpired leases. An
+ * unleased/expired/abandoned row may be refreshed for recovery. */
+const FINALIZE_PROTECTED_SQL = "(monetization.store_finalize.state = 'done' OR "
+ + "(monetization.store_finalize.lease_owner IS NOT NULL "
+ + "AND monetization.store_finalize.lease_until > EXCLUDED.updated_at))";
+const finalizeSet = (column, otherwise) => ' ' + column + ' = CASE WHEN ' + FINALIZE_PROTECTED_SQL
+ + ' THEN monetization.store_finalize.' + column + ' ELSE ' + otherwise + ' END';
 const ENQUEUE_FINALIZE_SQL = 'INSERT INTO monetization.store_finalize'
  + ' (store, transaction_id, product_id, purchase_token, kind, state, attempts, next_at, created_at, updated_at)'
  + " VALUES ($1, $2, $3, $4, $5, 'pending', 0, $6, $6, $6)"
  + ' ON CONFLICT (store, transaction_id) DO UPDATE SET'
- + ' product_id = EXCLUDED.product_id,'
- + ' purchase_token = CASE WHEN monetization.store_finalize.state = \'done\''
- + ' THEN monetization.store_finalize.purchase_token ELSE EXCLUDED.purchase_token END,'
- + ' kind = EXCLUDED.kind,'
- + " state = CASE WHEN monetization.store_finalize.state = 'done' THEN 'done' ELSE 'pending' END,"
- + ' attempts = CASE WHEN monetization.store_finalize.state = \'done\''
- + ' THEN monetization.store_finalize.attempts ELSE 0 END,'
- + ' next_at = CASE WHEN monetization.store_finalize.state = \'done\''
- + ' THEN monetization.store_finalize.next_at ELSE EXCLUDED.next_at END,'
- + ' lease_owner = CASE WHEN monetization.store_finalize.state = \'done\''
- + ' THEN monetization.store_finalize.lease_owner ELSE NULL END,'
- + ' lease_token = CASE WHEN monetization.store_finalize.state = \'done\''
- + ' THEN monetization.store_finalize.lease_token ELSE NULL END,'
- + ' lease_until = CASE WHEN monetization.store_finalize.state = \'done\''
- + ' THEN monetization.store_finalize.lease_until ELSE NULL END,'
- + ' updated_at = EXCLUDED.updated_at'
- /* `xmax = 0` is the PostgreSQL convention for "this row was INSERTed by this command, not updated by
-  * it": it distinguishes a first enqueue from a refresh of a row that already existed, which a plain
-  * row count cannot (an upsert reports one affected row either way). */
+ + [
+  finalizeSet('product_id', 'EXCLUDED.product_id'),
+  finalizeSet('purchase_token', 'EXCLUDED.purchase_token'),
+  finalizeSet('kind', 'EXCLUDED.kind'),
+  finalizeSet('state', "'pending'"),
+  finalizeSet('attempts', 'monetization.store_finalize.attempts'),
+  finalizeSet('next_at', 'EXCLUDED.next_at'),
+  finalizeSet('lease_owner', 'NULL'),
+  finalizeSet('lease_token', 'NULL'),
+  finalizeSet('lease_until', 'NULL'),
+  finalizeSet('updated_at', 'EXCLUDED.updated_at'),
+ ].join(',')
  + ' RETURNING (xmax = 0) AS inserted, state';
 
 /* The due finalization set, locked. UNLIKE the notification machine, a finalization row keeps
@@ -278,7 +277,7 @@ const CLAIM_FINALIZE_KEYS_SQL = 'SELECT store, transaction_id FROM monetization.
  + ' FOR UPDATE SKIP LOCKED';
 
 const CLAIM_FINALIZE_TAKE_SQL = 'UPDATE monetization.store_finalize'
- + ' SET lease_owner = $2, lease_token = COALESCE(lease_token, 0) + 1, lease_until = $3,'
+ + ' SET lease_owner = $2, lease_token = attempts + 1, lease_until = $3,'
  + ' attempts = attempts + 1, updated_at = $4'
  + ' WHERE (store, transaction_id) IN (SELECT * FROM unnest($1::text[], $5::text[]))'
  + ' RETURNING store, transaction_id, product_id, purchase_token, kind, attempts, lease_token, created_at';
@@ -288,12 +287,15 @@ const CLAIM_FINALIZE_TAKE_SQL = 'UPDATE monetization.store_finalize'
  * decision and the fence it was taken under are read from ONE consistent snapshot, and it reads the
  * receipt's OWN row (never a capped hydration) exactly as `commerce.purchase` does. */
 const FINALIZE_STATE_SQL = 'SELECT f.product_id, f.purchase_token, f.kind, f.created_at, f.attempts,'
- + ' r.refunded AS receipt_refunded, r.transaction_id AS receipt_present'
+ + ' r.refunded AS receipt_refunded, r.transaction_id AS receipt_present,'
+ + ' rv.transaction_id AS revocation_present'
  + ' FROM monetization.store_finalize f'
  + ' LEFT JOIN monetization.receipts r'
  + ' ON r.store = f.store AND r.transaction_id = f.transaction_id'
+ + ' LEFT JOIN monetization.store_revocations rv'
+ + ' ON rv.store = f.store AND rv.transaction_id = f.transaction_id'
  + " WHERE f.store = $1 AND f.transaction_id = $2 AND f.state = 'pending'"
- + ' AND f.lease_owner = $3 AND f.lease_token = $4'
+ + ' AND f.lease_owner = $3 AND f.lease_token = $4 AND f.lease_until > $5'
  + ' FOR UPDATE OF f';
 
 /* Terminal completion: the provider op succeeded, so the purchase token is CLEARED in the same UPDATE
@@ -341,7 +343,8 @@ const RECEIPT_SQL = 'SELECT refunded FROM monetization.receipts'
 const REVOCATION_SQL = 'SELECT 1 AS present FROM monetization.store_revocations'
  + ' WHERE store = $1 AND transaction_id = $2';
 
-const PENDING_FINALIZATIONS_SQL = 'SELECT store, transaction_id, product_id, purchase_token, kind, state,'
+const PENDING_FINALIZATIONS_SQL = 'SELECT store, transaction_id, product_id, kind, state,'
+ + " (purchase_token IS NOT NULL AND purchase_token <> '') AS has_purchase_token,"
  + ' attempts, next_at, created_at, updated_at, lease_owner, lease_token, lease_until'
  + ' FROM monetization.store_finalize'
  + " WHERE state = 'pending'"
@@ -552,10 +555,11 @@ function createProviderWorkflow(options = {}) {
    const finalizeProvider = requireFn(input.finalizeProvider, 'FINALIZE_PROVIDER_REQUIRED');
    const at = clock();
    await gate;
-   const rows = (await oneShot(FINALIZE_STATE_SQL, [store, transactionId, workerId, fence])).rows;
+   const rows = (await oneShot(FINALIZE_STATE_SQL, [store, transactionId, workerId, fence, atMs(at)])).rows;
    if (rows.length !== 1) return { completed: false, pendingGrant: false, fenceLost: true };
    const row = rows[0];
-   const refunded = row.receipt_refunded === true;
+   const refunded = row.receipt_refunded === true
+    || (row.revocation_present !== null && row.revocation_present !== undefined);
    const granted = row.receipt_present !== null && row.receipt_present !== undefined && !refunded;
    if (!granted) {
     /* No durable grant: the provider is not contacted. After the abandonment horizon the row becomes
@@ -629,14 +633,21 @@ function createProviderWorkflow(options = {}) {
    const reason = input.reason === undefined ? 'refund' : requireReason(input.reason);
    const at = clock();
    await gate;
+   const invoked = typeof input.revokeFn === 'function';
+   /* An already-granted purchase needs a Core-owned receipt freeze and wallet
+    * adjustment. Never report a recorded refund with no Core seam available
+    * while the granted asset would remain untouched. Unknown transactions may
+    * still be tombstoned first, preventing an out-of-order future mint. */
+   const existing = (await oneShot(RECEIPT_SQL, [store, transactionId])).rows;
+   if (existing.length > 0 && !invoked) fail('REFUND_CORE_SEAM_REQUIRED');
    const recorded = (await oneShot(INSERT_REVOCATION_SQL,
     [store, transactionId, productId, atMs(at), reason])).rowCount === 1;
-   const invoked = typeof input.revokeFn === 'function';
    const refund = invoked ? await input.revokeFn({ store, transactionId, productId, reason }) : null;
    return { recorded, duplicate: !recorded, invoked, refund };
   },
 
   /* The restricted operator surface: the finalizations still waiting on a grant, soonest first,
+    * returns only a boolean token-presence hint, never the purchase credential itself.
     * bounded. A row here is a purchase that is granted-or-waiting but not yet consumed/acknowledged -
     * the "pending finalization is visible" half of the task's verification. */
   async listPendingFinalizations(input = {}) {
@@ -649,7 +660,7 @@ function createProviderWorkflow(options = {}) {
     store: row.store,
     transactionId: String(row.transaction_id),
     productId: row.product_id,
-    purchaseToken: row.purchase_token,
+    hasPurchaseToken: row.has_purchase_token === true,
     kind: row.kind,
     state: row.state,
     attempts: Number(row.attempts),

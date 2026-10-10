@@ -23,6 +23,25 @@ function createCoreConnectionDrain(lifecycle) {
   const registered = new WeakMap();
   const entries = new Set();
 
+  /* Shutdown callbacks must enqueue synchronously. Treat an accidental async
+   * callback as FAILURE and consume its rejection: neither an unresolved
+   * promise nor an unhandled rejection may masquerade as a successful drain.
+   * The caller can track async transport completion independently, but ONLY
+   * socket close/release settles the lifecycle admission lease. */
+  function invokeSynchronous(callback) {
+    try {
+      const result = callback();
+      if (result && (typeof result === 'object' || typeof result === 'function')
+          && typeof result.then === 'function') {
+        Promise.resolve(result).catch(() => {});
+        return false;
+      }
+      return result !== false;
+    } catch {
+      return false;
+    }
+  }
+
   function status() {
     return Object.freeze({ ...lifecycle.snapshot(), trackedConnections: entries.size });
   }
@@ -59,12 +78,8 @@ function createCoreConnectionDrain(lifecycle) {
     for (const entry of [...entries]) {
       if (entry.notified || !entries.has(entry)) continue;
       entry.notified = true; // repeated termination signals cannot flood clients
-      try {
-        if (entry.notifyDrain() === false) failed += 1;
-        else notified += 1;
-      } catch {
-        failed += 1; // caller may privately log only a sanitized counter
-      }
+      if (invokeSynchronous(entry.notifyDrain)) notified += 1;
+      else failed += 1; // sanitize: never expose the callback error to the client
     }
     return Object.freeze({ ...status(), noticesQueued: notified, noticeFailures: failed });
   }
@@ -81,13 +96,10 @@ function createCoreConnectionDrain(lifecycle) {
     let failed = 0;
     for (const entry of [...entries]) {
       if (entry.forced || !entries.has(entry)) continue;
-      try {
-        if (entry.forceClose() === false) failed += 1;
-        else {
-          entry.forced = true;
-          requested += 1;
-        }
-      } catch {
+      if (invokeSynchronous(entry.forceClose)) {
+        entry.forced = true;
+        requested += 1;
+      } else {
         failed += 1;
       }
     }

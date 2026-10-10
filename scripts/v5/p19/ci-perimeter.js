@@ -39,8 +39,8 @@ function inspect(text){
    "V5_REDIS_DISPOSABLE: '1'",'127.0.0.1:5432:5432','127.0.0.1:6379:6379']) {
    if(!text.includes(required))deny('unowned, public or remote test service');
  }
- if(!/image: postgres:16@sha256:[a-f0-9]{64}/.test(text)||
-    !/image: redis:7\.4@sha256:[a-f0-9]{64}/.test(text))deny('mutable disposable database image');
+ if(!/^[ \t]*image: (?:postgres|public\.ecr\.aws\/docker\/library\/postgres|mirror\.gcr\.io\/library\/postgres):16@sha256:[a-f0-9]{64}$/m.test(text)||
+    !/^[ \t]*image: (?:redis|public\.ecr\.aws\/docker\/library\/redis|mirror\.gcr\.io\/library\/redis):7\.4@sha256:[a-f0-9]{64}$/m.test(text))deny('mutable disposable database image');
  if(/^\s*(?:-\s*)?(?:run:\s*)?(?:vercel deploy|vercel promote|docker push|git push|curl https:\/\/|wget https:\/\/)/m.test(text)) {
   deny('network release or public probe forbidden in PR load job');
  }

@@ -74,15 +74,15 @@ test('P19 actual disposable Redis wipe, Core reopen/idempotent retry and bounded
 
   // Redis wipe: real commands + atomic namespace removal from the owned
   // temporary Redis container. Immutable PG authority must not move.
-  await redis.heartbeat('svc_alice','session-synthetic',60000);
+  await redis.presenceTouch('svc_alice','session-synthetic',true,60000);
   await redis.cacheSet('cache','p19-fault','synthetic',60000);
   const beforeWipe=await truthDigest(db),startWipe=performance.now();
   const wiped=await redis.wipeNamespace();
   assert.equal(wiped.available,true);
   assert.ok(wiped.deleted>=2,'real test fixtures must actually be erased by Redis wipe');
-  const absent=await redis.lookupPresence('svc_alice');
+  const absent=await redis.presenceRead('svc_alice');
   assert.equal(absent.available,true);
-  assert.equal(absent.value,null,'ephemeral presence disappears; durable actor does not');
+  assert.deepEqual(absent.sessions,[],'ephemeral presence disappears; durable actor does not');
   record(rows,'redis_namespace_wipe',beforeWipe,await truthDigest(db),startWipe);
 
   // A Core service reopened with the same guarded PG pool reconstructs the

@@ -86,13 +86,21 @@ async function setupApiServer(database, options = {}) {
   return harness;
 }
 
-function apiRequest(target, routePath, { method = 'GET', actor = null, token = null, body = null, headers = {} } = {}) {
+async function apiRequest(target, routePath, { method = 'GET', actor = null, token = null, body = null, headers = {} } = {}) {
   const handler = (target && typeof target === 'object' && target.handler) ? target.handler : target;
   const req = new EventEmitter();
   req.method = method;
   req.url = routePath;
   req.headers = { ...headers };
-  if (actor) req.headers['x-actor-id'] = actor;
+  // Tests authenticate through the same linked sessions as real HTTP clients.
+  if (actor && !token) {
+    if (!target?.accounts?.issue) throw new Error('TEST_AUTHORITY_REQUIRED');
+    target._testSessions ||= new Map();
+    if (!target._testSessions.has(actor)) {
+      target._testSessions.set(actor, target.accounts.issue(actor, Date.now()));
+    }
+    token = (await target._testSessions.get(actor)).token;
+  }
   if (token) req.headers['authorization'] = `Bearer ${token}`;
   req.body = body;
 

@@ -153,6 +153,16 @@ const occupancyOf = (h, roomId) => h.rows("SELECT actor_id FROM core.actor_occup
 const burnsOf = async (h) => (await h.row('SELECT coins, crowns FROM economy.system_burns WHERE id = 1')) || { coins: 0, crowns: 0 };
 const recordsOf = (h) => h.rows('SELECT actor_id, entered, wins, runner_up, top3, top5, best_finish, finish_sum'
  + ' FROM economy.tournament_records ORDER BY actor_id');
+/* Outbox is worker-owned, not readable through the core_runtime role. Probe it
+ * with this test-owned admin client, never by expanding Core privileges. */
+const settlementEvent = async (h, roomId) => {
+ const c = await lab.adminClient(h.database);
+ try {
+  const q = await c.query('SELECT outbox_id, kind, state, payload FROM ops.outbox WHERE outbox_id = $1',
+   ['tournament.settle:' + roomId]);
+  return q.rows[0] ?? null;
+ } finally { await c.end(); }
+};
 const outcomeCount = async (h, actor, key) => Number((await h.row('SELECT count(*)::int AS n FROM tournament.command_outcomes WHERE actor_id = $1 AND "key" = $2',
  [actor, JSON.stringify(key)])).n);
 /* The committed outcome row for one (actor, key): the durable record a replay is answered from. The
@@ -316,6 +326,12 @@ test('V5-09-05: a ten-player public table survives a worker restart and duplicat
  assert.deepEqual(settledRow.ranking, played.view.ranking, 'the committed ranking is the delivered one');
  assert.deepEqual(plain(settledRow.receipt_json), plain(receipt), 'the committed receipt is the delivered one');
  assert.ok(settledRow.settled_at !== null, 'the settlement instant is durable');
+ const notified = await settlementEvent(h, roomId);
+ assert.ok(notified,'automatic game completion must atomically enqueue a settlement notification');
+ assert.equal(notified.kind,'tournament.settle');
+ assert.equal(notified.state,'queued');
+ assert.equal(JSON.parse(notified.payload).refunded,false);
+ assert.equal(JSON.parse(notified.payload).roomId,roomId);
 
  /* Exactly one payout ledger entry per player, each the frozen share, each credited once. */
  const payouts = await ledgerOf(h, roomId, 'payout');
@@ -356,6 +372,8 @@ test('V5-09-05: a ten-player public table survives a worker restart and duplicat
  assert.deepEqual(plain(secondWorker.receipt), plain(receipt), 'it hands back the committed receipt');
  assert.equal((await ledgerOf(h, roomId, 'payout')).length, 10, 'it pays nothing a second time');
  assert.equal(Number((await burnsOf(h)).coins), BURN, 'it burns nothing a second time');
+ assert.deepEqual(await settlementEvent(h, roomId),notified,
+  'command replay and standalone worker must not duplicate or rewrite the event');
  const finalWallets = await walletMap(h);
  for (const actor of ROSTER) {
   assert.equal(Number(finalWallets.get(actor).coins), 1000 - ENTRY + share.get(actor), `${actor}: still credited exactly once after the second worker`);
@@ -461,6 +479,12 @@ test('V5-09-05: a public table voided mid-tournament refunds every entry exactly
  assert.equal(voided.receipt.payouts.length, 10, 'every entrant is refunded');
  assert.ok(voided.receipt.payouts.every((p) => p.amount === ENTRY), 'every entrant gets back exactly the entry fee');
  assert.equal(voided.receipt.payouts.reduce((sum, p) => sum + p.amount, 0), POOL, '100% of the entry fees are refunded');
+ const refundNotice=await settlementEvent(h,roomId);
+ assert.ok(refundNotice,'in-command VOID/refund must atomically enqueue a settlement notification');
+ assert.equal(refundNotice.kind,'tournament.settle');
+ assert.equal(refundNotice.state,'queued');
+ assert.equal(JSON.parse(refundNotice.payload).refunded,true);
+ assert.equal(JSON.parse(refundNotice.payload).roomId,roomId);
 
  const refunds = await ledgerOf(h, roomId, 'refund');
  assert.equal(refunds.length, 10, 'exactly one refund entry per entrant');
@@ -510,6 +534,8 @@ test('V5-09-05: a public table voided mid-tournament refunds every entry exactly
  assert.equal((await ledgerOf(h, roomId, 'refund')).length, 10, 'no retry writes a second refund');
  assert.equal((await ledgerOf(h, roomId, 'payout')).length, 0, 'a refunded table never pays a prize');
  assert.equal(await outcomeCount(h, OPERATOR, 'void-1'), 1, 'no retry writes a second outcome row');
+ assert.deepEqual(await settlementEvent(h,roomId),refundNotice,
+  'restarted worker and repeated cancel cannot duplicate or rewrite refund delivery');
  wallets = await walletMap(h);
  for (const actor of ROSTER) {
   assert.equal(Number(wallets.get(actor).coins), 1000, `${actor}: still refunded exactly once`);

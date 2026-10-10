@@ -7,7 +7,9 @@
  *
  * WHAT THIS IS. ONE native (zero-dependency, RFC 6455) WebSocket server bound to an EXISTING
  * http(s) server's 'upgrade' event, plus ONE ordinary request listener that serves the HTTP
- * snapshot fallback for the same two paths. It owns the wire only: framing, the one-use ticket
+ * snapshot fallback for the same two paths. HTTP reads are disabled unless the owning host injects
+ * an authenticateHttp(req) session/bearer verifier; the URL's actor is only a mismatch assertion.
+ * It owns the wire only: framing, the one-use ticket
  * handshake, subscription membership, the revision transaction, bounded snapshot/delta recovery
  * and safe error frames. It is deliberately not the command authority - a `command` envelope is
  * projected onto the ONE Core transaction boundary (`core.run`), which locks, dedupes, commits the
@@ -28,6 +30,7 @@
  *                     {protocol:'realtime/v1',operation:'error',code[,match_id,expected_revision]}
  *   plain HTTP        GET /realtime/v1/snapshot?match_id=..&actor=..   -> application/json snapshot
  *                     GET /realtime/v1/match/:id?actor=..             -> application/json snapshot
+ *                       (both require the host's authenticateHttp(req) verified principal)
  * `ack` answers a redeemed ticket (ack_revision 0) or a committed command (the durable committed
  * revision read back from PostgreSQL).
  * Every inbound frame passes validateEnvelope() before it has any effect; every outbound error
@@ -130,6 +133,10 @@ const MATCH_CHANNEL = 'core-match';
  * authority produces them reconnects and catches up through `resume`/snapshot recovery instead of
  * pinning unbounded frames in memory. A policy bound, not a durable one. */
 const DEFAULT_MAX_BUFFER_BYTES = 65536;
+/* A client may pipeline bounded envelopes, but may not queue unbounded
+ * transactional/authorization work behind a slow PostgreSQL operation.
+ * The count includes the in-flight operation and every pending frame. */
+const MAX_PENDING_ENVELOPES = 64;
 /* How long a closing socket may linger for its close frame/FIN to flush before it is destroyed. */
 const CLOSE_GRACE_MS = 5000;
 /* RFC 6455 §5.5: a control frame payload never exceeds 125 bytes. */
@@ -302,6 +309,12 @@ function createRealtimeTransport(options = {}) {
   if (ephemera && (typeof ephemera.registerRoute !== 'function' || typeof ephemera.cacheDel !== 'function')) fail('EPHEMERA_REQUIRED');
   const clock = options.now === undefined ? Date.now : options.now;
   if (typeof clock !== 'function') fail('CLOCK_REQUIRED');
+  /* The HTTP recovery route has NO WebSocket ticket. The caller's identity
+   * perimeter must authenticate the request independently (session cookie or
+   * scoped bearer, including revocation/eligibility). An actor query parameter
+   * is never a credential. Without this hook the route MUST fail closed. */
+  const authenticateHttp = options.authenticateHttp;
+  if (authenticateHttp !== undefined && typeof authenticateHttp !== 'function') fail('HTTP_AUTHENTICATOR_INVALID');
   const maxEnvelopeBytes = boundedOption(options.maxEnvelopeBytes, MAX_ENVELOPE_BYTES, MAX_ENVELOPE_BYTES, 'MAX_ENVELOPE_BYTES_INVALID');
   const authTimeoutMs = boundedOption(options.authTimeoutMs, DEFAULT_AUTH_TIMEOUT_MS, MAX_AUTH_TIMEOUT_MS, 'AUTH_TIMEOUT_INVALID');
   const maxBufferBytes = boundedOption(options.maxBufferBytes, DEFAULT_MAX_BUFFER_BYTES, DEFAULT_MAX_BUFFER_BYTES, 'MAX_BUFFER_BYTES_INVALID');
@@ -605,7 +618,20 @@ function createRealtimeTransport(options = {}) {
   /* One connection, one ordered queue: an awaited ticket redemption or membership probe can never
    * be overtaken by the next frame, and a rejected task never becomes an unhandled rejection. */
   function enqueue(conn, task) {
-    conn.chain = conn.chain.then(task).catch(() => {});
+    /* Backpressure belongs at enqueue, BEFORE creating another pending Promise.
+     * Otherwise one valid socket can pile unlimited memory/database work behind
+     * a blocked transaction, even though each individual frame fits 8 KiB. */
+    if (conn.pendingEnvelopes >= MAX_PENDING_ENVELOPES) {
+      closeSocket(conn, CLOSE_POLICY, true);
+      return;
+    }
+    conn.pendingEnvelopes += 1;
+    conn.chain = conn.chain.then(() => {
+      if (conn.destroyed || conn.closing) return;
+      return task();
+    }).catch(() => {}).finally(() => {
+      conn.pendingEnvelopes -= 1;
+    });
   }
 
   /* A whole text message, already bounded by the frame parser. Malformed JSON and a shape the frozen
@@ -994,12 +1020,27 @@ function createRealtimeTransport(options = {}) {
     if (draining) { sendJson(res, 503, { protocol: PROTOCOL, operation: 'error', code: 'SERVICE_UNAVAILABLE' }); return; }
     if (req.method !== 'GET' && req.method !== 'HEAD') { snapshotReadOnly(res); return; }
     const query = httpQuery(req.url);
-    const actor = query.get('actor');
-    if (!ENVELOPE_FIELDS.actor(actor)) { sendSnapshotError(res, 'INVALID_ENVELOPE'); return; }
     const matchId = route.match_id === null ? query.get('match_id') : route.match_id;
     if (!ENVELOPE_FIELDS.match_id(matchId)) { sendSnapshotError(res, 'INVALID_ENVELOPE'); return; }
+    if (!authenticateHttp) { sendSnapshotError(res, 'AUTH_REQUIRED'); return; }
+    let principal;
+    try { principal = await authenticateHttp(req); }
+    catch (error) { sendSnapshotError(res, safeCode(error)); return; }
+    if (!principal || typeof principal !== 'object' ||
+        !ENVELOPE_FIELDS.actor(principal.actor)) {
+      sendSnapshotError(res, 'AUTH_REQUIRED');
+      return;
+    }
+    /* Keep the historical ?actor= URL as a compatibility assertion only.
+     * A caller cannot impersonate a participant by changing its query value.
+     * Without the legacy field, the verified identity still authorizes reads. */
+    const actorHint = query.get('actor');
+    if (actorHint !== null && actorHint !== principal.actor) {
+      sendSnapshotError(res, 'FORBIDDEN');
+      return;
+    }
     let view;
-    try { view = await committedView(actor, matchId); }
+    try { view = await committedView(principal.actor, matchId); }
     catch (error) { sendSnapshotError(res, safeCode(error)); return; }
     sendJson(res, 200, snapshotFrame(matchId, view, true));
   }
@@ -1074,6 +1115,7 @@ function createRealtimeTransport(options = {}) {
       matchScope: null,
       subscriptions: new Set(),
       chain: Promise.resolve(),
+      pendingEnvelopes: 0,
       buffer: EMPTY,
       fragments: null,
       authTimer: null,

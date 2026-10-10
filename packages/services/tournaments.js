@@ -546,8 +546,21 @@ function createTournamentService(options = {}) {
     if (account.activeMatch) fail('ALREADY_IN_MATCH');
     if (active.some((r) => r.table && r.players.some((p) => p.id === actor))) fail('ALREADY_QUEUED');
     if (account[quote.currency] < quote.entry) fail(`INSUFFICIENT_${quote.currency.toUpperCase()}`);
-    room = MM.selectTournamentRoom(active, economy, actor, cmd.table, now)
-     || T.create({ id: crypto.randomUUID(), code: await generateCode(tx), owner: 'service', name: `${quote.name} table`, table: cmd.table, now });
+    const candidate = MM.selectTournamentRoom(active, economy, actor, cmd.table, now);
+    if (candidate) {
+     /* Room-set locking serializes commands, but NOT a standalone settle().
+      * Lock the selected room row BEFORE wallets.lock/state.write, exactly
+      * like settle(). Re-hydrate the live state under that lock: never save
+      * an earlier activeRooms() snapshot over a terminal settlement. */
+     await lockRoomRow(tx, candidate.id);
+     const latest = await repositories.tournaments.freshRoom(candidate.id);
+     if (latest && latest.status === 'LOBBY' && latest.table === cmd.table
+      && latest.players.length < latest.capacity) room = latest;
+    }
+    if (!room) {
+     room = T.create({ id: crypto.randomUUID(), code: await generateCode(tx),
+      owner: 'service', name: `${quote.name} table`, table: cmd.table, now });
+    }
     T.join(room, actor, principal.name || account.id, now);
    } else {
     /* THE ROOM AGGREGATE ROW, FIRST (V5-09-04 global order, design 3.7): every command that names an
@@ -558,7 +571,11 @@ function createTournamentService(options = {}) {
      * room and therefore take nothing here; their serialization point is the room-set identity. */
     await lockRoomRow(tx, cmd.id);
     requireRoomCommandId(cmd.id);
-    room = await repositories.tournaments.room(cmd.id);
+    /* activeRooms() hydrated the aggregate BEFORE the room-row lock.
+     * An independent settlement can finalize the room while this
+     * command waits; using room() would return the cached old snapshot
+     * even after FOR UPDATE and resurrect completed financial state. */
+    room = await repositories.tournaments.freshRoom(cmd.id);
     if (!room) fail('ROOM_NOT_FOUND');
     if (cmd.type === 'join') {
      if (room.table) fail('USE_PUBLIC_QUEUE');
@@ -613,14 +630,40 @@ function createTournamentService(options = {}) {
     const actors = new Set(room.players.map((p) => p.id));
     for (const contribution of (room.contributions || [])) actors.add(contribution.id);
     if (actors.size > 0) await repositories.wallets.lock([...actors], { aggregate: { kind: 'tournament', id: room.id } });
-    /* Already-read for matchmaking, or read now; one hydrate per transaction either way. */
-    economy = economy || await repositories.state.read();
+    /* The pre-lock publicJoin aggregate was only for lobby selection, NEVER
+     * an authoritative balance: another transaction could have changed the
+     * actor's wallet while this join waited on the room/occupancy locks.
+     * Invalidate and rehydrate under wallet locks before any debit or write.
+     * Existing-room commands never read economy before these locks. */
+    /* Any public command may have hydrated the aggregate before wallets
+     * were locked (publicJoin for selection, other room commands through
+     * freshRoom). Refresh ALL public command economy views under the
+     * acquired wallet locks before debiting/reserving/settling. */
+    economy = await repositories.state.refresh();
+    if (cmd.type === 'publicJoin') {
+     const funded = eligibleAccount(lookupAccount(economy, actor));
+     const quote = T.prize(cmd.table);
+     if (funded.activeMatch) fail('ALREADY_IN_MATCH');
+     if (funded[quote.currency] < quote.entry) fail(`INSUFFICIENT_${quote.currency.toUpperCase()}`);
+    }
     if (room.status === 'LOBBY' && room.players.length === 10 && room.players.every((p) => p.ready)) {
      reserveRoom(room, economy, now);
      T.start(room, 'service', MM.tournamentSeed(room.players.map((p) => p.id), economy), now);
     }
-    settleRoom(room, economy, now);
+    /* A terminal public game normally settles INSIDE this command, not via
+     * the separate settle() worker. Publish the SAME deterministic outbox
+     * identity as settle() in this very transaction; otherwise a committed
+     * payout/refund never notifies P10 consumers, and settle() sees the room
+     * already settled so it cannot backfill the missing event. */
+    const settledHere = settleRoom(room, economy, now);
     await repositories.state.write(economy);
+    if (settledHere) {
+     await emitSettlement(tx, room.id, {
+      roomId: room.id, table: room.table, refunded: room.receipt.refunded === true,
+      actor: 'service', reason: room.reason ?? (room.receipt.refunded ? 'CANCELLED' : 'EVENT_COMPLETE'),
+      key: null,
+     }, now);
+    }
    }
    requireRoom(room);
    await repositories.tournaments.save(room);
@@ -775,22 +818,29 @@ function createTournamentService(options = {}) {
   if (!input || typeof input !== 'object') fail('INVALID_CLAIM');
   const owner = requireLeaseOwner(input.owner);
   const leaseMs = requireLeaseMs(input.leaseMs);
-  const epoch = input.epoch === undefined ? 0 : requireEpoch(input.epoch);
+  /* A requested epoch is a consistency check; only the live room revision is authority. */
+  const epoch = input.epoch === undefined ? null : requireEpoch(input.epoch);
   await gate;
   return uow.run(async (tx) => {
    const now = tx.clock();
    const until = now + leaseMs;
-   const updated = (await tx.query(
-    'UPDATE tournament.rooms SET timer_lease_owner = $1, timer_lease_epoch = $2, timer_lease_until = $3'
-    + ' WHERE room_id = $4 AND (timer_lease_owner IS NULL OR timer_lease_until < $3 OR timer_lease_owner = $1)',
-    [owner, epoch, atMs(until), roomId])).rowCount;
+   /* Expiry MUST compare against the current clock, not the NEW requested expiry:
+    * asking for a longer lease cannot steal a healthy worker's active claim.
+    * The fence is always the current durable revision, not an arbitrary epoch. */
+   const rows = (await tx.query(
+    'UPDATE tournament.rooms SET timer_lease_owner = $1, timer_lease_epoch = revision, timer_lease_until = $2'
+    + " WHERE room_id = $3 AND status IN ('RUNNING', 'PAUSED')"
+    + ' AND ($4::bigint IS NULL OR revision = $4)'
+    + ' AND (timer_lease_owner IS NULL OR timer_lease_until <= $5 OR timer_lease_owner = $1)'
+    + ' RETURNING timer_lease_epoch',
+    [owner, atMs(until), roomId, epoch, atMs(now)])).rows;
    /* Zero rows means one of two things: a live lease owned by someone else (refused), or no such
     * room. Only the second is an error - a refusal is the normal, expected answer. */
-   if (updated === 0) {
+   if (rows.length === 0) {
     if ((await roomRevision(tx, roomId)) === null) fail('ROOM_NOT_FOUND');
     return null;
    }
-   return { owner, epoch, until };
+   return { owner, epoch: Number(rows[0].timer_lease_epoch), until };
   });
  }
  /* Give the sweep back early (a worker shutting down cleanly). Owner-scoped: a worker that lost the
@@ -832,9 +882,11 @@ function createTournamentService(options = {}) {
     'UPDATE tournament.fixtures SET lease_owner = $1,'
     + ' lease_epoch = (SELECT revision FROM tournament.rooms WHERE room_id = $4), lease_until = $2'
     + ' WHERE room_id = $4 AND fixture_id = $3'
-    + ' AND (lease_owner IS NULL OR lease_until < $2 OR lease_owner = $1)'
+    + " AND status IN ('READY', 'PLAYING')"
+    + " AND EXISTS (SELECT 1 FROM tournament.rooms r WHERE r.room_id = $4 AND r.status IN ('RUNNING', 'PAUSED'))"
+    + ' AND (lease_owner IS NULL OR lease_until <= $5 OR lease_owner = $1)'
     + ' RETURNING lease_epoch',
-    [owner, atMs(until), fixtureId, roomId])).rows;
+    [owner, atMs(until), fixtureId, roomId, atMs(now)])).rows;
    if (!rows.length) { await requireFixtureRow(tx, roomId, fixtureId); return null; }
    return { owner, epoch: Number(rows[0].lease_epoch), until };
   });
@@ -860,8 +912,10 @@ function createTournamentService(options = {}) {
     + ' lease_until = NULL, revision = f.revision + 1'
     + ' FROM tournament.rooms r'
     + ' WHERE f.room_id = $1 AND f.fixture_id = $2 AND f.lease_owner = $3 AND f.lease_epoch = $4'
-    + ' AND f.lease_epoch = r.revision AND r.room_id = f.room_id',
-    [roomId, fixtureId, owner, epoch])).rowCount;
+    + ' AND f.lease_epoch = r.revision AND r.room_id = f.room_id'
+    + " AND r.status IN ('RUNNING', 'PAUSED') AND f.status IN ('READY', 'PLAYING')"
+    + ' AND f.lease_until > $5',
+    [roomId, fixtureId, owner, epoch, atMs(tx.clock())])).rowCount;
    return updated === 1;
   });
  }

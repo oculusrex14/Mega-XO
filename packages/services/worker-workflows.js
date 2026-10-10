@@ -102,6 +102,9 @@ const DEFAULT_RETENTION_MS = 7 * DAY_MS;
 /* One deletion can leave at most this many undelivered mail rows behind; the sweep is bounded so a
  * pathological actor cannot turn a privacy request into an unbounded transaction. */
 const CANCEL_SCAN_LIMIT = 256;
+/* Each iteration takes one bounded scan; an exceptionally large/deleted actor is
+ * explicitly escalated instead of silently leaving undelivered mail after row 256. */
+const CANCEL_MAX_BATCHES = 64;
 const IDENT_MAX = 200;
 /* Control characters (including NUL) never belong in an identifier or a log line. */
 const CONTROL_CHAR = /[\u0000-\u001F\u007F]/;
@@ -332,8 +335,13 @@ function createMailWorker(options = {}) {
    if (!transportEnabled()) return defer('transport_disabled');
    /* The spend guard is consulted BEFORE the claim, so a process with no allowance left does not take a
     * lease on work it will not deliver (that would only park the row until the lease lapsed). */
-   if (budgetRemaining(budget, requireClock(now), dailyLimit, monthlyLimit) < 1) return defer('budget');
-   const claimed = await jobService.claimJobs({ workerId, kinds: MAIL_KINDS, limit, leaseMs });
+   const remaining = budgetRemaining(budget, requireClock(now), dailyLimit, monthlyLimit);
+   if (remaining < 1) return defer('budget');
+   /* The claim itself must fit the remaining UTC allowance: checking for a positive
+    * balance but taking an entire batch could exceed the daily/monthly cap. */
+   const claimed = await jobService.claimJobs({
+    workerId, kinds: MAIL_KINDS, limit: Math.min(limit, remaining), leaseMs,
+   });
    /* Reserve the whole batch up front: the allowance is charged against the work this tick is about to
     * deliver, and the batch size then caps out naturally once the day's (or month's) spend is reached.
     * A reservation that a crash never delivers stays charged - conservative, exactly as the legacy
@@ -466,13 +474,20 @@ function createPrivacyWorkflow(options = {}) {
    requireOpen();
    const id = requireActorId(actor);
    const pattern = 'mail:' + escapeLike(id) + ':%';
-   const rows = (await runner(clientOrPool)(ACTOR_OUTBOX_SQL, [pattern, CANCEL_SCAN_LIMIT])).rows;
+   const scan = runner(clientOrPool);
    let cancelled = 0;
-   for (const row of rows) {
-    const outboxId = requireOutboxId(String(row.outbox_id));
-    if (await jobService.cancelJob({ id: outboxId })) cancelled += 1;
+   for (let batch = 0; batch < CANCEL_MAX_BATCHES; batch += 1) {
+    const rows = (await scan(ACTOR_OUTBOX_SQL, [pattern, CANCEL_SCAN_LIMIT])).rows;
+    if (rows.length === 0) return cancelled;
+    for (const row of rows) {
+     const outboxId = requireOutboxId(String(row.outbox_id));
+     if (await jobService.cancelJob({ id: outboxId })) cancelled += 1;
+    }
+    if (rows.length < CANCEL_SCAN_LIMIT) return cancelled;
    }
-   return cancelled;
+   /* Never present a partial privacy sweep as a completed cancellation. A
+    * caller can retry idempotently after reviewing the unusually large backlog. */
+   fail('ACTOR_CANCEL_LIMIT_REACHED', { batches: CANCEL_MAX_BATCHES, batchLimit: CANCEL_SCAN_LIMIT });
   },
 
   /* Delete terminal outbox rows that are older than the retention window. Delivered, failed, expired
@@ -594,9 +609,14 @@ function createWorkerApp(options = {}) {
   async stop() {
    if (timer !== null) { clearInterval(timer); timer = null; }
    closed = true;
-   inFlight = null;
-   mailWorker.close();
-   privacy.close();
+   /* Stop is a drain barrier: an already-claimed delivery must settle before the
+    * caller may close the pool or terminate this worker process. */
+   try {
+    if (inFlight !== null) await inFlight;
+   } finally {
+    mailWorker.close();
+    privacy.close();
+   }
    return { stopped: true };
   },
  });

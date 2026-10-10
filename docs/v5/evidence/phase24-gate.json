@@ -9,7 +9,7 @@
   ],
   "case_ids": [],
   "recorded_at_utc": "2026-10-10T07:30:00.000Z",
-  "status": "PASSED",
+  "status": "REHEARSAL_VERIFIED_G24_NOT_ACCEPTED_LIVE_METRICS_PENDING",
   "source_state": {
     "base_sha": "76165cf0fc3779789b31689a83a8c8695d96ca2b",
     "target_branch": "V5-platform",
@@ -20,11 +20,11 @@
   "gate_criteria": {
     "description": "Measured baseline and explicit scaling triggers are delivered. Additional infrastructure is conditional on evidence, not required speculative work",
     "verified_points": [
-      "Explicit free-tier capacity envelopes established for Neon PostgreSQL (500MB storage, 20 max conns), Upstash Redis (256MB memory), and Core instances (1000 WS conns).",
-      "Scaling alert triggers defined at safe warning thresholds (75-80%) prior to hard quota breach.",
-      "Automated scaling actions mapped to critical thresholds (90-95%) enabling connection draining, ephemeral data purge, or secondary Core routing.",
-      "Strict negative boundary enforced: speculative infrastructure scaling disallowed without measured metric proof (NOT_TRIGGERED).",
-      "Zero unbudgeted cost inflation: operational limits preserve compliance with existing platform free-tier commitments."
+      "Synthetic tests model bounded capacity policy and Free-tier risk envelopes; live V5 production resource measurements are not yet available.",
+      "Warning-threshold rules are implemented and exercised in tests; real post-cutover signals and alerts remain pending.",
+      "Scaling action routing is modeled for measured triggers; no production capacity change has been executed.",
+      "Negative guard refuses speculative capacity purchase/scaling without actual measurements.",
+      "Synthetic policy verifies that unauthorized cost increases are not required; live cost and provider quota acceptance is pending."
     ]
   },
   "capacity": {
@@ -38,10 +38,26 @@
     "critical_percent": 90
   },
   "triggers": [
-    { "metric": "db_connections", "threshold": 16, "action": "alert_pool_pressure" },
-    { "metric": "db_storage_mb", "threshold": 400, "action": "alert_storage_warning" },
-    { "metric": "redis_memory_mb", "threshold": 200, "action": "alert_memory_warning" },
-    { "metric": "core_ws_connections", "threshold": 800, "action": "route_to_secondary_core" }
+    {
+      "metric": "db_connections",
+      "threshold": 16,
+      "action": "alert_pool_pressure"
+    },
+    {
+      "metric": "db_storage_mb",
+      "threshold": 400,
+      "action": "alert_storage_warning"
+    },
+    {
+      "metric": "redis_memory_mb",
+      "threshold": 200,
+      "action": "alert_memory_warning"
+    },
+    {
+      "metric": "core_ws_connections",
+      "threshold": 800,
+      "action": "route_to_secondary_core"
+    }
   ],
   "operating_envelope": {
     "speculative_scaling_allowed": false,
@@ -57,5 +73,7 @@
       "tests_failed": 0,
       "tests_skipped": 0
     }
-  }
+  },
+  "acceptance_state": "G24_OPEN_POST_CUTOVER_CAPACITY_BASELINE_PENDING",
+  "proof_scope": "SCALING_POLICY_TESTS_ONLY"
 }

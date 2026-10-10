@@ -1,3 +1,17 @@
+## Current P0 checkpoint — operator handoff (2026-10-10)
+
+**Scope:** All co-dev source/security/P04-P14/P19 hardening on the single `co-dev/v5-integration` branch; **DO NOT MERGE YET** until the owner finishes provider/live acceptance and the user requests the final merge. [PR #9](https://github.com/oculusrex14/Mega-XO/pull/9) remains draft. Owner branch `V5-platform` and production are untouched.
+
+- Verified **12/12 exact-head workflows green** at the immutable pre-audit checkpoint [`dc88e7a`](https://github.com/oculusrex14/Mega-XO/commit/dc88e7a6a4cb46061543ed450fe28173e9528d2c), including real disposable PostgreSQL/Redis, source validation/browser, P15/P16/P18/P19, and Android/iOS host build jobs. CI proves code/source/build checks; **not live V5 staging, signed physical devices, store receipts or production cutover**.
+- The accepted owner authority audit [`cb54985`](https://github.com/oculusrex14/Mega-XO/commit/cb54985a2f1d5c6c68d1af9c151a0189f7f9f27b) directly verified exactly one **V4.1.2/SQLite** production writer and zero V5 writes. Two-parent co-dev sync `facca8f` kept both histories. No database, DNS, VPS, provider, store or production configuration mutated by co-dev.
+- Reconciled 13 falsely completed P22–P24 live tasks; current ledger: **104/117 terminal, G00–G20 accepted, G22–G24 open, P21 owner-deferred, 2/40 original acceptance cases PASS, 38 NOT_RUN**. Preserved synthetic rehearsal proof as rehearsal only, not live cutover.
+- The executable case-by-case inventory is [P0-ACCEPTANCE-TRIAGE.json](docs/co-dev/P0-ACCEPTANCE-TRIAGE.json) with 40 unique IDs, actual owner ledger status, existing evidence paths, remaining proof and responsible lead. Mandatory Node validation `tests/v5-p0-acceptance-triage.test.js` refuses unsupported promotion, lost cases and false-live gate claims. The triage is **not** a pass on behalf of the owner.
+- **Operator handoff / go-no-go dependencies:** [P0-PREMERGE-ENGINEERING-HANDOFF.md](docs/co-dev/P0-PREMERGE-ENGINEERING-HANDOFF.md). The next run of 12 workflows on the latest exact SHA must finish green; historical CI is not inherited automatically.
+- Previously fixed account impersonation, OTP/Core signing defaults, idempotency keys, privacy/cache, forwarded origin spoofing, worker shutdown and cross-phase CI are preserved. Approved gameplay, fees, Coins/Crowns, monetization and existing V4 deployment stay unchanged.
+
+**Historical phase-specific sections below are snapshots from earlier development and may quote an obsolete then-current phase. This checkpoint and the owner `progress.json` supersede those temporal claims.**
+
+---
 # Mega XO V5 — unified co-development handoff
 
 **Canonical branch:** `co-dev/v5-integration`  
@@ -5,15 +19,80 @@
 **Owner:** independent co-developer; **status:** preparatory implementation, NOT formal phase acceptance  
 **Started:** 2026-10-09 UTC  
 **Pinned starting V5 base:** `e8d049bf50862897f546e531def12715a36c670c` (other agent's latest P06 checkpoint when branch was created)  
+**Upstream sync:** accepted G06 (`42db7e0`) merged via `dc579856d8c4`; accepted G07 (`045d5f94a134`) via `41190f99feaa`; accepted G08 (`a09c1578e8dc`) via `1638ab671c66` (22 files, zero overlap); **accepted G09** (`f2863ab1b60f`) via two-parent merge **`cff167f8b163`** (18 byte-identical owner files + dedicated CI union `e40b149839c1`). Main branch was not edited. **G10** (`ca789f9cca8e`) merged at `ba1be63b`; **G11** (`76165cf0fc37`) merged at `8ad58c5d` after reconciling P11 CI with the existing co-dev tests in `63295320`. **Current primary phase P12**, with G00–G11 accepted (61/117 tasks).
 **Work policy:** only this branch receives new co-development commits. Do not ask the integration agent to inspect/merge individual phase PRs.
 
+## P11 post-gate security hardening — 2026-10-10
+
+- **Critical identity boundary:** the owner G11 HTTP helpers treated `x-actor-id`, `x-test-actor` and request `actor/user` properties as proof of linked identity, then minted sessions from arbitrary actor IDs. The competitive Core gateway additionally accepted forged headers without consulting authentication. A browser could therefore impersonate accounts and issue economic commands.
+- **Commits:** `50669051` removes all actor-header trust and implicit session minting from the API helper, and makes competitive Core forwarding resolve a linked token through the same authoritative account service. `07eec31f` adds forged-header-to-wallet negative regressions. Existing P11 synthetic requests now issue real linked sessions in their test harnesses, with no special production bypass.
+- **CI status:** the preceding `0294c70a` PR-head jobs for PostgreSQL/P15/P16/P18/P19 failed during GitHub-hosted service initialization, before application tests. Logs show Docker Hub unauthenticated `toomanyrequests` for pinned PostgreSQL 16, sometimes token endpoint timeouts. These are external image-acquisition failures, not proof of clean database tests or code regressions. Do not mark the new head green until an executed exact-head PG16/Redis run completes with zero skips.
+- **Unchanged architecture:** owner `V5-platform` and acceptance ledger are untouched; P9/P10 economy, tournament and worker rules remain unchanged. A production Core command must have an authenticated, currently linked session. Review browser cookie/session continuity before deployment.
+
+## Current short-task checkpoint — G11 synchronization
+
+- **Saved separately:** `63295320` adds the owner's five P11 API test suites and zero-skip evidence checks to the co-dev PostgreSQL workflow **without dropping** P08 HTTP security, P09 tournament or P10 worker hardening tests.
+- **Preserved both agents:** two-parent merge `8ad58c5d` imports all 32 other P11-owned source, route, evidence and owner-ledger changes from accepted primary SHA `76165cf0fc37`. This branch is now **zero commits behind** that owner checkpoint. No changes were made to `V5-platform`.
+- **Prior CI proof:** before this synchronization, all **11/11** workflows at co-dev SHA `d2435735bdda` were green (full PostgreSQL, browser, native and staging). **Do not inherit those pass marks** for the new combined SHA. New exact-head runs are in progress; review them before merging.
+- **Next bounded task (separate request):** review P11 API/compat/gateway contracts and harden one concrete issue at a time with one fix, one regression test and a README update. Do not start a large multi-phase sweep in this task.
 ## Quick start for the primary agent
 
 1. Review the **single unified PR** from `co-dev/v5-integration` to `V5-platform`. Its commits preserve the entire incremental history from the original branches via two-parent Git merges, rather than dropping previous work into one squash.
 2. Read this file, then the phase-specific notes linked below. This file is updated whenever a meaningful co-dev work unit lands.
 3. Run read-only PR CI and isolated tests. **Merge only after current `V5-platform` contracts and tests pass** and dependent P06–P14 changes are accounted for. Pull in changes via Git only; no live staging or production rollout is implied by merge.
-4. Do **not** close G15/G16/G17/G18/G19/G20 based solely on this source. The master ledger `docs/v5/progress.json`, its generated `TODO.md`, and runtime/Neon/Redis credentials remain the primary agent's authority.
+4. Do **not** close G15/G16/G17/G18/G19/G20/G22/G23/G24 based solely on this source. The master ledger `docs/v5/progress.json`, its generated `TODO.md`, and runtime/Neon/Redis credentials remain the primary agent's authority.
 
+## P09 second hardening pass — runtime tournament settlement, lock order and live wallet truth
+
+The primary agent's G09 remains accepted at `f2863ab1b60f`, and G10 was separately accepted at `ca789f9cca8e`; its P11 work remains owner-controlled. The prior P09 co-dev corrections for active-lease theft, expired fixture completion and forged timer epochs remain intact. This second pass addresses three new independently discovered cases **without changing approved gameplay rules, Coins/Crowns fees, prize shares or normal Elo**.
+
+- **Missing notification after player-command settlement:** a move/resign/cancel could atomically finish a tournament without enqueuing the `tournament.settle:<room>` event. `run` now calls the same deterministic transactional outbox writer as standalone `settle` **only when it commits a new payout or refund**. The worker's replay cannot double-write the event.
+- **Stale room overwrite and lock inversion:** `publicJoin` and **every command addressing an existing room** can pre-hydrate cached tournament state before acquiring the room row lock; standalone settlement does not take the global advisory room-set lock. Both paths now lock the row and call `tournaments.freshRoom()` to invalidate and rehydrate the true post-lock room. Closed/filled public candidates open a new lobby; late ready/move/cancel operations must obey the updated terminal state. **All public-table command economy writes** rehydrate PostgreSQL again after actor wallet locks. **Actual CI** [37963679886](https://github.com/oculusrex14/Mega-XO/actions/runs/37963679886) caught that naive `tournaments.room()` reused a stale cached room; the regression was retained and prompted the new targeted repository method.
+- **Cached pre-lock economy:** public matchmaking pre-read a full economy snapshot for cohort choice before taking wallets; if another transaction changed the joining actor's balance while blocked, that stale snapshot could authorize a join. An explicit repository `state.refresh()` is invoked after acquiring the wallet locks, followed by eligibility/occupancy/funds revalidation. Only `publicJoin` uses this private scoped refresh, before any mutations.
+
+**Executed-proof requirement:** Two new real PostgreSQL race tests in `tests/v5-p09-lifecycle.test.js` cover a room closing during publicJoin and an actor losing funds while that join is blocked. `tests/v5-p09-recovery.test.js` now verifies exactly one committed payout/refund outbox event before and after restarts/replays. Updated source/test files parse in V8, but this is **not** a substitute for executed exact-head Node24/PG16 results. The five original P09 suite files are still compulsory zero-skip coverage in `.github/workflows/v5-postgresql.yml`. Review [P09-POST-GATE-HARDENING.md](docs/co-dev/P09-POST-GATE-HARDENING.md) and the newest exact-head Actions before merging. No owner evidence/progress or real production infrastructure changed.
+
+## P10 accepted upstream, co-dev hardening on one branch — 2026-10-09
+
+The primary agent passed **G10** at `ca789f9cca8e` (56/117 accepted tasks; P11 now active). We incorporated its 26 owner files without altering their original blobs using two-parent merge [`ba1be63b`](https://github.com/oculusrex14/Mega-XO/commit/ba1be63b3b17eb02a79022f56f0ae0eb220456d2) and unioned all five P10 PostgreSQL suites with the P07–P09 co-dev security/recovery suites and mandatory zero-skip checks. The primary `V5-platform` branch remains untouched.
+
+**Hardening:** cap mail claims to the remaining budget; await in-flight delivery during worker stop; preserve active provider finalization lease/token/purchase fields on duplicate enqueue; refuse provider contact on already-expired finalizer leases or refund tombstones; remove purchase credentials from operator listings and free-form provider errors from database diagnostics; forbid payload-free dead-letter retries (operator must explicitly supply a new body and expiry). Added real-PG tests and the mandatory independent worker budget/shutdown test.
+
+**Operator compatibility note:** `retryDeadLetter({id})` now throws `RETRY_REQUIRES_PAYLOAD`; callers must provide a newly authorized `payload` to avoid silently consuming NULL mail. **Full handoff:** [P10-POST-GATE-HARDENING.md](docs/co-dev/P10-POST-GATE-HARDENING.md). Source additions do not yet establish live worker/provider/store deployment or formal acceptance of these post-gate corrections. Verify **exact current co-dev HEAD CI** before merging to the main agent's branch.
+
+## Latest full integration audit — 2026-10-09
+
+**Read the [complete 25-phase cross-agent audit](docs/co-dev/V5-FULL-INTEGRATION-SWEEP-2026-10-09.md) before merging.** The user-supplied implementation pack passed its full integrity validator (25 phases, 117 tasks, 40 acceptance cases). At the audit's original checkpoint: **41/117 tasks and G00–G07 accepted, P08 active**. **Now:** G10 accepted, 56/117 tasks, P11 active; V4 SQLite remains the sole live authority. G15–G20/G22 are **NOT** accepted.
+
+Audited all 95 previously changed JS/CJS files for parse errors and tracked relative imports (none found), native Gradle/Xcode source inclusion, source-only backup/release/staging/load/cutover boundaries and merge ancestry. **Found and fixed three cross-phase CI trigger defects:** P16 did not watch P08 Core/schema or direct pushes, P22 missed gate/import/client and direct-push changes, and native host builds missed shared contracts/bundle tooling. Updated read-only trusted push/PR scopes and added `tests/v5-cross-phase-integration.test.js` to mandatory P17 source CI. Together with P16/P22 CI security tests, **11/11** exact fetched test bodies passed source-level V8 + Node stubs; **NOT** live Actions or native/PG evidence.
+
+**Former CI runner blocker: resolved while repository is PUBLIC.** At the older private checkpoint `66065ac92fef`, all nine workflows failed with no runner allocation. After temporary public visibility, real GitHub-hosted jobs ran. **All 11 workflows passed on code SHA `9bc6f9f1398092aa8f5b7d7c553103a90525fae0`** with real disposable PostgreSQL/Redis, Core A/B failover, Node/Chromium and Android/iOS simulator builds. The private-repository account/billing/root-cause setting is not independently verified; re-privatizing may revive the problem. New documentation-only commits create a newer HEAD and require their own exact-head CI verification. Passing CI is not authority to accept G15-G24 or deploy production.
+## G09 merged + post-gate lease hardening: real CI verified
+
+**Full green CODE source: `3c9c90c855e76e4e6d1773fdadb7971f20e6c7db`**. On this exact source commit, **11/11 actual GitHub-hosted workflows passed**; see [PostgreSQL integration run 37944786000](https://github.com/oculusrex14/Mega-XO/actions/runs/37944786000), [native emulator/simulator run 37944785877](https://github.com/oculusrex14/Mega-XO/actions/runs/37944785877), and [main validation run 37944785737](https://github.com/oculusrex14/Mega-XO/actions/runs/37944785737). All post-G09 P07/P08/P09 suites executed in disposable PostgreSQL16/Redis with a **nonzero-pass, zero-skip, zero-fail** coverage audit and owned-database cleanup. **P09 delivered 25/25 real PG tests (0 skips)**, including all **four new co-dev lease/fencing cases** under `tests/v5-p09-fencing.test.js`. The 11-workflow matrix also includes P15 restore, P16 Core SIGKILL/failover, P18 acceptance, P19 load/chaos, P17/P22/P23/P24 source gates, and Android/iOS native smoke. All tested on PUBLIC-repo GitHub-hosted runners, with no production activation.
+
+**New documentation-only handoff edits after this code commit do not mutate these tested artifacts**; if HEAD has moved, verify GitHub checks for the new exact HEAD independently. The previous fully green `9bc6f9f1` table below remains a separate historical result from *before* G09 integration. Neither checkpoint alone proves live providers, G15–G24 formal closure or actual production cutover.
+## Executed real GitHub Actions CI — 2026-10-09
+
+**Last fully green CODE source SHA:** `9bc6f9f1398092aa8f5b7d7c553103a90525fae0`. After the repository was made **temporarily PUBLIC** by its owner, 11/11 GitHub-hosted workflows ran and succeeded, with zero failed or unfinished workflows. These are actual runner-executed tests, **not** the previous V8 stubbed checks. The following run IDs are pinned to that source:
+
+| Workflow | Executed run | Result |
+|---|---|---|
+| Main Node / Chromium / monetisation validation | [37936762265](https://github.com/oculusrex14/Mega-XO/actions/runs/37936762265) | PASS |
+| Disposable PostgreSQL16 + Redis integration (P02–P08) | [37936762385](https://github.com/oculusrex14/Mega-XO/actions/runs/37936762385) | PASS |
+| P15 encrypted backup and isolated restore | [37936762400](https://github.com/oculusrex14/Mega-XO/actions/runs/37936762400) | PASS |
+| P16 Core A SIGKILL / Core B recovery and socket drain | [37936762339](https://github.com/oculusrex14/Mega-XO/actions/runs/37936762339) | PASS |
+| P17 release engineering | [37936762420](https://github.com/oculusrex14/Mega-XO/actions/runs/37936762420) | PASS |
+| P18 disposable migration/economic parity/Redis-loss journeys | [37936762241](https://github.com/oculusrex14/Mega-XO/actions/runs/37936762241) | PASS |
+| P19 real disposable PG/Redis workload + chaos | [37936762307](https://github.com/oculusrex14/Mega-XO/actions/runs/37936762307) | PASS |
+| P20 Android build/emulator and iOS simulator first-launch + byte parity | [37936762369](https://github.com/oculusrex14/Mega-XO/actions/runs/37936762369) | PASS |
+| P22 cutover deny/preflight (source-only) | [37936762287](https://github.com/oculusrex14/Mega-XO/actions/runs/37936762287) | PASS |
+| P23 retirement deny/preflight (source-only) | [37936762230](https://github.com/oculusrex14/Mega-XO/actions/runs/37936762230) | PASS |
+| P24 scaling deny/preflight (source-only) | [37936762232](https://github.com/oculusrex14/Mega-XO/actions/runs/37936762232) | PASS |
+
+**Real runner-discovered regressions fixed in separate commits:** P04 mixed frozen test clock with wall-clock DB seeding (`05269728`); P08 HTTP security test wrongly expected an unauthorised Core membership read (`a59ec482`); P19 obsolete P06 Redis presence method names (`eb4fd995`, `52240d30`); three P07 test Redis namespace versions and one P08 timer version violated P06's key grammar (`1814a1d6`, `c40d2fac`); and P08 slow-client test's previous ~1.2 MiB stimulus was too small for hosted Linux send buffers (`9bc6f9f1`, now bounded ~8 MiB). No skips, relaxed gates or production application/economy changes were introduced to make these tests green.
+
+**Still NOT accepted:** Formal G15–G20, G22–G24, real offsite R2/Neon/Vercel/VPS acceptance, signed Play/App Store releases and production cutover. Temporary PUBLIC visibility is an operational workaround; the account owner should review the repo's secret/history exposure and private-repo Actions budget/permissions before returning it to PRIVATE. See [runner incident and recovery](docs/co-dev/CI-RUNNER-INCIDENT-2026-10-09.md).
 ### Integration manifest (2026-10-09)
 
 | Unit | Original PR (superseded) | Original source head | Unified merge commit | Diff |
@@ -32,12 +111,34 @@
 
 ## Ownership, dependencies and safety
 
-- The **primary agent** currently owns P06 (managed Redis/Core integration) and subsequent online platform P07–P14; follow its task ledger, real provider evidence and exact service interfaces. This branch never overwrites the primary agent's `packages/services/core.js`, `packages/services/ephemera.js`, schema/migrations, environment inventories, `deploy/compose.yaml`, production Caddyfile, or `docs/v5/progress.json`.
-- The **co-developer** owns additive, phase-scoped P15–P20 foundations plus client bundle build safety. All future work lands on this one branch, with small, meaningful commits and an updated README.
+- The **primary agent** has accepted G00–G11 and owns P12–P14 online work; follow its gate ledger, provider evidence and exact interfaces. This branch **edits P07 `packages/services/queue.js`** (claim/hint/race fixes), **P08 `packages/services/realtime-transport.js`, `packages/services/timers.js`** (HTTP auth, backlog and Redis TTL fixes), and **P09 `packages/services/tournaments.js`** (lease expiry/fencing correction) plus matching tests and unified CI. Review these contracts before integrating. The co-dev branch does not rewrite the primary agent's `packages/services/core.js`, `packages/services/ephemera.js`, schema/migrations, live environment inventories, `deploy/compose.yaml`, Caddyfile or `docs/v5/progress.json`.
+- The **co-developer** maintains P15–P20 and P22–P24 preparation, client-bundle safety, reviewed P07/P08/P09 corrections and cross-phase CI compatibility audits. All future work lands on this one branch, with small, meaningful commits and an updated README.
 - **No V4 changes**, no current production authority transfer, no modifying R2/Neon/Redis/provider objects, no store submission, no new external ports, and no credentials in Git.
 - P21 (new website/browser product) is **explicitly owner-deferred**; do not start it. P22 depends on P20 rather than the deferred website. P24 is measurement-gated.
 - Formal proof comes from **executed** CI/staging/device/provider runs attached to the exact integrated source SHA. Standalone local/CI tests do not automatically transfer G-phase acceptance to a newer integration head.
 
+## P07 post-gate review (pending current-head integration CI)
+
+The primary agent passed G07 at `045d5f94a134`. This branch preserves that checkpoint and adds three isolated `packages/services/queue.js` safeguards: claim release must compare the exact opaque `claimId` before deleting Redis state; Redis match hints require requesting-actor participation in PostgreSQL; and failed PG matcher hydration releases still-owned claims without losing FIFO position. No frozen matchmaking rules, Crown economics, four-theme UI, or P08 Core authority changed.
+
+Three real-Redis/PG regressions were added to `tests/v5-p07-queue.test.js`; existing P07 queue/match/recovery tests now supply the mandatory `claimId` to `releaseClaim`. **Caller contract change:** any new matcher must release with its own returned claim ID, never reread the latest claim ID to force a release. See [P07-POST-GATE-HARDENING.md](docs/co-dev/P07-POST-GATE-HARDENING.md).
+
+Exact P07 source/tests passed syntax parsing and stubbed queue.js demonstrated actor-isolated hints and claim-ID forwarding. **This is not the real Redis Lua and PG suite.** Rerun existing P07 disposable-service CI with zero skips, and review P08 consumers before merge. Historic G07 evidence is not proof of this new queue SHA.
+
+## P09 post-gate review — G09 accepted upstream, lease safety improved (exact-head CI required)
+
+Owner G09 accepted **21/21 real PG16 tests** at `f2863ab1b60f`. Its existing pure tournament rules, global room/roster/fixtures state, quotes, 200-Elo cohort, host-leave/transfer/pause, Coins/Crowns settlement/escrow and normal-Elo independence are retained. Integrated upstream via two-parent merge `cff167f8b163` (18 nonoverlapping owner files); the sole shared CI path was manually combined, never overwritten: `e40b149839c1` adds the **five full P09 suites** and mandatory zero-skip TAP register **alongside all P07/P08 post-gate checks**.
+
+**Critical fixes in `packages/services/tournaments.js`:** Both timer and fixture lease predicates incorrectly tested the previous expiry against the *request's new expiry*, allowing an 80-second lease request to steal a still-live 20-second claim. They now use **the frozen transaction clock**; timer epochs are stamped from live room revisions and optional epoch requests must match; expired fixture claims cannot complete; DONE/BLOCKED fixtures and terminal rooms cannot regain claims. Added **four actual PG regression cases** to `tests/v5-p09-fencing.test.js`, including pre-expiry long-TTL theft, expired completion, terminal replay and forged/stale epochs. The P17 cross-phase guard now insists on the P09 suites and no-skip register.
+
+**Still to coordinate with P10:** The timer release API still accepts owner-only release; production worker identities must be non-recycled, and a future claim-token/epoch-specific release contract must be reviewed before worker restarts. Cross-room economy/system-burn contention, full worker process termination and current live P05 HTTP verifier integration require separate P10 staging tests. No economy/gameplay rules were changed. The accepted original G09 report does **not** itself prove these later fixes: inspect **current-head** GitHub Actions and real PostgreSQL pass before merge. See [P09-POST-GATE-HARDENING.md](docs/co-dev/P09-POST-GATE-HARDENING.md).
+## P08 post-gate hardening (G08 remains owner-accepted; new co-dev SHA needs CI)
+
+Accepted primary G08 at `a09c1578e8dc` is preserved, merged conflict-free into this branch. Post-gate review found and fixed three independent P08 risks: **(1)** HTTP snapshot polling previously trusted a caller's query `actor`; now requires a real host-provided `authenticateHttp(req)` verified principal and fails closed 401 without it, **(2)** one socket could queue unlimited pending transaction/envelope tasks; now 64 pending operations maximum with close 1008, **(3)** scheduling a near timer could shorten a shared Redis due-index TTL and drop later hints; now Lua preserves the maximum TTL. Approved matchmaking, game clocks, 4-theme UI and Coins/Crowns rules unchanged.
+
+**Critical host integration:** Production P09–P11 must wire a real P05 session/bearer verifier to `authenticateHttp` for HTTP polling; `?actor=` is **never** a credential. Without the hook private polling intentionally remains 401. **Further review:** already-redeemed WebSocket session revocation/generation must be checked before sensitive later commands; the new HTTP hook does not solve long-lived socket authorization. See [P08-POST-GATE-HARDENING.md](docs/co-dev/P08-POST-GATE-HARDENING.md).
+
+Tests added: real local HTTP and masked-TCP ingress regressions (`tests/v5-p08-http-auth.test.js`, `tests/v5-p08-ingress-bounds.test.js`), updated real PG+Redis HTTP snapshot fixtures, a new real Redis 2-hour-then-5-second TTL regression, and mandatory no-skip coverage in `v5-postgresql.yml`. The exact source's HTTP decision logic and 96-frame close policy passed V8 fake-Node behavior checks; P17 cross-phase CI guard 6/6 passed V8 tests. **These are not real Node24, PG/Redis or Actions runs** on the changed source. G08 original 36 real PG/Redis tests are only evidence for the original owner SHA; rerun current-head CI before merging.
 ## What each unit actually contains
 
 ### P15 — encrypted PostgreSQL backup, isolated DR
@@ -49,11 +150,12 @@
 
 ### P16 — Core process admission, drain and failover
 
-- Delivered: `packages/services/core-instance-lifecycle.js` (BOOTING/READY/DRAINING/STOPPED, bounded admission and monotonic drain); `packages/services/core-drain-connections.js` (transport-neutral socket identity, one reconnect notice, explicit release, deadline-gated force-close requests); `scripts/v5/p16/core-failover-plan.js` (private immutable-image A/B topology plus fail-closed readiness selector).
-- Tests: `tests/v5-p16-lifecycle.test.js`, `tests/v5-p16-connections.test.js`, `tests/v5-p16-real-sockets.test.js` (real loopback TCP), `tests/v5-p16-topology.test.js`. Read-only PR job: `.github/workflows/v5-p16-core-failover.yml`. **These are source-level/runtime-independent tests, not a multi-Core durable failover run.**
-- Integration notes: [P16-CORE-FAILOVER-FOUNDATIONS.md](docs/v5/co-dev/P16-CORE-FAILOVER-FOUNDATIONS.md) and [P16-OPERATIONS-AND-ACCEPTANCE.md](docs/v5/co-dev/P16-OPERATIONS-AND-ACCEPTANCE.md) contain the safe Core wiring seams, shared-edge process-only availability limits, exact fault matrix, evidence requirements and rollback procedure.
-- **Next dependent work:** wire callback release and private readiness into the actual P08 runtime; deploy isolated A/B after P15/P08 prerequisites; execute the killed-A/live-revision and tournament/socket/session-revocation tests with real PG state. Do not invent acknowledgement/timer recovery from a local simulation.
-- **Not done:** actual Core A/B deployment or ingress routing, production host or zone HA, executed in-flight recovery, G16.
+- **Implemented:** `packages/services/core-instance-lifecycle.js` (bounded readiness/drain), `packages/services/core-drain-connections.js` (socket lifecycle, sync-only callbacks, no false release), `scripts/v5/p16/core-failover-plan.js` (private Core A/B and ready-only routing) and `scripts/v5/p16/ci-perimeter.js` (two-job fail-closed CI scope). No P07 matchmaking or production service edits.
+- **Real disposable-service harness committed:** `tests/v5-p16-process-failover.test.js` boots two genuine P06 Core OS processes on an owned PostgreSQL16/Redis7.4, creates/accepts a paid match, commits and ACKs a move, sends SIGKILL to Core A, replays safely through B without extra wallet/outbox effects, continues the match, wipes Redis and reads the unchanged truth from fresh Core C. **CI currently cannot execute due runnerless failures; do not count this harness as a passing test.**
+- **Pure/transport coverage:** `tests/v5-p16-lifecycle.test.js`, `tests/v5-p16-connections.test.js`, `tests/v5-p16-real-sockets.test.js`, `tests/v5-p16-topology.test.js`, `tests/v5-p16-ci-perimeter.test.js`. The behavior of four selected lifecycle/topology/TCP checks and the async-callback rejection contract was independently re-created on local Node22 and passed; this is not exact-branch test evidence.
+- **CI:** `.github/workflows/v5-p16-core-failover.yml` has read-only V5 push/PR Node24 no-skip jobs, with pinned disposable PG16/Redis, loopback ports, no provider credentials, nonpersistent checkout tokens, and a regression-tested full-workflow perimeter.
+- **Operator handoff:** [P16-CORE-FAILOVER-FOUNDATIONS.md](docs/v5/co-dev/P16-CORE-FAILOVER-FOUNDATIONS.md) and [P16-OPERATIONS-AND-ACCEPTANCE.md](docs/v5/co-dev/P16-OPERATIONS-AND-ACCEPTANCE.md) describe the integration contract, real failover exercise, single-edge routing, process-only HA scope, rollback, evidence matrix and untested cases.
+- **Dependent G16 work still OPEN:** P08–P10 real Core WebSocket/ticket/durable turn and tournament runtimes, separate staging A/B processes with private health-aware ingress, kill during post-commit/pre-publish and mid-transaction windows, real client reconnect plus deadline arbitration, provider/device/revocation scenarios and measured failover time. Nothing here proves those or authorizes live deployment.
 
 ### P17 — independent release engineering
 
@@ -79,6 +181,30 @@
 - Android Kotlin and iOS Swift host shells package the approved same-hash offline game client, origin-bound native identity bridge, encrypted local session storage, native network policy, ads/consent and store billing flows, emulator/simulator/device smoke scripts, and signed-artifact operator procedures.
 - Detail: [native/README.md](native/README.md) and [RELEASE-OPERATIONS.md](native/RELEASE-OPERATIONS.md). **Not done:** authorized physical device/store provisioning, final application bundle IDs/team/keystores, real purchase and Sign in with Apple/Google acceptance, native visual parity and G20. Never grant player Crowns locally on a store callback; backend verifies and commits first.
 
+### P22 — production cutover readiness safeguards (PREPARATION ONLY)
+
+- **Scope:** G22 is OPEN. No production authority transfer, frozen V4 writer, provider mutation or deploy was performed. P22 requires P20 completed and all appropriate G00–G20 production/device/recovery evidence. The new P21 website remains deferred.
+- **Code and tests:** `scripts/v5/p22/readiness.js` (G00–G20 missing gates, pinned artifact/owner evidence, cannot self-authorize); `writer-fence.js` (16 minimum mutation classes, frozen V4/disabled V5 and retryable no-ACK callback policy); `import-reconciliation.js` (frozen P03 model/run/schema and 12-family digest/count parity); `rollback-policy.js` (P18 pre/post-write cases, UNKNOWN quarantines, no stale SQLite restore); `compatibility-map.js` (retained old-origin browser, origin-bound cookies, old callbacks, Android/iOS and one PG authority). Regression suites: `tests/v5-p22-*.test.js`.
+- **CI:** `.github/workflows/v5-p22-cutover-readiness.yml` runs on trusted V5 pushes and review PRs, read-only with pinned checkout with no credentials persisted, zero-skip Node24 tests and the actual owner-ledger no-cutover check. No external provider access.
+- **Verification performed:** 31/31 exact fetched pure JavaScript test bodies passed a temporary V8 harness with Node module stubs, **not** an actual Node24/GitHub Actions run. The harness found and prompted fixes to the UNKNOWN-first-write classification and malformed event fixture before rerun; exact-head CI remains required. No G22 acceptance inferred.
+- **Detailed handoff:** [P22-CUTOVER-READINESS.md](docs/co-dev/P22-CUTOVER-READINESS.md), covering all V5-22-01 through 06, writer inventory, final consistent-source capture, P03 real importer/reconcile run, historical actor continuity, first-write epoch, rollback classes and post-cutover checks.
+- **Remaining owner-executed tasks:** real freeze with tested V4 restart fence, final production snapshot/zero-difference import, actual nonserving deployment, supported-client cookie/callback forwarding, first-write authority transfer, real provider/PG failover, backup/alert delivery and G22 sign-off.
+
+### P23 — V4 retirement, evidence retention and compatibility sunset (PREPARATION ONLY)
+
+- **Blocking prerequisite:** Owner **G22 is OPEN**, with V4 Node/SQLite still the sole live production writer. P23 cannot retire anything now. G00–G20 and G22 are required; owner-deferred G21 is intentionally not required.
+- **Four offline contracts:** `scripts/v5/p23/retirement-readiness.js` (same P22 first-write epoch, 16 V4 mutation classes, 6 restart/reboot vectors, permanent PG-only authority); `retention-manifest.js` (8 immutable recovery/history/key-custody artifacts, minimum private retention and 7 alert migration classes, no deletion); `compatibility-sunset.js` (10 browser/native/provider paths, old-origin actor and cookie continuity, ≥90 days zero *complete* telemetry before an **operator-only candidate**); `delivery-report.js` (distinct code, CI, device, signed, store-submitted, store-approved and production-enabled statuses). All return **non-authorizing** review-only results.
+- **CI diagnostics:** `scripts/v5/ci-runner-diagnostic.js` distinguishes real test failures from zero-step unallocated jobs without inventing a root cause. `tests/v5-ci-runner-diagnostic.test.js` plus `tests/v5-p23-*.test.js` cover negative cases. `.github/workflows/v5-p23-retirement-foundations.yml` is read-only, pinned, no-secrets, zero-skip and watches both trusted V5 pushes and review PRs. P17's cross-phase CI test also watches P23 dependency triggers.
+- **Verification:** 34/34 exact fetched P23/CI test bodies plus 5/5 cross-phase trigger assertions passed a V8 harness with stubbed Node APIs. **Not** Node24 Actions, host reboot, backup retrieval, native build, provider callback or production evidence. GitHub Actions remains blocked before runner allocation.
+- **Full handoff:** [P23-RETIREMENT-HANDOFF.md](docs/co-dev/P23-RETIREMENT-HANDOFF.md) and [CI-RUNNER-INCIDENT-2026-10-09.md](docs/co-dev/CI-RUNNER-INCIDENT-2026-10-09.md). No V4 service stop, SQLite deletion, DNS/Vercel/Neon/Oracle/R2 mutation or provider deregistration performed. G23 OPEN.
+### P24 — evidence-led capacity/scale reviews (MEASUREMENT-GATED PREPARATION ONLY)
+
+- **Phase picked:** P24 is the next independent remaining phase while the primary agent works through P09–P14. **Hard prerequisite:** real G23 accepted; in the current owner ledger, only G00–G08 are accepted and V4 remains live authority.
+- **Baseline:** `scripts/v5/p24/capacity-baseline.js` tracks ten typed aggregate signals across API, Core/WebSocket, matchmaking, PG, worker, Redis and Oracle. Unknowns stay `null`, and P19 synthetic disposable measurements are explicitly not production capacity. No invented player forecast, p95 SLO, or server/price threshold.
+- **Costed triggers:** `scripts/v5/p24/scale-policy.js` defines ten conservative, fixed first-remedy actions; every numeric trigger needs a sustained duration, metric-query proof, monthly incremental cost estimate and rollback reference. Owners must approve the policy. Same-host Core A/B does **not** count as host HA; no Kubernetes/Kafka or multi-primary Crown writers.
+- **No speculative changes:** `scripts/v5/p24/scaling-review.js` requires G23, declared complete real production observations, at least three adjacent fresh windows above the threshold, and owner-reviewed budget/rollback before returning a **review candidate only**. All outputs explicitly deny production mutation and G24 acceptance. `scripts/v5/p24/review-cli.js` prints unknown/NULL templates and reads only sanitized local `.artifacts/p24-review.json` plus checked-out owner ledger; no provider actions.
+- **CI/tests:** `.github/workflows/v5-p24-scale-readiness.yml` is read-only, pinned exact-PR-source SHA, no secrets/deployment and zero-skip on V5 push/PR with P19/P23/PG/Core/topology watchlists. Five test suites plus P17 cross-phase guard. **36/36 P24 and 7/7 cross-phase fetched test bodies passed V8 with stubbed Node modules/virtual FS; NOT real Node24 CI.** GitHub Actions still fails before runner assignment; current-head run and real telemetry/cost/staging gates remain unverified.
+- **Owner reference:** [P24-SCALING-HANDOFF.md](docs/co-dev/P24-SCALING-HANDOFF.md) provides the ten-signal capacity inventory, action/validation/rollback plan, recommended weekly owner review, CLI usage and open G24 blockers. **No infrastructure upgrades, resizing, paid services or production changes.**
 ### Client bundle safety (separate two-file review)
 
 - `scripts/v5/build-client.js` and `tests/v5-client-bundle.test.js` now preflight invalid dependency sources and reject occupied/unexpected/changed output before destructive rebuild. Both upstream base blobs were matched before this review was consolidated; this is not a gameplay/UI change.
@@ -89,19 +215,76 @@
 
 ```sh
 npm ci
-node --test tests/v5-p16-lifecycle.test.js tests/v5-p16-connections.test.js tests/v5-p16-real-sockets.test.js tests/v5-p16-topology.test.js
+node --test tests/v5-p16-lifecycle.test.js tests/v5-p16-connections.test.js tests/v5-p16-real-sockets.test.js tests/v5-p16-topology.test.js tests/v5-p16-ci-perimeter.test.js
 node --test tests/v5-native-foundations.test.js tests/v5-client-bundle.test.js
 node --test tests/v5-release-*.test.js tests/v5-ci-*.test.js
 node --test tests/v5-p15-archive-manifest.test.js tests/v5-p15-sealed-archive.test.js tests/v5-p15-recovery-policy.test.js
 node --test tests/v5-p18-acceptance-registry.test.js tests/v5-p18-isolation.test.js tests/v5-p18-stage-evidence.test.js
 node --test tests/v5-p19-workload-profile.test.js tests/v5-p19-metrics.test.js
+node --test tests/v5-p08-http-auth.test.js tests/v5-p08-ingress-bounds.test.js # local Node, no providers
+node --test tests/v5-p22-*.test.js
+node --test tests/v5-p23-*.test.js tests/v5-ci-runner-diagnostic.test.js
+node --test tests/v5-p24-*.test.js # pure/offline, no PG, Redis or provider secrets
+node scripts/v5/p24/review-cli.js --templates "$(git rev-parse HEAD)" # unknown metric values, NULL thresholds
+node scripts/v5/p22/readiness.js --sha "$(git rev-parse HEAD)" # must report BLOCKED until all owner gates and observed evidence are proven
 ```
+
+**P16 process-kill integration (CI-managed disposable-only):** `tests/v5-p16-process-failover.test.js` requires `V5_PG_URL`, `V5_PG_DISPOSABLE=1`, `V5_PG_REQUIRED=1`, `V5_REDIS_REQUIRED=1`, and a *loopback* `REDIS_URL`. The dedicated P16 workflow supplies these; never run against Neon/managed production Redis. The test is not accepted until it actually runs with zero skips.
 
 **Disposable-only:** `tests/v5-p15-real-roundtrip.test.js`, `tests/v5-p18-disposable-journeys.test.js`, `tests/v5-p19-real-services.test.js`, `tests/v5-p19-real-chaos.test.js` require owned isolated PostgreSQL16 and/or Redis with their workflow's exact environment guards. Use their dedicated CI workflows and read the test files before local execution. **Never** point a disposable harness at a live Neon branch or managed production Redis.
 
 Every PR update must verify the exact source head CI. Keep V5 retained regressions, economy and four-theme UI checks. A green synthetic test is not authority to deploy, purchase anything, activate email/billing, rotate operational keys, change V4 DNS/edge or tick a gate.
 
 ## Chronological co-dev checkpoint log
+
+- **2026-10-09 G11 short sync:** Primary G11 `76165cf0fc37` accepted (owner now P12, 61/117 tasks). Reconciled 5 P11 PostgreSQL API suites while preserving all co-dev P08–P10 suites (`63295320`), then merged the remaining 32 owner file changes via two-parent `8ad58c5d` with **no owner-branch modifications**. Prior head CI 11/11 green; exact new head CI in progress. Separate future work for P11 hardening, as one small task per commit.
+
+
+- **2026-10-09 P09 cache-hygiene extension:** The stale cached-room bug also affected non-publicJoin commands because they queried `activeRooms()` before the addressed row lock. All existing-room commands now use `tournaments.freshRoom()` after locking, and ALL public-table commands refresh the economy after wallet locks (`44f6648`). Added a third real-PG race proof: late `ready` must not revive an already closed room (`5061bfd`). This extends—not weakens—the unchanged gameplay/financial semantics. **Final exact-head CI pending.**
+
+
+- **2026-10-09 P09 CI-proven cached-room race:** Real owned PostgreSQL16 run `37963679886` executed the new close-during-publicJoin race and caught the first fix still using the per-transaction cached tournament graph (only newly added test failed). Added repository `tournaments.freshRoom()` under the acquired room row lock (`e49fd8f`) and wired publicJoin to it (`853f5e6`); the zero-skipped real PG regression remains mandatory. **Exact corrected-head CI must execute before pass claims.**
+
+
+- **2026-10-09 P09 second post-gate QA:** Patched automatically settled command outbox emission (`036c948`), selected-room row lock + rehydration (`82b1e12`), explicit post-lock aggregate refresh (`3cf866f`) and cached-wallet affordability revalidation (`39b3e08`); extended owned-PG room-finalization/zero-funds races (`8afcbc1`, `84ae685`) and payout/refund event replay checks (`cdc2c6b`). All 4 edited JS files parse. **Latest exact-head PG/Actions proof required** before claiming these new patches passed; G09/G10 owner's original gates remain unchanged. [P09 detailed review](docs/co-dev/P09-POST-GATE-HARDENING.md).
+
+
+- **2026-10-09 G09 actual integrated acceptance:** GitHub Actions run [`37944786000`](https://github.com/oculusrex14/Mega-XO/actions/runs/37944786000) verified **25/25 P09 tests** (original 21 + four lease/epoch/expired/terminal cases), **0 skipped/0 failed**; full zero-skip PG registry and cleanup succeeded. All **11/11** workflows on exact code SHA `3c9c90c855` passed, including Android/iOS and browser. This is the latest source verification; subsequent handoff-only commits require their own exact-head status check. G09 remains the primary agent's accepted gate; G10 currently active and G15–G24 formal gates unchanged.
+
+
+- **2026-10-09 G09 sync and real fencing repairs:** Imported the owner-accepted G09 (`f2863ab1b60f`, 21 owner real PG tests) as two-parent `cff167f8b163` (18 owner files; preserved co-dev PG CI), then united all five P09 suites with P07/P08 no-skip checks (`e40b149839c1`). Fixed P09 lease theft via long requested TTL, claimed timer epoch authority, expired fixture completion and terminal fixture reclaims (`736495c0f59f`), plus **four owned PG regression cases** (`e7d3c60f55bf`) and P17 watch (`0ad79cd86381`). [P09 handoff](docs/co-dev/P09-POST-GATE-HARDENING.md). **VERIFIED on real PG16 GitHub Actions:** [run 37944786000](https://github.com/oculusrex14/Mega-XO/actions/runs/37944786000) ran **25 P09 tests, all passing, zero skips**, including the four post-gate cases; exact code SHA `3c9c90c855e76e4e6d1773fdadb7971f20e6c7db`. The overall code SHA also passed all 11/11 workflows. G09 owner gate unchanged, P10 active; no production change.
+
+
+- **2026-10-09 PUBLIC repo restores CI — 11/11 real workflows PASSED:** On tested code SHA `9bc6f9f1` all GitHub-hosted jobs completed successfully, including real disposable PG16/Redis7, P16 SIGKILL recovery, P15 encrypted restore, P18 synthetic migration, P19 real disposable load, Node/Chromium and Android/iOS emulator/simulator first launches. Commits: P04 clock `05269728`; P08 test `a59ec482`; P19 P06 Redis API `eb4fd995`/`52240d30`; P07/P08 test namespace versions `1814a1d6`/`c40d2fac`; P08 slow-peer 8 MiB test `9bc6f9f1`. Details and run links in [executed CI section](#executed-real-github-actions-ci--2026-10-09). No provider releases or formal gate acceptance; private-repo billing/runner eligibility remains unresolved.
+
+
+- **2026-10-09 P24 latest-head CI status:** Fetched and checked all 11 workflows at source `d2f8f59370c2`; all failed with zero job steps, including new P24 run `37930690645` (no allocated runner). Rechecked source-only P24 tests **36/36**, P17 cross-phase **7/7**. Real Node24/PG/Redis/prod evidence unexecuted; G24 remains OPEN. [CI incident](docs/co-dev/CI-RUNNER-INCIDENT-2026-10-09.md).
+
+
+- **2026-10-09 P24 capacity/scale:** Picked the final measurement-gated phase, built offline ten-signal observed baseline (`76f4227`), strict budget/rollback/approval policy (`1e9e6f6`), G23-prerequisite sustained-demand review (`bac8382`), safe local source-scoped CLI (`be4424e`) and no-skip read-only CI (`9365a2f`). Five negative-test suites, and P17 cross-phase compatibility watcher (`f03e95d`). **36/36 P24 + 7/7 cross-phase source-level V8/stub checks passed; NOT GitHub/Node24/actual provider evidence.** G24 OPEN, no production capacity provisioned. [P24 handoff](docs/co-dev/P24-SCALING-HANDOFF.md).
+
+
+- **2026-10-09 G08 sync and P08 hardening:** Merged accepted primary G08 `a09c1578e8dc` in two-parent `1638ab671c66` (22 files, zero overlap), leaving the owner branch/ledger unchanged. Corrected URL-actor HTTP snapshot disclosure (`99bd99d`), bounded socket pending envelopes to 64 (`c759950`), made Redis due-index TTL monotonic (`222652c`), updated authenticated real-PG recovery fixtures and added standalone HTTP/TCP/real Redis regressions and zero-skip CI coverage. Source-level HTTP decisions and 96-frame 1008 close reproduced in V8 stubs, P17 cross-phase tests 6/6. **Current-head Node24 PG+Redis CI still unexecuted.** Host must wire an actual authenticated HTTP principal; [P08 handoff](docs/co-dev/P08-POST-GATE-HARDENING.md).
+
+
+- **2026-10-09 P23 preparation:** Added 4 separate source-only modules and negative suites: retirement/G22 lineage + P22 first-write and six reboot vectors (`2ee9ce9`, `3808b95`, `eb7f998`); immutable V4/PG archives and legacy monitors (`1696804`, `7d63f7d`); 90-day, provider-safe old-client/callback sunset advisory (`f0d3c2c`, `12ba54c`); truthful delivery milestones (`49ec22d`, `9d00bbd`). G21 remains deferred, no V4 teardown.
+- **2026-10-09 P23 final QA:** Repaired an escaped GitHub concurrency expression in the new workflow (`89bcb7a`), added a regression denying that malformed expression (`db488be`), and reran its actual fetched workflow guard (3/3 source-level tests passed). Exact GitHub runner execution remains blocked; no change to P22/G23 authority.
+- **2026-10-09 CI resilience:** Added offline zero-step GitHub Actions triage (`e8f913f`, `0cfa8cf`); new protected P23 CI workflow and guard (`9b45e98`, `53620e4`), source-G22 boundary and cross-phase release CI watch (`0f0c8da`). Verified 34/34 P23+CI and 5/5 cross-phase fetched source test bodies in V8 with Node stubs, **not executed Node24 GitHub CI**. [Incident](docs/co-dev/CI-RUNNER-INCIDENT-2026-10-09.md): zero allocated runners, zero steps, 0ms billed at observed workflow run; account/policy/service root cause unverified.
+
+
+- **2026-10-09 full integration sweep:** Verified the uploaded original implementation pack's 25-phase/117-task/40-acceptance matrix; reviewed co-dev source graph (95 pre-audit JS/CJS files without syntax or relative-import errors), native Android/iOS source membership, P00–P07 owner state and phase 15–20/22 foundations. Fixed P16/P22/native CI dependency scopes (including real Core/PG changes and direct V5 pushes), added 4 cross-phase regression tests and wired to P17 source CI. **11/11** P16/P22/CI tests passed V8 source evaluation with Node stubs, not Actions. [Detailed audit](docs/co-dev/V5-FULL-INTEGRATION-SWEEP-2026-10-09.md). Observed **9/9** current-head workflows failing at zero runner steps; no production or G-gate completion claimed.
+
+
+- **2026-10-09 P22 preparation:** Created fail-closed readiness (`031d292`, tests `230c0ebe`), writer catalogue/restart fence (`3808daa`, tests `80c64bfe`), UNKNOWN-first-write-safe rollback classifier (`c1ef7b1`, corrected `69233a9f`, tests `a0250b15`), frozen-source/P03 per-family reconciliation (`0f2041a`, tests `7fb18a34`), retained browser/native/callback compatibility (`8139739`, tests `e629c3db`), PR-only zero-skip workflow (`481f2fb3`, guard tests `43bff773`), and full operator runbook (`da73f4cf`). Later safety fixes refuse parent-traversal evidence refs and symlinked artifact directories. No live service changes.
+- **2026-10-09 P22 source verification:** 31/31 exact fetched pure source/test assertions passed with a V8/Node-module-stub harness after repairing three test/policy failures. Not Node24 CI execution or provider evidence. G22 OPEN; missing G08–G20 and runtime cutover.
+- **2026-10-09 G07 synchronization:** Merged G07-accepted upstream source SHA `045d5f94a134` into this branch at `41190f99feaa`; 17 files, zero co-dev conflicts, primary branch unchanged.
+- **2026-10-09 P07 co-dev hardening:** Fixed Redis claim ABA stale-delete (`a0e6e9e4e6`), actor-scoped match hints (`4a71df36cf`) and PG hydration release (`18362c96da`), updated P07 integration caller IDs and added 3 real-provider regressions. [Handoff](docs/co-dev/P07-POST-GATE-HARDENING.md). Await real source-head Redis/PG CI and P08 compatibility review.
+
+
+- **2026-10-09 P06 synchronization:** Two-parent merge `dc579856d8c4` integrated the actual G06-passed Core match-observer interfaces from `V5-platform` at `42db7e0ec401` without a conflict or primary branch edit. G06 is accepted in the primary ledger; its exact-head GitHub runs `37900949040` and `37900949132` failed before any runner steps, so there is no claim of new exact-head green CI.
+- **2026-10-09 P16 service crash proof and CI:** Added genuine disposable Core A SIGKILL/B resume/C Redis-wipe harness `d1f5cf7194af`; expanded P16 workflow to a pinned PG16/Redis 7.4 second job `2484f43997`. Tests are committed but **not executed** in current runnerless GitHub Actions.
+- **2026-10-09 P16 correctness/security:** Fixed rejected Promise-valued transport drain callbacks `ccb8d4934` and added regression `b60237fa2`; introduced full dual-job CI perimeter `e4490864ad`, replacing earlier partial self-audit `125aa1cc9c`, negative tests `c5af24feff`, mandatory nonpersistent checkout `ce7d532048`, guard and tests `2d02eac120`, `1439b0de0b`, test job inclusion `fc91fcbd4e`. Current CI jobs remain blocked before running; no G16 claim.
+
 
 - **2026-10-09:** Created the unified branch from pinned P06 head; integrated P20, P17, P18, P19, P15 and initial P16 in six separate two-parent merge commits; integrated nonconflicting client bundle safety as a seventh merge commit. Original commits/history preserved.
 - **2026-10-09:** Added this consolidated agent handoff and opened [unified PR #9](https://github.com/oculusrex14/Mega-XO/pull/9). Marked old PRs #2–#8 as superseded and closed them; `ops/main-ci-guard` #1 remains separate because it targets `main`.

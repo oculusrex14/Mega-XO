@@ -26,6 +26,17 @@ jobs:
       - name: Install locked Node dependencies
         if: ${{ hashFiles('package-lock.json') != '' }}
         run: npm ci
+      - name: P0 acceptance audit completeness and cutover truth
+        run: |
+          set -euo pipefail
+          node --test --test-reporter=tap tests/v5-p0-acceptance-triage.test.js > p0-acceptance-audit.tap
+          cat p0-acceptance-audit.tap
+          grep -Eq '^# tests [1-9][0-9]*$' p0-acceptance-audit.tap
+          grep -Eq '^# pass [1-9][0-9]*$' p0-acceptance-audit.tap
+          grep -Eq '^# fail 0$' p0-acceptance-audit.tap
+          grep -Eq '^# skipped 0$' p0-acceptance-audit.tap
+      - name: P11 session authority without database containers
+        run: node --test --test-reporter=tap tests/v5-p11-session-boundary.test.js
       - name: Production tag gate
         if: startsWith(github.ref, 'refs/tags/v4.')
         run: node scripts/release-gate.js

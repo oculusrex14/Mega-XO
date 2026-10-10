@@ -289,15 +289,15 @@ redis.call('PEXPIRE', KEYS[2], indexTtl)
 return out
 `;
 
-/* Release a claim. requeue = '1' keeps the candidate and its ORIGINAL score (still claimable, still
- * heartbeating); requeue = '0' removes it entirely. Either way the claim lock is dropped, so a
- * candidate whose ticket already expired is never requeued as a ghost. */
+/* Claim-owner fencing: a timed-out matcher must never delete/requeue/drop a
+ * newly-claimed actor's state. Check the opaque claimId FIRST, then mutate. */
 const RELEASE_LUA = `
 local actor = ARGV[1]
 local requeue = ARGV[2]
 local indexTtl = ARGV[3]
-local released = 0
-if redis.call('DEL', KEYS[3]) > 0 then released = 1 end
+local claimId = ARGV[4]
+if redis.call('GET', KEYS[3]) ~= claimId then return {'0'} end
+redis.call('DEL', KEYS[3])
 redis.call('ZREM', KEYS[2], actor)
 if requeue == '1' then
   if not redis.call('GET', KEYS[4]) then redis.call('ZREM', KEYS[1], actor) end
@@ -308,7 +308,7 @@ else
 end
 redis.call('PEXPIRE', KEYS[1], indexTtl)
 redis.call('PEXPIRE', KEYS[2], indexTtl)
-return {tostring(released)}
+return {'1'}
 `;
 
 /* Drop the batch of candidates whose heartbeat lease is gone (a dead client must not linger as a
@@ -611,12 +611,17 @@ function createQueueService(options = {}) {
     return row;
   }
   const clearMatchHint = (actor) => callRedis((client) => client.del(matchKey(actor)));
-  const MATCH_BY_ID_SQL = 'SELECT status, source, mode, kind, terms_hash, expires_at'
-    + ' FROM match.matches WHERE match_id = $1';
-  async function readMatchById(matchId) {
+  /* Redis hints are not authorization. A client can only resolve a hinted
+   * match if PostgreSQL confirms the requesting actor occupies one of its
+   * durable participant seats. Checking match_id alone leaks an unrelated
+   * live match when Redis contains a stale or malformed actor hint. */
+  const MATCH_BY_ID_SQL = 'SELECT m.status, m.source, m.mode, m.kind, m.terms_hash, m.expires_at'
+    + ' FROM match.matches m JOIN match.participants p ON p.match_id = m.match_id'
+    + ' WHERE m.match_id = $1 AND p.actor_id = $2';
+  async function readMatchById(matchId, actor) {
     return pool.withTransaction(async (tx) => {
       await tx.query('SET TRANSACTION READ ONLY');
-      const row = (await tx.query(MATCH_BY_ID_SQL, [matchId])).rows[0];
+      const row = (await tx.query(MATCH_BY_ID_SQL, [matchId, actor])).rows[0];
       if (!row) return null;
       return {
         matchId,
@@ -726,7 +731,9 @@ function createQueueService(options = {}) {
     /* A claim locks exactly ONE candidate, so a batch that cannot pair is handed straight back
      * instead of being held across ticks. */
     if (claimed.length < 2) {
-      for (const candidate of claimed) await releaseClaim({ mode, actor: candidate.actor, requeue: true });
+      for (const candidate of claimed) await releaseClaim({
+        mode, actor: candidate.actor, claimId: candidate.claimId, requeue: true,
+      });
       return { matched: 0, pairings: [] };
     }
 
@@ -735,7 +742,18 @@ function createQueueService(options = {}) {
      * re-read keeps its seat instead of being destroyed on an absence of evidence. */
     const remaining = claimed.slice();
     const at = clock();
-    const accounts = await readAccounts(claimed.map((candidate) => candidate.actor), at);
+    let accounts;
+    try {
+      accounts = await readAccounts(claimed.map((candidate) => candidate.actor), at);
+    } catch (error) {
+      /* No Core command was sent yet. Return the still-owned claims immediately
+       * instead of needlessly holding live entrants until the claim TTL if the
+       * database read fails. A stale claimId cannot affect a new matcher. */
+      await Promise.allSettled(claimed.map((candidate) => releaseClaim({
+        mode, actor: candidate.actor, claimId: candidate.claimId, requeue: true,
+      })));
+      throw error;
+    }
     const pairings = [];
     const refusedPairs = new Set();
 
@@ -765,7 +783,8 @@ function createQueueService(options = {}) {
           refusedPairs.add(pairKey(ta.actor, tb.actor));
           const faulted = await faultedActors([ta.actor, tb.actor]);
           for (const actor of faulted) {
-            await releaseClaim({ mode, actor, requeue: false });
+            const owned = claimed.find((candidate) => candidate.actor === actor);
+            if (owned) await releaseClaim({ mode, actor, claimId: owned.claimId, requeue: false });
             accounts.delete(actor);
             const index = remaining.findIndex((candidate) => candidate.actor === actor);
             if (index >= 0) remaining.splice(index, 1);
@@ -774,8 +793,8 @@ function createQueueService(options = {}) {
           if (!remaining.includes(ta)) break;
           continue;
         }
-        await releaseClaim({ mode, actor: ta.actor, requeue: false });
-        await releaseClaim({ mode, actor: tb.actor, requeue: false });
+        await releaseClaim({ mode, actor: ta.actor, claimId: ta.claimId, requeue: false });
+        await releaseClaim({ mode, actor: tb.actor, claimId: tb.claimId, requeue: false });
         const pairing = { a: ta.actor, b: tb.actor, matchId, mode, termsHash: match.termsHash, expires: match.expires };
         pairings.push(pairing);
         await cacheMatch(pairing);
@@ -786,7 +805,9 @@ function createQueueService(options = {}) {
     }
 
     /* Everything claimed but not paired keeps its queue position. */
-    for (const candidate of remaining) await releaseClaim({ mode, actor: candidate.actor, requeue: true });
+    for (const candidate of remaining) await releaseClaim({
+      mode, actor: candidate.actor, claimId: candidate.claimId, requeue: true,
+    });
     return { matched: pairings.length, pairings };
   }
 
@@ -907,7 +928,7 @@ function createQueueService(options = {}) {
      * hint the durable store does not confirm as live is discarded. */
     const hint = await readMatchHint(id);
     if (hint !== null) {
-      const confirmed = await readMatchById(hint.matchId);
+      const confirmed = await readMatchById(hint.matchId, id);
       if (confirmed !== null && (confirmed.status === 'OFFERED' || confirmed.status === 'PLAYING')) {
         return { state: 'matched', mode: confirmed.mode, matchId: confirmed.matchId, termsHash: confirmed.termsHash, expires: confirmed.expires };
       }
@@ -962,16 +983,18 @@ function createQueueService(options = {}) {
     }).filter((candidate) => candidate !== null);
   }
 
-  /* Give the claim back. `requeue` (default true) keeps the candidate and its original FIFO score;
-   * false removes the candidate entirely. */
+  /* Release requires the exact opaque token claimCandidates returned. An old
+   * worker, expired lease, or unauthenticated caller has no delete authority. */
   async function releaseClaim(input = {}) {
     const mode = requireMode(input.mode);
     const actor = requireActor(input.actor);
+    const claimId = input.claimId;
+    if (!validPart(claimId)) fail('INVALID_CLAIM_ID');
     const requeue = input.requeue === undefined ? true : input.requeue;
     if (typeof requeue !== 'boolean') fail('INVALID_REQUEUE');
     const result = await callRedis((client) => client.sendCommand(['EVAL', RELEASE_LUA, '5',
       indexKey(mode), claimedKey(mode), claimKey(actor), ticketKey(actor), leaseKey(actor),
-      actor, requeue ? '1' : '0', String(indexTtlMs)]));
+      actor, requeue ? '1' : '0', String(indexTtlMs), claimId]));
     if (!result.ok) return false;
     return String(result.value[0]) === '1';
   }

@@ -135,7 +135,12 @@ function validateCredentials({
   // 3. Cookie credentials
   if (hasCookie) {
     if (MUTATING_METHODS.has(upperMethod)) {
-      const candidate = extractOrigin(origin) || extractOrigin(referer);
+      // A present Origin header is authoritative. Never fall back to a
+      // friendly Referer when an explicit Origin is invalid or untrusted:
+      // that would permit contradictory provenance to pass cookie CSRF.
+      const candidate = typeof origin === 'string'
+        ? extractOrigin(origin)
+        : extractOrigin(referer);
       if (!candidate || !isAllowedOrigin(candidate, allowedOrigins)) {
         fail('CSRF_REJECTED', 403);
       }

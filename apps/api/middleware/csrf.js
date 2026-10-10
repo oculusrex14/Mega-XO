@@ -97,10 +97,14 @@ function checkCsrf(req, options = {}) {
   }
 
   // 3. Inspect Origin or Referer header
-  const originHeader = req.headers?.origin || req.headers?.['x-forwarded-origin'];
+  const originHeader = req.headers?.origin;
   const refererHeader = req.headers?.referer || req.headers?.referrer;
 
-  const candidate = extractOrigin(originHeader) || extractOrigin(refererHeader);
+  // Only use Referer as a fallback when Origin is genuinely absent. A
+  // present invalid/foreign Origin must never be overridden by Referer.
+  const candidate = typeof originHeader === 'string'
+    ? extractOrigin(originHeader)
+    : extractOrigin(refererHeader);
   if (!candidate) {
     return false; // Cookie-authenticated mutation with missing or unparseable origin
   }

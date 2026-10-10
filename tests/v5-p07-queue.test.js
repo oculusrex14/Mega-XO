@@ -378,7 +378,7 @@ test('V5-07-02 queue: concurrent matchers claim atomically and a released claim 
 
   /* A failed match releases its claim: the entrant returns, is re-claimable, and keeps its ORIGINAL
    * FIFO score rather than being appended at the tail. */
-  await queue.releaseClaim({ mode: 'ranked', actor: 'svc_alice', requeue: true });
+  await queue.releaseClaim({ mode: 'ranked', actor: 'svc_alice', claimId: claimed.find((c) => c.actor === 'svc_alice').claimId, requeue: true });
   assert.equal((await index(ephemera, 'ranked'))[0], 'svc_alice', 'the requeued entrant keeps its FIFO head position');
 
   const reclaimed = await queue.claimCandidates({ mode: 'ranked', limit: 1, matcherId: 'matcher-3', leaseMs: 30000 });
@@ -387,7 +387,7 @@ test('V5-07-02 queue: concurrent matchers claim atomically and a released claim 
   assert.equal(reclaimed[0].joinedAt, a.joinedAt, 'the original join time survives the release/claim cycle');
 
   /* `requeue:false` drops the entrant entirely. */
-  await queue.releaseClaim({ mode: 'ranked', actor: 'svc_alice', requeue: false });
+  await queue.releaseClaim({ mode: 'ranked', actor: 'svc_alice', claimId: reclaimed[0].claimId, requeue: false });
   assert.equal((await index(ephemera, 'ranked')).includes('svc_alice'), false, 'requeue:false removes the candidate from the index');
   const after = await queue.claimCandidates({ mode: 'ranked', limit: 16, matcherId: 'matcher-4', leaseMs: 30000 });
   assert.equal(after.some((cand) => cand.actor === 'svc_alice'), false, 'a dropped candidate is never re-claimable');
@@ -428,4 +428,100 @@ test('V5-07-02 queue: the candidate index is bounded by maxTickets and reclaims 
   assert.equal((await index(ephemera, 'ranked')).length, 3, 'the index is back at the cap, never above it');
 
   await expectCode(() => queue.join({ actor: 'svc_erin', mode: 'ranked', opKey: 'bd-4', region: 'iad', latencyMs: 40 }), 'QUEUE_FULL');
+});
+
+
+/* Post-gate regression: Redis claim TTL is shorter than a blocked PG transaction.
+ * Once the lease lapses, a second matcher can own the SAME queue seat. The old
+ * matcher must not delete the new claim or the candidate (even with requeue:false).
+ * Real Redis, real adapter, actual Lua compare-and-delete. */
+test('P07 co-dev regression: a stale claim cannot release a successor claim or remove its FIFO seat', { skip: GATE }, async (t) => {
+  const h = await harness(t, { keyVersion: 'q702cas' });
+  if (!h) return;
+  const { queue, ephemera } = h;
+  const joined = await queue.join({ actor: 'svc_alice', mode: 'ranked', opKey: 'cas-join', region: 'iad', latencyMs: 40 });
+  const prior = await queue.claimCandidates({ mode: 'ranked', limit: 1, matcherId: 'slow-matcher', leaseMs: 250 });
+  assert.equal(prior.length, 1);
+  assert.equal(prior[0].actor, 'svc_alice');
+
+  await lab.sleep(350); // wait for the Redis claim lock's *real* TTL, not the fixture clock
+  const successor = await queue.claimCandidates({ mode: 'ranked', limit: 1, matcherId: 'healthy-matcher', leaseMs: 30000 });
+  assert.equal(successor.length, 1);
+  assert.notEqual(successor[0].claimId, prior[0].claimId);
+
+  const key = ephemera.key('queue', 'claim', 'svc_alice');
+  assert.equal(await ephemera.client.get(key), successor[0].claimId);
+  assert.equal(await queue.releaseClaim({ mode: 'ranked', actor: 'svc_alice',
+    claimId: prior[0].claimId, requeue: false }), false, 'expired worker cannot drop a successor seat');
+  assert.equal(await queue.releaseClaim({ mode: 'ranked', actor: 'svc_alice',
+    claimId: prior[0].claimId, requeue: true }), false, 'expired worker cannot touch successor gauge');
+  await expectCode(() => queue.releaseClaim({ mode: 'ranked', actor: 'svc_alice', requeue: false }),
+    'INVALID_CLAIM_ID');
+
+  assert.equal(await ephemera.client.get(key), successor[0].claimId, 'new lock survives stale deletes');
+  assert.deepEqual(await index(ephemera, 'ranked'), ['svc_alice'], 'FIFO seat was not removed');
+  assert.equal((await queue.status('svc_alice')).joinedAt, joined.joinedAt);
+
+  assert.equal(await queue.releaseClaim({ mode: 'ranked', actor: 'svc_alice',
+    claimId: successor[0].claimId, requeue: true }), true, 'actual owner can release');
+  const reclaimed = await queue.claimCandidates({ mode: 'ranked', limit: 1, matcherId: 'next-worker', leaseMs: 30000 });
+  assert.equal(reclaimed.length, 1);
+  assert.equal(reclaimed[0].joinedAt, joined.joinedAt, 'original FIFO time survives the claim handoff');
+  assert.equal(await queue.releaseClaim({ mode: 'ranked', actor: 'svc_alice',
+    claimId: reclaimed[0].claimId, requeue: false }), true);
+  assert.deepEqual(await index(ephemera, 'ranked'), []);
+});
+
+
+/* A Redis match hint is a cache, not an access grant. This regression writes
+ * an actor-mismatched hint straight into the OWN test Redis namespace and
+ * proves PostgreSQL participant membership must still authorize the read. */
+test('P07 co-dev regression: a poisoned match hint cannot disclose another actor match', { skip: GATE }, async (t) => {
+  const h = await harness(t, { keyVersion: 'q702hint' });
+  if (!h) return;
+  const { queue, core, ephemera } = h;
+  const offer = await core.run({ actor: 'matchmaker', scope: 'matchmaker' }, 'hint-offer', {
+    type: 'queue', id: 'match-hint-security', a: 'svc_alice', b: 'svc_bob', mode: 'casual',
+  });
+  assert.equal(offer.status, 'OFFERED');
+  assert.equal((await queue.status('svc_alice')).matchId, 'match-hint-security',
+    'a real participant still sees their durable offer');
+  assert.equal((await queue.status('svc_bob')).matchId, 'match-hint-security');
+
+  const attackerKey = ephemera.key('queue', 'match', 'svc_carol');
+  await ephemera.client.set(attackerKey, JSON.stringify({
+    state: 'matched', mode: 'casual', matchId: 'match-hint-security',
+    termsHash: offer.termsHash, expires: offer.expires,
+  }), { PX: 60000 });
+  assert.notEqual(await ephemera.client.get(attackerKey), null, 'fixture inserted a cache hint for a nonparticipant');
+
+  const status = await queue.status('svc_carol');
+  assert.equal(status.state, 'idle', 'the unrelated actor cannot resolve or see this match');
+  assert.equal(Object.hasOwn(status, 'matchId'), false, 'the protected match id was not returned');
+  assert.equal(await ephemera.client.get(attackerKey), null, 'a rejected hint is evicted');
+});
+
+
+test('P07 co-dev regression: PostgreSQL hydration failure releases every owned claim without losing FIFO', { skip: GATE }, async (t) => {
+  const h = await harness(t, { keyVersion: 'q702pgf' });
+  if (!h) return;
+  const { queue, core, ephemera, now } = h;
+  const first = await queue.join({ actor: 'svc_alice', mode: 'ranked', opKey: 'fail-join-a' });
+  const second = await queue.join({ actor: 'svc_bob', mode: 'ranked', opKey: 'fail-join-b' });
+  const { createQueueService } = require('../packages/services/queue.js');
+  const broken = createQueueService({ ephemera, core, now,
+    pool: { withTransaction: async () => { throw Error('SIMULATED_DATABASE_READ_FAILURE'); } },
+  });
+  t.after(() => broken.close());
+  await assert.rejects(() => broken.matchTick({ mode: 'ranked', matcherId: 'pg-fail-worker', limit: 2 }),
+    /SIMULATED_DATABASE_READ_FAILURE/);
+  const reclaimed = await queue.claimCandidates({ mode: 'ranked', limit: 2,
+    matcherId: 'healthy-worker', leaseMs: 30000 });
+  assert.deepEqual(reclaimed.map((c) => c.actor), ['svc_alice', 'svc_bob'],
+    'no live entrant is stranded waiting for its old 15s Redis claim expiry');
+  assert.deepEqual(reclaimed.map((c) => c.joinedAt), [first.joinedAt, second.joinedAt],
+    'failed hydration preserves FIFO position');
+  for (const candidate of reclaimed) assert.equal(await queue.releaseClaim({
+    mode: 'ranked', actor: candidate.actor, claimId: candidate.claimId, requeue: true,
+  }), true);
 });

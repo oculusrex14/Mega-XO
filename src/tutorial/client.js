@@ -47,7 +47,7 @@ function render(match){cleanHighlights();const active=current(match)&&!match.sta
  focusNext(v);speak(caption.textContent);
 }
 function act(action){const match=host?.getMatch();if(!current(match)||document.hidden||!$('#sheet')?.hidden)return;
- if(action==='restart'){confirmRestart=true;render(match);return;}
+ if(action==='restart'){host.cancelBot?.();confirmRestart=true;render(match);return;}
  if(action==='restart-cancel'){confirmRestart=false;host.paint();host.scheduleBot();return;}
  if(action==='restart-confirm'){stop();host.restart();return;}
  if(action==='hide'){hiddenTips=true;stopSpeech();host.paint();return;}

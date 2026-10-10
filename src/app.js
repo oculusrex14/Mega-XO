@@ -3,6 +3,8 @@
 'use strict';
 /* V5.1 guided-practice hooks */
 const T=window.MegaTutorial;
+/* V5.1 worker bot hooks */
+const BR=window.MegaBotRuntime,BC=window.MegaBotContract,A=BR?new BR.Client():null;
 const G=window.MegaGame,D=window.MegaDomain,I=window.MegaIcons,$=s=>document.querySelector(s);
 const KEY='mega_v32_state',escape=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const parse=(key)=>{try{return JSON.parse(localStorage.getItem(key)||'null');}catch{return null;}};
@@ -25,7 +27,7 @@ function walletData(){return online.ready&&online.profile?online.profile.wallet:
 function renderWalletSummary(){const w=walletData(),coins=w.coins.toLocaleString(),crowns=w.crowns.toLocaleString();$('#walletAmount').textContent=coins;$('#walletCrownAmount').textContent=crowns;$('#walletButton').setAttribute('aria-label','Open wallet. Coins '+coins+'. Crowns '+crowns+'.');}
 function myTier(){return online.profile?.tier||'wood';}
 function save(){try{
- if(match&&!match.online&&!match.recorded&&!match.state.winner&&!$('#gameScreen').hidden)data.offlineMatch={id:match.id,first:match.first,mode:match.mode,difficulty:match.difficulty,practice:match.practice,tutorial:T?.snapshot(match)||null,moves:match.state.moves,active:match.active,turnLimit:match.turnLimit,turnRemaining:match.turnRemaining};
+ if(match&&!match.online&&!match.recorded&&!match.state.winner&&!$('#gameScreen').hidden)data.offlineMatch={id:match.id,first:match.first,mode:match.mode,difficulty:match.difficulty,practice:match.practice,tutorial:T?.snapshot(match)||null,bot:match.bot||null,moves:match.state.moves,active:match.active,turnLimit:match.turnLimit,turnRemaining:match.turnRemaining};
  else if(match?.recorded||match?.state.winner)delete data.offlineMatch;
  localStorage.setItem(KEY,JSON.stringify(data));window.dispatchEvent(new Event('mega:local-save'));
  }catch{notify('Storage is unavailable. Progress lasts for this session only.');}}
@@ -109,6 +111,7 @@ function sheetOpen(){return !$('#sheet').hidden;}
 
 function sheetIsolation(active){for(const selector of ['.topbar','#contentScroll','#gameScreen','#navigation']){const el=$(selector);if(el)el.inert=active;}}
 function open(title,html,kind='info'){
+ A?.cancel();
  clearTimeout(botTimer);botTimer=null;const sheet=$('#sheet'),wasHidden=sheet.hidden;if(wasHidden)sheetReturnFocus=document.activeElement;sheetKind=kind;$('#sheetTitle').textContent=title;$('#sheetBody').innerHTML=html;sheet.dataset.kind=kind;$('#sheetBackdrop').hidden=false;sheet.hidden=false;sheet.scrollTop=0;sheetIsolation(true);lastTick=performance.now();refreshIcons();window.dispatchEvent(new Event('mega:sheet'));requestAnimationFrame(()=>$('#sheetClose')?.focus());
 }
 function close(){const sheet=$('#sheet');if(sheet.hidden)return;sheet.hidden=true;sheet.removeAttribute('data-kind');$('#sheetBackdrop').hidden=true;sheetIsolation(false);sheetKind='';lastTick=performance.now();lastInput=lastTick;const returnTo=sheetReturnFocus;sheetReturnFocus=null;if(returnTo?.isConnected&&!returnTo.inert)requestAnimationFrame(()=>returnTo.focus());scheduleBot();}
@@ -178,7 +181,7 @@ function watchInvitation(id,kind='challenge',snapshot=null){
  onlinePoll=setInterval(check,1000);check();
 }
 function beginOnline(m){
- T?.stop();
+ T?.stop();A?.cancel();
  clearInterval(onlinePoll);waitingId=null;close();clearTimeout(botTimer);onlinePending=false;
  match={id:m.id,state:m.state,online:true,symbols:m.symbols,mode:m.quote.rated?'ranked':m.terms.source==='queue'?'casual':'friend',difficulty:'',first:'X',practice:false,active:0,turnLimit:m.terms.turnSeconds,turnRemaining:0,deadline:m.deadline,clockOffset:(m.serverNow||Date.now())-Date.now(),last:null,recorded:false,pending:null};
  $('#gameScreen').hidden=false;$('#matchMode').textContent=m.terms.source==='queue'?(m.quote.rated?'Ranked':'Casual'):(m.quote.rated?'Ranked challenge':'Friendly match');$('#matchLevel').textContent='ONLINE';$('#playerXName').textContent=m.symbols.X===online.profile.id?'You':m.playerNames?.[m.symbols.X]||'Opponent';$('#playerOName').textContent=m.symbols.O===online.profile.id?'You':m.playerNames?.[m.symbols.O]||'Opponent';
@@ -201,10 +204,10 @@ const miniNodes=[],cellNodes=[];
 function buildBoard(){for(let b=0;b<9;b++){const el=document.createElement('div');el.className='mini';el.dataset.board=b;const cells=[];for(let c=0;c<9;c++){const cell=document.createElement('button');cell.type='button';cell.className='cell';cell.dataset.b=b;cell.dataset.c=c;cell.addEventListener('click',()=>humanMove(b,c));cell.addEventListener('pointerenter',()=>preview(b,c));cell.addEventListener('pointerleave',clearPreview);el.append(cell);cells.push(cell);}const claim=document.createElement('div');claim.className='claim';claim.hidden=true;el.append(claim);$('#board').append(el);miniNodes.push({el,claim});cellNodes.push(cells);}}
 function mark(p){return '<span class="mark-layer '+p.toLowerCase()+'"><svg viewBox="0 0 40 40" stroke="currentColor" aria-hidden="true">'+(p==='X'?'<path d="M10 10 30 30M30 10 10 30"/>':'<circle cx="20" cy="20" r="11"/>')+'</svg></span>';}
 function startGame(practice=false,rematch=false){
- T?.stop();
+ T?.stop();A?.cancel();
  clearTimeout(botTimer);botTimer=null;const starter=practice?'X':rematch&&match?(match.first==='X'?'O':'X'):first;
  match={id:globalThis.crypto?.randomUUID?.()||String(Date.now())+Math.random(),state:G.create(starter),mode:practice?'bot':mode,difficulty:practice?'Beginner':difficulty,first:starter,practice,active:0,turnRemaining:Number(data.settings.timer)||0,turnLimit:Number(data.settings.timer)||0,last:null,recorded:false,pending:null};
- if(practice)T?.start(match);
+ if(BR)match.bot=BR.startInfo(null,practice);if(practice)T?.start(match);
  $('#gameScreen').hidden=false;$('#matchMode').textContent=practice?'Tutorial practice':match.mode==='local'?'Pass & Play':'Vs Bot';$('#matchLevel').textContent=match.mode==='local'?'Two players, one device':match.difficulty+' difficulty';$('#playerXName').textContent=match.mode==='local'?'Player X':'You';$('#playerOName').textContent=match.mode==='local'?'Player O':'Bot';
  lastTick=lastInput=performance.now();paint();syncAudio();save();scheduleBot();
 }
@@ -232,19 +235,24 @@ function move(m,source){if(!match||match.state.winner)return;if(match.mode==='bo
  try{match.state=G.apply(match.state,m);}catch{notify('Choose an empty cell in the highlighted board.');return;}
  T?.after(match,before,m);match.last=m;match.pending=null;match.turnRemaining=match.turnLimit;tone(source==='bot'?370:540);haptic();paint();clearPreview();animateRoute(m.b,m.c,match.state.required);if(match.state.winner)finish(match.state.winner==='DRAW'?'draw':'line');else{save();scheduleBot();}
 }
-function scheduleBot(){clearTimeout(botTimer);botTimer=null;if(!match||match.state.winner||match.mode!=='bot'||match.state.turn!=='O'||sheetOpen()||document.hidden||T?.blocked(match))return;const current=match,revision=match.state.moves.length;
- botTimer=setTimeout(()=>{botTimer=null;if(match!==current||match.state.moves.length!==revision||sheetOpen()||document.hidden)return;const m=G.choose(match.state,match.difficulty);if(m)move(m,'bot');},850+Math.random()*220);
+function scheduleBot(){clearTimeout(botTimer);botTimer=null;A?.cancel();if(!match||match.state.winner||match.mode!=='bot'||match.state.turn!=='O'||sheetOpen()||document.hidden||T?.blocked(match))return;const current=match,revision=match.state.moves.length;
+ const valid=()=>match===current&&match.state.moves.length===revision&&!match.state.winner&&!sheetOpen()&&!document.hidden&&!T?.blocked(match);
+ botTimer=setTimeout(async()=>{botTimer=null;if(!valid())return;const seed=((current.bot?.seed||0)^Math.imul(revision+1,0x9e3779b9))>>>0;let m=null;
+  try{if(!A)throw Error('BOT_WORKER_UNAVAILABLE');const result=await A.choose({state:current.state,gameId:current.id,revision,difficulty:current.difficulty,engine:current.bot?.engine||'legacy',seed});if(!valid())return;current.botDiagnostics=result.diagnostics;m=result.move;}
+  catch(e){if(e?.name==='AbortError'||!valid())return;const started=performance.now();m=G.choose(current.state,current.difficulty,BC?BC.seeded(seed):Math.random);current.botDiagnostics={engineVersion:'canonical-main-thread-recovery',rngSeed:seed,recoveryCode:e?.code||'BOT_WORKER_UNAVAILABLE',elapsedMs:performance.now()-started};if(!current.warnedBotFallback){notify('Background thinking is unavailable. Using the standard bot.');current.warnedBotFallback=true;}}
+  if(valid()&&m)move(m,'bot');
+ },850+Math.random()*220);
 }
-function finish(reason){if(!match||match.recorded)return;T?.stop();clearTimeout(botTimer);botTimer=null;match.recorded=true;
+function finish(reason){if(!match||match.recorded)return;T?.stop();A?.cancel();clearTimeout(botTimer);botTimer=null;match.recorded=true;
  const s=match.state,result=s.winner==='DRAW'?'draw':s.winner==='X'?'win':'loss';const record={id:match.id,at:Date.now(),mode:match.mode,difficulty:match.difficulty,practice:match.practice,result,reason,moves:s.moves.length,activeSeconds:Math.round(match.active),claimed:s.mini.filter(x=>x==='X').length};
  const award=D.complete(data,record);save();render();paint();open(result==='draw'?'A well-fought draw':match.mode==='local'?'Player '+s.winner+' wins':result==='win'?'Nicely played.':'One more try?',
  '<p class="caption">'+(reason==='line'?'Three Mini Boards in a row.':reason==='draw'?'All Mini Boards resolved without a big winning line.':reason==='timeout'?'The turn timer ran out.':'The match ended by resignation.')+'</p><div class="stats-grid"><div class="stat"><span>Moves</span><strong>'+s.moves.length+'</strong></div><div class="stat"><span>Active time</span><strong>'+seconds(match.active)+'</strong></div></div><div class="note">'+(match.practice?'Tutorial practice is not counted in your personal stats.':match.mode==='local'?'Pass & Play does not affect personal stats or rewards.':award?'You earned '+award+' Coins on this device.':'No coin reward for this result.')+'</div>'+fullButton('Rematch','rematch')+fullButton('Back to home','home','',true),'result');
 }
 setInterval(()=>{const now=performance.now(),delta=Math.min(1,Math.max(0,(now-lastTick)/1000));lastTick=now;if(!match||match.state.winner||$('#gameScreen').hidden||sheetOpen()||document.hidden||T?.blocked(match))return;if(now-lastInput<60000){match.active+=delta;if(!match.online&&match.mode!=='local'&&!match.practice){const k=match.mode+':all',d=match.mode+':'+match.difficulty;data.playSeconds[k]=(data.playSeconds[k]||0)+delta;data.playSeconds[d]=(data.playSeconds[d]||0)+delta;if(now-lastSave>5000){save();lastSave=now;}}}if(match.online){if(match.turnLimit)$('#clock').textContent=Math.max(0,Math.ceil((match.deadline-(Date.now()+match.clockOffset))/1000))+'s';return;}if(match.turnLimit){match.turnRemaining=Math.max(0,match.turnRemaining-delta);$('#clock').textContent=Math.ceil(match.turnRemaining)+'s';$('#clock').classList.toggle('urgent',match.turnLimit>0&&match.turnRemaining<=5);if(match.turnRemaining===0){match.state={...match.state,winner:match.state.turn==='X'?'O':'X'};finish('timeout');}}},100);
-document.addEventListener('visibilitychange',()=>{lastTick=performance.now();if(document.hidden){clearTimeout(botTimer);botTimer=null;}else{lastInput=lastTick;scheduleBot();}syncAudio();});
+document.addEventListener('visibilitychange',()=>{lastTick=performance.now();if(document.hidden){A?.cancel();clearTimeout(botTimer);botTimer=null;}else{lastInput=lastTick;scheduleBot();}syncAudio();});
 document.addEventListener('pointerdown',()=>{lastInput=performance.now();},true);
 function currentMatchStats(){if(!match)return;const s=match.state;open('Current match','<div class="stats-grid"><div class="stat"><span>Moves</span><strong>'+s.moves.length+'</strong></div><div class="stat"><span>Active time</span><strong>'+seconds(match.active)+'</strong></div><div class="stat"><span>X Mini Boards</span><strong>'+s.mini.filter(x=>x==='X').length+'</strong></div><div class="stat"><span>O Mini Boards</span><strong>'+s.mini.filter(x=>x==='O').length+'</strong></div></div>'+fullButton('Resign match','resign','',true),'matchstats');}
-function leave(){T?.stop();clearInterval(onlinePoll);onlinePoll=null;waitingId=null;delete data.offlineMatch;match=null;save();clearTimeout(botTimer);botTimer=null;$('#gameScreen').hidden=true;close();page='play';render();}
+function leave(){T?.stop();A?.cancel();clearInterval(onlinePoll);onlinePoll=null;waitingId=null;delete data.offlineMatch;match=null;save();clearTimeout(botTimer);botTimer=null;$('#gameScreen').hidden=true;close();page='play';render();}
 const actions={
  nav:v=>{page=v;render();$('#contentScroll').scrollTop=0;if(['rank','friends'].includes(v))refreshOnline();},retrynetwork:()=>retryNetwork(),copydiagnostics:copySupportDiagnostics,mode:v=>{mode=v;render();},difficulty:v=>{difficulty=v;render();},first:v=>{first=v;render();},settimer:v=>{data.settings.timer=Number(v);save();render();},onlinetype:v=>{onlineType=v;render();},start:()=>mode==='tournament'?(window.MegaParties?.tables?window.MegaParties.tables():notify('Tournaments are unavailable right now.')):['bot','local'].includes(mode)?startGame():onlineInfo(),queue:startQueue,settings,wallet,tutorial,rules,matchstats:currentMatchStats,rankhelp:rankHelp,feehelp:feeHelp,weeklyhelp:weeklyHelp,onlineinfo:onlineInfo,
  acceptfriend:async id=>{try{await NET.acceptFriend(id,opId());await refreshOnline();render();}catch(e){notify(friendlyError(e));}},
@@ -278,7 +286,7 @@ document.addEventListener('change',e=>{
  else if(el.id==='profileRegion'){data.profile.region=el.value;save();render();if(online.ready)NET.preferences({region:el.value},opId()).catch(()=>notify('Could not save the online preference.'));}else if(el.id==='wealthPublic'){data.profile.wealthPublic=el.checked;save();if(online.ready)NET.preferences({wealthPublic:el.checked},opId()).catch(()=>notify('Could not save the online preference.'));}else if(el.id.startsWith('challenge'))updateQuote(el.id==='challengeRated');else if(el.id.startsWith('exchange')){if(el.id==='exchangeFrom'){const coins=el.value==='coins';$('#exchangeAmount').step=coins?'10':'1';$('#exchangeAmount').min=coins?'10':'1';$('#exchangeAmount').value=coins?'10':'1';}updateExchange();}
 });
 for(const [id,name] of [['brandIcon','board'],['coinIcon','coin'],['crownIcon','crown'],['notificationButton','bell'],['settingsButton','settings'],['sheetClose','close'],['backIcon','back'],['matchSettings','sliders'],['routeIcon','route'],['rulesIcon','help'],['restartIcon','refresh'],['statsIcon','chart']])$('#'+id).innerHTML=icon(name);
-T?.bind({getMatch:()=>match,notify,save,paint,scheduleBot,commitBot:m=>move(m,'bot'),restart:()=>{close();startGame(true);}});
+T?.bind({getMatch:()=>match,notify,save,paint,scheduleBot,cancelBot:()=>A?.cancel(),commitBot:m=>move(m,'bot'),restart:()=>{close();startGame(true);}});
 refreshIcons();applyTheme();buildBoard();render();save();renderConnectivity(window.MegaAccount?.connectivity?.()||{state:navigator.onLine===false?'offline':'online'});refreshOnline();
 if(window.MegaBilling?.products)window.MegaBilling.products().then(items=>{online.products=items.filter(p=>D.CROWN_PACKS.some(q=>q.id===p.id));if(sheetKind==='wallet')wallet();}).catch(()=>{});
 
@@ -293,10 +301,10 @@ window.MegaApp=Object.freeze({
  challenge:async id=>{await refreshOnline();challenge(id,'friend');},
  reviewInvite:async id=>{await refreshOnline();reviewInvite(id);},
  resumeOnline:async id=>{await refreshOnline();if(!online.ready)throw Error('AUTH_REQUIRED');const m=await NET.match(id);if(m.status==='PLAYING')beginOnline(m);else if(m.status==='OFFERED')watchInvitation(id,m.terms.source==='queue'?'queue':'challenge');},
- resumeOffline:()=>{const old=data.offlineMatch;if(!old)return;let state=G.create(old.first);for(const m of old.moves||[])state=G.apply(state,m);if(state.winner)throw Error('MATCH_FINISHED');mode=['bot','local'].includes(old.mode)?old.mode:'bot';difficulty=G.LEVELS.includes(old.difficulty)?old.difficulty:'Medium';first=old.first;startGame(old.practice===true);match.id=old.id;match.state=state;match.active=Math.max(0,Math.min(86400,Number(old.active)||0));match.turnLimit=[0,30,60].includes(old.turnLimit)?old.turnLimit:0;match.turnRemaining=Math.min(match.turnLimit,Math.max(0,Number(old.turnRemaining)||0));if(old.practice)T?.restore(match,old.tutorial);paint();save();scheduleBot();}
+ resumeOffline:()=>{const old=data.offlineMatch;if(!old)return;let state=G.create(old.first);for(const m of old.moves||[])state=G.apply(state,m);if(state.winner)throw Error('MATCH_FINISHED');mode=['bot','local'].includes(old.mode)?old.mode:'bot';difficulty=G.LEVELS.includes(old.difficulty)?old.difficulty:'Medium';first=old.first;startGame(old.practice===true);match.id=old.id;match.state=state;match.bot=BR?.startInfo(old.bot,old.practice===true)||null;match.active=Math.max(0,Math.min(86400,Number(old.active)||0));match.turnLimit=[0,30,60].includes(old.turnLimit)?old.turnLimit:0;match.turnRemaining=Math.min(match.turnLimit,Math.max(0,Number(old.turnRemaining)||0));if(old.practice)T?.restore(match,old.tutorial);paint();save();scheduleBot();}
 });
 
 // Read-only diagnostics: no method can credit money, set rank or submit a server result.
-window.MegaXO=Object.freeze({version:'3.4.0-economy-2',getState:()=>match?structuredClone(match.state):null,getSettings:()=>({...data.settings}),getTutorial:()=>T?.snapshot(match)||null});
+window.MegaXO=Object.freeze({version:'3.4.0-economy-2',getState:()=>match?structuredClone(match.state):null,getSettings:()=>({...data.settings}),getTutorial:()=>T?.snapshot(match)||null,getBotInfo:()=>match?.bot?({...match.bot}):null,getBotDiagnostics:()=>match?.botDiagnostics?structuredClone(match.botDiagnostics):null});
 try{if(!window.MegaAccount&&!localStorage.getItem('mega_v32_tutorial_seen'))tutorial();}catch{}
 })();

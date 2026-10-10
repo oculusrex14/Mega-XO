@@ -35,10 +35,12 @@ jobs:
         run: |
           python3 -m pip install playwright==1.57.0
           python3 -m playwright install --with-deps chromium
-      - name: HTTP tutorial and accessibility
+      - name: HTTP tutorial, Worker, pack controls and accessibility
         run: |
           set -o pipefail
           python3 tests/bot/tutorial-browser.py 2>&1 | tee .artifacts/v51/tutorial-browser.log
+          python3 tests/bot/worker-browser.py 2>&1 | tee .artifacts/v51/worker-browser.log
+          python3 tests/bot/pack-browser.py 2>&1 | tee .artifacts/v51/pack-browser.log
           python3 tests/accessibility-ui.py 2>&1 | tee .artifacts/v51/accessibility.log
       - name: Retain source and evidence
         if: always()

@@ -1,0 +1,84 @@
+name: V5.1 dedicated recovery and chaos gates
+on:
+  push:
+    branches: ['feat/v5.1-bot-ai-tutorial']
+    paths: ['.github/workflows/v51-disposable-gates.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  dedicated-gates:
+    if: github.ref == 'refs/heads/feat/v5.1-bot-ai-tutorial'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    services:
+      postgres-source:
+        image: mirror.gcr.io/library/postgres:16@sha256:ca0bd484cb98bf4b24eb1010e73fb3fcbd6714d240fbc1a10eea5b7dbecb641d
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_DB: postgres
+          POSTGRES_HOST_AUTH_METHOD: trust
+        ports: ['127.0.0.1:5432:5432']
+        options: --health-cmd "pg_isready -U postgres -q" --health-interval 5s --health-timeout 5s --health-retries 24
+      postgres-target:
+        image: mirror.gcr.io/library/postgres:16@sha256:ca0bd484cb98bf4b24eb1010e73fb3fcbd6714d240fbc1a10eea5b7dbecb641d
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_DB: postgres
+          POSTGRES_HOST_AUTH_METHOD: trust
+        ports: ['127.0.0.1:5433:5432']
+        options: --health-cmd "pg_isready -U postgres -q" --health-interval 5s --health-timeout 5s --health-retries 24
+      redis:
+        image: mirror.gcr.io/library/redis:7.4@sha256:4fa24486b8bcca8eec45ee0eb166edc674795e53a2b53d1a9ef263eecebaac85
+        ports: ['127.0.0.1:6379:6379']
+        options: --health-cmd "redis-cli ping" --health-interval 5s --health-timeout 3s --health-retries 20
+    env:
+      V5_TARGET: test
+      V5_PG_URL: postgres://postgres@127.0.0.1:5432/postgres
+      V5_PG_DISPOSABLE: '1'
+      V5_PG_REQUIRED: '1'
+      V5_MIGRATE_ALLOW_INSECURE_LOOPBACK: '1'
+      REDIS_URL: redis://127.0.0.1:6379
+      V5_REDIS_DISPOSABLE: '1'
+      V5_REDIS_REQUIRED: '1'
+      V5_P19_DISPOSABLE: '1'
+      V5_P15_DISPOSABLE: '1'
+      V5_P15_QUARANTINE: '1'
+      P15_REAL_DISPOSABLE: '1'
+      P15_RESTORE_JOBS_DISABLED: '1'
+      P15_RESTORE_PROVIDER_CALLBACKS_DISABLED: '1'
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '24'
+      - run: npm ci
+      - name: Install matching backup client
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y postgresql-client-16
+          echo '/usr/lib/postgresql/16/bin' >> "$GITHUB_PATH"
+      - name: Recovery, isolated service disruption and real bounded adapter load
+        env:
+          P15_SOURCE_SHA: ${{ github.sha }}
+          P19_SOURCE_SHA: ${{ github.sha }}
+          P15_EVIDENCE_OUTPUT: .artifacts/p15-disposable-restore.json
+        run: |
+          set -euo pipefail
+          mkdir -p .artifacts/v51-gates
+          node --test --test-reporter=tap --test-concurrency=1 --test-force-exit tests/v5-p15-real-roundtrip.test.js tests/v5-p19-real-chaos.test.js tests/v5-p19-real-services.test.js 2>&1 | tee .artifacts/v51-gates/dedicated-tests.log
+          grep -q '^# tests 3$' .artifacts/v51-gates/dedicated-tests.log
+          grep -q '^# pass 3$' .artifacts/v51-gates/dedicated-tests.log
+          grep -q '^# skipped 0$' .artifacts/v51-gates/dedicated-tests.log
+          printf '%s\n' "$GITHUB_SHA" > .artifacts/v51-gates/source-commit.txt
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: v51-dedicated-disposable-gates
+          path: |
+            .artifacts/v51-gates
+            .artifacts/p15-disposable-restore.json
+            .artifacts/p19-disposable-services.json
+            .artifacts/p19-real-chaos.json
+          retention-days: 7
+          if-no-files-found: error

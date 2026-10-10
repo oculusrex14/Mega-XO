@@ -1,10 +1,10 @@
 name: Mega XO validation
 on:
   push:
-    branches: [V3.5, V3.5.1, V4, V4.1, V5-platform]
+    branches: [V3.5, V3.5.1, V4, V4.1, V5-platform, V5.1]
     tags: ['v4.*']
   pull_request:
-    branches: [V4, V4.1, V5-platform]
+    branches: [V4, V4.1, V5-platform, V5.1]
   workflow_dispatch:
 permissions:
   contents: read

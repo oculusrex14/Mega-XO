@@ -6,7 +6,7 @@ name: V5 native host build verification
 # co-dev branch push and its PR, which duplicates macOS build minutes.
 on:
   push:
-    branches: [V5-platform]
+    branches: [V5-platform, V5.1]
     paths:
       - 'native/**'
       - 'scripts/v5/build-client.js'
@@ -24,7 +24,7 @@ on:
       - 'index.html'
       - '.github/workflows/v5-native.yml'
   pull_request:
-    branches: [V5-platform]
+    branches: [V5-platform, V5.1]
     paths:
       - 'native/**'
       - 'scripts/v5/build-client.js'

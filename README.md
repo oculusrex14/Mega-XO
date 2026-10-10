@@ -1,4 +1,4 @@
-# Mega XO - V3.5.1
+# Mega XOXO - V3.5.1
 
 V3.5.1 builds on the V3.5 monetisation layer with a single first-party **Continue with email** account flow backed by mailbox OTP verification and password recovery, clearer self-profile access from Friends, and a revised cosmetic direction. The V3.5 board-frame collection is archived; Cosmetic Credits remain account-bound and are reserved for future full-theme releases. **Live ads and purchases are still disabled by default.**
 
@@ -6,7 +6,7 @@ Current patch reference: [V3.5.1 account and cosmetic patch](docs/V3.5.1-ACCOUNT
 
 Retained monetisation references: [Research](docs/V3.5-MONETISATION-RESEARCH.md), [Implementation and release contract](docs/V3.5-MONETISATION-IMPLEMENTATION.md), and [Validation evidence](docs/V3.5-TESTING.md). Where the V3.5 implementation document still describes the archived frame catalogue, the V3.5.1 patch takes precedence.
 
-`Continue with email` signs into an existing verified profile when the password matches. For a new or previously unverified email, Mega XO sends a 6-digit one-time code and does not activate the email identity until that code is confirmed. Forgot Password uses the same verified-mailbox channel and revokes older sessions after reset. Production delivery is configured through Resend from **Mega XO by Antimatter Innovations <contact@antimatterinnovations.com>** after the Antimatter Innovations domain is verified. See [email verification and recovery](docs/V3.5.1-EMAIL-VERIFICATION.md).
+`Continue with email` signs into an existing verified profile when the password matches. For a new or previously unverified email, Mega XOXO sends a 6-digit one-time code and does not activate the email identity until that code is confirmed. Forgot Password uses the same verified-mailbox channel and revokes older sessions after reset. Production delivery is configured through Resend from **Mega XOXO by Antimatter Innovations <contact@antimatterinnovations.com>** after the Antimatter Innovations domain is verified. See [email verification and recovery](docs/V3.5.1-EMAIL-VERIFICATION.md).
 
 Run `npm test`, `npm run test:monetization`, `npm run test:monetization-model` and `npm run test:monetization-ui`. Browser tests require Python Playwright/Chromium and use isolated test providers, never live ad inventory or real payments.
 
@@ -95,7 +95,7 @@ This repository contains implemented development code. It does not claim:
 - native phone-hosted Bluetooth/Nearby transport;
 - real-user retention/conversion/revenue validation.
 
-Ranked Coin entry, Crown challenges and public tournaments are closed-loop game-economy mechanics. Bought and earned Crowns have identical gameplay utility; Mega XO does not provide Crown cash-out or real-world redemption.
+Ranked Coin entry, Crown challenges and public tournaments are closed-loop game-economy mechanics. Bought and earned Crowns have identical gameplay utility; Mega XOXO does not provide Crown cash-out or real-world redemption.
 
 ## Current design references
 

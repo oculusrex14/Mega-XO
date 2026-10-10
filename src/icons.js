@@ -1,6 +1,6 @@
 /* V3.2.3 UI icon adapter.
    Uses the exact Lucide family/names from the supplied V3.1 reference.
-   Rank emblems remain Mega XO originals. */
+   Rank emblems remain Mega XOXO originals. */
 (function(root){
 const names={
  board:'grid-3x3',

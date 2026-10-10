@@ -111,6 +111,8 @@ function complete(data,record,now=Date.now()){
  if(data.processed.includes(record.id))return 0;
  if(!record.id||!['bot','local','ranked','casual','friend'].includes(record.mode)||!['win','loss','draw'].includes(record.result))throw Error('INVALID_RESULT');
  if(['ranked','casual','friend'].includes(record.mode))throw Error('SERVER_RESULT_REQUIRED');
+ // On-device neural results and explicit Expert recovery stay unverified and unpaid.
+ if(record.resultClass==='unverified-local-ai'||record.difficulty==='Impossible')return 0;
  if(!Number.isFinite(record.activeSeconds)||record.activeSeconds<0||record.activeSeconds>86400||!Number.isInteger(record.moves)||record.moves<0||record.moves>81)throw Error('INVALID_MATCH_METRICS');
  data.processed.push(record.id);if(record.mode==='local'||record.practice)return 0;data.records.push({...record});const d=getDaily(data,now);
  if(!['line','draw'].includes(record.reason)||record.activeSeconds<POLICY.minRewardSeconds||record.moves<POLICY.minRewardMoves)return 0;

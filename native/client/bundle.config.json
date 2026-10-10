@@ -19,6 +19,8 @@
     "src/bot/worker.js",
     "src/bot/board.js",
     "src/bot/search.js",
+    "src/bot/pack.js",
+    "src/bot/pack-ui.js",
     "src/app.js",
     "src/tournament.js",
     "src/party-ui.js",
@@ -30,7 +32,8 @@
     "src/party.css",
     "src/community.css",
     "src/monetization.css",
-    "src/tutorial/tutorial.css"
+    "src/tutorial/tutorial.css",
+    "src/bot/pack.css"
   ],
   "legal_pages": [
     {

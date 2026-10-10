@@ -12,3 +12,4 @@ require('./bot/onnx.test.cjs');
 require('./bot/pack.test.cjs');
 require('./bot/neural-search.test.cjs');
 require('./bot/neural-runtime.test.cjs');
+require('./bot/local-ai.test.cjs');

@@ -16,12 +16,12 @@
   "phases": {
     "B00": "DONE",
     "B01": "PARTIAL",
-    "B02": "IN_PROGRESS",
+    "B02": "PARTIAL",
     "B03": "PARTIAL",
-    "B04": "PLANNED",
-    "B05": "PLANNED",
-    "B06": "PLANNED",
-    "B07": "PLANNED"
+    "B04": "PARTIAL",
+    "B05": "PARTIAL",
+    "B06": "IN_PROGRESS",
+    "B07": "IN_PROGRESS"
   },
   "resolution": "Every task inherits defaults, then its checkpoint evidence, then task-specific values. Null commit means not yet recorded, never an inferred SHA. All 82 tasks are explicit. Checklist checkmarks track DONE only.",
   "defaults": {
@@ -85,6 +85,73 @@
         "../../../../tests/bot/runtime.test.cjs"
       ],
       "rollback": "Keep mega_v51_search unset/legacy. No new public difficulty or model was enabled; old canonical selector unchanged."
+    },
+    "C3-ui": {
+      "commit": "5657527cd9415fcb3c94aa2a13a1cc609ec75b24",
+      "ci": "PASS Actions 38087335248; 1183 tests, 894 passed, 0 failed, 289 skipped. Real Worker root/P21, HTTP tutorial/accessibility and packaging pass.",
+      "manualDevice": "NOT_RUN",
+      "evidence": [
+        "evidence/worker-ci.json"
+      ],
+      "rollback": "Keep mega_v51_search legacy. Revert coherent Worker hooks if needed; canonical saved moves remain unchanged."
+    },
+    "C4-data": {
+      "commit": "f43c856ee466a2fa6aa0b8ffb651fd3ba222528c",
+      "ci": "Canonical records validated in Actions 38087973848; local D4/data tests pass.",
+      "manualDevice": "NOT_APPLICABLE",
+      "evidence": [
+        "../../../../src/bot/encoding.js",
+        "../../../../training/bot/validate-data.cjs"
+      ],
+      "rollback": "Research only, no player or server change."
+    },
+    "C4-model": {
+      "commit": "8b46b8c7ce9b71bb5905e19d3e1cf39650c6d4ec",
+      "ci": "CPU model tests/training pass in Actions 38087973848. Unapproved 24-game bootstrap, not DGX or strength proof.",
+      "manualDevice": "NOT_RUN",
+      "evidence": [
+        "evidence/checkpoint-measurements.json",
+        "../../../../training/bot/README.md"
+      ],
+      "rollback": "Keep generated candidates unapproved and out of the public catalog."
+    },
+    "C5-export": {
+      "commit": "638e110a8eac2b87013fb8d5f58d8f24831fb271",
+      "ci": "PASS neural Actions 38087973848: 512 float CPU/WASM golden states, dynamic batches 1/7, INT8 numerical checks. 36 INT8 top-action changes; match regression unmeasured.",
+      "manualDevice": "NOT_RUN",
+      "evidence": [
+        "evidence/checkpoint-measurements.json"
+      ],
+      "rollback": "No model or ORT runtime shipped."
+    },
+    "C5-packs": {
+      "commit": "736c2220b2cec3e47574cbd666abe8d65e08f561",
+      "ci": "Six pack and three PUCT tests pass locally; product UI is a separate checkpoint.",
+      "manualDevice": "NOT_RUN",
+      "evidence": [
+        "../../../../tests/bot/pack.test.cjs",
+        "../../../../tests/bot/neural-search.test.cjs"
+      ],
+      "rollback": "Empty approved catalog prevents activation; cache removal never deletes human moves."
+    },
+    "C5-worker": {
+      "commit": "1d257c3224534f6be9b11634a8ab0707c591c484",
+      "ci": "PASS Actions 38089332962: actual warm neural Worker/PUCT lifecycle and 512-state parity; local feature suite 45 passed.",
+      "manualDevice": "NOT_RUN",
+      "evidence": [
+        "../../../../tests/bot/neural-runtime.test.cjs",
+        "../../../../tests/bot/neural-worker-browser.py"
+      ],
+      "rollback": "Terminate/unload runtime, preserve game state; never silently relabel Expert as Impossible."
+    },
+    "C7-platform": {
+      "commit": "2043ceb75f20638fb90abd472797aa10cbf83f28",
+      "ci": "PASS Actions 38088997400: disposable PostgreSQL/Redis, Firefox/WebKit tutorial, Android build/emulator and unsigned iOS simulator launch.",
+      "manualDevice": "NOT_RUN: emulator/simulator only",
+      "evidence": [
+        "evidence/platform-ci.json"
+      ],
+      "rollback": "Validation only; no deployment, signing or production data."
     }
   },
   "tasks": {
@@ -194,35 +261,35 @@
       ]
     },
     "B02.07": {
-      "status": "PARTIAL",
-      "checkpoint": "C3-core",
-      "blockers": [
-        "Worker protocol, match/revision fencing, termination and timeout tests pass. Live UI/packaging hooks are the next checkpoint."
-      ]
+      "status": "DONE",
+      "checkpoint": "C3-ui",
+      "blockers": []
     },
     "B02.08": {
       "status": "PARTIAL",
-      "checkpoint": "C3-core",
+      "checkpoint": "C7-platform",
       "blockers": [
-        "Cancellation and stale-result unit checks pass. Device thermal/memory/background validation remains open."
+        "Physical memory-pressure, thermal, process-death and in-match WKWebView validation remain open."
       ]
     },
     "B02.09": {
       "status": "PARTIAL",
-      "checkpoint": "C3-core",
+      "checkpoint": "C3-ui",
       "blockers": [
-        "24-game 20ms smoke: 17 wins, 7 draws, 0 losses, 85.4% points. Small-sample, reduced-budget result does not authorize promotion."
+        "320ms league: 47W/12D/5L, 82.8125% points in 64 games. Nine opening families, below promotion coverage. Expert/Hard separation inconclusive."
       ]
     },
     "B02.10": {
-      "status": "IN_PROGRESS",
-      "checkpoint": "C3-core"
+      "status": "DONE",
+      "checkpoint": "C3-ui",
+      "blockers": []
     },
     "B02.11": {
-      "status": "BLOCKED",
+      "status": "PARTIAL",
       "blockers": [
-        "Browser and packaged-client automation planned; physical Android/iOS WebViews are unavailable."
-      ]
+        "Browser/emulator/simulator evidence recorded; physical WebView acceptance remains open."
+      ],
+      "checkpoint": "C7-platform"
     },
     "B03.01": {
       "status": "DONE",
@@ -265,23 +332,23 @@
     },
     "B03.10": {
       "status": "PARTIAL",
-      "checkpoint": "C2",
+      "checkpoint": "C7-platform",
       "blockers": [
-        "Acknowledgment clock/bot pause and hidden-transition controller checks pass. Physical app backgrounding still untested."
+        "Browser acknowledgment/clock pause passes; physical app backgrounding untested."
       ]
     },
     "B03.11": {
       "status": "PARTIAL",
-      "checkpoint": "C2",
+      "checkpoint": "C7-platform",
       "blockers": [
-        "Real HTTP reload and intermediate revision tests pass. Android process death and iOS background recovery need devices."
+        "Canonical replay and HTTP reload pass; physical process-death/backgrounding untested."
       ]
     },
     "B03.12": {
       "status": "PARTIAL",
-      "checkpoint": "C2",
+      "checkpoint": "C7-platform",
       "blockers": [
-        "All four themes, keyboard, captions, 44px targets, focus and existing accessibility checks pass. Actual screen-reader users and large-text device matrix not tested."
+        "Four-theme keyboard/focus/captions/44px controls pass; audible narration, assistive-technology users and large-text device checks remain open."
       ]
     },
     "B03.13": {
@@ -297,39 +364,227 @@
         "Moderated new-user beta participants unavailable; comprehension cannot be inferred from automation."
       ]
     },
-    "B04.01": {},
-    "B04.02": {},
-    "B04.03": {},
-    "B04.04": {},
-    "B04.05": {},
-    "B04.06": {},
-    "B04.07": {},
-    "B04.08": {},
-    "B04.09": {},
-    "B04.10": {},
-    "B04.11": {},
-    "B04.12": {},
-    "B05.01": {},
-    "B05.02": {},
-    "B05.03": {},
-    "B05.04": {},
-    "B05.05": {},
-    "B05.06": {},
-    "B05.07": {},
-    "B05.08": {},
-    "B05.09": {},
-    "B05.10": {},
-    "B06.01": {},
-    "B06.02": {},
-    "B06.03": {},
-    "B06.04": {},
-    "B06.05": {},
-    "B06.06": {},
-    "B06.07": {},
-    "B06.08": {},
-    "B06.09": {},
-    "B06.10": {},
-    "B07.01": {},
+    "B04.01": {
+      "status": "DONE",
+      "checkpoint": "C4-data",
+      "blockers": []
+    },
+    "B04.02": {
+      "status": "DONE",
+      "checkpoint": "C4-data",
+      "blockers": []
+    },
+    "B04.03": {
+      "status": "DONE",
+      "checkpoint": "C4-model",
+      "blockers": []
+    },
+    "B04.04": {
+      "status": "DONE",
+      "checkpoint": "C4-data",
+      "blockers": []
+    },
+    "B04.05": {
+      "status": "DONE",
+      "checkpoint": "C4-data",
+      "blockers": []
+    },
+    "B04.06": {
+      "status": "PARTIAL",
+      "checkpoint": "C4-model",
+      "blockers": [
+        "CPU pipeline works; no DGX/private storage/GPU energy measurements. Tiny smoke validation worsened; no approved champion."
+      ]
+    },
+    "B04.07": {
+      "status": "PARTIAL",
+      "checkpoint": "C4-model",
+      "blockers": [
+        "Promotion protocol documented; iterative improvement cycles not run."
+      ]
+    },
+    "B04.08": {
+      "status": "BLOCKED",
+      "checkpoint": "C4-model",
+      "blockers": [
+        "No connected DGX/Unsloth teacher environment; optional experiment not run."
+      ]
+    },
+    "B04.09": {
+      "status": "BLOCKED",
+      "checkpoint": "C4-model",
+      "blockers": [
+        "Distillation depends on measured value from the optional teacher experiment."
+      ]
+    },
+    "B04.10": {
+      "status": "PARTIAL",
+      "checkpoint": "C5-packs",
+      "blockers": [
+        "Policy/value PUCT and policy-only switch implemented; equal-budget ablation leagues remain open."
+      ]
+    },
+    "B04.11": {
+      "status": "PARTIAL",
+      "checkpoint": "C5-export",
+      "blockers": [
+        "Search benchmarked; neural held-out match-strength acceptance not established."
+      ]
+    },
+    "B04.12": {
+      "status": "PARTIAL",
+      "checkpoint": "C5-export",
+      "blockers": [
+        "Source/data/model hashes and quantization provenance recorded; license review and model promotion approval outstanding."
+      ]
+    },
+    "B05.01": {
+      "status": "PARTIAL",
+      "checkpoint": "C5-export",
+      "blockers": [
+        "Float/dynamic parity passes; INT8 changes 36/512 legal top actions, match regression unmeasured."
+      ]
+    },
+    "B05.02": {
+      "status": "PARTIAL",
+      "checkpoint": "C5-export",
+      "blockers": [
+        "Float gzip model 1273783 bytes; ORT WASM separately 11905541 bytes. Slim runtime delivery, RAM and sustained device performance remain open."
+      ]
+    },
+    "B05.03": {
+      "status": "PARTIAL",
+      "checkpoint": "C5-export",
+      "blockers": [
+        "Actual Chromium WASM passes; healthy WebGPU and physical Safari/WebView neural inference untested."
+      ]
+    },
+    "B05.04": {
+      "status": "PARTIAL",
+      "checkpoint": "C5-worker",
+      "blockers": [
+        "Actual warm Worker/cancel/recovery pass; product delivery and physical resource gates remain open."
+      ]
+    },
+    "B05.05": {
+      "status": "PARTIAL",
+      "checkpoint": "C5-packs",
+      "blockers": [
+        "Integrity/consent/progress/pause/retry/cache/removal tested. UI integration pending; catalog empty and runtime unshipped."
+      ]
+    },
+    "B05.06": {
+      "status": "BLOCKED",
+      "checkpoint": "C5-packs",
+      "blockers": [
+        "Same-origin immutable artifact contract defined. Publishing model/runtime URLs and P21 cache headers needs coordination; deployment not authorized."
+      ]
+    },
+    "B05.07": {
+      "status": "PARTIAL",
+      "checkpoint": "C7-platform",
+      "blockers": [
+        "Hosts build/launch in CI; neural WASM versus LiteRT/Core ML comparison requires reference hardware. Network permissions unchanged."
+      ]
+    },
+    "B05.08": {
+      "status": "PARTIAL",
+      "checkpoint": "C5-packs",
+      "blockers": [
+        "Cache integrity/recovery primitives tested; product upgrade/offline resume and fallback UI require runtime integration."
+      ]
+    },
+    "B05.09": {
+      "status": "BLOCKED",
+      "checkpoint": "C5-export",
+      "blockers": [
+        "No physical reference phones for RAM, thermal, battery or sustained throughput."
+      ]
+    },
+    "B05.10": {
+      "status": "PARTIAL",
+      "checkpoint": "C5-export",
+      "blockers": [
+        "512 cross-runtime states, themes, packaging and integrity pass; model airplane-mode/native matrix remains open."
+      ]
+    },
+    "B06.01": {
+      "status": "IN_PROGRESS",
+      "checkpoint": "C5-packs",
+      "blockers": [
+        "Setup UI integration pending. Five public difficulties remain; no approved Impossible model."
+      ]
+    },
+    "B06.02": {
+      "status": "IN_PROGRESS",
+      "checkpoint": "C5-packs",
+      "blockers": [
+        "Unverified local match helpers and reward exclusion integration pending; no playable Impossible activation."
+      ]
+    },
+    "B06.03": {
+      "status": "PARTIAL",
+      "checkpoint": "C5-worker",
+      "blockers": [
+        "Canonical tensor/mask/PUCT/legality works in research Worker; product match lifecycle activation remains open."
+      ]
+    },
+    "B06.04": {
+      "status": "PARTIAL",
+      "checkpoint": "C5-worker",
+      "blockers": [
+        "Pinned warm model and saved-match helpers implemented; complete product lifecycle remains open."
+      ]
+    },
+    "B06.05": {
+      "status": "BLOCKED",
+      "checkpoint": "C4-model",
+      "blockers": [
+        "No neural candidate passed >=70% versus improved Expert or device gates."
+      ]
+    },
+    "B06.06": {
+      "status": "DEFERRED",
+      "checkpoint": "C5-export",
+      "blockers": [
+        "Verified/rewarded online Impossible not commissioned; local-first initial scope."
+      ]
+    },
+    "B06.07": {
+      "status": "DEFERRED",
+      "checkpoint": "C5-export",
+      "blockers": [
+        "No Oracle AI service or always-on GPU commissioned; separate authorization/capacity review required."
+      ]
+    },
+    "B06.08": {
+      "status": "PARTIAL",
+      "checkpoint": "C5-export",
+      "blockers": [
+        "Measured local inference supports local-first recommendation; approved model and owner release sign-off remain outstanding."
+      ]
+    },
+    "B06.09": {
+      "status": "PARTIAL",
+      "checkpoint": "C5-worker",
+      "blockers": [
+        "Explicit failure/cancel/recovery primitives exist; full product failure/fallback flows remain open."
+      ]
+    },
+    "B06.10": {
+      "status": "PARTIAL",
+      "checkpoint": "C5-worker",
+      "blockers": [
+        "Component fencing/resume pass; full Impossible rotation/rematch/resign/timeout/native matrix remains open."
+      ]
+    },
+    "B07.01": {
+      "status": "PARTIAL",
+      "checkpoint": "C7-platform",
+      "blockers": [
+        "CI engines/emulator/simulator recorded; physical reference hardware/release matrix outstanding."
+      ]
+    },
     "B07.02": {
       "status": "PARTIAL",
       "checkpoint": "C3-core",
@@ -346,13 +601,25 @@
     },
     "B07.04": {
       "status": "PARTIAL",
-      "checkpoint": "C3-core",
+      "checkpoint": "C3-ui",
       "blockers": [
-        "Reduced-budget result only; 320ms/high-sample held-out promotion and Impossible-versus-Expert absent."
+        "Sampled search league passes target; independent-family promotion coverage and Impossible strength not established."
       ]
     },
-    "B07.05": {},
-    "B07.06": {},
+    "B07.05": {
+      "status": "PARTIAL",
+      "checkpoint": "C3-ui",
+      "blockers": [
+        "Expert/Hard interval crosses parity; held-out tier calibration and exploit measurements required."
+      ]
+    },
+    "B07.06": {
+      "status": "DONE",
+      "checkpoint": "C3-ui",
+      "blockers": [
+        "Goals documented: Expert p95 <1.5s, Impossible <2.0s on designated devices. These are targets, not measured physical passes."
+      ]
+    },
     "B07.07": {
       "status": "PARTIAL",
       "checkpoint": "C2",
@@ -368,16 +635,30 @@
     },
     "B07.09": {
       "status": "PARTIAL",
-      "checkpoint": "C1",
+      "checkpoint": "C7-platform",
       "blockers": [
-        "289 existing CI skips remain unexecuted; native devices and staging acceptance not claimed."
+        "Service/browser/native CI passes. Three dedicated fault/rehearsal tests, physical devices and provider acceptance remain open."
       ]
     },
-    "B07.10": {},
+    "B07.10": {
+      "status": "PARTIAL",
+      "checkpoint": "C7-platform",
+      "blockers": [
+        "V5.1 remains f8913fd at recheck; P21 hooks compatible. Must recheck before owner integration; no merge performed."
+      ]
+    },
     "B07.11": {
       "status": "PARTIAL",
-      "checkpoint": "C0"
+      "checkpoint": "C3-ui",
+      "blockers": [
+        "Legacy/additive save rollback and no DB migration documented; final model/native delivery rollback depends on approved runtime."
+      ]
     },
-    "B07.12": {}
+    "B07.12": {
+      "status": "IN_PROGRESS",
+      "blockers": [
+        "Final handoff and inventory in progress."
+      ]
+    }
   }
 }

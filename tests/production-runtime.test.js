@@ -28,7 +28,7 @@ async function fixture(t) {
 }
 test('production config is fail-closed for secrets and unreleased provider features',()=>{
  assert.equal(config(secrets).mailDaily,80);
-  for(const patch of [{MEGA_ORIGIN:'http://game.test'},{MEGA_DB:'relative.db'},{MEGA_OTP_SECRET:'short'},{MEGA_PROXY_SECRET:'1'.repeat(64)},{MEGA_OTP_SECRET_FILE:'/tmp/key'},{MEGA_AUDIT_SECRET:'2'.repeat(64)},{MEGA_PURCHASES_ENABLED:'true'},{MEGA_AD_MODE:'hybrid'},{PORT:'8080x'},{GOOGLE_CLIENT_ID:'incomplete'},{MEGA_MAIL_DAILY_LIMIT:'101'}])assert.throws(()=>config({...secrets,...patch}));
+  for(const patch of [{MEGA_ORIGIN:'http://game.test'},{MEGA_DB:'relative.db'},{MEGA_OTP_SECRET:'short'},{MEGA_PROXY_SECRET:'1'.repeat(64)},{MEGA_AUDIT_SECRET:'2'.repeat(64)},{MEGA_OTP_SECRET_FILE:'/tmp/key'},{MEGA_PURCHASES_ENABLED:'true'},{MEGA_AD_MODE:'hybrid'},{PORT:'8080x'},{GOOGLE_CLIENT_ID:'incomplete'},{MEGA_MAIL_DAILY_LIMIT:'101'}])assert.throws(()=>config({...secrets,...patch}));
 });
 test('empty Apple roots placeholder keeps disabled stores bootable but partial stores fail closed',t=>{
   const dir=fs.mkdtempSync(path.join(os.tmpdir(),'mega-roots-'));t.after(()=>fs.rmSync(dir,{recursive:true,force:true}));
@@ -50,11 +50,16 @@ test('production perimeter authenticates the proxy and never logs tokens or quer
  assert.equal((await c.call('/api/account/email',{action:'continue'},{'X-CSRF-Token':'bad'})).status,409);
 });
 test('production email route queues encrypted delivery, verifies ownership and signs in again',async t=>{
- const f=await fixture(t),a=f.client();await a.call('/api/account/session');
+ const f=await fixture(t),a=f.client();
+ // Own the delivery tick while inspecting queued ciphertext. The real runtime
+ // timer may otherwise deliver and deliberately clear payload before assertion.
+ const deliver=f.runtime.outbox.tick.bind(f.runtime.outbox);
+ f.runtime.outbox.tick=async()=>{};
+ await a.call('/api/account/session');
  const pending=await a.call('/api/account/email',{action:'continue',email:'player@example.com',password:'correct-horse-42'});
  assert.equal(pending.status,200,JSON.stringify(pending.data));assert.equal(pending.data.verificationRequired,true);assert(!pending.data.delivery);assert.equal(f.runtime.service.store.read().accounts.size,0);
- const queued=f.runtime.service.store.db.prepare('SELECT payload FROM v4_outbox').get();assert(!queued.payload.includes('player@example.com'));
- await f.runtime.outbox.tick();assert.equal(f.sent.length,1);
+ const queued=f.runtime.service.store.db.prepare('SELECT payload FROM v4_outbox').get();assert.equal(typeof queued.payload,'string');assert(!queued.payload.includes('player@example.com'));
+ await deliver();assert.equal(f.sent.length,1);
  const verified=await a.call('/api/account/email',{action:'verify',challengeId:pending.data.challengeId,code:f.sent[0].code});
  assert.equal(verified.status,200,JSON.stringify(verified.data));assert.equal(verified.data.profile.emailVerified,true);
  const b=f.client('198.51.100.3');await b.call('/api/account/session');

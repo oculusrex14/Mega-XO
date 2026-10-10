@@ -33,7 +33,7 @@
         "P21-DELIVERY-01"
       ],
       "command": "env -u NODE_OPTIONS /Users/oculus/.hermes/node/bin/node --test tests/v5-p21-*.test.js",
-      "target": "Local macOS Node v24; no API credentials",
+      "target": "Local macOS Node v26.8.2; no API credentials",
       "result": "PASS: 27/27, zero skips",
       "evidence": "affected-tests.log",
       "task_ids": [
@@ -227,5 +227,7 @@
       "bytes": 20864,
       "sha256": "85132a3064178c406a9ec0429b2198d54f72c1d9d89e68dbee9027f1a6705ed1"
     }
-  ]
+  ],
+  "local_runtime_version": "v26.8.2",
+  "ci_runtime_major": "24"
 }

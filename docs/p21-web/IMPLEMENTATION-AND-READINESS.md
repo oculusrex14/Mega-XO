@@ -34,11 +34,11 @@ The [route/flow map](ROUTES-AND-FLOWS.md), [asset registry](ASSET-REGISTRY.md), 
 
 ## Exact checkpoint verification
 
-All checks below exercised source `99e65bdc8655162cf2dcc4af26dc0b73ec203cdc`. [verification.json](evidence/99e65bd/verification.json) records task/case IDs, exact commands, target/environment, results and file hashes.
+Local runtime was Node 26.8.2; CI uses Node 24. All checks below exercised source `99e65bdc8655162cf2dcc4af26dc0b73ec203cdc`. [verification.json](evidence/99e65bd/verification.json) records task/case IDs, exact commands, target/environment, results and file hashes.
 
 | Check | Command / target | Result / evidence |
 |---|---|---|
-| Affected paths | `env -u NODE_OPTIONS /Users/oculus/.hermes/node/bin/node --test tests/v5-p21-*.test.js`, local macOS Node 24 | **27/27 PASS**, zero skips; [log](evidence/99e65bd/affected-tests.log) |
+| Affected paths | `env -u NODE_OPTIONS /Users/oculus/.hermes/node/bin/node --test tests/v5-p21-*.test.js`, local macOS Node 26.8.2 | **27/27 PASS**, zero skips; [log](evidence/99e65bd/affected-tests.log) |
 | Static packaging | `node scripts/p21/build-web.js`, local `.artifacts/p21-web` | 62 allowlisted files, 1,935,785 bytes; [manifest](evidence/99e65bd/web-build.manifest.json) |
 | Browser matrix | `node scripts/p21/browser-qa.cjs --no-build`, managed Playwright 1.62.1 / Chromium 151.0.7922.34, unauthenticated loopback | **489/489 PASS**, 38 screenshots, zero missing local resources/JS errors; [report](evidence/99e65bd/browser-qa.json) |
 | Automatic accessibility | `node scripts/p21/accessibility-qa.cjs`, axe-core 4.14.0 / Chromium, desktop/mobile pages and practice | **58/58 PASS**, zero automatic violations; 56 views have incomplete checks requiring manual review; Paper Club HUD contrast 11.20:1; [report](evidence/99e65bd/accessibility-qa.json) |

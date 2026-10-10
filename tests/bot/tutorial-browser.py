@@ -1,4 +1,4 @@
-"""Live static-client tutorial checks. Chromium automation is not physical device evidence."""
+"""Live static-client tutorial checks. Browser automation is not physical device evidence."""
 import json, os, re, shutil, threading
 from functools import partial
 from http.server import ThreadingHTTPServer, SimpleHTTPRequestHandler
@@ -29,7 +29,12 @@ def load_page(context,saved=None):
  return page
 try:
  with sync_playwright() as p:
-  browser=p.chromium.launch(executable_path=os.environ.get('CHROMIUM_EXECUTABLE') or shutil.which('chromium'),headless=True,args=['--no-sandbox'])
+  browser_name=os.environ.get('MEGA_BROWSER','chromium')
+  if browser_name not in ('chromium','firefox','webkit'):raise ValueError('UNSUPPORTED_BROWSER')
+  launch={'headless':True}
+  if browser_name=='chromium':launch.update(executable_path=os.environ.get('CHROMIUM_EXECUTABLE') or shutil.which('chromium'),args=['--no-sandbox'])
+  browser=getattr(p,browser_name).launch(**launch)
+  browser_version=browser.version
   for theme in ['vector','midnight','paperclub','afterhours']:
    context=browser.new_context(viewport={'width':390,'height':844},reduced_motion='reduce')
    page=load_page(context)
@@ -88,7 +93,7 @@ try:
    context.close()
   browser.close()
  assert not errors,errors
- report={'engine':'headless Chromium','delivery':'inline fixture with restored storage' if INLINE else 'HTTP static client','physicalDevices':False,'results':results,'pageErrors':errors,'limitations':['No physical Android or iOS WebView, Safari, assistive-technology user or moderated beta participant tested.','Local speech may be unavailable; mandatory captions and disabled narration fallback verified.']}
+ report={'engine':'headless '+browser_name,'browserVersion':browser_version,'delivery':'inline fixture with restored storage' if INLINE else 'HTTP static client','physicalDevices':False,'results':results,'pageErrors':errors,'limitations':['No physical Android or iOS WebView, Safari, assistive-technology user or moderated beta participant tested.','Local speech may be unavailable; mandatory captions and disabled narration fallback verified.']}
  (OUT/'tutorial-browser.json').write_text(json.dumps(report,indent=2)+'\n')
  print(json.dumps(report,indent=2))
 finally:server.shutdown();server.server_close()

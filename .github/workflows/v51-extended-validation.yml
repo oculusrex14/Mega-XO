@@ -1,0 +1,173 @@
+name: V5.1 isolated service and platform validation
+on:
+  push:
+    branches: ['feat/v5.1-bot-ai-tutorial']
+    paths: ['.github/workflows/v51-extended-validation.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: v51-extended-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  disposable-services:
+    if: github.ref == 'refs/heads/feat/v5.1-bot-ai-tutorial'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: mirror.gcr.io/library/postgres:16@sha256:ca0bd484cb98bf4b24eb1010e73fb3fcbd6714d240fbc1a10eea5b7dbecb641d
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_DB: postgres
+          POSTGRES_HOST_AUTH_METHOD: trust
+        ports: ['127.0.0.1:5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres -q"
+          --health-interval 5s --health-timeout 5s --health-retries 24
+      redis:
+        image: mirror.gcr.io/library/redis:7.4@sha256:4fa24486b8bcca8eec45ee0eb166edc674795e53a2b53d1a9ef263eecebaac85
+        ports: ['127.0.0.1:6379:6379']
+        options: --health-cmd "redis-cli ping" --health-interval 5s --health-timeout 3s --health-retries 20
+    env:
+      V5_TARGET: test
+      V5_PG_URL: postgres://postgres@127.0.0.1:5432/postgres
+      V5_PG_DISPOSABLE: '1'
+      V5_PG_REQUIRED: '1'
+      V5_MIGRATE_ALLOW_INSECURE_LOOPBACK: '1'
+      V5_REDIS_REQUIRED: '1'
+      V5_REDIS_DISPOSABLE: '1'
+      REDIS_URL: redis://127.0.0.1:6379
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '24'
+      - run: npm ci
+      - name: Prepare only disposable loopback databases
+        run: |
+          set -euo pipefail
+          for name in v5_migrations v5_p03_authority v5_p05_api v5_p06_auth v5_p07_queue v5_p08_bridge v5_p08_core v5_p08_redis v5_p10_tournaments v5_p12_wallet v5_p13_jobs v5_p14_profile v5_p15_commerce v5_p15_ad_storage v5_p19_staging_release v5_p11_community; do
+            psql "$V5_PG_URL" -v ON_ERROR_STOP=1 -c "CREATE DATABASE $name;"
+          done
+      - name: Execute database, economy, auth, queue and abuse suites without service skips
+        run: |
+          set -o pipefail
+          mkdir -p .artifacts/v51-extended
+          node --test --test-reporter=tap --test-concurrency=1 --test-force-exit tests/v5-migrations.test.js tests/v5-pg-guards.test.js tests/v5-p0*.test.js tests/v5-p1*.test.js tests/v5-p2*.test.js 2>&1 | tee .artifacts/v51-extended/postgresql.log
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: v51-disposable-service-evidence
+          path: .artifacts/v51-extended
+          retention-days: 7
+          if-no-files-found: warn
+  browsers:
+    if: github.ref == 'refs/heads/feat/v5.1-bot-ai-tutorial'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [firefox, webkit]
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: '3.12'
+      - run: |
+          python3 -m pip install playwright==1.57.0
+          python3 -m playwright install --with-deps ${{ matrix.browser }}
+      - name: Four-theme tutorial with actual HTTP reload
+        env:
+          MEGA_BROWSER: ${{ matrix.browser }}
+        run: python3 tests/bot/tutorial-browser.py
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: v51-${{ matrix.browser }}-tutorial
+          path: .artifacts/v51
+          retention-days: 7
+          if-no-files-found: warn
+  android:
+    if: github.ref == 'refs/heads/feat/v5.1-bot-ai-tutorial'
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '24'
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools
+      - run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.13'
+      - run: gradle -p native/android :app:assembleDebug :app:testDebugUnitTest --no-daemon --stacktrace
+      - name: Assert original offline permission boundary and exact bundle
+        run: |
+          set -euo pipefail
+          mkdir -p .artifacts/v51-native
+          apk=native/android/app/build/outputs/apk/debug/app-debug.apk
+          test -s "$apk"
+          if "$ANDROID_HOME/build-tools/35.0.0/aapt" dump permissions "$apk" | grep -E 'android.permission.INTERNET|com.google.android.gms.permission.AD_ID'; then exit 1; fi
+          unzip -p "$apk" assets/mega/client-bundle.manifest.json > .artifacts/v51-native/android-manifest.json
+          sha256sum "$apk" > .artifacts/v51-native/apk-sha256.txt
+          if [ -e /dev/kvm ]; then sudo chmod 666 /dev/kvm; fi
+      - uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          disable-animations: true
+          script: APK_PATH="$GITHUB_WORKSPACE/native/android/app/build/outputs/apk/debug/app-debug.apk" SCREENSHOT_DIR="$GITHUB_WORKSPACE/.artifacts/v51-native/smoke" bash scripts/v5/native-smoke-android.sh
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: v51-android-validation-evidence
+          path: .artifacts/v51-native
+          retention-days: 7
+          if-no-files-found: warn
+  ios:
+    if: github.ref == 'refs/heads/feat/v5.1-bot-ai-tutorial'
+    runs-on: macos-15
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '24'
+      - name: Compile existing unsigned simulator host
+        run: |
+          xcodebuild -project native/ios/MegaXO.xcodeproj -scheme MegaXO -configuration Debug -sdk iphonesimulator -derivedDataPath "$RUNNER_TEMP/mega-v51-ios" CODE_SIGNING_ALLOWED=NO build
+      - name: Verify bundled source and offline first launch
+        run: |
+          set -euo pipefail
+          mkdir -p .artifacts/v51-native
+          app="$RUNNER_TEMP/mega-v51-ios/Build/Products/Debug-iphonesimulator/MegaXO.app"
+          test -s "$app/MegaClient/bundle-index.html"
+          cp "$app/MegaClient/client-bundle.manifest.json" .artifacts/v51-native/ios-manifest.json
+          xcrun simctl list devices available --json > .artifacts/v51-native/simulator-devices.json
+          udid="$(node -e 'const fs=require("node:fs");const devices=Object.values(JSON.parse(fs.readFileSync(process.argv[1])).devices).flat();const device=devices.find(d=>d.isAvailable&&/^iPhone/.test(d.name));if(!device)process.exit(5);process.stdout.write(device.udid)' .artifacts/v51-native/simulator-devices.json)"
+          xcrun simctl boot "$udid"
+          xcrun simctl bootstatus "$udid" -b
+          xcrun simctl install "$udid" "$app"
+          xcrun simctl io "$udid" screenshot .artifacts/v51-native/home.png
+          xcrun simctl launch "$udid" online.megaxo.prototype
+          sleep 7
+          xcrun simctl io "$udid" screenshot .artifacts/v51-native/first-launch.png
+          swift scripts/v5/verify-ios-launch.swift .artifacts/v51-native/home.png .artifacts/v51-native/first-launch.png
+          xcrun simctl shutdown "$udid"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: v51-ios-validation-evidence
+          path: .artifacts/v51-native
+          retention-days: 7
+          if-no-files-found: warn

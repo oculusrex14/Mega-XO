@@ -1,0 +1,44 @@
+/* Mega XO P21 website shell — draft. Does not modify gameplay theme variables. */
+:root {
+  --mx-web-canvas: #070f23;
+  --mx-web-header: #050a18;
+  --mx-web-panel: #0b1429;
+  --mx-web-panel-elevated: #111d36;
+  --mx-web-border: #28446e;
+  --mx-web-text: #f6f8ff;
+  --mx-web-muted: #b9cbe6;
+  --mx-web-blue: #1e85ff;
+  --mx-web-cyan: #23d8ff;
+  --mx-web-violet: #7657ff;
+  --mx-web-purple: #bf4ef8;
+  --mx-web-pink: #ff58ad;
+  --mx-web-gold: #f7b637;
+  --mx-web-logo-teal: #0ee3d5;
+  --mx-web-logo-pink: #ef2b90;
+  --mx-web-headline-gradient: linear-gradient(90deg,#23d8ff 0%,#1e85ff 44%,#bf4ef8 100%);
+  --mx-web-action-gradient: linear-gradient(100deg,#069ffd 0%,#486cff 52%,#c149ef 100%);
+  --mx-web-rank-gradient: linear-gradient(90deg,#1e85ff,#bf4ef8);
+  --mx-web-panel-radius: 20px;
+  --mx-web-button-radius: 28px;
+  --mx-web-focus: #c4e8ff;
+  --mx-web-neon-stroke: 1px solid rgba(34,147,255,.65);
+  --mx-web-neon-glow: 0 0 0 1px rgba(16,129,255,.55),0 0 14px rgba(0,140,255,.37),0 0 35px rgba(93,52,255,.13);
+  --mx-web-sans: 'Space Grotesk',ui-sans-serif,system-ui,-apple-system,'Segoe UI',sans-serif;
+  --mx-web-mono: 'IBM Plex Mono',ui-monospace,SFMono-Regular,Consolas,monospace;
+}
+.mx-web-shell {
+  color-scheme: dark;
+  color: var(--mx-web-text);
+  background: var(--mx-web-canvas);
+  font-family: var(--mx-web-sans);
+  font-size: 16px;
+  isolation: isolate;
+}
+.mx-web-shell :focus-visible { outline: 3px solid var(--mx-web-focus); outline-offset: 3px; }
+.mx-web-shell .mx-web-headline { font-size: clamp(2.75rem,5.2vw,5.25rem); line-height: 1.01; font-weight: 700; letter-spacing: -.047em; }
+.mx-web-shell .mx-web-headline-accent { background: var(--mx-web-headline-gradient); background-clip: text; -webkit-background-clip: text; color: transparent; }
+.mx-web-shell .mx-web-panel { background: rgba(11,20,41,.80); border: 1px solid rgba(54,108,172,.72); border-radius: var(--mx-web-panel-radius); box-shadow: inset 0 1px 0 rgba(191,219,255,.06); }
+.mx-web-shell .mx-web-cta { color: #fff; background: var(--mx-web-action-gradient); border: 1px solid rgba(141,219,255,.85); border-radius: var(--mx-web-button-radius); box-shadow: 0 0 17px rgba(13,131,255,.33), 0 0 29px rgba(112,57,254,.24); }
+.mx-web-shell .mx-web-board-active { border-color: var(--mx-web-cyan); box-shadow: var(--mx-web-neon-glow); }
+.mx-web-shell .mx-web-telemetry { font-family: var(--mx-web-mono); font-variant-numeric: tabular-nums; }
+@media (prefers-reduced-motion: reduce) { .mx-web-shell *, .mx-web-shell *::before, .mx-web-shell *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; } }

@@ -1,0 +1,108 @@
+{
+  "$schema": "https://design-tokens.github.io/community-group/format/",
+  "name": "Mega XO website shell",
+  "version": "0.1.0-draft",
+  "status": "provisional — requires visual approval",
+  "color": {
+    "canvas": {
+      "$value": "#070F23"
+    },
+    "header": {
+      "$value": "#050A18"
+    },
+    "panel": {
+      "$value": "#0B1429"
+    },
+    "panelElevated": {
+      "$value": "#111D36"
+    },
+    "border": {
+      "$value": "#28446E"
+    },
+    "text": {
+      "$value": "#F6F8FF"
+    },
+    "muted": {
+      "$value": "#B9CBE6"
+    },
+    "blue": {
+      "$value": "#1E85FF"
+    },
+    "cyan": {
+      "$value": "#23D8FF"
+    },
+    "violet": {
+      "$value": "#7657FF"
+    },
+    "purple": {
+      "$value": "#BF4EF8"
+    },
+    "pink": {
+      "$value": "#FF58AD"
+    },
+    "gold": {
+      "$value": "#F7B637"
+    },
+    "logoTeal": {
+      "$value": "#0EE3D5"
+    },
+    "logoPink": {
+      "$value": "#EF2B90"
+    }
+  },
+  "radius": {
+    "pill": {
+      "$value": "999px"
+    },
+    "button": {
+      "$value": "28px"
+    },
+    "card": {
+      "$value": "20px"
+    },
+    "miniboard": {
+      "$value": "12px"
+    }
+  },
+  "type": {
+    "sans": {
+      "$value": "Space Grotesk, sans-serif"
+    },
+    "mono": {
+      "$value": "IBM Plex Mono, ui-monospace, monospace"
+    }
+  },
+  "layout": {
+    "desktopMax": {
+      "$value": "1720px"
+    },
+    "navHeight": {
+      "$value": "70px"
+    },
+    "heroRailGap": {
+      "$value": "32px"
+    }
+  },
+  "gradients": {
+    "headline": {
+      "$value": "linear-gradient(90deg,#23D8FF 0%,#1E85FF 44%,#BF4EF8 100%)"
+    },
+    "action": {
+      "$value": "linear-gradient(100deg,#069FFD 0%,#486CFF 52%,#C149EF 100%)"
+    },
+    "rankProgress": {
+      "$value": "linear-gradient(90deg,#1E85FF,#BF4EF8)"
+    }
+  },
+  "motion": {
+    "short": {
+      "$value": "120ms"
+    },
+    "standard": {
+      "$value": "220ms"
+    },
+    "ambient": {
+      "$value": "9s"
+    }
+  }
+}

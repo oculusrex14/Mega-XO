@@ -53,6 +53,14 @@ try:
    page.wait_for_timeout(1250)
    assert page.evaluate('MegaXO.getState().moves.length')==1
    assert page.locator('#clock').inner_text()=='30s'
+   page.locator('#guidedPractice summary').click()
+   page.locator('[data-tutor="replay"]').click()
+   assert page.evaluate('MegaXO.getState().moves.length')==1
+   assert page.evaluate('document.activeElement.id')=='guidedCaption'
+   page.evaluate("Object.defineProperty(document,'hidden',{configurable:true,get:()=>true});document.dispatchEvent(new Event('visibilitychange'))")
+   page.locator('[data-tutor="continue"]').dispatch_event('click')
+   assert page.evaluate('MegaXO.getState().moves.length')==1
+   page.evaluate("delete document.hidden;document.dispatchEvent(new Event('visibilitychange'))")
    if theme=='vector':
     if INLINE:
      saved=page.evaluate('localStorage.data');page.close();page=load_page(context,saved)
@@ -89,11 +97,11 @@ try:
    assert page.locator('#board .cell:not(:disabled)').count()==81
    page.evaluate("()=>{const b=document.createElement('button');b.dataset.action='rematch';document.body.append(b);b.click();b.remove();}")
    assert page.evaluate("MegaXO.getTutorial().phase==='PROMPT' && MegaXO.getState().turn==='X'")
-   results.append({'theme':theme,'passed':True,'cases':['objective','initial-prompt-save','wrong-tap','keyboard','ack-pause','six-move-route','69-legal-handoff','real-Beginner','no-normal-stats','explicit-restart','skip','practice-rematch-X','44px-controls','no-horizontal-overflow']})
+   results.append({'theme':theme,'passed':True,'cases':['objective','initial-prompt-save','wrong-tap','keyboard','ack-pause','replay-focus-no-move','simulated-hidden-ack-gate','six-move-route','69-legal-handoff','real-Beginner','no-normal-stats','explicit-restart','skip','practice-rematch-X','44px-controls','no-horizontal-overflow']})
    context.close()
   browser.close()
  assert not errors,errors
- report={'engine':'headless '+browser_name,'browserVersion':browser_version,'delivery':'inline fixture with restored storage' if INLINE else 'HTTP static client','physicalDevices':False,'results':results,'pageErrors':errors,'limitations':['No physical Android or iOS WebView, Safari, assistive-technology user or moderated beta participant tested.','Local speech may be unavailable; mandatory captions and disabled narration fallback verified.']}
+ report={'engine':'headless '+browser_name,'browserVersion':browser_version,'delivery':'inline fixture with restored storage' if INLINE else 'HTTP static client','physicalDevices':False,'results':results,'pageErrors':errors,'limitations':['No physical Android or iOS WebView, Safari, assistive-technology user or moderated beta participant tested.','Hidden document state is simulated; physical process-death is not claimed.','Local speech may be unavailable; mandatory captions and disabled narration fallback verified.']}
  (OUT/'tutorial-browser.json').write_text(json.dumps(report,indent=2)+'\n')
  print(json.dumps(report,indent=2))
 finally:server.shutdown();server.server_close()

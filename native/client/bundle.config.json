@@ -25,50 +25,149 @@
     "src/monetization.css"
   ],
   "legal_pages": [
-    { "source": "public/privacy.html", "destination": "privacy.html" },
-    { "source": "public/terms.html", "destination": "terms.html" },
-    { "source": "public/support.html", "destination": "support.html" },
-    { "source": "public/privacy-choices.html", "destination": "privacy-choices.html" },
-    { "source": "public/delete-account.html", "destination": "delete-account.html" }
+    {
+      "source": "public/privacy.html",
+      "destination": "privacy.html"
+    },
+    {
+      "source": "public/terms.html",
+      "destination": "terms.html"
+    },
+    {
+      "source": "public/support.html",
+      "destination": "support.html"
+    },
+    {
+      "source": "public/privacy-choices.html",
+      "destination": "privacy-choices.html"
+    },
+    {
+      "source": "public/delete-account.html",
+      "destination": "delete-account.html"
+    }
   ],
   "legal_styles": [
-    { "source": "public/legal.css", "destination": "legal.css" }
+    {
+      "source": "public/legal.css",
+      "destination": "legal.css"
+    }
   ],
   "vendor_root": "assets/vendor",
-  "vendor_exclude": ["assets/vendor/fonts/google-fonts.source.css"],
+  "vendor_exclude": [
+    "assets/vendor/fonts/google-fonts.source.css"
+  ],
   "vendor_font_css": "assets/vendor/fonts/google-fonts.source.css",
   "vendor_font_css_url": "https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600&family=Space+Grotesk:wght@500;600;700&family=Caveat:wght@600;700&family=Patrick+Hand&family=Orbitron:wght@600;800&family=Chakra+Petch:wght@400;500;600;700&family=Share+Tech+Mono&display=swap",
   "vendor_licenses": [
-    { "path": "assets/vendor/lucide/LICENSE", "url": "https://unpkg.com/lucide@0.468.0/LICENSE", "name": "Lucide", "spdx": "ISC" },
-    { "path": "assets/vendor/fonts/caveat/OFL.txt", "url": "https://raw.githubusercontent.com/google/fonts/main/ofl/caveat/OFL.txt", "name": "Caveat", "spdx": "OFL-1.1" },
-    { "path": "assets/vendor/fonts/chakrapetch/OFL.txt", "url": "https://raw.githubusercontent.com/google/fonts/main/ofl/chakrapetch/OFL.txt", "name": "Chakra Petch", "spdx": "OFL-1.1" },
-    { "path": "assets/vendor/fonts/ibmplexmono/OFL.txt", "url": "https://raw.githubusercontent.com/google/fonts/main/ofl/ibmplexmono/OFL.txt", "name": "IBM Plex Mono", "spdx": "OFL-1.1" },
-    { "path": "assets/vendor/fonts/orbitron/OFL.txt", "url": "https://raw.githubusercontent.com/google/fonts/main/ofl/orbitron/OFL.txt", "name": "Orbitron", "spdx": "OFL-1.1" },
-    { "path": "assets/vendor/fonts/patrickhand/OFL.txt", "url": "https://raw.githubusercontent.com/google/fonts/main/ofl/patrickhand/OFL.txt", "name": "Patrick Hand", "spdx": "OFL-1.1" },
-    { "path": "assets/vendor/fonts/sharetechmono/OFL.txt", "url": "https://raw.githubusercontent.com/google/fonts/main/ofl/sharetechmono/OFL.txt", "name": "Share Tech Mono", "spdx": "OFL-1.1" },
-    { "path": "assets/vendor/fonts/spacegrotesk/OFL.txt", "url": "https://raw.githubusercontent.com/google/fonts/main/ofl/spacegrotesk/OFL.txt", "name": "Space Grotesk", "spdx": "OFL-1.1" }
+    {
+      "path": "assets/vendor/lucide/LICENSE",
+      "url": "https://unpkg.com/lucide@0.468.0/LICENSE",
+      "name": "Lucide",
+      "spdx": "ISC"
+    },
+    {
+      "path": "assets/vendor/fonts/caveat/OFL.txt",
+      "url": "https://raw.githubusercontent.com/google/fonts/main/ofl/caveat/OFL.txt",
+      "name": "Caveat",
+      "spdx": "OFL-1.1"
+    },
+    {
+      "path": "assets/vendor/fonts/chakrapetch/OFL.txt",
+      "url": "https://raw.githubusercontent.com/google/fonts/main/ofl/chakrapetch/OFL.txt",
+      "name": "Chakra Petch",
+      "spdx": "OFL-1.1"
+    },
+    {
+      "path": "assets/vendor/fonts/ibmplexmono/OFL.txt",
+      "url": "https://raw.githubusercontent.com/google/fonts/main/ofl/ibmplexmono/OFL.txt",
+      "name": "IBM Plex Mono",
+      "spdx": "OFL-1.1"
+    },
+    {
+      "path": "assets/vendor/fonts/orbitron/OFL.txt",
+      "url": "https://raw.githubusercontent.com/google/fonts/main/ofl/orbitron/OFL.txt",
+      "name": "Orbitron",
+      "spdx": "OFL-1.1"
+    },
+    {
+      "path": "assets/vendor/fonts/patrickhand/OFL.txt",
+      "url": "https://raw.githubusercontent.com/google/fonts/main/ofl/patrickhand/OFL.txt",
+      "name": "Patrick Hand",
+      "spdx": "OFL-1.1"
+    },
+    {
+      "path": "assets/vendor/fonts/sharetechmono/OFL.txt",
+      "url": "https://raw.githubusercontent.com/google/fonts/main/ofl/sharetechmono/OFL.txt",
+      "name": "Share Tech Mono",
+      "spdx": "OFL-1.1"
+    },
+    {
+      "path": "assets/vendor/fonts/spacegrotesk/OFL.txt",
+      "url": "https://raw.githubusercontent.com/google/fonts/main/ofl/spacegrotesk/OFL.txt",
+      "name": "Space Grotesk",
+      "spdx": "OFL-1.1"
+    }
   ],
   "vendor_scripts": [
-    { "source": "assets/vendor/lucide/lucide.min.js", "destination": "vendor/lucide/lucide.min.js", "url": "https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js", "name": "lucide", "version": "0.468.0" }
+    {
+      "source": "assets/vendor/lucide/lucide.min.js",
+      "destination": "vendor/lucide/lucide.min.js",
+      "url": "https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js",
+      "name": "lucide",
+      "version": "0.468.0"
+    }
   ],
   "index_rewrites": {
     "https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js": "vendor/lucide/lucide.min.js",
     "https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600&family=Space+Grotesk:wght@500;600;700&family=Caveat:wght@600;700&family=Patrick+Hand&family=Orbitron:wght@600;800&family=Chakra+Petch:wght@400;500;600;700&family=Share+Tech+Mono&display=swap": "vendor/fonts/fonts.css"
   },
   "index_dependency_links": [
-    { "rel": "preconnect", "href": "https://fonts.googleapis.com" },
-    { "rel": "preconnect", "href": "https://fonts.gstatic.com" }
+    {
+      "rel": "preconnect",
+      "href": "https://fonts.googleapis.com"
+    },
+    {
+      "rel": "preconnect",
+      "href": "https://fonts.gstatic.com"
+    }
   ],
   "local_route_rewrites": [
-    { "from": "/privacy-choices", "to": "privacy-choices.html" },
-    { "from": "/delete-account", "to": "delete-account.html" },
-    { "from": "/privacy", "to": "privacy.html" },
-    { "from": "/support", "to": "support.html" },
-    { "from": "/terms", "to": "terms.html" },
-    { "from": "/public/legal.css", "to": "legal.css" },
-    { "from": "/", "to": "bundle-index.html" }
+    {
+      "from": "/privacy-choices",
+      "to": "privacy-choices.html"
+    },
+    {
+      "from": "/delete-account",
+      "to": "delete-account.html"
+    },
+    {
+      "from": "/privacy",
+      "to": "privacy.html"
+    },
+    {
+      "from": "/support",
+      "to": "support.html"
+    },
+    {
+      "from": "/terms",
+      "to": "terms.html"
+    },
+    {
+      "from": "/public/legal.css",
+      "to": "legal.css"
+    },
+    {
+      "from": "/",
+      "to": "bundle-index.html"
+    }
   ],
-  "allowed_source_prefixes": ["index.html", "src/", "public/", "assets/vendor/"],
+  "allowed_source_prefixes": [
+    "index.html",
+    "src/",
+    "public/",
+    "assets/vendor/",
+    "assets/p21/logos/"
+  ],
   "forbidden_source_prefixes": [
     "src/authority.js",
     "server/",
@@ -95,5 +194,46 @@
     "AGENT-GOAL.md",
     "README.md"
   ],
-  "forbidden_destination_segments": ["authority", "server", "credential", "secret", ".git", ".env"]
+  "forbidden_destination_segments": [
+    "authority",
+    "server",
+    "credential",
+    "secret",
+    ".git",
+    ".env"
+  ],
+  "client_assets": [
+    {
+      "source": "assets/p21/logos/mega-xoxo-vector-app.webp",
+      "destination": "assets/p21/logos/mega-xoxo-vector-app.webp"
+    },
+    {
+      "source": "assets/p21/logos/mega-xoxo-vector-mark.webp",
+      "destination": "assets/p21/logos/mega-xoxo-vector-mark.webp"
+    },
+    {
+      "source": "assets/p21/logos/mega-xoxo-midnight-app.webp",
+      "destination": "assets/p21/logos/mega-xoxo-midnight-app.webp"
+    },
+    {
+      "source": "assets/p21/logos/mega-xoxo-midnight-mark.webp",
+      "destination": "assets/p21/logos/mega-xoxo-midnight-mark.webp"
+    },
+    {
+      "source": "assets/p21/logos/mega-xoxo-paperclub-app.webp",
+      "destination": "assets/p21/logos/mega-xoxo-paperclub-app.webp"
+    },
+    {
+      "source": "assets/p21/logos/mega-xoxo-paperclub-mark.webp",
+      "destination": "assets/p21/logos/mega-xoxo-paperclub-mark.webp"
+    },
+    {
+      "source": "assets/p21/logos/mega-xoxo-afterhours-app.webp",
+      "destination": "assets/p21/logos/mega-xoxo-afterhours-app.webp"
+    },
+    {
+      "source": "assets/p21/logos/mega-xoxo-afterhours-mark.webp",
+      "destination": "assets/p21/logos/mega-xoxo-afterhours-mark.webp"
+    }
+  ]
 }

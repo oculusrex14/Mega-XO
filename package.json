@@ -30,7 +30,11 @@
     "db:maintenance": "node scripts/db-maintenance.js",
     "test:db-growth": "node scripts/db-growth-smoke.js",
     "mail:audit": "node scripts/mail-domain-audit.js",
-    "abuse:audit": "node --test tests/p1-abuse-acceptance.test.js tests/competitive-abuse.test.js tests/abuse-guard.test.js"
+    "abuse:audit": "node --test tests/p1-abuse-acceptance.test.js tests/competitive-abuse.test.js tests/abuse-guard.test.js",
+    "web:build": "node scripts/p21/build-web.js",
+    "web:preview": "node scripts/p21/serve-web.js",
+    "web:qa": "node scripts/p21/browser-qa.cjs",
+    "test:web": "node --test tests/v5-p21-*.test.js"
   },
   "author": "Antimatter Innovations <contact@antimatterinnovations.com>",
   "dependencies": {

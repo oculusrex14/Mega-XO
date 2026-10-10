@@ -1,0 +1,178 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": null,
+  "installCommand": "true",
+  "buildCommand": "node ../../scripts/p21/build-web.js --output apps/web/dist",
+  "outputDirectory": "dist",
+  "git": {
+    "deploymentEnabled": false
+  },
+  "redirects": [
+    {
+      "source": "/game",
+      "destination": "/game/",
+      "permanent": true
+    }
+  ],
+  "rewrites": [
+    {
+      "source": "/game/",
+      "destination": "/game/index.html"
+    },
+    {
+      "source": "/legal/privacy",
+      "destination": "/legal/privacy.html"
+    },
+    {
+      "source": "/legal/terms",
+      "destination": "/legal/terms.html"
+    },
+    {
+      "source": "/legal/support",
+      "destination": "/legal/support.html"
+    },
+    {
+      "source": "/legal/delete-account",
+      "destination": "/legal/delete-account.html"
+    },
+    {
+      "source": "/legal/privacy-choices",
+      "destination": "/legal/privacy-choices.html"
+    },
+    {
+      "source": "/play",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/casual",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/ranked",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/tournaments",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/season",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/friends",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/challenge",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/leaderboard",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/rewards",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/themes",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/profile",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/settings",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/account",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/how-to-play",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/support",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/about",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/privacy",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/terms",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/delete-account",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/privacy-choices",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/help",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/news",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/status",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/accessibility",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/offline",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/404",
+      "destination": "/index.html"
+    }
+  ],
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "Referrer-Policy",
+          "value": "strict-origin-when-cross-origin"
+        },
+        {
+          "key": "X-Frame-Options",
+          "value": "DENY"
+        },
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, nofollow"
+        },
+        {
+          "key": "Cache-Control",
+          "value": "no-cache"
+        },
+        {
+          "key": "Content-Security-Policy",
+          "value": "default-src 'self'; script-src 'self' https://unpkg.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'"
+        }
+      ]
+    }
+  ]
+}

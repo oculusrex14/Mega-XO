@@ -1,0 +1,327 @@
+{
+  "schema_version": 1,
+  "created_on": "2026-10-11",
+  "owner": "Antimatter Innovations",
+  "request": "Owner's V5.1 website reference reconstruction",
+  "generation_tool": "built-in image_gen",
+  "model": "not exposed by tool",
+  "seed": "not exposed by tool",
+  "reference": "assets/p21/reference/homepage-generated-image-1.png",
+  "rights_note": "Owner-directed generated supporting artwork. Source reference supplied by owner; no third-party art pack. This records provenance, not trademark or legal clearance.",
+  "assets": [
+    {
+      "id": "P21-BG-001",
+      "source": "assets/p21/art/hero-source.png",
+      "exports": [
+        "assets/p21/art/hero-wide.webp",
+        "assets/p21/art/hero-small.webp"
+      ],
+      "prompt": "Create a production website BACKGROUND PLATE, a new standalone landscape illustration styled to match the supplied Mega XO website reference. Output a wide 16:9 high resolution image. Absolutely NO TEXT, letters, numbers, logos, user interface, tic tac toe marks, board, icons, buttons, badges, people or devices. Just an atmospheric cinematic alien mountain valley at night. Near-black navy sky occupying top 55 percent, very subtle sparse blue stars. Left and right jagged rocky mountain silhouettes framing a receding valley, cobalt illuminated rock edges. A luminous blue horizon and purple mist along the bottom 35 percent, streaks of cyan light running gently through the rocky valley floor; darker foreground. Keep center and upper left extremely dark with restrained detail so bright website text remains readable. Purple glow toward left, cobalt blue glow toward right, a tiny violet planet low behind right ridges. Premium polished fantasy esports artwork, photoreal painterly 3D rendered rocks, not cartoon. Match reference colors #030917 #06122c #103982 #34216c, tasteful light emission. Preserve exact mood/composition of reference mountainous background but remove all foreground site elements. This is supporting artwork, not an edit target. Save the image as a project asset.",
+      "role": "Clean mountain/starfield background; no UI baked into plate",
+      "alpha": false,
+      "fallback": "Static WebP; CSS responsive crop; no motion/video required to render"
+    },
+    {
+      "id": "P21-ART-001",
+      "source": "assets/p21/art/trophy-source.png",
+      "exports": [
+        "assets/p21/art/trophy.webp"
+      ],
+      "prompt": "Supporting production website illustration. A single magnificent gold esports championship trophy, symmetrical wide handled polished metal cup with a dimensional five pointed star on its front, flanked by small angular golden laurel blades. Black and gold geometric pedestal. Three-quarter very slight low angle, trophy fully visible with generous transparent margin. Highly detailed photoreal cinematic 3D render with warm gold highlights and subtle glints and gold dust at base. Dark reflected surfaces for integration on a near black navy background. Match the golden trophy depicted in bottom-left feature card of supplied website visual reference. NO TEXT, logo, letters, UI, numbers, watermark, no landscape. Output genuine transparent background cutout and do not bake black backdrop. One trophy isolated, near square aspect.",
+      "role": "Decorative Ranked/Tournament trophy cutout",
+      "alpha": true,
+      "fallback": "Static WebP"
+    },
+    {
+      "id": "P21-RANK-ART-001",
+      "source": "assets/p21/art/crystal-source.png",
+      "exports": [
+        "assets/p21/art/crystal.webp"
+      ],
+      "prompt": "A single premium blue and violet crystal esports rank emblem, as close as possible to the decorative diamond rank crest in the right-hand panel of the provided reference website image. Transparent background, full emblem centered and isolated with margin, no text, no UI, no numbers, no other objects. Symmetric angular silver-blue wings on left and right, layered beveled blue shield frame shaped like a long diamond pointing down, a faceted glowing violet blue diamond gemstone in the very center, smaller pointed icy blue spire above. Strong cyan beveled edges, indigo shadows, luminous violet core, cinematic polished photoreal 3D videogame badge. Front-on orthographic view. Crisp exact geometric silhouette, high-detail metallic bevels, jewel facets and restrained glow. This is only a decorative illustrative emblem, not an alternate game rank or new product tier. Genuine alpha-transparent PNG cutout.",
+      "role": "Decorative crystal emblem; does not identify a guest as Diamond or create a subdivision",
+      "alpha": true,
+      "fallback": "Static WebP"
+    },
+    {
+      "id": "P21-ART-002",
+      "source": "assets/p21/art/devices-source.png",
+      "exports": [
+        "assets/p21/art/devices.webp"
+      ],
+      "prompt": "Production website illustration for a cross-platform gaming feature card: a premium silver laptop, a black tablet in front lower left, and a slim smartphone on the right. Three devices resting on a dark rocky reflective surface, mostly front-on with slight 3/4 angle. Laptop behind is tallest, tablet landscape half height laptop, smartphone portrait. Screens show a deep navy blue purple starfield with large glowing cyan X and pink O symbols only, no letters, words, numbers, branded operating systems or UI. Cinematic polished photoreal 3D studio render, blue purple reflected edge lighting. Match the device trio in bottom-middle card of the provided Mega XO screenshot. Isolated devices with a small grounding reflection, genuine transparent background, horizontal aspect ratio, no external landscape. No text, no watermark, no logo words. Supporting decorative artwork for website, devices fully in frame.",
+      "role": "Decorative device trio with abstract X/O art; not actual app screenshots",
+      "alpha": true,
+      "fallback": "Static WebP"
+    }
+  ],
+  "font_sources": [
+    {
+      "family": "Space Grotesk",
+      "source": "https://github.com/floriankarsten/space-grotesk",
+      "license": "assets/p21/fonts/Space-Grotesk-OFL.txt"
+    },
+    {
+      "family": "IBM Plex Mono",
+      "source": "https://github.com/IBM/plex",
+      "license": "assets/p21/fonts/IBM-Plex-Mono-OFL.txt"
+    },
+    {
+      "families": [
+        "Caveat",
+        "Patrick Hand",
+        "Chakra Petch",
+        "Orbitron"
+      ],
+      "source": "Existing assets/vendor/fonts positive allowlist (Latin subsets)",
+      "licenses": "assets/p21/fonts/*-OFL.txt"
+    }
+  ],
+  "logo_exports": {
+    "source": "Official owner-provided horizontal and emblem PNGs; assets/p21/logos/",
+    "exports": [
+      "assets/p21/art/header.webp",
+      "assets/p21/art/mark.webp"
+    ],
+    "method": "Deterministic alpha-bounds crop and downsize; originals unchanged"
+  },
+  "open": [
+    "No editable EXR/PSD/GLB masters or independent landscape foreground layers; generated PNG masters are retained.",
+    "No production video/audio/3D assets or proof of all 11 rank emblems; remain open in master checklist.",
+    "Owner visual sign-off, physical-device/browser review, live API/cross-platform acceptance and deployment remain separate."
+  ],
+  "file_inventory": [
+    {
+      "path": "assets/p21/art/crystal-source.png",
+      "bytes": 1264046,
+      "sha256": "7982a68dc77f7c219ae576c4b7c924690bc2424da63c5743dc8cd72dfc7148b8",
+      "dimensions": [
+        1474,
+        1067
+      ],
+      "mode": "RGBA",
+      "color_space": "sRGB output",
+      "alpha_bounds": [
+        0,
+        255
+      ]
+    },
+    {
+      "path": "assets/p21/art/crystal.webp",
+      "bytes": 42372,
+      "sha256": "c62ad97cb7788ffed3336cbefd72c85063b93065fb9b0c1d8e0a837dfcc5b48c",
+      "dimensions": [
+        480,
+        347
+      ],
+      "mode": "RGBA",
+      "color_space": "sRGB output",
+      "alpha_bounds": [
+        0,
+        255
+      ]
+    },
+    {
+      "path": "assets/p21/art/devices-source.png",
+      "bytes": 2004407,
+      "sha256": "d655387e569809517aa9331b11da47349a16656568198c945ed415d1fb19b982",
+      "dimensions": [
+        1672,
+        941
+      ],
+      "mode": "RGBA",
+      "color_space": "sRGB output",
+      "alpha_bounds": [
+        0,
+        255
+      ]
+    },
+    {
+      "path": "assets/p21/art/devices.webp",
+      "bytes": 75328,
+      "sha256": "c542679ec5df8766517449fff82b96b0edd325f6c0c1997b940d0836df9f2ed5",
+      "dimensions": [
+        640,
+        360
+      ],
+      "mode": "RGBA",
+      "color_space": "sRGB output",
+      "alpha_bounds": [
+        0,
+        255
+      ]
+    },
+    {
+      "path": "assets/p21/art/header.webp",
+      "bytes": 39114,
+      "sha256": "e01604c213f23dbbeb53d4cec6a57fadc8dc8712e8314847d6ac948f1700b207",
+      "dimensions": [
+        640,
+        209
+      ],
+      "mode": "RGBA",
+      "color_space": "sRGB output",
+      "alpha_bounds": [
+        0,
+        255
+      ]
+    },
+    {
+      "path": "assets/p21/art/hero-small.webp",
+      "bytes": 39914,
+      "sha256": "0b49e436001904856ce042c266445fa6c71f7466641bbf0e530502ce6fa36fe7",
+      "dimensions": [
+        836,
+        471
+      ],
+      "mode": "RGB",
+      "color_space": "sRGB output",
+      "alpha_bounds": null
+    },
+    {
+      "path": "assets/p21/art/hero-source.png",
+      "bytes": 1892621,
+      "sha256": "f336109d932886e71823db7daea8c753774652f0925735b20cf107b1157258bb",
+      "dimensions": [
+        1672,
+        941
+      ],
+      "mode": "RGB",
+      "color_space": "sRGB output",
+      "alpha_bounds": null
+    },
+    {
+      "path": "assets/p21/art/hero-wide.webp",
+      "bytes": 137524,
+      "sha256": "5520bcfe9f83dcf515c75dcac4f28ed85401abdfb6c1ac4a708795383ee101b7",
+      "dimensions": [
+        1672,
+        941
+      ],
+      "mode": "RGB",
+      "color_space": "sRGB output",
+      "alpha_bounds": null
+    },
+    {
+      "path": "assets/p21/art/mark.webp",
+      "bytes": 14040,
+      "sha256": "c0144ee525cdb1710bb114524588aff9b7d9adff88eb4dae363e26b6bf71e974",
+      "dimensions": [
+        192,
+        178
+      ],
+      "mode": "RGBA",
+      "color_space": "sRGB output",
+      "alpha_bounds": [
+        0,
+        255
+      ]
+    },
+    {
+      "path": "assets/p21/art/trophy-source.png",
+      "bytes": 1908889,
+      "sha256": "ae98bbc7e643c708a8020f990333fe52d24994f80931ce2d4710f42dfdf8744b",
+      "dimensions": [
+        1254,
+        1254
+      ],
+      "mode": "RGBA",
+      "color_space": "sRGB output",
+      "alpha_bounds": [
+        0,
+        255
+      ]
+    },
+    {
+      "path": "assets/p21/art/trophy.webp",
+      "bytes": 107518,
+      "sha256": "fbd9d225f640869897941edb49208c2334d8d74cefa4f03492bcbf5233f68b7f",
+      "dimensions": [
+        560,
+        560
+      ],
+      "mode": "RGBA",
+      "color_space": "sRGB output",
+      "alpha_bounds": [
+        0,
+        255
+      ]
+    },
+    {
+      "path": "assets/p21/fonts/IBM-Plex-Mono-OFL.txt",
+      "bytes": 4362,
+      "sha256": "d741e57d5f865e294df801f96b7b5161a88b211df65887e4358d271c9fc5fb4f"
+    },
+    {
+      "path": "assets/p21/fonts/Space-Grotesk-OFL.txt",
+      "bytes": 4401,
+      "sha256": "18a4de52385f6b988782639d5d0cc1326e5a8c2de9a7f01d7b20d9aedcc60943"
+    },
+    {
+      "path": "assets/p21/fonts/caveat-OFL.txt",
+      "bytes": 4384,
+      "sha256": "163a2b400e16916ad3196296c946c526d0efce6baf22a2164269ffc62fb9f671"
+    },
+    {
+      "path": "assets/p21/fonts/caveat-Wnz6HAc5bAfYB2Q7ZjYYiAzcPA.woff2",
+      "bytes": 74572,
+      "sha256": "7a0049db01fdd8fc7af7ef36675862a72a5c76d0cb45ae63c9f5b6f1b769dac7"
+    },
+    {
+      "path": "assets/p21/fonts/chakrapetch-OFL.txt",
+      "bytes": 4395,
+      "sha256": "4a1d840eb0b2df8553804d844960a15773ca5af5d5c9803745307db8c617540b"
+    },
+    {
+      "path": "assets/p21/fonts/chakrapetch-cIf6MapbsEk7TDLdtEz1BwkWn6pgar3I1A.woff2",
+      "bytes": 9728,
+      "sha256": "e592818029a919d578974df32686d415d6acd8401bc5420695de41a46eeae426"
+    },
+    {
+      "path": "assets/p21/fonts/chakrapetch-cIflMapbsEk7TDLdtEz1BwkeJI91R5_F_gUk0w.woff2",
+      "bytes": 9868,
+      "sha256": "3c2433eb167176cddcdb3eb2ea306d68c2a4ed4c6e78a0dc07b3853d8f6ae8e3"
+    },
+    {
+      "path": "assets/p21/fonts/chakrapetch-cIflMapbsEk7TDLdtEz1BwkeQI51R5_F_gUk0w.woff2",
+      "bytes": 10040,
+      "sha256": "4d6d5f0b31b3a471a843779c4ecada040e5bc291f96bca9805a94293fe8003fa"
+    },
+    {
+      "path": "assets/p21/fonts/chakrapetch-cIflMapbsEk7TDLdtEz1BwkebIl1R5_F_gUk0w.woff2",
+      "bytes": 9944,
+      "sha256": "adf007cd277ef6dac0c8cecacfb60cc5e24e7c8bcce4db98aa233bd3a88ef5a3"
+    },
+    {
+      "path": "assets/p21/fonts/ibm-plex-mono-latin.woff2",
+      "bytes": 14888,
+      "sha256": "01d285447409c8a588692162439a038b8cbd7871309ee20267b0d2d91c6e8e22"
+    },
+    {
+      "path": "assets/p21/fonts/orbitron-OFL.txt",
+      "bytes": 4425,
+      "sha256": "dd6fdb6716fd179d1fe891759efb3f9200753fdf6abf513b55b712c4ae16e512"
+    },
+    {
+      "path": "assets/p21/fonts/orbitron-yMJRMIlzdpvBhQQL_Qq7dy1biN15.woff2",
+      "bytes": 11768,
+      "sha256": "967b3909a7d6a5cc6365e9947775060fca15efdb62bc70099aef2e7d86e10205"
+    },
+    {
+      "path": "assets/p21/fonts/patrickhand-LDI1apSQOAYtSuYWp8ZhfYe8XsLLubg58w.woff2",
+      "bytes": 14224,
+      "sha256": "42156e008dd5fc3000679ff4e9ba9cbd3f417b6317c6dcbe11a12e9c87a09b28"
+    },
+    {
+      "path": "assets/p21/fonts/patrickhand-OFL.txt",
+      "bytes": 4375,
+      "sha256": "dbf0df430d5997121cc569dbe4f9198f76cf393114438f1f6c80a49f06f029d6"
+    },
+    {
+      "path": "assets/p21/fonts/space-grotesk-latin.woff2",
+      "bytes": 22288,
+      "sha256": "0640890476fc1198ab4de571fb658de443c4d85b66466ec09534a8737ab1ce9d"
+    }
+  ],
+  "font_license_format": "License text preserved; line endings normalized to LF and trailing whitespace removed."
+}

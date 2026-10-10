@@ -1,0 +1,92 @@
+name: P21 V5.1 website validation
+
+# Validation only: no provider credentials, deployment, DNS or authority change.
+on:
+  push:
+    branches: [V5.1]
+    paths:
+      - 'apps/web/**'
+      - 'scripts/p21/**'
+      - 'tests/v5-p21-*.test.js'
+      - 'assets/p21/art/**'
+      - 'assets/p21/fonts/**'
+      - 'assets/p21/logos/**'
+      - 'index.html'
+      - 'src/**'
+      - 'public/**'
+      - '.github/workflows/p21-web.yml'
+  pull_request:
+    branches: [V5.1]
+    paths:
+      - 'apps/web/**'
+      - 'scripts/p21/**'
+      - 'tests/v5-p21-*.test.js'
+      - 'assets/p21/art/**'
+      - 'assets/p21/fonts/**'
+      - 'assets/p21/logos/**'
+      - 'index.html'
+      - 'src/**'
+      - 'public/**'
+      - '.github/workflows/p21-web.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: p21-web-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  static-website:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '24'
+      - name: Verify delivery boundaries and affected website paths
+        run: node --test tests/v5-p21-*.test.js
+      - name: Build reviewed static payload
+        run: node scripts/p21/build-web.js
+      - name: Retain sanitized checksums and route manifest
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: p21-web-manifest-${{ github.sha }}
+          path: .artifacts/p21-web/web-build.manifest.json
+          if-no-files-found: error
+          retention-days: 14
+
+  browser-presentation:
+    needs: static-website
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '24'
+      - name: Install isolated pinned browser tooling
+        run: npm install --prefix .artifacts/p21-browser-qa --no-package-lock --no-save --ignore-scripts playwright@1.62.1 axe-core@4.14.0
+      - name: Install Chromium and system libraries
+        run: .artifacts/p21-browser-qa/node_modules/.bin/playwright install --with-deps chromium
+      - name: Build and verify desktop, tablet and mobile presentation
+        run: node scripts/p21/browser-qa.cjs
+        env:
+          NODE_PATH: ${{ github.workspace }}/.artifacts/p21-browser-qa/node_modules
+      - name: Verify automatic WCAG checks and keyboard interactions
+        run: node scripts/p21/accessibility-qa.cjs
+        env:
+          NODE_PATH: ${{ github.workspace }}/.artifacts/p21-browser-qa/node_modules
+      - name: Retain local presentation report and screenshots
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: p21-web-browser-${{ github.sha }}
+          path: tests-output/p21-web/
+          if-no-files-found: error
+          retention-days: 14

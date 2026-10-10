@@ -1,0 +1,6 @@
+# Isolated research/CI only. Not app/server production dependencies.
+# Install torch==2.10.0 separately from the appropriate official CPU/CUDA index.
+onnx==1.19.1
+onnxruntime==1.23.2
+onnxscript==0.5.6
+numpy==2.2.6

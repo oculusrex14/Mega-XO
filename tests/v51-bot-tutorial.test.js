@@ -8,3 +8,4 @@ require('./bot/worker-entry.test.cjs');
 require('./bot/progress.test.cjs');
 require('./bot/encoding.test.cjs');
 require('./bot/training-data.test.cjs');
+require('./bot/onnx.test.cjs');

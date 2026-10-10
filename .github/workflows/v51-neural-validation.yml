@@ -1,0 +1,64 @@
+name: V5.1 compact model validation
+on:
+  push:
+    branches: ['feat/v5.1-bot-ai-tutorial']
+    paths: ['training/bot/**', 'src/bot/encoding.js', 'src/bot/onnx.js', 'tests/bot/neural-browser.py', '.github/workflows/v51-neural-validation.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: v51-neural-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  validate:
+    if: github.ref == 'refs/heads/feat/v5.1-bot-ai-tutorial'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '24'
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: '3.12'
+      - name: Isolated validation dependencies
+        run: |
+          python3 -m pip install torch==2.10.0 --index-url https://download.pytorch.org/whl/cpu
+          python3 -m pip install -r training/bot/requirements-validation.txt playwright==1.57.0
+          python3 -m playwright install --with-deps chromium
+          npm install --prefix .artifacts/v51/ort --ignore-scripts --no-audit --no-fund onnxruntime-web@1.23.2
+      - name: Canonical records and CPU candidate smoke
+        run: |
+          set -euo pipefail
+          mkdir -p .artifacts/v51
+          python3 training/bot/test_model.py 2>&1 | tee .artifacts/v51/model-tests.log
+          node training/bot/generate.cjs .artifacts/v51/bootstrap.jsonl 24 1000 8 > .artifacts/v51/data-summary.json
+          node training/bot/validate-data.cjs .artifacts/v51/bootstrap.jsonl
+          python3 training/bot/train.py .artifacts/v51/bootstrap.jsonl --output .artifacts/v51/candidate --source-commit "$GITHUB_SHA" --epochs 2 --device cpu > .artifacts/v51/training.log
+      - name: Float, dynamic-batch and INT8 numerical gates
+        run: |
+          set -o pipefail
+          python3 training/bot/export.py .artifacts/v51/candidate .artifacts/v51/bootstrap.jsonl --output .artifacts/v51/export 2>&1 | tee .artifacts/v51/export.log
+      - name: Actual ORT WASM Worker golden inference
+        run: |
+          set -o pipefail
+          python3 tests/bot/neural-browser.py 2>&1 | tee .artifacts/v51/neural-browser.log
+      - name: Keep reports only; no model deployment or public weights
+        if: always()
+        run: |
+          mkdir -p .artifacts/v51/reports
+          find .artifacts/v51 -maxdepth 1 -name '*.log' -exec cp {} .artifacts/v51/reports/ \;
+          test ! -f .artifacts/v51/candidate/training-report.json || cp .artifacts/v51/candidate/training-report.json .artifacts/v51/reports/
+          test ! -f .artifacts/v51/export/export-report.json || cp .artifacts/v51/export/export-report.json .artifacts/v51/reports/
+          test ! -f .artifacts/v51/neural-browser.json || cp .artifacts/v51/neural-browser.json .artifacts/v51/reports/
+          test ! -f .artifacts/v51/bootstrap.jsonl.manifest.json || cp .artifacts/v51/bootstrap.jsonl.manifest.json .artifacts/v51/reports/
+          python3 -m pip freeze > .artifacts/v51/reports/python-packages.txt
+          printf '%s\n' "$GITHUB_SHA" > .artifacts/v51/reports/source-commit.txt
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: v51-neural-validation
+          path: .artifacts/v51/reports
+          if-no-files-found: error
+          retention-days: 7

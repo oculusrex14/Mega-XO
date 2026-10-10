@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "baseCommit": "f8913fd36566f0c96d0b755b1e4e57be1795a266",
+  "branch": "feat/v5.1-bot-ai-tutorial",
+  "productionChanges": false,
+  "initialPhases": {"B00":"PLANNED","B01":"PLANNED","B02":"PLANNED","B03":"PLANNED","B04":"PLANNED","B05":"PLANNED","B06":"PLANNED","B07":"PLANNED"},
+  "phases": {"B00":"IN_PROGRESS","B01":"PARTIAL","B02":"PLANNED","B03":"IN_PROGRESS","B04":"PLANNED","B05":"PLANNED","B06":"PLANNED","B07":"PLANNED"},
+  "resolution": "Every task inherits defaults, then its checkpoint evidence, then task-specific values. Null commit means not yet recorded, never an inferred SHA. All 82 tasks are explicit. Checklist checkmarks track DONE only.",
+  "defaults": {"status":"PLANNED","commit":null,"ci":"NOT_RUN","manualDevice":"NOT_RUN","evidence":[],"blockers":[],"rollback":"No shipped change; feature branch only. Existing canonical game remains the fallback."},
+  "checkpoints": {
+    "C0":{"commit":"0054d2b9f950fe2465289c06dbe311e93293a42c","ci":"Covered by C1 successful Node24 run","evidence":["ARCHITECTURE.md","../../../../tests/bot/contracts.test.js"],"local":"3 passed, 0 failed; Node22.16.0","rollback":"Revert additive contracts/docs; no application or database changes."},
+    "C1":{"commit":"bf28c3bc3f7717dc62a26d1ac17aced4031158bc","ci":"PASS: Actions 38085543079; 877 passed, 0 failed, 289 skipped, 1166 total. P21/native packaging passed.","evidence":["BENCHMARKS.md","evidence/baseline-summary.json","../../../../tests/bot/runner.cjs","../../../../tests/bot/tactics.cjs"],"rollback":"Remove non-player-facing benchmark/test modules; no application changes."},
+    "C2-controller":{"commit":null,"ci":"PENDING","local":"5 controller tests passed; local combined contract/runner/controller 10 passed, 0 failed","evidence":["../../../../src/tutorial/lesson.js","../../../../tests/bot/lesson.test.cjs"],"rollback":"Remove additive controller; not wired to client in this checkpoint."}
+  },
+  "tasks": {
+    "B00.01":{"status":"DONE","checkpoint":"C0","evidence":["entry head f8913fd; branch created from same SHA; no open PRs; baseline CI 38082708144 passed"],"blockers":["Git HTTPS DNS unavailable; connected GitHub API and exact Actions source archive used instead. Local git snapshot is not upstream history."]},
+    "B00.02":{"status":"DONE","checkpoint":"C0"},"B00.03":{"status":"DONE","checkpoint":"C0"},"B00.04":{"status":"IN_PROGRESS","evidence":["IMPLEMENTATION.md","progress.json"]},"B00.05":{"status":"DONE","checkpoint":"C0"},"B00.06":{"status":"DONE","checkpoint":"C0"},
+    "B01.01":{"status":"DONE","checkpoint":"C1"},"B01.02":{"status":"PARTIAL","checkpoint":"C1","blockers":["Opening repetition reproduced; full-budget sequence and frozen full corpus acceptance remain open."]},"B01.03":{"status":"PARTIAL","checkpoint":"C1","blockers":["Nine reachable corpus categories implemented; dedicated fork and sacrifice-to-win proofs still open."]},"B01.04":{"status":"PARTIAL","checkpoint":"C1","blockers":["Script adversary scored 0 wins, 1 draw, 3 losses in four capped-budget games. Reliable exploit success not established."]},"B01.05":{"status":"BLOCKED","blockers":["No physical Android/iPhone/Safari reference hardware attached; container timings are not device evidence."]},"B01.06":{"status":"DONE","checkpoint":"C1"},"B01.07":{"status":"DONE","checkpoint":"C1"},
+    "B02.01":{},"B02.02":{},"B02.03":{},"B02.04":{},"B02.05":{},"B02.06":{},"B02.07":{},"B02.08":{},"B02.09":{},"B02.10":{},"B02.11":{},
+    "B03.01":{"status":"IN_PROGRESS","checkpoint":"C2-controller"},"B03.02":{},"B03.03":{},"B03.04":{},"B03.05":{},"B03.06":{},"B03.07":{},"B03.08":{},"B03.09":{},"B03.10":{},"B03.11":{},"B03.12":{},"B03.13":{"status":"PARTIAL","checkpoint":"C2-controller"},"B03.14":{"status":"BLOCKED","blockers":["Moderated new-user beta participants unavailable; comprehension cannot be inferred from automation."]},
+    "B04.01":{},"B04.02":{},"B04.03":{},"B04.04":{},"B04.05":{},"B04.06":{},"B04.07":{},"B04.08":{},"B04.09":{},"B04.10":{},"B04.11":{},"B04.12":{},
+    "B05.01":{},"B05.02":{},"B05.03":{},"B05.04":{},"B05.05":{},"B05.06":{},"B05.07":{},"B05.08":{},"B05.09":{},"B05.10":{},
+    "B06.01":{},"B06.02":{},"B06.03":{},"B06.04":{},"B06.05":{},"B06.06":{},"B06.07":{},"B06.08":{},"B06.09":{},"B06.10":{},
+    "B07.01":{},"B07.02":{},"B07.03":{},"B07.04":{},"B07.05":{},"B07.06":{},"B07.07":{},"B07.08":{"status":"BLOCKED","blockers":["Fresh user study and at least 80% unprompted routing comprehension not yet measured."]},"B07.09":{"status":"PARTIAL","checkpoint":"C1","blockers":["289 existing CI skips remain unexecuted; native devices and staging acceptance not claimed."]},"B07.10":{},"B07.11":{"status":"PARTIAL","checkpoint":"C0"},"B07.12":{}
+  }
+}

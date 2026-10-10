@@ -27,7 +27,7 @@ Google account login is distinct from Play Billing and Play Games Services. This
 
 Enable Sign in with Apple capability on the real App ID. Set the bundle ID in `APPLE_NATIVE_AUDIENCES`. Group the web Services ID under the correct primary native App ID so Apple identity subjects remain consistent across intended app/web surfaces. Pass the current scene's presentation window to the helper; retain the helper through completion. Do not hash the nonce a second time unless the server contract is changed to expect that exact value.
 
-Web Apple sign-in requires a real registered HTTPS callback domain; localhost is not a valid production Apple return URL. The code-only, no-personal-scopes flow permits a query callback. Google/Apple subjects, not email addresses, are identity keys. Hide My Email does not create a new Mega XO account when the Apple subject stays the same.
+Web Apple sign-in requires a real registered HTTPS callback domain; localhost is not a valid production Apple return URL. The code-only, no-personal-scopes flow permits a query callback. Google/Apple subjects, not email addresses, are identity keys. Hide My Email does not create a new Mega XOXO account when the Apple subject stays the same.
 
 ## V4 release checks still required
 

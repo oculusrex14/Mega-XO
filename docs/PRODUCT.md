@@ -2,13 +2,13 @@
 
 > **V4.1 clarification:** The competitive rules below remain the product baseline. [V3.5-MONETISATION-IMPLEMENTATION.md](V3.5-MONETISATION-IMPLEMENTATION.md) adds purchase, cosmetic-credit and ad rules without changing Elo/tournament currency rules. Bought and earned Crowns have identical gameplay utility.
 
-# Mega XO V3.4 — canonical product rules
+# Mega XOXO V3.4 — canonical product rules
 
 This document is the **current V3.4 product contract**. Historical V3.2/V3.3 documents remain in the repository for implementation history, but where they disagree with this file or the V3.4 design/economy documents, V3.4 wins.
 
 ## Core competitive model
 
-Mega XO keeps skill and wealth independent.
+Mega XOXO keeps skill and wealth independent.
 
 - Rated matchmaking and rated direct challenges use the same K=24 Elo formula.
 - Coins, Crowns, stake size, purchase history, league multiplier and wealth are never Elo inputs.
@@ -189,7 +189,7 @@ No:
 - artificial currency expiration;
 - purchase-dependent elite qualification.
 
-Ranked Coin entry, Crown challenges and public tournaments are active closed-loop gameplay. Coins/Crowns cannot be cashed out or redeemed from Mega XO for real-world money.
+Ranked Coin entry, Crown challenges and public tournaments are active closed-loop gameplay. Coins/Crowns cannot be cashed out or redeemed from Mega XOXO for real-world money.
 
 ## Deferred from V3.4
 

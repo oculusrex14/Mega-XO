@@ -1,4 +1,4 @@
-# iOS Mega XO native host (P20 co-development)
+# iOS Mega XOXO native host (P20 co-development)
 
 A checked-in Xcode application target embeds the approved client bundle. It does **not** load the deferred megaxo.online website. Swift WebKit hosts the offline game inside a restricted signed `MegaClient/` resource directory.
 

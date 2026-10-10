@@ -1,4 +1,4 @@
-name: Mega XO validation
+name: Mega XOXO validation
 on:
   push:
     branches: [V3.5, V3.5.1, V4, V4.1, V5-platform, V5.1]
@@ -196,4 +196,4 @@ jobs:
           IMAGE_DIGEST: ${{ steps.publish.outputs.digest }}
         run: |
           printf 'Immutable image: `ghcr.io/oculusrex14/mega-xo@%s`\n\nGit SHA: `%s`\n' "$IMAGE_DIGEST" "$GITHUB_SHA" > .release/notes.md
-          gh release create "$GITHUB_REF_NAME" --verify-tag --title "Mega XO $GITHUB_REF_NAME" --notes-file .release/notes.md
+          gh release create "$GITHUB_REF_NAME" --verify-tag --title "Mega XOXO $GITHUB_REF_NAME" --notes-file .release/notes.md

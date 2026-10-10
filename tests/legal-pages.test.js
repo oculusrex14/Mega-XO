@@ -17,7 +17,7 @@ test('public legal, privacy-choice, support and deletion pages have clean routes
   ['/privacy-choices','Privacy choices'],
   ['/terms','Terms of Service'],
   ['/support','Support'],
-  ['/delete-account','Delete your Mega XO account']
+  ['/delete-account','Delete your Mega XOXO account']
  ];
  for(const [route,title] of cases){
   const response=await fetch(base+route),text=await response.text();

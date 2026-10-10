@@ -57,5 +57,5 @@ test('privacy deletion migrations and authenticated routes are present while pol
  assert.equal(migrations.some(m=>m.name==='v41-privacy-requests'),true);assert.equal(migrations.some(m=>m.name==='v41-account-deletion-receipts'),true);
  const http=fs.readFileSync(path.join(__dirname,'..','server','community-http.js'),'utf8'),publicPage=fs.readFileSync(path.join(__dirname,'..','public','delete-account.html'),'utf8');
  assert.equal(http.includes("path==='/api/account/delete'"),true);assert.equal(http.includes("path==='/api/account/deletion'"),true);
- assert.match(publicPage,/Delete your Mega XO account/);assert.match(publicPage,/Permanently delete account|Delete account/);
+ assert.match(publicPage,/Delete your Mega XOXO account/);assert.match(publicPage,/Permanently delete account|Delete account/);
 });

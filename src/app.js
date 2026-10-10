@@ -28,7 +28,15 @@ function save(){try{
  localStorage.setItem(KEY,JSON.stringify(data));window.dispatchEvent(new Event('mega:local-save'));
  }catch{notify('Storage is unavailable. Progress lasts for this session only.');}}
 function notify(text){const t=$('#toast');t.textContent=text;t.classList.add('visible');clearTimeout(toastTimer);toastTimer=setTimeout(()=>t.classList.remove('visible'),2800);}
-function applyTheme(){document.documentElement.dataset.theme=data.settings.theme;document.body.dataset.theme=data.settings.theme;document.documentElement.dataset.motion=data.settings.motion?'reduced':'full';document.querySelector('meta[name="theme-color"]').content=getComputedStyle(document.documentElement).getPropertyValue('--surface').trim();}
+function applyTheme(){document.documentElement.dataset.theme=data.settings.theme;document.body.dataset.theme=data.settings.theme;document.documentElement.dataset.motion=data.settings.motion?'reduced':'full';document.querySelector('meta[name="theme-color"]').content=getComputedStyle(document.documentElement).getPropertyValue('--surface').trim();updateBrandMark();}
+function updateBrandMark(){
+ const host=$('#brandIcon');if(!host)return;
+ const source='assets/p21/logos/mega-xoxo-'+data.settings.theme+'-mark.webp';
+ let image=host.querySelector('img.brand-theme-mark');
+ if(!image){image=document.createElement('img');image.className='brand-theme-mark';image.alt='';image.width=34;image.height=34;image.decoding='async';host.replaceChildren(image);}
+ if(image.getAttribute('src')!==source)image.setAttribute('src',source);
+}
+
 function tone(freq=500){if(!data.settings.sound)return;try{const C=window.AudioContext||window.webkitAudioContext;if(!C)return;ctx=ctx||new C();ctx.resume().catch(()=>{});const o=ctx.createOscillator(),a=ctx.createGain();o.type='sine';o.frequency.value=freq;a.gain.setValueAtTime(.035,ctx.currentTime);a.gain.exponentialRampToValueAtTime(.001,ctx.currentTime+.12);o.connect(a);a.connect(ctx.destination);o.start();o.stop(ctx.currentTime+.14);}catch{}}
 function syncAudio(){try{if(ambient){ambient.osc.stop();ambient=null;}if(!data.settings.music||document.hidden)return;const C=window.AudioContext||window.webkitAudioContext;if(!C)return;ctx=ctx||new C();ctx.resume().catch(()=>{});const osc=ctx.createOscillator(),gain=ctx.createGain();osc.frequency.value=130.81;gain.gain.value=.004;osc.connect(gain);gain.connect(ctx.destination);osc.start();ambient={osc,gain};}catch{}}
 function haptic(){if(data.settings.haptics&&navigator.vibrate)navigator.vibrate(10);}

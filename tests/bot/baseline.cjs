@@ -1,0 +1,12 @@
+'use strict';
+const fs=require('node:fs'),crypto=require('node:crypto');
+const G=require('../../src/game.js'),C=require('../../src/bot/contracts.js'),R=require('./runner.cjs'),T=require('./tactics.cjs');
+const corpus=T.corpus();
+const pick=(state,level,seed)=>R.legacy(level).choose(state,C.seeded(seed));
+const outcomes=corpus.map(p=>{let s=G.create(p.first);for(const m of p.moves)s=G.apply(s,m);return {id:p.id,moves:G.LEVELS.map(level=>({level,choices:[1,2,3].map(seed=>pick(s,level,seed))}))};});
+const opening=G.create();const repeated=[1,2,3,4].map(seed=>pick(opening,'Expert',seed));
+const expert=R.legacy('Expert');const sample=R.play(R.legacy('Easy'),expert,{seed:72});
+const exploit=R.league(R.scripted(sample.moves),expert,{pairs:2,seed:91});
+const result={schemaVersion:1,baselineCommit:'f8913fd36566f0c96d0b755b1e4e57be1795a266',rulesSha256:crypto.createHash('sha256').update(fs.readFileSync('src/game.js')).digest('hex'),runtime:process.version,budget:'deterministic 512-node ceiling via injected clock (128-node checks); not release strength evidence',repeatedExpertOpening:repeated,repeated:repeated.every(m=>C.sameMove(m,repeated[0])),corpus,outcomes,exploit};
+fs.writeFileSync('docs/v5.1/bot-ai/evidence/baseline.json',JSON.stringify(result,null,2)+'\n');
+console.log(JSON.stringify({cases:corpus.map(x=>x.id),repeated,exploit:exploit.summary},null,2));

@@ -1,0 +1,42 @@
+name: V5.1 bot and tutorial validation
+on:
+  push:
+    branches: ['feat/v5.1-bot-ai-tutorial']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: v51-bot-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  validate:
+    if: github.ref == 'refs/heads/feat/v5.1-bot-ai-tutorial'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '24'
+      - run: npm ci
+      - name: Full Node regression
+        run: |
+          set -o pipefail
+          mkdir -p .artifacts/v51
+          npm test 2>&1 | tee .artifacts/v51/node-tests.log
+      - name: P21 and native packaging
+        run: |
+          node --test tests/v5-client-bundle.test.js tests/v5-p21-*.test.js
+          node scripts/p21/build-web.js
+      - name: Retain source and evidence
+        if: always()
+        run: |
+          mkdir -p .artifacts/v51
+          git archive --format=tar HEAD | gzip > .artifacts/v51/source.tar.gz
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: v51-bot-validation
+          path: .artifacts/v51
+          retention-days: 7
+          if-no-files-found: error

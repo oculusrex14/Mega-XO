@@ -46,3 +46,19 @@ test('original uploaded logo remains byte-identical in repo',()=>{
  const sha=crypto.createHash('sha256').update(read('assets/p21/reference/brand-owner-original.png')).digest('hex');
  assert.equal(sha,'af0eec08b3f554830e5a0fc95d470b20b4c8a15e3e526c99d0f07684c56cf34a');
 });
+
+test('website logo pack PNG assets exist with verified SHA-256 signatures',()=>{
+ const pack = [
+  { name: 'mega-xoxo-primary-logo.png', sha: '2283b160391b163b08b3f7817dac3e5eaf8ee79fb6490da242b748d94abc008c' },
+  { name: 'mega-xoxo-secondary-logo.png', sha: '10f8a9b27e1e5f9b2f25cebe4eb3ee64587e3dd4ae156b920df49295a4a5ae07' },
+  { name: 'mega-xoxo-icon-only-logo.png', sha: '3b3f7042c5826fcd31ba831d8546fccb5aea840c2c821627b6def2f4ce360286' },
+  { name: 'mega-xoxo-horizontal-logo.png', sha: '4a22dbc289023dc0444b7b94400fda3e3e25c6e97e44b5302964b7214704bf9e' }
+ ];
+ for(const item of pack){
+  const buf = read('assets/p21/logos/' + item.name);
+  assert.ok(buf.length > 500000, item.name + ' file size budget');
+  assert.equal(buf.subarray(0, 8).toString('hex'), '89504e470d0a1a0a', item.name + ' PNG signature');
+  const hash = crypto.createHash('sha256').update(buf).digest('hex');
+  assert.equal(hash, item.sha, item.name + ' SHA-256 match');
+ }
+});

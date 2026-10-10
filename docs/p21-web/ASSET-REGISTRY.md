@@ -9,6 +9,17 @@
 | Master website concept screenshot (historically says Mega XO) | `assets/p21/reference/homepage-generated-image-1.png` | 1672×941 | `fbf558f36e67dbbc207e969e83655db59fd221f7095a52ad14c6b49bb27fc1f8` |
 | Owner-provided original logo (reads MEGA XOXO) | `assets/p21/reference/brand-owner-original.png` | 1600×1600 | `af0eec08b3f554830e5a0fc95d470b20b4c8a15e3e526c99d0f07684c56cf34a` |
 
+### Official website logo pack (canonical branding masters)
+
+Four official transparent RGBA PNG brand assets prepared for website branding and identity lockups:
+
+| Asset | Git path | Dimensions | Format | SHA-256 | Role |
+|---|---|---|---|---|---|
+| Primary logo | `assets/p21/logos/mega-xoxo-primary-logo.png` | 1254 × 1254 | RGBA PNG | `2283b160391b163b08b3f7817dac3e5eaf8ee79fb6490da242b748d94abc008c` | Official stacked emblem + wordmark master |
+| Secondary logo | `assets/p21/logos/mega-xoxo-secondary-logo.png` | 1254 × 1254 | RGBA PNG | `10f8a9b27e1e5f9b2f25cebe4eb3ee64587e3dd4ae156b920df49295a4a5ae07` | Alternate stylized brand artwork variant |
+| Icon only logo | `assets/p21/logos/mega-xoxo-icon-only-logo.png` | 1254 × 1254 | RGBA PNG | `3b3f7042c5826fcd31ba831d8546fccb5aea840c2c821627b6def2f4ce360286` | Transparent emblem mark without typography |
+| Horizontal logo | `assets/p21/logos/mega-xoxo-horizontal-logo.png` | 2172 × 724 | RGBA PNG | `4a22dbc289023dc0444b7b94400fda3e3e25c6e97e44b5302964b7214704bf9e` | Official horizontal website header wordmark lockup |
+
 ### Approved four-theme logo suite
 
 Every master is a generated RGBA, transparent-background concept with alpha 0–255. Every 768px app export and 256px header mark is a transparent WebP. Mark-only variants are deterministic crops, not separately generated artwork. Reference hashes are original PNG bytes.

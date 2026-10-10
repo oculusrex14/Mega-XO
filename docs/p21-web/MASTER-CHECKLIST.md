@@ -39,8 +39,9 @@
 - [x] Copy unmodified originals into version-controlled `assets/p21/reference/` and verify both hashes.
 - [x] Confirm permanent user-facing wordmark **Mega XOXO** with owner.
 - [x] Preserve the original owner-supplied XO orbital emblem unchanged; theme variants respect existing screen palettes.
-- [ ] Official primary horizontal header wordmark, as approved.
+- [x] Official primary horizontal header wordmark (`assets/p21/logos/mega-xoxo-horizontal-logo.png`, 2172×724 RGBA transparent PNG, SHA-256 `4a22dbc289023dc0444b7b94400fda3e3e25c6e97e44b5302964b7214704bf9e`).
 - [x] Four full transparent raster emblems + stacked **MEGA XOXO** wordmarks committed (raster masters; editable vector source still open).
+- [x] Official website logo pack committed into `assets/p21/logos/`: primary stacked logo, secondary stylized logo, icon-only emblem, and horizontal lockup.
 - [ ] Single-color, reverse, light-background and small-size lockups.
 - [ ] Minimum clear space, safe bounds, display minimums and misuse examples.
 - [ ] Editable vector master (hand-correct paths; image-trace alone is not final).
@@ -358,6 +359,7 @@ Each asset receives an ID (for example P21-BG-001, P21-LOGO-001), target compone
 - [x] Update customer-facing email templates and legal/help pages; preserve crypto, package names and domain identifiers.
 - [x] Wire the 4 header marks to existing saved theme IDs and include all 8 WebPs in native deterministic allowlist.
 - [x] Add dedicated brand/bundle regression test coverage `tests/v5-p21-brand.test.js`; align email/legal tests.
+- [x] Import official website logo pack (`mega-xoxo-primary-logo.png`, `mega-xoxo-secondary-logo.png`, `mega-xoxo-icon-only-logo.png`, `mega-xoxo-horizontal-logo.png`) into `assets/p21/logos/` and catalog in [ASSET-REGISTRY.md](ASSET-REGISTRY.md).
 - [x] Enable V5.1 browser/native validation workflow triggers.
 - [x] Publish versioned artwork hashes, format and theme palette notes in [ASSET-REGISTRY.md](ASSET-REGISTRY.md).
 - [x] Browser validation passed on `a5549176` ([Actions 38058495832](https://github.com/oculusrex14/Mega-XO/actions/runs/38058495832)); full Node regression, Chromium accessibility and browser flow jobs green.
@@ -386,3 +388,4 @@ Each asset receives an ID (for example P21-BG-001, P21-LOGO-001), target compone
 | 2026-10-10 | App mark integration + native bundler + regression tests | `src/app.js`, `native/client/bundle.config.json`, V5 bundle builder and tests | `134268a` through `d406f14` |
 | 2026-10-10 | V5.1 validation activated; legal assertions corrected | Initial regression exposed stale expected legal-page names, fixed and rechecked via CI | `05a0615`, `c275fc6` |
 | 2026-10-10 | Rebrand decisions and complete artwork registry | `DECISIONS.md`, `BRAND-SYSTEM.md`, `REFERENCE-AUDIT.md`, `ASSET-REGISTRY.md` | `2901c07`, `26e1c8c` |
+| 2026-10-11 | Official website logo pack added | `mega-xoxo-{primary,secondary,icon-only,horizontal}-logo.png` committed to `assets/p21/logos/`; registry and checklist updated | `1938499` |

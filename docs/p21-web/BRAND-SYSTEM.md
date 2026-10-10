@@ -1,4 +1,4 @@
-# Mega XO | P21.01 Visual Brand and Web Shell System (draft v0.1)
+# Mega XOXO | P21.01 Visual Brand and Web Shell System (draft v0.1)
 
 **Status:** Implemented draft reference specification, **awaits visual owner approval and finalized lockup**. Applies to `megaxo.online` chrome/marketing front end. It must not overwrite the four retained gameplay theme contracts.
 
@@ -6,7 +6,7 @@
 - Master composition: the supplied 1672×941 screenshot, not arbitrary cyberpunk reference art.
 - Mood: premium competitive strategy game; midnight starfield with cinematic mountainous foreground; electric blue interaction and blue/purple/magenta iridescence.
 - Existing owner-provided emblem: teal crystalline X and pink orb O with fine orbit decoration. Honor geometry and use source unchanged in archive.
-- Public brand name: **Mega XO** per website and existing product; uploaded image says **Mega XOXO**. Final wordmark requires owner decision.
+- **Approved brand name: Mega XOXO** (owner decision 2026-10-10). Historical screenshot header says MEGA XO and must be reconstructed with MEGA XOXO text while retaining its visual proportions.
 - High fidelity must come from **native scalable components + isolated art layers**, not placing a static image under clickable hotspots.
 - All game/state figures (rank, season, timers, wallet) must remain truthful to product state.
 
@@ -69,7 +69,7 @@ These are provisional design palette values sampled/interpreted from the source.
 ## 7. Authoring / export standards
 - Reference master still: sRGB PNG unchanged, from attachment.
 - New backdrop artwork: layered 16-bit EXR or PSD-equivalent master + unlettered WebP/AVIF still + atmospheric WebM/MP4 only when useful.
-- Logo: final reviewed vector paths (not auto-trace alone), transparent SVG + raster suite.
+- Logo: 4 approved transparent 1254px themed raster masters and 768px WebP variants are checked into `assets/p21/logos/`; editable vectors and compact horizontal lockups remain separate open work.
 - Currency/emblems: source GLB/Blender or layered raster, transparent exports and defined halo.
 - All animations: still fallback, reduced-motion and low-power treatments.
 - All raster source masters: color-profile tagged sRGB output, alpha clean at dark and light edges.
@@ -86,6 +86,14 @@ Review the first clean cinematic background plate side by side with the user-pro
 ## 10. Completion acceptance
 1. The original screenshot and emblem masters are retained unmodified (same SHA-256).
 2. Header, hero, board/rank panel and feature-card silhouette match approved source at target viewport.
-3. Logo spelling confirmed; all lockups generated from owner-art geometry.
+3. Mega XOXO spelling is fixed; final editable vectors, splash/launcher and horizontal lockups still require design QA.
 4. Readability and accessibility tested over atmospheric layer.
 5. Brand CSS/JSON tokens are consumed by a real component preview and visually signed off; code tokens alone are a draft, not a finished design system.
+
+## P21.01 production branding checkpoints (2026-10-10)
+- Source master PNGs: `assets/p21/reference/` (Git commit `a158389`).
+- Four approved transparent thematic logo PNG/WebP sets: `assets/p21/logos/` (Git commit `fc67cfc`).
+- Small 256px transparent emblem-only marks for UI: Git commit `3f75527`.
+- Header selects the correct mark on initial load and theme changes; deterministic native allowlist includes eight optimized WebP files.
+- Existing legacy theme token names and technical identifiers are intentionally unchanged; mobile display name is `Mega XOXO`.
+- **Not completed:** manually editable SVG source master, OS launcher icons, final typographic horizontal website wordmark, theme/splash screenshots, production/store acceptance.

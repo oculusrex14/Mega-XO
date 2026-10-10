@@ -1,4 +1,4 @@
-# P21 Source Reference Audit
+# Mega XOXO — P21 Source Reference Audit
 
 Source files are attached to the 2026-10-10 P21 website conversation. Their exact original bytes must be preserved in Git once a binary-compatible transfer path is available. The PNGs are **opaque** (RGBA alpha = 255 everywhere).
 
@@ -9,7 +9,7 @@ Source files are attached to the 2026-10-10 P21 website conversation. Their exac
 
 ## Visual analysis
 
-### P21-REF-001 (site)
+### P21-REF-001 (site — pre-rebrand reference)
 - Deep midnight/navy star field; mountain silhouettes along left/right/lower horizon; blues and purples reflect on the mountains; **real background artwork is mandatory**.
 - Header at top with neon **MEGA XO** logo, six navigation labels, coin and crown balances, player avatar.
 - Left column: spaced tagline, massive white headline, gradient blue-to-purple “Think bigger.”, supporting lines, glowing CTA pair and platform device row.
@@ -26,7 +26,7 @@ Source files are attached to the 2026-10-10 P21 website conversation. Their exac
 - Under emblem: spaced “MEGA” then very large **“XOXO”** in white. This differs from the established **“Mega XO”** game/product name and reference website header.
 - Source is not transparent despite its RGBA container; vector master/transparency must be manually prepared or correctly matted, preserving geometry.
 - Approximate sampled brand tones: `#100F1F`, `#0EE3D5`, `#EF2B90`, `#221955`, `#F7F7F7`. They complement but are not identical to the hero preview color palette.
-- Do not replace/alter the uploaded logo in-place. Use the emblem as the brand identity source; create a harmonized header lockup **only after approval** of MEGA XO vs MEGA XOXO spelling.
+- The owner approved **Mega XOXO** for all surfaces on 2026-10-10. Keep source image untouched; website header typography will say MEGA XOXO even though the original screenshot says MEGA XO.
 
 ## Functional deviations required by actual game specification
 
@@ -51,3 +51,9 @@ Source files are attached to the 2026-10-10 P21 website conversation. Their exac
 - Derivative SVG/art must never be described as exact source or original vectorization without manual QC.
 - Do side-by-side comparison at source resolution, normalized sRGB display and multiple web viewports.
 - Existing `docs/v5` P21 `DEFERRED_BY_OWNER` ledger is an archived V5 foundation statement. This newer owner-authorized site work is tracked independently on `V5.1` until accepted; don't retroactively mark the original integration gate completed.
+
+## Source assets in repository (verified)
+- Original image reference master: `assets/p21/reference/homepage-generated-image-1.png` (SHA-256 `fbf558f36e67dbbc207e969e83655db59fd221f7095a52ad14c6b49bb27fc1f8`).
+- Original owner logo reference: `assets/p21/reference/brand-owner-original.png` (SHA-256 `af0eec08b3f554830e5a0fc95d470b20b4c8a15e3e526c99d0f07684c56cf34a`).
+- Theme-specific transparent image masters and optimized exports: `assets/p21/logos/`.
+- The uploaded screenshot remains a *visual master* only. Its historical MEGA XO lettering, old rank and season data must not be copied into functioning Mega XOXO product UI.

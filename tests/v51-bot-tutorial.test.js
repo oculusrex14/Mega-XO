@@ -9,3 +9,5 @@ require('./bot/progress.test.cjs');
 require('./bot/encoding.test.cjs');
 require('./bot/training-data.test.cjs');
 require('./bot/onnx.test.cjs');
+require('./bot/pack.test.cjs');
+require('./bot/neural-search.test.cjs');

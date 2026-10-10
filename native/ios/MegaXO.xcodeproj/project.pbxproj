@@ -67,7 +67,7 @@
    buildActionMask = 2147483647;
    files = ();
    inputPaths = ();
-   name = "Bundle approved Mega XO client";
+   name = "Bundle approved Mega XOXO client";
    outputPaths = ();
    runOnlyForDeploymentPostprocessing = 0;
    shellPath = /bin/sh;

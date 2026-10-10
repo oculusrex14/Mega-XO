@@ -28,7 +28,7 @@ final class MegaXOSceneDelegate: UIResponder, UIWindowSceneDelegate {
             // Keychain must not crash the offline game. Native sign-in remains
             // unavailable until a verified P05 exchange can use secure storage.
             // Never log raw credentials or the Keychain error's private context.
-            NSLog("Mega XO: native credential storage unavailable; offline play continues")
+            NSLog("Mega XOXO: native credential storage unavailable; offline play continues")
         }
         window.rootViewController = MegaXOGameController()
         window.makeKeyAndVisible()
@@ -126,7 +126,7 @@ final class MegaXOGameController: UIViewController, WKNavigationDelegate, WKUIDe
 
     private func showMissingBundle() {
         let label = UILabel()
-        label.text = "Game assets unavailable. Reinstall Mega XO."
+        label.text = "Game assets unavailable. Reinstall Mega XOXO."
         label.textAlignment = .center
         label.numberOfLines = 0
         label.translatesAutoresizingMaskIntoConstraints = false
@@ -182,7 +182,7 @@ final class MegaXOGameController: UIViewController, WKNavigationDelegate, WKUIDe
     func webView(_ webView: WKWebView, runJavaScriptAlertPanelWithMessage message: String,
                  initiatedByFrame frame: WKFrameInfo, completionHandler: @escaping () -> Void) {
         guard trusted(frame) else { completionHandler(); return }
-        let alert = UIAlertController(title: "Mega XO", message: message, preferredStyle: .alert)
+        let alert = UIAlertController(title: "Mega XOXO", message: message, preferredStyle: .alert)
         alert.addAction(UIAlertAction(title: "OK", style: .default) { _ in completionHandler() })
         present(alert, animated: true)
     }
@@ -190,7 +190,7 @@ final class MegaXOGameController: UIViewController, WKNavigationDelegate, WKUIDe
     func webView(_ webView: WKWebView, runJavaScriptConfirmPanelWithMessage message: String,
                  initiatedByFrame frame: WKFrameInfo, completionHandler: @escaping (Bool) -> Void) {
         guard trusted(frame) else { completionHandler(false); return }
-        let alert = UIAlertController(title: "Mega XO", message: message, preferredStyle: .alert)
+        let alert = UIAlertController(title: "Mega XOXO", message: message, preferredStyle: .alert)
         alert.addAction(UIAlertAction(title: "Cancel", style: .cancel) { _ in completionHandler(false) })
         alert.addAction(UIAlertAction(title: "Confirm", style: .default) { _ in completionHandler(true) })
         present(alert, animated: true)

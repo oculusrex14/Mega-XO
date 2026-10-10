@@ -326,7 +326,7 @@ Each asset receives an ID (for example P21-BG-001, P21-LOGO-001), target compone
 
 | Subphase | Gate | Status | Evidence / next action |
 |---|---|---|---|
-| P21.01 Brand foundation | Approved tokens, wordmark, original art archive | **IN PROGRESS** | Name approved; originals, 4 theme rasters, mark-only exports and native bundle committed; editable SVG, header lockups and visual/device QA pending |
+| P21.01 Brand foundation | Approved tokens, wordmark, original art archive | **IN PROGRESS** | Branding assets and name change integrated, **browser and native CI green**; editable SVG, launcher/header lockups, pixel QA and real-device/store acceptance pending |
 | P21.02 Architecture | Approved routes/flows/auth boundaries | NOT STARTED | Crosscheck V5 endpoint contracts |
 | P21.03 Homepage | Editable desktop parity + adaptive page | NOT STARTED | Recreate master sections including separate background |
 | P21.04 Components | Accessible documented component library | NOT STARTED | Build after shell/token approval |
@@ -345,7 +345,7 @@ Each asset receives an ID (for example P21-BG-001, P21-LOGO-001), target compone
 4. **Visual QA:** inspect app's four logo marks on physical Android/iOS builds and compare against the actual existing four theme screens; do not confuse alpha/format proof with device parity.
 5. **Provider/store branding:** update Apple/Google store listings, OAuth consent names and operational email sender `MEGA_EMAIL_FROM` when authorized; *do not* rename immutable package IDs, Apple/Google subjects, API keys, databases or the `megaxo.online` domain.
 6. **Release/authority:** website Vercel launch, API/session/CORS and V5 live identity cutover must pass their separate gates and explicit owner deployment approval. No production deployment here.
-7. **Tests:** GitHub Actions browser validation and native builds must be checked at their final SHA. The old V5 platform acceptance ledger remains historical; P21 work lives in this checklist.
+7. **Tests:** both browser and native V5.1 workflows passed; production/device/store acceptance is still separate. The old V5 platform acceptance ledger remains historical; P21 work lives in this checklist.
 
 ## P21.01 completed branding deliverables
 
@@ -360,11 +360,19 @@ Each asset receives an ID (for example P21-BG-001, P21-LOGO-001), target compone
 - [x] Add dedicated brand/bundle regression test coverage `tests/v5-p21-brand.test.js`; align email/legal tests.
 - [x] Enable V5.1 browser/native validation workflow triggers.
 - [x] Publish versioned artwork hashes, format and theme palette notes in [ASSET-REGISTRY.md](ASSET-REGISTRY.md).
-- [ ] Browser validation on final checklist SHA passes (record run/commit evidence).
-- [ ] Native Android and iOS build/bundle acceptance passes (record run/commit evidence).
+- [x] Browser validation passed on `a5549176` ([Actions 38058495832](https://github.com/oculusrex14/Mega-XO/actions/runs/38058495832)); full Node regression, Chromium accessibility and browser flow jobs green.
+- [x] Native CI passed on `05a06150` ([Actions 38058145708](https://github.com/oculusrex14/Mega-XO/actions/runs/38058145708)): Android build, iOS simulator, Android emulator launch and byte-level bundle parity. No store approval implied.
 - [ ] Final SVG/vector and all mobile/adaptive launch variants complete.
 - [ ] Independent QA at actual supported phone viewports and physical devices.
 - [ ] Complete original Phase 21 production website and browser game launch.
+
+## CI acceptance evidence
+
+| Check | Commit tested | Run | Result |
+|---|---|---|---|
+| V5.1 browser + Node regression / accessibility and UI | `a5549176` | [38058495832](https://github.com/oculusrex14/Mega-XO/actions/runs/38058495832) | **PASS** |
+| V5.1 native Android + iOS host build, Android emulator and bundle parity | `05a06150` | [38058145708](https://github.com/oculusrex14/Mega-XO/actions/runs/38058145708) | **PASS** |
+| Provider store submission / approval / real physical devices / release to `megaxo.online` | — | — | NOT CLAIMED |
 
 ## Commit/evidence journal
 

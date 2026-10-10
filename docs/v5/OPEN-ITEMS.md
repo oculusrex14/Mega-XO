@@ -28,3 +28,14 @@ P00 environment inventory is executed; precisely scoped gaps below are actual re
 - No complete V5 staging application platform, device parity, store upload/submission/approval or production authority transfer is claimed. The nonserving staging schema and roles are deployed and the full 35-file chain applied+verified there; dev/production schemas remain absent. Legal approval must be located or explicitly obtained, never inferred from product approval or tool access.
 
 For a genuine blocker append exact task/case ID, attempted command/action, sanitized failure, target/environment, build completion state, required permission/object/device, independent work still possible/completed, release impact and smallest owner action. Do not replace this record with a generic third-party-blocker label.
+
+## Later owner-authorized V5.1 website workstream (2026-10-11)
+
+The original program's P21 deferral above is historical. The later owner request authorizes website implementation on V5.1; original gates, tasks and 38 NOT_RUN acceptance cases remain unchanged.
+
+- P21-WEB-ONLINE / P21.02,.05,.07,.09: new pages currently render guest presentation and retained-game gateways. Real session/rank/wallet/friends/tournament/queue/realtime integration and shared permanent actor proof remain open. Static `/api` is explicitly unconfigured; do not infer online acceptance.
+- P21-WEB-VISUAL / P21.03,.06,.08,.10: owner review of actual rebuilt 1672×941 homepage and supporting pages pending. No layered landscape/vector/3D/video/audio completeness claim. Physical Safari/iOS/Android/Firefox, manual screen-reader/gradient contrast and real CWV remain open.
+- P21-WEB-PROVIDER / P21.09,.10: authenticated `vercel whoami` returned `oculusrex14`; read-only `vercel project ls --scope oculusrex14s-projects` returned three existing unrelated projects, no dedicated Mega XOXO website or `mega-xo-api`. Access is verified; actual project/deployment and commercial eligibility are not. No provider mutation or release authorized by this checkpoint.
+- P21-WEB-LEGAL / P21.07,.10: policy pages link draft retained legal documents; formal owner/legal/store disclosure approval remains required by the existing release gate.
+
+Reachable work delivered: isolated cinematic frontend, 27 route designs, five-level local bot/two-player, four palettes, generated still art/provenance, deterministic allowlisted build, Vercel static configuration and local/CI QA. Details: [readiness](../p21-web/IMPLEMENTATION-AND-READINESS.md).

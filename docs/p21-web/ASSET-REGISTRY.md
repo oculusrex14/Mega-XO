@@ -58,3 +58,20 @@ Every master is a generated RGBA, transparent-background concept with alpha 0–
 - [ ] Verify app store marketing names/OAuth consent names and associated sender branding at provider level.
 
 **Provenance:** concept imagery from the owner-supplied image and user-directed generative artwork. Model output is raster; the accompanying masters contain no editable path/source construction. Third-party fonts and logos require separate licensing/brand-guideline compliance if introduced in later phases. Do not reinterpret this document as a trademark clearance.
+
+## Website still-art and local fonts — 2026-10-11
+
+Code checkpoint `99e65bdc8655162cf2dcc4af26dc0b73ec203cdc`. [PROVENANCE.json](../../assets/p21/art/PROVENANCE.json) records exact prompts, source/export SHA-256, bytes/dimensions/alpha and font/license origins. Generated art used the built-in image tool; model and seed were not exposed. PNG originals are retained in Git and excluded from the deployed bundle. This is provenance, not owner trademark/legal clearance.
+
+| ID | Master | Optimized website output | Use / limitation |
+|---|---|---|---|
+| P21-BG-001 | `art/hero-source.png`, 1672×941 RGB | `hero-wide.webp`, 1672×941; `hero-small.webp`, 836×471 | Clean cinematic landscape, no baked UI; responsive crop, no editable independent layers |
+| P21-ART-001 | `art/trophy-source.png`, alpha PNG | `trophy.webp`, 560×560 | Gold trophy cutout with procedural background inset; no 3D source |
+| P21-RANK-ART-001 | `art/crystal-source.png`, alpha PNG | `crystal.webp`, 480×347 | Decorative blue/purple crystal; no guest rank or new subdivision |
+| P21-ART-002 | `art/devices-source.png`, alpha PNG | `devices.webp`, 640×360 | Decorative laptop/tablet/phone with abstract X/O art; actual app screenshots remain open |
+| P21-LOGO-WEB-001/002 | Existing official horizontal and icon PNG masters | `header.webp`, 640×209; `mark.webp`, 192×178 | Deterministic crop/downsize; original owner artwork unchanged |
+| P21-GAME-001 | Existing `src/game.js` + procedural DOM/CSS | 81 interactive cells, four scoped practice palettes | Real legal local fixture, no raster board or online authority |
+| P21-ICON-WEB | Own inline SVG/CSS geometry in `apps/web/ui.js` | Same SVG/CSS; no remote icon package for new shell | General game/navigation/currency illustrations; not full 3D/icon family |
+| P21-FONT-WEB | Space Grotesk, IBM Plex Mono; existing Caveat/Patrick Hand/Chakra Petch/Orbitron Latin subsets | Local WOFF2 with each OFL license under `assets/p21/fonts` | No external font fetch for new website/practice; retained game is unchanged |
+
+Source and exports are under `assets/p21/`. Full asset inventory hashes were checked, including alpha signatures; a dark-edge visual review was made in actual homepage captures. Local source masters are retained, not layered/vector/GLB deliverables. 3D/video/audio, all 11 illustrated rank emblems, editable scene layers, favicons/OG/icon finishing and physical device/color review remain open. The existing full brand suite above remains authoritative.

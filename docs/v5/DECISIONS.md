@@ -48,3 +48,11 @@ Decisions are scope/configuration choices, not implementation or deployment evid
 | V5-D042 | Reconcile production authority: V4/SQLite remains sole live production authority; P22/P23 are rehearsal-verified | Direct audit on Oracle host command confirms mega.sqlite actively written to (WAL Oct 9 22:45 UTC, 5056 support events); Neon production is dormant (0 bytes). Reconciles contradictory progress claims: synthetic cutover model is proven in tests; live cutover is pending an authorized maintenance window |
 
 Architecture is fixed to Vercel stateless account/social/read API, Neon durable truth, managed Redis/Valkey ephemera, Oracle Game Core/worker, direct realtime and independent encrypted R2 backups. Concrete resource IDs, plans, regions, native identifiers/signing and numeric operating targets remain inventory/measurement decisions, not invented setup defaults.
+
+## 2026-10-11 — Later V5.1 website request
+
+- Owner explicitly requested the new Mega XOXO website on V5.1, matching the uploaded homepage except the approved logo and designing the remaining pages. This overrides the earlier website exclusion for this follow-on work, while retaining the original pack/acceptance history.
+- `apps/web` is isolated static ESM/DOM/CSS. It consumes the existing `src/game.js` pure rules for local practice and packages the retained client unchanged. No new online actor, economy, schema or service authority.
+- Guest placeholders are truthful: no hardcoded wallet, Diamond II, expired Season 3, opponent rating or clock. Live account/session/data/realtime adapters require real staging acceptance.
+- No provider project creation/deployment, domain change or production cutover was performed. V4.1.2/SQLite remains live; legal, commercial hosting, physical browser/a11y and release-window gates remain open.
+- Code and exact local evidence: `99e65bdc8655162cf2dcc4af26dc0b73ec203cdc`; [website readiness](../p21-web/IMPLEMENTATION-AND-READINESS.md).

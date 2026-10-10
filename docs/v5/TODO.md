@@ -8,6 +8,16 @@ The mutable execution source is [progress.json](progress.json); this is its read
 
 Required path: execute P00–P20, P22–P23; owner-deferred P21 executes nothing; P24 is measurement-gated; phase prerequisites are gates, not status assumptions, and a deferred or measurement-gated phase is never used as another phase prerequisite. The foundation gate P00–P03 passes before dependent distributed work, and V5 CI starts in the foundation rather than only at P17.
 
+## Later owner-authorized website work
+
+The goal and phase contracts above describe the original V5 program. The later owner request authorizes a separate `V5.1` website workstream; its original P21 deferral and acceptance history are retained.
+
+**Status:** TESTED_LOCAL. Cinematic homepage, 26 secondary routes, shared-rule local practice, four game palettes, optimized still art, static delivery and presentation CI implemented. No live account integration, remote deployment or production acceptance.
+
+**Code checkpoint:** `99e65bdc8655162cf2dcc4af26dc0b73ec203cdc`. [Website checklist](../p21-web/MASTER-CHECKLIST.md). [Evidence and release gates](../p21-web/IMPLEMENTATION-AND-READINESS.md).
+
+**Next:** Owner visual review; live V5 staging/session/data/realtime integration, legal and hosting eligibility, physical browser/a11y/performance acceptance, then authorized deployment. V4.1.2/SQLite remains the live authority.
+
 ## P00 — Freeze baseline, scope and ownership
 
 Milestone: V5.0; status: `COMPLETE`; prerequisites: none. [Phase contract](../../Mega-XO-V5-Implementation-Pack/phases/00-baseline-and-architecture.md).

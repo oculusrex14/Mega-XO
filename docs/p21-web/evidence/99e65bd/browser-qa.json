@@ -1,0 +1,3812 @@
+{
+  "schema_version": 1,
+  "checked_at": "2026-10-10T20:01:29.577Z",
+  "source_commit": "99e65bdc8655162cf2dcc4af26dc0b73ec203cdc",
+  "bundle_sha256": "8df1661fceb72b300e55d81be9fc758a91238a9a90370e3d7a4d7cb3f14d8857",
+  "environment": "local loopback Chromium; new unauthenticated contexts; static presentation only",
+  "isolated_payload_snapshot": true,
+  "command": "env -u NODE_OPTIONS /Users/oculus/.hermes/node/bin/node scripts/p21/browser-qa.cjs --no-build",
+  "runtime_version": "v26.8.2",
+  "checks": [
+    {
+      "id": "P21-BROWSER-ROUTE",
+      "result": "PASS",
+      "route": "/",
+      "viewport": "desktop",
+      "status": 200,
+      "heading": "The UltimateTic-tac-toe.Think bigger."
+    },
+    {
+      "id": "P21-BROWSER-REFLOW",
+      "result": "PASS",
+      "route": "/",
+      "viewport": "desktop",
+      "width": 1672,
+      "scrollWidth": 1672,
+      "overflowing": []
+    },
+    {
+      "id": "P21-BROWSER-IMAGES",
+      "result": "PASS",
+      "route": "/",
+      "viewport": "desktop",
+      "brokenImages": []
+    },
+    {
+      "id": "P21-BROWSER-LABELS",
+      "result": "PASS",
+      "route": "/",
+      "viewport": "desktop",
+      "unlabeledButtons": []
+    },
+    {
+      "id": "P21-BROWSER-BOARD",
+      "result": "PASS",
+      "route": "/",
+      "viewport": "desktop"
+    },
+    {
+      "id": "P21-BROWSER-ROUTE",
+      "result": "PASS",
+      "route": "/play",
+      "viewport": "desktop",
+      "status": 200,
+      "heading": "Choose your arena."
+    },
+    {
+      "id": "P21-BROWSER-REFLOW",
+      "result": "PASS",
+      "route": "/play",
+      "viewport": "desktop",
+      "width": 1672,
+      "scrollWidth": 1672,
+      "overflowing": []
+    },
+    {
+      "id": "P21-BROWSER-IMAGES",
+      "result": "PASS",
+      "route": "/play",
+      "viewport": "desktop",
+      "brokenImages": []
+    },
+    {
+      "id": "P21-BROWSER-LABELS",
+      "result": "PASS",
+      "route": "/play",
+      "viewport": "desktop",
+      "unlabeledButtons": []
+    },
+    {
+      "id": "P21-BROWSER-ROUTE",
+      "result": "PASS",
+      "route": "/casual",
+      "viewport": "desktop",
+      "status": 200,
+      "heading": "Play for the next good move."
+    },
+    {
+      "id": "P21-BROWSER-REFLOW",
+      "result": "PASS",
+      "route": "/casual",
+      "viewport": "desktop",
+      "width": 1672,
+      "scrollWidth": 1672,
+      "overflowing": []
+    },
+    {
+      "id": "P21-BROWSER-IMAGES",
+      "result": "PASS",
+      "route": "/casual",
+      "viewport": "desktop",
+      "brokenImages": []
+    },
+    {
+      "id": "P21-BROWSER-LABELS",
+      "result": "PASS",
+      "route": "/casual",
+      "viewport": "desktop",
+      "unlabeledButtons": []
+    },
+    {
+      "id": "P21-BROWSER-ROUTE",
+      "result": "PASS",
+      "route": "/ranked",
+      "viewport": "desktop",
+      "status": 200,
+      "heading": "Earn your place."
+    },
+    {
+      "id": "P21-BROWSER-REFLOW",
+      "result": "PASS",
+      "route": "/ranked",
+      "viewport": "desktop",
+      "width": 1672,
+      "scrollWidth": 1672,
+      "overflowing": []
+    },
+    {
+      "id": "P21-BROWSER-IMAGES",
+      "result": "PASS",
+      "route": "/ranked",
+      "viewport": "desktop",
+      "brokenImages": []
+    },
+    {
+      "id": "P21-BROWSER-LABELS",
+      "result": "PASS",
+      "route": "/ranked",
+      "viewport": "desktop",
+      "unlabeledButtons": []
+    },
+    {
+      "id": "P21-BROWSER-ROUTE",
+      "result": "PASS",
+      "route": "/tournaments",
+      "viewport": "desktop",
+      "status": 200,
+      "heading": "Bring your best game."
+    },
+    {
+      "id": "P21-BROWSER-REFLOW",
+      "result": "PASS",
+      "route": "/tournaments",
+      "viewport": "desktop",
+      "width": 1672,
+      "scrollWidth": 1672,
+      "overflowing": []
+    },
+    {
+      "id": "P21-BROWSER-IMAGES",
+      "result": "PASS",
+      "route": "/tournaments",
+      "viewport": "desktop",
+      "brokenImages": []
+    },
+    {
+      "id": "P21-BROWSER-LABELS",
+      "result": "PASS",
+      "route": "/tournaments",
+      "viewport": "desktop",
+      "unlabeledButtons": []
+    },
+    {
+      "id": "P21-BROWSER-ROUTE",
+      "result": "PASS",
+      "route": "/season",
+      "viewport": "desktop",
+      "status": 200,
+      "heading": "The season is yours to shape."
+    },
+    {
+      "id": "P21-BROWSER-REFLOW",
+      "result": "PASS",
+      "route": "/season",
+      "viewport": "desktop",
+      "width": 1672,
+      "scrollWidth": 1672,
+      "overflowing": []
+    },
+    {
+      "id": "P21-BROWSER-IMAGES",
+      "result": "PASS",
+      "route": "/season",
+      "viewport": "desktop",
+      "brokenImages": []
+    },
+    {
+      "id": "P21-BROWSER-LABELS",
+      "result": "PASS",
+      "route": "/season",
+      "viewport": "desktop",
+      "unlabeledButtons": []
+    },
+    {
+      "id": "P21-BROWSER-ROUTE",
+      "result": "PASS",
+      "route": "/friends",
+      "viewport": "desktop",
+      "status": 200,
+      "heading": "Make it a friendly challenge."
+    },
+    {
+      "id": "P21-BROWSER-REFLOW",
+      "result": "PASS",
+      "route": "/friends",
+      "viewport": "desktop",
+      "width": 1672,
+      "scrollWidth": 1672,
+      "overflowing": []
+    },
+    {
+      "id": "P21-BROWSER-IMAGES",
+      "result": "PASS",
+      "route": "/friends",
+      "viewport": "desktop",
+      "brokenImages": []
+    },
+    {
+      "id": "P21-BROWSER-LABELS",
+      "result": "PASS",
+      "route": "/friends",
+      "viewport": "desktop",
+      "unlabeledButtons": []
+    },
+    {
+      "id": "P21-BROWSER-ROUTE",
+      "result": "PASS",
+      "route": "/challenge",
+      "viewport": "desktop",
+      "status": 200,
+      "heading": "A worthy opponent awaits."
+    },
+    {
+      "id": "P21-BROWSER-REFLOW",
+      "result": "PASS",
+      "route": "/challenge",
+      "viewport": "desktop",
+      "width": 1672,
+      "scrollWidth": 1672,
+      "overflowing": []
+    },
+    {
+      "id": "P21-BROWSER-IMAGES",
+      "result": "PASS",
+      "route": "/challenge",
+      "viewport": "desktop",
+      "brokenImages": []
+    },
+    {
+      "id": "P21-BROWSER-LABELS",
+      "result": "PASS",
+      "route": "/challenge",
+      "viewport": "desktop",
+      "unlabeledButtons": []
+    },
+    {
+      "id": "P21-BROWSER-ROUTE",
+      "result": "PASS",
+      "route": "/leaderboard",
+      "viewport": "desktop",
+      "status": 200,
+      "heading": "Play your way up."
+    },
+    {
+      "id": "P21-BROWSER-REFLOW",
+      "result": "PASS",
+      "route": "/leaderboard",
+      "viewport": "desktop",
+      "width": 1672,
+      "scrollWidth": 1672,
+      "overflowing": []
+    },
+    {
+      "id": "P21-BROWSER-IMAGES",
+      "result": "PASS",
+      "route": "/leaderboard",
+      "viewport": "desktop",
+      "brokenImages": []
+    },
+    {
+      "id": "P21-BROWSER-LABELS",
+      "result": "PASS",
+      "route": "/leaderboard",
+      "viewport": "desktop",
+      "unlabeledButtons": []
+    },
+    {
+      "id": "P21-BROWSER-ROUTE",
+      "result": "PASS",
+      "route": "/rewards",
+      "viewport": "desktop",
+      "status": 200,
+      "heading": "Make every game count."
+    },
+    {
+      "id": "P21-BROWSER-REFLOW",
+      "result": "PASS",
+      "route": "/rewards",
+      "viewport": "desktop",
+      "width": 1672,
+      "scrollWidth": 1672,
+      "overflowing": []
+    },
+    {
+      "id": "P21-BROWSER-IMAGES",
+      "result": "PASS",
+      "route": "/rewards",
+      "viewport": "desktop",
+      "brokenImages": []
+    },
+    {
+      "id": "P21-BROWSER-LABELS",
+      "result": "PASS",
+      "route": "/rewards",
+      "viewport": "desktop",
+      "unlabeledButtons": []
+    },
+    {
+      "id": "P21-BROWSER-ROUTE",
+      "result": "PASS",
+      "route": "/themes",
+      "viewport": "desktop",
+      "status": 200,
+      "heading": "Find your kind of focus."
+    },
+    {
+      "id": "P21-BROWSER-REFLOW",
+      "result": "PASS",
+      "route": "/themes",
+      "viewport": "desktop",
+      "width": 1672,
+      "scrollWidth": 1672,
+      "overflowing": []
+    },
+    {
+      "id": "P21-BROWSER-IMAGES",
+      "result": "PASS",
+      "route": "/themes",
+      "viewport": "desktop",
+      "brokenImages": []
+    },
+    {
+      "id": "P21-BROWSER-LABELS",
+      "result": "PASS",
+      "route": "/themes",
+      "viewport": "desktop",
+      "unlabeledButtons": []
+    },
+    {
+      "id": "P21-BROWSER-ROUTE",
+      "result": "PASS",
+      "route": "/profile",
+      "viewport": "desktop",
+      "status": 200,
+      "heading": "Your identity stays with you."
+    },
+    {
+      "id": "P21-BROWSER-REFLOW",
+      "result": "PASS",
+      "route": "/profile",
+      "viewport": "desktop",
+      "width": 1672,
+      "scrollWidth": 1672,
+      "overflowing": []
+    },
+    {
+      "id": "P21-BROWSER-IMAGES",
+      "result": "PASS",
+      "route": "/profile",
+      "viewport": "desktop",
+      "brokenImages": []
+    },
+    {
+      "id": "P21-BROWSER-LABELS",
+      "result": "PASS",
+      "route": "/profile",
+      "viewport": "desktop",
+      "unlabeledButtons": []
+    },
+    {
+      "id": "P21-BROWSER-ROUTE",
+      "result": "PASS",
+      "route": "/settings",
+      "viewport": "desktop",
+      "status": 200,
+      "heading": "Focus on your game."
+    },
+    {
+      "id": "P21-BROWSER-REFLOW",
+      "result": "PASS",
+      "route": "/settings",
+      "viewport": "desktop",
+      "width": 1672,
+      "scrollWidth": 1672,
+      "overflowing": []
+    },
+    {
+      "id": "P21-BROWSER-IMAGES",
+      "result": "PASS",
+      "route": "/settings",
+      "viewport": "desktop",
+      "brokenImages": []
+    },
+    {
+      "id": "P21-BROWSER-LABELS",
+      "result": "PASS",
+      "route": "/settings",
+      "viewport": "desktop",
+      "unlabeledButtons": []
+    },
+    {
+      "id": "P21-BROWSER-ROUTE",
+      "result": "PASS",
+      "route": "/account",
+      "viewport": "desktop",
+      "status": 200,
+      "heading": "Welcome to your next move."
+    },
+    {
+      "id": "P21-BROWSER-REFLOW",
+      "result": "PASS",
+      "route": "/account",
+      "viewport": "desktop",
+      "width": 1672,
+      "scrollWidth": 1672,
+      "overflowing": []
+    },
+    {
+      "id": "P21-BROWSER-IMAGES",
+      "result": "PASS",
+      "route": "/account",
+      "viewport": "desktop",
+      "brokenImages": []
+    },
+    {
+      "id": "P21-BROWSER-LABELS",
+      "result": "PASS",
+      "route": "/account",
+      "viewport": "desktop",
+      "unlabeledButtons": []
+    },
+    {
+      "id": "P21-BROWSER-ROUTE",
+      "result": "PASS",
+      "route": "/how-to-play",
+      "viewport": "desktop",
+      "status": 200,
+      "heading": "Small boards. Big decisions."
+    },
+    {
+      "id": "P21-BROWSER-REFLOW",
+      "result": "PASS",
+      "route": "/how-to-play",
+      "viewport": "desktop",
+      "width": 1672,
+      "scrollWidth": 1672,
+      "overflowing": []
+    },
+    {
+      "id": "P21-BROWSER-IMAGES",
+      "result": "PASS",
+      "route": "/how-to-play",
+      "viewport": "desktop",
+      "brokenImages": []
+    },
+    {
+      "id": "P21-BROWSER-LABELS",
+      "result": "PASS",
+      "route": "/how-to-play",
+      "viewport": "desktop",
+      "unlabeledButtons": []
+    },
+    {
+      "id": "P21-BROWSER-ROUTE",
+      "result": "PASS",
+      "route": "/support",
+      "viewport": "desktop",
+      "status": 200,
+      "heading": "A little help for your next move."
+    },
+    {
+      "id": "P21-BROWSER-REFLOW",
+      "result": "PASS",
+      "route": "/support",
+      "viewport": "desktop",
+      "width": 1672,
+      "scrollWidth": 1672,
+      "overflowing": []
+    },
+    {
+      "id": "P21-BROWSER-IMAGES",
+      "result": "PASS",
+      "route": "/support",
+      "viewport": "desktop",
+      "brokenImages": []
+    },
+    {
+      "id": "P21-BROWSER-LABELS",
+      "result": "PASS",
+      "route": "/support",
+      "viewport": "desktop",
+      "unlabeledButtons": []
+    },
+    {
+      "id": "P21-BROWSER-ROUTE",
+      "result": "PASS",
+      "route": "/about",
+      "viewport": "desktop",
+      "status": 200,
+      "heading": "A familiar game. A bigger idea."
+    },
+    {
+      "id": "P21-BROWSER-REFLOW",
+      "result": "PASS",
+      "route": "/about",
+      "viewport": "desktop",
+      "width": 1672,
+      "scrollWidth": 1672,
+      "overflowing": []
+    },
+    {
+      "id": "P21-BROWSER-IMAGES",
+      "result": "PASS",
+      "route": "/about",
+      "viewport": "desktop",
+      "brokenImages": []
+    },
+    {
+      "id": "P21-BROWSER-LABELS",
+      "result": "PASS",
+      "route": "/about",
+      "viewport": "desktop",
+      "unlabeledButtons": []
+    },
+    {
+      "id": "P21-BROWSER-ROUTE",
+      "result": "PASS",
+      "route": "/privacy",
+      "viewport": "desktop",
+      "status": 200,
+      "heading": "Your privacy matters."
+    },
+    {
+      "id": "P21-BROWSER-REFLOW",
+      "result": "PASS",
+      "route": "/privacy",
+      "viewport": "desktop",
+      "width": 1672,
+      "scrollWidth": 1672,
+      "overflowing": []
+    },
+    {
+      "id": "P21-BROWSER-IMAGES",
+      "result": "PASS",
+      "route": "/privacy",
+      "viewport": "desktop",
+      "brokenImages": []
+    },
+    {
+      "id": "P21-BROWSER-LABELS",
+      "result": "PASS",
+      "route": "/privacy",
+      "viewport": "desktop",
+      "unlabeledButtons": []
+    },
+    {
+      "id": "P21-BROWSER-ROUTE",
+      "result": "PASS",
+      "route": "/terms",
+      "viewport": "desktop",
+      "status": 200,
+      "heading": "Know the rules of the platform."
+    },
+    {
+      "id": "P21-BROWSER-REFLOW",
+      "result": "PASS",
+      "route": "/terms",
+      "viewport": "desktop",
+      "width": 1672,
+      "scrollWidth": 1672,
+      "overflowing": []
+    },
+    {
+      "id": "P21-BROWSER-IMAGES",
+      "result": "PASS",
+      "route": "/terms",
+      "viewport": "desktop",
+      "brokenImages": []
+    },
+    {
+      "id": "P21-BROWSER-LABELS",
+      "result": "PASS",
+      "route": "/terms",
+      "viewport": "desktop",
+      "unlabeledButtons": []
+    },
+    {
+      "id": "P21-BROWSER-ROUTE",
+      "result": "PASS",
+      "route": "/delete-account",
+      "viewport": "desktop",
+      "status": 200,
+      "heading": "A clear way to leave."
+    },
+    {
+      "id": "P21-BROWSER-REFLOW",
+      "result": "PASS",
+      "route": "/delete-account",
+      "viewport": "desktop",
+      "width": 1672,
+      "scrollWidth": 1672,
+      "overflowing": []
+    },
+    {
+      "id": "P21-BROWSER-IMAGES",
+      "result": "PASS",
+      "route": "/delete-account",
+      "viewport": "desktop",
+      "brokenImages": []
+    },
+    {
+      "id": "P21-BROWSER-LABELS",
+      "result": "PASS",
+      "route": "/delete-account",
+      "viewport": "desktop",
+      "unlabeledButtons": []
+    },
+    {
+      "id": "P21-BROWSER-ROUTE",
+      "result": "PASS",
+      "route": "/privacy-choices",
+      "viewport": "desktop",
+      "status": 200,
+      "heading": "Stay in control."
+    },
+    {
+      "id": "P21-BROWSER-REFLOW",
+      "result": "PASS",
+      "route": "/privacy-choices",
+      "viewport": "desktop",
+      "width": 1672,
+      "scrollWidth": 1672,
+      "overflowing": []
+    },
+    {
+      "id": "P21-BROWSER-IMAGES",
+      "result": "PASS",
+      "route": "/privacy-choices",
+      "viewport": "desktop",
+      "brokenImages": []
+    },
+    {
+      "id": "P21-BROWSER-LABELS",
+      "result": "PASS",
+      "route": "/privacy-choices",
+      "viewport": "desktop",
+      "unlabeledButtons": []
+    },
+    {
+      "id": "P21-BROWSER-ROUTE",
+      "result": "PASS",
+      "route": "/help",
+      "viewport": "desktop",
+      "status": 200,
+      "heading": "A little help for your next move."
+    },
+    {
+      "id": "P21-BROWSER-REFLOW",
+      "result": "PASS",
+      "route": "/help",
+      "viewport": "desktop",
+      "width": 1672,
+      "scrollWidth": 1672,
+      "overflowing": []
+    },
+    {
+      "id": "P21-BROWSER-IMAGES",
+      "result": "PASS",
+      "route": "/help",
+      "viewport": "desktop",
+      "brokenImages": []
+    },
+    {
+      "id": "P21-BROWSER-LABELS",
+      "result": "PASS",
+      "route": "/help",
+      "viewport": "desktop",
+      "unlabeledButtons": []
+    },
+    {
+      "id": "P21-BROWSER-ROUTE",
+      "result": "PASS",
+      "route": "/news",
+      "viewport": "desktop",
+      "status": 200,
+      "heading": "Your next chapter starts here."
+    },
+    {
+      "id": "P21-BROWSER-REFLOW",
+      "result": "PASS",
+      "route": "/news",
+      "viewport": "desktop",
+      "width": 1672,
+      "scrollWidth": 1672,
+      "overflowing": []
+    },
+    {
+      "id": "P21-BROWSER-IMAGES",
+      "result": "PASS",
+      "route": "/news",
+      "viewport": "desktop",
+      "brokenImages": []
+    },
+    {
+      "id": "P21-BROWSER-LABELS",
+      "result": "PASS",
+      "route": "/news",
+      "viewport": "desktop",
+      "unlabeledButtons": []
+    },
+    {
+      "id": "P21-BROWSER-ROUTE",
+      "result": "PASS",
+      "route": "/status",
+      "viewport": "desktop",
+      "status": 200,
+      "heading": "Keep your next move in sight."
+    },
+    {
+      "id": "P21-BROWSER-REFLOW",
+      "result": "PASS",
+      "route": "/status",
+      "viewport": "desktop",
+      "width": 1672,
+      "scrollWidth": 1672,
+      "overflowing": []
+    },
+    {
+      "id": "P21-BROWSER-IMAGES",
+      "result": "PASS",
+      "route": "/status",
+      "viewport": "desktop",
+      "brokenImages": []
+    },
+    {
+      "id": "P21-BROWSER-LABELS",
+      "result": "PASS",
+      "route": "/status",
+      "viewport": "desktop",
+      "unlabeledButtons": []
+    },
+    {
+      "id": "P21-BROWSER-ROUTE",
+      "result": "PASS",
+      "route": "/accessibility",
+      "viewport": "desktop",
+      "status": 200,
+      "heading": "Play at your own pace."
+    },
+    {
+      "id": "P21-BROWSER-REFLOW",
+      "result": "PASS",
+      "route": "/accessibility",
+      "viewport": "desktop",
+      "width": 1672,
+      "scrollWidth": 1672,
+      "overflowing": []
+    },
+    {
+      "id": "P21-BROWSER-IMAGES",
+      "result": "PASS",
+      "route": "/accessibility",
+      "viewport": "desktop",
+      "brokenImages": []
+    },
+    {
+      "id": "P21-BROWSER-LABELS",
+      "result": "PASS",
+      "route": "/accessibility",
+      "viewport": "desktop",
+      "unlabeledButtons": []
+    },
+    {
+      "id": "P21-BROWSER-ROUTE",
+      "result": "PASS",
+      "route": "/offline",
+      "viewport": "desktop",
+      "status": 200,
+      "heading": "Take the next move offline."
+    },
+    {
+      "id": "P21-BROWSER-REFLOW",
+      "result": "PASS",
+      "route": "/offline",
+      "viewport": "desktop",
+      "width": 1672,
+      "scrollWidth": 1672,
+      "overflowing": []
+    },
+    {
+      "id": "P21-BROWSER-IMAGES",
+      "result": "PASS",
+      "route": "/offline",
+      "viewport": "desktop",
+      "brokenImages": []
+    },
+    {
+      "id": "P21-BROWSER-LABELS",
+      "result": "PASS",
+      "route": "/offline",
+      "viewport": "desktop",
+      "unlabeledButtons": []
+    },
+    {
+      "id": "P21-BROWSER-ROUTE",
+      "result": "PASS",
+      "route": "/404",
+      "viewport": "desktop",
+      "status": 200,
+      "heading": "This move leads off the board."
+    },
+    {
+      "id": "P21-BROWSER-REFLOW",
+      "result": "PASS",
+      "route": "/404",
+      "viewport": "desktop",
+      "width": 1672,
+      "scrollWidth": 1672,
+      "overflowing": []
+    },
+    {
+      "id": "P21-BROWSER-IMAGES",
+      "result": "PASS",
+      "route": "/404",
+      "viewport": "desktop",
+      "brokenImages": []
+    },
+    {
+      "id": "P21-BROWSER-LABELS",
+      "result": "PASS",
+      "route": "/404",
+      "viewport": "desktop",
+      "unlabeledButtons": []
+    },
+    {
+      "id": "P21-BROWSER-ROUTE",
+      "result": "PASS",
+      "route": "/",
+      "viewport": "tablet",
+      "status": 200,
+      "heading": "The UltimateTic-tac-toe.Think bigger."
+    },
+    {
+      "id": "P21-BROWSER-REFLOW",
+      "result": "PASS",
+      "route": "/",
+      "viewport": "tablet",
+      "width": 768,
+      "scrollWidth": 768,
+      "overflowing": []
+    },
+    {
+      "id": "P21-BROWSER-IMAGES",
+      "result": "PASS",
+      "route": "/",
+      "viewport": "tablet",
+      "brokenImages": []
+    },
+    {
+      "id": "P21-BROWSER-LABELS",
+      "result": "PASS",
+      "route": "/",
+      "viewport": "tablet",
+      "unlabeledButtons": []
+    },
+    {
+      "id": "P21-BROWSER-BOARD",
+      "result": "PASS",
+      "route": "/",
+      "viewport": "tablet"
+    },
+    {
+      "id": "P21-BROWSER-ROUTE",
+      "result": "PASS",
+      "route": "/play",
+      "viewport": "tablet",
+      "status": 200,
+      "heading": "Choose your arena."
+    },
+    {
+      "id": "P21-BROWSER-REFLOW",
+      "result": "PASS",
+      "route": "/play",
+      "viewport": "tablet",
+      "width": 768,
+      "scrollWidth": 768,
+      "overflowing": []
+    },
+    {
+      "id": "P21-BROWSER-IMAGES",
+      "result": "PASS",
+      "route": "/play",
+      "viewport": "tablet",
+      "brokenImages": []
+    },
+    {
+      "id": "P21-BROWSER-LABELS",
+      "result": "PASS",
+      "route": "/play",
+      "viewport": "tablet",
+      "unlabeledButtons": []
+    },
+    {
+      "id": "P21-BROWSER-ROUTE",
+      "result": "PASS",
+      "route": "/casual",
+      "viewport": "tablet",
+      "status": 200,
+      "heading": "Play for the next good move."
+    },
+    {
+      "id": "P21-BROWSER-REFLOW",
+      "result": "PASS",
+      "route": "/casual",
+      "viewport": "tablet",
+      "width": 768,
+      "scrollWidth": 768,
+      "overflowing": []
+    },
+    {
+      "id": "P21-BROWSER-IMAGES",
+      "result": "PASS",
+      "route": "/casual",
+      "viewport": "tablet",
+      "brokenImages": []
+    },
+    {
+      "id": "P21-BROWSER-LABELS",
+      "result": "PASS",
+      "route": "/casual",
+      "viewport": "tablet",
+      "unlabeledButtons": []
+    },
+    {
+      "id": "P21-BROWSER-ROUTE",
+      "result": "PASS",
+      "route": "/ranked",
+      "viewport": "tablet",
+      "status": 200,
+      "heading": "Earn your place."
+    },
+    {
+      "id": "P21-BROWSER-REFLOW",
+      "result": "PASS",
+      "route": "/ranked",
+      "viewport": "tablet",
+      "width": 768,
+      "scrollWidth": 768,
+      "overflowing": []
+    },
+    {
+      "id": "P21-BROWSER-IMAGES",
+      "result": "PASS",
+      "route": "/ranked",
+      "viewport": "tablet",
+      "brokenImages": []
+    },
+    {
+      "id": "P21-BROWSER-LABELS",
+      "result": "PASS",
+      "route": "/ranked",
+      "viewport": "tablet",
+      "unlabeledButtons": []
+    },
+    {
+      "id": "P21-BROWSER-ROUTE",
+      "result": "PASS",
+      "route": "/tournaments",
+      "viewport": "tablet",
+      "status": 200,
+      "heading": "Bring your best game."
+    },
+    {
+      "id": "P21-BROWSER-REFLOW",
+      "result": "PASS",
+      "route": "/tournaments",
+      "viewport": "tablet",
+      "width": 768,
+      "scrollWidth": 768,
+      "overflowing": []
+    },
+    {
+      "id": "P21-BROWSER-IMAGES",
+      "result": "PASS",
+      "route": "/tournaments",
+      "viewport": "tablet",
+      "brokenImages": []
+    },
+    {
+      "id": "P21-BROWSER-LABELS",
+      "result": "PASS",
+      "route": "/tournaments",
+      "viewport": "tablet",
+      "unlabeledButtons": []
+    },
+    {
+      "id": "P21-BROWSER-ROUTE",
+      "result": "PASS",
+      "route": "/season",
+      "viewport": "tablet",
+      "status": 200,
+      "heading": "The season is yours to shape."
+    },
+    {
+      "id": "P21-BROWSER-REFLOW",
+      "result": "PASS",
+      "route": "/season",
+      "viewport": "tablet",
+      "width": 768,
+      "scrollWidth": 768,
+      "overflowing": []
+    },
+    {
+      "id": "P21-BROWSER-IMAGES",
+      "result": "PASS",
+      "route": "/season",
+      "viewport": "tablet",
+      "brokenImages": []
+    },
+    {
+      "id": "P21-BROWSER-LABELS",
+      "result": "PASS",
+      "route": "/season",
+      "viewport": "tablet",
+      "unlabeledButtons": []
+    },
+    {
+      "id": "P21-BROWSER-ROUTE",
+      "result": "PASS",
+      "route": "/friends",
+      "viewport": "tablet",
+      "status": 200,
+      "heading": "Make it a friendly challenge."
+    },
+    {
+      "id": "P21-BROWSER-REFLOW",
+      "result": "PASS",
+      "route": "/friends",
+      "viewport": "tablet",
+      "width": 768,
+      "scrollWidth": 768,
+      "overflowing": []
+    },
+    {
+      "id": "P21-BROWSER-IMAGES",
+      "result": "PASS",
+      "route": "/friends",
+      "viewport": "tablet",
+      "brokenImages": []
+    },
+    {
+      "id": "P21-BROWSER-LABELS",
+      "result": "PASS",
+      "route": "/friends",
+      "viewport": "tablet",
+      "unlabeledButtons": []
+    },
+    {
+      "id": "P21-BROWSER-ROUTE",
+      "result": "PASS",
+      "route": "/challenge",
+      "viewport": "tablet",
+      "status": 200,
+      "heading": "A worthy opponent awaits."
+    },
+    {
+      "id": "P21-BROWSER-REFLOW",
+      "result": "PASS",
+      "route": "/challenge",
+      "viewport": "tablet",
+      "width": 768,
+      "scrollWidth": 768,
+      "overflowing": []
+    },
+    {
+      "id": "P21-BROWSER-IMAGES",
+      "result": "PASS",
+      "route": "/challenge",
+      "viewport": "tablet",
+      "brokenImages": []
+    },
+    {
+      "id": "P21-BROWSER-LABELS",
+      "result": "PASS",
+      "route": "/challenge",
+      "viewport": "tablet",
+      "unlabeledButtons": []
+    },
+    {
+      "id": "P21-BROWSER-ROUTE",
+      "result": "PASS",
+      "route": "/leaderboard",
+      "viewport": "tablet",
+      "status": 200,
+      "heading": "Play your way up."
+    },
+    {
+      "id": "P21-BROWSER-REFLOW",
+      "result": "PASS",
+      "route": "/leaderboard",
+      "viewport": "tablet",
+      "width": 768,
+      "scrollWidth": 768,
+      "overflowing": []
+    },
+    {
+      "id": "P21-BROWSER-IMAGES",
+      "result": "PASS",
+      "route": "/leaderboard",
+      "viewport": "tablet",
+      "brokenImages": []
+    },
+    {
+      "id": "P21-BROWSER-LABELS",
+      "result": "PASS",
+      "route": "/leaderboard",
+      "viewport": "tablet",
+      "unlabeledButtons": []
+    },
+    {
+      "id": "P21-BROWSER-ROUTE",
+      "result": "PASS",
+      "route": "/rewards",
+      "viewport": "tablet",
+      "status": 200,
+      "heading": "Make every game count."
+    },
+    {
+      "id": "P21-BROWSER-REFLOW",
+      "result": "PASS",
+      "route": "/rewards",
+      "viewport": "tablet",
+      "width": 768,
+      "scrollWidth": 768,
+      "overflowing": []
+    },
+    {
+      "id": "P21-BROWSER-IMAGES",
+      "result": "PASS",
+      "route": "/rewards",
+      "viewport": "tablet",
+      "brokenImages": []
+    },
+    {
+      "id": "P21-BROWSER-LABELS",
+      "result": "PASS",
+      "route": "/rewards",
+      "viewport": "tablet",
+      "unlabeledButtons": []
+    },
+    {
+      "id": "P21-BROWSER-ROUTE",
+      "result": "PASS",
+      "route": "/themes",
+      "viewport": "tablet",
+      "status": 200,
+      "heading": "Find your kind of focus."
+    },
+    {
+      "id": "P21-BROWSER-REFLOW",
+      "result": "PASS",
+      "route": "/themes",
+      "viewport": "tablet",
+      "width": 768,
+      "scrollWidth": 768,
+      "overflowing": []
+    },
+    {
+      "id": "P21-BROWSER-IMAGES",
+      "result": "PASS",
+      "route": "/themes",
+      "viewport": "tablet",
+      "brokenImages": []
+    },
+    {
+      "id": "P21-BROWSER-LABELS",
+      "result": "PASS",
+      "route": "/themes",
+      "viewport": "tablet",
+      "unlabeledButtons": []
+    },
+    {
+      "id": "P21-BROWSER-ROUTE",
+      "result": "PASS",
+      "route": "/profile",
+      "viewport": "tablet",
+      "status": 200,
+      "heading": "Your identity stays with you."
+    },
+    {
+      "id": "P21-BROWSER-REFLOW",
+      "result": "PASS",
+      "route": "/profile",
+      "viewport": "tablet",
+      "width": 768,
+      "scrollWidth": 768,
+      "overflowing": []
+    },
+    {
+      "id": "P21-BROWSER-IMAGES",
+      "result": "PASS",
+      "route": "/profile",
+      "viewport": "tablet",
+      "brokenImages": []
+    },
+    {
+      "id": "P21-BROWSER-LABELS",
+      "result": "PASS",
+      "route": "/profile",
+      "viewport": "tablet",
+      "unlabeledButtons": []
+    },
+    {
+      "id": "P21-BROWSER-ROUTE",
+      "result": "PASS",
+      "route": "/settings",
+      "viewport": "tablet",
+      "status": 200,
+      "heading": "Focus on your game."
+    },
+    {
+      "id": "P21-BROWSER-REFLOW",
+      "result": "PASS",
+      "route": "/settings",
+      "viewport": "tablet",
+      "width": 768,
+      "scrollWidth": 768,
+      "overflowing": []
+    },
+    {
+      "id": "P21-BROWSER-IMAGES",
+      "result": "PASS",
+      "route": "/settings",
+      "viewport": "tablet",
+      "brokenImages": []
+    },
+    {
+      "id": "P21-BROWSER-LABELS",
+      "result": "PASS",
+      "route": "/settings",
+      "viewport": "tablet",
+      "unlabeledButtons": []
+    },
+    {
+      "id": "P21-BROWSER-ROUTE",
+      "result": "PASS",
+      "route": "/account",
+      "viewport": "tablet",
+      "status": 200,
+      "heading": "Welcome to your next move."
+    },
+    {
+      "id": "P21-BROWSER-REFLOW",
+      "result": "PASS",
+      "route": "/account",
+      "viewport": "tablet",
+      "width": 768,
+      "scrollWidth": 768,
+      "overflowing": []
+    },
+    {
+      "id": "P21-BROWSER-IMAGES",
+      "result": "PASS",
+      "route": "/account",
+      "viewport": "tablet",
+      "brokenImages": []
+    },
+    {
+      "id": "P21-BROWSER-LABELS",
+      "result": "PASS",
+      "route": "/account",
+      "viewport": "tablet",
+      "unlabeledButtons": []
+    },
+    {
+      "id": "P21-BROWSER-ROUTE",
+      "result": "PASS",
+      "route": "/how-to-play",
+      "viewport": "tablet",
+      "status": 200,
+      "heading": "Small boards. Big decisions."
+    },
+    {
+      "id": "P21-BROWSER-REFLOW",
+      "result": "PASS",
+      "route": "/how-to-play",
+      "viewport": "tablet",
+      "width": 768,
+      "scrollWidth": 768,
+      "overflowing": []
+    },
+    {
+      "id": "P21-BROWSER-IMAGES",
+      "result": "PASS",
+      "route": "/how-to-play",
+      "viewport": "tablet",
+      "brokenImages": []
+    },
+    {
+      "id": "P21-BROWSER-LABELS",
+      "result": "PASS",
+      "route": "/how-to-play",
+      "viewport": "tablet",
+      "unlabeledButtons": []
+    },
+    {
+      "id": "P21-BROWSER-ROUTE",
+      "result": "PASS",
+      "route": "/support",
+      "viewport": "tablet",
+      "status": 200,
+      "heading": "A little help for your next move."
+    },
+    {
+      "id": "P21-BROWSER-REFLOW",
+      "result": "PASS",
+      "route": "/support",
+      "viewport": "tablet",
+      "width": 768,
+      "scrollWidth": 768,
+      "overflowing": []
+    },
+    {
+      "id": "P21-BROWSER-IMAGES",
+      "result": "PASS",
+      "route": "/support",
+      "viewport": "tablet",
+      "brokenImages": []
+    },
+    {
+      "id": "P21-BROWSER-LABELS",
+      "result": "PASS",
+      "route": "/support",
+      "viewport": "tablet",
+      "unlabeledButtons": []
+    },
+    {
+      "id": "P21-BROWSER-ROUTE",
+      "result": "PASS",
+      "route": "/about",
+      "viewport": "tablet",
+      "status": 200,
+      "heading": "A familiar game. A bigger idea."
+    },
+    {
+      "id": "P21-BROWSER-REFLOW",
+      "result": "PASS",
+      "route": "/about",
+      "viewport": "tablet",
+      "width": 768,
+      "scrollWidth": 768,
+      "overflowing": []
+    },
+    {
+      "id": "P21-BROWSER-IMAGES",
+      "result": "PASS",
+      "route": "/about",
+      "viewport": "tablet",
+      "brokenImages": []
+    },
+    {
+      "id": "P21-BROWSER-LABELS",
+      "result": "PASS",
+      "route": "/about",
+      "viewport": "tablet",
+      "unlabeledButtons": []
+    },
+    {
+      "id": "P21-BROWSER-ROUTE",
+      "result": "PASS",
+      "route": "/privacy",
+      "viewport": "tablet",
+      "status": 200,
+      "heading": "Your privacy matters."
+    },
+    {
+      "id": "P21-BROWSER-REFLOW",
+      "result": "PASS",
+      "route": "/privacy",
+      "viewport": "tablet",
+      "width": 768,
+      "scrollWidth": 768,
+      "overflowing": []
+    },
+    {
+      "id": "P21-BROWSER-IMAGES",
+      "result": "PASS",
+      "route": "/privacy",
+      "viewport": "tablet",
+      "brokenImages": []
+    },
+    {
+      "id": "P21-BROWSER-LABELS",
+      "result": "PASS",
+      "route": "/privacy",
+      "viewport": "tablet",
+      "unlabeledButtons": []
+    },
+    {
+      "id": "P21-BROWSER-ROUTE",
+      "result": "PASS",
+      "route": "/terms",
+      "viewport": "tablet",
+      "status": 200,
+      "heading": "Know the rules of the platform."
+    },
+    {
+      "id": "P21-BROWSER-REFLOW",
+      "result": "PASS",
+      "route": "/terms",
+      "viewport": "tablet",
+      "width": 768,
+      "scrollWidth": 768,
+      "overflowing": []
+    },
+    {
+      "id": "P21-BROWSER-IMAGES",
+      "result": "PASS",
+      "route": "/terms",
+      "viewport": "tablet",
+      "brokenImages": []
+    },
+    {
+      "id": "P21-BROWSER-LABELS",
+      "result": "PASS",
+      "route": "/terms",
+      "viewport": "tablet",
+      "unlabeledButtons": []
+    },
+    {
+      "id": "P21-BROWSER-ROUTE",
+      "result": "PASS",
+      "route": "/delete-account",
+      "viewport": "tablet",
+      "status": 200,
+      "heading": "A clear way to leave."
+    },
+    {
+      "id": "P21-BROWSER-REFLOW",
+      "result": "PASS",
+      "route": "/delete-account",
+      "viewport": "tablet",
+      "width": 768,
+      "scrollWidth": 768,
+      "overflowing": []
+    },
+    {
+      "id": "P21-BROWSER-IMAGES",
+      "result": "PASS",
+      "route": "/delete-account",
+      "viewport": "tablet",
+      "brokenImages": []
+    },
+    {
+      "id": "P21-BROWSER-LABELS",
+      "result": "PASS",
+      "route": "/delete-account",
+      "viewport": "tablet",
+      "unlabeledButtons": []
+    },
+    {
+      "id": "P21-BROWSER-ROUTE",
+      "result": "PASS",
+      "route": "/privacy-choices",
+      "viewport": "tablet",
+      "status": 200,
+      "heading": "Stay in control."
+    },
+    {
+      "id": "P21-BROWSER-REFLOW",
+      "result": "PASS",
+      "route": "/privacy-choices",
+      "viewport": "tablet",
+      "width": 768,
+      "scrollWidth": 768,
+      "overflowing": []
+    },
+    {
+      "id": "P21-BROWSER-IMAGES",
+      "result": "PASS",
+      "route": "/privacy-choices",
+      "viewport": "tablet",
+      "brokenImages": []
+    },
+    {
+      "id": "P21-BROWSER-LABELS",
+      "result": "PASS",
+      "route": "/privacy-choices",
+      "viewport": "tablet",
+      "unlabeledButtons": []
+    },
+    {
+      "id": "P21-BROWSER-ROUTE",
+      "result": "PASS",
+      "route": "/help",
+      "viewport": "tablet",
+      "status": 200,
+      "heading": "A little help for your next move."
+    },
+    {
+      "id": "P21-BROWSER-REFLOW",
+      "result": "PASS",
+      "route": "/help",
+      "viewport": "tablet",
+      "width": 768,
+      "scrollWidth": 768,
+      "overflowing": []
+    },
+    {
+      "id": "P21-BROWSER-IMAGES",
+      "result": "PASS",
+      "route": "/help",
+      "viewport": "tablet",
+      "brokenImages": []
+    },
+    {
+      "id": "P21-BROWSER-LABELS",
+      "result": "PASS",
+      "route": "/help",
+      "viewport": "tablet",
+      "unlabeledButtons": []
+    },
+    {
+      "id": "P21-BROWSER-ROUTE",
+      "result": "PASS",
+      "route": "/news",
+      "viewport": "tablet",
+      "status": 200,
+      "heading": "Your next chapter starts here."
+    },
+    {
+      "id": "P21-BROWSER-REFLOW",
+      "result": "PASS",
+      "route": "/news",
+      "viewport": "tablet",
+      "width": 768,
+      "scrollWidth": 768,
+      "overflowing": []
+    },
+    {
+      "id": "P21-BROWSER-IMAGES",
+      "result": "PASS",
+      "route": "/news",
+      "viewport": "tablet",
+      "brokenImages": []
+    },
+    {
+      "id": "P21-BROWSER-LABELS",
+      "result": "PASS",
+      "route": "/news",
+      "viewport": "tablet",
+      "unlabeledButtons": []
+    },
+    {
+      "id": "P21-BROWSER-ROUTE",
+      "result": "PASS",
+      "route": "/status",
+      "viewport": "tablet",
+      "status": 200,
+      "heading": "Keep your next move in sight."
+    },
+    {
+      "id": "P21-BROWSER-REFLOW",
+      "result": "PASS",
+      "route": "/status",
+      "viewport": "tablet",
+      "width": 768,
+      "scrollWidth": 768,
+      "overflowing": []
+    },
+    {
+      "id": "P21-BROWSER-IMAGES",
+      "result": "PASS",
+      "route": "/status",
+      "viewport": "tablet",
+      "brokenImages": []
+    },
+    {
+      "id": "P21-BROWSER-LABELS",
+      "result": "PASS",
+      "route": "/status",
+      "viewport": "tablet",
+      "unlabeledButtons": []
+    },
+    {
+      "id": "P21-BROWSER-ROUTE",
+      "result": "PASS",
+      "route": "/accessibility",
+      "viewport": "tablet",
+      "status": 200,
+      "heading": "Play at your own pace."
+    },
+    {
+      "id": "P21-BROWSER-REFLOW",
+      "result": "PASS",
+      "route": "/accessibility",
+      "viewport": "tablet",
+      "width": 768,
+      "scrollWidth": 768,
+      "overflowing": []
+    },
+    {
+      "id": "P21-BROWSER-IMAGES",
+      "result": "PASS",
+      "route": "/accessibility",
+      "viewport": "tablet",
+      "brokenImages": []
+    },
+    {
+      "id": "P21-BROWSER-LABELS",
+      "result": "PASS",
+      "route": "/accessibility",
+      "viewport": "tablet",
+      "unlabeledButtons": []
+    },
+    {
+      "id": "P21-BROWSER-ROUTE",
+      "result": "PASS",
+      "route": "/offline",
+      "viewport": "tablet",
+      "status": 200,
+      "heading": "Take the next move offline."
+    },
+    {
+      "id": "P21-BROWSER-REFLOW",
+      "result": "PASS",
+      "route": "/offline",
+      "viewport": "tablet",
+      "width": 768,
+      "scrollWidth": 768,
+      "overflowing": []
+    },
+    {
+      "id": "P21-BROWSER-IMAGES",
+      "result": "PASS",
+      "route": "/offline",
+      "viewport": "tablet",
+      "brokenImages": []
+    },
+    {
+      "id": "P21-BROWSER-LABELS",
+      "result": "PASS",
+      "route": "/offline",
+      "viewport": "tablet",
+      "unlabeledButtons": []
+    },
+    {
+      "id": "P21-BROWSER-ROUTE",
+      "result": "PASS",
+      "route": "/404",
+      "viewport": "tablet",
+      "status": 200,
+      "heading": "This move leads off the board."
+    },
+    {
+      "id": "P21-BROWSER-REFLOW",
+      "result": "PASS",
+      "route": "/404",
+      "viewport": "tablet",
+      "width": 768,
+      "scrollWidth": 768,
+      "overflowing": []
+    },
+    {
+      "id": "P21-BROWSER-IMAGES",
+      "result": "PASS",
+      "route": "/404",
+      "viewport": "tablet",
+      "brokenImages": []
+    },
+    {
+      "id": "P21-BROWSER-LABELS",
+      "result": "PASS",
+      "route": "/404",
+      "viewport": "tablet",
+      "unlabeledButtons": []
+    },
+    {
+      "id": "P21-BROWSER-MENU",
+      "result": "PASS",
+      "viewport": "tablet"
+    },
+    {
+      "id": "P21-BROWSER-MENU-ESCAPE",
+      "result": "PASS",
+      "viewport": "tablet"
+    },
+    {
+      "id": "P21-BROWSER-ROUTE",
+      "result": "PASS",
+      "route": "/",
+      "viewport": "mobile390",
+      "status": 200,
+      "heading": "The UltimateTic-tac-toe.Think bigger."
+    },
+    {
+      "id": "P21-BROWSER-REFLOW",
+      "result": "PASS",
+      "route": "/",
+      "viewport": "mobile390",
+      "width": 390,
+      "scrollWidth": 390,
+      "overflowing": []
+    },
+    {
+      "id": "P21-BROWSER-IMAGES",
+      "result": "PASS",
+      "route": "/",
+      "viewport": "mobile390",
+      "brokenImages": []
+    },
+    {
+      "id": "P21-BROWSER-LABELS",
+      "result": "PASS",
+      "route": "/",
+      "viewport": "mobile390",
+      "unlabeledButtons": []
+    },
+    {
+      "id": "P21-BROWSER-BOARD",
+      "result": "PASS",
+      "route": "/",
+      "viewport": "mobile390"
+    },
+    {
+      "id": "P21-BROWSER-ROUTE",
+      "result": "PASS",
+      "route": "/play",
+      "viewport": "mobile390",
+      "status": 200,
+      "heading": "Choose your arena."
+    },
+    {
+      "id": "P21-BROWSER-REFLOW",
+      "result": "PASS",
+      "route": "/play",
+      "viewport": "mobile390",
+      "width": 390,
+      "scrollWidth": 390,
+      "overflowing": []
+    },
+    {
+      "id": "P21-BROWSER-IMAGES",
+      "result": "PASS",
+      "route": "/play",
+      "viewport": "mobile390",
+      "brokenImages": []
+    },
+    {
+      "id": "P21-BROWSER-LABELS",
+      "result": "PASS",
+      "route": "/play",
+      "viewport": "mobile390",
+      "unlabeledButtons": []
+    },
+    {
+      "id": "P21-BROWSER-ROUTE",
+      "result": "PASS",
+      "route": "/casual",
+      "viewport": "mobile390",
+      "status": 200,
+      "heading": "Play for the next good move."
+    },
+    {
+      "id": "P21-BROWSER-REFLOW",
+      "result": "PASS",
+      "route": "/casual",
+      "viewport": "mobile390",
+      "width": 390,
+      "scrollWidth": 390,
+      "overflowing": []
+    },
+    {
+      "id": "P21-BROWSER-IMAGES",
+      "result": "PASS",
+      "route": "/casual",
+      "viewport": "mobile390",
+      "brokenImages": []
+    },
+    {
+      "id": "P21-BROWSER-LABELS",
+      "result": "PASS",
+      "route": "/casual",
+      "viewport": "mobile390",
+      "unlabeledButtons": []
+    },
+    {
+      "id": "P21-BROWSER-ROUTE",
+      "result": "PASS",
+      "route": "/ranked",
+      "viewport": "mobile390",
+      "status": 200,
+      "heading": "Earn your place."
+    },
+    {
+      "id": "P21-BROWSER-REFLOW",
+      "result": "PASS",
+      "route": "/ranked",
+      "viewport": "mobile390",
+      "width": 390,
+      "scrollWidth": 390,
+      "overflowing": [
+        {
+          "element": "table",
+          "class": "pg-table"
+        },
+        {
+          "element": "thead",
+          "class": ""
+        },
+        {
+          "element": "tr",
+          "class": ""
+        },
+        {
+          "element": "th",
+          "class": ""
+        },
+        {
+          "element": "tbody",
+          "class": ""
+        },
+        {
+          "element": "tr",
+          "class": ""
+        },
+        {
+          "element": "td",
+          "class": ""
+        },
+        {
+          "element": "tr",
+          "class": ""
+        }
+      ]
+    },
+    {
+      "id": "P21-BROWSER-IMAGES",
+      "result": "PASS",
+      "route": "/ranked",
+      "viewport": "mobile390",
+      "brokenImages": []
+    },
+    {
+      "id": "P21-BROWSER-LABELS",
+      "result": "PASS",
+      "route": "/ranked",
+      "viewport": "mobile390",
+      "unlabeledButtons": []
+    },
+    {
+      "id": "P21-BROWSER-ROUTE",
+      "result": "PASS",
+      "route": "/tournaments",
+      "viewport": "mobile390",
+      "status": 200,
+      "heading": "Bring your best game."
+    },
+    {
+      "id": "P21-BROWSER-REFLOW",
+      "result": "PASS",
+      "route": "/tournaments",
+      "viewport": "mobile390",
+      "width": 390,
+      "scrollWidth": 390,
+      "overflowing": []
+    },
+    {
+      "id": "P21-BROWSER-IMAGES",
+      "result": "PASS",
+      "route": "/tournaments",
+      "viewport": "mobile390",
+      "brokenImages": []
+    },
+    {
+      "id": "P21-BROWSER-LABELS",
+      "result": "PASS",
+      "route": "/tournaments",
+      "viewport": "mobile390",
+      "unlabeledButtons": []
+    },
+    {
+      "id": "P21-BROWSER-ROUTE",
+      "result": "PASS",
+      "route": "/season",
+      "viewport": "mobile390",
+      "status": 200,
+      "heading": "The season is yours to shape."
+    },
+    {
+      "id": "P21-BROWSER-REFLOW",
+      "result": "PASS",
+      "route": "/season",
+      "viewport": "mobile390",
+      "width": 390,
+      "scrollWidth": 390,
+      "overflowing": []
+    },
+    {
+      "id": "P21-BROWSER-IMAGES",
+      "result": "PASS",
+      "route": "/season",
+      "viewport": "mobile390",
+      "brokenImages": []
+    },
+    {
+      "id": "P21-BROWSER-LABELS",
+      "result": "PASS",
+      "route": "/season",
+      "viewport": "mobile390",
+      "unlabeledButtons": []
+    },
+    {
+      "id": "P21-BROWSER-ROUTE",
+      "result": "PASS",
+      "route": "/friends",
+      "viewport": "mobile390",
+      "status": 200,
+      "heading": "Make it a friendly challenge."
+    },
+    {
+      "id": "P21-BROWSER-REFLOW",
+      "result": "PASS",
+      "route": "/friends",
+      "viewport": "mobile390",
+      "width": 390,
+      "scrollWidth": 390,
+      "overflowing": []
+    },
+    {
+      "id": "P21-BROWSER-IMAGES",
+      "result": "PASS",
+      "route": "/friends",
+      "viewport": "mobile390",
+      "brokenImages": []
+    },
+    {
+      "id": "P21-BROWSER-LABELS",
+      "result": "PASS",
+      "route": "/friends",
+      "viewport": "mobile390",
+      "unlabeledButtons": []
+    },
+    {
+      "id": "P21-BROWSER-ROUTE",
+      "result": "PASS",
+      "route": "/challenge",
+      "viewport": "mobile390",
+      "status": 200,
+      "heading": "A worthy opponent awaits."
+    },
+    {
+      "id": "P21-BROWSER-REFLOW",
+      "result": "PASS",
+      "route": "/challenge",
+      "viewport": "mobile390",
+      "width": 390,
+      "scrollWidth": 390,
+      "overflowing": []
+    },
+    {
+      "id": "P21-BROWSER-IMAGES",
+      "result": "PASS",
+      "route": "/challenge",
+      "viewport": "mobile390",
+      "brokenImages": []
+    },
+    {
+      "id": "P21-BROWSER-LABELS",
+      "result": "PASS",
+      "route": "/challenge",
+      "viewport": "mobile390",
+      "unlabeledButtons": []
+    },
+    {
+      "id": "P21-BROWSER-ROUTE",
+      "result": "PASS",
+      "route": "/leaderboard",
+      "viewport": "mobile390",
+      "status": 200,
+      "heading": "Play your way up."
+    },
+    {
+      "id": "P21-BROWSER-REFLOW",
+      "result": "PASS",
+      "route": "/leaderboard",
+      "viewport": "mobile390",
+      "width": 390,
+      "scrollWidth": 390,
+      "overflowing": []
+    },
+    {
+      "id": "P21-BROWSER-IMAGES",
+      "result": "PASS",
+      "route": "/leaderboard",
+      "viewport": "mobile390",
+      "brokenImages": []
+    },
+    {
+      "id": "P21-BROWSER-LABELS",
+      "result": "PASS",
+      "route": "/leaderboard",
+      "viewport": "mobile390",
+      "unlabeledButtons": []
+    },
+    {
+      "id": "P21-BROWSER-ROUTE",
+      "result": "PASS",
+      "route": "/rewards",
+      "viewport": "mobile390",
+      "status": 200,
+      "heading": "Make every game count."
+    },
+    {
+      "id": "P21-BROWSER-REFLOW",
+      "result": "PASS",
+      "route": "/rewards",
+      "viewport": "mobile390",
+      "width": 390,
+      "scrollWidth": 390,
+      "overflowing": []
+    },
+    {
+      "id": "P21-BROWSER-IMAGES",
+      "result": "PASS",
+      "route": "/rewards",
+      "viewport": "mobile390",
+      "brokenImages": []
+    },
+    {
+      "id": "P21-BROWSER-LABELS",
+      "result": "PASS",
+      "route": "/rewards",
+      "viewport": "mobile390",
+      "unlabeledButtons": []
+    },
+    {
+      "id": "P21-BROWSER-ROUTE",
+      "result": "PASS",
+      "route": "/themes",
+      "viewport": "mobile390",
+      "status": 200,
+      "heading": "Find your kind of focus."
+    },
+    {
+      "id": "P21-BROWSER-REFLOW",
+      "result": "PASS",
+      "route": "/themes",
+      "viewport": "mobile390",
+      "width": 390,
+      "scrollWidth": 390,
+      "overflowing": []
+    },
+    {
+      "id": "P21-BROWSER-IMAGES",
+      "result": "PASS",
+      "route": "/themes",
+      "viewport": "mobile390",
+      "brokenImages": []
+    },
+    {
+      "id": "P21-BROWSER-LABELS",
+      "result": "PASS",
+      "route": "/themes",
+      "viewport": "mobile390",
+      "unlabeledButtons": []
+    },
+    {
+      "id": "P21-BROWSER-ROUTE",
+      "result": "PASS",
+      "route": "/profile",
+      "viewport": "mobile390",
+      "status": 200,
+      "heading": "Your identity stays with you."
+    },
+    {
+      "id": "P21-BROWSER-REFLOW",
+      "result": "PASS",
+      "route": "/profile",
+      "viewport": "mobile390",
+      "width": 390,
+      "scrollWidth": 390,
+      "overflowing": []
+    },
+    {
+      "id": "P21-BROWSER-IMAGES",
+      "result": "PASS",
+      "route": "/profile",
+      "viewport": "mobile390",
+      "brokenImages": []
+    },
+    {
+      "id": "P21-BROWSER-LABELS",
+      "result": "PASS",
+      "route": "/profile",
+      "viewport": "mobile390",
+      "unlabeledButtons": []
+    },
+    {
+      "id": "P21-BROWSER-ROUTE",
+      "result": "PASS",
+      "route": "/settings",
+      "viewport": "mobile390",
+      "status": 200,
+      "heading": "Focus on your game."
+    },
+    {
+      "id": "P21-BROWSER-REFLOW",
+      "result": "PASS",
+      "route": "/settings",
+      "viewport": "mobile390",
+      "width": 390,
+      "scrollWidth": 390,
+      "overflowing": []
+    },
+    {
+      "id": "P21-BROWSER-IMAGES",
+      "result": "PASS",
+      "route": "/settings",
+      "viewport": "mobile390",
+      "brokenImages": []
+    },
+    {
+      "id": "P21-BROWSER-LABELS",
+      "result": "PASS",
+      "route": "/settings",
+      "viewport": "mobile390",
+      "unlabeledButtons": []
+    },
+    {
+      "id": "P21-BROWSER-ROUTE",
+      "result": "PASS",
+      "route": "/account",
+      "viewport": "mobile390",
+      "status": 200,
+      "heading": "Welcome to your next move."
+    },
+    {
+      "id": "P21-BROWSER-REFLOW",
+      "result": "PASS",
+      "route": "/account",
+      "viewport": "mobile390",
+      "width": 390,
+      "scrollWidth": 390,
+      "overflowing": []
+    },
+    {
+      "id": "P21-BROWSER-IMAGES",
+      "result": "PASS",
+      "route": "/account",
+      "viewport": "mobile390",
+      "brokenImages": []
+    },
+    {
+      "id": "P21-BROWSER-LABELS",
+      "result": "PASS",
+      "route": "/account",
+      "viewport": "mobile390",
+      "unlabeledButtons": []
+    },
+    {
+      "id": "P21-BROWSER-ROUTE",
+      "result": "PASS",
+      "route": "/how-to-play",
+      "viewport": "mobile390",
+      "status": 200,
+      "heading": "Small boards. Big decisions."
+    },
+    {
+      "id": "P21-BROWSER-REFLOW",
+      "result": "PASS",
+      "route": "/how-to-play",
+      "viewport": "mobile390",
+      "width": 390,
+      "scrollWidth": 390,
+      "overflowing": []
+    },
+    {
+      "id": "P21-BROWSER-IMAGES",
+      "result": "PASS",
+      "route": "/how-to-play",
+      "viewport": "mobile390",
+      "brokenImages": []
+    },
+    {
+      "id": "P21-BROWSER-LABELS",
+      "result": "PASS",
+      "route": "/how-to-play",
+      "viewport": "mobile390",
+      "unlabeledButtons": []
+    },
+    {
+      "id": "P21-BROWSER-ROUTE",
+      "result": "PASS",
+      "route": "/support",
+      "viewport": "mobile390",
+      "status": 200,
+      "heading": "A little help for your next move."
+    },
+    {
+      "id": "P21-BROWSER-REFLOW",
+      "result": "PASS",
+      "route": "/support",
+      "viewport": "mobile390",
+      "width": 390,
+      "scrollWidth": 390,
+      "overflowing": []
+    },
+    {
+      "id": "P21-BROWSER-IMAGES",
+      "result": "PASS",
+      "route": "/support",
+      "viewport": "mobile390",
+      "brokenImages": []
+    },
+    {
+      "id": "P21-BROWSER-LABELS",
+      "result": "PASS",
+      "route": "/support",
+      "viewport": "mobile390",
+      "unlabeledButtons": []
+    },
+    {
+      "id": "P21-BROWSER-ROUTE",
+      "result": "PASS",
+      "route": "/about",
+      "viewport": "mobile390",
+      "status": 200,
+      "heading": "A familiar game. A bigger idea."
+    },
+    {
+      "id": "P21-BROWSER-REFLOW",
+      "result": "PASS",
+      "route": "/about",
+      "viewport": "mobile390",
+      "width": 390,
+      "scrollWidth": 390,
+      "overflowing": []
+    },
+    {
+      "id": "P21-BROWSER-IMAGES",
+      "result": "PASS",
+      "route": "/about",
+      "viewport": "mobile390",
+      "brokenImages": []
+    },
+    {
+      "id": "P21-BROWSER-LABELS",
+      "result": "PASS",
+      "route": "/about",
+      "viewport": "mobile390",
+      "unlabeledButtons": []
+    },
+    {
+      "id": "P21-BROWSER-ROUTE",
+      "result": "PASS",
+      "route": "/privacy",
+      "viewport": "mobile390",
+      "status": 200,
+      "heading": "Your privacy matters."
+    },
+    {
+      "id": "P21-BROWSER-REFLOW",
+      "result": "PASS",
+      "route": "/privacy",
+      "viewport": "mobile390",
+      "width": 390,
+      "scrollWidth": 390,
+      "overflowing": []
+    },
+    {
+      "id": "P21-BROWSER-IMAGES",
+      "result": "PASS",
+      "route": "/privacy",
+      "viewport": "mobile390",
+      "brokenImages": []
+    },
+    {
+      "id": "P21-BROWSER-LABELS",
+      "result": "PASS",
+      "route": "/privacy",
+      "viewport": "mobile390",
+      "unlabeledButtons": []
+    },
+    {
+      "id": "P21-BROWSER-ROUTE",
+      "result": "PASS",
+      "route": "/terms",
+      "viewport": "mobile390",
+      "status": 200,
+      "heading": "Know the rules of the platform."
+    },
+    {
+      "id": "P21-BROWSER-REFLOW",
+      "result": "PASS",
+      "route": "/terms",
+      "viewport": "mobile390",
+      "width": 390,
+      "scrollWidth": 390,
+      "overflowing": []
+    },
+    {
+      "id": "P21-BROWSER-IMAGES",
+      "result": "PASS",
+      "route": "/terms",
+      "viewport": "mobile390",
+      "brokenImages": []
+    },
+    {
+      "id": "P21-BROWSER-LABELS",
+      "result": "PASS",
+      "route": "/terms",
+      "viewport": "mobile390",
+      "unlabeledButtons": []
+    },
+    {
+      "id": "P21-BROWSER-ROUTE",
+      "result": "PASS",
+      "route": "/delete-account",
+      "viewport": "mobile390",
+      "status": 200,
+      "heading": "A clear way to leave."
+    },
+    {
+      "id": "P21-BROWSER-REFLOW",
+      "result": "PASS",
+      "route": "/delete-account",
+      "viewport": "mobile390",
+      "width": 390,
+      "scrollWidth": 390,
+      "overflowing": []
+    },
+    {
+      "id": "P21-BROWSER-IMAGES",
+      "result": "PASS",
+      "route": "/delete-account",
+      "viewport": "mobile390",
+      "brokenImages": []
+    },
+    {
+      "id": "P21-BROWSER-LABELS",
+      "result": "PASS",
+      "route": "/delete-account",
+      "viewport": "mobile390",
+      "unlabeledButtons": []
+    },
+    {
+      "id": "P21-BROWSER-ROUTE",
+      "result": "PASS",
+      "route": "/privacy-choices",
+      "viewport": "mobile390",
+      "status": 200,
+      "heading": "Stay in control."
+    },
+    {
+      "id": "P21-BROWSER-REFLOW",
+      "result": "PASS",
+      "route": "/privacy-choices",
+      "viewport": "mobile390",
+      "width": 390,
+      "scrollWidth": 390,
+      "overflowing": []
+    },
+    {
+      "id": "P21-BROWSER-IMAGES",
+      "result": "PASS",
+      "route": "/privacy-choices",
+      "viewport": "mobile390",
+      "brokenImages": []
+    },
+    {
+      "id": "P21-BROWSER-LABELS",
+      "result": "PASS",
+      "route": "/privacy-choices",
+      "viewport": "mobile390",
+      "unlabeledButtons": []
+    },
+    {
+      "id": "P21-BROWSER-ROUTE",
+      "result": "PASS",
+      "route": "/help",
+      "viewport": "mobile390",
+      "status": 200,
+      "heading": "A little help for your next move."
+    },
+    {
+      "id": "P21-BROWSER-REFLOW",
+      "result": "PASS",
+      "route": "/help",
+      "viewport": "mobile390",
+      "width": 390,
+      "scrollWidth": 390,
+      "overflowing": []
+    },
+    {
+      "id": "P21-BROWSER-IMAGES",
+      "result": "PASS",
+      "route": "/help",
+      "viewport": "mobile390",
+      "brokenImages": []
+    },
+    {
+      "id": "P21-BROWSER-LABELS",
+      "result": "PASS",
+      "route": "/help",
+      "viewport": "mobile390",
+      "unlabeledButtons": []
+    },
+    {
+      "id": "P21-BROWSER-ROUTE",
+      "result": "PASS",
+      "route": "/news",
+      "viewport": "mobile390",
+      "status": 200,
+      "heading": "Your next chapter starts here."
+    },
+    {
+      "id": "P21-BROWSER-REFLOW",
+      "result": "PASS",
+      "route": "/news",
+      "viewport": "mobile390",
+      "width": 390,
+      "scrollWidth": 390,
+      "overflowing": []
+    },
+    {
+      "id": "P21-BROWSER-IMAGES",
+      "result": "PASS",
+      "route": "/news",
+      "viewport": "mobile390",
+      "brokenImages": []
+    },
+    {
+      "id": "P21-BROWSER-LABELS",
+      "result": "PASS",
+      "route": "/news",
+      "viewport": "mobile390",
+      "unlabeledButtons": []
+    },
+    {
+      "id": "P21-BROWSER-ROUTE",
+      "result": "PASS",
+      "route": "/status",
+      "viewport": "mobile390",
+      "status": 200,
+      "heading": "Keep your next move in sight."
+    },
+    {
+      "id": "P21-BROWSER-REFLOW",
+      "result": "PASS",
+      "route": "/status",
+      "viewport": "mobile390",
+      "width": 390,
+      "scrollWidth": 390,
+      "overflowing": []
+    },
+    {
+      "id": "P21-BROWSER-IMAGES",
+      "result": "PASS",
+      "route": "/status",
+      "viewport": "mobile390",
+      "brokenImages": []
+    },
+    {
+      "id": "P21-BROWSER-LABELS",
+      "result": "PASS",
+      "route": "/status",
+      "viewport": "mobile390",
+      "unlabeledButtons": []
+    },
+    {
+      "id": "P21-BROWSER-ROUTE",
+      "result": "PASS",
+      "route": "/accessibility",
+      "viewport": "mobile390",
+      "status": 200,
+      "heading": "Play at your own pace."
+    },
+    {
+      "id": "P21-BROWSER-REFLOW",
+      "result": "PASS",
+      "route": "/accessibility",
+      "viewport": "mobile390",
+      "width": 390,
+      "scrollWidth": 390,
+      "overflowing": []
+    },
+    {
+      "id": "P21-BROWSER-IMAGES",
+      "result": "PASS",
+      "route": "/accessibility",
+      "viewport": "mobile390",
+      "brokenImages": []
+    },
+    {
+      "id": "P21-BROWSER-LABELS",
+      "result": "PASS",
+      "route": "/accessibility",
+      "viewport": "mobile390",
+      "unlabeledButtons": []
+    },
+    {
+      "id": "P21-BROWSER-ROUTE",
+      "result": "PASS",
+      "route": "/offline",
+      "viewport": "mobile390",
+      "status": 200,
+      "heading": "Take the next move offline."
+    },
+    {
+      "id": "P21-BROWSER-REFLOW",
+      "result": "PASS",
+      "route": "/offline",
+      "viewport": "mobile390",
+      "width": 390,
+      "scrollWidth": 390,
+      "overflowing": []
+    },
+    {
+      "id": "P21-BROWSER-IMAGES",
+      "result": "PASS",
+      "route": "/offline",
+      "viewport": "mobile390",
+      "brokenImages": []
+    },
+    {
+      "id": "P21-BROWSER-LABELS",
+      "result": "PASS",
+      "route": "/offline",
+      "viewport": "mobile390",
+      "unlabeledButtons": []
+    },
+    {
+      "id": "P21-BROWSER-ROUTE",
+      "result": "PASS",
+      "route": "/404",
+      "viewport": "mobile390",
+      "status": 200,
+      "heading": "This move leads off the board."
+    },
+    {
+      "id": "P21-BROWSER-REFLOW",
+      "result": "PASS",
+      "route": "/404",
+      "viewport": "mobile390",
+      "width": 390,
+      "scrollWidth": 390,
+      "overflowing": []
+    },
+    {
+      "id": "P21-BROWSER-IMAGES",
+      "result": "PASS",
+      "route": "/404",
+      "viewport": "mobile390",
+      "brokenImages": []
+    },
+    {
+      "id": "P21-BROWSER-LABELS",
+      "result": "PASS",
+      "route": "/404",
+      "viewport": "mobile390",
+      "unlabeledButtons": []
+    },
+    {
+      "id": "P21-BROWSER-MENU",
+      "result": "PASS",
+      "viewport": "mobile390"
+    },
+    {
+      "id": "P21-BROWSER-MENU-ESCAPE",
+      "result": "PASS",
+      "viewport": "mobile390"
+    },
+    {
+      "id": "P21-BROWSER-ROUTE",
+      "result": "PASS",
+      "route": "/",
+      "viewport": "mobile320",
+      "status": 200,
+      "heading": "The UltimateTic-tac-toe.Think bigger."
+    },
+    {
+      "id": "P21-BROWSER-REFLOW",
+      "result": "PASS",
+      "route": "/",
+      "viewport": "mobile320",
+      "width": 320,
+      "scrollWidth": 320,
+      "overflowing": []
+    },
+    {
+      "id": "P21-BROWSER-IMAGES",
+      "result": "PASS",
+      "route": "/",
+      "viewport": "mobile320",
+      "brokenImages": []
+    },
+    {
+      "id": "P21-BROWSER-LABELS",
+      "result": "PASS",
+      "route": "/",
+      "viewport": "mobile320",
+      "unlabeledButtons": []
+    },
+    {
+      "id": "P21-BROWSER-BOARD",
+      "result": "PASS",
+      "route": "/",
+      "viewport": "mobile320"
+    },
+    {
+      "id": "P21-BROWSER-ROUTE",
+      "result": "PASS",
+      "route": "/play",
+      "viewport": "mobile320",
+      "status": 200,
+      "heading": "Choose your arena."
+    },
+    {
+      "id": "P21-BROWSER-REFLOW",
+      "result": "PASS",
+      "route": "/play",
+      "viewport": "mobile320",
+      "width": 320,
+      "scrollWidth": 320,
+      "overflowing": []
+    },
+    {
+      "id": "P21-BROWSER-IMAGES",
+      "result": "PASS",
+      "route": "/play",
+      "viewport": "mobile320",
+      "brokenImages": []
+    },
+    {
+      "id": "P21-BROWSER-LABELS",
+      "result": "PASS",
+      "route": "/play",
+      "viewport": "mobile320",
+      "unlabeledButtons": []
+    },
+    {
+      "id": "P21-BROWSER-ROUTE",
+      "result": "PASS",
+      "route": "/casual",
+      "viewport": "mobile320",
+      "status": 200,
+      "heading": "Play for the next good move."
+    },
+    {
+      "id": "P21-BROWSER-REFLOW",
+      "result": "PASS",
+      "route": "/casual",
+      "viewport": "mobile320",
+      "width": 320,
+      "scrollWidth": 320,
+      "overflowing": []
+    },
+    {
+      "id": "P21-BROWSER-IMAGES",
+      "result": "PASS",
+      "route": "/casual",
+      "viewport": "mobile320",
+      "brokenImages": []
+    },
+    {
+      "id": "P21-BROWSER-LABELS",
+      "result": "PASS",
+      "route": "/casual",
+      "viewport": "mobile320",
+      "unlabeledButtons": []
+    },
+    {
+      "id": "P21-BROWSER-ROUTE",
+      "result": "PASS",
+      "route": "/ranked",
+      "viewport": "mobile320",
+      "status": 200,
+      "heading": "Earn your place."
+    },
+    {
+      "id": "P21-BROWSER-REFLOW",
+      "result": "PASS",
+      "route": "/ranked",
+      "viewport": "mobile320",
+      "width": 320,
+      "scrollWidth": 320,
+      "overflowing": [
+        {
+          "element": "table",
+          "class": "pg-table"
+        },
+        {
+          "element": "thead",
+          "class": ""
+        },
+        {
+          "element": "tr",
+          "class": ""
+        },
+        {
+          "element": "th",
+          "class": ""
+        },
+        {
+          "element": "th",
+          "class": ""
+        },
+        {
+          "element": "tbody",
+          "class": ""
+        },
+        {
+          "element": "tr",
+          "class": ""
+        },
+        {
+          "element": "td",
+          "class": ""
+        }
+      ]
+    },
+    {
+      "id": "P21-BROWSER-IMAGES",
+      "result": "PASS",
+      "route": "/ranked",
+      "viewport": "mobile320",
+      "brokenImages": []
+    },
+    {
+      "id": "P21-BROWSER-LABELS",
+      "result": "PASS",
+      "route": "/ranked",
+      "viewport": "mobile320",
+      "unlabeledButtons": []
+    },
+    {
+      "id": "P21-BROWSER-ROUTE",
+      "result": "PASS",
+      "route": "/tournaments",
+      "viewport": "mobile320",
+      "status": 200,
+      "heading": "Bring your best game."
+    },
+    {
+      "id": "P21-BROWSER-REFLOW",
+      "result": "PASS",
+      "route": "/tournaments",
+      "viewport": "mobile320",
+      "width": 320,
+      "scrollWidth": 320,
+      "overflowing": []
+    },
+    {
+      "id": "P21-BROWSER-IMAGES",
+      "result": "PASS",
+      "route": "/tournaments",
+      "viewport": "mobile320",
+      "brokenImages": []
+    },
+    {
+      "id": "P21-BROWSER-LABELS",
+      "result": "PASS",
+      "route": "/tournaments",
+      "viewport": "mobile320",
+      "unlabeledButtons": []
+    },
+    {
+      "id": "P21-BROWSER-ROUTE",
+      "result": "PASS",
+      "route": "/season",
+      "viewport": "mobile320",
+      "status": 200,
+      "heading": "The season is yours to shape."
+    },
+    {
+      "id": "P21-BROWSER-REFLOW",
+      "result": "PASS",
+      "route": "/season",
+      "viewport": "mobile320",
+      "width": 320,
+      "scrollWidth": 320,
+      "overflowing": []
+    },
+    {
+      "id": "P21-BROWSER-IMAGES",
+      "result": "PASS",
+      "route": "/season",
+      "viewport": "mobile320",
+      "brokenImages": []
+    },
+    {
+      "id": "P21-BROWSER-LABELS",
+      "result": "PASS",
+      "route": "/season",
+      "viewport": "mobile320",
+      "unlabeledButtons": []
+    },
+    {
+      "id": "P21-BROWSER-ROUTE",
+      "result": "PASS",
+      "route": "/friends",
+      "viewport": "mobile320",
+      "status": 200,
+      "heading": "Make it a friendly challenge."
+    },
+    {
+      "id": "P21-BROWSER-REFLOW",
+      "result": "PASS",
+      "route": "/friends",
+      "viewport": "mobile320",
+      "width": 320,
+      "scrollWidth": 320,
+      "overflowing": []
+    },
+    {
+      "id": "P21-BROWSER-IMAGES",
+      "result": "PASS",
+      "route": "/friends",
+      "viewport": "mobile320",
+      "brokenImages": []
+    },
+    {
+      "id": "P21-BROWSER-LABELS",
+      "result": "PASS",
+      "route": "/friends",
+      "viewport": "mobile320",
+      "unlabeledButtons": []
+    },
+    {
+      "id": "P21-BROWSER-ROUTE",
+      "result": "PASS",
+      "route": "/challenge",
+      "viewport": "mobile320",
+      "status": 200,
+      "heading": "A worthy opponent awaits."
+    },
+    {
+      "id": "P21-BROWSER-REFLOW",
+      "result": "PASS",
+      "route": "/challenge",
+      "viewport": "mobile320",
+      "width": 320,
+      "scrollWidth": 320,
+      "overflowing": []
+    },
+    {
+      "id": "P21-BROWSER-IMAGES",
+      "result": "PASS",
+      "route": "/challenge",
+      "viewport": "mobile320",
+      "brokenImages": []
+    },
+    {
+      "id": "P21-BROWSER-LABELS",
+      "result": "PASS",
+      "route": "/challenge",
+      "viewport": "mobile320",
+      "unlabeledButtons": []
+    },
+    {
+      "id": "P21-BROWSER-ROUTE",
+      "result": "PASS",
+      "route": "/leaderboard",
+      "viewport": "mobile320",
+      "status": 200,
+      "heading": "Play your way up."
+    },
+    {
+      "id": "P21-BROWSER-REFLOW",
+      "result": "PASS",
+      "route": "/leaderboard",
+      "viewport": "mobile320",
+      "width": 320,
+      "scrollWidth": 320,
+      "overflowing": []
+    },
+    {
+      "id": "P21-BROWSER-IMAGES",
+      "result": "PASS",
+      "route": "/leaderboard",
+      "viewport": "mobile320",
+      "brokenImages": []
+    },
+    {
+      "id": "P21-BROWSER-LABELS",
+      "result": "PASS",
+      "route": "/leaderboard",
+      "viewport": "mobile320",
+      "unlabeledButtons": []
+    },
+    {
+      "id": "P21-BROWSER-ROUTE",
+      "result": "PASS",
+      "route": "/rewards",
+      "viewport": "mobile320",
+      "status": 200,
+      "heading": "Make every game count."
+    },
+    {
+      "id": "P21-BROWSER-REFLOW",
+      "result": "PASS",
+      "route": "/rewards",
+      "viewport": "mobile320",
+      "width": 320,
+      "scrollWidth": 320,
+      "overflowing": []
+    },
+    {
+      "id": "P21-BROWSER-IMAGES",
+      "result": "PASS",
+      "route": "/rewards",
+      "viewport": "mobile320",
+      "brokenImages": []
+    },
+    {
+      "id": "P21-BROWSER-LABELS",
+      "result": "PASS",
+      "route": "/rewards",
+      "viewport": "mobile320",
+      "unlabeledButtons": []
+    },
+    {
+      "id": "P21-BROWSER-ROUTE",
+      "result": "PASS",
+      "route": "/themes",
+      "viewport": "mobile320",
+      "status": 200,
+      "heading": "Find your kind of focus."
+    },
+    {
+      "id": "P21-BROWSER-REFLOW",
+      "result": "PASS",
+      "route": "/themes",
+      "viewport": "mobile320",
+      "width": 320,
+      "scrollWidth": 320,
+      "overflowing": []
+    },
+    {
+      "id": "P21-BROWSER-IMAGES",
+      "result": "PASS",
+      "route": "/themes",
+      "viewport": "mobile320",
+      "brokenImages": []
+    },
+    {
+      "id": "P21-BROWSER-LABELS",
+      "result": "PASS",
+      "route": "/themes",
+      "viewport": "mobile320",
+      "unlabeledButtons": []
+    },
+    {
+      "id": "P21-BROWSER-ROUTE",
+      "result": "PASS",
+      "route": "/profile",
+      "viewport": "mobile320",
+      "status": 200,
+      "heading": "Your identity stays with you."
+    },
+    {
+      "id": "P21-BROWSER-REFLOW",
+      "result": "PASS",
+      "route": "/profile",
+      "viewport": "mobile320",
+      "width": 320,
+      "scrollWidth": 320,
+      "overflowing": []
+    },
+    {
+      "id": "P21-BROWSER-IMAGES",
+      "result": "PASS",
+      "route": "/profile",
+      "viewport": "mobile320",
+      "brokenImages": []
+    },
+    {
+      "id": "P21-BROWSER-LABELS",
+      "result": "PASS",
+      "route": "/profile",
+      "viewport": "mobile320",
+      "unlabeledButtons": []
+    },
+    {
+      "id": "P21-BROWSER-ROUTE",
+      "result": "PASS",
+      "route": "/settings",
+      "viewport": "mobile320",
+      "status": 200,
+      "heading": "Focus on your game."
+    },
+    {
+      "id": "P21-BROWSER-REFLOW",
+      "result": "PASS",
+      "route": "/settings",
+      "viewport": "mobile320",
+      "width": 320,
+      "scrollWidth": 320,
+      "overflowing": []
+    },
+    {
+      "id": "P21-BROWSER-IMAGES",
+      "result": "PASS",
+      "route": "/settings",
+      "viewport": "mobile320",
+      "brokenImages": []
+    },
+    {
+      "id": "P21-BROWSER-LABELS",
+      "result": "PASS",
+      "route": "/settings",
+      "viewport": "mobile320",
+      "unlabeledButtons": []
+    },
+    {
+      "id": "P21-BROWSER-ROUTE",
+      "result": "PASS",
+      "route": "/account",
+      "viewport": "mobile320",
+      "status": 200,
+      "heading": "Welcome to your next move."
+    },
+    {
+      "id": "P21-BROWSER-REFLOW",
+      "result": "PASS",
+      "route": "/account",
+      "viewport": "mobile320",
+      "width": 320,
+      "scrollWidth": 320,
+      "overflowing": []
+    },
+    {
+      "id": "P21-BROWSER-IMAGES",
+      "result": "PASS",
+      "route": "/account",
+      "viewport": "mobile320",
+      "brokenImages": []
+    },
+    {
+      "id": "P21-BROWSER-LABELS",
+      "result": "PASS",
+      "route": "/account",
+      "viewport": "mobile320",
+      "unlabeledButtons": []
+    },
+    {
+      "id": "P21-BROWSER-ROUTE",
+      "result": "PASS",
+      "route": "/how-to-play",
+      "viewport": "mobile320",
+      "status": 200,
+      "heading": "Small boards. Big decisions."
+    },
+    {
+      "id": "P21-BROWSER-REFLOW",
+      "result": "PASS",
+      "route": "/how-to-play",
+      "viewport": "mobile320",
+      "width": 320,
+      "scrollWidth": 320,
+      "overflowing": []
+    },
+    {
+      "id": "P21-BROWSER-IMAGES",
+      "result": "PASS",
+      "route": "/how-to-play",
+      "viewport": "mobile320",
+      "brokenImages": []
+    },
+    {
+      "id": "P21-BROWSER-LABELS",
+      "result": "PASS",
+      "route": "/how-to-play",
+      "viewport": "mobile320",
+      "unlabeledButtons": []
+    },
+    {
+      "id": "P21-BROWSER-ROUTE",
+      "result": "PASS",
+      "route": "/support",
+      "viewport": "mobile320",
+      "status": 200,
+      "heading": "A little help for your next move."
+    },
+    {
+      "id": "P21-BROWSER-REFLOW",
+      "result": "PASS",
+      "route": "/support",
+      "viewport": "mobile320",
+      "width": 320,
+      "scrollWidth": 320,
+      "overflowing": []
+    },
+    {
+      "id": "P21-BROWSER-IMAGES",
+      "result": "PASS",
+      "route": "/support",
+      "viewport": "mobile320",
+      "brokenImages": []
+    },
+    {
+      "id": "P21-BROWSER-LABELS",
+      "result": "PASS",
+      "route": "/support",
+      "viewport": "mobile320",
+      "unlabeledButtons": []
+    },
+    {
+      "id": "P21-BROWSER-ROUTE",
+      "result": "PASS",
+      "route": "/about",
+      "viewport": "mobile320",
+      "status": 200,
+      "heading": "A familiar game. A bigger idea."
+    },
+    {
+      "id": "P21-BROWSER-REFLOW",
+      "result": "PASS",
+      "route": "/about",
+      "viewport": "mobile320",
+      "width": 320,
+      "scrollWidth": 320,
+      "overflowing": []
+    },
+    {
+      "id": "P21-BROWSER-IMAGES",
+      "result": "PASS",
+      "route": "/about",
+      "viewport": "mobile320",
+      "brokenImages": []
+    },
+    {
+      "id": "P21-BROWSER-LABELS",
+      "result": "PASS",
+      "route": "/about",
+      "viewport": "mobile320",
+      "unlabeledButtons": []
+    },
+    {
+      "id": "P21-BROWSER-ROUTE",
+      "result": "PASS",
+      "route": "/privacy",
+      "viewport": "mobile320",
+      "status": 200,
+      "heading": "Your privacy matters."
+    },
+    {
+      "id": "P21-BROWSER-REFLOW",
+      "result": "PASS",
+      "route": "/privacy",
+      "viewport": "mobile320",
+      "width": 320,
+      "scrollWidth": 320,
+      "overflowing": []
+    },
+    {
+      "id": "P21-BROWSER-IMAGES",
+      "result": "PASS",
+      "route": "/privacy",
+      "viewport": "mobile320",
+      "brokenImages": []
+    },
+    {
+      "id": "P21-BROWSER-LABELS",
+      "result": "PASS",
+      "route": "/privacy",
+      "viewport": "mobile320",
+      "unlabeledButtons": []
+    },
+    {
+      "id": "P21-BROWSER-ROUTE",
+      "result": "PASS",
+      "route": "/terms",
+      "viewport": "mobile320",
+      "status": 200,
+      "heading": "Know the rules of the platform."
+    },
+    {
+      "id": "P21-BROWSER-REFLOW",
+      "result": "PASS",
+      "route": "/terms",
+      "viewport": "mobile320",
+      "width": 320,
+      "scrollWidth": 320,
+      "overflowing": []
+    },
+    {
+      "id": "P21-BROWSER-IMAGES",
+      "result": "PASS",
+      "route": "/terms",
+      "viewport": "mobile320",
+      "brokenImages": []
+    },
+    {
+      "id": "P21-BROWSER-LABELS",
+      "result": "PASS",
+      "route": "/terms",
+      "viewport": "mobile320",
+      "unlabeledButtons": []
+    },
+    {
+      "id": "P21-BROWSER-ROUTE",
+      "result": "PASS",
+      "route": "/delete-account",
+      "viewport": "mobile320",
+      "status": 200,
+      "heading": "A clear way to leave."
+    },
+    {
+      "id": "P21-BROWSER-REFLOW",
+      "result": "PASS",
+      "route": "/delete-account",
+      "viewport": "mobile320",
+      "width": 320,
+      "scrollWidth": 320,
+      "overflowing": []
+    },
+    {
+      "id": "P21-BROWSER-IMAGES",
+      "result": "PASS",
+      "route": "/delete-account",
+      "viewport": "mobile320",
+      "brokenImages": []
+    },
+    {
+      "id": "P21-BROWSER-LABELS",
+      "result": "PASS",
+      "route": "/delete-account",
+      "viewport": "mobile320",
+      "unlabeledButtons": []
+    },
+    {
+      "id": "P21-BROWSER-ROUTE",
+      "result": "PASS",
+      "route": "/privacy-choices",
+      "viewport": "mobile320",
+      "status": 200,
+      "heading": "Stay in control."
+    },
+    {
+      "id": "P21-BROWSER-REFLOW",
+      "result": "PASS",
+      "route": "/privacy-choices",
+      "viewport": "mobile320",
+      "width": 320,
+      "scrollWidth": 320,
+      "overflowing": []
+    },
+    {
+      "id": "P21-BROWSER-IMAGES",
+      "result": "PASS",
+      "route": "/privacy-choices",
+      "viewport": "mobile320",
+      "brokenImages": []
+    },
+    {
+      "id": "P21-BROWSER-LABELS",
+      "result": "PASS",
+      "route": "/privacy-choices",
+      "viewport": "mobile320",
+      "unlabeledButtons": []
+    },
+    {
+      "id": "P21-BROWSER-ROUTE",
+      "result": "PASS",
+      "route": "/help",
+      "viewport": "mobile320",
+      "status": 200,
+      "heading": "A little help for your next move."
+    },
+    {
+      "id": "P21-BROWSER-REFLOW",
+      "result": "PASS",
+      "route": "/help",
+      "viewport": "mobile320",
+      "width": 320,
+      "scrollWidth": 320,
+      "overflowing": []
+    },
+    {
+      "id": "P21-BROWSER-IMAGES",
+      "result": "PASS",
+      "route": "/help",
+      "viewport": "mobile320",
+      "brokenImages": []
+    },
+    {
+      "id": "P21-BROWSER-LABELS",
+      "result": "PASS",
+      "route": "/help",
+      "viewport": "mobile320",
+      "unlabeledButtons": []
+    },
+    {
+      "id": "P21-BROWSER-ROUTE",
+      "result": "PASS",
+      "route": "/news",
+      "viewport": "mobile320",
+      "status": 200,
+      "heading": "Your next chapter starts here."
+    },
+    {
+      "id": "P21-BROWSER-REFLOW",
+      "result": "PASS",
+      "route": "/news",
+      "viewport": "mobile320",
+      "width": 320,
+      "scrollWidth": 320,
+      "overflowing": []
+    },
+    {
+      "id": "P21-BROWSER-IMAGES",
+      "result": "PASS",
+      "route": "/news",
+      "viewport": "mobile320",
+      "brokenImages": []
+    },
+    {
+      "id": "P21-BROWSER-LABELS",
+      "result": "PASS",
+      "route": "/news",
+      "viewport": "mobile320",
+      "unlabeledButtons": []
+    },
+    {
+      "id": "P21-BROWSER-ROUTE",
+      "result": "PASS",
+      "route": "/status",
+      "viewport": "mobile320",
+      "status": 200,
+      "heading": "Keep your next move in sight."
+    },
+    {
+      "id": "P21-BROWSER-REFLOW",
+      "result": "PASS",
+      "route": "/status",
+      "viewport": "mobile320",
+      "width": 320,
+      "scrollWidth": 320,
+      "overflowing": []
+    },
+    {
+      "id": "P21-BROWSER-IMAGES",
+      "result": "PASS",
+      "route": "/status",
+      "viewport": "mobile320",
+      "brokenImages": []
+    },
+    {
+      "id": "P21-BROWSER-LABELS",
+      "result": "PASS",
+      "route": "/status",
+      "viewport": "mobile320",
+      "unlabeledButtons": []
+    },
+    {
+      "id": "P21-BROWSER-ROUTE",
+      "result": "PASS",
+      "route": "/accessibility",
+      "viewport": "mobile320",
+      "status": 200,
+      "heading": "Play at your own pace."
+    },
+    {
+      "id": "P21-BROWSER-REFLOW",
+      "result": "PASS",
+      "route": "/accessibility",
+      "viewport": "mobile320",
+      "width": 320,
+      "scrollWidth": 320,
+      "overflowing": []
+    },
+    {
+      "id": "P21-BROWSER-IMAGES",
+      "result": "PASS",
+      "route": "/accessibility",
+      "viewport": "mobile320",
+      "brokenImages": []
+    },
+    {
+      "id": "P21-BROWSER-LABELS",
+      "result": "PASS",
+      "route": "/accessibility",
+      "viewport": "mobile320",
+      "unlabeledButtons": []
+    },
+    {
+      "id": "P21-BROWSER-ROUTE",
+      "result": "PASS",
+      "route": "/offline",
+      "viewport": "mobile320",
+      "status": 200,
+      "heading": "Take the next move offline."
+    },
+    {
+      "id": "P21-BROWSER-REFLOW",
+      "result": "PASS",
+      "route": "/offline",
+      "viewport": "mobile320",
+      "width": 320,
+      "scrollWidth": 320,
+      "overflowing": []
+    },
+    {
+      "id": "P21-BROWSER-IMAGES",
+      "result": "PASS",
+      "route": "/offline",
+      "viewport": "mobile320",
+      "brokenImages": []
+    },
+    {
+      "id": "P21-BROWSER-LABELS",
+      "result": "PASS",
+      "route": "/offline",
+      "viewport": "mobile320",
+      "unlabeledButtons": []
+    },
+    {
+      "id": "P21-BROWSER-ROUTE",
+      "result": "PASS",
+      "route": "/404",
+      "viewport": "mobile320",
+      "status": 200,
+      "heading": "This move leads off the board."
+    },
+    {
+      "id": "P21-BROWSER-REFLOW",
+      "result": "PASS",
+      "route": "/404",
+      "viewport": "mobile320",
+      "width": 320,
+      "scrollWidth": 320,
+      "overflowing": []
+    },
+    {
+      "id": "P21-BROWSER-IMAGES",
+      "result": "PASS",
+      "route": "/404",
+      "viewport": "mobile320",
+      "brokenImages": []
+    },
+    {
+      "id": "P21-BROWSER-LABELS",
+      "result": "PASS",
+      "route": "/404",
+      "viewport": "mobile320",
+      "unlabeledButtons": []
+    },
+    {
+      "id": "P21-BROWSER-MENU",
+      "result": "PASS",
+      "viewport": "mobile320"
+    },
+    {
+      "id": "P21-BROWSER-MENU-ESCAPE",
+      "result": "PASS",
+      "viewport": "mobile320"
+    },
+    {
+      "id": "P21-BROWSER-LINK",
+      "result": "PASS",
+      "href": "/",
+      "status": 200
+    },
+    {
+      "id": "P21-BROWSER-LINK",
+      "result": "PASS",
+      "href": "/about",
+      "status": 200
+    },
+    {
+      "id": "P21-BROWSER-LINK",
+      "result": "PASS",
+      "href": "/account",
+      "status": 200
+    },
+    {
+      "id": "P21-BROWSER-LINK",
+      "result": "PASS",
+      "href": "/challenge",
+      "status": 200
+    },
+    {
+      "id": "P21-BROWSER-LINK",
+      "result": "PASS",
+      "href": "/delete-account",
+      "status": 200
+    },
+    {
+      "id": "P21-BROWSER-LINK",
+      "result": "PASS",
+      "href": "/friends",
+      "status": 200
+    },
+    {
+      "id": "P21-BROWSER-LINK",
+      "result": "PASS",
+      "href": "/game",
+      "status": 200
+    },
+    {
+      "id": "P21-BROWSER-LINK",
+      "result": "PASS",
+      "href": "/game/",
+      "status": 200
+    },
+    {
+      "id": "P21-BROWSER-LINK",
+      "result": "PASS",
+      "href": "/how-to-play",
+      "status": 200
+    },
+    {
+      "id": "P21-BROWSER-LINK",
+      "result": "PASS",
+      "href": "/leaderboard",
+      "status": 200
+    },
+    {
+      "id": "P21-BROWSER-LINK",
+      "result": "PASS",
+      "href": "/legal/delete-account",
+      "status": 200
+    },
+    {
+      "id": "P21-BROWSER-LINK",
+      "result": "PASS",
+      "href": "/legal/privacy",
+      "status": 200
+    },
+    {
+      "id": "P21-BROWSER-LINK",
+      "result": "PASS",
+      "href": "/legal/privacy-choices",
+      "status": 200
+    },
+    {
+      "id": "P21-BROWSER-LINK",
+      "result": "PASS",
+      "href": "/legal/terms",
+      "status": 200
+    },
+    {
+      "id": "P21-BROWSER-LINK",
+      "result": "PASS",
+      "href": "/play",
+      "status": 200
+    },
+    {
+      "id": "P21-BROWSER-LINK",
+      "result": "PASS",
+      "href": "/play?mode=practice",
+      "status": 200
+    },
+    {
+      "id": "P21-BROWSER-LINK",
+      "result": "PASS",
+      "href": "/privacy",
+      "status": 200
+    },
+    {
+      "id": "P21-BROWSER-LINK",
+      "result": "PASS",
+      "href": "/privacy-choices",
+      "status": 200
+    },
+    {
+      "id": "P21-BROWSER-LINK",
+      "result": "PASS",
+      "href": "/profile",
+      "status": 200
+    },
+    {
+      "id": "P21-BROWSER-LINK",
+      "result": "PASS",
+      "href": "/ranked",
+      "status": 200
+    },
+    {
+      "id": "P21-BROWSER-LINK",
+      "result": "PASS",
+      "href": "/rewards",
+      "status": 200
+    },
+    {
+      "id": "P21-BROWSER-LINK",
+      "result": "PASS",
+      "href": "/season",
+      "status": 200
+    },
+    {
+      "id": "P21-BROWSER-LINK",
+      "result": "PASS",
+      "href": "/settings",
+      "status": 200
+    },
+    {
+      "id": "P21-BROWSER-LINK",
+      "result": "PASS",
+      "href": "/status",
+      "status": 200
+    },
+    {
+      "id": "P21-BROWSER-LINK",
+      "result": "PASS",
+      "href": "/support",
+      "status": 200
+    },
+    {
+      "id": "P21-BROWSER-LINK",
+      "result": "PASS",
+      "href": "/terms",
+      "status": 200
+    },
+    {
+      "id": "P21-BROWSER-LINK",
+      "result": "PASS",
+      "href": "/themes",
+      "status": 200
+    },
+    {
+      "id": "P21-BROWSER-LINK",
+      "result": "PASS",
+      "href": "/tournaments",
+      "status": 200
+    },
+    {
+      "id": "P21-BROWSER-LEGAL",
+      "result": "PASS",
+      "route": "/legal/privacy",
+      "status": 200
+    },
+    {
+      "id": "P21-BROWSER-LEGAL",
+      "result": "PASS",
+      "route": "/legal/terms",
+      "status": 200
+    },
+    {
+      "id": "P21-BROWSER-LEGAL",
+      "result": "PASS",
+      "route": "/legal/support",
+      "status": 200
+    },
+    {
+      "id": "P21-BROWSER-LEGAL",
+      "result": "PASS",
+      "route": "/legal/delete-account",
+      "status": 200
+    },
+    {
+      "id": "P21-BROWSER-LEGAL",
+      "result": "PASS",
+      "route": "/legal/privacy-choices",
+      "status": 200
+    },
+    {
+      "id": "P21-BROWSER-PRACTICE-INITIAL",
+      "result": "PASS",
+      "route": "/play?mode=practice"
+    },
+    {
+      "id": "P21-BROWSER-PRACTICE-ROUTING",
+      "result": "PASS",
+      "move": "0:4",
+      "nextBoard": 4,
+      "legalMoves": [
+        "4:0",
+        "4:1",
+        "4:2",
+        "4:3",
+        "4:4",
+        "4:5",
+        "4:6",
+        "4:7",
+        "4:8"
+      ]
+    },
+    {
+      "id": "P21-BROWSER-PRACTICE-OCCUPIED",
+      "result": "PASS",
+      "cell": "0:4",
+      "label": "Top left board, centre cell: X, occupied"
+    },
+    {
+      "id": "P21-BROWSER-THEME",
+      "result": "PASS",
+      "theme": "vector"
+    },
+    {
+      "id": "P21-BROWSER-THEME-STATE",
+      "result": "PASS",
+      "theme": "vector",
+      "cell": "0:4"
+    },
+    {
+      "id": "P21-BROWSER-THEME",
+      "result": "PASS",
+      "theme": "midnight"
+    },
+    {
+      "id": "P21-BROWSER-THEME-STATE",
+      "result": "PASS",
+      "theme": "midnight",
+      "cell": "0:4"
+    },
+    {
+      "id": "P21-BROWSER-THEME",
+      "result": "PASS",
+      "theme": "paperclub"
+    },
+    {
+      "id": "P21-BROWSER-THEME-STATE",
+      "result": "PASS",
+      "theme": "paperclub",
+      "cell": "0:4"
+    },
+    {
+      "id": "P21-BROWSER-THEME",
+      "result": "PASS",
+      "theme": "afterhours"
+    },
+    {
+      "id": "P21-BROWSER-THEME-STATE",
+      "result": "PASS",
+      "theme": "afterhours",
+      "cell": "0:4"
+    },
+    {
+      "id": "P21-BROWSER-RETAINED-GAME",
+      "result": "PASS",
+      "route": "/game/"
+    },
+    {
+      "id": "P21-BROWSER-ASSET-HTTP",
+      "result": "PASS",
+      "errors": []
+    },
+    {
+      "id": "P21-BROWSER-JAVASCRIPT",
+      "result": "PASS",
+      "errors": []
+    }
+  ],
+  "failures": [],
+  "screenshots": [
+    "tests-output/p21-web/8df1661fceb7/home-desktop.png",
+    "tests-output/p21-web/8df1661fceb7/home-desktop-full.png",
+    "tests-output/p21-web/8df1661fceb7/page-play.png",
+    "tests-output/p21-web/8df1661fceb7/page-casual.png",
+    "tests-output/p21-web/8df1661fceb7/page-ranked.png",
+    "tests-output/p21-web/8df1661fceb7/page-tournaments.png",
+    "tests-output/p21-web/8df1661fceb7/page-season.png",
+    "tests-output/p21-web/8df1661fceb7/page-friends.png",
+    "tests-output/p21-web/8df1661fceb7/page-challenge.png",
+    "tests-output/p21-web/8df1661fceb7/page-leaderboard.png",
+    "tests-output/p21-web/8df1661fceb7/page-rewards.png",
+    "tests-output/p21-web/8df1661fceb7/page-themes.png",
+    "tests-output/p21-web/8df1661fceb7/page-profile.png",
+    "tests-output/p21-web/8df1661fceb7/page-settings.png",
+    "tests-output/p21-web/8df1661fceb7/page-account.png",
+    "tests-output/p21-web/8df1661fceb7/page-how-to-play.png",
+    "tests-output/p21-web/8df1661fceb7/page-support.png",
+    "tests-output/p21-web/8df1661fceb7/page-about.png",
+    "tests-output/p21-web/8df1661fceb7/page-privacy.png",
+    "tests-output/p21-web/8df1661fceb7/page-terms.png",
+    "tests-output/p21-web/8df1661fceb7/page-delete-account.png",
+    "tests-output/p21-web/8df1661fceb7/page-privacy-choices.png",
+    "tests-output/p21-web/8df1661fceb7/page-help.png",
+    "tests-output/p21-web/8df1661fceb7/page-news.png",
+    "tests-output/p21-web/8df1661fceb7/page-status.png",
+    "tests-output/p21-web/8df1661fceb7/page-accessibility.png",
+    "tests-output/p21-web/8df1661fceb7/page-offline.png",
+    "tests-output/p21-web/8df1661fceb7/page-404.png",
+    "tests-output/p21-web/8df1661fceb7/home-tablet.png",
+    "tests-output/p21-web/8df1661fceb7/home-tablet-full.png",
+    "tests-output/p21-web/8df1661fceb7/home-mobile390.png",
+    "tests-output/p21-web/8df1661fceb7/home-mobile390-full.png",
+    "tests-output/p21-web/8df1661fceb7/home-mobile320.png",
+    "tests-output/p21-web/8df1661fceb7/home-mobile320-full.png",
+    "tests-output/p21-web/8df1661fceb7/practice-vector.png",
+    "tests-output/p21-web/8df1661fceb7/practice-midnight.png",
+    "tests-output/p21-web/8df1661fceb7/practice-paperclub.png",
+    "tests-output/p21-web/8df1661fceb7/practice-afterhours.png"
+  ],
+  "requests": {
+    "missing_local_resources": [],
+    "javascript_errors": []
+  },
+  "browser": "151.0.7922.34",
+  "result": "PASS"
+}

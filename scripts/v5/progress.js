@@ -900,6 +900,14 @@ function renderTodo(ledger, { root, ledgerPath, todoPath }) {
     .replace('{progress}', terminalCount + '/' + program.tasks.length + ' tasks terminal; ' + passed + '/' + program.phases.length + ' phase gates passed')
     .replace('{path}', 'execute ' + phaseRuns(program.phases, 'EXECUTE') + '; owner-deferred ' + phaseRuns(program.phases, 'DEFERRED_BY_OWNER') + ' executes nothing; ' + phaseRuns(program.phases, 'MEASUREMENT_GATED') + ' is measurement-gated; phase prerequisites are gates, not status assumptions, and a deferred or measurement-gated phase is never used as another phase prerequisite');
   const lines = [header];
+  const followOn = ledger.current.website_workstream;
+  if (followOn) {
+    lines.push('## Later owner-authorized website work', '');
+    lines.push('The goal and phase contracts above describe the original V5 program. The later owner request authorizes a separate `' + followOn.branch + '` website workstream; its original P21 deferral and acceptance history are retained.', '');
+    lines.push('**Status:** ' + followOn.status + '. ' + followOn.summary, '');
+    lines.push('**Code checkpoint:** `' + followOn.code_commit + '`. [Website checklist](' + link(path.resolve(root, followOn.checklist)) + '). [Evidence and release gates](' + link(path.resolve(root, followOn.evidence)) + ').', '');
+    lines.push('**Next:** ' + followOn.next_action, '');
+  }
   for (const phase of program.phases) {
     lines.push('## ' + phase.id + ' — ' + phase.title, '');
     lines.push('Milestone: ' + phase.milestone + '; status: `' + phase.status + '`; prerequisites: ' + ((phase.depends_on || []).join(', ') || 'none') + '. [Phase contract](' + link(path.resolve(root, String((ledger.source && ledger.source.pack) || ''), phase.file)) + ').', '');

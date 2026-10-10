@@ -2,6 +2,8 @@
 
 ## Current state
 
+**Later owner request (2026-10-11):** the `V5.1` website workstream is now authorized and implemented to local presentation evidence. Code `99e65bdc8655162cf2dcc4af26dc0b73ec203cdc` adds a cinematic homepage, 26 supporting pages and local practice. [Current website checklist](../p21-web/MASTER-CHECKLIST.md) and [readiness/evidence](../p21-web/IMPLEMENTATION-AND-READINESS.md) carry this follow-on scope. The original pack and P21 deferral remain historical; no V5 production gate is accepted by this frontend work.
+
 **V5 code and rehearsal suites have passed; P22/P23 live tasks remain unperformed and G22/G23/G24 are OPEN. G00–G20 are the recorded software gates, not proof that all physical-device/provider acceptance cases passed. P0 Critical audit confirms: LIVE PRODUCTION AUTHORITY REMAINS V4.1.2 ON SQLITE (/opt/mega-xo/data/mega.sqlite on Oracle host command), actively serving https://play.antimatterinnovations.com with ZERO conflicting writers. Neon production database is dormant (0 bytes). Contradictory cutover records reconciled.**
 
 - Goal: V5 hybrid platform plus genuine Android/iOS applications; approved game/retained browser preserved; new website/browser product deferred.

@@ -1,0 +1,231 @@
+{
+  "schema_version": 1,
+  "observed_at_utc": "2026-10-10T20:06:05.258941+00:00",
+  "branch": "V5.1",
+  "source_commit": "99e65bdc8655162cf2dcc4af26dc0b73ec203cdc",
+  "integration_entry_commit": "1638f088f641651654005c832fc813353d004101",
+  "task_ids": [
+    "P21.01",
+    "P21.02",
+    "P21.03",
+    "P21.04",
+    "P21.05",
+    "P21.06",
+    "P21.07",
+    "P21.08",
+    "P21.09",
+    "P21.10"
+  ],
+  "evidence_level": "TESTED_LOCAL; website and retained validation CI PASS",
+  "production_deployed": false,
+  "live_online_accepted": false,
+  "owner_visual_signoff": false,
+  "bundle_sha256": "8df1661fceb72b300e55d81be9fc758a91238a9a90370e3d7a4d7cb3f14d8857",
+  "verifications": [
+    {
+      "case_ids": [
+        "P21-BUILD-01",
+        "P21-BUILD-02",
+        "P21-BUILD-03",
+        "P21-BUILD-04",
+        "P21-SERVE-01",
+        "P21-SERVE-02",
+        "P21-DELIVERY-01"
+      ],
+      "command": "env -u NODE_OPTIONS /Users/oculus/.hermes/node/bin/node --test tests/v5-p21-*.test.js",
+      "target": "Local macOS Node v24; no API credentials",
+      "result": "PASS: 27/27, zero skips",
+      "evidence": "affected-tests.log",
+      "task_ids": [
+        "P21.03",
+        "P21.05",
+        "P21.07",
+        "P21.09"
+      ],
+      "test_files": [
+        "tests/v5-p21-board.test.js",
+        "tests/v5-p21-brand.test.js",
+        "tests/v5-p21-pages.test.js",
+        "tests/v5-p21-web-build.test.js"
+      ],
+      "case_note": "Board/page tests carry task IDs in their names; exact test names and outcomes are retained in affected-tests.log. Brand source/hash checks are file-based."
+    },
+    {
+      "case_ids": [
+        "P21-BUILD-MANIFEST"
+      ],
+      "command": "env -u NODE_OPTIONS /Users/oculus/.hermes/node/bin/node scripts/p21/build-web.js",
+      "target": "Local static .artifacts/p21-web",
+      "result": "PASS: 62 files, 1935785 bytes; manifest byte-identical to CI artifact",
+      "evidence": "web-build.manifest.json"
+    },
+    {
+      "case_ids": [
+        "P21-BROWSER-ASSET-HTTP",
+        "P21-BROWSER-BOARD",
+        "P21-BROWSER-IMAGES",
+        "P21-BROWSER-JAVASCRIPT",
+        "P21-BROWSER-LABELS",
+        "P21-BROWSER-LEGAL",
+        "P21-BROWSER-LINK",
+        "P21-BROWSER-MENU",
+        "P21-BROWSER-MENU-ESCAPE",
+        "P21-BROWSER-PRACTICE-INITIAL",
+        "P21-BROWSER-PRACTICE-OCCUPIED",
+        "P21-BROWSER-PRACTICE-ROUTING",
+        "P21-BROWSER-REFLOW",
+        "P21-BROWSER-RETAINED-GAME",
+        "P21-BROWSER-ROUTE",
+        "P21-BROWSER-THEME",
+        "P21-BROWSER-THEME-STATE"
+      ],
+      "command": "env -u NODE_OPTIONS /Users/oculus/.hermes/node/bin/node scripts/p21/browser-qa.cjs --no-build",
+      "dependency_resolution": "NODE_PATH points to managed runtime node_modules; Playwright 1.62.1",
+      "target": "local loopback Chromium; new unauthenticated contexts; static presentation only",
+      "result": "PASS: 489/489 checks; 38 screenshots; no missing local resources or JS errors",
+      "evidence": "browser-qa.json"
+    },
+    {
+      "case_ids": [
+        "P21-A11Y-001",
+        "P21-A11Y-PAPER-HUD-01",
+        "P21-A11Y-FORCED-COLORS-01"
+      ],
+      "command": "env -u NODE_OPTIONS /Users/oculus/.hermes/node/bin/node scripts/p21/accessibility-qa.cjs",
+      "dependency_resolution": "NODE_PATH includes isolated axe-core 4.14.0 and managed Playwright 1.62.1",
+      "target": "Local loopback Chromium; guest; no authenticated/provider traffic",
+      "result": "PASS: 58/58 checks; no automatic violations; 56 views have incomplete checks requiring human review",
+      "evidence": "accessibility-qa.json"
+    },
+    {
+      "case_ids": [
+        "P21-PRESERVE-SOURCE"
+      ],
+      "command": "git diff --exit-code 1638f088f641651654005c832fc813353d004101 HEAD -- index.html src native Mega-XO-V5-Implementation-Pack",
+      "target": "Committed repository inputs",
+      "result": "PASS: no change to retained client, native source or immutable pack",
+      "evidence": "Code commit and web-build.manifest.json"
+    },
+    {
+      "case_ids": [
+        "P21-ASSET-INVENTORY"
+      ],
+      "command": "Python hashlib verification of every assets/p21/art/PROVENANCE.json file_inventory SHA-256",
+      "target": "Committed local generated sources, exports and font/license files",
+      "result": "PASS: 26 hashes match",
+      "evidence": "assets/p21/art/PROVENANCE.json"
+    },
+    {
+      "case_ids": [
+        "P21-CI-WEBSITE",
+        "P21-CI-RETAINED"
+      ],
+      "command": "gh run view 38082099277/38082099203 --json status,conclusion,headSha,url,jobs; gh run download 38082099277 --name p21-web-manifest-99e65bdc8655162cf2dcc4af26dc0b73ec203cdc",
+      "target": "GitHub Actions Ubuntu; exact code commit",
+      "result": "PASS: both workflow conclusions success; website 2/2 jobs; publish/images excluded by release gates",
+      "evidence": [
+        "ci-website.json",
+        "ci-retained.json"
+      ]
+    },
+    {
+      "case_ids": [
+        "P21-PROVIDER-INVENTORY"
+      ],
+      "command": "vercel whoami; vercel project ls --scope oculusrex14s-projects",
+      "target": "Authenticated Vercel read-only account inventory; CLI 63.1.0",
+      "result": "Authenticated user oculusrex14. Scope returned godfin, bidthrone, website; no dedicated Mega XOXO or mega-xo-api project in this observed inventory. No changes.",
+      "evidence": "This sanitized observed result; identity is access evidence, not deployed API acceptance"
+    },
+    {
+      "case_ids": [
+        "P21-CI-NATIVE-PRESERVATION"
+      ],
+      "command": "gh run view 38082099216 --json status,conclusion,headSha,url,jobs; gh api repos/oculusrex14/Mega-XO/actions/runs/38082099216/artifacts",
+      "target": "GitHub Actions macOS simulator/Ubuntu Android build and emulator, exact code SHA",
+      "result": "PASS: all four jobs success, Android debug APK/iOS unsigned simulator build and packaged client byte parity. No physical device, signing, store approval or production proof.",
+      "evidence": [
+        "ci-native.json",
+        "ci-native-artifacts.json"
+      ]
+    }
+  ],
+  "limitations": [
+    "Only Chromium 151.0.7922.34 local presentation matrix at 1672/768/390/320; physical Safari, Android Chrome, Firefox and screen readers not accepted.",
+    "No real signed-in V5 session/account/economy/realtime or store/device/production acceptance.",
+    "Reference is a still composition; generated scene/art are not pixel-identical, 3D/layered/video/audio sources or complete rank family.",
+    "Live authority remains V4.1.2/SQLite; no production changes or PostgreSQL cutover."
+  ],
+  "file_checksums": [
+    {
+      "path": "accessibility-qa.json",
+      "bytes": 635654,
+      "sha256": "3e6f98653fbaef6044b810159b2e65d3c4b002703db85633c73413d6fa575764"
+    },
+    {
+      "path": "affected-tests.log",
+      "bytes": 2730,
+      "sha256": "6ae1c0dcb580353f1ad138db7c12700ed12adea95b502716ddc63e76cec3e72e"
+    },
+    {
+      "path": "browser-qa.json",
+      "bytes": 86679,
+      "sha256": "6a64c31eec19fd41aac166717ac5c5f1e3ebe453a965f0d8669cfffb73039399"
+    },
+    {
+      "path": "ci-native-artifacts.json",
+      "bytes": 905,
+      "sha256": "d21b8d7c8e80ebf2c935aec656004ed3bd7571a0c1b5120370040c0a8efb538f"
+    },
+    {
+      "path": "ci-native.json",
+      "bytes": 865,
+      "sha256": "ba4c1335668cc9533f818b630df486d7c07baf50ee8309a33f31d363c59f396b"
+    },
+    {
+      "path": "ci-retained.json",
+      "bytes": 638,
+      "sha256": "2b281b311f4c42b8ebfdf6ee50c6acc9e303bcfaacecce9852f8c0336e0fb929"
+    },
+    {
+      "path": "ci-website.json",
+      "bytes": 504,
+      "sha256": "2ebf747a3837975491359f8c558f444aff1de364615ba2c0828da4045c06654d"
+    },
+    {
+      "path": "corrected-findings.json",
+      "bytes": 2905,
+      "sha256": "20e73270899590b06a580af39ca91ab09c5bdd703982dad7322a03edc7bebc72"
+    },
+    {
+      "path": "home-desktop.png",
+      "bytes": 1512735,
+      "sha256": "f1de45cfe551f901c26376b41b4c378ca5bd0f415fdc970bdb5a52e635ae2261"
+    },
+    {
+      "path": "home-mobile390.png",
+      "bytes": 727409,
+      "sha256": "37be348ae8b72a678832147c86d5b1d77af86d14789bf87607641c175644bb31"
+    },
+    {
+      "path": "page-ranked.png",
+      "bytes": 1509565,
+      "sha256": "a07b4e81c8d89abba13fd21563116ab3f54fccddcc1b5f7ca8958a914e7c81e0"
+    },
+    {
+      "path": "page-themes.png",
+      "bytes": 1052833,
+      "sha256": "6f18a6198f66679cd5637ebe6114e1278ae15a23797c3e5191ee803f01b2c06f"
+    },
+    {
+      "path": "practice-paperclub.png",
+      "bytes": 707166,
+      "sha256": "4684f30ac1357ef741af0dc0ba19d1dd41898580ccc8abf57ceb3975e104f307"
+    },
+    {
+      "path": "web-build.manifest.json",
+      "bytes": 20864,
+      "sha256": "85132a3064178c406a9ec0429b2198d54f72c1d9d89e68dbee9027f1a6705ed1"
+    }
+  ]
+}

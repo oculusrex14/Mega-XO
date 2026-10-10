@@ -1,0 +1,104 @@
+{
+  "note": "Earlier working-tree findings preserved. Latest 99e65bd reports supersede them; per-file bundle hashes distinguish dirty-tree inputs.",
+  "runs": [
+    {
+      "evidence_source": "tests-output/p21-web/e7c0ae797a9a/browser-qa.json",
+      "source_commit": "1638f088f641651654005c832fc813353d004101",
+      "bundle_sha256": "e7c0ae797a9a79f1c47f4209275ae47e34ccc08aff320aeeddc17692a48b78ad",
+      "result": "FAIL",
+      "failures": [
+        {
+          "id": "P21-BROWSER-REFLOW",
+          "result": "FAIL",
+          "route": "/ranked",
+          "viewport": "mobile390",
+          "width": 390,
+          "scrollWidth": 438,
+          "overflowing": [
+            {
+              "element": "section",
+              "class": "mx-panel pg-panel pg-rank-explainer"
+            },
+            {
+              "element": "div",
+              "class": "pg-section-title"
+            },
+            {
+              "element": "div",
+              "class": ""
+            },
+            {
+              "element": "h2",
+              "class": ""
+            },
+            {
+              "element": "p",
+              "class": "mx-muted"
+            },
+            {
+              "element": "div",
+              "class": "pg-grid pg-grid-three pg-compact-grid"
+            },
+            {
+              "element": "section",
+              "class": "mx-panel pg-panel pg-feature"
+            },
+            {
+              "element": "h2",
+              "class": ""
+            }
+          ]
+        },
+        {
+          "id": "P21-BROWSER-REFLOW",
+          "result": "FAIL",
+          "route": "/ranked",
+          "viewport": "mobile320",
+          "width": 320,
+          "scrollWidth": 438,
+          "overflowing": [
+            {
+              "element": "section",
+              "class": "mx-panel pg-panel pg-rank-explainer"
+            },
+            {
+              "element": "div",
+              "class": "pg-section-title"
+            },
+            {
+              "element": "div",
+              "class": ""
+            },
+            {
+              "element": "h2",
+              "class": ""
+            },
+            {
+              "element": "p",
+              "class": "mx-muted"
+            },
+            {
+              "element": "div",
+              "class": "pg-grid pg-grid-three pg-compact-grid"
+            },
+            {
+              "element": "section",
+              "class": "mx-panel pg-panel pg-feature"
+            },
+            {
+              "element": "h2",
+              "class": ""
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "evidence_source": "tests-output/p21-web/8151a6a42594/accessibility-first.json",
+      "source_commit": "1638f088f641651654005c832fc813353d004101",
+      "bundle_sha256": "0b4c0d18efd284f987773b6e5341c420e756cb76d82d93508a7457c5f05cd3c1",
+      "result": "PASS",
+      "failures": []
+    }
+  ]
+}

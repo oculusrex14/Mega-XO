@@ -1,0 +1,35 @@
+✔ P21.03 practice showcase is a reproducible legal rules fixture with centre routing (2.299042ms)
+✔ P21.05 local practice enforces required board and preserves state after an illegal move (1.03975ms)
+✔ P21.05 preview reset replays the fixture and fresh practice clears every move (0.448625ms)
+✔ P21.03 accessible board uses 81 real cells and truthful practice labels (0.661416ms)
+✔ P21.05 bot cannot mutate a destroyed board mount (320.652333ms)
+✔ P21.05 keyboard navigation crosses small boards in visual row order (0.520042ms)
+✔ P21.05 theme switch changes presentation without resetting a mounted move (0.407625ms)
+✔ Mega XOXO browser and native display names (0.644667ms)
+✔ all themed logo PNG originals and optimized WebP files exist (6.35725ms)
+✔ theme-matched header mark is in V5 native bundle allowlist (0.368875ms)
+✔ original uploaded logo remains byte-identical in repo (3.176292ms)
+✔ website logo pack PNG assets exist with verified SHA-256 signatures (6.91225ms)
+✔ P21.07 every advertised website route renders a page and all rendered links resolve (14.118875ms)
+✔ P21.07 profile and Friends render adversarial user names and tags as text (0.274833ms)
+✔ P21.07 guest account routes retain account continuation and truthful identity state (0.237042ms)
+✔ P21.07 rendered league table matches approved domain floors, entry fees and weekly rewards (1.078083ms)
+✔ P21.07 rendered tournament entries and payouts match approved tournament mathematics (0.599417ms)
+✔ P21.07 reward and challenge copy retain approved currency limits and archived cosmetic direction (0.208375ms)
+✔ P21.07 quarter copy follows UTC domain boundaries rather than old screenshot dates (0.445834ms)
+✔ P21.07 legal and service pages preserve unapproved status and unknown routes fail safely (0.896417ms)
+✔ P21-BUILD-01: deterministic positive allowlist excludes authority, secrets, native files and masters (57.035875ms)
+✔ P21-BUILD-02: preserved game bytes and relative script, style, logo dependencies resolve (33.20275ms)
+✔ P21-BUILD-03: failed preflight preserves last build; arbitrary and unowned outputs are refused (41.885542ms)
+✔ P21-BUILD-04: source/output symlink escape and missing optimized brand exports are refused (15.268041ms)
+✔ P21-SERVE-01: clean route deep links, legal pages and game assets serve with correct content types (41.861792ms)
+✔ P21-SERVE-02: traversal, absent assets and writes fail safely; API is explicitly unconfigured (28.566542ms)
+✔ P21-DELIVERY-01: Vercel routing matches static manifest and automatic deployments stay disabled (0.221791ms)
+ℹ tests 27
+ℹ suites 0
+ℹ pass 27
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 364.613625

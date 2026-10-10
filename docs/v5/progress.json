@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at_utc": "2026-10-09T23:36:06.280Z",
+  "updated_at_utc": "2026-10-10T20:03:54.294529+00:00",
   "goal": "Deliver the V5 hybrid platform and real Android/iOS applications with shared permanent actor/assets, preserved approved game and retained browser compatibility; do not build the new website/browser product.",
   "source": {
     "goal": "AGENT-GOAL.md",
@@ -327,7 +327,7 @@
           "docs/v5/evidence/phase05-foundations.json"
         ],
         "gate_evidence": "docs/v5/evidence/phase05-foundations.json",
-        "note": "G05 PASSED: sessions/access/realtime foundations executed on the real 42-migration chain — 78/78 PG service suites (access 7, refresh 8, tickets 9, integration 4 + full P04 regression 47+4), 36/36 migrations+guards, 16/16 contracts, 130/130 retained, all zero-skip on disposable PG16. Signing/refresh/ticket services composed with the account revocation hook; no provider/device/production claim."
+        "note": "G05 PASSED: sessions/access/realtime foundations executed on the real 42-migration chain \u2014 78/78 PG service suites (access 7, refresh 8, tickets 9, integration 4 + full P04 regression 47+4), 36/36 migrations+guards, 16/16 contracts, 130/130 retained, all zero-skip on disposable PG16. Signing/refresh/ticket services composed with the account revocation hook; no provider/device/production claim."
       },
       {
         "phase": "P06",
@@ -701,7 +701,17 @@
         "gate_evidence": "docs/v5/evidence/phase20-gate.json",
         "note": "G20 PASSED: Real Android and iOS applications compile with approved assets, native identity, billing, ads, and signed build procedures."
       }
-    ]
+    ],
+    "website_workstream": {
+      "branch": "V5.1",
+      "authorized_on": "2026-10-11",
+      "status": "TESTED_LOCAL",
+      "code_commit": "99e65bdc8655162cf2dcc4af26dc0b73ec203cdc",
+      "summary": "Cinematic homepage, 26 secondary routes, shared-rule local practice, four game palettes, optimized still art, static delivery and presentation CI implemented. No live account integration, remote deployment or production acceptance.",
+      "checklist": "docs/p21-web/MASTER-CHECKLIST.md",
+      "evidence": "docs/p21-web/IMPLEMENTATION-AND-READINESS.md",
+      "next_action": "Owner visual review; live V5 staging/session/data/realtime integration, legal and hosting eligibility, physical browser/a11y/performance acceptance, then authorized deployment. V4.1.2/SQLite remains the live authority."
+    }
   },
   "program": {
     "schema_version": 1,

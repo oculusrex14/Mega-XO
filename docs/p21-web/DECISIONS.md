@@ -17,6 +17,18 @@
 ## Outstanding
 - Release/store-provider branding: verify Google Play / Apple listing names, OAuth consent-screen names, email sender configuration and screenshots with authorized owner; no bundle/package ID mutation.
 - Run and record browser and native CI on V5.1; don't infer device/store approval from source commits.
-- Produce first clean unlettered layered background using reference image as visual target; compare for fidelity before further 3D/video production.
+- Clean unlettered PNG/WebP background now implemented; independently editable scene layers remain open. Compare actual website before further 3D/video production.
 - Verify actual V5 web API/realtime callback endpoints before application wiring.
 - Do not deploy V5.1 or treat original V5 “deferred P21” ledger as retroactively changed.
+
+## 2026-10-11 website implementation
+
+| ID | Decision | Basis / implication | Status |
+|---|---|---|---|
+| P21-D011 | Use static ESM/DOM/CSS for this isolated cinematic frontend | Existing game is framework-free; pure rules and retained assets remain unchanged. Smaller dependency surface; Vercel configuration is static. Earlier React/Vite/Next wording was provisional. | IMPLEMENTED |
+| P21-D012 | Present true guest state and a clearly labeled practice board | Screenshot balances, Diamond II, season dates and clocks are illustrative, not player data. No fabricated service state or action outcome. | IMPLEMENTED |
+| P21-D013 | Route online/account actions to retained client while live V5 integration is open | No new credential collection or identity/economic writer. Local practice grants nothing and does not alter account state. | IMPLEMENTED / ONLINE OPEN |
+| P21-D014 | Retain generated PNG masters, optimized WebPs and self-hosted licensed fonts | Four generated still illustrations plus procedural DOM/SVG art reproduce the static composition; no 3D/video/audio asset claim. | IMPLEMENTED / EXTENDED PACK OPEN |
+| P21-D015 | Automated presentation results are Chromium/local evidence | 27 route designs, 4 viewport matrix, keyboard/board/theme checks and axe; actual device/providers/production remain separate. | TESTED_LOCAL |
+
+Code checkpoint and acceptance levels: [IMPLEMENTATION-AND-READINESS.md](IMPLEMENTATION-AND-READINESS.md).

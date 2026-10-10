@@ -148,6 +148,10 @@ function loadConfig(root, configPath) {
   for (const key of ['local_route_rewrites', 'index_dependency_links', 'client_scripts', 'client_styles', 'legal_pages', 'legal_styles', 'vendor_scripts', 'vendor_licenses', 'vendor_exclude', 'allowed_source_prefixes', 'forbidden_source_prefixes', 'forbidden_source_names', 'forbidden_destination_segments']) {
     config[key] = config[key] || [];
   }
+  if (config.client_assets !== undefined && !Array.isArray(config.client_assets)) throw refuse('client_assets must be an array');
+  for (const asset of config.client_assets || []) {
+    if (!asset || typeof asset.source !== 'string' || typeof asset.destination !== 'string') throw refuse('client_assets entries require source and destination paths');
+  }
   if (!config.index_rewrites || typeof config.index_rewrites !== 'object' || Array.isArray(config.index_rewrites)) {
     throw refuse('bundle config index_rewrites must be an object mapping dependency URL to bundle path');
   }
@@ -369,6 +373,7 @@ function buildPlan(root, config) {
   add('index', config.web_index, config.bundle_index, { provenance: 'approved-web-index' });
   for (const source of config.client_scripts) add('script', source, source, { provenance: 'approved-client-source' });
   for (const source of config.client_styles) add('style', source, source, { provenance: 'approved-client-source' });
+  for (const asset of config.client_assets || []) add('client-asset', asset.source, asset.destination, { provenance: 'approved-p21-brand-art' });
   for (const page of config.legal_pages) add('legal', page.source, page.destination, { provenance: 'approved-legal-page' });
   for (const style of config.legal_styles) add('legal-style', style.source, style.destination, { provenance: 'approved-legal-style' });
   for (const script of config.vendor_scripts) {

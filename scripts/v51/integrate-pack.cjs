@@ -7,7 +7,7 @@ const expected={
  'index.html':'6b61ca2d68629d253caf4aba20bb46dc6f7a9badaa1cd9d922ce283e6da4e304',
  'native/client/bundle.config.json':'714b71fdcd8fd5adf86be9bea357ef003100604b3e78f1011dd85bbcfc3a6329',
  'scripts/p21/build-web.js':'41ab20a34abd7e0c354e486683e5606047b8275ae2fb33094026331be71dda40',
- 'tests/v51-bot-tutorial.test.js':'814dfd0642b5cd03dcd0bfe06084abc90a0c0be10f94618b01458173f0b4bd47'
+ 'tests/v51-bot-tutorial.test.js':'fb39ca1d797b7af780f6b9794410f608c9b8a192f85aa5a6e81b18afb6bd7e6e'
 };
 function read(p){if(!files.has(p))files.set(p,fs.readFileSync(p,'utf8'));return files.get(p);}
 function patch(p,a,b){const s=read(p);if(!s.includes(a)||s.indexOf(a)!==s.lastIndexOf(a))throw Error('PATCH_CONTEXT_MISMATCH '+p);files.set(p,s.replace(a,b));}

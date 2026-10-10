@@ -1,8 +1,8 @@
-name: V5.1 reviewed tutorial source integration
+name: V5.1 reviewed client source integration
 on:
   push:
     branches: ['feat/v5.1-bot-ai-tutorial']
-    paths: ['scripts/v51/integrate-tutorial.cjs', '.github/workflows/v51-apply-tutorial.yml']
+    paths: ['scripts/v51/integrate-bot.cjs', '.github/workflows/v51-apply-tutorial.yml']
 permissions:
   contents: read
 concurrency:
@@ -23,8 +23,10 @@ jobs:
         with:
           node-version: '24'
       - run: npm ci
-      - name: Apply only preflighted shared hooks
-        run: node scripts/v51/integrate-tutorial.cjs
+      - name: Apply only preflighted shared hooks and explicit checkpoint journal
+        run: |
+          node scripts/v51/integrate-bot.cjs
+          node scripts/v51/update-progress.cjs docs/v5.1/bot-ai/evidence/checkpoint-c2-c3.json
       - name: Test exact candidate working tree
         run: |
           set -euo pipefail
@@ -39,10 +41,11 @@ jobs:
         run: |
           python3 -m pip install playwright==1.57.0
           python3 -m playwright install --with-deps chromium
-      - name: Real HTTP tutorial and existing accessibility
+      - name: Real HTTP tutorial, Worker lifecycle and accessibility
         run: |
           set -euo pipefail
           python3 tests/bot/tutorial-browser.py 2>&1 | tee .artifacts/v51/tutorial-browser.log
+          python3 tests/bot/worker-browser.py 2>&1 | tee .artifacts/v51/worker-browser.log
           python3 tests/accessibility-ui.py 2>&1 | tee .artifacts/v51/accessibility.log
       - name: Publish tested hooks on feature branch only
         env:
@@ -52,13 +55,13 @@ jobs:
           test "$GITHUB_REF" = refs/heads/feat/v5.1-bot-ai-tutorial
           test "$(git ls-remote origin refs/heads/feat/v5.1-bot-ai-tutorial | cut -f1)" = "$EXPECTED_HEAD"
           git diff --name-only | sort > .artifacts/v51/changed-paths.txt
-          printf '%s\n' index.html native/client/bundle.config.json scripts/p21/build-web.js src/app.js | sort > .artifacts/v51/allowed-paths.txt
+          printf '%s\n' index.html native/client/bundle.config.json scripts/p21/build-web.js src/app.js src/tutorial/client.js docs/v5.1/bot-ai/IMPLEMENTATION.md docs/v5.1/bot-ai/progress.json | sort > .artifacts/v51/allowed-paths.txt
           test -z "$(comm -23 .artifacts/v51/changed-paths.txt .artifacts/v51/allowed-paths.txt)"
-          git add -- index.html native/client/bundle.config.json scripts/p21/build-web.js src/app.js
+          git add -- index.html native/client/bundle.config.json scripts/p21/build-web.js src/app.js src/tutorial/client.js docs/v5.1/bot-ai/IMPLEMENTATION.md docs/v5.1/bot-ai/progress.json
           if ! git diff --cached --quiet; then
             git config user.name 'Mega XOXO validation'
             git config user.email 'validation@users.noreply.github.com'
-            git commit -m 'feat(tutorial): integrate tested guidance hooks and web/native allowlists'
+            git commit -m 'feat(bot-ai): integrate tested cancellable Worker hooks and update task evidence'
             git push origin HEAD:refs/heads/feat/v5.1-bot-ai-tutorial
           fi
           git rev-parse HEAD | tee .artifacts/v51/tested-source-commit.txt
@@ -67,7 +70,7 @@ jobs:
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:
-          name: v51-tutorial-integration
+          name: v51-worker-integration
           path: .artifacts/v51
           if-no-files-found: error
           retention-days: 7

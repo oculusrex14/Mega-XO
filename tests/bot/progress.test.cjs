@@ -1,0 +1,3 @@
+'use strict';
+const {test}=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs');
+test('82-task evidence ledger is complete and every checkmark has a recorded checkpoint',()=>{const root='docs/v5.1/bot-ai/',ledger=JSON.parse(fs.readFileSync(root+'progress.json','utf8')),text=fs.readFileSync(root+'IMPLEMENTATION.md','utf8');const tasks=[...text.matchAll(/^- \[([ x])\] \*\*(B\d\d\.\d\d)\*\*/gm)];assert.equal(tasks.length,82);assert.equal(Object.keys(ledger.tasks).length,82);for(const [,checked,id] of tasks){assert.ok(ledger.tasks[id]);if(checked==='x'){assert.equal(ledger.tasks[id].status,'DONE');const entry=ledger.tasks[id],checkpoint=ledger.checkpoints[entry.checkpoint];assert.match(entry.commit||checkpoint?.commit||'',/^[0-9a-f]{40}$/);}}});

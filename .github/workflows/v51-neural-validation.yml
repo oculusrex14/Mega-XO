@@ -2,7 +2,7 @@ name: V5.1 compact model validation
 on:
   push:
     branches: ['feat/v5.1-bot-ai-tutorial']
-    paths: ['training/bot/**', 'src/bot/encoding.js', 'src/bot/onnx.js', 'tests/bot/neural-browser.py', '.github/workflows/v51-neural-validation.yml']
+    paths: ['training/bot/**', 'src/bot/encoding.js', 'src/bot/onnx.js', 'src/bot/neural-*.js', 'tests/bot/neural*browser.py', '.github/workflows/v51-neural-validation.yml']
   workflow_dispatch:
 permissions:
   contents: read
@@ -44,6 +44,10 @@ jobs:
         run: |
           set -o pipefail
           python3 tests/bot/neural-browser.py 2>&1 | tee .artifacts/v51/neural-browser.log
+      - name: Actual warm neural Worker and PUCT lifecycle
+        run: |
+          set -o pipefail
+          python3 tests/bot/neural-worker-browser.py 2>&1 | tee .artifacts/v51/neural-worker-browser.log
       - name: Keep reports only; no model deployment or public weights
         if: always()
         run: |
@@ -53,6 +57,7 @@ jobs:
           test ! -f .artifacts/v51/export/export-report.json || cp .artifacts/v51/export/export-report.json .artifacts/v51/reports/
           test ! -f .artifacts/v51/neural-browser.json || cp .artifacts/v51/neural-browser.json .artifacts/v51/reports/
           test ! -f .artifacts/v51/bootstrap.jsonl.manifest.json || cp .artifacts/v51/bootstrap.jsonl.manifest.json .artifacts/v51/reports/
+          test ! -f .artifacts/v51/neural-worker-browser.json || cp .artifacts/v51/neural-worker-browser.json .artifacts/v51/reports/
           python3 -m pip freeze > .artifacts/v51/reports/python-packages.txt
           printf '%s\n' "$GITHUB_SHA" > .artifacts/v51/reports/source-commit.txt
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02

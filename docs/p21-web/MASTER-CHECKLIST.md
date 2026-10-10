@@ -1,10 +1,10 @@
-# Mega XO — P21 Website & Browser Game Master Checklist
+# Mega XOXO — P21 Website & Browser Game Master Checklist
 
 **Canonical website:** https://megaxo.online  
 **Development branch:** V5.1 (created from V5-platform, not the divergent main branch)  
-**Product:** One Mega XO identity, inventory, wallet, competitive authority, matchmaking pool, and social graph across web, iOS, and Android.  
+**Product:** One Mega XOXO identity, inventory, wallet, competitive authority, matchmaking pool, and social graph across web, iOS, and Android.  
 **Visual master:** user-uploaded desktop mockup (1672 × 941) / Generated Image 1.  
-**Brand reference:** user-uploaded logo artwork (1600 × 1600); keep untouched until the wordmark decision is approved.  
+**Brand reference:** user-uploaded official Mega XOXO logo artwork (1600 × 1600), archived unchanged; the name is approved for web/iOS/Android.  
 **Execution status:** PHASE 1 IN PROGRESS; PHASES 2–10 NOT STARTED. Nothing in this checklist means production deployed.
 
 ## How to maintain this file
@@ -21,8 +21,8 @@
 ## Global deliverable gates
 
 - [x] P21-G001: create isolated V5.1 branch from V5-platform; leave main / V4 / V5 / production untouched.
-- [ ] P21-G002: publish exact uploaded image and logo masters as versioned **binary assets** in the repository, with SHA-256 and unmodified original bytes.
-- [ ] P21-G003: approve exact public wordmark: uploaded artwork currently says “MEGA XOXO”, whereas product/UI says “Mega XO”.
+- [x] P21-G002: exact uploaded website screenshot and logo stored as original binary PNGs in `assets/p21/reference/`, SHA-256 verified (`a158389`).
+- [x] P21-G003: owner approved **Mega XOXO** for website, Android, iOS and user-facing content; original screenshot remains a pre-rebrand visual reference.
 - [ ] P21-G004: confirm all pages inherit the new cinematic chrome without modifying four existing gameplay theme definitions.
 - [ ] P21-G005: confirm live website shares V5 session identity, rank, wallet, friend, tournament, season and game authority with native apps.
 - [ ] P21-G006: capture desktop/tablet/mobile visual-diff evidence against approved reference variants and functional browser-game acceptance.
@@ -36,11 +36,11 @@
 
 ### Brand identity and provenance
 - [x] Record uploaded logo and screenshot filenames, dimensions, SHA-256 and roles in reference audit.
-- [ ] Copy unmodified originals into version-controlled reference-art directory.
-- [ ] Confirm MEGA XO vs MEGA XOXO lettering with owner before final lockups.
-- [ ] Preserve the brand emblem’s cyan X / hot-pink O / indigo outlines / circular motifs.
+- [x] Copy unmodified originals into version-controlled `assets/p21/reference/` and verify both hashes.
+- [x] Confirm permanent user-facing wordmark **Mega XOXO** with owner.
+- [x] Preserve the original owner-supplied XO orbital emblem unchanged; theme variants respect existing screen palettes.
 - [ ] Official primary horizontal header wordmark, as approved.
-- [ ] Official full emblem + stacked wordmark, as approved.
+- [x] Four full transparent raster emblems + stacked **MEGA XOXO** wordmarks committed (raster masters; editable vector source still open).
 - [ ] Single-color, reverse, light-background and small-size lockups.
 - [ ] Minimum clear space, safe bounds, display minimums and misuse examples.
 - [ ] Editable vector master (hand-correct paths; image-trace alone is not final).
@@ -308,11 +308,11 @@ Each asset receives an ID (for example P21-BG-001, P21-LOGO-001), target compone
 
 | Asset family | Example ID | Master format | Site exports | Completion |
 |---|---|---|---|---|
-| Source screenshot | P21-REF-001 | original PNG, unchanged | comparison-only | Referenced, repository binary pending |
-| Supplied logo | P21-REF-002 | original PNG, unchanged | later SVG / transparent PNG | Referenced, repository binary pending |
+| Source screenshot | P21-REF-001 | original PNG, unchanged | comparison-only | COMPLETE · `a158389` |
+| Supplied logo | P21-REF-002 | original PNG, unchanged | reference for vector conversion | COMPLETE · `a158389` |
 | **Cinematic unlettered background** | P21-BG-001 | layered EXR/PSD/Blender source | AVIF/WebP + WebM/MP4 variants | Pending |
 | Night-sky, stars, silhouette, fog layers | P21-BG-002…006 | independent alpha layers | WebP/PNG/video sprites | Pending |
-| Horizontal logo/header/mark/favicon | P21-LOGO-001…006 | editable SVG/vector master | SVG/PNG/favicon/PWA | Wordmark approval pending |
+| Horizontal logo/header/mark/favicon | P21-LOGO-001…006 | editable SVG/vector master | SVG/PNG/favicon/PWA | PARTIAL — themed raster marks integrated; vector/favicon pending |
 | Coin/Crown and icon families | P21-ICON-001… | SVG/3D source | sprite/SVG/WebP | Pending |
 | Game board/X/O/move indicators | P21-GAME-001… | vector/CSS procedural | DOM/CSS/SVG | Pending |
 | Actual 11 rank tiers | P21-RANK-001…011 | 3D/vector master | WebP/SVG/sprites | Pending |
@@ -326,27 +326,55 @@ Each asset receives an ID (for example P21-BG-001, P21-LOGO-001), target compone
 
 | Subphase | Gate | Status | Evidence / next action |
 |---|---|---|---|
-| P21.01 Brand foundation | Approved tokens, wordmark, original art archive | **IN PROGRESS** | Reference audit, design-system draft, tokens and no finalized wordmark yet |
+| P21.01 Brand foundation | Approved tokens, wordmark, original art archive | **IN PROGRESS** | Name approved; originals, 4 theme rasters, mark-only exports and native bundle committed; editable SVG, header lockups and visual/device QA pending |
 | P21.02 Architecture | Approved routes/flows/auth boundaries | NOT STARTED | Crosscheck V5 endpoint contracts |
 | P21.03 Homepage | Editable desktop parity + adaptive page | NOT STARTED | Recreate master sections including separate background |
 | P21.04 Components | Accessible documented component library | NOT STARTED | Build after shell/token approval |
 | P21.05 Game UI | Real web game, compatible rules and realtime | NOT STARTED | Preserve existing 4 themes and Core authority |
-| P21.06 Assets/3D/motion/audio | Complete licensed optimized asset registry | NOT STARTED | Produce visual art masters, not just flat screenshot |
+| P21.06 Assets/3D/motion/audio | Complete licensed optimized asset registry | **PARTIAL** | Four logo families done; cinematic background, 3D, 11 ranks, cards, video and audio remain |
 | P21.07 All pages | Complete site pages and state coverage | NOT STARTED | Route/page inventory |
 | P21.08 Responsive/quality | Tested adaptive and accessible performance | NOT STARTED | Screenshot/perf matrix |
-| P21.09 Engineering | Vercel-ready browser frontend connected to V5 | NOT STARTED | Await product/visual contracts |
+| P21.09 Engineering | Vercel-ready browser frontend connected to V5 | **BRAND FOUNDATION ONLY** | Retained browser app and native bundle updated; new `megaxo.online` website/frontend not built |
 | P21.10 Acceptance | Parity, E2E, security, owner go-live approval | NOT STARTED | No deploy authorized |
 
-## P21 open decisions / blockers
+## P21 current open items and gates
 
-1. **Wordmark conflict:** logo artwork says “MEGA XOXO”, original generated website and existing product say “Mega XO”; do not alter owner supplied source without explicit approval.
-2. **Source binaries to GitHub:** originals exist as user uploads and hashes are recorded. Exact PNG bytes have **not yet been committed to GitHub** through text-only repo file operations; do not mark G002 complete until binaries are in git.
-3. **Screenshot-only values:** “Diamond II”, 1620 rating, “Season 3 Oct–Dec 2024”, queue statistics and balances are illustration data. Real ranks, 2026+ seasons, active resources and wallet data come from accepted product contracts.
-4. **Gameplay themes:** website’s cinematic shell is new; default gameplay themes remain Vector Light, Midnight Club, Paper Club and After Hours with their own assets and CSS.
-5. **Production:** owner requested website on megaxo.online; deployment, DNS, auth, and V5 data authority must be verified independently and require a later explicit go-live decision.
+1. **New website still needs building:** source screenshot is 1672×941 and historically reads “Mega XO”; use its composition as visual authority but render **Mega XOXO** text and real game state.
+2. **Full production art:** independently layered starfield/mountain/fog background (no baked UI), feature-card illustrations, trophies, currency/icons, all 11 rank emblems, 3D/motion/audio and responsive scene crops.
+3. **Brand finishing:** editable SVG/vector master, horizontal header lockups, theme-verified splashes, Android adaptive icon and iOS app icon (launcher assets require platform-specific opaque backing).
+4. **Visual QA:** inspect app's four logo marks on physical Android/iOS builds and compare against the actual existing four theme screens; do not confuse alpha/format proof with device parity.
+5. **Provider/store branding:** update Apple/Google store listings, OAuth consent names and operational email sender `MEGA_EMAIL_FROM` when authorized; *do not* rename immutable package IDs, Apple/Google subjects, API keys, databases or the `megaxo.online` domain.
+6. **Release/authority:** website Vercel launch, API/session/CORS and V5 live identity cutover must pass their separate gates and explicit owner deployment approval. No production deployment here.
+7. **Tests:** GitHub Actions browser validation and native builds must be checked at their final SHA. The old V5 platform acceptance ledger remains historical; P21 work lives in this checklist.
+
+## P21.01 completed branding deliverables
+
+- [x] Confirm user-facing product name **Mega XOXO** (owner, 2026-10-10).
+- [x] Archive exact original logo and screenshot sources (commit `a158389`).
+- [x] Add four transparent 1254px theme PNG masters and 768px optimized WebP exports (`fc67cfc`).
+- [x] Add theme-matched 256px mark-only transparent WebP crops (`3f75527`).
+- [x] Replace browser navigation, account UX, diagnostics, notifications and social share names with Mega XOXO.
+- [x] Replace Android and iOS application display labels and native notification/alert names with Mega XOXO.
+- [x] Update customer-facing email templates and legal/help pages; preserve crypto, package names and domain identifiers.
+- [x] Wire the 4 header marks to existing saved theme IDs and include all 8 WebPs in native deterministic allowlist.
+- [x] Add dedicated brand/bundle regression test coverage `tests/v5-p21-brand.test.js`; align email/legal tests.
+- [x] Enable V5.1 browser/native validation workflow triggers.
+- [x] Publish versioned artwork hashes, format and theme palette notes in [ASSET-REGISTRY.md](ASSET-REGISTRY.md).
+- [ ] Browser validation on final checklist SHA passes (record run/commit evidence).
+- [ ] Native Android and iOS build/bundle acceptance passes (record run/commit evidence).
+- [ ] Final SVG/vector and all mobile/adaptive launch variants complete.
+- [ ] Independent QA at actual supported phone viewports and physical devices.
+- [ ] Complete original Phase 21 production website and browser game launch.
 
 ## Commit/evidence journal
 
 | Date | Scope | Evidence | Commit |
 |---|---|---|---|
-| 2026-10-10 | V5.1 branch from V5-platform; P21 checklist and Phase 1 draft started | GitHub branch inspection, original image audit | Update per completed commits |
+| 2026-10-10 | P21 checklist/Phase 1 foundation | All 10 subphases enumerated | `62efb725`, `8e9aeef` |
+| 2026-10-10 | Original screenshot + owner logo archived | Exact SHA-256, original binary blobs | `a158389` |
+| 2026-10-10 | Four approved transparent logo suites | 4 PNG masters + 4 optimized app WebPs | `fc67cfc` |
+| 2026-10-10 | Cropped icon assets | Four 256px WebPs, SHA-256 verified | `3f75527` |
+| 2026-10-10 | Public brand rename + provider text | Browser, Android, iOS, email, help/legal | `09d08ce` through `5e6e7ee` |
+| 2026-10-10 | App mark integration + native bundler + regression tests | `src/app.js`, `native/client/bundle.config.json`, V5 bundle builder and tests | `134268a` through `d406f14` |
+| 2026-10-10 | V5.1 validation activated; legal assertions corrected | Initial regression exposed stale expected legal-page names, fixed and rechecked via CI | `05a0615`, `c275fc6` |
+| 2026-10-10 | Rebrand decisions and complete artwork registry | `DECISIONS.md`, `BRAND-SYSTEM.md`, `REFERENCE-AUDIT.md`, `ASSET-REGISTRY.md` | `2901c07`, `26e1c8c` |

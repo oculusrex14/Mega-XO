@@ -12,6 +12,8 @@
     "src/icons.js",
     "src/account-client.js",
     "src/network.js",
+    "src/tutorial/lesson.js",
+    "src/tutorial/client.js",
     "src/app.js",
     "src/tournament.js",
     "src/party-ui.js",
@@ -22,7 +24,8 @@
     "src/styles.css",
     "src/party.css",
     "src/community.css",
-    "src/monetization.css"
+    "src/monetization.css",
+    "src/tutorial/tutorial.css"
   ],
   "legal_pages": [
     {

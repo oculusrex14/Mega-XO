@@ -10,7 +10,7 @@ const ROOT = path.resolve(__dirname, '../..');
 const GENERATOR = 'scripts/p21/build-web.js';
 const MANIFEST = 'web-build.manifest.json';
 const WEB_FILES = ['index.html', 'app.js', 'styles.css', 'ui.js', 'pages.js', 'pages.css', 'board.js', 'board.css'];
-const GAME_FILES = ['game.js', 'domain.js', 'monetization.js', 'lan-icons.js', 'icons.js', 'account-client.js', 'network.js', 'app.js', 'tournament.js', 'party-ui.js', 'community.js', 'monetization-ui.js', 'styles.css', 'party.css', 'community.css', 'monetization.css'];
+const GAME_FILES = ['tutorial/lesson.js', 'tutorial/client.js', 'tutorial/tutorial.css', 'game.js', 'domain.js', 'monetization.js', 'lan-icons.js', 'icons.js', 'account-client.js', 'network.js', 'app.js', 'tournament.js', 'party-ui.js', 'community.js', 'monetization-ui.js', 'styles.css', 'party.css', 'community.css', 'monetization.css'];
 const LEGAL_NAMES = ['privacy', 'terms', 'support', 'delete-account', 'privacy-choices'];
 const WEBSITE_ROUTES = ['/', '/play', '/casual', '/ranked', '/tournaments', '/season', '/friends', '/challenge', '/leaderboard', '/rewards', '/themes', '/profile', '/settings', '/account', '/how-to-play', '/support', '/about', '/privacy', '/terms', '/delete-account', '/privacy-choices', '/help', '/news', '/status', '/accessibility', '/offline', '/404'];
 const sha256 = bytes => crypto.createHash('sha256').update(bytes).digest('hex');

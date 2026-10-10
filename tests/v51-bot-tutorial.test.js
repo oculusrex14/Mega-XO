@@ -6,3 +6,5 @@ require('./bot/search.test.cjs');
 require('./bot/runtime.test.cjs');
 require('./bot/worker-entry.test.cjs');
 require('./bot/progress.test.cjs');
+require('./bot/encoding.test.cjs');
+require('./bot/training-data.test.cjs');

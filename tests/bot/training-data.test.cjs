@@ -1,0 +1,5 @@
+'use strict';
+const {test}=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),os=require('node:os'),path=require('node:path');
+const Data=require('../../training/bot/generate.cjs'),V=require('../../training/bot/validate-data.cjs'),E=require('../../src/bot/encoding.js');
+test('whole games and D4-related openings cannot leak across dataset splits',()=>{const opening=[{b:0,c:4},{b:4,c:0},{b:0,c:3},{b:3,c:0}],family=Data.family(opening);for(let s=0;s<8;s++)assert.equal(Data.family(opening.map(m=>E.mapMove(m,s))),family);assert.equal(Data.splitFor(family),Data.splitFor(family));});
+test('generated mixed-UCT records replay canonically with terminal value and visit targets',()=>{const dir=fs.mkdtempSync(path.join(os.tmpdir(),'mega-training-')),file=path.join(dir,'sample.jsonl');try{const m=Data.generate({output:file,games:3,simulations:4,seed:2451});const report=V.validate(file);assert.equal(report.games,3);assert.equal(report.records,m.records);assert.ok(m.records>80);assert.throws(()=>Data.generate({output:file,games:1}));}finally{fs.rmSync(dir,{recursive:true,force:true});}});

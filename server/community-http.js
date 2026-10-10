@@ -64,7 +64,7 @@ function createCommunityHandler({community,providers,emailer,store,matchmaker,or
     }
     if(action==='verify'){
      const result=community.emailVerify(token(req),b.challengeId,b.code);
-     if(result.emailChanged){for(const to of [result.oldEmail,result.newEmail])emailer?.sendSecurityNotice?.({to,event:'email_changed',detail:'The email address used to sign in to your Mega XO profile was changed.',idempotencyKey:'mega-xo/email-changed/'+b.challengeId+'/'+to}).catch(()=>{});delete result.oldEmail;delete result.newEmail;}
+     if(result.emailChanged){for(const to of [result.oldEmail,result.newEmail])emailer?.sendSecurityNotice?.({to,event:'email_changed',detail:'The email address used to sign in to your Mega XOXO profile was changed.',idempotencyKey:'mega-xo/email-changed/'+b.challengeId+'/'+to}).catch(()=>{});delete result.oldEmail;delete result.newEmail;}
      if(result.token){setCookie(res,result.token,14*86400);return send(res,200,{linked:true,csrf:result.csrf,profile:result.profile,created:result.created,verified:true}),true;}
      return send(res,200,result),true;
     }
@@ -72,7 +72,7 @@ function createCommunityHandler({community,providers,emailer,store,matchmaker,or
      if(!emailer?.enabled?.())throw Error('EMAIL_DELIVERY_NOT_CONFIGURED');const result=community.emailLinkStart(token(req),b.email,b.password);await emailer.sendOtp(result.delivery);const {delivery,...publicResult}=result;return send(res,200,publicResult),true;
     }
     if(action==='forgot'){
-     if(!emailer?.enabled?.())throw Error('EMAIL_DELIVERY_NOT_CONFIGURED');const started=community.emailResetStart(token(req),b.email),delivery=started.delivery;const minimum=new Promise(r=>setTimeout(r,350));if(delivery)await Promise.all([emailer.sendOtp(delivery),minimum]);else await minimum;const {delivery:_,...publicResult}=started;return send(res,200,{...publicResult,message:'If this email has a Mega XO account, a reset code has been sent.'}),true;
+     if(!emailer?.enabled?.())throw Error('EMAIL_DELIVERY_NOT_CONFIGURED');const started=community.emailResetStart(token(req),b.email),delivery=started.delivery;const minimum=new Promise(r=>setTimeout(r,350));if(delivery)await Promise.all([emailer.sendOtp(delivery),minimum]);else await minimum;const {delivery:_,...publicResult}=started;return send(res,200,{...publicResult,message:'If this email has a Mega XOXO account, a reset code has been sent.'}),true;
     }
     if(action==='reset'){
      const result=community.emailResetComplete(token(req),b.challengeId,b.password);setCookie(res,result.token,14*86400);emailer?.sendPasswordChanged?.({to:result.passwordChangedEmail,idempotencyKey:'mega-xo/password-changed/'+b.challengeId}).catch(()=>{});return send(res,200,{linked:true,csrf:result.csrf,profile:result.profile,passwordChanged:true}),true;

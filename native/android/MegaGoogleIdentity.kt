@@ -9,7 +9,7 @@ import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 
 /** Native adapter source, not a compiled Android application.
  * Call from the application's coroutine/UI flow after POST /api/account/native/challenge.
- * Forward the result ONLY to /api/account/native/finish on the configured Mega XO origin.
+ * Forward the result ONLY to /api/account/native/finish on the configured Mega XOXO origin.
  * The backend, not this helper, verifies and links the identity.
  */
 class MegaGoogleIdentity(private val activity: Activity, private val serverClientId: String) {

@@ -118,7 +118,7 @@ class EmailAuth {
   });
   if(result.error)throw Error(result.error);
   if(result.emailChanged){
-   for(const to of [result.oldEmail,result.newEmail])try{this.uow(()=>this.outbox.enqueue('security-email-'+crypto.randomUUID(),{to,event:'email_changed',detail:'The email address used to sign in to your Mega XO profile was changed.'},this.now()+86400000,'security'));}catch{}
+   for(const to of [result.oldEmail,result.newEmail])try{this.uow(()=>this.outbox.enqueue('security-email-'+crypto.randomUUID(),{to,event:'email_changed',detail:'The email address used to sign in to your Mega XOXO profile was changed.'},this.now()+86400000,'security'));}catch{}
    delete result.oldEmail;delete result.newEmail;
   }
   return result;
@@ -140,7 +140,7 @@ class EmailAuth {
   const result=this.challenge(session,address,'reset',{actor:row?.actor||null,credential:row,dummy:!row});
   // Delivery happens in the background outbox for BOTH response paths: no network
   // latency or provider error is exposed as an account-existence side channel.
-  return {...result,message:'If this email has a Mega XO account, a reset code has been requested.'};
+  return {...result,message:'If this email has a Mega XOXO account, a reset code has been requested.'};
  }
  async reset(token,id,password) {
   const session=this.c.requireSession(token);validate(password);

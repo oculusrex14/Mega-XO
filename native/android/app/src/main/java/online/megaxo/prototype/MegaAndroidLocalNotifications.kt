@@ -83,7 +83,7 @@ internal class MegaAndroidLocalNotifications private constructor(
         }
         if (Build.VERSION.SDK_INT >= 26) {
             manager.createNotificationChannel(NotificationChannel(
-                channel, "Mega XO game alerts", NotificationManager.IMPORTANCE_DEFAULT))
+                channel, "Mega XOXO game alerts", NotificationManager.IMPORTANCE_DEFAULT))
         }
         val intent = Intent(activity, MegaXOActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP

@@ -1,0 +1,199 @@
+{
+  "case_id": "P21-NEON-ORIGINAL-PALETTE-PARITY",
+  "source_commit": "c80663a7f66be5a7c193a818a0cd12cabedad64b",
+  "baseline_commit": "1a1a434bba893a8d70fb768b086a63fde1d06cb3",
+  "command": "env -u NODE_OPTIONS NODE_PATH=.artifacts/p21-browser-qa/node_modules /Users/oculus/.hermes/node/bin/node .artifacts/p21-theme-review/palette-parity.cjs",
+  "environment": "Local loopback Chromium; fresh unauthenticated contexts; old/new board CSS at identical cascade position",
+  "checked_at": "2026-10-11T04:56:18.173Z",
+  "checks": [
+    {
+      "width": 1151,
+      "theme": "vector",
+      "result": "PASS",
+      "baseline_styles_sha256": "52e1878751b7f38e9e78ac824653b07a91321951de86e10414436151de849b06",
+      "current_styles_sha256": "52e1878751b7f38e9e78ac824653b07a91321951de86e10414436151de849b06",
+      "differences": []
+    },
+    {
+      "width": 1151,
+      "theme": "midnight",
+      "result": "PASS",
+      "baseline_styles_sha256": "2e98c10dc7e6f851f189b079a277789dc337d8072586c5478e46451705781f85",
+      "current_styles_sha256": "2e98c10dc7e6f851f189b079a277789dc337d8072586c5478e46451705781f85",
+      "differences": []
+    },
+    {
+      "width": 1151,
+      "theme": "paperclub",
+      "result": "FAIL",
+      "baseline_styles_sha256": "db3701a3e05f237d1572f6c6a976ea1016c7f95e679e1ea49da7d3d498ed2cff",
+      "current_styles_sha256": "e207c99abf8b6fb219930e8a19129fcd925517d4fab85eb85f22f72066c6d59d",
+      "differences": [
+        {
+          "selector": ".gb-turn-strip p",
+          "property": "inline-size",
+          "before": "273.75px",
+          "after": "245.797px"
+        },
+        {
+          "selector": ".gb-turn-strip p",
+          "property": "perspective-origin",
+          "before": "136.875px 8.25px",
+          "after": "122.891px 8.25px"
+        },
+        {
+          "selector": ".gb-turn-strip p",
+          "property": "transform-origin",
+          "before": "136.875px 8.25px",
+          "after": "122.898px 8.25px"
+        },
+        {
+          "selector": ".gb-turn-strip p",
+          "property": "width",
+          "before": "273.75px",
+          "after": "245.797px"
+        }
+      ]
+    },
+    {
+      "width": 1151,
+      "theme": "afterhours",
+      "result": "FAIL",
+      "baseline_styles_sha256": "972a68f8283594bebc4344feaffd9880e6d9f2ef0dc61b8c58fa461bcc9ebf87",
+      "current_styles_sha256": "efcc97859211bee536c21382b669c89d0dae5103c37ba27fa942fd9010da9917",
+      "differences": [
+        {
+          "selector": ".gb-turn-strip p",
+          "property": "block-size",
+          "before": "33px",
+          "after": "16.5px"
+        },
+        {
+          "selector": ".gb-turn-strip p",
+          "property": "height",
+          "before": "33px",
+          "after": "16.5px"
+        },
+        {
+          "selector": ".gb-turn-strip p",
+          "property": "inline-size",
+          "before": "316.297px",
+          "after": "305.609px"
+        },
+        {
+          "selector": ".gb-turn-strip p",
+          "property": "perspective-origin",
+          "before": "158.141px 16.5px",
+          "after": "152.797px 8.25px"
+        },
+        {
+          "selector": ".gb-turn-strip p",
+          "property": "transform-origin",
+          "before": "158.148px 16.5px",
+          "after": "152.805px 8.25px"
+        },
+        {
+          "selector": ".gb-turn-strip p",
+          "property": "width",
+          "before": "316.297px",
+          "after": "305.609px"
+        }
+      ]
+    },
+    {
+      "width": 390,
+      "theme": "vector",
+      "result": "PASS",
+      "baseline_styles_sha256": "3de320170ee1da2480638c5b8cb49128b85011ba8d21c5663038fd7320a94498",
+      "current_styles_sha256": "3de320170ee1da2480638c5b8cb49128b85011ba8d21c5663038fd7320a94498",
+      "differences": []
+    },
+    {
+      "width": 390,
+      "theme": "midnight",
+      "result": "PASS",
+      "baseline_styles_sha256": "5d0aa57a1cdc425c2fc5215d0261be30170b1a125b311d4ee76bdb36337c503a",
+      "current_styles_sha256": "5d0aa57a1cdc425c2fc5215d0261be30170b1a125b311d4ee76bdb36337c503a",
+      "differences": []
+    },
+    {
+      "width": 390,
+      "theme": "paperclub",
+      "result": "FAIL",
+      "baseline_styles_sha256": "411442537a3c67dd55fa4770e90cfb5cbab969541c58a6f1034d80bdfcee7055",
+      "current_styles_sha256": "03b0aee90e298c66ba4c6b79156fdbe9bec92610f11ec9d32d37432fb509e691",
+      "differences": [
+        {
+          "selector": ".gb-turn-strip p",
+          "property": "block-size",
+          "before": "30px",
+          "after": "15px"
+        },
+        {
+          "selector": ".gb-turn-strip p",
+          "property": "height",
+          "before": "30px",
+          "after": "15px"
+        },
+        {
+          "selector": ".gb-turn-strip p",
+          "property": "inline-size",
+          "before": "224.875px",
+          "after": "217.906px"
+        },
+        {
+          "selector": ".gb-turn-strip p",
+          "property": "perspective-origin",
+          "before": "112.438px 15px",
+          "after": "108.953px 7.5px"
+        },
+        {
+          "selector": ".gb-turn-strip p",
+          "property": "transform-origin",
+          "before": "112.438px 15px",
+          "after": "108.953px 7.5px"
+        },
+        {
+          "selector": ".gb-turn-strip p",
+          "property": "width",
+          "before": "224.875px",
+          "after": "217.906px"
+        }
+      ]
+    },
+    {
+      "width": 390,
+      "theme": "afterhours",
+      "result": "FAIL",
+      "baseline_styles_sha256": "5b49474cba58050560c5296229566c7ee421ba240147b9c7f704da6f81a0a452",
+      "current_styles_sha256": "32ae7bee4bfa04f5722bbbd8d8d19739486e9637bb4ea6e95cdcdfe081dcfcf4",
+      "differences": [
+        {
+          "selector": ".gb-turn-strip p",
+          "property": "inline-size",
+          "before": "223.469px",
+          "after": "223.75px"
+        },
+        {
+          "selector": ".gb-turn-strip p",
+          "property": "perspective-origin",
+          "before": "111.734px 15px",
+          "after": "111.875px 15px"
+        },
+        {
+          "selector": ".gb-turn-strip p",
+          "property": "transform-origin",
+          "before": "111.734px 15px",
+          "after": "111.875px 15px"
+        },
+        {
+          "selector": ".gb-turn-strip p",
+          "property": "width",
+          "before": "223.469px",
+          "after": "223.75px"
+        }
+      ]
+    }
+  ],
+  "result": "FAIL"
+}

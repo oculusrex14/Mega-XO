@@ -1,0 +1,194 @@
+{
+  "schema_version": 1,
+  "source_commit": "c80663a7f66be5a7c193a818a0cd12cabedad64b",
+  "recorded_at": "2026-10-11T04:58:05.066913+00:00",
+  "branch": "V5.1",
+  "task_ids": [
+    "P21.03",
+    "P21.05",
+    "P21.06",
+    "P21.08",
+    "P21.10"
+  ],
+  "request": "Owner /game annotation: homepage atmosphere as the default fifth browser theme; retain generated assets for future paid app appearance",
+  "theme_id": "cinematic",
+  "display_name": "Mega XOXO Neon",
+  "environment": "Local macOS, Node26.8.2, Chromium151.0.7922.34, Playwright1.62.1, axe-core4.14.0; isolated payload; no live provider/authenticated account traffic",
+  "checks": [
+    {
+      "id": "P21-NEON-AFFECTED",
+      "command": "env -u NODE_OPTIONS /Users/oculus/.hermes/node/bin/node --test tests/v5-p21-*.test.js",
+      "target": "Local website/account/rules/build tests",
+      "result": "PASS",
+      "tests": 76,
+      "skips": 0,
+      "evidence": "affected-tests.log"
+    },
+    {
+      "id": "P21-NEON-BROWSER",
+      "command": "env -u NODE_OPTIONS /Users/oculus/.hermes/node/bin/node scripts/p21/browser-qa.cjs --no-build",
+      "target": "local loopback Chromium; new unauthenticated contexts; read proxy explicitly disabled; synthetic API fixtures only",
+      "result": "PASS",
+      "checks": 674,
+      "screenshots": 56,
+      "evidence": "browser-qa.json",
+      "coverage": "Same rendered homepage/game tokens and component effects at 1672/768/390/320px, five themes, move/route/tab-stop preservation, keyboard and Bot; 1151x865 owner viewport"
+    },
+    {
+      "id": "P21-NEON-AXE",
+      "command": "env -u NODE_OPTIONS /Users/oculus/.hermes/node/bin/node scripts/p21/accessibility-qa.cjs",
+      "target": "Local loopback Chromium; guest or synthetic linked fixture; read proxy explicitly disabled; no authenticated/provider traffic",
+      "result": "PASS",
+      "checks": 95,
+      "manual_review_views": 92,
+      "evidence": "accessibility-qa.json",
+      "coverage": "All routes, five game themes after a move, Neon forced-colors"
+    },
+    {
+      "id": "P21-NEON-ASSET-GIT-PROVENANCE",
+      "command": "python3 .artifacts/p21-theme-review/verify-assets.py",
+      "target": "52 artwork/font inventory files at the exact Git commit",
+      "result": "PASS",
+      "files": 52,
+      "evidence": "asset-verification.json"
+    },
+    {
+      "id": "P21-NEON-ORIGINAL-PALETTE-PARITY",
+      "command": "env -u NODE_OPTIONS NODE_PATH=.artifacts/p21-browser-qa/node_modules /Users/oculus/.hermes/node/bin/node .artifacts/p21-theme-review/palette-parity.cjs",
+      "target": "Local loopback Chromium; fresh unauthenticated contexts; old/new board CSS at identical cascade position",
+      "result": "PASS",
+      "checks": 8,
+      "evidence": "original-palette-parity.json",
+      "baseline_commit": "1a1a434bba893a8d70fb768b086a63fde1d06cb3",
+      "harness_correction": "Initial geometry comparisons ran before newly selected local fonts loaded. Exact failure retained; force layout and await document.fonts.ready corrected the harness. No application patch was needed."
+    },
+    {
+      "id": "P21-NEON-PRESERVATION",
+      "command": "git diff --exit-code 1a1a434bba893a8d70fb768b086a63fde1d06cb3 HEAD -- src native public index.html Mega-XO-V5-Implementation-Pack",
+      "target": "Retained/native/legal/rules/original pack source boundary",
+      "result": "PASS",
+      "details": "Zero changes in these paths. Fifth theme remains browser-only; no entitlement, SKU, price or production authority mutation."
+    },
+    {
+      "id": "P21-NEON-WEBSITE-CI",
+      "command": "gh run view 38113069080 --json headSha,status,conclusion,url,jobs",
+      "target": "GitHub Ubuntu Node24 static and browser/axe jobs",
+      "source_commit": "c80663a7f66be5a7c193a818a0cd12cabedad64b",
+      "result": "PASS",
+      "evidence": "ci-website.json",
+      "url": "https://github.com/oculusrex14/Mega-XO/actions/runs/38113069080"
+    },
+    {
+      "id": "P21-NEON-RETAINED-CI",
+      "command": "gh run view 38113069091 --json headSha,status,conclusion,url,jobs",
+      "target": "Retained validation workflow; release/image publishing skipped",
+      "source_commit": "c80663a7f66be5a7c193a818a0cd12cabedad64b",
+      "result": "PASS",
+      "evidence": "ci-retained.json",
+      "url": "https://github.com/oculusrex14/Mega-XO/actions/runs/38113069091"
+    },
+    {
+      "id": "P21-NEON-CI-PAYLOAD-PARITY",
+      "command": "gh run download 38113069080 --name p21-web-manifest-c80663a7f66be5a7c193a818a0cd12cabedad64b --dir .artifacts/p21-theme-review/ci-manifest; Python compare downloaded/local manifest bytes",
+      "target": "CI/local committed-source payload manifest",
+      "result": "PASS",
+      "manifest_sha256": "7383e3e865ab261f6a79942ca3d06b99277e5aa4ec3159f5d3b70bc09f7c3dcb",
+      "evidence": "web-build.manifest.json"
+    }
+  ],
+  "bundle_sha256": "390c3555d9f0b2ecd04107760aefa3e5223f3573461e7ff5049c4451fef7622d",
+  "bundle_files": 77,
+  "bundle_bytes": 2436750,
+  "limitations": [
+    "Automated axe incomplete image/gradient checks need manual review; no physical-device/native/store release is claimed.",
+    "Future paid native theme needs separate purchase and ownership specification and release verification.",
+    "Original V5 migration/acceptance gates and existing website live-service/provider release items remain open."
+  ],
+  "evidence_files": [
+    {
+      "path": "docs/p21-web/evidence/c80663a/accessibility-qa.json",
+      "bytes": 1253704,
+      "sha256": "9bd6089f454ef243534d9679f4b289546d7c8a4e2c42939f21d7f4b97c0a774f"
+    },
+    {
+      "path": "docs/p21-web/evidence/c80663a/affected-tests.log",
+      "bytes": 8000,
+      "sha256": "b88e47c8224f9ea9ebc034cd693d18e1d84b985705bbd471bf069d6fd6a49b85"
+    },
+    {
+      "path": "docs/p21-web/evidence/c80663a/asset-verification.json",
+      "bytes": 14810,
+      "sha256": "6e7725db7f8c4b6c6e3f37d07069174fa53fd3318fe4e3d13e70a9580413f32d"
+    },
+    {
+      "path": "docs/p21-web/evidence/c80663a/browser-qa.json",
+      "bytes": 155010,
+      "sha256": "fe8bfd826434c688f8356025a54bbf766c833b1bdd66931679ccbdf2c0eb3c10"
+    },
+    {
+      "path": "docs/p21-web/evidence/c80663a/ci-retained.json",
+      "bytes": 5488,
+      "sha256": "0f8e0c47221a284050845ee639ec11c279c22dbfcbf295dedc6cc8ae0aa65eb0"
+    },
+    {
+      "path": "docs/p21-web/evidence/c80663a/ci-website-artifacts.json",
+      "bytes": 1478,
+      "sha256": "95b162030ef5dc2bfc2e672a2b52b8158c1bad6637bc63ff3b463f07aea0a691"
+    },
+    {
+      "path": "docs/p21-web/evidence/c80663a/ci-website.json",
+      "bytes": 4427,
+      "sha256": "f59765a20c1b86cbd41bbfbd6ea641b374fae14f87b29eef93b2334d9b48d834"
+    },
+    {
+      "path": "docs/p21-web/evidence/c80663a/game-neon-1151.png",
+      "bytes": 621499,
+      "sha256": "758f7f64a45962063695f8f92e534a027500b25df8e85aed73ded4605b2dcd0b"
+    },
+    {
+      "path": "docs/p21-web/evidence/c80663a/game-neon-mobile320.png",
+      "bytes": 392534,
+      "sha256": "73f211926e4dc23e32ca44d0d3bb6ed3943c149fe17389331547a040ad5691d5"
+    },
+    {
+      "path": "docs/p21-web/evidence/c80663a/game-neon-mobile390.png",
+      "bytes": 428942,
+      "sha256": "46406c9b92d9012870862014418e9fbd26309d3c3d2685ae268b9e9536abf64b"
+    },
+    {
+      "path": "docs/p21-web/evidence/c80663a/original-palette-parity-font-loading-failure.json",
+      "bytes": 6391,
+      "sha256": "07417103894bf292771558d4c6e735c35af384712291344fb2798a3decdcbdc1"
+    },
+    {
+      "path": "docs/p21-web/evidence/c80663a/original-palette-parity.json",
+      "bytes": 3017,
+      "sha256": "29bf5c862dac4525a3b84ec91d36968843c3f45b02361cb62cb9daa169838dfd"
+    },
+    {
+      "path": "docs/p21-web/evidence/c80663a/page-themes.png",
+      "bytes": 1290831,
+      "sha256": "fa5d59a35d5f31e31e3d82ce57abbaafe433f15e70caa3beb205873c0bdb4543"
+    },
+    {
+      "path": "docs/p21-web/evidence/c80663a/palette-parity.cjs",
+      "bytes": 3971,
+      "sha256": "9d0de7e0e5b83d186012ec241557bfe44332dc7b323bf0a689b783793441dc95"
+    },
+    {
+      "path": "docs/p21-web/evidence/c80663a/practice-cinematic.png",
+      "bytes": 919741,
+      "sha256": "4678ae1a6b14651d7f057f545533448e46a43261995d35f1542011e7e33e0f47"
+    },
+    {
+      "path": "docs/p21-web/evidence/c80663a/verify-assets.py",
+      "bytes": 1804,
+      "sha256": "e8ad4a8f406a57b0dac43e2f1a3e7864eacbd2803adff07c7b0e148d56ea8743"
+    },
+    {
+      "path": "docs/p21-web/evidence/c80663a/web-build.manifest.json",
+      "bytes": 26723,
+      "sha256": "7383e3e865ab261f6a79942ca3d06b99277e5aa4ec3159f5d3b70bc09f7c3dcb"
+    }
+  ]
+}

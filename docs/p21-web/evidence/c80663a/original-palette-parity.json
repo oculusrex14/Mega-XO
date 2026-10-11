@@ -1,0 +1,75 @@
+{
+  "case_id": "P21-NEON-ORIGINAL-PALETTE-PARITY",
+  "source_commit": "c80663a7f66be5a7c193a818a0cd12cabedad64b",
+  "baseline_commit": "1a1a434bba893a8d70fb768b086a63fde1d06cb3",
+  "command": "env -u NODE_OPTIONS NODE_PATH=.artifacts/p21-browser-qa/node_modules /Users/oculus/.hermes/node/bin/node .artifacts/p21-theme-review/palette-parity.cjs",
+  "environment": "Local loopback Chromium; fresh unauthenticated contexts; old/new board CSS at identical cascade position",
+  "checked_at": "2026-10-11T04:56:56.854Z",
+  "checks": [
+    {
+      "width": 1151,
+      "theme": "vector",
+      "result": "PASS",
+      "baseline_styles_sha256": "52e1878751b7f38e9e78ac824653b07a91321951de86e10414436151de849b06",
+      "current_styles_sha256": "52e1878751b7f38e9e78ac824653b07a91321951de86e10414436151de849b06",
+      "differences": []
+    },
+    {
+      "width": 1151,
+      "theme": "midnight",
+      "result": "PASS",
+      "baseline_styles_sha256": "2e98c10dc7e6f851f189b079a277789dc337d8072586c5478e46451705781f85",
+      "current_styles_sha256": "2e98c10dc7e6f851f189b079a277789dc337d8072586c5478e46451705781f85",
+      "differences": []
+    },
+    {
+      "width": 1151,
+      "theme": "paperclub",
+      "result": "PASS",
+      "baseline_styles_sha256": "e207c99abf8b6fb219930e8a19129fcd925517d4fab85eb85f22f72066c6d59d",
+      "current_styles_sha256": "e207c99abf8b6fb219930e8a19129fcd925517d4fab85eb85f22f72066c6d59d",
+      "differences": []
+    },
+    {
+      "width": 1151,
+      "theme": "afterhours",
+      "result": "PASS",
+      "baseline_styles_sha256": "efcc97859211bee536c21382b669c89d0dae5103c37ba27fa942fd9010da9917",
+      "current_styles_sha256": "efcc97859211bee536c21382b669c89d0dae5103c37ba27fa942fd9010da9917",
+      "differences": []
+    },
+    {
+      "width": 390,
+      "theme": "vector",
+      "result": "PASS",
+      "baseline_styles_sha256": "2e1dd64d363d826c98abbc947bc15f82a6b17009d0e4478cd3fb7e481ecb621d",
+      "current_styles_sha256": "2e1dd64d363d826c98abbc947bc15f82a6b17009d0e4478cd3fb7e481ecb621d",
+      "differences": []
+    },
+    {
+      "width": 390,
+      "theme": "midnight",
+      "result": "PASS",
+      "baseline_styles_sha256": "82b9b2ca27b1bbc36340c398486fea47d26afb70fe8eb7c6cffaa00b29d8f1e9",
+      "current_styles_sha256": "82b9b2ca27b1bbc36340c398486fea47d26afb70fe8eb7c6cffaa00b29d8f1e9",
+      "differences": []
+    },
+    {
+      "width": 390,
+      "theme": "paperclub",
+      "result": "PASS",
+      "baseline_styles_sha256": "58ae72bdc6243d3a51dbe41ffb52f857284dc8f9ab7c4cebd19632ee8c1c1916",
+      "current_styles_sha256": "58ae72bdc6243d3a51dbe41ffb52f857284dc8f9ab7c4cebd19632ee8c1c1916",
+      "differences": []
+    },
+    {
+      "width": 390,
+      "theme": "afterhours",
+      "result": "PASS",
+      "baseline_styles_sha256": "5cf9f087a62cccab4bfbbaa642a150b643803be52912c4253b36382a61c1ec95",
+      "current_styles_sha256": "5cf9f087a62cccab4bfbbaa642a150b643803be52912c4253b36382a61c1ec95",
+      "differences": []
+    }
+  ],
+  "result": "PASS"
+}

@@ -1,0 +1,429 @@
+{
+  "case_id": "P21-NEON-ASSET-GIT-PROVENANCE",
+  "source_commit": "c80663a7f66be5a7c193a818a0cd12cabedad64b",
+  "checked_at": "2026-10-11T04:55:11.506878+00:00",
+  "command": "python3 .artifacts/p21-theme-review/verify-assets.py",
+  "environment": "Local macOS; read-only Git/working-tree comparison; no provider calls",
+  "manifest": "assets/p21/art/PROVENANCE.json",
+  "manifest_sha256": "d691f9ea9a28d0e7b5b184442d8973fccbe8e2c083ad7e5d4b1a11a8557baa05",
+  "files": [
+    {
+      "path": "assets/p21/art/crystal-source.png",
+      "sha256": "7982a68dc77f7c219ae576c4b7c924690bc2424da63c5743dc8cd72dfc7148b8",
+      "bytes": 1264046,
+      "result": "PASS",
+      "committed_bytes_match": true,
+      "provenance_hash_matches": true
+    },
+    {
+      "path": "assets/p21/art/crystal.webp",
+      "sha256": "c62ad97cb7788ffed3336cbefd72c85063b93065fb9b0c1d8e0a837dfcc5b48c",
+      "bytes": 42372,
+      "result": "PASS",
+      "committed_bytes_match": true,
+      "provenance_hash_matches": true
+    },
+    {
+      "path": "assets/p21/art/devices-source.png",
+      "sha256": "d655387e569809517aa9331b11da47349a16656568198c945ed415d1fb19b982",
+      "bytes": 2004407,
+      "result": "PASS",
+      "committed_bytes_match": true,
+      "provenance_hash_matches": true
+    },
+    {
+      "path": "assets/p21/art/devices.webp",
+      "sha256": "c542679ec5df8766517449fff82b96b0edd325f6c0c1997b940d0836df9f2ed5",
+      "bytes": 75328,
+      "result": "PASS",
+      "committed_bytes_match": true,
+      "provenance_hash_matches": true
+    },
+    {
+      "path": "assets/p21/art/header.webp",
+      "sha256": "e01604c213f23dbbeb53d4cec6a57fadc8dc8712e8314847d6ac948f1700b207",
+      "bytes": 39114,
+      "result": "PASS",
+      "committed_bytes_match": true,
+      "provenance_hash_matches": true
+    },
+    {
+      "path": "assets/p21/art/hero-small.webp",
+      "sha256": "0b49e436001904856ce042c266445fa6c71f7466641bbf0e530502ce6fa36fe7",
+      "bytes": 39914,
+      "result": "PASS",
+      "committed_bytes_match": true,
+      "provenance_hash_matches": true
+    },
+    {
+      "path": "assets/p21/art/hero-source.png",
+      "sha256": "f336109d932886e71823db7daea8c753774652f0925735b20cf107b1157258bb",
+      "bytes": 1892621,
+      "result": "PASS",
+      "committed_bytes_match": true,
+      "provenance_hash_matches": true
+    },
+    {
+      "path": "assets/p21/art/hero-wide.webp",
+      "sha256": "5520bcfe9f83dcf515c75dcac4f28ed85401abdfb6c1ac4a708795383ee101b7",
+      "bytes": 137524,
+      "result": "PASS",
+      "committed_bytes_match": true,
+      "provenance_hash_matches": true
+    },
+    {
+      "path": "assets/p21/art/mark.webp",
+      "sha256": "c0144ee525cdb1710bb114524588aff9b7d9adff88eb4dae363e26b6bf71e974",
+      "bytes": 14040,
+      "result": "PASS",
+      "committed_bytes_match": true,
+      "provenance_hash_matches": true
+    },
+    {
+      "path": "assets/p21/art/trophy-source.png",
+      "sha256": "ae98bbc7e643c708a8020f990333fe52d24994f80931ce2d4710f42dfdf8744b",
+      "bytes": 1908889,
+      "result": "PASS",
+      "committed_bytes_match": true,
+      "provenance_hash_matches": true
+    },
+    {
+      "path": "assets/p21/art/trophy.webp",
+      "sha256": "fbd9d225f640869897941edb49208c2334d8d74cefa4f03492bcbf5233f68b7f",
+      "bytes": 107518,
+      "result": "PASS",
+      "committed_bytes_match": true,
+      "provenance_hash_matches": true
+    },
+    {
+      "path": "assets/p21/fonts/IBM-Plex-Mono-OFL.txt",
+      "sha256": "d741e57d5f865e294df801f96b7b5161a88b211df65887e4358d271c9fc5fb4f",
+      "bytes": 4362,
+      "result": "PASS",
+      "committed_bytes_match": true,
+      "provenance_hash_matches": true
+    },
+    {
+      "path": "assets/p21/fonts/Space-Grotesk-OFL.txt",
+      "sha256": "18a4de52385f6b988782639d5d0cc1326e5a8c2de9a7f01d7b20d9aedcc60943",
+      "bytes": 4401,
+      "result": "PASS",
+      "committed_bytes_match": true,
+      "provenance_hash_matches": true
+    },
+    {
+      "path": "assets/p21/fonts/caveat-OFL.txt",
+      "sha256": "163a2b400e16916ad3196296c946c526d0efce6baf22a2164269ffc62fb9f671",
+      "bytes": 4384,
+      "result": "PASS",
+      "committed_bytes_match": true,
+      "provenance_hash_matches": true
+    },
+    {
+      "path": "assets/p21/fonts/caveat-Wnz6HAc5bAfYB2Q7ZjYYiAzcPA.woff2",
+      "sha256": "7a0049db01fdd8fc7af7ef36675862a72a5c76d0cb45ae63c9f5b6f1b769dac7",
+      "bytes": 74572,
+      "result": "PASS",
+      "committed_bytes_match": true,
+      "provenance_hash_matches": true
+    },
+    {
+      "path": "assets/p21/fonts/chakrapetch-OFL.txt",
+      "sha256": "4a1d840eb0b2df8553804d844960a15773ca5af5d5c9803745307db8c617540b",
+      "bytes": 4395,
+      "result": "PASS",
+      "committed_bytes_match": true,
+      "provenance_hash_matches": true
+    },
+    {
+      "path": "assets/p21/fonts/chakrapetch-cIf6MapbsEk7TDLdtEz1BwkWn6pgar3I1A.woff2",
+      "sha256": "e592818029a919d578974df32686d415d6acd8401bc5420695de41a46eeae426",
+      "bytes": 9728,
+      "result": "PASS",
+      "committed_bytes_match": true,
+      "provenance_hash_matches": true
+    },
+    {
+      "path": "assets/p21/fonts/chakrapetch-cIflMapbsEk7TDLdtEz1BwkeJI91R5_F_gUk0w.woff2",
+      "sha256": "3c2433eb167176cddcdb3eb2ea306d68c2a4ed4c6e78a0dc07b3853d8f6ae8e3",
+      "bytes": 9868,
+      "result": "PASS",
+      "committed_bytes_match": true,
+      "provenance_hash_matches": true
+    },
+    {
+      "path": "assets/p21/fonts/chakrapetch-cIflMapbsEk7TDLdtEz1BwkeQI51R5_F_gUk0w.woff2",
+      "sha256": "4d6d5f0b31b3a471a843779c4ecada040e5bc291f96bca9805a94293fe8003fa",
+      "bytes": 10040,
+      "result": "PASS",
+      "committed_bytes_match": true,
+      "provenance_hash_matches": true
+    },
+    {
+      "path": "assets/p21/fonts/chakrapetch-cIflMapbsEk7TDLdtEz1BwkebIl1R5_F_gUk0w.woff2",
+      "sha256": "adf007cd277ef6dac0c8cecacfb60cc5e24e7c8bcce4db98aa233bd3a88ef5a3",
+      "bytes": 9944,
+      "result": "PASS",
+      "committed_bytes_match": true,
+      "provenance_hash_matches": true
+    },
+    {
+      "path": "assets/p21/fonts/ibm-plex-mono-latin.woff2",
+      "sha256": "01d285447409c8a588692162439a038b8cbd7871309ee20267b0d2d91c6e8e22",
+      "bytes": 14888,
+      "result": "PASS",
+      "committed_bytes_match": true,
+      "provenance_hash_matches": true
+    },
+    {
+      "path": "assets/p21/fonts/orbitron-OFL.txt",
+      "sha256": "dd6fdb6716fd179d1fe891759efb3f9200753fdf6abf513b55b712c4ae16e512",
+      "bytes": 4425,
+      "result": "PASS",
+      "committed_bytes_match": true,
+      "provenance_hash_matches": true
+    },
+    {
+      "path": "assets/p21/fonts/orbitron-yMJRMIlzdpvBhQQL_Qq7dy1biN15.woff2",
+      "sha256": "967b3909a7d6a5cc6365e9947775060fca15efdb62bc70099aef2e7d86e10205",
+      "bytes": 11768,
+      "result": "PASS",
+      "committed_bytes_match": true,
+      "provenance_hash_matches": true
+    },
+    {
+      "path": "assets/p21/fonts/patrickhand-LDI1apSQOAYtSuYWp8ZhfYe8XsLLubg58w.woff2",
+      "sha256": "42156e008dd5fc3000679ff4e9ba9cbd3f417b6317c6dcbe11a12e9c87a09b28",
+      "bytes": 14224,
+      "result": "PASS",
+      "committed_bytes_match": true,
+      "provenance_hash_matches": true
+    },
+    {
+      "path": "assets/p21/fonts/patrickhand-OFL.txt",
+      "sha256": "dbf0df430d5997121cc569dbe4f9198f76cf393114438f1f6c80a49f06f029d6",
+      "bytes": 4375,
+      "result": "PASS",
+      "committed_bytes_match": true,
+      "provenance_hash_matches": true
+    },
+    {
+      "path": "assets/p21/fonts/space-grotesk-latin.woff2",
+      "sha256": "0640890476fc1198ab4de571fb658de443c4d85b66466ec09534a8737ab1ce9d",
+      "bytes": 22288,
+      "result": "PASS",
+      "committed_bytes_match": true,
+      "provenance_hash_matches": true
+    },
+    {
+      "path": "assets/p21/art/ranks/PROMPTS.json",
+      "sha256": "b4da7c1dcfa3395fa25c162e093899ae883ba1912c59802b96f2e0e67312d3c1",
+      "bytes": 9716,
+      "result": "PASS",
+      "committed_bytes_match": true,
+      "provenance_hash_matches": true
+    },
+    {
+      "path": "assets/p21/art/ranks/bronze-source.png",
+      "sha256": "b5c825a07d8e3141b4bf4a5a672b80602de31ae8b0918f49aa5f01f3a84d12f1",
+      "bytes": 1521484,
+      "result": "PASS",
+      "committed_bytes_match": true,
+      "provenance_hash_matches": true
+    },
+    {
+      "path": "assets/p21/art/ranks/bronze.webp",
+      "sha256": "49a0a76df33a7a5432fef96ecefac1a6768f83fa06b0f61dc764c27296b33f3a",
+      "bytes": 35900,
+      "result": "PASS",
+      "committed_bytes_match": true,
+      "provenance_hash_matches": true
+    },
+    {
+      "path": "assets/p21/art/ranks/champion-source.png",
+      "sha256": "a6b893292c422f0bbec97cbf0f3414a0d8437c34f9722dadfdc295860f859f34",
+      "bytes": 1579663,
+      "result": "PASS",
+      "committed_bytes_match": true,
+      "provenance_hash_matches": true
+    },
+    {
+      "path": "assets/p21/art/ranks/champion.webp",
+      "sha256": "a436b2ff003d7a25295314a9d1cec1203d399c3707791ade7758094f6ee76d4b",
+      "bytes": 39910,
+      "result": "PASS",
+      "committed_bytes_match": true,
+      "provenance_hash_matches": true
+    },
+    {
+      "path": "assets/p21/art/ranks/diamond.webp",
+      "sha256": "90bdf78de8283e413d1a1b776e712e8cdffb018fcb222132609aae46f5f04f93",
+      "bytes": 27864,
+      "result": "PASS",
+      "committed_bytes_match": true,
+      "provenance_hash_matches": true
+    },
+    {
+      "path": "assets/p21/art/ranks/emerald-source.png",
+      "sha256": "87162e99df88b8c180b9ce7a801082ca9498d20384828f6834e72838d7dae299",
+      "bytes": 1470859,
+      "result": "PASS",
+      "committed_bytes_match": true,
+      "provenance_hash_matches": true
+    },
+    {
+      "path": "assets/p21/art/ranks/emerald.webp",
+      "sha256": "f80f340326d5f30962efb4c46281b82aa3350a11ee75a4be2d8d56104ecb31ef",
+      "bytes": 35786,
+      "result": "PASS",
+      "committed_bytes_match": true,
+      "provenance_hash_matches": true
+    },
+    {
+      "path": "assets/p21/art/ranks/gold-source.png",
+      "sha256": "4e5ed19d169c8609a39b730d8831266ee7f57102fb31786171e0c5f01a6404fd",
+      "bytes": 1326749,
+      "result": "PASS",
+      "committed_bytes_match": true,
+      "provenance_hash_matches": true
+    },
+    {
+      "path": "assets/p21/art/ranks/gold.webp",
+      "sha256": "f86f94052814cf9edbba30bffeb3d748ffc70365a4d8fa62da738bbd08b1e1bc",
+      "bytes": 34592,
+      "result": "PASS",
+      "committed_bytes_match": true,
+      "provenance_hash_matches": true
+    },
+    {
+      "path": "assets/p21/art/ranks/grandmaster-source.png",
+      "sha256": "378ca2cda69d55e999357e47bda0f1c6ce9d4e0bb842a7400b0a6a8c6ccbcc23",
+      "bytes": 1630341,
+      "result": "PASS",
+      "committed_bytes_match": true,
+      "provenance_hash_matches": true
+    },
+    {
+      "path": "assets/p21/art/ranks/grandmaster.webp",
+      "sha256": "95e6f83148dc22983f946e9a1e6c9bb284ea1caed71301a8bae3ed124a23dee8",
+      "bytes": 40790,
+      "result": "PASS",
+      "committed_bytes_match": true,
+      "provenance_hash_matches": true
+    },
+    {
+      "path": "assets/p21/art/ranks/iron-source.png",
+      "sha256": "d5e905f2ba3ec69ed640032d865925ba5ace3c080ad3724d2bdd17316d4a0eb3",
+      "bytes": 1641348,
+      "result": "PASS",
+      "committed_bytes_match": true,
+      "provenance_hash_matches": true
+    },
+    {
+      "path": "assets/p21/art/ranks/iron.webp",
+      "sha256": "891ef50675bd4d064e3788c883fcf210299e0327206d05271ceb90ce6474dc10",
+      "bytes": 31850,
+      "result": "PASS",
+      "committed_bytes_match": true,
+      "provenance_hash_matches": true
+    },
+    {
+      "path": "assets/p21/art/ranks/master-source.png",
+      "sha256": "88c010753ea8038def789911bc448adb3cebc771df3914b662120aac796134b8",
+      "bytes": 1648423,
+      "result": "PASS",
+      "committed_bytes_match": true,
+      "provenance_hash_matches": true
+    },
+    {
+      "path": "assets/p21/art/ranks/master.webp",
+      "sha256": "9900695647330248a6a961c933833cbb35978bb6e057300e0642b332ad734fc3",
+      "bytes": 41888,
+      "result": "PASS",
+      "committed_bytes_match": true,
+      "provenance_hash_matches": true
+    },
+    {
+      "path": "assets/p21/art/ranks/silver-source.png",
+      "sha256": "f38c194a1353d5394c26dbbb3814b1f203d090d002f0690634b85ea50d7173c3",
+      "bytes": 1596524,
+      "result": "PASS",
+      "committed_bytes_match": true,
+      "provenance_hash_matches": true
+    },
+    {
+      "path": "assets/p21/art/ranks/silver.webp",
+      "sha256": "8999a3069a140c20aeb14e69413a11abb2bf0c30320f63ffaa7b29b622303e3f",
+      "bytes": 36644,
+      "result": "PASS",
+      "committed_bytes_match": true,
+      "provenance_hash_matches": true
+    },
+    {
+      "path": "assets/p21/art/ranks/stone-source.png",
+      "sha256": "2240b6032e78401bf6c2fd069c28412e2326c87f901ca47aa4af8cb12f12f677",
+      "bytes": 2067404,
+      "result": "PASS",
+      "committed_bytes_match": true,
+      "provenance_hash_matches": true
+    },
+    {
+      "path": "assets/p21/art/ranks/stone.webp",
+      "sha256": "edffb46aca720fcf5cc6bbbe14a4b67457514f285202cfa0c48e2a87df09233a",
+      "bytes": 37666,
+      "result": "PASS",
+      "committed_bytes_match": true,
+      "provenance_hash_matches": true
+    },
+    {
+      "path": "assets/p21/art/ranks/wood-source.png",
+      "sha256": "0bcc05fb989517fb0a7ff53cddaf87c4dadfbc24565e1c634bbd61a66e5bc022",
+      "bytes": 1660906,
+      "result": "PASS",
+      "committed_bytes_match": true,
+      "provenance_hash_matches": true
+    },
+    {
+      "path": "assets/p21/art/ranks/wood.webp",
+      "sha256": "fd5f1b763b9e7acc58974e0577b41fa1e7b9ac1e761fff651964f4eca327e2a5",
+      "bytes": 35156,
+      "result": "PASS",
+      "committed_bytes_match": true,
+      "provenance_hash_matches": true
+    },
+    {
+      "path": "assets/p21/art/currency/coin-source.png",
+      "sha256": "b9da5519c69b2b4ace3d3b005905728f25427a62152060c1fbd109642f6689e7",
+      "bytes": 1456638,
+      "result": "PASS",
+      "committed_bytes_match": true,
+      "provenance_hash_matches": true
+    },
+    {
+      "path": "assets/p21/art/currency/coin.webp",
+      "sha256": "777752e01cc4c87d944db5f1d97d2919b590b35bb5429ad28c99d340c3b3f0cd",
+      "bytes": 6428,
+      "result": "PASS",
+      "committed_bytes_match": true,
+      "provenance_hash_matches": true
+    },
+    {
+      "path": "assets/p21/art/currency/crown-source.png",
+      "sha256": "7e11fab41e355f884a5e4f0bc84708a258476f17edbc0fb7fe549d936beccfc2",
+      "bytes": 798070,
+      "result": "PASS",
+      "committed_bytes_match": true,
+      "provenance_hash_matches": true
+    },
+    {
+      "path": "assets/p21/art/currency/crown.webp",
+      "sha256": "d1cf3170664e8a82ef8d060da0dde9c4cbfa6eb0549c68f6ec7cb8e0cb4286dc",
+      "bytes": 5420,
+      "result": "PASS",
+      "committed_bytes_match": true,
+      "provenance_hash_matches": true
+    }
+  ],
+  "file_count": 52,
+  "result": "PASS"
+}

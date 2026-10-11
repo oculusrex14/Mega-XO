@@ -12,9 +12,9 @@ Required path: execute P00–P20, P22–P23; owner-deferred P21 executes nothing
 
 The goal and phase contracts above describe the original V5 program. The later owner request authorizes a separate `V5.1` website workstream; its original P21 deferral and acceptance history are retained.
 
-**Status:** TESTED_LOCAL. Owner annotations implemented: cinematic in-site game, account/server read-model adapters, in-site standings, eleven rank images, generated Coin/Crown, Store/Sponsors, full themed legal documents and responsive pages. 75 affected tests, 658 browser checks and 84 automatic axe checks pass locally. Live website/API/provider deployment and production acceptance remain OPEN. Website and retained validation CI passed on the exact code SHA; downloaded CI/local manifests are byte-identical.
+**Status:** TESTED_LOCAL. Owner annotations plus browser Neon default implemented: fifth browser-only homepage appearance and original four palettes, in-site game, account/read-model adapters, standings, rank/currency art, Store/Sponsors and themed legal/responsive pages. Exact latest source passes 76 affected tests, 674 browser checks and 95 automated accessibility checks locally; 52 committed asset hashes and eight original-palette comparisons pass. Live website/API/provider deployment and physical-device/production acceptance remain OPEN. Website and retained validation CI passed on the exact code SHA; CI/local payload manifests match.
 
-**Code checkpoint:** `41e74bff40c62cb35a7ca7a7045a27a79fa01c5d`. [Website checklist](../p21-web/MASTER-CHECKLIST.md). [Evidence and release gates](../p21-web/evidence/41e74bf/verification.json).
+**Code checkpoint:** `c80663a7f66be5a7c193a818a0cd12cabedad64b`. [Website checklist](../p21-web/MASTER-CHECKLIST.md). [Evidence and release gates](../p21-web/evidence/41e74bf/verification.json).
 
 **Next:** Owner visual review; connect real same-origin staging session/API/callbacks and public standings ingress; activate approved store/ad providers after legal/hosting readiness; physical browser/manual accessibility checks, then authorized release. V4.1.2 SQLite remains sole production authority.
 

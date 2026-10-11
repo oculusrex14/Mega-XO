@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at_utc": "2026-10-11T04:53:44.024281Z",
+  "updated_at_utc": "2026-10-11T05:00:10.611852Z",
   "goal": "Deliver the V5 hybrid platform and real Android/iOS applications with shared permanent actor/assets, preserved approved game and retained browser compatibility; do not build the new website/browser product.",
   "source": {
     "goal": "AGENT-GOAL.md",
@@ -706,8 +706,8 @@
       "branch": "V5.1",
       "authorized_on": "2026-10-11",
       "status": "TESTED_LOCAL",
-      "code_commit": "41e74bff40c62cb35a7ca7a7045a27a79fa01c5d",
-      "summary": "Owner annotations implemented: cinematic in-site game, account/server read-model adapters, in-site standings, eleven rank images, generated Coin/Crown, Store/Sponsors, full themed legal documents and responsive pages. 75 affected tests, 658 browser checks and 84 automatic axe checks pass locally. Live website/API/provider deployment and production acceptance remain OPEN. Website and retained validation CI passed on the exact code SHA; downloaded CI/local manifests are byte-identical.",
+      "code_commit": "c80663a7f66be5a7c193a818a0cd12cabedad64b",
+      "summary": "Owner annotations plus browser Neon default implemented: fifth browser-only homepage appearance and original four palettes, in-site game, account/read-model adapters, standings, rank/currency art, Store/Sponsors and themed legal/responsive pages. Exact latest source passes 76 affected tests, 674 browser checks and 95 automated accessibility checks locally; 52 committed asset hashes and eight original-palette comparisons pass. Live website/API/provider deployment and physical-device/production acceptance remain OPEN. Website and retained validation CI passed on the exact code SHA; CI/local payload manifests match.",
       "checklist": "docs/p21-web/MASTER-CHECKLIST.md",
       "evidence": "docs/p21-web/evidence/41e74bf/verification.json",
       "next_action": "Owner visual review; connect real same-origin staging session/API/callbacks and public standings ingress; activate approved store/ad providers after legal/hosting readiness; physical browser/manual accessibility checks, then authorized release. V4.1.2 SQLite remains sole production authority.",
@@ -736,13 +736,31 @@
       },
       "browser_theme_iteration": {
         "request": "Owner /game annotation: default to homepage style, fifth browser-only theme; commit reusable art for future paid app theme",
-        "status": "IMPLEMENTED",
+        "status": "TESTED_LOCAL",
         "theme_id": "cinematic",
         "display_name": "Mega XOXO Neon",
         "record": "docs/p21-web/BROWSER-NEON-THEME.md",
-        "summary": "Browser default, selector and gallery use homepage Neon styling; original four palettes remain available. Committed-source browser/accessibility matrix pending.",
+        "summary": "Homepage styling is the default fifth browser appearance in the game and gallery. Default component/token parity passes at desktop/tablet/390/320 widths; themes preserve moves/routes/roving focus. All 52 committed artwork inventory files match provenance. Original four complete computed-style palettes match the entry baseline in eight comparisons.",
         "asset_inventory": "assets/p21/art/PROVENANCE.json",
-        "native_delivery": "FUTURE_BY_OWNER: paid app packaging, entitlement, SKU/price and provider/device release require future specification; not activated by this unit"
+        "native_delivery": "FUTURE_BY_OWNER: paid app packaging, entitlement, SKU/price and provider/device release require future specification; not activated by this unit",
+        "code_commit": "c80663a7f66be5a7c193a818a0cd12cabedad64b",
+        "bundle_sha256": "390c3555d9f0b2ecd04107760aefa3e5223f3573461e7ff5049c4451fef7622d",
+        "evidence": "docs/p21-web/evidence/c80663a/verification.json",
+        "local_checks": {
+          "affected_tests": 76,
+          "browser_checks": 674,
+          "automatic_axe_checks": 95,
+          "manual_axe_review_views": 92,
+          "asset_files": 52,
+          "original_palette_comparisons": 8
+        },
+        "ci": {
+          "source_commit": "c80663a7f66be5a7c193a818a0cd12cabedad64b",
+          "website_run": 38113069080,
+          "retained_run": 38113069091,
+          "result": "PASS",
+          "manifest_matches_local": true
+        }
       }
     }
   },

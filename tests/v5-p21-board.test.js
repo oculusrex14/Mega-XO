@@ -95,7 +95,9 @@ test('P21.03 accessible board uses 81 real cells and truthful practice labels', 
     const practice = renderPractice();
     assert.match(practice, /data-board-preview="false"/);
     assert.match(practice, /Two players · same screen/);
-    assert.deepEqual(GAME_THEMES.map(item => item.id), ['vector', 'midnight', 'paperclub', 'afterhours']);
+    assert.deepEqual(GAME_THEMES.map(item => item.id), ['cinematic', 'vector', 'midnight', 'paperclub', 'afterhours']);
+    assert.match(practice, /data-board-theme="cinematic"/);
+    assert.match(practice, /value="cinematic" selected>Mega XOXO Neon/);
     for (const item of GAME_THEMES) assert.match(practice, new RegExp(`value="${item.id}"`));
   } finally { delete globalThis.MegaGame; }
 });
@@ -160,7 +162,7 @@ test('P21.05 theme switch changes presentation without resetting a mounted move'
   const { mountBoard } = await board;
   globalThis.MegaGame = game;
   const listeners = new Map();
-  const stage = { dataset: { gbTheme: 'vector' } };
+  const stage = { dataset: { gbTheme: 'cinematic' } };
   let renderCount = 0;
   const host = {
     addEventListener(type, callback) { listeners.set(type, callback); },
@@ -181,6 +183,10 @@ test('P21.05 theme switch changes presentation without resetting a mounted move'
     assert.equal(renderCount, before);
     assert.equal(instance.getState(), state);
     assert.equal(instance.getState().required, 4);
+    listeners.get('change')({ target: { dataset: { gbSetting: 'theme' }, value: 'cinematic' } });
+    assert.equal(stage.dataset.gbTheme, 'cinematic');
+    assert.equal(renderCount, before);
+    assert.equal(instance.getState(), state);
     instance.destroy();
   } finally { delete globalThis.MegaGame; }
 });
@@ -203,9 +209,31 @@ test('P21.05 game route stays inside the website, sanitizes settings and preserv
     for (const theme of GAME_THEMES) assert.match(html, new RegExp(`value="${theme.id}"`));
     for (const level of game.LEVELS) assert.match(html, new RegExp(`<option(?: selected)?>${level}</option>`));
     const unsafe = renderGame({ mode: '"><script>alert(1)</script>', theme: '"><img src=x onerror=alert(1)>', difficulty: 'Impossible' });
-    assert.match(unsafe, /data-board-mode="bot" data-board-difficulty="Easy" data-board-theme="vector"/);
+    assert.match(unsafe, /data-board-mode="bot" data-board-difficulty="Easy" data-board-theme="cinematic"/);
     assert.doesNotMatch(unsafe, /<script|onerror|Impossible|legacy-game/);
     assert.equal(renderPractice(), renderGame());
+  } finally { delete globalThis.MegaGame; }
+});
+
+test('P21.05 browser Neon defaults apply to local and server boards while original themes stay selectable', async () => {
+  const { renderGame, mountBoard } = await board;
+  globalThis.MegaGame = game;
+  try {
+    const fresh = renderGame();
+    assert.match(fresh, /data-gb-theme="cinematic"/);
+    assert.match(fresh, /value="cinematic" selected/);
+    for (const theme of ['vector', 'midnight', 'paperclub', 'afterhours']) {
+      const html = renderGame({ theme });
+      assert.match(html, new RegExp(`data-gb-theme="${theme}"`));
+      assert.match(html, new RegExp(`value="${theme}" selected`));
+    }
+    const ui = boardHost();
+    const state = game.apply(game.create(), { b: 0, c: 4 });
+    const mounted = mountBoard(ui.host, { online: { match: matchSnapshot(state), actorId: 'actor-o', onMove() {} } });
+    assert.match(ui.host.innerHTML, /data-gb-theme="cinematic"/);
+    assert.match(ui.host.innerHTML, /value="cinematic" selected/);
+    assert.deepEqual(mounted.getState(), state);
+    mounted.destroy();
   } finally { delete globalThis.MegaGame; }
 });
 

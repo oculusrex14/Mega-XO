@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at_utc": "2026-10-10T20:03:54.294529+00:00",
+  "updated_at_utc": "2026-10-11T04:53:44.024281Z",
   "goal": "Deliver the V5 hybrid platform and real Android/iOS applications with shared permanent actor/assets, preserved approved game and retained browser compatibility; do not build the new website/browser product.",
   "source": {
     "goal": "AGENT-GOAL.md",
@@ -733,6 +733,16 @@
           "result": "PASS",
           "manifest_matches_local": true
         }
+      },
+      "browser_theme_iteration": {
+        "request": "Owner /game annotation: default to homepage style, fifth browser-only theme; commit reusable art for future paid app theme",
+        "status": "IMPLEMENTED",
+        "theme_id": "cinematic",
+        "display_name": "Mega XOXO Neon",
+        "record": "docs/p21-web/BROWSER-NEON-THEME.md",
+        "summary": "Browser default, selector and gallery use homepage Neon styling; original four palettes remain available. Committed-source browser/accessibility matrix pending.",
+        "asset_inventory": "assets/p21/art/PROVENANCE.json",
+        "native_delivery": "FUTURE_BY_OWNER: paid app packaging, entitlement, SKU/price and provider/device release require future specification; not activated by this unit"
       }
     }
   },

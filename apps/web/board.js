@@ -1,5 +1,6 @@
 /* Website presentation of the retained rules. Local practice has no server authority. */
 export const GAME_THEMES = Object.freeze([
+  { id: 'cinematic', name: 'Mega XOXO Neon' },
   { id: 'vector', name: 'Vector Light' },
   { id: 'midnight', name: 'Midnight Club' },
   { id: 'paperclub', name: 'Paper Club' },
@@ -16,7 +17,7 @@ const escapeText = value => String(value ?? '').replace(/[&<>"']/g, character =>
 const localOptions = (options = {}) => ({
   mode: options.mode === 'local' ? 'local' : 'bot',
   difficulty: ['Beginner', 'Easy', 'Medium', 'Hard', 'Expert'].includes(options.difficulty) ? options.difficulty : 'Easy',
-  theme: GAME_THEMES.some(theme => theme.id === options.theme) ? options.theme : 'vector',
+  theme: GAME_THEMES.some(theme => theme.id === options.theme) ? options.theme : 'cinematic',
 });
 
 function rules(game = globalThis.MegaGame) {
@@ -144,7 +145,7 @@ function toolbar({ mode, difficulty, theme, snapshot }) {
   </div>`;
 }
 
-function renderBoard(state, game, { preview = true, mode = 'bot', difficulty = 'Easy', theme = 'vector', thinking = false, focus = null, snapshot = null, actorId = '', pending = false, error = '', uncertain = false, requestKind = '', canResign = false } = {}) {
+function renderBoard(state, game, { preview = true, mode = 'bot', difficulty = 'Easy', theme = 'cinematic', thinking = false, focus = null, snapshot = null, actorId = '', pending = false, error = '', uncertain = false, requestKind = '', canResign = false } = {}) {
   const copy = turnCopy(state, { preview, mode, thinking, snapshot, actorId, pending, error });
   const last = state.moves.at(-1);
   const playerName = player => snapshot ? snapshot.symbols[player] === actorId ? 'You' : escapeText(snapshot.playerNames?.[snapshot.symbols[player]] || 'Opponent') : mode === 'local' ? `Player ${player}` : player === 'X' ? 'You' : 'Bot';

@@ -70,7 +70,7 @@ Code checkpoint `99e65bdc8655162cf2dcc4af26dc0b73ec203cdc`. [PROVENANCE.json](..
 | P21-RANK-ART-001 | `art/crystal-source.png`, alpha PNG | `crystal.webp`, 480×347 | Decorative blue/purple crystal; no guest rank or new subdivision |
 | P21-ART-002 | `art/devices-source.png`, alpha PNG | `devices.webp`, 640×360 | Decorative laptop/tablet/phone with abstract X/O art; actual app screenshots remain open |
 | P21-LOGO-WEB-001/002 | Existing official horizontal and icon PNG masters | `header.webp`, 640×209; `mark.webp`, 192×178 | Deterministic crop/downsize; original owner artwork unchanged |
-| P21-GAME-001 | Existing `src/game.js` + procedural DOM/CSS | 81 interactive cells, four scoped practice palettes | Real legal local fixture, no raster board or online authority |
+| P21-GAME-001 | Existing `src/game.js` + procedural DOM/CSS | 81 interactive cells; browser Neon default plus four retained palettes | Real legal local fixture; fifth browser theme authorized by later owner annotation; no raster board or online authority |
 | P21-ICON-WEB | Own inline SVG/CSS geometry in `apps/web/ui.js` | Same SVG/CSS; no remote icon package for new shell | General game/navigation/currency illustrations; not full 3D/icon family |
 | P21-FONT-WEB | Space Grotesk, IBM Plex Mono; existing Caveat/Patrick Hand/Chakra Petch/Orbitron Latin subsets | Local WOFF2 with each OFL license under `assets/p21/fonts` | No external font fetch for new website/practice; retained game is unchanged |
 
@@ -78,3 +78,5 @@ Source and exports are under `assets/p21/`. Full asset inventory hashes were che
 # Annotation artwork
 
 Header Coin and Crown are generated transparent raster assets under `assets/p21/art/currency/`. Ten new material-specific rank masters plus the retained Diamond form the eleven-rank family under `assets/p21/art/ranks/`; exact rank prompts are in [PROMPTS.json](../../assets/p21/art/ranks/PROMPTS.json). Built-in image generation was used; model and seed are not exposed. Source PNGs remain available, while only 128px currency and 384px rank WebPs ship. [PROVENANCE.json](../../assets/p21/art/PROVENANCE.json) records source/export dimensions, alpha, hashes, prompts or currency prompt summaries, and the export recipe. Server tier selects personal images; guest decorative imagery does not claim a rank.
+
+The browser-only **Mega XOXO Neon** theme reuses these committed assets and the homepage board styling. Its source/export map and future paid app handoff are recorded in [BROWSER-NEON-THEME.md](BROWSER-NEON-THEME.md). All 52 provenance entries were checked against Git tracking and SHA-256 on 2026-10-11, with zero missing or changed files. App packaging, ownership and paid-release work remain future scope.

@@ -11,6 +11,8 @@
 
 The owner annotation iteration adds cinematic `/game`, Store, Sponsors and full themed legal routes, an in-site standings table, server-selected personal ranks, eleven badge images and generated currency artwork. Track all fourteen comments and remaining live-service/provider gates in [ANNOTATION-CHANGES.md](ANNOTATION-CHANGES.md). The earlier `99e65bd` checkpoint below remains historical evidence.
 
+The subsequent `/game` annotation authorizes **Mega XOXO Neon** (`cinematic`) as a fifth browser-only theme and default. [Theme and artwork handoff](BROWSER-NEON-THEME.md) records its implementation and the owner's future paid app-theme intent. The four retained theme IDs and native catalog remain intact.
+
 - This is the **living** P21 build ledger, not a conceptual wish list. On **V5.1 only**, update checkboxes after evidence-backed delivery, link file path(s), test(s) and commit SHAs, and keep open decisions explicit.
 - Check an item only when the asset/code/doc actually exists in the repository and is validated. Concept artwork is **not** a shippable, layered, licensed, responsive or accessible replacement.
 - Retain original references and source files; create separately optimized web exports. Never bake UI controls, text, live metrics or grid logic into a flat hero background.
@@ -168,6 +170,7 @@ The owner annotation iteration adds cinematic `/game`, Store, Sponsors and full 
 - [ ] Win/loss/draw summary, rewards, rank change and match history.
 - [ ] Audio option, haptics policy (where supported), animations and accessibility toggles.
 - [x] Four existing themes **vector, midnight, paperclub, afterhours** remain functional in gameplay.
+- [x] Owner-requested **Mega XOXO Neon** (`cinematic`) is the fifth browser theme and default; the playable board shares homepage styling. Future paid app delivery remains open.
 - [x] No online competitive/economic mutation or wallet/rating simulation. Local practice uses the existing pure rules; all online authority remains backend-owned.
 - [ ] Cross-browser input, keyboard navigation, touch and screen-reader board descriptions.
 - [ ] Spectating only if supported by actual feature contracts; otherwise marked future/disabled.

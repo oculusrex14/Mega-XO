@@ -87,6 +87,22 @@ async function main() {
       });
       page.on('pageerror', error => report.requests.javascript_errors.push(String(error.message).slice(0, 500)));
     };
+    // Compare rendered component styles with the homepage rather than just
+    // asserting the theme ID: practice overrides must not remove Neon effects.
+    const neonStyle = page => page.locator('[data-gb-stage]').evaluate(stage => {
+      const tokens = ['--gb-surface', '--gb-raised', '--gb-ink', '--gb-muted', '--gb-line', '--gb-mini-border', '--gb-x', '--gb-o', '--gb-route', '--gb-focus', '--gb-radius', '--gb-font'];
+      const properties = ['backgroundColor', 'backgroundImage', 'borderTopColor', 'boxShadow', 'borderRadius', 'color', 'filter'];
+      const selectors = ['.gb-frame', '.gb-mini--active', '.gb-avatar--x', '.gb-avatar--o', '.gb-avatar--x .gb-mark', '.gb-avatar--o .gb-mark', '.gb-move-dot', '.gb-turn-strip', '.gb-turn-strip p'];
+      const style = getComputedStyle(stage);
+      return {
+        tokens: Object.fromEntries(tokens.map(token => [token, style.getPropertyValue(token).trim()])),
+        components: Object.fromEntries(selectors.map(selector => {
+          const component = getComputedStyle(stage.querySelector(selector));
+          return [selector, Object.fromEntries(properties.map(property => [property, component[property]]))];
+        })),
+        frameEdge: getComputedStyle(stage.querySelector('.gb-frame'), '::before').display,
+      };
+    });
     const widths = [
       { name: 'desktop', width: 1672, height: 941 },
       { name: 'tablet', width: 768, height: 1024 },
@@ -98,6 +114,7 @@ async function main() {
       await localOnly(context);
       const page = await context.newPage();
       track(page);
+      let homeNeon;
       for (const route of WEBSITE_ROUTES) {
         const response = await page.goto(origin + route, { waitUntil: 'networkidle' });
         await page.locator('#main').waitFor();
@@ -121,11 +138,20 @@ async function main() {
         check('P21-BROWSER-LABELS', metrics.unlabeledButtons.length === 0, { route, viewport: viewport.name, unlabeledButtons: metrics.unlabeledButtons });
         for (const href of metrics.links) snapshots.add(href.split('#')[0]);
         if (route === '/') {
+          homeNeon = await neonStyle(page);
           check('P21-BROWSER-BOARD', await page.locator('.gb-cell').count() === 81, { route, viewport: viewport.name });
           await snapshot(page, 'home-' + viewport.name, false);
           await snapshot(page, 'home-' + viewport.name + '-full');
         } else {
-          if (route === '/game') check('P21-BROWSER-CINEMATIC-GAME', await page.locator('.gb-game-page').count() === 1 && await page.locator('[data-board-preview="false"] .gb-cell').count() === 81 && await page.locator('iframe').count() === 0 && await page.locator('.mx-header').count() === 1, { route, viewport: viewport.name });
+          if (route === '/game') {
+            check('P21-BROWSER-CINEMATIC-GAME', await page.locator('.gb-game-page').count() === 1 && await page.locator('[data-board-preview="false"] .gb-cell').count() === 81 && await page.locator('iframe').count() === 0 && await page.locator('.mx-header').count() === 1, { route, viewport: viewport.name });
+            const selected = await page.locator('[data-gb-setting="theme"]').inputValue();
+            const themes = await page.locator('[data-gb-setting="theme"] option').evaluateAll(options => options.map(option => option.value));
+            check('P21-BROWSER-NEON-DEFAULT', selected === 'cinematic' && themes.join(',') === 'cinematic,vector,midnight,paperclub,afterhours', { route, viewport: viewport.name, selected, themes });
+            const gameNeon = await neonStyle(page);
+            check('P21-BROWSER-NEON-HOME-PARITY', JSON.stringify(homeNeon) === JSON.stringify(gameNeon), { route, viewport: viewport.name, homeNeon, gameNeon });
+            if (viewport.name !== 'desktop') await snapshot(page, 'game-neon-' + viewport.name);
+          }
           if (viewport.name === 'desktop') await snapshot(page, 'page-' + route.slice(1).replaceAll('/', '-'));
         }
       }
@@ -174,10 +200,13 @@ async function main() {
     check('P21-BROWSER-PRACTICE-ROUTING', legalMoves.length === 9 && legalMoves.every(key => key.startsWith('4:')), { move: '0:4', nextBoard: 4, legalMoves });
     const occupied = await page.locator('[data-gb-cell="0:4"]').getAttribute('aria-label');
     check('P21-BROWSER-PRACTICE-OCCUPIED', occupied.includes('X, occupied'), { cell: '0:4', label: occupied });
-    for (const theme of ['vector', 'midnight', 'paperclub', 'afterhours']) {
+    const tabStop = await page.locator('.gb-cell[tabindex="0"]').getAttribute('data-gb-cell');
+    for (const theme of ['vector', 'midnight', 'paperclub', 'afterhours', 'cinematic']) {
       await page.locator('[data-gb-setting="theme"]').selectOption(theme);
       check('P21-BROWSER-THEME', await page.locator('[data-gb-stage]').getAttribute('data-gb-theme') === theme, { theme });
       check('P21-BROWSER-THEME-STATE', (await page.locator('[data-gb-cell="0:4"]').getAttribute('aria-label')).includes('X, occupied'), { theme, cell: '0:4' });
+      const afterThemeMoves = await page.locator('.gb-cell[aria-disabled="false"]').evaluateAll(cells => cells.map(cell => cell.dataset.gbCell));
+      check('P21-BROWSER-THEME-ROUTING-FOCUS', JSON.stringify(afterThemeMoves) === JSON.stringify(legalMoves) && await page.locator('.gb-cell[tabindex="0"]').getAttribute('data-gb-cell') === tabStop, { theme, legalMoves: afterThemeMoves, tabStop });
       await snapshot(page, 'practice-' + theme);
     }
     await page.locator('[data-gb-cell="4:0"]').focus();
@@ -195,6 +224,10 @@ async function main() {
     await page.waitForFunction(() => document.querySelectorAll('.gb-cell[aria-label*="occupied"]').length === 2);
     const botMove = await page.locator('.gb-cell[aria-label*="O, occupied"]').getAttribute('data-gb-cell');
     check('P21-BROWSER-GAME-BOT', botMove.startsWith('4:') && await page.locator('.gb-cell[aria-disabled="false"]').count() > 0, { difficulty: 'Beginner', botBoard: botMove.split(':')[0] });
+    await page.setViewportSize({ width: 1151, height: 865 });
+    await page.goto(origin + '/game', { waitUntil: 'networkidle' });
+    check('P21-BROWSER-NEON-ANNOTATION-VIEWPORT', await page.locator('[data-gb-setting="theme"]').inputValue() === 'cinematic' && await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), { width: 1151, height: 865 });
+    await snapshot(page, 'game-neon-1151', false);
     await page.goto(origin + '/legacy-game/', { waitUntil: 'domcontentloaded' });
     await page.locator('#app').waitFor();
     check('P21-BROWSER-RETAINED-GAME', await page.locator('#app').count() === 1 && await page.locator('#board').count() === 1, { route: '/legacy-game/' });

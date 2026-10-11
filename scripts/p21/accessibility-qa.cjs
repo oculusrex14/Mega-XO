@@ -23,7 +23,7 @@ async function main() {
   }
   fs.writeFileSync(path.join(snapshot,MANIFEST),JSON.stringify(manifest,null,2)+'\n');
  }catch(error){fs.rmSync(snapshot,{recursive:true,force:true});throw error;}
- const report={case_ids:['P21-A11Y-001','P21-A11Y-SYNTHETIC-LINKED','P21-A11Y-PAPER-HUD-01','P21-A11Y-FORCED-COLORS-01'],checked_at:new Date().toISOString(),runtime_version:process.version,source_commit:manifest.source_commit,bundle_sha256:manifest.bundle_sha256,command:`env -u NODE_OPTIONS ${process.execPath} scripts/p21/accessibility-qa.cjs`,environment:'Local loopback Chromium; guest or synthetic linked fixture; read proxy explicitly disabled; no authenticated/provider traffic',isolated_payload_snapshot:true,tool_version:axe.version,checks:[],manual_review:[]};
+ const report={case_ids:['P21-A11Y-001','P21-A11Y-SYNTHETIC-LINKED','P21-A11Y-GAME-THEMES','P21-A11Y-PAPER-HUD-01','P21-A11Y-FORCED-COLORS-01'],checked_at:new Date().toISOString(),runtime_version:process.version,source_commit:manifest.source_commit,bundle_sha256:manifest.bundle_sha256,command:`env -u NODE_OPTIONS ${process.execPath} scripts/p21/accessibility-qa.cjs`,environment:'Local loopback Chromium; guest or synthetic linked fixture; read proxy explicitly disabled; no authenticated/provider traffic',isolated_payload_snapshot:true,tool_version:axe.version,checks:[],manual_review:[]};
  report.qa_script_sha256=crypto.createHash('sha256').update(fs.readFileSync(__filename)).digest('hex');
  const server=createPreviewServer({directory:snapshot,readApiOrigin:null});server.listen(0,'127.0.0.1');await once(server,'listening');
  const origin=`http://127.0.0.1:${server.address().port}`;
@@ -42,6 +42,19 @@ async function main() {
     });
     report.checks.push({route,width,result:result.violations.length?'FAIL':'PASS',violations:result.violations});
     if(result.incomplete.length)report.manual_review.push({route,width,items:result.incomplete});
+   }
+   await page.goto(origin+'/game',{waitUntil:'networkidle'});
+   await page.locator('[data-gb-setting="mode"]').selectOption('local');
+   await page.locator('[data-gb-cell="0:4"]').click();
+   for(const theme of ['cinematic','vector','midnight','paperclub','afterhours']) {
+    await page.locator('[data-gb-setting="theme"]').selectOption(theme);await page.evaluate(axe.source);
+    const result=await page.evaluate(async()=>{
+     const data=await axe.run({runOnly:{type:'tag',values:['wcag2a','wcag2aa','wcag21a','wcag21aa','wcag22aa','best-practice']}});
+     const compact=entry=>({id:entry.id,impact:entry.impact,nodes:entry.nodes.map(node=>({target:node.target,failure_summary:node.failureSummary}))});
+     return {violations:data.violations.map(compact),incomplete:data.incomplete.map(compact)};
+    });
+    report.checks.push({case_id:'P21-A11Y-GAME-THEMES',route:'/game',width,theme,result:result.violations.length?'FAIL':'PASS',violations:result.violations});
+    if(result.incomplete.length)report.manual_review.push({route:'/game',width,theme,items:result.incomplete});
    }
    await page.close();
   }
@@ -76,9 +89,12 @@ async function main() {
   const luminance=css=>{const rgb=css.match(/[\d.]+/g).slice(0,3).map(Number).map(n=>n/255).map(n=>n<=.04045?n/12.92:((n+.055)/1.055)**2.4);return rgb[0]*.2126+rgb[1]*.7152+rgb[2]*.0722;};
   const l=[luminance(hud.foreground),luminance(hud.background)].sort((a,b)=>b-a);const contrast=(l[0]+.05)/(l[1]+.05);
   report.checks.push({case_id:'P21-A11Y-PAPER-HUD-01',result:contrast>=4.5?'PASS':'FAIL',...hud,contrast});
+  await page.locator('[data-gb-setting="theme"]').selectOption('cinematic');
   await page.emulateMedia({forcedColors:'active',reducedMotion:'reduce'});
   const forced=await page.locator('.gb-page-heading h1 span').evaluate(el=>({background:getComputedStyle(el).backgroundImage,color:getComputedStyle(el).color,transition:getComputedStyle(el).transitionDuration}));
   report.checks.push({case_id:'P21-A11Y-FORCED-COLORS-01',result:forced.background==='none'?'PASS':'FAIL',...forced});
+  const forcedBoard=await page.locator('.gb-frame').evaluate(el=>({background:getComputedStyle(el).backgroundImage,shadow:getComputedStyle(el).boxShadow,edge:getComputedStyle(el,'::before').display}));
+  report.checks.push({case_id:'P21-A11Y-NEON-FORCED-COLORS',result:forcedBoard.background==='none'&&forcedBoard.shadow==='none'&&forcedBoard.edge==='none'?'PASS':'FAIL',...forcedBoard});
   await page.close();
  } catch(error) {
   report.checks.push({case_id:'P21-A11Y-EXECUTION',result:'FAIL',message:String(error.message).slice(0,1000)});

@@ -769,6 +769,189 @@ test('7. Competitive API routes: /api/v1/convert routes through coreGateway to C
 });
 
 /* ==========================================================================
+ * 7b. Competitive API routes: offer/accept/decline/cancel resolve through the
+ *     signed Core ingress and commit the durable outcome (V5-11-03).
+ * ========================================================================== */
+
+test('7b. Competitive API routes: offer -> accept -> decline -> cancel through signed Core ingress', async (t) => {
+  if (!(await lab.boot(t))) return;
+  const db = await lab.createDatabase('p11_gateway_offer');
+  /* Distinct offer pairs: direct ranked pair limits and one-active-match rules are
+   * Core-owned, so each scenario uses its own opponent and the accept that commits
+   * PLAYING runs LAST (an active match blocks every further offer from that actor). */
+  await lab.seedActors(db, [
+    { actor: 'svc_alice', coins: 1000, crowns: 100, rating: 1500, games: 30, stats: 'friends' },
+    { actor: 'svc_bob', coins: 1000, crowns: 100, rating: 1500, games: 30, stats: 'friends' },
+    { actor: 'svc_carol', coins: 1000, crowns: 100, rating: 1500, games: 30, stats: 'friends' },
+    { actor: 'svc_dave', coins: 1000, crowns: 100, rating: 1500, games: 30, stats: 'friends' },
+  ]);
+
+  const pools = lab.poolsFor(db);
+  const accounts = await lab.accountsFor(db);
+  const core = await lab.coreFor(db);
+
+  const ingress = createCoreServiceIngress({
+    coreService: core,
+    secret: TEST_SECRET,
+  });
+  const ingressServer = await startIngressServer(ingress);
+
+  const gateway = createCoreGateway({
+    coreUrl: ingressServer.url,
+    secret: TEST_SECRET,
+    fetcher: testHttpFetch,
+  });
+
+  const handler = createApiHandler({
+    pool: pools.api,
+    accounts,
+    coreGateway: gateway,
+  });
+
+  t.after(async () => {
+    await ingressServer.close();
+    await accounts.close();
+    await core.close();
+    await lab.closeDatabasePools(db);
+  });
+
+  /* Cookie-authenticated linked sessions, exactly like the real browser client: the
+   * API composition enforces Origin/CSRF and resolveAuth binds the actor server-side. */
+  const sessions = new Map();
+  async function cookieFor(actor) {
+    if (!sessions.has(actor)) sessions.set(actor, await accounts.issue(actor, Date.now()));
+    return sessions.get(actor);
+  }
+  const cookieRequest = async (actor, routePath, { body, opKey, csrf = true } = {}) => {
+    const session = await cookieFor(actor);
+    const headers = { cookie: `mega_dev_session=${session.token}`, origin: 'https://megaxo.online' };
+    if (csrf) headers['x-csrf-token'] = session.csrf;
+    if (opKey !== undefined) headers['idempotency-key'] = opKey;
+    return apiRequest(handler, routePath, { method: 'POST', body, headers });
+  };
+
+  /* Direct ranked Gold-vs-Gold: the Core quote minimum for a leaderboard pot is
+   * 2*ceil(65*8/16)=66 Crowns; 80 is an even pot above the minimum that the
+   * challenger (who seeds the whole pot) can fund from 100 Crowns. */
+  const TERMS = { kind: 'leaderboard', amount: 80 };
+
+  // A. Authenticated linked offer commits a real OFFERED match in Core.
+  const offer = await cookieRequest('svc_alice', '/api/v1/offer', {
+    opKey: 'api-offer-01',
+    body: { id: 'api-match-accept', opponent: 'svc_bob', terms: TERMS },
+  });
+  assert.equal(offer.status, 200, 'authenticated offer succeeds');
+  assert.equal(offer.data.status, 'OFFERED', 'the committed Core view is OFFERED');
+  assert.equal(offer.data.players[0], 'svc_alice', 'the offer principal is the server-resolved actor');
+  assert.equal(typeof offer.data.termsHash, 'string', 'the committed terms hash is returned');
+  {
+    const view = await core.readMatch('svc_alice', 'api-match-accept');
+    assert.equal(view.status, 'OFFERED', 'durable match row reflects the committed offer');
+  }
+
+  // B. Two more distinct offers for the decline/cancel scenarios.
+  const declineOffer = await cookieRequest('svc_alice', '/api/v1/offer', {
+    opKey: 'api-offer-decline',
+    body: { id: 'api-match-decline', opponent: 'svc_carol', terms: TERMS },
+  });
+  assert.equal(declineOffer.status, 200, 'second distinct offer succeeds');
+  const cancelOffer = await cookieRequest('svc_alice', '/api/v1/offer', {
+    opKey: 'api-offer-cancel',
+    body: { id: 'api-match-cancel', opponent: 'svc_dave', terms: TERMS },
+  });
+  assert.equal(cancelOffer.status, 200, 'third distinct offer succeeds');
+
+  // C. A wrong actor (not a participant) cannot accept another pair's offer.
+  {
+    const res = await cookieRequest('svc_dave', '/api/v1/accept', {
+      opKey: 'api-accept-wrongactor',
+      body: { id: 'api-match-accept', termsHash: offer.data.termsHash },
+    });
+    assert.equal(res.status, 409, 'a non-participant accept is refused by Core');
+    assert.equal(res.data.error, 'NOT_PARTICIPANT');
+    const view = await core.readMatch('svc_alice', 'api-match-accept');
+    assert.equal(view.status, 'OFFERED', 'the refused accept committed no state change');
+  }
+
+  // D. Decline resolves through Core for the invited participant.
+  {
+    const res = await cookieRequest('svc_carol', '/api/v1/decline', {
+      opKey: 'api-decline-01',
+      body: { id: 'api-match-decline' },
+    });
+    assert.equal(res.status, 200, 'decline resolves through the signed ingress');
+    assert.equal(res.data.status, 'DECLINED', 'Core committed the decline');
+    const view = await core.readMatch('svc_carol', 'api-match-decline');
+    assert.equal(view.status, 'DECLINED', 'durable row reflects the committed decline');
+  }
+
+  // E. Cancel resolves through Core for the offer creator; a non-creator is refused.
+  {
+    const wrong = await cookieRequest('svc_dave', '/api/v1/cancel', {
+      opKey: 'api-cancel-wrong',
+      body: { id: 'api-match-cancel' },
+    });
+    assert.equal(wrong.status, 409, 'a non-creator cancel is refused by Core');
+    assert.equal(wrong.data.error, 'CANNOT_CANCEL');
+    const res = await cookieRequest('svc_alice', '/api/v1/cancel', {
+      opKey: 'api-cancel-01',
+      body: { id: 'api-match-cancel' },
+    });
+    assert.equal(res.status, 200, 'creator cancel resolves through the signed ingress');
+    assert.equal(res.data.status, 'CANCELLED', 'Core committed the cancel');
+    const view = await core.readMatch('svc_alice', 'api-match-cancel');
+    assert.equal(view.status, 'CANCELLED', 'durable row reflects the committed cancel');
+  }
+
+  // F. Missing operation key is refused before any Core call.
+  {
+    const res = await cookieRequest('svc_alice', '/api/v1/offer', {
+      opKey: undefined,
+      body: { id: 'api-match-nokey', opponent: 'svc_bob', terms: TERMS },
+    });
+    assert.equal(res.status, 400, 'a missing operation key is refused');
+    assert.equal(res.data.error, 'IDEMPOTENCY_KEY_REQUIRED');
+  }
+
+  // G. Forged / malformed operation key is refused.
+  {
+    const res = await cookieRequest('svc_alice', '/api/v1/offer', {
+      opKey: 'bad\nkey',
+      body: { id: 'api-match-badkey', opponent: 'svc_bob', terms: TERMS },
+    });
+    assert.equal(res.status, 400, 'a forged operation key is refused');
+    assert.equal(res.data.error, 'INVALID_IDEMPOTENCY_KEY');
+  }
+
+  // H. Unauthenticated request is refused (no committed side effect).
+  {
+    const res = await apiRequest(handler, '/api/v1/offer', {
+      method: 'POST',
+      headers: { origin: 'https://megaxo.online' },
+      body: { id: 'api-match-anon', opponent: 'svc_bob', terms: TERMS },
+    });
+    assert.equal(res.status, 401, 'unauthenticated offer refused with 401');
+    assert.equal(res.data.error, 'AUTH_REQUIRED');
+  }
+
+  // I. The invited participant accepts by the Core-issued terms hash -> PLAYING with escrow.
+  const accept = await cookieRequest('svc_bob', '/api/v1/accept', {
+    opKey: 'api-accept-01',
+    body: { id: 'api-match-accept', termsHash: offer.data.termsHash },
+  });
+  assert.equal(accept.status, 200, 'participant accept succeeds');
+  assert.equal(accept.data.status, 'PLAYING', 'both seats accepted -> committed PLAYING');
+  assert.ok(accept.data.symbols && accept.data.symbols.X && accept.data.symbols.O, 'Core committed the symbol draw');
+  {
+    const view = await core.readMatch('svc_bob', 'api-match-accept');
+    assert.equal(view.status, 'PLAYING', 'durable match row reflects the committed accept');
+    assert.equal(Number(view.escrow), 80, 'the accepted match holds its committed escrow');
+    const reserved = await lab.scalar(db, "SELECT reserved_crowns FROM economy.wallets WHERE actor_id = 'svc_alice'");
+    assert.equal(Number(reserved), 80, 'the accept reserved the challenger stake in the durable wallet');
+  }
+});
+
+/* ==========================================================================
  * 8. Strict Database Least Privilege (PostgreSQL 42501 Permission Denied)
  * ========================================================================== */
 
@@ -895,9 +1078,9 @@ test('9. Public leaderboard: API composition serves the real projection through 
   const ids = res.data.map((row) => row.id);
   assert.ok(ids.includes('svc_alice'), 'real public row svc_alice present');
   assert.ok(ids.includes('svc_bob'), 'real public row svc_bob present');
-  assert.ok(!ids.includes('svc_carol'), 'friends-only profile never appears on the public board');
-  assert.equal(res.data[0].id, 'svc_alice', 'ranked by rating desc (alice first at 1500/30)');
-  assert.equal(Number(res.data[0].rating), 1500, 'materialized rating is real');
+  assert.ok(!ids.includes('svc_carol'), 'private profile never appears on the public board');
+  assert.equal(res.data[0].id, 'svc_alice', 'ranked by rating desc (alice first at 1650)');
+  assert.equal(Number(res.data[0].rating), 1650, 'materialized rating is real');
 
   // B. The gateway client itself requires no actor and rejects a real transport failure.
   const direct = await gateway.leaderboard({ metric: 'rating', scope: 'global', league: 'all', region: '' });
@@ -943,7 +1126,10 @@ async function materializeForTest(pool) {
 test('10. Public leaderboard ingress refuses tampering, wrong path, oversized/unknown query and cross-path reuse', async (t) => {
   if (!(await lab.boot(t))) return;
   const db = await lab.createDatabase('p11_gateway_leaderboard_guard');
-  await lab.seedActors(db, lab.SEED_ACTORS);
+  await lab.seedActors(db, [
+    { actor: 'svc_alice', coins: 1000, crowns: 100, rating: 1650, games: 30, stats: 'public' },
+    { actor: 'svc_bob', coins: 1000, crowns: 100, rating: 1550, games: 30, stats: 'public' },
+  ]);
 
   const pools = lab.poolsFor(db);
   const core = await lab.coreFor(db);
@@ -1023,10 +1209,11 @@ test('10. Public leaderboard ingress refuses tampering, wrong path, oversized/un
     assert.equal(res.data.error, 'INVALID_SERVICE_SIGNATURE');
   }
 
-  // D. Cross-path reuse: a signature for the queue path replayed at the leaderboard path.
+  // D. Cross-path reuse: a fully valid queue signature (same actor, same body) is
+  // replayed at the leaderboard path; only the path differs and it must be refused.
   {
-    const queueBody = JSON.stringify({ command: {} });
-    const queueHash = hashBody(queueBody);
+    const queueBody = { command: {} };
+    const queueHash = hashBody(JSON.stringify(queueBody));
     const sig = computeSignature(TEST_SECRET, {
       timestamp: now, method: 'POST', path: '/ingress/queue/status',
       actor: 'svc_alice', opKey: 'queue-status', bodyHash: queueHash,
@@ -1035,9 +1222,9 @@ test('10. Public leaderboard ingress refuses tampering, wrong path, oversized/un
       method: 'POST',
       headers: {
         'x-service-timestamp': String(now),
-        'x-service-actor': '', 'x-service-opkey': '', 'x-service-signature': sig,
+        'x-service-actor': 'svc_alice', 'x-service-opkey': 'queue-status', 'x-service-signature': sig,
       },
-      body: goodBody,
+      body: queueBody,
     });
     assert.equal(res.status, 403, 'queue-signed request cannot be reused at the leaderboard path');
     assert.equal(res.data.error, 'INVALID_SERVICE_SIGNATURE');

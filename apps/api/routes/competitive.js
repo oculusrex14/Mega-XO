@@ -234,6 +234,70 @@ async function handleResign(context, req, res) {
 }
 
 /**
+ * POST /api/v1/offer
+ * Direct challenge offer to an opponent (Core-only match escrow).
+ */
+async function handleOffer(context, req, res) {
+  return forwardToCore(context, req, res, (body) => {
+    if (body.command) return body.command;
+    if (body.type === 'offer') return body;
+    // Only the exact V4 wire fields cross into Core; actor/scope stay server-resolved.
+    return {
+      type: 'offer',
+      id: body.id || body.matchId,
+      opponent: body.opponent,
+      terms: body.terms,
+    };
+  });
+}
+
+/**
+ * POST /api/v1/accept
+ * Accepts a pending offer by its immutable terms hash (Core-only match escrow).
+ */
+async function handleAccept(context, req, res) {
+  return forwardToCore(context, req, res, (body) => {
+    if (body.command) return body.command;
+    if (body.type === 'accept') return body;
+    return {
+      type: 'accept',
+      id: body.id || body.matchId,
+      termsHash: body.termsHash,
+    };
+  });
+}
+
+/**
+ * POST /api/v1/decline
+ * Declines a pending offer.
+ */
+async function handleDecline(context, req, res) {
+  return forwardToCore(context, req, res, (body) => {
+    if (body.command) return body.command;
+    if (body.type === 'decline') return body;
+    return {
+      type: 'decline',
+      id: body.id || body.matchId,
+    };
+  });
+}
+
+/**
+ * POST /api/v1/cancel
+ * Cancels an offer this actor created.
+ */
+async function handleCancel(context, req, res) {
+  return forwardToCore(context, req, res, (body) => {
+    if (body.command) return body.command;
+    if (body.type === 'cancel') return body;
+    return {
+      type: 'cancel',
+      id: body.id || body.matchId,
+    };
+  });
+}
+
+/**
  * POST /api/v1/quest
  * Claims a completed quest reward.
  */
@@ -337,6 +401,22 @@ async function handleCompetitiveRoute(context, req, res) {
       await handleResign(context, req, res);
       return true;
     }
+    if (subpath === '/api/offer') {
+      await handleOffer(context, req, res);
+      return true;
+    }
+    if (subpath === '/api/accept') {
+      await handleAccept(context, req, res);
+      return true;
+    }
+    if (subpath === '/api/decline') {
+      await handleDecline(context, req, res);
+      return true;
+    }
+    if (subpath === '/api/cancel') {
+      await handleCancel(context, req, res);
+      return true;
+    }
     if (subpath === '/api/quest' || subpath === '/api/quest/claim') {
       await handleQuest(context, req, res);
       return true;
@@ -365,6 +445,10 @@ module.exports = {
   handleCancelQueue,
   handleMove,
   handleResign,
+  handleOffer,
+  handleAccept,
+  handleDecline,
+  handleCancel,
   handleQuest,
   handleTicket,
   handleCommand,

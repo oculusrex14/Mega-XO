@@ -839,3 +839,308 @@ test('8. Strict database least privilege: api_runtime role cannot directly write
   const finalCoins = await lab.scalar(db, "SELECT coins FROM economy.wallets WHERE actor_id = 'svc_alice'");
   assert.equal(Number(finalCoins), 1000, 'wallet balance remains completely intact');
 });
+
+/* ==========================================================================
+ * 9. Core-Served Public Leaderboard (Actor-Free Signed Ingress)
+ * ========================================================================== */
+
+test('9. Public leaderboard: API composition serves the real projection through the actor-free signed Core ingress', async (t) => {
+  if (!(await lab.boot(t))) return;
+  const db = await lab.createDatabase('p11_gateway_leaderboard');
+  /* This test needs PUBLIC profiles AND distinct ratings (the ORDER BY is on rating/games):
+   * alice must sort unambiguously first, carol is private and must be excluded. */
+  await lab.seedActors(db, [
+    { actor: 'svc_alice', coins: 1000, crowns: 100, rating: 1650, games: 30, stats: 'public' },
+    { actor: 'svc_bob', coins: 1000, crowns: 100, rating: 1550, games: 30, stats: 'public' },
+    { actor: 'svc_carol', coins: 1000, crowns: 100, rating: 1450, games: 30, stats: 'private' },
+  ]);
+
+  const pools = lab.poolsFor(db);
+  const accounts = await lab.accountsFor(db);
+  const core = await lab.coreFor(db);
+
+  // The Core ingress owns the Core pool; the API gateway holds NO Core pool.
+  const ingress = createCoreServiceIngress({
+    coreService: core,
+    leaderboardPool: pools.core,
+    secret: TEST_SECRET,
+  });
+  const ingressServer = await startIngressServer(ingress);
+
+  const gateway = createCoreGateway({
+    coreUrl: ingressServer.url,
+    secret: TEST_SECRET,
+    fetcher: testHttpFetch,
+  });
+
+  // Deliberately NO corePool: the deployed API composition holds only api_runtime.
+  const handler = createApiHandler({
+    pool: pools.api,
+    accounts,
+    coreGateway: gateway,
+  });
+  handler._testAccounts = accounts;
+
+  t.after(async () => {
+    await ingressServer.close();
+    await accounts.close();
+    await core.close();
+    await lab.closeDatabasePools(db);
+  });
+
+  // A. Real HTTP GET /api/v1/leaderboard: real public rows, no actor credentials.
+  const res = await apiRequest(handler, '/api/v1/leaderboard');
+  assert.equal(res.status, 200, 'public leaderboard served with 200');
+  assert.ok(Array.isArray(res.data), 'response is the public rows array');
+  const ids = res.data.map((row) => row.id);
+  assert.ok(ids.includes('svc_alice'), 'real public row svc_alice present');
+  assert.ok(ids.includes('svc_bob'), 'real public row svc_bob present');
+  assert.ok(!ids.includes('svc_carol'), 'friends-only profile never appears on the public board');
+  assert.equal(res.data[0].id, 'svc_alice', 'ranked by rating desc (alice first at 1500/30)');
+  assert.equal(Number(res.data[0].rating), 1500, 'materialized rating is real');
+
+  // B. The gateway client itself requires no actor and rejects a real transport failure.
+  const direct = await gateway.leaderboard({ metric: 'rating', scope: 'global', league: 'all', region: '' });
+  assert.ok(Array.isArray(direct), 'actor-free gateway read returns rows');
+  assert.ok(direct.some((row) => row.id === 'svc_alice'), 'actor-free gateway read is the real projection');
+
+  // C. The api_runtime pool still cannot read economy.ratings directly (42501).
+  const isDenied = (err) => err && (err.code === '42501' || /permission denied/i.test(err.message));
+  await assert.rejects(
+    () => pools.api.query('SELECT rating FROM economy.ratings LIMIT 1'),
+    isDenied,
+    'api_runtime cannot read economy.ratings (42501 expected)'
+  );
+  await assert.rejects(
+    () => materializeForTest(pools.api),
+    isDenied,
+    'api_runtime materialization of the leaderboard is denied (42501 expected)'
+  );
+
+  // D. A real transport failure surfaces as 503, never a silent empty 200.
+  const deadGateway = createCoreGateway({
+    coreUrl: 'http://127.0.0.1:1',
+    secret: TEST_SECRET,
+    fetcher: testHttpFetch,
+  });
+  const deadHandler = createApiHandler({ pool: pools.api, accounts, coreGateway: deadGateway });
+  const deadRes = await apiRequest(deadHandler, '/api/v1/leaderboard?metric=wealth');
+  assert.equal(deadRes.status, 503, 'an available-but-failing leaderboard transport yields 503');
+  assert.equal(deadRes.data.error, 'SERVICE_UNAVAILABLE');
+});
+
+/* The api_runtime leaderboard materialization is the exact Core read path, exercised
+ * here to prove the API-role denial is real rather than a missing function. */
+async function materializeForTest(pool) {
+  const { materializeLeaderboardProjection } = require('../packages/services/read-cache.js');
+  return materializeLeaderboardProjection(pool, { metric: 'rating', limit: 50 });
+}
+
+/* ==========================================================================
+ * 10. Actor-Free Ingress Hardening (Tampering, Path, Query, Cross-Path Reuse)
+ * ========================================================================== */
+
+test('10. Public leaderboard ingress refuses tampering, wrong path, oversized/unknown query and cross-path reuse', async (t) => {
+  if (!(await lab.boot(t))) return;
+  const db = await lab.createDatabase('p11_gateway_leaderboard_guard');
+  await lab.seedActors(db, lab.SEED_ACTORS);
+
+  const pools = lab.poolsFor(db);
+  const core = await lab.coreFor(db);
+
+  const ingress = createCoreServiceIngress({
+    coreService: core,
+    leaderboardPool: pools.core,
+    secret: TEST_SECRET,
+  });
+  const ingressServer = await startIngressServer(ingress);
+
+  t.after(async () => {
+    await ingressServer.close();
+    await core.close();
+    await lab.closeDatabasePools(db);
+  });
+
+  const now = Date.now();
+  const goodBody = { metric: 'rating', scope: 'global', league: 'all', region: '' };
+  const goodBodyStr = JSON.stringify(goodBody);
+  const goodHash = hashBody(goodBodyStr);
+
+  // A. Valid actor-free signed read succeeds (baseline).
+  {
+    const sig = computeSignature(TEST_SECRET, {
+      timestamp: now, method: 'POST', path: '/ingress/leaderboard',
+      actor: '', opKey: '', bodyHash: goodHash,
+    });
+    const res = await rawIngressRequest(ingressServer.url, '/ingress/leaderboard', {
+      method: 'POST',
+      headers: {
+        'x-service-timestamp': String(now),
+        'x-service-actor': '',
+        'x-service-opkey': '',
+        'x-service-signature': sig,
+      },
+      body: goodBody,
+    });
+    assert.equal(res.status, 200, 'baseline actor-free signed read succeeds');
+    assert.equal(res.data.ok, true);
+    assert.ok(Array.isArray(res.data.result), 'result is the public rows array');
+  }
+
+  // B. Tampered body: signature made for the original query, body swapped.
+  {
+    const sig = computeSignature(TEST_SECRET, {
+      timestamp: now, method: 'POST', path: '/ingress/leaderboard',
+      actor: '', opKey: '', bodyHash: goodHash,
+    });
+    const res = await rawIngressRequest(ingressServer.url, '/ingress/leaderboard', {
+      method: 'POST',
+      headers: {
+        'x-service-timestamp': String(now),
+        'x-service-actor': '', 'x-service-opkey': '', 'x-service-signature': sig,
+      },
+      body: { metric: 'wealth', scope: 'global', league: 'all', region: '' },
+    });
+    assert.equal(res.status, 403, 'tampered leaderboard body rejected with 403');
+    assert.equal(res.data.error, 'INVALID_SERVICE_SIGNATURE');
+  }
+
+  // C. Wrong path: a signature valid for /ingress/leaderboard replayed at another path.
+  {
+    const sig = computeSignature(TEST_SECRET, {
+      timestamp: now, method: 'POST', path: '/ingress/leaderboard',
+      actor: '', opKey: '', bodyHash: goodHash,
+    });
+    const res = await rawIngressRequest(ingressServer.url, '/ingress/command', {
+      method: 'POST',
+      headers: {
+        'x-service-timestamp': String(now),
+        'x-service-actor': '', 'x-service-opkey': '', 'x-service-signature': sig,
+      },
+      body: goodBody,
+    });
+    assert.equal(res.status, 403, 'path reuse rejected with 403');
+    assert.equal(res.data.error, 'INVALID_SERVICE_SIGNATURE');
+  }
+
+  // D. Cross-path reuse: a signature for the queue path replayed at the leaderboard path.
+  {
+    const queueBody = JSON.stringify({ command: {} });
+    const queueHash = hashBody(queueBody);
+    const sig = computeSignature(TEST_SECRET, {
+      timestamp: now, method: 'POST', path: '/ingress/queue/status',
+      actor: 'svc_alice', opKey: 'queue-status', bodyHash: queueHash,
+    });
+    const res = await rawIngressRequest(ingressServer.url, '/ingress/leaderboard', {
+      method: 'POST',
+      headers: {
+        'x-service-timestamp': String(now),
+        'x-service-actor': '', 'x-service-opkey': '', 'x-service-signature': sig,
+      },
+      body: goodBody,
+    });
+    assert.equal(res.status, 403, 'queue-signed request cannot be reused at the leaderboard path');
+    assert.equal(res.data.error, 'INVALID_SERVICE_SIGNATURE');
+  }
+
+  // E. Actor-free signature cannot be used on an actor-required path.
+  {
+    const emptyActorHash = hashBody(JSON.stringify({ command: {} }));
+    const sig = computeSignature(TEST_SECRET, {
+      timestamp: now, method: 'POST', path: '/ingress/queue/status',
+      actor: '', opKey: '', bodyHash: emptyActorHash,
+    });
+    const res = await rawIngressRequest(ingressServer.url, '/ingress/queue/status', {
+      method: 'POST',
+      headers: {
+        'x-service-timestamp': String(now),
+        'x-service-actor': '', 'x-service-opkey': '', 'x-service-signature': sig,
+      },
+      body: { command: {} },
+    });
+    assert.equal(res.status, 403, 'actor-free signing is admitted ONLY on the fixed leaderboard path');
+  }
+
+  // F. Unknown query field rejected 400.
+  {
+    const body = { metric: 'rating', evil: 'x' };
+    const sig = computeSignature(TEST_SECRET, {
+      timestamp: now, method: 'POST', path: '/ingress/leaderboard',
+      actor: '', opKey: '', bodyHash: hashBody(JSON.stringify(body)),
+    });
+    const res = await rawIngressRequest(ingressServer.url, '/ingress/leaderboard', {
+      method: 'POST',
+      headers: {
+        'x-service-timestamp': String(now),
+        'x-service-actor': '', 'x-service-opkey': '', 'x-service-signature': sig,
+      },
+      body,
+    });
+    assert.equal(res.status, 400, 'unknown query field rejected with 400');
+    assert.equal(res.data.error, 'INVALID_LEADERBOARD_QUERY');
+  }
+
+  // G. Oversized query value rejected 400.
+  {
+    const body = { region: 'A'.repeat(200) };
+    const sig = computeSignature(TEST_SECRET, {
+      timestamp: now, method: 'POST', path: '/ingress/leaderboard',
+      actor: '', opKey: '', bodyHash: hashBody(JSON.stringify(body)),
+    });
+    const res = await rawIngressRequest(ingressServer.url, '/ingress/leaderboard', {
+      method: 'POST',
+      headers: {
+        'x-service-timestamp': String(now),
+        'x-service-actor': '', 'x-service-opkey': '', 'x-service-signature': sig,
+      },
+      body,
+    });
+    assert.equal(res.status, 400, 'oversized query value rejected with 400');
+    assert.equal(res.data.error, 'INVALID_LEADERBOARD_QUERY');
+  }
+
+  // H. Unsupported metric rejected 400.
+  {
+    const body = { metric: 'balance' };
+    const sig = computeSignature(TEST_SECRET, {
+      timestamp: now, method: 'POST', path: '/ingress/leaderboard',
+      actor: '', opKey: '', bodyHash: hashBody(JSON.stringify(body)),
+    });
+    const res = await rawIngressRequest(ingressServer.url, '/ingress/leaderboard', {
+      method: 'POST',
+      headers: {
+        'x-service-timestamp': String(now),
+        'x-service-actor': '', 'x-service-opkey': '', 'x-service-signature': sig,
+      },
+      body,
+    });
+    assert.equal(res.status, 400, 'unsupported metric rejected with 400');
+  }
+
+  // I. GET is not admitted on the fixed path (properly signed for the GET method).
+  {
+    const sig = computeSignature(TEST_SECRET, {
+      timestamp: now, method: 'GET', path: '/ingress/leaderboard',
+      actor: '', opKey: '', bodyHash: hashBody(''),
+    });
+    const res = await rawIngressRequest(ingressServer.url, '/ingress/leaderboard', {
+      method: 'GET',
+      headers: {
+        'x-service-timestamp': String(now),
+        'x-service-actor': '', 'x-service-opkey': '', 'x-service-signature': sig,
+      },
+    });
+    assert.equal(res.status, 405, 'GET on the leaderboard ingress is refused with 405');
+    assert.equal(res.data.error, 'METHOD_NOT_ALLOWED');
+  }
+
+  // J. Missing signature rejected 403 (the empty actor is signed, never omitted).
+  {
+    const res = await rawIngressRequest(ingressServer.url, '/ingress/leaderboard', {
+      method: 'POST',
+      headers: { 'x-service-timestamp': String(now), 'x-service-actor': '' },
+      body: goodBody,
+    });
+    assert.equal(res.status, 403, 'missing signature rejected with 403');
+  }
+});

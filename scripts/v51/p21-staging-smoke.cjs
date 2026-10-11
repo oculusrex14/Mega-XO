@@ -589,6 +589,9 @@ async function main() {
       coreService: core,
       ticketIssuer,
       queue,
+      // The public leaderboard is a Core-owned aggregate read (api_runtime has no
+      // economy SELECT), served actor-free over the same signed ingress.
+      leaderboardPool: corePool,
       secret: GATEWAY_SECRET,
       now: clock,
     });

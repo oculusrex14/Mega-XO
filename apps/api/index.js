@@ -34,6 +34,12 @@ function createApiHandler(options = {}) {
       status: (actor) => competitiveRoutes.resolveGateway(context).status(actor),
     };
   }
+  if (typeof context.leaderboard !== 'function') {
+    // The public leaderboard needs `economy.ratings`, which the API-role pool is
+    // denied. Like queue admission it is served by the Core-owned ingress; the
+    // deployed API gains no Core credentials and holds no core pool.
+    context.leaderboard = (query) => competitiveRoutes.resolveGateway(context).leaderboard(query);
+  }
 
   return async function handler(req, res) {
     try {

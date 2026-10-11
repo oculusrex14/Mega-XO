@@ -411,6 +411,8 @@ async function handleGetLeaderboard(context, req, res) {
   }
 
   let projection = null;
+  // A Core-owned pool is only ever present when the API composition was handed one
+  // (loopback/e2e), never in the deployed API-role composition.
   const pool = context?.corePool || context?.pool;
   if (pool) {
     try {
@@ -418,12 +420,21 @@ async function handleGetLeaderboard(context, req, res) {
     } catch {}
   }
   if (!projection && typeof context?.leaderboard === 'function') {
+    // The leaderboard transport is genuinely available; a real failure (Core
+    // unreachable, timed out, refused the signed read) is NOT an empty board and
+    // must surface instead of being masked as a 200 with [].
     try {
       const rows = await context.leaderboard({ metric, scope, league, region });
       projection = createVersionedProjection(1, rows);
-    } catch {}
+    } catch (err) {
+      return sendJson(res, 503, { error: 'SERVICE_UNAVAILABLE' }, {
+        'Cache-Control': CACHE_CONTROL_POLICIES.PUBLIC_LEADERBOARD,
+      });
+    }
   }
   if (!projection) {
+    // No pool and no configured leaderboard transport: the existing empty
+    // projection (unchanged public shape).
     projection = createVersionedProjection(1, []);
   }
 

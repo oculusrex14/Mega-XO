@@ -1,6 +1,41 @@
 'use strict';
 
 const crypto = require('node:crypto');
+const { materializeLeaderboardProjection } = require('./read-cache.js');
+
+/* The public leaderboard is an aggregate read: no actor is ever authenticated. The
+ * single fixed public ingress path below is the ONLY place an empty actor header is
+ * admitted, and its query surface is a bounded whitelist - never an arbitrary object. */
+const LEADERBOARD_PATH = '/ingress/leaderboard';
+const LEADERBOARD_FIELDS = Object.freeze(['metric', 'scope', 'league', 'region']);
+const LEADERBOARD_METRICS = Object.freeze(['rating', 'wealth']);
+const LEADERBOARD_MAX_FIELD = 64;
+const LEADERBOARD_TOKEN = /^[A-Za-z0-9_-]*$/;
+
+/**
+ * Whitelists and bounds a public leaderboard query. Unknown keys, non-string or
+ * oversized values, and unsupported metrics are rejected so an unvalidated object
+ * can never reach the Core-owned read.
+ * @param {*} body Parsed request body
+ * @returns {{ok: boolean, query?: Object}}
+ */
+function validateLeaderboardQuery(body) {
+  if (!body || typeof body !== 'object' || Array.isArray(body)) return { ok: false };
+  for (const key of Object.keys(body)) {
+    if (!LEADERBOARD_FIELDS.includes(key)) return { ok: false };
+  }
+  const query = {};
+  for (const key of LEADERBOARD_FIELDS) {
+    const value = body[key];
+    if (value === undefined) continue;
+    if (typeof value !== 'string' || value.length > LEADERBOARD_MAX_FIELD || !LEADERBOARD_TOKEN.test(value)) {
+      return { ok: false };
+    }
+    query[key] = value;
+  }
+  if (query.metric !== undefined && !LEADERBOARD_METRICS.includes(query.metric)) return { ok: false };
+  return { ok: true, query };
+}
 
 /**
  * Constant-time comparison of two 64-character hex strings to protect against timing attacks.
@@ -411,6 +446,110 @@ function createCoreGateway({
         clearTimeout(timer);
       }
     },
+
+    /**
+     * Reads the public leaderboard aggregate through the Core-owned ingress.
+     *
+     * This is the ONE actor-free service call: the leaderboard is a public aggregate
+     * with no authenticated principal, so the request is signed with the SAME
+     * timestamp/method/path/actor('')/opKey('')/bodyHash construction the actor
+     * paths use (an empty actor can therefore never be forged - it is signed, not
+     * omitted). The body is the bounded query whitelist only, never a caller object.
+     * @param {Object} [query] { metric, scope, league, region }
+     * @returns {Promise<Array>} public leaderboard rows
+     */
+    async leaderboard(query = {}) {
+      const cleanPath = LEADERBOARD_PATH;
+      const url = baseUrl ? `${baseUrl}${cleanPath}` : cleanPath;
+      const timestamp = String(clock());
+      const bodyObj = {};
+      for (const field of LEADERBOARD_FIELDS) {
+        const value = query?.[field];
+        if (typeof value === 'string') bodyObj[field] = value;
+      }
+      const bodyString = JSON.stringify(bodyObj);
+
+      const signature = signRequest({
+        secret,
+        timestamp,
+        method: 'POST',
+        path: cleanPath,
+        actor: '',
+        opKey: '',
+        bodyString,
+      });
+
+      const headers = {
+        'content-type': 'application/json',
+        'x-service-timestamp': timestamp,
+        'x-service-actor': '',
+        'x-service-opkey': '',
+        'x-service-signature': signature,
+      };
+
+      const controller = new AbortController();
+      const timer = setTimeout(() => {
+        controller.abort(new Error('CORE_GATEWAY_TIMEOUT'));
+      }, timeout);
+      if (typeof timer?.unref === 'function') timer.unref();
+
+      try {
+        const res = await fetchFn(url, {
+          method: 'POST',
+          headers,
+          body: bodyString,
+          signal: controller.signal,
+        });
+
+        const status = res.status ?? res.statusCode ?? 200;
+        let text = '';
+        let parsed = null;
+
+        if (typeof res.text === 'function') {
+          text = await res.text();
+          if (text) {
+            try { parsed = JSON.parse(text); } catch {}
+          }
+        } else if (typeof res.json === 'function') {
+          try {
+            parsed = await res.json();
+            text = JSON.stringify(parsed);
+          } catch {}
+        } else if (typeof res.body === 'string') {
+          text = res.body;
+          try { parsed = JSON.parse(text); } catch {}
+        } else if (res.body && typeof res.body === 'object') {
+          parsed = res.body;
+          text = JSON.stringify(parsed);
+        } else if (res.data && typeof res.data === 'object') {
+          parsed = res.data;
+          text = JSON.stringify(parsed);
+        }
+
+        if (status < 200 || status >= 300) {
+          const errCode = parsed?.error || parsed?.code || (text && text.length < 120 ? text : 'REQUEST_FAILED');
+          const err = new Error(errCode);
+          err.status = status;
+          err.statusCode = status;
+          err.code = errCode;
+          err.data = parsed;
+          throw err;
+        }
+
+        if (parsed && typeof parsed === 'object' && 'result' in parsed) return parsed.result;
+        return parsed;
+      } catch (err) {
+        if (err.name === 'AbortError' || err.message === 'CORE_GATEWAY_TIMEOUT') {
+          const timeoutErr = new Error('GATEWAY_TIMEOUT');
+          timeoutErr.status = 504;
+          timeoutErr.code = 'GATEWAY_TIMEOUT';
+          throw timeoutErr;
+        }
+        throw err;
+      } finally {
+        clearTimeout(timer);
+      }
+    },
   };
 }
 
@@ -420,7 +559,11 @@ function createCoreGateway({
  * @param {Object} options.coreService
  * @param {Object} [options.ticketIssuer]
  * @param {Object} [options.queue] Core-owned queue service for admission/cancel/status.
- * The API gateway never acquires its database pool or exposes privileged pairing.
+ * @param {Function} [options.leaderboard] Core-owned public leaderboard materializer
+ * `(query) => rows`. Defaults to the existing `materializeLeaderboardProjection`
+ * against the Core-owned pool (bound via `leaderboardPool`), so the public API never
+ * needs Core credentials.
+ * @param {Object} [options.leaderboardPool] Core-owned pool used by the default materializer.
  * @param {string} options.secret
  * @param {number} [options.maxDriftMs=30000]
  * @param {Function} [options.now=Date.now]
@@ -430,6 +573,8 @@ function createCoreServiceIngress({
   coreService,
   ticketIssuer,
   queue,
+  leaderboard,
+  leaderboardPool,
   secret,
   maxDriftMs = 30000,
   now = Date.now,
@@ -439,6 +584,19 @@ function createCoreServiceIngress({
   }
 
   const clock = typeof now === 'function' ? now : Date.now;
+
+  /* The public leaderboard read is materialized by the Core-owned pool by default.
+   * An injected `leaderboard` function takes precedence, but neither an injected
+   * function nor a pool can be supplied by a request - only by the Core composition.
+   * The served result is the public ROWS array (the projection wrapper stays Core-side). */
+  const readLeaderboard = typeof leaderboard === 'function'
+    ? leaderboard
+    : (leaderboardPool
+      ? async (query) => {
+        const projection = await materializeLeaderboardProjection(leaderboardPool, query);
+        return projection && Array.isArray(projection.data) ? projection.data : projection;
+      }
+      : null);
 
   async function ingress(req, res) {
     try {
@@ -489,8 +647,11 @@ function createCoreServiceIngress({
         return sendIngressError(res, 403, 'INVALID_SERVICE_SIGNATURE');
       }
 
-      // 3. Verify actor match and presence
-      if (!actorHeader) {
+      // 3. Verify actor match and presence. The public leaderboard is the ONLY
+      // actor-free call: it carries no principal, but its empty actor header is
+      // still signed (see signRequest) and only the exact fixed path is admitted.
+      const isPublicLeaderboard = pathname === LEADERBOARD_PATH;
+      if (!actorHeader && !isPublicLeaderboard) {
         return sendIngressError(res, 403, 'INVALID_SERVICE_SIGNATURE');
       }
       if (parsedBody && typeof parsedBody === 'object' && parsedBody.actor && parsedBody.actor !== actorHeader) {
@@ -498,6 +659,24 @@ function createCoreServiceIngress({
       }
 
       // 4. Route dispatch
+      if (pathname === LEADERBOARD_PATH) {
+        if (method !== 'POST') return sendIngressError(res, 405, 'METHOD_NOT_ALLOWED');
+        if (typeof readLeaderboard !== 'function') {
+          return sendIngressError(res, 503, 'LEADERBOARD_UNAVAILABLE');
+        }
+        // The signed request body is the bounded query whitelist; arbitrary
+        // objects, unknown keys and oversized values never reach the Core read.
+        const validated = validateLeaderboardQuery(parsedBody === null ? {} : parsedBody);
+        if (!validated.ok) return sendIngressError(res, 400, 'INVALID_LEADERBOARD_QUERY');
+        try {
+          const result = await readLeaderboard(validated.query);
+          return sendIngressJson(res, 200, { ok: true, result });
+        } catch (err) {
+          const code = err?.code || err?.message || 'LEADERBOARD_UNAVAILABLE';
+          return sendIngressJson(res, err?.status || 503, { ok: false, error: code });
+        }
+      }
+
       if (pathname === '/ingress/queue/join' ||
           pathname === '/ingress/queue/cancel' ||
           pathname === '/ingress/queue/status') {

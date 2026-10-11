@@ -4,7 +4,8 @@ const fs = require('node:fs');
 const path = require('node:path');
 const http = require('node:http');
 const { ROOT, GENERATOR, MANIFEST } = require('./build-web.js');
-const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.json': 'application/json; charset=utf-8', '.webp': 'image/webp', '.svg': 'image/svg+xml', '.png': 'image/png', '.woff2': 'font/woff2', '.woff': 'font/woff', '.txt': 'text/plain; charset=utf-8' };
+const {createDownloadHandler} = require('../../apps/web/download-config.cjs');
+const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.json': 'application/json; charset=utf-8', '.webp': 'image/webp', '.svg': 'image/svg+xml', '.png': 'image/png', '.woff2': 'font/woff2', '.woff': 'font/woff', '.txt': 'text/plain; charset=utf-8', '.xml':'application/xml; charset=utf-8' };
 const CSP = "default-src 'self'; script-src 'self' https://unpkg.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'";
 const READ_API_ORIGIN = 'https://play.antimatterinnovations.com';
 const LEAGUES = new Set(['all', 'wood', 'stone', 'iron', 'bronze', 'silver', 'gold', 'diamond', 'emerald', 'champion', 'master', 'grandmaster']);
@@ -111,6 +112,7 @@ function createPreviewServer(options = {}) {
   if (manifest.generator !== GENERATOR || !Array.isArray(manifest.files)) throw new Error('P21_SERVE_REFUSED: expected a built P21 static artifact');
   const files = new Set([MANIFEST, ...manifest.files.map(file => file.path)]);
   const readOrigin = configuredReadOrigin(options);
+  const downloadHandler=createDownloadHandler({links:options.storeLinks||manifest.store_links});
   return http.createServer(async (request, response) => {
     response.setHeader('X-Content-Type-Options', 'nosniff');
     response.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
@@ -122,10 +124,11 @@ function createPreviewServer(options = {}) {
       response.writeHead(status, { 'Content-Type': type, 'Content-Length': Buffer.byteLength(content) });
       response.end(request.method === 'HEAD' ? undefined : content);
     };
-    if (!['GET', 'HEAD'].includes(request.method)) { response.setHeader('Allow', 'GET, HEAD'); return send(405, 'Method not allowed'); }
     let pathname;
     try { pathname = requestPath(request.url); }
     catch { return send(400, 'Invalid request path'); }
+    if(pathname==='/api/download')return downloadHandler(request,response);
+    if (!['GET', 'HEAD'].includes(request.method)) { response.setHeader('Allow', 'GET, HEAD'); return send(405, 'Method not allowed'); }
     if (pathname === '/api' || pathname.startsWith('/api/')) {
       response.setHeader('Cache-Control', 'no-store');
       if (pathname !== '/api/v1/leaderboard' || !readOrigin) return send(503, JSON.stringify({ error: 'WEB_API_NOT_CONFIGURED', message: 'This preview has no configured account or game service.' }), MIME['.json']);
@@ -142,13 +145,17 @@ function createPreviewServer(options = {}) {
     }
     const route = pathname.length > 1 ? pathname.replace(/\/$/, '') : pathname;
     let relative = route === '/legacy-game' ? 'legacy-game/index.html' : manifest.routes[route] || pathname.replace(/^\//, '');
-    let status = 200;
+    let status = route==='/404'?404:200;
     if (!files.has(relative)) {
-      if (pathname.startsWith('/legacy-game/') || pathname.startsWith('/game/') || pathname.startsWith('/assets/') || pathname.startsWith('/legal/') || path.extname(pathname)) return send(404, 'Not found');
+      if (pathname.startsWith('/legacy-game/') || pathname.startsWith('/game/') || pathname.startsWith('/assets/') || pathname.startsWith('/legal/') || (path.extname(pathname)&&!pathname.startsWith('/pages/'))) return send(404, 'Not found');
       // The website owns its visual 404. Missing resources never receive HTML.
-      relative = 'index.html';
+      relative = '404.html';
       status = 404;
     }
+    const meta=manifest.seo?.metadata?.[route];
+    if(options.indexable===true&&status===200&&meta?.indexable)response.setHeader('X-Robots-Tag',meta.robots);
+    const rawLegal=pathname.match(/^\/legal\/([a-z-]+)\.html$/);
+    if(rawLegal&&manifest.seo?.metadata?.['/'+rawLegal[1]])response.setHeader('Link','<'+manifest.seo.metadata['/'+rawLegal[1]].canonical+'>; rel="canonical"');
     const absolute = path.resolve(directory, relative);
     try {
       if (!absolute.startsWith(directory + path.sep) || fs.realpathSync(absolute) !== absolute || !fs.lstatSync(absolute).isFile()) return send(404, 'Not found');

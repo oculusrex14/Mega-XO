@@ -5,15 +5,17 @@ const fs = require('node:fs');
 const path = require('node:path');
 const crypto = require('node:crypto');
 const { execFileSync } = require('node:child_process');
+const {validateStoreLinks} = require('../../apps/web/download-config.cjs');
 
 const ROOT = path.resolve(__dirname, '../..');
 const GENERATOR = 'scripts/p21/build-web.js';
 const MANIFEST = 'web-build.manifest.json';
-const WEB_FILES = ['index.html', 'app.js', 'styles.css', 'ui.js', 'pages.js', 'pages.css', 'board.js', 'board.css'];
+const WEB_FILES = ['index.html', 'app.js', 'styles.css', 'ui.js', 'pages.js', 'pages.css', 'board.js', 'board.css', 'site.js', 'seo.js', 'downloads.js'];
 const OPTIONAL_WEB_FILES = ['data.js', 'game-runtime.js'];
 const GAME_FILES = ['game.js', 'domain.js', 'monetization.js', 'lan-icons.js', 'icons.js', 'account-client.js', 'network.js', 'app.js', 'tournament.js', 'party-ui.js', 'community.js', 'monetization-ui.js', 'styles.css', 'party.css', 'community.css', 'monetization.css'];
 const LEGAL_NAMES = ['privacy', 'terms', 'support', 'delete-account', 'privacy-choices'];
-const WEBSITE_ROUTES = ['/', '/play', '/game', '/casual', '/ranked', '/tournaments', '/season', '/friends', '/challenge', '/leaderboard', '/rewards', '/store', '/sponsors', '/ads', '/themes', '/profile', '/settings', '/account', '/how-to-play', '/support', '/about', '/privacy', '/terms', '/delete-account', '/privacy-choices', ...LEGAL_NAMES.map(name => '/legal/' + name), '/help', '/news', '/status', '/accessibility', '/offline', '/404'];
+const WEBSITE_ROUTES = ['/', '/download', '/faq', '/press', '/play', '/game', '/casual', '/ranked', '/tournaments', '/season', '/friends', '/challenge', '/leaderboard', '/rewards', '/store', '/sponsors', '/ads', '/themes', '/profile', '/settings', '/account', '/how-to-play', '/support', '/about', '/privacy', '/terms', '/delete-account', '/privacy-choices', ...LEGAL_NAMES.map(name => '/legal/' + name), '/help', '/news', '/status', '/accessibility', '/offline', '/404'];
+const routeFile = route => route==='/'?'index.html':route==='/404'?'404.html':'pages'+route+'.html';
 const sha256 = bytes => crypto.createHash('sha256').update(bytes).digest('hex');
 const posix = value => value.split(path.sep).join('/');
 
@@ -95,11 +97,12 @@ function createPlan(root) {
     const bytes = transform ? Buffer.from(transform(original.toString('utf8'))) : original;
     entries.push({ source, path: destination, bytes, source_sha256: sha256(original), sha256: sha256(bytes), ...(transform ? { transformation: 'legal-stylesheet-url-only' } : {}) });
   };
-  for (const name of WEB_FILES) add('apps/web/' + name, name);
+  const template=readSource(root,'apps/web/index.html').toString('utf8');
+  for(const marker of ['<!--SEO_HEAD-->','<header id="header" class="mx-header"></header>','<main id="main" tabindex="-1"></main>','<footer id="footer" class="mx-footer"></footer>']){
+    if(template.split(marker).length!==2)refuse('template must contain each prerender marker exactly once');
+  }
+  for (const name of WEB_FILES.filter(name=>name!=='index.html')) add('apps/web/' + name, name);
   for (const name of OPTIONAL_WEB_FILES) if (fs.existsSync(path.join(root, 'apps/web', name))) add('apps/web/' + name, name);
-  // Vercel's static-file 404 convention retains HTTP 404 for unknown routes.
-  // The shared SPA document renders its existing page-not-found design.
-  add('apps/web/index.html', '404.html');
   add('index.html', 'legacy-game/index.html');
   for (const name of GAME_FILES) add('src/' + name, 'legacy-game/src/' + name);
   for (const theme of ['vector', 'midnight', 'paperclub', 'afterhours']) {
@@ -119,6 +122,22 @@ function createPlan(root) {
   }
   const legalBytes = Buffer.from('// Generated from the retained public documents; wording and draft notices are unchanged.\nexport const legalDocuments = Object.freeze(' + JSON.stringify(documents, null, 2) + ');\n');
   entries.push({ source: null, sources: legalSources, path: 'legal-documents.js', bytes: legalBytes, sha256: sha256(legalBytes), transformation: 'trusted-main-inner-markup-to-es-module' });
+  const configSource='apps/web/store-links.json';
+  const storeLinks=validateStoreLinks(JSON.parse(readSource(root,configSource).toString('utf8')));
+  const renderSources=[...WEB_FILES.map(name=>'apps/web/'+name),'src/game.js',configSource,...legalSources.map(row=>row.source)].map(source=>({source,source_sha256:sha256(readSource(root,source))}));
+  const rendered=JSON.parse(execFileSync(process.execPath,[path.join(__dirname,'prerender-web.mjs')],{
+    input:JSON.stringify({root,template,storeLinks,legalDocuments:documents,routes:WEBSITE_ROUTES}),encoding:'utf8',maxBuffer:12*1024*1024,
+  }));
+  const generated=(destination,text,sources=renderSources,transformation='shared-pure-view-prerender')=>{
+    const bytes=Buffer.from(text);
+    entries.push({source:null,sources,path:destination,bytes,sha256:sha256(bytes),transformation});
+  };
+  for(const route of WEBSITE_ROUTES)generated(routeFile(route),rendered.documents[route]);
+  generated('robots.txt',rendered.robots,renderSources,'canonical-crawl-policy');
+  generated('sitemap.xml',rendered.sitemap,renderSources,'canonical-public-route-sitemap');
+  generated('store-links.js','// Generated from validated public store configuration.\nexport const storeLinks = Object.freeze('+JSON.stringify(storeLinks)+');\n',[{source:configSource,source_sha256:sha256(readSource(root,configSource))}],'validated-store-links-to-es-module');
+  entries.seo={origin:rendered.origin,public_routes:rendered.publicRoutes,metadata:rendered.metadata};
+  entries.storeLinks=storeLinks;
   const art = [...filesIn(root, 'assets/p21/art', name => /^[a-z0-9][a-z0-9.-]*\.webp$/.test(name)), ...rankFiles(root), ...rankFiles(root, 'assets/p21/art/ranks'), ...rankFiles(root, 'assets/p21/art/currency')];
   for (const source of art) {
     const bytes = readSource(root, source);
@@ -149,7 +168,10 @@ function buildWeb(options = {}) {
     bundle_sha256: sha256(Buffer.from(files.map(file => file.path + '\0' + file.bytes + '\0' + file.sha256).join('\0'))),
     file_count: files.length,
     total_bytes: files.reduce((total, file) => total + file.bytes, 0),
-    routes: Object.fromEntries([...WEBSITE_ROUTES.map(route => [route, 'index.html']), ['/game/', 'index.html'], ['/legacy-game/', 'legacy-game/index.html']]),
+    routes: Object.fromEntries([...WEBSITE_ROUTES.map(route => [route, routeFile(route)]), ['/game/', routeFile('/game')], ['/legacy-game/', 'legacy-game/index.html']]),
+    seo: entries.seo,
+    store_links: entries.storeLinks,
+    download: {endpoint:'/api/download',configuration:'apps/web/store-links.json',authority:'official-store redirect only; no purchases, identity or economic writes'},
     api: { configured: false, authority: 'existing API / Game Core; static artifact has no backend, credentials or writers', preview_read_seam: 'explicit P21_READ_API_ORIGIN only; GET /api/v1/leaderboard; no credential forwarding' },
     files,
   };
@@ -188,4 +210,4 @@ if (require.main === module) {
   } catch (error) { process.stderr.write(error.message + '\n'); process.exitCode = 1; }
 }
 
-module.exports = { buildWeb, createPlan, legalMain, ROOT, GENERATOR, MANIFEST, WEB_FILES, OPTIONAL_WEB_FILES, GAME_FILES, LEGAL_NAMES, WEBSITE_ROUTES };
+module.exports = { buildWeb, createPlan, legalMain, routeFile, ROOT, GENERATOR, MANIFEST, WEB_FILES, OPTIONAL_WEB_FILES, GAME_FILES, LEGAL_NAMES, WEBSITE_ROUTES };

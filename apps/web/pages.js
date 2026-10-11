@@ -1,7 +1,11 @@
 import { icon, escapeHtml, button, pageHeading } from './ui.js';
+import {renderDownloadPage} from './downloads.js';
 
 /** Public page copy is product documentation. Player state is never fabricated. */
 export const routes = [
+  { path: '/download', title: 'Download', description: 'Choose Android, iPhone or iPad downloads when available, or play Mega XOXO in your browser today.' },
+  { path: '/faq', title: 'Frequently asked questions', description: 'Answers about Mega XOXO rules, browser play, accounts, appearances and mobile downloads.' },
+  { path: '/press', title: 'Press & media kit', description: 'Official Mega XOXO facts, brand artwork and attribution for writers, creators and project partners.' },
   { path: '/play', title: 'Play', description: 'Choose local practice, Ranked, Casual or a game with friends.' },
   { path: '/casual', title: 'Casual', description: 'All the Mega XOXO strategy with no Elo at stake.' },
   { path: '/ranked', title: 'Ranked', description: 'Climb the Mega XOXO leagues through skill and seasonal competition.' },
@@ -362,6 +366,24 @@ function offlinePage() {
   return `<div class="pg-page pg-error-page">${panel(empty('cloud', 'Take the next move offline.', 'Online matches, friends and account updates need a connection. You can still try local practice in this loaded website.', actions(button('Start local practice', '/play?mode=practice', 'primary', 'arrow-right'), button('Try the game again', '/game', 'secondary', 'refresh')), '', 'h1'), 'pg-error-card')}${note('Local practice does not change your online rank, mint rewards or save to your cloud profile.')}</div>`;
 }
 
+export const faqEntries = [
+  {question:'What is Mega XOXO?', answer:'Mega XOXO is an Ultimate Tic-tac-toe strategy game by Antimatter Innovations. Nine small 3 × 3 boards form one bigger board.'},
+  {question:'How do you win?', answer:'Place three Xs or Os in a row to claim a small board. Claim three small boards in a row on the bigger board to win the game.'},
+  {question:'How does a move decide where the opponent plays?', answer:'The cell you choose sends the next player to the corresponding small board. If that board is complete, they can choose any open board.'},
+  {question:'Can I play in a browser without an account?', answer:'Yes. Play against Bot or share a screen with a friend without linking an account. Online play requires signing in to your permanent Mega XOXO profile.'},
+  {question:'Do themes change the rules or give an advantage?', answer:'No. Themes change the appearance, while legal moves and competitive balance stay the same. The browser offers Mega XOXO Neon plus Vector Light, Midnight Club, Paper Club and After Hours.'},
+  {question:'Where can I download the mobile apps?', answer:'The Download page will link to the official Google Play and App Store listings when they are available. Until then, you can play Mega XOXO in your browser.'},
+  {question:'What is the official game website?', answer:'The official Mega XOXO website is megaxo.online. Mega XOXO is made by Antimatter Innovations.'},
+];
+
+function faqPage() {
+  return `<div class="pg-page">${heading('A CLEARER NEXT MOVE.', 'Your questions. Answered.', 'Learn the rules, choose a play mode, and find the official place to start.')}<div class="pg-stack">${faqEntries.map(({question,answer})=>panel(`<h2>${e(question)}</h2><p class="mx-muted">${e(answer)}</p>`)).join('')}</div>${actions(button('Learn to play','/how-to-play','primary','arrow-right'),button('Download options','/download','secondary','download'),button('Get support','/support','secondary','help'))}</div>`;
+}
+
+function pressPage() {
+  return `<div class="pg-page">${heading('MEGA XOXO · BY ANTIMATTER INNOVATIONS', 'One bigger game. Ready to share.', 'Official facts and artwork for people writing about Mega XOXO.')}<div class="pg-grid pg-grid-two">${panel(`<h2>The game at a glance</h2><dl class="pg-facts"><dt>Name</dt><dd>Mega XOXO</dd><dt>Developer</dt><dd>Antimatter Innovations</dd><dt>Genre</dt><dd>Strategy · Ultimate Tic-tac-toe</dd><dt>Official website</dt><dd><a class="pg-text-link" href="https://megaxo.online/">megaxo.online</a></dd><dt>Browser play</dt><dd>Bot, local two-player and linked online play</dd><dt>Mobile downloads</dt><dd>Store links will appear on the <a class="pg-text-link" href="/download">Download page</a> when available.</dd></dl>`)}${panel(`<img src="/assets/art/header.webp" width="236" height="70" alt="Mega XOXO logo"><h2>Brand artwork</h2><p class="mx-muted">Use the logo to identify Mega XOXO in coverage or a project listing, with a link to the official game website. Keep its proportions and colours.</p>${actions(button('Download logo','/assets/art/header.webp','secondary','download').replace('<a ','<a download="mega-xoxo-logo.webp" '),button('Download icon','/assets/art/mark.webp','secondary','download').replace('<a ','<a download="mega-xoxo-icon.webp" '))}`)}</div>${panel(`<h2>A description you can use</h2><p>Mega XOXO is an Ultimate Tic-tac-toe strategy game by Antimatter Innovations. Win the small boards to win the big one. Every move also decides where your opponent plays next.</p><p class="mx-muted">Link to <a class="pg-text-link" href="https://megaxo.online/">megaxo.online</a> when introducing the game.</p>`)}<div class="pg-grid pg-grid-two">${panel(`<h2>Learn before you write</h2><p class="mx-muted">The game guide explains the small boards, move routing and big-board win. Frequently asked questions cover browser play and accounts.</p>${actions(button('Game guide','/how-to-play','secondary','arrow-right'),button('Frequently asked questions','/faq','secondary','help'))}`)}${panel(`<h2>The company behind the game</h2><p class="mx-muted">Mega XOXO is a project by Antimatter Innovations. A company showcase is planned for antimatterinnovations.com.</p>${button('Contact & support','/support','secondary','mail')}`)}</div></div>`;
+}
+
 function notFoundPage() {
   return `<div class="pg-page pg-error-page">${panel(`<span class="pg-error-code" aria-hidden="true">404</span><h1>This move leads off the board.</h1><p class="mx-muted">The page could not be found. Your next game is still just a move away.</p>${actions(button('Back to home', '/', 'primary', 'arrow-left'), button('Choose a play mode', '/play', 'secondary', 'swords'))}`, 'pg-error-card')}</div>`;
 }
@@ -376,6 +398,7 @@ export function renderPage(path, context = {}) {
     if (path.startsWith('/legal/')) return renderPage(documentPath, context);
   }
   const renderers = {
+    '/download': renderDownloadPage, '/faq': faqPage, '/press': pressPage,
     '/play': playPage, '/casual': casualPage, '/ranked': rankedPage, '/tournaments': tournamentsPage,
     '/season': seasonPage, '/friends': friendsPage, '/challenge': challengePage,
     '/leaderboard': leaderboardPage, '/rewards': rewardsPage, '/store': storePage, '/sponsors': sponsorsPage, '/ads': sponsorsPage, '/themes': themesPage,

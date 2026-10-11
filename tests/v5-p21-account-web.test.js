@@ -8,14 +8,17 @@ const crypto = require('node:crypto');
 
 const appSource = fs.readFileSync(path.join(__dirname, '../apps/web/app.js'), 'utf8').replace(/^import[^;]+;\s*/gm, '');
 const accountSource = fs.readFileSync(path.join(__dirname, '../src/account-client.js'), 'utf8');
-const helpers = Promise.all([import('../apps/web/ui.js'), import('../apps/web/pages.js'), import('../apps/web/data.js')]);
+const helpers = Promise.all([
+  import('../apps/web/ui.js'), import('../apps/web/downloads.js'), import('../apps/web/pages.js'),
+  import('../apps/web/site.js'), import('../apps/web/seo.js'), import('../apps/web/data.js'),
+]);
 const tick = () => new Promise(resolve => setImmediate(resolve));
 
 /** Runs the actual website controller and retained cookie/CSRF client against
  * synthetic service replies. The DOM adapter covers controller dispatch only;
  * layout and browser rendering are verified by the separate browser QA. */
 async function fixture(handler) {
-  const [ui, pages, data] = await helpers;
+  const [ui, downloads, pages, site, seo, data] = await helpers;
   const calls = [], listeners = new Map(), nodes = new Map(), storage = new Map();
   const location = { href: 'https://website.test/account', origin: 'https://website.test', pathname: '/account', search: '', assign(url) { this.assigned = url; } };
   const node = () => ({ innerHTML: '', content: '', textContent: '', hidden: false, focus() {}, querySelector: () => null, querySelectorAll: () => [], insertAdjacentHTML() {} });
@@ -27,8 +30,9 @@ async function fixture(handler) {
     addEventListener(type, callback) { const list = listeners.get(type) || []; list.push(callback); listeners.set(type, list); },
   };
   const sandbox = {
-    ...ui, ...pages, ...data, document, location,
+    ...ui, ...downloads, ...pages, ...site, ...seo, ...data, document, location,
     legalDocuments: {},
+    storeLinks: { ios: null, android: null },
     renderPreview: () => '', renderPractice: () => '', renderGame: () => '', mountBoard: () => ({ destroy() {} }),
     AbortController, Headers, URL, URLSearchParams, Date, setTimeout, clearTimeout, setInterval, clearInterval,
     navigator: { onLine: true }, crypto,
@@ -49,6 +53,9 @@ async function fixture(handler) {
   // transport so every real controller request reaches this isolated service.
   sandbox.readJSON = (resource, options = {}) => data.readJSON(resource, { ...options, fetcher: sandbox.fetch });
   sandbox.createReadModel = options => data.createReadModel({ ...options, request: sandbox.readJSON });
+  // SEO is also imported into the host realm; pass the fixture document so
+  // title/description updates run against the controller's actual DOM adapter.
+  sandbox.updateSeo = route => seo.updateSeo(route, document);
   const context = vm.createContext(sandbox);
   vm.runInContext(accountSource, context, { filename: 'src/account-client.js' });
   vm.runInContext(appSource, context, { filename: 'apps/web/app.js' });

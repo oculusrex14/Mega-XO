@@ -8,7 +8,7 @@ const path = require('node:path');
 const crypto = require('node:crypto');
 const http = require('node:http');
 const { once } = require('node:events');
-const { buildWeb, ROOT, MANIFEST, WEB_FILES, OPTIONAL_WEB_FILES, GAME_FILES, LEGAL_NAMES, WEBSITE_ROUTES } = require('../scripts/p21/build-web.js');
+const { buildWeb, ROOT, MANIFEST, WEB_FILES, OPTIONAL_WEB_FILES, GAME_FILES, LEGAL_NAMES, WEBSITE_ROUTES, routeFile } = require('../scripts/p21/build-web.js');
 const { createPreviewServer, READ_API_ORIGIN, READ_MAX_BYTES } = require('../scripts/p21/serve-web.js');
 const hash = value => crypto.createHash('sha256').update(value).digest('hex');
 
@@ -16,7 +16,10 @@ function fixture(t) {
   const root = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'mega-p21-build-')));
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
   const write = (relative, bytes) => { const target = path.join(root, relative); fs.mkdirSync(path.dirname(target), { recursive: true }); fs.writeFileSync(target, bytes); };
-  for (const name of [...WEB_FILES, ...OPTIONAL_WEB_FILES]) write('apps/web/' + name, name === 'index.html' ? '<!doctype html><title>Mega XOXO</title><script type="module" src="/app.js"></script>' : '/* synthetic website fixture */');
+  for (const name of [...WEB_FILES, ...OPTIONAL_WEB_FILES, 'package.json', 'store-links.json']) {
+    const original=path.join(ROOT,'apps/web',name);
+    write('apps/web/'+name,fs.existsSync(original)?fs.readFileSync(original):'/* optional synthetic runtime fixture */');
+  }
   const retained = ['index.html', ...GAME_FILES.map(name => 'src/' + name), ...LEGAL_NAMES.map(name => 'public/' + name + '.html'), 'public/legal.css'];
   for (const theme of ['vector', 'midnight', 'paperclub', 'afterhours']) for (const kind of ['app', 'mark']) retained.push('assets/p21/logos/mega-xoxo-' + theme + '-' + kind + '.webp');
   for (const relative of retained) write(relative, fs.readFileSync(path.join(ROOT, relative)));
@@ -43,12 +46,12 @@ test('P21-BUILD-01: deterministic positive allowlist excludes authority, secrets
   assert.equal(fs.readFileSync(path.join(second.output, MANIFEST), 'utf8'), text);
   assert.equal(first.manifest.bundle_sha256, second.manifest.bundle_sha256);
   assert.equal(first.manifest.api.configured, false);
-  assert.equal(first.manifest.routes['/game'], 'index.html');
-  assert.equal(first.manifest.routes['/game/'], 'index.html');
-  assert.deepEqual(fs.readFileSync(path.join(first.output, '404.html')), fs.readFileSync(path.join(first.output, 'index.html')));
+  assert.equal(first.manifest.routes['/game'], 'pages/game.html');
+  assert.equal(first.manifest.routes['/game/'], 'pages/game.html');
+  assert.notDeepEqual(fs.readFileSync(path.join(first.output, '404.html')), fs.readFileSync(path.join(first.output, 'index.html')));
   assert.equal(first.manifest.routes['/legacy-game/'], 'legacy-game/index.html');
-  assert.equal(first.manifest.routes['/privacy'], 'index.html');
-  assert.equal(first.manifest.routes['/legal/privacy'], 'index.html');
+  assert.equal(first.manifest.routes['/privacy'], 'pages/privacy.html');
+  assert.equal(first.manifest.routes['/legal/privacy'], 'pages/legal/privacy.html');
   for (const file of second.manifest.files) {
     const bytes = fs.readFileSync(path.join(second.output, file.path));
     assert.equal(hash(bytes), file.sha256, file.path);
@@ -156,7 +159,7 @@ test('P21-SERVE-01: clean route deep links, legal pages and game assets serve wi
   const port = server.address().port;
   for (const route of WEBSITE_ROUTES) {
     const response = await rawRequest(port, route + '?source=deep-link');
-    assert.equal(response.status, 200, route);
+    assert.equal(response.status, route === '/404' ? 404 : 200, route);
     assert.match(response.headers['content-type'], /^text\/html/);
     assert.ok(response.body.includes('Mega XOXO'), route);
   }
@@ -274,8 +277,12 @@ test('P21-DELIVERY-01: Vercel routing matches static manifest and automatic depl
   assert.equal(config.outputDirectory, 'dist');
   assert.equal(config.git.deploymentEnabled, false);
   assert.equal(config.installCommand, 'true');
-  for (const route of WEBSITE_ROUTES.filter(route => route !== '/')) assert.ok(config.rewrites.some(rule => rule.source === route && rule.destination === '/index.html'), route);
-  for (const name of LEGAL_NAMES) assert.ok(config.rewrites.some(rule => rule.source === '/legal/' + name && rule.destination === '/index.html'), name);
+  for (const route of WEBSITE_ROUTES.filter(route => route !== '/')) assert.ok(config.rewrites.some(rule => rule.source === route && rule.destination === '/' + routeFile(route)), route);
+  for (const name of LEGAL_NAMES) assert.ok(config.rewrites.some(rule => rule.source === '/legal/' + name && rule.destination === '/' + routeFile('/legal/' + name)), name);
   assert.ok(!config.rewrites.some(rule => rule.source.includes('/api') || rule.destination.startsWith('http')));
   assert.ok(config.redirects.some(rule => rule.source === '/legacy-game' && rule.destination === '/legacy-game/'));
+  const robotsAt=source=>config.headers.find(rule=>rule.source===source)?.headers.find(header=>header.key==='X-Robots-Tag')?.value;
+  assert.equal(robotsAt('/(.*)'),undefined,'public production pages have no blanket noindex');
+  for(const source of ['/game','/game/(.*)','/play','/legacy-game/(.*)','/account','/profile','/settings','/api/(.*)','/pages/(.*)','/legal/:name.html'])assert.match(robotsAt(source),/noindex/,source);
+  for(const name of LEGAL_NAMES)assert.ok(config.headers.some(rule=>rule.source==='/legal/'+name+'.html'&&rule.headers.some(header=>header.key==='Link'&&header.value==='<https://megaxo.online/'+name+'>; rel="canonical"')),name+' retained legal canonical header');
 });

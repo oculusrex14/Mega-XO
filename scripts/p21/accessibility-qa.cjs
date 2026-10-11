@@ -23,7 +23,7 @@ async function main() {
   }
   fs.writeFileSync(path.join(snapshot,MANIFEST),JSON.stringify(manifest,null,2)+'\n');
  }catch(error){fs.rmSync(snapshot,{recursive:true,force:true});throw error;}
- const report={case_ids:['P21-A11Y-001','P21-A11Y-SYNTHETIC-LINKED','P21-A11Y-GAME-THEMES','P21-A11Y-PAPER-HUD-01','P21-A11Y-FORCED-COLORS-01'],checked_at:new Date().toISOString(),runtime_version:process.version,source_commit:manifest.source_commit,bundle_sha256:manifest.bundle_sha256,command:`env -u NODE_OPTIONS ${process.execPath} scripts/p21/accessibility-qa.cjs`,environment:'Local loopback Chromium; guest or synthetic linked fixture; read proxy explicitly disabled; no authenticated/provider traffic',isolated_payload_snapshot:true,tool_version:axe.version,checks:[],manual_review:[]};
+ const report={case_ids:['P21-A11Y-001','P21-A11Y-SYNTHETIC-LINKED','P21-A11Y-GAME-THEMES','P21-A11Y-PRERENDERED-ISOLATION','P21-A11Y-PRERENDERED','P21-A11Y-PAPER-HUD-01','P21-A11Y-FORCED-COLORS-01'],checked_at:new Date().toISOString(),runtime_version:process.version,source_commit:manifest.source_commit,bundle_sha256:manifest.bundle_sha256,command:`env -u NODE_OPTIONS ${process.execPath} scripts/p21/accessibility-qa.cjs`,environment:'Local loopback Chromium; guest or synthetic linked fixture; prerender audit blocks all site scripts and allows axe tooling only; read proxy explicitly disabled; no authenticated/provider traffic',isolated_payload_snapshot:true,tool_version:axe.version,checks:[],manual_review:[]};
  report.qa_script_sha256=crypto.createHash('sha256').update(fs.readFileSync(__filename)).digest('hex');
  const server=createPreviewServer({directory:snapshot,readApiOrigin:null});server.listen(0,'127.0.0.1');await once(server,'listening');
  const origin=`http://127.0.0.1:${server.address().port}`;
@@ -57,6 +57,52 @@ async function main() {
     if(result.incomplete.length)report.manual_review.push({route:'/game',width,theme,items:result.incomplete});
    }
    await page.close();
+  }
+  // Axe needs asynchronous JavaScript execution. Chromium's fully disabled
+  // execution mode can garbage-collect its pending promises, so this audit
+  // enables tooling while aborting every site script request. The separate
+  // browser suite still verifies genuine javaScriptEnabled:false rendering.
+  for(const width of [1672,390]) {
+   const context=await browser.newContext({javaScriptEnabled:true,viewport:{width,height:941}});
+   const page=await context.newPage(),blockedScripts=[],apiRequests=[];
+   await page.route('**/*',route=>{
+    const request=route.request(),url=new URL(request.url());
+    if(request.resourceType()==='script'){blockedScripts.push(url.pathname);return route.abort('blockedbyclient');}
+    if(url.pathname.startsWith('/api/')){apiRequests.push(url.pathname);return route.abort('blockedbyclient');}
+    return url.origin===origin?route.continue():route.abort('blockedbyclient');
+   });
+   for(const route of ['/','/how-to-play','/themes','/download','/faq','/press','/privacy','/terms','/legal/support']) {
+    const scriptStart=blockedScripts.length,apiStart=apiRequests.length;
+    const response=await context.request.get(origin+route),sourceHTML=await response.text();
+    await page.goto(origin+route,{waitUntil:'networkidle'});await page.locator('#main h1').waitFor();await page.evaluate(()=>document.fonts.ready);
+    const isolation=await page.evaluate(html=>{
+     const parsed=new DOMParser().parseFromString(html,'text/html');
+     const siteScripts=[...document.querySelectorAll('script[src]')].map(script=>new URL(script.src).pathname);
+     const inlineExecutionCandidates=[...document.scripts].filter(script=>!script.src&&!['application/ld+json','application/json'].includes(script.type)&&script.textContent.trim()).length;
+     const inlineEventHandlers=[...document.querySelectorAll('*')].filter(element=>[...element.attributes].some(attribute=>/^on/i.test(attribute.name))).length;
+     const globals=['MegaGame','MegaAccount','MegaNetwork'].filter(name=>typeof globalThis[name]!=='undefined');
+     const mainUnhydrated=document.querySelector('#main').innerHTML===parsed.querySelector('#main').innerHTML;
+     // An enabled HTML parser treats noscript body contents as text. Expose
+     // the retained notice for the audit exactly as disabled rendering does.
+     const notices=[...document.querySelectorAll('noscript')];
+     for(const notice of notices){const container=document.createElement('div');container.dataset.qaNoscript='exposed-for-audit';container.innerHTML=notice.textContent;notice.replaceWith(container);}
+     return {siteScripts,inlineExecutionCandidates,inlineEventHandlers,globals,mainUnhydrated,noscriptNoticesExposed:notices.length};
+    },sourceHTML);
+    const currentBlocked=blockedScripts.slice(scriptStart),currentAPI=apiRequests.slice(apiStart);
+    const isolated=isolation.mainUnhydrated&&isolation.inlineExecutionCandidates===0&&isolation.inlineEventHandlers===0&&isolation.globals.length===0&&currentAPI.length===0&&isolation.siteScripts.every(script=>currentBlocked.includes(script));
+    const mode={javaScriptEnabled:true,execution_mode:'audit-tool-only; every site script blocked; noscript notice exposed',site_scripts_blocked:currentBlocked};
+    report.checks.push({case_id:'P21-A11Y-PRERENDERED-ISOLATION',route,width,...mode,result:isolated?'PASS':'FAIL',...isolation,apiRequests:currentAPI});
+    if(!isolated)throw Error('Prerender audit could not prove site-script isolation: '+route+' at '+width);
+    await page.evaluate(axe.source);
+    const result=await page.evaluate(async()=>{
+     const data=await axe.run({runOnly:{type:'tag',values:['wcag2a','wcag2aa','wcag21a','wcag21aa','wcag22aa','best-practice']}});
+     const compact=entry=>({id:entry.id,impact:entry.impact,nodes:entry.nodes.map(node=>({target:node.target,failure_summary:node.failureSummary}))});
+     return {violations:data.violations.map(compact),incomplete:data.incomplete.map(compact)};
+    });
+    report.checks.push({case_id:'P21-A11Y-PRERENDERED',route,width,...mode,result:result.violations.length?'FAIL':'PASS',violations:result.violations});
+    if(result.incomplete.length)report.manual_review.push({route,width,...mode,items:result.incomplete});
+   }
+   await context.close();
   }
   // Published standings and personal cards need a separate synthetic linked
   // fixture: unavailable guest data cannot exercise their rendered controls.
@@ -100,7 +146,7 @@ async function main() {
   report.checks.push({case_id:'P21-A11Y-EXECUTION',result:'FAIL',message:String(error.message).slice(0,1000)});
  } finally {await browser.close();server.closeAllConnections();await new Promise(resolve=>server.close(resolve));fs.rmSync(snapshot,{recursive:true,force:true});}
  report.result=report.checks.every(check=>check.result==='PASS')?'PASS':'FAIL';
- report.limitations=['Automated checks are not physical VoiceOver/TalkBack acceptance.','Incomplete image/gradient contrast findings require human review.','No live account, native store, provider or production acceptance.'];
+ report.limitations=['Automated checks are not physical VoiceOver/TalkBack acceptance.','Prerender axe checks allow audit JavaScript, block all site scripts, verify no hydration and expose the noscript notice. Actual JavaScript-disabled rendering is verified separately by browser-qa.cjs.','Incomplete image/gradient contrast findings require human review.','No live account, native store, provider or production acceptance.'];
  const output=path.join(ROOT,'tests-output/p21-web');fs.mkdirSync(output,{recursive:true});
  const immutableOutput=path.join(output,manifest.bundle_sha256.slice(0,12));fs.mkdirSync(immutableOutput,{recursive:true});
  fs.writeFileSync(path.join(immutableOutput,'accessibility-qa.json'),JSON.stringify(report,null,2)+'\n');

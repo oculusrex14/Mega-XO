@@ -81,7 +81,8 @@ async function main() {
     };
     const track = page => {
       page.on('response', response => {
-        if (response.url().startsWith(origin + '/') && response.status() >= 400 && !response.url().startsWith(origin + '/api/')) {
+        const intentional404 = new URL(response.url()).pathname === '/404' && response.request().resourceType() === 'document' && response.status() === 404;
+        if (response.url().startsWith(origin + '/') && response.status() >= 400 && !response.url().startsWith(origin + '/api/') && !intentional404) {
           report.requests.missing_local_resources.push({ path: new URL(response.url()).pathname, status: response.status() });
         }
       });
@@ -103,6 +104,19 @@ async function main() {
         frameEdge: getComputedStyle(stage.querySelector('.gb-frame'), '::before').display,
       };
     });
+    const metadata = page => page.evaluate(() => ({
+      title: document.title,
+      description: [...document.querySelectorAll('meta[name="description"]')].map(meta => meta.content),
+      canonical: [...document.querySelectorAll('link[rel="canonical"]')].map(link => link.href),
+      robots: [...document.querySelectorAll('meta[name="robots"]')].map(meta => meta.content),
+      ogTitle: [...document.querySelectorAll('meta[property="og:title"]')].map(meta => meta.content),
+      ogUrl: [...document.querySelectorAll('meta[property="og:url"]')].map(meta => meta.content),
+      twitterTitle: [...document.querySelectorAll('meta[name="twitter:title"]')].map(meta => meta.content),
+      schema: [...document.querySelectorAll('script[type="application/ld+json"]')].flatMap(script => {
+        const value = JSON.parse(script.textContent); return Array.isArray(value) ? value : value['@graph'] || [value];
+      }),
+    }));
+    const rawMetadata = new Map();
     const widths = [
       { name: 'desktop', width: 1672, height: 941 },
       { name: 'tablet', width: 768, height: 1024 },
@@ -132,10 +146,33 @@ async function main() {
           }).slice(0, 8).map(element => ({ element: element.tagName.toLowerCase(), class: element.className?.baseVal ?? element.className })),
           links: [...document.querySelectorAll('a[href]')].map(anchor => anchor.getAttribute('href')).filter(href => href.startsWith('/') && !href.startsWith('//')),
         }));
-        check('P21-BROWSER-ROUTE', response?.status() === 200 && Boolean(metrics.heading) && (route === '/404' || !metrics.renders404), { route, viewport: viewport.name, status: response?.status(), heading: metrics.heading });
+        check('P21-BROWSER-ROUTE', response?.status() === (route === '/404' ? 404 : 200) && Boolean(metrics.heading) && (route === '/404' || !metrics.renders404), { route, viewport: viewport.name, status: response?.status(), heading: metrics.heading });
         check('P21-BROWSER-REFLOW', metrics.scrollWidth <= metrics.width + 1, { route, viewport: viewport.name, width: metrics.width, scrollWidth: metrics.scrollWidth, overflowing: metrics.overflowing });
         check('P21-BROWSER-IMAGES', metrics.brokenImages.length === 0, { route, viewport: viewport.name, brokenImages: metrics.brokenImages });
         check('P21-BROWSER-LABELS', metrics.unlabeledButtons.length === 0, { route, viewport: viewport.name, unlabeledButtons: metrics.unlabeledButtons });
+        if (viewport.name === 'desktop') {
+          const raw = await context.request.get(origin + route);
+          const content = await page.evaluate(html => {
+            const document = new DOMParser().parseFromString(html, 'text/html');
+            const get = (selector, property = 'content') => [...document.querySelectorAll(selector)].map(element => element[property] || element.getAttribute(property));
+            const main = document.querySelector('#main');
+            return {
+              title: document.title, description: get('meta[name="description"]'), canonical: get('link[rel="canonical"]', 'href'), robots: get('meta[name="robots"]'),
+              ogTitle: get('meta[property="og:title"]'), ogUrl: get('meta[property="og:url"]'), twitterTitle: get('meta[name="twitter:title"]'),
+              headingCount: main?.querySelectorAll('h1').length || 0,
+              contentLength: main?.textContent.replace(/\s+/g, ' ').trim().length || 0,
+              header: Boolean(document.querySelector('#header a[href="/"]')), footer: Boolean(document.querySelector('#footer a')),
+              schema: [...document.querySelectorAll('script[type="application/ld+json"]')].flatMap(script => {
+                const value = JSON.parse(script.textContent); return Array.isArray(value) ? value : value['@graph'] || [value];
+              }),
+            };
+          }, await raw.text());
+          rawMetadata.set(route, content);
+          check('P21-BROWSER-PRERENDERED-CONTENT', content.headingCount === 1 && content.contentLength > 80 && content.header && content.footer, { route, headingCount: content.headingCount, contentLength: content.contentLength, header: content.header, footer: content.footer });
+          check('P21-BROWSER-RAW-METADATA', content.title.length > 10 && content.description.length === 1 && content.description[0].length >= 50 && content.canonical.length === 1 && content.canonical[0].startsWith('https://megaxo.online/') && content.robots.length === 1 && content.ogTitle[0] === content.title && content.ogUrl[0] === content.canonical[0] && content.twitterTitle[0] === content.title && content.schema.length > 0, { route, title: content.title, canonical: content.canonical, robots: content.robots });
+          const live = await metadata(page);
+          check('P21-BROWSER-METADATA-HYDRATION', ['title', 'description', 'canonical', 'robots', 'ogTitle', 'ogUrl', 'twitterTitle', 'schema'].every(key => JSON.stringify(content[key]) === JSON.stringify(live[key])), { route, title: live.title, canonical: live.canonical });
+        }
         for (const href of metrics.links) snapshots.add(href.split('#')[0]);
         if (route === '/') {
           homeNeon = await neonStyle(page);
@@ -175,8 +212,13 @@ async function main() {
     track(page);
     for (const href of [...snapshots].sort()) {
       const response = await context.request.get(origin + href);
-      check('P21-BROWSER-LINK', response.status() === 200, { href, status: response.status() });
+      check('P21-BROWSER-LINK', response.status() === (href.split('?')[0] === '/404' ? 404 : 200), { href, status: response.status() });
     }
+    const crawlable = [...rawMetadata.entries()].filter(([route, value]) => !/noindex/i.test(value.robots[0]) && value.canonical[0] === 'https://megaxo.online' + route);
+    check('P21-BROWSER-PUBLIC-METADATA-UNIQUE', new Set(crawlable.map(([, value]) => value.title)).size === crawlable.length && new Set(crawlable.map(([, value]) => value.description[0])).size === crawlable.length && new Set(crawlable.map(([, value]) => value.canonical[0])).size === crawlable.length, { pages: crawlable.length });
+    for (const route of ['/game', '/play', '/account', '/profile', '/settings', '/offline', '/status', '/404']) check('P21-BROWSER-PRIVATE-NOINDEX', /noindex/i.test(rawMetadata.get(route)?.robots[0] || ''), { route });
+    const unknown = await context.request.get(origin + '/missing-synthetic-website-route');
+    check('P21-BROWSER-REAL-404', unknown.status() === 404 && /noindex/i.test(await unknown.text()), { route: '/missing-synthetic-website-route', status: unknown.status() });
     for (const name of LEGAL_NAMES) {
       const response = await page.goto(origin + '/legal/' + name, { waitUntil: 'networkidle' });
       const main = await page.locator('#main').textContent();
@@ -191,6 +233,19 @@ async function main() {
       const chrome = await page.locator('.mx-header').count() === 1 && await page.locator('.mx-footer').count() === 1;
       check('P21-BROWSER-LEGAL', response?.status() === 200 && await page.locator('#main h1').count() === 1 && chrome && text.includes(expected), { route: '/legal/' + name, status: response?.status(), websiteChrome: chrome, completeSourceText: text.includes(expected) });
     }
+    await page.goto(origin + '/', { waitUntil: 'networkidle' });
+    const homeSeo = await metadata(page);
+    const primary = page.getByRole('link', { name: 'Play Now', exact: true });
+    check('P21-BROWSER-HERO-PLAY-DESTINATION', await primary.getAttribute('href') === '/game', { label: 'Play Now', href: await primary.getAttribute('href') });
+    await primary.click();
+    await page.waitForURL(origin + '/game');
+    await page.locator('.gb-game-page').waitFor();
+    const gameSeo = await metadata(page);
+    check('P21-BROWSER-SPA-GAME-METADATA', gameSeo.canonical[0] === 'https://megaxo.online/game' && /noindex/i.test(gameSeo.robots[0]) && gameSeo.title !== homeSeo.title && gameSeo.ogTitle[0] === gameSeo.title && gameSeo.twitterTitle[0] === gameSeo.title && gameSeo.ogUrl[0] === gameSeo.canonical[0], { from: '/', to: '/game', title: gameSeo.title, canonical: gameSeo.canonical, robots: gameSeo.robots });
+    await page.goBack();
+    await page.waitForURL(origin + '/');
+    await page.locator('#hero-title').waitFor();
+    check('P21-BROWSER-SPA-METADATA-RESTORE', JSON.stringify(await metadata(page)) === JSON.stringify(homeSeo), { from: '/game', to: '/', title: (await metadata(page)).title });
     await page.goto(origin + '/game/', { waitUntil: 'networkidle' });
     check('P21-BROWSER-GAME-SLASH', await page.locator('.gb-game-page').count() === 1 && await page.locator('.mx-header').count() === 1, { route: '/game/' });
     await page.locator('[data-gb-setting="mode"]').selectOption('local');
@@ -201,12 +256,14 @@ async function main() {
     const occupied = await page.locator('[data-gb-cell="0:4"]').getAttribute('aria-label');
     check('P21-BROWSER-PRACTICE-OCCUPIED', occupied.includes('X, occupied'), { cell: '0:4', label: occupied });
     const tabStop = await page.locator('.gb-cell[tabindex="0"]').getAttribute('data-gb-cell');
+    const playingSeo = await metadata(page);
     for (const theme of ['vector', 'midnight', 'paperclub', 'afterhours', 'cinematic']) {
       await page.locator('[data-gb-setting="theme"]').selectOption(theme);
       check('P21-BROWSER-THEME', await page.locator('[data-gb-stage]').getAttribute('data-gb-theme') === theme, { theme });
       check('P21-BROWSER-THEME-STATE', (await page.locator('[data-gb-cell="0:4"]').getAttribute('aria-label')).includes('X, occupied'), { theme, cell: '0:4' });
       const afterThemeMoves = await page.locator('.gb-cell[aria-disabled="false"]').evaluateAll(cells => cells.map(cell => cell.dataset.gbCell));
       check('P21-BROWSER-THEME-ROUTING-FOCUS', JSON.stringify(afterThemeMoves) === JSON.stringify(legalMoves) && await page.locator('.gb-cell[tabindex="0"]').getAttribute('data-gb-cell') === tabStop, { theme, legalMoves: afterThemeMoves, tabStop });
+      check('P21-BROWSER-THEME-SEO-STABILITY', JSON.stringify(await metadata(page)) === JSON.stringify(playingSeo), { theme, route: '/game/' });
       await snapshot(page, 'practice-' + theme);
     }
     await page.locator('[data-gb-cell="4:0"]').focus();
@@ -291,13 +348,49 @@ async function main() {
     await authPage.clock.fastForward(31000);
     check('P21-BROWSER-AUTH-NO-POLL', authReads.filter(read => read.path === '/api/v1/leaderboard').length === 1 && authReads.every(read => read.method === 'GET'), { response: 'synthetic AUTH_REQUIRED', leaderboardReads: authReads.filter(read => read.path === '/api/v1/leaderboard').length, simulatedMilliseconds: 31000 });
     await authContext.close();
+    const downloadDevices = [
+      { name: 'desktop', viewport: { width: 1280, height: 900 }, expectedPlatform: null },
+      { name: 'android', viewport: { width: 390, height: 844 }, userAgent: 'Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Mobile Safari/537.36', expectedPlatform: 'android' },
+      { name: 'ios', viewport: { width: 390, height: 844 }, userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1', expectedPlatform: 'ios' },
+    ];
+    for (const device of downloadDevices) {
+      const downloadContext = await browser.newContext({ viewport: device.viewport, userAgent: device.userAgent, reducedMotion: 'reduce' });
+      await localOnly(downloadContext);
+      const requests = [];
+      await downloadContext.route(origin + '/api/download**', async route => {
+        const request = route.request(), url = new URL(request.url());
+        requests.push({ method: request.method(), pathname: url.pathname, platform: url.searchParams.get('platform'), documentNavigation: request.isNavigationRequest() });
+        // Synthetic unavailable listing response exercises the full document
+        // handoff without opening a store or using a real device account.
+        await route.fulfill({ status: 303, headers: { Location: '/download' + (device.expectedPlatform ? '?platform=' + device.expectedPlatform : '') }, body: '' });
+      });
+      const downloadPage = await downloadContext.newPage(); track(downloadPage);
+      await downloadPage.goto(origin + '/', { waitUntil: 'networkidle' });
+      const secondary = downloadPage.getByRole('link', { name: 'Download Now', exact: true });
+      const href = await secondary.getAttribute('href');
+      check('P21-BROWSER-HERO-DOWNLOAD-DESTINATION', new URL(href, origin).pathname === '/api/download', { device: device.name, href });
+      await secondary.click();
+      await downloadPage.waitForURL(url => url.pathname === '/download');
+      await downloadPage.locator('#main h1').waitFor();
+      check('P21-BROWSER-DOWNLOAD-NATIVE-NAVIGATION', requests.length === 1 && requests[0].method === 'GET' && requests[0].documentNavigation && requests[0].platform === device.expectedPlatform, { device: device.name, requests, source: 'synthetic listing unavailable response' });
+      check('P21-BROWSER-DOWNLOAD-CHOOSER', await downloadPage.locator('.mx-header').count() === 1 && await downloadPage.locator('.mx-footer').count() === 1 && await downloadPage.locator('a[href^="https://play.google.com"],a[href^="https://apps.apple.com"]').count() === 0, { device: device.name, externalListings: 'unconfigured' });
+      await downloadContext.close();
+    }
     const noScriptContext = await browser.newContext({ javaScriptEnabled: false, viewport: { width: 390, height: 844 } });
     await localOnly(noScriptContext);
     const noScriptPage = await noScriptContext.newPage();
+    for (const route of ['/', '/how-to-play', '/themes', '/download', '/faq', '/press', '/privacy', '/terms', '/legal/support']) {
+      const response = await noScriptPage.goto(origin + route, { waitUntil: 'networkidle' });
+      const geometry = await noScriptPage.evaluate(() => ({ width: document.documentElement.clientWidth, scrollWidth: document.documentElement.scrollWidth }));
+      check('P21-BROWSER-NOSCRIPT-PAGE', response?.status() === 200 && await noScriptPage.locator('#main h1').count() === 1 && await noScriptPage.locator('#main').innerText().then(text => text.trim().length > 80) && await noScriptPage.locator('.mx-header a').count() > 0 && await noScriptPage.locator('.mx-footer a').count() > 0, { route, javaScriptEnabled: false, status: response?.status() });
+      check('P21-BROWSER-NOSCRIPT-REFLOW', geometry.scrollWidth <= geometry.width + 1, { route, javaScriptEnabled: false, ...geometry });
+      const seo = await metadata(noScriptPage);
+      check('P21-BROWSER-NOSCRIPT-METADATA', JSON.stringify(seo) === JSON.stringify(Object.fromEntries(['title', 'description', 'canonical', 'robots', 'ogTitle', 'ogUrl', 'twitterTitle', 'schema'].map(key => [key, rawMetadata.get(route)?.[key]]))), { route, title: seo.title, canonical: seo.canonical });
+    }
     await noScriptPage.goto(origin + '/', { waitUntil: 'networkidle' });
     const supportHref = await noScriptPage.locator('.mx-noscript a').getAttribute('href');
     const supportResponse = await noScriptPage.goto(origin + supportHref, { waitUntil: 'networkidle' });
-    check('P21-BROWSER-NOSCRIPT-SUPPORT', supportHref === '/legal/support.html' && supportResponse?.status() === 200 && await noScriptPage.locator('main h1').count() === 1, { javaScriptEnabled: false, href: supportHref, status: supportResponse?.status() });
+    check('P21-BROWSER-NOSCRIPT-SUPPORT', supportHref === '/support' && supportResponse?.status() === 200 && await noScriptPage.locator('main h1').count() === 1 && await noScriptPage.locator('.mx-header a').count() > 0, { javaScriptEnabled: false, href: supportHref, status: supportResponse?.status() });
     await noScriptContext.close();
     check('P21-BROWSER-ASSET-HTTP', report.requests.missing_local_resources.length === 0, { errors: report.requests.missing_local_resources });
     check('P21-BROWSER-JAVASCRIPT', report.requests.javascript_errors.length === 0, { errors: report.requests.javascript_errors });

@@ -13,7 +13,8 @@ const number = value => Number(value.replace(/[^0-9]/g, ''));
 
 test('P21.07 every advertised website route renders a page and all rendered links resolve', async () => {
   const { routes, renderPage } = await pages;
-  const supported = new Set([...WEBSITE_ROUTES, ...routes.map(route => route.path), '/game', '/game/', ...LEGAL_NAMES.map(name => `/legal/${name}`)]);
+  const supported = new Set([...WEBSITE_ROUTES, ...routes.map(route => route.path), '/game', '/game/', '/api/download', ...LEGAL_NAMES.map(name => `/legal/${name}`)]);
+  const pressDownloads = new Map(['header', 'mark'].map(name => [`/assets/art/${name}.webp`, path.join(__dirname, `../assets/p21/art/${name}.webp`)]));
   for (const route of WEBSITE_ROUTES.filter(route => !['/', '/game'].includes(route))) {
     const html = renderPage(route, { profile: null, connection: 'guest', now: '2026-10-11T12:00:00Z' });
     assert.ok(typeof html === 'string' && html.length > 150, `${route} has rendered content`);
@@ -21,6 +22,14 @@ test('P21.07 every advertised website route renders a page and all rendered link
     assert.doesNotMatch(html, /\$\{(?:icon|context|theme|profile|button)\(/, `${route} has no unexpanded template text`);
     for (const match of html.matchAll(/href="(\/[^"#]*)"/g)) {
       const destination = new URL(match[1], 'https://megaxo.online').pathname;
+      if (pressDownloads.has(destination)) {
+        const source = pressDownloads.get(destination);
+        const info = fs.lstatSync(source);
+        assert.ok(info.isFile() && !info.isSymbolicLink(), `${route} downloads the regular optimized source for ${destination}`);
+        const bytes = fs.readFileSync(source);
+        assert.ok(bytes.length >= 12 && bytes.toString('ascii', 0, 4) === 'RIFF' && bytes.toString('ascii', 8, 12) === 'WEBP', `${destination} has a real WebP source`);
+        continue;
+      }
       assert.ok(supported.has(destination) || /^\/legal\/[a-z-]+\.html$/.test(destination), `${route} links to supported ${destination}`);
     }
   }

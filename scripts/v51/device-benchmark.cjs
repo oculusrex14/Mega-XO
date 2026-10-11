@@ -125,11 +125,15 @@ async function handleCapture() {
 
   if (playwright) {
     let browser;
+    /* An installed-but-unmanaged Playwright cache may lack the bundled download. Honour an explicit
+     * CHROMIUM_EXECUTABLE (the same convention the other browser smokes use) so the harness can run
+     * against a real installed Chromium instead of failing on a missing headless shell. */
+    const executablePath = process.env.CHROMIUM_EXECUTABLE || undefined;
     try {
       browser = await playwright.webkit.launch({ headless: true });
       browserEngine = `desktop-webkit-${browser.version()}`;
     } catch {
-      browser = await playwright.chromium.launch({ headless: true });
+      browser = await playwright.chromium.launch({ headless: true, executablePath });
       browserEngine = `desktop-chromium-${browser.version()}`;
     }
 

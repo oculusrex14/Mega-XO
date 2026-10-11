@@ -197,6 +197,26 @@ Recorded in `.artifacts/v51/baseline-current.json` on Node runtime `v26.8.2`:
 
 ## Physical Reference Hardware and Human Accessibility Testing (B01.05, B05.09, B07.01, B07.08)
 
+### Desktop harness measurements (real, one commit-pinned run)
+
+`node scripts/v51/device-benchmark.cjs --capture` (with `CHROMIUM_EXECUTABLE` pointing at an installed
+Chromium) drives the real harness in headless Chromium and records
+`evidence/device-2026-10-11T23-54-01-631Z.json` at commit `c28fe74126c9033bff61459400aacb942156b9a8`:
+
+| Measurement | Result | Limit |
+| --- | --- | --- |
+| Legacy per-tier move time | Beginner 13.5 ms, Easy 5.5 ms, Medium 20.9 ms, Hard 132.0 ms, Expert 326.6 ms | One desktop run; not a device matrix |
+| Experimental Expert | 510.4 ms | Same budget family, one run |
+| Canonical corpus (11 positions) | p50 79.35 ms, p95 329.86 ms; **Expert target <1500 ms met**; 0 tactical violations | 11 curated positions |
+| Frame latency (60 samples) | p50 16.66 ms, p95 16.67 ms | Headless desktop |
+| Cold start | 326.67 ms | Includes page/harness startup |
+| Cancellation fence | passed, AbortError verified | — |
+| Resume integrity | passed, pinned seed preserved | — |
+| Impossible neural | NOT staged/available; skipped with a truthful reason, no placeholder | No approved model exists |
+
+The run records `deviceClass: headless-ci`, `physicalDevices: false`, WebGPU supported and thermal
+unavailable (`NOT_EXPOSED_BY_WEB_PLATFORM`). Physical Android/iPhone measurements remain UNMEASURED.
+
 - **Physical Reference Devices (B01.05, B05.09, B07.01):** **UNMEASURED.** No physical Android phones (low-end/mid-range), iPhones, iOS Safari/WKWebView, Android WebView, device RAM footprints, thermal throttling, or battery drain curves have been measured. Desktop and container Node timings are headless simulation proxies and cannot substitute for physical hardware measurements.
 - **Fresh-User Onboarding and Accessibility Testing (B03.14, B07.08):** **UNMEASURED.** No moderated first-time user trials or screen-reader / assistive-technology sessions have been conducted.
 

@@ -1,0 +1,328 @@
+{
+  "schemaVersion": 1,
+  "capturedAt": "2026-10-11T23:54:01.631Z",
+  "evidenceFile": "device-2026-10-11T23-54-01-631Z.json",
+  "deviceClass": "desktop-browser",
+  "browserEngine": "desktop-chromium-151.0.7922.34",
+  "physicalDevices": false,
+  "environmentDisclaimer": "Desktop browser automated execution; NOT physical Android or iPhone device measurements.",
+  "hardwareInventory": {
+    "androidPhysicalConnected": false,
+    "iosPhysicalConnected": false,
+    "codeSigningIdentities": 0,
+    "bootedSimulatorsCount": 3
+  },
+  "nativeThermalState": {
+    "available": true,
+    "source": "pmset -g therm",
+    "raw": "Note: No thermal warning level has been recorded\nNote: No performance warning level has been recorded\nNote: No CPU power status has been recorded"
+  },
+  "unmetPrerequisites": [
+    "Physical Android: No physical Android device detected in adb devices (status EMPTY); exact cause UNCONFIRMED (cable, USB debugging, or authorization unverified).",
+    "Physical iPhone: Physical iPhone paired but connection cannot be established (status unavailable); exact cause UNCONFIRMED (cable, pairing, lock status, or Developer Mode unverified; not stated as fact).",
+    "Code Signing: Apple Developer Team certificate and provisioning profile missing; cannot sign native IPA for physical device.",
+    "User Study: Moderated study blocked pending recruitment of >=20 novice human participants (Task B07.08)"
+  ],
+  "artifactIdentity": {
+    "gitCommit": "c28fe74126c9033bff61459400aacb942156b9a8",
+    "rulesSha256": "e6e14c258b4db439eedf28090ebafd0962867bab5e64709d0d4438cb145b31e0",
+    "contractsSha256": "7d4a900b7e712b69508faca657a89f6724b9e24636a543e49ecc4685929ea3d9",
+    "botRuntimeSha256": "defa117fa13482a1b9d535e06d34ef499244cdd2eb709ec6f915953c1b532613",
+    "botWorkerSha256": "8397d036aa2d01833ffc9aa2e90db05dd6dab01e9ef993ecaca6c97563e9f8ad",
+    "botSearchSha256": "5194df8e120f35391e6991f4277f0400a14caa6cc481b86e8d6e138c3af3a545",
+    "neuralRuntimeSha256": "b676b5dab24a19e73ff9584617413f562c7e46d3fd8228f0e362e782f23c4bcd",
+    "neuralWorkerSha256": "a570053d24dc3586e3febc4c73a5c1b8c88dfdde753770696dd8e32ba35b6490",
+    "bundleConfigSha256": "a0521b0d859096a461e30a265f48ef5e6cf0efd7cb1dab2483e940023f3f856c",
+    "engineVersions": {
+      "legacy": "search-v1-legacy",
+      "experimental": "search-v1-experimental",
+      "neural": "neural-worker-v1",
+      "ruleset": "mega-xoxo-canonical-v1"
+    }
+  },
+  "contracts": {
+    "expertMaxP95Ms": 1500,
+    "impossibleMaxP95Ms": 2000,
+    "maxInitialFrameDrop": 2,
+    "userStudyRoutingComprehensionMinPct": 80
+  },
+  "benchmarkResults": {
+    "schemaVersion": 1,
+    "runId": "bench-9n43yar7-1791762837969",
+    "timestamp": "2026-10-11T23:54:01.553Z",
+    "environment": {
+      "runId": "bench-9n43yar7-1791762837969",
+      "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/151.0.0.0 Safari/537.36",
+      "platform": "MacIntel",
+      "deviceClass": "headless-ci",
+      "screen": {
+        "width": 1280,
+        "height": 720,
+        "pixelRatio": 1
+      },
+      "hardwareConcurrency": 10,
+      "capabilities": {
+        "webAssembly": true,
+        "webWorker": true,
+        "sharedArrayBuffer": true,
+        "webGPU": {
+          "supported": true,
+          "isFallback": false
+        }
+      },
+      "sensors": {
+        "memory": {
+          "available": true,
+          "value": {
+            "jsHeapSizeLimit": 4395630592,
+            "totalJSHeapSize": 2131106,
+            "usedJSHeapSize": 917274
+          }
+        },
+        "battery": {
+          "available": true,
+          "value": {
+            "charging": true,
+            "level": 100,
+            "chargingTime": 0,
+            "dischargingTime": null
+          }
+        },
+        "thermal": {
+          "available": false,
+          "reason": "NOT_EXPOSED_BY_WEB_PLATFORM (Requires native OS instrumentation like xctrace / pmset / IOKit)",
+          "value": null
+        }
+      }
+    },
+    "artifactIdentity": {
+      "gitCommit": "c28fe74126c9033bff61459400aacb942156b9a8",
+      "rulesSha256": "e6e14c258b4db439eedf28090ebafd0962867bab5e64709d0d4438cb145b31e0",
+      "contractsSha256": "7d4a900b7e712b69508faca657a89f6724b9e24636a543e49ecc4685929ea3d9",
+      "botRuntimeSha256": "defa117fa13482a1b9d535e06d34ef499244cdd2eb709ec6f915953c1b532613",
+      "botWorkerSha256": "8397d036aa2d01833ffc9aa2e90db05dd6dab01e9ef993ecaca6c97563e9f8ad",
+      "botSearchSha256": "5194df8e120f35391e6991f4277f0400a14caa6cc481b86e8d6e138c3af3a545",
+      "neuralRuntimeSha256": "b676b5dab24a19e73ff9584617413f562c7e46d3fd8228f0e362e782f23c4bcd",
+      "neuralWorkerSha256": "a570053d24dc3586e3febc4c73a5c1b8c88dfdde753770696dd8e32ba35b6490",
+      "bundleConfigSha256": "a0521b0d859096a461e30a265f48ef5e6cf0efd7cb1dab2483e940023f3f856c",
+      "engineVersions": {
+        "legacy": "search-v1-legacy",
+        "experimental": "search-v1-experimental",
+        "neural": "neural-worker-v1",
+        "ruleset": "mega-xoxo-canonical-v1"
+      }
+    },
+    "coldStartMs": 326.67,
+    "allFiveTiersLegacy": {
+      "Beginner": {
+        "elapsedMs": 13.5,
+        "chosenMove": {
+          "b": 5,
+          "c": 3
+        },
+        "engine": "canonical-legacy"
+      },
+      "Easy": {
+        "elapsedMs": 5.49,
+        "chosenMove": {
+          "b": 5,
+          "c": 3
+        },
+        "engine": "canonical-legacy"
+      },
+      "Medium": {
+        "elapsedMs": 20.92,
+        "chosenMove": {
+          "b": 4,
+          "c": 4
+        },
+        "engine": "canonical-legacy"
+      },
+      "Hard": {
+        "elapsedMs": 131.98,
+        "chosenMove": {
+          "b": 4,
+          "c": 4
+        },
+        "engine": "canonical-legacy"
+      },
+      "Expert": {
+        "elapsedMs": 326.61,
+        "chosenMove": {
+          "b": 4,
+          "c": 4
+        },
+        "engine": "canonical-legacy"
+      }
+    },
+    "experimentalExpert": {
+      "elapsedMs": 510.36,
+      "chosenMove": {
+        "b": 4,
+        "c": 4
+      },
+      "engine": "search-v1-experimental"
+    },
+    "corpusSummary": {
+      "positionsTested": 11,
+      "statsMs": {
+        "count": 11,
+        "min": 3.38,
+        "max": 329.86,
+        "mean": 106.09,
+        "p50": 79.35,
+        "p95": 329.86
+      },
+      "expertTargetMet": true,
+      "targetP95BoundMs": 1500,
+      "tacticalViolations": 0
+    },
+    "cancellationFence": {
+      "passed": true,
+      "verifiedAbortError": true
+    },
+    "resumeIntegrity": {
+      "passed": true,
+      "pinnedSeedPreserved": true
+    },
+    "frameLatencyStats": {
+      "count": 60,
+      "min": 12.66,
+      "max": 16.67,
+      "mean": 16.6,
+      "p50": 16.66,
+      "p95": 16.67
+    },
+    "impossibleNeural": {
+      "staged": false,
+      "available": false,
+      "measured": null,
+      "reason": "Candidate model not staged in catalog/filesystem; neural inference skipped without placeholder fake."
+    },
+    "detailedTurns": [
+      {
+        "positionId": "opening",
+        "elapsedMs": 326.46,
+        "chosenMove": {
+          "b": 4,
+          "c": 4
+        },
+        "legal": true,
+        "engine": "canonical-legacy"
+      },
+      {
+        "positionId": "curated-fork",
+        "elapsedMs": 79.35,
+        "chosenMove": {
+          "b": 8,
+          "c": 4
+        },
+        "legal": true,
+        "engine": "canonical-legacy"
+      },
+      {
+        "positionId": "sacrifice-to-win",
+        "elapsedMs": 5.75,
+        "chosenMove": {
+          "b": 0,
+          "c": 5
+        },
+        "legal": true,
+        "engine": "canonical-legacy"
+      },
+      {
+        "positionId": "send-danger",
+        "elapsedMs": 93.02,
+        "chosenMove": {
+          "b": 3,
+          "c": 1
+        },
+        "legal": true,
+        "engine": "canonical-legacy"
+      },
+      {
+        "positionId": "mini-win",
+        "elapsedMs": 105.92,
+        "chosenMove": {
+          "b": 6,
+          "c": 5
+        },
+        "legal": true,
+        "engine": "canonical-legacy"
+      },
+      {
+        "positionId": "closed-route",
+        "elapsedMs": 190.12,
+        "chosenMove": {
+          "b": 1,
+          "c": 0
+        },
+        "legal": true,
+        "engine": "canonical-legacy"
+      },
+      {
+        "positionId": "free-choice",
+        "elapsedMs": 329.86,
+        "chosenMove": {
+          "b": 6,
+          "c": 0
+        },
+        "legal": true,
+        "engine": "canonical-legacy"
+      },
+      {
+        "positionId": "mandatory-global-defense",
+        "elapsedMs": 25.16,
+        "chosenMove": {
+          "b": 0,
+          "c": 4
+        },
+        "legal": true,
+        "engine": "canonical-legacy"
+      },
+      {
+        "positionId": "mega-win",
+        "elapsedMs": 4.45,
+        "chosenMove": {
+          "b": 8,
+          "c": 1
+        },
+        "legal": true,
+        "engine": "canonical-legacy"
+      },
+      {
+        "positionId": "late-forced",
+        "elapsedMs": 3.52,
+        "chosenMove": {
+          "b": 3,
+          "c": 7
+        },
+        "legal": true,
+        "engine": "canonical-legacy"
+      },
+      {
+        "positionId": "drawn-route",
+        "elapsedMs": 3.38,
+        "chosenMove": {
+          "b": 0,
+          "c": 0
+        },
+        "legal": true,
+        "engine": "canonical-legacy"
+      }
+    ],
+    "rawSamplesMs": [
+      326.460000038147,
+      79.34500002861023,
+      5.745000123977661,
+      93.01500010490417,
+      105.91999983787537,
+      190.11999988555908,
+      329.8550000190735,
+      25.164999961853027,
+      4.454999923706055,
+      3.5199999809265137,
+      3.375
+    ]
+  }
+}

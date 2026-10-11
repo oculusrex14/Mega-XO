@@ -1,7 +1,6 @@
 # V5.1 bot intelligence and guided tutorial handoff
 
-> **2026-10-11 updated owner handoff:** Read [P21 verification, cross-client integration obligations, dual-DGX assignment and main-agent prompt](P21-VERIFICATION-AND-MAIN-AGENT-HANDOFF.md) first. This earlier handoff is an immutable implementation checkpoint, **not** the newest V5.1 tree. At audit, V5.1 had advanced to \`9c651cc\` with four newer P21 commits; the tutorial/bot branch diverged and must be reconciled without overwriting the independently owned P21 website/SEO work. Main agent now owns safe remaining B01–B07 code, dual-DGX training, model benchmarking and real-device/staging acceptance. A dedicated website controller still needs the guided lesson and Worker integration. Production, official rewards, cutover and P21 site release remain separately gated.
-
+> **2026-10-11 updated owner handoff:** Read [P21 verification, cross-client integration obligations, dual-DGX assignment and main-agent prompt](P21-VERIFICATION-AND-MAIN-AGENT-HANDOFF.md) first. This earlier handoff is an immutable implementation checkpoint, **not** the newest V5.1 tree. At audit, V5.1 had advanced to `9c651cc` with four newer P21 commits; the tutorial/bot branch diverged and must be reconciled without overwriting the independently owned P21 website/SEO work. Main agent now owns safe remaining B01–B07 code, dual-DGX training, model benchmarking and real-device/staging acceptance. A dedicated website controller still needs the guided lesson and Worker integration. Production, official rewards, cutover and P21 site release remain separately gated.
 
 ## Boundary and current product state
 

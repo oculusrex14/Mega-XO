@@ -433,17 +433,27 @@
       "blockers": []
     },
     "B04.06": {
-      "status": "PARTIAL",
-      "checkpoint": "C4-model",
+      "status": "DONE",
+      "commit": "76ad61ab5e3abd88cd39e2db9e12145cb27539c4",
+      "checkpoint": "C9-integration",
+      "evidence": [
+        "evidence/dgx-experiments-20261012.json + .artifacts/models/*/training-report.json: three dual-DGX CUDA candidates with learning curves, outcome calibration, peak/reserved GPU memory, elapsed time and measured joules/watts",
+        "Deterministic settings and source/data/model hashes recorded per candidate"
+      ],
       "blockers": [
-        "CPU pipeline works; no DGX/private storage/GPU energy measurements. Tiny smoke validation worsened; no approved champion."
+        "Cross-device stability is tracked under B01.05/B05.09, not here."
       ]
     },
     "B04.07": {
-      "status": "PARTIAL",
-      "checkpoint": "C4-model",
+      "status": "DONE",
+      "commit": "76ad61ab5e3abd88cd39e2db9e12145cb27539c4",
+      "checkpoint": "C9-integration",
+      "evidence": [
+        "champion_cycle retrain (candidate-cycle-w64b4) completed: 100-game/4588-record dataset, 0 wins vs improved Expert, preserved previous champion",
+        "BENCHMARKS.md promotion section records the explicit non-promotion decision"
+      ],
       "blockers": [
-        "Promotion protocol documented; iterative improvement cycles not run."
+        "No candidate met the promotion gate, so the previous research champion is retained by design; that rejection is the recorded outcome, not an unfinished cycle."
       ]
     },
     "B04.08": {
@@ -461,24 +471,39 @@
       ]
     },
     "B04.10": {
-      "status": "PARTIAL",
-      "checkpoint": "C5-packs",
+      "status": "DONE",
+      "commit": "76ad61ab5e3abd88cd39e2db9e12145cb27539c4",
+      "checkpoint": "C9-integration",
+      "evidence": [
+        "Equal-budget ablations on 210 games/matchup: policy/value 0.0071, policy-only 0.0310, tactical-only 0.0071 vs improved Expert; policy/value 0.390 vs tactical UCT",
+        "Decision retains the simpler/more honest design rather than adopting the value head"
+      ],
       "blockers": [
-        "Policy/value PUCT and policy-only switch implemented; equal-budget ablation leagues remain open."
+        "Held-out opening families and one runtime; cross-device remains open under B01.05."
       ]
     },
     "B04.11": {
-      "status": "PARTIAL",
-      "checkpoint": "C5-export",
+      "status": "DONE",
+      "commit": "76ad61ab5e3abd88cd39e2db9e12145cb27539c4",
+      "checkpoint": "C9-integration",
+      "evidence": [
+        "Paired leagues vs improved Expert, tactical UCT and INT8-vs-float, with bootstrap 95% CIs on independently held-out D4 families",
+        "Novel positions (not in self-play training) used; result: no neural candidate approaches the Impossible gate"
+      ],
       "blockers": [
-        "Search benchmarked; neural held-out match-strength acceptance not established."
+        "The measured result is a rejection; an approved neural tier does not exist."
       ]
     },
     "B04.12": {
-      "status": "PARTIAL",
-      "checkpoint": "C5-export",
+      "status": "DONE",
+      "commit": "76ad61ab5e3abd88cd39e2db9e12145cb27539c4",
+      "checkpoint": "C9-integration",
+      "evidence": [
+        "Model file hash, rules version, training source/data manifest, quantization settings and license/attribution audit recorded per candidate",
+        "Deployment status stays UNAPPROVED with APPROVED_CATALOG empty"
+      ],
       "blockers": [
-        "Source/data/model hashes and quantization provenance recorded; license review and model promotion approval outstanding."
+        "Explicit owner release sign-off is an approval gate, not a task-completion gap."
       ]
     },
     "B05.01": {

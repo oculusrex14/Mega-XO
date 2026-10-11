@@ -1063,21 +1063,20 @@ async function main() {
     const existingOperation = await ownerClient.query('SELECT 1 FROM economy.command_outcomes WHERE actor_id = $1 AND "key" = $2', ['matchmaker', JSON.stringify(queueOperation)]);
     if (existingMatch.rowCount || existingOperation.rowCount) throw new Error('SYNTHETIC_MATCH_ID_COLLISION');
     ownedMatches.add(queueMatchId);
+
+    // =========================================================================
+    // Phase 12: Realtime Ticket, Committed Moves & HTTP Fallback
+    // =========================================================================
+    // A QUEUE offer expires 15s after matchTick (src/authority.js: `queueSource ? 15000 : …`), while
+    // each Neon staging round-trip costs seconds. So the pairing is produced HERE, immediately
+    // before the projection poll and the two accepts, and every step that must observe the OFFERED
+    // window runs in that window. Nothing between the tick and the accepts is allowed to be slow.
     const tickResult = await queue.matchTick({
       mode: 'casual', matcherId: `matcher_${runId}`, limit: 2, now: clock, makeId: () => `p21_${runId}`,
     });
     if (tickResult.matched !== 1 || tickResult.pairings.length !== 1 ||
         tickResult.pairings[0].matchId !== queueMatchId ||
         ![tickResult.pairings[0].a, tickResult.pairings[0].b].every((actor) => ownedActors.has(actor))) throw new Error('MATCHMAKING_PAIRING_FAILED');
-    for (const session of [sessA, sessB]) {
-      const status = await requestHttp(`${loopbackBaseUrl}/api/v1/queue`, { headers: { Cookie: `mega_dev_session=${session.token}` } });
-      if (status.status !== 200 || status.data?.state !== 'matched' || status.data?.matchId !== queueMatchId) throw new Error('API_QUEUE_MATCHED_PROJECTION_FAILED');
-    }
-    logStep('11_actual_queue_service_and_api_status', 'PASSED');
-
-    // =========================================================================
-    // Phase 12: Realtime Ticket, Committed Moves & HTTP Fallback
-    // =========================================================================
     const matchId = queueMatchId;
     const pairing = tickResult.pairings[0];
     for (const [actor, session] of [[actorA, sessA], [actorB, sessB]]) {
@@ -1097,6 +1096,14 @@ async function main() {
         throw new Error('QUEUE_ACCEPT_GATEWAY_FAILED');
       }
     }
+    // The advertised matched projection is verified from the SAME durable match the tick committed;
+    // it is polled after the accepts because the queue status reports `matched` for a live PLAYING
+    // match too, and polling must not delay the two accepts past the 15s offer window.
+    for (const session of [sessA, sessB]) {
+      const status = await requestHttp(`${loopbackBaseUrl}/api/v1/queue`, { headers: { Cookie: `mega_dev_session=${session.token}` } });
+      if (status.status !== 200 || status.data?.state !== 'matched' || status.data?.matchId !== queueMatchId) throw new Error('API_QUEUE_MATCHED_PROJECTION_FAILED');
+    }
+    logStep('11_actual_queue_service_and_api_status', 'PASSED', { offerExpiresAt: pairing.expires, nowMs: Date.now() });
     const matchView = await core.readMatch(actorA, matchId);
     if (matchView.status !== 'PLAYING' || matchView.revision !== 0) throw new Error('QUEUE_MATCH_NOT_PLAYING');
     const sessionByActor = new Map([[actorA, sessA], [actorB, sessB]]);

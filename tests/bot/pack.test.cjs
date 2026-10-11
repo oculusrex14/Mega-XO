@@ -1,6 +1,11 @@
 'use strict';
 const {test}=require('node:test'),assert=require('node:assert/strict'),crypto=require('node:crypto');
 const P=require('../../src/bot/pack.js'),C=require('../../src/bot/contracts.js');
+/* The pinned onnxruntime-web dist is gitignored (install is a documented, network-backed CI step of
+ * the neural workflow). The staging tests below verify REAL sealed bytes, so they must SKIP with an
+ * explicit reason rather than fail when that optional toolroot is absent — never silently pass. */
+const ORT_DIST=require('node:path').resolve(__dirname,'../../.artifacts/v51/ort/node_modules/onnxruntime-web/dist');
+const ORT_GATE=require('node:fs').existsSync(ORT_DIST)?false:'no pinned onnxruntime-web dist';
 const bytes=new Uint8Array([1,2,3,4]),hash=crypto.createHash('sha256').update(bytes).digest('hex'),info={schemaVersion:1,version:'test-v1',ruleset:C.RULESET,encodingVersion:P.ENCODING,sha256:hash,url:'/game/ai/'+hash+'.onnx',bytes:4,gzipBytes:4,deploymentStatus:'APPROVED'};
 function fixture(fetcher=async()=>new Response(bytes)){const data=new Map(),cache={async match(k){return data.get(k)?.clone();},async put(k,v){data.set(k,v.clone());},async delete(k){return data.delete(k);}};const states=[];return {data,states,store:new P.Store({baseURL:'https://game.example/game/index.html',cacheStorage:{open:async()=>cache},fetcher,catalog:[info],onState:s=>states.push(s)})};}
 test('no network download without explicit consent; approved pin survives a new store and offline cache read',async()=>{let calls=0;const f=fixture(async()=>{calls++;return new Response(bytes);});await assert.rejects(f.store.download(info),/CONSENT/);assert.equal(calls,0);await f.store.download(info,{consent:true});const pin=f.store.pin(info);assert.equal(pin.modelHash,hash);const second=new P.Store({baseURL:f.store.baseURL,cacheStorage:f.store.caches,fetcher:async()=>{throw Error('offline');}});assert.deepEqual(await second.read(info),bytes);assert.equal(P.resolvePinned(pin,[info]),info);await second.remove(info);assert.equal(await second.read(info),null);});
@@ -49,7 +54,7 @@ test('recovery after corruption allows successful re-download and restores ready
  assert.equal(f.store.state.modelHash,hash);
  assert.equal(f.data.size,1);
 });
-test('stage-ai-runtime tool generates compliant immutable model manifests and research catalog',async()=>{
+test('stage-ai-runtime tool generates compliant immutable model manifests and research catalog',{skip:ORT_GATE},async()=>{
  const stageTool=require('../../scripts/v51/stage-ai-runtime.cjs');
  assert.equal(stageTool.PINNED_ORT_VERSION,'1.23.2');
  const dummyModelPath=require('node:path').resolve(__dirname,'../../.artifacts/v51/dummy-candidate.onnx');
@@ -95,7 +100,7 @@ test('stage-ai-runtime tool generates compliant immutable model manifests and re
  try{require('node:fs').rmSync(dummyModelPath,{force:true});}catch{}
 });
 
-test('staging refuses sealed, unowned and linked output paths before mutating artifacts',()=>{
+test('staging refuses sealed, unowned and linked output paths before mutating artifacts',{skip:ORT_GATE},()=>{
  const fs=require('node:fs'),path=require('node:path'),stage=require('../../scripts/v51/stage-ai-runtime.cjs');
  for(const targetDir of ['.artifacts','.artifacts/v51','.artifacts/p21-web','.artifacts/p21-web/legacy-game','.artifacts/v51/ort']){
   assert.throws(()=>stage.stageRuntime({targetDir}),/owned scratch|sealed builder/);

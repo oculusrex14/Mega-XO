@@ -895,9 +895,10 @@ async function main() {
     }
 
     // 8.3 Verify updated wallet in PostgreSQL and via /api/v1/profile
+    // Canonical rate: POLICY.coinsPerCrown = 10, so 100 coins debits 100 coins and credits 10 crowns.
     const walletQuery = await corePool.query('SELECT coins, crowns FROM economy.wallets WHERE actor_id = $1', [actorA]);
     const walletRow = walletQuery.rows[0];
-    if (Number(walletRow.coins) !== 900 || Number(walletRow.crowns) !== 101) {
+    if (Number(walletRow.coins) !== 900 || Number(walletRow.crowns) !== 110) {
       throw new Error(`WALLET_BALANCE_UNEXPECTED: coins ${walletRow.coins}, crowns ${walletRow.crowns}`);
     }
 
@@ -906,7 +907,7 @@ async function main() {
         'Cookie': `mega_dev_session=${sessA.token}`,
       },
     });
-    if (legacyProfAfter.data.wallet.coins !== 900 || legacyProfAfter.data.wallet.crowns !== 101) {
+    if (legacyProfAfter.data.wallet.coins !== 900 || legacyProfAfter.data.wallet.crowns !== 110) {
       throw new Error('ECONOMIC_READ_PROJECTION_MISMATCH');
     }
 

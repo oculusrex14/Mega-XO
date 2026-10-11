@@ -35,20 +35,28 @@ engineering, not merely external-access blockers.
 
 ## Measured results, not promotion claims
 
+The current measured set is recorded in [BENCHMARKS.md](BENCHMARKS.md) and
+[evidence/dgx-experiments-20261012.json](evidence/dgx-experiments-20261012.json).
+The table below is the earlier checkpoint's numbers; the newer independent-family
+runs supersede the two league rows.
+
 | Measurement | Observed result | Limitation |
 | --- | --- | --- |
-| Candidate Expert versus original at 320 ms | 64 games, 47 wins / 12 draws / 5 losses; 82.8125% points; paired 95% interval 75%-89.84375% | Only nine opening families; below independent-family promotion coverage |
-| Expert versus Hard | 16 games, 62.5% points; interval 46.875%-81.25% | Ordering remains inconclusive |
-| Compact CNN | 342,282 parameters | CPU bootstrap, not an approved Impossible champion |
-| Float ONNX, source 1d257c3 candidate | 1,419,850 raw bytes; 1,303,784 gzip bytes | Model only, excluding runtime and memory |
-| INT8 candidate | 351,396 gzip bytes; 49/512 legal top actions differ | Match-strength regression not measured |
-| Actual WASM golden inference | 512 states, zero illegal probabilities; p50 4.0 ms / p95 7.5 ms | Linux Chromium CI, not phone performance |
+| Improved Expert versus legacy Expert (current) | 128 held-out D4 families, 256 games, 167 W / 54 D / 35 L, 75.78% points, CI [0.7129, 0.8008] | One Node runtime/host; cross-device remains open |
+| Adjacent tiers, 105 independent families (current) | Easy>Beginner 0.9690, Medium>Easy 0.9643, Hard>Medium 0.8905, Expert>Hard 0.5833; all strictly monotonic, intervals exclude parity | One runtime; not a device matrix |
+| Policy/value CNN vs improved Expert (DGX) | 0.0071 (CI [0, 0.019]); policy-only 0.0310; INT8 vs float CI contains 0.5 | All neural candidates REJECTED; catalog stays empty |
+| Compact CNN | 342,282 parameters (w64b4) | CPU/GPU research candidate, not an approved Impossible champion |
+| Float ONNX | 1,375,959 raw / 1,272,393 gzip bytes | Model only, excluding the separate 11.9 MB ORT WASM runtime |
+| INT8 candidate | 380,957 raw / 327,182 gzip bytes; 17/512 legal top actions differ | Match-strength regression measured as no detected difference, not parity |
+| Actual WASM golden inference | 512 states, zero illegal probabilities; p50 4.0 ms / p95 7.5 ms; real Chromium neural Worker turns 31-46 ms on WebGPU | CI/desktop, not phone performance |
 | Separate baseline ORT WASM binary | 11,905,541 bytes | Runtime slimming and device memory remain open |
 
-Neural numbers above are pinned to Actions 38089332962 and its exact candidate,
-not mixed with older reports. Candidate hash:
-`56d9cb1bda4f075d87440886b2f7f2057d80818c120479b6db6a5b9c90c6ea6b34`.
-Tiny training/validation samples demonstrate plumbing only. No claim that a
+The rows marked (current) come from the 2026-10-12 dual-DGX runs recorded in
+BENCHMARKS.md; the neural rows are pinned to those reports' candidates, not mixed
+with older checkpoints. The rejected research champion is `candidate-dgx1-w64b4`
+(`ac9cc0ecdcf9a5b47fe002c7ff4f71c9bc9ffb9c7a0a0d645648121ac5959f70`), retained for
+offline work only. Tiny training samples demonstrate plumbing, and the measured
+ablations show no neural candidate approaches the Impossible gate; no claim that a
 small file, low loss or deeper search meets Impossible strength is justified.
 
 ## Verified CI and release matrix

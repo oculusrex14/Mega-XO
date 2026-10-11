@@ -39,3 +39,7 @@ The original program's P21 deferral above is historical. The later owner request
 - P21-WEB-LEGAL / P21.07,.10: policy pages link draft retained legal documents; formal owner/legal/store disclosure approval remains required by the existing release gate.
 
 Reachable work delivered: isolated cinematic frontend, 27 route designs, five-level local bot/two-player, four palettes, generated still art/provenance, deterministic allowlisted build, Vercel static configuration and local/CI QA. Details: [readiness](../p21-web/IMPLEMENTATION-AND-READINESS.md).
+
+## Owner website annotation follow-on (V5.1)
+
+Local delivery on `41e74bff40c62cb35a7ca7a7045a27a79fa01c5d` is verified in [annotation evidence](../p21-web/evidence/41e74bf/verification.json). Remaining: real same-origin website/API session/CSRF/OAuth callback configuration, public leaderboard ingress (production currently AUTH_REQUIRED), actual billing bridge/provider prices and ad campaigns/network/consent/disclosures, owner visual review, 82 manual axe review views and physical Safari/Android/Firefox checks. These remain external production/device/provider gates; the implemented frontend is not a live release. Original G22/G23/G24 and the 13 production-dependent tasks retain their statuses.

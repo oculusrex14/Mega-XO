@@ -62,3 +62,7 @@ Actual later prerequisites: Vercel CLI is authorized on the verified Hobby team,
 ## Restart protocol
 
 Read this file, progress.json, TODO.md, BASELINE.md, DECISIONS.md, OPEN-ITEMS.md and the current phase/specifications. Inspect Git/CI once at entry. Preserve `.agents/`, goal/pack, `docs/Handoff/` and skill lock additions. Advance only from observed task/gate state; never infer completed migrations/grants/native/store approval from files or template checkboxes. Update exact commands, environments, SHAs, evidence and accurate statuses after each meaningful unit.
+
+## V5.1 owner website annotations — local checkpoint
+
+Code `41e74bff40c62cb35a7ca7a7045a27a79fa01c5d` implements the fourteen owner browser annotations in the isolated website. The game now stays inside the site, actual account/rank/wallet and standings adapters use retained contracts, eleven rank artworks and currency icons are generated, Store/Sponsors are structured and full legal source documents inherit chrome. Exact local evidence: [verification](../p21-web/evidence/41e74bf/verification.json), 75 affected tests, 658 browser checks, 84 automatic axe checks. Live read-only probe confirms production leaderboard returns AUTH_REQUIRED; anonymous ingress and real same-origin session/callback/provider deployment are still open. No production writer, source game, native app, original pack or original acceptance gate changed.

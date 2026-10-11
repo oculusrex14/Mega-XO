@@ -12,11 +12,11 @@ Required path: execute P00–P20, P22–P23; owner-deferred P21 executes nothing
 
 The goal and phase contracts above describe the original V5 program. The later owner request authorizes a separate `V5.1` website workstream; its original P21 deferral and acceptance history are retained.
 
-**Status:** TESTED_LOCAL. Cinematic homepage, 26 secondary routes, shared-rule local practice, four game palettes, optimized still art, static delivery and presentation CI implemented. No live account integration, remote deployment or production acceptance.
+**Status:** TESTED_LOCAL. Owner annotations implemented: cinematic in-site game, account/server read-model adapters, in-site standings, eleven rank images, generated Coin/Crown, Store/Sponsors, full themed legal documents and responsive pages. 75 affected tests, 658 browser checks and 84 automatic axe checks pass locally. Live website/API/provider deployment and production acceptance remain OPEN. Website and retained validation CI passed on the exact code SHA; downloaded CI/local manifests are byte-identical.
 
-**Code checkpoint:** `99e65bdc8655162cf2dcc4af26dc0b73ec203cdc`. [Website checklist](../p21-web/MASTER-CHECKLIST.md). [Evidence and release gates](../p21-web/IMPLEMENTATION-AND-READINESS.md).
+**Code checkpoint:** `41e74bff40c62cb35a7ca7a7045a27a79fa01c5d`. [Website checklist](../p21-web/MASTER-CHECKLIST.md). [Evidence and release gates](../p21-web/evidence/41e74bf/verification.json).
 
-**Next:** Owner visual review; live V5 staging/session/data/realtime integration, legal and hosting eligibility, physical browser/a11y/performance acceptance, then authorized deployment. V4.1.2/SQLite remains the live authority.
+**Next:** Owner visual review; connect real same-origin staging session/API/callbacks and public standings ingress; activate approved store/ad providers after legal/hosting readiness; physical browser/manual accessibility checks, then authorized release. V4.1.2 SQLite remains sole production authority.
 
 ## P00 — Freeze baseline, scope and ownership
 

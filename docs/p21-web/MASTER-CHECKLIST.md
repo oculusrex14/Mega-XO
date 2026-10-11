@@ -5,7 +5,7 @@
 **Product:** One Mega XOXO identity, inventory, wallet, competitive authority, matchmaking pool, and social graph across web, iOS, and Android.  
 **Visual master:** user-uploaded desktop mockup (1672 × 941) / Generated Image 1.  
 **Brand reference:** user-uploaded official Mega XOXO logo artwork (1600 × 1600), archived unchanged; the name is approved for web/iOS/Android.  
-**Execution status:** Homepage, 26 secondary routes, local practice, optimized art and static delivery implemented on `99e65bdc8655162cf2dcc4af26dc0b73ec203cdc`. Locally verified presentation; live account/service integration and production release remain OPEN. See [IMPLEMENTATION-AND-READINESS.md](IMPLEMENTATION-AND-READINESS.md) for verification levels and exact evidence. Nothing here means production deployed.
+**Execution status:** Owner browser annotations implemented and locally verified on `41e74bff40c62cb35a7ca7a7045a27a79fa01c5d`: 36 SPA routes, cinematic in-site game, existing account contracts, in-site standings read model, actual rank/wallet views, eleven badge images, currency art, Store/Sponsors and full themed legal content. 75 tests, 658 browser checks and 84 automatic axe checks pass; live service/provider integration and production release remain OPEN. See [ANNOTATION-CHANGES.md](ANNOTATION-CHANGES.md). Nothing here means production deployed.
 
 ## How to maintain this file
 
@@ -25,7 +25,7 @@ The owner annotation iteration adds cinematic `/game`, Store, Sponsors and full 
 - [x] P21-G001: create isolated V5.1 branch from V5-platform; leave main / V4 / V5 / production untouched.
 - [x] P21-G002: exact uploaded website screenshot and logo stored as original binary PNGs in `assets/p21/reference/`, SHA-256 verified (`a158389`).
 - [x] P21-G003: owner approved **Mega XOXO** for website, Android, iOS and user-facing content; original screenshot remains a pre-rebrand visual reference.
-- [x] P21-G004: confirm all 27 website routes inherit cinematic chrome; local practice retains the four approved palettes and saved IDs. Retained `src/` theme definitions are byte-identical to entry HEAD.
+- [x] P21-G004: confirm all 36 website routes inherit cinematic chrome; local practice retains the four approved palettes and saved IDs. Retained `src/` theme definitions are byte-identical to entry HEAD.
 - [ ] P21-G005: confirm live website shares V5 session identity, rank, wallet, friend, tournament, season and game authority with native apps.
 - [ ] P21-G006: capture desktop/tablet/mobile visual-diff evidence against approved reference variants and functional browser-game acceptance.
 - [ ] P21-G007: production deploy authorized separately; **none** of the design/asset commits auto-cut over or deploy.
@@ -80,7 +80,7 @@ The owner annotation iteration adds cinematic `/game`, Store, Sponsors and full 
 - [x] Player data model field provenance; never use image’s illustrative stats as live data.
 - [ ] SEO/title/OG/content specification per public page (no indexing private sessions).
 - [ ] Navigation, breadcrumbs, utility nav, bottom nav, responsive drawers, footer.
-- [x] API/WebSocket/session/CSRF/CORS integration requirements documented in [DEVELOPMENT-AND-RELEASE.md](DEVELOPMENT-AND-RELEASE.md); actual adapters remain open.
+- [x] API/WebSocket/session/CSRF/CORS integration requirements documented in [DEVELOPMENT-AND-RELEASE.md](DEVELOPMENT-AND-RELEASE.md); adapters have local/synthetic evidence; live same-origin provider/service integration remains open.
 - [ ] Accessibility landmarks, keyboard map, localization and RTL-readiness policy.
 - [ ] Copy deck, string IDs, error/empty/success/waiting text, UX writing review.
 - [ ] Analytics consent and event naming; no raw gameplay/personally identifying data in tracking.

@@ -56,3 +56,7 @@ Architecture is fixed to Vercel stateless account/social/read API, Neon durable 
 - Guest placeholders are truthful: no hardcoded wallet, Diamond II, expired Season 3, opponent rating or clock. Live account/session/data/realtime adapters require real staging acceptance.
 - No provider project creation/deployment, domain change or production cutover was performed. V4.1.2/SQLite remains live; legal, commercial hosting, physical browser/a11y and release-window gates remain open.
 - Code and exact local evidence: `99e65bdc8655162cf2dcc4af26dc0b73ec203cdc`; [website readiness](../p21-web/IMPLEMENTATION-AND-READINESS.md).
+
+## V5.1 annotation integration boundary
+
+Owner requests dated 2026-10-11 authorize in-site browser play, themed legal documents, Store/Sponsors, live-read standings UI and generated rank/currency presentation. `/legacy-game/` retains the byte-identical browser client while `/game` renders the website game. New browsing reads protected profile without automatic account/session bootstrap; explicit account actions reuse the existing cookie/CSRF client. Frontend only accepts confirmed server match snapshots. Public leaderboard proxy is opt-in and credential-free; no authentication bypass or write proxy. Sponsor interests require explicit browser-local consent. Store requires real provider capabilities/prices and durable receipt delivery before finish. This is presentation/client integration on V5.1; production authority and original migration gates remain unchanged.

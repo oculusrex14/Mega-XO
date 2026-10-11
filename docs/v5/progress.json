@@ -705,18 +705,34 @@
     "website_workstream": {
       "branch": "V5.1",
       "authorized_on": "2026-10-11",
-      "status": "LOCAL_IMPLEMENTED_VERIFYING_FINAL",
-      "code_commit": "99e65bdc8655162cf2dcc4af26dc0b73ec203cdc",
-      "summary": "Cinematic homepage, 26 secondary routes, shared-rule local practice, four game palettes, optimized still art, static delivery and presentation CI implemented. No live account integration, remote deployment or production acceptance.",
+      "status": "TESTED_LOCAL",
+      "code_commit": "41e74bff40c62cb35a7ca7a7045a27a79fa01c5d",
+      "summary": "Owner annotations implemented: cinematic in-site game, account/server read-model adapters, in-site standings, eleven rank images, generated Coin/Crown, Store/Sponsors, full themed legal documents and responsive pages. 75 affected tests, 658 browser checks and 84 automatic axe checks pass locally. Live website/API/provider deployment and production acceptance remain OPEN. Website and retained validation CI passed on the exact code SHA; downloaded CI/local manifests are byte-identical.",
       "checklist": "docs/p21-web/MASTER-CHECKLIST.md",
-      "evidence": "docs/p21-web/IMPLEMENTATION-AND-READINESS.md",
-      "next_action": "Owner visual review; live V5 staging/session/data/realtime integration, legal and hosting eligibility, physical browser/a11y/performance acceptance, then authorized deployment. V4.1.2/SQLite remains the live authority.",
+      "evidence": "docs/p21-web/evidence/41e74bf/verification.json",
+      "next_action": "Owner visual review; connect real same-origin staging session/API/callbacks and public standings ingress; activate approved store/ad providers after legal/hosting readiness; physical browser/manual accessibility checks, then authorized release. V4.1.2 SQLite remains sole production authority.",
       "annotation_iteration": {
         "request": "Fourteen owner browser comments",
-        "status": "LOCAL_IMPLEMENTED_VERIFYING_FINAL",
+        "status": "TESTED_LOCAL",
         "record": "docs/p21-web/ANNOTATION-CHANGES.md",
-        "summary": "Generated currency art and eleven rank badges, cinematic in-site game, account/read-model adapters, in-site standings, approved Store, consent-first sponsor layout and complete themed legal routes. Synthetic lifecycle/contract checks pass; final immutable browser/CI evidence pending.",
-        "residual": "Live same-origin service/session/callback deployment, public leaderboard ingress, actual billing/ad providers, legal approval and physical-device acceptance remain open."
+        "summary": "Owner annotations implemented: cinematic in-site game, account/server read-model adapters, in-site standings, eleven rank images, generated Coin/Crown, Store/Sponsors, full themed legal documents and responsive pages. 75 affected tests, 658 browser checks and 84 automatic axe checks pass locally. Live website/API/provider deployment and production acceptance remain OPEN.",
+        "residual": "Live same-origin service/session/callback deployment, public leaderboard ingress, actual billing/ad providers, legal approval and physical-device acceptance remain open.",
+        "code_commit": "41e74bff40c62cb35a7ca7a7045a27a79fa01c5d",
+        "bundle_sha256": "8ba90487208d286d869b1f3cad7cdee3a16cedc4326c5b8e79ce66fabd58ac72",
+        "evidence": "docs/p21-web/evidence/41e74bf/verification.json",
+        "local_checks": {
+          "affected_tests": 75,
+          "browser_checks": 658,
+          "automatic_axe_checks": 84,
+          "manual_axe_review_views": 82
+        },
+        "ci": {
+          "source_commit": "41e74bff40c62cb35a7ca7a7045a27a79fa01c5d",
+          "website_run": 38103649095,
+          "retained_run": 38103649059,
+          "result": "PASS",
+          "manifest_matches_local": true
+        }
       }
     }
   },

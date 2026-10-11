@@ -3,6 +3,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const { pathToFileURL } = require('node:url');
 const path = require('node:path');
+const fs = require('node:fs');
 const domain = require('../src/domain.js');
 const tournament = require('../src/tournament.js');
 const { WEBSITE_ROUTES, LEGAL_NAMES } = require('../scripts/p21/build-web.js');
@@ -12,16 +13,183 @@ const number = value => Number(value.replace(/[^0-9]/g, ''));
 
 test('P21.07 every advertised website route renders a page and all rendered links resolve', async () => {
   const { routes, renderPage } = await pages;
-  const supported = new Set([...WEBSITE_ROUTES, '/game', '/game/', ...LEGAL_NAMES.map(name => `/legal/${name}`)]);
-  for (const route of WEBSITE_ROUTES.filter(route => route !== '/')) {
+  const supported = new Set([...WEBSITE_ROUTES, ...routes.map(route => route.path), '/game', '/game/', '/api/download', ...LEGAL_NAMES.map(name => `/legal/${name}`)]);
+  const pressDownloads = new Map(['header', 'mark'].map(name => [`/assets/art/${name}.webp`, path.join(__dirname, `../assets/p21/art/${name}.webp`)]));
+  for (const route of WEBSITE_ROUTES.filter(route => !['/', '/game'].includes(route))) {
     const html = renderPage(route, { profile: null, connection: 'guest', now: '2026-10-11T12:00:00Z' });
     assert.ok(typeof html === 'string' && html.length > 150, `${route} has rendered content`);
     assert.ok(routes.some(item => item.path === route), `${route} has route metadata`);
     assert.doesNotMatch(html, /\$\{(?:icon|context|theme|profile|button)\(/, `${route} has no unexpanded template text`);
     for (const match of html.matchAll(/href="(\/[^"#]*)"/g)) {
       const destination = new URL(match[1], 'https://megaxo.online').pathname;
+      if (pressDownloads.has(destination)) {
+        const source = pressDownloads.get(destination);
+        const info = fs.lstatSync(source);
+        assert.ok(info.isFile() && !info.isSymbolicLink(), `${route} downloads the regular optimized source for ${destination}`);
+        const bytes = fs.readFileSync(source);
+        assert.ok(bytes.length >= 12 && bytes.toString('ascii', 0, 4) === 'RIFF' && bytes.toString('ascii', 8, 12) === 'WEBP', `${destination} has a real WebP source`);
+        continue;
+      }
       assert.ok(supported.has(destination) || /^\/legal\/[a-z-]+\.html$/.test(destination), `${route} links to supported ${destination}`);
     }
+  }
+});
+
+test('P21 leaderboard renders supplied standings inside the website and preserves server tier/order', async () => {
+  const { renderPage } = await pages;
+  const payload = '<script>bad()</script><img src=x onerror=bad()>';
+  const html = renderPage('/leaderboard', {
+    sessionStatus: 'linked', profile: { id: 'actor-2', name: 'Me', tier: 'wood', rating: 2700 },
+    leaderboard: { status: 'ready', metric: 'rating', scope: 'region', league: 'wood', updatedAt: Date.parse('2026-10-12T01:00:00Z'), rows: [
+      { id: 'actor-1', name: payload, tag: 'MEGA-AAA', rating: 2400.75, tier: 'wood', region: payload, position: 1 },
+      { id: 'actor-2', name: 'Me', tag: 'MEGA-BBB', rating: 2700, tier: 'wood', region: 'India', position: 2 },
+    ] },
+  });
+  assert.match(html, /class="pg-table pg-standings"/);
+  assert.match(html, /data-leaderboard-filter="metric"/);
+  assert.match(html, /data-leaderboard-filter="scope"/);
+  assert.match(html, /data-leaderboard-filter="league"/);
+  assert.match(html, /data-leaderboard-action="refresh"/);
+  assert.match(html, /value="region" selected/);
+  assert.match(html, /value="wood" selected/);
+  assert.match(html, /2,400\.75/);
+  assert.ok(html.indexOf('MEGA-AAA') < html.indexOf('MEGA-BBB'), 'the supplied published order is retained');
+  assert.match(html, /pg-current-player/);
+  assert.match(html, /\/assets\/art\/ranks\/wood\.webp/);
+  assert.doesNotMatch(html, /ranks\/grandmaster|<script>|<img src=x|href="\/game/);
+  assert.match(html, /&lt;script&gt;bad\(\)&lt;\/script&gt;/);
+  const wealth = renderPage('/leaderboard', { leaderboard: { status: 'ready', metric: 'wealth', rows: [{ name: 'Wealthy player', wealth: 3450, rating: 999, tier: 'gold' }] } });
+  assert.match(text(wealth), /Coin-equivalent/);
+  assert.match(text(wealth), /3,450/);
+  assert.doesNotMatch(text(wealth), /999\.00/);
+});
+
+test('P21 leaderboard loading, empty and error states never fabricate player rows', async () => {
+  const { renderPage } = await pages;
+  for (const status of ['loading', 'ready', 'error']) {
+    const html = renderPage('/leaderboard', { leaderboard: { status, rows: [], metric: 'rating', scope: 'global', league: 'all' } });
+    assert.doesNotMatch(html, /<tbody>|RivalPlayer|Diamond II|href="\/game/);
+    assert.match(html, /data-leaderboard-filter="league"/);
+    if (status === 'loading') assert.match(html, /aria-busy="true"/);
+    if (status === 'error') assert.match(html, /Try again/);
+    if (status === 'ready') assert.match(html, /No published players match/);
+  }
+  assert.doesNotThrow(() => renderPage('/leaderboard', { leaderboard: { status: 'ready', rows: [null], updatedAt: Number.MAX_VALUE } }));
+  for (const code of ['AUTH_REQUIRED', 'LINK_ACCOUNT_REQUIRED']) {
+    const html = renderPage('/leaderboard', { leaderboard: { status: 'error', code } });
+    assert.match(html, /Sign in to play online/);
+    assert.match(html, /href="\/account"/);
+    assert.doesNotMatch(html, /could not be loaded|Try again|href="\/game/);
+  }
+  assert.match(renderPage('/leaderboard', { leaderboard: { status: 'error', error: 'AUTH_REQUIRED' } }), /Sign in to play online/);
+});
+
+test('P21 personal rank uses the published profile tier, never rating-derived entitlement', async () => {
+  const { renderPage } = await pages;
+  const ranked = renderPage('/ranked', { sessionStatus: 'linked', profile: { name: 'Real player', tier: 'wood', rating: 2800.25 } });
+  const badge = ranked.match(/<div class="pg-rank-gem"[^>]*>([\s\S]*?)<\/div>/)?.[0];
+  assert.match(badge, /data-rank-tier="wood"/);
+  assert.match(badge, /ranks\/wood\.webp/);
+  assert.doesNotMatch(badge, /grandmaster/);
+  assert.match(text(ranked), /2,800\.25 rating/);
+  for (const tier of domain.TIERS) assert.match(ranked, new RegExp('ranks/' + tier.id + '\\.webp'));
+  const guest = renderPage('/ranked', { sessionStatus: 'guest', profile: null }).match(/<div class="pg-rank-gem"[^>]*>([\s\S]*?)<\/div>/)?.[0];
+  assert.match(guest, /ranks\/diamond\.webp/);
+  const guestCopy = text(renderPage('/ranked', { sessionStatus: 'guest', profile: null }));
+  assert.match(guestCopy, /It starts with a move/);
+  assert.doesNotMatch(guestCopy, /Diamond ·|Your rank is Diamond/);
+  const invalid = renderPage('/ranked', { sessionStatus: 'linked', profile: { tier: '../secrets', rating: 3000 } }).match(/<div class="pg-rank-gem"[^>]*>([\s\S]*?)<\/div>/)?.[0];
+  assert.doesNotMatch(invalid, /<img|secrets/);
+});
+
+test('P21 profile and reward balances render only the linked supplied profile', async () => {
+  const { renderPage } = await pages;
+  const profile = { name: 'Actual account', tag: 'MEGA-REAL', tier: 'wood', rating: 2700.25, games: 17, wallet: { coins: 421, crowns: 31 }, cosmeticCredits: 8 };
+  const linked = { sessionStatus: 'linked', profile };
+  const rewardText = text(renderPage('/rewards', linked));
+  assert.match(rewardText, /Coins 421/);
+  assert.match(rewardText, /Crowns 31/);
+  assert.match(rewardText, /Cosmetic Credits 8/);
+  assert.doesNotMatch(rewardText, /Sign in to play online/);
+  const accountText = text(renderPage('/profile', linked));
+  assert.match(accountText, /Actual account/);
+  assert.match(accountText, /Wood 2,700\.25 rating · 17 games/);
+  for (const path of ['/profile', '/friends', '/rewards']) {
+    const guest = renderPage(path, { sessionStatus: 'guest', profile });
+    assert.doesNotMatch(guest, /Actual account|MEGA-REAL|<strong>421<|<strong>31<|<strong>8</);
+  }
+});
+
+test('P21 account owns one unified continuation and verified recovery flow in the website', async () => {
+  const { renderPage } = await pages;
+  for (const view of ['email', 'verify', 'recover', 'reset']) {
+    const html = renderPage('/account', { sessionStatus: 'guest', accountView: view, accountMessage: '<script>unsafe()</script>', accountEmail: 'test"@example.com' });
+    assert.match(html, new RegExp('data-account-form="' + view + '"'));
+    assert.doesNotMatch(html, /<script>|action="https:\/\//);
+    assert.match(html, /&lt;script&gt;unsafe\(\)&lt;\/script&gt;/);
+    if (view === 'email') { assert.match(html, /name="email"/); assert.match(html, /name="password"/); assert.match(html, /Continue with email/); }
+    if (['verify', 'reset'].includes(view)) assert.match(html, /autocomplete="one-time-code"/);
+  }
+  assert.doesNotMatch(renderPage('/account', { sessionStatus: 'loading' }), /data-account-form/);
+  assert.match(renderPage('/account', { sessionStatus: 'guest' }), /data-provider="google" disabled/);
+  assert.doesNotMatch(renderPage('/account', { sessionStatus: 'guest', providers: { google: { web: true }, apple: { web: false } } }), /data-provider="google" disabled/);
+  const linked = renderPage('/account', { sessionStatus: 'linked', profile: { id: 'real', name: 'Actual profile', tag: 'MEGA-REAL', tier: 'gold', rating: 1580.35 } });
+  assert.match(linked, /Actual profile/);
+  assert.match(linked, /data-account-action="logout"/);
+  assert.doesNotMatch(linked, /data-account-form/);
+});
+
+test('P21 store only renders approved returned products and provider prices', async () => {
+  const { renderPage } = await pages;
+  const rows = [
+    { id: 'crowns_100', enabled: true, localizedPrice: '₹89.00', suggestedUSD: 0.99 },
+    { id: 'crowns_525', enabled: false, localizedPrice: '₹449.00' },
+    { id: 'crowns_1100', enabled: true },
+    { id: 'remove_ads', enabled: true, localizedPrice: '₹359.00', owned: true },
+    { id: 'style_collection', enabled: true, title: 'Buy archived frames', localizedPrice: '$9.99' },
+  ];
+  const html = renderPage('/store', { sessionStatus: 'linked', profile: { wallet: { coins: 47, crowns: 6 } }, products: { status: 'ready', purchasesAvailable: true, rows } });
+  assert.equal((html.match(/pg-store-card/g) || []).length, 4);
+  assert.match(html, /₹89\.00/);
+  assert.match(html, /data-product-id="crowns_100"/);
+  assert.doesNotMatch(html, /data-product-id="crowns_100" disabled/);
+  assert.match(html, /data-product-id="crowns_525" disabled/);
+  assert.match(html, /Price unavailable/);
+  assert.match(html, /Owned/);
+  assert.doesNotMatch(html, /style_collection|Buy archived frames|\$9\.99|0\.99/);
+  const unavailableProvider = renderPage('/store', { sessionStatus: 'linked', products: { status: 'ready', purchasesAvailable: false, rows } });
+  assert.match(unavailableProvider, /data-product-id="crowns_100" disabled/);
+  for (const status of ['error', 'loading']) {
+    const unavailable = renderPage('/store', { products: { status, rows } });
+    assert.doesNotMatch(unavailable, /pg-store-card|₹89\.00|\$0\.99/);
+  }
+});
+
+test('P21 sponsor preferences require explicit local consent and no active advertising', async () => {
+  const { renderPage } = await pages;
+  const html = renderPage('/sponsors', { sponsorPreferences: { consent: false, interests: [] } });
+  assert.match(html, /data-sponsor-preferences/);
+  assert.match(html, /name="consent" required/);
+  assert.match(html, /saved only in this browser/);
+  assert.equal((html.match(/class="pg-ad-label">Advertisement/g) || []).length, 3);
+  assert.match(html, /Sponsor placements are currently inactive/);
+  assert.doesNotMatch(html, /<script|<iframe|https:\/\/.*(?:doubleclick|googlesyndication)|click to earn|reward for clicking/i);
+  assert.equal(html, renderPage('/ads', { sponsorPreferences: { consent: false, interests: [] } }));
+});
+
+test('P21 full public legal bodies and all wording remain within shared website chrome', async () => {
+  const { renderPage } = await pages;
+  for (const name of LEGAL_NAMES) {
+    const source = fs.readFileSync(path.join(__dirname, '../public', name + '.html'), 'utf8');
+    const body = source.match(/<main\b[^>]*>([\s\S]*?)<\/main>/)?.[1];
+    assert.ok(body);
+    const context = { legalDocuments: { ['/' + name]: body } };
+    const clean = renderPage('/' + name, context), alias = renderPage('/legal/' + name, context);
+    assert.match(clean, /pg-legal-document/);
+    assert.ok(clean.includes(body), name + ': full source markup is preserved');
+    assert.equal(clean, alias);
+    assert.equal((clean.match(/<h1\b/g) || []).length, 1);
+    if (['privacy', 'terms'].includes(name)) assert.match(text(clean), /Draft for legal review/);
   }
 });
 

@@ -12,11 +12,11 @@ Required path: execute P00–P20, P22–P23; owner-deferred P21 executes nothing
 
 The goal and phase contracts above describe the original V5 program. The later owner request authorizes a separate `V5.1` website workstream; its original P21 deferral and acceptance history are retained.
 
-**Status:** TESTED_LOCAL. Cinematic homepage, 26 secondary routes, shared-rule local practice, four game palettes, optimized still art, static delivery and presentation CI implemented. No live account integration, remote deployment or production acceptance.
+**Status:** TESTED_LOCAL. Owner website annotations and browser Neon retained; latest download/discovery unit adds device-aware official-store routing and 39 prerendered pages, 22 public canonical URLs at megaxo.online, sitemap/robots, route metadata/social cards, factual FAQ/media kit and future company backlink source. Exact source passes 89 affected tests, 901 browser checks and 137 accessibility checks locally. Website/provider deployment, actual store URLs/company backlink and physical/manual accessibility remain OPEN; original production authority/gates unchanged. Website and retained CI pass on the exact source; downloaded CI/local manifests are byte-identical.
 
-**Code checkpoint:** `99e65bdc8655162cf2dcc4af26dc0b73ec203cdc`. [Website checklist](../p21-web/MASTER-CHECKLIST.md). [Evidence and release gates](../p21-web/IMPLEMENTATION-AND-READINESS.md).
+**Code checkpoint:** `8520f1ca32bdcc830bfab6830e2292732849eae8`. [Website checklist](../p21-web/MASTER-CHECKLIST.md). [Evidence and release gates](../p21-web/evidence/8520f1c/verification.json).
 
-**Next:** Owner visual review; live V5 staging/session/data/realtime integration, legal and hosting eligibility, physical browser/a11y/performance acceptance, then authorized deployment. V4.1.2/SQLite remains the live authority.
+**Next:** Owner visual review; authorize/configure actual website and same-origin service hosting, verify deployed crawl/redirect/session behavior, activate published store URLs and future Antimatter company backlink, complete 116 human accessibility views and physical browsers; retain V4.1.2 SQLite until separately authorized cutover.
 
 ## P00 — Freeze baseline, scope and ownership
 

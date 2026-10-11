@@ -1,0 +1,8 @@
+static-website	Verify delivery boundaries and affected website paths	2026-10-11T05:27:00.4676851Z ℹ tests 89
+static-website	Verify delivery boundaries and affected website paths	2026-10-11T05:27:00.4677681Z ℹ pass 89
+browser-presentation	Build and verify desktop, tablet and mobile presentation	2026-10-11T05:29:13.2206680Z {"stage":"viewport-complete","viewport":"desktop","checks":277,"failures":0}
+browser-presentation	Build and verify desktop, tablet and mobile presentation	2026-10-11T05:29:38.6766701Z {"stage":"viewport-complete","viewport":"tablet","checks":439,"failures":0}
+browser-presentation	Build and verify desktop, tablet and mobile presentation	2026-10-11T05:30:03.9427322Z {"stage":"viewport-complete","viewport":"mobile390","checks":601,"failures":0}
+browser-presentation	Build and verify desktop, tablet and mobile presentation	2026-10-11T05:30:28.8886885Z {"stage":"viewport-complete","viewport":"mobile320","checks":763,"failures":0}
+browser-presentation	Build and verify desktop, tablet and mobile presentation	2026-10-11T05:30:52.1367554Z {"result":"PASS","source_commit":"8520f1ca32bdcc830bfab6830e2292732849eae8","checks":901,"failures":0,"report":"/home/runner/work/Mega-XO/Mega-XO/tests-output/p21-web/6d14a99617f4/browser-qa.json"}
+browser-presentation	Verify automatic WCAG checks and keyboard interactions	2026-10-11T05:32:17.0137527Z {"result":"PASS","checks":137,"violations":[],"incomplete_views":116}

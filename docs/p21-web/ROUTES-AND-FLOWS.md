@@ -73,3 +73,10 @@ Reduced motion disables nonessential transitions, and forced-colors rules retain
 The local site has complete layouts and useful, honest guest states for the route set above. Online account/social/economic operations open the approved retained client. Direct website API read-state wiring, signed-in live cards, provider proof, native store approvals, public legal approval, production DNS/deployment, incident telemetry and production acceptance remain distinct gates. No static page, product rule table or green render test proves any of those gates.
 
 This route work covers P21.02 and P21.07 implementation slices and supports P21.04 accessibility/empty-state components. Checklist completion and evidence are maintained by the parent integration owner after the whole build is verified at its exact checkpoint SHA.
+# Owner annotation route revision
+
+The owner iteration replaces the old game gateway: `/game` and `/game/` are cinematic website game routes. The byte-preserved retained client is available at `/legacy-game/`; `/play?mode=practice` remains an alias for local website play. Standings stay inside `/leaderboard`, using fixed same-origin reads and explicit loading/empty/auth/error states.
+
+Store uses `/store`; the optional sponsor space uses `/sponsors` with `/ads` alias. Clean `/legal/{privacy,terms,support,delete-account,privacy-choices}` routes carry the website shell and complete source documents. Their `.html` aliases remain readable without JavaScript. Current packaging advertises 36 SPA routes.
+
+Account, rank and wallet are server-selected read models, with actual HttpOnly-cookie/CSRF account actions and a confirmed-snapshot online board. These adapters have synthetic/local test evidence; real deployment/session/callback/provider integration remains open. Historical gateway descriptions below describe the earlier `99e65bd` checkpoint.

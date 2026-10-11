@@ -41,23 +41,32 @@ async function main() {
     checked_at: new Date().toISOString(),
     source_commit: build.manifest.source_commit,
     bundle_sha256: build.manifest.bundle_sha256,
-    environment: 'local loopback Chromium; new unauthenticated contexts; static presentation only',
+    environment: 'local loopback Chromium; new unauthenticated contexts; read proxy explicitly disabled; synthetic API fixtures only',
     isolated_payload_snapshot: true,
     command: 'env -u NODE_OPTIONS ' + process.execPath + ' scripts/p21/browser-qa.cjs' + (process.argv.includes('--no-build') ? ' --no-build' : ''),
     runtime_version: process.version,
+    qa_script_sha256: crypto.createHash('sha256').update(fs.readFileSync(__filename)).digest('hex'),
     checks: [],
     failures: [],
     screenshots: [],
-    requests: { missing_local_resources: [], javascript_errors: [] },
+    requests: { missing_local_resources: [], javascript_errors: [], blocked_external_origins: [] },
   };
   let browser;
-  const server = createPreviewServer({ directory: snapshotRoot });
+  const server = createPreviewServer({ directory: snapshotRoot, readApiOrigin: null });
   try {
     server.listen(0, '127.0.0.1');
     await once(server, 'listening');
     const origin = 'http://127.0.0.1:' + server.address().port;
     browser = await playwright.chromium.launch({ headless: true });
     report.browser = browser.version();
+    const localOnly = async context => context.route('**/*', route => {
+      const url = new URL(route.request().url());
+      if (url.origin === origin || ['data:', 'blob:'].includes(url.protocol)) return route.continue();
+      // The retained client can reference its old font/icon CDNs. Blocking
+      // every external request makes this acceptance independent of providers.
+      if (!report.requests.blocked_external_origins.includes(url.origin)) report.requests.blocked_external_origins.push(url.origin);
+      return route.abort('blockedbyclient');
+    });
     const check = (id, condition, details) => {
       const result = { id, result: condition ? 'PASS' : 'FAIL', ...details };
       report.checks.push(result);
@@ -72,12 +81,42 @@ async function main() {
     };
     const track = page => {
       page.on('response', response => {
-        if (response.url().startsWith(origin + '/') && response.status() >= 400 && !response.url().startsWith(origin + '/api/')) {
+        const intentional404 = new URL(response.url()).pathname === '/404' && response.request().resourceType() === 'document' && response.status() === 404;
+        if (response.url().startsWith(origin + '/') && response.status() >= 400 && !response.url().startsWith(origin + '/api/') && !intentional404) {
           report.requests.missing_local_resources.push({ path: new URL(response.url()).pathname, status: response.status() });
         }
       });
       page.on('pageerror', error => report.requests.javascript_errors.push(String(error.message).slice(0, 500)));
     };
+    // Compare rendered component styles with the homepage rather than just
+    // asserting the theme ID: practice overrides must not remove Neon effects.
+    const neonStyle = page => page.locator('[data-gb-stage]').evaluate(stage => {
+      const tokens = ['--gb-surface', '--gb-raised', '--gb-ink', '--gb-muted', '--gb-line', '--gb-mini-border', '--gb-x', '--gb-o', '--gb-route', '--gb-focus', '--gb-radius', '--gb-font'];
+      const properties = ['backgroundColor', 'backgroundImage', 'borderTopColor', 'boxShadow', 'borderRadius', 'color', 'filter'];
+      const selectors = ['.gb-frame', '.gb-mini--active', '.gb-avatar--x', '.gb-avatar--o', '.gb-avatar--x .gb-mark', '.gb-avatar--o .gb-mark', '.gb-move-dot', '.gb-turn-strip', '.gb-turn-strip p'];
+      const style = getComputedStyle(stage);
+      return {
+        tokens: Object.fromEntries(tokens.map(token => [token, style.getPropertyValue(token).trim()])),
+        components: Object.fromEntries(selectors.map(selector => {
+          const component = getComputedStyle(stage.querySelector(selector));
+          return [selector, Object.fromEntries(properties.map(property => [property, component[property]]))];
+        })),
+        frameEdge: getComputedStyle(stage.querySelector('.gb-frame'), '::before').display,
+      };
+    });
+    const metadata = page => page.evaluate(() => ({
+      title: document.title,
+      description: [...document.querySelectorAll('meta[name="description"]')].map(meta => meta.content),
+      canonical: [...document.querySelectorAll('link[rel="canonical"]')].map(link => link.href),
+      robots: [...document.querySelectorAll('meta[name="robots"]')].map(meta => meta.content),
+      ogTitle: [...document.querySelectorAll('meta[property="og:title"]')].map(meta => meta.content),
+      ogUrl: [...document.querySelectorAll('meta[property="og:url"]')].map(meta => meta.content),
+      twitterTitle: [...document.querySelectorAll('meta[name="twitter:title"]')].map(meta => meta.content),
+      schema: [...document.querySelectorAll('script[type="application/ld+json"]')].flatMap(script => {
+        const value = JSON.parse(script.textContent); return Array.isArray(value) ? value : value['@graph'] || [value];
+      }),
+    }));
+    const rawMetadata = new Map();
     const widths = [
       { name: 'desktop', width: 1672, height: 941 },
       { name: 'tablet', width: 768, height: 1024 },
@@ -86,8 +125,10 @@ async function main() {
     ];
     for (const viewport of widths) {
       const context = await browser.newContext({ viewport: { width: viewport.width, height: viewport.height }, reducedMotion: 'reduce', timezoneId: 'Asia/Kolkata' });
+      await localOnly(context);
       const page = await context.newPage();
       track(page);
+      let homeNeon;
       for (const route of WEBSITE_ROUTES) {
         const response = await page.goto(origin + route, { waitUntil: 'networkidle' });
         await page.locator('#main').waitFor();
@@ -105,16 +146,51 @@ async function main() {
           }).slice(0, 8).map(element => ({ element: element.tagName.toLowerCase(), class: element.className?.baseVal ?? element.className })),
           links: [...document.querySelectorAll('a[href]')].map(anchor => anchor.getAttribute('href')).filter(href => href.startsWith('/') && !href.startsWith('//')),
         }));
-        check('P21-BROWSER-ROUTE', response?.status() === 200 && Boolean(metrics.heading) && (route === '/404' || !metrics.renders404), { route, viewport: viewport.name, status: response?.status(), heading: metrics.heading });
+        check('P21-BROWSER-ROUTE', response?.status() === (route === '/404' ? 404 : 200) && Boolean(metrics.heading) && (route === '/404' || !metrics.renders404), { route, viewport: viewport.name, status: response?.status(), heading: metrics.heading });
         check('P21-BROWSER-REFLOW', metrics.scrollWidth <= metrics.width + 1, { route, viewport: viewport.name, width: metrics.width, scrollWidth: metrics.scrollWidth, overflowing: metrics.overflowing });
         check('P21-BROWSER-IMAGES', metrics.brokenImages.length === 0, { route, viewport: viewport.name, brokenImages: metrics.brokenImages });
         check('P21-BROWSER-LABELS', metrics.unlabeledButtons.length === 0, { route, viewport: viewport.name, unlabeledButtons: metrics.unlabeledButtons });
+        if (viewport.name === 'desktop') {
+          const raw = await context.request.get(origin + route);
+          const content = await page.evaluate(html => {
+            const document = new DOMParser().parseFromString(html, 'text/html');
+            const get = (selector, property = 'content') => [...document.querySelectorAll(selector)].map(element => element[property] || element.getAttribute(property));
+            const main = document.querySelector('#main');
+            return {
+              title: document.title, description: get('meta[name="description"]'), canonical: get('link[rel="canonical"]', 'href'), robots: get('meta[name="robots"]'),
+              ogTitle: get('meta[property="og:title"]'), ogUrl: get('meta[property="og:url"]'), twitterTitle: get('meta[name="twitter:title"]'),
+              headingCount: main?.querySelectorAll('h1').length || 0,
+              contentLength: main?.textContent.replace(/\s+/g, ' ').trim().length || 0,
+              header: Boolean(document.querySelector('#header a[href="/"]')), footer: Boolean(document.querySelector('#footer a')),
+              schema: [...document.querySelectorAll('script[type="application/ld+json"]')].flatMap(script => {
+                const value = JSON.parse(script.textContent); return Array.isArray(value) ? value : value['@graph'] || [value];
+              }),
+            };
+          }, await raw.text());
+          rawMetadata.set(route, content);
+          check('P21-BROWSER-PRERENDERED-CONTENT', content.headingCount === 1 && content.contentLength > 80 && content.header && content.footer, { route, headingCount: content.headingCount, contentLength: content.contentLength, header: content.header, footer: content.footer });
+          check('P21-BROWSER-RAW-METADATA', content.title.length > 10 && content.description.length === 1 && content.description[0].length >= 50 && content.canonical.length === 1 && content.canonical[0].startsWith('https://megaxo.online/') && content.robots.length === 1 && content.ogTitle[0] === content.title && content.ogUrl[0] === content.canonical[0] && content.twitterTitle[0] === content.title && content.schema.length > 0, { route, title: content.title, canonical: content.canonical, robots: content.robots });
+          const live = await metadata(page);
+          check('P21-BROWSER-METADATA-HYDRATION', ['title', 'description', 'canonical', 'robots', 'ogTitle', 'ogUrl', 'twitterTitle', 'schema'].every(key => JSON.stringify(content[key]) === JSON.stringify(live[key])), { route, title: live.title, canonical: live.canonical });
+        }
         for (const href of metrics.links) snapshots.add(href.split('#')[0]);
         if (route === '/') {
+          homeNeon = await neonStyle(page);
           check('P21-BROWSER-BOARD', await page.locator('.gb-cell').count() === 81, { route, viewport: viewport.name });
           await snapshot(page, 'home-' + viewport.name, false);
           await snapshot(page, 'home-' + viewport.name + '-full');
-        } else if (viewport.name === 'desktop') await snapshot(page, 'page-' + route.slice(1));
+        } else {
+          if (route === '/game') {
+            check('P21-BROWSER-CINEMATIC-GAME', await page.locator('.gb-game-page').count() === 1 && await page.locator('[data-board-preview="false"] .gb-cell').count() === 81 && await page.locator('iframe').count() === 0 && await page.locator('.mx-header').count() === 1, { route, viewport: viewport.name });
+            const selected = await page.locator('[data-gb-setting="theme"]').inputValue();
+            const themes = await page.locator('[data-gb-setting="theme"] option').evaluateAll(options => options.map(option => option.value));
+            check('P21-BROWSER-NEON-DEFAULT', selected === 'cinematic' && themes.join(',') === 'cinematic,vector,midnight,paperclub,afterhours', { route, viewport: viewport.name, selected, themes });
+            const gameNeon = await neonStyle(page);
+            check('P21-BROWSER-NEON-HOME-PARITY', JSON.stringify(homeNeon) === JSON.stringify(gameNeon), { route, viewport: viewport.name, homeNeon, gameNeon });
+            if (viewport.name !== 'desktop') await snapshot(page, 'game-neon-' + viewport.name);
+          }
+          if (viewport.name === 'desktop') await snapshot(page, 'page-' + route.slice(1).replaceAll('/', '-'));
+        }
       }
       // The mobile drawer opens and Escape restores keyboard focus.
       if (viewport.width < 1000) {
@@ -131,34 +207,191 @@ async function main() {
       process.stdout.write(JSON.stringify({ stage: 'viewport-complete', viewport: viewport.name, checks: report.checks.length, failures: report.failures.length }) + '\n');
     }
     const context = await browser.newContext({ viewport: { width: 1280, height: 900 }, reducedMotion: 'reduce' });
+    await localOnly(context);
     const page = await context.newPage();
     track(page);
     for (const href of [...snapshots].sort()) {
       const response = await context.request.get(origin + href);
-      check('P21-BROWSER-LINK', response.status() === 200, { href, status: response.status() });
+      check('P21-BROWSER-LINK', response.status() === (href.split('?')[0] === '/404' ? 404 : 200), { href, status: response.status() });
     }
+    const crawlable = [...rawMetadata.entries()].filter(([route, value]) => !/noindex/i.test(value.robots[0]) && value.canonical[0] === 'https://megaxo.online' + route);
+    check('P21-BROWSER-PUBLIC-METADATA-UNIQUE', new Set(crawlable.map(([, value]) => value.title)).size === crawlable.length && new Set(crawlable.map(([, value]) => value.description[0])).size === crawlable.length && new Set(crawlable.map(([, value]) => value.canonical[0])).size === crawlable.length, { pages: crawlable.length });
+    for (const route of ['/game', '/play', '/account', '/profile', '/settings', '/offline', '/status', '/404']) check('P21-BROWSER-PRIVATE-NOINDEX', /noindex/i.test(rawMetadata.get(route)?.robots[0] || ''), { route });
+    const unknown = await context.request.get(origin + '/missing-synthetic-website-route');
+    check('P21-BROWSER-REAL-404', unknown.status() === 404 && /noindex/i.test(await unknown.text()), { route: '/missing-synthetic-website-route', status: unknown.status() });
     for (const name of LEGAL_NAMES) {
       const response = await page.goto(origin + '/legal/' + name, { waitUntil: 'networkidle' });
-      check('P21-BROWSER-LEGAL', response?.status() === 200 && await page.locator('h1').count() > 0, { route: '/legal/' + name, status: response?.status() });
+      const main = await page.locator('#main').textContent();
+      const raw = fs.readFileSync(path.join(snapshotRoot, 'legal', name + '.html'), 'utf8');
+      // Comparing visible text after browser parsing verifies every retained
+      // paragraph and draft warning without changing document wording.
+      const expected = await page.evaluate(html => {
+        const document = new DOMParser().parseFromString(html, 'text/html');
+        return document.querySelector('main').textContent.replace(/\s+/g, ' ').trim();
+      }, raw);
+      const text = main.replace(/\s+/g, ' ').trim();
+      const chrome = await page.locator('.mx-header').count() === 1 && await page.locator('.mx-footer').count() === 1;
+      check('P21-BROWSER-LEGAL', response?.status() === 200 && await page.locator('#main h1').count() === 1 && chrome && text.includes(expected), { route: '/legal/' + name, status: response?.status(), websiteChrome: chrome, completeSourceText: text.includes(expected) });
     }
-    await page.goto(origin + '/play?mode=practice', { waitUntil: 'networkidle' });
+    await page.goto(origin + '/', { waitUntil: 'networkidle' });
+    const homeSeo = await metadata(page);
+    const primary = page.getByRole('link', { name: 'Play Now', exact: true });
+    check('P21-BROWSER-HERO-PLAY-DESTINATION', await primary.getAttribute('href') === '/game', { label: 'Play Now', href: await primary.getAttribute('href') });
+    await primary.click();
+    await page.waitForURL(origin + '/game');
+    await page.locator('.gb-game-page').waitFor();
+    const gameSeo = await metadata(page);
+    check('P21-BROWSER-SPA-GAME-METADATA', gameSeo.canonical[0] === 'https://megaxo.online/game' && /noindex/i.test(gameSeo.robots[0]) && gameSeo.title !== homeSeo.title && gameSeo.ogTitle[0] === gameSeo.title && gameSeo.twitterTitle[0] === gameSeo.title && gameSeo.ogUrl[0] === gameSeo.canonical[0], { from: '/', to: '/game', title: gameSeo.title, canonical: gameSeo.canonical, robots: gameSeo.robots });
+    await page.goBack();
+    await page.waitForURL(origin + '/');
+    await page.locator('#hero-title').waitFor();
+    check('P21-BROWSER-SPA-METADATA-RESTORE', JSON.stringify(await metadata(page)) === JSON.stringify(homeSeo), { from: '/game', to: '/', title: (await metadata(page)).title });
+    await page.goto(origin + '/game/', { waitUntil: 'networkidle' });
+    check('P21-BROWSER-GAME-SLASH', await page.locator('.gb-game-page').count() === 1 && await page.locator('.mx-header').count() === 1, { route: '/game/' });
     await page.locator('[data-gb-setting="mode"]').selectOption('local');
-    check('P21-BROWSER-PRACTICE-INITIAL', await page.locator('.gb-cell[aria-disabled="false"]').count() === 81, { route: '/play?mode=practice' });
+    check('P21-BROWSER-PRACTICE-INITIAL', await page.locator('.gb-cell[aria-disabled="false"]').count() === 81, { route: '/game/' });
     await page.locator('[data-gb-cell="0:4"]').click();
     const legalMoves = await page.locator('.gb-cell[aria-disabled="false"]').evaluateAll(cells => cells.map(cell => cell.dataset.gbCell));
     check('P21-BROWSER-PRACTICE-ROUTING', legalMoves.length === 9 && legalMoves.every(key => key.startsWith('4:')), { move: '0:4', nextBoard: 4, legalMoves });
     const occupied = await page.locator('[data-gb-cell="0:4"]').getAttribute('aria-label');
     check('P21-BROWSER-PRACTICE-OCCUPIED', occupied.includes('X, occupied'), { cell: '0:4', label: occupied });
-    for (const theme of ['vector', 'midnight', 'paperclub', 'afterhours']) {
+    const tabStop = await page.locator('.gb-cell[tabindex="0"]').getAttribute('data-gb-cell');
+    const playingSeo = await metadata(page);
+    for (const theme of ['vector', 'midnight', 'paperclub', 'afterhours', 'cinematic']) {
       await page.locator('[data-gb-setting="theme"]').selectOption(theme);
       check('P21-BROWSER-THEME', await page.locator('[data-gb-stage]').getAttribute('data-gb-theme') === theme, { theme });
       check('P21-BROWSER-THEME-STATE', (await page.locator('[data-gb-cell="0:4"]').getAttribute('aria-label')).includes('X, occupied'), { theme, cell: '0:4' });
+      const afterThemeMoves = await page.locator('.gb-cell[aria-disabled="false"]').evaluateAll(cells => cells.map(cell => cell.dataset.gbCell));
+      check('P21-BROWSER-THEME-ROUTING-FOCUS', JSON.stringify(afterThemeMoves) === JSON.stringify(legalMoves) && await page.locator('.gb-cell[tabindex="0"]').getAttribute('data-gb-cell') === tabStop, { theme, legalMoves: afterThemeMoves, tabStop });
+      check('P21-BROWSER-THEME-SEO-STABILITY', JSON.stringify(await metadata(page)) === JSON.stringify(playingSeo), { theme, route: '/game/' });
       await snapshot(page, 'practice-' + theme);
     }
-    await page.goto(origin + '/game/', { waitUntil: 'domcontentloaded' });
+    await page.locator('[data-gb-cell="4:0"]').focus();
+    await page.keyboard.press('ArrowRight');
+    const focus = await page.evaluate(() => document.activeElement.dataset.gbCell);
+    check('P21-BROWSER-GAME-KEYBOARD', focus === '4:1', { direction: 'ArrowRight', expectedCell: '4:1', focusedCell: focus });
+    await page.keyboard.press('Space');
+    const afterKeyboard = await page.locator('.gb-cell[aria-disabled="false"]').evaluateAll(cells => cells.map(cell => cell.dataset.gbCell));
+    check('P21-BROWSER-GAME-KEYBOARD-MOVE', (await page.locator('[data-gb-cell="4:1"]').getAttribute('aria-label')).includes('O, occupied') && afterKeyboard.length === 9 && afterKeyboard.every(key => key.startsWith('1:')), { move: '4:1', nextBoard: 1 });
+    await page.locator('[data-gb-action="fresh"]').click();
+    check('P21-BROWSER-GAME-NEW', await page.locator('.gb-cell[aria-disabled="false"]').count() === 81 && await page.locator('.gb-cell[aria-label*="occupied"]').count() === 0, { route: '/game/' });
+    await page.locator('[data-gb-setting="mode"]').selectOption('bot');
+    await page.locator('[data-gb-setting="difficulty"]').selectOption('Beginner');
+    await page.locator('[data-gb-cell="0:4"]').click();
+    await page.waitForFunction(() => document.querySelectorAll('.gb-cell[aria-label*="occupied"]').length === 2);
+    const botMove = await page.locator('.gb-cell[aria-label*="O, occupied"]').getAttribute('data-gb-cell');
+    check('P21-BROWSER-GAME-BOT', botMove.startsWith('4:') && await page.locator('.gb-cell[aria-disabled="false"]').count() > 0, { difficulty: 'Beginner', botBoard: botMove.split(':')[0] });
+    await page.setViewportSize({ width: 1151, height: 865 });
+    await page.goto(origin + '/game', { waitUntil: 'networkidle' });
+    check('P21-BROWSER-NEON-ANNOTATION-VIEWPORT', await page.locator('[data-gb-setting="theme"]').inputValue() === 'cinematic' && await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), { width: 1151, height: 865 });
+    await snapshot(page, 'game-neon-1151', false);
+    await page.goto(origin + '/legacy-game/', { waitUntil: 'domcontentloaded' });
     await page.locator('#app').waitFor();
-    check('P21-BROWSER-RETAINED-GAME', await page.locator('#app').count() === 1 && await page.locator('#board').count() === 1, { route: '/game/' });
+    check('P21-BROWSER-RETAINED-GAME', await page.locator('#app').count() === 1 && await page.locator('#board').count() === 1, { route: '/legacy-game/' });
+    const retained = build.manifest.files.filter(file => file.path.startsWith('legacy-game/'));
+    check('P21-BROWSER-RETAINED-PARITY', retained.every(file => file.source_sha256 === file.sha256), { files: retained.length, bytePreserved: retained.every(file => file.source_sha256 === file.sha256) });
     await context.close();
+    for (const viewport of [widths[0], widths[2]]) {
+      const fixtureContext = await browser.newContext({ viewport: { width: viewport.width, height: viewport.height }, reducedMotion: 'reduce' });
+      await localOnly(fixtureContext);
+      const reads = [];
+      await fixtureContext.route(origin + '/api/**', async route => {
+        const request = route.request(), url = new URL(request.url());
+        reads.push({ method: request.method(), path: url.pathname, query: url.search });
+        const profile = { id: 'fixture-player', name: 'Fixture Player', tier: 'emerald', rating: 1968.25, games: 24, region: 'IN', season: { qualified: true }, wallet: { coins: 2450, crowns: 12 } };
+        const rows = [{ id: 'fixture-rival', name: 'Fixture Rival', tier: 'gold', rating: 1591.25, games: 24, region: 'IN', wealth: 43210 }];
+        const known = request.method() === 'GET' && ['/api/v1/profile', '/api/v1/leaderboard'].includes(url.pathname);
+        await route.fulfill({ status: known ? 200 : 503, contentType: 'application/json', body: JSON.stringify(known ? url.pathname === '/api/v1/profile' ? profile : rows : { error: 'WEB_API_NOT_CONFIGURED' }) });
+      });
+      const fixturePage = await fixtureContext.newPage();
+      track(fixturePage);
+      await fixturePage.goto(origin + '/ranked', { waitUntil: 'networkidle' });
+      await fixturePage.locator('.pg-personal-rating strong').waitFor();
+      const wallet = await fixturePage.locator('.mx-wallet-pill b').allTextContents();
+      check('P21-BROWSER-SYNTHETIC-PROFILE', (await fixturePage.locator('.pg-personal-rating strong').textContent()).replaceAll(',', '') === '1968.25' && wallet[0].replace(/\D/g, '') === '2450' && wallet[1].replace(/\D/g, '') === '12', { viewport: viewport.name, data: 'synthetic linked profile only' });
+      await snapshot(fixturePage, 'synthetic-ranked-' + viewport.name);
+      await fixturePage.goto(origin + '/leaderboard', { waitUntil: 'networkidle' });
+      await fixturePage.locator('.pg-standings tbody tr').waitFor();
+      check('P21-BROWSER-SYNTHETIC-STANDINGS', await fixturePage.locator('.pg-player-name').textContent() === 'Fixture Rival' && (await fixturePage.locator('.pg-score').textContent()).replaceAll(',', '') === '1591.25', { viewport: viewport.name, data: 'synthetic public rows only' });
+      await fixturePage.locator('[data-leaderboard-filter="metric"]').selectOption('wealth');
+      await fixturePage.waitForFunction(() => document.querySelector('.pg-score')?.textContent.replaceAll(',', '') === '43210');
+      await fixturePage.locator('[data-leaderboard-filter="league"]').selectOption('gold');
+      await fixturePage.waitForFunction(() => document.querySelector('[data-leaderboard-results]')?.getAttribute('aria-busy') === 'false');
+      check('P21-BROWSER-SYNTHETIC-FILTERS', reads.some(read => read.path === '/api/v1/leaderboard' && new URLSearchParams(read.query).get('metric') === 'wealth' && new URLSearchParams(read.query).get('league') === 'gold'), { viewport: viewport.name, metric: 'wealth', league: 'gold' });
+      await fixturePage.locator('[data-leaderboard-filter="scope"]').selectOption('region');
+      await fixturePage.waitForFunction(() => document.querySelector('[data-leaderboard-results]')?.getAttribute('aria-busy') === 'false');
+      check('P21-BROWSER-SYNTHETIC-REGION', reads.some(read => read.path === '/api/v1/leaderboard' && new URLSearchParams(read.query).get('scope') === 'local' && new URLSearchParams(read.query).get('region') === 'IN'), { viewport: viewport.name, scope: 'local', region: 'IN' });
+      const reflow = await fixturePage.evaluate(() => ({ width: document.documentElement.clientWidth, scrollWidth: document.documentElement.scrollWidth }));
+      check('P21-BROWSER-SYNTHETIC-REFLOW', reflow.scrollWidth <= reflow.width + 1, { viewport: viewport.name, ...reflow });
+      await snapshot(fixturePage, 'synthetic-leaderboard-' + viewport.name);
+      await fixturePage.goto(origin + '/store', { waitUntil: 'networkidle' });
+      await fixturePage.locator('[data-store-products]').waitFor();
+      check('P21-BROWSER-SYNTHETIC-STORE-UNAVAILABLE', await fixturePage.locator('[data-store-action="purchase"]').count() === 0, { viewport: viewport.name, source: 'synthetic unavailable provider response' });
+      check('P21-BROWSER-NO-AUTOMATIC-WRITES', reads.every(read => read.method === 'GET') && !reads.some(read => read.path.startsWith('/api/account/')), { viewport: viewport.name, methods: [...new Set(reads.map(read => read.method))], sessionBootstrapRequests: reads.filter(read => read.path.startsWith('/api/account/')).length });
+      await fixtureContext.close();
+    }
+    const authContext = await browser.newContext({ viewport: { width: 390, height: 844 }, reducedMotion: 'reduce' });
+    await localOnly(authContext);
+    const authReads = [];
+    await authContext.route(origin + '/api/**', async route => {
+      authReads.push({ method: route.request().method(), path: new URL(route.request().url()).pathname });
+      await route.fulfill({ status: 401, contentType: 'application/json', body: JSON.stringify({ error: 'AUTH_REQUIRED' }) });
+    });
+    const authPage = await authContext.newPage();
+    track(authPage);
+    await authPage.clock.install();
+    await authPage.goto(origin + '/leaderboard', { waitUntil: 'networkidle' });
+    const signIn = authPage.locator('[data-leaderboard-results] a[href="/account"]');
+    await signIn.waitFor();
+    const authText = await authPage.locator('[data-leaderboard-results]').textContent();
+    check('P21-BROWSER-AUTH-STATE', /Sign in/i.test(authText) && !/could not be loaded|service.*unavailable/i.test(authText), { response: 'synthetic AUTH_REQUIRED', signInAction: await signIn.textContent() });
+    await authPage.clock.fastForward(31000);
+    check('P21-BROWSER-AUTH-NO-POLL', authReads.filter(read => read.path === '/api/v1/leaderboard').length === 1 && authReads.every(read => read.method === 'GET'), { response: 'synthetic AUTH_REQUIRED', leaderboardReads: authReads.filter(read => read.path === '/api/v1/leaderboard').length, simulatedMilliseconds: 31000 });
+    await authContext.close();
+    const downloadDevices = [
+      { name: 'desktop', viewport: { width: 1280, height: 900 }, expectedPlatform: null },
+      { name: 'android', viewport: { width: 390, height: 844 }, userAgent: 'Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Mobile Safari/537.36', expectedPlatform: 'android' },
+      { name: 'ios', viewport: { width: 390, height: 844 }, userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1', expectedPlatform: 'ios' },
+    ];
+    for (const device of downloadDevices) {
+      const downloadContext = await browser.newContext({ viewport: device.viewport, userAgent: device.userAgent, reducedMotion: 'reduce' });
+      await localOnly(downloadContext);
+      const requests = [];
+      await downloadContext.route(origin + '/api/download**', async route => {
+        const request = route.request(), url = new URL(request.url());
+        requests.push({ method: request.method(), pathname: url.pathname, platform: url.searchParams.get('platform'), documentNavigation: request.isNavigationRequest() });
+        // Synthetic unavailable listing response exercises the full document
+        // handoff without opening a store or using a real device account.
+        await route.fulfill({ status: 303, headers: { Location: '/download' + (device.expectedPlatform ? '?platform=' + device.expectedPlatform : '') }, body: '' });
+      });
+      const downloadPage = await downloadContext.newPage(); track(downloadPage);
+      await downloadPage.goto(origin + '/', { waitUntil: 'networkidle' });
+      const secondary = downloadPage.getByRole('link', { name: 'Download Now', exact: true });
+      const href = await secondary.getAttribute('href');
+      check('P21-BROWSER-HERO-DOWNLOAD-DESTINATION', new URL(href, origin).pathname === '/api/download', { device: device.name, href });
+      await secondary.click();
+      await downloadPage.waitForURL(url => url.pathname === '/download');
+      await downloadPage.locator('#main h1').waitFor();
+      check('P21-BROWSER-DOWNLOAD-NATIVE-NAVIGATION', requests.length === 1 && requests[0].method === 'GET' && requests[0].documentNavigation && requests[0].platform === device.expectedPlatform, { device: device.name, requests, source: 'synthetic listing unavailable response' });
+      check('P21-BROWSER-DOWNLOAD-CHOOSER', await downloadPage.locator('.mx-header').count() === 1 && await downloadPage.locator('.mx-footer').count() === 1 && await downloadPage.locator('a[href^="https://play.google.com"],a[href^="https://apps.apple.com"]').count() === 0, { device: device.name, externalListings: 'unconfigured' });
+      await downloadContext.close();
+    }
+    const noScriptContext = await browser.newContext({ javaScriptEnabled: false, viewport: { width: 390, height: 844 } });
+    await localOnly(noScriptContext);
+    const noScriptPage = await noScriptContext.newPage();
+    for (const route of ['/', '/how-to-play', '/themes', '/download', '/faq', '/press', '/privacy', '/terms', '/legal/support']) {
+      const response = await noScriptPage.goto(origin + route, { waitUntil: 'networkidle' });
+      const geometry = await noScriptPage.evaluate(() => ({ width: document.documentElement.clientWidth, scrollWidth: document.documentElement.scrollWidth }));
+      check('P21-BROWSER-NOSCRIPT-PAGE', response?.status() === 200 && await noScriptPage.locator('#main h1').count() === 1 && await noScriptPage.locator('#main').innerText().then(text => text.trim().length > 80) && await noScriptPage.locator('.mx-header a').count() > 0 && await noScriptPage.locator('.mx-footer a').count() > 0, { route, javaScriptEnabled: false, status: response?.status() });
+      check('P21-BROWSER-NOSCRIPT-REFLOW', geometry.scrollWidth <= geometry.width + 1, { route, javaScriptEnabled: false, ...geometry });
+      const seo = await metadata(noScriptPage);
+      check('P21-BROWSER-NOSCRIPT-METADATA', JSON.stringify(seo) === JSON.stringify(Object.fromEntries(['title', 'description', 'canonical', 'robots', 'ogTitle', 'ogUrl', 'twitterTitle', 'schema'].map(key => [key, rawMetadata.get(route)?.[key]]))), { route, title: seo.title, canonical: seo.canonical });
+    }
+    await noScriptPage.goto(origin + '/', { waitUntil: 'networkidle' });
+    const supportHref = await noScriptPage.locator('.mx-noscript a').getAttribute('href');
+    const supportResponse = await noScriptPage.goto(origin + supportHref, { waitUntil: 'networkidle' });
+    check('P21-BROWSER-NOSCRIPT-SUPPORT', supportHref === '/support' && supportResponse?.status() === 200 && await noScriptPage.locator('main h1').count() === 1 && await noScriptPage.locator('.mx-header a').count() > 0, { javaScriptEnabled: false, href: supportHref, status: supportResponse?.status() });
+    await noScriptContext.close();
     check('P21-BROWSER-ASSET-HTTP', report.requests.missing_local_resources.length === 0, { errors: report.requests.missing_local_resources });
     check('P21-BROWSER-JAVASCRIPT', report.requests.javascript_errors.length === 0, { errors: report.requests.javascript_errors });
     report.result = report.failures.length === 0 ? 'PASS' : 'FAIL';
@@ -170,6 +403,7 @@ async function main() {
     await new Promise(resolve => { server.close(resolve); server.closeAllConnections(); });
     fs.rmSync(snapshotRoot, { recursive: true, force: true });
     fs.writeFileSync(path.join(output, 'browser-qa.json'), JSON.stringify(report, null, 2) + '\n');
+    fs.writeFileSync(path.join(output, 'browser-qa-' + (report.source_commit || 'unversioned').slice(0, 12) + '-' + report.checked_at.replace(/[^0-9]/g, '') + '.json'), JSON.stringify(report, null, 2) + '\n');
     fs.writeFileSync(path.join(outputRoot, 'browser-qa.json'), JSON.stringify(report, null, 2) + '\n');
     process.stdout.write(JSON.stringify({ result: report.result, source_commit: report.source_commit, checks: report.checks.length, failures: report.failures.length, report: path.join(output, 'browser-qa.json') }) + '\n');
     if (report.result !== 'PASS') process.exitCode = 1;

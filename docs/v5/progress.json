@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at_utc": "2026-10-10T20:03:54.294529+00:00",
+  "updated_at_utc": "2026-10-11T05:33:56.143382Z",
   "goal": "Deliver the V5 hybrid platform and real Android/iOS applications with shared permanent actor/assets, preserved approved game and retained browser compatibility; do not build the new website/browser product.",
   "source": {
     "goal": "AGENT-GOAL.md",
@@ -706,11 +706,94 @@
       "branch": "V5.1",
       "authorized_on": "2026-10-11",
       "status": "TESTED_LOCAL",
-      "code_commit": "99e65bdc8655162cf2dcc4af26dc0b73ec203cdc",
-      "summary": "Cinematic homepage, 26 secondary routes, shared-rule local practice, four game palettes, optimized still art, static delivery and presentation CI implemented. No live account integration, remote deployment or production acceptance.",
+      "code_commit": "8520f1ca32bdcc830bfab6830e2292732849eae8",
+      "summary": "Owner website annotations and browser Neon retained; latest download/discovery unit adds device-aware official-store routing and 39 prerendered pages, 22 public canonical URLs at megaxo.online, sitemap/robots, route metadata/social cards, factual FAQ/media kit and future company backlink source. Exact source passes 89 affected tests, 901 browser checks and 137 accessibility checks locally. Website/provider deployment, actual store URLs/company backlink and physical/manual accessibility remain OPEN; original production authority/gates unchanged. Website and retained CI pass on the exact source; downloaded CI/local manifests are byte-identical.",
       "checklist": "docs/p21-web/MASTER-CHECKLIST.md",
-      "evidence": "docs/p21-web/IMPLEMENTATION-AND-READINESS.md",
-      "next_action": "Owner visual review; live V5 staging/session/data/realtime integration, legal and hosting eligibility, physical browser/a11y/performance acceptance, then authorized deployment. V4.1.2/SQLite remains the live authority."
+      "evidence": "docs/p21-web/evidence/8520f1c/verification.json",
+      "next_action": "Owner visual review; authorize/configure actual website and same-origin service hosting, verify deployed crawl/redirect/session behavior, activate published store URLs and future Antimatter company backlink, complete 116 human accessibility views and physical browsers; retain V4.1.2 SQLite until separately authorized cutover.",
+      "annotation_iteration": {
+        "request": "Fourteen owner browser comments",
+        "status": "TESTED_LOCAL",
+        "record": "docs/p21-web/ANNOTATION-CHANGES.md",
+        "summary": "Owner annotations implemented: cinematic in-site game, account/server read-model adapters, in-site standings, eleven rank images, generated Coin/Crown, Store/Sponsors, full themed legal documents and responsive pages. 75 affected tests, 658 browser checks and 84 automatic axe checks pass locally. Live website/API/provider deployment and production acceptance remain OPEN.",
+        "residual": "Live same-origin service/session/callback deployment, public leaderboard ingress, actual billing/ad providers, legal approval and physical-device acceptance remain open.",
+        "code_commit": "41e74bff40c62cb35a7ca7a7045a27a79fa01c5d",
+        "bundle_sha256": "8ba90487208d286d869b1f3cad7cdee3a16cedc4326c5b8e79ce66fabd58ac72",
+        "evidence": "docs/p21-web/evidence/41e74bf/verification.json",
+        "local_checks": {
+          "affected_tests": 75,
+          "browser_checks": 658,
+          "automatic_axe_checks": 84,
+          "manual_axe_review_views": 82
+        },
+        "ci": {
+          "source_commit": "41e74bff40c62cb35a7ca7a7045a27a79fa01c5d",
+          "website_run": 38103649095,
+          "retained_run": 38103649059,
+          "result": "PASS",
+          "manifest_matches_local": true
+        }
+      },
+      "browser_theme_iteration": {
+        "request": "Owner /game annotation: default to homepage style, fifth browser-only theme; commit reusable art for future paid app theme",
+        "status": "TESTED_LOCAL",
+        "theme_id": "cinematic",
+        "display_name": "Mega XOXO Neon",
+        "record": "docs/p21-web/BROWSER-NEON-THEME.md",
+        "summary": "Homepage styling is the default fifth browser appearance in the game and gallery. Default component/token parity passes at desktop/tablet/390/320 widths; themes preserve moves/routes/roving focus. All 52 committed artwork inventory files match provenance. Original four complete computed-style palettes match the entry baseline in eight comparisons.",
+        "asset_inventory": "assets/p21/art/PROVENANCE.json",
+        "native_delivery": "FUTURE_BY_OWNER: paid app packaging, entitlement, SKU/price and provider/device release require future specification; not activated by this unit",
+        "code_commit": "c80663a7f66be5a7c193a818a0cd12cabedad64b",
+        "bundle_sha256": "390c3555d9f0b2ecd04107760aefa3e5223f3573461e7ff5049c4451fef7622d",
+        "evidence": "docs/p21-web/evidence/c80663a/verification.json",
+        "local_checks": {
+          "affected_tests": 76,
+          "browser_checks": 674,
+          "automatic_axe_checks": 95,
+          "manual_axe_review_views": 92,
+          "asset_files": 52,
+          "original_palette_comparisons": 8
+        },
+        "ci": {
+          "source_commit": "c80663a7f66be5a7c193a818a0cd12cabedad64b",
+          "website_run": 38113069080,
+          "retained_run": 38113069091,
+          "result": "PASS",
+          "manifest_matches_local": true
+        }
+      },
+      "download_discovery_iteration": {
+        "request": "Owner Download Now + device store backend + SEO/GEO/AEO; megaxo.online canonical, future antimatterinnovations.com company showcase, no public GitHub backlink",
+        "status": "TESTED_LOCAL",
+        "code_commit": "8520f1ca32bdcc830bfab6830e2292732849eae8",
+        "record": "docs/p21-web/DOWNLOAD-AND-DISCOVERY.md",
+        "evidence": "docs/p21-web/evidence/8520f1c/verification.json",
+        "bundle_sha256": "6d14a99617f49bdee645abb95df51577992530200a4d41af14e45d01d6a57242",
+        "local_checks": {
+          "affected_tests": 89,
+          "browser_checks": 901,
+          "accessibility_checks": 137,
+          "prerender_isolation_checks": 18,
+          "manual_review_views": 116,
+          "website_routes": 39,
+          "public_canonical_routes": 22
+        },
+        "store_links": {
+          "android": "UNPUBLISHED_NULL",
+          "ios": "UNPUBLISHED_NULL"
+        },
+        "company_backlink": "SOURCE_PREPARED_NOT_PUBLISHED",
+        "ci": {
+          "source_commit": "8520f1ca32bdcc830bfab6830e2292732849eae8",
+          "website_run": 38114808679,
+          "retained_run": 38114808754,
+          "result": "PASS",
+          "manifest_matches_local": true,
+          "manifest_sha256": "65ca4cb9887a5a88f437fe97f3fbe19f97e63fcfdbf9d3dc3967d26dea8404e3",
+          "provider_deployment": "NOT_PERFORMED; Git deployment disabled; retained publish/images skipped"
+        },
+        "residual": "Website/service hosting + deployed policy/session/redirect proof, real store listings, company-page publication, webmaster ownership/submission, physical/manual accessibility and legal/providers remain open."
+      }
     }
   },
   "program": {

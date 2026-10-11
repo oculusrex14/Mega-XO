@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "taskIds": ["B00.01", "B07.10", "P21-I01", "P21-I02", "P21-I03"],
+  "target": "feat/v5.1-bot-ai-tutorial; private loopback static preview",
+  "source": {
+    "featureParent": "1b8c45275d426e19ec9f3ca790d866f9d9385098",
+    "websiteParent": "1c74b41a1eadf6c284fbcb01459381ef90fe7be4",
+    "inputState": "normal merge working tree; per-file source hashes in generated manifest, not a clean committed build",
+    "entryCarried": [".agents/", "mega_xoxo_website_logo_pack/", "skills-lock.json"]
+  },
+  "ci": [
+    {"sha":"1b8c45275d426e19ec9f3ca790d866f9d9385098","run":38114874082,"result":"success","url":"https://github.com/oculusrex14/Mega-XO/actions/runs/38114874082"},
+    {"sha":"1c74b41a1eadf6c284fbcb01459381ef90fe7be4","run":38115264781,"result":"success","url":"https://github.com/oculusrex14/Mega-XO/actions/runs/38115264781"}
+  ],
+  "actions": [
+    {"command":"git fetch origin; git merge --no-ff --no-commit origin/V5.1","result":"one content conflict in scripts/p21/build-web.js; resolved with latest website/prerender/SEO/download routes plus retained bot/tutorial assets"},
+    {"command":"node scripts/p21/build-web.js --output .artifacts/v51-integration-baseline","result":"PASS","files":131,"bytes":2997448,"bundleSha256":"fb35fb94663de10caff063c1d74f618de9a350269f820131d0dedf0cb690030f","evidence":".artifacts/v51-integration-baseline/web-build.manifest.json"},
+    {"command":"node --test tests/v51-bot-tutorial.test.js tests/v5-p21-*.test.js tests/v5-client-bundle.test.js","result":"TIMEOUT at 300 seconds; emitted passing bundle/account/app/board/brand/data checks, no complete suite result. Investigating next download suite; not a pass.","evidence":"tool-delivered bg_605 output in the integration session"},
+    {"command":"node scripts/p21/serve-web.js --directory .artifacts/v51-integration-baseline --port 4271; browser.open http://127.0.0.1:4271/game","result":"actual 390x844 browser surface rendered; five web themes; no guided practice controls at baseline; this is the target compatibility gap","screenshot":"/var/folders/bg/pd6rztd92f73y6f73sbxdkdc0000gn/T/omp-sshots-15a1ad89516423d4.webp"}
+  ],
+  "frozenHashes": {
+    "src/game.js":"e6e14c258b4db439eedf28090ebafd0962867bab5e64709d0d4438cb145b31e0",
+    "src/domain.js":"a284a3b9de23a526d84bfa0a7e1cc976e058daa4432188189bcd43601c4db7b5",
+    "src/styles.css":"9a8a94d1896045917cf793a405fa14c809e4cee2a3bdf04b38374ac0ac8f8367"
+  },
+  "releaseHold": {"globalXRobotsTag":"noindex, nofollow","gitAutoDeployment":false,"reason":"new upstream SEO metadata preserved; no owner indexing/publication authorization"},
+  "productionChanges": false,
+  "modelPromotion": false,
+  "physicalAcceptance": "NOT_RUN",
+  "state": "PARTIAL; reconciliation build/browser proved, compatibility and full validation still in progress"
+}

@@ -1,0 +1,627 @@
+{
+  "schema_version": 1,
+  "generator": "scripts/p21/build-web.js",
+  "source_commit": "c80663a7f66be5a7c193a818a0cd12cabedad64b",
+  "source_commit_meaning": "checkout HEAD; per-file source_sha256 records the exact packaged working-tree input",
+  "bundle_sha256": "390c3555d9f0b2ecd04107760aefa3e5223f3573461e7ff5049c4451fef7622d",
+  "file_count": 77,
+  "total_bytes": 2436750,
+  "routes": {
+    "/": "index.html",
+    "/play": "index.html",
+    "/game": "index.html",
+    "/casual": "index.html",
+    "/ranked": "index.html",
+    "/tournaments": "index.html",
+    "/season": "index.html",
+    "/friends": "index.html",
+    "/challenge": "index.html",
+    "/leaderboard": "index.html",
+    "/rewards": "index.html",
+    "/store": "index.html",
+    "/sponsors": "index.html",
+    "/ads": "index.html",
+    "/themes": "index.html",
+    "/profile": "index.html",
+    "/settings": "index.html",
+    "/account": "index.html",
+    "/how-to-play": "index.html",
+    "/support": "index.html",
+    "/about": "index.html",
+    "/privacy": "index.html",
+    "/terms": "index.html",
+    "/delete-account": "index.html",
+    "/privacy-choices": "index.html",
+    "/legal/privacy": "index.html",
+    "/legal/terms": "index.html",
+    "/legal/support": "index.html",
+    "/legal/delete-account": "index.html",
+    "/legal/privacy-choices": "index.html",
+    "/help": "index.html",
+    "/news": "index.html",
+    "/status": "index.html",
+    "/accessibility": "index.html",
+    "/offline": "index.html",
+    "/404": "index.html",
+    "/game/": "index.html",
+    "/legacy-game/": "legacy-game/index.html"
+  },
+  "api": {
+    "configured": false,
+    "authority": "existing API / Game Core; static artifact has no backend, credentials or writers",
+    "preview_read_seam": "explicit P21_READ_API_ORIGIN only; GET /api/v1/leaderboard; no credential forwarding"
+  },
+  "files": [
+    {
+      "source": "apps/web/index.html",
+      "path": "404.html",
+      "source_sha256": "b8701045404a8c365b6bc8cd8e73c73e67d07b21056d20b4f336a705c10c7858",
+      "sha256": "b8701045404a8c365b6bc8cd8e73c73e67d07b21056d20b4f336a705c10c7858",
+      "bytes": 1918
+    },
+    {
+      "source": "apps/web/app.js",
+      "path": "app.js",
+      "source_sha256": "2c19b23a0bc53030d5271cbda383e2f0612c02bff7da0d3767bff9e72a0dea35",
+      "sha256": "2c19b23a0bc53030d5271cbda383e2f0612c02bff7da0d3767bff9e72a0dea35",
+      "bytes": 32251
+    },
+    {
+      "source": "assets/p21/art/crystal.webp",
+      "path": "assets/art/crystal.webp",
+      "source_sha256": "c62ad97cb7788ffed3336cbefd72c85063b93065fb9b0c1d8e0a837dfcc5b48c",
+      "sha256": "c62ad97cb7788ffed3336cbefd72c85063b93065fb9b0c1d8e0a837dfcc5b48c",
+      "bytes": 42372
+    },
+    {
+      "source": "assets/p21/art/currency/coin.webp",
+      "path": "assets/art/currency/coin.webp",
+      "source_sha256": "777752e01cc4c87d944db5f1d97d2919b590b35bb5429ad28c99d340c3b3f0cd",
+      "sha256": "777752e01cc4c87d944db5f1d97d2919b590b35bb5429ad28c99d340c3b3f0cd",
+      "bytes": 6428
+    },
+    {
+      "source": "assets/p21/art/currency/crown.webp",
+      "path": "assets/art/currency/crown.webp",
+      "source_sha256": "d1cf3170664e8a82ef8d060da0dde9c4cbfa6eb0549c68f6ec7cb8e0cb4286dc",
+      "sha256": "d1cf3170664e8a82ef8d060da0dde9c4cbfa6eb0549c68f6ec7cb8e0cb4286dc",
+      "bytes": 5420
+    },
+    {
+      "source": "assets/p21/art/devices.webp",
+      "path": "assets/art/devices.webp",
+      "source_sha256": "c542679ec5df8766517449fff82b96b0edd325f6c0c1997b940d0836df9f2ed5",
+      "sha256": "c542679ec5df8766517449fff82b96b0edd325f6c0c1997b940d0836df9f2ed5",
+      "bytes": 75328
+    },
+    {
+      "source": "assets/p21/art/header.webp",
+      "path": "assets/art/header.webp",
+      "source_sha256": "e01604c213f23dbbeb53d4cec6a57fadc8dc8712e8314847d6ac948f1700b207",
+      "sha256": "e01604c213f23dbbeb53d4cec6a57fadc8dc8712e8314847d6ac948f1700b207",
+      "bytes": 39114
+    },
+    {
+      "source": "assets/p21/art/hero-small.webp",
+      "path": "assets/art/hero-small.webp",
+      "source_sha256": "0b49e436001904856ce042c266445fa6c71f7466641bbf0e530502ce6fa36fe7",
+      "sha256": "0b49e436001904856ce042c266445fa6c71f7466641bbf0e530502ce6fa36fe7",
+      "bytes": 39914
+    },
+    {
+      "source": "assets/p21/art/hero-wide.webp",
+      "path": "assets/art/hero-wide.webp",
+      "source_sha256": "5520bcfe9f83dcf515c75dcac4f28ed85401abdfb6c1ac4a708795383ee101b7",
+      "sha256": "5520bcfe9f83dcf515c75dcac4f28ed85401abdfb6c1ac4a708795383ee101b7",
+      "bytes": 137524
+    },
+    {
+      "source": "assets/p21/art/mark.webp",
+      "path": "assets/art/mark.webp",
+      "source_sha256": "c0144ee525cdb1710bb114524588aff9b7d9adff88eb4dae363e26b6bf71e974",
+      "sha256": "c0144ee525cdb1710bb114524588aff9b7d9adff88eb4dae363e26b6bf71e974",
+      "bytes": 14040
+    },
+    {
+      "source": "assets/p21/art/ranks/bronze.webp",
+      "path": "assets/art/ranks/bronze.webp",
+      "source_sha256": "49a0a76df33a7a5432fef96ecefac1a6768f83fa06b0f61dc764c27296b33f3a",
+      "sha256": "49a0a76df33a7a5432fef96ecefac1a6768f83fa06b0f61dc764c27296b33f3a",
+      "bytes": 35900
+    },
+    {
+      "source": "assets/p21/art/ranks/champion.webp",
+      "path": "assets/art/ranks/champion.webp",
+      "source_sha256": "a436b2ff003d7a25295314a9d1cec1203d399c3707791ade7758094f6ee76d4b",
+      "sha256": "a436b2ff003d7a25295314a9d1cec1203d399c3707791ade7758094f6ee76d4b",
+      "bytes": 39910
+    },
+    {
+      "source": "assets/p21/art/ranks/diamond.webp",
+      "path": "assets/art/ranks/diamond.webp",
+      "source_sha256": "90bdf78de8283e413d1a1b776e712e8cdffb018fcb222132609aae46f5f04f93",
+      "sha256": "90bdf78de8283e413d1a1b776e712e8cdffb018fcb222132609aae46f5f04f93",
+      "bytes": 27864
+    },
+    {
+      "source": "assets/p21/art/ranks/emerald.webp",
+      "path": "assets/art/ranks/emerald.webp",
+      "source_sha256": "f80f340326d5f30962efb4c46281b82aa3350a11ee75a4be2d8d56104ecb31ef",
+      "sha256": "f80f340326d5f30962efb4c46281b82aa3350a11ee75a4be2d8d56104ecb31ef",
+      "bytes": 35786
+    },
+    {
+      "source": "assets/p21/art/ranks/gold.webp",
+      "path": "assets/art/ranks/gold.webp",
+      "source_sha256": "f86f94052814cf9edbba30bffeb3d748ffc70365a4d8fa62da738bbd08b1e1bc",
+      "sha256": "f86f94052814cf9edbba30bffeb3d748ffc70365a4d8fa62da738bbd08b1e1bc",
+      "bytes": 34592
+    },
+    {
+      "source": "assets/p21/art/ranks/grandmaster.webp",
+      "path": "assets/art/ranks/grandmaster.webp",
+      "source_sha256": "95e6f83148dc22983f946e9a1e6c9bb284ea1caed71301a8bae3ed124a23dee8",
+      "sha256": "95e6f83148dc22983f946e9a1e6c9bb284ea1caed71301a8bae3ed124a23dee8",
+      "bytes": 40790
+    },
+    {
+      "source": "assets/p21/art/ranks/iron.webp",
+      "path": "assets/art/ranks/iron.webp",
+      "source_sha256": "891ef50675bd4d064e3788c883fcf210299e0327206d05271ceb90ce6474dc10",
+      "sha256": "891ef50675bd4d064e3788c883fcf210299e0327206d05271ceb90ce6474dc10",
+      "bytes": 31850
+    },
+    {
+      "source": "assets/p21/art/ranks/master.webp",
+      "path": "assets/art/ranks/master.webp",
+      "source_sha256": "9900695647330248a6a961c933833cbb35978bb6e057300e0642b332ad734fc3",
+      "sha256": "9900695647330248a6a961c933833cbb35978bb6e057300e0642b332ad734fc3",
+      "bytes": 41888
+    },
+    {
+      "source": "assets/p21/art/ranks/silver.webp",
+      "path": "assets/art/ranks/silver.webp",
+      "source_sha256": "8999a3069a140c20aeb14e69413a11abb2bf0c30320f63ffaa7b29b622303e3f",
+      "sha256": "8999a3069a140c20aeb14e69413a11abb2bf0c30320f63ffaa7b29b622303e3f",
+      "bytes": 36644
+    },
+    {
+      "source": "assets/p21/art/ranks/stone.webp",
+      "path": "assets/art/ranks/stone.webp",
+      "source_sha256": "edffb46aca720fcf5cc6bbbe14a4b67457514f285202cfa0c48e2a87df09233a",
+      "sha256": "edffb46aca720fcf5cc6bbbe14a4b67457514f285202cfa0c48e2a87df09233a",
+      "bytes": 37666
+    },
+    {
+      "source": "assets/p21/art/ranks/wood.webp",
+      "path": "assets/art/ranks/wood.webp",
+      "source_sha256": "fd5f1b763b9e7acc58974e0577b41fa1e7b9ac1e761fff651964f4eca327e2a5",
+      "sha256": "fd5f1b763b9e7acc58974e0577b41fa1e7b9ac1e761fff651964f4eca327e2a5",
+      "bytes": 35156
+    },
+    {
+      "source": "assets/p21/art/trophy.webp",
+      "path": "assets/art/trophy.webp",
+      "source_sha256": "fbd9d225f640869897941edb49208c2334d8d74cefa4f03492bcbf5233f68b7f",
+      "sha256": "fbd9d225f640869897941edb49208c2334d8d74cefa4f03492bcbf5233f68b7f",
+      "bytes": 107518
+    },
+    {
+      "source": "assets/p21/fonts/IBM-Plex-Mono-OFL.txt",
+      "path": "assets/fonts/IBM-Plex-Mono-OFL.txt",
+      "source_sha256": "d741e57d5f865e294df801f96b7b5161a88b211df65887e4358d271c9fc5fb4f",
+      "sha256": "d741e57d5f865e294df801f96b7b5161a88b211df65887e4358d271c9fc5fb4f",
+      "bytes": 4362
+    },
+    {
+      "source": "assets/p21/fonts/Space-Grotesk-OFL.txt",
+      "path": "assets/fonts/Space-Grotesk-OFL.txt",
+      "source_sha256": "18a4de52385f6b988782639d5d0cc1326e5a8c2de9a7f01d7b20d9aedcc60943",
+      "sha256": "18a4de52385f6b988782639d5d0cc1326e5a8c2de9a7f01d7b20d9aedcc60943",
+      "bytes": 4401
+    },
+    {
+      "source": "assets/p21/fonts/caveat-OFL.txt",
+      "path": "assets/fonts/caveat-OFL.txt",
+      "source_sha256": "163a2b400e16916ad3196296c946c526d0efce6baf22a2164269ffc62fb9f671",
+      "sha256": "163a2b400e16916ad3196296c946c526d0efce6baf22a2164269ffc62fb9f671",
+      "bytes": 4384
+    },
+    {
+      "source": "assets/p21/fonts/caveat-Wnz6HAc5bAfYB2Q7ZjYYiAzcPA.woff2",
+      "path": "assets/fonts/caveat-Wnz6HAc5bAfYB2Q7ZjYYiAzcPA.woff2",
+      "source_sha256": "7a0049db01fdd8fc7af7ef36675862a72a5c76d0cb45ae63c9f5b6f1b769dac7",
+      "sha256": "7a0049db01fdd8fc7af7ef36675862a72a5c76d0cb45ae63c9f5b6f1b769dac7",
+      "bytes": 74572
+    },
+    {
+      "source": "assets/p21/fonts/chakrapetch-OFL.txt",
+      "path": "assets/fonts/chakrapetch-OFL.txt",
+      "source_sha256": "4a1d840eb0b2df8553804d844960a15773ca5af5d5c9803745307db8c617540b",
+      "sha256": "4a1d840eb0b2df8553804d844960a15773ca5af5d5c9803745307db8c617540b",
+      "bytes": 4395
+    },
+    {
+      "source": "assets/p21/fonts/chakrapetch-cIf6MapbsEk7TDLdtEz1BwkWn6pgar3I1A.woff2",
+      "path": "assets/fonts/chakrapetch-cIf6MapbsEk7TDLdtEz1BwkWn6pgar3I1A.woff2",
+      "source_sha256": "e592818029a919d578974df32686d415d6acd8401bc5420695de41a46eeae426",
+      "sha256": "e592818029a919d578974df32686d415d6acd8401bc5420695de41a46eeae426",
+      "bytes": 9728
+    },
+    {
+      "source": "assets/p21/fonts/chakrapetch-cIflMapbsEk7TDLdtEz1BwkeJI91R5_F_gUk0w.woff2",
+      "path": "assets/fonts/chakrapetch-cIflMapbsEk7TDLdtEz1BwkeJI91R5_F_gUk0w.woff2",
+      "source_sha256": "3c2433eb167176cddcdb3eb2ea306d68c2a4ed4c6e78a0dc07b3853d8f6ae8e3",
+      "sha256": "3c2433eb167176cddcdb3eb2ea306d68c2a4ed4c6e78a0dc07b3853d8f6ae8e3",
+      "bytes": 9868
+    },
+    {
+      "source": "assets/p21/fonts/chakrapetch-cIflMapbsEk7TDLdtEz1BwkeQI51R5_F_gUk0w.woff2",
+      "path": "assets/fonts/chakrapetch-cIflMapbsEk7TDLdtEz1BwkeQI51R5_F_gUk0w.woff2",
+      "source_sha256": "4d6d5f0b31b3a471a843779c4ecada040e5bc291f96bca9805a94293fe8003fa",
+      "sha256": "4d6d5f0b31b3a471a843779c4ecada040e5bc291f96bca9805a94293fe8003fa",
+      "bytes": 10040
+    },
+    {
+      "source": "assets/p21/fonts/chakrapetch-cIflMapbsEk7TDLdtEz1BwkebIl1R5_F_gUk0w.woff2",
+      "path": "assets/fonts/chakrapetch-cIflMapbsEk7TDLdtEz1BwkebIl1R5_F_gUk0w.woff2",
+      "source_sha256": "adf007cd277ef6dac0c8cecacfb60cc5e24e7c8bcce4db98aa233bd3a88ef5a3",
+      "sha256": "adf007cd277ef6dac0c8cecacfb60cc5e24e7c8bcce4db98aa233bd3a88ef5a3",
+      "bytes": 9944
+    },
+    {
+      "source": "assets/p21/fonts/ibm-plex-mono-latin.woff2",
+      "path": "assets/fonts/ibm-plex-mono-latin.woff2",
+      "source_sha256": "01d285447409c8a588692162439a038b8cbd7871309ee20267b0d2d91c6e8e22",
+      "sha256": "01d285447409c8a588692162439a038b8cbd7871309ee20267b0d2d91c6e8e22",
+      "bytes": 14888
+    },
+    {
+      "source": "assets/p21/fonts/orbitron-OFL.txt",
+      "path": "assets/fonts/orbitron-OFL.txt",
+      "source_sha256": "dd6fdb6716fd179d1fe891759efb3f9200753fdf6abf513b55b712c4ae16e512",
+      "sha256": "dd6fdb6716fd179d1fe891759efb3f9200753fdf6abf513b55b712c4ae16e512",
+      "bytes": 4425
+    },
+    {
+      "source": "assets/p21/fonts/orbitron-yMJRMIlzdpvBhQQL_Qq7dy1biN15.woff2",
+      "path": "assets/fonts/orbitron-yMJRMIlzdpvBhQQL_Qq7dy1biN15.woff2",
+      "source_sha256": "967b3909a7d6a5cc6365e9947775060fca15efdb62bc70099aef2e7d86e10205",
+      "sha256": "967b3909a7d6a5cc6365e9947775060fca15efdb62bc70099aef2e7d86e10205",
+      "bytes": 11768
+    },
+    {
+      "source": "assets/p21/fonts/patrickhand-LDI1apSQOAYtSuYWp8ZhfYe8XsLLubg58w.woff2",
+      "path": "assets/fonts/patrickhand-LDI1apSQOAYtSuYWp8ZhfYe8XsLLubg58w.woff2",
+      "source_sha256": "42156e008dd5fc3000679ff4e9ba9cbd3f417b6317c6dcbe11a12e9c87a09b28",
+      "sha256": "42156e008dd5fc3000679ff4e9ba9cbd3f417b6317c6dcbe11a12e9c87a09b28",
+      "bytes": 14224
+    },
+    {
+      "source": "assets/p21/fonts/patrickhand-OFL.txt",
+      "path": "assets/fonts/patrickhand-OFL.txt",
+      "source_sha256": "dbf0df430d5997121cc569dbe4f9198f76cf393114438f1f6c80a49f06f029d6",
+      "sha256": "dbf0df430d5997121cc569dbe4f9198f76cf393114438f1f6c80a49f06f029d6",
+      "bytes": 4375
+    },
+    {
+      "source": "assets/p21/fonts/space-grotesk-latin.woff2",
+      "path": "assets/fonts/space-grotesk-latin.woff2",
+      "source_sha256": "0640890476fc1198ab4de571fb658de443c4d85b66466ec09534a8737ab1ce9d",
+      "sha256": "0640890476fc1198ab4de571fb658de443c4d85b66466ec09534a8737ab1ce9d",
+      "bytes": 22288
+    },
+    {
+      "source": "apps/web/board.css",
+      "path": "board.css",
+      "source_sha256": "0f7e7191fde6f84ad80e0a7ff54c4668cb207a7fd84836ef5f4e2991da98d7d7",
+      "sha256": "0f7e7191fde6f84ad80e0a7ff54c4668cb207a7fd84836ef5f4e2991da98d7d7",
+      "bytes": 17376
+    },
+    {
+      "source": "apps/web/board.js",
+      "path": "board.js",
+      "source_sha256": "ee6a97154befa804f1056c6a1fde02c4f6a304153ccf80d2d04ef4be3bcd31b3",
+      "sha256": "ee6a97154befa804f1056c6a1fde02c4f6a304153ccf80d2d04ef4be3bcd31b3",
+      "bytes": 24816
+    },
+    {
+      "source": "apps/web/data.js",
+      "path": "data.js",
+      "source_sha256": "c170752e42ade11662511b77695b0cd2a048833a3f0eb9b39ba11cf89d809214",
+      "sha256": "c170752e42ade11662511b77695b0cd2a048833a3f0eb9b39ba11cf89d809214",
+      "bytes": 4539
+    },
+    {
+      "source": "apps/web/index.html",
+      "path": "index.html",
+      "source_sha256": "b8701045404a8c365b6bc8cd8e73c73e67d07b21056d20b4f336a705c10c7858",
+      "sha256": "b8701045404a8c365b6bc8cd8e73c73e67d07b21056d20b4f336a705c10c7858",
+      "bytes": 1918
+    },
+    {
+      "source": "assets/p21/logos/mega-xoxo-afterhours-app.webp",
+      "path": "legacy-game/assets/p21/logos/mega-xoxo-afterhours-app.webp",
+      "source_sha256": "2e4a88b52261d7f56953b6676f77d0368cfd26d859386368e833c348f10202f1",
+      "sha256": "2e4a88b52261d7f56953b6676f77d0368cfd26d859386368e833c348f10202f1",
+      "bytes": 129448
+    },
+    {
+      "source": "assets/p21/logos/mega-xoxo-afterhours-mark.webp",
+      "path": "legacy-game/assets/p21/logos/mega-xoxo-afterhours-mark.webp",
+      "source_sha256": "17bc84973d1c70f522541a9665caf161f94030abaf55d69ff504b82cd24a4f52",
+      "sha256": "17bc84973d1c70f522541a9665caf161f94030abaf55d69ff504b82cd24a4f52",
+      "bytes": 89770
+    },
+    {
+      "source": "assets/p21/logos/mega-xoxo-midnight-app.webp",
+      "path": "legacy-game/assets/p21/logos/mega-xoxo-midnight-app.webp",
+      "source_sha256": "749df0625b138994a668cfa89bb12f4817e05a826bd17243cc99da20c8fb303f",
+      "sha256": "749df0625b138994a668cfa89bb12f4817e05a826bd17243cc99da20c8fb303f",
+      "bytes": 80682
+    },
+    {
+      "source": "assets/p21/logos/mega-xoxo-midnight-mark.webp",
+      "path": "legacy-game/assets/p21/logos/mega-xoxo-midnight-mark.webp",
+      "source_sha256": "b4becf54ff31c026b716478d9e67979277ea2b4ae373f904e4956ebcdb4f5191",
+      "sha256": "b4becf54ff31c026b716478d9e67979277ea2b4ae373f904e4956ebcdb4f5191",
+      "bytes": 73380
+    },
+    {
+      "source": "assets/p21/logos/mega-xoxo-paperclub-app.webp",
+      "path": "legacy-game/assets/p21/logos/mega-xoxo-paperclub-app.webp",
+      "source_sha256": "83fa3e2aa82628316c6e2b6a8732523755e685bafd08ad233e88c1f58a1ee0e3",
+      "sha256": "83fa3e2aa82628316c6e2b6a8732523755e685bafd08ad233e88c1f58a1ee0e3",
+      "bytes": 126226
+    },
+    {
+      "source": "assets/p21/logos/mega-xoxo-paperclub-mark.webp",
+      "path": "legacy-game/assets/p21/logos/mega-xoxo-paperclub-mark.webp",
+      "source_sha256": "fa39ac3dc3f0fec4806c8a43d8d70d12a3cd36e719ba253c696bd12139fa8a77",
+      "sha256": "fa39ac3dc3f0fec4806c8a43d8d70d12a3cd36e719ba253c696bd12139fa8a77",
+      "bytes": 73394
+    },
+    {
+      "source": "assets/p21/logos/mega-xoxo-vector-app.webp",
+      "path": "legacy-game/assets/p21/logos/mega-xoxo-vector-app.webp",
+      "source_sha256": "5a6bdfae17c4ebd87a60f746dccb945a17c3aea9fa1d85b25c3b117fee36bd29",
+      "sha256": "5a6bdfae17c4ebd87a60f746dccb945a17c3aea9fa1d85b25c3b117fee36bd29",
+      "bytes": 111856
+    },
+    {
+      "source": "assets/p21/logos/mega-xoxo-vector-mark.webp",
+      "path": "legacy-game/assets/p21/logos/mega-xoxo-vector-mark.webp",
+      "source_sha256": "5ecf36fedc7713b04bec4921394898044d8bf62b452536e40b8258ef88c03321",
+      "sha256": "5ecf36fedc7713b04bec4921394898044d8bf62b452536e40b8258ef88c03321",
+      "bytes": 50684
+    },
+    {
+      "source": "index.html",
+      "path": "legacy-game/index.html",
+      "source_sha256": "d4476ff7564f112a8daed91226eb272080f76421072ae7fe4b65c10df483d289",
+      "sha256": "d4476ff7564f112a8daed91226eb272080f76421072ae7fe4b65c10df483d289",
+      "bytes": 5776
+    },
+    {
+      "source": "src/account-client.js",
+      "path": "legacy-game/src/account-client.js",
+      "source_sha256": "46d3420577b1e28adc93fc5d666940b7b394e674fe8b597fba791df6c967fab8",
+      "sha256": "46d3420577b1e28adc93fc5d666940b7b394e674fe8b597fba791df6c967fab8",
+      "bytes": 5711
+    },
+    {
+      "source": "src/app.js",
+      "path": "legacy-game/src/app.js",
+      "source_sha256": "79d8f07e4843a593d425eae9bdbe948a73676e3b18cdb74b37956d06ec2b09cb",
+      "sha256": "79d8f07e4843a593d425eae9bdbe948a73676e3b18cdb74b37956d06ec2b09cb",
+      "bytes": 74347
+    },
+    {
+      "source": "src/community.css",
+      "path": "legacy-game/src/community.css",
+      "source_sha256": "1d2b1d2bba4ef163c2bcbdc4913b5c0a42ff45005374a2e965c4b8bf17f7a438",
+      "sha256": "1d2b1d2bba4ef163c2bcbdc4913b5c0a42ff45005374a2e965c4b8bf17f7a438",
+      "bytes": 19722
+    },
+    {
+      "source": "src/community.js",
+      "path": "legacy-game/src/community.js",
+      "source_sha256": "f68c760323d6f662bca93f9bd886abc971b23d5cc8a7f6f6b2880ec61133979b",
+      "sha256": "f68c760323d6f662bca93f9bd886abc971b23d5cc8a7f6f6b2880ec61133979b",
+      "bytes": 53247
+    },
+    {
+      "source": "src/domain.js",
+      "path": "legacy-game/src/domain.js",
+      "source_sha256": "5c4bf7e41c61ea7db152d1e53ebe2b8f30421fba7261dc03bc9724a02cc7c8a4",
+      "sha256": "5c4bf7e41c61ea7db152d1e53ebe2b8f30421fba7261dc03bc9724a02cc7c8a4",
+      "bytes": 16543
+    },
+    {
+      "source": "src/game.js",
+      "path": "legacy-game/src/game.js",
+      "source_sha256": "e6e14c258b4db439eedf28090ebafd0962867bab5e64709d0d4438cb145b31e0",
+      "sha256": "e6e14c258b4db439eedf28090ebafd0962867bab5e64709d0d4438cb145b31e0",
+      "bytes": 4565
+    },
+    {
+      "source": "src/icons.js",
+      "path": "legacy-game/src/icons.js",
+      "source_sha256": "e220f1989623105c6c184fa5f68f717a427bf1d084515f1f64f6e4adc801281c",
+      "sha256": "e220f1989623105c6c184fa5f68f717a427bf1d084515f1f64f6e4adc801281c",
+      "bytes": 3098
+    },
+    {
+      "source": "src/lan-icons.js",
+      "path": "legacy-game/src/lan-icons.js",
+      "source_sha256": "f3cc4fd205187e4da205011770ce6576471b1c9685d65d758ede8934690a5709",
+      "sha256": "f3cc4fd205187e4da205011770ce6576471b1c9685d65d758ede8934690a5709",
+      "bytes": 2586
+    },
+    {
+      "source": "src/monetization-ui.js",
+      "path": "legacy-game/src/monetization-ui.js",
+      "source_sha256": "b762b65145489376d5fcbec50525d6bbed9e17b87bc8240b684ad7ef5c11e35b",
+      "sha256": "b762b65145489376d5fcbec50525d6bbed9e17b87bc8240b684ad7ef5c11e35b",
+      "bytes": 15817
+    },
+    {
+      "source": "src/monetization.css",
+      "path": "legacy-game/src/monetization.css",
+      "source_sha256": "0d9a99911775cd591b3059346a220724415a5034724bfc4ffe36e1af3499c456",
+      "sha256": "0d9a99911775cd591b3059346a220724415a5034724bfc4ffe36e1af3499c456",
+      "bytes": 4935
+    },
+    {
+      "source": "src/monetization.js",
+      "path": "legacy-game/src/monetization.js",
+      "source_sha256": "a7f754cbf455de6f790452dba0085320b987057909b873bf594726611d2e6b77",
+      "sha256": "a7f754cbf455de6f790452dba0085320b987057909b873bf594726611d2e6b77",
+      "bytes": 5825
+    },
+    {
+      "source": "src/network.js",
+      "path": "legacy-game/src/network.js",
+      "source_sha256": "cdb297372e132b8063fd397b7db2b88ce2c00f99a49f2ce69d06117655687e33",
+      "sha256": "cdb297372e132b8063fd397b7db2b88ce2c00f99a49f2ce69d06117655687e33",
+      "bytes": 2232
+    },
+    {
+      "source": "src/party-ui.js",
+      "path": "legacy-game/src/party-ui.js",
+      "source_sha256": "72f91a571591b30d21d1baf9c86ca5c2a868b9028f17c4bac6c8f8beb8585c1c",
+      "sha256": "72f91a571591b30d21d1baf9c86ca5c2a868b9028f17c4bac6c8f8beb8585c1c",
+      "bytes": 28923
+    },
+    {
+      "source": "src/party.css",
+      "path": "legacy-game/src/party.css",
+      "source_sha256": "f884f2296dd5c0fbd579fb7cf24731a9b0ba0648db896159ddd1e6c49dcec4b5",
+      "sha256": "f884f2296dd5c0fbd579fb7cf24731a9b0ba0648db896159ddd1e6c49dcec4b5",
+      "bytes": 13208
+    },
+    {
+      "source": "src/styles.css",
+      "path": "legacy-game/src/styles.css",
+      "source_sha256": "9a8a94d1896045917cf793a405fa14c809e4cee2a3bdf04b38374ac0ac8f8367",
+      "sha256": "9a8a94d1896045917cf793a405fa14c809e4cee2a3bdf04b38374ac0ac8f8367",
+      "bytes": 77251
+    },
+    {
+      "source": "src/tournament.js",
+      "path": "legacy-game/src/tournament.js",
+      "source_sha256": "3ac1298855cb8664dac54dde66fd465b81ecfc64f3e4f5b849e1e7840155f7ad",
+      "sha256": "3ac1298855cb8664dac54dde66fd465b81ecfc64f3e4f5b849e1e7840155f7ad",
+      "bytes": 13275
+    },
+    {
+      "source": null,
+      "sources": [
+        {
+          "source": "public/privacy.html",
+          "bytes": 8458,
+          "source_sha256": "aa9885848b7ad5983550fa321f086aad4e42b85711530ecfb104b6af9214fb90"
+        },
+        {
+          "source": "public/terms.html",
+          "bytes": 5871,
+          "source_sha256": "7ce1694cdb5ee343930614fbdf60dfcd5ace83da904de4e09d6a0a9001629127"
+        },
+        {
+          "source": "public/support.html",
+          "bytes": 2683,
+          "source_sha256": "4e9e15c646f68b3fc24a1f48f9dfab632114807c21ce62ea2d0b8b12adf1c017"
+        },
+        {
+          "source": "public/delete-account.html",
+          "bytes": 2808,
+          "source_sha256": "442e0d5909c8bf3af5a57d04789a7ad32bc21a48872cb5a7459db3546f3976e0"
+        },
+        {
+          "source": "public/privacy-choices.html",
+          "bytes": 2823,
+          "source_sha256": "9174e74de5e704e6b89056c6818327b6556a5eb37f39a1fa6cb33979c5de9763"
+        }
+      ],
+      "path": "legal-documents.js",
+      "sha256": "88d53d056525b7af36a3953b0cef10eaa40ad4e607b98f9905b73f5308b30fc6",
+      "transformation": "trusted-main-inner-markup-to-es-module",
+      "bytes": 20422
+    },
+    {
+      "source": "public/delete-account.html",
+      "path": "legal/delete-account.html",
+      "source_sha256": "442e0d5909c8bf3af5a57d04789a7ad32bc21a48872cb5a7459db3546f3976e0",
+      "sha256": "442e0d5909c8bf3af5a57d04789a7ad32bc21a48872cb5a7459db3546f3976e0",
+      "transformation": "legal-stylesheet-url-only",
+      "bytes": 2808
+    },
+    {
+      "source": "public/legal.css",
+      "path": "legal/legal.css",
+      "source_sha256": "7403ff953f368282182e371c45badc2550fb1da26e346ca4e3af4d9fdfd390a4",
+      "sha256": "7403ff953f368282182e371c45badc2550fb1da26e346ca4e3af4d9fdfd390a4",
+      "bytes": 1969
+    },
+    {
+      "source": "public/privacy-choices.html",
+      "path": "legal/privacy-choices.html",
+      "source_sha256": "9174e74de5e704e6b89056c6818327b6556a5eb37f39a1fa6cb33979c5de9763",
+      "sha256": "ee9812bf3a3453774844da89552c393e38fc058fd01b7db6d49479724ac766ba",
+      "transformation": "legal-stylesheet-url-only",
+      "bytes": 2822
+    },
+    {
+      "source": "public/privacy.html",
+      "path": "legal/privacy.html",
+      "source_sha256": "aa9885848b7ad5983550fa321f086aad4e42b85711530ecfb104b6af9214fb90",
+      "sha256": "e6f9d9b8d9ca33d1b821cdb4824a3e641200b50514c653f61f08758f6b78fefa",
+      "transformation": "legal-stylesheet-url-only",
+      "bytes": 8457
+    },
+    {
+      "source": "public/support.html",
+      "path": "legal/support.html",
+      "source_sha256": "4e9e15c646f68b3fc24a1f48f9dfab632114807c21ce62ea2d0b8b12adf1c017",
+      "sha256": "ac925a0544f59bb56afab47c77cba081bf6211ca573d587fcb771a4038c7638d",
+      "transformation": "legal-stylesheet-url-only",
+      "bytes": 2682
+    },
+    {
+      "source": "public/terms.html",
+      "path": "legal/terms.html",
+      "source_sha256": "7ce1694cdb5ee343930614fbdf60dfcd5ace83da904de4e09d6a0a9001629127",
+      "sha256": "bb3279d75566b5eeb77bab3c97437d027fc58f6ba030bddc52545e9bf1dda2f0",
+      "transformation": "legal-stylesheet-url-only",
+      "bytes": 5870
+    },
+    {
+      "source": "apps/web/pages.css",
+      "path": "pages.css",
+      "source_sha256": "d829773101a255bf22e6e742d1eb5cab2f3c4ca2b64e1c0b3570ae10a53c6ac6",
+      "sha256": "d829773101a255bf22e6e742d1eb5cab2f3c4ca2b64e1c0b3570ae10a53c6ac6",
+      "bytes": 52161
+    },
+    {
+      "source": "apps/web/pages.js",
+      "path": "pages.js",
+      "source_sha256": "9c5be7264cbc10398b02b5ed54afcf7cc279854ac1ac7ca06aaf73ff30fb03e7",
+      "sha256": "9c5be7264cbc10398b02b5ed54afcf7cc279854ac1ac7ca06aaf73ff30fb03e7",
+      "bytes": 72649
+    },
+    {
+      "source": "apps/web/styles.css",
+      "path": "styles.css",
+      "source_sha256": "bef0964859591f1e6e58c9ff81ac805cb74257f2e2266c064f714d27e515470b",
+      "sha256": "bef0964859591f1e6e58c9ff81ac805cb74257f2e2266c064f714d27e515470b",
+      "bytes": 27804
+    },
+    {
+      "source": "apps/web/ui.js",
+      "path": "ui.js",
+      "source_sha256": "bfac016c45c3eb60ed3404ce557628720f3c633d9f3f9be49c3ef83cb365b1b2",
+      "sha256": "bfac016c45c3eb60ed3404ce557628720f3c633d9f3f9be49c3ef83cb365b1b2",
+      "bytes": 4421
+    }
+  ]
+}

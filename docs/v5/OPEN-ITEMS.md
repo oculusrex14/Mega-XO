@@ -39,3 +39,13 @@ The original program's P21 deferral above is historical. The later owner request
 - P21-WEB-LEGAL / P21.07,.10: policy pages link draft retained legal documents; formal owner/legal/store disclosure approval remains required by the existing release gate.
 
 Reachable work delivered: isolated cinematic frontend, 27 route designs, five-level local bot/two-player, four palettes, generated still art/provenance, deterministic allowlisted build, Vercel static configuration and local/CI QA. Details: [readiness](../p21-web/IMPLEMENTATION-AND-READINESS.md).
+
+## Owner website annotation follow-on (V5.1)
+
+Local delivery on `41e74bff40c62cb35a7ca7a7045a27a79fa01c5d` is verified in [annotation evidence](../p21-web/evidence/41e74bf/verification.json). Remaining: real same-origin website/API session/CSRF/OAuth callback configuration, public leaderboard ingress (production currently AUTH_REQUIRED), actual billing bridge/provider prices and ad campaigns/network/consent/disclosures, owner visual review, 82 manual axe review views and physical Safari/Android/Firefox checks. These remain external production/device/provider gates; the implemented frontend is not a live release. Original G22/G23/G24 and the 13 production-dependent tasks retain their statuses.
+
+Owner-planned future app theme: **Mega XOXO Neon**, currently browser-only, will eventually be offered as a paid native appearance with its generated currency/rank artwork. [Handoff](../p21-web/BROWSER-NEON-THEME.md) records the committed sources. Pricing/SKU, authoritative ownership, native packaging and device/provider release are future scope; this does not block the authorized browser default.
+
+## Download/discovery launch follow-on (V5.1)
+
+Source `8520f1c` is locally verified for store redirects and public crawlability. Still required: actual reviewed website/API publication at megaxo.online, deployed headers/status/sitemap/session proof, real store listing URLs and device redirects, publication of the future company project card on antimatterinnovations.com, webmaster ownership/sitemap submission, and 116 human accessibility views plus physical-browser review. [Exact source/evidence](../p21-web/evidence/8520f1c/verification.json) and [activation guidance](../p21-web/DOWNLOAD-AND-DISCOVERY.md) retain these distinctions. No original production task/gate or live V4 authority was changed.

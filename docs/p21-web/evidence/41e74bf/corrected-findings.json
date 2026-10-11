@@ -1,0 +1,74 @@
+{
+  "source_commit": "41e74bff40c62cb35a7ca7a7045a27a79fa01c5d",
+  "recorded_at": "2026-10-11T02:01:41.782663+00:00",
+  "review_method": "Parent/subagent contract review with failing cases for account06/account07/app09-app12; all cases verified against final committed source. No retained production change.",
+  "findings": [
+    {
+      "cases": [
+        "P21-APP-01",
+        "P21-APP-02"
+      ],
+      "finding": "Own accepted queue invitations disappear from invitations(); matchId and actual matched cancellation outcome require authoritative snapshot reconciliation.",
+      "fix": "Fetch queueStatus.matchId / waiting invitation ID; preserve PLAYING and decline only an OFFERED invitation on explicit leave."
+    },
+    {
+      "cases": [
+        "P21-APP-03",
+        "P21-APP-05",
+        "P21-APP-06",
+        "P21-APP-07",
+        "P21-APP-16"
+      ],
+      "finding": "Asynchronous replies can outlive route, actor or match ownership and regress cached snapshots.",
+      "fix": "Fence generation, route, actor and match; cache only accepted snapshots; retire pagehide work; retain stable move retry keys."
+    },
+    {
+      "cases": [
+        "P21-APP-04",
+        "P21-APP-10",
+        "P21-APP-11"
+      ],
+      "finding": "A previous online actor or late profile read could survive authentication failure/account change.",
+      "fix": "Invalidate protected reads; increment online lifetime; destroy/rebind board and show sign-in while local modes remain playable."
+    },
+    {
+      "cases": [
+        "P21-APP-09",
+        "P21-APP-12",
+        "P21-APP-15"
+      ],
+      "finding": "Fresh game routes, transient polling and timeout settlement need resume paths.",
+      "fix": "Hydrate published activeMatch; expose Retry connection/focus/reconnect; retain confirmed FINISHED/VOID outcomes."
+    },
+    {
+      "cases": [
+        "P21-APP-13",
+        "P21-APP-14"
+      ],
+      "finding": "Online resignation/cancellation must preserve approved acceptance consequences and never automatically resign a found live match.",
+      "fix": "User confirmation of loss/agreed-pot/rating consequence before resignation; reconcile actual cancel outcome."
+    },
+    {
+      "cases": [
+        "P21-ACCOUNT-04"
+      ],
+      "finding": "A corrected-password recovery retry must not re-verify a consumed OTP.",
+      "fix": "Preserve verified resetReady stage until completion or new flow; password/code remain memory-only."
+    },
+    {
+      "cases": [
+        "P21-ACCOUNT-06",
+        "P21-ACCOUNT-07"
+      ],
+      "finding": "Account action could claim success after failed protected profile read or miss another-tab linking.",
+      "fix": "Only linked profile produces success copy; explicit options refresh linked state."
+    },
+    {
+      "cases": [
+        "P21-BROWSER-NOSCRIPT"
+      ],
+      "finding": "Clean legal routes use the SPA, so no-JS support needs the preserved HTML fallback.",
+      "fix": "Noscript points to /legal/support.html."
+    }
+  ]
+}

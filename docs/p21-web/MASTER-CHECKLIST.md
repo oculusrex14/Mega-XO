@@ -5,9 +5,13 @@
 **Product:** One Mega XOXO identity, inventory, wallet, competitive authority, matchmaking pool, and social graph across web, iOS, and Android.  
 **Visual master:** user-uploaded desktop mockup (1672 × 941) / Generated Image 1.  
 **Brand reference:** user-uploaded official Mega XOXO logo artwork (1600 × 1600), archived unchanged; the name is approved for web/iOS/Android.  
-**Execution status:** Homepage, 26 secondary routes, local practice, optimized art and static delivery implemented on `99e65bdc8655162cf2dcc4af26dc0b73ec203cdc`. Locally verified presentation; live account/service integration and production release remain OPEN. See [IMPLEMENTATION-AND-READINESS.md](IMPLEMENTATION-AND-READINESS.md) for verification levels and exact evidence. Nothing here means production deployed.
+**Execution status:** Latest website source `8520f1ca32bdcc830bfab6830e2292732849eae8`: owner annotations and browser Neon retained; **Download Now**, device-aware official-store handler, 39 prerendered routes, 22 public canonical URLs at megaxo.online, sitemap/robots, metadata/social cards, FAQ/media kit and future company backlink source. Exact source passes 89 affected tests, 901 browser checks and 137 accessibility checks locally. 116 views require human accessibility review. Store links remain null and the company backlink is prepared source; website/provider/device/production release remains OPEN. See [download and discovery](DOWNLOAD-AND-DISCOVERY.md) and [verification](evidence/8520f1c/verification.json).
 
 ## How to maintain this file
+
+The owner annotation iteration adds cinematic `/game`, Store, Sponsors and full themed legal routes, an in-site standings table, server-selected personal ranks, eleven badge images and generated currency artwork. Track all fourteen comments and remaining live-service/provider gates in [ANNOTATION-CHANGES.md](ANNOTATION-CHANGES.md). The earlier `99e65bd` checkpoint below remains historical evidence.
+
+The subsequent `/game` annotation authorizes **Mega XOXO Neon** (`cinematic`) as a fifth browser-only theme and default. [Theme and artwork handoff](BROWSER-NEON-THEME.md) records its implementation and the owner's future paid app-theme intent. The four retained theme IDs and native catalog remain intact.
 
 - This is the **living** P21 build ledger, not a conceptual wish list. On **V5.1 only**, update checkboxes after evidence-backed delivery, link file path(s), test(s) and commit SHAs, and keep open decisions explicit.
 - Check an item only when the asset/code/doc actually exists in the repository and is validated. Concept artwork is **not** a shippable, layered, licensed, responsive or accessible replacement.
@@ -23,7 +27,7 @@
 - [x] P21-G001: create isolated V5.1 branch from V5-platform; leave main / V4 / V5 / production untouched.
 - [x] P21-G002: exact uploaded website screenshot and logo stored as original binary PNGs in `assets/p21/reference/`, SHA-256 verified (`a158389`).
 - [x] P21-G003: owner approved **Mega XOXO** for website, Android, iOS and user-facing content; original screenshot remains a pre-rebrand visual reference.
-- [x] P21-G004: confirm all 27 website routes inherit cinematic chrome; local practice retains the four approved palettes and saved IDs. Retained `src/` theme definitions are byte-identical to entry HEAD.
+- [x] P21-G004: confirm all 39 website routes inherit cinematic chrome; local practice defaults to browser Neon and retains the four approved palette IDs. Retained `src/` theme definitions are byte-identical to entry HEAD.
 - [ ] P21-G005: confirm live website shares V5 session identity, rank, wallet, friend, tournament, season and game authority with native apps.
 - [ ] P21-G006: capture desktop/tablet/mobile visual-diff evidence against approved reference variants and functional browser-game acceptance.
 - [ ] P21-G007: production deploy authorized separately; **none** of the design/asset commits auto-cut over or deploy.
@@ -76,9 +80,9 @@
 - [ ] Login/signup/verify/link-identity/refresh/revocation/session-expiry flow aligned with V5.
 - [ ] Native-app deep-link / universal-link / app-association strategy.
 - [x] Player data model field provenance; never use image’s illustrative stats as live data.
-- [ ] SEO/title/OG/content specification per public page (no indexing private sessions).
+- [x] SEO/title/OG/content specification per public page; private/play routes noindex. Shared raw/client metadata is locally verified in [download/discovery evidence](evidence/8520f1c/verification.json).
 - [ ] Navigation, breadcrumbs, utility nav, bottom nav, responsive drawers, footer.
-- [x] API/WebSocket/session/CSRF/CORS integration requirements documented in [DEVELOPMENT-AND-RELEASE.md](DEVELOPMENT-AND-RELEASE.md); actual adapters remain open.
+- [x] API/WebSocket/session/CSRF/CORS integration requirements documented in [DEVELOPMENT-AND-RELEASE.md](DEVELOPMENT-AND-RELEASE.md); adapters have local/synthetic evidence; live same-origin provider/service integration remains open.
 - [ ] Accessibility landmarks, keyboard map, localization and RTL-readiness policy.
 - [ ] Copy deck, string IDs, error/empty/success/waiting text, UX writing review.
 - [ ] Analytics consent and event naming; no raw gameplay/personally identifying data in tracking.
@@ -166,6 +170,8 @@
 - [ ] Win/loss/draw summary, rewards, rank change and match history.
 - [ ] Audio option, haptics policy (where supported), animations and accessibility toggles.
 - [x] Four existing themes **vector, midnight, paperclub, afterhours** remain functional in gameplay.
+- [x] Owner-requested **Mega XOXO Neon** (`cinematic`) is the fifth browser theme and default; the playable board shares homepage styling. Future paid app delivery remains open.
+- [x] Neon checkpoint `c80663a`: 76 affected tests, 674 browser checks, 95 automatic accessibility checks, 52 Git/provenance assets and eight original-palette comparisons pass; [exact verification](evidence/c80663a/verification.json) and CI are archived.
 - [x] No online competitive/economic mutation or wallet/rating simulation. Local practice uses the existing pure rules; all online authority remains backend-owned.
 - [ ] Cross-browser input, keyboard navigation, touch and screen-reader board descriptions.
 - [ ] Spectating only if supported by actual feature contracts; otherwise marked future/disabled.
@@ -257,7 +263,7 @@
 - [x] Keyboard game control, focus visibility, high-contrast/forced colors, reduced motion.
 - [ ] Browser coverage: Chromium, Safari/macOS, Safari/iOS, Firefox, Android Chrome.
 - [ ] PWA install manifest/service worker/offline rules, no stale authenticated data.
-- [ ] SEO crawl policy, sitemap/robots/canonical URLs and indexation tests.
+- [x] Local SEO crawl policy, sitemap/robots/canonical URLs and production-policy fixture tests. Deployed indexing and webmaster submission remain open.
 - [ ] 60fps targeted micro-motion with low-power exceptions; WebGL not mandatory for controls.
 
 ## P21.09 — Codebase, deployment boundaries & backend integration
@@ -274,7 +280,7 @@
 - [x] No shadow economy, no duplicated policy, no insecure browser secrets.
 - [x] Integrate source assets via named manifest/hash rather than fragile direct paths.
 - [ ] Static asset CDN caching, immutable revisions, optimized bundle splitting.
-- [ ] Semantic SEO and Open Graph for public content, protected authenticated routes.
+- [x] Semantic SEO and Open Graph for public content; private routes excluded. Raw HTTP/client parity tests pass locally; live release remains open.
 - [ ] CI checks: lint/typecheck/unit/contract/visual/a11y/perf/playwright cross-browser.
 - [x] Loopback static preview refuses API writes and reads return unconfigured; no production writer/currency access. Remote staging remains open.
 - [ ] Deployment/rollback/canary runbook, build provenance and observable releases.
@@ -331,7 +337,7 @@ Each asset receives an ID (for example P21-BG-001, P21-LOGO-001), target compone
 | P21.02 Architecture | Routes/flows/auth boundaries | DOCUMENTED / PARTIAL | 27 routes and gateway ownership map; live auth/session/deep links open |
 | P21.03 Homepage | Editable desktop parity + adaptive page | IMPLEMENTED / TESTED_LOCAL | Reference composition, separate scene art, real legal practice board; exact approval open |
 | P21.04 Components | Accessible reusable components | PARTIAL / TESTED_LOCAL | Shared chrome/cards/buttons/icons/tabs; full signed-in form/state library open |
-| P21.05 Game UI | Real game with compatible rules/realtime | PARTIAL / TESTED_LOCAL | Local bot + two-player, 81 cells, four themes, preserved retained game; online/realtime open |
+| P21.05 Game UI | Real game with compatible rules/realtime | PARTIAL / TESTED_LOCAL | Local bot + two-player, 81 cells, Neon default plus four original palettes, preserved retained game; live online/realtime acceptance open |
 | P21.06 Assets/3D/motion/audio | Complete asset registry | PARTIAL | Four generated PNG masters/WebP exports + procedural art; layered scenes, 11 rank family, 3D/video/audio open |
 | P21.07 All pages | Full site pages and states | DESIGNED / PARTIAL | 26 supporting routes; live account data, detail/transaction flows open |
 | P21.08 Responsive/quality | Adaptive/a11y/performance | PARTIAL / TESTED_LOCAL | 320/390/768/1672 Chromium matrix; axe automatic checks; physical browsers/manual a11y/CWV open |
@@ -344,7 +350,7 @@ Each asset receives an ID (for example P21-BG-001, P21-LOGO-001), target compone
 2. **Actual signed-in website:** connect real protected sessions and account/rank/wallet/friend/tournament data; implement missing detail/transaction/realtime states against staging and verify shared permanent actor agreement. Current pages are guest presentation with game gateways.
 3. **Legal/release:** approve draft legal and retention disclosures; verify commercial hosting eligibility, origins, callbacks, DNS/associations and intended project. Vercel access exists; current scoped project inventory contains no `mega-xo-api` or dedicated Mega XOXO website project. Do not invent a deployment.
 4. **Quality:** physical Safari/iOS/Android/Firefox, VoiceOver/TalkBack, image/gradient contrast review, real device/network CWV, zoom and touch acceptance remain open. Chromium automation is narrower evidence.
-5. **Extended asset/brand pack:** editable vectors, app icons, actual device screenshots, independent scene layers, 11 tier art, 3D, motion and audio remain unfulfilled. The current still reconstruction renders without WebGL/video/audio. Tool permission does not constitute provider/legal approval.
+5. **Extended asset/brand pack:** editable vectors, app icons, actual device screenshots, independent scene layers, 3D, motion and audio remain unfulfilled; the eleven rank images are now committed. The current still reconstruction renders without WebGL/video/audio. Tool permission does not constitute provider/legal approval.
 6. **Production authority:** V4.1.2/SQLite stays live. A website launch cannot silently perform the separate V5 API/Core/PostgreSQL cutover; use the existing go/no-go and operator-window gates.
 7. **Historical ledger:** original pack P21 remains historically deferred. This later owner-authorized V5.1 workstream is separately recorded in `docs/v5/progress.json` and here; G22/G23/G24 and 38 original acceptance cases remain open.
 
@@ -401,3 +407,9 @@ Code: `99e65bdc8655162cf2dcc4af26dc0b73ec203cdc`. Evidence and final CI result: 
 | Native host build/launch/client byte parity | same | [38082099216](https://github.com/oculusrex14/Mega-XO/actions/runs/38082099216) | PASS; physical/store release OPEN |
 
 All 27 affected tests, 489 local browser checks and 58 automatic accessibility checks passed. Local build manifest equals the downloaded CI manifest. No production deployment.
+
+## Download and discovery follow-on — 2026-10-11
+
+Source `8520f1c` implements the owner’s Download Now request with a central nullable store-link config and an official-store-only device redirect handler. Public pages render full themed content before JavaScript. Twenty-two canonical public URLs use megaxo.online; play/personal routes stay out of the sitemap and have disallow/noindex policies. FAQ answers and structured data share one source; the media kit and company project card support legitimate future links. The GitHub repository is not used as a marketing destination. [Implementation and remaining launch checks](DOWNLOAD-AND-DISCOVERY.md) distinguish local delivery from actual publication. Existing Neon/artwork records remain historical evidence.
+
+Website and retained CI both passed on source `8520f1c`; the downloaded CI manifest is byte-identical to the local build. CI run identities and results are archived in the linked verification record.

@@ -9,139 +9,176 @@
   },
   "redirects": [
     {
-      "source": "/game",
-      "destination": "/game/",
+      "source": "/legacy-game",
+      "destination": "/legacy-game/",
+      "permanent": true
+    },
+    {
+      "source": "/index.html",
+      "destination": "/",
       "permanent": true
     }
   ],
   "rewrites": [
     {
-      "source": "/game/",
-      "destination": "/game/index.html"
+      "source": "/legacy-game/",
+      "destination": "/legacy-game/index.html"
     },
     {
       "source": "/legal/privacy",
-      "destination": "/legal/privacy.html"
+      "destination": "/pages/legal/privacy.html"
     },
     {
       "source": "/legal/terms",
-      "destination": "/legal/terms.html"
+      "destination": "/pages/legal/terms.html"
     },
     {
       "source": "/legal/support",
-      "destination": "/legal/support.html"
+      "destination": "/pages/legal/support.html"
     },
     {
       "source": "/legal/delete-account",
-      "destination": "/legal/delete-account.html"
+      "destination": "/pages/legal/delete-account.html"
     },
     {
       "source": "/legal/privacy-choices",
-      "destination": "/legal/privacy-choices.html"
+      "destination": "/pages/legal/privacy-choices.html"
     },
     {
       "source": "/play",
-      "destination": "/index.html"
+      "destination": "/pages/play.html"
     },
     {
       "source": "/casual",
-      "destination": "/index.html"
+      "destination": "/pages/casual.html"
     },
     {
       "source": "/ranked",
-      "destination": "/index.html"
+      "destination": "/pages/ranked.html"
     },
     {
       "source": "/tournaments",
-      "destination": "/index.html"
+      "destination": "/pages/tournaments.html"
     },
     {
       "source": "/season",
-      "destination": "/index.html"
+      "destination": "/pages/season.html"
     },
     {
       "source": "/friends",
-      "destination": "/index.html"
+      "destination": "/pages/friends.html"
     },
     {
       "source": "/challenge",
-      "destination": "/index.html"
+      "destination": "/pages/challenge.html"
     },
     {
       "source": "/leaderboard",
-      "destination": "/index.html"
+      "destination": "/pages/leaderboard.html"
     },
     {
       "source": "/rewards",
-      "destination": "/index.html"
+      "destination": "/pages/rewards.html"
     },
     {
       "source": "/themes",
-      "destination": "/index.html"
+      "destination": "/pages/themes.html"
     },
     {
       "source": "/profile",
-      "destination": "/index.html"
+      "destination": "/pages/profile.html"
     },
     {
       "source": "/settings",
-      "destination": "/index.html"
+      "destination": "/pages/settings.html"
     },
     {
       "source": "/account",
-      "destination": "/index.html"
+      "destination": "/pages/account.html"
     },
     {
       "source": "/how-to-play",
-      "destination": "/index.html"
+      "destination": "/pages/how-to-play.html"
     },
     {
       "source": "/support",
-      "destination": "/index.html"
+      "destination": "/pages/support.html"
     },
     {
       "source": "/about",
-      "destination": "/index.html"
+      "destination": "/pages/about.html"
     },
     {
       "source": "/privacy",
-      "destination": "/index.html"
+      "destination": "/pages/privacy.html"
     },
     {
       "source": "/terms",
-      "destination": "/index.html"
+      "destination": "/pages/terms.html"
     },
     {
       "source": "/delete-account",
-      "destination": "/index.html"
+      "destination": "/pages/delete-account.html"
     },
     {
       "source": "/privacy-choices",
-      "destination": "/index.html"
+      "destination": "/pages/privacy-choices.html"
     },
     {
       "source": "/help",
-      "destination": "/index.html"
+      "destination": "/pages/help.html"
     },
     {
       "source": "/news",
-      "destination": "/index.html"
+      "destination": "/pages/news.html"
     },
     {
       "source": "/status",
-      "destination": "/index.html"
+      "destination": "/pages/status.html"
     },
     {
       "source": "/accessibility",
-      "destination": "/index.html"
+      "destination": "/pages/accessibility.html"
     },
     {
       "source": "/offline",
-      "destination": "/index.html"
+      "destination": "/pages/offline.html"
     },
     {
       "source": "/404",
-      "destination": "/index.html"
+      "destination": "/404.html"
+    },
+    {
+      "source": "/game",
+      "destination": "/pages/game.html"
+    },
+    {
+      "source": "/game/",
+      "destination": "/pages/game.html"
+    },
+    {
+      "source": "/store",
+      "destination": "/pages/store.html"
+    },
+    {
+      "source": "/sponsors",
+      "destination": "/pages/sponsors.html"
+    },
+    {
+      "source": "/ads",
+      "destination": "/pages/ads.html"
+    },
+    {
+      "source": "/download",
+      "destination": "/pages/download.html"
+    },
+    {
+      "source": "/faq",
+      "destination": "/pages/faq.html"
+    },
+    {
+      "source": "/press",
+      "destination": "/pages/press.html"
     }
   ],
   "headers": [
@@ -161,16 +198,214 @@
           "value": "DENY"
         },
         {
-          "key": "X-Robots-Tag",
-          "value": "noindex, nofollow"
-        },
-        {
           "key": "Cache-Control",
           "value": "no-cache"
         },
         {
+          "key": "X-Robots-Tag",
+          "value": "noindex, nofollow"
+        },
+        {
           "key": "Content-Security-Policy",
           "value": "default-src 'self'; script-src 'self' https://unpkg.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'"
+        }
+      ]
+    },
+    {
+      "source": "/game",
+      "headers": [
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, follow"
+        }
+      ]
+    },
+    {
+      "source": "/game/(.*)",
+      "headers": [
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, follow"
+        }
+      ]
+    },
+    {
+      "source": "/play",
+      "headers": [
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, follow"
+        }
+      ]
+    },
+    {
+      "source": "/legacy-game",
+      "headers": [
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, follow"
+        }
+      ]
+    },
+    {
+      "source": "/legacy-game/(.*)",
+      "headers": [
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, follow"
+        }
+      ]
+    },
+    {
+      "source": "/account",
+      "headers": [
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, follow"
+        }
+      ]
+    },
+    {
+      "source": "/profile",
+      "headers": [
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, follow"
+        }
+      ]
+    },
+    {
+      "source": "/friends",
+      "headers": [
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, follow"
+        }
+      ]
+    },
+    {
+      "source": "/settings",
+      "headers": [
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, follow"
+        }
+      ]
+    },
+    {
+      "source": "/challenge",
+      "headers": [
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, follow"
+        }
+      ]
+    },
+    {
+      "source": "/offline",
+      "headers": [
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, follow"
+        }
+      ]
+    },
+    {
+      "source": "/status",
+      "headers": [
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, follow"
+        }
+      ]
+    },
+    {
+      "source": "/404",
+      "headers": [
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, follow"
+        }
+      ]
+    },
+    {
+      "source": "/404.html",
+      "headers": [
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, follow"
+        }
+      ]
+    },
+    {
+      "source": "/api/(.*)",
+      "headers": [
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, follow"
+        }
+      ]
+    },
+    {
+      "source": "/pages/(.*)",
+      "headers": [
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, follow"
+        }
+      ]
+    },
+    {
+      "source": "/legal/:name.html",
+      "headers": [
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, follow"
+        }
+      ]
+    },
+    {
+      "source": "/legal/privacy.html",
+      "headers": [
+        {
+          "key": "Link",
+          "value": "<https://megaxo.online/privacy>; rel=\"canonical\""
+        }
+      ]
+    },
+    {
+      "source": "/legal/terms.html",
+      "headers": [
+        {
+          "key": "Link",
+          "value": "<https://megaxo.online/terms>; rel=\"canonical\""
+        }
+      ]
+    },
+    {
+      "source": "/legal/support.html",
+      "headers": [
+        {
+          "key": "Link",
+          "value": "<https://megaxo.online/support>; rel=\"canonical\""
+        }
+      ]
+    },
+    {
+      "source": "/legal/delete-account.html",
+      "headers": [
+        {
+          "key": "Link",
+          "value": "<https://megaxo.online/delete-account>; rel=\"canonical\""
+        }
+      ]
+    },
+    {
+      "source": "/legal/privacy-choices.html",
+      "headers": [
+        {
+          "key": "Link",
+          "value": "<https://megaxo.online/privacy-choices>; rel=\"canonical\""
         }
       ]
     }

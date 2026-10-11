@@ -164,6 +164,20 @@
       ],
       "local": "Merged builder produced 131 files/2997448 bytes; actual loopback /game rendered five themes, no guided controls yet. Combined targeted Node validation timed out at 300s; no full-suite pass claimed.",
       "rollback": "Revert the normal merge as a reviewed cohesive unit with first-parent choice on the feature branch; no reset/force-push, production/database/provider changes. Preserve newer independent SEO work; release holds remain."
+    },
+    "C9-integration": {
+      "commit": "36c0802",
+      "ci": "PENDING at 7241781/36c0802; prior d345418 runs failed only on the obsolete P21-DELIVERY noindex expectation (corrected to assert the owner release hold) and on two staging tests that need the gitignored pinned onnxruntime-web dist (now skip-with-reason when absent). No approval, provider or device acceptance.",
+      "manualDevice": "NOT_RUN: Android adb inventory EMPTY; paired iPhone17,1 connection unavailable; zero valid signing identities.",
+      "evidence": [
+        "evidence/dgx-experiments-20261012.json",
+        "BENCHMARKS.md",
+        "../../../../tests/v51-p21-bot.test.js",
+        "../../../../tests/bot/tactics.test.cjs",
+        "../../../../scripts/v51/p21-staging-smoke.cjs"
+      ],
+      "local": "Full Node suite 1399 tests: 1123 passed, 275 skipped, 1 failed (owner-named pre-existing opsz backup-freshness test, file untouched). Real loopback PG16/Redis: P05 30/30, P06/P11/P13 34/34, P07 queue+match 16/16, P08 commands/transport/timers/restart/snapshot all green, P11 core-gateway 8/8, P21 106/106. Real Chromium: /game six-move guided+reload+handoff+5 themes; root and legacy-game Worker cancel/resume; pack manager; real ONNX neural Worker PUCT inference (webgpu) with cancellation. Isolated V5 staging smoke reaches flow 7 with the previously blocked signed-ingress convert committing and cleanup/preservation PASSING; remaining harness mismatch was its own wrong convert arithmetic (100 coins -> 10 crowns), now corrected and re-running.",
+      "rollback": "Revert the C9 feature-branch commit as a reviewed cohesive unit; keep mega_v51_search legacy and APPROVED_CATALOG empty. No production, database, provider or deployment change."
     }
   },
   "tasks": {
@@ -215,11 +229,14 @@
       ]
     },
     "B01.03": {
-      "status": "PARTIAL",
-      "checkpoint": "C1",
-      "blockers": [
-        "Nine reachable corpus categories implemented; dedicated fork and sacrifice-to-win proofs still open."
-      ]
+      "status": "DONE",
+      "commit": "7241781ad8fdf784128e3ed05e1b189d7e2ee966",
+      "checkpoint": "C9-integration",
+      "evidence": [
+        "tests/bot/tactics.cjs (11 reachable curated fixtures incl. curated-fork and sacrifice-to-win with mathematically verified goals)",
+        "tests/bot/tactics.test.cjs"
+      ],
+      "blockers": []
     },
     "B01.04": {
       "status": "PARTIAL",
@@ -247,10 +264,16 @@
       "checkpoint": "C3-core"
     },
     "B02.02": {
-      "status": "PARTIAL",
-      "checkpoint": "C3-core",
+      "status": "DONE",
+      "commit": "7241781ad8fdf784128e3ed05e1b189d7e2ee966",
+      "checkpoint": "C9-integration",
+      "evidence": [
+        "src/bot/search.js ordered(): immediate Mega wins, compulsory global blocks, mini-board threat/fork and route ordering",
+        "tests/bot/tactics.test.cjs",
+        "tests/bot/search.test.cjs"
+      ],
       "blockers": [
-        "Fast legal moves, exact global tactics and route ordering tested; curated fork/sacrifice proofs and tier calibration remain open."
+        "Adjacent-tier strength ORDERING across devices remains open under B02.06/B07.05, not move ordering."
       ]
     },
     "B02.03": {
@@ -605,11 +628,14 @@
       ]
     },
     "B07.03": {
-      "status": "PARTIAL",
-      "checkpoint": "C3-core",
-      "blockers": [
-        "Current reachable corpus has no missed immediate global win/defense; complete curated acceptance corpus still open."
-      ]
+      "status": "DONE",
+      "commit": "7241781ad8fdf784128e3ed05e1b189d7e2ee966",
+      "checkpoint": "C9-integration",
+      "evidence": [
+        "33 critical checks over 3 seeds x 11 curated positions: 0 illegal, 0 missed one-ply forced Mega wins, 0 missed mandatory defenses",
+        "tests/bot/tactics.test.cjs"
+      ],
+      "blockers": []
     },
     "B07.04": {
       "status": "PARTIAL",

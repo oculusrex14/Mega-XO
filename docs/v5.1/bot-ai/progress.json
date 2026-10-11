@@ -166,15 +166,18 @@
       "rollback": "Revert the normal merge as a reviewed cohesive unit with first-parent choice on the feature branch; no reset/force-push, production/database/provider changes. Preserve newer independent SEO work; release holds remain."
     },
     "C9-integration": {
-      "commit": "36c0802",
-      "ci": "PENDING at 7241781/36c0802; prior d345418 runs failed only on the obsolete P21-DELIVERY noindex expectation (corrected to assert the owner release hold) and on two staging tests that need the gitignored pinned onnxruntime-web dist (now skip-with-reason when absent). No approval, provider or device acceptance.",
+      "commit": "6937e87df646b8b213e72aa85b5a1c565e52f311",
+      "ci": "PASS Actions on 10d83ef: all four workflows succeeded (Mega XOXO validation, P21 V5.1 website validation, V5 native host build verification, V5.1 bot and tutorial validation). Prior d345418 runs failed only on the obsolete P21-DELIVERY noindex expectation (now asserting the owner release hold) and on two staging tests needing the gitignored pinned onnxruntime-web dist (now skip-with-reason when absent). No approval, provider or device acceptance.",
       "manualDevice": "NOT_RUN: Android adb inventory EMPTY; paired iPhone17,1 connection unavailable; zero valid signing identities.",
       "evidence": [
         "evidence/dgx-experiments-20261012.json",
         "BENCHMARKS.md",
         "../../../../tests/v51-p21-bot.test.js",
         "../../../../tests/bot/tactics.test.cjs",
-        "../../../../scripts/v51/p21-staging-smoke.cjs"
+        "../../../../scripts/v51/p21-staging-smoke.cjs",
+        "V5-O016 (real public-leaderboard defect + Core-served fix)",
+        "V5-O017 (measured staging latency gate at flow 12)",
+        "docs/v5/OPEN-ITEMS.md"
       ],
       "local": "Full Node suite 1399 tests: 1123 passed, 275 skipped, 1 failed (owner-named pre-existing opsz backup-freshness test, file untouched). Real loopback PG16/Redis: P05 30/30, P06/P11/P13 34/34, P07 queue+match 16/16, P08 commands/transport/timers/restart/snapshot all green, P11 core-gateway 8/8, P21 106/106. Real Chromium: /game six-move guided+reload+handoff+5 themes; root and legacy-game Worker cancel/resume; pack manager; real ONNX neural Worker PUCT inference (webgpu) with cancellation. Isolated V5 staging smoke reaches flow 7 with the previously blocked signed-ingress convert committing and cleanup/preservation PASSING; remaining harness mismatch was its own wrong convert arithmetic (100 coins -> 10 crowns), now corrected and re-running.",
       "rollback": "Revert the C9 feature-branch commit as a reviewed cohesive unit; keep mega_v51_search legacy and APPROVED_CATALOG empty. No production, database, provider or deployment change."
@@ -292,7 +295,7 @@
       "status": "PARTIAL",
       "checkpoint": "C3-core",
       "blockers": [
-        "Explicit profiles exist. Adjacent-tier strength ordering across devices is not established."
+        "Profiles are explicit and adjacent-tier strength ordering IS measured on one Node runtime/host (105 independent held-out D4 families, all four adjacent pairs strictly monotonic with intervals excluding parity). Physical-device ordering and cross-device stability remain open under B01.05/B05.09/B07.01."
       ]
     },
     "B02.07": {
@@ -641,7 +644,7 @@
       "status": "PARTIAL",
       "checkpoint": "C3-ui",
       "blockers": [
-        "Sampled search league passes target; independent-family promotion coverage and Impossible strength not established."
+        "Improved Expert passes its >=65% gate against legacy Expert (75.78%, CI [0.7129,0.8008], 128 held-out families). Impossible strength is NOT established; all neural candidates were rejected (<=0.008 point score) and the public catalog stays empty."
       ]
     },
     "B07.05": {
@@ -687,7 +690,7 @@
       "status": "PARTIAL",
       "checkpoint": "C8-merge",
       "blockers": [
-        "Latest V5.1 1c74b41 normal-merged and pushed; website guide/Worker compatibility and real isolated protected account/provider acceptance remain in progress. Draft PR10 is the SEO/P21 coordination thread; no owner response, release approval or deployment."
+        "Latest V5.1 1c74b41 normal-merged and pushed; website guide/Worker compatibility, the guided-lesson/Worker adapter, the leaderboard/accept route gaps and flows 1-11 of the isolated staging smoke are verified. Final flow 12 is environment-gated by cross-region staging latency (V5-O017). Draft PR10 is the SEO/P21 coordination thread; no owner response, release approval or deployment."
       ]
     },
     "B07.11": {
@@ -698,9 +701,17 @@
       ]
     },
     "B07.12": {
-      "status": "IN_PROGRESS",
-      "blockers": [
-        "Final handoff and inventory in progress."
+      "status": "DONE",
+      "blockers": [],
+      "commit": "6937e87df646b8b213e72aa85b5a1c565e52f311",
+      "checkpoint": "C9-integration",
+      "evidence": [
+        "HANDOFF.md",
+        "ROLLBACK.md",
+        "BENCHMARKS.md",
+        "progress.json",
+        "docs/v5/OPEN-ITEMS.md",
+        "evidence/dgx-experiments-20261012.json"
       ]
     }
   }

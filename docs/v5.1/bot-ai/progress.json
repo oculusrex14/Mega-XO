@@ -249,9 +249,14 @@
       ]
     },
     "B01.05": {
-      "status": "BLOCKED",
+      "status": "PARTIAL",
+      "commit": "65a5ff52dfc3b55689f5a4dc73caf8048ae1e151",
+      "checkpoint": "C9-integration",
+      "evidence": [
+        "evidence/device-2026-10-11T23-54-01-631Z.json: real headless Chromium run at c28fe74 with legacy per-tier move times (Expert 326.6 ms), corpus p95 329.86 ms vs <1500 ms target, frame latency p95 16.67 ms, cold start 326.67 ms, cancellation + resume fences passing"
+      ],
       "blockers": [
-        "No physical Android/iPhone/Safari reference hardware attached; container timings are not device evidence."
+        "Physical Android (adb EMPTY), physical iPhone (paired but connection cannot be established) and Apple signing remain unavailable; desktop-container telemetry is NOT phone evidence."
       ]
     },
     "B01.06": {
@@ -628,9 +633,14 @@
     },
     "B07.01": {
       "status": "PARTIAL",
-      "checkpoint": "C7-platform",
+      "commit": "65a5ff52dfc3b55689f5a4dc73caf8048ae1e151",
+      "checkpoint": "C9-integration",
+      "evidence": [
+        "Desktop Chromium 151.0.7922.34 measured over the real harness (evidence/device-2026-10-11T23-54-01-631Z.json)",
+        "CI records Firefox/WebKit tutorial runs, Android emulator build and unsigned iOS simulator launch (evidence/platform-ci.json)"
+      ],
       "blockers": [
-        "CI engines/emulator/simulator recorded; physical reference hardware/release matrix outstanding."
+        "Physical reference devices, real Safari/WebView matrix, screen readers and thermal/battery are UNMEASURED; emulator/simulator is not device parity."
       ]
     },
     "B07.02": {

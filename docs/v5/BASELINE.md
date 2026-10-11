@@ -56,3 +56,7 @@ Approved source/rule baseline protects21 unchanged application files. Actual iso
 Source-backed [ownership manifest](ROUTE-AND-DATA-INVENTORY.md) covers all35 exact restored source tables, eight authority roots, serialized/practice fields, mounted/standalone/test-only routes and implicit/startup writers. [Target architecture](ARCHITECTURE.md) freezes write owners and product/failure/cutover boundaries.
 
 Neon Free org/admin/zero projects and Hostinger owned domain/DNS/object reads are verified. Vercel CLI authentication, effective Neon quotas/capabilities, package metadata scope, monitor IDs, current Apple membership/signing/store entitlements and connected physical devices remain precisely scoped later prerequisites. [Provider](evidence/phase00-provider-inventory.json) / [native](evidence/phase00-native-inventory.json) inventories preserve actual commands and failures.
+
+## V5.1 download/discovery unit baseline
+
+Entry `9c651cc` → source `8520f1c` retains byte-identical src/, root game index, public legal sources, native/, packages/, server/, deploy/, original implementation pack/goal and all prior art/font/logo inputs. The comparison is recorded as P21-DISCOVERY-RETAINED-01 in [verification](../p21-web/evidence/8520f1c/verification.json). Website code, shared pure page renderers, static prerender tooling, redirect handler/config and affected-path QA are the changed unit. Megaxo.online is public canonical identity; the retained play.antimatterinnovations.com origin is not silently redirected or cut over.

@@ -1,0 +1,17 @@
+{
+  "checked_at": "2026-10-11T05:19:06.919Z",
+  "source_commit": "9c651cc73647525b0817f7abd6e4a417787c3030",
+  "bundle_sha256": "5708fceefc6dd6f53b9062a9d1f589c2aaf10806656c35a002c342edeca27569",
+  "command": "env -u NODE_OPTIONS /Users/oculus/.hermes/node/bin/node scripts/p21/accessibility-qa.cjs",
+  "environment": "Local loopback Chromium; guest or synthetic linked fixture; JavaScript-disabled prerendered public pages; read proxy explicitly disabled; no authenticated/provider traffic",
+  "result": "FAIL",
+  "meaning": "Preliminary working-source QA driver failure; not a committed-source accessibility result.",
+  "failure": [
+    {
+      "case_id": "P21-A11Y-EXECUTION",
+      "result": "FAIL",
+      "message": "page.evaluate: Resulting promise was garbage collected."
+    }
+  ],
+  "resolution": "Run axe in tooling-only JavaScript context with every site script/API blocked; compare raw/prerender main HTML and verify absent site globals. Actual JavaScript-disabled rendering remains independently tested."
+}

@@ -1,0 +1,6 @@
+{
+  "case_id": "P21-DISCOVERY-LEDGER-01",
+  "result": "PASS",
+  "command": "Compare parsed docs/v5/progress.json against git show 9c651cc:docs/v5/progress.json excluding updated_at_utc/current.website_workstream; run scripts/v5/progress.js render and inspect",
+  "meaning": "Only owner website workstream and timestamp changed; all original program/task/phase/acceptance/baseline/source/production fields remain identical. 117 tasks,104terminal,13nonterminal; P21 DEFERRED_BY_OWNER; 38/40 original acceptance cases NOT_RUN."
+}

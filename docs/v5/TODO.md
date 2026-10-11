@@ -12,11 +12,11 @@ Required path: execute P00–P20, P22–P23; owner-deferred P21 executes nothing
 
 The goal and phase contracts above describe the original V5 program. The later owner request authorizes a separate `V5.1` website workstream; its original P21 deferral and acceptance history are retained.
 
-**Status:** TESTED_LOCAL. Owner annotations plus browser Neon default implemented: fifth browser-only homepage appearance and original four palettes, in-site game, account/read-model adapters, standings, rank/currency art, Store/Sponsors and themed legal/responsive pages. Exact latest source passes 76 affected tests, 674 browser checks and 95 automated accessibility checks locally; 52 committed asset hashes and eight original-palette comparisons pass. Live website/API/provider deployment and physical-device/production acceptance remain OPEN. Website and retained validation CI passed on the exact code SHA; CI/local payload manifests match.
+**Status:** TESTED_LOCAL. Owner website annotations and browser Neon retained; latest download/discovery unit adds device-aware official-store routing and 39 prerendered pages, 22 public canonical URLs at megaxo.online, sitemap/robots, route metadata/social cards, factual FAQ/media kit and future company backlink source. Exact source passes 89 affected tests, 901 browser checks and 137 accessibility checks locally. Website/provider deployment, actual store URLs/company backlink and physical/manual accessibility remain OPEN; original production authority/gates unchanged. Website and retained CI pass on the exact source; downloaded CI/local manifests are byte-identical.
 
-**Code checkpoint:** `c80663a7f66be5a7c193a818a0cd12cabedad64b`. [Website checklist](../p21-web/MASTER-CHECKLIST.md). [Evidence and release gates](../p21-web/evidence/41e74bf/verification.json).
+**Code checkpoint:** `8520f1ca32bdcc830bfab6830e2292732849eae8`. [Website checklist](../p21-web/MASTER-CHECKLIST.md). [Evidence and release gates](../p21-web/evidence/8520f1c/verification.json).
 
-**Next:** Owner visual review; connect real same-origin staging session/API/callbacks and public standings ingress; activate approved store/ad providers after legal/hosting readiness; physical browser/manual accessibility checks, then authorized release. V4.1.2 SQLite remains sole production authority.
+**Next:** Owner visual review; authorize/configure actual website and same-origin service hosting, verify deployed crawl/redirect/session behavior, activate published store URLs and future Antimatter company backlink, complete 116 human accessibility views and physical browsers; retain V4.1.2 SQLite until separately authorized cutover.
 
 ## P00 — Freeze baseline, scope and ownership
 

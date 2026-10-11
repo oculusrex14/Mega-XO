@@ -1086,7 +1086,16 @@ async function main() {
         headers: { Cookie: `mega_dev_session=${session.token}`, 'X-CSRF-Token': session.csrf, Origin: 'https://megaxo.online', 'Idempotency-Key': `accept_${actor}_${runId}` },
         body: { id: matchId, termsHash: pairing.termsHash },
       });
-      if (accepted.status !== 200) throw new Error('QUEUE_ACCEPT_GATEWAY_FAILED');
+      if (accepted.status !== 200) {
+        // Record the exact Core refusal and how long after pairing it arrived: a queue offer
+        // expires 15s after matchTick, so a slow staging round-trip is a distinguishable cause
+        // rather than a route failure.
+        logStep('12_accept_refusal', 'FAILED', {
+          actor, status: accepted.status, code: safeError({ message: accepted.data?.error }),
+          offerExpiresAt: pairing.expires, nowMs: Date.now(),
+        });
+        throw new Error('QUEUE_ACCEPT_GATEWAY_FAILED');
+      }
     }
     const matchView = await core.readMatch(actorA, matchId);
     if (matchView.status !== 'PLAYING' || matchView.revision !== 0) throw new Error('QUEUE_MATCH_NOT_PLAYING');

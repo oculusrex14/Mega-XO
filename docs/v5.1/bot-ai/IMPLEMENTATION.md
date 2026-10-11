@@ -88,8 +88,8 @@ Exactly six canonical half-moves: X {b:0,c:4}, O {b:4,c:0}, X {b:0,c:3}, O {b:3,
 
 ## B06 - Impossible mode product and optional verified challenge
 
-- [ ] **B06.01** Extend public mode metadata to include `Impossible` only when the pack is available or clearly shows download/setup state. Ensure every caller of `G.LEVELS` tolerates a new value (difficulty picker, statistics filter, quests/rewards views, persistence and native packaging). Avoid adding undefined Coin reward rows.
-- [ ] **B06.02** Treat Impossible as a distinct **local AI match type or difficulty with an unverified result class**. It has no new coin minting, Elo or official leaderboard placement; user progress UI may show separate local wins/draws/losses.
+- [x] **B06.01** Extend public mode metadata to include `Impossible` only when the pack is available or clearly shows download/setup state. Ensure every caller of `G.LEVELS` tolerates a new value (difficulty picker, statistics filter, quests/rewards views, persistence and native packaging). Avoid adding undefined Coin reward rows.
+- [x] **B06.02** Treat Impossible as a distinct **local AI match type or difficulty with an unverified result class**. It has no new coin minting, Elo or official leaderboard placement; user progress UI may show separate local wins/draws/losses.
 - [ ] **B06.03** Build the move pipeline: canonical state -> tensor -> legal mask -> policy/value inference -> PUCT/MCTS -> tactical verification -> original `G.apply` legality check -> UI result. Never allow an ML output to bypass canonical rules.
 - [ ] **B06.04** Pin the loaded model version at match start, persist it in resumed matches, and expose a benign technical identifier for bug reports. Updates affect new matches rather than midgame moves.
 - [ ] **B06.05** Give Impossible substantial tactical strength and quality-bounded opening variety, but preserve forced correct actions. Surface training/version labels only where they improve user trust and clarity.

@@ -20,7 +20,7 @@
     "B03": "PARTIAL",
     "B04": "PARTIAL",
     "B05": "PARTIAL",
-    "B06": "IN_PROGRESS",
+    "B06": "PARTIAL",
     "B07": "IN_PROGRESS"
   },
   "resolution": "Every task inherits defaults, then its checkpoint evidence, then task-specific values. Null commit means not yet recorded, never an inferred SHA. All 82 tasks are explicit. Checklist checkmarks track DONE only.",
@@ -547,18 +547,28 @@
       ]
     },
     "B06.01": {
-      "status": "IN_PROGRESS",
-      "checkpoint": "C5-packs",
+      "status": "DONE",
+      "commit": "23a7146f6ba3318f79605482d3af25faf2ec1a9d",
+      "checkpoint": "C9-integration",
+      "evidence": [
+        "src/app.js: the difficulty picker adds IMPOSSIBLE only when the pack is ready or already selected, and shows the explicit setup/manage action otherwise",
+        "src/app.js: statistics filter offers 'Impossible (Local AI)' separately; localAi snapshot persists with the existing offlineMatch save",
+        "native/client/bundle.config.json bundles local-ai.js and local-session.js; G.LEVELS stays the five public tiers"
+      ],
       "blockers": [
-        "Setup UI integration pending. Five public difficulties remain; no approved Impossible model."
+        "No approved Impossible model exists, so the mode truthfully shows setup/download state; that is the approved absence, not a gap in this task."
       ]
     },
     "B06.02": {
-      "status": "IN_PROGRESS",
-      "checkpoint": "C5-packs",
-      "blockers": [
-        "Unverified local match helpers and reward exclusion integration pending; no playable Impossible activation."
-      ]
+      "status": "DONE",
+      "commit": "23a7146f6ba3318f79605482d3af25faf2ec1a9d",
+      "checkpoint": "C9-integration",
+      "evidence": [
+        "resultClass 'unverified-local-ai' with a separate localAiRecords ledger (src/bot/local-ai.js)",
+        "tests/bot/local-ai.test.cjs: local records are idempotent and leave wallet/records/daily untouched",
+        "tests/bot/impossible-session.test.cjs: Impossible and labeled Expert recovery cannot feed normal rewards or quest progress"
+      ],
+      "blockers": []
     },
     "B06.03": {
       "status": "PARTIAL",

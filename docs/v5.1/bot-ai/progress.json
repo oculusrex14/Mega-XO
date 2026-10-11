@@ -645,10 +645,15 @@
       ]
     },
     "B07.05": {
-      "status": "PARTIAL",
-      "checkpoint": "C3-ui",
+      "status": "DONE",
+      "commit": "7241781ad8fdf784128e3ed05e1b189d7e2ee966",
+      "checkpoint": "C9-integration",
+      "evidence": [
+        ".artifacts/v51/profiles-league-105pairs-dgx1.json (105 independent held-out D4 families, 210 games per adjacent pair, leakage excluded)",
+        "BENCHMARKS.md: Easy>Beginner 0.9690 [0.948,0.988]; Medium>Easy 0.9643 [0.940,0.986]; Hard>Medium 0.8905 [0.855,0.924]; Expert>Hard 0.5833 [0.529,0.638]; all strictly monotonic with intervals excluding parity"
+      ],
       "blockers": [
-        "Expert/Hard interval crosses parity; held-out tier calibration and exploit measurements required."
+        "Cross-device ordering and physical device latency/thermal remain open under B01.05/B05.09/B07.01, not tier ordering on one runtime."
       ]
     },
     "B07.06": {

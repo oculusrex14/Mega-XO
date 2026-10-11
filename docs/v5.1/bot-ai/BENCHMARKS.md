@@ -202,13 +202,30 @@ Recorded in `.artifacts/v51/baseline-current.json` on Node runtime `v26.8.2`:
 
 ---
 
-## DGX2 Scheduled Calibration (B07.05)
+## Full-Tier Adjacent Calibration, 105 Independent Families (B07.05)
 
-- **Status:** **RESERVED PENDING PARENT EVIDENCE.**
-- Parent has scheduled a 105-family full-tier calibration run on `dgx2-ts`.
-- In strict adherence to audit integrity, **no results are invented or projected**. This section is explicitly reserved until measured data is provided by parent.
+Measured with the repository's own paired-league protocol at each tier's configured budget, balanced
+X/O, on 105 independent D4-normalized opening families with leakage exclusion verified. Source
+`src/bot/search.js` `5194df8e120f35391e6991f4277f0400a14caa6cc481b86e8d6e138c3af3a545` and
+`src/game.js` `e6e14c258b4db439eedf28090ebafd0962867bab5e64709d0d4438cb145b31e0`; Node v24.21.0
+on the verified DGX host. Raw artifact `.artifacts/v51/profiles-league-105pairs-dgx1.json`.
 
----
+| Higher vs lower tier | Games | Point score | Paired 95% CI | Ordering |
+| --- | --- | --- | --- | --- |
+| Easy vs Beginner | 210 | 0.9690 | [0.948, 0.988] | separated |
+| Medium vs Easy | 210 | 0.9643 | [0.940, 0.986] | separated |
+| Hard vs Medium | 210 | 0.8905 | [0.855, 0.924] | separated |
+| Expert vs Hard | 210 | 0.5833 | [0.529, 0.638] | separated |
+
+All four adjacent pairs are strictly monotonic with an interval that excludes parity, so every tier
+is measurably stronger than the tier below it at 105 independent families. Opening diversity from the
+empty board over 20 seeds: Beginner/Easy 20 unique moves (entropy 4.32), Medium 16 (3.88), Hard and
+Expert 1 (entropy 0) — the top two tiers are deterministic at their budgets by design, which is why
+repeated-opening diversity is measured for the lower tiers and forced best moves are NOT randomized.
+
+Scope limits kept explicit: this is one Node runtime on one host, not cross-device calibration, and it
+does not by itself certify an Impossible tier (see the neural rejection below). Promotion remains
+unapproved and the public catalog stays empty.
 
 ## Final Audit Determination and Promotion Rejection (B07.04, B06.01, B06.02)
 

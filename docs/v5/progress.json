@@ -705,12 +705,19 @@
     "website_workstream": {
       "branch": "V5.1",
       "authorized_on": "2026-10-11",
-      "status": "TESTED_LOCAL",
+      "status": "LOCAL_IMPLEMENTED_VERIFYING_FINAL",
       "code_commit": "99e65bdc8655162cf2dcc4af26dc0b73ec203cdc",
       "summary": "Cinematic homepage, 26 secondary routes, shared-rule local practice, four game palettes, optimized still art, static delivery and presentation CI implemented. No live account integration, remote deployment or production acceptance.",
       "checklist": "docs/p21-web/MASTER-CHECKLIST.md",
       "evidence": "docs/p21-web/IMPLEMENTATION-AND-READINESS.md",
-      "next_action": "Owner visual review; live V5 staging/session/data/realtime integration, legal and hosting eligibility, physical browser/a11y/performance acceptance, then authorized deployment. V4.1.2/SQLite remains the live authority."
+      "next_action": "Owner visual review; live V5 staging/session/data/realtime integration, legal and hosting eligibility, physical browser/a11y/performance acceptance, then authorized deployment. V4.1.2/SQLite remains the live authority.",
+      "annotation_iteration": {
+        "request": "Fourteen owner browser comments",
+        "status": "LOCAL_IMPLEMENTED_VERIFYING_FINAL",
+        "record": "docs/p21-web/ANNOTATION-CHANGES.md",
+        "summary": "Generated currency art and eleven rank badges, cinematic in-site game, account/read-model adapters, in-site standings, approved Store, consent-first sponsor layout and complete themed legal routes. Synthetic lifecycle/contract checks pass; final immutable browser/CI evidence pending.",
+        "residual": "Live same-origin service/session/callback deployment, public leaderboard ingress, actual billing/ad providers, legal approval and physical-device acceptance remain open."
+      }
     }
   },
   "program": {

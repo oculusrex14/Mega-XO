@@ -9,6 +9,8 @@
 
 ## How to maintain this file
 
+The owner annotation iteration adds cinematic `/game`, Store, Sponsors and full themed legal routes, an in-site standings table, server-selected personal ranks, eleven badge images and generated currency artwork. Track all fourteen comments and remaining live-service/provider gates in [ANNOTATION-CHANGES.md](ANNOTATION-CHANGES.md). The earlier `99e65bd` checkpoint below remains historical evidence.
+
 - This is the **living** P21 build ledger, not a conceptual wish list. On **V5.1 only**, update checkboxes after evidence-backed delivery, link file path(s), test(s) and commit SHAs, and keep open decisions explicit.
 - Check an item only when the asset/code/doc actually exists in the repository and is validated. Concept artwork is **not** a shippable, layered, licensed, responsive or accessible replacement.
 - Retain original references and source files; create separately optimized web exports. Never bake UI controls, text, live metrics or grid logic into a flat hero background.

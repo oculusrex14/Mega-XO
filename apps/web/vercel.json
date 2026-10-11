@@ -9,35 +9,35 @@
   },
   "redirects": [
     {
-      "source": "/game",
-      "destination": "/game/",
+      "source": "/legacy-game",
+      "destination": "/legacy-game/",
       "permanent": true
     }
   ],
   "rewrites": [
     {
-      "source": "/game/",
-      "destination": "/game/index.html"
+      "source": "/legacy-game/",
+      "destination": "/legacy-game/index.html"
     },
     {
       "source": "/legal/privacy",
-      "destination": "/legal/privacy.html"
+      "destination": "/index.html"
     },
     {
       "source": "/legal/terms",
-      "destination": "/legal/terms.html"
+      "destination": "/index.html"
     },
     {
       "source": "/legal/support",
-      "destination": "/legal/support.html"
+      "destination": "/index.html"
     },
     {
       "source": "/legal/delete-account",
-      "destination": "/legal/delete-account.html"
+      "destination": "/index.html"
     },
     {
       "source": "/legal/privacy-choices",
-      "destination": "/legal/privacy-choices.html"
+      "destination": "/index.html"
     },
     {
       "source": "/play",
@@ -141,6 +141,26 @@
     },
     {
       "source": "/404",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/game",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/game/",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/store",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/sponsors",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/ads",
       "destination": "/index.html"
     }
   ],

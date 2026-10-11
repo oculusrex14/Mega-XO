@@ -41,23 +41,32 @@ async function main() {
     checked_at: new Date().toISOString(),
     source_commit: build.manifest.source_commit,
     bundle_sha256: build.manifest.bundle_sha256,
-    environment: 'local loopback Chromium; new unauthenticated contexts; static presentation only',
+    environment: 'local loopback Chromium; new unauthenticated contexts; read proxy explicitly disabled; synthetic API fixtures only',
     isolated_payload_snapshot: true,
     command: 'env -u NODE_OPTIONS ' + process.execPath + ' scripts/p21/browser-qa.cjs' + (process.argv.includes('--no-build') ? ' --no-build' : ''),
     runtime_version: process.version,
+    qa_script_sha256: crypto.createHash('sha256').update(fs.readFileSync(__filename)).digest('hex'),
     checks: [],
     failures: [],
     screenshots: [],
-    requests: { missing_local_resources: [], javascript_errors: [] },
+    requests: { missing_local_resources: [], javascript_errors: [], blocked_external_origins: [] },
   };
   let browser;
-  const server = createPreviewServer({ directory: snapshotRoot });
+  const server = createPreviewServer({ directory: snapshotRoot, readApiOrigin: null });
   try {
     server.listen(0, '127.0.0.1');
     await once(server, 'listening');
     const origin = 'http://127.0.0.1:' + server.address().port;
     browser = await playwright.chromium.launch({ headless: true });
     report.browser = browser.version();
+    const localOnly = async context => context.route('**/*', route => {
+      const url = new URL(route.request().url());
+      if (url.origin === origin || ['data:', 'blob:'].includes(url.protocol)) return route.continue();
+      // The retained client can reference its old font/icon CDNs. Blocking
+      // every external request makes this acceptance independent of providers.
+      if (!report.requests.blocked_external_origins.includes(url.origin)) report.requests.blocked_external_origins.push(url.origin);
+      return route.abort('blockedbyclient');
+    });
     const check = (id, condition, details) => {
       const result = { id, result: condition ? 'PASS' : 'FAIL', ...details };
       report.checks.push(result);
@@ -86,6 +95,7 @@ async function main() {
     ];
     for (const viewport of widths) {
       const context = await browser.newContext({ viewport: { width: viewport.width, height: viewport.height }, reducedMotion: 'reduce', timezoneId: 'Asia/Kolkata' });
+      await localOnly(context);
       const page = await context.newPage();
       track(page);
       for (const route of WEBSITE_ROUTES) {
@@ -114,7 +124,10 @@ async function main() {
           check('P21-BROWSER-BOARD', await page.locator('.gb-cell').count() === 81, { route, viewport: viewport.name });
           await snapshot(page, 'home-' + viewport.name, false);
           await snapshot(page, 'home-' + viewport.name + '-full');
-        } else if (viewport.name === 'desktop') await snapshot(page, 'page-' + route.slice(1));
+        } else {
+          if (route === '/game') check('P21-BROWSER-CINEMATIC-GAME', await page.locator('.gb-game-page').count() === 1 && await page.locator('[data-board-preview="false"] .gb-cell').count() === 81 && await page.locator('iframe').count() === 0 && await page.locator('.mx-header').count() === 1, { route, viewport: viewport.name });
+          if (viewport.name === 'desktop') await snapshot(page, 'page-' + route.slice(1).replaceAll('/', '-'));
+        }
       }
       // The mobile drawer opens and Escape restores keyboard focus.
       if (viewport.width < 1000) {
@@ -131,6 +144,7 @@ async function main() {
       process.stdout.write(JSON.stringify({ stage: 'viewport-complete', viewport: viewport.name, checks: report.checks.length, failures: report.failures.length }) + '\n');
     }
     const context = await browser.newContext({ viewport: { width: 1280, height: 900 }, reducedMotion: 'reduce' });
+    await localOnly(context);
     const page = await context.newPage();
     track(page);
     for (const href of [...snapshots].sort()) {
@@ -139,11 +153,22 @@ async function main() {
     }
     for (const name of LEGAL_NAMES) {
       const response = await page.goto(origin + '/legal/' + name, { waitUntil: 'networkidle' });
-      check('P21-BROWSER-LEGAL', response?.status() === 200 && await page.locator('h1').count() > 0, { route: '/legal/' + name, status: response?.status() });
+      const main = await page.locator('#main').textContent();
+      const raw = fs.readFileSync(path.join(snapshotRoot, 'legal', name + '.html'), 'utf8');
+      // Comparing visible text after browser parsing verifies every retained
+      // paragraph and draft warning without changing document wording.
+      const expected = await page.evaluate(html => {
+        const document = new DOMParser().parseFromString(html, 'text/html');
+        return document.querySelector('main').textContent.replace(/\s+/g, ' ').trim();
+      }, raw);
+      const text = main.replace(/\s+/g, ' ').trim();
+      const chrome = await page.locator('.mx-header').count() === 1 && await page.locator('.mx-footer').count() === 1;
+      check('P21-BROWSER-LEGAL', response?.status() === 200 && await page.locator('#main h1').count() === 1 && chrome && text.includes(expected), { route: '/legal/' + name, status: response?.status(), websiteChrome: chrome, completeSourceText: text.includes(expected) });
     }
-    await page.goto(origin + '/play?mode=practice', { waitUntil: 'networkidle' });
+    await page.goto(origin + '/game/', { waitUntil: 'networkidle' });
+    check('P21-BROWSER-GAME-SLASH', await page.locator('.gb-game-page').count() === 1 && await page.locator('.mx-header').count() === 1, { route: '/game/' });
     await page.locator('[data-gb-setting="mode"]').selectOption('local');
-    check('P21-BROWSER-PRACTICE-INITIAL', await page.locator('.gb-cell[aria-disabled="false"]').count() === 81, { route: '/play?mode=practice' });
+    check('P21-BROWSER-PRACTICE-INITIAL', await page.locator('.gb-cell[aria-disabled="false"]').count() === 81, { route: '/game/' });
     await page.locator('[data-gb-cell="0:4"]').click();
     const legalMoves = await page.locator('.gb-cell[aria-disabled="false"]').evaluateAll(cells => cells.map(cell => cell.dataset.gbCell));
     check('P21-BROWSER-PRACTICE-ROUTING', legalMoves.length === 9 && legalMoves.every(key => key.startsWith('4:')), { move: '0:4', nextBoard: 4, legalMoves });
@@ -155,10 +180,92 @@ async function main() {
       check('P21-BROWSER-THEME-STATE', (await page.locator('[data-gb-cell="0:4"]').getAttribute('aria-label')).includes('X, occupied'), { theme, cell: '0:4' });
       await snapshot(page, 'practice-' + theme);
     }
-    await page.goto(origin + '/game/', { waitUntil: 'domcontentloaded' });
+    await page.locator('[data-gb-cell="4:0"]').focus();
+    await page.keyboard.press('ArrowRight');
+    const focus = await page.evaluate(() => document.activeElement.dataset.gbCell);
+    check('P21-BROWSER-GAME-KEYBOARD', focus === '4:1', { direction: 'ArrowRight', expectedCell: '4:1', focusedCell: focus });
+    await page.keyboard.press('Space');
+    const afterKeyboard = await page.locator('.gb-cell[aria-disabled="false"]').evaluateAll(cells => cells.map(cell => cell.dataset.gbCell));
+    check('P21-BROWSER-GAME-KEYBOARD-MOVE', (await page.locator('[data-gb-cell="4:1"]').getAttribute('aria-label')).includes('O, occupied') && afterKeyboard.length === 9 && afterKeyboard.every(key => key.startsWith('1:')), { move: '4:1', nextBoard: 1 });
+    await page.locator('[data-gb-action="fresh"]').click();
+    check('P21-BROWSER-GAME-NEW', await page.locator('.gb-cell[aria-disabled="false"]').count() === 81 && await page.locator('.gb-cell[aria-label*="occupied"]').count() === 0, { route: '/game/' });
+    await page.locator('[data-gb-setting="mode"]').selectOption('bot');
+    await page.locator('[data-gb-setting="difficulty"]').selectOption('Beginner');
+    await page.locator('[data-gb-cell="0:4"]').click();
+    await page.waitForFunction(() => document.querySelectorAll('.gb-cell[aria-label*="occupied"]').length === 2);
+    const botMove = await page.locator('.gb-cell[aria-label*="O, occupied"]').getAttribute('data-gb-cell');
+    check('P21-BROWSER-GAME-BOT', botMove.startsWith('4:') && await page.locator('.gb-cell[aria-disabled="false"]').count() > 0, { difficulty: 'Beginner', botBoard: botMove.split(':')[0] });
+    await page.goto(origin + '/legacy-game/', { waitUntil: 'domcontentloaded' });
     await page.locator('#app').waitFor();
-    check('P21-BROWSER-RETAINED-GAME', await page.locator('#app').count() === 1 && await page.locator('#board').count() === 1, { route: '/game/' });
+    check('P21-BROWSER-RETAINED-GAME', await page.locator('#app').count() === 1 && await page.locator('#board').count() === 1, { route: '/legacy-game/' });
+    const retained = build.manifest.files.filter(file => file.path.startsWith('legacy-game/'));
+    check('P21-BROWSER-RETAINED-PARITY', retained.every(file => file.source_sha256 === file.sha256), { files: retained.length, bytePreserved: retained.every(file => file.source_sha256 === file.sha256) });
     await context.close();
+    for (const viewport of [widths[0], widths[2]]) {
+      const fixtureContext = await browser.newContext({ viewport: { width: viewport.width, height: viewport.height }, reducedMotion: 'reduce' });
+      await localOnly(fixtureContext);
+      const reads = [];
+      await fixtureContext.route(origin + '/api/**', async route => {
+        const request = route.request(), url = new URL(request.url());
+        reads.push({ method: request.method(), path: url.pathname, query: url.search });
+        const profile = { id: 'fixture-player', name: 'Fixture Player', tier: 'emerald', rating: 1968.25, games: 24, region: 'IN', season: { qualified: true }, wallet: { coins: 2450, crowns: 12 } };
+        const rows = [{ id: 'fixture-rival', name: 'Fixture Rival', tier: 'gold', rating: 1591.25, games: 24, region: 'IN', wealth: 43210 }];
+        const known = request.method() === 'GET' && ['/api/v1/profile', '/api/v1/leaderboard'].includes(url.pathname);
+        await route.fulfill({ status: known ? 200 : 503, contentType: 'application/json', body: JSON.stringify(known ? url.pathname === '/api/v1/profile' ? profile : rows : { error: 'WEB_API_NOT_CONFIGURED' }) });
+      });
+      const fixturePage = await fixtureContext.newPage();
+      track(fixturePage);
+      await fixturePage.goto(origin + '/ranked', { waitUntil: 'networkidle' });
+      await fixturePage.locator('.pg-personal-rating strong').waitFor();
+      const wallet = await fixturePage.locator('.mx-wallet-pill b').allTextContents();
+      check('P21-BROWSER-SYNTHETIC-PROFILE', (await fixturePage.locator('.pg-personal-rating strong').textContent()).replaceAll(',', '') === '1968.25' && wallet[0].replace(/\D/g, '') === '2450' && wallet[1].replace(/\D/g, '') === '12', { viewport: viewport.name, data: 'synthetic linked profile only' });
+      await snapshot(fixturePage, 'synthetic-ranked-' + viewport.name);
+      await fixturePage.goto(origin + '/leaderboard', { waitUntil: 'networkidle' });
+      await fixturePage.locator('.pg-standings tbody tr').waitFor();
+      check('P21-BROWSER-SYNTHETIC-STANDINGS', await fixturePage.locator('.pg-player-name').textContent() === 'Fixture Rival' && (await fixturePage.locator('.pg-score').textContent()).replaceAll(',', '') === '1591.25', { viewport: viewport.name, data: 'synthetic public rows only' });
+      await fixturePage.locator('[data-leaderboard-filter="metric"]').selectOption('wealth');
+      await fixturePage.waitForFunction(() => document.querySelector('.pg-score')?.textContent.replaceAll(',', '') === '43210');
+      await fixturePage.locator('[data-leaderboard-filter="league"]').selectOption('gold');
+      await fixturePage.waitForFunction(() => document.querySelector('[data-leaderboard-results]')?.getAttribute('aria-busy') === 'false');
+      check('P21-BROWSER-SYNTHETIC-FILTERS', reads.some(read => read.path === '/api/v1/leaderboard' && new URLSearchParams(read.query).get('metric') === 'wealth' && new URLSearchParams(read.query).get('league') === 'gold'), { viewport: viewport.name, metric: 'wealth', league: 'gold' });
+      await fixturePage.locator('[data-leaderboard-filter="scope"]').selectOption('region');
+      await fixturePage.waitForFunction(() => document.querySelector('[data-leaderboard-results]')?.getAttribute('aria-busy') === 'false');
+      check('P21-BROWSER-SYNTHETIC-REGION', reads.some(read => read.path === '/api/v1/leaderboard' && new URLSearchParams(read.query).get('scope') === 'local' && new URLSearchParams(read.query).get('region') === 'IN'), { viewport: viewport.name, scope: 'local', region: 'IN' });
+      const reflow = await fixturePage.evaluate(() => ({ width: document.documentElement.clientWidth, scrollWidth: document.documentElement.scrollWidth }));
+      check('P21-BROWSER-SYNTHETIC-REFLOW', reflow.scrollWidth <= reflow.width + 1, { viewport: viewport.name, ...reflow });
+      await snapshot(fixturePage, 'synthetic-leaderboard-' + viewport.name);
+      await fixturePage.goto(origin + '/store', { waitUntil: 'networkidle' });
+      await fixturePage.locator('[data-store-products]').waitFor();
+      check('P21-BROWSER-SYNTHETIC-STORE-UNAVAILABLE', await fixturePage.locator('[data-store-action="purchase"]').count() === 0, { viewport: viewport.name, source: 'synthetic unavailable provider response' });
+      check('P21-BROWSER-NO-AUTOMATIC-WRITES', reads.every(read => read.method === 'GET') && !reads.some(read => read.path.startsWith('/api/account/')), { viewport: viewport.name, methods: [...new Set(reads.map(read => read.method))], sessionBootstrapRequests: reads.filter(read => read.path.startsWith('/api/account/')).length });
+      await fixtureContext.close();
+    }
+    const authContext = await browser.newContext({ viewport: { width: 390, height: 844 }, reducedMotion: 'reduce' });
+    await localOnly(authContext);
+    const authReads = [];
+    await authContext.route(origin + '/api/**', async route => {
+      authReads.push({ method: route.request().method(), path: new URL(route.request().url()).pathname });
+      await route.fulfill({ status: 401, contentType: 'application/json', body: JSON.stringify({ error: 'AUTH_REQUIRED' }) });
+    });
+    const authPage = await authContext.newPage();
+    track(authPage);
+    await authPage.clock.install();
+    await authPage.goto(origin + '/leaderboard', { waitUntil: 'networkidle' });
+    const signIn = authPage.locator('[data-leaderboard-results] a[href="/account"]');
+    await signIn.waitFor();
+    const authText = await authPage.locator('[data-leaderboard-results]').textContent();
+    check('P21-BROWSER-AUTH-STATE', /Sign in/i.test(authText) && !/could not be loaded|service.*unavailable/i.test(authText), { response: 'synthetic AUTH_REQUIRED', signInAction: await signIn.textContent() });
+    await authPage.clock.fastForward(31000);
+    check('P21-BROWSER-AUTH-NO-POLL', authReads.filter(read => read.path === '/api/v1/leaderboard').length === 1 && authReads.every(read => read.method === 'GET'), { response: 'synthetic AUTH_REQUIRED', leaderboardReads: authReads.filter(read => read.path === '/api/v1/leaderboard').length, simulatedMilliseconds: 31000 });
+    await authContext.close();
+    const noScriptContext = await browser.newContext({ javaScriptEnabled: false, viewport: { width: 390, height: 844 } });
+    await localOnly(noScriptContext);
+    const noScriptPage = await noScriptContext.newPage();
+    await noScriptPage.goto(origin + '/', { waitUntil: 'networkidle' });
+    const supportHref = await noScriptPage.locator('.mx-noscript a').getAttribute('href');
+    const supportResponse = await noScriptPage.goto(origin + supportHref, { waitUntil: 'networkidle' });
+    check('P21-BROWSER-NOSCRIPT-SUPPORT', supportHref === '/legal/support.html' && supportResponse?.status() === 200 && await noScriptPage.locator('main h1').count() === 1, { javaScriptEnabled: false, href: supportHref, status: supportResponse?.status() });
+    await noScriptContext.close();
     check('P21-BROWSER-ASSET-HTTP', report.requests.missing_local_resources.length === 0, { errors: report.requests.missing_local_resources });
     check('P21-BROWSER-JAVASCRIPT', report.requests.javascript_errors.length === 0, { errors: report.requests.javascript_errors });
     report.result = report.failures.length === 0 ? 'PASS' : 'FAIL';
@@ -170,6 +277,7 @@ async function main() {
     await new Promise(resolve => { server.close(resolve); server.closeAllConnections(); });
     fs.rmSync(snapshotRoot, { recursive: true, force: true });
     fs.writeFileSync(path.join(output, 'browser-qa.json'), JSON.stringify(report, null, 2) + '\n');
+    fs.writeFileSync(path.join(output, 'browser-qa-' + (report.source_commit || 'unversioned').slice(0, 12) + '-' + report.checked_at.replace(/[^0-9]/g, '') + '.json'), JSON.stringify(report, null, 2) + '\n');
     fs.writeFileSync(path.join(outputRoot, 'browser-qa.json'), JSON.stringify(report, null, 2) + '\n');
     process.stdout.write(JSON.stringify({ result: report.result, source_commit: report.source_commit, checks: report.checks.length, failures: report.failures.length, report: path.join(output, 'browser-qa.json') }) + '\n');
     if (report.result !== 'PASS') process.exitCode = 1;

@@ -6,6 +6,95 @@ const http = require('node:http');
 const { ROOT, GENERATOR, MANIFEST } = require('./build-web.js');
 const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.json': 'application/json; charset=utf-8', '.webp': 'image/webp', '.svg': 'image/svg+xml', '.png': 'image/png', '.woff2': 'font/woff2', '.woff': 'font/woff', '.txt': 'text/plain; charset=utf-8' };
 const CSP = "default-src 'self'; script-src 'self' https://unpkg.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'";
+const READ_API_ORIGIN = 'https://play.antimatterinnovations.com';
+const LEAGUES = new Set(['all', 'wood', 'stone', 'iron', 'bronze', 'silver', 'gold', 'diamond', 'emerald', 'champion', 'master', 'grandmaster']);
+const READ_MAX_BYTES = 262144;
+const READ_TIMEOUT_MS = 5000;
+
+function configuredReadOrigin(options) {
+  // Test injection is programmatic and loopback-only. CLI/request parameters
+  // cannot choose a proxy destination or turn this into a general proxy.
+  if (options.testReadApiOrigin) {
+    const url = new URL(options.testReadApiOrigin);
+    if (url.protocol !== 'http:' || url.hostname !== '127.0.0.1' || url.username || url.password || url.pathname !== '/' || url.search || url.hash) throw new Error('P21_SERVE_REFUSED: test read origin must be loopback');
+    return url.origin;
+  }
+  const value = Object.hasOwn(options, 'readApiOrigin') ? options.readApiOrigin : process.env.P21_READ_API_ORIGIN;
+  if (!value) return null;
+  if (value !== READ_API_ORIGIN) throw new Error('P21_SERVE_REFUSED: P21_READ_API_ORIGIN is not the allowed public-read origin');
+  return value;
+}
+
+function readQuery(raw) {
+  if (raw.length > 1024) throw new Error('invalid filters');
+  const input = new URL(raw, 'http://127.0.0.1').searchParams;
+  const values = {};
+  for (const [key, value] of input) {
+    if (!['metric', 'scope', 'league', 'region'].includes(key) || Object.hasOwn(values, key)) throw new Error('invalid filters');
+    values[key] = value;
+  }
+  if (values.metric && !['rating', 'wealth'].includes(values.metric)) throw new Error('invalid metric');
+  if (values.scope && !['global', 'local', 'region'].includes(values.scope)) throw new Error('invalid scope');
+  if (values.league && !LEAGUES.has(values.league)) throw new Error('invalid league');
+  if (values.region && !/^[A-Z]{2}$/.test(values.region)) throw new Error('invalid region');
+  if (values.scope === 'region') values.scope = 'local';
+  return new URLSearchParams(Object.entries(values)).toString();
+}
+
+function publicRows(value) {
+  if (!Array.isArray(value) || value.length > 200) throw new Error('invalid read response');
+  return value.map(row => {
+    if (!row || typeof row !== 'object' || Array.isArray(row)) throw new Error('invalid read response');
+    const clean = {};
+    for (const key of ['id', 'name', 'region', 'tier']) {
+      if (row[key] === undefined) continue;
+      if (typeof row[key] !== 'string' || row[key].length > (key === 'id' ? 128 : 80)) throw new Error('invalid read response');
+      clean[key] = row[key];
+    }
+    if (clean.tier && !LEAGUES.has(clean.tier)) throw new Error('invalid read response');
+    for (const key of ['rating', 'games', 'wealth']) {
+      if (row[key] === undefined) continue;
+      if (typeof row[key] !== 'number' || !Number.isFinite(row[key]) || row[key] < 0 || row[key] > Number.MAX_SAFE_INTEGER) throw new Error('invalid read response');
+      clean[key] = row[key];
+    }
+    return clean;
+  });
+}
+
+async function fetchPublicLeaderboard(origin, query, timeoutMs = READ_TIMEOUT_MS) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+  timeout.unref();
+  try {
+    const upstream = await fetch(origin + '/api/v1/leaderboard' + (query ? '?' + query : ''), {
+      method: 'GET', headers: { Accept: 'application/json' }, credentials: 'omit', redirect: 'error', signal: controller.signal,
+    });
+    if (!upstream.ok) {
+      await upstream.body?.cancel();
+      if ([401, 403].includes(upstream.status)) return { status: 401, body: { error: 'AUTH_REQUIRED', message: 'The existing service requires sign-in for this leaderboard. No credentials were forwarded.' } };
+      return { status: 502, body: { error: 'READ_API_UNAVAILABLE', message: 'The leaderboard service is unavailable.' } };
+    }
+    if (!/^application\/json(?:\s*;|$)/i.test(upstream.headers.get('content-type') || '') || Number(upstream.headers.get('content-length')) > READ_MAX_BYTES) {
+      await upstream.body?.cancel();
+      throw new Error('invalid read response');
+    }
+    const reader = upstream.body.getReader();
+    const chunks = [];
+    let total = 0;
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      total += value.byteLength;
+      if (total > READ_MAX_BYTES) { await reader.cancel(); throw new Error('invalid read response'); }
+      chunks.push(Buffer.from(value));
+    }
+    return { status: 200, body: publicRows(JSON.parse(Buffer.concat(chunks).toString('utf8'))) };
+  } catch {
+    return controller.signal.aborted
+      ? { status: 504, body: { error: 'READ_API_TIMEOUT', message: 'The leaderboard service did not respond in time.' } }
+      : { status: 502, body: { error: 'READ_API_UNAVAILABLE', message: 'The leaderboard service is unavailable.' } };
+  } finally { clearTimeout(timeout); }
+}
 
 function requestPath(raw) {
   if (!raw || !raw.startsWith('/')) throw new Error('invalid path');
@@ -21,7 +110,8 @@ function createPreviewServer(options = {}) {
   const manifest = JSON.parse(fs.readFileSync(path.join(directory, MANIFEST), 'utf8'));
   if (manifest.generator !== GENERATOR || !Array.isArray(manifest.files)) throw new Error('P21_SERVE_REFUSED: expected a built P21 static artifact');
   const files = new Set([MANIFEST, ...manifest.files.map(file => file.path)]);
-  return http.createServer((request, response) => {
+  const readOrigin = configuredReadOrigin(options);
+  return http.createServer(async (request, response) => {
     response.setHeader('X-Content-Type-Options', 'nosniff');
     response.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
     response.setHeader('X-Frame-Options', 'DENY');
@@ -36,16 +126,25 @@ function createPreviewServer(options = {}) {
     let pathname;
     try { pathname = requestPath(request.url); }
     catch { return send(400, 'Invalid request path'); }
-    if (pathname === '/api' || pathname.startsWith('/api/')) return send(503, JSON.stringify({ error: 'WEB_API_NOT_CONFIGURED', message: 'This local preview does not connect to an account or game service.' }), MIME['.json']);
-    if (pathname === '/game') {
-      response.writeHead(308, { Location: '/game/' + (request.url.includes('?') ? '?' + request.url.split('?').slice(1).join('?') : '') });
+    if (pathname === '/api' || pathname.startsWith('/api/')) {
+      response.setHeader('Cache-Control', 'no-store');
+      if (pathname !== '/api/v1/leaderboard' || !readOrigin) return send(503, JSON.stringify({ error: 'WEB_API_NOT_CONFIGURED', message: 'This preview has no configured account or game service.' }), MIME['.json']);
+      if (request.method !== 'GET') { response.setHeader('Allow', 'GET'); return send(405, JSON.stringify({ error: 'METHOD_NOT_ALLOWED' }), MIME['.json']); }
+      let query;
+      try { query = readQuery(request.url); }
+      catch { return send(400, JSON.stringify({ error: 'INVALID_FILTER', message: 'Use the supported leaderboard filters.' }), MIME['.json']); }
+      const result = await fetchPublicLeaderboard(readOrigin, query, options.testReadTimeoutMs || READ_TIMEOUT_MS);
+      return send(result.status, JSON.stringify(result.body), MIME['.json']);
+    }
+    if (pathname === '/legacy-game') {
+      response.writeHead(308, { Location: '/legacy-game/' + (request.url.includes('?') ? '?' + request.url.split('?').slice(1).join('?') : '') });
       return response.end();
     }
     const route = pathname.length > 1 ? pathname.replace(/\/$/, '') : pathname;
-    let relative = route === '/game' ? 'game/index.html' : manifest.routes[route] || pathname.replace(/^\//, '');
+    let relative = route === '/legacy-game' ? 'legacy-game/index.html' : manifest.routes[route] || pathname.replace(/^\//, '');
     let status = 200;
     if (!files.has(relative)) {
-      if (pathname.startsWith('/game/') || pathname.startsWith('/assets/') || pathname.startsWith('/legal/') || path.extname(pathname)) return send(404, 'Not found');
+      if (pathname.startsWith('/legacy-game/') || pathname.startsWith('/game/') || pathname.startsWith('/assets/') || pathname.startsWith('/legal/') || path.extname(pathname)) return send(404, 'Not found');
       // The website owns its visual 404. Missing resources never receive HTML.
       relative = 'index.html';
       status = 404;
@@ -76,9 +175,9 @@ if (require.main === module) {
     const options = parseArguments(process.argv.slice(2));
     const server = createPreviewServer(options);
     server.on('error', error => { process.stderr.write(error.message + '\n'); process.exitCode = 1; });
-    server.listen(options.port, '127.0.0.1', () => process.stdout.write('P21 local preview: http://127.0.0.1:' + options.port + ' (static presentation; API unconfigured)\n'));
+    server.listen(options.port, '127.0.0.1', () => process.stdout.write('P21 local preview: http://127.0.0.1:' + options.port + ' (leaderboard read: ' + (process.env.P21_READ_API_ORIGIN ? 'explicitly configured; no credentials' : 'disabled') + ')\n'));
     for (const signal of ['SIGINT', 'SIGTERM']) process.on(signal, () => server.close());
   } catch (error) { process.stderr.write(error.message + '\n'); process.exitCode = 1; }
 }
 
-module.exports = { createPreviewServer, requestPath, CSP };
+module.exports = { createPreviewServer, requestPath, readQuery, publicRows, READ_API_ORIGIN, READ_MAX_BYTES, CSP };

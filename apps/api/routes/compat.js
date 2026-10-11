@@ -426,7 +426,7 @@ async function handleGetLeaderboard(context, req, res) {
     try {
       const rows = await context.leaderboard({ metric, scope, league, region });
       projection = createVersionedProjection(1, rows);
-    } catch (err) {
+    } catch {
       return sendJson(res, 503, { error: 'SERVICE_UNAVAILABLE' }, {
         'Cache-Control': CACHE_CONTROL_POLICIES.PUBLIC_LEADERBOARD,
       });

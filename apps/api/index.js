@@ -38,7 +38,19 @@ function createApiHandler(options = {}) {
     // The public leaderboard needs `economy.ratings`, which the API-role pool is
     // denied. Like queue admission it is served by the Core-owned ingress; the
     // deployed API gains no Core credentials and holds no core pool.
-    context.leaderboard = (query) => competitiveRoutes.resolveGateway(context).leaderboard(query);
+    //
+    // The gateway is resolved eagerly so a genuinely UNCONFIGURED deployment (no
+    // Core URL/secret) leaves `context.leaderboard` absent and keeps the existing
+    // empty projection - only a CONFIGURED transport surfaces a real failure.
+    let gateway = null;
+    try {
+      gateway = competitiveRoutes.resolveGateway(context);
+    } catch {
+      gateway = null;
+    }
+    if (gateway) {
+      context.leaderboard = (query) => gateway.leaderboard(query);
+    }
   }
 
   return async function handler(req, res) {

@@ -12,10 +12,14 @@ threading.Thread(target=server.serve_forever,daemon=True).start();base=f'http://
 try:
  with sync_playwright() as p:
   browser=p.chromium.launch(executable_path=os.environ.get('CHROMIUM_EXECUTABLE') or shutil.which('chromium'),headless=True,args=['--no-sandbox']);page=browser.new_page(viewport={'width':390,'height':844});errors=[];page.on('pageerror',lambda e:errors.append(str(e)))
+  optional_requests=[];page.on('request',lambda r:optional_requests.append(r.url) if '.onnx' in r.url or '.wasm' in r.url or '/neural-worker.js' in r.url or '/ort-1.23.2/' in r.url else None)
   page.route('**/*',lambda r:r.continue_() if r.request.url.startswith(base) else r.abort())
   page.goto(base+'/index.html',wait_until='domcontentloaded');page.locator('[data-c="guest"]').click()
   before=page.evaluate('MegaApp.getSave()')
   page.locator('[data-action="aipack"]').click();assert 'No approved Impossible' in page.locator('#aiPackPanel').inner_text();assert page.locator('[data-pack-action="download"]').count()==0
+  assert page.evaluate('MegaBotPack.APPROVED_CATALOG.length')==0
+  assert optional_requests==[],optional_requests
+  assert page.evaluate('MegaApp.getSave()')==before
   page.evaluate("""async()=>{
    const bytes=new Uint8Array([1,2,3,4]),hash=Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',bytes)),x=>x.toString(16).padStart(2,'0')).join('');
    const info={schemaVersion:1,version:'synthetic-ui-fixture',sha256:hash,url:'/fixture/'+hash+'.onnx',bytes:4,gzipBytes:4,ruleset:MegaBotContract.RULESET,encodingVersion:'planes8-v1',deploymentStatus:'APPROVED'};
@@ -27,14 +31,17 @@ try:
   assert page.locator('[data-pack-action="download"]').is_disabled();assert page.evaluate('__packRequests')==0
   page.locator('#aiPackConsent').check();page.locator('[data-pack-action="download"]').click();page.wait_for_function('__packUI.getState().status==="ready"')
   assert page.evaluate('__packRequests')==1;assert 'verified and cached' in page.locator('[data-pack-status]').inner_text()
-  assert page.locator('[data-pack-action="start"]').count()==0
+  assert page.locator('[data-pack-action="start"]').count()==1
+  assert not page.locator('[data-pack-action="start"]').is_disabled()
   sizes=page.locator('.ai-pack-controls button').evaluate_all('(els)=>els.map(e=>[e.getBoundingClientRect().width,e.getBoundingClientRect().height])')
   assert all(w>=44 and h>=44 for w,h in sizes),sizes
   page.locator('[data-pack-action="remove"]').click();page.wait_for_function('__packUI.getState().status==="unavailable"')
+  assert page.locator('[data-pack-action="start"]').is_disabled()
   page.locator('[data-pack-action="download"]').click();page.wait_for_function('__packUI.getState().status==="ready"');assert page.evaluate('__packRequests')==2
+  assert not page.locator('[data-pack-action="start"]').is_disabled()
   after=page.evaluate('MegaApp.getSave()');assert after['wallet']==before['wallet'];assert after['records']==before['records'];assert after['daily']==before['daily']
   assert page.evaluate('MegaGame.LEVELS.length')==5
-  report={'browser':'Chromium','browserVersion':browser.version,'syntheticBytes':True,'approvedProductCatalogEmpty':True,'noAutomaticDownload':True,'consentRequired':True,'verifiedCache':True,'removeAndRedownload':True,'noPlayableModeClaim':True,'noEconomyOrStatsChange':True,'pageErrors':errors}
+  report={'browser':'Chromium','browserVersion':browser.version,'syntheticBytes':True,'approvedProductCatalogEmpty':True,'noAutomaticDownload':True,'consentRequired':True,'verifiedCache':True,'removeAndRedownload':True,'startActionRendered':True,'noEconomyOrStatsChange':True,'pageErrors':errors}
   page.screenshot(path=str(OUT/'pack-manager.png'));browser.close()
  if errors:raise AssertionError(errors)
  (OUT/'pack-browser.json').write_text(json.dumps(report,indent=2)+'\n');print(json.dumps(report,indent=2))

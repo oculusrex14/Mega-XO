@@ -202,10 +202,8 @@ async function handleGetQueue(context, req, res) {
 
   // 1. Context queue service
   if (context?.queue && typeof context.queue.status === 'function') {
-    try {
-      const qStatus = await context.queue.status(actor);
-      if (qStatus) return sendJson(res, 200, qStatus, { 'Cache-Control': CACHE_CONTROL_POLICIES.EPHEMERAL_SHORT });
-    } catch {}
+    const qStatus = await context.queue.status(actor);
+    if (qStatus) return sendJson(res, 200, qStatus, { 'Cache-Control': CACHE_CONTROL_POLICIES.EPHEMERAL_SHORT });
   }
 
   // 2. Custom getQueueStatus hook

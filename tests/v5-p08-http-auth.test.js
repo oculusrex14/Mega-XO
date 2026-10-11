@@ -33,6 +33,8 @@ async function serve(t, authenticateHttp) {
       },
       run:async()=>{throw Error('NO_WRITES_PERMITTED')},
     },
+    environment:'test',
+    audience:'mega-core',
   };
   if(authenticateHttp!==undefined)config.authenticateHttp=authenticateHttp;
   const transport=createRealtimeTransport(config);

@@ -29,6 +29,8 @@ async function createHost(t){
     server,pool:{withTransaction:async()=>{throw Error('DB_FORBIDDEN_IN_PROTOCOL_STRESS')}},
     core:{readMatch:async()=>{throw Error('READ_FORBIDDEN')},
       run:async()=>{throw Error('COMMAND_FORBIDDEN')}},
+    environment:'test',
+    audience:'mega-core',
     authTimeoutMs:5000,
   });
   await new Promise((resolve,reject)=>{

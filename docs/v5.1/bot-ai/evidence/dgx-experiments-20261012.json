@@ -1,0 +1,1057 @@
+{
+  "schemaVersion": 1,
+  "timestamp": "2026-10-12T00:00:00.000Z",
+  "auditTitle": "Dual-DGX Neural Training, Paired League Tournaments, Staged Runtime Footprint, and Baseline Evidence",
+  "provenance": {
+    "experimentDates": "2026-10-11 to 2026-10-12",
+    "baseCommitNote": "Base commit d3454187471ffb15e74831a6c19ab60baff1a118 was dirty during experiments; reports base commit is NOT clean exact experiment tree. Verifiable source hashes, commands, and runtime provenance retained.",
+    "verifiedSourceHashes": {
+      "src/bot/search.js": "5194df8e120f35391e6991f4277f0400a14caa6cc481b86e8d6e138c3af3a545",
+      "src/game.js": "e6e14c258b4db439eedf28090ebafd0962867bab5e64709d0d4438cb145b31e0",
+      "src/bot/encoding.js": "1eea6e4fbbc0d411feba8dfca8455f39fe2fd68996a13618718b56b86a6c9511",
+      "training/bot/train.py": "ee5533833869bf3769c701c30321aced64e2c65bac78f5557410b518239b13e4",
+      "training/bot/model.py": "5c10a00b5eefc76ae117cc55e05bab9de388c77850bdc12326399eedf700ddc4",
+      "training/bot/generate.cjs": "46e5fe419efb928e4a600dde6c3fe255038013e6edd54d78961db476d6c1b5f9",
+      "training/bot/validate-data.cjs": "0996d546285b55a89d9d3452cbea162e4bfd7da440387483b4475fd1961ffe74"
+    },
+    "clusterEnvironment": {
+      "nodes": [
+        "dgx-ts",
+        "dgx2-ts"
+      ],
+      "device": "cuda",
+      "hardware": "NVIDIA GB10",
+      "pythonVersion": "3.12.3",
+      "torchVersion": "2.13.0+cu129",
+      "onnxVersion": "1.19.1",
+      "ortVersion": "1.23.2",
+      "determinism": "enforced"
+    }
+  },
+  "models": {
+    "candidate-1": {
+      "modelId": "candidate-dgx1-w64b4",
+      "clusterNode": "dgx-ts",
+      "sourceReport": ".artifacts/models/candidate-dgx1-w64b4/training-report.json",
+      "exportReport": ".artifacts/models/candidate-dgx1-w64b4/export/export-report.json",
+      "remoteBenchmark": "ssh://dgx-ts/home/oculus-rex/v51-experiment/benchmarks/candidate-1-ablations-105pairs.json",
+      "trainingCommand": "python training/bot/train.py --config w64b4 --epochs 20 --seed 51 --device cuda",
+      "exportCommand": "python training/bot/export.py --model .artifacts/models/candidate-dgx1-w64b4",
+      "modelConfig": {
+        "width": 64,
+        "blocks": 4,
+        "encodingVersion": "planes8-v1"
+      },
+      "parameters": 342282,
+      "parameterClassification": "Within proposed 0.25M-2.0M range",
+      "seed": 51,
+      "epochs": 20,
+      "datasetSha256": "a8bfbe3bbcae6da235f6f16b8292d443857b69294f78dd057d9a4e3efcf98d81",
+      "modelSha256": "ac9cc0ecdcf9a5b47fe002c7ff4f71c9bc9ffb9c7a0a0d645648121ac5959f70",
+      "checkpointBytes": 1379604,
+      "checkpointGzipBytes": 1274108,
+      "elapsedSeconds": 19.482535082999675,
+      "peakCudaBytes": 95263744,
+      "peakCudaReservedBytes": 113246208,
+      "energyJoules": 313.3909289808037,
+      "meanPowerWatts": 16.246486486486486,
+      "peakPowerWatts": 18.04,
+      "splitGames": {
+        "train": 159,
+        "validation": 20,
+        "holdout": 21
+      },
+      "learningCurves": {
+        "epoch1": {
+          "trainLoss": 2.607010314097144,
+          "validationPolicyLoss": 2.0095028359622242,
+          "validationValueMSE": 0.8493770773398047,
+          "top1Agreement": 0.1657754010695187,
+          "top3Agreement": 0.4641711229946524,
+          "policyEntropy": 2.005796977670435
+        },
+        "epoch20": {
+          "trainLoss": 1.853034715718974,
+          "validationPolicyLoss": 2.066007902277982,
+          "validationValueMSE": 0.9078776759259841,
+          "top1Agreement": 0.17433155080213902,
+          "top3Agreement": 0.46524064171123,
+          "policyEntropy": 1.938917620041791
+        },
+        "calibrationEpoch20": [
+          {
+            "bin": [
+              -1.0,
+              -0.6
+            ],
+            "count": 185,
+            "meanPredicted": -0.8757539095105351,
+            "meanTarget": -0.16756756756756758,
+            "absError": 0.7081863419429675
+          },
+          {
+            "bin": [
+              -0.6,
+              -0.2
+            ],
+            "count": 95,
+            "meanPredicted": -0.3765470873368414,
+            "meanTarget": -0.16842105263157894,
+            "absError": 0.20812603470526245
+          },
+          {
+            "bin": [
+              -0.2,
+              0.2
+            ],
+            "count": 390,
+            "meanPredicted": 0.001352312059353631,
+            "meanTarget": -0.015384615384615385,
+            "absError": 0.016736927443969016
+          },
+          {
+            "bin": [
+              0.2,
+              0.6
+            ],
+            "count": 72,
+            "meanPredicted": 0.4085463862866163,
+            "meanTarget": 0.2222222222222222,
+            "absError": 0.18632416406439412
+          },
+          {
+            "bin": [
+              0.6,
+              1.0
+            ],
+            "count": 193,
+            "meanPredicted": 0.8975807385123455,
+            "meanTarget": 0.23834196891191708,
+            "absError": 0.6592387696004285
+          }
+        ]
+      },
+      "exportArtifacts": {
+        "candidate.onnx": {
+          "bytes": 1375959,
+          "gzipBytes": 1272393,
+          "sha256": "568549183e07f2ba8324f5dbf1b0e00f091f963f08785df26dfaa1e454fe5dbd"
+        },
+        "candidate-dynamic.onnx": {
+          "bytes": 1375974,
+          "gzipBytes": 1272400,
+          "sha256": "1c9267bb552fe92bc98f5298558b96e0f0493123c2630deb6e1d17961a28c6a3"
+        },
+        "candidate-int8.onnx": {
+          "bytes": 380957,
+          "gzipBytes": 327182,
+          "sha256": "e4408ea8229955c825adf95166c698cbae0589708b9ade40fd7e4a327ce19191"
+        }
+      },
+      "sizeGateAudit": {
+        "floatGzipBytes": 1272393,
+        "floatGzipMb": 1.272393,
+        "inside1to5MbTarget": true,
+        "int8GzipBytes": 327182,
+        "int8GzipMb": 0.327182,
+        "below1MbNominalTarget": true,
+        "under5MbHardCap": true,
+        "exportSizeGateValue": true,
+        "sizeGateInterpretation": "sizeGate=true in export report certifies meeting the <=5MB hard upper cap only. Float gzip is inside the 1-5MB nominal target; INT8 gzip is below the nominal 1MB lower bound."
+      },
+      "quantizationAndParity": {
+        "frozenStates": 512,
+        "floatLegalArgmaxChanges": 0,
+        "floatPolicyMaxAbsError": 2.86102294921875e-06,
+        "floatValueMaxAbsError": 7.748603820800781e-07,
+        "quantizationFormat": "QDQ signed INT8 per-channel",
+        "quantizationCalibration": "128 training records only",
+        "int8LegalArgmaxChanges512": 17,
+        "int8MaxPolicyAbsError": 2.1974258422851562
+      },
+      "deploymentStatus": "UNAPPROVED_RESEARCH_CHAMPION"
+    },
+    "candidate-2": {
+      "modelId": "candidate-dgx2-w48b3",
+      "clusterNode": "dgx2-ts",
+      "sourceReport": ".artifacts/models/candidate-dgx2-w48b3/training-report.json",
+      "exportReport": ".artifacts/models/candidate-dgx2-w48b3/export/export-report.json",
+      "remoteBenchmark": "ssh://dgx2-ts/home/oculus-rex/v51-experiment/benchmarks/candidate-2-dgx2-105pairs.json",
+      "trainingCommand": "python training/bot/train.py --config w48b3 --epochs 20 --seed 77 --device cuda",
+      "exportCommand": "python training/bot/export.py --model .artifacts/models/candidate-dgx2-w48b3",
+      "modelConfig": {
+        "width": 48,
+        "blocks": 3,
+        "encodingVersion": "planes8-v1"
+      },
+      "parameters": 170250,
+      "parameterClassification": "BELOW proposed 0.25M lower range; explicitly flagged as size experiment",
+      "seed": 77,
+      "epochs": 20,
+      "datasetSha256": "d00370104bdf1e274a3478cb93ccaa1522b2fdb64af77e83cea01f68aee7adf5",
+      "modelSha256": "140adef750930262335a31641688311c313ac79e0b9d876682b55e2e3d110337",
+      "checkpointBytes": 690072,
+      "checkpointGzipBytes": 635588,
+      "elapsedSeconds": 22.169439457997214,
+      "peakCudaBytes": 85904896,
+      "peakCudaReservedBytes": 102760448,
+      "energyJoules": 298.63098745887635,
+      "meanPowerWatts": 13.615,
+      "peakPowerWatts": 14.47,
+      "splitGames": {
+        "train": 158,
+        "validation": 25,
+        "holdout": 17
+      },
+      "learningCurves": {
+        "epoch1": {
+          "trainLoss": 2.758005700900012,
+          "validationPolicyLoss": 1.975599904821013,
+          "validationValueMSE": 1.0439114941229746,
+          "top1Agreement": 0.17066895368782162,
+          "top3Agreement": 0.47598627787307035,
+          "policyEntropy": 1.9736868502958766
+        },
+        "epoch20": {
+          "trainLoss": 1.892073203184033,
+          "validationPolicyLoss": 2.0030141968669857,
+          "validationValueMSE": 1.3729539030003097,
+          "top1Agreement": 0.18181818181818182,
+          "top3Agreement": 0.46397941680960547,
+          "policyEntropy": 1.9377826493150374
+        },
+        "calibrationEpoch20": [
+          {
+            "bin": [
+              -1.0,
+              -0.6
+            ],
+            "count": 352,
+            "meanPredicted": -0.8569084356792949,
+            "meanTarget": 0.17897727272727273,
+            "absError": 1.0358857084065676
+          },
+          {
+            "bin": [
+              -0.6,
+              -0.2
+            ],
+            "count": 181,
+            "meanPredicted": -0.39273713685530987,
+            "meanTarget": 0.10497237569060773,
+            "absError": 0.4977095125459176
+          },
+          {
+            "bin": [
+              -0.2,
+              0.2
+            ],
+            "count": 160,
+            "meanPredicted": 0.007659498449356761,
+            "meanTarget": 0.0625,
+            "absError": 0.05484050155064324
+          },
+          {
+            "bin": [
+              0.2,
+              0.6
+            ],
+            "count": 139,
+            "meanPredicted": 0.4111940336527584,
+            "meanTarget": -0.02158273381294964,
+            "absError": 0.43277676746570803
+          },
+          {
+            "bin": [
+              0.6,
+              1.0
+            ],
+            "count": 334,
+            "meanPredicted": 0.8514702555662144,
+            "meanTarget": -0.24251497005988024,
+            "absError": 1.0939852256260947
+          }
+        ]
+      },
+      "exportArtifacts": {
+        "candidate.onnx": {
+          "bytes": 686774,
+          "gzipBytes": 634021,
+          "sha256": "dfe1399fb2832c2ab8984fe5bc4363c0af8ffa839cf2c78f6385577cf9ba80e7"
+        },
+        "candidate-dynamic.onnx": {
+          "bytes": 686789,
+          "gzipBytes": 634027,
+          "sha256": "1c5d6d6b046ba1872cff39ab596e77ea217d5e12ecbba56ab3394fd70cecdaf8"
+        },
+        "candidate-int8.onnx": {
+          "bytes": 200382,
+          "gzipBytes": 165807,
+          "sha256": "54105a26ac62b4273cba6f4db14a8e905ab0a2df109b2f50d15f629b2962c437"
+        }
+      },
+      "sizeTargetEvaluation": {
+        "floatGzipBytes": 634021,
+        "floatGzipMb": 0.634021,
+        "inside1to5MbTarget": false,
+        "int8GzipBytes": 165807,
+        "int8GzipMb": 0.165807,
+        "below1MbNominalTarget": true,
+        "under5MbHardCap": true,
+        "exportSizeGateValue": true,
+        "sizeGateInterpretation": "sizeGate=true in export report indicates <=5MB hard upper cap; both float and INT8 gzip are below 1MB nominal target."
+      },
+      "quantizationAndParity": {
+        "frozenStates": 512,
+        "floatLegalArgmaxChanges": 0,
+        "floatPolicyMaxAbsError": 1.9073486328125e-06,
+        "floatValueMaxAbsError": 7.897615432739258e-07,
+        "quantizationFormat": "QDQ signed INT8 per-channel",
+        "quantizationCalibration": "128 training records only",
+        "int8LegalArgmaxChanges512": 33,
+        "int8MaxPolicyAbsError": 1.461418628692627
+      },
+      "deploymentStatus": "UNAPPROVED_SIZE_EXPERIMENT"
+    },
+    "candidate-3": {
+      "modelId": "candidate-cycle-w64b4",
+      "clusterNode": "dgx-ts",
+      "sourceReport": ".artifacts/models/candidate-cycle-w64b4/training-report.json",
+      "exportReport": ".artifacts/models/candidate-cycle-w64b4/export/export-report.json",
+      "remoteBenchmark": "ssh://dgx-ts/home/oculus-rex/v51-experiment/benchmarks/candidate-3-cycle-105pairs.json",
+      "trainingCommand": "python training/bot/train.py --config w64b4 --epochs 20 --seed 99 --cycle 1 --device cuda",
+      "exportCommand": "python training/bot/export.py --model .artifacts/models/candidate-cycle-w64b4",
+      "modelConfig": {
+        "width": 64,
+        "blocks": 4,
+        "encodingVersion": "planes8-v1"
+      },
+      "parameters": 342282,
+      "parameterClassification": "Within proposed 0.25M-2.0M range (cycle self-play retrain)",
+      "seed": 99,
+      "epochs": 20,
+      "datasetSha256": "a054a925c06e6a80a63029f9cb9907c144d2295ad041a75f1eeec0cef09ec842",
+      "modelSha256": "e4efc6c095627d14723a6643cb6404343a8eef43e527466d4e0e65372cebfc6a",
+      "checkpointBytes": 1379604,
+      "checkpointGzipBytes": 1276151,
+      "elapsedSeconds": 32.61845635999998,
+      "peakCudaBytes": 95267840,
+      "peakCudaReservedBytes": 119537664,
+      "energyJoules": 506.566859799028,
+      "meanPowerWatts": 15.621290322580645,
+      "peakPowerWatts": 18.56,
+      "splitGames": {
+        "train": 240,
+        "validation": 32,
+        "holdout": 28
+      },
+      "learningCurves": {
+        "epoch1": {
+          "trainLoss": 2.6860183475231927,
+          "validationPolicyLoss": 1.985306015042938,
+          "validationValueMSE": 0.9552594496768482,
+          "top1Agreement": 0.17336849044166117,
+          "top3Agreement": 0.4594594594594595,
+          "policyEntropy": 1.9846958577357867
+        },
+        "epoch20": {
+          "trainLoss": 1.871520752684611,
+          "validationPolicyLoss": 2.0287020203308126,
+          "validationValueMSE": 1.1021560909485613,
+          "top1Agreement": 0.17798286090969018,
+          "top3Agreement": 0.47198417930125247,
+          "policyEntropy": 1.9298920520607703
+        },
+        "calibrationEpoch20": [
+          {
+            "bin": [
+              -1.0,
+              -0.6
+            ],
+            "count": 418,
+            "meanPredicted": -0.9109982102396386,
+            "meanTarget": -0.15311004784688995,
+            "absError": 0.7578881623927486
+          },
+          {
+            "bin": [
+              -0.6,
+              -0.2
+            ],
+            "count": 150,
+            "meanPredicted": -0.4023140452305476,
+            "meanTarget": -0.04666666666666667,
+            "absError": 0.3556473785638809
+          },
+          {
+            "bin": [
+              -0.2,
+              0.2
+            ],
+            "count": 457,
+            "meanPredicted": -0.00035763828202835495,
+            "meanTarget": 0.015317286652078774,
+            "absError": 0.015674924934107128
+          },
+          {
+            "bin": [
+              0.2,
+              0.6
+            ],
+            "count": 79,
+            "meanPredicted": 0.4006175615742237,
+            "meanTarget": 0.3037974683544304,
+            "absError": 0.09682009321979329
+          },
+          {
+            "bin": [
+              0.6,
+              1.0
+            ],
+            "count": 413,
+            "meanPredicted": 0.9267523747668139,
+            "meanTarget": 0.13559322033898305,
+            "absError": 0.7911591544278309
+          }
+        ]
+      },
+      "exportArtifacts": {
+        "candidate.onnx": {
+          "bytes": 1375959,
+          "gzipBytes": 1274436,
+          "sha256": "5a60a404e38b767c77d220e2a2bda29863a4eee92da78957bc451cd9560a9bd9"
+        },
+        "candidate-dynamic.onnx": {
+          "bytes": 1375974,
+          "gzipBytes": 1274445,
+          "sha256": "76f61075c5f895e8952b54f23e28936fef5fd707ef7641de83a742bd937db598"
+        },
+        "candidate-int8.onnx": {
+          "bytes": 380957,
+          "gzipBytes": 325809,
+          "sha256": "a780b50988c0ffde3faa45b98177e7bf3466e458916f23656b941fffb4b87d6a"
+        }
+      },
+      "sizeTargetEvaluation": {
+        "floatGzipBytes": 1274436,
+        "floatGzipMb": 1.274436,
+        "inside1to5MbTarget": true,
+        "int8GzipBytes": 325809,
+        "int8GzipMb": 0.325809,
+        "below1MbNominalTarget": true,
+        "under5MbHardCap": true,
+        "exportSizeGateValue": true,
+        "sizeGateInterpretation": "sizeGate=true in export report indicates <=5MB hard upper cap; float gzip is inside 1-5MB target, while INT8 gzip is below nominal 1MB target."
+      },
+      "quantizationAndParity": {
+        "frozenStates": 512,
+        "floatLegalArgmaxChanges": 0,
+        "floatPolicyMaxAbsError": 3.814697265625e-06,
+        "floatValueMaxAbsError": 1.4901161193847656e-06,
+        "quantizationFormat": "QDQ signed INT8 per-channel",
+        "quantizationCalibration": "128 training records only",
+        "int8LegalArgmaxChanges512": 28,
+        "int8MaxPolicyAbsError": 5.113710403442383
+      },
+      "deploymentStatus": "UNAPPROVED_CYCLE_RETRAIN"
+    }
+  },
+  "leagueTournaments": {
+    "methodology": {
+      "holdoutFamiliesCount": 105,
+      "gamesPerMatchup": 210,
+      "pairsPerMatchup": 105,
+      "rule": "Strict D4-normalized 4-ply opening families where splitFor(family) === holdout; zero leakage with train/validation; equal wall (30ms) / simulation (16 sims) budgets; paired alternating-side games.",
+      "promotionGate": "Win rate >= 70% with lower 95% CI >= 0.65 required for promotion. Automatic promotion disabled."
+    },
+    "candidate1Tournaments": {
+      "host": "dgx-ts",
+      "modelDir": "/home/oculus-rex/v51-experiment/models/candidate-dgx1-w64b4/export",
+      "matchups": [
+        {
+          "engineA": "tacticalOnly",
+          "engineB": "improvedExpert",
+          "games": 210,
+          "pairs": 105,
+          "wins": 0,
+          "draws": 3,
+          "losses": 207,
+          "pointScore": 0.007142857142857143,
+          "pairBootstrap95": [
+            0.0,
+            0.016666666666666666
+          ],
+          "p50MoveMs": 0.1269110000002911,
+          "p95MoveMs": 30.10217399999965
+        },
+        {
+          "engineA": "policyOnlyPUCT",
+          "engineB": "improvedExpert",
+          "games": 210,
+          "pairs": 105,
+          "wins": 2,
+          "draws": 9,
+          "losses": 199,
+          "pointScore": 0.030952380952380953,
+          "pairBootstrap95": [
+            0.011904761904761904,
+            0.05476190476190476
+          ],
+          "p50MoveMs": 11.857923999999912,
+          "p95MoveMs": 30.22483000000011
+        },
+        {
+          "engineA": "policyValuePUCT",
+          "engineB": "improvedExpert",
+          "games": 210,
+          "pairs": 105,
+          "wins": 1,
+          "draws": 1,
+          "losses": 208,
+          "pointScore": 0.007142857142857143,
+          "pairBootstrap95": [
+            0.0,
+            0.01904761904761905
+          ],
+          "p50MoveMs": 11.911027000000104,
+          "p95MoveMs": 30.17431899999974
+        },
+        {
+          "engineA": "policyValuePUCT",
+          "engineB": "tacticalUCT",
+          "games": 210,
+          "pairs": 105,
+          "wins": 50,
+          "draws": 64,
+          "losses": 96,
+          "pointScore": 0.3904761904761905,
+          "pairBootstrap95": [
+            0.3357142857142857,
+            0.44761904761904764
+          ],
+          "p50MoveMs": 0.23679900000001908,
+          "p95MoveMs": 11.492148999999927
+        },
+        {
+          "engineA": "int8PUCT",
+          "engineB": "policyValuePUCT",
+          "games": 210,
+          "pairs": 105,
+          "wins": 78,
+          "draws": 63,
+          "losses": 69,
+          "pointScore": 0.5214285714285715,
+          "pairBootstrap95": [
+            0.4714285714285714,
+            0.5738095238095238
+          ],
+          "p50MoveMs": 5.71512999999959,
+          "p95MoveMs": 11.605141000000003,
+          "statisticalConclusion": "95% CI [0.4714, 0.5738] contains 0.50; demonstrates NO DETECTED REGRESSION between INT8 and Float32 models, not exact parity/equivalence."
+        }
+      ]
+    },
+    "candidate2Tournaments": {
+      "host": "dgx2-ts",
+      "modelDir": "/home/oculus-rex/v51-experiment/models/candidate-dgx2-w48b3/export",
+      "matchups": [
+        {
+          "engineA": "tacticalOnly",
+          "engineB": "improvedExpert",
+          "games": 210,
+          "pairs": 105,
+          "wins": 0,
+          "draws": 2,
+          "losses": 208,
+          "pointScore": 0.004761904761904762,
+          "pairBootstrap95": [
+            0.0,
+            0.011904761904761904
+          ],
+          "p50MoveMs": 0.12537599999996019,
+          "p95MoveMs": 30.09922800000095
+        },
+        {
+          "engineA": "policyOnlyPUCT",
+          "engineB": "improvedExpert",
+          "games": 210,
+          "pairs": 105,
+          "wins": 4,
+          "draws": 10,
+          "losses": 196,
+          "pointScore": 0.04285714285714286,
+          "pairBootstrap95": [
+            0.02142857142857143,
+            0.06904761904761905
+          ],
+          "p50MoveMs": 7.1174859999991895,
+          "p95MoveMs": 30.393309000000954
+        },
+        {
+          "engineA": "policyValuePUCT",
+          "engineB": "improvedExpert",
+          "games": 210,
+          "pairs": 105,
+          "wins": 1,
+          "draws": 1,
+          "losses": 208,
+          "pointScore": 0.007142857142857143,
+          "pairBootstrap95": [
+            0.0,
+            0.01904761904761905
+          ],
+          "p50MoveMs": 7.11438199999975,
+          "p95MoveMs": 30.250220000000354
+        },
+        {
+          "engineA": "policyValuePUCT",
+          "engineB": "tacticalUCT",
+          "games": 210,
+          "pairs": 105,
+          "wins": 41,
+          "draws": 68,
+          "losses": 101,
+          "pointScore": 0.35714285714285715,
+          "pairBootstrap95": [
+            0.3,
+            0.4119047619047619
+          ],
+          "p50MoveMs": 0.24911999999994805,
+          "p95MoveMs": 6.575452999999925
+        },
+        {
+          "engineA": "int8PUCT",
+          "engineB": "policyValuePUCT",
+          "games": 210,
+          "pairs": 105,
+          "wins": 77,
+          "draws": 57,
+          "losses": 76,
+          "pointScore": 0.5023809523809524,
+          "pairBootstrap95": [
+            0.45476190476190476,
+            0.5523809523809524
+          ],
+          "p50MoveMs": 3.9924080000000117,
+          "p95MoveMs": 6.35295700000006,
+          "statisticalConclusion": "95% CI [0.4548, 0.5524] contains 0.50; demonstrates NO DETECTED REGRESSION between INT8 and Float32 models, not exact parity/equivalence."
+        }
+      ]
+    },
+    "candidate3Tournaments": {
+      "host": "dgx-ts",
+      "modelDir": "/home/oculus-rex/v51-experiment/models/candidate-cycle-w64b4/export",
+      "matchups": [
+        {
+          "engineA": "tacticalOnly",
+          "engineB": "improvedExpert",
+          "games": 210,
+          "pairs": 105,
+          "wins": 0,
+          "draws": 3,
+          "losses": 207,
+          "pointScore": 0.007142857142857143,
+          "pairBootstrap95": [
+            0.0,
+            0.016666666666666666
+          ],
+          "p50MoveMs": 0.12651200000073004,
+          "p95MoveMs": 30.101824999999735
+        },
+        {
+          "engineA": "policyOnlyPUCT",
+          "engineB": "improvedExpert",
+          "games": 210,
+          "pairs": 105,
+          "wins": 0,
+          "draws": 4,
+          "losses": 206,
+          "pointScore": 0.009523809523809525,
+          "pairBootstrap95": [
+            0.002380952380952381,
+            0.01904761904761905
+          ],
+          "p50MoveMs": 11.895684000000074,
+          "p95MoveMs": 30.181634000000486
+        },
+        {
+          "engineA": "policyValuePUCT",
+          "engineB": "improvedExpert",
+          "games": 210,
+          "pairs": 105,
+          "wins": 0,
+          "draws": 2,
+          "losses": 208,
+          "pointScore": 0.004761904761904762,
+          "pairBootstrap95": [
+            0.0,
+            0.011904761904761904
+          ],
+          "p50MoveMs": 12.014948000000004,
+          "p95MoveMs": 30.155346999999892
+        },
+        {
+          "engineA": "policyValuePUCT",
+          "engineB": "tacticalUCT",
+          "games": 210,
+          "pairs": 105,
+          "wins": 44,
+          "draws": 66,
+          "losses": 100,
+          "pointScore": 0.36666666666666664,
+          "pairBootstrap95": [
+            0.3142857142857143,
+            0.42142857142857143
+          ],
+          "p50MoveMs": 0.2375189999999634,
+          "p95MoveMs": 11.370759000000362
+        },
+        {
+          "engineA": "int8PUCT",
+          "engineB": "policyValuePUCT",
+          "games": 210,
+          "pairs": 105,
+          "wins": 65,
+          "draws": 58,
+          "losses": 87,
+          "pointScore": 0.44761904761904764,
+          "pairBootstrap95": [
+            0.3952380952380952,
+            0.5023809523809524
+          ],
+          "p50MoveMs": 5.585676000000603,
+          "p95MoveMs": 11.42250200000035,
+          "statisticalConclusion": "95% CI [0.3952, 0.5024] contains 0.50; demonstrates NO DETECTED REGRESSION between INT8 and Float32 models, not exact parity/equivalence."
+        }
+      ]
+    }
+  },
+  "searchTournamentHeldout": {
+    "sourceArtifact": ".artifacts/v51/candidate-heldout-128pairs-20ms.json",
+    "engineA": "search-v1-experimental",
+    "engineB": "legacy-Expert",
+    "versionA": "5194df8e120f35391e6991f4277f0400a14caa6cc481b86e8d6e138c3af3a545",
+    "versionB": "f8913fd",
+    "rulesSha256": "e6e14c258b4db439eedf28090ebafd0962867bab5e64709d0d4438cb145b31e0",
+    "budgetA": "20ms; 350000-node ceiling",
+    "budgetB": "20ms scaled original clock; original node cap remains",
+    "pairs": 128,
+    "holdoutFamiliesCount": 128,
+    "leakageExcluded": true,
+    "summary": {
+      "games": 256,
+      "wins": 167,
+      "draws": 54,
+      "losses": 35,
+      "pointScore": 0.7578125,
+      "pairBootstrap95": [
+        0.712890625,
+        0.80078125
+      ],
+      "p50MoveMs": 20.071166999987327,
+      "p95MoveMs": 21.00024999998277,
+      "openingDiversity": {
+        "uniqueMoves": 45,
+        "repetitionRate": 0.102,
+        "entropy": 4.84
+      }
+    },
+    "gateResult": "PASSED Expert promotion gate (75.78% point score exceeds >=65% threshold with lower 95% CI 71.29% >= 65%)."
+  },
+  "baselineCorpusEvidence": {
+    "sourceArtifact": ".artifacts/v51/baseline-current.json",
+    "baselineCommit": "f8913fd36566f0c96d0b755b1e4e57be1795a266",
+    "rulesSha256": "e6e14c258b4db439eedf28090ebafd0962867bab5e64709d0d4438cb145b31e0",
+    "runtime": "v26.8.2",
+    "corpusFixturesCount": 11,
+    "caseIds": [
+      "opening",
+      "curated-fork",
+      "sacrifice-to-win",
+      "send-danger",
+      "mini-win",
+      "closed-route",
+      "free-choice",
+      "mandatory-global-defense",
+      "mega-win",
+      "late-forced",
+      "drawn-route"
+    ],
+    "repeatedExpertOpeningDeterministic": true,
+    "repeatedExpertOpeningMoves": [
+      {
+        "b": 4,
+        "c": 4
+      },
+      {
+        "b": 4,
+        "c": 4
+      },
+      {
+        "b": 4,
+        "c": 4
+      },
+      {
+        "b": 4,
+        "c": 4
+      }
+    ],
+    "repeatedExpertSequences": {
+      "match1MovesCount": 47,
+      "match2MovesCount": 47,
+      "identicalSequencesAcrossDifferentSeeds": true
+    },
+    "exploitScriptAdversary": {
+      "scriptTrainingSeed": 72,
+      "scriptEvaluationSeed": 91,
+      "pairs": 4,
+      "games": 8,
+      "wins": 0,
+      "draws": 1,
+      "losses": 7,
+      "pointScore": 0.0625,
+      "pairBootstrap95": [
+        0.0,
+        0.1875
+      ],
+      "uncertainty": "SMOKE ONLY: fewer than 30 independent pairs; interval is not promotion evidence",
+      "promotionEvidence": false
+    }
+  },
+  "runtimeAndLegalDeliveryPackaging": {
+    "pinnedOrtVersion": "1.23.2",
+    "upstreamCommit": "a83fc4d58cb48eb68890dd689f94f28288cf2278",
+    "offlineLegalAssets": {
+      "LICENSE": {
+        "bytes": 1073,
+        "sha256": "2f07c72751aed99790b8a4869cf2311df85a860b22ded05fa22803587a48922c",
+        "role": "license",
+        "provenance": "Original pinned Microsoft MIT license file"
+      },
+      "ThirdPartyNotices.txt": {
+        "bytes": 326866,
+        "sha256": "e9e90971a8e75a9a8ac0c6412e29c1202d079998389915aa485f46c816c3b4cc",
+        "role": "third-party-notices",
+        "provenance": "Original pinned upstream third-party attribution notice"
+      }
+    },
+    "sealedRuntimeDist": {
+      "ort.wasm.min.js": {
+        "bytes": 49926,
+        "sha256": "c6bc9f8e1d0ecc3983a57910e6a30b2230a512bcd2e0207cd64306459c3de7b4",
+        "role": "wasm-runner"
+      },
+      "ort.webgpu.min.js": {
+        "bytes": 66329,
+        "sha256": "c94f5bb9c17bd37168e9b4220facb2b6fc1dd125a5e91b7a680171840a27f254",
+        "role": "webgpu-runner"
+      },
+      "ort-wasm-simd-threaded.wasm": {
+        "bytes": 11905541,
+        "sha256": "45eaee27761ad883742a8d4b8fce1538d60ce43b51adf1726fafccc59b8c1a15",
+        "role": "wasm-binary"
+      },
+      "ort-wasm-simd-threaded.jsep.wasm": {
+        "bytes": 23824254,
+        "sha256": "ac0d8f1cfbf2732420ad78a86072b8507253c63885a61c3fd640b3055256d31d",
+        "role": "webgpu-jsep-binary"
+      },
+      "ort-wasm-simd-threaded.asyncify.wasm": {
+        "bytes": 25499390,
+        "sha256": "babec0bbddb6d3082623b99b7e1391b75e0729bcca076ff8424d7753af97fada",
+        "role": "wasm-asyncify-binary"
+      },
+      "ort-wasm-simd-threaded.mjs": {
+        "bytes": 20321,
+        "sha256": "90a557d15c02bac4504d95b67f431d8594635ed2a0a62a7f2cd83d090ff91d3e",
+        "role": "wasm-glue"
+      },
+      "ort-wasm-simd-threaded.jsep.mjs": {
+        "bytes": 49998,
+        "sha256": "c7b70c8003f077c62849e15275d0b1f1d1cf1a6dfc63b967400567c7224bfdbe",
+        "role": "webgpu-jsep-glue"
+      },
+      "ort-wasm-simd-threaded.asyncify.mjs": {
+        "bytes": 51913,
+        "sha256": "249b4dc791f081d33bd11760bfd669fe85f97289e679bbeb291b874272125dff",
+        "role": "wasm-asyncify-glue"
+      }
+    },
+    "runtimeSeparationNote": "Runtime WASM binary (11,905,541 bytes, ~11.9MB) is separate from model bytes. Model weights must not be aggregated into WASM binary size calculations.",
+    "legalBytesTotal": 327939,
+    "legalBytesIncludedInStagedRuntime": true,
+    "stagingStatus": "Parent actual staging smoke pending"
+  },
+  "researchOptionsAndPendingItems": {
+    "unslothDecisionModel": {
+      "status": "NOT_SELECTED_RESEARCH_OPTION",
+      "task": "B04.08",
+      "findings": "No experiment or evidence of teacher benefit or absence. Tiny networks being fast on GPU does not prove they are strong in match play. No per-move DGX/cloud/Oracle dependency allowed in game client."
+    },
+    "teacherDistillation": {
+      "status": "BLOCKED_PENDING_TEACHER_VALUE",
+      "task": "B04.09",
+      "findings": "Distillation evaluation not conducted because teacher option was not selected or demonstrated to provide strength benefit."
+    },
+    "physicalReferenceHardware": {
+      "status": "UNMEASURED",
+      "tasks": [
+        "B01.05",
+        "B05.09",
+        "B07.01"
+      ],
+      "findings": "No physical Android, iPhone, WKWebView, Android WebView, thermal, or battery tests have been conducted. Linux/Darwin desktop/container timings are not physical device measurements and cannot substitute for them."
+    },
+    "freshUserBetaTesting": {
+      "status": "UNMEASURED",
+      "tasks": [
+        "B03.14",
+        "B07.08"
+      ],
+      "findings": "No moderated fresh-user beta onboarding or screen-reader / assistive-technology trials have been conducted."
+    },
+    "dgx2ScheduledCalibration": {
+      "status": "RESERVED_PENDING_PARENT_EVIDENCE",
+      "task": "B07.05",
+      "findings": "Parent has scheduled 105-family full-tier calibration on DGX2. Section is explicitly reserved pending execution by parent; results are NOT invented."
+    }
+  },
+  "promotionDecision": {
+    "decision": "REJECT_ALL_PUBLIC_NEURAL_PROMOTION",
+    "publicCatalog": "EMPTY (APPROVED_CATALOG = [])",
+    "reasons": [
+      "Candidate 1 policyValuePUCT scores 0.00714 (0.71%) with 95% CI [0.0000, 0.0190] against improvedExpert; required threshold is >=0.70 with lower CI >=0.65.",
+      "Candidate 2 (170k params size experiment) policyValuePUCT scores 0.00714 with 95% CI [0.0000, 0.0190], failing promotion gate by two orders of magnitude.",
+      "Candidate 3 (iterative cycle retrain) scored 0 wins across 210 games (score 0.00476, CI [0.0000, 0.0119]); demonstrated zero improvement over Candidate 1.",
+      "Ablation proves value head miscalibration harms search: policyOnlyPUCT outperforms policyValuePUCT against improvedExpert.",
+      "Under B04.07 protocol, Candidate 1 is preserved as the internal research champion only.",
+      "No public Impossible difficulty tier or neural model is promoted or activated."
+    ]
+  },
+  "taskAuditInventory": {
+    "B01.01": {
+      "status": "DONE",
+      "evidence": "105-family paired league runner and 128-family search tournament runner with paired alternating sides and bootstrap 95% CIs."
+    },
+    "B01.02": {
+      "status": "PARTIAL",
+      "evidence": "11-fixture corpus outcomes in baseline-current.json; 47-move identical sequence across seeds under deterministic budget."
+    },
+    "B01.03": {
+      "status": "PARTIAL",
+      "evidence": "11-case tactical corpus in baseline-current.json; curated fork and sacrifice-to-win proofs remain open."
+    },
+    "B01.04": {
+      "status": "PARTIAL",
+      "evidence": "Script adversary smoke test recorded (4 pairs, 8 games, score 0.0625, SMOKE ONLY); exploit resistance not certified."
+    },
+    "B01.05": {
+      "status": "BLOCKED",
+      "evidence": "UNMEASURED: No physical Android/iPhone/Safari reference hardware attached; container timings are not device evidence."
+    },
+    "B01.06": {
+      "status": "DONE",
+      "evidence": "Fair league protocol enforced: 105 D4-normalized families, alternating colors, equal wall/sim budgets, bootstrap 95% CIs."
+    },
+    "B01.07": {
+      "status": "DONE",
+      "evidence": "Committed frozen evidence files under docs/v5.1/bot-ai/evidence/ without bulky raw weights/data in Git."
+    },
+    "B04.01": {
+      "status": "DONE",
+      "evidence": "planes8-v1 tensor encoding verified in reports and encoding.js."
+    },
+    "B04.02": {
+      "status": "DONE",
+      "evidence": "8 dihedral board symmetries implemented with canonical rule oracle parity."
+    },
+    "B04.03": {
+      "status": "DONE",
+      "evidence": "PyTorch residual CNNs built: Candidate 1 (342k params), Candidate 2 (170k params - size experiment), Candidate 3 (342k params)."
+    },
+    "B04.04": {
+      "status": "DONE",
+      "evidence": "Self-play data generated from canonical Mega XOXO rules with MCTS visit distributions."
+    },
+    "B04.05": {
+      "status": "DONE",
+      "evidence": "Game-level train/validation/holdout split enforced; zero position leakage."
+    },
+    "B04.06": {
+      "status": "PARTIAL",
+      "evidence": "Dual DGX training curves, calibration, peak GPU memory, energy, and determinism captured; validation loss worsened, no approved model."
+    },
+    "B04.07": {
+      "status": "PARTIAL",
+      "evidence": "Iterative self-play cycle run (Candidate 3); 0 wins in league showed no improvement; Candidate 1 preserved as research champion only."
+    },
+    "B04.08": {
+      "status": "NOT_SELECTED_RESEARCH_OPTION",
+      "evidence": "Unsloth teacher experiment not selected; no evidence of teacher benefit or absence."
+    },
+    "B04.09": {
+      "status": "BLOCKED",
+      "evidence": "Distillation blocked pending demonstration of teacher value."
+    },
+    "B04.10": {
+      "status": "DONE",
+      "evidence": "PUCT value vs policy-only ablation completed across 3 models; value miscalibration degrades performance."
+    },
+    "B04.11": {
+      "status": "DONE",
+      "evidence": "Heldout league benchmarks completed across 105 novel families vs improvedExpert; point scores ~0.007 reject promotion."
+    },
+    "B04.12": {
+      "status": "DONE",
+      "evidence": "Candidates versioned with modelSha256, source hashes, dataset hashes; deployment status UNAPPROVED."
+    },
+    "B05.01": {
+      "status": "DONE",
+      "evidence": "ONNX export and quantization parity verified: 512 frozen states, 0 float argmax changes, INT8 league CIs contain 0.50 (no detected regression)."
+    },
+    "B05.02": {
+      "status": "PARTIAL",
+      "evidence": "Candidate 1 float gzip 1.272MB meets 1-5MB target; INT8 gzip 0.327MB below nominal 1MB; runtime WASM 11.9MB separate."
+    },
+    "B05.03": {
+      "status": "PARTIAL",
+      "evidence": "PINNED ORT Web 1.23.2 dist files and exact offline MIT license (1,073 B) and ThirdPartyNotices (326,866 B) verified."
+    },
+    "B05.05": {
+      "status": "PARTIAL",
+      "evidence": "Pack loading/cache/integrity mechanics verified in scripts; APPROVED_CATALOG stays EMPTY."
+    },
+    "B05.06": {
+      "status": "BLOCKED",
+      "evidence": "Public model publishing not authorized; no models approved for production delivery."
+    },
+    "B05.09": {
+      "status": "BLOCKED",
+      "evidence": "UNMEASURED: Physical reference phone RAM, thermal, battery profile absent."
+    },
+    "B07.01": {
+      "status": "PARTIAL",
+      "evidence": "UNMEASURED: Physical reference device release matrix absent."
+    },
+    "B07.02": {
+      "status": "DONE",
+      "evidence": "100% legal moves verified across tournament and baseline games; rules and search hashes pinned."
+    },
+    "B07.03": {
+      "status": "PARTIAL",
+      "evidence": "11 reachable tactical fixtures tested; curated fork and sacrifice-to-win proofs remain open."
+    },
+    "B07.04": {
+      "status": "DONE",
+      "evidence": "Measured promotion gate: improvedExpert PASSED (75.78% vs old Expert >=65%); neural candidates REJECTED (~0.007 vs improvedExpert < 0.70)."
+    },
+    "B07.05": {
+      "status": "PARTIAL",
+      "evidence": "Adjacent difficulty tiers: Parent scheduled 105-family full-tier calibration on DGX2 reserved pending parent evidence."
+    },
+    "B07.08": {
+      "status": "BLOCKED",
+      "evidence": "UNMEASURED: Fresh-user beta testing and assistive technology trials absent."
+    }
+  }
+}

@@ -53,6 +53,7 @@ function createDownloadHandler({links = configuredLinks} = {}) {
       response.end(method === 'HEAD' ? undefined : message);
     };
     if (!['GET', 'HEAD'].includes(method)) {
+      request.resume?.();
       response.setHeader('Allow', 'GET, HEAD');
       return finish(405, 'Use GET or HEAD for download links.\n');
     }

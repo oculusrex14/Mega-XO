@@ -10,8 +10,13 @@ self.onmessage=async event=>{
    await model?.dispose();model=null;manifest=null;
    const info=MegaBotPack.manifest(job.manifest,self.location.href),bytes=new Uint8Array(job.bytes);await MegaBotPack.verify(bytes,info);
    const useGPU=job.preferGPU===true&&!!self.navigator.gpu;
-   if(!self.ort){try{importScripts('ort-1.23.2/'+(useGPU?'ort.webgpu.min.js':'ort.wasm.min.js'));}catch{importScripts('ort-1.23.2/ort.wasm.min.js');}}
-   ort.env.wasm.wasmPaths=new URL('ort-1.23.2/',self.location.href).href;
+   const runtimeBase=new URL('ort-1.23.2/',self.location.href).href;
+   if(!self.ort){
+    const script=useGPU?'ort.webgpu.min.js':'ort.wasm.min.js';
+    try{importScripts(new URL(script,runtimeBase).href);}
+    catch{importScripts(new URL('ort.wasm.min.js',runtimeBase).href);}
+   }
+   ort.env.wasm.wasmPaths=runtimeBase;
    model=new MegaBotOnnx.Model(ort,bytes,{preferGPU:useGPU,gpuAvailable:!!self.navigator.gpu});await model.initialize();manifest=info;
    self.postMessage({requestId:job.requestId,modelHash:manifest.sha256,provider:model.provider,version:'neural-worker-v1'});
   }else{

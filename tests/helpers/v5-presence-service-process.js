@@ -150,6 +150,7 @@ async function childMain() {
   /* Only real consumer methods are callable; there is no echo adapter and no fake Core. */
   const METHODS = {
     issue: (a) => accounts.issue(...(a || [])),
+    accessBinding: (a) => accounts.accessBinding(...(a || [])),
     heartbeat: (a) => accounts.heartbeat(...(a || [])),
     view: (a) => accounts.view(...(a || [])),
     self: (a) => accounts.self(...(a || [])),
@@ -164,7 +165,7 @@ async function childMain() {
     startFamily: (a) => refresh.startFamily(...(a || [])),
     rotateRefresh: (a) => refresh.rotate(...(a || [])),
     revokeFamily: (a) => refresh.revokeFamily(...(a || [])),
-    redeemTicket: (a) => redeemRealtimeTicket(pool, { ...((a && a[0]) || {}), now: clock }),
+    redeemTicket: (a) => redeemRealtimeTicket(pool, { environment: payload.environment || 'test', audience: 'mega-core', ...((a && a[0]) || {}), now: clock }),
     coreRun: (a) => core.run(...(a || [])),
     /* Real Core match observer surfaces (the P06 changed path). `readMatch` is the durable
      * membership selector and `watchMatch` opens a real subscription on the child's OWN Core

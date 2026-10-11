@@ -6,15 +6,17 @@ const CACHE='mega-xoxo-ai-v1',ENCODING='planes8-v1',MAX_BYTES=8*1024*1024,MAX_CO
 const APPROVED_CATALOG=Object.freeze([]);
 function failure(code,abort=false){const e=Error(code);e.code=code;if(abort)e.name='AbortError';return e;}
 function manifest(value,baseURL){
- if(!value||value.schemaVersion!==1||value.ruleset!==C.RULESET||value.encodingVersion!==ENCODING||typeof value.version!=='string'||!/^[a-zA-Z0-9._-]{1,64}$/.test(value.version)||typeof value.sha256!=='string'||!/^[a-f0-9]{64}$/.test(value.sha256)||!Number.isInteger(value.bytes)||value.bytes<1||value.bytes>MAX_BYTES||!Number.isInteger(value.gzipBytes)||value.gzipBytes<1||value.gzipBytes>MAX_COMPRESSED)throw failure('PACK_INCOMPATIBLE');
+ if(!value||value.schemaVersion!==1||value.ruleset!==C.RULESET||value.encodingVersion!==ENCODING||typeof value.version!=='string'||!/^[a-zA-Z0-9._-]{1,64}$/.test(value.version)||typeof value.sha256!=='string'||!/^[a-f0-9]{64}$/.test(value.sha256)||!Number.isInteger(value.bytes)||value.bytes<1||value.bytes>MAX_BYTES||!Number.isInteger(value.gzipBytes)||value.gzipBytes<1||value.gzipBytes>MAX_COMPRESSED||(value.deploymentStatus!==undefined&&!['APPROVED','RESEARCH','UNAPPROVED'].includes(value.deploymentStatus)))throw failure('PACK_INCOMPATIBLE');
  const base=new URL(baseURL),url=new URL(value.url,base);
  if(url.origin!==base.origin||!['https:','http:'].includes(url.protocol)||url.search||url.hash||url.username||url.password||!url.pathname.endsWith('/'+value.sha256+'.onnx'))throw failure('PACK_URL_INVALID');
- return Object.freeze({...value,url:url.href});
+ return Object.freeze({...value,deploymentStatus:value.deploymentStatus||'UNAPPROVED',url:url.href});
 }
 async function verify(bytes,info){
  if(!(bytes instanceof Uint8Array)||bytes.length!==info.bytes||bytes.length>MAX_BYTES)throw failure('PACK_SIZE_MISMATCH');
- if(!root.crypto?.subtle)throw failure('PACK_CRYPTO_UNSUPPORTED');
- const actual=Array.from(new Uint8Array(await root.crypto.subtle.digest('SHA-256',bytes)),n=>n.toString(16).padStart(2,'0')).join('');
+ let actual;
+ if(root.crypto?.subtle){actual=Array.from(new Uint8Array(await root.crypto.subtle.digest('SHA-256',bytes)),n=>n.toString(16).padStart(2,'0')).join('');}
+ else{try{const crypto=typeof require==='function'?require('node:crypto'):null;if(crypto)actual=crypto.createHash('sha256').update(bytes).digest('hex');}catch{}}
+ if(!actual)throw failure('PACK_CRYPTO_UNSUPPORTED');
  if(actual!==info.sha256)throw failure('PACK_HASH_MISMATCH');return bytes;
 }
 async function boundedBytes(response,info,alive,progress=()=>{}){
@@ -23,12 +25,16 @@ async function boundedBytes(response,info,alive,progress=()=>{}){
  try{while(true){const {done,value}=await reader.read();alive();if(done)break;if(!value||received+value.byteLength>info.bytes)throw failure('PACK_SIZE_MISMATCH');bytes.set(value,received);received+=value.byteLength;progress(received);}if(received!==info.bytes)throw failure('PACK_SIZE_MISMATCH');return bytes;}
  finally{try{reader.cancel().catch(()=>{});}catch{}try{reader.releaseLock();}catch{}}
 }
-function resolvePinned(pin,catalog=APPROVED_CATALOG){return catalog.find(m=>m.version===pin?.packVersion&&m.sha256===pin?.modelHash&&m.ruleset===pin?.ruleset&&m.encodingVersion===pin?.encodingVersion&&m.deploymentStatus==='APPROVED')||null;}
+function resolvePinned(pin,catalog=APPROVED_CATALOG){
+ if(!pin||!Array.isArray(catalog))return null;
+ return catalog.find(m=>m.version===pin?.packVersion&&m.sha256===pin?.modelHash&&m.ruleset===pin?.ruleset&&m.encodingVersion===pin?.encodingVersion&&(m.deploymentStatus==='APPROVED'||m.deploymentStatus==='RESEARCH'))||null;
+}
 class Store {
  constructor({baseURL,cacheStorage=root.caches,fetcher=root.fetch?.bind(root),onState=()=>{},catalog=APPROVED_CATALOG}={}){
   this.baseURL=baseURL||root.location?.href;this.caches=cacheStorage;this.fetch=fetcher;this.onState=onState;this.catalog=catalog;
   this.state={status:'unavailable',receivedBytes:0,totalBytes:null,error:null};this.sequence=0;this.controller=null;this.inflight=new Set();this.removing=false;
  }
+ setCatalog(catalog){if(!Array.isArray(catalog))throw failure('PACK_CATALOG_INVALID');this.catalog=catalog;}
  emit(status,extra={}){this.state={...this.state,...extra,status};try{this.onState({...this.state});}catch{}return this.state;}
  info(value){return manifest(value,this.baseURL);}
  async cache(){if(!this.caches?.open)throw failure('PACK_STORAGE_UNSUPPORTED');return this.caches.open(CACHE);}
@@ -53,9 +59,9 @@ class Store {
    alive();const cache=await this.cache();alive();this.emit('downloading',{version:info.version,modelHash:null,totalBytes:info.bytes,receivedBytes:0,error:null});
    if(typeof this.fetch!=='function')throw failure('PACK_NETWORK_UNSUPPORTED');
    const response=await this.fetch(info.url,{signal:controller.signal,credentials:'omit',cache:'no-store',redirect:'error'});alive();
-   const bytes=await boundedBytes(response,info,alive,n=>this.emit('downloading',{receivedBytes:n}));await verify(bytes,info);alive();
+   const bytes=await boundedBytes(response,info,alive,n=>this.emit('downloading',{receivedBytes:n,totalBytes:info.bytes}));await verify(bytes,info);alive();
    await cache.put(info.url,new Response(bytes,{headers:{'Content-Type':'application/octet-stream','X-Mega-Model-SHA256':info.sha256}}));alive();
-   this.emit('ready',{modelHash:info.sha256,receivedBytes:bytes.length,error:null});return bytes;
+   this.emit('ready',{version:info.version,modelHash:info.sha256,receivedBytes:bytes.length,totalBytes:bytes.length,error:null});return bytes;
   }catch(e){if(sequence===this.sequence)this.emit(e.name==='AbortError'?'paused':/HASH|SIZE/.test(e.code||'')?'corrupt':'unavailable',{modelHash:null,error:e.code||'PACK_DOWNLOAD_FAILED'});throw e;}
   finally{signal?.removeEventListener('abort',cancel);if(this.controller===controller)this.controller=null;}})());
  }
@@ -64,7 +70,12 @@ class Store {
   try{await Promise.allSettled([...this.inflight]);const cache=await this.cache();await cache.delete(info.url);this.emit('unavailable',{version:info.version,receivedBytes:0,modelHash:null,error:null});}
   finally{this.removing=false;}
  }
- pin(value){const info=this.info(value),pin={packVersion:info.version,modelHash:info.sha256,ruleset:info.ruleset,encodingVersion:info.encodingVersion};if(this.state.status!=='ready'||this.state.modelHash!==info.sha256||info.deploymentStatus!=='APPROVED'||!resolvePinned(pin,this.catalog))throw failure('PACK_NOT_APPROVED_READY');return Object.freeze(pin);}
+ pin(value){
+  const info=this.info(value),pin={packVersion:info.version,modelHash:info.sha256,ruleset:info.ruleset,encodingVersion:info.encodingVersion};
+  const matched=resolvePinned(pin,this.catalog);
+  if(this.state.status!=='ready'||this.state.modelHash!==info.sha256||!matched||(info.deploymentStatus!=='APPROVED'&&info.deploymentStatus!=='RESEARCH'))throw failure('PACK_NOT_APPROVED_READY');
+  return Object.freeze({...pin,deploymentStatus:matched.deploymentStatus||'APPROVED'});
+ }
 }
 return {CACHE,ENCODING,MAX_BYTES,MAX_COMPRESSED,manifest,verify,Store,APPROVED_CATALOG,resolvePinned};
 });

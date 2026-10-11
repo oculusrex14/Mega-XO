@@ -2,6 +2,7 @@
 
 const path = require('node:path');
 const { createAccountService } = require(path.join(__dirname, '../../../packages/services/accounts.js'));
+const { createAccessService } = require(path.join(__dirname, '../../../packages/services/access.js'));
 
 const STATUS_MAP = Object.freeze({
   AUTH_REQUIRED: 401,
@@ -9,6 +10,7 @@ const STATUS_MAP = Object.freeze({
   AMBIGUOUS_CREDENTIAL: 401,
   REAUTH_REQUIRED: 401,
   CSRF_REJECTED: 403,
+  CSRF_FAILED: 403,
   PRIVATE_OPERATOR_ROUTE: 403,
   PROFILE_NOT_FOUND: 404,
   NOT_FOUND: 404,
@@ -188,38 +190,49 @@ async function resolveService(context) {
 // HTTP requests must prove the actor by presenting a live linked session.
 // Request properties and x-actor-* headers are untrusted client input, even
 // when passed through a proxy. Never mint sessions here from an actor ID.
-async function resolveAuth(context, req) {
+async function resolveAuth(context, req, { linked = true } = {}) {
   const accounts = await resolveService(context);
 
-  let token = req.token || req.sessionToken || null;
   const authorization = req.headers?.authorization;
-  if (!token && typeof authorization === 'string' && /^Bearer /i.test(authorization)) {
-    token = authorization.slice(7).trim();
+  const bearer = typeof authorization === 'string' && /^Bearer /i.test(authorization)
+    ? authorization.slice(7).trim() : null;
+  const cookies = parseCookies(req.headers?.cookie);
+  const cookieToken = cookies['__Host-mega_session'] || cookies['mega_dev_session'] || cookies['session'] || cookies['token'] || null;
+  if (bearer && cookieToken) {
+    const error = new Error('AMBIGUOUS_CREDENTIAL');
+    error.status = 401;
+    throw error;
   }
-  if (!token && typeof req.headers?.['x-session-token'] === 'string') {
-    token = req.headers['x-session-token'];
-  }
-  if (!token && req.headers?.cookie) {
-    const cookies = parseCookies(req.headers.cookie);
-    token = cookies['__Host-mega_session'] || cookies['mega_dev_session'] || cookies['session'] || cookies['token'] || null;
-  }
+  let token = bearer || req.token || req.sessionToken || req.headers?.['x-session-token'] || cookieToken || null;
+  const credentialMode = bearer ? 'bearer' : cookieToken ? 'cookie' : 'session';
 
   if (!token) return { actor: null, token: null, accounts };
   let session;
   try {
-    session = await accounts.requireLinked(token);
+    if (bearer && bearer.includes('.')) {
+      /* The API runtime owns P05 verification configuration. No issuer, audience or key fallback
+       * is inferred from client input; an explicitly configured factory is lazily initialized. */
+      if (!context.access && context.accessOptions && context.pool) {
+        if (!context._accessPromise) context._accessPromise = createAccessService(context.pool, context.accessOptions);
+        context.access = await context._accessPromise;
+      }
+      token = await accounts.authenticateNative(bearer, {
+        access: context.access, nativeAudiences: context.nativeAudiences,
+      });
+    }
+    session = linked ? await accounts.requireLinked(token) : await accounts.requireSession(token);
   } catch {
     // Do not expose expiry, revocation or account state to the caller.
     const error = new Error('AUTH_REQUIRED');
     error.status = 401;
     throw error;
   }
-  if (!session || typeof session.actor !== 'string' || !session.actor) {
+  if (!session || (linked && (typeof session.actor !== 'string' || !session.actor))) {
     const error = new Error('AUTH_REQUIRED');
     error.status = 401;
     throw error;
   }
-  return { actor: session.actor, token, accounts };
+  return { actor: session.actor, token, accounts, credentialMode };
 }
 
 module.exports = {

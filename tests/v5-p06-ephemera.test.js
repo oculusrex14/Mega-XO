@@ -202,10 +202,11 @@ test('P06 ephemera: a namespace wipe and total loss leave durable PostgreSQL tru
 
   /* Durable facts established BEFORE the wipe: a redeemed ticket, a revoked refresh family and a
    * verified store purchase (all authoritative in PostgreSQL, never in Redis). */
-  const ticket = await issuer.issue({ actor: 'svc_alice', sessionId: 'sess-1'.padEnd(24, '0'), generation: 1, connectionClass: 'game' });
-  const redeemed = await redeemRealtimeTicket(lab.poolsFor(db).core, { ticket: ticket.ticket, connectionId: 'conn-1', node: 'node-a', now: () => lab.CLOCK });
+  const aliceBinding = await lab.sessionBindingFor(db, 'svc_alice', { now: () => lab.CLOCK, connectionClass: 'game' });
+  const ticket = await issuer.issue({ actor: 'svc_alice', sessionId: aliceBinding.sessionId, generation: aliceBinding.generation, connectionClass: aliceBinding.connectionClass });
+  const redeemed = await redeemRealtimeTicket(lab.poolsFor(db).core, { ticket: ticket.ticket, connectionId: 'conn-1', node: 'node-a', now: () => lab.CLOCK, environment: 'test', audience: 'mega-core' });
   assert.equal(redeemed.actorId, 'svc_alice');
-  const { familyId } = await refresh.startFamily({ actor: 'svc_alice', sessionId: 'sess-durable' });
+  const { familyId } = await refresh.startFamily({ actor: 'svc_alice', sessionId: aliceBinding.sessionId });
   await refresh.revokeFamily(familyId, 'wipe-proof');
   const grant = await commerce.purchase('svc_alice', 'p06-buy-1', { store: 'google', productId: 'crowns_100', transactionId: 'p06-tx-1', purchaseToken: 'tok-p06' });
   assert.equal(grant.crowns, 100);
@@ -239,7 +240,7 @@ test('P06 ephemera: a namespace wipe and total loss leave durable PostgreSQL tru
   assert.equal(digestOf(afterWipe), digestOf(before), 'the durable content is byte-identical across the namespace wipe');
 
   await assert.rejects(
-    () => redeemRealtimeTicket(lab.poolsFor(db).core, { ticket: ticket.ticket, connectionId: 'conn-2', node: 'node-b', now: () => lab.CLOCK }),
+    () => redeemRealtimeTicket(lab.poolsFor(db).core, { ticket: ticket.ticket, connectionId: 'conn-2', node: 'node-b', now: () => lab.CLOCK, environment: 'test', audience: 'mega-core' }),
     (e) => e.message === 'TICKET_REDEEMED',
     'a wiped cache cannot re-enable a redeemed ticket',
   );

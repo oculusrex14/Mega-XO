@@ -3,12 +3,22 @@
 'use strict';
 const VERSION='neural-runtime-v1';
 const scriptURL=typeof document!=='undefined'?document.currentScript?.src:null;
-const workerURL=scriptURL?new URL('neural-worker.js',scriptURL).href:null;
+function resolveWorkerURL(baseURL){
+ if(scriptURL)return new URL('neural-worker.js',scriptURL).href;
+ if(typeof document!=='undefined'){
+  const list=document.querySelectorAll?.('script[src]')||[];
+  for(const s of list){if(s.src&&s.src.includes('neural-runtime.js'))return new URL('neural-worker.js',s.src).href;}
+ }
+ if(baseURL){try{return new URL('neural-worker.js',baseURL).href;}catch{}}
+ return null;
+}
 function fail(code,abort=false){const e=Error(code);e.code=code;if(abort)e.name='AbortError';return e;}
 class Client {
  constructor({workerFactory,baseURL,onState=()=>{},loadTimeoutMs=15000,thinkTimeoutMs=2600}={}){
-  this.factory=workerFactory||(()=>{if(!workerURL||!root.Worker)throw fail('NEURAL_WORKER_UNAVAILABLE');return new root.Worker(workerURL);});
-  this.baseURL=baseURL||root.location?.href;this.onState=onState;this.loadTimeoutMs=Math.max(100,Math.min(30000,Number.isFinite(loadTimeoutMs)?loadTimeoutMs:15000));this.thinkTimeoutMs=Math.max(100,Math.min(5000,Number.isFinite(thinkTimeoutMs)?thinkTimeoutMs:2600));
+  const base=baseURL||root.location?.href;
+  const derivedWorkerURL=resolveWorkerURL(base);
+  this.factory=workerFactory||(()=>{if(!derivedWorkerURL||!root.Worker)throw fail('NEURAL_WORKER_UNAVAILABLE');return new root.Worker(derivedWorkerURL);});
+  this.baseURL=base;this.onState=onState;this.loadTimeoutMs=Math.max(100,Math.min(30000,Number.isFinite(loadTimeoutMs)?loadTimeoutMs:15000));this.thinkTimeoutMs=Math.max(100,Math.min(5000,Number.isFinite(thinkTimeoutMs)?thinkTimeoutMs:2600));
   this.worker=null;this.pending=null;this.info=null;this.bytes=null;this.loaded=false;this.serial=0;this.generation=0;this.busy=false;this.state={status:'unavailable',modelHash:null};
  }
  emit(status,extra={}){this.state={...this.state,...extra,status};try{this.onState({...this.state});}catch{}}

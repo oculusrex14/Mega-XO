@@ -9,7 +9,7 @@
  *   await api.listOpen(actor);                 // bounded read of still-redeemable tickets
  *   api.close();
  *
- *   const grant = await redeemRealtimeTicket(corePool, { ticket, connectionId, node, now });
+ *   const grant = await redeemRealtimeTicket(corePool, { ticket, connectionId, node, now, environment });
  *   // -> { actorId, sessionId, generation, environment, audience, matchScope }
  *
  * DURABILITY CONTRACT. The ticket is a 32-byte random bearer; ONLY sha256 hex lives in
@@ -20,11 +20,11 @@
  * consulted anywhere, and a replay after a cache wipe is therefore proven by simply redeeming
  * twice (A14/A15).
  *
- * OWNERSHIP. The redeem function returns the STORED fields; this module never compares them against
- * a request envelope. environment/audience/sessionId/generation and match membership are compared
- * by the Core envelope guard (design B5.3/B5.4, A14), which is why `matchScope` is returned rather
- * than enforced here. Core holds EXECUTE + SELECT only - it can never INSERT/UPDATE/DELETE the
- * ticket table - so a caller cannot turn a redemption into a ticket mint or a reset.
+ * OWNERSHIP. All stored player/session references are canonical public24. Issuance checks the live
+ * owned session, actor revocation generation and eligibility under the shared actor-auth mutex.
+ * Redemption compares stored audience/environment with trusted consumer configuration and checks
+ * the same durable session authority; match membership remains the transport's. Core holds only
+ * EXECUTE + SELECT, so no caller can turn redemption into a ticket mint or reset.
  *
  * ADMISSION LIMITS (all fail closed, evaluated in the issue transaction): outstanding unredeemed
  * tickets per actor < 3; concurrently LIVE (redeemed and not yet expired) < 4; a per-IP issuance
@@ -37,6 +37,8 @@ const { ContextError } = require('../db/context');
 const { verifyRuntimeSchema } = require('../db/pg/readiness.js');
 const { createPgUnitOfWork } = require('../db/pg/uow.js');
 const { lockTransactionIdentity } = require('../db/pg/locks.js');
+const { accountRepositoryFor } = require('../db/pg/accounts.js');
+const { publicSessionId } = require('../domain/session-id.js');
 
 /* Frozen TTLs and admission bounds (design Part F). A caller may tighten, never loosen, them via
  * the `limits` option; each override is validated against a hard ceiling. */
@@ -56,6 +58,20 @@ const CORE_ROLE = 'core_runtime';
 const fail = (code) => { throw Error(code); };
 const hex = (value) => crypto.createHash('sha256').update(value).digest('hex');
 const isHex = (value) => typeof value === 'string' && /^[0-9a-f]{64}$/.test(value);
+const isPublicSessionId = (value) => typeof value === 'string' && /^[0-9a-f]{24}$/.test(value);
+
+/* Core's retained view exposes the reversible STORAGE digest, not a public reference. Derive the
+ * one canonical public24 identity and compare only that; never accept the digest as an alias. */
+async function requireRealtimeSession(tx, { actor, sessionId, generation } = {}) {
+ if (typeof actor !== 'string' || !actor || actor.length > 128 || !isPublicSessionId(sessionId)
+  || !Number.isSafeInteger(generation) || generation < 1) fail('SESSION_REVOKED');
+ const rows = (await tx.query(
+  'SELECT session_id, generation, state, verified, suspended, security_hold FROM core.actor_access_state'
+  + ' WHERE actor_id = $1 LIMIT 101', [actor])).rows;
+ if (rows.length > 100 || !rows.some((row) => publicSessionId(row.session_id) === sessionId
+  && Number(row.generation === null ? 1 : row.generation) === generation && row.state === 'live'
+  && row.verified === true && row.suspended === false && row.security_hold === false)) fail('SESSION_REVOKED');
+}
 /* Epoch ms -> ISO text for every timestamptz parameter (the repository convention; a raw JS number
  * would be parsed by PostgreSQL as an absolute-timestamp literal, not as epoch milliseconds). */
 const iso = (value) => new Date(value).toISOString();
@@ -124,15 +140,24 @@ async function createTicketIssuer(apiPool, options = {}) {
  async function issue(request = {}) {
   const { actor, sessionId, generation, matchScope = null, connectionClass, ipHash = null } = request;
   if (typeof actor !== 'string' || actor.length === 0 || actor.length > 128) fail('TICKET_BINDING_REQUIRED');
-  if (typeof sessionId !== 'string' || sessionId.length === 0 || sessionId.length > 128) fail('TICKET_BINDING_REQUIRED');
+  if (!isPublicSessionId(sessionId)) fail('TICKET_BINDING_REQUIRED');
   if (!Number.isSafeInteger(generation) || generation < 1) fail('TICKET_BINDING_REQUIRED');
-  if (typeof connectionClass !== 'string' || connectionClass.length === 0 || connectionClass.length > 32) fail('TICKET_BINDING_REQUIRED');
+  if (!['browser', 'android', 'ios', 'game'].includes(connectionClass)) fail('TICKET_BINDING_REQUIRED');
   if (matchScope !== null && (typeof matchScope !== 'string' || matchScope.length === 0 || matchScope.length > MAX_SCOPE)) fail('TICKET_BINDING_REQUIRED');
   if (ipHash !== null && !isHex(ipHash)) fail('TICKET_BINDING_REQUIRED');
   const at = clock();
   const ticket = crypto.randomBytes(32).toString('base64url');
   const ticketHash = hex(ticket);
   const inserted = await run(async (tx) => {
+   await lockTransactionIdentity(tx, 'aggregate', ['auth', actor]);
+   const repositories = accountRepositoryFor({ client: tx.client, clock, role: API_ROLE });
+   const match = (await repositories.sessions.list(actor, at)).find((row) => publicSessionId(row.hash) === sessionId);
+   const live = match ? await repositories.sessions.live(match.hash, at) : null;
+   const account = live ? await repositories.accounts.for(actor) : null;
+   if (!live || live.actor !== actor || !account || !account.verified || account.suspended || account.hold
+    || await repositories.sessions.accessGeneration(actor) !== generation) fail('SESSION_REVOKED');
+   if (['android', 'ios'].includes(connectionClass)
+    && !(await repositories.sessions.nativeState(actor, sessionId, generation, connectionClass, at))) fail('SESSION_REVOKED');
    await lockTransactionIdentity(tx, 'realtime-ticket-issue', [actor]);
    return tx.query(
     `INSERT INTO identity.realtime_tickets
@@ -212,7 +237,14 @@ async function redeemRealtimeTicket(corePool, options = {}) {
    `SELECT actor_id, session_id, generation, environment, audience, match_scope
       FROM identity.redeem_realtime_ticket($1, $2, $3, $4)`,
    [ticketHash, connectionId, node, new Date(at)]);
-  if (redeemed.rows.length > 0) return { grant: redeemed.rows[0] };
+  if (redeemed.rows.length > 0) {
+   const grant = redeemed.rows[0];
+   const audience = options.audience === undefined ? 'mega-core' : options.audience;
+   if (grant.audience !== audience || (options.environment !== undefined && grant.environment !== options.environment)) fail('FORBIDDEN');
+   await lockTransactionIdentity(tx, 'aggregate', ['auth', grant.actor_id]);
+   await requireRealtimeSession(tx, { actor: grant.actor_id, sessionId: grant.session_id, generation: Number(grant.generation) });
+   return { grant };
+  }
   const probe = await tx.query(
    `SELECT redeemed_at, expires_at, actor_id, session_id, generation, environment, audience, match_scope
       FROM identity.realtime_tickets WHERE ticket_hash = $1`,
@@ -235,4 +267,4 @@ async function redeemRealtimeTicket(corePool, options = {}) {
  };
 }
 
-module.exports = { createTicketIssuer, redeemRealtimeTicket, TICKET_TTL, OUTSTANDING_PER_ACTOR, LIVE_PER_ACTOR, GLOBAL_OUTSTANDING, IP_ISSUE_MAX, IP_WINDOW_MS };
+module.exports = { createTicketIssuer, redeemRealtimeTicket, requireRealtimeSession, TICKET_TTL, OUTSTANDING_PER_ACTOR, LIVE_PER_ACTOR, GLOBAL_OUTSTANDING, IP_ISSUE_MAX, IP_WINDOW_MS };

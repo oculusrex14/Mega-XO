@@ -15,12 +15,24 @@ const security = require(path.join(__dirname, '../../packages/services/security.
 /**
  * Creates an HTTP request handler for the API control plane.
  * @param {Object} options Options containing pool, accounts, otpSecret, now, etc.
+ * Signed native authorization uses the caller-owned P05 `access` service (or pool + explicit
+ * `accessOptions` factory configuration) and `nativeAudiences` (mega-ios/mega-android by default).
+ * Provider token issuance is separate; never infer issuer/key custody from a presented JWT.
  * @returns {Function} async function handler(req, res)
  */
 function createApiHandler(options = {}) {
   const context = { ...options };
   if (!context.readCache) {
     context.readCache = createReadCache(context.readCacheOptions || {});
+  }
+  if (!context.queue) {
+    // The public API holds only API-role credentials. Queue admission and
+    // ephemeral status execute in the Core-owned service over signed ingress.
+    context.queue = {
+      join: (input) => competitiveRoutes.resolveGateway(context).join(input),
+      cancel: (input) => competitiveRoutes.resolveGateway(context).cancel(input),
+      status: (actor) => competitiveRoutes.resolveGateway(context).status(actor),
+    };
   }
 
   return async function handler(req, res) {

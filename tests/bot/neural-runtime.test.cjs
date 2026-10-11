@@ -14,3 +14,45 @@ test('unload during integrity verification cannot resurrect the model',async()=>
 test('worker timeout is explicit, stops computation and retains no pending move',async()=>{const f=fixture();await ready(f);f.client.thinkTimeoutMs=100;await assert.rejects(f.client.choose(job()),/NEURAL_WORKER_TIMEOUT/);assert.equal(f.client.pending,null);assert.equal(f.workers[0].terminated,true);f.client.unload();});
 
 test('concurrent configuration is rejected without replacing the first model operation',async()=>{const f=fixture(),first=f.client.configure(info,bytes);await assert.rejects(f.client.configure(info,bytes),/NEURAL_BACKPRESSURE/);while(!f.workers[0]?.jobs.length)await new Promise(r=>setImmediate(r));f.workers[0].reply({modelHash:hash,provider:'wasm'});await first;assert.equal(f.workers.length,1);assert.equal(f.client.loaded,true);f.client.unload();});
+test('signal abort during choose cancels inference cleanly and marks client cancelled',async()=>{
+ const f=fixture();await ready(f);
+ const controller=new AbortController();
+ const chosen=f.client.choose(job(),{signal:controller.signal});
+ await requestReady(f.workers[0],2);
+ controller.abort();
+ await assert.rejects(chosen,{name:'AbortError'});
+ assert.equal(f.workers[0].terminated,true);
+ assert.equal(f.client.loaded,false);
+ f.client.unload();
+});
+test('configure with corrupted bytes fails integrity verification without spawning a worker',async()=>{
+ const f=fixture();
+ const corruptBytes=new Uint8Array([9,9,9]);
+ await assert.rejects(f.client.configure(info,corruptBytes),/PACK_HASH_MISMATCH/);
+ assert.equal(f.workers.length,0);
+ assert.equal(f.client.loaded,false);
+ assert.equal(f.client.bytes,null);
+});
+
+test('default Worker URL stays beside the runtime module when the caller is another script',()=>{
+ const fs=require('node:fs'),path=require('node:path'),vm=require('node:vm');
+ const source=fs.readFileSync(path.resolve(__dirname,'../../src/bot/neural-runtime.js'),'utf8');
+ for(const prefix of ['https://game.example/','https://game.example/legacy-game/','file:///native/bundle/']){
+  const runtimeURL=prefix+'src/bot/neural-runtime.js',urls=[];
+  const document={currentScript:{src:runtimeURL},querySelectorAll:()=>[{src:runtimeURL}]};
+  const context={document,location:{href:prefix+'index.html'},URL,MegaBotContract:C,MegaBotPack:require('../../src/bot/pack.js'),Worker:function(url){urls.push(url);}};
+  vm.runInNewContext(source,context);
+  document.currentScript={src:prefix+'src/app.js'};
+  new context.MegaBotNeuralRuntime.Client().factory();
+  document.currentScript=null;
+  new context.MegaBotNeuralRuntime.Client().factory();
+  assert.deepEqual(urls,[prefix+'src/bot/neural-worker.js',prefix+'src/bot/neural-worker.js']);
+ }
+});
+test('default Worker URL supports document-free dedicated Worker context without a deployment base',()=>{
+ const fs=require('node:fs'),path=require('node:path'),vm=require('node:vm'),urls=[];
+ const context={location:{href:'https://game.example/legacy-game/src/bot/client-host.js'},URL,MegaBotContract:C,MegaBotPack:require('../../src/bot/pack.js'),Worker:function(url){urls.push(url);}};
+ vm.runInNewContext(fs.readFileSync(path.resolve(__dirname,'../../src/bot/neural-runtime.js'),'utf8'),context);
+ new context.MegaBotNeuralRuntime.Client().factory();
+ assert.deepEqual(urls,['https://game.example/legacy-game/src/bot/neural-worker.js']);
+});

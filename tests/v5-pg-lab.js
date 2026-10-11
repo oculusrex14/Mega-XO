@@ -237,9 +237,28 @@ async function installAdvisoryGate(database, { schema, table, name, when, key })
 }
 const throwsCode = (promise, code) => assert.rejects(promise, (e) => e.message === code, `expected ${code}`);
 
+async function sessionBindingFor(database, actor, { now = () => CLOCK, connectionClass = 'browser' } = {}) {
+ const clockFn = typeof now === 'function' ? now : () => now;
+ const accounts = await accountsFor(database, { clock: clockFn });
+ try {
+  const at = clockFn();
+  const issued = await accounts.issue(actor, at);
+  const binding = await accounts.accessBinding(issued.token);
+  return {
+   actor: binding.actor,
+   sessionId: binding.sessionId,
+   generation: Number(binding.generation),
+   connectionClass,
+  };
+ } finally {
+  await accounts.close();
+ }
+}
+
 module.exports = {
  ROOT, OTP_SECRET, CLOCK, DAY, CHAIN_LENGTH, RUNTIME_ROLES, SEED_ACTORS, OWNED_PREFIX,
  ensureBackend, adminClient, dbUrl, poolsFor, closeDatabasePools, accountsFor, coreFor,
  createDatabase, runMigrator, boot, installCleanup, seedActors, seedFor, tagFor, USERNAME, practicePayload,
  scalar, installSql, waitForLockWaiter, holdGate, releaseGate, installAdvisoryGate, throwsCode, sleep,
+ sessionBindingFor,
 };

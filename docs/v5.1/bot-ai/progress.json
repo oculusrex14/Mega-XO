@@ -152,6 +152,18 @@
         "evidence/platform-ci.json"
       ],
       "rollback": "Validation only; no deployment, signing or production data."
+    },
+    "C8-merge": {
+      "commit": "d3454187471ffb15e74831a6c19ab60baff1a118",
+      "ci": "FAIL Actions 38116443293: 1273 tests, 983 passed, 1 failed, 289 skipped. Failure is P21-DELIVERY-01's obsolete expectation that public production pages have no blanket noindex; owner release hold requires noindex. No approval or provider/device acceptance.",
+      "manualDevice": "NOT_RUN: Android inventory empty; paired iPhone17,1 unavailable on actual connection attempt; no valid signing identities.",
+      "evidence": [
+        "evidence/integration-entry.json",
+        "https://github.com/oculusrex14/Mega-XO/actions/runs/38116443293",
+        "https://github.com/oculusrex14/Mega-XO/pull/10"
+      ],
+      "local": "Merged builder produced 131 files/2997448 bytes; actual loopback /game rendered five themes, no guided controls yet. Combined targeted Node validation timed out at 300s; no full-suite pass claimed.",
+      "rollback": "Revert the normal merge as a reviewed cohesive unit with first-parent choice on the feature branch; no reset/force-push, production/database/provider changes. Preserve newer independent SEO work; release holds remain."
     }
   },
   "tasks": {
@@ -642,9 +654,9 @@
     },
     "B07.10": {
       "status": "PARTIAL",
-      "checkpoint": "C7-platform",
+      "checkpoint": "C8-merge",
       "blockers": [
-        "V5.1 remains f8913fd at recheck; P21 hooks compatible. Must recheck before owner integration; no merge performed."
+        "Latest V5.1 1c74b41 normal-merged and pushed; website guide/Worker compatibility and real isolated protected account/provider acceptance remain in progress. Draft PR10 is the SEO/P21 coordination thread; no owner response, release approval or deployment."
       ]
     },
     "B07.11": {

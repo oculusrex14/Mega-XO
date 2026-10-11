@@ -48,6 +48,7 @@ const lab = require('./v5-pg-lab.js');
 
 const { createCoreGateway, createCoreServiceIngress } = require('../packages/services/core-gateway.js');
 const { createApiHandler } = require('../apps/api/index.js');
+const { createTicketIssuer } = require('../packages/services/tickets.js');
 
 /* Register top-level cleanup of synthetic PG16 databases and guarded connection pools */
 lab.installCleanup(test);
@@ -604,21 +605,18 @@ test('6. Ticket ingress: requestTicket sends signed request and receives valid t
   await lab.seedActors(db, lab.SEED_ACTORS);
 
   const core = await lab.coreFor(db);
-  const ingress = createCoreServiceIngress({
-    coreService: core,
-    secret: TEST_SECRET,
-    ticketIssuer: {
-      issueTicket: async (actor, session) => ({
-        ticket: 'ticket_' + crypto.randomBytes(8).toString('hex'),
-        actor,
-        expiresIn: 300,
-      }),
-    },
-  });
+  const pools = lab.poolsFor(db);
+  const accounts = await lab.accountsFor(db);
+  const session = await accounts.issue('svc_alice', Date.now());
+  const binding = await accounts.accessBinding(session.token);
+  const ticketIssuer = await createTicketIssuer(pools.api, { environment: 'stg', audience: 'mega-core' });
+  const ingress = createCoreServiceIngress({ coreService: core, secret: TEST_SECRET, ticketIssuer });
   const ingressServer = await startIngressServer(ingress);
 
   t.after(async () => {
     await ingressServer.close();
+    await ticketIssuer.close();
+    await accounts.close();
     await core.close();
     await lab.closeDatabasePools(db);
   });
@@ -629,13 +627,39 @@ test('6. Ticket ingress: requestTicket sends signed request and receives valid t
     fetcher: testHttpFetch,
   });
 
-  const ticketRes = await gateway.requestTicket({
-    actor: 'svc_alice',
-    session: { sessionId: 'sess-123' },
+  const handler = createApiHandler({ pool: pools.api, accounts, coreGateway: gateway });
+  const apiServer = await startIngressServer(handler);
+  t.after(async () => { await apiServer.close(); });
+  for (const body of [
+    { sessionId: 'foreign-session' }, { generation: binding.generation + 1 },
+    { actor: 'svc_bob' }, { connectionClass: 'android' }, { environment: 'prod' },
+    { audience: 'attacker' },
+  ]) {
+    const rejected = await rawIngressRequest(apiServer.url, '/api/v1/ticket', {
+      method: 'POST', headers: { authorization: `Bearer ${session.token}` }, body,
+    });
+    assert.equal(rejected.status, 400, 'ticket identity is never supplied by the caller');
+  }
+  assert.equal(Number(await lab.scalar(db, 'SELECT count(*) FROM identity.realtime_tickets')), 0);
+  const bobSession = await accounts.issue('svc_bob', Date.now());
+  const bobBinding = await accounts.accessBinding(bobSession.token);
+  await assert.rejects(() => gateway.requestTicket({
+    actor: binding.actor,
+    session: { actor: bobBinding.actor, sessionId: bobBinding.sessionId,
+      generation: bobBinding.generation, connectionClass: bobBinding.connectionClass },
+  }), (error) => error.status >= 400,
+  'nested foreign actor/session cannot override signed principal at real Core issuer');
+  assert.equal(Number(await lab.scalar(db, 'SELECT count(*) FROM identity.realtime_tickets')), 0,
+    'forged signed nested binding creates no durable ticket for either actor');
+  const issued = await rawIngressRequest(apiServer.url, '/api/v1/ticket', {
+    method: 'POST', headers: { authorization: `Bearer ${session.token}` }, body: {},
   });
-
-  assert.ok(ticketRes, 'ticket response received');
-  assert.ok(ticketRes.ticket || ticketRes.result?.ticket, 'valid ticket field in response');
+  assert.equal(issued.status, 200);
+  assert.equal(typeof issued.data.ticket, 'string');
+  assert.equal(await lab.scalar(db, 'SELECT actor_id FROM identity.realtime_tickets'), binding.actor);
+  assert.equal(await lab.scalar(db, 'SELECT session_id FROM identity.realtime_tickets'), binding.sessionId);
+  assert.equal(Number(await lab.scalar(db, 'SELECT generation FROM identity.realtime_tickets')), binding.generation);
+  assert.equal(await lab.scalar(db, 'SELECT connection_class FROM identity.realtime_tickets'), binding.connectionClass);
 });
 
 /* ==========================================================================

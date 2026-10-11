@@ -597,6 +597,23 @@ function accountRepositoryFor(context) {
     auth_at: msOrNull(row.auth_at, 'sessions.auth_at'),
    };
   },
+  async accessGeneration(actor) {
+   const row = (await q('SELECT generation FROM identity.session_generations WHERE actor_id = $1', [actor])).rows[0];
+   return row ? Number(row.generation) : 1;
+  },
+  /* P05 revocation generation is actor-wide, not refresh lineage. A device-less family remains
+   * supported; a bound device must still belong to this actor and client platform. */
+  async nativeState(actor, publicId, generation, platform, now) {
+   const r = await q(
+    'SELECT 1 FROM identity.session_generations g'
+    + ' JOIN identity.refresh_families f ON f.actor_id = g.actor_id'
+    + ' LEFT JOIN identity.devices d ON d.device_id = f.device_id'
+    + " WHERE g.actor_id = $1 AND g.generation = $3 AND f.session_id = $2 AND f.state = 'active'"
+    + ' AND f.absolute_expires_at > $5'
+    + ' AND (f.device_id IS NULL OR (d.actor_id = $1 AND d.platform = $4 AND d.revoked_at IS NULL)) LIMIT 1',
+    [actor, publicId, generation, platform, iso(now, 'sessions.nativeState')]);
+   return r.rows.length === 1;
+  },
   /* Legacy `_replaceSession` keeps at most the 5 most recent sessions for an actor. */
   async pruneBeyond(actor, keep) {
    const bounded = Number.isSafeInteger(keep) && keep >= 0 ? keep : 5;

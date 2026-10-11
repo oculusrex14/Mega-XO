@@ -65,7 +65,7 @@ const GATE = HAVE_REDIS && HAVE_PG ? false : (!HAVE_REDIS ? 'no REDIS_URL' : 'no
 const KEY_VERSION = 'rtp08';
 const INGRESS = '/realtime/v1';
 const ACCEPT_GUID = '258EAFA5-E914-47DA-95CA-C5AB0DC85B11';
-const SEEDS = ['svc_alice', 'svc_bob', 'svc_carol', 'svc_dave']
+const SEEDS = ['svc_alice', 'svc_bob', 'svc_carol', 'svc_dave', 'svc_eve', 'svc_frank']
   .map((actor) => ({ actor, coins: 1000, crowns: 100, rating: 1500, games: 30, stats: 'friends' }));
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -161,10 +161,11 @@ async function issue(h, request) {
   return h.issuer.issue(request);
 }
 
-const binding = (extra = {}) => ({
-  actor: 'svc_alice', sessionId: 'a'.repeat(24), generation: 1,
-  connectionClass: 'game', matchScope: null, ipHash: null, ...extra,
-});
+async function binding(h, extra = {}) {
+  const actor = extra.actor || 'svc_alice';
+  const b = await lab.sessionBindingFor(h.database, actor, { now: () => clock, connectionClass: extra.connectionClass || 'game' });
+  return { ...b, matchScope: null, ipHash: null, ...extra };
+}
 /* The independent Core oracle for a match DTO: no transport is involved. */
 const oracle = (h, actor, matchId) => h.core.readMatch(actor, matchId);
 
@@ -202,6 +203,7 @@ async function serve(h, t, { authTimeoutMs, coHosted = true } = {}) {
   const create = loadTransportFactory();
   const transport = create({
     server, pool: h.pools.core, core: h.core, ephemera: h.ephemera, now: () => clock,
+    environment: 'stg', audience: 'mega-core',
     ...(authTimeoutMs === undefined ? {} : { authTimeoutMs }),
   });
   assert.equal(transport.ingressPath, INGRESS, 'the transport answers exactly the staged ingress');
@@ -459,7 +461,7 @@ test('V5-08-01 transport: an expired ticket is refused TICKET_EXPIRED, closed, a
   if (!h) return;
   const s = await serve(h, t);
   /* `issue` first retires every ticket earlier tests left open, then mints on the forward clock. */
-  const { ticket } = await issue(h, binding({ matchScope: null }));
+  const { ticket } = await issue(h, await binding(h, { matchScope: null }));
   /* Redeem past the 10 s durable TTL: real millisecond arithmetic on the stored row, not a sleep. */
   const expiredAt = clock + 20000;
   tick(20000);
@@ -487,7 +489,7 @@ test('V5-08-01 transport: a replayed ticket is refused TICKET_REDEEMED and only 
   if (!h) return;
   const s = await serve(h, t);
 
-  const { ticket } = await issue(h, binding({ matchScope: null }));
+  const { ticket } = await issue(h, await binding(h, { matchScope: null }));
   const hash = crypto.createHash('sha256').update(ticket).digest('hex');
 
   const first = wsClient(s.url(INGRESS));
@@ -517,7 +519,7 @@ test('V5-08-01 transport: oversize frames are closed 1009 and protocol faults 10
   const s = await serve(h, t);
 
   /* BOUNDS CAN ONLY TIGHTEN. A caller may never raise the frozen envelope or auth-timeout ceiling. */
-  const build = (options) => loadTransportFactory()({ server: s.server, pool: h.pools.core, core: h.core, ...options });
+  const build = (options) => loadTransportFactory()({ server: s.server, pool: h.pools.core, core: h.core, environment: 'stg', audience: 'mega-core', ...options });
   assert.throws(() => build({ maxEnvelopeBytes: MAX_ENVELOPE_BYTES + 1 }), /MAX_ENVELOPE_BYTES_INVALID/, 'the envelope bound cannot be loosened');
   assert.throws(() => build({ authTimeoutMs: 60001 }), /AUTH_TIMEOUT_INVALID/, 'the auth deadline cannot be loosened past its ceiling');
 
@@ -577,7 +579,7 @@ test('V5-08-01 transport: cross-actor and out-of-scope subscriptions are refused
   await playMatch(h, 'match:p08-notpart', 'svc_bob', 'svc_dave');
 
   /* NOT_PARTICIPANT: authenticated as Alice, subscribing to a match she is not in. */
-  const aliceTicket = (await issue(h, binding({ matchScope: null }))).ticket;
+  const aliceTicket = (await issue(h, await binding(h, { matchScope: null }))).ticket;
   const alice = wsClient(s.url(INGRESS));
   await alice.open();
   alice.send(redeemFrame(aliceTicket));
@@ -592,7 +594,7 @@ test('V5-08-01 transport: cross-actor and out-of-scope subscriptions are refused
   assert.deepEqual(await alice.next(), { protocol: 'realtime/v1', operation: 'error', code: 'UNKNOWN_MATCH' });
 
   /* FORBIDDEN: a ticket scoped to one match can never be widened to another, before any DB read. */
-  const scoped = (await issue(h, binding({ matchScope: 'match-1' }))).ticket;
+  const scoped = (await issue(h, await binding(h, { matchScope: 'match-1' }))).ticket;
   const wide = wsClient(s.url(INGRESS));
   await wide.open();
   wide.send(redeemFrame(scoped));
@@ -602,7 +604,7 @@ test('V5-08-01 transport: cross-actor and out-of-scope subscriptions are refused
   assert.deepEqual(await wide.next(), { protocol: 'realtime/v1', operation: 'error', code: 'FORBIDDEN' });
 
   /* NO RE-BIND: a redeemed connection cannot be re-pointed by a second ticket. */
-  const rebind = (await issue(h, binding({ matchScope: null }))).ticket;
+  const rebind = (await issue(h, await binding(h, { matchScope: null }))).ticket;
   wide.send(redeemFrame(rebind));
   assert.deepEqual(await wide.next(), { protocol: 'realtime/v1', operation: 'error', code: 'INVALID_OPERATION' },
     'an authenticated socket refuses a second ticket.redeem');
@@ -628,7 +630,7 @@ test('V5-08-01 transport: a valid ticket acks and the participant receives the c
   const expectedView = await oracle(h, 'svc_alice', matchId);
   assert.equal(expectedView.revision, 1, 'the oracle sees the committed revision');
 
-  const { ticket } = await issue(h, binding({ actor: 'svc_alice', matchScope: matchId }));
+  const { ticket } = await issue(h, await binding(h, { actor: 'svc_alice', matchScope: matchId }));
   const client = wsClient(s.url(INGRESS));
   await client.open();
   client.send(redeemFrame(ticket));
@@ -696,7 +698,7 @@ test('V5-08-01 transport: close() drains every socket, releases Redis routes and
   if (!h) return;
   const s = await serve(h, t);
 
-  const ticket = (await issue(h, binding({ matchScope: null }))).ticket;
+  const ticket = (await issue(h, await binding(h, { matchScope: null }))).ticket;
   const authed = wsClient(s.url(INGRESS));
   const idle = wsClient(s.url(INGRESS));
   const idle2 = wsClient(s.url(INGRESS));
@@ -729,6 +731,108 @@ test('V5-08-01 transport: close() drains every socket, releases Redis routes and
 
   /* The suite's own namespace is empty, so nothing this test wrote outlives it. */
   assert.deepEqual(await routeKeys(h.ephemera), [], 'no route key survives the suite\'s own namespace');
+});
+
+/* ============================================================ 9. session binding regressions */
+
+test('V5-08-01 transport: invalid or foreign session binding is refused at issuance', { skip: GATE }, async (t) => {
+  const h = await session(t);
+  if (!h) return;
+
+  // Invalid (non-existent) session id
+  await assert.rejects(
+    issue(h, { actor: 'svc_alice', sessionId: 'f'.repeat(24), generation: 1, connectionClass: 'game', matchScope: null }),
+    (err) => err.code === 'SESSION_REVOKED' || err.message === 'SESSION_REVOKED',
+    'non-existent session binding must fail with SESSION_REVOKED',
+  );
+
+  // Foreign session binding: Alice attempts to issue with Bob\'s live session
+  const bobBinding = await lab.sessionBindingFor(h.database, 'svc_bob', { now: () => clock, connectionClass: 'game' });
+  await assert.rejects(
+    issue(h, { actor: 'svc_alice', sessionId: bobBinding.sessionId, generation: bobBinding.generation, connectionClass: 'game', matchScope: null }),
+    (err) => err.code === 'SESSION_REVOKED' || err.message === 'SESSION_REVOKED',
+    'foreign actor session binding must fail with SESSION_REVOKED',
+  );
+});
+
+test('V5-08-01 transport: durable revocation before redeem is refused SESSION_REVOKED and closes 1008', { skip: GATE }, async (t) => {
+  const h = await session(t);
+  if (!h) return;
+  const s = await serve(h, t);
+
+  // Issue real session for Eve using real accounts service
+  const accounts = await lab.accountsFor(h.database, { clock: () => clock });
+  const issued = await accounts.issue('svc_eve', clock);
+  const eveBinding = await accounts.accessBinding(issued.token);
+  const { ticket } = await issue(h, {
+    actor: 'svc_eve',
+    sessionId: eveBinding.sessionId,
+    generation: Number(eveBinding.generation),
+    connectionClass: 'game',
+    matchScope: null,
+  });
+
+  // Now logout Eve before redeem
+  await accounts.logout(issued.token);
+  await accounts.close();
+
+  // Eve attempts to redeem the ticket on WS
+  const client = wsClient(s.url(INGRESS));
+  await client.open();
+  client.send(redeemFrame(ticket));
+
+  const error = await client.next();
+  assert.deepEqual(error, { protocol: 'realtime/v1', operation: 'error', code: 'SESSION_REVOKED' }, 'refused with bare SESSION_REVOKED');
+  const closed = await client.waitClose();
+  assert.equal(closed.code, 1008, 'closed with policy 1008');
+
+  // Verify ticket remains unredeemed in PostgreSQL
+  const hash = crypto.createHash('sha256').update(ticket).digest('hex');
+  assert.equal(
+    await lab.scalar(h.database, 'SELECT redeemed_at IS NULL FROM identity.realtime_tickets WHERE ticket_hash = $1', [hash]),
+    true,
+    'ticket was never redeemed',
+  );
+});
+
+test('V5-08-01 transport: post-redeem session logout refuses subscribe with SESSION_REVOKED and closes 1008', { skip: GATE }, async (t) => {
+  const h = await session(t);
+  if (!h) return;
+  const s = await serve(h, t);
+
+  // Create match for Frank and Bob
+  const matchId = 'match:p08-logout-sub';
+  await playMatch(h, matchId, 'svc_frank', 'svc_bob');
+
+  // Issue real session for Frank
+  const accounts = await lab.accountsFor(h.database, { clock: () => clock });
+  const issued = await accounts.issue('svc_frank', clock);
+  const frankBinding = await accounts.accessBinding(issued.token);
+  const { ticket } = await issue(h, {
+    actor: 'svc_frank',
+    sessionId: frankBinding.sessionId,
+    generation: Number(frankBinding.generation),
+    connectionClass: 'game',
+    matchScope: matchId,
+  });
+
+  // Client connects and redeems successfully
+  const client = wsClient(s.url(INGRESS));
+  await client.open();
+  client.send(redeemFrame(ticket));
+  assert.deepEqual(await client.next(), { protocol: 'realtime/v1', operation: 'ack', match_id: matchId, ack_revision: 0 });
+
+  // Now logout Frank after redemption
+  await accounts.logout(issued.token);
+  await accounts.close();
+
+  // Client attempts to subscribe after logout
+  client.send(subscribeFrame(matchId));
+  const error = await client.next();
+  console.log('DEBUG_SUBSCRIBE_LOGOUT_ERROR:', JSON.stringify(error));
+  assert.deepEqual(error, { protocol: 'realtime/v1', operation: 'error', code: 'SESSION_REVOKED' });
+  const closed = await client.waitClose();
+  assert.equal(closed.code, 1008, 'socket closed with policy 1008 on revoked session');
 });
 
 /* ------------------------------------------------ shared-session teardown ----- */

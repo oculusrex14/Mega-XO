@@ -7,3 +7,7 @@
 .ai-pack-consent input{width:24px;height:24px;flex:none}
 .ai-pack-panel progress{width:100%;height:18px}
 .ai-pack-panel :focus-visible{outline:3px solid var(--focus);outline-offset:3px}
+.ai-pack-recovery{margin:14px 0;padding:12px;border-radius:8px;border:1px solid var(--line);background:var(--card)}
+.ai-pack-recovery p{margin:0 0 8px}
+.ai-pack-recovery .ai-pack-controls{margin:0}
+.ai-pack-stats{margin-top:14px}

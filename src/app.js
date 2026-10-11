@@ -5,6 +5,8 @@
 const T=window.MegaTutorial;
 /* V5.1 worker bot hooks */
 const BR=window.MegaBotRuntime,BC=window.MegaBotContract,A=BR?new BR.Client():null;
+const LA=window.MegaLocalAI,LS=window.MegaLocalSession,BP=window.MegaBotPack;
+let localSession=LS?LS.createSession({baseURL:location?.href}):null;
 const G=window.MegaGame,D=window.MegaDomain,I=window.MegaIcons,$=s=>document.querySelector(s);
 const KEY='mega_v32_state',escape=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const parse=(key)=>{try{return JSON.parse(localStorage.getItem(key)||'null');}catch{return null;}};
@@ -27,10 +29,14 @@ function walletData(){return online.ready&&online.profile?online.profile.wallet:
 function renderWalletSummary(){const w=walletData(),coins=w.coins.toLocaleString(),crowns=w.crowns.toLocaleString();$('#walletAmount').textContent=coins;$('#walletCrownAmount').textContent=crowns;$('#walletButton').setAttribute('aria-label','Open wallet. Coins '+coins+'. Crowns '+crowns+'.');}
 function myTier(){return online.profile?.tier||'wood';}
 function save(){try{
- if(match&&!match.online&&!match.recorded&&!match.state.winner&&!$('#gameScreen').hidden)data.offlineMatch={id:match.id,first:match.first,mode:match.mode,difficulty:match.difficulty,practice:match.practice,tutorial:T?.snapshot(match)||null,bot:match.bot||null,moves:match.state.moves,active:match.active,turnLimit:match.turnLimit,turnRemaining:match.turnRemaining};
+ if(match&&!match.online&&!match.recorded&&!match.state.winner&&!$('#gameScreen').hidden){
+  data.offlineMatch={id:match.id,first:match.first,mode:match.mode,difficulty:match.difficulty,practice:match.practice,tutorial:T?.snapshot(match)||null,bot:match.bot||null,moves:match.state.moves,active:match.active,turnLimit:match.turnLimit,turnRemaining:match.turnRemaining};
+  if(match.resultClass==='unverified-local-ai'||match.difficulty==='Impossible'||match.engine==='neural')data.offlineMatch.localAi=LA?LA.snapshot(match):null;
+ }
  else if(match?.recorded||match?.state.winner)delete data.offlineMatch;
  localStorage.setItem(KEY,JSON.stringify(data));window.dispatchEvent(new Event('mega:local-save'));
  }catch{notify('Storage is unavailable. Progress lasts for this session only.');}}
+function openNeuralRecovery(err){if(!match)return;const code=err?.code||err?.message||'INFERENCE_FAILED';open('Impossible Bot Recovery','<div class="ai-pack-recovery"><p><strong>Background thinking could not complete.</strong> ('+escape(code)+')</p><p class="caption">All completed human moves are preserved. Choose recovery:</p></div>'+fullButton('Retry move','retrybot')+fullButton('Continue with Expert bot (Unverified, no rewards)','fallbackexpert','',true)+fullButton('Resign match','resign','',true),'recovery');}
 function notify(text){const t=$('#toast');t.textContent=text;t.classList.add('visible');clearTimeout(toastTimer);toastTimer=setTimeout(()=>t.classList.remove('visible'),2800);}
 function applyTheme(){document.documentElement.dataset.theme=data.settings.theme;document.body.dataset.theme=data.settings.theme;document.documentElement.dataset.motion=data.settings.motion?'reduced':'full';document.querySelector('meta[name="theme-color"]').content=getComputedStyle(document.documentElement).getPropertyValue('--surface').trim();updateBrandMark();}
 function updateBrandMark(){
@@ -62,10 +68,16 @@ function home(){
  const modes=[['bot','bot','Vs Bot','Five skill levels, fully offline'],['local','users','Pass & Play','Two players on one device'],['online','swords','Play Online','Ranked or casual matchmaking'],['private','link','Private Match','Create or join a friend room'],['tournament','trophy','Tournaments','Ten players. One table. Bigger prizes.']];
  const rankTier=D.tier(myTier()),rankFee=rankTier.fee;
  let setup='';
- if(['bot','local'].includes(mode))setup='<div class="setup old-setup">'+(mode==='bot'?'<div class="setup-block"><div class="setup-title"><b>Bot difficulty</b><span>Strategy depth</span></div><div class="setup-chips">'+G.LEVELS.map(x=>chip(x.toUpperCase(),'difficulty',x,difficulty===x)).join('')+'</div></div>':'')+'<div class="setup-block"><div class="setup-title"><b>First move</b><span>Who starts</span></div><div class="setup-chips two">'+chip('X STARTS','first','X',first==='X')+chip('O STARTS','first','O',first==='O')+'</div></div><div class="setup-block"><div class="setup-title"><b>Turn timer</b><span>Optional</span></div><div class="setup-chips three">'+[['0','OFF'],['30','30 SEC'],['60','60 SEC']].map(([v,l])=>chip(l,'settimer',v,String(data.settings.timer)===v)).join('')+'</div></div></div>';
+ if(['bot','local'].includes(mode)){
+  const packReady=localSession?.isAvailable?.()||window.MegaAiPack?.getState?.()?.status==='ready';
+  setup='<div class="setup old-setup">'+(mode==='bot'?'<div class="setup-block"><div class="setup-title"><b>Bot difficulty</b><span>Strategy depth</span></div><div class="setup-chips">'+G.LEVELS.map(x=>chip(x.toUpperCase(),'difficulty',x,difficulty===x)).join('')+(packReady||difficulty==='Impossible'?chip('IMPOSSIBLE','difficulty','Impossible',difficulty==='Impossible'):'')+'</div></div>':'')+'<div class="setup-block"><div class="setup-title"><b>First move</b><span>Who starts</span></div><div class="setup-chips two">'+chip('X STARTS','first','X',first==='X')+chip('O STARTS','first','O',first==='O')+'</div></div><div class="setup-block"><div class="setup-title"><b>Turn timer</b><span>Optional</span></div><div class="setup-chips three">'+[['0','OFF'],['30','30 SEC'],['60','60 SEC']].map(([v,l])=>chip(l,'settimer',v,String(data.settings.timer||0)===v)).join('')+'</div></div>';
+ }
  else if(mode==='online')setup='<div class="setup old-setup"><div class="setup-block"><div class="setup-title"><b>Match type</b><span>Choose your queue</span></div><div class="setup-chips two">'+chip('RANKED','onlinetype','ranked',onlineType==='ranked')+chip('CASUAL','onlinetype','casual',onlineType==='casual')+'</div></div><p class="setup-note">'+(onlineType==='ranked'?'Entry cost: '+rankFee+' Coins at your current '+rankTier.name+' league. Skill rating applies.':'Free to play. No rating changes.')+'</p></div>';
  /* V5.1 optional AI pack setup */
- if(mode==='bot'&&window.MegaAiPack)setup+=fullButton('Impossible AI pack: setup','aipack','',true);
+ if(mode==='bot'&&window.MegaAiPack){
+  const packReady=localSession?.isAvailable?.()||window.MegaAiPack?.getState?.()?.status==='ready';
+  setup+=fullButton('Impossible AI pack: '+(packReady?'Manage':'Setup'),'aipack','',true);
+ }
  const placed=online.profile?.games>=D.POLICY.placements,s=online.profile?.season,seasonReady=!!s?.qualified,rankTitle=!placed?'Your ranked journey starts here':!seasonReady?'Season requalification':D.tier(myTier()).name,rankSub=!placed?'Unranked &middot; '+Math.min(10,online.profile?.games||0)+' / 10 placement games':!seasonReady?seasonProgress(s):online.profile.rating+' Elo · '+seasonName(s);
  return '<div class="hero home-hero"><h1><span class="home-title-main">The Ultimate <span class="home-game-name">Tic-tac-toe.</span></span><br><em>Think bigger.</em></h1><p>Win the small boards to win the big one. Every move also decides where your opponent plays next.</p></div>'+
  '<button class="card rank-summary" data-action="nav" data-value="rank">'+badge(D.tier(myTier()))+'<span class="grow"><b>'+rankTitle+'</b><small>'+rankSub+'</small></span>'+icon('arrow')+'</button>'+
@@ -84,9 +96,20 @@ function friends(){if(window.MegaCommunity?.friendsMarkup)return window.MegaComm
  (online.invitations.length?'<div class="section-heading"><h3>Challenges</h3></div>'+online.invitations.map(m=>'<div class="ledger"><span>'+escape(m.challengerName||m.players[0])+'<small>'+(m.quote.rated?'Ranked':'Unranked')+' &middot; '+m.quote.pool+' '+(m.quote.currency||'entry')+'</small></span>'+button('Review','reviewinvite',m.id,true)+'</div>').join(''):'');}
 function statsView(){const tabs='<div class="tabs">'+[['bot','Bot'],['ranked','Ranked'],['casual','Casual'],['friend','Friends'],['tournament','Tournaments']].map(([id,name])=>'<button class="tab '+(statsMode===id?'active':'')+'" data-action="statmode" data-value="'+id+'">'+name+'</button>').join('')+'</div>';
  if(statsMode==='tournament'){const t=online.profile?.tournament||online.profile?.stats?.tournament||D.tournamentStats();return '<h2>Your game, in numbers</h2><p class="caption">Competitive public tournament results.</p>'+tabs+'<div class="section-heading"><h3>Tournament record</h3><span class="eyebrow">'+t.entered+' events</span></div><div class="stats-grid">'+[['Wins',t.wins],['Runner-up',t.runnerUp],['Top 3',t.top3],['Top 5',t.top5],['Best finish',t.bestFinish===null?'--':'#'+t.bestFinish],['Average finish',t.averageFinish===null?'--':t.averageFinish.toFixed(1)],['Win rate',t.winRate===null?'--':(100*t.winRate).toFixed(1)+'%'],['Premium wins',t.premiumWins]].map(([label,value])=>'<div class="stat"><span>'+label+'</span><strong>'+value+'</strong></div>').join('')+'</div><p class="caption">Only completed public tournaments count. Private/friendly events and refunded tournaments do not.</p>';}
- const records=statsMode==='bot'?data.records:(online.profile?.records||[]),a=D.aggregate(records,statsMode,statsDifficulty);return '<h2>Your game, in numbers</h2><p class="caption">Different opponents. Separate records.</p>'+tabs+(statsMode==='bot'?field('Bot difficulty','statsDifficulty',opts([['all','All difficulties'],...G.LEVELS.map(x=>[x,x])],statsDifficulty)):'')+
- '<div class="section-heading"><h3>'+({bot:'Against the bot',ranked:'Ranked matches',casual:'Casual matches',friend:'Friend matches'}[statsMode])+'</h3><span class="eyebrow">'+a.games+' games</span></div><div class="stats-grid">'+[['Win rate',a.winRate===null?'--':(a.winRate*100).toFixed(1)+'%'],['Wins',a.wins],['Average game',seconds(a.averageSeconds)],['Hours played',((data.playSeconds[statsMode+':'+statsDifficulty]??a.hours*3600)/3600).toFixed(2)],['Losses',a.losses],['Draws',a.draws]].map(([label,value])=>'<div class="stat"><span>'+label+'</span><strong>'+value+'</strong></div>').join('')+'</div><p class="caption">Win rate = wins / all completed games, including draws. Average game time uses completed matches. Total hours also includes unfinished sessions. Menus, background time, Pass & Play and tutorial practice are excluded.</p>'+
- '<div class="section-heading"><h3>Recent games</h3></div>'+records.filter(r=>r.mode===statsMode).slice(-6).reverse().map(r=>'<div class="ledger"><span>'+escape(r.difficulty||r.mode)+'<small>'+new Date(r.at).toLocaleDateString()+' &middot; '+seconds(r.activeSeconds)+'</small></span><b>'+r.result+'</b></div>').join('')+(a.games?'':empty('chart','Your first game goes here','Finish a match to start your record.'));}
+ if(statsMode==='bot'&&statsDifficulty==='Impossible'){
+  const ai=LA?LA.stats(data):{games:0,wins:0,draws:0,losses:0};
+  const aiRows=(data.localAiRecords||[]).filter(r=>r.resultClass==='unverified-local-ai');
+  return '<h2>Your game, in numbers</h2><p class="caption">Different opponents. Separate records.</p>'+tabs+field('Bot difficulty','statsDifficulty',opts([['all','All difficulties'],...G.LEVELS.map(x=>[x,x]),['Impossible','Impossible (Local AI)']],statsDifficulty))+
+  '<div class="section-heading"><h3>Impossible mode</h3><span class="eyebrow">'+ai.games+' local games</span></div><div class="stats-grid">'+[['Win rate',ai.games?(ai.wins/ai.games*100).toFixed(1)+'%':'--'],['Wins',ai.wins],['Draws',ai.draws],['Losses',ai.losses]].map(([label,value])=>'<div class="stat"><span>'+label+'</span><strong>'+value+'</strong></div>').join('')+'</div><p class="caption">On-device neural AI. No Coins, Crowns or Elo changes.</p>'+
+  '<div class="section-heading"><h3>Recent games</h3></div>'+(aiRows.length?aiRows.slice(-6).reverse().map(r=>'<div class="ledger"><span>'+escape(r.difficulty||'Impossible')+'<small>'+new Date(r.at).toLocaleDateString()+' &middot; '+r.moves+' moves</small></span><b>'+r.result+'</b></div>').join(''):empty('chart','No Impossible games yet','Download the pack and finish a match to start your record.'));
+ }
+ const records=statsMode==='bot'?data.records:(online.profile?.records||[]),a=D.aggregate(records,statsMode,statsDifficulty);
+ const ai=statsMode==='bot'&&LA?LA.stats(data):null;
+ const aiCard=ai&&ai.games>0?'<div class="section-heading"><h3>On-device AI record</h3><span class="eyebrow">'+ai.games+' local games</span></div><div class="card"><b>Impossible mode</b><p class="caption">'+ai.wins+' wins &middot; '+ai.draws+' draws &middot; '+ai.losses+' losses &middot; Unverified local play</p></div>':'';
+ return '<h2>Your game, in numbers</h2><p class="caption">Different opponents. Separate records.</p>'+tabs+(statsMode==='bot'?field('Bot difficulty','statsDifficulty',opts([['all','All difficulties'],...G.LEVELS.map(x=>[x,x]),['Impossible','Impossible (Local AI)']],statsDifficulty)):'')+
+ '<div class="section-heading"><h3>'+({bot:'Against the bot',ranked:'Ranked matches',casual:'Casual matches',friend:'Friend matches'}[statsMode])+'</h3><span class="eyebrow">'+a.games+' games</span></div><div class="stats-grid">'+[['Win rate',a.winRate===null?'--':(a.winRate*100).toFixed(1)+'%'],['Wins',a.wins],['Average game',seconds(a.averageSeconds)],['Hours played',((data.playSeconds[statsMode+':'+statsDifficulty]??a.hours*3600)/3600).toFixed(2)],['Losses',a.losses],['Draws',a.draws]].map(([label,value])=>'<div class="stat"><span>'+label+'</span><strong>'+value+'</strong></div>').join('')+'</div><p class="caption">Win rate = wins / all completed games, including draws. Average game time uses completed matches. Total hours also includes unfinished sessions.</p>'+aiCard+
+ '<div class="section-heading"><h3>Recent games</h3></div>'+records.filter(r=>r.mode===statsMode).slice(-6).reverse().map(r=>'<div class="ledger"><span>'+escape(r.difficulty||r.mode)+'<small>'+new Date(r.at).toLocaleDateString()+' &middot; '+seconds(r.activeSeconds)+'</small></span><b>'+r.result+'</b></div>').join('')+(a.games?'':empty('chart','Your first game goes here','Finish a match to start your record.'));
+}
 function rankDescription(t){return t.cap?'Up to '+t.cap.toLocaleString()+' exclusive worldwide seats &middot; '+t.min+'+ Elo':t.name==='Emerald'?'1900+ Elo &middot; the highest open league':t.min+' &ndash; '+(D.TIERS[t.index+1].min-1)+' Elo';}
 function rankSeasonCard(s){if(rankMetric!=='rating'||!s)return '';const req=s.requirements||{},gamesReq=req.games||5,queueReq=req.queueGames||3,opponentReq=req.uniqueOpponents||3,games=Math.min(s.games||0,gamesReq),queueGames=Math.min(s.queueGames||0,queueReq),opponents=Math.min(s.uniqueOpponents||0,opponentReq),score=s.qualified?(online.profile?.rating||0)+' Elo':games+' / '+gamesReq;return '<section class="card rank-season-card"><div class="rank-season-head"><div class="rank-season-title"><span class="eyebrow">'+seasonName(s)+'</span><strong>'+(s.qualified?'Ranked season qualified':'Requalification in progress')+'</strong></div><strong class="rank-season-score">'+score+'</strong></div>'+(s.qualified?'<p class="rank-season-copy">Your Elo carried into this season. Keep playing to remain eligible for scarce elite seats.</p>':'<div class="rank-season-progress"><span><b>'+games+' / '+gamesReq+'</b> games</span><span><b>'+queueGames+' / '+queueReq+'</b> matchmade</span><span><b>'+opponents+' / '+opponentReq+'</b> opponents</span></div><p class="rank-season-copy">Your underlying Elo is preserved while you requalify.</p>')+'</section>';}
 function ranks(){
@@ -205,12 +228,26 @@ async function onlineResign(){if(!match?.online)return;try{await NET.resign(matc
 const miniNodes=[],cellNodes=[];
 function buildBoard(){for(let b=0;b<9;b++){const el=document.createElement('div');el.className='mini';el.dataset.board=b;const cells=[];for(let c=0;c<9;c++){const cell=document.createElement('button');cell.type='button';cell.className='cell';cell.dataset.b=b;cell.dataset.c=c;cell.addEventListener('click',()=>humanMove(b,c));cell.addEventListener('pointerenter',()=>preview(b,c));cell.addEventListener('pointerleave',clearPreview);el.append(cell);cells.push(cell);}const claim=document.createElement('div');claim.className='claim';claim.hidden=true;el.append(claim);$('#board').append(el);miniNodes.push({el,claim});cellNodes.push(cells);}}
 function mark(p){return '<span class="mark-layer '+p.toLowerCase()+'"><svg viewBox="0 0 40 40" stroke="currentColor" aria-hidden="true">'+(p==='X'?'<path d="M10 10 30 30M30 10 10 30"/>':'<circle cx="20" cy="20" r="11"/>')+'</svg></span>';}
-function startGame(practice=false,rematch=false){
- T?.stop();A?.cancel();
- clearTimeout(botTimer);botTimer=null;const starter=practice?'X':rematch&&match?(match.first==='X'?'O':'X'):first;
+function startGame(practice=false,rematch=false,explicitPin=null){
+ T?.stop();A?.cancel();localSession?.cancel();
+ clearTimeout(botTimer);botTimer=null;
+ const isNeural=!practice&&mode==='bot'&&difficulty==='Impossible';
+ let pin=explicitPin;
+ if(isNeural&&!pin){
+  const manifest=localSession?.getLatestManifest();
+  if(manifest)try{pin=localSession.store.pin(manifest);}catch{}
+ }
+ if(isNeural&&(!pin||!localSession?.runtime?.loaded)){
+  notify('Please set up and download the optional Impossible pack first.');
+  window.MegaAiPack?.show();
+  return;
+ }
+ const starter=practice?'X':rematch&&match?(match.first==='X'?'O':'X'):first;
+ const seed=Math.floor(Math.random()*0xffffffff);
  match={id:globalThis.crypto?.randomUUID?.()||String(Date.now())+Math.random(),state:G.create(starter),mode:practice?'bot':mode,difficulty:practice?'Beginner':difficulty,first:starter,practice,active:0,turnRemaining:Number(data.settings.timer)||0,turnLimit:Number(data.settings.timer)||0,last:null,recorded:false,pending:null};
- if(BR)match.bot=BR.startInfo(null,practice);if(practice)T?.start(match);
- $('#gameScreen').hidden=false;$('#matchMode').textContent=practice?'Tutorial practice':match.mode==='local'?'Pass & Play':'Vs Bot';$('#matchLevel').textContent=match.mode==='local'?'Two players, one device':match.difficulty+' difficulty';$('#playerXName').textContent=match.mode==='local'?'Player X':'You';$('#playerOName').textContent=match.mode==='local'?'Player O':'Bot';
+ if(isNeural&&pin&&LA){match.version=LA.VERSION;match.resultClass=LA.RESULT_CLASS;match.engine='neural';match.pin={...pin};match.seed=seed;match.status='ready';}
+ if(BR&&!isNeural)match.bot=BR.startInfo(null,practice);if(practice)T?.start(match);
+ $('#gameScreen').hidden=false;$('#matchMode').textContent=practice?'Tutorial practice':match.mode==='local'?'Pass & Play':'Vs Bot';$('#matchLevel').textContent=match.mode==='local'?'Two players, one device':match.difficulty==='Impossible'?'Impossible \u00b7 '+(match.pin?.packVersion||'Neural'):match.difficulty+' difficulty';$('#playerXName').textContent=match.mode==='local'?'Player X':'You';$('#playerOName').textContent=match.mode==='local'?'Player O':match.difficulty==='Impossible'?'Impossible Bot':'Bot';
  lastTick=lastInput=performance.now();paint();syncAudio();save();scheduleBot();
 }
 function paint(){if(!match)return;const s=match.state,canHuman=!s.winner&&(match.online?match.symbols[s.turn]===online.profile?.id&&!onlinePending:match.mode==='local'||s.turn==='X');const choices=new Set(G.legal(s).map(m=>m.b*9+m.c));
@@ -235,28 +272,48 @@ function humanMove(b,c){if(match?.online){onlineMove({b,c});return;}if(!match||m
 function move(m,source){if(!match||match.state.winner)return;if(match.mode==='bot'&&((match.state.turn==='O')!==(source==='bot')))return;
  if(T&&!T.permits(match,m,source))return;const before=match.state;
  try{match.state=G.apply(match.state,m);}catch{notify('Choose an empty cell in the highlighted board.');return;}
+ if(match.resultClass==='unverified-local-ai')match.status=match.state.winner?'finished':'ready';
  T?.after(match,before,m);match.last=m;match.pending=null;match.turnRemaining=match.turnLimit;tone(source==='bot'?370:540);haptic();paint();clearPreview();animateRoute(m.b,m.c,match.state.required);if(match.state.winner)finish(match.state.winner==='DRAW'?'draw':'line');else{save();scheduleBot();}
 }
-function scheduleBot(){clearTimeout(botTimer);botTimer=null;A?.cancel();if(!match||match.state.winner||match.mode!=='bot'||match.state.turn!=='O'||sheetOpen()||document.hidden||T?.blocked(match))return;const current=match,revision=match.state.moves.length;
+function scheduleBot(){clearTimeout(botTimer);botTimer=null;A?.cancel();localSession?.cancel();if(!match||match.state.winner||match.mode!=='bot'||match.state.turn!=='O'||sheetOpen()||document.hidden||T?.blocked(match))return;const current=match,revision=match.state.moves.length;
  const valid=()=>match===current&&match.state.moves.length===revision&&!match.state.winner&&!sheetOpen()&&!document.hidden&&!T?.blocked(match);
- botTimer=setTimeout(async()=>{botTimer=null;if(!valid())return;const seed=((current.bot?.seed||0)^Math.imul(revision+1,0x9e3779b9))>>>0;let m=null;
-  try{if(!A)throw Error('BOT_WORKER_UNAVAILABLE');const result=await A.choose({state:current.state,gameId:current.id,revision,difficulty:current.difficulty,engine:current.bot?.engine||'legacy',seed});if(!valid())return;current.botDiagnostics=result.diagnostics;m=result.move;}
-  catch(e){if(e?.name==='AbortError'||!valid())return;const started=performance.now();m=G.choose(current.state,current.difficulty,BC?BC.seeded(seed):Math.random);current.botDiagnostics={engineVersion:'canonical-main-thread-recovery',rngSeed:seed,recoveryCode:e?.code||'BOT_WORKER_UNAVAILABLE',elapsedMs:performance.now()-started};if(!current.warnedBotFallback){notify('Background thinking is unavailable. Using the standard bot.');current.warnedBotFallback=true;}}
+ botTimer=setTimeout(async()=>{botTimer=null;if(!valid())return;const seed=((current.seed||current.bot?.seed||0)^Math.imul(revision+1,0x9e3779b9))>>>0;let m=null;
+  if(current.engine==='neural'&&LA){
+   try{
+    if(!localSession?.runtime)throw Error('NEURAL_RUNTIME_UNAVAILABLE');
+    const manifest=localSession.getLatestManifest();
+    if(!manifest||manifest.sha256!==current.pin?.modelHash)throw Error('LOCAL_AI_MODEL_CHANGED');
+    const result=await localSession.runtime.choose({state:current.state,gameId:current.id,revision,seed,modelHash:current.pin.modelHash,budgetMs:2600});
+    if(!valid())return;
+    BC.accept({state:current.state,gameId:current.id,revision},result);
+    if(result.diagnostics?.modelHash!==current.pin.modelHash)throw Error('LOCAL_AI_MODEL_CHANGED');
+    current.botDiagnostics=result.diagnostics;m=result.move;
+   }catch(e){
+    if(e?.name==='AbortError'||!valid())return;
+    current.status='failed';current.botDiagnostics={error:e.code||e.message,modelHash:current.pin?.modelHash};
+    openNeuralRecovery(e);return;
+   }
+  }else{
+   try{if(!A)throw Error('BOT_WORKER_UNAVAILABLE');const result=await A.choose({state:current.state,gameId:current.id,revision,difficulty:current.difficulty,engine:current.bot?.engine||'legacy',seed});if(!valid())return;current.botDiagnostics=result.diagnostics;m=result.move;}
+   catch(e){if(e?.name==='AbortError'||!valid())return;const started=performance.now();m=G.choose(current.state,current.difficulty,BC?BC.seeded(seed):Math.random);current.botDiagnostics={engineVersion:'canonical-main-thread-recovery',rngSeed:seed,recoveryCode:e?.code||'BOT_WORKER_UNAVAILABLE',elapsedMs:performance.now()-started};if(!current.warnedBotFallback){notify('Background thinking is unavailable. Using the standard bot.');current.warnedBotFallback=true;}}
+  }
   if(valid()&&m)move(m,'bot');
  },850+Math.random()*220);
 }
-function finish(reason){if(!match||match.recorded)return;T?.stop();A?.cancel();clearTimeout(botTimer);botTimer=null;match.recorded=true;
+function finish(reason){if(!match||match.recorded)return;T?.stop();A?.cancel();localSession?.cancel();clearTimeout(botTimer);botTimer=null;match.recorded=true;
  const s=match.state,result=s.winner==='DRAW'?'draw':s.winner==='X'?'win':'loss';const record={id:match.id,at:Date.now(),mode:match.mode,difficulty:match.difficulty,practice:match.practice,result,reason,moves:s.moves.length,activeSeconds:Math.round(match.active),claimed:s.mini.filter(x=>x==='X').length};
+ if(match.resultClass==='unverified-local-ai'||match.difficulty==='Impossible'){record.resultClass='unverified-local-ai';if(LA)LA.record(data,match);}
  const award=D.complete(data,record);save();render();paint();open(result==='draw'?'A well-fought draw':match.mode==='local'?'Player '+s.winner+' wins':result==='win'?'Nicely played.':'One more try?',
- '<p class="caption">'+(reason==='line'?'Three Mini Boards in a row.':reason==='draw'?'All Mini Boards resolved without a big winning line.':reason==='timeout'?'The turn timer ran out.':'The match ended by resignation.')+'</p><div class="stats-grid"><div class="stat"><span>Moves</span><strong>'+s.moves.length+'</strong></div><div class="stat"><span>Active time</span><strong>'+seconds(match.active)+'</strong></div></div><div class="note">'+(match.practice?'Tutorial practice is not counted in your personal stats.':match.mode==='local'?'Pass & Play does not affect personal stats or rewards.':award?'You earned '+award+' Coins on this device.':'No coin reward for this result.')+'</div>'+fullButton('Rematch','rematch')+fullButton('Back to home','home','',true),'result');
+ '<p class="caption">'+(reason==='line'?'Three Mini Boards in a row.':reason==='draw'?'All Mini Boards resolved without a big winning line.':reason==='timeout'?'The turn timer ran out.':'The match ended by resignation.')+'</p><div class="stats-grid"><div class="stat"><span>Moves</span><strong>'+s.moves.length+'</strong></div><div class="stat"><span>Active time</span><strong>'+seconds(match.active)+'</strong></div></div><div class="note">'+(match.practice?'Tutorial practice is not counted in your personal stats.':match.mode==='local'?'Pass & Play does not affect personal stats or rewards.':match.resultClass==='unverified-local-ai'||match.difficulty==='Impossible'?'Impossible local match recorded. No Coin, Crown or Elo rewards.':award?'You earned '+award+' Coins on this device.':'No coin reward for this result.')+'</div>'+fullButton('Rematch','rematch')+fullButton('Back to home','home','',true),'result');
 }
-setInterval(()=>{const now=performance.now(),delta=Math.min(1,Math.max(0,(now-lastTick)/1000));lastTick=now;if(!match||match.state.winner||$('#gameScreen').hidden||sheetOpen()||document.hidden||T?.blocked(match))return;if(now-lastInput<60000){match.active+=delta;if(!match.online&&match.mode!=='local'&&!match.practice){const k=match.mode+':all',d=match.mode+':'+match.difficulty;data.playSeconds[k]=(data.playSeconds[k]||0)+delta;data.playSeconds[d]=(data.playSeconds[d]||0)+delta;if(now-lastSave>5000){save();lastSave=now;}}}if(match.online){if(match.turnLimit)$('#clock').textContent=Math.max(0,Math.ceil((match.deadline-(Date.now()+match.clockOffset))/1000))+'s';return;}if(match.turnLimit){match.turnRemaining=Math.max(0,match.turnRemaining-delta);$('#clock').textContent=Math.ceil(match.turnRemaining)+'s';$('#clock').classList.toggle('urgent',match.turnLimit>0&&match.turnRemaining<=5);if(match.turnRemaining===0){match.state={...match.state,winner:match.state.turn==='X'?'O':'X'};finish('timeout');}}},100);
-document.addEventListener('visibilitychange',()=>{lastTick=performance.now();if(document.hidden){A?.cancel();clearTimeout(botTimer);botTimer=null;}else{lastInput=lastTick;scheduleBot();}syncAudio();});
+setInterval(()=>{const now=performance.now(),delta=Math.min(1,Math.max(0,(now-lastTick)/1000));lastTick=now;if(!match||match.state.winner||$('#gameScreen').hidden||sheetOpen()||document.hidden||T?.blocked(match))return;if(now-lastInput<60000){match.active+=delta;if(!match.online&&match.mode!=='local'&&!match.practice){const isUnverified=match.resultClass==='unverified-local-ai'||match.difficulty==='Impossible';if(isUnverified){data.localAiPlaySeconds=(data.localAiPlaySeconds||0)+delta;}else{const k=match.mode+':all',d=match.mode+':'+match.difficulty;data.playSeconds[k]=(data.playSeconds[k]||0)+delta;data.playSeconds[d]=(data.playSeconds[d]||0)+delta;}if(now-lastSave>5000){save();lastSave=now;}}}if(match.online){if(match.turnLimit)$('#clock').textContent=Math.max(0,Math.ceil((match.deadline-(Date.now()+match.clockOffset))/1000))+'s';return;}if(match.turnLimit){match.turnRemaining=Math.max(0,match.turnRemaining-delta);$('#clock').textContent=Math.ceil(match.turnRemaining)+'s';if(match.turnRemaining<=0){finish('timeout');return;}}paint();}
+,100);
+document.addEventListener('visibilitychange',()=>{lastTick=performance.now();if(document.hidden){A?.cancel();localSession?.cancel();clearTimeout(botTimer);botTimer=null;}else{lastInput=lastTick;scheduleBot();}syncAudio();});
 document.addEventListener('pointerdown',()=>{lastInput=performance.now();},true);
-function currentMatchStats(){if(!match)return;const s=match.state;open('Current match','<div class="stats-grid"><div class="stat"><span>Moves</span><strong>'+s.moves.length+'</strong></div><div class="stat"><span>Active time</span><strong>'+seconds(match.active)+'</strong></div><div class="stat"><span>X Mini Boards</span><strong>'+s.mini.filter(x=>x==='X').length+'</strong></div><div class="stat"><span>O Mini Boards</span><strong>'+s.mini.filter(x=>x==='O').length+'</strong></div></div>'+fullButton('Resign match','resign','',true),'matchstats');}
-function leave(){T?.stop();A?.cancel();clearInterval(onlinePoll);onlinePoll=null;waitingId=null;delete data.offlineMatch;match=null;save();clearTimeout(botTimer);botTimer=null;$('#gameScreen').hidden=true;close();page='play';render();}
+function currentMatchStats(){if(!match)return;const s=match.state;let extra='';if(match.resultClass==='unverified-local-ai'||match.difficulty==='Impossible'){extra='<div class="note">Impossible match &middot; Model: '+escape(match.pin?.packVersion||'none')+' &middot; Hash: '+escape(match.pin?.modelHash?.slice(0,12)||'none')+(match.fallbackFrom?'<br><small>Fallback from: '+escape(match.fallbackFrom.slice(0,12))+'</small>':'')+'</div>';}open('Current match','<div class="stats-grid"><div class="stat"><span>Moves</span><strong>'+s.moves.length+'</strong></div><div class="stat"><span>Active time</span><strong>'+seconds(match.active)+'</strong></div><div class="stat"><span>X Mini Boards</span><strong>'+s.mini.filter(x=>x==='X').length+'</strong></div><div class="stat"><span>O Mini Boards</span><strong>'+s.mini.filter(x=>x==='O').length+'</strong></div></div>'+extra+fullButton('Resign match','resign','',true),'matchstats');}
+function leave(){T?.stop();A?.cancel();localSession?.cancel();clearInterval(onlinePoll);onlinePoll=null;waitingId=null;delete data.offlineMatch;match=null;save();clearTimeout(botTimer);botTimer=null;$('#gameScreen').hidden=true;close();page='play';render();}
 const actions={
- nav:v=>{page=v;render();$('#contentScroll').scrollTop=0;if(['rank','friends'].includes(v))refreshOnline();},retrynetwork:()=>retryNetwork(),copydiagnostics:copySupportDiagnostics,mode:v=>{mode=v;render();},difficulty:v=>{difficulty=v;render();},first:v=>{first=v;render();},settimer:v=>{data.settings.timer=Number(v);save();render();},onlinetype:v=>{onlineType=v;render();},start:()=>mode==='tournament'?(window.MegaParties?.tables?window.MegaParties.tables():notify('Tournaments are unavailable right now.')):['bot','local'].includes(mode)?startGame():onlineInfo(),queue:startQueue,settings,wallet,tutorial,rules,aipack:()=>window.MegaAiPack?.show(),matchstats:currentMatchStats,rankhelp:rankHelp,feehelp:feeHelp,weeklyhelp:weeklyHelp,onlineinfo:onlineInfo,
+ nav:v=>{page=v;render();$('#contentScroll').scrollTop=0;if(['rank','friends'].includes(v))refreshOnline();},retrynetwork:()=>retryNetwork(),copydiagnostics:copySupportDiagnostics,mode:v=>{mode=v;render();},difficulty:v=>{if(v==='Impossible'&&!localSession?.isAvailable?.()&&window.MegaAiPack?.getState?.()?.status!=='ready'){window.MegaAiPack?.show();notify('Please set up and download the optional Impossible pack first.');return;}difficulty=v;render();},first:v=>{first=v;render();},settimer:v=>{data.settings.timer=Number(v);save();render();},onlinetype:v=>{onlineType=v;render();},start:()=>mode==='tournament'?(window.MegaParties?.tables?window.MegaParties.tables():notify('Tournaments are unavailable right now.')):['bot','local'].includes(mode)?startGame():onlineInfo(),queue:startQueue,settings,wallet,tutorial,rules,aipack:()=>window.MegaAiPack?.show(),matchstats:currentMatchStats,rankhelp:rankHelp,feehelp:feeHelp,weeklyhelp:weeklyHelp,onlineinfo:onlineInfo,retrybot:()=>{close();if(match){match.status='ready';scheduleBot();}},fallbackexpert:()=>{if(match&&LA){match=LA.expertFallback(match,{confirmed:true});$('#matchLevel').textContent='Expert (Fallback \u00b7 Unverified)';close();notify('Switched to Expert bot. Result remains unverified with no rewards.');scheduleBot();}},
  acceptfriend:async id=>{try{await NET.acceptFriend(id,opId());await refreshOnline();render();}catch(e){notify(friendlyError(e));}},
  cancelqueue:async()=>{if(queueCancelling)return;queueCancelling=true;clearInterval(onlinePoll);waitingId=null;try{if(queueSubmission)await queueSubmission.catch(()=>{});const r=await NET.cancelQueue(opId());if(r.state==='playing'){beginOnline(await NET.match(r.matchId));return;}}catch{notify('Cancellation could not be confirmed. Reconnect to check the match.');}finally{queueCancelling=false;}close();},
  cancelinvite:async()=>{const id=waitingId;if(!id)return;try{await NET.cancel(id,opId());clearInterval(onlinePoll);waitingId=null;close();}catch(e){notify(friendlyError(e));}},
@@ -303,10 +360,84 @@ window.MegaApp=Object.freeze({
  challenge:async id=>{await refreshOnline();challenge(id,'friend');},
  reviewInvite:async id=>{await refreshOnline();reviewInvite(id);},
  resumeOnline:async id=>{await refreshOnline();if(!online.ready)throw Error('AUTH_REQUIRED');const m=await NET.match(id);if(m.status==='PLAYING')beginOnline(m);else if(m.status==='OFFERED')watchInvitation(id,m.terms.source==='queue'?'queue':'challenge');},
- resumeOffline:()=>{const old=data.offlineMatch;if(!old)return;let state=G.create(old.first);for(const m of old.moves||[])state=G.apply(state,m);if(state.winner)throw Error('MATCH_FINISHED');mode=['bot','local'].includes(old.mode)?old.mode:'bot';difficulty=G.LEVELS.includes(old.difficulty)?old.difficulty:'Medium';first=old.first;startGame(old.practice===true);match.id=old.id;match.state=state;match.bot=BR?.startInfo(old.bot,old.practice===true)||null;match.active=Math.max(0,Math.min(86400,Number(old.active)||0));match.turnLimit=[0,30,60].includes(old.turnLimit)?old.turnLimit:0;match.turnRemaining=Math.min(match.turnLimit,Math.max(0,Number(old.turnRemaining)||0));if(old.practice)T?.restore(match,old.tutorial);paint();save();scheduleBot();}
+ resumeOffline:async()=>{
+  const old=data.offlineMatch;if(!old)return;
+  let state=G.create(old.first);
+  for(const m of old.moves||[])state=G.apply(state,m);
+  if(state.winner)throw Error('MATCH_FINISHED');
+  T?.stop();A?.cancel();localSession?.cancel();clearTimeout(botTimer);botTimer=null;
+  mode=['bot','local'].includes(old.mode)?old.mode:'bot';
+  difficulty=['Impossible',...G.LEVELS].includes(old.difficulty)?old.difficulty:'Medium';
+  first=old.first;
+  const isNeuralMatch=(old.localAi&&old.localAi.engine==='neural')||old.difficulty==='Impossible';
+  match={id:old.id,state,mode,difficulty:old.difficulty,first:old.first,practice:old.practice===true,active:Math.max(0,Math.min(86400,Number(old.active)||0)),turnLimit:[0,30,60].includes(old.turnLimit)?old.turnLimit:0,turnRemaining:Math.min([0,30,60].includes(old.turnLimit)?old.turnLimit:0,Math.max(0,Number(old.turnRemaining)||0)),last:old.moves?.at(-1)||null,recorded:false,pending:null};
+  if(BR&&!isNeuralMatch)match.bot=BR.startInfo(old.bot,old.practice===true);
+  if(old.localAi&&LA){
+   const catalog=localSession?.getCatalog?.()||BP?.APPROVED_CATALOG||[];
+   try{
+    const restored=LA.restore(old.localAi,catalog);
+    match.version=restored.version;
+    match.resultClass=restored.resultClass;
+    match.difficulty=restored.difficulty;
+    match.engine=restored.engine;
+    match.pin={...restored.pin};
+    match.seed=restored.seed;
+    match.status=restored.status;
+    if(restored.fallbackFrom)match.fallbackFrom=restored.fallbackFrom;
+    if(restored.engine==='neural'&&restored.status==='ready'){
+     try{
+      const info=catalog.find(m=>m.sha256===restored.pin.modelHash&&m.version===restored.pin.packVersion);
+      if(!info){match.status='pack-unavailable';}
+      else{
+       const manifest=BP.manifest(info,location.href);
+       const bytes=await localSession.store.read(manifest);
+       if(!bytes){match.status='pack-unavailable';}
+       else{await localSession.runtime.configure(manifest,bytes);}
+      }
+     }catch{match.status='pack-unavailable';}
+    }
+    if(match.status==='pack-unavailable'){
+     notify('The model for this Impossible match is unavailable. Choose recovery.');
+     openNeuralRecovery({code:'PACK_UNAVAILABLE'});
+    }
+   }catch(e){
+    match.status='pack-unavailable';
+    notify('Saved Impossible match could not resolve model.');
+    openNeuralRecovery(e);
+   }
+  }
+  if(old.practice)T?.restore(match,old.tutorial);
+  $('#gameScreen').hidden=false;
+  $('#matchMode').textContent=match.practice?'Tutorial practice':match.mode==='local'?'Pass & Play':'Vs Bot';
+  $('#matchLevel').textContent=match.mode==='local'?'Two players, one device':match.difficulty==='Impossible'?'Impossible \u00b7 '+(match.pin?.packVersion||'Neural'):match.difficulty+' difficulty';
+  $('#playerXName').textContent=match.mode==='local'?'Player X':'You';
+  $('#playerOName').textContent=match.mode==='local'?'Player O':match.difficulty==='Impossible'?'Impossible Bot':'Bot';
+  lastTick=lastInput=performance.now();paint();save();
+  if(match.status==='ready')scheduleBot();
+ },
+ startImpossible:async info=>{
+  if(!localSession)throw Error('LOCAL_SESSION_UNAVAILABLE');
+  if(info){
+   const catalog=localSession.getCatalog();
+   if(!catalog.some(m=>m.sha256===info.sha256)){
+    localSession.setCatalog([...catalog,info]);
+   }
+  }
+  const manifest=info?BP.manifest(info,location.href):localSession.getLatestManifest();
+  if(!manifest)throw Error('NO_APPROVED_MODEL');
+  const readBytes=await localSession.store.read(manifest);
+  if(!readBytes)throw Error('PACK_NOT_DOWNLOADED');
+  await localSession.runtime.configure(manifest,readBytes);
+  const pin=localSession.store.pin(manifest);
+  mode='bot';difficulty='Impossible';
+  startGame(false,false,pin);
+ },
+ getLocalSession:()=>localSession,
+ setLocalSession:s=>{localSession=s;},
+ getImpossibleStats:()=>LA?LA.stats(data):null
 });
 
 // Read-only diagnostics: no method can credit money, set rank or submit a server result.
-window.MegaXO=Object.freeze({version:'3.4.0-economy-2',getState:()=>match?structuredClone(match.state):null,getSettings:()=>({...data.settings}),getTutorial:()=>T?.snapshot(match)||null,getBotInfo:()=>match?.bot?({...match.bot}):null,getBotDiagnostics:()=>match?.botDiagnostics?structuredClone(match.botDiagnostics):null});
+window.MegaXO=Object.freeze({version:'3.4.0-economy-2',getState:()=>match?structuredClone(match.state):null,getSettings:()=>({...data.settings}),getTutorial:()=>T?.snapshot(match)||null,getBotInfo:()=>match?.bot?({...match.bot}):null,getBotDiagnostics:()=>match?.botDiagnostics?structuredClone(match.botDiagnostics):null,getLocalAiInfo:()=>match?.resultClass==='unverified-local-ai'?{packVersion:match.pin?.packVersion,modelHash:match.pin?.modelHash,engine:match.engine,status:match.status,fallbackFrom:match.fallbackFrom||null}:null});
 try{if(!window.MegaAccount&&!localStorage.getItem('mega_v32_tutorial_seen'))tutorial();}catch{}
 })();

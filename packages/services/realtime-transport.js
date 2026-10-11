@@ -1,7 +1,7 @@
 /* packages/services/realtime-transport.js - V5 P08 authenticated realtime/v1 WebSocket transport
  * (V5-08-01).
  *
- *   const transport = createRealtimeTransport({ server, pool, core, ephemera, now });
+ *   const transport = createRealtimeTransport({ server, pool, core, ephemera, now, environment });
  *   // staging ingress: wss://<host>/realtime/v1  (no other path on this server is touched)
  *   await transport.close();
  *
@@ -43,9 +43,11 @@
  * would make two peers mirror each other forever. RFC 6455 PING frames are still answered at the
  * protocol level with PONG frames, so no application envelope is involved there.
  *
- * DURABLE AUTHORITY. PostgreSQL decides who may join a match: redemption consumes the durable
- * identity.realtime_tickets row through the narrow SECURITY DEFINER function (V5-05-05), and the
- * subscription probe reads committed match.participants / match.matches rows. The caller-owned
+ * DURABLE AUTHORITY. Redemption consumes the durable identity.realtime_tickets row through the
+ * narrow SECURITY DEFINER function, then validates audience/environment and the live owned session,
+ * generation and eligibility. Every authenticated operation rechecks those facts; Core commands
+ * repeat admission under the API actor-auth mutex in their commit transaction. The subscription
+ * probe also reads committed match.participants / match.matches rows. The caller-owned
  * `ephemera` adapter holds ONE rebuildable advisory fact - the connection route record - whose loss
  * can only stop another Core from FINDING this socket, never let one enter a match or replay a
  * ticket. No Redis value is an authorization input anywhere in this file.
@@ -74,7 +76,7 @@
  * `command.revision` are stamped from `message.match_id`/`message.expected_revision` by the
  * transport, exactly as the HTTP bridge stamps them from the request body and never from client
  * JSON; a client therefore cannot name a second match or revision through the payload. The command
- * is executed as `core.run({actor: conn.actor, scope:'player'}, message.operation_id, payload)`:
+ * is executed as `core.run(principal, operationId, payload, {access: storedSessionBinding})`:
  *   - `core.run` is the revision transaction. Inside ONE PostgreSQL transaction it takes the
  *     logical identities then the match row lock, LOOKS UP the operation outcome (dedupe BEFORE the
  *     stale-revision/legality checks, so a lost-response retry returns the PRIOR result instead of a
@@ -101,7 +103,7 @@ const {
   PROTOCOL, PUBLIC_CODES, MAX_ENVELOPE_BYTES, ENVELOPE_FIELDS,
   validateEnvelope,
 } = require('../contracts/realtime.js');
-const { redeemRealtimeTicket } = require('./tickets.js');
+const { redeemRealtimeTicket, requireRealtimeSession } = require('./tickets.js');
 
 /* The ONE ingress this transport owns: an exact path, so a co-hosted route handler keeps every other
  * path. A query string or a single trailing slash is tolerated; nothing else is. */
@@ -318,6 +320,10 @@ function createRealtimeTransport(options = {}) {
   const maxEnvelopeBytes = boundedOption(options.maxEnvelopeBytes, MAX_ENVELOPE_BYTES, MAX_ENVELOPE_BYTES, 'MAX_ENVELOPE_BYTES_INVALID');
   const authTimeoutMs = boundedOption(options.authTimeoutMs, DEFAULT_AUTH_TIMEOUT_MS, MAX_AUTH_TIMEOUT_MS, 'AUTH_TIMEOUT_INVALID');
   const maxBufferBytes = boundedOption(options.maxBufferBytes, DEFAULT_MAX_BUFFER_BYTES, DEFAULT_MAX_BUFFER_BYTES, 'MAX_BUFFER_BYTES_INVALID');
+  const environment = options.environment;
+  if (typeof environment !== 'string' || !/^[a-z0-9][a-z0-9-]{0,31}$/.test(environment)) fail('ISSUER_ENVIRONMENT_REQUIRED');
+  const audience = options.audience === undefined ? 'mega-core' : options.audience;
+  if (typeof audience !== 'string' || !audience || audience.length > 64) fail('ISSUER_AUDIENCE_REQUIRED');
 
   /* Every live connection, keyed by its opaque connection id (the id recorded on the durable ticket
    * row at redemption and on the advisory route record). This Map is the ONLY registry: a socket
@@ -675,6 +681,17 @@ function createRealtimeTransport(options = {}) {
       sendError(conn, 'AUTH_REQUIRED');
       return;
     }
+    try {
+      await pool.withTransaction((tx) => requireRealtimeSession(tx, {
+        actor: conn.actor, sessionId: conn.sessionId, generation: conn.generation,
+      }));
+    } catch (error) {
+      const code = safeCode(error);
+      sendError(conn, code);
+      closeSocket(conn, code === 'SERVICE_UNAVAILABLE' ? CLOSE_INTERNAL : CLOSE_POLICY);
+      return;
+    }
+    if (conn.destroyed || conn.closing) return;
     if (message.operation === 'ping') { sendPong(conn); return; }
     if (message.operation === 'error') return;
     if (message.operation === 'subscribe') { await subscribe(conn, message); return; }
@@ -701,6 +718,8 @@ function createRealtimeTransport(options = {}) {
         connectionId: conn.id,
         node: CORE_NODE,
         now: clock,
+        environment,
+        audience,
       });
     } catch (error) {
       if (conn.destroyed) return;
@@ -898,10 +917,18 @@ function createRealtimeTransport(options = {}) {
     pendingEcho.set(matchId, (pendingEcho.get(matchId) || 0) + 1);
     try {
       try {
-        await core.run({ actor: conn.actor, scope: 'player' }, message.operation_id, payload);
+        await core.run({ actor: conn.actor, scope: 'player' }, message.operation_id, payload, {
+          access: { sessionId: conn.sessionId, generation: conn.generation },
+        });
       } catch (error) {
         if (conn.destroyed) return;
-        sendError(conn, commandCode(error.message), message);
+        const code = commandCode(error.message);
+        if (code === 'SESSION_REVOKED') {
+          sendError(conn, code);
+          closeSocket(conn, CLOSE_POLICY);
+          return;
+        }
+        sendError(conn, code, message);
         return;
       }
       if (conn.destroyed) return;

@@ -152,21 +152,33 @@ async function handleConvert(context, req, res) {
   });
 }
 
+function resolveQueue(context, operation) {
+  if (typeof context?.queue?.[operation] === 'function') return context.queue;
+  if (!context?.queue) {
+    const gateway = resolveGateway(context);
+    if (typeof gateway[operation] === 'function') return gateway;
+  }
+  const error = new Error('QUEUE_UNAVAILABLE');
+  error.status = 503;
+  throw error;
+}
+
 /**
  * POST /api/v1/queue
  * Enters matchmaking queue.
  */
 async function handleQueue(context, req, res) {
-  return forwardToCore(context, req, res, (body) => {
-    if (body.command) return body.command;
-    if (body.type === 'queue') return body;
-    const { opKey, idempotencyKey, ...rest } = body;
-    return {
-      type: 'queue',
-      mode: rest.mode || 'ranked',
-      ...rest,
-    };
+  const actor = await resolveActor(context, req);
+  const body = (await parseJsonBody(req)) || {};
+  const opKey = resolveOpKey(req, body);
+  const queue = resolveQueue(context, 'join');
+  // Only admission context crosses this boundary. Pairing commands, actor IDs
+  // and command scopes supplied by the client cannot become Core authority.
+  const result = await queue.join({
+    actor, mode: body.mode === undefined ? 'ranked' : body.mode,
+    opKey, region: body.region, latencyMs: body.latencyMs,
   });
+  return sendJson(res, 200, result);
 }
 
 /**
@@ -174,15 +186,15 @@ async function handleQueue(context, req, res) {
  * Cancels active matchmaking queue.
  */
 async function handleCancelQueue(context, req, res) {
-  return forwardToCore(context, req, res, (body) => {
-    if (body.command) return body.command;
-    if (body.type === 'cancel-queue' || body.type === 'cancel') return body;
-    const { opKey, idempotencyKey, ...rest } = body;
-    return {
-      type: 'cancel-queue',
-      ...rest,
-    };
-  });
+  const actor = await resolveActor(context, req);
+  const body = (await parseJsonBody(req)) || {};
+  const opKey = resolveOpKey(req, body);
+  const queue = resolveQueue(context, 'cancel');
+  const result = await queue.cancel({ actor, opKey });
+  // The browser follows matched responses to the durable match view. A live
+  // PLAYING match cannot be cancelled by leaving the queue.
+  return sendJson(res, 200, result.state === 'playing'
+    ? { ...result, state: 'matched' } : result);
 }
 
 /**
@@ -243,10 +255,30 @@ async function handleQuest(context, req, res) {
  * Requests a ticket via Core ingress.
  */
 async function handleTicket(context, req, res) {
-  const actor = await resolveActor(context, req);
+  const { actor, token, accounts } = await resolveAuth(context, req);
+  if (!actor || !token) {
+    const error = new Error('AUTH_REQUIRED');
+    error.status = 401;
+    throw error;
+  }
   const body = (await parseJsonBody(req)) || {};
+  if (typeof body !== 'object' || Array.isArray(body) ||
+      Object.keys(body).some((key) => key !== 'matchScope')) {
+    const error = new Error('INVALID_TICKET_REQUEST');
+    error.status = 400;
+    throw error;
+  }
+  const binding = await accounts.accessBinding(token);
+  if (binding.actor !== actor) {
+    const error = new Error('AUTH_REQUIRED');
+    error.status = 401;
+    throw error;
+  }
   const gateway = resolveGateway(context);
-  const result = await gateway.requestTicket({ actor, session: body });
+  const result = await gateway.requestTicket({ actor, session: {
+    sessionId: binding.sessionId, generation: binding.generation,
+    connectionClass: binding.connectionClass, matchScope: body.matchScope ?? null,
+  } });
   const payload = (typeof result === 'object' && result !== null)
     ? (result.ok === undefined ? { ok: true, ...result } : result)
     : { ok: true, ticket: result };
@@ -324,6 +356,7 @@ async function handleCompetitiveRoute(context, req, res) {
 
 module.exports = {
   resolveGateway,
+  resolveQueue,
   resolveActor,
   resolveOpKey,
   forwardToCore,

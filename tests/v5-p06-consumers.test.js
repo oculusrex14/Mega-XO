@@ -255,15 +255,16 @@ test('P06 consumers: namespace wipe and total dependency loss leave every durabl
     api = await startChild({ databaseUrl: url, role: 'api_runtime', clock: lab.CLOCK, redis: redisOptions() });
     core = await startChild({ databaseUrl: url, role: 'core_runtime', clock: lab.CLOCK, redis: null });
     const session = await sessionFor(api, 'svc_alice');
+    const binding = await api.call('accessBinding', [session.token]);
     await api.call('heartbeat', [session.token, true]);
 
     /* A durable, one-use realtime ticket redeemed by the Core process (the PG authority). */
-    const minted = await api.call('issueTicket', [{ actor: 'svc_alice', sessionId: 'dur-session-00000000000', generation: 1, connectionClass: 'game' }]);
+    const minted = await api.call('issueTicket', [{ actor: 'svc_alice', sessionId: binding.sessionId, generation: binding.generation, connectionClass: 'game' }]);
     const grant = await core.call('redeemTicket', [{ ticket: minted.ticket, connectionId: 'dur-conn', node: 'dur-core' }]);
     assert.equal(grant.actorId, 'svc_alice', 'the ticket is redeemed in PostgreSQL');
 
     /* A durable refresh family revoked by the API process. */
-    const family = await api.call('startFamily', [{ actor: 'svc_alice', sessionId: 'dur-family-0000000000' }]);
+    const family = await api.call('startFamily', [{ actor: 'svc_alice', sessionId: binding.sessionId }]);
     await api.call('revokeFamily', [family.familyId, 'p06-durable']);
 
     const before = await durableSnapshot(db);

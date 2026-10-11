@@ -170,10 +170,11 @@ async function coreFor(h, t, { ephemera = null } = {}) {
 }
 
 /* Issue one one-use ticket for a match scope (or unscoped when matchScope is null). */
-const binding = (extra = {}) => ({
-  actor: FIXTURES.restart[0], sessionId: 'a'.repeat(24), generation: 1,
-  connectionClass: 'game', matchScope: null, ipHash: null, ...extra,
-});
+async function binding(h, extra = {}) {
+  const actor = extra.actor || FIXTURES.restart[0];
+  const b = await lab.sessionBindingFor(h.database, actor, { now: () => clock, connectionClass: extra.connectionClass || 'game' });
+  return { ...b, matchScope: null, ipHash: null, ...extra };
+}
 const issue = (h, request) => h.issuer.issue(request);
 
 /* The independent Core oracle for a match DTO: no transport is involved. */
@@ -214,6 +215,7 @@ async function serve(h, t, { core = h.core, ephemera = h.ephemera } = {}) {
   const port = server.address().port;
   const transport = loadTransport().createRealtimeTransport({
     server, pool: h.pools.core, core, ephemera, now: () => clock,
+    environment: 'stg', audience: 'mega-core',
   });
   assert.equal(transport.ingressPath, INGRESS, 'the transport answers exactly the staged ingress');
   /* The transport opens its OWN `core-match` subscription in the constructor; awaiting `ready` makes
@@ -296,7 +298,8 @@ const commandMove = (matchId, key, revision, move) => ({
 /* Redeem one one-use ticket scoped to the match, then (by default) subscribe: the returned snapshot is
  * the committed document the subscription answered with. */
 async function connect(h, s, actor, matchId, { subscribe = true } = {}) {
-  const { ticket } = await issue(h, binding({ actor, sessionId: `${actor}:${matchId}`, matchScope: matchId }));
+  const b = await lab.sessionBindingFor(h.database, actor, { now: () => clock, connectionClass: 'game' });
+  const { ticket } = await issue(h, { ...b, matchScope: matchId, ipHash: null });
   const client = wsClient(s.url(INGRESS));
   await client.open();
   client.send(redeemFrame(ticket));
@@ -312,8 +315,9 @@ async function connect(h, s, actor, matchId, { subscribe = true } = {}) {
 
 /* Redeem an UNSCOPED ticket (so the ack names the `auth` scope) and leave the connection
  * UNSUBSCRIBED: `resume` must then prove membership itself. Returns the client and its auth ack. */
-async function connectUnscoped(h, s, actor, sessionId) {
-  const { ticket } = await issue(h, binding({ actor, sessionId, matchScope: null }));
+async function connectUnscoped(h, s, actor) {
+  const b = await lab.sessionBindingFor(h.database, actor, { now: () => clock, connectionClass: 'game' });
+  const { ticket } = await issue(h, { ...b, matchScope: null, ipHash: null });
   const client = wsClient(s.url(INGRESS));
   await client.open();
   client.send(redeemFrame(ticket));
@@ -666,6 +670,7 @@ test('V5-08-05 restart: a stalled client is closed 1008 and recovers the latest 
   /* The bound is a bounded option: a caller may tighten it but never raise it past the export. */
   assert.throws(() => loadTransport().createRealtimeTransport({
     server: s.server, pool: h.pools.core, core, ephemera: h.ephemera,
+    environment: 'stg', audience: 'mega-core',
     maxBufferBytes: loadTransport().DEFAULT_MAX_BUFFER_BYTES + 1,
   }), /MAX_BUFFER_BYTES_INVALID/, 'the slow-client bound cannot be loosened');
 
@@ -674,7 +679,8 @@ test('V5-08-05 restart: a stalled client is closed 1008 and recovers the latest 
   const slow = rawClient(s.port);
   const head = await slow.handshake();
   assert.equal(head.split('\r\n')[0], 'HTTP/1.1 101 Switching Protocols', 'the stalled client completed a real WS handshake');
-  const { ticket } = await issue(h, binding({ actor: playerA, sessionId: `${playerA}:${matchId}`, matchScope: matchId }));
+  const b = await lab.sessionBindingFor(h.database, playerA, { now: () => clock, connectionClass: 'game' });
+  const { ticket } = await issue(h, { ...b, matchScope: matchId, ipHash: null });
   slow.text(redeemFrame(ticket));
   slow.text(subscribeFrame(matchId));
   assert.equal(await until(() => s.transport.stats().connections === 1), true, 'the stalled client is tracked');
@@ -707,7 +713,7 @@ test('V5-08-05 restart: a stalled client is closed 1008 and recovers the latest 
   /* The client RECONNECTS and recovers the latest committed state through `resume`. The slow client
    * never applied the dropped frames, so it resumes from the revision it last held (0) and is served
    * the authoritative snapshot at the committed head. */
-  const back = await connectUnscoped(h, s, playerA, `${playerA}:${matchId}:back`);
+  const back = await connectUnscoped(h, s, playerA);
   back.send(resumeFrame(matchId, 0));
   const frames = [await back.next()];
   if (!(await back.idle(400))) frames.push(await back.next());

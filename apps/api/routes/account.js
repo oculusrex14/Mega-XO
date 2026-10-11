@@ -3,6 +3,7 @@
 const path = require('node:path');
 const {
   parseJsonBody,
+  parseCookies,
   sendJson,
   resolveAuth,
 } = require('./helpers');
@@ -137,13 +138,7 @@ async function getExport(context, req, res) {
     throw err;
   }
 
-  let exportData;
-  if (token) {
-    exportData = await accounts.exportData(token);
-  } else {
-    const session = await accounts.issue(actor, Date.now());
-    exportData = await accounts.exportData(session.token);
-  }
+  const exportData = await accounts.exportData(token);
 
   return sendJson(res, 200, {
     ...exportData,
@@ -169,13 +164,7 @@ async function deleteAccount(context, req, res) {
   const body = await parseJsonBody(req);
   const confirmation = body.confirmation;
 
-  let result;
-  if (token) {
-    result = await accounts.deleteAccount(token, confirmation);
-  } else {
-    const session = await accounts.issue(actor, Date.now());
-    result = await accounts.deleteAccount(session.token, confirmation);
-  }
+  const result = await accounts.deleteAccount(token, confirmation);
 
   return sendJson(res, 200, {
     deleted: true,
@@ -202,13 +191,7 @@ async function unlinkProvider(context, req, res) {
   const body = await parseJsonBody(req);
   const provider = body.provider;
 
-  let result;
-  if (token) {
-    result = await accounts.unlink(token, provider);
-  } else {
-    const session = await accounts.issue(actor, Date.now());
-    result = await accounts.unlink(session.token, provider);
-  }
+  const result = await accounts.unlink(token, provider);
 
   return sendJson(res, 200, result);
 }
@@ -225,15 +208,36 @@ async function getDeletionStatus(context, req, res) {
     throw err;
   }
 
-  let status;
-  if (token) {
-    status = await accounts.deletionStatus(token);
-  } else {
-    const session = await accounts.issue(actor, Date.now());
-    status = await accounts.deletionStatus(session.token);
-  }
+  const status = await accounts.deletionStatus(token);
 
   return sendJson(res, 200, status, { 'Cache-Control': CACHE_CONTROL_POLICIES.PRIVATE_NO_STORE });
+}
+
+async function logout(context, req, res) {
+  const { token, accounts, credentialMode } = await resolveAuth(context, req, { linked: false });
+  if (!token) {
+    const error = new Error('AUTH_REQUIRED');
+    error.status = 401;
+    throw error;
+  }
+  if (credentialMode === 'cookie') {
+    if (!/^application\/json(?:\s*;|$)/i.test(req.headers?.['content-type'] || '')) {
+      const error = new Error('ORIGIN_OR_CONTENT_TYPE');
+      error.status = 403;
+      throw error;
+    }
+    await accounts.csrf(token, req.headers?.['x-csrf-token']);
+  }
+  const body = await parseJsonBody(req);
+  const result = await accounts.logout(token, body.allDevices === true);
+  const headers = { 'Cache-Control': CACHE_CONTROL_POLICIES.PRIVATE_NO_STORE };
+  if (credentialMode === 'cookie') {
+    const cookies = parseCookies(req.headers?.cookie);
+    headers['Set-Cookie'] = ['__Host-mega_session', 'mega_dev_session', 'session', 'token']
+      .filter((name) => cookies[name])
+      .map((name) => `${name}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0${name === 'mega_dev_session' ? '' : '; Secure'}`);
+  }
+  return sendJson(res, 200, result, headers);
 }
 
 /**
@@ -247,6 +251,11 @@ async function handleAccountRoute(context, req, res) {
     pathname = pathname.slice(0, -1);
   }
   const method = req.method;
+
+  if ((pathname === '/api/account/logout' || pathname === '/auth/logout') && method === 'POST') {
+    await logout(context, req, res);
+    return true;
+  }
 
   if (pathname === '/api/account/profile') {
     if (method === 'GET') {
@@ -304,5 +313,6 @@ module.exports = {
   deleteAccount,
   unlinkProvider,
   getDeletionStatus,
+  logout,
   handleAccountRoute,
 };

@@ -4,3 +4,20 @@ const modelHash='a'.repeat(64),infer=async()=>({logits:new Float32Array(81),valu
 test('PUCT stays legal, bounded, seeded and leaves the live state unchanged',async()=>{const state=G.create(),before=JSON.stringify(state),options={infer,modelHash,gameId:'research',seed:7,budgetMs:2000,simulations:12,maxNodes:128,clock:()=>0};const a=await N.choose(state,options),b=await N.choose(state,options);assert.deepEqual(a.move,b.move);assert.equal(a.diagnostics.simulations,12);assert.ok(a.diagnostics.nodes<=128);assert.equal(JSON.stringify(state),before);assert.equal(a.gameId,'research');assert.ok(G.legal(state).some(m=>m.b===a.move.b&&m.c===a.move.c));});
 test('neural priors cannot bypass a forced win or mandatory immediate global defense',async()=>{for(const item of T.corpus({games:12})){let state=G.create(item.first);for(const m of item.moves)state=G.apply(state,m);const r=await N.choose(state,{infer,modelHash,budgetMs:0});assert.equal(T.verifyCritical(state,r.move),true,item.id);}});
 test('late inference completion after cancellation is discarded and malformed outputs fail',async()=>{const controller=new AbortController();await assert.rejects(N.choose(G.create(),{modelHash,signal:controller.signal,infer:async()=>{controller.abort();return {logits:new Float32Array(81),value:0};}}),{name:'AbortError'});await assert.rejects(N.choose(G.create(),{modelHash,infer:async()=>({logits:new Float32Array(81),value:NaN})}),/INVALID_NEURAL_VALUE/);await assert.rejects(N.choose(G.create(),{infer}),/NOT_PINNED/);});
+test('stale revision and malformed logits fail closed without altering game state',async()=>{
+ const state=G.create();
+ const before=JSON.stringify(state);
+ await assert.rejects(N.choose(state,{infer,modelHash,revision:99}),/STALE_BOT_RESULT/);
+ await assert.rejects(N.choose(state,{infer:async()=>({logits:new Float32Array(40),value:0}),modelHash}),/INVALID_NEURAL_VALUE/);
+ await assert.rejects(N.choose(state,{infer:async()=>null,modelHash}),/INVALID_NEURAL_VALUE/);
+ assert.equal(JSON.stringify(state),before);
+});
+test('time budget exhaustion stops search and returns best candidate',async()=>{
+ let now=0;
+ const state=G.create();
+ const timedInfer=async()=>{now+=50;return {logits:new Float32Array(81),value:0};};
+ const res=await N.choose(state,{infer:timedInfer,modelHash,budgetMs:100,simulations:1000,clock:()=>now});
+ assert.ok(res.move);
+ assert.ok(res.diagnostics.simulations<1000);
+ assert.ok(G.legal(state).some(m=>m.b===res.move.b&&m.c===res.move.c));
+});

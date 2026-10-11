@@ -14,7 +14,7 @@ base=f'http://127.0.0.1:{server.server_port}';results=[];errors=[]
 try:
  with sync_playwright() as p:
   browser=p.chromium.launch(executable_path=os.environ.get('CHROMIUM_EXECUTABLE') or shutil.which('chromium'),headless=True,args=['--no-sandbox'])
-  for route in ['/index.html','/.artifacts/p21-web/game/index.html']:
+  for route in ['/index.html','/.artifacts/p21-web/legacy-game/index.html']:
    context=browser.new_context(viewport={'width':390,'height':844})
    page=context.new_page();page.on('pageerror',lambda e:errors.append(str(e)))
    page.route('**/*',lambda r:r.continue_() if r.request.url.startswith(base) else r.abort())

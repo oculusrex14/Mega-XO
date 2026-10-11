@@ -194,6 +194,19 @@ function createCoreGateway({
     baseUrl,
     timeoutMs: timeout,
 
+    // Admission is a queue-service operation, never a player Core command.
+    async join({ actor, opKey, mode, region, latencyMs }) {
+      return this.forwardCommand({ actor, opKey, path: '/ingress/queue/join',
+        command: { mode, region, latencyMs } });
+    },
+    async cancel({ actor, opKey }) {
+      return this.forwardCommand({ actor, opKey, path: '/ingress/queue/cancel', command: {} });
+    },
+    async status(actor) {
+      return this.forwardCommand({ actor, opKey: 'queue-status',
+        path: '/ingress/queue/status', command: {} });
+    },
+
     /**
      * Forwards an economic or competitive command to Game Core ingress.
      * @param {Object} params
@@ -406,6 +419,8 @@ function createCoreGateway({
  * @param {Object} options
  * @param {Object} options.coreService
  * @param {Object} [options.ticketIssuer]
+ * @param {Object} [options.queue] Core-owned queue service for admission/cancel/status.
+ * The API gateway never acquires its database pool or exposes privileged pairing.
  * @param {string} options.secret
  * @param {number} [options.maxDriftMs=30000]
  * @param {Function} [options.now=Date.now]
@@ -414,6 +429,7 @@ function createCoreGateway({
 function createCoreServiceIngress({
   coreService,
   ticketIssuer,
+  queue,
   secret,
   maxDriftMs = 30000,
   now = Date.now,
@@ -482,6 +498,35 @@ function createCoreServiceIngress({
       }
 
       // 4. Route dispatch
+      if (pathname === '/ingress/queue/join' ||
+          pathname === '/ingress/queue/cancel' ||
+          pathname === '/ingress/queue/status') {
+        if (method !== 'POST') return sendIngressError(res, 405, 'METHOD_NOT_ALLOWED');
+        const operation = pathname.slice('/ingress/queue/'.length);
+        if (!opKeyHeader) return sendIngressError(res, 400, 'OPKEY_REQUIRED');
+        if (typeof queue?.[operation] !== 'function') {
+          return sendIngressError(res, 503, 'QUEUE_UNAVAILABLE');
+        }
+        const input = parsedBody?.command;
+        if (!input || typeof input !== 'object' || Array.isArray(input)) {
+          return sendIngressError(res, 400, 'INVALID_COMMAND');
+        }
+        // Signed headers are the sole authority. Body actor, opKey, pairing
+        // players and scope never cross into the Core-owned queue service.
+        try {
+          const result = operation === 'status'
+            ? await queue.status(actorHeader)
+            : operation === 'cancel'
+              ? await queue.cancel({ actor: actorHeader, opKey: opKeyHeader })
+              : await queue.join({ actor: actorHeader, opKey: opKeyHeader,
+                mode: input.mode, region: input.region, latencyMs: input.latencyMs });
+          return sendIngressJson(res, 200, { ok: true, result });
+        } catch (err) {
+          const code = err?.code || err?.message || 'QUEUE_UNAVAILABLE';
+          return sendIngressJson(res, err?.status || 409, { ok: false, error: code });
+        }
+      }
+
       if (pathname === '/ingress/command') {
         if (method !== 'POST') {
           return sendIngressError(res, 405, 'METHOD_NOT_ALLOWED');
@@ -520,26 +565,19 @@ function createCoreServiceIngress({
           return sendIngressError(res, 405, 'METHOD_NOT_ALLOWED');
         }
 
-        const session = parsedBody?.session || parsedBody || {};
+        const session = parsedBody?.session;
+        if (!session || typeof session !== 'object' || Array.isArray(session)) {
+          return sendIngressError(res, 400, 'INVALID_TICKET_REQUEST');
+        }
         try {
-          let ticket = null;
-          if (ticketIssuer && typeof ticketIssuer.issueTicket === 'function') {
-            try {
-              ticket = await ticketIssuer.issueTicket(actorHeader, session);
-            } catch {
-              ticket = await ticketIssuer.issueTicket({ actor: actorHeader, ...session });
-            }
-          } else if (ticketIssuer && typeof ticketIssuer.issue === 'function') {
-            ticket = await ticketIssuer.issue({ actor: actorHeader, ...session });
-          } else if (coreService && typeof coreService.issueTicket === 'function') {
-            try {
-              ticket = await coreService.issueTicket(actorHeader, session);
-            } catch {
-              ticket = await coreService.issueTicket({ actor: actorHeader, ...session });
-            }
-          } else {
-            return sendIngressError(res, 500, 'TICKET_ISSUER_UNAVAILABLE');
+          if (!ticketIssuer || typeof ticketIssuer.issue !== 'function') {
+            return sendIngressError(res, 503, 'TICKET_ISSUER_UNAVAILABLE');
           }
+          const ticket = await ticketIssuer.issue({
+            sessionId: session.sessionId, generation: session.generation,
+            connectionClass: session.connectionClass, matchScope: session.matchScope ?? null,
+            actor: actorHeader,
+          });
 
           const responseData = typeof ticket === 'object' && ticket !== null
             ? { ok: true, ticket: ticket.ticket || ticket, ...ticket }

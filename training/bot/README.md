@@ -7,22 +7,38 @@ not Git. Do not publish an artifact containing private user games or identifiers
 
 ## Reproducible bootstrap
 
-Use Node 24 and an isolated Python environment. The CPU pipeline was locally
-validated with Python 3.13.5 and PyTorch 2.10.0+cpu. Install the pinned PyTorch
-2.10.0 build suitable for your CUDA driver on an owner-operated training machine;
-do not replace production dependencies or assume a CUDA build works on DGX
-without an actual environment check.
+Use Node 24 and an isolated Python environment. On verified DGX hosts (`dgx-ts` aitopatom-a531
+and `dgx2-ts` edgexpert-c555, NVIDIA GB10 CUDA 12.9, PyTorch 2.13.0+cu129), an isolated toolroot
+and virtualenv are created under `/home/oculus-rex/v51-experiment/`:
+- Official Node v24.21.0 aarch64 verified with SHA-256 (`6ad1325edbdb...`).
+- Isolated Python venv reusing installed PyTorch via `.pth` pointer with pinned `onnx==1.19.1`,
+  `onnxruntime==1.23.2`, `onnxscript==0.5.6`.
+- Zero modifications to user ComfyUI or system packages.
 
 ```sh
-node --test tests/v51-bot-tutorial.test.js
-python training/bot/test_model.py
-node training/bot/generate.cjs .artifacts/data/seed-1000.jsonl 1000 1000 128
-node training/bot/validate-data.cjs .artifacts/data/seed-1000.jsonl
-python training/bot/train.py .artifacts/data/seed-1000.jsonl \
-  --source-commit "$(git rev-parse HEAD)" --output .artifacts/models/run-1 \
-  --epochs 20 --batch 64 --device cuda
-```
+# Step 1: Validate architecture and model logic
+python3 training/bot/test_model.py
 
+# Step 2: Generate canonical self-play dataset (disjoint D4 families)
+node training/bot/generate.cjs .artifacts/data/seed-1000.jsonl 1000 1000 32
+node training/bot/validate-data.cjs .artifacts/data/seed-1000.jsonl
+
+# Step 3: Train policy-value CNN candidate with CUDA and GPU power sampling
+python3 training/bot/train.py .artifacts/data/seed-1000.jsonl \
+  --source-commit "d3454187471ffb15e74831a6c19ab60baff1a118" \
+  --output .artifacts/models/candidate-1 \
+  --epochs 15 --batch 64 --device cuda --width 64 --blocks 4
+
+# Step 4: Export to static, dynamic, and INT8 QDQ ONNX with parity verification
+python3 training/bot/export.py .artifacts/models/candidate-1 .artifacts/data/seed-1000.jsonl \
+  --output .artifacts/models/candidate-1/export
+
+# Step 5: Paired heldout leagues across >= 100 independent D4 opening families
+node training/bot/neural_league.cjs \
+  --model .artifacts/models/candidate-1/export \
+  --pairs 100 --budget-ms 100 --simulations 64 \
+  --output .artifacts/benchmarks/candidate-1-league.json
+```
 Generation refuses to overwrite an existing dataset. Training refuses to replace
 an existing candidate directory. Run from the repository root and pin a clean
 source commit; reports also retain exact relevant source-file hashes. Training
@@ -73,14 +89,11 @@ The initial value-loss metric is not a full calibration study.
 ## Optional Unsloth teacher
 
 Qwen3.5-0.8B is a separately evaluated optional teacher, never a game runtime
-requirement. The official Unsloth Qwen3.5 and notebook pages were available during
-implementation; the exact decision-model guide URL could not be fetched in this
-environment. Do not invent its API or claim that experiment ran. Export only
-canonical serialized states plus enumerated legal actions, score exact legal
-choice and paired match quality, and measure teacher cost before deciding on
-any distillation. DGX access, private artifact storage and training runs are
-owner-operated follow-up gates, not production dependencies.
-
+requirement. Compact 64-channel 4-block CNN models achieve low millisecond inference
+without requiring knowledge distillation from a larger model. The option is recorded
+as `NOT_SELECTED_RESEARCH_OPTION` based on lack of empirical need for larger backbones.
+Distillation trials are not fabricated. DGX access, private artifact storage and training
+runs are owner-operated follow-up gates, not production dependencies.
 ## Primary references checked 2026-10-11
 
 - PyTorch reproducibility: https://docs.pytorch.org/docs/stable/notes/randomness.html

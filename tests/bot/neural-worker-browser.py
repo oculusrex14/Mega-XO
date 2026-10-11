@@ -31,8 +31,12 @@ try:
    const artifact=exported.artifacts.find(a=>a.file==='candidate.onnx');
    const bytes=new Uint8Array(await (await fetch('/.artifacts/v51/export/candidate.onnx')).arrayBuffer());
    const manifest={schemaVersion:1,version:'ci-unapproved',ruleset:MegaBotContract.RULESET,encodingVersion:'planes8-v1',sha256:artifact.sha256,bytes:artifact.bytes,gzipBytes:artifact.gzipBytes,url:'/game/ai/'+artifact.sha256+'.onnx',deploymentStatus:'UNAPPROVED'};
-   let workers=0,initializations=0;const states=[];
-   const client=new MegaBotNeuralRuntime.Client({onState:s=>states.push(s.status),workerFactory:()=>{workers++;const w=new Worker('/src/bot/neural-worker.js');const post=w.postMessage.bind(w);w.postMessage=(job,...args)=>{if(job.op==='initialize')initializations++;return post(job,...args);};return w;}});
+   let workers=0,initializations=0;const states=[],workerURLs=[],NativeWorker=window.Worker;
+   window.Worker=class extends NativeWorker{
+    constructor(url,...options){super(url,...options);workers++;workerURLs.push(String(url));}
+    postMessage(job,...options){if(job.op==='initialize')initializations++;return super.postMessage(job,...options);}
+   };
+   const client=new MegaBotNeuralRuntime.Client({onState:s=>states.push(s.status)});
    await client.configure(manifest,bytes);
    let state=MegaGame.create();const turns=[];
    for(let i=0;i<4;i++){
@@ -41,6 +45,7 @@ try:
     state=MegaGame.apply(state,r.move);turns.push({elapsedMs:performance.now()-started,...r.diagnostics});
    }
    if(workers!==1||initializations!==1)throw Error('MODEL_NOT_WARM');
+   if(workerURLs[0]!==new URL('/src/bot/neural-worker.js',location.href).href)throw Error('WRONG_DEFAULT_WORKER_URL');
    const before=JSON.stringify(state),pending=client.choose({state,gameId:'cancel-test',revision:state.moves.length,modelHash:manifest.sha256,seed:81,budgetMs:1500,simulations:2048,maxNodes:2048});
    const outcome=pending.then(()=>({cancelled:false}),e=>({cancelled:e.name==='AbortError',code:e.code}));
    await new Promise(resolve=>setTimeout(resolve,15));client.cancel();const cancellation=await outcome;
@@ -48,7 +53,8 @@ try:
    const recovery=await client.choose({state,gameId:'recovery',revision:state.moves.length,modelHash:manifest.sha256,seed:82,budgetMs:50,simulations:8});
    MegaBotContract.accept({state,gameId:'recovery',revision:state.moves.length},recovery);
    client.unload();if(client.bytes!==null||client.worker!==null)throw Error('UNLOAD_FAILED');
-   return {ok:true,modelHash:manifest.sha256,turns,initialWarmTurns:4,initializations,workers,cancellation,recoveryProvider:recovery.diagnostics.provider,stateMovesPreserved:state.moves.length,states,unapprovedFixture:true,physicalDevice:false};
+   window.Worker=NativeWorker;
+   return {ok:true,modelHash:manifest.sha256,turns,initialWarmTurns:4,initializations,workers,workerURLs,defaultWorkerFactory:true,cancellation,recoveryProvider:recovery.diagnostics.provider,stateMovesPreserved:state.moves.length,states,unapprovedFixture:true,physicalDevice:false};
   }""")
   browser.close()
  if errors or not result['ok']:raise AssertionError({'result':result,'pageErrors':errors})

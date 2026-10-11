@@ -10,6 +10,8 @@
  *   const pool = createPgPool(fromEnvironment(process.env));       // caller-owned, GUARDED
  *   const core = await createCoreService(pool, { now, random, verifyPurchase });
  *   await core.run({ actor, scope: 'player' }, key, { type: 'convert', from: 'coins', amount: 100 });
+ *   // Socket callers additionally supply {access:{sessionId,generation}} from their stored ticket:
+ *   // this is checked under the shared actor-auth mutex INSIDE the command transaction.
  *   await core.read((tx) => tx.repositories.wallets.for(actor));
  *   await core.read();                                             // whole exported aggregate
  *   await core.provisionActor(actor);
@@ -107,6 +109,7 @@ const { createPgUnitOfWork } = require('../db/pg/uow.js');
 const { verifyRuntimeSchema } = require('../db/pg/readiness.js');
 const { PgGuardError } = require('../db/pg/guards.js');
 const { lockTransactionIdentity } = require('../db/pg/locks.js');
+const { requireRealtimeSession } = require('./tickets.js');
 const { COMMANDS } = require('../db/scopes.js');
 const { CAP } = require('../db/pg/repositories.js');
 const { validateInvocation } = require('../contracts/invocation.js');
@@ -406,7 +409,7 @@ async function createCoreService(pool, options = {}) {
  }
 
  /* All externally reachable commands pass through this transaction boundary. */
- async function run(principal, key, command) {
+ async function run(principal, key, command, { access } = {}) {
   validateInvocation(principal, key, command);
   if (API_OWNED_COMMANDS.includes(command.type)) throw Error('API_OWNED_COMMAND');
   if (COMMERCE_OWNED_COMMANDS.includes(command.type)) throw Error('COMMERCE_OWNED_COMMAND');
@@ -414,10 +417,19 @@ async function createCoreService(pool, options = {}) {
   const fingerprint = commandFingerprint(principal, command);
   const outcome = await uow.run(async (tx) => {
    const repositories = tx.repositories;
-   /* LOGICAL IDENTITIES, then the aggregate/receipt ROWS, then eligibility/occupancy/wallets
-    * (design 3.7). The operation identity is taken FIRST and unconditionally, so two commands that
-    * share a service-principal key but touch disjoint aggregates still serialize on it and the
-    * loser re-reads the winner's committed outcome instead of applying a second business effect. */
+   /* Trusted socket binding, never a player JWT or a client body. Share the API actor-auth mutex
+    * so logout either follows this commit or wins before this authoritative post-wait read.
+    * Internal service callers retain the established three-argument invocation. */
+   if (access !== undefined) {
+    if (principal.scope !== 'player' || !access) throw Error('SESSION_REVOKED');
+    await lockTransactionIdentity(tx, 'aggregate', ['auth', principal.actor]);
+    await requireRealtimeSession(tx, {
+     actor: principal.actor, sessionId: access.sessionId, generation: access.generation,
+    });
+   }
+   /* After optional actor-auth admission: logical identities, then aggregate/receipt ROWS, then
+    * eligibility/occupancy/wallets (design3.7). The operation identity is unconditional, so commands
+    * sharing a service-principal key serialize even when their aggregates differ. */
    const plan = await lockTargets(tx, principal, command, key);
    const replayed = await replayOrNull(tx, principal, key, fingerprint);
    /* A REPLAY commits nothing new: the stored response is returned unchanged and NO hint is

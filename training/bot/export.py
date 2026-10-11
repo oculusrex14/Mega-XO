@@ -27,9 +27,13 @@ def main() -> None:
     rows=[r for split in splits.values() for r in split];random.Random(5101).shuffle(rows);rows=rows[:512]
     if len(rows)<200: raise ValueError('AT_LEAST_200_FROZEN_STATES_REQUIRED')
     args.output.mkdir(parents=True);static=args.output/'candidate.onnx';dynamic=args.output/'candidate-dynamic.onnx';quant=args.output/'candidate-int8.onnx'
-    options=dict(input_names=['planes'],output_names=['policy','value'],dynamo=True,external_data=False,opset_version=18)
-    torch.onnx.export(model,(torch.zeros(1,8,9,9),),str(static),**options)
-    torch.onnx.export(model,(torch.zeros(2,8,9,9),),str(dynamic),dynamic_shapes=({0:torch.export.Dim('batch',min=1,max=64)},),**options)
+    options=dict(input_names=['planes'],output_names=['policy','value'],external_data=False,opset_version=18)
+    try:
+        torch.onnx.export(model,(torch.zeros(1,8,9,9),),str(static),dynamo=True,**options)
+        torch.onnx.export(model,(torch.zeros(2,8,9,9),),str(dynamic),dynamo=True,dynamic_shapes=({0:torch.export.Dim('batch',min=1,max=64)},),**options)
+    except Exception:
+        torch.onnx.export(model,(torch.zeros(1,8,9,9),),str(static),dynamo=False,**options)
+        torch.onnx.export(model,(torch.zeros(2,8,9,9),),str(dynamic),dynamo=False,dynamic_axes={'planes':{0:'batch'},'policy':{0:'batch'},'value':{0:'batch'}},**options)
     for file in (static,dynamic): onnx.checker.check_model(str(file))
     options_ort=ort.SessionOptions();options_ort.intra_op_num_threads=1;options_ort.inter_op_num_threads=1
     single=ort.InferenceSession(str(static),sess_options=options_ort,providers=['CPUExecutionProvider']);batch=ort.InferenceSession(str(dynamic),sess_options=options_ort,providers=['CPUExecutionProvider'])

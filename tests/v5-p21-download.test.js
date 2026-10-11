@@ -26,8 +26,39 @@ async function loopback(t, handler) {
   const server = http.createServer(handler);
   server.listen(0, '127.0.0.1');
   await once(server, 'listening');
-  t.after(() => new Promise(resolve => { server.close(resolve); server.closeAllConnections(); }));
-  return (route = '/api/download', options = {}) => fetch(`http://127.0.0.1:${server.address().port}${route}`, {redirect: 'manual', ...options});
+  t.after(() => new Promise(resolve => {
+    server.closeIdleConnections?.();
+    server.closeAllConnections?.();
+    server.close(resolve);
+  }));
+  const port = server.address().port;
+  return (route = '/api/download', options = {}) => new Promise((resolve, reject) => {
+    const headers = { connection: 'close', ...(options.headers || {}) };
+    const req = http.request({
+      host: '127.0.0.1',
+      port,
+      path: route,
+      method: options.method || 'GET',
+      headers,
+      agent: false
+    }, res => {
+      const chunks = [];
+      res.on('data', chunk => chunks.push(chunk));
+      res.on('end', () => {
+        const body = Buffer.concat(chunks).toString('utf8');
+        resolve({
+          status: res.statusCode,
+          headers: {
+            get: name => res.headers[name.toLowerCase()] ?? null
+          },
+          text: async () => body
+        });
+      });
+    });
+    req.on('error', reject);
+    if (options.body) req.write(options.body);
+    req.end();
+  });
 }
 
 test('P21-DOWNLOAD-01 browser device detection handles mobile, desktop and iPadOS desktop Safari', async () => {

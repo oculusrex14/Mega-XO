@@ -65,6 +65,7 @@
 const crypto = require('node:crypto');
 const D = require('../domain/index.js');
 const policy = require('../domain/account-policy.js');
+const { publicSessionId: sessionId } = require('../domain/session-id.js');
 const { ContextError } = require('../db/context');
 const { verifyRuntimeSchema } = require('../db/pg/readiness');
 const { createPgUnitOfWork } = require('../db/pg/uow');
@@ -105,16 +106,6 @@ const DELETION_RETAINED = Object.freeze(['purchase_replay_records', 'operator_se
 const fail = (code) => { throw Error(code); };
 const json = (value) => JSON.stringify(value);
 const safeInt = (value) => Number.isSafeInteger(value) && value >= 0;
-/* The public session id (source semantics): sha256 of the 43-char base64url digest, hex, first
- * 24 chars. Repository rows carry EITHER representation (list/revokeOthers return the hex
- * column; live reads return base64url), so the input is normalized to base64url first — the
- * same session must yield the same public id from every path. */
-const sessionId = (tokenHash) => {
- const b64 = typeof tokenHash === 'string' && /^[0-9a-f]{64}$/.test(tokenHash)
-  ? Buffer.from(tokenHash, 'hex').toString('base64url')
-  : tokenHash;
- return crypto.createHash('sha256').update(b64).digest('hex').slice(0, 24);
-};
 /* The shared logical-identity advisory locks (packages/db/pg/locks.js). THE canonical auth lock
  * order, applied by every session/identity mutation:
  *   1. the source-bearer LOGICAL key (its sha256, never the raw bearer),
@@ -131,9 +122,6 @@ const lockProviderIdentity = (repositories, provider, subject) => repositories.l
  * interleave a session/identity change: a reset that revokes all sessions cannot miss a session a
  * concurrent login is about to insert, and an unlink cannot race a link. */
 const lockAuth = (repositories, actor) => lockActorIdentity(repositories, actor, 'auth');
-/* The source-bearer logical mutex, taken FIRST by every session-bound mutator (before the actor auth
- * mutex and any session ROW lock). */
-const lockSessionToken = (repositories, token) => repositories.lockIdentity(LOCK_NAMESPACE, ['session', repositories.sessions.hash(token)]);
 /* One logical identity per challenge, so two concurrent OTP verifications/completions of the same
  * challenge serialize (the durable verified/consumed predicates decide the single winner). */
 const lockChallengeIdentity = (repositories, id) => repositories.lockIdentity(LOCK_NAMESPACE, ['challenge', String(id)]);
@@ -191,6 +179,12 @@ async function createAccountService(pool, options = {}) {
   * AFTER the commit (at-least-once; the durable family state stays authoritative) and is optional
   * so this service has no dependency on the refresh factory. */
  const onSessionRevoked = typeof options.onSessionRevoked === 'function' ? options.onSessionRevoked : null;
+ /* Native credentials are service-private handles, never raw session bearers or caller-supplied
+  * actor objects. Every existing token-bound command rechecks their durable authority below. */
+ const nativeCredentials = new WeakMap();
+ const tokenHash = (token) => nativeCredentials.get(token)?.hash || crypto.createHash('sha256').update(token).digest('hex');
+ /* Source-bearer logical mutex, before actor auth and session row locks. */
+ const lockSessionToken = (repositories, token) => repositories.lockIdentity(LOCK_NAMESPACE, ['session', tokenHash(token)]);
  /* P06 presence: a CALLER-OWNED ephemera adapter (packages/services/ephemera.js). This service
   * NEVER constructs, closes or reconfigures it; without one, every presence projection stays the
   * conservative frozen default (hidden) and heartbeat is a no-op. An unavailable adapter yields the
@@ -311,14 +305,28 @@ async function createAccountService(pool, options = {}) {
   if (hits > limit) fail('RATE_LIMITED');
  };
  const sessionOf = async (repositories, token) => {
-  if (typeof token !== 'string' || token.length === 0 || token.length > 128) return null;
-  const row = await repositories.sessions.live(repositories.sessions.hash(token), clock());
-  if (!row) return null;
+  const native = nativeCredentials.get(token);
+  let row;
+  if (native) {
+   const { claims, platform } = native;
+   const seconds = Math.floor(clock() / 1000);
+   if (claims.exp <= seconds || claims.nbf > seconds) return null;
+   const match = (await repositories.sessions.list(claims.sub, clock())).find((s) => sessionId(s.hash) === claims.sid);
+   if (!match || !(await repositories.sessions.nativeState(claims.sub, claims.sid, claims.gen, platform, clock()))) return null;
+   row = await repositories.sessions.live(match.hash, clock());
+   if (!row || row.actor !== claims.sub) return null;
+   native.hash = row.token;
+  } else {
+   if (typeof token !== 'string' || token.length === 0 || token.length > 128) return null;
+   row = await repositories.sessions.live(repositories.sessions.hash(token), clock());
+   if (!row) return null;
+  }
   if (row.actor) {
    const account = await repositories.accounts.for(row.actor);
    if (!account || account.suspended || account.hold || !account.verified) return null;
   }
-  return { hash: row.token, actor: row.actor, csrf: row.csrf, expires: row.expires, authAt: row.auth_at };
+  return { hash: row.token, actor: row.actor, csrf: row.csrf, expires: row.expires,
+   authAt: native ? Math.min(row.auth_at, native.claims.ath * 1000) : row.auth_at };
  };
  /* The read-only session guard used by every session-bound method. The session is AWAITED before
   * the AUTH_REQUIRED rejection: `sessionOf(...) || fail(...)` would test a Promise (always truthy)
@@ -543,25 +551,17 @@ async function createAccountService(pool, options = {}) {
   if (linked && !source.actor) fail('LINK_ACCOUNT_REQUIRED');
   if (keyed) await lockSessionToken(repositories, token);
   else if (source.actor) await lockAuth(repositories, source.actor);
-  const live = await repositories.sessions.live(repositories.sessions.hash(token), clock());
+  const live = await sessionOf(repositories, token);
   if (!live) fail('AUTH_REQUIRED');
-  if (live.actor) {
-   const account = await repositories.accounts.for(live.actor);
-   if (!account || account.suspended || account.hold || !account.verified) fail('AUTH_REQUIRED');
-  }
   if (linked && !live.actor) fail('LINK_ACCOUNT_REQUIRED');
-  return { hash: live.token, actor: live.actor, csrf: live.csrf, expires: live.expires, authAt: live.auth_at };
+  return live;
  };
  /* The read-only live-bearer projection for a method that must re-read the bearer AFTER waiting (e.g.
   * deletion): same rejection semantics, no lock. */
  const liveSession = async (repositories, token) => {
-  const live = await repositories.sessions.live(repositories.sessions.hash(token), clock());
+  const live = await sessionOf(repositories, token);
   if (!live) fail('AUTH_REQUIRED');
-  if (live.actor) {
-   const account = await repositories.accounts.for(live.actor);
-   if (!account || account.suspended || account.hold || !account.verified) fail('AUTH_REQUIRED');
-  }
-  return { hash: live.token, actor: live.actor, csrf: live.csrf, expires: live.expires, authAt: live.auth_at };
+  return live;
  };
  /* Create + deliver a one-time challenge. `delivery` is returned for the mail outbox; an unknown
   * address gets none (no account-existence side channel).
@@ -690,6 +690,44 @@ async function createAccountService(pool, options = {}) {
   },
   async requireLinked(token) {
    return run((repositories) => linkedRow(repositories, token));
+  },
+  async accessBinding(token) {
+   return run(async (repositories) => {
+    const session = await linkedRow(repositories, token);
+    const generation = await repositories.sessions.accessGeneration(session.actor);
+    const native = nativeCredentials.get(token);
+    if (native && native.claims.gen !== generation) fail('AUTH_REQUIRED');
+    return {
+     actor: session.actor, sessionId: sessionId(session.hash), generation,
+     connectionClass: native ? native.platform : 'browser',
+    };
+   });
+  },
+  async authenticateNative(token, { access, nativeAudiences = ['mega-ios', 'mega-android'] } = {}) {
+   try {
+    if (!access || typeof access.verify !== 'function' || typeof token !== 'string' || token.length > 4096) fail('AUTH_REQUIRED');
+    /* Decode ONLY to select the allowlisted audience for ONE P05 signature verification.
+     * No decoded claim grants authority; the verified minimal player claims do. */
+    const hint = JSON.parse(Buffer.from(token.split('.')[1] || '', 'base64url').toString('utf8'));
+    const platforms = { 'mega-ios': 'ios', 'mega-android': 'android' };
+    if (!Array.isArray(nativeAudiences) || !nativeAudiences.includes(hint.aud) || !Object.hasOwn(platforms, hint.aud)) fail('AUTH_REQUIRED');
+    const claims = await access.verify(token, { audience: hint.aud });
+    const keys = ['iss', 'aud', 'sub', 'sid', 'gen', 'amr', 'ath', 'iat', 'nbf', 'exp', 'jti'];
+    if (!claims || Object.keys(claims).length !== keys.length || !keys.every((key) => Object.hasOwn(claims, key))
+     || claims.aud !== hint.aud || typeof claims.sub !== 'string' || !claims.sub
+     || typeof claims.sid !== 'string' || !/^[a-f0-9]{24}$/.test(claims.sid)
+     || !Number.isSafeInteger(claims.gen) || claims.gen < 1
+     || !Array.isArray(claims.amr) || claims.amr.length === 0 || !claims.amr.every((method) => ['pwd', 'otp', 'google', 'apple'].includes(method))
+     || !['ath', 'iat', 'nbf', 'exp'].every((key) => Number.isSafeInteger(claims[key]) && claims[key] >= 0)
+     || claims.ath > claims.iat || claims.iat > Math.floor(clock() / 1000)
+     || typeof claims.jti !== 'string' || !claims.jti) fail('AUTH_REQUIRED');
+    const credential = Object.freeze({});
+    nativeCredentials.set(credential, { claims: Object.freeze({ ...claims }), platform: platforms[claims.aud], hash: null });
+    await service.requireLinked(credential);
+    return credential;
+   } catch {
+    fail('AUTH_REQUIRED');
+   }
   },
   async csrf(token, provided) {
    return run(async (repositories) => {
@@ -1221,7 +1259,7 @@ async function createAccountService(pool, options = {}) {
     if (!source) fail('AUTH_REQUIRED');
     if (source.actor) fail('ALREADY_LINKED');
     await lockAuth(repositories, known.actor);
-    const live = await repositories.sessions.live(repositories.sessions.hash(token), clock());
+    const live = await repositories.sessions.live(tokenHash(token), clock());
     if (!live) fail('AUTH_REQUIRED');
     if (live.actor) fail('ALREADY_LINKED');
     await rate(repositories, live.token, 'email-continue', 10, 300);

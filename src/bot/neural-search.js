@@ -12,7 +12,7 @@ async function choose(state,{infer,signal,seed=0,budgetMs=1500,simulations=256,m
  const result=move=>{diagnostics.elapsedMs=clock()-start;return {move:C.assertMove(state,move),gameId,revision,diagnostics};};
  if(roots[0].win)return result(roots[Math.floor(rng()*roots.length)].move);
  const node=(s,prior=1,move=null)=>({state:s,prior,move,visits:0,total:0,children:null,cachedValue:null,tie:rng()}),root=node(state);
- async function expand(n,choices){if(n.state.winner)return E.value(n.state.winner,n.state.turn);const evaluated=await infer(n.state,{signal});check();if(!Number.isFinite(evaluated.value)||Math.abs(evaluated.value)>1.0001)throw Error('INVALID_NEURAL_VALUE');const encoding=E.encode(n.state),policy=E.maskedPolicy(evaluated.logits,encoding.mask),rows=choices||critical(n.state);const total=rows.reduce((sum,r)=>sum+policy[r.move.b*9+r.move.c],0);
+ async function expand(n,choices){if(n.state.winner)return E.value(n.state.winner,n.state.turn);const evaluated=await infer(n.state,{signal});check();if(!evaluated||!evaluated.logits||evaluated.logits.length!==81||!Number.isFinite(evaluated.value)||Math.abs(evaluated.value)>1.0001)throw Error('INVALID_NEURAL_VALUE');const encoding=E.encode(n.state),policy=E.maskedPolicy(evaluated.logits,encoding.mask),rows=choices||critical(n.state);const total=rows.reduce((sum,r)=>sum+policy[r.move.b*9+r.move.c],0);
   n.cachedValue=policyOnly?Math.tanh(G.evaluate(n.state,n.state.turn)/600):evaluated.value;
   if(diagnostics.nodes+rows.length<=nodeCap){n.children=rows.map(row=>node(row.next,total?policy[row.move.b*9+row.move.c]/total:1/rows.length,row.move));diagnostics.nodes+=rows.length;}
   return n.cachedValue;

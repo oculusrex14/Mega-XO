@@ -92,6 +92,7 @@ const FIXTURES = Object.freeze({
   illegal: ['svc_p08c13', 'svc_p08c14'],
   resign: ['svc_p08c15', 'svc_p08c16'],
   teardown: ['svc_p08c17', 'svc_p08c18'],
+  logout: ['svc_p08c19', 'svc_p08c20'],
 });
 const SEEDS = Object.values(FIXTURES).flat()
   .map((actor) => ({ actor, coins: 1000, crowns: 100, rating: 1500, games: 30, stats: 'friends' }));
@@ -182,10 +183,11 @@ async function playMatch(h, id, playerA, playerB, { move = false } = {}) {
   return view;
 }
 
-const binding = (extra = {}) => ({
-  actor: 'svc_p08c01', sessionId: 'a'.repeat(24), generation: 1,
-  connectionClass: 'game', matchScope: null, ipHash: null, ...extra,
-});
+async function binding(h, extra = {}) {
+  const actor = extra.actor || FIXTURES.move[0];
+  const b = await lab.sessionBindingFor(h.database, actor, { now: () => clock, connectionClass: extra.connectionClass || 'game' });
+  return { ...b, matchScope: null, ipHash: null, ...extra };
+}
 /* The independent Core oracle for a match DTO: no transport is involved. */
 const oracle = (h, actor, matchId) => h.core.readMatch(actor, matchId);
 
@@ -200,6 +202,7 @@ async function serve(h, t) {
   const port = server.address().port;
   const transport = loadTransportFactory()({
     server, pool: h.pools.core, core: h.core, ephemera: h.ephemera, now: () => clock,
+    environment: 'stg', audience: 'mega-core',
   });
   assert.equal(transport.ingressPath, INGRESS, 'the transport answers exactly the staged ingress');
 
@@ -281,18 +284,19 @@ const commandResign = (matchId, key, revision) => ({
 /* Redeem one one-use ticket scoped to the match, then (by default) subscribe: the returned snapshot
  * is the committed document the subscription answered with. */
 async function connect(h, s, actor, matchId, { subscribe = true } = {}) {
-  const { ticket } = await h.issuer.issue(binding({ actor, sessionId: `${actor}:${matchId}`, matchScope: matchId }));
+  const b = await lab.sessionBindingFor(h.database, actor, { now: () => clock, connectionClass: 'game' });
+  const { ticket } = await h.issuer.issue({ ...b, matchScope: matchId, ipHash: null });
   const client = wsClient(s.url(INGRESS));
   await client.open();
   client.send(redeemFrame(ticket));
   assert.deepEqual(await client.next(), { protocol: PROTOCOL, operation: 'ack', match_id: matchId, ack_revision: 0 },
     'the redeemed ticket binds the connection to its actor and match scope');
-  if (!subscribe) return { client, snapshot: null };
+  if (!subscribe) return { client, snapshot: null, binding: b };
   client.send(subscribeFrame(matchId));
   const snapshot = await client.next();
   assert.equal(snapshot.operation, 'snapshot', 'the subscription answers with the committed snapshot');
   assert.equal(snapshot.match_id, matchId);
-  return { client, snapshot };
+  return { client, snapshot, binding: b };
 }
 
 const closeAll = async (clients) => {
@@ -727,6 +731,74 @@ test('V5-08-02 commands: close() drains a commanding match, releases every advis
   assert.equal(s.server.listenerCount('upgrade'), 0, 'the transport removed its upgrade listener');
   assert.equal(s.transport.stats().closed, true, 'the transport reports itself closed');
   await s.close();
+});
+
+/* ======================================================= 9. logged-out socket command zero-commit */
+
+test('V5-08-02 commands: a logged-out socket cannot commit another command through actual Core', { skip: GATE }, async (t) => {
+  const h = await session(t);
+  if (!h) return;
+  const s = await serve(h, t);
+
+  const matchId = 'match:p08c-logout';
+  const created = await playMatch(h, matchId, ...FIXTURES.logout);
+  const mover = created.symbols.X;
+  const opponent = created.symbols.O;
+
+  // Issue session for mover using real accounts service
+  const accounts = await lab.accountsFor(h.database, { clock: () => clock });
+  const issued = await accounts.issue(mover, clock);
+  const moverBinding = await accounts.accessBinding(issued.token);
+  const { ticket: moverTicket } = await h.issuer.issue({
+    actor: moverBinding.actor,
+    sessionId: moverBinding.sessionId,
+    generation: Number(moverBinding.generation),
+    connectionClass: 'game',
+    matchScope: matchId,
+    ipHash: null,
+  });
+
+  const moverClient = wsClient(s.url(INGRESS));
+  await moverClient.open();
+  moverClient.send(redeemFrame(moverTicket));
+  assert.deepEqual(await moverClient.next(), { protocol: PROTOCOL, operation: 'ack', match_id: matchId, ack_revision: 0 });
+  moverClient.send(subscribeFrame(matchId));
+  const moverSnap = await moverClient.next();
+  assert.equal(moverSnap.operation, 'snapshot');
+
+  // Opponent connects normally
+  const opponentSeat = await connect(h, s, opponent, matchId);
+
+  // Baseline database state
+  const revBefore = await revisionOf(h, matchId);
+  const stateBefore = await stateOf(h, matchId);
+  const moveOutcomesBefore = await moveOutcomes(h, matchId);
+
+  // Perform durable accounts.logout on mover's session
+  await accounts.logout(issued.token);
+  await accounts.close();
+
+  // Mover attempts to send a command after logout
+  const key = `move:${matchId}:logout-attempt`;
+  moverClient.send(commandMove(matchId, key, moverSnap.expected_revision, { b: 0, c: 0 }));
+
+  // Refusal must be SESSION_REVOKED and socket must close 1008
+  const error = await moverClient.next();
+  assert.deepEqual(error, { protocol: PROTOCOL, operation: 'error', code: 'SESSION_REVOKED' });
+  const closed = await moverClient.waitClose();
+  assert.equal(closed.code, 1008, 'logged-out socket is closed with policy 1008');
+
+  // Zero commits in actual Core / PostgreSQL
+  assert.equal(await revisionOf(h, matchId), revBefore, 'revision never advanced');
+  assert.deepEqual(await stateOf(h, matchId), stateBefore, 'match state is unchanged');
+  assert.equal(await moveOutcomes(h, matchId), moveOutcomesBefore, 'no move outcome written');
+  assert.equal(await outcomesOf(h, mover, key), 0, 'zero command outcome rows written');
+  assert.equal(await outboxOf(h, key), 0, 'zero outbox rows written');
+
+  // Opponent received no broadcast
+  assert.equal(await opponentSeat.client.idle(400), true, 'opponent received no broadcast');
+
+  await closeAll([opponentSeat.client]);
 });
 
 /* ------------------------------------------------ shared-session teardown ----- */

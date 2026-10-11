@@ -41,16 +41,10 @@ async function rows(db, text, params = []) {
  try { return (await c.query(text, params)).rows; } finally { await c.end(); }
 }
 
-/* A directly inserted live session row; its public session id IS the stored sha256 hex of the
- * bearer (the same value core.actor_access_state exposes, design B3.1/C3). */
+/* A real accounts-issued live session; its public session id is the canonical 24 hex chars. */
 async function makeSession(db, actor, at) {
- const bearer = crypto.randomBytes(32).toString('base64url');
- const c = await lab.adminClient(db);
- try {
-  await c.query('INSERT INTO identity.sessions (token_hash, actor_id, csrf, created_at, expires_at, auth_at) VALUES ($1, $2, $3, $4, $5, $6)',
-   [HEX(bearer), actor, crypto.randomBytes(24).toString('base64url'), new Date(at).toISOString(), new Date(at + 14 * lab.DAY).toISOString(), new Date(at).toISOString()]);
- } finally { await c.end(); }
- return HEX(bearer);
+ const binding = await lab.sessionBindingFor(db, actor, { now: () => at });
+ return binding.sessionId;
 }
 
 /* A service whose only Core-owned effect (the access mint) is a genuine awaited callback, plus a

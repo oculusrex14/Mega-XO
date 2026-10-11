@@ -1,0 +1,49 @@
+{
+  "schemaVersion": 1,
+  "taskId": "B07.08",
+  "title": "Moderated New-User Study: Unprompted Next-Board Routing Comprehension",
+  "targetAcceptanceCriteria": {
+    "minimumParticipantCohort": 20,
+    "targetUnpromptedComprehensionRatePct": 80,
+    "evaluationWindowTurns": 5,
+    "prerequisiteStatus": "BLOCKED",
+    "prerequisiteBlocker": "No human participants recruited or tested; actual user comprehension cannot be fabricated."
+  },
+  "taskDesign": {
+    "objective": "Determine whether novice players deduce the Ultimate Tic-Tac-Toe routing rule (the cell selected in the local mini-board determines the active mini-board for the opponent's subsequent turn) without explicit coaching or hints.",
+    "targetRule": "Move at (b, c) forces the opponent's next move to mini-board c, provided mini-board c is open and undecided.",
+    "rubric": {
+      "perfect": {
+        "score": 1.0,
+        "description": "Participant unpromptedly selects and executes legal move in the dictated active mini-board on first interaction without guidance."
+      },
+      "partial": {
+        "score": 0.5,
+        "description": "Participant initially taps a disabled mini-board, observes UI constraint indicator (active border highlight / subtle shake), and immediately selects the correct board without verbal intervention."
+      },
+      "failure": {
+        "score": 0.0,
+        "description": "Participant expresses confusion, requires facilitator explanation, or relies on tutorial hint/continue button."
+      }
+    }
+  },
+  "setupInstructions": {
+    "facilitatorScript": "Welcome. Today you will be trying Mega XO. Your goal is to align three mini-boards in a row to win the overall match. Please take your first five moves against the computer opponent as you would normally play.",
+    "deviceConfiguration": "Native iOS WKWebView or Android WebView test build running on reference hardware, initialized in clean state (no prior local storage or cached saves).",
+    "moderatorRole": "Strictly observational. Do not offer unsolicited tips, point at active boards, or explain the destination rule during the 5-move evaluation window."
+  },
+  "privacyAndEthics": {
+    "piiCollected": false,
+    "piiGuarantee": "Zero participant names, emails, biometrics, camera recordings, or device serials are recorded or transmitted.",
+    "anonymization": "Participants assigned randomized tokens (e.g., P-01 through P-20).",
+    "dataRetention": "Anonymized scoring tallies stored locally; no telemetry sent to third parties.",
+    "voluntaryParticipation": "Participants may withdraw at any time without penalty."
+  },
+  "currentStatusLedger": {
+    "status": "BLOCKED",
+    "completedSessions": 0,
+    "recordedParticipants": 0,
+    "measuredScore": null,
+    "conclusion": "UNMET_PREREQUISITE: Requires real human participant recruitment and moderated evaluation sessions. Preparation does not mark task done."
+  }
+}

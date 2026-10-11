@@ -381,12 +381,15 @@ test('P06 loss: with an unreachable adapter the durable credential-attempt and 6
     /* (b) The durable 60s ticket-issuance admission (tickets.IP_ISSUE_MAX per ipHash per window) is
      * unaffected by the lost Redis: the approved cap is reached, then the next issuance is refused. */
     const ipHash = crypto.createHash('sha256').update('p06-loss-ip').digest('hex');
+    let firstBinding = null;
     for (const actor of ticketActors) {
-      const issued = await issuer.issue({ actor, sessionId: 'loss-ticket-session', generation: 1, connectionClass: 'game', ipHash });
+      const binding = await lab.sessionBindingFor(database, actor, { now: () => lab.CLOCK, connectionClass: 'game' });
+      if (!firstBinding) firstBinding = binding;
+      const issued = await issuer.issue({ actor, sessionId: binding.sessionId, generation: binding.generation, connectionClass: binding.connectionClass, ipHash });
       assert.ok(issued.ticket && issued.expiresAt > lab.CLOCK, 'each in-budget issuance is a real durable ticket');
     }
     await lab.throwsCode(
-      issuer.issue({ actor: ticketActors[0], sessionId: 'loss-ticket-session', generation: 1, connectionClass: 'game', ipHash }),
+      issuer.issue({ actor: ticketActors[0], sessionId: firstBinding.sessionId, generation: firstBinding.generation, connectionClass: firstBinding.connectionClass, ipHash }),
       'TICKET_LIMIT');
     assert.equal(Number(await lab.scalar(database, 'SELECT count(*)::int FROM identity.realtime_tickets WHERE issued_ip_hash = $1', [ipHash])), tickets.IP_ISSUE_MAX, 'the durable issuance count is exactly the approved admission cap');
   } finally {

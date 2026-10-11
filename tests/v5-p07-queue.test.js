@@ -37,6 +37,9 @@
  */
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const http = require('node:http');
+const { createApiHandler } = require('../apps/api/index.js');
+const { createCoreGateway, createCoreServiceIngress, signRequest } = require('../packages/services/core-gateway.js');
 
 const lab = require('./v5-pg-lab.js');
 const { createEphemeraService } = require('../packages/services/ephemera.js');
@@ -524,4 +527,105 @@ test('P07 co-dev regression: PostgreSQL hydration failure releases every owned c
   for (const candidate of reclaimed) assert.equal(await queue.releaseClaim({
     mode: 'ranked', actor: candidate.actor, claimId: candidate.claimId, requeue: true,
   }), true);
+});
+
+test('P21 HTTP queue admission and cancellation preserve actor authority and durable matching', { skip: GATE }, async (t) => {
+  const h = await harness(t, { keyVersion: 'qp21http' });
+  if (!h) return;
+  const accounts = await lab.accountsFor(h.database);
+  t.after(() => accounts.close());
+  const secret = 'p21-owned-http-queue-signing-secret';
+  const ingress = http.createServer(createCoreServiceIngress({ coreService: h.core, queue: h.queue, secret }));
+  await new Promise((resolve) => ingress.listen(0, '127.0.0.1', resolve));
+  t.after(() => new Promise((resolve) => { ingress.closeAllConnections(); ingress.close(resolve); }));
+  const coreUrl = `http://127.0.0.1:${ingress.address().port}`;
+  const gateway = createCoreGateway({ coreUrl, secret });
+  // No queue or Core-role credentials reach the API; its factory supplies the
+  // remote adapter and only the Core ingress owns the actual queue service.
+  const handler = createApiHandler({ pool: h.pools.api, accounts, coreGateway: gateway, allowedOrigins: ['https://megaxo.online'] });
+  const server = http.createServer(handler);
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  t.after(() => new Promise((resolve) => { server.closeAllConnections(); server.close(resolve); }));
+  const base = `http://127.0.0.1:${server.address().port}`;
+  const alice = await accounts.issue('svc_alice', Date.now());
+  const bob = await accounts.issue('svc_bob', Date.now());
+  const signedBody = JSON.stringify({ actor: 'svc_alice', opKey: 'body-key-ignored',
+    command: { mode: 'casual', actor: 'svc_bob', scope: 'matchmaker', a: 'svc_bob', b: 'svc_carol' } });
+  const timestamp = String(Date.now());
+  const signedPath = '/ingress/queue/join';
+  const signature = signRequest({ secret, timestamp, method: 'POST', path: signedPath,
+    actor: 'svc_alice', opKey: 'header-authority', bodyString: signedBody });
+  const serviceHeaders = { 'Content-Type': 'application/json', 'x-service-timestamp': timestamp,
+    'x-service-actor': 'svc_alice', 'x-service-opkey': 'header-authority', 'x-service-signature': signature };
+  for (const [route, headers, body] of [
+    ['/ingress/queue/cancel', serviceHeaders, signedBody],
+    [signedPath, { ...serviceHeaders, 'x-service-actor': 'svc_bob' }, signedBody],
+    [signedPath, { ...serviceHeaders, 'x-service-opkey': 'tampered-key' }, signedBody],
+    [signedPath, serviceHeaders, `${signedBody} `],
+  ]) {
+    const rejected = await fetch(`${coreUrl}${route}`, { method: 'POST', headers, body });
+    assert.equal(rejected.status, 403, 'signed queue path/header/body tampering fails closed');
+  }
+  assert.equal((await index(h.ephemera, 'casual')).length, 0);
+  const admittedSigned = await fetch(`${coreUrl}${signedPath}`, {
+    method: 'POST', headers: serviceHeaders, body: signedBody,
+  });
+  assert.equal(admittedSigned.status, 200);
+  const signedResult = (await admittedSigned.json()).result;
+  assert.equal(signedResult.state, 'searching');
+  assert.deepEqual(await index(h.ephemera, 'casual'), ['svc_alice'],
+    'verified header actor wins over privileged body fields');
+  assert.deepEqual(await gateway.join({ actor: 'svc_alice', opKey: 'header-authority', mode: 'ranked' }),
+    signedResult, 'verified header operation key owns the replay');
+  assert.equal((await gateway.cancel({ actor: 'svc_alice', opKey: 'signed-cleanup' })).state, 'cancelled');
+  const request = async (session, route, opKey, body, method = 'POST') => {
+    const response = await fetch(`${base}${route}`, {
+      method,
+      headers: {
+        Cookie: `mega_dev_session=${session.token}`, 'X-CSRF-Token': session.csrf,
+        Origin: 'https://megaxo.online', 'Content-Type': 'application/json',
+        ...(opKey ? { 'Idempotency-Key': opKey } : {}),
+      },
+      ...(method === 'POST' ? { body: JSON.stringify(body) } : {}),
+    });
+    return { status: response.status, data: await response.json() };
+  };
+  const admission = { mode: 'casual', region: 'us-east', latencyMs: 30,
+    actor: 'svc_carol', a: 'svc_bob', b: 'svc_carol', scope: 'matchmaker',
+    command: { type: 'queue', a: 'svc_bob', b: 'svc_carol' } };
+  const forged = await request({ token: 'forged-session', csrf: 'forged-csrf' }, '/api/v1/queue', 'http-forged', admission);
+  assert.equal(forged.status, 401);
+  const first = await request(alice, '/api/v1/queue', 'http-join-a', admission);
+  assert.equal(first.status, 200);
+  assert.equal(first.data.state, 'searching');
+  assert.deepEqual(await request(alice, '/api/v1/queue', 'http-join-a', admission), first);
+  const searchingStatus = await request(alice, '/api/v1/queue', null, null, 'GET');
+  assert.equal(searchingStatus.status, 200);
+  assert.equal(searchingStatus.data.state, 'searching', 'polling reads actual Core-owned ephemeral intent');
+  assert.equal(searchingStatus.data.joinedAt, first.data.joinedAt);
+  assert.deepEqual(await index(h.ephemera, 'casual'), ['svc_alice']);
+  assert.equal(Number(await lab.scalar(h.database, 'SELECT count(*) FROM match.matches')), 0,
+    'public admission never pairs players');
+  const otherCancel = await request(bob, '/api/v1/cancel-queue', 'http-cancel-other', { actor: 'svc_alice' });
+  assert.equal(otherCancel.status, 200);
+  assert.equal(otherCancel.data.state, 'idle');
+  assert.deepEqual(await index(h.ephemera, 'casual'), ['svc_alice'],
+    'body actor cannot cancel another authenticated player intent');
+  const cancelled = await request(alice, '/api/v1/cancel-queue', 'http-cancel-a', { actor: 'svc_bob' });
+  assert.equal(cancelled.status, 200);
+  assert.equal(cancelled.data.state, 'cancelled');
+  assert.deepEqual(await request(alice, '/api/v1/cancel-queue', 'http-cancel-a', {}), cancelled);
+  assert.equal((await index(h.ephemera, 'casual')).length, 0);
+  assert.equal((await request(alice, '/api/v1/queue', null, admission)).status, 400);
+  assert.equal((await request(alice, '/api/v1/queue', 'http-invalid', { mode: 'operator' })).status, 409);
+  assert.equal((await request(alice, '/api/v1/queue', 'http-rejoin-a', admission)).status, 200);
+  assert.equal((await request(bob, '/api/v1/queue', 'http-join-b', { mode: 'casual', region: 'us-east', latencyMs: 30 })).status, 200);
+  await h.queue.matchTick({ mode: 'casual', matcherId: 'http-test-matcher' });
+  const statusA = await request(alice, '/api/v1/queue', null, null, 'GET');
+  const statusB = await request(bob, '/api/v1/queue', null, null, 'GET');
+  assert.equal(statusA.data.state, 'matched');
+  assert.equal(statusB.data.matchId, statusA.data.matchId);
+  await h.queue.matchTick({ mode: 'casual', matcherId: 'http-test-matcher' });
+  assert.equal(Number(await lab.scalar(h.database, 'SELECT count(*) FROM match.matches')), 1,
+    'real matchmaker creates exactly one durable assignment');
 });

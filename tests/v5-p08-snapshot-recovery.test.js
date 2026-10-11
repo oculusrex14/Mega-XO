@@ -181,11 +181,11 @@ async function issue(h, request) {
   return h.issuer.issue(request);
 }
 
-const sessionIdFor = (actor, matchId) => crypto.createHash('sha256').update(`${actor}:${matchId}`).digest('hex').slice(0, 24);
-const binding = (extra = {}) => ({
-  actor: 'svc_p08r01', sessionId: 'a'.repeat(24), generation: 1,
-  connectionClass: 'game', matchScope: null, ipHash: null, ...extra,
-});
+async function binding(h, extra = {}) {
+  const actor = extra.actor || 'svc_p08r01';
+  const b = await lab.sessionBindingFor(h.database, actor, { now: () => clock, connectionClass: extra.connectionClass || 'game' });
+  return { ...b, matchScope: null, ipHash: null, ...extra };
+}
 /* The independent Core oracle for a match DTO: no transport is involved. */
 const oracle = (h, actor, matchId) => h.core.readMatch(actor, matchId);
 
@@ -225,6 +225,7 @@ async function serve(h, t) {
   const beforeRequest = server.listenerCount('request');
   const transport = loadTransportFactory()({
     server, pool: h.pools.core, core: h.core, ephemera: h.ephemera, now: () => clock,
+    environment: 'stg', audience: 'mega-core',
     authenticateHttp: async (req) => {
       const actor = httpTokens.get(req.headers.authorization);
       return actor ? { actor } : null;
@@ -343,7 +344,8 @@ const resumeFrame = (matchId, ackRevision) => ({ protocol: PROTOCOL, operation: 
  * be confused with a match `ack`). The connection is left UNSUBSCRIPTED: `resume` must therefore
  * prove membership itself, which is exactly the path under test. */
 async function connect(h, s, actor, matchId) {
-  const { ticket } = await issue(h, binding({ actor, sessionId: sessionIdFor(actor, matchId), matchScope: null }));
+  const b = await lab.sessionBindingFor(h.database, actor, { now: () => clock, connectionClass: 'game' });
+  const { ticket } = await issue(h, { ...b, matchScope: null, ipHash: null });
   const client = wsClient(s.url(INGRESS));
   await client.open();
   client.send(redeemFrame(ticket));

@@ -426,6 +426,28 @@ class Operator:
         entry.update({"status": status, "at": now_iso(), **extra})
         self._write_state()
 
+    def _clear_partial_outputs(self, outputs: list[Path]) -> None:
+        """Remove partial artifacts (and their `.manifest.json` siblings) left by a crashed stage.
+        Only called for a stage that is NOT complete. Files that are recorded artifacts of ANY completed
+        stage are PROTECTED: several stages legitimately share an output (e.g. DATA_VALIDATED validates
+        the same shard GENERATING wrote), and clearing it would destroy a verified immutable input."""
+        protected = set()
+        for entry in self.state.get("stages", {}).values():
+            if entry.get("status") == "complete":
+                for item in (entry.get("artifacts") or {}).values():
+                    base = str((self.root / item["path"]).resolve())
+                    protected.add(base)
+                    protected.add(base + ".manifest.json")
+        candidates = list(outputs) + [p.with_suffix(p.suffix + ".manifest.json") for p in outputs]
+        for path in candidates:
+            if str(path.resolve()) in protected:
+                continue
+            try:
+                if path.exists():
+                    path.unlink()
+            except OSError:
+                pass
+
     def _stage_outputs_intact(self, stage: str, outputs: list[Path]) -> bool:
         """A completed stage is skippable ONLY if every recorded output still exists at its recorded
         size and SHA-256. The earlier code skipped purely on `p.exists()`, so a tampered output was
@@ -464,6 +486,12 @@ class Operator:
         self._transition(stage, stage)
         self.state["attempts"][stage] = self.state["attempts"].get(stage, 0) + 1
         self._write_state()
+        # A stage that is NOT complete has no immutable output to protect: any file it left behind is a
+        # PARTIAL artifact from a crash (the generators refuse to overwrite with O_EXCL, so a partial
+        # shard would otherwise make resume fail forever). Remove the declared outputs and their
+        # manifests BEFORE re-running; a COMPLETE+intact stage already returned above, so a verified
+        # immutable output is never touched here.
+        self._clear_partial_outputs(outputs)
         result = self._child_process(argv)
         if result.returncode != 0:
             status = "PAUSED" if self._stopping else self._classify_failure(result)

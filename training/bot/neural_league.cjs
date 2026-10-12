@@ -487,6 +487,7 @@ module.exports = {
   generateHoldoutOpenings,
   buildEngines,
   runLeaguePair,
+  createOnnxInfer,
 };
 
 if (require.main === module) {

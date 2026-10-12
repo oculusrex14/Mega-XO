@@ -162,7 +162,12 @@ function generate({ output, games = 16, seed = 1000, simulations = 32, trainingS
   if (targetSimulations !== null && (!Number.isInteger(targetSimulations) || targetSimulations < 1)) throw Error('INVALID_TARGET_SIMULATIONS');
   if (labelSource !== 'search' && labelSource !== 'expert') throw Error('INVALID_LABEL_SOURCE');
   fs.mkdirSync(path.dirname(output), { recursive: true });
-  const fd = fs.openSync(output, 'wx'), hash = crypto.createHash('sha256'), counts = { train: 0, validation: 0, holdout: 0 }, ids = [];
+  // Write to a temp path and rename into place: a killed run must never leave a PARTIAL file where the
+  // final artifact is expected, and an existing final artifact must fail honestly rather than be
+  // silently overwritten (O_EXCL semantics preserved by the pre-check + atomic rename).
+  if (fs.existsSync(output)) throw Error('OUTPUT_EXISTS');
+  const tmpOutput = output + '.partial';
+  const fd = fs.openSync(tmpOutput, 'w'), hash = crypto.createHash('sha256'), counts = { train: 0, validation: 0, holdout: 0 }, ids = [];
   let records = 0, hardStates = 0;
   try {
     for (let i = 0; i < games; i++) {
@@ -171,6 +176,7 @@ function generate({ output, games = 16, seed = 1000, simulations = 32, trainingS
       for (const row of result.rows) { if (row.hardState) hardStates++; const text = JSON.stringify(row) + '\n'; fs.writeSync(fd, text); hash.update(text); records++; }
     }
   } finally { fs.closeSync(fd); }
+  fs.renameSync(tmpOutput, output);
   const manifest = { schemaVersion: 1, encodingVersion: E.VERSION, rulesSha256: digest(fs.readFileSync('src/game.js')), searchSha256: digest(fs.readFileSync('src/bot/search.js')),
     records, games, seed, simulations, counts, gameIndex: ids, sha256: hash.digest('hex'), trainingStatus,
     perspective: 'value target is terminal outcome for side to move; draw=0',
@@ -188,7 +194,9 @@ async function generateAsync({ output, games = 16, seed = 1000, simulations = 32
   if (targetSimulations !== null && (!Number.isInteger(targetSimulations) || targetSimulations < 1)) throw Error('INVALID_TARGET_SIMULATIONS');
   if (labelSource !== 'search' && labelSource !== 'expert') throw Error('INVALID_LABEL_SOURCE');
   fs.mkdirSync(path.dirname(output), { recursive: true });
-  const fd = fs.openSync(output, 'wx'), hash = crypto.createHash('sha256'), counts = { train: 0, validation: 0, holdout: 0 }, ids = [];
+  if (fs.existsSync(output)) throw Error('OUTPUT_EXISTS');
+  const tmpOutput = output + '.partial';
+  const fd = fs.openSync(tmpOutput, 'w'), hash = crypto.createHash('sha256'), counts = { train: 0, validation: 0, holdout: 0 }, ids = [];
   let records = 0, hardStates = 0;
   try {
     for (let i = 0; i < games; i++) {
@@ -197,6 +205,7 @@ async function generateAsync({ output, games = 16, seed = 1000, simulations = 32
       for (const row of result.rows) { if (row.hardState) hardStates++; const text = JSON.stringify(row) + '\n'; fs.writeSync(fd, text); hash.update(text); records++; }
     }
   } finally { fs.closeSync(fd); }
+  fs.renameSync(tmpOutput, output);
   const manifest = { schemaVersion: 1, encodingVersion: E.VERSION, rulesSha256: digest(fs.readFileSync('src/game.js')), searchSha256: digest(fs.readFileSync('src/bot/search.js')),
     records, games, seed, simulations, counts, gameIndex: ids, sha256: hash.digest('hex'), trainingStatus,
     perspective: 'value target is terminal outcome for side to move; draw=0',

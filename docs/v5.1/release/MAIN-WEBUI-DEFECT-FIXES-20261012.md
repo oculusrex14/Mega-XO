@@ -101,3 +101,38 @@ Proof: budget 20 vs 400 recorded distinctly; permutation invariance true; `tests
 
 WEB-AI-08 two-cycle feedback PROOF and the remaining 08 items; WEB-DOC-01 register repair (R26/R28);
 WebUI re-verification handoff. The gate stays `productionApproved: false`; `APPROVED_CATALOG` untouched.
+
+## WEB-AI-04/08 - two-cycle self-play PROOF and real kill/resume
+
+Real artifact: `training/bot/selfplay.cjs`. Cycle 1 runs neural self-play whose moves come from a FROZEN
+research artifact (the ONNX model dir) through the real PUCT producer (`neural-search.choose` over
+onnxruntime-node). Cycle 2 trains a compact student on cycle 1's shard (`training/bot/train.py` +
+`export.py`) and re-runs self-play USING the resulting artifact.
+
+Chain proof (this host):
+
+| cycle | producer version | model SHA-256 | parent | status |
+| --- | --- | --- | --- | --- |
+| 1 | `onnx-3da3ed0001b077d7` | `3da3ed00…` | - | SELF_PLAY_BOOTSTRAP |
+| 2 | `onnx-7245a9023b91d860` | `7245a902…` | `3da3ed00…` (cycle 1) | SELF_PLAY_FROM_RESEARCH_ARTIFACT |
+
+`CHAIN_LINKED true`: cycle 2's `parentModelSha256` IS cycle 1's model, and its own model differs, so the
+loop genuinely consumed the previous cycle's chosen research artifact.
+
+### Recovery: real kill and resume
+
+Two further defects found and fixed while proving WEB-AI-08:
+
+1. `generate.cjs`/`generateAsync` wrote with `O_EXCL` directly to the final path, so a SIGTERM mid-
+   generation left a PARTIAL shard and `resume` failed with `EEXIST` forever. Now they write to a
+   `*.partial` temp file and `rename` into place (atomic), and refuse to overwrite an existing final
+   artifact (`OUTPUT_EXISTS`).
+2. The operator's own `_clear_partial_outputs` (added for the above) must not remove an artifact that is
+   a RECORDED output of ANY completed stage, because stages legitimately share files
+   (`DATA_VALIDATED` validates the shard `GENERATING` wrote). It now protects those, and their
+   `.manifest.json` siblings.
+
+Kill/resume evidence (SIGTERM ~9 s into a long GENERATING stage; resume with the venv interpreter):
+GENERATING `paused` -> on resume `GENERATING complete`, `DATA_VALIDATED complete`, `TRAINING complete`
+(export then needs the `onnx` module that only the isolated venv provides - a genuine environment
+requirement, reported honestly, not a code fault).

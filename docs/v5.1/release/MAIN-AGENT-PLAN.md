@@ -1,6 +1,6 @@
 # Main-agent V5.1 execution and continuous-learning plan
 
-Issued12 October2026. Work on V5.1 only. Read AGENTS.md and HANDOFF-20261012.md before the historical packs. A companion4572-word downloadable MAIN-AGENT-EXECUTION-PLAN.md expands this repository plan; the executable task contracts below stand independently.
+Issued12 October2026. Work on V5.1 only. Read AGENTS.md and HANDOFF-20261012.md before the historical packs. The [expanded, committed execution plan](MAIN-AGENT-EXECUTION-PLAN-EXPANDED.md) includes the full phased platform/blocker closure and dual-AI continuous-learning contracts. The [complete open-work register](OPEN-WORK-AND-OWNERS.md) maps every unfinished source item to an owner. The executable task contracts below also stand independently.
 
 ## Execution path
 

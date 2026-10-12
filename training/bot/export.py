@@ -15,7 +15,7 @@ def facts(path: Path) -> dict:
     return {'file':path.name,'sha256':hashlib.sha256(raw).hexdigest(),'bytes':len(raw),'gzipBytes':len(gzip.compress(raw,mtime=0))}
 
 def main() -> None:
-    parser=argparse.ArgumentParser();parser.add_argument('candidate',type=Path);parser.add_argument('dataset',type=Path);parser.add_argument('--output',type=Path,required=True);args=parser.parse_args()
+    parser=argparse.ArgumentParser();parser.add_argument('candidate',type=Path);parser.add_argument('dataset',type=Path);parser.add_argument('--output',type=Path,required=True);parser.add_argument('--league',type=Path,default=None,help='measured int8PUCT-vs-policyValuePUCT league report; records the real quantization match-score regression instead of NOT_MEASURED');args=parser.parse_args()
     if args.output.exists(): raise ValueError('OUTPUT_ALREADY_EXISTS')
     report=json.loads((args.candidate/'training-report.json').read_text());checkpoint=args.candidate/'candidate.pt'
     if facts(checkpoint)['sha256']!=report['modelSha256']: raise ValueError('CHECKPOINT_HASH_MISMATCH')
@@ -61,7 +61,25 @@ def main() -> None:
         if not np.isfinite(p).all() or not np.isfinite(v).all(): raise ValueError('NONFINITE_QUANTIZED_OUTPUT')
         quant_changes+=int(np.argmax(np.where(mask,p[0],-1e9))!=np.argmax(np.where(mask,g['policy'],-1e9)));qerror=max(qerror,float(np.max(np.abs(p[0]-np.asarray(g['policy'])))))
     artifacts=[facts(file) for file in (static,dynamic,quant)]
-    result={'schemaVersion':1,'sourceCommit':report['sourceCommit'],'trainingModelSha256':report['modelSha256'],'datasetSha256':manifest['sha256'],'encodingVersion':ENCODING_VERSION,'frozenStates':len(rows),'numericalStatesPurpose':'parity only; includes train/validation/holdout, not a strength benchmark','floatPolicyMaxAbsError':max_policy,'floatValueMaxAbsError':max_value,'floatLegalArgmaxChanges':rank_changes,'dynamicBatches':[1,7],'quantization':{'format':'QDQ signed INT8 per-channel','calibration':'128 training records only','legalArgmaxChanges':quant_changes,'maxPolicyAbsError':qerror,'matchScoreRegression':'NOT_MEASURED'},'artifacts':artifacts,'sizeGate':all(x['gzipBytes']<=5*1024*1024 for x in artifacts),'ortRuntimeBytes':'NOT_INCLUDED_IN_MODEL_SIZE','browserMemory':'NOT_MEASURED','torchVersion':torch.__version__,'onnxVersion':onnx.__version__,'ortVersion':ort.__version__,'deploymentStatus':'UNAPPROVED','strengthGate':'NOT_PASSED','deviceGate':'NOT_PASSED'}
+    # MEASURED quantization match-score regression (WEB-AI-05/R27). When a real int8PUCT-vs-float
+    # league report is supplied, record its actual point score and paired bootstrap instead of the
+    # `NOT_MEASURED` placeholder. The league binds the exported ONNX artifact (candidate.onnx), so that
+    # is what we compare against; a report for a different artifact is refused.
+    match_regression={'status':'NOT_MEASURED'}
+    if args.league and args.league.exists():
+        league=json.loads(args.league.read_text())
+        static_sha=facts(static)['sha256']
+        int8=[m for m in (league.get('matchups') or []) if m.get('engineA')=='int8PUCT' and m.get('engineB')=='policyValuePUCT']
+        if league.get('modelSha256') and league['modelSha256']!=static_sha:
+            raise ValueError('LEAGUE_MODEL_BINDING_MISMATCH')
+        if len(int8)==1:
+            s=int8[0]['summary']
+            interval=s.get('pairBootstrap95')
+            match_regression={'status':'MEASURED','engineA':'int8PUCT','engineB':'policyValuePUCT','boundArtifactSha256':static_sha,
+                              'games':s.get('games'),'pointScore':s.get('pointScore'),'pairBootstrap95':interval,
+                              'nonInferiorityMargin':0.05,
+                              'nonInferiorAt5Points':bool(interval and interval[0]>=0.45)}
+    result={'schemaVersion':1,'sourceCommit':report['sourceCommit'],'trainingModelSha256':report['modelSha256'],'datasetSha256':manifest['sha256'],'encodingVersion':ENCODING_VERSION,'frozenStates':len(rows),'numericalStatesPurpose':'parity only; includes train/validation/holdout, not a strength benchmark','floatPolicyMaxAbsError':max_policy,'floatValueMaxAbsError':max_value,'floatLegalArgmaxChanges':rank_changes,'dynamicBatches':[1,7],'quantization':{'format':'QDQ signed INT8 per-channel','calibration':'128 training records only','legalArgmaxChanges':quant_changes,'maxPolicyAbsError':qerror,'matchScoreRegression':match_regression},'artifacts':artifacts,'sizeGate':all(x['gzipBytes']<=5*1024*1024 for x in artifacts),'ortRuntimeBytes':'NOT_INCLUDED_IN_MODEL_SIZE','browserMemory':'NOT_MEASURED','torchVersion':torch.__version__,'onnxVersion':onnx.__version__,'ortVersion':ort.__version__,'deploymentStatus':'UNAPPROVED','strengthGate':'NOT_PASSED','deviceGate':'NOT_PASSED'}
     (args.output/'export-report.json').write_text(json.dumps(result,indent=2)+'\n');(args.output/'golden.json').write_text(json.dumps(golden)+'\n');print(json.dumps(result,indent=2))
     if not result['sizeGate'] or rank_changes: raise ValueError('FLOAT_PARITY_OR_SIZE_GATE_FAILED')
 if __name__=='__main__':main()

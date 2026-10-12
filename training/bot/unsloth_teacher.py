@@ -67,6 +67,8 @@ def main() -> int:
     ap.add_argument("--model", default="unsloth/Qwen3.5-0.8B")
     ap.add_argument("--output", type=Path, required=True)
     ap.add_argument("--max-steps", type=int, default=120)
+    ap.add_argument("--batch", type=int, default=2)
+    ap.add_argument("--grad-accum", type=int, default=4)
     ap.add_argument("--max-seq-length", type=int, default=2048)
     ap.add_argument("--lr", type=float, default=2e-4)
     ap.add_argument("--rank", type=int, default=16)
@@ -128,9 +130,9 @@ def main() -> int:
             from transformers import TrainingArguments
             trainer = DecisionTrainer(
                 model=model, processing_class=tokenizer, train_dataset=built, eval_dataset=eval_built,
-                args=TrainingArguments(per_device_train_batch_size=2, gradient_accumulation_steps=4, warmup_steps=10,
+                args=TrainingArguments(per_device_train_batch_size=args.batch, gradient_accumulation_steps=args.grad_accum, warmup_steps=10,
                                        max_steps=args.max_steps, learning_rate=args.lr, lr_scheduler_type="cosine",
-                                       weight_decay=0.01, bf16=True, eval_strategy="no", logging_steps=5,
+                                       weight_decay=0.01, bf16=False, fp16=False, eval_strategy="no", logging_steps=5,
                                        output_dir=str(args.output.parent / "trainer"), report_to="none", seed=3407),
             )
             stats = trainer.train()

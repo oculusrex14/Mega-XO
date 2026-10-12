@@ -1,66 +1,77 @@
-# V5.1 isolated staging origin - Codex handoff (2026-10-12)
+# V5.1 isolated staging origin - Codex handoff (2026-10-12, updated)
 
-Main agent. This is the running isolated V5.1 **pre-production** origin, ready for browser/native
+Main agent. This is the running isolated V5.1 **pre-production** origin for browser/native
 acceptance work. It is **not** a production cutover and does not touch live V4.
 
-## What is running
+## What is running (exact facts)
 
 | Fact | Value |
 |---|---|
-| Git commit (deployed source) | `c71a3be` (branch `V5.1`) |
-| Server entrypoint | `scripts/v51/p21-staging-server.cjs` |
-| Process | one Node loopback process (isolated; no Docker, no public 80/443, no V4 containers) |
-| Neon database | `mega_xo_v5_staging` (project `lively-shadow-52629967`, nonserving, 43 migrations applied) |
+| Running build source commit | `f4851a5` (the generated P21 bundle's `source_commit`) |
+| Repository HEAD when this was recorded | `042c913` (branch `V5.1`) |
+| Generated bundle hash | `bundle_sha256 8167f349fb16b303c9347ac544afc3f9c73b9ea5515b0a085a7f40a6d75f3ea3`, 140 files |
+| Server entrypoint | `scripts/v51/p21-staging-server.cjs` (serves the generated bundle, not `apps/web`) |
+| Process | one Node process on the tailnet interface (isolated; no Docker, no public 80/443, no V4) |
+| Neon database | `mega_xo_v5_staging` (project `lively-shadow-52629967`, nonserving, migrations applied) |
 | Redis | Upstash staging, isolated `mx:stg:<keyVersion>:*` namespace |
 | Roles | `api_runtime` (API) and `core_runtime` (Core/queue), separately bound and verified |
 | Outbound providers | email / store notifications / ad rewards all **disabled** (target-file enforced) |
 | Indexing | `X-Robots-Tag: noindex, nofollow` on every response |
 
-## URLs
+## URLs (private, tailnet-reachable - NO public ingress)
 
-- **Website (local):** `http://127.0.0.1:8081/` - serves `apps/web` (the game shell + bot/tutorial).
-- **API (local):** `http://127.0.0.1:8081/api/v1/...` (plus `/auth/*`, `/.well-known/*`, `/realtime/v1`).
-- **Realtime:** `ws://127.0.0.1:8081/realtime/v1` (direct WebSocket; HTTP fallback snapshot paths too).
+- **Website + API + realtime:** `http://100.107.65.122:8081/` (this Mac mini's tailnet IP).
+- **From another tailnet node** (verified from the Oracle host): `/`, `/livez`,
+  `/legacy-game/src/game.js`, `/api/account/session` all `200` with real byte counts.
+- **HTTPS** (`https://naraharikripas-mac-mini.tail95c48c.ts.net`) is possible via `tailscale serve`,
+  but that needs a one-click owner enablement in the Tailscale admin console
+  (`https://login.tailscale.com/f/serve?node=nLo62ZkXpj11CNTRL`). Until then use the http tailnet URL.
 
-This host is a Mac mini on Tailscale. To reach it from another tailnet device (e.g. Codex's browser),
-restart the server bound to the tailnet IP (explicit, never a wildcard):
+Restart (explicit tailnet bind; wildcards refused):
 
 ```sh
 MEGA_V51_STAGING_SERVER=lively-shadow-52629967/mega_xo_v5_staging \
-  node scripts/v51/p21-staging-server.cjs --port 8081 --host <TAILNET_IP> --allow-host <TAILNET_IP>
+  node scripts/v51/p21-staging-server.cjs --port 8081 \
+    --host <TAILNET_IP> --allow-host <TAILNET_IP> \
+    --public-origin https://<host>.<tailnet>.ts.net \
+    --web-build .artifacts/p21-web \
+    --otp-out /Users/oculus/Downloads/Mega-XO-private-evidence/v5-neon-staging/run/staging-otp.jsonl
 ```
 
-Then the origin becomes `http://<TAILNET_IP>:8081/` for any tailnet peer (e.g. the DGX at
-`100.101.152.92`). It is not published on the public internet and has no TLS - treat it as a private
-staging origin.
+Build the bundle first if it is missing: `node scripts/p21/build-web.js --output .artifacts/p21-web`.
 
-## Access instructions
+## Sign-in now works (R15 resolved)
 
-- The website loads immediately at `/`. Anonymous play and the bot/tutorial work with no sign-in.
-- Public reads already work: `GET /api/v1/leaderboard` returns the real signed Core projection.
-- **Sign-in caveat (important, R15):** no HTTP session/email route is mounted yet. The browser calls
-  `POST /api/account/session` (anonymous bootstrap) and `POST /api/account/email` (email OTP), which
-  the **V4 production perimeter** provides and the V5 API does not yet mount. Until that route is
-  added, a browser cannot obtain a session over HTTP, so online play/native sign-in cannot be driven
-  from the website - local tests use the service-issued synthetic sessions instead. This is the exact
-  remaining V5 website↔API composition gap; do not treat the missing route as a service outage.
-- `/.well-known/assetlinks.json` and `/.well-known/apple-app-site-association` are served for native
-  association work.
+The V5 PostgreSQL account routes ARE mounted and verified end-to-end on this origin:
+
+- `GET  /api/account/session` - anonymous bootstrap sets an HttpOnly session cookie and returns
+  `{linked, actorId, csrf, expires, providers}`; an existing caller is not re-issued.
+- `POST /api/account/email` - `{action: continue|verify|forgot|reset|reauth|change}`.
+
+Controlled end-to-end proof on the running origin (`tests/e2e-staging-signin.cjs`, **8/8**):
+anonymous cookie -> `continue` (signup) -> one-time code delivered ONLY out-of-band to the staging
+OTP sink -> `verify` links actor `u_ccb45ebc-daca-4c07-ad20-ead12fc2143f` (tag `MEGA-B26F553B`) ->
+session reports `linked:true, providers.email.linked:true` -> profile readable -> cookie POST without
+Origin `403` -> foreign Origin `403`. The one-time code never appears in any HTTP response.
+
+Reading the code for a manual browser test (staging email is disabled by design): each delivery is
+appended to the `--otp-out` file (mode 0600, outside the repo).
 
 ## Verified on this origin
 
-- Website shell `200` (`mx-web-shell`), `app.js`/`bot-compat.js` `200`.
-- `GET /livez` `200`; unauthenticated `GET /api/v1/queue` `401` (honest); `GET /api/v1/leaderboard`
-  `200` with the real projection; `/operator` `403 PRIVATE_OPERATOR_ROUTE`; path traversal serves the
-  SPA shell, never files outside `apps/web`.
-- The full acceptance smoke against the same real Neon + Upstash passes **flows 1-11** (migrations,
-  schema, roles, static web, native P05 JWT, profile read/update, economic read/write privilege,
-  leaderboard, social graph, native queue admission/cancel) and stops at **flow 12** with
-  `12_accept_refusal 409 OFFER_EXPIRED` - the measured cross-region Neon latency, not a route defect
-  (a co-located accept is ~18 ms vs the preserved 15 s offer TTL).
+- The **generated P21 bundle** is served (not the raw `apps/web` tree): `/` 200; `/legacy-game/src/game.js`
+  200 (4565b), `/legacy-game/src/bot/worker.js` 200 (1248b), `/store-links.js` 200 (126b),
+  `/legal-documents.js` 200 (20422b), `/assets/art/mark.webp` 200 (14040b), fonts 200 - all with real
+  byte counts; a missing asset is a **real 404**, never an HTML SPA fallback.
+- `/livez` 200; unauthenticated `GET /api/v1/queue` 401 (honest); `GET /api/v1/leaderboard` 200 with
+  the real signed Core projection; `/operator` 403 `PRIVATE_OPERATOR_ROUTE`.
+- The acceptance smoke passes flows 1-11 and, with the two queue accepts issued concurrently (as two
+  browsers would), flow 12 as well; see the smoke result JSON.
 
 ## Boundaries
 
 - No production change, no V4 restart, no public ingress, noindex enforced, providers disabled.
+- The V5 API does not mount `POST /api/account/start` (provider OAuth redirect) - only
+  `session`/`email` are mounted. Do not assume provider sign-in is available on this origin.
 - No secrets are printed by the server; credentials stay in the encrypted private evidence dir.
 - Model publication and production cutover remain approval-gated.

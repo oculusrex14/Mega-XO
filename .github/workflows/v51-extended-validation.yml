@@ -1,17 +1,20 @@
 name: V5.1 isolated service and platform validation
 on:
   push:
-    branches: ['feat/v5.1-bot-ai-tutorial']
-    paths: ['.github/workflows/v51-extended-validation.yml']
+    branches: ['V5.1']
+    paths-ignore: ['docs/**', '*.md']
+  pull_request:
+    branches: ['V5.1']
+    paths-ignore: ['docs/**', '*.md']
   workflow_dispatch:
 permissions:
   contents: read
 concurrency:
   group: v51-extended-${{ github.ref }}
-  cancel-in-progress: false
+  cancel-in-progress: true
 jobs:
   disposable-services:
-    if: github.ref == 'refs/heads/feat/v5.1-bot-ai-tutorial'
+    if: github.ref == 'refs/heads/V5.1' || github.base_ref == 'V5.1'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     services:
@@ -63,7 +66,7 @@ jobs:
           retention-days: 7
           if-no-files-found: warn
   browsers:
-    if: github.ref == 'refs/heads/feat/v5.1-bot-ai-tutorial'
+    if: github.ref == 'refs/heads/V5.1' || github.base_ref == 'V5.1'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     strategy:
@@ -90,7 +93,7 @@ jobs:
           retention-days: 7
           if-no-files-found: warn
   android:
-    if: github.ref == 'refs/heads/feat/v5.1-bot-ai-tutorial'
+    if: github.ref == 'refs/heads/V5.1' || github.base_ref == 'V5.1'
     runs-on: ubuntu-latest
     timeout-minutes: 40
     steps:
@@ -135,7 +138,7 @@ jobs:
           retention-days: 7
           if-no-files-found: warn
   ios:
-    if: github.ref == 'refs/heads/feat/v5.1-bot-ai-tutorial'
+    if: github.ref == 'refs/heads/V5.1' || github.base_ref == 'V5.1'
     runs-on: macos-15
     timeout-minutes: 30
     steps:

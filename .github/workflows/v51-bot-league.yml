@@ -1,36 +1,38 @@
-name: V5.1 measured bot league
+name: V5.1 bot strength league
 on:
   push:
-    branches: ['feat/v5.1-bot-ai-tutorial']
-    paths: ['tests/bot/profiles-league.cjs', '.github/workflows/v51-bot-league.yml']
+    branches: ['V5.1']
+    paths: ['src/bot/**', 'src/game.js', 'tests/bot/**', '.github/workflows/v51-bot-league.yml']
+  pull_request:
+    branches: ['V5.1']
+    paths: ['src/bot/**', 'src/game.js', 'tests/bot/**', '.github/workflows/v51-bot-league.yml']
+  workflow_dispatch:
 permissions:
   contents: read
 concurrency:
-  group: v51-strength-${{ github.ref }}
-  cancel-in-progress: false
+  group: v51-league-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
   league:
-    if: github.ref == 'refs/heads/feat/v5.1-bot-ai-tutorial'
+    if: github.ref == 'refs/heads/V5.1' || github.base_ref == 'V5.1'
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version: '24'
-      - name: Paired original and candidate Expert at 320ms
+      - name: Full-budget legacy comparison and adjacent-profile smoke
         run: |
-          set -o pipefail
+          set -euo pipefail
           mkdir -p .artifacts/v51
-          node tests/bot/candidate-league.cjs 32 320 .artifacts/v51/full-budget-league.json | tee .artifacts/v51/full-budget-summary.log
-      - name: Adjacent tiers at their configured budgets
-        run: |
-          set -o pipefail
-          node tests/bot/profiles-league.cjs 8 | tee .artifacts/v51/profiles-summary.log
+          node tests/bot/candidate-league.cjs 32 320 .artifacts/v51/full-budget-league.json 2>&1 | tee .artifacts/v51/full-budget-league.log
+          node tests/bot/profiles-league.cjs 8 2>&1 | tee .artifacts/v51/profiles-league.log
+          printf '%s\n' "$GITHUB_SHA" > .artifacts/v51/source-commit.txt
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:
-          name: v51-strength-league
+          name: v51-bot-league
           path: .artifacts/v51
-          if-no-files-found: error
           retention-days: 7
+          if-no-files-found: error

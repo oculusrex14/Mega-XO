@@ -1,14 +1,20 @@
 name: V5.1 dedicated recovery and chaos gates
 on:
   push:
-    branches: ['feat/v5.1-bot-ai-tutorial']
-    paths: ['.github/workflows/v51-disposable-gates.yml']
+    branches: ['V5.1']
+    paths-ignore: ['docs/**', '*.md']
+  pull_request:
+    branches: ['V5.1']
+    paths-ignore: ['docs/**', '*.md']
   workflow_dispatch:
 permissions:
   contents: read
+concurrency:
+  group: v51-disposable-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
   dedicated-gates:
-    if: github.ref == 'refs/heads/feat/v5.1-bot-ai-tutorial'
+    if: github.ref == 'refs/heads/V5.1' || github.base_ref == 'V5.1'
     runs-on: ubuntu-latest
     timeout-minutes: 25
     services:

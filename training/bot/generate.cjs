@@ -33,20 +33,35 @@ function targetSearch(state, { seed, simulations, budgetMs }) {
   return S.mcts(state, { seed, simulations, budgetMs, clock: () => 0 });
 }
 
-function game({ seed, simulations = 32, openingPlies = 4, neuralEngine = null, teacher = 'Expert', targetSimulations = null, roster = DEFAULT_ROSTER, exploreRate = 0.2 } = {}) {
+function game({ seed, simulations = 32, openingPlies = 4, neuralEngine = null, teacher = 'Expert', targetSimulations = null, roster = DEFAULT_ROSTER, exploreRate = 0.2, labelSource = 'search' } = {}) {
   const rng = C.seeded(seed);
   let state = G.create(seed % 2 ? 'O' : 'X');
   for (let i = 0; i < openingPlies; i++) { const moves = G.legal(state); state = G.apply(state, moves[Math.floor(rng() * moves.length)]); }
   const opening = state.moves.map(({ b, c }) => ({ b, c })), openingFamily = family(opening), split = splitFor(openingFamily);
   const gameId = 'bootstrap-' + seed + '-' + openingFamily, rows = [];
   const targetBudget = targetSimulations === null ? simulations : targetSimulations;
+  if (labelSource !== 'search' && labelSource !== 'expert') throw Error('INVALID_LABEL_SOURCE');
   let weakDisagreements = 0;
   while (!state.winner) {
     const analysis = neuralEngine ? null : targetSearch(state, { seed: Math.floor(rng() * 4294967296), simulations: targetBudget, budgetMs: 2000 });
     const encoding = E.encode(state);
-    const policyTarget = analysis ? analysis.policy : neuralEngine.policy(state);
-    const visits = analysis ? analysis.diagnostics.visits : targetBudget;
-    const modelVersion = neuralEngine ? neuralEngine.version : ('no-neural-bootstrap-' + S.VERSION);
+    const teacherMove = analysis.move;
+    // LABEL SOURCE. 'search' = UCT visit distribution (the weak bootstrap teacher). 'expert' = the
+    // strongest available classical engine's move (behaviour cloning of Expert), which is the
+    // stronger-label experiment CL10 calls for: the student must learn from a player better than the
+    // weak UCT teacher, not from more copies of it.
+    let policyTarget, visits, modelVersion;
+    if (labelSource === 'expert') {
+      const expert = G.choose(state, teacher === 'Expert' ? 'Expert' : 'Expert', C.seeded(seed + state.moves.length));
+      policyTarget = new Array(81).fill(0);
+      if (expert) policyTarget[expert.b * 9 + expert.c] = 1;
+      visits = 0;
+      modelVersion = 'expert-label-' + teacher;
+    } else {
+      policyTarget = analysis.policy;
+      visits = analysis.diagnostics.visits;
+      modelVersion = neuralEngine ? neuralEngine.version : ('no-neural-bootstrap-' + S.VERSION);
+    }
     rows.push({ schemaVersion: 1, gameId, openingFamily, split, seed, revision: state.moves.length, first: state.moves[0].player,
       moves: state.moves, player: state.turn, encodingVersion: E.VERSION, planes: [...encoding.planes], legalMask: [...encoding.mask],
       visitTarget: policyTarget, searchVisits: visits, modelVersion });
@@ -57,15 +72,15 @@ function game({ seed, simulations = 32, openingPlies = 4, neuralEngine = null, t
     let move, behavior;
     if (neuralEngine && !explore) { move = neuralEngine.choose(state, rng); behavior = 'neural-uct'; }
     else if (explore) { const moves = G.legal(state); move = moves[Math.floor(rng() * moves.length)]; behavior = 'explore'; }
-    else if (opponent === null) { move = analysis.move; behavior = 'uct-teacher-' + targetBudget; }
+    else if (opponent === null) { move = teacherMove; behavior = 'uct-teacher-' + targetBudget; }
     else { move = G.choose(state, opponent, rng); behavior = 'frozen-' + opponent; }
     // Hard-state flag: the strong teacher's best move differs from the frozen weak engine's choice.
     const weak = G.choose(state, 'Easy', C.seeded(seed + state.moves.length));
-    if (weak.b !== analysis.move.b || weak.c !== analysis.move.c) weakDisagreements++;
+    if (weak.b !== teacherMove.b || weak.c !== teacherMove.c) weakDisagreements++;
     rows.at(-1).behavior = behavior;
     rows.at(-1).opponent = opponent === null ? 'uct' : opponent;
     rows.at(-1).playedMove = move;
-    rows.at(-1).hardState = (weak.b !== analysis.move.b || weak.c !== analysis.move.c);
+    rows.at(-1).hardState = (weak.b !== teacherMove.b || weak.c !== teacherMove.c);
     state = G.apply(state, move);
   }
   for (const row of rows) { row.terminalOutcome = state.winner; row.valueTarget = E.value(state.winner, row.player); row.completeGameMoves = state.moves.length; }
@@ -73,17 +88,18 @@ function game({ seed, simulations = 32, openingPlies = 4, neuralEngine = null, t
 }
 
 function generate({ output, games = 16, seed = 1000, simulations = 32, trainingStatus = 'BOOTSTRAP_ONLY', neuralEngine = null,
-  teacher = 'Expert', targetSimulations = null, roster = DEFAULT_ROSTER, exploreRate = 0.2, profile = null } = {}) {
+  teacher = 'Expert', targetSimulations = null, roster = DEFAULT_ROSTER, exploreRate = 0.2, profile = null, labelSource = 'search' } = {}) {
   if (!output || !Number.isInteger(games) || games < 1 || games > 100000 || !Number.isInteger(simulations) || simulations < 1 || simulations > 50000) throw Error('INVALID_GENERATION_OPTIONS');
   if (typeof exploreRate !== 'number' || exploreRate < 0 || exploreRate > 1) throw Error('INVALID_EXPLORE_RATE');
   if (!Array.isArray(roster) || roster.length === 0) throw Error('INVALID_ROSTER');
   if (targetSimulations !== null && (!Number.isInteger(targetSimulations) || targetSimulations < 1)) throw Error('INVALID_TARGET_SIMULATIONS');
+  if (labelSource !== 'search' && labelSource !== 'expert') throw Error('INVALID_LABEL_SOURCE');
   fs.mkdirSync(path.dirname(output), { recursive: true });
   const fd = fs.openSync(output, 'wx'), hash = crypto.createHash('sha256'), counts = { train: 0, validation: 0, holdout: 0 }, ids = [];
   let records = 0, hardStates = 0;
   try {
     for (let i = 0; i < games; i++) {
-      const result = game({ seed: seed + i, simulations, neuralEngine, teacher, targetSimulations, roster, exploreRate });
+      const result = game({ seed: seed + i, simulations, neuralEngine, teacher, targetSimulations, roster, exploreRate, labelSource });
       counts[result.split]++; ids.push({ gameId: result.gameId, openingFamily: result.openingFamily, split: result.split });
       for (const row of result.rows) { if (row.hardState) hardStates++; const text = JSON.stringify(row) + '\n'; fs.writeSync(fd, text); hash.update(text); records++; }
     }
@@ -91,9 +107,9 @@ function generate({ output, games = 16, seed = 1000, simulations = 32, trainingS
   const manifest = { schemaVersion: 1, encodingVersion: E.VERSION, rulesSha256: digest(fs.readFileSync('src/game.js')), searchSha256: digest(fs.readFileSync('src/bot/search.js')),
     records, games, seed, simulations, counts, gameIndex: ids, sha256: hash.digest('hex'), trainingStatus,
     perspective: 'value target is terminal outcome for side to move; draw=0',
-    targetPolicy: 'UCT visits at every retained position; mixed behavior creates off-policy coverage',
+    targetPolicy: labelSource === 'expert' ? 'behaviour cloning of the strongest classical engine (Expert move one-hot)' : 'UCT visits at every retained position; mixed behavior creates off-policy coverage',
     splitPolicy: 'whole games grouped by D4-normalized four-ply opening; no family crosses splits',
-    teacher: { ...(profile || {}), teacher, targetSimulations: targetSimulations === null ? simulations : targetSimulations, roster: [...roster], exploreRate, hardStates } };
+    teacher: { ...(profile || {}), teacher, labelSource, targetSimulations: targetSimulations === null ? simulations : targetSimulations, roster: [...roster], exploreRate, hardStates } };
   fs.writeFileSync(output + '.manifest.json', JSON.stringify(manifest, null, 2) + '\n', { flag: 'wx' });
   return manifest;
 }

@@ -35,6 +35,31 @@ release.
 | Real mailbox delivery | BLOCKED (provider creds) | - | sink proves bridge only; provider disabled by design |
 | Flow-12 accept latency (Neon cross-region) | BLOCKED (region-local host) | - | measured 17.4s accept / 2.5s RTT; co-located 10/10 |
 
+## TRACK A - DGX AI research (owner standing instruction, 72h programme)
+
+| Item | Status | Commit/Artifact | Evidence |
+| --- | --- | --- | --- |
+| Recon both DGX Sparks | COMPLETE | checkpoint 1 | dgx-ts + dgx2 via QSFP; CUDA/Unsloth envs |
+| Value-head diagnosis | COMPLETE | `4bc55ab` | weak outcome value near-unpredictable (var 0.662/0.731) |
+| Strong-search labels | COMPLETE | `4bc55ab`,`2655581` | POLICY=deep visits, VALUE=root score |
+| Datasets | COMPLETE | checkpoint 2 | 48,396 (DGX1) + 31,854 (DGX2) |
+| Value head fixed | COMPLETE | `38045d9` | val MSE 1.08 -> **0.176** |
+| Strength vs tacticalUCT | COMPLETE | `38045d9` | **0.545** (was 0.385) |
+| Architecture sweep (w96/128, b6) | IN PROGRESS | - | DGX2 tmux `sweep` |
+| PUCT self-play + working value | PENDING | - | next after best architecture |
+| Decision teacher fine-tune | IN PROGRESS | - | dataset building on DGX1 |
+| Model promotion (>=0.70) | NOT REACHED | - | 0.020 vs Expert; catalog empty (correct) |
+
+## TRACK B - staging
+
+| Item | Status | Commit | Evidence |
+| --- | --- | --- | --- |
+| Flow-12 accept latency | COMPLETE | `8328b71` | co-located Oracle: 8ms Neon, 244/413ms accept, 468ms since-pair |
+| Two-account multiplayer | COMPLETE | `8328b71` | co-located smoke 19/0 (34 steps) |
+| Realtime ticket issuer gap | COMPLETE | `8328b71` | createApiHandler token required ticketIssuer |
+| Codex URLs/SHAs | COMPLETE | `a6a7c50` | `http://100.64.128.46:8085`, SHA `8328b71` |
+| HTTPS/WSS | BLOCKED (owner enablement) | - | tailscale serve one-click |
+
 ## R/B/CL and original acceptance
 
 | ID | Status | Commit | Evidence |

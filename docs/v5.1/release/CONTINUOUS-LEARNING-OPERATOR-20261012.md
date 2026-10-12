@@ -68,3 +68,13 @@ catalog.
 
 The public `APPROVED_CATALOG` stays empty and `mega_v51_search` stays `legacy`; the operator cannot
 and does not change either.
+
+## R27 quantization measurement (INT8 vs float)
+
+A real INT8-vs-float league (the `int8PUCT:policyValuePUCT` matchup, 24 independent D4 holdout
+families, 48 games, 20 ms/16 simulations) measured **point score 0.5417, paired-bootstrap 95% CI
+[0.4375, 0.6458]**. Interpretation, stated conservatively: **no regression was detected** (the point
+score is near 0.5), but because the interval contains 0.5 it does **not** establish INT8 equivalence
+or non-inferiority at this sample - a larger paired league is required. The export-time numerical
+gates remain: float parity is exact (`floatLegalArgmaxChanges: 0`, max abs error ~4e-7) while INT8 QDQ
+changes 13/512 legal argmaxes, which is why the match-level measure is the one that matters.

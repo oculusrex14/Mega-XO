@@ -60,7 +60,7 @@ function paintOfflineControls(state){
  if(status)status.textContent=offlineBusy?(offlineBusy==='remove'?'Removing your offline copy…':'Saving your offline copy…'):state.message||({ready:'Offline practice is saved. Reload this page when you are ready to use it.',waiting:'An updated copy is saved. Close the other Mega XOXO tabs, then reopen the game to use it.',absent:'No offline copy is saved. Saving uses a small amount of storage on this device.',unavailable:'Offline saving is unavailable in this browser. You can still practice while connected.',conflict:'Another offline app is using this address. Your existing offline app has been left in place.'}[state.status]||'Offline saving is unavailable. Try again while connected.');
  const prepare=main.querySelector('[data-offline-action="prepare"]');
  const remove=main.querySelector('[data-offline-action="remove"]');
- if(prepare)prepare.disabled=offlineBusy||['unavailable','conflict','waiting'].includes(state.status);
+ if(prepare)prepare.disabled=Boolean(offlineBusy)||['unavailable','conflict','waiting','preparing'].includes(state.status);
  if(remove)remove.disabled=Boolean(offlineBusy)||state.canRemove!==true;
 }
 async function refreshOfflineControls(){

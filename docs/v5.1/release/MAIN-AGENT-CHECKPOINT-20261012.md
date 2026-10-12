@@ -54,3 +54,13 @@ Branch `V5.1` (sole shared development branch). Entered at `f0a3144`; the prior 
 - **Model approval & publication (R28/R29), cutover/retire/scale (R30/R31/R32)**: owner authority.
 
 No production change, model promotion, index change, secret exposure or branch rewrite occurred.
+
+## Additional local verification (owned loopback PG16 + Redis)
+
+Beyond the CI head, the R-series platform suites were re-run locally with `V5_PG_REQUIRED=1
+V5_REDIS_REQUIRED=1`: **P09 tournaments (persistence/lifecycle/fencing/settlement/recovery), P10
+durable workers and jobs, P12 read-cache and privacy, P13 security/ingress, P14 observability, P15
+backup/restore/manifest** = **140 tests, 139 pass, 0 fail, 1 skip** (the P15 twin-PG roundtrip skip,
+which runs only in P15 ephemeral CI). Earlier in the session: P05 30/30, P06/P11/P13 34/34, P07 16/16,
+P08 all-green, P11 browser-compat 8/8, P21 106/106, bot/tutorial 88/87/1skip. These are code-level
+proofs; deployed/staging/native/owner acceptance remains separate.

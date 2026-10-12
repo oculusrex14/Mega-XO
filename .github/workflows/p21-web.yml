@@ -2,12 +2,14 @@ name: P21 V5.1 website validation
 
 # Validation only: no provider credentials, deployment, DNS or authority change.
 on:
+  workflow_dispatch:
   push:
     branches: [V5.1]
     paths:
       - 'apps/web/**'
       - 'scripts/p21/**'
       - 'tests/v5-p21-*.test.js'
+      - 'tests/v51-*.test.js'
       - 'assets/p21/art/**'
       - 'assets/p21/fonts/**'
       - 'assets/p21/logos/**'
@@ -15,12 +17,14 @@ on:
       - 'src/**'
       - 'public/**'
       - '.github/workflows/p21-web.yml'
+      - '.github/workflows/v51-*.yml'
   pull_request:
     branches: [V5.1]
     paths:
       - 'apps/web/**'
       - 'scripts/p21/**'
       - 'tests/v5-p21-*.test.js'
+      - 'tests/v51-*.test.js'
       - 'assets/p21/art/**'
       - 'assets/p21/fonts/**'
       - 'assets/p21/logos/**'
@@ -28,6 +32,7 @@ on:
       - 'src/**'
       - 'public/**'
       - '.github/workflows/p21-web.yml'
+      - '.github/workflows/v51-*.yml'
 
 permissions:
   contents: read

@@ -7,7 +7,7 @@ import {storeLinks} from './store-links.js';
 import {renderPractice, renderGame, mountBoard} from './board.js';
 import {getOfflineState, prepareOffline, removeOffline} from './offline.js';
 
-import {createReadModel, readJSON, authRequired, errorCopy} from './data.js';
+import {createReadModel, createProfileEditor, readJSON, authRequired, errorCopy} from './data.js';
 import {legalDocuments} from './legal-documents.js';
 
 let board=null;
@@ -21,7 +21,11 @@ const context={storeLinks,profile:null, sessionStatus:'loading', providers:{}, a
  products:{status:'ready',rows:productIds.map(id=>({id,enabled:false})),purchasesAvailable:false},
  leaderboard:{status:'loading',rows:[],metric:'rating',scope:'global',league:'all'}};
 const balance=value=>Number.isSafeInteger(value)&&value>=0?value.toLocaleString('en-US'):'—';
-const model=createReadModel({context,changed:()=>{if(normalizedPath()==='/game')synchronizeGameProfile();else render();}});
+const model=createReadModel({context,changed:()=>{if(normalizedPath()==='/game')synchronizeGameProfile();else renderProfileEditorView();}});
+let profileEditor;
+profileEditor=createProfileEditor({context,request:(path,body)=>globalThis.MegaAccount.request(path,body),changed:()=>renderProfileEditorView(),
+ active:actor=>normalizedPath()==='/profile'&&context.sessionStatus==='linked'&&context.profile?.id===actor,
+ onAuthRequired:error=>{model.invalidate();context.profile=null;context.sessionStatus='guest';context.accountMessage=errorCopy(error);renderProfileEditorView();}});
 let activePath='',leaderboardTimer,accountChallenge='',resetReady=false,serviceBusy=false,onlineTimer,onlineBusy=false,onlineRevision=0;
 let boundOnlineActor=null,hydratingMatch='';
 let offlineBusy=false,offlineRevision=0;
@@ -44,6 +48,11 @@ function render({focus=false}={}){
  document.body.dataset.page=path==='/'?'home':'inner';
  header(path);footer();configureDownloadLinks();
  main.innerHTML=path==='/'?home():path==='/game'?renderGame({match:visibleMatch(),actorId:context.profile?.id}):path==='/play'&&new URLSearchParams(location.search).get('mode')==='practice'?renderPractice():renderPage(path,context)||renderPage('/404',context);
+ if(path==='/profile'){
+  if(context.sessionStatus==='linked'){if(profileEditor.isSuspended())profileEditor.resume(context.profile?.id);else profileEditor.load();}
+  else if(context.sessionStatus==='loading'){if(!profileEditor.suspend())profileEditor.deactivate();}
+  else if(!(context.sessionStatus==='error'&&profileEditor.isSuspended()))profileEditor.deactivate();
+ }else profileEditor.deactivate();
  updateSeo(path);configureDownloadLinks();
  document.querySelectorAll('[data-board-host]').forEach(host=>{board=mountBoard(host,{preview:host.dataset.boardPreview!=='false'&&path==='/',mode:host.dataset.boardMode,difficulty:host.dataset.boardDifficulty,theme:host.dataset.boardTheme,...(path==='/game'&&visibleMatch()?{online:{match:visibleMatch(),actorId:context.profile?.id,onMove:sendOnlineMove,onResign:sendOnlineResign,onError:handleOnlineError}}:{})})});
  if(path==='/game'){boundOnlineActor=visibleMatch()?context.profile.id:null;updateOnlineControls();}
@@ -51,6 +60,17 @@ function render({focus=false}={}){
  if(path==='/account'&&context.sessionStatus==='guest'&&!context.providersLoaded){main.querySelector('.pg-auth-card')?.insertAdjacentHTML('beforeend','<button class="mx-button secondary" type="button" data-account-action="options">Check sign-in options</button>');}
  if(path==='/settings')refreshOfflineControls();
  if(focus){main.focus({preventScroll:true});window.scrollTo(0,0);}
+}
+function renderProfileEditorView(){
+ const path=normalizedPath(),actor=profileEditor?.actorId?.()||context.profile?.id||null,active=document.activeElement;
+ const restoreFocus=path==='/profile'&&Boolean(active)&&Boolean(main?.contains?.(active))&&Boolean(active.closest?.('#profile-editor'));
+ render();
+ const currentActor=profileEditor?.actorId?.()||context.profile?.id||null;
+ if(!restoreFocus||path!=='/profile'||normalizedPath()!==path||actor!==currentActor)return;
+ const status=main.querySelector('#profile-editor [data-profile-message]')||main.querySelector('#profile-editor [role="status"]');
+ if(status&&!status.hidden&&typeof status.focus==='function'){status.focus({preventScroll:true});return;}
+ const fallback=main.querySelector('#profile-editor [name="username"]')||main.querySelector('#profile-editor [data-profile-action]')||main.querySelector('#profile-editor-title');
+ fallback?.focus?.({preventScroll:true});
 }
 function navigate(href){main.removeAttribute?.('data-offline-fallback');history.pushState({},'',href);render({focus:true});activate();}
 function notify(message){const el=document.querySelector('#notification');el.textContent=message;el.hidden=false;clearTimeout(toastTimer);toastTimer=setTimeout(()=>{el.hidden=true},4500);}
@@ -181,10 +201,16 @@ async function pollOnline(){
  }catch(error){if(revision===onlineRevision){handleOnlineError(error);clearInterval(onlineTimer);}}
  finally{onlineBusy=false;if(revision===onlineRevision)updateOnlineControls();}
 }
+function syncProfileDraft(form){if(form&&profileEditor.updateDraft(profileFormDraft(form))){const message=form.querySelector('[data-profile-message]');if(message){message.textContent='';message.hidden=true;}}}
 document.addEventListener('change',event=>{
+ syncProfileDraft(event.target.closest('[data-profile-form]'));
  const filter=event.target.closest('[data-leaderboard-filter]');if(filter)model.leaderboard({[filter.dataset.leaderboardFilter]:filter.value});
 });
+function profileFormDraft(form){const data=new FormData(form);return {username:String(data.get('username')||''),displayName:String(data.get('displayName')||''),statsVisibility:String(data.get('statsVisibility')||''),presenceVisibility:String(data.get('presenceVisibility')||'')};}
+document.addEventListener('input',event=>syncProfileDraft(event.target.closest('[data-profile-form]')));
 document.addEventListener('submit',event=>{
+ const profileForm=event.target.closest('[data-profile-form]');
+ if(profileForm){event.preventDefault();profileEditor.save(profileFormDraft(profileForm));return;}
  const sponsor=event.target.closest('[data-sponsor-preferences]');
  if(sponsor){event.preventDefault();const data=new FormData(sponsor);if(data.get('consent')!=='on')return;context.sponsorPreferences={consent:true,interests:data.getAll('interest').filter(x=>['Strategy games','Technology','Creative tools','Learning','Gaming gear','Entertainment'].includes(x))};try{localStorage.setItem('mega-xoxo-sponsor-interests',JSON.stringify(context.sponsorPreferences));context.sponsorMessage='Your choices are saved in this browser.';}catch{context.sponsorMessage='Your browser could not save these choices.';}render();return;}
  const form=event.target.closest('[data-account-form]');if(!form)return;event.preventDefault();
@@ -203,6 +229,7 @@ document.addEventListener('submit',event=>{
  });
 });
 document.addEventListener('click',event=>{
+ const profileAction=event.target.closest('[data-profile-action]');if(profileAction){if(profileAction.dataset.profileAction==='retry-load')profileEditor.reload();else if(profileAction.dataset.profileAction==='retry-refresh')profileEditor.refresh();else if(profileAction.dataset.profileAction==='discard')profileEditor.resetDraft();else if(profileAction.dataset.profileAction==='keep-username'){const state=context.profileEditor;if(state?.profile&&state.draft){profileEditor.updateDraft({...state.draft,username:state.profile.username});renderProfileEditorView();}}return;}
  const refresh=event.target.closest('[data-leaderboard-action="refresh"]');if(refresh)model.leaderboard();
  const account=event.target.closest('[data-account-action]');if(account){const action=account.dataset.accountAction;
   if(action==='view'||action==='resend'){resetReady=false;accountChallenge='';context.accountView=action==='resend'?'email':account.dataset.accountView;context.accountMessage=action==='resend'?'Continue with your email and password again to request a new code.':'';render();}
@@ -228,7 +255,7 @@ document.addEventListener('click',event=>{
 });
 window.addEventListener('focus',()=>{if(context.sessionStatus==='linked')model.profile().then(()=>{if(normalizedPath()==='/game'&&visibleMatch()){startOnlinePolling();pollOnline();}});});
 window.addEventListener('online',()=>{if(normalizedPath()==='/game'&&context.sessionStatus==='linked'){startOnlinePolling();pollOnline();}});
-window.addEventListener('pagehide',event=>{onlineRevision++;event.persisted?model.invalidate():model.destroy();clearInterval(leaderboardTimer);clearInterval(onlineTimer);board?.destroy();});
+window.addEventListener('pagehide',event=>{onlineRevision++;event.persisted?model.invalidate():model.destroy();event.persisted?profileEditor.deactivate():profileEditor.destroy();clearInterval(leaderboardTimer);clearInterval(onlineTimer);board?.destroy();});
 window.addEventListener('popstate',event=>{event.state?.mxOfflineFallback?main.setAttribute?.('data-offline-fallback',''):main.removeAttribute?.('data-offline-fallback');render({focus:true});activate();});
 window.addEventListener('pageshow',event=>{if(event.persisted){activePath='';render();activate();if(context.sessionStatus==='linked')model.profile();}});
 render();activate();model.profile().then(()=>{if(normalizedPath()==='/store'&&context.sessionStatus==='linked')refreshProducts();});

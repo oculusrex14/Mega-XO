@@ -26,7 +26,17 @@ def load_records(path: Path) -> tuple[dict, dict[str, list]]:
         if any(not isinstance(p, (int, float)) or not 0 <= p <= 1 or (p and not m) for p, m in zip(policy, row['legalMask'])) or abs(sum(policy)-1) > 1e-5:
             raise ValueError('INVALID_VISIT_DISTRIBUTION')
         expected = 0 if row['terminalOutcome'] == 'DRAW' else 1 if row['terminalOutcome'] == row['player'] else -1
-        if row['valueTarget'] != expected: raise ValueError('WRONG_VALUE_PERSPECTIVE')
+        # A row that declares a STRONGER value target (e.g. a deep-search root score normalised to
+        # [-1,1]) is accepted when the terminal value it also records matches the outcome exactly; the
+        # default (no declaration) still requires valueTarget == terminal outcome, so ordinary
+        # bootstrap/self-play rows cannot silently drift onto a different value perspective.
+        source = row.get('valueTargetSource')
+        if source in (None, 'terminal-outcome'):
+            if row['valueTarget'] != expected: raise ValueError('WRONG_VALUE_PERSPECTIVE')
+        else:
+            if not isinstance(row['valueTarget'], (int, float)) or not -1.0 <= row['valueTarget'] <= 1.0:
+                raise ValueError('INVALID_VALUE_TARGET')
+            if row.get('terminalValue') != expected: raise ValueError('TERMINAL_VALUE_MISMATCH')
         splits[split].append(row)
     if not splits['train'] or not splits['validation']: raise ValueError('TRAIN_AND_VALIDATION_GAMES_REQUIRED')
     return manifest, splits

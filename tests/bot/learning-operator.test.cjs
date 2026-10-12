@@ -20,7 +20,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
-const { spawnSync } = require('node:child_process');
+const { spawnSync, spawn } = require('node:child_process');
 
 const ROOT = path.join(__dirname, '..', '..');
 const OPERATOR = path.join(ROOT, 'training', 'bot', 'champion_cycle.py');
@@ -117,6 +117,28 @@ test('learning operator: a bounded real cycle completes and a killed cycle resum
   assert.ok(['REJECTED', 'RESEARCH_APPROVED'].includes(state.status), 'the cycle reached a decision');
   assert.equal(state.promotionApproved, state.status === 'RESEARCH_APPROVED', 'promotion flag matches the decision');
   assert.ok(!fs.existsSync(path.join(dir, 'export', 'APPROVED')), 'nothing is silently marked APPROVED');
+});
+
+/* REAL kill + resume. The earlier test of this name never killed a worker (WEB-AI-08). Here we start a
+ * long GENERATING stage, SIGTERM the operator mid-stage, assert it PAUSED without a completed stage,
+ * then `resume` and assert the cycle actually advanced past generation to a decision. */
+test('learning operator: SIGTERM mid-generation pauses and resume advances the cycle', { skip: GATE }, async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'op-kill-'));
+  const cfg = writeCfg(dir, { games: 16, seed: 9001, simulations: 4, epochs: 20, batch: 16,
+    width: 48, blocks: 4, leaguePairs: 2, budgetMs: 5, leagueSimulations: 8, workers: 1 });
+  const py = process.env.V5_OPERATOR_PYTHON || 'python3';
+  const long = spawn(py, [OPERATOR, 'run', '--run-id', 'kill', '--output-root', dir, '--config', cfg], { cwd: ROOT });
+  await new Promise((resolve) => { let seen = false; long.stdout.on('data', () => { if (!seen) { seen = true; setTimeout(() => { long.kill('SIGTERM'); resolve(); }, 7000); } }); setTimeout(() => { if (!seen) { try { long.kill('SIGTERM'); } catch {} resolve(); } }, 20000); });
+  await new Promise((r) => long.on('exit', r));
+  const afterKill = JSON.parse(fs.readFileSync(path.join(dir, 'run.json'), 'utf8'));
+  assert.equal(afterKill.status, 'PAUSED', 'a SIGTERM mid-stage leaves the run PAUSED, not failed');
+  assert.notEqual((afterKill.stages.GENERATING || {}).status, 'complete', 'the killed stage is not marked complete');
+  const resumed = runOperator(['resume', '--run-id', 'kill', '--output-root', dir, '--config', cfg], { timeout: 900000 });
+  assert.equal(resumed.status, 0, resumed.stderr.slice(-2000));
+  const afterResume = JSON.parse(fs.readFileSync(path.join(dir, 'run.json'), 'utf8'));
+  assert.equal(afterResume.stages.GENERATING.status, 'complete', 'resume re-ran generation from a clean state');
+  assert.ok(['REJECTED', 'RESEARCH_APPROVED'].includes(afterResume.status), 'resume advanced to a decision');
+  assert.ok(!fs.existsSync(path.join(dir, 'export', 'APPROVED')), 'resume never silently approves');
 });
 
 function writeCfg(dir, obj) {

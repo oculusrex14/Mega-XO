@@ -6,12 +6,26 @@ on:
       - '.github/workflows/v51-webui-readiness-audit.yml'
       - 'scripts/v51-readiness-*'
       - 'tests/v51-readiness-*'
+      - 'training/bot/**'
+      - 'src/bot/**'
+      - 'docs/v5/progress.json'
+      - 'docs/v5.1/bot-ai/progress.json'
+      - 'docs/v5.1/release/OPEN-WORK-AND-OWNERS.md'
+      - 'docs/p21-web/MASTER-CHECKLIST.md'
+      - 'Mega-XO-V5-Implementation-Pack/**'
   pull_request:
     branches: ['V5.1']
     paths:
       - '.github/workflows/v51-webui-readiness-audit.yml'
       - 'scripts/v51-readiness-*'
       - 'tests/v51-readiness-*'
+      - 'training/bot/**'
+      - 'src/bot/**'
+      - 'docs/v5/progress.json'
+      - 'docs/v5.1/bot-ai/progress.json'
+      - 'docs/v5.1/release/OPEN-WORK-AND-OWNERS.md'
+      - 'docs/p21-web/MASTER-CHECKLIST.md'
+      - 'Mega-XO-V5-Implementation-Pack/**'
   workflow_dispatch:
 permissions:
   contents: read
@@ -28,6 +42,13 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           persist-credentials: false
+          fetch-depth: 30
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '24'
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: '3.12'
       - name: Preserve tracked text source and measured provenance only
         shell: bash
         run: |
@@ -67,7 +88,16 @@ jobs:
           (out / 'recent-commits.txt').write_bytes(git('log', '-30', '--format=%H %s'))
           print(json.dumps({'sourceSha': head, 'trackedTextFiles': len(entries), 'sourceArchiveSha256': hashlib.sha256((out / 'tracked-source.zip').read_bytes()).hexdigest()}))
           PY
+      - name: Independent tooling regressions and full source inventory
+        shell: bash
+        run: |
+          set -euo pipefail
+          for test in tests/v51-readiness-*.test.py; do
+            python3 "$test" 2>&1 | tee -a .artifacts/v51-readiness/tooling-tests.log
+          done
+          python3 scripts/v51-readiness-audit.py --output .artifacts/v51-readiness/inventory.json
       - name: Read current CI, PR and retained-branch metadata
+        if: always()
         env:
           GH_TOKEN: ${{ github.token }}
           REPOSITORY: ${{ github.repository }}
@@ -77,6 +107,7 @@ jobs:
           python3 - <<'PY'
           import json, os, pathlib, urllib.request
           out = pathlib.Path('.artifacts/v51-readiness')
+          out.mkdir(parents=True, exist_ok=True)
           def get(path):
               request = urllib.request.Request('https://api.github.com/repos/' + os.environ['REPOSITORY'] + path,
                   headers={'Authorization': 'Bearer ' + os.environ['GH_TOKEN'], 'Accept': 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28'})
@@ -100,5 +131,31 @@ jobs:
         with:
           name: v51-readiness-source-${{ github.sha }}
           path: .artifacts/v51-readiness
+          retention-days: 7
+          if-no-files-found: error
+  independent-model-safety:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '24'
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: '3.12'
+      - name: Fail on unsafe promotion, lease races, tampered resume or broken neural feedback
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p .artifacts/v51-readiness-probes
+          python3 scripts/v51-readiness-probes.py --output .artifacts/v51-readiness-probes/results.json 2>&1 | tee .artifacts/v51-readiness-probes/probes.log
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: v51-readiness-negative-contracts-${{ github.sha }}
+          path: .artifacts/v51-readiness-probes
           retention-days: 7
           if-no-files-found: error

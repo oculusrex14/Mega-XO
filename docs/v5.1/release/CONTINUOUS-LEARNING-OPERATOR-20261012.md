@@ -97,3 +97,20 @@ changes 13/512 legal argmaxes, which is why the match-level measure is the one t
 
 The decision teacher is **evaluation-only**: it never serves player inference and its output is used
 only to judge whether a stronger label source improves the compact student (CL21-CL23).
+
+### CL18-CL20 executed teacher result (real GPU run on the DGX)
+
+`unsloth/Qwen3.5-0.8B` fine-tuned with the Clef-style decision head on `dgx-ts` (NVIDIA GB10, torch
+2.14.1+cu130, unsloth 2026.10.3):
+
+| Fact | Value |
+|---|---|
+| decision build | train 324 items (0 skipped), eval 90 (0 skipped), 0 truncated |
+| training | 40 steps, batch 1, fp32 (bf16/AdamW at batch 2 trips an aarch64 GB10 custom-op stride assertion), **94.7 s** |
+| teacher metrics | **accuracy 0.756**, **ECE 0.080**, loss 0.614 (per-question, 3 questions/row) |
+| record accuracy | 0.267 (all three questions correct on a row - honest, an 8-option choice plus two nouls is hard) |
+
+Interpretation: the decision teacher learns the legal-option task well per question and is
+well-calibrated (ECE 0.08), but joint record accuracy is low. This is **evaluation-only**; CL21 decides
+keep/reject on measured utility, and CL22-CL23 would distil it into the compact student only if it
+measurably helps. No player inference, no publication.

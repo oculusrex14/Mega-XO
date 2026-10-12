@@ -1,20 +1,12 @@
 name: V5.1 independent audit regression
 on:
   push:
-    branches: ['fix/v51-independent-audit-20261012']
+    branches: ['V5.1']
+    paths-ignore: ['docs/**', '*.md']
   pull_request:
-    branches: ['feat/v5.1-bot-ai-tutorial']
-    paths:
-      - 'apps/api/**'
-      - 'apps/game-core/**'
-      - 'apps/web/board.js'
-      - 'apps/web/pages.js'
-      - 'packages/services/core-gateway.js'
-      - 'packages/services/read-cache.js'
-      - 'src/bot/**'
-      - 'tests/v51-audit-*.test.js'
-      - 'tests/v51-p21-bot.test.js'
-      - '.github/workflows/v51-audit-fixes.yml'
+    branches: ['V5.1']
+    paths-ignore: ['docs/**', '*.md']
+  workflow_dispatch:
 permissions:
   contents: read
 concurrency:

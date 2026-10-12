@@ -141,3 +141,38 @@ the **search depth/compute at inference**, not the label or the network size. Th
 
 This is recorded as the top AI open item with the exact evidence chain: model size (0%), label volume
 (0%), label quality (0%) all fail to move the Expert gap; only inference search depth remains.
+
+## Inference-budget / value-head ablation (matched openings, held-out families)
+
+Same exported model (`expert-BC`), same 24 held-out families (48 games), same `improvedExpert` and
+`tacticalUCT` references; only the neural bot's search budget changed:
+
+| config | policyValuePUCT vs improvedExpert | policyOnlyPUCT vs improvedExpert | policyValuePUCT vs tacticalUCT |
+|---|---|---|---|
+| 16 sims / 20 ms | 0.010 | 0.010 | 0.438 |
+| 64 sims / 100 ms | 0.010 | 0.000 | 0.260 |
+| 256 sims / 400 ms | 0.021 | 0.021 | 0.167 |
+
+Three honest findings:
+
+1. **The Expert gap is NOT a compute-budget gap.** 16x more search (16 -> 256 sims) moved the score
+   from 0.010 to 0.021 - still ~1-2%, nowhere near a competitive result. So the earlier claim that
+   "inference compute is the only remaining bottleneck" is **refuted**: adding inference budget does
+   not close the gap.
+2. **More search with a weak network is WORSE vs the classical engine.** vs `tacticalUCT` the score
+   FALLS monotonically as budget rises (0.438 -> 0.260 -> 0.167). The compact net's prior is
+   genuinely useful at very low budget; at higher budgets noisy MCTS with a weak value head dilutes
+   that prior and plays worse. This is a design/quality limit of the network, not a compute limit.
+3. **The value head does no work here.** policyValuePUCT and policyOnlyPUCT are identical within noise
+   (0.010 vs 0.010; 0.021 vs 0.021). At these budgets the learned value adds nothing over the policy.
+
+Conclusion: **do not scale AlphaZero-style training on this evidence.** Neither label quality (the
+generator now labels with the SAME `improvedExpert` the league uses, `042c913`), model size, nor
+inference budget closes the Expert gap, and raising budget regresses. The honest disposition remains
+no promotion, catalog empty; the realistic routes (a genuinely stronger label source, or a much larger
+network trained by self-play over many iterations) are not supported by any evidence gathered here.
+
+Latency note for phone feasibility: 256 sims / 400 ms per move is already the top of the intended
+< 1500 ms client budget once ONNX Runtime load + first-move compile are added, and it is the WORST
+configuration vs tacticalUCT - so there is no budget at which this design both fits a phone and
+approaches Expert.

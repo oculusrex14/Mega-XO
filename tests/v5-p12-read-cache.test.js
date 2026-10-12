@@ -722,3 +722,45 @@ test('P12 privacy: stale public profile cache cannot override a cross-process bl
   assert.equal(after.status, 404, 'fresh durable block wins over stale target cache');
   assert.equal(after.data.error, 'PROFILE_NOT_FOUND');
 });
+
+
+test('V5-12-02: leaderboard metric/scope/league SQL gates and wealth opt-in on real PG16', async (t) => {
+  if (!await lab.boot(t)) return;
+  const db = await lab.createDatabase('lb_filters_privacy');
+  const fixtures = [
+    { actor:'svc_alice', coins:140, crowns:10, rating:1650.25, games:30, stats:'public' },
+    { actor:'svc_bob', coins:5000, crowns:0, rating:1550.75, games:30, stats:'public' },
+    { actor:'svc_carol', coins:9000, crowns:0, rating:1450, games:30, stats:'private' },
+    { actor:'svc_dave', coins:6000, crowns:0, rating:1350, games:30, stats:'public' },
+    { actor:'svc_erin', coins:4000, crowns:0, rating:1500, games:30, stats:'public' },
+  ];
+  await lab.seedActors(db, fixtures);
+  await lab.installSql(db, [
+    "UPDATE identity.actors SET region='IN',wealth_public=true WHERE actor_id IN ('svc_alice','svc_bob','svc_carol')",
+    "UPDATE identity.actors SET region='IN',wealth_public=false WHERE actor_id='svc_dave'",
+    "UPDATE identity.actors SET region='US',wealth_public=true WHERE actor_id='svc_erin'",
+    "UPDATE economy.ratings SET tier='silver' WHERE actor_id IN ('svc_alice','svc_bob')",
+    "UPDATE economy.ratings SET tier='wood' WHERE actor_id='svc_erin'",
+  ]);
+  const pool=lab.poolsFor(db).core;
+  try {
+    const rating=await materializeLeaderboardProjection(pool,{metric:'rating'});
+    assert.equal(rating.data[0].id,'svc_alice');
+    assert.equal(rating.data[0].rating,1650.25);
+    assert.equal(rating.data[1].rating,1550.75);
+    assert.ok(!rating.data.some(r=>r.id==='svc_carol'),'private stats must never leak');
+    const india=await materializeLeaderboardProjection(pool,{metric:'rating',scope:'local',region:'IN',league:'silver'});
+    assert.deepEqual(india.data.map(r=>r.id),['svc_alice','svc_bob']);
+    const america=await materializeLeaderboardProjection(pool,{metric:'rating',scope:'region',region:'US',league:'wood'});
+    assert.deepEqual(america.data.map(r=>r.id),['svc_erin']);
+    assert.deepEqual((await materializeLeaderboardProjection(pool,{scope:'local'})).data,[]);
+    const wealth=await materializeLeaderboardProjection(pool,{metric:'wealth',scope:'local',region:'IN',league:'silver'});
+    assert.deepEqual(wealth.data.map(r=>r.id),['svc_bob','svc_alice']);
+    assert.equal(wealth.data[0].wealth,'5000');
+    assert.equal(wealth.data[1].wealth,'240');
+    const allWealth=await materializeLeaderboardProjection(pool,{metric:'wealth'});
+    assert.ok(!allWealth.data.some(r=>r.id==='svc_carol'),'private profile must not reveal wealth');
+    assert.ok(!allWealth.data.some(r=>r.id==='svc_dave'),'wealth opt-out must not reveal balance');
+    await assert.rejects(materializeLeaderboardProjection(pool,{region:"US';DROP TABLE economy.wallets;--"}),{code:'INVALID_LEADERBOARD_QUERY'});
+  } finally { await lab.closeDatabasePools(db); }
+});

@@ -584,6 +584,16 @@
     }
   ],
   "export_command": "python3 scripts/p21/export-scene-layers.py (Pillow required)",
+  "color_profile": {
+    "path": "assets/p21/scene-layers/srgb.icc",
+    "bytes": 588,
+    "sha256": "85ecec0f261679a58a1a9228e33abedc31c0ae56f3c4b3f783aaa791fa53f2ac"
+  },
+  "tool_versions": {
+    "pillow": "12.3.0",
+    "libwebp": "1.6.0",
+    "littlecms": "2.19"
+  },
   "rights_note": "Owner-directed generated derivatives and original procedural vector sources. Provenance is not a trademark/legal clearance.",
   "current_site_unchanged": "Builder does not include assets/p21/scene-layers; no source layer is mounted by this commit",
   "open": [

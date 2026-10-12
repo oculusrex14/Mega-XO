@@ -72,3 +72,34 @@ constraint is the **data and label quality** (bootstrap self-play with a mixed-s
 policy), not model capacity - exactly the lever the plan's CL10 ("bootstrap with stronger teachers and
 diverse opponents") targets, and not more of the same self-play. The value head continues to
 underperform policy-only vs Expert at both scales. No promotion; the approved catalog stays empty.
+
+## CL10 stronger-teacher dataset - measured effect
+
+The enhanced generator (`training/bot/generate.cjs`, CL10 profile: larger target search than the
+behavior move, frozen tier roster, explicit exploration fraction, hard-state flags/provenance) produced
+80 games / 3,708 records with **2,821 hard-state positions (76%)**. A 64x4 student trained on it (25
+epochs, batch 64, CPU):
+
+| Metric | Old bootstrap labels | CL10 stronger-teacher labels |
+|---|---|---|
+| top-1 policy agreement | 16.2% | **23.9%** |
+| top-3 policy agreement | 47.1% | **60.9%** |
+| value MSE | 1.14 | **0.71** |
+| policy loss | 2.09 | 1.92 |
+
+So stronger labels measurably improve what the student learns. Match strength (24 families, 48 games
+each):
+
+| Matchup | old bootstrap | CL10 |
+|---|---|---|
+| policyValuePUCT vs improvedExpert | 0.010 | **0.000** |
+| policyOnlyPUCT vs improvedExpert | 0.031 | 0.042 |
+| policyValuePUCT vs tacticalUCT | 0.365 | **0.500** |
+| int8PUCT vs policyValuePUCT | 0.542 | 0.490 |
+
+**Interpretation (decisive):** CL10 made the model stronger relative to the UCT tactical reference
+(0.365 -> 0.500, now even) and improved learning, but the gap to `improvedExpert` is still ~0%. The
+bootstrap labels come from a UCT teacher that is itself far weaker than Expert, so no amount of the
+same self-play can teach Expert-level play. The binding constraint is a **genuinely stronger label
+source** - Expert search / solved positions - which is exactly CL18-CL23 (approach B teacher and
+conditional distillation). No promotion; catalog stays empty.

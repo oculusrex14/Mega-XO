@@ -20,6 +20,9 @@ function createCoreIngressServer(options = {}) {
   }
   if (!coreService || typeof coreService.run !== 'function') throw Error('CORE_SERVICE_REQUIRED');
   if (!pool || typeof pool.query !== 'function') throw Error('CORE_READ_POOL_REQUIRED');
+  if (typeof pool.describe !== 'function' || pool.describe()?.role !== 'core_runtime') {
+    throw Error('CORE_RUNTIME_ROLE_REQUIRED');
+  }
   if (typeof secret !== 'string' || secret.length < 16) throw Error('INGRESS_SECRET_REQUIRED');
   if (typeof host !== 'string' || !host.trim() || (!LOOPBACK.has(host) && allowNonLoopback !== true)) {
     throw Error('INGRESS_BIND_REQUIRES_EXPLICIT_APPROVAL');

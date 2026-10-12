@@ -5,13 +5,14 @@ const { createCoreIngressServer } = require('../apps/game-core/ingress-server.js
 const { createCoreGateway } = require('../packages/services/core-gateway.js');
 
 const secret = 'v51-core-test-long-service-secret';
-const pool = { async query() { return { rows:[{id:'svc_alice',username:'Alice',rating:'1520.75',tier:'gold',region:'IN',games:21}] }; } };
+const pool = { describe:() => ({role:'core_runtime'}), async query() { return { rows:[{id:'svc_alice',username:'Alice',rating:'1520.75',tier:'gold',region:'IN',games:21}] }; } };
 const coreService = { async run(actor, key, command) { return {principal:actor.actor,opKey:key,command}; } };
 const common = { coreService, pool, secret };
 
 test('Core ingress host rejects unauthorized network binds and API-role credential injection', () => {
   assert.throws(() => createCoreIngressServer({...common,host:'0.0.0.0'}), /INGRESS_BIND_REQUIRES_EXPLICIT_APPROVAL/);
   assert.throws(() => createCoreIngressServer({...common,apiPool:pool}), /CORE_API_ROLE_CREDENTIAL_FORBIDDEN/);
+  assert.throws(() => createCoreIngressServer({...common,pool:{...pool,describe:()=>({role:'api_runtime'})}}), /CORE_RUNTIME_ROLE_REQUIRED/);
   assert.throws(() => createCoreIngressServer({...common,ticketIssuer:{issue(){}}}), /CORE_API_ROLE_CREDENTIAL_FORBIDDEN/);
   assert.throws(() => createCoreIngressServer({...common,secret:'secret'}), /INGRESS_SECRET_REQUIRED/);
   assert.throws(() => createCoreIngressServer({...common,port:-1}), /INGRESS_PORT_INVALID/);

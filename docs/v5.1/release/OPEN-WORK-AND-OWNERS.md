@@ -394,3 +394,17 @@ These are the new executable-loop deliverables, not an assertion that the existi
 | CL29 | Publish only in approved release scope | CL28,R29 | Owner-authorized staged/canary rollout; active games stay pinned; authenticated/trusted catalog update separate from artifact upload; no extra rewards/official Elo. | Main agent |
 | CL30 | Add consented failure feedback without contamination | CL29 | Default synthetic/self-play input. Player replay upload only approved opt-in,minimal board data,no identity/secrets,retention/deletion; validate,relabel and quarantine before training. | Main agent |
 | CL31 | Operate a bounded review-driven continuous loop | CL17,CL30 | Resource windows/data thresholds,periodic evaluation,plateau stop/diagnostics,regression alerts,operator pause and tested rollback; published model never hot-swaps mid-match. | Main agent |
+## 2026-10-13 - R25/R26 resolution (Main, TRACK A)
+
+**R25 - Unsloth Qwen3.5-0.8B decision teacher: EXECUTED, bar NOT met.** Fine-tuned with the Clef
+decision head on DGX1 (`unsloth-env`, NVIDIA GB10, torch 2.14.1+cu130, unsloth 2026.10.3; 38.1M LoRA
+params) on an improved family-safe `decision-v2` dataset (960 rows, strong teacher budget 320 ms). Frozen
+confirmation accuracy: `winNow` **1.00**, `opponentThreat` **1.00**, `bestMove` **0.143** (8/56 = chance
+over ~7 legal moves; prior run 0.20). The environment blocker is resolved (both Sparks have the env; DGX2
+via QSFP replication + HF cache ship), but the teacher does not produce useful best-move labels. Evidence:
+`docs/v5.1/bot-ai/evidence/track-a-20261013/teacher-v2.json`.
+
+**R26 - distill only a useful teacher: JUSTIFIED REJECTION.** The teacher's best-move decision is at
+chance, so distilling it is not supported; no distillation is performed. The compact-CNN + deep-search
+label route is the one with demonstrated, monotone gains (value MSE 1.08 -> 0.154; vs tacticalUCT 0.385
+-> 0.608; vs improvedExpert 0.020 -> 0.050). No promotion; `APPROVED_CATALOG` empty.

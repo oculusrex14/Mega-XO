@@ -170,7 +170,7 @@ function verifyRequest({
   maxDriftMs = 30000,
   now = Date.now,
 }) {
-  const currentTime = (typeof now === 'function' ? now() : Date.now)();
+  const currentTime = (typeof now === 'function' ? now : Date.now)();
   const reqTime = Number(timestamp);
 
   // 1. Check timestamp drift

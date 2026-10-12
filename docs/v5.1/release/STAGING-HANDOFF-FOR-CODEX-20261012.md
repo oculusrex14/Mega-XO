@@ -94,3 +94,32 @@ Proof (real PostgreSQL staging, running origin `http://100.107.65.122:8081`):
 
 Staging outbound email remains DISABLED by design; the OTP sink proves the HTTP bridge, not a live mail
 provider. No live SMTP, no provider, and no V4 contact were used.
+
+## Co-located staging on the Oracle host (2026-10-13) - Codex test instructions
+
+The latency problem is solved by running the staging stack in the SAME region as Neon. It now runs on
+the Oracle production host (`command`, tailnet `100.64.128.46`, Ashburn us-east) alongside (but
+isolated from) V4.
+
+**Verified (this session):**
+
+- `GET http://100.64.128.46:8085/livez` -> 200; `/` serves the P21 shell; assets/fonts/worker 200; a
+  missing asset returns 404.
+- Full online journey (`scripts/v51/p21-staging-smoke.cjs`, co-located): **34 steps / 19 passed / 0
+  failed** - two real accounts -> matchmaking -> concurrent accepts (244/413 ms, 468 ms since pair) ->
+  PLAYING -> realtime ticket -> move -> reconnect -> snapshot fallback -> cleanup, on the real Neon
+  staging DB + Upstash.
+- Email sign-in e2e on the co-located origin: 8/8.
+- Offer TTL unchanged at 15 s; V4 production untouched.
+
+**Access from the tailnet** (`http://100.64.128.46:8085`). Sign-in: POST `/api/account/email`
+`{action:'continue',email,password}`, read the code from `/opt/mega-xo-v51-staging/staging-otp.jsonl`,
+then `{action:'verify',challengeId,code}`.
+
+**Exact source SHA:** deployed from `V5.1` `8328b71c934a5aba407daa6a1e243a3a4bdcd1f9` (repo at
+`/opt/mega-xo-v51-staging/repo`). Bundle `source_commit f4851a5` (`.artifacts/p21-web` copy at
+`/opt/mega-xo-v51-staging/p21-web`).
+
+**HTTPS/WSS:** still requires the one-click owner enablement
+`https://login.tailscale.com/f/serve?node=nLo62ZkXpj11CNTRL` (or the equivalent for the Oracle node);
+the realtime handshake already accepts the HTTPS origin once live.

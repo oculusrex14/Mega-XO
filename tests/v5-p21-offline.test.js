@@ -331,18 +331,32 @@ test('new version preserves old cache until activation, then removes only this f
   assert.ok(currentNames[0].includes(':p21-next:'));
 });
 
-function mockRegistration({ script = '/offline-sw.js', waiting = false, installing = false } = {}) {
-  const worker = { scriptURL: new URL(script, ORIGIN).href, state: installing ? 'installing' : 'activated', addEventListener() {}, removeEventListener() {} };
+function mockEventTarget() {
+  const listeners = new Map();
   return {
+    addEventListener(type, listener) {
+      if (!listeners.has(type)) listeners.set(type, new Set());
+      listeners.get(type).add(listener);
+    },
+    removeEventListener(type, listener) { listeners.get(type)?.delete(listener); },
+    dispatch(type) { for (const listener of [...(listeners.get(type) || [])]) listener({ type }); },
+    listenerCount(type) { return listeners.get(type)?.size || 0; },
+  };
+}
+
+function mockWorker(script, state) {
+  return Object.assign(mockEventTarget(), { scriptURL: new URL(script, ORIGIN).href, state });
+}
+
+function mockRegistration({ script = '/offline-sw.js', waiting = false, installing = false, active = true } = {}) {
+  return Object.assign(mockEventTarget(), {
     scope: `${ORIGIN}/`,
-    active: worker,
-    waiting: waiting ? worker : null,
-    installing: installing ? worker : null,
-    addEventListener() {},
-    removeEventListener() {},
+    active: active ? mockWorker(script, 'activated') : null,
+    waiting: waiting ? mockWorker(script, 'installed') : null,
+    installing: installing ? mockWorker(script, 'installing') : null,
     unregisterCalls: 0,
     async unregister() { this.unregisterCalls += 1; return true; },
-  };
+  });
 }
 
 function installClientGlobals({ registration = null, cacheNames = [], controller = null, secure = true } = {}) {
@@ -383,15 +397,17 @@ test('client inspection is local and read-only; explicit preparation registers t
     assert.equal(state.canRemove, true);
     assert.equal(stateEnv.registerCalls.length, 0);
 
-    const registration = mockRegistration();
-    stateEnv.serviceWorker.getRegistration = async () => null;
+    let registration = null;
+    stateEnv.serviceWorker.getRegistration = async () => registration;
     stateEnv.serviceWorker.register = async (path, options) => {
       stateEnv.registerCalls.push({ path, options });
+      registration = mockRegistration();
       return registration;
     };
     const prepared = await client.prepareOffline();
     assert.equal(prepared.status, 'ready');
     assert.equal(prepared.reloadRequired, true);
+    assert.match(prepared.message,/Reload this page once/);
     assert.deepEqual(stateEnv.registerCalls[0], { path: '/offline-sw.js', options: { scope: '/', updateViaCache: 'none' } });
   } finally {
     stateEnv.restore();
@@ -514,5 +530,178 @@ test('preparation errors inherit local removability without contacting the netwo
     assert.equal(result.canRemove, true);
     assert.match(result.message, /did not allow/);
   } finally { env.restore(); }
+});
+
+test('first install may pass through waiting before it activates; it is never misreported as an update', async () => {
+  const client = await import('../apps/web/offline.js');
+  const candidate = mockRegistration({ active: false });
+  const cacheNames = [`${OFFLINE_CACHE_PREFIX}p21-first:abc:verified`];
+  const env = installClientGlobals({ cacheNames });
+  let registration = null;
+  env.serviceWorker.getRegistration = async () => registration;
+  env.serviceWorker.register = async () => {
+    registration = candidate;
+    return candidate;
+  };
+
+  try {
+    const preparing = client.prepareOffline();
+    await new Promise((resolve) => setImmediate(resolve));
+    const displaced = mockWorker('/offline-sw.js', 'installing');
+    candidate.installing = displaced;
+    candidate.dispatch('updatefound');
+    const worker = mockWorker('/offline-sw.js', 'installing');
+    candidate.installing = worker;
+    candidate.dispatch('updatefound');
+    assert.equal(displaced.listenerCount('statechange'), 0);
+    assert.equal(worker.listenerCount('statechange'), 1);
+
+    worker.state = 'installed';
+    candidate.installing = null;
+    candidate.waiting = worker;
+    candidate.dispatch('updatefound');
+    const intermediate = await client.getOfflineState();
+    assert.equal(intermediate.status, 'preparing');
+    assert.doesNotMatch(intermediate.message, /open tabs to close/);
+    assert.equal(candidate.listenerCount('updatefound'), 1);
+
+    candidate.waiting = null;
+    candidate.active = worker;
+    worker.state = 'activating';
+    worker.dispatch('statechange');
+    worker.state = 'activated';
+    worker.dispatch('statechange');
+
+    const result = await preparing;
+    assert.equal(result.status, 'ready');
+    assert.equal(result.reloadRequired, true);
+    assert.equal(candidate.listenerCount('updatefound'), 0);
+    assert.equal(worker.listenerCount('statechange'), 0);
+  } finally { env.restore(); }
+});
+
+test('fast failed install with a disappeared registration is failure and preserves the prior verified copy', async () => {
+  const client = await import('../apps/web/offline.js');
+  const candidate = mockRegistration({ active: false });
+  const priorCache = `${OFFLINE_CACHE_PREFIX}p21-prior:abc:verified`;
+  const env = installClientGlobals({ cacheNames: [priorCache] });
+  let registration = null;
+  env.serviceWorker.getRegistration = async () => registration;
+  env.serviceWorker.register = async () => {
+    registration = candidate;
+    // Model a fast failed install whose registration vanished before the UI can inspect it.
+    registration = null;
+    return candidate;
+  };
+
+  try {
+    const result = await client.prepareOffline();
+    assert.equal(result.status, 'unavailable');
+    assert.equal(result.canRemove, true);
+    assert.equal(result.version, 'p21-prior');
+    assert.match(result.message, /previously saved verified copy was left in place/);
+    assert.deepEqual(env.deleted, []);
+    assert.equal(candidate.listenerCount('updatefound'), 0);
+  } finally { env.restore(); }
+});
+
+test('a known empty registration from a fast failed install remains removable', async () => {
+  const client = await import('../apps/web/offline.js');
+  const candidate = mockRegistration({ active: false });
+  const env = installClientGlobals();
+  let registration = null;
+  env.serviceWorker.getRegistration = async () => registration;
+  env.serviceWorker.register = async () => {
+    registration = candidate;
+    return candidate;
+  };
+
+  try {
+    const failed = await client.prepareOffline();
+    assert.equal(failed.status, 'unavailable');
+    assert.equal(failed.canRemove, true);
+    assert.match(failed.message, /failed its integrity or storage checks/);
+    assert.equal(candidate.listenerCount('updatefound'), 0);
+
+    const removed = await client.removeOffline();
+    assert.equal(removed.status, 'absent');
+    assert.equal(removed.canRemove, false);
+    assert.equal(candidate.unregisterCalls, 1);
+    assert.deepEqual(env.deleted, []);
+  } finally { env.restore(); }
+});
+
+test('timeout rechecks local state to distinguish ready, preparing, and absent without deleting caches', async (t) => {
+  const client = await import('../apps/web/offline.js');
+  const nativeSetTimeout = globalThis.setTimeout;
+  const withShortTimeouts = async (run) => {
+    globalThis.setTimeout = (callback, delay, ...args) => nativeSetTimeout(callback, Math.min(delay, 25), ...args);
+    try { await run(); } finally { globalThis.setTimeout = nativeSetTimeout; }
+  };
+
+  await t.test('completed worker without a delivered statechange is ready and asks for manual reload', async () => {
+    const candidate = mockRegistration({ active: false, installing: true });
+    const worker = candidate.installing;
+    const env = installClientGlobals({ cacheNames: [`${OFFLINE_CACHE_PREFIX}p21-complete:abc:verified`] });
+    let registration = null;
+    env.serviceWorker.getRegistration = async () => registration;
+    env.serviceWorker.register = async () => { registration = candidate; return candidate; };
+    try {
+      await withShortTimeouts(async () => {
+        const preparing = client.prepareOffline();
+        await new Promise((resolve) => nativeSetTimeout(resolve, 5));
+        candidate.installing = null;
+        candidate.active = worker;
+        worker.state = 'activated';
+        // Intentionally omit statechange; the timeout path must read registration/cache state.
+        const result = await preparing;
+        assert.equal(result.status, 'ready');
+        assert.equal(result.reloadRequired, true);
+        assert.equal(worker.listenerCount('statechange'), 0);
+      });
+      assert.deepEqual(env.deleted, []);
+    } finally { env.restore(); }
+  });
+
+  await t.test('pending first install stays preparing instead of waiting for other tabs', async () => {
+    const candidate = mockRegistration({ active: false, installing: true });
+    const env = installClientGlobals();
+    let registration = null;
+    env.serviceWorker.getRegistration = async () => registration;
+    env.serviceWorker.register = async () => { registration = candidate; return candidate; };
+    try {
+      await withShortTimeouts(async () => {
+        const result = await client.prepareOffline();
+        assert.equal(result.status, 'preparing');
+        assert.equal(result.canRemove, true);
+        assert.match(result.message, /still being prepared/);
+      });
+      assert.equal(candidate.installing.listenerCount('statechange'), 0);
+      assert.deepEqual(env.deleted, []);
+    } finally { env.restore(); }
+  });
+
+  await t.test('disappeared registration reports failure while retaining the previous cache', async () => {
+    const candidate = mockRegistration({ active: false, installing: true });
+    const priorCache = `${OFFLINE_CACHE_PREFIX}p21-preserved:abc:verified`;
+    const env = installClientGlobals({ cacheNames: [priorCache] });
+    let registration = null;
+    env.serviceWorker.getRegistration = async () => registration;
+    env.serviceWorker.register = async () => { registration = candidate; return candidate; };
+    try {
+      await withShortTimeouts(async () => {
+        const preparing = client.prepareOffline();
+        await new Promise((resolve) => nativeSetTimeout(resolve, 5));
+        candidate.installing = null;
+        registration = null;
+        const result = await preparing;
+        assert.equal(result.status, 'unavailable');
+        assert.equal(result.canRemove, true);
+        assert.equal(result.version, 'p21-preserved');
+        assert.match(result.message, /previously saved verified copy was left in place/);
+      });
+      assert.deepEqual(env.deleted, []);
+    } finally { env.restore(); }
+  });
 });
 

@@ -1,13 +1,13 @@
 {
   "schemaVersion": 1,
   "sourceCommit": "8328b71c934a5aba407daa6a1e243a3a4bdcd1f9",
-  "trainingModelSha256": "6e4d559ad1cb97687ab4a92d68ff25d1d3849e3fdf149aa0dbd7812c8b90b579",
+  "trainingModelSha256": "41af1f5a6bca2c7044b3ca26925de570f58cd339c9dc166956d6088414751993",
   "datasetSha256": "c38fad12fffb14b8ec000ce308d64ddbf7d1ee2c5227d0c66a43ac3629001ef6",
   "encodingVersion": "planes8-v1",
   "frozenStates": 512,
   "numericalStatesPurpose": "parity only; includes train/validation/holdout, not a strength benchmark",
-  "floatPolicyMaxAbsError": 9.5367431640625e-06,
-  "floatValueMaxAbsError": 6.556510925292969e-07,
+  "floatPolicyMaxAbsError": 7.62939453125e-06,
+  "floatValueMaxAbsError": 8.344650268554688e-07,
   "floatLegalArgmaxChanges": 0,
   "dynamicBatches": [
     1,
@@ -16,8 +16,8 @@
   "quantization": {
     "format": "QDQ signed INT8 per-channel",
     "calibration": "128 training records only",
-    "legalArgmaxChanges": 45,
-    "maxPolicyAbsError": 3.416341781616211,
+    "legalArgmaxChanges": 26,
+    "maxPolicyAbsError": 4.371278762817383,
     "matchScoreRegression": {
       "status": "NOT_MEASURED"
     }
@@ -25,21 +25,21 @@
   "artifacts": [
     {
       "file": "candidate.onnx",
-      "sha256": "9783b3891d21b73cadb94616493d48624492e210bf24b4a738558bbd9e4075b8",
-      "bytes": 1375959,
-      "gzipBytes": 1275967
+      "sha256": "0906b053329f8a0d062393fae542dd958eda935bf369bd4a7ebd04e045d29851",
+      "bytes": 2862040,
+      "gzipBytes": 2665778
     },
     {
       "file": "candidate-dynamic.onnx",
-      "sha256": "0f31ead31a0751a3c97afe1646620af1f8cc90f0879f8a0540e940c2fa42a03d",
-      "bytes": 1375974,
-      "gzipBytes": 1275975
+      "sha256": "176b0ca7bdf60fdeb2a353f0cbb1f31e4a8c803da337b53aa12d0cb7b2a8db79",
+      "bytes": 2862055,
+      "gzipBytes": 2665786
     },
     {
       "file": "candidate-int8.onnx",
-      "sha256": "8bc3b0d5fbe8aee8e3f555dee608d65897715471cf8eb68d43791e1e382a417b",
-      "bytes": 380957,
-      "gzipBytes": 322766
+      "sha256": "d7ffd368037cd9ad158f8e5d9e2f0a1e82f925b40da2ce2710ec3724d66ac863",
+      "bytes": 757086,
+      "gzipBytes": 649451
     }
   ],
   "sizeGate": true,

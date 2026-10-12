@@ -1,0 +1,596 @@
+{
+  "schema_version": 1,
+  "created_on": "2026-10-12",
+  "owner": "Antimatter Innovations",
+  "reference": {
+    "path": "assets/p21/art/hero-source.png",
+    "bytes": 1892621,
+    "sha256": "f336109d932886e71823db7daea8c753774652f0925735b20cf107b1157258bb"
+  },
+  "request": "Owner-commissioned P21 independent scene layers",
+  "task_ids": [
+    "R16",
+    "P21-K076",
+    "P21-K077",
+    "P21-K078",
+    "P21-K079",
+    "P21-K125"
+  ],
+  "status": "PARTIAL_SOURCE_PACK; source/export checks pass, complete scene and owner visual acceptance remain open",
+  "assets": [
+    {
+      "id": "P21-BG-002",
+      "name": "foreground",
+      "source": {
+        "path": "assets/p21/scene-layers/foreground-source.png",
+        "bytes": 499427,
+        "sha256": "e7edac53b67f1ae30b2f5ae13add85f77707930181ac6443acba97602d1f5668"
+      },
+      "exports": [
+        {
+          "path": "assets/p21/scene-layers/foreground.webp",
+          "bytes": 62656,
+          "sha256": "a980c75a34f5e33acc1e58e18191a8176ed89a56abdb665fca14c19718722ad4"
+        }
+      ],
+      "dimensions": [
+        1672,
+        941
+      ],
+      "source_format": "RGBA PNG",
+      "export_format": "RGBA WebP",
+      "alpha_range": [
+        0,
+        255
+      ],
+      "alpha_bit_exact_in_export": true,
+      "source_color_profile": "No embedded ICC profile; generated RGB is interpreted as sRGB for the separate export",
+      "export_color_profile": "embedded sRGB ICC",
+      "generator": "built-in image_gen",
+      "model": "not exposed by tool",
+      "seed": "not exposed by tool",
+      "prompt": "Use case: background-extraction. Asset type: independent foreground terrain layer for the existing Mega XOXO website scene asset pack. Edit target is the referenced unlettered hero plate. Preserve the existing lower foreground rocky terrain silhouette, its original camera alignment, blue edge-lighting, deep navy-black material, faint violet foreground haze, and its left/right valley framing. Extract ONLY the very near rocky foreground occupying approximately the lower 30 percent of the reference and its lower left/right edges. Remove the sky, stars, purple planet, far mountains, middle-distance ridge and bright horizon completely, replacing all of those with actual alpha transparency. Keep original wide 16:9 canvas and terrain placement; the upper 60 percent must be fully transparent. Natural clean transparent transitions at the rocky ridge contour, no white or black backdrop, no new text, no UI, no letters, no board, no logos. A single independent image layer, not a contact sheet or collage. This is a source production asset for compositing, do not reimagine the scene or change the existing website.",
+      "role": "independent source layer; not mounted in the current website",
+      "fallback": "static WebP layer; current site retains its original hero-wide/hero-small stills"
+    },
+    {
+      "id": "P21-BG-003",
+      "name": "midground",
+      "source": {
+        "path": "assets/p21/scene-layers/midground-source.png",
+        "bytes": 703018,
+        "sha256": "8991a7ffbc0df1cb2f7d3ae2acdbbc71e02514159f9b5616b1b6499748e5fbb3"
+      },
+      "exports": [
+        {
+          "path": "assets/p21/scene-layers/midground.webp",
+          "bytes": 120280,
+          "sha256": "788c86f6da3fa02e60cf6ca2f7ddf48d21883e0bcb95e8c6593d3f8abbceb62d"
+        }
+      ],
+      "dimensions": [
+        1672,
+        941
+      ],
+      "source_format": "RGBA PNG",
+      "export_format": "RGBA WebP",
+      "alpha_range": [
+        0,
+        255
+      ],
+      "alpha_bit_exact_in_export": true,
+      "source_color_profile": "No embedded ICC profile; generated RGB is interpreted as sRGB for the separate export",
+      "export_color_profile": "embedded sRGB ICC",
+      "generator": "built-in image_gen",
+      "model": "not exposed by tool",
+      "seed": "not exposed by tool",
+      "prompt": "Use case: background-extraction. Asset type: independent midground mountain-ridge layer for Mega XOXO website source asset pack. Edit target is the referenced unlettered hero background. Preserve the original jagged left and right middle-distance mountains, central distant valley ridge line, original 16:9 canvas camera alignment, cobalt edge-lighting, indigo shadow rock material and purple-blue mountain glow. Extract ONLY the mountain silhouettes and middle-distance ridges. Remove all sky/stars/planet, remove the near dark rocky foreground in the bottom quarter, and remove the bright floor stream and horizon fog. Replace removed pixels with actual transparent alpha, including upper half sky and bottom foreground. Natural clean alpha edges around the mountain outlines. Keep mountains at their exact approximate positions from the original reference, not a new camera scene. No text, no UI, no game marks, no logo, no icons, no white/black backdrop. One standalone wide independent layer, not a contact sheet. The existing website rendering is not being replaced by this asset; it is a production compositing source.",
+      "role": "independent source layer; not mounted in the current website",
+      "fallback": "static WebP layer; current site retains its original hero-wide/hero-small stills"
+    },
+    {
+      "id": "P21-BG-004",
+      "name": "haze",
+      "source": {
+        "path": "assets/p21/scene-layers/haze-source.png",
+        "bytes": 1316072,
+        "sha256": "bff8f6f67b088ba3656fa19b3eab875c3e47845cdb9f3de3921df8007c68cf99"
+      },
+      "exports": [
+        {
+          "path": "assets/p21/scene-layers/haze.webp",
+          "bytes": 303868,
+          "sha256": "e8a4fca45e0dfce788c38ab1add48bea5d7a26a9ee767596ed9e48e5ef49ae7b"
+        }
+      ],
+      "dimensions": [
+        1672,
+        941
+      ],
+      "source_format": "RGBA PNG",
+      "export_format": "RGBA WebP",
+      "alpha_range": [
+        0,
+        253
+      ],
+      "alpha_bit_exact_in_export": true,
+      "source_color_profile": "No embedded ICC profile; generated RGB is interpreted as sRGB for the separate export",
+      "export_color_profile": "embedded sRGB ICC",
+      "generator": "built-in image_gen",
+      "model": "not exposed by tool",
+      "seed": "not exposed by tool",
+      "prompt": "Use case: background-extraction. Asset type: independent atmospheric horizon haze layer for the existing Mega XOXO website scene source pack. Reference/edit target is the unlettered original hero scene. Preserve its restrained purple haze on the lower-left and cobalt/cyan horizon illumination across the valley near y=60\u201375% of the wide 16:9 canvas. Output ONLY the soft distant fog/haze and gentle horizon bloom, with true graded alpha transparency. Remove all opaque sky, stars, planet, mountains, rocks, river, foreground and every object; these must become transparent. Most of upper55% and lower10% should be transparent. Smooth cinematic diffuse blue and violet fog wisps, low intensity, no hard boundary or banding, no solid black/white background. Keep spatial light distribution roughly aligned to original. No text, logo, UI, shapes, board or marks. One standalone wide alpha atmospheric layer, not a collage or poster. Existing website is not being changed; this is an editable compositing-source layer.",
+      "role": "independent source layer; not mounted in the current website",
+      "fallback": "static WebP layer; current site retains its original hero-wide/hero-small stills"
+    },
+    {
+      "id": "P21-BG-005",
+      "name": "stars",
+      "source": {
+        "path": "assets/p21/scene-layers/stars.svg",
+        "bytes": 3762,
+        "sha256": "c3deef7c0fb5fdad7d05780da585e0bb3ba74ca74253399c6bc43ce936c9abe5"
+      },
+      "exports": [],
+      "dimensions": [
+        1672,
+        941
+      ],
+      "format": "editable SVG",
+      "seed": 210051,
+      "placement_map": [
+        {
+          "x": 1074.12,
+          "y": 493.2,
+          "radius": 0.56,
+          "opacity": 0.3
+        },
+        {
+          "x": 1190.07,
+          "y": 242.81,
+          "radius": 0.41,
+          "opacity": 0.45
+        },
+        {
+          "x": 1489.19,
+          "y": 333.7,
+          "radius": 0.93,
+          "opacity": 0.49
+        },
+        {
+          "x": 1600.14,
+          "y": 538.34,
+          "radius": 0.68,
+          "opacity": 0.22
+        },
+        {
+          "x": 1588.92,
+          "y": 360.08,
+          "radius": 1.16,
+          "opacity": 0.21
+        },
+        {
+          "x": 680.35,
+          "y": 121.69,
+          "radius": 0.69,
+          "opacity": 0.21
+        },
+        {
+          "x": 775.51,
+          "y": 175.12,
+          "radius": 0.36,
+          "opacity": 0.12
+        },
+        {
+          "x": 1414.3,
+          "y": 440.5,
+          "radius": 0.96,
+          "opacity": 0.3
+        },
+        {
+          "x": 928.16,
+          "y": 278.32,
+          "radius": 0.6,
+          "opacity": 0.15
+        },
+        {
+          "x": 1115.68,
+          "y": 440.98,
+          "radius": 0.49,
+          "opacity": 0.33
+        },
+        {
+          "x": 974.07,
+          "y": 337.21,
+          "radius": 0.81,
+          "opacity": 0.22
+        },
+        {
+          "x": 1443.13,
+          "y": 167.65,
+          "radius": 0.85,
+          "opacity": 0.32
+        },
+        {
+          "x": 669.43,
+          "y": 49.34,
+          "radius": 0.43,
+          "opacity": 0.36
+        },
+        {
+          "x": 756.81,
+          "y": 121.51,
+          "radius": 0.47,
+          "opacity": 0.49
+        },
+        {
+          "x": 1211.61,
+          "y": 246.48,
+          "radius": 1.05,
+          "opacity": 0.14
+        },
+        {
+          "x": 1291.85,
+          "y": 66.0,
+          "radius": 0.53,
+          "opacity": 0.48
+        },
+        {
+          "x": 914.43,
+          "y": 135.91,
+          "radius": 0.84,
+          "opacity": 0.36
+        },
+        {
+          "x": 236.62,
+          "y": 255.89,
+          "radius": 1.03,
+          "opacity": 0.44
+        },
+        {
+          "x": 1112.25,
+          "y": 360.68,
+          "radius": 0.41,
+          "opacity": 0.47
+        },
+        {
+          "x": 82.83,
+          "y": 497.81,
+          "radius": 0.91,
+          "opacity": 0.48
+        },
+        {
+          "x": 1563.05,
+          "y": 447.13,
+          "radius": 0.87,
+          "opacity": 0.18
+        },
+        {
+          "x": 710.37,
+          "y": 246.23,
+          "radius": 1.05,
+          "opacity": 0.35
+        },
+        {
+          "x": 1594.85,
+          "y": 440.29,
+          "radius": 0.49,
+          "opacity": 0.42
+        },
+        {
+          "x": 1562.02,
+          "y": 535.52,
+          "radius": 0.88,
+          "opacity": 0.24
+        },
+        {
+          "x": 762.74,
+          "y": 244.28,
+          "radius": 0.82,
+          "opacity": 0.46
+        },
+        {
+          "x": 1558.87,
+          "y": 516.28,
+          "radius": 0.97,
+          "opacity": 0.38
+        },
+        {
+          "x": 1536.69,
+          "y": 418.03,
+          "radius": 0.71,
+          "opacity": 0.42
+        },
+        {
+          "x": 651.52,
+          "y": 56.2,
+          "radius": 1.02,
+          "opacity": 0.23
+        },
+        {
+          "x": 910.46,
+          "y": 137.17,
+          "radius": 0.89,
+          "opacity": 0.22
+        },
+        {
+          "x": 765.64,
+          "y": 361.11,
+          "radius": 0.72,
+          "opacity": 0.14
+        },
+        {
+          "x": 1316.26,
+          "y": 347.06,
+          "radius": 0.87,
+          "opacity": 0.51
+        },
+        {
+          "x": 57.65,
+          "y": 470.52,
+          "radius": 0.51,
+          "opacity": 0.44
+        },
+        {
+          "x": 848.86,
+          "y": 525.76,
+          "radius": 1.18,
+          "opacity": 0.27
+        },
+        {
+          "x": 1360.87,
+          "y": 89.31,
+          "radius": 0.66,
+          "opacity": 0.38
+        },
+        {
+          "x": 572.74,
+          "y": 452.73,
+          "radius": 1.01,
+          "opacity": 0.38
+        },
+        {
+          "x": 343.19,
+          "y": 413.28,
+          "radius": 0.81,
+          "opacity": 0.26
+        },
+        {
+          "x": 909.75,
+          "y": 485.73,
+          "radius": 0.37,
+          "opacity": 0.31
+        },
+        {
+          "x": 928.34,
+          "y": 330.7,
+          "radius": 0.88,
+          "opacity": 0.42
+        },
+        {
+          "x": 1173.84,
+          "y": 161.32,
+          "radius": 0.88,
+          "opacity": 0.24
+        },
+        {
+          "x": 1073.66,
+          "y": 322.65,
+          "radius": 0.36,
+          "opacity": 0.42
+        },
+        {
+          "x": 841.71,
+          "y": 535.55,
+          "radius": 0.73,
+          "opacity": 0.37
+        },
+        {
+          "x": 510.27,
+          "y": 531.16,
+          "radius": 0.45,
+          "opacity": 0.24
+        },
+        {
+          "x": 513.99,
+          "y": 140.29,
+          "radius": 0.44,
+          "opacity": 0.15
+        },
+        {
+          "x": 1108.4,
+          "y": 172.4,
+          "radius": 0.84,
+          "opacity": 0.37
+        },
+        {
+          "x": 390.08,
+          "y": 279.64,
+          "radius": 1.05,
+          "opacity": 0.35
+        },
+        {
+          "x": 641.94,
+          "y": 167.04,
+          "radius": 0.78,
+          "opacity": 0.39
+        },
+        {
+          "x": 1002.25,
+          "y": 275.96,
+          "radius": 0.44,
+          "opacity": 0.5
+        },
+        {
+          "x": 322.76,
+          "y": 505.03,
+          "radius": 0.66,
+          "opacity": 0.27
+        },
+        {
+          "x": 686.24,
+          "y": 387.46,
+          "radius": 1.12,
+          "opacity": 0.37
+        },
+        {
+          "x": 903.25,
+          "y": 177.89,
+          "radius": 0.65,
+          "opacity": 0.26
+        },
+        {
+          "x": 906.87,
+          "y": 304.4,
+          "radius": 0.59,
+          "opacity": 0.19
+        },
+        {
+          "x": 1241.14,
+          "y": 196.62,
+          "radius": 0.67,
+          "opacity": 0.4
+        },
+        {
+          "x": 1372.16,
+          "y": 325.64,
+          "radius": 0.69,
+          "opacity": 0.44
+        },
+        {
+          "x": 67.98,
+          "y": 277.28,
+          "radius": 0.43,
+          "opacity": 0.31
+        },
+        {
+          "x": 800.16,
+          "y": 497.58,
+          "radius": 0.92,
+          "opacity": 0.36
+        },
+        {
+          "x": 1629.44,
+          "y": 232.87,
+          "radius": 1.12,
+          "opacity": 0.12
+        },
+        {
+          "x": 998.55,
+          "y": 154.6,
+          "radius": 0.51,
+          "opacity": 0.2
+        },
+        {
+          "x": 1341.05,
+          "y": 249.22,
+          "radius": 0.74,
+          "opacity": 0.3
+        },
+        {
+          "x": 1612.14,
+          "y": 57.01,
+          "radius": 0.6,
+          "opacity": 0.48
+        },
+        {
+          "x": 785.26,
+          "y": 484.45,
+          "radius": 0.54,
+          "opacity": 0.18
+        },
+        {
+          "x": 671.34,
+          "y": 332.75,
+          "radius": 1.19,
+          "opacity": 0.5
+        },
+        {
+          "x": 118.94,
+          "y": 58.49,
+          "radius": 0.7,
+          "opacity": 0.45
+        },
+        {
+          "x": 735.67,
+          "y": 390.61,
+          "radius": 0.56,
+          "opacity": 0.23
+        },
+        {
+          "x": 911.53,
+          "y": 61.21,
+          "radius": 0.71,
+          "opacity": 0.13
+        }
+      ],
+      "intensity_limit": "64 static stars, maximum opacity 0.52 and radius 1.2px at reference size; no flicker",
+      "fallback": "omit the decorative overlay; current original still remains available",
+      "role": "source only; not mounted"
+    },
+    {
+      "id": "P21-BG-006",
+      "name": "left-glow",
+      "source": {
+        "path": "assets/p21/scene-layers/left-glow.svg",
+        "bytes": 334,
+        "sha256": "0921d76921840543f2eacbb822386c5d8a6018ca109e8d6213a674b50bf93e44"
+      },
+      "exports": [],
+      "dimensions": [
+        1672,
+        941
+      ],
+      "format": "editable SVG lighting mask",
+      "maximum_opacity": 0.2,
+      "fallback": "omit optional glow; current original still remains available",
+      "role": "source only; not mounted"
+    },
+    {
+      "id": "P21-BG-007",
+      "name": "right-glow",
+      "source": {
+        "path": "assets/p21/scene-layers/right-glow.svg",
+        "bytes": 335,
+        "sha256": "729fbca4b647c679a585f4ec4373ad8b5fd4192455a86dacc406cae666e65818"
+      },
+      "exports": [],
+      "dimensions": [
+        1672,
+        941
+      ],
+      "format": "editable SVG lighting mask",
+      "maximum_opacity": 0.18,
+      "fallback": "omit optional glow; current original still remains available",
+      "role": "source only; not mounted"
+    },
+    {
+      "id": "P21-BG-008",
+      "name": "center-backlight",
+      "source": {
+        "path": "assets/p21/scene-layers/center-backlight.svg",
+        "bytes": 335,
+        "sha256": "830259954aa7b4c6e5a283412005f947ce6aff053d22c52549c335d5ede5e7a1"
+      },
+      "exports": [],
+      "dimensions": [
+        1672,
+        941
+      ],
+      "format": "editable SVG lighting mask",
+      "maximum_opacity": 0.12,
+      "fallback": "omit optional glow; current original still remains available",
+      "role": "source only; not mounted"
+    }
+  ],
+  "export_command": "python3 scripts/p21/export-scene-layers.py (Pillow required)",
+  "rights_note": "Owner-directed generated derivatives and original procedural vector sources. Provenance is not a trademark/legal clearance.",
+  "current_site_unchanged": "Builder does not include assets/p21/scene-layers; no source layer is mounted by this commit",
+  "open": [
+    "independent far-ridge/cloud/vignette layers",
+    "approved layered composite and per-breakpoint art direction",
+    "edge checks over dark/light surfaces and visual sign-off",
+    "motion/video/3D/audio pack",
+    "formal ownership/legal approval"
+  ]
+}

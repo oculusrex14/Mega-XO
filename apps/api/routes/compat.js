@@ -27,6 +27,7 @@ const {
   CACHE_CONTROL_POLICIES,
   createVersionedProjection,
   materializeLeaderboardProjection,
+  normalizeLeaderboardFilter,
 } = require(path.join(__dirname, '../../../packages/services/read-cache.js'));
 
 /**
@@ -398,9 +399,12 @@ async function handleGetLeaderboard(context, req, res) {
   const scope = url.searchParams.get('scope') || 'global';
   const league = url.searchParams.get('league') || 'all';
   const region = url.searchParams.get('region') || '';
+  let filters;
+  try { filters = normalizeLeaderboardFilter({ metric, scope, league, region }); }
+  catch { return sendJson(res, 400, { error: 'INVALID_LEADERBOARD_QUERY' }, { 'Cache-Control': 'private, no-store' }); }
 
   const readCache = context?.readCache || defaultReadCache;
-  const cacheKey = `leaderboard:${metric}:${scope}:${league}:${region}`;
+  const cacheKey = `leaderboard:${filters.metric}:${filters.scope}:${filters.league}:${filters.region}`;
 
   const cached = readCache.get(cacheKey, { allowStale: true });
   if (cached) {
@@ -416,7 +420,7 @@ async function handleGetLeaderboard(context, req, res) {
   const pool = context?.corePool || context?.pool;
   if (pool) {
     try {
-      projection = await materializeLeaderboardProjection(pool, { metric, limit: 50 });
+      projection = await materializeLeaderboardProjection(pool, { ...filters, limit: 50 });
     } catch {}
   }
   if (!projection && typeof context?.leaderboard === 'function') {
@@ -424,7 +428,7 @@ async function handleGetLeaderboard(context, req, res) {
     // unreachable, timed out, refused the signed read) is NOT an empty board and
     // must surface instead of being masked as a 200 with [].
     try {
-      const rows = await context.leaderboard({ metric, scope, league, region });
+      const rows = await context.leaderboard(filters);
       projection = createVersionedProjection(1, rows);
     } catch {
       return sendJson(res, 503, { error: 'SERVICE_UNAVAILABLE' }, {

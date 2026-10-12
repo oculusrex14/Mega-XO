@@ -731,54 +731,93 @@ async function ensureReadProjectionIndexes(pool) {
   return true;
 }
 
+/* Server-owned leaderboard vocabulary shared by API and the Core ingress.
+ * Never insert request-supplied metric, region or tier text into SQL. */
+const LEADERBOARD_TIERS = Object.freeze([
+  'wood', 'stone', 'iron', 'bronze', 'silver', 'gold',
+  'diamond', 'emerald', 'champion', 'master', 'grandmaster',
+]);
+function normalizeLeaderboardFilter(filter = {}) {
+  const fail = () => {
+    const error = new Error('INVALID_LEADERBOARD_QUERY');
+    error.code = 'INVALID_LEADERBOARD_QUERY';
+    error.status = 400;
+    throw error;
+  };
+  if (!filter || typeof filter !== 'object' || Array.isArray(filter)) fail();
+  const metric = filter.metric === undefined ? 'rating' : filter.metric;
+  const scope = filter.scope === undefined ? 'global'
+    : filter.scope === 'region' ? 'local' : filter.scope;
+  const league = filter.league === undefined ? 'all' : filter.league;
+  const region = filter.region === undefined ? '' : filter.region;
+  if (!['rating', 'wealth'].includes(metric) || !['global', 'local'].includes(scope) ||
+      (league !== 'all' && !LEADERBOARD_TIERS.includes(league)) ||
+      typeof region !== 'string' || (region !== '' && !/^[A-Z]{2}$/.test(region))) fail();
+  return { metric, scope, league, region: scope === 'global' ? '' : region };
+}
+
 /**
- * Materializes authorized public leaderboard projection directly from PostgreSQL 16.
- *
- * @param {Object} pool PostgreSQL connection pool
- * @param {Object} [filter] Leaderboard filter options: { metric, limit, version }
- * @returns {Promise<VersionedProjection>} Versioned leaderboard projection
+ * Materializes eligible public players, applying metric, region and league
+ * restrictions before LIMIT. Private/friends-only stats never appear; wealth
+ * additionally requires explicit wealth_public opt-in. Elo retains decimals,
+ * and wealth stays a decimal string to avoid 64-bit integer precision loss.
  */
 async function materializeLeaderboardProjection(pool, filter = {}) {
-  const limit = Number.isSafeInteger(filter.limit) && filter.limit > 0 ? filter.limit : 50;
+  const { metric, scope, league, region } = normalizeLeaderboardFilter(filter);
+  const limit = Number.isSafeInteger(filter.limit) && filter.limit > 0
+    ? Math.min(filter.limit, 100) : 50;
   const version = Number.isSafeInteger(filter.version) && filter.version > 0 ? filter.version : 1;
-
-  if (!pool || typeof pool.query !== 'function') {
-    // Fallback empty projection when no pool is connected
+  if (!pool || typeof pool.query !== 'function' || (scope === 'local' && !region)) {
     return new VersionedProjection(version, [], Date.now());
   }
 
-  const query = `
-    SELECT p.actor_id AS id,
-           p.tag,
-           p.username,
-           p.display_name AS "displayName",
-           r.rating::int AS rating,
-           r.tier,
-           r.games
-    FROM identity.profiles p
-    JOIN identity.eligibility e ON e.actor_id = p.actor_id
-    LEFT JOIN economy.ratings r ON r.actor_id = p.actor_id
-    WHERE e.verified = true
-      AND e.suspended = false
-      AND e.security_hold = false
-      AND p.stats_visibility = 'public'
-    ORDER BY r.rating DESC, r.games DESC
-    LIMIT $1
-  `;
-
-  const res = await pool.query(query, [limit]);
+  const predicates = [
+    'e.verified = true', 'e.suspended = false', 'e.security_hold = false',
+    "p.stats_visibility = 'public'",
+  ];
+  const args = [];
+  if (metric === 'rating') predicates.push('r.games >= 10');
+  if (metric === 'wealth') predicates.push('a.wealth_public = true');
+  if (scope === 'local') {
+    args.push(region);
+    predicates.push('a.region = $' + args.length);
+  }
+  if (league !== 'all') {
+    args.push(league);
+    predicates.push('r.tier = $' + args.length);
+  }
+  const wealth = '(w.coins::numeric + w.reserved_coins::numeric + (w.crowns::numeric + w.reserved_crowns::numeric) * 10)';
+  const score = metric === 'wealth' ? wealth : 'r.rating';
+  args.push(limit);
+  const query = [
+    'SELECT p.actor_id AS id, p.tag, p.username,',
+    '       p.display_name AS "displayName", a.region,',
+    '       r.rating, r.tier, r.games,',
+    metric === 'wealth' ? wealth + '::text AS wealth' : 'NULL::text AS wealth',
+    'FROM identity.profiles p',
+    'JOIN identity.actors a ON a.actor_id = p.actor_id',
+    'JOIN identity.eligibility e ON e.actor_id = p.actor_id',
+    (metric === 'wealth' ? 'LEFT JOIN' : 'JOIN') + ' economy.ratings r ON r.actor_id = p.actor_id',
+    ...(metric === 'wealth' ? ['JOIN economy.wallets w ON w.actor_id = p.actor_id'] : []),
+    'WHERE ' + predicates.join(' AND '),
+    'ORDER BY ' + score + ' DESC NULLS LAST, p.actor_id ASC',
+    'LIMIT $' + args.length,
+  ].join('\n');
+  const res = await pool.query(query, args);
   const rows = (res?.rows || []).map((row, idx) => ({
     rank: idx + 1,
+    position: idx + 1,
     id: row.id,
     tag: row.tag,
     name: row.displayName || row.username || row.tag,
     displayName: row.displayName || row.username,
     username: row.username,
-    rating: row.rating !== null && row.rating !== undefined ? row.rating : 1000,
-    tier: row.tier || 'bronze',
+    rating: row.rating === null || row.rating === undefined ? null : Number(row.rating),
+    tier: row.tier || null,
     games: row.games,
+    region: row.region || '',
+    ...(metric === 'wealth' ? { wealth: String(row.wealth) } : {}),
   }));
-
   return new VersionedProjection(version, rows, Date.now());
 }
 
@@ -806,4 +845,5 @@ module.exports = {
   defaultReadCache,
   ensureReadProjectionIndexes,
   materializeLeaderboardProjection,
+  normalizeLeaderboardFilter,
 };

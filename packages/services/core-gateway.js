@@ -1,6 +1,7 @@
 'use strict';
 
 const crypto = require('node:crypto');
+const { materializeLeaderboardProjection, normalizeLeaderboardFilter } = require('./read-cache.js');
 const { materializeLeaderboardProjection } = require('./read-cache.js');
 
 /* The public leaderboard is an aggregate read: no actor is ever authenticated. The
@@ -33,8 +34,8 @@ function validateLeaderboardQuery(body) {
     }
     query[key] = value;
   }
-  if (query.metric !== undefined && !LEADERBOARD_METRICS.includes(query.metric)) return { ok: false };
-  return { ok: true, query };
+  try { return { ok: true, query: normalizeLeaderboardFilter(query) }; }
+  catch { return { ok: false }; }
 }
 
 /**

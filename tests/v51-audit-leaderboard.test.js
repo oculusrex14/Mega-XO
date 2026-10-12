@@ -33,7 +33,7 @@ test('leaderboard builds independent parameterized rating and wealth projections
   assert.match(pool.queries[0].sql, /r\.games >= 10/);
   assert.match(pool.queries[1].sql, /a\.wealth_public = true/);
   assert.match(pool.queries[1].sql, /p\.stats_visibility = 'public'/);
-  assert.match(pool.queries[1].sql, /a\.region = \$1/);
+  assert.match(pool.queries[1].sql, /a\.region #>> '\{\}' = \$1/);
   assert.match(pool.queries[1].sql, /r\.tier = \$2/);
   assert.deepEqual(pool.queries[1].args, ['IN', 'silver', 50]);
   assert.doesNotMatch(pool.queries[1].sql, /'IN'|'silver'/);

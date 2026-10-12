@@ -736,9 +736,9 @@ test('V5-12-02: leaderboard metric/scope/league SQL gates and wealth opt-in on r
   ];
   await lab.seedActors(db, fixtures);
   await lab.installSql(db, [
-    "UPDATE identity.actors SET region='IN',wealth_public=true WHERE actor_id IN ('svc_alice','svc_bob','svc_carol')",
-    "UPDATE identity.actors SET region='IN',wealth_public=false WHERE actor_id='svc_dave'",
-    "UPDATE identity.actors SET region='US',wealth_public=true WHERE actor_id='svc_erin'",
+    "UPDATE identity.actors SET region=to_json('IN'::text),wealth_public=true WHERE actor_id IN ('svc_alice','svc_bob','svc_carol')",
+    "UPDATE identity.actors SET region=to_json('IN'::text),wealth_public=false WHERE actor_id='svc_dave'",
+    "UPDATE identity.actors SET region=to_json('US'::text),wealth_public=true WHERE actor_id='svc_erin'",
     "UPDATE economy.ratings SET tier='silver' WHERE actor_id IN ('svc_alice','svc_bob')",
     "UPDATE economy.ratings SET tier='wood' WHERE actor_id='svc_erin'",
   ]);

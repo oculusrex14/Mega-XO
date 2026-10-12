@@ -780,7 +780,7 @@ async function materializeLeaderboardProjection(pool, filter = {}) {
   if (metric === 'wealth') predicates.push('a.wealth_public = true');
   if (scope === 'local') {
     args.push(region);
-    predicates.push('a.region = $' + args.length);
+    predicates.push("a.region #>> '{}' = $" + args.length);
   }
   if (league !== 'all') {
     args.push(league);
@@ -791,7 +791,7 @@ async function materializeLeaderboardProjection(pool, filter = {}) {
   args.push(limit);
   const query = [
     'SELECT p.actor_id AS id, p.tag, p.username,',
-    '       p.display_name AS "displayName", a.region,',
+    '       p.display_name AS "displayName", a.region #>> \'{}\' AS region,',
     '       r.rating, r.tier, r.games,',
     metric === 'wealth' ? wealth + '::text AS wealth' : 'NULL::text AS wealth',
     'FROM identity.profiles p',

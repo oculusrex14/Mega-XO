@@ -51,10 +51,12 @@ def main() -> None:
     parser.add_argument('--lr',type=float,default=0.001)
     parser.add_argument('--weight-decay',type=float,default=0.0001)
     parser.add_argument('--node-bin',type=str,default='node')
+    parser.add_argument('--interim-dir',type=Path,default=None)
+    parser.add_argument('--resume',type=Path,default=None)
     args=parser.parse_args()
     if not re.fullmatch('[0-9a-f]{40}',args.source_commit) or not 1 <= args.epochs <= 10000 or not 1 <= args.batch <= 4096 or not 1 <= args.blocks <= 6:
         parser.error('invalid commit or training limits')
-    if args.output.exists(): raise ValueError('OUTPUT_ALREADY_EXISTS')
+    if args.output.exists() and args.resume is None: raise ValueError('OUTPUT_ALREADY_EXISTS')
     if args.device=='cuda' and not torch.cuda.is_available(): raise RuntimeError('CUDA_UNAVAILABLE')
     os.environ.setdefault('CUBLAS_WORKSPACE_CONFIG', ':4096:8')
     random.seed(args.seed); torch.manual_seed(args.seed); torch.set_num_threads(2)
@@ -74,6 +76,20 @@ def main() -> None:
     device=torch.device(args.device)
     model=TinyPolicyValue(width=args.width,blocks=args.blocks).to(device)
     optimizer=torch.optim.AdamW(model.parameters(),lr=args.lr,weight_decay=args.weight_decay)
+    resume_meta=None
+    if args.resume is not None:
+        # Warm start from a prior checkpoint (or an operator-persisted interim checkpoint): restore the
+        # model AND optimizer, and continue at the recorded epoch. The dataset hash and config must
+        # match, so a resumed run never silently drifts onto different data or hyperparameters.
+        ck=torch.load(args.resume,map_location=device,weights_only=False)
+        if ck.get('datasetSha256')!=manifest['sha256']: raise ValueError('RESUME_DATASET_MISMATCH')
+        if ck.get('modelConfig',{}).get('width')!=args.width or ck.get('modelConfig',{}).get('blocks')!=args.blocks: raise ValueError('RESUME_CONFIG_MISMATCH')
+        model.load_state_dict(ck['state_dict'])
+        if 'optimizer' in ck: optimizer.load_state_dict(ck['optimizer'])
+        if 'rng' in ck:
+            random.setstate(ck['rng']['python']); torch.set_rng_state(ck['rng']['torch'])
+        resume_meta={'resumedFromEpoch':int(ck.get('epoch',0)),'resumedFrom':str(args.resume)}
+    start_epoch = resume_meta['resumedFromEpoch'] if resume_meta else 0
     power_samples = []
     stop_power = threading.Event()
     def sample_power():
@@ -94,7 +110,7 @@ def main() -> None:
         power_thread = threading.Thread(target=sample_power, daemon=True)
         power_thread.start()
     start=time.monotonic();curves=[]
-    for epoch in range(args.epochs):
+    for epoch in range(start_epoch,args.epochs):
         model.train();indices=list(range(len(splits['train'])));random.Random(args.seed+epoch).shuffle(indices);total=0.;count=0
         for offset in range(0,len(indices),args.batch):
             rows=[splits['train'][i] for i in indices[offset:offset+args.batch]];x,mask,policy,y=tensors(rows,device);optimizer.zero_grad(set_to_none=True);logits,value=model(x);pl,vl=masked_loss(logits,value,mask,policy,y);loss=pl+vl
@@ -132,6 +148,18 @@ def main() -> None:
         val_summary = {k: v/metrics['count'] for k, v in metrics.items() if k != 'count'}
         val_summary['calibration'] = calibration
         curves.append({'epoch':epoch+1,'trainLoss':total/count,'validation':val_summary})
+        if args.interim_dir is not None:
+            # Durable interim checkpoint after EVERY epoch: a killed process resumes from the last
+            # completed epoch. Written atomically via a temp file + rename so a crash mid-write cannot
+            # leave a half-written checkpoint that resume would then reject.
+            args.interim_dir.mkdir(parents=True,exist_ok=True)
+            interim={'state_dict':model.state_dict(),'optimizer':optimizer.state_dict(),
+                     'rng':{'python':random.getstate(),'torch':torch.get_rng_state()},
+                     'config':model.config,'modelConfig':model.config,'encodingVersion':ENCODING_VERSION,
+                     'epoch':epoch+1,'datasetSha256':manifest['sha256'],'seed':args.seed,
+                     'width':args.width,'blocks':args.blocks,'sourceCommit':args.source_commit}
+            tmp=args.interim_dir/('interim.pt.tmp')
+            torch.save(interim,tmp);os.replace(tmp,args.interim_dir/'interim.pt')
     if power_thread:
         stop_power.set()
         power_thread.join(timeout=2)
@@ -139,6 +167,6 @@ def main() -> None:
     mean_power_watts = (sum(p for _, p in power_samples) / len(power_samples)) if power_samples else None
     peak_power_watts = max((p for _, p in power_samples), default=None)
     args.output.mkdir(parents=True);checkpoint=args.output/'candidate.pt';model=model.cpu();torch.save({'state_dict':model.state_dict(),'config':model.config,'encodingVersion':ENCODING_VERSION},checkpoint);raw=checkpoint.read_bytes()
-    report={'schemaVersion':1,'sourceCommit':args.source_commit,'datasetSha256':manifest['sha256'],'sourceFileHashes':{p:hashlib.sha256((root/p).read_bytes()).hexdigest() for p in ['training/bot/train.py','training/bot/model.py','training/bot/generate.cjs','training/bot/validate-data.cjs','src/bot/encoding.js','src/bot/search.js','src/game.js']},'modelSha256':hashlib.sha256(raw).hexdigest(),'parameters':sum(p.numel() for p in model.parameters()),'checkpointBytes':len(raw),'checkpointGzipBytes':len(gzip.compress(raw,mtime=0)),'modelConfig':model.config,'seed':args.seed,'epochs':args.epochs,'device':str(device),'hardware':torch.cuda.get_device_name() if args.device=='cuda' else platform.processor() or platform.machine(),'torchVersion':torch.__version__,'pythonVersion':platform.python_version(),'elapsedSeconds':time.monotonic()-start,'peakCudaBytes':torch.cuda.max_memory_allocated() if args.device=='cuda' else None,'peakCudaReservedBytes':torch.cuda.max_memory_reserved() if args.device=='cuda' else None,'energyJoules':energy_joules,'meanPowerWatts':mean_power_watts,'peakPowerWatts':peak_power_watts,'determinism':determinism,'curves':curves,'splitGames':manifest['counts'],'holdoutUsedForTraining':False,'deploymentStatus':'UNAPPROVED_BOOTSTRAP_CANDIDATE','strengthMeasured':False,'licenseReview':'Original network architecture; dependency/model distribution license sign-off still required'}
+    report={'schemaVersion':1,'sourceCommit':args.source_commit,'datasetSha256':manifest['sha256'],'sourceFileHashes':{p:hashlib.sha256((root/p).read_bytes()).hexdigest() for p in ['training/bot/train.py','training/bot/model.py','training/bot/generate.cjs','training/bot/validate-data.cjs','src/bot/encoding.js','src/bot/search.js','src/game.js']},'modelSha256':hashlib.sha256(raw).hexdigest(),'parameters':sum(p.numel() for p in model.parameters()),'checkpointBytes':len(raw),'checkpointGzipBytes':len(gzip.compress(raw,mtime=0)),'modelConfig':model.config,'seed':args.seed,'epochs':args.epochs,'device':str(device),'hardware':torch.cuda.get_device_name() if args.device=='cuda' else platform.processor() or platform.machine(),'torchVersion':torch.__version__,'pythonVersion':platform.python_version(),'elapsedSeconds':time.monotonic()-start,'peakCudaBytes':torch.cuda.max_memory_allocated() if args.device=='cuda' else None,'peakCudaReservedBytes':torch.cuda.max_memory_reserved() if args.device=='cuda' else None,'energyJoules':energy_joules,'meanPowerWatts':mean_power_watts,'peakPowerWatts':peak_power_watts,'determinism':determinism,'curves':curves,'splitGames':manifest['counts'],'holdoutUsedForTraining':False,'deploymentStatus':'UNAPPROVED_BOOTSTRAP_CANDIDATE','strengthMeasured':False,'licenseReview':'Original network architecture; dependency/model distribution license sign-off still required','resume':resume_meta}
     (args.output/'training-report.json').write_text(json.dumps(report,indent=2)+'\n');print(json.dumps(report,indent=2))
 if __name__=='__main__': main()

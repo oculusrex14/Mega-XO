@@ -5,13 +5,18 @@ from pathlib import Path
 import random
 import xml.etree.ElementTree as ET
 
-from PIL import Image, ImageCms
+from PIL import Image, ImageCms, __version__ as pillow_version, features
 
 ROOT = Path(__file__).resolve().parents[2]
 DIRECTORY = ROOT / "assets/p21/scene-layers"
 WIDTH, HEIGHT = 1672, 941
 REFERENCE = "assets/p21/art/hero-source.png"
-PROFILE = ImageCms.ImageCmsProfile(ImageCms.createProfile("sRGB")).tobytes()
+# ImageCms.createProfile stamps the current time into the ICC header. Retain
+# the generated source profile so the same pixels produce identical exports.
+PROFILE_FILE = DIRECTORY / "srgb.icc"
+PROFILE = PROFILE_FILE.read_bytes()
+if "sRGB" not in ImageCms.getProfileDescription(ImageCms.ImageCmsProfile(str(PROFILE_FILE))):
+    raise ValueError("Expected the retained sRGB profile")
 
 PROMPTS = {
     "foreground": "Use case: background-extraction. Asset type: independent foreground terrain layer for the existing Mega XOXO website scene asset pack. Edit target is the referenced unlettered hero plate. Preserve the existing lower foreground rocky terrain silhouette, its original camera alignment, blue edge-lighting, deep navy-black material, faint violet foreground haze, and its left/right valley framing. Extract ONLY the very near rocky foreground occupying approximately the lower 30 percent of the reference and its lower left/right edges. Remove the sky, stars, purple planet, far mountains, middle-distance ridge and bright horizon completely, replacing all of those with actual alpha transparency. Keep original wide 16:9 canvas and terrain placement; the upper 60 percent must be fully transparent. Natural clean transparent transitions at the rocky ridge contour, no white or black backdrop, no new text, no UI, no letters, no board, no logos. A single independent image layer, not a contact sheet or collage. This is a source production asset for compositing, do not reimagine the scene or change the existing website.",
@@ -99,6 +104,8 @@ def main():
         "task_ids": ["R16", "P21-K076", "P21-K077", "P21-K078", "P21-K079", "P21-K125"],
         "status": "PARTIAL_SOURCE_PACK; source/export checks pass, complete scene and owner visual acceptance remain open",
         "assets": assets, "export_command": "python3 scripts/p21/export-scene-layers.py (Pillow required)",
+        "color_profile": record(PROFILE_FILE),
+        "tool_versions": {"pillow": pillow_version, "libwebp": features.version_module("webp"), "littlecms": ImageCms.core.littlecms_version},
         "rights_note": "Owner-directed generated derivatives and original procedural vector sources. Provenance is not a trademark/legal clearance.",
         "current_site_unchanged": "Builder does not include assets/p21/scene-layers; no source layer is mounted by this commit",
         "open": ["independent far-ridge/cloud/vignette layers", "approved layered composite and per-breakpoint art direction",

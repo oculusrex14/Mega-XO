@@ -1079,12 +1079,20 @@ async function main() {
         ![tickResult.pairings[0].a, tickResult.pairings[0].b].every((actor) => ownedActors.has(actor))) throw new Error('MATCHMAKING_PAIRING_FAILED');
     const matchId = queueMatchId;
     const pairing = tickResult.pairings[0];
-    for (const [actor, session] of [[actorA, sessA], [actorB, sessB]]) {
+    // Both players accept their own offer. A real deployment has two browsers (or two devices)
+    // accepting at once, so the accepts are issued CONCURRENTLY: serializing them doubled the wall
+    // clock against a cross-region database and pushed the second accept past the 15s offer window,
+    // which is a smoke artifact, not a route or Core defect. The window is preserved exactly.
+    const acceptResults = await Promise.all([[actorA, sessA], [actorB, sessB]].map(async ([actor, session]) => {
+      const started = Date.now();
       const accepted = await requestHttp(`${loopbackBaseUrl}/api/v1/accept`, {
         method: 'POST',
         headers: { Cookie: `mega_dev_session=${session.token}`, 'X-CSRF-Token': session.csrf, Origin: 'https://megaxo.online', 'Idempotency-Key': `accept_${actor}_${runId}` },
         body: { id: matchId, termsHash: pairing.termsHash },
       });
+      return { actor, accepted, elapsedMs: Date.now() - started };
+    }));
+    for (const { actor, accepted, elapsedMs } of acceptResults) {
       if (accepted.status !== 200) {
         // Record the exact Core refusal and how long after pairing it arrived: a queue offer
         // expires 15s after matchTick, so a slow staging round-trip is a distinguishable cause
@@ -1092,10 +1100,14 @@ async function main() {
         logStep('12_accept_refusal', 'FAILED', {
           actor, status: accepted.status, code: safeError({ message: accepted.data?.error }),
           offerExpiresAt: pairing.expires, nowMs: Date.now(),
+          elapsedMs, sincePairMs: Date.now() - (pairing.expires - 15000),
         });
         throw new Error('QUEUE_ACCEPT_GATEWAY_FAILED');
       }
     }
+    logStep('12_concurrent_accepts', 'PASSED', {
+      sincePairMs: Date.now() - (pairing.expires - 15000), offerTtlMs: 15000, perAcceptMs: acceptResults.map((r) => r.elapsedMs),
+    });
     // The advertised matched projection is verified from the SAME durable match the tick committed;
     // it is polled after the accepts because the queue status reports `matched` for a live PLAYING
     // match too, and polling must not delay the two accepts past the 15s offer window.

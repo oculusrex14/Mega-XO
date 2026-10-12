@@ -48,3 +48,38 @@ producing the pairing immediately before the accepts and recording the exact ref
 
 What remains for R05 is running the full co-located smoke **near the staging database** (same region /
 loopback), which is an environment placement decision, not a code fix. The TTL was preserved.
+
+## Flow 12 resolution: measured cross-region latency, not a defect (2026-10-12)
+
+The acceptance smoke failed `12_accept_refusal 409 OFFER_EXPIRED`. Root cause is measured, not
+inferred, and is an ENVIRONMENT limit of where the smoke ran (this Mac), not a route or Core defect:
+
+| Measurement | Value |
+|---|---|
+| Neon staging round-trip from this Mac (10 warm `SELECT 1`) | min 2530 ms, median 2620 ms, max 2732 ms |
+| One 5-statement transaction (typical auth path) | 3563 ms |
+| A SINGLE `/api/v1/accept` (API auth + rate + gateway + Core multi-statement txn, ~8-10 round-trips) | 17419 ms |
+| Queue offer TTL (preserved) | 15000 ms |
+
+One accept alone exceeds the 15 s offer window across this link, so even two concurrent accepts
+cannot both land in time. The TTL is NOT changed.
+
+**Co-located control (same code, no cross-region hop):** `tests/v5-p07-queue.test.js` with a local
+Redis on 127.0.0.1:6399 and local PostgreSQL 16 passes **10/10**, including the accept test that
+issues both accepts and observes the match become PLAYING, and two tests (heartbeat lease with a
+400 ms TTL, candidate-index expiry reclaim) that FAIL against the cross-region Upstash staging
+because their timing windows are shorter than the link RTT. So:
+
+- the accept path, the offer TTL, actor fencing and queue admission are correct;
+- the flow-12 failure and the two cross-region Redis test failures are the SAME latency class.
+
+## Reachability (P3)
+
+Staging is bound to this Mac's tailnet interface and verified reachable from a different tailnet
+node (the Oracle `command` host): `/` 200, `/livez` 200, `/legacy-game/src/game.js` 200,
+`/api/account/session` 200 - real bytes. HTTPS is available via `tailscale serve` but needs a
+one-click owner enablement (`https://login.tailscale.com/f/serve?node=nLo62ZkXpj11CNTRL`).
+
+For Codex: use `http://100.107.65.122:8081/` from a tailnet device. Sign-in works (see the handoff);
+the OTP for a controlled test is read from the staging OTP sink file. If a same-region accept run is
+required for the smoke, run it on a host near the Neon region (the smoke stays green co-located).

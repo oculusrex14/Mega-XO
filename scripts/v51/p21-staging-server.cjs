@@ -22,10 +22,14 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const ROOT = path.resolve(__dirname, '..', '..');
-const CREDENTIALS_PATH = '/Users/oculus/Downloads/Mega-XO-private-evidence/v5-neon-staging/credentials.json';
-const CA_PATH = '/Users/oculus/Downloads/Mega-XO-private-evidence/v5-neon-staging/ca.pem';
-const RUNTIME_ROLES_PATH = '/Users/oculus/Downloads/Mega-XO-private-evidence/v5-neon-staging/runtime-roles.json';
-const UPSTASH_PATH = '/Users/oculus/Downloads/Mega-XO-private-evidence/p06-provider-credentials/upstash-staging.json';
+// Secret-material paths. Default to the operator's Mac layout; a co-located deployment (e.g. the same
+// region as Neon) sets MEGA_V51_STAGING_SECRETS to its own directory. The files themselves are never
+// committed and are mode 0600.
+const SECRETS_DIR = process.env.MEGA_V51_STAGING_SECRETS || '/Users/oculus/Downloads/Mega-XO-private-evidence/v5-neon-staging';
+const CREDENTIALS_PATH = path.join(SECRETS_DIR, 'credentials.json');
+const CA_PATH = path.join(SECRETS_DIR, 'ca.pem');
+const RUNTIME_ROLES_PATH = path.join(SECRETS_DIR, 'runtime-roles.json');
+const UPSTASH_PATH = process.env.MEGA_V51_UPSTASH_PATH || '/Users/oculus/Downloads/Mega-XO-private-evidence/p06-provider-credentials/upstash-staging.json';
 
 const { createPgPool } = require(path.join(ROOT, 'packages/db/pg/pool.js'));
 const { createAccountService } = require(path.join(ROOT, 'packages/services/accounts.js'));
@@ -197,6 +201,10 @@ async function main() {
   const apiHandler = createApiHandler({
     pool: apiPool, accounts, coreGateway, access, nativeAudiences: ['mega-ios', 'mega-android'],
     queue: coreGateway, otpSecret: stagingOtpSecret, otpSink,
+    // The realtime-ticket route (POST /api/v1/ticket) resolves a ticket issuer from context; without
+    // it the route returns 503. Wire the SAME issuer the ingress uses, so browser/native clients can
+    // obtain a realtime ticket in staging just as in production.
+    ticketIssuer,
     allowedOrigins,
   });
 

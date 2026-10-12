@@ -29,10 +29,13 @@ const crypto = require('node:crypto');
 const pg = require('pg');
 
 const ROOT = path.resolve(__dirname, '..', '..');
-const CREDENTIALS_PATH = '/Users/oculus/Downloads/Mega-XO-private-evidence/v5-neon-staging/credentials.json';
-const CA_PATH = '/Users/oculus/Downloads/Mega-XO-private-evidence/v5-neon-staging/ca.pem';
-const RUNTIME_ROLES_PATH = '/Users/oculus/Downloads/Mega-XO-private-evidence/v5-neon-staging/runtime-roles.json';
-const UPSTASH_PATH = '/Users/oculus/Downloads/Mega-XO-private-evidence/p06-provider-credentials/upstash-staging.json';
+// Secret paths default to the operator's Mac layout; a co-located run (near Neon) sets
+// MEGA_V51_STAGING_SECRETS / MEGA_V51_UPSTASH_PATH. Files are never committed and are mode 0600.
+const SECRETS_DIR = process.env.MEGA_V51_STAGING_SECRETS || '/Users/oculus/Downloads/Mega-XO-private-evidence/v5-neon-staging';
+const CREDENTIALS_PATH = path.join(SECRETS_DIR, 'credentials.json');
+const CA_PATH = path.join(SECRETS_DIR, 'ca.pem');
+const RUNTIME_ROLES_PATH = path.join(SECRETS_DIR, 'runtime-roles.json');
+const UPSTASH_PATH = process.env.MEGA_V51_UPSTASH_PATH || '/Users/oculus/Downloads/Mega-XO-private-evidence/p06-provider-credentials/upstash-staging.json';
 
 const { createPgPool } = require(path.join(ROOT, 'packages/db/pg/pool.js'));
 const { createAccountService } = require(path.join(ROOT, 'packages/services/accounts.js'));
@@ -125,7 +128,11 @@ const SETTLE_TIMEOUT_MS = 30000;
 const quoteIdentifier = (value) => `"${value.replace(/"/g, '""')}"`;
 const safeError = (error) => {
   const code = error?.code || error?.message?.split(':', 1)[0];
-  return typeof code === 'string' && /^[A-Z0-9_]{1,80}$/.test(code) ? code : 'SMOKE_ASSERTION_FAILED';
+  if (typeof code === 'string' && /^[A-Z0-9_]{1,80}$/.test(code)) return code;
+  // Preserve a bounded, sanitized diagnostic tail (status/error class) so a failure names its cause.
+  const message = typeof error?.message === 'string' ? error.message : '';
+  const detail = message.replace(/[^A-Za-z0-9_:={}.,\- ]/g, '').slice(0, 140);
+  return detail ? `${code || 'SMOKE_ASSERTION_FAILED'}:${detail}` : 'SMOKE_ASSERTION_FAILED';
 };
 
 // Rows never leave this process: only sorted, length-delimited SHA-256 digests are retained.
@@ -714,6 +721,7 @@ async function main() {
       queue: coreGateway,
       now: clock,
       otpSecret: OTP_SECRET,
+      ticketIssuer,
       allowedOrigins: ['https://megaxo.online', 'https://play.antimatterinnovations.com', loopbackBaseUrl],
     });
 
@@ -1128,7 +1136,7 @@ async function main() {
           : { Cookie: `mega_dev_session=${session.token}`, 'X-CSRF-Token': session.csrf, Origin: 'https://megaxo.online' },
         body: { matchScope: matchId },
       });
-      if (response.status !== 200 || typeof response.data?.ticket !== 'string') throw new Error('GATEWAY_REALTIME_TICKET_FAILED');
+      if (response.status !== 200 || typeof response.data?.ticket !== 'string') throw new Error(`GATEWAY_REALTIME_TICKET_FAILED:status=${response.status}:err=${JSON.stringify(response.data?.error ?? response.data).slice(0, 160)}`);
       return response.data.ticket;
     };
     const nativeObserver = await openRealtime(loopbackBaseUrl.replace('http:', 'ws:') + '/realtime/v1', sockets);

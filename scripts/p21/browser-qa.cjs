@@ -206,6 +206,87 @@ async function main() {
       await context.close();
       process.stdout.write(JSON.stringify({ stage: 'viewport-complete', viewport: viewport.name, checks: report.checks.length, failures: report.failures.length }) + '\n');
     }
+    // Exercise the narrowest accepted CSS width with a classic reserved
+    // scrollbar. Overlay-scrollbar mobile browsers do not expose this gutter,
+    // so this fixture catches the desktop-emulation case explicitly.
+    const gutterContext = await browser.newContext({ viewport: { width: 320, height: 800 }, reducedMotion: 'reduce' });
+    await localOnly(gutterContext);
+    const gutterPage = await gutterContext.newPage();
+    track(gutterPage);
+    for (const route of ['/', '/game', '/legal/privacy', '/account']) {
+      await gutterPage.goto(origin + route, { waitUntil: 'networkidle' });
+      await gutterPage.addStyleTag({ content: 'html { scrollbar-gutter: stable !important; }' });
+      const geometry = await gutterPage.evaluate(() => ({
+        viewportWidth: innerWidth,
+        clientWidth: document.documentElement.clientWidth,
+        scrollWidth: document.documentElement.scrollWidth,
+        overflowing: [...document.querySelectorAll('#header, #main, #footer, #main *')].filter(element => {
+          const rect = element.getBoundingClientRect();
+          return rect.width > 0 && (rect.left < -1 || rect.right > document.documentElement.clientWidth + 1) && getComputedStyle(element).position !== 'absolute';
+        }).slice(0, 8).map(element => ({ element: element.tagName.toLowerCase(), class: element.className?.baseVal ?? element.className })),
+      }));
+      check('P21-BROWSER-320-SCROLLBAR-GUTTER-REFLOW', geometry.scrollWidth <= geometry.clientWidth + 1, { route, fixture: 'scrollbar-gutter:stable', ...geometry });
+      if (route === '/' || route === '/game') await snapshot(gutterPage, 'scrollbar-gutter-' + (route === '/' ? 'home' : 'game'), false);
+    }
+    await gutterContext.close();
+
+    // CSS-variable fixture approximates cutout insets on a phone and in
+    // landscape. It is deliberately reported as synthetic, never as device
+    // safe-area acceptance. The practice board must survive both changes.
+    const safeContext = await browser.newContext({ viewport: { width: 390, height: 844 }, reducedMotion: 'reduce' });
+    await localOnly(safeContext);
+    const safePage = await safeContext.newPage();
+    track(safePage);
+    await safePage.goto(origin + '/game', { waitUntil: 'networkidle' });
+    await safePage.locator('[data-gb-setting="mode"]').selectOption('local');
+    await safePage.locator('[data-gb-cell="0:4"]').click();
+    const safeFixtures = [
+      { name: 'portrait', viewport: { width: 390, height: 844 }, insets: { top: 24, right: 18, bottom: 30, left: 18 } },
+      { name: 'landscape', viewport: { width: 844, height: 390 }, insets: { top: 0, right: 44, bottom: 21, left: 44 } },
+    ];
+    for (const fixture of safeFixtures) {
+      await safePage.setViewportSize(fixture.viewport);
+      await safePage.evaluate(insets => {
+        for (const [side, value] of Object.entries(insets)) document.documentElement.style.setProperty('--mx-web-safe-' + side, value + 'px');
+      }, fixture.insets);
+      const geometry = await safePage.evaluate(() => {
+        const rect = element => {
+          const box = element?.getBoundingClientRect();
+          return box ? { left: box.left, top: box.top, right: box.right, bottom: box.bottom } : null;
+        };
+        const inset = side => parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--mx-web-safe-' + side)) || 0;
+        const header = document.querySelector('.mx-header');
+        const frame = document.querySelector('.gb-frame');
+        const cells = [...document.querySelectorAll('.gb-cell[aria-disabled="false"]')].map(cell => cell.getBoundingClientRect());
+        return {
+          viewport: { width: innerWidth, height: innerHeight, clientWidth: document.documentElement.clientWidth, scrollWidth: document.documentElement.scrollWidth },
+          safe: { top: inset('top'), right: inset('right'), bottom: inset('bottom'), left: inset('left') },
+          bodyPadding: {
+            top: parseFloat(getComputedStyle(document.body).paddingTop),
+            right: parseFloat(getComputedStyle(document.body).paddingRight),
+            bottom: parseFloat(getComputedStyle(document.body).paddingBottom),
+            left: parseFloat(getComputedStyle(document.body).paddingLeft),
+          },
+          header: rect(header),
+          board: rect(frame),
+          legalCells: cells.map(box => ({ left: box.left, right: box.right })).slice(0, 9),
+        };
+      });
+      const safeLeft = geometry.safe.left - 1;
+      const safeRight = geometry.viewport.width - geometry.safe.right + 1;
+      const headerInSafeArea = geometry.header && geometry.header.left >= safeLeft && geometry.header.right <= safeRight && geometry.header.top >= geometry.safe.top - 1;
+      const boardInSafeArea = geometry.board && geometry.board.left >= safeLeft && geometry.board.right <= safeRight && geometry.legalCells.length > 0 && geometry.legalCells.every(cell => cell.left >= safeLeft && cell.right <= safeRight);
+      const paddingMatches = ['top', 'right', 'bottom', 'left'].every(side => Math.abs(geometry.bodyPadding[side] - geometry.safe[side]) <= 1);
+      const movePreserved = await safePage.locator('[data-gb-cell="0:4"]').getAttribute('aria-label').then(label => label.includes('X, occupied'))
+        && /1 move played/.test(await safePage.locator('.gb-match-note').textContent().catch(() => ''));
+      check('P21-BROWSER-SYNTHETIC-SAFE-AREA-HEADER', headerInSafeArea, { fixture: fixture.name, source: 'synthetic CSS variables; not physical-device evidence', ...geometry });
+      check('P21-BROWSER-SYNTHETIC-SAFE-AREA-BOARD', boardInSafeArea, { fixture: fixture.name, source: 'synthetic CSS variables; not physical-device evidence', ...geometry });
+      check('P21-BROWSER-SYNTHETIC-SAFE-AREA-PADDING', paddingMatches, { fixture: fixture.name, source: 'synthetic CSS variables; not physical-device evidence', ...geometry });
+      check('P21-BROWSER-SYNTHETIC-SAFE-AREA-NO-OVERFLOW', geometry.viewport.scrollWidth <= geometry.viewport.clientWidth + 1, { fixture: fixture.name, source: 'synthetic CSS variables; not physical-device evidence', ...geometry });
+      check('P21-BROWSER-SYNTHETIC-SAFE-AREA-STATE-PRESERVED', movePreserved, { fixture: fixture.name, move: '0:4', source: 'local two-player practice only' });
+      await snapshot(safePage, 'safe-area-synthetic-' + fixture.name, false);
+    }
+    await safeContext.close();
     const context = await browser.newContext({ viewport: { width: 1280, height: 900 }, reducedMotion: 'reduce' });
     await localOnly(context);
     const page = await context.newPage();

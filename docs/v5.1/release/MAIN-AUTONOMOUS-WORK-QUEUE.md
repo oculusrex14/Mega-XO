@@ -45,10 +45,14 @@ release.
 | Datasets | COMPLETE | checkpoint 2 | 48,396 (DGX1) + 31,854 (DGX2) |
 | Value head fixed | COMPLETE | `38045d9` | val MSE 1.08 -> **0.176** |
 | Strength vs tacticalUCT | COMPLETE | `38045d9` | **0.545** (was 0.385) |
-| Architecture sweep (w96/128, b6) | IN PROGRESS | - | DGX2 tmux `sweep` |
-| PUCT self-play + working value | PENDING | - | next after best architecture |
-| Decision teacher fine-tune | IN PROGRESS | - | dataset building on DGX1 |
-| Model promotion (>=0.70) | NOT REACHED | - | 0.020 vs Expert; catalog empty (correct) |
+| Architecture sweep (w96/128, b6) | COMPLETE | `b92c9be` | capacity is NOT the lever |
+| Search-vs-strength (sims) | COMPLETE | `b92c9be` | more search does NOT help the weak prior |
+| Combined 80k dataset | COMPLETE | `38045d9`/`5aebdfc` | big-w96b4: MSE 0.154, top1 0.252 |
+| Strength: big-w96b4 | COMPLETE | `5aebdfc` | vs tacticalUCT **0.608**, vs improvedExpert **0.050** |
+| LLM teacher bestMove | COMPLETE (negative) | `5aebdfc` | 0.143 = chance; R26 justified rejection |
+| Depth-16 labels + d12d16 train | IN PROGRESS | - | DGX1 57,480 records |
+| PUCT self-play + sp-augmented train | IN PROGRESS | - | DGX2 91,121 records |
+| Model promotion (>=0.70) | NOT REACHED | - | 0.050 vs Expert; catalog empty (correct) |
 
 ## TRACK B - staging
 

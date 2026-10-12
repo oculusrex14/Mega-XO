@@ -127,7 +127,7 @@ function createPlan(root) {
   entries.push({ source: null, sources: legalSources, path: 'legal-documents.js', bytes: legalBytes, sha256: sha256(legalBytes), transformation: 'trusted-main-inner-markup-to-es-module' });
   const configSource='apps/web/store-links.json';
   const storeLinks=validateStoreLinks(JSON.parse(readSource(root,configSource).toString('utf8')));
-  const renderSources=[...WEB_FILES.map(name=>'apps/web/'+name),'src/game.js',configSource,...legalSources.map(row=>row.source)].map(source=>({source,source_sha256:sha256(readSource(root,source))}));
+  const renderSources=[...WEB_FILES.map(name=>'apps/web/'+name),'src/game.js','scripts/p21/prerender-web.mjs',configSource,...legalSources.map(row=>row.source)].map(source=>({source,source_sha256:sha256(readSource(root,source))}));
   const rendered=JSON.parse(execFileSync(process.execPath,[path.join(__dirname,'prerender-web.mjs')],{
     input:JSON.stringify({root,template,storeLinks,legalDocuments:documents,routes:WEBSITE_ROUTES}),encoding:'utf8',maxBuffer:12*1024*1024,
   }));

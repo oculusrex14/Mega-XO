@@ -2,7 +2,6 @@
 
 const crypto = require('node:crypto');
 const { materializeLeaderboardProjection, normalizeLeaderboardFilter } = require('./read-cache.js');
-const { materializeLeaderboardProjection } = require('./read-cache.js');
 
 /* The public leaderboard is an aggregate read: no actor is ever authenticated. The
  * single fixed public ingress path below is the ONLY place an empty actor header is

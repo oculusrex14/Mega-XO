@@ -1,0 +1,6987 @@
+{
+  "schemaVersion": 1,
+  "startedAt": "2026-10-12T12:11:16.783Z",
+  "status": "PASS",
+  "sourceCommit": "9df5e8e5cbc92a3832551c160cfef9d15763db45",
+  "sourceRevisionExpected": "9df5e8e5cbc92a3832551c160cfef9d15763db45",
+  "inputs": {
+    "expectedRevision": "9df5e8e5cbc92a3832551c160cfef9d15763db45",
+    "observedRevision": "9df5e8e5cbc92a3832551c160cfef9d15763db45",
+    "files": [
+      {
+        "path": "assets/p21/three/factories.mjs",
+        "sha256": "5514018144356cb104713f9527cbec5a3699e410cc5ad4aaa4742637b5566474",
+        "bytes": 34572
+      },
+      {
+        "path": "scripts/p21/export-three.mjs",
+        "sha256": "e3034e9947cf3ae9a6628974a6504fa7d945387f495287fbfbcb161514fc01f4",
+        "bytes": 24076
+      },
+      {
+        "path": "assets/p21/three/exports/x-high.glb",
+        "sha256": "45b5b1fb3aee37994b942e514eb4383530738235f692e80e8fedcf9bfad61647",
+        "bytes": 508876
+      },
+      {
+        "path": "assets/p21/three/exports/x-low.glb",
+        "sha256": "0e1b094783745e96786dd9c1cb0ddfcac8d29ad303af7f57952121cb31a60522",
+        "bytes": 69572
+      },
+      {
+        "path": "assets/p21/three/exports/o-high.glb",
+        "sha256": "df61bfc9791fd19f04289529d059f7fa5c6814e75246d5d97b7fd478e0cb626b",
+        "bytes": 208912
+      },
+      {
+        "path": "assets/p21/three/exports/o-low.glb",
+        "sha256": "103e5b852c9499bf93ac07d6c11cc4c283bf4d034074d1877a8648898b4bfaad",
+        "bytes": 20676
+      },
+      {
+        "path": "assets/p21/three/exports/coin-high.glb",
+        "sha256": "7791dcfed9da0f107d20043cbc77c0bb408823c1799b0b334c37777fc2284ab1",
+        "bytes": 157104
+      },
+      {
+        "path": "assets/p21/three/exports/coin-low.glb",
+        "sha256": "455cc13f7a647e0b53e0ab73ffbfea7a8e8dc3fecb39743a3ad2a93caff1fbee",
+        "bytes": 41984
+      },
+      {
+        "path": "assets/p21/three/exports/crown-high.glb",
+        "sha256": "b2e4e2362f011f79a7022b850bb0f3d7af7572fda3667d4f47ffed3405284bda",
+        "bytes": 195152
+      },
+      {
+        "path": "assets/p21/three/exports/crown-low.glb",
+        "sha256": "b22f4a5ecae7eb7271cd4f24d8bfb2e713d17fde8b9165b2156248ba98793090",
+        "bytes": 77564
+      },
+      {
+        "path": "assets/p21/three/exports/rank-wood-high.glb",
+        "sha256": "d173c6542b4067570993318be7b1fc2b9c98d5b019801d11ac426cf791865e08",
+        "bytes": 227900
+      },
+      {
+        "path": "assets/p21/three/exports/rank-wood-low.glb",
+        "sha256": "635bc80b2a453e30e88949c1a822bc15fcf656d096c8e12634d0b191b67c2a27",
+        "bytes": 98800
+      },
+      {
+        "path": "assets/p21/three/exports/rank-stone-high.glb",
+        "sha256": "b8c91360b857a6b215785dc078fb7b228e3b66403b1343a23f40f25f7e7dae7d",
+        "bytes": 227924
+      },
+      {
+        "path": "assets/p21/three/exports/rank-stone-low.glb",
+        "sha256": "e8f3774b66f056b85f547a77e056572ac4957ebb11425b1b6fc6659ea6f79203",
+        "bytes": 98824
+      },
+      {
+        "path": "assets/p21/three/exports/rank-iron-high.glb",
+        "sha256": "1adaf60c159cf45222385e90a07d883157e9fa0abbcb511cb3a43cd0c364aca7",
+        "bytes": 227892
+      },
+      {
+        "path": "assets/p21/three/exports/rank-iron-low.glb",
+        "sha256": "f4f03db20bbef351deba8b8fdbe2be493e8b142c57cc94515dbe8e20a96927ae",
+        "bytes": 98792
+      },
+      {
+        "path": "assets/p21/three/exports/rank-bronze-high.glb",
+        "sha256": "f7c9cac05be0c206e61edba18c92a9dc4a2eaf3f2058600899b2628a7cb2d2ab",
+        "bytes": 259296
+      },
+      {
+        "path": "assets/p21/three/exports/rank-bronze-low.glb",
+        "sha256": "714549515d82c7cdfbec310e18fa06486182c96d73b32fc68a8880cdb37d81bb",
+        "bytes": 104404
+      },
+      {
+        "path": "assets/p21/three/exports/rank-silver-high.glb",
+        "sha256": "64ccd31535f19e87ac12d786abcac7922cececbda4123182057c1ec718f99a4f",
+        "bytes": 259168
+      },
+      {
+        "path": "assets/p21/three/exports/rank-silver-low.glb",
+        "sha256": "84d1a14efea0ffdbe50a5eeefaec4294caa8815048def433cca99dd361b50698",
+        "bytes": 104276
+      },
+      {
+        "path": "assets/p21/three/exports/rank-gold-high.glb",
+        "sha256": "09baf0f4b9023301320fdffd598e1366881a0eeeaf35b5abfc658c52bc150dd9",
+        "bytes": 259232
+      },
+      {
+        "path": "assets/p21/three/exports/rank-gold-low.glb",
+        "sha256": "4f97d6bd8cb2352eee141721f6aa241c6450ff7e8cb44810cb2387de6e295f16",
+        "bytes": 104340
+      },
+      {
+        "path": "assets/p21/three/exports/rank-diamond-high.glb",
+        "sha256": "bcff2a8aeefdbca149e3b0f481658532a5af19c3b06c97751b7ec87e778d84bf",
+        "bytes": 273424
+      },
+      {
+        "path": "assets/p21/three/exports/rank-diamond-low.glb",
+        "sha256": "bb1a0e753c6dd775995ae6c425dcbac02340ae6fabca89a5261bbf0f93542e96",
+        "bytes": 110564
+      },
+      {
+        "path": "assets/p21/three/exports/rank-emerald-high.glb",
+        "sha256": "00279b676fdc7feebbcadb7f362299e30b85798509b94e8695f1c500e9290603",
+        "bytes": 259268
+      },
+      {
+        "path": "assets/p21/three/exports/rank-emerald-low.glb",
+        "sha256": "fdd02ab0db5fc968e845a56d7d43d03e3fc4c27cce35aeb4c10db44c6224b404",
+        "bytes": 104376
+      },
+      {
+        "path": "assets/p21/three/exports/rank-champion-high.glb",
+        "sha256": "9028036acd95fe696df0115e7f2cf269eb30820ecbcab61a870c05ca7b88cf90",
+        "bytes": 281120
+      },
+      {
+        "path": "assets/p21/three/exports/rank-champion-low.glb",
+        "sha256": "26d366ecfc2bfbc6d41d4ae1aee1209ac9d9369a07b4abcfa640ff71c90d635b",
+        "bytes": 113844
+      },
+      {
+        "path": "assets/p21/three/exports/rank-master-high.glb",
+        "sha256": "ea4848a5b599a6845422ad02dd49bf71867675276698b75076a563aa4d5e2318",
+        "bytes": 338036
+      },
+      {
+        "path": "assets/p21/three/exports/rank-master-low.glb",
+        "sha256": "b0f6bfebe6d6964b53d7a486c3a0ad73ab21af7cd34a444f276afb163f8ad9e8",
+        "bytes": 138392
+      },
+      {
+        "path": "assets/p21/three/exports/rank-grandmaster-high.glb",
+        "sha256": "21e0fb73d7c5de954f4297c103cb8aa71d559652258046ffce531de049f98925",
+        "bytes": 338024
+      },
+      {
+        "path": "assets/p21/three/exports/rank-grandmaster-low.glb",
+        "sha256": "2d6f4444c421103f8650b5e463baeefae9e465afb658f8bb202e73a28154b580",
+        "bytes": 138384
+      },
+      {
+        "path": "assets/p21/three/exports/trophy-high.glb",
+        "sha256": "214d183127533e61a778588cf0041f5b2ef647c54a9b103243a29260182c0fce",
+        "bytes": 302120
+      },
+      {
+        "path": "assets/p21/three/exports/trophy-low.glb",
+        "sha256": "baf6caba0e4b77a094ef5e3b4016ae102dde41e3c00ee839048b6adef0e723bc",
+        "bytes": 108084
+      },
+      {
+        "path": "assets/p21/three/exports/reward-chest-high.glb",
+        "sha256": "ac86346e81bb17b9b1dd576a50dd3b994c418c61d4fb8f395b51aeb2d692cc46",
+        "bytes": 262620
+      },
+      {
+        "path": "assets/p21/three/exports/reward-chest-low.glb",
+        "sha256": "ad83b9a707f296feef4712ada0c792c1ac459dc5e2ea3543acfad141fd4f6325",
+        "bytes": 55792
+      },
+      {
+        "path": "assets/p21/three/exports/board-x-high.glb",
+        "sha256": "a6021c96555f200fd4e6440f2eb67fb3e626362530c7b6c532045baf2b69f879",
+        "bytes": 954532
+      },
+      {
+        "path": "assets/p21/three/exports/board-x-low.glb",
+        "sha256": "a839fec3ce0e7842a297b768f9d36263b0a8139d514fa8e2c649e1aa8b8d0430",
+        "bytes": 318608
+      },
+      {
+        "path": "assets/p21/three/exports/board-o-high.glb",
+        "sha256": "cd8f9074054c7d96f3f20ffc62e708a71c354b87e1b61784b8731e879299adcc",
+        "bytes": 430152
+      },
+      {
+        "path": "assets/p21/three/exports/board-o-low.glb",
+        "sha256": "43431b5c6f850fc2d0039eec6c2ef65d2657e91c18172db823131d986a56c47c",
+        "bytes": 133596
+      }
+    ]
+  },
+  "framework": {
+    "name": "Playwright",
+    "version": "1.62.1",
+    "browserEngine": "Chromium",
+    "headless": true,
+    "browserVersion": "151.0.7922.34"
+  },
+  "execution": {
+    "context": "fresh unauthenticated headless BrowserContext; service workers blocked; no page scripts, cookies or local storage imported from user profiles",
+    "network": "ephemeral 127.0.0.1 listener with exact allowlist; Playwright route aborts every non-loopback origin before network; no external traffic permitted",
+    "server": {
+      "allowedPaths": [
+        "/factories.mjs",
+        "/glb/board-o-high.glb",
+        "/glb/board-o-low.glb",
+        "/glb/board-x-high.glb",
+        "/glb/board-x-low.glb",
+        "/glb/coin-high.glb",
+        "/glb/coin-low.glb",
+        "/glb/crown-high.glb",
+        "/glb/crown-low.glb",
+        "/glb/o-high.glb",
+        "/glb/o-low.glb",
+        "/glb/rank-bronze-high.glb",
+        "/glb/rank-bronze-low.glb",
+        "/glb/rank-champion-high.glb",
+        "/glb/rank-champion-low.glb",
+        "/glb/rank-diamond-high.glb",
+        "/glb/rank-diamond-low.glb",
+        "/glb/rank-emerald-high.glb",
+        "/glb/rank-emerald-low.glb",
+        "/glb/rank-gold-high.glb",
+        "/glb/rank-gold-low.glb",
+        "/glb/rank-grandmaster-high.glb",
+        "/glb/rank-grandmaster-low.glb",
+        "/glb/rank-iron-high.glb",
+        "/glb/rank-iron-low.glb",
+        "/glb/rank-master-high.glb",
+        "/glb/rank-master-low.glb",
+        "/glb/rank-silver-high.glb",
+        "/glb/rank-silver-low.glb",
+        "/glb/rank-stone-high.glb",
+        "/glb/rank-stone-low.glb",
+        "/glb/rank-wood-high.glb",
+        "/glb/rank-wood-low.glb",
+        "/glb/reward-chest-high.glb",
+        "/glb/reward-chest-low.glb",
+        "/glb/trophy-high.glb",
+        "/glb/trophy-low.glb",
+        "/glb/x-high.glb",
+        "/glb/x-low.glb",
+        "/modules/loaders/GLTFLoader.js",
+        "/modules/three.core.js",
+        "/modules/three.module.js",
+        "/modules/utils/BufferGeometryUtils.js",
+        "/render.html"
+      ],
+      "servedPaths": [
+        {
+          "path": "/render.html",
+          "source": "in-memory controlled harness",
+          "bytes": 5864
+        },
+        {
+          "path": "/modules/three.module.js",
+          "source": ".artifacts/p21-three-tools/node_modules/three/build/three.module.js",
+          "bytes": 603113
+        },
+        {
+          "path": "/modules/loaders/GLTFLoader.js",
+          "source": ".artifacts/p21-three-tools/node_modules/three/examples/jsm/loaders/GLTFLoader.js",
+          "bytes": 114739
+        },
+        {
+          "path": "/factories.mjs",
+          "source": "assets/p21/three/factories.mjs",
+          "bytes": 34572
+        },
+        {
+          "path": "/modules/utils/BufferGeometryUtils.js",
+          "source": ".artifacts/p21-three-tools/node_modules/three/examples/jsm/utils/BufferGeometryUtils.js",
+          "bytes": 35539
+        },
+        {
+          "path": "/modules/three.core.js",
+          "source": ".artifacts/p21-three-tools/node_modules/three/build/three.core.js",
+          "bytes": 1403455
+        },
+        {
+          "path": "/glb/x-high.glb",
+          "source": "assets/p21/three/exports/x-high.glb",
+          "bytes": 508876
+        },
+        {
+          "path": "/glb/x-low.glb",
+          "source": "assets/p21/three/exports/x-low.glb",
+          "bytes": 69572
+        },
+        {
+          "path": "/glb/o-high.glb",
+          "source": "assets/p21/three/exports/o-high.glb",
+          "bytes": 208912
+        },
+        {
+          "path": "/glb/o-low.glb",
+          "source": "assets/p21/three/exports/o-low.glb",
+          "bytes": 20676
+        },
+        {
+          "path": "/glb/coin-high.glb",
+          "source": "assets/p21/three/exports/coin-high.glb",
+          "bytes": 157104
+        },
+        {
+          "path": "/glb/coin-low.glb",
+          "source": "assets/p21/three/exports/coin-low.glb",
+          "bytes": 41984
+        },
+        {
+          "path": "/glb/crown-high.glb",
+          "source": "assets/p21/three/exports/crown-high.glb",
+          "bytes": 195152
+        },
+        {
+          "path": "/glb/crown-low.glb",
+          "source": "assets/p21/three/exports/crown-low.glb",
+          "bytes": 77564
+        },
+        {
+          "path": "/glb/rank-wood-high.glb",
+          "source": "assets/p21/three/exports/rank-wood-high.glb",
+          "bytes": 227900
+        },
+        {
+          "path": "/glb/rank-wood-low.glb",
+          "source": "assets/p21/three/exports/rank-wood-low.glb",
+          "bytes": 98800
+        },
+        {
+          "path": "/glb/rank-stone-high.glb",
+          "source": "assets/p21/three/exports/rank-stone-high.glb",
+          "bytes": 227924
+        },
+        {
+          "path": "/glb/rank-stone-low.glb",
+          "source": "assets/p21/three/exports/rank-stone-low.glb",
+          "bytes": 98824
+        },
+        {
+          "path": "/glb/rank-iron-high.glb",
+          "source": "assets/p21/three/exports/rank-iron-high.glb",
+          "bytes": 227892
+        },
+        {
+          "path": "/glb/rank-iron-low.glb",
+          "source": "assets/p21/three/exports/rank-iron-low.glb",
+          "bytes": 98792
+        },
+        {
+          "path": "/glb/rank-bronze-high.glb",
+          "source": "assets/p21/three/exports/rank-bronze-high.glb",
+          "bytes": 259296
+        },
+        {
+          "path": "/glb/rank-bronze-low.glb",
+          "source": "assets/p21/three/exports/rank-bronze-low.glb",
+          "bytes": 104404
+        },
+        {
+          "path": "/glb/rank-silver-high.glb",
+          "source": "assets/p21/three/exports/rank-silver-high.glb",
+          "bytes": 259168
+        },
+        {
+          "path": "/glb/rank-silver-low.glb",
+          "source": "assets/p21/three/exports/rank-silver-low.glb",
+          "bytes": 104276
+        },
+        {
+          "path": "/glb/rank-gold-high.glb",
+          "source": "assets/p21/three/exports/rank-gold-high.glb",
+          "bytes": 259232
+        },
+        {
+          "path": "/glb/rank-gold-low.glb",
+          "source": "assets/p21/three/exports/rank-gold-low.glb",
+          "bytes": 104340
+        },
+        {
+          "path": "/glb/rank-diamond-high.glb",
+          "source": "assets/p21/three/exports/rank-diamond-high.glb",
+          "bytes": 273424
+        },
+        {
+          "path": "/glb/rank-diamond-low.glb",
+          "source": "assets/p21/three/exports/rank-diamond-low.glb",
+          "bytes": 110564
+        },
+        {
+          "path": "/glb/rank-emerald-high.glb",
+          "source": "assets/p21/three/exports/rank-emerald-high.glb",
+          "bytes": 259268
+        },
+        {
+          "path": "/glb/rank-emerald-low.glb",
+          "source": "assets/p21/three/exports/rank-emerald-low.glb",
+          "bytes": 104376
+        },
+        {
+          "path": "/glb/rank-champion-high.glb",
+          "source": "assets/p21/three/exports/rank-champion-high.glb",
+          "bytes": 281120
+        },
+        {
+          "path": "/glb/rank-champion-low.glb",
+          "source": "assets/p21/three/exports/rank-champion-low.glb",
+          "bytes": 113844
+        },
+        {
+          "path": "/glb/rank-master-high.glb",
+          "source": "assets/p21/three/exports/rank-master-high.glb",
+          "bytes": 338036
+        },
+        {
+          "path": "/glb/rank-master-low.glb",
+          "source": "assets/p21/three/exports/rank-master-low.glb",
+          "bytes": 138392
+        },
+        {
+          "path": "/glb/rank-grandmaster-high.glb",
+          "source": "assets/p21/three/exports/rank-grandmaster-high.glb",
+          "bytes": 338024
+        },
+        {
+          "path": "/glb/rank-grandmaster-low.glb",
+          "source": "assets/p21/three/exports/rank-grandmaster-low.glb",
+          "bytes": 138384
+        },
+        {
+          "path": "/glb/trophy-high.glb",
+          "source": "assets/p21/three/exports/trophy-high.glb",
+          "bytes": 302120
+        },
+        {
+          "path": "/glb/trophy-low.glb",
+          "source": "assets/p21/three/exports/trophy-low.glb",
+          "bytes": 108084
+        },
+        {
+          "path": "/glb/reward-chest-high.glb",
+          "source": "assets/p21/three/exports/reward-chest-high.glb",
+          "bytes": 262620
+        },
+        {
+          "path": "/glb/reward-chest-low.glb",
+          "source": "assets/p21/three/exports/reward-chest-low.glb",
+          "bytes": 55792
+        },
+        {
+          "path": "/glb/board-x-high.glb",
+          "source": "assets/p21/three/exports/board-x-high.glb",
+          "bytes": 954532
+        },
+        {
+          "path": "/glb/board-x-low.glb",
+          "source": "assets/p21/three/exports/board-x-low.glb",
+          "bytes": 318608
+        },
+        {
+          "path": "/glb/board-o-high.glb",
+          "source": "assets/p21/three/exports/board-o-high.glb",
+          "bytes": 430152
+        },
+        {
+          "path": "/glb/board-o-low.glb",
+          "source": "assets/p21/three/exports/board-o-low.glb",
+          "bytes": 133596
+        }
+      ],
+      "disallowedRequests": [],
+      "blockedExternalOrigins": [],
+      "servedPathCount": 44,
+      "restrictedToLoopback": true,
+      "externalTrafficAllowed": false
+    },
+    "consoleErrors": [],
+    "pageErrors": [],
+    "renderer": {
+      "webglVersion": "WebGL 2.0 (OpenGL ES 3.0 Chromium)",
+      "shadingLanguageVersion": "WebGL GLSL ES 3.00 (OpenGL ES GLSL ES 3.0 Chromium)",
+      "renderer": "WebKit WebGL",
+      "vendor": "WebKit",
+      "alpha": true
+    },
+    "initializationWebglErrors": []
+  },
+  "matrix": [
+    {
+      "asset": "x",
+      "quality": "high",
+      "view": "front",
+      "file": "assets/p21/three/stills/x-high-front.png",
+      "bytes": 35424,
+      "sha256": "98c69089baed946be07b37e1bcf60b4d15e43ac14f5f6944edaa3c2ef9119ef4",
+      "pixel": {
+        "width": 640,
+        "height": 640,
+        "colorType": "RGBA8",
+        "visiblePixels": 104904,
+        "transparentPixels": 304696,
+        "opaquePixels": 103436,
+        "alphaMin": 0,
+        "alphaMax": 255,
+        "alphaCoverage": {
+          "minX": 99,
+          "minY": 99,
+          "maxX": 540,
+          "maxY": 540,
+          "width": 442,
+          "height": 442
+        },
+        "hasTransparentBackground": true
+      },
+      "renderTriangles": 5272,
+      "sourceTriangles": 5272,
+      "drawCalls": 2,
+      "canvasAlpha": true,
+      "webglErrors": []
+    },
+    {
+      "asset": "x",
+      "quality": "high",
+      "view": "quarter",
+      "file": "assets/p21/three/stills/x-high-quarter.png",
+      "bytes": 59714,
+      "sha256": "2571e78008628eeb27d45b9b836cd41469c12597ff1b06c07191eccea33f4629",
+      "pixel": {
+        "width": 640,
+        "height": 640,
+        "colorType": "RGBA8",
+        "visiblePixels": 106779,
+        "transparentPixels": 302821,
+        "opaquePixels": 105449,
+        "alphaMin": 0,
+        "alphaMax": 255,
+        "alphaCoverage": {
+          "minX": 124,
+          "minY": 71,
+          "maxX": 515,
+          "maxY": 568,
+          "width": 392,
+          "height": 498
+        },
+        "hasTransparentBackground": true
+      },
+      "renderTriangles": 5272,
+      "sourceTriangles": 5272,
+      "drawCalls": 2,
+      "canvasAlpha": true,
+      "webglErrors": []
+    },
+    {
+      "asset": "x",
+      "quality": "low",
+      "view": "front",
+      "file": "assets/p21/three/stills/x-low-front.png",
+      "bytes": 26318,
+      "sha256": "4be6dc76855c74f35d401c7f83a87a4f686299c31d7851c30488e981c465ffeb",
+      "pixel": {
+        "width": 640,
+        "height": 640,
+        "colorType": "RGBA8",
+        "visiblePixels": 104884,
+        "transparentPixels": 304716,
+        "opaquePixels": 103408,
+        "alphaMin": 0,
+        "alphaMax": 255,
+        "alphaCoverage": {
+          "minX": 98,
+          "minY": 98,
+          "maxX": 541,
+          "maxY": 541,
+          "width": 444,
+          "height": 444
+        },
+        "hasTransparentBackground": true
+      },
+      "renderTriangles": 696,
+      "sourceTriangles": 696,
+      "drawCalls": 2,
+      "canvasAlpha": true,
+      "webglErrors": []
+    },
+    {
+      "asset": "x",
+      "quality": "low",
+      "view": "quarter",
+      "file": "assets/p21/three/stills/x-low-quarter.png",
+      "bytes": 38751,
+      "sha256": "46ff26f1afb4ae4b9457057dcf796e142df298415f0a2b078312a6082e34aa77",
+      "pixel": {
+        "width": 640,
+        "height": 640,
+        "colorType": "RGBA8",
+        "visiblePixels": 103552,
+        "transparentPixels": 306048,
+        "opaquePixels": 102253,
+        "alphaMin": 0,
+        "alphaMax": 255,
+        "alphaCoverage": {
+          "minX": 127,
+          "minY": 71,
+          "maxX": 512,
+          "maxY": 568,
+          "width": 386,
+          "height": 498
+        },
+        "hasTransparentBackground": true
+      },
+      "renderTriangles": 696,
+      "sourceTriangles": 696,
+      "drawCalls": 2,
+      "canvasAlpha": true,
+      "webglErrors": []
+    },
+    {
+      "asset": "o",
+      "quality": "high",
+      "view": "front",
+      "file": "assets/p21/three/stills/o-high-front.png",
+      "bytes": 134081,
+      "sha256": "aadfe03fd3d2173f59c40b265a3dbf4b6f972301c16a2f8bf61516e33bf628dd",
+      "pixel": {
+        "width": 640,
+        "height": 640,
+        "colorType": "RGBA8",
+        "visiblePixels": 75804,
+        "transparentPixels": 333796,
+        "opaquePixels": 73952,
+        "alphaMin": 0,
+        "alphaMax": 255,
+        "alphaCoverage": {
+          "minX": 81,
+          "minY": 81,
+          "maxX": 558,
+          "maxY": 558,
+          "width": 478,
+          "height": 478
+        },
+        "hasTransparentBackground": true
+      },
+      "renderTriangles": 9216,
+      "sourceTriangles": 9216,
+      "drawCalls": 1,
+      "canvasAlpha": true,
+      "webglErrors": []
+    },
+    {
+      "asset": "o",
+      "quality": "high",
+      "view": "quarter",
+      "file": "assets/p21/three/stills/o-high-quarter.png",
+      "bytes": 116280,
+      "sha256": "5f5f85fa5d02fa762307a15d9e788da19143a66dac7a988a64415c09d239b87b",
+      "pixel": {
+        "width": 640,
+        "height": 640,
+        "colorType": "RGBA8",
+        "visiblePixels": 67005,
+        "transparentPixels": 342595,
+        "opaquePixels": 65339,
+        "alphaMin": 0,
+        "alphaMax": 255,
+        "alphaCoverage": {
+          "minX": 123,
+          "minY": 87,
+          "maxX": 516,
+          "maxY": 552,
+          "width": 394,
+          "height": 466
+        },
+        "hasTransparentBackground": true
+      },
+      "renderTriangles": 9216,
+      "sourceTriangles": 9216,
+      "drawCalls": 1,
+      "canvasAlpha": true,
+      "webglErrors": []
+    },
+    {
+      "asset": "o",
+      "quality": "low",
+      "view": "front",
+      "file": "assets/p21/three/stills/o-low-front.png",
+      "bytes": 131872,
+      "sha256": "27d0b267340b630ee237d77e4ff194fb3bb9a6f65a8cf05d84721cfa75169fa1",
+      "pixel": {
+        "width": 640,
+        "height": 640,
+        "colorType": "RGBA8",
+        "visiblePixels": 74848,
+        "transparentPixels": 334752,
+        "opaquePixels": 72976,
+        "alphaMin": 0,
+        "alphaMax": 255,
+        "alphaCoverage": {
+          "minX": 81,
+          "minY": 81,
+          "maxX": 558,
+          "maxY": 558,
+          "width": 478,
+          "height": 478
+        },
+        "hasTransparentBackground": true
+      },
+      "renderTriangles": 800,
+      "sourceTriangles": 800,
+      "drawCalls": 1,
+      "canvasAlpha": true,
+      "webglErrors": []
+    },
+    {
+      "asset": "o",
+      "quality": "low",
+      "view": "quarter",
+      "file": "assets/p21/three/stills/o-low-quarter.png",
+      "bytes": 115269,
+      "sha256": "8e8c4210ecd93750e14c8ee8e14e93b37a14a44b2aabcb25c680ee9844739128",
+      "pixel": {
+        "width": 640,
+        "height": 640,
+        "colorType": "RGBA8",
+        "visiblePixels": 66010,
+        "transparentPixels": 343590,
+        "opaquePixels": 64354,
+        "alphaMin": 0,
+        "alphaMax": 255,
+        "alphaCoverage": {
+          "minX": 123,
+          "minY": 89,
+          "maxX": 516,
+          "maxY": 550,
+          "width": 394,
+          "height": 462
+        },
+        "hasTransparentBackground": true
+      },
+      "renderTriangles": 800,
+      "sourceTriangles": 800,
+      "drawCalls": 1,
+      "canvasAlpha": true,
+      "webglErrors": []
+    },
+    {
+      "asset": "coin",
+      "quality": "high",
+      "view": "front",
+      "file": "assets/p21/three/stills/coin-high-front.png",
+      "bytes": 156355,
+      "sha256": "8f5a38b6e6c6ded0f264ed68f92be8cb5f4245ad22f7cf16286caf8637c677e9",
+      "pixel": {
+        "width": 640,
+        "height": 640,
+        "colorType": "RGBA8",
+        "visiblePixels": 179404,
+        "transparentPixels": 230196,
+        "opaquePixels": 178340,
+        "alphaMin": 0,
+        "alphaMax": 255,
+        "alphaCoverage": {
+          "minX": 81,
+          "minY": 81,
+          "maxX": 558,
+          "maxY": 558,
+          "width": 478,
+          "height": 478
+        },
+        "hasTransparentBackground": true
+      },
+      "renderTriangles": 5028,
+      "sourceTriangles": 5028,
+      "drawCalls": 6,
+      "canvasAlpha": true,
+      "webglErrors": []
+    },
+    {
+      "asset": "coin",
+      "quality": "high",
+      "view": "quarter",
+      "file": "assets/p21/three/stills/coin-high-quarter.png",
+      "bytes": 142240,
+      "sha256": "db4e4057af28f10a14705d3dbd1b509ad00bcaa0a76689e9327c74ccf7e66641",
+      "pixel": {
+        "width": 640,
+        "height": 640,
+        "colorType": "RGBA8",
+        "visiblePixels": 149771,
+        "transparentPixels": 259829,
+        "opaquePixels": 148796,
+        "alphaMin": 0,
+        "alphaMax": 255,
+        "alphaCoverage": {
+          "minX": 125,
+          "minY": 79,
+          "maxX": 532,
+          "maxY": 553,
+          "width": 408,
+          "height": 475
+        },
+        "hasTransparentBackground": true
+      },
+      "renderTriangles": 5028,
+      "sourceTriangles": 5028,
+      "drawCalls": 6,
+      "canvasAlpha": true,
+      "webglErrors": []
+    },
+    {
+      "asset": "coin",
+      "quality": "low",
+      "view": "front",
+      "file": "assets/p21/three/stills/coin-low-front.png",
+      "bytes": 144938,
+      "sha256": "35c8ef293f3f4729800f221689221d4ec329de524f7e131fde02a8fabddb8a38",
+      "pixel": {
+        "width": 640,
+        "height": 640,
+        "colorType": "RGBA8",
+        "visiblePixels": 176864,
+        "transparentPixels": 232736,
+        "opaquePixels": 175784,
+        "alphaMin": 0,
+        "alphaMax": 255,
+        "alphaCoverage": {
+          "minX": 81,
+          "minY": 81,
+          "maxX": 558,
+          "maxY": 558,
+          "width": 478,
+          "height": 478
+        },
+        "hasTransparentBackground": true
+      },
+      "renderTriangles": 956,
+      "sourceTriangles": 956,
+      "drawCalls": 6,
+      "canvasAlpha": true,
+      "webglErrors": []
+    },
+    {
+      "asset": "coin",
+      "quality": "low",
+      "view": "quarter",
+      "file": "assets/p21/three/stills/coin-low-quarter.png",
+      "bytes": 131221,
+      "sha256": "f13f176a91ec2379bf3b03e3daf0a4b7e069794cc3f7f876e96773dfeaeed770",
+      "pixel": {
+        "width": 640,
+        "height": 640,
+        "colorType": "RGBA8",
+        "visiblePixels": 147618,
+        "transparentPixels": 261982,
+        "opaquePixels": 146634,
+        "alphaMin": 0,
+        "alphaMax": 255,
+        "alphaCoverage": {
+          "minX": 125,
+          "minY": 81,
+          "maxX": 532,
+          "maxY": 551,
+          "width": 408,
+          "height": 471
+        },
+        "hasTransparentBackground": true
+      },
+      "renderTriangles": 956,
+      "sourceTriangles": 956,
+      "drawCalls": 6,
+      "canvasAlpha": true,
+      "webglErrors": []
+    },
+    {
+      "asset": "crown",
+      "quality": "high",
+      "view": "front",
+      "file": "assets/p21/three/stills/crown-high-front.png",
+      "bytes": 80390,
+      "sha256": "6251ea2c5e4c0cd6da50e80817b75e616dcd1e968401806cb9add7a84181b9e3",
+      "pixel": {
+        "width": 640,
+        "height": 640,
+        "colorType": "RGBA8",
+        "visiblePixels": 89198,
+        "transparentPixels": 320402,
+        "opaquePixels": 87716,
+        "alphaMin": 0,
+        "alphaMax": 255,
+        "alphaCoverage": {
+          "minX": 84,
+          "minY": 154,
+          "maxX": 555,
+          "maxY": 504,
+          "width": 472,
+          "height": 351
+        },
+        "hasTransparentBackground": true
+      },
+      "renderTriangles": 2976,
+      "sourceTriangles": 2976,
+      "drawCalls": 19,
+      "canvasAlpha": true,
+      "webglErrors": []
+    },
+    {
+      "asset": "crown",
+      "quality": "high",
+      "view": "quarter",
+      "file": "assets/p21/three/stills/crown-high-quarter.png",
+      "bytes": 79693,
+      "sha256": "d99fa675a016c404aa0c4db0fc59f08962d6b68a53274875c5cfd0f460398682",
+      "pixel": {
+        "width": 640,
+        "height": 640,
+        "colorType": "RGBA8",
+        "visiblePixels": 83205,
+        "transparentPixels": 326395,
+        "opaquePixels": 81929,
+        "alphaMin": 0,
+        "alphaMax": 255,
+        "alphaCoverage": {
+          "minX": 134,
+          "minY": 163,
+          "maxX": 538,
+          "maxY": 517,
+          "width": 405,
+          "height": 355
+        },
+        "hasTransparentBackground": true
+      },
+      "renderTriangles": 2976,
+      "sourceTriangles": 2976,
+      "drawCalls": 19,
+      "canvasAlpha": true,
+      "webglErrors": []
+    },
+    {
+      "asset": "crown",
+      "quality": "low",
+      "view": "front",
+      "file": "assets/p21/three/stills/crown-low-front.png",
+      "bytes": 55347,
+      "sha256": "97d1e6c801e607f709f19e1aaf018c1f8c5fc7707def1b2c8dea0f34b6c84c22",
+      "pixel": {
+        "width": 640,
+        "height": 640,
+        "colorType": "RGBA8",
+        "visiblePixels": 86704,
+        "transparentPixels": 322896,
+        "opaquePixels": 85172,
+        "alphaMin": 0,
+        "alphaMax": 255,
+        "alphaCoverage": {
+          "minX": 84,
+          "minY": 155,
+          "maxX": 555,
+          "maxY": 504,
+          "width": 472,
+          "height": 350
+        },
+        "hasTransparentBackground": true
+      },
+      "renderTriangles": 768,
+      "sourceTriangles": 768,
+      "drawCalls": 19,
+      "canvasAlpha": true,
+      "webglErrors": []
+    },
+    {
+      "asset": "crown",
+      "quality": "low",
+      "view": "quarter",
+      "file": "assets/p21/three/stills/crown-low-quarter.png",
+      "bytes": 56310,
+      "sha256": "1d81b8fad462affd91be973fc7dade4496d87c5e6b6f6b79f8f3c66e143f52d6",
+      "pixel": {
+        "width": 640,
+        "height": 640,
+        "colorType": "RGBA8",
+        "visiblePixels": 79737,
+        "transparentPixels": 329863,
+        "opaquePixels": 78445,
+        "alphaMin": 0,
+        "alphaMax": 255,
+        "alphaCoverage": {
+          "minX": 137,
+          "minY": 164,
+          "maxX": 536,
+          "maxY": 516,
+          "width": 400,
+          "height": 353
+        },
+        "hasTransparentBackground": true
+      },
+      "renderTriangles": 768,
+      "sourceTriangles": 768,
+      "drawCalls": 19,
+      "canvasAlpha": true,
+      "webglErrors": []
+    },
+    {
+      "asset": "rank-wood",
+      "quality": "high",
+      "view": "front",
+      "file": "assets/p21/three/stills/rank-wood-high-front.png",
+      "bytes": 81801,
+      "sha256": "00f2c343778c062d0ec2ffa5ecad9c6b8f07ac8930165967367b1dd8d22df2f9",
+      "pixel": {
+        "width": 640,
+        "height": 640,
+        "colorType": "RGBA8",
+        "visiblePixels": 119762,
+        "transparentPixels": 289838,
+        "opaquePixels": 118236,
+        "alphaMin": 0,
+        "alphaMax": 255,
+        "alphaCoverage": {
+          "minX": 81,
+          "minY": 119,
+          "maxX": 558,
+          "maxY": 519,
+          "width": 478,
+          "height": 401
+        },
+        "hasTransparentBackground": true
+      },
+      "renderTriangles": 2164,
+      "sourceTriangles": 2164,
+      "drawCalls": 19,
+      "canvasAlpha": true,
+      "webglErrors": []
+    },
+    {
+      "asset": "rank-wood",
+      "quality": "high",
+      "view": "quarter",
+      "file": "assets/p21/three/stills/rank-wood-high-quarter.png",
+      "bytes": 81182,
+      "sha256": "237a9079322d196d33c07bca392108987e38b5dba1afe477952d9afda6e6a021",
+      "pixel": {
+        "width": 640,
+        "height": 640,
+        "colorType": "RGBA8",
+        "visiblePixels": 102822,
+        "transparentPixels": 306778,
+        "opaquePixels": 101689,
+        "alphaMin": 0,
+        "alphaMax": 255,
+        "alphaCoverage": {
+          "minX": 131,
+          "minY": 93,
+          "maxX": 530,
+          "maxY": 511,
+          "width": 400,
+          "height": 419
+        },
+        "hasTransparentBackground": true
+      },
+      "renderTriangles": 2164,
+      "sourceTriangles": 2164,
+      "drawCalls": 19,
+      "canvasAlpha": true,
+      "webglErrors": []
+    },
+    {
+      "asset": "rank-wood",
+      "quality": "low",
+      "view": "front",
+      "file": "assets/p21/three/stills/rank-wood-low-front.png",
+      "bytes": 60495,
+      "sha256": "8e35bf199232070084167454cd2995b2491fca63b893788cb7c26512cfe20f43",
+      "pixel": {
+        "width": 640,
+        "height": 640,
+        "colorType": "RGBA8",
+        "visiblePixels": 119762,
+        "transparentPixels": 289838,
+        "opaquePixels": 118236,
+        "alphaMin": 0,
+        "alphaMax": 255,
+        "alphaCoverage": {
+          "minX": 81,
+          "minY": 119,
+          "maxX": 558,
+          "maxY": 519,
+          "width": 478,
+          "height": 401
+        },
+        "hasTransparentBackground": true
+      },
+      "renderTriangles": 820,
+      "sourceTriangles": 820,
+      "drawCalls": 19,
+      "canvasAlpha": true,
+      "webglErrors": []
+    },
+    {
+      "asset": "rank-wood",
+      "quality": "low",
+      "view": "quarter",
+      "file": "assets/p21/three/stills/rank-wood-low-quarter.png",
+      "bytes": 60370,
+      "sha256": "b57e345323e123592b29d458aa38ae3ae1420b3f169146007af1efb238714aed",
+      "pixel": {
+        "width": 640,
+        "height": 640,
+        "colorType": "RGBA8",
+        "visiblePixels": 101841,
+        "transparentPixels": 307759,
+        "opaquePixels": 100701,
+        "alphaMin": 0,
+        "alphaMax": 255,
+        "alphaCoverage": {
+          "minX": 132,
+          "minY": 93,
+          "maxX": 529,
+          "maxY": 511,
+          "width": 398,
+          "height": 419
+        },
+        "hasTransparentBackground": true
+      },
+      "renderTriangles": 820,
+      "sourceTriangles": 820,
+      "drawCalls": 19,
+      "canvasAlpha": true,
+      "webglErrors": []
+    },
+    {
+      "asset": "rank-stone",
+      "quality": "high",
+      "view": "front",
+      "file": "assets/p21/three/stills/rank-stone-high-front.png",
+      "bytes": 82754,
+      "sha256": "99444e0bcac68001b4a6c01a877f2fa56201286ae361105bbfa88e9437dcc673",
+      "pixel": {
+        "width": 640,
+        "height": 640,
+        "colorType": "RGBA8",
+        "visiblePixels": 119762,
+        "transparentPixels": 289838,
+        "opaquePixels": 118236,
+        "alphaMin": 0,
+        "alphaMax": 255,
+        "alphaCoverage": {
+          "minX": 81,
+          "minY": 119,
+          "maxX": 558,
+          "maxY": 519,
+          "width": 478,
+          "height": 401
+        },
+        "hasTransparentBackground": true
+      },
+      "renderTriangles": 2164,
+      "sourceTriangles": 2164,
+      "drawCalls": 19,
+      "canvasAlpha": true,
+      "webglErrors": []
+    },
+    {
+      "asset": "rank-stone",
+      "quality": "high",
+      "view": "quarter",
+      "file": "assets/p21/three/stills/rank-stone-high-quarter.png",
+      "bytes": 81816,
+      "sha256": "63d3a52c09e6662c2b840abcc5a7d426703ce634117c0736e09e292f7bf0f74f",
+      "pixel": {
+        "width": 640,
+        "height": 640,
+        "colorType": "RGBA8",
+        "visiblePixels": 102822,
+        "transparentPixels": 306778,
+        "opaquePixels": 101689,
+        "alphaMin": 0,
+        "alphaMax": 255,
+        "alphaCoverage": {
+          "minX": 131,
+          "minY": 93,
+          "maxX": 530,
+          "maxY": 511,
+          "width": 400,
+          "height": 419
+        },
+        "hasTransparentBackground": true
+      },
+      "renderTriangles": 2164,
+      "sourceTriangles": 2164,
+      "drawCalls": 19,
+      "canvasAlpha": true,
+      "webglErrors": []
+    },
+    {
+      "asset": "rank-stone",
+      "quality": "low",
+      "view": "front",
+      "file": "assets/p21/three/stills/rank-stone-low-front.png",
+      "bytes": 61003,
+      "sha256": "2c4b4210a29cce23975844145df13d12d069a811f42d72ba56f57acd08fbc94e",
+      "pixel": {
+        "width": 640,
+        "height": 640,
+        "colorType": "RGBA8",
+        "visiblePixels": 119762,
+        "transparentPixels": 289838,
+        "opaquePixels": 118236,
+        "alphaMin": 0,
+        "alphaMax": 255,
+        "alphaCoverage": {
+          "minX": 81,
+          "minY": 119,
+          "maxX": 558,
+          "maxY": 519,
+          "width": 478,
+          "height": 401
+        },
+        "hasTransparentBackground": true
+      },
+      "renderTriangles": 820,
+      "sourceTriangles": 820,
+      "drawCalls": 19,
+      "canvasAlpha": true,
+      "webglErrors": []
+    },
+    {
+      "asset": "rank-stone",
+      "quality": "low",
+      "view": "quarter",
+      "file": "assets/p21/three/stills/rank-stone-low-quarter.png",
+      "bytes": 60386,
+      "sha256": "0f29bf7bff8559f53aabfb8312b1fa2c2a406780ddf751a29284f075d3329920",
+      "pixel": {
+        "width": 640,
+        "height": 640,
+        "colorType": "RGBA8",
+        "visiblePixels": 101841,
+        "transparentPixels": 307759,
+        "opaquePixels": 100701,
+        "alphaMin": 0,
+        "alphaMax": 255,
+        "alphaCoverage": {
+          "minX": 132,
+          "minY": 93,
+          "maxX": 529,
+          "maxY": 511,
+          "width": 398,
+          "height": 419
+        },
+        "hasTransparentBackground": true
+      },
+      "renderTriangles": 820,
+      "sourceTriangles": 820,
+      "drawCalls": 19,
+      "canvasAlpha": true,
+      "webglErrors": []
+    },
+    {
+      "asset": "rank-iron",
+      "quality": "high",
+      "view": "front",
+      "file": "assets/p21/three/stills/rank-iron-high-front.png",
+      "bytes": 80030,
+      "sha256": "26793caad173d5e87ad627dec638ce72aa9b87ed1a6675868cac9a5928c914f1",
+      "pixel": {
+        "width": 640,
+        "height": 640,
+        "colorType": "RGBA8",
+        "visiblePixels": 119762,
+        "transparentPixels": 289838,
+        "opaquePixels": 118236,
+        "alphaMin": 0,
+        "alphaMax": 255,
+        "alphaCoverage": {
+          "minX": 81,
+          "minY": 119,
+          "maxX": 558,
+          "maxY": 519,
+          "width": 478,
+          "height": 401
+        },
+        "hasTransparentBackground": true
+      },
+      "renderTriangles": 2164,
+      "sourceTriangles": 2164,
+      "drawCalls": 19,
+      "canvasAlpha": true,
+      "webglErrors": []
+    },
+    {
+      "asset": "rank-iron",
+      "quality": "high",
+      "view": "quarter",
+      "file": "assets/p21/three/stills/rank-iron-high-quarter.png",
+      "bytes": 74869,
+      "sha256": "e2dfb7a263fe278c28b50a6df113e90ce02db1d3fb303128e980be07b1513669",
+      "pixel": {
+        "width": 640,
+        "height": 640,
+        "colorType": "RGBA8",
+        "visiblePixels": 102822,
+        "transparentPixels": 306778,
+        "opaquePixels": 101689,
+        "alphaMin": 0,
+        "alphaMax": 255,
+        "alphaCoverage": {
+          "minX": 131,
+          "minY": 93,
+          "maxX": 530,
+          "maxY": 511,
+          "width": 400,
+          "height": 419
+        },
+        "hasTransparentBackground": true
+      },
+      "renderTriangles": 2164,
+      "sourceTriangles": 2164,
+      "drawCalls": 19,
+      "canvasAlpha": true,
+      "webglErrors": []
+    },
+    {
+      "asset": "rank-iron",
+      "quality": "low",
+      "view": "front",
+      "file": "assets/p21/three/stills/rank-iron-low-front.png",
+      "bytes": 58017,
+      "sha256": "1318af4a4f2937e9001a2b49474ca58e15d25360c2c4e5305d9f5fd0e382f3d0",
+      "pixel": {
+        "width": 640,
+        "height": 640,
+        "colorType": "RGBA8",
+        "visiblePixels": 119762,
+        "transparentPixels": 289838,
+        "opaquePixels": 118236,
+        "alphaMin": 0,
+        "alphaMax": 255,
+        "alphaCoverage": {
+          "minX": 81,
+          "minY": 119,
+          "maxX": 558,
+          "maxY": 519,
+          "width": 478,
+          "height": 401
+        },
+        "hasTransparentBackground": true
+      },
+      "renderTriangles": 820,
+      "sourceTriangles": 820,
+      "drawCalls": 19,
+      "canvasAlpha": true,
+      "webglErrors": []
+    },
+    {
+      "asset": "rank-iron",
+      "quality": "low",
+      "view": "quarter",
+      "file": "assets/p21/three/stills/rank-iron-low-quarter.png",
+      "bytes": 55886,
+      "sha256": "dabb63ca7a499d94fb47af8654ea3e554b3464cafc7f6b79870adcd0d01cad07",
+      "pixel": {
+        "width": 640,
+        "height": 640,
+        "colorType": "RGBA8",
+        "visiblePixels": 101841,
+        "transparentPixels": 307759,
+        "opaquePixels": 100701,
+        "alphaMin": 0,
+        "alphaMax": 255,
+        "alphaCoverage": {
+          "minX": 132,
+          "minY": 93,
+          "maxX": 529,
+          "maxY": 511,
+          "width": 398,
+          "height": 419
+        },
+        "hasTransparentBackground": true
+      },
+      "renderTriangles": 820,
+      "sourceTriangles": 820,
+      "drawCalls": 19,
+      "canvasAlpha": true,
+      "webglErrors": []
+    },
+    {
+      "asset": "rank-bronze",
+      "quality": "high",
+      "view": "front",
+      "file": "assets/p21/three/stills/rank-bronze-high-front.png",
+      "bytes": 105500,
+      "sha256": "5377b0076c48beea3df90aacedeeecc11da4dd5bd218c244df8e9d350a923b4a",
+      "pixel": {
+        "width": 640,
+        "height": 640,
+        "colorType": "RGBA8",
+        "visiblePixels": 119762,
+        "transparentPixels": 289838,
+        "opaquePixels": 118236,
+        "alphaMin": 0,
+        "alphaMax": 255,
+        "alphaCoverage": {
+          "minX": 81,
+          "minY": 119,
+          "maxX": 558,
+          "maxY": 519,
+          "width": 478,
+          "height": 401
+        },
+        "hasTransparentBackground": true
+      },
+      "renderTriangles": 3560,
+      "sourceTriangles": 3560,
+      "drawCalls": 20,
+      "canvasAlpha": true,
+      "webglErrors": []
+    },
+    {
+      "asset": "rank-bronze",
+      "quality": "high",
+      "view": "quarter",
+      "file": "assets/p21/three/stills/rank-bronze-high-quarter.png",
+      "bytes": 92751,
+      "sha256": "85b64214c9351220696dcd46c4818972d3638338e5aca075f06cc4819bbc8565",
+      "pixel": {
+        "width": 640,
+        "height": 640,
+        "colorType": "RGBA8",
+        "visiblePixels": 102810,
+        "transparentPixels": 306790,
+        "opaquePixels": 101676,
+        "alphaMin": 0,
+        "alphaMax": 255,
+        "alphaCoverage": {
+          "minX": 148,
+          "minY": 86,
+          "maxX": 546,
+          "maxY": 505,
+          "width": 399,
+          "height": 420
+        },
+        "hasTransparentBackground": true
+      },
+      "renderTriangles": 3560,
+      "sourceTriangles": 3560,
+      "drawCalls": 20,
+      "canvasAlpha": true,
+      "webglErrors": []
+    },
+    {
+      "asset": "rank-bronze",
+      "quality": "low",
+      "view": "front",
+      "file": "assets/p21/three/stills/rank-bronze-low-front.png",
+      "bytes": 71459,
+      "sha256": "6c8d829d0bfefb26a53fab8ef75f7142e786a93be210d5650ad80529641dee83",
+      "pixel": {
+        "width": 640,
+        "height": 640,
+        "colorType": "RGBA8",
+        "visiblePixels": 119762,
+        "transparentPixels": 289838,
+        "opaquePixels": 118236,
+        "alphaMin": 0,
+        "alphaMax": 255,
+        "alphaCoverage": {
+          "minX": 81,
+          "minY": 119,
+          "maxX": 558,
+          "maxY": 519,
+          "width": 478,
+          "height": 401
+        },
+        "hasTransparentBackground": true
+      },
+      "renderTriangles": 1040,
+      "sourceTriangles": 1040,
+      "drawCalls": 20,
+      "canvasAlpha": true,
+      "webglErrors": []
+    },
+    {
+      "asset": "rank-bronze",
+      "quality": "low",
+      "view": "quarter",
+      "file": "assets/p21/three/stills/rank-bronze-low-quarter.png",
+      "bytes": 64227,
+      "sha256": "21eb9497da9d3a51453f9ab0ae19e303f9b958b0443a1b34f6ddaa591ad01d46",
+      "pixel": {
+        "width": 640,
+        "height": 640,
+        "colorType": "RGBA8",
+        "visiblePixels": 101848,
+        "transparentPixels": 307752,
+        "opaquePixels": 100684,
+        "alphaMin": 0,
+        "alphaMax": 255,
+        "alphaCoverage": {
+          "minX": 149,
+          "minY": 86,
+          "maxX": 545,
+          "maxY": 504,
+          "width": 397,
+          "height": 419
+        },
+        "hasTransparentBackground": true
+      },
+      "renderTriangles": 1040,
+      "sourceTriangles": 1040,
+      "drawCalls": 20,
+      "canvasAlpha": true,
+      "webglErrors": []
+    },
+    {
+      "asset": "rank-silver",
+      "quality": "high",
+      "view": "front",
+      "file": "assets/p21/three/stills/rank-silver-high-front.png",
+      "bytes": 109533,
+      "sha256": "e1b9fd946bfd1cce2a5de618d3fd2e34840dafdc9177e3c5523b4c50033f0859",
+      "pixel": {
+        "width": 640,
+        "height": 640,
+        "colorType": "RGBA8",
+        "visiblePixels": 119762,
+        "transparentPixels": 289838,
+        "opaquePixels": 118236,
+        "alphaMin": 0,
+        "alphaMax": 255,
+        "alphaCoverage": {
+          "minX": 81,
+          "minY": 119,
+          "maxX": 558,
+          "maxY": 519,
+          "width": 478,
+          "height": 401
+        },
+        "hasTransparentBackground": true
+      },
+      "renderTriangles": 3560,
+      "sourceTriangles": 3560,
+      "drawCalls": 20,
+      "canvasAlpha": true,
+      "webglErrors": []
+    },
+    {
+      "asset": "rank-silver",
+      "quality": "high",
+      "view": "quarter",
+      "file": "assets/p21/three/stills/rank-silver-high-quarter.png",
+      "bytes": 99354,
+      "sha256": "7f74f0e406a8a15401fbeada542b523d96796508d2cc6d386097f72254ff0392",
+      "pixel": {
+        "width": 640,
+        "height": 640,
+        "colorType": "RGBA8",
+        "visiblePixels": 102810,
+        "transparentPixels": 306790,
+        "opaquePixels": 101676,
+        "alphaMin": 0,
+        "alphaMax": 255,
+        "alphaCoverage": {
+          "minX": 148,
+          "minY": 86,
+          "maxX": 546,
+          "maxY": 505,
+          "width": 399,
+          "height": 420
+        },
+        "hasTransparentBackground": true
+      },
+      "renderTriangles": 3560,
+      "sourceTriangles": 3560,
+      "drawCalls": 20,
+      "canvasAlpha": true,
+      "webglErrors": []
+    },
+    {
+      "asset": "rank-silver",
+      "quality": "low",
+      "view": "front",
+      "file": "assets/p21/three/stills/rank-silver-low-front.png",
+      "bytes": 75332,
+      "sha256": "35e0049c6f46ee28d66f2381d728c41dad95c5cdde826eb28cf904bda87bdeba",
+      "pixel": {
+        "width": 640,
+        "height": 640,
+        "colorType": "RGBA8",
+        "visiblePixels": 119762,
+        "transparentPixels": 289838,
+        "opaquePixels": 118236,
+        "alphaMin": 0,
+        "alphaMax": 255,
+        "alphaCoverage": {
+          "minX": 81,
+          "minY": 119,
+          "maxX": 558,
+          "maxY": 519,
+          "width": 478,
+          "height": 401
+        },
+        "hasTransparentBackground": true
+      },
+      "renderTriangles": 1040,
+      "sourceTriangles": 1040,
+      "drawCalls": 20,
+      "canvasAlpha": true,
+      "webglErrors": []
+    },
+    {
+      "asset": "rank-silver",
+      "quality": "low",
+      "view": "quarter",
+      "file": "assets/p21/three/stills/rank-silver-low-quarter.png",
+      "bytes": 69124,
+      "sha256": "952ba01070983dc6a276029b05a6202164d86232cd094f272c6201a381f52225",
+      "pixel": {
+        "width": 640,
+        "height": 640,
+        "colorType": "RGBA8",
+        "visiblePixels": 101848,
+        "transparentPixels": 307752,
+        "opaquePixels": 100684,
+        "alphaMin": 0,
+        "alphaMax": 255,
+        "alphaCoverage": {
+          "minX": 149,
+          "minY": 86,
+          "maxX": 545,
+          "maxY": 504,
+          "width": 397,
+          "height": 419
+        },
+        "hasTransparentBackground": true
+      },
+      "renderTriangles": 1040,
+      "sourceTriangles": 1040,
+      "drawCalls": 20,
+      "canvasAlpha": true,
+      "webglErrors": []
+    },
+    {
+      "asset": "rank-gold",
+      "quality": "high",
+      "view": "front",
+      "file": "assets/p21/three/stills/rank-gold-high-front.png",
+      "bytes": 105865,
+      "sha256": "162e7f00e1028a431eb0e1169b040ab2e15037327436e067991ee0aaf8570cfd",
+      "pixel": {
+        "width": 640,
+        "height": 640,
+        "colorType": "RGBA8",
+        "visiblePixels": 119762,
+        "transparentPixels": 289838,
+        "opaquePixels": 118236,
+        "alphaMin": 0,
+        "alphaMax": 255,
+        "alphaCoverage": {
+          "minX": 81,
+          "minY": 119,
+          "maxX": 558,
+          "maxY": 519,
+          "width": 478,
+          "height": 401
+        },
+        "hasTransparentBackground": true
+      },
+      "renderTriangles": 3560,
+      "sourceTriangles": 3560,
+      "drawCalls": 20,
+      "canvasAlpha": true,
+      "webglErrors": []
+    },
+    {
+      "asset": "rank-gold",
+      "quality": "high",
+      "view": "quarter",
+      "file": "assets/p21/three/stills/rank-gold-high-quarter.png",
+      "bytes": 92892,
+      "sha256": "c54477e2f544e074ab6e9390f57b6eee5b2507afe5e0fc0c1981d44a15afd396",
+      "pixel": {
+        "width": 640,
+        "height": 640,
+        "colorType": "RGBA8",
+        "visiblePixels": 102810,
+        "transparentPixels": 306790,
+        "opaquePixels": 101676,
+        "alphaMin": 0,
+        "alphaMax": 255,
+        "alphaCoverage": {
+          "minX": 148,
+          "minY": 86,
+          "maxX": 546,
+          "maxY": 505,
+          "width": 399,
+          "height": 420
+        },
+        "hasTransparentBackground": true
+      },
+      "renderTriangles": 3560,
+      "sourceTriangles": 3560,
+      "drawCalls": 20,
+      "canvasAlpha": true,
+      "webglErrors": []
+    },
+    {
+      "asset": "rank-gold",
+      "quality": "low",
+      "view": "front",
+      "file": "assets/p21/three/stills/rank-gold-low-front.png",
+      "bytes": 71453,
+      "sha256": "87734cb6638312b1518ada68bd6eb97afc357ad19ffe06ba5c1946e5390c42e7",
+      "pixel": {
+        "width": 640,
+        "height": 640,
+        "colorType": "RGBA8",
+        "visiblePixels": 119762,
+        "transparentPixels": 289838,
+        "opaquePixels": 118236,
+        "alphaMin": 0,
+        "alphaMax": 255,
+        "alphaCoverage": {
+          "minX": 81,
+          "minY": 119,
+          "maxX": 558,
+          "maxY": 519,
+          "width": 478,
+          "height": 401
+        },
+        "hasTransparentBackground": true
+      },
+      "renderTriangles": 1040,
+      "sourceTriangles": 1040,
+      "drawCalls": 20,
+      "canvasAlpha": true,
+      "webglErrors": []
+    },
+    {
+      "asset": "rank-gold",
+      "quality": "low",
+      "view": "quarter",
+      "file": "assets/p21/three/stills/rank-gold-low-quarter.png",
+      "bytes": 63827,
+      "sha256": "4e8ea66ce1ac18f5f5975a26821b40d6964a2d8c537e75630354087781335846",
+      "pixel": {
+        "width": 640,
+        "height": 640,
+        "colorType": "RGBA8",
+        "visiblePixels": 101848,
+        "transparentPixels": 307752,
+        "opaquePixels": 100684,
+        "alphaMin": 0,
+        "alphaMax": 255,
+        "alphaCoverage": {
+          "minX": 149,
+          "minY": 86,
+          "maxX": 545,
+          "maxY": 504,
+          "width": 397,
+          "height": 419
+        },
+        "hasTransparentBackground": true
+      },
+      "renderTriangles": 1040,
+      "sourceTriangles": 1040,
+      "drawCalls": 20,
+      "canvasAlpha": true,
+      "webglErrors": []
+    },
+    {
+      "asset": "rank-diamond",
+      "quality": "high",
+      "view": "front",
+      "file": "assets/p21/three/stills/rank-diamond-high-front.png",
+      "bytes": 109970,
+      "sha256": "93ddd6618d6a887bb5ecb83ed9f90f84d1a6420ffe39d36fac1c91c4bb724555",
+      "pixel": {
+        "width": 640,
+        "height": 640,
+        "colorType": "RGBA8",
+        "visiblePixels": 120652,
+        "transparentPixels": 288948,
+        "opaquePixels": 119092,
+        "alphaMin": 0,
+        "alphaMax": 255,
+        "alphaCoverage": {
+          "minX": 81,
+          "minY": 98,
+          "maxX": 558,
+          "maxY": 541,
+          "width": 478,
+          "height": 444
+        },
+        "hasTransparentBackground": true
+      },
+      "renderTriangles": 3688,
+      "sourceTriangles": 3688,
+      "drawCalls": 22,
+      "canvasAlpha": true,
+      "webglErrors": []
+    },
+    {
+      "asset": "rank-diamond",
+      "quality": "high",
+      "view": "quarter",
+      "file": "assets/p21/three/stills/rank-diamond-high-quarter.png",
+      "bytes": 97973,
+      "sha256": "b732e083bebb2077b07b1fe2b2a2dac84b900911938930f3b66c19d1837b02f7",
+      "pixel": {
+        "width": 640,
+        "height": 640,
+        "colorType": "RGBA8",
+        "visiblePixels": 103754,
+        "transparentPixels": 305846,
+        "opaquePixels": 102587,
+        "alphaMin": 0,
+        "alphaMax": 255,
+        "alphaCoverage": {
+          "minX": 148,
+          "minY": 98,
+          "maxX": 546,
+          "maxY": 525,
+          "width": 399,
+          "height": 428
+        },
+        "hasTransparentBackground": true
+      },
+      "renderTriangles": 3688,
+      "sourceTriangles": 3688,
+      "drawCalls": 22,
+      "canvasAlpha": true,
+      "webglErrors": []
+    },
+    {
+      "asset": "rank-diamond",
+      "quality": "low",
+      "view": "front",
+      "file": "assets/p21/three/stills/rank-diamond-low-front.png",
+      "bytes": 74654,
+      "sha256": "242a5135a767d6d61a1cc776af44beae8e930776318f6e1ed8ba54a543273f21",
+      "pixel": {
+        "width": 640,
+        "height": 640,
+        "colorType": "RGBA8",
+        "visiblePixels": 120652,
+        "transparentPixels": 288948,
+        "opaquePixels": 119092,
+        "alphaMin": 0,
+        "alphaMax": 255,
+        "alphaCoverage": {
+          "minX": 81,
+          "minY": 98,
+          "maxX": 558,
+          "maxY": 541,
+          "width": 478,
+          "height": 444
+        },
+        "hasTransparentBackground": true
+      },
+      "renderTriangles": 1084,
+      "sourceTriangles": 1084,
+      "drawCalls": 22,
+      "canvasAlpha": true,
+      "webglErrors": []
+    },
+    {
+      "asset": "rank-diamond",
+      "quality": "low",
+      "view": "quarter",
+      "file": "assets/p21/three/stills/rank-diamond-low-quarter.png",
+      "bytes": 68648,
+      "sha256": "8f01cadcfb86063d7861a405b8f222ad1134ef34b4d01d430ce69e920ace9206",
+      "pixel": {
+        "width": 640,
+        "height": 640,
+        "colorType": "RGBA8",
+        "visiblePixels": 102756,
+        "transparentPixels": 306844,
+        "opaquePixels": 101562,
+        "alphaMin": 0,
+        "alphaMax": 255,
+        "alphaCoverage": {
+          "minX": 149,
+          "minY": 99,
+          "maxX": 545,
+          "maxY": 525,
+          "width": 397,
+          "height": 427
+        },
+        "hasTransparentBackground": true
+      },
+      "renderTriangles": 1084,
+      "sourceTriangles": 1084,
+      "drawCalls": 22,
+      "canvasAlpha": true,
+      "webglErrors": []
+    },
+    {
+      "asset": "rank-emerald",
+      "quality": "high",
+      "view": "front",
+      "file": "assets/p21/three/stills/rank-emerald-high-front.png",
+      "bytes": 104347,
+      "sha256": "894ea35af43e25c30876575d513ecaf6194651be7756c7b14af73888d16f435a",
+      "pixel": {
+        "width": 640,
+        "height": 640,
+        "colorType": "RGBA8",
+        "visiblePixels": 119762,
+        "transparentPixels": 289838,
+        "opaquePixels": 118236,
+        "alphaMin": 0,
+        "alphaMax": 255,
+        "alphaCoverage": {
+          "minX": 81,
+          "minY": 119,
+          "maxX": 558,
+          "maxY": 519,
+          "width": 478,
+          "height": 401
+        },
+        "hasTransparentBackground": true
+      },
+      "renderTriangles": 3560,
+      "sourceTriangles": 3560,
+      "drawCalls": 20,
+      "canvasAlpha": true,
+      "webglErrors": []
+    },
+    {
+      "asset": "rank-emerald",
+      "quality": "high",
+      "view": "quarter",
+      "file": "assets/p21/three/stills/rank-emerald-high-quarter.png",
+      "bytes": 93973,
+      "sha256": "65e172aff9d35310de099615acfc98d436fadf92a26d6aa186c9ef2643a2884a",
+      "pixel": {
+        "width": 640,
+        "height": 640,
+        "colorType": "RGBA8",
+        "visiblePixels": 102810,
+        "transparentPixels": 306790,
+        "opaquePixels": 101676,
+        "alphaMin": 0,
+        "alphaMax": 255,
+        "alphaCoverage": {
+          "minX": 148,
+          "minY": 86,
+          "maxX": 546,
+          "maxY": 505,
+          "width": 399,
+          "height": 420
+        },
+        "hasTransparentBackground": true
+      },
+      "renderTriangles": 3560,
+      "sourceTriangles": 3560,
+      "drawCalls": 20,
+      "canvasAlpha": true,
+      "webglErrors": []
+    },
+    {
+      "asset": "rank-emerald",
+      "quality": "low",
+      "view": "front",
+      "file": "assets/p21/three/stills/rank-emerald-low-front.png",
+      "bytes": 70845,
+      "sha256": "6f83a90ba25abfa7f779d6b9f5c0dd3f4287d575acf5b732f3043bff3dd0b7bf",
+      "pixel": {
+        "width": 640,
+        "height": 640,
+        "colorType": "RGBA8",
+        "visiblePixels": 119762,
+        "transparentPixels": 289838,
+        "opaquePixels": 118236,
+        "alphaMin": 0,
+        "alphaMax": 255,
+        "alphaCoverage": {
+          "minX": 81,
+          "minY": 119,
+          "maxX": 558,
+          "maxY": 519,
+          "width": 478,
+          "height": 401
+        },
+        "hasTransparentBackground": true
+      },
+      "renderTriangles": 1040,
+      "sourceTriangles": 1040,
+      "drawCalls": 20,
+      "canvasAlpha": true,
+      "webglErrors": []
+    },
+    {
+      "asset": "rank-emerald",
+      "quality": "low",
+      "view": "quarter",
+      "file": "assets/p21/three/stills/rank-emerald-low-quarter.png",
+      "bytes": 65574,
+      "sha256": "125653b1146457b3df18c395918ea355dec989f1d96adcb7c9a35534afba80c1",
+      "pixel": {
+        "width": 640,
+        "height": 640,
+        "colorType": "RGBA8",
+        "visiblePixels": 101848,
+        "transparentPixels": 307752,
+        "opaquePixels": 100684,
+        "alphaMin": 0,
+        "alphaMax": 255,
+        "alphaCoverage": {
+          "minX": 149,
+          "minY": 86,
+          "maxX": 545,
+          "maxY": 504,
+          "width": 397,
+          "height": 419
+        },
+        "hasTransparentBackground": true
+      },
+      "renderTriangles": 1040,
+      "sourceTriangles": 1040,
+      "drawCalls": 20,
+      "canvasAlpha": true,
+      "webglErrors": []
+    },
+    {
+      "asset": "rank-champion",
+      "quality": "high",
+      "view": "front",
+      "file": "assets/p21/three/stills/rank-champion-high-front.png",
+      "bytes": 112475,
+      "sha256": "ffc68de8b3ac4f6fdc3dadf07f8ef9ab5306d89f7e1133c40b4c247da72b76c5",
+      "pixel": {
+        "width": 640,
+        "height": 640,
+        "colorType": "RGBA8",
+        "visiblePixels": 120652,
+        "transparentPixels": 288948,
+        "opaquePixels": 119092,
+        "alphaMin": 0,
+        "alphaMax": 255,
+        "alphaCoverage": {
+          "minX": 81,
+          "minY": 98,
+          "maxX": 558,
+          "maxY": 541,
+          "width": 478,
+          "height": 444
+        },
+        "hasTransparentBackground": true
+      },
+      "renderTriangles": 3752,
+      "sourceTriangles": 3752,
+      "drawCalls": 24,
+      "canvasAlpha": true,
+      "webglErrors": []
+    },
+    {
+      "asset": "rank-champion",
+      "quality": "high",
+      "view": "quarter",
+      "file": "assets/p21/three/stills/rank-champion-high-quarter.png",
+      "bytes": 98708,
+      "sha256": "ae6999c8b22e9669e53b6a0f478b3fb1c637287d6a2d42b7a3c74f341b1aa460",
+      "pixel": {
+        "width": 640,
+        "height": 640,
+        "colorType": "RGBA8",
+        "visiblePixels": 103754,
+        "transparentPixels": 305846,
+        "opaquePixels": 102587,
+        "alphaMin": 0,
+        "alphaMax": 255,
+        "alphaCoverage": {
+          "minX": 148,
+          "minY": 98,
+          "maxX": 546,
+          "maxY": 525,
+          "width": 399,
+          "height": 428
+        },
+        "hasTransparentBackground": true
+      },
+      "renderTriangles": 3752,
+      "sourceTriangles": 3752,
+      "drawCalls": 24,
+      "canvasAlpha": true,
+      "webglErrors": []
+    },
+    {
+      "asset": "rank-champion",
+      "quality": "low",
+      "view": "front",
+      "file": "assets/p21/three/stills/rank-champion-low-front.png",
+      "bytes": 74831,
+      "sha256": "7d2597acbf135520396397c4cbedf6f19bd2b1762710e54ab9565ea9bf4c65d8",
+      "pixel": {
+        "width": 640,
+        "height": 640,
+        "colorType": "RGBA8",
+        "visiblePixels": 120652,
+        "transparentPixels": 288948,
+        "opaquePixels": 119092,
+        "alphaMin": 0,
+        "alphaMax": 255,
+        "alphaCoverage": {
+          "minX": 81,
+          "minY": 98,
+          "maxX": 558,
+          "maxY": 541,
+          "width": 478,
+          "height": 444
+        },
+        "hasTransparentBackground": true
+      },
+      "renderTriangles": 1100,
+      "sourceTriangles": 1100,
+      "drawCalls": 24,
+      "canvasAlpha": true,
+      "webglErrors": []
+    },
+    {
+      "asset": "rank-champion",
+      "quality": "low",
+      "view": "quarter",
+      "file": "assets/p21/three/stills/rank-champion-low-quarter.png",
+      "bytes": 68565,
+      "sha256": "47dd1bdcb069d6b0a70d285ef51dfdd4efad82b223232bc2c241500ba4a97884",
+      "pixel": {
+        "width": 640,
+        "height": 640,
+        "colorType": "RGBA8",
+        "visiblePixels": 102756,
+        "transparentPixels": 306844,
+        "opaquePixels": 101562,
+        "alphaMin": 0,
+        "alphaMax": 255,
+        "alphaCoverage": {
+          "minX": 149,
+          "minY": 99,
+          "maxX": 545,
+          "maxY": 525,
+          "width": 397,
+          "height": 427
+        },
+        "hasTransparentBackground": true
+      },
+      "renderTriangles": 1100,
+      "sourceTriangles": 1100,
+      "drawCalls": 24,
+      "canvasAlpha": true,
+      "webglErrors": []
+    },
+    {
+      "asset": "rank-master",
+      "quality": "high",
+      "view": "front",
+      "file": "assets/p21/three/stills/rank-master-high-front.png",
+      "bytes": 122698,
+      "sha256": "832ba34b256fa4b98fe0f4fed9c7c390ef68b122b157665bf7914e86ed988ff3",
+      "pixel": {
+        "width": 640,
+        "height": 640,
+        "colorType": "RGBA8",
+        "visiblePixels": 130628,
+        "transparentPixels": 278972,
+        "opaquePixels": 128927,
+        "alphaMin": 0,
+        "alphaMax": 255,
+        "alphaCoverage": {
+          "minX": 81,
+          "minY": 98,
+          "maxX": 558,
+          "maxY": 541,
+          "width": 478,
+          "height": 444
+        },
+        "hasTransparentBackground": true
+      },
+      "renderTriangles": 4296,
+      "sourceTriangles": 4296,
+      "drawCalls": 29,
+      "canvasAlpha": true,
+      "webglErrors": []
+    },
+    {
+      "asset": "rank-master",
+      "quality": "high",
+      "view": "quarter",
+      "file": "assets/p21/three/stills/rank-master-high-quarter.png",
+      "bytes": 111882,
+      "sha256": "388777b47a10ab54e8bdf6af0067c80ae0bf722658a11a97802f9ca8c82057f2",
+      "pixel": {
+        "width": 640,
+        "height": 640,
+        "colorType": "RGBA8",
+        "visiblePixels": 111868,
+        "transparentPixels": 297732,
+        "opaquePixels": 110621,
+        "alphaMin": 0,
+        "alphaMax": 255,
+        "alphaCoverage": {
+          "minX": 148,
+          "minY": 88,
+          "maxX": 546,
+          "maxY": 525,
+          "width": 399,
+          "height": 438
+        },
+        "hasTransparentBackground": true
+      },
+      "renderTriangles": 4296,
+      "sourceTriangles": 4296,
+      "drawCalls": 29,
+      "canvasAlpha": true,
+      "webglErrors": []
+    },
+    {
+      "asset": "rank-master",
+      "quality": "low",
+      "view": "front",
+      "file": "assets/p21/three/stills/rank-master-low-front.png",
+      "bytes": 83367,
+      "sha256": "05704788aef5f20b5c0cad0088c608a8a6f11985c993618b533cbcfdf3ce97b5",
+      "pixel": {
+        "width": 640,
+        "height": 640,
+        "colorType": "RGBA8",
+        "visiblePixels": 130628,
+        "transparentPixels": 278972,
+        "opaquePixels": 128927,
+        "alphaMin": 0,
+        "alphaMax": 255,
+        "alphaCoverage": {
+          "minX": 81,
+          "minY": 98,
+          "maxX": 558,
+          "maxY": 541,
+          "width": 478,
+          "height": 444
+        },
+        "hasTransparentBackground": true
+      },
+      "renderTriangles": 1308,
+      "sourceTriangles": 1308,
+      "drawCalls": 29,
+      "canvasAlpha": true,
+      "webglErrors": []
+    },
+    {
+      "asset": "rank-master",
+      "quality": "low",
+      "view": "quarter",
+      "file": "assets/p21/three/stills/rank-master-low-quarter.png",
+      "bytes": 77644,
+      "sha256": "fe0313dadb4415cb4a91fe03298f31c898e4b6e4a4aadc0e269978a1dadfa5f9",
+      "pixel": {
+        "width": 640,
+        "height": 640,
+        "colorType": "RGBA8",
+        "visiblePixels": 110864,
+        "transparentPixels": 298736,
+        "opaquePixels": 109580,
+        "alphaMin": 0,
+        "alphaMax": 255,
+        "alphaCoverage": {
+          "minX": 149,
+          "minY": 89,
+          "maxX": 545,
+          "maxY": 525,
+          "width": 397,
+          "height": 437
+        },
+        "hasTransparentBackground": true
+      },
+      "renderTriangles": 1308,
+      "sourceTriangles": 1308,
+      "drawCalls": 29,
+      "canvasAlpha": true,
+      "webglErrors": []
+    },
+    {
+      "asset": "rank-grandmaster",
+      "quality": "high",
+      "view": "front",
+      "file": "assets/p21/three/stills/rank-grandmaster-high-front.png",
+      "bytes": 119410,
+      "sha256": "c380e2a6647c1cb934f74460792b88722dd8f109b50ead536b390fce3fcfe797",
+      "pixel": {
+        "width": 640,
+        "height": 640,
+        "colorType": "RGBA8",
+        "visiblePixels": 130628,
+        "transparentPixels": 278972,
+        "opaquePixels": 128927,
+        "alphaMin": 0,
+        "alphaMax": 255,
+        "alphaCoverage": {
+          "minX": 81,
+          "minY": 98,
+          "maxX": 558,
+          "maxY": 541,
+          "width": 478,
+          "height": 444
+        },
+        "hasTransparentBackground": true
+      },
+      "renderTriangles": 4296,
+      "sourceTriangles": 4296,
+      "drawCalls": 29,
+      "canvasAlpha": true,
+      "webglErrors": []
+    },
+    {
+      "asset": "rank-grandmaster",
+      "quality": "high",
+      "view": "quarter",
+      "file": "assets/p21/three/stills/rank-grandmaster-high-quarter.png",
+      "bytes": 106600,
+      "sha256": "7e591d16b0a7bc22f8f79f5d80a8d5a069008bef7b459bebff07160530472361",
+      "pixel": {
+        "width": 640,
+        "height": 640,
+        "colorType": "RGBA8",
+        "visiblePixels": 111868,
+        "transparentPixels": 297732,
+        "opaquePixels": 110621,
+        "alphaMin": 0,
+        "alphaMax": 255,
+        "alphaCoverage": {
+          "minX": 148,
+          "minY": 88,
+          "maxX": 546,
+          "maxY": 525,
+          "width": 399,
+          "height": 438
+        },
+        "hasTransparentBackground": true
+      },
+      "renderTriangles": 4296,
+      "sourceTriangles": 4296,
+      "drawCalls": 29,
+      "canvasAlpha": true,
+      "webglErrors": []
+    },
+    {
+      "asset": "rank-grandmaster",
+      "quality": "low",
+      "view": "front",
+      "file": "assets/p21/three/stills/rank-grandmaster-low-front.png",
+      "bytes": 81022,
+      "sha256": "c1d09eda50707f22d9cf41948ae686d591006b05ad14d4a3b1f448b4971835be",
+      "pixel": {
+        "width": 640,
+        "height": 640,
+        "colorType": "RGBA8",
+        "visiblePixels": 130628,
+        "transparentPixels": 278972,
+        "opaquePixels": 128927,
+        "alphaMin": 0,
+        "alphaMax": 255,
+        "alphaCoverage": {
+          "minX": 81,
+          "minY": 98,
+          "maxX": 558,
+          "maxY": 541,
+          "width": 478,
+          "height": 444
+        },
+        "hasTransparentBackground": true
+      },
+      "renderTriangles": 1308,
+      "sourceTriangles": 1308,
+      "drawCalls": 29,
+      "canvasAlpha": true,
+      "webglErrors": []
+    },
+    {
+      "asset": "rank-grandmaster",
+      "quality": "low",
+      "view": "quarter",
+      "file": "assets/p21/three/stills/rank-grandmaster-low-quarter.png",
+      "bytes": 73834,
+      "sha256": "479433c236800e4474dd16921743854f8513d8f812f665865d697513c99af1c9",
+      "pixel": {
+        "width": 640,
+        "height": 640,
+        "colorType": "RGBA8",
+        "visiblePixels": 110864,
+        "transparentPixels": 298736,
+        "opaquePixels": 109580,
+        "alphaMin": 0,
+        "alphaMax": 255,
+        "alphaCoverage": {
+          "minX": 149,
+          "minY": 89,
+          "maxX": 545,
+          "maxY": 525,
+          "width": 397,
+          "height": 437
+        },
+        "hasTransparentBackground": true
+      },
+      "renderTriangles": 1308,
+      "sourceTriangles": 1308,
+      "drawCalls": 29,
+      "canvasAlpha": true,
+      "webglErrors": []
+    },
+    {
+      "asset": "trophy",
+      "quality": "high",
+      "view": "front",
+      "file": "assets/p21/three/stills/trophy-high-front.png",
+      "bytes": 133753,
+      "sha256": "c5fff3b5f04e49fd815f1d3cc72b87b45715b28673b19ab1ffd816f79e4bc916",
+      "pixel": {
+        "width": 640,
+        "height": 640,
+        "colorType": "RGBA8",
+        "visiblePixels": 106998,
+        "transparentPixels": 302602,
+        "opaquePixels": 104289,
+        "alphaMin": 0,
+        "alphaMax": 255,
+        "alphaCoverage": {
+          "minX": 118,
+          "minY": 81,
+          "maxX": 521,
+          "maxY": 558,
+          "width": 404,
+          "height": 478
+        },
+        "hasTransparentBackground": true
+      },
+      "renderTriangles": 6760,
+      "sourceTriangles": 6760,
+      "drawCalls": 23,
+      "canvasAlpha": true,
+      "webglErrors": []
+    },
+    {
+      "asset": "trophy",
+      "quality": "high",
+      "view": "quarter",
+      "file": "assets/p21/three/stills/trophy-high-quarter.png",
+      "bytes": 139193,
+      "sha256": "4d4ada874ae8ed0e08b98792b7c5e41bfb607bb1eb87cfe6f37276a50d2d019a",
+      "pixel": {
+        "width": 640,
+        "height": 640,
+        "colorType": "RGBA8",
+        "visiblePixels": 120859,
+        "transparentPixels": 288741,
+        "opaquePixels": 118901,
+        "alphaMin": 0,
+        "alphaMax": 255,
+        "alphaCoverage": {
+          "minX": 136,
+          "minY": 58,
+          "maxX": 486,
+          "maxY": 598,
+          "width": 351,
+          "height": 541
+        },
+        "hasTransparentBackground": true
+      },
+      "renderTriangles": 6760,
+      "sourceTriangles": 6760,
+      "drawCalls": 23,
+      "canvasAlpha": true,
+      "webglErrors": []
+    },
+    {
+      "asset": "trophy",
+      "quality": "low",
+      "view": "front",
+      "file": "assets/p21/three/stills/trophy-low-front.png",
+      "bytes": 120380,
+      "sha256": "7bdac66524fc54298ddd9fd62026c9d7a80e9421681a4196075f52c2f87ca8e4",
+      "pixel": {
+        "width": 640,
+        "height": 640,
+        "colorType": "RGBA8",
+        "visiblePixels": 103658,
+        "transparentPixels": 305942,
+        "opaquePixels": 100967,
+        "alphaMin": 0,
+        "alphaMax": 255,
+        "alphaCoverage": {
+          "minX": 120,
+          "minY": 81,
+          "maxX": 519,
+          "maxY": 558,
+          "width": 400,
+          "height": 478
+        },
+        "hasTransparentBackground": true
+      },
+      "renderTriangles": 1728,
+      "sourceTriangles": 1728,
+      "drawCalls": 23,
+      "canvasAlpha": true,
+      "webglErrors": []
+    },
+    {
+      "asset": "trophy",
+      "quality": "low",
+      "view": "quarter",
+      "file": "assets/p21/three/stills/trophy-low-quarter.png",
+      "bytes": 133461,
+      "sha256": "56b25b7eab7f91e08199c165a2d3422d390abeb145c97b8441aac2b6378f2741",
+      "pixel": {
+        "width": 640,
+        "height": 640,
+        "colorType": "RGBA8",
+        "visiblePixels": 118340,
+        "transparentPixels": 291260,
+        "opaquePixels": 116391,
+        "alphaMin": 0,
+        "alphaMax": 255,
+        "alphaCoverage": {
+          "minX": 136,
+          "minY": 57,
+          "maxX": 483,
+          "maxY": 598,
+          "width": 348,
+          "height": 542
+        },
+        "hasTransparentBackground": true
+      },
+      "renderTriangles": 1728,
+      "sourceTriangles": 1728,
+      "drawCalls": 23,
+      "canvasAlpha": true,
+      "webglErrors": []
+    },
+    {
+      "asset": "reward-chest",
+      "quality": "high",
+      "view": "front",
+      "file": "assets/p21/three/stills/reward-chest-high-front.png",
+      "bytes": 31220,
+      "sha256": "ee902294bc263d8af404fe816f548e98dc31104f06d7bf140358e93fb3e485ce",
+      "pixel": {
+        "width": 640,
+        "height": 640,
+        "colorType": "RGBA8",
+        "visiblePixels": 165802,
+        "transparentPixels": 243798,
+        "opaquePixels": 163939,
+        "alphaMin": 0,
+        "alphaMax": 255,
+        "alphaCoverage": {
+          "minX": 81,
+          "minY": 120,
+          "maxX": 558,
+          "maxY": 519,
+          "width": 478,
+          "height": 400
+        },
+        "hasTransparentBackground": true
+      },
+      "renderTriangles": 5504,
+      "sourceTriangles": 5504,
+      "drawCalls": 14,
+      "canvasAlpha": true,
+      "webglErrors": []
+    },
+    {
+      "asset": "reward-chest",
+      "quality": "high",
+      "view": "quarter",
+      "file": "assets/p21/three/stills/reward-chest-high-quarter.png",
+      "bytes": 51605,
+      "sha256": "ab7098e19a1c2e4f3e1456cd6c7bd66179e3a0e7ac961352f4370add41af4dbf",
+      "pixel": {
+        "width": 640,
+        "height": 640,
+        "colorType": "RGBA8",
+        "visiblePixels": 214524,
+        "transparentPixels": 195076,
+        "opaquePixels": 213321,
+        "alphaMin": 0,
+        "alphaMax": 255,
+        "alphaCoverage": {
+          "minX": 52,
+          "minY": 88,
+          "maxX": 605,
+          "maxY": 585,
+          "width": 554,
+          "height": 498
+        },
+        "hasTransparentBackground": true
+      },
+      "renderTriangles": 5504,
+      "sourceTriangles": 5504,
+      "drawCalls": 14,
+      "canvasAlpha": true,
+      "webglErrors": []
+    },
+    {
+      "asset": "reward-chest",
+      "quality": "low",
+      "view": "front",
+      "file": "assets/p21/three/stills/reward-chest-low-front.png",
+      "bytes": 24724,
+      "sha256": "b1ed22b76cfb53dd2ef59f4e20fd53f5c9b6d644d008553dbd7b228adf898a15",
+      "pixel": {
+        "width": 640,
+        "height": 640,
+        "colorType": "RGBA8",
+        "visiblePixels": 165653,
+        "transparentPixels": 243947,
+        "opaquePixels": 163795,
+        "alphaMin": 0,
+        "alphaMax": 255,
+        "alphaCoverage": {
+          "minX": 81,
+          "minY": 120,
+          "maxX": 558,
+          "maxY": 519,
+          "width": 478,
+          "height": 400
+        },
+        "hasTransparentBackground": true
+      },
+      "renderTriangles": 668,
+      "sourceTriangles": 668,
+      "drawCalls": 14,
+      "canvasAlpha": true,
+      "webglErrors": []
+    },
+    {
+      "asset": "reward-chest",
+      "quality": "low",
+      "view": "quarter",
+      "file": "assets/p21/three/stills/reward-chest-low-quarter.png",
+      "bytes": 41472,
+      "sha256": "fbe77646a7d2509f4cf555fd8e3be4dec8be123bc7d3adf00a5f2778750b4ac4",
+      "pixel": {
+        "width": 640,
+        "height": 640,
+        "colorType": "RGBA8",
+        "visiblePixels": 213448,
+        "transparentPixels": 196152,
+        "opaquePixels": 212279,
+        "alphaMin": 0,
+        "alphaMax": 255,
+        "alphaCoverage": {
+          "minX": 52,
+          "minY": 89,
+          "maxX": 605,
+          "maxY": 585,
+          "width": 554,
+          "height": 497
+        },
+        "hasTransparentBackground": true
+      },
+      "renderTriangles": 668,
+      "sourceTriangles": 668,
+      "drawCalls": 14,
+      "canvasAlpha": true,
+      "webglErrors": []
+    },
+    {
+      "asset": "board-x",
+      "quality": "high",
+      "view": "front",
+      "file": "assets/p21/three/stills/board-x-high-front.png",
+      "bytes": 32586,
+      "sha256": "11dd6366f1f4ddf58be355fa11f3a06b39c488bf5b2ec31c20575a43fd00bfd2",
+      "pixel": {
+        "width": 640,
+        "height": 640,
+        "colorType": "RGBA8",
+        "visiblePixels": 152974,
+        "transparentPixels": 256626,
+        "opaquePixels": 152312,
+        "alphaMin": 0,
+        "alphaMax": 255,
+        "alphaCoverage": {
+          "minX": 159,
+          "minY": 81,
+          "maxX": 480,
+          "maxY": 558,
+          "width": 322,
+          "height": 478
+        },
+        "hasTransparentBackground": true
+      },
+      "renderTriangles": 9804,
+      "sourceTriangles": 9804,
+      "drawCalls": 13,
+      "canvasAlpha": true,
+      "webglErrors": []
+    },
+    {
+      "asset": "board-x",
+      "quality": "high",
+      "view": "quarter",
+      "file": "assets/p21/three/stills/board-x-high-quarter.png",
+      "bytes": 44089,
+      "sha256": "8a5c6bc608af369db312874a221667149c90c00d783d0f18b48e2ede8c8cd9bb",
+      "pixel": {
+        "width": 640,
+        "height": 640,
+        "colorType": "RGBA8",
+        "visiblePixels": 130885,
+        "transparentPixels": 278715,
+        "opaquePixels": 129998,
+        "alphaMin": 0,
+        "alphaMax": 255,
+        "alphaCoverage": {
+          "minX": 186,
+          "minY": 61,
+          "maxX": 467,
+          "maxY": 572,
+          "width": 282,
+          "height": 512
+        },
+        "hasTransparentBackground": true
+      },
+      "renderTriangles": 9804,
+      "sourceTriangles": 9804,
+      "drawCalls": 13,
+      "canvasAlpha": true,
+      "webglErrors": []
+    },
+    {
+      "asset": "board-x",
+      "quality": "low",
+      "view": "front",
+      "file": "assets/p21/three/stills/board-x-low-front.png",
+      "bytes": 25249,
+      "sha256": "a6334997a454a13f7a26c848430daee10f14e131467e85bba9537a287ffff5f3",
+      "pixel": {
+        "width": 640,
+        "height": 640,
+        "colorType": "RGBA8",
+        "visiblePixels": 152968,
+        "transparentPixels": 256632,
+        "opaquePixels": 152300,
+        "alphaMin": 0,
+        "alphaMax": 255,
+        "alphaCoverage": {
+          "minX": 159,
+          "minY": 81,
+          "maxX": 480,
+          "maxY": 558,
+          "width": 322,
+          "height": 478
+        },
+        "hasTransparentBackground": true
+      },
+      "renderTriangles": 3180,
+      "sourceTriangles": 3180,
+      "drawCalls": 13,
+      "canvasAlpha": true,
+      "webglErrors": []
+    },
+    {
+      "asset": "board-x",
+      "quality": "low",
+      "view": "quarter",
+      "file": "assets/p21/three/stills/board-x-low-quarter.png",
+      "bytes": 36269,
+      "sha256": "6017d85139edaf770c64ac6bf65c4858df0b9fb6eef4554e8f5cd0301fae22ff",
+      "pixel": {
+        "width": 640,
+        "height": 640,
+        "colorType": "RGBA8",
+        "visiblePixels": 128497,
+        "transparentPixels": 281103,
+        "opaquePixels": 127225,
+        "alphaMin": 0,
+        "alphaMax": 255,
+        "alphaCoverage": {
+          "minX": 188,
+          "minY": 62,
+          "maxX": 465,
+          "maxY": 572,
+          "width": 278,
+          "height": 511
+        },
+        "hasTransparentBackground": true
+      },
+      "renderTriangles": 3180,
+      "sourceTriangles": 3180,
+      "drawCalls": 13,
+      "canvasAlpha": true,
+      "webglErrors": []
+    },
+    {
+      "asset": "board-o",
+      "quality": "high",
+      "view": "front",
+      "file": "assets/p21/three/stills/board-o-high-front.png",
+      "bytes": 46825,
+      "sha256": "92720bc212933b047c7afcb26a673633e9f6ae9f8b0785edbd49376ec3dfab3c",
+      "pixel": {
+        "width": 640,
+        "height": 640,
+        "colorType": "RGBA8",
+        "visiblePixels": 152974,
+        "transparentPixels": 256626,
+        "opaquePixels": 152312,
+        "alphaMin": 0,
+        "alphaMax": 255,
+        "alphaCoverage": {
+          "minX": 159,
+          "minY": 81,
+          "maxX": 480,
+          "maxY": 558,
+          "width": 322,
+          "height": 478
+        },
+        "hasTransparentBackground": true
+      },
+      "renderTriangles": 7620,
+      "sourceTriangles": 7620,
+      "drawCalls": 10,
+      "canvasAlpha": true,
+      "webglErrors": []
+    },
+    {
+      "asset": "board-o",
+      "quality": "high",
+      "view": "quarter",
+      "file": "assets/p21/three/stills/board-o-high-quarter.png",
+      "bytes": 51834,
+      "sha256": "31f243a6fa4e0a9ea1b8cd97c716b338cd01612116f66688030362881bda9123",
+      "pixel": {
+        "width": 640,
+        "height": 640,
+        "colorType": "RGBA8",
+        "visiblePixels": 131286,
+        "transparentPixels": 278314,
+        "opaquePixels": 130011,
+        "alphaMin": 0,
+        "alphaMax": 255,
+        "alphaCoverage": {
+          "minX": 186,
+          "minY": 61,
+          "maxX": 468,
+          "maxY": 572,
+          "width": 283,
+          "height": 512
+        },
+        "hasTransparentBackground": true
+      },
+      "renderTriangles": 7620,
+      "sourceTriangles": 7620,
+      "drawCalls": 10,
+      "canvasAlpha": true,
+      "webglErrors": []
+    },
+    {
+      "asset": "board-o",
+      "quality": "low",
+      "view": "front",
+      "file": "assets/p21/three/stills/board-o-low-front.png",
+      "bytes": 40678,
+      "sha256": "5d9cbc0b2fe7e90feee852cc6b3a9d49de9883ff5a8602ee211e4de0f415af3a",
+      "pixel": {
+        "width": 640,
+        "height": 640,
+        "colorType": "RGBA8",
+        "visiblePixels": 152968,
+        "transparentPixels": 256632,
+        "opaquePixels": 152300,
+        "alphaMin": 0,
+        "alphaMax": 255,
+        "alphaCoverage": {
+          "minX": 159,
+          "minY": 81,
+          "maxX": 480,
+          "maxY": 558,
+          "width": 322,
+          "height": 478
+        },
+        "hasTransparentBackground": true
+      },
+      "renderTriangles": 1812,
+      "sourceTriangles": 1812,
+      "drawCalls": 10,
+      "canvasAlpha": true,
+      "webglErrors": []
+    },
+    {
+      "asset": "board-o",
+      "quality": "low",
+      "view": "quarter",
+      "file": "assets/p21/three/stills/board-o-low-quarter.png",
+      "bytes": 45823,
+      "sha256": "3e32b8e4fec441eb53bfb62fb6609b1bebd19604becfb3bae4815d879a76f966",
+      "pixel": {
+        "width": 640,
+        "height": 640,
+        "colorType": "RGBA8",
+        "visiblePixels": 128144,
+        "transparentPixels": 281456,
+        "opaquePixels": 127274,
+        "alphaMin": 0,
+        "alphaMax": 255,
+        "alphaCoverage": {
+          "minX": 186,
+          "minY": 62,
+          "maxX": 465,
+          "maxY": 571,
+          "width": 280,
+          "height": 510
+        },
+        "hasTransparentBackground": true
+      },
+      "renderTriangles": 1812,
+      "sourceTriangles": 1812,
+      "drawCalls": 10,
+      "canvasAlpha": true,
+      "webglErrors": []
+    }
+  ],
+  "checks": [
+    {
+      "id": "THREE-QA-WEBGL-CONTEXT",
+      "result": "PASS",
+      "renderer": {
+        "webglVersion": "WebGL 2.0 (OpenGL ES 3.0 Chromium)",
+        "shadingLanguageVersion": "WebGL GLSL ES 3.00 (OpenGL ES GLSL ES 3.0 Chromium)",
+        "renderer": "WebKit WebGL",
+        "vendor": "WebKit",
+        "alpha": true
+      }
+    },
+    {
+      "id": "THREE-QA-INIT-WEBGL-ERRORS",
+      "result": "PASS",
+      "errors": []
+    },
+    {
+      "id": "THREE-QA-GLTF-READBACK",
+      "result": "PASS",
+      "file": "x-high.glb",
+      "meshCount": 2,
+      "vertices": 15816,
+      "triangles": 5272,
+      "normalAttributes": 2,
+      "uvAttributes": 2,
+      "finite": true,
+      "normalsUnit": true,
+      "pivot": [
+        0,
+        0,
+        0
+      ],
+      "rootScale": [
+        1,
+        1,
+        1
+      ],
+      "bounds": {
+        "min": [
+          -0.6558415568307308,
+          -0.6558415568307308,
+          -0.10750000014901161
+        ],
+        "max": [
+          0.6558415568307308,
+          0.6558415568307308,
+          0.10750000715255738
+        ],
+        "size": [
+          1.3116831136614615,
+          1.3116831136614615,
+          0.21500000730156898
+        ]
+      }
+    },
+    {
+      "id": "THREE-QA-TRANSPARENT-STILL",
+      "result": "PASS",
+      "file": "assets/p21/three/stills/x-high-front.png",
+      "width": 640,
+      "height": 640,
+      "visiblePixels": 104904,
+      "transparentPixels": 304696,
+      "alphaCoverage": {
+        "minX": 99,
+        "minY": 99,
+        "maxX": 540,
+        "maxY": 540,
+        "width": 442,
+        "height": 442
+      },
+      "canvasAlpha": true
+    },
+    {
+      "id": "THREE-QA-RENDER-TRIANGLES",
+      "result": "PASS",
+      "file": "x-high.glb",
+      "view": "front",
+      "renderTriangles": 5272,
+      "readbackTriangles": 5272
+    },
+    {
+      "id": "THREE-QA-WEBGL-ERRORS",
+      "result": "PASS",
+      "file": "x-high.glb",
+      "view": "front",
+      "errors": []
+    },
+    {
+      "id": "THREE-QA-TRANSPARENT-STILL",
+      "result": "PASS",
+      "file": "assets/p21/three/stills/x-high-quarter.png",
+      "width": 640,
+      "height": 640,
+      "visiblePixels": 106779,
+      "transparentPixels": 302821,
+      "alphaCoverage": {
+        "minX": 124,
+        "minY": 71,
+        "maxX": 515,
+        "maxY": 568,
+        "width": 392,
+        "height": 498
+      },
+      "canvasAlpha": true
+    },
+    {
+      "id": "THREE-QA-RENDER-TRIANGLES",
+      "result": "PASS",
+      "file": "x-high.glb",
+      "view": "quarter",
+      "renderTriangles": 5272,
+      "readbackTriangles": 5272
+    },
+    {
+      "id": "THREE-QA-WEBGL-ERRORS",
+      "result": "PASS",
+      "file": "x-high.glb",
+      "view": "quarter",
+      "errors": []
+    },
+    {
+      "id": "THREE-QA-GLTF-READBACK",
+      "result": "PASS",
+      "file": "x-low.glb",
+      "meshCount": 2,
+      "vertices": 2088,
+      "triangles": 696,
+      "normalAttributes": 2,
+      "uvAttributes": 2,
+      "finite": true,
+      "normalsUnit": true,
+      "pivot": [
+        0,
+        0,
+        0
+      ],
+      "rootScale": [
+        1,
+        1,
+        1
+      ],
+      "bounds": {
+        "min": [
+          -0.6558415568307308,
+          -0.6558415568307308,
+          -0.10750000014901161
+        ],
+        "max": [
+          0.6558415568307308,
+          0.6558415568307308,
+          0.10750000715255738
+        ],
+        "size": [
+          1.3116831136614615,
+          1.3116831136614615,
+          0.21500000730156898
+        ]
+      }
+    },
+    {
+      "id": "THREE-QA-TRANSPARENT-STILL",
+      "result": "PASS",
+      "file": "assets/p21/three/stills/x-low-front.png",
+      "width": 640,
+      "height": 640,
+      "visiblePixels": 104884,
+      "transparentPixels": 304716,
+      "alphaCoverage": {
+        "minX": 98,
+        "minY": 98,
+        "maxX": 541,
+        "maxY": 541,
+        "width": 444,
+        "height": 444
+      },
+      "canvasAlpha": true
+    },
+    {
+      "id": "THREE-QA-RENDER-TRIANGLES",
+      "result": "PASS",
+      "file": "x-low.glb",
+      "view": "front",
+      "renderTriangles": 696,
+      "readbackTriangles": 696
+    },
+    {
+      "id": "THREE-QA-WEBGL-ERRORS",
+      "result": "PASS",
+      "file": "x-low.glb",
+      "view": "front",
+      "errors": []
+    },
+    {
+      "id": "THREE-QA-TRANSPARENT-STILL",
+      "result": "PASS",
+      "file": "assets/p21/three/stills/x-low-quarter.png",
+      "width": 640,
+      "height": 640,
+      "visiblePixels": 103552,
+      "transparentPixels": 306048,
+      "alphaCoverage": {
+        "minX": 127,
+        "minY": 71,
+        "maxX": 512,
+        "maxY": 568,
+        "width": 386,
+        "height": 498
+      },
+      "canvasAlpha": true
+    },
+    {
+      "id": "THREE-QA-RENDER-TRIANGLES",
+      "result": "PASS",
+      "file": "x-low.glb",
+      "view": "quarter",
+      "renderTriangles": 696,
+      "readbackTriangles": 696
+    },
+    {
+      "id": "THREE-QA-WEBGL-ERRORS",
+      "result": "PASS",
+      "file": "x-low.glb",
+      "view": "quarter",
+      "errors": []
+    },
+    {
+      "id": "THREE-QA-GLTF-READBACK",
+      "result": "PASS",
+      "file": "o-high.glb",
+      "meshCount": 1,
+      "vertices": 4745,
+      "triangles": 9216,
+      "normalAttributes": 1,
+      "uvAttributes": 1,
+      "finite": true,
+      "normalsUnit": true,
+      "pivot": [
+        0,
+        0,
+        0
+      ],
+      "rootScale": [
+        1,
+        1,
+        1
+      ],
+      "bounds": {
+        "min": [
+          -0.6150000095367432,
+          -0.6150000095367432,
+          -0.0729999989271164
+        ],
+        "max": [
+          0.6150000095367432,
+          0.6150000095367432,
+          0.0729999989271164
+        ],
+        "size": [
+          1.2300000190734863,
+          1.2300000190734863,
+          0.1459999978542328
+        ]
+      }
+    },
+    {
+      "id": "THREE-QA-TRANSPARENT-STILL",
+      "result": "PASS",
+      "file": "assets/p21/three/stills/o-high-front.png",
+      "width": 640,
+      "height": 640,
+      "visiblePixels": 75804,
+      "transparentPixels": 333796,
+      "alphaCoverage": {
+        "minX": 81,
+        "minY": 81,
+        "maxX": 558,
+        "maxY": 558,
+        "width": 478,
+        "height": 478
+      },
+      "canvasAlpha": true
+    },
+    {
+      "id": "THREE-QA-RENDER-TRIANGLES",
+      "result": "PASS",
+      "file": "o-high.glb",
+      "view": "front",
+      "renderTriangles": 9216,
+      "readbackTriangles": 9216
+    },
+    {
+      "id": "THREE-QA-WEBGL-ERRORS",
+      "result": "PASS",
+      "file": "o-high.glb",
+      "view": "front",
+      "errors": []
+    },
+    {
+      "id": "THREE-QA-TRANSPARENT-STILL",
+      "result": "PASS",
+      "file": "assets/p21/three/stills/o-high-quarter.png",
+      "width": 640,
+      "height": 640,
+      "visiblePixels": 67005,
+      "transparentPixels": 342595,
+      "alphaCoverage": {
+        "minX": 123,
+        "minY": 87,
+        "maxX": 516,
+        "maxY": 552,
+        "width": 394,
+        "height": 466
+      },
+      "canvasAlpha": true
+    },
+    {
+      "id": "THREE-QA-RENDER-TRIANGLES",
+      "result": "PASS",
+      "file": "o-high.glb",
+      "view": "quarter",
+      "renderTriangles": 9216,
+      "readbackTriangles": 9216
+    },
+    {
+      "id": "THREE-QA-WEBGL-ERRORS",
+      "result": "PASS",
+      "file": "o-high.glb",
+      "view": "quarter",
+      "errors": []
+    },
+    {
+      "id": "THREE-QA-GLTF-READBACK",
+      "result": "PASS",
+      "file": "o-low.glb",
+      "meshCount": 1,
+      "vertices": 441,
+      "triangles": 800,
+      "normalAttributes": 1,
+      "uvAttributes": 1,
+      "finite": true,
+      "normalsUnit": true,
+      "pivot": [
+        0,
+        0,
+        0
+      ],
+      "rootScale": [
+        1,
+        1,
+        1
+      ],
+      "bounds": {
+        "min": [
+          -0.6150000095367432,
+          -0.6150000095367432,
+          -0.0729999989271164
+        ],
+        "max": [
+          0.6150000095367432,
+          0.6150000095367432,
+          0.0729999989271164
+        ],
+        "size": [
+          1.2300000190734863,
+          1.2300000190734863,
+          0.1459999978542328
+        ]
+      }
+    },
+    {
+      "id": "THREE-QA-TRANSPARENT-STILL",
+      "result": "PASS",
+      "file": "assets/p21/three/stills/o-low-front.png",
+      "width": 640,
+      "height": 640,
+      "visiblePixels": 74848,
+      "transparentPixels": 334752,
+      "alphaCoverage": {
+        "minX": 81,
+        "minY": 81,
+        "maxX": 558,
+        "maxY": 558,
+        "width": 478,
+        "height": 478
+      },
+      "canvasAlpha": true
+    },
+    {
+      "id": "THREE-QA-RENDER-TRIANGLES",
+      "result": "PASS",
+      "file": "o-low.glb",
+      "view": "front",
+      "renderTriangles": 800,
+      "readbackTriangles": 800
+    },
+    {
+      "id": "THREE-QA-WEBGL-ERRORS",
+      "result": "PASS",
+      "file": "o-low.glb",
+      "view": "front",
+      "errors": []
+    },
+    {
+      "id": "THREE-QA-TRANSPARENT-STILL",
+      "result": "PASS",
+      "file": "assets/p21/three/stills/o-low-quarter.png",
+      "width": 640,
+      "height": 640,
+      "visiblePixels": 66010,
+      "transparentPixels": 343590,
+      "alphaCoverage": {
+        "minX": 123,
+        "minY": 89,
+        "maxX": 516,
+        "maxY": 550,
+        "width": 394,
+        "height": 462
+      },
+      "canvasAlpha": true
+    },
+    {
+      "id": "THREE-QA-RENDER-TRIANGLES",
+      "result": "PASS",
+      "file": "o-low.glb",
+      "view": "quarter",
+      "renderTriangles": 800,
+      "readbackTriangles": 800
+    },
+    {
+      "id": "THREE-QA-WEBGL-ERRORS",
+      "result": "PASS",
+      "file": "o-low.glb",
+      "view": "quarter",
+      "errors": []
+    },
+    {
+      "id": "THREE-QA-GLTF-READBACK",
+      "result": "PASS",
+      "file": "coin-high.glb",
+      "meshCount": 6,
+      "vertices": 3773,
+      "triangles": 5028,
+      "normalAttributes": 6,
+      "uvAttributes": 6,
+      "finite": true,
+      "normalsUnit": true,
+      "pivot": [
+        0,
+        0,
+        0
+      ],
+      "rootScale": [
+        1,
+        1,
+        1
+      ],
+      "bounds": {
+        "min": [
+          -0.9399999976158142,
+          -0.9399999976158142,
+          -0.10318909215927125
+        ],
+        "max": [
+          0.9399999976158142,
+          0.9399999976158142,
+          0.21800000208616255
+        ],
+        "size": [
+          1.8799999952316284,
+          1.8799999952316284,
+          0.3211890942454338
+        ]
+      }
+    },
+    {
+      "id": "THREE-QA-TRANSPARENT-STILL",
+      "result": "PASS",
+      "file": "assets/p21/three/stills/coin-high-front.png",
+      "width": 640,
+      "height": 640,
+      "visiblePixels": 179404,
+      "transparentPixels": 230196,
+      "alphaCoverage": {
+        "minX": 81,
+        "minY": 81,
+        "maxX": 558,
+        "maxY": 558,
+        "width": 478,
+        "height": 478
+      },
+      "canvasAlpha": true
+    },
+    {
+      "id": "THREE-QA-RENDER-TRIANGLES",
+      "result": "PASS",
+      "file": "coin-high.glb",
+      "view": "front",
+      "renderTriangles": 5028,
+      "readbackTriangles": 5028
+    },
+    {
+      "id": "THREE-QA-WEBGL-ERRORS",
+      "result": "PASS",
+      "file": "coin-high.glb",
+      "view": "front",
+      "errors": []
+    },
+    {
+      "id": "THREE-QA-TRANSPARENT-STILL",
+      "result": "PASS",
+      "file": "assets/p21/three/stills/coin-high-quarter.png",
+      "width": 640,
+      "height": 640,
+      "visiblePixels": 149771,
+      "transparentPixels": 259829,
+      "alphaCoverage": {
+        "minX": 125,
+        "minY": 79,
+        "maxX": 532,
+        "maxY": 553,
+        "width": 408,
+        "height": 475
+      },
+      "canvasAlpha": true
+    },
+    {
+      "id": "THREE-QA-RENDER-TRIANGLES",
+      "result": "PASS",
+      "file": "coin-high.glb",
+      "view": "quarter",
+      "renderTriangles": 5028,
+      "readbackTriangles": 5028
+    },
+    {
+      "id": "THREE-QA-WEBGL-ERRORS",
+      "result": "PASS",
+      "file": "coin-high.glb",
+      "view": "quarter",
+      "errors": []
+    },
+    {
+      "id": "THREE-QA-GLTF-READBACK",
+      "result": "PASS",
+      "file": "coin-low.glb",
+      "meshCount": 6,
+      "vertices": 917,
+      "triangles": 956,
+      "normalAttributes": 6,
+      "uvAttributes": 6,
+      "finite": true,
+      "normalsUnit": true,
+      "pivot": [
+        0,
+        0,
+        0
+      ],
+      "rootScale": [
+        1,
+        1,
+        1
+      ],
+      "bounds": {
+        "min": [
+          -0.9399999976158142,
+          -0.9399999976158142,
+          -0.10004293921589852
+        ],
+        "max": [
+          0.9399999976158142,
+          0.9399999976158142,
+          0.21800000208616255
+        ],
+        "size": [
+          1.8799999952316284,
+          1.8799999952316284,
+          0.31804294130206107
+        ]
+      }
+    },
+    {
+      "id": "THREE-QA-TRANSPARENT-STILL",
+      "result": "PASS",
+      "file": "assets/p21/three/stills/coin-low-front.png",
+      "width": 640,
+      "height": 640,
+      "visiblePixels": 176864,
+      "transparentPixels": 232736,
+      "alphaCoverage": {
+        "minX": 81,
+        "minY": 81,
+        "maxX": 558,
+        "maxY": 558,
+        "width": 478,
+        "height": 478
+      },
+      "canvasAlpha": true
+    },
+    {
+      "id": "THREE-QA-RENDER-TRIANGLES",
+      "result": "PASS",
+      "file": "coin-low.glb",
+      "view": "front",
+      "renderTriangles": 956,
+      "readbackTriangles": 956
+    },
+    {
+      "id": "THREE-QA-WEBGL-ERRORS",
+      "result": "PASS",
+      "file": "coin-low.glb",
+      "view": "front",
+      "errors": []
+    },
+    {
+      "id": "THREE-QA-TRANSPARENT-STILL",
+      "result": "PASS",
+      "file": "assets/p21/three/stills/coin-low-quarter.png",
+      "width": 640,
+      "height": 640,
+      "visiblePixels": 147618,
+      "transparentPixels": 261982,
+      "alphaCoverage": {
+        "minX": 125,
+        "minY": 81,
+        "maxX": 532,
+        "maxY": 551,
+        "width": 408,
+        "height": 471
+      },
+      "canvasAlpha": true
+    },
+    {
+      "id": "THREE-QA-RENDER-TRIANGLES",
+      "result": "PASS",
+      "file": "coin-low.glb",
+      "view": "quarter",
+      "renderTriangles": 956,
+      "readbackTriangles": 956
+    },
+    {
+      "id": "THREE-QA-WEBGL-ERRORS",
+      "result": "PASS",
+      "file": "coin-low.glb",
+      "view": "quarter",
+      "errors": []
+    },
+    {
+      "id": "THREE-QA-GLTF-READBACK",
+      "result": "PASS",
+      "file": "crown-high.glb",
+      "meshCount": 19,
+      "vertices": 5178,
+      "triangles": 2976,
+      "normalAttributes": 19,
+      "uvAttributes": 19,
+      "finite": true,
+      "normalsUnit": true,
+      "pivot": [
+        0,
+        0,
+        0
+      ],
+      "rootScale": [
+        1,
+        1,
+        1
+      ],
+      "bounds": {
+        "min": [
+          -0.7781642011128298,
+          -0.5281827449798584,
+          -0.08500000037252903
+        ],
+        "max": [
+          0.7781642011128298,
+          0.6733506171328558,
+          0.273763526849121
+        ],
+        "size": [
+          1.5563284022256596,
+          1.2015333621127142,
+          0.35876352722165
+        ]
+      }
+    },
+    {
+      "id": "THREE-QA-TRANSPARENT-STILL",
+      "result": "PASS",
+      "file": "assets/p21/three/stills/crown-high-front.png",
+      "width": 640,
+      "height": 640,
+      "visiblePixels": 89198,
+      "transparentPixels": 320402,
+      "alphaCoverage": {
+        "minX": 84,
+        "minY": 154,
+        "maxX": 555,
+        "maxY": 504,
+        "width": 472,
+        "height": 351
+      },
+      "canvasAlpha": true
+    },
+    {
+      "id": "THREE-QA-RENDER-TRIANGLES",
+      "result": "PASS",
+      "file": "crown-high.glb",
+      "view": "front",
+      "renderTriangles": 2976,
+      "readbackTriangles": 2976
+    },
+    {
+      "id": "THREE-QA-WEBGL-ERRORS",
+      "result": "PASS",
+      "file": "crown-high.glb",
+      "view": "front",
+      "errors": []
+    },
+    {
+      "id": "THREE-QA-TRANSPARENT-STILL",
+      "result": "PASS",
+      "file": "assets/p21/three/stills/crown-high-quarter.png",
+      "width": 640,
+      "height": 640,
+      "visiblePixels": 83205,
+      "transparentPixels": 326395,
+      "alphaCoverage": {
+        "minX": 134,
+        "minY": 163,
+        "maxX": 538,
+        "maxY": 517,
+        "width": 405,
+        "height": 355
+      },
+      "canvasAlpha": true
+    },
+    {
+      "id": "THREE-QA-RENDER-TRIANGLES",
+      "result": "PASS",
+      "file": "crown-high.glb",
+      "view": "quarter",
+      "renderTriangles": 2976,
+      "readbackTriangles": 2976
+    },
+    {
+      "id": "THREE-QA-WEBGL-ERRORS",
+      "result": "PASS",
+      "file": "crown-high.glb",
+      "view": "quarter",
+      "errors": []
+    },
+    {
+      "id": "THREE-QA-GLTF-READBACK",
+      "result": "PASS",
+      "file": "crown-low.glb",
+      "meshCount": 19,
+      "vertices": 1738,
+      "triangles": 768,
+      "normalAttributes": 19,
+      "uvAttributes": 19,
+      "finite": true,
+      "normalsUnit": true,
+      "pivot": [
+        0,
+        0,
+        0
+      ],
+      "rootScale": [
+        1,
+        1,
+        1
+      ],
+      "bounds": {
+        "min": [
+          -0.7781642011128298,
+          -0.5281827449798584,
+          -0.08500000037252903
+        ],
+        "max": [
+          0.7781642011128298,
+          0.6733506171328558,
+          0.273763526849121
+        ],
+        "size": [
+          1.5563284022256596,
+          1.2015333621127142,
+          0.35876352722165
+        ]
+      }
+    },
+    {
+      "id": "THREE-QA-TRANSPARENT-STILL",
+      "result": "PASS",
+      "file": "assets/p21/three/stills/crown-low-front.png",
+      "width": 640,
+      "height": 640,
+      "visiblePixels": 86704,
+      "transparentPixels": 322896,
+      "alphaCoverage": {
+        "minX": 84,
+        "minY": 155,
+        "maxX": 555,
+        "maxY": 504,
+        "width": 472,
+        "height": 350
+      },
+      "canvasAlpha": true
+    },
+    {
+      "id": "THREE-QA-RENDER-TRIANGLES",
+      "result": "PASS",
+      "file": "crown-low.glb",
+      "view": "front",
+      "renderTriangles": 768,
+      "readbackTriangles": 768
+    },
+    {
+      "id": "THREE-QA-WEBGL-ERRORS",
+      "result": "PASS",
+      "file": "crown-low.glb",
+      "view": "front",
+      "errors": []
+    },
+    {
+      "id": "THREE-QA-TRANSPARENT-STILL",
+      "result": "PASS",
+      "file": "assets/p21/three/stills/crown-low-quarter.png",
+      "width": 640,
+      "height": 640,
+      "visiblePixels": 79737,
+      "transparentPixels": 329863,
+      "alphaCoverage": {
+        "minX": 137,
+        "minY": 164,
+        "maxX": 536,
+        "maxY": 516,
+        "width": 400,
+        "height": 353
+      },
+      "canvasAlpha": true
+    },
+    {
+      "id": "THREE-QA-RENDER-TRIANGLES",
+      "result": "PASS",
+      "file": "crown-low.glb",
+      "view": "quarter",
+      "renderTriangles": 768,
+      "readbackTriangles": 768
+    },
+    {
+      "id": "THREE-QA-WEBGL-ERRORS",
+      "result": "PASS",
+      "file": "crown-low.glb",
+      "view": "quarter",
+      "errors": []
+    },
+    {
+      "id": "THREE-QA-GLTF-READBACK",
+      "result": "PASS",
+      "file": "rank-wood-high.glb",
+      "meshCount": 19,
+      "vertices": 6492,
+      "triangles": 2164,
+      "normalAttributes": 19,
+      "uvAttributes": 19,
+      "finite": true,
+      "normalsUnit": true,
+      "pivot": [
+        0,
+        0,
+        0
+      ],
+      "rootScale": [
+        1,
+        1,
+        1
+      ],
+      "bounds": {
+        "min": [
+          -0.9970930218696594,
+          -0.8511127233505249,
+          -0.0860000005364418
+        ],
+        "max": [
+          0.9970930218696594,
+          0.8229454159736633,
+          0.25199999955296515
+        ],
+        "size": [
+          1.9941860437393188,
+          1.6740581393241882,
+          0.33800000008940695
+        ]
+      }
+    },
+    {
+      "id": "THREE-QA-TRANSPARENT-STILL",
+      "result": "PASS",
+      "file": "assets/p21/three/stills/rank-wood-high-front.png",
+      "width": 640,
+      "height": 640,
+      "visiblePixels": 119762,
+      "transparentPixels": 289838,
+      "alphaCoverage": {
+        "minX": 81,
+        "minY": 119,
+        "maxX": 558,
+        "maxY": 519,
+        "width": 478,
+        "height": 401
+      },
+      "canvasAlpha": true
+    },
+    {
+      "id": "THREE-QA-RENDER-TRIANGLES",
+      "result": "PASS",
+      "file": "rank-wood-high.glb",
+      "view": "front",
+      "renderTriangles": 2164,
+      "readbackTriangles": 2164
+    },
+    {
+      "id": "THREE-QA-WEBGL-ERRORS",
+      "result": "PASS",
+      "file": "rank-wood-high.glb",
+      "view": "front",
+      "errors": []
+    },
+    {
+      "id": "THREE-QA-TRANSPARENT-STILL",
+      "result": "PASS",
+      "file": "assets/p21/three/stills/rank-wood-high-quarter.png",
+      "width": 640,
+      "height": 640,
+      "visiblePixels": 102822,
+      "transparentPixels": 306778,
+      "alphaCoverage": {
+        "minX": 131,
+        "minY": 93,
+        "maxX": 530,
+        "maxY": 511,
+        "width": 400,
+        "height": 419
+      },
+      "canvasAlpha": true
+    },
+    {
+      "id": "THREE-QA-RENDER-TRIANGLES",
+      "result": "PASS",
+      "file": "rank-wood-high.glb",
+      "view": "quarter",
+      "renderTriangles": 2164,
+      "readbackTriangles": 2164
+    },
+    {
+      "id": "THREE-QA-WEBGL-ERRORS",
+      "result": "PASS",
+      "file": "rank-wood-high.glb",
+      "view": "quarter",
+      "errors": []
+    },
+    {
+      "id": "THREE-QA-GLTF-READBACK",
+      "result": "PASS",
+      "file": "rank-wood-low.glb",
+      "meshCount": 19,
+      "vertices": 2460,
+      "triangles": 820,
+      "normalAttributes": 19,
+      "uvAttributes": 19,
+      "finite": true,
+      "normalsUnit": true,
+      "pivot": [
+        0,
+        0,
+        0
+      ],
+      "rootScale": [
+        1,
+        1,
+        1
+      ],
+      "bounds": {
+        "min": [
+          -0.9970930218696594,
+          -0.8511127233505249,
+          -0.0860000005364418
+        ],
+        "max": [
+          0.9970930218696594,
+          0.8229454159736633,
+          0.25199999955296515
+        ],
+        "size": [
+          1.9941860437393188,
+          1.6740581393241882,
+          0.33800000008940695
+        ]
+      }
+    },
+    {
+      "id": "THREE-QA-TRANSPARENT-STILL",
+      "result": "PASS",
+      "file": "assets/p21/three/stills/rank-wood-low-front.png",
+      "width": 640,
+      "height": 640,
+      "visiblePixels": 119762,
+      "transparentPixels": 289838,
+      "alphaCoverage": {
+        "minX": 81,
+        "minY": 119,
+        "maxX": 558,
+        "maxY": 519,
+        "width": 478,
+        "height": 401
+      },
+      "canvasAlpha": true
+    },
+    {
+      "id": "THREE-QA-RENDER-TRIANGLES",
+      "result": "PASS",
+      "file": "rank-wood-low.glb",
+      "view": "front",
+      "renderTriangles": 820,
+      "readbackTriangles": 820
+    },
+    {
+      "id": "THREE-QA-WEBGL-ERRORS",
+      "result": "PASS",
+      "file": "rank-wood-low.glb",
+      "view": "front",
+      "errors": []
+    },
+    {
+      "id": "THREE-QA-TRANSPARENT-STILL",
+      "result": "PASS",
+      "file": "assets/p21/three/stills/rank-wood-low-quarter.png",
+      "width": 640,
+      "height": 640,
+      "visiblePixels": 101841,
+      "transparentPixels": 307759,
+      "alphaCoverage": {
+        "minX": 132,
+        "minY": 93,
+        "maxX": 529,
+        "maxY": 511,
+        "width": 398,
+        "height": 419
+      },
+      "canvasAlpha": true
+    },
+    {
+      "id": "THREE-QA-RENDER-TRIANGLES",
+      "result": "PASS",
+      "file": "rank-wood-low.glb",
+      "view": "quarter",
+      "renderTriangles": 820,
+      "readbackTriangles": 820
+    },
+    {
+      "id": "THREE-QA-WEBGL-ERRORS",
+      "result": "PASS",
+      "file": "rank-wood-low.glb",
+      "view": "quarter",
+      "errors": []
+    },
+    {
+      "id": "THREE-QA-GLTF-READBACK",
+      "result": "PASS",
+      "file": "rank-stone-high.glb",
+      "meshCount": 19,
+      "vertices": 6492,
+      "triangles": 2164,
+      "normalAttributes": 19,
+      "uvAttributes": 19,
+      "finite": true,
+      "normalsUnit": true,
+      "pivot": [
+        0,
+        0,
+        0
+      ],
+      "rootScale": [
+        1,
+        1,
+        1
+      ],
+      "bounds": {
+        "min": [
+          -0.9970930218696594,
+          -0.8511127233505249,
+          -0.0860000005364418
+        ],
+        "max": [
+          0.9970930218696594,
+          0.8229454159736633,
+          0.25199999955296515
+        ],
+        "size": [
+          1.9941860437393188,
+          1.6740581393241882,
+          0.33800000008940695
+        ]
+      }
+    },
+    {
+      "id": "THREE-QA-TRANSPARENT-STILL",
+      "result": "PASS",
+      "file": "assets/p21/three/stills/rank-stone-high-front.png",
+      "width": 640,
+      "height": 640,
+      "visiblePixels": 119762,
+      "transparentPixels": 289838,
+      "alphaCoverage": {
+        "minX": 81,
+        "minY": 119,
+        "maxX": 558,
+        "maxY": 519,
+        "width": 478,
+        "height": 401
+      },
+      "canvasAlpha": true
+    },
+    {
+      "id": "THREE-QA-RENDER-TRIANGLES",
+      "result": "PASS",
+      "file": "rank-stone-high.glb",
+      "view": "front",
+      "renderTriangles": 2164,
+      "readbackTriangles": 2164
+    },
+    {
+      "id": "THREE-QA-WEBGL-ERRORS",
+      "result": "PASS",
+      "file": "rank-stone-high.glb",
+      "view": "front",
+      "errors": []
+    },
+    {
+      "id": "THREE-QA-TRANSPARENT-STILL",
+      "result": "PASS",
+      "file": "assets/p21/three/stills/rank-stone-high-quarter.png",
+      "width": 640,
+      "height": 640,
+      "visiblePixels": 102822,
+      "transparentPixels": 306778,
+      "alphaCoverage": {
+        "minX": 131,
+        "minY": 93,
+        "maxX": 530,
+        "maxY": 511,
+        "width": 400,
+        "height": 419
+      },
+      "canvasAlpha": true
+    },
+    {
+      "id": "THREE-QA-RENDER-TRIANGLES",
+      "result": "PASS",
+      "file": "rank-stone-high.glb",
+      "view": "quarter",
+      "renderTriangles": 2164,
+      "readbackTriangles": 2164
+    },
+    {
+      "id": "THREE-QA-WEBGL-ERRORS",
+      "result": "PASS",
+      "file": "rank-stone-high.glb",
+      "view": "quarter",
+      "errors": []
+    },
+    {
+      "id": "THREE-QA-GLTF-READBACK",
+      "result": "PASS",
+      "file": "rank-stone-low.glb",
+      "meshCount": 19,
+      "vertices": 2460,
+      "triangles": 820,
+      "normalAttributes": 19,
+      "uvAttributes": 19,
+      "finite": true,
+      "normalsUnit": true,
+      "pivot": [
+        0,
+        0,
+        0
+      ],
+      "rootScale": [
+        1,
+        1,
+        1
+      ],
+      "bounds": {
+        "min": [
+          -0.9970930218696594,
+          -0.8511127233505249,
+          -0.0860000005364418
+        ],
+        "max": [
+          0.9970930218696594,
+          0.8229454159736633,
+          0.25199999955296515
+        ],
+        "size": [
+          1.9941860437393188,
+          1.6740581393241882,
+          0.33800000008940695
+        ]
+      }
+    },
+    {
+      "id": "THREE-QA-TRANSPARENT-STILL",
+      "result": "PASS",
+      "file": "assets/p21/three/stills/rank-stone-low-front.png",
+      "width": 640,
+      "height": 640,
+      "visiblePixels": 119762,
+      "transparentPixels": 289838,
+      "alphaCoverage": {
+        "minX": 81,
+        "minY": 119,
+        "maxX": 558,
+        "maxY": 519,
+        "width": 478,
+        "height": 401
+      },
+      "canvasAlpha": true
+    },
+    {
+      "id": "THREE-QA-RENDER-TRIANGLES",
+      "result": "PASS",
+      "file": "rank-stone-low.glb",
+      "view": "front",
+      "renderTriangles": 820,
+      "readbackTriangles": 820
+    },
+    {
+      "id": "THREE-QA-WEBGL-ERRORS",
+      "result": "PASS",
+      "file": "rank-stone-low.glb",
+      "view": "front",
+      "errors": []
+    },
+    {
+      "id": "THREE-QA-TRANSPARENT-STILL",
+      "result": "PASS",
+      "file": "assets/p21/three/stills/rank-stone-low-quarter.png",
+      "width": 640,
+      "height": 640,
+      "visiblePixels": 101841,
+      "transparentPixels": 307759,
+      "alphaCoverage": {
+        "minX": 132,
+        "minY": 93,
+        "maxX": 529,
+        "maxY": 511,
+        "width": 398,
+        "height": 419
+      },
+      "canvasAlpha": true
+    },
+    {
+      "id": "THREE-QA-RENDER-TRIANGLES",
+      "result": "PASS",
+      "file": "rank-stone-low.glb",
+      "view": "quarter",
+      "renderTriangles": 820,
+      "readbackTriangles": 820
+    },
+    {
+      "id": "THREE-QA-WEBGL-ERRORS",
+      "result": "PASS",
+      "file": "rank-stone-low.glb",
+      "view": "quarter",
+      "errors": []
+    },
+    {
+      "id": "THREE-QA-GLTF-READBACK",
+      "result": "PASS",
+      "file": "rank-iron-high.glb",
+      "meshCount": 19,
+      "vertices": 6492,
+      "triangles": 2164,
+      "normalAttributes": 19,
+      "uvAttributes": 19,
+      "finite": true,
+      "normalsUnit": true,
+      "pivot": [
+        0,
+        0,
+        0
+      ],
+      "rootScale": [
+        1,
+        1,
+        1
+      ],
+      "bounds": {
+        "min": [
+          -0.9970930218696594,
+          -0.8511127233505249,
+          -0.0860000005364418
+        ],
+        "max": [
+          0.9970930218696594,
+          0.8229454159736633,
+          0.25199999955296515
+        ],
+        "size": [
+          1.9941860437393188,
+          1.6740581393241882,
+          0.33800000008940695
+        ]
+      }
+    },
+    {
+      "id": "THREE-QA-TRANSPARENT-STILL",
+      "result": "PASS",
+      "file": "assets/p21/three/stills/rank-iron-high-front.png",
+      "width": 640,
+      "height": 640,
+      "visiblePixels": 119762,
+      "transparentPixels": 289838,
+      "alphaCoverage": {
+        "minX": 81,
+        "minY": 119,
+        "maxX": 558,
+        "maxY": 519,
+        "width": 478,
+        "height": 401
+      },
+      "canvasAlpha": true
+    },
+    {
+      "id": "THREE-QA-RENDER-TRIANGLES",
+      "result": "PASS",
+      "file": "rank-iron-high.glb",
+      "view": "front",
+      "renderTriangles": 2164,
+      "readbackTriangles": 2164
+    },
+    {
+      "id": "THREE-QA-WEBGL-ERRORS",
+      "result": "PASS",
+      "file": "rank-iron-high.glb",
+      "view": "front",
+      "errors": []
+    },
+    {
+      "id": "THREE-QA-TRANSPARENT-STILL",
+      "result": "PASS",
+      "file": "assets/p21/three/stills/rank-iron-high-quarter.png",
+      "width": 640,
+      "height": 640,
+      "visiblePixels": 102822,
+      "transparentPixels": 306778,
+      "alphaCoverage": {
+        "minX": 131,
+        "minY": 93,
+        "maxX": 530,
+        "maxY": 511,
+        "width": 400,
+        "height": 419
+      },
+      "canvasAlpha": true
+    },
+    {
+      "id": "THREE-QA-RENDER-TRIANGLES",
+      "result": "PASS",
+      "file": "rank-iron-high.glb",
+      "view": "quarter",
+      "renderTriangles": 2164,
+      "readbackTriangles": 2164
+    },
+    {
+      "id": "THREE-QA-WEBGL-ERRORS",
+      "result": "PASS",
+      "file": "rank-iron-high.glb",
+      "view": "quarter",
+      "errors": []
+    },
+    {
+      "id": "THREE-QA-GLTF-READBACK",
+      "result": "PASS",
+      "file": "rank-iron-low.glb",
+      "meshCount": 19,
+      "vertices": 2460,
+      "triangles": 820,
+      "normalAttributes": 19,
+      "uvAttributes": 19,
+      "finite": true,
+      "normalsUnit": true,
+      "pivot": [
+        0,
+        0,
+        0
+      ],
+      "rootScale": [
+        1,
+        1,
+        1
+      ],
+      "bounds": {
+        "min": [
+          -0.9970930218696594,
+          -0.8511127233505249,
+          -0.0860000005364418
+        ],
+        "max": [
+          0.9970930218696594,
+          0.8229454159736633,
+          0.25199999955296515
+        ],
+        "size": [
+          1.9941860437393188,
+          1.6740581393241882,
+          0.33800000008940695
+        ]
+      }
+    },
+    {
+      "id": "THREE-QA-TRANSPARENT-STILL",
+      "result": "PASS",
+      "file": "assets/p21/three/stills/rank-iron-low-front.png",
+      "width": 640,
+      "height": 640,
+      "visiblePixels": 119762,
+      "transparentPixels": 289838,
+      "alphaCoverage": {
+        "minX": 81,
+        "minY": 119,
+        "maxX": 558,
+        "maxY": 519,
+        "width": 478,
+        "height": 401
+      },
+      "canvasAlpha": true
+    },
+    {
+      "id": "THREE-QA-RENDER-TRIANGLES",
+      "result": "PASS",
+      "file": "rank-iron-low.glb",
+      "view": "front",
+      "renderTriangles": 820,
+      "readbackTriangles": 820
+    },
+    {
+      "id": "THREE-QA-WEBGL-ERRORS",
+      "result": "PASS",
+      "file": "rank-iron-low.glb",
+      "view": "front",
+      "errors": []
+    },
+    {
+      "id": "THREE-QA-TRANSPARENT-STILL",
+      "result": "PASS",
+      "file": "assets/p21/three/stills/rank-iron-low-quarter.png",
+      "width": 640,
+      "height": 640,
+      "visiblePixels": 101841,
+      "transparentPixels": 307759,
+      "alphaCoverage": {
+        "minX": 132,
+        "minY": 93,
+        "maxX": 529,
+        "maxY": 511,
+        "width": 398,
+        "height": 419
+      },
+      "canvasAlpha": true
+    },
+    {
+      "id": "THREE-QA-RENDER-TRIANGLES",
+      "result": "PASS",
+      "file": "rank-iron-low.glb",
+      "view": "quarter",
+      "renderTriangles": 820,
+      "readbackTriangles": 820
+    },
+    {
+      "id": "THREE-QA-WEBGL-ERRORS",
+      "result": "PASS",
+      "file": "rank-iron-low.glb",
+      "view": "quarter",
+      "errors": []
+    },
+    {
+      "id": "THREE-QA-GLTF-READBACK",
+      "result": "PASS",
+      "file": "rank-bronze-high.glb",
+      "meshCount": 20,
+      "vertices": 7163,
+      "triangles": 3560,
+      "normalAttributes": 20,
+      "uvAttributes": 20,
+      "finite": true,
+      "normalsUnit": true,
+      "pivot": [
+        0,
+        0,
+        0
+      ],
+      "rootScale": [
+        1,
+        1,
+        1
+      ],
+      "bounds": {
+        "min": [
+          -0.9970930218696594,
+          -0.8511127233505249,
+          -0.0860000005364418
+        ],
+        "max": [
+          0.9970930218696594,
+          0.8229454159736633,
+          0.48246359367577385
+        ],
+        "size": [
+          1.9941860437393188,
+          1.6740581393241882,
+          0.5684635942122156
+        ]
+      }
+    },
+    {
+      "id": "THREE-QA-TRANSPARENT-STILL",
+      "result": "PASS",
+      "file": "assets/p21/three/stills/rank-bronze-high-front.png",
+      "width": 640,
+      "height": 640,
+      "visiblePixels": 119762,
+      "transparentPixels": 289838,
+      "alphaCoverage": {
+        "minX": 81,
+        "minY": 119,
+        "maxX": 558,
+        "maxY": 519,
+        "width": 478,
+        "height": 401
+      },
+      "canvasAlpha": true
+    },
+    {
+      "id": "THREE-QA-RENDER-TRIANGLES",
+      "result": "PASS",
+      "file": "rank-bronze-high.glb",
+      "view": "front",
+      "renderTriangles": 3560,
+      "readbackTriangles": 3560
+    },
+    {
+      "id": "THREE-QA-WEBGL-ERRORS",
+      "result": "PASS",
+      "file": "rank-bronze-high.glb",
+      "view": "front",
+      "errors": []
+    },
+    {
+      "id": "THREE-QA-TRANSPARENT-STILL",
+      "result": "PASS",
+      "file": "assets/p21/three/stills/rank-bronze-high-quarter.png",
+      "width": 640,
+      "height": 640,
+      "visiblePixels": 102810,
+      "transparentPixels": 306790,
+      "alphaCoverage": {
+        "minX": 148,
+        "minY": 86,
+        "maxX": 546,
+        "maxY": 505,
+        "width": 399,
+        "height": 420
+      },
+      "canvasAlpha": true
+    },
+    {
+      "id": "THREE-QA-RENDER-TRIANGLES",
+      "result": "PASS",
+      "file": "rank-bronze-high.glb",
+      "view": "quarter",
+      "renderTriangles": 3560,
+      "readbackTriangles": 3560
+    },
+    {
+      "id": "THREE-QA-WEBGL-ERRORS",
+      "result": "PASS",
+      "file": "rank-bronze-high.glb",
+      "view": "quarter",
+      "errors": []
+    },
+    {
+      "id": "THREE-QA-GLTF-READBACK",
+      "result": "PASS",
+      "file": "rank-bronze-low.glb",
+      "meshCount": 20,
+      "vertices": 2547,
+      "triangles": 1040,
+      "normalAttributes": 20,
+      "uvAttributes": 20,
+      "finite": true,
+      "normalsUnit": true,
+      "pivot": [
+        0,
+        0,
+        0
+      ],
+      "rootScale": [
+        1,
+        1,
+        1
+      ],
+      "bounds": {
+        "min": [
+          -0.9970930218696594,
+          -0.8511127233505249,
+          -0.0860000005364418
+        ],
+        "max": [
+          0.9970930218696594,
+          0.8229454159736633,
+          0.48246359367577385
+        ],
+        "size": [
+          1.9941860437393188,
+          1.6740581393241882,
+          0.5684635942122156
+        ]
+      }
+    },
+    {
+      "id": "THREE-QA-TRANSPARENT-STILL",
+      "result": "PASS",
+      "file": "assets/p21/three/stills/rank-bronze-low-front.png",
+      "width": 640,
+      "height": 640,
+      "visiblePixels": 119762,
+      "transparentPixels": 289838,
+      "alphaCoverage": {
+        "minX": 81,
+        "minY": 119,
+        "maxX": 558,
+        "maxY": 519,
+        "width": 478,
+        "height": 401
+      },
+      "canvasAlpha": true
+    },
+    {
+      "id": "THREE-QA-RENDER-TRIANGLES",
+      "result": "PASS",
+      "file": "rank-bronze-low.glb",
+      "view": "front",
+      "renderTriangles": 1040,
+      "readbackTriangles": 1040
+    },
+    {
+      "id": "THREE-QA-WEBGL-ERRORS",
+      "result": "PASS",
+      "file": "rank-bronze-low.glb",
+      "view": "front",
+      "errors": []
+    },
+    {
+      "id": "THREE-QA-TRANSPARENT-STILL",
+      "result": "PASS",
+      "file": "assets/p21/three/stills/rank-bronze-low-quarter.png",
+      "width": 640,
+      "height": 640,
+      "visiblePixels": 101848,
+      "transparentPixels": 307752,
+      "alphaCoverage": {
+        "minX": 149,
+        "minY": 86,
+        "maxX": 545,
+        "maxY": 504,
+        "width": 397,
+        "height": 419
+      },
+      "canvasAlpha": true
+    },
+    {
+      "id": "THREE-QA-RENDER-TRIANGLES",
+      "result": "PASS",
+      "file": "rank-bronze-low.glb",
+      "view": "quarter",
+      "renderTriangles": 1040,
+      "readbackTriangles": 1040
+    },
+    {
+      "id": "THREE-QA-WEBGL-ERRORS",
+      "result": "PASS",
+      "file": "rank-bronze-low.glb",
+      "view": "quarter",
+      "errors": []
+    },
+    {
+      "id": "THREE-QA-GLTF-READBACK",
+      "result": "PASS",
+      "file": "rank-silver-high.glb",
+      "meshCount": 20,
+      "vertices": 7163,
+      "triangles": 3560,
+      "normalAttributes": 20,
+      "uvAttributes": 20,
+      "finite": true,
+      "normalsUnit": true,
+      "pivot": [
+        0,
+        0,
+        0
+      ],
+      "rootScale": [
+        1,
+        1,
+        1
+      ],
+      "bounds": {
+        "min": [
+          -0.9970930218696594,
+          -0.8511127233505249,
+          -0.0860000005364418
+        ],
+        "max": [
+          0.9970930218696594,
+          0.8229454159736633,
+          0.48246359367577385
+        ],
+        "size": [
+          1.9941860437393188,
+          1.6740581393241882,
+          0.5684635942122156
+        ]
+      }
+    },
+    {
+      "id": "THREE-QA-TRANSPARENT-STILL",
+      "result": "PASS",
+      "file": "assets/p21/three/stills/rank-silver-high-front.png",
+      "width": 640,
+      "height": 640,
+      "visiblePixels": 119762,
+      "transparentPixels": 289838,
+      "alphaCoverage": {
+        "minX": 81,
+        "minY": 119,
+        "maxX": 558,
+        "maxY": 519,
+        "width": 478,
+        "height": 401
+      },
+      "canvasAlpha": true
+    },
+    {
+      "id": "THREE-QA-RENDER-TRIANGLES",
+      "result": "PASS",
+      "file": "rank-silver-high.glb",
+      "view": "front",
+      "renderTriangles": 3560,
+      "readbackTriangles": 3560
+    },
+    {
+      "id": "THREE-QA-WEBGL-ERRORS",
+      "result": "PASS",
+      "file": "rank-silver-high.glb",
+      "view": "front",
+      "errors": []
+    },
+    {
+      "id": "THREE-QA-TRANSPARENT-STILL",
+      "result": "PASS",
+      "file": "assets/p21/three/stills/rank-silver-high-quarter.png",
+      "width": 640,
+      "height": 640,
+      "visiblePixels": 102810,
+      "transparentPixels": 306790,
+      "alphaCoverage": {
+        "minX": 148,
+        "minY": 86,
+        "maxX": 546,
+        "maxY": 505,
+        "width": 399,
+        "height": 420
+      },
+      "canvasAlpha": true
+    },
+    {
+      "id": "THREE-QA-RENDER-TRIANGLES",
+      "result": "PASS",
+      "file": "rank-silver-high.glb",
+      "view": "quarter",
+      "renderTriangles": 3560,
+      "readbackTriangles": 3560
+    },
+    {
+      "id": "THREE-QA-WEBGL-ERRORS",
+      "result": "PASS",
+      "file": "rank-silver-high.glb",
+      "view": "quarter",
+      "errors": []
+    },
+    {
+      "id": "THREE-QA-GLTF-READBACK",
+      "result": "PASS",
+      "file": "rank-silver-low.glb",
+      "meshCount": 20,
+      "vertices": 2547,
+      "triangles": 1040,
+      "normalAttributes": 20,
+      "uvAttributes": 20,
+      "finite": true,
+      "normalsUnit": true,
+      "pivot": [
+        0,
+        0,
+        0
+      ],
+      "rootScale": [
+        1,
+        1,
+        1
+      ],
+      "bounds": {
+        "min": [
+          -0.9970930218696594,
+          -0.8511127233505249,
+          -0.0860000005364418
+        ],
+        "max": [
+          0.9970930218696594,
+          0.8229454159736633,
+          0.48246359367577385
+        ],
+        "size": [
+          1.9941860437393188,
+          1.6740581393241882,
+          0.5684635942122156
+        ]
+      }
+    },
+    {
+      "id": "THREE-QA-TRANSPARENT-STILL",
+      "result": "PASS",
+      "file": "assets/p21/three/stills/rank-silver-low-front.png",
+      "width": 640,
+      "height": 640,
+      "visiblePixels": 119762,
+      "transparentPixels": 289838,
+      "alphaCoverage": {
+        "minX": 81,
+        "minY": 119,
+        "maxX": 558,
+        "maxY": 519,
+        "width": 478,
+        "height": 401
+      },
+      "canvasAlpha": true
+    },
+    {
+      "id": "THREE-QA-RENDER-TRIANGLES",
+      "result": "PASS",
+      "file": "rank-silver-low.glb",
+      "view": "front",
+      "renderTriangles": 1040,
+      "readbackTriangles": 1040
+    },
+    {
+      "id": "THREE-QA-WEBGL-ERRORS",
+      "result": "PASS",
+      "file": "rank-silver-low.glb",
+      "view": "front",
+      "errors": []
+    },
+    {
+      "id": "THREE-QA-TRANSPARENT-STILL",
+      "result": "PASS",
+      "file": "assets/p21/three/stills/rank-silver-low-quarter.png",
+      "width": 640,
+      "height": 640,
+      "visiblePixels": 101848,
+      "transparentPixels": 307752,
+      "alphaCoverage": {
+        "minX": 149,
+        "minY": 86,
+        "maxX": 545,
+        "maxY": 504,
+        "width": 397,
+        "height": 419
+      },
+      "canvasAlpha": true
+    },
+    {
+      "id": "THREE-QA-RENDER-TRIANGLES",
+      "result": "PASS",
+      "file": "rank-silver-low.glb",
+      "view": "quarter",
+      "renderTriangles": 1040,
+      "readbackTriangles": 1040
+    },
+    {
+      "id": "THREE-QA-WEBGL-ERRORS",
+      "result": "PASS",
+      "file": "rank-silver-low.glb",
+      "view": "quarter",
+      "errors": []
+    },
+    {
+      "id": "THREE-QA-GLTF-READBACK",
+      "result": "PASS",
+      "file": "rank-gold-high.glb",
+      "meshCount": 20,
+      "vertices": 7163,
+      "triangles": 3560,
+      "normalAttributes": 20,
+      "uvAttributes": 20,
+      "finite": true,
+      "normalsUnit": true,
+      "pivot": [
+        0,
+        0,
+        0
+      ],
+      "rootScale": [
+        1,
+        1,
+        1
+      ],
+      "bounds": {
+        "min": [
+          -0.9970930218696594,
+          -0.8511127233505249,
+          -0.0860000005364418
+        ],
+        "max": [
+          0.9970930218696594,
+          0.8229454159736633,
+          0.48246359367577385
+        ],
+        "size": [
+          1.9941860437393188,
+          1.6740581393241882,
+          0.5684635942122156
+        ]
+      }
+    },
+    {
+      "id": "THREE-QA-TRANSPARENT-STILL",
+      "result": "PASS",
+      "file": "assets/p21/three/stills/rank-gold-high-front.png",
+      "width": 640,
+      "height": 640,
+      "visiblePixels": 119762,
+      "transparentPixels": 289838,
+      "alphaCoverage": {
+        "minX": 81,
+        "minY": 119,
+        "maxX": 558,
+        "maxY": 519,
+        "width": 478,
+        "height": 401
+      },
+      "canvasAlpha": true
+    },
+    {
+      "id": "THREE-QA-RENDER-TRIANGLES",
+      "result": "PASS",
+      "file": "rank-gold-high.glb",
+      "view": "front",
+      "renderTriangles": 3560,
+      "readbackTriangles": 3560
+    },
+    {
+      "id": "THREE-QA-WEBGL-ERRORS",
+      "result": "PASS",
+      "file": "rank-gold-high.glb",
+      "view": "front",
+      "errors": []
+    },
+    {
+      "id": "THREE-QA-TRANSPARENT-STILL",
+      "result": "PASS",
+      "file": "assets/p21/three/stills/rank-gold-high-quarter.png",
+      "width": 640,
+      "height": 640,
+      "visiblePixels": 102810,
+      "transparentPixels": 306790,
+      "alphaCoverage": {
+        "minX": 148,
+        "minY": 86,
+        "maxX": 546,
+        "maxY": 505,
+        "width": 399,
+        "height": 420
+      },
+      "canvasAlpha": true
+    },
+    {
+      "id": "THREE-QA-RENDER-TRIANGLES",
+      "result": "PASS",
+      "file": "rank-gold-high.glb",
+      "view": "quarter",
+      "renderTriangles": 3560,
+      "readbackTriangles": 3560
+    },
+    {
+      "id": "THREE-QA-WEBGL-ERRORS",
+      "result": "PASS",
+      "file": "rank-gold-high.glb",
+      "view": "quarter",
+      "errors": []
+    },
+    {
+      "id": "THREE-QA-GLTF-READBACK",
+      "result": "PASS",
+      "file": "rank-gold-low.glb",
+      "meshCount": 20,
+      "vertices": 2547,
+      "triangles": 1040,
+      "normalAttributes": 20,
+      "uvAttributes": 20,
+      "finite": true,
+      "normalsUnit": true,
+      "pivot": [
+        0,
+        0,
+        0
+      ],
+      "rootScale": [
+        1,
+        1,
+        1
+      ],
+      "bounds": {
+        "min": [
+          -0.9970930218696594,
+          -0.8511127233505249,
+          -0.0860000005364418
+        ],
+        "max": [
+          0.9970930218696594,
+          0.8229454159736633,
+          0.48246359367577385
+        ],
+        "size": [
+          1.9941860437393188,
+          1.6740581393241882,
+          0.5684635942122156
+        ]
+      }
+    },
+    {
+      "id": "THREE-QA-TRANSPARENT-STILL",
+      "result": "PASS",
+      "file": "assets/p21/three/stills/rank-gold-low-front.png",
+      "width": 640,
+      "height": 640,
+      "visiblePixels": 119762,
+      "transparentPixels": 289838,
+      "alphaCoverage": {
+        "minX": 81,
+        "minY": 119,
+        "maxX": 558,
+        "maxY": 519,
+        "width": 478,
+        "height": 401
+      },
+      "canvasAlpha": true
+    },
+    {
+      "id": "THREE-QA-RENDER-TRIANGLES",
+      "result": "PASS",
+      "file": "rank-gold-low.glb",
+      "view": "front",
+      "renderTriangles": 1040,
+      "readbackTriangles": 1040
+    },
+    {
+      "id": "THREE-QA-WEBGL-ERRORS",
+      "result": "PASS",
+      "file": "rank-gold-low.glb",
+      "view": "front",
+      "errors": []
+    },
+    {
+      "id": "THREE-QA-TRANSPARENT-STILL",
+      "result": "PASS",
+      "file": "assets/p21/three/stills/rank-gold-low-quarter.png",
+      "width": 640,
+      "height": 640,
+      "visiblePixels": 101848,
+      "transparentPixels": 307752,
+      "alphaCoverage": {
+        "minX": 149,
+        "minY": 86,
+        "maxX": 545,
+        "maxY": 504,
+        "width": 397,
+        "height": 419
+      },
+      "canvasAlpha": true
+    },
+    {
+      "id": "THREE-QA-RENDER-TRIANGLES",
+      "result": "PASS",
+      "file": "rank-gold-low.glb",
+      "view": "quarter",
+      "renderTriangles": 1040,
+      "readbackTriangles": 1040
+    },
+    {
+      "id": "THREE-QA-WEBGL-ERRORS",
+      "result": "PASS",
+      "file": "rank-gold-low.glb",
+      "view": "quarter",
+      "errors": []
+    },
+    {
+      "id": "THREE-QA-GLTF-READBACK",
+      "result": "PASS",
+      "file": "rank-diamond-high.glb",
+      "meshCount": 22,
+      "vertices": 7547,
+      "triangles": 3688,
+      "normalAttributes": 22,
+      "uvAttributes": 22,
+      "finite": true,
+      "normalsUnit": true,
+      "pivot": [
+        0,
+        0,
+        0
+      ],
+      "rootScale": [
+        1,
+        1,
+        1
+      ],
+      "bounds": {
+        "min": [
+          -0.9970930218696594,
+          -0.8511127233505249,
+          -0.0860000005364418
+        ],
+        "max": [
+          0.9970930218696594,
+          1.004142165184021,
+          0.48246359367577385
+        ],
+        "size": [
+          1.9941860437393188,
+          1.855254888534546,
+          0.5684635942122156
+        ]
+      }
+    },
+    {
+      "id": "THREE-QA-TRANSPARENT-STILL",
+      "result": "PASS",
+      "file": "assets/p21/three/stills/rank-diamond-high-front.png",
+      "width": 640,
+      "height": 640,
+      "visiblePixels": 120652,
+      "transparentPixels": 288948,
+      "alphaCoverage": {
+        "minX": 81,
+        "minY": 98,
+        "maxX": 558,
+        "maxY": 541,
+        "width": 478,
+        "height": 444
+      },
+      "canvasAlpha": true
+    },
+    {
+      "id": "THREE-QA-RENDER-TRIANGLES",
+      "result": "PASS",
+      "file": "rank-diamond-high.glb",
+      "view": "front",
+      "renderTriangles": 3688,
+      "readbackTriangles": 3688
+    },
+    {
+      "id": "THREE-QA-WEBGL-ERRORS",
+      "result": "PASS",
+      "file": "rank-diamond-high.glb",
+      "view": "front",
+      "errors": []
+    },
+    {
+      "id": "THREE-QA-TRANSPARENT-STILL",
+      "result": "PASS",
+      "file": "assets/p21/three/stills/rank-diamond-high-quarter.png",
+      "width": 640,
+      "height": 640,
+      "visiblePixels": 103754,
+      "transparentPixels": 305846,
+      "alphaCoverage": {
+        "minX": 148,
+        "minY": 98,
+        "maxX": 546,
+        "maxY": 525,
+        "width": 399,
+        "height": 428
+      },
+      "canvasAlpha": true
+    },
+    {
+      "id": "THREE-QA-RENDER-TRIANGLES",
+      "result": "PASS",
+      "file": "rank-diamond-high.glb",
+      "view": "quarter",
+      "renderTriangles": 3688,
+      "readbackTriangles": 3688
+    },
+    {
+      "id": "THREE-QA-WEBGL-ERRORS",
+      "result": "PASS",
+      "file": "rank-diamond-high.glb",
+      "view": "quarter",
+      "errors": []
+    },
+    {
+      "id": "THREE-QA-GLTF-READBACK",
+      "result": "PASS",
+      "file": "rank-diamond-low.glb",
+      "meshCount": 22,
+      "vertices": 2679,
+      "triangles": 1084,
+      "normalAttributes": 22,
+      "uvAttributes": 22,
+      "finite": true,
+      "normalsUnit": true,
+      "pivot": [
+        0,
+        0,
+        0
+      ],
+      "rootScale": [
+        1,
+        1,
+        1
+      ],
+      "bounds": {
+        "min": [
+          -0.9970930218696594,
+          -0.8511127233505249,
+          -0.0860000005364418
+        ],
+        "max": [
+          0.9970930218696594,
+          1.004142165184021,
+          0.48246359367577385
+        ],
+        "size": [
+          1.9941860437393188,
+          1.855254888534546,
+          0.5684635942122156
+        ]
+      }
+    },
+    {
+      "id": "THREE-QA-TRANSPARENT-STILL",
+      "result": "PASS",
+      "file": "assets/p21/three/stills/rank-diamond-low-front.png",
+      "width": 640,
+      "height": 640,
+      "visiblePixels": 120652,
+      "transparentPixels": 288948,
+      "alphaCoverage": {
+        "minX": 81,
+        "minY": 98,
+        "maxX": 558,
+        "maxY": 541,
+        "width": 478,
+        "height": 444
+      },
+      "canvasAlpha": true
+    },
+    {
+      "id": "THREE-QA-RENDER-TRIANGLES",
+      "result": "PASS",
+      "file": "rank-diamond-low.glb",
+      "view": "front",
+      "renderTriangles": 1084,
+      "readbackTriangles": 1084
+    },
+    {
+      "id": "THREE-QA-WEBGL-ERRORS",
+      "result": "PASS",
+      "file": "rank-diamond-low.glb",
+      "view": "front",
+      "errors": []
+    },
+    {
+      "id": "THREE-QA-TRANSPARENT-STILL",
+      "result": "PASS",
+      "file": "assets/p21/three/stills/rank-diamond-low-quarter.png",
+      "width": 640,
+      "height": 640,
+      "visiblePixels": 102756,
+      "transparentPixels": 306844,
+      "alphaCoverage": {
+        "minX": 149,
+        "minY": 99,
+        "maxX": 545,
+        "maxY": 525,
+        "width": 397,
+        "height": 427
+      },
+      "canvasAlpha": true
+    },
+    {
+      "id": "THREE-QA-RENDER-TRIANGLES",
+      "result": "PASS",
+      "file": "rank-diamond-low.glb",
+      "view": "quarter",
+      "renderTriangles": 1084,
+      "readbackTriangles": 1084
+    },
+    {
+      "id": "THREE-QA-WEBGL-ERRORS",
+      "result": "PASS",
+      "file": "rank-diamond-low.glb",
+      "view": "quarter",
+      "errors": []
+    },
+    {
+      "id": "THREE-QA-GLTF-READBACK",
+      "result": "PASS",
+      "file": "rank-emerald-high.glb",
+      "meshCount": 20,
+      "vertices": 7163,
+      "triangles": 3560,
+      "normalAttributes": 20,
+      "uvAttributes": 20,
+      "finite": true,
+      "normalsUnit": true,
+      "pivot": [
+        0,
+        0,
+        0
+      ],
+      "rootScale": [
+        1,
+        1,
+        1
+      ],
+      "bounds": {
+        "min": [
+          -0.9970930218696594,
+          -0.8511127233505249,
+          -0.0860000005364418
+        ],
+        "max": [
+          0.9970930218696594,
+          0.8229454159736633,
+          0.48246359367577385
+        ],
+        "size": [
+          1.9941860437393188,
+          1.6740581393241882,
+          0.5684635942122156
+        ]
+      }
+    },
+    {
+      "id": "THREE-QA-TRANSPARENT-STILL",
+      "result": "PASS",
+      "file": "assets/p21/three/stills/rank-emerald-high-front.png",
+      "width": 640,
+      "height": 640,
+      "visiblePixels": 119762,
+      "transparentPixels": 289838,
+      "alphaCoverage": {
+        "minX": 81,
+        "minY": 119,
+        "maxX": 558,
+        "maxY": 519,
+        "width": 478,
+        "height": 401
+      },
+      "canvasAlpha": true
+    },
+    {
+      "id": "THREE-QA-RENDER-TRIANGLES",
+      "result": "PASS",
+      "file": "rank-emerald-high.glb",
+      "view": "front",
+      "renderTriangles": 3560,
+      "readbackTriangles": 3560
+    },
+    {
+      "id": "THREE-QA-WEBGL-ERRORS",
+      "result": "PASS",
+      "file": "rank-emerald-high.glb",
+      "view": "front",
+      "errors": []
+    },
+    {
+      "id": "THREE-QA-TRANSPARENT-STILL",
+      "result": "PASS",
+      "file": "assets/p21/three/stills/rank-emerald-high-quarter.png",
+      "width": 640,
+      "height": 640,
+      "visiblePixels": 102810,
+      "transparentPixels": 306790,
+      "alphaCoverage": {
+        "minX": 148,
+        "minY": 86,
+        "maxX": 546,
+        "maxY": 505,
+        "width": 399,
+        "height": 420
+      },
+      "canvasAlpha": true
+    },
+    {
+      "id": "THREE-QA-RENDER-TRIANGLES",
+      "result": "PASS",
+      "file": "rank-emerald-high.glb",
+      "view": "quarter",
+      "renderTriangles": 3560,
+      "readbackTriangles": 3560
+    },
+    {
+      "id": "THREE-QA-WEBGL-ERRORS",
+      "result": "PASS",
+      "file": "rank-emerald-high.glb",
+      "view": "quarter",
+      "errors": []
+    },
+    {
+      "id": "THREE-QA-GLTF-READBACK",
+      "result": "PASS",
+      "file": "rank-emerald-low.glb",
+      "meshCount": 20,
+      "vertices": 2547,
+      "triangles": 1040,
+      "normalAttributes": 20,
+      "uvAttributes": 20,
+      "finite": true,
+      "normalsUnit": true,
+      "pivot": [
+        0,
+        0,
+        0
+      ],
+      "rootScale": [
+        1,
+        1,
+        1
+      ],
+      "bounds": {
+        "min": [
+          -0.9970930218696594,
+          -0.8511127233505249,
+          -0.0860000005364418
+        ],
+        "max": [
+          0.9970930218696594,
+          0.8229454159736633,
+          0.48246359367577385
+        ],
+        "size": [
+          1.9941860437393188,
+          1.6740581393241882,
+          0.5684635942122156
+        ]
+      }
+    },
+    {
+      "id": "THREE-QA-TRANSPARENT-STILL",
+      "result": "PASS",
+      "file": "assets/p21/three/stills/rank-emerald-low-front.png",
+      "width": 640,
+      "height": 640,
+      "visiblePixels": 119762,
+      "transparentPixels": 289838,
+      "alphaCoverage": {
+        "minX": 81,
+        "minY": 119,
+        "maxX": 558,
+        "maxY": 519,
+        "width": 478,
+        "height": 401
+      },
+      "canvasAlpha": true
+    },
+    {
+      "id": "THREE-QA-RENDER-TRIANGLES",
+      "result": "PASS",
+      "file": "rank-emerald-low.glb",
+      "view": "front",
+      "renderTriangles": 1040,
+      "readbackTriangles": 1040
+    },
+    {
+      "id": "THREE-QA-WEBGL-ERRORS",
+      "result": "PASS",
+      "file": "rank-emerald-low.glb",
+      "view": "front",
+      "errors": []
+    },
+    {
+      "id": "THREE-QA-TRANSPARENT-STILL",
+      "result": "PASS",
+      "file": "assets/p21/three/stills/rank-emerald-low-quarter.png",
+      "width": 640,
+      "height": 640,
+      "visiblePixels": 101848,
+      "transparentPixels": 307752,
+      "alphaCoverage": {
+        "minX": 149,
+        "minY": 86,
+        "maxX": 545,
+        "maxY": 504,
+        "width": 397,
+        "height": 419
+      },
+      "canvasAlpha": true
+    },
+    {
+      "id": "THREE-QA-RENDER-TRIANGLES",
+      "result": "PASS",
+      "file": "rank-emerald-low.glb",
+      "view": "quarter",
+      "renderTriangles": 1040,
+      "readbackTriangles": 1040
+    },
+    {
+      "id": "THREE-QA-WEBGL-ERRORS",
+      "result": "PASS",
+      "file": "rank-emerald-low.glb",
+      "view": "quarter",
+      "errors": []
+    },
+    {
+      "id": "THREE-QA-GLTF-READBACK",
+      "result": "PASS",
+      "file": "rank-champion-high.glb",
+      "meshCount": 24,
+      "vertices": 7739,
+      "triangles": 3752,
+      "normalAttributes": 24,
+      "uvAttributes": 24,
+      "finite": true,
+      "normalsUnit": true,
+      "pivot": [
+        0,
+        0,
+        0
+      ],
+      "rootScale": [
+        1,
+        1,
+        1
+      ],
+      "bounds": {
+        "min": [
+          -0.9970930218696594,
+          -0.8511127233505249,
+          -0.0860000005364418
+        ],
+        "max": [
+          0.9970930218696594,
+          1.004142165184021,
+          0.48246359367577385
+        ],
+        "size": [
+          1.9941860437393188,
+          1.855254888534546,
+          0.5684635942122156
+        ]
+      }
+    },
+    {
+      "id": "THREE-QA-TRANSPARENT-STILL",
+      "result": "PASS",
+      "file": "assets/p21/three/stills/rank-champion-high-front.png",
+      "width": 640,
+      "height": 640,
+      "visiblePixels": 120652,
+      "transparentPixels": 288948,
+      "alphaCoverage": {
+        "minX": 81,
+        "minY": 98,
+        "maxX": 558,
+        "maxY": 541,
+        "width": 478,
+        "height": 444
+      },
+      "canvasAlpha": true
+    },
+    {
+      "id": "THREE-QA-RENDER-TRIANGLES",
+      "result": "PASS",
+      "file": "rank-champion-high.glb",
+      "view": "front",
+      "renderTriangles": 3752,
+      "readbackTriangles": 3752
+    },
+    {
+      "id": "THREE-QA-WEBGL-ERRORS",
+      "result": "PASS",
+      "file": "rank-champion-high.glb",
+      "view": "front",
+      "errors": []
+    },
+    {
+      "id": "THREE-QA-TRANSPARENT-STILL",
+      "result": "PASS",
+      "file": "assets/p21/three/stills/rank-champion-high-quarter.png",
+      "width": 640,
+      "height": 640,
+      "visiblePixels": 103754,
+      "transparentPixels": 305846,
+      "alphaCoverage": {
+        "minX": 148,
+        "minY": 98,
+        "maxX": 546,
+        "maxY": 525,
+        "width": 399,
+        "height": 428
+      },
+      "canvasAlpha": true
+    },
+    {
+      "id": "THREE-QA-RENDER-TRIANGLES",
+      "result": "PASS",
+      "file": "rank-champion-high.glb",
+      "view": "quarter",
+      "renderTriangles": 3752,
+      "readbackTriangles": 3752
+    },
+    {
+      "id": "THREE-QA-WEBGL-ERRORS",
+      "result": "PASS",
+      "file": "rank-champion-high.glb",
+      "view": "quarter",
+      "errors": []
+    },
+    {
+      "id": "THREE-QA-GLTF-READBACK",
+      "result": "PASS",
+      "file": "rank-champion-low.glb",
+      "meshCount": 24,
+      "vertices": 2727,
+      "triangles": 1100,
+      "normalAttributes": 24,
+      "uvAttributes": 24,
+      "finite": true,
+      "normalsUnit": true,
+      "pivot": [
+        0,
+        0,
+        0
+      ],
+      "rootScale": [
+        1,
+        1,
+        1
+      ],
+      "bounds": {
+        "min": [
+          -0.9970930218696594,
+          -0.8511127233505249,
+          -0.0860000005364418
+        ],
+        "max": [
+          0.9970930218696594,
+          1.004142165184021,
+          0.48246359367577385
+        ],
+        "size": [
+          1.9941860437393188,
+          1.855254888534546,
+          0.5684635942122156
+        ]
+      }
+    },
+    {
+      "id": "THREE-QA-TRANSPARENT-STILL",
+      "result": "PASS",
+      "file": "assets/p21/three/stills/rank-champion-low-front.png",
+      "width": 640,
+      "height": 640,
+      "visiblePixels": 120652,
+      "transparentPixels": 288948,
+      "alphaCoverage": {
+        "minX": 81,
+        "minY": 98,
+        "maxX": 558,
+        "maxY": 541,
+        "width": 478,
+        "height": 444
+      },
+      "canvasAlpha": true
+    },
+    {
+      "id": "THREE-QA-RENDER-TRIANGLES",
+      "result": "PASS",
+      "file": "rank-champion-low.glb",
+      "view": "front",
+      "renderTriangles": 1100,
+      "readbackTriangles": 1100
+    },
+    {
+      "id": "THREE-QA-WEBGL-ERRORS",
+      "result": "PASS",
+      "file": "rank-champion-low.glb",
+      "view": "front",
+      "errors": []
+    },
+    {
+      "id": "THREE-QA-TRANSPARENT-STILL",
+      "result": "PASS",
+      "file": "assets/p21/three/stills/rank-champion-low-quarter.png",
+      "width": 640,
+      "height": 640,
+      "visiblePixels": 102756,
+      "transparentPixels": 306844,
+      "alphaCoverage": {
+        "minX": 149,
+        "minY": 99,
+        "maxX": 545,
+        "maxY": 525,
+        "width": 397,
+        "height": 427
+      },
+      "canvasAlpha": true
+    },
+    {
+      "id": "THREE-QA-RENDER-TRIANGLES",
+      "result": "PASS",
+      "file": "rank-champion-low.glb",
+      "view": "quarter",
+      "renderTriangles": 1100,
+      "readbackTriangles": 1100
+    },
+    {
+      "id": "THREE-QA-WEBGL-ERRORS",
+      "result": "PASS",
+      "file": "rank-champion-low.glb",
+      "view": "quarter",
+      "errors": []
+    },
+    {
+      "id": "THREE-QA-GLTF-READBACK",
+      "result": "PASS",
+      "file": "rank-master-high.glb",
+      "meshCount": 29,
+      "vertices": 9371,
+      "triangles": 4296,
+      "normalAttributes": 29,
+      "uvAttributes": 29,
+      "finite": true,
+      "normalsUnit": true,
+      "pivot": [
+        0,
+        0,
+        0
+      ],
+      "rootScale": [
+        1,
+        1,
+        1
+      ],
+      "bounds": {
+        "min": [
+          -0.9970930218696594,
+          -0.8511127233505249,
+          -0.0860000005364418
+        ],
+        "max": [
+          0.9970930218696594,
+          1.004142165184021,
+          0.48246359367577385
+        ],
+        "size": [
+          1.9941860437393188,
+          1.855254888534546,
+          0.5684635942122156
+        ]
+      }
+    },
+    {
+      "id": "THREE-QA-TRANSPARENT-STILL",
+      "result": "PASS",
+      "file": "assets/p21/three/stills/rank-master-high-front.png",
+      "width": 640,
+      "height": 640,
+      "visiblePixels": 130628,
+      "transparentPixels": 278972,
+      "alphaCoverage": {
+        "minX": 81,
+        "minY": 98,
+        "maxX": 558,
+        "maxY": 541,
+        "width": 478,
+        "height": 444
+      },
+      "canvasAlpha": true
+    },
+    {
+      "id": "THREE-QA-RENDER-TRIANGLES",
+      "result": "PASS",
+      "file": "rank-master-high.glb",
+      "view": "front",
+      "renderTriangles": 4296,
+      "readbackTriangles": 4296
+    },
+    {
+      "id": "THREE-QA-WEBGL-ERRORS",
+      "result": "PASS",
+      "file": "rank-master-high.glb",
+      "view": "front",
+      "errors": []
+    },
+    {
+      "id": "THREE-QA-TRANSPARENT-STILL",
+      "result": "PASS",
+      "file": "assets/p21/three/stills/rank-master-high-quarter.png",
+      "width": 640,
+      "height": 640,
+      "visiblePixels": 111868,
+      "transparentPixels": 297732,
+      "alphaCoverage": {
+        "minX": 148,
+        "minY": 88,
+        "maxX": 546,
+        "maxY": 525,
+        "width": 399,
+        "height": 438
+      },
+      "canvasAlpha": true
+    },
+    {
+      "id": "THREE-QA-RENDER-TRIANGLES",
+      "result": "PASS",
+      "file": "rank-master-high.glb",
+      "view": "quarter",
+      "renderTriangles": 4296,
+      "readbackTriangles": 4296
+    },
+    {
+      "id": "THREE-QA-WEBGL-ERRORS",
+      "result": "PASS",
+      "file": "rank-master-high.glb",
+      "view": "quarter",
+      "errors": []
+    },
+    {
+      "id": "THREE-QA-GLTF-READBACK",
+      "result": "PASS",
+      "file": "rank-master-low.glb",
+      "meshCount": 29,
+      "vertices": 3351,
+      "triangles": 1308,
+      "normalAttributes": 29,
+      "uvAttributes": 29,
+      "finite": true,
+      "normalsUnit": true,
+      "pivot": [
+        0,
+        0,
+        0
+      ],
+      "rootScale": [
+        1,
+        1,
+        1
+      ],
+      "bounds": {
+        "min": [
+          -0.9970930218696594,
+          -0.8511127233505249,
+          -0.0860000005364418
+        ],
+        "max": [
+          0.9970930218696594,
+          1.004142165184021,
+          0.48246359367577385
+        ],
+        "size": [
+          1.9941860437393188,
+          1.855254888534546,
+          0.5684635942122156
+        ]
+      }
+    },
+    {
+      "id": "THREE-QA-TRANSPARENT-STILL",
+      "result": "PASS",
+      "file": "assets/p21/three/stills/rank-master-low-front.png",
+      "width": 640,
+      "height": 640,
+      "visiblePixels": 130628,
+      "transparentPixels": 278972,
+      "alphaCoverage": {
+        "minX": 81,
+        "minY": 98,
+        "maxX": 558,
+        "maxY": 541,
+        "width": 478,
+        "height": 444
+      },
+      "canvasAlpha": true
+    },
+    {
+      "id": "THREE-QA-RENDER-TRIANGLES",
+      "result": "PASS",
+      "file": "rank-master-low.glb",
+      "view": "front",
+      "renderTriangles": 1308,
+      "readbackTriangles": 1308
+    },
+    {
+      "id": "THREE-QA-WEBGL-ERRORS",
+      "result": "PASS",
+      "file": "rank-master-low.glb",
+      "view": "front",
+      "errors": []
+    },
+    {
+      "id": "THREE-QA-TRANSPARENT-STILL",
+      "result": "PASS",
+      "file": "assets/p21/three/stills/rank-master-low-quarter.png",
+      "width": 640,
+      "height": 640,
+      "visiblePixels": 110864,
+      "transparentPixels": 298736,
+      "alphaCoverage": {
+        "minX": 149,
+        "minY": 89,
+        "maxX": 545,
+        "maxY": 525,
+        "width": 397,
+        "height": 437
+      },
+      "canvasAlpha": true
+    },
+    {
+      "id": "THREE-QA-RENDER-TRIANGLES",
+      "result": "PASS",
+      "file": "rank-master-low.glb",
+      "view": "quarter",
+      "renderTriangles": 1308,
+      "readbackTriangles": 1308
+    },
+    {
+      "id": "THREE-QA-WEBGL-ERRORS",
+      "result": "PASS",
+      "file": "rank-master-low.glb",
+      "view": "quarter",
+      "errors": []
+    },
+    {
+      "id": "THREE-QA-GLTF-READBACK",
+      "result": "PASS",
+      "file": "rank-grandmaster-high.glb",
+      "meshCount": 29,
+      "vertices": 9371,
+      "triangles": 4296,
+      "normalAttributes": 29,
+      "uvAttributes": 29,
+      "finite": true,
+      "normalsUnit": true,
+      "pivot": [
+        0,
+        0,
+        0
+      ],
+      "rootScale": [
+        1,
+        1,
+        1
+      ],
+      "bounds": {
+        "min": [
+          -0.9970930218696594,
+          -0.8511127233505249,
+          -0.0860000005364418
+        ],
+        "max": [
+          0.9970930218696594,
+          1.004142165184021,
+          0.48246359367577385
+        ],
+        "size": [
+          1.9941860437393188,
+          1.855254888534546,
+          0.5684635942122156
+        ]
+      }
+    },
+    {
+      "id": "THREE-QA-TRANSPARENT-STILL",
+      "result": "PASS",
+      "file": "assets/p21/three/stills/rank-grandmaster-high-front.png",
+      "width": 640,
+      "height": 640,
+      "visiblePixels": 130628,
+      "transparentPixels": 278972,
+      "alphaCoverage": {
+        "minX": 81,
+        "minY": 98,
+        "maxX": 558,
+        "maxY": 541,
+        "width": 478,
+        "height": 444
+      },
+      "canvasAlpha": true
+    },
+    {
+      "id": "THREE-QA-RENDER-TRIANGLES",
+      "result": "PASS",
+      "file": "rank-grandmaster-high.glb",
+      "view": "front",
+      "renderTriangles": 4296,
+      "readbackTriangles": 4296
+    },
+    {
+      "id": "THREE-QA-WEBGL-ERRORS",
+      "result": "PASS",
+      "file": "rank-grandmaster-high.glb",
+      "view": "front",
+      "errors": []
+    },
+    {
+      "id": "THREE-QA-TRANSPARENT-STILL",
+      "result": "PASS",
+      "file": "assets/p21/three/stills/rank-grandmaster-high-quarter.png",
+      "width": 640,
+      "height": 640,
+      "visiblePixels": 111868,
+      "transparentPixels": 297732,
+      "alphaCoverage": {
+        "minX": 148,
+        "minY": 88,
+        "maxX": 546,
+        "maxY": 525,
+        "width": 399,
+        "height": 438
+      },
+      "canvasAlpha": true
+    },
+    {
+      "id": "THREE-QA-RENDER-TRIANGLES",
+      "result": "PASS",
+      "file": "rank-grandmaster-high.glb",
+      "view": "quarter",
+      "renderTriangles": 4296,
+      "readbackTriangles": 4296
+    },
+    {
+      "id": "THREE-QA-WEBGL-ERRORS",
+      "result": "PASS",
+      "file": "rank-grandmaster-high.glb",
+      "view": "quarter",
+      "errors": []
+    },
+    {
+      "id": "THREE-QA-GLTF-READBACK",
+      "result": "PASS",
+      "file": "rank-grandmaster-low.glb",
+      "meshCount": 29,
+      "vertices": 3351,
+      "triangles": 1308,
+      "normalAttributes": 29,
+      "uvAttributes": 29,
+      "finite": true,
+      "normalsUnit": true,
+      "pivot": [
+        0,
+        0,
+        0
+      ],
+      "rootScale": [
+        1,
+        1,
+        1
+      ],
+      "bounds": {
+        "min": [
+          -0.9970930218696594,
+          -0.8511127233505249,
+          -0.0860000005364418
+        ],
+        "max": [
+          0.9970930218696594,
+          1.004142165184021,
+          0.48246359367577385
+        ],
+        "size": [
+          1.9941860437393188,
+          1.855254888534546,
+          0.5684635942122156
+        ]
+      }
+    },
+    {
+      "id": "THREE-QA-TRANSPARENT-STILL",
+      "result": "PASS",
+      "file": "assets/p21/three/stills/rank-grandmaster-low-front.png",
+      "width": 640,
+      "height": 640,
+      "visiblePixels": 130628,
+      "transparentPixels": 278972,
+      "alphaCoverage": {
+        "minX": 81,
+        "minY": 98,
+        "maxX": 558,
+        "maxY": 541,
+        "width": 478,
+        "height": 444
+      },
+      "canvasAlpha": true
+    },
+    {
+      "id": "THREE-QA-RENDER-TRIANGLES",
+      "result": "PASS",
+      "file": "rank-grandmaster-low.glb",
+      "view": "front",
+      "renderTriangles": 1308,
+      "readbackTriangles": 1308
+    },
+    {
+      "id": "THREE-QA-WEBGL-ERRORS",
+      "result": "PASS",
+      "file": "rank-grandmaster-low.glb",
+      "view": "front",
+      "errors": []
+    },
+    {
+      "id": "THREE-QA-TRANSPARENT-STILL",
+      "result": "PASS",
+      "file": "assets/p21/three/stills/rank-grandmaster-low-quarter.png",
+      "width": 640,
+      "height": 640,
+      "visiblePixels": 110864,
+      "transparentPixels": 298736,
+      "alphaCoverage": {
+        "minX": 149,
+        "minY": 89,
+        "maxX": 545,
+        "maxY": 525,
+        "width": 397,
+        "height": 437
+      },
+      "canvasAlpha": true
+    },
+    {
+      "id": "THREE-QA-RENDER-TRIANGLES",
+      "result": "PASS",
+      "file": "rank-grandmaster-low.glb",
+      "view": "quarter",
+      "renderTriangles": 1308,
+      "readbackTriangles": 1308
+    },
+    {
+      "id": "THREE-QA-WEBGL-ERRORS",
+      "result": "PASS",
+      "file": "rank-grandmaster-low.glb",
+      "view": "quarter",
+      "errors": []
+    },
+    {
+      "id": "THREE-QA-GLTF-READBACK",
+      "result": "PASS",
+      "file": "trophy-high.glb",
+      "meshCount": 23,
+      "vertices": 7600,
+      "triangles": 6760,
+      "normalAttributes": 23,
+      "uvAttributes": 23,
+      "finite": true,
+      "normalsUnit": true,
+      "pivot": [
+        0,
+        0,
+        0
+      ],
+      "rootScale": [
+        1,
+        1,
+        1
+      ],
+      "bounds": {
+        "min": [
+          -0.7263777852058411,
+          -0.8900000007450581,
+          -0.6000000238418579
+        ],
+        "max": [
+          0.7263777852058411,
+          0.8300000095367431,
+          0.6000000238418579
+        ],
+        "size": [
+          1.4527555704116821,
+          1.7200000102818014,
+          1.2000000476837158
+        ]
+      }
+    },
+    {
+      "id": "THREE-QA-TRANSPARENT-STILL",
+      "result": "PASS",
+      "file": "assets/p21/three/stills/trophy-high-front.png",
+      "width": 640,
+      "height": 640,
+      "visiblePixels": 106998,
+      "transparentPixels": 302602,
+      "alphaCoverage": {
+        "minX": 118,
+        "minY": 81,
+        "maxX": 521,
+        "maxY": 558,
+        "width": 404,
+        "height": 478
+      },
+      "canvasAlpha": true
+    },
+    {
+      "id": "THREE-QA-RENDER-TRIANGLES",
+      "result": "PASS",
+      "file": "trophy-high.glb",
+      "view": "front",
+      "renderTriangles": 6760,
+      "readbackTriangles": 6760
+    },
+    {
+      "id": "THREE-QA-WEBGL-ERRORS",
+      "result": "PASS",
+      "file": "trophy-high.glb",
+      "view": "front",
+      "errors": []
+    },
+    {
+      "id": "THREE-QA-TRANSPARENT-STILL",
+      "result": "PASS",
+      "file": "assets/p21/three/stills/trophy-high-quarter.png",
+      "width": 640,
+      "height": 640,
+      "visiblePixels": 120859,
+      "transparentPixels": 288741,
+      "alphaCoverage": {
+        "minX": 136,
+        "minY": 58,
+        "maxX": 486,
+        "maxY": 598,
+        "width": 351,
+        "height": 541
+      },
+      "canvasAlpha": true
+    },
+    {
+      "id": "THREE-QA-RENDER-TRIANGLES",
+      "result": "PASS",
+      "file": "trophy-high.glb",
+      "view": "quarter",
+      "renderTriangles": 6760,
+      "readbackTriangles": 6760
+    },
+    {
+      "id": "THREE-QA-WEBGL-ERRORS",
+      "result": "PASS",
+      "file": "trophy-high.glb",
+      "view": "quarter",
+      "errors": []
+    },
+    {
+      "id": "THREE-QA-GLTF-READBACK",
+      "result": "PASS",
+      "file": "trophy-low.glb",
+      "meshCount": 23,
+      "vertices": 2372,
+      "triangles": 1728,
+      "normalAttributes": 23,
+      "uvAttributes": 23,
+      "finite": true,
+      "normalsUnit": true,
+      "pivot": [
+        0,
+        0,
+        0
+      ],
+      "rootScale": [
+        1,
+        1,
+        1
+      ],
+      "bounds": {
+        "min": [
+          -0.7199184894561768,
+          -0.8900000007450581,
+          -0.6000000238418579
+        ],
+        "max": [
+          0.7199184894561768,
+          0.8300000095367431,
+          0.6000000238418579
+        ],
+        "size": [
+          1.4398369789123535,
+          1.7200000102818014,
+          1.2000000476837158
+        ]
+      }
+    },
+    {
+      "id": "THREE-QA-TRANSPARENT-STILL",
+      "result": "PASS",
+      "file": "assets/p21/three/stills/trophy-low-front.png",
+      "width": 640,
+      "height": 640,
+      "visiblePixels": 103658,
+      "transparentPixels": 305942,
+      "alphaCoverage": {
+        "minX": 120,
+        "minY": 81,
+        "maxX": 519,
+        "maxY": 558,
+        "width": 400,
+        "height": 478
+      },
+      "canvasAlpha": true
+    },
+    {
+      "id": "THREE-QA-RENDER-TRIANGLES",
+      "result": "PASS",
+      "file": "trophy-low.glb",
+      "view": "front",
+      "renderTriangles": 1728,
+      "readbackTriangles": 1728
+    },
+    {
+      "id": "THREE-QA-WEBGL-ERRORS",
+      "result": "PASS",
+      "file": "trophy-low.glb",
+      "view": "front",
+      "errors": []
+    },
+    {
+      "id": "THREE-QA-TRANSPARENT-STILL",
+      "result": "PASS",
+      "file": "assets/p21/three/stills/trophy-low-quarter.png",
+      "width": 640,
+      "height": 640,
+      "visiblePixels": 118340,
+      "transparentPixels": 291260,
+      "alphaCoverage": {
+        "minX": 136,
+        "minY": 57,
+        "maxX": 483,
+        "maxY": 598,
+        "width": 348,
+        "height": 542
+      },
+      "canvasAlpha": true
+    },
+    {
+      "id": "THREE-QA-RENDER-TRIANGLES",
+      "result": "PASS",
+      "file": "trophy-low.glb",
+      "view": "quarter",
+      "renderTriangles": 1728,
+      "readbackTriangles": 1728
+    },
+    {
+      "id": "THREE-QA-WEBGL-ERRORS",
+      "result": "PASS",
+      "file": "trophy-low.glb",
+      "view": "quarter",
+      "errors": []
+    },
+    {
+      "id": "THREE-QA-GLTF-READBACK",
+      "result": "PASS",
+      "file": "reward-chest-high.glb",
+      "meshCount": 14,
+      "vertices": 6964,
+      "triangles": 5504,
+      "normalAttributes": 14,
+      "uvAttributes": 14,
+      "finite": true,
+      "normalsUnit": true,
+      "pivot": [
+        0,
+        0,
+        0
+      ],
+      "rootScale": [
+        1,
+        1,
+        1
+      ],
+      "bounds": {
+        "min": [
+          -0.7350000143051147,
+          -0.5650000017881394,
+          -0.4399999976158142
+        ],
+        "max": [
+          0.7350000143051147,
+          0.6650388693809509,
+          0.5290000003576278
+        ],
+        "size": [
+          1.4700000286102295,
+          1.2300388711690902,
+          0.968999997973442
+        ]
+      }
+    },
+    {
+      "id": "THREE-QA-TRANSPARENT-STILL",
+      "result": "PASS",
+      "file": "assets/p21/three/stills/reward-chest-high-front.png",
+      "width": 640,
+      "height": 640,
+      "visiblePixels": 165802,
+      "transparentPixels": 243798,
+      "alphaCoverage": {
+        "minX": 81,
+        "minY": 120,
+        "maxX": 558,
+        "maxY": 519,
+        "width": 478,
+        "height": 400
+      },
+      "canvasAlpha": true
+    },
+    {
+      "id": "THREE-QA-RENDER-TRIANGLES",
+      "result": "PASS",
+      "file": "reward-chest-high.glb",
+      "view": "front",
+      "renderTriangles": 5504,
+      "readbackTriangles": 5504
+    },
+    {
+      "id": "THREE-QA-WEBGL-ERRORS",
+      "result": "PASS",
+      "file": "reward-chest-high.glb",
+      "view": "front",
+      "errors": []
+    },
+    {
+      "id": "THREE-QA-TRANSPARENT-STILL",
+      "result": "PASS",
+      "file": "assets/p21/three/stills/reward-chest-high-quarter.png",
+      "width": 640,
+      "height": 640,
+      "visiblePixels": 214524,
+      "transparentPixels": 195076,
+      "alphaCoverage": {
+        "minX": 52,
+        "minY": 88,
+        "maxX": 605,
+        "maxY": 585,
+        "width": 554,
+        "height": 498
+      },
+      "canvasAlpha": true
+    },
+    {
+      "id": "THREE-QA-RENDER-TRIANGLES",
+      "result": "PASS",
+      "file": "reward-chest-high.glb",
+      "view": "quarter",
+      "renderTriangles": 5504,
+      "readbackTriangles": 5504
+    },
+    {
+      "id": "THREE-QA-WEBGL-ERRORS",
+      "result": "PASS",
+      "file": "reward-chest-high.glb",
+      "view": "quarter",
+      "errors": []
+    },
+    {
+      "id": "THREE-QA-GLTF-READBACK",
+      "result": "PASS",
+      "file": "reward-chest-low.glb",
+      "meshCount": 14,
+      "vertices": 1168,
+      "triangles": 668,
+      "normalAttributes": 14,
+      "uvAttributes": 14,
+      "finite": true,
+      "normalsUnit": true,
+      "pivot": [
+        0,
+        0,
+        0
+      ],
+      "rootScale": [
+        1,
+        1,
+        1
+      ],
+      "bounds": {
+        "min": [
+          -0.7350000143051147,
+          -0.5650000017881394,
+          -0.4399999976158142
+        ],
+        "max": [
+          0.7350000143051147,
+          0.6650727844238281,
+          0.5290000003576278
+        ],
+        "size": [
+          1.4700000286102295,
+          1.2300727862119674,
+          0.968999997973442
+        ]
+      }
+    },
+    {
+      "id": "THREE-QA-TRANSPARENT-STILL",
+      "result": "PASS",
+      "file": "assets/p21/three/stills/reward-chest-low-front.png",
+      "width": 640,
+      "height": 640,
+      "visiblePixels": 165653,
+      "transparentPixels": 243947,
+      "alphaCoverage": {
+        "minX": 81,
+        "minY": 120,
+        "maxX": 558,
+        "maxY": 519,
+        "width": 478,
+        "height": 400
+      },
+      "canvasAlpha": true
+    },
+    {
+      "id": "THREE-QA-RENDER-TRIANGLES",
+      "result": "PASS",
+      "file": "reward-chest-low.glb",
+      "view": "front",
+      "renderTriangles": 668,
+      "readbackTriangles": 668
+    },
+    {
+      "id": "THREE-QA-WEBGL-ERRORS",
+      "result": "PASS",
+      "file": "reward-chest-low.glb",
+      "view": "front",
+      "errors": []
+    },
+    {
+      "id": "THREE-QA-TRANSPARENT-STILL",
+      "result": "PASS",
+      "file": "assets/p21/three/stills/reward-chest-low-quarter.png",
+      "width": 640,
+      "height": 640,
+      "visiblePixels": 213448,
+      "transparentPixels": 196152,
+      "alphaCoverage": {
+        "minX": 52,
+        "minY": 89,
+        "maxX": 605,
+        "maxY": 585,
+        "width": 554,
+        "height": 497
+      },
+      "canvasAlpha": true
+    },
+    {
+      "id": "THREE-QA-RENDER-TRIANGLES",
+      "result": "PASS",
+      "file": "reward-chest-low.glb",
+      "view": "quarter",
+      "renderTriangles": 668,
+      "readbackTriangles": 668
+    },
+    {
+      "id": "THREE-QA-WEBGL-ERRORS",
+      "result": "PASS",
+      "file": "reward-chest-low.glb",
+      "view": "quarter",
+      "errors": []
+    },
+    {
+      "id": "THREE-QA-GLTF-READBACK",
+      "result": "PASS",
+      "file": "board-x-high.glb",
+      "meshCount": 13,
+      "vertices": 29364,
+      "triangles": 9804,
+      "normalAttributes": 13,
+      "uvAttributes": 13,
+      "finite": true,
+      "normalsUnit": true,
+      "pivot": [
+        0,
+        0,
+        0
+      ],
+      "rootScale": [
+        1,
+        1,
+        1
+      ],
+      "bounds": {
+        "min": [
+          -0.45500001311302185,
+          -0.675000011920929,
+          -0.0900000001490116
+        ],
+        "max": [
+          0.45500001311302185,
+          0.675000011920929,
+          0.13449999982118607
+        ],
+        "size": [
+          0.9100000262260437,
+          1.350000023841858,
+          0.22449999997019768
+        ]
+      }
+    },
+    {
+      "id": "THREE-QA-TRANSPARENT-STILL",
+      "result": "PASS",
+      "file": "assets/p21/three/stills/board-x-high-front.png",
+      "width": 640,
+      "height": 640,
+      "visiblePixels": 152974,
+      "transparentPixels": 256626,
+      "alphaCoverage": {
+        "minX": 159,
+        "minY": 81,
+        "maxX": 480,
+        "maxY": 558,
+        "width": 322,
+        "height": 478
+      },
+      "canvasAlpha": true
+    },
+    {
+      "id": "THREE-QA-RENDER-TRIANGLES",
+      "result": "PASS",
+      "file": "board-x-high.glb",
+      "view": "front",
+      "renderTriangles": 9804,
+      "readbackTriangles": 9804
+    },
+    {
+      "id": "THREE-QA-WEBGL-ERRORS",
+      "result": "PASS",
+      "file": "board-x-high.glb",
+      "view": "front",
+      "errors": []
+    },
+    {
+      "id": "THREE-QA-TRANSPARENT-STILL",
+      "result": "PASS",
+      "file": "assets/p21/three/stills/board-x-high-quarter.png",
+      "width": 640,
+      "height": 640,
+      "visiblePixels": 130885,
+      "transparentPixels": 278715,
+      "alphaCoverage": {
+        "minX": 186,
+        "minY": 61,
+        "maxX": 467,
+        "maxY": 572,
+        "width": 282,
+        "height": 512
+      },
+      "canvasAlpha": true
+    },
+    {
+      "id": "THREE-QA-RENDER-TRIANGLES",
+      "result": "PASS",
+      "file": "board-x-high.glb",
+      "view": "quarter",
+      "renderTriangles": 9804,
+      "readbackTriangles": 9804
+    },
+    {
+      "id": "THREE-QA-WEBGL-ERRORS",
+      "result": "PASS",
+      "file": "board-x-high.glb",
+      "view": "quarter",
+      "errors": []
+    },
+    {
+      "id": "THREE-QA-GLTF-READBACK",
+      "result": "PASS",
+      "file": "board-x-low.glb",
+      "meshCount": 13,
+      "vertices": 9492,
+      "triangles": 3180,
+      "normalAttributes": 13,
+      "uvAttributes": 13,
+      "finite": true,
+      "normalsUnit": true,
+      "pivot": [
+        0,
+        0,
+        0
+      ],
+      "rootScale": [
+        1,
+        1,
+        1
+      ],
+      "bounds": {
+        "min": [
+          -0.45500001311302185,
+          -0.675000011920929,
+          -0.0900000001490116
+        ],
+        "max": [
+          0.45500001311302185,
+          0.675000011920929,
+          0.13449999982118607
+        ],
+        "size": [
+          0.9100000262260437,
+          1.350000023841858,
+          0.22449999997019768
+        ]
+      }
+    },
+    {
+      "id": "THREE-QA-TRANSPARENT-STILL",
+      "result": "PASS",
+      "file": "assets/p21/three/stills/board-x-low-front.png",
+      "width": 640,
+      "height": 640,
+      "visiblePixels": 152968,
+      "transparentPixels": 256632,
+      "alphaCoverage": {
+        "minX": 159,
+        "minY": 81,
+        "maxX": 480,
+        "maxY": 558,
+        "width": 322,
+        "height": 478
+      },
+      "canvasAlpha": true
+    },
+    {
+      "id": "THREE-QA-RENDER-TRIANGLES",
+      "result": "PASS",
+      "file": "board-x-low.glb",
+      "view": "front",
+      "renderTriangles": 3180,
+      "readbackTriangles": 3180
+    },
+    {
+      "id": "THREE-QA-WEBGL-ERRORS",
+      "result": "PASS",
+      "file": "board-x-low.glb",
+      "view": "front",
+      "errors": []
+    },
+    {
+      "id": "THREE-QA-TRANSPARENT-STILL",
+      "result": "PASS",
+      "file": "assets/p21/three/stills/board-x-low-quarter.png",
+      "width": 640,
+      "height": 640,
+      "visiblePixels": 128497,
+      "transparentPixels": 281103,
+      "alphaCoverage": {
+        "minX": 188,
+        "minY": 62,
+        "maxX": 465,
+        "maxY": 572,
+        "width": 278,
+        "height": 511
+      },
+      "canvasAlpha": true
+    },
+    {
+      "id": "THREE-QA-RENDER-TRIANGLES",
+      "result": "PASS",
+      "file": "board-x-low.glb",
+      "view": "quarter",
+      "renderTriangles": 3180,
+      "readbackTriangles": 3180
+    },
+    {
+      "id": "THREE-QA-WEBGL-ERRORS",
+      "result": "PASS",
+      "file": "board-x-low.glb",
+      "view": "quarter",
+      "errors": []
+    },
+    {
+      "id": "THREE-QA-GLTF-READBACK",
+      "result": "PASS",
+      "file": "board-o-high.glb",
+      "meshCount": 10,
+      "vertices": 12261,
+      "triangles": 7620,
+      "normalAttributes": 10,
+      "uvAttributes": 10,
+      "finite": true,
+      "normalsUnit": true,
+      "pivot": [
+        0,
+        0,
+        0
+      ],
+      "rootScale": [
+        1,
+        1,
+        1
+      ],
+      "bounds": {
+        "min": [
+          -0.45500001311302185,
+          -0.675000011920929,
+          -0.0900000001490116
+        ],
+        "max": [
+          0.45500001311302185,
+          0.675000011920929,
+          0.14231479102373124
+        ],
+        "size": [
+          0.9100000262260437,
+          1.350000023841858,
+          0.23231479117274284
+        ]
+      }
+    },
+    {
+      "id": "THREE-QA-TRANSPARENT-STILL",
+      "result": "PASS",
+      "file": "assets/p21/three/stills/board-o-high-front.png",
+      "width": 640,
+      "height": 640,
+      "visiblePixels": 152974,
+      "transparentPixels": 256626,
+      "alphaCoverage": {
+        "minX": 159,
+        "minY": 81,
+        "maxX": 480,
+        "maxY": 558,
+        "width": 322,
+        "height": 478
+      },
+      "canvasAlpha": true
+    },
+    {
+      "id": "THREE-QA-RENDER-TRIANGLES",
+      "result": "PASS",
+      "file": "board-o-high.glb",
+      "view": "front",
+      "renderTriangles": 7620,
+      "readbackTriangles": 7620
+    },
+    {
+      "id": "THREE-QA-WEBGL-ERRORS",
+      "result": "PASS",
+      "file": "board-o-high.glb",
+      "view": "front",
+      "errors": []
+    },
+    {
+      "id": "THREE-QA-TRANSPARENT-STILL",
+      "result": "PASS",
+      "file": "assets/p21/three/stills/board-o-high-quarter.png",
+      "width": 640,
+      "height": 640,
+      "visiblePixels": 131286,
+      "transparentPixels": 278314,
+      "alphaCoverage": {
+        "minX": 186,
+        "minY": 61,
+        "maxX": 468,
+        "maxY": 572,
+        "width": 283,
+        "height": 512
+      },
+      "canvasAlpha": true
+    },
+    {
+      "id": "THREE-QA-RENDER-TRIANGLES",
+      "result": "PASS",
+      "file": "board-o-high.glb",
+      "view": "quarter",
+      "renderTriangles": 7620,
+      "readbackTriangles": 7620
+    },
+    {
+      "id": "THREE-QA-WEBGL-ERRORS",
+      "result": "PASS",
+      "file": "board-o-high.glb",
+      "view": "quarter",
+      "errors": []
+    },
+    {
+      "id": "THREE-QA-GLTF-READBACK",
+      "result": "PASS",
+      "file": "board-o-low.glb",
+      "meshCount": 10,
+      "vertices": 3669,
+      "triangles": 1812,
+      "normalAttributes": 10,
+      "uvAttributes": 10,
+      "finite": true,
+      "normalsUnit": true,
+      "pivot": [
+        0,
+        0,
+        0
+      ],
+      "rootScale": [
+        1,
+        1,
+        1
+      ],
+      "bounds": {
+        "min": [
+          -0.45500001311302185,
+          -0.675000011920929,
+          -0.0900000001490116
+        ],
+        "max": [
+          0.45500001311302185,
+          0.675000011920929,
+          0.14112435588240624
+        ],
+        "size": [
+          0.9100000262260437,
+          1.350000023841858,
+          0.23112435603141784
+        ]
+      }
+    },
+    {
+      "id": "THREE-QA-TRANSPARENT-STILL",
+      "result": "PASS",
+      "file": "assets/p21/three/stills/board-o-low-front.png",
+      "width": 640,
+      "height": 640,
+      "visiblePixels": 152968,
+      "transparentPixels": 256632,
+      "alphaCoverage": {
+        "minX": 159,
+        "minY": 81,
+        "maxX": 480,
+        "maxY": 558,
+        "width": 322,
+        "height": 478
+      },
+      "canvasAlpha": true
+    },
+    {
+      "id": "THREE-QA-RENDER-TRIANGLES",
+      "result": "PASS",
+      "file": "board-o-low.glb",
+      "view": "front",
+      "renderTriangles": 1812,
+      "readbackTriangles": 1812
+    },
+    {
+      "id": "THREE-QA-WEBGL-ERRORS",
+      "result": "PASS",
+      "file": "board-o-low.glb",
+      "view": "front",
+      "errors": []
+    },
+    {
+      "id": "THREE-QA-TRANSPARENT-STILL",
+      "result": "PASS",
+      "file": "assets/p21/three/stills/board-o-low-quarter.png",
+      "width": 640,
+      "height": 640,
+      "visiblePixels": 128144,
+      "transparentPixels": 281456,
+      "alphaCoverage": {
+        "minX": 186,
+        "minY": 62,
+        "maxX": 465,
+        "maxY": 571,
+        "width": 280,
+        "height": 510
+      },
+      "canvasAlpha": true
+    },
+    {
+      "id": "THREE-QA-RENDER-TRIANGLES",
+      "result": "PASS",
+      "file": "board-o-low.glb",
+      "view": "quarter",
+      "renderTriangles": 1812,
+      "readbackTriangles": 1812
+    },
+    {
+      "id": "THREE-QA-WEBGL-ERRORS",
+      "result": "PASS",
+      "file": "board-o-low.glb",
+      "view": "quarter",
+      "errors": []
+    },
+    {
+      "id": "THREE-QA-ALLOWLIST",
+      "result": "PASS",
+      "disallowedRequests": [],
+      "blockedExternalOrigins": [],
+      "allowedPathCount": 44
+    },
+    {
+      "id": "THREE-QA-BROWSER-ERRORS",
+      "result": "PASS",
+      "consoleErrors": [],
+      "pageErrors": []
+    }
+  ],
+  "failures": [],
+  "stillDirectory": "assets/p21/three/stills",
+  "turntables": {
+    "status": "NOT_GENERATED_OR_REMOVED",
+    "frameCountPerAsset": 8,
+    "width": 240,
+    "height": 240,
+    "fps": 8,
+    "codec": "VP9 WebM",
+    "transparentSourceFrames": true,
+    "items": [],
+    "failures": [
+      "Combined 3D asset pack with a 120,000-byte metadata safety margin would exceed the 15,000,000-byte ceiling (14899590 bytes before final evidence)"
+    ]
+  },
+  "completedAt": "2026-10-12T12:11:47.552Z",
+  "renderedStillCount": 76,
+  "totalStillBytes": 6180310,
+  "checkSummary": {
+    "passed": 270,
+    "failed": 0,
+    "skipped": 0
+  }
+}

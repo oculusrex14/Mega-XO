@@ -139,6 +139,27 @@ def main() -> int:
             report["trainSeconds"] = getattr(stats, "metrics", {}).get("train_runtime")
         metrics = FastDecisionModel.calibrate(model, tokenizer, eval_built) if hasattr(FastDecisionModel, "calibrate") else None
         report["metrics"] = metrics
+        # Per-question breakdown: the aggregate is dominated by the two easy noul questions, so the
+        # bestMove (choice over all legal moves) accuracy is the number that matters for label quality.
+        try:
+            FastDecisionModel.for_inference(model)
+            correct = {"winNow": 0, "opponentThreat": 0, "bestMove": 0}
+            total = {"winNow": 0, "opponentThreat": 0, "bestMove": 0}
+            for r in eval_items:
+                answers = FastDecisionModel.predict(model, tokenizer, r["state"], r["questions"])
+                for name in correct:
+                    if name in answers:
+                        total[name] += 1
+                        ans = answers[name]
+                        got = ans.get("answer") if isinstance(ans, dict) else ans
+                        want = r["gold"][name]
+                        if name == "bestMove":
+                            if str(got) == str(want.get("label") if isinstance(want, dict) else want): correct[name] += 1
+                        else:
+                            if str(got).lower() == str(want.get("label") if isinstance(want, dict) else want).lower(): correct[name] += 1
+            report["perQuestion"] = {k: {"correct": correct[k], "total": total[k], "accuracy": (correct[k] / total[k]) if total[k] else None} for k in correct}
+        except Exception as exc:
+            report["perQuestion"] = {"error": f"{type(exc).__name__}: {exc}"}
         report["status"] = "COMPLETED"
     except Exception as exc:
         report["status"] = "TEACHER_RUN_FAILED"

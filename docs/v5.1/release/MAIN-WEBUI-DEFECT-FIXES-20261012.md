@@ -61,3 +61,43 @@ byte-identical for every tested seed. Probe: the injected engine now throws its 
 League receipts (05), teacher-eval leakage (06), stronger-label provenance/budget (07) and the remaining
 08 items plus the two-cycle feedback PROOF are the next queue items. The gate stays `productionApproved:
 false`; `APPROVED_CATALOG` remains untouched.
+
+## WEB-AI-05 - complete league receipts (`training/bot/neural_league.cjs`)
+
+The final report truncated to `games.slice(0, 10)` and dropped worker shards, so it could not be
+independently replayed. Now every game is retained with its `openingFamily`, both seating seeds,
+`aVersion`/`bVersion`, the canonical terminal move trace (`moves`), and per-engine latency kept
+SEPARATE (never summed). The report binds `modelSha256`, `sourceSha`, `rulesSha256`, engine versions,
+budgets and the full `holdoutFamilies` list (no 10-item sample).
+
+Proof: a 200-family run (`--matchup policyValuePUCT:improvedExpert`, 400 games) produced a complete
+receipt; the independent verifier accepted its structure and returned
+`independentFamilies: 200, reasons: [POINT_TARGET_NOT_MET, CONFIDENCE_TARGET_NOT_MET]` for the current
+unqualified model (0.015). A 4-family run returns `INSUFFICIENT_INDEPENDENT_FAMILIES`. The verifier
+refuses truncated/unbound reports. `scripts/v51-readiness-model-gate.py` remains a SEPARATE approval
+gate; green process exit is not qualification.
+
+## WEB-AI-06 - teacher evaluation leakage (`training/bot/unsloth_teacher.py`)
+
+Evaluation pooled validation+holdout and calibrated on that pool, so the holdout was not untouched.
+Now `split_evaluation` gives train / calibration (validation ONLY) / confirmation (the frozen holdout,
+never calibrated on); `score_answers` scores ONCE on the confirmation families, counts a missing or
+invalid answer as a FAILURE, and keeps every independent family as a denominator with per-question and
+family detail (the binary-question aggregate can no longer hide the choice accuracy). The model
+revision is pinned via `--model-revision` and loaded with `revision=`; the license is READ from the
+model card (not hardcoded) and an unpinned revision is flagged. Tests:
+`tests/v51-readiness-teacher-leakage.test.py` (3/3).
+
+## WEB-AI-07 - label provenance and budget threading (`training/bot/decision-dataset.cjs`)
+
+`--budget-ms` never reached `teacherMove` (it stayed at the 20 ms default); the receipts now record the
+actual `budgetMs` per row (`gold.bestMove.budgetMs`). The "invariance" check re-derived the same
+deterministic shuffle and compared it to itself - a tautology - and is replaced with a real
+INDEPENDENT-seed option-order permutation whose gold move id must be present and identical as a set.
+Proof: budget 20 vs 400 recorded distinctly; permutation invariance true; `tests/bot/training-data.test.cjs`
+6/6.
+
+## Not yet closed
+
+WEB-AI-08 two-cycle feedback PROOF and the remaining 08 items; WEB-DOC-01 register repair (R26/R28);
+WebUI re-verification handoff. The gate stays `productionApproved: false`; `APPROVED_CATALOG` untouched.

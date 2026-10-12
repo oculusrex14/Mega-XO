@@ -38,12 +38,16 @@ function serialize(state) {
 }
 
 /* All legal moves, in a deterministic per-position shuffled order so option order carries no signal. */
-function options(state) {
+function optionsWithSeed(state, seed) {
   const legal = G.legal(state).map((m) => ({ id: moveId(m), b: m.b, c: m.c }));
-  const seed = parseInt(digest('opt-order-v1:' + serialize(state)).slice(0, 8), 16);
-  const rng = C.seeded(seed);
+  const rng = C.seeded(seed >>> 0);
   for (let i = legal.length - 1; i > 0; i--) { const j = Math.floor(rng() * (i + 1)); [legal[i], legal[j]] = [legal[j], legal[i]]; }
   return legal;
+}
+
+function options(state) {
+  const seed = parseInt(digest('opt-order-v1:' + serialize(state)).slice(0, 8), 16);
+  return optionsWithSeed(state, seed);
 }
 
 function teacherMove(state, { seed, budgetMs = 20 }) {
@@ -63,11 +67,14 @@ function opponentThreat(state) {
   return false;
 }
 
-function buildRow(state, { seed, gameId, openingFamily, split }) {
+function buildRow(state, { seed, gameId, openingFamily, split, budgetMs = 20 }) {
   const opts = options(state);
   const win = winNowMove(state);
   const threat = opponentThreat(state);
-  const teacher = teacherMove(state, { seed });
+  // The requested budget is THREADED to the teacher (WEB-AI-07): the exposed --budget-ms previously
+  // never reached teacherMove, so an experiment silently ran at the 20 ms default and the receipt
+  // claimed a budget it never used.
+  const teacher = teacherMove(state, { seed, budgetMs });
   const teacherBest = moveId(teacher.move);
   // Move probability from the teacher's own search diagnostics when available, else a one-hot label.
   const diag = teacher.diagnostics || {};
@@ -78,10 +85,16 @@ function buildRow(state, { seed, gameId, openingFamily, split }) {
   if (!Object.keys(probs).length) probs[teacherBest] = 1;
   const criteria = {};
   for (const o of opts) criteria[o.id] = `place in local board ${o.b}, cell ${o.c}`;
-  // Invariance: re-shuffle and confirm the gold id is unchanged.
-  const reshuffled = options(state);
-  const invariant = reshuffled.map((o) => o.id).sort().join('|') === opts.map((o) => o.id).sort().join('|') &&
-    opts.some((o) => o.id === teacherBest);
+  // INDEPENDENT-PERMUTATION INVARIANCE (WEB-AI-07). The previous check re-derived the SAME
+  // deterministic shuffle and compared it to itself - a tautology. Here the option list is permuted
+  // with an INDEPENDENT seed (option order only; the teacher is board-based and is NOT reseeded, so
+  // the gold id is a stable function of the position, not of the shuffle), and the gold move id must
+  // be present and identical as a SET under both orders. This exercises real option-order robustness.
+  const altSeed = (seed ^ 0x5bf03635) >>> 0;
+  const alt = optionsWithSeed(state, altSeed);
+  const altIds = alt.map((o) => o.id).sort().join('|');
+  const optIds = opts.map((o) => o.id).sort().join('|');
+  const invariant = altIds === optIds && opts.some((o) => o.id === teacherBest);
   return {
     id: `${gameId}#${state.moves.length}`,
     gameId, openingFamily, split, state: serialize(state),
@@ -93,10 +106,10 @@ function buildRow(state, { seed, gameId, openingFamily, split }) {
     gold: {
       winNow: { label: win ? 'true' : 'false', noul: win ? 0.999 : 0.001, type: 'noul', moveId: win ? moveId(win) : null },
       opponentThreat: { label: threat ? 'true' : 'false', noul: threat ? 0.999 : 0.001, type: 'noul' },
-      bestMove: { label: teacherBest, type: 'choice', probabilities: probs, visits: diag.visits || null, modelVersion: S.VERSION },
+      bestMove: { label: teacherBest, type: 'choice', probabilities: probs, visits: diag.visits || null, modelVersion: S.VERSION, budgetMs },
     },
     factors: { revision: state.moves.length, legalCount: opts.length, required: state.required, turn: state.turn },
-    labelAgreement: { optionCount: opts.length, invariant },
+    labelAgreement: { optionCount: opts.length, invariant, altSeed },
   };
 }
 
@@ -117,7 +130,7 @@ function build({ output, games = 8, seed = 3000, samplesPerGame = 6, budgetMs = 
         // Reconstruct the exact canonical state at this revision.
         let state = G.create(row.first);
         for (const m of row.moves) state = G.apply(state, m);
-        const dr = buildRow(state, { seed: seed + i * 100 + k, gameId: g.gameId, openingFamily: g.openingFamily, split: g.split });
+        const dr = buildRow(state, { seed: seed + i * 100 + k, gameId: g.gameId, openingFamily: g.openingFamily, split: g.split, budgetMs });
         if (dr.labelAgreement.invariant) invarianceOk++;
         if (dr.gold.winNow.label === 'true') winNowPositive++;
         if (dr.gold.opponentThreat.label === 'true') threatPositive++;
@@ -132,7 +145,7 @@ function build({ output, games = 8, seed = 3000, samplesPerGame = 6, budgetMs = 
     searchSha256: digest(fs.readFileSync('src/bot/search.js')), rows, games, seed, samplesPerGame, budgetMs,
     counts, gameIndex: ids, sha256: hash.digest('hex'),
     format: 'unsloth-decision (state + questions + gold)',
-    optionOrder: 'deterministic per-position shuffle (no option-position shortcut)',
+    optionOrder: 'deterministic per-position shuffle, plus an INDEPENDENT alternate-seed permutation whose teacher move must match (real option-order invariance, not a self-comparison)',
     invarianceOk, winNowPositive, threatPositive,
     splitPolicy: 'whole games grouped by D4-normalized four-ply opening; no family crosses splits',
     teacher: { engine: S.VERSION, budgetMs, note: 'gold bestMove is the strong teacher move, never a weak self-play played move' },

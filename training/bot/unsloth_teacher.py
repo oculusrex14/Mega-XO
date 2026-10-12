@@ -61,10 +61,69 @@ def to_unsloth(items):
                     "split": r["split"], "id": r["id"]})
     return out
 
+QUESTION_NAMES = ("winNow", "opponentThreat", "bestMove")
+
+
+def split_evaluation(rows):
+    """Family-safe three-way split (WEB-AI-06). The previous evaluation POOLED validation and holdout,
+    so the holdout was not untouched confirmation:
+      * train        - fit the decision head;
+      * calibration  - choose thresholds/early-stop (VALIDATION ONLY);
+      * confirmation - the frozen holdout, scored ONCE after calibration, never calibrated on.
+    A row missing a family is placed in confirmation only if its split says so; unknown/missing split
+    is treated as confirmation (never trained or calibrated on)."""
+    train = [r for r in rows if r.get("split") == "train"]
+    calibration = [r for r in rows if r.get("split") == "validation"]
+    confirmation = [r for r in rows if r.get("split") not in ("train", "validation")]
+    return {"train": train, "calibration": calibration, "confirmation": confirmation}
+
+
+def _label_of(gold):
+    value = gold.get("label") if isinstance(gold, dict) else gold
+    return str(value)
+
+
+def _answer_of(answers, name):
+    if name not in answers:
+        return None
+    ans = answers[name]
+    return ans.get("answer") if isinstance(ans, dict) else ans
+
+
+def score_answers(items, answers_by_id, calibration=None):
+    """Per-question accuracy over independent families, counting a MISSING/INVALID answer as a FAILURE
+    (WEB-AI-06). The earlier loop advanced the denominator only for returned question names, so missing
+    answers silently disappeared from the accuracy. Returns per-question and family-level results so a
+    binary-question-dominated aggregate cannot hide the choice accuracy."""
+    per_question = {name: {"correct": 0, "total": 0, "families": {}} for name in QUESTION_NAMES}
+    for r in items:
+        family = r.get("family") or r.get("openingFamily") or r.get("id")
+        answers = answers_by_id.get(r["id"], {})
+        for name in QUESTION_NAMES:
+            gold = (r.get("gold") or {}).get(name)
+            if gold is None:
+                continue
+            per_question[name]["total"] += 1
+            got = _answer_of(answers, name)
+            ok = got is not None and str(got).lower() == _label_of(gold).lower()
+            if ok:
+                per_question[name]["correct"] += 1
+            bucket = per_question[name]["families"].setdefault(family, {"correct": 0, "total": 0})
+            bucket["total"] += 1
+            bucket["correct"] += 1 if ok else 0
+    for name in QUESTION_NAMES:
+        entry = per_question[name]
+        entry["accuracy"] = (entry["correct"] / entry["total"]) if entry["total"] else None
+    return {"perQuestion": per_question,
+            "families": sorted({f for name in QUESTION_NAMES for f in per_question[name]["families"]})}
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("dataset", type=Path)
     ap.add_argument("--model", default="unsloth/Qwen3.5-0.8B")
+    ap.add_argument("--model-revision", default=None,
+                    help="Pinned model revision/commit to load (WEB-AI-06). Required for a qualified run; "
+                         "'main'/None is recorded as UNPINNED and blocks qualification.")
     ap.add_argument("--output", type=Path, required=True)
     ap.add_argument("--max-steps", type=int, default=120)
     ap.add_argument("--batch", type=int, default=2)
@@ -77,9 +136,10 @@ def main() -> int:
 
     report = {
         "schemaVersion": 1, "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
-        "model": args.model, "dataset": str(args.dataset), "datasetSha256": sha256_file(args.dataset),
+        "model": args.model, "modelRevision": args.model_revision,
+        "dataset": str(args.dataset), "datasetSha256": sha256_file(args.dataset),
         "host": platform.node(), "python": platform.python_version(), "unsloth": None, "torch": None,
-        "cuda": None, "gpu": None, "license": "apache-2.0", "status": "STARTED", "metrics": None,
+        "cuda": None, "gpu": None, "license": None, "status": "STARTED", "metrics": None,
         "note": "offline teacher evaluation only; no player inference, no publication",
     }
     try:
@@ -100,9 +160,13 @@ def main() -> int:
         return 2
 
     rows = to_unsloth(load_rows(args.dataset))
-    train_items = [r for r in rows if r["split"] == "train"]
-    eval_items = [r for r in rows if r["split"] in ("validation", "holdout")]
-    report["counts"] = {"train": len(train_items), "eval": len(eval_items), "total": len(rows)}
+    # Family-safe: TRAIN fits, CALIBRATION is validation-only, CONFIRMATION is the untouched holdout
+    # (WEB-AI-06). The teacher must never calibrate on the confirmation families it then reports.
+    splits = split_evaluation(rows)
+    train_items, eval_items = splits["train"], splits["calibration"]
+    confirmation_items = splits["confirmation"]
+    report["counts"] = {"train": len(train_items), "calibration": len(eval_items),
+                        "confirmation": len(confirmation_items), "total": len(rows)}
     if not train_items or not eval_items:
         report["status"] = "INSUFFICIENT_SPLIT"
         args.output.parent.mkdir(parents=True, exist_ok=True)
@@ -111,7 +175,19 @@ def main() -> int:
         return 3
 
     try:
-        model, tokenizer = FastDecisionModel.from_pretrained(model_name=args.model, max_seq_length=args.max_seq_length, load_in_4bit=True)
+        model, tokenizer = FastDecisionModel.from_pretrained(model_name=args.model, max_seq_length=args.max_seq_length, load_in_4bit=True,
+                                                             revision=args.model_revision)
+        # The license must be READ from the resolved model card, not hardcoded (WEB-AI-06). A missing
+        # license blocks qualification; the revision above pins the exact weights loaded.
+        try:
+            from huggingface_hub import HfApi
+            info = HfApi().model_info(args.model, revision=args.model_revision)
+            report["license"] = getattr(info, "cardData", {}).get("license") if getattr(info, "cardData", None) else None
+            report["resolvedRevision"] = getattr(info, "sha", None)
+        except Exception as exc:
+            report["licenseError"] = f"{type(exc).__name__}: {exc}"
+        if not args.model_revision:
+            report["licensingNote"] = "UNPINNED_REVISION: a qualified result requires --model-revision"
         model = FastDecisionModel.get_peft_model(model, r=args.rank, lora_alpha=args.rank, lora_dropout=0,
                                                  use_gradient_checkpointing="unsloth", random_state=3407)
         # FastDecisionModel consumes a HuggingFace dataset whose rows carry {state, questions, gold}
@@ -139,25 +215,19 @@ def main() -> int:
             report["trainSeconds"] = getattr(stats, "metrics", {}).get("train_runtime")
         metrics = FastDecisionModel.calibrate(model, tokenizer, eval_built) if hasattr(FastDecisionModel, "calibrate") else None
         report["metrics"] = metrics
-        # Per-question breakdown: the aggregate is dominated by the two easy noul questions, so the
-        # bestMove (choice over all legal moves) accuracy is the number that matters for label quality.
+        report["calibratedOn"] = "validation-only"
+        # Per-question breakdown scored ONCE on the untouched CONFIRMATION (holdout) families, with a
+        # missing/invalid answer counted as a FAILURE and every independent family present as a
+        # denominator (WEB-AI-06). The aggregate is not allowed to hide the bestMove choice accuracy.
         try:
             FastDecisionModel.for_inference(model)
-            correct = {"winNow": 0, "opponentThreat": 0, "bestMove": 0}
-            total = {"winNow": 0, "opponentThreat": 0, "bestMove": 0}
-            for r in eval_items:
-                answers = FastDecisionModel.predict(model, tokenizer, r["state"], r["questions"])
-                for name in correct:
-                    if name in answers:
-                        total[name] += 1
-                        ans = answers[name]
-                        got = ans.get("answer") if isinstance(ans, dict) else ans
-                        want = r["gold"][name]
-                        if name == "bestMove":
-                            if str(got) == str(want.get("label") if isinstance(want, dict) else want): correct[name] += 1
-                        else:
-                            if str(got).lower() == str(want.get("label") if isinstance(want, dict) else want).lower(): correct[name] += 1
-            report["perQuestion"] = {k: {"correct": correct[k], "total": total[k], "accuracy": (correct[k] / total[k]) if total[k] else None} for k in correct}
+            answers_by_id = {}
+            for r in confirmation_items:
+                answers_by_id[r["id"]] = FastDecisionModel.predict(model, tokenizer, r["state"], r["questions"]) or {}
+            scored = score_answers(confirmation_items, answers_by_id)
+            report["perQuestion"] = {k: {"correct": v["correct"], "total": v["total"], "accuracy": v["accuracy"]}
+                                     for k, v in scored["perQuestion"].items()}
+            report["confirmationFamilies"] = scored["families"]
         except Exception as exc:
             report["perQuestion"] = {"error": f"{type(exc).__name__}: {exc}"}
         report["status"] = "COMPLETED"

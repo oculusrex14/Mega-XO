@@ -270,7 +270,7 @@ function buildEngines({ modelDir, budgetMs = 100, simulations = 64 } = {}) {
   return engines;
 }
 
-async function playAsync(a, b, { seed = 1, first = 'X', opening = [], swap = false } = {}) {
+async function playAsync(a, b, { seed = 1, first = 'X', opening = [], swap = false, openingFamily = null } = {}) {
   let state = G.create(first);
   for (const move of opening) state = G.apply(state, move);
   const engines = swap ? { X: b, O: a } : { X: a, O: b };
@@ -282,6 +282,8 @@ async function playAsync(a, b, { seed = 1, first = 'X', opening = [], swap = fal
     const engine = engines[who];
     const t = performance.now();
     let move = null;
+    // Per-engine move latency is kept SEPARATE (never summed): a candidate's own device latency is a
+    // distinct measurement from the reference's (WEB-AI-05).
     if (typeof engine.chooseAsync === 'function') {
       move = await engine.chooseAsync(state, rngs[who]);
     } else {
@@ -296,11 +298,17 @@ async function playAsync(a, b, { seed = 1, first = 'X', opening = [], swap = fal
     seed,
     first,
     swap,
+    openingFamily,
     a: a.id,
+    aVersion: a.version || null,
     b: b.id,
+    bVersion: b.version || null,
     point,
     winner: state.winner,
     moveCount: state.moves.length,
+    // Canonical terminal trace: the exact move sequence (b,c per ply) so a reviewer can replay the
+    // outcome and recompute the point without trusting the running process.
+    moves: state.moves.map(({ b: col, c: row, player }) => ({ b: col, c: row, player })),
     latency,
     elapsedMs: performance.now() - start,
   };
@@ -310,12 +318,14 @@ async function runLeaguePair(engineA, engineB, openings, { seed = 20261011 } = {
   const games = [];
   for (let i = 0; i < openings.length; i++) {
     const op = openings[i].opening;
+    const fam = openings[i].family || null;
     for (const swap of [false, true]) {
       const g = await playAsync(engineA, engineB, {
         seed: seed + i * 2 + (swap ? 1 : 0),
         first: i % 2 ? 'O' : 'X',
         opening: op,
         swap,
+        openingFamily: fam,
       });
       games.push(g);
     }
@@ -429,25 +439,41 @@ async function main() {
       engineB: nameB,
       summary,
       gameCount: allGames.length,
-      games: allGames.slice(0, 10),
+      // Complete paired records for every game (never truncated): a reviewer must be able to replay
+      // each game, resample paired families and read the candidate's own device latency (WEB-AI-05).
+      games: allGames,
     };
     results.push(matchupResult);
     console.log(`Result ${nameA} vs ${nameB}: Score=${summary.pointScore.toFixed(3)}, W=${summary.wins} D=${summary.draws} L=${summary.losses}, 95% CI=[${summary.pairBootstrap95 ? summary.pairBootstrap95.map(x => x.toFixed(3)).join(', ') : 'NA'}] (Total games: ${allGames.length})`);
   }
 
+  // COMPLETE RECEIPT (WEB-AI-05): bind the report to the exact source/rules/model/runtime so a
+  // truncated or unbound report can never be mistaken for qualification. The independent verifier
+  // refuses any report missing these.
+  const modelSha = modelDir && fs.existsSync(path.join(modelDir, 'candidate.onnx'))
+    ? crypto.createHash('sha256').update(fs.readFileSync(path.join(modelDir, 'candidate.onnx'))).digest('hex') : null;
+  const sourceSha = (() => {
+    try { return require('node:child_process').execSync('git rev-parse HEAD', { cwd: __dirname }).toString().trim(); }
+    catch { return null; }
+  })();
   const report = {
     schemaVersion: 1,
+    status: 'COMPLETED',
     timestamp: new Date().toISOString(),
     pairs: pairsCount,
     budgetMs,
     simulations,
     modelDir,
+    modelSha256: modelSha,
+    sourceSha,
+    rulesSha256: crypto.createHash('sha256').update(fs.readFileSync(path.join(__dirname, '..', '..', 'src', 'game.js'))).digest('hex'),
+    engineVersions: { tacticalUCT: 'uct-v1', improvedExpert: 'expert-v1' },
     holdoutFamiliesCount: openings.length,
-    holdoutFamiliesSample: openings.slice(0, 10).map(o => o.family),
+    holdoutFamilies: openings.map(o => o.family),
     matchups: results,
-    methodology: 'Strict D4-normalized 4-ply opening families where splitFor(family) === holdout. Zero leakage with train/validation. Equal wall/simulation budgets. Paired alternating-side games.',
+    methodology: 'Strict D4-normalized 4-ply opening families where splitFor(family) === holdout. Zero leakage with train/validation. Equal wall/simulation budgets. Paired alternating-side games. All games retained with opening family, both seating seeds, per-engine latency and canonical move trace.',
     promotionApproved: false,
-    promotionGate: 'Win rate >= 70% with lower 95% CI >= 0.65 required for promotion. Automatic promotion disabled.',
+    promotionGate: 'Win rate >= 70% with lower 95% CI >= 0.65 on >= 200 independent families. Automatic promotion disabled; production approval is a separate human step.',
   };
 
   fs.mkdirSync(path.dirname(outputPath), { recursive: true });

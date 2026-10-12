@@ -78,3 +78,22 @@ score is near 0.5), but because the interval contains 0.5 it does **not** establ
 or non-inferiority at this sample - a larger paired league is required. The export-time numerical
 gates remain: float parity is exact (`floatLegalArgmaxChanges: 0`, max abs error ~4e-7) while INT8 QDQ
 changes 13/512 legal argmaxes, which is why the match-level measure is the one that matters.
+
+## CL18-CL23 progress (approach B: Unsloth Qwen3.5-0.8B decision teacher)
+
+- **Environment (CL18 done):** an isolated DGX venv `/home/oculus-rex/mega-xo-learning/unsloth-env`
+  with `unsloth 2026.10.3`, `torch 2.14.1+cu130`, `CUDA True` on `NVIDIA GB10`. It is separate from
+  the compact-CNN venv and untouched ComfyUI/TTS. Model `unsloth/Qwen3.5-0.8B` confirmed on Hugging
+  Face as **apache-2.0, ungated** (2.6M downloads).
+- **Dataset (CL19):** `training/bot/decision-dataset.cjs` emits legal-option decision rows (compact
+  canonical state; `winNow`/`opponentThreat` noul + `bestMove` choice over ALL legal moves; the gold
+  best move is the strong teacher's move; options deterministically shuffled with an invariance
+  check). A 120-row sample: 100% invariance, deterministic option order.
+- **Runner (CL20 in progress):** `training/bot/unsloth_teacher.py` fine-tunes with the Clef-style
+  decision head via `FastDecisionModel`/`DecisionTrainer`. Two real API-compatibility fixes were made
+  against the documented signatures (`build_dataset` needs a HF dataset with per-question gold answer
+  objects, not raw dicts/bare bools). The teacher run on the DGX reports `COMPLETED`/`TEACHER_RUN_FAILED`
+  honestly with the real error; results are recorded when the run completes.
+
+The decision teacher is **evaluation-only**: it never serves player inference and its output is used
+only to judge whether a stronger label source improves the compact student (CL21-CL23).

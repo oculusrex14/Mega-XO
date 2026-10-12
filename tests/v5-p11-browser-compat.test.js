@@ -60,9 +60,22 @@ const { createApiHandler, handleRequest } = require('../apps/api/index.js');
 const corsMiddleware = require('../apps/api/middleware/cors.js');
 const csrfMiddleware = require('../apps/api/middleware/csrf.js');
 const compatRoutes = require('../apps/api/routes/compat.js');
+const { createCoreGateway, createCoreServiceIngress } = require('../packages/services/core-gateway.js');
+const { createQueueService } = require('../packages/services/queue.js');
+const { createEphemeraService } = require('../packages/services/ephemera.js');
 
 /* Register top-level cleanup of synthetic PG16 databases and guarded connection pools */
 lab.installCleanup(test);
+
+/* The public queue-status read the API serves is a Core-owned operation reached over the signed
+ * ingress, so this file composes a REAL Core host (Core + queue + ephemera) exactly as CI does. The
+ * owned loopback Redis and the PG lab gate it: absent Redis the harness cannot build the Core host. */
+const REDIS_URL = process.env.REDIS_URL || 'redis://127.0.0.1:50710';
+/* A per-harness ephemera namespace: `keyVersion` is strictly `[a-z0-9]{1,8}` in the adapter. */
+const queueKeyVersion = () => `p11${crypto.randomBytes(3).toString('hex').slice(0, 5)}`;
+/* A test-only deployment signing key. Production refuses a published fallback secret and the API and
+ * ingress must share the SAME key; this is never a deployed value. */
+const CORE_SIGNING_SECRET = 'v5-p11-compat-owned-core-signing-secret';
 
 /* ---------------------------------------------------------------- Test Fixtures */
 
@@ -166,6 +179,13 @@ function httpRequest(baseUrl, routePath, { method = 'GET', headers = {}, body = 
 
 /**
  * Sets up a full API test harness backed by real loopback PostgreSQL 16.
+ *
+ * The public API holds only API-role credentials and no Core pool: every queue/leaderboard operation
+ * is reached through the signed Core ingress. When the owned Redis is available this harness stands
+ * up the REAL Core host (Core service + Core-owned queue service + ephemera) behind
+ * `createCoreServiceIngress` and points the API at it with `createCoreGateway`, mirroring the P07
+ * HTTP queue and P11 core-gateway suites. When Redis is absent the API is composed without a
+ * gateway, which is the honest unconfigured-deployment state (queue reads then fail closed).
  */
 async function setupApiHarness(database, options = {}) {
   const pools = lab.poolsFor(database);
@@ -175,10 +195,40 @@ async function setupApiHarness(database, options = {}) {
   });
   const core = await lab.coreFor(database, { ...options });
 
+  const closers = [];
+  let coreGateway = options.coreGateway ?? null;
+  let coreUrl = options.coreUrl;
+
+  const haveRedis = process.env.REDIS_URL !== undefined || process.env.V5_REDIS_REQUIRED === '1';
+  if (!coreGateway && coreUrl === undefined && haveRedis) {
+    const ephemera = await createEphemeraService({
+      url: REDIS_URL,
+      environment: 'test',
+      keyVersion: queueKeyVersion(),
+      allowPlaintext: !REDIS_URL.startsWith('rediss://'),
+      socket: { connectTimeout: 3000 },
+    });
+    closers.push(() => ephemera.wipeNamespace().catch(() => {}));
+    closers.push(() => ephemera.close().catch(() => {}));
+    /* Core owns the queue; the API never receives the queue service or its pool. */
+    const queue = createQueueService({ ephemera, core, pool: pools.core });
+    closers.push(() => Promise.resolve(queue.close()).catch(() => {}));
+    const ingress = http.createServer(createCoreServiceIngress({
+      coreService: core,
+      queue,
+      secret: CORE_SIGNING_SECRET,
+    }));
+    await new Promise((resolve) => ingress.listen(0, '127.0.0.1', resolve));
+    closers.push(() => new Promise((resolve) => { ingress.closeAllConnections?.(); ingress.close(resolve); }));
+    coreUrl = `http://127.0.0.1:${ingress.address().port}`;
+    coreGateway = createCoreGateway({ coreUrl, secret: CORE_SIGNING_SECRET });
+  }
+
   const handler = createApiHandler({
     pool: pools.api,
     accounts,
     core,
+    ...(coreGateway ? { coreGateway } : {}),
     ...options,
   });
 
@@ -187,6 +237,9 @@ async function setupApiHarness(database, options = {}) {
   async function close() {
     if (serverInstance && serverInstance.close) {
       try { await serverInstance.close(); } catch {}
+    }
+    for (const close of closers.reverse()) {
+      try { await close(); } catch {}
     }
     if (core && core.close) {
       try { await core.close(); } catch {}
@@ -200,6 +253,8 @@ async function setupApiHarness(database, options = {}) {
     core,
     pools,
     serverInstance,
+    coreUrl,
+    coreGateway,
     url: serverInstance.url,
     close,
   };
@@ -661,6 +716,38 @@ test('5. Legacy /api/v1/profile compatibility: returns exact expected JSON shape
   assert.equal(bobProfile.rating, 1400, 'rating matches Bob rating');
   assert.equal(bobProfile.wallet.coins, 800, 'wallet.coins matches Bob coins');
   assert.equal(bobProfile.wallet.crowns, 50, 'wallet.crowns matches Bob crowns');
+});
+
+/* ==========================================================================
+ * 5b. Unconfigured / unhealthy Core is an honest service error (never a fake idle 200)
+ * ========================================================================== */
+
+test('5b. Unconfigured Core: a queue-status read without a signed gateway fails closed, never a fake idle 200', async (t) => {
+  if (!(await lab.boot(t))) return;
+  const db = await lab.createDatabase('p11_compat_nogateway');
+  await lab.seedActors(db, ACTORS);
+
+  /* The honest unconfigured-deployment composition: an API-role pool and accounts only. No Core URL
+   * or signing secret is supplied, so no gateway can be resolved and the queue route has nothing to
+   * call. The read must surface an honest service error, NOT an empty `idle` projection. */
+  const accounts = await lab.accountsFor(db, { deletionPolicy: { enabled: true, policyVersion: 'v5-p11-test-policy' } });
+  const core = await lab.coreFor(db);
+  const handler = createApiHandler({ pool: lab.poolsFor(db).api, accounts, core });
+  const server = await startApiServer(handler);
+  t.after(async () => {
+    await server.close();
+    try { await core.close(); } catch {}
+    try { await accounts.close(); } catch {}
+    await lab.closeDatabasePools(db);
+  });
+
+  const aliceSession = await accounts.issue('svc_alice', Date.now());
+  const res = await httpRequest(server.url, '/api/v1/queue', {
+    method: 'GET',
+    headers: { authorization: `Bearer ${aliceSession.token}`, origin: 'https://play.antimatterinnovations.com' },
+  });
+  assert.equal(res.status, 503, 'an unconfigured Core yields an honest service error, not 200');
+  assert.notEqual(res.data?.state, 'idle', 'never fabricates an idle queue projection');
 });
 
 /* ==========================================================================

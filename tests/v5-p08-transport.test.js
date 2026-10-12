@@ -65,7 +65,7 @@ const GATE = HAVE_REDIS && HAVE_PG ? false : (!HAVE_REDIS ? 'no REDIS_URL' : 'no
 const KEY_VERSION = 'rtp08';
 const INGRESS = '/realtime/v1';
 const ACCEPT_GUID = '258EAFA5-E914-47DA-95CA-C5AB0DC85B11';
-const SEEDS = ['svc_alice', 'svc_bob', 'svc_carol', 'svc_dave', 'svc_eve', 'svc_frank']
+const SEEDS = ['svc_alice', 'svc_bob', 'svc_carol', 'svc_dave', 'svc_eve', 'svc_frank', 'svc_grace']
   .map((actor) => ({ actor, coins: 1000, crowns: 100, rating: 1500, games: 30, stats: 'friends' }));
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -800,9 +800,12 @@ test('V5-08-01 transport: post-redeem session logout refuses subscribe with SESS
   if (!h) return;
   const s = await serve(h, t);
 
-  // Create match for Frank and Bob
+  /* A FRESH, unoccupied pair. `svc_bob` is already seated in `match:p08-notpart`; the production
+   * single-active-match guard is correct and must stay, so this test takes a genuinely free pair
+   * (`svc_frank` + the dedicated `svc_grace`) instead of relaxing `Authority._offer` or clearing
+   * arbitrary occupancy. The 1008 revocation assertion is unchanged. */
   const matchId = 'match:p08-logout-sub';
-  await playMatch(h, matchId, 'svc_frank', 'svc_bob');
+  await playMatch(h, matchId, 'svc_frank', 'svc_grace');
 
   // Issue real session for Frank
   const accounts = await lab.accountsFor(h.database, { clock: () => clock });
@@ -829,7 +832,6 @@ test('V5-08-01 transport: post-redeem session logout refuses subscribe with SESS
   // Client attempts to subscribe after logout
   client.send(subscribeFrame(matchId));
   const error = await client.next();
-  console.log('DEBUG_SUBSCRIBE_LOGOUT_ERROR:', JSON.stringify(error));
   assert.deepEqual(error, { protocol: 'realtime/v1', operation: 'error', code: 'SESSION_REVOKED' });
   const closed = await client.waitClose();
   assert.equal(closed.code, 1008, 'socket closed with policy 1008 on revoked session');

@@ -176,3 +176,38 @@ Latency note for phone feasibility: 256 sims / 400 ms per move is already the to
 < 1500 ms client budget once ONNX Runtime load + first-move compile are added, and it is the WORST
 configuration vs tacticalUCT - so there is no budget at which this design both fits a phone and
 approaches Expert.
+
+## Teacher-equivalence correction and matched re-test (authoritative result)
+
+The earlier expert-BC labels came from the weak heuristic `G.choose` while the league benchmarks
+`improvedExpert = S.choose({difficulty:'Expert'})` - a **depth-12 alpha-beta search, 350k nodes**
+(`src/bot/search.js` PROFILES.Expert). That mismatched teacher/benchmark pair made the earlier number
+weak evidence. Corrected (`042c913`): the generator's `expert` labelSource now labels with EXACTLY the
+benchmarked `S.choose` Expert.
+
+Corrected dataset: 1,911 records / 40 games; student trained 30 epochs.
+
+| metric | value |
+|---|---|
+| policy top-1 agreement with the real Expert | 0.230 (vs 0.299 when imitating the weak heuristic teacher) |
+| policy top-3 | 0.634 |
+| value MSE | 1.08 |
+
+Matched league (same 24 held-out families, 48 games, 16 sims / 20 ms), teacher == benchmark teacher:
+
+| matchup | score |
+|---|---|
+| policyValuePUCT vs improvedExpert | 0.010 |
+| policyOnlyPUCT vs improvedExpert | 0.000 |
+| tacticalOnly vs improvedExpert | 0.000 |
+| policyValuePUCT vs tacticalUCT | 0.385 |
+
+**Conclusion (matched, confound removed):** the ~1% vs Expert and the inference-budget plateau are
+NOT artifacts of the teacher mismatch. Behaviour-cloning a depth-12 search engine's *moves* (23% top-1)
+does not reproduce its strength when the student is used only as a shallow-search prior, and raising
+the budget does not close the gap (and regresses vs tacticalUCT). Note the real Expert is *harder* to
+imitate (0.230) than the weak heuristic was (0.299), so the earlier 0.299 was a soft label artifact.
+
+No promotion; `APPROVED_CATALOG` stays empty. Scaling AlphaZero-style training is not supported by any
+evidence gathered; the honest routes remain (a) a much larger network trained by long self-play, or
+(b) accepting the classical ladder as the shipped strength - neither is proven here.

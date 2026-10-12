@@ -1,0 +1,54 @@
+{
+  "schemaVersion": 1,
+  "sourceCommit": "8328b71c934a5aba407daa6a1e243a3a4bdcd1f9",
+  "trainingModelSha256": "6e4d559ad1cb97687ab4a92d68ff25d1d3849e3fdf149aa0dbd7812c8b90b579",
+  "datasetSha256": "c38fad12fffb14b8ec000ce308d64ddbf7d1ee2c5227d0c66a43ac3629001ef6",
+  "encodingVersion": "planes8-v1",
+  "frozenStates": 512,
+  "numericalStatesPurpose": "parity only; includes train/validation/holdout, not a strength benchmark",
+  "floatPolicyMaxAbsError": 9.5367431640625e-06,
+  "floatValueMaxAbsError": 6.556510925292969e-07,
+  "floatLegalArgmaxChanges": 0,
+  "dynamicBatches": [
+    1,
+    7
+  ],
+  "quantization": {
+    "format": "QDQ signed INT8 per-channel",
+    "calibration": "128 training records only",
+    "legalArgmaxChanges": 45,
+    "maxPolicyAbsError": 3.416341781616211,
+    "matchScoreRegression": {
+      "status": "NOT_MEASURED"
+    }
+  },
+  "artifacts": [
+    {
+      "file": "candidate.onnx",
+      "sha256": "9783b3891d21b73cadb94616493d48624492e210bf24b4a738558bbd9e4075b8",
+      "bytes": 1375959,
+      "gzipBytes": 1275967
+    },
+    {
+      "file": "candidate-dynamic.onnx",
+      "sha256": "0f31ead31a0751a3c97afe1646620af1f8cc90f0879f8a0540e940c2fa42a03d",
+      "bytes": 1375974,
+      "gzipBytes": 1275975
+    },
+    {
+      "file": "candidate-int8.onnx",
+      "sha256": "8bc3b0d5fbe8aee8e3f555dee608d65897715471cf8eb68d43791e1e382a417b",
+      "bytes": 380957,
+      "gzipBytes": 322766
+    }
+  ],
+  "sizeGate": true,
+  "ortRuntimeBytes": "NOT_INCLUDED_IN_MODEL_SIZE",
+  "browserMemory": "NOT_MEASURED",
+  "torchVersion": "2.13.0+cu129",
+  "onnxVersion": "1.19.1",
+  "ortVersion": "1.23.2",
+  "deploymentStatus": "UNAPPROVED",
+  "strengthGate": "NOT_PASSED",
+  "deviceGate": "NOT_PASSED"
+}

@@ -1,0 +1,2568 @@
+{
+  "schemaVersion": 1,
+  "sourceCommit": "8328b71c934a5aba407daa6a1e243a3a4bdcd1f9",
+  "datasetSha256": "c38fad12fffb14b8ec000ce308d64ddbf7d1ee2c5227d0c66a43ac3629001ef6",
+  "sourceFileHashes": {
+    "training/bot/train.py": "ee81ecce89b6a63e914d4dd08ce63c494e24880be18eef6e57718818e4a7c266",
+    "training/bot/model.py": "5c10a00b5eefc76ae117cc55e05bab9de388c77850bdc12326399eedf700ddc4",
+    "training/bot/generate.cjs": "cc64ec37af76595ebfdc53c0c7d563b56d4c8172bd0c2b10e28a3b0e1b3c2c4e",
+    "training/bot/validate-data.cjs": "0c1ea279c1fbd77403806d7f424fe68e161ec58d562f77561dde26cc3717cc68",
+    "src/bot/encoding.js": "1eea6e4fbbc0d411feba8dfca8455f39fe2fd68996a13618718b56b86a6c9511",
+    "src/bot/search.js": "5194df8e120f35391e6991f4277f0400a14caa6cc481b86e8d6e138c3af3a545",
+    "src/game.js": "e6e14c258b4db439eedf28090ebafd0962867bab5e64709d0d4438cb145b31e0"
+  },
+  "modelSha256": "6e4d559ad1cb97687ab4a92d68ff25d1d3849e3fdf149aa0dbd7812c8b90b579",
+  "parameters": 342282,
+  "checkpointBytes": 1379604,
+  "checkpointGzipBytes": 1277721,
+  "modelConfig": {
+    "width": 64,
+    "blocks": 4,
+    "encodingVersion": "planes8-v1"
+  },
+  "seed": 51,
+  "epochs": 40,
+  "device": "cuda",
+  "hardware": "NVIDIA GB10",
+  "torchVersion": "2.13.0+cu129",
+  "pythonVersion": "3.12.3",
+  "elapsedSeconds": 87.00986463401932,
+  "peakCudaBytes": 109880832,
+  "peakCudaReservedBytes": 130023424,
+  "energyJoules": 1506.266610244243,
+  "meanPowerWatts": 17.349451219512193,
+  "peakPowerWatts": 18.84,
+  "determinism": "enforced",
+  "curves": [
+    {
+      "epoch": 1,
+      "trainLoss": 2.0512796668734223,
+      "validation": {
+        "policyLoss": 1.877059083965483,
+        "valueMSE": 0.17567068233377173,
+        "top1Agreement": 0.20437956204379562,
+        "top3Agreement": 0.5169896803423106,
+        "policyEntropy": 1.8767197985448676,
+        "calibration": [
+          {
+            "bin": [
+              -1.0,
+              -0.6
+            ],
+            "count": 108,
+            "meanPredicted": -0.7142763005362617,
+            "meanTarget": -0.7678115588647348,
+            "absError": 0.05353525832847317
+          },
+          {
+            "bin": [
+              -0.6,
+              -0.2
+            ],
+            "count": 459,
+            "meanPredicted": -0.394108813150516,
+            "meanTarget": -0.3787244886984442,
+            "absError": 0.015384324452071774
+          },
+          {
+            "bin": [
+              -0.2,
+              0.2
+            ],
+            "count": 2749,
+            "meanPredicted": 0.013519542575800701,
+            "meanTarget": 0.012041443652298407,
+            "absError": 0.0014780989235022943
+          },
+          {
+            "bin": [
+              0.2,
+              0.6
+            ],
+            "count": 566,
+            "meanPredicted": 0.4042997478175079,
+            "meanTarget": 0.34174830313430943,
+            "absError": 0.06255144468319845
+          },
+          {
+            "bin": [
+              0.6,
+              1.0
+            ],
+            "count": 91,
+            "meanPredicted": 0.7102199347464593,
+            "meanTarget": 0.7108411327168181,
+            "absError": 0.0006211979703588666
+          }
+        ]
+      }
+    },
+    {
+      "epoch": 2,
+      "trainLoss": 2.0199728759453985,
+      "validation": {
+        "policyLoss": 1.8742342007841297,
+        "valueMSE": 0.17994300508391128,
+        "top1Agreement": 0.21369242386106216,
+        "top3Agreement": 0.5275610369997483,
+        "policyEntropy": 1.875524154694771,
+        "calibration": [
+          {
+            "bin": [
+              -1.0,
+              -0.6
+            ],
+            "count": 31,
+            "meanPredicted": -0.6637291677536503,
+            "meanTarget": -0.8304817090111394,
+            "absError": 0.16675254125748906
+          },
+          {
+            "bin": [
+              -0.6,
+              -0.2
+            ],
+            "count": 395,
+            "meanPredicted": -0.3655634849509106,
+            "meanTarget": -0.5048157425843404,
+            "absError": 0.13925225763342974
+          },
+          {
+            "bin": [
+              -0.2,
+              0.2
+            ],
+            "count": 2674,
+            "meanPredicted": 0.011821447868882654,
+            "meanTarget": -0.016587338301891436,
+            "absError": 0.028408786170774088
+          },
+          {
+            "bin": [
+              0.2,
+              0.6
+            ],
+            "count": 674,
+            "meanPredicted": 0.3947223229693022,
+            "meanTarget": 0.257968357592066,
+            "absError": 0.13675396537723622
+          },
+          {
+            "bin": [
+              0.6,
+              1.0
+            ],
+            "count": 199,
+            "meanPredicted": 0.6997841315053815,
+            "meanTarget": 0.6537228315769128,
+            "absError": 0.046061299928468746
+          }
+        ]
+      }
+    },
+    {
+      "epoch": 3,
+      "trainLoss": 2.0041324707130936,
+      "validation": {
+        "policyLoss": 1.8719153929320804,
+        "valueMSE": 0.17716246592797472,
+        "top1Agreement": 0.22350868361439719,
+        "top3Agreement": 0.5263025421595772,
+        "policyEntropy": 1.8685826262088319,
+        "calibration": [
+          {
+            "bin": [
+              -1.0,
+              -0.6
+            ],
+            "count": 167,
+            "meanPredicted": -0.7333980184829164,
+            "meanTarget": -0.6648425199760648,
+            "absError": 0.06855549850685161
+          },
+          {
+            "bin": [
+              -0.6,
+              -0.2
+            ],
+            "count": 539,
+            "meanPredicted": -0.38740318670785934,
+            "meanTarget": -0.28102672984294425,
+            "absError": 0.10637645686491509
+          },
+          {
+            "bin": [
+              -0.2,
+              0.2
+            ],
+            "count": 2784,
+            "meanPredicted": 0.014995047259471067,
+            "meanTarget": 0.020853365219607796,
+            "absError": 0.005858317960136729
+          },
+          {
+            "bin": [
+              0.2,
+              0.6
+            ],
+            "count": 404,
+            "meanPredicted": 0.3696674016663934,
+            "meanTarget": 0.4361721502055384,
+            "absError": 0.06650474853914501
+          },
+          {
+            "bin": [
+              0.6,
+              1.0
+            ],
+            "count": 79,
+            "meanPredicted": 0.6832219641419905,
+            "meanTarget": 0.7935773841565168,
+            "absError": 0.11035542001452625
+          }
+        ]
+      }
+    },
+    {
+      "epoch": 4,
+      "trainLoss": 1.9826284904505602,
+      "validation": {
+        "policyLoss": 1.8705998148751324,
+        "valueMSE": 0.18221018089625207,
+        "top1Agreement": 0.22426378051849988,
+        "top3Agreement": 0.5265542411276114,
+        "policyEntropy": 1.8659870436111745,
+        "calibration": [
+          {
+            "bin": [
+              -1.0,
+              -0.6
+            ],
+            "count": 221,
+            "meanPredicted": -0.7399366608572222,
+            "meanTarget": -0.6052818124549152,
+            "absError": 0.13465484840230701
+          },
+          {
+            "bin": [
+              -0.6,
+              -0.2
+            ],
+            "count": 493,
+            "meanPredicted": -0.388285461866106,
+            "meanTarget": -0.2538289308606299,
+            "absError": 0.1344565310054761
+          },
+          {
+            "bin": [
+              -0.2,
+              0.2
+            ],
+            "count": 2572,
+            "meanPredicted": -0.0024432926257924883,
+            "meanTarget": 0.008465372736068424,
+            "absError": 0.010908665361860912
+          },
+          {
+            "bin": [
+              0.2,
+              0.6
+            ],
+            "count": 447,
+            "meanPredicted": 0.38234388781607287,
+            "meanTarget": 0.2797618871898509,
+            "absError": 0.10258200062622197
+          },
+          {
+            "bin": [
+              0.6,
+              1.0
+            ],
+            "count": 240,
+            "meanPredicted": 0.7352029994130135,
+            "meanTarget": 0.6105760991551505,
+            "absError": 0.12462690025786294
+          }
+        ]
+      }
+    },
+    {
+      "epoch": 5,
+      "trainLoss": 1.9558046794749977,
+      "validation": {
+        "policyLoss": 1.8717360469516626,
+        "valueMSE": 0.18863616794115226,
+        "top1Agreement": 0.23156305059149257,
+        "top3Agreement": 0.5303297256481249,
+        "policyEntropy": 1.8616663010211008,
+        "calibration": [
+          {
+            "bin": [
+              -1.0,
+              -0.6
+            ],
+            "count": 154,
+            "meanPredicted": -0.7471210654679831,
+            "meanTarget": -0.6376505899545434,
+            "absError": 0.10947047551343969
+          },
+          {
+            "bin": [
+              -0.6,
+              -0.2
+            ],
+            "count": 426,
+            "meanPredicted": -0.36615755639865366,
+            "meanTarget": -0.2748822213976946,
+            "absError": 0.09127533500095908
+          },
+          {
+            "bin": [
+              -0.2,
+              0.2
+            ],
+            "count": 2634,
+            "meanPredicted": 0.013364578098151161,
+            "meanTarget": -0.007000598059615351,
+            "absError": 0.020365176157766514
+          },
+          {
+            "bin": [
+              0.2,
+              0.6
+            ],
+            "count": 560,
+            "meanPredicted": 0.37143416314252786,
+            "meanTarget": 0.24706668294384143,
+            "absError": 0.12436748019868643
+          },
+          {
+            "bin": [
+              0.6,
+              1.0
+            ],
+            "count": 199,
+            "meanPredicted": 0.7596176647061679,
+            "meanTarget": 0.6524626763333361,
+            "absError": 0.10715498837283177
+          }
+        ]
+      }
+    },
+    {
+      "epoch": 6,
+      "trainLoss": 1.9263985724405874,
+      "validation": {
+        "policyLoss": 1.874401333228245,
+        "valueMSE": 0.19775420092768253,
+        "top1Agreement": 0.24238610621696452,
+        "top3Agreement": 0.5356154039768437,
+        "policyEntropy": 1.8523692455815033,
+        "calibration": [
+          {
+            "bin": [
+              -1.0,
+              -0.6
+            ],
+            "count": 207,
+            "meanPredicted": -0.7720047549349098,
+            "meanTarget": -0.5380651222694899,
+            "absError": 0.23393963266541995
+          },
+          {
+            "bin": [
+              -0.6,
+              -0.2
+            ],
+            "count": 435,
+            "meanPredicted": -0.3712380549688449,
+            "meanTarget": -0.2115550669188472,
+            "absError": 0.15968298804999767
+          },
+          {
+            "bin": [
+              -0.2,
+              0.2
+            ],
+            "count": 2619,
+            "meanPredicted": -0.0013125905333003815,
+            "meanTarget": -0.007143131879235839,
+            "absError": 0.005830541345935457
+          },
+          {
+            "bin": [
+              0.2,
+              0.6
+            ],
+            "count": 543,
+            "meanPredicted": 0.36734532335735376,
+            "meanTarget": 0.26724205558783415,
+            "absError": 0.10010326776951961
+          },
+          {
+            "bin": [
+              0.6,
+              1.0
+            ],
+            "count": 169,
+            "meanPredicted": 0.7525920487014499,
+            "meanTarget": 0.6595336284523571,
+            "absError": 0.09305842024909283
+          }
+        ]
+      }
+    },
+    {
+      "epoch": 7,
+      "trainLoss": 1.9027599849247518,
+      "validation": {
+        "policyLoss": 1.8733479387358698,
+        "valueMSE": 0.2062025297102147,
+        "top1Agreement": 0.22501887742260257,
+        "top3Agreement": 0.5323433173923987,
+        "policyEntropy": 1.8582119094974414,
+        "calibration": [
+          {
+            "bin": [
+              -1.0,
+              -0.6
+            ],
+            "count": 236,
+            "meanPredicted": -0.7859762485249567,
+            "meanTarget": -0.5200238742145918,
+            "absError": 0.2659523743103649
+          },
+          {
+            "bin": [
+              -0.6,
+              -0.2
+            ],
+            "count": 400,
+            "meanPredicted": -0.3946408067271113,
+            "meanTarget": -0.2658056321273034,
+            "absError": 0.12883517459980792
+          },
+          {
+            "bin": [
+              -0.2,
+              0.2
+            ],
+            "count": 2468,
+            "meanPredicted": -0.018503288870351974,
+            "meanTarget": -0.003138291084094764,
+            "absError": 0.01536499778625721
+          },
+          {
+            "bin": [
+              0.2,
+              0.6
+            ],
+            "count": 536,
+            "meanPredicted": 0.3901225999553702,
+            "meanTarget": 0.1769787392982129,
+            "absError": 0.2131438606571573
+          },
+          {
+            "bin": [
+              0.6,
+              1.0
+            ],
+            "count": 333,
+            "meanPredicted": 0.7755961423521643,
+            "meanTarget": 0.5297069305666952,
+            "absError": 0.24588921178546919
+          }
+        ]
+      }
+    },
+    {
+      "epoch": 8,
+      "trainLoss": 1.879654310540256,
+      "validation": {
+        "policyLoss": 1.8819952862646188,
+        "valueMSE": 0.20099081518726267,
+        "top1Agreement": 0.2310596526554241,
+        "top3Agreement": 0.5401459854014599,
+        "policyEntropy": 1.83893115185023,
+        "calibration": [
+          {
+            "bin": [
+              -1.0,
+              -0.6
+            ],
+            "count": 285,
+            "meanPredicted": -0.7819889001679002,
+            "meanTarget": -0.4710750924521371,
+            "absError": 0.31091380771576316
+          },
+          {
+            "bin": [
+              -0.6,
+              -0.2
+            ],
+            "count": 436,
+            "meanPredicted": -0.38467660354911737,
+            "meanTarget": -0.25044109712586066,
+            "absError": 0.1342355064232567
+          },
+          {
+            "bin": [
+              -0.2,
+              0.2
+            ],
+            "count": 2490,
+            "meanPredicted": -0.00041292911171249253,
+            "meanTarget": 0.0017127712674010695,
+            "absError": 0.002125700379113562
+          },
+          {
+            "bin": [
+              0.2,
+              0.6
+            ],
+            "count": 528,
+            "meanPredicted": 0.379008845764805,
+            "meanTarget": 0.23640156048879196,
+            "absError": 0.14260728527601302
+          },
+          {
+            "bin": [
+              0.6,
+              1.0
+            ],
+            "count": 234,
+            "meanPredicted": 0.7846354307272495,
+            "meanTarget": 0.6359987943729238,
+            "absError": 0.14863663635432567
+          }
+        ]
+      }
+    },
+    {
+      "epoch": 9,
+      "trainLoss": 1.8575828555603966,
+      "validation": {
+        "policyLoss": 1.8836759983248055,
+        "valueMSE": 0.20508789205293107,
+        "top1Agreement": 0.22552227535867103,
+        "top3Agreement": 0.5449282657941102,
+        "policyEntropy": 1.8400505093762474,
+        "calibration": [
+          {
+            "bin": [
+              -1.0,
+              -0.6
+            ],
+            "count": 263,
+            "meanPredicted": -0.7855005966846481,
+            "meanTarget": -0.43173386543252623,
+            "absError": 0.3537667312521219
+          },
+          {
+            "bin": [
+              -0.6,
+              -0.2
+            ],
+            "count": 440,
+            "meanPredicted": -0.38940811814232307,
+            "meanTarget": -0.2705440154098059,
+            "absError": 0.11886410273251719
+          },
+          {
+            "bin": [
+              -0.2,
+              0.2
+            ],
+            "count": 2478,
+            "meanPredicted": 0.006620102250735543,
+            "meanTarget": -0.005975104038800166,
+            "absError": 0.012595206289535709
+          },
+          {
+            "bin": [
+              0.2,
+              0.6
+            ],
+            "count": 504,
+            "meanPredicted": 0.3856944114501987,
+            "meanTarget": 0.22520261280430806,
+            "absError": 0.16049179864589067
+          },
+          {
+            "bin": [
+              0.6,
+              1.0
+            ],
+            "count": 288,
+            "meanPredicted": 0.7791587691754103,
+            "meanTarget": 0.5845464823794626,
+            "absError": 0.19461228679594766
+          }
+        ]
+      }
+    },
+    {
+      "epoch": 10,
+      "trainLoss": 1.8426537272616388,
+      "validation": {
+        "policyLoss": 1.8829041527705621,
+        "valueMSE": 0.2083092541020132,
+        "top1Agreement": 0.22728416813491065,
+        "top3Agreement": 0.5371255977850491,
+        "policyEntropy": 1.8393951308178176,
+        "calibration": [
+          {
+            "bin": [
+              -1.0,
+              -0.6
+            ],
+            "count": 259,
+            "meanPredicted": -0.7905850553144359,
+            "meanTarget": -0.4927205059346545,
+            "absError": 0.2978645493797814
+          },
+          {
+            "bin": [
+              -0.6,
+              -0.2
+            ],
+            "count": 407,
+            "meanPredicted": -0.39500120567748237,
+            "meanTarget": -0.20504383454945954,
+            "absError": 0.18995737112802283
+          },
+          {
+            "bin": [
+              -0.2,
+              0.2
+            ],
+            "count": 2549,
+            "meanPredicted": -0.0002174117028689112,
+            "meanTarget": -0.0025490427591332637,
+            "absError": 0.0023316310562643524
+          },
+          {
+            "bin": [
+              0.2,
+              0.6
+            ],
+            "count": 495,
+            "meanPredicted": 0.3890227774176935,
+            "meanTarget": 0.2201363705901777,
+            "absError": 0.16888640682751577
+          },
+          {
+            "bin": [
+              0.6,
+              1.0
+            ],
+            "count": 263,
+            "meanPredicted": 0.7804935830627557,
+            "meanTarget": 0.5439440335780948,
+            "absError": 0.2365495494846609
+          }
+        ]
+      }
+    },
+    {
+      "epoch": 11,
+      "trainLoss": 1.8270024136900684,
+      "validation": {
+        "policyLoss": 1.8916502214336228,
+        "valueMSE": 0.2061640123351227,
+        "top1Agreement": 0.21998489806191796,
+        "top3Agreement": 0.5466901585703499,
+        "policyEntropy": 1.830067958484931,
+        "calibration": [
+          {
+            "bin": [
+              -1.0,
+              -0.6
+            ],
+            "count": 230,
+            "meanPredicted": -0.7837267966374107,
+            "meanTarget": -0.4685167967301348,
+            "absError": 0.31520999990727594
+          },
+          {
+            "bin": [
+              -0.6,
+              -0.2
+            ],
+            "count": 426,
+            "meanPredicted": -0.37495319412347855,
+            "meanTarget": -0.2532313878827252,
+            "absError": 0.12172180624075335
+          },
+          {
+            "bin": [
+              -0.2,
+              0.2
+            ],
+            "count": 2577,
+            "meanPredicted": 0.006349040625273941,
+            "meanTarget": -0.003101783022304385,
+            "absError": 0.009450823647578327
+          },
+          {
+            "bin": [
+              0.2,
+              0.6
+            ],
+            "count": 507,
+            "meanPredicted": 0.37784606241850693,
+            "meanTarget": 0.22975320558071033,
+            "absError": 0.1480928568377966
+          },
+          {
+            "bin": [
+              0.6,
+              1.0
+            ],
+            "count": 233,
+            "meanPredicted": 0.7637790589885138,
+            "meanTarget": 0.6077411016586732,
+            "absError": 0.1560379573298406
+          }
+        ]
+      }
+    },
+    {
+      "epoch": 12,
+      "trainLoss": 1.8139335018241343,
+      "validation": {
+        "policyLoss": 1.8985212552526451,
+        "valueMSE": 0.20987784848266006,
+        "top1Agreement": 0.2162094135414045,
+        "top3Agreement": 0.5388874905612887,
+        "policyEntropy": 1.8243138390165896,
+        "calibration": [
+          {
+            "bin": [
+              -1.0,
+              -0.6
+            ],
+            "count": 297,
+            "meanPredicted": -0.7962288033681285,
+            "meanTarget": -0.4724383812134314,
+            "absError": 0.3237904221546971
+          },
+          {
+            "bin": [
+              -0.6,
+              -0.2
+            ],
+            "count": 449,
+            "meanPredicted": -0.3836737114164505,
+            "meanTarget": -0.20300934614742253,
+            "absError": 0.180664365269028
+          },
+          {
+            "bin": [
+              -0.2,
+              0.2
+            ],
+            "count": 2523,
+            "meanPredicted": -0.009454908987179711,
+            "meanTarget": 0.005769527354702173,
+            "absError": 0.015224436341881885
+          },
+          {
+            "bin": [
+              0.2,
+              0.6
+            ],
+            "count": 444,
+            "meanPredicted": 0.38666270079242215,
+            "meanTarget": 0.2456537976599852,
+            "absError": 0.14100890313243694
+          },
+          {
+            "bin": [
+              0.6,
+              1.0
+            ],
+            "count": 260,
+            "meanPredicted": 0.7834189525017372,
+            "meanTarget": 0.5473015944041365,
+            "absError": 0.2361173580976007
+          }
+        ]
+      }
+    },
+    {
+      "epoch": 13,
+      "trainLoss": 1.8070512636680183,
+      "validation": {
+        "policyLoss": 1.8971074246172037,
+        "valueMSE": 0.20979337135070583,
+        "top1Agreement": 0.2219984898061918,
+        "top3Agreement": 0.5393908884973572,
+        "policyEntropy": 1.823312194918074,
+        "calibration": [
+          {
+            "bin": [
+              -1.0,
+              -0.6
+            ],
+            "count": 225,
+            "meanPredicted": -0.7718930260340373,
+            "meanTarget": -0.49306509140697824,
+            "absError": 0.27882793462705907
+          },
+          {
+            "bin": [
+              -0.6,
+              -0.2
+            ],
+            "count": 401,
+            "meanPredicted": -0.378545443761973,
+            "meanTarget": -0.2596201341274947,
+            "absError": 0.11892530963447834
+          },
+          {
+            "bin": [
+              -0.2,
+              0.2
+            ],
+            "count": 2505,
+            "meanPredicted": -0.0009052772449744036,
+            "meanTarget": -0.005028577350561475,
+            "absError": 0.004123300105587071
+          },
+          {
+            "bin": [
+              0.2,
+              0.6
+            ],
+            "count": 538,
+            "meanPredicted": 0.3849916448435819,
+            "meanTarget": 0.1904187040844046,
+            "absError": 0.1945729407591773
+          },
+          {
+            "bin": [
+              0.6,
+              1.0
+            ],
+            "count": 304,
+            "meanPredicted": 0.7801072836706513,
+            "meanTarget": 0.5251923203910625,
+            "absError": 0.25491496327958885
+          }
+        ]
+      }
+    },
+    {
+      "epoch": 14,
+      "trainLoss": 1.7973869507112952,
+      "validation": {
+        "policyLoss": 1.899898945340095,
+        "valueMSE": 0.2077943036215989,
+        "top1Agreement": 0.2285426629750818,
+        "top3Agreement": 0.5419078781776995,
+        "policyEntropy": 1.8191349690307936,
+        "calibration": [
+          {
+            "bin": [
+              -1.0,
+              -0.6
+            ],
+            "count": 290,
+            "meanPredicted": -0.7937451551700461,
+            "meanTarget": -0.47162098002074093,
+            "absError": 0.32212417514930514
+          },
+          {
+            "bin": [
+              -0.6,
+              -0.2
+            ],
+            "count": 459,
+            "meanPredicted": -0.3728897320613882,
+            "meanTarget": -0.20880697855283556,
+            "absError": 0.16408275350855264
+          },
+          {
+            "bin": [
+              -0.2,
+              0.2
+            ],
+            "count": 2448,
+            "meanPredicted": -0.009697800042166955,
+            "meanTarget": -0.0015603469416413157,
+            "absError": 0.00813745310052564
+          },
+          {
+            "bin": [
+              0.2,
+              0.6
+            ],
+            "count": 491,
+            "meanPredicted": 0.38498108905347445,
+            "meanTarget": 0.24105544646209875,
+            "absError": 0.1439256425913757
+          },
+          {
+            "bin": [
+              0.6,
+              1.0
+            ],
+            "count": 285,
+            "meanPredicted": 0.7832367275890552,
+            "meanTarget": 0.5352063685735247,
+            "absError": 0.2480303590155305
+          }
+        ]
+      }
+    },
+    {
+      "epoch": 15,
+      "trainLoss": 1.79113930766339,
+      "validation": {
+        "policyLoss": 1.896173371675781,
+        "valueMSE": 0.21534160591179977,
+        "top1Agreement": 0.2245154794865341,
+        "top3Agreement": 0.5363705008809464,
+        "policyEntropy": 1.8201345280019097,
+        "calibration": [
+          {
+            "bin": [
+              -1.0,
+              -0.6
+            ],
+            "count": 320,
+            "meanPredicted": -0.7933170190081,
+            "meanTarget": -0.4665192563103119,
+            "absError": 0.32679776269778815
+          },
+          {
+            "bin": [
+              -0.6,
+              -0.2
+            ],
+            "count": 394,
+            "meanPredicted": -0.3822226540237514,
+            "meanTarget": -0.21653199259314077,
+            "absError": 0.16569066143061062
+          },
+          {
+            "bin": [
+              -0.2,
+              0.2
+            ],
+            "count": 2405,
+            "meanPredicted": 0.0020405520894976135,
+            "meanTarget": 2.5763584585500234e-05,
+            "absError": 0.0020147885049121134
+          },
+          {
+            "bin": [
+              0.2,
+              0.6
+            ],
+            "count": 504,
+            "meanPredicted": 0.3817954118407908,
+            "meanTarget": 0.20879183853523703,
+            "absError": 0.17300357330555377
+          },
+          {
+            "bin": [
+              0.6,
+              1.0
+            ],
+            "count": 350,
+            "meanPredicted": 0.7882146438530513,
+            "meanTarget": 0.467904404685001,
+            "absError": 0.3203102391680503
+          }
+        ]
+      }
+    },
+    {
+      "epoch": 16,
+      "trainLoss": 1.7848247792222258,
+      "validation": {
+        "policyLoss": 1.903581140805275,
+        "valueMSE": 0.21502685357844412,
+        "top1Agreement": 0.22728416813491065,
+        "top3Agreement": 0.5476969544424868,
+        "policyEntropy": 1.814251337548272,
+        "calibration": [
+          {
+            "bin": [
+              -1.0,
+              -0.6
+            ],
+            "count": 240,
+            "meanPredicted": -0.7846672482788563,
+            "meanTarget": -0.4874121349925796,
+            "absError": 0.29725511328627663
+          },
+          {
+            "bin": [
+              -0.6,
+              -0.2
+            ],
+            "count": 368,
+            "meanPredicted": -0.3682364744498678,
+            "meanTarget": -0.2654070652775851,
+            "absError": 0.10282940917228267
+          },
+          {
+            "bin": [
+              -0.2,
+              0.2
+            ],
+            "count": 2446,
+            "meanPredicted": -0.0011149681818070697,
+            "meanTarget": -0.014926114593960349,
+            "absError": 0.013811146412153278
+          },
+          {
+            "bin": [
+              0.2,
+              0.6
+            ],
+            "count": 550,
+            "meanPredicted": 0.395794974565506,
+            "meanTarget": 0.19799285697708413,
+            "absError": 0.19780211758842187
+          },
+          {
+            "bin": [
+              0.6,
+              1.0
+            ],
+            "count": 369,
+            "meanPredicted": 0.7971134300477459,
+            "meanTarget": 0.4789207045020104,
+            "absError": 0.3181927255457355
+          }
+        ]
+      }
+    },
+    {
+      "epoch": 17,
+      "trainLoss": 1.7793483567013673,
+      "validation": {
+        "policyLoss": 1.897332790004136,
+        "valueMSE": 0.21468891617095415,
+        "top1Agreement": 0.21998489806191796,
+        "top3Agreement": 0.5386357915932545,
+        "policyEntropy": 1.823594344403382,
+        "calibration": [
+          {
+            "bin": [
+              -1.0,
+              -0.6
+            ],
+            "count": 258,
+            "meanPredicted": -0.7867530247037725,
+            "meanTarget": -0.46529244084489646,
+            "absError": 0.32146058385887605
+          },
+          {
+            "bin": [
+              -0.6,
+              -0.2
+            ],
+            "count": 415,
+            "meanPredicted": -0.37783025312854585,
+            "meanTarget": -0.26197739546565924,
+            "absError": 0.11585285766288661
+          },
+          {
+            "bin": [
+              -0.2,
+              0.2
+            ],
+            "count": 2452,
+            "meanPredicted": 0.0014192958705521873,
+            "meanTarget": -0.002602055693471798,
+            "absError": 0.004021351564023985
+          },
+          {
+            "bin": [
+              0.2,
+              0.6
+            ],
+            "count": 513,
+            "meanPredicted": 0.3800801109326513,
+            "meanTarget": 0.21600582921690512,
+            "absError": 0.1640742817157462
+          },
+          {
+            "bin": [
+              0.6,
+              1.0
+            ],
+            "count": 335,
+            "meanPredicted": 0.7931591163820295,
+            "meanTarget": 0.47401534808893453,
+            "absError": 0.319143768293095
+          }
+        ]
+      }
+    },
+    {
+      "epoch": 18,
+      "trainLoss": 1.7750891989906974,
+      "validation": {
+        "policyLoss": 1.902703716987151,
+        "valueMSE": 0.21916079373405287,
+        "top1Agreement": 0.22879436194311603,
+        "top3Agreement": 0.5386357915932545,
+        "policyEntropy": 1.8164619741768673,
+        "calibration": [
+          {
+            "bin": [
+              -1.0,
+              -0.6
+            ],
+            "count": 253,
+            "meanPredicted": -0.7812851874724679,
+            "meanTarget": -0.48316127815736615,
+            "absError": 0.29812390931510174
+          },
+          {
+            "bin": [
+              -0.6,
+              -0.2
+            ],
+            "count": 395,
+            "meanPredicted": -0.3829917695326141,
+            "meanTarget": -0.24355935815108729,
+            "absError": 0.13943241138152682
+          },
+          {
+            "bin": [
+              -0.2,
+              0.2
+            ],
+            "count": 2482,
+            "meanPredicted": -0.01163312995051982,
+            "meanTarget": -0.005972151703579842,
+            "absError": 0.005660978246939978
+          },
+          {
+            "bin": [
+              0.2,
+              0.6
+            ],
+            "count": 475,
+            "meanPredicted": 0.3959815487422441,
+            "meanTarget": 0.21254241929291504,
+            "absError": 0.18343912944932908
+          },
+          {
+            "bin": [
+              0.6,
+              1.0
+            ],
+            "count": 368,
+            "meanPredicted": 0.8032076661677464,
+            "meanTarget": 0.45318153203555517,
+            "absError": 0.35002613413219125
+          }
+        ]
+      }
+    },
+    {
+      "epoch": 19,
+      "trainLoss": 1.769922899725324,
+      "validation": {
+        "policyLoss": 1.906289023954563,
+        "valueMSE": 0.21484796481200918,
+        "top1Agreement": 0.21822300528567834,
+        "top3Agreement": 0.5313365215202618,
+        "policyEntropy": 1.811331973368714,
+        "calibration": [
+          {
+            "bin": [
+              -1.0,
+              -0.6
+            ],
+            "count": 275,
+            "meanPredicted": -0.7926104829528114,
+            "meanTarget": -0.4784597778862173,
+            "absError": 0.31415070506659415
+          },
+          {
+            "bin": [
+              -0.6,
+              -0.2
+            ],
+            "count": 462,
+            "meanPredicted": -0.3757603613264633,
+            "meanTarget": -0.20297396796588177,
+            "absError": 0.17278639336058152
+          },
+          {
+            "bin": [
+              -0.2,
+              0.2
+            ],
+            "count": 2425,
+            "meanPredicted": -0.008080545720121027,
+            "meanTarget": -0.0020751889716814627,
+            "absError": 0.006005356748439564
+          },
+          {
+            "bin": [
+              0.2,
+              0.6
+            ],
+            "count": 491,
+            "meanPredicted": 0.38243955750086644,
+            "meanTarget": 0.19915009164080677,
+            "absError": 0.18328946586005967
+          },
+          {
+            "bin": [
+              0.6,
+              1.0
+            ],
+            "count": 320,
+            "meanPredicted": 0.7852927075698972,
+            "meanTarget": 0.5220621030033726,
+            "absError": 0.2632306045665246
+          }
+        ]
+      }
+    },
+    {
+      "epoch": 20,
+      "trainLoss": 1.766398044069613,
+      "validation": {
+        "policyLoss": 1.9022336672872433,
+        "valueMSE": 0.2067610791429836,
+        "top1Agreement": 0.2219984898061918,
+        "top3Agreement": 0.5376289957211176,
+        "policyEntropy": 1.8207864554619086,
+        "calibration": [
+          {
+            "bin": [
+              -1.0,
+              -0.6
+            ],
+            "count": 216,
+            "meanPredicted": -0.7838339957374113,
+            "meanTarget": -0.5017992865008031,
+            "absError": 0.2820347092366082
+          },
+          {
+            "bin": [
+              -0.6,
+              -0.2
+            ],
+            "count": 418,
+            "meanPredicted": -0.3750368840814207,
+            "meanTarget": -0.2979331124053419,
+            "absError": 0.07710377167607879
+          },
+          {
+            "bin": [
+              -0.2,
+              0.2
+            ],
+            "count": 2481,
+            "meanPredicted": 0.0026979599469713904,
+            "meanTarget": -0.003047606035913478,
+            "absError": 0.005745565982884868
+          },
+          {
+            "bin": [
+              0.2,
+              0.6
+            ],
+            "count": 528,
+            "meanPredicted": 0.38158847194052103,
+            "meanTarget": 0.19554875534474073,
+            "absError": 0.1860397165957803
+          },
+          {
+            "bin": [
+              0.6,
+              1.0
+            ],
+            "count": 330,
+            "meanPredicted": 0.7918419395432328,
+            "meanTarget": 0.5202905369821978,
+            "absError": 0.27155140256103494
+          }
+        ]
+      }
+    },
+    {
+      "epoch": 21,
+      "trainLoss": 1.7620029720373243,
+      "validation": {
+        "policyLoss": 1.9113167654258791,
+        "valueMSE": 0.224180736695973,
+        "top1Agreement": 0.22225018877422603,
+        "top3Agreement": 0.528316133903851,
+        "policyEntropy": 1.8049391860959514,
+        "calibration": [
+          {
+            "bin": [
+              -1.0,
+              -0.6
+            ],
+            "count": 300,
+            "meanPredicted": -0.7984285052617391,
+            "meanTarget": -0.4212507025790789,
+            "absError": 0.37717780268266027
+          },
+          {
+            "bin": [
+              -0.6,
+              -0.2
+            ],
+            "count": 467,
+            "meanPredicted": -0.3733138065202844,
+            "meanTarget": -0.21143513103950534,
+            "absError": 0.16187867548077906
+          },
+          {
+            "bin": [
+              -0.2,
+              0.2
+            ],
+            "count": 2399,
+            "meanPredicted": -0.012825131473824827,
+            "meanTarget": 0.004015912564901115,
+            "absError": 0.016841044038725942
+          },
+          {
+            "bin": [
+              0.2,
+              0.6
+            ],
+            "count": 463,
+            "meanPredicted": 0.3822927001228085,
+            "meanTarget": 0.1851161108427675,
+            "absError": 0.19717658928004103
+          },
+          {
+            "bin": [
+              0.6,
+              1.0
+            ],
+            "count": 344,
+            "meanPredicted": 0.7992329321974931,
+            "meanTarget": 0.4774194941488785,
+            "absError": 0.3218134380486146
+          }
+        ]
+      }
+    },
+    {
+      "epoch": 22,
+      "trainLoss": 1.7577067341187083,
+      "validation": {
+        "policyLoss": 1.9184051056277862,
+        "valueMSE": 0.208652021451048,
+        "top1Agreement": 0.21469921973319908,
+        "top3Agreement": 0.5252957462874402,
+        "policyEntropy": 1.80293022485095,
+        "calibration": [
+          {
+            "bin": [
+              -1.0,
+              -0.6
+            ],
+            "count": 229,
+            "meanPredicted": -0.8007719982659453,
+            "meanTarget": -0.4934676266946387,
+            "absError": 0.3073043715713066
+          },
+          {
+            "bin": [
+              -0.6,
+              -0.2
+            ],
+            "count": 433,
+            "meanPredicted": -0.3689541670797053,
+            "meanTarget": -0.2619971689718666,
+            "absError": 0.10695699810783871
+          },
+          {
+            "bin": [
+              -0.2,
+              0.2
+            ],
+            "count": 2542,
+            "meanPredicted": -0.006065070182956549,
+            "meanTarget": 0.0039240390802499124,
+            "absError": 0.009989109263206461
+          },
+          {
+            "bin": [
+              0.2,
+              0.6
+            ],
+            "count": 498,
+            "meanPredicted": 0.3883973051266498,
+            "meanTarget": 0.21326080579207798,
+            "absError": 0.1751364993345718
+          },
+          {
+            "bin": [
+              0.6,
+              1.0
+            ],
+            "count": 271,
+            "meanPredicted": 0.7946433809850488,
+            "meanTarget": 0.5340586517818489,
+            "absError": 0.26058472920319997
+          }
+        ]
+      }
+    },
+    {
+      "epoch": 23,
+      "trainLoss": 1.7553667241305073,
+      "validation": {
+        "policyLoss": 1.91279937078993,
+        "valueMSE": 0.20420695978959683,
+        "top1Agreement": 0.22149509187012334,
+        "top3Agreement": 0.5363705008809464,
+        "policyEntropy": 1.8044376532616797,
+        "calibration": [
+          {
+            "bin": [
+              -1.0,
+              -0.6
+            ],
+            "count": 225,
+            "meanPredicted": -0.8012777596049838,
+            "meanTarget": -0.5177619905438688,
+            "absError": 0.283515769061115
+          },
+          {
+            "bin": [
+              -0.6,
+              -0.2
+            ],
+            "count": 394,
+            "meanPredicted": -0.38339652548435377,
+            "meanTarget": -0.2725835373166589,
+            "absError": 0.11081298816769486
+          },
+          {
+            "bin": [
+              -0.2,
+              0.2
+            ],
+            "count": 2526,
+            "meanPredicted": -0.005313127810846695,
+            "meanTarget": -0.008772345605759454,
+            "absError": 0.0034592177949127586
+          },
+          {
+            "bin": [
+              0.2,
+              0.6
+            ],
+            "count": 524,
+            "meanPredicted": 0.3863059626678929,
+            "meanTarget": 0.22309774628934587,
+            "absError": 0.16320821637854704
+          },
+          {
+            "bin": [
+              0.6,
+              1.0
+            ],
+            "count": 304,
+            "meanPredicted": 0.8008384445780202,
+            "meanTarget": 0.5381904937536379,
+            "absError": 0.2626479508243823
+          }
+        ]
+      }
+    },
+    {
+      "epoch": 24,
+      "trainLoss": 1.7517042614511407,
+      "validation": {
+        "policyLoss": 1.9129760927857544,
+        "valueMSE": 0.205818393939753,
+        "top1Agreement": 0.21922980115781526,
+        "top3Agreement": 0.5396425874653914,
+        "policyEntropy": 1.8046651195285603,
+        "calibration": [
+          {
+            "bin": [
+              -1.0,
+              -0.6
+            ],
+            "count": 249,
+            "meanPredicted": -0.8049266508305408,
+            "meanTarget": -0.4900902749963075,
+            "absError": 0.31483637583423335
+          },
+          {
+            "bin": [
+              -0.6,
+              -0.2
+            ],
+            "count": 418,
+            "meanPredicted": -0.3936067834567796,
+            "meanTarget": -0.2712538719832291,
+            "absError": 0.12235291147355049
+          },
+          {
+            "bin": [
+              -0.2,
+              0.2
+            ],
+            "count": 2553,
+            "meanPredicted": -0.0015480433681749407,
+            "meanTarget": 0.002605862352317451,
+            "absError": 0.004153905720492392
+          },
+          {
+            "bin": [
+              0.2,
+              0.6
+            ],
+            "count": 461,
+            "meanPredicted": 0.3831945044552168,
+            "meanTarget": 0.21354680289736588,
+            "absError": 0.16964770155785092
+          },
+          {
+            "bin": [
+              0.6,
+              1.0
+            ],
+            "count": 292,
+            "meanPredicted": 0.7921964207740679,
+            "meanTarget": 0.5643101946005441,
+            "absError": 0.22788622617352383
+          }
+        ]
+      }
+    },
+    {
+      "epoch": 25,
+      "trainLoss": 1.7479734356773007,
+      "validation": {
+        "policyLoss": 1.916235893702225,
+        "valueMSE": 0.21131198803183715,
+        "top1Agreement": 0.20488295997986408,
+        "top3Agreement": 0.5325950163604329,
+        "policyEntropy": 1.8066105392817553,
+        "calibration": [
+          {
+            "bin": [
+              -1.0,
+              -0.6
+            ],
+            "count": 266,
+            "meanPredicted": -0.788442241518121,
+            "meanTarget": -0.46925792601016436,
+            "absError": 0.3191843155079567
+          },
+          {
+            "bin": [
+              -0.6,
+              -0.2
+            ],
+            "count": 407,
+            "meanPredicted": -0.37877943178213197,
+            "meanTarget": -0.2774229738001794,
+            "absError": 0.10135645798195259
+          },
+          {
+            "bin": [
+              -0.2,
+              0.2
+            ],
+            "count": 2470,
+            "meanPredicted": -0.0029509252346255573,
+            "meanTarget": 0.0017628688580612936,
+            "absError": 0.004713794092686851
+          },
+          {
+            "bin": [
+              0.2,
+              0.6
+            ],
+            "count": 494,
+            "meanPredicted": 0.3867120262883935,
+            "meanTarget": 0.20058279442421806,
+            "absError": 0.18612923186417546
+          },
+          {
+            "bin": [
+              0.6,
+              1.0
+            ],
+            "count": 336,
+            "meanPredicted": 0.7978857402645406,
+            "meanTarget": 0.5022362937852449,
+            "absError": 0.2956494464792957
+          }
+        ]
+      }
+    },
+    {
+      "epoch": 26,
+      "trainLoss": 1.7452216903169684,
+      "validation": {
+        "policyLoss": 1.9206448521867316,
+        "valueMSE": 0.2011402633473401,
+        "top1Agreement": 0.2149509187012333,
+        "top3Agreement": 0.5212685627988926,
+        "policyEntropy": 1.7982191615221095,
+        "calibration": [
+          {
+            "bin": [
+              -1.0,
+              -0.6
+            ],
+            "count": 217,
+            "meanPredicted": -0.8061972150604846,
+            "meanTarget": -0.5272025003651595,
+            "absError": 0.2789947146953251
+          },
+          {
+            "bin": [
+              -0.6,
+              -0.2
+            ],
+            "count": 458,
+            "meanPredicted": -0.36993631824655826,
+            "meanTarget": -0.29743693707974456,
+            "absError": 0.0724993811668137
+          },
+          {
+            "bin": [
+              -0.2,
+              0.2
+            ],
+            "count": 2524,
+            "meanPredicted": -0.007547868677820747,
+            "meanTarget": 0.004658462426622609,
+            "absError": 0.012206331104443356
+          },
+          {
+            "bin": [
+              0.2,
+              0.6
+            ],
+            "count": 455,
+            "meanPredicted": 0.38225587013658585,
+            "meanTarget": 0.22640173136522726,
+            "absError": 0.1558541387713586
+          },
+          {
+            "bin": [
+              0.6,
+              1.0
+            ],
+            "count": 319,
+            "meanPredicted": 0.794011837449567,
+            "meanTarget": 0.5339126501794026,
+            "absError": 0.26009918727016446
+          }
+        ]
+      }
+    },
+    {
+      "epoch": 27,
+      "trainLoss": 1.7432181853759312,
+      "validation": {
+        "policyLoss": 1.9207635159880156,
+        "valueMSE": 0.20737587043388706,
+        "top1Agreement": 0.21142713314875408,
+        "top3Agreement": 0.5403976843694941,
+        "policyEntropy": 1.7981729794292705,
+        "calibration": [
+          {
+            "bin": [
+              -1.0,
+              -0.6
+            ],
+            "count": 230,
+            "meanPredicted": -0.7960468336291935,
+            "meanTarget": -0.5216116066860116,
+            "absError": 0.2744352269431819
+          },
+          {
+            "bin": [
+              -0.6,
+              -0.2
+            ],
+            "count": 435,
+            "meanPredicted": -0.3734661668539047,
+            "meanTarget": -0.2570621776105515,
+            "absError": 0.11640398924335321
+          },
+          {
+            "bin": [
+              -0.2,
+              0.2
+            ],
+            "count": 2508,
+            "meanPredicted": -0.0032311668195836936,
+            "meanTarget": -0.002551870057357481,
+            "absError": 0.0006792967622262125
+          },
+          {
+            "bin": [
+              0.2,
+              0.6
+            ],
+            "count": 482,
+            "meanPredicted": 0.3752859327555692,
+            "meanTarget": 0.23170527381797348,
+            "absError": 0.14358065893759572
+          },
+          {
+            "bin": [
+              0.6,
+              1.0
+            ],
+            "count": 318,
+            "meanPredicted": 0.7930801385228738,
+            "meanTarget": 0.5061971305138446,
+            "absError": 0.2868830080090292
+          }
+        ]
+      }
+    },
+    {
+      "epoch": 28,
+      "trainLoss": 1.7392665221198418,
+      "validation": {
+        "policyLoss": 1.9196140510502433,
+        "valueMSE": 0.20869143758407024,
+        "top1Agreement": 0.20941354140448024,
+        "top3Agreement": 0.5308331235841933,
+        "policyEntropy": 1.8003144263621094,
+        "calibration": [
+          {
+            "bin": [
+              -1.0,
+              -0.6
+            ],
+            "count": 235,
+            "meanPredicted": -0.8056141759486909,
+            "meanTarget": -0.5059355593900732,
+            "absError": 0.2996786165586177
+          },
+          {
+            "bin": [
+              -0.6,
+              -0.2
+            ],
+            "count": 401,
+            "meanPredicted": -0.37754295721761605,
+            "meanTarget": -0.2972532836209397,
+            "absError": 0.08028967359667633
+          },
+          {
+            "bin": [
+              -0.2,
+              0.2
+            ],
+            "count": 2490,
+            "meanPredicted": -9.359008278211496e-05,
+            "meanTarget": -0.0024143364981291855,
+            "absError": 0.0023207464153470704
+          },
+          {
+            "bin": [
+              0.2,
+              0.6
+            ],
+            "count": 486,
+            "meanPredicted": 0.37426873130930793,
+            "meanTarget": 0.21908073514985466,
+            "absError": 0.15518799615945328
+          },
+          {
+            "bin": [
+              0.6,
+              1.0
+            ],
+            "count": 361,
+            "meanPredicted": 0.800118007488198,
+            "meanTarget": 0.4767083278881358,
+            "absError": 0.32340967960006217
+          }
+        ]
+      }
+    },
+    {
+      "epoch": 29,
+      "trainLoss": 1.7372660640298547,
+      "validation": {
+        "policyLoss": 1.9324070520374597,
+        "valueMSE": 0.20265043729983256,
+        "top1Agreement": 0.21419582179713062,
+        "top3Agreement": 0.5451799647621445,
+        "policyEntropy": 1.7883304699884084,
+        "calibration": [
+          {
+            "bin": [
+              -1.0,
+              -0.6
+            ],
+            "count": 243,
+            "meanPredicted": -0.8108948469161987,
+            "meanTarget": -0.5074447672124263,
+            "absError": 0.30345007970377247
+          },
+          {
+            "bin": [
+              -0.6,
+              -0.2
+            ],
+            "count": 450,
+            "meanPredicted": -0.3690342159072558,
+            "meanTarget": -0.2361750519503322,
+            "absError": 0.13285916395692363
+          },
+          {
+            "bin": [
+              -0.2,
+              0.2
+            ],
+            "count": 2558,
+            "meanPredicted": -0.00794377841050023,
+            "meanTarget": -0.0015823283205715396,
+            "absError": 0.00636145008992869
+          },
+          {
+            "bin": [
+              0.2,
+              0.6
+            ],
+            "count": 435,
+            "meanPredicted": 0.3780597578177507,
+            "meanTarget": 0.25508015954428104,
+            "absError": 0.12297959827346966
+          },
+          {
+            "bin": [
+              0.6,
+              1.0
+            ],
+            "count": 287,
+            "meanPredicted": 0.7837557333687041,
+            "meanTarget": 0.5475101074354337,
+            "absError": 0.23624562593327036
+          }
+        ]
+      }
+    },
+    {
+      "epoch": 30,
+      "trainLoss": 1.7338832026364122,
+      "validation": {
+        "policyLoss": 1.91949189648411,
+        "valueMSE": 0.20174586607891998,
+        "top1Agreement": 0.21520261766926754,
+        "top3Agreement": 0.5378806946891518,
+        "policyEntropy": 1.8001812733062832,
+        "calibration": [
+          {
+            "bin": [
+              -1.0,
+              -0.6
+            ],
+            "count": 235,
+            "meanPredicted": -0.8094084087838518,
+            "meanTarget": -0.49869439830394224,
+            "absError": 0.31071401047990954
+          },
+          {
+            "bin": [
+              -0.6,
+              -0.2
+            ],
+            "count": 414,
+            "meanPredicted": -0.37908088394265244,
+            "meanTarget": -0.28034028783089093,
+            "absError": 0.0987405961117615
+          },
+          {
+            "bin": [
+              -0.2,
+              0.2
+            ],
+            "count": 2581,
+            "meanPredicted": 0.0002821682646782388,
+            "meanTarget": -0.0020296248204191352,
+            "absError": 0.002311793085097374
+          },
+          {
+            "bin": [
+              0.2,
+              0.6
+            ],
+            "count": 433,
+            "meanPredicted": 0.37026126975275353,
+            "meanTarget": 0.26614777659771505,
+            "absError": 0.10411349315503848
+          },
+          {
+            "bin": [
+              0.6,
+              1.0
+            ],
+            "count": 310,
+            "meanPredicted": 0.8076501623276742,
+            "meanTarget": 0.508743095934023,
+            "absError": 0.29890706639365117
+          }
+        ]
+      }
+    },
+    {
+      "epoch": 31,
+      "trainLoss": 1.7302616510499154,
+      "validation": {
+        "policyLoss": 1.9257434885897327,
+        "valueMSE": 0.2062853772934876,
+        "top1Agreement": 0.20966524037251447,
+        "top3Agreement": 0.5325950163604329,
+        "policyEntropy": 1.7952154164286667,
+        "calibration": [
+          {
+            "bin": [
+              -1.0,
+              -0.6
+            ],
+            "count": 218,
+            "meanPredicted": -0.8171188481357119,
+            "meanTarget": -0.5806111018899658,
+            "absError": 0.2365077462457461
+          },
+          {
+            "bin": [
+              -0.6,
+              -0.2
+            ],
+            "count": 435,
+            "meanPredicted": -0.37182417570174425,
+            "meanTarget": -0.2616439587404502,
+            "absError": 0.11018021696129404
+          },
+          {
+            "bin": [
+              -0.2,
+              0.2
+            ],
+            "count": 2509,
+            "meanPredicted": -0.000642490726506806,
+            "meanTarget": 0.00565739207407931,
+            "absError": 0.006299882800586116
+          },
+          {
+            "bin": [
+              0.2,
+              0.6
+            ],
+            "count": 472,
+            "meanPredicted": 0.38433074228212993,
+            "meanTarget": 0.19295072877509284,
+            "absError": 0.1913800135070371
+          },
+          {
+            "bin": [
+              0.6,
+              1.0
+            ],
+            "count": 339,
+            "meanPredicted": 0.8120409199270175,
+            "meanTarget": 0.5002390092915641,
+            "absError": 0.3118019106354535
+          }
+        ]
+      }
+    },
+    {
+      "epoch": 32,
+      "trainLoss": 1.7284910448713462,
+      "validation": {
+        "policyLoss": 1.9249282398723158,
+        "valueMSE": 0.20931140562013567,
+        "top1Agreement": 0.2106720362446514,
+        "top3Agreement": 0.5285678328718852,
+        "policyEntropy": 1.7940825312137003,
+        "calibration": [
+          {
+            "bin": [
+              -1.0,
+              -0.6
+            ],
+            "count": 211,
+            "meanPredicted": -0.8178632748070487,
+            "meanTarget": -0.5182889849477187,
+            "absError": 0.29957428985933
+          },
+          {
+            "bin": [
+              -0.6,
+              -0.2
+            ],
+            "count": 440,
+            "meanPredicted": -0.3689106576822021,
+            "meanTarget": -0.2787919407470988,
+            "absError": 0.09011871693510332
+          },
+          {
+            "bin": [
+              -0.2,
+              0.2
+            ],
+            "count": 2527,
+            "meanPredicted": -0.003418392781695708,
+            "meanTarget": 0.0015068945048926424,
+            "absError": 0.004925287286588351
+          },
+          {
+            "bin": [
+              0.2,
+              0.6
+            ],
+            "count": 456,
+            "meanPredicted": 0.38199308122459213,
+            "meanTarget": 0.2006567079035704,
+            "absError": 0.18133637332102173
+          },
+          {
+            "bin": [
+              0.6,
+              1.0
+            ],
+            "count": 339,
+            "meanPredicted": 0.7992971499057646,
+            "meanTarget": 0.5049553720243096,
+            "absError": 0.294341777881455
+          }
+        ]
+      }
+    },
+    {
+      "epoch": 33,
+      "trainLoss": 1.7272089406791544,
+      "validation": {
+        "policyLoss": 1.9355034938603901,
+        "valueMSE": 0.20758619467947484,
+        "top1Agreement": 0.19959728165114524,
+        "top3Agreement": 0.5260508431915429,
+        "policyEntropy": 1.7856537060746012,
+        "calibration": [
+          {
+            "bin": [
+              -1.0,
+              -0.6
+            ],
+            "count": 221,
+            "meanPredicted": -0.8236771641273843,
+            "meanTarget": -0.5126965503583397,
+            "absError": 0.3109806137690446
+          },
+          {
+            "bin": [
+              -0.6,
+              -0.2
+            ],
+            "count": 419,
+            "meanPredicted": -0.3730577880201021,
+            "meanTarget": -0.2953844184260415,
+            "absError": 0.07767336959406057
+          },
+          {
+            "bin": [
+              -0.2,
+              0.2
+            ],
+            "count": 2523,
+            "meanPredicted": -0.0018448728603256252,
+            "meanTarget": 0.0010604930940917292,
+            "absError": 0.002905365954417354
+          },
+          {
+            "bin": [
+              0.2,
+              0.6
+            ],
+            "count": 497,
+            "meanPredicted": 0.37039590445562626,
+            "meanTarget": 0.21541000138059394,
+            "absError": 0.15498590307503232
+          },
+          {
+            "bin": [
+              0.6,
+              1.0
+            ],
+            "count": 313,
+            "meanPredicted": 0.811791534050585,
+            "meanTarget": 0.516924718110532,
+            "absError": 0.29486681594005304
+          }
+        ]
+      }
+    },
+    {
+      "epoch": 34,
+      "trainLoss": 1.7248960405244842,
+      "validation": {
+        "policyLoss": 1.9355665847692867,
+        "valueMSE": 0.20134212896171577,
+        "top1Agreement": 0.202617669267556,
+        "top3Agreement": 0.5295746287440222,
+        "policyEntropy": 1.7866725716097602,
+        "calibration": [
+          {
+            "bin": [
+              -1.0,
+              -0.6
+            ],
+            "count": 222,
+            "meanPredicted": -0.8086451912248457,
+            "meanTarget": -0.5462560102276437,
+            "absError": 0.262389180997202
+          },
+          {
+            "bin": [
+              -0.6,
+              -0.2
+            ],
+            "count": 472,
+            "meanPredicted": -0.36695016412285425,
+            "meanTarget": -0.23011290575022478,
+            "absError": 0.13683725837262947
+          },
+          {
+            "bin": [
+              -0.2,
+              0.2
+            ],
+            "count": 2569,
+            "meanPredicted": -0.01280478110177627,
+            "meanTarget": -0.0005350889539369301,
+            "absError": 0.012269692147839338
+          },
+          {
+            "bin": [
+              0.2,
+              0.6
+            ],
+            "count": 444,
+            "meanPredicted": 0.37433589219644264,
+            "meanTarget": 0.2762961865236001,
+            "absError": 0.09803970567284254
+          },
+          {
+            "bin": [
+              0.6,
+              1.0
+            ],
+            "count": 266,
+            "meanPredicted": 0.7988406764833551,
+            "meanTarget": 0.5377484401213127,
+            "absError": 0.2610922363620424
+          }
+        ]
+      }
+    },
+    {
+      "epoch": 35,
+      "trainLoss": 1.7227353696766443,
+      "validation": {
+        "policyLoss": 1.9356885729284932,
+        "valueMSE": 0.2041968570798523,
+        "top1Agreement": 0.212433929020891,
+        "top3Agreement": 0.5288195318399195,
+        "policyEntropy": 1.788131823324899,
+        "calibration": [
+          {
+            "bin": [
+              -1.0,
+              -0.6
+            ],
+            "count": 208,
+            "meanPredicted": -0.8167537241601027,
+            "meanTarget": -0.5045634715889509,
+            "absError": 0.31219025257115185
+          },
+          {
+            "bin": [
+              -0.6,
+              -0.2
+            ],
+            "count": 408,
+            "meanPredicted": -0.3698887202304368,
+            "meanTarget": -0.29565591512158895,
+            "absError": 0.07423280510884783
+          },
+          {
+            "bin": [
+              -0.2,
+              0.2
+            ],
+            "count": 2555,
+            "meanPredicted": 0.006405973085213667,
+            "meanTarget": -0.003951845272743087,
+            "absError": 0.010357818357956754
+          },
+          {
+            "bin": [
+              0.2,
+              0.6
+            ],
+            "count": 504,
+            "meanPredicted": 0.36765583716924227,
+            "meanTarget": 0.21403918560318988,
+            "absError": 0.1536166515660524
+          },
+          {
+            "bin": [
+              0.6,
+              1.0
+            ],
+            "count": 298,
+            "meanPredicted": 0.7996206937620304,
+            "meanTarget": 0.5444894401657773,
+            "absError": 0.2551312535962531
+          }
+        ]
+      }
+    },
+    {
+      "epoch": 36,
+      "trainLoss": 1.7210914827205421,
+      "validation": {
+        "policyLoss": 1.9382989501401036,
+        "valueMSE": 0.21081680937825117,
+        "top1Agreement": 0.20312106720362447,
+        "top3Agreement": 0.5257991442235087,
+        "policyEntropy": 1.7862967631692643,
+        "calibration": [
+          {
+            "bin": [
+              -1.0,
+              -0.6
+            ],
+            "count": 243,
+            "meanPredicted": -0.8265911706190541,
+            "meanTarget": -0.4620734221886924,
+            "absError": 0.36451774843036167
+          },
+          {
+            "bin": [
+              -0.6,
+              -0.2
+            ],
+            "count": 440,
+            "meanPredicted": -0.37621098451993684,
+            "meanTarget": -0.2928174008427463,
+            "absError": 0.08339358367719052
+          },
+          {
+            "bin": [
+              -0.2,
+              0.2
+            ],
+            "count": 2480,
+            "meanPredicted": -0.006809858278211322,
+            "meanTarget": 0.0012350969494652798,
+            "absError": 0.008044955227676603
+          },
+          {
+            "bin": [
+              0.2,
+              0.6
+            ],
+            "count": 461,
+            "meanPredicted": 0.3777716339862786,
+            "meanTarget": 0.19293776144669542,
+            "absError": 0.1848338725395832
+          },
+          {
+            "bin": [
+              0.6,
+              1.0
+            ],
+            "count": 349,
+            "meanPredicted": 0.8154014410467065,
+            "meanTarget": 0.5260056506661914,
+            "absError": 0.2893957903805151
+          }
+        ]
+      }
+    },
+    {
+      "epoch": 37,
+      "trainLoss": 1.7196076894779853,
+      "validation": {
+        "policyLoss": 1.9388148205543747,
+        "valueMSE": 0.20579166913284572,
+        "top1Agreement": 0.2051346589478983,
+        "top3Agreement": 0.5295746287440222,
+        "policyEntropy": 1.782448373271751,
+        "calibration": [
+          {
+            "bin": [
+              -1.0,
+              -0.6
+            ],
+            "count": 238,
+            "meanPredicted": -0.8155468106269836,
+            "meanTarget": -0.4937110079646584,
+            "absError": 0.32183580266232525
+          },
+          {
+            "bin": [
+              -0.6,
+              -0.2
+            ],
+            "count": 452,
+            "meanPredicted": -0.3537542080193494,
+            "meanTarget": -0.2334428599831366,
+            "absError": 0.12031134803621282
+          },
+          {
+            "bin": [
+              -0.2,
+              0.2
+            ],
+            "count": 2564,
+            "meanPredicted": -0.011789111926389895,
+            "meanTarget": -0.004077013987946497,
+            "absError": 0.007712097938443398
+          },
+          {
+            "bin": [
+              0.2,
+              0.6
+            ],
+            "count": 432,
+            "meanPredicted": 0.3687125673103664,
+            "meanTarget": 0.2689195197669539,
+            "absError": 0.0997930475434125
+          },
+          {
+            "bin": [
+              0.6,
+              1.0
+            ],
+            "count": 287,
+            "meanPredicted": 0.7984274482477832,
+            "meanTarget": 0.528778559286334,
+            "absError": 0.26964888896144923
+          }
+        ]
+      }
+    },
+    {
+      "epoch": 38,
+      "trainLoss": 1.7161987051109975,
+      "validation": {
+        "policyLoss": 1.9385090820020612,
+        "valueMSE": 0.20205973624703027,
+        "top1Agreement": 0.2041278630757614,
+        "top3Agreement": 0.5318399194563302,
+        "policyEntropy": 1.7861190713265067,
+        "calibration": [
+          {
+            "bin": [
+              -1.0,
+              -0.6
+            ],
+            "count": 222,
+            "meanPredicted": -0.8215027048781112,
+            "meanTarget": -0.5146211490461389,
+            "absError": 0.3068815558319723
+          },
+          {
+            "bin": [
+              -0.6,
+              -0.2
+            ],
+            "count": 418,
+            "meanPredicted": -0.3702994395386089,
+            "meanTarget": -0.29654501112605197,
+            "absError": 0.07375442841255692
+          },
+          {
+            "bin": [
+              -0.2,
+              0.2
+            ],
+            "count": 2598,
+            "meanPredicted": 0.000491923499956646,
+            "meanTarget": 0.0003468715763662306,
+            "absError": 0.0001450519235904154
+          },
+          {
+            "bin": [
+              0.2,
+              0.6
+            ],
+            "count": 463,
+            "meanPredicted": 0.37050557262052985,
+            "meanTarget": 0.27630375853747724,
+            "absError": 0.09420181408305262
+          },
+          {
+            "bin": [
+              0.6,
+              1.0
+            ],
+            "count": 272,
+            "meanPredicted": 0.8120925369508126,
+            "meanTarget": 0.5287930873607419,
+            "absError": 0.2832994495900707
+          }
+        ]
+      }
+    },
+    {
+      "epoch": 39,
+      "trainLoss": 1.714871962481853,
+      "validation": {
+        "policyLoss": 1.9392770229044831,
+        "valueMSE": 0.1988465519087038,
+        "top1Agreement": 0.20463126101182985,
+        "top3Agreement": 0.5275610369997483,
+        "policyEntropy": 1.7847671572699404,
+        "calibration": [
+          {
+            "bin": [
+              -1.0,
+              -0.6
+            ],
+            "count": 238,
+            "meanPredicted": -0.8205221120048972,
+            "meanTarget": -0.5229089233805152,
+            "absError": 0.297613188624382
+          },
+          {
+            "bin": [
+              -0.6,
+              -0.2
+            ],
+            "count": 450,
+            "meanPredicted": -0.3722631103131506,
+            "meanTarget": -0.24355042747014927,
+            "absError": 0.12871268284300136
+          },
+          {
+            "bin": [
+              -0.2,
+              0.2
+            ],
+            "count": 2544,
+            "meanPredicted": -0.0006188594131270509,
+            "meanTarget": -0.005851207299510518,
+            "absError": 0.005232347886383467
+          },
+          {
+            "bin": [
+              0.2,
+              0.6
+            ],
+            "count": 451,
+            "meanPredicted": 0.37080367841239514,
+            "meanTarget": 0.2720618142117591,
+            "absError": 0.09874186420063602
+          },
+          {
+            "bin": [
+              0.6,
+              1.0
+            ],
+            "count": 290,
+            "meanPredicted": 0.8029001550427799,
+            "meanTarget": 0.5541221788552477,
+            "absError": 0.24877797618753217
+          }
+        ]
+      }
+    },
+    {
+      "epoch": 40,
+      "trainLoss": 1.7148169279729324,
+      "validation": {
+        "policyLoss": 1.942718541865201,
+        "valueMSE": 0.21213093746557604,
+        "top1Agreement": 0.20437956204379562,
+        "top3Agreement": 0.5378806946891518,
+        "policyEntropy": 1.7816482102453874,
+        "calibration": [
+          {
+            "bin": [
+              -1.0,
+              -0.6
+            ],
+            "count": 216,
+            "meanPredicted": -0.8198919390086774,
+            "meanTarget": -0.4872724102592824,
+            "absError": 0.332619528749395
+          },
+          {
+            "bin": [
+              -0.6,
+              -0.2
+            ],
+            "count": 434,
+            "meanPredicted": -0.36129273240742044,
+            "meanTarget": -0.25189495584506366,
+            "absError": 0.10939777656235677
+          },
+          {
+            "bin": [
+              -0.2,
+              0.2
+            ],
+            "count": 2530,
+            "meanPredicted": -0.006029475095227228,
+            "meanTarget": -0.009504195737970898,
+            "absError": 0.0034747206427436696
+          },
+          {
+            "bin": [
+              0.2,
+              0.6
+            ],
+            "count": 469,
+            "meanPredicted": 0.37901059285537014,
+            "meanTarget": 0.2330786211049752,
+            "absError": 0.14593197175039493
+          },
+          {
+            "bin": [
+              0.6,
+              1.0
+            ],
+            "count": 324,
+            "meanPredicted": 0.8132579758947278,
+            "meanTarget": 0.5054469628180133,
+            "absError": 0.30781101307671455
+          }
+        ]
+      }
+    }
+  ],
+  "splitGames": {
+    "train": 24567,
+    "validation": 3973,
+    "holdout": 3314
+  },
+  "holdoutUsedForTraining": false,
+  "deploymentStatus": "UNAPPROVED_BOOTSTRAP_CANDIDATE",
+  "strengthMeasured": false,
+  "licenseReview": "Original network architecture; dependency/model distribution license sign-off still required",
+  "resume": null
+}

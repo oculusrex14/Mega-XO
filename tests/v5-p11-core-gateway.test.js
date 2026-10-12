@@ -627,7 +627,7 @@ test('6. Ticket ingress: requestTicket sends signed request and receives valid t
     fetcher: testHttpFetch,
   });
 
-  const handler = createApiHandler({ pool: pools.api, accounts, coreGateway: gateway });
+  const handler = createApiHandler({ pool: pools.api, accounts, coreGateway: gateway, ticketIssuer });
   const apiServer = await startIngressServer(handler);
   t.after(async () => { await apiServer.close(); });
   for (const body of [

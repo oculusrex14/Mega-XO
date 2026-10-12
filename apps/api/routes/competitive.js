@@ -8,6 +8,7 @@ const {
   resolveAuth,
 } = require('./helpers');
 const { createCoreGateway } = require(path.join(__dirname, '../../../packages/services/core-gateway.js'));
+const { createTicketIssuer } = require(path.join(__dirname, '../../../packages/services/tickets.js'));
 
 /**
  * Resolves the core gateway client from context or options.
@@ -46,6 +47,25 @@ function resolveGateway(context) {
     now,
   });
   return context._coreGateway;
+}
+
+/** Ticket issuance is owned exclusively by api_runtime. Core can redeem but
+ * must not need INSERT privileges or a borrowed API pool inside its process. */
+async function resolveApiTicketIssuer(context) {
+  if (context?.ticketIssuer && typeof context.ticketIssuer.issue === 'function') return context.ticketIssuer;
+  if (!context?.pool || typeof context.pool.withTransaction !== 'function') return null;
+  const environment = context.ticketEnvironment || process.env.MEGA_TICKET_ENV;
+  if (typeof environment !== 'string' || !/^[a-z0-9][a-z0-9-]{0,31}$/.test(environment)) return null;
+  if (!context._ticketIssuerPromise) {
+    context._ticketIssuerPromise = createTicketIssuer(context.pool, {
+      environment,
+      audience: context.ticketAudience || process.env.MEGA_TICKET_AUDIENCE || 'mega-core',
+    }).catch((err) => {
+      context._ticketIssuerPromise = null;
+      throw err;
+    });
+  }
+  return context._ticketIssuerPromise;
 }
 
 /**
@@ -316,7 +336,7 @@ async function handleQuest(context, req, res) {
 
 /**
  * POST /api/v1/ticket
- * Requests a ticket via Core ingress.
+ * Issues a one-use realtime ticket through the API-role issuer. Core only redeems.
  */
 async function handleTicket(context, req, res) {
   const { actor, token, accounts } = await resolveAuth(context, req);
@@ -338,11 +358,17 @@ async function handleTicket(context, req, res) {
     error.status = 401;
     throw error;
   }
-  const gateway = resolveGateway(context);
-  const result = await gateway.requestTicket({ actor, session: {
-    sessionId: binding.sessionId, generation: binding.generation,
+  const issuer = await resolveApiTicketIssuer(context);
+  if (!issuer) {
+    const error = new Error('TICKET_ISSUER_UNAVAILABLE');
+    error.code = 'TICKET_ISSUER_UNAVAILABLE';
+    error.status = 503;
+    throw error;
+  }
+  const result = await issuer.issue({
+    actor, sessionId: binding.sessionId, generation: binding.generation,
     connectionClass: binding.connectionClass, matchScope: body.matchScope ?? null,
-  } });
+  });
   const payload = (typeof result === 'object' && result !== null)
     ? (result.ok === undefined ? { ok: true, ...result } : result)
     : { ok: true, ticket: result };

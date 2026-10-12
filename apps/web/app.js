@@ -14,6 +14,7 @@ let board=null;
 let tab='ranked';
 let toastTimer;
 const main=document.querySelector('#main');
+if(main?.hasAttribute?.('data-offline-fallback'))history.replaceState?.({...history.state,mxOfflineFallback:true},'',location.href);
 const productIds=['crowns_100','crowns_525','crowns_1100','remove_ads'];
 const context={storeLinks,profile:null, sessionStatus:'loading', providers:{}, accountView:'email',
  legalDocuments:Object.fromEntries(Object.entries(legalDocuments).map(([key,value])=>['/'+key,value])),
@@ -36,7 +37,7 @@ function configureDownloadLinks(){
  context.device=device;context.query=new URLSearchParams(location.search);
  document.querySelectorAll('[data-download-link]').forEach(anchor=>{anchor.href=downloadHref(device);});
 }
-function normalizedPath(){return location.pathname.replace(/\/+$/,'')||'/';}
+function normalizedPath(){return main?.hasAttribute?.('data-offline-fallback')?'/offline':location.pathname.replace(/\/+$/,'')||'/';}
 function render({focus=false}={}){
  board?.destroy();board=null;
  const path=normalizedPath();
@@ -51,7 +52,7 @@ function render({focus=false}={}){
  if(path==='/settings')refreshOfflineControls();
  if(focus){main.focus({preventScroll:true});window.scrollTo(0,0);}
 }
-function navigate(href){history.pushState({},'',href);render({focus:true});activate();}
+function navigate(href){main.removeAttribute?.('data-offline-fallback');history.pushState({},'',href);render({focus:true});activate();}
 function notify(message){const el=document.querySelector('#notification');el.textContent=message;el.hidden=false;clearTimeout(toastTimer);toastTimer=setTimeout(()=>{el.hidden=true},4500);}
 function paintOfflineControls(state){
  if(normalizedPath()!=='/settings')return;
@@ -228,6 +229,6 @@ document.addEventListener('click',event=>{
 window.addEventListener('focus',()=>{if(context.sessionStatus==='linked')model.profile().then(()=>{if(normalizedPath()==='/game'&&visibleMatch()){startOnlinePolling();pollOnline();}});});
 window.addEventListener('online',()=>{if(normalizedPath()==='/game'&&context.sessionStatus==='linked'){startOnlinePolling();pollOnline();}});
 window.addEventListener('pagehide',event=>{onlineRevision++;event.persisted?model.invalidate():model.destroy();clearInterval(leaderboardTimer);clearInterval(onlineTimer);board?.destroy();});
-window.addEventListener('popstate',()=>{render({focus:true});activate();});
+window.addEventListener('popstate',event=>{event.state?.mxOfflineFallback?main.setAttribute?.('data-offline-fallback',''):main.removeAttribute?.('data-offline-fallback');render({focus:true});activate();});
 window.addEventListener('pageshow',event=>{if(event.persisted){activePath='';render();activate();if(context.sessionStatus==='linked')model.profile();}});
 render();activate();model.profile().then(()=>{if(normalizedPath()==='/store'&&context.sessionStatus==='linked')refreshProducts();});

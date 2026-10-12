@@ -20,7 +20,7 @@ function fixture(t) {
     const original=path.join(ROOT,'apps/web',name);
     write('apps/web/'+name,fs.existsSync(original)?fs.readFileSync(original):'/* optional synthetic runtime fixture */');
   }
-  const retained = ['index.html', ...GAME_FILES.map(name => 'src/' + name), ...LEGAL_NAMES.map(name => 'public/' + name + '.html'), 'public/legal.css', 'scripts/p21/offline-worker.cjs', ...ICON_FILES.map(name=>'assets/p21/icons/'+name)];
+  const retained = ['index.html', ...GAME_FILES.map(name => 'src/' + name), ...LEGAL_NAMES.map(name => 'public/' + name + '.html'), 'public/legal.css', 'scripts/p21/offline-worker.cjs', 'scripts/p21/prerender-web.mjs', ...ICON_FILES.map(name=>'assets/p21/icons/'+name)];
   for (const theme of ['vector', 'midnight', 'paperclub', 'afterhours']) for (const kind of ['app', 'mark']) retained.push('assets/p21/logos/mega-xoxo-' + theme + '-' + kind + '.webp');
   for (const relative of retained) write(relative, fs.readFileSync(path.join(ROOT, relative)));
   const webp = Buffer.from('5249464610000000574542505650384c00000000', 'hex');
@@ -79,6 +79,8 @@ test('P21-BUILD-06: offline copy uses only versioned static bytes and guest docu
  assert.deepEqual(offline.navigations,{'/game':'/pages/game.html','/offline':'/pages/offline.html','/how-to-play':'/pages/how-to-play.html'});
  assert.ok(offline.bytes<6*1024*1024);assert.match(offline.version,/^[a-f0-9]{64}$/);
  assert.equal(offline.registration,'explicit user opt-in only');
+ assert.match(fs.readFileSync(path.join(first.output,'pages/offline.html'),'utf8'),/<main[^>]*data-offline-fallback/);
+ assert.doesNotMatch(fs.readFileSync(path.join(first.output,'pages/account.html'),'utf8'),/<main[^>]*data-offline-fallback/);
  const paths=new Set(offline.assets.map(row=>row.url));
  for(const required of ['/app.js','/offline.js','/legal-documents.js','/pages/game.html','/pages/offline.html','/pages/how-to-play.html','/legacy-game/src/game.js'])assert.ok(paths.has(required),required);
  for(const url of paths)assert.ok(!/^\/api(?:\/|$)|^\/auth(?:\/|$)|^\/pages\/(?:account|profile|settings|friends|challenge)\.html$|^\/legacy-game\/index\.html$/.test(url),url);

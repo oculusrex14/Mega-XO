@@ -105,6 +105,32 @@ function requestPath(raw) {
   return decoded;
 }
 
+/**
+ * Resolves a request path against a built P21 artifact to a file + status, WITHOUT ever serving
+ * HTML for a missing sub-resource. The website keeps its own visual 404 page for page routes, but
+ * a missing asset, script, stylesheet, font, worker or legal document is a REAL 404 - never an SPA
+ * fallback - so a broken bundle is visible instead of silently masked.
+ *
+ * @returns {{status:number, file:(string|null), text:(string|null)}} `file` is an artifact-relative
+ *   path to stream (the caller MUST verify it exists and stays inside the artifact root); `text` is
+ *   a literal body when the response is not a file.
+ */
+function resolveStatic(artifact, pathname) {
+  const files = artifact.files;
+  const route = pathname.length > 1 ? pathname.replace(/\/$/, '') : pathname;
+  let relative = route === '/legacy-game' ? 'legacy-game/index.html' : (artifact.routes[route] || pathname.replace(/^\//, ''));
+  let status = route === '/404' ? 404 : 200;
+  if (!files.has(relative)) {
+    if (pathname.startsWith('/legacy-game/') || pathname.startsWith('/game/') || pathname.startsWith('/assets/') || pathname.startsWith('/legal/') || (path.extname(pathname) && !pathname.startsWith('/pages/'))) {
+      return { status: 404, file: null, text: 'Not found' };
+    }
+    // The website owns its visual 404. Missing resources never receive HTML.
+    relative = '404.html';
+    status = 404;
+  }
+  return { status, file: relative, text: files.has(relative) ? null : 'Not found' };
+}
+
 function createPreviewServer(options = {}) {
   const directory = path.resolve(options.directory || path.join(ROOT, '.artifacts/p21-web'));
   if (fs.realpathSync(directory) !== directory) throw new Error('P21_SERVE_REFUSED: root must be unlinked');
@@ -144,14 +170,10 @@ function createPreviewServer(options = {}) {
       return response.end();
     }
     const route = pathname.length > 1 ? pathname.replace(/\/$/, '') : pathname;
-    let relative = route === '/legacy-game' ? 'legacy-game/index.html' : manifest.routes[route] || pathname.replace(/^\//, '');
-    let status = route==='/404'?404:200;
-    if (!files.has(relative)) {
-      if (pathname.startsWith('/legacy-game/') || pathname.startsWith('/game/') || pathname.startsWith('/assets/') || pathname.startsWith('/legal/') || (path.extname(pathname)&&!pathname.startsWith('/pages/'))) return send(404, 'Not found');
-      // The website owns its visual 404. Missing resources never receive HTML.
-      relative = '404.html';
-      status = 404;
-    }
+    const resolved = resolveStatic({ routes: manifest.routes, files }, pathname);
+    let status = resolved.status;
+    if (resolved.text !== null) return send(status, resolved.text);
+    const relative = resolved.file;
     const meta=manifest.seo?.metadata?.[route];
     if(options.indexable===true&&status===200&&meta?.indexable)response.setHeader('X-Robots-Tag',meta.robots);
     const rawLegal=pathname.match(/^\/legal\/([a-z-]+)\.html$/);
@@ -187,4 +209,4 @@ if (require.main === module) {
   } catch (error) { process.stderr.write(error.message + '\n'); process.exitCode = 1; }
 }
 
-module.exports = { createPreviewServer, requestPath, readQuery, publicRows, READ_API_ORIGIN, READ_MAX_BYTES, CSP };
+module.exports = { createPreviewServer, resolveStatic, requestPath, readQuery, publicRows, READ_API_ORIGIN, READ_MAX_BYTES, CSP };

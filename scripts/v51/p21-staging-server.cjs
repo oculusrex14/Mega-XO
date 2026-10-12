@@ -39,6 +39,7 @@ const { createRealtimeTransport } = require(path.join(ROOT, 'packages/services/r
 const { createApiHandler } = require(path.join(ROOT, 'apps/api/index.js'));
 const security = require(path.join(ROOT, 'packages/services/security.js'));
 const { resolveAuth } = require(path.join(ROOT, 'apps/api/routes/helpers.js'));
+const { resolveStatic } = require(path.join(ROOT, 'scripts/p21/serve-web.js'));
 
 const MIME_TYPES = Object.freeze({
   '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.mjs': 'text/javascript; charset=utf-8',
@@ -47,6 +48,26 @@ const MIME_TYPES = Object.freeze({
   '.ico': 'image/x-icon', '.woff': 'font/woff', '.woff2': 'font/woff2', '.txt': 'text/plain; charset=utf-8',
   '.xml': 'application/xml; charset=utf-8', '.webmanifest': 'application/manifest+json',
 });
+
+/**
+ * Loads a verified P21 build artifact: the generated bundle (built by scripts/p21/build-web.js) is
+ * the ONLY thing served, never the raw apps/web source tree - the bundle is where the packaged
+ * legacy game, store-links/legal-documents modules, fonts, art and bot worker actually live. The
+ * artifact's own manifest is the route table and the file allowlist, so an unlisted path is a real
+ * 404 rather than a rewritten source file.
+ */
+function loadWebArtifact(dir) {
+  const manifestPath = path.join(dir, 'web-build.manifest.json');
+  if (!fs.existsSync(manifestPath)) throw new Error('WEB_BUILD_ARTIFACT_REQUIRED: run scripts/p21/build-web.js');
+  const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
+  if (manifest.generator !== 'scripts/p21/build-web.js' || !Array.isArray(manifest.files)) {
+    throw new Error('WEB_BUILD_ARTIFACT_INVALID');
+  }
+  return Object.freeze({
+    dir, routes: manifest.routes || {}, files: new Set(['web-build.manifest.json', ...manifest.files.map((f) => f.path)]),
+    sourceCommit: manifest.source_commit || null, bundleSha256: manifest.bundle_sha256 || null, fileCount: manifest.file_count || manifest.files.length,
+  });
+}
 const LOOPBACK = new Set(['127.0.0.1', 'localhost', '::1']);
 const GATEWAY_TIMEOUT_MS = 30000;
 
@@ -56,12 +77,31 @@ function arg(flag, fallback) {
 }
 const safeError = (err) => (err && err.message) ? String(err.message).slice(0, 120) : 'ERROR';
 
+/**
+ * Loads the STABLE staging OTP HMAC secret. A fresh random secret on every restart would make each
+ * instance's one-time codes unverifiable by any other instance and would invalidate every code
+ * already mailed. The secret therefore lives in the staging secrets directory (create mode 0600),
+ * is never printed, and is shared by every staging process for this environment.
+ */
+function loadStagingOtpSecret(secretPath) {
+  if (fs.existsSync(secretPath)) {
+    const value = fs.readFileSync(secretPath, 'utf8').trim();
+    if (value.length >= 32) return value;
+    throw new Error('STAGING_OTP_SECRET_TOO_SHORT');
+  }
+  const generated = crypto.randomBytes(32).toString('hex');
+  fs.writeFileSync(secretPath, generated + '\n', { mode: 0o600, flag: 'wx' });
+  return generated;
+}
+
 async function main() {
   if (process.env.MEGA_V51_STAGING_SERVER !== 'lively-shadow-52629967/mega_xo_v5_staging') {
     throw new Error('EXPLICIT_STAGING_SERVER_OPT_IN_REQUIRED');
   }
   const host = arg('--host', '127.0.0.1');
   const port = Number(arg('--port', '8081'));
+  const webBuildDir = path.resolve(arg('--web-build', path.join(ROOT, '.artifacts/p21-web')));
+  const OTP_SECRET_PATH = path.join(path.dirname(CREDENTIALS_PATH), 'staging-otp.secret');
   // Loopback is always allowed. A non-loopback bind must name the exact interface (e.g. the
   // Tailscale IP) via --allow-host; wildcard binds are refused so staging can never be exposed
   // beyond an explicit, private address.
@@ -127,14 +167,24 @@ async function main() {
   const coreIngress = createCoreServiceIngress({ coreService: core, ticketIssuer, queue, leaderboardPool: corePool, secret: GATEWAY_SECRET });
   const coreGateway = createCoreGateway({ coreUrl: `http://${host}:${port}`, secret: GATEWAY_SECRET, timeoutMs: GATEWAY_TIMEOUT_MS });
 
+  const webArtifact = loadWebArtifact(webBuildDir);
+  const stagingOtpSecret = loadStagingOtpSecret(OTP_SECRET_PATH);
+  // Staging outbound email is disabled by design (no live SMTP), so a controlled sign-in test needs
+  // the one-time code from somewhere. `--otp-out` appends each delivery to a loopback-only file
+  // (mode 0600) OUTSIDE the repository; absent the flag the code is dropped, never logged.
+  const otpOut = arg('--otp-out', null);
+  const otpSink = otpOut ? (delivery) => {
+    fs.appendFileSync(path.resolve(otpOut), JSON.stringify({ at: new Date().toISOString(), ...delivery }) + '\n', { mode: 0o600 });
+  } : undefined;
+
   let origin = `http://${host}:${port}`;
   const apiHandler = createApiHandler({
     pool: apiPool, accounts, coreGateway, access, nativeAudiences: ['mega-ios', 'mega-android'],
-    queue: coreGateway, otpSecret: crypto.randomBytes(32).toString('hex'),
+    queue: coreGateway, otpSecret: stagingOtpSecret, otpSink,
     allowedOrigins: ['https://megaxo.online', 'https://play.antimatterinnovations.com', origin],
   });
 
-  const webRoot = path.join(ROOT, 'apps/web');
+  const artifactDir = webArtifact.dir;
   const server = http.createServer(async (req, res) => {
     try {
       const parsedUrl = new URL(req.url || '/', origin);
@@ -143,18 +193,20 @@ async function main() {
       if (security.isOperatorRoute(pathname)) { res.statusCode = 403; res.setHeader('Content-Type', 'application/json'); res.end(JSON.stringify({ error: 'PRIVATE_OPERATOR_ROUTE' })); return; }
       if (pathname === '/realtime/v1/snapshot' || pathname === '/realtime/v1/snapshot/' || pathname.startsWith('/realtime/v1/match/')) return;
       if (pathname.startsWith('/ingress/')) { await coreIngress(req, res); return; }
-      if (pathname.startsWith('/api/') || pathname.startsWith('/auth/') || pathname.startsWith('/.well-known/')) { await apiHandler(req, res); return; }
-      let filePath = path.resolve(webRoot, pathname === '/' ? 'index.html' : pathname.replace(/^\//, ''));
-      if (!filePath.startsWith(webRoot + path.sep)) { res.statusCode = 403; res.end('Forbidden'); return; }
-      if (!fs.existsSync(filePath) && fs.existsSync(filePath + '.html')) filePath = filePath + '.html';
-      if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
-        res.statusCode = 200;
-        res.setHeader('Content-Type', MIME_TYPES[path.extname(filePath).toLowerCase()] || 'application/octet-stream');
-        fs.createReadStream(filePath).pipe(res); return;
+      if (pathname.startsWith('/api/') || pathname.startsWith('/auth/') || pathname.startsWith('/.well-known/') ||
+          pathname === '/health' || pathname === '/livez' || pathname === '/readyz') { await apiHandler(req, res); return; }
+      if (pathname === '/legacy-game') { res.statusCode = 308; res.setHeader('Location', '/legacy-game/' + (parsedUrl.search || '')); res.end(); return; }
+      // The generated bundle is the allowlist: an unlisted path is a real 404, never a source file
+      // and never an HTML SPA fallback for a missing script/image/font/worker.
+      const resolved = resolveStatic(webArtifact, pathname);
+      if (resolved.text !== null) { res.statusCode = resolved.status; res.setHeader('Content-Type', 'text/plain; charset=utf-8'); res.end(resolved.text); return; }
+      const absolute = path.resolve(artifactDir, resolved.file);
+      if (!absolute.startsWith(artifactDir + path.sep) || !fs.existsSync(absolute) || !fs.statSync(absolute).isFile()) {
+        res.statusCode = 404; res.setHeader('Content-Type', 'text/plain; charset=utf-8'); res.end('Not found'); return;
       }
-      const indexPath = path.join(webRoot, 'index.html');
-      if (fs.existsSync(indexPath)) { res.statusCode = 200; res.setHeader('Content-Type', 'text/html; charset=utf-8'); fs.createReadStream(indexPath).pipe(res); return; }
-      res.statusCode = 404; res.end('Not Found');
+      res.statusCode = resolved.status;
+      res.setHeader('Content-Type', MIME_TYPES[path.extname(absolute).toLowerCase()] || 'application/octet-stream');
+      fs.createReadStream(absolute).pipe(res); return;
     } catch (err) { if (!res.headersSent) { res.statusCode = 500; res.setHeader('Content-Type', 'application/json'); } res.end(JSON.stringify({ error: safeError(err) })); }
   });
 
@@ -170,14 +222,33 @@ async function main() {
 
   await new Promise((resolve, reject) => { server.on('error', reject); server.listen(port, host, resolve); });
   origin = `http://${host}:${port}`;
-  // Startup self-check: the website shell and the live API both answer on this origin.
+  // Startup self-check: the generated bundle answers for the shell AND for the retained-game /
+  // module / art / font / worker paths the client actually requests; a missing sub-resource is a
+  // real 404, never an HTML SPA fallback. This is the difference between "a shell returned 200"
+  // and "the site works".
+  const probe = async (pathname, method = null) => {
+    try {
+      const r = await fetch(origin + pathname, method ? { method } : undefined);
+      const body = method === 'HEAD' ? null : await r.arrayBuffer();
+      return { status: r.status, type: r.headers.get('content-type') || '', bytes: body ? body.byteLength : Number(r.headers.get('content-length') || 0) };
+    } catch (err) { return { status: 0, type: '', error: safeError(err) }; }
+  };
   const shell = await fetch(`${origin}/`).then((r) => r.text()).catch(() => '');
-  const livez = await fetch(`${origin}/livez`).then((r) => r.status).catch(() => 0);
+  const livez = await probe('/livez');
+  const assets = {};
+  for (const p of ['/legacy-game/src/game.js', '/legacy-game/src/bot/worker.js', '/store-links.js', '/legal-documents.js',
+    '/assets/art/mark.webp', '/assets/fonts/ibm-plex-mono-latin.woff2', '/assets/fonts/space-grotesk-latin.woff2']) {
+    assets[p] = await probe(p);
+  }
+  const missing = await probe('/legacy-game/src/does-not-exist.js');
+  const assetSelfCheck = Object.values(assets).every((a) => a.status === 200);
   console.log(JSON.stringify({
     ok: true, origin, database: target.database, environment: 'staging', nonserving: target.nonserving,
     redisNamespace: ephemera.keyVersion, outbound: target.outbound,
-    websiteServesShell: shell.includes('mx-web-shell'), livezStatus: livez,
-    note: 'isolated loopback staging origin; noindex enforced; live V4 untouched',
+    webBuild: { dir: artifactDir, sourceCommit: webArtifact.sourceCommit, bundleSha256: webArtifact.bundleSha256, fileCount: webArtifact.fileCount },
+    websiteServesShell: shell.includes('mx-web-shell'), livezStatus: livez.status,
+    assets, missingAssetStatus: missing.status, assetSelfCheck,
+    note: 'isolated loopback staging origin; noindex enforced; live V4 untouched; serves the generated P21 bundle',
   }, null, 2));
 
   const shutdown = async () => {

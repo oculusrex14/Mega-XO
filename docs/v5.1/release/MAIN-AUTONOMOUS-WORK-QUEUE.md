@@ -37,6 +37,19 @@ release.
 
 ## R/B/CL and original acceptance
 
-R03-R09, R11, R19-R20 operational acceptance and the 25-phase/40-case/82-task bot checklists proceed
-after the P0 block. Track each as COMPLETE (with commit+test+evidence) or EXTERNALLY BLOCKED (with the
-exact owner action).
+| ID | Status | Commit | Evidence |
+| --- | --- | --- | --- |
+| R19 frozen classical baselines + exploit | COMPLETE (host-scoped) | `15f1af4` | baseline.json (11 cases), exploit 0.016 CI[0,0.039], tactics 6/6 |
+| R22 learning orchestrator (real operator) | COMPLETE | `2706408` | fail-closed gate, atomic lease, resume integrity, SIGTERM+resume test |
+| R24 wire neural self-play producer | COMPLETE (loop) / PARTIAL (strength) | `2706408` | operator runs selfplay.cjs; chain proof `4aa03e3`; candidate far below gate |
+| R27 INT8 quantization non-inferiority | COMPLETE (quant step) | `e421ccf` | 300 families, 0.498 CI[0.475,0.522] >= 0.45 margin |
+| R23 diagnose neural losses | COMPLETE (diagnosis) | earlier | real strength gap, not a semantics bug; no scaling to conceal |
+| R25 Unsloth teacher evaluation | BLOCKED (DGX venv) | `324f380` (fixes) | family-safe split + pinned revision shipped; DGX run is external |
+| R26 useful-teacher distillation | BLOCKED (R25) | - | needs a demonstrated-utility teacher first |
+| R28 approve/distribute model | BLOCKED_MODEL | - | no candidate meets the gate; catalog empty (correct) |
+| R03/R06/R07/R08/R09/R11/R20 etc. | BLOCKED (device/provider/production) | - | see OPEN-WORK-AND-OWNERS.md per-row owner actions |
+
+R05 (co-located smoke) is BLOCKED on a host near the Neon region; R04 (deployed process-manager/TLS) and
+R10/R12/R13/R14/R18/R21 are blocked on owner/provider/device decisions. These are genuine external
+blockers, recorded with the exact owner action, not Main-code gaps.
+

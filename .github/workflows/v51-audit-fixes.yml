@@ -1,0 +1,53 @@
+name: V5.1 independent audit regression
+on:
+  push:
+    branches: ['fix/v51-independent-audit-20261012']
+  pull_request:
+    branches: ['feat/v5.1-bot-ai-tutorial']
+    paths:
+      - 'apps/api/**'
+      - 'apps/game-core/**'
+      - 'apps/web/board.js'
+      - 'apps/web/pages.js'
+      - 'packages/services/core-gateway.js'
+      - 'packages/services/read-cache.js'
+      - 'src/bot/**'
+      - 'tests/v51-audit-*.test.js'
+      - 'tests/v51-p21-bot.test.js'
+      - '.github/workflows/v51-audit-fixes.yml'
+permissions:
+  contents: read
+concurrency:
+  group: v51-audit-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  audited-boundaries:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: mirror.gcr.io/library/postgres:16@sha256:ca0bd484cb98bf4b24eb1010eea5b7dbecb641d
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_DB: postgres
+          POSTGRES_HOST_AUTH_METHOD: trust
+        ports: ['127.0.0.1:5432:5432']
+        options: --health-cmd "pg_isready -U postgres -q" --health-interval 5s --health-timeout 5s --health-retries 24
+    env:
+      V5_TARGET: test
+      V5_PG_URL: postgres://postgres@127.0.0.1:5432/postgres
+      V5_PG_DISPOSABLE: '1'
+      V5_PG_REQUIRED: '1'
+      V5_MIGRATE_ALLOW_INSECURE_LOOPBACK: '1'
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '24'
+      - run: npm ci
+      - name: Audit unit, tutorial and neural selection
+        run: |
+          node --test tests/v51-audit-*.test.js tests/v51-p21-bot.test.js tests/bot/pack.test.cjs tests/bot/impossible-session.test.cjs
+      - name: Signed Core integration, least privilege and PostgreSQL leaderboard privacy
+        run: |
+          node --test --test-concurrency=1 tests/v5-p11-core-gateway.test.js tests/v5-p12-read-cache.test.js

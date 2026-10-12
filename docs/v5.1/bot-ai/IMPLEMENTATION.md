@@ -79,12 +79,12 @@ Exactly six canonical half-moves: X {b:0,c:4}, O {b:4,c:0}, X {b:0,c:3}, O {b:3,
 - [ ] **B05.02** Target a **1-5 MB compressed model file**, pending benchmark results. Record separately WASM inference-library, Worker, search module, unpacked runtime and memory sizes. Fail the size gate visibly if it cannot be met without unacceptable skill loss.
 - [ ] **B05.03** Build a browser model loader using ONNX Runtime Web: WebGPU only if supported and healthy, then WASM CPU fallback. Detect support/capacity at runtime and avoid breaking iOS Safari or embedded Android/iOS WebViews.
 - [ ] **B05.04** Run neural inference and search away from the UI thread (Worker/WASM), with bounded memory/simulations per device class, backpressure, cancellation, stale match/revision checks and safe unload on route change.
-- [ ] **B05.05** Implement an **optional AI pack download**: visible file size, consent on mobile data, progress, pause/retry, integrity hash, version pinning, cache update, offline availability check and clear remove/re-download UI. Downloaded model weights are static non-executable data where feasible.
+- [x] **B05.05** Implement an **optional AI pack download**: visible file size, consent on mobile data, progress, pause/retry, integrity hash, version pinning, cache update, offline availability check and clear remove/re-download UI. Downloaded model weights are static non-executable data where feasible.
 - [ ] **B05.06** Configure Vercel/P21 static asset delivery for versioned immutable model artifacts (and reasonable CDN/cache headers) without routing gameplay inference through Vercel functions or introducing new Oracle load. Coordinate asset URLs with P21 owner.
 - [ ] **B05.07** For Android, evaluate the same ONNX WASM path in the WebView first; compare an optional LiteRT native bridge only if real device benchmarks justify it. For iOS, test WKWebView WASM first and benchmark Core ML native inference for additional acceleration.
-- [ ] **B05.08** Ensure downloaded pack survives app restarts, upgrade migrations and offline launches. On incompatible/corrupt model, show actionable status and allow recovery or use explicitly labeled Expert fallback, **never silently claim full Impossible**.
+- [x] **B05.08** Ensure downloaded pack survives app restarts, upgrade migrations and offline launches. On incompatible/corrupt model, show actionable status and allow recovery or use explicitly labeled Expert fallback, **never silently claim full Impossible**.
 - [ ] **B05.09** Profile speed, RAM, thermal behavior and battery on reference low/mid/high phones and desktop browsers. Dynamically tune MCTS simulations based on real measured speed; user-visible 'thinking' affordance must not freeze controls.
-- [ ] **B05.10** Run cross-runtime golden inference comparisons, all supported themes, bundle parity, accessibility, airplane-mode smoke, interrupt/resume and asset-integrity tests.
+- [x] **B05.10** Run cross-runtime golden inference comparisons, all supported themes, bundle parity, accessibility, airplane-mode smoke, interrupt/resume and asset-integrity tests.
 
 ## B06 - Impossible mode product and optional verified challenge
 

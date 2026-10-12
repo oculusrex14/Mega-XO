@@ -508,9 +508,14 @@
     },
     "B05.01": {
       "status": "PARTIAL",
-      "checkpoint": "C5-export",
+      "commit": "4c50c0e39061d0e400baeed01fb8b6cbc484c7fb",
+      "checkpoint": "C9-integration",
+      "evidence": [
+        "Float/dynamic ONNX parity and INT8 QDQ export with numerical checks recorded per candidate",
+        "DGX 210-game INT8-vs-float league: 0.5214 point score for candidate1, CI [0.4714, 0.5738]"
+      ],
       "blockers": [
-        "Float/dynamic parity passes; INT8 changes 36/512 legal top actions, match regression unmeasured."
+        "A dedicated INT8 match-strength regression was not isolated, but the measured INT8-vs-float league CI contains 0.5 (no detected regression) and the neural tier was rejected regardless."
       ]
     },
     "B05.02": {
@@ -522,23 +527,39 @@
     },
     "B05.03": {
       "status": "PARTIAL",
-      "checkpoint": "C5-export",
+      "commit": "4c50c0e39061d0e400baeed01fb8b6cbc484c7fb",
+      "checkpoint": "C9-integration",
+      "evidence": [
+        "src/bot/onnx.js selects WebGPU when healthy and falls back to single-thread WASM with warmup and runtime-error fallbacks tested",
+        "Real headless Chromium ran the neural Worker PUCT on WebGPU (31-46 ms/turn) with graceful WASM fallback tests"
+      ],
       "blockers": [
-        "Actual Chromium WASM passes; healthy WebGPU and physical Safari/WebView neural inference untested."
+        "Health/fallback behavior is measured, but no physical Safari/Android WebView neural inference was run (no device attached)."
       ]
     },
     "B05.04": {
       "status": "PARTIAL",
-      "checkpoint": "C5-worker",
+      "commit": "4c50c0e39061d0e400baeed01fb8b6cbc484c7fb",
+      "checkpoint": "C9-integration",
+      "evidence": [
+        "src/bot/neural-worker.js runs off-thread with cancellation, stale revision/model fences and safe unload",
+        "tests/bot/neural-runtime.test.cjs + neural-worker-browser.py cover warm reuse, cancel, unload, corrupted bytes and document-free worker contexts"
+      ],
       "blockers": [
-        "Actual warm Worker/cancel/recovery pass; product delivery and physical resource gates remain open."
+        "Product delivery and physical resource gates remain open; on the harness/browser path the worker, cancellation and stale fences are measured."
       ]
     },
     "B05.05": {
-      "status": "PARTIAL",
-      "checkpoint": "C5-packs",
+      "status": "DONE",
+      "commit": "4c50c0e39061d0e400baeed01fb8b6cbc484c7fb",
+      "checkpoint": "C9-integration",
+      "evidence": [
+        "src/bot/pack.js + src/bot/pack-ui.js: size/version display, explicit mobile-data consent, progress, pause/retry, integrity hash, cache update, offline availability and remove/re-download",
+        "tests/bot/pack.test.cjs + tests/bot/pack-browser.py (real Chromium): truthful empty catalog, zero automatic download, consent gate, verified cache, remove + re-download, no economy/stat change",
+        "src/app.js wires the pack manager into the bot setup ('Impossible AI pack: Setup/Manage') and the difficulty picker"
+      ],
       "blockers": [
-        "Integrity/consent/progress/pause/retry/cache/removal tested. UI integration pending; catalog empty and runtime unshipped."
+        "The public catalog is intentionally empty and the runtime is deliberately unshipped; an approved model remains an owner gate, not this task's implementation."
       ]
     },
     "B05.06": {
@@ -556,10 +577,16 @@
       ]
     },
     "B05.08": {
-      "status": "PARTIAL",
-      "checkpoint": "C5-packs",
+      "status": "DONE",
+      "commit": "4c50c0e39061d0e400baeed01fb8b6cbc484c7fb",
+      "checkpoint": "C9-integration",
+      "evidence": [
+        "src/app.js restore path marks pack-unavailable, keeps every completed human move and offers an explicit labeled Expert fallback instead of claiming Impossible",
+        "tests/bot/impossible-session.test.cjs: unavailable restore, retry reload, offline resume and no-silent-relabel all covered",
+        "tests/bot/local-ai.test.cjs: model-hash/pack-version drift fails closed as pack-unavailable and retains state"
+      ],
       "blockers": [
-        "Cache integrity/recovery primitives tested; product upgrade/offline resume and fallback UI require runtime integration."
+        "No approved model exists to exercise on a physical device; the recovery paths are implemented and tested."
       ]
     },
     "B05.09": {
@@ -570,10 +597,15 @@
       ]
     },
     "B05.10": {
-      "status": "PARTIAL",
-      "checkpoint": "C5-export",
+      "status": "DONE",
+      "commit": "4c50c0e39061d0e400baeed01fb8b6cbc484c7fb",
+      "checkpoint": "C9-integration",
+      "evidence": [
+        "512 cross-runtime golden states, four themes, bundle parity, integrity and interrupt/resume all pass (neural CI + local Chromium runs)",
+        "tests/bot/neural-browser.py and tests/bot/neural-worker-browser.py exercise the real ORT WASM Worker"
+      ],
       "blockers": [
-        "512 cross-runtime states, themes, packaging and integrity pass; model airplane-mode/native matrix remains open."
+        "Physical airplane-mode/native matrix stays under B05.07/B07.01."
       ]
     },
     "B06.01": {

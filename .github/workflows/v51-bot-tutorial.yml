@@ -1,16 +1,20 @@
 name: V5.1 bot and tutorial validation
 on:
   push:
-    branches: ['feat/v5.1-bot-ai-tutorial']
+    branches: ['V5.1']
+    paths-ignore: ['docs/**', '*.md']
+  pull_request:
+    branches: ['V5.1']
+    paths-ignore: ['docs/**', '*.md']
   workflow_dispatch:
 permissions:
   contents: read
 concurrency:
   group: v51-bot-${{ github.ref }}
-  cancel-in-progress: false
+  cancel-in-progress: true
 jobs:
   validate:
-    if: github.ref == 'refs/heads/feat/v5.1-bot-ai-tutorial'
+    if: github.ref == 'refs/heads/V5.1' || github.base_ref == 'V5.1'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:

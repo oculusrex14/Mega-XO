@@ -10,6 +10,11 @@ const { buildWeb, ROOT, MANIFEST, WEBSITE_ROUTES, LEGAL_NAMES } = require('./bui
 const { createPreviewServer } = require('./serve-web.js');
 
 async function main() {
+  const requestedBrowser = process.env.P21_QA_BROWSER;
+  const browserEngine = requestedBrowser || 'chromium';
+  if (!['chromium', 'firefox', 'webkit'].includes(browserEngine)) {
+    throw new Error('P21_QA_BROWSER must be one of chromium, firefox, or webkit.');
+  }
   let playwright;
   try { playwright = require('playwright'); }
   catch { throw new Error('Playwright is unavailable. Point NODE_PATH to the installed runtime node_modules directory.'); }
@@ -19,7 +24,14 @@ async function main() {
   const build = process.argv.includes('--no-build')
     ? { output: path.join(ROOT, '.artifacts/p21-web'), manifest: JSON.parse(fs.readFileSync(path.join(ROOT, '.artifacts/p21-web', MANIFEST), 'utf8')) }
     : buildWeb();
-  const output = path.join(outputRoot, build.manifest.bundle_sha256.slice(0, 12));
+  const bundleOutput = path.join(outputRoot, build.manifest.bundle_sha256.slice(0, 12));
+  // Preserve the historical Chromium report location for existing consumers.
+  // Other engines receive their own timestamped directory so their screenshots
+  // and reports cannot overwrite or be mistaken for Chromium evidence.
+  const runStamp = new Date().toISOString().replace(/[^0-9]/g, '');
+  const output = browserEngine === 'chromium'
+    ? bundleOutput
+    : path.join(bundleOutput, browserEngine, runStamp + '-' + process.pid);
   fs.mkdirSync(output, { recursive: true });
   // Capture an isolated checksum-verified snapshot. Another developer can
   // rebuild the preview during this matrix without changing the tested bytes.
@@ -39,11 +51,14 @@ async function main() {
   const report = {
     schema_version: 1,
     checked_at: new Date().toISOString(),
+    browser_engine: browserEngine,
     source_commit: build.manifest.source_commit,
     bundle_sha256: build.manifest.bundle_sha256,
-    environment: 'local loopback Chromium; new unauthenticated contexts; read proxy explicitly disabled; synthetic API fixtures only',
+    environment: 'local loopback ' + browserEngine + '; new unauthenticated contexts; read proxy explicitly disabled; synthetic API fixtures only',
+    report_directory: path.relative(ROOT, output),
+    screenshots_directory: path.relative(ROOT, output),
     isolated_payload_snapshot: true,
-    command: 'env -u NODE_OPTIONS ' + process.execPath + ' scripts/p21/browser-qa.cjs' + (process.argv.includes('--no-build') ? ' --no-build' : ''),
+    command: 'env -u NODE_OPTIONS ' + (requestedBrowser ? 'P21_QA_BROWSER=' + browserEngine + ' ' : '') + process.execPath + ' scripts/p21/browser-qa.cjs' + (process.argv.includes('--no-build') ? ' --no-build' : ''),
     runtime_version: process.version,
     qa_script_sha256: crypto.createHash('sha256').update(fs.readFileSync(__filename)).digest('hex'),
     checks: [],
@@ -57,7 +72,7 @@ async function main() {
     server.listen(0, '127.0.0.1');
     await once(server, 'listening');
     const origin = 'http://127.0.0.1:' + server.address().port;
-    browser = await playwright.chromium.launch({ headless: true });
+    browser = await playwright[browserEngine].launch({ headless: true });
     report.browser = browser.version();
     const localOnly = async context => context.route('**/*', route => {
       const url = new URL(route.request().url());
@@ -485,7 +500,8 @@ async function main() {
     fs.rmSync(snapshotRoot, { recursive: true, force: true });
     fs.writeFileSync(path.join(output, 'browser-qa.json'), JSON.stringify(report, null, 2) + '\n');
     fs.writeFileSync(path.join(output, 'browser-qa-' + (report.source_commit || 'unversioned').slice(0, 12) + '-' + report.checked_at.replace(/[^0-9]/g, '') + '.json'), JSON.stringify(report, null, 2) + '\n');
-    fs.writeFileSync(path.join(outputRoot, 'browser-qa.json'), JSON.stringify(report, null, 2) + '\n');
+    // Keep the compatibility pointer tied to Chromium's unchanged default.
+    if (browserEngine === 'chromium') fs.writeFileSync(path.join(outputRoot, 'browser-qa.json'), JSON.stringify(report, null, 2) + '\n');
     process.stdout.write(JSON.stringify({ result: report.result, source_commit: report.source_commit, checks: report.checks.length, failures: report.failures.length, report: path.join(output, 'browser-qa.json') }) + '\n');
     if (report.result !== 'PASS') process.exitCode = 1;
   }

@@ -66,18 +66,19 @@ RETRYABLE_MARKERS = (
 CONFIG_KEYS = {
     "games": int, "seed": int, "simulations": int, "epochs": int, "batch": int,
     "width": int, "blocks": int, "leaguePairs": int, "budgetMs": int, "leagueSimulations": int,
-    "workers": int, "nodeBin": str, "pythonBin": str,
+    "workers": int, "nodeBin": str, "pythonBin": str, "producerModel": str, "producerBudgetMs": int,
 }
 CONFIG_BOUNDS = {
     "games": (2, 100000), "seed": (0, 2**31 - 1), "simulations": (1, 4096),
     "epochs": (1, 10000), "batch": (1, 4096), "width": (48, 128), "blocks": (1, 6),
     "leaguePairs": (2, 20000), "budgetMs": (1, 60000), "leagueSimulations": (1, 4096),
-    "workers": (1, 64),
+    "workers": (1, 64), "producerBudgetMs": (1, 60000),
 }
 DEFAULT_CONFIG = {
     "games": 24, "seed": 7001, "simulations": 8, "epochs": 3, "batch": 32,
     "width": 48, "blocks": 4, "leaguePairs": 8, "budgetMs": 10, "leagueSimulations": 8,
     "workers": 4, "nodeBin": "node", "pythonBin": sys.executable,
+    "producerModel": None, "producerBudgetMs": 300,
 }
 LEASE_TTL_SECONDS = 90
 LOG_LIMIT_BYTES = 2 * 1024 * 1024
@@ -166,6 +167,11 @@ def validate_config(config: dict) -> dict:
     out = {}
     for key, kind in CONFIG_KEYS.items():
         value = merged.get(key)
+        # `producerModel` is an OPTIONAL path: absent means the classical bootstrap generator, and an
+        # explicit null is the same as absent (never a non-empty-string violation).
+        if key == "producerModel" and (value is None or value == ""):
+            out[key] = None
+            continue
         if kind is int:
             if isinstance(value, bool) or not isinstance(value, int):
                 raise SystemExit(f"CONFIG_INVALID:{key} must be an integer")
@@ -529,6 +535,15 @@ class Operator:
 
     def _argv_generate(self) -> list[str]:
         c = self.config
+        # CL10/WEB-AI-04: when a research champion artifact exists, real neural self-play consumes it
+        # (binds parent model hash, records producer version) instead of the mixed-strength bootstrap.
+        producer = c.get("producerModel")
+        if producer:
+            argv = [c["nodeBin"], str(ROOT / "training/bot/selfplay.cjs"),
+                    "--model", str(producer), "--output", str(self._shard()),
+                    "--games", str(c["games"]), "--seed", str(c["seed"]),
+                    "--simulations", str(c["simulations"]), "--budget-ms", str(c.get("producerBudgetMs", 300))]
+            return argv
         return [c["nodeBin"], str(ROOT / "training/bot/generate.cjs"), str(self._shard()),
                 str(c["games"]), str(c["seed"]), str(c["simulations"])]
 

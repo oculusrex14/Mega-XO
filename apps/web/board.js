@@ -152,10 +152,10 @@ function turnCopy(state, { mode, thinking, preview, snapshot, actorId, pending, 
   return { title, detail };
 }
 
-function toolbar({ mode, difficulty, theme, snapshot }) {
+function toolbar({ mode, difficulty, theme, snapshot, guidedLocked = false }) {
   return `<div class="gb-toolbar">
-    ${snapshot ? `<span class="gb-online-mode">${snapshot.quote?.rated ? 'Ranked' : snapshot.terms?.source === 'queue' ? 'Casual' : 'Friendly match'}</span>` : `<label>Play mode<select data-gb-setting="mode"><option value="bot"${mode === 'bot' ? ' selected' : ''}>Play against Bot</option><option value="local"${mode === 'local' ? ' selected' : ''}>Two players · same screen</option></select></label>
-    <label${mode === 'local' ? ' hidden' : ''}>Bot level<select data-gb-setting="difficulty">${['Beginner', 'Easy', 'Medium', 'Hard', 'Expert'].map(level => `<option${difficulty === level ? ' selected' : ''}>${level}</option>`).join('')}</select></label>`}
+    ${snapshot ? `<span class="gb-online-mode">${snapshot.quote?.rated ? 'Ranked' : snapshot.terms?.source === 'queue' ? 'Casual' : 'Friendly match'}</span>` : `<label>Play mode<select data-gb-setting="mode"${guidedLocked ? ' disabled aria-describedby="gb-guided-title"' : ''}><option value="bot"${mode === 'bot' ? ' selected' : ''}>Play against Bot</option><option value="local"${mode === 'local' ? ' selected' : ''}>Two players · same screen</option></select></label>
+    <label${mode === 'local' ? ' hidden' : ''}>Bot level<select data-gb-setting="difficulty"${guidedLocked ? ' disabled aria-describedby="gb-guided-title"' : ''}>${['Beginner', 'Easy', 'Medium', 'Hard', 'Expert'].map(level => `<option${difficulty === level ? ' selected' : ''}>${level}</option>`).join('')}</select></label>`}
     <label>Game theme<select data-gb-setting="theme">${GAME_THEMES.map(item => `<option value="${item.id}"${theme === item.id ? ' selected' : ''}>${item.name}</option>`).join('')}</select></label>
   </div>`;
 }
@@ -219,7 +219,7 @@ function renderBoard(state, game, {
   const playerName = player => snapshot ? snapshot.symbols[player] === actorId ? 'You' : escapeText(snapshot.playerNames?.[snapshot.symbols[player]] || 'Opponent') : mode === 'local' ? `Player ${player}` : player === 'X' ? 'You' : 'Bot';
   const blocked = !!snapshot && (snapshot.status !== 'PLAYING' || snapshot.symbols[state.turn] !== actorId || pending || uncertain || !!error);
   return `<section class="gb-stage${preview ? ' gb-stage--preview' : ' gb-stage--practice'}" data-gb-stage data-gb-theme="${preview ? 'cinematic' : theme}" aria-label="${preview ? 'Interactive practice preview against Bot' : snapshot ? 'Online Mega XOXO match' : 'Local Mega XOXO game'}">
-    ${preview ? '' : toolbar({ mode, difficulty, theme, snapshot })}
+    ${preview ? '' : toolbar({ mode, difficulty, theme, snapshot, guidedLocked: !!guidedView })}
     ${guidedPanel(guidedView)}
     <div class="gb-frame">
       <div class="gb-hud">
@@ -519,6 +519,7 @@ export function mountBoard(host, {
           if (view?.text) compat?.speakNarration?.(view.text, { enabled: view.narrationEnabled, volume: view.volume });
           render();
         } else if (transition.completed) {
+          mode = 'bot';
           difficulty = 'Beginner';
           saveGuided();
           const view = tutorialController.getView(session.getState());
@@ -533,6 +534,8 @@ export function mountBoard(host, {
       }
       if (action === 'skip') {
         tutorialController.advance('skip', session.getState());
+        mode = 'bot';
+        difficulty = 'Beginner';
         saveGuided();
         render();
         scheduleBot();
@@ -687,6 +690,12 @@ export function mountBoard(host, {
       return;
     }
     if (online) return;
+    // The lesson owns bot mode and Beginner until its explicit skip/handoff.
+    // Ignore synthetic change events as well as disabling the controls in the DOM.
+    if (tutorialController?.isActive() || tutorialController?.isConfirmRestart()) {
+      if (setting === 'mode' || setting === 'difficulty') render({ setting });
+      return;
+    }
     cancelBot();
     if (setting === 'mode') mode = event.target.value === 'local' ? 'local' : 'bot';
     if (setting === 'difficulty' && game.LEVELS.includes(event.target.value)) difficulty = event.target.value;

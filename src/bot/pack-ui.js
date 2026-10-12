@@ -26,7 +26,7 @@ function create({host=()=>root.MegaApp,catalog=null,store=null,baseURL=root.loca
  }
  async function launch(){if(!active()||manager.state.status!=='ready'||!info)return;const api=host();if(!api)return;api.close();try{await api.startImpossible?.(info);}catch(e){api.notify?.(e?.message||'Impossible launch failed.');}}
  async function action(kind){if(!active()||!info)return;try{if(kind==='download')await manager.download(info,{consent});else if(kind==='pause')manager.pause();else if(kind==='remove')await manager.remove(info);else if(kind==='start')await launch();}catch(e){if(active()){panel.querySelector('[data-pack-status]').textContent=message(e.code);host().notify(message(e.code));}}finally{update();}}
- function show(){const api=host();if(!api)return;consent=false;info=null;const latest=resolvedCatalog.filter(x=>x.deploymentStatus==='APPROVED'||x.deploymentStatus==='RESEARCH').at(-1);
+ function show(){const api=host();if(!api)return;consent=false;info=null;const latest=resolvedCatalog.filter(x=>x.deploymentStatus==='APPROVED').at(-1);
   api.open('Impossible AI pack','<section class="ai-pack-panel" id="aiPackPanel" aria-label="Optional on-device AI pack"></section>','ai-pack');panel=document.getElementById('aiPackPanel');
   const paragraph=text=>{const p=document.createElement('p');p.textContent=text;panel.append(p);return p;};
   paragraph('Optional on-device AI. No per-move cloud requests, Coins, Crowns, Elo or official leaderboard rewards. The five existing offline bots are unchanged.');

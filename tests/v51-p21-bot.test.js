@@ -236,6 +236,50 @@ test('P21-I01 exact six halfmoves claim mini0 and preserve live free route witho
   instance.destroy();
 });
 
+test('P21 guidance locks bot mode and Beginner across settings, and finishes on the same board', async () => {
+  const { mountBoard } = await boardPromise;
+  const ui = mockHost({ boardMode: 'local', boardDifficulty: 'Expert' });
+  const instance = mountBoard(ui.host, { preview: false, tutorial: true });
+  const hasLockedSetting = setting => new RegExp(
+    'data-gb-setting="' + setting + '"[^>]*disabled'
+  ).test(ui.host.innerHTML);
+  const assertGuided = () => {
+    assert.equal(hasLockedSetting('mode'), true);
+    assert.equal(hasLockedSetting('difficulty'), true);
+    assert.match(ui.host.innerHTML, /<option value="bot" selected>/);
+    assert.match(ui.host.innerHTML, /<option selected>Beginner<\/option>/);
+  };
+  try {
+    assertGuided();
+    ui.changeSetting('mode', 'local');
+    ui.changeSetting('difficulty', 'Expert');
+    assertGuided();
+    ui.changeSetting('theme', 'vector');
+    ui.changeSetting('mode', 'local'); // force a mock-DOM refresh (real browser updates stage directly)
+    assert.match(ui.host.innerHTML, /data-gb-theme="vector"/);
+    ui.clickGuided('continue');
+    ui.clickCell('0:4');
+    ui.clickGuided('continue');
+    ui.changeSetting('mode', 'local');
+    ui.changeSetting('difficulty', 'Hard');
+    assertGuided();
+    ui.clickCell('0:3');
+    ui.clickGuided('continue');
+    ui.clickCell('0:5');
+    ui.clickGuided('continue');
+    const beforeHandoff = instance.getState();
+    assert.equal(beforeHandoff.moves.length, 6);
+    ui.changeSetting('mode', 'local');
+    assertGuided();
+    ui.clickGuided('continue');
+    assert.equal(instance.getState(), beforeHandoff);
+    assert.equal(instance.getBotState().practice, true);
+    assert.equal(hasLockedSetting('mode'), false);
+    assert.match(ui.host.innerHTML, /<option value="bot" selected>/);
+    assert.match(ui.host.innerHTML, /<option selected>Beginner<\/option>/);
+  } finally { instance.destroy(); }
+});
+
 test('P21-I01 wrong taps are blocked during guided steps and state does not mutate', async () => {
   const { mountBoard } = await boardPromise;
   const ui = mockHost({ boardMode: 'bot' });

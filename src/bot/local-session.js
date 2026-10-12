@@ -78,7 +78,7 @@ class Session {
   }
 
   getLatestManifest(){
-    const latest=this.catalog.filter(x=>x.deploymentStatus==='APPROVED'||x.deploymentStatus==='RESEARCH').at(-1);
+    const latest=this.catalog.filter(x=>x.deploymentStatus==='APPROVED').at(-1);
     if(!latest)return null;
     return P.manifest(latest,this.baseURL);
   }

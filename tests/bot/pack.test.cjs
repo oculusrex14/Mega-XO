@@ -27,16 +27,15 @@ test('a default catalog never approves arbitrary metadata or cached oversized co
  const f=fixture();await f.store.download(info,{consent:true});f.store.catalog=[];assert.throws(()=>f.store.pin(info),/NOT_APPROVED_READY/);
  const key=[...f.data.keys()][0];f.data.set(key,new Response(new Uint8Array(5)));await assert.rejects(f.store.read(info),/SIZE/);assert.equal(f.data.size,0);
 });
-test('trusted private research catalog pins after hash verification while public catalog stays empty',async()=>{
+test('private research data can be verified and cached but never pinned for playable Impossible',async()=>{
  const rBytes=new Uint8Array([5,6,7,8]),rHash=crypto.createHash('sha256').update(rBytes).digest('hex');
  const researchInfo={schemaVersion:1,version:'research-candidate-v1',ruleset:C.RULESET,encodingVersion:P.ENCODING,sha256:rHash,url:'/game/ai/'+rHash+'.onnx',bytes:4,gzipBytes:4,deploymentStatus:'RESEARCH'};
  const f=fixture(async()=>new Response(rBytes));
  f.store.setCatalog([researchInfo]);
  await f.store.download(researchInfo,{consent:true});
- const pin=f.store.pin(researchInfo);
- assert.equal(pin.modelHash,rHash);
- assert.equal(pin.deploymentStatus,'RESEARCH');
- assert.equal(P.resolvePinned(pin,[researchInfo]),researchInfo);
+ const pin={packVersion:researchInfo.version,modelHash:rHash,ruleset:researchInfo.ruleset,encodingVersion:researchInfo.encodingVersion};
+ assert.throws(()=>f.store.pin(researchInfo),/NOT_APPROVED_READY/);
+ assert.equal(P.resolvePinned(pin,[researchInfo]),null);
  assert.equal(P.resolvePinned(pin,P.APPROVED_CATALOG),null);
  assert.equal(P.APPROVED_CATALOG.length,0);
  assert.throws(()=>P.manifest({...researchInfo,deploymentStatus:'INVALID_STATUS'},'https://game.example/'),/INCOMPATIBLE/);

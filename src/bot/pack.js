@@ -27,7 +27,7 @@ async function boundedBytes(response,info,alive,progress=()=>{}){
 }
 function resolvePinned(pin,catalog=APPROVED_CATALOG){
  if(!pin||!Array.isArray(catalog))return null;
- return catalog.find(m=>m.version===pin?.packVersion&&m.sha256===pin?.modelHash&&m.ruleset===pin?.ruleset&&m.encodingVersion===pin?.encodingVersion&&(m.deploymentStatus==='APPROVED'||m.deploymentStatus==='RESEARCH'))||null;
+ return catalog.find(m=>m.version===pin?.packVersion&&m.sha256===pin?.modelHash&&m.ruleset===pin?.ruleset&&m.encodingVersion===pin?.encodingVersion&&m.deploymentStatus==='APPROVED')||null;
 }
 class Store {
  constructor({baseURL,cacheStorage=root.caches,fetcher=root.fetch?.bind(root),onState=()=>{},catalog=APPROVED_CATALOG}={}){
@@ -73,7 +73,7 @@ class Store {
  pin(value){
   const info=this.info(value),pin={packVersion:info.version,modelHash:info.sha256,ruleset:info.ruleset,encodingVersion:info.encodingVersion};
   const matched=resolvePinned(pin,this.catalog);
-  if(this.state.status!=='ready'||this.state.modelHash!==info.sha256||!matched||(info.deploymentStatus!=='APPROVED'&&info.deploymentStatus!=='RESEARCH'))throw failure('PACK_NOT_APPROVED_READY');
+  if(this.state.status!=='ready'||this.state.modelHash!==info.sha256||!matched||info.deploymentStatus!=='APPROVED')throw failure('PACK_NOT_APPROVED_READY');
   return Object.freeze({...pin,deploymentStatus:matched.deploymentStatus||'APPROVED'});
  }
 }

@@ -64,7 +64,13 @@ const rankImage = (value, className = 'pg-rank-image') => {
   const key = tierId(value);
   return key ? `<img class="${className}" src="/assets/art/ranks/${key}.webp" width="96" height="96" alt="">` : icon('shield', className);
 };
-const numeric = (value, digits = 0) => typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value.toLocaleString('en-US', { minimumFractionDigits: digits, maximumFractionDigits: digits }) : '—';
+const numeric = (value, digits = 0) => {
+  if (typeof value === 'string' && digits === 0 && /^\d+$/.test(value)) {
+    try { return BigInt(value).toLocaleString('en-US'); } catch { return '—'; }
+  }
+  return typeof value === 'number' && Number.isFinite(value) && value >= 0
+    ? value.toLocaleString('en-US', { minimumFractionDigits: digits, maximumFractionDigits: digits }) : '—';
+};
 const displayName = profile => profile?.displayName || profile?.name || profile?.username || 'Player';
 const isLinked = context => context.sessionStatus === 'linked' || (!context.sessionStatus && Boolean(context.profile));
 const heading = (eyebrow, title, copy) => pageHeading(eyebrow, title, copy);

@@ -168,7 +168,7 @@ async function defaultHandler(req, res) {
         // Fall back to no default pool; requests will require context injection
       }
     }
-    defaultHandlerInstance = createApiHandler({ pool });
+    defaultHandlerInstance = createApiHandler({ pool, ticketEnvironment: process.env.MEGA_TICKET_ENV, ticketAudience: process.env.MEGA_TICKET_AUDIENCE });
   }
   return defaultHandlerInstance(req, res);
 }

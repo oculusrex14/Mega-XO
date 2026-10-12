@@ -1,7 +1,7 @@
 'use strict';
 
 const crypto = require('node:crypto');
-const { materializeLeaderboardProjection } = require('./read-cache.js');
+const { materializeLeaderboardProjection, normalizeLeaderboardFilter } = require('./read-cache.js');
 
 /* The public leaderboard is an aggregate read: no actor is ever authenticated. The
  * single fixed public ingress path below is the ONLY place an empty actor header is
@@ -33,8 +33,8 @@ function validateLeaderboardQuery(body) {
     }
     query[key] = value;
   }
-  if (query.metric !== undefined && !LEADERBOARD_METRICS.includes(query.metric)) return { ok: false };
-  return { ok: true, query };
+  try { return { ok: true, query: normalizeLeaderboardFilter(query) }; }
+  catch { return { ok: false }; }
 }
 
 /**
@@ -72,28 +72,83 @@ function getHeader(headers, name) {
   return undefined;
 }
 
+/* Service ingress accepts bounded JSON only. This limit is independent of upstream
+ * API middleware: Core must defend itself before processing unsigned requests. */
+const MAX_INGRESS_BODY_BYTES = 100 * 1024;
+const INGRESS_BODY_TIMEOUT_MS = 10000;
+function ingressBodyError(code) {
+  const error = new Error(code);
+  error.code = code;
+  return error;
+}
+
 /**
- * Reads request body from a stream, buffer, or pre-parsed object.
- * @param {Object} req
- * @returns {Promise<string>}
+ * Reads at most MAX_INGRESS_BODY_BYTES from a streamed, buffered or pre-parsed
+ * request. Content-Length is an early hint, never the only size check. The
+ * deadline is absolute so slow chunked clients cannot hold an ingress read open.
  */
 async function readBody(req) {
-  if (req.body !== undefined && req.body !== null) {
-    if (typeof req.body === 'string') return req.body;
-    if (Buffer.isBuffer(req.body)) return req.body.toString('utf8');
-    if (typeof req.body === 'object') return JSON.stringify(req.body);
-    return String(req.body);
+  const declaredLength = getHeader(req.headers, 'content-length');
+  if (declaredLength !== undefined) {
+    const value = Number(declaredLength);
+    if (!Number.isSafeInteger(value) || value < 0 || value > MAX_INGRESS_BODY_BYTES) {
+      throw ingressBodyError('INGRESS_BODY_TOO_LARGE');
+    }
   }
-  if (typeof req.rawBody === 'string') return req.rawBody;
-  if (Buffer.isBuffer(req.rawBody)) return req.rawBody.toString('utf8');
 
+  if (req.body !== undefined && req.body !== null) {
+    const text = typeof req.body === 'string' ? req.body
+      : Buffer.isBuffer(req.body) ? req.body.toString('utf8')
+        : typeof req.body === 'object' ? JSON.stringify(req.body) : String(req.body);
+    if (Buffer.byteLength(text, 'utf8') > MAX_INGRESS_BODY_BYTES) {
+      throw ingressBodyError('INGRESS_BODY_TOO_LARGE');
+    }
+    return text;
+  }
+  if (typeof req.rawBody === 'string' || Buffer.isBuffer(req.rawBody)) {
+    const raw = req.rawBody;
+    if (Buffer.byteLength(raw, 'utf8') > MAX_INGRESS_BODY_BYTES) {
+      throw ingressBodyError('INGRESS_BODY_TOO_LARGE');
+    }
+    return Buffer.isBuffer(raw) ? raw.toString('utf8') : raw;
+  }
   if (typeof req.on !== 'function') return '';
 
   return new Promise((resolve, reject) => {
     const chunks = [];
-    req.on('data', (c) => chunks.push(Buffer.isBuffer(c) ? c : Buffer.from(c)));
-    req.on('end', () => resolve(Buffer.concat(chunks).toString('utf8')));
-    req.on('error', reject);
+    let total = 0;
+    let settled = false;
+    const finish = (error, result) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(deadline);
+      req.removeListener('data', onData);
+      req.removeListener('end', onEnd);
+      req.removeListener('error', onError);
+      req.removeListener('aborted', onAborted);
+      if (error) reject(error); else resolve(result);
+    };
+    const onData = (chunk) => {
+      const bytes = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+      total += bytes.length;
+      if (total > MAX_INGRESS_BODY_BYTES) {
+        req.pause?.();
+        return finish(ingressBodyError('INGRESS_BODY_TOO_LARGE'));
+      }
+      chunks.push(bytes);
+    };
+    const onEnd = () => finish(null, Buffer.concat(chunks, total).toString('utf8'));
+    const onError = (error) => finish(error);
+    const onAborted = () => finish(ingressBodyError('INGRESS_BODY_ABORTED'));
+    const deadline = setTimeout(() => {
+      req.pause?.();
+      finish(ingressBodyError('INGRESS_BODY_TIMEOUT'));
+    }, INGRESS_BODY_TIMEOUT_MS);
+    deadline.unref?.();
+    req.on('data', onData);
+    req.on('end', onEnd);
+    req.on('error', onError);
+    req.on('aborted', onAborted);
   });
 }
 
@@ -170,7 +225,7 @@ function verifyRequest({
   maxDriftMs = 30000,
   now = Date.now,
 }) {
-  const currentTime = (typeof now === 'function' ? now() : Date.now)();
+  const currentTime = (typeof now === 'function' ? now : Date.now)();
   const reqTime = Number(timestamp);
 
   // 1. Check timestamp drift
@@ -771,7 +826,11 @@ function createCoreServiceIngress({
 
       return sendIngressError(res, 404, 'NOT_FOUND');
     } catch (err) {
-      return sendIngressError(res, 500, 'INTERNAL_SERVER_ERROR', err?.message);
+      if (err?.code === 'INGRESS_BODY_TOO_LARGE' || err?.code === 'INGRESS_BODY_TIMEOUT') {
+        if (typeof res.setHeader === 'function') res.setHeader('connection', 'close');
+        return sendIngressError(res, err.code === 'INGRESS_BODY_TOO_LARGE' ? 413 : 408, err.code);
+      }
+      return sendIngressError(res, 500, 'INTERNAL_SERVER_ERROR');
     }
   }
 

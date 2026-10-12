@@ -453,14 +453,13 @@ async function main() {
       const downloadContext = await browser.newContext({ viewport: device.viewport, userAgent: device.userAgent, reducedMotion: 'reduce' });
       await localOnly(downloadContext);
       const requests = [];
-      await downloadContext.route(origin + '/api/download**', async route => {
-        const request = route.request(), url = new URL(request.url());
-        requests.push({ method: request.method(), pathname: url.pathname, platform: url.searchParams.get('platform'), documentNavigation: request.isNavigationRequest() });
-        // Synthetic unavailable listing response exercises the full document
-        // handoff without opening a store or using a real device account.
-        await route.fulfill({ status: 303, headers: { Location: '/download' + (device.expectedPlatform ? '?platform=' + device.expectedPlatform : '') }, body: '' });
-      });
       const downloadPage = await downloadContext.newPage(); track(downloadPage);
+      downloadPage.on('request', request => {
+        const url = new URL(request.url());
+        if (url.origin === origin && url.pathname === '/api/download') {
+          requests.push({ method: request.method(), pathname: url.pathname, platform: url.searchParams.get('platform'), documentNavigation: request.isNavigationRequest() });
+        }
+      });
       await downloadPage.goto(origin + '/', { waitUntil: 'networkidle' });
       const secondary = downloadPage.getByRole('link', { name: 'Download Now', exact: true });
       const href = await secondary.getAttribute('href');
@@ -468,7 +467,7 @@ async function main() {
       await secondary.click();
       await downloadPage.waitForURL(url => url.pathname === '/download');
       await downloadPage.locator('#main h1').waitFor();
-      check('P21-BROWSER-DOWNLOAD-NATIVE-NAVIGATION', requests.length === 1 && requests[0].method === 'GET' && requests[0].documentNavigation && requests[0].platform === device.expectedPlatform, { device: device.name, requests, source: 'synthetic listing unavailable response' });
+      check('P21-BROWSER-DOWNLOAD-NATIVE-NAVIGATION', requests.length === 1 && requests[0].method === 'GET' && requests[0].documentNavigation && requests[0].platform === device.expectedPlatform, { device: device.name, requests, source: 'local preview download handler with null store links' });
       check('P21-BROWSER-DOWNLOAD-CHOOSER', await downloadPage.locator('.mx-header').count() === 1 && await downloadPage.locator('.mx-footer').count() === 1 && await downloadPage.locator('a[href^="https://play.google.com"],a[href^="https://apps.apple.com"]').count() === 0, { device: device.name, externalListings: 'unconfigured' });
       await downloadContext.close();
     }

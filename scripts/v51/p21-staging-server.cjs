@@ -229,7 +229,10 @@ async function main() {
   const realtime = createRealtimeTransport({
     server, pool: corePool, core, ephemera, environment: 'stg', audience: 'mega-core',
     authenticateHttp: async (req) => {
-      security.validateCredentials({ cookie: req.headers.cookie, authorization: req.headers.authorization, method: req.method, allowedOrigins: [origin] });
+      // The realtime handshake must accept the SAME origins the HTTP API accepts, including the HTTPS
+      // public origin; the earlier `[origin]` allowed only the loopback/tailnet http origin, so a
+      // browser on the HTTPS staging URL could sign in but its WebSocket Origin was refused.
+      security.validateCredentials({ cookie: req.headers.cookie, authorization: req.headers.authorization, method: req.method, allowedOrigins });
       const { actor } = await resolveAuth({ accounts, access, nativeAudiences: ['mega-ios', 'mega-android'] }, req);
       if (!actor) throw new Error('AUTH_REQUIRED');
       return { actor };

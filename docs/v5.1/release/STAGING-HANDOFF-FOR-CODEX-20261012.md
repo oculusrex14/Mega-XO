@@ -75,3 +75,22 @@ appended to the `--otp-out` file (mode 0600, outside the repo).
   `session`/`email` are mounted. Do not assume provider sign-in is available on this origin.
 - No secrets are printed by the server; credentials stay in the encrypted private evidence dir.
 - Model publication and production cutover remain approval-gated.
+
+## OTP secret mismatch fixed and proven across restart (Main, 2026-10-12)
+
+`createAccountService()` in `scripts/v51/p21-staging-server.cjs` was constructed with a FRESH
+`crypto.randomBytes(32)` while the API handler received the STABLE file secret. The account service
+MINTS/HASHES the one-time code (`otpHash` HMAC) and the handler verifies it, so two different secrets
+made every freshly issued code unverifiable and unverifiable after a restart. Fix: load the stable
+`staging-otp.secret` (0600) ONCE before any consumer and pass the SAME value to both.
+
+Proof (real PostgreSQL staging, running origin `http://100.107.65.122:8081`):
+
+- `tests/e2e-staging-signin.cjs` -> **8/8 PASS** (bootstrap, signup continue with no OTP leak, code from
+  the sink, verify links actor `u_cbd3bac8…`, session reports linked, profile readable, cookie POST
+  without Origin 403, foreign Origin 403).
+- **Cross-restart**: a challenge minted by the pre-restart process verified on the post-restart process
+  (actor `u_f7a487c4…`, `linked:true`), proving one stable secret across processes/restarts.
+
+Staging outbound email remains DISABLED by design; the OTP sink proves the HTTP bridge, not a live mail
+provider. No live SMTP, no provider, and no V4 contact were used.

@@ -158,7 +158,13 @@ async function main() {
   const coreCheck = (await corePool.query('SELECT current_user AS role')).rows[0];
   if (poolCheck.role !== 'api_runtime' || coreCheck.role !== 'core_runtime') throw new Error('RUNTIME_ROLE_BINDING_FAILED');
 
-  const accounts = await createAccountService(apiPool, { deletionPolicy: { enabled: true, policyVersion: 'v51-staging' }, otpSecret: crypto.randomBytes(32).toString('hex') });
+  // ONE stable staging OTP secret, loaded BEFORE any consumer, shared by the account service that
+  // MINTS/HASHES the code and the API handler that verifies it. Passing two different secrets (the
+  // previous fresh `crypto.randomBytes` here vs. the stable file below) made every freshly issued
+  // code unverifiable and made a code unverifiable after a restart. The secret lives in the staging
+  // secrets directory (0600), is never printed, and is identical for every staging process.
+  const stagingOtpSecret = loadStagingOtpSecret(OTP_SECRET_PATH);
+  const accounts = await createAccountService(apiPool, { deletionPolicy: { enabled: true, policyVersion: 'v51-staging' }, otpSecret: stagingOtpSecret });
   const keyFile = path.join(path.dirname(CREDENTIALS_PATH), 'keys.sealed.json');
   if (!fs.existsSync(keyFile)) throw new Error('EXISTING_SIGNING_KEY_CUSTODY_REQUIRED');
   const activeKeys = await apiPool.query("SELECT kid FROM identity.signing_keys WHERE environment = 'stg' AND state = 'active'");
@@ -177,7 +183,6 @@ async function main() {
   const coreGateway = createCoreGateway({ coreUrl: `http://${host}:${port}`, secret: GATEWAY_SECRET, timeoutMs: GATEWAY_TIMEOUT_MS });
 
   const webArtifact = loadWebArtifact(webBuildDir);
-  const stagingOtpSecret = loadStagingOtpSecret(OTP_SECRET_PATH);
   // Staging outbound email is disabled by design (no live SMTP), so a controlled sign-in test needs
   // the one-time code from somewhere. `--otp-out` appends each delivery to a loopback-only file
   // (mode 0600) OUTSIDE the repository; absent the flag the code is dropped, never logged.

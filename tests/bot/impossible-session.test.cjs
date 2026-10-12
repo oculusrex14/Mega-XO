@@ -53,6 +53,19 @@ function createMockStore(catalog=[fixtureInfo]){
   });
 }
 
+test('research candidates remain non-playable even when their bytes are cached',async()=>{
+  const research={...fixtureInfo,deploymentStatus:'RESEARCH'};
+  const store=createMockStore([research]);
+  const session=LS.createSession({baseURL:'https://game.example/',catalog:[research],store});
+  const pin={packVersion:research.version,modelHash:research.sha256,ruleset:research.ruleset,encodingVersion:research.encodingVersion};
+  assert.equal(session.getLatestManifest(),null);
+  assert.equal(session.isAvailable(),false);
+  await assert.rejects(session.prepareModel({consent:true}),/NO_APPROVED_MODEL/);
+  assert.throws(()=>session.startMatch({id:'research-only',pin}),/LOCAL_AI_MATCH_NOT_APPROVED/);
+  assert.throws(()=>L.create({id:'research-only',pin},[research]),/LOCAL_AI_MATCH_NOT_APPROVED/);
+  session.destroy();
+});
+
 test('empty approved catalog truthfully reports unavailable and fails closed',async()=>{
   const {factory}=createMockWorkerFactory();
   const session=LS.createSession({

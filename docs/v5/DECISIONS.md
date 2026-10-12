@@ -66,3 +66,33 @@ The later `/game` annotation explicitly authorizes `cinematic` / **Mega XOXO Neo
 ## 2026-10-11 — Download and public discovery owner scope
 
 Owner clarified megaxo.online is the canonical game website, antimatterinnovations.com is a future parent-company showcase, and the repository will become private. Source `8520f1c` replaces the duplicate homepage CTA with Download Now and central official store-link routing; both launch listings remain null. Public pages are prerendered, guides/FAQ/media kit are discoverable, and gameplay/private/utility routes receive crawl/index exclusions. A company project-card source is prepared; no backlink publication is claimed. Domain/service/DNS/cutover changes and provider/economic activation are separate release gates. Earlier artwork and four retained native appearances remain intact.
+
+## 2026-10-12 — V5.1 staging functional readiness (Main agent)
+
+Owner re-prioritized: finish functional, secure V5.1 staging before further AI scaling. Work landed on
+branch `V5.1` (`92797bc`, `e00d108`, `042c913`, `87d55eb`, `ffd4168`, `1767acf`, `74db5ef`, `1f0cb61`).
+
+- **Website delivery (P1).** The staging origin served the raw `apps/web` source tree and rewrote every
+  miss to the SPA shell, so missing legacy-game scripts/assets/fonts/workers returned an HTML 200. It now
+  serves the generated P21 bundle (`scripts/p21/build-web.js`) as an allowlist through a shared
+  `resolveStatic()`; a missing sub-resource is a real 404. Verified: shell + real asset paths 200 with
+  real byte counts, missing asset 404, `/livez` 200. Running build `source_commit f4851a5`,
+  `bundle_sha256 8167f349…`, 140 files.
+- **PostgreSQL auth HTTP bridge (P2).** `GET /api/account/session` (anonymous HttpOnly cookie bootstrap)
+  and `POST /api/account/email` (`continue|verify|forgot|reset|reauth|change`) implemented on the V5
+  PostgreSQL account service only; OTP delivery is stripped from every HTTP response and routed to a
+  server-side sink; the staging OTP secret is now stable (0600 file) across restarts. No V4 SQLite, no
+  forged session, CSRF/rate-limit/revocation preserved. Verified 5/5 on real PG16 + 8/8 end-to-end on the
+  running origin (actor `u_ccb45ebc…`).
+- **Remote reachability and latency (P3).** Staging bound to the tailnet interface and verified reachable
+  from another tailnet node. The smoke's `OFFER_EXPIRED` is measured cross-region latency (2.5–2.7 s per
+  Neon round-trip; a single accept 17.4 s vs the unchanged 15 s TTL), not a defect: the co-located queue
+  suite passes 10/10. HTTPS via `tailscale serve` awaits a one-click owner enablement.
+- **AI correction.** Confirmed `generate.cjs` expert labels used `G.choose` while the league benchmarks
+  `improvedExpert = S.choose`; the generator now labels with the same teacher. A matched-opening,
+  held-out inference-budget ablation shows 16→256 sims leaves the gap at 0.01–0.02 and MORE search
+  REGRESSES vs `tacticalUCT` (0.438→0.167); the value head is inert. "Compute is the only bottleneck" is
+  refuted; no AlphaZero-style scaling on this evidence. No promotion; catalog empty.
+
+Preserved: V4 production untouched, staging isolation, noindex, disabled providers, all owner-carried
+untracked inputs. No production cutover, store publication or model promotion.

@@ -41,10 +41,16 @@ def questions_block(r):
     }
 
 def gold_block(r):
+    """Per-question gold objects matching the typed-decisions schema: each question maps to an answer
+    object carrying at least `label` and `type` (and probabilities for a choice). A bare bool/string is
+    rejected by the builder ('bool' object is not subscriptable)."""
     return {
-        "winNow": bool(r["gold"]["winNow"]["label"] == "true"),
-        "opponentThreat": bool(r["gold"]["opponentThreat"]["label"] == "true"),
-        "bestMove": r["gold"]["bestMove"]["label"],
+        "winNow": {"type": "noul", "label": "true" if r["gold"]["winNow"]["label"] == "true" else "false",
+                   "noul": 0.999 if r["gold"]["winNow"]["label"] == "true" else 0.001},
+        "opponentThreat": {"type": "noul", "label": "true" if r["gold"]["opponentThreat"]["label"] == "true" else "false",
+                           "noul": 0.999 if r["gold"]["opponentThreat"]["label"] == "true" else 0.001},
+        "bestMove": {"type": "choice", "label": r["gold"]["bestMove"]["label"],
+                     "probabilities": r["gold"]["bestMove"].get("probabilities") or {r["gold"]["bestMove"]["label"]: 1.0}},
     }
 
 def to_unsloth(items):

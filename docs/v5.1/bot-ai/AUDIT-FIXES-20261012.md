@@ -14,6 +14,14 @@ Branch: `fix/v51-independent-audit-20261012` (based on feature commit `cc4665a`)
 | Ticket creation crossed API/Core least-privilege boundary | API mints tickets through `api_runtime` only, Core redeems; fail closed when issuer unconfigured; test malicious client actor/session overrides |
 | Signed Core service was only mounted in disposable test composition | Add `apps/game-core/ingress-server.js` as a boot-composable HTTP listener using only Core service, Core pool and optional Core queue; no API pool or ticket issuer; explicit external bind guard; signed HTTP host regression |
 
+## CI verification (exact audited commits)
+
+- **SUCCESS** Node 24 audit regression + disposable PostgreSQL 16: [run 38190120782](https://github.com/oculusrex14/Mega-XO/actions/runs/38190120782), commit `18eb5cf0f78f16c033f2774d2be456366d8e15a2` — audit+website+neural 53 tests (51 PASS, 2 optional SKIP, 0 FAIL), real Core gateway/P12 PostgreSQL 28 tests (28 PASS, 0 SKIP, 0 FAIL).
+- Earlier failures were real and fixed incrementally: truncated Docker digest, duplicate JS import, JSON-coded region comparison, and legacy queue-test wiring. Do not interpret prior cancelled superseded runs as current failures.
+- Later CI workflow-only change pinned the Postgres image to the exact digest from the green run. That new SHA must pass separately before it inherits a green status.
+- Four standard V5.1 workflows should be rerun on the **post-integration PR #10 SHA** by the main agent. This independent audit PR checks only the changed boundaries.
+- The real PostgreSQL suite runs against per-test isolated databases on GitHub Actions; it is not a production test.
+
 ## Test / release gates
 
 - Local Node 22 (not reference Node 24): `node --test tests/v51-audit-*.test.js tests/v51-p21-bot.test.js tests/bot/pack.test.cjs tests/bot/impossible-session.test.cjs`: 53 tests, 51 pass, 2 optional runtime skips. This does not substitute for the PostgreSQL integration or browser/device matrix.

@@ -52,11 +52,15 @@ function game({ seed, simulations = 32, openingPlies = 4, neuralEngine = null, t
     // weak UCT teacher, not from more copies of it.
     let policyTarget, visits, modelVersion;
     if (labelSource === 'expert') {
-      const expert = G.choose(state, teacher === 'Expert' ? 'Expert' : 'Expert', C.seeded(seed + state.moves.length));
+      // LABEL EQUIVALENCE: this MUST be the same teacher the league benchmarks against, or the
+      // experiment compares two different players. neural_league's `improvedExpert` is
+      // S.choose({difficulty:'Expert'}) (a bounded UCT search), NOT the heuristic G.choose used by
+      // the frozen roster - labeling with G.choose while matching against S.choose measures nothing.
+      const expert = S.choose(state, { difficulty: 'Expert', seed: Math.floor(rng() * 4294967296), budgetMs: 2000 });
       policyTarget = new Array(81).fill(0);
-      if (expert) policyTarget[expert.b * 9 + expert.c] = 1;
+      if (expert && expert.move) policyTarget[expert.move.b * 9 + expert.move.c] = 1;
       visits = 0;
-      modelVersion = 'expert-label-' + teacher;
+      modelVersion = 'expert-label-improvedExpert';
     } else {
       policyTarget = analysis.policy;
       visits = analysis.diagnostics.visits;
@@ -107,7 +111,7 @@ function generate({ output, games = 16, seed = 1000, simulations = 32, trainingS
   const manifest = { schemaVersion: 1, encodingVersion: E.VERSION, rulesSha256: digest(fs.readFileSync('src/game.js')), searchSha256: digest(fs.readFileSync('src/bot/search.js')),
     records, games, seed, simulations, counts, gameIndex: ids, sha256: hash.digest('hex'), trainingStatus,
     perspective: 'value target is terminal outcome for side to move; draw=0',
-    targetPolicy: labelSource === 'expert' ? 'behaviour cloning of the strongest classical engine (Expert move one-hot)' : 'UCT visits at every retained position; mixed behavior creates off-policy coverage',
+    targetPolicy: labelSource === 'expert' ? 'behaviour cloning of the SAME improvedExpert (S.choose UCT) the league benchmarks against, move one-hot' : 'UCT visits at every retained position; mixed behavior creates off-policy coverage',
     splitPolicy: 'whole games grouped by D4-normalized four-ply opening; no family crosses splits',
     teacher: { ...(profile || {}), teacher, labelSource, targetSimulations: targetSimulations === null ? simulations : targetSimulations, roster: [...roster], exploreRate, hardStates } };
   fs.writeFileSync(output + '.manifest.json', JSON.stringify(manifest, null, 2) + '\n', { flag: 'wx' });

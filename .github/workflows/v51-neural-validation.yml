@@ -2,10 +2,10 @@ name: V5.1 compact model validation
 on:
   push:
     branches: ['V5.1']
-    paths: ['training/bot/**', 'src/bot/**', 'tests/bot/neural*browser.py', '.github/workflows/v51-neural-validation.yml']
+    paths: ['training/bot/**', 'src/bot/**', 'tests/bot/neural*browser.py', 'tests/bot/learning-operator.test.cjs', '.github/workflows/v51-neural-validation.yml']
   pull_request:
     branches: ['V5.1']
-    paths: ['training/bot/**', 'src/bot/**', 'tests/bot/neural*browser.py', '.github/workflows/v51-neural-validation.yml']
+    paths: ['training/bot/**', 'src/bot/**', 'tests/bot/neural*browser.py', 'tests/bot/learning-operator.test.cjs', '.github/workflows/v51-neural-validation.yml']
   workflow_dispatch:
 permissions:
   contents: read
@@ -31,6 +31,12 @@ jobs:
           python3 -m pip install -r training/bot/requirements-validation.txt playwright==1.57.0
           python3 -m playwright install --with-deps chromium
           npm install --prefix .artifacts/v51/ort --ignore-scripts --no-audit --no-fund onnxruntime-web@1.23.2
+          npm install --prefix .artifacts/v51-ort-node --ignore-scripts --no-audit --no-fund onnxruntime-node@1.23.2
+      - name: Continuous-learning operator contract and real cycle
+        run: |
+          set -o pipefail
+          NODE_PATH="$PWD/.artifacts/v51-ort-node/node_modules" V5_LEARNING_OPERATOR_PREREQS=1 V5_OPERATOR_PYTHON=python3 \
+            node --test tests/bot/learning-operator.test.cjs 2>&1 | tee .artifacts/v51/learning-operator.log
       - name: Canonical records and CPU candidate smoke
         run: |
           set -euo pipefail

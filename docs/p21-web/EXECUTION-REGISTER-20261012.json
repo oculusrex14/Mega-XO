@@ -11,7 +11,7 @@
     "audited_source_commit": "5fc3f957eb6268395b5aa9a2883d46a56b13b85c",
     "audited_source_commit_verified_as_HEAD": true,
     "current_master_checklist": "docs/p21-web/MASTER-CHECKLIST.md",
-    "current_master_checklist_sha256": "772653436f79cfd179a67d4c10ac14fa9363c73c29cbe736f93b3197e27a9d9e",
+    "current_master_checklist_sha256": "a772d4123ecd523a5e1b8c0d305eada35335b8a20e79e4eb14816f1edb87bc4a",
     "current_master_counts": {
       "checked": 71,
       "open": 159
@@ -148,7 +148,7 @@
       "node_qa": {
         "result": "PASS",
         "checks": 138,
-        "scope": "Local website-only Node checks",
+        "scope": "Local affected website and bot Node checks",
         "provenance": "Codex-run against the original local candidate; saved log: docs/p21-web/evidence/20261012-recovery-validation/website-138-pass.log"
       },
       "offline_runtime_source_checkpoint": "12acd99 (Codex commit for offline-runtime source work; not a deployed service or process runtime identity)",
@@ -162,7 +162,21 @@
         "bundle_files": 151,
         "bundle_bytes": 3474873,
         "relationship": "Separate detached reconciliation candidate; its web bundle was byte-identical to the original local build at source 681f06bfad5e929cdda929cdf6d4486f5fff89ec. Not the source identity of the current browser QA reports.",
-        "evidence": "docs/p21-web/RECOVERY-AND-MAIN-HANDOFF-20261012.md"
+        "evidence": "docs/p21-web/RECOVERY-AND-MAIN-HANDOFF-20261012.md",
+        "additional_cases": "Five static-resolver tests added by Main; prior website/bot case names retained."
+      },
+      "offline_transport_qualification": {
+        "artifact_source_commit": "681f06bfad5e929cdda929cdf6d4486f5fff89ec",
+        "bundle_sha256": "9cfa78636df78528c6ae1fb95ee5afc845b787f796f17d91be5258d4b283aeef",
+        "prior_assertion_helper_sha256": "c50fb0ff7bb76fb75f2284ac207cbe39eb93b226d80bfef175ff1a506c48080f",
+        "latest_teardown_helper_sha256": "3cf3be02b7880eae6d72b0ac6e69e44bf3c5e2537d28be98b85319dc73333e89",
+        "chromium151_browser_offline": "33/33 PASS with prior helper",
+        "firefox_webkit_browser_offline": "FAIL_OR_INCOMPLETE after14checks; Worker recovery visible",
+        "firefox_webkit_origin_drop": "33/33 PASS each; navigator.onLine true; transport simulation with prior helper",
+        "chromium145_browser_offline": "30/33; account and unknown navigation reached proxy; query route attribution uncertain",
+        "chromium145_origin_drop_latest": "33/33 and clean exit0 with latest teardown helper; prior completed run required Ctrl-C exit130",
+        "physical_offline_acceptance": "NOT_RUN",
+        "persistent_evidence": "docs/p21-web/evidence/20261012-recovery-validation/archive-index.json"
       }
     },
     "staging_frontend_review": {

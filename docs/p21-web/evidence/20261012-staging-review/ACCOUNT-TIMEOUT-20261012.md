@@ -6,6 +6,8 @@ Status: **owner-reported defect; signup timeout not independently reproduced**. 
 
 The owner tried email continuation at the private V5 staging account page and reported: “The service did not respond in time. Try again.” The owner also said the account exists in V4.1 production. V4.1 identity is not evidence of an account in the isolated V5 staging database; no identity migration was approved or performed by Codex.
 
+The owner subsequently confirmed the timeout origin as `http://100.107.65.122:8081/`. This resolves the ambiguity with the separate local-preview tab. The failing account request/phase and running server revision remain unverified. The timing probes below independently target that private staging origin.
+
 Target: `http://100.107.65.122:8081/account`. Prior public-file verification identifies frontend source `f4851a568524846d981b351c659af4a9ee7479be`, bundle `8167f349fb16b303c9347ac544afc3f9c73b9ea5515b0a085a7f40a6d75f3ea3`. Server/API boot SHA is not verified. Main checkout and `origin/V5.1` were `46da760c8c3da1fcec0733ba1b92f8f296762ba4` when source was reviewed.
 
 CUA follow-up could locate only the staging `/game` tab, not the account tab. No form values were inspected, no credential was entered, and no signup retry was submitted. The reported account error remains owner evidence, not a CUA reproduction. A separate app selection timed out; that is a tool availability failure and is not evidence of a website failure or an automatic approval-review rejection.
@@ -20,6 +22,8 @@ Around 17:23 UTC, two parallel `fetch` probes used the explicit tailnet origin, 
 | `/api/account/session` | 200 | 4,181 ms | JSON; `Cache-Control: private, no-store`; `linked: false`; CSRF field present; empty provider keys; noindex/nofollow |
 
 A session GET can issue an anonymous staging session. This was a bounded staging diagnostic, not a durable signup/login or authenticated acceptance result. One sample is not a latency distribution and cannot identify which request in the owner's continuation timed out.
+
+The owner subsequently shared Main's summary at repository `539c9ba`: warm Neon RTT was 2,530–2,732 ms, and a single remote match accept took 17.4 seconds against the unchanged 15-second offer window. Main reports a passing co-located queue suite and eight HTTP sign-in cases. Those observations support investigating deployment placement and account phase timing; they are Main-reported service evidence, not a Codex browser signup reproduction or a passing remote multiplayer journey. A co-located pass does not close the current cross-region browser acceptance gate.
 
 ## Source budget and Main's next diagnosis
 

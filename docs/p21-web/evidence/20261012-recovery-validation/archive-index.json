@@ -107,6 +107,59 @@
       "evidence": "chromium-guided-complete-offline.png",
       "bytes": 981748,
       "sha256": "102dabce829dba29b27285f068b411fda81e65382e4f3c4158613630f76927dc"
+    },
+    {
+      "source": "tests-output/p21-offline/9cfa78636df7/chromium/20261012174912161-53421/offline-qa.json",
+      "evidence": "chromium151-offline-final-helper.json",
+      "bytes": 103632,
+      "sha256": "f0b1a90cc0d93ff312fa7469c821cd442f288ef876795db250dcfee5a645e130"
+    },
+    {
+      "source": "tests-output/p21-offline/9cfa78636df7/firefox/20261012174936802-53568/offline-qa.json",
+      "evidence": "firefox-origin-drop-final-helper.json",
+      "bytes": 113833,
+      "sha256": "58dbdb1609ddc28fa20c0f5718efd1eece0efd55e4141c0c429421bc02fb811b"
+    },
+    {
+      "source": "tests-output/p21-offline/9cfa78636df7/webkit/20261012175005328-53747/offline-qa.json",
+      "evidence": "webkit-origin-drop-final-helper.json",
+      "bytes": 108414,
+      "sha256": "ac0a8265cd5041a3c621c44160ee556bb504e31fd08063cc69b3d6eaccd6983f"
+    },
+    {
+      "source": "tests-output/p21-offline/9cfa78636df7/firefox/20261012175037312-53942/offline-qa.json",
+      "evidence": "firefox-browser-offline-final-helper-incomplete.json",
+      "bytes": 32628,
+      "sha256": "47b7c2fab5b276a0203f163b15cd2ea29f86e16fbee177f8e99a62f8f153130b"
+    },
+    {
+      "source": "tests-output/p21-offline/9cfa78636df7/webkit/20261012175101860-54099/offline-qa.json",
+      "evidence": "webkit-browser-offline-final-helper-incomplete.json",
+      "bytes": 32696,
+      "sha256": "958edfab7710bc1845afdc0d41d9be849e12bcf509b3d4144032a64e8e68bf25"
+    },
+    {
+      "source": "tests-output/p21-offline/9cfa78636df7/chromium/20261012174638675-52408/offline-qa.json",
+      "evidence": "chromium145-browser-offline-fail.json",
+      "bytes": 111115,
+      "sha256": "8893394ca1d7234612806a99b98cd337d1b869b59c665f7f905b9d312e4a36b9"
+    },
+    {
+      "source": "tests-output/p21-offline/9cfa78636df7/chromium/20261012175539160-55853/offline-qa.json",
+      "evidence": "chromium145-origin-drop-completed-with-exit130.json",
+      "bytes": 110080,
+      "sha256": "d1262c27ef9cf81e8207dbf23a3c3a8bbc9a66d12cebf0d30a4f1cee5fbe53ee",
+      "process_result": "33/33 checks completed and report written; then lingering handle required Ctrl-C, exit130. CLI cleanup under diagnosis; do not call this clean exit0."
+    },
+    {
+      "source": "tests-output/p21-offline/9cfa78636df7/chromium/20261012180208478-59077/offline-qa.json",
+      "evidence": "chromium145-origin-drop-clean-exit-final-teardown.json",
+      "bytes": 109624,
+      "sha256": "d7eb0bdade4295242dee32d14ab854a8426ee197aab3cae830685892809c9251",
+      "process_result": "clean exit0 reported by executing Luna agent;33checksPASS"
     }
-  ]
+  ],
+  "final_offline_helper_sha256": "c50fb0ff7bb76fb75f2284ac207cbe39eb93b226d80bfef175ff1a506c48080f",
+  "updated_at": "2026-10-12T17:55:23.385Z",
+  "latest_offline_helper_sha256": "3cf3be02b7880eae6d72b0ac6e69e44bf3c5e2537d28be98b85319dc73333e89"
 }

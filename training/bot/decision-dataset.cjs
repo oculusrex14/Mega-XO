@@ -163,4 +163,4 @@ function optionIdsFor(seed) {
 }
 
 module.exports = { serialize, options, buildRow, build, optionIdsFor, opponentThreat, winNowMove };
-if (require.main === module) { const [output = '.artifacts/cl19/decisions.jsonl', games = '8', seed = '3000'] = process.argv.slice(2); console.log(JSON.stringify(build({ output, games: Number(games), seed: Number(seed) }), null, 2)); }
+if (require.main === module) { const [output = '.artifacts/cl19/decisions.jsonl', games = '8', seed = '3000', samplesPerGame = '6', budgetMs = '20'] = process.argv.slice(2); console.log(JSON.stringify(build({ output, games: Number(games), seed: Number(seed), samplesPerGame: Number(samplesPerGame), budgetMs: Number(budgetMs) }), null, 2)); }

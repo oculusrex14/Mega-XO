@@ -8,7 +8,7 @@ const path = require('node:path');
 const crypto = require('node:crypto');
 const http = require('node:http');
 const { once } = require('node:events');
-const { buildWeb, ROOT, MANIFEST, WEB_FILES, OPTIONAL_WEB_FILES, GAME_FILES, LEGAL_NAMES, WEBSITE_ROUTES, routeFile } = require('../scripts/p21/build-web.js');
+const { buildWeb, ROOT, MANIFEST, WEB_FILES, ICON_FILES, OPTIONAL_WEB_FILES, GAME_FILES, LEGAL_NAMES, WEBSITE_ROUTES, routeFile } = require('../scripts/p21/build-web.js');
 const { createPreviewServer, READ_API_ORIGIN, READ_MAX_BYTES } = require('../scripts/p21/serve-web.js');
 const hash = value => crypto.createHash('sha256').update(value).digest('hex');
 
@@ -20,7 +20,7 @@ function fixture(t) {
     const original=path.join(ROOT,'apps/web',name);
     write('apps/web/'+name,fs.existsSync(original)?fs.readFileSync(original):'/* optional synthetic runtime fixture */');
   }
-  const retained = ['index.html', ...GAME_FILES.map(name => 'src/' + name), ...LEGAL_NAMES.map(name => 'public/' + name + '.html'), 'public/legal.css'];
+  const retained = ['index.html', ...GAME_FILES.map(name => 'src/' + name), ...LEGAL_NAMES.map(name => 'public/' + name + '.html'), 'public/legal.css', 'scripts/p21/offline-worker.cjs', ...ICON_FILES.map(name=>'assets/p21/icons/'+name)];
   for (const theme of ['vector', 'midnight', 'paperclub', 'afterhours']) for (const kind of ['app', 'mark']) retained.push('assets/p21/logos/mega-xoxo-' + theme + '-' + kind + '.webp');
   for (const relative of retained) write(relative, fs.readFileSync(path.join(ROOT, relative)));
   const webp = Buffer.from('5249464610000000574542505650384c00000000', 'hex');
@@ -32,6 +32,7 @@ function fixture(t) {
   write('assets/p21/ranks/original.png', 'must not ship');
   write('assets/p21/art/huge-master.png', 'must not ship');
   write('assets/p21/reference/private-reference.png', 'must not ship');
+  write('assets/p21/icons/not-approved.png', 'must not ship');
   write('assets/p21/fonts/test-latin.woff2', Buffer.from('wOF2'));
   write('assets/p21/fonts/OFL.txt', 'test license');
   for (const relative of ['.env', '.vercel/project.json', 'server/credentials.json', 'src/authority.js', 'native/keystore.jks', 'players.sqlite']) write(relative, 'FORBIDDEN-SENTINEL');
@@ -57,13 +58,33 @@ test('P21-BUILD-01: deterministic positive allowlist excludes authority, secrets
     assert.equal(hash(bytes), file.sha256, file.path);
     assert.equal(bytes.length, file.bytes, file.path);
     assert.ok(!bytes.includes(Buffer.from('FORBIDDEN-SENTINEL')), file.path);
-    assert.ok(!/\.png$|authority|\.env|\.sqlite|\.vercel|keystore/.test(file.path), file.path);
+    assert.ok(!/authority|\.env|\.sqlite|\.vercel|keystore|master|reference/.test(file.path), file.path);
+    if(file.path.endsWith('.png'))assert.ok(ICON_FILES.some(name=>file.path==='assets/icons/'+name),file.path);
   }
   assert.ok(second.manifest.files.some(file => file.path === 'assets/art/hero-landscape.webp'));
   assert.ok(second.manifest.files.some(file => file.path === 'assets/art/header.webp'));
   assert.ok(!second.manifest.files.some(file => file.path === 'assets/brand/header.webp'));
   assert.ok(second.manifest.files.some(file => file.path === 'assets/fonts/test-latin.woff2'));
   for (const file of ['data.js', 'game-runtime.js', 'legal-documents.js', 'assets/art/ranks/wood.webp', 'assets/art/ranks/archive/diamond.webp', 'assets/art/ranks/stone.webp', 'assets/art/currency/coin.webp']) assert.ok(second.manifest.files.some(row => row.path === file), file);
+  for(const name of ICON_FILES)assert.ok(second.manifest.files.some(row=>row.path==='assets/icons/'+name));
+  assert.ok(!second.manifest.files.some(row=>row.path.endsWith('not-approved.png')));
+});
+
+test('P21-BUILD-06: offline copy uses only versioned static bytes and guest documents, never private/API responses',t=>{
+ const {root,write}=fixture(t);const first=buildWeb({root});
+ const manifest=JSON.parse(fs.readFileSync(path.join(first.output,'manifest.webmanifest'),'utf8'));
+ assert.equal(manifest.start_url,'/game');assert.equal(manifest.id,'/game');assert.equal(manifest.display,'standalone');
+ assert.equal(manifest.icons.find(row=>row.purpose==='maskable').sizes,'512x512');
+ const offline=first.manifest.offline;
+ assert.deepEqual(offline.navigations,{'/game':'/pages/game.html','/offline':'/pages/offline.html','/how-to-play':'/pages/how-to-play.html'});
+ assert.ok(offline.bytes<6*1024*1024);assert.match(offline.version,/^[a-f0-9]{64}$/);
+ assert.equal(offline.registration,'explicit user opt-in only');
+ const paths=new Set(offline.assets.map(row=>row.url));
+ for(const required of ['/app.js','/offline.js','/legal-documents.js','/pages/game.html','/pages/offline.html','/pages/how-to-play.html','/legacy-game/src/game.js'])assert.ok(paths.has(required),required);
+ for(const url of paths)assert.ok(!/^\/api(?:\/|$)|^\/auth(?:\/|$)|^\/pages\/(?:account|profile|settings|friends|challenge)\.html$|^\/legacy-game\/index\.html$/.test(url),url);
+ for(const row of offline.assets)assert.equal(row.sha256,first.manifest.files.find(file=>'/'+file.path===row.url).sha256);
+ const version=offline.version;write('apps/web/styles.css',fs.readFileSync(path.join(root,'apps/web/styles.css'),'utf8')+'\n/* fixture version change */\n');
+ const next=buildWeb({root});assert.notEqual(next.manifest.offline.version,version);
 });
 
 test('P21-BUILD-02: preserved legacy game and complete legal wording have checksummed source parity', async t => {

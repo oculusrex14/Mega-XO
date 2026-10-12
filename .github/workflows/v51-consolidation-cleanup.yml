@@ -1,0 +1,87 @@
+name: V5.1 one-time consolidation cleanup
+on:
+  push:
+    branches: ['V5.1']
+    paths: ['.github/workflows/v51-consolidation-cleanup.yml']
+permissions:
+  contents: read
+concurrency:
+  group: v51-owner-consolidation-cleanup
+  cancel-in-progress: false
+jobs:
+  consolidate:
+    if: github.repository == 'oculusrex14/Mega-XO' && github.ref == 'refs/heads/V5.1'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          fetch-depth: 0
+      - name: Verify retained heads and integrated source ancestry before atomic deletion
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p .artifacts/consolidation
+          git fetch origin --prune
+          git ls-remote --heads origin > .artifacts/consolidation/branches-before.txt
+          test "$(git rev-parse origin/main)" = 66b19db3451f5eb1af824110556aa4ab6fae138a
+          test "$(git rev-parse origin/V4.1)" = 455b8ec9ea4070b4410d78f9eea2aaa06d32c0b2
+          git merge-base --is-ancestor 02452da428dd93eea5a66f91ffb1a71d5a543e1f origin/V5.1
+          refs=(V5-platform feat/v5.1-bot-ai-tutorial fix/v51-independent-audit-20261012)
+          shas=(cac2d8dcae725b916095f32a332a5e28d694330c 682f44e66c42d5a4b2918f311f4c6f1d6e2b410c b2b1d67e99b86d20d16c772ae753c8722404155c)
+          leases=()
+          deletes=()
+          for i in 0 1 2; do
+            ref="${refs[$i]}"
+            sha="${shas[$i]}"
+            git merge-base --is-ancestor "$sha" origin/V5.1
+            actual="$(git ls-remote --heads origin "refs/heads/$ref" | cut -f1)"
+            if [ -z "$actual" ]; then
+              printf 'Already absent: %s; integrated SHA %s\n' "$ref" "$sha"
+              continue
+            fi
+            test "$actual" = "$sha"
+            leases+=("--force-with-lease=refs/heads/$ref:$sha")
+            deletes+=(":refs/heads/$ref")
+          done
+          if [ "${#deletes[@]}" -gt 0 ]; then
+            git push --atomic "${leases[@]}" origin "${deletes[@]}"
+          fi
+          git ls-remote --heads origin > .artifacts/consolidation/branches-after.txt
+          test "$(git ls-remote --heads origin refs/heads/main | cut -f1)" = 66b19db3451f5eb1af824110556aa4ab6fae138a
+          test "$(git ls-remote --heads origin refs/heads/V4.1 | cut -f1)" = 455b8ec9ea4070b4410d78f9eea2aaa06d32c0b2
+          cut -f2 .artifacts/consolidation/branches-after.txt | sort > .artifacts/consolidation/actual-refs.txt
+          printf '%s\n' refs/heads/V4.1 refs/heads/V5.1 refs/heads/main | sort > .artifacts/consolidation/expected-refs.txt
+          diff -u .artifacts/consolidation/expected-refs.txt .artifacts/consolidation/actual-refs.txt
+          printf 'All three retired heads are ancestors of V5.1. Main and V4.1 unchanged. No deployment.\n' >> "$GITHUB_STEP_SUMMARY"
+      - name: Retain text source and task ledgers for consolidation audit
+        if: always()
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import json, pathlib, subprocess, tarfile
+          root=pathlib.Path('.')
+          out=root/'.artifacts/consolidation'
+          out.mkdir(parents=True,exist_ok=True)
+          sha=subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip()
+          paths=subprocess.check_output(['git','ls-files','-z']).decode().split('\0')
+          banned={'.woff','.woff2','.ttf','.otf','.png','.jpg','.jpeg','.webp','.gif','.zip','.pdf','.mp4','.mp3','.onnx','.wasm','.keystore','.p12'}
+          with tarfile.open(out/'text-source.tar.gz','w:gz') as archive:
+              for name in paths:
+                  p=root/name
+                  if name and p.is_file() and p.suffix.lower() not in banned:
+                      archive.add(p,arcname=name,recursive=False)
+          (out/'source.json').write_text(json.dumps({'sha':sha,'scope':'tracked source excluding binary assets and fonts','productionChanged':False},indent=2)+'\n')
+          for name in ['docs/v5/progress.json','docs/v5.1/bot-ai/progress.json']:
+              obj=json.loads((root/name).read_text())
+              print(name, 'top-level keys:', list(obj))
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: v51-consolidation-evidence
+          path: .artifacts/consolidation
+          retention-days: 14
+          if-no-files-found: error

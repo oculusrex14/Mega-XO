@@ -102,6 +102,15 @@ async function main() {
   const port = Number(arg('--port', '8081'));
   const webBuildDir = path.resolve(arg('--web-build', path.join(ROOT, '.artifacts/p21-web')));
   const OTP_SECRET_PATH = path.join(path.dirname(CREDENTIALS_PATH), 'staging-otp.secret');
+  // A private reachable origin (e.g. the tailnet HTTPS name from `tailscale serve`) is an allowed
+  // browser origin for CORS/CSRF, so a reviewer on the tailnet can authenticate over HTTPS. It must
+  // be https and must not be a wildcard; it grants no new authority, only an accepted Origin value.
+  const publicOrigin = arg('--public-origin', null);
+  if (publicOrigin !== null) {
+    let parsed;
+    try { parsed = new URL(publicOrigin); } catch { throw new Error('INVALID_PUBLIC_ORIGIN'); }
+    if (parsed.protocol !== 'https:' || parsed.origin !== publicOrigin.replace(/\/$/, '')) throw new Error('PUBLIC_ORIGIN_MUST_BE_HTTPS_ORIGIN');
+  }
   // Loopback is always allowed. A non-loopback bind must name the exact interface (e.g. the
   // Tailscale IP) via --allow-host; wildcard binds are refused so staging can never be exposed
   // beyond an explicit, private address.
@@ -178,10 +187,12 @@ async function main() {
   } : undefined;
 
   let origin = `http://${host}:${port}`;
+  const allowedOrigins = ['https://megaxo.online', 'https://play.antimatterinnovations.com', origin];
+  if (publicOrigin) allowedOrigins.push(publicOrigin);
   const apiHandler = createApiHandler({
     pool: apiPool, accounts, coreGateway, access, nativeAudiences: ['mega-ios', 'mega-android'],
     queue: coreGateway, otpSecret: stagingOtpSecret, otpSink,
-    allowedOrigins: ['https://megaxo.online', 'https://play.antimatterinnovations.com', origin],
+    allowedOrigins,
   });
 
   const artifactDir = webArtifact.dir;
@@ -243,7 +254,7 @@ async function main() {
   const missing = await probe('/legacy-game/src/does-not-exist.js');
   const assetSelfCheck = Object.values(assets).every((a) => a.status === 200);
   console.log(JSON.stringify({
-    ok: true, origin, database: target.database, environment: 'staging', nonserving: target.nonserving,
+    ok: true, origin, publicOrigin, allowedOrigins, database: target.database, environment: 'staging', nonserving: target.nonserving,
     redisNamespace: ephemera.keyVersion, outbound: target.outbound,
     webBuild: { dir: artifactDir, sourceCommit: webArtifact.sourceCommit, bundleSha256: webArtifact.bundleSha256, fileCount: webArtifact.fileCount },
     websiteServesShell: shell.includes('mx-web-shell'), livezStatus: livez.status,

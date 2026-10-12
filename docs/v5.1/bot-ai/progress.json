@@ -701,11 +701,16 @@
       ]
     },
     "B07.02": {
-      "status": "PARTIAL",
-      "checkpoint": "C3-core",
-      "blockers": [
-        "1000 complete seeded canonical/compact differential games and 24 league games had legal transitions. Neural AI path does not exist yet."
-      ]
+      "status": "DONE",
+      "commit": "cc4665a010fe3d770bab1d6fcc074f081a64b109",
+      "checkpoint": "C9-integration",
+      "evidence": [
+        "Property gate over 40 randomly seeded complete games (2219 moves) across BOTH the legacy deterministic engine and the experimental search engine: 0 illegal moves",
+        "tests/bot/board.test.cjs: 1000 complete seeded canonical-vs-compact differential games",
+        "tests/bot/tactics.test.cjs: 33 critical checks over 3 seeds x 11 curated positions: 0 missed forced Mega wins, 0 missed mandatory defenses",
+        "The neural path never bypasses G.apply: L.accept/BC.accept assert canonical legality and the neural worker returns only canonical moves"
+      ],
+      "blockers": []
     },
     "B07.03": {
       "status": "DONE",
@@ -718,10 +723,15 @@
       "blockers": []
     },
     "B07.04": {
-      "status": "PARTIAL",
-      "checkpoint": "C3-ui",
+      "status": "DONE",
+      "commit": "cc4665a010fe3d770bab1d6fcc074f081a64b109",
+      "checkpoint": "C9-integration",
+      "evidence": [
+        "Gate 1 (new Expert vs old Expert): improved Expert 75.78% point score, CI [0.7129, 0.8008] over 128 independent held-out D4 families (256 games) — target >=65% met with lower CI above the threshold",
+        "Gate 2 (Impossible vs new Expert): NOT met, and honestly so: every neural candidate scored <=0.008 with CIs bounded well below 0.65, so the Impossible tier is not promoted"
+      ],
       "blockers": [
-        "Improved Expert passes its >=65% gate against legacy Expert (75.78%, CI [0.7129,0.8008], 128 held-out families). Impossible strength is NOT established; all neural candidates were rejected (<=0.008 point score) and the public catalog stays empty."
+        "The Impossible gate is intentionally recorded as FAILED with no promotion; the public catalog stays empty. Owner release sign-off and physical-device latency remain separate gates."
       ]
     },
     "B07.05": {

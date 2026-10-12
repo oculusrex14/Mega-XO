@@ -1,0 +1,188 @@
+{
+  "schemaVersion": 1,
+  "runtime": "v26.8.2",
+  "sourceSha256": "5194df8e120f35391e6991f4277f0400a14caa6cc481b86e8d6e138c3af3a545",
+  "rulesSha256": "e6e14c258b4db439eedf28090ebafd0962867bab5e64709d0d4438cb145b31e0",
+  "ruleset": "mega-xoxo-canonical-v1",
+  "modelHash": "no-model-search",
+  "pairs": 12,
+  "holdoutFamiliesCount": 100,
+  "leakageExcluded": true,
+  "scope": "Adjacent-tier calibration with balanced X/O on independently held-out D4 opening families. One runtime is not cross-device calibration.",
+  "calibration": [
+    {
+      "tierA": "Easy",
+      "tierB": "Beginner",
+      "pointScore": 0.9583333333333334,
+      "pairBootstrap95": [
+        0.875,
+        1
+      ],
+      "monotonic": true,
+      "significant": true,
+      "status": "statistically-separated",
+      "uncertainty": "SMOKE ONLY: fewer than 30 independent pairs; interval is not promotion evidence"
+    },
+    {
+      "tierA": "Medium",
+      "tierB": "Easy",
+      "pointScore": 1,
+      "pairBootstrap95": [
+        1,
+        1
+      ],
+      "monotonic": true,
+      "significant": true,
+      "status": "statistically-separated",
+      "uncertainty": "SMOKE ONLY: fewer than 30 independent pairs; interval is not promotion evidence"
+    },
+    {
+      "tierA": "Hard",
+      "tierB": "Medium",
+      "pointScore": 0.8333333333333334,
+      "pairBootstrap95": [
+        0.7083333333333334,
+        0.9583333333333334
+      ],
+      "monotonic": true,
+      "significant": true,
+      "status": "statistically-separated",
+      "uncertainty": "SMOKE ONLY: fewer than 30 independent pairs; interval is not promotion evidence"
+    },
+    {
+      "tierA": "Expert",
+      "tierB": "Hard",
+      "pointScore": 0.5833333333333334,
+      "pairBootstrap95": [
+        0.4166666666666667,
+        0.75
+      ],
+      "monotonic": true,
+      "significant": false,
+      "status": "directionally-higher",
+      "uncertainty": "SMOKE ONLY: fewer than 30 independent pairs; interval is not promotion evidence"
+    }
+  ],
+  "tierDiversity": {
+    "Beginner": {
+      "uniqueMoves": 20,
+      "repetitionRate": 0.05,
+      "entropy": 4.322
+    },
+    "Easy": {
+      "uniqueMoves": 20,
+      "repetitionRate": 0.05,
+      "entropy": 4.322
+    },
+    "Medium": {
+      "uniqueMoves": 16,
+      "repetitionRate": 0.15,
+      "entropy": 3.884
+    },
+    "Hard": {
+      "uniqueMoves": 1,
+      "repetitionRate": 1,
+      "entropy": 0
+    },
+    "Expert": {
+      "uniqueMoves": 1,
+      "repetitionRate": 1,
+      "entropy": 0
+    }
+  },
+  "leagues": [
+    {
+      "higherTier": "Easy",
+      "lowerTier": "Beginner",
+      "summary": {
+        "games": 24,
+        "wins": 23,
+        "draws": 0,
+        "losses": 1,
+        "pointScore": 0.9583333333333334,
+        "pairBootstrap95": [
+          0.875,
+          1
+        ],
+        "uncertainty": "SMOKE ONLY: fewer than 30 independent pairs; interval is not promotion evidence",
+        "p50MoveMs": 0.005124999999999602,
+        "p95MoveMs": 0.04904200000000003,
+        "openingDiversity": {
+          "uniqueMoves": 22,
+          "repetitionRate": 0.083,
+          "entropy": 4.418
+        }
+      }
+    },
+    {
+      "higherTier": "Medium",
+      "lowerTier": "Easy",
+      "summary": {
+        "games": 24,
+        "wins": 24,
+        "draws": 0,
+        "losses": 0,
+        "pointScore": 1,
+        "pairBootstrap95": [
+          1,
+          1
+        ],
+        "uncertainty": "SMOKE ONLY: fewer than 30 independent pairs; interval is not promotion evidence",
+        "p50MoveMs": 0.017249999999989996,
+        "p95MoveMs": 3.2647089999999253,
+        "openingDiversity": {
+          "uniqueMoves": 20,
+          "repetitionRate": 0.083,
+          "entropy": 4.252
+        }
+      }
+    },
+    {
+      "higherTier": "Hard",
+      "lowerTier": "Medium",
+      "summary": {
+        "games": 24,
+        "wins": 18,
+        "draws": 4,
+        "losses": 2,
+        "pointScore": 0.8333333333333334,
+        "pairBootstrap95": [
+          0.7083333333333334,
+          0.9583333333333334
+        ],
+        "uncertainty": "SMOKE ONLY: fewer than 30 independent pairs; interval is not promotion evidence",
+        "p50MoveMs": 1.9792079999970156,
+        "p95MoveMs": 140.0771249999998,
+        "openingDiversity": {
+          "uniqueMoves": 18,
+          "repetitionRate": 0.083,
+          "entropy": 4.085
+        }
+      }
+    },
+    {
+      "higherTier": "Expert",
+      "lowerTier": "Hard",
+      "summary": {
+        "games": 24,
+        "wins": 12,
+        "draws": 4,
+        "losses": 8,
+        "pointScore": 0.5833333333333334,
+        "pairBootstrap95": [
+          0.4166666666666667,
+          0.75
+        ],
+        "uncertainty": "SMOKE ONLY: fewer than 30 independent pairs; interval is not promotion evidence",
+        "p50MoveMs": 140.08270799998718,
+        "p95MoveMs": 320.19754100000137,
+        "openingDiversity": {
+          "uniqueMoves": 14,
+          "repetitionRate": 0.083,
+          "entropy": 3.752
+        }
+      }
+    }
+  ],
+  "promotionApproved": false
+}

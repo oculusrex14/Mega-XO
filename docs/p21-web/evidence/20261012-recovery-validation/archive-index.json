@@ -1,0 +1,112 @@
+{
+  "schema_version": 1,
+  "archived_at": "2026-10-12T17:33:49.213Z",
+  "environment": "unauthenticated local software QA; synthetic API fixtures; no credentials or real player data",
+  "source_commit": "681f06bfad5e929cdda929cdf6d4486f5fff89ec",
+  "reconciliation_source_commit": "4f3e48339312576549ea0c6bf381588c21f57f5c",
+  "bundle_sha256": "9cfa78636df78528c6ae1fb95ee5afc845b787f796f17d91be5258d4b283aeef",
+  "files": [
+    {
+      "source": "tests-output/p21-web/9cfa78636df7/browser-qa.json",
+      "evidence": "chromium-presentation.json",
+      "bytes": 216166,
+      "sha256": "1086dc528b9967fae8baf1c35953f3ce46700ef0ae465a151691a99deade1bf6"
+    },
+    {
+      "source": "tests-output/p21-web/9cfa78636df7/accessibility-qa.json",
+      "evidence": "chromium-accessibility.json",
+      "bytes": 1727828,
+      "sha256": "3fe3d681a4246545d9023356c88a1bc408c26312056335e27cd6f71f90b76658"
+    },
+    {
+      "source": "tests-output/p21-web/9cfa78636df7/firefox/20261012172200567-41942/browser-qa.json",
+      "evidence": "firefox-presentation.json",
+      "bytes": 219481,
+      "sha256": "39fc6671f35a5822dbec065cc1ff545ebcd347b4e2561ffce717f276d9bcc1c1"
+    },
+    {
+      "source": "tests-output/p21-web/9cfa78636df7/webkit/20261012172405329-42892/browser-qa.json",
+      "evidence": "webkit-presentation.json",
+      "bytes": 218146,
+      "sha256": "c04a2fa8c80357dc6f0ec794a767b98f80bc901cff9c9902231ad63532924c88"
+    },
+    {
+      "source": "tests-output/p21-offline/9cfa78636df7/chromium/20261012171908112-40273/offline-qa.json",
+      "evidence": "chromium-offline.json",
+      "bytes": 103045,
+      "sha256": "3709c865bd83b43ee501aab45e06c2a688ebe1e76f66ff077b19deafbb48ad6a"
+    },
+    {
+      "source": "tests-output/p21-offline/9cfa78636df7/chromium/20261012171002624-35858/offline-qa.json",
+      "evidence": "chromium-offline-before-fixture-fix.json",
+      "bytes": 102491,
+      "sha256": "775247dc4b2259813ca5a531fd813e636367f3e57a4ccf2922d2afdf18e545f8"
+    },
+    {
+      "source": "tests-output/p21-offline/153e87df43c5/chromium/20261012165009664-25664/offline-qa.json",
+      "evidence": "chromium-offline-before-product-fixes.json",
+      "bytes": 105795,
+      "sha256": "8e77c2d25ed1279f5fab16b870a36a814233e89863b99c0c74613100fcb1bd41"
+    },
+    {
+      "source": "tests-output/p21-offline/9cfa78636df7/firefox/20261012172618523-44046/offline-qa.json",
+      "evidence": "firefox-offline-incomplete.json",
+      "bytes": 30219,
+      "sha256": "4b887b8a3e483aa21afaf193fb61d6ff890aad10b8c30a53f3957c567a5d6a61"
+    },
+    {
+      "source": "tests-output/p21-offline/9cfa78636df7/webkit/20261012172656378-44345/offline-qa.json",
+      "evidence": "webkit-offline-incomplete.json",
+      "bytes": 30283,
+      "sha256": "f994e05c3c0586bc347fa9e32646076653f6ff91c64a9b141b0ce02632c705f2"
+    },
+    {
+      "source": ".artifacts/p21-recovery-12acd99-tests.log",
+      "evidence": "website-138-pass.log",
+      "bytes": 14684,
+      "sha256": "f90a6bf5d1fb09781d724d930caead88c0687eb518d21b6d13ff14a93107c0ef"
+    },
+    {
+      "source": ".artifacts/p21-reconciliation-4f3e483-web-bot-tests.log",
+      "evidence": "reconciliation-143-pass.log",
+      "bytes": 15090,
+      "sha256": "1727772af5a78f8b63f79ec73406afef3a495a0cfc27bda785622fe08805d5f3"
+    },
+    {
+      "source": ".artifacts/p21-reconciliation-4f3e483-tests.log",
+      "evidence": "reconciliation-foundations-dependency-failure.log",
+      "bytes": 16598,
+      "sha256": "add1cfeb8fd46a354a19abd98d23f688a80b3b965dc28e2bd77ae4e92928abc1"
+    },
+    {
+      "source": ".artifacts/p21-web/web-build.manifest.json",
+      "evidence": "candidate-build.manifest.json",
+      "bytes": 228977,
+      "sha256": "8075d99364ed5979293739d3ee66aa248e27e2cec74f653e7fbbe1e62435a0bd"
+    },
+    {
+      "source": "/Users/oculus/.codex/worktrees/v51-website-reconciliation/Test XO/.artifacts/p21-web/web-build.manifest.json",
+      "evidence": "reconciliation-build.manifest.json",
+      "bytes": 228977,
+      "sha256": "bad1864dc155a519c3fb1d534e31e64453b26c42dfbc82fca12b641e5e544e59"
+    },
+    {
+      "source": "tests-output/p21-web/9cfa78636df7/home-mobile320.png",
+      "evidence": "home-mobile320.png",
+      "bytes": 169318,
+      "sha256": "6210a90b7022f141a58e6d784e7a4d1ed921468a6ae4e8a19151511224658e38"
+    },
+    {
+      "source": "tests-output/p21-web/9cfa78636df7/game-neon-mobile320.png",
+      "evidence": "game-neon-mobile320.png",
+      "bytes": 421577,
+      "sha256": "038c5292b8894766b8b01061b34756b89cf6f52816597701d7a67ae4a13da92e"
+    },
+    {
+      "source": "tests-output/p21-offline/9cfa78636df7/chromium/20261012171908112-40273/03-game-guided-complete-offline.png",
+      "evidence": "chromium-guided-complete-offline.png",
+      "bytes": 981748,
+      "sha256": "102dabce829dba29b27285f068b411fda81e65382e4f3c4158613630f76927dc"
+    }
+  ]
+}

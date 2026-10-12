@@ -1,0 +1,408 @@
+{
+  "activation": {
+    "autoplay": false,
+    "default_playback": "not connected; no audio is requested or played by this asset pack",
+    "future_requirement": "Explicit user opt-in, mute/volume controls, and an accessible silent fallback before any playback integration.",
+    "integrated_into_web_or_native_app": false
+  },
+  "audio_quality": {
+    "channels": 1,
+    "compressed_decode_peak_limit_linear": 0.32,
+    "edge_step_validation_limit": 0.06,
+    "leading_silence_ms": 30,
+    "master_format": "WAV, signed 24-bit little-endian PCM (PCM_S24LE)",
+    "master_peak_target_dbfs": -14.0,
+    "maximum_compressed_file_bytes": 32768,
+    "maximum_master_duration_seconds": 1.5,
+    "per_note_attack_ms": 14,
+    "per_note_release_ms": 60,
+    "sample_rate_hz": 48000,
+    "trailing_silence_ms": 40
+  },
+  "generator_version": "1.0.0",
+  "pack": "Mega XOXO optional-to-play UI cues",
+  "provenance": {
+    "rights_note": "No third-party audio incorporated. Separate product, trademark, or owner clearance remains outside this technical provenance record.",
+    "source": "Original local procedural synthesis authored for this pack; pure sine oscillators with fixed soft partials/envelopes.",
+    "source_script": "scripts/p21/export-audio.py",
+    "source_script_sha256": "306d04c481ddc7e103fd2c3b1551d5397472521b2119ff0157836221faeb89f0",
+    "third_party_audio": "None; no samples, loops, songs, or hosted generation service used."
+  },
+  "schema_version": 1,
+  "tools": {
+    "ffmpeg": "ffmpeg version 8.1.2",
+    "libraries": "Python standard library only",
+    "python": "3.14.4"
+  },
+  "tracks": [
+    {
+      "asset_id": "P21-AUD-001",
+      "description": "Soft two-note selection confirmation",
+      "exports_qa": {
+        "mp3": {
+          "codec": "MP3 / libmp3lame, mono 96 kb/s",
+          "decoded_peak_dbfs": -14.446,
+          "duration_seconds": 0.384,
+          "edge_max_step": 0.027099
+        },
+        "ogg": {
+          "codec": "Ogg Vorbis / native FFmpeg encoder marked experimental; stereo quality 2 via -strict -2",
+          "decoded_peak_dbfs": -13.969,
+          "duration_seconds": 0.362667,
+          "edge_max_step": 0.02838
+        }
+      },
+      "files": {
+        "mp3": {
+          "bytes": 4608,
+          "path": "ui-select.mp3",
+          "sha256": "fdaf4ad13620d6548f082d9c400a47adf399bdd09b70c51cd24d62c4df95e3ab"
+        },
+        "ogg": {
+          "bytes": 5048,
+          "path": "ui-select.ogg",
+          "sha256": "62fe0dcbb813437fa3d1c0d30cc81d49145c49efac0dce49f7db0a7a3f102890"
+        },
+        "wav": {
+          "bytes": 49724,
+          "path": "ui-select.wav",
+          "sha256": "8b4547d970054211f503d8efb84ffd13ec0c868b3891e34328948b863f44793f"
+        }
+      },
+      "id": "ui-select",
+      "master": {
+        "duration_seconds": 0.345,
+        "edge_max_step": 0.028522,
+        "peak_dbfs": -14.0
+      }
+    },
+    {
+      "asset_id": "P21-AUD-002",
+      "description": "Muted warm X placement chord",
+      "exports_qa": {
+        "mp3": {
+          "codec": "MP3 / libmp3lame, mono 96 kb/s",
+          "decoded_peak_dbfs": -14.448,
+          "duration_seconds": 0.288,
+          "edge_max_step": 0.019419
+        },
+        "ogg": {
+          "codec": "Ogg Vorbis / native FFmpeg encoder marked experimental; stereo quality 2 via -strict -2",
+          "decoded_peak_dbfs": -14.036,
+          "duration_seconds": 0.256,
+          "edge_max_step": 0.020266
+        }
+      },
+      "files": {
+        "mp3": {
+          "bytes": 3456,
+          "path": "placed-x.mp3",
+          "sha256": "bec96d57d16585b3340081dabb96b69116a703af87067665df575cc64cffb28d"
+        },
+        "ogg": {
+          "bytes": 4554,
+          "path": "placed-x.ogg",
+          "sha256": "4cbb875631677a99cf46820e8a29ff518f8551c6000f1f34db3da0e0b6190d6e"
+        },
+        "wav": {
+          "bytes": 35324,
+          "path": "placed-x.wav",
+          "sha256": "6d6fd73162d6c7a77c02fe8258fba91d9216a99eb2cafdfa9d04a0edc3c4cec4"
+        }
+      },
+      "id": "placed-x",
+      "master": {
+        "duration_seconds": 0.245,
+        "edge_max_step": 0.020444,
+        "peak_dbfs": -14.0
+      }
+    },
+    {
+      "asset_id": "P21-AUD-003",
+      "description": "Muted bright O placement chord",
+      "exports_qa": {
+        "mp3": {
+          "codec": "MP3 / libmp3lame, mono 96 kb/s",
+          "decoded_peak_dbfs": -14.446,
+          "duration_seconds": 0.288,
+          "edge_max_step": 0.021931
+        },
+        "ogg": {
+          "codec": "Ogg Vorbis / native FFmpeg encoder marked experimental; stereo quality 2 via -strict -2",
+          "decoded_peak_dbfs": -14.099,
+          "duration_seconds": 0.256,
+          "edge_max_step": 0.023302
+        }
+      },
+      "files": {
+        "mp3": {
+          "bytes": 3456,
+          "path": "placed-o.mp3",
+          "sha256": "bcc753ad5154fb31ca725b5fe589e358a75441458306c240cbd4985a3e059d2a"
+        },
+        "ogg": {
+          "bytes": 4567,
+          "path": "placed-o.ogg",
+          "sha256": "36cbb806e0f8b5fbf087497c15d53893de06ccf1daac9a394ef78c1d78a955f6"
+        },
+        "wav": {
+          "bytes": 35324,
+          "path": "placed-o.wav",
+          "sha256": "6bcd1009e65f482dc21ae866570450a1533d737ce715360018fadd104cbbe1cf"
+        }
+      },
+      "id": "placed-o",
+      "master": {
+        "duration_seconds": 0.245,
+        "edge_max_step": 0.023196,
+        "peak_dbfs": -14.0
+      }
+    },
+    {
+      "asset_id": "P21-AUD-004",
+      "description": "Gentle rising major arpeggio",
+      "exports_qa": {
+        "mp3": {
+          "codec": "MP3 / libmp3lame, mono 96 kb/s",
+          "decoded_peak_dbfs": -14.444,
+          "duration_seconds": 0.768,
+          "edge_max_step": 0.018032
+        },
+        "ogg": {
+          "codec": "Ogg Vorbis / native FFmpeg encoder marked experimental; stereo quality 2 via -strict -2",
+          "decoded_peak_dbfs": -13.873,
+          "duration_seconds": 0.746667,
+          "edge_max_step": 0.019162
+        }
+      },
+      "files": {
+        "mp3": {
+          "bytes": 9216,
+          "path": "victory.mp3",
+          "sha256": "29c1c08bb6796fa798ab573bbf79d136a233b74edf99c5ddb677339963de137c"
+        },
+        "ogg": {
+          "bytes": 6785,
+          "path": "victory.ogg",
+          "sha256": "504361bb678266b7a9643a0c9b0ec423ab9fd413a53f762bc2f234c1f64526e7"
+        },
+        "wav": {
+          "bytes": 106604,
+          "path": "victory.wav",
+          "sha256": "8552f43ecfefca97bcd4d36a2f4136df65f402a9bd87bf8ff3904a6bc1ed6693"
+        }
+      },
+      "id": "victory",
+      "master": {
+        "duration_seconds": 0.74,
+        "edge_max_step": 0.018977,
+        "peak_dbfs": -14.0
+      }
+    },
+    {
+      "asset_id": "P21-AUD-005",
+      "description": "Soft descending reflective phrase",
+      "exports_qa": {
+        "mp3": {
+          "codec": "MP3 / libmp3lame, mono 96 kb/s",
+          "decoded_peak_dbfs": -14.445,
+          "duration_seconds": 0.768,
+          "edge_max_step": 0.015186
+        },
+        "ogg": {
+          "codec": "Ogg Vorbis / native FFmpeg encoder marked experimental; stereo quality 2 via -strict -2",
+          "decoded_peak_dbfs": -13.97,
+          "duration_seconds": 0.746667,
+          "edge_max_step": 0.01597
+        }
+      },
+      "files": {
+        "mp3": {
+          "bytes": 9216,
+          "path": "loss.mp3",
+          "sha256": "35233b95a8318bb6d140072441c1b46b8ee485643c2bfb5a323e21f51e9ca821"
+        },
+        "ogg": {
+          "bytes": 6360,
+          "path": "loss.ogg",
+          "sha256": "8c318e73d310e012039f4346a279ca2b1ec222848388823f726ef47a04805cdc"
+        },
+        "wav": {
+          "bytes": 105164,
+          "path": "loss.wav",
+          "sha256": "0a67a86ce745e28fb0f2695df0c5cf5af4ce6de9d027ad06db4ec84d66cac568"
+        }
+      },
+      "id": "loss",
+      "master": {
+        "duration_seconds": 0.73,
+        "edge_max_step": 0.015985,
+        "peak_dbfs": -14.0
+      }
+    },
+    {
+      "asset_id": "P21-AUD-006",
+      "description": "Warm five-note upward milestone",
+      "exports_qa": {
+        "mp3": {
+          "codec": "MP3 / libmp3lame, mono 96 kb/s",
+          "decoded_peak_dbfs": -14.444,
+          "duration_seconds": 0.888,
+          "edge_max_step": 0.013516
+        },
+        "ogg": {
+          "codec": "Ogg Vorbis / native FFmpeg encoder marked experimental; stereo quality 2 via -strict -2",
+          "decoded_peak_dbfs": -13.819,
+          "duration_seconds": 0.853333,
+          "edge_max_step": 0.01438
+        }
+      },
+      "files": {
+        "mp3": {
+          "bytes": 10656,
+          "path": "rank-up.mp3",
+          "sha256": "e02c2587ed92ac72f7c45f9fc5874cbcd029834a5f5bb460d4d9847d9baf9a9a"
+        },
+        "ogg": {
+          "bytes": 7269,
+          "path": "rank-up.ogg",
+          "sha256": "f5792711fe71f7858d3efd3bb55102311b0fffd91916ac7f7efafc74f9b2f324"
+        },
+        "wav": {
+          "bytes": 121724,
+          "path": "rank-up.wav",
+          "sha256": "0ab1d90855ef381b1da86004281509a72545dfe150b82a9480e9c1b212698ea7"
+        }
+      },
+      "id": "rank-up",
+      "master": {
+        "duration_seconds": 0.845,
+        "edge_max_step": 0.014659,
+        "peak_dbfs": -14.0
+      }
+    },
+    {
+      "asset_id": "P21-AUD-007",
+      "description": "Friendly two-pulse invitation",
+      "exports_qa": {
+        "mp3": {
+          "codec": "MP3 / libmp3lame, mono 96 kb/s",
+          "decoded_peak_dbfs": -14.443,
+          "duration_seconds": 0.672,
+          "edge_max_step": 0.022732
+        },
+        "ogg": {
+          "codec": "Ogg Vorbis / native FFmpeg encoder marked experimental; stereo quality 2 via -strict -2",
+          "decoded_peak_dbfs": -13.879,
+          "duration_seconds": 0.618667,
+          "edge_max_step": 0.024203
+        }
+      },
+      "files": {
+        "mp3": {
+          "bytes": 8064,
+          "path": "invite.mp3",
+          "sha256": "3c9dc92b4cdb6002e8908252c0f3db901ba1fcbcf2cce807aa661e6e9f9187d4"
+        },
+        "ogg": {
+          "bytes": 6219,
+          "path": "invite.ogg",
+          "sha256": "67e086423a1f20a8b70c9bb2a059162807f6307360c6fee759e21d16ae90af8e"
+        },
+        "wav": {
+          "bytes": 92204,
+          "path": "invite.wav",
+          "sha256": "4ec82f8d408fb8f41cb9b2989e7e9ebb311095f92acfdb166f86a8a81311b8a5"
+        }
+      },
+      "id": "invite",
+      "master": {
+        "duration_seconds": 0.64,
+        "edge_max_step": 0.023933,
+        "peak_dbfs": -14.0
+      }
+    },
+    {
+      "asset_id": "P21-AUD-008",
+      "description": "Quiet rising match-found signal",
+      "exports_qa": {
+        "mp3": {
+          "codec": "MP3 / libmp3lame, mono 96 kb/s",
+          "decoded_peak_dbfs": -14.443,
+          "duration_seconds": 0.576,
+          "edge_max_step": 0.020246
+        },
+        "ogg": {
+          "codec": "Ogg Vorbis / native FFmpeg encoder marked experimental; stereo quality 2 via -strict -2",
+          "decoded_peak_dbfs": -13.829,
+          "duration_seconds": 0.554667,
+          "edge_max_step": 0.021824
+        }
+      },
+      "files": {
+        "mp3": {
+          "bytes": 6912,
+          "path": "queue-match.mp3",
+          "sha256": "3267751748369eb652569b302bba7623b5d4fa153df1fec0b0ae3c842b257d04"
+        },
+        "ogg": {
+          "bytes": 5965,
+          "path": "queue-match.ogg",
+          "sha256": "68ab13965ccc5c2d6a9df82ba27a7ea9aebc392e11733464f369bbef96f7b3ba"
+        },
+        "wav": {
+          "bytes": 78524,
+          "path": "queue-match.wav",
+          "sha256": "2b2aa98a9964bb8acc79e5214dd08334d3fc0076085493d83e488e0f1d65afe0"
+        }
+      },
+      "id": "queue-match",
+      "master": {
+        "duration_seconds": 0.545,
+        "edge_max_step": 0.021309,
+        "peak_dbfs": -14.0
+      }
+    },
+    {
+      "asset_id": "P21-AUD-009",
+      "description": "Bright but restrained reward cascade",
+      "exports_qa": {
+        "mp3": {
+          "codec": "MP3 / libmp3lame, mono 96 kb/s",
+          "decoded_peak_dbfs": -14.445,
+          "duration_seconds": 0.696,
+          "edge_max_step": 0.022728
+        },
+        "ogg": {
+          "codec": "Ogg Vorbis / native FFmpeg encoder marked experimental; stereo quality 2 via -strict -2",
+          "decoded_peak_dbfs": -13.879,
+          "duration_seconds": 0.661333,
+          "edge_max_step": 0.024203
+        }
+      },
+      "files": {
+        "mp3": {
+          "bytes": 8352,
+          "path": "reward.mp3",
+          "sha256": "afc155fe9378b59cdf6c552225942aa79ab72e026e497dceb40703d0cca9eb06"
+        },
+        "ogg": {
+          "bytes": 6482,
+          "path": "reward.ogg",
+          "sha256": "302a5bd9e7b336b536877fe967d244a89ac5332a2c38d81ed41ac553eb8eea9f"
+        },
+        "wav": {
+          "bytes": 94364,
+          "path": "reward.wav",
+          "sha256": "e362a4a9b459b389ef3878c8b72a29a2e3120339a9901b8a51739a1e8669766f"
+        }
+      },
+      "id": "reward",
+      "master": {
+        "duration_seconds": 0.655,
+        "edge_max_step": 0.02393,
+        "peak_dbfs": -14.0
+      }
+    }
+  ]
+}

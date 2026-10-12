@@ -49,3 +49,26 @@ existing ComfyUI/TTS venvs: `/home/oculus-rex/mega-xo-learning/.venv` with
 `v24.12.0` (linux-arm64) was placed in the same directory for the validate/generate stages, and the
 training tree was synced read-from-Git. This removes the previous "no torch on the Spark" blocker for
 GPU runs; the results of the GPU training/league are recorded separately when they complete.
+
+## DGX GPU candidate (96x5, 879,882 params) - real GPU run
+
+Trained on `dgx-ts` GPU (torch 2.14.1+cu130, GB10): 400 games / 18,679 records, 40 epochs, batch 128,
+**63.4 s, 1523.7 J (mean 24.1 W), 141 MB peak CUDA**. Export (DGX): float 3,527,415 B,
+INT8 931,567 B; `floatLegalArgmaxChanges: 0`, `sizeGate: true`, `deploymentStatus: UNAPPROVED`,
+`strengthGate: NOT_PASSED`. Independent league on the pulled candidate (24 families, 48 games each):
+
+| Matchup | Point score | 95% CI |
+|---|---|---|
+| tacticalOnly vs improvedExpert | 0.000 | [0.000, 0.000] |
+| policyOnlyPUCT vs improvedExpert | 0.010 | [0.000, 0.031] |
+| policyValuePUCT vs improvedExpert | 0.000 | [0.000, 0.000] |
+| policyValuePUCT vs tacticalUCT | 0.438 | [0.333, 0.542] |
+| int8PUCT vs policyValuePUCT | 0.563 | [0.458, 0.667] |
+
+**Conclusion (decisive, not a strength claim):** growing the model (342k -> 880k) and training on the
+GPU **improved `policyValuePUCT vs tacticalUCT` from 0.365 to 0.438**, but left **every** matchup
+against `improvedExpert` at 0.0-1.0% - the Expert gap is essentially unchanged. Therefore the binding
+constraint is the **data and label quality** (bootstrap self-play with a mixed-strength behavior
+policy), not model capacity - exactly the lever the plan's CL10 ("bootstrap with stronger teachers and
+diverse opponents") targets, and not more of the same self-play. The value head continues to
+underperform policy-only vs Expert at both scales. No promotion; the approved catalog stays empty.

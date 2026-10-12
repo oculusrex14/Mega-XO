@@ -44,7 +44,7 @@ function searchTarget(state, { seed, budgetMs, simulations, depth }) {
   return { move: ab.move, policy: mcts.policy, visits: (mcts.diagnostics && mcts.diagnostics.visits) || 0, rootScore: top, abMove: ab.move };
 }
 
-function game({ seed, simulations = 128, budgetMs = 300, openingPlies = 4, roster = ['Expert', 'Hard', 'Expert', 'Medium', null], exploreRate = 0.15 }) {
+function game({ seed, simulations = 128, budgetMs = 300, openingPlies = 4, roster = ['Expert', 'Hard', 'Expert', 'Medium', null], exploreRate = 0.15, depth = null }) {
   const rng = C.seeded(seed);
   let state = G.create(seed % 2 ? 'O' : 'X');
   for (let i = 0; i < openingPlies; i++) { const moves = G.legal(state); state = G.apply(state, moves[Math.floor(rng() * moves.length)]); }
@@ -52,7 +52,7 @@ function game({ seed, simulations = 128, budgetMs = 300, openingPlies = 4, roste
   const gameId = 'searchlabel-' + seed + '-' + openingFamily, rows = [];
   let hardStates = 0;
   while (!state.winner) {
-    const target = searchTarget(state, { seed: Math.floor(rng() * 4294967296), budgetMs, simulations });
+    const target = searchTarget(state, { seed: Math.floor(rng() * 4294967296), budgetMs, simulations, depth: depth === null ? undefined : depth });
     const encoding = E.encode(state);
     const valueTarget = valueFromScore(target.rootScore);
     const weak = G.choose(state, 'Easy', C.seeded(seed + state.moves.length));
@@ -106,6 +106,6 @@ function generate({ output, games = 16, seed = 8000, simulations = 128, budgetMs
 
 module.exports = { family, splitFor, game, generate, valueFromScore };
 if (require.main === module) {
-  const [output = '.artifacts/v51/search-labels.jsonl', games = '16', seed = '8000', simulations = '128', budgetMs = '300'] = process.argv.slice(2);
-  console.log(JSON.stringify(generate({ output, games: Number(games), seed: Number(seed), simulations: Number(simulations), budgetMs: Number(budgetMs) }), null, 2));
+  const [output = '.artifacts/v51/search-labels.jsonl', games = '16', seed = '8000', simulations = '128', budgetMs = '300', depth = ''] = process.argv.slice(2);
+  console.log(JSON.stringify(generate({ output, games: Number(games), seed: Number(seed), simulations: Number(simulations), budgetMs: Number(budgetMs), depth: depth ? Number(depth) : null }), null, 2));
 }

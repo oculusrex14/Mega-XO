@@ -1,0 +1,104 @@
+name: V5.1 independent readiness evidence
+on:
+  push:
+    branches: ['V5.1']
+    paths:
+      - '.github/workflows/v51-webui-readiness-audit.yml'
+      - 'scripts/v51-readiness-*'
+      - 'tests/v51-readiness-*'
+  pull_request:
+    branches: ['V5.1']
+    paths:
+      - '.github/workflows/v51-webui-readiness-audit.yml'
+      - 'scripts/v51-readiness-*'
+      - 'tests/v51-readiness-*'
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+  pull-requests: read
+concurrency:
+  group: v51-readiness-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  source-evidence:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - name: Preserve tracked text source and measured provenance only
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import hashlib, json, pathlib, subprocess, zipfile
+          out = pathlib.Path('.artifacts/v51-readiness')
+          out.mkdir(parents=True, exist_ok=True)
+          def git(*args):
+              return subprocess.check_output(['git', *args])
+          head = git('rev-parse', 'HEAD').decode().strip()
+          suffixes = {'.md', '.json', '.js', '.cjs', '.mjs', '.ts', '.tsx', '.jsx', '.py', '.yml', '.yaml', '.sql', '.html', '.css', '.kt', '.swift', '.xml', '.gradle', '.kts', '.sh', '.toml', '.txt', '.properties'}
+          entries = []
+          with zipfile.ZipFile(out / 'tracked-source.zip', 'w', zipfile.ZIP_DEFLATED) as bundle:
+              for record in git('ls-tree', '-rz', '--full-tree', 'HEAD').split(b'\0'):
+                  if not record:
+                      continue
+                  meta, raw_path = record.split(b'\t', 1)
+                  mode, kind, oid = meta.decode().split()
+                  path = raw_path.decode()
+                  p = pathlib.PurePosixPath(path)
+                  if kind != 'blob' or mode not in ('100644', '100755'):
+                      continue
+                  if p.suffix not in suffixes or any(part.startswith('.env') for part in p.parts):
+                      continue
+                  data = git('cat-file', 'blob', oid)
+                  if len(data) > 2 * 1024 * 1024 or b'\0' in data:
+                      continue
+                  try:
+                      data.decode('utf-8')
+                  except UnicodeDecodeError:
+                      continue
+                  bundle.writestr(path, data)
+                  entries.append({'path': path, 'blob': oid, 'sha256': hashlib.sha256(data).hexdigest(), 'bytes': len(data)})
+          manifest = {'schemaVersion': 1, 'sourceSha': head, 'scope': 'TRACKED_TEXT_ONLY_NOT_A_RELEASE_BUNDLE', 'files': entries}
+          (out / 'source-manifest.json').write_text(json.dumps(manifest, indent=2) + '\n')
+          (out / 'recent-commits.txt').write_bytes(git('log', '-30', '--format=%H %s'))
+          print(json.dumps({'sourceSha': head, 'trackedTextFiles': len(entries), 'sourceArchiveSha256': hashlib.sha256((out / 'tracked-source.zip').read_bytes()).hexdigest()}))
+          PY
+      - name: Read current CI, PR and retained-branch metadata
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json, os, pathlib, urllib.request
+          out = pathlib.Path('.artifacts/v51-readiness')
+          def get(path):
+              request = urllib.request.Request('https://api.github.com/repos/' + os.environ['REPOSITORY'] + path,
+                  headers={'Authorization': 'Bearer ' + os.environ['GH_TOKEN'], 'Accept': 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28'})
+              with urllib.request.urlopen(request, timeout=30) as response:
+                  return json.load(response)
+          runs = get('/actions/runs?branch=V5.1&per_page=100')['workflow_runs']
+          runs = [{key: run.get(key) for key in ('id', 'name', 'path', 'head_sha', 'event', 'status', 'conclusion', 'created_at', 'run_attempt', 'html_url')} for run in runs]
+          branches = {name: get('/git/ref/heads/' + name)['object']['sha'] for name in ('V5.1', 'main', 'V4.1')}
+          prs = [{key: pr.get(key) for key in ('number', 'title', 'state', 'html_url')} for pr in get('/pulls?state=open&per_page=100')]
+          report = {'branches': branches, 'openPullRequests': prs, 'runs': runs, 'scope': 'OBSERVED_CI_METADATA_NOT_RELEASE_ACCEPTANCE'}
+          (out / 'github-observation.json').write_text(json.dumps(report, indent=2) + '\n')
+          print(json.dumps({'branches': branches, 'openPullRequests': prs}))
+          seen = set()
+          for run in runs:
+              if run['path'] not in seen:
+                  print(json.dumps(run))
+                  seen.add(run['path'])
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: v51-readiness-source-${{ github.sha }}
+          path: .artifacts/v51-readiness
+          retention-days: 7
+          if-no-files-found: error

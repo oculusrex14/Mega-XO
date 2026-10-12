@@ -114,3 +114,28 @@ Interpretation: the decision teacher learns the legal-option task well per quest
 well-calibrated (ECE 0.08), but joint record accuracy is low. This is **evaluation-only**; CL21 decides
 keep/reject on measured utility, and CL22-CL23 would distil it into the compact student only if it
 measurably helps. No player inference, no publication.
+
+### CL20-CL21 measured decision: teacher utility per question, and the keep/reject call
+
+Per-question held-out accuracy of the trained decision teacher (60 steps, batch 1, fp32, DGX GB10):
+
+| Question | Accuracy |
+|---|---|
+| `winNow` (immediate win?) | **1.00 (30/30)** |
+| `opponentThreat` (must-block?) | **1.00 (30/30)** |
+| `bestMove` (choose among all legal moves) | **0.20 (6/30)** |
+
+Chance for `bestMove` is about 1/8 (12.5%), so the move head is barely above chance. The teacher
+learns the two trivial tactical questions perfectly and the hard move-selection question poorly -
+because the gold labels come from the same UCT search (`search-v1`) that is itself ~0% vs Expert.
+
+**CL21 decision: REJECT the current teacher as a distillation source (CL22-CL23 not justified yet).**
+Distilling a 20%-accurate move teacher into the compact student would not improve it; the plan requires
+"distil only a useful teacher and prove student improvement". The teacher stays offline.
+
+**The real fix is upstream and now firmly established:** both approaches are bottlenecked by the LABEL
+source. The bootstrap/teacher labels come from a search weaker than Expert, so neither the compact CNN
+(CL10 measurement: still ~0% vs Expert) nor the LLM teacher (bestMove 20%) can exceed it. A genuinely
+stronger label source - Expert search / solved positions / the strongest available classical engine -
+must produce the targets before either approach can close the Expert gap. This is recorded as the top
+AI open item; no promotion, catalog empty.

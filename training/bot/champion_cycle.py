@@ -26,13 +26,18 @@ Design commitments (see docs/v5.1/release/MAIN-AGENT-EXECUTION-PLAN-EXPANDED.md 
 from __future__ import annotations
 import argparse
 import hashlib
+import importlib.util
 import json
+import math
 import os
+import re
 import shutil
 import signal
 import subprocess
 import sys
+import threading
 import time
+from collections import defaultdict
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -76,6 +81,49 @@ DEFAULT_CONFIG = {
 }
 LEASE_TTL_SECONDS = 90
 LOG_LIMIT_BYTES = 2 * 1024 * 1024
+
+# Frozen research-promotion policy. A candidate may only become the RESEARCH champion when a single,
+# exactly-identified matchup against the frozen reference clears BOTH the point target and the
+# independently agreed LOWER confidence bound, on a qualification-sized set of independent opening
+# families, with complete ordered statistics that are recomputed from the raw game records. The
+# 24-family league default stays a DIAGNOSTIC; it can never satisfy this gate. Nothing here sets the
+# shipped APPROVED catalog or production approval.
+PROMOTION_POINT_TARGET = 0.70      # league's declared point-score target
+PROMOTION_LOWER_TARGET = 0.65     # league's declared lower-95%-CI target
+PROMOTION_MIN_FAMILIES = 200      # BENCHMARKS.md independent-family qualification protocol
+PROMOTION_CANDIDATE = "policyValuePUCT"
+PROMOTION_REFERENCE = "improvedExpert"
+BOOTSTRAP_SEED = 731              # must match src/bot/contracts.js and v51-readiness-model-gate.py
+
+# Operator lease: heartbeat from wall-clock time, not stdout volume, so a quiet long stage cannot
+# silently outlive its lease. STOP is not a terminal state; a resume clears it explicitly.
+LEASE_HEARTBEAT_SECONDS = 15.0
+
+
+def _uint32_rng(seed: int):
+    """Exact uint32 Mulberry32 used by src/bot/contracts.js (bootstrap seed 731)."""
+    n, mask = seed, 0xFFFFFFFF
+    while True:
+        n = (n + 0x6D2B79F5) & mask
+        t = ((n ^ (n >> 15)) * (n | 1)) & mask
+        t ^= (t + (((t ^ (t >> 7)) * (t | 61)) & mask)) & mask
+        yield ((t ^ (t >> 14)) & mask) / 4294967296
+
+
+def _bootstrap_ci(pairs: list, iterations: int = 2000) -> list:
+    """Paired-family bootstrap, reproducing the league's own seed so the gate recomputes - not trusts
+    - the reported interval."""
+    if not pairs:
+        return None
+    rng = _uint32_rng(BOOTSTRAP_SEED)
+    scores = []
+    for _ in range(iterations):
+        total = 0.0
+        for _ in range(len(pairs)):
+            total += pairs[int(next(rng) * len(pairs))]
+        scores.append(total / len(pairs))
+    scores.sort()
+    return [scores[int(0.025 * iterations)], scores[int(0.975 * iterations)]]
 
 
 def now_iso() -> str:
@@ -152,15 +200,27 @@ class Operator:
         self.child: subprocess.Popen | None = None
         self._stopping = False
         self.state = self._load_or_init()
-        # A resume MUST reuse the run's frozen configuration: only explicit overrides this invocation
+        # A resume MUST reuse the run's frozen configuration; only explicit overrides this invocation
         # may change it, so a killed run never silently drifts onto different hyperparameters/data.
         base = dict(self.state.get("config") or {})
         base.update({k: v for k, v in overrides.items() if v is not None})
         if python_bin:
             base["pythonBin"] = python_bin
         self.config = validate_config(base)
-        self.state["config"] = self.config
-        self._write_state()
+        # CONSTRUCTION IS READ-ONLY with respect to the shared run files. A second Operator built over
+        # the same output root (the WebUI WEB-AI-02a probe) must NEVER mutate the active owner's
+        # run.json or frozen configuration - the earlier code wrote both here. An explicit
+        # --config/override that disagrees with a FROZEN run is refused, not silently applied; the
+        # owner's bytes only change inside an owned, transitioned write.
+        stored = self.state.get("config") or {}
+        frozen = bool(stored) and self.state.get("status") not in (None, "CREATED")
+        if frozen:
+            drifted = {k: (stored.get(k), self.config.get(k)) for k in CONFIG_KEYS
+                       if stored.get(k) != self.config.get(k)}
+            if drifted:
+                raise SystemExit("CONFIG_FROZEN:" + ",".join(sorted(drifted)))
+            self.config = validate_config(stored)
+        self._pending_config_write = (not frozen) and (stored != self.config)
 
     # ---------------------------------------------------------------- state
 
@@ -201,20 +261,96 @@ class Operator:
             return None
         return lease
 
+    def _read_lease_file(self) -> dict | None:
+        """Read the lease file DIRECTLY (independent of any subclass/patched helper). Returns None only
+        when the file is absent; an unreadable/corrupt file is treated as OCCUPIED (fail-closed) so a
+        half-written lease is never silently reclaimed."""
+        try:
+            raw = self.lease_path.read_text()
+        except FileNotFoundError:
+            return None
+        except OSError:
+            return {"pid": None, "occupied": True, "expiresAt": float("inf")}
+        try:
+            lease = json.loads(raw)
+            return lease if isinstance(lease, dict) else {"pid": None, "occupied": True, "expiresAt": float("inf")}
+        except Exception:
+            return {"pid": None, "occupied": True, "expiresAt": float("inf")}
+
     def _acquire_lease(self) -> None:
+        """ATOMIC acquisition. The check-then-write race (WEB-AI-02b) let two operators both observe an
+        empty lease and both write it. `O_CREAT|O_EXCL` makes the create itself the mutual-exclusion
+        primitive: exactly one creator wins. The initial `_lease_holder()` check is an early refuse; a
+        creator that LOSES the create re-reads the file directly and refuses unless the winner is
+        provably stale (dead pid or lapsed TTL), so a live owner is never displaced."""
+        payload = json.dumps({"pid": os.getpid(), "expiresAt": time.time() + LEASE_TTL_SECONDS,
+                              "runId": self.run_id, "nonce": os.urandom(16).hex()})
         holder = self._lease_holder()
-        if holder:
+        if holder is not None:
             raise SystemExit(f"LEASE_HELD:{holder.get('pid')}")
-        self.lease_path.write_text(json.dumps({"pid": os.getpid(), "expiresAt": time.time() + LEASE_TTL_SECONDS, "runId": self.run_id}))
+        if self._try_create_lease(payload):
+            self._lease_nonce = json.loads(payload)["nonce"]
+            self._commit_pending_config()
+            return
+        # Lost the create: someone else now holds the lease. Re-read directly; refuse unless stale.
+        current = self._read_lease_file()
+        stale = current is None or (not current.get("occupied")
+                                    and current.get("expiresAt", 0) < time.time()
+                                    and (not current.get("pid") or not _pid_alive(current["pid"])))
+        if not stale:
+            raise SystemExit(f"LEASE_HELD:{(current or {}).get('pid')}")
+        try:
+            reclaim = self.lease_path.with_suffix(".stale")
+            os.replace(self.lease_path, reclaim)
+            os.unlink(reclaim)
+        except FileNotFoundError:
+            pass
+        if self._try_create_lease(payload):
+            self._lease_nonce = json.loads(payload)["nonce"]
+            self._commit_pending_config()
+            return
+        raise SystemExit("LEASE_CONTENDED")
+
+    def _commit_pending_config(self) -> None:
+        """Persist the frozen run state ONLY after ownership is held. This is the single write the
+        constructor used to perform unconditionally, which mutated another active owner's run."""
+        if getattr(self, "_pending_config_write", False):
+            self.state["config"] = self.config
+            self._write_state()
+            self._pending_config_write = False
+
+    def _try_create_lease(self, payload: str) -> bool:
+        try:
+            fd = os.open(self.lease_path, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
+        except FileExistsError:
+            return False
+        try:
+            os.write(fd, payload.encode("utf-8"))
+        finally:
+            os.close(fd)
+        return True
 
     def _renew_lease(self) -> None:
-        self.lease_path.write_text(json.dumps({"pid": os.getpid(), "expiresAt": time.time() + LEASE_TTL_SECONDS, "runId": self.run_id}))
+        # Ownership-checked: only the holder whose nonce matches may renew, so a reclaimed/stale worker
+        # can never clobber the current owner's lease (fencing).
+        if not self.lease_path.exists():
+            raise SystemExit("LEASE_LOST")
+        try:
+            lease = json.loads(self.lease_path.read_text())
+        except Exception:
+            raise SystemExit("LEASE_LOST")
+        if lease.get("nonce") != getattr(self, "_lease_nonce", None):
+            raise SystemExit("LEASE_LOST")
+        lease["expiresAt"] = time.time() + LEASE_TTL_SECONDS
+        tmp = self.lease_path.with_suffix(".lease.tmp")
+        tmp.write_text(json.dumps(lease))
+        os.replace(tmp, self.lease_path)
 
     def _release_lease(self) -> None:
         try:
             if self.lease_path.exists():
                 lease = json.loads(self.lease_path.read_text())
-                if lease.get("pid") == os.getpid():
+                if lease.get("nonce") == getattr(self, "_lease_nonce", None) and lease.get("pid") == os.getpid():
                     self.lease_path.unlink()
         except Exception:
             pass
@@ -244,13 +380,29 @@ class Operator:
         proc = subprocess.Popen(argv, cwd=ROOT, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                                 text=True, start_new_session=True, env=env)
         self.child = proc
+        # HEARTBEAT FROM WALL-CLOCK TIME, not stdout volume (WEB-AI-08): a quiet long stage that emits
+        # no lines for minutes must not let the lease lapse under it. A daemon thread renews on a fixed
+        # interval while the child runs; renewal is ownership-checked, so a stolen lease aborts.
+        self._lease_lost = False
+        stop_heartbeat = threading.Event()
+
+        def _heartbeat() -> None:
+            while not stop_heartbeat.wait(LEASE_HEARTBEAT_SECONDS):
+                try:
+                    self._renew_lease()
+                except SystemExit:
+                    self._lease_lost = True
+                    return
+
+        heartbeat = threading.Thread(target=_heartbeat, name="lease-heartbeat", daemon=True)
+        heartbeat.start()
         out = []
         try:
             for line in proc.stdout:  # stream so a bounded log is kept even on interruption
                 out.append(line)
-                if len(out) % 400 == 0:
-                    self._renew_lease()
         finally:
+            stop_heartbeat.set()
+            heartbeat.join(timeout=1)
             proc.wait()
         self.child = None
         text = "".join(out)
@@ -274,9 +426,36 @@ class Operator:
         entry.update({"status": status, "at": now_iso(), **extra})
         self._write_state()
 
+    def _stage_outputs_intact(self, stage: str, outputs: list[Path]) -> bool:
+        """A completed stage is skippable ONLY if every recorded output still exists at its recorded
+        size and SHA-256. The earlier code skipped purely on `p.exists()`, so a tampered output was
+        silently reused and a false completion preserved (WEB-AI-03). Returns False when any output is
+        missing, resized, re-hashed differently, or was never recorded - which forces a rebuild."""
+        entry = self.state["stages"].get(stage) or {}
+        recorded = entry.get("artifacts") or {}
+        if not recorded:
+            return False
+        for path in outputs:
+            item = recorded.get(path.name)
+            if not isinstance(item, dict):
+                return False
+            if not path.exists():
+                return False
+            if path.stat().st_size != item.get("bytes"):
+                return False
+            if sha256_file(path) != item.get("sha256"):
+                return False
+        return True
+
     def _run_stage(self, stage: str, argv: list[str], outputs: list[Path]) -> None:
-        if self._stage_done(stage) and all(p.exists() for p in outputs):
-            return  # idempotent: never overwrite a completed immutable output
+        if self._stage_done(stage) and self._stage_outputs_intact(stage, outputs):
+            return  # idempotent: a verified, unchanged immutable output is never overwritten
+        if self._stage_done(stage):
+            # A stage marked complete whose artifacts are missing/altered is NOT complete. Invalidate
+            # it explicitly so the downstream decision never rests on a false completion.
+            self._mark(stage, "invalidated", reason="OUTPUT_INTEGRITY_FAILED")
+            self.state["integrityFailures"] = self.state.get("integrityFailures", 0) + 1
+            self._write_state()
         if self._stopping or self.stop_path.exists():
             self._transition("PAUSED", stage)
             self.state["pausedReason"] = "stop-requested"
@@ -387,7 +566,9 @@ class Operator:
 
     def resume(self) -> int:
         # A resume re-enters the machine at the first stage that is not yet complete; completed
-        # stages are skipped by their own idempotent output check.
+        # stages are skipped by their own idempotent output check. A prior STOP is cleared so the
+        # resume actually proceeds.
+        self.reset_for_resume()
         return self.run()
 
     def status(self) -> int:
@@ -411,9 +592,15 @@ class Operator:
 
     def _decide(self) -> None:
         """Compare the candidate's independent league result against the frozen champion and
-        compare-and-swap the research pointer. This NEVER sets the shipped APPROVED catalog."""
+        compare-and-swap the research pointer. This NEVER sets the shipped APPROVED catalog. The gate
+        is fed the candidate's OWN model/source bindings and the qualification family floor, so a
+        diagnostic-sized or unbound report cannot promote."""
         league = json.loads(self._league_path().read_text())
-        gate = evaluate_gate(league)
+        model_path = self._export_dir() / "candidate.onnx"
+        model_sha = sha256_file(model_path) if model_path.exists() else None
+        gate = evaluate_gate(league, expected_model=model_sha,
+                             expected_source=self.state["source"]["head"],
+                             min_families=PROMOTION_MIN_FAMILIES)
         self.state["leagueGate"] = gate
         if gate["promote"]:
             self._promote(gate)
@@ -422,6 +609,15 @@ class Operator:
             self._transition("REJECTED", "EVALUATING")
         self._write_state()
         print(json.dumps({"runId": self.run_id, "gate": gate, "champion": self.state["champion"]}, indent=2))
+
+    def reset_for_resume(self) -> None:
+        """Explicitly clear a prior STOP so `resume` actually continues. STOP is a request, not a
+        terminal state; the earlier code checked it between stages and `resume` never cleared it, so a
+        stopped run could never be resumed (WEB-AI-08). A resume after a STOP is recorded in history."""
+        if self.stop_path.exists():
+            self.stop_path.unlink()
+            self.state.setdefault("history", []).append({"at": now_iso(), "status": "RESUME_CLEARED_STOP"})
+            self._write_state()
 
     def _promote(self, gate: dict) -> None:
         pointer = self.root / "research-champion.json"
@@ -451,34 +647,79 @@ class Operator:
             lock.unlink(missing_ok=True)
 
 
-def evaluate_gate(league: dict) -> dict:
-    """Frozen promotion gate, aligned to the real league schema. The candidate must clear the
-    lower bound of the paired-family bootstrap CI against the strong classical reference. The
-    threshold (lower 95% CI >= 0.65) is read from the league's own declared gate so it is not
-    re-invented here; a candidate that does not clear it never becomes the research champion."""
-    matchups = league.get("matchups") or []
-    target = None
-    for item in matchups:
-        a = str(item.get("engineA") or "")
-        b = str(item.get("engineB") or "")
-        if "policyValuePUCT" in a and "improvedExpert" in b:
-            target = item
-            break
-    if target is None and matchups:
-        target = matchups[0]
-    if not target:
-        return {"promote": False, "reason": "NO_LEAGUE_RESULT"}
-    summary = target.get("summary") or {}
-    score = summary.get("pointScore")
-    ci = summary.get("pairBootstrap95") or []
-    ci_low = ci[0] if ci else None
-    threshold = 0.65  # "lower 95% CI >= 0.65 required for promotion" (league promotionGate)
-    if score is None or ci_low is None:
-        return {"promote": False, "reason": "INCOMPLETE_LEAGUE_METRICS",
-                "matchup": f"{target.get('engineA')} vs {target.get('engineB')}", "summary": summary}
-    return {"promote": bool(ci_low >= threshold), "score": score, "ciLow": ci_low,
-            "matchup": f"{target.get('engineA')} vs {target.get('engineB')}",
-            "threshold": f"ciLow>={threshold}", "summary": summary}
+def _load_model_verifier():
+    """Integrate the INDEPENDENT model-evidence verifier (scripts/v51-readiness-model-gate.py) rather
+    than re-implementing its checks. It is the same code WebUI tests; the operator only supplies the
+    candidate's own bindings. Absent the file, the gate fails closed."""
+    path = ROOT / "scripts" / "v51-readiness-model-gate.py"
+    try:
+        spec = importlib.util.spec_from_file_location("v51_readiness_model_gate", path)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        return module
+    except Exception:
+        return None
+
+
+def evaluate_gate(league: dict, *, expected_model: str | None = None, expected_source: str | None = None,
+                  min_families: int = PROMOTION_MIN_FAMILIES) -> dict:
+    """Fail-closed research-promotion gate. Promote ONLY when the independent verifier qualifies a
+    single, exactly-identified `policyValuePUCT` vs `improvedExpert` matchup whose complete paired
+    evidence clears BOTH the point target and the lower-confidence target on a qualification-sized set
+    of independent opening families, with statistics RECOMPUTED from the raw records and the candidate's
+    model/source bound and verified. This can NEVER set the shipped APPROVED catalog or production
+    approval. Any missing/ambiguous/failed input returns promote=False with an explicit reason.
+
+    WEB-AI-01a (unrelated opponents accepted), 01b (point target ignored), 01c (reversed interval,
+    unverified counts) are all closed by delegating the numeric verdict to the verifier and requiring
+    the exact matchup here."""
+    reasons: list[str] = []
+    def refuse(reason: str, **extra) -> dict:
+        return {"promote": False, "reason": reason, "productionApproved": False, **extra}
+
+    if not isinstance(league, dict):
+        return refuse("LEAGUE_INVALID")
+    model_sha = expected_model or league.get("modelSha256")
+    source_sha = expected_source or league.get("sourceSha")
+    verifier = _load_model_verifier()
+    if verifier is None:
+        return refuse("MODEL_VERIFIER_UNAVAILABLE")
+    # Reject absent, duplicate and unrelated reference matchups BEFORE the numeric verdict.
+    matchups = league.get("matchups")
+    if not isinstance(matchups, list):
+        return refuse("MATCHUPS_MISSING")
+    matches = [m for m in matchups if isinstance(m, dict)
+               and m.get("engineA") == PROMOTION_CANDIDATE and m.get("engineB") == PROMOTION_REFERENCE]
+    if len(matches) != 1:
+        return refuse("EXACT_REFERENCE_MATCHUP_REQUIRED", matched=len(matches))
+    if not (isinstance(model_sha, str) and re.fullmatch(r"[0-9a-f]{64}", model_sha)
+            and isinstance(source_sha, str) and re.fullmatch(r"[0-9a-f]{40}", source_sha)):
+        return refuse("MODEL_OR_SOURCE_BINDING_REQUIRED")
+    # Hand the SAME league document to the independent verifier with the frozen policy.
+    report = dict(league)
+    report.setdefault("status", "COMPLETED")
+    report["modelSha256"] = model_sha
+    report["sourceSha"] = source_sha
+    verdict = verifier.evaluate(report, expected_model=model_sha, expected_source=source_sha,
+                                min_families=min_families, min_score=PROMOTION_POINT_TARGET,
+                                min_lower=PROMOTION_LOWER_TARGET)
+    result = {
+        "promote": bool(verdict.get("researchEvidenceQualified")),
+        "reason": "QUALIFIED" if verdict.get("researchEvidenceQualified") else ";".join(verdict.get("reasons") or ["UNQUALIFIED"]),
+        "matchup": f"{PROMOTION_CANDIDATE} vs {PROMOTION_REFERENCE}",
+        "pointTarget": PROMOTION_POINT_TARGET,
+        "lowerTarget": PROMOTION_LOWER_TARGET,
+        "minFamilies": min_families,
+        "verdict": verdict,
+        "productionApproved": False,
+    }
+    if not result["promote"]:
+        return refuse(result["reason"], verdict=verdict, matchup=result["matchup"],
+                      pointTarget=PROMOTION_POINT_TARGET, lowerTarget=PROMOTION_LOWER_TARGET)
+    result["score"] = verdict.get("pointScore")
+    result["ciLow"] = (verdict.get("recomputedPairBootstrap95") or [None])[0]
+    result["independentFamilies"] = verdict.get("independentFamilies")
+    return result
 
 
 def _pid_alive(pid: int) -> bool:

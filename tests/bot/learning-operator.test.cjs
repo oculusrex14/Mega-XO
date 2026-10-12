@@ -52,21 +52,32 @@ test('learning operator: configuration bounds are rejected before any stage runs
   assert.match(badWidth.stderr + badWidth.stdout, /CONFIG_INVALID:width/, 'an unsupported width is refused');
 });
 
-test('learning operator: the promotion gate uses the league threshold and rejects a weak candidate', { skip: PY ? false : 'no python3' }, () => {
+test('learning operator: the promotion gate is fail-closed and needs complete bound evidence', { skip: PY ? false : 'no python3' }, () => {
   const script = [
-    'import json, sys',
+    'import json, sys, hashlib',
     "sys.path.insert(0, 'training/bot')",
     'import champion_cycle as cc',
-    'weak = {"matchups":[{"engineA":"policyValuePUCT","engineB":"improvedExpert","summary":{"pointScore":0.4,"pairBootstrap95":[0.1,0.7]}}]}',
-    'strong = {"matchups":[{"engineA":"policyValuePUCT","engineB":"improvedExpert","summary":{"pointScore":0.78,"pairBootstrap95":[0.66,0.9]}}]}',
-    'print(json.dumps({"weak":cc.evaluate_gate(weak),"strong":cc.evaluate_gate(strong)}))',
+    // A numerically "strong" report with NO game records / no binding must NOT promote (the old gate
+    // fell back to the first matchup and promoted on a bare CI). This is WEB-AI-01a/b/c.
+    'bare = {"matchups":[{"engineA":"policyValuePUCT","engineB":"improvedExpert","summary":{"pointScore":0.78,"pairBootstrap95":[0.66,0.9]}}]}',
+    // A complete, bound, 200-independent-family report clears the frozen targets.
+    'games=[]',
+    'for i in range(200):',
+    '    for swap in (False, True):',
+    '        games.append({"openingFamily":f"fam-{i}","swap":swap,"first":"X","a":"policyValuePUCT","b":"improvedExpert","point":1,"winner":"O" if swap else "X"})',
+    'full = {"status":"COMPLETED","matchups":[{"engineA":"policyValuePUCT","engineB":"improvedExpert","games":games,"summary":{"games":400,"pairs":200,"wins":400,"draws":0,"losses":0,"pointScore":1.0,"pairBootstrap95":[1.0,1.0]}}]}',
+    'm="a"*64; s="b"*40',
+    'print(json.dumps({"bare":cc.evaluate_gate(bare,expected_model=m,expected_source=s),"full":cc.evaluate_gate(full,expected_model=m,expected_source=s)}))',
   ].join('\n');
   const res = spawnSync(PY, ['-c', script], { encoding: 'utf8', cwd: ROOT });
   assert.equal(res.status, 0, res.stderr);
   const out = JSON.parse(res.stdout);
-  assert.equal(out.weak.promote, false, 'a candidate whose lower CI is below 0.65 is rejected');
-  assert.equal(out.strong.promote, true, 'a candidate clearing the gate is promotable');
-  assert.match(out.strong.threshold, /0\.65/, 'the frozen threshold is 0.65');
+  assert.equal(out.bare.promote, false, 'a bare numeric report with no bound records is refused');
+  assert.equal(out.bare.productionApproved, false, 'the gate never approves production');
+  assert.equal(out.full.promote, true, 'a complete bound 200-family report clears the gate');
+  assert.equal(out.full.lowerTarget, 0.65, 'the frozen lower-CI target is 0.65');
+  assert.equal(out.full.pointTarget, 0.70, 'the frozen point target is 0.70');
+  assert.equal(out.full.minFamilies, 200, 'the qualification family floor is 200');
 });
 
 test('learning operator: plan emits real argv arrays for all five stages', { skip: PY ? false : 'no python3' }, () => {

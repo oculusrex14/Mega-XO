@@ -5,6 +5,7 @@ import {updateSeo} from './seo.js';
 import {detectDownloadPlatform, downloadHref} from './downloads.js';
 import {storeLinks} from './store-links.js';
 import {renderPractice, renderGame, mountBoard} from './board.js';
+import {getOfflineState, prepareOffline, removeOffline} from './offline.js';
 
 import {createReadModel, readJSON, authRequired, errorCopy} from './data.js';
 import {legalDocuments} from './legal-documents.js';
@@ -22,6 +23,7 @@ const balance=value=>Number.isSafeInteger(value)&&value>=0?value.toLocaleString(
 const model=createReadModel({context,changed:()=>{if(normalizedPath()==='/game')synchronizeGameProfile();else render();}});
 let activePath='',leaderboardTimer,accountChallenge='',resetReady=false,serviceBusy=false,onlineTimer,onlineBusy=false,onlineRevision=0;
 let boundOnlineActor=null,hydratingMatch='';
+let offlineBusy=false,offlineRevision=0;
 let onlineState={status:'idle',match:null,invitation:null,message:''};
 try{const saved=JSON.parse(localStorage.getItem('mega-xoxo-sponsor-interests')||'null');if(saved?.consent===true)context.sponsorPreferences=saved;}catch{}
 
@@ -46,11 +48,33 @@ function render({focus=false}={}){
  if(path==='/game'){boundOnlineActor=visibleMatch()?context.profile.id:null;updateOnlineControls();}
  if(path==='/store'&&context.products.status!=='error')main.querySelector('[data-store-products]')?.insertAdjacentHTML('afterend','<div class="pg-actions"><button class="mx-button secondary" data-store-action="refresh">Check store availability</button></div>');
  if(path==='/account'&&context.sessionStatus==='guest'&&!context.providersLoaded){main.querySelector('.pg-auth-card')?.insertAdjacentHTML('beforeend','<button class="mx-button secondary" type="button" data-account-action="options">Check sign-in options</button>');}
+ if(path==='/settings')refreshOfflineControls();
  if(focus){main.focus({preventScroll:true});window.scrollTo(0,0);}
 }
 function navigate(href){history.pushState({},'',href);render({focus:true});activate();}
 function notify(message){const el=document.querySelector('#notification');el.textContent=message;el.hidden=false;clearTimeout(toastTimer);toastTimer=setTimeout(()=>{el.hidden=true},4500);}
+function paintOfflineControls(state){
+ if(normalizedPath()!=='/settings')return;
+ const status=main.querySelector('[data-offline-status]');
+ if(status)status.textContent=offlineBusy?(offlineBusy==='remove'?'Removing your offline copy…':'Saving your offline copy…'):state.message||({ready:'Offline practice is saved. Reload this page when you are ready to use it.',waiting:'An updated copy is saved. Close the other Mega XOXO tabs, then reopen the game to use it.',absent:'No offline copy is saved. Saving uses a small amount of storage on this device.',unavailable:'Offline saving is unavailable in this browser. You can still practice while connected.',conflict:'Another offline app is using this address. Your existing offline app has been left in place.'}[state.status]||'Offline saving is unavailable. Try again while connected.');
+ const prepare=main.querySelector('[data-offline-action="prepare"]');
+ const remove=main.querySelector('[data-offline-action="remove"]');
+ if(prepare)prepare.disabled=offlineBusy||['unavailable','conflict','waiting'].includes(state.status);
+ if(remove)remove.disabled=Boolean(offlineBusy)||state.canRemove!==true;
+}
+async function refreshOfflineControls(){
+ const revision=++offlineRevision;
+ try{const state=await getOfflineState();if(revision===offlineRevision)paintOfflineControls(state);}
+ catch{if(revision===offlineRevision)paintOfflineControls({status:'unavailable'});}
+}
+async function offlineAction(name){
+ if(offlineBusy||!['prepare','remove'].includes(name))return;
+ offlineBusy=name;offlineRevision++;paintOfflineControls({status:'ready'});
+ try{const state=await (name==='prepare'?prepareOffline():removeOffline());offlineBusy=false;paintOfflineControls(state);}
+ catch{offlineBusy=false;paintOfflineControls({status:'absent',message:name==='prepare'?'The offline copy could not be saved. Check your connection and available storage, then try again.':'The offline copy could not be removed. Try again in this browser.'});}
+}
 document.addEventListener('click',event=>{
+ const offline=event.target.closest('[data-offline-action]');if(offline){offlineAction(offline.dataset.offlineAction);return;}
  const menu=event.target.closest('.mx-menu-button');if(menu){const nav=document.querySelector('#mobile-menu');nav.hidden=!nav.hidden;menu.setAttribute('aria-expanded',String(!nav.hidden));return;}
  const mode=event.target.closest('[data-mode]');if(mode){tab=mode.dataset.mode;document.querySelector('.mx-ranked').outerHTML=rankPanel();document.querySelector(`#tab-${tab}`).focus();return;}
  const action=event.target.closest('[data-page-action]');if(action){const name=action.dataset.pageAction;

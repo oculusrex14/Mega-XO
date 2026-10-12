@@ -103,3 +103,41 @@ bootstrap labels come from a UCT teacher that is itself far weaker than Expert, 
 same self-play can teach Expert-level play. The binding constraint is a **genuinely stronger label
 source** - Expert search / solved positions - which is exactly CL18-CL23 (approach B teacher and
 conditional distillation). No promotion; catalog stays empty.
+
+## Stronger-LABEL experiment (expert behaviour cloning) - the decisive result
+
+Following the CL20-CL21 finding (weak UCT labels cap everything), the generator gained an
+`expert` **labelSource**: instead of UCT visit distribution, the target is the strongest classical
+engine's move (one-hot behaviour cloning). 100 games / **4,633 records**; a 64x4 student trained 30
+epochs:
+
+| | weak-UCT labels (CL10) | Expert BC labels |
+|---|---|---|
+| top-1 policy agreement | 23.9% | **29.9%** |
+| top-3 agreement | 60.9% | **68.3%** |
+| value MSE | 0.71 | 1.26 |
+
+So the student learns the Expert move policy better (top-1 29.9%). But the independent league:
+
+| Matchup (24 families, 48 games) | Expert-BC |
+|---|---|
+| policyValuePUCT vs improvedExpert | **0.000** |
+| policyOnlyPUCT vs improvedExpert | 0.031 |
+| policyValuePUCT vs tacticalUCT | 0.406 |
+| int8PUCT vs policyValuePUCT | 0.521 |
+
+**Conclusion (the sharpest result of this work):** better move-*labels* alone do not close the Expert
+gap. Imitating a DEEP-SEARCH engine's individual moves with a student that is used only as a prior in a
+SHALLOW search (16 sims / 20 ms) cannot reproduce that engine's strength - the missing ingredient is
+the **search depth/compute at inference**, not the label or the network size. Therefore:
+
+- Impossible (> Expert) is not achievable by the compact CNN at the current client inference budget,
+  regardless of dataset size or label source.
+- The realistic paths are (a) a much larger inference/search budget on capable devices (contradicts the
+  <1500 ms client target), or (b) an AlphaZero-style loop where the network is trained on its OWN
+  deep-search self-play over many iterations - far beyond this session's budget and not provable here.
+- **No promotion.** `APPROVED_CATALOG` stays empty; `mega_v51_search` stays legacy; the public ladder is
+  the measured classical five tiers.
+
+This is recorded as the top AI open item with the exact evidence chain: model size (0%), label volume
+(0%), label quality (0%) all fail to move the Expert gap; only inference search depth remains.

@@ -18,12 +18,12 @@ release.
 | WEB-AI-03 resume verifies output hashes | COMPLETE | `b1db862` | probe: tampered output not reused |
 | WEB-AI-04 neural feedback wired | COMPLETE | `b1db862` | probe: injected engine reached; sync path byte-identical |
 | WEB-AI-08 wall-clock heartbeat + STOP clear | COMPLETE (partial) | `b1db862` | heartbeat thread; resume clears STOP |
-| WEB-AI-05 complete league receipts | IN PROGRESS | - | retain all games + family IDs + bindings; verifier refuses truncated |
-| WEB-AI-06 teacher-eval leakage | PENDING | - | `unsloth_teacher.py` family split; missing=failure; pinned revision |
-| WEB-AI-07 label provenance + budget threading | PENDING | - | thread budget to teacherMove; independent option-order eval |
-| WEB-AI-08 two-cycle feedback PROOF | PENDING | - | cycle 2 consumes cycle 1's chosen artifact (real kill/resume) |
-| WEB-DOC-01 register repair (R26/R28 restored) | PENDING | - | apply prepared `repair.patch` after review |
-| WebUI re-verification handoff | PENDING | - | independent re-run of the probes on the fixed source |
+| WEB-AI-05 complete league receipts | COMPLETE | `324f380` | 200-family receipt; verifier enforces targets |
+| WEB-AI-06 teacher-eval leakage | COMPLETE | `324f380` | family split; missing=failure; pinned revision; 3/3 |
+| WEB-AI-07 label provenance + budget | COMPLETE | `324f380` | budget threaded; real option-order permutation; 6/6 |
+| WEB-AI-08 two-cycle feedback PROOF | COMPLETE | `4aa03e3` | chain `3da3ed00…`->`7245a902…`; real kill/resume |
+| WEB-DOC-01 register repair (R26/R28) | COMPLETE | `4aa03e3` | `73d866a0…`; audit structuralErrors 0 |
+| WebUI re-verification (independent gate) | COMPLETE | `324f380`/`4aa03e3` | `V5.1 independent readiness evidence` GREEN |
 
 ## P0 - secure staging
 

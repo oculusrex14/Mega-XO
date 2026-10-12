@@ -246,7 +246,12 @@ test('V5-12-01: HTTP control plane returns explicit Cache-Control headers', asyn
 
   const db = await lab.createDatabase('cache_headers');
   await lab.seedActors(db, ACTORS);
-  const server = await setupApiServer(db);
+  // P11 routes the queue status read to the signed Core ingress by default.
+  // This isolated Cache-Control fixture injects the Core result explicitly;
+  // it must not depend on the CI runner exposing a remote Core endpoint.
+  const server = await setupApiServer(db, {
+    queue: { status: async () => ({ state: 'idle', matchId: null }) },
+  });
 
   try {
     // 1. GET /api/v1/profile -> private, no-store

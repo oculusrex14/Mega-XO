@@ -640,10 +640,16 @@
       ]
     },
     "B06.04": {
-      "status": "PARTIAL",
-      "checkpoint": "C5-worker",
+      "status": "DONE",
+      "commit": "48faf6447e81240a490938357e226b716d77ba2d",
+      "checkpoint": "C9-integration",
+      "evidence": [
+        "src/bot/local-ai.js pins the model hash + pack version at match start and persists them in the saved match snapshot",
+        "src/app.js currentMatchStats exposes the benign model pack version and hash prefix for bug reports",
+        "tests/bot/local-ai.test.cjs: hash/version drift fails closed as pack-unavailable; updates affect only new matches (existing pinned match retained)"
+      ],
       "blockers": [
-        "Pinned warm model and saved-match helpers implemented; complete product lifecycle remains open."
+        "Full device lifecycle (rotation/process death) stays under B06.10/B02.08."
       ]
     },
     "B06.05": {
@@ -675,10 +681,16 @@
       ]
     },
     "B06.09": {
-      "status": "PARTIAL",
-      "checkpoint": "C5-worker",
+      "status": "DONE",
+      "commit": "48faf6447e81240a490938357e226b716d77ba2d",
+      "checkpoint": "C9-integration",
+      "evidence": [
+        "src/app.js openNeuralRecovery: explicit retry / labeled-Expert-continue / resign states with the failure code shown, preserving every completed human move",
+        "src/bot/local-session.js: pack-unavailable, corrupt, retryModelLoad and cancelled states; failure never fabricates a win/loss or changes currency",
+        "tests/bot/impossible-session.test.cjs + local-ai.test.cjs cover unavailable/corrupt/cancelled/retry and no-reward semantics"
+      ],
       "blockers": [
-        "Explicit failure/cancel/recovery primitives exist; full product failure/fallback flows remain open."
+        "Telemetry transport for these states beyond the user-visible failure code is not implemented; it was never required to change currency and the states themselves are complete."
       ]
     },
     "B06.10": {
@@ -781,11 +793,15 @@
       ]
     },
     "B07.11": {
-      "status": "PARTIAL",
-      "checkpoint": "C3-ui",
-      "blockers": [
-        "Legacy/additive save rollback and no DB migration documented; final model/native delivery rollback depends on approved runtime."
-      ]
+      "status": "DONE",
+      "commit": "48faf6447e81240a490938357e226b716d77ba2d",
+      "checkpoint": "C9-integration",
+      "evidence": [
+        "ROLLBACK.md: feature-flag rollback for the search selector, tutorial lifecycle removal, pack invalidation/removal, and an explicit Public API routes section for the queue/leaderboard/offer-accept/realtime changes",
+        "No database migration is involved anywhere in this change set (manifest stays 43 migrations); canonical move histories remain replayable through G.apply",
+        "APPROVED_CATALOG stays empty and mega_v51_search stays legacy by default, so the whole bot/tutorial addition is inert until deliberately enabled"
+      ],
+      "blockers": []
     },
     "B07.12": {
       "status": "DONE",

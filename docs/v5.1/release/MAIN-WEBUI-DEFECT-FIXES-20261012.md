@@ -136,3 +136,16 @@ Kill/resume evidence (SIGTERM ~9 s into a long GENERATING stage; resume with the
 GENERATING `paused` -> on resume `GENERATING complete`, `DATA_VALIDATED complete`, `TRAINING complete`
 (export then needs the `onnx` module that only the isolated venv provides - a genuine environment
 requirement, reported honestly, not a code fault).
+
+## B07.09 - full repository local + CI run (this source)
+
+Local, `V5_PG_REQUIRED=1 REDIS_URL=redis://127.0.0.1:6399 V5_REDIS_REQUIRED=1 node --test tests/*.test.js`:
+**633 pass, 1 fail, 1 skip** before the 1700 s harness cap cancelled the tail (751 discovered). The one
+failure is the **known pre-existing `opsz` backup-freshness** test documented in `AGENTS.md`
+("occurs on the clean tree too, pre-existing; do not rerun to confirm, redefine, suppress or change
+approved behavior to get green"). It is unrelated to every file this session changed.
+
+GitHub Actions on the final head `c807206`: **all six workflows GREEN** -
+`Mega XO validation`, `V5.1 isolated service and platform`, `V5.1 bot and tutorial validation`,
+`V5.1 dedicated recovery and chaos`, `V5.1 independent audit regression`, and
+`V5.1 compact model validation` (the neural/export path), plus WebUI's `V5.1 independent readiness evidence`.

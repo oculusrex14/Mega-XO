@@ -1,33 +1,43 @@
-# Day-one gameplay capture implementation
+# Day-one gameplay capture - living implementation record
 
-Owner: WebUI. Base: `4e7d38584cde00dd4fe66fbd125470f6c8e74d19`. Branch: `feat/v51-gameplay-data-capture`. Owner's October 13 feature-branch and training-deferral instructions supersede the older trunk-only/training instructions. Main owns integration and deployment; this branch will only propose a PR, not merge or deploy.
+Owner: WebUI. Base V5.1 `4e7d38584cde00dd4fe66fbd125470f6c8e74d19`. Feature branch `feat/v51-gameplay-data-capture`. Draft PR12 targets V5.1; Main alone integrates/deploys. Impossible and ALL neural training remain deferred. No V4, game rules, economy, ranks, themes, website or shared Core source was changed.
 
-## Source audit and decisions
+## Evidence checkpoint
 
-Read the architecture, implementation pack, utttai analysis/converter, deferral, original match/tournament migrations, canonical rules, Core, jobs, repositories and account deletion. Existing operational matches carry complete moves. Match resignation/timeout deliberately overwrite `state.winner`: replay must distinguish the genuine board result. Tournament `history_json` keeps every finished attempt's players/moves/reason/winner; fixture attempt counters can reset and players swap on drawn deciders. Use history ordinal, not the resettable counter, as archival attempt identity. Old tournament histories lack individual timestamps/timings; record unknown, not invented values. Their source revision is not a move count.
+`b7c18335d6f14827195a6be01f2c9e01b348e4f1` passed actual GitHub PG16/Node24 capture CI run38373759608. Retained artifact11799244557 SHA256 `3c3108befd051de253f2de356db213fd3b958bf314ac7fede5a7d65d39f95336`. This verifies full normal win/draw, direct/casual/ranked, resignation/timeout/void, repeated requests, scoped claims, expiry/fencing, missing intent reconciliation, source corruption, role denials and deletion/export invalidation. No staging or real player claim.
 
-Only PostgreSQL is authoritative; never depend on Redis for collection. Source SHA/file hashes come from a read-only CI source receipt because local github.com DNS is unavailable. Existing migration tip is 0043. Public utttai evaluated positions are not games and remain excluded. Current APIs do not prove humans rather than bots/test accounts: default population is UNKNOWN until private, audited classification; retain trajectories but do not label them clean human training data by inference.
+Earlier CI failures were fixed rather than hidden: initial schema creation ran after dropping migration privileges (fixed a558aa5); migration0034 intentionally preserves operational json rather than jsonb, including scalar receipt_reason (fixed b7c1833 with explicit decoding and casts, without changing originals). Follow-up99714b adds real process-kill/tournament/container-restart tests; its workflow initially referenced job.services from job-level env, which GitHub rejects. This checkpoint moves that reference to step env. Those new runtime tests require their own successful run before PASS.
 
-DC04 will use an additive terminal-row database trigger, inside the already existing successful Core transaction, rather than changing shared Core source. It inserts only a small deterministic `learning.capture` outbox intent. Replay/archive work stays in a dedicated worker. Tournament row replacement requires a deferred pruning guard, not a BEFORE DELETE rule that would break legitimate room saves. No game/economy/rank/theme change.
+Pure tests:31 capture/replay tests include200 complete canonical games;5 worker tests;4 authenticated-stream tests;5 deterministic export tests;4 privacy-journal tests;4 connection/release-gate tests. Exact combined CI totals supersede manual sums (the real PG file uses nested tests).
 
-## Living checklist
+## Living checklist (DONE is the evidenced implementation scope, not production acceptance)
 
-| ID | State | Evidence / remaining |
+| ID | State | Evidence / residual |
 |---|---|---|
-| DC00 | PARTIAL | Scope fixed; real privacy/purpose/retention/storage authorization remains a release blocker. Default disabled; no invented retention. |
-| DC01 | DONE | Current source/grants/outbox/repository/deletion audit and threat boundaries above. |
-| DC02 | DONE | `packages/learning/capture.js`; `node --test tests/gameplay-capture.test.js`: 31 pass, 0 fail, 0 skip on local Node22.16; 200 complete canonical games including genuine draws. Initial two malformed tests were no-op mutations; corrected to mutate an actual value and reran all tests. |
-| DC03 | NOT_RUN | Additive learning schema and exact-role grants, disposable PG validation pending. |
-| DC04 | NOT_RUN | Terminal intents pending. |
-| DC05 | NOT_RUN | Kind-scoped fenced capture worker pending. |
-| DC06 | NOT_RUN | Reconciliation/pruning guards/metrics pending. |
-| DC07 | PARTIAL | History-only archive representation tested; actual tournament extractor pending. |
-| DC08 | NOT_RUN | Deletion, user-choice, retention, lineage and restore suppression pending. |
-| DC09 | PARTIAL | Canonical pre-move encoder iterator exists; private deterministic exporter pending. |
-| DC10 | NOT_RUN | CI/staging complete service journeys pending. |
-| DC11 | NOT_RUN | Latency/storage benchmark pending. |
-| DC12 | PARTIAL | Isolated read-only source CI established; explicit rollout gate pending. |
+| DC00 | PARTIAL | Feature scope and disabled defaults implemented. Owner/Main must approve actual purpose, capture/export/backup retention and storage/choice references. No invented legal approval. |
+| DC01 | DONE | Actual Core/outbox/repository/privacy audit; existing0034 JSON types preserved. |
+| DC02 | DONE | game-capture/v1 replay, exact b*9+c, actual symbols and timings, strict corruption bounds; line/draw separate from adjudicated/null value.200 full games tested. |
+| DC03 | DONE | New0044-0046 private schema/functions, exact isolated roles, manifest, real PG apply/reapply and permission denials passed. Real deployment NOT_RUN. |
+| DC04 | DONE | Deferred terminal database triggers run inside existing successful Core transaction and insert deterministic durable outbox intents; actual six-mode/outcome Core cases passed. No shared Core edit. |
+| DC05 | DONE | Scoped/fenced worker, re-read/hash binding, seal+ack atomicity, quarantine/backoff, no Redis dependency. Logical expired lease passed; new actual SIGKILL test pending CI. |
+| DC06 | PARTIAL | Keyset reconciliation, repair, source-drift quarantine, pruning guards, aggregate metrics implemented and PG tested. Real schedule/alerts and larger history load pending. |
+| DC07 | PARTIAL | History-ordinal fixture extraction, symbol rematches and honest unavailable timing implemented. New four-attempt actual tournament test pending CI. |
+| DC08 | PARTIAL | Deletion request trigger, private opt-out propagation, suppression/erasure/export revocation and encrypted journal implemented. Unit/PG subsets pass. Actual isolated journal replay, storage retention and user-facing choice delivery remain acceptance gates. |
+| DC09 | DONE | Streaming encrypted archives + optional observed-position records, D4 family grouping, disk-backed state deduplication, stable seed, reserved qualification, lineage and privacy-fenced reader. Unit tests pass; real encrypted PG export/revocation added pending CI. No training execution. |
+| DC10 | PARTIAL | Broad real PG capture acceptance green. Additional actual worker/process/database-restart and tournament tests now included; deployed staging/network/R2 acceptance remains NOT_RUN. |
+| DC11 | PARTIAL | Paired-order move/settlement and200-full-game CPU/storage benchmark implemented; measured CI result pending. No guessed production SLA. |
+| DC12 | PARTIAL | Guarded one-shot CLI, exact-role/TLS/target checks, release receipt gate and draft PR exist. Main integration, approvals and actual day-one canary remain open. |
 
-The archive forbids unknown fields, raw subject IDs in the gameplay body, impossible moves, altered boards/routing, invalid timing/symbol mappings and invented board outcomes. Restricted actor lookup is separate. Observed human actions are not search visits. Adjudicated games have null board-value labels. Native/browser telemetry, external positions and local practice are not eligible authoritative inputs.
+## Shared integration boundary
 
-No production data, environment secrets, raw player capture, training job or approved model is created by these commits. CI source receipts contain tracked source only and are not deployment packages.
+Only the migration manifest and NEW0044-0046 numbered migrations affect shared platform integration. All earlier migrations are unchanged. No runtime grant widening. Capture functions use separate capture_runtime/capture_exporter/capture_privacy identities; API and Core cannot read training tables. Collection starts disabled; provisioning/activation is Main's separately approved operation.
+
+The Core hook is a deferred database terminal trigger, not a second game service. Main must carry the full new migration chain, validate on a disposable clone, budget dedicated connections and install the private worker/reconciler/privacy/export-purge schedules. Existing workers must keep their explicit kind allowlists. The source is PostgreSQL; Redis notifications are neither capture triggers nor delivery authority.
+
+## Important representation and scope boundaries
+
+Match resignation/timeout overwrite state.winner; independent replay establishes boardWinner and never converts adjudication into a strategic loss value. Tournament history retains moves/players/outcome per attempt, but not every old timestamp. Use history ordinal, not a counter reset after drawn deciders; preserve unknown metadata rather than invent it. The repository deletes/reinserts fixtures during valid room saves, so pruning constraints are deferred.
+
+Population defaults UNKNOWN unless private audited classification proves human versus bot/test. Unknown games are preserved privately but not mislabeled human training data. Raw actor lookup stays separate. utttai evaluated positions, synthetic examples and client practice cannot masquerade as observed online matches.
+
+A development dataset withholds qualification trajectories, omits common initial positions from supervised records, and removes cross-split symmetry/transposition samples. Proof is for each immutable frozen export snapshot. Do not concatenate differently dated exports or reconstruct filtered training positions from archival games without re-running a joint leakage audit and privacy checks. No training consumer or automatic model approval is part of this work.

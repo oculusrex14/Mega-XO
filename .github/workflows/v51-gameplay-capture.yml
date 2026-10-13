@@ -1,7 +1,7 @@
 name: V5.1 gameplay capture
 on:
   push:
-    branches: ['feat/v51-gameplay-data-capture']
+    branches: ['feat/v51-gameplay-data-capture', 'V5.1']
   pull_request:
     branches: ['V5.1']
     paths:
@@ -9,6 +9,11 @@ on:
       - 'packages/migrations/**'
       - 'packages/services/core.js'
       - 'tests/gameplay-*'
+      - 'tests/helpers/gameplay-*'
+      - 'src/game.js'
+      - 'src/tournament.js'
+      - 'src/bot/encoding.js'
+      - 'packages/db/pg/**'
       - 'scripts/gameplay-*'
       - 'docs/v5.1/data/**'
       - '.github/workflows/v51-gameplay-capture.yml'
@@ -81,7 +86,6 @@ jobs:
       V5_PG_DISPOSABLE: '1'
       V5_PG_REQUIRED: '1'
       V5_MIGRATE_ALLOW_INSECURE_LOOPBACK: '1'
-      CAPTURE_TEST_PG_CONTAINER: ${{ job.services.postgres.id }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
@@ -91,6 +95,8 @@ jobs:
           node-version: '24'
       - run: npm ci
       - name: Run synthetic canonical and real disposable PostgreSQL acceptance
+        env:
+          CAPTURE_TEST_PG_CONTAINER: ${{ job.services.postgres.id }}
         shell: bash
         run: |
           set -euo pipefail

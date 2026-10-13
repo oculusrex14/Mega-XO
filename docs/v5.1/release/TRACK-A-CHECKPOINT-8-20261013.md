@@ -37,6 +37,18 @@ checkpoint reports measured status. Research-only: `APPROVED_CATALOG` empty; pro
 - **External-only training: val value MSE 0.0004, policy top-1 0.574** — the utttai NMCTS labels are
   far more learnable than our weak self-play labels (top-1 ~0.23–0.25).
 
+### BREAKTHROUGH — stronger labels (the headline result)
+Training on the combined utttai corpus (352,357 positions, DGX2 CUDA) produced the strongest candidate
+in the programme: **0.406 vs improvedExpert** (CI [0.319, 0.500]; was 0.05) and **0.900 vs
+tacticalUCT** (CI [0.838, 0.956]; was 0.608), 40 families / 80 paired games. Research gate advances
+(`RESEARCH_ADVANCE_REFERENCE_FLOOR`, CI low 0.8375); public qualification correctly refused (40 < 200
+families). This confirms the diagnosis: **label quality, not compute, was the bottleneck.**
+Evidence: `docs/v5.1/research/stronger-label-breakthrough-20261013.md`.
+
+### Multi-source corpus (Phase 4)
+`multi-source.jsonl` = deep-search (80,250) + external utttai (352,357, deduped) → **431,999 records,
+1,696 games, 351,749 external rows, `canonical:true`** with 3 distinct value-target sources.
+
 ### RL pipeline (DGX2, GPU)
 - Full cycle 5/5 stages on CUDA; seeded from 80,250 strong-search rows; best-epoch export; 713,802
   params; peak CUDA 287 MB; 19 s train.

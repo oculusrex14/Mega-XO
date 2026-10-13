@@ -1,6 +1,5 @@
 'use strict';
-/* This check is a receipt validator, not permission to deploy or evidence that an operator's
- * assertion happened. Main must attach the exact-SHA artifacts and independently approve it. */
+/* A receipt validator, not deployment permission or an assertion that external checks happened. */
 const C=require('./capture.js');
 const REQUIRED=['privacyPurpose','retention','encryptedStorage','userChoiceDelivery','workerScheduler',
  'reconcilerScheduler','deletionSweep','exportPurge','restoreJournal','postgresRestart','redisLoss',
@@ -12,8 +11,8 @@ function assess({sourceCommit,configuration,metrics,receipt,now=Date.now()}={}){
  if(configuration?.rulesHash!==C.RULES_HASH)failures.push('RULES_HASH_MISMATCH');
  if(!configuration?.policyVersion)failures.push('POLICY_VERSION_REQUIRED');
  if(!['staging','production'].includes(configuration?.environment))failures.push('REAL_TARGET_REQUIRED');
- if(!metrics||['pending','quarantined','expiredUnpurged'].some(k=>!Number.isSafeInteger(Number(metrics[k]))||Number(metrics[k])!==0))failures.push('CAPTURE_BACKLOG_OR_UNKNOWN');
- if(!metrics||Number(metrics.sealed)<1)failures.push('SEALED_CANARY_REQUIRED');
+ if(!metrics||['pending','quarantined','expiredUnpurged'].some(k=>!Number.isSafeInteger(metrics[k])||metrics[k]!==0))failures.push('CAPTURE_BACKLOG_OR_UNKNOWN');
+ if(!metrics||!Number.isSafeInteger(metrics.sealed)||metrics.sealed<1)failures.push('SEALED_CANARY_REQUIRED');
  if(!receipt||receipt.sourceCommit!==sourceCommit||receipt.rulesHash!==C.RULES_HASH||receipt.policyVersion!==configuration?.policyVersion||receipt.environment!==configuration?.environment)failures.push('RECEIPT_BINDING');
  if(!receipt||!Number.isSafeInteger(receipt.privacyEpoch)||receipt.privacyEpoch!==Number(configuration?.privacyEpoch))failures.push('PRIVACY_EPOCH_MISMATCH');
  const at=Date.parse(receipt?.checkedAt||'');if(!Number.isFinite(at)||at>now||now-at>86400000)failures.push('RECEIPT_STALE');

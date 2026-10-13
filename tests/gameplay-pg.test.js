@@ -34,7 +34,7 @@ test('DC03-DC10 real PostgreSQL capture, replay, fencing, repair and privacy',as
   const cid=await val("SELECT capture_id FROM learning.captures WHERE source_kind='match' AND source_id=$1",[id]);
   if(cid)captures[id]=cid;return cid;
  }
- await t.test('migration 45 applies and reapplies; policy disabled and exact-role denials',async()=>{
+ await t.test('additive migrations apply and reapply; policy disabled and exact-role denials',async()=>{
   assert.equal(lab.runMigrator(db).json.appliedCount,0);
   assert.equal((await worker.tick()).disabled,true);
   for(const role of ['api_runtime','core_runtime','worker_runtime',...roles]){
@@ -51,7 +51,6 @@ test('DC03-DC10 real PostgreSQL capture, replay, fencing, repair and privacy',as
   await play('dc-draw','draw','casual',draw.moves);
   await play('dc-resign','resign','direct-unrated');await play('dc-timeout','timeout','ranked');await play('dc-void','void');await play('dc-direct','resign','direct-rated');
   assert.equal(await count(),6);assert.equal(await val("SELECT count(*)::int FROM ops.outbox WHERE kind='learning.capture'"),6);
-  // No worker ran during any move/settlement; all games completed without Redis/capture service.
   const result=await worker.tick();assert.equal(result.sealed,6,JSON.stringify(result));
   const rows=(await query("SELECT payload,payload_sha256 FROM learning.captures ORDER BY source_id")).rows;
   for(const row of rows){const p=JSON.parse(row.payload);C.validate(p,row.payload_sha256);assert.equal(p.provenance.population,'test-fixture');assert.ok(!row.payload.includes('svc_alice'));for(const position of C.positions(p))assert.equal(position.legalMask[position.observedAction],1);}
@@ -76,7 +75,7 @@ test('DC03-DC10 real PostgreSQL capture, replay, fencing, repair and privacy',as
   await worker.reconcile({audit:true});assert.equal(await val('SELECT state FROM learning.captures WHERE capture_id=$1',[cid]),'quarantined');
  });
  await t.test('source corruption is quarantined without raw source/error logging',async()=>{
-  const cid=await play('dc-bad');await query("UPDATE match.matches SET revision=revision+1 WHERE match_id='dc-bad'");const r=await worker.tick();assert.equal(r.quarantined,1);assert.equal(await val('SELECT code FROM learning.rejections WHERE capture_id=$1',[cid]),'CAPTURE_REVISION');
+  const cid=await play('dc-bad');await query("UPDATE match.matches SET revision=revision+1 WHERE match_id='dc-bad'");const r=await worker.tick();assert.equal(r.quarantined,1);assert.equal(await val('SELECT code FROM learning.rejections WHERE capture_id=$1',[cid]),'CAPTURE_INTENT_SOURCE_CHANGED');
  });
  await t.test('deletion request synchronously suppresses and invalidates export; erasure is irreversible',async()=>{
   const uuid='00000000-0000-4000-8000-000000000001';await exp.query('SELECT learning.begin_export($1,$2,$3,$4)',[uuid,'test-key','gameplay-opening6-v1-20261013',0]);

@@ -20,8 +20,8 @@
  *                     GET /realtime/v1/match/:id?actor=..             -> application/json snapshot
  *
  * WHAT THIS SUITE PROVES (the parent ticket's five cases):
- *   1. RESUME AT THE CURRENT REVISION answers `ack` carrying the durable revision - the client is
- *      already synchronized, so no snapshot and no delta frame is sent for it.
+ *   1. RESUME AT THE CURRENT REVISION answers `ack` carrying the durable revision, then the full
+ *      authoritative snapshot. An equal move revision does not prove settlement is unchanged.
  *   2. RESUME AFTER A MISSED COMMIT. A subscriber socket is closed while the match is at revision 0;
  *      the opponent then commits a REAL move to revision 1 (a genuine pubsub miss). A fresh
  *      connection redeems a fresh ticket and resumes at ack_revision 0: it receives the bounded
@@ -372,7 +372,7 @@ test('V5-08-04 recovery: resume at the current revision is answered ack with the
   assert.equal(view.revision, 0, 'the fixture match is committed at revision 0');
 
   const client = await connect(h, s, playerA, matchId);
-  /* The client was away briefly but missed nothing: it resumes at the revision the authority holds. */
+  /* The client names the authority's move revision; settlement may still have changed at it. */
   client.send(resumeFrame(matchId, view.revision));
   const ack = await client.next();
   assert.deepEqual(ack, { protocol: PROTOCOL, operation: 'ack', match_id: matchId, ack_revision: view.revision },
@@ -384,8 +384,11 @@ test('V5-08-04 recovery: resume at the current revision is answered ack with the
   assert.ok(Number.isSafeInteger(durable.revision), 'the oracle reports a safe-integer revision');
   assert.equal(ack.ack_revision, durable.revision, 'the ack names the durable revision read back from PostgreSQL');
 
-  /* In sync: NO snapshot and NO delta is warranted, so none is sent (and none is queued). */
-  assert.equal(await client.idle(400), true, 'no snapshot or delta follows an in-sync resume');
+  const full = await client.next();
+  assert.deepEqual(full, { protocol: PROTOCOL, operation: 'snapshot', match_id: matchId,
+    expected_revision: durable.revision, snapshot: durable, server_now: clock },
+    'the full committed view follows the ack even at the same move revision');
+  assert.equal(await client.idle(400), true, 'no delta or extra snapshot follows the full recovery');
 
   /* The resume also established the subscription (and the advisory route) for this fresh socket. */
   assert.equal(s.transport.stats().subscriptions, 1, 'resume subscribed the connection to the match');

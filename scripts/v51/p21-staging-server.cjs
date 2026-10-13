@@ -177,9 +177,11 @@ async function main() {
     issuer: 'https://api.megaxo.online', environment: 'stg', keyFile,
     playerAudiences: ['mega-browser', 'mega-android', 'mega-ios'], serviceAudiences: ['mega-core'],
   });
-  const core = await createCoreService(corePool);
   const ephemera = await createEphemeraService({ url: upstashCred.url, environment: 'stg', keyVersion: `s${crypto.randomBytes(3).toString('hex').slice(0, 7)}`, socket: { connectTimeout: 5000 } });
   if (!(await ephemera.healthy())) throw new Error('UPSTASH_STAGING_UNHEALTHY');
+  // HTTP commands and socket commands share Core's existing post-commit publisher.
+  // The same caller-owned adapter wakes realtime readers after the durable commit.
+  const core = await createCoreService(corePool, { ephemera });
   const ticketIssuer = await createTicketIssuer(apiPool, { environment: 'stg', audience: 'mega-core' });
   const queue = await createQueueService({ ephemera, core, pool: corePool });
   const GATEWAY_SECRET = crypto.randomBytes(32).toString('hex');

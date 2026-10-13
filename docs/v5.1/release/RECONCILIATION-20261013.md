@@ -19,6 +19,7 @@ new evidence docs.
 | Backend PG/Redis suites executed | **DONE (local)** | `P6-BACKEND-VERIFICATION-20261013.md` |
 | CI trigger gap (10 workflows on the retired branch) | **FIXED** | commits `6e914f0`, `4f907d2`, `ae288ff` — newly-enabled workflows pass |
 | Production authority read-only recon | **DONE** | `PRODUCTION-AUTHORITY-RECON-20261013.md` |
+| Gameplay capture source merge and staging migrations | **DONE (source/staging schema only)** | PR #12 merge `c384b4d`; `GAMEPLAY-CAPTURE-PR-REVIEW-20261013.md` + `GAMEPLAY-CAPTURE-STAGING-DEPLOY-20261013.md`. Staging capture still OFF, no approved human cohort. |
 
 ## Genuinely open (not closed; owner/provider/device/final-approval gated)
 
@@ -39,9 +40,18 @@ new evidence docs.
 | R25/R26/R27/R28 | Teacher/distillation/quantization/model release | **TRAINING DEFERRED BY OWNER** |
 | R30/R31/R32 | Cutover/retirement/scaling | Owner authorization; measured demand |
 | R33/R34 | Paid native Neon; rewarded online Impossible | Separate owner scope |
-| P7 collector | WebUI PR #12 open — under review this session | Reviewed before first public V5 games |
+| P7 collector source merge | **DONE** — PR #12 merged into V5.1 at `c384b4d`, with 0044-0049 migrations and least-privilege capture functions | Main merged after independent review; no need to re-merge feature branch. Real staging schema/role probes are complete; data collection is disabled pending DC00 approval. |
+| R35/DC00 gameplay consent/purpose/retention | **BLOCKED_DECISION** — owner approval and user-choice integration not evidenced | Human + Main; collection remains off until policy, disclosures, retention windows and storage approval. |
+| R36/DC06 capture operations | **PARTIAL** — isolated lab worker/reconcile/recovery verified; no sustained real staging schedules/canary/alerting | Main installs and proves private worker, reconcile, metrics, erasure, purge, journal, alerting and zero-missing cohort. |
+| R37/DC08 privacy restore | **PARTIAL** — isolated lab suppression/erasure/export revocation verified; actual backup replay and authenticated user choice still missing | Main + human; restore in nonserving target with latest privacy journal; retain deletion obligations during failback. |
+| R38/DC10-12 collection release gate | **BLOCKED_RELEASE** — 15 receipts and exact policy/source binding not accepted on staging | Main + human; staging cohort, PG/Redis drills, latency/size, zero missing games, source and policy hashes, independent go/no-go. |
+| R02/CI post-merge | **REPAIRED_PENDING_CI** — V5 PostgreSQL integration failed run 38393227603, P11 read-only queue 503 because the job omitted its Redis URL | WebUI PR #13 sets only step-scoped Redis configuration; must re-run 48 P11 tests plus full PG suite and preserve unconfigured-Core 503 negative. |
 
 ## Not claimed
 
 No device/provider/production/live acceptance is claimed anywhere it was not actually exercised.
 The training programme and Impossible remain deferred.
+
+## WebUI post-merge evidence correction
+
+The four new numbered owner packages R35–R38 are now part of `OPEN-WORK-AND-OWNERS.md`. The previous P7 'PR open' statement is superseded by GitHub PR #12 `merged_at=2026-10-13T11:05:55Z`, merge SHA `c384b4d8a9a640b68207e5021dc807b1436726fa`, and branch ancestry verification. `V4.1` and `main` were not merged/deployed by this reconciliation. CI is separate from live release authority; no result may be labeled PASS until an exact-SHA job actually completes. Training and Impossible remain owner-deferred.

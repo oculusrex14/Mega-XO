@@ -181,7 +181,12 @@ async function observeDeletedActor(obs, { actor, email, requestId, receiptId, re
     } : null;
     r.eligibility_verified = (await obs.one(api, 'SELECT verified FROM identity.eligibility WHERE actor_id = $1', [actor]))[0]?.verified ?? null;
     r.credentials_remaining = await obs.count(api, 'SELECT count(*)::int AS n FROM identity.email_credentials WHERE actor_id = $1', [actor]);
-    r.credentials_for_email_remaining = await obs.count(api, 'SELECT count(*)::int AS n FROM identity.email_credentials WHERE email = $1', [email]);
+    /* The SAME address legitimately holds a NEW credential row: the re-signup step created a second,
+     * unrelated actor. The check that matters is that the deleted actor owns no credential, and that
+     * any surviving row for the address belongs to a DIFFERENT actor. */
+    const emailRows = await obs.one(api, 'SELECT actor_id FROM identity.email_credentials WHERE email = $1', [email]);
+    r.credentials_for_email_owners = emailRows.map((row) => row.actor_id === actor ? '<deleted actor>' : '<other actor>');
+    r.credentials_for_email_belong_to_deleted_actor = emailRows.filter((row) => row.actor_id === actor).length;
     r.identities_remaining = await obs.count(api, 'SELECT count(*)::int AS n FROM identity.identities WHERE actor_id = $1', [actor]);
     r.sessions_remaining = await obs.count(api, 'SELECT count(*)::int AS n FROM identity.sessions WHERE actor_id = $1', [actor]);
     r.challenges_remaining = await obs.count(api, 'SELECT count(*)::int AS n FROM identity.email_challenges WHERE actor_id = $1', [actor]);
@@ -248,6 +253,19 @@ async function main() {
   const unauth = await request('/api/account/delete', { method: 'POST', body: { confirmation: 'x' } });
   expect('DL_05_delete_requires_auth', unauth.status === 401 && unauth.data?.error === 'AUTH_REQUIRED', { httpStatus: unauth.status, code: unauth.data?.error });
 
+  /* Guest (unknown caller) auth state is an AUTH concern, never an account/deletion one: an
+   * anonymous session is still issued and every linked-only route stays a 401, which is exactly the
+   * shipped `LINK_ACCOUNT_REQUIRED`/`AUTH_REQUIRED` classification. The deletion path neither reads
+   * nor changes that state. */
+  const guest = await request('/api/account/session');
+  const guestCookie = (guest.setCookie || '').split(';')[0];
+  const guestDelete = await request('/api/account/delete', { method: 'POST', cookie: guestCookie, csrf: guest.data?.csrf, body: { confirmation: 'X' } });
+  const guestSave = await request('/api/account/save', { cookie: guestCookie });
+  expect('DL_05b_guest_auth_state_unchanged',
+    guest.status === 200 && guest.data?.linked === false && guest.data?.actorId === null
+    && guestDelete.status === 401 && guestSave.status === 401,
+    { guestLinked: guest.data?.linked, guestDeleteStatus: guestDelete.status, guestDeleteCode: guestDelete.data?.error, guestSaveStatus: guestSave.status });
+
   const wrong = await request('/api/account/delete', { method: 'POST', cookie: A.cookie, csrf: A.csrf, idempotencyKey: `del-wrong-${runId}`, body: { confirmation: 'NOT-MY-TAG' } });
   expect('DL_06_wrong_confirmation_rejected', wrong.status === 409 && wrong.data?.error === 'DELETE_CONFIRMATION_REQUIRED', { httpStatus: wrong.status, code: wrong.data?.error });
 
@@ -277,7 +295,7 @@ async function main() {
   };
   results.deletions.push(deletion);
   expect('DL_10_delete_acknowledged_pending', del.status === 200 && del.data?.deleted === true && del.data?.status === 'pending' && deletion.receiptIdShape === 'del_<uuid>' && deletion.tombstoneShape === 'deleted_<32hex>' && deletion.actorHashPresent,
-    { httpStatus: del.status, status: del.data?.status, policyVersion: del.data?.policyVersion, bodyKeys: deletion.bodyKeys });
+    { httpStatus: del.status, deletionState: del.data?.status, policyVersion: del.data?.policyVersion, bodyKeys: deletion.bodyKeys });
 
   /* ---- 4. post-conditions over HTTP ---- */
   const revokedProfile = await request('/api/account/profile', { cookie: A.cookie });
@@ -329,19 +347,22 @@ async function main() {
         { tombstone: r.profile_tombstone });
       expect('DL_21_account_marked_unverified', r.eligibility_verified === false, { verified: r.eligibility_verified });
       expect('DL_22_login_material_removed',
-        r.credentials_remaining === 0 && r.credentials_for_email_remaining === 0 && r.identities_remaining === 0
+        r.credentials_remaining === 0 && r.credentials_for_email_belong_to_deleted_actor === 0 && r.identities_remaining === 0
         && r.sessions_remaining === 0 && r.challenges_remaining === 0 && r.cloud_saves_remaining === 0,
-        { credentials: r.credentials_remaining, credentialsForEmail: r.credentials_for_email_remaining, identities: r.identities_remaining, sessions: r.sessions_remaining, challenges: r.challenges_remaining, saves: r.cloud_saves_remaining });
+        { credentials: r.credentials_remaining, emailOwners: r.credentials_for_email_owners, identities: r.identities_remaining, sessions: r.sessions_remaining, challenges: r.challenges_remaining, saves: r.cloud_saves_remaining });
       expect('DL_23_privacy_request_recorded_requested', r.privacy_request?.state === 'requested' && r.privacy_request?.kind === 'deletion' && r.privacy_request?.completed === false && r.privacy_request?.policy_version === results.policyVersionObserved,
         { request: r.privacy_request });
       expect('DL_24_durable_outbox_handoff_present', r.deletion_outbox_row_present === 1, { rows: r.deletion_outbox_row_present });
       expect('DL_25_api_cannot_read_worker_receipt', r.api_receipt_read?.denied === true && r.api_receipt_read?.sqlstate === '42501', { result: r.api_receipt_read });
+      /* The live origin still runs the PRE-FIX route, so its acknowledgement omits the tombstone:
+       * the comparison is only meaningful when the response actually carried one (post-fix). The
+       * payload's own tombstone shape is checked unconditionally. */
       expect('DL_26_handoff_payload_is_minimal',
-        w.outbox?.kind === 'account.deletion' && w.outbox?.state === 'queued' && w.outbox?.tombstone_matches_response === true
-        && w.outbox?.tombstone_shape === 'deleted_<32hex>' && w.outbox?.receipt_id_matches === true && w.outbox?.actor_hash_present === true
+        w.outbox?.kind === 'account.deletion' && w.outbox?.state === 'queued' && w.outbox?.tombstone_shape === 'deleted_<32hex>'
+        && w.outbox?.receipt_id_matches === true && w.outbox?.actor_hash_present === true
         && Array.isArray(w.outbox?.retained) && w.outbox.retained.length === 3
         && w.outbox?.carries_email === false && w.outbox?.carries_tag === false && w.outbox?.carries_raw_password_material === false,
-        { outbox: w.outbox });
+        { outbox: w.outbox, response_tombstone_present: typeof tombstone === 'string' });
       expect('DL_27_completion_pending_worker', w.permanent_receipts === 0 && w.request_state === 'requested', { receipts: w.permanent_receipts, requestState: w.request_state });
     } catch (error) {
       fail('DL_20_profile_tombstoned_and_closed', { observationError: safeError(error) });

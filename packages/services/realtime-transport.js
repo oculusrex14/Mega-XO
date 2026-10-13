@@ -375,24 +375,23 @@ function createRealtimeTransport(options = {}) {
     conn.grace = null;
   }
 
-  /* One socket, one close. The close frame is written first, so the peer receives the code before
-   * the connection goes away: a graceful close end()s the writable side (the peer's own close/FIN
-   * then completes the TCP teardown), a `hard` close (oversize, protocol and internal faults) skips
-   * the exchange and destroys the socket once the frame is flushed. Either way an unref'd
-   * CLOSE_GRACE_MS backstop destroys the socket, so no closing socket can outlive this bounded wait
-   * or hold the process open. */
-  function closeSocket(conn, code, hard = false) {
+  /* One socket, one close. The close frame is written first and the writable side is then
+   * half-closed (end), so the peer ALWAYS receives the code before the connection goes away; the
+   * socket is only freed once that frame has left the userland queue. THIS IS THE ONLY CLOSE PATH: an
+   * oversize frame, a protocol fault, an over-bound slow client and a policy refusal all have to
+   * deliver their code. The sockets this matters most for are the ones the peer is not reading: the
+   * userland queue is non-empty and the kernel send buffer is full, so a `destroy()` there discards
+   * the queued bytes and RSTs the connection - the peer never learns the policy code it is being
+   * disconnected for. `end` flushes the frame and FINs the writable side while the readable side
+   * stays open. An unref'd CLOSE_GRACE_MS backstop destroys the socket, so no closing socket can
+   * outlive this bounded wait or hold the process open, and a peer that never acknowledges is
+   * reaped. */
+  function closeSocket(conn, code) {
     if (conn.closing || conn.destroyed) return;
     conn.closing = true;
     clearAuthTimer(conn);
-    const frame = closeFrame(code);
-    if (hard) {
-      try { conn.socket.write(frame, () => conn.socket.destroy()); }
-      catch { conn.socket.destroy(); }
-    } else {
-      try { conn.socket.end(frame); }
-      catch { conn.socket.destroy(); }
-    }
+    try { conn.socket.end(closeFrame(code)); }
+    catch { conn.socket.destroy(); }
     const grace = setTimeout(() => { conn.grace = null; conn.socket.destroy(); }, CLOSE_GRACE_MS);
     grace.unref();
     conn.grace = grace;
@@ -448,7 +447,7 @@ function createRealtimeTransport(options = {}) {
     if (conn.destroyed || conn.closing) return;
     try {
       conn.socket.write(frame);
-      if (conn.socket.bufferSize > maxBufferBytes) closeSocket(conn, CLOSE_POLICY, true);
+      if (conn.socket.bufferSize > maxBufferBytes) closeSocket(conn, CLOSE_POLICY);
     } catch { /* the socket is already gone; 'close' performs teardown */ }
   }
   function sendText(conn, value) {
@@ -509,8 +508,8 @@ function createRealtimeTransport(options = {}) {
     }
     sendText(conn, frame);
   }
-  function protocolError(conn) { closeSocket(conn, CLOSE_PROTOCOL, true); }
-  function oversize(conn) { closeSocket(conn, CLOSE_TOO_BIG, true); }
+  function protocolError(conn) { closeSocket(conn, CLOSE_PROTOCOL); }
+  function oversize(conn) { closeSocket(conn, CLOSE_TOO_BIG); }
 
   /* --------------------------------------------------------- frame decoding --- */
 
@@ -628,7 +627,7 @@ function createRealtimeTransport(options = {}) {
      * Otherwise one valid socket can pile unlimited memory/database work behind
      * a blocked transaction, even though each individual frame fits 8 KiB. */
     if (conn.pendingEnvelopes >= MAX_PENDING_ENVELOPES) {
-      closeSocket(conn, CLOSE_POLICY, true);
+      closeSocket(conn, CLOSE_POLICY);
       return;
     }
     conn.pendingEnvelopes += 1;

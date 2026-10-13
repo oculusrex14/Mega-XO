@@ -17,8 +17,8 @@ const WATCH=Object.freeze([
 function fail(why){throw Error('P24_WORKFLOW_REFUSED:'+why);}
 function audit(src){
  if(!/^name: V5 P24 evidence-led scaling foundations$/m.test(src)||
-    !/^on:\n  push:\n    branches: \[V5-platform\]/m.test(src)||
-    !/^  pull_request:\n    branches: \[V5-platform\]/m.test(src)||
+    !/^on:\n  push:\n    branches: \[V5-platform, V5.1\]/m.test(src)||
+    !/^  pull_request:\n    branches: \[V5-platform, V5.1\]/m.test(src)||
     /^\s*(?:pull_request_target|workflow_dispatch|workflow_run|repository_dispatch|schedule):/m.test(src))
    fail('UNTRUSTED_EVENT');
  const a=src.indexOf('\non:\n'),b=src.indexOf('\npermissions:\n');
@@ -72,7 +72,7 @@ test('privileged jobs, broad tokens or unpinned actions cannot be introduced',()
   x=>x.replace('  contents: read','  contents: write'),
   x=>x.replace('persist-credentials: false','persist-credentials: true'),
   x=>x.replace(/actions\/checkout@[0-9a-f]{40}/,'actions/checkout@v4'),
-  x=>x.replace('    branches: [V5-platform]','    branches: [main]'),
+  x=>x.replace('    branches: [V5-platform, V5.1]','    branches: [main]'),
   x=>x.replace('group: v5-p24-${{','group: v5-p24-\\${{'),
  ])assert.throws(()=>audit(mutate(yaml)),/P24_WORKFLOW_REFUSED/);
 });

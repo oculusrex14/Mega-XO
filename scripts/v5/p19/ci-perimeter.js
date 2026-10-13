@@ -15,7 +15,7 @@ function inspect(text){
  if(/^\s*(?:pull_request_target|workflow_dispatch|workflow_run|repository_dispatch):/m.test(text)) {
   deny('privileged event trigger');
  }
- if((text.match(/branches: \[V5-platform\]/g)||[]).length!==2)deny('wrong base/push branch');
+ if((text.match(/branches: \[V5-platform, V5.1\]/g)||[]).length!==2)deny('wrong base/push branch');
  if(!/^permissions:\n  contents: read$/m.test(text)||
    /^\s+[a-z_-]+: write\s*$/m.test(text))deny('non-read-only workflow permission');
  const secretExpression='$'+'{{ secrets.';

@@ -10,7 +10,7 @@ function audit(text) {
   if(!/^name: V5 release engineering\s*$/m.test(text)) reject('unexpected workflow identity');
   if(!/^on:\s*$/m.test(text) || !/^  push:\s*$/m.test(text) ||
      !/^  pull_request:\s*$/m.test(text) ||
-     !/branches: \[V5-platform\]/.test(text)) reject('event scope changed');
+     !/branches: \[V5-platform, V5.1\]/.test(text)) reject('event scope changed');
   if(/^\s*(?:pull_request_target|workflow_run|repository_dispatch|workflow_dispatch):/m.test(text)) {
     reject('privileged or unreviewed event is not allowed');
   }

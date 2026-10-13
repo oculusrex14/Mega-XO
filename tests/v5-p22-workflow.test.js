@@ -8,8 +8,8 @@ const actual=fs.readFileSync(location,'utf8');
 function inspect(text){
   const bad=(reason)=>{throw Error('P22_CI_REFUSED:'+reason);};
   if(!/^name: V5 P22 cutover readiness safeguards$/m.test(text) ||
-    !/^on:\n  push:\n    branches: \[V5-platform\]/m.test(text) ||
-    !/^  pull_request:\n    branches: \[V5-platform\]/m.test(text) ||
+    !/^on:\n  push:\n    branches: \[V5-platform, V5.1\]/m.test(text) ||
+    !/^  pull_request:\n    branches: \[V5-platform, V5.1\]/m.test(text) ||
     /^\s*(?:pull_request_target|workflow_run|workflow_dispatch|repository_dispatch|schedule):/m.test(text))bad('EVENT');
   const eventSpec=text.slice(text.indexOf('on:\n')+4,text.indexOf('\npermissions:'))+'\n';
   const push=eventSpec.match(/^  push:\n(?: {4,}.*\n)+/m)?.[0];
@@ -41,7 +41,7 @@ test('privileged triggers, write tokens, secret access and mutable actions fail'
   for(const text of [
     actual.replace('  pull_request:', '  pull_request_target:'),
     actual.replace('  push:', '  workflow_dispatch:'),
-    actual.replace('    branches: [V5-platform]', '    branches: [main]'),
+    actual.replace('    branches: [V5-platform, V5.1]', '    branches: [main]'),
     actual.replace("      - 'packages/**'", "      - 'packages/services/only.js'"),
     actual.replace('  contents: read','  contents: write'),
     actual.replace(/actions\/checkout@[a-f0-9]{40}/,'actions/checkout@v4'),

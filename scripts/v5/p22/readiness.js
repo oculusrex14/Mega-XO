@@ -1,5 +1,7 @@
 #!/usr/bin/env node
 'use strict';
+// V5.1 is the current sole integration branch; V5-platform is retained for provenance.
+const INTEGRATION_BRANCHES = Object.freeze(['V5-platform', 'V5.1']);
 
 /*
  * P22-01 offline pre-cutover evaluation. Reads the program owner's ledger and
@@ -35,7 +37,7 @@ function assess(ledger, expectedSha, packet = null, checkedAtUtc = new Date().to
   if (!SHA40.test(expectedSha)) refuse('EXACT_SOURCE_SHA_REQUIRED');
   const checked = utc(checkedAtUtc);
   if (!ledger || ledger.schema_version !== 1 || !ledger.current ||
-      ledger.current.integration_branch !== 'V5-platform' ||
+      !INTEGRATION_BRANCHES.includes(ledger.current.integration_branch) ||
       !Array.isArray(ledger.current.passed_phase_gates)) refuse('OWNER_LEDGER_REQUIRED');
   // Owner-authored gate labels are not provider/cutover evidence. Detect
   // contradictory G22/G23 claims before treating those entries as invalid

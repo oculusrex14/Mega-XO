@@ -1,4 +1,6 @@
 'use strict';
+// V5.1 is the current sole integration branch; V5-platform is retained for provenance.
+const INTEGRATION_BRANCHES = Object.freeze(['V5-platform', 'V5.1']);
 
 /*
  * P23-01. OFFLINE retirement readiness, not a write-fence installer.
@@ -28,7 +30,7 @@ function evidence(value) {
 }
 function hasAcceptedGate(ledger, gate) {
   if (!ledger || ledger.schema_version !== 1 || !ledger.current ||
-      ledger.current.integration_branch !== 'V5-platform' ||
+      !INTEGRATION_BRANCHES.includes(ledger.current.integration_branch) ||
       !Array.isArray(ledger.current.passed_phase_gates)) fail('OWNER_LEDGER_REQUIRED');
   const seen = new Set();
   for (const e of ledger.current.passed_phase_gates) {

@@ -62,3 +62,44 @@ jobs:
           path: .artifacts/gameplay-source
           retention-days: 7
           if-no-files-found: error
+
+  capture-contracts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    services:
+      postgres:
+        image: postgres:16@sha256:ca0bd484cb98bf4b24eb1010e73fb3fcbd6714d240fbc1a10eea5b7dbecb641d
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_DB: postgres
+          POSTGRES_HOST_AUTH_METHOD: trust
+        ports: ['127.0.0.1:5432:5432']
+        options: --health-cmd "pg_isready -U postgres -q" --health-interval 5s --health-timeout 5s --health-retries 24
+    env:
+      V5_TARGET: test
+      V5_PG_URL: postgres://postgres@127.0.0.1:5432/postgres
+      V5_PG_DISPOSABLE: '1'
+      V5_PG_REQUIRED: '1'
+      V5_MIGRATE_ALLOW_INSECURE_LOOPBACK: '1'
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '24'
+      - run: npm ci
+      - name: Run synthetic canonical and real disposable PostgreSQL acceptance
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p .artifacts/gameplay-tests
+          node scripts/v5/migrate.js --dry-run --json > .artifacts/gameplay-tests/migration.json
+          node --test --test-reporter=tap --test-concurrency=1 tests/gameplay-*.test.js 2>&1 | tee .artifacts/gameplay-tests/tests.tap
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: gameplay-tests-${{ github.sha }}
+          path: .artifacts/gameplay-tests
+          retention-days: 7
+          if-no-files-found: error

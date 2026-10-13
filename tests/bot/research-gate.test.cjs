@@ -40,17 +40,18 @@ const HEAD = [
 test('research gate: decoupled advancement is real, honest, and never production', { skip: PY ? false : 'no python3' }, () => {
   const out = run([
     HEAD,
-    // 0.20 vs improvedExpert: far below any threshold -> refuse.
-    "low=mk('improvedExpert',40)",
+    // 0.20 vs tacticalUCT (the research reference): far below any threshold -> refuse.
+    "low=mk('tacticalUCT',40)",
     // 0.62 vs improvedExpert at 200 families (CI ~[0.55,0.685]): below strict public bar (0.70) ->
     // strict refuses, research advances because its recomputed lower CI clears 0.50.
-    "mid=mk('improvedExpert',124)",
+    "mid=mk('tacticalUCT',124)",
     // 0.65 vs a named predecessor (CI ~[0.585,0.715]): head-to-head path clears.
     "h2h=mk('prevmodel',130)",
     'r_low=cc.evaluate_research_progression(low,expected_model=m,expected_source=s)',
     'r_mid=cc.evaluate_research_progression(mid,expected_model=m,expected_source=s)',
     'r_h2h=cc.evaluate_research_progression(h2h,expected_model=m,expected_source=s,parent_engine="prevmodel")',
     'strict_mid=cc.evaluate_gate(mid,expected_model=m,expected_source=s)',
+    'print0=0',
     'bare={"matchups":[{"engineA":"policyValuePUCT","engineB":"improvedExpert","summary":{"pointScore":0.9,"pairBootstrap95":[0.8,0.95]}}]}',
     'r_bare=cc.evaluate_research_progression(bare,expected_model=m,expected_source=s)',
     'print(json.dumps({"low":r_low,"mid":r_mid,"h2h":r_h2h,"strict_mid":strict_mid,"bare":r_bare}))',
@@ -71,7 +72,7 @@ test('research gate: thin evidence is refused (wide CI cannot advance)', { skip:
     HEAD,
     // 34/40 families win = 0.85 point, but only 40 families -> wide CI; the reference floor needs
     // lower-95% > 0.50, which 40 families at 0.85 does not guarantee; assert the gate uses the CI.
-    "small=mk('improvedExpert',34,nf=40)",
+    "small=mk('tacticalUCT',34,nf=40)",
     'r=cc.evaluate_research_progression(small,expected_model=m,expected_source=s)',
     'print(json.dumps({"r":r}))',
   ].join('\n'));

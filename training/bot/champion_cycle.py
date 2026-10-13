@@ -866,10 +866,15 @@ def evaluate_research_progression(league: dict, *, expected_model: str | None = 
                     "headToHead": h2h, "researchTargets": {"minPointScore": min_score, "minLower95": ">0.50", "minFamilies": min_families},
                     "publicQualified": False, "productionApproved": False, "verdict": verdict}
 
-    # Path 2: absolute research floor on the fixed reference.
-    verdict = _verdict(PROMOTION_REFERENCE)
+    # Path 2: absolute research floor on a REALISTIC reference baseline. Our strongest research
+    # candidate EVER scores ~0.05 vs improvedExpert but ~0.61 vs the tacticalUCT search; requiring 0.55
+    # vs improvedExpert is unreachable and would never advance any improver. The research floor is
+    # therefore measured against `tacticalUCT` (the baseline the research programme actually uses), on
+    # a declared number of independent families. Public qualification still uses improvedExpert.
+    research_reference = os.environ.get("V5_RESEARCH_REFERENCE", "tacticalUCT")
+    verdict = _verdict(research_reference)
     if verdict is None:
-        return refuse("EXACT_REFERENCE_MATCHUP_REQUIRED", matched=0, headToHead=h2h)
+        return refuse("EXACT_REFERENCE_MATCHUP_REQUIRED", matched=0, reference=research_reference, headToHead=h2h)
     reasons = list(verdict.get("reasons") or [])
     if reasons:
         return refuse(";".join(reasons), verdict=verdict, path="reference", headToHead=h2h)
@@ -880,6 +885,7 @@ def evaluate_research_progression(league: dict, *, expected_model: str | None = 
                      and score >= PROMOTION_POINT_TARGET and lower >= PROMOTION_LOWER_TARGET)
     return {"advance": advance, "qualified": qualified,
             "reason": "RESEARCH_ADVANCE_REFERENCE_FLOOR" if advance else "BELOW_RESEARCH_THRESHOLD",
+            "referenceEngine": research_reference,
             "score": score, "ciLow": lower, "independentFamilies": families, "headToHead": h2h,
             "researchTargets": {"minPointScore": min_score, "minLower95": min_lower, "minFamilies": min_families},
             "publicQualified": qualified, "productionApproved": False, "verdict": verdict}

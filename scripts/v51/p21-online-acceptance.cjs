@@ -34,11 +34,12 @@ const steps = [];
 function logStep(name, passed, extra = {}) { steps.push({ name, status: passed ? 'PASSED' : 'FAILED', ...extra }); if (!passed) throw new Error(name); }
 function record(name, passed, extra = {}) { steps.push({ name, status: passed ? 'PASSED' : 'OBSERVED', ...extra }); }
 
-async function request(pathname, { method = 'GET', cookie, csrf, body, token, origin = HTTPS_ORIGIN } = {}) {
+async function request(pathname, { method = 'GET', cookie, csrf, body, token, origin = HTTPS_ORIGIN, idempotencyKey } = {}) {
   const headers = {};
   if (cookie) headers.Cookie = cookie;
   if (csrf) headers['X-CSRF-Token'] = csrf;
   if (token) headers.Authorization = `Bearer ${token}`;
+  if (idempotencyKey) headers['Idempotency-Key'] = idempotencyKey;
   if (method !== 'GET' && origin) headers.Origin = origin;
   let payload;
   if (body !== undefined) { headers['Content-Type'] = 'application/json'; payload = JSON.stringify(body); }
@@ -96,8 +97,7 @@ async function signUpAccount(runId, label) {
   const password = `Aa1!${crypto.randomBytes(18).toString('hex')}`;
   // 1. anonymous bootstrap -> HttpOnly cookie + csrf
   let res = await request('/api/account/session');
-  const setCookie = res.setCookie || '';
-  const cookie = setCookie.split(';')[0];
+  let cookie = (res.setCookie || '').split(';')[0];
   const csrf = res.data?.csrf;
   if (!cookie || !csrf) throw new Error('BOOTSTRAP_FAILED');
   const origin = { cookie, csrf };
@@ -108,13 +108,15 @@ async function signUpAccount(runId, label) {
   // 3. read the code from the out-of-band sink
   const delivery = readOtp(email);
   if (!delivery?.code) throw new Error('OTP_NOT_FOUND');
-  // 4. verify -> links actor
+  // 4. verify -> links actor AND ROTATES the session cookie + csrf (session fixation defence)
   res = await request('/api/account/email', { method: 'POST', ...origin, body: { action: 'verify', challengeId, code: delivery.code } });
-  if (res.status !== 200 || res.data?.linked !== true) throw new Error('VERIFY_FAILED:' + safeError(res.data));
-  // 5. confirm session reports linked
+  if (res.status !== 200 || res.data?.actor === undefined) throw new Error('VERIFY_FAILED:' + safeError(res.data));
+  if (res.setCookie) cookie = res.setCookie.split(';')[0];
+  const rotatedCsrf = res.data.csrf || csrf;
+  // 5. confirm session reports linked with the rotated cookie
   res = await request('/api/account/session', { cookie });
   if (res.data?.linked !== true || !res.data?.actorId) throw new Error('SESSION_NOT_LINKED');
-  return { email, password, cookie, csrf, actorId: res.data.actorId, tag: res.data.tag || null };
+  return { email, password, cookie, csrf: rotatedCsrf, actorId: res.data.actorId, tag: res.data.tag || null };
 }
 
 async function main() {
@@ -133,39 +135,40 @@ async function main() {
 
   // ---- profile read + update ----
   let p = await request('/api/account/profile', { cookie: A.cookie });
-  logStep('P2_02_profile_read', p.status === 200 && p.data?.id === A.actor, { status: p.status });
-  let u = await request('/api/account/profile', { method: 'POST', cookie: A.cookie, csrf: A.csrf, body: { displayName: `Acceptor ${runId.slice(0, 6)}` } });
-  logStep('P2_02_profile_update', u.status === 200, { status: u.status });
+  logStep('P2_02_profile_read', p.status === 200 && p.data?.id === A.actor, { httpStatus: p.status });
+  let u = await request('/api/account/profile', { method: 'POST', cookie: A.cookie, csrf: A.csrf, idempotencyKey: `pu_${runId}`, body: { displayName: `Acceptor ${runId.slice(0, 6)}` } });
+  logStep('P2_02_profile_update', u.status === 200, { httpStatus: u.status });
 
   // ---- friends request/accept ----
-  let fr = await request('/api/community/friend', { method: 'POST', cookie: A.cookie, csrf: A.csrf, body: { action: 'request', target: B.actor } });
-  logStep('P2_03_friend_request', fr.status === 200, { status: fr.status, code: fr.data?.error });
-  let fa = await request('/api/community/friend', { method: 'POST', cookie: B.cookie, csrf: B.csrf, body: { action: 'accept', target: A.actor } });
-  logStep('P2_03_friend_accept', fa.status === 200, { status: fa.status, code: fa.data?.error });
+  let fr = await request('/api/community/friend', { method: 'POST', cookie: A.cookie, csrf: A.csrf, idempotencyKey: `fr_${runId}`, body: { action: 'request', target: B.actor } });
+  logStep('P2_03_friend_request', fr.status === 200, { httpStatus: fr.status, code: fr.data?.error });
+  let fa = await request('/api/community/friend', { method: 'POST', cookie: B.cookie, csrf: B.csrf, idempotencyKey: `fa_${runId}`, body: { action: 'accept', target: A.actor } });
+  logStep('P2_03_friend_accept', fa.status === 200, { httpStatus: fa.status, code: fa.data?.error });
   let fl = await request('/api/community/friends', { cookie: A.cookie });
   const friendsList = Array.isArray(fl.data) ? fl.data : (fl.data?.friends || []);
   logStep('P2_03_friends_list_contains', fl.status === 200 && friendsList.some((f) => (f.id || f.actor) === B.actor), { count: friendsList.length });
 
-  // ---- direct challenge where available ----
-  let ch = await request('/api/v1/challenge', { method: 'POST', cookie: A.cookie, csrf: A.csrf, body: { target: B.actor, mode: 'casual' }, });
-  record('P2_09_direct_challenge_route', ch.status !== 404, { status: ch.status, code: ch.data?.error });
+  // ---- direct challenge (Core-only escrow offer) where the route is mounted ----
+  // A genuine direct offer: unique id, the two friends, no rated mode (MATCHMAKER_REQUIRED otherwise).
+  const directId = `direct:${runId}`;
+  let ch = await request('/api/v1/offer', { method: 'POST', cookie: A.cookie, csrf: A.csrf, idempotencyKey: `ch_${runId}`, body: { id: directId, opponent: B.actor, terms: { mode: 'direct', kind: 'friend', turnSeconds: 60 } } });
+  record('P2_09_direct_challenge_offer', ch.status === 200 || (ch.status === 409 && ch.data?.error === 'COMPLETE_PLACEMENTS'), { httpStatus: ch.status, code: ch.data?.error, id: directId.slice(0, 16) });
 
   // ---- ranked/casual matchmaking: both join casual ----
-  const opKey = (s) => `acc_${s}_${runId}`;
-  let jA = await request('/api/v1/queue', { method: 'POST', cookie: A.cookie, csrf: A.csrf, body: { mode: 'casual', region: 'us-east', latencyMs: 20 } });
-  logStep('P2_04_queue_join_a', jA.status === 200 && jA.data?.state === 'searching', { status: jA.status, code: jA.data?.error });
-  let jB = await request('/api/v1/queue', { method: 'POST', cookie: B.cookie, csrf: B.csrf, body: { mode: 'casual', region: 'us-east', latencyMs: 22 } });
-  logStep('P2_04_queue_join_b', jB.status === 200 && jB.data?.state === 'searching', { status: jB.status, code: jB.data?.error });
+  let jA = await request('/api/v1/queue', { method: 'POST', cookie: A.cookie, csrf: A.csrf, idempotencyKey: `q_a_${runId}`, body: { mode: 'casual', region: 'us-east', latencyMs: 20 } });
+  logStep('P2_04_queue_join_a', jA.status === 200 && jA.data?.state === 'searching', { httpStatus: jA.status, code: jA.data?.error });
+  let jB = await request('/api/v1/queue', { method: 'POST', cookie: B.cookie, csrf: B.csrf, idempotencyKey: `q_b_${runId}`, body: { mode: 'casual', region: 'us-east', latencyMs: 22 } });
+  logStep('P2_04_queue_join_b', jB.status === 200 && jB.data?.state === 'searching', { httpStatus: jB.status, code: jB.data?.error });
 
   // cancellation path on a throwaway third account
   const acctC = await signUpAccount(runId, 'c');
   const C = { cookie: `mega_dev_session=${acctC.cookie.split('=')[1]}`, csrf: acctC.csrf, actor: acctC.actorId };
-  let jC = await request('/api/v1/queue', { method: 'POST', cookie: C.cookie, csrf: C.csrf, body: { mode: 'ranked', region: 'us-east', latencyMs: 25 } });
-  logStep('P2_04_queue_join_c_ranked', jC.status === 200 && jC.data?.state === 'searching', { status: jC.status });
-  let cC = await request('/api/v1/cancel-queue', { method: 'POST', cookie: C.cookie, csrf: C.csrf, body: {} });
-  logStep('P2_04_queue_cancel', cC.status === 200 && cC.data?.state === 'cancelled', { status: cC.status, code: cC.data?.error });
+  let jC = await request('/api/v1/queue', { method: 'POST', cookie: C.cookie, csrf: C.csrf, idempotencyKey: `q_c_${runId}`, body: { mode: 'ranked', region: 'us-east', latencyMs: 25 } });
+  logStep('P2_04_queue_join_c_ranked', jC.status === 200 && jC.data?.state === 'searching', { httpStatus: jC.status });
+  let cC = await request('/api/v1/cancel-queue', { method: 'POST', cookie: C.cookie, csrf: C.csrf, idempotencyKey: `qc_${runId}`, body: {} });
+  logStep('P2_04_queue_cancel', cC.status === 200 && cC.data?.state === 'cancelled', { httpStatus: cC.status, code: cC.data?.error });
   let iC = await request('/api/v1/queue', { cookie: C.cookie });
-  logStep('P2_04_queue_idle_after_cancel', iC.status === 200 && iC.data?.state === 'idle', { status: iC.status });
+  logStep('P2_04_queue_idle_after_cancel', iC.status === 200 && iC.data?.state === 'idle', { httpStatus: iC.status });
 
   // ---- wait for the real matchmaker tick to pair A & B ----
   let matchId = null;
@@ -182,14 +185,14 @@ async function main() {
   const termsHash = sA.data?.termsHash;
   const accepts = await Promise.all([A, B].map(async (S) => {
     const started = Date.now();
-    const r = await request('/api/v1/accept', { method: 'POST', cookie: S.cookie, csrf: S.csrf, body: { id: matchId, termsHash }, });
+    const r = await request('/api/v1/accept', { method: 'POST', cookie: S.cookie, csrf: S.csrf, idempotencyKey: `acc_${S.actor}_${runId}`, body: { id: matchId, termsHash } });
     return { actor: S.actor, status: r.status, code: r.data?.error, ms: Date.now() - started };
   }));
-  logStep('P2_04_concurrent_accepts', accepts.every((a) => a.status === 200), { accepts: accepts.map((a) => ({ status: a.status, ms: a.ms, code: a.code })) });
+  logStep('P2_04_concurrent_accepts', accepts.every((a) => a.status === 200), { accepts: accepts.map((a) => ({ httpStatus: a.status, ms: a.ms, code: a.code })) });
 
   // ---- realtime ticket + committed move + opponent fanout ----
   const issue = async (S) => {
-    const r = await request('/api/v1/ticket', { method: 'POST', cookie: S.cookie, csrf: S.csrf, body: { matchScope: matchId } });
+    const r = await request('/api/v1/ticket', { method: 'POST', cookie: S.cookie, csrf: S.csrf, idempotencyKey: `tk_${S.actor}_${runId}`, body: { matchScope: matchId } });
     if (r.status !== 200 || typeof r.data?.ticket !== 'string') throw new Error('TICKET_FAILED:' + safeError(r.data));
     return r.data.ticket;
   };
@@ -232,23 +235,23 @@ async function main() {
 
   // ---- HTTP snapshot fallback + fencing ----
   const snap = await request(`/realtime/v1/snapshot?match_id=${matchId}&actor=${A.actor}`, { cookie: A.cookie });
-  logStep('P2_06_http_snapshot_fallback', snap.status === 200 && snap.data?.expected_revision === 1, { status: snap.status });
+  logStep('P2_06_http_snapshot_fallback', snap.status === 200 && snap.data?.expected_revision === 1, { httpStatus: snap.status });
   const anon = await request(`/realtime/v1/snapshot?match_id=${matchId}&actor=${A.actor}`);
-  logStep('P2_06_snapshot_anon_401', anon.status === 401, { status: anon.status });
+  logStep('P2_06_snapshot_anon_401', anon.status === 401, { httpStatus: anon.status });
   const spoof = await request(`/realtime/v1/snapshot?match_id=${matchId}&actor=${B.actor}`, { cookie: A.cookie });
-  logStep('P2_08_actor_fencing_403', spoof.status === 403, { status: spoof.status });
+  logStep('P2_08_actor_fencing_403', spoof.status === 403, { httpStatus: spoof.status });
 
   // ---- resignation terminal delivery ----
-  const resign = await request('/api/v1/resign', { method: 'POST', cookie: mover.cookie, csrf: mover.csrf, body: { id: matchId } });
-  record('P2_07_resign_route', resign.status !== 404, { status: resign.status, code: resign.data?.error });
+  const resign = await request('/api/v1/resign', { method: 'POST', cookie: mover.cookie, csrf: mover.csrf, idempotencyKey: `rs_${runId}`, body: { id: matchId } });
+  record('P2_07_resign_route', resign.status !== 404, { httpStatus: resign.status, code: resign.data?.error });
 
   // ---- logout + revocation + session expiry semantics ----
-  const lo = await request('/api/account/logout', { method: 'POST', cookie: A.cookie, csrf: A.csrf, body: {} });
-  logStep('P2_08_logout', lo.status === 200 && lo.data?.signedOut === true, { status: lo.status });
+  const lo = await request('/api/account/logout', { method: 'POST', cookie: A.cookie, csrf: A.csrf, idempotencyKey: `lo_${runId}`, body: {} });
+  logStep('P2_08_logout', lo.status === 200 && lo.data?.signedOut === true, { httpStatus: lo.status });
   const after = await request('/api/account/profile', { cookie: A.cookie });
-  logStep('P2_08_logout_revokes_cookie', after.status === 401, { status: after.status });
+  logStep('P2_08_logout_revokes_cookie', after.status === 401, { httpStatus: after.status });
   const bAlive = await request('/api/account/profile', { cookie: B.cookie });
-  logStep('P2_08_other_actor_unaffected', bAlive.status === 200 && bAlive.data?.id === B.actor, { status: bAlive.status });
+  logStep('P2_08_other_actor_unaffected', bAlive.status === 200 && bAlive.data?.id === B.actor, { httpStatus: bAlive.status });
 
   for (const s of sockets) { try { s.close(); } catch {} }
   results.ok = steps.every((s) => s.status === 'PASSED' || s.status === 'OBSERVED');

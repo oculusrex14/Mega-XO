@@ -11,7 +11,13 @@ DO $$ DECLARE r text; BEGIN
   IF NOT EXISTS(SELECT FROM pg_roles WHERE rolname=r) THEN
    EXECUTE format('CREATE ROLE %I NOLOGIN NOINHERIT NOSUPERUSER NOCREATEDB NOCREATEROLE NOBYPASSRLS',r);
   END IF;
-  EXECUTE format('GRANT %I TO migration_owner WITH ADMIN OPTION',r);
+  -- PG16 auto-grants ADMIN OPTION to the CREATEROLE principal that creates a role; re-granting
+  -- it back to the same (own-grantor) session fails with 0LP01. Mirror 0001's idempotent guard so
+  -- the grant is made only when migration_owner does not already hold the membership.
+  IF NOT EXISTS(SELECT FROM pg_auth_members
+                 WHERE roleid=r::regrole AND member='migration_owner'::regrole AND admin_option) THEN
+   EXECUTE format('GRANT %I TO migration_owner WITH ADMIN OPTION',r);
+  END IF;
  END LOOP;
 END $$;
 CREATE SCHEMA learning AUTHORIZATION v5_owner;

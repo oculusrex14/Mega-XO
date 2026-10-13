@@ -168,7 +168,6 @@ async function main() {
   // code unverifiable and made a code unverifiable after a restart. The secret lives in the staging
   // secrets directory (0600), is never printed, and is identical for every staging process.
   const stagingOtpSecret = loadStagingOtpSecret(OTP_SECRET_PATH);
-  const accounts = await createAccountService(apiPool, { deletionPolicy: { enabled: true, policyVersion: 'v51-staging' }, otpSecret: stagingOtpSecret });
   const keyFile = path.join(path.dirname(CREDENTIALS_PATH), 'keys.sealed.json');
   if (!fs.existsSync(keyFile)) throw new Error('EXISTING_SIGNING_KEY_CUSTODY_REQUIRED');
   const activeKeys = await apiPool.query("SELECT kid FROM identity.signing_keys WHERE environment = 'stg' AND state = 'active'");
@@ -182,9 +181,23 @@ async function main() {
   // HTTP commands and socket commands share Core's existing post-commit publisher.
   // The same caller-owned adapter wakes realtime readers after the durable commit.
   const core = await createCoreService(corePool, { ephemera });
+  // A real email signup commits the actor + a durable `account.provision` outbox row, but the WALLET
+  // is Core-owned: without this callback the new actor has no `economy.wallets` row, so the first
+  // queue/accept/convert fails `ACCOUNT_REQUIRED`. The production worker drains that outbox; this
+  // isolated origin wires the SAME `core.provisionActor` effect after commit (at-least-once; the
+  // durable outbox row remains the correctness contract), so a real signup can actually play.
+  const accounts = await createAccountService(apiPool, {
+    deletionPolicy: { enabled: true, policyVersion: 'v51-staging' }, otpSecret: stagingOtpSecret,
+    provisionActor: async (actor) => { await core.provisionActor(actor); },
+    cancelSocialOffers: async (actor, target) => { await core.cancelSocialOffers(actor, target); },
+  });
   const ticketIssuer = await createTicketIssuer(apiPool, { environment: 'stg', audience: 'mega-core' });
   const queue = await createQueueService({ ephemera, core, pool: corePool });
-  const GATEWAY_SECRET = crypto.randomBytes(32).toString('hex');
+  // The signed Core-ingress secret must be STABLE across restarts and shared with any external
+  // caller (e.g. the stateless Vercel API) that presents it, exactly like the OTP secret. A fresh
+  // random secret per boot would invalidate every configured caller on every restart. The file is
+  // 0600 and never printed.
+  const GATEWAY_SECRET = loadStagingOtpSecret(path.join(path.dirname(CREDENTIALS_PATH), 'core-gateway.secret'));
   const coreIngress = createCoreServiceIngress({ coreService: core, ticketIssuer, queue, leaderboardPool: corePool, secret: GATEWAY_SECRET });
   const coreGateway = createCoreGateway({ coreUrl: `http://${host}:${port}`, secret: GATEWAY_SECRET, timeoutMs: GATEWAY_TIMEOUT_MS });
 
@@ -281,12 +294,39 @@ async function main() {
   }, null, 2));
 
   const shutdown = async () => {
+    clearInterval(matchmakerTimer);
     try { await realtime.close(); } catch {}
     try { await new Promise((r) => server.close(r)); } catch {}
     for (const c of [() => queue.close(), () => ephemera.close(), () => ticketIssuer.close?.(), () => core.close(), () => accounts.close(), () => apiPool.end(), () => corePool.end()]) { try { await c(); } catch {} }
     process.exit(0);
   };
   process.on('SIGINT', shutdown); process.on('SIGTERM', shutdown);
+  // Real matchmaking needs a matcher tick: two real browsers JOIN the queue over HTTP, but nothing
+  // pairs them unless a matcher claims+commits. The production worker normally ticks; the isolated
+  // staging origin had no loop, so a real two-browser queue join never produced a match. This tick
+  // is bounded, single-flight (never overlapping), best-effort (a transient DB error never kills
+  // the server) and only pairs actors that are ALREADY in the durable queue. It changes no matching
+  // rule, TTL or economy. Disable with --no-matchmaker if a test needs to tick manually.
+  let matchmakerTimer = null;
+  if (arg('--matchmaker', 'on') !== 'off') {
+    const matcherId = `stg_matcher_${process.pid}`;
+    let ticking = false;
+    const tick = async () => {
+      if (ticking) return;
+      ticking = true;
+      try {
+        for (const mode of ['casual', 'ranked']) {
+          const result = await queue.matchTick({ mode, matcherId, limit: 4, makeId: () => crypto.randomUUID() });
+          if (result.matched) console.log(JSON.stringify({ event: 'matchmaker.pairing', mode, matched: result.matched, at: new Date().toISOString() }));
+        }
+      } catch (error) {
+        // Best-effort: a staging tick that fails must never crash the origin or alter a request.
+        console.error(JSON.stringify({ event: 'matchmaker.tick_error', code: safeError(error) }));
+      } finally { ticking = false; }
+    };
+    matchmakerTimer = setInterval(tick, 3000);
+    tick();
+  }
   setInterval(() => {}, 1 << 30); // keep the process alive
 }
 

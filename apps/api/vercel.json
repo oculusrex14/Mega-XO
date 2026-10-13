@@ -1,26 +1,9 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "name": "mega-xo-api",
-  "scope": "team_wS9BpnXbYRZahs1DiSueN3SS",
-  "teamId": "team_wS9BpnXbYRZahs1DiSueN3SS",
-  "orgId": "team_wS9BpnXbYRZahs1DiSueN3SS",
-  "projectId": "mega-xo-api",
   "framework": null,
   "regions": [
     "iad1"
   ],
-  "functions": {
-    "api/**/*.js": {
-      "memory": 1024,
-      "maxDuration": 15,
-      "runtime": "nodejs22.x"
-    },
-    "api/index.js": {
-      "memory": 1024,
-      "maxDuration": 15,
-      "runtime": "nodejs22.x"
-    }
-  },
   "headers": [
     {
       "source": "/(.*)",

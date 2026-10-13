@@ -878,11 +878,10 @@ function themeSpecificity(selector, theme) {
   const guarded = withoutGuards(selector);
   const scoped = guarded.includes('[data-gb-theme="' + theme + '"]') ? 100 : 0;
   const unscopedGuard = selector !== guarded && theme !== 'cinematic' ? 50 : 0;
-  const pseudo = /:(?:hover|active|focus|focus-visible|disabled)/.test(selector) ? 1 : 0;
   // `:where()` contributes zero specificity; every other class/attribute selector contributes one.
   const classes = [...guarded.matchAll(/\.[a-zA-Z_][\w-]*/g)].length;
   const attributes = [...guarded.matchAll(/\[[a-zA-Z-]+[^\]]*\]/g)].length;
-  return scoped + unscopedGuard + (classes + attributes) * 2 + pseudo;
+  return scoped + unscopedGuard + (classes + attributes) * 2;
 }
 /** Theme tokens plus the descendant-scoped token overrides that reach an ancestor context. */
 function scopedTokens(rules, theme, classes, scopes, ancestors = []) {
@@ -900,10 +899,14 @@ function scopedTokens(rules, theme, classes, scopes, ancestors = []) {
   return tokens;
 }
 /** Winning declaration for a property on a class-list target, theme scope first, tokens substituted. */
+const STATE_PSEUDO = /:(?:hover|active|focus|focus-visible|focus-within|disabled|checked|target)\b/;
 function winningDeclaration(rules, theme, classes, property, tokens) {
   const matches = [];
   for (const rule of rules) {
     if (!selectorMatches(rule.selector, classes, theme)) continue;
+    // State variants are not the resting appearance: a `:hover` background must not be measured as
+    // the background the text normally sits on.
+    if (STATE_PSEUDO.test(rule.selector)) continue;
     const value = declaration(rule.body, property);
     if (!value || /^(?:none|initial|unset|inherit|transparent|0)$/i.test(value.trim())) continue;
     matches.push({ value, selector: rule.selector, specificity: themeSpecificity(rule.selector, theme) });
@@ -1178,10 +1181,21 @@ function main() {
   const bundleCss = manifest.files.map(file => file.path).filter(name => name.endsWith('.css'));
   const focus = checkFocusStyles(report, bundleCss, options.bundle);
 
-  const boardCss = fs.readFileSync(path.join(ROOT, 'apps/web/board.css'), 'utf8');
-  const compatCss = fs.readFileSync(path.join(ROOT, 'apps/web/bot-compat.css'), 'utf8');
+  // Read the contrast rules from the SAME payload being audited. The builder copies these two
+  // stylesheets into the bundle verbatim, so a `--bundle` run must not mix built HTML with
+  // working-tree CSS: that would report the source's contrast for the bundle's markup.
+  const payloadCss = name => {
+    const built = path.join(options.bundle, name);
+    if (fs.existsSync(built)) return fs.readFileSync(built, 'utf8');
+    const source = path.join(ROOT, 'apps/web', name);
+    if (fs.existsSync(source)) return fs.readFileSync(source, 'utf8');
+    throw new Error('stylesheets unavailable for the audited payload: ' + name);
+  };
+  const boardCss = payloadCss('board.css');
+  const compatCss = payloadCss('bot-compat.css');
   const boardScopes = tokenScopes(boardCss, 'data-gb-theme');
-  const retainedScopes = tokenScopes(fs.readFileSync(path.join(ROOT, 'src/styles.css'), 'utf8'), 'data-theme');
+  const retainedSource = path.join(ROOT, 'src/styles.css');
+  const retainedScopes = fs.existsSync(retainedSource) ? tokenScopes(fs.readFileSync(retainedSource, 'utf8'), 'data-theme') : {};
   // Conditional renderings are measured by their own rules, not by the forced-colors override:
   // a `@media (forced-colors: active)` or reduced-motion block is not the default appearance.
   const contrastRules = [...cssRules(stripComments(boardCss)), ...cssRules(stripComments(compatCss))]
@@ -1226,6 +1240,7 @@ function main() {
     source_commit: summary.source_commit,
     files_checked: summary.files_checked,
     html_documents_checked: summary.html_documents_checked,
+    js_templates_checked: summary.js_templates_checked,
     counts: summary.counts,
     contrast: summary.contrast,
     failures: summary.failures.map(entry => ({ group: entry.group, id: entry.id })),

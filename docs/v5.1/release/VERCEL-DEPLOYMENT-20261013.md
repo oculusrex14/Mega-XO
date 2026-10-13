@@ -90,13 +90,13 @@ Let's Encrypt intermediates); `MEGA_PG_TARGET_B64` = the staging inventory; `MEG
 
 ## Honest limits / remaining
 
-- **Vercel → Oracle Core** is not yet a live connection: the signed Core ingress is tailnet-only
-  (`http://100.64.128.46:8085`, `X-Robots-Tag: noindex`) and cannot be reached from Vercel without a
-  **public signed endpoint**, which is a DNS/domain decision the owner must approve (the API is NOT
-  the economic authority and must not proxy into an inaccessible private endpoint). The API therefore
-  serves DB-backed reads/sessions now and an honest empty leaderboard until a public Core edge exists.
-  The staging origin now loads a **stable** Core-ingress secret from a 0600 file so the wiring is
-  ready the moment a public signed endpoint is approved.
+- **Vercel → Oracle Core is now a LIVE connection (P3 closed 2026-10-13).** The owner approved a
+  custom `core.megaxo.online` public edge routed through the existing Oracle Caddy HTTPS ingress to the
+  isolated signed Core gateway. Verified end-to-end: `GET /api/v1/leaderboard` on the API preview
+  returns live staging data (the API signs with the server-side `MEGA_PROXY_SECRET` and reaches Core).
+  Details/evidence: `CORE-EDGE-DEPLOYED-20261013.md`. The earlier tailnet-only/Funnel path was
+  abandoned because Tailscale never provisions this tailnet's public DNS record (upstream bug; see
+  `CORE-EDGE-ATTEMPT-20261013.md`).
 - `megaxo.online` is **not** in the owner's Vercel account; DNS/domain association and the production
   alias are prepared but not attached (`megaxo.online` cutover stays under final approval).
 - No production deployment was promoted; no paid subscription; Vercel Hobby.

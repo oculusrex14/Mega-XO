@@ -81,6 +81,7 @@ jobs:
       V5_PG_DISPOSABLE: '1'
       V5_PG_REQUIRED: '1'
       V5_MIGRATE_ALLOW_INSECURE_LOOPBACK: '1'
+      CAPTURE_TEST_PG_CONTAINER: ${{ job.services.postgres.id }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:

@@ -30,10 +30,12 @@ test('failed directory sync after atomic publication cannot leave an untracked c
  const {dir,key,opts}=await fixture(t),target=path.join(dir,'fail-after-link');
  const w=await S.createWriter(target,key,opts);await w.write({type:'game',value:'synthetic'});
  const original=fs.open;
- // The file link succeeds; inject failure only at directory fsync-open, so the
- // hardening covers post-publication errors without broad monkeypatching.
+ // The implementation opens the directory via its realpath (macOS /var -> /private/var), so the
+ // stub must key on that same resolved path, not the raw mkdtemp path; otherwise the injected EIO
+ // never fires on darwin and the finish() resolves. Compute the realpath before patching.
+ const realDir=await fs.realpath(dir);
  fs.open=async function(name,...rest){
-  if(name===dir&&rest[0]==='r'){const err=new Error('simulated directory fsync failure');err.code='EIO';throw err;}
+  if(name===realDir&&rest[0]==='r'){const err=new Error('simulated directory fsync failure');err.code='EIO';throw err;}
   return original.call(fs,name,...rest);
  };
  try{await assert.rejects(w.finish(),e=>e.code==='EIO');}finally{fs.open=original;}

@@ -68,7 +68,7 @@ CONFIG_KEYS = {
     "width": int, "blocks": int, "leaguePairs": int, "budgetMs": int, "leagueSimulations": int,
     "workers": int, "nodeBin": str, "pythonBin": str, "producerModel": str, "producerBudgetMs": int,
     "device": str, "generations": int, "qualificationReserve": int, "valueSource": str, "earlyStopPatience": int,
-    "seedDataset": str,
+    "seedDataset": str, "anchorDataset": str,
 }
 CONFIG_BOUNDS = {
     "games": (2, 100000), "seed": (0, 2**31 - 1), "simulations": (1, 4096),
@@ -91,7 +91,7 @@ DEFAULT_CONFIG = {
     # `seedDataset` bootstraps generation 1's training from an existing strong-search dataset (e.g. the
     # committed search-labels-combined) instead of weak self-play; later generations self-play the
     # promoted champion. Absent => the classical bootstrap generator is used.
-    "seedDataset": None,
+    "seedDataset": None, "anchorDataset": None,
 }
 LEASE_TTL_SECONDS = 90
 LOG_LIMIT_BYTES = 2 * 1024 * 1024
@@ -186,6 +186,9 @@ def validate_config(config: dict) -> dict:
             out[key] = None
             continue
         if key == "seedDataset" and (value is None or value == ""):
+            out[key] = None
+            continue
+        if key == "anchorDataset" and (value is None or value == ""):
             out[key] = None
             continue
         if kind is int:
@@ -564,6 +567,15 @@ class Operator:
         # (binds parent model hash, records producer version) instead of the mixed-strength bootstrap.
         producer = self._effective_producer()
         if producer:
+            anchor = c.get("anchorDataset")
+            if anchor:
+                # ANCHORED self-play: keep the strong-label corpus in the mix every generation, add
+                # self-play from the current champion - never substitute it (measured: pure self-play
+                # replacement degraded 0.931 -> 0.394 -> 0.294 vs tacticalUCT).
+                return [c["nodeBin"], str(ROOT / "training/bot/selfplay-anchored.cjs"),
+                        "--model", str(producer), "--anchor", str(anchor), "--output", str(self._shard()),
+                        "--games", str(c["games"]), "--seed", str(c["seed"]),
+                        "--simulations", str(c["simulations"]), "--budget-ms", str(c.get("producerBudgetMs", 300))]
             argv = [c["nodeBin"], str(ROOT / "training/bot/selfplay.cjs"),
                     "--model", str(producer), "--output", str(self._shard()),
                     "--games", str(c["games"]), "--seed", str(c["seed"]),
@@ -626,6 +638,11 @@ class Operator:
         explicit = self.config.get("producerModel")
         if explicit:
             return explicit
+        # A stable pointer to the latest promoted champion's export, written by _archive_generation,
+        # so generation N+1 self-plays the model that was actually archived (not a run-id guess).
+        cur = self.root / "current-champion.onnx"
+        if cur.exists():
+            return cur
         ptr = self.root / "research-champion.json"
         if ptr.exists():
             record = json.loads(ptr.read_text())
@@ -668,6 +685,11 @@ class Operator:
         generation starts clean while the previous champion artifact remains available as the producer."""
         dest = self.root / f"gen-{generation}"
         dest.mkdir(parents=True, exist_ok=True)
+        # Publish a stable champion pointer for the next generation's self-play producer.
+        export = self._export_dir() / "candidate.onnx"
+        if export.exists():
+            cur = self.root / "current-champion.onnx"
+            shutil.copyfile(export, cur)
         for name in ("data", "candidate", "export", "league.json", "interim"):
             src = self.root / name
             if src.exists():

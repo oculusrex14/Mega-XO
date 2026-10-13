@@ -115,11 +115,11 @@ This is a full-file pass, not a sample. On the exact released bytes, the two rul
 Our convention is `E.value(winner, player) = +1` win / `0` draw / `−1` loss **for the side to move in the
 recorded state** (`src/bot/encoding.js:21`). Theirs matches:
 
-- Their NMCTS value is the **root's mean state value, sign-flipped twice** so it is side-to-move-relative:
-  `backprop` alternates the sign up the path (`neuralMonteCarloTreeSearchWorker.cpp:407-411`,
-  also `neural_monte_carlo_tree_search.py:136-142`), and `getEvaluatedActions` reports
-  `-childNodes[i]->stateValueMean` (`neuralMonteCarloTreeSearch.cpp:111`) so the action value is from the
-  parent mover's view.
+- The PVN's `state_value` head is trained on side-to-move targets, and `backprop` negamax-alternates the
+  sign as it walks a path back to the root (`neuralMonteCarloTreeSearchWorker.cpp:407-411`,
+  `neural_monte_carlo_tree_search.py:136-142`). So the **root's** `stateValueMean` is expressed from the
+  root mover's perspective, and `getEvaluatedActions` negates a child's mean
+  (`neuralMonteCarloTreeSearch.cpp:111`) to report each action value from the parent mover's view.
 - Terminal leaf for the mover is `-1.0`, draw `0.0` (`neuralMonteCarloTreeSearchWorker.cpp:380-386`) —
   i.e. the perspective is "value of the position for the player who is about to move".
 - Empirically on real 1.0-magnitude rows: `mover=O, value=0.9998, best action 74 → utttai result O_WON`;
@@ -145,9 +145,10 @@ simulation. Both are strong internal-consistency checks that the files are what 
    - ours: ch0 own marks, ch1 opp marks, ch2 own mini-board, ch3 opp mini-board, ch4 drawn mini-board,
      ch5 required mini-board, ch6 legal cells, ch7 free route.
    - Verified: our ch0/ch1 reproduce their ch0/ch1 semantics exactly (both are side-to-move-relative
-     own/opponent marks), and our ch6 equals their ch3 (legal cells). Their ch2 is a constant ±1 fill; it
-     has no counterpart in ours, but our ch5 (required mini-board) + ch7 (free route) carry the routing
-     information it stands in for. Our ch2/ch3/ch4/ch5/ch7 have no utttai counterpart at all.
+     own/opponent marks), and our ch6 equals their ch3 (legal cells). Their ch2 is a **constant** ±1 fill
+     (all 81 cells) that only restates whose turn it is; ours conveys "whose turn" implicitly by the
+     ch0/ch1 ordering and has no such channel. Our ch2/ch3/ch4/ch5/ch7 (macro claims, required subgame,
+     free route) are *additional* state our encoding exposes and their 4-channel input does not.
    - Their visual flattening `row_index/col_index` (`helpers.py:11-19`) is exactly our `spatial()`:
      `spatial(i//9, i%9) === i` for all 81 — verified.
 3. **Action-space index — this is the one place a naive converter breaks.**
@@ -326,10 +327,10 @@ carries the §4 attribution obligation, and the dataset's own licence status is 
 ### 4.1 The loop (documented + code-verified)
 
 1. **Stage 1 — bootstrap from pure MCTS.** MCTS with random playouts, single-threaded, synchronous
-   (`utttcpp/src/mcts-generate.cpp`; `MonteCarloTreeSearch::simulate` in
-   `utttcpp/src/utttcpp/selfplay/monteCarloTreeSearch.cpp:322-339`). Self-play games were played
+   (`utttcpp/src/mcts-generate.cpp`; `MonteCarloTreeSearch::simulate` at
+   `utttcpp/src/utttcpp/selfplay/monteCarloTreeSearch.cpp:335-340`, `run()` at `:252-257`). Self-play games were played
    start-to-finish; at each ply the tree is **synchronised** to the played child and re-run for
-   `numSimulations − rootVisits` more simulations (`run()`, `:255-260`), so each position accumulates a
+   `numSimulations − rootVisits` more simulations (`run()`, `:252-257`), so each position accumulates a
    *fresh* visit distribution (`mcts-generate.cpp:98-116`). Move selection: `"sample"` (visit-
    proportional), also `argmax`/`random` (`selectAction`, `:259-298`).
 2. **Stage 1 training.** `scripts/train_stage1.py` → `train_policy_value_net` (`utttpy/selfplay/training.py`):
@@ -338,8 +339,8 @@ carries the §4 attribution obligation, and the dataset's own licence status is 
    (`policy_loss_weight 1.0`) + masked MSE **action-values** (`1.0`) + MSE **state value** (`3.0`)
    (`policy_value_loss.py:44-49`).
 3. **Stage 2 — NMCTS self-play with that net.** `utttcpp/src/nmcts-generate.cpp:200-241`: same loop, but
-   each simulation evaluates a leaf with the PVN (`evaluate(leafNode, 1.0)`,
-   `neuralMonteCarloTreeSearch.cpp:314-320`), selects by `Q = −childMean` plus a **PUCT** term
+   each simulation evaluates a leaf with the PVN (`simulate()`/`evaluate(leafNode, 1.0)` at
+   `neuralMonteCarloTreeSearch.cpp:314-320` / `:362`), selects by `Q = −childMean` plus a **PUCT** term
    (`U ∝ explorationStrength · policyProb · √parentVisits / (childVisits+1)`,
    `neuralMonteCarloTreeSearch.py:98-108`), and backpropagates with alternating sign (`:136-142`).
    **No Dirichlet noise and no temperature schedule** — `grep -rni "dirichlet\|noise\|temperature"` over
@@ -369,8 +370,8 @@ carries the §4 attribution obligation, and the dataset's own licence status is 
 | Stage-1 label budget | avg 1,359,479 sims/position | `datasets/README.md:11` |
 | Stage-2 label budget | avg 10,000 sims/position | `datasets/README.md:36` |
 | Training iterations | 100,000 × 2048 = ~2.05e8 samples per stage | `train_stage1.py:36-37`, `train_stage2.py:40-41` |
-| Wall clock | "about 10 weeks" on one desktop (i7-10700K + 2× RTX 2080 Ti); most time in C++ dataset generation | `website/src/blog/Blog.js:~247-248` |
-| Runtime budget | 1k sims ≈ 4.4 s; 10k sims ≈ 17.8 s single-threaded server; in-browser: 75 sims/s desktop, 2.5 sims/s phone | `README.md:54-59`; `Blog.js:~251-253` |
+| Wall clock | "about 10 weeks" on one desktop (i7-10700K + 2× RTX 2080 Ti); most time in C++ dataset generation | `website/src/blog/Blog.js:247-248` |
+| Runtime budget | 1k sims ≈ 4.4 s; 10k sims ≈ 17.8 s single-threaded server; in-browser: 75 sims/s desktop, 2.5 sims/s phone | `README.md:54-59`; `Blog.js:251-253` |
 
 ### 4.3 What actually made it improve (and what to distrust)
 
@@ -456,6 +457,16 @@ must **not** reuse the complete-game schema. The transformations:
 8. **Never mix value sources.** These rows must not be averaged with our `terminal-outcome` or
    `deep-search-root-score` rows (the exact failure our `dataset-audit-20261013.md` documents); the
    corpus is a single new source.
+9. **`playedMove` cannot be recovered.** Our schema requires the move that was actually played from the
+   recorded state (`generate.cjs:102`, `playedMove`), because a game's successor row is reached by
+   applying it. The utttai row stores only the *evaluation* of a position (visit distribution and
+   values) — which move the searcher then sampled is not in the file, and (per §2.3) the corpus is a
+   heavily subsampled position set, so the successor is usually absent too. Either
+   `playedMove = argmax(visitTarget)` must be recorded as a **derived/reconstructed** field (with its
+   own provenance string, never presented as observed play), or the field must be dropped from the
+   converted schema. Likewise `hardState` (our weak-engine disagreement flag) is meaningful only for
+   our own generator, and `provenance` must name the upstream repo/commit/archive hash rather than a
+   teacher roster.
 
 ### 5.3 Rejection criteria (drop the row; do not repair it)
 
@@ -482,6 +493,9 @@ would catch a corrupt or hostile file):
 10. A required game-level field (`gameId`, `openingFamily`, `split`, `terminalOutcome`,
     `completeGameMoves`) would have to be invented. **Inventing any of these is a hard reject** — that
     is the definition of fabricating evidence.
+11. `playedMove` is written as an *observed* move when it is in fact `argmax` of the visit target. The
+    record must declare it derived (see §5.2 item 9) or omit it; presenting a reconstruction as
+    observed play is a reject.
 
 ### 5.4 Recommended position for the programme
 

@@ -612,10 +612,16 @@ class Operator:
 
     def _argv_league(self) -> list[str]:
         c = self.config
-        return [c["nodeBin"], str(ROOT / "training/bot/neural_league.cjs"),
+        argv = [c["nodeBin"], str(ROOT / "training/bot/neural_league.cjs"),
                 "--model", str(self._export_dir()), "--pairs", str(c["leaguePairs"]),
                 "--budget-ms", str(c["budgetMs"]), "--simulations", str(c["leagueSimulations"]),
                 "--output", str(self._league_path()), "--workers", str(c["workers"])]
+        # Head-to-head: include the current champion as an opponent so the gate can measure the candidate
+        # against the model it would replace (not only the fixed baselines).
+        champ = self.root / "current-champion"
+        if champ.is_dir() and (champ / "candidate.onnx").exists():
+            argv += ["--champion-dir", str(champ)]
+        return argv
 
     # ---------------------------------------------------------------- modes
 
@@ -745,17 +751,14 @@ class Operator:
         source_sha = self.state["source"]["head"]
         strict = evaluate_gate(league, expected_model=model_sha, expected_source=source_sha,
                                min_families=PROMOTION_MIN_FAMILIES)
-        # The predecessor engine id (its model hash) is the research head-to-head opponent, if the
-        # league actually includes a matchup against it; absent that, only the reference-floor path runs.
-        parent_engine = None
-        try:
-            ptr = self.root / "research-champion.json"
-            if ptr.exists():
-                parent_engine = json.loads(ptr.read_text()).get("candidateSha256")
-        except Exception:
-            parent_engine = None
+        # Head-to-head: if the league includes a matchup against the current champion engine, the gate
+        # can require the candidate to statistically BEAT the model it would replace (lower-CI > 0.50),
+        # which prevents a regressing generation overwriting a stronger champion.
+        champion_present = any(isinstance(m, dict) and m.get("engineB") == "championPUCT"
+                               for m in (league.get("matchups") or []))
+        parent_engine = "championPUCT" if champion_present else None
         research = evaluate_research_progression(league, expected_model=model_sha, expected_source=source_sha,
-                                                 parent_engine=None)  # head-to-head wired once leagues name the parent
+                                                 parent_engine=parent_engine)
         self.state["leagueGate"] = {
             "strict": strict, "research": research,
             "advance": bool(strict["promote"] or research["advance"]),

@@ -154,7 +154,7 @@ function createOnnxInfer(modelPath) {
   };
 }
 
-function buildEngines({ modelDir, budgetMs = 100, simulations = 64 } = {}) {
+function buildEngines({ modelDir, championDir = null, budgetMs = 100, simulations = 64 } = {}) {
   const engines = {};
 
   // 1. Baselines
@@ -267,6 +267,27 @@ function buildEngines({ modelDir, budgetMs = 100, simulations = 64 } = {}) {
     }
   }
 
+  // Optional: the PREVIOUS champion as a head-to-head opponent, so a candidate must be measured against
+  // the model it would replace (not only the fixed baselines). Built from `championDir`.
+  if (championDir) {
+    const champPath = ['candidate-dynamic.onnx', 'candidate.onnx'].map((f) => path.join(championDir, f)).find((p) => fs.existsSync(p));
+    if (champPath) {
+      const champInfer = createOnnxInfer(champPath);
+      engines['championPUCT'] = {
+        id: 'championPUCT',
+        version: champInfer.hash.slice(0, 16),
+        choose(state, rng) { return engines['improvedExpert'].choose(state, rng); },
+        async chooseAsync(state, rng) {
+          const res = await NS.choose(state, {
+            infer: champInfer.infer, seed: Math.floor(rng() * 4294967296), budgetMs, simulations,
+            modelHash: champInfer.hash, policyOnly: false,
+          });
+          return res.move;
+        }
+      };
+    }
+  }
+
   return engines;
 }
 
@@ -353,6 +374,7 @@ async function main() {
   const outputPath = getArg('--output', '.artifacts/benchmarks/neural-league.json');
   const shardArg = getArg('--shard', null);
   const matchupArg = getArg('--matchup', null);
+  const championDir = getArg('--champion-dir', null);
   const workersCount = parseInt(getArg('--workers', '8'), 10);
 
   console.log(`Generating ${pairsCount} independent D4 holdout opening families...`);
@@ -366,6 +388,7 @@ async function main() {
     ['policyValuePUCT', 'tacticalUCT'],
     ['int8PUCT', 'policyValuePUCT'],
   ];
+  if (championDir) coreMatchups.push(['policyValuePUCT', 'championPUCT']);
 
   const matchups = matchupArg ? [matchupArg.split(':')] : coreMatchups;
 
@@ -376,7 +399,7 @@ async function main() {
     openings = openings.slice(start, end);
     console.log(`Shard ${sIdx + 1}/${sTotal} running ${openings.length} opening pairs...`);
 
-    const engines = buildEngines({ modelDir, budgetMs, simulations });
+    const engines = buildEngines({ modelDir, championDir, budgetMs, simulations });
     const results = [];
     for (const [nameA, nameB] of matchups) {
       const eA = engines[nameA];
@@ -411,6 +434,7 @@ async function main() {
         '--shard', `${w}/${workersCount}`,
         '--output', shardOut,
       ];
+      if (championDir) subArgs.push('--champion-dir', championDir);
       const p = new Promise((resolve, reject) => {
         const child = fork(__filename, subArgs.slice(1), {
           env: process.env,

@@ -43,7 +43,10 @@ test('DC03-DC10 real PostgreSQL capture, replay, fencing, repair and privacy',as
   }
   await assert.rejects(query('UPDATE learning.policy SET enabled=true'),e=>e.code==='23514');
   assert.equal(await val("SELECT count(*)::int FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname='learning' AND p.prosecdef AND NOT ('search_path=pg_catalog, learning, pg_temp'=ANY(p.proconfig))"),0);
+  const deployed=(await cap.query('SELECT learning.configuration() AS value')).rows[0].value;
+  assert.equal(deployed.sourceCommit,null,'disabled policy projects nullable deployed commit');
   await query("UPDATE learning.policy SET enabled=true,policy_version='test-only',approval_ref='synthetic-not-legal-approval',encryption_ref='synthetic-isolated-cluster',choice_ref='test-only',capture_after='1970-01-01',retention_days=7,export_retention_days=1,backup_retention_days=7,source_commit=$1,rules_hash=$2,environment='test'",['a'.repeat(40),C.RULES_HASH]);
+  assert.equal((await cap.query('SELECT learning.configuration() AS value')).rows[0].value.sourceCommit,'a'.repeat(40),'database config binds exact deployed source');
  });
  await t.test('full board win and draw; adjudicated timeout/resign/void; queue/direct and retries',async()=>{
   let draw;for(let n=1;n<1000;n++){const s=source(n);if(s.reason==='draw'){draw=s;break;}}assert.ok(draw);

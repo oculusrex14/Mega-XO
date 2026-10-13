@@ -8,6 +8,7 @@ function assess({sourceCommit,configuration,metrics,receipt,now=Date.now()}={}){
  const failures=[];
  if(!/^[a-f0-9]{40}$/.test(sourceCommit||''))failures.push('SOURCE_SHA_REQUIRED');
  if(!configuration?.enabled)failures.push('COLLECTION_DISABLED');
+ if(configuration?.sourceCommit!==sourceCommit)failures.push('DEPLOYED_POLICY_SOURCE_MISMATCH');
  if(configuration?.rulesHash!==C.RULES_HASH)failures.push('RULES_HASH_MISMATCH');
  if(!configuration?.policyVersion)failures.push('POLICY_VERSION_REQUIRED');
  if(!['staging','production'].includes(configuration?.environment))failures.push('REAL_TARGET_REQUIRED');

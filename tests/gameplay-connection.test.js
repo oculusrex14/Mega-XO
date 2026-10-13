@@ -15,9 +15,9 @@ test('private key loader rejects publicly readable, malformed and symlinked keys
  const dir=fs.mkdtempSync(path.join(os.tmpdir(),'capture-keys-'));t.after(()=>fs.rmSync(dir,{recursive:true,force:true}));const f=path.join(dir,'key');fs.writeFileSync(f,Buffer.alloc(32,5),{mode:0o600});assert.equal(D.readKey(f).length,32);fs.symlinkSync(f,path.join(dir,'link'));assert.throws(()=>D.readKey(path.join(dir,'link')));fs.chmodSync(f,0o644);assert.throws(()=>D.readKey(f),/PRIVATE_KEY/);
 });
 test('day-one gate refuses absent, stale, disabled, wrong-source and unproved external receipts',()=>{
- const sourceCommit='a'.repeat(40),now=Date.now(),configuration={enabled:true,rulesHash:C.RULES_HASH,environment:'staging',policyVersion:'test',privacyEpoch:0};
+ const sourceCommit='a'.repeat(40),now=Date.now(),configuration={enabled:true,sourceCommit,rulesHash:C.RULES_HASH,environment:'staging',policyVersion:'test',privacyEpoch:0};
  const receipt={sourceCommit,rulesHash:C.RULES_HASH,environment:'staging',policyVersion:'test',privacyEpoch:0,checkedAt:new Date(now).toISOString(),evidence:Object.fromEntries(R.REQUIRED.map(k=>[k,{status:'PASS',artifact:'synthetic-unit-test-only'}]))};
  const args={sourceCommit,configuration,receipt,metrics:{pending:0,quarantined:0,expiredUnpurged:0,sealed:1},now};
  assert.equal(R.assess(args).result,'RECEIPTS_READY_FOR_MAIN_REVIEW');assert.equal(R.assess(args).productionAuthorized,false);
- for(const delta of [{receipt:null},{configuration:{...configuration,enabled:false}},{sourceCommit:'b'.repeat(40)},{metrics:{...args.metrics,pending:1}},{receipt:{...receipt,checkedAt:'2020-01-01'}},{receipt:{...receipt,privacyEpoch:3}}])assert.equal(R.assess({...args,...delta}).result,'BLOCKED');
+ for(const delta of [{receipt:null},{configuration:{...configuration,enabled:false}},{sourceCommit:'b'.repeat(40)},{configuration:{...configuration,sourceCommit:'b'.repeat(40)}},{configuration:{...configuration,sourceCommit:null}},{metrics:{...args.metrics,pending:1}},{receipt:{...receipt,checkedAt:'2020-01-01'}},{receipt:{...receipt,privacyEpoch:3}}])assert.equal(R.assess({...args,...delta}).result,'BLOCKED');
 });

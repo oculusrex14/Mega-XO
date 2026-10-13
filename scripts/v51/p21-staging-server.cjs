@@ -193,7 +193,11 @@ async function main() {
   });
   const ticketIssuer = await createTicketIssuer(apiPool, { environment: 'stg', audience: 'mega-core' });
   const queue = await createQueueService({ ephemera, core, pool: corePool });
-  const GATEWAY_SECRET = crypto.randomBytes(32).toString('hex');
+  // The signed Core-ingress secret must be STABLE across restarts and shared with any external
+  // caller (e.g. the stateless Vercel API) that presents it, exactly like the OTP secret. A fresh
+  // random secret per boot would invalidate every configured caller on every restart. The file is
+  // 0600 and never printed.
+  const GATEWAY_SECRET = loadStagingOtpSecret(path.join(path.dirname(CREDENTIALS_PATH), 'core-gateway.secret'));
   const coreIngress = createCoreServiceIngress({ coreService: core, ticketIssuer, queue, leaderboardPool: corePool, secret: GATEWAY_SECRET });
   const coreGateway = createCoreGateway({ coreUrl: `http://${host}:${port}`, secret: GATEWAY_SECRET, timeoutMs: GATEWAY_TIMEOUT_MS });
 

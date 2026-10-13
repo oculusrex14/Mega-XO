@@ -25,8 +25,9 @@ function lists(extra = {}) {
 async function fixture(request, options = {}) {
  const {createFriendsController} = await friendsModule;
  const context = {sessionStatus:'linked', profile:{id:'actor-one', wallet:{coins:123, crowns:4}, rating:900}};
- const changes = [], authLosses = [];
- const controller = createFriendsController({context, request, changed:() => changes.push(context.friends.status),
+ const changes = [], authLosses = [];let operations = 0;
+ const controller = createFriendsController({context, request, operationKey:options.operationKey || (() => 'friends-fixture-' + ++operations),
+  changed:() => changes.push(context.friends.status),
   active:options.active || (() => true),
   onAuthRequired:(error, operation) => { authLosses.push(operation); options.onAuthRequired?.(error, operation, context, controller); }});
  return {context, controller, changes, authLosses};
@@ -211,7 +212,7 @@ test('current auth loss is delivered only after the full operation fence for rea
  for (const failing of ['load', 'search', 'action']) {
   const f = await fixture(async (url, body) => {
    if (failing !== 'load' && url === '/api/community/friends') return lists();
-   if (failing === 'action') assert.deepEqual(body, {action:'remove', target:'friend-one'});
+   if (failing === 'action') assert.deepEqual(body, {action:'remove', target:'friend-one', key:'friends-fixture-1'});
    throw Error('AUTH_REQUIRED');
   }, {onAuthRequired:(_error, _operation, context, controller) => {context.sessionStatus = 'guest';context.profile = null;controller.deactivate();}});
   if (failing === 'load') assert.equal(await f.controller.load(), false);
@@ -245,23 +246,46 @@ test('only actions from the current protected source and relation are allowed; f
  assert.equal(calls.length, 2);
 });
 
-test('all seven social commands send only the existing payload and reload canonical lists', async () => {
+test('all seven social commands send the approved payload and bind the shared-client operation key before canonical reload', async () => {
  for (const [name, target] of [['request', 'new-player'], ['accept', 'incoming-one'], ['decline', 'incoming-one'],
   ['cancel', 'outgoing-one'], ['remove', 'friend-one'], ['block', 'friend-one'], ['unblock', 'blocked-one']]) {
   const calls = [];let reads = 0;
-  const f = await fixture(async (url, body) => {
-   calls.push({url, body});
+  const f = await fixture(async (url, body, operation) => {
+   calls.push({url, body, operation});
    if (body) return {ok:true};
    if (url.startsWith('/api/community/search')) return [player('new-player', 'none')];
    return ++reads === 1 ? lists() : lists({friends:[], incoming:[], outgoing:[], blocked:[]});
   });
   await f.controller.load();f.controller.setQuery('player');await f.controller.search();
   assert.equal(await f.controller.action(name, target), true, name);
-  assert.deepEqual(calls.at(-2), {url:'/api/community/friend', body:{action:name, target}});
-  assert.deepEqual(calls.at(-1), {url:'/api/community/friends', body:undefined});
+  assert.deepEqual(calls.at(-2), {url:'/api/community/friend', body:{action:name, target, key:'friends-fixture-1'}, operation:'friends-fixture-1'});
+  assert.deepEqual(calls.at(-1), {url:'/api/community/friends', body:undefined, operation:undefined});
   assert.equal(f.context.friends.actionStatus, 'saved');assert.equal(f.context.friends.status, 'ready');
   assert.equal(f.context.friends.busy, false);assertEmpty(f.context.friends);
   assert.equal(f.context.friends.query, 'player');assert.equal(f.context.friends.searchStatus, 'idle');
+ }
+});
+
+test('distinct user mutations get distinct keys and invalid key factories cannot send a write', async () => {
+ const writes = [];let generated = 0;
+ const f = await fixture(async (_url, body, operation) => {
+  if (body) {writes.push({body, operation});return {ok:true};}
+  return lists();
+ }, {operationKey:() => 'new-user-action-' + ++generated});
+ await f.controller.load();
+ assert.equal(await f.controller.action('remove', 'friend-one'), true);
+ assert.equal(await f.controller.action('unblock', 'blocked-one'), true);
+ assert.deepEqual(writes.map(write => write.operation), ['new-user-action-1', 'new-user-action-2']);
+ for (const write of writes) assert.equal(write.body.key, write.operation);
+ assert.equal(generated, 2);
+
+ for (const badKey of ['', 'spaces are invalid', undefined, 'x'.repeat(161)]) {
+  let attempted = false;
+  const invalidKey = await fixture(async (_url, body) => {if (body) attempted = true;return body ? {ok:true} : lists();}, {operationKey:() => badKey});
+  await invalidKey.controller.load();
+  assert.equal(await invalidKey.controller.action('remove', 'friend-one'), false);
+  assert.equal(attempted, false);assert.equal(invalidKey.context.friends.busy, false);
+  assert.equal(invalidKey.context.friends.actionStatus, 'error');
  }
 });
 
@@ -331,18 +355,24 @@ test('actor changes and suspension fence pending mutations without retiring the 
  }
 });
 
-test('shared client owns POST retries with one idempotency key and Friends never accesses persistent storage', async () => {
+test('shared client reuses each social body/header key on internal retries, gives new actions new keys and avoids persistent storage', async () => {
  const {createFriendsController} = await friendsModule;
  const calls = [];let writes = 0, storageAccesses = 0;
+ let canonical = lists();
  const sandbox = {AbortController, Headers, URL, URLSearchParams, location:{href:'https://website.test/friends', origin:'https://website.test'},
   document:{dispatchEvent() {}}, navigator:{onLine:true}, addEventListener() {}, crypto:require('node:crypto'),
   setTimeout, clearTimeout, CustomEvent:class {},
   async fetch(url, options = {}) {
    calls.push({url, ...options});
-   let body = url === '/api/account/session' ? {csrf:'synthetic-csrf', linked:true} : lists();
+   let body = url === '/api/account/session' ? {csrf:'synthetic-csrf', linked:true} : canonical;
    let status = 200;
    if (url === '/api/community/friend') {
-    if (++writes === 1) {body = {error:'SERVICE_UNAVAILABLE'};status = 503;} else body = {ok:true};
+    if (++writes % 2 === 1) {body = {error:'SERVICE_UNAVAILABLE'};status = 503;}
+    else {
+     body = {ok:true};
+     const submitted = JSON.parse(options.body);
+     canonical = submitted.action === 'remove' ? {...canonical, friends:[]} : {...canonical, blocked:[]};
+    }
    }
    return new Response(JSON.stringify(body), {status});
   },
@@ -359,12 +389,19 @@ test('shared client owns POST retries with one idempotency key and Friends never
  const context = {sessionStatus:'linked', profile:{id:'actor-one'}};
  const controller = sandbox.createFriendsController({context});
  await controller.load();assert.equal(await controller.action('remove', 'friend-one'), true);
+ assert.equal(await controller.action('unblock', 'blocked-one'), true);
  const posts = calls.filter(call => call.url === '/api/community/friend');
- assert.equal(posts.length, 2);assert.equal(posts[0].method, 'POST');
+ assert.equal(posts.length, 4);assert.equal(posts[0].method, 'POST');
  assert.equal(posts[0].credentials, 'same-origin');assert.equal(posts[0].headers['X-CSRF-Token'], 'synthetic-csrf');
- assert.equal(posts[0].headers['Idempotency-Key'], posts[1].headers['Idempotency-Key']);
- assert.ok(posts[0].headers['Idempotency-Key']);
- assert.deepEqual(JSON.parse(posts[0].body), {action:'remove', target:'friend-one'});
+ for (const offset of [0, 2]) {
+  const first = posts[offset], retry = posts[offset + 1], key = first.headers['Idempotency-Key'];
+  assert.ok(key);assert.equal(retry.headers['Idempotency-Key'], key);
+  assert.equal(JSON.parse(first.body).key, key);assert.equal(JSON.parse(retry.body).key, key);
+  assert.equal(first.body, retry.body);
+ }
+ assert.notEqual(posts[0].headers['Idempotency-Key'], posts[2].headers['Idempotency-Key']);
+ assert.deepEqual(JSON.parse(posts[0].body), {action:'remove', target:'friend-one', key:posts[0].headers['Idempotency-Key']});
+ assert.deepEqual(JSON.parse(posts[2].body), {action:'unblock', target:'blocked-one', key:posts[2].headers['Idempotency-Key']});
  controller.suspend();controller.deactivate();controller.destroy();
  assert.equal(storageAccesses, 0);
 });

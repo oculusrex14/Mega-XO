@@ -27,7 +27,7 @@ let profileEditor;
 profileEditor=createProfileEditor({context,request:(path,body)=>globalThis.MegaAccount.request(path,body),changed:()=>renderProfileEditorView(),
  active:actor=>normalizedPath()==='/profile'&&context.sessionStatus==='linked'&&context.profile?.id===actor,
  onAuthRequired:error=>{model.invalidate();context.profile=null;context.sessionStatus='guest';context.accountMessage=errorCopy(error);renderProfileEditorView();}});
-const friendsController=createFriendsController({context,request:(path,body)=>globalThis.MegaAccount.request(path,body),
+const friendsController=createFriendsController({context,request:(path,body,operation)=>globalThis.MegaAccount.request(path,body,operation),
  active:actor=>normalizedPath()==='/friends'&&context.sessionStatus==='linked'&&context.profile?.id===actor,
  changed:()=>renderFriendsView(),onAuthRequired:error=>{model.invalidate();context.profile=null;context.sessionStatus='guest';context.accountMessage=errorCopy(error);renderFriendsView();}});
 let activePath='',leaderboardTimer,accountChallenge='',resetReady=false,serviceBusy=false,onlineTimer,onlineBusy=false,onlineRevision=0;

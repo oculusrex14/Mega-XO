@@ -1,0 +1,35 @@
+{
+  "totalRowsWritten": 442732,
+  "perSource": {
+    "deep-search": {
+      "path": "/tmp/sl.jsonl",
+      "rows": 80250,
+      "uniquePositions": 80200,
+      "duplicatesDropped": 50
+    },
+    "external": {
+      "path": ".artifacts/v51/utttai-combined.jsonl",
+      "rows": 352357,
+      "uniquePositions": 352357,
+      "duplicatesDropped": 608
+    },
+    "selfplay": {
+      "path": "/tmp/selfplay.jsonl",
+      "rows": 91121,
+      "uniquePositions": 91062,
+      "duplicatesDropped": 80338
+    }
+  },
+  "valueTargetSources": {
+    "deep-search-root-score": 80200,
+    "utttai-mcts-root-mean": 174257,
+    "utttai-nmcts-root-value": 177492,
+    "terminal-outcome": 10783
+  },
+  "crossSourceOverlap": {
+    "deep-search & external": 608,
+    "deep-search & selfplay": 80200,
+    "external & selfplay": 687
+  },
+  "note": "overlap counts shared canonical positions (deduped in the output, first source wins)"
+}

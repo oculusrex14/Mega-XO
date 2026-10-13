@@ -51,3 +51,12 @@ Every count is a real run. See `P6-BACKEND-VERIFICATION-20261013.md` for command
   of the app image was not run here; the image build/smoke is covered by CI and by the Oracle deploy
   path. Deployment reproducibility (same SHA → same image digest) is asserted by the source-candidate
   verify (deterministic content hash) + pinned base digest.
+
+## Observability (P14)
+
+`v5-p14-observability` → **15/15 pass**, 0 skipped: telemetry instrumentation, incident/recovery
+event shapes, operator diagnosis routes, and `/opsz` classification verified against real PG.
+`deploy/install-monitoring.sh` + `deploy/host-health-monitor.sh` implement the production timers
+(`mega-xo-health.timer` active on the host per the live recon). **Delivered** incident/recovery alerts
+to a real provider destination, `read:packages` scope and current monitor IDs remain owner/provider
+gated (R09).

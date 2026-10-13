@@ -67,3 +67,16 @@ origin (`ACCOUNT-DELETION-LIFECYCLE-20261013.md`): request → tombstone/actorHa
 sessions/challenges/saves purged, profile scrubbed, pseudonymous outbox row, `privacy.requests`
 `requested` (completion is worker-dependent and not deployed here). Final legal attestations remain an
 owner decision (R14).
+
+## Provider/store/email/ad code verification
+
+| Suite | Result |
+| --- | --- |
+| `email-provider` + `monetization-*` | **29/29 pass**, 0 skipped |
+| `provider-authorization` + `monetization-store` + `apple-storekit-hardening` + `apple-store-notifications` + `email-auth` | **27/27 pass**, 0 skipped |
+
+So the receipt-verification, provider-authorization, StoreKit/Play hardening, ad-reward/SSV and email
+verification **code paths** are exercised. What remains open is only the *provider-side* reality:
+real Play/App Store products/SKUs, sandbox purchases/restores, AdMob units + consent/ATT, live email
+delivery (`RESEND_API_KEY`), and store review — each needs the owner's developer accounts, MFA, fees
+and attestations (R12–R14).

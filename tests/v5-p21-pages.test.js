@@ -309,3 +309,20 @@ test('P21.07 legal and service pages preserve unapproved status and unknown rout
   for (const route of ['/missing-page', '__proto__', 'constructor', 'toString', '/<script>alert(1)</script>']) assert.equal(renderPage(route), null);
   assert.match(renderPage('/404'), /This move leads off the board/);
 });
+
+
+test('P21 Friends renders only the current actor projection and escapes names without exposing private stats', async () => {
+ const {renderPage}=await pages;
+ const actor={id:'self',name:'Me',tag:'MEGA-SELF'};
+ const player={id:'friend-1',username:'rival',name:'<img src=x onerror=bad()>',tag:'MEGA-RIVAL',relation:'friend',presence:{state:'hidden',online:false},wallet:{crowns:999999},stats:{private:'secret'}};
+ const state={actorId:'self',status:'ready',friends:[player],incoming:[],outgoing:[],blocked:[],results:[],query:'',searchStatus:'idle',busy:false,truncated:true};
+ const html=renderPage('/friends',{sessionStatus:'linked',profile:actor,friends:state});
+ assert.match(html,/data-friends-search/);assert.match(html,/data-friend-action="confirm-remove"/);assert.match(html,/Presence hidden/);
+ assert.match(html,/&lt;img src=x onerror=bad\(\)&gt;/);assert.doesNotMatch(html,/<img src=x|999999|secret|Open Friends in game/);
+ assert.match(html,/limited list/);
+ const switched=renderPage('/friends',{sessionStatus:'linked',profile:{...actor,id:'another'},friends:state});
+ assert.doesNotMatch(switched,/MEGA-RIVAL|data-friend-target="friend-1"/);
+ const guest=renderPage('/friends',{sessionStatus:'guest',friends:state});assert.doesNotMatch(guest,/MEGA-RIVAL|data-friends-search/);
+ const failed=renderPage('/friends',{sessionStatus:'linked',profile:actor,friends:{...state,status:'refresh-error',message:'Your change was accepted, but the updated lists could not be loaded.'}});
+ assert.match(failed,/Your change was accepted/);assert.match(failed,/Try again/);assert.doesNotMatch(failed,/MEGA-RIVAL|data-friends-search/);
+});

@@ -9,6 +9,7 @@ import {getOfflineState, prepareOffline, removeOffline} from './offline.js';
 
 import {createReadModel, createProfileEditor, readJSON, authRequired, errorCopy} from './data.js';
 import {legalDocuments} from './legal-documents.js';
+import {createFriendsController} from './friends.js';
 
 let board=null;
 let tab='ranked';
@@ -21,11 +22,14 @@ const context={storeLinks,profile:null, sessionStatus:'loading', providers:{}, a
  products:{status:'ready',rows:productIds.map(id=>({id,enabled:false})),purchasesAvailable:false},
  leaderboard:{status:'loading',rows:[],metric:'rating',scope:'global',league:'all'}};
 const balance=value=>Number.isSafeInteger(value)&&value>=0?value.toLocaleString('en-US'):'—';
-const model=createReadModel({context,changed:()=>{if(normalizedPath()==='/game')synchronizeGameProfile();else renderProfileEditorView();}});
+const model=createReadModel({context,changed:()=>{if(normalizedPath()==='/game')synchronizeGameProfile();else normalizedPath()==='/friends'?renderFriendsView():renderProfileEditorView();}});
 let profileEditor;
 profileEditor=createProfileEditor({context,request:(path,body)=>globalThis.MegaAccount.request(path,body),changed:()=>renderProfileEditorView(),
  active:actor=>normalizedPath()==='/profile'&&context.sessionStatus==='linked'&&context.profile?.id===actor,
  onAuthRequired:error=>{model.invalidate();context.profile=null;context.sessionStatus='guest';context.accountMessage=errorCopy(error);renderProfileEditorView();}});
+const friendsController=createFriendsController({context,request:(path,body)=>globalThis.MegaAccount.request(path,body),
+ active:actor=>normalizedPath()==='/friends'&&context.sessionStatus==='linked'&&context.profile?.id===actor,
+ changed:()=>renderFriendsView(),onAuthRequired:error=>{model.invalidate();context.profile=null;context.sessionStatus='guest';context.accountMessage=errorCopy(error);renderFriendsView();}});
 let activePath='',leaderboardTimer,accountChallenge='',resetReady=false,serviceBusy=false,onlineTimer,onlineBusy=false,onlineRevision=0;
 let boundOnlineActor=null,hydratingMatch='';
 let offlineBusy=false,offlineRevision=0;
@@ -53,6 +57,11 @@ function render({focus=false}={}){
   else if(context.sessionStatus==='loading'){if(!profileEditor.suspend())profileEditor.deactivate();}
   else if(!(context.sessionStatus==='error'&&profileEditor.isSuspended()))profileEditor.deactivate();
  }else profileEditor.deactivate();
+ if(path==='/friends'){
+  if(context.sessionStatus==='linked'){if(friendsController.isSuspended())friendsController.resume(context.profile?.id);else friendsController.load();}
+  else if(context.sessionStatus==='loading'){context.friendConfirmation=null;friendsController.suspend();}
+  else{context.friendConfirmation=null;friendsController.deactivate();}
+ }else{context.friendConfirmation=null;friendsController.deactivate();}
  updateSeo(path);configureDownloadLinks();
  document.querySelectorAll('[data-board-host]').forEach(host=>{board=mountBoard(host,{preview:host.dataset.boardPreview!=='false'&&path==='/',mode:host.dataset.boardMode,difficulty:host.dataset.boardDifficulty,theme:host.dataset.boardTheme,...(path==='/game'&&visibleMatch()?{online:{match:visibleMatch(),actorId:context.profile?.id,onMove:sendOnlineMove,onResign:sendOnlineResign,onError:handleOnlineError}}:{})})});
  if(path==='/game'){boundOnlineActor=visibleMatch()?context.profile.id:null;updateOnlineControls();}
@@ -71,6 +80,18 @@ function renderProfileEditorView(){
  if(status&&!status.hidden&&typeof status.focus==='function'){status.focus({preventScroll:true});return;}
  const fallback=main.querySelector('#profile-editor [name="username"]')||main.querySelector('#profile-editor [data-profile-action]')||main.querySelector('#profile-editor-title');
  fallback?.focus?.({preventScroll:true});
+}
+function renderFriendsView(){
+ const path=normalizedPath(),actor=context.profile?.id||null,active=document.activeElement;
+ const inFriends=path==='/friends'&&Boolean(main?.contains?.(active))&&Boolean(active?.closest?.('#friends-controls'));
+ const inputFocus=inFriends&&active.id==='friend-query';
+ const selection=inputFocus?[active.selectionStart,active.selectionEnd]:null;
+ render();
+ if(!inFriends||normalizedPath()!==path||actor!==context.profile?.id)return;
+ const query=main.querySelector('#friend-query');
+ if(inputFocus&&query&&!query.disabled){query.focus({preventScroll:true});if(selection)query.setSelectionRange(...selection);return;}
+ const status=main.querySelector('[data-friends-status]:not([hidden])')||main.querySelector('[data-friends-search-status]');
+ status?.focus?.({preventScroll:true});
 }
 function navigate(href){main.removeAttribute?.('data-offline-fallback');history.pushState({},'',href);render({focus:true});activate();}
 function notify(message){const el=document.querySelector('#notification');el.textContent=message;el.hidden=false;clearTimeout(toastTimer);toastTimer=setTimeout(()=>{el.hidden=true},4500);}
@@ -207,8 +228,12 @@ document.addEventListener('change',event=>{
  const filter=event.target.closest('[data-leaderboard-filter]');if(filter)model.leaderboard({[filter.dataset.leaderboardFilter]:filter.value});
 });
 function profileFormDraft(form){const data=new FormData(form);return {username:String(data.get('username')||''),displayName:String(data.get('displayName')||''),statsVisibility:String(data.get('statsVisibility')||''),presenceVisibility:String(data.get('presenceVisibility')||'')};}
-document.addEventListener('input',event=>syncProfileDraft(event.target.closest('[data-profile-form]')));
+document.addEventListener('input',event=>{syncProfileDraft(event.target.closest('[data-profile-form]'));if(event.target.matches('#friend-query')&&friendsController.setQuery(event.target.value)){
+ main.querySelector('#friend-search-results')?.remove();const form=event.target.closest('[data-friends-search]');
+ if(form){form.setAttribute('aria-busy','false');const status=form.querySelector('[data-friends-search-status]');if(status)status.textContent='';const submit=form.querySelector('[type="submit"]');if(submit)submit.disabled=context.friends.busy;}
+ }});
 document.addEventListener('submit',event=>{
+ const searchForm=event.target.closest('[data-friends-search]');if(searchForm){event.preventDefault();friendsController.search(String(new FormData(searchForm).get('query')||''));return;}
  const profileForm=event.target.closest('[data-profile-form]');
  if(profileForm){event.preventDefault();profileEditor.save(profileFormDraft(profileForm));return;}
  const sponsor=event.target.closest('[data-sponsor-preferences]');
@@ -229,6 +254,19 @@ document.addEventListener('submit',event=>{
  });
 });
 document.addEventListener('click',event=>{
+ const friendAction=event.target.closest('[data-friend-action]');
+ if(friendAction){
+  const action=friendAction.dataset.friendAction,target=friendAction.dataset.friendTarget;
+  if(action==='refresh'){context.friendConfirmation=null;friendsController.reload();}
+  else if(action==='dismiss-confirm'){context.friendConfirmation=null;renderFriendsView();}
+  else if(action==='confirm'){const pending=context.friendConfirmation;context.friendConfirmation=null;if(pending?.actorId===context.profile?.id)friendsController.action(pending.action,pending.target);}
+  else if(action==='confirm-remove'||action==='confirm-block'){
+   const command=action==='confirm-remove'?'remove':'block';
+   const player=context.friends?.friends?.find(p=>p.id===target);
+   if(player&&friendsController.allowedActions(target).includes(command)){context.friendConfirmation={actorId:context.profile.id,action:command,target,name:player.name||player.displayName||player.username};renderFriendsView();main.querySelector('[data-friend-action="confirm"]')?.focus();}
+  }else{context.friendConfirmation=null;friendsController.action(action,target);}
+  return;
+ }
  const profileAction=event.target.closest('[data-profile-action]');if(profileAction){if(profileAction.dataset.profileAction==='retry-load')profileEditor.reload();else if(profileAction.dataset.profileAction==='retry-refresh')profileEditor.refresh();else if(profileAction.dataset.profileAction==='discard')profileEditor.resetDraft();else if(profileAction.dataset.profileAction==='keep-username'){const state=context.profileEditor;if(state?.profile&&state.draft){profileEditor.updateDraft({...state.draft,username:state.profile.username});renderProfileEditorView();}}return;}
  const refresh=event.target.closest('[data-leaderboard-action="refresh"]');if(refresh)model.leaderboard();
  const account=event.target.closest('[data-account-action]');if(account){const action=account.dataset.accountAction;
@@ -255,7 +293,7 @@ document.addEventListener('click',event=>{
 });
 window.addEventListener('focus',()=>{if(context.sessionStatus==='linked')model.profile().then(()=>{if(normalizedPath()==='/game'&&visibleMatch()){startOnlinePolling();pollOnline();}});});
 window.addEventListener('online',()=>{if(normalizedPath()==='/game'&&context.sessionStatus==='linked'){startOnlinePolling();pollOnline();}});
-window.addEventListener('pagehide',event=>{onlineRevision++;event.persisted?model.invalidate():model.destroy();event.persisted?profileEditor.deactivate():profileEditor.destroy();clearInterval(leaderboardTimer);clearInterval(onlineTimer);board?.destroy();});
+window.addEventListener('pagehide',event=>{onlineRevision++;event.persisted?model.invalidate():model.destroy();event.persisted?profileEditor.deactivate():profileEditor.destroy();event.persisted?friendsController.deactivate():friendsController.destroy();clearInterval(leaderboardTimer);clearInterval(onlineTimer);board?.destroy();});
 window.addEventListener('popstate',event=>{event.state?.mxOfflineFallback?main.setAttribute?.('data-offline-fallback',''):main.removeAttribute?.('data-offline-fallback');render({focus:true});activate();});
 window.addEventListener('pageshow',event=>{if(event.persisted){activePath='';render();activate();if(context.sessionStatus==='linked')model.profile();}});
 render();activate();model.profile().then(()=>{if(normalizedPath()==='/store'&&context.sessionStatus==='linked')refreshProducts();});

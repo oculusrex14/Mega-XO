@@ -33,8 +33,15 @@ const UPSTREAM_PORT = Number(arg('--upstream-port', '8085'));
 // The single prefix the signed Core ingress owns. Everything else is refused before it reaches Core.
 const ALLOWED_PREFIX = '/ingress/';
 
-// Refuse a non-loopback bind: this filter must only ever be reachable from `tailscale funnel`.
-if (HOST !== '127.0.0.1' && HOST !== '::1' && HOST !== 'localhost') {
+// Default is loopback only. A private Docker-bridge bind (e.g. 172.18.0.1, the host side of the
+// production `backend` network) is permitted ONLY with the explicit `--allow-private-bind` flag, and
+// a wildcard bind is never allowed. This keeps the filter reachable by the co-located Caddy edge
+// container and nothing else: never the public interface, never other Docker networks.
+const ALLOW_PRIVATE = process.argv.includes('--allow-private-bind');
+const LOOPBACK_HOSTS = new Set(['127.0.0.1', '::1', 'localhost']);
+const PRIVATE_BIND = /^(10\.|172\.(1[6-9]|2[0-9]|3[01])\.|192\.168\.)/;
+if (HOST === '0.0.0.0' || HOST === '::') throw new Error('CORE_EDGE_REFUSED_WILDCARD_BIND');
+if (!LOOPBACK_HOSTS.has(HOST) && !(ALLOW_PRIVATE && PRIVATE_BIND.test(HOST))) {
   throw new Error('CORE_EDGE_REFUSED_NON_LOOPBACK_BIND');
 }
 

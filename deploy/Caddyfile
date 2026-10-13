@@ -34,3 +34,27 @@
   }
  }
 }
+
+# V5.1 signed Game Core edge (additive). Routes ONLY /ingress/* to the isolated host Core proxy,
+# which forwards to the single Core instance. Everything else is refused with a real 404. This block
+# is fully independent of the V4 site block above; removing it and reloading reverts to V4-only.
+core.megaxo.online {
+ encode zstd gzip
+ header -Server
+ header Strict-Transport-Security "max-age=31536000"
+ header X-Robots-Tag "noindex, nofollow"
+ request_body {
+  max_size 131072
+ }
+ @ingress path /ingress/*
+ handle @ingress {
+  reverse_proxy 172.18.0.1:8096 {
+   header_up -X-Forwarded-Host
+   transport http {
+    dial_timeout 3s
+    response_header_timeout 15s
+   }
+  }
+ }
+ respond 404
+}

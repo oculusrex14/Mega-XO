@@ -11,7 +11,7 @@
     "audited_source_commit": "5fc3f957eb6268395b5aa9a2883d46a56b13b85c",
     "audited_source_commit_verified_as_HEAD": true,
     "current_master_checklist": "docs/p21-web/MASTER-CHECKLIST.md",
-    "current_master_checklist_sha256": "a772d4123ecd523a5e1b8c0d305eada35335b8a20e79e4eb14816f1edb87bc4a",
+    "current_master_checklist_sha256": "28ddddb9efd73a98e82364666f6e83511fd5f825e0cde601bcbe61ac60d57df8",
     "current_master_counts": {
       "checked": 71,
       "open": 159
@@ -245,6 +245,40 @@
       "historical_evidence_preserved": true,
       "device_acceptance": "NOT_RUN",
       "no_checkboxes_closed_in_this_checkpoint": true
+    },
+    "latest_locally_verified_checkpoint": "realtime_checkpoint_20261013",
+    "realtime_checkpoint_20261013": {
+      "feature_source_commit": "4a9c29c789f743dcdcf76d5aea3ed4c47d4a9437",
+      "qa_commit": "e807d28b6f7eef2faf581eddd1e4028aa8f2696b",
+      "integrated_commit": "09e13826df714946388e9c610b8ddd62c3a4a604",
+      "main_preserved_through": "8faf575fe7d70c4f5a321ffdc6cabdfed52f3e46",
+      "bundle_sha256": "2887b0cd9723513792af01d71412ee94040f2f2dcfc9277a52fe7612733eb9e6",
+      "file_count": 153,
+      "total_bytes": 3542005,
+      "unit_pass": 256,
+      "unit_fail": 0,
+      "unit_skip": 0,
+      "browser_realtime_each": 21,
+      "browser_profile_each": 18,
+      "browser_friends_each": 40,
+      "engines": [
+        "Chromium151.0.7922.34",
+        "Firefox153.0",
+        "WebKit26.5"
+      ],
+      "broad_chromium_pass": 915,
+      "axe_pass": 137,
+      "axe_violations": 0,
+      "axe_manual_views": 116,
+      "tutorial_worker_pass": 15,
+      "archive": "docs/p21-web/evidence/20261013-realtime-browser/archive-index.json",
+      "actual_staging_source": "f4851a568524846d981b351c659af4a9ee7479be",
+      "actual_staging_bundle": "8167f349fb16b303c9347ac544afc3f9c73b9ea5515b0a085a7f40a6d75f3ea3",
+      "process_boot_sha": "NOT_VERIFIED",
+      "authenticated_browser_acceptance": "NOT_RUN",
+      "provider_approval": "NOT_VERIFIED",
+      "checkboxes_closed": 0,
+      "boundary": "Local software/synthetic actors; actual staging read-only discovery, no real account/WSS/economy/device acceptance. Earlier checkpoints retained historically."
     }
   },
   "inventory_integrity": {
@@ -927,11 +961,12 @@
         "docs/p21-web/evidence/20261012-staging-review/STAGING-READONLY-20261012.md",
         "docs/p21-web/evidence/20261012-staging-review/ACCOUNT-TIMEOUT-20261012.md",
         "docs/p21-web/evidence/20261013-staging-browser/https-readonly-probes.json",
-        "docs/p21-web/REALTIME-CONTRACT-AND-INTEGRATION-GAPS-20261013.md"
+        "docs/p21-web/REALTIME-CONTRACT-AND-INTEGRATION-GAPS-20261013.md",
+        "docs/p21-web/REALTIME-BROWSER-CHECKPOINT-20261013.md: scoped reader/account deadline (4a9c29c/2887b0cd; local synthetic only)"
       ],
       "evidence_boundary": "CUA confirmed only the anonymous staging continuation form; no credentials or OTP were entered and no signup/login was submitted. The owner-reported continuation timeout is OWNER_REPORTED_NOT_REPRODUCED; API/server boot SHA is unverified. 2026-10-13 superseding context: staging HTTPS reachable/co-located; frontend still8167/f485. Real authenticated browser acceptance pending human handoff, candidate deployment and precise account-reentry spinner diagnosis.",
       "remaining_whole_condition": "Signup, verification, identity-link, refresh, revocation and expiry remain untested on the serving V5 auth/callback stack; the reported continuation timeout has not been reproduced or diagnosed.",
-      "next_owner_action": "Main: pin the running API revision and diagnose the sanitized timeout with a dedicated staging test actor, then provide a sanitized status/timing receipt. After the human privately supplies an authorized credential/OTP handoff or supported secure helper, Codex can verify the session lifecycle against deployed cookie/CSRF/callback contracts. Preserve production dormancy and V4.1 authority."
+      "next_owner_action": "Main deploys exact reviewed bundle, fixes HTTP publisher/equal-revision terminal delivery, and supplies process receipt/two private actors; Codex executes authenticated browser acceptance. No closure from local fixtures."
     },
     {
       "snapshot_id": "P21-K040",
@@ -2044,11 +2079,12 @@
         "apps/web/data.js",
         "docs/p21-web/evidence/20261012-staging-review/STAGING-READONLY-20261012.md",
         "docs/p21-web/evidence/20261013-staging-browser/https-readonly-probes.json",
-        "docs/p21-web/REALTIME-CONTRACT-AND-INTEGRATION-GAPS-20261013.md"
+        "docs/p21-web/REALTIME-CONTRACT-AND-INTEGRATION-GAPS-20261013.md",
+        "docs/p21-web/REALTIME-BROWSER-CHECKPOINT-20261013.md: scoped reader/account deadline (4a9c29c/2887b0cd; local synthetic only)"
       ],
       "evidence_boundary": "Only the staging frontend has been identified and loaded. No authenticated match, WebSocket/realtime route, reconnect, resume, replay or HTTP fallback was exercised; API/server boot SHA and Core authority are unverified. 2026-10-13 superseding context: staging HTTPS reachable/co-located; frontend still8167/f485. Real authenticated browser acceptance pending human handoff, candidate deployment and precise account-reentry spinner diagnosis.",
       "remaining_whole_condition": "No serving V5 staging result demonstrates WebSocket reconnect/resume/replay behavior or idempotent settlement against Core.",
-      "next_owner_action": "Main: after pinning the actual staging API/Core revision and enabling approved test actors, create and accept a real staged match, then exercise reconnect, resume, replay/idempotency and HTTP fallback through existing contracts. Confirm Core remains the sole match/economy writer and no duplicate settlement occurs; keep production dormant and V4.1 unchanged."
+      "next_owner_action": "Main deploys exact reviewed bundle, fixes HTTP publisher/equal-revision terminal delivery, and supplies process receipt/two private actors; Codex executes authenticated browser acceptance. No closure from local fixtures."
     },
     {
       "snapshot_id": "P21-K105",
@@ -3845,11 +3881,12 @@
         "docs/p21-web/ROUTES-AND-FLOWS.md",
         "docs/p21-web/evidence/20261012-staging-review/STAGING-READONLY-20261012.md",
         "docs/p21-web/evidence/20261013-staging-browser/https-readonly-probes.json",
-        "docs/p21-web/REALTIME-CONTRACT-AND-INTEGRATION-GAPS-20261013.md"
+        "docs/p21-web/REALTIME-CONTRACT-AND-INTEGRATION-GAPS-20261013.md",
+        "docs/p21-web/REALTIME-BROWSER-CHECKPOINT-20261013.md: scoped reader/account deadline (4a9c29c/2887b0cd; local synthetic only)"
       ],
       "evidence_boundary": "Only static frontend identity and anonymous page rendering were verified on staging. No authenticated match creation, turn submission, reconnect/resume or result through Core was observed; backend boot identity is unverified. 2026-10-13 superseding context: staging HTTPS reachable/co-located; frontend still8167/f485. Real authenticated browser acceptance pending human handoff, candidate deployment and precise account-reentry spinner diagnosis.",
       "remaining_whole_condition": "The Core realtime route has no verified staging run through match creation, turns, reconnect and result.",
-      "next_owner_action": "Main: pin the staging API/Core revision and connect dedicated staging actors through website and native clients; create/accept a match, submit moves, reconnect/resume and settle using existing server contracts. Verify Core state and no duplicate effects; leave production dormant and V4.1 unchanged."
+      "next_owner_action": "Main deploys exact reviewed bundle, fixes HTTP publisher/equal-revision terminal delivery, and supplies process receipt/two private actors; Codex executes authenticated browser acceptance. No closure from local fixtures."
     },
     {
       "snapshot_id": "P21-K188",

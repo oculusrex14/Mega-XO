@@ -10,6 +10,7 @@ import {getOfflineState, prepareOffline, removeOffline} from './offline.js';
 import {createReadModel, createProfileEditor, readJSON, authRequired, errorCopy} from './data.js';
 import {legalDocuments} from './legal-documents.js';
 import {createFriendsController} from './friends.js';
+import {createRealtimeReader, canApplyMatchSnapshot} from './realtime.js';
 
 let board=null;
 let tab='ranked';
@@ -34,6 +35,13 @@ let activePath='',leaderboardTimer,accountChallenge='',resetReady=false,serviceB
 let boundOnlineActor=null,hydratingMatch='';
 let offlineBusy=false,offlineRevision=0;
 let onlineState={status:'idle',match:null,invitation:null,message:''};
+let settledProfileRefresh='',onlineSnapshotVersion=0;
+const realtime=createRealtimeReader({
+ getContext:()=>normalizedPath()==='/game'&&context.sessionStatus==='linked'&&visibleMatch()?.status==='PLAYING'?{actorId:context.profile.id,match:onlineState.match,epoch:onlineRevision,session:globalThis.MegaAccount.peek?.()}:null,
+ request:(path,body)=>globalThis.MegaAccount.request(path,body),
+ receive:snapshot=>acceptOnlineSnapshot(snapshot,onlineRevision,context.profile?.id,snapshot.id),
+ changed:()=>updateOnlineControls(),onAuthRequired:()=>handleOnlineError(Error('AUTH_REQUIRED')),
+});
 try{const saved=JSON.parse(localStorage.getItem('mega-xoxo-sponsor-interests')||'null');if(saved?.consent===true)context.sponsorPreferences=saved;}catch{}
 
 function header(path){document.querySelector('#header').innerHTML=renderHeader(path,context);}
@@ -68,6 +76,7 @@ function render({focus=false}={}){
  if(path==='/store'&&context.products.status!=='error')main.querySelector('[data-store-products]')?.insertAdjacentHTML('afterend','<div class="pg-actions"><button class="mx-button secondary" data-store-action="refresh">Check store availability</button></div>');
  if(path==='/account'&&context.sessionStatus==='guest'&&!context.providersLoaded){main.querySelector('.pg-auth-card')?.insertAdjacentHTML('beforeend','<button class="mx-button secondary" type="button" data-account-action="options">Check sign-in options</button>');}
  if(path==='/settings')refreshOfflineControls();
+ realtime.sync();
  if(focus){main.focus({preventScroll:true});window.scrollTo(0,0);}
 }
 function renderProfileEditorView(){
@@ -136,11 +145,12 @@ document.addEventListener('keydown',event=>{
 });
 function activate(){
  const path=normalizedPath();
- if(path!==activePath){activePath=path;clearInterval(leaderboardTimer);clearInterval(onlineTimer);onlineRevision++;
+ if(path!==activePath){activePath=path;clearInterval(leaderboardTimer);clearInterval(onlineTimer);onlineRevision++;realtime.stop();
   if(path==='/store'&&context.sessionStatus==='linked')refreshProducts();
   if(path==='/leaderboard'){model.leaderboard();leaderboardTimer=setInterval(()=>{if(!document.hidden&&context.leaderboard.status==='ready')model.leaderboard();},30000);}
   if(path==='/game'&&['queued','waiting','playing'].includes(onlineState.status))startOnlinePolling();
  }
+ realtime.sync();
 }
 async function accountAction(task){
  if(serviceBusy)return;serviceBusy=true;context.accountBusy=true;context.accountMessage='';render();
@@ -148,7 +158,7 @@ async function accountAction(task){
  finally{serviceBusy=false;context.accountBusy=false;render();}
 }
 async function linkedAccount(){
- accountChallenge='';resetReady=false;context.accountView='email';globalThis.MegaAccount.reset();
+ accountChallenge='';resetReady=false;context.accountView='email';onlineRevision++;realtime.stop();globalThis.MegaAccount.reset();
  await model.profile();if(context.sessionStatus==='linked')context.accountMessage='Your profile is ready.';
 }
 async function refreshProducts(){
@@ -174,54 +184,69 @@ function updateOnlineControls(){
  if(state.message&&linked)controls+='<button class="mx-button secondary" data-online-action="retry">Retry connection</button>';
  if(state.match&&linked)controls=state.match.status==='PLAYING'?'<p>Your match is live. Moves are confirmed by the game service.</p>':'<button class="mx-button secondary" data-online-action="new">Choose your next match</button>';
  if(state.match&&linked&&state.message)controls+='<button class="mx-button secondary" data-online-action="retry">Retry connection</button>';
- region.innerHTML=`<h2 id="online-title">Bring your strategy online.</h2><p class="mx-muted">One profile. The same Ranked and Casual competition.</p>${controls}<p role="status" class="mx-online-message">${escapeHtml(state.message)}</p>`;
+ const connection=state.match?.status==='PLAYING'?({live:'Live updates connected.',connecting:'Connecting live updates. Match checks continue.',fallback:'Live updates interrupted. Match checks continue.'}[realtime.status()]||'Checking the latest match.') : '';
+ region.innerHTML=`<h2 id="online-title">Bring your strategy online.</h2><p class="mx-muted">One profile. The same Ranked and Casual competition.</p>${controls}<p role="status" class="mx-online-message">${escapeHtml(state.message||connection)}</p>`;
 }
 function synchronizeGameProfile(){
  const actor=context.sessionStatus==='linked'?context.profile?.id:null;
- if(context.sessionStatus==='loading'){header('/game');updateOnlineControls();return;}
+ if(context.sessionStatus==='loading'){realtime.stop();header('/game');updateOnlineControls();return;}
  if(boundOnlineActor&&actor!==boundOnlineActor){onlineRevision++;clearInterval(onlineTimer);onlineState.status=actor?'idle':'auth';if(actor&&!onlineState.match?.players?.includes(actor))onlineState.match=null;render();}
  if(actor&&typeof context.profile.activeMatch==='string'&&context.profile.activeMatch&&(!onlineState.match||onlineState.match.id!==context.profile.activeMatch))hydrateMatch(context.profile.activeMatch,actor);
  else if(actor&&visibleMatch()&&boundOnlineActor!==actor){onlineRevision++;onlineState.status='playing';render();startOnlinePolling();}
- header('/game');updateOnlineControls();
+ realtime.sync();header('/game');updateOnlineControls();
 }
 async function hydrateMatch(id,actor){
- const revision=onlineRevision,stamp=actor+':'+id+':'+revision;if(hydratingMatch===stamp)return;hydratingMatch=stamp;
- try{const match=await globalThis.MegaNetwork.match(id);if(revision!==onlineRevision||normalizedPath()!=='/game'||context.sessionStatus!=='linked'||context.profile?.id!==actor)return;reconcileMatch(match,true);}catch(error){if(revision===onlineRevision)handleOnlineError(error);}finally{if(hydratingMatch===stamp)hydratingMatch='';}
+ const revision=onlineRevision,session=globalThis.MegaAccount.peek?.(),stamp=actor+':'+id+':'+revision;if(hydratingMatch===stamp)return;hydratingMatch=stamp;
+ try{const match=await globalThis.MegaNetwork.match(id);if(!onlineBindingCurrent(revision,actor,session)||(onlineState.match&&onlineState.match.id!==id))return;reconcileMatch(match,true);}catch(error){if(onlineBindingCurrent(revision,actor,session))handleOnlineError(error);}finally{if(hydratingMatch===stamp)hydratingMatch='';}
 }
 function visibleMatch(){return context.sessionStatus==='linked'&&onlineState.match?.players?.includes(context.profile?.id)?onlineState.match:null;}
 function handleOnlineError(error){
  onlineState.message=errorCopy(error);
- if(authRequired(error)){clearInterval(onlineTimer);onlineState.status='auth';onlineRevision++;model.invalidate();context.profile=null;context.sessionStatus='guest';render();}
+ if(authRequired(error)){clearInterval(onlineTimer);realtime.stop();onlineState.status='auth';onlineRevision++;model.invalidate();context.profile=null;context.sessionStatus='guest';render();}
  updateOnlineControls();
 }
-function acceptOnlineSnapshot(snapshot,revision,actor,id){
- if(revision!==onlineRevision||normalizedPath()!=='/game'||context.sessionStatus!=='linked'||context.profile?.id!==actor||onlineState.match?.id!==id)return false;
+function onlineBindingCurrent(revision,actor,session){return revision===onlineRevision&&normalizedPath()==='/game'&&context.sessionStatus==='linked'&&context.profile?.id===actor&&(session===undefined||session===globalThis.MegaAccount.peek?.());}
+function acceptOnlineSnapshot(snapshot,revision,actor,id,session){
+ if(!onlineBindingCurrent(revision,actor,session)||onlineState.match?.id!==id)return false;
+ if(!canApplyMatchSnapshot(snapshot,onlineState.match,actor,id))return false;
  if(!board?.receive(snapshot))return false;
- onlineState.match=snapshot;onlineState.message='';return true;
+ onlineState.match=snapshot;onlineState.message='';onlineSnapshotVersion++;realtime.record(snapshot);
+ if(['FINISHED','VOID'].includes(snapshot.status))finishOnlineMatch();
+ updateOnlineControls();return true;
 }
-async function sendOnlineMove(operation){const revision=onlineRevision,actor=context.profile?.id;await globalThis.MegaNetwork.move(operation.id,operation.revision,operation.move,operation.key);const match=await globalThis.MegaNetwork.match(operation.id);return acceptOnlineSnapshot(match,revision,actor,operation.id)?match:null;}
-async function sendOnlineResign(operation){if(!globalThis.confirm('Resign this match? This counts as a loss. The agreed pot and any Ranked rating change settle normally.'))return false;const revision=onlineRevision,actor=context.profile?.id;await globalThis.MegaNetwork.resign(operation.id,operation.key);const match=await globalThis.MegaNetwork.match(operation.id);return acceptOnlineSnapshot(match,revision,actor,operation.id)?match:null;}
+function finishOnlineMatch(){
+ onlineState.status='finished';onlineState.invitation=null;clearInterval(onlineTimer);realtime.stop();
+ const stamp=context.profile?.id+':'+onlineState.match?.id;
+ if(stamp!==settledProfileRefresh){settledProfileRefresh=stamp;model.profile();}
+}
+async function sendOnlineMove(operation){const revision=onlineRevision,actor=context.profile?.id,session=globalThis.MegaAccount.peek?.();if(!onlineBindingCurrent(revision,actor,session)||visibleMatch()?.id!==operation.id||visibleMatch()?.status!=='PLAYING')throw Error('SERVICE_UNAVAILABLE');await globalThis.MegaNetwork.move(operation.id,operation.revision,operation.move,operation.key);if(!onlineBindingCurrent(revision,actor,session))return null;const match=await globalThis.MegaNetwork.match(operation.id);return acceptOnlineSnapshot(match,revision,actor,operation.id,session)?match:null;}
+async function sendOnlineResign(operation){const revision=onlineRevision,actor=context.profile?.id,session=globalThis.MegaAccount.peek?.();if(!onlineBindingCurrent(revision,actor,session)||visibleMatch()?.id!==operation.id||visibleMatch()?.status!=='PLAYING')throw Error('SERVICE_UNAVAILABLE');if(!globalThis.confirm('Resign this match? This counts as a loss. The agreed pot and any Ranked rating change settle normally.'))return false;await globalThis.MegaNetwork.resign(operation.id,operation.key);if(!onlineBindingCurrent(revision,actor,session))return null;const match=await globalThis.MegaNetwork.match(operation.id);return acceptOnlineSnapshot(match,revision,actor,operation.id,session)?match:null;}
 function reconcileMatch(snapshot,accepted=false){
  if(!snapshot?.players?.includes(context.profile?.id))throw Error('AUTH_REQUIRED');
- if(snapshot.status==='PLAYING'){onlineState.match=snapshot;onlineState.status='playing';render();startOnlinePolling();}
- else if(['FINISHED','VOID'].includes(snapshot.status)){onlineState.match=snapshot;onlineState.invitation=null;onlineState.status='finished';clearInterval(onlineTimer);render();}
+ if(onlineState.match?.id===snapshot.id&&!['PLAYING','FINISHED','VOID'].includes(snapshot.status))return;
+ if(['PLAYING','FINISHED','VOID'].includes(snapshot.status)){
+  if(!canApplyMatchSnapshot(snapshot,onlineState.match?.id===snapshot.id?onlineState.match:null,context.profile.id,snapshot.id))return;
+  if(onlineState.match?.id===snapshot.id&&board){acceptOnlineSnapshot(snapshot,onlineRevision,context.profile.id,snapshot.id);return;}
+  onlineState.match=snapshot;onlineSnapshotVersion++;onlineState.status=snapshot.status==='PLAYING'?'playing':'finished';render();
+  if(snapshot.status==='PLAYING')startOnlinePolling();else finishOnlineMatch();
+ }
  else if(snapshot.status==='OFFERED'){onlineState.invitation=snapshot;onlineState.status=accepted?'waiting':'review';if(!accepted)clearInterval(onlineTimer);}
  else{onlineState.match=null;onlineState.invitation=null;onlineState.status='idle';onlineState.message='This invitation is complete. Search again when you are ready.';clearInterval(onlineTimer);}
 }
-function startOnlinePolling(){clearInterval(onlineTimer);onlineTimer=setInterval(()=>{if(!document.hidden)pollOnline();},2500);}
+function startOnlinePolling(){clearInterval(onlineTimer);if(onlineState.match&&onlineState.match.status!=='PLAYING')return;onlineTimer=setInterval(()=>{if(!document.hidden)pollOnline();},2500);}
 async function pollOnline(){
  if(onlineBusy||normalizedPath()!=='/game'||context.sessionStatus!=='linked')return;
- const revision=onlineRevision;onlineBusy=true;
+ const revision=onlineRevision,actor=context.profile.id,session=globalThis.MegaAccount.peek?.(),readVersion=onlineSnapshotVersion;onlineBusy=true;
  try{
-  if(onlineState.match){const id=onlineState.match.id,actor=context.profile.id;const match=await globalThis.MegaNetwork.match(id);if(!acceptOnlineSnapshot(match,revision,actor,id))return;if(match.status!=='PLAYING'){onlineState.status='finished';clearInterval(onlineTimer);}}
-  else{const queue=await globalThis.MegaNetwork.queueStatus();if(revision!==onlineRevision)return;
+  if(onlineState.match){const id=onlineState.match.id;const match=await globalThis.MegaNetwork.match(id);if(!acceptOnlineSnapshot(match,revision,actor,id,session))return;}
+  else{const queue=await globalThis.MegaNetwork.queueStatus();if(!onlineBindingCurrent(revision,actor,session))return;
    const id=onlineState.status==='waiting'?onlineState.invitation?.id:queue?.matchId;
-   if(id){const snapshot=await globalThis.MegaNetwork.match(id);if(revision!==onlineRevision||context.sessionStatus!=='linked')return;reconcileMatch(snapshot,onlineState.status==='waiting');}
+   if(id){const snapshot=await globalThis.MegaNetwork.match(id);if(!onlineBindingCurrent(revision,actor,session))return;reconcileMatch(snapshot,onlineState.status==='waiting');}
    else if(queue?.state==='idle'){onlineState.status='idle';onlineState.message='No entry was charged. Search again when you are ready.';clearInterval(onlineTimer);}
-   else{const invites=await globalThis.MegaNetwork.invitations();if(revision!==onlineRevision)return;const invitation=Array.isArray(invites)?invites.find(m=>m.terms?.source==='queue'&&m.players?.includes(context.profile.id)):null;if(invitation)reconcileMatch(invitation,false);}
+   else{const invites=await globalThis.MegaNetwork.invitations();if(!onlineBindingCurrent(revision,actor,session))return;const invitation=Array.isArray(invites)?invites.find(m=>m.terms?.source==='queue'&&m.players?.includes(context.profile.id)):null;if(invitation)reconcileMatch(invitation,false);}
 
   }
- }catch(error){if(revision===onlineRevision){handleOnlineError(error);clearInterval(onlineTimer);}}
+ }catch(error){if(revision===onlineRevision&&context.profile?.id===actor&&(session===undefined||session===globalThis.MegaAccount.peek?.()||(authRequired(error)&&globalThis.MegaAccount.peek?.()==null))){if(authRequired(error)&&readVersion!==onlineSnapshotVersion)model.profile();else{handleOnlineError(error);clearInterval(onlineTimer);}}}
  finally{onlineBusy=false;if(revision===onlineRevision)updateOnlineControls();}
 }
 function syncProfileDraft(form){if(form&&profileEditor.updateDraft(profileFormDraft(form))){const message=form.querySelector('[data-profile-message]');if(message){message.textContent='';message.hidden=true;}}}
@@ -276,13 +301,13 @@ document.addEventListener('click',event=>{
   if(action==='retry')model.profile();
   if(action==='options')accountAction(async()=>{const session=await globalThis.MegaAccount.session();context.providers=session.providers||{};context.providersLoaded=true;if(session.linked)await model.profile();else context.accountMessage='Choose an available sign-in method.';});
   if(action==='provider')accountAction(async()=>{const session=await globalThis.MegaAccount.session();if(session.providers?.[account.dataset.provider]?.web!==true)throw Error('PROVIDER_NOT_CONFIGURED');const result=await globalThis.MegaAccount.request('/api/account/start',{provider:account.dataset.provider,intent:'login'});const url=new URL(result.url);if(url.protocol!=='https:')throw Error('SERVICE_UNAVAILABLE');location.assign(url.href);});
-  if(action==='logout')accountAction(async()=>{await globalThis.MegaAccount.request('/api/account/logout',{});globalThis.MegaAccount.reset();model.invalidate();context.profile=null;resetReady=false;accountChallenge='';context.sessionStatus='guest';context.accountMessage='You are signed out.';context.products.purchasesAvailable=false;onlineState={status:'idle',match:null,invitation:null,message:''};clearInterval(onlineTimer);onlineRevision++;});
+  if(action==='logout')accountAction(async()=>{await globalThis.MegaAccount.request('/api/account/logout',{});globalThis.MegaAccount.reset();model.invalidate();context.profile=null;resetReady=false;accountChallenge='';context.sessionStatus='guest';context.accountMessage='You are signed out.';context.products.purchasesAvailable=false;onlineState={status:'idle',match:null,invitation:null,message:''};clearInterval(onlineTimer);onlineRevision++;realtime.stop();});
  }
  if(event.target.closest('[data-sponsor-action="clear"]')){try{localStorage.removeItem('mega-xoxo-sponsor-interests');}catch{}context.sponsorPreferences={};context.sponsorMessage='Saved choices cleared.';render();}
  const store=event.target.closest('[data-store-action]');if(store){if(store.dataset.storeAction==='refresh')refreshProducts();else if(store.dataset.storeAction==='purchase'&&context.products.purchasesAvailable&&!serviceBusy){accountAction(async()=>{const actor=context.profile?.id,id=store.dataset.productId,row=context.products.rows.find(x=>x.id===id);if(!actor||!row?.enabled||!row.localizedPrice)throw Error('STORE_UNAVAILABLE');const evidence=await globalThis.MegaBilling.purchase(id,context.products.storeContext);if(actor!==context.profile?.id)throw Error('AUTH_REQUIRED');const delivered=await globalThis.MegaNetwork.purchase(evidence,globalThis.MegaAccount.id());await globalThis.MegaBilling.finish?.(evidence,delivered);await model.profile();await refreshProducts();notify('Verified purchase delivered.');});}}
  const online=event.target.closest('[data-online-action]');if(online&&!onlineBusy){const action=online.dataset.onlineAction;
-  if(action==='retry'){startOnlinePolling();pollOnline();return;}
-  if(action==='new'){onlineState={status:'idle',match:null,invitation:null,message:''};clearInterval(onlineTimer);render();return;}
+  if(action==='retry'){realtime.reconnect();startOnlinePolling();pollOnline();return;}
+  if(action==='new'){onlineRevision++;realtime.stop();onlineState={status:'idle',match:null,invitation:null,message:''};clearInterval(onlineTimer);render();return;}
   onlineBusy=true;onlineState.message='';updateOnlineControls();const revision=onlineRevision;
   (async()=>{try{
    const net=globalThis.MegaNetwork,key=globalThis.MegaAccount.id();
@@ -293,9 +318,9 @@ document.addEventListener('click',event=>{
   }catch(error){if(revision===onlineRevision)handleOnlineError(error);}finally{onlineBusy=false;if(revision===onlineRevision)updateOnlineControls();}})();
  }
 });
-window.addEventListener('focus',()=>{if(context.sessionStatus==='linked')model.profile().then(()=>{if(normalizedPath()==='/game'&&visibleMatch()){startOnlinePolling();pollOnline();}});});
-window.addEventListener('online',()=>{if(normalizedPath()==='/game'&&context.sessionStatus==='linked'){startOnlinePolling();pollOnline();}});
-window.addEventListener('pagehide',event=>{onlineRevision++;event.persisted?model.invalidate():model.destroy();event.persisted?profileEditor.deactivate():profileEditor.destroy();event.persisted?friendsController.deactivate():friendsController.destroy();clearInterval(leaderboardTimer);clearInterval(onlineTimer);board?.destroy();});
+window.addEventListener('focus',()=>{if(context.sessionStatus==='linked')model.profile().then(()=>{if(normalizedPath()==='/game'&&visibleMatch()?.status==='PLAYING'){startOnlinePolling();pollOnline();}});});
+window.addEventListener('online',()=>{if(normalizedPath()==='/game'&&context.sessionStatus==='linked'){realtime.reconnect();startOnlinePolling();pollOnline();}});
+window.addEventListener('pagehide',event=>{onlineRevision++;realtime.stop();event.persisted?model.invalidate():model.destroy();event.persisted?profileEditor.deactivate():profileEditor.destroy();event.persisted?friendsController.deactivate():friendsController.destroy();clearInterval(leaderboardTimer);clearInterval(onlineTimer);board?.destroy();});
 window.addEventListener('popstate',event=>{event.state?.mxOfflineFallback?main.setAttribute?.('data-offline-fallback',''):main.removeAttribute?.('data-offline-fallback');render({focus:true});activate();});
-window.addEventListener('pageshow',event=>{if(event.persisted){activePath='';render();activate();if(context.sessionStatus==='linked')model.profile();}});
+window.addEventListener('pageshow',event=>{if(event.persisted){activePath='';render();activate();if(['linked','loading','error'].includes(context.sessionStatus))model.profile();}});
 render();activate();model.profile().then(()=>{if(normalizedPath()==='/store'&&context.sessionStatus==='linked')refreshProducts();});

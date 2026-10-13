@@ -64,6 +64,51 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
+  browser-realtime:
+    needs: static-website
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, firefox, webkit]
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '24'
+      - name: Install isolated pinned browser tooling
+        run: npm install --prefix .artifacts/p21-browser-qa --no-package-lock --no-save --ignore-scripts playwright@1.62.1
+      - name: Install selected browser and system libraries
+        run: .artifacts/p21-browser-qa/node_modules/.bin/playwright install --with-deps ${{ matrix.browser }}
+      - name: Verify exact build with synthetic HTTP and real loopback WS/WSS
+        run: |
+          node scripts/p21/build-web.js
+          node - <<'NODE'
+          const fs = require('node:fs');
+          const {spawnSync} = require('node:child_process');
+          const manifest = JSON.parse(fs.readFileSync('.artifacts/p21-web/web-build.manifest.json', 'utf8'));
+          const result = spawnSync(process.execPath, ['scripts/p21/realtime-qa.cjs',
+            '--bundle', '.artifacts/p21-web', '--expect-source', manifest.source_commit,
+            '--expect-bundle', manifest.bundle_sha256, '--browser', process.env.P21_QA_BROWSER,
+            '--output-root', 'tests-output/p21-realtime/' + process.env.P21_QA_BROWSER], {stdio: 'inherit'});
+          if (result.error) throw result.error;
+          process.exit(result.status ?? 1);
+          NODE
+        env:
+          NODE_PATH: ${{ github.workspace }}/.artifacts/p21-browser-qa/node_modules
+          P21_QA_BROWSER: ${{ matrix.browser }}
+      - name: Retain sanitized synthetic transport evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: p21-web-realtime-${{ matrix.browser }}-${{ github.sha }}
+          path: tests-output/p21-realtime/${{ matrix.browser }}/
+          if-no-files-found: error
+          retention-days: 14
+
   browser-presentation:
     needs: static-website
     runs-on: ubuntu-latest

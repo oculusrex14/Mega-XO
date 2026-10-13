@@ -1,0 +1,411 @@
+{
+  "schema_version": 1,
+  "checked_at": "2026-10-13T05:31:35.029Z",
+  "source_commit": "4a9c29c789f743dcdcf76d5aea3ed4c47d4a9437",
+  "bundle_sha256": "2887b0cd9723513792af01d71412ee94040f2f2dcfc9277a52fe7612733eb9e6",
+  "browser_engine": "chromium",
+  "runtime_version": "v26.8.2",
+  "playwright_version": "1.62.1",
+  "command": "env -u NODE_OPTIONS NODE_PATH='/Users/oculus/Downloads/Test XO/.artifacts/p21-browser-qa/node_modules' '/Users/oculus/.hermes/node/bin/node' scripts/p21/realtime-qa.cjs --bundle '/Users/oculus/.codex/worktrees/v51-website-publish/Test XO/.artifacts/p21-realtime-20261013/web' --expect-source 4a9c29c789f743dcdcf76d5aea3ed4c47d4a9437 --expect-bundle 2887b0cd9723513792af01d71412ee94040f2f2dcfc9277a52fe7612733eb9e6 --browser chromium --output-root '/Users/oculus/.codex/worktrees/v51-website-publish/Test XO/.artifacts/realtime-qa-output/chromium'",
+  "qa_script_sha256": "f220f9a29ebf91236091d318e82264a77d3a27388484ab3e08a9247f6344b1ce",
+  "environment": "Local loopback HTTP and isolated self-signed HTTPS only; checksum-verified immutable artifact snapshot; all foreign browser origins blocked.",
+  "fixture_boundary": "Synthetic linked actors, account session, CSRF values, ticket grants, match DTOs and HTTP endpoints exist only in test memory. No user account, provider, production API or authenticated staging service was contacted.",
+  "isolated_payload_snapshot": true,
+  "target": "Synthetic browser fixture served from loopback only; HTTP and isolated self-signed HTTPS/WSS when OpenSSL is available.",
+  "artifact_manifest_sha256": "c50175bd6fbb2b0db35ad48f0d2388ead32c024fd958b30e49a7da0526f512c3",
+  "verified_payload_files": 153,
+  "verified_payload_bytes": 3542005,
+  "rollback": "No API or production target writes. Temporary browser servers, contexts, verified snapshot, and local TLS key files are removed at exit; report remains in the selected output directory.",
+  "checks": [
+    {
+      "id": "P21-REALTIME-LOOPBACK-CSP-AND-SAME-ORIGIN",
+      "result": "PASS",
+      "csp_connect_src": "'self'",
+      "broad_connect_wildcard": false,
+      "browser_engines_tested": "chromium"
+    },
+    {
+      "id": "P21-REALTIME-ACTUAL-LOCAL-WEBSOCKET-HANDSHAKE",
+      "result": "PASS",
+      "successful_handshakes": 2,
+      "ticket_redeems": 2
+    },
+    {
+      "id": "P21-REALTIME-ACK-DELTA-DO-NOT-ADVANCE",
+      "result": "PASS",
+      "displayed_move_count_before": "0 moves played",
+      "displayed_move_count_after": "0 moves played",
+      "complete_snapshot_recoveries": 2
+    },
+    {
+      "id": "P21-REALTIME-HTTP-ONLY-MUTATION",
+      "result": "PASS",
+      "http_move_post_seen": true,
+      "csrf_header_present": true,
+      "idempotency_header_present": true,
+      "websocket_mutation_operations": 0
+    },
+    {
+      "id": "P21-REALTIME-TWO-CONTEXT-PUSH-WITHOUT-POLL",
+      "result": "PASS",
+      "contexts_updated": 2,
+      "push_latency_ms": 4,
+      "second_context_match_http_reads_during_push": 0,
+      "polling_hidden_in_test_contexts": true
+    },
+    {
+      "id": "P21-REALTIME-BOARD-REFLOW-320",
+      "result": "PASS",
+      "viewport_width": 320,
+      "scroll_width": 320,
+      "board_left": 23,
+      "board_right": 297,
+      "board_width": 274
+    },
+    {
+      "id": "P21-REALTIME-BOARD-REFLOW-390",
+      "result": "PASS",
+      "viewport_width": 390,
+      "scroll_width": 390,
+      "board_left": 23,
+      "board_right": 367,
+      "board_width": 344
+    },
+    {
+      "id": "P21-REALTIME-RECONNECT-FRESH-TICKET-RESUME",
+      "result": "PASS",
+      "fresh_grants_issued": 2,
+      "resumed_contexts": 2,
+      "ack_and_full_snapshot_revisions_equal": true,
+      "full_snapshots_match_synthetic_authority": true
+    },
+    {
+      "id": "P21-REALTIME-ROUTE-FENCE",
+      "result": "PASS",
+      "route_after_stale_frame": "/play",
+      "stale_match_view_recreated": false,
+      "tickets_after_route_exit": 0
+    },
+    {
+      "id": "P21-REALTIME-LOGOUT-SESSION-FENCE",
+      "result": "PASS",
+      "signed_out_game_has_no_prior_match_identity": true,
+      "tickets_after_logout": 0
+    },
+    {
+      "id": "P21-REALTIME-ACTOR-SESSION-FENCE",
+      "result": "PASS",
+      "old_actor_match_hidden": true,
+      "profile_reads": 2
+    }
+  ],
+  "failures": [
+    {
+      "id": "P21-REALTIME-RUNNER-ERROR",
+      "result": "FAIL",
+      "error_name": "TimeoutError",
+      "message": "locator.waitFor: Timeout 6000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByText('Match finished') to be visible\u001b[22m\n"
+    }
+  ],
+  "api_fixture_summary": null,
+  "websocket_fixture_summary": null,
+  "screenshots": [],
+  "limitations": [
+    "Synthetic software/browser acceptance only; it does not establish authenticated staging, physical-device, provider, production or release acceptance."
+  ],
+  "browser_version": "151.0.7922.34",
+  "fixture_diagnostics": {
+    "api_requests": [
+      {
+        "method": "GET",
+        "path": "/api/v1/profile",
+        "field_names": [],
+        "csrf_header_present": false,
+        "idempotency_header_present": false
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/match/fixture-push-match",
+        "field_names": [],
+        "csrf_header_present": false,
+        "idempotency_header_present": false
+      },
+      {
+        "method": "GET",
+        "path": "/api/account/session",
+        "field_names": [],
+        "csrf_header_present": false,
+        "idempotency_header_present": false
+      },
+      {
+        "method": "POST",
+        "path": "/api/v1/ticket",
+        "field_names": [
+          "matchScope"
+        ],
+        "csrf_header_present": true,
+        "idempotency_header_present": true
+      },
+      {
+        "method": "GET",
+        "path": "/realtime/v1/snapshot",
+        "field_names": [],
+        "csrf_header_present": false,
+        "idempotency_header_present": false
+      },
+      {
+        "method": "GET",
+        "path": "/realtime/v1/snapshot",
+        "field_names": [],
+        "csrf_header_present": false,
+        "idempotency_header_present": false
+      },
+      {
+        "method": "GET",
+        "path": "/realtime/v1/snapshot",
+        "field_names": [],
+        "csrf_header_present": false,
+        "idempotency_header_present": false
+      },
+      {
+        "method": "POST",
+        "path": "/api/v1/move",
+        "field_names": [
+          "id",
+          "move",
+          "revision"
+        ],
+        "csrf_header_present": true,
+        "idempotency_header_present": true
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/match/fixture-push-match",
+        "field_names": [],
+        "csrf_header_present": false,
+        "idempotency_header_present": false
+      },
+      {
+        "method": "GET",
+        "path": "/realtime/v1/snapshot",
+        "field_names": [],
+        "csrf_header_present": false,
+        "idempotency_header_present": false
+      },
+      {
+        "method": "POST",
+        "path": "/api/v1/ticket",
+        "field_names": [
+          "matchScope"
+        ],
+        "csrf_header_present": true,
+        "idempotency_header_present": true
+      },
+      {
+        "method": "GET",
+        "path": "/realtime/v1/snapshot",
+        "field_names": [],
+        "csrf_header_present": false,
+        "idempotency_header_present": false
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/profile",
+        "field_names": [],
+        "csrf_header_present": false,
+        "idempotency_header_present": false
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/match/fixture-push-match",
+        "field_names": [],
+        "csrf_header_present": false,
+        "idempotency_header_present": false
+      },
+      {
+        "method": "GET",
+        "path": "/api/account/session",
+        "field_names": [],
+        "csrf_header_present": false,
+        "idempotency_header_present": false
+      },
+      {
+        "method": "POST",
+        "path": "/api/v1/ticket",
+        "field_names": [
+          "matchScope"
+        ],
+        "csrf_header_present": true,
+        "idempotency_header_present": true
+      },
+      {
+        "method": "GET",
+        "path": "/realtime/v1/snapshot",
+        "field_names": [],
+        "csrf_header_present": false,
+        "idempotency_header_present": false
+      },
+      {
+        "method": "GET",
+        "path": "/realtime/v1/snapshot",
+        "field_names": [],
+        "csrf_header_present": false,
+        "idempotency_header_present": false
+      },
+      {
+        "method": "GET",
+        "path": "/realtime/v1/snapshot",
+        "field_names": [],
+        "csrf_header_present": false,
+        "idempotency_header_present": false
+      },
+      {
+        "method": "GET",
+        "path": "/realtime/v1/snapshot",
+        "field_names": [],
+        "csrf_header_present": false,
+        "idempotency_header_present": false
+      },
+      {
+        "method": "POST",
+        "path": "/api/v1/ticket",
+        "field_names": [
+          "matchScope"
+        ],
+        "csrf_header_present": true,
+        "idempotency_header_present": true
+      },
+      {
+        "method": "GET",
+        "path": "/realtime/v1/snapshot",
+        "field_names": [],
+        "csrf_header_present": false,
+        "idempotency_header_present": false
+      },
+      {
+        "method": "POST",
+        "path": "/api/account/logout",
+        "field_names": [],
+        "csrf_header_present": true,
+        "idempotency_header_present": true
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/profile",
+        "field_names": [],
+        "csrf_header_present": false,
+        "idempotency_header_present": false
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/match/fixture-actor-fence-match",
+        "field_names": [],
+        "csrf_header_present": false,
+        "idempotency_header_present": false
+      },
+      {
+        "method": "GET",
+        "path": "/api/account/session",
+        "field_names": [],
+        "csrf_header_present": false,
+        "idempotency_header_present": false
+      },
+      {
+        "method": "POST",
+        "path": "/api/v1/ticket",
+        "field_names": [
+          "matchScope"
+        ],
+        "csrf_header_present": true,
+        "idempotency_header_present": true
+      },
+      {
+        "method": "GET",
+        "path": "/realtime/v1/snapshot",
+        "field_names": [],
+        "csrf_header_present": false,
+        "idempotency_header_present": false
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/profile",
+        "field_names": [],
+        "csrf_header_present": false,
+        "idempotency_header_present": false
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/profile",
+        "field_names": [],
+        "csrf_header_present": false,
+        "idempotency_header_present": false
+      },
+      {
+        "method": "GET",
+        "path": "/api/v1/match/fixture-resign-terminal",
+        "field_names": [],
+        "csrf_header_present": false,
+        "idempotency_header_present": false
+      },
+      {
+        "method": "GET",
+        "path": "/api/account/session",
+        "field_names": [],
+        "csrf_header_present": false,
+        "idempotency_header_present": false
+      },
+      {
+        "method": "POST",
+        "path": "/api/v1/ticket",
+        "field_names": [
+          "matchScope"
+        ],
+        "csrf_header_present": true,
+        "idempotency_header_present": true
+      },
+      {
+        "method": "GET",
+        "path": "/realtime/v1/snapshot",
+        "field_names": [],
+        "csrf_header_present": false,
+        "idempotency_header_present": false
+      }
+    ],
+    "socket_operation_counts": {
+      "ticket.redeem": 6,
+      "subscribe": 6,
+      "resume": 6
+    },
+    "room_heads": [
+      {
+        "status": "PLAYING",
+        "revision": 2,
+        "socket_subscriptions": 4,
+        "profile_reads": {
+          "fixture-actor-one": 1,
+          "fixture-actor-two": 1
+        }
+      },
+      {
+        "status": "PLAYING",
+        "revision": 0,
+        "socket_subscriptions": 1,
+        "profile_reads": {
+          "fixture-actor-one": 2
+        }
+      },
+      {
+        "status": "PLAYING",
+        "revision": 0,
+        "socket_subscriptions": 1,
+        "profile_reads": {
+          "fixture-actor-one": 1
+        }
+      }
+    ],
+    "secret_values_recorded": false
+  },
+  "finished_at": "2026-10-13T05:31:43.982Z",
+  "result": "FAIL",
+  "output_directory": "/Users/oculus/.codex/worktrees/v51-website-publish/Test XO/.artifacts/realtime-qa-output/chromium/2887b0cd9723/realtime-chromium/20261013053135029-60871"
+}

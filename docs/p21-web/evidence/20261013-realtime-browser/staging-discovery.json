@@ -1,0 +1,50 @@
+{
+  "evidence_id": "P21-STAGING-DISCOVERY-20261013-01",
+  "collected_at_utc": "2026-10-13 05:12:19 UTC",
+  "workspace_head": "b275b89678238f8c7a6a694953527c13c6026f8d",
+  "target_origin": "https://command.tail95c48c.ts.net",
+  "deployment": {
+    "manifest_http_status": 200,
+    "manifest_elapsed_ms": 1342,
+    "manifest_schema_version": 1,
+    "manifest_generator": "scripts/p21/build-web.js",
+    "source_commit": "f4851a568524846d981b351c659af4a9ee7479be",
+    "bundle_sha256": "8167f349fb16b303c9347ac544afc3f9c73b9ea5515b0a085a7f40a6d75f3ea3",
+    "file_count": 140,
+    "total_bytes": 3096081
+  },
+  "health": {
+    "livez_http_status": 200,
+    "livez_elapsed_ms": 1453,
+    "live": true,
+    "ready": true,
+    "status": "ok"
+  },
+  "anonymous_session_probe": {
+    "path": "/api/account/session",
+    "http_status": 200,
+    "elapsed_ms": 752,
+    "request_sent_without_cookie_header": true,
+    "response_body_recorded": false
+  },
+  "browser_observation": {
+    "browser": "Brave",
+    "route": "/account",
+    "initial_direct_load": "anonymous email/password form visible",
+    "home_to_account_reentry_ms": 204,
+    "reentry_state": "anonymous email/password form visible",
+    "reload_check_ms": 6608,
+    "reload_state_at_first_check": "Checking your account… / Restoring your current session; email/password form not visible",
+    "followup_wait_ms": 20000,
+    "followup_state": "anonymous email/password form visible",
+    "approx_reload_to_form_ms": 26608,
+    "credentials_entered": false,
+    "provider_buttons": "Google and Apple displayed disabled",
+    "screenshots_saved": false
+  },
+  "limitations": [
+    "No authenticated session, cookie, CSRF value, account identifier, or response body was recorded.",
+    "Browser network traces were not inspected; cookie-bearing restoration request timing and cause remain unverified.",
+    "No authenticated WSS, two-actor settlement, provider, or device acceptance was performed."
+  ]
+}

@@ -35,3 +35,19 @@ Every count is a real run. See `P6-BACKEND-VERIFICATION-20261013.md` for command
 - Provider delivery/alerting (monitor IDs, `read:packages`) — needs the provider console (R09).
 - Deployed RPO/RTO + provider R2/PITR retrieval — needs the production host + off-host key custody (R08).
 - Realistic production-history sizing — measured only on disposable capacity (R19/R32).
+
+## Runtime packaging / deployment reproducibility
+
+- `Dockerfile` pins the base image by immutable digest
+  (`node@sha256:d6aa754f16b3197301076f047b5def2f02ea1dbbc2ca920407d46d7ec7f87b20`), runs as the
+  non-root `node` user, has a bounded healthcheck (`/livez`), and copies only `src/ server/ deploy/
+  scripts/ packages/` + `package.json`/`index.html` (no secrets, no tests).
+- `scripts/image-smoke.sh` is the local/release smoke (read-only rootfs, `cap-drop ALL`,
+  `no-new-privileges`, `readyz` probe, root-not-writable assertion, Host/Origin 403, CSP/HttpOnly
+  checks) and passes `bash -n`.
+- `V5 release engineering` + `V5 CI official service image provenance` CI lanes build/re-verify the
+  source candidate and pin service images by digest; both are green on V5.1.
+- **Not exercised locally**: this Mac has Docker stopped and ~4.5 GB free, so a local `docker build`
+  of the app image was not run here; the image build/smoke is covered by CI and by the Oracle deploy
+  path. Deployment reproducibility (same SHA → same image digest) is asserted by the source-candidate
+  verify (deterministic content hash) + pinned base digest.

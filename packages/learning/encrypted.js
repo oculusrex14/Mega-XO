@@ -46,13 +46,23 @@ async function createWriter(destination,key,{keyId,kind='gameplay'}={}) {
  async function abort(){if(!closed){closed=true;await fh.close().catch(()=>{});}await fsp.unlink(temp).catch(e=>{if(e.code!=='ENOENT')throw e;});derived.fill(0);}
  async function finish(){
   const plainSha256=plainHash.digest('hex');
+  let linked=false;
   try {
    await frame({type:'end',records,plainSha256});await fh.sync();await fh.close();closed=true;
    // link is an atomic no-replace publication; a repeated run can never overwrite an old export.
-   await fsp.link(temp,target);await fsp.unlink(temp);
+   await fsp.link(temp,target);linked=true;await fsp.unlink(temp);
    const d=await fsp.open(dir,'r');try{await d.sync();}finally{await d.close();}
    return {records,plainSha256,cipherSha256:cipherHash.digest('hex'),bytes};
-  } catch(e){await abort();throw e;} finally{derived.fill(0);}
+  } catch(e){
+   // A failure AFTER successful publication (e.g. unlink or directory fsync) must not
+   // leave a private dataset with no DB manifest/retention receipt. Never remove an
+   // existing target on EEXIST: only unlink a path THIS invocation just published.
+   let cleanupError=null;
+   if(linked)try{await fsp.unlink(target);}catch(cleanup){if(cleanup.code!=='ENOENT')cleanupError=cleanup;}
+   await abort();
+   if(cleanupError)throw new Error('CAPTURE_POSTPUBLISH_CLEANUP_FAILED',{cause:cleanupError});
+   throw e;
+  } finally{derived.fill(0);}
  }
  return {write,finish,abort};
 }

@@ -25,3 +25,18 @@ test('oversized records, absent encryption keys and forged end records rejected'
  const {dir,key,opts}=await fixture(t),file=path.join(dir,'x');await assert.rejects(S.createWriter(file,null,opts),/CAPTURE_KEY/);const w=await S.createWriter(file,key,opts);
  await assert.rejects(w.write({data:'x'.repeat(S.MAX)}),/CAPTURE_RECORD_TOO_LARGE/);await assert.rejects(w.write({type:'end'}),/CAPTURE_RESERVED/);await w.abort();
 });
+
+test('failed directory sync after atomic publication cannot leave an untracked ciphertext',async t=>{
+ const {dir,key,opts}=await fixture(t),target=path.join(dir,'fail-after-link');
+ const w=await S.createWriter(target,key,opts);await w.write({type:'game',value:'synthetic'});
+ const original=fs.open;
+ // The file link succeeds; inject failure only at directory fsync-open, so the
+ // hardening covers post-publication errors without broad monkeypatching.
+ fs.open=async function(name,...rest){
+  if(name===dir&&rest[0]==='r'){const err=new Error('simulated directory fsync failure');err.code='EIO';throw err;}
+  return original.call(fs,name,...rest);
+ };
+ try{await assert.rejects(w.finish(),e=>e.code==='EIO');}finally{fs.open=original;}
+ await assert.rejects(fs.stat(target),e=>e.code==='ENOENT');
+ assert.equal((await fs.readdir(dir)).filter(x=>x.includes('.partial-')).length,0);
+});

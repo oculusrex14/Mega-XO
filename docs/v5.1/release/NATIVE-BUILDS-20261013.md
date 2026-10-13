@@ -69,3 +69,10 @@ cd native/android && gradle :app:assembleDebug
 xcodebuild -project native/ios/MegaXO.xcodeproj -scheme MegaXO -configuration Debug \
   -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO build
 ```
+
+## Offline bundle + client packaging (verified)
+
+`v5-p21-offline` + `v5-client-bundle` → **40/40 pass**, 0 skipped: the offline bundle serves the
+allowlisted client, the service worker/offline routes resolve, and no server authority or secret is
+bundled (the shared deterministic `scripts/v5/build-client.js` is the only packager). Native apps
+consume this exact bundle.

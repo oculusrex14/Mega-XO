@@ -54,8 +54,11 @@ browsers would. All 27 steps pass (`ok:true`, 27/27, ~29 s).
 ## Not yet exercised (honest)
 
 - Physical native devices and real provider sign-in (out of scope here; staged, provider-disabled).
-- A **complete terminal game** to settlement (this run makes one committed move then resigns). A full
-  to-terminal game with economy settlement is the next acceptance increment.
+- **Tournaments**: the V5 API mounts no tournament HTTP route (`apps/api/routes/*` has no
+  `/api/v1/tournament`); tournament execution is Core/`packages/*`-level only. Tournament acceptance
+  therefore runs through the Core service suites (`v5-p09-*`, `v5-p18-*`, `gameplay-tournament.test.js`),
+  not a browser/API flow, until a public route exists. Direct **challenges** are covered by the
+  `/api/v1/offer` step (genuine Core `COMPLETE_PLACEMENTS` refusal for unplaced actors).
 
 ## Reproduce
 

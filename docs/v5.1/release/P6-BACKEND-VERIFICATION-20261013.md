@@ -59,3 +59,20 @@ workflows now run and pass.
 - The node test runner does not self-exit on this host after some WS suites; `--test-force-exit`
   gives a clean summary and does not change any assertion. This is teardown behavior, not a test
   failure, and it is independent of the transport fix.
+
+## Additional suites executed (real disposable PG16 + Redis)
+
+| Suite | Result |
+| --- | --- |
+| `v5-p13-security` + `v5-p11-session-boundary` + `v51-audit-ticket-boundary` | **22/22 pass**, 0 skipped — deployed service-identity, session boundary, ticket boundary and negative authorization with real PG |
+| `v5-p04-services` (PG authority contention/atomicity, commands, provisioning) | **37/37 pass**, 0 skipped — transaction idempotency, wallet readiness gate, economic outcomes |
+| `v5-p08-restart-recovery` | **6/6 pass** (stalled-client 1008 now fixed) |
+| `v5-p09-fencing` | **7/7 pass** |
+| `v5-p10-worker-hardening` (+ `v5-p09-recovery`) | **6/6 pass** |
+
+Commands (disposable lab, loopback only):
+```
+V5_PG_URL=postgres://postgres@127.0.0.1:54329/postgres V5_PG_DISPOSABLE=1 V5_PG_REQUIRED=1 \
+REDIS_URL=redis://127.0.0.1:6389 V5_REDIS_REQUIRED=1 V5_TARGET=test \
+node --test --test-force-exit tests/<suite>
+```

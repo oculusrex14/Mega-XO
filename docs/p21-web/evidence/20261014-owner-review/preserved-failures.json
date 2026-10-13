@@ -1,0 +1,24 @@
+{
+  "preserved_failures": [
+    {
+      "case": "initial remote HTTPS preflight",
+      "result": "FAIL_BEFORE_ANY_SWAP",
+      "reason": "Tailscale HTTPS self-connection TLS alert; replaced by loopback preflight and independent Mac/browser HTTPS verification"
+    },
+    {
+      "case": "first public browser run",
+      "result": "INCOMPLETE",
+      "reason": "networkidle navigation timeout; complete rerun uses DOM readiness and visible geometry/font checks"
+    },
+    {
+      "case": "public all-payload fetch",
+      "result": "INCOMPLETE",
+      "reason": "Mac HTTPS manifest fetch timed out; 152 payload hashes/sizes verified against deployed loopback HTTP via SSH, with separate public HTTPS browser acceptance"
+    },
+    {
+      "case": "legacy legal-pages assertion",
+      "result": "FAIL_STALE_EXPECTATION_THEN_REPAIRED",
+      "reason": "Expected draft banners superseded by explicit owner content approval; all 3 tests now pass"
+    }
+  ]
+}

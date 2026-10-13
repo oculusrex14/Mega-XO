@@ -27,11 +27,16 @@ test('public legal, privacy-choice, support and deletion pages have clean routes
  }
 });
 
-test('privacy and terms remain explicitly draft-gated before legal approval',()=>{
+test('privacy and terms publish owner-approved wording without activating new data uses',()=>{
  const privacy=fs.readFileSync(path.join(__dirname,'..','public','privacy.html'),'utf8');
  const terms=fs.readFileSync(path.join(__dirname,'..','public','terms.html'),'utf8');
- assert.match(privacy,/Draft for legal review/);assert.match(privacy,/Not yet effective/);
- assert.match(terms,/Draft for legal review/);assert.match(terms,/Governing law.*Pending legal approval/s);
+ for(const document of [privacy,terms]){
+  assert.doesNotMatch(document,/Draft for legal review|Not yet effective|Pending legal approval/);
+  assert.match(document,/India-based sole proprietorship/);
+  assert.match(document,/mailto:contact@antimatterinnovations\.com/);
+ }
+ assert.match(privacy,/collecting player gameplay for training is not enabled by this policy/);
+ assert.match(terms,/Indian law governs these Terms/);
 });
 
 test('settings exposes privacy policy terms privacy choices and support inside the app',()=>{

@@ -1,0 +1,19 @@
+{
+  "schema_version": 1,
+  "environment": "isolated-staging",
+  "origin": "https://command.tail95c48c.ts.net",
+  "backend_source_commit": "3e51ba0c95d1083fe89e7c6f909e7590cee1a600",
+  "backend_entry_sha256": "f73e8a0c8d49ccfe6666583d8a2b0f4aa055a151cf2d6f1d7df3d715b8740c69",
+  "backend_source_unchanged": true,
+  "frontend_source_commit": "5897497493617e1f389af1626451899831045840",
+  "bundle_sha256": "31cdb4d302a12182b709c7430b389d79a42a706001360fab56afb3dd22028b7c",
+  "file_count": 152,
+  "total_bytes": 3547734,
+  "pid": 2441819,
+  "boot_time_utc": "2026-10-13T20:09:16.880000+00:00",
+  "observed_at_utc": "2026-10-13T20:09:19.304326+00:00",
+  "health": "PASS",
+  "existing_secret_material_unchanged": true,
+  "old_frontend_preserved": "/opt/mega-xo-v51-staging/p21-web-before-5897497493617e1f389af1626451899831045840",
+  "status": "DEPLOYED"
+}

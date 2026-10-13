@@ -1,0 +1,67 @@
+{
+  "source_commit": "5897497493617e1f389af1626451899831045840",
+  "bundle_sha256": "31cdb4d302a12182b709c7430b389d79a42a706001360fab56afb3dd22028b7c",
+  "environment": "isolated staging + separately labeled local browser checks",
+  "files": [
+    {
+      "path": "deployment-receipt.json",
+      "bytes": 851,
+      "sha256": "64b133841e2c6bc21df89d161097945b5368fd4e16454896922cb0842ea7c273"
+    },
+    {
+      "path": "layout-qa-driver.cjs",
+      "bytes": 3821,
+      "sha256": "f5e5ff1e600f2191881f3af81a0b61a4271191cdfcbfe759e1ff8801ceb7daad"
+    },
+    {
+      "path": "legal-pages-regression.log",
+      "bytes": 401,
+      "sha256": "8bc7948b7a23f66b39f360c8f5b006754473e4c173a58b5fb8cd41a18edf3e6f"
+    },
+    {
+      "path": "local-layout-qa.json",
+      "bytes": 12104,
+      "sha256": "0505df7bf6230c6696eb0bc9ab0545e02f2e81f9e9e5588c2f3d29ac5a1d5466"
+    },
+    {
+      "path": "preserved-failures.json",
+      "bytes": 958,
+      "sha256": "cd95add691a2c13cea12621696fb35d223befa062d86d4a8a1b716a2fab46165"
+    },
+    {
+      "path": "privacy-desktop.png",
+      "bytes": 891526,
+      "sha256": "13055261426ba356900e56d92b05227597230060ed091a1b6dac6485c5138267"
+    },
+    {
+      "path": "privacy-mobile.png",
+      "bytes": 147886,
+      "sha256": "d24534b7d6020a4ae039eb6c851e7525c262c817adfd1eb496d1430f8edf6c91"
+    },
+    {
+      "path": "served-payload-loopback.json",
+      "bytes": 23679,
+      "sha256": "21ca02db9d320e4ab79537fb9fe276e9f4601ada21d4d76c65d1635c020327f9"
+    },
+    {
+      "path": "sponsors-desktop.png",
+      "bytes": 836251,
+      "sha256": "89aea1b20c1f4b57e2bc2162e1faff8b55b14fb7a42d7fc5c1d7993281240999"
+    },
+    {
+      "path": "staging-layout-qa.json",
+      "bytes": 2980,
+      "sha256": "5b6483839793e6b88e79c8a1efb07788bba981317a3dd7f412bfedc006b9999e"
+    },
+    {
+      "path": "terms-desktop.png",
+      "bytes": 1136508,
+      "sha256": "ebb8dd3c686a20e60d1389ed4933004bc1d20b7cf2e56b061989a2b0fae75f02"
+    },
+    {
+      "path": "website-regression.log",
+      "bytes": 25766,
+      "sha256": "1ad189be2049663a623b7dc12bc2cbd252e99236af445ddae3c7c5d64186c3c1"
+    }
+  ]
+}

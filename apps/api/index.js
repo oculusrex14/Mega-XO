@@ -158,17 +158,59 @@ async function defaultHandler(req, res) {
     const dbUrl = process.env.DATABASE_URL || process.env.POSTGRES_URL;
     if (dbUrl) {
       try {
-        const { createPgPool } = require('../../packages/db/pg/pool.js');
-        pool = createPgPool({
-          url: dbUrl,
-          role: 'api_runtime',
-          applicationName: 'mega_xo_api_vercel',
-        });
-      } catch {
-        // Fall back to no default pool; requests will require context injection
+      const { createPgPool, fromEnvironment } = require('../../packages/db/pg/pool.js');
+      // Build a COMPLETE guard config from the environment (host/port/db/user/password/role/label/
+      // TLS/budget), then assert the api_runtime role. The DB label MUST match the target
+      // inventory's environment: the target file names the environment it belongs to, so the label
+      // is read from it when available (a preview deployment that binds the staging inventory is
+      // coherent as 'staging'), else from an explicit override. A misconfigured deployment fails
+      // closed rather than silently serving without a pool. The API holds only API-role credentials.
+      let label = process.env.MEGA_ENV_LABEL || process.env.MEGA_DB_LABEL || 'preview';
+      // The target inventory names the environment it belongs to; the DB label MUST equal it. Under
+      // a Vercel lambda the docs/ tree may not be bundled, so the inventory is accepted inline via
+      // MEGA_PG_TARGET (JSON) or from the file when present. A coherent explicit label is honoured
+      // if neither is available (the guards still fail closed on host/db/user mismatch).
+      let target;
+      if (process.env.MEGA_PG_TARGET_B64) {
+        try { target = JSON.parse(Buffer.from(process.env.MEGA_PG_TARGET_B64, 'base64').toString('utf8')); } catch { target = undefined; }
+      }
+      if (!target && process.env.MEGA_PG_TARGET) {
+        try { target = JSON.parse(process.env.MEGA_PG_TARGET); } catch { target = undefined; }
+      }
+      if (target && target.environment) label = target.environment;
+      if (!target) {
+        const targetRel = process.env.MEGA_PG_TARGET_FILE || 'docs/v5/environments/staging.json';
+        for (const base of [process.cwd(), path.join(__dirname, '..', '..'), path.join(__dirname, '..', '..', '..')]) {
+          try { target = require(path.join(base, targetRel)); label = target.environment || label; break; } catch { /* next candidate */ }
+        }
+      }
+      // Application-name segments (role/service/revision) must each be a <=32-char token. A raw
+      // 40-char commit SHA fails the segment check, so the revision is shortened to 12 chars.
+      const rawRevision = process.env.VERCEL_GIT_COMMIT_SHA || process.env.MEGA_RELEASE_REVISION || 'vercel';
+      const revision = String(rawRevision).replace(/[^A-Za-z0-9._-]/g, '').slice(0, 12) || 'vercel';
+      const config = fromEnvironment({ ...process.env, MEGA_PG_URL: dbUrl }, {
+        role: 'api_runtime',
+        label,
+        target,
+        service: 'mega-xo-api-vercel',
+        revision,
+      });
+      if (process.env.MEGA_API_DEBUG === '1') console.error('API_POOL_CFG', JSON.stringify({ revision: config.revision, service: config.service, role: config.role, label: config.label, user: config.user, host: config.host, db: config.database, targetEnv: target && target.environment }));
+      pool = createPgPool(config);
+      } catch (error) {
+        // A misconfigured pool must not crash the function on every cold start: construct the
+        // handler with no pool so routes return their honest 503 (e.g. OTP/session unavailable)
+        // instead of FUNCTION_INVOCATION_FAILED. The guard code/message never contains a secret.
+        if (process.env.MEGA_API_DEBUG === '1') console.error('API_POOL_INIT_FAILED', (error && error.code) || '', String((error && error.message) || '').slice(0, 200));
+        pool = null;
       }
     }
-    defaultHandlerInstance = createApiHandler({ pool, ticketEnvironment: process.env.MEGA_TICKET_ENV, ticketAudience: process.env.MEGA_TICKET_AUDIENCE });
+    defaultHandlerInstance = createApiHandler({
+      pool,
+      otpSecret: process.env.MEGA_OTP_SECRET || process.env.OTP_SECRET,
+      ticketEnvironment: process.env.MEGA_TICKET_ENV,
+      ticketAudience: process.env.MEGA_TICKET_AUDIENCE,
+    });
   }
   return defaultHandlerInstance(req, res);
 }

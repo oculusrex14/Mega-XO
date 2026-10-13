@@ -53,7 +53,11 @@ def main():
                 rows += 1
                 k = _pos_key(r)
                 ks.add(k)
-                if k in seen_global:
+                # Game-based rows (they carry gameId) must ALL be kept: dropping even one row of a game
+                # breaks the game-group prefix invariant (the first row of a group is the opening).
+                # Only position-only rows (external corpus, no gameId) are deduplicated.
+                game_row = 'gameId' in r
+                if (not game_row) and k in seen_global:
                     dup += 1
                     continue
                 seen_global.add(k); uni += 1

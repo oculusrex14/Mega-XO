@@ -1,0 +1,98 @@
+{
+  "schema_version": 1,
+  "source_commit": "4d9aa91503ed34cc72cb73a63a0e8207133e6d01",
+  "bundle_sha256": "c93156ef86927204d3bb5b1ef6c66b50fb7d8298609507cf7e7bc3d0948972eb",
+  "boundary": "Synthetic/local software QA; initial helper failures retained; separate reconciliation manifest source82a1bd5 has byte-identical payload. No live accounts/devices/providers accepted.",
+  "files": [
+    {
+      "path": "browser-qa.json",
+      "original_path": "tests-output/p21-web/c93156ef8692/browser-qa.json",
+      "bytes": 216166,
+      "sha256": "6b7175f5f5c73e28b1221cc6cbc9c8a78bb8c22decc0680bcc02b73f9e5094f3"
+    },
+    {
+      "path": "accessibility-qa.json",
+      "original_path": "tests-output/p21-web/c93156ef8692/accessibility-qa.json",
+      "bytes": 1731076,
+      "sha256": "d2f16e7e624aa1031c21daf202de553e28314e540404507af02b318c78349c44"
+    },
+    {
+      "path": "profile-tests-147.log",
+      "original_path": ".artifacts/p21-profile-editor-all-tests.log",
+      "bytes": 15579,
+      "sha256": "11ec9328291f30c4875a23134c6eabbf198b58ba62c635f74a58193e07cd61c8"
+    },
+    {
+      "path": "reconciled-profile-tests-152.log",
+      "original_path": ".artifacts/p21-profile-reconciliation-tests.log",
+      "bytes": 15962,
+      "sha256": "5b318eea40a2ad6c7792633077f391c9fb7548c46b28589050fe048ee5d5d907"
+    },
+    {
+      "path": "reconciled-profile-build.json",
+      "original_path": ".artifacts/p21-profile-reconciliation-build.json",
+      "bytes": 268,
+      "sha256": "a640c1ac1530dff05586a1b532ce360eb8ccba0a08cd76280d393f3df6d2f305"
+    },
+    {
+      "path": "reconciled-manifest-82a1bd5.json",
+      "original_path": "/Users/oculus/.codex/worktrees/v51-website-reconciliation/Test XO/.artifacts/p21-web/web-build.manifest.json",
+      "bytes": 228978,
+      "sha256": "ceffc79c7f5d63cf473128e36747763b164d5fb9b8f96471062b8a97ad008d62"
+    },
+    {
+      "path": "profile-20261013014014168-91481.json",
+      "original_path": "tests-output/p21-web/c93156ef8692/profile-chromium/20261013014014168-91481/profile-qa.json",
+      "bytes": 1844,
+      "sha256": "a0f8cb768fccda847a3731aa36659e2c3d01ecbcb077ff6a7aabfb3e10ea25b7"
+    },
+    {
+      "path": "profile-20261013014022927-91531.json",
+      "original_path": "tests-output/p21-web/c93156ef8692/profile-chromium/20261013014022927-91531/profile-qa.json",
+      "bytes": 4875,
+      "sha256": "85767d3b1fd8d7a1daae5effb2b80ef2e9e2ade9560c9e8a0766cb05559b8c19"
+    },
+    {
+      "path": "profile-20261013014115335-91780.json",
+      "original_path": "tests-output/p21-web/c93156ef8692/profile-chromium/20261013014115335-91780/profile-qa.json",
+      "bytes": 4869,
+      "sha256": "5aac79969825622bd953b8ff2060438fd03ff708fc0d900e8f41c9dd612085bf"
+    },
+    {
+      "path": "profile-20261013014211963-92042.json",
+      "original_path": "tests-output/p21-web/c93156ef8692/profile-chromium/20261013014211963-92042/profile-qa.json",
+      "bytes": 6468,
+      "sha256": "9961eb0e1f6befdad797f05f0d9cb0a56e027156f2ec8d5f1142bf27c024faa7"
+    },
+    {
+      "path": "profile-20261013014749682-93675.json",
+      "original_path": "tests-output/p21-web/c93156ef8692/profile-chromium/20261013014749682-93675/profile-qa.json",
+      "bytes": 6593,
+      "sha256": "71df187584bd80506d1b4d118654b5b5658769450d30452b84157440badc5649"
+    },
+    {
+      "path": "profile-editor-ready-390.png",
+      "original_path": "tests-output/p21-web/c93156ef8692/profile-chromium/20261013014749682-93675/profile-editor-ready-390.png",
+      "bytes": 611681,
+      "sha256": "22f202904c0b3d5be2a12fdaf810cf038065e9aa954e3a0230820e94259ea4cb"
+    },
+    {
+      "path": "offline-chromium-20261013014610875-93178.json",
+      "original_path": "tests-output/p21-offline/c93156ef8692/chromium/20261013014610875-93178/offline-qa.json",
+      "bytes": 103632,
+      "sha256": "f80c12f69225b1c508fd78cf35d3ad7ea5d3f9c9fbcbf5c39a9e34f61e21bf01"
+    },
+    {
+      "path": "offline-firefox-20261013014632058-93278.json",
+      "original_path": "tests-output/p21-offline/c93156ef8692/firefox/20261013014632058-93278/offline-qa.json",
+      "bytes": 113190,
+      "sha256": "5a1e3948b561c7d618a2a1a783c8a1287cc9adfc0c00487726b587d411d6cef4"
+    },
+    {
+      "path": "offline-webkit-20261013014654551-93384.json",
+      "original_path": "tests-output/p21-offline/c93156ef8692/webkit/20261013014654551-93384/offline-qa.json",
+      "bytes": 107293,
+      "sha256": "4975b10197f054e3076b2c18986c0569aab5bf7d0f46aa4f35322167ffb50587"
+    }
+  ]
+}

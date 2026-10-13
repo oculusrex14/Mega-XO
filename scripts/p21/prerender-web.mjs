@@ -17,7 +17,7 @@ for(const route of input.routes){
  const html=input.template.replace('<!--SEO_HEAD-->',seo.seoHead(route))
   .replace('<body class="mx-web-shell">',`<body class="mx-web-shell" data-page="${route==='/'?'home':'inner'}">`)
   .replace('<header id="header" class="mx-header"></header>',`<header id="header" class="mx-header">${site.renderHeader(route,context)}</header>`)
-  .replace('<main id="main" tabindex="-1"></main>',`<main id="main" tabindex="-1">${main}</main>`)
+  .replace('<main id="main" tabindex="-1"></main>',`<main id="main" tabindex="-1"${route==='/offline'?' data-offline-fallback':''}>${main}</main>`)
   .replace('<footer id="footer" class="mx-footer"></footer>',`<footer id="footer" class="mx-footer">${site.renderFooter()}</footer>`);
  documents[route]=html; metadata[route]=seo.metadataFor(route);
 }

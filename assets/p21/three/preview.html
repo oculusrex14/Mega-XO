@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Mega XOXO · Procedural 3D source preview</title>
+  <style>
+    :root { color-scheme: dark; font: 15px/1.5 system-ui, sans-serif; background: #050a15; color: #eaf2ff; }
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100vh; background: radial-gradient(ellipse at 50% 4%, #151a3d 0, #090f20 44%, #050a15 100%); }
+    header { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 20px clamp(18px, 4vw, 54px); border-bottom: 1px solid #213350; }
+    .eyebrow { display: block; color: #6db9ff; font: 700 11px/1.2 system-ui, sans-serif; letter-spacing: .16em; text-transform: uppercase; }
+    h1 { margin: 5px 0 0; font-size: clamp(20px, 3vw, 30px); letter-spacing: -.03em; }
+    .controls { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+    button { border: 1px solid #3479c9; border-radius: 999px; padding: 9px 16px; color: #eaf7ff; background: #10274a; font: inherit; cursor: pointer; }
+    button:hover { background: #173866; }
+    select { border: 1px solid #3479c9; border-radius: 999px; padding: 9px 35px 9px 14px; color: #eaf7ff; background: #10274a; font: inherit; }
+    main { max-width: 1500px; margin: auto; padding: 18px clamp(14px, 3vw, 42px) 36px; }
+    .notice { max-width: 980px; margin: 0 auto 13px; color: #9eb8d7; font-size: 13px; text-align: center; }
+    .canvas-wrap { position: relative; min-height: 340px; height: min(62vh, 610px); overflow: hidden; border: 1px solid #1e416a; border-radius: 22px; background: linear-gradient(145deg, #071323, #080d1c 68%, #15102a); box-shadow: 0 18px 70px #0008, inset 0 0 48px #177bff0b; }
+    canvas { display: block; width: 100%; height: 100%; touch-action: none; cursor: grab; }
+    canvas:active { cursor: grabbing; }
+    .labels { display: flex; justify-content: center; gap: 8px; margin: 12px 8px 0; text-align: center; flex-wrap: wrap; }
+    .labels b { font-size: 14px; letter-spacing: .08em; }
+    .labels span { color: #8fa8c7; font-size: 12px; }
+    footer { margin: 30px auto 0; max-width: 900px; color: #788eab; text-align: center; font-size: 12px; }
+    @media(max-width:650px) { header { align-items: flex-start; flex-direction: column; } .canvas-wrap { height: 410px; } .labels { gap: 4px; } .labels b { font-size: 11px; } .labels span { font-size: 10px; } }
+  </style>
+</head>
+<body>
+  <header>
+    <div><span class="eyebrow">P21 · procedural geometry study</span><h1>Mega XOXO · 3D source preview</h1></div>
+    <div class="controls"><label for="asset-select">Asset <select id="asset-select">
+      <option value="x">Neon X</option><option value="o">Neon O</option><option value="coin">Coin</option><option value="crown">Crown</option>
+      <option value="rank-wood">Wood rank</option><option value="rank-stone">Stone rank</option><option value="rank-iron">Iron rank</option>
+      <option value="rank-bronze">Bronze rank</option><option value="rank-silver">Silver rank</option><option value="rank-gold">Gold rank</option>
+      <option value="rank-diamond">Diamond rank</option><option value="rank-emerald">Emerald rank</option><option value="rank-champion">Champion rank</option>
+      <option value="rank-master">Master rank</option><option value="rank-grandmaster">Grandmaster rank</option>
+      <option value="trophy">Trophy</option><option value="reward-chest">Decorative chest</option><option value="board-x">Neon X board plate</option><option value="board-o">Neon O board plate</option>
+    </select></label><span id="quality-label">High detail</span><button id="quality-toggle" type="button">Show lightweight</button></div>
+  </header>
+  <main>
+    <p class="notice">Nineteen editable procedural mesh studies · local preview only · visual and device acceptance remain open. Choose one model and drag to rotate it.</p>
+    <div class="canvas-wrap"><canvas id="preview" aria-label="Interactive preview of one of the procedural Mega XOXO 3D source meshes"></canvas></div>
+    <div class="labels"><b id="asset-label">Neon X</b><span id="asset-description">Solid cyan X with rounded arms and bevels.</span></div>
+    <footer>Source and GLB studies are not connected to the live website, gameplay, native apps or product economy. Current website artwork remains in place pending visual approval.</footer>
+  </main>
+  <script type="module" src="./preview.mjs"></script>
+</body>
+</html>

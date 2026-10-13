@@ -1,0 +1,49 @@
+{
+  "source_sha": "2411dc0e9d8a026dae1c57486eee9ad2a1eab3d1",
+  "bundle_sha256": "28c1ad39883b4431e7b446d8e5d54c422b9daa5ce3be89cd7770f61c3a8badc9",
+  "files": 152,
+  "bytes": 3523500,
+  "original_milestones_preserved": 26,
+  "original_commit_ids": [
+    "222e6ded787ddc47367108d7573c6709c3dc01a8",
+    "4d30e37bf0dcab349046d377707cb93e42533d2b",
+    "576eb54da5700918941cd318b219faaf253d8748",
+    "95789cfcb3f7f0be6e13eb00c674fa6857a55af2",
+    "0663ae50ce979528e505ca42b15e7b014ffe33f7",
+    "5fc3f957eb6268395b5aa9a2883d46a56b13b85c",
+    "a44bc39bb1793f5a3c5ded4c30ac8338d460c42d",
+    "9df5e8e5cbc92a3832551c160cfef9d15763db45",
+    "991e8b8970de3810dfcb2a1f4a3f7be2a75d71ab",
+    "4d76d755d5a760d514d5f35f3768ac90fba2bc79",
+    "af1e3d57be28a09ebf6d421a1e92c268e8048eaf",
+    "12acd9967928b00f79e7348593d61310dba2c2ea",
+    "681f06bfad5e929cdda929cdf6d4486f5fff89ec",
+    "2a3fec72463cf00187a1c78cec94b6d349161184",
+    "2953c7e2432f28282ce1309e11e87f506e0b2e50",
+    "2934129bc4b5a32c4e48ea4734a9a314070e47d8",
+    "82358d42d4d6c1c06120273d11591b6a83ce83e9",
+    "e374b7ea751a3a6c98df49c4d70df0d71ae3ceea",
+    "4d9aa91503ed34cc72cb73a63a0e8207133e6d01",
+    "586fe5efdc1282112c25d8c030ea174c3332363d",
+    "f71856a18e320ee267c2d28723855d658f5e33e3",
+    "b313daac32c89ba36fd7f8ec2ce7ade6d0683154",
+    "e9eab5753fe9ee8552f3b7f9d1be6ad5e7e3deec",
+    "e36e359b09e02579378c8c8df72c2039d0f6469d",
+    "90d6e05a7c311cc28133542e5aed851a3e2cb242",
+    "3775a2f07e043c96856dea207276200f09aa4fad"
+  ],
+  "parents": [
+    "464f02444bf3aa4272588903be3940d8e447ea5d",
+    "3775a2f07e043c96856dea207276200f09aa4fad"
+  ],
+  "file_checksums": "PASS",
+  "payload_changes_since_browser_evidence": [
+    "legacy-game/src/bot/search.js",
+    "offline-sw.js"
+  ],
+  "vercel_sitewide_noindex": "PASS",
+  "automatic_vercel_deployment_disabled": true,
+  "play_crawl_exclusions": "PASS",
+  "main_bot_source_and_worker_digest_change": "expected",
+  "earlier_adhoc_static_meta_expectation": "incorrect; actual release hold is sitewide HTTP header, verified separately"
+}

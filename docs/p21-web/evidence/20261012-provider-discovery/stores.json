@@ -1,0 +1,399 @@
+{
+  "schema_version": 1,
+  "evidence_type": "sanitized_read_only_provider_discovery",
+  "record_timestamp_sampled_at_utc": "2026-10-12T11:02:01Z",
+  "updated_timestamp_sampled_at_utc": "2026-10-12T17:18:33Z",
+  "browser_observation_date": "2026-10-12",
+  "browser_observation_timezone": "Asia/Kolkata",
+  "browser_observation_time_precision": "Per-page times were not captured; the date is the discovery session date, not an exact timestamp for each page.",
+  "source_provenance": {
+    "prepared_in_worktree": "/Users/oculus/.codex/worktrees/v51-website-readiness/Test XO",
+    "source_base_sha": "f0a3144466e3e738c1ba9e4833691c21eeeb24af",
+    "separately_observed_main_checkout_sha": "09115e55cc26c2a0fd93e41a8d386a0dc179514c",
+    "browser_state_is_external_evidence_not_source_or_build_provenance": true
+  },
+  "scopes_checked": [
+    "Google Play Console sign-up flow under the selected personal Google context and account switching to the existing business Workspace identity",
+    "Google Cloud personal-context project picker and API credentials page; business Workspace account switching attempted",
+    "AdMob sign-in under the existing business Workspace identity",
+    "Apple App Store Connect apps route",
+    "Apple Developer account route"
+  ],
+  "sanitization": {
+    "personal_names_and_emails_omitted": true,
+    "account_indices_and_project_ids_omitted": true,
+    "oauth_client_ids_and_credentials_omitted": true,
+    "tokens_otp_passwords_signing_keys_and_authenticated_traces_omitted": true,
+    "screenshots_attached": false
+  },
+  "provider_observations": [
+    {
+      "provider": "google_play_console",
+      "public_console_url": "https://play.google.com/console/",
+      "observed_landing": "developer account sign-up flow; organization or individual choice presented",
+      "business_account_access": "existing business Workspace identity was available in the account chooser; selecting it displayed a two-step-verification requirement before developer-account creation",
+      "actions_taken": [
+        "read visible state",
+        "switched account context"
+      ],
+      "actions_not_taken": [
+        "selected organization or individual",
+        "enabled 2-step verification",
+        "accepted terms",
+        "paid fee",
+        "created developer account",
+        "created app record"
+      ],
+      "membership": "not verified; the current view was gated before app inventory, so absence of an existing invitation or organization record is not proven",
+      "app_record_state": "no record state verifiable; not evidence of DRAFT, UPLOADED, TESTING, SUBMITTED, APPROVED, or LIVE"
+    },
+    {
+      "provider": "google_cloud_oauth",
+      "public_console_url": "https://console.cloud.google.com/",
+      "observed_landing": "personal-account project picker showed no organization; a Mega XO project search returned no matching resource",
+      "personal_context_credentials_view": "one unrelated desktop OAuth client; no API keys and no service accounts; all identifiers omitted",
+      "business_account_access": "business Workspace identity was selectable, but Cloud requested password reauthentication before showing its projects or credentials",
+      "actions_taken": [
+        "read visible state",
+        "checked account and project selectors",
+        "attempted account-context switch"
+      ],
+      "actions_not_taken": [
+        "entered password",
+        "created a project",
+        "created OAuth clients",
+        "changed credentials"
+      ],
+      "business_project_or_oauth_state": "not verified"
+    },
+    {
+      "provider": "admob_and_ump",
+      "public_console_url": "https://admob.google.com/home/",
+      "observed_landing": "business-account sign-in path stopped at /signup/info/user-age-missing; query parameters omitted",
+      "access_blocker": "Google account age/DOB-missing notice",
+      "actions_taken": [
+        "read visible state",
+        "selected existing business Workspace account"
+      ],
+      "actions_not_taken": [
+        "updated age information",
+        "entered date of birth",
+        "created AdMob publisher/app/ad units",
+        "configured UMP messages"
+      ],
+      "publisher_account_app_units_and_ump": "not verified"
+    },
+    {
+      "provider": "apple_app_store_connect",
+      "public_console_url": "https://appstoreconnect.apple.com/",
+      "observed_landing": "/apps redirected to /login with authResult=FAILED",
+      "actions_taken": [
+        "opened public console route",
+        "read visible state"
+      ],
+      "actions_not_taken": [
+        "entered Apple credentials",
+        "completed MFA",
+        "accepted agreements",
+        "enrolled",
+        "created app record"
+      ],
+      "membership_apps_products_and_review_state": "not verified; app list was unavailable"
+    },
+    {
+      "provider": "apple_developer",
+      "public_console_url": "https://developer.apple.com/account/",
+      "observed_landing": "Apple sign-in shell; no usable credential or MFA flow was visible in the page",
+      "actions_taken": [
+        "opened public account route",
+        "read visible state"
+      ],
+      "actions_not_taken": [
+        "entered credentials",
+        "completed MFA",
+        "enrolled",
+        "accepted legal terms",
+        "created identifiers or certificates"
+      ],
+      "membership_team_identifiers_and_capabilities": "not verified"
+    }
+  ],
+  "source_derived_requirements_not_live_provider_state": {
+    "release_register": [
+      "R11",
+      "R12",
+      "R13",
+      "R14"
+    ],
+    "acceptance_cases": {
+      "A34": "NOT_RUN",
+      "A35": "NOT_RUN",
+      "A37": "NOT_RUN"
+    },
+    "p21_items": [
+      "P21-K164",
+      "P21-K165",
+      "P21-K189",
+      "P21-K197",
+      "P21-K211",
+      "P21-K213"
+    ],
+    "approved_internal_product_ids_only": [
+      "crowns_100",
+      "crowns_525",
+      "crowns_1100",
+      "remove_ads"
+    ],
+    "provider_skus_prices_regions_and_launch_date": "not approved or verified",
+    "temporary_native_application_id": "online.megaxo.prototype is unapproved and must not be registered",
+    "canonical_production_domain_intended_by_owner": "megaxo.online; deployment/provider callback registration not verified",
+    "canonical_production_callbacks_from_current_architecture_source": [
+      "https://megaxo.online/auth/callback/google",
+      "https://megaxo.online/auth/callback/apple"
+    ],
+    "exact_staging_https_origin_and_callbacks": "No HTTPS staging origin supplied. Main reports private HTTP tailnet origin http://100.107.65.122:8081; HTTPS is off, boot-server SHA is unknown, staging OAuth/start is absent, and Google/Apple are disabled. This HTTP URL is not a valid OAuth callback origin.",
+    "historical_v4_callbacks_not_current_registration_targets": [
+      "https://play.antimatterinnovations.com/auth/callback/google",
+      "https://staging.play.antimatterinnovations.com/auth/callback/google",
+      "https://play.antimatterinnovations.com/auth/callback/apple",
+      "https://staging.play.antimatterinnovations.com/auth/callback/apple"
+    ],
+    "neon_scope": "browser-only Mega XOXO Neon is not an activated native paid product",
+    "ad_mode_source_default": "off"
+  },
+  "owner_confirmed_inputs_not_independently_verified": {
+    "business_identity": {
+      "public_business_name": "Antimatter Innovations",
+      "country": "India",
+      "legal_form": "sole proprietorship registered under Udyam",
+      "not_incorporated_as": [
+        "Pvt Ltd",
+        "LLP"
+      ],
+      "verification_status": "owner-provided; not verified against government records or D&B"
+    },
+    "apple_enrollment_intent": {
+      "target_account_type": "Individual",
+      "seller_name_expectation": "owner's legal personal name; personal name not stored in evidence",
+      "app_brand": "Mega XOXO",
+      "owner_acknowledges_seller_name": true
+    },
+    "google_play_public_name_fallback": "Antimatter Innovations where the Play developer-name field permits a name different from legal identity",
+    "selected_unregistered_identifiers": {
+      "android_application_id": "online.megaxo.xoxo",
+      "ios_bundle_id": "online.megaxo.xoxo",
+      "optional_staging_identifier": "online.megaxo.xoxo.staging",
+      "selection_state": "owner-selected target only; not registered, reserved, or verified available"
+    },
+    "staging_previous_observation": {
+      "historical_owner_report": {
+        "v5_staging_serving": false,
+        "staging_url": null,
+        "deployed_sha": null,
+        "statement_source": "owner-confirmed",
+        "v4_substitution_permitted": false
+      },
+      "superseded_by": "Main-reported current staging observation recorded separately below",
+      "historical_only": true
+    }
+  },
+  "official_documentation_research": {
+    "research_date": "2026-10-12",
+    "source_policy": "official Google Play, Apple Developer, and Dun & Bradstreet India documentation only",
+    "google_play_organization_eligibility": {
+      "finding": "conditional_unresolved_for_indian_sole_proprietorship",
+      "official_sources_say": [
+        "Organization accounts are for organization/business use and require a D-U-N-S number.",
+        "India's accepted organization-registration documents include the Udyam (MSME) Registration Certificate, separately from authorized-representative ID.",
+        "Organization/payment-profile legal name and address must match the D&B profile."
+      ],
+      "official_sources_do_not_explicitly_resolve": "whether this Indian Udyam-registered sole proprietorship qualifies as an Organization Play account",
+      "duns_number_supplied_or_verified": false,
+      "next_owner_action": "After direct sign-in/2SV, privately check existing Play membership and D&B legal-name/address match; obtain written Play Support eligibility answer before any type choice or app registration.",
+      "fallback_if_org_not_confirmed": "Personal Play identity with Antimatter Innovations as public developer name where permitted; Google says full address is displayed if a personal account monetizes.",
+      "type_change_caution": "Google currently documents individual-to-organization via a new verified payments profile and does not support organization-to-individual conversion."
+    },
+    "apple_enrollment_eligibility": {
+      "finding": "Apple's documented route for a sole proprietor/single-person business is Individual enrollment.",
+      "seller_name": "personal legal name; Mega XOXO remains app brand/title",
+      "duns_required_for_individual": false,
+      "owner_identity_or_membership_verified": false,
+      "next_owner_action": "Owner signs in to intended Apple Account, completes required 2FA and identity verification, inspects existing team/app records, and stops before agreement acceptance or payment."
+    },
+    "dnb_india": {
+      "official_request_url": "https://www.dnb.co.in/duns/get-a-duns",
+      "lookup_or_request_performed": false,
+      "reason_not_performed": "No D-U-N-S number or exact legal business name/address was supplied for a privacy-safe match; the D&B request flow includes personal/business data and consent fields.",
+      "owner_steps": "Privately search by exact legal business name and headquarters address; if absent, owner decides whether to request directly from D&B India. Udyam is not a D-U-N-S number.",
+      "processing_note": "Google Play says D-U-N-S requests are free and may take up to 30 days; D&B India says up to 30 business days and that expedited service may be chargeable."
+    },
+    "identifier_availability": {
+      "android_application_id": "online.megaxo.xoxo",
+      "ios_bundle_id": "online.megaxo.xoxo",
+      "result": "not checked in authenticated Play Console or Apple Developer team; do not register or create an app record as an availability probe",
+      "source_prototype_to_keep_unregistered": "online.megaxo.prototype"
+    },
+    "last_rechecked_at_utc": "2026-10-12T16:38:53Z",
+    "eligibility_recheck_result": "Official Google Play documentation still requires D-U-N-S for Organization accounts and includes Udyam in India document guidance, but does not expressly settle this sole-proprietor classification; Apple’s current official guidance explicitly directs sole proprietors/single-person businesses to Individual enrollment."
+  },
+  "follow_up_cua_access_check": {
+    "date": "2026-10-12",
+    "checked_at_utc": "2026-10-12T17:18:33Z",
+    "result": "Browser inventory succeeded, but creating a dedicated Play Console tab failed. The inventory showed an existing Mega XOXO account page at the private staging URL; this agent did not open or inspect that tab. No provider console was opened and no provider-console inventory was obtained.",
+    "inventory_browser_running": "Brave Browser",
+    "staging_tab_url_seen_in_inventory": "http://100.107.65.122:8081/account",
+    "attempted_provider_target": "https://play.google.com/console/",
+    "exact_tool_error": "Browser is not available: Brave Browser",
+    "existing_tabs_touched": false,
+    "provider_page_reached": false,
+    "no_new_provider_console_state": true
+  },
+  "official_sources": [
+    {
+      "title": "Google Play — Choose a developer account type",
+      "url": "https://support.google.com/googleplay/android-developer/answer/13634885?hl=en",
+      "supports": "Organization account business-use framing and mandatory D-U-N-S requirement"
+    },
+    {
+      "title": "Google Play — Required information to create a developer account",
+      "url": "https://support.google.com/googleplay/android-developer/answer/13628312?hl=en",
+      "supports": "Personal vs organization information, public developer identity, personal display name differing from legal name, D-U-N-S, and support-before-creation guidance"
+    },
+    {
+      "title": "Google Play — India developer verification documents",
+      "url": "https://support.google.com/googleplay/android-developer/answer/15633622?co=GENIE.CountryCode%3DIN&hl=en",
+      "supports": "Udyam certificate accepted among India organization-registration documents; separate representative photo-ID requirement"
+    },
+    {
+      "title": "Google Play — Keeping developer account information up to date",
+      "url": "https://support.google.com/googleplay/android-developer/answer/13634888?hl=en",
+      "supports": "D&B profile matching and organization-to-individual conversion limitation"
+    },
+    {
+      "title": "Apple Developer Program — Become a member",
+      "url": "https://developer.apple.com/programs/enroll/",
+      "supports": "Sole proprietor enrollment as Individual and legal personal name as App Store seller"
+    },
+    {
+      "title": "Apple Developer — D-U-N-S Number",
+      "url": "https://developer.apple.com/help/account/membership/D-U-N-S/",
+      "supports": "Sole proprietor/single-person business should enroll as individual; no D-U-N-S for individual enrollment"
+    },
+    {
+      "title": "Apple Developer — Enrolling through the Apple Developer app",
+      "url": "https://developer.apple.com/help/account/membership/enrolling-in-the-app/",
+      "supports": "Individual enrollment prerequisites and steps, including 2FA, identity verification, agreement, and purchase"
+    },
+    {
+      "title": "Dun & Bradstreet India — Get a D-U-N-S Number",
+      "url": "https://www.dnb.co.in/duns/get-a-duns",
+      "supports": "Official India D&B request path, information required, data consent fields, and processing timing"
+    }
+  ],
+  "acceptance_closures": [],
+  "mutations_performed": [],
+  "current_native_configuration_review": {
+    "observed_source_head": "4d76d755d5a760d514d5f35f3768ac90fba2bc79",
+    "review_mode": "read-only source inspection; source HEAD is not proof of any provider-console binary or deployed build",
+    "android": {
+      "gradle_application_id_property": "online.megaxo.prototype",
+      "namespace": "online.megaxo.prototype",
+      "release_guard": "rejects the temporary prototype application ID",
+      "google_server_client_id_property": "megaGoogleServerClientId; optional and empty by default",
+      "network_permission": "absent in current offline APK",
+      "native_identity_bridge": "not end-to-end enabled"
+    },
+    "ios": {
+      "debug_and_release_bundle_id": "online.megaxo.prototype",
+      "code_signing": "disabled in checked-in project settings",
+      "apple_native_identity_enabled": "NO",
+      "javascript_keychain_session_exchange": "not connected"
+    },
+    "admob": {
+      "android_and_ios_app_ids": "Google test placeholders only; literal identifiers omitted",
+      "live_admob_registration": "not verified"
+    },
+    "server_oauth_and_session_contract": {
+      "google_server_fields": [
+        "GOOGLE_CLIENT_ID",
+        "GOOGLE_CLIENT_SECRET",
+        "GOOGLE_NATIVE_AUDIENCES",
+        "GOOGLE_AUTHORIZED_PARTIES"
+      ],
+      "apple_server_fields": [
+        "APPLE_SERVICE_ID",
+        "APPLE_TEAM_ID",
+        "APPLE_KEY_ID",
+        "APPLE_PRIVATE_KEY",
+        "APPLE_NATIVE_AUDIENCES"
+      ],
+      "google_android_client_property": "megaGoogleServerClientId must match the registered web/server OAuth client ID",
+      "google_web_scopes": "openid profile; no email scope",
+      "google_web_flow": "state, nonce and PKCE; exact redirect URI is derived from the configured public origin",
+      "apple_web_flow": "query-mode callback; exact redirect URI is derived from the configured public origin",
+      "production_origin": "https://megaxo.online",
+      "production_callbacks": [
+        "https://megaxo.online/auth/callback/google",
+        "https://megaxo.online/auth/callback/apple"
+      ],
+      "staging_origin": "Main reports http://100.107.65.122:8081; private HTTP only, not suitable for the HTTPS-required staging OAuth callback.",
+      "native_session": "same-origin HttpOnly session and CSRF context; POST /api/account/native/challenge then /api/account/native/finish; server verifies provider ID token before actor linking",
+      "staging_https_enabled": false,
+      "staging_oauth_start_present": false,
+      "staging_google_enabled": false,
+      "staging_apple_enabled": false,
+      "staging_boot_server_sha": null
+    },
+    "owner_selected_package_ids_applied": false,
+    "owner_selected_ids": [
+      "online.megaxo.xoxo",
+      "online.megaxo.xoxo.staging"
+    ],
+    "source_prototype_online_megaxo_prototype_must_remain_unregistered": true
+  },
+  "follow_up_cua_access_checks": [
+    {
+      "date": "2026-10-12",
+      "checked_at_utc": "2026-10-12T16:38:53Z",
+      "result": "CUA inventory succeeded and reported Brave running, but a separate provider tab could not be opened; no provider page was reached. Earlier provider-page observations remain the latest live provider evidence.",
+      "inventory_browser_running": "Brave Browser",
+      "attempted_target": "https://play.google.com/console/",
+      "exact_tool_error": "Browser is not available: Brave Browser",
+      "existing_tabs_touched": false,
+      "provider_page_reached": false
+    },
+    {
+      "date": "2026-10-12",
+      "checked_at_utc": "2026-10-12T17:18:33Z",
+      "result": "Browser inventory succeeded, but creating a dedicated Play Console tab failed. The inventory showed an existing Mega XOXO account page at the private staging URL; this agent did not open or inspect that tab. No provider console was opened and no provider-console inventory was obtained.",
+      "inventory_browser_running": "Brave Browser",
+      "staging_tab_url_seen_in_inventory": "http://100.107.65.122:8081/account",
+      "attempted_provider_target": "https://play.google.com/console/",
+      "exact_tool_error": "Browser is not available: Brave Browser",
+      "existing_tabs_touched": false,
+      "provider_page_reached": false,
+      "no_new_provider_console_state": true
+    }
+  ],
+  "current_staging_runtime_observation": {
+    "observed_or_reported_at_utc": "2026-10-12T17:18:33Z",
+    "source": "Main report plus browser inventory; no provider console was reached",
+    "account_form_url": "http://100.107.65.122:8081/account",
+    "account_form_status": "Main reports loaded; this agent did not inspect the existing tab",
+    "origin_scope": "private tailnet HTTP",
+    "https_enabled": false,
+    "boot_server_sha": null,
+    "oauth_start_route": "absent in staging per Main",
+    "provider_capabilities": {
+      "google": "disabled",
+      "apple": "disabled"
+    },
+    "frontend_revision_identifiers_as_reported": [
+      "f4851a",
+      "8167f349"
+    ],
+    "frontend_checks_as_reported": "140/140; Main-reported and not independently rerun by this agent",
+    "provider_console_state": "not observed in this check",
+    "oauth_callback_ready": false
+  }
+}

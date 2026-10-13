@@ -1,0 +1,62 @@
+# P21 execution register review — 2026-10-12
+
+This companion review dispositions every row in the pinned 160-item open P21 inventory without editing that inventory or changing any checkbox. The machine-readable row register is [EXECUTION-REGISTER-20261012.json](EXECUTION-REGISTER-20261012.json).
+
+The inventory remains pinned to f0a3144466e3e738c1ba9e4833691c21eeeb24af; its exact 162-line Markdown table SHA-256 is 63577eed9906e6514a46b066d5f6a69a8a5a58ad55ba43b3e64f58529b28c52e. This overlay preserves all 160 pinned IDs and does not change their original acceptance conditions. The current MASTER-CHECKLIST.md SHA-256 is a772d4123ecd523a5e1b8c0d305eada35335b8a20e79e4eb14816f1edb87bc4a; it contains 71 checked and 159 open boxes (230 total). All 160 pinned IDs still map uniquely to current checklist lines; 159 remain open, and P21-K120 remains checked as a policy-only item. The checklist banner now distinguishes the current local candidate from the verified tailnet frontend and from historical browser runs.
+
+## Evidence boundary
+
+Historical local browser evidence stays bound to its exact earlier payload: source 222e6de / bundle db286d8f passed 915/915 Chromium UI checks and 137/137 automated accessibility checks (zero violations, 116 incomplete/manual views); source 5fc3f957 used that identical payload for 915/915 Firefox 146.0.1 and 915/915 WebKit 26.0 checks. Those loopback runs used unauthenticated contexts, disabled read proxy and synthetic API fixtures; WebKit automation is not Safari acceptance, and synthetic safe-area values are not physical-device evidence.
+
+The tested local website payload was built from source commit 681f06bfad5e929cdda929cdf6d4486f5fff89ec with bundle 9cfa78636df78528c6ae1fb95ee5afc845b787f796f17d91be5258d4b283aeef (151 files, 3,474,873 bytes). Local UI automation passed 915/915 checks in Chromium 151.0.7922.34 ([report](../../tests-output/p21-web/9cfa78636df7/browser-qa.json)), Firefox 146.0.1 ([report](../../tests-output/p21-web/9cfa78636df7/firefox/20261012172200567-41942/browser-qa.json)) and WebKit 26.0 ([report](../../tests-output/p21-web/9cfa78636df7/webkit/20261012172405329-42892/browser-qa.json)); all use fresh unauthenticated local contexts, disabled read proxy and synthetic API fixtures. Accessibility passed 137/137 with zero automated violations and 116 incomplete/manual views ([report](../../tests-output/p21-web/9cfa78636df7/accessibility-qa.json)). Chromium offline-practice automation passed 33/33 as PASS_AUTOMATED_LOCAL_ONLY ([report](../../tests-output/p21-offline/9cfa78636df7/chromium/20261012171908112-40273/offline-qa.json)). Firefox and WebKit offline runs each completed 14 checks, then halted at a 15-second page wait timeout with FAIL_OR_INCOMPLETE and no reported check failures ([Firefox](../../tests-output/p21-offline/9cfa78636df7/firefox/20261012172618523-44046/offline-qa.json), [WebKit](../../tests-output/p21-offline/9cfa78636df7/webkit/20261012172656378-44345/offline-qa.json)); these are not passes. Codex's local affected website/bot Node check passed 138/138 ([saved log](evidence/20261012-recovery-validation/website-138-pass.log)). Commit 12acd99 is a Codex offline-runtime source checkpoint, not a deployed process/runtime identity. A separate detached reconciliation candidate at 4f3e483 passed 143/143 web+bot checks ([saved log](evidence/20261012-recovery-validation/reconciliation-143-pass.log)) and emitted the identical 9cfa bundle; this is separate software-test evidence and does not alter the provenance of the listed browser reports. These results are local automation, not staging, provider, physical-device, actual-screenreader or release acceptance.
+
+R15 is now AUTHENTICATED_ACCEPTANCE_PENDING, not “no staging URL/build.” CUA observed the populated public home and anonymous `/account` at `http://100.107.65.122:8081/`; every one of the 140 listed public files matched the generated frontend manifest for source f4851a568524846d981b351c659af4a9ee7479be / bundle 8167f349fb16b303c9347ac544afc3f9c73b9ea5515b0a085a7f40a6d75f3ea3 ([staging review](evidence/20261012-staging-review/STAGING-READONLY-20261012.md)). This verifies only static frontend identity. The API/server process boot SHA and backend authority are not independently verified, no sign-in/signup/OTP or account/multiplayer mutation was accepted, and no cross-client/Core/PostgreSQL journey was observed. The owner-reported account continuation message “The service did not respond in time. Try again.” is classified OWNER_REPORTED_NOT_REPRODUCED; the CUA account tab was unavailable, and no browser retry was made. The separate receipt records sanitized cookie-free endpoint timing, but one sample does not establish the cause ([account-timeout receipt](evidence/20261012-staging-review/ACCOUNT-TIMEOUT-20261012.md)). The nine pinned R15 rows remain acceptance-open; real staging state-changing account and multiplayer flows with test actors and Core/PostgreSQL as sole authority remain required. Production stays dormant and V4.1 remains the live authority.
+
+R17 remains IMPLEMENTED_NOT_ACCEPTED / BLOCKED_OWNER for owner, physical-device and manual accessibility acceptance. No signed phones, physical Safari/iOS/Android Chrome matrix, actual screenreader review or real-device CWV result exists. The P21-K120 policy-only rank subdivision row is LOCALLY_VERIFIED_POLICY and remains checked at current MASTER line 189: canonical source tiers and existing tests establish that no “Diamond II” subdivision is invented; no new owner confirmation was needed. The original pinned row remains in this register, while art-pack and device acceptance stay open in their own rows. Other art and device acceptance remains open.
+
+R21 novice acceptance remains IMPLEMENTED_NOT_ACCEPTED: a study protocol/evaluator and four scorer/probe tests are present in the worktree, but no novice sessions or comprehension results exist.
+
+The foreground, midground and haze scene layers are source-committed in 576eb54, with the sRGB/repeatability fix in 95789cf. They remain outside the older db286d8f browser payload and are not activated in the default compositor; they are partial source inputs, not a complete art-directed layer pack or human visual/device acceptance. Coin/Crown and all eleven rank raster masters have source/provenance. Editable SVG/vector masters, complete 3D/video/audio production and human visual/listening/runtime acceptance remain open. Unfinished 3D drafts are paused and are not validated assets; local export files alone do not close those requirements.
+
+## Offline transport qualification update
+
+The committed [archive index](evidence/20261012-recovery-validation/archive-index.json) preserves the exact reports, manifests, logs and selected guest screenshots. Original `tests-output` links identify local run directories; these checked-in copies provide persistent evidence.
+
+Final assertion helper `c50fb0ff…` passed 33/33 in Chromium 151 browser-offline emulation and 33/33 in Firefox/WebKit origin-drop simulations. Firefox/WebKit browser-offline emulation remains incomplete after 14 checks with Worker recovery visible. Chromium 145 browser-offline emulation passed 30/33; ordinary account/unknown-route requests reached the proxy despite the offline setting, while query-navigation attribution remains uncertain. Chromium 145 origin-drop completed 33/33 but required Ctrl-C after reporting; that exit130 is preserved. A targeted teardown revision, helper `3cf3be02…`, explicitly closes owned HTTP resources; its Chromium145 origin-drop rerun passed 33/33 with clean exit0. Earlier engine reports remain bound to the earlier helper, not relabeled as reruns. All use the same 681f/9cfa artifact. No physical-device offline acceptance is established. See [transport/teardown details](OFFLINE-ACCEPTANCE-PLAN-20261012.md).
+
+## Disposition counts
+
+| Disposition | Rows |
+|---|---:|
+| BLOCKED_OWNER | 12 |
+| BLOCKED_PROVIDER | 1 |
+| BLOCKED_STAGING | 9 |
+| IMPLEMENTED_NOT_ACCEPTED | 9 |
+| LOCALLY_VERIFIED_POLICY | 1 |
+| NOT_IMPLEMENTED | 19 |
+| PARTIAL | 109 |
+
+| Package | Rows |
+|---|---:|
+| R14 | 3 |
+| R15 | 9 |
+| R16 | 130 |
+| R17 | 11 |
+| R18 | 5 |
+| R29 | 2 |
+
+Each JSON row carries the exact pinned subphase, requirement, package, scope, owner/support, source line, prior open reason/action, current checkbox text/status/line, disposition, evidence pointers, acceptance boundary, remaining whole condition and next owner action. PARTIAL never closes a checkbox; file presence, screenshots, local Chromium and synthetic fixtures are not owner/provider/device acceptance.
+
+## Resumed source and external-state checkpoint — 2026-10-13
+
+All prior evidence and 160 pinned requirements remain. Master remains71 checked/159 open; this checkpoint closes no additional compound requirement. Original source f71856a / bundle 3383ceaa passes167 affected web+bot tests; reconciliation9e9955d over Main 2e8e501 passes172, all with zero failures/skips and byte-identical152-file frontend. Profile source 4d9aa9/c931 separately passed18 synthetic profile browser checks,915 broad Chromium checks and 137 axe checks (zero violations,116 manual views); Chrome browser-offline33 and Firefox/WebKit origin-drop33 each remain software transport proofs, not devices. Persistent archive: evidence/20261013-profile-validation/archive-index.json. Current3383 browser validation is pending and is not inferred from c931.
+
+Friends now has protected website controls and canonical service actions; source 586fe5e plus retryfixf71856a sends body.key matching the shared transport operation key. Requests are not optimistic; reload/query/actor/route fences remove private/stale rows. Real relationship/challenge/presence acceptance is still open. Profile four-field privacy editing is implemented but avatar/history/stats/achievements and actual account/native acceptance remain open.
+
+Staging HTTPS now opens at https://command.tail95c48c.ts.net, and the independently read manifest still serves f4851a5/8167 with 140 files. Main's source receipt is 8328b71; fresh running process boot evidence is still requested. Brave rendered the account form once, then restored-session text persisted25+ seconds through reentry/reload. Cookie-free session200911ms is separate successful transport evidence; the browser defect cause remains unverified. See evidence/20261013-staging-browser. Human private signup/OTP handoff and two approved staging accounts remain pending. No real two-account game finish, authenticated WSS, wallet/tournament settlement or physical-native continuity has been accepted. Main's co-located service smoke does not substitute for those website cases.
+
+Owner confirms present non-commercial hobby status: use Vercel Hobby; a paid upgrade is not a current blocker. Scoped CLI reverified3 projects with no Mega-name match and Hobby plan; no project/deployment was created. Connected preview still needs Main's approved reachable API, cookie/Origin and WSS contract; the current tailnet origin is private. Google Play remains at account-type choice and Apple requires sign-in; no identity classification, ID registration, store record, fee, release or provider approval occurred. Production/noindex/store holds remain.
+
+Final browser supersession: source e9eab575 / bundle efe8fdc62860 replaces the pending 3383 candidate above. Friends 40 and Profile 18 pass in each metadata-confirmed Chrome 151/Firefox 146/WebKit 26. Chrome broad915 and axe 137 pass with zero violations and 116 manual-review views; Chrome browser-offline33 and Firefox/WebKit origin-drop33 each pass. Local167 and reconciled172 tests pass without failure/skip; final reconciliation de5d5ef over Main 2e8e501 has identical152-file bytes. The archive retains earlier Chromium145 runs, both real WebKit focus failures and the partial interrupted b313 broad run; they are not relabeled. No physical or authenticated service acceptance is inferred.
+
+Owner-reported credential submission reached a code step but no mail arrived; staging mail is intentionally disabled and Main's private OTP handoff remains necessary. CUA's accessible Brave tab could not independently attribute the owner's code phase. Source audit also found staging Core created without its HTTP-to-socket publisher and equal-revision recovery/hint suppression risks for terminal settlement; see REALTIME-CONTRACT-AND-INTEGRATION-GAPS-20261013.md. No backend/training edits were made to bypass Main ownership.

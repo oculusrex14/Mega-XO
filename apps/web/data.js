@@ -10,6 +10,12 @@ export const errorCopy = error => ({
  OTP_LOCKED: 'Too many code attempts. Request a new code after the waiting period.',
  INVALID_PASSWORD: 'Use at least ten characters, including a letter and a number.',
  INVALID_CREDENTIALS: 'Check your email and password and try again.',
+ INVALID_USERNAME: 'Use 3–20 letters, numbers or underscores, starting with a letter. Some names are reserved.',
+ USERNAME_TAKEN: 'That username is already in use. Choose another.',
+ USERNAME_COOLDOWN: 'Your username can change once every 7 days. This update was not saved; remove the username change to save your other edits.',
+ INVALID_DISPLAY_NAME: 'Choose a display name of up to 28 characters using supported text.',
+ INVALID_PRIVACY: 'Choose one of the available visibility options.',
+ PROFILE_NOT_FOUND: 'This profile is no longer available. Sign in again to continue.',
  REQUEST_TIMEOUT: 'The service did not respond in time. Try again.',
  RATE_LIMITED: 'Please wait a moment before trying again.',
 })[error?.message] || 'The service is unavailable right now. Please try again.';
@@ -73,4 +79,183 @@ export function createReadModel({context, changed, request = readJSON}) {
  function invalidate(){profileRevision++;leaderboardRevision++;leaderboardAbort?.abort();}
  function destroy(){destroyed=true;invalidate();}
  return {profile,leaderboard,invalidate,destroy};
+}
+
+const PROFILE_STATS_VISIBILITY = ['public', 'friends', 'private'];
+const PROFILE_PRESENCE_VISIBILITY = ['friends', 'hidden'];
+
+function profileDraft(profile) {
+ const displayName = profile?.displayName ?? profile?.name;
+ if (!profile || typeof profile.id !== 'string' || typeof profile.username !== 'string' || !profile.username.trim() || typeof displayName !== 'string' || !displayName.trim() ||
+     !PROFILE_STATS_VISIBILITY.includes(profile.statsVisibility) || !PROFILE_PRESENCE_VISIBILITY.includes(profile.presenceVisibility)) {
+  throw Error('SERVICE_UNAVAILABLE');
+ }
+ return {
+  username: profile.username,
+  displayName,
+  statsVisibility: profile.statsVisibility,
+  presenceVisibility: profile.presenceVisibility,
+ };
+}
+
+function profilePayload(draft) {
+ return {
+  username: String(draft?.username ?? '').trim().toLowerCase(),
+  displayName: String(draft?.displayName ?? '').trim(),
+  statsVisibility: draft?.statsVisibility,
+  presenceVisibility: draft?.presenceVisibility,
+ };
+}
+
+/**
+ * Protected self-profile editor. The caller supplies MegaAccount.request so POSTs
+ * keep the shared cookie/CSRF/idempotency behavior instead of using raw fetch.
+ * Drafts are memory-only and every response is fenced by actor, page and revision.
+ */
+export function createProfileEditor({context, changed = () => {}, request = readJSON, active = () => true, onAuthRequired = () => {}}) {
+ let revision = 0, saveRevision = 0, activeActor = null, visible = false, suspended = false, destroyed = false;
+ const idle = () => ({status:'idle', actorId:null, profile:null, draft:null, message:'', errorCode:''});
+ context.profileEditor = idle();
+
+ function isCurrent(actor, token) {
+  return !destroyed && visible && activeActor === actor && revision === token &&
+   context.sessionStatus === 'linked' && context.profile?.id === actor && active(actor);
+ }
+
+ function deactivate() {
+  if (!visible && context.profileEditor?.status === 'idle') return;
+  revision++; saveRevision++; activeActor = null; visible = false; suspended = false;
+  context.profileEditor = idle();
+ }
+
+ function suspend() {
+  if (destroyed || !visible) return false;
+  if (suspended) return true;
+  suspended = true; revision++; saveRevision++;
+  const state = context.profileEditor || idle();
+  context.profileEditor = {...state, status:'refreshing', message:'Confirming your account before profile changes can continue…', errorCode:''};
+  changed();
+  return true;
+ }
+
+ function resume(actor) {
+  if (destroyed || !suspended || context.sessionStatus !== 'linked' || typeof actor !== 'string' || context.profile?.id !== actor) return false;
+  if (activeActor !== actor) { deactivate(); return load(); }
+  const state = context.profileEditor;
+  suspended = false;
+  return load({force:true, preserveDraft:Boolean(state?.profile && state?.draft)});
+ }
+
+ async function load({force = false, preserveDraft = false} = {}) {
+  const actor = context.sessionStatus === 'linked' ? context.profile?.id : null;
+  if (destroyed || typeof actor !== 'string' || !actor || !active(actor)) { deactivate(); return false; }
+  const currentState = context.profileEditor;
+  if (!force && visible && activeActor === actor && currentState?.status !== 'idle') return false;
+
+  const retainedProfile = preserveDraft && currentState?.actorId === actor && currentState?.profile ? currentState.profile : null;
+  const retainedDraft = retainedProfile && currentState?.draft ? currentState.draft : null;
+  visible = true; activeActor = actor;
+  suspended = false;
+  const token = ++revision;
+  saveRevision++;
+  context.profileEditor = retainedDraft
+   ? {status:'refreshing', actorId:actor, profile:retainedProfile, draft:retainedDraft, message:'Confirming your account before profile changes can continue…', errorCode:''}
+   : {status:'loading', actorId:actor, profile:null, draft:null, message:'', errorCode:''};
+  changed();
+  try {
+   const result = await request('/api/account/profile');
+   if (!isCurrent(actor, token)) return false;
+   if (!result || result.id !== actor) throw Error(result?.id ? 'ACTOR_CHANGED' : 'SERVICE_UNAVAILABLE');
+   const draft = profileDraft(result);
+   context.profileEditor = {status:'ready', actorId:actor, profile:result, draft:retainedDraft || draft, message:'', errorCode:''};
+  } catch (error) {
+   if (!isCurrent(actor, token)) return false;
+   if (authRequired(error)) {
+    onAuthRequired(error, {actor, operation:retainedDraft ? 'refresh' : 'load'});
+    if (!isCurrent(actor, token)) return false;
+   }
+   context.profileEditor = {
+    status:retainedDraft ? 'refresh-error' : 'error', actorId:actor, profile:retainedProfile, draft:retainedDraft,
+    message:errorCopy(error), errorCode:error?.message || 'SERVICE_UNAVAILABLE',
+   };
+  }
+  if (isCurrent(actor, token)) changed();
+  return context.profileEditor.status === 'ready';
+ }
+
+ function updateDraft(draft) {
+  const state = context.profileEditor;
+  if (!visible || suspended || !state?.profile || state.actorId !== activeActor || ['saving','refreshing','refresh-error'].includes(state.status) ||
+      context.sessionStatus !== 'linked' || context.profile?.id !== activeActor || !active(activeActor)) return false;
+  context.profileEditor = {
+   ...state,
+   status:'ready',
+   draft:{
+    username:String(draft?.username ?? ''),
+    displayName:String(draft?.displayName ?? ''),
+    statsVisibility:String(draft?.statsVisibility ?? ''),
+    presenceVisibility:String(draft?.presenceVisibility ?? ''),
+   },
+   message:'', errorCode:'',
+  };
+  return true;
+ }
+
+ function resetDraft() {
+  const state = context.profileEditor;
+  if (!state?.profile || suspended || state.actorId !== activeActor || ['saving','refreshing','refresh-error'].includes(state.status)) return false;
+  context.profileEditor = {...state, status:'ready', draft:profileDraft(state.profile), message:'', errorCode:''};
+  changed();
+  return true;
+ }
+
+ async function save(draft = context.profileEditor?.draft) {
+  let state = context.profileEditor;
+  if (!visible || suspended || !state?.profile || state.actorId !== activeActor || ['saving','refreshing','refresh-error'].includes(state.status) ||
+      context.sessionStatus !== 'linked' || context.profile?.id !== activeActor || !active(activeActor)) return false;
+  if (draft) updateDraft(draft);
+  state = context.profileEditor;
+  const actor = activeActor, token = revision, operation = ++saveRevision;
+  const submittedDraft = {...state.draft};
+  const body = profilePayload(submittedDraft);
+  context.profileEditor = {...state, status:'saving', message:'Saving your profile…', errorCode:''};
+  changed();
+  try {
+   const updated = await request('/api/account/profile', body);
+   if (!isCurrent(actor, token) || operation !== saveRevision) return false;
+   if (!updated || updated.id !== actor) throw Error(updated?.id ? 'ACTOR_CHANGED' : 'SERVICE_UNAVAILABLE');
+   const savedDraft = profileDraft(updated);
+   context.profile = {
+    ...context.profile,
+    username:updated.username,
+    displayName:updated.displayName ?? updated.name,
+    name:updated.name ?? updated.displayName,
+    avatar:updated.avatar ?? context.profile.avatar,
+    statsVisibility:updated.statsVisibility,
+    presenceVisibility:updated.presenceVisibility,
+   };
+   context.profileEditor = {status:'saved', actorId:actor, profile:updated, draft:savedDraft, message:'Your profile changes are saved.', errorCode:''};
+  } catch (error) {
+   if (!isCurrent(actor, token) || operation !== saveRevision) return false;
+   if (authRequired(error)) {
+    onAuthRequired(error, {actor, operation:'save'});
+    if (!isCurrent(actor, token) || operation !== saveRevision) return false;
+   }
+   context.profileEditor = {
+    ...context.profileEditor,
+    status:'error', actorId:actor, draft:submittedDraft,
+    message:errorCopy(error), errorCode:error?.message || 'SERVICE_UNAVAILABLE',
+   };
+  }
+  if (isCurrent(actor, token) && operation === saveRevision) changed();
+  return context.profileEditor.status === 'saved';
+ }
+
+ function destroy() { destroyed = true; deactivate(); }
+ return {
+  load, reload:() => load({force:true}), refresh:() => load({force:true,preserveDraft:true}),
+  updateDraft, resetDraft, save, suspend, resume,
+  isSuspended:() => suspended, actorId:() => activeActor,
+  deactivate, destroy,
+ };
 }

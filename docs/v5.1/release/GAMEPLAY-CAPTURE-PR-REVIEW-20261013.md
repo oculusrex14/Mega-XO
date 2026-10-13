@@ -1,7 +1,19 @@
 # PR #12 `feat/v51-gameplay-data-capture` — independent review (V5.1)
 
 **Reviewer:** Main integration owner (Priority 7 review pass).
-**Date:** 2026-10-13. **Decision: READY_WITH_FIXES.** Not merged, not deployed by this review.
+**Date:** 2026-10-13. **Decision: READY_WITH_FIXES → INTEGRATED.** Merged into `V5.1` after the fixes below.
+
+## Integration disposition (fixes applied by the integration owner)
+
+| Blocker | Fix | Commit |
+| --- | --- | --- |
+| B1 — encrypted suite fails on darwin (realpath stub) | test now resolves `fs.realpath(dir)` before stubbing `fs.promises.open`; 5/5 pass locally | `a972af8` |
+| B2 — branch behind V5.1 (deletion-ack regression risk) | merged with a **reviewed two-parent merge** (`--no-ff`) that keeps V5.1's `packages/services/accounts.js` (6-key ack) and V5.1's release docs / `scripts/v51/*`; verified `tombstone`/`actorHash` intact post-merge | `c384b4d` |
+| B3 — capture gate not a required check | `V5.1 gameplay capture` added to `ALWAYS_REQUIRED` in `scripts/v5/ci-impact.js` and the release-engineering workflow's required-gate assertion (fail-closed) | `5513866` |
+
+Post-merge verification: 45/45 capture PG+capture+worker+tournament tests, 5/5 encrypted, 58/58
+non-PG capture tests; `node scripts/v5/migrate.js --dry-run` plan OK over 49 migrations.
+
 
 | Field | Value |
 | --- | --- |

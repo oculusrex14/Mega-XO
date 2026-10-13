@@ -64,6 +64,30 @@ Let's Encrypt intermediates); `MEGA_PG_TARGET_B64` = the staging inventory; `MEG
 | `OPTIONS /api/account/email` from `https://megaxo.online` | 204 (CORS allowed) |
 | Headers | HSTS, `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy`, `Permissions-Policy` |
 
+## Website route / caching / boundary verification (deployed, fetched)
+
+- **All 38 website routes return 200**: `/`, `/download`, `/faq`, `/press`, `/play`, `/game`, `/casual`,
+  `/ranked`, `/tournaments`, `/season`, `/friends`, `/challenge`, `/leaderboard`, `/rewards`, `/store`,
+  `/sponsors`, `/ads`, `/themes`, `/profile`, `/settings`, `/account`, `/how-to-play`, `/support`,
+  `/about`, `/privacy`, `/terms`, `/delete-account`, `/privacy-choices`, `/legal/privacy`, `/help`,
+  `/news`, `/status`, `/accessibility`, `/offline`, `/404`, `/legacy-game/`, `/manifest.webmanifest`,
+  `/offline-sw.js`.
+- **Real 404s preserved**: `/pages/nope.html` → 404; `/api/v1/leaderboard` on the website origin → **404**
+  (the static site proxies nothing into Core — the API/Core split holds).
+- **CSP** (strict): `default-src 'self'; script-src 'self' https://unpkg.com; style-src 'self'
+  'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src
+  'self' data: blob:; connect-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none';
+  form-action 'self'`.
+- **Cache**: `Cache-Control: no-cache` on both HTML and static assets (deliberate while the site is
+  under the noindex hold and the release is unapproved — no accidental private-data caching; a
+  hash-immutable policy is a release-time change). `X-Robots-Tag: noindex, nofollow` on every page.
+- **Headers**: `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, HSTS.
+- **Store links**: `apps/web/store-links.json` is `{ios:null,android:null}` — honest; the built
+  `/download` page renders "Coming soon" and `/api/download` 303-redirects to
+  `/download?platform=…&unavailable=1`. The strict validator (`apps/web/download-config.cjs`) refuses
+  anything but a real `play.google.com/store/apps/details?id=…` / `apps.apple.com/…/id…` HTTPS listing.
+  Links are set only once real listings exist.
+
 ## Honest limits / remaining
 
 - **Vercel → Oracle Core** is not yet a live connection: the signed Core ingress is tailnet-only

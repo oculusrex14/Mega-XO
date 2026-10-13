@@ -63,8 +63,8 @@
  * closed here.
  *
  * RECOVERY (V5-08-04). A returning client names the last revision it applied; `resume` compares it
- * with the durable head and answers `ack` (already in sync), a bounded `delta` plus the
- * authoritative `snapshot` (a miss inside the replayable window), or the full `snapshot` (a miss
+ * with the durable head and answers `ack` plus the authoritative `snapshot` at an equal move
+ * revision, a bounded `delta` plus `snapshot` (a miss inside the replayable window), or the full `snapshot` (a miss
  * beyond it, a non-move revision step, or a client claiming to be AHEAD of the authority). Because
  * the snapshot is the committed aggregate itself, a client is synchronized by REPLACEMENT and never
  * reapplies the moves it already holds - the invariant the phase gate tests. A client without a
@@ -340,13 +340,13 @@ function createRealtimeTransport(options = {}) {
    * path idempotent against that:
    *   - a hint is NEVER authority - it only decides whether and for whom to reread committed
    *     PostgreSQL truth (the broadcast is a fresh `core.readMatch`, never the payload);
-   *   - the SAME revision is broadcast to local subscribers at most once. `lastBroadcast` records
-   *     the last revision each match was fanned out at, and a hint acts only when the fresh durable
-   *     read shows a DIFFERENT revision (a genuine other-process change).
+   *   - an unchanged committed VIEW is fanned out through the hint path at most once.
+   *     `lastBroadcast` records a bounded fingerprint of the complete view, because resign,
+   *     timeout and void can change status/receipt without adding a move revision.
    * `pendingEcho` is the in-flight half of the same guard: a local command arms it with the revision
    * it is about to commit, so a hint that arrives BETWEEN the commit and the local broadcast (the
-   * echo can beat the command handler back) waits for that revision to be broadcast instead of
-   * publishing a second, duplicate snapshot. Both maps are advisory and bounded by the matches this
+   * echo can beat the command handler back) waits for that view to be broadcast instead of
+   * publishing a second, duplicate snapshot. Both maps are advisory and scoped to the matches this
    * process has fanned out. */
   const lastBroadcast = new Map();
   const pendingEcho = new Map();
@@ -793,14 +793,31 @@ function createRealtimeTransport(options = {}) {
     return view;
   }
 
+  /* A fingerprint is only an advisory duplicate guard, never state authority. Canonical object
+   * keys make byte-equivalent committed facts identical even if a repository reorders JSON keys.
+   * Keep a digest rather than retaining another player/match DTO in this transport. */
+  function publication(view) {
+    const canonical = JSON.stringify(view, (_key, value) => value && typeof value === 'object' && !Array.isArray(value)
+      ? Object.fromEntries(Object.keys(value).sort().map(key => [key, value[key]])) : value);
+    return { revision: view.revision, terminal: view.settled === true || ['FINISHED', 'VOID'].includes(view.status),
+      fingerprint: crypto.createHash('sha256').update(canonical).digest('hex') };
+  }
+  function superseded(previous, next) {
+    return previous && (next.revision < previous.revision
+      || (next.revision === previous.revision && previous.terminal && !next.terminal));
+  }
+
   /* Fan the committed view out to every local socket subscribed to this match. A socket that closed
    * or unsubscribed mid-await is gone from both the registry and its own set, and sendText drops a
    * closing socket, so a subscriber can never be written after teardown. */
-  function broadcastSnapshot(matchId, view) {
-    /* Remember the revision this process fanned out for the match: a `core-match` hint that only
+  function broadcastSnapshot(matchId, view, next = publication(view)) {
+    /* A read started before a concurrent local command must not reintroduce an older move head or
+     * reopen a settled match after that command's fresh view was delivered. */
+    if (superseded(lastBroadcast.get('b|' + matchId), next)) return;
+    /* Remember the committed facts this process fanned out: a `core-match` hint that only
      * echoes this very commit (which this process already delivered) is suppressed rather than
      * duplicating every local subscriber's snapshot. */
-    lastBroadcast.set('b|' + matchId, view.revision);
+    lastBroadcast.set('b|' + matchId, next);
     for (const peer of connections.values()) {
       if (peer.destroyed || peer.closing) continue;
       if (!peer.subscriptions.has(matchId)) continue;
@@ -813,7 +830,7 @@ function createRealtimeTransport(options = {}) {
   /* The `core-match` wake-up: another Core committed a change to `matchId`. A hint is NEVER
    * authority, so this only decides WHETHER to reread and for whom - the durable document is the
    * broadcast. Nothing is done for a hint that names a match no local socket watches (no wasted
-   * `core.readMatch`) or that merely echoes a revision this process already fanned out. The reread
+   * `core.readMatch`) or that merely echoes a view this process already fanned out. The reread
    * uses one already-subscribed local actor, because `core.readMatch` enforces match.participants
    * membership: a non-participant read can neither prove nor broadcast the match. */
   function onMatchHint(text) {
@@ -843,10 +860,11 @@ function createRealtimeTransport(options = {}) {
         try { view = await committedView(actor, matchId); }
         catch { break; } /* a transient read fault keeps the match; the next hint rereads */
         if (closed || draining) break;
-        /* Self-echo or an already-delivered revision: this process fanned that exact revision out.
-         * Any other revision is a genuine other-process commit and is broadcast. */
-        if (lastBroadcast.get('b|' + matchId) === view.revision) continue;
-        broadcastSnapshot(matchId, view);
+        /* A move revision alone cannot prove settlement is unchanged. Suppress only the exact
+         * already-published committed facts (and a stale read overtaken by a newer broadcast). */
+        const next = publication(view), previous = lastBroadcast.get('b|' + matchId);
+        if (previous?.fingerprint === next.fingerprint || superseded(previous, next)) continue;
+        broadcastSnapshot(matchId, view, next);
       }
     } finally { hintInFlight.delete(matchId); }
   }
@@ -960,13 +978,14 @@ function createRealtimeTransport(options = {}) {
    * A client that was away (backgrounded app, dropped network, a lost pubsub fan-out) returns with
    * the last revision it APPLIED. The transport never replays that client's own moves: it compares
    * the claim against the durable head and answers the smallest honest thing.
-   *   - claim === head: `ack`. The client is already synchronized; nothing follows.
+   *   - claim === head: `ack`, then the full snapshot. The equal move revision does not establish
+   *     that status/deadline/receipt is unchanged (resign/timeout/void do not add a move).
    *   - claim <  head, the miss is within the bounded window, and the durable move log is exactly as
    *     long as the revision (a contiguous window): the `delta` of the committed moves it missed,
    *     followed by the authoritative `snapshot`. The snapshot alone synchronizes by replacement, so
    *     the client never reapplies a move it already holds; the delta lets it replay the gap.
-   *   - anything else - a miss beyond the window, a revision step that was not a move (a resign or a
-   *     timeout), a truncated state read, or a claim AHEAD of the authority - the full committed
+   *   - anything else - a miss beyond the window, a move log that cannot establish a contiguous
+   *     replay, a truncated state read, or a claim AHEAD of the authority - the full committed
    *     `snapshot`, which brings the client to the true head whether it was behind or corrupted.
    *
    * Membership comes from PostgreSQL, never from the client's own subscription set: a connection
@@ -994,6 +1013,7 @@ function createRealtimeTransport(options = {}) {
     const ackRevision = message.ack_revision;
     if (ackRevision === view.revision) {
       sendText(conn, { protocol: PROTOCOL, operation: 'ack', match_id: matchId, ack_revision: view.revision });
+      sendText(conn, snapshotFrame(matchId, view, true));
       return;
     }
     const moves = view.state && Array.isArray(view.state.moves) ? view.state.moves : null;

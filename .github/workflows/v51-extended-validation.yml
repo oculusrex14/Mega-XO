@@ -57,7 +57,7 @@ jobs:
         run: |
           set -o pipefail
           mkdir -p .artifacts/v51-extended
-          node --test --test-reporter=tap --test-concurrency=1 --test-force-exit tests/v5-migrations.test.js tests/v5-pg-guards.test.js tests/v5-p0*.test.js tests/v5-p1*.test.js tests/v5-p2*.test.js 2>&1 | tee .artifacts/v51-extended/postgresql.log
+          node --test --test-reporter=tap --test-concurrency=1 --test-force-exit tests/v5-migrations.test.js tests/v5-pg-guards.test.js tests/v5-p0*.test.js tests/v5-p1*.test.js tests/v5-p2*.test.js tests/v51-p21-realtime-publication.test.js 2>&1 | tee .artifacts/v51-extended/postgresql.log
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:

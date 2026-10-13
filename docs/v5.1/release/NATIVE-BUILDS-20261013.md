@@ -35,8 +35,20 @@ Both platforms embed the SAME generated client bundle:
 | Android (Gradle `stageMegaClient`) | 97 | `8d3350025a14a9b5a0fd07bb54657085a5c16c15ab59eb50690f22830233ed47` |
 | iOS (`MegaClient/`) | 97 | `8d3350025a14a9b5a0fd07bb54657085a5c16c15ab59eb50690f22830233ed47` |
 
-The shared asset manifest matches across Android and iOS for the same source revision, as the iOS
-README requires.
+Confirmed by the official verifier:
+`node scripts/v5/verify-native-bundle-parity.js <android-manifest> <ios-manifest>` →
+`Native client parity passed: hash=8d335002… files=97`.
+
+## Native release configuration (implemented; owner signing gated)
+
+The signed-release pipeline is fully implemented and **fails closed without owner-held signing
+material**: `scripts/v5/native-release-{android,ios}.sh` require `MEGA_ANDROID_APPLICATION_ID`
+(refuses the `online.megaxo.prototype` prototype ID and any non-registered package), a monotonic release
+version code, and the owner-held keystore/alias/passwords; the iOS release path similarly requires a real
+App ID/signing identity. `scripts/v5/native-smoke-android.sh` drives a real emulator install + launch +
+`MegaXOStartup READY` assertion (not a screenshot-only check). All four scripts pass `bash -n`.
+No signing identity, keystore, provisioning profile or store record exists yet, so no signed/distributable
+artifact is produced — that is the owner action (P5).
 
 ## Honest limits (not claimed)
 

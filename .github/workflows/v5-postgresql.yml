@@ -224,6 +224,13 @@ jobs:
           set -o pipefail
           node --test --test-reporter=tap --test-concurrency=1 tests/v5-p10-jobs.test.js tests/v5-p10-workflows.test.js tests/v5-p10-provider.test.js tests/v5-p10-scheduling.test.js tests/v5-p10-deploy-overlap.test.js 2>&1 | tee .evidence-logs/v5-p10-workers.tap
       - name: P11 stateless Vercel API and control plane
+        # P11's browser-compat contract runs a real signed Core queue gateway backed by
+        # the job's isolated Redis service. Without REDIS_URL the fixture deliberately
+        # enters its unconfigured-Core negative path and GET /api/v1/queue correctly
+        # returns 503; do not weaken the production fail-closed behavior to get 200.
+        env:
+          REDIS_URL: redis://127.0.0.1:6379
+          V5_REDIS_REQUIRED: '1'
         run: |
           set -o pipefail
           node --test --test-reporter=tap --test-concurrency=1 tests/v5-p11-vercel-config.test.js tests/v5-p11-account-social.test.js tests/v5-p11-core-gateway.test.js tests/v5-p11-browser-compat.test.js tests/v5-p11-website-foundations.test.js 2>&1 | tee .evidence-logs/v5-p11-api.tap

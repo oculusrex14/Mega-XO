@@ -82,6 +82,24 @@ release.
 | Multi-LLM arena + pilot | IN PROGRESS | - | agent building llm-arena.cjs + pilot |
 | Multi-generation RL run (real scale) | PENDING | - | needs arena/qualification data; pipeline proven |
 
+
+## TRACK A Phase 2-5 results (owner multi-LLM + RL direction, 2026-10-13)
+
+| Item | Status | Commit/Artifact | Evidence |
+| --- | --- | --- | --- |
+| utttai compatibility assessment | COMPLETE | `61aaa06`/`382ec1f` | rules identical over 16,005,010 rows; Apache-2.0; supervision-only |
+| Validated utttai converter | COMPLETE | `ac5ef83` | 355,102 rows verified, 0 mismatches; 18/18 corruptions rejected |
+| External value-source training | COMPLETE | `ac5ef83` | external-only val value MSE 0.0004, top1 0.574 |
+| Multi-LLM arena + pilot | COMPLETE | `20a1c28` | 6 real games; both LLMs lost 0-4 to Expert; Gemma reliable generator |
+| Multi-source corpus | COMPLETE | `2af88de`/`34e872f` | 431,999 records, 1,696 games, canonical |
+| STRONGER-LABEL BREAKTHROUGH | COMPLETE | `1e1501b` | external-trained: **0.406 vs Expert / 0.900 vs tacticalUCT** (was 0.05/0.61) |
+| 3-generation RL run | COMPLETE (finding) | `73955c6` | seeded gen-1 **0.469 vs Expert / 0.931 vs tacticalUCT**; gens 2-3 self-play COLLAPSE (0.394/0.294) |
+| Anchored self-play loop | COMPLETE | `7b0e46c` | keeps anchor corpus each generation; verified 633+153=786 canonical |
+| Anchored multi-generation run (rl4) | RUNNING | - | on DGX2, tests whether the anchored loop holds/improves 0.469 |
+
+**Champion (research only): rl3 gen-1** - 713,802-param compact CNN, 0.469 vs improvedExpert
+(CI [0.381,0.556]) / 0.931 vs tacticalUCT (CI [0.881,0.975]). APPROVED_CATALOG unchanged; no promotion.
+
 ## R/B/CL and original acceptance
 
 | ID | Status | Commit | Evidence |

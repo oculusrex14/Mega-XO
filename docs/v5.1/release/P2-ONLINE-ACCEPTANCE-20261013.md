@@ -16,7 +16,7 @@ browsers would. All 27 steps pass (`ok:true`, 27/27, ~29 s).
    `cancelSocialOffers`) after commit, exactly as the production worker's outbox drain does
    (commit `11e6f50`). Composition reordered so Core exists before the account service.
 
-## Steps (all PASSED)
+## Steps (all PASSED — 31/31)
 
 | Step | Result |
 | --- | --- |
@@ -36,7 +36,10 @@ browsers would. All 27 steps pass (`ok:true`, 27/27, ~29 s).
 | P2_06 HTTP snapshot fallback | 200 |
 | P2_06 unauthenticated snapshot | 401 |
 | P2_08 actor fencing (spoof another actor) | 403 |
-| P2_07 resign route | 200 |
+| **P2_04 complete legal game to terminal** | **PASSED — winner O, 50 moves, no illegal move** |
+| **P2_04 terminal durable + settled** | **PASSED — status `FINISHED`, receipt `reason=line`, payout recorded** |
+| **P2_04 economy + progression durable** | **PASSED — `/api/account/export`: both wallets hold the approved 150-Coin opening grant; `matchHistory` length 1 with `reason=line`; `casualGames=1` each** |
+| P2_07 resignation terminal delivery (2nd live match) | PASSED — status `FINISHED`, `reason=resign` |
 | P2_08 logout + cookie revocation | 200 / post-logout 401 |
 | P2_08 other actor unaffected | 200 |
 

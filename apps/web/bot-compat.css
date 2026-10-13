@@ -56,7 +56,7 @@
   padding: 12px 16px;
   border: 1px dashed var(--gb-line, #4b5f78);
   border-radius: 12px;
-  background: rgba(10, 24, 48, .4);
+  background: rgba(10, 24, 48, .12);
 }
 
 .gb-guided-diagram-step {
@@ -127,14 +127,14 @@
 }
 
 .gb-guided-btn--primary {
-  background: linear-gradient(135deg, #157aff, #0056cc);
+  background: linear-gradient(135deg, #0d5fce, #0056cc);
   border-color: #2b88ff;
   color: #ffffff;
   box-shadow: 0 0 12px rgba(21, 122, 255, .35);
 }
 
 .gb-guided-btn--primary:hover {
-  background: linear-gradient(135deg, #2b88ff, #157aff);
+  background: linear-gradient(135deg, #2b88ff, #0d5fce);
   border-color: #70adff;
 }
 
@@ -232,7 +232,7 @@
   padding: 16px;
   border: 1px solid var(--gb-line, #35537b);
   border-radius: 12px;
-  background: rgba(12, 28, 56, .6);
+  background: rgba(12, 28, 56, .55);
 }
 
 .gb-button--guided {
@@ -244,7 +244,7 @@
   padding: 10px 18px;
   border: 1px solid #2b88ff;
   border-radius: 10px;
-  background: linear-gradient(135deg, #157aff, #0056cc);
+  background: linear-gradient(135deg, #0d5fce, #0056cc);
   color: #ffffff;
   font-size: 14px;
   font-weight: 700;
@@ -254,7 +254,7 @@
 }
 
 .gb-button--guided:hover {
-  background: linear-gradient(135deg, #2b88ff, #157aff);
+  background: linear-gradient(135deg, #2b88ff, #0d5fce);
   border-color: #70adff;
 }
 
@@ -344,3 +344,15 @@
     outline: 3px solid Highlight !important;
   }
 }
+
+/* The guided panel paints a light card on every light theme, so its colour tokens are pinned per
+   theme: otherwise the panel inherits the dark-theme glow and muted tokens and the card text drops
+   far below the 4.5:1 minimum. Paper Club additionally swaps the light board marks for the ink
+   colours it uses on its dark rail. */
+.gb-stage[data-gb-theme="vector"] .gb-guided-panel { --gb-route: #1f57d6; }
+.gb-stage[data-gb-theme="paperclub"] .gb-guided-panel {
+  --gb-route: #8a6c00;
+  --gb-muted: #6a5e4c;
+  --gb-x: #2a4f9b;
+}
+.gb-stage[data-gb-theme="paperclub"] .gb-guided-btn { border-color: #27221b; }

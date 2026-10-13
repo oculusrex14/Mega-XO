@@ -161,13 +161,20 @@
 .gb-stage--practice:where(:not([data-gb-theme="cinematic"])) .gb-turn-strip { background: var(--gb-surface); border-color: var(--gb-mini-border); box-shadow: none; }
 .gb-stage--practice:where(:not([data-gb-theme="cinematic"])) .gb-turn-strip p { border-color: var(--gb-mini-border); }
 .gb-stage[data-gb-theme="vector"] .gb-turn-strip { --gb-surface: #171a1f; --gb-ink: #fff; --gb-muted: #aeb5bd; color: var(--gb-ink); }
-.gb-stage[data-gb-theme="paperclub"] .gb-frame { border: 2px solid #27221b; border-radius: 10px 16px 12px 14px; background-image: repeating-linear-gradient(to bottom, transparent 0, transparent 31px, rgba(70, 110, 170, .2) 31px, rgba(70, 110, 170, .2) 32px); box-shadow: 7px 9px 0 rgba(39, 34, 27, .18); }
+.gb-stage[data-gb-theme="paperclub"] .gb-frame { border: 2px solid #27221b; border-radius: 10px 16px 12px 14px; background-image: repeating-linear-gradient(to bottom, transparent 0, transparent 31px, rgba(70, 110, 170, .13) 31px, rgba(70, 110, 170, .13) 32px); box-shadow: 7px 9px 0 rgba(39, 34, 27, .18); }
 .gb-stage[data-gb-theme="paperclub"] .gb-mini { border-width: 2px; }
 .gb-stage[data-gb-theme="paperclub"] .gb-mini--active { box-shadow: 0 0 0 3px #ffd23f, 3px 4px 0 rgba(39, 34, 27, .2); }
 .gb-stage[data-gb-theme="paperclub"] .gb-player b { font-family: var(--gb-title); font-size: 19px; }
-.gb-stage[data-gb-theme="paperclub"] .gb-turn-strip { background: #2f3a52; color: #f6efdc; --gb-muted: #c8cfe0; }
+/* Paper Club's dark turn strip is the retained `--panel-dark` (#2f3a52). Every child keeps the
+   contrast the strip was designed for: a light ink for text, and marks that stay legible on that
+   dark slate instead of the light-theme board tokens. The strip is also the rail for
+   `.gb-sign-in` and `.gb-reset`, which read the theme ink and muted tokens directly. */
+.gb-stage[data-gb-theme="paperclub"] .gb-turn-strip { background: #2f3a52; color: #f6efdc; --gb-ink: #f6efdc; --gb-muted: #d8d2c4; --gb-x: #ffd23f; --gb-o: #ffcf9e; }
+.gb-stage[data-gb-theme="paperclub"] .gb-turn-strip p { border-color: #6b7899; }
 .gb-stage[data-gb-theme="paperclub"] .gb-turn-icon { background: #ffd23f; color: #2a1f08; border-color: #ffd23f; }
 .gb-stage[data-gb-theme="paperclub"] .gb-turn-icon .gb-mark { color: #2a1f08; }
+.gb-stage[data-gb-theme="paperclub"] .gb-turn-icon--x .gb-mark,
+.gb-stage[data-gb-theme="paperclub"] .gb-turn-icon--o .gb-mark { filter: none; }
 .gb-stage[data-gb-theme="afterhours"] .gb-frame { border-width: 2px; border-radius: 8px; background-image: linear-gradient(rgba(44, 242, 255, .045) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 79, 182, .04) 1px, transparent 1px); background-size: 28px 28px; box-shadow: 0 0 36px rgba(255, 79, 182, .14), 0 0 60px rgba(44, 242, 255, .08), 0 24px 60px #0006; }
 .gb-stage[data-gb-theme="afterhours"] .gb-mini--active { box-shadow: 0 0 0 2px #ffd83d, 0 0 16px rgba(255, 216, 61, .3); }
 .gb-stage[data-gb-theme="afterhours"] .gb-mark--x { filter: drop-shadow(0 0 3px rgba(44, 242, 255, .7)); }

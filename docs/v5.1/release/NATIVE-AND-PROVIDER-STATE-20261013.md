@@ -50,3 +50,20 @@ files must not be treated as configured, and the offline apps link to nothing.
 No device, provider, purchase, store, or live-native acceptance is claimed. The remaining P4 online
 items are blocked on the owner-authorized online native target (transport + provider identity) and the
 final app IDs/signing identities, which need the owner's store accounts and devices.
+
+## Privacy / deletion / retention implementation evidence (P5)
+
+Real suites executed against the disposable PG16 lab:
+
+| Suite | Result |
+| --- | --- |
+| `account-deletion` + `privacy-export` + `abuse-guard` + `p1-abuse-acceptance` | **23/23 pass**, 0 skipped |
+| `gameplay-privacy` (capture suppression/erase/restore fence) | pass (see capture matrix) |
+
+Legal/retention source documents present under `docs/legal/`: `DATA-INVENTORY-RETENTION.md`,
+`COOKIE-AND-CONSENT.md`, `LEGAL-APPROVAL-CHECKLIST.md`, `MODERATION-POLICY-DRAFT.md`,
+`STORE-PRIVACY-DECLARATIONS.md`. Live account-deletion lifecycle verified end-to-end on the staging
+origin (`ACCOUNT-DELETION-LIFECYCLE-20261013.md`): request → tombstone/actorHash → credentials/identities/
+sessions/challenges/saves purged, profile scrubbed, pseudonymous outbox row, `privacy.requests`
+`requested` (completion is worker-dependent and not deployed here). Final legal attestations remain an
+owner decision (R14).

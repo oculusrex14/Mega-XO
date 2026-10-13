@@ -35,8 +35,13 @@ def owner_rows(text):
 def inspect(text):
     rows = owner_rows(text)
     counts = Counter(c[0] for _, c in rows)
-    return {'missing': sorted(set(EXPECTED)-set(counts)),
-            'unknown': sorted(set(counts)-set(EXPECTED)),
+    # R01-R34 form the original audited identity contract; later owner packages may be
+    # appended only as a gap-free, increasing suffix (R35, R36, ...). Do not let
+    # new release tasks masquerade as missing or duplicated historical identities.
+    suffix = [f'R{i:02d}' for i in range(35, 35 + max(0, len(rows) - len(EXPECTED)))]
+    expected = EXPECTED + suffix
+    return {'missing': sorted(set(expected)-set(counts)),
+            'unknown': sorted(set(counts)-set(expected)),
             'duplicates': {k: v for k, v in counts.items() if v > 1},
             'malformedRows': [{'id': c[0], 'line': i+1, 'columns': len(c)} for i,c in rows if len(c)!=11]}
 
@@ -44,17 +49,21 @@ def inspect(text):
 def repair(text):
     """Only repair the observed corruption pattern; unfamiliar damage fails closed."""
     rows = owner_rows(text)
-    if len(rows) != 34:
+    if len(rows) < len(EXPECTED):
         raise ValueError('EXPECTED_34_OWNER_ROWS')
     actual = [cells[0] for _, cells in rows]
     known = EXPECTED.copy(); known[25] = 'R25'; known[27] = 'R24'
-    if actual not in (EXPECTED, known):
+    head, suffix = actual[:len(EXPECTED)], actual[len(EXPECTED):]
+    if head not in (EXPECTED, known):
         raise ValueError('UNRECOGNIZED_OWNER_ID_PATTERN')
-    if actual == EXPECTED and not inspect(text)['malformedRows']:
+    expected_suffix = [f'R{i:02d}' for i in range(35, 35 + len(suffix))]
+    if suffix != expected_suffix:
+        raise ValueError('UNRECOGNIZED_ADDITIONAL_OWNER_ID_PATTERN')
+    if head == EXPECTED and not inspect(text)['malformedRows']:
         return text
     lines = text.splitlines(keepends=True)
     preserved = []
-    for expected, (i, original) in zip(EXPECTED, rows):
+    for expected, (i, original) in zip(EXPECTED, rows[:len(EXPECTED)]):
         if len(original) < 11:
             raise ValueError('MISSING_OWNER_CELLS:' + expected)
         cells = list(original)

@@ -68,6 +68,7 @@ CONFIG_KEYS = {
     "width": int, "blocks": int, "leaguePairs": int, "budgetMs": int, "leagueSimulations": int,
     "workers": int, "nodeBin": str, "pythonBin": str, "producerModel": str, "producerBudgetMs": int,
     "device": str, "generations": int, "qualificationReserve": int, "valueSource": str, "earlyStopPatience": int,
+    "seedDataset": str,
 }
 CONFIG_BOUNDS = {
     "games": (2, 100000), "seed": (0, 2**31 - 1), "simulations": (1, 4096),
@@ -87,6 +88,10 @@ DEFAULT_CONFIG = {
     # `qualificationReserve` reserves untouched final-evaluation families; `valueSource` restricts
     # training to one value-target semantics; `earlyStopPatience` enables early stopping.
     "device": "cpu", "generations": 1, "qualificationReserve": 0, "valueSource": "all", "earlyStopPatience": 0,
+    # `seedDataset` bootstraps generation 1's training from an existing strong-search dataset (e.g. the
+    # committed search-labels-combined) instead of weak self-play; later generations self-play the
+    # promoted champion. Absent => the classical bootstrap generator is used.
+    "seedDataset": None,
 }
 LEASE_TTL_SECONDS = 90
 LOG_LIMIT_BYTES = 2 * 1024 * 1024
@@ -178,6 +183,9 @@ def validate_config(config: dict) -> dict:
         # `producerModel` is an OPTIONAL path: absent means the classical bootstrap generator, and an
         # explicit null is the same as absent (never a non-empty-string violation).
         if key == "producerModel" and (value is None or value == ""):
+            out[key] = None
+            continue
+        if key == "seedDataset" and (value is None or value == ""):
             out[key] = None
             continue
         if kind is int:
@@ -547,9 +555,13 @@ class Operator:
 
     def _argv_generate(self) -> list[str]:
         c = self.config
+        # Generation 1 bootstrap: an explicit `seedDataset` (strong-search labels) is copied into the
+        # shard slot and validated in place; later generations self-play the promoted champion.
+        seed = c.get("seedDataset")
+        if seed and self.state.get("generation", 1) == 1:
+            return [c["nodeBin"], str(ROOT / "training/bot/copy-dataset.cjs"), str(seed), str(self._shard())]
         # CL10/WEB-AI-04: when a research champion artifact exists, real neural self-play consumes it
         # (binds parent model hash, records producer version) instead of the mixed-strength bootstrap.
-        # `_effectiveProducers()` re-resolves the producer to the newest champion artifact each generation.
         producer = self._effective_producer()
         if producer:
             argv = [c["nodeBin"], str(ROOT / "training/bot/selfplay.cjs"),
@@ -572,7 +584,7 @@ class Operator:
                 "--output", str(self._candidate_dir()), "--source-commit", self.state["source"]["head"],
                 "--epochs", str(c["epochs"]), "--batch", str(c["batch"]), "--device", c["device"],
                 "--width", str(c["width"]), "--blocks", str(c["blocks"]),
-                "--value-source", c["valueSource"],
+                "--value-source", c["valueSource"], "--node-bin", c["nodeBin"],
                 "--interim-dir", str(self._interim())]
         if c["earlyStopPatience"]:
             argv += ["--early-stop-patience", str(c["earlyStopPatience"])]

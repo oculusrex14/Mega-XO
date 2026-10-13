@@ -1,9 +1,25 @@
-# TRACK A - 72-hour serious AI research programme (DGX1 + DGX2)
+# TRACK A - 72-hour serious AI research programme (DGX1 + DGX2 + Colab)
 
-Owner: Main. Two parallel, complementary streams. Non-commercial hobby project; both NVIDIA DGX Sparks
-reserved for this. Every serious candidate is benchmarked on the FROZEN, leakage-free holdout against
-`improvedExpert`, the previous neural candidate and tactical baselines at realistic client inference
-budgets, with paired CIs, wall-clock, energy, memory, model size and provenance.
+Owner: Main. Parallel, complementary streams. Non-commercial hobby project; both NVIDIA DGX Sparks
+reserved for this, plus a **Google Colab** lane (T4 GPU / TPU v5e1; see
+`COLAB-RUNTIME-INVENTORY-20261013.md`). Every serious candidate is benchmarked on the FROZEN,
+leakage-free holdout against `improvedExpert`, the previous neural candidate and tactical baselines at
+realistic client inference budgets, with paired CIs, wall-clock, energy, memory, model size and
+provenance.
+
+## Hardware pooling and placement
+
+| Resource | Available | Placement / role |
+| --- | --- | --- |
+| DGX1 (`dgx-ts`, GB10) | 20 cores, 121 GB, unsloth-env + v51 venv | **Primary train/export**; teacher fine-tune; deep-search label generation (CPU-parallel) |
+| DGX2 (`dgx2-qsfp-a`, GB10) | via DGX1 QSFP, no internet | **Secondary train/export + independent league eval**; unsloth env replicated over QSFP |
+| Colab T4 (1.15 CU/hr) | subscription-included, transient FS | **Portability proof** + **overflow** small sweeps/labels; short notebook workflows |
+| Colab TPU v5e1 | available | only TPU path; needs a JAX/torch-xla port (separate investigation) |
+| Oracle `command` (us-east) | 4 cores, 23 GB | co-located staging + API/Core (TRACK B), **not** training |
+
+Rule: **do not duplicate a DGX job on Colab**; Colab takes work the DGX pair is waiting on or cannot do
+(third-runtime reproduction, TPU, notebook sharing). Colab is time-metered, so any run > a few minutes
+needs owner confirmation (spend-bearing).
 
 ## Frozen holdout discipline
 
@@ -22,7 +38,7 @@ candidate on validation). A direction that shows no signal is recorded and aband
 Policy top-1 ~0.23-0.30 against a depth-12 Expert; league ~0.01 vs `improvedExpert`; **value MSE ~1.08,
 worse than predicting zero (0.73)** - the value head learned nothing. Diagnosis is the first task.
 
-## DGX1 (policy/value nets, self-play, search)
+## Lane DGX1 (policy/value nets, self-play, search)
 
 1. **Value-head diagnosis (pilot):** is the failure optimisation, capacity, or a genuinely hard target?
    A deterministic material/feature baseline plus a value-only training run establishes the ceiling.
@@ -34,7 +50,7 @@ worse than predicting zero (0.73)** - the value head learned nothing. Diagnosis 
    short-circuit); measure strength per unit client time.
 5. **Self-play:** PUCT self-play with value backup once the value head works; temperature schedule.
 
-## DGX2 (Unsloth Qwen3.5-0.8B decision teacher)
+## Lane DGX2 (Unsloth Qwen3.5-0.8B decision teacher)
 
 1. **Diagnose 20% bestMove:** separate best-move accuracy from the two easy binary questions; is it
    label quality, task weighting, decision formulation, or capacity?

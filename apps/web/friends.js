@@ -103,7 +103,7 @@ function lists(value, actor) {
  * `search()` is an explicit submit operation; typing only calls `setQuery()`.
  */
 export function createFriendsController({context, request = (...args) => globalThis.MegaAccount.request(...args),
- changed = () => {}, active = () => true, onAuthRequired = () => {}}) {
+ operationKey = () => globalThis.MegaAccount.id(), changed = () => {}, active = () => true, onAuthRequired = () => {}}) {
  let revision = 0, searchRevision = 0, activeActor = null, visible = false, suspended = false, destroyed = false;
  let query = '', protectedLists = null, protectedResults = Object.freeze([]);
  context.friends = emptyFriendsState();
@@ -248,7 +248,11 @@ export function createFriendsController({context, request = (...args) => globalT
    pendingAction:{action:name, target}, actionStatus:'pending', message:'Updating your Friends lists…', errorCode:''};
   changed();
   try {
-   const result = await request('/api/community/friend', {action:name, target});
+   // The social route consumes body.key; the shared client consumes the third
+   // argument. Bind both to this one user operation before its transport retries.
+   const key = operationKey();
+   if (typeof key !== 'string' || !/^[A-Za-z0-9:_-]{1,160}$/.test(key)) invalid();
+   const result = await request('/api/community/friend', {action:name, target, key}, key);
    if (!current(actor, token)) return false;
    if (!result || result.ok !== true) invalid();
    accepted = true;

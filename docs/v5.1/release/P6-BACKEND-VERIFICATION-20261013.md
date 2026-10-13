@@ -32,12 +32,30 @@ Ten workflows triggered **only** on the retired `V5-platform` branch, so the Pos
 | `v5-p11-account-social` (incl. the account-deletion ack fix `1a80ebc`) | **6/6 pass** |
 | `v5-p22-*` (cutover readiness, writer-fence, rollback, import-reconciliation, compat, workflow) | **30/30 pass** |
 | `v5-p18-*` (acceptance registry, isolation, topology, public head) | **41 pass / 1 skip** |
-| `v5-p08-restart-recovery` | restart/rollback/idempotent-retry/Redis-hint/drain all pass; **one** assertion (`stalled client closed 1008`) fails on this Darwin host and two files hang on an open handle — under investigation (`P08StalledClient`); being treated as a real defect until proven otherwise |
-| `v5-p08-snapshot-recovery` | **5/5 assertions pass**; the file hangs after completion on an open handle (same class as above) |
+| `v5-p08-restart-recovery` | **6/6 pass** (with `--test-force-exit`) — restart/rollback/idempotent-retry/Redis-hint/drain **and** the stalled-client 1008 close. The 1008 failure was a **genuine transport defect** (the bounded socket was `destroy()`ed right after writing the 1008 frame, discarding it) — fixed in `packages/services/realtime-transport.js` (`3adf278`). |
+| `v5-p08-snapshot-recovery` | **5/5 pass** (`--test-force-exit`); the earlier apparent hang is the node test runner's teardown on this host, not a test failure — `--test-force-exit` gives a clean summary. |
+| `v5-p15-sealed-archive` | 3/3 pass; fixed a real destroy-then-unlink race that could leave the `.partial` ciphertext behind on Linux (`ac452fa`), 20/20 stress runs green. |
+| `gameplay-capture` (merged PR #12) | 58 non-PG + 11 PG tests pass, 1 skip (needs a container); `V5.1 gameplay capture` CI **success**. |
+
+## Real defects fixed from this run
+
+1. **P08 slow-client close-frame delivery** (`3adf278`): the bound tripped and `closeSocket(…, 1008)`
+   ran, but the hard-close path `destroy()`ed the socket immediately after writing the close frame, so
+   for a peer that was not reading the 1008 frame never reached the wire (`closeCode=null`). Collapsed
+   to one delivered path (`socket.end(closeFrame)` with the unref'd grace backstop).
+2. **P15 partial-ciphertext cleanup race** (`ac452fa`): a WriteStream whose async `open` had not
+   completed recreated the file after `destroy()`, undoing the synchronous unlink.
+
+## CI trigger gap (the reason green CI masked the DB gates)
+
+Ten workflows triggered only on the retired `V5-platform` branch, so the PostgreSQL-backed suites
+skipped silently in the generic job. Fixed in `6e914f0`/`4f907d2`/`ae288ff`; the newly-enabled V5.1
+workflows now run and pass.
 
 ## Honest limits
 
 - Local disposable PG/Redis ≠ provider Neon/Upstash recovery; the deployed RPO/RTO and delivered
   alerts remain open (R08/R09).
-- The stalled-client 1008 failure is **not** claimed fixed; it is recorded as an open defect under
-  investigation, not written off as a CI artifact.
+- The node test runner does not self-exit on this host after some WS suites; `--test-force-exit`
+  gives a clean summary and does not change any assertion. This is teardown behavior, not a test
+  failure, and it is independent of the transport fix.

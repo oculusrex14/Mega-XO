@@ -1,0 +1,137 @@
+{
+  "schema_version": 1,
+  "task_ids": [
+    "R16",
+    "P21-K019",
+    "P21-K180"
+  ],
+  "source": {
+    "path": "assets/p21/logos/mega-xoxo-icon-only-logo.png",
+    "bytes": 1327731,
+    "sha256": "3b3f7042c5826fcd31ba831d8546fccb5aea840c2c821627b6def2f4ce360286"
+  },
+  "alpha_crop": [
+    0,
+    85,
+    1244,
+    1238
+  ],
+  "color_profile": {
+    "path": "assets/p21/scene-layers/srgb.icc",
+    "bytes": 588,
+    "sha256": "85ecec0f261679a58a1a9228e33abedc31c0ae56f3c4b3f783aaa791fa53f2ac"
+  },
+  "tool": {
+    "pillow": "12.3.0"
+  },
+  "generator": "scripts/p21/export-icons.py",
+  "outputs": [
+    {
+      "path": "assets/p21/icons/favicon-16.png",
+      "bytes": 1146,
+      "sha256": "6246043fae0907459eee41828c0b857fc21391e38b1d56ebcb7868cc1620db21",
+      "size": [
+        16,
+        16
+      ],
+      "mode": "RGBA",
+      "emblem_fraction": 0.94,
+      "opaque_background": null
+    },
+    {
+      "path": "assets/p21/icons/favicon-32.png",
+      "bytes": 2469,
+      "sha256": "74cf9ca3538bd3d72821c66436955e310ff492338c3947943e343355895ea1e1",
+      "size": [
+        32,
+        32
+      ],
+      "mode": "RGBA",
+      "emblem_fraction": 0.94,
+      "opaque_background": null
+    },
+    {
+      "path": "assets/p21/icons/favicon-48.png",
+      "bytes": 4379,
+      "sha256": "7bd2af2728bf30f58af58b22ff055f1ec0873d482b941d0e28ae4a1b8a949d4c",
+      "size": [
+        48,
+        48
+      ],
+      "mode": "RGBA",
+      "emblem_fraction": 0.94,
+      "opaque_background": null
+    },
+    {
+      "path": "assets/p21/icons/apple-touch-icon.png",
+      "bytes": 24265,
+      "sha256": "9810dba89d3fc4778981481a4bb830969b832d19c8f16b3320e926e2475849bb",
+      "size": [
+        180,
+        180
+      ],
+      "mode": "RGB",
+      "emblem_fraction": 0.8,
+      "opaque_background": "#030917"
+    },
+    {
+      "path": "assets/p21/icons/pwa-192.png",
+      "bytes": 32090,
+      "sha256": "11bb0a76f2baf06d110a3fa397ffa57bd7fdab0b18cad6cb94c8edfcfdcd2917",
+      "size": [
+        192,
+        192
+      ],
+      "mode": "RGBA",
+      "emblem_fraction": 0.8,
+      "opaque_background": null
+    },
+    {
+      "path": "assets/p21/icons/pwa-512.png",
+      "bytes": 179847,
+      "sha256": "9fb79d9e99a77cea9c3c1e027cdaa29205c38cfb184d9a39b1273703c26e5ebc",
+      "size": [
+        512,
+        512
+      ],
+      "mode": "RGBA",
+      "emblem_fraction": 0.8,
+      "opaque_background": null
+    },
+    {
+      "path": "assets/p21/icons/pwa-maskable-512.png",
+      "bytes": 79267,
+      "sha256": "889f67edd93a0a3bf4a3f6064b39a94513c2e5ad158a2a42d811ce5436cfbbf2",
+      "size": [
+        512,
+        512
+      ],
+      "mode": "RGB",
+      "emblem_fraction": 0.55,
+      "opaque_background": "#030917"
+    },
+    {
+      "path": "assets/p21/icons/favicon.ico",
+      "bytes": 7041,
+      "sha256": "633881db629a9da83f09e0aef00533776ac823ff118ecc920b0dade3ce004ca7",
+      "sizes": [
+        [
+          16,
+          16
+        ],
+        [
+          32,
+          32
+        ],
+        [
+          48,
+          48
+        ]
+      ],
+      "mode": "RGBA"
+    }
+  ],
+  "status": "Raster browser exports verified; editable vector, monochrome mask and physical install review remain open",
+  "maskable_safe_area": "Emblem box is <=55% of canvas; its corners fit within the centered 40%-radius safe circle",
+  "rights": "Owner-approved emblem resized without changing its design. No new logo or native launcher configuration."
+}

@@ -10,6 +10,11 @@ const { buildWeb, ROOT, MANIFEST, WEBSITE_ROUTES, LEGAL_NAMES } = require('./bui
 const { createPreviewServer } = require('./serve-web.js');
 
 async function main() {
+  const requestedBrowser = process.env.P21_QA_BROWSER;
+  const browserEngine = requestedBrowser || 'chromium';
+  if (!['chromium', 'firefox', 'webkit'].includes(browserEngine)) {
+    throw new Error('P21_QA_BROWSER must be one of chromium, firefox, or webkit.');
+  }
   let playwright;
   try { playwright = require('playwright'); }
   catch { throw new Error('Playwright is unavailable. Point NODE_PATH to the installed runtime node_modules directory.'); }
@@ -19,7 +24,14 @@ async function main() {
   const build = process.argv.includes('--no-build')
     ? { output: path.join(ROOT, '.artifacts/p21-web'), manifest: JSON.parse(fs.readFileSync(path.join(ROOT, '.artifacts/p21-web', MANIFEST), 'utf8')) }
     : buildWeb();
-  const output = path.join(outputRoot, build.manifest.bundle_sha256.slice(0, 12));
+  const bundleOutput = path.join(outputRoot, build.manifest.bundle_sha256.slice(0, 12));
+  // Preserve the historical Chromium report location for existing consumers.
+  // Other engines receive their own timestamped directory so their screenshots
+  // and reports cannot overwrite or be mistaken for Chromium evidence.
+  const runStamp = new Date().toISOString().replace(/[^0-9]/g, '');
+  const output = browserEngine === 'chromium'
+    ? bundleOutput
+    : path.join(bundleOutput, browserEngine, runStamp + '-' + process.pid);
   fs.mkdirSync(output, { recursive: true });
   // Capture an isolated checksum-verified snapshot. Another developer can
   // rebuild the preview during this matrix without changing the tested bytes.
@@ -39,11 +51,14 @@ async function main() {
   const report = {
     schema_version: 1,
     checked_at: new Date().toISOString(),
+    browser_engine: browserEngine,
     source_commit: build.manifest.source_commit,
     bundle_sha256: build.manifest.bundle_sha256,
-    environment: 'local loopback Chromium; new unauthenticated contexts; read proxy explicitly disabled; synthetic API fixtures only',
+    environment: 'local loopback ' + browserEngine + '; new unauthenticated contexts; read proxy explicitly disabled; synthetic API fixtures only',
+    report_directory: path.relative(ROOT, output),
+    screenshots_directory: path.relative(ROOT, output),
     isolated_payload_snapshot: true,
-    command: 'env -u NODE_OPTIONS ' + process.execPath + ' scripts/p21/browser-qa.cjs' + (process.argv.includes('--no-build') ? ' --no-build' : ''),
+    command: 'env -u NODE_OPTIONS ' + (requestedBrowser ? 'P21_QA_BROWSER=' + browserEngine + ' ' : '') + process.execPath + ' scripts/p21/browser-qa.cjs' + (process.argv.includes('--no-build') ? ' --no-build' : ''),
     runtime_version: process.version,
     qa_script_sha256: crypto.createHash('sha256').update(fs.readFileSync(__filename)).digest('hex'),
     checks: [],
@@ -57,7 +72,7 @@ async function main() {
     server.listen(0, '127.0.0.1');
     await once(server, 'listening');
     const origin = 'http://127.0.0.1:' + server.address().port;
-    browser = await playwright.chromium.launch({ headless: true });
+    browser = await playwright[browserEngine].launch({ headless: true });
     report.browser = browser.version();
     const localOnly = async context => context.route('**/*', route => {
       const url = new URL(route.request().url());
@@ -206,6 +221,87 @@ async function main() {
       await context.close();
       process.stdout.write(JSON.stringify({ stage: 'viewport-complete', viewport: viewport.name, checks: report.checks.length, failures: report.failures.length }) + '\n');
     }
+    // Exercise the narrowest accepted CSS width with a classic reserved
+    // scrollbar. Overlay-scrollbar mobile browsers do not expose this gutter,
+    // so this fixture catches the desktop-emulation case explicitly.
+    const gutterContext = await browser.newContext({ viewport: { width: 320, height: 800 }, reducedMotion: 'reduce' });
+    await localOnly(gutterContext);
+    const gutterPage = await gutterContext.newPage();
+    track(gutterPage);
+    for (const route of ['/', '/game', '/legal/privacy', '/account']) {
+      await gutterPage.goto(origin + route, { waitUntil: 'networkidle' });
+      await gutterPage.addStyleTag({ content: 'html { scrollbar-gutter: stable !important; }' });
+      const geometry = await gutterPage.evaluate(() => ({
+        viewportWidth: innerWidth,
+        clientWidth: document.documentElement.clientWidth,
+        scrollWidth: document.documentElement.scrollWidth,
+        overflowing: [...document.querySelectorAll('#header, #main, #footer, #main *')].filter(element => {
+          const rect = element.getBoundingClientRect();
+          return rect.width > 0 && (rect.left < -1 || rect.right > document.documentElement.clientWidth + 1) && getComputedStyle(element).position !== 'absolute';
+        }).slice(0, 8).map(element => ({ element: element.tagName.toLowerCase(), class: element.className?.baseVal ?? element.className })),
+      }));
+      check('P21-BROWSER-320-SCROLLBAR-GUTTER-REFLOW', geometry.scrollWidth <= geometry.clientWidth + 1, { route, fixture: 'scrollbar-gutter:stable', ...geometry });
+      if (route === '/' || route === '/game') await snapshot(gutterPage, 'scrollbar-gutter-' + (route === '/' ? 'home' : 'game'), false);
+    }
+    await gutterContext.close();
+
+    // CSS-variable fixture approximates cutout insets on a phone and in
+    // landscape. It is deliberately reported as synthetic, never as device
+    // safe-area acceptance. The practice board must survive both changes.
+    const safeContext = await browser.newContext({ viewport: { width: 390, height: 844 }, reducedMotion: 'reduce' });
+    await localOnly(safeContext);
+    const safePage = await safeContext.newPage();
+    track(safePage);
+    await safePage.goto(origin + '/game', { waitUntil: 'networkidle' });
+    await safePage.locator('[data-gb-setting="mode"]').selectOption('local');
+    await safePage.locator('[data-gb-cell="0:4"]').click();
+    const safeFixtures = [
+      { name: 'portrait', viewport: { width: 390, height: 844 }, insets: { top: 24, right: 18, bottom: 30, left: 18 } },
+      { name: 'landscape', viewport: { width: 844, height: 390 }, insets: { top: 0, right: 44, bottom: 21, left: 44 } },
+    ];
+    for (const fixture of safeFixtures) {
+      await safePage.setViewportSize(fixture.viewport);
+      await safePage.evaluate(insets => {
+        for (const [side, value] of Object.entries(insets)) document.documentElement.style.setProperty('--mx-web-safe-' + side, value + 'px');
+      }, fixture.insets);
+      const geometry = await safePage.evaluate(() => {
+        const rect = element => {
+          const box = element?.getBoundingClientRect();
+          return box ? { left: box.left, top: box.top, right: box.right, bottom: box.bottom } : null;
+        };
+        const inset = side => parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--mx-web-safe-' + side)) || 0;
+        const header = document.querySelector('.mx-header');
+        const frame = document.querySelector('.gb-frame');
+        const cells = [...document.querySelectorAll('.gb-cell[aria-disabled="false"]')].map(cell => cell.getBoundingClientRect());
+        return {
+          viewport: { width: innerWidth, height: innerHeight, clientWidth: document.documentElement.clientWidth, scrollWidth: document.documentElement.scrollWidth },
+          safe: { top: inset('top'), right: inset('right'), bottom: inset('bottom'), left: inset('left') },
+          bodyPadding: {
+            top: parseFloat(getComputedStyle(document.body).paddingTop),
+            right: parseFloat(getComputedStyle(document.body).paddingRight),
+            bottom: parseFloat(getComputedStyle(document.body).paddingBottom),
+            left: parseFloat(getComputedStyle(document.body).paddingLeft),
+          },
+          header: rect(header),
+          board: rect(frame),
+          legalCells: cells.map(box => ({ left: box.left, right: box.right })).slice(0, 9),
+        };
+      });
+      const safeLeft = geometry.safe.left - 1;
+      const safeRight = geometry.viewport.width - geometry.safe.right + 1;
+      const headerInSafeArea = geometry.header && geometry.header.left >= safeLeft && geometry.header.right <= safeRight && geometry.header.top >= geometry.safe.top - 1;
+      const boardInSafeArea = geometry.board && geometry.board.left >= safeLeft && geometry.board.right <= safeRight && geometry.legalCells.length > 0 && geometry.legalCells.every(cell => cell.left >= safeLeft && cell.right <= safeRight);
+      const paddingMatches = ['top', 'right', 'bottom', 'left'].every(side => Math.abs(geometry.bodyPadding[side] - geometry.safe[side]) <= 1);
+      const movePreserved = await safePage.locator('[data-gb-cell="0:4"]').getAttribute('aria-label').then(label => label.includes('X, occupied'))
+        && /1 move played/.test(await safePage.locator('.gb-match-note').textContent().catch(() => ''));
+      check('P21-BROWSER-SYNTHETIC-SAFE-AREA-HEADER', headerInSafeArea, { fixture: fixture.name, source: 'synthetic CSS variables; not physical-device evidence', ...geometry });
+      check('P21-BROWSER-SYNTHETIC-SAFE-AREA-BOARD', boardInSafeArea, { fixture: fixture.name, source: 'synthetic CSS variables; not physical-device evidence', ...geometry });
+      check('P21-BROWSER-SYNTHETIC-SAFE-AREA-PADDING', paddingMatches, { fixture: fixture.name, source: 'synthetic CSS variables; not physical-device evidence', ...geometry });
+      check('P21-BROWSER-SYNTHETIC-SAFE-AREA-NO-OVERFLOW', geometry.viewport.scrollWidth <= geometry.viewport.clientWidth + 1, { fixture: fixture.name, source: 'synthetic CSS variables; not physical-device evidence', ...geometry });
+      check('P21-BROWSER-SYNTHETIC-SAFE-AREA-STATE-PRESERVED', movePreserved, { fixture: fixture.name, move: '0:4', source: 'local two-player practice only' });
+      await snapshot(safePage, 'safe-area-synthetic-' + fixture.name, false);
+    }
+    await safeContext.close();
     const context = await browser.newContext({ viewport: { width: 1280, height: 900 }, reducedMotion: 'reduce' });
     await localOnly(context);
     const page = await context.newPage();
@@ -357,14 +453,13 @@ async function main() {
       const downloadContext = await browser.newContext({ viewport: device.viewport, userAgent: device.userAgent, reducedMotion: 'reduce' });
       await localOnly(downloadContext);
       const requests = [];
-      await downloadContext.route(origin + '/api/download**', async route => {
-        const request = route.request(), url = new URL(request.url());
-        requests.push({ method: request.method(), pathname: url.pathname, platform: url.searchParams.get('platform'), documentNavigation: request.isNavigationRequest() });
-        // Synthetic unavailable listing response exercises the full document
-        // handoff without opening a store or using a real device account.
-        await route.fulfill({ status: 303, headers: { Location: '/download' + (device.expectedPlatform ? '?platform=' + device.expectedPlatform : '') }, body: '' });
-      });
       const downloadPage = await downloadContext.newPage(); track(downloadPage);
+      downloadPage.on('request', request => {
+        const url = new URL(request.url());
+        if (url.origin === origin && url.pathname === '/api/download') {
+          requests.push({ method: request.method(), pathname: url.pathname, platform: url.searchParams.get('platform'), documentNavigation: request.isNavigationRequest() });
+        }
+      });
       await downloadPage.goto(origin + '/', { waitUntil: 'networkidle' });
       const secondary = downloadPage.getByRole('link', { name: 'Download Now', exact: true });
       const href = await secondary.getAttribute('href');
@@ -372,7 +467,7 @@ async function main() {
       await secondary.click();
       await downloadPage.waitForURL(url => url.pathname === '/download');
       await downloadPage.locator('#main h1').waitFor();
-      check('P21-BROWSER-DOWNLOAD-NATIVE-NAVIGATION', requests.length === 1 && requests[0].method === 'GET' && requests[0].documentNavigation && requests[0].platform === device.expectedPlatform, { device: device.name, requests, source: 'synthetic listing unavailable response' });
+      check('P21-BROWSER-DOWNLOAD-NATIVE-NAVIGATION', requests.length === 1 && requests[0].method === 'GET' && requests[0].documentNavigation && requests[0].platform === device.expectedPlatform, { device: device.name, requests, source: 'local preview download handler with null store links' });
       check('P21-BROWSER-DOWNLOAD-CHOOSER', await downloadPage.locator('.mx-header').count() === 1 && await downloadPage.locator('.mx-footer').count() === 1 && await downloadPage.locator('a[href^="https://play.google.com"],a[href^="https://apps.apple.com"]').count() === 0, { device: device.name, externalListings: 'unconfigured' });
       await downloadContext.close();
     }
@@ -404,7 +499,8 @@ async function main() {
     fs.rmSync(snapshotRoot, { recursive: true, force: true });
     fs.writeFileSync(path.join(output, 'browser-qa.json'), JSON.stringify(report, null, 2) + '\n');
     fs.writeFileSync(path.join(output, 'browser-qa-' + (report.source_commit || 'unversioned').slice(0, 12) + '-' + report.checked_at.replace(/[^0-9]/g, '') + '.json'), JSON.stringify(report, null, 2) + '\n');
-    fs.writeFileSync(path.join(outputRoot, 'browser-qa.json'), JSON.stringify(report, null, 2) + '\n');
+    // Keep the compatibility pointer tied to Chromium's unchanged default.
+    if (browserEngine === 'chromium') fs.writeFileSync(path.join(outputRoot, 'browser-qa.json'), JSON.stringify(report, null, 2) + '\n');
     process.stdout.write(JSON.stringify({ result: report.result, source_commit: report.source_commit, checks: report.checks.length, failures: report.failures.length, report: path.join(output, 'browser-qa.json') }) + '\n');
     if (report.result !== 'PASS') process.exitCode = 1;
   }

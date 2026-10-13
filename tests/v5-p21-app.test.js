@@ -10,7 +10,7 @@ const game = require('../src/game.js');
 // Execute the actual controller and its renderer, download, SEO, board and
 // read-model dependencies in browser module order inside an isolated DOM
 // harness. No provider connection, session, server mutation or browser is used.
-const sources = ['ui', 'downloads', 'pages', 'board', 'site', 'seo', 'data', 'app'].map(name => ({ name, text: fs.readFileSync(path.join(__dirname, `../apps/web/${name}.js`), 'utf8') }));
+const sources = ['ui', 'downloads', 'pages', 'board', 'site', 'seo', 'data', 'friends', 'app'].map(name => ({ name, text: fs.readFileSync(path.join(__dirname, `../apps/web/${name}.js`), 'utf8') }));
 const flush = () => new Promise(resolve => setImmediate(resolve));
 const json = value => JSON.parse(JSON.stringify(value));
 function deferred() { let resolve, reject; const promise = new Promise((yes, no) => { resolve = yes; reject = no; }); return { promise, resolve, reject }; }
@@ -19,14 +19,17 @@ function playing(state = game.create()) {
 }
 function offered(accepted = []) { return { ...playing(), status: 'OFFERED', players: ['synthetic-x'], accepted, symbols: null, opponentHidden: true }; }
 
-async function harness(overrides = {}, profileExtra = {}) {
+async function harness(overrides = {}, profileExtra = {}, pageOptions = {}) {
   const documentListeners = new Map(), windowListeners = new Map(), timers = new Map();
   let timerId = 0, operation = 0;
   const calls = [], confirmations = [];
   const replies = { ...overrides };
   const profile = { id: 'synthetic-x', name: 'Synthetic player', tier: 'wood', rating: 600, wallet: { coins: 150, crowns: 0 }, ...profileExtra };
   class Element {
-    constructor() { this.dataset = {}; this.listeners = new Map(); this.html = ''; }
+    constructor() { this.dataset = {}; this.listeners = new Map(); this.html = ''; this.attributes=new Map(); }
+    hasAttribute(name) { return this.attributes.has(name); }
+    setAttribute(name,value) { this.attributes.set(name,String(value)); }
+    removeAttribute(name) { this.attributes.delete(name); }
     set innerHTML(value) {
       this.html = value;
       if (this === main) {
@@ -49,6 +52,8 @@ async function harness(overrides = {}, profileExtra = {}) {
   }
   const main = new Element(), header = new Element(), footer = new Element(), notification = new Element();
   const location = { pathname: '/game', search: '', href: 'http://localhost/game', origin: 'http://localhost', assign() {} };
+  if(pageOptions.path){const url=new URL(pageOptions.path,location.origin);Object.assign(location,{pathname:url.pathname,search:url.search,href:url.href});}
+  if(pageOptions.offlineFallback)main.setAttribute('data-offline-fallback','');
   const add = (collection, name, fn) => { const rows = collection.get(name) || []; rows.push(fn); collection.set(name, rows); };
   const document = {
     hidden: false, body: { dataset: {} },
@@ -66,7 +71,7 @@ async function harness(overrides = {}, profileExtra = {}) {
     setInterval(fn, ms) { const id = ++timerId; timers.set(id, { fn, ms, interval: true }); return id; },
     clearInterval(id) { timers.delete(id); },
     localStorage: { getItem() { return null; }, setItem() {}, removeItem() {} },
-    history: { pushState(_state, _title, url) { const parsed = new URL(url, location.origin); location.pathname = parsed.pathname; location.search = parsed.search; location.href = parsed.href; } },
+    history: { state:null, replaceState(state) { this.state=state; }, pushState(state, _title, url) { this.state=state;const parsed = new URL(url, location.origin); location.pathname = parsed.pathname; location.search = parsed.search; location.href = parsed.href; } },
     fetch: async () => { const result = replies.profile ? await replies.profile() : profile; return { ok: true, json: async () => structuredClone(result) }; },
     MegaGame: game, MegaNetwork: network,
     confirm(message) { confirmations.push(message); return replies.confirm ? replies.confirm(message) : true; },
@@ -87,7 +92,7 @@ async function harness(overrides = {}, profileExtra = {}) {
     for (const fn of documentListeners.get('click') || []) fn({ target, defaultPrevented: false, button: 0 });
   }
   return {
-    qa, calls, confirmations, replies, main,
+    qa, calls, confirmations, replies, main, location,
     online: action => clickAction('online', action), account: action => clickAction('account', action),
     cell(key) { const node = { dataset: { gbCell: key }, getAttribute: () => 'false' }; main.boardHost.listeners.get('click')({ target: { closest: () => node } }); },
     boardAction(action) { const node = { dataset: { gbAction: action } }; main.boardHost.listeners.get('click')({ target: { closest: () => node } }); },
@@ -98,6 +103,21 @@ async function harness(overrides = {}, profileExtra = {}) {
 }
 
 async function enterPlaying(ui) { ui.online('casual'); await flush(); assert.equal(ui.qa.state().onlineState.status, 'playing'); }
+
+test('P21-APP-OFFLINE: verified fallback survives hydration at private, unknown and query URLs and can open practice',async()=>{
+ for(const path of ['/account','/__offline_unknown__','/game?offline-qa=route']){
+  const ui=await harness({profile:()=>{throw Error('REQUEST_TIMEOUT');}},{},{path,offlineFallback:true});
+  try{
+   assert.match(ui.main.innerHTML, /Take the next move offline\./,path);
+   assert.equal(ui.qa.state().context.profile,null);
+   assert.equal(ui.qa.board(),null);
+   ui.qa.navigate('/game');await flush();
+   assert.equal(ui.location.pathname,'/game');
+   assert.equal(ui.main.hasAttribute('data-offline-fallback'),false);
+   assert.ok(ui.qa.board(), 'explicit practice navigation works');
+  }finally{ui.destroy();}
+ }
+});
 
 test('P21-APP-01 queued acceptance uses frozen terms and discovers PLAYING after own invitation disappears', async () => {
   let snapshot = offered();

@@ -6,12 +6,15 @@ const path = require('node:path');
 const crypto = require('node:crypto');
 const { execFileSync } = require('node:child_process');
 const {validateStoreLinks} = require('../../apps/web/download-config.cjs');
+const {createOfflineWorker} = require('./offline-worker.cjs');
 
 const ROOT = path.resolve(__dirname, '../..');
 const GENERATOR = 'scripts/p21/build-web.js';
 const MANIFEST = 'web-build.manifest.json';
-const WEB_FILES = ['index.html', 'app.js', 'styles.css', 'ui.js', 'pages.js', 'pages.css', 'board.js', 'board.css', 'site.js', 'seo.js', 'downloads.js'];
-const OPTIONAL_WEB_FILES = ['data.js', 'game-runtime.js', 'bot-compat.js', 'bot-compat.css'];
+const WEB_FILES = ['index.html', 'app.js', 'styles.css', 'ui.js', 'pages.js', 'pages.css', 'board.js', 'board.css', 'site.js', 'seo.js', 'downloads.js', 'offline.js'];
+const ICON_FILES = ['favicon-16.png', 'favicon-32.png', 'favicon-48.png', 'favicon.ico', 'apple-touch-icon.png', 'pwa-192.png', 'pwa-512.png', 'pwa-maskable-512.png'];
+const OFFLINE_NAVIGATIONS = Object.freeze({'/game':'/pages/game.html','/offline':'/pages/offline.html','/how-to-play':'/pages/how-to-play.html'});
+const OPTIONAL_WEB_FILES = ['data.js', 'friends.js', 'game-runtime.js', 'bot-compat.js', 'bot-compat.css'];
 const GAME_FILES = ['bot/pack.js', 'bot/pack-ui.js', 'bot/pack.css', 'bot/contracts.js', 'bot/runtime.js', 'bot/worker.js', 'bot/board.js', 'bot/search.js', 'bot/encoding.js', 'bot/onnx.js', 'bot/neural-search.js', 'bot/neural-runtime.js', 'bot/neural-worker.js', 'bot/local-ai.js', 'bot/local-session.js', 'tutorial/lesson.js', 'tutorial/client.js', 'tutorial/tutorial.css', 'game.js', 'domain.js', 'monetization.js', 'lan-icons.js', 'icons.js', 'account-client.js', 'network.js', 'app.js', 'tournament.js', 'party-ui.js', 'community.js', 'monetization-ui.js', 'styles.css', 'party.css', 'community.css', 'monetization.css'];
 const LEGAL_NAMES = ['privacy', 'terms', 'support', 'delete-account', 'privacy-choices'];
 const WEBSITE_ROUTES = ['/', '/download', '/faq', '/press', '/play', '/game', '/casual', '/ranked', '/tournaments', '/season', '/friends', '/challenge', '/leaderboard', '/rewards', '/store', '/sponsors', '/ads', '/themes', '/profile', '/settings', '/account', '/how-to-play', '/support', '/about', '/privacy', '/terms', '/delete-account', '/privacy-choices', ...LEGAL_NAMES.map(name => '/legal/' + name), '/help', '/news', '/status', '/accessibility', '/offline', '/404'];
@@ -124,7 +127,7 @@ function createPlan(root) {
   entries.push({ source: null, sources: legalSources, path: 'legal-documents.js', bytes: legalBytes, sha256: sha256(legalBytes), transformation: 'trusted-main-inner-markup-to-es-module' });
   const configSource='apps/web/store-links.json';
   const storeLinks=validateStoreLinks(JSON.parse(readSource(root,configSource).toString('utf8')));
-  const renderSources=[...WEB_FILES.map(name=>'apps/web/'+name),'src/game.js',configSource,...legalSources.map(row=>row.source)].map(source=>({source,source_sha256:sha256(readSource(root,source))}));
+  const renderSources=[...WEB_FILES.map(name=>'apps/web/'+name),'src/game.js','scripts/p21/prerender-web.mjs',configSource,...legalSources.map(row=>row.source)].map(source=>({source,source_sha256:sha256(readSource(root,source))}));
   const rendered=JSON.parse(execFileSync(process.execPath,[path.join(__dirname,'prerender-web.mjs')],{
     input:JSON.stringify({root,template,storeLinks,legalDocuments:documents,routes:WEBSITE_ROUTES}),encoding:'utf8',maxBuffer:12*1024*1024,
   }));
@@ -149,6 +152,34 @@ function createPlan(root) {
     if (!entries.some(entry => entry.path === required)) refuse('required optimized brand export is missing: ' + required);
   }
   for (const source of filesIn(root, 'assets/p21/fonts', name => /^[a-z0-9][a-z0-9._-]*\.(woff2?|css|txt)$/i.test(name) || /^LICENSE(?:\.[a-z]+)?$/.test(name))) add(source, 'assets/fonts/' + path.basename(source));
+  for (const name of ICON_FILES) {
+    const source='assets/p21/icons/'+name;
+    const bytes=readSource(root,source);
+    if(name.endsWith('.png')) {
+      const dimension=name==='apple-touch-icon.png'?180:Number(name.match(/(16|32|48|192|512)\.png$/)?.[1]);
+      if(bytes.length<24||bytes.subarray(0,8).toString('hex')!=='89504e470d0a1a0a'||bytes.toString('ascii',12,16)!=='IHDR'||bytes.readUInt32BE(16)!==dimension||bytes.readUInt32BE(20)!==dimension)refuse('invalid browser icon: '+source);
+    } else if(bytes.length<54||bytes.readUInt16LE(0)!==0||bytes.readUInt16LE(2)!==1||bytes.readUInt16LE(4)!==3)refuse('invalid multi-size favicon: '+source);
+    add(source,'assets/icons/'+name);
+  }
+  const installManifest={id:'/game',name:'Mega XOXO',short_name:'Mega XOXO',description:'Nine small boards. One big strategy. Practice against Bot or share a screen with a friend.',start_url:'/game',scope:'/',display:'standalone',background_color:'#030917',theme_color:'#030917',lang:'en',icons:[
+    {src:'/assets/icons/pwa-192.png',sizes:'192x192',type:'image/png',purpose:'any'},
+    {src:'/assets/icons/pwa-512.png',sizes:'512x512',type:'image/png',purpose:'any'},
+    {src:'/assets/icons/pwa-maskable-512.png',sizes:'512x512',type:'image/png',purpose:'maskable'},
+  ]};
+  const iconSources=ICON_FILES.map(name=>({source:'assets/p21/icons/'+name,source_sha256:sha256(readSource(root,'assets/p21/icons/'+name))}));
+  generated('manifest.webmanifest',JSON.stringify(installManifest,null,2)+'\n',iconSources,'browser-install-metadata');
+  // Only build-time static bytes and these guest documents enter the worker.
+  // Account HTML, unknown routes, API replies and legacy launch HTML are excluded.
+  const offlineEntries=entries.filter(entry=>/\.(?:js|css|webp|png|ico|woff2?)$/.test(entry.path)||entry.path==='manifest.webmanifest'||Object.values(OFFLINE_NAVIGATIONS).includes('/'+entry.path));
+  if(offlineEntries.reduce((sum,entry)=>sum+entry.bytes.length,0)>6*1024*1024)refuse('offline static copy exceeds 6 MiB');
+  const offlineAssets=offlineEntries.map(entry=>({url:'/'+entry.path,sha256:entry.sha256})).sort((a,b)=>a.url.localeCompare(b.url,'en'));
+  const offlineVersion=sha256(Buffer.from(JSON.stringify({assets:offlineAssets,navigations:OFFLINE_NAVIGATIONS})));
+  const offlineSource='scripts/p21/offline-worker.cjs';
+  generated('offline-sw.js',createOfflineWorker({version:offlineVersion,assets:offlineAssets,navigations:OFFLINE_NAVIGATIONS,fallback:'/pages/offline.html'}),[
+    {source:offlineSource,source_sha256:sha256(readSource(root,offlineSource))},
+    ...offlineEntries.map(entry=>({built_path:entry.path,sha256:entry.sha256})),
+  ],'versioned-static-guest-offline-worker');
+  entries.offline={version:offlineVersion,assets:offlineAssets,navigations:OFFLINE_NAVIGATIONS,bytes:offlineEntries.reduce((sum,entry)=>sum+entry.bytes.length,0),registration:'explicit user opt-in only',private_responses:'network-only; never cached'};
   entries.sort((left, right) => left.path < right.path ? -1 : left.path > right.path ? 1 : 0);
   return entries;
 }
@@ -172,6 +203,7 @@ function buildWeb(options = {}) {
     seo: entries.seo,
     store_links: entries.storeLinks,
     download: {endpoint:'/api/download',configuration:'apps/web/store-links.json',authority:'official-store redirect only; no purchases, identity or economic writes'},
+    offline: entries.offline,
     api: { configured: false, authority: 'existing API / Game Core; static artifact has no backend, credentials or writers', preview_read_seam: 'explicit P21_READ_API_ORIGIN only; GET /api/v1/leaderboard; no credential forwarding' },
     files,
   };
@@ -210,4 +242,4 @@ if (require.main === module) {
   } catch (error) { process.stderr.write(error.message + '\n'); process.exitCode = 1; }
 }
 
-module.exports = { buildWeb, createPlan, legalMain, routeFile, ROOT, GENERATOR, MANIFEST, WEB_FILES, OPTIONAL_WEB_FILES, GAME_FILES, LEGAL_NAMES, WEBSITE_ROUTES };
+module.exports = { buildWeb, createPlan, legalMain, routeFile, ROOT, GENERATOR, MANIFEST, WEB_FILES, ICON_FILES, OFFLINE_NAVIGATIONS, OPTIONAL_WEB_FILES, GAME_FILES, LEGAL_NAMES, WEBSITE_ROUTES };

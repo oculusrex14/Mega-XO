@@ -1,0 +1,115 @@
+{
+  "schema_version": 1,
+  "asset_status": "source_candidate_only",
+  "provider": "Higgsfield",
+  "model_id": "seedance_2_5",
+  "model_name": "Seedance 2.5",
+  "job_id": "99452e30-3092-4bfe-a235-958c68c3d86f",
+  "submitted_at_utc": "2026-10-12T12:16:02.766Z",
+  "completion_status": "completed",
+  "completion_status_confirmed_on_utc_date": "2026-10-12",
+  "context": "Create one silent, subtle looping background motion candidate for an optional browser-game hero.",
+  "prompt": "Create one wide 16:9 atmospheric night landscape backdrop for a polished browser strategy game's hero, matching a deep navy and blue-violet rocky valley composition: a quiet dark navy upper sky with only a few faint stationary blue stars, jagged dark rocky mountain walls framing a broad valley, a low distant horizon with a tiny restrained blue-violet haze, and a dim thin luminous blue stream leading through the valley center. Keep the camera locked on a tripod and the entire composition fixed. Only the horizon haze may drift extremely slowly and smoothly. Maintain stable exposure, color and geometry throughout; the first and last frames should be nearly identical for a quiet seamless loop. No camera movement, no cuts, no moving terrain, no lightning, no flashes, no twinkling or moving stars, no glitter, no particles, no bright pulses, no text, no letters, no logo, no symbols, no interface, no characters. Absolutely silent: generate no audio.",
+  "parameters": {
+    "mode": "t2v",
+    "duration_seconds": 10,
+    "aspect_ratio": "16:9",
+    "resolution": "1080p",
+    "generate_audio": false,
+    "bitrate_mode": "high",
+    "count": 1,
+    "use_free_gens": false,
+    "use_unlim": false,
+    "reference_media": []
+  },
+  "provenance": {
+    "reference_image_uploaded": false,
+    "basis": "Text description of the project's unlettered hero composition; no local image was uploaded.",
+    "attribution": "AI-generated with Higgsfield Seedance 2.5. No third-party reference image, video, audio, samples, or music were supplied. Provider output rights and licensing are not evaluated in this technical source pack.",
+    "provider_result_url": "Omitted; transient result URL not retained.",
+    "billing_preflight": "Existing credit balance and trial state were checked before submission. The request selected existing credits (use_unlim=false); no trial, unlimited generation, top-up, plan change, or project creation was requested. The post-generation balance delta was not checked.",
+    "local_source": {
+      "file": "hero-provider-source.mp4",
+      "sha256": "eec8cb77863393599d8b2b37535e363658e1dddd02b8cd5d25ac1feeb6be8a25",
+      "bytes": 4100697,
+      "width": 1920,
+      "height": 1080,
+      "duration_seconds": 10.041667,
+      "codec": "hevc",
+      "audio_streams": 0,
+      "decoded_without_errors": true
+    },
+    "exports": [
+      {
+        "file": "hero-loop.mp4",
+        "sha256": "651386705df3853fc29851b091c415814eb154c535973ab8bcac5cc6cea8e04d",
+        "bytes": 1144605,
+        "width": 1920,
+        "height": 1080,
+        "duration_seconds": 9.666667,
+        "codec": "h264",
+        "audio_streams": 0,
+        "decoded_without_errors": true
+      },
+      {
+        "file": "hero-loop.webm",
+        "sha256": "90471838d550ea6bb8729ada864b6c9dce21c9131277038b226797756025872e",
+        "bytes": 105474,
+        "width": 1920,
+        "height": 1080,
+        "duration_seconds": 9.667,
+        "codec": "vp9",
+        "audio_streams": 0,
+        "decoded_without_errors": true
+      },
+      {
+        "file": "hero-poster.png",
+        "sha256": "583965c90b4eb2aa252a8683a9fb6482172952a035f9d74cda5c7bad7e9bec1d",
+        "bytes": 602599,
+        "width": 1280,
+        "height": 720,
+        "codec": "png",
+        "audio_streams": 0,
+        "decoded_without_errors": true
+      }
+    ]
+  },
+  "exporter": {
+    "file": "scripts/p21/export-motion.py",
+    "sha256": "690f901aa45d0fde4dd5ac04ea571cd788a28928781916821daaf4fab38d7d37",
+    "python": "3.14.4",
+    "ffmpeg": "8.1.2",
+    "ffprobe": "8.1.2",
+    "output_fps": 24,
+    "crossfade_seconds": 0.4,
+    "mp4": "H.264 libx264, medium preset, CRF 19, yuv420p, faststart",
+    "webm": "VP9 libvpx-vp9, CRF 33, row-mt disabled, one thread, yuv420p",
+    "poster": "One center frame from the exported MP4, 1280x720 lossless PNG",
+    "repeat_export_check": {
+      "runs": 2,
+      "mp4_sha256_match": true,
+      "poster_sha256_match": true,
+      "webm_sha256_match": false,
+      "webm_run_1_sha256": "90471838d550ea6bb8729ada864b6c9dce21c9131277038b226797756025872e",
+      "webm_run_2_sha256": "74a5adc1318f866800bfdb64abb800722f0ba77b4da1bfd07af85e53d3aaf717",
+      "webm_run_1_and_2_bytes": 105474,
+      "interpretation": "VP9 output is not byte-reproducible in the two-run check; no cause is asserted. Do not claim repeatable WebM bytes."
+    }
+  },
+  "review": {
+    "endpoint_ssim_all": 0.977498,
+    "sampling": "First, middle, last, and 1 fps contact-sheet frames inspected locally.",
+    "observed": "Fixed dark valley and stream composition; slow violet horizon haze movement; no visible text, logo, camera travel, cut, or flash in sampled frames.",
+    "human_visual_approval": false,
+    "browser_acceptance": false,
+    "device_acceptance": false,
+    "listening_claim": false
+  },
+  "runtime": {
+    "activated": false,
+    "default_hero_changed": false,
+    "autoplay_or_audio_enabled": false,
+    "integration_status": "Not wired into the website. The existing still hero remains authoritative.",
+    "future_policy": "Keep the still poster as fallback. Any later optional motion integration must respect prefers-reduced-motion, save-data, low battery/thermal state and inactive tabs; pause when hidden and keep audio absent. P21/R16 browser and physical-device acceptance remains open."
+  }
+}

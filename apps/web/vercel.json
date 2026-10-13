@@ -408,6 +408,24 @@
           "value": "<https://megaxo.online/privacy-choices>; rel=\"canonical\""
         }
       ]
+    },
+    {
+      "source": "/manifest.webmanifest",
+      "headers": [
+        {
+          "key": "Content-Type",
+          "value": "application/manifest+json; charset=utf-8"
+        }
+      ]
+    },
+    {
+      "source": "/offline-sw.js",
+      "headers": [
+        {
+          "key": "Service-Worker-Allowed",
+          "value": "/"
+        }
+      ]
     }
   ]
 }

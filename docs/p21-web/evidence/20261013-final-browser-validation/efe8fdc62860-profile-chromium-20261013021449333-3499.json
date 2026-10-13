@@ -1,0 +1,211 @@
+{
+  "schema_version": 1,
+  "checked_at": "2026-10-13T02:14:49.333Z",
+  "source_commit": "e9eab5753fe9ee8552f3b7f9d1be6ad5e7e3deec",
+  "bundle_sha256": "efe8fdc628606103b7171e0c0230a260614fb6c082e86a0cb5e26fb5f6d20e92",
+  "browser_engine": "chromium",
+  "runtime_version": "v26.8.2",
+  "playwright_version": "1.62.1",
+  "command": "env -u NODE_OPTIONS NODE_PATH='/Users/oculus/Downloads/Test XO/.artifacts/p21-browser-qa/node_modules:/Users/oculus/.codex/worktrees/v51-website-readiness/Test XO/.artifacts/p21-browser-qa-1.58.2/node_modules' '/Users/oculus/.hermes/node/bin/node' scripts/p21/profile-qa.cjs --bundle '.artifacts/p21-web' --expect-source e9eab5753fe9ee8552f3b7f9d1be6ad5e7e3deec --expect-bundle efe8fdc628606103b7171e0c0230a260614fb6c082e86a0cb5e26fb5f6d20e92 --browser chromium",
+  "qa_script_sha256": "b680a3de2af4c0afb925ee0d4876adbd6773fa24c2a7fb97892beceb4b7a30e0",
+  "environment": "Local loopback only; checksum-verified immutable build snapshot; fresh unauthenticated browser context; synthetic linked actor fixtures; all other origins blocked.",
+  "fixture_boundary": "The linked profile, account session, profile GET/POST, logout and all actor changes are synthetic browser route fixtures. No account, credential, provider, production or user browser was used.",
+  "isolated_payload_snapshot": true,
+  "checks": [
+    {
+      "id": "P21-PROFILE-SYNTHETIC-LINKED-LOAD",
+      "result": "PASS",
+      "fixture": "synthetic linked actor; protected profile GET observed",
+      "field_names": [
+        "displayName",
+        "presenceVisibility",
+        "statsVisibility",
+        "username"
+      ],
+      "protected_fields_present": true
+    },
+    {
+      "id": "P21-PROFILE-ACCESSIBLE-FIELDS-AND-STATUS",
+      "result": "PASS",
+      "field_label_count": [
+        1,
+        1,
+        1,
+        1
+      ],
+      "described_help_count": 4,
+      "status_role": "status",
+      "live_region": "polite",
+      "status_tab_index": -1
+    },
+    {
+      "id": "P21-PROFILE-INITIAL-REFLOW-390",
+      "result": "PASS",
+      "viewport_width": 390,
+      "scroll_width": 390
+    },
+    {
+      "id": "P21-PROFILE-REFLOW-320",
+      "result": "PASS",
+      "viewport_width": 320,
+      "scroll_width": 320,
+      "route": "/profile",
+      "fixture": "synthetic linked actor"
+    },
+    {
+      "id": "P21-PROFILE-NATIVE-VALIDATION",
+      "result": "PASS",
+      "username_invalid": true,
+      "invalid_field_received_focus": true,
+      "profile_posts_before": 0,
+      "profile_posts_after": 0
+    },
+    {
+      "id": "P21-PROFILE-VALIDATION-DRAFT-RECOVERY",
+      "result": "PASS",
+      "all_four_draft_fields_retained": true,
+      "error_status_focused": true,
+      "status_role": "status"
+    },
+    {
+      "id": "P21-PROFILE-SAVE-FOUR-FIELD-WHITELIST",
+      "result": "PASS",
+      "submitted_field_names": [
+        "displayName",
+        "presenceVisibility",
+        "statsVisibility",
+        "username"
+      ],
+      "csrf_header_present": true,
+      "idempotency_header_present": true,
+      "saved_status_focused": true
+    },
+    {
+      "id": "P21-PROFILE-COOLDOWN-DRAFT-RECOVERY",
+      "result": "PASS",
+      "keep_current_username_action": true,
+      "all_four_draft_fields_retained": true
+    },
+    {
+      "id": "P21-PROFILE-COOLDOWN-KEEP-AND-SAVE",
+      "result": "PASS",
+      "current_username_restored": true,
+      "other_three_edits_retained": true,
+      "focus_restored_to_username": true,
+      "submitted_field_names": [
+        "displayName",
+        "presenceVisibility",
+        "statsVisibility",
+        "username"
+      ]
+    },
+    {
+      "id": "P21-PROFILE-SAME-ACTOR-REFRESH-LOCKS-DRAFT",
+      "result": "PASS",
+      "controls_disabled_during_refresh": true,
+      "draft_visible_in_memory": true,
+      "aria_busy": "true",
+      "confirming_status": true
+    },
+    {
+      "id": "P21-PROFILE-SAME-ACTOR-REFRESH-RETAINS-DRAFT",
+      "result": "PASS",
+      "all_four_fields_retained_after_refresh": true
+    },
+    {
+      "id": "P21-PROFILE-ACTOR-STALE-AUTH-FENCED",
+      "result": "PASS",
+      "new_actor_editor_preserved": true,
+      "new_actor_profile_remains_linked": true,
+      "stale_auth_did_not_sign_out": true
+    },
+    {
+      "id": "P21-PROFILE-ROUTE-STALE-AUTH-FENCED",
+      "result": "PASS",
+      "linked_actor_loaded_after_return": true,
+      "stale_auth_error_not_rendered": true
+    },
+    {
+      "id": "P21-PROFILE-LOGOUT-STALE-AUTH-FENCED",
+      "result": "PASS",
+      "signed_out_account_surface_retained": true,
+      "profile_details_absent_after_late_auth": true,
+      "profile_editor_hidden_while_signed_out": true,
+      "sign_in_path_available": true
+    },
+    {
+      "id": "P21-PROFILE-NO-LOCALSTORAGE",
+      "result": "PASS",
+      "local_storage_write_count": 0,
+      "local_storage_remove_count": 0,
+      "profile_or_auth_storage_keys": 0
+    },
+    {
+      "id": "P21-PROFILE-NO-PRIVATE-CACHE",
+      "result": "PASS",
+      "protected_api_cache_control": "private, no-store",
+      "cache_storage_entries": 0,
+      "service_worker_controls_page": false
+    },
+    {
+      "id": "P21-PROFILE-REFLOW-390-SIGNED-OUT",
+      "result": "PASS",
+      "viewport_width": 390,
+      "scroll_width": 390,
+      "route": "/profile",
+      "session": "signed-out fixture"
+    },
+    {
+      "id": "P21-PROFILE-JAVASCRIPT-ERRORS",
+      "result": "PASS",
+      "error_count": 0,
+      "errors": []
+    }
+  ],
+  "failures": [],
+  "api_fixture_summary": {
+    "synthetic_api_requests": 18,
+    "observed_profile_reads": 4,
+    "observed_profile_writes": 7,
+    "profile_write_field_sets": [
+      [
+        "displayName",
+        "presenceVisibility",
+        "statsVisibility",
+        "username"
+      ],
+      [
+        "displayName",
+        "presenceVisibility",
+        "statsVisibility",
+        "username"
+      ],
+      [
+        "displayName",
+        "presenceVisibility",
+        "statsVisibility",
+        "username"
+      ],
+      [
+        "displayName",
+        "presenceVisibility",
+        "statsVisibility",
+        "username"
+      ]
+    ],
+    "all_profile_write_field_sets_whitelisted": true,
+    "private_no_store_responses": 18,
+    "requests_with_cookie_headers": 0,
+    "requests_missing_csrf_header": 0,
+    "requests_missing_idempotency_header": 0,
+    "other_origins_blocked": 0
+  },
+  "screenshots": [
+    "tests-output/p21-web/efe8fdc62860/profile-chromium/20261013021449333-3499/profile-editor-ready-390.png"
+  ],
+  "limitations": [
+    "Synthetic browser software acceptance only; no live API, authenticated user profile, physical device or production acceptance."
+  ],
+  "browser_version": "151.0.7922.34",
+  "result": "PASS_AUTOMATED_LOCAL_ONLY"
+}

@@ -1,0 +1,250 @@
+{
+  "schema_version": 1,
+  "evidence_id": "P21-RT-20261013",
+  "collected_at": "2026-10-13T05:43:40.924696+00:00",
+  "feature_source_commit": "4a9c29c789f743dcdcf76d5aea3ed4c47d4a9437",
+  "qa_commit": "e807d28b6f7eef2faf581eddd1e4028aa8f2696b",
+  "integrated_commit": "09e13826df714946388e9c610b8ddd62c3a4a604",
+  "bundle_sha256": "2887b0cd9723513792af01d71412ee94040f2f2dcfc9277a52fe7612733eb9e6",
+  "qa_script_sha256": "b42e8d13711c913362f9b1e964cdc414e4de5f43172664c25320234a1540059f",
+  "acceptance_boundary": "Implemented and locally verified synthetic actor/software contexts; actual staging discovery is read-only and still serves old f4851a5/8167 build. Authenticated WSS, complete game settlement, devices and provider approvals NOT_RUN.",
+  "artifacts": [
+    {
+      "path": "integrated-unit-tests.log",
+      "bytes": 25742,
+      "sha256": "5fd1b4e1b1b9d30a7bff94398bc2042598bf676f73f325f5b60d71e176996841",
+      "kind": "256 passing source tests",
+      "original_path": ".artifacts/p21-realtime-20261013/integrated-unit-tests.log"
+    },
+    {
+      "path": "source-unit-tests.log",
+      "bytes": 25332,
+      "sha256": "19d95c9f2dd3b7e78cdf6b135b11fca65b754fffd13c6c9b534d252c8d79cfb2",
+      "kind": "251 passing frontend source tests",
+      "original_path": ".artifacts/p21-realtime-20261013/complete-unit-tests.log"
+    },
+    {
+      "path": "development-failures/initial-full-tests.log",
+      "bytes": 31119,
+      "sha256": "5a68c2232ff9afe004775fce38c63725e79fb6734c7dfa8c3542e2f5aaf587c3",
+      "kind": "uncommitted implementation failures; not acceptance evidence",
+      "original_path": ".artifacts/p21-realtime-20261013/initial-full-tests.log"
+    },
+    {
+      "path": "development-failures/realtime-unit-tests.log",
+      "bytes": 30209,
+      "sha256": "6f5a03e21972808d38976cc42c56f5f9997d0066c17e988c801c1892df022b8b",
+      "kind": "uncommitted implementation failures; not acceptance evidence",
+      "original_path": ".artifacts/p21-realtime-20261013/realtime-unit-tests.log"
+    },
+    {
+      "path": "development-failures/final-unit-tests.log",
+      "bytes": 31076,
+      "sha256": "87f1143511b89681aa8d64b9ea3eb06f68840cce7555d7bb3b866ba8cd200d31",
+      "kind": "uncommitted implementation failures; not acceptance evidence",
+      "original_path": ".artifacts/p21-realtime-20261013/final-unit-tests.log"
+    },
+    {
+      "path": "staging-discovery.json",
+      "bytes": 1959,
+      "sha256": "14ed3d8a41f6bfa836202b38eea6c35ccb98b230108194e04fbde1a0d1c5654e",
+      "kind": "read-only actual staging and Brave observations",
+      "original_path": ".artifacts/p21-realtime-20261013/staging-discovery.json"
+    },
+    {
+      "path": "web-manifest.json",
+      "bytes": 236609,
+      "sha256": "c50175bd6fbb2b0db35ad48f0d2388ead32c024fd958b30e49a7da0526f512c3",
+      "kind": "exact positive-allowlist payload inventory",
+      "original_path": ".artifacts/p21-realtime-20261013/web/web-build.manifest.json"
+    },
+    {
+      "path": "integrated-web-manifest.json",
+      "bytes": 236609,
+      "sha256": "24683c21f21e1a0c9ebef9030fbfbbbc7861576993e41039b18375a28de5baff",
+      "kind": "exact positive-allowlist payload inventory",
+      "original_path": ".artifacts/p21-realtime-20261013/integrated-web/web-build.manifest.json"
+    },
+    {
+      "path": "browser-qa.json",
+      "bytes": 216166,
+      "sha256": "188faf7484d4e1ed783e25ae1fdc6cb17a6ba103c537eeeeea4f04475a587b1f",
+      "kind": "local Chromium software checks",
+      "original_path": "tests-output/p21-web/2887b0cd9723/browser-qa.json"
+    },
+    {
+      "path": "accessibility-qa.json",
+      "bytes": 1730290,
+      "sha256": "707c2833357d2282f5c173a21f2b2176a773525cfd5c207466514f4a9fb8c77c",
+      "kind": "local Chromium software checks",
+      "original_path": "tests-output/p21-web/2887b0cd9723/accessibility-qa.json"
+    },
+    {
+      "path": "realtime-history/chromium-20261013052829929-59569.json",
+      "bytes": 2722,
+      "sha256": "41e281c5a337daf95baf8f0be84dd3f28aff3e93b06ad5ffc4358d3b67693b98",
+      "kind": "retained earlier helper/fixture/launch failure or superseded pass",
+      "original_path": ".artifacts/realtime-qa-output/chromium/2887b0cd9723/realtime-chromium/20261013052829929-59569/report.json"
+    },
+    {
+      "path": "realtime-history/chromium-20261013052844812-59706.json",
+      "bytes": 2728,
+      "sha256": "86246c9a2f39b2098ce6243de7e9aa1b19e5df74fb6c544c9b2a95721afa4f6b",
+      "kind": "retained earlier helper/fixture/launch failure or superseded pass",
+      "original_path": ".artifacts/realtime-qa-output/chromium/2887b0cd9723/realtime-chromium/20261013052844812-59706/report.json"
+    },
+    {
+      "path": "realtime-history/chromium-20261013052903995-59862.json",
+      "bytes": 3378,
+      "sha256": "5b3f303b2155e4172ef2ba3847632dac70e363f955d0b481967f430d524e4850",
+      "kind": "retained earlier helper/fixture/launch failure or superseded pass",
+      "original_path": ".artifacts/realtime-qa-output/chromium/2887b0cd9723/realtime-chromium/20261013052903995-59862/report.json"
+    },
+    {
+      "path": "realtime-history/chromium-20261013052944781-60120.json",
+      "bytes": 5083,
+      "sha256": "e0329d71278ce6a6a4d0a9f6cb9a4cbbdf63785f00481fff546b85f2575436b0",
+      "kind": "retained earlier helper/fixture/launch failure or superseded pass",
+      "original_path": ".artifacts/realtime-qa-output/chromium/2887b0cd9723/realtime-chromium/20261013052944781-60120/report.json"
+    },
+    {
+      "path": "realtime-history/chromium-20261013053135029-60871.json",
+      "bytes": 12623,
+      "sha256": "6dbd6fb7cbad19637b8343ca7443af1f27bed99c73a6e087e6ca4456be4861bd",
+      "kind": "retained earlier helper/fixture/launch failure or superseded pass",
+      "original_path": ".artifacts/realtime-qa-output/chromium/2887b0cd9723/realtime-chromium/20261013053135029-60871/report.json"
+    },
+    {
+      "path": "realtime-history/chromium-20261013053215312-61135.json",
+      "bytes": 7974,
+      "sha256": "8074987935b1b9b3c1a2b3256df2409fa972b68fc55f7a97fa034de56b5a24a2",
+      "kind": "retained earlier helper/fixture/launch failure or superseded pass",
+      "original_path": ".artifacts/realtime-qa-output/chromium/2887b0cd9723/realtime-chromium/20261013053215312-61135/report.json"
+    },
+    {
+      "path": "realtime-history/chromium-20261013053432616-62073.json",
+      "bytes": 8020,
+      "sha256": "ffd063f364a6401366a3b3128a3e5dd8c118a205cb75271d1eaf77616ba1dbff",
+      "kind": "retained earlier helper/fixture/launch failure or superseded pass",
+      "original_path": ".artifacts/realtime-qa-output/chromium/2887b0cd9723/realtime-chromium/20261013053432616-62073/report.json"
+    },
+    {
+      "path": "realtime-chromium.json",
+      "bytes": 8188,
+      "sha256": "8a30aed344ce772b1779f920465a8d86830c58e4f67c7c53123f6bc2809774d1",
+      "kind": "local real WS/WSS with synthetic actors; final identical helper",
+      "original_path": ".artifacts/realtime-qa-output/chromium/2887b0cd9723/realtime-chromium/20261013053629565-62873/report.json"
+    },
+    {
+      "path": "realtime-history/firefox-20261013053241065-61302.json",
+      "bytes": 3104,
+      "sha256": "3b6de41703301ddd41278fd586a9e4a7a6aba123b73b87aea6ecb3c7b72f343b",
+      "kind": "retained earlier helper/fixture/launch failure or superseded pass",
+      "original_path": ".artifacts/realtime-qa-output/firefox/2887b0cd9723/realtime-firefox/20261013053241065-61302/report.json"
+    },
+    {
+      "path": "realtime-history/firefox-20261013053322623-61572.json",
+      "bytes": 18797,
+      "sha256": "be028e517e80b7c8be3c42c67fa38d08ff74d282429b2fc21ec927e902cec049",
+      "kind": "retained earlier helper/fixture/launch failure or superseded pass",
+      "original_path": ".artifacts/realtime-qa-output/firefox/2887b0cd9723/realtime-firefox/20261013053322623-61572/report.json"
+    },
+    {
+      "path": "realtime-history/firefox-20261013053408384-61903.json",
+      "bytes": 8131,
+      "sha256": "395c9f58d0ffe5db66df4de0652c80128cfd55e93ab5d2ea30b1743af26b5e06",
+      "kind": "retained earlier helper/fixture/launch failure or superseded pass",
+      "original_path": ".artifacts/realtime-qa-output/firefox/2887b0cd9723/realtime-firefox/20261013053408384-61903/report.json"
+    },
+    {
+      "path": "realtime-firefox.json",
+      "bytes": 8300,
+      "sha256": "7306a72e0766e1ceda9de2ee6c68261a80d239ddacff47035fb988c97936cbd5",
+      "kind": "local real WS/WSS with synthetic actors; final identical helper",
+      "original_path": ".artifacts/realtime-qa-output/firefox/2887b0cd9723/realtime-firefox/20261013053629565-62872/report.json"
+    },
+    {
+      "path": "realtime-history/webkit-20261013053241065-61303.json",
+      "bytes": 3104,
+      "sha256": "024757d764d91155594fb33081c59a422c3107b69a9b9808ad403f4297771161",
+      "kind": "retained earlier helper/fixture/launch failure or superseded pass",
+      "original_path": ".artifacts/realtime-qa-output/webkit/2887b0cd9723/realtime-webkit/20261013053241065-61303/report.json"
+    },
+    {
+      "path": "realtime-history/webkit-20261013053322623-61571.json",
+      "bytes": 8124,
+      "sha256": "17da697a348ddf72a2fa7111f1107c7a9653de39847502d58af303ced1603b02",
+      "kind": "retained earlier helper/fixture/launch failure or superseded pass",
+      "original_path": ".artifacts/realtime-qa-output/webkit/2887b0cd9723/realtime-webkit/20261013053322623-61571/report.json"
+    },
+    {
+      "path": "realtime-history/webkit-20261013053432616-62074.json",
+      "bytes": 8124,
+      "sha256": "94601e522e12daa1330571be7134e046e3ec73d58ea94d9d858c365435a900c0",
+      "kind": "retained earlier helper/fixture/launch failure or superseded pass",
+      "original_path": ".artifacts/realtime-qa-output/webkit/2887b0cd9723/realtime-webkit/20261013053432616-62074/report.json"
+    },
+    {
+      "path": "realtime-webkit.json",
+      "bytes": 8292,
+      "sha256": "10ce8979806967a2599cca84c9640e5db42ca55a243bb2cdf8573af5f6ff7b59",
+      "kind": "local real WS/WSS with synthetic actors; final identical helper",
+      "original_path": ".artifacts/realtime-qa-output/webkit/2887b0cd9723/realtime-webkit/20261013053629565-62874/report.json"
+    },
+    {
+      "path": "profile-chromium.json",
+      "bytes": 6640,
+      "sha256": "fbfc0ee83cd67d2542a70c33dcb4a414f0ff41260408168dc80d46aa75573224",
+      "kind": "local synthetic protected UI fixtures",
+      "original_path": ".artifacts/p21-realtime-20261013/profile-chromium/2887b0cd9723/profile-chromium/20261013053659850-63153/profile-qa.json"
+    },
+    {
+      "path": "profile-firefox.json",
+      "bytes": 6628,
+      "sha256": "e2539aed00a0cb949999cb759dd453e8181691074d960dd2ce88a786856cfb9c",
+      "kind": "local synthetic protected UI fixtures",
+      "original_path": ".artifacts/p21-realtime-20261013/profile-firefox/2887b0cd9723/profile-firefox/20261013053702230-63207/profile-qa.json"
+    },
+    {
+      "path": "profile-webkit.json",
+      "bytes": 6623,
+      "sha256": "5d460e506670dd1e9d04635eced7deacd0c273ebdac03d4c5cd6459383f5eec7",
+      "kind": "local synthetic protected UI fixtures",
+      "original_path": ".artifacts/p21-realtime-20261013/profile-webkit/2887b0cd9723/profile-webkit/20261013053704512-63266/profile-qa.json"
+    },
+    {
+      "path": "friends-chromium.json",
+      "bytes": 102767,
+      "sha256": "f8ce6bced642089a24f11d4444d14b037f48c56d6bb73acccd298dccedb5fa8d",
+      "kind": "local synthetic protected UI fixtures",
+      "original_path": ".artifacts/p21-realtime-20261013/friends-chromium/2887b0cd9723/friends-chromium/20261013053701028-63192/friends-qa.json"
+    },
+    {
+      "path": "friends-firefox.json",
+      "bytes": 102749,
+      "sha256": "cdcfbedc609da3241c440e12a71b2be061c611ac99bbce21ce1327663ff3b906",
+      "kind": "local synthetic protected UI fixtures",
+      "original_path": ".artifacts/p21-realtime-20261013/friends-firefox/2887b0cd9723/friends-firefox/20261013053703416-63233/friends-qa.json"
+    },
+    {
+      "path": "friends-webkit.json",
+      "bytes": 102739,
+      "sha256": "94eb65394eddf0c863fd91ddf40b86ec73833d7def77e38719b5d30e962b2d0b",
+      "kind": "local synthetic protected UI fixtures",
+      "original_path": ".artifacts/p21-realtime-20261013/friends-webkit/2887b0cd9723/friends-webkit/20261013053705960-63289/friends-qa.json"
+    },
+    {
+      "path": "provider-handoff.json",
+      "bytes": 1123,
+      "sha256": "e03e9cab894209ae6802027e3d5f6e5955a4d4e3f7318e2c2766cfcbfee01638",
+      "kind": "sanitized provider handoff; no identity identifiers"
+    },
+    {
+      "path": "tutorial-worker-browser.log",
+      "bytes": 754,
+      "sha256": "71846f7fe766f94e5a703bcb944ca934c4b993855ab775e81d4d28833532202f",
+      "kind": "15 retained tutorial/Worker browser checks; loopback integrated payload",
+      "original_path": ".artifacts/p21-realtime-20261013/tutorial-worker-browser.log"
+    }
+  ]
+}

@@ -1,0 +1,366 @@
+✖ P21-ACCOUNT-01 browsing only reads the protected profile; sign-in options explicitly bootstrap (28.3285ms)
+✖ P21-ACCOUNT-02 new email continuation verifies the retained challenge and restores the same profile (0.55425ms)
+✖ P21-ACCOUNT-03 existing email login and logout use the retained client, without a second identity (2.299458ms)
+✖ P21-ACCOUNT-04 recovery preserves a verified challenge when correcting a rejected password (0.928042ms)
+✖ P21-ACCOUNT-05 provider starts require published capability and use the existing authorization redirect (0.967667ms)
+✖ P21-ACCOUNT-06 account continuation does not claim success when the protected profile cannot load (1.025667ms)
+✖ P21-ACCOUNT-07 explicit options discovers a session linked in another tab (1.430375ms)
+✔ P21-APP-OFFLINE: verified fallback survives hydration at private, unknown and query URLs and can open practice (42.78475ms)
+✔ P21-APP-01 queued acceptance uses frozen terms and discovers PLAYING after own invitation disappears (25.008833ms)
+✔ P21-APP-02 matched queue cancellation reconciles a started match and idle queue stops polling (11.63275ms)
+✔ P21-APP-03 move retry retains its original operation, authoritative revision and selected cell (7.262666ms)
+✔ P21-APP-04 poll auth failure stops polling, retires online input and offers the online sign-in action (7.736625ms)
+✔ P21-APP-05 an older in-flight match poll cannot regress the cache used on route remount (14.256667ms)
+✔ P21-APP-06 route departure fences the queued POST subsequent match read and new polling lifetime (8.051167ms)
+✔ P21-APP-07 logout retires match ownership before a pending move returns its old actor snapshot (27.044292ms)
+✔ P21-APP-08 matched snapshots owned by another actor cannot enable online controls (7.126083ms)
+✔ P21-APP-09 a fresh game route resumes the current profile published active match (12.102875ms)
+✔ P21-APP-10 a refreshed profile belonging to another actor retires the former online board (7.31725ms)
+✔ P21-APP-11 a profile read started before an auth failure cannot relink the retired actor afterward (6.195416ms)
+✔ P21-APP-12 transient match polling can recover the latest opponent move inside the current game route (7.949292ms)
+✔ P21-APP-13 online resignation confirms loss and agreed consequences before transport (5.73075ms)
+✔ P21-APP-14 leaving matchmaking declines an accepted OFFERED match without resigning a live match (2.741167ms)
+✔ P21-APP-15 reconnect preserves a server-settled terminal result and disables online moves (2.849083ms)
+✔ P21-APP-16 page departure fences an unfinished queue command and cannot restart polling (1.744417ms)
+✔ P21-APP-RT-01 socket snapshots update the mounted board and cache without a game mutation (4.910541ms)
+✔ P21-APP-RT-02 an older in-flight HTTP match read cannot regress a newer socket snapshot (4.468667ms)
+✔ P21-APP-RT-03-FINISHED same-revision settlement refreshes the server profile once and retires match transport (5.019667ms)
+✔ P21-APP-RT-03-VOID same-revision settlement refreshes the server profile once and retires match transport (4.347542ms)
+✔ P21-APP-RT-04-route pending socket tickets cannot bind after ownership changes (2.322375ms)
+✔ P21-APP-RT-04-pagehide pending socket tickets cannot bind after ownership changes (2.260875ms)
+✔ P21-APP-RT-04-logout pending socket tickets cannot bind after ownership changes (1.8885ms)
+✔ P21-APP-RT-04-actor pending socket tickets cannot bind after ownership changes (2.272042ms)
+✔ P21-APP-RT-04b-route delayed recovery and queued socket callbacks cannot restore departed ownership (2.298417ms)
+✔ P21-APP-RT-04b-pagehide delayed recovery and queued socket callbacks cannot restore departed ownership (2.137ms)
+✔ P21-APP-RT-04b-logout delayed recovery and queued socket callbacks cannot restore departed ownership (2.277041ms)
+✔ P21-APP-RT-04b-actor delayed recovery and queued socket callbacks cannot restore departed ownership (3.975708ms)
+✔ P21-APP-RT-05 opaque session replacement fences queued socket state and auth callbacks (3.688792ms)
+✔ P21-APP-RT-06 an explicit current socket auth refusal retires the actor and queued peer callbacks (2.483125ms)
+✔ P21-APP-RT-07 cached-page restoration restarts a loading profile and fences the interrupted result (1.877625ms)
+✔ P21-APP-RT-08 an interrupted cached-page check reaches bounded error and the actual retry button recovers (1.586833ms)
+✔ P21-APP-RT-09 browsers without WebSocket keep protected HTTP match polling (2.925667ms)
+✔ P21.03 practice showcase is a reproducible legal rules fixture with centre routing (1.850875ms)
+✔ P21.05 local practice enforces required board and preserves state after an illegal move (0.461625ms)
+✔ P21.05 preview reset replays the fixture and fresh practice clears every move (0.323125ms)
+✔ P21.03 accessible board uses 81 real cells and truthful practice labels (4.269708ms)
+✔ P21.05 bot cannot mutate a destroyed board mount (322.872417ms)
+✔ P21.05 keyboard navigation crosses small boards in visual row order (0.468583ms)
+✔ P21.05 theme switch changes presentation without resetting a mounted move (0.315042ms)
+✔ P21.05 game route stays inside the website, sanitizes settings and preserves approved mode choices (0.556917ms)
+✔ P21.05 browser Neon defaults apply to local and server boards while original themes stay selectable (0.738458ms)
+✔ P21.05 explicitly selected same-screen mode follows both turns without scheduling Bot (301.779ms)
+✔ P21.05 Bot response uses the retained legal route and a fresh game fences its queued response (601.522292ms)
+✔ P21.05 server session rejects stale history, changed identities and invalid board shapes (0.382166ms)
+✔ P21.05 online moves remain server-owned, serialize and use the authoritative move revision (0.740958ms)
+✔ P21.05 a failed online move retries its original idempotency key without optimistic mutation (0.713083ms)
+✔ P21.05 auth-required online state offers sign in and never retries as a service outage (0.504208ms)
+✔ P21.05 online callbacks cannot mutate a destroyed board and server names are escaped (0.387792ms)
+✔ P21.05 resignation waits for a server result, supports cancelled confirmation, and excludes spectators (0.5945ms)
+✔ Mega XOXO browser and native display names (5.003958ms)
+✔ all themed logo PNG originals and optimized WebP files exist (20.519292ms)
+✔ theme-matched header mark is in V5 native bundle allowlist (4.4885ms)
+✔ original uploaded logo remains byte-identical in repo (4.6725ms)
+✔ website logo pack PNG assets exist with verified SHA-256 signatures (10.053875ms)
+✔ P21-DATA-01 browsing profile never bootstraps a session and auth state stops (1.178958ms)
+✔ P21-DATA-02 linked profile preserves server tier, precise rating and wallet (0.111708ms)
+✔ P21-DATA-03 filter changes fence stale standings and preserve server ordering (0.309417ms)
+✔ P21-DATA-04 auth-required standings remain inside the website and destroy fences late data (0.239125ms)
+✔ P21-DATA-05 transport keeps protected same-origin cookies and sanitizes errors (0.743792ms)
+✔ P21-DATA-06 an unresponsive profile client reaches a retryable error after eight seconds (12.656542ms)
+✔ P21-DATA-07 the profile deadline also bounds a stalled response body that ignores abort (0.749333ms)
+✔ P21-DATA-08 retry uses a fresh check and a late timed-out response cannot replace its actor (2.898375ms)
+✔ P21-DATA-09 replacing a pending restoration releases the old wait and fences late failure (1.996833ms)
+✔ P21-DATA-10 logout invalidation releases a stalled wait and late data cannot restore the account (3.7755ms)
+✔ P21-DATA-11 destroying the model releases the wait and stops new or late profile checks (0.602125ms)
+✔ P21-DOWNLOAD-01 browser device detection handles mobile, desktop and iPadOS desktop Safari (1.15525ms)
+✔ P21-DOWNLOAD-02 chooser has truthful launch status and web play remains available (0.979625ms)
+✔ P21-DOWNLOAD-03 only official listing configuration is accepted (0.802208ms)
+✔ P21-DOWNLOAD-04 mobile uses configured listing or explicit unavailable chooser; desktop chooses (0.399834ms)
+✔ P21-DOWNLOAD-05 loopback redirects preserve method semantics and cache isolation (33.585125ms)
+✔ P21-DOWNLOAD-06 shipped handler never guesses launch links and refuses redirect input (12.3815ms)
+✔ P21-DOWNLOAD-07 invalid deployment configuration fails closed without leaking its URL (1.746959ms)
+✔ Friends never bootstraps guests, inactive routes or a destroyed controller (1.40175ms)
+✔ protected lists use a safe immutable projection and honestly report partial lists (0.728166ms)
+✔ malformed private responses fail closed without showing a fabricated empty success (3.774375ms)
+✔ the approved projection preserves fractional Elo and valid Unicode display names (0.215375ms)
+✔ latest protected list request wins and a failed latest read has an explicit recovery (0.165291ms)
+✔ old-actor auth errors and route departure cannot affect a later account or page (0.1285ms)
+✔ same-actor session refresh clears private rows, retains only the query and recovers from refresh failure (0.361166ms)
+✔ search happens on explicit submit with the server minimum and exact-tag contract (0.228959ms)
+✔ query and search revision fences ignore stale results and stale 401s, including same-actor queries (0.295458ms)
+✔ search errors remain separate from loaded lists and a new explicit submit can recover (0.951209ms)
+✔ current auth loss is delivered only after the full operation fence for reads, searches and mutations (1.712542ms)
+✔ only actions from the current protected source and relation are allowed; forged view rows confer no permission (0.2205ms)
+✔ all seven social commands send the approved payload and bind the shared-client operation key before canonical reload (1.828459ms)
+✔ distinct user mutations get distinct keys and invalid key factories cannot send a write (4.740958ms)
+✔ mutations are never optimistic and stay busy through the canonical reload (8.169958ms)
+✔ an accepted mutation with a failed canonical reload is reported honestly and can be recovered (0.513375ms)
+✔ failed or malformed mutation replies never claim success and require a canonical reload (0.49525ms)
+✔ actor changes and suspension fence pending mutations without retiring the new session (0.535666ms)
+✔ shared client reuses each social body/header key on internal retries, gives new actions new keys and avoids persistent storage (526.97775ms)
+✔ R21-STUDY-01: canonical probes preserve the lesson handoff and required destinations (29.220125ms)
+✔ R21-STUDY-02: incomplete/coached/no-answer cases stay in the primary denominator (14.176959ms)
+✔ R21-STUDY-03: empty templates, identities, duplicates and ambiguous values are refused (0.606375ms)
+✔ R21-STUDY-04: observed target and uncertainty are separate, without invented human acceptance (8.479958ms)
+✔ generator rejects malformed, external, dynamic, or unmanifested paths (1.6695ms)
+✔ install verifies all static bytes before publishing one bounded cache (55.727166ms)
+✔ mixed private/API/callback traffic stays network-only and is never cached (11.044125ms)
+✔ known routes use the verified version; offline unknown navigation gets an honest guest 503 (5.381917ms)
+✔ modified cached bytes are never served and are not written back over the prior cache (5.221916ms)
+✔ offline fallback returns static guest content with status 503 and no-store; API errors remain network failures (6.419458ms)
+▶ digest, no-store, byte-limit, and cache-put failures remove only a failed new cache
+  ✔ digest mismatch preserves prior cache (2.728459ms)
+  ✔ no-store response preserves prior cache (2.5885ms)
+  ✔ aggregate response size cap preserves prior cache (24.939542ms)
+  ✔ cache quota failure removes candidate and preserves prior cache (4.237541ms)
+✔ digest, no-store, byte-limit, and cache-put failures remove only a failed new cache (35.500958ms)
+✔ new version preserves old cache until activation, then removes only this feature namespace (11.477375ms)
+✔ client inspection is local and read-only; explicit preparation registers the exact root worker (2.987334ms)
+✔ client refuses to overwrite another root worker and reports an existing waiting update (0.470542ms)
+✔ client removal unregisters only its own worker and deletes only its cache namespace (0.134792ms)
+✔ owned worker without its verified cache stays removable and can recover through remove then explicit prepare (0.323292ms)
+✔ failed unregister is not reported as cleanup and leaves owned cache in place (0.33375ms)
+✔ preparation errors inherit local removability without contacting the network (0.236792ms)
+✔ first install may pass through waiting before it activates; it is never misreported as an update (0.873083ms)
+✔ fast failed install with a disappeared registration is failure and preserves the prior verified copy (100.538333ms)
+✔ a known empty registration from a fast failed install remains removable (102.528041ms)
+▶ timeout rechecks local state to distinguish ready, preparing, and absent without deleting caches
+  ✔ completed worker without a delivered statechange is ready and asks for manual reload (27.016ms)
+  ✔ pending first install stays preparing instead of waiting for other tabs (24.708ms)
+  ✔ disappeared registration reports failure while retaining the previous cache (27.510625ms)
+✔ timeout rechecks local state to distinguish ready, preparing, and absent without deleting caches (79.8055ms)
+✔ P21.07 every advertised website route renders a page and all rendered links resolve (27.917417ms)
+✔ P21 leaderboard renders supplied standings inside the website and preserves server tier/order (0.593917ms)
+✔ P21 leaderboard loading, empty and error states never fabricate player rows (1.011542ms)
+✔ P21 personal rank uses the published profile tier, never rating-derived entitlement (2.305833ms)
+✔ P21 profile and reward balances render only the linked supplied profile (2.07ms)
+✔ P21 account owns one unified continuation and verified recovery flow in the website (0.546459ms)
+✔ P21 store only renders approved returned products and provider prices (0.832916ms)
+✔ P21 sponsor preferences require explicit local consent and no active advertising (0.38425ms)
+✔ P21 full public legal bodies and all wording remain within shared website chrome (7.330792ms)
+✔ P21.07 profile and Friends render adversarial user names and tags as text (0.670458ms)
+✔ P21.07 guest account routes retain account continuation and truthful identity state (0.56175ms)
+✔ P21.07 rendered league table matches approved domain floors, entry fees and weekly rewards (3.2775ms)
+✔ P21.07 rendered tournament entries and payouts match approved tournament mathematics (4.265ms)
+✔ P21.07 reward and challenge copy retain approved currency limits and archived cosmetic direction (0.434584ms)
+✔ P21.07 quarter copy follows UTC domain boundaries rather than old screenshot dates (1.409083ms)
+✔ P21.07 legal and service pages preserve unapproved status and unknown routes fail safely (1.979791ms)
+✔ P21 Friends renders only the current actor projection and escapes names without exposing private stats (0.582625ms)
+✔ profile editor loads protected fields and POSTs only the approved editable fields (1.327542ms)
+✔ validation failure keeps the submitted draft for correction and a successful retry (0.674916ms)
+✔ matching actor id alone cannot make an incomplete save response look successful (1.427125ms)
+✔ old actor save reply is fenced after the signed-in actor changes (0.785833ms)
+✔ a delayed old-actor AUTH_REQUIRED cannot retire the newly linked actor (0.398334ms)
+✔ only a current AUTH_REQUIRED retires the session for profile reads and saves (0.844583ms)
+✔ same-actor focus refresh freezes writes and preserves the memory-only draft until protected refresh succeeds (0.506ms)
+✔ session and route departure fence both pending protected reads and writes (0.157083ms)
+✔ profile page renders labeled supported fields and preserves a failed draft accessibly (17.749541ms)
+✔ P21-RT-URL same-origin ingress derives ws/wss and never carries a ticket or page query (1.193958ms)
+✔ P21-RT-SHAPE invalid identity, board, move, state and current revision shapes fail closed (1.240291ms)
+✔ P21-RT-HISTORY rejects regressions, divergent history and equal-history board changes while preserving settlement (1.356459ms)
+✔ P21-RT-REDEEM fresh scoped ticket precedes subscribe and resume; only authoritative snapshots advance presentation (8.534166ms)
+✔ P21-RT-HINTS ack and delta never apply moves or acknowledge an unapplied revision (2.4555ms)
+▶ P21-RT-SETTLEMENT equal-revision ack recovery discovers FINISHED and VOID and retires transport
+  ✔ FINISHED (1.767417ms)
+  ✔ VOID (1.09725ms)
+✔ P21-RT-SETTLEMENT equal-revision ack recovery discovers FINISHED and VOID and retires transport (3.384041ms)
+✔ P21-RT-FALLBACK HTTP recovery never claims a confirmed socket subscription; malformed push returns to recovery (2.309375ms)
+✔ P21-RT-BACKOFF healthy HTTP cannot reset repeated upgrade-denial backoff or reuse scoped tickets (3.294958ms)
+✔ P21-RT-NO-SOCKET missing browser WebSocket uses HTTP recovery without ticket issuance or retry timers (0.514583ms)
+▶ P21-RT-AUTH shared HTTP session cleanup before AUTH_REQUIRED still retires the owning reader
+  ✔ ticket (0.427167ms)
+  ✔ recovery (0.699084ms)
+✔ P21-RT-AUTH shared HTTP session cleanup before AUTH_REQUIRED still retires the owning reader (1.420834ms)
+✔ P21-RT-BOOTSTRAP a first session created before transient ticket failure remains recoverable (0.813958ms)
+▶ P21-RT-LATE-TICKET route, actor, match and existing-session replacement fence late grants and errors
+  ✔ actor:grant (0.306667ms)
+  ✔ actor:auth (2.481125ms)
+  ✔ session:grant (1.101584ms)
+  ✔ session:auth (0.235ms)
+  ✔ route:grant (0.370583ms)
+  ✔ route:auth (0.242791ms)
+  ✔ match:grant (0.41525ms)
+  ✔ match:auth (0.354083ms)
+✔ P21-RT-LATE-TICKET route, actor, match and existing-session replacement fence late grants and errors (6.04375ms)
+▶ P21-RT-STALE-SOCKET actor/session/route/match/generation replacement fences saved socket callbacks
+  ✔ actor (1.320583ms)
+  ✔ session (1.013959ms)
+  ✔ route (4.613625ms)
+  ✔ match (2.189959ms)
+  ✔ generation (1.695125ms)
+✔ P21-RT-STALE-SOCKET actor/session/route/match/generation replacement fences saved socket callbacks (11.724625ms)
+▶ P21-RT-ORDER a delayed recovery success or auth error cannot replace a newer accepted push
+  ✔ snapshot (1.389708ms)
+  ✔ auth (1.360208ms)
+✔ P21-RT-ORDER a delayed recovery success or auth error cannot replace a newer accepted push (3.63275ms)
+✔ P21-RT-RECORD HTTP record cannot lower the applied revision or record across a retired lifecycle (1.991583ms)
+✔ P21-RT-CONSUMER a rejected snapshot does not advance the applied resume revision (1.00425ms)
+▶ P21-RT-TICKET expired issuance and expiration during upgrade require a fresh ticket before redemption
+  ✔ already expired (1.129958ms)
+  ✔ expires while connecting (1.618125ms)
+✔ P21-RT-TICKET expired issuance and expiration during upgrade require a fresh ticket before redemption (3.227583ms)
+▶ P21-RT-POLICY 1008 and spent-ticket errors recover with new tickets without invalidating the actor
+  ✔ close (1.308583ms)
+  ✔ TICKET_EXPIRED (0.980166ms)
+  ✔ TICKET_REDEEMED (0.84925ms)
+✔ P21-RT-POLICY 1008 and spent-ticket errors recover with new tickets without invalidating the actor (3.785459ms)
+✔ P21-RT-HEARTBEAT pong keeps one heartbeat deadline and absent pong recovers a lost socket (1.564042ms)
+✔ P21-RT-HANDSHAKE a timed-out ticket request cannot open a stale connection after the next attempt (1.319292ms)
+✔ P21-RT-DESTROY teardown cancels all timers and fences pending HTTP and saved socket callbacks (1.0975ms)
+✔ P21-SEO-01: each deep link returns its complete prerendered chrome and route metadata without JavaScript (180.78075ms)
+✔ P21-SEO-02: unique public metadata and sitemap include only eligible canonical pages (3.09125ms)
+✔ P21-SEO-03: FAQ schema answers match visible content and aliases retain their main canonical policy (7.984333ms)
+✔ P21-SEO-04: preview remains noindex while unknown documents really return 404 (2.865ms)
+✔ P21-DOWNLOAD-01: unavailable device listings redirect to the themed chooser with no fabricated storefront (1.992833ms)
+✔ P21-DOWNLOAD-02: explicitly configured synthetic official listings redirect only to allowlisted store destinations (1.444875ms)
+✔ the website shell and the retained-game entry resolve to the bundle (4.498042ms)
+✔ generated modules, art and fonts are served (1.324334ms)
+✔ a missing sub-resource is a real 404, never the HTML SPA fallback (0.094292ms)
+✔ an unknown page route gets the branded 404 document, not a 200 shell (0.343125ms)
+✔ a route not present in the bundle is not rewritten to a source file (0.149709ms)
+✔ P21-BUILD-01: deterministic positive allowlist excludes authority, secrets, native files and masters (227.610375ms)
+✔ P21-BUILD-06: offline copy uses only versioned static bytes and guest documents, never private/API responses (200.661875ms)
+✔ P21-BUILD-02: preserved legacy game and complete legal wording have checksummed source parity (115.904625ms)
+✔ P21-BUILD-05: a changed or executable legal source and linked rank exports are refused before replacement (172.268291ms)
+✔ P21-BUILD-03: failed preflight preserves last build; arbitrary and unowned outputs are refused (405.802417ms)
+✔ P21-BUILD-04: source/output symlink escape and missing optimized brand exports are refused (145.721709ms)
+✔ P21-SERVE-01: clean route deep links, legal pages and game assets serve with correct content types (129.522ms)
+✔ P21-READ-01: read proxy is opt-in, exact-origin and fixed-path; credentials and nonpublic fields never propagate (125.638916ms)
+✔ P21-READ-02: auth, malformed, redirect, oversized and timeout upstream replies remain bounded and sanitized (217.454375ms)
+✔ P21-SERVE-02: traversal, absent assets and writes fail safely; API is explicitly unconfigured (109.999209ms)
+✔ P21-DELIVERY-01: Vercel routing matches static manifest and automatic deployments stay disabled (0.644542ms)
+(node:57162) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+(Use `node --trace-warnings ...` to show where the warning was created)
+✔ P21-I01 sidebar starts its own tutorial and cannot reset a retired board (4.820625ms)
+✔ P21-I01 exact six halfmoves claim mini0 and preserve live free route without reset (2.223959ms)
+✔ P21 guidance locks bot mode and Beginner across settings, and finishes on the same board (2.384084ms)
+✔ P21-I01 wrong taps are blocked during guided steps and state does not mutate (0.39175ms)
+✔ P21-I01 skip guidance ends tutorial immediately, keeps live moves, and does not reset (0.541583ms)
+✔ P21-I01 hint and replay explanation are strictly read-only and do not mutate state (0.3355ms)
+✔ P21-I01 canonical save and restore survives reload without committing extra moves (0.19575ms)
+✔ P21-I01 practice completion and guided play have zero economy or reward mutations (0.148041ms)
+✔ P21-I02 Worker executes bot calculations for all five difficulty tiers (0.743125ms)
+✔ P21-I02 cancellation, gameId and revision fences prevent stale commits and duplicate turns (0.270709ms)
+✔ P21-I02 hidden boards fence late Worker replies and resume the same human move (3.752458ms)
+✔ P21-I02 teardown destroys Worker and drops pending turns cleanly (350.309875ms)
+✔ P21-I02 labeled measured fallback activates when Worker is absent without server authority (22.550042ms)
+✔ P21-I01 five themes stay selectable and theme switch does not reset game moves (0.299ms)
+✔ P21 match recipe pins the flag across settings and visibility, then resets at a fresh match (1.398791ms)
+✔ P21 guided skip and restore preserve unpaid legacy recipe and live moves under experimental flag (0.519417ms)
+✔ P21 explicit recovery repeats canonical seeded legacy selection using the pinned recipe (0.135666ms)
+✔ P21 old guided saves replay safely as legacy even when the experimental flag is enabled (0.295375ms)
+ℹ tests 240
+ℹ suites 0
+ℹ pass 233
+ℹ fail 7
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 2117.588208
+
+✖ failing tests:
+
+test at tests/v5-p21-account-web.test.js:81:1
+✖ P21-ACCOUNT-01 browsing only reads the protected profile; sign-in options explicitly bootstrap (28.3285ms)
+  apps/web/app.js:25
+  const realtime=createRealtimeReader({
+                 ^
+  
+  ReferenceError: createRealtimeReader is not defined
+      at apps/web/app.js:25:16
+      at Script.runInContext (node:vm:150:12)
+      at Object.runInContext (node:vm:302:6)
+      at fixture (/Users/oculus/.codex/worktrees/v51-website-publish/Test XO/tests/v5-p21-account-web.test.js:61:6)
+      at async TestContext.<anonymous> (/Users/oculus/.codex/worktrees/v51-website-publish/Test XO/tests/v5-p21-account-web.test.js:82:13)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:387:3)
+
+test at tests/v5-p21-account-web.test.js:92:1
+✖ P21-ACCOUNT-02 new email continuation verifies the retained challenge and restores the same profile (0.55425ms)
+  apps/web/app.js:25
+  const realtime=createRealtimeReader({
+                 ^
+  
+  ReferenceError: createRealtimeReader is not defined
+      at apps/web/app.js:25:16
+      at Script.runInContext (node:vm:150:12)
+      at Object.runInContext (node:vm:302:6)
+      at fixture (/Users/oculus/.codex/worktrees/v51-website-publish/Test XO/tests/v5-p21-account-web.test.js:61:6)
+      at async TestContext.<anonymous> (/Users/oculus/.codex/worktrees/v51-website-publish/Test XO/tests/v5-p21-account-web.test.js:94:13)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7)
+
+test at tests/v5-p21-account-web.test.js:115:1
+✖ P21-ACCOUNT-03 existing email login and logout use the retained client, without a second identity (2.299458ms)
+  apps/web/app.js:25
+  const realtime=createRealtimeReader({
+                 ^
+  
+  ReferenceError: createRealtimeReader is not defined
+      at apps/web/app.js:25:16
+      at Script.runInContext (node:vm:150:12)
+      at Object.runInContext (node:vm:302:6)
+      at fixture (/Users/oculus/.codex/worktrees/v51-website-publish/Test XO/tests/v5-p21-account-web.test.js:61:6)
+      at async TestContext.<anonymous> (/Users/oculus/.codex/worktrees/v51-website-publish/Test XO/tests/v5-p21-account-web.test.js:117:13)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7)
+
+test at tests/v5-p21-account-web.test.js:135:1
+✖ P21-ACCOUNT-04 recovery preserves a verified challenge when correcting a rejected password (0.928042ms)
+  apps/web/app.js:25
+  const realtime=createRealtimeReader({
+                 ^
+  
+  ReferenceError: createRealtimeReader is not defined
+      at apps/web/app.js:25:16
+      at Script.runInContext (node:vm:150:12)
+      at Object.runInContext (node:vm:302:6)
+      at fixture (/Users/oculus/.codex/worktrees/v51-website-publish/Test XO/tests/v5-p21-account-web.test.js:61:6)
+      at async TestContext.<anonymous> (/Users/oculus/.codex/worktrees/v51-website-publish/Test XO/tests/v5-p21-account-web.test.js:137:13)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7)
+
+test at tests/v5-p21-account-web.test.js:163:1
+✖ P21-ACCOUNT-05 provider starts require published capability and use the existing authorization redirect (0.967667ms)
+  apps/web/app.js:25
+  const realtime=createRealtimeReader({
+                 ^
+  
+  ReferenceError: createRealtimeReader is not defined
+      at apps/web/app.js:25:16
+      at Script.runInContext (node:vm:150:12)
+      at Object.runInContext (node:vm:302:6)
+      at fixture (/Users/oculus/.codex/worktrees/v51-website-publish/Test XO/tests/v5-p21-account-web.test.js:61:6)
+      at async TestContext.<anonymous> (/Users/oculus/.codex/worktrees/v51-website-publish/Test XO/tests/v5-p21-account-web.test.js:164:13)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7)
+
+test at tests/v5-p21-account-web.test.js:179:1
+✖ P21-ACCOUNT-06 account continuation does not claim success when the protected profile cannot load (1.025667ms)
+  apps/web/app.js:25
+  const realtime=createRealtimeReader({
+                 ^
+  
+  ReferenceError: createRealtimeReader is not defined
+      at apps/web/app.js:25:16
+      at Script.runInContext (node:vm:150:12)
+      at Object.runInContext (node:vm:302:6)
+      at fixture (/Users/oculus/.codex/worktrees/v51-website-publish/Test XO/tests/v5-p21-account-web.test.js:61:6)
+      at async TestContext.<anonymous> (/Users/oculus/.codex/worktrees/v51-website-publish/Test XO/tests/v5-p21-account-web.test.js:180:13)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7)
+
+test at tests/v5-p21-account-web.test.js:193:1
+✖ P21-ACCOUNT-07 explicit options discovers a session linked in another tab (1.430375ms)
+  apps/web/app.js:25
+  const realtime=createRealtimeReader({
+                 ^
+  
+  ReferenceError: createRealtimeReader is not defined
+      at apps/web/app.js:25:16
+      at Script.runInContext (node:vm:150:12)
+      at Object.runInContext (node:vm:302:6)
+      at fixture (/Users/oculus/.codex/worktrees/v51-website-publish/Test XO/tests/v5-p21-account-web.test.js:61:6)
+      at async TestContext.<anonymous> (/Users/oculus/.codex/worktrees/v51-website-publish/Test XO/tests/v5-p21-account-web.test.js:195:13)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7)

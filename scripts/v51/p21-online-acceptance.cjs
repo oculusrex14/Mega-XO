@@ -17,7 +17,10 @@
 
 const crypto = require('node:crypto');
 const fs = require('node:fs');
+const path = require('node:path');
 const { execFileSync } = require('node:child_process');
+
+const ROOT = path.resolve(__dirname, '..', '..');
 
 function arg(flag, fallback) {
   const i = process.argv.indexOf(flag);
@@ -241,9 +244,70 @@ async function main() {
   const spoof = await request(`/realtime/v1/snapshot?match_id=${matchId}&actor=${B.actor}`, { cookie: A.cookie });
   logStep('P2_08_actor_fencing_403', spoof.status === 403, { httpStatus: spoof.status });
 
-  // ---- resignation terminal delivery ----
-  const resign = await request('/api/v1/resign', { method: 'POST', cookie: mover.cookie, csrf: mover.csrf, idempotencyKey: `rs_${runId}`, body: { id: matchId } });
-  record('P2_07_resign_route', resign.status !== 404, { httpStatus: resign.status, code: resign.data?.error });
+  // ---- complete legal game to terminal + authoritative settlement ----
+  const game = require(path.join(ROOT, 'src/game.js'));
+  // One durable realtime connection per actor (a real game has two clients, each moving its own turn).
+  const connA = openRealtime(wsUrl); sockets.add(connA.socket); await connA.ready;
+  connA.send({ operation: 'ticket.redeem', ticket: await issue(A) }); await connA.next((f) => f.operation === 'ack');
+  connA.send({ operation: 'subscribe', match_id: matchId });
+  const connB = openRealtime(wsUrl); sockets.add(connB.socket); await connB.ready;
+  connB.send({ operation: 'ticket.redeem', ticket: await issue(B) }); await connB.next((f) => f.operation === 'ack');
+  connB.send({ operation: 'subscribe', match_id: matchId });
+  const connFor = (actorId) => (actorId === A.actor ? connA : connB);
+
+  let view = (await request(`/realtime/v1/snapshot?match_id=${matchId}&actor=${A.actor}`, { cookie: A.cookie })).data.snapshot;
+  let state = view.state;
+  const actorForSymbol = (sym) => view.symbols?.[sym];
+  let moves = state.moves?.length || 0;
+  let playError = null;
+  while (!state.winner && moves < 90) {
+    const actorId = actorForSymbol(state.turn);
+    const conn = connFor(actorId);
+    const legal = game.legal(state);
+    if (!legal.length) { playError = 'NO_LEGAL_MOVES'; break; }
+    const choice = legal[0];
+    const rev = view.revision;
+    conn.send({ operation: 'command', operation_id: `g_${runId}_${moves}`, match_id: matchId, expected_revision: rev, command: { type: 'move', move: choice } });
+    const ack = await conn.next((f) => f.operation === 'ack' && f.ack_revision === rev + 1);
+    const snapFrame = await conn.next((f) => f.operation === 'snapshot' && f.expected_revision === rev + 1);
+    view = snapFrame.snapshot; state = view.state; moves++;
+    void ack;
+  }
+  logStep('P2_04_complete_legal_game_terminal', Boolean(state.winner) && !playError, { winner: state.winner, moves, playError });
+  // Settlement: the terminal match is durable, status FINISHED, and carries an authoritative receipt.
+  const terminal = await request(`/realtime/v1/snapshot?match_id=${matchId}&actor=${A.actor}`, { cookie: A.cookie });
+  const tSnap = terminal.data?.snapshot;
+  logStep('P2_04_terminal_durable_settled', terminal.status === 200 && tSnap?.status === 'FINISHED' && Boolean(tSnap?.receipt?.reason),
+    { httpStatus: terminal.status, matchStatus: tSnap?.status, reason: tSnap?.receipt?.reason, winnerId: tSnap?.receipt?.winner, payout: tSnap?.receipt?.payout });
+  // History: the settled game is recorded in each participant's history.
+  const profA = await request('/api/account/profile', { cookie: A.cookie });
+  const profB = await request('/api/account/profile', { cookie: B.cookie });
+  record('P2_04_post_game_profiles_readable', profA.status === 200 && profB.status === 200,
+    { aGames: profA.data?.games, bGames: profB.data?.games, aWalletReady: profA.data?.walletReady, bWalletReady: profB.data?.walletReady });
+
+  // ---- resignation terminal delivery on a SEPARATE live PLAYING match ----
+  // Pair B and C again (A already has a finished match; the single-active-match guard is preserved),
+  // then B resigns mid-game and the terminal reason must be delivered authoritatively.
+  const q4 = `q_bc_${runId}`;
+  await request('/api/v1/queue', { method: 'POST', cookie: B.cookie, csrf: B.csrf, idempotencyKey: q4 + '_b', body: { mode: 'casual', region: 'us-east', latencyMs: 20 } });
+  await request('/api/v1/queue', { method: 'POST', cookie: C.cookie, csrf: C.csrf, idempotencyKey: q4 + '_c', body: { mode: 'casual', region: 'us-east', latencyMs: 21 } });
+  let resignMatch = null;
+  for (let i = 0; i < 30 && !resignMatch; i++) {
+    await new Promise((r) => setTimeout(r, 1000));
+    const sB = await request('/api/v1/queue', { cookie: B.cookie });
+    if (sB.data?.state === 'matched' && sB.data?.matchId) resignMatch = sB.data.matchId;
+  }
+  if (resignMatch) {
+    const sB2 = await request('/api/v1/queue', { cookie: B.cookie });
+    await Promise.all([B, C].map((S) => request('/api/v1/accept', { method: 'POST', cookie: S.cookie, csrf: S.csrf, idempotencyKey: `rsacc_${S.actor}_${runId}`, body: { id: resignMatch, termsHash: sB2.data.termsHash } })));
+    const rs = await request('/api/v1/resign', { method: 'POST', cookie: B.cookie, csrf: B.csrf, idempotencyKey: `rs_${runId}`, body: { id: resignMatch } });
+    const rsSnap = await request(`/realtime/v1/snapshot?match_id=${resignMatch}&actor=${B.actor}`, { cookie: B.cookie });
+    logStep('P2_07_resign_terminal_delivery',
+      rs.status === 200 && rsSnap.data?.snapshot?.status === 'FINISHED' && rsSnap.data?.snapshot?.receipt?.reason === 'resign',
+      { httpStatus: rs.status, reason: rsSnap.data?.snapshot?.receipt?.reason });
+  } else {
+    record('P2_07_resign_terminal_delivery', false, { note: 'no second pairing within 30s' });
+  }
 
   // ---- logout + revocation + session expiry semantics ----
   const lo = await request('/api/account/logout', { method: 'POST', cookie: A.cookie, csrf: A.csrf, idempotencyKey: `lo_${runId}`, body: {} });

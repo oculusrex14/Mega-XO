@@ -570,7 +570,7 @@ test('5. Cross-service consistency between API and Core: same actor ID queries i
  * 6. Account Export, Deletion Status, Deletion Workflow & Unlink Safety
  * ========================================================================== */
 
-test('6. Account export, deletion status, deletion tag check, and unlink last-method safety', async (t) => {
+test('6. Account export, deletion status, deletion tag check, coordinated deletion acknowledgement, and unlink last-method safety', async (t) => {
   if (!(await lab.boot(t))) return;
   const db = await lab.createDatabase('p11_account_ops');
   await lab.seedActors(db, ACTORS);
@@ -604,6 +604,67 @@ test('6. Account export, deletion status, deletion tag check, and unlink last-me
   });
   assert.ok([400, 409].includes(badDelete.status), 'Mismatched confirmation tag is rejected');
   assert.equal(badDelete.data.error, 'DELETE_CONFIRMATION_REQUIRED', 'Error code is DELETE_CONFIRMATION_REQUIRED');
+
+  // 6.3b The successful acknowledgement carries the durable hand-off values
+  // (receiptId/tombstone/actorHash) the route contract promises and the service produces; the
+  // service's own `deleteAccount` return shape is `{deletionPending}` and does NOT include them,
+  // so a route that forwards only `receiptId`/`policyVersion` silently drops the tombstone and the
+  // actor hash the mail/worker hand-off is addressed by.
+  // Seat real login material and a cloud save first so the deletion has something to remove.
+  const seeded = await lab.adminClient(db);
+  try {
+    await seeded.query(
+      "INSERT INTO identity.email_credentials (email, actor_id, salt, password_hash, created_at, verified_at) VALUES ('alice@p11-delete.test', 'svc_alice', 'seed-salt', 'seed-hash', now(), now())"
+    );
+    await seeded.query(
+      "INSERT INTO identity.identities (provider, subject, actor_id, created_at) VALUES ('email', 'alice@p11-delete.test', 'svc_alice', now())"
+    );
+  } finally { await seeded.end(); }
+  const saved = await apiRequest(harness.baseUrl, '/api/account/save', {
+    method: 'POST',
+    actor: 'svc_alice',
+    body: { revision: 0, practice: lab.practicePayload('svc_alice', { coins: 5 }) },
+  });
+  assert.equal(saved.status, 200, 'Cloud save seated before deletion');
+  assert.equal(await lab.scalar(db, 'SELECT count(*)::int FROM profile.profile_saves WHERE actor_id = $1', ['svc_alice']), 1, 'One cloud save row before deletion');
+
+  const okDelete = await apiRequest(harness.baseUrl, '/api/account/delete', {
+    method: 'POST',
+    actor: 'svc_alice',
+    body: { confirmation: lab.tagFor('svc_alice') },
+  });
+  assert.equal(okDelete.status, 200, 'Matching tag confirmation deletes with 200');
+  assert.equal(okDelete.data.deleted, true, 'Acknowledgement reports deleted:true');
+  assert.equal(okDelete.data.status, 'pending', 'Acknowledgement is pending (completion belongs to the worker)');
+  assert.match(okDelete.data.receiptId, /^del_/, 'Acknowledgement carries the durable privacy-request id');
+  assert.match(okDelete.data.tombstone, /^deleted_[0-9a-f]{32}$/, 'Acknowledgement carries the tombstone written to the profile and the outbox payload');
+  assert.equal(typeof okDelete.data.actorHash, 'string', 'Acknowledgement carries the pseudonymized actor hash');
+  assert.equal(okDelete.data.actorHash.length, 43, 'actorHash is the 43-char base64url digest');
+  assert.equal(okDelete.data.policyVersion, 'v5-p11-test-policy', 'Acknowledgement reports the configured policy version');
+
+  // 6.3c Post-conditions: the bearer is revoked and the login identity is gone
+  const afterDelete = await apiRequest(harness.baseUrl, '/api/account/profile', { method: 'GET', actor: 'svc_alice' });
+  assert.equal(afterDelete.status, 401, 'The deleted actor bearer is revoked');
+  assert.equal(await lab.scalar(db, 'SELECT count(*)::int FROM identity.email_credentials WHERE actor_id = $1', ['svc_alice']), 0, 'No credential survives deletion');
+  assert.equal(await lab.scalar(db, 'SELECT count(*)::int FROM identity.sessions WHERE actor_id = $1', ['svc_alice']), 0, 'No session survives deletion');
+  assert.equal(await lab.scalar(db, 'SELECT count(*)::int FROM identity.identities WHERE actor_id = $1', ['svc_alice']), 0, 'No linked identity survives deletion');
+  assert.equal(await lab.scalar(db, 'SELECT count(*)::int FROM profile.profile_saves WHERE actor_id = $1', ['svc_alice']), 0, 'No cloud save survives deletion');
+  assert.equal(await lab.scalar(db, 'SELECT verified FROM identity.eligibility WHERE actor_id = $1', ['svc_alice']), false, 'The account is marked unverified');
+  const tombstoneAdmin = await lab.adminClient(db);
+  let tombstoned;
+  try {
+    tombstoned = (await tombstoneAdmin.query(
+      'SELECT tag, username, display_name, stats_visibility, presence_visibility FROM identity.profiles WHERE actor_id = $1',
+      ['svc_alice']
+    )).rows[0];
+  } finally { await tombstoneAdmin.end(); }
+  assert.equal(tombstoned.username, okDelete.data.tombstone.slice(0, 24), 'The username is scrubbed to the tombstone');
+  assert.equal(tombstoned.display_name, okDelete.data.tombstone.slice(0, 24), 'The display name is scrubbed to the tombstone');
+  assert.equal(tombstoned.stats_visibility, 'private', 'Stats visibility closes');
+  assert.equal(tombstoned.presence_visibility, 'hidden', 'Presence visibility closes');
+  assert.equal(tombstoned.tag, lab.tagFor('svc_alice'), 'The tag row is retained as a soft reference');
+  assert.equal(await lab.scalar(db, 'SELECT state FROM privacy.requests WHERE request_id = $1', [okDelete.data.receiptId]), 'requested', 'The privacy.request intake row is recorded (worker owns the state machine)');
+  assert.equal(await lab.scalar(db, 'SELECT count(*)::int FROM privacy.deletion_receipts WHERE receipt_id = $1', [okDelete.data.receiptId]), 0, 'The API writes no permanent receipt (worker-owned completion)');
 
   // 6.4 POST /api/account/unlink rejects unlinking when only one identity exists (LAST_LOGIN_METHOD)
   // Seed one identity for Carol

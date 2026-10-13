@@ -1675,7 +1675,11 @@ async function createAccountService(pool, options = {}) {
    });
    /* Worker/Core-owned remainder (request completion + permanent receipt + economic erasure). The
     * outbox row already makes it durable; a supplied hook just runs it inline. Completion is the
-    * worker's to record, so this method always reports PENDING. */
+    * worker's to record, so this method always reports PENDING. The acknowledgement carries the
+    * tombstone and the pseudonymized actor hash the durable hand-off was addressed by: the receipt
+    * `privacy.requests` row and the `account.deletion` outbox payload both hold them, and the
+    * route response contract exposes them to the caller, so returning only `{deletionPending}` would
+    * silently drop durable facts the API already committed. */
    if (completeDeletion) await afterCommit(() => completeDeletion({ ...result }));
    await afterRevocation(capturedRevokedIds);
    /* Post-commit: the revocation hints fence any in-flight heartbeat, then the deleted actor's
@@ -1683,7 +1687,7 @@ async function createAccountService(pool, options = {}) {
     * the now-absent session and writes nothing). */
    await setRevocationHints(capturedRevokedIds);
    await dropActorPresence(deletedActor, capturedRevokedIds);
-   return { deletionPending: true, receiptId: result.receiptId, policyVersion: result.policyVersion };
+   return { deletionPending: true, receiptId: result.receiptId, tombstone: result.tombstone, policyVersion: result.policyVersion, actorHash: result.actorHash };
   },
 
   /* --- maintenance --- */

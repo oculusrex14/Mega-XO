@@ -492,3 +492,6 @@
 .pg-friend-confirm p{font-size:.9rem;color:#d0bfdd}
 @media(max-width:650px){.pg-friend-search>div{flex-direction:column}.pg-friend-row{flex-wrap:wrap;gap:11px;padding:14px}.pg-friend-identity{flex-basis:calc(100% - 55px)}.pg-friend-actions{width:100%}.pg-friend-actions>.mx-button{flex:1}.pg-friends-heading>.mx-button{width:100%}.pg-friend-confirm .pg-actions{flex-direction:column}.pg-friend-confirm .mx-button{width:100%}}
 @media(forced-colors:active){.pg-friend-row,.pg-friend-search input,.pg-friend-confirm{background:Canvas;color:CanvasText;border-color:CanvasText}.pg-friend-identity>span,.pg-friend-identity>small,.pg-friend-identity>code,.pg-friend-confirm p{color:CanvasText}.pg-friend-search input:focus-visible{outline-color:Highlight}.pg-friend-avatar{background:Canvas;color:CanvasText}.pg-friend-manage summary{color:LinkText}}
+
+/* Keep the sponsor privacy action clear of the final disclosure item. */
+.pg-sponsor-disclosure > .pg-actions{margin-top:26px}

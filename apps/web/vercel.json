@@ -175,10 +175,6 @@
     {
       "source": "/faq",
       "destination": "/pages/faq.html"
-    },
-    {
-      "source": "/press",
-      "destination": "/pages/press.html"
     }
   ],
   "headers": [

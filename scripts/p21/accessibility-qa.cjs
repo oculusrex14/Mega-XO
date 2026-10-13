@@ -71,7 +71,7 @@ async function main() {
     if(url.pathname.startsWith('/api/')){apiRequests.push(url.pathname);return route.abort('blockedbyclient');}
     return url.origin===origin?route.continue():route.abort('blockedbyclient');
    });
-   for(const route of ['/','/how-to-play','/themes','/download','/faq','/press','/privacy','/terms','/legal/support']) {
+   for(const route of ['/','/how-to-play','/themes','/download','/faq','/privacy','/terms','/legal/support']) {
     const scriptStart=blockedScripts.length,apiStart=apiRequests.length;
     const response=await context.request.get(origin+route),sourceHTML=await response.text();
     await page.goto(origin+route,{waitUntil:'networkidle'});await page.locator('#main h1').waitFor();await page.evaluate(()=>document.fonts.ready);

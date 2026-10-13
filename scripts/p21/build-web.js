@@ -17,7 +17,7 @@ const OFFLINE_NAVIGATIONS = Object.freeze({'/game':'/pages/game.html','/offline'
 const OPTIONAL_WEB_FILES = ['data.js', 'friends.js', 'game-runtime.js', 'bot-compat.js', 'bot-compat.css'];
 const GAME_FILES = ['bot/pack.js', 'bot/pack-ui.js', 'bot/pack.css', 'bot/contracts.js', 'bot/runtime.js', 'bot/worker.js', 'bot/board.js', 'bot/search.js', 'bot/encoding.js', 'bot/onnx.js', 'bot/neural-search.js', 'bot/neural-runtime.js', 'bot/neural-worker.js', 'bot/local-ai.js', 'bot/local-session.js', 'tutorial/lesson.js', 'tutorial/client.js', 'tutorial/tutorial.css', 'game.js', 'domain.js', 'monetization.js', 'lan-icons.js', 'icons.js', 'account-client.js', 'network.js', 'app.js', 'tournament.js', 'party-ui.js', 'community.js', 'monetization-ui.js', 'styles.css', 'party.css', 'community.css', 'monetization.css'];
 const LEGAL_NAMES = ['privacy', 'terms', 'support', 'delete-account', 'privacy-choices'];
-const WEBSITE_ROUTES = ['/', '/download', '/faq', '/press', '/play', '/game', '/casual', '/ranked', '/tournaments', '/season', '/friends', '/challenge', '/leaderboard', '/rewards', '/store', '/sponsors', '/ads', '/themes', '/profile', '/settings', '/account', '/how-to-play', '/support', '/about', '/privacy', '/terms', '/delete-account', '/privacy-choices', ...LEGAL_NAMES.map(name => '/legal/' + name), '/help', '/news', '/status', '/accessibility', '/offline', '/404'];
+const WEBSITE_ROUTES = ['/', '/download', '/faq', '/play', '/game', '/casual', '/ranked', '/tournaments', '/season', '/friends', '/challenge', '/leaderboard', '/rewards', '/store', '/sponsors', '/ads', '/themes', '/profile', '/settings', '/account', '/how-to-play', '/support', '/about', '/privacy', '/terms', '/delete-account', '/privacy-choices', ...LEGAL_NAMES.map(name => '/legal/' + name), '/help', '/news', '/status', '/accessibility', '/offline', '/404'];
 const routeFile = route => route==='/'?'index.html':route==='/404'?'404.html':'pages'+route+'.html';
 const sha256 = bytes => crypto.createHash('sha256').update(bytes).digest('hex');
 const posix = value => value.split(path.sep).join('/');
@@ -123,7 +123,7 @@ function createPlan(root) {
     documents[name] = legalMain(original.toString('utf8'), source);
     legalSources.push({ source, bytes: original.length, source_sha256: sha256(original) });
   }
-  const legalBytes = Buffer.from('// Generated from the retained public documents; wording and draft notices are unchanged.\nexport const legalDocuments = Object.freeze(' + JSON.stringify(documents, null, 2) + ');\n');
+  const legalBytes = Buffer.from('// Generated from the retained public documents; wording is preserved.\nexport const legalDocuments = Object.freeze(' + JSON.stringify(documents, null, 2) + ');\n');
   entries.push({ source: null, sources: legalSources, path: 'legal-documents.js', bytes: legalBytes, sha256: sha256(legalBytes), transformation: 'trusted-main-inner-markup-to-es-module' });
   const configSource='apps/web/store-links.json';
   const storeLinks=validateStoreLinks(JSON.parse(readSource(root,configSource).toString('utf8')));

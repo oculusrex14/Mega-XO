@@ -320,7 +320,7 @@ async function main() {
       const main = await page.locator('#main').textContent();
       const raw = fs.readFileSync(path.join(snapshotRoot, 'legal', name + '.html'), 'utf8');
       // Comparing visible text after browser parsing verifies every retained
-      // paragraph and draft warning without changing document wording.
+      // paragraphs without changing source-document wording.
       const expected = await page.evaluate(html => {
         const document = new DOMParser().parseFromString(html, 'text/html');
         return document.querySelector('main').textContent.replace(/\s+/g, ' ').trim();
@@ -474,7 +474,7 @@ async function main() {
     const noScriptContext = await browser.newContext({ javaScriptEnabled: false, viewport: { width: 390, height: 844 } });
     await localOnly(noScriptContext);
     const noScriptPage = await noScriptContext.newPage();
-    for (const route of ['/', '/how-to-play', '/themes', '/download', '/faq', '/press', '/privacy', '/terms', '/legal/support']) {
+    for (const route of ['/', '/how-to-play', '/themes', '/download', '/faq', '/privacy', '/terms', '/legal/support']) {
       const response = await noScriptPage.goto(origin + route, { waitUntil: 'networkidle' });
       const geometry = await noScriptPage.evaluate(() => ({ width: document.documentElement.clientWidth, scrollWidth: document.documentElement.scrollWidth }));
       check('P21-BROWSER-NOSCRIPT-PAGE', response?.status() === 200 && await noScriptPage.locator('#main h1').count() === 1 && await noScriptPage.locator('#main').innerText().then(text => text.trim().length > 80) && await noScriptPage.locator('.mx-header a').count() > 0 && await noScriptPage.locator('.mx-footer a').count() > 0, { route, javaScriptEnabled: false, status: response?.status() });

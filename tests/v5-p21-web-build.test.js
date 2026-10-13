@@ -109,8 +109,13 @@ test('P21-BUILD-02: preserved legacy game and complete legal wording have checks
     assert.ok(!/<(?:style|script|head|body)\b/i.test(legalDocuments[name]), name);
     assert.equal(generated.sources.find(row => row.source === 'public/' + name + '.html').source_sha256, hash(Buffer.from(source)));
   }
-  assert.match(legalDocuments.privacy, /Draft for legal review/);
-  assert.match(legalDocuments.terms, /Draft for legal review/);
+  for (const name of ['privacy', 'terms']) {
+    assert.doesNotMatch(legalDocuments[name], /Draft for legal review|Not yet effective|Pending legal approval/);
+    assert.match(legalDocuments[name], /India-based sole proprietorship/);
+  }
+  assert.equal(result.manifest.routes['/press'], undefined);
+  assert.ok(!result.manifest.files.some(file => file.path === 'pages/press.html'));
+  assert.doesNotMatch(fs.readFileSync(path.join(result.output, 'sitemap.xml'), 'utf8'), /megaxo\.online\/press/);
 });
 
 test('P21-BUILD-05: a changed or executable legal source and linked rank exports are refused before replacement', t => {

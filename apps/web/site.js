@@ -40,5 +40,5 @@ export function renderHome(context={},tab='ranked') {
 }
 
 export function renderFooter() {
- return `<div class="mx-footer-brand"><img src="/assets/art/mark.webp" width="40" height="40" alt=""><span>Mega XOXO <small>by Antimatter Innovations</small></span></div><nav aria-label="Footer navigation"><a href="/how-to-play">How to play</a><a href="/download">Download</a><a href="/friends">Friends</a><a href="/store">Store</a><a href="/sponsors">Sponsors</a><a href="/about">About</a><a href="/faq">FAQ</a><a href="/press">Media kit</a><a href="/support">Support</a><a href="/privacy">Privacy</a><a href="/terms">Terms</a><a href="/settings">Settings</a></nav><span class="mx-footer-note">Nine small boards. One bigger game.</span>`;
+ return `<div class="mx-footer-brand"><img src="/assets/art/mark.webp" width="40" height="40" alt=""><span>Mega XOXO <small>by Antimatter Innovations</small></span></div><nav aria-label="Footer navigation"><a href="/how-to-play">How to play</a><a href="/download">Download</a><a href="/friends">Friends</a><a href="/store">Store</a><a href="/sponsors">Sponsors</a><a href="/about">About</a><a href="/faq">FAQ</a><a href="/support">Support</a><a href="/privacy">Privacy</a><a href="/terms">Terms</a><a href="/settings">Settings</a></nav><span class="mx-footer-note">Nine small boards. One bigger game.</span>`;
 }

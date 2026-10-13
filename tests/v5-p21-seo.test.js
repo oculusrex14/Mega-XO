@@ -95,7 +95,7 @@ test('P21-SEO-01: each deep link returns its complete prerendered chrome and rou
 
 test('P21-SEO-02: unique public metadata and sitemap include only eligible canonical pages', async t => {
   const { publicRoutes, metadataFor, SITE_ORIGIN, sitemapXml, robotsTxt } = await seo;
-  const required = ['/', '/how-to-play', '/themes', '/download', '/faq', '/press', '/about', '/privacy', '/terms'];
+  const required = ['/', '/how-to-play', '/themes', '/download', '/faq', '/about', '/privacy', '/terms'];
   for (const route of required) assert.ok(publicRoutes.includes(route), route + ' public crawl route');
   assert.equal(new Set(publicRoutes).size, publicRoutes.length);
   const titles = new Set(), descriptions = new Set(), canonicals = new Set();

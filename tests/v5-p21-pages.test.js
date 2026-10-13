@@ -189,7 +189,10 @@ test('P21 full public legal bodies and all wording remain within shared website 
     assert.ok(clean.includes(body), name + ': full source markup is preserved');
     assert.equal(clean, alias);
     assert.equal((clean.match(/<h1\b/g) || []).length, 1);
-    if (['privacy', 'terms'].includes(name)) assert.match(text(clean), /Draft for legal review/);
+    if (['privacy', 'terms'].includes(name)) {
+      assert.doesNotMatch(text(clean), /Draft for legal review|Not yet effective|Pending legal approval/);
+      assert.match(text(clean), /India-based sole proprietorship/);
+    }
   }
 });
 
@@ -290,12 +293,11 @@ test('P21.07 quarter copy follows UTC domain boundaries rather than old screensh
   }
 });
 
-test('P21.07 legal and service pages preserve unapproved status and unknown routes fail safely', async () => {
+test('P21.07 legal and service pages reflect owner-approved wording and unknown routes fail safely', async () => {
   const { renderPage } = await pages;
   for (const route of ['/privacy', '/terms']) {
     const html = renderPage(route);
-    assert.match(text(html), /Draft for legal review/);
-    assert.match(text(html), /awaiting Antimatter Innovations’ legal approval/);
+    assert.doesNotMatch(text(html), /Draft for legal review|awaiting Antimatter Innovations’ legal approval/);
     assert.ok(html.includes(`href="/legal${route}"`));
   }
   for (const connection of ['guest', 'connected', 'reconnecting', 'error']) {

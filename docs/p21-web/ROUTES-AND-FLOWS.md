@@ -10,7 +10,7 @@ This current implementation map supersedes the earlier gateway-only map, which r
 | `/game` | In-site Bot/two-player board, six-move guided practice, five themes and signed-in online controls | Existing canonical Worker/lesson retained; real online acceptance open |
 | `/play` | Mode introduction and in-site game/account links | `/play?mode=practice` mounts the actual local board |
 | `/download` | Device-aware store availability/fallback | Real store URLs null; `/api/download` permits validated official URLs only |
-| `/faq`, `/press` | Answers and brand/media material | Company backlink prepared; no live backlink/indexing claim |
+| `/faq` | Answers about the game | The owner removed `/press` on 14 October 2026; company backlink remains prepared, with no live backlink/indexing claim |
 | `/casual`, `/ranked` | Published rules, canonical league table, eleven rank images and server-selected tier | No invented subdivisions/rating |
 | `/tournaments`, `/season` | Approved table/qualification rules and UTC quarter | Reservations, personal progress and payouts not accepted yet |
 | `/leaderboard` | In-site standings, rating/wealth/scope/league filters and retry/error/empty states | No game redirect or fabricated rows; deployed correctness/privacy open |

@@ -48,3 +48,7 @@ Exact source SHA, affected-path commands, local browser/accessibility results an
 Source `8520f1ca32bdcc830bfab6830e2292732849eae8` passes all 89 affected tests,901 browser checks and 137 accessibility checks locally, with zero automated violations. Eighteen prerender isolation checks prove unchanged raw main content and zero site execution during axe tooling; actual JavaScript-disabled rendering is independently covered by browser QA. 116 views remain for human review. Bundle `6d14a99617f49bdee645abb95df51577992530200a4d41af14e45d01d6a57242` contains 120 files / 2,945,270 bytes. [Exact verification](evidence/8520f1c/verification.json) records source, commands, environment, cases, screenshots and residual work.
 
 Website CI [38114808679](https://github.com/oculusrex14/Mega-XO/actions/runs/38114808679) and retained validation [38114808754](https://github.com/oculusrex14/Mega-XO/actions/runs/38114808754) pass on that source. The downloaded CI manifest matches the local manifest byte for byte. No provider deployment, live store listing or external backlink was activated.
+
+## Owner review, 14 October 2026
+
+The owner requested removal of the media-kit page. `/press`, its footer link, its generated artifact, sitemap entry and Vercel rewrite are removed. The earlier media-kit description above is historical and superseded. Existing logo assets are preserved. Settings remains because it contains offline-copy management and account/privacy navigation.

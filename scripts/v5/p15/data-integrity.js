@@ -11,7 +11,10 @@
 const crypto=require('node:crypto');
 const manifest=require('../../../packages/migrations/manifest.json');
 const SCHEMAS=new Set(['meta','identity','profile','social','economy','core','match',
- 'tournament','monetization','cosmetics','season','privacy','support','audit','runtime','ops','v5_migration']);
+ 'tournament','monetization','cosmetics','season','privacy','support','audit','runtime','ops','v5_migration',
+ // Private gameplay-capture archive (migrations 0044-0049). It is part of the V5 application schema and
+ // must round-trip through backup/restore exactly like every other schema; it is not an economic writer.
+ 'learning']);
 const REQUIRED=[
  'meta.migrations','identity.actors','identity.eligibility','identity.profiles',
  'economy.wallets','economy.ratings','economy.ledger','economy.command_outcomes',

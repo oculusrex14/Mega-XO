@@ -76,3 +76,14 @@ xcodebuild -project native/ios/MegaXO.xcodeproj -scheme MegaXO -configuration De
 allowlisted client, the service worker/offline routes resolve, and no server authority or secret is
 bundled (the shared deterministic `scripts/v5/build-client.js` is the only packager). Native apps
 consume this exact bundle.
+
+## Native foundations + CI smoke
+
+- `v5-native-foundations` → **30/30 pass**, 0 skipped (bridge/asset/manifest/security contracts).
+- The `v5-native` CI lane (targeting V5.1) runs the full **Android `:app:assembleDebug`** and the
+  **iOS simulator build → `simctl boot` → `install` → launch → screenshot** sequence with a
+  crash/SpringBoard-return guard — the same end-to-end native verification performed manually here
+  (`P4-IOS-SIMULATOR-RUNTIME-20261013.md`).
+- Background/foreground recovery, rotation, thermal/battery, on-device VoiceOver/TalkBack and the
+  full four-theme on-device matrix remain **physical-device** acceptance (owner/device gated); they
+  cannot be claimed from a simulator/emulator.

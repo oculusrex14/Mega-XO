@@ -10,7 +10,7 @@ const appSource = fs.readFileSync(path.join(__dirname, '../apps/web/app.js'), 'u
 const accountSource = fs.readFileSync(path.join(__dirname, '../src/account-client.js'), 'utf8');
 const helpers = Promise.all([
   import('../apps/web/ui.js'), import('../apps/web/downloads.js'), import('../apps/web/pages.js'),
-  import('../apps/web/site.js'), import('../apps/web/seo.js'), import('../apps/web/data.js'), import('../apps/web/friends.js'),
+  import('../apps/web/site.js'), import('../apps/web/seo.js'), import('../apps/web/data.js'), import('../apps/web/friends.js'), import('../apps/web/realtime.js'),
 ]);
 const tick = () => new Promise(resolve => setImmediate(resolve));
 
@@ -18,7 +18,7 @@ const tick = () => new Promise(resolve => setImmediate(resolve));
  * synthetic service replies. The DOM adapter covers controller dispatch only;
  * layout and browser rendering are verified by the separate browser QA. */
 async function fixture(handler) {
-  const [ui, downloads, pages, site, seo, data, friends] = await helpers;
+  const [ui, downloads, pages, site, seo, data, friends, realtime] = await helpers;
   const calls = [], listeners = new Map(), nodes = new Map(), storage = new Map();
   const location = { href: 'https://website.test/account', origin: 'https://website.test', pathname: '/account', search: '', assign(url) { this.assigned = url; } };
   const node = () => ({ innerHTML: '', content: '', textContent: '', hidden: false, focus() {}, querySelector: () => null, querySelectorAll: () => [], insertAdjacentHTML() {} });
@@ -30,7 +30,7 @@ async function fixture(handler) {
     addEventListener(type, callback) { const list = listeners.get(type) || []; list.push(callback); listeners.set(type, list); },
   };
   const sandbox = {
-    ...ui, ...downloads, ...pages, ...site, ...seo, ...data, ...friends, document, location,
+    ...ui, ...downloads, ...pages, ...site, ...seo, ...data, ...friends, ...realtime, document, location,
     legalDocuments: {},
     storeLinks: { ios: null, android: null },
     renderPreview: () => '', renderPractice: () => '', renderGame: () => '', mountBoard: () => ({ destroy() {} }),
@@ -70,7 +70,7 @@ async function fixture(handler) {
     state: () => JSON.parse(vm.runInContext('JSON.stringify(context)', context)),
     async submit(view, values) { send('submit', { dataset: { accountForm: view }, values }, '[data-account-form]'); await settle(); },
     async action(action, extra = {}) { send('click', { dataset: { accountAction: action, ...extra } }, '[data-account-action]'); await settle(); },
-    destroy() { vm.runInContext('model.destroy();clearInterval(leaderboardTimer);clearInterval(onlineTimer);', context); },
+    destroy() { vm.runInContext('model.destroy();realtime.destroy();clearInterval(leaderboardTimer);clearInterval(onlineTimer);', context); },
   };
 }
 

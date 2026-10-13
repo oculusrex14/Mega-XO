@@ -38,12 +38,24 @@ export async function readJSON(path, {fetcher = globalThis.fetch, signal} = {}) 
 }
 
 export function createReadModel({context, changed, request = readJSON}) {
- let profileRevision=0, leaderboardRevision=0, destroyed=false, leaderboardAbort;
+ let profileRevision=0, leaderboardRevision=0, destroyed=false, leaderboardAbort, cancelProfile;
  async function profile() {
+  if(destroyed)return;
   const revision=++profileRevision;
+  cancelProfile?.();
+  const controller=new AbortController();
+  let cancel,timer;
+  // An abort signal alone cannot settle a stalled transport or body reader.
+  // This deadline also bounds an injected shared client that ignores signals.
+  const deadline=new Promise((_resolve,reject)=>{
+   cancel=()=>{clearTimeout(timer);reject(Error('CANCELLED'));controller.abort();};
+   timer=setTimeout(()=>{reject(Error('REQUEST_TIMEOUT'));controller.abort();},8000);
+  });
+  cancelProfile=cancel;
+  context.accountMessage='';
   context.sessionStatus='loading';changed();
   try {
-   const result=await request('/api/v1/profile');
+   const result=await Promise.race([request('/api/v1/profile',{signal:controller.signal}),deadline]);
    if(destroyed||revision!==profileRevision)return;
    if(!result || typeof result.id!=='string')throw Error('SERVICE_UNAVAILABLE');
    context.profile=result;context.sessionStatus='linked';
@@ -51,8 +63,11 @@ export function createReadModel({context, changed, request = readJSON}) {
    if(destroyed||revision!==profileRevision)return;
    context.profile=null;context.sessionStatus=authRequired(error)||error.message==='WEB_API_NOT_CONFIGURED'?'guest':'error';
    context.accountMessage=errorCopy(error);
+  } finally {
+   clearTimeout(timer);
+   if(cancelProfile===cancel)cancelProfile=null;
   }
-  if(!destroyed)changed();
+  if(!destroyed&&revision===profileRevision)changed();
  }
  async function leaderboard(filters={}) {
   const old=context.leaderboard||{};
@@ -76,7 +91,7 @@ export function createReadModel({context, changed, request = readJSON}) {
   }
   if(!destroyed)changed();
  }
- function invalidate(){profileRevision++;leaderboardRevision++;leaderboardAbort?.abort();}
+ function invalidate(){profileRevision++;leaderboardRevision++;cancelProfile?.();cancelProfile=null;leaderboardAbort?.abort();}
  function destroy(){destroyed=true;invalidate();}
  return {profile,leaderboard,invalidate,destroy};
 }

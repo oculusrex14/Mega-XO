@@ -72,7 +72,8 @@ function render({focus=false}={}){
 }
 function renderProfileEditorView(){
  const path=normalizedPath(),actor=profileEditor?.actorId?.()||context.profile?.id||null,active=document.activeElement;
- const restoreFocus=path==='/profile'&&Boolean(active)&&Boolean(main?.contains?.(active))&&Boolean(active.closest?.('#profile-editor'));
+ const operationFeedback=path==='/profile'&&['saving','saved','error','refresh-error'].includes(context.profileEditor?.status);
+ const restoreFocus=operationFeedback||(path==='/profile'&&Boolean(active)&&Boolean(main?.contains?.(active))&&Boolean(active.closest?.('#profile-editor')));
  render();
  const currentActor=profileEditor?.actorId?.()||context.profile?.id||null;
  if(!restoreFocus||path!=='/profile'||normalizedPath()!==path||actor!==currentActor)return;
@@ -85,12 +86,13 @@ function renderFriendsView(){
  const path=normalizedPath(),actor=context.profile?.id||null,active=document.activeElement;
  const inFriends=path==='/friends'&&Boolean(main?.contains?.(active))&&Boolean(active?.closest?.('#friends-controls'));
  const inputFocus=inFriends&&active.id==='friend-query';
+ const searchError=path==='/friends'&&context.friends?.searchStatus==='error';
  const selection=inputFocus?[active.selectionStart,active.selectionEnd]:null;
  render();
- if(!inFriends||normalizedPath()!==path||actor!==context.profile?.id)return;
+ if((!inFriends&&!searchError)||normalizedPath()!==path||actor!==context.profile?.id)return;
  const query=main.querySelector('#friend-query');
  if(inputFocus&&query&&!query.disabled){query.focus({preventScroll:true});if(selection)query.setSelectionRange(...selection);return;}
- const status=main.querySelector('[data-friends-status]:not([hidden])')||main.querySelector('[data-friends-search-status]');
+ const status=searchError?main.querySelector('[data-friends-search-status]'):(main.querySelector('[data-friends-status]:not([hidden])')||main.querySelector('[data-friends-search-status]'));
  status?.focus?.({preventScroll:true});
 }
 function navigate(href){main.removeAttribute?.('data-offline-fallback');history.pushState({},'',href);render({focus:true});activate();}

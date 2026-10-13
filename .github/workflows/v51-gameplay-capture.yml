@@ -1,0 +1,64 @@
+name: V5.1 gameplay capture
+on:
+  push:
+    branches: ['feat/v51-gameplay-data-capture']
+  pull_request:
+    branches: ['V5.1']
+    paths:
+      - 'packages/learning/**'
+      - 'packages/migrations/**'
+      - 'packages/services/core.js'
+      - 'tests/gameplay-*'
+      - 'scripts/gameplay-*'
+      - 'docs/v5.1/data/**'
+      - '.github/workflows/v51-gameplay-capture.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: gameplay-capture-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  source-receipt:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - name: Preserve tracked code for independent offline validation
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import hashlib, json, pathlib, subprocess, zipfile
+          out = pathlib.Path('.artifacts/gameplay-source')
+          out.mkdir(parents=True, exist_ok=True)
+          def git(*args): return subprocess.check_output(['git', *args])
+          head = git('rev-parse', 'HEAD').decode().strip()
+          suffixes = {'.md', '.json', '.js', '.cjs', '.mjs', '.ts', '.tsx', '.py', '.yml', '.yaml', '.sql', '.html', '.css', '.kt', '.swift', '.xml', '.gradle', '.kts', '.sh', '.toml', '.txt', '.properties'}
+          entries = []
+          with zipfile.ZipFile(out / 'tracked-source.zip', 'w', zipfile.ZIP_DEFLATED) as bundle:
+              for record in git('ls-tree', '-rz', '--full-tree', 'HEAD').split(b'\0'):
+                  if not record: continue
+                  meta, raw_path = record.split(b'\t', 1)
+                  mode, kind, oid = meta.decode().split()
+                  path = raw_path.decode()
+                  p = pathlib.PurePosixPath(path)
+                  if kind != 'blob' or mode not in ('100644', '100755'): continue
+                  if p.suffix not in suffixes or any(part.startswith('.env') for part in p.parts): continue
+                  data = git('cat-file', 'blob', oid)
+                  if len(data) > 2097152 or b'\0' in data: continue
+                  try: data.decode('utf-8')
+                  except UnicodeDecodeError: continue
+                  bundle.writestr(path, data)
+                  entries.append({'path': path, 'blob': oid, 'sha256': hashlib.sha256(data).hexdigest(), 'bytes': len(data)})
+          (out / 'source-manifest.json').write_text(json.dumps({'sourceSha': head, 'scope': 'TRACKED_SOURCE_NOT_PLAYER_DATA', 'files': entries}, indent=2) + '\n')
+          print(json.dumps({'sourceSha': head, 'files': len(entries)}))
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: gameplay-source-${{ github.sha }}
+          path: .artifacts/gameplay-source
+          retention-days: 7
+          if-no-files-found: error

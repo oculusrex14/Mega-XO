@@ -60,3 +60,16 @@ event shapes, operator diagnosis routes, and `/opsz` classification verified aga
 (`mega-xo-health.timer` active on the host per the live recon). **Delivered** incident/recovery alerts
 to a real provider destination, `read:packages` scope and current monitor IDs remain owner/provider
 gated (R09).
+
+## Backups / restore (P15)
+
+- `v5-p15-*` contract suites (archive-manifest, backup-cli, backup-watch, data-integrity,
+  direct-target, drill-readiness, r2-contract, r2-transfer, recovery-policy, sealed-archive) →
+  **34/34 pass** across the local runs, 0 skipped.
+- The two-cluster `v5-p15-real-roundtrip` encrypted backup + authenticated restore drill runs in the
+  `V5 P15 isolated backup and recovery` CI lane (green on V5.1), proving all-table integrity equality
+  between source and restored PostgreSQL 16.
+- **Owner/provider gated**: retrieval from the real independent encrypted R2 repository, off-host key
+  custody, and the deployed RPO/RTO against production history require the production host + owner
+  credentials (R08). The live V4 backup container + a pre-deploy snapshot were reconfirmed present
+  (read-only) but are not a V5 restore proof.

@@ -76,3 +76,21 @@ V5_PG_URL=postgres://postgres@127.0.0.1:54329/postgres V5_PG_DISPOSABLE=1 V5_PG_
 REDIS_URL=redis://127.0.0.1:6389 V5_REDIS_REQUIRED=1 V5_TARGET=test \
 node --test --test-force-exit tests/<suite>
 ```
+
+## Load / chaos / capacity (real disposable PG16 + Redis on the owned loopback ports)
+
+| Suite | Result |
+| --- | --- |
+| `v5-p19-real-services` (real disposable load: persistent wallet/Crown effects exactly once at all four tiny concurrency tiers) | **1/1 pass** (evidence `.artifacts/p19-real-disposable.json`, source SHA = HEAD) |
+| `v5-p19-real-chaos` | **1/1 pass** |
+| `v51-bot-tutorial` + `v51-p21-bot` | **72/72 pass**, 0 skipped — tutorial/practice/Expert-bot correctness |
+
+Command contract (owned-loopback only, ports 5432/6379):
+```
+V5_PG_URL=postgres://postgres@127.0.0.1:5432/postgres V5_PG_DISPOSABLE=1 V5_PG_REQUIRED=1 \
+REDIS_URL=redis://127.0.0.1:6379 V5_REDIS_REQUIRED=1 V5_REDIS_DISPOSABLE=1 V5_TARGET=test \
+V5_P19_DISPOSABLE=1 V5_MIGRATE_ALLOW_INSECURE_LOOPBACK=1 P19_SOURCE_SHA=$(git rev-parse HEAD) \
+node --test --test-force-exit tests/v5-p19-real-services.test.js
+```
+These also run in the `V5 P19 disposable load and chaos foundations` CI lane (now targeted at V5.1).
+Realistic-history sizing, delivered provider alerts and production headroom remain open (R09/R19/R32).

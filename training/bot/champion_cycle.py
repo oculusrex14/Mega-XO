@@ -635,23 +635,43 @@ class Operator:
 
     def _decide(self) -> None:
         """Compare the candidate's independent league result against the frozen champion and
-        compare-and-swap the research pointer. This NEVER sets the shipped APPROVED catalog. The gate
-        is fed the candidate's OWN model/source bindings and the qualification family floor, so a
-        diagnostic-sized or unbound report cannot promote."""
+        compare-and-swap the research pointer. This NEVER sets the shipped APPROVED catalog.
+
+        Two distinct gates, per the audit finding that research progression was gated at the strict
+        PUBLIC-qualification bar (so an intermediate improver could never advance):
+          * `evaluate_gate`              - strict public-qualification bar (0.70 / 0.65 / 200 families).
+          * `evaluate_research_progression` - lighter research bar (default 0.70 / 0.50 / 40 families),
+            SAME evidence-integrity requirements, so iterative RL can advance the research champion on
+            measured improvement. A candidate clearing the strict bar is recorded as fully qualified."""
         league = json.loads(self._league_path().read_text())
         model_path = self._export_dir() / "candidate.onnx"
         model_sha = sha256_file(model_path) if model_path.exists() else None
-        gate = evaluate_gate(league, expected_model=model_sha,
-                             expected_source=self.state["source"]["head"],
-                             min_families=PROMOTION_MIN_FAMILIES)
-        self.state["leagueGate"] = gate
-        if gate["promote"]:
-            self._promote(gate)
+        source_sha = self.state["source"]["head"]
+        strict = evaluate_gate(league, expected_model=model_sha, expected_source=source_sha,
+                               min_families=PROMOTION_MIN_FAMILIES)
+        # The predecessor engine id (its model hash) is the research head-to-head opponent, if the
+        # league actually includes a matchup against it; absent that, only the reference-floor path runs.
+        parent_engine = None
+        try:
+            ptr = self.root / "research-champion.json"
+            if ptr.exists():
+                parent_engine = json.loads(ptr.read_text()).get("candidateSha256")
+        except Exception:
+            parent_engine = None
+        research = evaluate_research_progression(league, expected_model=model_sha, expected_source=source_sha,
+                                                 parent_engine=None)  # head-to-head wired once leagues name the parent
+        self.state["leagueGate"] = {
+            "strict": strict, "research": research,
+            "advance": bool(strict["promote"] or research["advance"]),
+            "publicQualified": bool(strict["promote"]),
+        }
+        if strict["promote"] or research["advance"]:
+            self._promote(strict if strict["promote"] else research, qualified=bool(strict["promote"]))
         else:
             self.state["champion"] = "PRESERVED_UNAPPROVED"
             self._transition("REJECTED", "EVALUATING")
         self._write_state()
-        print(json.dumps({"runId": self.run_id, "gate": gate, "champion": self.state["champion"]}, indent=2))
+        print(json.dumps({"runId": self.run_id, "gate": self.state["leagueGate"], "champion": self.state["champion"]}, indent=2))
 
     def reset_for_resume(self) -> None:
         """Explicitly clear a prior STOP so `resume` actually continues. STOP is a request, not a
@@ -662,7 +682,7 @@ class Operator:
             self.state.setdefault("history", []).append({"at": now_iso(), "status": "RESUME_CLEARED_STOP"})
             self._write_state()
 
-    def _promote(self, gate: dict) -> None:
+    def _promote(self, gate: dict, *, qualified: bool = False) -> None:
         pointer = self.root / "research-champion.json"
         lock = self.root / "research-champion.lock"
         try:
@@ -677,6 +697,7 @@ class Operator:
                 "runId": self.run_id, "promotedAt": now_iso(),
                 "candidateSha256": sha256_file(self._export_dir() / "candidate.onnx"),
                 "league": gate, "parent": (prior or {}).get("candidateSha256"),
+                "researchQualifiedOnly": not qualified,
                 "shippedApproved": False,
             }
             tmp = pointer.with_suffix(".json.tmp")
@@ -702,6 +723,111 @@ def _load_model_verifier():
         return module
     except Exception:
         return None
+
+
+def evaluate_research_progression(league: dict, *, expected_model: str | None = None,
+                                  expected_source: str | None = None, parent_engine: str | None = None,
+                                  min_families: int = 40, min_score: float = 0.55,
+                                  min_lower: float = 0.50) -> dict:
+    """RESEARCH-only advancement gate, decoupled from the strict PUBLIC-qualification bar.
+
+    The audit finding: the strict `evaluate_gate` (0.70 point / 0.65 lower / 200 families) was the ONLY
+    path to advance the research champion, so an intermediate improver could never advance and iterative
+    RL could not progress. Two independent advancement paths, EITHER of which suffices:
+
+      1. **Head-to-head vs the predecessor** (the true AlphaZero criterion): a bound
+         `policyValuePUCT`-vs-`parent_engine` matchup with complete paired records whose recomputed
+         lower-95%-CI is > 0.50 (the candidate is statistically at least as good as the champion it
+         would replace) AND point score >= min_score.
+      2. **Absolute research floor** on the fixed `improvedExpert` reference: point >= min_score and
+         recomputed lower-95%-CI >= min_lower on >= min_families independent families.
+
+    Both keep the SAME evidence-integrity requirements as the strict gate (exact matchup, complete
+    paired records, counts and bootstrap RECOMPUTED by the independent verifier). This NEVER sets the
+    shipped APPROVED catalog or production approval, and a candidate that also clears the strict public
+    gate is recorded as fully qualified."""
+    reasons: list[str] = []
+    def refuse(reason: str, **extra) -> dict:
+        return {"advance": False, "qualified": False, "reason": reason, "productionApproved": False, **extra}
+    if not isinstance(league, dict):
+        return refuse("LEAGUE_INVALID")
+    model_sha = expected_model or league.get("modelSha256")
+    source_sha = expected_source or league.get("sourceSha")
+    verifier = _load_model_verifier()
+    if verifier is None:
+        return refuse("MODEL_VERIFIER_UNAVAILABLE")
+    matchups = league.get("matchups")
+    if not isinstance(matchups, list):
+        return refuse("MATCHUPS_MISSING")
+    if not (isinstance(model_sha, str) and re.fullmatch(r"[0-9a-f]{64}", model_sha)
+            and isinstance(source_sha, str) and re.fullmatch(r"[0-9a-f]{40}", source_sha)):
+        return refuse("MODEL_OR_SOURCE_BINDING_REQUIRED")
+
+    def _verdict(engine_b: str) -> dict | None:
+        matches = [m for m in matchups if isinstance(m, dict)
+                   and m.get("engineA") == PROMOTION_CANDIDATE and m.get("engineB") == engine_b]
+        if len(matches) != 1:
+            return None
+        report = dict(league); report.setdefault("status", "COMPLETED")
+        report["modelSha256"] = model_sha; report["sourceSha"] = source_sha
+        # min_score=min_lower=0 forces the verifier to RECOMPUTE and integrity-check counts/records/
+        # bootstrap and hand back its recomputed interval; this gate applies its own thresholds. Any
+        # integrity failure (missing records, wrong counts, tampered bootstrap, wrong binding) refuses.
+        return _eval_forced(report, verifier, engine_b, model_sha, source_sha, min_families)
+
+    # Path 1: head-to-head vs the predecessor, when the caller names one.
+    h2h = None
+    if parent_engine:
+        verdict = _verdict(parent_engine)
+        if verdict is None:
+            return refuse("PARENT_MATCHUP_MISSING", parentEngine=parent_engine)
+        reasons = list(verdict.get("reasons") or [])
+        if reasons:
+            return refuse(";".join(reasons), verdict=verdict, path="head-to-head")
+        score = verdict.get("pointScore"); interval = verdict.get("recomputedPairBootstrap95")
+        lower = interval[0] if interval else None
+        advance = bool(isinstance(score, (int, float)) and score >= min_score and lower is not None and lower > 0.50)
+        h2h = {"path": "head-to-head", "parentEngine": parent_engine, "score": score, "ciLow": lower,
+               "independentFamilies": verdict.get("independentFamilies"), "advance": advance}
+        if advance:
+            return {"advance": True, "qualified": False, "reason": "RESEARCH_ADVANCE_HEAD_TO_HEAD",
+                    "score": score, "ciLow": lower, "independentFamilies": verdict.get("independentFamilies"),
+                    "headToHead": h2h, "researchTargets": {"minPointScore": min_score, "minLower95": ">0.50", "minFamilies": min_families},
+                    "publicQualified": False, "productionApproved": False, "verdict": verdict}
+
+    # Path 2: absolute research floor on the fixed reference.
+    verdict = _verdict(PROMOTION_REFERENCE)
+    if verdict is None:
+        return refuse("EXACT_REFERENCE_MATCHUP_REQUIRED", matched=0, headToHead=h2h)
+    reasons = list(verdict.get("reasons") or [])
+    if reasons:
+        return refuse(";".join(reasons), verdict=verdict, path="reference", headToHead=h2h)
+    score = verdict.get("pointScore"); interval = verdict.get("recomputedPairBootstrap95")
+    families = verdict.get("independentFamilies"); lower = interval[0] if interval else None
+    advance = bool(isinstance(score, (int, float)) and score >= min_score and lower is not None and lower >= min_lower)
+    qualified = bool(advance and families is not None and families >= PROMOTION_MIN_FAMILIES
+                     and score >= PROMOTION_POINT_TARGET and lower >= PROMOTION_LOWER_TARGET)
+    return {"advance": advance, "qualified": qualified,
+            "reason": "RESEARCH_ADVANCE_REFERENCE_FLOOR" if advance else "BELOW_RESEARCH_THRESHOLD",
+            "score": score, "ciLow": lower, "independentFamilies": families, "headToHead": h2h,
+            "researchTargets": {"minPointScore": min_score, "minLower95": min_lower, "minFamilies": min_families},
+            "publicQualified": qualified, "productionApproved": False, "verdict": verdict}
+
+
+def _eval_forced(report: dict, verifier, engine_b: str, model_sha: str, source_sha: str, min_families: int) -> dict:
+    """Run the independent verifier against a SPECIFIC candidate-vs-`engine_b` matchup. The verifier
+    hard-codes the `improvedExpert` reference, so for a head-to-head comparison we substitute the
+    reference name with the real predecessor id for the duration of the call only."""
+    report = json.loads(json.dumps(report))
+    for m in report.get("matchups", []):
+        if isinstance(m, dict) and m.get("engineA") == PROMOTION_CANDIDATE and m.get("engineB") == engine_b:
+            if engine_b != PROMOTION_REFERENCE:
+                m["engineB"] = PROMOTION_REFERENCE
+                for g in (m.get("games") or []):
+                    if isinstance(g, dict) and g.get("b") == engine_b:
+                        g["b"] = PROMOTION_REFERENCE
+    return verifier.evaluate(report, expected_model=model_sha, expected_source=source_sha,
+                             min_families=min_families, min_score=0.0, min_lower=0.0)
 
 
 def evaluate_gate(league: dict, *, expected_model: str | None = None, expected_source: str | None = None,

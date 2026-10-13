@@ -53,9 +53,12 @@ async function request(pathname, { method = 'GET', cookie, csrf, body, token, or
   return { status: res.status, data, setCookie: res.headers.get('set-cookie'), headers: res.headers };
 }
 
-// Reads the newest OTP delivery for an email from the sink (over ssh, never printed).
+// Reads the newest OTP delivery for an email from the sink (never printed). When run co-located on
+// the staging host the sink file is read directly; otherwise it is fetched over ssh.
 function readOtp(email) {
-  const raw = execFileSync('ssh', [SSH_HOST, `tail -50 ${OTP_SINK}`], { encoding: 'utf8' });
+  const raw = fs.existsSync(OTP_SINK)
+    ? fs.readFileSync(OTP_SINK, 'utf8')
+    : execFileSync('ssh', [SSH_HOST, `tail -50 ${OTP_SINK}`], { encoding: 'utf8' });
   let found = null;
   for (const line of raw.split('\n')) {
     if (!line.includes(email)) continue;

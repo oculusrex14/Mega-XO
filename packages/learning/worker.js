@@ -13,7 +13,7 @@ function createCaptureWorker(db, {workerId, batchSize = 8, leaseMs = 30000} = {}
   if (!config?.enabled) return {disabled:true,claimed:0,sealed:0,quarantined:0,suppressed:0,retry:0,stale:0};
   if (config.rulesHash !== C.RULES_HASH) throw new Error('CAPTURE_RULES_DEPLOYMENT_MISMATCH');
   const {rows} = await db.query('SELECT * FROM learning.claim($1,$2,$3)',[workerId,batchSize,leaseMs]);
-  const result = {disabled:false,claimed:rows.length,sealed:0,quarantined:0,suppressed:0,retry:0,stale:0};
+  const result = {disabled:false,claimed:rows.length,sealed:0,quarantined:0,suppressed:0,retry:0,stale:0,errors:{}};
   for (const job of rows) {
    try {
     const p = await scalar('SELECT learning.project($1) AS value',[job.capture_id]);
@@ -27,6 +27,7 @@ function createCaptureWorker(db, {workerId, batchSize = 8, leaseMs = 30000} = {}
     if (!['sealed','quarantined','suppressed'].includes(state)) throw new Error('CAPTURE_WORKER_RESULT');
     result[state]++;
    } catch (e) {
+    const code=safeCode(e); result.errors[code]=(result.errors[code] || 0)+1;
     if (safeCode(e) === 'CAPTURE_STALE_LEASE') { result.stale++; continue; }
     // Store only a bounded allowlisted code, never stack/SQL/credentials/source payload.
     try {

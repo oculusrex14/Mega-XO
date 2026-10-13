@@ -21,3 +21,10 @@ native/ios/MegaXO.xcodeproj/project.xcworkspace/
 native/android/.gradle/
 native/android/build/
 native/android/app/build/
+
+# Vercel CLI local artifacts
+.vercel/
+apps/api/.vercel/
+apps/web/.vercel/
+apps/api/package-lock.json
+apps/web/package-lock.json

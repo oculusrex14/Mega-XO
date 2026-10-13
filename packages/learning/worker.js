@@ -3,7 +3,7 @@ const C = require('./capture.js');
 const transient = e => /^(08|40|53|57P0)/.test(e.code || '') || ['ECONNRESET','ECONNREFUSED','ETIMEDOUT','EPIPE'].includes(e.code);
 const safeCode = e => {
  const s = String(e.message || '').match(/^(CAPTURE_[A-Z0-9_]{1,70})(?:$|\s)/);
- return s ? s[1] : 'CAPTURE_SOURCE_INVALID';
+ return s ? s[1] : /^[0-9A-Z]{5}$/.test(e.code || '') ? 'CAPTURE_DATABASE_' + e.code : 'CAPTURE_SOURCE_INVALID';
 };
 function createCaptureWorker(db, {workerId, batchSize = 8, leaseMs = 30000} = {}) {
  if (!db || typeof db.query !== 'function' || !/^[A-Za-z0-9:_-]{1,120}$/.test(workerId || '') || !Number.isInteger(batchSize) || batchSize < 1 || batchSize > 100 || !Number.isInteger(leaseMs) || leaseMs < 1000 || leaseMs > 600000) throw new Error('CAPTURE_WORKER_CONFIG');

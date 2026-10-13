@@ -1,8 +1,8 @@
 # V5.1 takeover checkpoint — 2026-10-13
 
 Continuing Codex's unfinished deployment/integration/release work as sole integration owner on
-`V5.1`. Entry HEAD was `4e7d3858`; latest pushed HEAD is below. Every claimed result has an evidence
-doc under `docs/v5.1/release/` and a commit.
+`V5.1`. Entry HEAD was `4e7d3858`; latest pushed HEAD is `1284c5b` (see below). Every claimed result
+has an evidence doc under `docs/v5.1/release/` and a commit.
 
 ## Milestone status
 

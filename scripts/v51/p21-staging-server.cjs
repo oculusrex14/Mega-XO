@@ -281,12 +281,39 @@ async function main() {
   }, null, 2));
 
   const shutdown = async () => {
+    clearInterval(matchmakerTimer);
     try { await realtime.close(); } catch {}
     try { await new Promise((r) => server.close(r)); } catch {}
     for (const c of [() => queue.close(), () => ephemera.close(), () => ticketIssuer.close?.(), () => core.close(), () => accounts.close(), () => apiPool.end(), () => corePool.end()]) { try { await c(); } catch {} }
     process.exit(0);
   };
   process.on('SIGINT', shutdown); process.on('SIGTERM', shutdown);
+  // Real matchmaking needs a matcher tick: two real browsers JOIN the queue over HTTP, but nothing
+  // pairs them unless a matcher claims+commits. The production worker normally ticks; the isolated
+  // staging origin had no loop, so a real two-browser queue join never produced a match. This tick
+  // is bounded, single-flight (never overlapping), best-effort (a transient DB error never kills
+  // the server) and only pairs actors that are ALREADY in the durable queue. It changes no matching
+  // rule, TTL or economy. Disable with --no-matchmaker if a test needs to tick manually.
+  let matchmakerTimer = null;
+  if (arg('--matchmaker', 'on') !== 'off') {
+    const matcherId = `stg_matcher_${process.pid}`;
+    let ticking = false;
+    const tick = async () => {
+      if (ticking) return;
+      ticking = true;
+      try {
+        for (const mode of ['casual', 'ranked']) {
+          const result = await queue.matchTick({ mode, matcherId, limit: 4, makeId: () => crypto.randomUUID() });
+          if (result.matched) console.log(JSON.stringify({ event: 'matchmaker.pairing', mode, matched: result.matched, at: new Date().toISOString() }));
+        }
+      } catch (error) {
+        // Best-effort: a staging tick that fails must never crash the origin or alter a request.
+        console.error(JSON.stringify({ event: 'matchmaker.tick_error', code: safeError(error) }));
+      } finally { ticking = false; }
+    };
+    matchmakerTimer = setInterval(tick, 3000);
+    tick();
+  }
   setInterval(() => {}, 1 << 30); // keep the process alive
 }
 

@@ -5,16 +5,19 @@ from pathlib import Path
 import torch
 from model import TinyPolicyValue, masked_loss, ENCODING_VERSION
 
-def load_records(path: Path) -> tuple[dict, dict[str, list]]:
+def load_records(path: Path, value_source: str = 'all') -> tuple[dict, dict[str, list]]:
     manifest = json.loads(Path(str(path) + '.manifest.json').read_text())
     if hashlib.sha256(path.read_bytes()).hexdigest() != manifest['sha256']:
         raise ValueError('DATASET_HASH_MISMATCH')
     splits = {name: [] for name in ('train', 'validation', 'holdout')}
-    games, families = {}, {}
+    games, families, sources = {}, {}, {}
+    filtered = 0
     for line in path.open():
         row = json.loads(line); split = row['split']
         if split not in splits or row['encodingVersion'] != ENCODING_VERSION or row['terminalOutcome'] not in ('X', 'O', 'DRAW'):
             raise ValueError('INVALID_TRAINING_RECORD')
+        # Leakage tables are built from EVERY row (even filtered ones) so a source filter can never
+        # hide a train/validation family overlap.
         for table, key in ((games, row['gameId']), (families, row['openingFamily'])):
             if key in table and table[key] != split: raise ValueError('SPLIT_LEAKAGE')
             table[key] = split
@@ -26,19 +29,30 @@ def load_records(path: Path) -> tuple[dict, dict[str, list]]:
         if any(not isinstance(p, (int, float)) or not 0 <= p <= 1 or (p and not m) for p, m in zip(policy, row['legalMask'])) or abs(sum(policy)-1) > 1e-5:
             raise ValueError('INVALID_VISIT_DISTRIBUTION')
         expected = 0 if row['terminalOutcome'] == 'DRAW' else 1 if row['terminalOutcome'] == row['player'] else -1
-        # A row that declares a STRONGER value target (e.g. a deep-search root score normalised to
-        # [-1,1]) is accepted when the terminal value it also records matches the outcome exactly; the
-        # default (no declaration) still requires valueTarget == terminal outcome, so ordinary
-        # bootstrap/self-play rows cannot silently drift onto a different value perspective.
-        source = row.get('valueTargetSource')
-        if source in (None, 'terminal-outcome'):
+        # SEPARATE LABEL TARGET TYPES. A row's `valueTarget` is only comparable to another row's when
+        # both declare the SAME source. A "terminal-outcome" target is the actual game result (a noisy
+        # but honest label); a "deep-search-root-score" target is a bounded look-ahead evaluation. They
+        # must never be silently averaged together as if equivalent. Canonicalise the source, count each
+        # kind, and record the mix on the manifest so it is always visible in the training report.
+        source = row.get('valueTargetSource') or 'terminal-outcome'
+        if source == 'terminal-outcome':
             if row['valueTarget'] != expected: raise ValueError('WRONG_VALUE_PERSPECTIVE')
         else:
             if not isinstance(row['valueTarget'], (int, float)) or not -1.0 <= row['valueTarget'] <= 1.0:
                 raise ValueError('INVALID_VALUE_TARGET')
             if row.get('terminalValue') != expected: raise ValueError('TERMINAL_VALUE_MISMATCH')
-        splits[split].append(row)
+        sources[source] = sources.get(source, 0) + 1
+        # Optional: restrict training to one target type (a clean same-semantics experiment). Rows of
+        # other sources are still validated and still count for leakage, but are not fed to the model.
+        if value_source == 'all' or source == value_source:
+            splits[split].append(row)
+        else:
+            filtered += 1
     if not splits['train'] or not splits['validation']: raise ValueError('TRAIN_AND_VALIDATION_GAMES_REQUIRED')
+    manifest['valueTargetSources'] = dict(sorted(sources.items()))
+    manifest['mixedValueTargets'] = len(sources) > 1
+    manifest['valueTargetSourceFilter'] = value_source
+    manifest['valueTargetRowsFilteredOut'] = filtered
     return manifest, splits
 
 def tensors(rows: list, device: torch.device) -> tuple:
@@ -63,6 +77,8 @@ def main() -> None:
     parser.add_argument('--node-bin',type=str,default='node')
     parser.add_argument('--interim-dir',type=Path,default=None)
     parser.add_argument('--resume',type=Path,default=None)
+    parser.add_argument('--value-source',type=str,default='all',choices=['all','terminal-outcome','deep-search-root-score'],help='Restrict training to rows of ONE value-target semantics (never silently mix terminal outcomes and search-root scores). "all" keeps every row but records the mix.')
+    parser.add_argument('--early-stop-patience',type=int,default=0,help='Stop after this many epochs with no improvement in the best-validation metric (0 disables).')
     args=parser.parse_args()
     if not re.fullmatch('[0-9a-f]{40}',args.source_commit) or not 1 <= args.epochs <= 10000 or not 1 <= args.batch <= 4096 or not 1 <= args.blocks <= 6:
         parser.error('invalid commit or training limits')
@@ -82,7 +98,7 @@ def main() -> None:
     if torch.cuda.is_available(): torch.cuda.manual_seed_all(args.seed)
     root=Path(__file__).resolve().parents[2]
     subprocess.run([args.node_bin,str(root/'training/bot/validate-data.cjs'),str(args.dataset.resolve())],cwd=root,check=True,capture_output=True)
-    manifest,splits=load_records(args.dataset)
+    manifest,splits=load_records(args.dataset, args.value_source)
     device=torch.device(args.device)
     model=TinyPolicyValue(width=args.width,blocks=args.blocks).to(device)
     optimizer=torch.optim.AdamW(model.parameters(),lr=args.lr,weight_decay=args.weight_decay)
@@ -120,6 +136,11 @@ def main() -> None:
         power_thread = threading.Thread(target=sample_power, daemon=True)
         power_thread.start()
     start=time.monotonic();curves=[]
+    # Best-validation model selection (the audit finding: the final-epoch model was always kept, and
+    # the checkpoint was written before the validation metric existed). We now keep the model state at
+    # the epoch with the lowest validation policy+value loss and export THAT, and record which epoch and
+    # what score it won on, so the exported artifact provably corresponds to the reported validation.
+    best_metric=float('inf');best_epoch=0;best_state=None;best_summary=None;epochs_without_improvement=0
     for epoch in range(start_epoch,args.epochs):
         model.train();indices=list(range(len(splits['train'])));random.Random(args.seed+epoch).shuffle(indices);total=0.;count=0
         for offset in range(0,len(indices),args.batch):
@@ -158,6 +179,16 @@ def main() -> None:
         val_summary = {k: v/metrics['count'] for k, v in metrics.items() if k != 'count'}
         val_summary['calibration'] = calibration
         curves.append({'epoch':epoch+1,'trainLoss':total/count,'validation':val_summary})
+        # Keep the best-validation model state (a deep copy off the GPU so memory stays bounded).
+        metric = val_summary['policyLoss'] + val_summary['valueMSE']
+        if metric < best_metric - 1e-9:
+            best_metric = metric; best_epoch = epoch + 1
+            best_state = {k: v.detach().to('cpu').clone() for k, v in model.state_dict().items()}
+            best_summary = {'epoch': best_epoch, 'policyLoss': val_summary['policyLoss'], 'valueMSE': val_summary['valueMSE'],
+                            'top1Agreement': val_summary['top1Agreement'], 'combinedMetric': metric}
+            epochs_without_improvement = 0
+        else:
+            epochs_without_improvement += 1
         if args.interim_dir is not None:
             # Durable interim checkpoint after EVERY epoch: a killed process resumes from the last
             # completed epoch. Written atomically via a temp file + rename so a crash mid-write cannot
@@ -167,16 +198,31 @@ def main() -> None:
                      'rng':{'python':random.getstate(),'torch':torch.get_rng_state()},
                      'config':model.config,'modelConfig':model.config,'encodingVersion':ENCODING_VERSION,
                      'epoch':epoch+1,'datasetSha256':manifest['sha256'],'seed':args.seed,
-                     'width':args.width,'blocks':args.blocks,'sourceCommit':args.source_commit}
+                     'width':args.width,'blocks':args.blocks,'sourceCommit':args.source_commit,
+                     'bestEpoch':best_epoch,'bestMetric':best_metric}
             tmp=args.interim_dir/('interim.pt.tmp')
             torch.save(interim,tmp);os.replace(tmp,args.interim_dir/'interim.pt')
+        # Early stopping (opt-in): stop once validation has not improved for N epochs. The BEST
+        # checkpoint is still the one exported, so stopping early never degrades the artifact.
+        if args.early_stop_patience and epochs_without_improvement >= args.early_stop_patience:
+            print(json.dumps({'earlyStop': True, 'atEpoch': epoch + 1, 'bestEpoch': best_epoch, 'bestMetric': best_metric}))
+            break
     if power_thread:
         stop_power.set()
         power_thread.join(timeout=2)
     energy_joules = sum(dt * p for dt, p in power_samples) if power_samples else None
     mean_power_watts = (sum(p for _, p in power_samples) / len(power_samples)) if power_samples else None
     peak_power_watts = max((p for _, p in power_samples), default=None)
-    args.output.mkdir(parents=True);checkpoint=args.output/'candidate.pt';model=model.cpu();torch.save({'state_dict':model.state_dict(),'config':model.config,'encodingVersion':ENCODING_VERSION},checkpoint);raw=checkpoint.read_bytes()
-    report={'schemaVersion':1,'sourceCommit':args.source_commit,'datasetSha256':manifest['sha256'],'sourceFileHashes':{p:hashlib.sha256((root/p).read_bytes()).hexdigest() for p in ['training/bot/train.py','training/bot/model.py','training/bot/generate.cjs','training/bot/validate-data.cjs','src/bot/encoding.js','src/bot/search.js','src/game.js']},'modelSha256':hashlib.sha256(raw).hexdigest(),'parameters':sum(p.numel() for p in model.parameters()),'checkpointBytes':len(raw),'checkpointGzipBytes':len(gzip.compress(raw,mtime=0)),'modelConfig':model.config,'seed':args.seed,'epochs':args.epochs,'device':str(device),'hardware':torch.cuda.get_device_name() if args.device=='cuda' else platform.processor() or platform.machine(),'torchVersion':torch.__version__,'pythonVersion':platform.python_version(),'elapsedSeconds':time.monotonic()-start,'peakCudaBytes':torch.cuda.max_memory_allocated() if args.device=='cuda' else None,'peakCudaReservedBytes':torch.cuda.max_memory_reserved() if args.device=='cuda' else None,'energyJoules':energy_joules,'meanPowerWatts':mean_power_watts,'peakPowerWatts':peak_power_watts,'determinism':determinism,'curves':curves,'splitGames':manifest['counts'],'holdoutUsedForTraining':False,'deploymentStatus':'UNAPPROVED_BOOTSTRAP_CANDIDATE','strengthMeasured':False,'licenseReview':'Original network architecture; dependency/model distribution license sign-off still required','resume':resume_meta}
+    args.output.mkdir(parents=True);checkpoint=args.output/'candidate.pt'
+    # Export the BEST-validation state, not the final epoch (which is typically overfit). If no epoch
+    # improved on the initial metric, fall back to the live model rather than writing nothing.
+    selection = {'policy': 'best-validation (lowest validation policyLoss+valueMSE)', 'bestEpoch': best_epoch,
+                 'bestMetric': best_metric, 'bestValidation': best_summary, 'epochsRun': len(curves),
+                 'finalEpochCombinedMetric': (curves[-1]['validation']['policyLoss'] + curves[-1]['validation']['valueMSE']) if curves else None,
+                 'earlyStopped': bool(args.early_stop_patience and epochs_without_improvement >= args.early_stop_patience)}
+    if best_state is not None:
+        model.load_state_dict(best_state)
+    model=model.cpu();torch.save({'state_dict':model.state_dict(),'config':model.config,'encodingVersion':ENCODING_VERSION},checkpoint);raw=checkpoint.read_bytes()
+    report={'schemaVersion':1,'sourceCommit':args.source_commit,'datasetSha256':manifest['sha256'],'sourceFileHashes':{p:hashlib.sha256((root/p).read_bytes()).hexdigest() for p in ['training/bot/train.py','training/bot/model.py','training/bot/generate.cjs','training/bot/validate-data.cjs','src/bot/encoding.js','src/bot/search.js','src/game.js']},'modelSha256':hashlib.sha256(raw).hexdigest(),'parameters':sum(p.numel() for p in model.parameters()),'checkpointBytes':len(raw),'checkpointGzipBytes':len(gzip.compress(raw,mtime=0)),'modelConfig':model.config,'seed':args.seed,'epochs':args.epochs,'device':str(device),'hardware':torch.cuda.get_device_name() if args.device=='cuda' else platform.processor() or platform.machine(),'torchVersion':torch.__version__,'pythonVersion':platform.python_version(),'elapsedSeconds':time.monotonic()-start,'peakCudaBytes':torch.cuda.max_memory_allocated() if args.device=='cuda' else None,'peakCudaReservedBytes':torch.cuda.max_memory_reserved() if args.device=='cuda' else None,'energyJoules':energy_joules,'meanPowerWatts':mean_power_watts,'peakPowerWatts':peak_power_watts,'determinism':determinism,'curves':curves,'splitGames':manifest['counts'],'valueTargetSources':manifest.get('valueTargetSources'),'mixedValueTargets':manifest.get('mixedValueTargets'),'valueTargetSourceFilter':manifest.get('valueTargetSourceFilter'),'selection':selection,'holdoutUsedForTraining':False,'deploymentStatus':'UNAPPROVED_BOOTSTRAP_CANDIDATE','strengthMeasured':False,'licenseReview':'Original network architecture; dependency/model distribution license sign-off still required','resume':resume_meta}
     (args.output/'training-report.json').write_text(json.dumps(report,indent=2)+'\n');print(json.dumps(report,indent=2))
 if __name__=='__main__': main()

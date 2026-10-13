@@ -1,0 +1,75 @@
+"""Unit tests for load_records semantics: separate value-target types and leakage safety.
+
+The audit finding: mixed terminal-outcome and deep-search-root-score value targets were being fed
+together as if directly comparable. load_records now canonicalises the source, counts the mix, and can
+filter to one semantics WITHOUT ever hiding a train/validation family overlap behind the filter.
+"""
+import json
+import tempfile
+import unittest
+from pathlib import Path
+
+from train import load_records
+
+
+def _row(game_id, family, split, source, value, terminal, player, planes=None):
+    tv = 0 if terminal == 'DRAW' else (1 if terminal == player else -1)
+    return {
+        'schemaVersion': 1, 'gameId': game_id, 'openingFamily': family, 'split': split,
+        'seed': 1, 'revision': 1, 'first': 'X', 'moves': [{'b': 0, 'c': 0, 'player': 'X'}],
+        'player': player, 'encodingVersion': 'planes8-v1',
+        'planes': planes if planes is not None else [0] * 648,
+        'legalMask': [1] * 81, 'visitTarget': [1 / 81] * 81,
+        'valueTarget': value, 'valueTargetSource': source,
+        'terminalOutcome': terminal, 'terminalValue': tv,
+    }
+
+
+class LoadRecordsTests(unittest.TestCase):
+    def _write(self, rows):
+        d = Path(tempfile.mkdtemp())
+        path = d / 'd.jsonl'
+        path.write_text(''.join(json.dumps(r) + '\n' for r in rows))
+        import hashlib
+        manifest = {'sha256': hashlib.sha256(path.read_bytes()).hexdigest(), 'records': len(rows), 'games': len(rows)}
+        (d / 'd.jsonl.manifest.json').write_text(json.dumps(manifest))
+        return path
+
+    def test_sources_counted_and_not_silently_mixed(self):
+        rows = [
+            _row('g1', 'f1', 'train', 'terminal-outcome', 1.0, 'X', 'X'),
+            _row('g2', 'f2', 'train', 'deep-search-root-score', 0.5, 'X', 'X'),
+            _row('g3', 'f3', 'validation', 'terminal-outcome', -1.0, 'O', 'X'),
+        ]
+        manifest, splits = load_records(self._write(rows))
+        self.assertEqual(manifest['valueTargetSources'], {'deep-search-root-score': 1, 'terminal-outcome': 2})
+        self.assertTrue(manifest['mixedValueTargets'])
+        self.assertEqual(len(splits['train']), 2)
+
+    def test_filter_to_one_semantics_keeps_leakage_detection(self):
+        rows = [
+            _row('g1', 'f1', 'train', 'terminal-outcome', 1.0, 'X', 'X'),
+            _row('g2', 'f2', 'train', 'deep-search-root-score', 0.5, 'X', 'X'),
+            _row('g3', 'f3', 'validation', 'terminal-outcome', -1.0, 'O', 'X'),
+        ]
+        manifest, splits = load_records(self._write(rows), value_source='terminal-outcome')
+        self.assertEqual(len(splits['train']), 1, 'only terminal-outcome training rows are kept')
+        self.assertEqual(manifest['valueTargetRowsFilteredOut'], 1)
+        # A search-source row that shares a gameId with a train row of ANOTHER split is still caught.
+        leak = [
+            _row('gX', 'fA', 'train', 'terminal-outcome', 1.0, 'X', 'X'),
+            _row('gX', 'fB', 'validation', 'deep-search-root-score', 0.2, 'X', 'X'),
+        ]
+        with self.assertRaises(ValueError):
+            load_records(self._write(leak), value_source='terminal-outcome')
+
+    def test_wrong_terminal_perspective_is_rejected(self):
+        bad = [_row('g1', 'f1', 'train', 'terminal-outcome', 1.0, 'X', 'X'),
+               _row('g2', 'f2', 'validation', 'terminal-outcome', 1.0, 'X', 'X')]
+        bad[0]['valueTarget'] = -1.0  # outcome says +1 but value says -1
+        with self.assertRaises(ValueError):
+            load_records(self._write(bad))
+
+
+if __name__ == '__main__':
+    unittest.main()

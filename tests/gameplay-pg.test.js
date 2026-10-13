@@ -72,14 +72,14 @@ test('DC03-DC10 real PostgreSQL capture, replay, fencing, repair and privacy',as
   const cid=await play('dc-repair');await query('DELETE FROM ops.outbox WHERE outbox_id=$1',['learning.capture:'+cid]);
   await assert.rejects(query("DELETE FROM match.matches WHERE match_id='dc-repair'"),/CAPTURE_SOURCE_STILL_REQUIRED/);
   const result=await worker.reconcile();assert.ok(result.repaired>=1);assert.equal((await worker.tick()).sealed,1);
-  await query("UPDATE match.matches SET state_json=jsonb_set(state_json,'{required}','8') WHERE match_id='dc-repair'");
+  await query("UPDATE match.matches SET state_json=jsonb_set(state_json::jsonb,'{required}','8')::json WHERE match_id='dc-repair'");
   await worker.reconcile({audit:true});assert.equal(await val('SELECT state FROM learning.captures WHERE capture_id=$1',[cid]),'quarantined');
  });
  await t.test('source corruption is quarantined without raw source/error logging',async()=>{
   const cid=await play('dc-bad');await query("UPDATE match.matches SET revision=revision+1 WHERE match_id='dc-bad'");const r=await worker.tick();assert.equal(r.quarantined,1);assert.equal(await val('SELECT code FROM learning.rejections WHERE capture_id=$1',[cid]),'CAPTURE_REVISION');
  });
  await t.test('deletion request synchronously suppresses and invalidates export; erasure is irreversible',async()=>{
-  const uuid='00000000-0000-4000-8000-000000000001';await exp.query('SELECT learning.begin_export($1,$2,$3,$4)',[uuid,'test-key','frozen-split',0]);
+  const uuid='00000000-0000-4000-8000-000000000001';await exp.query('SELECT learning.begin_export($1,$2,$3,$4)',[uuid,'test-key','gameplay-opening6-v1-20261013',0]);
   const page=await exp.query('SELECT * FROM learning.export_page($1)',[uuid]);assert.ok(page.rows.length>0);await exp.query('SELECT learning.export_member($1,$2)',[uuid,page.rows[0].capture_id]);
   await query("INSERT INTO privacy.requests(request_id,actor_id,kind,state,requested_at,updated_at,policy_version) VALUES('dc-delete','svc_alice','deletion','requested',now(),now(),'test-only')");
   await assert.rejects(exp.query('SELECT * FROM learning.export_page($1)',[uuid]),/CAPTURE_EXPORT_REVOKED/);

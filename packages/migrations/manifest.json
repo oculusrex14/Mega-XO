@@ -273,6 +273,12 @@
       "name": "0045_gameplay_capture_lifecycle",
       "file": "migrations/0045_gameplay_capture_lifecycle.sql",
       "sha256": "0c38cb0e4b6b0955b2b99a0a68c3e3f24e3d6405881a4d0ef1d7c26a7397d924"
+    },
+    {
+      "id": 46,
+      "name": "0046_gameplay_source_fidelity",
+      "file": "migrations/0046_gameplay_source_fidelity.sql",
+      "sha256": "0212edd3ee8f243a99971f81148c6b1c1cf7b14b9947229c338d44f14d3a0091"
     }
   ]
 }

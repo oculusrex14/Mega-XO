@@ -47,6 +47,28 @@ class RegisterTests(unittest.TestCase):
         self.assertIn('evidence two', repaired)
         self.assertFalse(R.inspect(repaired)['malformedRows'])
 
+    def test_append_only_new_owner_packages_preserve_original_contracts(self):
+        original = fixture()
+        additional = ''.join('| ' + ' | '.join([f'R{i:02d}'] + ['retained'] * 10) + ' |\n'
+                             for i in range(35, 39))
+        text = original + additional
+        self.assertEqual(R.repair(text), text)
+        self.assertFalse(any(R.inspect(text).values()))
+        self.assertTrue(R.repair(text).endswith(additional))
+        self.assertEqual(original, R.repair(text)[:len(original)])
+
+    def test_appended_owner_gaps_and_duplicates_are_rejected(self):
+        valid = fixture() + '| R35 |' + ' retained |' * 10 + '\n'
+        duplicate = valid + '| R35 |' + ' retained |' * 10 + '\n'
+        missing = fixture() + '| R36 |' + ' retained |' * 10 + '\n'
+        self.assertIn('R36', R.inspect(duplicate)['missing'])
+        self.assertEqual(R.inspect(duplicate)['duplicates'], {'R35': 2})
+        self.assertIn('R35', R.inspect(missing)['missing'])
+        with self.assertRaisesRegex(ValueError, 'UNRECOGNIZED_ADDITIONAL'):
+            R.repair(duplicate)
+        with self.assertRaisesRegex(ValueError, 'UNRECOGNIZED_ADDITIONAL'):
+            R.repair(missing)
+
     def test_real_register_can_be_repaired_without_ledger_loss(self):
         text = (ROOT/R.RELATIVE).read_text()
         fixed = R.repair(text)

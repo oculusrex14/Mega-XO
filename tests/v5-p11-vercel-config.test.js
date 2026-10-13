@@ -89,16 +89,19 @@ function parseRouteManifestTable(markdownContent) {
 /* ==========================================================================
  * 1. Vercel Project Metadata & Configuration Tests
  * ========================================================================== */
-test('1.1 apps/api/vercel.json: valid JSON structure and project metadata', () => {
+test('1.1 apps/api/vercel.json: valid JSON structure and Vercel-valid schema', () => {
   assert.ok(fs.existsSync(VERCEL_JSON_PATH), 'apps/api/vercel.json must exist');
   const content = fs.readFileSync(VERCEL_JSON_PATH, 'utf8');
   const config = JSON.parse(content);
 
-  assert.equal(config.name, 'mega-xo-api', 'Project name must be mega-xo-api');
-  assert.equal(config.projectId, 'mega-xo-api', 'Project ID must be mega-xo-api');
-  assert.equal(config.teamId, 'team_wS9BpnXbYRZahs1DiSueN3SS', 'Team ID must match oculusrex14s-projects');
-  assert.equal(config.orgId, 'team_wS9BpnXbYRZahs1DiSueN3SS', 'Org ID must match team_wS9BpnXbYRZahs1DiSueN3SS');
-  assert.equal(config.scope, 'team_wS9BpnXbYRZahs1DiSueN3SS', 'Scope must match team_wS9BpnXbYRZahs1DiSueN3SS');
+  // Project identity lives in the Vercel project (rootDirectory=apps/api), not in vercel.json:
+  // Vercel rejects `name`/`projectId`/`teamId`/`orgId`/`scope` as additional properties, so the
+  // deployable config must NOT carry them.
+  for (const key of ['name', 'projectId', 'teamId', 'orgId', 'scope']) {
+    assert.equal(config[key], undefined, `vercel.json must not carry the invalid key "${key}"`);
+  }
+  assert.equal(config.framework, null, 'framework must be null (no framework preset)');
+  assert.ok(Array.isArray(config.rewrites) && config.rewrites.length > 0, 'rewrites must route to the API entrypoint');
 });
 
 test('1.2 apps/api/vercel.json: strict region placement to iad1 adjacent to Neon aws-us-east-1', () => {
@@ -109,19 +112,16 @@ test('1.2 apps/api/vercel.json: strict region placement to iad1 adjacent to Neon
   assert.equal(config.regions[0], 'iad1', 'Compute region must strictly be iad1 (US East, adjacent to Neon aws-us-east-1)');
 });
 
-test('1.3 apps/api/vercel.json: function compute constraints (1024MB, 15s maxDuration, nodejs22.x)', () => {
+test('1.3 apps/api/vercel.json: function compute is bounded by project settings, not a rejected runtime block', () => {
   const config = JSON.parse(fs.readFileSync(VERCEL_JSON_PATH, 'utf8'));
 
-  assert.ok(config.functions, 'functions configuration must exist');
-  const fnEntry = config.functions['api/**/*.js'] || config.functions['api/index.js'];
-  assert.ok(fnEntry, 'functions must configure api/**/*.js or api/index.js');
-
-  assert.equal(fnEntry.memory, 1024, 'Function memory must be set to 1024 MB');
-  assert.equal(fnEntry.maxDuration, 15, 'Function maxDuration must be set to 15s (Hobby limit)');
-  assert.ok(
-    fnEntry.runtime.startsWith('nodejs22') || fnEntry.runtime.startsWith('nodejs20'),
-    `Runtime must be modern Node.js, got ${fnEntry.runtime}`
-  );
+  // Vercel rejects the legacy per-function `runtime: nodejs22.x` form ("Function Runtimes must have a
+  // valid version") and an `api/index.js` pattern that does not match a real function at the project
+  // root. Node functions therefore auto-detect; the memory/maxDuration ceilings are enforced by the
+  // project/Hobby tier rather than a vercel.json `functions` block. Assert the block is absent so a
+  // regression cannot reintroduce a config that fails the Vercel build.
+  assert.equal(config.functions, undefined, 'functions block must be absent (Vercel rejects the legacy runtime/pattern form)');
+  assert.ok(Array.isArray(config.regions) && config.regions[0] === 'iad1', 'region stays iad1 adjacent to Neon us-east-1');
 });
 
 test('1.4 apps/api/vercel.json: perimeter security headers enforced', () => {

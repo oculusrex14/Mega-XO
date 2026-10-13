@@ -284,6 +284,19 @@ async function main() {
   const profB = await request('/api/account/profile', { cookie: B.cookie });
   record('P2_04_post_game_profiles_readable', profA.status === 200 && profB.status === 200,
     { aGames: profA.data?.games, bGames: profB.data?.games, aWalletReady: profA.data?.walletReady, bWalletReady: profB.data?.walletReady });
+  // Economy + progression: the durable export reflects the settled game (wallet coins, match
+  // history with the terminal reason, rating/casual counters) for the winner and loser.
+  const expA = await request('/api/account/export', { cookie: A.cookie });
+  const expB = await request('/api/account/export', { cookie: B.cookie });
+  const eA = expA.data?.account || {}; const eB = expB.data?.account || {};
+  const wA = eA.wallet || {}; const wB = eB.wallet || {};
+  const cA = eA.competitive || {}; const cB = eB.competitive || {};
+  const movesA = Array.isArray(cA.matchHistory) ? cA.matchHistory.length : 0;
+  const reasonOf = (c) => (Array.isArray(c.matchHistory) && c.matchHistory.length) ? c.matchHistory[c.matchHistory.length - 1].reason : null;
+  record('P2_04_economy_and_progression_durable',
+    expA.status === 200 && expB.status === 200 && typeof wA.coins === 'number' && typeof wB.coins === 'number' &&
+    movesA >= 1 && reasonOf(cA) === 'line' && typeof cA.casualGames === 'number' && typeof cB.casualGames === 'number',
+    { aCoins: wA.coins, bCoins: wB.coins, aCasualGames: cA.casualGames, bCasualGames: cB.casualGames, lastReason: reasonOf(cA), aHistory: movesA, bHistory: Array.isArray(cB.matchHistory) ? cB.matchHistory.length : 0 });
 
   // ---- resignation terminal delivery on a SEPARATE live PLAYING match ----
   // Pair B and C again (A already has a finished match; the single-active-match guard is preserved),

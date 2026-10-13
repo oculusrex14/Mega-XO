@@ -44,7 +44,7 @@ def main() -> None:
         op,ov=single.run(None,{'planes':x});max_policy=max(max_policy,float(np.max(np.abs(p-op))));max_value=max(max_value,float(np.max(np.abs(v-ov))))
         np.testing.assert_allclose(op,p,rtol=1e-4,atol=1e-4);np.testing.assert_allclose(ov,v,rtol=1e-4,atol=1e-4)
         if np.argmax(np.where(mask,p[0],-1e9))!=np.argmax(np.where(mask,op[0],-1e9)):rank_changes+=1
-        golden.append({'first':row['first'],'moves':row['moves'],'planes':row['planes'],'legalMask':row['legalMask'],'policy':p[0].tolist(),'value':float(v[0,0])})
+        golden.append({'first':row.get('first'),'moves':row.get('moves'),'planes':row['planes'],'legalMask':row['legalMask'],'policy':p[0].tolist(),'value':float(v[0,0])})
     for n in (1,7):
         x=np.asarray([r['planes'] for r in rows[:n]],dtype=np.float32).reshape(n,8,9,9)
         with torch.no_grad(): p,v=model(torch.from_numpy(x))

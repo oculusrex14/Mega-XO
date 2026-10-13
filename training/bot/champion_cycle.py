@@ -893,16 +893,22 @@ def evaluate_research_progression(league: dict, *, expected_model: str | None = 
 
 def _eval_forced(report: dict, verifier, engine_b: str, model_sha: str, source_sha: str, min_families: int) -> dict:
     """Run the independent verifier against a SPECIFIC candidate-vs-`engine_b` matchup. The verifier
-    hard-codes the `improvedExpert` reference, so for a head-to-head comparison we substitute the
-    reference name with the real predecessor id for the duration of the call only."""
+    hard-codes the `improvedExpert` reference, so for a head-to-head / alternate-reference comparison we
+    ISOLATE the target matchup (drop every other matchup, else the verifier sees a duplicate reference)
+    and substitute the reference name with the real predecessor id."""
     report = json.loads(json.dumps(report))
-    for m in report.get("matchups", []):
-        if isinstance(m, dict) and m.get("engineA") == PROMOTION_CANDIDATE and m.get("engineB") == engine_b:
-            if engine_b != PROMOTION_REFERENCE:
-                m["engineB"] = PROMOTION_REFERENCE
-                for g in (m.get("games") or []):
-                    if isinstance(g, dict) and g.get("b") == engine_b:
-                        g["b"] = PROMOTION_REFERENCE
+    keep = [m for m in report.get("matchups", []) if isinstance(m, dict)
+            and m.get("engineA") == PROMOTION_CANDIDATE and m.get("engineB") == engine_b]
+    if len(keep) != 1:
+        return {"researchEvidenceQualified": False, "productionApproved": False,
+                "policy": {}, "reasons": ["EXACT_REFERENCE_MATCHUP_REQUIRED"], "matchupCount": len(keep)}
+    match = keep[0]
+    if engine_b != PROMOTION_REFERENCE:
+        match["engineB"] = PROMOTION_REFERENCE
+        for g in (match.get("games") or []):
+            if isinstance(g, dict) and g.get("b") == engine_b:
+                g["b"] = PROMOTION_REFERENCE
+    report["matchups"] = [match]
     return verifier.evaluate(report, expected_model=model_sha, expected_source=source_sha,
                              min_families=min_families, min_score=0.0, min_lower=0.0)
 

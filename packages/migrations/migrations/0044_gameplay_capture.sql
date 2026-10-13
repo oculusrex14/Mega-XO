@@ -14,8 +14,9 @@ DO $$ DECLARE r text; BEGIN
   EXECUTE format('GRANT %I TO migration_owner WITH ADMIN OPTION',r);
  END LOOP;
 END $$;
-SET LOCAL ROLE v5_owner;
 CREATE SCHEMA learning AUTHORIZATION v5_owner;
+GRANT USAGE ON SCHEMA learning TO migration_owner;
+SET LOCAL ROLE v5_owner;
 REVOKE ALL ON SCHEMA learning FROM PUBLIC;
 GRANT USAGE ON SCHEMA learning TO capture_runtime,capture_exporter,capture_privacy;
 ALTER DEFAULT PRIVILEGES IN SCHEMA learning REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC;

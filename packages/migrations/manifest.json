@@ -1,7 +1,7 @@
 {
   "tool": "v5-migrate-manifest",
   "version": 1,
-  "algorithm": "sha256(name + '\n' + sql)",
+  "algorithm": "sha256(name + '\\n' + sql)",
   "advisoryLockKey": 7202050231,
   "migrations": [
     {
@@ -266,7 +266,7 @@
       "id": 44,
       "name": "0044_gameplay_capture",
       "file": "migrations/0044_gameplay_capture.sql",
-      "sha256": "91813a859df856cb27de86e6dd8e26d1d0e5b513ddaa2fcdd9a0f322d982eb0b"
+      "sha256": "a2be06706a999d8b77dbb138dc90bb162fc8b1d913b0bc084f7a40a8b6ee61d7"
     },
     {
       "id": 45,

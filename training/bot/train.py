@@ -13,8 +13,12 @@ def load_records(path: Path, value_source: str = 'all') -> tuple[dict, dict[str,
     games, families, sources = {}, {}, {}
     filtered = 0
     for line in path.open():
-        row = json.loads(line); split = row['split']
-        external = bool(row.get('external'))  # e.g. converted utttai rows carry no game-level fields
+        row = json.loads(line); split = row.get('split') or row.get('externalSplit')
+        source = row.get('valueTargetSource') or 'terminal-outcome'
+        # External (e.g. utttai-converted) rows carry no game-level fields. Detect them explicitly, by
+        # their dedicated split, or by an external value source (a genuine game record can never have
+        # a utttai-* source).
+        external = bool(row.get('external')) or split == 'external' or source.startswith('utttai-')
         if split not in splits or row['encodingVersion'] != ENCODING_VERSION:
             raise ValueError('INVALID_TRAINING_RECORD')
         if not external and row['terminalOutcome'] not in ('X', 'O', 'DRAW'):
@@ -33,7 +37,7 @@ def load_records(path: Path, value_source: str = 'all') -> tuple[dict, dict[str,
         policy = row['visitTarget']
         if any(not isinstance(p, (int, float)) or not 0 <= p <= 1 or (p and not m) for p, m in zip(policy, row['legalMask'])) or abs(sum(policy)-1) > 1e-5:
             raise ValueError('INVALID_VISIT_DISTRIBUTION')
-        source = row.get('valueTargetSource') or 'terminal-outcome'
+        # (source already computed above)
         # SEPARATE LABEL TARGET TYPES. A row's `valueTarget` is only comparable to another row's when
         # both declare the SAME source. A "terminal-outcome" target is the actual game result (a noisy
         # but honest label); a "deep-search-root-score" target is a bounded look-ahead evaluation; an
@@ -94,7 +98,7 @@ def main() -> None:
     parser.add_argument('--node-bin',type=str,default='node')
     parser.add_argument('--interim-dir',type=Path,default=None)
     parser.add_argument('--resume',type=Path,default=None)
-    parser.add_argument('--value-source',type=str,default='all',choices=['all','terminal-outcome','deep-search-root-score'],help='Restrict training to rows of ONE value-target semantics (never silently mix terminal outcomes and search-root scores). "all" keeps every row but records the mix.')
+    parser.add_argument('--value-source',type=str,default='all',choices=['all','terminal-outcome','deep-search-root-score','utttai-nmcts-root-value','utttai-mcts-root-mean'],help='Restrict training to rows of ONE value-target semantics (never silently mix terminal outcomes and search-root scores). "all" keeps every row but records the mix.')
     parser.add_argument('--early-stop-patience',type=int,default=0,help='Stop after this many epochs with no improvement in the best-validation metric (0 disables).')
     args=parser.parse_args()
     if not re.fullmatch('[0-9a-f]{40}',args.source_commit) or not 1 <= args.epochs <= 10000 or not 1 <= args.batch <= 4096 or not 1 <= args.blocks <= 6:
@@ -240,6 +244,6 @@ def main() -> None:
     if best_state is not None:
         model.load_state_dict(best_state)
     model=model.cpu();torch.save({'state_dict':model.state_dict(),'config':model.config,'encodingVersion':ENCODING_VERSION},checkpoint);raw=checkpoint.read_bytes()
-    report={'schemaVersion':1,'sourceCommit':args.source_commit,'datasetSha256':manifest['sha256'],'sourceFileHashes':{p:hashlib.sha256((root/p).read_bytes()).hexdigest() for p in ['training/bot/train.py','training/bot/model.py','training/bot/generate.cjs','training/bot/validate-data.cjs','src/bot/encoding.js','src/bot/search.js','src/game.js']},'modelSha256':hashlib.sha256(raw).hexdigest(),'parameters':sum(p.numel() for p in model.parameters()),'checkpointBytes':len(raw),'checkpointGzipBytes':len(gzip.compress(raw,mtime=0)),'modelConfig':model.config,'seed':args.seed,'epochs':args.epochs,'device':str(device),'hardware':torch.cuda.get_device_name() if args.device=='cuda' else platform.processor() or platform.machine(),'torchVersion':torch.__version__,'pythonVersion':platform.python_version(),'elapsedSeconds':time.monotonic()-start,'peakCudaBytes':torch.cuda.max_memory_allocated() if args.device=='cuda' else None,'peakCudaReservedBytes':torch.cuda.max_memory_reserved() if args.device=='cuda' else None,'energyJoules':energy_joules,'meanPowerWatts':mean_power_watts,'peakPowerWatts':peak_power_watts,'determinism':determinism,'curves':curves,'splitGames':manifest['counts'],'valueTargetSources':manifest.get('valueTargetSources'),'mixedValueTargets':manifest.get('mixedValueTargets'),'valueTargetSourceFilter':manifest.get('valueTargetSourceFilter'),'selection':selection,'holdoutUsedForTraining':False,'deploymentStatus':'UNAPPROVED_BOOTSTRAP_CANDIDATE','strengthMeasured':False,'licenseReview':'Original network architecture; dependency/model distribution license sign-off still required','resume':resume_meta}
+    report={'schemaVersion':1,'sourceCommit':args.source_commit,'datasetSha256':manifest['sha256'],'sourceFileHashes':{p:hashlib.sha256((root/p).read_bytes()).hexdigest() for p in ['training/bot/train.py','training/bot/model.py','training/bot/generate.cjs','training/bot/validate-data.cjs','src/bot/encoding.js','src/bot/search.js','src/game.js']},'modelSha256':hashlib.sha256(raw).hexdigest(),'parameters':sum(p.numel() for p in model.parameters()),'checkpointBytes':len(raw),'checkpointGzipBytes':len(gzip.compress(raw,mtime=0)),'modelConfig':model.config,'seed':args.seed,'epochs':args.epochs,'device':str(device),'hardware':torch.cuda.get_device_name() if args.device=='cuda' else platform.processor() or platform.machine(),'torchVersion':torch.__version__,'pythonVersion':platform.python_version(),'elapsedSeconds':time.monotonic()-start,'peakCudaBytes':torch.cuda.max_memory_allocated() if args.device=='cuda' else None,'peakCudaReservedBytes':torch.cuda.max_memory_reserved() if args.device=='cuda' else None,'energyJoules':energy_joules,'meanPowerWatts':mean_power_watts,'peakPowerWatts':peak_power_watts,'determinism':determinism,'curves':curves,'splitGames':manifest.get('counts',{k:len(v) for k,v in splits.items()}),'valueTargetSources':manifest.get('valueTargetSources'),'mixedValueTargets':manifest.get('mixedValueTargets'),'valueTargetSourceFilter':manifest.get('valueTargetSourceFilter'),'selection':selection,'holdoutUsedForTraining':False,'deploymentStatus':'UNAPPROVED_BOOTSTRAP_CANDIDATE','strengthMeasured':False,'licenseReview':'Original network architecture; dependency/model distribution license sign-off still required','resume':resume_meta}
     (args.output/'training-report.json').write_text(json.dumps(report,indent=2)+'\n');print(json.dumps(report,indent=2))
 if __name__=='__main__': main()

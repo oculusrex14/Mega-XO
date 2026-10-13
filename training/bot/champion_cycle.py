@@ -202,8 +202,8 @@ def validate_config(config: dict) -> dict:
         raise SystemExit("CONFIG_INVALID:width must be one of 48,64,96,128")
     if out["device"] not in ("cpu", "cuda"):
         raise SystemExit("CONFIG_INVALID:device must be cpu or cuda")
-    if out["valueSource"] not in ("all", "terminal-outcome", "deep-search-root-score"):
-        raise SystemExit("CONFIG_INVALID:valueSource must be all|terminal-outcome|deep-search-root-score")
+    if out["valueSource"] not in ("all", "terminal-outcome", "deep-search-root-score", "utttai-nmcts-root-value", "utttai-mcts-root-mean"):
+        raise SystemExit("CONFIG_INVALID:valueSource must be all|terminal-outcome|deep-search-root-score|utttai-nmcts-root-value|utttai-mcts-root-mean")
     return out
 
 

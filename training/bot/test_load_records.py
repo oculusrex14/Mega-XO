@@ -87,10 +87,11 @@ class ExternalRowTests(unittest.TestCase):
         return path
 
     def _ext(self, split):
-        return {'schemaVersion': 1, 'encodingVersion': 'planes8-v1', 'split': split, 'external': True,
+        # Mirror the real converter output shape (externalSplit, no terminalOutcome/terminalValue).
+        return {'schemaVersion': 1, 'encodingVersion': 'planes8-v1', 'externalSplit': split,
+                'source': 'utttai', 'valueTargetSource': 'utttai-nmcts-root-value',
                 'planes': [0] * 648, 'legalMask': [1] * 81, 'visitTarget': [1 / 81] * 81,
-                'valueTarget': 0.3, 'valueTargetSource': 'utttai-nmcts-root-value',
-                'terminalOutcome': None, 'terminalValue': None}
+                'valueTarget': 0.3, 'utttai': {'depthFile': 'stage2-nmcts/depth04.txt', 'stateSha256': 'a' * 64}}
 
     def test_external_rows_load_and_count(self):
         rows = [self._ext('external'), self._ext('external'),

@@ -64,6 +64,24 @@ release.
 | Codex URLs/SHAs | COMPLETE | `a6a7c50` | `http://100.64.128.46:8085`, SHA `8328b71` |
 | HTTPS/WSS | BLOCKED (owner enablement) | - | tailscale serve one-click |
 
+
+## TRACK A Phase 1 corrections + multi-LLM/RL programme (owner direction 2026-10-13)
+
+| Item | Status | Commit | Evidence |
+| --- | --- | --- | --- |
+| Depth propagation + real search diagnostics | COMPLETE | `22a236e` | search-labels.test.cjs 3/3; measured depth12@4M->9, depth16@21M->11 |
+| Best-validation export + early stopping | COMPLETE | `c1974d5` | smoke chose epoch 2 (metric 3.12) over final 4 |
+| Separated label target types (no silent mixing) | COMPLETE | `c1974d5` | test_load_records.py 3/3 |
+| Dataset dedup audit + reserved qualification split | COMPLETE | `de92848` | dataset-audit-20261013.md; nested provenance measured |
+| Research progression decoupled from public gate | COMPLETE | `464f024` | research-gate.test.cjs 2/2 |
+| GPU device + multi-generation operator loop | COMPLETE | `2a374ef` | 2-generation CPU run; DGX2 cuda cycle 5/5 stages |
+| Seed-dataset bootstrap + node-bin forwarding | COMPLETE | `db7d945` | DGX2 seeded run: 80,250 rows validated, cuda train ok |
+| DGX1/DGX2 LLM serving + QSFP measured | COMPLETE | `ca93c90` | dgx-llm-probe-dgx1/dgx2.md (Nemotron 65->262 tok/s) |
+| utttai compatibility assessment | COMPLETE | `61aaa06` | utttai-analysis.md (rules identical over 16M rows) |
+| utttai converter (validated) | IN PROGRESS | - | agent building streaming converter |
+| Multi-LLM arena + pilot | IN PROGRESS | - | agent building llm-arena.cjs + pilot |
+| Multi-generation RL run (real scale) | PENDING | - | needs arena/qualification data; pipeline proven |
+
 ## R/B/CL and original acceptance
 
 | ID | Status | Commit | Evidence |

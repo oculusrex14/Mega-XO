@@ -11,7 +11,10 @@ const COMPONENTS = Object.freeze(['api', 'browser', 'core', 'database', 'native'
 const ALWAYS_REQUIRED = Object.freeze([
   'Mega XO validation',
   'V5 PostgreSQL integration',
-  'V5 release engineering'
+  'V5 release engineering',
+  // Day-one gameplay-capture must be accepted before the first public V5 games are played
+  // (owner directive P7). Making its lane an always-required gate keeps that contract checked.
+  'V5.1 gameplay capture'
 ]);
 
 function validatePath(file) {

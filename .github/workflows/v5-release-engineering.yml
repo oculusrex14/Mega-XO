@@ -57,7 +57,7 @@ jobs:
           node - <<'NODE'
           const fs = require('node:fs');
           const plan = JSON.parse(fs.readFileSync('.artifacts/v5-ci-impact.json','utf8'));
-          for (const required of ['Mega XO validation','V5 PostgreSQL integration','V5 release engineering']) {
+          for (const required of ['Mega XO validation','V5 PostgreSQL integration','V5 release engineering','V5.1 gameplay capture']) {
             if (!plan.requiredWorkflows.includes(required)) throw new Error('missing required gate: '+required);
           }
           console.log('Conservative CI impact: ' + plan.affected.join(', '));

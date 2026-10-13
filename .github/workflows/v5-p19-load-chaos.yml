@@ -3,9 +3,9 @@ name: V5 P19 disposable load and chaos foundations
 # No Vercel/Neon/Oracle/public targets, secret access, or production traffic.
 on:
   push:
-    branches: [V5-platform]
+    branches: [V5-platform, V5.1]
   pull_request:
-    branches: [V5-platform]
+    branches: [V5-platform, V5.1]
 permissions:
   contents: read
 concurrency:

@@ -67,18 +67,26 @@ CONFIG_KEYS = {
     "games": int, "seed": int, "simulations": int, "epochs": int, "batch": int,
     "width": int, "blocks": int, "leaguePairs": int, "budgetMs": int, "leagueSimulations": int,
     "workers": int, "nodeBin": str, "pythonBin": str, "producerModel": str, "producerBudgetMs": int,
+    "device": str, "generations": int, "qualificationReserve": int, "valueSource": str, "earlyStopPatience": int,
 }
 CONFIG_BOUNDS = {
     "games": (2, 100000), "seed": (0, 2**31 - 1), "simulations": (1, 4096),
     "epochs": (1, 10000), "batch": (1, 4096), "width": (48, 128), "blocks": (1, 6),
     "leaguePairs": (2, 20000), "budgetMs": (1, 60000), "leagueSimulations": (1, 4096),
     "workers": (1, 64), "producerBudgetMs": (1, 60000),
+    "generations": (1, 1000), "qualificationReserve": (0, 50), "earlyStopPatience": (0, 1000),
 }
 DEFAULT_CONFIG = {
     "games": 24, "seed": 7001, "simulations": 8, "epochs": 3, "batch": 32,
     "width": 48, "blocks": 4, "leaguePairs": 8, "budgetMs": 10, "leagueSimulations": 8,
     "workers": 4, "nodeBin": "node", "pythonBin": sys.executable,
     "producerModel": None, "producerBudgetMs": 300,
+    # GPU multi-generation training: `device` cuda uses the DGX GPU; `generations` repeats the whole
+    # generate->validate->train->export->evaluate cycle, feeding each generation's research champion
+    # back into the next self-play (the producer is re-resolved to the newest champion artifact).
+    # `qualificationReserve` reserves untouched final-evaluation families; `valueSource` restricts
+    # training to one value-target semantics; `earlyStopPatience` enables early stopping.
+    "device": "cpu", "generations": 1, "qualificationReserve": 0, "valueSource": "all", "earlyStopPatience": 0,
 }
 LEASE_TTL_SECONDS = 90
 LOG_LIMIT_BYTES = 2 * 1024 * 1024
@@ -184,6 +192,10 @@ def validate_config(config: dict) -> dict:
         out[key] = value
     if out["width"] not in (48, 64, 96, 128):
         raise SystemExit("CONFIG_INVALID:width must be one of 48,64,96,128")
+    if out["device"] not in ("cpu", "cuda"):
+        raise SystemExit("CONFIG_INVALID:device must be cpu or cuda")
+    if out["valueSource"] not in ("all", "terminal-outcome", "deep-search-root-score"):
+        raise SystemExit("CONFIG_INVALID:valueSource must be all|terminal-outcome|deep-search-root-score")
     return out
 
 
@@ -537,15 +549,19 @@ class Operator:
         c = self.config
         # CL10/WEB-AI-04: when a research champion artifact exists, real neural self-play consumes it
         # (binds parent model hash, records producer version) instead of the mixed-strength bootstrap.
-        producer = c.get("producerModel")
+        # `_effectiveProducers()` re-resolves the producer to the newest champion artifact each generation.
+        producer = self._effective_producer()
         if producer:
             argv = [c["nodeBin"], str(ROOT / "training/bot/selfplay.cjs"),
                     "--model", str(producer), "--output", str(self._shard()),
                     "--games", str(c["games"]), "--seed", str(c["seed"]),
                     "--simulations", str(c["simulations"]), "--budget-ms", str(c.get("producerBudgetMs", 300))]
             return argv
-        return [c["nodeBin"], str(ROOT / "training/bot/generate.cjs"), str(self._shard()),
+        argv = [c["nodeBin"], str(ROOT / "training/bot/generate.cjs"), str(self._shard()),
                 str(c["games"]), str(c["seed"]), str(c["simulations"])]
+        if c["qualificationReserve"]:
+            argv.append(str(c["qualificationReserve"]))
+        return argv
 
     def _argv_validate(self) -> list[str]:
         return [self.config["nodeBin"], str(ROOT / "training/bot/validate-data.cjs"), str(self._shard())]
@@ -554,9 +570,12 @@ class Operator:
         c = self.config
         argv = [c["pythonBin"], str(ROOT / "training/bot/train.py"), str(self._shard()),
                 "--output", str(self._candidate_dir()), "--source-commit", self.state["source"]["head"],
-                "--epochs", str(c["epochs"]), "--batch", str(c["batch"]), "--device", "cpu",
+                "--epochs", str(c["epochs"]), "--batch", str(c["batch"]), "--device", c["device"],
                 "--width", str(c["width"]), "--blocks", str(c["blocks"]),
+                "--value-source", c["valueSource"],
                 "--interim-dir", str(self._interim())]
+        if c["earlyStopPatience"]:
+            argv += ["--early-stop-patience", str(c["earlyStopPatience"])]
         ckpt = self._interim() / "interim.pt"
         if ckpt.exists():
             argv += ["--resume", str(ckpt)]  # warm start from the last completed epoch
@@ -588,24 +607,64 @@ class Operator:
         print(json.dumps({"runId": self.run_id, "status": self.state["status"], "plan": self.state["plan"]}, indent=2))
         return 0
 
+    def _effective_producer(self):
+        """Resolve the self-play producer for the CURRENT generation: an explicit `producerModel`
+        config path, else the newest research-champion artifact (so generation N+1's self-play is guided
+        by generation N's promoted model). Returns None when neither exists (classical bootstrap)."""
+        explicit = self.config.get("producerModel")
+        if explicit:
+            return explicit
+        ptr = self.root / "research-champion.json"
+        if ptr.exists():
+            record = json.loads(ptr.read_text())
+            run_id = record.get("runId")
+            cand = self.root / f"gen-{run_id}" / "export" / "candidate.onnx" if run_id else None
+            if cand and cand.exists():
+                return cand
+        return None
+
     def run(self) -> int:
         self._acquire_lease()
         signal.signal(signal.SIGTERM, self._on_signal)
         signal.signal(signal.SIGINT, self._on_signal)
-        stages = [
-            ("GENERATING", self._argv_generate, [self._shard()]),
-            ("DATA_VALIDATED", self._argv_validate, [self._shard()]),
-            ("TRAINING", self._argv_train, [self._candidate_dir() / "candidate.pt"]),
-            ("EXPORT_VALIDATED", self._argv_export, [self._export_dir() / "candidate.onnx", self._export_dir() / "candidate-int8.onnx"]),
-            ("EVALUATING", self._argv_league, [self._league_path()]),
-        ]
         try:
-            for stage, builder, outputs in stages:
-                self._run_stage(stage, builder(), outputs)
-            self._decide()
+            for generation in range(1, self.config["generations"] + 1):
+                self.state["generation"] = generation
+                self.state["generations"] = self.config["generations"]
+                self._write_state()
+                stages = [
+                    ("GENERATING", self._argv_generate, [self._shard()]),
+                    ("DATA_VALIDATED", self._argv_validate, [self._shard()]),
+                    ("TRAINING", self._argv_train, [self._candidate_dir() / "candidate.pt"]),
+                    ("EXPORT_VALIDATED", self._argv_export, [self._export_dir() / "candidate.onnx", self._export_dir() / "candidate-int8.onnx"]),
+                    ("EVALUATING", self._argv_league, [self._league_path()]),
+                ]
+                for stage, builder, outputs in stages:
+                    self._run_stage(stage, builder(), outputs)
+                self._decide()
+                print(json.dumps({"generation": generation, "champion": self.state.get("champion")}))
+                if generation < self.config["generations"]:
+                    # Preserve this generation's artifacts and reset the per-generation working dirs so
+                    # the next generation regenerates into a clean state but keeps the promoted model.
+                    self._archive_generation(generation)
         finally:
             self._release_lease()
         return 0
+
+    def _archive_generation(self, generation: int) -> None:
+        """Move a completed generation's artifacts into gen-<n>/ and clear the working dirs, so the next
+        generation starts clean while the previous champion artifact remains available as the producer."""
+        dest = self.root / f"gen-{generation}"
+        dest.mkdir(parents=True, exist_ok=True)
+        for name in ("data", "candidate", "export", "league.json", "interim"):
+            src = self.root / name
+            if src.exists():
+                target = dest / name
+                if target.exists():
+                    shutil.rmtree(target) if target.is_dir() else target.unlink()
+                shutil.move(str(src), str(target))
+        self.state.setdefault("history", []).append({"at": now_iso(), "generation": generation, "archivedTo": str(dest)})
+        self._write_state()
 
     def resume(self) -> int:
         # A resume re-enters the machine at the first stage that is not yet complete; completed

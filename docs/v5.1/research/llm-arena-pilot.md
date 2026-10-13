@@ -122,8 +122,8 @@ $ node training/bot/llm-arena.cjs \
 
 | agent | W/L/D | X/O seats | decisions | invalid responses | retries | fallbacks | violations | latency mean/p50/p95 (ms) | TTFT mean (ms) | prompt tok | completion tok |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| nemotron-3-5-lightning | 1/1/0 | 1/1 | 43 | 3 | 2 | 1 | 0 | 347/343/455 | 138 | 31 571 | 585 |
-| gemma-4-26b | 1/1/0 | 1/1 | 43 | 11 | 11 | 0 | 0 | 619/514/1042 | 169 | 40 318 | 702 |
+| nemotron-3-5-lightning | 1/1/0 | 1/1 | 43 | 2 | 1 | 1 | 0 | 295/276/348 | 99 | 30 655 | 572 |
+| gemma-4-26b | 1/1/0 | 1/1 | 43 | 10 | 10 | 0 | 0 | 604/501/955 | 175 | 39 541 | 689 |
 
 The result is perfectly mirrored: **each model won exactly the game in which it held the X seat**
 (X moves first). That is a first-move-advantage signal from 2 games, not a strength ranking between
@@ -144,17 +144,17 @@ $ node training/bot/llm-arena.cjs --a llm --a-endpoint http://127.0.0.1:18893 --
 
 | game | X seat held by | winner | plies | opening family |
 | --- | --- | --- | --- | --- |
-| `gemma-vs-expert-0` | gemma-4-26b | expert (O) | 32 | 77,73,34,43 |
+| `gemma-vs-expert-0` | gemma-4-26b | expert (O) | 34 | 77,73,34,43 |
 | `gemma-vs-expert-1` | expert | expert | 25 | 04,41,16,68 |
 | `nemotron-vs-expert-0` | nemotron-3-5-lightning | expert (O) | 26 | 78,82,23,38 |
-| `nemotron-vs-expert-1` | expert | expert | 33 | 31,16,63,33 |
+| `nemotron-vs-expert-1` | expert | expert | 35 | 31,16,63,33 |
 
 | pairing | agent | W/L/D | X/O seats | decisions | invalid | retries | fallbacks | violations | latency mean/p50/p95 (ms) |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| gemma vs expert | gemma-4-26b | 0/2/0 | 1/1 | 24 | 2 | 2 | 0 | 0 | 566/533/906 |
-| gemma vs expert | expert | 2/0/0 | 1/1 | 25 | 0 | 0 | 0 | 0 | 294/320/320 |
-| nemotron vs expert | nemotron-3-5-lightning | 0/2/0 | 1/1 | 25 | 0 | 0 | 0 | 0 | 361/369/489 |
-| nemotron vs expert | expert | 2/0/0 | 1/1 | 26 | 0 | 0 | 0 | 0 | 295/320/321 |
+| gemma vs expert | gemma-4-26b | 0/2/0 | 1/1 | 25 | 5 | 5 | 0 | 0 | 605/521/989 |
+| gemma vs expert | expert | 2/0/0 | 1/1 | 26 | 0 | 0 | 0 | 0 | 296/320/321 |
+| nemotron vs expert | nemotron-3-5-lightning | 0/2/0 | 1/1 | 26 | 0 | 0 | 0 | 0 | 317/316/398 |
+| nemotron vs expert | expert | 2/0/0 | 1/1 | 27 | 0 | 0 | 0 | 0 | 285/320/321 |
 
 Both LLMs lost **0–2** to Expert, and Expert won from both seats (as O against gemma's and
 nemotron's X, and as X in the second game of each pairing). Nemotron recorded **0** invalid
@@ -168,6 +168,8 @@ move choice at this budget) is consistent across both models and both seats.
 $ node training/bot/llm-bench.cjs --endpoint http://127.0.0.1:18894 --model gemma-4-26b \
     --concurrency 1,4 --requests 12 --max-tokens 64 --out .artifacts/v51/llm-arena/bench-gemma.json
 $ node training/bot/llm-bench.cjs --endpoint http://127.0.0.1:18893 --model nemotron-3-5-lightning \
+    --concurrency 1,4 --requests 12 --max-tokens 128 --out .artifacts/v51/llm-arena/bench-nemotron-thinking.json
+$ node training/bot/llm-bench.cjs --endpoint http://127.0.0.1:18893 --model nemotron-3-5-lightning \
     --concurrency 1,4 --requests 12 --max-tokens 64 --no-think --out .artifacts/v51/llm-arena/bench-nemotron-nothink.json
 ```
 
@@ -176,17 +178,17 @@ Prompt is a real mid-game position from `buildPrompt` (~660–680 prompt tokens,
 
 | model | max_tokens | thinking | concurrency | TTFT p50/p95 (ms) | latency mean (ms) | decode tok/s | output tok/s | legal-move rate |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| gemma-4-26b | 64 | n/a | 1 | 67/244 | 412 | 39.4 | 31.6 | 1.00 |
-| gemma-4-26b | 64 | n/a | 4 | 91/114 | 428 | 36.2 | 117.1 | 1.00 |
-| nemotron (default) | 128 | on | 1 | 72/288 | 2008 | 66.3 | 63.8 | 0.08 |
-| nemotron (default) | 128 | on | 4 | 144/202 | 2428 | 56.0 | 210.8 | 0.00 |
-| nemotron | 64 | **off** | 1 | 70/79 | 260 | 63.8 | 50.1 | 1.00 |
-| nemotron | 64 | **off** | 4 | 151/182 | 351 | 61.2 | 147.5 | 1.00 |
+| gemma-4-26b | 64 | n/a | 1 | 63/183 | 398 | 39.1 | 32.6 | 1.00 |
+| gemma-4-26b | 64 | n/a | 4 | 99/121 | 409 | 39.7 | 126.7 | 1.00 |
+| nemotron | 128 | **on** (default) | 1 | 73/160 | 2007 | 66.1 | 63.8 | 0.00 |
+| nemotron | 128 | **on** (default) | 4 | 144/211 | 2393 | 56.8 | 214.0 | 0.00 |
+| nemotron | 64 | **off** (`--no-think`) | 1 | 72/80 | 263 | 63.7 | 49.5 | 1.00 |
+| nemotron | 64 | **off** (`--no-think`) | 4 | 142/160 | 345 | 58.1 | 150.7 | 1.00 |
 
 The raw-decode rate of Nemotron is ~1.6× Gemma's, but **with thinking on its usable move latency is
-~2.0 s versus 0.41 s for Gemma** — the reasoning block, not decode speed, dominates. Turning
+~2.0 s versus 0.40 s for Gemma** — the reasoning block, not decode speed, dominates. Turning
 thinking off makes Nemotron both correct (legal-move rate 1.00) and the faster of the two at
-concurrency 1 (260 ms vs 412 ms).
+concurrency 1 (263 ms vs 398 ms).
 
 ## 5. Honest limitations (what was not run or cannot be concluded)
 
@@ -213,18 +215,18 @@ concurrency 1 (260 ms vs 412 ms).
 - **Gemma-4-26B-A4B is the practical candidate-move generator for the next pilot.** Justification is
   measured, not assumed:
   - it emits well-formed JSON on essentially every request (`legal-move rate 1.00` in the 12-request
-    bench; its only 13 invalid attempts across 67 real decisions were **parseable moves that were
-    illegal in the position**, never format failures);
-  - it is the faster usable move source out of the box (no reasoning tax; ~0.42 s/move bench,
-    ~0.57–0.62 s/move in-game, TTFT ~0.17–0.21 s);
+    bench; every one of its invalid attempts across 68 real decisions was a **parseable move that was
+    illegal in the position**, never a format failure);
+  - it is the faster usable move source out of the box (no reasoning tax; ~0.40 s/move bench,
+    ~0.60 s/move in-game, TTFT ~0.18 s);
   - it stayed rules-legal for entire games (0 rule violations) and lost only to Expert.
 - **Nemotron-3.5-Lightning-30B is usable only with thinking disabled.** Its raw decode is the fastest
-  measured (63.8 vs 39.4 tok/s at concurrency 1) and it recorded the fewest invalid attempts
-  (3/68 real decisions), but its default thinking mode spends the whole budget reasoning and then
-  truncates (`legal-move rate 0.08 → 0.00` in the bench), and its per-move latency with thinking on
-  (~2.0 s) is ~5× Gemma's. With `enable_thinking:false` it was both correct and the fastest
-  single-stream responder (260 ms bench, TTFT p95 79 ms) — that is the configuration to use if it is
-  played again.
+  measured (63.7 vs 39.1 tok/s at concurrency 1) and it recorded the fewest invalid attempts
+  (2/69 real decisions), but its default thinking mode spends the whole budget reasoning and then
+  truncates (`legal-move rate 0.00` in the bench at `max_tokens 128`), and its per-move latency with
+  thinking on (~2.0–2.4 s) is ~6× Gemma's. With `enable_thinking:false` it was both correct and the
+  fastest single-stream responder (263 ms bench, TTFT p95 80 ms) — that is the configuration to use
+  if it is played again.
 - **The pilot is too small to say which model plays better.** The LLM-vs-LLM pairing came out
   perfectly mirrored (each model won its X game, 1–1) and **neither LLM beat Expert — both went 0–2
   from both seats (0–4 aggregate)**. That is consistent with "bounded search beats one-shot LLM move

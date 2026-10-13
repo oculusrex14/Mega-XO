@@ -19,7 +19,7 @@ This current implementation map supersedes the earlier gateway-only map, which r
 | `/store` | Four approved products, wallet, provider/bridge availability and purchase/restore controls | Prices/products absent; unavailable purchasing disabled |
 | `/sponsors`, `/ads` | Structured layout and explicit optional browser-local interest choices | No active ad unit, tracking or click reward |
 | `/themes` | Browser Neon plus four original appearance previews | Play-theme control on board; future paid native Neon inactive |
-| `/profile` | Protected identity/tag/tier/rating summary | Current game gateway links do not deliver profile editing/privacy/history |
+| `/profile` | Protected identity/tag/tier/rating summary plus in-site username, display name and visibility editor | Actual staged persistence, avatar/history/stats/achievements acceptance open |
 | `/account` | Email continuation, verification, recovery/reset, provider capability and logout via retained cookie/CSRF client | No second identity system; real browser acceptance and method changes/linking open |
 | `/settings` | Appearance/account links, reduced-motion guidance, explicit offline Save/Remove | Saving opt-in; device/storage/update acceptance open |
 | `/how-to-play` | Canonical small-board, routing and macro-board rules | `/game` provides the real six-move lesson; novice study not executed |
@@ -48,3 +48,9 @@ Online acceptance uses the frozen server quote/terms. Retry retains the original
 Website/legal routes inherit the navy/cyan/violet shell. Browser Neon is the fifth browser-only default; four original native theme IDs/rules remain intact. Theme changes preserve match state. The board exposes legal-move labels, keyboard navigation, focus and turn status. Narrow reflow is locally tested; physical safe-area, screen-reader and phone acceptance remain open.
 
 [Execution status](EXECUTION-STATUS-20261012.md) records exact-source results and original checklist dispositions. [Main's handoff](RECOVERY-AND-MAIN-HANDOFF-20261012.md) distinguishes the recovered candidate from served staging and lists the missing service evidence. An attractive gateway or a game link is not completed account/social functionality.
+
+## 2026-10-13 service boundary
+
+New Friends actions use supported body.key and the identical shared-client request operation key; retries stay within the canonical social service. Typing removes stale search actions; refresh hides private lists until current actor verification. Profile drafts remain memory-only and freeze through same-actor identity refresh. The current private staging base is https://command.tail95c48c.ts.net; its frontend still serves f4851a5/8167. The source realtime ingress contract is wss://command.tail95c48c.ts.net/realtime/v1, while the current browser match controller still polls HTTP. A transport endpoint and service smoke are not an implemented/accepted browser WSS client or completed game settlement. See the current Main handoff and staged account-reentry defect.
+
+See [realtime contract/source gaps](REALTIME-CONTRACT-AND-INTEGRATION-GAPS-20261013.md). Both publisher wiring and terminal-at-equal-revision behavior require Main coordination and genuine two-account reproduction.

@@ -6,11 +6,13 @@ The evidence JSON is [hosting.json](evidence/20261012-provider-discovery/hosting
 
 ## Vercel
 
+**Owner correction, 2026-10-13:** Mega XOXO is currently a non-commercial hobby and experimental project. Continue with Vercel Hobby; a paid upgrade is not a current blocker. The earlier commercial-project interpretation below is superseded. Reconsider plan eligibility only when commercial activity begins. No paid provisioning is authorized.
+
 The installed Vercel CLI is 63.1.0 and authenticated successfully as the previously verified intended account. The explicit current team scope is `oculusrex14s-projects` on Hobby. Read-only commands ran from `/tmp`; the repository was not linked. There are three projects in this team scope, but none matches Mega XO. Names and URLs for unrelated projects are omitted.
 
 The scoped CLI project filter returned `project_not_found`; the filtered Vercel connector query returned zero Mega XO projects and zero matching deployments. This supersedes earlier personal-scope or single-project interpretations. No target project exists, so its region, project-specific limits, current usage, production capacity, and recovery readiness are unknown. Usage and cost were not queried in this verification; a previously recorded Oct 1–12 query returned “billing cost data unavailable,” which does not establish zero usage or cost. Existing CLI authentication worked, so MFA was not a blocker for this read-only inventory.
 
-Current official Vercel documentation limits Hobby to personal, non-commercial use. This is provider policy, not a legal determination, and it does not qualify as commercial hosting for Mega XOXO. Published included usage includes 100 GB of fast data transfer, 1 million CDN requests, 4 active CPU-hours, 360 GB-hours of provisioned memory, and 1 million function invocations per month. The published project limit is 200 and the deployment limit is 100 per day. Hobby is a free tier with no billing cycle; Vercel says most exceeded limits pause use until 30 days have passed.
+Current official Vercel documentation limits Hobby to personal, non-commercial use. This is provider policy. The owner has now confirmed non-commercial hobby use, so the earlier assumption that the project currently needed commercial hosting is superseded. Published included usage includes 100 GB of fast data transfer, 1 million CDN requests, 4 active CPU-hours, 360 GB-hours of provisioned memory, and 1 million function invocations per month. The published project limit is 200 and the deployment limit is 100 per day. Hobby is a free tier with no billing cycle; Vercel says most exceeded limits pause use until 30 days have passed.
 
 Vercel Pro is a concrete priced option at a $20/month platform fee, including one deploying seat and $20/month usage credit. Additional owner/member seats are $20/month each; viewer seats are free. Usage can incur on-demand charges after the monthly credit, and applicable taxes are extra. Because no Mega XO project or workload exists yet, total hosting cost cannot be estimated from this account inventory. This is public price context only; no upgrade, trial, purchase, or billing change occurred.
 
@@ -43,9 +45,9 @@ The previously authenticated Google Search Console session listed only the godfi
 
 ## R10 decision and next safe actions
 
-The release register remains R10 BLOCKED_DECISION. The verified accounts do not yet establish a commercially eligible hosting plan, target-region selection, realistic capacity or recovery, or owner-approved costs. The current Vercel Hobby terms rule out Hobby as commercial hosting. Neon and Upstash target resources are Free tier and have not been load-tested or approved for production. DNS ownership is not currently verified in Hostinger or Cloudflare.
+The historical Main register records R10 BLOCKED_DECISION. For the owner-confirmed present non-commercial project, Vercel Hobby is the selected preview plan; a paid plan decision is not pending. Capacity/recovery, intended target and DNS verification still need evidence before a separately approved production deployment. Main now documents a private HTTPS staging origin on the Oracle host; the older pending-HTTPS observation above is historical.
 
-Next, verify the intended Hostinger and Cloudflare account scopes, then select a commercially eligible hosting plan and target region after capacity and recovery requirements are defined. The owner must approve any paid cost before a plan or resource changes. Do not interpret account existence, a free resource, or a public price as provider or release approval.
+Next, verify the intended Hostinger and Cloudflare account scopes, preserve Hobby for the non-commercial preview, and obtain Main’s preview-to-API/session/WSS contract. The current API origin is private to the tailnet; a Vercel deployment cannot be assumed to reach it or share its host-only cookies. Do not publish a broken proxy or expose private staging as a workaround. The owner must approve any paid cost before a plan or resource changes. Do not interpret account existence, a free resource, or a public price as provider or release approval.
 
 ## R18 release hold
 
@@ -54,3 +56,9 @@ R18 remains BLOCKED_RELEASE. The current P21 checklist still has null store URLs
 ## R02 support
 
 The prior read-only GitHub settings inspection found no classic branch protections or rulesets. This was not reverified in the Vercel CLI pass and no protection configuration changed here. R02 still needs current required-check and permission review before any protection setup.
+
+## Read-only recheck — 2026-10-13
+
+The Vercel connector query `list_projects(slug=oculusrex14s-projects, repoUrl=https://github.com/oculusrex14/Mega-XO, limit=100)` returned zero projects with pagination count zero. This is a repository-filtered check; it does not exclude an unlinked project under another name. No project or deployment was created. The existing `apps/web/vercel.json` retains disabled Git deployment, same-origin CSP and noindex headers. Preparation may continue on Hobby; connected online preview requires an approved reachable API and cookie/Origin/WSS contract from Main.
+
+Scoped CLI recheck on 2026-10-13 also returned exactly three projects, no name containing Mega, and no additional page (`pagination.next=null`). `vercel teams list` confirmed the selected `oculusrex14s-projects` team still has plan `hobby`. Outputs were filtered before display/storage to omit unrelated project and account identity fields. No repository link or external mutation occurred.

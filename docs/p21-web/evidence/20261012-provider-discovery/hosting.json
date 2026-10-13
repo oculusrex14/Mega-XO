@@ -110,7 +110,7 @@
         "repository_linked": false
       },
       "usage_query_history": {
-        "prior_reported_observation": "A previously recorded Oct 1–12 query returned billing cost data unavailable; it was not repeated in this scope verification.",
+        "prior_reported_observation": "A previously recorded Oct 1\u201312 query returned billing cost data unavailable; it was not repeated in this scope verification.",
         "current_query_performed": false,
         "usage_or_cost_inferred_as_zero": false
       },
@@ -313,5 +313,36 @@
       "changes_made": false
     }
   },
-  "provider_mutations_performed": []
+  "provider_mutations_performed": [],
+  "superseding_owner_context_20261013": {
+    "project_status": "non-commercial hobby and experimental",
+    "current_plan": "Vercel Hobby",
+    "paid_upgrade_current_blocker": false,
+    "reconsider_when": "commercial activity begins",
+    "production_hold": true,
+    "paid_provisioning_authorized": false
+  },
+  "reverification_20261013": {
+    "query": "list_projects slug=oculusrex14s-projects repoUrl=https://github.com/oculusrex14/Mega-XO limit=100",
+    "matching_projects": 0,
+    "pagination_count": 0,
+    "scope_boundary": "repository-filtered; unlinked projects not ruled out",
+    "mutations": [],
+    "cli": {
+      "project_count": 3,
+      "mega_name_matches": 0,
+      "more_pages": false,
+      "team_slug": "oculusrex14s-projects",
+      "plan": "hobby",
+      "commands": [
+        "vercel project list --scope oculusrex14s-projects --json --limit 100 --non-interactive",
+        "vercel teams list --json --non-interactive --limit 100"
+      ],
+      "exit_codes": [
+        0,
+        0
+      ],
+      "unrelated_identity_fields_retained": false
+    }
+  }
 }

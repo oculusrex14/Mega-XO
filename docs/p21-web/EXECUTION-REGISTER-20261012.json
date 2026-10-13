@@ -201,6 +201,50 @@
       "screenshot_artifact_bytes": 0,
       "boundary": "Frontend-only identity and anonymous UI observation. No API/server boot identity, authenticated account, Core/PostgreSQL mutation, native parity, production behavior or release acceptance was verified.",
       "hosting_owner": "Main (oh-my-pi); frontend identity was independently checked by Codex CUA read-only review"
+    },
+    "resume_checkpoint_20261013": {
+      "saved_source_commit": "e9eab5753fe9ee8552f3b7f9d1be6ad5e7e3deec",
+      "main_base_verified": "2e8e501a6c9770a15383fd392c3323c652daf977",
+      "reconciliation_commit": "de5d5ef4fca22118bb223601bc833511eb5d2f53",
+      "bundle_sha256": "efe8fdc628606103b7171e0c0230a260614fb6c082e86a0cb5e26fb5f6d20e92",
+      "website_bot_tests": {
+        "original_pass": 167,
+        "reconciled_pass": 172,
+        "fail": 0,
+        "skip": 0
+      },
+      "current_candidate_browser_qa": {
+        "friends_checks_each": 40,
+        "profile_checks_each": 18,
+        "engines": [
+          "Chrome151/PW1.62.1",
+          "Firefox146/PW1.58.2",
+          "WebKit26/PW1.58.2"
+        ],
+        "broad_chrome_checks": 915,
+        "axe_checks": 137,
+        "axe_violations": 0,
+        "axe_manual_views": 116,
+        "offline_chrome_browser_offline": 33,
+        "offline_firefox_webkit_origin_drop_each": 33,
+        "archive": "docs/p21-web/evidence/20261013-final-browser-validation/archive-index.json",
+        "boundary": "Local synthetic/software; no authenticated staging/WSS/device/provider proof"
+      },
+      "prior_profile_candidate": {
+        "commit": "4d9aa91503ed34cc72cb73a63a0e8207133e6d01",
+        "bundle_sha256": "c93156ef86927204d3bb5b1ef6c66b50fb7d8298609507cf7e7bc3d0948972eb",
+        "profile_checks": 18,
+        "chromium_broad_checks": 915,
+        "axe_checks": 137,
+        "axe_violations": 0,
+        "axe_manual_views": 116,
+        "chrome_offline_checks": 33,
+        "firefox_webkit_origin_drop_checks_each": 33,
+        "archive": "docs/p21-web/evidence/20261013-profile-validation/archive-index.json"
+      },
+      "historical_evidence_preserved": true,
+      "device_acceptance": "NOT_RUN",
+      "no_checkboxes_closed_in_this_checkpoint": true
     }
   },
   "inventory_integrity": {
@@ -234,7 +278,7 @@
     {
       "id": "R15",
       "status": "AUTHENTICATED_ACCEPTANCE_PENDING",
-      "note": "CUA verified the isolated tailnet staging frontend at http://100.107.65.122:8081/: all 140 manifest files match frontend source f4851a568524846d981b351c659af4a9ee7479be / bundle 8167f349fb16b303c9347ac544afc3f9c73b9ea5515b0a085a7f40a6d75f3ea3, and home plus anonymous /account loaded. API/server process boot SHA, authenticated account/OTP, staged state changes, Core/PostgreSQL authority, cross-client agreement and production behavior remain unverified. The owner-reported continuation timeout is OWNER_REPORTED_NOT_REPRODUCED; see the sanitized receipt. The nine pinned R15 rows remain open. Main owns staging diagnosis and test-actor/Core acceptance; human credential/OTP handoff or a supported private helper is required before authenticated browser acceptance. Production remains dormant and V4.1 authority unchanged."
+      "note": "Private staging HTTPS is independently reachable at https://command.tail95c48c.ts.net, still serving frontendf4851a5 / bundle8167f349 (140 files). Main reports service source8328b71; fresh process boot receipt remains unverified. Home/leaderboard loaded and account form appeared once; account reentry then remained restoring session25+seconds in Brave. Cookie-free session200911ms and protected profile401760ms are separate probes, not auth proof. Human private new-credential/OTP handoff and two approved test actors requested. All nine R15 rows stay open: no complete browser game/settlement, wallet/friend/tournament mutations, authenticated WSS or physical-native continuity accepted. Main co-location/CLI smoke is separate from browser acceptance. No V4/production mutation. Owner reports private credential submission/code step, mail absent as outbound delivery is disabled. Verification/linkage remain unaccepted. Source audit identifies missing Core publisher in staging and equal-revision settlement delivery risks; actual WSS browser client/complete game remains open."
     },
     {
       "id": "R17",
@@ -296,9 +340,11 @@
         "docs/p21-web/ROUTES-AND-FLOWS.md",
         "apps/web/data.js",
         "apps/web/app.js",
-        "docs/p21-web/evidence/20261012-staging-review/STAGING-READONLY-20261012.md"
+        "docs/p21-web/evidence/20261012-staging-review/STAGING-READONLY-20261012.md",
+        "docs/p21-web/evidence/20261013-staging-browser/https-readonly-probes.json",
+        "docs/p21-web/REALTIME-CONTRACT-AND-INTEGRATION-GAPS-20261013.md"
       ],
-      "evidence_boundary": "CUA loaded the corrected isolated tailnet staging homepage and anonymous /account form; 140/140 listed public frontend files match the manifest. This establishes served frontend identity only, not signed-in account, rank/wallet/social/season/match authority, native parity or backend process identity.",
+      "evidence_boundary": "CUA loaded the corrected isolated tailnet staging homepage and anonymous /account form; 140/140 listed public frontend files match the manifest. This establishes served frontend identity only, not signed-in account, rank/wallet/social/season/match authority, native parity or backend process identity. 2026-10-13 superseding context: staging HTTPS reachable/co-located; frontend still8167/f485. Real authenticated browser acceptance pending human handoff, candidate deployment and precise account-reentry spinner diagnosis.",
       "remaining_whole_condition": "The full shared V5 session identity, rank, wallet, friends, tournament, season and Core game authority still lacks an end-to-end result across web and native clients. Staging API/server boot SHA and authenticated identity remain unverified.",
       "next_owner_action": "Main: pin the actual staging server/API boot SHA and backend authority, then use approved test actors after private credential/OTP handoff to exercise real state-changing account, social, season, match and Core-settled progression/economy flows across web and native clients. Compare authoritative state and ledger. Keep production dormant and V4.1 unchanged; do not substitute synthetic records or mint balances."
     },
@@ -879,9 +925,11 @@
         "apps/web/seo.js",
         "apps/web/data.js",
         "docs/p21-web/evidence/20261012-staging-review/STAGING-READONLY-20261012.md",
-        "docs/p21-web/evidence/20261012-staging-review/ACCOUNT-TIMEOUT-20261012.md"
+        "docs/p21-web/evidence/20261012-staging-review/ACCOUNT-TIMEOUT-20261012.md",
+        "docs/p21-web/evidence/20261013-staging-browser/https-readonly-probes.json",
+        "docs/p21-web/REALTIME-CONTRACT-AND-INTEGRATION-GAPS-20261013.md"
       ],
-      "evidence_boundary": "CUA confirmed only the anonymous staging continuation form; no credentials or OTP were entered and no signup/login was submitted. The owner-reported continuation timeout is OWNER_REPORTED_NOT_REPRODUCED; API/server boot SHA is unverified.",
+      "evidence_boundary": "CUA confirmed only the anonymous staging continuation form; no credentials or OTP were entered and no signup/login was submitted. The owner-reported continuation timeout is OWNER_REPORTED_NOT_REPRODUCED; API/server boot SHA is unverified. 2026-10-13 superseding context: staging HTTPS reachable/co-located; frontend still8167/f485. Real authenticated browser acceptance pending human handoff, candidate deployment and precise account-reentry spinner diagnosis.",
       "remaining_whole_condition": "Signup, verification, identity-link, refresh, revocation and expiry remain untested on the serving V5 auth/callback stack; the reported continuation timeout has not been reproduced or diagnosed.",
       "next_owner_action": "Main: pin the running API revision and diagnose the sanitized timeout with a dedicated staging test actor, then provide a sanitized status/timing receipt. After the human privately supplies an authorized credential/OTP handoff or supported secure helper, Codex can verify the session lifecycle against deployed cookie/CSRF/callback contracts. Preserve production dormancy and V4.1 authority."
     },
@@ -1994,9 +2042,11 @@
         "apps/web/app.js",
         "docs/p21-web/ROUTES-AND-FLOWS.md",
         "apps/web/data.js",
-        "docs/p21-web/evidence/20261012-staging-review/STAGING-READONLY-20261012.md"
+        "docs/p21-web/evidence/20261012-staging-review/STAGING-READONLY-20261012.md",
+        "docs/p21-web/evidence/20261013-staging-browser/https-readonly-probes.json",
+        "docs/p21-web/REALTIME-CONTRACT-AND-INTEGRATION-GAPS-20261013.md"
       ],
-      "evidence_boundary": "Only the staging frontend has been identified and loaded. No authenticated match, WebSocket/realtime route, reconnect, resume, replay or HTTP fallback was exercised; API/server boot SHA and Core authority are unverified.",
+      "evidence_boundary": "Only the staging frontend has been identified and loaded. No authenticated match, WebSocket/realtime route, reconnect, resume, replay or HTTP fallback was exercised; API/server boot SHA and Core authority are unverified. 2026-10-13 superseding context: staging HTTPS reachable/co-located; frontend still8167/f485. Real authenticated browser acceptance pending human handoff, candidate deployment and precise account-reentry spinner diagnosis.",
       "remaining_whole_condition": "No serving V5 staging result demonstrates WebSocket reconnect/resume/replay behavior or idempotent settlement against Core.",
       "next_owner_action": "Main: after pinning the actual staging API/Core revision and enabling approved test actors, create and accept a real staged match, then exercise reconnect, resume, replay/idempotency and HTTP fallback through existing contracts. Confirm Core remains the sole match/economy writer and no duplicate settlement occurs; keep production dormant and V4.1 unchanged."
     },
@@ -3077,11 +3127,18 @@
         "apps/web/site.js",
         "apps/web/styles.css",
         "assets/p21/art/PROVENANCE.json",
-        "tests-output/p21-web/db286d8f8356/home-desktop.png"
+        "tests-output/p21-web/db286d8f8356/home-desktop.png",
+        "docs/p21-web/CODEX-TO-MAIN-20261013.md",
+        "docs/p21-web/evidence/20261013-staging-browser/staging-browser-readiness.md",
+        "apps/web/friends.js",
+        "tests/v5-p21-friends.test.js",
+        "apps/web/pages.js",
+        "apps/web/app.js",
+        "docs/p21-web/evidence/20261013-final-browser-validation/archive-index.json"
       ],
-      "evidence_boundary": "Partial local implementation/evidence exists; the remaining condition is still open.",
-      "remaining_whole_condition": "Friends/challenge pages explain; presence/search/requests/invite settlement remain in account service.",
-      "next_owner_action": "Codex app: complete \u201cFriends, presence, profile search, challenges, invites and pending requests\u201d at apps/web/site.js, verify each requested format/state with a current-source fixture, and attach evidence before changing the checkbox."
+      "evidence_boundary": "Friends lists, explicit search, all seven relationship actions, safe projections and actor/query/route fences implemented; local controller/shared-client tests pass. Final Friends40/40 passes Chrome151/Firefox146/WebKit26 on e9/efe8; prior WebKit focus failure preserved. No real staging relationship/challenge/presence game acceptance.",
+      "remaining_whole_condition": "Real two-actor relationship/search/presence acceptance, direct challenge/invitation gameplay and settlement; device/privacy/browser manual review.",
+      "next_owner_action": "Codex: finish real staged Friends acceptance and direct challenge UI after Main deploys the verified candidate and provides approved test actors/private handoff. Core remains sole competitive/economic writer."
     },
     {
       "snapshot_id": "P21-K157",
@@ -3177,11 +3234,18 @@
         "apps/web/site.js",
         "apps/web/styles.css",
         "assets/p21/art/PROVENANCE.json",
-        "tests-output/p21-web/db286d8f8356/home-desktop.png"
+        "tests-output/p21-web/db286d8f8356/home-desktop.png",
+        "docs/p21-web/CODEX-TO-MAIN-20261013.md",
+        "docs/p21-web/evidence/20261013-staging-browser/staging-browser-readiness.md",
+        "apps/web/data.js",
+        "tests/v5-p21-profile-editor.test.js",
+        "scripts/p21/profile-qa.cjs",
+        "docs/p21-web/evidence/20261013-profile-validation/archive-index.json",
+        "docs/p21-web/evidence/20261013-final-browser-validation/archive-index.json"
       ],
-      "evidence_boundary": "Partial local implementation/evidence exists; the remaining condition is still open.",
-      "remaining_whole_condition": "Profile overview/gateways exist; authenticated history/stats/achievements/privacy/edit require account service.",
-      "next_owner_action": "Codex app: complete \u201cUser profile, match history, stats, achievements and privacy controls\u201d at apps/web/site.js, verify each requested format/state with a current-source fixture, and attach evidence before changing the checkbox."
+      "evidence_boundary": "Four-field protected profile editor committed4d9aa9 with18/18 synthetic Chromium browser checks on c931 bundle,9 meaningful controller tests, draft/focus/identity fencing. Fixture passes do not establish actual account/device acceptance.",
+      "remaining_whole_condition": "Real staged profile edit/privacy persistence plus avatar/history/stats/achievements and cross-platform acceptance; compound checkbox stays open.",
+      "next_owner_action": "Codex: exercise profile GET/POST on deployed verified staging after human private sign-in; finish remaining account-owned projections and controls using actual contracts."
     },
     {
       "snapshot_id": "P21-K161",
@@ -3748,9 +3812,11 @@
         "docs/p21-web/DOWNLOAD-AND-DISCOVERY.md",
         "docs/p21-web/ROUTES-AND-FLOWS.md",
         "docs/p21-web/evidence/20261012-staging-review/STAGING-READONLY-20261012.md",
-        "docs/p21-web/evidence/20261012-staging-review/ACCOUNT-TIMEOUT-20261012.md"
+        "docs/p21-web/evidence/20261012-staging-review/ACCOUNT-TIMEOUT-20261012.md",
+        "docs/p21-web/evidence/20261013-staging-browser/https-readonly-probes.json",
+        "docs/p21-web/REALTIME-CONTRACT-AND-INTEGRATION-GAPS-20261013.md"
       ],
-      "evidence_boundary": "The frontend bundle is verified and the anonymous account form rendered, but no credentials were submitted and no API SDK/session/CSRF/redirect behavior was tested with an authenticated staging actor. API/server boot SHA is unverified; owner-reported timeout remains unreproduced.",
+      "evidence_boundary": "The frontend bundle is verified and the anonymous account form rendered, but no credentials were submitted and no API SDK/session/CSRF/redirect behavior was tested with an authenticated staging actor. API/server boot SHA is unverified; owner-reported timeout remains unreproduced. 2026-10-13 superseding context: staging HTTPS reachable/co-located; frontend still8167/f485. Real authenticated browser acceptance pending human handoff, candidate deployment and precise account-reentry spinner diagnosis.",
       "remaining_whole_condition": "The SDK/session/CSRF/redirect contract remains unexercised against the actual deployed V5 API/Core ownership boundary, including an authenticated permitted mutation.",
       "next_owner_action": "Main: pin the actual API process revision and verify SDK, session credentials, CSRF and redirect behavior with a staging test actor after supported private credential handoff. Exercise permitted state changes with real API/Core role separation and confirm single-writer effects; leave production and V4.1 untouched."
     },
@@ -3777,9 +3843,11 @@
         "scripts/p21/build-web.js",
         "docs/p21-web/DOWNLOAD-AND-DISCOVERY.md",
         "docs/p21-web/ROUTES-AND-FLOWS.md",
-        "docs/p21-web/evidence/20261012-staging-review/STAGING-READONLY-20261012.md"
+        "docs/p21-web/evidence/20261012-staging-review/STAGING-READONLY-20261012.md",
+        "docs/p21-web/evidence/20261013-staging-browser/https-readonly-probes.json",
+        "docs/p21-web/REALTIME-CONTRACT-AND-INTEGRATION-GAPS-20261013.md"
       ],
-      "evidence_boundary": "Only static frontend identity and anonymous page rendering were verified on staging. No authenticated match creation, turn submission, reconnect/resume or result through Core was observed; backend boot identity is unverified.",
+      "evidence_boundary": "Only static frontend identity and anonymous page rendering were verified on staging. No authenticated match creation, turn submission, reconnect/resume or result through Core was observed; backend boot identity is unverified. 2026-10-13 superseding context: staging HTTPS reachable/co-located; frontend still8167/f485. Real authenticated browser acceptance pending human handoff, candidate deployment and precise account-reentry spinner diagnosis.",
       "remaining_whole_condition": "The Core realtime route has no verified staging run through match creation, turns, reconnect and result.",
       "next_owner_action": "Main: pin the staging API/Core revision and connect dedicated staging actors through website and native clients; create/accept a match, submit moves, reconnect/resume and settle using existing server contracts. Verify Core state and no duplicate effects; leave production dormant and V4.1 unchanged."
     },
@@ -3807,9 +3875,13 @@
         "docs/p21-web/DOWNLOAD-AND-DISCOVERY.md",
         "docs/p21-web/ROUTES-AND-FLOWS.md",
         "docs/p21-web/evidence/20261012-staging-review/STAGING-READONLY-20261012.md",
-        "docs/p21-web/evidence/20261012-staging-review/ACCOUNT-TIMEOUT-20261012.md"
+        "docs/p21-web/evidence/20261012-staging-review/ACCOUNT-TIMEOUT-20261012.md",
+        "docs/p21-web/CODEX-TO-MAIN-20261013.md",
+        "docs/p21-web/evidence/20261013-staging-browser/staging-browser-readiness.md",
+        "docs/p21-web/evidence/20261013-staging-browser/https-readonly-probes.json",
+        "docs/p21-web/REALTIME-CONTRACT-AND-INTEGRATION-GAPS-20261013.md"
       ],
-      "evidence_boundary": "CUA saw only the anonymous account continuation form; no account, wallet, rank, friends, tournament, season or cosmetics adapter was exercised with an authenticated staging actor. The reported timeout is OWNER_REPORTED_NOT_REPRODUCED and backend boot identity is unverified.",
+      "evidence_boundary": "CUA saw only the anonymous account continuation form; no account, wallet, rank, friends, tournament, season or cosmetics adapter was exercised with an authenticated staging actor. The reported timeout is OWNER_REPORTED_NOT_REPRODUCED and backend boot identity is unverified. 2026-10-13 superseding context: staging HTTPS reachable/co-located; frontend still8167/f485. Real authenticated browser acceptance pending human handoff, candidate deployment and precise account-reentry spinner diagnosis.",
       "remaining_whole_condition": "Account, wallet, rank, friends, tournament, season and cosmetics adapters have no end-to-end result against the serving V5 stack and shared Core.",
       "next_owner_action": "Main: pin the staging API/Core revision and diagnose the sanitized continuation timeout with an approved test actor. After private credential/OTP handoff, exercise these adapters through real staged account/match flows, including Core-authorized changes, and compare returned account/progression/ledger state across clients. Do not mint fixture balances; keep production dormant and V4.1 unchanged."
     },
@@ -3948,9 +4020,11 @@
         "docs/p21-web/DOWNLOAD-AND-DISCOVERY.md",
         "docs/p21-web/ROUTES-AND-FLOWS.md",
         "docs/p21-web/evidence/20261012-staging-review/STAGING-READONLY-20261012.md",
-        "docs/p21-web/evidence/20261012-staging-review/ACCOUNT-TIMEOUT-20261012.md"
+        "docs/p21-web/evidence/20261012-staging-review/ACCOUNT-TIMEOUT-20261012.md",
+        "docs/p21-web/evidence/20261013-staging-browser/https-readonly-probes.json",
+        "docs/p21-web/REALTIME-CONTRACT-AND-INTEGRATION-GAPS-20261013.md"
       ],
-      "evidence_boundary": "Verified evidence is limited to the static staging frontend and anonymous account form. No authenticated browser mutation, canonical PostgreSQL ledger/result or process boot SHA was observed. The owner-reported continuation timeout remains unreproduced.",
+      "evidence_boundary": "Verified evidence is limited to the static staging frontend and anonymous account form. No authenticated browser mutation, canonical PostgreSQL ledger/result or process boot SHA was observed. The owner-reported continuation timeout remains unreproduced. 2026-10-13 superseding context: staging HTTPS reachable/co-located; frontend still8167/f485. Real authenticated browser acceptance pending human handoff, candidate deployment and precise account-reentry spinner diagnosis.",
       "remaining_whole_condition": "No verified staging run demonstrates browser-to-V5-to-PostgreSQL identity/economy authority through an authorized mutation.",
       "next_owner_action": "Main: pin the actual API/Core/PostgreSQL deployment and, after a supported private test-actor credential handoff, perform an allowed account or match-settlement mutation through the browser contract and verify the canonical PostgreSQL ledger/result. Do not deploy to production; preserve V4.1 authority."
     },
@@ -4100,9 +4174,11 @@
         "apps/web/data.js",
         "apps/web/app.js",
         "docs/p21-web/evidence/20261012-staging-review/STAGING-READONLY-20261012.md",
-        "docs/p21-web/evidence/20261012-staging-review/ACCOUNT-TIMEOUT-20261012.md"
+        "docs/p21-web/evidence/20261012-staging-review/ACCOUNT-TIMEOUT-20261012.md",
+        "docs/p21-web/evidence/20261013-staging-browser/https-readonly-probes.json",
+        "docs/p21-web/REALTIME-CONTRACT-AND-INTEGRATION-GAPS-20261013.md"
       ],
-      "evidence_boundary": "The staging home and anonymous account form rendered and the public frontend bundle matched its manifest. No signed-in web/native account, progression, wallet or player-data comparison was made; the owner\u2019s continuation timeout remains unreproduced and the backend boot SHA is unverified.",
+      "evidence_boundary": "The staging home and anonymous account form rendered and the public frontend bundle matched its manifest. No signed-in web/native account, progression, wallet or player-data comparison was made; the owner\u2019s continuation timeout remains unreproduced and the backend boot SHA is unverified. 2026-10-13 superseding context: staging HTTPS reachable/co-located; frontend still8167/f485. Real authenticated browser acceptance pending human handoff, candidate deployment and precise account-reentry spinner diagnosis.",
       "remaining_whole_condition": "Cross-client signed-in account, progression, wallet and player-data agreement has no verified run using shared staging identities and Core.",
       "next_owner_action": "Main: pin staging API/Core identity and resolve the reported continuation issue with a designated actor. Following private human credential/OTP handoff, run the signed-in staging journey on web and native clients with permitted match/progression and Core-settled wallet changes. Compare the same actor and authoritative result across clients; keep production dormant and V4.1 unchanged."
     },
@@ -4329,9 +4405,11 @@
         "docs/p21-web/ROUTES-AND-FLOWS.md",
         "apps/web/data.js",
         "apps/web/app.js",
-        "docs/p21-web/evidence/20261012-staging-review/STAGING-READONLY-20261012.md"
+        "docs/p21-web/evidence/20261012-staging-review/STAGING-READONLY-20261012.md",
+        "docs/p21-web/evidence/20261013-staging-browser/https-readonly-probes.json",
+        "docs/p21-web/REALTIME-CONTRACT-AND-INTEGRATION-GAPS-20261013.md"
       ],
-      "evidence_boundary": "The corrected staging frontend is verified (140/140 public file hashes) and anonymous pages loaded; no backend/API boot identity, authenticated shared-account journey, native parity or production URL was verified.",
+      "evidence_boundary": "The corrected staging frontend is verified (140/140 public file hashes) and anonymous pages loaded; no backend/API boot identity, authenticated shared-account journey, native parity or production URL was verified. 2026-10-13 superseding context: staging HTTPS reachable/co-located; frontend still8167/f485. Real authenticated browser acceptance pending human handoff, candidate deployment and precise account-reentry spinner diagnosis.",
       "remaining_whole_condition": "No serving V5 staging shared-account smoke is verified; a production URL smoke also requires a separately authorized deployment and cannot be inferred from staging.",
       "next_owner_action": "Main: first pin backend/API identity and complete the full shared-account journey on serving V5 staging with dedicated test actors and Core as sole authority, including real staged mutations and cross-client comparison after supported private credential/OTP handoff. Keep production dormant and V4.1 unchanged; run any production URL smoke only after separate exact-build deployment approval."
     },

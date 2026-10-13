@@ -94,3 +94,14 @@ node --test --test-force-exit tests/v5-p19-real-services.test.js
 ```
 These also run in the `V5 P19 disposable load and chaos foundations` CI lane (now targeted at V5.1).
 Realistic-history sizing, delivered provider alerts and production headroom remain open (R09/R19/R32).
+
+## Failover + disaster-recovery suites (real disposable PG16)
+
+| Suite | Result |
+| --- | --- |
+| `v5-p16-*` (Core process redundancy, rolling drain, failover) | **22/22 pass**, 0 skipped |
+| `v5-p15-*` (archive manifest, backup CLI, data integrity, drill readiness, R2 contract, recovery policy, sealed archive) | **20/20 pass**, 0 skipped |
+
+The two-cluster `v5-p15-real-roundtrip` encrypted backup+restore drill runs in the
+`V5 P15 isolated backup and recovery` CI lane (now targeted at V5.1 — **success**). Provider R2/PITR
+retrieval and the deployed RPO/RTO remain open (R08).

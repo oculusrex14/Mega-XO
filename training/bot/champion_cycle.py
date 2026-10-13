@@ -638,10 +638,11 @@ class Operator:
         explicit = self.config.get("producerModel")
         if explicit:
             return explicit
-        # A stable pointer to the latest promoted champion's export, written by _archive_generation,
-        # so generation N+1 self-plays the model that was actually archived (not a run-id guess).
-        cur = self.root / "current-champion.onnx"
-        if cur.exists():
+        # A stable pointer to the latest champion's export DIRECTORY (selfplay.cjs expects a dir
+        # containing candidate.onnx), written by _archive_generation, so generation N+1 self-plays the
+        # model that was actually archived (not a run-id guess).
+        cur = self.root / "current-champion"
+        if cur.is_dir():
             return cur
         ptr = self.root / "research-champion.json"
         if ptr.exists():
@@ -685,11 +686,13 @@ class Operator:
         generation starts clean while the previous champion artifact remains available as the producer."""
         dest = self.root / f"gen-{generation}"
         dest.mkdir(parents=True, exist_ok=True)
-        # Publish a stable champion pointer for the next generation's self-play producer.
-        export = self._export_dir() / "candidate.onnx"
-        if export.exists():
-            cur = self.root / "current-champion.onnx"
-            shutil.copyfile(export, cur)
+        # Publish a stable champion export DIRECTORY for the next generation's self-play producer.
+        export = self._export_dir()
+        if (export / "candidate.onnx").exists():
+            cur = self.root / "current-champion"
+            if cur.exists():
+                shutil.rmtree(cur)
+            shutil.copytree(export, cur)
         for name in ("data", "candidate", "export", "league.json", "interim"):
             src = self.root / name
             if src.exists():

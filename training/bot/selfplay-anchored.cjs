@@ -31,7 +31,8 @@ async function main() {
     simulations: Number(arg('--simulations', '48')), budgetMs: Number(arg('--budget-ms', '300')),
     parentModelSha256: arg('--parent-sha', null),
   });
-  // 2. concatenate anchor ++ self-play into the shard, recomputing the manifest hash over the joined bytes
+  // 2. concatenate anchor ++ self-play into the shard, streaming line by line (the anchor may be >1 GB)
+  //    and recomputing the manifest hash over the joined bytes.
   fs.mkdirSync(path.dirname(output), { recursive: true });
   const hash = crypto.createHash('sha256');
   const counts = { train: 0, validation: 0, holdout: 0, qualification: 0, external: 0 };
@@ -39,12 +40,18 @@ async function main() {
   const fd = fs.openSync(output, 'w');
   try {
     for (const src of [anchor, tmp]) {
-      for (const line of fs.readFileSync(src, 'utf8').split('\n')) {
-        if (!line.trim()) continue;
-        fs.writeSync(fd, line + '\n'); hash.update(line + '\n'); records++;
-        const r = JSON.parse(line);
-        const s = r.split || r.externalSplit || 'external';
-        if (counts[s] !== undefined) counts[s]++;
+      const data = fs.readFileSync(src);           // Buffer, not a string (avoids the length limit)
+      let start = 0;
+      for (let i = 0; i <= data.length; i++) {
+        if (i === data.length || data[i] === 10) {
+          if (i > start) {
+            const line = data.subarray(start, i);
+            fs.writeSync(fd, line); fs.writeSync(fd, '\n'); hash.update(line); hash.update('\n'); records++;
+            const s = JSON.parse(line.toString()).split || JSON.parse(line.toString()).externalSplit || 'external';
+            if (counts[s] !== undefined) counts[s]++;
+          }
+          start = i + 1;
+        }
       }
     }
   } finally { fs.closeSync(fd); }

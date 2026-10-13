@@ -128,7 +128,13 @@ async function sealStream(input,publicPem,outputFile,context){
    recipientSpkiSha256:JSON.parse(header.toString('utf8')).recipientSpkiSha256,
    archiveFormat:'mega-v5-p15-sealed-archive/v1'};
  }catch(e){
-  if(out)out.destroy();
+  // Tear the writer down and WAIT for it to fully close before unlinking: a WriteStream whose
+  // async `open` has not yet completed still creates the file after destroy(), so a synchronous
+  // unlink taken before `close` can be undone by that pending open, leaving the partial ciphertext
+  // behind (observed on the Linux CI runner). Awaiting `close` makes the removal deterministic.
+  if(out){
+   await new Promise((resolve)=>{ out.once('close',resolve); out.destroy(); });
+  }
   try{fs.unlinkSync(outputFile);}catch{}
   if(e.message&&e.message.startsWith('P15_SEAL_REFUSED:'))throw e;
   refuse('stream encryption failed (partial archive destroyed)');

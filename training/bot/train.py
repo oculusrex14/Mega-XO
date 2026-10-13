@@ -9,7 +9,7 @@ def load_records(path: Path, value_source: str = 'all') -> tuple[dict, dict[str,
     manifest = json.loads(Path(str(path) + '.manifest.json').read_text())
     if hashlib.sha256(path.read_bytes()).hexdigest() != manifest['sha256']:
         raise ValueError('DATASET_HASH_MISMATCH')
-    splits = {name: [] for name in ('train', 'validation', 'holdout')}
+    splits = {name: [] for name in ('train', 'validation', 'holdout', 'qualification')}
     games, families, sources = {}, {}, {}
     filtered = 0
     for line in path.open():
@@ -53,6 +53,11 @@ def load_records(path: Path, value_source: str = 'all') -> tuple[dict, dict[str,
     manifest['mixedValueTargets'] = len(sources) > 1
     manifest['valueTargetSourceFilter'] = value_source
     manifest['valueTargetRowsFilteredOut'] = filtered
+    # The reserved qualification split is NEVER trained or tuned on. It is surfaced separately so the
+    # training report always shows how many genuinely-untouched families exist for final qualification.
+    manifest['qualificationRows'] = len(splits['qualification'])
+    manifest['qualificationGames'] = len({r['gameId'] for r in splits['qualification']})
+    manifest['qualificationFamilies'] = len({r['openingFamily'] for r in splits['qualification']})
     return manifest, splits
 
 def tensors(rows: list, device: torch.device) -> tuple:

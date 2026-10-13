@@ -21,7 +21,12 @@ const fs=require('node:fs'),crypto=require('node:crypto'),path=require('node:pat
 const G=require('../../src/game.js'),C=require('../../src/bot/contracts.js'),E=require('../../src/bot/encoding.js'),S=require('../../src/bot/search.js');
 const digest=value=>crypto.createHash('sha256').update(value).digest('hex');
 function family(moves){return Array.from({length:8},(_,s)=>moves.map(m=>{const t=E.mapMove(m,s);return t.b*9+t.c;}).join(',')).sort()[0];}
-function splitFor(f){const n=parseInt(digest('split-v1:'+f).slice(0,8),16)%100;return n<80?'train':n<90?'validation':'holdout';}
+/* Reserved qualification split: the first `reserve` percent of the family-hash space is NEVER trained
+ * on or tuned against, so a qualification dataset built from those families is genuinely untouched.
+ * Default 0 keeps historical datasets reproducible; a run that wants a held-out qualification split
+ * passes an explicit reserve and the manifest records it, so validation can reproduce the exact split.
+ * A reserved family is disjoint from every other split by construction. */
+function splitFor(f,reserve=0){const n=parseInt(digest('split-v1:'+f).slice(0,8),16)%100;return n<reserve?'qualification':n<80?'train':n<90?'validation':'holdout';}
 
 /* The frozen teacher roster. `null` = the UCT teacher whose visit counts label the position. */
 const DEFAULT_ROSTER = Object.freeze(['Expert', 'Hard', 'Expert', 'Medium', null]);
@@ -98,11 +103,11 @@ function finishMove({ state, seed, rng, analysis, labelSource, targetBudget, ros
   return { row, move, hardState };
 }
 
-function game({ seed, simulations = 32, openingPlies = 4, neuralEngine = null, teacher = 'Expert', targetSimulations = null, roster = DEFAULT_ROSTER, exploreRate = 0.2, labelSource = 'search' } = {}) {
+function game({ seed, simulations = 32, openingPlies = 4, neuralEngine = null, teacher = 'Expert', targetSimulations = null, roster = DEFAULT_ROSTER, exploreRate = 0.2, labelSource = 'search', qualificationReserve = 0 } = {}) {
   const rng = C.seeded(seed);
   let state = G.create(seed % 2 ? 'O' : 'X');
   for (let i = 0; i < openingPlies; i++) { const moves = G.legal(state); state = G.apply(state, moves[Math.floor(rng() * moves.length)]); }
-  const opening = state.moves.map(({ b, c }) => ({ b, c })), openingFamily = family(opening), split = splitFor(openingFamily);
+  const opening = state.moves.map(({ b, c }) => ({ b, c })), openingFamily = family(opening), split = splitFor(openingFamily, qualificationReserve);
   const gameId = 'bootstrap-' + seed + '-' + openingFamily, rows = [];
   const targetBudget = targetSimulations === null ? simulations : targetSimulations;
   if (labelSource !== 'search' && labelSource !== 'expert') throw Error('INVALID_LABEL_SOURCE');
@@ -131,11 +136,11 @@ function game({ seed, simulations = 32, openingPlies = 4, neuralEngine = null, t
  * `finishMove`), so a two-cycle self-play proof consumes the previous cycle's frozen artifact. */
 async function gameAsync(options = {}) {
   const { seed, simulations = 32, openingPlies = 4, neuralEngine = null, targetSimulations = null,
-    roster = DEFAULT_ROSTER, exploreRate = 0.2, labelSource = 'search' } = options;
+    roster = DEFAULT_ROSTER, exploreRate = 0.2, labelSource = 'search', qualificationReserve = 0 } = options;
   const rng = C.seeded(seed);
   let state = G.create(seed % 2 ? 'O' : 'X');
   for (let i = 0; i < openingPlies; i++) { const moves = G.legal(state); state = G.apply(state, moves[Math.floor(rng() * moves.length)]); }
-  const opening = state.moves.map(({ b, c }) => ({ b, c })), openingFamily = family(opening), split = splitFor(openingFamily);
+  const opening = state.moves.map(({ b, c }) => ({ b, c })), openingFamily = family(opening), split = splitFor(openingFamily, qualificationReserve);
   const gameId = 'bootstrap-' + seed + '-' + openingFamily, rows = [];
   const targetBudget = targetSimulations === null ? simulations : targetSimulations;
   if (labelSource !== 'search' && labelSource !== 'expert') throw Error('INVALID_LABEL_SOURCE');
@@ -155,7 +160,7 @@ async function gameAsync(options = {}) {
 }
 
 function generate({ output, games = 16, seed = 1000, simulations = 32, trainingStatus = 'BOOTSTRAP_ONLY', neuralEngine = null,
-  teacher = 'Expert', targetSimulations = null, roster = DEFAULT_ROSTER, exploreRate = 0.2, profile = null, labelSource = 'search' } = {}) {
+  teacher = 'Expert', targetSimulations = null, roster = DEFAULT_ROSTER, exploreRate = 0.2, profile = null, labelSource = 'search', qualificationReserve = 0 } = {}) {
   if (!output || !Number.isInteger(games) || games < 1 || games > 100000 || !Number.isInteger(simulations) || simulations < 1 || simulations > 50000) throw Error('INVALID_GENERATION_OPTIONS');
   if (typeof exploreRate !== 'number' || exploreRate < 0 || exploreRate > 1) throw Error('INVALID_EXPLORE_RATE');
   if (!Array.isArray(roster) || roster.length === 0) throw Error('INVALID_ROSTER');
@@ -167,18 +172,18 @@ function generate({ output, games = 16, seed = 1000, simulations = 32, trainingS
   // silently overwritten (O_EXCL semantics preserved by the pre-check + atomic rename).
   if (fs.existsSync(output)) throw Error('OUTPUT_EXISTS');
   const tmpOutput = output + '.partial';
-  const fd = fs.openSync(tmpOutput, 'w'), hash = crypto.createHash('sha256'), counts = { train: 0, validation: 0, holdout: 0 }, ids = [];
+  const fd = fs.openSync(tmpOutput, 'w'), hash = crypto.createHash('sha256'), counts = { train: 0, validation: 0, holdout: 0, qualification: 0 }, ids = [];
   let records = 0, hardStates = 0;
   try {
     for (let i = 0; i < games; i++) {
-      const result = game({ seed: seed + i, simulations, neuralEngine, teacher, targetSimulations, roster, exploreRate, labelSource });
+      const result = game({ seed: seed + i, simulations, neuralEngine, teacher, targetSimulations, roster, exploreRate, labelSource, qualificationReserve });
       counts[result.split]++; ids.push({ gameId: result.gameId, openingFamily: result.openingFamily, split: result.split });
       for (const row of result.rows) { if (row.hardState) hardStates++; const text = JSON.stringify(row) + '\n'; fs.writeSync(fd, text); hash.update(text); records++; }
     }
   } finally { fs.closeSync(fd); }
   fs.renameSync(tmpOutput, output);
   const manifest = { schemaVersion: 1, encodingVersion: E.VERSION, rulesSha256: digest(fs.readFileSync('src/game.js')), searchSha256: digest(fs.readFileSync('src/bot/search.js')),
-    records, games, seed, simulations, counts, gameIndex: ids, sha256: hash.digest('hex'), trainingStatus,
+    records, games, seed, simulations, qualificationReserve, counts, gameIndex: ids, sha256: hash.digest('hex'), trainingStatus,
     perspective: 'value target is terminal outcome for side to move; draw=0',
     targetPolicy: labelSource === 'expert' ? 'behaviour cloning of the SAME improvedExpert (S.choose UCT) the league benchmarks against, move one-hot' : 'UCT visits at every retained position; mixed behavior creates off-policy coverage',
     splitPolicy: 'whole games grouped by D4-normalized four-ply opening; no family crosses splits',
@@ -187,7 +192,7 @@ function generate({ output, games = 16, seed = 1000, simulations = 32, trainingS
   return manifest;
 }
 async function generateAsync({ output, games = 16, seed = 1000, simulations = 32, trainingStatus = 'BOOTSTRAP_ONLY', neuralEngine = null,
-  teacher = 'Expert', targetSimulations = null, roster = DEFAULT_ROSTER, exploreRate = 0.2, profile = null, labelSource = 'search' } = {}) {
+  teacher = 'Expert', targetSimulations = null, roster = DEFAULT_ROSTER, exploreRate = 0.2, profile = null, labelSource = 'search', qualificationReserve = 0 } = {}) {
   if (!output || !Number.isInteger(games) || games < 1 || games > 100000 || !Number.isInteger(simulations) || simulations < 1 || simulations > 50000) throw Error('INVALID_GENERATION_OPTIONS');
   if (typeof exploreRate !== 'number' || exploreRate < 0 || exploreRate > 1) throw Error('INVALID_EXPLORE_RATE');
   if (!Array.isArray(roster) || roster.length === 0) throw Error('INVALID_ROSTER');
@@ -196,18 +201,18 @@ async function generateAsync({ output, games = 16, seed = 1000, simulations = 32
   fs.mkdirSync(path.dirname(output), { recursive: true });
   if (fs.existsSync(output)) throw Error('OUTPUT_EXISTS');
   const tmpOutput = output + '.partial';
-  const fd = fs.openSync(tmpOutput, 'w'), hash = crypto.createHash('sha256'), counts = { train: 0, validation: 0, holdout: 0 }, ids = [];
+  const fd = fs.openSync(tmpOutput, 'w'), hash = crypto.createHash('sha256'), counts = { train: 0, validation: 0, holdout: 0, qualification: 0 }, ids = [];
   let records = 0, hardStates = 0;
   try {
     for (let i = 0; i < games; i++) {
-      const result = await gameAsync({ seed: seed + i, simulations, neuralEngine, teacher, targetSimulations, roster, exploreRate, labelSource });
+      const result = await gameAsync({ seed: seed + i, simulations, neuralEngine, teacher, targetSimulations, roster, exploreRate, labelSource, qualificationReserve });
       counts[result.split]++; ids.push({ gameId: result.gameId, openingFamily: result.openingFamily, split: result.split });
       for (const row of result.rows) { if (row.hardState) hardStates++; const text = JSON.stringify(row) + '\n'; fs.writeSync(fd, text); hash.update(text); records++; }
     }
   } finally { fs.closeSync(fd); }
   fs.renameSync(tmpOutput, output);
   const manifest = { schemaVersion: 1, encodingVersion: E.VERSION, rulesSha256: digest(fs.readFileSync('src/game.js')), searchSha256: digest(fs.readFileSync('src/bot/search.js')),
-    records, games, seed, simulations, counts, gameIndex: ids, sha256: hash.digest('hex'), trainingStatus,
+    records, games, seed, simulations, qualificationReserve, counts, gameIndex: ids, sha256: hash.digest('hex'), trainingStatus,
     perspective: 'value target is terminal outcome for side to move; draw=0',
     targetPolicy: labelSource === 'expert' ? 'behaviour cloning of the SAME improvedExpert (S.choose UCT) the league benchmarks against, move one-hot' : 'UCT visits at every retained position; mixed behavior creates off-policy coverage',
     splitPolicy: 'whole games grouped by D4-normalized four-ply opening; no family crosses splits',

@@ -25,7 +25,11 @@ const S = require('../../src/bot/search.js');
 
 const digest = (value) => crypto.createHash('sha256').update(value).digest('hex');
 function family(moves) { return Array.from({ length: 8 }, (_, s) => moves.map((m) => { const t = E.mapMove(m, s); return t.b * 9 + t.c; }).join(',')).sort()[0]; }
-function splitFor(f) { const n = parseInt(digest('split-v1:' + f).slice(0, 8), 16) % 100; return n < 80 ? 'train' : n < 90 ? 'validation' : 'holdout'; }
+/* Must match generate.cjs exactly (same split-v1 hash + qualification reserve) so a family lands in the
+ * same split no matter which generator produced the row. Default 0 keeps historical datasets
+ * reproducible; a run that wants a reserved qualification split passes --reserve and the manifest
+ * records it so validation can reproduce the exact split. */
+function splitFor(f, reserve = 0) { const n = parseInt(digest('split-v1:' + f).slice(0, 8), 16) % 100; return n < reserve ? 'qualification' : n < 80 ? 'train' : n < 90 ? 'validation' : 'holdout'; }
 
 /* Normalise an alpha-beta root score to a bounded value target. The search returns board.evaluate units
  * where +-1e6 is a forced win/loss; tanh gives a smooth, centred, learnable target. SCALE controls how
@@ -55,15 +59,15 @@ function searchTarget(state, { seed, budgetMs, simulations, maxDepth, nodeBudget
   };
 }
 
-function game({ seed, simulations = 128, budgetMs = 300, openingPlies = 4, roster = ['Expert', 'Hard', 'Expert', 'Medium', null], exploreRate = 0.15, depth = null }) {
+function game({ seed, simulations = 128, budgetMs = 300, openingPlies = 4, roster = ['Expert', 'Hard', 'Expert', 'Medium', null], exploreRate = 0.15, depth = null, reserve = 0, nodeBudget = null }) {
   const rng = C.seeded(seed);
   let state = G.create(seed % 2 ? 'O' : 'X');
   for (let i = 0; i < openingPlies; i++) { const moves = G.legal(state); state = G.apply(state, moves[Math.floor(rng() * moves.length)]); }
-  const opening = state.moves.map(({ b, c }) => ({ b, c })), openingFamily = family(opening), split = splitFor(openingFamily);
+  const opening = state.moves.map(({ b, c }) => ({ b, c })), openingFamily = family(opening), split = splitFor(openingFamily, reserve);
   const gameId = 'searchlabel-' + seed + '-' + openingFamily, rows = [];
   let hardStates = 0, minDepth = Infinity, maxNodes = 0, minNodes = Infinity, forcedWinStates = 0, completedSims = 0;
   while (!state.winner) {
-    const target = searchTarget(state, { seed: Math.floor(rng() * 4294967296), budgetMs, simulations, maxDepth: depth });
+    const target = searchTarget(state, { seed: Math.floor(rng() * 4294967296), budgetMs, simulations, maxDepth: depth, nodeBudget });
     const encoding = E.encode(state);
     const valueTarget = valueFromScore(target.rootScore);
     const weak = G.choose(state, 'Easy', C.seeded(seed + state.moves.length));
@@ -101,18 +105,19 @@ function game({ seed, simulations = 128, budgetMs = 300, openingPlies = 4, roste
       minNodes: minNodes === Infinity ? null : minNodes, maxNodes, forcedWinStates, meanSearchVisits: rows.length ? completedSims / rows.length : 0 } };
 }
 
-function generate({ output, games = 16, seed = 8000, simulations = 128, budgetMs = 300, depth = null, trainingStatus = 'STRONG_SEARCH_LABELS', profile = null }) {
+function generate({ output, games = 16, seed = 8000, simulations = 128, budgetMs = 300, depth = null, reserve = 0, nodeBudget = null, trainingStatus = 'STRONG_SEARCH_LABELS', profile = null }) {
   if (!output || !Number.isInteger(games) || games < 1 || games > 100000) throw Error('INVALID_GENERATION_OPTIONS');
   if (depth !== null && (!Number.isInteger(depth) || depth < 1 || depth > 20)) throw Error('INVALID_DEPTH');
+  if (!Number.isInteger(reserve) || reserve < 0 || reserve > 50) throw Error('INVALID_RESERVE');
   fs.mkdirSync(path.dirname(output), { recursive: true });
   if (fs.existsSync(output)) throw Error('OUTPUT_EXISTS');
   const tmp = output + '.partial';
-  const fd = fs.openSync(tmp, 'w'), hash = crypto.createHash('sha256'), counts = { train: 0, validation: 0, holdout: 0 }, ids = [];
+  const fd = fs.openSync(tmp, 'w'), hash = crypto.createHash('sha256'), counts = { train: 0, validation: 0, holdout: 0, qualification: 0 }, ids = [];
   let records = 0, hardStates = 0, forcedWinStates = 0, depthSamples = [], minCompletedDepth = null, maxCompletedDepth = null;
   try {
     for (let i = 0; i < games; i++) {
       // The requested depth MUST reach the search, or a "depth-16" dataset is silently depth-12.
-      const result = game({ seed: seed + i, simulations, budgetMs, depth });
+      const result = game({ seed: seed + i, simulations, budgetMs, depth, reserve, nodeBudget });
       counts[result.split]++; ids.push({ gameId: result.gameId, openingFamily: result.openingFamily, split: result.split });
       const q = result.searchQuality;
       if (q.minCompletedDepth !== null) minCompletedDepth = minCompletedDepth === null ? q.minCompletedDepth : Math.min(minCompletedDepth, q.minCompletedDepth);
@@ -124,7 +129,7 @@ function generate({ output, games = 16, seed = 8000, simulations = 128, budgetMs
   fs.renameSync(tmp, output);
   const manifest = { schemaVersion: 1, encodingVersion: E.VERSION, rulesSha256: digest(fs.readFileSync(path.join(__dirname, '..', '..', 'src', 'game.js'))),
     searchSha256: digest(fs.readFileSync(path.join(__dirname, '..', '..', 'src', 'bot', 'search.js'))),
-    records, games, seed, simulations, budgetMs, requestedDepth: depth, counts, gameIndex: ids, sha256: hash.digest('hex'), trainingStatus, hardStates,
+    records, games, seed, simulations, budgetMs, requestedDepth: depth, qualificationReserve: reserve, counts, gameIndex: ids, sha256: hash.digest('hex'), trainingStatus, hardStates,
     // ACTUAL search realisation (a requested depth is not a claim the search reached it).
     searchQuality: { requestedDepth: depth, minCompletedDepth, maxCompletedDepth, forcedWinStates, perGameMaxCompletedDepth: depthSamples },
     splitPolicy: 'whole games grouped by D4-normalized four-ply opening; no family crosses splits',
@@ -136,6 +141,6 @@ function generate({ output, games = 16, seed = 8000, simulations = 128, budgetMs
 
 module.exports = { family, splitFor, game, generate, valueFromScore };
 if (require.main === module) {
-  const [output = '.artifacts/v51/search-labels.jsonl', games = '16', seed = '8000', simulations = '128', budgetMs = '300', depth = ''] = process.argv.slice(2);
-  console.log(JSON.stringify(generate({ output, games: Number(games), seed: Number(seed), simulations: Number(simulations), budgetMs: Number(budgetMs), depth: depth ? Number(depth) : null }), null, 2));
+  const [output = '.artifacts/v51/search-labels.jsonl', games = '16', seed = '8000', simulations = '128', budgetMs = '300', depth = '', reserve = '', nodeBudget = ''] = process.argv.slice(2);
+  console.log(JSON.stringify(generate({ output, games: Number(games), seed: Number(seed), simulations: Number(simulations), budgetMs: Number(budgetMs), depth: depth ? Number(depth) : null, reserve: reserve ? Number(reserve) : 0, nodeBudget: nodeBudget ? Number(nodeBudget) : null }), null, 2));
 }

@@ -10,7 +10,7 @@ const game = require('../src/game.js');
 // Execute the actual controller and its renderer, download, SEO, board and
 // read-model dependencies in browser module order inside an isolated DOM
 // harness. No provider connection, session, server mutation or browser is used.
-const sources = ['ui', 'downloads', 'pages', 'board', 'site', 'seo', 'data', 'app'].map(name => ({ name, text: fs.readFileSync(path.join(__dirname, `../apps/web/${name}.js`), 'utf8') }));
+const sources = ['ui', 'downloads', 'pages', 'board', 'site', 'seo', 'data', 'friends', 'app'].map(name => ({ name, text: fs.readFileSync(path.join(__dirname, `../apps/web/${name}.js`), 'utf8') }));
 const flush = () => new Promise(resolve => setImmediate(resolve));
 const json = value => JSON.parse(JSON.stringify(value));
 function deferred() { let resolve, reject; const promise = new Promise((yes, no) => { resolve = yes; reject = no; }); return { promise, resolve, reject }; }

@@ -168,7 +168,6 @@ async function main() {
   // code unverifiable and made a code unverifiable after a restart. The secret lives in the staging
   // secrets directory (0600), is never printed, and is identical for every staging process.
   const stagingOtpSecret = loadStagingOtpSecret(OTP_SECRET_PATH);
-  const accounts = await createAccountService(apiPool, { deletionPolicy: { enabled: true, policyVersion: 'v51-staging' }, otpSecret: stagingOtpSecret });
   const keyFile = path.join(path.dirname(CREDENTIALS_PATH), 'keys.sealed.json');
   if (!fs.existsSync(keyFile)) throw new Error('EXISTING_SIGNING_KEY_CUSTODY_REQUIRED');
   const activeKeys = await apiPool.query("SELECT kid FROM identity.signing_keys WHERE environment = 'stg' AND state = 'active'");
@@ -182,6 +181,16 @@ async function main() {
   // HTTP commands and socket commands share Core's existing post-commit publisher.
   // The same caller-owned adapter wakes realtime readers after the durable commit.
   const core = await createCoreService(corePool, { ephemera });
+  // A real email signup commits the actor + a durable `account.provision` outbox row, but the WALLET
+  // is Core-owned: without this callback the new actor has no `economy.wallets` row, so the first
+  // queue/accept/convert fails `ACCOUNT_REQUIRED`. The production worker drains that outbox; this
+  // isolated origin wires the SAME `core.provisionActor` effect after commit (at-least-once; the
+  // durable outbox row remains the correctness contract), so a real signup can actually play.
+  const accounts = await createAccountService(apiPool, {
+    deletionPolicy: { enabled: true, policyVersion: 'v51-staging' }, otpSecret: stagingOtpSecret,
+    provisionActor: async (actor) => { await core.provisionActor(actor); },
+    cancelSocialOffers: async (actor, target) => { await core.cancelSocialOffers(actor, target); },
+  });
   const ticketIssuer = await createTicketIssuer(apiPool, { environment: 'stg', audience: 'mega-core' });
   const queue = await createQueueService({ ephemera, core, pool: corePool });
   const GATEWAY_SECRET = crypto.randomBytes(32).toString('hex');

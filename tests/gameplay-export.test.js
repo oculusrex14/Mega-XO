@@ -38,3 +38,21 @@ test('unknown/test population excluded, corruption fails closed, and revoked exp
 test('aborted preparation revokes its receipt and retains no scratch/plaintext/export file',async t=>{
  const o=await setup(t),controller=new AbortController();controller.abort();const db=fake(rows(1));await assert.rejects(X.exportDataset(db,{...o,signal:controller.signal}),/CAPTURE_EXPORT_ABORTED/);assert.deepEqual(await fs.readdir(o.directory),[]);assert.ok([...db.runs.values()].every(r=>r.state==='revoked'));
 });
+
+test('revoking privacy eligibility mid-stream prevents even the next record from reaching a reader',async t=>{
+ const options=await setup(t),db=fake(rows(30)),out=await X.exportDataset(db,options);
+ const it=X.readDataset(db,{...options,...out})[Symbol.asyncIterator]();
+ const first=await it.next();assert.equal(first.done,false);
+ db.runs.get(out.runId).state='revoked';
+ await assert.rejects(it.next(),/CAPTURE_EXPORT_REVOKED/);
+ await it.return?.();
+});
+
+test('privacy epoch changes during streaming immediately fence further records',async t=>{
+ const options=await setup(t),db=fake(rows(30)),out=await X.exportDataset(db,options);
+ const it=X.readDataset(db,{...options,...out})[Symbol.asyncIterator]();
+ assert.equal((await it.next()).done,false);
+ db.runs.get(out.runId).privacyEpoch=1;
+ await assert.rejects(it.next(),/CAPTURE_EXPORT_REVOKED/);
+ await it.return?.();
+});

@@ -79,7 +79,11 @@ async function *readDataset(db,{file,runId,key,keyId,privacyEpoch}={}){
  if(!UUID.test(runId)||!Number.isSafeInteger(privacyEpoch))fail('CAPTURE_EXPORT_CONFIG');
  async function eligible(){const r=(await db.query('SELECT learning.export_status($1) AS value',[runId])).rows[0]?.value;
   if(!r||r.state!=='ready'||Number(r.privacyEpoch)!==privacyEpoch||!r.manifest)fail('CAPTURE_EXPORT_REVOKED');return r.manifest;}
- const m=await eligible();let n=0;for await(const r of readRecords(file,key,{...m,keyId,kind:'gameplay'})){if(n++%100===0)await eligible();yield r;}await eligible();
+ const m=await eligible();
+// Deletion/choice revocation must fence the NEXT record, not allow up to 99 more
+// records from an already invalidated export to reach an offline training reader.
+for await(const r of readRecords(file,key,{...m,keyId,kind:'gameplay'})){await eligible();yield r;}
+await eligible();
 }
 async function purgeRevoked(db,directory){
  const dir=await privateDirectory(directory);let purged=0;

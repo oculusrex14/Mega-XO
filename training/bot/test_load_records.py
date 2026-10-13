@@ -73,3 +73,36 @@ class LoadRecordsTests(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+class ExternalRowTests(unittest.TestCase):
+    """External (utttai-converted) rows have no game outcome; the loader must accept a declared
+    non-terminal value source and REFUSE a row that mislabels itself as terminal."""
+
+    def _write(self, rows):
+        import hashlib
+        d = Path(tempfile.mkdtemp()); path = d / 'd.jsonl'
+        path.write_text(''.join(json.dumps(r) + '\n' for r in rows))
+        (d / 'd.jsonl.manifest.json').write_text(json.dumps({'sha256': hashlib.sha256(path.read_bytes()).hexdigest(), 'records': len(rows), 'games': len(rows)}))
+        return path
+
+    def _ext(self, split):
+        return {'schemaVersion': 1, 'encodingVersion': 'planes8-v1', 'split': split, 'external': True,
+                'planes': [0] * 648, 'legalMask': [1] * 81, 'visitTarget': [1 / 81] * 81,
+                'valueTarget': 0.3, 'valueTargetSource': 'utttai-nmcts-root-value',
+                'terminalOutcome': None, 'terminalValue': None}
+
+    def test_external_rows_load_and_count(self):
+        rows = [self._ext('external'), self._ext('external'),
+                _row('g1', 'f1', 'validation', 'terminal-outcome', 1.0, 'X', 'X'),
+                _row('g2', 'f2', 'train', 'terminal-outcome', 1.0, 'X', 'X')]
+        manifest, splits = load_records(self._write(rows))
+        self.assertEqual(manifest['valueTargetSources'], {'terminal-outcome': 2, 'utttai-nmcts-root-value': 2})
+        self.assertEqual(len(splits['external']), 2)
+
+    def test_external_row_cannot_masquerade_as_terminal(self):
+        bad = self._ext('external'); bad['terminalValue'] = 1  # claims a terminal value it cannot have
+        good = [_row('g1', 'f1', 'validation', 'terminal-outcome', 1.0, 'X', 'X'),
+                _row('g2', 'f2', 'train', 'terminal-outcome', 1.0, 'X', 'X')]
+        with self.assertRaises(ValueError):
+            load_records(self._write([bad] + good))

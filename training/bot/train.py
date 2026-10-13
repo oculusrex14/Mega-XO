@@ -9,18 +9,23 @@ def load_records(path: Path, value_source: str = 'all') -> tuple[dict, dict[str,
     manifest = json.loads(Path(str(path) + '.manifest.json').read_text())
     if hashlib.sha256(path.read_bytes()).hexdigest() != manifest['sha256']:
         raise ValueError('DATASET_HASH_MISMATCH')
-    splits = {name: [] for name in ('train', 'validation', 'holdout', 'qualification')}
+    splits = {name: [] for name in ('train', 'validation', 'holdout', 'qualification', 'external')}
     games, families, sources = {}, {}, {}
     filtered = 0
     for line in path.open():
         row = json.loads(line); split = row['split']
-        if split not in splits or row['encodingVersion'] != ENCODING_VERSION or row['terminalOutcome'] not in ('X', 'O', 'DRAW'):
+        external = bool(row.get('external'))  # e.g. converted utttai rows carry no game-level fields
+        if split not in splits or row['encodingVersion'] != ENCODING_VERSION:
+            raise ValueError('INVALID_TRAINING_RECORD')
+        if not external and row['terminalOutcome'] not in ('X', 'O', 'DRAW'):
             raise ValueError('INVALID_TRAINING_RECORD')
         # Leakage tables are built from EVERY row (even filtered ones) so a source filter can never
-        # hide a train/validation family overlap.
-        for table, key in ((games, row['gameId']), (families, row['openingFamily'])):
-            if key in table and table[key] != split: raise ValueError('SPLIT_LEAKAGE')
-            table[key] = split
+        # hide a train/validation family overlap. External-corpus rows have no gameId/openingFamily, so
+        # they are deduplicated by canonical position instead and never join the family tables.
+        if not external:
+            for table, key in ((games, row['gameId']), (families, row['openingFamily'])):
+                if key in table and table[key] != split: raise ValueError('SPLIT_LEAKAGE')
+                table[key] = split
         if len(row['planes']) != 648 or len(row['legalMask']) != 81 or len(row['visitTarget']) != 81:
             raise ValueError('INVALID_TENSOR_SHAPE')
         if any(x not in (0, 1) for x in row['planes'] + row['legalMask']) or not any(row['legalMask']):
@@ -28,19 +33,26 @@ def load_records(path: Path, value_source: str = 'all') -> tuple[dict, dict[str,
         policy = row['visitTarget']
         if any(not isinstance(p, (int, float)) or not 0 <= p <= 1 or (p and not m) for p, m in zip(policy, row['legalMask'])) or abs(sum(policy)-1) > 1e-5:
             raise ValueError('INVALID_VISIT_DISTRIBUTION')
-        expected = 0 if row['terminalOutcome'] == 'DRAW' else 1 if row['terminalOutcome'] == row['player'] else -1
+        source = row.get('valueTargetSource') or 'terminal-outcome'
         # SEPARATE LABEL TARGET TYPES. A row's `valueTarget` is only comparable to another row's when
         # both declare the SAME source. A "terminal-outcome" target is the actual game result (a noisy
-        # but honest label); a "deep-search-root-score" target is a bounded look-ahead evaluation. They
-        # must never be silently averaged together as if equivalent. Canonicalise the source, count each
-        # kind, and record the mix on the manifest so it is always visible in the training report.
-        source = row.get('valueTargetSource') or 'terminal-outcome'
+        # but honest label); a "deep-search-root-score" target is a bounded look-ahead evaluation; an
+        # external "utttai-*-root-value" target is another look-ahead value from a different engine.
+        # They must never be silently averaged together as if equivalent.
         if source == 'terminal-outcome':
+            expected = 0 if row['terminalOutcome'] == 'DRAW' else 1 if row['terminalOutcome'] == row['player'] else -1
             if row['valueTarget'] != expected: raise ValueError('WRONG_VALUE_PERSPECTIVE')
         else:
             if not isinstance(row['valueTarget'], (int, float)) or not -1.0 <= row['valueTarget'] <= 1.0:
                 raise ValueError('INVALID_VALUE_TARGET')
-            if row.get('terminalValue') != expected: raise ValueError('TERMINAL_VALUE_MISMATCH')
+            if external:
+                # External corpus rows have no game outcome; the value MUST be declared as non-terminal
+                # and MUST NOT masquerade as a terminal label.
+                if row.get('terminalValue') is not None or row.get('terminalOutcome') is not None:
+                    raise ValueError('EXTERNAL_VALUE_MISLABELLED')
+            else:
+                expected = 0 if row['terminalOutcome'] == 'DRAW' else 1 if row['terminalOutcome'] == row['player'] else -1
+                if row.get('terminalValue') != expected: raise ValueError('TERMINAL_VALUE_MISMATCH')
         sources[source] = sources.get(source, 0) + 1
         # Optional: restrict training to one target type (a clean same-semantics experiment). Rows of
         # other sources are still validated and still count for leakage, but are not fed to the model.

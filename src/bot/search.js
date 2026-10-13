@@ -4,7 +4,7 @@
 const VERSION='search-v1-experimental';
 const PROFILES=Object.freeze({Beginner:{ms:0,nodes:0,depth:0,tolerance:0,error:1},Easy:{ms:8,nodes:200,depth:1,tolerance:30,error:.2},Medium:{ms:55,nodes:18000,depth:4,tolerance:8,error:0},Hard:{ms:140,nodes:100000,depth:8,tolerance:0,error:0},Expert:{ms:320,nodes:350000,depth:12,tolerance:0,error:0}});
 const STOP={};
-function limits(options={}){const p=PROFILES[options.difficulty||'Expert'];if(!p)throw Error('UNSUPPORTED_DIFFICULTY');const finite=(v,f)=>Number.isFinite(v)?v:f;return {...p,ms:Math.max(0,Math.min(2000,finite(options.budgetMs,p.ms))),nodes:Math.max(1,Math.min(2000000,Math.floor(finite(options.nodeBudget,p.nodes)))),depth:Math.max(0,Math.min(20,Math.floor(finite(options.maxDepth,p.depth))))};}
+function limits(options={}){const p=PROFILES[options.difficulty||'Expert'];if(!p)throw Error('UNSUPPORTED_DIFFICULTY');const finite=(v,f)=>Number.isFinite(v)?v:f;return {...p,ms:Math.max(0,Math.min(600000,finite(options.budgetMs,p.ms))),nodes:Math.max(1,Math.min(50000000,Math.floor(finite(options.nodeBudget,p.nodes)))),depth:Math.max(0,Math.min(20,Math.floor(finite(options.maxDepth,p.depth))))};}
 function ordered(t,rng){
  const side=t.turn,other=3-side,ownMarks=side===1?t.x:t.o,otherMarks=side===1?t.o:t.x;
  const oppMacroThreats=B.threats(side===1?t.mo:t.mx,(side===1?t.mx:t.mo)|t.md),rows=[];

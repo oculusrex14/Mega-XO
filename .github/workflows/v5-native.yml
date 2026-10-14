@@ -94,19 +94,28 @@ jobs:
           # AAR manifests can silently re-add INTERNET/AD_ID even when our app manifest omits them.
           # Assert the EFFECTIVE installed permissions of each flavor, not our intent.
           aapt="$ANDROID_HOME/build-tools/35.0.0/aapt"
-          if "$aapt" dump permissions "$offline" | grep -E 'android.permission.INTERNET|android.permission.ACCESS_NETWORK_STATE|com.google.android.gms.permission.AD_ID'; then
-            echo "Offline P20 host unexpectedly has network or advertising ID permissions" >&2
-            exit 1
-          fi
+          # INTERNET/ACCESS_NETWORK_STATE are DELIBERATELY present in both flavors: the
+          # owner-authorised LAN-local room host runs a room server on the device and needs
+          # NsdManager discovery, which refuses to run without them (removing them made the host
+          # crash on start). That is not an outward internet capability: every outbound origin is
+          # still constrained by the WebView origin gate, network_security_config (cleartext denied
+          # except loopback) and MegaAndroidLanBridge's private-literal check. So assert the
+          # properties that really must hold, instead of the outdated "no network permission".
           for permission in android.permission.INTERNET android.permission.ACCESS_NETWORK_STATE; do
+            "$aapt" dump permissions "$offline" | grep -F "uses-permission: name='$permission'" >/dev/null || {
+              echo "Offline LAN host is missing $permission required for local room hosting" >&2; exit 1;
+            }
             "$aapt" dump permissions "$online" | grep -F "uses-permission: name='$permission'" >/dev/null || {
               echo "Online target is missing $permission" >&2; exit 1;
             }
           done
-          if "$aapt" dump permissions "$online" | grep -F 'com.google.android.gms.permission.AD_ID'; then
-            echo "Online target must keep the advertising ID permission removed" >&2
-            exit 1
-          fi
+          # The advertising ID permission must stay removed in BOTH flavors: no ad SDK may track.
+          for apk in "$offline" "$online"; do
+            if "$aapt" dump permissions "$apk" | grep -F 'com.google.android.gms.permission.AD_ID'; then
+              echo "Advertising ID permission must be removed from $(basename "$apk")" >&2
+              exit 1
+            fi
+          done
           unzip -p "$offline" 'assets/mega/client-bundle.manifest.json' > "$RUNNER_TEMP/mega-native-android-manifest.json"
           test -s "$RUNNER_TEMP/mega-native-android-manifest.json"
           sha256sum "$apk"

@@ -30,7 +30,7 @@ workflow and retrievable from the archive tag.
 | V5.2 image built on the host | `mega-xo-v5-candidate:8ebeb0c6…` → digest **`sha256:8e53d6679119f355bf3951ad53880b87f5f0f8ae0a3ae2db77aae1e9a788832e`**, 393 MB, revision label = the source SHA |
 | Live V4 authority (untouched) | `ghcr.io/oculusrex14/mega-xo@sha256:71d33a1a9893a303c5ffcbdb090caefde22d9e7e054a8c2d6c494a44919b58e4`, container healthy 6 days |
 | V5 production DB | Neon `blue-sun-85454968/br-dawn-dawn-b8f9n7zq/mega_xo_v5_production`, **52/52 migrations**, `--verify` clean, `nonserving: true` |
-| Staging (live now) | `https://command.tail95c48c.ts.net/` serving bundle `d9e281c0…` / commit `ad847de` / 160 files — byte-identical to the local build |
+| Staging (live now) | `https://command.tail95c48c.ts.net/` serving the V5.2 bundle; byte-identical to the local build (verified by fetching the served manifest and comparing its `bundle_sha256`) |
 | Web bundle from final V5.2 | `bundle_sha256 8fbe…` (rebuilt per commit), 160 files, builds reproducibly |
 
 ## 3. Migration, authority, reconciliation and recovery
@@ -56,7 +56,7 @@ workflow and retrievable from the archive tag.
 | --- | --- |
 | V5 backup service | running on the host on a 5-minute cadence; `freshness-state.json` current |
 | Encryption / R2 retrieval / isolated restore / PITR | prior evidence retained (`P15-*`, `NEON-PITR-VERIFIED`) |
-| **Retention jobs** | **implemented and scheduled** — four weekly timers (`captures` 730d, `exports` 90d, `spool` 7d, `backups` 35d), each executed for real |
+| **Retention jobs** | **implemented and scheduled** — four weekly timers (`captures` 730d, `exports` 90d, `spool` 7d, `backups` 35d), each executed for real; the deployed policy was found contradicting the schedule (90/30 instead of 730/90) and corrected |
 | Backup sweep | reports `journalObligation: CURRENT` and correctly refuses to prune (`pruneReady:false`) until pruning is validated |
 | **Journal defect** | every scheduled run had failed with a masked `CAPTURE_COMMAND_FAILED`; root-caused (atomic no-replace `link()` against a fixed filename) and fixed with run-scoped `privacy-journal-<UTCSTAMP>.mxojournal`; watermarks now advance 1→2→…→6 with no failing mode |
 | Alert delivery | prior evidence retained (`DELIVERED-ALERTS`) |
@@ -74,16 +74,23 @@ workflow and retrievable from the archive tag.
 - **Server-authoritative** entitlements, atomic revisions, revision fencing, crash recovery and
   idempotent settlement paths exist; idempotent **AdMob SSV** needs the provider channel.
 - **Consent and retention (DC00)**: the one-time cross-device research consent, age controls,
-  withdrawal and demographic segregation are implemented in migration 0052 + the policy engine, and
-  the DC00 gate now returns **`RECEIPTS_READY_FOR_MAIN_REVIEW`** — independently re-verified by Main at
-  the reported SHA, with `MISSING_privacyPurpose` and `MISSING_retention` gone and the validator's
-  binding still refusing a mismatched receipt.
+  withdrawal and demographic segregation are implemented in migration 0052 + the policy engine. The
+  gate now passes **live on the staging host through the shipped CLI** — `RECEIPTS_READY_FOR_MAIN_REVIEW`
+  with an empty failures list against `sourceCommit 320bb69…`, `rulesHash e6e14c25…`, `sealed 15,
+  pending 0, quarantined 0, expiredUnpurged 0`, and `privacyEpoch 0` (nothing withdrawn, so it is not
+  inflated). The staging canary therefore matches the V5.2 schema and SHA rather than a historical
+  commit.
 
 ## 6. Android and iPhone testing / cleanup records
 
 - **Android (offline flavor, real device):** the prior pass stands — installed, launched, all four
-  themes, tutorial entry, Bot gameplay, wallet, **no personal data touched**, nothing left behind on
-  the device. The **online flavor** device pass has **not** run (no phone attached during this work).
+  themes, tutorial entry, Bot gameplay, wallet, **no personal data touched**, nothing left behind.
+- **Android (ONLINE flavor, real device):** now run — installed on the OnePlus EB2101, cold launch
+  focused, **zero crashes/ANRs**, 81-cell board, a real human move plus Bot reply advancing the count
+  0 → 2, `window.MegaAds` present with `platform:'android'`, and the powers kill switch off by default
+  then reporting `powers/v1` when enabled, failing closed with `NO_MATCH`. This run found that the
+  native bundle allowlist had never included the two new modules, so the native apps were shipping
+  without the powers entirely.
 - **iPhone: first real device-signed build in the project's history.** Signed with the free
   provisioning team `D5TQJ76T44`, `Apple Development: oculusrexai@gmail.com (HTG9867RG9)`, verified with
   `codesign -dv`, and **installed on the owner's iPhone 16 Pro** (devicectl reports the bundle).
@@ -128,13 +135,23 @@ workflow and retrievable from the archive tag.
 
 ## 10. What this work fixed beyond the plan
 
-Four genuine defects were found and corrected, each with evidence: an undeclared Gradle lint
-dependency that broke the Android release build; the always-failing privacy-journal job that blocked
-backup pruning; the powers reward lane pointing at a global no host publishes (so a power could never
-be earned); and **ten UI actions silently dropped from `src/app.js`**, which a CI browser test caught
-and which a Node-only suite could not see. A stale offline-permission assertion that had been failing
-on every run since the LAN feature landed was also corrected — its intent preserved, its premise
-updated.
+**Seven** genuine defects were found and corrected, each with evidence:
+
+1. An undeclared Gradle lint dependency that broke the Android **release** build.
+2. The always-failing privacy-journal job (atomic no-replace `link()` against a fixed filename) that
+   blocked backup pruning; fixed with run-scoped timestamped filenames.
+3. The powers reward lane pointing at `window.MegaNativeReward`, a global **no host publishes**, so a
+   power could never have been earned on any platform.
+4. **Ten UI actions silently dropped** from `src/app.js`, which a CI browser test caught and which a
+   Node-only suite could not see (dead buttons, and the `matchstats` sheet never pausing the Bot).
+5. The **four shorthand action members** my own restore then dropped, killing the Settings sheet.
+6. The **native bundle allowlist** never including the two new modules, so the native apps shipped
+   without the powers — found only by driving the real device over CDP.
+7. The deployed staging **capture policy contradicting its own retention schedule** (90/30 vs 730/90)
+   and naming a commit the origin no longer served.
+
+A stale offline-permission CI assertion that had been failing on every run since the LAN feature
+landed was also corrected — its intent preserved, its premise updated.
 
 **Nothing was fabricated.** Where a check could not run — live ad fill, physical iPhone launch, store
 submission, the cutover — it is stated as pending rather than passed.

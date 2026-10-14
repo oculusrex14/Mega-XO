@@ -7,7 +7,7 @@ actually run; anything not executed is labelled as such. The truthful status tab
 
 | Item | Value |
 | --- | --- |
-| Integration / default branch | **`V5.2`**, HEAD `941998c4125f72ceb68ba81895ccb3c36ef5e58c`, CI **11 workflows green, 0 failures** |
+| Integration / default branch | **`V5.2`**, HEAD `bb54b7b`, CI **25 runs green, 0 failures** |
 | Frozen historical reference | `V5.1` @ `077bfbc0cc0dc24c4e1e9becb6c264e585108b93`, tag **`freeze/V5.1-final-20261014`** (pushed) |
 | Retired previous default | `main` @ `66b19db3451f5eb1af824110556aa4ab6fae138a`, tag **`archive/main-pre-retirement-20261014`** (pushed) |
 | Retained recovery branch | `V4.1` @ `455b8ec` (the shipped V4.1.2 line) |
@@ -27,9 +27,9 @@ workflow and retrievable from the archive tag.
 
 | Item | Value |
 | --- | --- |
-| V5.2 image built on the host | `mega-xo-v5-candidate:8ebeb0c6…` → digest **`sha256:8e53d6679119f355bf3951ad53880b87f5f0f8ae0a3ae2db77aae1e9a788832e`**, 393 MB, revision label = the source SHA |
+| V5.2 production image (final) | `mega-xo-v5-candidate:a3dc0c60…` → digest **`sha256:d6a9ab9846d59c47df8334b987806e21d30f3d702d1c2556b49256d39ed0f2f0`**, 393 MB, revision label = `a3dc0c6` |
 | Live V4 authority (untouched) | `ghcr.io/oculusrex14/mega-xo@sha256:71d33a1a9893a303c5ffcbdb090caefde22d9e7e054a8c2d6c494a44919b58e4`, container healthy 6 days |
-| V5 production DB | Neon `blue-sun-85454968/br-dawn-dawn-b8f9n7zq/mega_xo_v5_production`, **52/52 migrations**, `--verify` clean, `nonserving: true` |
+| V5 production DB | Neon `blue-sun-85454968/br-dawn-dawn-b8f9n7zq/mega_xo_v5_production`, **53/53 migrations**, `--verify` clean, `nonserving: true` |
 | Staging (live now) | `https://command.tail95c48c.ts.net/` serving the V5.2 bundle; byte-identical to the local build (verified by fetching the served manifest and comparing its `bundle_sha256`) |
 | Web bundle from final V5.2 | `bundle_sha256 8fbe…` (rebuilt per commit), 160 files, builds reproducibly |
 
@@ -177,3 +177,17 @@ Fixes 4 and 5 could not go into 0052 — it was already applied in staging and p
 an applied migration changes its checksum and rewrites the ledger. Migration **0053** was authored
 instead, applied to **both** databases, and both verify at **53 checksums + catalog conformance** with
 0052's own checksum untouched, which is the proof the ledger was not rewritten.
+
+## 12. Delta — production image rebuilt and re-verified on the final source
+
+The provisioned production image had predated V5.2. It is now rebuilt from the exact final HEAD:
+
+| Field | Value |
+| --- | --- |
+| Source SHA | `a3dc0c6058757143b3773434ff846a77c5a4b339` |
+| Digest | **`sha256:d6a9ab9846d59c47df8334b987806e21d30f3d702d1c2556b49256d39ed0f2f0`** (393 MB, revision label verified) |
+| Rehearsal | boots against real production Neon + Redis with the epoch unset; `servingEpoch null`; `/livez` 200, `/readyz` 200, `/` 200, unknown path 404, profile `AUTH_REQUIRED`, leaderboard `[]` through the production pool |
+| Backups after | timer active, ran 2 min prior; freshness `{"state":"fresh","consecutiveUnhealthy":0}` |
+| Databases | staging and production both at **53** migrations, `--verify` clean, 0052's checksum unchanged |
+
+Full detail in `docs/v5.2/release/PRODUCTION-IMAGE-V52-FINAL-20261014.md`.

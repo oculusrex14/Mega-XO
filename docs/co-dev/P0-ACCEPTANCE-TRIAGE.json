@@ -3,7 +3,7 @@
   "format": "mega-xo-v5-acceptance-triage/v1",
   "reviewed_source_sha": "dc88e7a6a4cb46061543ed450fe28173e9528d2c",
   "owner_audit_sha": "cb54985a2f1d5c6c68d1af9c151a0189f7f9f27b",
-  "interpretation": "Source/CI test success is not full contract acceptance. This is an evidence gap inventory, not a change to the owner ledger. PASS only means the owner ledger already marked A04/A05 PASS. All other cases keep their NOT_RUN status until real evidence and independent acceptance review.",
+  "interpretation": "Source/CI test success is not full contract acceptance. This is an evidence-gap inventory that mirrors the owner ledger, not a change to it. Each case was re-reviewed on 2026-10-14 against docs/v5/progress.json as reconciled in docs/v5.1/release/ACCEPTANCE-CASE-RECONCILIATION-20261014.md: LEDGER_PASS entries record statuses the owner ledger already accepted, RUNNING entries name the remaining reachable work, and BLOCKED entries name the exact external gate. No source or CI result promotes a case by itself.",
   "production_authority": "V4_SQLITE",
   "v5_live_cutover_executed": false,
   "cutover_authorized": false,
@@ -22,37 +22,39 @@
     {
       "id": "A01",
       "title": "Product/source freeze",
-      "ledger_status": "NOT_RUN",
+      "ledger_status": "RUNNING",
       "proof_scope": "MIXED_EXTERNAL",
       "lead": "joint",
       "evidence_refs": [
-        "docs/v5/evidence/phase00-gate.json",
-        "docs/v5/evidence/phase00-visual-baseline.json"
+        "docs/v5/evidence/phase00-visual-baseline.json",
+        "docs/v5/evidence/phase04-differential.json",
+        "docs/v5/evidence/v5-client-bundle-smoke.json"
       ],
-      "remaining_proof": "Run approved four-theme and accessibility/device screenshots against the final V5 native and browser builds; publish exact difference/exception register."
+      "remaining_proof": "Android device and desktop four-theme captures exist (phase00-visual-baseline), but the iOS physical-device theme matrix and the final native/browser exception register remain outstanding; primary release-doc proof sits in docs/v5.1/release/DEVICE-ANDROID-EB2101-20261014.md and NATIVE-BUILDS-20261013.md."
     },
     {
       "id": "A02",
       "title": "Baseline and CI",
-      "ledger_status": "NOT_RUN",
+      "ledger_status": "RUNNING",
       "proof_scope": "CI_PROVEN_SCOPE",
       "lead": "co-dev",
       "evidence_refs": [
+        "docs/v5/evidence/phase00-inventory-and-ci.json",
         "docs/v5/evidence/phase17-gate.json"
       ],
-      "remaining_proof": "Review final merged SHA and V4 protected tags against exact-head Node, PostgreSQL, native and all 12 workflow reports; sign off the original A02 contract."
+      "remaining_proof": "Baseline ancestry and the V4 protected tags are verified, but the exact-head all-green 12-workflow Actions run ID for the frozen candidate is still unrecorded; record it and re-sign A02 (adjacent proof in docs/v5.1/release/STAGE-D-RELEASE-QUALIFICATION-20261014.md)."
     },
     {
       "id": "A03",
       "title": "Reported backup conflict",
-      "ledger_status": "NOT_RUN",
-      "proof_scope": "REPORTED_OWNER_PROOF",
-      "lead": "main-agent",
+      "ledger_status": "PASS",
+      "proof_scope": "LEDGER_PASS",
+      "lead": "joint",
       "evidence_refs": [
         "docs/v5/evidence/phase00-live-operations.json",
         "docs/v5/evidence/live-production-authority-audit.json"
       ],
-      "remaining_proof": "Independently inspect the latest V4 encrypted backup, perform a fresh isolated restore and compare current backup freshness/status to the earlier outage."
+      "remaining_proof": "Already PASS in the owner ledger: the E1 read-only V4 Restic inspection (611 snapshots, byte-identical off-box restore, quick_check ok) plus the V5-only R2 bucket and live host alerts; retain snapshot IDs, retrieval checksums and the restore log (release-doc proof: docs/v5.1/release/E1-V4-SNAPSHOT-RESTORE-20261014.md)."
     },
     {
       "id": "A04",
@@ -64,7 +66,7 @@
         "docs/v5/evidence/phase02-gate.json",
         "docs/v5/evidence/phase13-gate.json"
       ],
-      "remaining_proof": "Already PASS in owner ledger; preserve verified separate service roles and regressions at release SHA."
+      "remaining_proof": "Already PASS in the owner ledger: distinct least-privilege api/core/worker/backup/audit roles verified with real production 42501 denials; retain the role probes and regression logs at the release SHA."
     },
     {
       "id": "A05",
@@ -76,405 +78,421 @@
         "docs/v5/evidence/phase02-gate.json",
         "docs/v5/evidence/phase17-gate.json"
       ],
-      "remaining_proof": "Already PASS in owner ledger; retain checksummed migrations, exclusive migrator and no-DDL runtime validation."
+      "remaining_proof": "Already PASS in the owner ledger: 49/49 checksummed migrations applied from zero with SCRAM channel binding and a verified idempotent re-run; retain migration checksums, create/upgrade logs and the lock test."
     },
     {
       "id": "A06",
       "title": "Complete source coverage",
-      "ledger_status": "NOT_RUN",
-      "proof_scope": "REPORTED_OWNER_PROOF",
+      "ledger_status": "PASS",
+      "proof_scope": "LEDGER_PASS",
       "lead": "main-agent",
       "evidence_refs": [
-        "docs/v5/evidence/phase03-gate.json",
-        "docs/v5/evidence/live-production-authority-audit.json"
+        "docs/v5/evidence/phase03-source-capture.json",
+        "docs/v5/evidence/phase03-import-coverage.json"
       ],
-      "remaining_proof": "Re-inventory live SQLite source immediately before cutover, capture final schema/root fingerprint and classify any new durable source fields."
+      "remaining_proof": "Already PASS in the owner ledger: the production import coverage inventory recorded 35 tables, 14 indexes, 2 triggers, 8,549 rows and 44,197 fields with zero unclassified locators against the source fingerprint; retain the coverage manifest (release-doc proof: docs/v5.1/release/E2-PRODUCTION-IMPORT-RECONCILIATION-20261014.md)."
     },
     {
       "id": "A07",
       "title": "Per-actor reconciliation",
-      "ledger_status": "NOT_RUN",
-      "proof_scope": "REPORTED_OWNER_PROOF",
+      "ledger_status": "PASS",
+      "proof_scope": "LEDGER_PASS",
       "lead": "main-agent",
       "evidence_refs": [
-        "docs/v5/evidence/phase03-gate.json",
+        "docs/v5/evidence/phase03-reconciliation.json",
         "docs/v5/evidence/phase04-runtime-defects.json"
       ],
-      "remaining_proof": "Repeat exact per-actor wallet, receipt, identity, privacy and relationship reconciliation on the FINAL frozen source; retain negative swapped-wallet check."
+      "remaining_proof": "Already PASS in the owner ledger: the production reconcile gate passed with unexplained:0 and all nine conservation equations holding over real actors; retain the sanitized difference summary and the swapped-wallet negative check."
     },
     {
       "id": "A08",
       "title": "Deterministic restartable import",
-      "ledger_status": "NOT_RUN",
+      "ledger_status": "RUNNING",
       "proof_scope": "CI_PROVEN_SCOPE",
       "lead": "main-agent",
       "evidence_refs": [
-        "docs/v5/evidence/phase03-gate.json"
+        "docs/v5/evidence/phase03-rerun-resume.json",
+        "docs/v5/evidence/phase03-source-copy.json"
       ],
-      "remaining_proof": "Confirm interrupted and repeated final import is deterministic with real frozen production snapshot, time boundary and non-UUID source IDs."
+      "remaining_proof": "Deterministic single import and fixture-level interruption/resume are proven, but a repeated/interrupted replay and a quarterly boundary rollover on the frozen production snapshot remain unexecuted."
     },
     {
       "id": "A09",
       "title": "Escrow and ledger",
-      "ledger_status": "NOT_RUN",
-      "proof_scope": "CI_PROVEN_SCOPE",
+      "ledger_status": "PASS",
+      "proof_scope": "LEDGER_PASS",
       "lead": "joint",
       "evidence_refs": [
-        "docs/v5/evidence/phase03-gate.json",
+        "docs/v5/evidence/phase03-reconciliation.json",
         "docs/v5/evidence/phase04-runtime-defects.json"
       ],
-      "remaining_proof": "Review source-linked per-actor liquid/reserved/escrow accounting and replay legacy journal in final import; preserve zero unexplained differences."
+      "remaining_proof": "Already PASS in the owner ledger: per-asset escrow/ledger invariants C1-C6 pass with zero failures over real production data; retain the source-linked accounting baseline and transaction tests."
     },
     {
       "id": "A10",
       "title": "Concurrent spending",
-      "ledger_status": "NOT_RUN",
+      "ledger_status": "RUNNING",
       "proof_scope": "CI_PROVEN_SCOPE",
       "lead": "joint",
       "evidence_refs": [
+        "docs/v5/evidence/phase04-repositories.json",
         "docs/v5/evidence/phase04-runtime-defects.json",
-        "docs/v5/evidence/phase07-gate.json",
-        "docs/v5/evidence/phase09-gate.json"
+        "docs/v5/evidence/phase07-gate.json"
       ],
-      "remaining_proof": "Review P04/P07/P09 concurrency and same-actor reservation races against deployed final Core/PG; verify no double charge or altered timing."
+      "remaining_proof": "Contention/atomicity and concurrent accepts are proven, but same-actor races across entry, challenge, conversion and tournament reservation with final wallet rows remain unexecuted against the deployed Core."
     },
     {
       "id": "A11",
       "title": "Atomic result and payout",
-      "ledger_status": "NOT_RUN",
-      "proof_scope": "CI_PROVEN_SCOPE",
+      "ledger_status": "PASS",
+      "proof_scope": "LEDGER_PASS",
       "lead": "joint",
       "evidence_refs": [
-        "docs/v5/evidence/phase09-gate.json",
-        "docs/v5/evidence/phase19-gate.json"
+        "docs/v5/evidence/phase09-settlement.json",
+        "docs/v5/evidence/phase09-gate.json"
       ],
-      "remaining_proof": "Review fault-injection and final wallet/result/rating/outbox traces with deployed final Core; confirm exactly-once payout and rollback."
+      "remaining_proof": "Already PASS in the owner ledger: a forced mid-transaction crash rolled back with zero wallet/ledger/outbox effects and the retry committed exactly once; retain the fault-injection log and before/after invariants."
     },
     {
       "id": "A12",
       "title": "Shared actor identity",
-      "ledger_status": "NOT_RUN",
+      "ledger_status": "BLOCKED",
       "proof_scope": "PROVIDER_DEVICE_PENDING",
       "lead": "main-agent",
       "evidence_refs": [
         "docs/v5/evidence/phase05-foundations.json",
-        "docs/v5/evidence/phase20-gate.json"
+        "docs/v5/evidence/phase00-provider-inventory.json"
       ],
-      "remaining_proof": "Exercise real email, Google and Apple sign-in/linking on old browser and physical Android/iOS; prove stable actor hash across platforms."
+      "remaining_proof": "Blocked externally: Google and Apple OAuth are unconfigured and the Android prototype is offline-only, so a real cross-provider actor-hash comparison on signed mobile clients cannot be produced yet (primary proof: docs/v5.1/release/PROVIDER-READINESS-INVENTORY-20261013.md)."
     },
     {
       "id": "A13",
       "title": "Refresh and revocation",
-      "ledger_status": "NOT_RUN",
+      "ledger_status": "RUNNING",
       "proof_scope": "CI_PROVEN_SCOPE",
       "lead": "main-agent",
       "evidence_refs": [
         "docs/v5/evidence/phase05-foundations.json",
         "docs/v5/evidence/phase13-gate.json"
       ],
-      "remaining_proof": "Exercise real device refresh races, old-token replay, revocation and active socket/key rotation under configured provider sessions."
+      "remaining_proof": "Live cookie/session revocation and presence fencing are proven, but physical-device refresh races, old-token replay and active socket key rotation under configured provider sessions remain unexecuted."
     },
     {
       "id": "A14",
       "title": "One-use realtime tickets",
-      "ledger_status": "NOT_RUN",
+      "ledger_status": "RUNNING",
       "proof_scope": "CI_PROVEN_SCOPE",
       "lead": "joint",
       "evidence_refs": [
         "docs/v5/evidence/phase05-foundations.json",
-        "docs/v5/evidence/phase08-gate.json"
+        "docs/v5/evidence/phase08-transport.json"
       ],
-      "remaining_proof": "Record dual-Core one-use ticket redemption and negative wrong-session/env/audience outcomes in integrated staging."
+      "remaining_proof": "Single-node realtime ticket subscribe and redemption are proven, but concurrent two-node redemption and replay after Redis loss remain unexecuted on the deployed topology (staging operates a single Core)."
     },
     {
       "id": "A15",
       "title": "Redis complete loss",
-      "ledger_status": "NOT_RUN",
+      "ledger_status": "RUNNING",
       "proof_scope": "REPORTED_OWNER_PROOF",
       "lead": "main-agent",
       "evidence_refs": [
-        "docs/v5/evidence/phase06-managed-provider.json",
+        "docs/v5/evidence/phase06-ephemera.json",
         "docs/v5/evidence/phase19-gate.json"
       ],
-      "remaining_proof": "Wipe isolated stage Redis during active match, paid queue and pending effects; capture PG hashes before/after plus rejoin and latency metrics."
+      "remaining_proof": "Durable decisions survive complete ephemera loss on a disposable lab, but a real staging Redis (Upstash) wipe during an active match and paid queue remains unexecuted."
     },
     {
       "id": "A16",
       "title": "Matcher concurrency",
-      "ledger_status": "NOT_RUN",
-      "proof_scope": "CI_PROVEN_SCOPE",
+      "ledger_status": "PASS",
+      "proof_scope": "LEDGER_PASS",
       "lead": "joint",
       "evidence_refs": [
-        "docs/v5/evidence/phase07-gate.json"
+        "docs/v5/evidence/phase07-gate.json",
+        "docs/v5/evidence/phase07-queue.json",
+        "docs/v5/evidence/phase07-recovery.json"
       ],
-      "remaining_proof": "Capture final staging multi-matcher, heartbeat expiry and dead-worker races; verify durable assignment and reserved Crowns."
+      "remaining_proof": "Already PASS in the owner ledger: concurrent matcher races produced at most one assignment with zero double-seated players and zero charges at offer; retain the load trace and the assignment constraint results."
     },
     {
       "id": "A17",
       "title": "Committed move recovery",
-      "ledger_status": "NOT_RUN",
-      "proof_scope": "CI_PROVEN_SCOPE",
+      "ledger_status": "PASS",
+      "proof_scope": "LEDGER_PASS",
       "lead": "main-agent",
       "evidence_refs": [
-        "docs/v5/evidence/phase08-gate.json",
+        "docs/v5/evidence/phase08-restart-recovery.json",
         "docs/v5/evidence/phase16-gate.json"
       ],
-      "remaining_proof": "Kill one real Core before/after commit/publish/ACK and reconnect via the other live process; capture revision and outage duration."
+      "remaining_proof": "Already PASS in the owner ledger: a real-socket SIGKILL after a committed move was reconstructed by the second Core with retry deduplication; retain the operation/revision trace and the failover demonstration."
     },
     {
       "id": "A18",
       "title": "Clock correctness",
-      "ledger_status": "NOT_RUN",
-      "proof_scope": "CI_PROVEN_SCOPE",
+      "ledger_status": "PASS",
+      "proof_scope": "LEDGER_PASS",
       "lead": "joint",
       "evidence_refs": [
-        "docs/v5/evidence/phase08-gate.json",
-        "docs/v5/evidence/phase09-gate.json"
+        "docs/v5/evidence/phase08-timers.json",
+        "docs/v5/evidence/phase08-gate.json"
       ],
-      "remaining_proof": "Run exact deadline move/timeout and restart/reconnect boundary on the deployed Core/PG clock source."
+      "remaining_proof": "Already PASS in the owner ledger: durable clocks settle a due timeout once, commit exactly one effect under concurrent move/timeout, pay a replayed key once and survive Redis loss; retain the deterministic boundary tests."
     },
     {
       "id": "A19",
       "title": "Transport recovery",
-      "ledger_status": "NOT_RUN",
+      "ledger_status": "RUNNING",
       "proof_scope": "PROVIDER_DEVICE_PENDING",
       "lead": "main-agent",
       "evidence_refs": [
-        "docs/v5/evidence/phase08-gate.json",
-        "docs/v5/evidence/phase20-gate.json"
+        "docs/v5/evidence/phase08-transport.json",
+        "docs/v5/evidence/phase08-recovery.json"
       ],
-      "remaining_proof": "Test real Android/iOS backgrounding, offline/reconnect, reordered notifications and HTTP fallback against staging."
+      "remaining_proof": "HTTP snapshot fallback, reconnect delta and duplicate safety are proven on the deployed origin, but physical-device backgrounding, offline reconnect and notification reordering remain unrun on native devices."
     },
     {
       "id": "A20",
       "title": "Tournament behavior",
-      "ledger_status": "NOT_RUN",
+      "ledger_status": "RUNNING",
       "proof_scope": "CI_PROVEN_SCOPE",
       "lead": "joint",
       "evidence_refs": [
-        "docs/v5/evidence/phase09-gate.json"
+        "docs/v5/evidence/phase09-lifecycle.json",
+        "docs/v5/evidence/phase09-settlement.json",
+        "docs/v5/evidence/phase09-recovery.json"
       ],
-      "remaining_proof": "Exercise full public/private tournaments through real stage workers including host-leave cancel, dead-worker recovery and payout/escrow parity."
+      "remaining_proof": "Host-leave cancellation, pause/resume and indivisible settlement pass in local and capture labs, but no multi-worker public/private tournament run exists on deployed staging (the API mounts no tournament route)."
     },
     {
       "id": "A21",
       "title": "Jobs and outbox",
-      "ledger_status": "NOT_RUN",
+      "ledger_status": "RUNNING",
       "proof_scope": "CI_PROVEN_SCOPE",
       "lead": "main-agent",
       "evidence_refs": [
-        "docs/v5/evidence/phase10-gate.json"
+        "docs/v5/evidence/phase10-jobs.json",
+        "docs/v5/evidence/phase10-provider.json"
       ],
-      "remaining_proof": "Run actual provider I/O crash/retry/DLQ failure scenarios with workers in integrated staging; record idempotent external effects."
+      "remaining_proof": "Durable lease fencing, outbox retry and claim crash recovery are proven on a disposable PG lab, but real provider I/O crash/retry/DLQ scenarios remain unexecuted on integrated staging."
     },
     {
       "id": "A22",
       "title": "UTC scheduled economics",
-      "ledger_status": "NOT_RUN",
-      "proof_scope": "CI_PROVEN_SCOPE",
+      "ledger_status": "PASS",
+      "proof_scope": "LEDGER_PASS",
       "lead": "joint",
       "evidence_refs": [
-        "docs/v5/evidence/phase10-gate.json"
+        "docs/v5/evidence/phase10-scheduling.json",
+        "docs/v5/evidence/phase10-workflows.json"
       ],
-      "remaining_proof": "Record duplicate scheduler and UTC week/quarter catch-up through staging and check unique business operations and approved reward periods."
+      "remaining_proof": "Already PASS in the owner ledger: seeded UTC scheduling tests show stable period identities, one effect under two concurrent schedulers and ordered downtime catch-up across the week boundary; retain the unique business-operation records."
     },
     {
       "id": "A23",
       "title": "Vercel/Core ownership",
-      "ledger_status": "NOT_RUN",
-      "proof_scope": "CI_PROVEN_SCOPE",
+      "ledger_status": "PASS",
+      "proof_scope": "LEDGER_PASS",
       "lead": "main-agent",
       "evidence_refs": [
         "docs/v5/evidence/phase11-gate.json",
         "docs/v5/evidence/phase13-gate.json"
       ],
-      "remaining_proof": "Attempt forbidden API/worker wallet writes and forged service HMAC/actor assertions against REAL deployed Vercel/Core staging."
+      "remaining_proof": "Already PASS in the owner ledger: the public Core gateway returned the required 403/401/404s and the Vercel API holds only api_runtime with zero Core pool; retain the negative security tests and the sanitized distributed request trace."
     },
     {
       "id": "A24",
       "title": "Retained browser compatibility",
-      "ledger_status": "NOT_RUN",
+      "ledger_status": "BLOCKED",
       "proof_scope": "PROVIDER_DEVICE_PENDING",
       "lead": "main-agent",
       "evidence_refs": [
-        "docs/v5/evidence/phase11-gate.json",
-        "docs/v5/evidence/phase18-gate.json"
+        "docs/v5/evidence/phase11-browser-compat.json",
+        "docs/v5/evidence/phase11-gate.json"
       ],
-      "remaining_proof": "Exercise shipped old-origin browser cookie, account session exchange, callback routing, CSRF and match/economic flows on real V5 staging."
+      "remaining_proof": "Blocked externally: old-origin browser E2E and session continuity require the authorised V5 facade cutover; until then the residual V4 SQLite writer stays live and the comparison cannot be run (primary proof: docs/v5.1/release/P3-EDGE-V4-REGRESSION-20261013.md)."
     },
     {
       "id": "A25",
       "title": "Cache correctness and privacy",
-      "ledger_status": "NOT_RUN",
-      "proof_scope": "CI_PROVEN_SCOPE",
+      "ledger_status": "PASS",
+      "proof_scope": "LEDGER_PASS",
       "lead": "joint",
       "evidence_refs": [
         "docs/v5/evidence/phase12-gate.json"
       ],
-      "remaining_proof": "Verify real cross-worker block/invalidation, stale read projections, Redis wipe and actor-separated cache headers; no authorization from caches."
+      "remaining_proof": "Already PASS in the owner ledger: versioned projections reject stale sequence updates, private responses are no-cache, and exact 64-bit decimals plus an honest 503 were observed on the deployed signed Core; retain the cache replay and isolation report."
     },
     {
       "id": "A26",
       "title": "Private operations and audit",
-      "ledger_status": "NOT_RUN",
+      "ledger_status": "RUNNING",
       "proof_scope": "PROVIDER_ENV_PENDING",
       "lead": "main-agent",
       "evidence_refs": [
-        "docs/v5/evidence/phase13-gate.json"
+        "docs/v5/evidence/phase13-gate.json",
+        "docs/v5/evidence/phase11-core-gateway.json"
       ],
-      "remaining_proof": "Probe public/private ops and audit endpoints from outside actual staging and verify dedicated-key audit chain under concurrency."
+      "remaining_proof": "Public edge blocks non-ingress paths and audit_runtime is restricted on production, but an external probe of the private staging ops/audit endpoints and a concurrent audit-chain verification remain unrecorded."
     },
     {
       "id": "A27",
       "title": "Operational diagnosis and alerting",
-      "ledger_status": "NOT_RUN",
+      "ledger_status": "RUNNING",
       "proof_scope": "PROVIDER_ENV_PENDING",
       "lead": "main-agent",
       "evidence_refs": [
-        "docs/v5/evidence/phase14-gate.json"
+        "docs/v5/evidence/phase14-gate.json",
+        "docs/v5/evidence/phase00-live-operations.json"
       ],
-      "remaining_proof": "Inject a staging fault and verify end-to-end support trace and DELIVERED alert, not just simulated telemetry or liveness."
+      "remaining_proof": "Incident and recovery alert delivery is proven on the V4 host, but V5 staging-specific signals (API/Core/Neon/backup/worker) still lack wired thresholds and no cross-service support-ID trace has been executed (adjacent proof: docs/v5.1/release/DELIVERED-ALERTS-20261014.md)."
     },
     {
       "id": "A28",
       "title": "Independent restore",
-      "ledger_status": "NOT_RUN",
-      "proof_scope": "PROVIDER_ENV_PENDING",
+      "ledger_status": "PASS",
+      "proof_scope": "LEDGER_PASS",
       "lead": "main-agent",
       "evidence_refs": [
         "docs/v5/evidence/phase15-gate.json"
       ],
-      "remaining_proof": "Restore real encrypted off-host R2 backup into independent PostgreSQL project; measure RPO/RTO, hashes, revocations and cleanup."
+      "remaining_proof": "Already PASS in the owner ledger on measured independent backup/restore evidence: a real production pg_dump was sealed, uploaded to a new V5-only R2 bucket, re-fetched under an independent credential with matching sha256 and restored into an isolated PG16 target with row-for-row equality; retain measured RPO/RTO and cleanup (release-doc proof: docs/v5.1/release/P15-V5-BACKUP-RETRIEVE-MEASURED-20261014.md)."
     },
     {
       "id": "A29",
       "title": "Process vs host availability",
-      "ledger_status": "NOT_RUN",
+      "ledger_status": "RUNNING",
       "proof_scope": "PROVIDER_ENV_PENDING",
       "lead": "main-agent",
       "evidence_refs": [
-        "docs/v5/evidence/phase16-gate.json"
+        "docs/v5/evidence/phase16-gate.json",
+        "docs/v5/evidence/phase10-deploy-overlap.json"
       ],
-      "remaining_proof": "Prove real active-game Core process failover, then separately document same-host edge/power failure and true RTO."
+      "remaining_proof": "Core process redundancy and drain failover pass in the real-socket loopback lab, but a real Core kill during an active match plus a measured same-host outage RTO remain unrun on staging."
     },
     {
       "id": "A30",
       "title": "Immutable release compatibility",
-      "ledger_status": "NOT_RUN",
+      "ledger_status": "BLOCKED",
       "proof_scope": "PROVIDER_ENV_PENDING",
       "lead": "main-agent",
       "evidence_refs": [
-        "docs/v5/evidence/phase17-gate.json"
+        "docs/v5/evidence/phase17-gate.json",
+        "docs/v5/evidence/phase10-deploy-overlap.json"
       ],
-      "remaining_proof": "Deploy immutable components in allowed skew sequence, verify image digests and perform PostgreSQL-compatible application rollback on staging."
+      "remaining_proof": "Blocked externally: production V5 image digests and the cutover window are unavailable (E3 pending), so no component-skew deploy or application rollback can be executed against real release manifests (adjacent proof: docs/v5.1/release/STAGE-D-RELEASE-QUALIFICATION-20261014.md)."
     },
     {
       "id": "A31",
       "title": "Capacity and degradation",
-      "ledger_status": "NOT_RUN",
+      "ledger_status": "RUNNING",
       "proof_scope": "PROVIDER_ENV_PENDING",
       "lead": "main-agent",
       "evidence_refs": [
-        "docs/v5/evidence/phase18-gate.json",
-        "docs/v5/evidence/phase19-gate.json"
+        "docs/v5/evidence/phase19-gate.json",
+        "docs/v5/evidence/phase18-gate.json"
       ],
-      "remaining_proof": "Run realistic mixed traffic on deployed topology; record p95/p99, connection/storage budgets, backpressure, recovery and alerts."
+      "remaining_proof": "Tiered load and chaos are profiled only on a small synthetic disposable fixture (MEASURED_ADAPTER_ONLY_NOT_LAUNCH_CAPACITY); realistic-history load, dependency saturation and backpressure on the deployed topology remain unexecuted."
     },
     {
       "id": "A32",
       "title": "Real native artifacts and offline bundle",
-      "ledger_status": "NOT_RUN",
+      "ledger_status": "BLOCKED",
       "proof_scope": "PROVIDER_DEVICE_PENDING",
       "lead": "main-agent",
       "evidence_refs": [
-        "docs/v5/evidence/phase20-gate.json"
+        "docs/v5/evidence/phase20-gate.json",
+        "docs/v5/evidence/phase00-native-inventory.json"
       ],
-      "remaining_proof": "Build, SIGN and install real Android/iOS artifacts; offline cold launch and inspect assets, bridge manifest and hashes."
+      "remaining_proof": "Blocked externally: signed iOS artifacts require Apple Developer enrollment (0 signing identities), so only the prototype Android physical install, offline launch and bundle parity can be shown now (primary proof: docs/v5.1/release/DEVICE-IOS-IPHONE16PRO-20261014.md)."
     },
     {
       "id": "A33",
       "title": "Native bridge security",
-      "ledger_status": "NOT_RUN",
-      "proof_scope": "CI_PROVEN_SCOPE",
+      "ledger_status": "RUNNING",
+      "proof_scope": "MIXED_EXTERNAL",
       "lead": "main-agent",
       "evidence_refs": [
-        "docs/v5/evidence/phase20-gate.json"
+        "docs/v5/evidence/phase20-gate.json",
+        "docs/v5/evidence/phase00-native-inventory.json"
       ],
-      "remaining_proof": "Execute native untrusted-frame/navigation and storage/backup extraction attempts on physical devices; inspect real token exposure."
+      "remaining_proof": "Native bridge and asset security contracts pass locally (30/30) and the Android APK drops INTERNET/AD_ID, but untrusted-frame injection and storage/backup extraction remain unexercised on physical devices."
     },
     {
       "id": "A34",
       "title": "Native purchases and restore",
-      "ledger_status": "NOT_RUN",
+      "ledger_status": "BLOCKED",
       "proof_scope": "PROVIDER_DEVICE_PENDING",
       "lead": "main-agent",
       "evidence_refs": [
-        "docs/v5/evidence/phase20-gate.json"
+        "docs/v5/evidence/phase20-gate.json",
+        "docs/v5/evidence/phase00-provider-inventory.json"
       ],
-      "remaining_proof": "Exercise all four Crown products with sandbox purchase/cancel/pending/replay/refund/restore and backend ledger grant proof."
+      "remaining_proof": "Blocked externally: no registered store products, sandbox testers or provider credentials exist and store approval is pending, so real Crown purchase/restore flows cannot be exercised (primary proof: docs/v5.1/release/PROVIDER-READINESS-INVENTORY-20261013.md)."
     },
     {
       "id": "A35",
       "title": "Ads and consent",
-      "ledger_status": "NOT_RUN",
+      "ledger_status": "BLOCKED",
       "proof_scope": "PROVIDER_DEVICE_PENDING",
       "lead": "main-agent",
       "evidence_refs": [
-        "docs/v5/evidence/phase20-gate.json"
+        "docs/v5/evidence/phase20-gate.json",
+        "docs/v5/evidence/phase00-provider-inventory.json"
       ],
-      "remaining_proof": "Run real UMP/consent and ad SDK tests, reward SSV replay/delay and prohibited-screen checks on device."
+      "remaining_proof": "Blocked externally: the AdMob publisher account is unverified and UMP consent plus the iOS tracking declarations are unapproved, so real ad SSV/consent behaviour cannot be measured on device."
     },
     {
       "id": "A36",
       "title": "Native accessibility and parity",
-      "ledger_status": "NOT_RUN",
+      "ledger_status": "BLOCKED",
       "proof_scope": "PROVIDER_DEVICE_PENDING",
       "lead": "main-agent",
       "evidence_refs": [
-        "docs/v5/evidence/phase00-gate.json",
-        "docs/v5/evidence/phase20-gate.json"
+        "docs/v5/evidence/phase20-gate.json",
+        "docs/v5/evidence/phase00-visual-baseline.json"
       ],
-      "remaining_proof": "Capture 4 themes, TalkBack/VoiceOver, keyboard/notch/small-screen and real network lifecycle on both device families."
+      "remaining_proof": "Blocked externally: the iOS device matrix and VoiceOver verification require Apple Developer enrollment; only the physical Android themes and structural accessibility checks can be shown now."
     },
     {
       "id": "A37",
       "title": "Distribution and review truthfulness",
-      "ledger_status": "NOT_RUN",
+      "ledger_status": "BLOCKED",
       "proof_scope": "PROVIDER_DEVICE_PENDING",
       "lead": "main-agent",
       "evidence_refs": [
-        "docs/v5/evidence/phase20-gate.json"
+        "docs/v5/evidence/phase20-gate.json",
+        "docs/v5/evidence/phase00-provider-inventory.json"
       ],
-      "remaining_proof": "Verify real authorized signing and provider consoles; preserve uploaded/submitted/reviewed/approved/enabled as separate states."
+      "remaining_proof": "Blocked externally: there are no signing identities, provisioning profiles or store console records, so real submission/review states cannot be demonstrated and the release scripts fail closed by design."
     },
     {
       "id": "A38",
       "title": "Single writer and first-write fence",
-      "ledger_status": "NOT_RUN",
+      "ledger_status": "BLOCKED",
       "proof_scope": "PRODUCTION_CUTOVER_PENDING",
       "lead": "main-agent",
       "evidence_refs": [
         "docs/v5/evidence/phase22-gate.json",
         "docs/v5/evidence/live-production-authority-audit.json"
       ],
-      "remaining_proof": "During APPROVED cutover window fence all V4 writers, reconcile final import, record exact epoch and first V5 application write, prove no split-brain."
+      "remaining_proof": "Blocked externally: only an authorised cutover window can stop the V4 writers and transfer the authority epoch; mutation paths are inventoried and the import is verified, but no epoch was transferred and no first V5 write was logged."
     },
     {
       "id": "A39",
       "title": "Rollback classes",
-      "ledger_status": "NOT_RUN",
+      "ledger_status": "BLOCKED",
       "proof_scope": "PRODUCTION_CUTOVER_PENDING",
       "lead": "main-agent",
       "evidence_refs": [
         "docs/v5/evidence/phase22-gate.json",
         "docs/v5/evidence/live-production-authority-audit.json"
       ],
-      "remaining_proof": "Run documented pre-write abort and post-write PG-compatible recovery on actual release topology; attach immutable operator artifacts."
+      "remaining_proof": "Blocked externally: rehearsals beyond the quarantined P15 drills require the authorised cutover window, so release-topology pre-write abort and post-write recovery remain unproven."
     },
     {
       "id": "A40",
       "title": "Retirement and scaling discipline",
-      "ledger_status": "NOT_RUN",
+      "ledger_status": "BLOCKED",
       "proof_scope": "PRODUCTION_CUTOVER_PENDING",
       "lead": "main-agent",
       "evidence_refs": [
@@ -482,7 +500,19 @@
         "docs/v5/evidence/phase24-gate.json",
         "docs/v5/evidence/live-production-authority-audit.json"
       ],
-      "remaining_proof": "AFTER real G22, verify irreversible V4 writer retirement, preserved archives/client compatibility and measured capacity triggers."
+      "remaining_proof": "Blocked externally: retirement and the post-cutover scaling review require an executed G22; V4/SQLite remains the sole live authority, so no real post-cutover demand metrics exist."
     }
-  ]
+  ],
+  "ledger_reconciliation": {
+    "ledger": "docs/v5/progress.json",
+    "ledger_updated_at_utc": "2026-10-14T02:30:00.000Z",
+    "reconciliation_review": "docs/v5.1/release/ACCEPTANCE-CASE-RECONCILIATION-20261014.md",
+    "reconciled_at_utc": "2026-10-14T02:52:48.723Z",
+    "status_counts": {
+      "PASS": 14,
+      "RUNNING": 15,
+      "BLOCKED": 11,
+      "NOT_RUN": 0
+    }
+  }
 }

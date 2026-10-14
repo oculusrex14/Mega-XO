@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at_utc": "2026-10-11T05:33:56.143382Z",
+  "updated_at_utc": "2026-10-14T02:30:00.000Z",
   "goal": "Deliver the V5 hybrid platform and real Android/iOS applications with shared permanent actor/assets, preserved approved game and retained browser compatibility; do not build the new website/browser product.",
   "source": {
     "goal": "AGENT-GOAL.md",
@@ -327,7 +327,7 @@
           "docs/v5/evidence/phase05-foundations.json"
         ],
         "gate_evidence": "docs/v5/evidence/phase05-foundations.json",
-        "note": "G05 PASSED: sessions/access/realtime foundations executed on the real 42-migration chain \u2014 78/78 PG service suites (access 7, refresh 8, tickets 9, integration 4 + full P04 regression 47+4), 36/36 migrations+guards, 16/16 contracts, 130/130 retained, all zero-skip on disposable PG16. Signing/refresh/ticket services composed with the account revocation hook; no provider/device/production claim."
+        "note": "G05 PASSED: sessions/access/realtime foundations executed on the real 42-migration chain — 78/78 PG service suites (access 7, refresh 8, tickets 9, integration 4 + full P04 regression 47+4), 36/36 migrations+guards, 16/16 contracts, 130/130 retained, all zero-skip on disposable PG16. Signing/refresh/ticket services composed with the account revocation hook; no provider/device/production claim."
       },
       {
         "phase": "P06",
@@ -3153,7 +3153,15 @@
       "exercise": "Compare approved rule/policy constants, differential game outcomes and four-theme screenshots on representative screens/devices.",
       "expected": "No unapproved game/economy/visual/archived-feature change; justified native exceptions individually recorded.",
       "evidence": "Commit-pinned hashes, screenshots, regression logs and exception register.",
-      "status": "NOT_RUN"
+      "status": "RUNNING",
+      "evidence_refs": [
+        "docs/v5.1/release/DEVICE-ANDROID-EB2101-20261014.md",
+        "docs/v5.1/release/NATIVE-BUILDS-20261013.md",
+        "docs/v5.1/release/STAGE-D-RELEASE-QUALIFICATION-20261014.md",
+        "docs/v5/evidence/phase00-visual-baseline.json",
+        "docs/v5/evidence/phase04-differential.json"
+      ],
+      "gap": "Four-theme screenshots verified on physical Android (OnePlus EB2101) and desktop browser; iOS physical-device theme matrix blocked on Apple signing (0 identities); final native exception register uncommitted."
     },
     {
       "id": "A02",
@@ -3162,7 +3170,15 @@
       "exercise": "Resolve actual green base and run V5 validation on meaningful commits.",
       "expected": "V5 branch is covered; V4 pipeline/tags remain; no fake passed tests or secret artifacts.",
       "evidence": "Git SHA, Actions run ID, commands/results and branch ancestry.",
-      "status": "NOT_RUN"
+      "status": "RUNNING",
+      "evidence_refs": [
+        "docs/v5.1/release/P6-BACKEND-VERIFICATION-20261013.md",
+        "docs/v5.1/release/CONSOLIDATION-AND-VALIDATION-EXPANDED.md",
+        "docs/v5.1/release/STAGE-D-RELEASE-QUALIFICATION-20261014.md",
+        "docs/v5/evidence/phase00-inventory-and-ci.json",
+        "docs/v5/evidence/phase17-gate.json"
+      ],
+      "gap": "V5 branch ancestry and V4 protected tags verified (baseline CI run 37658524961); CI trigger gap fixed and lanes pass on V5.1; exact-head all-green 12-workflow Actions run ID set on frozen candidate 4c1c1681 is unrecorded."
     },
     {
       "id": "A03",
@@ -3171,7 +3187,15 @@
       "exercise": "Inspect current ops status, actual backup repository and fresh restore; compare handoff and ledger.",
       "expected": "Current fact is established; stale statement is explained; no destructive repository initialization.",
       "evidence": "Snapshot/target IDs, timestamps, retrieval/checksum and restore result.",
-      "status": "NOT_RUN"
+      "status": "PASS",
+      "evidence_refs": [
+        "docs/v5.1/release/E1-V4-SNAPSHOT-RESTORE-20261014.md",
+        "docs/v5.1/release/P15-V5-BACKUP-RETRIEVE-MEASURED-20261014.md",
+        "docs/v5.1/release/DELIVERED-ALERTS-20261014.md",
+        "docs/v5.1/release/E4-V4-WRITE-FENCE-INVENTORY-20261014.md",
+        "docs/v5/evidence/phase00-live-operations.json"
+      ],
+      "gap": null
     },
     {
       "id": "A04",
@@ -3180,7 +3204,14 @@
       "exercise": "Use API/worker/preview credentials to attempt forbidden economic/DDL/production access.",
       "expected": "Negative tests fail as designed; correct service role succeeds only on its authority.",
       "evidence": "Role/grant tests and actual environment IDs without credentials.",
-      "status": "PASS"
+      "status": "PASS",
+      "evidence_refs": [
+        "docs/v5/evidence/phase02-gate.json",
+        "docs/v5.1/release/PRODUCTION-PG-PROVISIONED-20261014.md",
+        ".artifacts/p3-core-edge/prod-role-probe.json",
+        "docs/v5/evidence/phase13-gate.json"
+      ],
+      "gap": null
     },
     {
       "id": "A05",
@@ -3189,7 +3220,15 @@
       "exercise": "Create from zero and upgrade supported schemas under concurrent migrator attempts.",
       "expected": "Only one migrator; checksums/history correct; runtime never alters schema.",
       "evidence": "Migration IDs/checksums, create/upgrade logs and lock tests.",
-      "status": "PASS"
+      "status": "PASS",
+      "evidence_refs": [
+        "docs/v5/evidence/phase02-gate.json",
+        "docs/v5.1/release/PRODUCTION-PG-PROVISIONED-20261014.md",
+        "docs/v5.1/release/P15-DR-RESTORE-PROVEN-20261014.md",
+        "docs/v5.1/release/GAMEPLAY-CAPTURE-STAGING-DEPLOY-20261013.md",
+        "docs/v5/evidence/phase17-gate.json"
+      ],
+      "gap": null
     },
     {
       "id": "A06",
@@ -3198,7 +3237,14 @@
       "exercise": "Inventory SQLite relational schema and every serialized root/nested field variant; compare migration coverage.",
       "expected": "All durable source data mapped or deliberately accounted for; unknowns not silently dropped.",
       "evidence": "Coverage manifest and source snapshot/schema fingerprint.",
-      "status": "NOT_RUN"
+      "status": "PASS",
+      "evidence_refs": [
+        "docs/v5.1/release/E2-PRODUCTION-IMPORT-RECONCILIATION-20261014.md",
+        "docs/v5.1/release/E1-V4-SNAPSHOT-RESTORE-20261014.md",
+        "docs/v5/evidence/phase03-source-capture.json",
+        "docs/v5/evidence/phase03-import-coverage.json"
+      ],
+      "gap": null
     },
     {
       "id": "A07",
@@ -3207,7 +3253,13 @@
       "exercise": "Import accounts/identities/assets/ranks/receipts/history/social/privacy state; inject swapped-wallet test.",
       "expected": "Exact per-actor/relationship values match; aggregate-only false success is detected.",
       "evidence": "Restricted diff and sanitized zero-unexplained-difference summary.",
-      "status": "NOT_RUN"
+      "status": "PASS",
+      "evidence_refs": [
+        "docs/v5.1/release/E2-PRODUCTION-IMPORT-RECONCILIATION-20261014.md",
+        "docs/v5/evidence/phase03-reconciliation.json",
+        "tests/v5-migration-reconcile.test.js"
+      ],
+      "gap": null
     },
     {
       "id": "A08",
@@ -3216,7 +3268,13 @@
       "exercise": "Repeat import, interrupt each batch and re-run near a quarterly boundary with non-UUID IDs.",
       "expected": "No generated identities/default grants/time rollover; canonical target is equivalent.",
       "evidence": "Rerun/interruption fixtures and canonical hashes.",
-      "status": "NOT_RUN"
+      "status": "RUNNING",
+      "evidence_refs": [
+        "docs/v5.1/release/E2-PRODUCTION-IMPORT-RECONCILIATION-20261014.md",
+        "docs/v5/evidence/phase03-rerun-resume.json",
+        "tests/v5-migration-load.test.js"
+      ],
+      "gap": "Deterministic single import executed on production PG (E2); batch interruption/resume proven on representative fixtures (phase03-rerun-resume); repeated/interrupted import and quarterly boundary rollover not run on the frozen production snapshot."
     },
     {
       "id": "A09",
@@ -3225,7 +3283,13 @@
       "exercise": "Reconcile liquid/reserved/escrow and replay transaction fixtures including conversions/burn/grants.",
       "expected": "No double counting or reapplication of legacy journal; postings match approved policy.",
       "evidence": "Per-asset invariants, source-linked migration accounting baseline and transaction tests.",
-      "status": "NOT_RUN"
+      "status": "PASS",
+      "evidence_refs": [
+        "docs/v5.1/release/E2-PRODUCTION-IMPORT-RECONCILIATION-20261014.md",
+        "docs/v5/evidence/phase03-reconciliation.json",
+        "docs/v5/evidence/phase04-runtime-defects.json"
+      ],
+      "gap": null
     },
     {
       "id": "A10",
@@ -3234,7 +3298,15 @@
       "exercise": "Race entry, challenge, conversion and tournament reservation for the same actor.",
       "expected": "No overspend, conflicting occupancy or changed charge timing; losing request has safe outcome.",
       "evidence": "Parallel test trace, final wallet/reservation/operation rows, no PII in public output.",
-      "status": "NOT_RUN"
+      "status": "RUNNING",
+      "evidence_refs": [
+        "docs/v5.1/release/P6-BACKEND-VERIFICATION-20261013.md",
+        "docs/v5.1/release/R05-ONLINE-ACCEPTANCE-20261013.md",
+        "docs/v5/evidence/phase04-repositories.json",
+        "docs/v5/evidence/phase04-runtime-defects.json",
+        "docs/v5/evidence/phase07-gate.json"
+      ],
+      "gap": "PG authority contention/atomicity (37/37) and concurrent accepts proven; same-actor races across entry, challenge, conversion, and tournament reservation with final wallet rows have not been executed against the deployed Core."
     },
     {
       "id": "A11",
@@ -3243,7 +3315,14 @@
       "exercise": "Inject failures between wallet/ledger/result/rating/outbox writes and race settlement/refund.",
       "expected": "Everything commits once or rolls back; no duplicate result or payout.",
       "evidence": "Transaction fault-injection logs and before/after invariants.",
-      "status": "NOT_RUN"
+      "status": "PASS",
+      "evidence_refs": [
+        "tests/v5-p09-settlement.test.js",
+        "docs/v5/evidence/phase09-settlement.json",
+        "docs/v5.1/release/R05-ONLINE-ACCEPTANCE-20261013.md",
+        "docs/v5.1/release/P6-BACKEND-VERIFICATION-20261013.md"
+      ],
+      "gap": null
     },
     {
       "id": "A12",
@@ -3252,7 +3331,15 @@
       "exercise": "Login/link supported email/Google/Apple across browser-style, Android and iOS clients.",
       "expected": "Same actor and permanent bindings; no email-based merge or separate mobile account.",
       "evidence": "Actor-hash comparison and real provider/device evidence, not raw tokens.",
-      "status": "NOT_RUN"
+      "status": "BLOCKED",
+      "evidence_refs": [
+        "docs/v5.1/release/R05-ONLINE-ACCEPTANCE-20261013.md",
+        "docs/v5.1/release/PROVIDER-READINESS-INVENTORY-20261013.md",
+        "docs/v5.1/release/DEVICE-ANDROID-EB2101-20261014.md",
+        "docs/v5.1/release/DEVICE-IOS-IPHONE16PRO-20261014.md",
+        "docs/v5/evidence/phase05-foundations.json"
+      ],
+      "gap": "Staging browser email auth proven live; Google and Apple OAuth unconfigured; Android prototype build is offline-only (no INTERNET permission); iOS physical install blocked on Apple Developer enrollment."
     },
     {
       "id": "A13",
@@ -3261,7 +3348,14 @@
       "exercise": "Race refresh, replay old refresh, revoke device/all devices, rotate keys with active sockets.",
       "expected": "Legitimate parallel retry handled; real replay/revocation enforced; bounded documented revocation delay.",
       "evidence": "Session-family/generation traces, key IDs and test outcomes.",
-      "status": "NOT_RUN"
+      "status": "RUNNING",
+      "evidence_refs": [
+        "docs/v5.1/release/R05-ONLINE-ACCEPTANCE-20261013.md",
+        "docs/v5.1/release/ACCOUNT-DELETION-LIFECYCLE-20261013.md",
+        "docs/v5/evidence/phase05-foundations.json",
+        "tests/v5-p05-refresh.test.js"
+      ],
+      "gap": "Live cookie/session revocation and presence fencing proven on deployed staging; physical-device refresh races, old-token replay and active socket key rotation under provider sessions unexecuted."
     },
     {
       "id": "A14",
@@ -3270,7 +3364,14 @@
       "exercise": "Redeem concurrently on two nodes, replay after Redis loss, try wrong session/env/audience.",
       "expected": "Exactly one valid redemption; failures cannot join protected matches.",
       "evidence": "Ticket-hash/redeem test result without ticket values.",
-      "status": "NOT_RUN"
+      "status": "RUNNING",
+      "evidence_refs": [
+        "docs/v5.1/release/R05-ONLINE-ACCEPTANCE-20261013.md",
+        "docs/v5/evidence/phase05-foundations.json",
+        "docs/v5/evidence/phase08-transport.json",
+        "tests/v5-p05-tickets.test.js"
+      ],
+      "gap": "Single-node realtime ticket subscribe proven live on deployed origin (R05); concurrent two-node redemption and replay after Redis loss unexecuted on deployed topology (staging operates a single Core)."
     },
     {
       "id": "A15",
@@ -3279,7 +3380,14 @@
       "exercise": "Wipe isolated staging Redis during queues, active games and pending effects.",
       "expected": "Assets/results/identity intact; ephemeral state rebuilds or clients rejoin without losing money.",
       "evidence": "Database before/after invariant report and recovery metrics.",
-      "status": "NOT_RUN"
+      "status": "RUNNING",
+      "evidence_refs": [
+        "docs/v5/evidence/phase06-ephemera.json",
+        "docs/v5.1/release/P6-BACKEND-VERIFICATION-20261013.md",
+        ".artifacts/p19-real-disposable.json",
+        "tests/v5-p06-ephemera.test.js"
+      ],
+      "gap": "Durable decisions with all ephemera gone and Redis disconnect recovery proven on disposable lab; real staging Redis (Upstash) wipe during active match/queue unexecuted."
     },
     {
       "id": "A16",
@@ -3288,7 +3396,14 @@
       "exercise": "Run multiple matchers with cancellation/heartbeat expiry/dead workers and conflicting entry paths.",
       "expected": "At most one compatible durable assignment; no stranded paid reservation.",
       "evidence": "Actor occupancy and assignment constraints tested under load.",
-      "status": "NOT_RUN"
+      "status": "PASS",
+      "evidence_refs": [
+        "docs/v5/evidence/phase07-gate.json",
+        "docs/v5/evidence/phase07-queue.json",
+        "docs/v5/evidence/phase07-recovery.json",
+        "docs/v5.1/release/R05-ONLINE-ACCEPTANCE-20261013.md"
+      ],
+      "gap": null
     },
     {
       "id": "A17",
@@ -3297,7 +3412,15 @@
       "exercise": "Kill Core before/after commit, publish and response; reconnect through other Core.",
       "expected": "Latest acknowledged revision survives; duplicate retry returns prior result; no restart void.",
       "evidence": "Operation/revision trace and recorded failover demonstration.",
-      "status": "NOT_RUN"
+      "status": "PASS",
+      "evidence_refs": [
+        "tests/v5-p16-process-failover.test.js",
+        "docs/v5/evidence/phase16-gate.json",
+        "docs/v5/evidence/phase08-restart-recovery.json",
+        "docs/v5.1/release/R05-ONLINE-ACCEPTANCE-20261013.md",
+        "docs/v5.1/release/P6-BACKEND-VERIFICATION-20261013.md"
+      ],
+      "gap": null
     },
     {
       "id": "A18",
@@ -3306,7 +3429,14 @@
       "exercise": "Race exact-deadline move/timeout and reconnect after process/clock disruptions.",
       "expected": "Same accepted timer rule; no free extension, stale timer effect or double settlement.",
       "evidence": "Deterministic clock boundary tests and durable deadline evidence.",
-      "status": "NOT_RUN"
+      "status": "PASS",
+      "evidence_refs": [
+        "docs/v5/evidence/phase08-timers.json",
+        "tests/v5-p08-timers.test.js",
+        "docs/v5.1/release/R05-ONLINE-ACCEPTANCE-20261013.md",
+        "docs/v5.1/release/P6-BACKEND-VERIFICATION-20261013.md"
+      ],
+      "gap": null
     },
     {
       "id": "A19",
@@ -3315,7 +3445,14 @@
       "exercise": "Drop/reorder notifications, disconnect network, background/foreground app, use HTTP fallback.",
       "expected": "Snapshot/revision reconciliation succeeds without speculative reapply or duplicate match.",
       "evidence": "Network/device logs and match-state comparisons.",
-      "status": "NOT_RUN"
+      "status": "RUNNING",
+      "evidence_refs": [
+        "docs/v5.1/release/R05-ONLINE-ACCEPTANCE-20261013.md",
+        "docs/v5.1/release/DEVICE-ANDROID-EB2101-20261014.md",
+        "docs/v5/evidence/phase08-transport.json",
+        "docs/v5/evidence/phase08-restart-recovery.json"
+      ],
+      "gap": "HTTP snapshot fallback, reconnect delta, and duplicate safety proven live on deployed origin (R05); physical device backgrounding, offline disconnect/reconnect, and notification reordering unrun on native devices."
     },
     {
       "id": "A20",
@@ -3324,7 +3461,14 @@
       "exercise": "Run public/private tournament lifecycle with host leave, concurrent timers and worker death.",
       "expected": "Approved CANCELLED host-leave behavior; original cohort/payout/rank rules and escrow intact.",
       "evidence": "Existing fixtures plus multi-worker end-to-end evidence.",
-      "status": "NOT_RUN"
+      "status": "RUNNING",
+      "evidence_refs": [
+        "docs/v5/evidence/phase09-lifecycle.json",
+        "docs/v5/evidence/phase09-settlement.json",
+        "docs/v5/evidence/phase09-recovery.json",
+        "docs/v5.1/release/GAMEPLAY-CAPTURE-STAGING-DEPLOY-20261013.md"
+      ],
+      "gap": "Host-leave cancellation, pause/resume, and indivisible settlement verified in local real-PG suites and 2-fixture capture lab; no multi-worker public/private tournament run on deployed staging (API mounts no tournament route)."
     },
     {
       "id": "A21",
@@ -3333,7 +3477,14 @@
       "exercise": "Crash worker at claim/I/O/completion; deliver duplicates and exhaust retries.",
       "expected": "Durable recovery, current fence required, idempotent effect and visible DLQ.",
       "evidence": "Job state trace, provider idempotency evidence and private retry audit.",
-      "status": "NOT_RUN"
+      "status": "RUNNING",
+      "evidence_refs": [
+        "docs/v5/evidence/phase10-jobs.json",
+        "docs/v5/evidence/phase10-provider.json",
+        "docs/v5.1/release/P6-BACKEND-VERIFICATION-20261013.md",
+        "docs/v5.1/release/GAMEPLAY-CAPTURE-STAGING-DEPLOY-20261013.md"
+      ],
+      "gap": "Durable worker lease fencing, outbox retry, and claim crash recovery proven on disposable PG lab; real provider I/O failure scenarios (email/storage crash/retry/DLQ) not executed on integrated staging."
     },
     {
       "id": "A22",
@@ -3342,7 +3493,12 @@
       "exercise": "Run duplicate workers and catch-up across week/quarter boundary.",
       "expected": "Existing qualification, snapshot and payout rules; no fabricated missing reward periods.",
       "evidence": "Seeded calendar tests and unique business-operation records.",
-      "status": "NOT_RUN"
+      "status": "PASS",
+      "evidence_refs": [
+        "docs/v5/evidence/phase10-scheduling.json",
+        "tests/v5-p10-scheduling.test.js"
+      ],
+      "gap": null
     },
     {
       "id": "A23",
@@ -3351,7 +3507,15 @@
       "exercise": "Attempt direct wallet write and forged/replayed service assertion with altered actor/body.",
       "expected": "API cannot grant; Core independently checks authorization/idempotency.",
       "evidence": "Negative permission/security tests and sanitized distributed request trace.",
-      "status": "NOT_RUN"
+      "status": "PASS",
+      "evidence_refs": [
+        "docs/v5.1/release/CORE-EDGE-DEPLOYED-20261013.md",
+        ".artifacts/p3-core-edge/host-hmac-verify.json",
+        "docs/v5.1/release/R04-DEPLOYED-CORE-COMPOSITION-20261013.md",
+        "docs/v5.1/release/PRODUCTION-PG-PROVISIONED-20261014.md",
+        "docs/v5/evidence/phase13-gate.json"
+      ],
+      "gap": null
     },
     {
       "id": "A24",
@@ -3360,7 +3524,14 @@
       "exercise": "Run approved old-origin client against V5 facade and callback/session continuity.",
       "expected": "Existing UI/contracts work; no shared-cookie-domain fiction or residual SQLite writer.",
       "evidence": "Old-client E2E, CSRF/callback checks and authority-path evidence.",
-      "status": "NOT_RUN"
+      "status": "BLOCKED",
+      "evidence_refs": [
+        "docs/v5.1/release/P3-EDGE-V4-REGRESSION-20261013.md",
+        "docs/v5.1/release/CORE-EDGE-DEPLOYED-20261013.md",
+        "docs/v5.1/release/E4-V4-WRITE-FENCE-INVENTORY-20261014.md",
+        "docs/v5/evidence/phase11-gate.json"
+      ],
+      "gap": "V4 live origin serving re-verified (play.antimatterinnovations.com 200); old-origin browser client E2E against V5 facade and session continuity unexecuted; residual SQLite writer remains live until cutover."
     },
     {
       "id": "A25",
@@ -3369,7 +3540,13 @@
       "exercise": "Clear caches, deliver old projection events, request private data across accounts.",
       "expected": "Correct fallback, no old-version overwrite or shared-cache leakage; caches never authorize spending.",
       "evidence": "Projection/cache replay and isolation test report.",
-      "status": "NOT_RUN"
+      "status": "PASS",
+      "evidence_refs": [
+        "docs/v5/evidence/phase12-gate.json",
+        "docs/v5.1/release/R06-LEADERBOARD-PRIVACY-20261013.md",
+        "tests/v5-p12-read-cache.test.js"
+      ],
+      "gap": null
     },
     {
       "id": "A26",
@@ -3378,7 +3555,14 @@
       "exercise": "Probe public metrics/operator/server paths, verify migrated/new audit chain under concurrency.",
       "expected": "Private surfaces inaccessible publicly; audit uses dedicated key and preserves historical verification.",
       "evidence": "External/private probe results and audit verification without keys.",
-      "status": "NOT_RUN"
+      "status": "RUNNING",
+      "evidence_refs": [
+        "docs/v5.1/release/CORE-EDGE-DEPLOYED-20261013.md",
+        "docs/v5.1/release/PRODUCTION-PG-PROVISIONED-20261014.md",
+        ".artifacts/p3-core-edge/prod-role-probe.json",
+        "docs/v5/evidence/phase13-gate.json"
+      ],
+      "gap": "Public edge blocks non-ingress paths (404s); audit_runtime role restricted to audit.operator_audit on production; external probe of private staging ops endpoints and concurrent audit-chain verification unrecorded."
     },
     {
       "id": "A27",
@@ -3387,7 +3571,13 @@
       "exercise": "Force a staging failure/recovery and trace its support ID across services.",
       "expected": "Alerts actually arrive; safe diagnosis possible; ops reflects backup/backlog not just liveness.",
       "evidence": "Delivered alert references, trace sample and endpoint observations.",
-      "status": "NOT_RUN"
+      "status": "RUNNING",
+      "evidence_refs": [
+        "docs/v5.1/release/DELIVERED-ALERTS-20261014.md",
+        "docs/v5.1/release/E4-V4-WRITE-FENCE-INVENTORY-20261014.md",
+        "docs/v5/evidence/phase14-gate.json"
+      ],
+      "gap": "Incident and recovery email alert delivery proven on V4 host via live Resend path; V5 staging-specific signals (API/Core/Neon/backup/worker) lack wired thresholds and no cross-service support-ID trace executed."
     },
     {
       "id": "A28",
@@ -3396,7 +3586,14 @@
       "exercise": "Restore encrypted R2 logical backup to isolated PostgreSQL outside original project; run all invariants.",
       "expected": "Data/config prerequisites reconstructable; privacy/deletion/revocation protections applied before service.",
       "evidence": "Measured RPO/RTO, hashes, target IDs, invariant results and cleanup record.",
-      "status": "NOT_RUN"
+      "status": "PASS",
+      "evidence_refs": [
+        "docs/v5.1/release/P15-V5-BACKUP-RETRIEVE-MEASURED-20261014.md",
+        "docs/v5.1/release/P15-DR-RESTORE-PROVEN-20261014.md",
+        "docs/v5.1/release/P15-PRODUCTION-RESTORE-PROCEDURE-20261014.md",
+        "docs/v5.1/release/NEON-PITR-VERIFIED-20261014.md"
+      ],
+      "gap": null
     },
     {
       "id": "A29",
@@ -3405,7 +3602,14 @@
       "exercise": "Stop one Core during active games and separately document shared host/edge failure impact.",
       "expected": "Process failover works; same-host test not mislabeled host HA.",
       "evidence": "Topology diagram and measured process outage/reconnect result.",
-      "status": "NOT_RUN"
+      "status": "RUNNING",
+      "evidence_refs": [
+        "docs/v5/evidence/phase16-gate.json",
+        "docs/v5.1/release/CORE-EDGE-DEPLOYED-20261013.md",
+        "docs/v5.1/release/E4-V4-WRITE-FENCE-INVENTORY-20261014.md",
+        "docs/v5.1/release/P6-BACKEND-VERIFICATION-20261013.md"
+      ],
+      "gap": "Core process redundancy and drain failover proven in real-socket loopback lab (22/22); single Core deployed on staging; real Core process kill during active match and measured same-host outage RTO unrun."
     },
     {
       "id": "A30",
@@ -3414,7 +3618,13 @@
       "exercise": "Deploy components in supported skew order and roll to prior PostgreSQL-compatible build.",
       "expected": "Exact tested image/deployment used; migrations compatible; no data rollback hidden in app rollback.",
       "evidence": "Release manifests, digest verification and rollout/recovery logs.",
-      "status": "NOT_RUN"
+      "status": "BLOCKED",
+      "evidence_refs": [
+        "docs/v5.1/release/P8-LAUNCH-CANDIDATE-20261013.md",
+        "docs/v5.1/release/STAGE-D-RELEASE-QUALIFICATION-20261014.md",
+        "docs/v5/evidence/phase17-gate.json"
+      ],
+      "gap": "Source candidate verified (NOT DEPLOYABLE); schema compatibility and rollback policy verified in code; production V5 image digests missing (E3 pending); no component skew deploy or application rollback executed."
     },
     {
       "id": "A31",
@@ -3423,7 +3633,14 @@
       "exercise": "Run realistic mixed traffic/history tiers and dependency saturation/failure.",
       "expected": "Measured safe envelope and backpressure; durable invariants remain true under overload.",
       "evidence": "Reproducible load profile, p95/p99/resource metrics, recovery/alert outcomes.",
-      "status": "NOT_RUN"
+      "status": "RUNNING",
+      "evidence_refs": [
+        "docs/v5/evidence/phase19-gate.json",
+        ".artifacts/p19-real-disposable.json",
+        "docs/v5.1/release/P6-BACKEND-VERIFICATION-20261013.md",
+        "docs/v5.1/release/GAMEPLAY-CAPTURE-STAGING-DEPLOY-20261013.md"
+      ],
+      "gap": "Tiered load and chaos profiled on small synthetic disposable fixture (explicitly MEASURED_ADAPTER_ONLY_NOT_LAUNCH_CAPACITY); realistic-history load, dependency saturation and backpressure on deployed topology unexecuted."
     },
     {
       "id": "A32",
@@ -3432,7 +3649,15 @@
       "exercise": "Compile/install genuine Android/iOS targets; inspect asset bundles; launch clean install offline.",
       "expected": "Approved offline game works without new website; no server code/secrets or fake native target.",
       "evidence": "APK/AAB/archive/IPA hashes where applicable; manifest and install/launch evidence.",
-      "status": "NOT_RUN"
+      "status": "BLOCKED",
+      "evidence_refs": [
+        "docs/v5.1/release/DEVICE-ANDROID-EB2101-20261014.md",
+        "docs/v5.1/release/DEVICE-IOS-IPHONE16PRO-20261014.md",
+        "docs/v5.1/release/NATIVE-BUILDS-20261013.md",
+        "docs/v5.1/release/P4-IOS-SIMULATOR-RUNTIME-20261013.md",
+        "docs/v5/evidence/phase20-gate.json"
+      ],
+      "gap": "Android physical install, cold launch, offline banner, and bot gameplay verified with bundle parity; iOS physical device install blocked on Apple Developer enrollment (0 signing identities); builds are prototype/debug."
     },
     {
       "id": "A33",
@@ -3441,7 +3666,14 @@
       "exercise": "Attempt untrusted-frame/navigation/request-path injection and inspect storage/backups.",
       "expected": "Host tokens not exposed to arbitrary content; only trusted allowed operations; secure persistence.",
       "evidence": "Bridge negative tests and storage/backup inspection without token values.",
-      "status": "NOT_RUN"
+      "status": "RUNNING",
+      "evidence_refs": [
+        "docs/v5/evidence/phase20-gate.json",
+        "docs/v5.1/release/NATIVE-BUILDS-20261013.md",
+        "docs/v5.1/release/DEVICE-ANDROID-EB2101-20261014.md",
+        "tests/v5-native-foundations.test.js"
+      ],
+      "gap": "Native bridge and asset security contracts pass in local test suites (30/30); Android APK removes INTERNET and AD_ID; untrusted-frame injection and storage extraction unexercised on physical devices."
     },
     {
       "id": "A34",
@@ -3450,7 +3682,14 @@
       "exercise": "Run real sandbox pending/cancel/success/crash/replay/refund and cross-platform entitlement read.",
       "expected": "One backend-verified grant; stored bindings preserved; finish/consume after delivery; no consumable remint.",
       "evidence": "Device/build/store transaction references hashed or sanitized; grant/finalization evidence.",
-      "status": "NOT_RUN"
+      "status": "BLOCKED",
+      "evidence_refs": [
+        "docs/v5.1/release/PROVIDER-READINESS-INVENTORY-20261013.md",
+        "docs/v5.1/release/DEVICE-ANDROID-EB2101-20261014.md",
+        "docs/v5.1/release/STAGE-D-RELEASE-QUALIFICATION-20261014.md",
+        "docs/v5/evidence/phase20-gate.json"
+      ],
+      "gap": "Play Billing and StoreKit 2 adapters implemented in code but unwired from app targets; no registered store products, sandbox testers, or provider credentials configured; store approval pending."
     },
     {
       "id": "A35",
@@ -3459,7 +3698,14 @@
       "exercise": "Test UMP state/forms before preload, reward callback delay/replay and interstitial entry conditions.",
       "expected": "No premature ad requests, no client-only grant, no ads during prohibited gameplay; Remove Ads works.",
       "evidence": "Device recording and SSV/ticket assertions with sensitive values removed.",
-      "status": "NOT_RUN"
+      "status": "BLOCKED",
+      "evidence_refs": [
+        "docs/v5.1/release/PROVIDER-READINESS-INVENTORY-20261013.md",
+        "docs/v5.1/release/DEVICE-ANDROID-EB2101-20261014.md",
+        "docs/v5.1/release/STAGE-D-RELEASE-QUALIFICATION-20261014.md",
+        "docs/v5/evidence/phase20-gate.json"
+      ],
+      "gap": "AdMob publisher account unverified, app/unit IDs are Google test placeholders, MEGA_AD_MODE=off, iOS privacy declarations (NSUserTrackingUsageDescription, .xcprivacy) absent, ad classes unwired."
     },
     {
       "id": "A36",
@@ -3468,7 +3714,14 @@
       "exercise": "Exercise all four themes, keyboard/notch/small screen, VoiceOver/TalkBack and network lifecycle.",
       "expected": "Approved layout/controls/game behavior preserved; unavoidable platform adjustments documented.",
       "evidence": "Real device/OS/build matrix and before/after screenshots.",
-      "status": "NOT_RUN"
+      "status": "BLOCKED",
+      "evidence_refs": [
+        "docs/v5.1/release/DEVICE-ANDROID-EB2101-20261014.md",
+        "docs/v5.1/release/DEVICE-IOS-IPHONE16PRO-20261014.md",
+        "docs/v5/evidence/phase00-visual-baseline.json",
+        "docs/v5/evidence/phase20-gate.json"
+      ],
+      "gap": "Four themes and structural CDP accessibility verified on physical Android (EB2101); on-device TalkBack traversal, VoiceOver on iOS, notch/small-screen layout, and network lifecycle matrix blocked by Apple enrollment."
     },
     {
       "id": "A37",
@@ -3477,7 +3730,14 @@
       "exercise": "Build/sign/upload with real authorized identities and inspect provider state.",
       "expected": "Uploaded/submitted/reviewed/approved/enabled reported separately, no inferred approval.",
       "evidence": "Version code/build number, track/TestFlight/submission IDs and provider status.",
-      "status": "NOT_RUN"
+      "status": "BLOCKED",
+      "evidence_refs": [
+        "docs/v5.1/release/PROVIDER-READINESS-INVENTORY-20261013.md",
+        "docs/v5.1/release/DEVICE-IOS-IPHONE16PRO-20261014.md",
+        "docs/v5.1/release/NATIVE-BUILDS-20261013.md",
+        "docs/v5/evidence/phase20-gate.json"
+      ],
+      "gap": "0 codesigning identities on workstation, no provisioning profiles, no Play Console or App Store Connect membership/app records; prototype bundle IDs; release scripts fail closed by design."
     },
     {
       "id": "A38",
@@ -3486,7 +3746,14 @@
       "exercise": "Rehearse all writer shutdown, exact import, read-only checks, epoch transfer, old endpoint/DNS overlap.",
       "expected": "No dual authority; first post-import application write logged; stale V4 cannot resume.",
       "evidence": "Cutover state/evidence timeline, source hash and mutating-path inventory.",
-      "status": "NOT_RUN"
+      "status": "BLOCKED",
+      "evidence_refs": [
+        "docs/v5.1/release/E4-V4-WRITE-FENCE-INVENTORY-20261014.md",
+        "docs/v5.1/release/E2-PRODUCTION-IMPORT-RECONCILIATION-20261014.md",
+        "docs/v5.1/release/STAGE-D-RELEASE-QUALIFICATION-20261014.md",
+        "docs/v5/evidence/phase22-gate.json"
+      ],
+      "gap": "Mutation paths inventoried (E4) and production import verified (E2); no V4 writer stopped, no authority epoch transferred, and no first V5 write logged; blocked on authorized cutover window."
     },
     {
       "id": "A39",
@@ -3495,7 +3762,14 @@
       "exercise": "Abort before first application write; fail after session/provider write and recover via PG-compatible build.",
       "expected": "Only pre-write case may restore unchanged SQLite authority; post-write preserves PostgreSQL effects.",
       "evidence": "Both rehearsals and actual release-compatible rollback references.",
-      "status": "NOT_RUN"
+      "status": "BLOCKED",
+      "evidence_refs": [
+        "docs/v5.1/release/P15-DR-RESTORE-PROVEN-20261014.md",
+        "docs/v5.1/release/P15-PRODUCTION-RESTORE-PROCEDURE-20261014.md",
+        "docs/v5.1/release/P8-LAUNCH-CANDIDATE-20261013.md",
+        "docs/v5/evidence/phase22-gate.json"
+      ],
+      "gap": "Pre-write abort invariant and post-write data-only restore proven in quarantined drills (P15); actual release-topology pre-write abort and post-write recovery rehearsals require authorized cutover window."
     },
     {
       "id": "A40",
@@ -3504,7 +3778,14 @@
       "exercise": "Audit current writers/endpoints/archives and proposed scale actions against real metrics.",
       "expected": "V4 not a dependency; retained evidence intact; only justified capacity added; website remains deferred.",
       "evidence": "Final inventory, residual items, metrics/trigger/cost/rollback plan.",
-      "status": "NOT_RUN"
+      "status": "BLOCKED",
+      "evidence_refs": [
+        "docs/v5.1/release/E4-V4-WRITE-FENCE-INVENTORY-20261014.md",
+        "docs/v5.1/release/STAGE-D-RELEASE-QUALIFICATION-20261014.md",
+        "docs/v5/evidence/phase23-gate.json",
+        "docs/v5/evidence/phase24-gate.json"
+      ],
+      "gap": "V4/SQLite remains sole live production authority; safe retirement (P23) requires executed G22; scaling review (P24) remains unaccepted without real post-cutover production demand metrics."
     }
   ],
   "task_evidence": {

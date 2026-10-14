@@ -51,13 +51,22 @@ test('P0 never promotes CI coverage to acceptance or external proof', () => {
   assert.equal(audit.evidence_baseline.required_workflows, 12);
   assert.equal(audit.evidence_baseline.passed_workflows, 12);
   assert.equal(audit.evidence_baseline.failed_workflows, 0);
+  // Reconciled 2026-10-14 against docs/v5/progress.json (see
+  // docs/v5.1/release/ACCEPTANCE-CASE-RECONCILIATION-20261014.md): exactly these
+  // cases are owner-ledger ACCEPTED, and none is left unassessed.
+  const accepted = ['A03', 'A04', 'A05', 'A06', 'A07', 'A09', 'A11', 'A16',
+    'A17', 'A18', 'A22', 'A23', 'A25', 'A28'];
   assert.deepEqual(audit.cases.filter(c => c.ledger_status === 'PASS').map(c => c.id),
-    ['A04', 'A05']);
-  assert.equal(audit.cases.filter(c => c.ledger_status === 'NOT_RUN').length, 38);
+    accepted);
+  assert.equal(audit.cases.filter(c => c.ledger_status === 'NOT_RUN').length, 0);
   for (const entry of audit.cases) {
-    if (entry.proof_scope === 'LEDGER_PASS') assert.equal(entry.ledger_status, 'PASS');
-    else assert.equal(entry.ledger_status, 'NOT_RUN',
-      entry.id + ' remains unaccepted regardless of source/CI evidence');
+    if (entry.proof_scope === 'LEDGER_PASS') {
+      assert.equal(entry.ledger_status, 'PASS',
+        entry.id + ' claims a ledger acceptance the owner ledger does not record');
+    } else {
+      assert.notEqual(entry.ledger_status, 'PASS',
+        entry.id + ' remains unaccepted regardless of source/CI evidence');
+    }
   }
 });
 
@@ -78,22 +87,44 @@ test('P0 V4 production reality cannot be overwritten by simulated cutover result
     assert.equal(ledger.current.passed_phase_gates.some(e => e.gate === gate),
       false, 'live gate must stay open: ' + gate);
   }
+  // The reconciled ledger keeps these externally gated on the authorised window:
+  // not accepted, and not claimed as reachable work either.
   for (const entry of audit.cases.filter(c => LIVE_PENDING.has(c.id))) {
     assert.equal(entry.proof_scope, 'PRODUCTION_CUTOVER_PENDING');
-    assert.equal(entry.ledger_status, 'NOT_RUN');
+    assert.notEqual(entry.ledger_status, 'PASS',
+      entry.id + ' cannot be accepted while V4 remains the live authority');
+    assert.equal(entry.ledger_status, 'BLOCKED');
     assert.equal(entry.lead, 'main-agent');
   }
 });
 
 test('P0 source-check pass cannot silently close device/store or staging acceptance', () => {
+  // Reconciled 2026-10-14: these stay device/provider-gated, so they may be
+  // RUNNING or externally BLOCKED, never ACCEPTED.
   for (const id of ['A12','A19','A24','A32','A34','A35','A36','A37']) {
     const entry = audit.cases.find(c => c.id === id);
     assert.equal(entry.proof_scope, 'PROVIDER_DEVICE_PENDING');
-    assert.equal(entry.ledger_status, 'NOT_RUN');
+    assert.notEqual(entry.ledger_status, 'PASS',
+      entry.id + ' needs real device/store evidence, not a source/CI pass');
+    assert.ok(['RUNNING', 'BLOCKED'].includes(entry.ledger_status));
   }
-  for (const id of ['A26','A27','A28','A29','A30','A31']) {
+  for (const id of ['A26','A27','A29','A30','A31']) {
     const entry = audit.cases.find(c => c.id === id);
     assert.equal(entry.proof_scope, 'PROVIDER_ENV_PENDING');
-    assert.equal(entry.ledger_status, 'NOT_RUN');
+    assert.notEqual(entry.ledger_status, 'PASS',
+      entry.id + ' needs real provider-environment evidence, not a source/CI pass');
+    assert.ok(['RUNNING', 'BLOCKED'].includes(entry.ledger_status));
+  }
+  // A28 is the one provider-environment case the owner ledger did accept, and only
+  // on measured independent backup/restore evidence against real Neon and R2 — not
+  // on a source or CI pass. Its acceptance must therefore be recorded as an owner
+  // ledger PASS (LEDGER_PASS scope) that already carries recorded owner evidence.
+  {
+    const entry = audit.cases.find(c => c.id === 'A28');
+    assert.equal(entry.proof_scope, 'LEDGER_PASS');
+    assert.equal(entry.ledger_status, 'PASS');
+    const ownerCase = ledger.acceptance_cases.find(c => c.id === 'A28');
+    assert.ok(Array.isArray(ownerCase.evidence_refs) && ownerCase.evidence_refs.length > 0,
+      'A28 acceptance must rest on recorded owner evidence, not source/CI output');
   }
 });

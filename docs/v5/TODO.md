@@ -313,6 +313,6 @@ Milestone: V5.10; status: `PLANNED`; prerequisites: P23. [Phase contract](../../
 
 ## Acceptance and evidence
 
-All 40 original acceptance cases (A01–A40) are preserved in progress.json; current statuses: NOT_RUN 38, PASS 2. [Acceptance contracts](../../Mega-XO-V5-Implementation-Pack/ACCEPTANCE.md) specify real integration/staging/device/provider proof; a planned checklist is not proof.
+All 40 original acceptance cases (A01–A40) are preserved in progress.json; current statuses: RUNNING 15, PASS 14, BLOCKED 11. [Acceptance contracts](../../Mega-XO-V5-Implementation-Pack/ACCEPTANCE.md) specify real integration/staging/device/provider proof; a planned checklist is not proof.
 
 After each verified unit: record exact source SHA, command, target/environment, observed result, evidence reference and accurate evidence level; update PROGRESS/DECISIONS/OPEN-ITEMS and checkpoint on V5. Never mark uploads, submissions or reviews as approvals.

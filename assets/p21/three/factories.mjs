@@ -27,8 +27,8 @@ function makeRoot(T, name, quality) {
   return { root, pivot };
 }
 
-function material(T, name, color, { metalness = 0, roughness = 0.5, emissive = '#000000', emissiveIntensity = 0 } = {}) {
-  return new T.MeshStandardMaterial({ name, color, metalness, roughness, emissive, emissiveIntensity });
+function material(T, name, color, { metalness = 0, roughness = 0.5, emissive = '#000000', emissiveIntensity = 0, vertexColors = false } = {}) {
+  return new T.MeshStandardMaterial({ name, color, metalness, roughness, emissive, emissiveIntensity, vertexColors });
 }
 
 function ensureMeshAttributes(T, geometry) {
@@ -71,6 +71,72 @@ function addMesh(T, parent, name, geometry, mat) {
   mesh.receiveShadow = true;
   parent.add(mesh);
   return mesh;
+}
+
+function facetedDiamondGeometry(T, { width, height, depth, segments, colors }) {
+  const outlineProfile = segments < 8 ? [
+    [0, height, 0.08], [-width, 0, 0.44], [-width * 0.70, -height * 0.62, 0.28],
+    [0, -height, 0.10], [width * 0.70, -height * 0.62, 0.28], [width, 0, 0.44],
+  ] : [
+    [0, height, 0.08], [-width * 0.72, height * 0.30, 0.26], [-width, 0, 0.44],
+    [-width * 0.72, -height * 0.62, 0.28], [0, -height, 0.10],
+    [width * 0.72, -height * 0.62, 0.28], [width, 0, 0.44], [width * 0.72, height * 0.30, 0.26],
+  ];
+  const outline = outlineProfile.map(([x, y, z]) => [x, y, z * depth]);
+  const centerY = -height * 0.055;
+  const frontCenter = [0, centerY, depth * 1.24];
+  const backCenter = [0, centerY, -depth * 0.72];
+  const front = outline.map(([x, y, z]) => [x, y, z]);
+  const back = outline.map(([x, y]) => [x, y, -depth * 0.38]);
+  const positions = [];
+  const colorValues = [];
+  const palette = colors.map(value => value.isColor ? value : new T.Color(value));
+
+  function triangle(a, b, c, colorIndex, target) {
+    const av = new T.Vector3(...a), bv = new T.Vector3(...b), cv = new T.Vector3(...c);
+    const normal = bv.clone().sub(av).cross(cv.clone().sub(av));
+    if (normal.dot(new T.Vector3(...target)) < 0) [b, c] = [c, b];
+    const color = palette[colorIndex % palette.length];
+    for (const point of [a, b, c]) {
+      positions.push(point[0], point[1], point[2]);
+      colorValues.push(color.r, color.g, color.b);
+    }
+  }
+
+  // Separate non-indexed triangles preserve crisp light/dark pavilion cuts.
+  const frontFacetColors = [1, 0, 2, 3, 3, 2, 0, 1];
+  for (let i = 0; i < segments; i++) {
+    const a = Math.floor(i * outline.length / segments);
+    const b = Math.floor((i + 1) * outline.length / segments) % outline.length;
+    triangle(frontCenter, front[a], front[b], frontFacetColors[i % frontFacetColors.length], [0, 0, 1]);
+    triangle(backCenter, back[b], back[a], frontFacetColors[(i + 4) % frontFacetColors.length], [0, 0, -1]);
+    const darkFacet = palette[3].clone().lerp(palette[2], 0.18);
+    const before = palette.length;
+    palette.push(darkFacet);
+    triangle(front[a], back[a], back[b], before, [(outline[a][0] + outline[b][0]) / 2, (outline[a][1] + outline[b][1]) / 2, 0]);
+    palette.pop();
+    palette.push(darkFacet);
+    triangle(front[a], back[b], front[b], before, [(outline[a][0] + outline[b][0]) / 2, (outline[a][1] + outline[b][1]) / 2, 0]);
+    palette.pop();
+  }
+
+  const geometry = new T.BufferGeometry();
+  geometry.setAttribute('position', new T.Float32BufferAttribute(positions, 3));
+  geometry.setAttribute('color', new T.Float32BufferAttribute(colorValues, 3));
+  return geometry;
+}
+
+function gemColorPalette(T, base, highlight, glow, shadow) {
+  const gem = new T.Color(base);
+  const bright = new T.Color(highlight);
+  const glowColor = new T.Color(glow || base);
+  const dark = new T.Color(shadow);
+  return [
+    gem.clone(),
+    gem.clone().lerp(bright, 0.68),
+    gem.clone().lerp(glowColor, 0.58),
+    gem.clone().lerp(dark, 0.58),
+  ];
 }
 
 function roundedRect(T, width, height, radius) {
@@ -208,7 +274,8 @@ function makeCrown(T, qualityName = 'high') {
     material(T, 'Band panel · orchid', '#b155ef', { metalness: 0.49, roughness: 0.24 }),
   ];
   const facets = material(T, 'Crown tine facets · lavender', '#bf74ff', { metalness: 0.46, roughness: 0.22 });
-  const gems = material(T, 'Tip gems · pink lavender crystal', '#edc7ff', { metalness: 0.26, roughness: 0.18, emissive: '#7c29cf', emissiveIntensity: 0.11 });
+  const gems = material(T, 'Three-point crown · cut lavender crystal facets', '#ffffff', { metalness: 0.12, roughness: 0.2, emissive: '#7c29cf', emissiveIntensity: 0.045, vertexColors: true });
+  const gemColors = gemColorPalette(T, '#edc7ff', '#ffffff', '#9d3ee8', '#431c73');
   const rails = material(T, 'Band rails · lilac silver', '#dda4ff', { metalness: 0.72, roughness: 0.22, emissive: '#691ea5', emissiveIntensity: 0.05 });
 
   const shell = addMesh(T, pivot, 'Three-point crown shell', extrude(T, crownOutline(T), q, 0.12, 0.018, 0.025), base);
@@ -255,14 +322,13 @@ function makeCrown(T, qualityName = 'high') {
     addMesh(T, pivot, name, new T.TubeGeometry(path, steps, 0.012, q.tubeSegments, false), rails);
   }
 
-  for (const [label, x, y, radius] of [
-    ['Left tip gem', -0.62, 0.265, 0.108],
-    ['Center tip gem', 0, 0.50, 0.12],
-    ['Right tip gem', 0.62, 0.265, 0.108],
+  for (const [label, x, y, width, height, depth] of [
+    ['Left tip diamond', -0.62, 0.265, 0.082, 0.102, 0.052],
+    ['Center tip diamond', 0, 0.485, 0.122, 0.168, 0.074],
+    ['Right tip diamond', 0.62, 0.265, 0.082, 0.102, 0.052],
   ]) {
-    const gem = addMesh(T, pivot, label, new T.OctahedronGeometry(radius, q.gemDetail), gems);
+    const gem = addMesh(T, pivot, label, facetedDiamondGeometry(T, { width, height, depth, segments: q.gemDetail ? 8 : 6, colors: gemColors }), gems);
     gem.position.set(x, y, 0.12);
-    gem.rotation.set(0.14, 0.18, Math.PI / 8);
   }
 
   return root;
@@ -374,9 +440,10 @@ function makeRank(T, rank, qualityName = 'high') {
     highlight: material(T, `${config.title} shield facet`, config.highlight, { metalness: config.metalness, roughness: Math.max(0.16, config.roughness - 0.03) }),
   };
   if (config.gem) {
-    materials.gem = material(T, `${config.title} central faceted crystal`, config.gem, {
-      metalness: 0.28, roughness: 0.17, emissive: config.gemGlow || '#000000', emissiveIntensity: config.gemGlow ? 0.12 : 0,
+    materials.gem = material(T, `${config.title} cut crystal · vertex-colored pavilion facets`, '#ffffff', {
+      metalness: 0.1, roughness: 0.21, emissive: config.gemGlow || '#000000', emissiveIntensity: config.gemGlow ? 0.045 : 0, vertexColors: true,
     });
+    materials.gemColors = gemColorPalette(T, config.gem, config.highlight, config.gemGlow, config.dark);
   }
 
   // The twelve source designs share an angular shield-and-wing silhouette. Each
@@ -407,10 +474,8 @@ function makeRank(T, rank, qualityName = 'high') {
     const bezel = addMesh(T, pivot, 'Raised crystal bezel', new T.TorusGeometry(0.31, 0.028, Math.max(6, q.radialSegments / 6), q.torusSegments), materials.frame);
     bezel.scale.set(0.72, 1.27, 0.45);
     bezel.position.set(0, -0.015, 0.225);
-    const crystal = addMesh(T, pivot, 'Independently faceted central crystal', new T.OctahedronGeometry(0.30, q.gemDetail), materials.gem);
-    crystal.scale.set(0.76, 1.43, 0.56);
+    const crystal = addMesh(T, pivot, 'Independently cut central diamond · pointed crown and pavilion', facetedDiamondGeometry(T, { width: 0.22, height: 0.41, depth: 0.135, segments: q.gemDetail ? 8 : 6, colors: materials.gemColors }), materials.gem);
     crystal.position.set(0, -0.03, 0.24);
-    crystal.rotation.y = Math.PI / 8;
   } else {
     // Wood and stone remain visibly material-first: the raised inner shield is
     // cut into separate relief planes and does not introduce an unapproved gem.
@@ -421,8 +486,7 @@ function makeRank(T, rank, qualityName = 'high') {
   // Thin material seams and studs provide distinct tier signatures without
   // introducing text, numbers or game-economy semantics into the emblem.
   if (config.sideGems >= 2) for (const side of [-1, 1]) {
-    const stud = addMesh(T, pivot, `${side < 0 ? 'Left' : 'Right'} shoulder crystal`, new T.OctahedronGeometry(0.075, q.gemDetail), materials.gem);
-    stud.scale.set(0.9, 1.1, 0.5);
+    const stud = addMesh(T, pivot, `${side < 0 ? 'Left' : 'Right'} shoulder cut crystal`, facetedDiamondGeometry(T, { width: 0.058, height: 0.072, depth: 0.042, segments: q.gemDetail ? 8 : 6, colors: materials.gemColors }), materials.gem);
     stud.position.set(side * 0.39, 0.43, 0.22);
   }
 
@@ -435,8 +499,7 @@ function makeRank(T, rank, qualityName = 'high') {
         : [[x - 0.085, 0.68], [x - 0.045, 0.76], [x, 0.87], [x + 0.045, 0.76], [x + 0.085, 0.68]];
       addRankPlate(T, pivot, `${config.title} ${config.finials === 3 ? 'crown' : 'rising'} finial ${index + 1}`, points, q, materials.frame, 0.035, { depth: 0.07, bevelSize: 0.01, bevelThickness: 0.018 });
       if (center && materials.gem && (rank === 'champion' || rank === 'diamond')) {
-        const crestGem = addMesh(T, pivot, `${config.title} finial crystal`, new T.OctahedronGeometry(0.075, q.gemDetail), materials.gem);
-        crestGem.scale.set(0.75, 1.3, 0.6);
+        const crestGem = addMesh(T, pivot, `${config.title} finial cut crystal`, facetedDiamondGeometry(T, { width: 0.044, height: 0.072, depth: 0.038, segments: q.gemDetail ? 8 : 6, colors: materials.gemColors }), materials.gem);
         crestGem.position.set(0, 0.80, 0.10);
       }
     });

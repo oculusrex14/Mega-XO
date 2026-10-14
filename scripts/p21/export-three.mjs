@@ -10,8 +10,18 @@ const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(scriptDir, '../..');
 const outDir = path.join(repoRoot, 'assets/p21/three/exports');
 const dependencyDir = path.join(repoRoot, '.artifacts/p21-three-tools/node_modules/three');
+const provenancePath = path.join(repoRoot, 'assets/p21/three/provenance.json');
+const repairBaselinePath = path.join(repoRoot, '.artifacts/p21-three-repair-baseline.json');
 const readFile = (p) => fs.readFile(p);
 const digest = (data) => crypto.createHash('sha256').update(data).digest('hex');
+const repairAssetNames = ['crown', 'rank-bronze', 'rank-silver', 'rank-gold', 'rank-diamond', 'rank-emerald', 'rank-champion', 'rank-master', 'rank-grandmaster'];
+
+let priorProvenance = null;
+try { priorProvenance = JSON.parse(await readFile(provenancePath, 'utf8')); } catch {}
+let capturedRepairBaseline = priorProvenance?.changeAudit?.baseline || null;
+if (!capturedRepairBaseline) {
+  try { capturedRepairBaseline = JSON.parse(await readFile(repairBaselinePath, 'utf8')); } catch {}
+}
 
 const [THREE, { GLTFExporter }, { GLTFLoader }] = await Promise.all([
   import(pathToFileURL(path.join(dependencyDir, 'build/three.module.js')).href),
@@ -265,6 +275,14 @@ async function directoryBytes(directory) {
 }
 const referenceInventory = await sourceBounds();
 const observedSourceRevision = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: repoRoot, encoding: 'utf8' }).trim();
+const currentAssetsByPath = new Map(assets.map((asset) => [asset.path, asset]));
+const repairedOutputDiffs = (capturedRepairBaseline?.files || [])
+  .filter((item) => item.path.startsWith('assets/p21/three/exports/'))
+  .map((before) => {
+    const after = currentAssetsByPath.get(before.path);
+    return after ? { path: before.path, before: { bytes: before.bytes, sha256: before.sha256 }, after: { bytes: after.bytes, sha256: after.sha256 }, changed: before.sha256 !== after.sha256 } : null;
+  })
+  .filter(Boolean);
 const manifest = {
   status: 'FULL_FAMILY_PROCEDURAL_SOURCE_AND_GLBS_VALIDATED; VISUAL_REVIEW_PENDING; NOT_RUNTIME_ACTIVATED',
   generatedAt: new Date().toISOString(),
@@ -272,8 +290,21 @@ const manifest = {
     priorGlyphAndCurrencySliceStart: '576eb54da5700918941cd318b219faaf253d8748',
     fullFamilyExpansionPinnedRevision: '5fc3f957eb6268395b5aa9a2883d46a56b13b85c',
     assetExportRevisionObserved: observedSourceRevision,
-    note: 'The source assets, exporters, and exports are uncommitted working-tree inputs. assetExportRevisionObserved records HEAD at export time only; the hashes below identify the actual working inputs and neither revision proves an app release or runtime integration.',
+    note: 'assetExportRevisionObserved records HEAD at export time only; input and output hashes identify the actual files. Neither the revision nor this asset evidence proves an app release or runtime integration.',
   },
+  changeAudit: capturedRepairBaseline ? {
+    changeId: capturedRepairBaseline.changeId,
+    baseline: capturedRepairBaseline,
+    affectedAssetNames: repairAssetNames,
+    preChangeAndPostChangeOutputHashes: repairedOutputDiffs,
+    unchangedAffectedGlbCount: repairedOutputDiffs.filter((item) => !item.changed).length,
+    changedAffectedGlbCount: repairedOutputDiffs.filter((item) => item.changed).length,
+    priorFullMatrix: {
+      path: 'assets/p21/three/render-evidence.json',
+      sha256BeforeGeometryRepair: capturedRepairBaseline.files.find((item) => item.path === 'assets/p21/three/render-evidence.json')?.sha256 || null,
+      note: 'This earlier full-family matrix is historical for the nine repaired models. The scoped repair matrix revalidates those models; untouched asset outputs are reusable only when their prior full-matrix and current SHA-256 values match.',
+    },
+  } : undefined,
   toolchain: {
     three: { name: threePackage.name, version: threePackage.version, license: 'MIT', path: '.artifacts/p21-three-tools/node_modules/three', productionDependency: false, installedBytes: await directoryBytes(dependencyDir), downloadArchiveBytes: (await fs.stat(path.join(repoRoot, '.artifacts/p21-three-tools/three-0.180.0.tgz'))).size },
     reconstructionGuidance: { name: 'img2threejs', repository: 'https://github.com/img2threejs/img2threejs', skillVersionRead: '2.0.0', license: 'Apache-2.0', use: 'procedural quality-gating approach consulted; no code copied and no host skill installed' },
@@ -301,6 +332,12 @@ const manifest = {
       plateBackground: '#031426dd',
       sourceScope: 'decorative standalone solid mesh study; no integration into the approved homepage raster/card or gameplay board',
     },
+    crystalCutRepair: {
+      sourceReference: 'assets/p21/art/crystal-source.png',
+      model: 'Pointed top crown, broad polygon girdle, and pointed lower pavilion made from separate flat-shaded triangular faces; vertex-color PBR facets, no subdivided sphere or texture map.',
+      scope: 'central cut crystals across all eight gem-bearing rank tiers plus three faceted Crown tip jewels; canonical asset and rank IDs remain unchanged',
+      limitation: 'geometry follows the approved silhouette and palette as a source-based study; no exact raster parity or final art approval claimed',
+    },
   },
   sourceCodeReferences: [
     { asset: 'X', path: 'apps/web/board.js', detail: 'X path M10 10 30 30M30 10 10 30; viewBox 0 0 40 40', colorPath: 'apps/web/board.css', color: '#39cfff' },
@@ -311,18 +348,20 @@ const manifest = {
     coin: 'Owner-provided 1254x1254 transparent gold coin reference: raised five-point star, inset face and stacked bright rim. Model uses geometry and PBR only; no exact raster parity claimed.',
     crown: 'Owner-provided 1254x1254 transparent purple crown reference: center and side tines, segmented base and bright tip gems. Model uses geometry and PBR only; no exact raster parity claimed.',
     neonGlyphs: 'Reconstructed as solid 3D counterparts of the existing browser SVG strokes; colors copied from current Mega XOXO Neon CSS. Glow is restrained emissive material, not a baked effect.',
-    rankFamily: 'Eleven canonical raster rank designs were inventoried before modeling. SourcePNG prompts and material palettes are recorded in assets/p21/art/ranks/PROMPTS.json; Diamond uses the existing crystal-source.png and diamond.webp. Geometry shares the angular shield/segmented-wing silhouette while tier materials and finials stay distinct. It is not a pixel-exact raster trace.',
+    rankFamily: 'Eleven canonical raster rank designs were inventoried before modeling. SourcePNG prompts and material palettes are recorded in assets/p21/art/ranks/PROMPTS.json; Diamond uses the existing crystal-source.png and diamond.webp. Geometry shares the angular shield/segmented-wing silhouette while tier materials and finials stay distinct. Gem-bearing tiers now use an explicit pointed crown, polygon girdle and pointed pavilion made from flat-shaded facets, based on the retained cut-crystal silhouette; no subdivided sphere is used. It is not a pixel-exact raster trace.',
     trophy: 'Owner-provided transparent trophy source inspected: wide gold handled bowl, raised five-point star, laurel-like side ornaments, narrow neck and black/gold stepped pedestal. Model reconstructs the visible forms as genuine geometry; no exact raster parity claimed.',
     rewardChest: 'No owner-supplied reward-chest source image exists in the available asset registry; this is an explicitly provisional closed black-and-gold decorative chest geometry, with no visible contents or claimed economy meaning.',
     boardPlates: 'The approved home capture and current siteMiniTheme/CSS were inspected. Two independent vertical boards reproduce the three diagonal X or O mark positions and current Neon edge/grid palette as 3D mesh plates. They are decorative standalone studies, not replacements for the approved card render.',
     materialLimits: 'Materials use procedural MeshStandardMaterial PBR values only. There are no image textures, normal maps, roughness maps or metalness maps; wood grain, stone microtexture and iridescent fine detail remain open.',
+    crownHeaderComparison: 'The three-prong silhouette, raised center tine and smaller side-tip gems were compared with assets/p21/art/currency/crown.webp and the owner-provided crown-source.png. Crown tips are modeled as discrete faceted gems; this remains a visual study, not a final header replacement.',
   },
   authoredSourceFiles: [],
   detailInventory: {
     X: ['two independently editable rounded rectangular crossed extrusions'],
     O: ['one closed continuous torus with rounded cross-section'],
     Coin: ['solid coin blank', 'inset circular face', 'two front rim details', 'back edge bead', 'raised beveled five-point star'],
-    Crown: ['three-point extruded shell', 'split tine facets', 'five separate raised band panels', 'two curved band rails', 'three faceted tip gems'],
+    Crown: ['three-point extruded shell', 'split tine facets', 'five separate raised band panels', 'two curved band rails', 'three separately editable flat-faceted crown-cut diamonds: larger center gem and two smaller side gems'],
+    RankCutCrystals: ['pointed upper crown', 'broad polygon girdle and angular shoulders', 'pointed lower pavilion', 'eight-color high-detail or six-color lightweight flat-shaded facet layout', 'vertex-colored metallic-roughness material with generated normals and UVs; no sphere subdivision or image textures'],
     RankBadges: Object.fromEntries(Object.entries(rankMaterialNotes).map(([rank, detail]) => [rank, [
       'dark rear shield/backplate', 'raised material-specific shield frame', 'inset central relief plates',
       'three independently extruded feather segments per wing', ...(rank === 'master' || rank === 'grandmaster' ? ['fourth upper feather segment per wing'] : []),

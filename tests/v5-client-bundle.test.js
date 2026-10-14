@@ -298,6 +298,49 @@ test('dependencyUrls ignores XML namespaces but reports real remote references',
   assert.deepEqual(builder.dependencyUrls(html), ['https://fonts.googleapis.com/css2']);
 });
 
+test('a declared canonical page link resolves to its bundled page without weakening resource guards', (t) => {
+  const { root, write, configPath } = fixture(t);
+  // Real source shape: a legal page names the public site root as an anchor, not a resource.
+  write('public/privacy.html', '<!doctype html><html><body><a href="https://megaxo.online/">megaxo.online</a><img src="https://tracker.example.test/pixel.gif"></body></html>');
+  const config = JSON.parse(fs.readFileSync(path.join(root, configPath), 'utf8'));
+  config.canonical_link_rewrites = { 'https://megaxo.online/': 'privacy.html' };
+
+  // An undeclared canonical link is still a non-local dependency refusal.
+  write('native/client/canonical-missing.config.json', JSON.stringify({ ...config, canonical_link_rewrites: {} }));
+  const outMissing = outDir('cm');
+  t.after(() => fs.rmSync(outMissing, { recursive: true, force: true }));
+  assert.throws(() => buildIn(root, { output: outMissing, config: 'native/client/canonical-missing.config.json' }), /REFUSAL/);
+
+  // A declared canonical rewrite must not smuggle a resource or deep link: the same page still
+  // carries a tracker img, so the resource guard alone must refuse the build.
+  write('native/client/canonical-tracker.config.json', JSON.stringify(config));
+  const outTracker = outDir('ct');
+  t.after(() => fs.rmSync(outTracker, { recursive: true, force: true }));
+  assert.throws(() => buildIn(root, { output: outTracker, config: 'native/client/canonical-tracker.config.json' }), /REFUSAL/);
+
+  // Removing the tracker yields a build whose canonical link points at the bundled page.
+  write('public/privacy.html', '<!doctype html><html><body><a href="https://megaxo.online/">megaxo.online</a></body></html>');
+  write('native/client/canonical.config.json', JSON.stringify(config));
+  const output = outDir('c');
+  t.after(() => fs.rmSync(output, { recursive: true, force: true }));
+  buildIn(root, { output, config: 'native/client/canonical.config.json' });
+  const page = fs.readFileSync(path.join(output, 'privacy.html'), 'utf8');
+  assert.ok(page.includes('href="privacy.html">megaxo.online'));
+  assert.ok(!page.includes('megaxo.online/"'));
+
+  // URL shape and target are validated: a deep link, a query or a non-bundled page is refused.
+  for (const bad of ['https://megaxo.online/privacy', 'https://megaxo.online/?x=1', 'https://megaxo.online/#top']) {
+    write('native/client/canonical-bad.config.json', JSON.stringify({ ...config, canonical_link_rewrites: { [bad]: 'privacy.html' } }));
+    const outBad = outDir('cb');
+    t.after(() => fs.rmSync(outBad, { recursive: true, force: true }));
+    assert.throws(() => buildIn(root, { output: outBad, config: 'native/client/canonical-bad.config.json' }), /REFUSAL/, 'must refuse canonical link ' + bad);
+  }
+  write('native/client/canonical-target.config.json', JSON.stringify({ ...config, canonical_link_rewrites: { 'https://megaxo.online/': 'not-bundled.html' } }));
+  const outTarget = outDir('cg');
+  t.after(() => fs.rmSync(outTarget, { recursive: true, force: true }));
+  assert.throws(() => buildIn(root, { output: outTarget, config: 'native/client/canonical-target.config.json' }), /REFUSAL/);
+});
+
 test('the repository root is not a permitted output and reads no mutable state', () => {
   assert.throws(() => builder.assertOutputLocation(REPO_ROOT, REPO_ROOT), /REFUSAL/);
   // The default config path exists and is a real regular file in the repository.

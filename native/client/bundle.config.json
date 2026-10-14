@@ -149,6 +149,9 @@
       "href": "https://fonts.gstatic.com"
     }
   ],
+  "canonical_link_rewrites": {
+    "https://megaxo.online/": "bundle-index.html"
+  },
   "local_route_rewrites": [
     {
       "from": "/privacy-choices",

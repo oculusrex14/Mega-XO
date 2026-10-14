@@ -155,6 +155,23 @@ function loadConfig(root, configPath) {
   if (!config.index_rewrites || typeof config.index_rewrites !== 'object' || Array.isArray(config.index_rewrites)) {
     throw refuse('bundle config index_rewrites must be an object mapping dependency URL to bundle path');
   }
+  // Declared canonical page links (for example the public site root shown in a legal page) are
+  // not resource dependencies: they must resolve to a page that actually ships in this bundle.
+  // Each key is an exact absolute https page URL with no path, query or fragment, so a resource,
+  // tracker or deep link can never be hidden behind this allowlist.
+  if (config.canonical_link_rewrites === undefined) config.canonical_link_rewrites = {};
+  if (!config.canonical_link_rewrites || typeof config.canonical_link_rewrites !== 'object' || Array.isArray(config.canonical_link_rewrites)) {
+    throw refuse('bundle config canonical_link_rewrites must be an object mapping a canonical https page URL to a bundled page');
+  }
+  const bundledPages = new Set([config.bundle_index, ...(config.legal_pages || []).map((page) => page && page.destination)]);
+  for (const [url, destination] of Object.entries(config.canonical_link_rewrites)) {
+    if (!/^https:\/\/[a-z0-9](?:[a-z0-9.-]*[a-z0-9])?(?::\d+)?\/?$/i.test(url)) {
+      throw refuse('canonical_link_rewrites keys must be absolute https page URLs without path, query or fragment: ' + String(url));
+    }
+    const target = normalizeBundlePath(destination, 'canonical link target');
+    if (!target.endsWith('.html')) throw refuse('canonical link target must be a bundled html page: ' + String(destination));
+    if (!bundledPages.has(target)) throw refuse('canonical link target is not a bundled page: ' + target);
+  }
   if (!(config.vendor_root === 'assets/vendor' || normalizeBundlePath(config.vendor_root, 'vendor_root').startsWith(VENDOR_ROOT_PREFIX))) {
     throw refuse('vendor_root must live under ' + VENDOR_ROOT_PREFIX + ', got: ' + config.vendor_root);
   }
@@ -227,6 +244,14 @@ function localizeHtml(html, config, { requireDependencyLinks = false } = {}) {
       throw refuse('local route rewrite requires a site-absolute path: ' + JSON.stringify(rewrite.from === undefined ? null : rewrite.from));
     }
     output = output.split('"' + rewrite.from + '"').join('"' + normalizeBundlePath(rewrite.to, 'local route target') + '"');
+  }
+  // Canonical page links resolve onto the bundled page (validated in loadConfig). The trailing
+  // slash is optional in the source, so both forms are rewritten to the same bundled target.
+  for (const [url, destination] of Object.entries(config.canonical_link_rewrites || {})) {
+    const base = url.replace(/\/$/, '');
+    for (const form of [url, base]) {
+      output = output.split('"' + form + '"').join('"' + normalizeBundlePath(destination, 'canonical link target') + '"');
+    }
   }
   const remaining = dependencyUrls(output);
   if (remaining.length > 0) throw refuse('html still references non-local dependency URLs: ' + remaining.join(', '));

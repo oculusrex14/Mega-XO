@@ -152,6 +152,16 @@ async function handleRequest(req, res, options = {}) {
 
 // Global default handler for Vercel Serverless Function entrypoint
 let defaultHandlerInstance = null;
+/* Deployment-owned P05 native session plumbing from the environment (issuer, key file, audiences).
+ * A partial configuration stays null, so the bearer routes answer their honest 503 instead of
+ * accepting a token signed by a key nobody published. */
+function nativeSessionOptions(env) {
+  try {
+    return require('./config.js').nativeSessionConfig(env);
+  } catch {
+    return { nativeAudiences: ['mega-ios', 'mega-android'], accessOptions: null, refreshOptions: null };
+  }
+}
 async function defaultHandler(req, res) {
   if (!defaultHandlerInstance) {
     let pool = null;
@@ -210,6 +220,7 @@ async function defaultHandler(req, res) {
       otpSecret: process.env.MEGA_OTP_SECRET || process.env.OTP_SECRET,
       ticketEnvironment: process.env.MEGA_TICKET_ENV,
       ticketAudience: process.env.MEGA_TICKET_AUDIENCE,
+      ...nativeSessionOptions(process.env),
     });
   }
   return defaultHandlerInstance(req, res);

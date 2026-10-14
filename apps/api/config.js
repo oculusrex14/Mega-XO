@@ -224,8 +224,60 @@ function validateConfig(env = process.env) {
     otpSecret: env.MEGA_OTP_SECRET || env.OTP_SECRET || '',
     auditSecret: env.MEGA_AUDIT_SECRET || env.AUDIT_SECRET || '',
     jwtSecret: env.MEGA_JWT_SECRET || env.JWT_SECRET || '',
-    coreUrl: env.MEGA_CORE_URL || env.CORE_SERVICE_URL || ''
+    coreUrl: env.MEGA_CORE_URL || env.CORE_SERVICE_URL || '',
+    ...nativeSessionConfig(env),
   });
+}
+
+/** Splits a comma-separated list, trimming blank entries. Returns null when unset. */
+function csvList(value) {
+  if (typeof value !== 'string' || !value.trim()) return null;
+  const items = value.split(',').map((item) => item.trim()).filter(Boolean);
+  return items.length ? items : null;
+}
+
+/** Reads a non-negative integer; an unset value stays undefined so the service default applies. */
+function optionalInt(value) {
+  if (value === undefined || value === null || String(value).trim() === '') return undefined;
+  const parsed = Number(value);
+  return Number.isSafeInteger(parsed) && parsed >= 0 ? parsed : undefined;
+}
+
+/**
+ * P05 cookie-free native session plumbing (design B4.2/C5). The API runtime owns the signing
+ * configuration; a partial configuration yields `accessOptions: null`, which is the honest
+ * unconfigured state (the bearer routes answer 503) rather than an issuer, key file or audience
+ * invented at request time. Never a fallback secret.
+ */
+function nativeSessionConfig(env = {}) {
+  const issuer = env.MEGA_ACCESS_ISSUER;
+  const environment = env.MEGA_ACCESS_ENVIRONMENT;
+  const keyFile = env.MEGA_ACCESS_KEY_FILE;
+  const playerAudiences = csvList(env.MEGA_ACCESS_PLAYER_AUDIENCES);
+  const serviceAudiences = csvList(env.MEGA_ACCESS_SERVICE_AUDIENCES);
+  const configured = Boolean(issuer && environment && keyFile && playerAudiences && serviceAudiences);
+  const now = optionalInt(env.MEGA_SESSION_NOW_MS);
+  const refresh = {};
+  for (const [key, name] of [['graceMs', 'MEGA_REFRESH_GRACE_MS'], ['maxGraceReuse', 'MEGA_REFRESH_MAX_GRACE_REUSE'], ['absoluteTtlMs', 'MEGA_REFRESH_ABSOLUTE_TTL_MS']]) {
+    const value = optionalInt(env[name]);
+    if (value !== undefined) refresh[key] = value;
+  }
+  return {
+    nativeAudiences: csvList(env.MEGA_NATIVE_AUDIENCES) || Object.freeze(['mega-ios', 'mega-android']),
+    accessOptions: configured
+      ? Object.freeze({
+        ...(now === undefined ? {} : { now: () => now }),
+        issuer,
+        environment,
+        keyFile,
+        playerAudiences,
+        serviceAudiences,
+      })
+      : null,
+    refreshOptions: Object.keys(refresh).length
+      ? Object.freeze({ ...(now === undefined ? {} : { now: () => now }), ...refresh })
+      : null,
+  };
 }
 
 // Export both named functions and config object
@@ -236,6 +288,7 @@ validateConfig.assertSecretIsolation = assertSecretIsolation;
 validateConfig.isProductionDatabase = isProductionDatabase;
 validateConfig.isNonproductionDatabase = isNonproductionDatabase;
 validateConfig.isProductionSecret = isProductionSecret;
+validateConfig.nativeSessionConfig = nativeSessionConfig;
 validateConfig.VALID_ENVIRONMENTS = VALID_ENVIRONMENTS;
 validateConfig.PROD_HOSTNAMES = PROD_HOSTNAMES;
 
@@ -247,5 +300,6 @@ module.exports.assertSecretIsolation = assertSecretIsolation;
 module.exports.isProductionDatabase = isProductionDatabase;
 module.exports.isNonproductionDatabase = isNonproductionDatabase;
 module.exports.isProductionSecret = isProductionSecret;
+module.exports.nativeSessionConfig = nativeSessionConfig;
 module.exports.VALID_ENVIRONMENTS = VALID_ENVIRONMENTS;
 module.exports.PROD_HOSTNAMES = PROD_HOSTNAMES;

@@ -187,6 +187,20 @@ async function resolveService(context) {
   throw new Error('NO_DATABASE_POOL_OR_ACCOUNTS_SERVICE');
 }
 
+/* The caller-owned P05 access signer (design B2.2). Configuration is explicit
+ * (`context.access`, or `context.accessOptions` for a lazily built factory); no
+ * issuer, audience or key file is ever inferred from client input. */
+async function resolveAccess(context) {
+  if (context?.access && typeof context.access.verify === 'function') return context.access;
+  if (!context?.accessOptions || !context?.pool) return null;
+  if (!context._accessPromise) {
+    context._accessPromise = createAccessService(context.pool, context.accessOptions)
+      .then((service) => { context.access = service; return service; })
+      .catch((error) => { context._accessPromise = null; throw error; });
+  }
+  return context._accessPromise;
+}
+
 // HTTP requests must prove the actor by presenting a live linked session.
 // Request properties and x-actor-* headers are untrusted client input, even
 // when passed through a proxy. Never mint sessions here from an actor ID.
@@ -210,14 +224,11 @@ async function resolveAuth(context, req, { linked = true } = {}) {
   let session;
   try {
     if (bearer && bearer.includes('.')) {
-      /* The API runtime owns P05 verification configuration. No issuer, audience or key fallback
-       * is inferred from client input; an explicitly configured factory is lazily initialized. */
-      if (!context.access && context.accessOptions && context.pool) {
-        if (!context._accessPromise) context._accessPromise = createAccessService(context.pool, context.accessOptions);
-        context.access = await context._accessPromise;
-      }
+      /* The API runtime owns P05 verification configuration: the access service
+       * is either injected or lazily built from the explicit factory options. */
+      const access = await resolveAccess(context);
       token = await accounts.authenticateNative(bearer, {
-        access: context.access, nativeAudiences: context.nativeAudiences,
+        access, nativeAudiences: context.nativeAudiences,
       });
     }
     session = linked ? await accounts.requireLinked(token) : await accounts.requireSession(token);
@@ -242,5 +253,6 @@ module.exports = {
   sendJson,
   sendError,
   resolveService,
+  resolveAccess,
   resolveAuth,
 };

@@ -1,0 +1,135 @@
+{
+ "format": "mega-v5-p22-writer-inventory/v1",
+ "sourceSha": "7004b722017f189b5fc1376b996a80e4ade292ed",
+ "phase": "V4_SERVING",
+ "v4ReleaseSha": "f1e5577d42809fc3da889ba76b87ca6c87e68575",
+ "v4FrozenSnapshotSha256": null,
+ "v4RebootFenceTestRef": null,
+ "firstV5ApplicationWriteRef": null,
+ "entries": [
+  {
+   "class": "session-bootstrap",
+   "v4Mode": "V4_WRITES_ONLY",
+   "v5Mode": "V5_MUTATIONS_DISABLED",
+   "v4RestartFenced": false,
+   "callbackResponse": "NORMAL_V4"
+  },
+  {
+   "class": "session-refresh",
+   "v4Mode": "V4_WRITES_ONLY",
+   "v5Mode": "V5_MUTATIONS_DISABLED",
+   "v4RestartFenced": false,
+   "callbackResponse": "NORMAL_V4"
+  },
+  {
+   "class": "profile-and-save",
+   "v4Mode": "V4_WRITES_ONLY",
+   "v5Mode": "V5_MUTATIONS_DISABLED",
+   "v4RestartFenced": false,
+   "callbackResponse": "NORMAL_V4"
+  },
+  {
+   "class": "friends-and-privacy",
+   "v4Mode": "V4_WRITES_ONLY",
+   "v5Mode": "V5_MUTATIONS_DISABLED",
+   "v4RestartFenced": false,
+   "callbackResponse": "NORMAL_V4"
+  },
+  {
+   "class": "matchmaking-and-offers",
+   "v4Mode": "V4_WRITES_ONLY",
+   "v5Mode": "V5_MUTATIONS_DISABLED",
+   "v4RestartFenced": false,
+   "callbackResponse": "NORMAL_V4"
+  },
+  {
+   "class": "direct-challenges",
+   "v4Mode": "V4_WRITES_ONLY",
+   "v5Mode": "V5_MUTATIONS_DISABLED",
+   "v4RestartFenced": false,
+   "callbackResponse": "NORMAL_V4"
+  },
+  {
+   "class": "ranked-and-casual-moves",
+   "v4Mode": "V4_WRITES_ONLY",
+   "v5Mode": "V5_MUTATIONS_DISABLED",
+   "v4RestartFenced": false,
+   "callbackResponse": "NORMAL_V4"
+  },
+  {
+   "class": "tournament-entry-and-payout",
+   "v4Mode": "V4_WRITES_ONLY",
+   "v5Mode": "V5_MUTATIONS_DISABLED",
+   "v4RestartFenced": false,
+   "callbackResponse": "NORMAL_V4"
+  },
+  {
+   "class": "wallet-and-currency",
+   "v4Mode": "V4_WRITES_ONLY",
+   "v5Mode": "V5_MUTATIONS_DISABLED",
+   "v4RestartFenced": false,
+   "callbackResponse": "NORMAL_V4"
+  },
+  {
+   "class": "game-clock-and-deadlines",
+   "v4Mode": "V4_WRITES_ONLY",
+   "v5Mode": "V5_MUTATIONS_DISABLED",
+   "v4RestartFenced": false,
+   "callbackResponse": "NORMAL_V4"
+  },
+  {
+   "class": "season-and-scheduled-awards",
+   "v4Mode": "V4_WRITES_ONLY",
+   "v5Mode": "V5_MUTATIONS_DISABLED",
+   "v4RestartFenced": false,
+   "callbackResponse": "NORMAL_V4"
+  },
+  {
+   "class": "outbox-and-delivery",
+   "v4Mode": "V4_WRITES_ONLY",
+   "v5Mode": "V5_MUTATIONS_DISABLED",
+   "v4RestartFenced": false,
+   "callbackResponse": "NORMAL_V4"
+  },
+  {
+   "class": "email-and-ad-rewards",
+   "v4Mode": "V4_WRITES_ONLY",
+   "v5Mode": "V5_MUTATIONS_DISABLED",
+   "v4RestartFenced": false,
+   "callbackResponse": "NORMAL_V4"
+  },
+  {
+   "class": "store-purchase-and-refund",
+   "v4Mode": "V4_WRITES_ONLY",
+   "v5Mode": "V5_MUTATIONS_DISABLED",
+   "v4RestartFenced": false,
+   "callbackResponse": "NORMAL_V4"
+  },
+  {
+   "class": "provider-callback-and-inbox",
+   "v4Mode": "V4_WRITES_ONLY",
+   "v5Mode": "V5_MUTATIONS_DISABLED",
+   "v4RestartFenced": false,
+   "callbackResponse": "NORMAL_V4"
+  },
+  {
+   "class": "operator-mutations",
+   "v4Mode": "V4_WRITES_ONLY",
+   "v5Mode": "V5_MUTATIONS_DISABLED",
+   "v4RestartFenced": false,
+   "callbackResponse": "NORMAL_V4"
+  }
+ ],
+ "safeReadProbes": [
+  {
+   "method": "GET",
+   "route": "/livez",
+   "observedNoMutation": true
+  },
+  {
+   "method": "GET",
+   "route": "/readyz",
+   "observedNoMutation": true
+  }
+ ]
+}

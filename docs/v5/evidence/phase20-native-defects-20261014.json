@@ -1,6 +1,7 @@
 {
   "schemaVersion": 1,
   "task": "V5-20-04",
+  "task_id": "V5-20-04",
   "recordedAtUtc": "2026-10-14T13:05:00Z",
   "subject": "Owner-reported mobile defects on the real devices: Impossible level, theme fit, press-hold preview, app fluidity, and LAN-local private rooms",
   "devices": {

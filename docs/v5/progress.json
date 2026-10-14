@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at_utc": "2026-10-14T07:33:24.275+00:00",
+  "updated_at_utc": "2026-10-14T07:33:36.365+00:00",
   "goal": "Deliver the V5 hybrid platform and real Android/iOS applications with shared permanent actor/assets, preserved approved game and retained browser compatibility; do not build the new website/browser product.",
   "source": {
     "goal": "AGENT-GOAL.md",
@@ -5847,7 +5847,7 @@
       ],
       "completed_portions": [],
       "remaining": [],
-      "review_notes": "Android Keystore and iOS Keychain hardware-backed vault primitives verified. Native mobile defects the owner found on the real devices are fixed and device-verified: the playable Impossible level is gone from the UI while its engine and collection infrastructure stay compiled; all four themes paint their own system bars (measured #0f0722/#f6efdc/#101720/#f8f9fb where they were all #f7f9fc) and the 360px topbar no longer clips the settings button; press-and-hold previews the destination mini-board and places no move; screens and presses animate and go fully inert under the Motion setting; and a phone can host a real LAN room server that another device on the same Wi-Fi discovers over mDNS and joins with no internet (Android NSD + iOS Bonjour, verified cross-device). Owner-reported mobile defects fixed and device-verified (OnePlus EB2101): Impossible hidden from the UI with the engine kept; all four themes paint their own system bars and the 360px topbar no longer clips; press-and-hold previews the destination and places no move; screens/presses animate and go inert under Motion; and a phone hosts a real LAN room server that another device on the same Wi-Fi discovers over mDNS and joins with no internet. iOS builds and carries the same primitives; no device install (no Apple signing identity).",
+      "review_notes": "Android Keystore and iOS Keychain hardware-backed vault primitives verified. Native mobile defects the owner found on the real devices are fixed and device-verified: the playable Impossible level is gone from the UI while its engine and collection infrastructure stay compiled; all four themes paint their own system bars (measured #0f0722/#f6efdc/#101720/#f8f9fb where they were all #f7f9fc) and the 360px topbar no longer clips the settings button; press-and-hold previews the destination mini-board and places no move; screens and presses animate and go fully inert under the Motion setting; and a phone can host a real LAN room server that another device on the same Wi-Fi discovers over mDNS and joins with no internet (Android NSD + iOS Bonjour, verified cross-device). Owner-reported mobile defects fixed and device-verified (OnePlus EB2101): Impossible hidden from the UI with the engine kept; all four themes paint their own system bars and the 360px topbar no longer clips; press-and-hold previews the destination and places no move; screens/presses animate and go inert under Motion; and a phone hosts a real LAN room server that another device on the same Wi-Fi discovers over mDNS and joins with no internet. iOS builds and carries the same primitives; no device install (no Apple signing identity). Owner-reported mobile defects fixed and device-verified (OnePlus EB2101): Impossible hidden from the UI with the engine kept; all four themes paint their own system bars and the 360px topbar no longer clips; press-and-hold previews the destination and places no move; screens/presses animate and go inert under Motion; and a phone hosts a real LAN room server that another device on the same Wi-Fi discovers over mDNS and joins with no internet. iOS builds and carries the same primitives; no device install (no Apple signing identity).",
       "transitions": [
         {
           "at_utc": "2026-10-09T21:50:01.900+00:00",
@@ -5865,6 +5865,13 @@
         },
         {
           "at_utc": "2026-10-14T07:33:24.273+00:00",
+          "from": "DEVICE_VERIFIED",
+          "to": "DEVICE_VERIFIED",
+          "evidence": "docs/v5/evidence/phase20-native-defects-20261014.json",
+          "note": "Owner-reported mobile defects fixed and device-verified (OnePlus EB2101): Impossible hidden from the UI with the engine kept; all four themes paint their own system bars and the 360px topbar no longer clips; press-and-hold previews the destination and places no move; screens/presses animate and go inert under Motion; and a phone hosts a real LAN room server that another device on the same Wi-Fi discovers over mDNS and joins with no internet. iOS builds and carries the same primitives; no device install (no Apple signing identity)."
+        },
+        {
+          "at_utc": "2026-10-14T07:33:36.364+00:00",
           "from": "DEVICE_VERIFIED",
           "to": "DEVICE_VERIFIED",
           "evidence": "docs/v5/evidence/phase20-native-defects-20261014.json",

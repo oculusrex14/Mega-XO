@@ -49,16 +49,18 @@ test('Android enforces local HTTPS app assets, no insecure file access and no in
   assert.match(manifest, /android:allowBackup="false"/);
 });
 
-test('the offline flavor stays network-isolated while the online flavor grants exactly two permissions', () => {
+test('both flavors grant the LAN transport permissions while the advertising id stays removed', () => {
   const base = read('native/android/app/src/main/AndroidManifest.xml');
   const overlay = read('native/android/app/src/online/AndroidManifest.xml');
   const gradle = read('native/android/app/build.gradle.kts');
-  // The default (offline) artifact must still REMOVE the network permissions, and must never
-  // restore the advertising id in any flavor.
-  assert.match(base, /android\.permission\.INTERNET"\s+tools:node="remove"/);
-  assert.match(base, /android\.permission\.ACCESS_NETWORK_STATE"\s+tools:node="remove"/);
+  // The owner-authorised LAN-local room host needs INTERNET/ACCESS_NETWORK_STATE in the default
+  // (offline) artifact too: the host runs a room server and discovers one on the same Wi-Fi with
+  // no internet. Neither flavor may restore the advertising id.
+  assert.match(base, /android\.permission\.INTERNET"\s*\/>/);
+  assert.match(base, /android\.permission\.ACCESS_NETWORK_STATE"\s*\/>/);
+  assert.doesNotMatch(base, /android\.permission\.INTERNET"\s+tools:node="remove"/);
   assert.match(base, /com\.google\.android\.gms\.permission\.AD_ID"\s+tools:node="remove"/);
-  // The online overlay replaces exactly those two, and nothing else.
+  // The online overlay still names exactly the two network permissions it replaces.
   assert.equal((overlay.match(/uses-permission/g) || []).length, 2);
   assert.match(overlay, /android\.permission\.INTERNET"\s+tools:node="replace"/);
   assert.match(overlay, /android\.permission\.ACCESS_NETWORK_STATE"\s+tools:node="replace"/);
@@ -68,9 +70,10 @@ test('the offline flavor stays network-isolated while the online flavor grants e
   assert.match(gradle, /create\("online"\)/);
   assert.match(gradle, /MEGA_ONLINE_TARGET", "false"/);
   assert.match(gradle, /MEGA_ONLINE_TARGET", "true"/);
-  // Cleartext and backup posture is unchanged by the overlay.
+  // Cleartext and backup posture is unchanged, in the base manifest and the overlay alike.
   assert.match(base, /android:usesCleartextTraffic="false"/);
   assert.match(base, /android:allowBackup="false"/);
+  assert.doesNotMatch(base, /usesCleartextTraffic="true"/);
 });
 
 test('iOS restricts the loaded signed file bundle and does not expose a bridge', () => {
@@ -129,10 +132,32 @@ test('real Google and Apple provider helpers are compiled, not stubbed or export
   assert.match(read('native/android/MegaGoogleIdentity.kt'), /CredentialManager/);
 });
 
-test('offline Android host has OS-level network-denial until native transport is integrated', () => {
+test('offline Android host grants the LAN transport permission but keeps a narrow, private-only cleartext policy', () => {
   const manifest = read('native/android/app/src/main/AndroidManifest.xml');
-  assert.match(manifest, /android\.permission\.INTERNET" tools:node="remove"/);
+  const config = read('native/android/app/src/main/res/xml/network_security_config.xml');
+  // The owner-authorised LAN-local private room host needs INTERNET: Android grants a normal app
+  // no network access at all without it, and NsdManager refuses to run without it. AD_ID stays
+  // removed, so no advertising capability is restored with it.
+  assert.match(manifest, /android\.permission\.INTERNET"\s*\/>/);
+  assert.doesNotMatch(manifest, /android\.permission\.INTERNET"\s+tools:node="remove"/);
   assert.match(manifest, /com\.google\.android\.gms\.permission\.AD_ID" tools:node="remove"/);
+  // The outward internet capability stays constrained: no blanket cleartext, and the security
+  // config permits cleartext for loopback hosts only.
+  assert.match(manifest, /android:usesCleartextTraffic="false"/);
+  assert.match(manifest, /android:networkSecurityConfig="@xml\/network_security_config"/);
+  assert.match(config, /cleartextTrafficPermitted="false"/);
+  assert.match(config, /127\.0\.0\.1/);
+  assert.doesNotMatch(manifest, /usesCleartextTraffic="true"/);
+  // The private-range rule that Android's exact-hostname config cannot express lives in the bridge.
+  const bridge = read('native/android/app/src/main/java/online/megaxo/prototype/MegaAndroidLanBridge.kt');
+  assert.match(bridge, /fun isPrivateLanHost/);
+  // The RFC1918 / link-local / loopback rule that Android's exact-hostname config cannot express
+  // is enforced in code, and only for literal IPv4 addresses (never a hostname).
+  assert.match(bridge, /parts\.size != 4/);
+  assert.match(bridge, /10, 127 -> true/);
+  assert.match(bridge, /172 -> values\[1\] in 16\.\.31/);
+  assert.match(bridge, /192 -> values\[1\] == 168/);
+  assert.match(bridge, /169 -> values\[1\] == 254/);
 });
 
 test('iOS blocks HTTP(S) subresources before loading signed local HTML', () => {

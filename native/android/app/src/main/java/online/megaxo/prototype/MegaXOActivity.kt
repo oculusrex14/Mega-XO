@@ -9,6 +9,7 @@ import android.os.Bundle
 import android.view.View
 import android.view.WindowInsets
 import android.webkit.CookieManager
+import android.webkit.JsPromptResult
 import android.webkit.WebChromeClient
 import android.webkit.ConsoleMessage
 import android.webkit.WebResourceRequest
@@ -28,6 +29,7 @@ class MegaXOActivity : Activity() {
     private lateinit var game: WebView
     private var notifications: MegaAndroidLocalNotifications? = null
     private var themeBridge: MegaAndroidThemeBridge? = null
+    private var lanBridge: MegaAndroidLanBridge? = null
     private var identityBridge: MegaAndroidIdentityBridge? = null
     private var apiBridge: MegaNativeApiBridge? = null
     private var sessionManager: MegaNativeSessionManager? = null
@@ -60,6 +62,22 @@ class MegaXOActivity : Activity() {
         }
         CookieManager.getInstance().setAcceptThirdPartyCookies(game, false)
         game.webChromeClient = object : WebChromeClient() {
+            /**
+             * The LAN bridge's frozen primitives (`start`/`stop`/`status`/`advertise`) are
+             * synchronous by contract, so they are answered on this one synchronous page-to-host
+             * channel without exposing a `JavascriptInterface`. Everything that is not the bridge's
+             * own prefixed message falls through to the default behaviour.
+             */
+            override fun onJsPrompt(
+                view: WebView?, url: String?, message: String?, defaultValue: String?,
+                result: JsPromptResult
+            ): Boolean {
+                val bridge = lanBridge
+                if (bridge != null && view != null && url != null && message != null &&
+                    bridge.handlePrompt(view, url, message, result)) return true
+                return super.onJsPrompt(view, url, message, defaultValue, result)
+            }
+
             override fun onConsoleMessage(message: ConsoleMessage): Boolean {
                 if (BuildConfig.DEBUG && message.messageLevel() == ConsoleMessage.MessageLevel.ERROR) {
                     val category = Regex("(?:SyntaxError|ReferenceError|TypeError|RangeError|SecurityError)")
@@ -79,6 +97,19 @@ class MegaXOActivity : Activity() {
                 val url = request.url
                 // data: favicon and blob: local exports are handled internally by WebView.
                 if (url.scheme == "data" || url.scheme == "blob" || url.scheme == "about") return null
+                // The ONE relaxation of the /api/* block: a plain-HTTP call to a private literal on
+                // a party route, which is exactly "a LAN host the page discovered" and nothing else.
+                // The block was this app's own second gate; removing it for that one shape leaves the
+                // platform's cleartext policy as the only gate, and the platform refuses public
+                // origins by configuration while this refuses every non-private host in code.
+                // It is deliberately NOT the load-bearing path: MIXED_CONTENT_NEVER_ALLOW still stops
+                // an https document from fetching http directly, so the lobby's real LAN traffic is
+                // carried by MegaAndroidLanBridge, which dials the same private literal on its own
+                // socket. This branch is what keeps the door open for a caller the platform does
+                // permit, rather than making the bridge's carrier the only expressible option.
+                if (url.scheme == "http" && url.port in 1024..65535 &&
+                    url.path?.startsWith("/api/party/") == true &&
+                    MegaAndroidLanBridge.isPrivateLanHost(url.host)) return null
                 if (url.scheme != "https" || url.host != assetHost || url.port != -1) return blocked()
                 if (url.path?.startsWith(assetPrefix) == true) {
                     return loader.shouldInterceptRequest(url) ?: blocked()
@@ -117,6 +148,12 @@ class MegaXOActivity : Activity() {
         // with the other host services rather than after load; its own gates keep it usable only
         // from the signed game entry.
         themeBridge = MegaAndroidThemeBridge.install(this, game, gameEntry)
+        // V5.1 same-Wi-Fi hosting. The bridge owns the TCP listener and the NSD record; the room
+        // rules stay in the bundled src/lan modules. It is installed in BOTH flavors because the
+        // OS, not this code, is what enforces the offline flavor's permission removal: a bind or an
+        // NSD call that the platform refuses is reported to the page as START_FAILED /
+        // DISCOVERY_UNAVAILABLE, and no reachability is added by the code being present.
+        lanBridge = MegaAndroidLanBridge.install(this, game, gameEntry, loader)
         notifications = MegaAndroidLocalNotifications.install(this, game, gameEntry)
         identityBridge = MegaAndroidIdentityBridge.install(
             this, game, gameEntry, BuildConfig.MEGA_GOOGLE_SERVER_CLIENT_ID)
@@ -167,6 +204,10 @@ class MegaXOActivity : Activity() {
         startupProbe.close()
         themeBridge?.close()
         themeBridge = null
+        // The listener socket, the NSD record and both executors are released here, so a destroyed
+        // activity never leaves a port open behind it.
+        lanBridge?.close()
+        lanBridge = null
         notifications?.close()
         notifications = null
         identityBridge?.close()

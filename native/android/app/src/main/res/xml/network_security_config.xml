@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  V5.1 cleartext policy for the same-Wi-Fi room host.
+
+  The app previously set only `android:usesCleartextTraffic="false"`, which is a blanket switch: the
+  platform then refuses plain HTTP to every host, including the phone two seats away on the same
+  Wi-Fi. This file narrows that switch instead of flipping it. The base configuration still DENIES
+  cleartext everywhere, and the only explicit exception is the loopback pair the host genuinely owns.
+
+  There is one honest limit to record here. Android's network security configuration matches a
+  `<domain>` as an exact host name (see ApplicationConfig#getConfigForHostname); it has no CIDR or
+  range syntax, so "10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16, 169.254.0.0/16" cannot be written down
+  in this file at any size. It is therefore NOT true that the private ranges are permitted here, and
+  pretending otherwise with a wildcard would be the blanket policy this change exists to avoid.
+
+  The private-range traffic does not need this file at all. Every request the app makes to a room on
+  the Wi-Fi is carried by MegaAndroidLanBridge on a plain java.net.Socket, and the platform network
+  security policy is consulted by the HTTP client stacks (URLConnection, OkHttp, the WebView), not by
+  a directly opened socket. That path checks its own destination in code — scheme http, an IPv4
+  private / link-local / loopback literal, and a /api/party/ path, nothing else — which is a stricter
+  rule than a CIDR list could express, and it keeps the signed page unable to reach a public origin.
+-->
+<network-security-config>
+    <!-- No cleartext by default. This is the same posture as usesCleartextTraffic="false". -->
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+    <!-- The host's own loopback listener, and nothing else. -->
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="false">localhost</domain>
+        <domain includeSubdomains="false">127.0.0.1</domain>
+    </domain-config>
+</network-security-config>

@@ -60,12 +60,15 @@ test('online flavor restores exactly INTERNET and ACCESS_NETWORK_STATE, and noth
   assert.doesNotMatch(onlineManifest, /<(activity|service|receiver|provider|application)\b/);
 });
 
-test('offline flavor keeps the OS-level network denial and stays the default artifact', () => {
-  assert.match(baseManifest, /android\.permission\.INTERNET"\s+tools:node="remove"\s*\/>/);
-  assert.match(baseManifest, /android\.permission\.ACCESS_NETWORK_STATE"\s+tools:node="remove"\s*\/>/);
+test('offline flavor stays the default artifact with a LAN-only network posture', () => {
+  // The owner-authorised LAN-local room host needs the network permissions; the advertising id
+  // stays removed and cleartext stays denied by default with a loopback-only exception.
+  assert.match(baseManifest, /android\.permission\.INTERNET"\s*\/>/);
+  assert.doesNotMatch(baseManifest, /android\.permission\.INTERNET"\s+tools:node="remove"/);
   assert.match(baseManifest, /com\.google\.android\.gms\.permission\.AD_ID"\s+tools:node="remove"\s*\/>/);
   assert.match(baseManifest, /android:usesCleartextTraffic="false"/);
   assert.match(baseManifest, /android:allowBackup="false"/);
+  assert.doesNotMatch(baseManifest, /usesCleartextTraffic="true"/);
   // The flavor switch itself: offline is one of two declared flavors with MEGA_ONLINE_TARGET=false,
   // and the release guard still refuses an unregistered package / unsigned bundle.
   assert.match(gradle, /create\("offline"\)[\s\S]*?MEGA_ONLINE_TARGET", "false"/);

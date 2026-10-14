@@ -99,3 +99,31 @@ ones); the production database now has migration 0052 applied but no systemd uni
 `retention`; nothing has been cut over; the V5.1-era unit and directory names are retained on the host
 for continuity rather than renamed. Also, `withdraw` was exercised by the agent against a lab, not
 yet against this host.
+
+## Update — the gate now passes live on staging
+
+After the bundle deploy and the policy corrections, the real shipped CLI run on the staging host
+returns:
+
+```json
+{"gate":"day-one-gameplay-capture/v1","result":"RECEIPTS_READY_FOR_MAIN_REVIEW",
+ "sourceCommit":"320bb6900d6d4d3ce612de30acdd4da27a6811f0",
+ "rulesHash":"e6e14c258b4db439eedf28090ebafd0962867bab5e64709d0d4438cb145b31e0",
+ "failures":[],"productionAuthorized":false,"trainingAuthorized":false}
+```
+
+with `configuration()` reporting `enabled:true, environment:staging, privacyEpoch:0,
+policyVersion:mxv5-capture-2026Q4-stage2` and `metrics()` reporting `sealed:15, pending:0,
+quarantined:0, expiredUnpurged:0, excluded:0, suppressed:0`.
+
+Two real policy defects were fixed to get here, both found by the gate refusing rather than by
+inspection:
+
+| Defect | Before | After | Why |
+| --- | --- | --- | --- |
+| `source_commit` named a historical commit | `3e51ba0c…` | `320bb69…` | The field means "the commit the origin serves"; after the V5.2 bundle deploy it no longer did. The gate refused with `DEPLOYED_POLICY_SOURCE_MISMATCH`. |
+| Retention windows disagreed with the approved schedule | `retention_days 90`, `export_retention_days 30` | `730`, `90` | Migration 0052 declares 730 days for consented adult gameplay and 90 for working research exports. The deployed policy contradicted the schedule the migration itself writes. The 35-day backup window was already right. |
+
+`privacy_epoch` stays **0** deliberately: nothing has been withdrawn, so raising it would be a false
+claim. The change was applied through the migration role; `capture_runtime` correctly refused with
+`permission denied for table policy`, which is the least-privilege split working.

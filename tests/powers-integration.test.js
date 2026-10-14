@@ -780,3 +780,41 @@ test('the shipped window.MegaAds lane counts a shown-then-skipped ad as exposure
  assert.equal(failed.earned, false);
  assert.equal(powers.pacing().rewardedShownToday, 2, 'a never-presented ad consumes nothing');
 });
+
+test('the aggregate rewarded ceiling is shared with the cosmetic lane, not a separate powers ledger', async () => {
+ let now = Date.parse('2026-10-14T12:00:00Z');
+ const terminalState = buildState(BOT_LOSS);
+ const context = {
+  id: 'm-agg-1', state: terminalState, mode: 'bot', first: 'X',
+  practice: false, online: false, reason: 'line', charges: 0, used: 0, botPending: false
+ };
+ /* The cosmetic lane already booked nine presentations today. The powers lane must see them, or a
+    player could watch nine Credits ads and then ten Undo ads against a "ten per day" ceiling. */
+ let cosmeticShown = 9;
+ const host = {
+  MegaAds: {
+   platform: 'android', privacyState: () => ({ canRequestAds: true }),
+   isReady: () => true, showRewarded: async () => ({ earned: true, shown: true, outcome: 'EARNED' })
+  }
+ };
+ const powers = PowersUI.createPowers({
+  enabled: () => true, clock: () => now, host,
+  issueTicket: async () => 'TICKET-AGG',
+  otherShown: () => cosmeticShown
+ });
+
+ assert.equal(powers.pacing().rewardedShownToday, 9, 'the cosmetic lane is counted in the aggregate');
+
+ const tenth = await powers.request('undo', { match: context });
+ assert.equal(tenth.earned, true, 'the tenth presentation overall is still allowed');
+ assert.equal(powers.pacing().rewardedShownToday, 10, 'and the aggregate now reads ten');
+
+ /* The eleventh must be refused before any ad is shown. */
+ now = powers.pacing().nextEligibleAt;
+ let shown = 0;
+ host.MegaAds.showRewarded = async () => { shown++; return { earned: true, shown: true, outcome: 'EARNED' }; };
+ const eleventh = await powers.request('undo', { match: context });
+ assert.equal(eleventh.earned, false, 'the eleventh presentation must be refused');
+ assert.equal(eleventh.reason, 'DAY_CAP', 'refused for the daily ceiling');
+ assert.equal(shown, 0, 'and refused BEFORE any ad is presented');
+});

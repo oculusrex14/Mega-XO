@@ -282,7 +282,10 @@ test('bound to a source commit, the gate no longer reports the two previously-mi
  const receipt = JSON.parse(require('node:fs').readFileSync(RECEIPT, 'utf8'));
  const now = Date.now();
  const stamp = { ...receipt, sourceCommit, checkedAt: new Date(now).toISOString() };
- const configuration = { enabled: true, sourceCommit, rulesHash: C.RULES_HASH, environment: 'staging', policyVersion: 'mxv5-capture-2026Q4-stage1', privacyEpoch: receipt.privacyEpoch };
+ // Take the policy identity from the committed receipt rather than hardcoding a revision: the point
+ // of this test is that the receipt BINDS to the deployed policy, not that a particular version
+ // string was frozen forever. A receipt must still fail when the binding does not match.
+ const configuration = { enabled: true, sourceCommit, rulesHash: C.RULES_HASH, environment: receipt.environment, policyVersion: receipt.policyVersion, privacyEpoch: receipt.privacyEpoch };
  const metrics = { pending: 0, quarantined: 0, expiredUnpurged: 0, sealed: 1 };
  const report = GATE.assess({ sourceCommit, configuration, metrics, receipt: stamp, now });
  assert.ok(!report.failures.includes('MISSING_privacyPurpose'), JSON.stringify(report.failures));

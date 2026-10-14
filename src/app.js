@@ -40,6 +40,14 @@ function initPowers(){
  if(!PW||powers)return powers;
  powers=PW.createPowers({
   enabled:()=>POWERS_ON||window.MEGA_POWERS_ENABLED===true,
+  /* The aggregate ceiling is shared with the cosmetic rewarded lane, which books its presentations
+     in the ad-cadence store. Report today's count from there so Credits and Undo cannot together
+     exceed the owner's ten-per-UTC-day ceiling. */
+  otherShown:()=>{
+   const M=window.MegaMonetization;if(!M)return 0;
+   try{const raw=JSON.parse(localStorage.getItem('mega_v35_ad_cadence')||'null');
+    return raw?M.rewardedExposure(raw).shownToday:0;}catch{return 0;}
+  },
   storage:{read:readPowersState,write:writePowersState},
   live:()=>match?{
    id:match.id,

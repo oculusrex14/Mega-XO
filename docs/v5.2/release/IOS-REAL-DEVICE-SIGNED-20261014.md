@@ -78,3 +78,25 @@ xcrun devicectl device process launch --device 00008140-0019711E2260801C online.
   iPhone — only the install is proven.
 - The app was left installed (allowed by the owner's instruction). No personal data was read or
   modified.
+
+## Update — launch retry (same day, later)
+
+Two further launch attempts after the install:
+
+1. `error 3` / `BSErrorCodeDescription = Security` — a free-provisioning developer app must be trusted
+   by hand on the device once. Unchanged from the first report.
+2. `com.apple.dt.CoreDeviceError error 4016` with
+   `RequestedDeviceStates = (…powerAssertionTaken)` and
+   `Device State: unavailable` — the phone is now asleep/locked, so CoreDevice cannot take the usage
+   assertion it needs. Last successful connection 2026-10-14 20:50.
+
+Neither is a code defect. **Launch remains blocked on a physical owner action:** wake and unlock the
+phone, open **Settings → General → VPN & Device Management → Developer App → `oculusrexai@gmail.com`
+→ Trust**, then run
+
+```
+xcrun devicectl device process launch --device 00008140-0019711E2260801C online.megaxo.prototype
+```
+
+The installed build remains valid until the profile expires **2026-10-21**. The app is still installed;
+nothing on the device was modified beyond that install.

@@ -112,12 +112,12 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.13'
-      - run: gradle -p native/android :app:assembleDebug :app:testDebugUnitTest --no-daemon --stacktrace
+      - run: gradle -p native/android :app:assembleOfflineDebug :app:assembleOnlineDebug --no-daemon --stacktrace
       - name: Assert original offline permission boundary and exact bundle
         run: |
           set -euo pipefail
           mkdir -p .artifacts/v51-native
-          apk=native/android/app/build/outputs/apk/debug/app-debug.apk
+          apk=native/android/app/build/outputs/apk/offline/debug/app-offline-debug.apk
           test -s "$apk"
           if "$ANDROID_HOME/build-tools/35.0.0/aapt" dump permissions "$apk" | grep -E 'android.permission.INTERNET|com.google.android.gms.permission.AD_ID'; then exit 1; fi
           unzip -p "$apk" assets/mega/client-bundle.manifest.json > .artifacts/v51-native/android-manifest.json
@@ -129,7 +129,7 @@ jobs:
           target: google_apis
           arch: x86_64
           disable-animations: true
-          script: APK_PATH="$GITHUB_WORKSPACE/native/android/app/build/outputs/apk/debug/app-debug.apk" SCREENSHOT_DIR="$GITHUB_WORKSPACE/.artifacts/v51-native/smoke" bash scripts/v5/native-smoke-android.sh
+          script: APK_PATH="$GITHUB_WORKSPACE/native/android/app/build/outputs/apk/offline/debug/app-offline-debug.apk" SCREENSHOT_DIR="$GITHUB_WORKSPACE/.artifacts/v51-native/smoke" bash scripts/v5/native-smoke-android.sh
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:

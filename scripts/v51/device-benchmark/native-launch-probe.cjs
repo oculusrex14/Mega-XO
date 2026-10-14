@@ -78,7 +78,7 @@ function getNativeHostArchitectureReport() {
         step5_verifyFirstLaunch: `xcrun simctl io "${targetUdid}" screenshot .artifacts/v51/ios-launch.png && swift scripts/v5/verify-ios-launch.swift .artifacts/v51/home-before.png .artifacts/v51/ios-launch.png`
       },
       androidEmulator: {
-        step1_installApk: 'adb install -r native/android/app/build/outputs/apk/debug/app-debug.apk',
+        step1_installApk: 'adb install -r native/android/app/build/outputs/apk/offline/debug/app-offline-debug.apk',
         step2_launchApp: 'adb shell am start -W -n online.megaxo.prototype/.MegaXOActivity',
         step3_observeRenderProbe: 'adb logcat -d -s MegaXOStartup:I',
         step4_verifyGameplayCdp: 'adb forward tcp:9222 "localabstract:webview_devtools_remote_$(adb shell pidof online.megaxo.prototype)" && node scripts/v5/native-smoke-gameplay.cjs'

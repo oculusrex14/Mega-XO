@@ -13,8 +13,8 @@ function refuse(reason) { throw Error('P16_CI_REFUSED:' + reason); }
 function auditWorkflow(text) {
   if (typeof text !== 'string' || text.length < 500) refuse('ABSENT');
   if (!/^name: V5 P16 process failover foundations\s*$/m.test(text)) refuse('IDENTITY');
-  if (!/^on:\n  push:\n    branches: \[V5-platform, V5.1\]/m.test(text) ||
-      !/^  pull_request:\n    branches: \[V5-platform, V5.1\]/m.test(text)) refuse('TRIGGER');
+  if (!/^on:\n  push:\n    branches: \[V5.2\]/m.test(text) ||
+      !/^  pull_request:\n    branches: \[V5.2\]/m.test(text)) refuse('TRIGGER');
   if (/^\s*(?:pull_request_target|workflow_run|workflow_dispatch|repository_dispatch|schedule):/m.test(text)) {
     refuse('UNTRUSTED_EVENT');
   }

@@ -17,7 +17,7 @@ test('privileged events, write token or provider secret references are refused',
   const inputs = [
     workflow.replace('  pull_request:', '  pull_request_target:'),
     workflow.replace('  push:', '  workflow_dispatch:'),
-    workflow.replace('    branches: [V5-platform, V5.1]', '    branches: [main]'),
+    workflow.replace('    branches: [V5.2]', '    branches: [main]'),
     workflow.replace("      - 'packages/services/**'", "      - 'packages/services/not-all.js'"),
     workflow.replace('  contents: read', '  contents: write'),
     workflow.replace('permissions:', 'env:\n  GH_TOKEN: unexpected\npermissions:'),

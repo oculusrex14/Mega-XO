@@ -1,4 +1,4 @@
-name: P21 V5.1 website validation
+name: P21 V5.2 website validation
 
 # Validation only: no provider credentials, deployment, DNS or authority change.
 on:
@@ -17,7 +17,7 @@ on:
       - 'src/**'
       - 'public/**'
       - '.github/workflows/p21-web.yml'
-      - '.github/workflows/v51-*.yml'
+      - '.github/workflows/v52-*.yml'
   pull_request:
     branches: [V5.1]
     paths:
@@ -32,7 +32,7 @@ on:
       - 'src/**'
       - 'public/**'
       - '.github/workflows/p21-web.yml'
-      - '.github/workflows/v51-*.yml'
+      - '.github/workflows/v52-*.yml'
 
 permissions:
   contents: read

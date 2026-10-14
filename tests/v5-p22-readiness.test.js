@@ -15,7 +15,7 @@ const gate = i => ({
 });
 function ledger(n = 7) {
   return { schema_version: 1, current: {
-    phase: 'P07', integration_branch: 'V5-platform',
+    phase: 'P07', integration_branch: 'V5.2',
     passed_phase_gates: Array.from({ length: n }, (_, i) => gate(i)),
   }};
 }

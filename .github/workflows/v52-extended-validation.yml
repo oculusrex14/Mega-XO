@@ -1,20 +1,20 @@
-name: V5.1 isolated service and platform validation
+name: V5.2 isolated service and platform validation
 on:
   push:
-    branches: ['V5.1']
+    branches: ['V5.2']
     paths-ignore: ['docs/**', '*.md']
   pull_request:
-    branches: ['V5.1']
+    branches: ['V5.2']
     paths-ignore: ['docs/**', '*.md']
   workflow_dispatch:
 permissions:
   contents: read
 concurrency:
-  group: v51-extended-${{ github.ref }}
+  group: v52-extended-${{ github.ref }}
   cancel-in-progress: true
 jobs:
   disposable-services:
-    if: github.ref == 'refs/heads/V5.1' || github.base_ref == 'V5.1'
+    if: github.ref == 'refs/heads/V5.2' || github.base_ref == 'V5.2'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     services:
@@ -56,17 +56,17 @@ jobs:
       - name: Execute database, economy, auth, queue and abuse suites without service skips
         run: |
           set -o pipefail
-          mkdir -p .artifacts/v51-extended
-          node --test --test-reporter=tap --test-concurrency=1 --test-force-exit tests/v5-migrations.test.js tests/v5-pg-guards.test.js tests/v5-p0*.test.js tests/v5-p1*.test.js tests/v5-p2*.test.js tests/v51-p21-realtime-publication.test.js 2>&1 | tee .artifacts/v51-extended/postgresql.log
+          mkdir -p .artifacts/v52-extended
+          node --test --test-reporter=tap --test-concurrency=1 --test-force-exit tests/v5-migrations.test.js tests/v5-pg-guards.test.js tests/v5-p0*.test.js tests/v5-p1*.test.js tests/v5-p2*.test.js tests/v51-p21-realtime-publication.test.js 2>&1 | tee .artifacts/v52-extended/postgresql.log
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:
-          name: v51-disposable-service-evidence
-          path: .artifacts/v51-extended
+          name: v52-disposable-service-evidence
+          path: .artifacts/v52-extended
           retention-days: 7
           if-no-files-found: warn
   browsers:
-    if: github.ref == 'refs/heads/V5.1' || github.base_ref == 'V5.1'
+    if: github.ref == 'refs/heads/V5.2' || github.base_ref == 'V5.2'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     strategy:
@@ -88,12 +88,12 @@ jobs:
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:
-          name: v51-${{ matrix.browser }}-tutorial
+          name: v52-${{ matrix.browser }}-tutorial
           path: .artifacts/v51
           retention-days: 7
           if-no-files-found: warn
   android:
-    if: github.ref == 'refs/heads/V5.1' || github.base_ref == 'V5.1'
+    if: github.ref == 'refs/heads/V5.2' || github.base_ref == 'V5.2'
     runs-on: ubuntu-latest
     timeout-minutes: 40
     steps:
@@ -116,12 +116,12 @@ jobs:
       - name: Assert original offline permission boundary and exact bundle
         run: |
           set -euo pipefail
-          mkdir -p .artifacts/v51-native
+          mkdir -p .artifacts/v52-native
           apk=native/android/app/build/outputs/apk/offline/debug/app-offline-debug.apk
           test -s "$apk"
           if "$ANDROID_HOME/build-tools/35.0.0/aapt" dump permissions "$apk" | grep -E 'android.permission.INTERNET|com.google.android.gms.permission.AD_ID'; then exit 1; fi
-          unzip -p "$apk" assets/mega/client-bundle.manifest.json > .artifacts/v51-native/android-manifest.json
-          sha256sum "$apk" > .artifacts/v51-native/apk-sha256.txt
+          unzip -p "$apk" assets/mega/client-bundle.manifest.json > .artifacts/v52-native/android-manifest.json
+          sha256sum "$apk" > .artifacts/v52-native/apk-sha256.txt
           if [ -e /dev/kvm ]; then sudo chmod 666 /dev/kvm; fi
       - uses: reactivecircus/android-emulator-runner@v2
         with:
@@ -129,16 +129,16 @@ jobs:
           target: google_apis
           arch: x86_64
           disable-animations: true
-          script: APK_PATH="$GITHUB_WORKSPACE/native/android/app/build/outputs/apk/offline/debug/app-offline-debug.apk" SCREENSHOT_DIR="$GITHUB_WORKSPACE/.artifacts/v51-native/smoke" bash scripts/v5/native-smoke-android.sh
+          script: APK_PATH="$GITHUB_WORKSPACE/native/android/app/build/outputs/apk/offline/debug/app-offline-debug.apk" SCREENSHOT_DIR="$GITHUB_WORKSPACE/.artifacts/v52-native/smoke" bash scripts/v5/native-smoke-android.sh
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:
-          name: v51-android-validation-evidence
-          path: .artifacts/v51-native
+          name: v52-android-validation-evidence
+          path: .artifacts/v52-native
           retention-days: 7
           if-no-files-found: warn
   ios:
-    if: github.ref == 'refs/heads/V5.1' || github.base_ref == 'V5.1'
+    if: github.ref == 'refs/heads/V5.2' || github.base_ref == 'V5.2'
     runs-on: macos-15
     timeout-minutes: 30
     steps:
@@ -148,29 +148,29 @@ jobs:
           node-version: '24'
       - name: Compile existing unsigned simulator host
         run: |
-          xcodebuild -project native/ios/MegaXO.xcodeproj -scheme MegaXO -configuration Debug -sdk iphonesimulator -derivedDataPath "$RUNNER_TEMP/mega-v51-ios" CODE_SIGNING_ALLOWED=NO build
+          xcodebuild -project native/ios/MegaXO.xcodeproj -scheme MegaXO -configuration Debug -sdk iphonesimulator -derivedDataPath "$RUNNER_TEMP/mega-v52-ios" CODE_SIGNING_ALLOWED=NO build
       - name: Verify bundled source and offline first launch
         run: |
           set -euo pipefail
-          mkdir -p .artifacts/v51-native
-          app="$RUNNER_TEMP/mega-v51-ios/Build/Products/Debug-iphonesimulator/MegaXO.app"
+          mkdir -p .artifacts/v52-native
+          app="$RUNNER_TEMP/mega-v52-ios/Build/Products/Debug-iphonesimulator/MegaXO.app"
           test -s "$app/MegaClient/bundle-index.html"
-          cp "$app/MegaClient/client-bundle.manifest.json" .artifacts/v51-native/ios-manifest.json
-          xcrun simctl list devices available --json > .artifacts/v51-native/simulator-devices.json
-          udid="$(node -e 'const fs=require("node:fs");const devices=Object.values(JSON.parse(fs.readFileSync(process.argv[1])).devices).flat();const device=devices.find(d=>d.isAvailable&&/^iPhone/.test(d.name));if(!device)process.exit(5);process.stdout.write(device.udid)' .artifacts/v51-native/simulator-devices.json)"
+          cp "$app/MegaClient/client-bundle.manifest.json" .artifacts/v52-native/ios-manifest.json
+          xcrun simctl list devices available --json > .artifacts/v52-native/simulator-devices.json
+          udid="$(node -e 'const fs=require("node:fs");const devices=Object.values(JSON.parse(fs.readFileSync(process.argv[1])).devices).flat();const device=devices.find(d=>d.isAvailable&&/^iPhone/.test(d.name));if(!device)process.exit(5);process.stdout.write(device.udid)' .artifacts/v52-native/simulator-devices.json)"
           xcrun simctl boot "$udid"
           xcrun simctl bootstatus "$udid" -b
           xcrun simctl install "$udid" "$app"
-          xcrun simctl io "$udid" screenshot .artifacts/v51-native/home.png
+          xcrun simctl io "$udid" screenshot .artifacts/v52-native/home.png
           xcrun simctl launch "$udid" online.megaxo.prototype
           sleep 7
-          xcrun simctl io "$udid" screenshot .artifacts/v51-native/first-launch.png
-          swift scripts/v5/verify-ios-launch.swift .artifacts/v51-native/home.png .artifacts/v51-native/first-launch.png
+          xcrun simctl io "$udid" screenshot .artifacts/v52-native/first-launch.png
+          swift scripts/v5/verify-ios-launch.swift .artifacts/v52-native/home.png .artifacts/v52-native/first-launch.png
           xcrun simctl shutdown "$udid"
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:
-          name: v51-ios-validation-evidence
-          path: .artifacts/v51-native
+          name: v52-ios-validation-evidence
+          path: .artifacts/v52-native
           retention-days: 7
           if-no-files-found: warn

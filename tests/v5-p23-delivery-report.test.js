@@ -6,7 +6,7 @@ const SHA='a'.repeat(40),ref=x=>'artifact://v5/p23/'+x+'/completed-20261009';
 function ledger(g22=false){
   const ids=g22?[...Array(21).keys(),22]:[...Array(8).keys()];
   return {schema_version:1,current:{
-    integration_branch:'V5-platform',
+    integration_branch:'V5.2',
     passed_phase_gates:ids.map(i=>({
       gate:'G'+String(i).padStart(2,'0'),phase:'P'+String(i).padStart(2,'0'),
       evidence_refs:['docs/v5/evidence/phase-gate.json'],

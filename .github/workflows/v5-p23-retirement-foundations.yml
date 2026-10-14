@@ -3,7 +3,7 @@ name: V5 P23 legacy retirement foundations
 # DNS changes, SQLite writer fencing, artifact cleanup or acceptance grants.
 on:
   push:
-    branches: [V5-platform, V5.1]
+    branches: [V5.2]
     paths:
       - '.github/workflows/v5-p23-retirement-foundations.yml'
       - 'scripts/v5/p23/**'
@@ -21,7 +21,7 @@ on:
       - 'tools/v5-migration/**'
       - 'docs/co-dev/P23-RETIREMENT-HANDOFF.md'
   pull_request:
-    branches: [V5-platform, V5.1]
+    branches: [V5.2]
     paths:
       - '.github/workflows/v5-p23-retirement-foundations.yml'
       - 'scripts/v5/p23/**'

@@ -1,7 +1,7 @@
 name: V5 CI official service image provenance
 on:
   pull_request:
-    branches: [V5-platform, V5.1]
+    branches: [V5.2]
     paths:
       - '.github/workflows/v5-ci-image-probe.yml'
       - '.github/workflows/v5-postgresql.yml'

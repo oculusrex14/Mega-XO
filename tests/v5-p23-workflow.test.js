@@ -8,8 +8,8 @@ const workflow=fs.readFileSync(path.join(__dirname,'../.github/workflows/v5-p23-
 function audit(src){
   function fail(s){throw Error('P23_CI_REFUSED:'+s);}
   if(!/^name: V5 P23 legacy retirement foundations$/m.test(src) ||
-    !/^on:\n  push:\n    branches: \[V5-platform, V5.1\]/m.test(src)||
-    !/^  pull_request:\n    branches: \[V5-platform, V5.1\]/m.test(src)||
+    !/^on:\n  push:\n    branches: \[V5.2\]/m.test(src)||
+    !/^  pull_request:\n    branches: \[V5.2\]/m.test(src)||
     /^\s*(?:pull_request_target|workflow_run|workflow_dispatch|repository_dispatch|schedule):/m.test(src))fail('EVENT');
   const events=src.slice(src.indexOf('on:\n')+4,src.indexOf('\npermissions:'))+'\n';
   const push=events.match(/^  push:\n(?: {4,}.*\n)+/m)?.[0];
@@ -56,7 +56,7 @@ test('privileged events, service accounts and unsafe checkout are rejected',()=>
     x=>x.replace('persist-credentials: false','persist-credentials: true'),
     x=>x.replace('group: v5-p23-${{','group: v5-p23-\\${{'),
     x=>x.replace(/actions\/checkout@[0-9a-f]{40}/,'actions/checkout@v4'),
-    x=>x.replace('    branches: [V5-platform, V5.1]', '    branches: [main]'),
+    x=>x.replace('    branches: [V5.2]', '    branches: [main]'),
   ])assert.throws(()=>audit(mutate(workflow)),/P23_CI_REFUSED/);
 });
 test('caller dependency watchlists and zero-skip checks cannot be removed',()=>{

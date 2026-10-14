@@ -1,9 +1,9 @@
-name: V5.1 independent readiness evidence
+name: V5.2 independent readiness evidence
 on:
   push:
-    branches: ['V5.1']
+    branches: ['V5.2']
     paths:
-      - '.github/workflows/v51-webui-readiness-audit.yml'
+      - '.github/workflows/v52-webui-readiness-audit.yml'
       - 'scripts/v51-readiness-*'
       - 'tests/v51-readiness-*'
       - 'training/bot/**'
@@ -14,9 +14,9 @@ on:
       - 'docs/p21-web/MASTER-CHECKLIST.md'
       - 'Mega-XO-V5-Implementation-Pack/**'
   pull_request:
-    branches: ['V5.1']
+    branches: ['V5.2']
     paths:
-      - '.github/workflows/v51-webui-readiness-audit.yml'
+      - '.github/workflows/v52-webui-readiness-audit.yml'
       - 'scripts/v51-readiness-*'
       - 'tests/v51-readiness-*'
       - 'training/bot/**'
@@ -32,7 +32,7 @@ permissions:
   actions: read
   pull-requests: read
 concurrency:
-  group: v51-readiness-${{ github.ref }}
+  group: v52-readiness-${{ github.ref }}
   cancel-in-progress: false
 jobs:
   source-evidence:
@@ -55,7 +55,7 @@ jobs:
           set -euo pipefail
           python3 - <<'PY'
           import hashlib, json, pathlib, subprocess, zipfile
-          out = pathlib.Path('.artifacts/v51-readiness')
+          out = pathlib.Path('.artifacts/v52-readiness')
           out.mkdir(parents=True, exist_ok=True)
           def git(*args):
               return subprocess.check_output(['git', *args])
@@ -93,9 +93,9 @@ jobs:
         run: |
           set -euo pipefail
           for test in tests/v51-readiness-*.test.py; do
-            python3 "$test" 2>&1 | tee -a .artifacts/v51-readiness/tooling-tests.log
+            python3 "$test" 2>&1 | tee -a .artifacts/v52-readiness/tooling-tests.log
           done
-          python3 scripts/v51-readiness-audit.py --output .artifacts/v51-readiness/inventory.json
+          python3 scripts/v51-readiness-audit.py --output .artifacts/v52-readiness/inventory.json
       - name: Read current CI, PR and retained-branch metadata
         if: always()
         env:
@@ -106,7 +106,7 @@ jobs:
           set -euo pipefail
           python3 - <<'PY'
           import json, os, pathlib, urllib.request
-          out = pathlib.Path('.artifacts/v51-readiness')
+          out = pathlib.Path('.artifacts/v52-readiness')
           out.mkdir(parents=True, exist_ok=True)
           def get(path):
               request = urllib.request.Request('https://api.github.com/repos/' + os.environ['REPOSITORY'] + path,
@@ -115,7 +115,7 @@ jobs:
                   return json.load(response)
           runs = get('/actions/runs?branch=V5.1&per_page=100')['workflow_runs']
           runs = [{key: run.get(key) for key in ('id', 'name', 'path', 'head_sha', 'event', 'status', 'conclusion', 'created_at', 'run_attempt', 'html_url')} for run in runs]
-          branches = {name: get('/git/ref/heads/' + name)['object']['sha'] for name in ('V5.1', 'main', 'V4.1')}
+          branches = {name: get('/git/ref/heads/' + name)['object']['sha'] for name in ('V5.2', 'V4.1')}
           prs = [{key: pr.get(key) for key in ('number', 'title', 'state', 'html_url')} for pr in get('/pulls?state=open&per_page=100')]
           report = {'branches': branches, 'openPullRequests': prs, 'runs': runs, 'scope': 'OBSERVED_CI_METADATA_NOT_RELEASE_ACCEPTANCE'}
           (out / 'github-observation.json').write_text(json.dumps(report, indent=2) + '\n')
@@ -129,8 +129,8 @@ jobs:
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:
-          name: v51-readiness-source-${{ github.sha }}
-          path: .artifacts/v51-readiness
+          name: v52-readiness-source-${{ github.sha }}
+          path: .artifacts/v52-readiness
           retention-days: 7
           if-no-files-found: error
   independent-model-safety:
@@ -150,12 +150,12 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          mkdir -p .artifacts/v51-readiness-probes
-          python3 scripts/v51-readiness-probes.py --output .artifacts/v51-readiness-probes/results.json 2>&1 | tee .artifacts/v51-readiness-probes/probes.log
+          mkdir -p .artifacts/v52-readiness-probes
+          python3 scripts/v51-readiness-probes.py --output .artifacts/v52-readiness-probes/results.json 2>&1 | tee .artifacts/v52-readiness-probes/probes.log
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:
-          name: v51-readiness-negative-contracts-${{ github.sha }}
-          path: .artifacts/v51-readiness-probes
+          name: v52-readiness-negative-contracts-${{ github.sha }}
+          path: .artifacts/v52-readiness-probes
           retention-days: 7
           if-no-files-found: error

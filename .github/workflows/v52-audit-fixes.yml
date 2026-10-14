@@ -1,16 +1,16 @@
-name: V5.1 independent audit regression
+name: V5.2 independent audit regression
 on:
   push:
-    branches: ['V5.1']
+    branches: ['V5.2']
     paths-ignore: ['docs/**', '*.md']
   pull_request:
-    branches: ['V5.1']
+    branches: ['V5.2']
     paths-ignore: ['docs/**', '*.md']
   workflow_dispatch:
 permissions:
   contents: read
 concurrency:
-  group: v51-audit-${{ github.ref }}
+  group: v52-audit-${{ github.ref }}
   cancel-in-progress: true
 jobs:
   audited-boundaries:

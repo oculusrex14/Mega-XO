@@ -9,7 +9,7 @@ const ref=s=>'artifact://v5/p24/'+s+'/operator-verified-20261009';
 function ledger(accepted){
  const ids=accepted?[...Array(21).keys(),22,23]:[...Array(9).keys()];
  return {schema_version:1,current:{
-  integration_branch:'V5-platform',passed_phase_gates:ids.map(i=>({
+  integration_branch:'V5.2',passed_phase_gates:ids.map(i=>({
    phase:'P'+String(i).padStart(2,'0'),gate:'G'+String(i).padStart(2,'0'),
    evidence_refs:['docs/v5/evidence/phase-gate.json'],
   })),

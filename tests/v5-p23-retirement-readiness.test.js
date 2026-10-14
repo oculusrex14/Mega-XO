@@ -8,7 +8,7 @@ const FIRST = 'artifact://v5/p22/first-write/verified-first-write-01';
 const ref = name => 'artifact://v5/p23/' + name + '/operator-test-evidence-001';
 function ledger(accepted = false) {
   const ids = accepted ? [...Array(21).keys(),22] : [...Array(8).keys()];
-  return { schema_version:1, current:{ integration_branch:'V5-platform',
+  return { schema_version:1, current:{ integration_branch:'V5.2',
     passed_phase_gates:ids.map(i=>({
       phase:'P'+String(i).padStart(2,'0'), gate:'G'+String(i).padStart(2,'0'),
       evidence_refs:['docs/v5/evidence/phase-gate.json'],

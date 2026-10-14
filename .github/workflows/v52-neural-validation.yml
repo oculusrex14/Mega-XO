@@ -1,20 +1,20 @@
-name: V5.1 compact model validation
+name: V5.2 compact model validation
 on:
   push:
-    branches: ['V5.1']
-    paths: ['training/bot/**', 'src/bot/**', 'tests/bot/neural*browser.py', 'tests/bot/learning-operator.test.cjs', '.github/workflows/v51-neural-validation.yml']
+    branches: ['V5.2']
+    paths: ['training/bot/**', 'src/bot/**', 'tests/bot/neural*browser.py', 'tests/bot/learning-operator.test.cjs', '.github/workflows/v52-neural-validation.yml']
   pull_request:
-    branches: ['V5.1']
-    paths: ['training/bot/**', 'src/bot/**', 'tests/bot/neural*browser.py', 'tests/bot/learning-operator.test.cjs', '.github/workflows/v51-neural-validation.yml']
+    branches: ['V5.2']
+    paths: ['training/bot/**', 'src/bot/**', 'tests/bot/neural*browser.py', 'tests/bot/learning-operator.test.cjs', '.github/workflows/v52-neural-validation.yml']
   workflow_dispatch:
 permissions:
   contents: read
 concurrency:
-  group: v51-neural-${{ github.ref }}
+  group: v52-neural-${{ github.ref }}
   cancel-in-progress: true
 jobs:
   validate:
-    if: github.ref == 'refs/heads/V5.1' || github.base_ref == 'V5.1'
+    if: github.ref == 'refs/heads/V5.2' || github.base_ref == 'V5.2'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -31,11 +31,11 @@ jobs:
           python3 -m pip install -r training/bot/requirements-validation.txt playwright==1.57.0
           python3 -m playwright install --with-deps chromium
           npm install --prefix .artifacts/v51/ort --ignore-scripts --no-audit --no-fund onnxruntime-web@1.23.2
-          npm install --prefix .artifacts/v51-ort-node --ignore-scripts --no-audit --no-fund onnxruntime-node@1.23.2
+          npm install --prefix .artifacts/v52-ort-node --ignore-scripts --no-audit --no-fund onnxruntime-node@1.23.2
       - name: Continuous-learning operator contract and real cycle
         run: |
           set -o pipefail
-          NODE_PATH="$PWD/.artifacts/v51-ort-node/node_modules" V5_LEARNING_OPERATOR_PREREQS=1 V5_OPERATOR_PYTHON=python3 \
+          NODE_PATH="$PWD/.artifacts/v52-ort-node/node_modules" V5_LEARNING_OPERATOR_PREREQS=1 V5_OPERATOR_PYTHON=python3 \
             node --test tests/bot/learning-operator.test.cjs 2>&1 | tee .artifacts/v51/learning-operator.log
       - name: Canonical records and CPU candidate smoke
         run: |
@@ -72,7 +72,7 @@ jobs:
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:
-          name: v51-neural-validation
+          name: v52-neural-validation
           path: .artifacts/v51/reports
           if-no-files-found: error
           retention-days: 7

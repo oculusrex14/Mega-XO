@@ -3,7 +3,7 @@ name: V5 P24 evidence-led scaling foundations
 # autoscale, change DB/write authority, call providers, or touch production.
 on:
   push:
-    branches: [V5-platform, V5.1]
+    branches: [V5.2]
     paths:
       - '.github/workflows/v5-p24-scale-readiness.yml'
       - 'scripts/v5/p24/**'
@@ -27,7 +27,7 @@ on:
       - 'docs/co-dev/P19-LOAD-CHAOS.md'
       - 'docs/v5/designs/**'
   pull_request:
-    branches: [V5-platform, V5.1]
+    branches: [V5.2]
     paths:
       - '.github/workflows/v5-p24-scale-readiness.yml'
       - 'scripts/v5/p24/**'

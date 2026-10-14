@@ -1,6 +1,6 @@
 'use strict';
-// V5.1 is the current sole integration branch; V5-platform is retained for provenance.
-const INTEGRATION_BRANCHES = Object.freeze(['V5-platform', 'V5.1']);
+// V5.2 is the sole active integration, release and production branch; V5.1 is the frozen historical reference.
+const INTEGRATION_BRANCHES = Object.freeze(['V5.2']);
 
 /*
  * P23-01. OFFLINE retirement readiness, not a write-fence installer.

@@ -2,7 +2,7 @@ name: V5 P22 cutover readiness safeguards
 # Source-only CI: never authorizes, rehearses, or initiates a production cutover.
 on:
   push:
-    branches: [V5-platform, V5.1]
+    branches: [V5.2]
     paths:
       - '.github/workflows/v5-p22-cutover-readiness.yml'
       - 'scripts/v5/p22/**'
@@ -24,7 +24,7 @@ on:
       - 'tests/v5-p18-*.test.js'
       - 'docs/co-dev/P22-CUTOVER-READINESS.md'
   pull_request:
-    branches: [V5-platform, V5.1]
+    branches: [V5.2]
     paths:
       - '.github/workflows/v5-p22-cutover-readiness.yml'
       - 'scripts/v5/p22/**'

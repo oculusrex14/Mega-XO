@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at_utc": "2026-10-14T07:33:36.365+00:00",
+  "updated_at_utc": "2026-10-14T15:02:40Z",
   "goal": "Deliver the V5 hybrid platform and real Android/iOS applications with shared permanent actor/assets, preserved approved game and retained browser compatibility; do not build the new website/browser product.",
   "source": {
     "goal": "AGENT-GOAL.md",
@@ -50,7 +50,7 @@
     "active_task": "V5-20-04",
     "next_action": "P22 live go/no-go pending: independent physical device/store/provider acceptance, nonserving V5 production staging, final V4 backup and one-writer cutover window; V4/SQLite remains sole live authority. G22/G23/G24 are not accepted. P21 remains owner-deferred.",
     "checkout_branch_at_setup": "V4.1",
-    "integration_branch": "V5-platform",
+    "integration_branch": "V5.2",
     "integration_branch_exists_at_setup": false,
     "last_v5_commit": "e8d049bf50862897f546e531def12715a36c670c",
     "last_pushed_v5_commit": "e8d049bf50862897f546e531def12715a36c670c",

@@ -1,20 +1,20 @@
-name: V5.1 dedicated recovery and chaos gates
+name: V5.2 dedicated recovery and chaos gates
 on:
   push:
-    branches: ['V5.1']
+    branches: ['V5.2']
     paths-ignore: ['docs/**', '*.md']
   pull_request:
-    branches: ['V5.1']
+    branches: ['V5.2']
     paths-ignore: ['docs/**', '*.md']
   workflow_dispatch:
 permissions:
   contents: read
 concurrency:
-  group: v51-disposable-${{ github.ref }}
+  group: v52-disposable-${{ github.ref }}
   cancel-in-progress: true
 jobs:
   dedicated-gates:
-    if: github.ref == 'refs/heads/V5.1' || github.base_ref == 'V5.1'
+    if: github.ref == 'refs/heads/V5.2' || github.base_ref == 'V5.2'
     runs-on: ubuntu-latest
     timeout-minutes: 25
     services:
@@ -71,18 +71,18 @@ jobs:
           P15_EVIDENCE_OUTPUT: .artifacts/p15-disposable-restore.json
         run: |
           set -euo pipefail
-          mkdir -p .artifacts/v51-gates
-          node --test --test-reporter=tap --test-concurrency=1 --test-force-exit tests/v5-p15-real-roundtrip.test.js tests/v5-p19-real-chaos.test.js tests/v5-p19-real-services.test.js 2>&1 | tee .artifacts/v51-gates/dedicated-tests.log
-          grep -q '^# tests 3$' .artifacts/v51-gates/dedicated-tests.log
-          grep -q '^# pass 3$' .artifacts/v51-gates/dedicated-tests.log
-          grep -q '^# skipped 0$' .artifacts/v51-gates/dedicated-tests.log
-          printf '%s\n' "$GITHUB_SHA" > .artifacts/v51-gates/source-commit.txt
+          mkdir -p .artifacts/v52-gates
+          node --test --test-reporter=tap --test-concurrency=1 --test-force-exit tests/v5-p15-real-roundtrip.test.js tests/v5-p19-real-chaos.test.js tests/v5-p19-real-services.test.js 2>&1 | tee .artifacts/v52-gates/dedicated-tests.log
+          grep -q '^# tests 3$' .artifacts/v52-gates/dedicated-tests.log
+          grep -q '^# pass 3$' .artifacts/v52-gates/dedicated-tests.log
+          grep -q '^# skipped 0$' .artifacts/v52-gates/dedicated-tests.log
+          printf '%s\n' "$GITHUB_SHA" > .artifacts/v52-gates/source-commit.txt
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:
-          name: v51-dedicated-disposable-gates
+          name: v52-dedicated-disposable-gates
           path: |
-            .artifacts/v51-gates
+            .artifacts/v52-gates
             .artifacts/p15-disposable-restore.json
             .artifacts/p19-disposable-services.json
             .artifacts/p19-real-chaos.json

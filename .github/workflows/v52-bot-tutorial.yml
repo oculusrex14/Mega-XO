@@ -1,20 +1,20 @@
-name: V5.1 bot and tutorial validation
+name: V5.2 bot and tutorial validation
 on:
   push:
-    branches: ['V5.1']
+    branches: ['V5.2']
     paths-ignore: ['docs/**', '*.md']
   pull_request:
-    branches: ['V5.1']
+    branches: ['V5.2']
     paths-ignore: ['docs/**', '*.md']
   workflow_dispatch:
 permissions:
   contents: read
 concurrency:
-  group: v51-bot-${{ github.ref }}
+  group: v52-bot-${{ github.ref }}
   cancel-in-progress: true
 jobs:
   validate:
-    if: github.ref == 'refs/heads/V5.1' || github.base_ref == 'V5.1'
+    if: github.ref == 'refs/heads/V5.2' || github.base_ref == 'V5.2'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -54,7 +54,7 @@ jobs:
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:
-          name: v51-bot-validation
+          name: v52-bot-validation
           path: .artifacts/v51
           retention-days: 7
           if-no-files-found: error

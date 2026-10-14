@@ -62,8 +62,8 @@ test('P24 source scaling review watches actual P19 measurement, owner ledger and
 
 test('P09 post-gate fencing and settlement remain real PG zero-skip acceptance coverage', () => {
   const yaml = workflow('v5-postgresql.yml');
-  assert.match(yaml, /^  push:\n    branches: \[V5-platform, V5.1\]/m);
-  assert.match(yaml, /^  pull_request:\n    branches: \[V5-platform, V5.1\]/m);
+  assert.match(yaml, /^  push:\n    branches: \[V5.2\]/m);
+  assert.match(yaml, /^  pull_request:\n    branches: \[V5.2\]/m);
   const suites = [
     'tests/v5-p09-persistence.test.js',
     'tests/v5-p09-lifecycle.test.js',
@@ -85,8 +85,8 @@ test('P09 post-gate fencing and settlement remain real PG zero-skip acceptance c
 
 test('P08 HTTP identity and socket queue safeguards stay in zero-skip PG integration checks', () => {
   const yaml = workflow('v5-postgresql.yml');
-  assert.match(yaml, /^  push:\n    branches: \[V5-platform, V5.1\]/m);
-  assert.match(yaml, /^  pull_request:\n    branches: \[V5-platform, V5.1\]/m);
+  assert.match(yaml, /^  push:\n    branches: \[V5.2\]/m);
+  assert.match(yaml, /^  pull_request:\n    branches: \[V5.2\]/m);
   for (const suite of [
     'tests/v5-p08-http-auth.test.js',
     'tests/v5-p08-ingress-bounds.test.js',

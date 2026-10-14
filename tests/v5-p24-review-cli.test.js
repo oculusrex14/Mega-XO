@@ -7,7 +7,7 @@ const path=require('node:path');
 const {runCli,safeLocal}=require('../scripts/v5/p24/review-cli');
 const SHA='a'.repeat(40);
 const ledger=()=>({schema_version:1,current:{
- integration_branch:'V5-platform',
+ integration_branch:'V5.2',
  passed_phase_gates:Array.from({length:9},(_,i)=>({
   phase:'P'+String(i).padStart(2,'0'),gate:'G'+String(i).padStart(2,'0'),
   evidence_refs:['docs/v5/evidence/phase-gate.json'],

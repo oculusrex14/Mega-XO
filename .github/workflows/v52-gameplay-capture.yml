@@ -1,9 +1,9 @@
-name: V5.1 gameplay capture
+name: V5.2 gameplay capture
 on:
   push:
-    branches: ['feat/v51-gameplay-data-capture', 'V5.1']
+    branches: ['V5.2']
   pull_request:
-    branches: ['V5.1']
+    branches: ['V5.2']
     paths:
       - 'packages/learning/**'
       - 'packages/migrations/**'
@@ -16,7 +16,7 @@ on:
       - 'packages/db/pg/**'
       - 'scripts/gameplay-*'
       - 'docs/v5.1/data/**'
-      - '.github/workflows/v51-gameplay-capture.yml'
+      - '.github/workflows/v52-gameplay-capture.yml'
   workflow_dispatch:
 permissions:
   contents: read

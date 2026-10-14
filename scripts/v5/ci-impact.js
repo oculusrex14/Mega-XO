@@ -14,7 +14,7 @@ const ALWAYS_REQUIRED = Object.freeze([
   'V5 release engineering',
   // Day-one gameplay-capture must be accepted before the first public V5 games are played
   // (owner directive P7). Making its lane an always-required gate keeps that contract checked.
-  'V5.1 gameplay capture'
+  'V5.2 gameplay capture'
 ]);
 
 function validatePath(file) {

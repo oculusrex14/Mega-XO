@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at_utc": "2026-10-14T02:30:00.000Z",
+  "updated_at_utc": "2026-10-14T04:20:50.989+00:00",
   "goal": "Deliver the V5 hybrid platform and real Android/iOS applications with shared permanent actor/assets, preserved approved game and retained browser compatibility; do not build the new website/browser product.",
   "source": {
     "goal": "AGENT-GOAL.md",
@@ -5933,7 +5933,8 @@
     "V5-22-01": {
       "status": "IMPLEMENTED",
       "evidence_refs": [
-        "docs/v5/evidence/phase22-gate.json"
+        "docs/v5/evidence/phase22-gate.json",
+        "docs/v5/evidence/phase22-production-cutover-prep.json"
       ],
       "completed_portions": [
         "Source code and synthetic cutover/retirement/scaling rehearsals preserved; no live cutover proven."
@@ -5941,7 +5942,7 @@
       "remaining": [
         "Revalidate live provider, recovery, physical-device and release evidence; explicit operator go/no-go still required."
       ],
-      "review_notes": "revalidated release identity and go/no-go criteria: all gates G00-G20 verified. 2026-10-09 production-authority audit cb54985: V4/SQLite is live, V5 Neon production is dormant. Earlier COMPLETE status was based on synthetic rehearsals, not a live P22 operation.",
+      "review_notes": "revalidated release identity and go/no-go criteria: all gates G00-G20 verified. 2026-10-09 production-authority audit cb54985: V4/SQLite is live, V5 Neon production is dormant. Earlier COMPLETE status was based on synthetic rehearsals, not a live P22 operation. Reversible half of the release identity and go/no-go is revalidated: production image digest sha256:41b8b7a3..., V4 frozen snapshot sha256 c77632f0..., 51/51 migrations, import+reconciliation 0 unexplained, V4_SERVING fence manifest. The task stays open because the P22 operator evidence packet cannot be completed honestly while the iOS device pass, live provider channels and the executed fence are outstanding.",
       "transitions": [
         {
           "at_utc": "2026-10-09T21:50:10.150+00:00",
@@ -5956,6 +5957,13 @@
           "to": "IMPLEMENTED",
           "evidence": "docs/v5/evidence/live-production-authority-audit.json",
           "note": "Correct synthetic/live acceptance conflation; Revalidate live provider, recovery, physical-device and release evidence; explicit operator go/no-go still required."
+        },
+        {
+          "at_utc": "2026-10-14T04:20:50.988+00:00",
+          "from": "IMPLEMENTED",
+          "to": "IMPLEMENTED",
+          "evidence": "docs/v5/evidence/phase22-production-cutover-prep.json",
+          "note": "Reversible half of the release identity and go/no-go is revalidated: production image digest sha256:41b8b7a3..., V4 frozen snapshot sha256 c77632f0..., 51/51 migrations, import+reconciliation 0 unexplained, V4_SERVING fence manifest. The task stays open because the P22 operator evidence packet cannot be completed honestly while the iOS device pass, live provider channels and the executed fence are outstanding."
         }
       ]
     },

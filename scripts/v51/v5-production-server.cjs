@@ -1,0 +1,748 @@
+'use strict';
+/* scripts/v51/v5-production-server.cjs - V5 PRODUCTION composition entry point (E5).
+ *
+ * The production twin of `scripts/v51/p21-staging-server.cjs`. It composes the SAME real stack in
+ * ONE process, against the PRODUCTION target instead of staging:
+ *
+ *   apps/web static bundle + apps/api handler + the signed Core service ingress
+ *   (`createCoreServiceIngress`) + the realtime transport (`createRealtimeTransport`), backed by the
+ *   real Neon `mega_xo_v5_production` database through least-privilege runtime roles
+ *   (`api_runtime` / `core_runtime` / `worker_runtime`) and the real managed Aiven Valkey.
+ *
+ * Its purpose is that the owner-authorised production cutover is a CONFIGURATION CHANGE plus an
+ * immutable-image deploy, not new code: the composition, the role separation, the secret custody,
+ * the namespace derivation and the health surface are identical in shape to the proven staging
+ * entry, so only the binding, the secret directory, the inventory and the two deliberate switches
+ * below differ between staging and production.
+ *
+ * SAFETY IDIOMS (all copied from the staging entry, deliberately):
+ *   - FAIL-CLOSED TARGET BINDING. Binding comes from `MEGA_V5_PRODUCTION_SERVER=<project>/<branch>/
+ *     <database>` and must equal the exact identity declared in docs/v5/environments/production.json.
+ *     The inventory must still declare `"nonserving": true`; a target that declares
+ *     `"nonserving": false` is REFUSED unless the separate authority-epoch switch is set (see the
+ *     operator sequence). The database must be `mega_xo_v5_production`.
+ *   - DISTINCT NAMESPACE. Every env var is `MEGA_V5_PRODUCTION_*` (never the staging `MEGA_V51_*`),
+ *     the secrets directory and the Redis credential envelope are separate files, and the ephemera
+ *     namespace is DERIVED (`prd<5 hex>`, over a production-only hash domain) so a production process
+ *     can never share staging's `mx:stg:<keyVersion>:*` coordination namespace.
+ *   - SECRETS ONLY FROM FILES. The Neon CA, the per-role credential envelope, the Core gateway HMAC
+ *     secret and the OTP/mail secret load from absolute, regular, non-symlinked mode-0600 files.
+ *     Nothing is read from an inline env value, and no secret or connection URL is ever printed.
+ *   - EXPLICIT ROLE SEPARATION, ASSERTED AT BOOT. API uses `api_runtime`, Core uses `core_runtime`,
+ *     the worker uses `worker_runtime`; every pool's `describe().role` is asserted, and the API
+ *     handler context is asserted to hold no Core pool (it reaches Core only over the signed
+ *     ingress), mirroring the proof in tests/v5-p11-browser-compat.test.js.
+ *   - OUTBOUND PROVIDER CLASSES STAY DISABLED, ENFORCED FROM THE TARGET FILE: email,
+ *     storeNotifications and adRewards are read from the bound inventory, never from a flag. The
+ *     current production inventory disables all three; a class the inventory enables is refused
+ *     because no provider implementation is configured here.
+ *   - NO V4 COUPLING. This module never reads, writes, starts or stops a V4 path, container,
+ *     database or service, and never shells out to Docker. It binds loopback only (never a
+ *     wildcard), keeps `X-Robots-Tag: noindex, nofollow` and serves the generated bundle only.
+ *
+ * OPERATOR SEQUENCE (E5 - every step below is a deliberate, separate switch):
+ *   1. E1-E4 complete: the legacy V4 authority is frozen and fenced, its writers stopped by the
+ *      fence/epoch tooling (NOT by this process), and docs/v5/environments/production.json
+ *      reconciled. This process never touches the legacy authority.
+ *   2. Provision the production secrets directory OUTSIDE Git (mode 0700) with the credential
+ *      envelope, the role envelope, the sealed signing-key custody and the Neon root CA
+ *      (credentials.json, runtime-roles.json, keys.sealed.json, ca.pem) plus the two generated-once
+ *      files otp.secret and core-gateway.secret. Every file must be mode 0600.
+ *   3. DELIBERATE SWITCH A - the FIRST PRODUCTION WRITE: create the single ACTIVE `prd` signing key
+ *      row in identity.signing_keys (access-service bootstrap) with its private half already sealed
+ *      in keys.sealed.json. This entry point REFUSES to boot before that exists
+ *      (EXISTING_SIGNING_KEY_CUSTODY_REQUIRED) and never mints a key implicitly.
+ *   4. Build the immutable web artifact from the frozen commit:
+ *        node scripts/p21/build-web.js --output .artifacts/p21-web
+ *   5. Export the binding and start the co-located stack (loopback only; no wildcard, no --allow-host
+ *      escape hatch in production):
+ *        MEGA_V5_PRODUCTION_SERVER=blue-sun-85454968/br-dawn-dawn-b8f9n7zq/mega_xo_v5_production \
+ *        MEGA_V5_PRODUCTION_SECRETS=<absolute dir> MEGA_HTTP_PORT=8080 \
+ *        node scripts/v51/v5-production-server.cjs --web-build .artifacts/p21-web
+ *      While the inventory declares `"nonserving": true` the binding validator REFUSES any authority
+ *      epoch, so this process cannot become the recorded serving authority by configuration drift;
+ *      it still composes the REAL production pools, so start it only once the E4 writer fence is
+ *      recorded. /livez and /readyz answer exactly as the deploy tooling and the host health monitor
+ *      expect, and that is the only traffic this step needs.
+ *   6. DELIBERATE SWITCH B - the AUTHORITY EPOCH: flip `"nonserving"` to false in the inventory (after
+ *      the recorded writer fence and first application write) and start with
+ *        MEGA_V5_PRODUCTION_SERVE=v5:<13-digit epoch>:<16-64 hex>
+ *      This is one configuration change plus one immutable-image deploy - no new code. A serving
+ *      target whose epoch is missing or malformed is REFUSED, and an epoch supplied while the target
+ *      is still nonserving is REFUSED (never arm early).
+ *   7. Verify: /livez and /readyz answer 200 {"status":"ok","live":true,"ready":true}; / serves the
+ *      bundle shell; a missing asset is a real 404, never an HTML fallback; X-Robots-Tag noindex.
+ *
+ * Usage: MEGA_V5_PRODUCTION_SERVER=blue-sun-85454968/br-dawn-dawn-b8f9n7zq/mega_xo_v5_production \
+ *          node scripts/v51/v5-production-server.cjs [--port 8080] [--web-build .artifacts/p21-web]
+ */
+const http = require('node:http');
+const crypto = require('node:crypto');
+const fs = require('node:fs');
+const path = require('node:path');
+
+const ROOT = path.resolve(__dirname, '..', '..');
+const PRODUCTION_TARGET_FILE = path.join(ROOT, 'docs/v5/environments/production.json');
+const REDIS_PRODUCTION_FILE = path.join(ROOT, 'docs/v5/environments/redis-production.json');
+
+/* Production-only env prefix. Nothing here reads a staging variable, and nothing staging reads is
+ * read here: the two processes cannot be started, or configured, by the same accident. */
+const SECRETS_DIR = process.env.MEGA_V5_PRODUCTION_SECRETS || '/Users/oculus/Downloads/Mega-XO-private-evidence/v5-neon-production';
+const BINDING_ENV = 'MEGA_V5_PRODUCTION_SERVER';
+const SERVING_EPOCH_ENV = 'MEGA_V5_PRODUCTION_SERVE';
+const HTTP_PORT_ENV = 'MEGA_HTTP_PORT';
+const REDIS_CREDENTIALS_ENV = 'MEGA_V5_PRODUCTION_REDIS_CREDENTIALS';
+
+/* The private-material filenames inside the secrets directory. All are absolute, regular,
+ * non-symlinked, mode-0600 files; the two `.secret` files are created once (0600) and then reused, so
+ * a restart never invalidates a one-time code or a configured ingress caller. */
+const SECRET_FILES = Object.freeze({
+  credentials: 'credentials.json', runtimeRoles: 'runtime-roles.json', keys: 'keys.sealed.json',
+  ca: 'ca.pem', otp: 'otp.secret', gateway: 'core-gateway.secret',
+});
+
+/* The exact production identity. Pinned here as well as read from the inventory: a drift in either
+ * place is a refusal, never a silent rebinding. */
+const PRODUCTION_IDENTITY = Object.freeze({
+  environment: 'production',
+  projectId: 'blue-sun-85454968',
+  branchId: 'br-dawn-dawn-b8f9n7zq',
+  endpointId: 'ep-mute-surf-b8v94ksa',
+  host: 'ep-mute-surf-b8v94ksa.c-14.us-east-1.aws.neon.tech',
+  database: 'mega_xo_v5_production',
+  pgMajor: 16,
+});
+const PRODUCTION_DATABASE = PRODUCTION_IDENTITY.database;
+const PRODUCTION_BINDING = [PRODUCTION_IDENTITY.projectId, PRODUCTION_IDENTITY.branchId, PRODUCTION_IDENTITY.database].join('/');
+
+/* `v5:<13-digit epoch ms>:<16-64 hex>` - the authority-epoch grammar the P22/P23 cutover tooling
+ * already verifies (scripts/v5/p23/retirement-readiness.js). Reused rather than invented. */
+const AUTHORITY_EPOCH = /^v5:[0-9]{13}:[0-9a-f]{16,64}$/;
+const BINDING_TOKEN = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,63}$/;
+
+/* The three outbound provider classes. Their state is a property of the bound target file. */
+const OUTBOUND_CLASSES = Object.freeze(['email', 'storeNotifications', 'adRewards']);
+const OUTBOUND_STATES = Object.freeze(['disabled', 'enabled']);
+
+const LOOPBACK = new Set(['127.0.0.1', 'localhost', '::1']);
+/* Production serves inside the co-located edge: the loopback port the edge/monitor front, on the same
+ * `MEGA_HTTP_PORT` pattern the V4 deployment already uses (default 8080). */
+const DEFAULT_HTTP_PORT = 8080;
+const GATEWAY_TIMEOUT_MS = 30000;
+const SECRET_MAX_BYTES = 4 * 1024 * 1024;
+const REFUSE = (code, detail) => { const error = new Error(detail === undefined ? code : `${code}: ${String(detail).slice(0, 200)}`); error.code = code; return error; };
+
+function arg(flag, fallback) {
+  const i = process.argv.indexOf(flag);
+  return i !== -1 && process.argv[i + 1] ? process.argv[i + 1] : fallback;
+}
+const safeError = (err) => (err && err.message) ? String(err.message).slice(0, 120) : 'ERROR';
+
+/* ------------------------------------------------------------------ secrets */
+
+/* Reads private material from an absolute, regular, non-symlinked file whose mode grants nothing to
+ * group/other. The mode is checked on the OPENED descriptor, so a path swapped after the initial
+ * lstat cannot slip a world-readable file past the guard. The returned text is never logged; callers
+ * either parse it or use it as a key. */
+function readSecretFile(file, { label, maxBytes = SECRET_MAX_BYTES } = {}) {
+  if (typeof file !== 'string' || !path.isAbsolute(file)) throw REFUSE('SECRET_PATH_REQUIRED', label);
+  let lst;
+  try { lst = fs.lstatSync(file); } catch { throw REFUSE('SECRET_FILE_UNREADABLE', label); }
+  if (!lst.isFile() || lst.isSymbolicLink()) throw REFUSE('SECRET_FILE_UNSAFE', label);
+  let fd;
+  try { fd = fs.openSync(file, fs.constants.O_RDONLY | (fs.constants.O_NOFOLLOW || 0)); }
+  catch { throw REFUSE('SECRET_FILE_UNREADABLE', label); }
+  let text;
+  try {
+    const stat = fs.fstatSync(fd);
+    if (!stat.isFile()) throw REFUSE('SECRET_FILE_UNSAFE', label);
+    if (process.platform !== 'win32' && (stat.mode & 0o077) !== 0) throw REFUSE('SECRET_FILE_NOT_PRIVATE', label);
+    if (stat.size === 0 || stat.size > maxBytes) throw REFUSE('SECRET_FILE_SIZE_INVALID', label);
+    text = fs.readFileSync(fd, 'utf8');
+  } finally { try { fs.closeSync(fd); } catch { /* descriptor already gone */ } }
+  return text;
+}
+
+/* `SECRET_FILES` names -> absolute paths inside the configured secrets directory. The directory
+ * itself must be absolute; a relative root would make every guard path-dependent. */
+function secretPaths(dir = SECRETS_DIR) {
+  if (typeof dir !== 'string' || !path.isAbsolute(dir)) throw REFUSE('SECRETS_DIR_MUST_BE_ABSOLUTE');
+  const out = {};
+  for (const [key, name] of Object.entries(SECRET_FILES)) out[key] = path.join(dir, name);
+  return Object.freeze(out);
+}
+
+/* Loads (or, on the very first boot, mints once) a STABLE operator secret. A fresh random value on
+ * every restart would invalidate every one-time code already issued and every configured ingress
+ * caller. The file is mode 0600, never printed and shared by every process of this environment. */
+function loadStableSecret(secretPath, code) {
+  if (fs.existsSync(secretPath)) {
+    const value = readSecretFile(secretPath, { label: path.basename(secretPath) }).trim();
+    if (value.length >= 32) return value;
+    throw REFUSE(`${code}_TOO_SHORT`);
+  }
+  const generated = crypto.randomBytes(32).toString('hex');
+  fs.writeFileSync(secretPath, generated + '\n', { mode: 0o600, flag: 'wx' });
+  return generated;
+}
+
+/* --------------------------------------------------------- pure validators */
+
+/* `<projectId>/<branchId>/<database>` - the staging convention, widened to name the branch too. */
+function parseProductionBinding(binding) {
+  if (typeof binding !== 'string' || binding.length === 0) throw REFUSE('PRODUCTION_BINDING_REQUIRED', BINDING_ENV);
+  const parts = binding.split('/');
+  if (parts.length !== 3 || parts.some((part) => !BINDING_TOKEN.test(part))) throw REFUSE('MALFORMED_PRODUCTION_BINDING', binding.length);
+  return Object.freeze({ projectId: parts[0], branchId: parts[1], database: parts[2] });
+}
+
+/* The exact-target guard: the inventory must still be the pinned production identity, and it must not
+ * have started serving unless the deliberate authority-epoch switch is set. Returns the bound
+ * descriptor; every other outcome throws. */
+function validateProductionBinding({ binding, target, servingEpoch = null } = {}) {
+  const parsed = parseProductionBinding(binding);
+  if (!target || typeof target !== 'object' || Array.isArray(target)) throw REFUSE('REFUSED_PRODUCTION_TARGET_FILE', 'inventory required');
+  if (target.environment !== PRODUCTION_IDENTITY.environment) throw REFUSE('REFUSED_PRODUCTION_TARGET_FILE', 'environment');
+  for (const field of ['projectId', 'branchId', 'endpointId', 'host']) {
+    if (target[field] !== PRODUCTION_IDENTITY[field]) throw REFUSE('REFUSED_PRODUCTION_TARGET_FILE', `${field} drift`);
+  }
+  if (target.pgMajor !== PRODUCTION_IDENTITY.pgMajor) throw REFUSE('REFUSED_PRODUCTION_TARGET_FILE', 'pgMajor');
+  /* The database name alone decides whether this is production at all. */
+  if (target.database !== PRODUCTION_DATABASE) throw REFUSE('REFUSED_NON_PRODUCTION_DATABASE', target.database);
+  if (parsed.projectId !== target.projectId || parsed.branchId !== target.branchId || parsed.database !== target.database) {
+    throw REFUSE('REFUSED_PRODUCTION_BINDING', 'the binding does not name the exact production project/branch/database');
+  }
+  if (typeof target.nonserving !== 'boolean') throw REFUSE('REFUSED_NONSERVING_FLAG_INVALID');
+  const outbound = resolveOutboundPolicy(target);
+  /* No outbound provider exists in this entry, so a target file that ENABLES one is refused here
+   * rather than silently composed without it. */
+  assertProviderClassesComposable(outbound);
+  /* Switch A is the first production write and switch B is the authority epoch; nothing here can
+   * reach a serving target by accident, and nothing arms early. */
+  if (target.nonserving === true) {
+    if (servingEpoch !== null && servingEpoch !== undefined && servingEpoch !== '') throw REFUSE('SERVING_EPOCH_BEFORE_CUTOVER');
+    return Object.freeze({ ...parsed, host: target.host, endpointId: target.endpointId, nonserving: true, serving: false, servingEpoch: null, outbound });
+  }
+  if (typeof servingEpoch !== 'string' || !AUTHORITY_EPOCH.test(servingEpoch)) throw REFUSE('REFUSED_SERVING_PRODUCTION_TARGET', `${SERVING_EPOCH_ENV} (authority epoch) required`);
+  return Object.freeze({ ...parsed, host: target.host, endpointId: target.endpointId, nonserving: false, serving: true, servingEpoch, outbound });
+}
+
+/* Outbound policy is READ FROM THE TARGET FILE, never from a flag. The resolved state of a class is
+ * exactly what the bound inventory declares; an explicit request can only CONFIRM a declaration, never
+ * flip a `disabled` class on (`OUTBOUND_CLASS_DISABLED_BY_TARGET`). An inventory that enables a class
+ * therefore yields an enabled policy, which the composition then refuses to run without a provider for. */
+function resolveOutboundPolicy(target, requested = {}) {
+  if (!target || typeof target !== 'object' || Array.isArray(target)) throw REFUSE('REFUSED_PRODUCTION_TARGET_FILE', 'outbound');
+  const declared = target.outbound;
+  if (!declared || typeof declared !== 'object' || Array.isArray(declared)) throw REFUSE('OUTBOUND_DECLARATION_INVALID', 'outbound section');
+  if (!requested || typeof requested !== 'object' || Array.isArray(requested)) throw REFUSE('OUTBOUND_REQUEST_INVALID');
+  for (const key of Object.keys(requested)) {
+    if (!OUTBOUND_CLASSES.includes(key)) throw REFUSE('OUTBOUND_CLASS_UNKNOWN', key);
+  }
+  const policy = {};
+  for (const klass of OUTBOUND_CLASSES) {
+    const state = declared[klass];
+    if (!OUTBOUND_STATES.includes(state)) throw REFUSE('OUTBOUND_DECLARATION_INVALID', klass);
+    const wanted = requested[klass];
+    if (wanted !== undefined && !OUTBOUND_STATES.includes(wanted)) throw REFUSE('OUTBOUND_REQUEST_INVALID', klass);
+    /* A request may only CONFIRM the declaration: it can never flip a class either way. */
+    if (wanted !== undefined && wanted !== state) {
+      throw REFUSE(state === 'disabled' ? 'OUTBOUND_CLASS_DISABLED_BY_TARGET' : 'OUTBOUND_REQUEST_INVALID', klass);
+    }
+    policy[klass] = state;
+  }
+  return Object.freeze(policy);
+}
+
+/* A mail transport bound to the resolved policy. When email is disabled by the target the worker
+ * defers every delivery (`enabled() === false`) instead of claiming work it must not send. */
+function createMailTransportForPolicy(policy) {
+  if (!policy || typeof policy !== 'object') throw REFUSE('OUTBOUND_POLICY_REQUIRED');
+  if (policy.email !== 'disabled') throw REFUSE('OUTBOUND_CLASS_UNIMPLEMENTED', 'email');
+  const unreachable = (method) => () => { throw REFUSE('OUTBOUND_DISABLED_BY_TARGET', method); };
+  return Object.freeze({
+    enabled: () => false,
+    sendOtp: unreachable('sendOtp'),
+    sendPasswordChanged: unreachable('sendPasswordChanged'),
+    sendSecurityNotice: unreachable('sendSecurityNotice'),
+    sendMail: unreachable('sendMail'),
+  });
+}
+
+/* This entry point composes NO outbound provider: it has no mail provider, no store notification
+ * verifier and no rewarded-ad service. A target file that ENABLES a class is therefore refused
+ * explicitly rather than silently ignored - a declared outbound effect that nothing implements is a
+ * configuration error, and the cutover inventory keeps all three disabled. */
+function assertProviderClassesComposable(policy) {
+  if (!policy || typeof policy !== 'object') throw REFUSE('OUTBOUND_POLICY_REQUIRED');
+  const enabled = OUTBOUND_CLASSES.filter((klass) => policy[klass] === 'enabled');
+  if (enabled.length > 0) throw REFUSE('OUTBOUND_CLASS_UNIMPLEMENTED', enabled.join(','));
+  return Object.freeze({ composed: false, classes: Object.freeze({ ...policy }) });
+}
+
+/* --------------------------------------------------------------- namespace */
+
+/* The ephemera namespace is `mx:<environment>:<keyVersion>:<family>:...` (packages/services/ephemera
+ * .js). Both halves are DERIVED: the environment token is production-only (`prd`) and the keyVersion
+ * comes from a production-only hash domain over the binding, so a production process can never land
+ * in `mx:stg:*` - and, for the same input, its keyVersion differs from staging's by construction. */
+function deriveNamespace(environment, binding) {
+  const map = { production: 'prd', staging: 'stg', dev: 'tst' };
+  const token = map[environment];
+  if (!token) throw REFUSE('NAMESPACE_ENVIRONMENT_INVALID', environment);
+  if (typeof binding !== 'string' || binding.length === 0) throw REFUSE('PRODUCTION_BINDING_REQUIRED');
+  const digest = crypto.createHash('sha256').update(`mega-v5:${environment}:namespace:${binding}`).digest('hex');
+  const keyVersion = `${token}${digest.slice(0, 5)}`;
+  if (!/^[a-z0-9]{1,8}$/.test(keyVersion)) throw REFUSE('INVALID_KEY_VERSION');
+  return Object.freeze({ environment: token, keyVersion, prefix: `mx:${token}:${keyVersion}:` });
+}
+
+/* ------------------------------------------------------------- role binding */
+
+const REQUIRED_ROLE = Object.freeze({ api: 'api_runtime', core: 'core_runtime', worker: 'worker_runtime' });
+
+/* `describe().role` is the pool's own assertion of the login identity it was built with. A pool whose
+ * role is not the one this composition expects is refused before a single statement runs. */
+function assertPoolRole(pool, expectedRole, label) {
+  const described = pool && typeof pool.describe === 'function' ? pool.describe() : null;
+  const role = described ? described.role : null;
+  if (role !== expectedRole) throw REFUSE('POOL_ROLE_MISMATCH', `${label || 'pool'} expected ${expectedRole}, observed ${role}`);
+  return described;
+}
+
+/* The three pools must describe exactly the three required runtime roles, each exactly once, and no
+ * role may be observed twice: a composition that hands the Core pool to the API (or vice versa) is
+ * refused before a single statement runs. */
+function assertRoleSeparation(pools) {
+  const out = {};
+  for (const key of ['api', 'core', 'worker']) {
+    const described = assertPoolRole(pools && pools[key], REQUIRED_ROLE[key], key);
+    out[key] = Object.freeze({ role: described.role, applicationName: described.applicationName || null });
+  }
+  const required = Object.values(REQUIRED_ROLE).sort().join(',');
+  const observed = Object.values(out).map((entry) => entry.role).sort().join(',');
+  if (observed !== required) throw REFUSE('POOL_ROLE_MISMATCH', `api/core/worker roles are ${observed}`);
+  return Object.freeze(out);
+}
+
+/* The public API process holds ONLY API-role credentials: it carries no Core pool and no Core service,
+ * and reaches Core exclusively over the signed ingress (the proof composed in
+ * tests/v5-p11-browser-compat.test.js). This assertion makes that structural, not aspirational. */
+function assertApiCompositionHoldsNoCoreAccess(context) {
+  if (!context || typeof context !== 'object') throw REFUSE('API_CONTEXT_REQUIRED');
+  for (const key of ['corePool', 'coreService', 'leaderboardPool', 'workerPool', 'privacyPool', 'coreClient']) {
+    if (context[key] !== undefined) throw REFUSE('API_HOLDS_CORE_POOL', key);
+  }
+  const described = assertPoolRole(context.pool, REQUIRED_ROLE.api, 'api');
+  return Object.freeze({ role: described.role, applicationName: described.applicationName || null });
+}
+
+/* The mirror assertion: the Core-side composition (Core service, Core-owned queue, leaderboard
+ * materializer) runs on the `core_runtime` pool and never on the API's. The one deliberate exception
+ * is the API-owned ticket issuer, exactly as in the proven staging stack: ticket rows are API-granted
+ * (createTicketIssuer enforces `api_runtime` itself), so it is asserted separately rather than waived.
+ */
+function assertCoreCompositionUsesCorePool({ corePool, queuePool, leaderboardPool, ticketIssuerPool, apiPool } = {}) {
+  const core = assertPoolRole(corePool, REQUIRED_ROLE.core, 'core');
+  assertPoolRole(queuePool, REQUIRED_ROLE.core, 'queue');
+  assertPoolRole(leaderboardPool, REQUIRED_ROLE.core, 'leaderboard');
+  assertPoolRole(ticketIssuerPool, REQUIRED_ROLE.api, 'ticketIssuer');
+  assertPoolRole(apiPool, REQUIRED_ROLE.api, 'api');
+  if (corePool === apiPool) throw REFUSE('POOL_ROLE_MISMATCH', 'the Core composition shares the API pool');
+  return Object.freeze({ role: core.role, applicationName: core.applicationName || null });
+}
+
+/* The connection budget is read from the inventory's per-role limits; a pool that would exceed its
+ * role allocation (or a role limit that is missing/absurd) is refused before any socket. */
+function resolveConnectionBudget(target, poolMax = { api: 6, core: 6, worker: 2 }) {
+  const limits = target && target.roleConnectionLimits;
+  if (!limits || typeof limits !== 'object' || Array.isArray(limits)) throw REFUSE('INVENTORY_ROLE_LIMITS_INVALID');
+  const roleConnections = {};
+  for (const role of Object.values(REQUIRED_ROLE)) {
+    const limit = limits[role];
+    if (!Number.isInteger(limit) || limit < 1 || limit > 64) throw REFUSE('INVENTORY_ROLE_LIMITS_INVALID', role);
+    roleConnections[role] = limit;
+  }
+  for (const [key, role] of Object.entries(REQUIRED_ROLE)) {
+    const max = poolMax[key];
+    if (!Number.isInteger(max) || max < 1 || max > roleConnections[role]) throw REFUSE('POOL_MAX_EXCEEDS_ROLE_LIMIT', role);
+  }
+  const totalConnections = Object.values(roleConnections).reduce((sum, n) => sum + n, 0);
+  return Object.freeze({
+    budget: Object.freeze({ totalConnections, roleConnections: Object.freeze(roleConnections) }),
+    poolMax: Object.freeze({ api: poolMax.api, core: poolMax.core, worker: poolMax.worker }),
+  });
+}
+
+/* The HTTP bind. Production is loopback-only behind the co-located edge: no wildcard, no remote
+ * interface, and no `--allow-host` escape hatch (unlike the staging entry, which may publish on an
+ * explicit private tailnet address). `MEGA_HTTP_PORT` is read exactly as the deployment environment
+ * exposes it; the public 80/443 remain the edge's alone, so a stack that tried to take them (or any
+ * other privileged port) is refused rather than silently colliding with the sole V4 ingress. */
+function resolveHttpBinding({ host, port } = {}) {
+  const resolvedHost = host === undefined || host === null || host === '' ? '127.0.0.1' : host;
+  if (!LOOPBACK.has(resolvedHost)) throw REFUSE('REFUSED_NON_LOOPBACK_BIND', resolvedHost);
+  if (resolvedHost === '0.0.0.0' || resolvedHost === '::') throw REFUSE('REFUSED_WILDCARD_BIND');
+  const resolvedPort = port === undefined || port === null || port === '' ? DEFAULT_HTTP_PORT : Number(port);
+  if (!Number.isInteger(resolvedPort) || resolvedPort < 1 || resolvedPort > 65535) throw REFUSE('HTTP_PORT_INVALID', String(port));
+  /* Every privileged port is refused - never silently substituted: a stack that asked for one must
+   * fail loudly instead of binding somewhere else. */
+  if (resolvedPort < 1024) throw REFUSE('REFUSED_RESERVED_HTTP_PORT', String(resolvedPort));
+  return Object.freeze({ host: resolvedHost, port: resolvedPort });
+}
+
+/* Server-side identity of the served artifact. Reused verbatim from the staging entry: the generated
+ * bundle (scripts/p21/build-web.js) is the ONLY thing served, never the raw apps/web source tree, and
+ * the artifact's own manifest is both the route table and the file allowlist, so an unlisted path is a
+ * real 404 rather than a rewritten source file. */
+function loadWebArtifact(dir) {
+  const manifestPath = path.join(dir, 'web-build.manifest.json');
+  if (!fs.existsSync(manifestPath)) throw new Error('WEB_BUILD_ARTIFACT_REQUIRED: run scripts/p21/build-web.js');
+  const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
+  if (manifest.generator !== 'scripts/p21/build-web.js' || !Array.isArray(manifest.files)) {
+    throw new Error('WEB_BUILD_ARTIFACT_INVALID');
+  }
+  return Object.freeze({
+    dir, routes: manifest.routes || {}, files: new Set(['web-build.manifest.json', ...manifest.files.map((f) => f.path)]),
+    sourceCommit: manifest.source_commit || null, bundleSha256: manifest.bundle_sha256 || null, fileCount: manifest.file_count || manifest.files.length,
+  });
+}
+
+/* Which surface a request path belongs to. Pure and total, so the routing decision can be asserted
+ * offline: `ingress` (the signed Core ingress), `api` (the API handler, which also owns /livez,
+ * /readyz and /health), `operator` (refused privately), `realtime` (owned by the transport) or
+ * `static` (the generated bundle). */
+function classifyPath(pathname) {
+  if (typeof pathname !== 'string' || pathname.length === 0) throw REFUSE('PATH_REQUIRED');
+  if (pathname === '/realtime/v1/snapshot' || pathname === '/realtime/v1/snapshot/' || pathname.startsWith('/realtime/v1/match/')) return 'realtime';
+  if (pathname.startsWith('/ingress/')) return 'ingress';
+  if (pathname.startsWith('/api/') || pathname.startsWith('/auth/') || pathname.startsWith('/.well-known/') ||
+      pathname === '/health' || pathname === '/livez' || pathname === '/readyz') return 'api';
+  return 'static';
+}
+
+const MIME_TYPES = Object.freeze({
+  '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.mjs': 'text/javascript; charset=utf-8',
+  '.cjs': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.json': 'application/json; charset=utf-8',
+  '.webp': 'image/webp', '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.svg': 'image/svg+xml',
+  '.ico': 'image/x-icon', '.woff': 'font/woff', '.woff2': 'font/woff2', '.txt': 'text/plain; charset=utf-8',
+  '.xml': 'application/xml; charset=utf-8', '.webmanifest': 'application/manifest+json',
+});
+
+/* Reads a non-secret JSON inventory (a checked-in allowlisted manifest, never secret material). */
+function readInventory(file) {
+  if (!fs.existsSync(file)) throw REFUSE('INVENTORY_MISSING', path.basename(file));
+  let parsed;
+  try { parsed = JSON.parse(fs.readFileSync(file, 'utf8')); }
+  catch { throw REFUSE('INVENTORY_INVALID', path.basename(file)); }
+  return parsed;
+}
+
+/* ------------------------------------------------------------------- main */
+
+async function main() {
+  /* The composition modules are required INSIDE main so that requiring this file for its validators
+   * never loads a service, reads a secret or opens a socket. */
+  const { createPgPool } = require(path.join(ROOT, 'packages/db/pg/pool.js'));
+  const { createAccountService } = require(path.join(ROOT, 'packages/services/accounts.js'));
+  const { createCoreService } = require(path.join(ROOT, 'packages/services/core.js'));
+  const { createAccessService } = require(path.join(ROOT, 'packages/services/access.js'));
+  const { createTicketIssuer } = require(path.join(ROOT, 'packages/services/tickets.js'));
+  const { createQueueService } = require(path.join(ROOT, 'packages/services/queue.js'));
+  const { createCoreGateway, createCoreServiceIngress } = require(path.join(ROOT, 'packages/services/core-gateway.js'));
+  const { createRealtimeTransport } = require(path.join(ROOT, 'packages/services/realtime-transport.js'));
+  const { resolveManagedRedisTarget } = require(path.join(ROOT, 'packages/services/managed-ephemera.js'));
+  const { createEphemeraService } = require(path.join(ROOT, 'packages/services/ephemera.js'));
+  const { createWorkerApp } = require(path.join(ROOT, 'packages/services/worker-workflows.js'));
+  const { createApiHandler } = require(path.join(ROOT, 'apps/api/index.js'));
+  const security = require(path.join(ROOT, 'packages/services/security.js'));
+  const { resolveAuth } = require(path.join(ROOT, 'apps/api/routes/helpers.js'));
+  const { resolveStatic } = require(path.join(ROOT, 'scripts/p21/serve-web.js'));
+
+  /* 1. TARGET BINDING. Explicit, exact and fail-closed; the process refuses to start otherwise. */
+  const binding = process.env[BINDING_ENV];
+  const servingEpoch = process.env[SERVING_EPOCH_ENV] || null;
+  const target = readInventory(PRODUCTION_TARGET_FILE);
+  const boundary = validateProductionBinding({ binding, target, servingEpoch });
+  const namespace = deriveNamespace('production', binding);
+  if (namespace.environment !== 'prd') throw REFUSE('NAMESPACE_ISOLATION_FAILED');
+
+  /* 2. HTTP BIND. Loopback only, on the production `MEGA_HTTP_PORT` pattern. */
+  const httpBinding = resolveHttpBinding({
+    host: arg('--host', '127.0.0.1'),
+    port: arg('--port', process.env[HTTP_PORT_ENV] || String(DEFAULT_HTTP_PORT)),
+  });
+  const webBuildDir = path.resolve(arg('--web-build', path.join(ROOT, '.artifacts/p21-web')));
+
+  /* 3. PRIVATE MATERIAL. Everything from absolute mode-0600 regular files; nothing inline. The two
+   * `.secret` files may be minted once on first boot; the signing-key custody file may NOT (see the
+   * deliberate switch A below), so its absence is reported by its own explicit refusal. */
+  const secrets = secretPaths(process.env.MEGA_V5_PRODUCTION_SECRETS || SECRETS_DIR);
+  for (const file of [secrets.credentials, secrets.runtimeRoles, secrets.ca]) {
+    if (!fs.existsSync(file)) throw REFUSE('MISSING_PRODUCTION_MATERIAL', path.basename(file));
+  }
+  const creds = JSON.parse(readSecretFile(secrets.credentials, { label: 'credentials.json' }));
+  const caPem = readSecretFile(secrets.ca, { label: 'ca.pem' });
+  if (!caPem.includes('-----BEGIN CERTIFICATE-----')) throw REFUSE('NEON_CA_NOT_PEM');
+  const runtimeRoles = JSON.parse(readSecretFile(secrets.runtimeRoles, { label: 'runtime-roles.json' }));
+
+  /* The credential and role envelopes must describe the SAME target the binding named - a staging
+   * envelope can never be pointed at production by changing one environment variable. */
+  const migrationUrl = new URL(String(creds.migration_url));
+  if (creds.project !== boundary.projectId || creds.branch !== boundary.branchId || creds.database !== boundary.database ||
+      runtimeRoles.host !== boundary.host || runtimeRoles.database !== boundary.database ||
+      migrationUrl.hostname !== boundary.host || migrationUrl.pathname !== `/${boundary.database}`) {
+    throw REFUSE('REFUSED_PRODUCTION_CREDENTIAL_BINDING');
+  }
+  for (const role of Object.values(REQUIRED_ROLE)) {
+    const entry = runtimeRoles.roles && runtimeRoles.roles[role];
+    if (!entry || typeof entry.password !== 'string' || entry.password.length === 0) throw REFUSE('RUNTIME_ROLE_CREDENTIAL_MISSING', role);
+  }
+
+  /* 4. MANAGED REDIS. The inventory names the intended endpoint; the private envelope holds the
+   * credential. `resolveManagedRedisTarget` is the audited P06 guard: it validates the inventory, the
+   * envelope privacy, the provider identity and the `rediss://` endpoint BEFORE any socket exists, and
+   * it derives the production namespace (`prd`). The adapter's `keyVersion` is then bound to THIS
+   * process's derived namespace, so the production process can never share staging's coordination
+   * keyspace (`mx:stg:*`) even for an identical input. */
+  const redisInventory = readInventory(REDIS_PRODUCTION_FILE);
+  const redisCredentialFile = process.env[REDIS_CREDENTIALS_ENV] || redisInventory.redis.credentialFile;
+  const redisTarget = resolveManagedRedisTarget({ inventory: redisInventory, environment: 'production', credentialFile: redisCredentialFile });
+  if (redisTarget.namespace !== namespace.environment) throw REFUSE('NAMESPACE_ISOLATION_FAILED');
+  const ephemera = createEphemeraService({ ...redisTarget.options, keyVersion: namespace.keyVersion });
+  if (!(await ephemera.healthy())) throw REFUSE('PRODUCTION_REDIS_UNHEALTHY');
+
+  /* 5. ROLE-SEPARATED POOLS. One pool per role, each max capped by the inventory's role limit. */
+  /* SCRAM channel binding (SCRAM-SHA-256-PLUS) is negotiated automatically by node-postgres over the
+   * verified TLS stream - there is no `channel_binding` pool option to set - so `ssl: {ca,
+   * rejectUnauthorized: true}` plus the pinned `sslRootCertPath` is the whole TLS contract here. */
+  const { budget, poolMax } = resolveConnectionBudget(target);
+  const mkPool = (role, max) => createPgPool({
+    host: runtimeRoles.host, port: 5432, database: runtimeRoles.database, user: role,
+    password: runtimeRoles.roles[role].password, role, label: 'production', service: 'v5-production-server', revision: 'v51-server',
+    ssl: { ca: caPem, rejectUnauthorized: true }, sslRootCertPath: secrets.ca,
+    targetFile: PRODUCTION_TARGET_FILE, budget, pool: { max, idleTimeoutMillis: 5000, connectionTimeoutMillis: 15000 },
+    lockTimeoutMs: 15000, statementTimeoutMs: 30000, idleInTransactionTimeoutMs: 15000,
+  });
+  const apiPool = mkPool(REQUIRED_ROLE.api, poolMax.api);
+  const corePool = mkPool(REQUIRED_ROLE.core, poolMax.core);
+  const workerPool = mkPool(REQUIRED_ROLE.worker, poolMax.worker);
+  /* Structural assertion BEFORE any statement: the API process holds no Core pool and the Core
+   * composition holds no API pool (beyond the API-owned ticket issuer, as in staging). */
+  const roleSeparation = assertRoleSeparation({ api: apiPool, core: corePool, worker: workerPool });
+  const apiCheck = (await apiPool.query('SELECT current_user AS role')).rows[0];
+  const coreCheck = (await corePool.query('SELECT current_user AS role')).rows[0];
+  const workerCheck = (await workerPool.query('SELECT current_user AS role')).rows[0];
+  if (apiCheck.role !== REQUIRED_ROLE.api || coreCheck.role !== REQUIRED_ROLE.core || workerCheck.role !== REQUIRED_ROLE.worker) {
+    throw REFUSE('RUNTIME_ROLE_BINDING_FAILED');
+  }
+
+  /* DELIBERATE SWITCH A. The active `prd` signing key is created by the operator's access-service
+   * bootstrap; this entry never mints one (that write is the recorded first production write). */
+  const keyFile = secrets.keys;
+  if (!fs.existsSync(keyFile)) throw REFUSE('EXISTING_SIGNING_KEY_CUSTODY_REQUIRED');
+  const activeKeys = await apiPool.query("SELECT kid FROM identity.signing_keys WHERE environment = 'prd' AND state = 'active'");
+  if (activeKeys.rows.length !== 1) throw REFUSE('EXISTING_ACTIVE_SIGNING_KEY_REQUIRED');
+
+  /* ONE stable OTP/mail secret, loaded BEFORE any consumer and shared by the account service (which
+   * mints/hashes a code) and the API handler (which verifies it), and by the worker (whose mail body
+   * seal is HKDF over the same operator secret in V4 and V5). */
+  const otpSecret = loadStableSecret(secrets.otp, 'PRODUCTION_OTP_SECRET');
+  const access = await createAccessService(apiPool, {
+    issuer: 'https://api.megaxo.online', environment: 'prd', keyFile,
+    playerAudiences: ['mega-browser', 'mega-android', 'mega-ios'], serviceAudiences: ['mega-core'],
+  });
+  /* The signed Core ingress secret must be STABLE across restarts and shared with any external caller
+   * (e.g. the stateless Vercel API) that presents it. File-backed, 0600, never printed. */
+  const gatewaySecret = loadStableSecret(secrets.gateway, 'PRODUCTION_GATEWAY_SECRET');
+  const core = await createCoreService(corePool, { ephemera });
+  const accounts = await createAccountService(apiPool, {
+    deletionPolicy: { enabled: true, policyVersion: 'v51-production' }, otpSecret,
+    provisionActor: async (actor) => { await core.provisionActor(actor); },
+    cancelSocialOffers: async (actor, targetActor) => { await core.cancelSocialOffers(actor, targetActor); },
+  });
+  const ticketIssuer = await createTicketIssuer(apiPool, { environment: 'prd', audience: 'mega-core' });
+  const queue = await createQueueService({ ephemera, core, pool: corePool });
+  const coreIngress = createCoreServiceIngress({ coreService: core, ticketIssuer, queue, leaderboardPool: corePool, secret: gatewaySecret });
+  /* The mirror of the API assertion: Core, the Core-owned queue, the leaderboard materializer and the
+   * realtime pool all run on `core_runtime`; the API-owned ticket issuer is the one asserted API member. */
+  const coreRole = assertCoreCompositionUsesCorePool({
+    corePool, queuePool: corePool, leaderboardPool: corePool, ticketIssuerPool: apiPool, apiPool,
+  });
+  const coreGateway = createCoreGateway({ coreUrl: `http://${httpBinding.host}:${httpBinding.port}`, secret: gatewaySecret, timeoutMs: GATEWAY_TIMEOUT_MS });
+
+  /* 6. OUTBOUND PROVIDER CLASSES. Resolved from the bound inventory; the disabled mail transport is
+   * the only one composed while the inventory disables email, and a class the inventory enables is
+   * refused because no provider implementation is configured in this entry. */
+  const providerComposition = assertProviderClassesComposable(boundary.outbound);
+  const mailTransport = createMailTransportForPolicy(boundary.outbound);
+  const worker = createWorkerApp({
+    pool: workerPool, redis: ephemera, secret: otpSecret, transport: mailTransport,
+    /* The rate-bucket DELETE grant lives with api_runtime (0020; 0037 withholds it from the worker), so
+     * the one sweep that needs it runs on the API connection, exactly as in the proven staging stack. */
+    privacyPool: apiPool,
+    intervalMs: Number(arg('--worker-interval', '5000')),
+    workerId: `prd_worker_${process.pid}`,
+    log: (event) => console.error(JSON.stringify(event)),
+  });
+
+  const webArtifact = loadWebArtifact(webBuildDir);
+  let origin = `http://${httpBinding.host}:${httpBinding.port}`;
+  const publicOrigin = arg('--public-origin', null);
+  if (publicOrigin !== null) {
+    let parsed;
+    try { parsed = new URL(publicOrigin); } catch { throw new Error('INVALID_PUBLIC_ORIGIN'); }
+    if (parsed.protocol !== 'https:' || parsed.origin !== publicOrigin.replace(/\/$/, '')) throw new Error('PUBLIC_ORIGIN_MUST_BE_HTTPS_ORIGIN');
+  }
+  const allowedOrigins = ['https://megaxo.online', 'https://play.antimatterinnovations.com', origin];
+  if (publicOrigin) allowedOrigins.push(publicOrigin);
+
+  /* The API handler context holds ONLY API-role material: no Core pool, no Core service. Queue and
+   * leaderboard go through the signed Core gateway; the ticket issuer is the SAME issuer the ingress
+   * uses, so browser/native clients can obtain a realtime ticket here exactly as in staging.
+   *
+   * ROLE SEPARATION IN ONE PROCESS. Like the proven staging entry (and the composition proved by
+   * tests/v5-p11-browser-compat.test.js), this is ONE process holding three SEPARATE pools: the API
+   * handler is composed with the `api_runtime` pool alone - it never receives the Core pool - while
+   * Core, its queue and the realtime transport run exclusively on `core_runtime` and the worker
+   * workflows on `worker_runtime`. Every pool's `describe().role` is asserted before any statement, and
+   * the API context is asserted to carry no Core handle, so the boundary is structural: an API route
+   * can reach Core only over the signed ingress, never by borrowing the Core connection. */
+  const apiContext = {
+    pool: apiPool, accounts, coreGateway, access, nativeAudiences: ['mega-ios', 'mega-android'],
+    queue: coreGateway, otpSecret, ticketIssuer, allowedOrigins,
+  };
+  const apiRole = assertApiCompositionHoldsNoCoreAccess(apiContext);
+  const apiHandler = createApiHandler(apiContext);
+
+  const artifactDir = webArtifact.dir;
+  const server = http.createServer(async (req, res) => {
+    try {
+      const parsedUrl = new URL(req.url || '/', origin);
+      const pathname = parsedUrl.pathname;
+      res.setHeader('X-Robots-Tag', 'noindex, nofollow');
+      if (security.isOperatorRoute(pathname)) { res.statusCode = 403; res.setHeader('Content-Type', 'application/json'); res.end(JSON.stringify({ error: 'PRIVATE_OPERATOR_ROUTE' })); return; }
+      const surface = classifyPath(pathname);
+      if (surface === 'realtime') return;
+      if (surface === 'ingress') { await coreIngress(req, res); return; }
+      /* /livez and /readyz are served by the API handler with the SAME semantics the deploy tooling
+       * and the host health monitor expect: 200 {"status":"ok","live":true,"ready":true} while the
+       * database answers, 503 {"status":"degraded",...,"ready":false} when it does not. */
+      if (surface === 'api') { await apiHandler(req, res); return; }
+      if (pathname === '/legacy-game') { res.statusCode = 308; res.setHeader('Location', '/legacy-game/' + (parsedUrl.search || '')); res.end(); return; }
+      const resolved = resolveStatic(webArtifact, pathname);
+      if (resolved.text !== null) { res.statusCode = resolved.status; res.setHeader('Content-Type', 'text/plain; charset=utf-8'); res.end(resolved.text); return; }
+      const absolute = path.resolve(artifactDir, resolved.file);
+      if (!absolute.startsWith(artifactDir + path.sep) || !fs.existsSync(absolute) || !fs.statSync(absolute).isFile()) {
+        res.statusCode = 404; res.setHeader('Content-Type', 'text/plain; charset=utf-8'); res.end('Not found'); return;
+      }
+      res.statusCode = resolved.status;
+      res.setHeader('Content-Type', MIME_TYPES[path.extname(absolute).toLowerCase()] || 'application/octet-stream');
+      fs.createReadStream(absolute).pipe(res); return;
+    } catch (err) { if (!res.headersSent) { res.statusCode = 500; res.setHeader('Content-Type', 'application/json'); } res.end(JSON.stringify({ error: safeError(err) })); }
+  });
+
+  const realtime = createRealtimeTransport({
+    server, pool: corePool, core, ephemera, environment: 'prd', audience: 'mega-core',
+    authenticateHttp: async (req) => {
+      security.validateCredentials({ cookie: req.headers.cookie, authorization: req.headers.authorization, method: req.method, allowedOrigins });
+      const { actor } = await resolveAuth({ accounts, access, nativeAudiences: ['mega-ios', 'mega-android'] }, req);
+      if (!actor) throw new Error('AUTH_REQUIRED');
+      return { actor };
+    },
+  });
+
+  await new Promise((resolve, reject) => { server.on('error', reject); server.listen(httpBinding.port, httpBinding.host, resolve); });
+  origin = `http://${httpBinding.host}:${httpBinding.port}`;
+
+  /* Startup self-check: the bundle answers for the shell AND for the retained-game / module / art /
+   * font / worker paths the client actually requests; a missing sub-resource is a real 404, never an
+   * HTML SPA fallback. This is the difference between "a shell returned 200" and "the site works". */
+  const probe = async (pathname, method = null) => {
+    try {
+      const r = await fetch(origin + pathname, method ? { method } : undefined);
+      const body = method === 'HEAD' ? null : await r.arrayBuffer();
+      return { status: r.status, type: r.headers.get('content-type') || '', bytes: body ? body.byteLength : Number(r.headers.get('content-length') || 0) };
+    } catch (err) { return { status: 0, type: '', error: safeError(err) }; }
+  };
+  const shell = await fetch(`${origin}/`).then((r) => r.text()).catch(() => '');
+  const livez = await probe('/livez');
+  const readyz = await probe('/readyz');
+  const assets = {};
+  for (const p of ['/legacy-game/src/game.js', '/legacy-game/src/bot/worker.js', '/store-links.js', '/legal-documents.js',
+    '/assets/art/mark.webp', '/assets/fonts/ibm-plex-mono-latin.woff2', '/assets/fonts/space-grotesk-latin.woff2']) {
+    assets[p] = await probe(p);
+  }
+  const missing = await probe('/legacy-game/src/does-not-exist.js');
+  const assetSelfCheck = Object.values(assets).every((a) => a.status === 200);
+  console.log(JSON.stringify({
+    ok: true, origin, publicOrigin, allowedOrigins, binding: `${boundary.projectId}/${boundary.branchId}/${boundary.database}`,
+    database: boundary.database, environment: 'production', nonserving: boundary.nonserving, serving: boundary.serving,
+    servingEpoch: boundary.servingEpoch, redisNamespace: ephemera.keyVersion, namespacePrefix: namespace.prefix,
+    redisProvider: redisInventory.redis.provider, outbound: boundary.outbound, providerComposition,
+    roleSeparation, apiRole, coreRole, budget,
+    webBuild: { dir: artifactDir, sourceCommit: webArtifact.sourceCommit, bundleSha256: webArtifact.bundleSha256, fileCount: webArtifact.fileCount },
+    websiteServesShell: shell.includes('mx-web-shell'), livezStatus: livez.status, readyzStatus: readyz.status,
+    assets, missingAssetStatus: missing.status, assetSelfCheck,
+    note: 'production composition; loopback only; noindex enforced; no legacy-authority path touched; serves the generated P21 bundle',
+  }, null, 2));
+
+  const shutdown = async () => {
+    clearInterval(matchmakerTimer);
+    try { await realtime.close(); } catch {}
+    try { await new Promise((r) => server.close(r)); } catch {}
+    for (const c of [() => worker.stop(), () => queue.close(), () => ephemera.close(), () => ticketIssuer.close?.(), () => core.close(), () => accounts.close(), () => access.close?.(), () => apiPool.end(), () => corePool.end(), () => workerPool.end()]) { try { await c(); } catch {} }
+    process.exit(0);
+  };
+  process.on('SIGINT', shutdown); process.on('SIGTERM', shutdown);
+
+  /* Real matchmaking needs a matcher tick: two real browsers JOIN the queue over HTTP, but nothing
+   * pairs them unless a matcher claims+commits. Bounded, single-flight, best-effort, and it only pairs
+   * actors ALREADY in the durable queue; it changes no matching rule, TTL or economy. */
+  let matchmakerTimer = null;
+  if (arg('--matchmaker', 'on') !== 'off') {
+    const matcherId = `prd_matcher_${process.pid}`;
+    let ticking = false;
+    const tick = async () => {
+      if (ticking) return;
+      ticking = true;
+      try {
+        for (const mode of ['casual', 'ranked']) {
+          const result = await queue.matchTick({ mode, matcherId, limit: 4, makeId: () => crypto.randomUUID() });
+          if (result.matched) console.log(JSON.stringify({ event: 'matchmaker.pairing', mode, matched: result.matched, at: new Date().toISOString() }));
+        }
+      } catch (error) {
+        console.error(JSON.stringify({ event: 'matchmaker.tick_error', code: safeError(error) }));
+      } finally { ticking = false; }
+    };
+    matchmakerTimer = setInterval(tick, 3000);
+    tick();
+  }
+
+  /* The worker pass (worker_runtime): lapsed work, the privacy/retention sweeps and mail delivery.
+   * Mail delivery is DEFERRED while the bound inventory disables email, so this can run safely on the
+   * production target without a provider. `start()` arms the periodic pass and `stop()` clears it
+   * synchronously on shutdown. */
+  try { await worker.tick(); } catch (error) { console.error(JSON.stringify({ event: 'worker.tick_error', code: safeError(error) })); }
+  worker.start();
+  setInterval(() => {}, 1 << 30); // keep the process alive
+}
+
+if (require.main === module) {
+  main().catch((err) => { console.error('PRODUCTION_SERVER_FAILED', safeError(err)); process.exit(1); });
+}
+
+module.exports = {
+  /* pure validators and builders (offline, deterministic, no socket, no secret) */
+  PRODUCTION_IDENTITY, PRODUCTION_DATABASE, PRODUCTION_BINDING, PRODUCTION_TARGET_FILE, REDIS_PRODUCTION_FILE,
+  BINDING_ENV, SERVING_EPOCH_ENV, HTTP_PORT_ENV, REDIS_CREDENTIALS_ENV, SECRET_FILES, OUTBOUND_CLASSES,
+  REQUIRED_ROLE, DEFAULT_HTTP_PORT,
+  parseProductionBinding, validateProductionBinding, resolveOutboundPolicy, createMailTransportForPolicy,
+  assertProviderClassesComposable,
+  deriveNamespace, assertPoolRole, assertRoleSeparation, assertApiCompositionHoldsNoCoreAccess,
+  assertCoreCompositionUsesCorePool,
+  resolveConnectionBudget, resolveHttpBinding, classifyPath,
+  /* filesystem-bounded helpers used by the composition (never network) */
+  secretPaths, readSecretFile, loadStableSecret, readInventory, loadWebArtifact,
+  arg, safeError, main,
+};

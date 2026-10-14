@@ -75,6 +75,13 @@ import java.util.concurrent.atomic.AtomicBoolean
  * private / link-local / loopback literal, a `/api/party/` path, and nothing else - which is strictly
  * narrower than any address-range rule and still leaves the page unable to reach a public origin.
  *
+ * A room host on the Wi-Fi is often Node's `http` server rather than another phone, and Node answers
+ * a JSON body with `Transfer-Encoding: chunked`. [parseResponse] therefore undoes the transfer coding
+ * before the body reaches the page - chunked decoded and reassembled, `Content-Length` honoured,
+ * a body with neither read to the close - and a body whose framing cannot be undone becomes a clean
+ * `502 {"error":"UPSTREAM_DECODE"}` instead of a size-prefixed, truncated string the lobby would only
+ * mis-parse. The same reader serves the NSD discovery fetch and this device's own listener.
+ *
  * No bearer token, request body or actor id is ever logged, echoed into an error or stored.
  */
 internal class MegaAndroidLanBridge private constructor(

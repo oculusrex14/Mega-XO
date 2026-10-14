@@ -4,7 +4,7 @@ The mutable execution source is [progress.json](progress.json); this is its read
 
 **Goal:** Deliver the V5 hybrid platform and real Android/iOS applications with shared permanent actor/assets, preserved approved game and retained browser compatibility; do not build the new website/browser product.
 
-**Integration base:** `455b8ec9ea4070b4410d78f9eea2aaa06d32c0b2`. **Active phase/task:** P22 / V5-22-01 (IMPLEMENTED). **Progress:** 104/117 tasks terminal; 21/25 phase gates passed
+**Integration base:** `455b8ec9ea4070b4410d78f9eea2aaa06d32c0b2`. **Active phase/task:** P20 / V5-20-04 (DEVICE_VERIFIED). **Progress:** 103/117 tasks terminal; 21/25 phase gates passed
 
 Required path: execute P00–P20, P22–P23; owner-deferred P21 executes nothing; P24 is measurement-gated; phase prerequisites are gates, not status assumptions, and a deferred or measurement-gated phase is never used as another phase prerequisite. The foundation gate P00–P03 passes before dependent distributed work, and V5 CI starts in the foundation rather than only at P17.
 
@@ -261,7 +261,7 @@ Milestone: V5.7; status: `COMPLETE`; prerequisites: P19. [Phase contract](../../
 - [x] **V5-20-01 — Freeze real native identity and build configuration** (`COMPLETE`).
 - [x] **V5-20-02 — Build trusted bundled-client hosts** (`COMPLETE`).
 - [x] **V5-20-03 — Implement secure session/network/realtime adapter** (`COMPLETE`).
-- [x] **V5-20-04 — Integrate real native Google/Apple identity** (`COMPLETE`).
+- [ ] **V5-20-04 — Integrate real native Google/Apple identity** (`DEVICE_VERIFIED`).
 - [x] **V5-20-05 — Integrate four-product Play/StoreKit commerce** (`COMPLETE`).
 - [x] **V5-20-06 — Integrate ads/consent and approved privacy resources** (`COMPLETE`).
 - [x] **V5-20-07 — Complete actual device and cross-platform parity** (`COMPLETE`).

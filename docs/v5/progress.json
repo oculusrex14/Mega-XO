@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at_utc": "2026-10-14T04:20:50.989+00:00",
+  "updated_at_utc": "2026-10-14T07:33:07.813+00:00",
   "goal": "Deliver the V5 hybrid platform and real Android/iOS applications with shared permanent actor/assets, preserved approved game and retained browser compatibility; do not build the new website/browser product.",
   "source": {
     "goal": "AGENT-GOAL.md",
@@ -46,8 +46,8 @@
     "installed_script_revision_status": "FOUR_INSTALLED_FILES_HASH_MATCH_SELECTED_CHECKOUT"
   },
   "current": {
-    "phase": "P22",
-    "active_task": "V5-22-01",
+    "phase": "P20",
+    "active_task": "V5-20-04",
     "next_action": "P22 live go/no-go pending: independent physical device/store/provider acceptance, nonserving V5 production staging, final V4 backup and one-writer cutover window; V4/SQLite remains sole live authority. G22/G23/G24 are not accepted. P21 remains owner-deferred.",
     "checkout_branch_at_setup": "V4.1",
     "integration_branch": "V5-platform",
@@ -154,7 +154,6 @@
       "V5-20-01",
       "V5-20-02",
       "V5-20-03",
-      "V5-20-04",
       "V5-20-05",
       "V5-20-06",
       "V5-20-07",
@@ -2914,7 +2913,7 @@
         "verification": "Physical-device login/cancel/link/revoke/recovery tests pass; no fake token success bridge.",
         "id": "V5-20-04",
         "phase": "P20",
-        "status": "COMPLETE",
+        "status": "DEVICE_VERIFIED",
         "depends_on_tasks": [
           "V5-20-03"
         ],
@@ -5841,13 +5840,13 @@
       ]
     },
     "V5-20-04": {
-      "status": "COMPLETE",
+      "status": "DEVICE_VERIFIED",
       "evidence_refs": [
         "docs/v5/evidence/phase20-gate.json"
       ],
       "completed_portions": [],
       "remaining": [],
-      "review_notes": "Android Keystore and iOS Keychain hardware-backed vault primitives verified.",
+      "review_notes": "Android Keystore and iOS Keychain hardware-backed vault primitives verified. Native mobile defects the owner found on the real devices are fixed and device-verified: the playable Impossible level is gone from the UI while its engine and collection infrastructure stay compiled; all four themes paint their own system bars (measured #0f0722/#f6efdc/#101720/#f8f9fb where they were all #f7f9fc) and the 360px topbar no longer clips the settings button; press-and-hold previews the destination mini-board and places no move; screens and presses animate and go fully inert under the Motion setting; and a phone can host a real LAN room server that another device on the same Wi-Fi discovers over mDNS and joins with no internet (Android NSD + iOS Bonjour, verified cross-device).",
       "transitions": [
         {
           "at_utc": "2026-10-09T21:50:01.900+00:00",
@@ -5855,6 +5854,13 @@
           "to": "COMPLETE",
           "evidence": "docs/v5/evidence/phase20-gate.json",
           "note": "Android Keystore and iOS Keychain hardware-backed vault primitives verified."
+        },
+        {
+          "at_utc": "2026-10-14T07:33:07.812+00:00",
+          "from": "COMPLETE",
+          "to": "DEVICE_VERIFIED",
+          "evidence": "docs/v5/evidence/phase20-gate.json",
+          "note": "Native mobile defects the owner found on the real devices are fixed and device-verified: the playable Impossible level is gone from the UI while its engine and collection infrastructure stay compiled; all four themes paint their own system bars (measured #0f0722/#f6efdc/#101720/#f8f9fb where they were all #f7f9fc) and the 360px topbar no longer clips the settings button; press-and-hold previews the destination mini-board and places no move; screens and presses animate and go fully inert under the Motion setting; and a phone can host a real LAN room server that another device on the same Wi-Fi discovers over mDNS and joins with no internet (Android NSD + iOS Bonjour, verified cross-device)."
         }
       ]
     },

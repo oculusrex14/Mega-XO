@@ -15,7 +15,9 @@ Both Rewarded units have amount `1`, item `cosmetic_reward`, matching the existi
 
 **Runtime serving remains disabled.** Real IDs are not substituted into test builds. Native Google test IDs and test-device acceptance remain required. SDK/client callbacks cannot grant rewards; only authoritative eligible, server-verified Cosmetic Credits are permitted. This checkpoint does not change Coins, Crowns, reward eligibility, game rules or native release settings.
 
-SSV is unconfigured pending Main's verified public V5 handler. UMP had no existing messages. Publisher-data navigation reached an owner-only agreement/account gate; the agent stopped without accepting or creating a new publisher. The owner subsequently reported signing in, and the agent resumed inspection. Authorized `app-ads.txt` seller entries must come from the console; do not infer them solely from an App ID. Until that row is actually retrieved and deployed as text, the parked HTML response at the public path is a failure, not app-ads ownership verification.
+SSV is unconfigured pending Main's verified public V5 handler. UMP had no existing messages. Publisher-data navigation reached an owner-only agreement/account gate; the agent stopped without accepting or creating a new publisher. The owner subsequently reported signing in, and the agent resumed inspection. The UMP embedded builder remained loading; no draft/message was saved or published. The public privacy URL is still parked, and the reviewed staging notice is tailnet-only.
+
+The AdMob setup snippet explicitly supplied `google.com, pub-5255314563073178, DIRECT, f08c47fec0942fa0`. This row was **retrieved from the console**, not inferred from an App ID. Codex added `public/app-ads.txt` to the builder's explicit allowlist and an explicit Vercel text/plain header. The actual loopback HTTP test verifies exact bytes, checksum/provenance and MIME, and exclusion from the offline practice cache. **256/256 affected website tests passed**, zero skips/failures; the focused 22-test subset is included in that count. The public canonical path still returns parked HTML until deployment/domain cutover, so public ownership verification remains **NOT_RUN**.
 
 ## Resend: existing account and sender verified
 
@@ -40,9 +42,19 @@ After owner sign-in, UptimeRobot showed the two preserved legacy records:
 | `mega-xo-livez` | `804201831` | `https://play.antimatterinnovations.com/livez` | Down / connection timeout since 7 October |
 | `mega-xo-opsz` | `804201842` | `https://play.antimatterinnovations.com/opsz` | Down / connection timeout since 7 October |
 
-Both use five-minute checks. This is a real external observation and requires diagnosis even though prior host/CLI health probes were green. Do not erase the incident history or label monitoring verified. Receiver/plan inspection and safe test-message delivery are in progress; no controlled incident/recovery receipt exists at this checkpoint. The tailnet-only staging origin is not an appropriate external UptimeRobot target.
+Both use five-minute checks. This is a real external observation and requires diagnosis even though prior host/CLI health probes were green. Do not erase the incident history or label monitoring verified. The account uses Free 50 (50 monitors, 300-second checks), no payment method; neither an upgrade nor a charge occurred. The agent verified the existing email receiver matches an owner-approved mailbox, with Up+Down notifications enabled.
+
+Created the missing `prelaunch-core-tcp443`, ID `804264653`, for `core.megaxo.online:443`, with five-minute checks and the existing receiver. Its initial external check was **Up**, about 149 ms, observed 2026-10-14 01:06:07 UTC. This measures TCP listener availability only, not TLS correctness or HTTP/API/game readiness. Treating an intentional HTTP 404 as healthy requires a paid status-code allowlist in the inspected console; no paid setting was enabled. Legacy monitors remain unchanged.
+
+One provider test notification showed green **Test notification sent**, confirmation observed 2026-10-14 01:03:37 UTC. This is **not** a receiving-mailbox timestamp. The available authenticated inbox was a different approved mailbox and contained no matching test message; the actual receiving inbox needed owner handoff. Inbox reception and controlled incident/recovery delivery remain **UNVERIFIED**, with no fabricated delivery receipt. The tailnet-only staging origin is not an appropriate external UptimeRobot target.
 
 Vercel CLI confirmed the existing projects and Hobby scope, plus the configured default high-severity team-owner rule `ar_default`. Actual alert delivery remains unverified. Current DNS and production isolation requirements are in [the Main handoff](MAIN-PROVIDER-WEBSITE-HANDOFF-20261014.md).
+
+## Actual staging browser practice
+
+Luna manually tested the deployed site in Brave at a 946×800 desktop viewport: all six tutorial moves and completed-board fallback, “Play from here” retaining the six-move position into Beginner, legal player/Bot replies, keyboard Tab/Arrow/Enter moves and visible focus, and all five browser appearances. Anonymous balances remained dashes with sign-in prompts; no account currency or Elo was granted. Rules and Settings navigation worked; no horizontal clipping was observed. The agent clicked **Save for offline practice** once: preparation completed and Settings showed ready. Networking was never disconnected, so disconnected-network acceptance is **NOT_RUN**. Theme was restored to Mega XOXO Neon; the local ten-move position and saved offline copy were retained, with no removal/reset of pre-existing browser data. Physical phones, moderated novice comprehension, full authenticated online gameplay and all-theme zoom/screen-reader matrices are **NOT_RUN by this manual slice**.
+
+The independently fetched actual staging manifest was `5897497493617e1f389af1626451899831045840`, hash `31cdb4d302a12182b709c7430b389d79a42a706001360fab56afb3dd22028b7c`, 152 files / 3,547,734 bytes. The new 153-file app-ads bundle is a local verified artifact, not this currently served build. Codex did not restart Main's in-progress online acceptance to replace it.
 
 ## Next dependency and release evidence
 

@@ -1,0 +1,140 @@
+{
+  "schema_version": 2,
+  "evidence_type": "store_enrollment_and_monitoring_snapshot",
+  "observed_at_utc": "2026-10-14 01:06:07 UTC",
+  "browser": "Brave Browser",
+  "tabs": {
+    "uptimerobot": {
+      "browser_tab_id": "1438672306",
+      "url": "https://dashboard.uptimerobot.com/monitors/804264653",
+      "handoff_marked": true
+    },
+    "staging_practice": {
+      "browser_tab_id": "1438672309",
+      "url": "https://command.tail95c48c.ts.net/game",
+      "handoff_marked": true
+    }
+  },
+  "store_observations": {
+    "observed_at_utc": "2026-10-14 00:54:33 UTC",
+    "google_play": {
+      "account_type": "Personal",
+      "account_identifier": "omitted",
+      "identity_status": "Console states documents were uploaded and Google is verifying identity.",
+      "phone_verification": "Action required; console says other verification tasks include identity approval.",
+      "app_inventory": "No apps visible; Create app is disabled pending account verification.",
+      "target_identifier": "online.megaxo.xoxo",
+      "identifier_availability": "Unverified; no app or identifier record was created as a probe."
+    },
+    "apple_developer": {
+      "account_status": "Pending",
+      "visible_enrollment_state": "Page prompts to purchase/complete membership; states purchase processing may take up to 48 hours.",
+      "reconciliation": "This conflicts with the owner-reported paid/docs-submitted state; no purchase was attempted. Owner should confirm receipt/status with Apple before any further enrollment action.",
+      "target_identifier": "online.megaxo.xoxo",
+      "identifier_availability": "Unverified; no team/app record or identifier availability was accessible."
+    },
+    "app_store_connect": {
+      "access_state": "Redirects to INVALIDITCUSER.",
+      "app_inventory": "Unavailable; no app record state can be asserted."
+    }
+  },
+  "monitoring_observations": {
+    "provider": "UptimeRobot",
+    "console": {
+      "authenticated_state": "Owner-completed sign-in; account dashboard accessible.",
+      "current_url": "https://dashboard.uptimerobot.com/monitors/804264653",
+      "browser": "Brave Browser",
+      "tab_id": "1438672306",
+      "main_api_key": "Masked key was visible; not revealed, copied, used, or changed."
+    },
+    "plan_and_quota": {
+      "plan": "Free 50",
+      "monitor_limit": 50,
+      "minimum_interval_seconds": 300,
+      "monitor_count_after_addition": 3,
+      "billing_payment_method_present": false,
+      "observed_capability": "TCP Port monitor was available without an upgrade label; 15s/1m HTTP intervals and HTTP status allowlist customization were marked paid."
+    },
+    "existing_monitors": [
+      {
+        "id": "804201831",
+        "name": "mega-xo-livez",
+        "type": "HTTP/S",
+        "url": "https://play.antimatterinnovations.com/livez",
+        "interval_seconds": 300,
+        "last_observed_status": "Down",
+        "root_cause": "Connection Timeout",
+        "incident_started_local": "2026-10-07 19:41:40 GMT+5:30",
+        "uptime_percent_24h": "0.000%",
+        "uptime_percent_7d": "0.014%",
+        "uptime_percent_30d": "0.014%"
+      },
+      {
+        "id": "804201842",
+        "name": "mega-xo-opsz",
+        "type": "HTTP/S",
+        "url": "https://play.antimatterinnovations.com/opsz",
+        "interval_seconds": 300,
+        "last_observed_status": "Down",
+        "root_cause": "Connection Timeout",
+        "down_duration_at_list_observation": "approximately 6d 10h",
+        "uptime_percent_24h": "0.000%",
+        "uptime_percent_7d": "0.014%",
+        "uptime_percent_30d": "0.014%"
+      }
+    ],
+    "account_notification_settings": {
+      "enabled_channel": "E-mail",
+      "enabled_events": [
+        "Up",
+        "Down"
+      ],
+      "receiver_matches_owner_approved_mailbox": true,
+      "receiver_address_omitted": true,
+      "attached_integrations_on_tested_monitor": 0,
+      "team_members_selected_on_tested_monitor": 0
+    },
+    "provider_test_notification": {
+      "monitor_id": "804201831",
+      "result": "UptimeRobot displayed green confirmation: Test notification sent.",
+      "action_observed_at_utc": "2026-10-14 01:03:37 UTC",
+      "recipient_matches_owner_approved_mailbox": true,
+      "mailbox_delivery_verified": false,
+      "no_monitor_state_or_alert_configuration_changed": true,
+      "controlled_incident_and_recovery_delivery_proof": "NOT_RUN"
+    },
+    "new_core_monitor": {
+      "id": "804264653",
+      "name": "prelaunch-core-tcp443",
+      "type": "TCP port monitor",
+      "target": "core.megaxo.online:443",
+      "alert_condition": "Port closed",
+      "interval_seconds": 300,
+      "email_receiver_matches_owner_approved_mailbox": true,
+      "created_without_paid_features_or_charge": true,
+      "first_check_status": "Up",
+      "status_observed_at_utc": "2026-10-14 01:06:07 UTC",
+      "response_time_ms": 149,
+      "interpretation": "Confirms only that TCP/443 accepted a connection. It does not prove HTTP/API/game health or launch readiness."
+    },
+    "free_http_semantics": {
+      "custom_http_up_status_codes": "Premium feature; default visible accepted ranges were 2xx and 3xx.",
+      "expected_404_as_healthy": "Not available on the Free plan through this form.",
+      "direct_core_http_probe": "Browser navigation to https://core.megaxo.online/ was blocked by client; no HTTP status/body was verified."
+    },
+    "repository_contract": {
+      "runbook": "deploy/MONITORING-RUNBOOK.md",
+      "finding": "The runbook describes external public /livez and /opsz checks separately from the local VPS health timer and its Resend transition alerts.",
+      "runtime_local_alert_delivery": "Not verified in this browser lane."
+    }
+  },
+  "privacy": {
+    "personal_names_emails_account_ids_identity_documents_api_keys_and_screenshots_omitted": true,
+    "paid_actions_or_subscriptions": false,
+    "duplicate_store_accounts_or_app_records_created": false,
+    "production_or_vps_failures_induced": false,
+    "alert_test_sent": true,
+    "monitor_created": true,
+    "screenshots_saved_to_local_path": false
+  }
+}

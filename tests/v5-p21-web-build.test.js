@@ -20,7 +20,7 @@ function fixture(t) {
     const original=path.join(ROOT,'apps/web',name);
     write('apps/web/'+name,fs.existsSync(original)?fs.readFileSync(original):'/* optional synthetic runtime fixture */');
   }
-  const retained = ['index.html', ...GAME_FILES.map(name => 'src/' + name), ...LEGAL_NAMES.map(name => 'public/' + name + '.html'), 'public/legal.css', 'scripts/p21/offline-worker.cjs', 'scripts/p21/prerender-web.mjs', ...ICON_FILES.map(name=>'assets/p21/icons/'+name)];
+  const retained = ['index.html', ...GAME_FILES.map(name => 'src/' + name), ...LEGAL_NAMES.map(name => 'public/' + name + '.html'), 'public/legal.css', 'public/app-ads.txt', 'scripts/p21/offline-worker.cjs', 'scripts/p21/prerender-web.mjs', ...ICON_FILES.map(name=>'assets/p21/icons/'+name)];
   for (const theme of ['vector', 'midnight', 'paperclub', 'afterhours']) for (const kind of ['app', 'mark']) retained.push('assets/p21/logos/mega-xoxo-' + theme + '-' + kind + '.webp');
   for (const relative of retained) write(relative, fs.readFileSync(path.join(ROOT, relative)));
   const webp = Buffer.from('5249464610000000574542505650384c00000000', 'hex');
@@ -210,6 +210,14 @@ test('P21-SERVE-01: clean route deep links, legal pages and game assets serve wi
   assert.equal((await rawRequest(port, '/game/?mode=practice')).status, 200);
   assert.equal((await rawRequest(port, '/game')).status, 200);
   assert.equal((await rawRequest(port, '/legal-documents.js')).status, 200);
+  const seller = await rawRequest(port, '/app-ads.txt');
+  assert.equal(seller.status, 200);
+  assert.equal(seller.headers['content-type'], 'text/plain; charset=utf-8');
+  assert.equal(seller.body, 'google.com, pub-5255314563073178, DIRECT, f08c47fec0942fa0\n');
+  const sellerAsset = build.manifest.files.find(row => row.path === 'app-ads.txt');
+  assert.equal(sellerAsset.source, 'public/app-ads.txt');
+  assert.equal(sellerAsset.sha256, hash(Buffer.from(seller.body)));
+  assert.ok(!build.manifest.offline.assets.some(row => row.url === '/app-ads.txt'));
   const head = await rawRequest(port, '/ranked', 'HEAD');
   assert.equal(head.status, 200);
   assert.equal(head.body, '');

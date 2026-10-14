@@ -72,6 +72,43 @@ val generateMegaClient = tasks.register<Sync>("generateMegaClient") {
     into(generatedAssets.get().asFile.resolve("mega"))
 }
 
+// P20-06 ad identifiers for the NATIVE ads bridge only. The owner's values are empty by default,
+// exactly like the API origin: a RELEASE build that does not explicitly name approved units publishes
+// no `window.MegaAds` and requests nothing. A DEBUG build falls back to Google's own demo units (never
+// live inventory) so the bridge is exercisable on an emulator. These are public provider identifiers,
+// not credentials, and live serving is still decided by the backend's MEGA_AD_MODE (which stays `off`
+// until consent, SSV and store review are accepted).
+// The AdMob application id. Public provider identifier, not a credential: the official Google test
+// app id is the default so a non-distributing prototype never requests live inventory. A real
+// release requires an owner-verified registration.
+val adMobAppId = providers.gradleProperty("megaAdMobAppId").orNull
+    ?: "ca-app-pub-3940256099942544~3347511713"
+require(Regex("^ca-app-pub-[0-9]{16}~[0-9]{10}$").matches(adMobAppId)) {
+    "megaAdMobAppId must be an exact AdMob application id"
+}
+val adMobRewardedUnit = (providers.gradleProperty("megaAdMobRewardedUnit").orNull ?: "").trim()
+val adMobInterstitialUnit = (providers.gradleProperty("megaAdMobInterstitialUnit").orNull ?: "").trim()
+// A device/emulator pass supplies the official Google demo units, which carry no revenue and no
+// invalid-traffic risk:
+//   -PmegaAdMobRewardedUnit=ca-app-pub-3940256099942544/5224354917 \
+//   -PmegaAdMobInterstitialUnit=ca-app-pub-3940256099942544/1033173712
+// No live unit id is committed here, and an empty value simply publishes no window.MegaAds.
+require(adMobRewardedUnit.isEmpty() ||
+    Regex("^ca-app-pub-[0-9]{16}/[0-9]{10}$").matches(adMobRewardedUnit)) {
+    "megaAdMobRewardedUnit must be an exact AdMob ad unit id"
+}
+require(adMobInterstitialUnit.isEmpty() ||
+    Regex("^ca-app-pub-[0-9]{16}/[0-9]{10}$").matches(adMobInterstitialUnit)) {
+    "megaAdMobInterstitialUnit must be an exact AdMob ad unit id"
+}
+// A DEBUG build defaults to Google's own demo units - the documented test units, never live
+// inventory - so `window.MegaAds` is actually exercisable on an emulator or device, exactly like the
+// test AdMob app id above. An explicit -P value wins, and a RELEASE build names only what the owner
+// supplied, so no unreviewed unit is ever built into a distributable artifact.
+val debugAdMobRewardedUnit = adMobRewardedUnit.ifEmpty { "ca-app-pub-3940256099942544/5224354917" }
+val debugAdMobInterstitialUnit =
+    adMobInterstitialUnit.ifEmpty { "ca-app-pub-3940256099942544/1033173712" }
+
 android {
     namespace = "online.megaxo.prototype"
     compileSdk = 35
@@ -83,6 +120,9 @@ android {
         versionCode = nativeVersionCode
         versionName = nativeVersionName
         buildConfigField("String", "MEGA_GOOGLE_SERVER_CLIENT_ID", "\"$googleNativeServerClientId\"")
+        // The AdMob application id the native ads bridge initialises with. Public identifier; the
+        // manifest's `com.google.android.gms.ads.APPLICATION_ID` carries the same value.
+        buildConfigField("String", "MEGA_ADMOB_APP_ID", "\"$adMobAppId\"")
         // P20-03: the authenticated API origin for the NATIVE session manager only. Empty by
         // default, so an offline build (and any build that does not explicitly name an approved
         // origin) bakes in no host at all and MegaNativeHttpClient stays unconfigured. The WebView's
@@ -110,9 +150,12 @@ android {
         }
         // Official test app ID for a non-distributing, offline prototype.
         // Real releases require an owner-verified AdMob registration.
-        manifestPlaceholders["megaAdMobAppId"] =
-            providers.gradleProperty("megaAdMobAppId").orNull
-                ?: "ca-app-pub-3940256099942544~3347511713"
+        manifestPlaceholders["megaAdMobAppId"] = adMobAppId
+        // The two owner-approved ad units this build may present, or "" for none. Never a live unit
+        // by default and never a real id invented here; the test units a device pass needs are
+        // supplied as build properties, exactly like the app id above.
+        buildConfigField("String", "MEGA_ADMOB_REWARDED_UNIT", "\"$adMobRewardedUnit\"")
+        buildConfigField("String", "MEGA_ADMOB_INTERSTITIAL_UNIT", "\"$adMobInterstitialUnit\"")
     }
 
     buildFeatures {
@@ -133,6 +176,12 @@ android {
     buildTypes {
         getByName("debug") {
             isDebuggable = true
+            // Test units only: Google's own demo units unless the owner named others. A debug build
+            // that reaches the provider therefore never presents live inventory, even though the
+            // bridge is fully exercisable there.
+            buildConfigField("String", "MEGA_ADMOB_REWARDED_UNIT", "\"$debugAdMobRewardedUnit\"")
+            buildConfigField("String", "MEGA_ADMOB_INTERSTITIAL_UNIT",
+                "\"$debugAdMobInterstitialUnit\"")
         }
         getByName("release") {
             isMinifyEnabled = false

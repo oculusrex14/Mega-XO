@@ -52,6 +52,8 @@ final class MegaXOGameController: UIViewController, WKNavigationDelegate, WKUIDe
     private var identityBridge: MegaIOSIdentityBridge?
     private var apiBridge: MegaIOSApiBridge?
     private var nativeSession: MegaNativeSession?
+    private var ads: MegaIOSAds?
+    private var adsBridge: MegaAdsBridge?
 
     /// The last theme the signed page announced, so the status bar style survives a re-query from
     /// the system. Light surfaces take dark status bar glyphs and vice versa.
@@ -140,6 +142,29 @@ final class MegaXOGameController: UIViewController, WKNavigationDelegate, WKUIDe
                 WKUserScript(source: MegaIOSApiBridge.bootstrap,
                              injectionTime: .atDocumentStart, forMainFrameOnly: true))
         }
+        // P20-06 REWARDED/INTERSTITIAL ADS (iOS parity). The real GoogleMobileAds + UMP wrapper is
+        // instantiated here and published to the page as `window.MegaAds`, which the shipped
+        // `src/monetization-ui.js` has always called and which nothing used to define. The handler is
+        // installed only when this build named an approved app id and at least one approved ad unit,
+        // exactly like the api handler without an origin. Nothing here makes an ad required: `MegaAds`
+        // absent simply leaves the rewards page's own optional ad actions disabled.
+        let adMobAppID = (Bundle.main.object(forInfoDictionaryKey: "MegaAdMobAppID") as? String) ?? ""
+        let adMobRewardedUnit = (Bundle.main.object(forInfoDictionaryKey: "MegaAdMobRewardedUnit")
+                                 as? String) ?? ""
+        let adMobInterstitialUnit = (Bundle.main.object(forInfoDictionaryKey: "MegaAdMobInterstitialUnit")
+                                     as? String) ?? ""
+        let adService = MegaIOSAds(appID: adMobAppID, rewardedUnit: adMobRewardedUnit,
+                                   interstitialUnit: adMobInterstitialUnit)
+        if adService.isConfigured {
+            ads = adService
+            let bridge = MegaAdsBridge(controller: self, entry: entry, ads: adService)
+            adsBridge = bridge
+            configuration.userContentController.addScriptMessageHandler(
+                bridge, contentWorld: .page, name: "megaNativeAds")
+            configuration.userContentController.addUserScript(
+                WKUserScript(source: MegaAdsBridge.bootstrap,
+                             injectionTime: .atDocumentStart, forMainFrameOnly: true))
+        }
         let webView = WKWebView(frame: .zero, configuration: configuration)
         webView.navigationDelegate = self
         webView.uiDelegate = self
@@ -182,6 +207,8 @@ final class MegaXOGameController: UIViewController, WKNavigationDelegate, WKUIDe
                 + "tutorial:localStorage.getItem('mega_v32_tutorial_seen'),"
                 + "theme:document.documentElement.dataset.theme,"
                 + "aipackEntries:document.querySelectorAll('[data-action=\"aipack\"]').length,"
+                + "ads:typeof window.MegaAds,adsPlatform:window.MegaAds&&window.MegaAds.platform,"
+                + "adsReady:!!(window.MegaAds&&window.MegaAds.isReady&&window.MegaAds.isReady('rewarded')),"
                 + "impossibleChips:Array.from(document.querySelectorAll('.setup-chip'))"
                 + ".filter(function(c){return /IMPOSSIBLE/i.test(c.textContent)}).length,"
                 + "partyChoices:document.querySelectorAll('.party-choice').length,"

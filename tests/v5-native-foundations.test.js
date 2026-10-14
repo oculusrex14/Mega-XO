@@ -223,6 +223,8 @@ test('native transport is bearer-only, host/path bound and refuses redirects', (
 
 test('Android UMP and Next-Gen ads never grant rewards or bypass SDK consent', () => {
   const code = read('native/android/app/src/main/java/online/megaxo/prototype/MegaAndroidAds.kt');
+  const bridge = read('native/android/app/src/main/java/online/megaxo/prototype/MegaAdsBridge.kt');
+  const activity = read('native/android/app/src/main/java/online/megaxo/prototype/MegaXOActivity.kt');
   const gradle = read('native/android/app/build.gradle.kts');
   assert.match(gradle, /user-messaging-platform:4\.0\.0/);
   assert.match(gradle, /ads-mobile-sdk:1\.4\.0/);
@@ -230,15 +232,49 @@ test('Android UMP and Next-Gen ads never grant rewards or bypass SDK consent', (
   assert.match(code, /loadAndShowConsentFormIfRequired/);
   assert.match(code, /consent\.canRequestAds/);
   assert.match(code, /ServerSideVerificationOptions\(actor, ticket\)/);
-  assert.match(code, /rewardItem != "cosmetic_reward"/);
-  assert.match(code, /rewardAmount != 1/);
+  // The reward item/amount is an allowlist, not a single literal: the owner's contract adds
+  // undo/hint placements, and every item is still pinned to exactly the amount the server settles.
+  assert.match(code, /rewardAllowlist\[rewardItem\] != rewardAmount/);
+  assert.match(code, /"cosmetic_reward" to 1/);
+  for (const item of ['solo_rewind', 'tactical_hint', 'casual_rewind']) {
+    assert.match(code, new RegExp(`"${item}" to 1`), item);
+  }
+  // EARNED is the SDK's own earned listener and is the only positive terminal outcome; a shown,
+  // a dismissal, a failure, a timeout and an unattached caller all settle negatively.
+  assert.match(code, /OnUserEarnedRewardListener \{ settlement\.earned\(\) \}/);
+  assert.match(code, /enum class AdRewardOutcome \{ EARNED, DISMISSED, FAILED, TIMEOUT, UNAVAILABLE \}/);
+  assert.match(code, /onAdShowedFullScreenContent/);
+  assert.match(code, /onAdFailedToShowFullScreenContent/);
+  assert.doesNotMatch(code, /OnUserEarnedRewardListener \{ _ -> \}/);
+  // No caller-supplied value can reach the earned path.
+  assert.doesNotMatch(code, /optBoolean\("watched"/);
   assert.doesNotMatch(code, /grantCredits|mintCrowns|setBalance/);
+  // The bridge is instantiated by the online host, pinned to the app-assets origin and the exact
+  // signed entry, and published only for a configured build.
+  assert.match(activity, /MegaAndroidAds\(/);
+  assert.match(activity, /MegaAdsBridge\.install\(this, game, gameEntry, adService\)/);
+  assert.match(activity, /BuildConfig\.MEGA_ADMOB_REWARDED_UNIT/);
+  assert.match(bridge, /WebViewCompat\.addWebMessageListener\(/);
+  assert.match(bridge, /isMainFrame && origin\.scheme == "https"/);
+  assert.match(bridge, /view\.url == entryUrl/);
+  assert.match(bridge, /addDocumentStartJavaScript/);
+  // The published surface is exactly the one src/monetization-ui.js already calls.
+  for (const method of ['privacyState', 'isReady', 'prepare', 'privacyOptions',
+                        'showRewarded', 'showInterstitial', 'reportAd']) {
+    assert.match(bridge, new RegExp(`${method}:`), method);
+  }
+  assert.match(bridge, /platform: 'android'/);
+  assert.doesNotMatch(bridge, /optString\("token"|optString\("authorization"|optString\("cookie"/i);
+  assert.doesNotMatch(activity, /\.addJavascriptInterface\s*\(/);
 });
 
 test('iOS UMP and GoogleMobileAds SDKs are pinned and enforce SSV-only rewards', () => {
   const project = read('native/ios/MegaXO.xcodeproj/project.pbxproj');
   const code = read('native/ios/MegaXO/MegaIOSAds.swift');
+  const bridge = read('native/ios/MegaXO/MegaAdsBridge.swift');
+  const host = read('native/ios/MegaXO/MegaXOApplication.swift');
   assert.match(project, /MegaIOSAds\.swift in Sources/);
+  assert.match(project, /MegaAdsBridge\.swift in Sources/);
   assert.match(project, /swift-package-manager-google-mobile-ads\.git/);
   assert.match(project, /swift-package-manager-google-user-messaging-platform\.git/);
   assert.match(project, /version = "13\.2\.0"/);
@@ -247,8 +283,34 @@ test('iOS UMP and GoogleMobileAds SDKs are pinned and enforce SSV-only rewards',
   assert.match(code, /ServerSideVerificationOptions\(\)/);
   assert.match(code, /options\.userIdentifier = actor/);
   assert.match(code, /options\.customRewardText = ticket/);
-  assert.match(code, /rewardAmount == 1/);
+  // The reward item/amount is an allowlist, not a single literal: the owner's contract adds
+  // undo/hint placements, and every item is still pinned to exactly the amount the server settles.
+  assert.match(code, /Self\.rewardAllowlist\[rewardItem\] == rewardAmount/);
+  assert.match(code, /"cosmetic_reward": 1/);
+  for (const item of ['solo_rewind', 'tactical_hint', 'casual_rewind']) {
+    assert.match(code, new RegExp(`"${item}": 1`), item);
+  }
+  // EARNED comes only from the SDK's earned handler; show-only, dismissal, failure and timeout do not.
+  assert.match(code, /ad\.present\(from: controller, userDidEarnRewardHandler: \{ settlement\.earn\(\) \}\)/);
+  assert.match(code, /case earned = "EARNED"/);
+  assert.match(code, /func adWillPresentFullScreenContent/);
+  assert.match(code, /didFailToPresentFullScreenContentWithError/);
+  // No caller-supplied value can reach the earned path.
+  assert.doesNotMatch(code, /body\["watched"\]/);
   assert.doesNotMatch(code, /grantCredit|mintCrowns|localReward/);
+  // The handler is instantiated by the host, main-frame only and pinned to the exact signed entry.
+  assert.match(host, /MegaIOSAds\(appID: adMobAppID/);
+  assert.match(host, /MegaAdsBridge\(controller: self, entry: entry, ads: adService\)/);
+  assert.match(host, /name: "megaNativeAds"/);
+  assert.match(bridge, /message\.frameInfo\.isMainFrame/);
+  assert.match(bridge, /== trustedEntry/);
+  assert.match(host, /forMainFrameOnly: true/);
+  // The published surface is exactly the one src/monetization-ui.js already calls.
+  for (const method of ['privacyState', 'isReady', 'prepare', 'privacyOptions',
+                        'showRewarded', 'showInterstitial', 'reportAd']) {
+    assert.match(bridge, new RegExp(`${method}:`), method);
+  }
+  assert.match(bridge, /platform: 'ios'/);
 });
 
 test('native CI includes actual emulator/simulator launch smoke separate from compiler checks', () => {

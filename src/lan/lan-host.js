@@ -30,12 +30,13 @@
   'use strict';
   const api = factory(
     typeof module === 'object' && module.exports
-      ? { LAN: require('./lan-room-store.js'), HTTP: require('./lan-room-http.js') }
-      : { LAN: root.MegaLanRoomStore, HTTP: root.MegaLanRoomHttp }
+      ? { LAN: require('./lan-room-store.js'), HTTP: require('./lan-room-http.js'), root: null }
+      : { LAN: root.MegaLanRoomStore, HTTP: root.MegaLanRoomHttp, root },
+    typeof module === 'object' && module.exports ? globalThis : root
   );
   if (typeof module === 'object' && module.exports) module.exports = api;
   else root.MegaLanHost = api;
-})(typeof globalThis !== 'undefined' ? globalThis : this, function (deps) {
+})(typeof globalThis !== 'undefined' ? globalThis : this, function (deps, root) {
   const LAN = deps.LAN, HTTP = deps.HTTP;
   if (!LAN || !LAN.LanRoomStore) throw Error('LAN_ROOM_STORE_MISSING');
   if (!HTTP || !HTTP.createLanRoomHandler) throw Error('LAN_ROOM_HTTP_MISSING');

@@ -257,3 +257,101 @@ test('discovery reports only private lobby rooms, never a live or terminal one',
   store.run(pa, 'k5', { type: 'start', id: created.id });
   assert.equal(store.discover().length, 0, 'a running room is no longer joinable, so it is not listed');
 });
+
+/* ----------------------------------------------------------------------------------------------
+ * The JS<->native bridge contract: the shell owns the socket and the discovery record, the page
+ * owns the rules. These tests stand in for the Kotlin/Swift side with the exact published
+ * primitives, so a change to the contract fails here before it fails on a phone.
+ * ---------------------------------------------------------------------------------------------- */
+const LanHost = require('../src/lan/lan-host.js');
+
+function fakeShell({ port = 8081, origin = 'http://192.168.0.55:8081' } = {}) {
+  const calls = { start: [], stop: 0, advertise: [], browse: 0, discoveryStop: 0 };
+  const shell = {
+    MegaLanSocket: {
+      start(p) { calls.start.push(p); return { ok: true, port }; },
+      stop() { calls.stop += 1; return { ok: true }; },
+      status() { return { listening: true, port, origin }; },
+    },
+    MegaLanDiscovery: {
+      advertise(name, p) { calls.advertise.push([name, p]); return { ok: true }; },
+      stop() { calls.discoveryStop += 1; return { ok: true }; },
+      browse() { calls.browse += 1; return Promise.resolve([{ name: 'Other phone', origin: 'http://192.168.0.9:8081', rooms: [{ id: 'r1', code: 'ABCDE', name: 'Kitchen', players: 2, capacity: 10, status: 'LOBBY' }] }]); },
+    },
+    calls,
+  };
+  return shell;
+}
+
+test('hosting starts the native socket and advertises over the Wi-Fi', async () => {
+  const shell = fakeShell();
+  const keys = ['MegaLanSocket', 'MegaLanDiscovery'];
+  const saved = keys.map((k) => [k, globalThis[k]]);
+  Object.assign(globalThis, { MegaLanSocket: shell.MegaLanSocket, MegaLanDiscovery: shell.MegaLanDiscovery });
+  try {
+    const host = LanHost.create({ storage: memoryStorage(), now: () => 1750000000000 });
+    const started = host.open('Kitchen phone', 8081);
+    assert.deepEqual(started, { ok: true, port: 8081, code: LanHost.VERSION, version: LanHost.VERSION });
+    assert.deepEqual(shell.calls.start, [8081], 'the shell bound the requested port');
+    assert.deepEqual(shell.calls.advertise, [['Kitchen phone', 8081]], 'and advertised it on the Wi-Fi');
+    assert.deepEqual(host.ready(), { ok: true, port: 8081, origin: 'http://192.168.0.55:8081', rooms: 0, version: LanHost.VERSION });
+    const closed = host.close();
+    assert.equal(closed.ok, true);
+    assert.equal(shell.calls.stop, 1, 'the listener was closed');
+    assert.equal(shell.calls.discoveryStop, 1);
+  } finally { for (const [k, v] of saved) { if (v === undefined) delete globalThis[k]; else globalThis[k] = v; } }
+});
+
+test('without a native host the lobby is told so instead of pretending', () => {
+  const saved = globalThis.MegaLanSocket;
+  delete globalThis.MegaLanSocket;
+  try {
+    const host = LanHost.create({ storage: memoryStorage() });
+    const r = host.open('Kitchen phone', 8081);
+    assert.equal(r.ok, false);
+    assert.equal(r.error, 'HOST_UNAVAILABLE');
+  } finally { if (saved !== undefined) globalThis.MegaLanSocket = saved; }
+});
+
+test('discovery returns the rooms another phone is hosting, and never throws', async () => {
+  const shell = fakeShell();
+  const saved = globalThis.MegaLanDiscovery;
+  globalThis.MegaLanDiscovery = shell.MegaLanDiscovery;
+  try {
+    const host = LanHost.create({ storage: memoryStorage() });
+    const found = await host.discover(1500);
+    assert.equal(found.ok, true);
+    assert.equal(shell.calls.browse, 1);
+    assert.equal(found.hosts[0].origin, 'http://192.168.0.9:8081');
+    assert.equal(found.hosts[0].rooms[0].code, 'ABCDE');
+    delete globalThis.MegaLanDiscovery;
+    const none = await host.discover(500);
+    assert.equal(none.ok, false);
+    assert.equal(none.error, 'DISCOVERY_UNAVAILABLE');
+    assert.deepEqual(none.hosts, [], 'a missing discovery service is an empty list, not a crash');
+  } finally { if (saved === undefined) delete globalThis.MegaLanDiscovery; else globalThis.MegaLanDiscovery = saved; }
+});
+
+test('handle() answers a real command round trip and always returns JSON, never throws', () => {
+  const host = LanHost.create({ storage: memoryStorage(), now: () => 1750000000000 });
+  const headers = { host: '192.168.0.55:8081' };
+  const caps = JSON.parse(host.handle(JSON.stringify({ method: 'GET', path: '/api/party/capabilities', headers })));
+  assert.equal(caps.status, 200);
+  assert.equal(caps.body.lan, true);
+  const session = JSON.parse(host.handle(JSON.stringify({ method: 'POST', path: '/api/party/session', headers, body: JSON.stringify({ name: 'Guest' }) })));
+  assert.equal(session.status, 200);
+  const created = JSON.parse(host.handle(JSON.stringify({
+    method: 'POST', path: '/api/party/command',
+    headers: { ...headers, authorization: 'Bearer ' + session.body.token, 'idempotency-key': 'k1' },
+    body: JSON.stringify({ type: 'create', name: 'Kitchen', format: 'knockout', clock: 120, increment: 2 }),
+  })));
+  assert.equal(created.status, 200);
+  assert.equal(created.body.players.length, 1);
+  // Every failure path returns parseable JSON.
+  for (const bad of ['not json at all', JSON.stringify({ method: 'GET' }), '{}', JSON.stringify({ method: 'GET', path: '/nope' })]) {
+    const out = JSON.parse(host.handle(bad));
+    assert.ok(out.error || out.status, 'a bad request still produced a JSON answer: ' + bad);
+  }
+  // A non-party path is reported as NOT_FOUND rather than silently 200.
+  assert.equal(JSON.parse(host.handle(JSON.stringify({ method: 'GET', path: '/api/v1/profile', headers }))).error, 'NOT_FOUND');
+});

@@ -2,7 +2,15 @@
 (function(root,factory){const api=factory(typeof module==='object'?require('./domain.js'):root.MegaDomain);if(typeof module==='object')module.exports=api;else root.MegaMonetization=api;})(globalThis,D=>{
 'use strict';
 const MINUTE=60000,DAY=86400000;
-const POLICY=Object.freeze({version:'monetisation-1.1',firstAdAge:DAY,firstAdGames:5,gamesBetweenAds:3,activeTimeBetweenAds:8*MINUTE,fullScreenGap:8*MINUTE,interstitialSessionCap:2,interstitialDayCap:6,rewardedDayCap:4,rewardedGap:2*MINUTE,ticketLifetime:5*MINUTE,callbackGrace:24*60*MINUTE,rewardCredits:5,casualCredits:2,casualDayCap:10,boostDuration:10*MINUTE,boostDayCap:10,maxGameSeconds:86400});
+/* `rewardedDayCap` stays the legacy account lane's own rewarded quota, enforced by the server
+   ticket store; it is not weakened here. The shipped client measures ONE aggregate ceiling of ten
+   rewarded presentations per UTC day across every reward type in `rewardedAggregateDayCap`, which
+   `rewardedExposure` reports and the rewarded-power lane enforces. */
+const POLICY=Object.freeze({version:'monetisation-1.1',firstAdAge:DAY,firstAdGames:5,gamesBetweenAds:3,activeTimeBetweenAds:8*MINUTE,fullScreenGap:8*MINUTE,interstitialSessionCap:2,interstitialDayCap:6,rewardedDayCap:4,rewardedAggregateDayCap:10,rewardedGap:2*MINUTE,ticketLifetime:5*MINUTE,callbackGrace:24*60*MINUTE,rewardCredits:5,casualCredits:2,casualDayCap:10,boostDuration:10*MINUTE,boostDayCap:10,maxGameSeconds:86400});
+/* Cadence storage schema. Version 2 separates a shown presentation from a native-confirmed earned
+   reward; a version-1 object is upgraded in place rather than discarded, so an installed client
+   keeps its first-seen age, game cadence and daily counters across the update. */
+const CADENCE_VERSION=2;
 const FRAMES=Object.freeze([
  {id:'classic',name:'Classic',credits:0,description:'The standard Mega XO board surround.'}
 ].map(Object.freeze));
@@ -14,11 +22,22 @@ const product=id=>PRODUCTS.find(p=>p.id===id)||null;
 const frame=id=>FRAMES.find(f=>f.id===id)||null;
 const positive=n=>Number.isFinite(n)&&n>=0;
 const day=now=>new Date(now).toISOString().slice(0,10);
-function freshProgress(now=Date.now()){return {version:1,firstSeenAt:now,sessions:0,day:day(now),totalGames:0,gamesSinceAd:0,activeSinceAd:0,sessionAds:0,dayAds:0,lastFullScreenAt:0,seen:[]};}
+function freshProgress(now=Date.now()){return {version:CADENCE_VERSION,firstSeenAt:now,sessions:0,day:day(now),totalGames:0,gamesSinceAd:0,activeSinceAd:0,sessionAds:0,dayAds:0,lastFullScreenAt:0,rewardedShown:0,rewardedGranted:0,lastRewardedCompletedAt:0,lastInterstitialShownAt:0,seen:[]};}
+/* Version 1 kept one shared `lastFullScreenAt`: a rewarded ad start moved it even when no ad was
+   shown, and an interstitial reset the game cadence on the permit. Upgrade to version 2 without
+   losing a single counter, and without inventing an impression that v1 never proved. */
+function migrateCadence(raw,now=Date.now()){
+ const p=raw&&(raw.version===1||raw.version===CADENCE_VERSION)&&positive(raw.firstSeenAt)&&Array.isArray(raw.seen)?structuredClone(raw):freshProgress(now);
+ for(const k of ['sessions','totalGames','gamesSinceAd','activeSinceAd','sessionAds','dayAds','lastFullScreenAt'])if(!positive(p[k]))p[k]=0;
+ p.version=CADENCE_VERSION;
+ if(!positive(p.rewardedShown))p.rewardedShown=0;
+ for(const k of ['rewardedGranted','lastRewardedCompletedAt','lastInterstitialShownAt'])if(!positive(p[k]))p[k]=0;
+ if(p.day!==day(now)){p.day=day(now);p.dayAds=0;p.rewardedShown=0;}
+ return p;
+}
 function startSession(raw,now=Date.now()){
- const p=raw&&raw.version===1&&positive(raw.firstSeenAt)&&Array.isArray(raw.seen)?structuredClone(raw):freshProgress(now);
- for(const k of ['sessions','totalGames','gamesSinceAd','activeSinceAd','dayAds','lastFullScreenAt'])if(!positive(p[k]))p[k]=0;
- if(p.day!==day(now)){p.day=day(now);p.dayAds=0;}p.sessions++;p.sessionAds=0;return p;
+ const p=migrateCadence(raw,now);
+ p.sessions++;p.sessionAds=0;return p;
 }
 function meaningfulBot(r){return !!r&&r.mode==='bot'&&!r.practice&&['line','draw'].includes(r.reason)&&['win','loss','draw'].includes(r.result)&&Number.isInteger(r.moves)&&r.moves>=D.POLICY.minRewardMoves&&r.moves<=81&&positive(r.activeSeconds)&&r.activeSeconds>=D.POLICY.minRewardSeconds&&r.activeSeconds<=POLICY.maxGameSeconds&&typeof r.id==='string';}
 function noteGame(p,r){if(!meaningfulBot(r)||p.seen.includes(r.id))return false;p.seen.push(r.id);p.seen=p.seen.slice(-500);p.totalGames++;p.gamesSinceAd++;p.activeSinceAd+=r.activeSeconds*1000;return true;}
@@ -32,8 +51,29 @@ function interstitialAllowed(p,c,now=Date.now()){
 }
 function noteFullScreen(p,format,now=Date.now()){
  if(!['rewarded','interstitial'].includes(format))throw Error('INVALID_AD_FORMAT');
- if(p.day!==day(now)){p.day=day(now);p.dayAds=0;}p.lastFullScreenAt=now;
- if(format==='interstitial'){p.dayAds++;p.sessionAds++;p.gamesSinceAd=0;p.activeSinceAd=0;}
+ if(p.day!==day(now)){p.day=day(now);p.dayAds=0;if(positive(p.rewardedShown))p.rewardedShown=0;}
+ p.lastFullScreenAt=now;
+ if(format==='rewarded')p.lastRewardedCompletedAt=now;
+ if(format==='interstitial'){p.dayAds++;p.sessionAds++;p.gamesSinceAd=0;p.activeSinceAd=0;p.lastInterstitialShownAt=now;}
+}
+/* Shown and earned are different facts. `noteRewardedShown` books the aggregate presentation the
+   SDK actually put on screen and restarts the full-screen gap; `noteRewardedEarned` books a
+   native-confirmed reward. A refused start or a no-fill callback calls neither. */
+function noteRewardedShown(p,now=Date.now()){
+ if(p.day!==day(now)){p.day=day(now);p.dayAds=0;p.rewardedShown=0;}
+ p.rewardedShown=Math.min(9999,(positive(p.rewardedShown)?p.rewardedShown:0)+1);p.lastFullScreenAt=now;
+ return p.rewardedShown;
+}
+function noteRewardedEarned(p,now=Date.now()){
+ if(p.day!==day(now)){p.day=day(now);p.dayAds=0;p.rewardedShown=0;p.rewardedGranted=0;}
+ p.rewardedGranted=Math.min(9999,(positive(p.rewardedGranted)?p.rewardedGranted:0)+1);p.lastRewardedCompletedAt=now;
+ return p.rewardedGranted;
+}
+/* The one aggregate daily truth the UI may quote: presentations already on screen today, across
+   Credits, boost and Undo together, against the ten-per-UTC-day ceiling. */
+function rewardedExposure(p,now=Date.now()){
+ const shown=p.day!==day(now)?0:(positive(p.rewardedShown)?p.rewardedShown:0);
+ return {shownToday:Math.min(shown,POLICY.rewardedAggregateDayCap),dayCap:POLICY.rewardedAggregateDayCap,remaining:Math.max(0,POLICY.rewardedAggregateDayCap-shown)};
 }
 function cohort(id,mode='off'){
  if(['off','rewarded','hybrid'].includes(mode))return mode;
@@ -52,5 +92,5 @@ function revenueScenario(x){
  const interstitial=x.dau*x.automaticOpportunities*x.fill*x.interstitialEcpm/1000,rewarded=x.dau*x.rewardOptIn*x.rewardsPerViewer*x.fill*x.rewardedEcpm/1000,iap=x.dau*x.dailyPayerShare*x.payerSpend*(1-x.refundRate)*(1-x.platformFee);
  return {interstitial,rewarded,netIap:iap,totalBeforeOperatingCosts:interstitial+rewarded+iap,netPerDau:x.dau?(interstitial+rewarded+iap)/x.dau:0};
 }
-return Object.freeze({POLICY,FRAMES,PRODUCTS,MINUTE,DAY,product,frame,day,startSession,freshProgress,meaningfulBot,noteGame,interstitialAllowed,noteFullScreen,cohort,qualifiedCasual,boostApplies,packInfo,revenueScenario});
+return Object.freeze({POLICY,FRAMES,PRODUCTS,MINUTE,DAY,CADENCE_VERSION,product,frame,day,startSession,freshProgress,migrateCadence,meaningfulBot,noteGame,interstitialAllowed,noteFullScreen,noteRewardedShown,noteRewardedEarned,rewardedExposure,cohort,qualifiedCasual,boostApplies,packInfo,revenueScenario});
 });

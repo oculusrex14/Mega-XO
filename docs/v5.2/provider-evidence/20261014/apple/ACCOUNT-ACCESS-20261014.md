@@ -1,7 +1,7 @@
 # Apple Developer account access checkpoint — 2026-10-14
 
-**Observed:** 2026-10-14 16:38 UTC  
-**Portal:** Apple Developer account (`developer.apple.com/account/`)  
+**Observed:** 2026-10-14 16:38 UTC
+**Portal:** Apple Developer account (`developer.apple.com/account/`)
 **Action:** Opened a dedicated Brave tab and entered the owner-designated account identifier into Apple's sign-in form. Apple advanced to the password step. No password, verification code, recovery credential, or legal attestation was entered or accepted.
 
 **Owner authentication completed:** the same tab was available at the Apple Developer account home after the owner handoff. All observations below are read-only. Personal name, address, and phone details shown in the portals are intentionally omitted.

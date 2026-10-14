@@ -1,7 +1,7 @@
 # Apple IAP metadata and base-price setup — 2026-10-14
 
-**Observed:** 2026-10-14 17:52:33 UTC  
-**Scope:** Existing App Store Connect draft IAPs for Mega XOXO.  
+**Observed:** 2026-10-14 17:52:33 UTC
+**Scope:** Existing App Store Connect draft IAPs for Mega XOXO.
 **Evidence handling:** Sanitized record IDs, store metadata, price schedule, status, and UI-confirmed behavior only; no screenshots or private account values retained.
 
 ## App and team

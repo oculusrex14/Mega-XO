@@ -1,7 +1,7 @@
 # Apple Business handoff and IAP draft receipt — 2026-10-14
 
-**Observed:** 2026-10-14 17:32:01 UTC  
-**Scope:** Read-only inspection of the existing Apple Business owner forms and ordinary draft setup in Mega XOXO's existing App Store Connect app record.  
+**Observed:** 2026-10-14 17:32:01 UTC
+**Scope:** Read-only inspection of the existing Apple Business owner forms and ordinary draft setup in Mega XOXO's existing App Store Connect app record.
 **Evidence handling:** Sanitized field labels, option labels, presence booleans, IDs, and provider statuses only. No screenshots or private form values retained.
 
 ## Business owner forms

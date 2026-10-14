@@ -1,7 +1,7 @@
 # App Store Connect app and submission readiness — 2026-10-14
 
-**Observed:** 2026-10-14 17:21 UTC  
-**Scope:** Existing Apple Developer / App Store Connect account and existing Mega XOXO app record only.  
+**Observed:** 2026-10-14 17:21 UTC
+**Scope:** Existing Apple Developer / App Store Connect account and existing Mega XOXO app record only.
 **Evidence:** Sanitized live-console observations; no screenshots retained because account identity details are visible in the portal.
 
 ## Verified app record

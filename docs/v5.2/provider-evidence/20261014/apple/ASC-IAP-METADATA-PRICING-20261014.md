@@ -2,7 +2,7 @@
 
 **Observed:** 2026-10-14 17:52:33 UTC
 **Scope:** Existing App Store Connect draft IAPs for Mega XOXO.
-**Evidence handling:** Sanitized record IDs, store metadata, price schedule, status, and UI-confirmed behavior only; no screenshots or private account values retained.
+**Evidence handling:** Sanitized record IDs, store metadata, price schedule, status, and UI-confirmed behavior only; no private account values retained.
 
 ## App and team
 
@@ -21,6 +21,8 @@
 | `remove_ads` | `6822842392` | Non-Consumable | Remove Ads | Auto interstitials removed; opt-in rewarded ads remain. | USD $3.99 |
 
 The owner approved the four U.S. base prices. Each schedule uses United States (USD) as its base. App Store Connect generated comparable prices for 174 other countries or regions; examples observed for India were ₹99.00, ₹499.00, ₹999.00, and ₹399.00 in the same order as the table. These are storefront prices shown by Apple, not proceeds. Apple states a schedule takes effect only after IAP approval and when the app is Ready for Sale.
+
+A sanitized crop of the Remove Ads draft detail screen is saved at `.artifacts/v52-provider/screenshots/apple-iap-prices.jpg`; it shows the draft status and product ID. The base and India storefront prices above were read from the App Store Connect Current Price tables.
 
 ## Current release state
 

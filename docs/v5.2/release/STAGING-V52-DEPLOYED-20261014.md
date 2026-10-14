@@ -73,3 +73,22 @@ as the rollback source, no AppleDouble sidecars, explicit `ubuntu:ubuntu` owners
 modes, and a restart of `p21-staging-server.cjs`. That restart is mandatory and easy to forget: the
 server builds its file allowlist from the artifact manifest **at startup**, so a new artifact is
 invisible - and if the process dies, the origin returns `502` - until it is restarted.
+
+## Update — post-review fixes deployed
+
+After the independent review's fixes (shared rewarded ceiling, migration 0053), staging was rebuilt
+and redeployed: the served manifest reports `bundle_sha256 17b1d88e…`, `source_commit 3752383c`, 160
+files, byte-identical to the local build, and both new modules serve `200`.
+
+Two operational lessons worth recording for the production cutover, both of which cost time here:
+
+1. **Applying a migration to the database also requires deploying the matching `manifest.json`.**
+   The staging server validates the live migration ledger against its own bundled manifest at boot,
+   so after 0053 was applied the running tree still expected 52 and refused with `SCHEMA_INCOMPATIBLE`.
+   The manifest and the new migration file had to be shipped together with the bundle.
+2. **`SCHEMA_INCOMPATIBLE` is also what you get when the connection budget is exhausted.** The
+   role has a hard connection limit (`api_runtime` 16); a killed process's connections linger until
+   the server times them out, and the next boot fails while it cannot get a connection - the guard's
+   error looks identical to a real schema divergence. Diagnosing it properly required reading the
+   guard's own `detail` (which says `too many connections for role`), not the summary code. Repeated
+   ad-hoc diagnostics that open their own pools make this worse; they must always close their pools.

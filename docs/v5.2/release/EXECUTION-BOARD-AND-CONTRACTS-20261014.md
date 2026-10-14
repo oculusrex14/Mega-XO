@@ -27,13 +27,26 @@ code depends on the exact shape.
 | Stream | Owner | Files (exclusive) | Blocking class |
 | --- | --- | --- | --- |
 | Powers pure logic (AM02–AM04) | Main | `src/gameplay-rewind.js`, `src/app.js`, `tests/gameplay-rewind*.test.js` | release-blocking |
-| Entitlement + pacing + SSV (AM09–AM11) | Main | `packages/migrations/migrations/0052_*.sql`, `src/monetization.js`, `packages/services/commerce.js`, `tests/monetization-*.test.js` | release-blocking for ad serving |
-| Consent + research + retention (DC00) | Main | `packages/migrations/migrations/0053_*.sql`, `packages/learning/*`, `docs/v5.2/**` | release-blocking for day-one capture |
-| Capture all-source coverage | Main | `packages/learning/worker.js`, `packages/learning/exporter.js` | needs 0053 |
+| Entitlement + pacing + SSV (AM09–AM11) | Main | `packages/migrations/migrations/0053_*.sql`, `src/monetization.js`, `packages/services/commerce.js`, `tests/monetization-*.test.js` | release-blocking for ad serving |
+| Consent + research + retention (DC00) | Main | `packages/migrations/migrations/0052_*.sql`, `packages/learning/*`, `docs/v5.2/**` | release-blocking for day-one capture |
+| Capture all-source coverage | Main | `packages/learning/worker.js`, `packages/learning/exporter.js` | needs 0052 |
 | Prune (P1B) | PruneV52Tree | archive-only trees | not blocking |
 | Website UI (powers) | Codex/Sol | `apps/web/**` | blocked on the frozen state contract below |
 | Store + provider consoles | Codex | provider accounts | external |
 | Device matrix | Main | `native/**`, evidence docs | iOS needs a signing identity |
+
+## Verified infrastructure at freeze time (real, not claimed)
+
+| Fact | Evidence |
+| --- | --- |
+| Production Neon DB reachable and conformant | `node scripts/v5/migrate.js --verify` → `verify OK: 51 checksums + catalog conformance` |
+| V4.1.2 is the live authority | `/opt/mega-xo/current-image` = `ghcr.io/oculusrex14/mega-xo@sha256:71d33a1a…`, container `mega-xo-production-app-1` healthy 6 days |
+| V5 production stack provisioned, non-serving | `/opt/mega-xo-v5-production/{src,bin,secrets,state}` present; secrets 0600; no `v5-production-server` process running |
+| V5 production image built on the host | `sha256:41b8b7a3…` (393 MB) from source SHA `07c9fbab`; **predates V5.2**, so it must be rebuilt from the final V5.2 SHA before cutover |
+| V5 backups actively running | `state/freshness-state.json` + `backup.lock` written today |
+| Web bundle builds from V5.2 source | `node scripts/p21/build-web.js` → 156 files, 3 599 827 bytes, bundle sha256 `c34de2e7…` |
+| Apple device connected | `Naraharikripa's iPhone` (iPhone 16 Pro, `00008140-0019711E2260801C`) paired and available; **no signing identity** in the keychain |
+| Android device | none attached; SDK `adb` present at `~/Library/Android/sdk/platform-tools/adb` |
 
 ## Blocking classification
 

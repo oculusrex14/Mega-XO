@@ -66,14 +66,20 @@ Two further proofs inside the WebView: a same-origin `fetch('/api/party/capabili
 direct `fetch('http://192.168.0.111:8081/api/party/capabilities')` both return a clean
 `{"lan":true,…}` body.
 
+## Also verified after the first pass
+
+| Defect found by probing the running host | Evidence after the fix |
+| --- | --- |
+| Relaying a room hosted on another machine returned the chunk framing (`345\r\n{...}`, truncated) | The phone's WebView now fetches the Mac's chunked host and gets 837 bytes of clean JSON; the phone then created a room **on the Mac host** and resolved `MacBook Room` at `http://192.168.0.8:8082` over mDNS |
+| A static GET answered `HTTP/1.1 0 Status` (curl: "Unsupported HTTP/1 subversion"). Root cause: AndroidX `WebResourceResponse`'s 3-arg constructor never assigns `mStatusCode` | `GET /` → `HTTP/1.1 200 OK`; `GET /favicon.ico` → `HTTP/1.1 404 Not Found` |
+| Hosting died with the process and never returned | After `force-stop`: refused during downtime; after relaunch → `200` with real JSON. The app auto-resumes hosting and re-advertises on the same port |
+
 ## Honest limits at the time of writing
 
 - iOS hosting/discovery is implemented by a sibling change and still needs the simulator compile
   and a device pass.
-- Relaying a response from a **remote Node host** that answers `Transfer-Encoding: chunked` still
-  leaks the chunk framing to the page (found by the same measurement above; a fix is in flight).
-  The bridge's own listener and the same-origin path are clean.
 - The two-phone no-internet run — both devices hosting/joining with the internet actually off — is
   still owed; the cross-device proof above used this Mac as the second device.
 - `NEARBY_WIFI_DEVICES` is requested with `neverForLocation` on Android 13+ as a precaution;
   whether this device honours it without a runtime prompt is unverified.
+- Two guests joining the same phone-hosted room simultaneously has not been exercised.

@@ -1,0 +1,97 @@
+[
+  {
+    "path": ".agents/skills/neon-postgres/SKILL.md",
+    "bytes": 16595,
+    "sha256": "83d3c75651bd81f06e5e8c47ffc306936cc4d2a1ac84d288e8f6a15fcfb724b4"
+  },
+  {
+    "path": ".agents/skills/neon-postgres/references/full-text-search.md",
+    "bytes": 3901,
+    "sha256": "025d4380ccfe8e2c745687d82ed6182d501d5678a3941112f37f58bac38e7db4"
+  },
+  {
+    "path": ".agents/skills/neon-postgres/references/hybrid-search.md",
+    "bytes": 4451,
+    "sha256": "80b9b1a9974c41eea80bfa4159c5be2b89ca0caaf96b06356ce60d49b2443f90"
+  },
+  {
+    "path": ".agents/skills/neon-postgres/references/lakebase-search-drizzle.md",
+    "bytes": 6716,
+    "sha256": "9d5193830642719ecd325dd60f2ffc7c1104055e9c7c4f4828963299adb234b7"
+  },
+  {
+    "path": ".agents/skills/neon-postgres/references/vector-search.md",
+    "bytes": 6244,
+    "sha256": "4d7c14f1940033e2c379be62f00ef5ba5e17878a44bc11957a5176f91c2aa0ac"
+  },
+  {
+    "path": ".agents/skills/neon/SKILL.md",
+    "bytes": 35062,
+    "sha256": "e3d7835b2a6443f52972c033b267fa12467f5d9d19cfad4f102969d05c14434f"
+  },
+  {
+    "path": ".agents/skills/neon/references/auth.md",
+    "bytes": 730,
+    "sha256": "c2c609f25d6936c8df52989889ffff738f55b5100259e9193173ed07891f49f0"
+  },
+  {
+    "path": ".agents/skills/neon/references/claimable-neon.md",
+    "bytes": 8163,
+    "sha256": "1f510be025b1841231b8ee40f69f8b38a348336b258be43b943cc94f2d88bcf8"
+  },
+  {
+    "path": ".agents/skills/neon/references/function-triggers.md",
+    "bytes": 3249,
+    "sha256": "a72aadc3e63464db7f618abb6daa7f119eb76cf213f27a88c84f7aa92b4dd254"
+  },
+  {
+    "path": ".agents/skills/neon/references/logs-loki.md",
+    "bytes": 4044,
+    "sha256": "fb338ad4d75e3d6c594945bd24d64a4134860fc2f554cd3273c27dd79769c889"
+  },
+  {
+    "path": ".agents/skills/neon/references/parse-env.md",
+    "bytes": 1406,
+    "sha256": "f43eb0d40570b06437ea3a93662ab528bad4d5c44c9c28c45f993aaa269e10bd"
+  },
+  {
+    "path": ".agents/skills/neon/references/sdk.md",
+    "bytes": 806,
+    "sha256": "b9376b5bb1658d9d926a560a7be632a0aaa4fd12e60f38c3ba5050bd35989da0"
+  },
+  {
+    "path": "MAIN-AGENT-EXECUTION-PLAN.md",
+    "bytes": 44684,
+    "sha256": "975fbb6806ec364ec333870f5875b4158904e82886a063569e1d3078929e4ff0"
+  },
+  {
+    "path": "mega_xoxo_website_logo_pack/README.md",
+    "bytes": 253,
+    "sha256": "a3c584358f0f8cd395b63508def970bbc35641ae85a9dc46d4a3a244e49baa9f"
+  },
+  {
+    "path": "mega_xoxo_website_logo_pack/mega-xoxo-horizontal-logo.png",
+    "bytes": 1159796,
+    "sha256": "4a22dbc289023dc0444b7b94400fda3e3e25c6e97e44b5302964b7214704bf9e"
+  },
+  {
+    "path": "mega_xoxo_website_logo_pack/mega-xoxo-icon-only-logo.png",
+    "bytes": 1327731,
+    "sha256": "3b3f7042c5826fcd31ba831d8546fccb5aea840c2c821627b6def2f4ce360286"
+  },
+  {
+    "path": "mega_xoxo_website_logo_pack/mega-xoxo-primary-logo.png",
+    "bytes": 1580085,
+    "sha256": "2283b160391b163b08b3f7817dac3e5eaf8ee79fb6490da242b748d94abc008c"
+  },
+  {
+    "path": "mega_xoxo_website_logo_pack/mega-xoxo-secondary-logo.png",
+    "bytes": 1394874,
+    "sha256": "10f8a9b27e1e5f9b2f25cebe4eb3ee64587e3dd4ae156b920df49295a4a5ae07"
+  },
+  {
+    "path": "skills-lock.json",
+    "bytes": 511,
+    "sha256": "939fb9e87f21bd4182f25ab2f82c1a37d11a7fe975a361331551aa94e8ccf4ca"
+  }
+]

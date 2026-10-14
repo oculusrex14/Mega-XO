@@ -27,6 +27,7 @@ import java.io.ByteArrayInputStream
 class MegaXOActivity : Activity() {
     private lateinit var game: WebView
     private var notifications: MegaAndroidLocalNotifications? = null
+    private var themeBridge: MegaAndroidThemeBridge? = null
     private var identityBridge: MegaAndroidIdentityBridge? = null
     private var apiBridge: MegaNativeApiBridge? = null
     private var sessionManager: MegaNativeSessionManager? = null
@@ -112,6 +113,10 @@ class MegaXOActivity : Activity() {
             insets
         }
         setContentView(game)
+        // The bar theme must be ready before the very first frame, so the bridge is installed here
+        // with the other host services rather than after load; its own gates keep it usable only
+        // from the signed game entry.
+        themeBridge = MegaAndroidThemeBridge.install(this, game, gameEntry)
         notifications = MegaAndroidLocalNotifications.install(this, game, gameEntry)
         identityBridge = MegaAndroidIdentityBridge.install(
             this, game, gameEntry, BuildConfig.MEGA_GOOGLE_SERVER_CLIENT_ID)
@@ -160,6 +165,8 @@ class MegaXOActivity : Activity() {
 
     override fun onDestroy() {
         startupProbe.close()
+        themeBridge?.close()
+        themeBridge = null
         notifications?.close()
         notifications = null
         identityBridge?.close()

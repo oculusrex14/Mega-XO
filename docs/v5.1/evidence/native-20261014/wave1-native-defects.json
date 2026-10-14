@@ -1,0 +1,81 @@
+{
+  "schemaVersion": 1,
+  "subject": "Native mobile defect fixes - wave 1 (themed system bars, Impossible hidden, press-hold preview)",
+  "recordedAtUtc": "2026-10-14T05:40:00Z",
+  "device": {
+    "android": {
+      "model": "OnePlus Nord CE (EB2101)",
+      "serial": "5199676e",
+      "androidRelease": "13",
+      "sdk": 33,
+      "appTargetSdk": 35,
+      "physicalSize": "1080x2400",
+      "density": 480,
+      "cssViewport": { "width": 360, "height": 745, "devicePixelRatio": 3 }
+    },
+    "ios": {
+      "model": "iPhone 16 Pro (iPhone17,1)",
+      "udid": "00008140-0019711E2260801C",
+      "state": "available (paired, physical)",
+      "note": "not exercised in this wave; the Swift change is compiled by CI, not device-verified here"
+    }
+  },
+  "defect_1_impossible_level": {
+    "requirement": "The playable Impossible level must not appear anywhere in the app; the training-data collection / pack engine stays compiled.",
+    "entryPointsRemovedFromUi": [
+      "home(): the conditionally rendered IMPOSSIBLE difficulty chip in the bot setup",
+      "home(): the 'Impossible AI pack: Manage/Setup' full button and its enclosing MegaAiPack block",
+      "statsView(): the 'Impossible (Local AI)' option in both Bot-difficulty selects",
+      "statsView(): the dedicated 'Impossible mode' stats page and its Recent games ledger",
+      "statsView(): the 'On-device AI record' card",
+      "statsDifficulty is coerced to one of the G.LEVELS values or 'all', so a saved 'Impossible' can never reach a removed branch"
+    ],
+    "enginePreserved": [
+      "src/bot/* entirely untouched (pack-ui, local-ai, local-session, neural-* , contracts)",
+      "openNeuralRecovery, LA, localSession, window.MegaAiPack, the aipack action handler and MegaApp.startImpossible remain"
+    ],
+    "tests": [
+      { "cmd": "node --test tests/static-ui.test.js tests/v5-p0-acceptance-triage.test.js tests/bot/impossible-session.test.cjs tests/bot/pack.test.cjs tests/bot/local-ai.test.cjs tests/v5-p21-board.test.js", "result": "62 pass / 0 fail" },
+      { "cmd": "CHROMIUM_EXECUTABLE=<playwright> python3 tests/bot/pack-browser.py", "result": "pass; report.playableImpossibleHiddenFromUI=true, approvedProductCatalogEmpty=true, noAutomaticDownload=true, noEconomyOrStatsChange=true, pageErrors=[]" }
+    ]
+  },
+  "defect_2_theme_overflow_and_white_bars": {
+    "measuredBefore": {
+      "method": "read raw screenshot pixels via adb exec-out screencap + ffmpeg crop, and CDP getBoundingClientRect on the running app",
+      "whiteBands": "status bar rows y=4..114 and navigation bar rows y=2385..2399 were #f7f9fc in every theme; the app surface was #0f0722 (afterhours) / #f6efdc (paperclub)",
+      "topbarOverflow": "cssViewport 360 px: .header-actions right edge 368.4 (paperclub) and 368.7 (afterhours) vs 360 usable - the settings button was clipped 8.4-8.7 px off-screen; .brand measured 151.5 px in paperclub"
+    },
+    "nativeFix": {
+      "bridge": "window.MegaNativeTheme.apply({theme,dark,surface}) published by MegaAndroidThemeBridge (WebViewCompat.addWebMessageListener + addDocumentStartJavaScript, origin- and entry-scoped, #rrggbb validated) and by MegaNativeThemeBridge (WKScriptMessageHandler, contentWorld .page, entry-scoped)",
+      "androidPaints": "statusBarColor, navigationBarColor, decorView and WebView background, and the bar icon appearance from the dark flag",
+      "compiles": "BUILD SUCCESSFUL (gradle 8.13, :app:assembleOfflineDebug); only pre-existing deprecation warnings",
+      "guardPreserved": "the new bridge uses WebViewCompat, not addJavascriptInterface, so tests/v5-native-foundations.test.js keeps passing"
+    },
+    "verifiedAfterOnDevice": {
+      "vector": { "statusBar": "#f8f9fb", "navBar": "#f8f9fb", "expectedSurface": "#f7f9fc" },
+      "midnight": { "statusBar": "#101720", "navBar": "#101720", "expectedSurface": "#101720" },
+      "paperclub": { "statusBar": "#f6efdc", "navBar": "#f6efdc", "expectedSurface": "#f4eedf" },
+      "afterhours": { "statusBar": "#0f0722", "navBar": "#0f0722", "expectedSurface": "#0f0722" },
+      "conclusion": "every theme's bars are painted the theme's own surface colour; the white bands are gone. The 1-2 value difference from the CSS --surface is the platform's own bar scrim, not a mismatch."
+    },
+    "cssHalf": {
+      "status": "in progress by a parallel slice: the paperclub/afterhours 360 px topbar overflow (settings button clipped) and the page-level fluidity work",
+      "notYetVerified": true
+    },
+    "screenshots": {
+      "before-paperclub.png": "sha256:e6b61c4284234aaa... (prefix); paperclub with clipped settings button and white status/nav bands",
+      "after-paperclub.png": "sha256:876d390f67c17051... (prefix); same theme after the native fix",
+      "after-afterhours.png": "sha256:c5963d2bfd92f07a... (prefix); afterhours with dark bars"
+    }
+  },
+  "defect_5_press_hold_preview": {
+    "requirement": "On a phone, pressing and holding a cell must show where the move sends the opponent, matching the web hover preview.",
+    "implementation": "src/app.js buildBoard(): a 200 ms pointerdown timer on touch/pen calls the existing preview(b,c) (cell highlight plus, when the Destination-preview setting is on, the destination mini-board highlight and the 'This sends your opponent to the ... board.' line); pointerup/pointercancel/pointerleave clears it and suppresses the follow-up click so a hold previews without moving; mouse keeps pointerenter/pointerleave hover.",
+    "deviceVerification": "pending Wave 1 close-out"
+  },
+  "notClaimed": [
+    "iOS device verification of the themed bars",
+    "the CSS topbar-overflow fix (still in flight at the time of this record)",
+    "LAN-local private rooms (Wave 2)"
+  ]
+}

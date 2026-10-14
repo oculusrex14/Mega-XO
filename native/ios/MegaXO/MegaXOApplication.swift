@@ -45,9 +45,18 @@ final class MegaXOGameController: UIViewController, WKNavigationDelegate, WKUIDe
     private var game: WKWebView?
     private var clientRoot: URL?
     private var nativeNotifications: MegaLocalNotifications?
+    private var themeBridge: MegaNativeThemeBridge?
     private var identityBridge: MegaIOSIdentityBridge?
     private var apiBridge: MegaIOSApiBridge?
     private var nativeSession: MegaNativeSession?
+
+    /// The last theme the signed page announced, so the status bar style survives a re-query from
+    /// the system. Light surfaces take dark status bar glyphs and vice versa.
+    private var darkSurface = false
+
+    override var preferredStatusBarStyle: UIStatusBarStyle {
+        return darkSurface ? .lightContent : .darkContent
+    }
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -76,6 +85,15 @@ final class MegaXOGameController: UIViewController, WKNavigationDelegate, WKUIDe
             notifications, contentWorld: .page, name: "megaNativeNotifications")
         configuration.userContentController.addUserScript(
             WKUserScript(source: MegaLocalNotifications.bootstrap,
+                         injectionTime: .atDocumentStart, forMainFrameOnly: true))
+        // System-bar theming for the same one signed entry file, main frame only. It carries a
+        // colour and a darkness flag, never identity, credential or transport data.
+        let themeBridge = MegaNativeThemeBridge(controller: self, entry: entry)
+        self.themeBridge = themeBridge
+        configuration.userContentController.addScriptMessageHandler(
+            themeBridge, contentWorld: .page, name: "megaNativeTheme")
+        configuration.userContentController.addUserScript(
+            WKUserScript(source: MegaNativeThemeBridge.bootstrap,
                          injectionTime: .atDocumentStart, forMainFrameOnly: true))
         // Real native Apple sign-in must use the registered bundle/entitlement.
         // Default is disabled until authorized App ID and P05 API handshake.
@@ -142,6 +160,21 @@ final class MegaXOGameController: UIViewController, WKNavigationDelegate, WKUIDe
                 webView.loadFileURL(entry, allowingReadAccessTo: root)
             }
         }
+    }
+
+    /// Applies one theme announcement from the signed page: the window, the WebView, and therefore
+    /// every strip the safe-area constraints leave uncovered (status bar and home indicator area),
+    /// plus the status bar glyph style. The page's own colours remain authoritative; this only
+    /// makes the native chrome agree with them.
+    func applyNativeTheme(dark: Bool, surface: UIColor) {
+        // A dark game surface must not sit inside a light-appearance shell, or the system would
+        // restyle the bars and any sheet the page raises behind its back.
+        overrideUserInterfaceStyle = dark ? .dark : .light
+        darkSurface = dark
+        view.backgroundColor = surface
+        game?.backgroundColor = surface
+        game?.scrollView.backgroundColor = surface
+        setNeedsStatusBarAppearanceUpdate()
     }
 
     private func showMissingBundle() {

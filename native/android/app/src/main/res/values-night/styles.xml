@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Night variant of the pre-JS default, matching the midnight theme's surface. It only
+         prevents a light frame from flashing before the page applies its theme; the bridge still
+         repaints the bars for whichever theme the player actually chose. -->
+    <style name="Theme.MegaXO" parent="android:style/Theme.Material.NoActionBar">
+        <item name="android:windowLightStatusBar">false</item>
+        <item name="android:windowLightNavigationBar">false</item>
+        <item name="android:statusBarColor">#101720</item>
+        <item name="android:navigationBarColor">#101720</item>
+        <item name="android:windowBackground">#101720</item>
+        <item name="android:windowActionModeOverlay">true</item>
+    </style>
+</resources>

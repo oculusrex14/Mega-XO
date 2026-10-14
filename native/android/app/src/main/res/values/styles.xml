@@ -1,9 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <!-- Pre-JS default only. The signed page owns the real bar colours: it calls
+         window.MegaNativeTheme.apply from its theme application, and MegaAndroidThemeBridge paints
+         the status bar, navigation bar, icon appearance and every inset area with the active
+         theme's surface colour. These values are what the very first frame uses, so they stay a
+         coherent light Vector look rather than a mismatched leftover. -->
     <style name="Theme.MegaXO" parent="android:style/Theme.Material.Light.NoActionBar">
         <item name="android:windowLightStatusBar">true</item>
+        <item name="android:windowLightNavigationBar">true</item>
         <item name="android:statusBarColor">#F7F9FC</item>
         <item name="android:navigationBarColor">#F7F9FC</item>
+        <item name="android:windowBackground">#F7F9FC</item>
         <item name="android:windowActionModeOverlay">true</item>
     </style>
 </resources>

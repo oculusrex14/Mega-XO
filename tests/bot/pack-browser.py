@@ -16,7 +16,13 @@ try:
   page.route('**/*',lambda r:r.continue_() if r.request.url.startswith(base) else r.abort())
   page.goto(base+'/index.html',wait_until='domcontentloaded');page.locator('[data-c="guest"]').click()
   before=page.evaluate('MegaApp.getSave()')
-  page.locator('[data-action="aipack"]').click();assert 'No approved Impossible' in page.locator('#aiPackPanel').inner_text();assert page.locator('[data-pack-action="download"]').count()==0
+  # The optional pack manager is an engineered capability with NO user-facing entry point: the
+  # playable Impossible mode is hidden from the UI (owner decision), so the app must render no
+  # control that opens it. The engine and this manager stay shipped and are exercised below
+  # through their public APIs, which is the contract this suite actually protects.
+  assert page.locator('[data-action="aipack"]').count()==0
+  assert page.evaluate("MegaGame.LEVELS.filter(x=>x==='Impossible').length")==0
+  page.evaluate('MegaAiPack.show()');assert 'No approved Impossible' in page.locator('#aiPackPanel').inner_text();assert page.locator('[data-pack-action="download"]').count()==0
   assert page.evaluate('MegaBotPack.APPROVED_CATALOG.length')==0
   assert optional_requests==[],optional_requests
   assert page.evaluate('MegaApp.getSave()')==before
@@ -41,7 +47,7 @@ try:
   assert not page.locator('[data-pack-action="start"]').is_disabled()
   after=page.evaluate('MegaApp.getSave()');assert after['wallet']==before['wallet'];assert after['records']==before['records'];assert after['daily']==before['daily']
   assert page.evaluate('MegaGame.LEVELS.length')==5
-  report={'browser':'Chromium','browserVersion':browser.version,'syntheticBytes':True,'approvedProductCatalogEmpty':True,'noAutomaticDownload':True,'consentRequired':True,'verifiedCache':True,'removeAndRedownload':True,'startActionRendered':True,'noEconomyOrStatsChange':True,'pageErrors':errors}
+  report={'browser':'Chromium','browserVersion':browser.version,'syntheticBytes':True,'approvedProductCatalogEmpty':True,'playableImpossibleHiddenFromUI':True,'noAutomaticDownload':True,'consentRequired':True,'verifiedCache':True,'removeAndRedownload':True,'startActionRendered':True,'noEconomyOrStatsChange':True,'pageErrors':errors}
   page.screenshot(path=str(OUT/'pack-manager.png'));browser.close()
  if errors:raise AssertionError(errors)
  (OUT/'pack-browser.json').write_text(json.dumps(report,indent=2)+'\n');print(json.dumps(report,indent=2))

@@ -509,7 +509,7 @@ async function main() {
   const redisCredentialFile = process.env[REDIS_CREDENTIALS_ENV] || redisInventory.redis.credentialFile;
   const redisTarget = resolveManagedRedisTarget({ inventory: redisInventory, environment: 'production', credentialFile: redisCredentialFile });
   if (redisTarget.namespace !== namespace.environment) throw REFUSE('NAMESPACE_ISOLATION_FAILED');
-  const ephemera = createEphemeraService({ ...redisTarget.options, keyVersion: namespace.keyVersion });
+  const ephemera = await createEphemeraService({ ...redisTarget.options, keyVersion: namespace.keyVersion });
   if (!(await ephemera.healthy())) throw REFUSE('PRODUCTION_REDIS_UNHEALTHY');
 
   /* 5. ROLE-SEPARATED POOLS. One pool per role, each max capped by the inventory's role limit. */

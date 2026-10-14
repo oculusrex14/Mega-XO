@@ -70,3 +70,45 @@ This page is the live coordination index for Main (VPS/integration/DB/native/rel
   `scripts/p21/build-web.js` and served from the isolated staging origin.
 - **D3:** Production API must never point at the staging Core; Core credentials/DB/Redis namespace are
   provisioned independently at cutover.
+
+---
+
+## Session close — 2026-10-14 outcome
+
+All A01–A40 cases were reconciled against executed evidence: **PASS 14 / RUNNING 15 / BLOCKED 11 /
+NOT_RUN 0** (`ACCEPTANCE-CASE-RECONCILIATION-20261014.md`). Gates G00–G20 accepted; P21 owner-deferred.
+
+### Completed and verified
+
+| Area | Evidence |
+| --- | --- |
+| Production PostgreSQL: 51/51 migrations, 5 least-privilege roles, capture-table isolation | `PRODUCTION-PG-PROVISIONED-20261014.md` |
+| Real V4→PG import + reconciliation (0 unexplained, C1–C9 pass) | `E2-PRODUCTION-IMPORT-RECONCILIATION-20261014.md` |
+| V4 snapshot restored off-box, hash equals manifest | `E1-V4-SNAPSHOT-RESTORE-20261014.md` |
+| V5-only R2 target + real encrypted backup + independent retrieve | `P15-V5-BACKUP-RETRIEVE-MEASURED-20261014.md` |
+| Complete DR restore (counts equal production) | `P15-DR-RESTORE-PROVEN-20261014.md`, `P15-PRODUCTION-RESTORE-PROCEDURE-20261014.md` |
+| Neon PITR recovery point | `NEON-PITR-VERIFIED-20261014.md` |
+| Incident + recovery alerts delivered | `DELIVERED-ALERTS-20261014.md` |
+| Automatic supervised backup service | `V5-BACKUP-SERVICE-20261014.md` |
+| Day-one capture policy + 13/15 receipts | `DC00-R35-COLLECTION-EVIDENCE-20261014.md` |
+| Production image/secrets/namespace + live rehearsal | `E3-PRODUCTION-STACK-PROVISIONED-20261014.md`, `E5-PRODUCTION-STACK-REHEARSAL-20261014.md` |
+| Write-fence inventory + `V4_SERVING` manifest | `E4-V4-WRITE-FENCE-INVENTORY-20261014.md`, `v4-serving-manifest.json` |
+| Android online/offline flavors + real device install | `native/android/**` (`3531e98`), `DEVICE-ANDROID-EB2101-20261014.md` |
+| iOS build + cross-platform parity | `DEVICE-IOS-IPHONE16PRO-20261014.md` |
+| Website acceptance 256/5/0; domain association prepared | `P3-*`, `VERCEL-DOMAIN-PREPARED-20261014.md` |
+| Incident/rollback/forward-recovery runbook | `V5-INCIDENT-AND-FORWARD-RECOVERY-RUNBOOK-20261014.md` |
+| Final report | `FINAL-PRODUCTION-DEPLOYMENT-REPORT-20261014.md` |
+
+### Postponed (mandatory gates blocked)
+
+E4 fence → E5 first write → retirement are **postponed** because the P22 operator packet and the DC00
+day-one gate are both BLOCKED on external decisions. Exact unblocking actions are in
+`E4-E5-CUTOVER-POSTPONED-20261014.md`.
+
+### Open (in flight / owner-gated)
+
+- Native session lifecycle client wiring + iOS parity (agents).
+- Native session routes mount in `apps/api/routes/account.js` (agent).
+- Real app IDs / signing identities / entitlements (owner).
+- Store billing + live ads (provider approval).
+- Vercel apex/API DNS records at Hostinger (owner).

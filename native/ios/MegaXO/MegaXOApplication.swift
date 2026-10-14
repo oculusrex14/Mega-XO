@@ -1,4 +1,5 @@
 import UIKit
+import os
 import WebKit
 
 @main
@@ -47,6 +48,7 @@ final class MegaXOGameController: UIViewController, WKNavigationDelegate, WKUIDe
     private var nativeNotifications: MegaLocalNotifications?
     private var themeBridge: MegaNativeThemeBridge?
     private var lanBridge: MegaNativeLanBridge?
+    private var probeWork: DispatchWorkItem?
     private var identityBridge: MegaIOSIdentityBridge?
     private var apiBridge: MegaIOSApiBridge?
     private var nativeSession: MegaNativeSession?
@@ -145,7 +147,20 @@ final class MegaXOGameController: UIViewController, WKNavigationDelegate, WKUIDe
         webView.backgroundColor = view.backgroundColor
         webView.scrollView.contentInsetAdjustmentBehavior = .never
         webView.translatesAutoresizingMaskIntoConstraints = false
+        // Parity with the Android host, which enables `WebView.setWebContentsDebuggingEnabled`
+        // in debug builds. Without this the bundled page cannot be inspected by a developer or
+        // by a device-verification harness, which is how the owner-reported defects were found
+        // on Android. DEBUG only: a release build leaves it unset.
+        #if DEBUG
+        if #available(iOS 16.4, *) { webView.isInspectable = true }
+        #endif
         view.addSubview(webView)
+        // The window now fills the display (UILaunchScreen), but the WebView itself stays inside the
+        // safe area, exactly like the Android host: there the system insets pad the WebView, so the
+        // page's content sits below the status bar and above the gesture bar, and the bar strips are
+        // painted the active theme colour by MegaNativeThemeBridge.applyNativeTheme rather than
+        // showing the window. Letting the WebView run edge to edge instead made page screens that
+        // have no top inset (the account sheet) collide with the clock.
         NSLayoutConstraint.activate([
             webView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
             webView.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor),
@@ -153,6 +168,30 @@ final class MegaXOGameController: UIViewController, WKNavigationDelegate, WKUIDe
             webView.trailingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.trailingAnchor)
         ])
         game = webView
+        // Diagnostics parity with the Android host's MegaNativeRenderProbe: report what the page
+        // actually has once it finishes loading, so a missing primitive, or a playable-Impossible
+        // entry point that should not exist, is visible in the device log instead of showing up only
+        // as a feature that silently does nothing. DEBUG only.
+        #if DEBUG
+        probeWork = DispatchWorkItem { [weak self] in
+            guard let webView = self?.game else { return }
+            webView.evaluateJavaScript(
+                "JSON.stringify({room:typeof window.MegaLanRoom,socket:typeof window.MegaLanSocket,"
+                + "discovery:typeof window.MegaLanDiscovery,host:typeof window.MegaLanHost,"
+                + "intent:localStorage.getItem('mega_lan_host_intent_v1'),"
+                + "tutorial:localStorage.getItem('mega_v32_tutorial_seen'),"
+                + "theme:document.documentElement.dataset.theme,"
+                + "aipackEntries:document.querySelectorAll('[data-action=\"aipack\"]').length,"
+                + "impossibleChips:Array.from(document.querySelectorAll('.setup-chip'))"
+                + ".filter(function(c){return /IMPOSSIBLE/i.test(c.textContent)}).length,"
+                + "partyChoices:document.querySelectorAll('.party-choice').length,"
+                + "cells:document.querySelectorAll('.cell').length})"
+            ) { value, error in
+                NSLog("LANPROBE page=%@ err=%@", String(describing: value), String(describing: error))
+            }
+        }
+        if let probeWork { DispatchQueue.main.asyncAfter(deadline: .now() + 4, execute: probeWork) }
+        #endif
         // The LAN bridge answers page requests on its own queues and hops to the main thread only
         // for the one synchronous `MegaLanRoom.handle` call the frozen contract requires.
         lanBridge.host = webView

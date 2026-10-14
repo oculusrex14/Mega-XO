@@ -37,6 +37,13 @@
  </dict>
 </dict>
 <key>UIRequiredDeviceCapabilities</key><array><string>arm64</string></array>
+<!-- Without a launch screen declaration iOS runs the app in legacy letterbox mode at a reduced
+     size, so the app never filled the iPhone display: the status-bar and home-indicator strips
+     showed the window's black background instead of the theme. The app has no launch artwork, so
+     an empty UILaunchScreen is the correct declaration - it makes the system give the app the
+     full screen, and the page's own env(safe-area-inset-*) padding keeps content clear of the
+     notch and the gesture bar. -->
+<key>UILaunchScreen</key><dict/>
 <key>UISupportedInterfaceOrientations</key><array><string>UIInterfaceOrientationPortrait</string><string>UIInterfaceOrientationLandscapeLeft</string><string>UIInterfaceOrientationLandscapeRight</string></array>
 <key>UISupportedInterfaceOrientations~ipad</key><array><string>UIInterfaceOrientationPortrait</string><string>UIInterfaceOrientationPortraitUpsideDown</string><string>UIInterfaceOrientationLandscapeLeft</string><string>UIInterfaceOrientationLandscapeRight</string></array>
 </dict></plist>

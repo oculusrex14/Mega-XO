@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- P20-03 ONLINE TARGET manifest overlay (flavor `online` only).
+     The `offline` flavor keeps the base manifest's `tools:node="remove"` on
+     INTERNET/ACCESS_NETWORK_STATE, so the default artifact is still network-isolated. This overlay
+     re-declares those two permissions with `tools:node="replace"`, which turns them into real
+     granted permissions for the authenticated online build. AD_ID stays removed because the base
+     manifest's removal is not overridden here.
+
+     This overlay adds NO new capability beyond network access: the session still lives in the
+     Android Keystore vault, the transport still refuses cookies / client-supplied Authorization /
+     non-https / arbitrary hosts, and no server authority or secret is bundled. -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+    <uses-permission android:name="android.permission.INTERNET" tools:node="replace" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" tools:node="replace" />
+</manifest>

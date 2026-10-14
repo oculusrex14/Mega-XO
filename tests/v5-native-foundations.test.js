@@ -49,6 +49,30 @@ test('Android enforces local HTTPS app assets, no insecure file access and no in
   assert.match(manifest, /android:allowBackup="false"/);
 });
 
+test('the offline flavor stays network-isolated while the online flavor grants exactly two permissions', () => {
+  const base = read('native/android/app/src/main/AndroidManifest.xml');
+  const overlay = read('native/android/app/src/online/AndroidManifest.xml');
+  const gradle = read('native/android/app/build.gradle.kts');
+  // The default (offline) artifact must still REMOVE the network permissions, and must never
+  // restore the advertising id in any flavor.
+  assert.match(base, /android\.permission\.INTERNET"\s+tools:node="remove"/);
+  assert.match(base, /android\.permission\.ACCESS_NETWORK_STATE"\s+tools:node="remove"/);
+  assert.match(base, /com\.google\.android\.gms\.permission\.AD_ID"\s+tools:node="remove"/);
+  // The online overlay replaces exactly those two, and nothing else.
+  assert.equal((overlay.match(/uses-permission/g) || []).length, 2);
+  assert.match(overlay, /android\.permission\.INTERNET"\s+tools:node="replace"/);
+  assert.match(overlay, /android\.permission\.ACCESS_NETWORK_STATE"\s+tools:node="replace"/);
+  assert.doesNotMatch(overlay.split('-->').pop(), /AD_ID/);
+  // Both flavors exist and only the online one declares the online target.
+  assert.match(gradle, /create\("offline"\)/);
+  assert.match(gradle, /create\("online"\)/);
+  assert.match(gradle, /MEGA_ONLINE_TARGET", "false"/);
+  assert.match(gradle, /MEGA_ONLINE_TARGET", "true"/);
+  // Cleartext and backup posture is unchanged by the overlay.
+  assert.match(base, /android:usesCleartextTraffic="false"/);
+  assert.match(base, /android:allowBackup="false"/);
+});
+
 test('iOS restricts the loaded signed file bundle and does not expose a bridge', () => {
   const swift = read('native/ios/MegaXO/MegaXOApplication.swift');
   const project = read('native/ios/MegaXO.xcodeproj/project.pbxproj');

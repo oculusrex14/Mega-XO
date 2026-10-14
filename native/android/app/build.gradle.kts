@@ -74,6 +74,24 @@ android {
         versionCode = nativeVersionCode
         versionName = nativeVersionName
         buildConfigField("String", "MEGA_GOOGLE_SERVER_CLIENT_ID", "\"$googleNativeServerClientId\"")
+        // P20-03 ONLINE TARGET SWITCH. The `offline` flavor (the DEFAULT, and the only artifact the
+        // release path builds without an explicit choice) keeps `tools:node="remove"` on
+        // INTERNET/ACCESS_NETWORK_STATE, so an accidentally built APK cannot reach the network.
+        // The `online` flavor drops those removals for the authenticated online target, whose
+        // transport, Keystore session vault and provider identity bridge are already implemented
+        // (MegaNativeHttpClient/MegaSecureSessionVault/MegaAndroidIdentityBridge). AD_ID stays
+        // removed in BOTH flavors. Build the online variant with `:app:assembleOnlineDebug`.
+        flavorDimensions += "target"
+        productFlavors {
+            create("offline") {
+                dimension = "target"
+                buildConfigField("boolean", "MEGA_ONLINE_TARGET", "false")
+            }
+            create("online") {
+                dimension = "target"
+                buildConfigField("boolean", "MEGA_ONLINE_TARGET", "true")
+            }
+        }
         // Official test app ID for a non-distributing, offline prototype.
         // Real releases require an owner-verified AdMob registration.
         manifestPlaceholders["megaAdMobAppId"] =

@@ -30,6 +30,13 @@ The approval of collection scope does not supply missing numeric retention windo
 - Vercel default high-severity alert rule `ar_default` has team-owner notifications enabled. This is configuration only: no actual incident/notification/recovery delivery proved.
 - Staging `/readyz` returned HTTP 200 with `live:true, ready:true`. This health check is not authenticated-game or production acceptance.
 
+### Delivered preparation since the first checkpoint
+
+- Code commit `6532a1e0536c5f620b4d3c4929d2f1198d18beaa` contains AdMob's console-authorized seller row at `public/app-ads.txt`, explicit builder inclusion and Vercel text/plain header. Prepared clean frontend hash `4eb558b78ca46fdcaf062218d1eaa387d75c43dfde7d69c7afde5736ac1f589e`, 153 files / 3,547,793 bytes; all 256 affected website tests pass. The currently served frontend remains source `5897497`, hash `31cdb4d3…`, 152 files. No hot restart performed during Main's B03.
+- Free external TCP monitor `prelaunch-core-tcp443`, ID `804264653`, initially Up. This is port reachability only; Main still supplies a safe application-health hook.
+- Both UptimeRobot DOWN/UP **test** messages were observed in the approved receiving inbox after owner sign-in. Receiver values remain private. Controlled staging outage/recovery and broader service monitors remain open.
+- Manual anonymous Brave practice passed the six-move tutorial/Beginner handoff, legal keyboard moves and five browser appearances. This is not authenticated multi-account, real-phone or novice-study acceptance.
+
 ## Coordination limitation
 
 The Luna browser agent found Terminal running, but computer-use safety review rejected opening it. No Main message was typed, queued or sent, and no research action was interrupted. This file is the durable coordination handoff; do not claim the Main task received a direct message.

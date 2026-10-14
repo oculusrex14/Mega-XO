@@ -213,6 +213,9 @@ async function onlineMove(move){
 async function onlineResign(){if(!match?.online)return;try{await NET.resign(match.id,opId());close();receiveOnline(await NET.match(match.id));}catch(e){notify(friendlyError(e));}}
 // Build the fixed board once. Theme changes and marks never replace its grid containers.
 const miniNodes=[],cellNodes=[];
+// Destination preview currently shown by hover or press-and-hold, or null. `paint()` re-asserts it
+// because it rebuilds every Mini Board's class list on each poller tick.
+let previewCell=null;
 // Press-and-hold destination preview for touch/pen. Mouse keeps hover preview.
 let holdTimer=null,holdFired=false,suppressHoldClick=false;
 function releaseTouchHold(){clearTimeout(holdTimer);holdTimer=null;if(holdFired){suppressHoldClick=true;clearPreview();}holdFired=false;}
@@ -247,6 +250,10 @@ function paint(){if(!match)return;const s=match.state,canHuman=!s.winner&&(match
   for(let c=0;c<9;c++){const n=cellNodes[b][c],v=s.board[b][c];if(n.dataset.mark!==(v||'')){n.innerHTML=v?mark(v):'';n.dataset.mark=v||'';}n.disabled=!canHuman||!choices.has(b*9+c);n.classList.toggle('last',!!match.last&&match.last.b===b&&match.last.c===c);n.setAttribute('aria-label',G.NAMES[b]+' board, '+G.NAMES[c]+' cell, '+(v||'empty'));}
   claim.hidden=!s.mini[b];if(s.mini[b]&&claim.dataset.owner!==s.mini[b]){claim.className='claim '+s.mini[b].toLowerCase();claim.innerHTML=s.mini[b]==='DRAW'?'<span>DRAW</span>':mark(s.mini[b]);claim.dataset.owner=s.mini[b];}
  }
+ // `el.className=...` above rebuilds each Mini Board's class list, which would silently drop an
+ // active destination preview (the poller repaints about every 900 ms, and a press-and-hold lasts
+ // longer than that). Re-assert the preview mark so a hold keeps its destination highlighted.
+ if(previewCell){const {b,next}=previewCell;cellNodes[b][next].classList.add('cell-hover',s.turn==='X'?'hover-x':'hover-o');if(data.settings.preview&&!s.mini[next])miniNodes[next].el.classList.add('preview');}
  $('#miniX').textContent=s.mini.filter(x=>x==='X').length;$('#miniO').textContent=s.mini.filter(x=>x==='O').length;$('#playerX').classList.toggle('active',!s.winner&&s.turn==='X');$('#playerO').classList.toggle('active',!s.winner&&s.turn==='O');
  const who=match.online?(match.symbols[s.turn]===online.profile?.id?'YOUR TURN':'OPPONENT TURN'):match.mode==='local'?(s.turn==='X'?'PLAYER X':'PLAYER O'):(s.turn==='X'?'YOUR TURN':'BOT TURN');
  $('#turnText').textContent=s.winner?(s.winner==='DRAW'?'MATCH DRAWN':s.winner+' WINS'):s.required===null?'FREE ROUTE':who+' \u00b7 '+G.NAMES[s.required].toUpperCase();
@@ -254,8 +261,8 @@ function paint(){if(!match)return;const s=match.state,canHuman=!s.winner&&(match
  $('#clock').textContent=match.turnLimit?Math.ceil(match.turnRemaining)+'s':'\u221e';$('#clock').classList.toggle('urgent',match.turnLimit>0&&match.turnRemaining<=5);
  T?.render(match);
 }
-function clearPreview(){miniNodes.forEach(x=>x.el.classList.remove('preview'));cellNodes.flat().forEach(n=>n.classList.remove('cell-hover','hover-x','hover-o'));if(match)$('#previewText').textContent=match.pending?'Tap the same cell again to confirm.':"Your cell determines the opponent's next board.";}
-function preview(b,c){if(!match||cellNodes[b][c].disabled)return;clearPreview();cellNodes[b][c].classList.add('cell-hover',match.state.turn==='X'?'hover-x':'hover-o');if(!data.settings.preview)return;if(match.state.mini[c])$('#previewText').textContent='This gives your opponent free choice of any open board.';else{miniNodes[c].el.classList.add('preview');$('#previewText').textContent='This sends your opponent to the '+G.NAMES[c].toLowerCase()+' board.';}}
+function clearPreview(){previewCell=null;miniNodes.forEach(x=>x.el.classList.remove('preview'));cellNodes.flat().forEach(n=>n.classList.remove('cell-hover','hover-x','hover-o'));if(match)$('#previewText').textContent=match.pending?'Tap the same cell again to confirm.':"Your cell determines the opponent's next board.";}
+function preview(b,c){if(!match||cellNodes[b][c].disabled)return;clearPreview();previewCell={b,next:c};cellNodes[b][c].classList.add('cell-hover',match.state.turn==='X'?'hover-x':'hover-o');if(!data.settings.preview)return;if(match.state.mini[c])$('#previewText').textContent='This gives your opponent free choice of any open board.';else{miniNodes[c].el.classList.add('preview');$('#previewText').textContent='This sends your opponent to the '+G.NAMES[c].toLowerCase()+' board.';}}
 function animateRoute(b,c,next){const routeOverlay=$('#routeOverlay');routeOverlay.innerHTML='';if(next===null)return;requestAnimationFrame(()=>{const wrap=$('#boardWrap').getBoundingClientRect(),cell=cellNodes[b]?.[c],target=miniNodes[next]?.el;if(!cell||!target)return;const a=cell.getBoundingClientRect(),t=target.getBoundingClientRect();const x1=a.left+a.width/2-wrap.left,y1=a.top+a.height/2-wrap.top,x2=t.left+t.width/2-wrap.left,y2=t.top+t.height/2-wrap.top;routeOverlay.setAttribute('viewBox','0 0 '+wrap.width+' '+wrap.height);routeOverlay.innerHTML='<line x1="'+x1+'" y1="'+y1+'" x2="'+x2+'" y2="'+y2+'"/><circle cx="'+x2+'" cy="'+y2+'" r="5"/>';target.classList.add('route-target');setTimeout(()=>{routeOverlay.innerHTML='';target.classList.remove('route-target');},700);});}
 
 function humanMove(b,c){if(match?.online){onlineMove({b,c});return;}if(!match||match.state.winner||sheetOpen()||(match.mode==='bot'&&match.state.turn==='O'))return;if(T&&!T.allows(match,{b,c})){T.hint();return;}lastInput=performance.now();if(data.settings.confirm&&(!match.pending||match.pending.b!==b||match.pending.c!==c)){match.pending={b,c};preview(b,c);$('#previewText').textContent='Tap the same cell again to confirm.';return;}move({b,c},'human');}

@@ -581,6 +581,10 @@ test('6. Invariant verification: asserts zero new website or browser gameplay UI
     'privacy-choices.html',
     'delete-account.html',
     'legal.css',
+    // IAB/AdMob seller declaration. A mandated compliance technical text file that must be
+    // served from the site root, so it belongs in this compliance-only directory alongside
+    // legal.css. It is not a page, a bundle or playable UI, so invariant 6.4 is unaffected.
+    'app-ads.txt',
   ]);
 
   for (const file of publicEntries) {

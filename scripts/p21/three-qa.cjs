@@ -16,8 +16,8 @@ const OUT_DIR = path.join(ASSET_DIR, 'stills');
 const TURNTABLE_DIR = path.join(ASSET_DIR, 'turntables');
 const TURNTABLE_WORK_DIR = path.join(ROOT, '.artifacts/p21-three-turntable-frames');
 const MANIFEST_PATH = path.join(ASSET_DIR, 'provenance.json');
-const EVIDENCE_PATH = path.join(ASSET_DIR, 'render-evidence.json');
-const EXPECTED_COMMIT = '9df5e8e5cbc92a3832551c160cfef9d15763db45';
+const FULL_EVIDENCE_PATH = path.join(ASSET_DIR, 'render-evidence.json');
+const EXPECTED_COMMIT = '4d76d755d5a760d514d5f35f3768ac90fba2bc79';
 const ASSETS = [
   'x', 'o', 'coin', 'crown',
   'rank-wood', 'rank-stone', 'rank-iron', 'rank-bronze', 'rank-silver', 'rank-gold',
@@ -26,6 +26,19 @@ const ASSETS = [
 ];
 const QUALITIES = ['high', 'low'];
 const VIEWS = ['front', 'quarter'];
+function cliAssetList(option, fallback) {
+  const prefix = `--${option}=`;
+  const value = process.argv.find(argument => argument.startsWith(prefix))?.slice(prefix.length);
+  const names = value ? value.split(',').filter(Boolean) : fallback;
+  if (names.some(name => !ASSETS.includes(name)) || new Set(names).size !== names.length) {
+    throw new Error(`--${option} must contain unique known asset IDs: ${ASSETS.join(', ')}`);
+  }
+  return names;
+}
+const MATRIX_ASSETS = cliAssetList('assets', ASSETS);
+const TURNTABLE_ASSETS = cliAssetList('turntables', []);
+const FULL_MATRIX_RUN = MATRIX_ASSETS.length === ASSETS.length && TURNTABLE_ASSETS.length === 0;
+const EVIDENCE_PATH = FULL_MATRIX_RUN ? FULL_EVIDENCE_PATH : path.join(ASSET_DIR, 'render-evidence-crystal-repair.json');
 const sha256 = bytes => crypto.createHash('sha256').update(bytes).digest('hex');
 const rel = file => path.relative(ROOT, file).split(path.sep).join('/');
 
@@ -42,13 +55,15 @@ function expectedSourceHash(manifest, file) {
   return manifest.authoredSourceFiles?.find(item => item.path === file)?.sha256;
 }
 
-function getInputSnapshot(manifest) {
+function getInputSnapshot(manifest, matrixAssets, turntableAssets) {
   const revision = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: ROOT, encoding: 'utf8' }).trim();
   if (revision !== EXPECTED_COMMIT) throw new Error(`Source revision changed during this matrix: expected ${EXPECTED_COMMIT}, observed ${revision}`);
+  const inputAssets = [...new Set([...matrixAssets, ...turntableAssets])];
   const files = [
     'assets/p21/three/factories.mjs',
     'scripts/p21/export-three.mjs',
-    ...ASSETS.flatMap(asset => QUALITIES.map(quality => `assets/p21/three/exports/${asset}-${quality}.glb`)),
+    'scripts/p21/three-qa.cjs',
+    ...inputAssets.flatMap(asset => QUALITIES.map(quality => `assets/p21/three/exports/${asset}-${quality}.glb`)),
   ].map(file => {
     const actual = sha256(fs.readFileSync(path.join(ROOT, file)));
     const expected = file.endsWith('.glb')
@@ -57,7 +72,60 @@ function getInputSnapshot(manifest) {
     if (!expected || actual !== expected) throw new Error(`Input differs from recorded asset provenance: ${file}`);
     return { path: file, sha256: actual, bytes: fs.statSync(path.join(ROOT, file)).size };
   });
-  return { expectedRevision: EXPECTED_COMMIT, observedRevision: revision, files };
+  return { expectedRevision: EXPECTED_COMMIT, observedRevision: revision, matrixAssets, turntableAssets, files };
+}
+
+function buildRepairReuseEvidence(manifest, matrixAssets) {
+  const baseline = manifest.changeAudit?.baseline;
+  if (!baseline) {
+    if (matrixAssets.length !== ASSETS.length) throw new Error('A scoped run requires the captured pre-change SHA-256 baseline.');
+    return { changedAssets: [], reusedAssets: [], priorEvidence: null };
+  }
+  const baselineHashes = new Map(baseline.files.map(file => [file.path, file.sha256]));
+  const oldEvidenceBytes = fs.readFileSync(FULL_EVIDENCE_PATH);
+  const priorEvidence = JSON.parse(oldEvidenceBytes.toString('utf8'));
+  const expectedEvidenceHash = baselineHashes.get('assets/p21/three/render-evidence.json');
+  if (!expectedEvidenceHash || sha256(oldEvidenceBytes) !== expectedEvidenceHash || priorEvidence.status !== 'PASS') {
+    throw new Error('The full-matrix baseline evidence does not match the captured pre-change hash or PASS status.');
+  }
+  const priorInputHashes = new Map((priorEvidence.inputs?.files || []).map(file => [file.path, file.sha256]));
+  const priorMatrix = new Map((priorEvidence.matrix || []).map(item => [path.basename(item.file), item]));
+  const priorReadbacks = new Map((priorEvidence.checks || []).filter(item => item.id === 'THREE-QA-GLTF-READBACK' && item.result === 'PASS').map(item => [item.file, item]));
+  const changedAssets = ASSETS.filter(asset => QUALITIES.some(quality => {
+    const file = `assets/p21/three/exports/${asset}-${quality}.glb`;
+    const before = baselineHashes.get(file);
+    const now = sha256(fs.readFileSync(path.join(ROOT, file)));
+    return before !== now;
+  }));
+  const missingChanged = changedAssets.filter(asset => !matrixAssets.includes(asset));
+  if (missingChanged.length) throw new Error(`Scoped repair matrix omitted changed model assets: ${missingChanged.join(', ')}`);
+  const reusedAssets = [];
+  for (const asset of ASSETS.filter(name => !matrixAssets.includes(name))) {
+    const files = QUALITIES.map(quality => {
+      const file = `assets/p21/three/exports/${asset}-${quality}.glb`;
+      const now = sha256(fs.readFileSync(path.join(ROOT, file)));
+      const before = baselineHashes.get(file);
+      const priorInput = priorInputHashes.get(file);
+      const readback = priorReadbacks.get(`${asset}-${quality}.glb`);
+      if (!before || now !== before || priorInput !== before || !readback) {
+        throw new Error(`Cannot reuse prior full-matrix GLB evidence for changed or unmatched input ${file}`);
+      }
+      return { path:file, sha256:now, bytes:fs.statSync(path.join(ROOT,file)).size, priorReadback:{meshCount:readback.meshCount,vertices:readback.vertices,triangles:readback.triangles} };
+    });
+    const stills = QUALITIES.flatMap(quality => VIEWS.map(view => {
+      const file = `assets/p21/three/stills/${asset}-${quality}-${view}.png`;
+      const old = priorMatrix.get(`${asset}-${quality}-${view}.png`);
+      const now = fs.readFileSync(path.join(ROOT,file));
+      if (!old || sha256(now) !== old.sha256) throw new Error(`Cannot reuse prior rendered still evidence for changed or unmatched input ${file}`);
+      return { path:file, sha256:old.sha256, bytes:now.length };
+    }));
+    reusedAssets.push({asset,glbs:files,stills});
+  }
+  return {
+    changedAssets,
+    reusedAssets,
+    priorEvidence:{path:'assets/p21/three/render-evidence.json',sha256:expectedEvidenceHash,sourceCommit:priorEvidence.sourceCommit,status:priorEvidence.status},
+  };
 }
 
 function paeth(a, b, c) {
@@ -128,6 +196,26 @@ function inspectPng(bytes) {
     alphaCoverage: visiblePixels ? { minX, minY, maxX, maxY, width: maxX - minX + 1, height: maxY - minY + 1 } : null,
     hasTransparentBackground: transparentPixels > 0 && visiblePixels > 0,
   };
+}
+
+function inspectRgbaFrames(bytes, width, height, frameCount) {
+  const frameBytes=width*height*4;
+  if(bytes.length!==frameBytes*frameCount)throw new Error(`RGBA decoder returned ${bytes.length} bytes; expected ${frameBytes*frameCount}`);
+  const frames=[];
+  for(let frame=0;frame<frameCount;frame++) {
+    let transparentPixels=0,visiblePixels=0,opaquePixels=0,alphaMin=255,alphaMax=0;
+    const offset=frame*frameBytes;
+    for(let pixel=0;pixel<width*height;pixel++) {
+      const alpha=bytes[offset+pixel*4+3];
+      if(alpha<alphaMin)alphaMin=alpha;
+      if(alpha>alphaMax)alphaMax=alpha;
+      if(alpha===0)transparentPixels++;
+      else { visiblePixels++; if(alpha===255)opaquePixels++; }
+    }
+    if(!transparentPixels||!visiblePixels||alphaMax<250)throw new Error(`Decoded frame ${frame} did not preserve both transparent background and visible opaque geometry`);
+    frames.push({index:frame,transparentPixels,visiblePixels,opaquePixels,alphaMin,alphaMax});
+  }
+  return frames;
 }
 
 function makeRenderHtml() {
@@ -266,14 +354,17 @@ function createAllowlistedServer(manifest, audit) {
 
 async function main() {
   const manifest = readJson(MANIFEST_PATH);
-  const inputs = getInputSnapshot(manifest);
+  const reuse = buildRepairReuseEvidence(manifest, MATRIX_ASSETS);
+  const inputs = getInputSnapshot(manifest, MATRIX_ASSETS, TURNTABLE_ASSETS);
   fs.mkdirSync(OUT_DIR, { recursive:true });
   const evidence = {
     schemaVersion:1,
     startedAt:new Date().toISOString(),
     status:'RUNNING',
+    mode:FULL_MATRIX_RUN?'FULL_FAMILY_MATRIX':'SCOPED_REPAIR_MATRIX',
     sourceCommit:inputs.observedRevision,
     sourceRevisionExpected:EXPECTED_COMMIT,
+    scope:{matrixAssets:MATRIX_ASSETS,turntableAssets:TURNTABLE_ASSETS,changedAssets:reuse.changedAssets,reusedAssets:reuse.reusedAssets.map(item=>item.asset),reuseStatus:reuse.priorEvidence?'MATCHED_PRIOR_FULL_MATRIX_FOR_UNCHANGED_GLB_AND_STILL_HASHES':'NO_PRIOR_MATRIX_REUSE',priorEvidence:reuse.priorEvidence},
     inputs,
     framework:{ name:'Playwright', version:require('playwright/package.json').version, browserEngine:'Chromium', headless:true },
     execution:{
@@ -286,6 +377,7 @@ async function main() {
     checks:[],
     failures:[],
     stillDirectory:'assets/p21/three/stills',
+    reusedAssetEvidence:reuse.reusedAssets,
   };
   let playwright, browser, context, page, server, origin;
   const check = (id, passed, details={}) => {
@@ -321,7 +413,7 @@ async function main() {
     check('THREE-QA-INIT-WEBGL-ERRORS',initialized.initializationWebglErrors.length===0,{errors:initialized.initializationWebglErrors});
 
     const expectedByFile=new Map(manifest.assets.map(item=>[path.basename(item.path),item.readback]));
-    for(const asset of ASSETS) for(const quality of QUALITIES) {
+    for(const asset of MATRIX_ASSETS) for(const quality of QUALITIES) {
       const glbFile=`${asset}-${quality}.glb`;
       const readback=await page.evaluate(async ({asset,quality})=>window.__assetQA.readAsset(asset,quality),{asset,quality});
       const expected=expectedByFile.get(glbFile);

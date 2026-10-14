@@ -1,11 +1,11 @@
 {
-  "status": "COMMISSIONED_19_ASSET_SOURCE_AND_GLBS_VALIDATED; TRANSPARENT_STILLS_RENDERED; VISUAL_OWNER_REVIEW_PENDING; NOT_RUNTIME_ACTIVATED",
-  "generatedAt": "2026-10-12T12:11:12.330Z",
+  "status": "FULL_FAMILY_PROCEDURAL_SOURCE_AND_GLBS_VALIDATED; VISUAL_REVIEW_PENDING; NOT_RUNTIME_ACTIVATED",
+  "generatedAt": "2026-10-14T14:45:57.745Z",
   "sourceBase": {
     "priorGlyphAndCurrencySliceStart": "576eb54da5700918941cd318b219faaf253d8748",
     "fullFamilyExpansionPinnedRevision": "5fc3f957eb6268395b5aa9a2883d46a56b13b85c",
-    "assetExportRevisionObserved": "9df5e8e5cbc92a3832551c160cfef9d15763db45",
-    "note": "The source assets, exporters, and exports are uncommitted working-tree inputs. assetExportRevisionObserved records HEAD at export time only; the hashes below identify the actual working inputs and neither revision proves an app release or runtime integration."
+    "assetExportRevisionObserved": "077bfbc0cc0dc24c4e1e9becb6c264e585108b93",
+    "note": "assetExportRevisionObserved records HEAD at export time only; input and output hashes identify the actual files. Neither the revision nor this asset evidence proves an app release or runtime integration."
   },
   "toolchain": {
     "three": {
@@ -14,7 +14,7 @@
       "license": "MIT",
       "path": ".artifacts/p21-three-tools/node_modules/three",
       "productionDependency": false,
-      "installedBytes": 2248954,
+      "installedBytes": 30764975,
       "downloadArchiveBytes": 7750248
     },
     "reconstructionGuidance": {
@@ -226,14 +226,14 @@
     {
       "path": "apps/web/site.js",
       "role": "current Card 3 X/O pattern: siteMiniTheme cells 0, 4 and 8",
-      "bytes": 8590,
-      "sha256": "a195df64dae19b526817ed123c17c39467ea6531a984544fa83218930d306001"
+      "bytes": 8560,
+      "sha256": "3720df649050f5f3010d38bfde2b140e9a3e9a6844c6bdf06dbbae5e2ddbde2c"
     },
     {
       "path": "apps/web/styles.css",
       "role": "current Neon board plate dimensions, colors and grid styling",
       "bytes": 28277,
-      "sha256": "ed16de419dccbfbe339098859c7efe5cd8069b46d32ff9d9c669370f8194feef"
+      "sha256": "b0204bef2e27166394dd35f71057c6637cd31d66d30fb05ffa910fdb9e876cbc"
     }
   ],
   "sourceInventory": {
@@ -344,6 +344,12 @@
       "oGridColor": "#77286c",
       "plateBackground": "#031426dd",
       "sourceScope": "decorative standalone solid mesh study; no integration into the approved homepage raster/card or gameplay board"
+    },
+    "crystalCutRepair": {
+      "sourceReference": "assets/p21/art/crystal-source.png",
+      "model": "Pointed top crown, broad polygon girdle, and pointed lower pavilion made from separate flat-shaded triangular faces; vertex-color PBR facets, no subdivided sphere or texture map.",
+      "scope": "central cut crystals across all eight gem-bearing rank tiers plus three faceted Crown tip jewels; canonical asset and rank IDs remain unchanged",
+      "limitation": "geometry follows the approved silhouette and palette as a source-based study; no exact raster parity or final art approval claimed"
     }
   },
   "sourceCodeReferences": [
@@ -374,17 +380,18 @@
     "coin": "Owner-provided 1254x1254 transparent gold coin reference: raised five-point star, inset face and stacked bright rim. Model uses geometry and PBR only; no exact raster parity claimed.",
     "crown": "Owner-provided 1254x1254 transparent purple crown reference: center and side tines, segmented base and bright tip gems. Model uses geometry and PBR only; no exact raster parity claimed.",
     "neonGlyphs": "Reconstructed as solid 3D counterparts of the existing browser SVG strokes; colors copied from current Mega XOXO Neon CSS. Glow is restrained emissive material, not a baked effect.",
-    "rankFamily": "Eleven canonical raster rank designs were inventoried before modeling. SourcePNG prompts and material palettes are recorded in assets/p21/art/ranks/PROMPTS.json; Diamond uses the existing crystal-source.png and diamond.webp. Geometry shares the angular shield/segmented-wing silhouette while tier materials and finials stay distinct. It is not a pixel-exact raster trace.",
+    "rankFamily": "Eleven canonical raster rank designs were inventoried before modeling. SourcePNG prompts and material palettes are recorded in assets/p21/art/ranks/PROMPTS.json; Diamond uses the existing crystal-source.png and diamond.webp. Geometry shares the angular shield/segmented-wing silhouette while tier materials and finials stay distinct. Gem-bearing tiers now use an explicit pointed crown, polygon girdle and pointed pavilion made from flat-shaded facets, based on the retained cut-crystal silhouette; no subdivided sphere is used. It is not a pixel-exact raster trace.",
     "trophy": "Owner-provided transparent trophy source inspected: wide gold handled bowl, raised five-point star, laurel-like side ornaments, narrow neck and black/gold stepped pedestal. Model reconstructs the visible forms as genuine geometry; no exact raster parity claimed.",
     "rewardChest": "No owner-supplied reward-chest source image exists in the available asset registry; this is an explicitly provisional closed black-and-gold decorative chest geometry, with no visible contents or claimed economy meaning.",
     "boardPlates": "The approved home capture and current siteMiniTheme/CSS were inspected. Two independent vertical boards reproduce the three diagonal X or O mark positions and current Neon edge/grid palette as 3D mesh plates. They are decorative standalone studies, not replacements for the approved card render.",
-    "materialLimits": "Materials use procedural MeshStandardMaterial PBR values only. There are no image textures, normal maps, roughness maps or metalness maps; wood grain, stone microtexture and iridescent fine detail remain open."
+    "materialLimits": "Materials use procedural MeshStandardMaterial PBR values only. There are no image textures, normal maps, roughness maps or metalness maps; wood grain, stone microtexture and iridescent fine detail remain open.",
+    "crownHeaderComparison": "The three-prong silhouette, raised center tine and smaller side-tip gems were compared with assets/p21/art/currency/crown.webp and the owner-provided crown-source.png. Crown tips are modeled as discrete faceted gems; this remains a visual study, not a final header replacement."
   },
   "authoredSourceFiles": [
     {
       "path": "assets/p21/three/factories.mjs",
-      "bytes": 34572,
-      "sha256": "5514018144356cb104713f9527cbec5a3699e410cc5ad4aaa4742637b5566474"
+      "bytes": 38134,
+      "sha256": "5a837d85d63e86584dfde516b08bf4fe8c56cc1162dc78bb9ae0c5bc8346a74e"
     },
     {
       "path": "assets/p21/three/preview.html",
@@ -403,13 +410,13 @@
     },
     {
       "path": "scripts/p21/export-three.mjs",
-      "bytes": 24076,
-      "sha256": "e3034e9947cf3ae9a6628974a6504fa7d945387f495287fbfbcb161514fc01f4"
+      "bytes": 27601,
+      "sha256": "71aad053ecac05581c05b66276078de276ece3fb22e0e0c4a5bd7183cfc9907c"
     },
     {
       "path": "scripts/p21/three-qa.cjs",
-      "bytes": 30929,
-      "sha256": "5d1844f41a5f43584973b560bcbae9b93aca254829db6b92f4c1df03c0d764d8"
+      "bytes": 36823,
+      "sha256": "50a5f47ed707b9c3cee20ec738578b3163dcf05cd088850afd93398e5e4a4d44"
     }
   ],
   "detailInventory": {
@@ -431,7 +438,14 @@
       "split tine facets",
       "five separate raised band panels",
       "two curved band rails",
-      "three faceted tip gems"
+      "three separately editable flat-faceted crown-cut diamonds: larger center gem and two smaller side gems"
+    ],
+    "RankCutCrystals": [
+      "pointed upper crown",
+      "broad polygon girdle and angular shoulders",
+      "pointed lower pavilion",
+      "eight-color high-detail or six-color lightweight flat-shaded facet layout",
+      "vertex-colored metallic-roughness material with generated normals and UVs; no sphere subdivision or image textures"
     ],
     "RankBadges": {
       "wood": [
@@ -547,18 +561,12 @@
     ]
   },
   "preview": {
-    "status": "RENDERED",
+    "status": "NOT_RENDERED",
     "files": [
       "assets/p21/three/preview.html",
       "assets/p21/three/preview.mjs"
     ],
-    "reason": null,
-    "renderer": "headless Chromium via repository-installed Playwright 1.62.1; isolated WebGL context; source factory renders and GLBs read back in browser",
-    "evidencePath": "assets/p21/three/render-evidence.json",
-    "stillDirectory": "assets/p21/three/stills",
-    "renderedStillCount": 76,
-    "browserMatrixStatus": "PASS",
-    "visualOwnerReview": "PENDING"
+    "reason": "CUA could not create an isolated Chrome browser tab (browser unavailable); selecting the separate Chrome-for-Testing app timed out. Existing Brave tabs were left untouched."
   },
   "outputRules": {
     "materials": "MeshStandardMaterial glTF metallic-roughness PBR; scalar and color values recorded per output",
@@ -1400,20 +1408,20 @@
       "asset": "crown",
       "quality": "high",
       "path": "assets/p21/three/exports/crown-high.glb",
-      "bytes": 195152,
-      "sha256": "b2e4e2362f011f79a7022b850bb0f3d7af7572fda3667d4f47ffed3405284bda",
+      "bytes": 199428,
+      "sha256": "d7b2cc4d08bb1a94bde3e3a141895b117136dec5f91e31695ca4655e65984f33",
       "header": {
         "magic": "glTF",
         "version": 2,
-        "length": 195152,
+        "length": 199428,
         "chunks": [
           {
             "type": "JSON",
-            "bytes": 20212
+            "bytes": 21032
           },
           {
             "type": "BIN",
-            "bytes": 174912
+            "bytes": 178368
           }
         ]
       },
@@ -1492,30 +1500,30 @@
             "hasTexture": false
           },
           {
-            "name": "Tip gems · pink lavender crystal",
-            "color": "#edc7ff",
-            "metalness": 0.26,
-            "roughness": 0.18,
+            "name": "Three-point crown · cut lavender crystal facets",
+            "color": "#ffffff",
+            "metalness": 0.12,
+            "roughness": 0.2,
             "emissive": "#7c29cf",
-            "emissiveIntensity": 0.11,
+            "emissiveIntensity": 0.045,
             "hasTexture": false
           }
         ],
         "bounds": {
           "min": [
-            -0.778164,
+            -0.769528,
             -0.528183,
             -0.085
           ],
           "max": [
-            0.778164,
-            0.673351,
-            0.273764
+            0.769528,
+            0.653,
+            0.21176
           ],
           "size": [
-            1.556328,
-            1.201533,
-            0.358764
+            1.539055,
+            1.181183,
+            0.29676
           ]
         },
         "pivot": [
@@ -1602,30 +1610,30 @@
             "hasTexture": false
           },
           {
-            "name": "Tip gems · pink lavender crystal",
-            "color": "#edc7ff",
-            "metalness": 0.26,
-            "roughness": 0.18,
+            "name": "Three-point crown · cut lavender crystal facets",
+            "color": "#ffffff",
+            "metalness": 0.12,
+            "roughness": 0.2,
             "emissive": "#7c29cf",
-            "emissiveIntensity": 0.11,
+            "emissiveIntensity": 0.045,
             "hasTexture": false
           }
         ],
         "bounds": {
           "min": [
-            -0.778164,
+            -0.769528,
             -0.528183,
             -0.085
           ],
           "max": [
-            0.778164,
-            0.673351,
-            0.273764
+            0.769528,
+            0.653,
+            0.21176
           ],
           "size": [
-            1.556328,
-            1.201533,
-            0.358764
+            1.539055,
+            1.181183,
+            0.29676
           ]
         },
         "pivot": [
@@ -1646,20 +1654,20 @@
       "asset": "crown",
       "quality": "low",
       "path": "assets/p21/three/exports/crown-low.glb",
-      "bytes": 77564,
-      "sha256": "b22f4a5ecae7eb7271cd4f24d8bfb2e713d17fde8b9165b2156248ba98793090",
+      "bytes": 85268,
+      "sha256": "3ea1a2496614caa166ba810d36c287704a7ca96dd636dba7390b781f06af614d",
       "header": {
         "magic": "glTF",
         "version": 2,
-        "length": 77564,
+        "length": 85268,
         "chunks": [
           {
             "type": "JSON",
-            "bytes": 20480
+            "bytes": 20984
           },
           {
             "type": "BIN",
-            "bytes": 57056
+            "bytes": 64256
           }
         ]
       },
@@ -1667,8 +1675,8 @@
       "externalUris": 0,
       "source": {
         "meshCount": 19,
-        "vertices": 1738,
-        "triangles": 768,
+        "vertices": 1882,
+        "triangles": 816,
         "normalAttributes": 19,
         "uvAttributes": 19,
         "finite": true,
@@ -1738,30 +1746,30 @@
             "hasTexture": false
           },
           {
-            "name": "Tip gems · pink lavender crystal",
-            "color": "#edc7ff",
-            "metalness": 0.26,
-            "roughness": 0.18,
+            "name": "Three-point crown · cut lavender crystal facets",
+            "color": "#ffffff",
+            "metalness": 0.12,
+            "roughness": 0.2,
             "emissive": "#7c29cf",
-            "emissiveIntensity": 0.11,
+            "emissiveIntensity": 0.045,
             "hasTexture": false
           }
         ],
         "bounds": {
           "min": [
-            -0.778164,
+            -0.769528,
             -0.528183,
             -0.085
           ],
           "max": [
-            0.778164,
-            0.673351,
-            0.273764
+            0.769528,
+            0.653,
+            0.21176
           ],
           "size": [
-            1.556328,
-            1.201533,
-            0.358764
+            1.539055,
+            1.181183,
+            0.29676
           ]
         },
         "pivot": [
@@ -1777,8 +1785,8 @@
       },
       "readback": {
         "meshCount": 19,
-        "vertices": 1738,
-        "triangles": 768,
+        "vertices": 1882,
+        "triangles": 816,
         "normalAttributes": 19,
         "uvAttributes": 19,
         "finite": true,
@@ -1848,30 +1856,30 @@
             "hasTexture": false
           },
           {
-            "name": "Tip gems · pink lavender crystal",
-            "color": "#edc7ff",
-            "metalness": 0.26,
-            "roughness": 0.18,
+            "name": "Three-point crown · cut lavender crystal facets",
+            "color": "#ffffff",
+            "metalness": 0.12,
+            "roughness": 0.2,
             "emissive": "#7c29cf",
-            "emissiveIntensity": 0.11,
+            "emissiveIntensity": 0.045,
             "hasTexture": false
           }
         ],
         "bounds": {
           "min": [
-            -0.778164,
+            -0.769528,
             -0.528183,
             -0.085
           ],
           "max": [
-            0.778164,
-            0.673351,
-            0.273764
+            0.769528,
+            0.653,
+            0.21176
           ],
           "size": [
-            1.556328,
-            1.201533,
-            0.358764
+            1.539055,
+            1.181183,
+            0.29676
           ]
         },
         "pivot": [
@@ -3260,20 +3268,20 @@
       "asset": "rank-bronze",
       "quality": "high",
       "path": "assets/p21/three/exports/rank-bronze-high.glb",
-      "bytes": 259296,
-      "sha256": "f7c9cac05be0c206e61edba18c92a9dc4a2eaf3f2058600899b2628a7cb2d2ab",
+      "bytes": 260720,
+      "sha256": "ae1272ffb2fb28d8fde126487ab5b3e4505f5e1c66dc850aa35c674c17390b92",
       "header": {
         "magic": "glTF",
         "version": 2,
-        "length": 259296,
+        "length": 260720,
         "chunks": [
           {
             "type": "JSON",
-            "bytes": 21412
+            "bytes": 21684
           },
           {
             "type": "BIN",
-            "bytes": 237856
+            "bytes": 239008
           }
         ]
       },
@@ -3298,12 +3306,12 @@
             "hasTexture": false
           },
           {
-            "name": "Bronze central faceted crystal",
-            "color": "#ff8b20",
-            "metalness": 0.28,
-            "roughness": 0.17,
+            "name": "Bronze cut crystal · vertex-colored pavilion facets",
+            "color": "#ffffff",
+            "metalness": 0.1,
+            "roughness": 0.21,
             "emissive": "#b74704",
-            "emissiveIntensity": 0.12,
+            "emissiveIntensity": 0.045,
             "hasTexture": false
           },
           {
@@ -3370,12 +3378,12 @@
           "max": [
             0.997093,
             0.822945,
-            0.482464
+            0.4074
           ],
           "size": [
             1.994186,
             1.674058,
-            0.568464
+            0.4934
           ]
         },
         "pivot": [
@@ -3408,12 +3416,12 @@
             "hasTexture": false
           },
           {
-            "name": "Bronze central faceted crystal",
-            "color": "#ff8b20",
-            "metalness": 0.28,
-            "roughness": 0.17,
+            "name": "Bronze cut crystal · vertex-colored pavilion facets",
+            "color": "#ffffff",
+            "metalness": 0.1,
+            "roughness": 0.21,
             "emissive": "#b74704",
-            "emissiveIntensity": 0.12,
+            "emissiveIntensity": 0.045,
             "hasTexture": false
           },
           {
@@ -3480,12 +3488,12 @@
           "max": [
             0.997093,
             0.822945,
-            0.482464
+            0.4074
           ],
           "size": [
             1.994186,
             1.674058,
-            0.568464
+            0.4934
           ]
         },
         "pivot": [
@@ -3506,20 +3514,20 @@
       "asset": "rank-bronze",
       "quality": "low",
       "path": "assets/p21/three/exports/rank-bronze-low.glb",
-      "bytes": 104404,
-      "sha256": "714549515d82c7cdfbec310e18fa06486182c96d73b32fc68a8880cdb37d81bb",
+      "bytes": 106976,
+      "sha256": "2a88e91c93b19c3fcb00e3593fa94389c62c928fa26eea98735d65c4ec275b72",
       "header": {
         "magic": "glTF",
         "version": 2,
-        "length": 104404,
+        "length": 106976,
         "chunks": [
           {
             "type": "JSON",
-            "bytes": 21432
+            "bytes": 21604
           },
           {
             "type": "BIN",
-            "bytes": 82944
+            "bytes": 85344
           }
         ]
       },
@@ -3527,8 +3535,8 @@
       "externalUris": 0,
       "source": {
         "meshCount": 20,
-        "vertices": 2547,
-        "triangles": 1040,
+        "vertices": 2595,
+        "triangles": 1056,
         "normalAttributes": 20,
         "uvAttributes": 20,
         "finite": true,
@@ -3544,12 +3552,12 @@
             "hasTexture": false
           },
           {
-            "name": "Bronze central faceted crystal",
-            "color": "#ff8b20",
-            "metalness": 0.28,
-            "roughness": 0.17,
+            "name": "Bronze cut crystal · vertex-colored pavilion facets",
+            "color": "#ffffff",
+            "metalness": 0.1,
+            "roughness": 0.21,
             "emissive": "#b74704",
-            "emissiveIntensity": 0.12,
+            "emissiveIntensity": 0.045,
             "hasTexture": false
           },
           {
@@ -3616,12 +3624,12 @@
           "max": [
             0.997093,
             0.822945,
-            0.482464
+            0.4074
           ],
           "size": [
             1.994186,
             1.674058,
-            0.568464
+            0.4934
           ]
         },
         "pivot": [
@@ -3637,8 +3645,8 @@
       },
       "readback": {
         "meshCount": 20,
-        "vertices": 2547,
-        "triangles": 1040,
+        "vertices": 2595,
+        "triangles": 1056,
         "normalAttributes": 20,
         "uvAttributes": 20,
         "finite": true,
@@ -3654,12 +3662,12 @@
             "hasTexture": false
           },
           {
-            "name": "Bronze central faceted crystal",
-            "color": "#ff8b20",
-            "metalness": 0.28,
-            "roughness": 0.17,
+            "name": "Bronze cut crystal · vertex-colored pavilion facets",
+            "color": "#ffffff",
+            "metalness": 0.1,
+            "roughness": 0.21,
             "emissive": "#b74704",
-            "emissiveIntensity": 0.12,
+            "emissiveIntensity": 0.045,
             "hasTexture": false
           },
           {
@@ -3726,12 +3734,12 @@
           "max": [
             0.997093,
             0.822945,
-            0.482464
+            0.4074
           ],
           "size": [
             1.994186,
             1.674058,
-            0.568464
+            0.4934
           ]
         },
         "pivot": [
@@ -3752,20 +3760,20 @@
       "asset": "rank-silver",
       "quality": "high",
       "path": "assets/p21/three/exports/rank-silver-high.glb",
-      "bytes": 259168,
-      "sha256": "64ccd31535f19e87ac12d786abcac7922cececbda4123182057c1ec718f99a4f",
+      "bytes": 260592,
+      "sha256": "9403c375779d08ec9aa0072345c0c32eaa78777d7e8eb956a1976e5087470aad",
       "header": {
         "magic": "glTF",
         "version": 2,
-        "length": 259168,
+        "length": 260592,
         "chunks": [
           {
             "type": "JSON",
-            "bytes": 21284
+            "bytes": 21556
           },
           {
             "type": "BIN",
-            "bytes": 237856
+            "bytes": 239008
           }
         ]
       },
@@ -3790,12 +3798,12 @@
             "hasTexture": false
           },
           {
-            "name": "Silver central faceted crystal",
-            "color": "#a9dfff",
-            "metalness": 0.28,
-            "roughness": 0.17,
+            "name": "Silver cut crystal · vertex-colored pavilion facets",
+            "color": "#ffffff",
+            "metalness": 0.1,
+            "roughness": 0.21,
             "emissive": "#3c9bec",
-            "emissiveIntensity": 0.12,
+            "emissiveIntensity": 0.045,
             "hasTexture": false
           },
           {
@@ -3862,12 +3870,12 @@
           "max": [
             0.997093,
             0.822945,
-            0.482464
+            0.4074
           ],
           "size": [
             1.994186,
             1.674058,
-            0.568464
+            0.4934
           ]
         },
         "pivot": [
@@ -3900,12 +3908,12 @@
             "hasTexture": false
           },
           {
-            "name": "Silver central faceted crystal",
-            "color": "#a9dfff",
-            "metalness": 0.28,
-            "roughness": 0.17,
+            "name": "Silver cut crystal · vertex-colored pavilion facets",
+            "color": "#ffffff",
+            "metalness": 0.1,
+            "roughness": 0.21,
             "emissive": "#3c9bec",
-            "emissiveIntensity": 0.12,
+            "emissiveIntensity": 0.045,
             "hasTexture": false
           },
           {
@@ -3972,12 +3980,12 @@
           "max": [
             0.997093,
             0.822945,
-            0.482464
+            0.4074
           ],
           "size": [
             1.994186,
             1.674058,
-            0.568464
+            0.4934
           ]
         },
         "pivot": [
@@ -3998,20 +4006,20 @@
       "asset": "rank-silver",
       "quality": "low",
       "path": "assets/p21/three/exports/rank-silver-low.glb",
-      "bytes": 104276,
-      "sha256": "84d1a14efea0ffdbe50a5eeefaec4294caa8815048def433cca99dd361b50698",
+      "bytes": 106848,
+      "sha256": "0770b525b03a6f2631d30814d41b3a7af2f3aa830b7bfbdcea26b8a2e064ce8d",
       "header": {
         "magic": "glTF",
         "version": 2,
-        "length": 104276,
+        "length": 106848,
         "chunks": [
           {
             "type": "JSON",
-            "bytes": 21304
+            "bytes": 21476
           },
           {
             "type": "BIN",
-            "bytes": 82944
+            "bytes": 85344
           }
         ]
       },
@@ -4019,8 +4027,8 @@
       "externalUris": 0,
       "source": {
         "meshCount": 20,
-        "vertices": 2547,
-        "triangles": 1040,
+        "vertices": 2595,
+        "triangles": 1056,
         "normalAttributes": 20,
         "uvAttributes": 20,
         "finite": true,
@@ -4036,12 +4044,12 @@
             "hasTexture": false
           },
           {
-            "name": "Silver central faceted crystal",
-            "color": "#a9dfff",
-            "metalness": 0.28,
-            "roughness": 0.17,
+            "name": "Silver cut crystal · vertex-colored pavilion facets",
+            "color": "#ffffff",
+            "metalness": 0.1,
+            "roughness": 0.21,
             "emissive": "#3c9bec",
-            "emissiveIntensity": 0.12,
+            "emissiveIntensity": 0.045,
             "hasTexture": false
           },
           {
@@ -4108,12 +4116,12 @@
           "max": [
             0.997093,
             0.822945,
-            0.482464
+            0.4074
           ],
           "size": [
             1.994186,
             1.674058,
-            0.568464
+            0.4934
           ]
         },
         "pivot": [
@@ -4129,8 +4137,8 @@
       },
       "readback": {
         "meshCount": 20,
-        "vertices": 2547,
-        "triangles": 1040,
+        "vertices": 2595,
+        "triangles": 1056,
         "normalAttributes": 20,
         "uvAttributes": 20,
         "finite": true,
@@ -4146,12 +4154,12 @@
             "hasTexture": false
           },
           {
-            "name": "Silver central faceted crystal",
-            "color": "#a9dfff",
-            "metalness": 0.28,
-            "roughness": 0.17,
+            "name": "Silver cut crystal · vertex-colored pavilion facets",
+            "color": "#ffffff",
+            "metalness": 0.1,
+            "roughness": 0.21,
             "emissive": "#3c9bec",
-            "emissiveIntensity": 0.12,
+            "emissiveIntensity": 0.045,
             "hasTexture": false
           },
           {
@@ -4218,12 +4226,12 @@
           "max": [
             0.997093,
             0.822945,
-            0.482464
+            0.4074
           ],
           "size": [
             1.994186,
             1.674058,
-            0.568464
+            0.4934
           ]
         },
         "pivot": [
@@ -4244,20 +4252,20 @@
       "asset": "rank-gold",
       "quality": "high",
       "path": "assets/p21/three/exports/rank-gold-high.glb",
-      "bytes": 259232,
-      "sha256": "09baf0f4b9023301320fdffd598e1366881a0eeeaf35b5abfc658c52bc150dd9",
+      "bytes": 260660,
+      "sha256": "6cb0e88ea92e17467f419ce4e5f73d097d2a39439d3937310b7914bc47bf21d4",
       "header": {
         "magic": "glTF",
         "version": 2,
-        "length": 259232,
+        "length": 260660,
         "chunks": [
           {
             "type": "JSON",
-            "bytes": 21348
+            "bytes": 21624
           },
           {
             "type": "BIN",
-            "bytes": 237856
+            "bytes": 239008
           }
         ]
       },
@@ -4282,12 +4290,12 @@
             "hasTexture": false
           },
           {
-            "name": "Gold central faceted crystal",
-            "color": "#ffca3e",
-            "metalness": 0.28,
-            "roughness": 0.17,
+            "name": "Gold cut crystal · vertex-colored pavilion facets",
+            "color": "#ffffff",
+            "metalness": 0.1,
+            "roughness": 0.21,
             "emissive": "#b56505",
-            "emissiveIntensity": 0.12,
+            "emissiveIntensity": 0.045,
             "hasTexture": false
           },
           {
@@ -4354,12 +4362,12 @@
           "max": [
             0.997093,
             0.822945,
-            0.482464
+            0.4074
           ],
           "size": [
             1.994186,
             1.674058,
-            0.568464
+            0.4934
           ]
         },
         "pivot": [
@@ -4392,12 +4400,12 @@
             "hasTexture": false
           },
           {
-            "name": "Gold central faceted crystal",
-            "color": "#ffca3e",
-            "metalness": 0.28,
-            "roughness": 0.17,
+            "name": "Gold cut crystal · vertex-colored pavilion facets",
+            "color": "#ffffff",
+            "metalness": 0.1,
+            "roughness": 0.21,
             "emissive": "#b56505",
-            "emissiveIntensity": 0.12,
+            "emissiveIntensity": 0.045,
             "hasTexture": false
           },
           {
@@ -4464,12 +4472,12 @@
           "max": [
             0.997093,
             0.822945,
-            0.482464
+            0.4074
           ],
           "size": [
             1.994186,
             1.674058,
-            0.568464
+            0.4934
           ]
         },
         "pivot": [
@@ -4490,20 +4498,20 @@
       "asset": "rank-gold",
       "quality": "low",
       "path": "assets/p21/three/exports/rank-gold-low.glb",
-      "bytes": 104340,
-      "sha256": "4f97d6bd8cb2352eee141721f6aa241c6450ff7e8cb44810cb2387de6e295f16",
+      "bytes": 106912,
+      "sha256": "4be681c4d58788d955b19cf6327186ca8894197acfad7a73ac95a1bf168406de",
       "header": {
         "magic": "glTF",
         "version": 2,
-        "length": 104340,
+        "length": 106912,
         "chunks": [
           {
             "type": "JSON",
-            "bytes": 21368
+            "bytes": 21540
           },
           {
             "type": "BIN",
-            "bytes": 82944
+            "bytes": 85344
           }
         ]
       },
@@ -4511,8 +4519,8 @@
       "externalUris": 0,
       "source": {
         "meshCount": 20,
-        "vertices": 2547,
-        "triangles": 1040,
+        "vertices": 2595,
+        "triangles": 1056,
         "normalAttributes": 20,
         "uvAttributes": 20,
         "finite": true,
@@ -4528,12 +4536,12 @@
             "hasTexture": false
           },
           {
-            "name": "Gold central faceted crystal",
-            "color": "#ffca3e",
-            "metalness": 0.28,
-            "roughness": 0.17,
+            "name": "Gold cut crystal · vertex-colored pavilion facets",
+            "color": "#ffffff",
+            "metalness": 0.1,
+            "roughness": 0.21,
             "emissive": "#b56505",
-            "emissiveIntensity": 0.12,
+            "emissiveIntensity": 0.045,
             "hasTexture": false
           },
           {
@@ -4600,12 +4608,12 @@
           "max": [
             0.997093,
             0.822945,
-            0.482464
+            0.4074
           ],
           "size": [
             1.994186,
             1.674058,
-            0.568464
+            0.4934
           ]
         },
         "pivot": [
@@ -4621,8 +4629,8 @@
       },
       "readback": {
         "meshCount": 20,
-        "vertices": 2547,
-        "triangles": 1040,
+        "vertices": 2595,
+        "triangles": 1056,
         "normalAttributes": 20,
         "uvAttributes": 20,
         "finite": true,
@@ -4638,12 +4646,12 @@
             "hasTexture": false
           },
           {
-            "name": "Gold central faceted crystal",
-            "color": "#ffca3e",
-            "metalness": 0.28,
-            "roughness": 0.17,
+            "name": "Gold cut crystal · vertex-colored pavilion facets",
+            "color": "#ffffff",
+            "metalness": 0.1,
+            "roughness": 0.21,
             "emissive": "#b56505",
-            "emissiveIntensity": 0.12,
+            "emissiveIntensity": 0.045,
             "hasTexture": false
           },
           {
@@ -4710,12 +4718,12 @@
           "max": [
             0.997093,
             0.822945,
-            0.482464
+            0.4074
           ],
           "size": [
             1.994186,
             1.674058,
-            0.568464
+            0.4934
           ]
         },
         "pivot": [
@@ -4736,20 +4744,20 @@
       "asset": "rank-diamond",
       "quality": "high",
       "path": "assets/p21/three/exports/rank-diamond-high.glb",
-      "bytes": 273424,
-      "sha256": "bcff2a8aeefdbca149e3b0f481658532a5af19c3b06c97751b7ec87e778d84bf",
+      "bytes": 276364,
+      "sha256": "cc9427ef977531d4bdbbfc8d527925db7f4140187950116adde15f81037fb272",
       "header": {
         "magic": "glTF",
         "version": 2,
-        "length": 273424,
+        "length": 276364,
         "chunks": [
           {
             "type": "JSON",
-            "bytes": 23252
+            "bytes": 23888
           },
           {
             "type": "BIN",
-            "bytes": 250144
+            "bytes": 252448
           }
         ]
       },
@@ -4774,12 +4782,12 @@
             "hasTexture": false
           },
           {
-            "name": "Diamond central faceted crystal",
-            "color": "#bd6eff",
-            "metalness": 0.28,
-            "roughness": 0.17,
+            "name": "Diamond cut crystal · vertex-colored pavilion facets",
+            "color": "#ffffff",
+            "metalness": 0.1,
+            "roughness": 0.21,
             "emissive": "#762dff",
-            "emissiveIntensity": 0.12,
+            "emissiveIntensity": 0.045,
             "hasTexture": false
           },
           {
@@ -4846,12 +4854,12 @@
           "max": [
             0.997093,
             1.004142,
-            0.482464
+            0.4074
           ],
           "size": [
             1.994186,
             1.855255,
-            0.568464
+            0.4934
           ]
         },
         "pivot": [
@@ -4884,12 +4892,12 @@
             "hasTexture": false
           },
           {
-            "name": "Diamond central faceted crystal",
-            "color": "#bd6eff",
-            "metalness": 0.28,
-            "roughness": 0.17,
+            "name": "Diamond cut crystal · vertex-colored pavilion facets",
+            "color": "#ffffff",
+            "metalness": 0.1,
+            "roughness": 0.21,
             "emissive": "#762dff",
-            "emissiveIntensity": 0.12,
+            "emissiveIntensity": 0.045,
             "hasTexture": false
           },
           {
@@ -4956,12 +4964,12 @@
           "max": [
             0.997093,
             1.004142,
-            0.482464
+            0.4074
           ],
           "size": [
             1.994186,
             1.855255,
-            0.568464
+            0.4934
           ]
         },
         "pivot": [
@@ -4982,20 +4990,20 @@
       "asset": "rank-diamond",
       "quality": "low",
       "path": "assets/p21/three/exports/rank-diamond-low.glb",
-      "bytes": 110564,
-      "sha256": "bb1a0e753c6dd775995ae6c425dcbac02340ae6fabca89a5261bbf0f93542e96",
+      "bytes": 115788,
+      "sha256": "fb6a6f8129bfaa820bb292a2eb6e629f6e4fd9f00d6d94bef7ef998e54f1e92f",
       "header": {
         "magic": "glTF",
         "version": 2,
-        "length": 110564,
+        "length": 115788,
         "chunks": [
           {
             "type": "JSON",
-            "bytes": 23368
+            "bytes": 23792
           },
           {
             "type": "BIN",
-            "bytes": 87168
+            "bytes": 91968
           }
         ]
       },
@@ -5003,8 +5011,8 @@
       "externalUris": 0,
       "source": {
         "meshCount": 22,
-        "vertices": 2679,
-        "triangles": 1084,
+        "vertices": 2775,
+        "triangles": 1116,
         "normalAttributes": 22,
         "uvAttributes": 22,
         "finite": true,
@@ -5020,12 +5028,12 @@
             "hasTexture": false
           },
           {
-            "name": "Diamond central faceted crystal",
-            "color": "#bd6eff",
-            "metalness": 0.28,
-            "roughness": 0.17,
+            "name": "Diamond cut crystal · vertex-colored pavilion facets",
+            "color": "#ffffff",
+            "metalness": 0.1,
+            "roughness": 0.21,
             "emissive": "#762dff",
-            "emissiveIntensity": 0.12,
+            "emissiveIntensity": 0.045,
             "hasTexture": false
           },
           {
@@ -5092,12 +5100,12 @@
           "max": [
             0.997093,
             1.004142,
-            0.482464
+            0.4074
           ],
           "size": [
             1.994186,
             1.855255,
-            0.568464
+            0.4934
           ]
         },
         "pivot": [
@@ -5113,8 +5121,8 @@
       },
       "readback": {
         "meshCount": 22,
-        "vertices": 2679,
-        "triangles": 1084,
+        "vertices": 2775,
+        "triangles": 1116,
         "normalAttributes": 22,
         "uvAttributes": 22,
         "finite": true,
@@ -5130,12 +5138,12 @@
             "hasTexture": false
           },
           {
-            "name": "Diamond central faceted crystal",
-            "color": "#bd6eff",
-            "metalness": 0.28,
-            "roughness": 0.17,
+            "name": "Diamond cut crystal · vertex-colored pavilion facets",
+            "color": "#ffffff",
+            "metalness": 0.1,
+            "roughness": 0.21,
             "emissive": "#762dff",
-            "emissiveIntensity": 0.12,
+            "emissiveIntensity": 0.045,
             "hasTexture": false
           },
           {
@@ -5202,12 +5210,12 @@
           "max": [
             0.997093,
             1.004142,
-            0.482464
+            0.4074
           ],
           "size": [
             1.994186,
             1.855255,
-            0.568464
+            0.4934
           ]
         },
         "pivot": [
@@ -5228,20 +5236,20 @@
       "asset": "rank-emerald",
       "quality": "high",
       "path": "assets/p21/three/exports/rank-emerald-high.glb",
-      "bytes": 259268,
-      "sha256": "00279b676fdc7feebbcadb7f362299e30b85798509b94e8695f1c500e9290603",
+      "bytes": 260696,
+      "sha256": "249dbf5e3051325e66f99b2651bb4c1e9ed551785e56ace0777d64e236e8f078",
       "header": {
         "magic": "glTF",
         "version": 2,
-        "length": 259268,
+        "length": 260696,
         "chunks": [
           {
             "type": "JSON",
-            "bytes": 21384
+            "bytes": 21660
           },
           {
             "type": "BIN",
-            "bytes": 237856
+            "bytes": 239008
           }
         ]
       },
@@ -5266,12 +5274,12 @@
             "hasTexture": false
           },
           {
-            "name": "Emerald central faceted crystal",
-            "color": "#1de7a0",
-            "metalness": 0.28,
-            "roughness": 0.17,
+            "name": "Emerald cut crystal · vertex-colored pavilion facets",
+            "color": "#ffffff",
+            "metalness": 0.1,
+            "roughness": 0.21,
             "emissive": "#00a875",
-            "emissiveIntensity": 0.12,
+            "emissiveIntensity": 0.045,
             "hasTexture": false
           },
           {
@@ -5338,12 +5346,12 @@
           "max": [
             0.997093,
             0.822945,
-            0.482464
+            0.4074
           ],
           "size": [
             1.994186,
             1.674058,
-            0.568464
+            0.4934
           ]
         },
         "pivot": [
@@ -5376,12 +5384,12 @@
             "hasTexture": false
           },
           {
-            "name": "Emerald central faceted crystal",
-            "color": "#1de7a0",
-            "metalness": 0.28,
-            "roughness": 0.17,
+            "name": "Emerald cut crystal · vertex-colored pavilion facets",
+            "color": "#ffffff",
+            "metalness": 0.1,
+            "roughness": 0.21,
             "emissive": "#00a875",
-            "emissiveIntensity": 0.12,
+            "emissiveIntensity": 0.045,
             "hasTexture": false
           },
           {
@@ -5448,12 +5456,12 @@
           "max": [
             0.997093,
             0.822945,
-            0.482464
+            0.4074
           ],
           "size": [
             1.994186,
             1.674058,
-            0.568464
+            0.4934
           ]
         },
         "pivot": [
@@ -5474,20 +5482,20 @@
       "asset": "rank-emerald",
       "quality": "low",
       "path": "assets/p21/three/exports/rank-emerald-low.glb",
-      "bytes": 104376,
-      "sha256": "fdd02ab0db5fc968e845a56d7d43d03e3fc4c27cce35aeb4c10db44c6224b404",
+      "bytes": 106952,
+      "sha256": "8cdf8865ea35e39765f0ef706cdd8038829a0db611ba773eed1e40a38bfd2104",
       "header": {
         "magic": "glTF",
         "version": 2,
-        "length": 104376,
+        "length": 106952,
         "chunks": [
           {
             "type": "JSON",
-            "bytes": 21404
+            "bytes": 21580
           },
           {
             "type": "BIN",
-            "bytes": 82944
+            "bytes": 85344
           }
         ]
       },
@@ -5495,8 +5503,8 @@
       "externalUris": 0,
       "source": {
         "meshCount": 20,
-        "vertices": 2547,
-        "triangles": 1040,
+        "vertices": 2595,
+        "triangles": 1056,
         "normalAttributes": 20,
         "uvAttributes": 20,
         "finite": true,
@@ -5512,12 +5520,12 @@
             "hasTexture": false
           },
           {
-            "name": "Emerald central faceted crystal",
-            "color": "#1de7a0",
-            "metalness": 0.28,
-            "roughness": 0.17,
+            "name": "Emerald cut crystal · vertex-colored pavilion facets",
+            "color": "#ffffff",
+            "metalness": 0.1,
+            "roughness": 0.21,
             "emissive": "#00a875",
-            "emissiveIntensity": 0.12,
+            "emissiveIntensity": 0.045,
             "hasTexture": false
           },
           {
@@ -5584,12 +5592,12 @@
           "max": [
             0.997093,
             0.822945,
-            0.482464
+            0.4074
           ],
           "size": [
             1.994186,
             1.674058,
-            0.568464
+            0.4934
           ]
         },
         "pivot": [
@@ -5605,8 +5613,8 @@
       },
       "readback": {
         "meshCount": 20,
-        "vertices": 2547,
-        "triangles": 1040,
+        "vertices": 2595,
+        "triangles": 1056,
         "normalAttributes": 20,
         "uvAttributes": 20,
         "finite": true,
@@ -5622,12 +5630,12 @@
             "hasTexture": false
           },
           {
-            "name": "Emerald central faceted crystal",
-            "color": "#1de7a0",
-            "metalness": 0.28,
-            "roughness": 0.17,
+            "name": "Emerald cut crystal · vertex-colored pavilion facets",
+            "color": "#ffffff",
+            "metalness": 0.1,
+            "roughness": 0.21,
             "emissive": "#00a875",
-            "emissiveIntensity": 0.12,
+            "emissiveIntensity": 0.045,
             "hasTexture": false
           },
           {
@@ -5694,12 +5702,12 @@
           "max": [
             0.997093,
             0.822945,
-            0.482464
+            0.4074
           ],
           "size": [
             1.994186,
             1.674058,
-            0.568464
+            0.4934
           ]
         },
         "pivot": [
@@ -5720,20 +5728,20 @@
       "asset": "rank-champion",
       "quality": "high",
       "path": "assets/p21/three/exports/rank-champion-high.glb",
-      "bytes": 281120,
-      "sha256": "9028036acd95fe696df0115e7f2cf269eb30820ecbcab61a870c05ca7b88cf90",
+      "bytes": 287088,
+      "sha256": "95e8d663827b72a794534dadadaa0e4c6d5ebb90527c0a4353252ddc39d52415",
       "header": {
         "magic": "glTF",
         "version": 2,
-        "length": 281120,
+        "length": 287088,
         "chunks": [
           {
             "type": "JSON",
-            "bytes": 24804
+            "bytes": 26164
           },
           {
             "type": "BIN",
-            "bytes": 256288
+            "bytes": 260896
           }
         ]
       },
@@ -5758,12 +5766,12 @@
             "hasTexture": false
           },
           {
-            "name": "Champion central faceted crystal",
-            "color": "#ff3158",
-            "metalness": 0.28,
-            "roughness": 0.17,
+            "name": "Champion cut crystal · vertex-colored pavilion facets",
+            "color": "#ffffff",
+            "metalness": 0.1,
+            "roughness": 0.21,
             "emissive": "#d30036",
-            "emissiveIntensity": 0.12,
+            "emissiveIntensity": 0.045,
             "hasTexture": false
           },
           {
@@ -5830,12 +5838,12 @@
           "max": [
             0.997093,
             1.004142,
-            0.482464
+            0.4074
           ],
           "size": [
             1.994186,
             1.855255,
-            0.568464
+            0.4934
           ]
         },
         "pivot": [
@@ -5868,12 +5876,12 @@
             "hasTexture": false
           },
           {
-            "name": "Champion central faceted crystal",
-            "color": "#ff3158",
-            "metalness": 0.28,
-            "roughness": 0.17,
+            "name": "Champion cut crystal · vertex-colored pavilion facets",
+            "color": "#ffffff",
+            "metalness": 0.1,
+            "roughness": 0.21,
             "emissive": "#d30036",
-            "emissiveIntensity": 0.12,
+            "emissiveIntensity": 0.045,
             "hasTexture": false
           },
           {
@@ -5940,12 +5948,12 @@
           "max": [
             0.997093,
             1.004142,
-            0.482464
+            0.4074
           ],
           "size": [
             1.994186,
             1.855255,
-            0.568464
+            0.4934
           ]
         },
         "pivot": [
@@ -5966,20 +5974,20 @@
       "asset": "rank-champion",
       "quality": "low",
       "path": "assets/p21/three/exports/rank-champion-low.glb",
-      "bytes": 113844,
-      "sha256": "26d366ecfc2bfbc6d41d4ae1aee1209ac9d9369a07b4abcfa640ff71c90d635b",
+      "bytes": 124392,
+      "sha256": "77c833ddde3fc935b9a70b445cada1aef56f1ef8cfbb7c8dd29c4059726c5bc6",
       "header": {
         "magic": "glTF",
         "version": 2,
-        "length": 113844,
+        "length": 124392,
         "chunks": [
           {
             "type": "JSON",
-            "bytes": 25112
+            "bytes": 26060
           },
           {
             "type": "BIN",
-            "bytes": 88704
+            "bytes": 98304
           }
         ]
       },
@@ -5987,8 +5995,8 @@
       "externalUris": 0,
       "source": {
         "meshCount": 24,
-        "vertices": 2727,
-        "triangles": 1100,
+        "vertices": 2919,
+        "triangles": 1164,
         "normalAttributes": 24,
         "uvAttributes": 24,
         "finite": true,
@@ -6004,12 +6012,12 @@
             "hasTexture": false
           },
           {
-            "name": "Champion central faceted crystal",
-            "color": "#ff3158",
-            "metalness": 0.28,
-            "roughness": 0.17,
+            "name": "Champion cut crystal · vertex-colored pavilion facets",
+            "color": "#ffffff",
+            "metalness": 0.1,
+            "roughness": 0.21,
             "emissive": "#d30036",
-            "emissiveIntensity": 0.12,
+            "emissiveIntensity": 0.045,
             "hasTexture": false
           },
           {
@@ -6076,12 +6084,12 @@
           "max": [
             0.997093,
             1.004142,
-            0.482464
+            0.4074
           ],
           "size": [
             1.994186,
             1.855255,
-            0.568464
+            0.4934
           ]
         },
         "pivot": [
@@ -6097,8 +6105,8 @@
       },
       "readback": {
         "meshCount": 24,
-        "vertices": 2727,
-        "triangles": 1100,
+        "vertices": 2919,
+        "triangles": 1164,
         "normalAttributes": 24,
         "uvAttributes": 24,
         "finite": true,
@@ -6114,12 +6122,12 @@
             "hasTexture": false
           },
           {
-            "name": "Champion central faceted crystal",
-            "color": "#ff3158",
-            "metalness": 0.28,
-            "roughness": 0.17,
+            "name": "Champion cut crystal · vertex-colored pavilion facets",
+            "color": "#ffffff",
+            "metalness": 0.1,
+            "roughness": 0.21,
             "emissive": "#d30036",
-            "emissiveIntensity": 0.12,
+            "emissiveIntensity": 0.045,
             "hasTexture": false
           },
           {
@@ -6186,12 +6194,12 @@
           "max": [
             0.997093,
             1.004142,
-            0.482464
+            0.4074
           ],
           "size": [
             1.994186,
             1.855255,
-            0.568464
+            0.4934
           ]
         },
         "pivot": [
@@ -6212,20 +6220,20 @@
       "asset": "rank-master",
       "quality": "high",
       "path": "assets/p21/three/exports/rank-master-high.glb",
-      "bytes": 338036,
-      "sha256": "ea4848a5b599a6845422ad02dd49bf71867675276698b75076a563aa4d5e2318",
+      "bytes": 342484,
+      "sha256": "4380fcf0246ca0050950a4879f9546d875b0b3cad15c4596561507a26aef07eb",
       "header": {
         "magic": "glTF",
         "version": 2,
-        "length": 338036,
+        "length": 342484,
         "chunks": [
           {
             "type": "JSON",
-            "bytes": 29496
+            "bytes": 30488
           },
           {
             "type": "BIN",
-            "bytes": 308512
+            "bytes": 311968
           }
         ]
       },
@@ -6250,12 +6258,12 @@
             "hasTexture": false
           },
           {
-            "name": "Master central faceted crystal",
-            "color": "#b657ff",
-            "metalness": 0.28,
-            "roughness": 0.17,
+            "name": "Master cut crystal · vertex-colored pavilion facets",
+            "color": "#ffffff",
+            "metalness": 0.1,
+            "roughness": 0.21,
             "emissive": "#7b28ff",
-            "emissiveIntensity": 0.12,
+            "emissiveIntensity": 0.045,
             "hasTexture": false
           },
           {
@@ -6322,12 +6330,12 @@
           "max": [
             0.997093,
             1.004142,
-            0.482464
+            0.4074
           ],
           "size": [
             1.994186,
             1.855255,
-            0.568464
+            0.4934
           ]
         },
         "pivot": [
@@ -6360,12 +6368,12 @@
             "hasTexture": false
           },
           {
-            "name": "Master central faceted crystal",
-            "color": "#b657ff",
-            "metalness": 0.28,
-            "roughness": 0.17,
+            "name": "Master cut crystal · vertex-colored pavilion facets",
+            "color": "#ffffff",
+            "metalness": 0.1,
+            "roughness": 0.21,
             "emissive": "#7b28ff",
-            "emissiveIntensity": 0.12,
+            "emissiveIntensity": 0.045,
             "hasTexture": false
           },
           {
@@ -6432,12 +6440,12 @@
           "max": [
             0.997093,
             1.004142,
-            0.482464
+            0.4074
           ],
           "size": [
             1.994186,
             1.855255,
-            0.568464
+            0.4934
           ]
         },
         "pivot": [
@@ -6458,20 +6466,20 @@
       "asset": "rank-master",
       "quality": "low",
       "path": "assets/p21/three/exports/rank-master-low.glb",
-      "bytes": 138392,
-      "sha256": "b0f6bfebe6d6964b53d7a486c3a0ad73ab21af7cd34a444f276afb163f8ad9e8",
+      "bytes": 146288,
+      "sha256": "af04bff61aee670b264082804363625e7a51282e199c4f9c9081440f36413b0f",
       "header": {
         "magic": "glTF",
         "version": 2,
-        "length": 138392,
+        "length": 146288,
         "chunks": [
           {
             "type": "JSON",
-            "bytes": 29692
+            "bytes": 30388
           },
           {
             "type": "BIN",
-            "bytes": 108672
+            "bytes": 115872
           }
         ]
       },
@@ -6479,8 +6487,8 @@
       "externalUris": 0,
       "source": {
         "meshCount": 29,
-        "vertices": 3351,
-        "triangles": 1308,
+        "vertices": 3495,
+        "triangles": 1356,
         "normalAttributes": 29,
         "uvAttributes": 29,
         "finite": true,
@@ -6496,12 +6504,12 @@
             "hasTexture": false
           },
           {
-            "name": "Master central faceted crystal",
-            "color": "#b657ff",
-            "metalness": 0.28,
-            "roughness": 0.17,
+            "name": "Master cut crystal · vertex-colored pavilion facets",
+            "color": "#ffffff",
+            "metalness": 0.1,
+            "roughness": 0.21,
             "emissive": "#7b28ff",
-            "emissiveIntensity": 0.12,
+            "emissiveIntensity": 0.045,
             "hasTexture": false
           },
           {
@@ -6568,12 +6576,12 @@
           "max": [
             0.997093,
             1.004142,
-            0.482464
+            0.4074
           ],
           "size": [
             1.994186,
             1.855255,
-            0.568464
+            0.4934
           ]
         },
         "pivot": [
@@ -6589,8 +6597,8 @@
       },
       "readback": {
         "meshCount": 29,
-        "vertices": 3351,
-        "triangles": 1308,
+        "vertices": 3495,
+        "triangles": 1356,
         "normalAttributes": 29,
         "uvAttributes": 29,
         "finite": true,
@@ -6606,12 +6614,12 @@
             "hasTexture": false
           },
           {
-            "name": "Master central faceted crystal",
-            "color": "#b657ff",
-            "metalness": 0.28,
-            "roughness": 0.17,
+            "name": "Master cut crystal · vertex-colored pavilion facets",
+            "color": "#ffffff",
+            "metalness": 0.1,
+            "roughness": 0.21,
             "emissive": "#7b28ff",
-            "emissiveIntensity": 0.12,
+            "emissiveIntensity": 0.045,
             "hasTexture": false
           },
           {
@@ -6678,12 +6686,12 @@
           "max": [
             0.997093,
             1.004142,
-            0.482464
+            0.4074
           ],
           "size": [
             1.994186,
             1.855255,
-            0.568464
+            0.4934
           ]
         },
         "pivot": [
@@ -6704,20 +6712,20 @@
       "asset": "rank-grandmaster",
       "quality": "high",
       "path": "assets/p21/three/exports/rank-grandmaster-high.glb",
-      "bytes": 338024,
-      "sha256": "21e0fb73d7c5de954f4297c103cb8aa71d559652258046ffce531de049f98925",
+      "bytes": 342476,
+      "sha256": "8456b8f5db4b07583f8e3fa50d4067923de52a3c4a092d609bb541eb490d03e9",
       "header": {
         "magic": "glTF",
         "version": 2,
-        "length": 338024,
+        "length": 342476,
         "chunks": [
           {
             "type": "JSON",
-            "bytes": 29484
+            "bytes": 30480
           },
           {
             "type": "BIN",
-            "bytes": 308512
+            "bytes": 311968
           }
         ]
       },
@@ -6742,12 +6750,12 @@
             "hasTexture": false
           },
           {
-            "name": "Grandmaster central faceted crystal",
-            "color": "#e7f7ff",
-            "metalness": 0.28,
-            "roughness": 0.17,
+            "name": "Grandmaster cut crystal · vertex-colored pavilion facets",
+            "color": "#ffffff",
+            "metalness": 0.1,
+            "roughness": 0.21,
             "emissive": "#82d7ff",
-            "emissiveIntensity": 0.12,
+            "emissiveIntensity": 0.045,
             "hasTexture": false
           },
           {
@@ -6814,12 +6822,12 @@
           "max": [
             0.997093,
             1.004142,
-            0.482464
+            0.4074
           ],
           "size": [
             1.994186,
             1.855255,
-            0.568464
+            0.4934
           ]
         },
         "pivot": [
@@ -6852,12 +6860,12 @@
             "hasTexture": false
           },
           {
-            "name": "Grandmaster central faceted crystal",
-            "color": "#e7f7ff",
-            "metalness": 0.28,
-            "roughness": 0.17,
+            "name": "Grandmaster cut crystal · vertex-colored pavilion facets",
+            "color": "#ffffff",
+            "metalness": 0.1,
+            "roughness": 0.21,
             "emissive": "#82d7ff",
-            "emissiveIntensity": 0.12,
+            "emissiveIntensity": 0.045,
             "hasTexture": false
           },
           {
@@ -6924,12 +6932,12 @@
           "max": [
             0.997093,
             1.004142,
-            0.482464
+            0.4074
           ],
           "size": [
             1.994186,
             1.855255,
-            0.568464
+            0.4934
           ]
         },
         "pivot": [
@@ -6950,20 +6958,20 @@
       "asset": "rank-grandmaster",
       "quality": "low",
       "path": "assets/p21/three/exports/rank-grandmaster-low.glb",
-      "bytes": 138384,
-      "sha256": "2d6f4444c421103f8650b5e463baeefae9e465afb658f8bb202e73a28154b580",
+      "bytes": 146280,
+      "sha256": "3eea26779316a15f5883f111ff61c2197a4639d84ec5a42e7f58fcb67630b2c1",
       "header": {
         "magic": "glTF",
         "version": 2,
-        "length": 138384,
+        "length": 146280,
         "chunks": [
           {
             "type": "JSON",
-            "bytes": 29684
+            "bytes": 30380
           },
           {
             "type": "BIN",
-            "bytes": 108672
+            "bytes": 115872
           }
         ]
       },
@@ -6971,8 +6979,8 @@
       "externalUris": 0,
       "source": {
         "meshCount": 29,
-        "vertices": 3351,
-        "triangles": 1308,
+        "vertices": 3495,
+        "triangles": 1356,
         "normalAttributes": 29,
         "uvAttributes": 29,
         "finite": true,
@@ -6988,12 +6996,12 @@
             "hasTexture": false
           },
           {
-            "name": "Grandmaster central faceted crystal",
-            "color": "#e7f7ff",
-            "metalness": 0.28,
-            "roughness": 0.17,
+            "name": "Grandmaster cut crystal · vertex-colored pavilion facets",
+            "color": "#ffffff",
+            "metalness": 0.1,
+            "roughness": 0.21,
             "emissive": "#82d7ff",
-            "emissiveIntensity": 0.12,
+            "emissiveIntensity": 0.045,
             "hasTexture": false
           },
           {
@@ -7060,12 +7068,12 @@
           "max": [
             0.997093,
             1.004142,
-            0.482464
+            0.4074
           ],
           "size": [
             1.994186,
             1.855255,
-            0.568464
+            0.4934
           ]
         },
         "pivot": [
@@ -7081,8 +7089,8 @@
       },
       "readback": {
         "meshCount": 29,
-        "vertices": 3351,
-        "triangles": 1308,
+        "vertices": 3495,
+        "triangles": 1356,
         "normalAttributes": 29,
         "uvAttributes": 29,
         "finite": true,
@@ -7098,12 +7106,12 @@
             "hasTexture": false
           },
           {
-            "name": "Grandmaster central faceted crystal",
-            "color": "#e7f7ff",
-            "metalness": 0.28,
-            "roughness": 0.17,
+            "name": "Grandmaster cut crystal · vertex-colored pavilion facets",
+            "color": "#ffffff",
+            "metalness": 0.1,
+            "roughness": 0.21,
             "emissive": "#82d7ff",
-            "emissiveIntensity": 0.12,
+            "emissiveIntensity": 0.045,
             "hasTexture": false
           },
           {
@@ -7170,12 +7178,12 @@
           "max": [
             0.997093,
             1.004142,
-            0.482464
+            0.4074
           ],
           "size": [
             1.994186,
             1.855255,
-            0.568464
+            0.4934
           ]
         },
         "pivot": [
@@ -8699,18 +8707,5 @@
     "Wood grain, stone microtexture and crystal normal/roughness/metalness map review; no texture maps are fabricated",
     "Award chest owner source/art direction is missing; review this provisional geometry before any use",
     "Cinematic board, remaining glyph/motion/icon assets outside this commissioned family"
-  ],
-  "turntables": {
-    "status": "NOT_GENERATED_OR_REMOVED",
-    "format": "VP9 WebM",
-    "directory": null,
-    "assetCount": 0,
-    "perAssetFrameCount": 8,
-    "totalBytes": 0,
-    "assetTreeBytes": 14646635,
-    "provenance": "Real separate frames rendered from high-detail editable factory meshes by isolated headless Chromium; FFmpeg encodes them; frame hashes, stream readback and video hashes are in render-evidence.json.",
-    "failures": [
-      "Combined 3D asset pack with a 120,000-byte metadata safety margin would exceed the 15,000,000-byte ceiling (14899590 bytes before final evidence)"
-    ]
-  }
+  ]
 }

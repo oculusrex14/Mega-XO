@@ -1,0 +1,313 @@
+{
+  "schemaVersion": 1,
+  "changeId": "P21-3D-CRYSTAL-FACET-REWORK-AND-TRANSPARENT-TURNTABLES",
+  "capturedAt": "2026-10-12T12:20:56.082Z",
+  "sourceRevision": "4d76d755d5a760d514d5f35f3768ac90fba2bc79",
+  "files": [
+    {
+      "path": "assets/p21/three/factories.mjs",
+      "bytes": 34572,
+      "sha256": "5514018144356cb104713f9527cbec5a3699e410cc5ad4aaa4742637b5566474"
+    },
+    {
+      "path": "scripts/p21/export-three.mjs",
+      "bytes": 24076,
+      "sha256": "e3034e9947cf3ae9a6628974a6504fa7d945387f495287fbfbcb161514fc01f4"
+    },
+    {
+      "path": "scripts/p21/three-qa.cjs",
+      "bytes": 30929,
+      "sha256": "5d1844f41a5f43584973b560bcbae9b93aca254829db6b92f4c1df03c0d764d8"
+    },
+    {
+      "path": "assets/p21/three/provenance.json",
+      "bytes": 231021,
+      "sha256": "4c128a2e47a0583cdd18177a8ab846b7aa59863dded231b4b9a4b247dba3e1f5"
+    },
+    {
+      "path": "assets/p21/three/render-evidence.json",
+      "bytes": 174817,
+      "sha256": "1381e863653206a189c8207a3f8dc5912a4c378c5a51c4fa9ff93ee652110047"
+    },
+    {
+      "path": "assets/p21/art/currency/crown-source.png",
+      "bytes": 798070,
+      "sha256": "7e11fab41e355f884a5e4f0bc84708a258476f17edbc0fb7fe549d936beccfc2"
+    },
+    {
+      "path": "assets/p21/art/currency/crown.webp",
+      "bytes": 5420,
+      "sha256": "d1cf3170664e8a82ef8d060da0dde9c4cbfa6eb0549c68f6ec7cb8e0cb4286dc"
+    },
+    {
+      "path": "assets/p21/art/crystal-source.png",
+      "bytes": 1264046,
+      "sha256": "7982a68dc77f7c219ae576c4b7c924690bc2424da63c5743dc8cd72dfc7148b8"
+    },
+    {
+      "path": "assets/p21/art/crystal.webp",
+      "bytes": 42372,
+      "sha256": "c62ad97cb7788ffed3336cbefd72c85063b93065fb9b0c1d8e0a837dfcc5b48c"
+    },
+    {
+      "path": "assets/p21/art/ranks/PROMPTS.json",
+      "bytes": 9716,
+      "sha256": "b4da7c1dcfa3395fa25c162e093899ae883ba1912c59802b96f2e0e67312d3c1"
+    },
+    {
+      "path": "assets/p21/art/PROVENANCE.json",
+      "bytes": 37306,
+      "sha256": "d691f9ea9a28d0e7b5b184442d8973fccbe8e2c083ad7e5d4b1a11a8557baa05"
+    },
+    {
+      "path": "assets/p21/art/header.webp",
+      "bytes": 39114,
+      "sha256": "e01604c213f23dbbeb53d4cec6a57fadc8dc8712e8314847d6ac948f1700b207"
+    },
+    {
+      "path": "assets/p21/art/ranks/diamond.webp",
+      "bytes": 27864,
+      "sha256": "90bdf78de8283e413d1a1b776e712e8cdffb018fcb222132609aae46f5f04f93"
+    },
+    {
+      "path": "assets/p21/art/ranks/wood-source.png",
+      "bytes": 1660906,
+      "sha256": "0bcc05fb989517fb0a7ff53cddaf87c4dadfbc24565e1c634bbd61a66e5bc022"
+    },
+    {
+      "path": "assets/p21/art/ranks/stone-source.png",
+      "bytes": 2067404,
+      "sha256": "2240b6032e78401bf6c2fd069c28412e2326c87f901ca47aa4af8cb12f12f677"
+    },
+    {
+      "path": "assets/p21/art/ranks/iron-source.png",
+      "bytes": 1641348,
+      "sha256": "d5e905f2ba3ec69ed640032d865925ba5ace3c080ad3724d2bdd17316d4a0eb3"
+    },
+    {
+      "path": "assets/p21/art/ranks/bronze-source.png",
+      "bytes": 1521484,
+      "sha256": "b5c825a07d8e3141b4bf4a5a672b80602de31ae8b0918f49aa5f01f3a84d12f1"
+    },
+    {
+      "path": "assets/p21/art/ranks/silver-source.png",
+      "bytes": 1596524,
+      "sha256": "f38c194a1353d5394c26dbbb3814b1f203d090d002f0690634b85ea50d7173c3"
+    },
+    {
+      "path": "assets/p21/art/ranks/gold-source.png",
+      "bytes": 1326749,
+      "sha256": "4e5ed19d169c8609a39b730d8831266ee7f57102fb31786171e0c5f01a6404fd"
+    },
+    {
+      "path": "assets/p21/art/ranks/emerald-source.png",
+      "bytes": 1470859,
+      "sha256": "87162e99df88b8c180b9ce7a801082ca9498d20384828f6834e72838d7dae299"
+    },
+    {
+      "path": "assets/p21/art/ranks/champion-source.png",
+      "bytes": 1579663,
+      "sha256": "a6b893292c422f0bbec97cbf0f3414a0d8437c34f9722dadfdc295860f859f34"
+    },
+    {
+      "path": "assets/p21/art/ranks/master-source.png",
+      "bytes": 1648423,
+      "sha256": "88c010753ea8038def789911bc448adb3cebc771df3914b662120aac796134b8"
+    },
+    {
+      "path": "assets/p21/art/ranks/grandmaster-source.png",
+      "bytes": 1630341,
+      "sha256": "378ca2cda69d55e999357e47bda0f1c6ce9d4e0bb842a7400b0a6a8c6ccbcc23"
+    },
+    {
+      "path": "assets/p21/three/exports/crown-high.glb",
+      "bytes": 195152,
+      "sha256": "b2e4e2362f011f79a7022b850bb0f3d7af7572fda3667d4f47ffed3405284bda"
+    },
+    {
+      "path": "assets/p21/three/exports/crown-low.glb",
+      "bytes": 77564,
+      "sha256": "b22f4a5ecae7eb7271cd4f24d8bfb2e713d17fde8b9165b2156248ba98793090"
+    },
+    {
+      "path": "assets/p21/three/exports/rank-bronze-high.glb",
+      "bytes": 259296,
+      "sha256": "f7c9cac05be0c206e61edba18c92a9dc4a2eaf3f2058600899b2628a7cb2d2ab"
+    },
+    {
+      "path": "assets/p21/three/exports/rank-bronze-low.glb",
+      "bytes": 104404,
+      "sha256": "714549515d82c7cdfbec310e18fa06486182c96d73b32fc68a8880cdb37d81bb"
+    },
+    {
+      "path": "assets/p21/three/exports/rank-silver-high.glb",
+      "bytes": 259168,
+      "sha256": "64ccd31535f19e87ac12d786abcac7922cececbda4123182057c1ec718f99a4f"
+    },
+    {
+      "path": "assets/p21/three/exports/rank-silver-low.glb",
+      "bytes": 104276,
+      "sha256": "84d1a14efea0ffdbe50a5eeefaec4294caa8815048def433cca99dd361b50698"
+    },
+    {
+      "path": "assets/p21/three/exports/rank-gold-high.glb",
+      "bytes": 259232,
+      "sha256": "09baf0f4b9023301320fdffd598e1366881a0eeeaf35b5abfc658c52bc150dd9"
+    },
+    {
+      "path": "assets/p21/three/exports/rank-gold-low.glb",
+      "bytes": 104340,
+      "sha256": "4f97d6bd8cb2352eee141721f6aa241c6450ff7e8cb44810cb2387de6e295f16"
+    },
+    {
+      "path": "assets/p21/three/exports/rank-diamond-high.glb",
+      "bytes": 273424,
+      "sha256": "bcff2a8aeefdbca149e3b0f481658532a5af19c3b06c97751b7ec87e778d84bf"
+    },
+    {
+      "path": "assets/p21/three/exports/rank-diamond-low.glb",
+      "bytes": 110564,
+      "sha256": "bb1a0e753c6dd775995ae6c425dcbac02340ae6fabca89a5261bbf0f93542e96"
+    },
+    {
+      "path": "assets/p21/three/exports/rank-emerald-high.glb",
+      "bytes": 259268,
+      "sha256": "00279b676fdc7feebbcadb7f362299e30b85798509b94e8695f1c500e9290603"
+    },
+    {
+      "path": "assets/p21/three/exports/rank-emerald-low.glb",
+      "bytes": 104376,
+      "sha256": "fdd02ab0db5fc968e845a56d7d43d03e3fc4c27cce35aeb4c10db44c6224b404"
+    },
+    {
+      "path": "assets/p21/three/exports/rank-champion-high.glb",
+      "bytes": 281120,
+      "sha256": "9028036acd95fe696df0115e7f2cf269eb30820ecbcab61a870c05ca7b88cf90"
+    },
+    {
+      "path": "assets/p21/three/exports/rank-champion-low.glb",
+      "bytes": 113844,
+      "sha256": "26d366ecfc2bfbc6d41d4ae1aee1209ac9d9369a07b4abcfa640ff71c90d635b"
+    },
+    {
+      "path": "assets/p21/three/exports/rank-master-high.glb",
+      "bytes": 338036,
+      "sha256": "ea4848a5b599a6845422ad02dd49bf71867675276698b75076a563aa4d5e2318"
+    },
+    {
+      "path": "assets/p21/three/exports/rank-master-low.glb",
+      "bytes": 138392,
+      "sha256": "b0f6bfebe6d6964b53d7a486c3a0ad73ab21af7cd34a444f276afb163f8ad9e8"
+    },
+    {
+      "path": "assets/p21/three/exports/rank-grandmaster-high.glb",
+      "bytes": 338024,
+      "sha256": "21e0fb73d7c5de954f4297c103cb8aa71d559652258046ffce531de049f98925"
+    },
+    {
+      "path": "assets/p21/three/exports/rank-grandmaster-low.glb",
+      "bytes": 138384,
+      "sha256": "2d6f4444c421103f8650b5e463baeefae9e465afb658f8bb202e73a28154b580"
+    },
+    {
+      "path": "assets/p21/three/exports/x-high.glb",
+      "bytes": 508876,
+      "sha256": "45b5b1fb3aee37994b942e514eb4383530738235f692e80e8fedcf9bfad61647"
+    },
+    {
+      "path": "assets/p21/three/exports/x-low.glb",
+      "bytes": 69572,
+      "sha256": "0e1b094783745e96786dd9c1cb0ddfcac8d29ad303af7f57952121cb31a60522"
+    },
+    {
+      "path": "assets/p21/three/exports/o-high.glb",
+      "bytes": 208912,
+      "sha256": "df61bfc9791fd19f04289529d059f7fa5c6814e75246d5d97b7fd478e0cb626b"
+    },
+    {
+      "path": "assets/p21/three/exports/o-low.glb",
+      "bytes": 20676,
+      "sha256": "103e5b852c9499bf93ac07d6c11cc4c283bf4d034074d1877a8648898b4bfaad"
+    },
+    {
+      "path": "assets/p21/three/exports/coin-high.glb",
+      "bytes": 157104,
+      "sha256": "7791dcfed9da0f107d20043cbc77c0bb408823c1799b0b334c37777fc2284ab1"
+    },
+    {
+      "path": "assets/p21/three/exports/coin-low.glb",
+      "bytes": 41984,
+      "sha256": "455cc13f7a647e0b53e0ab73ffbfea7a8e8dc3fecb39743a3ad2a93caff1fbee"
+    },
+    {
+      "path": "assets/p21/three/exports/rank-wood-high.glb",
+      "bytes": 227900,
+      "sha256": "d173c6542b4067570993318be7b1fc2b9c98d5b019801d11ac426cf791865e08"
+    },
+    {
+      "path": "assets/p21/three/exports/rank-wood-low.glb",
+      "bytes": 98800,
+      "sha256": "635bc80b2a453e30e88949c1a822bc15fcf656d096c8e12634d0b191b67c2a27"
+    },
+    {
+      "path": "assets/p21/three/exports/rank-stone-high.glb",
+      "bytes": 227924,
+      "sha256": "b8c91360b857a6b215785dc078fb7b228e3b66403b1343a23f40f25f7e7dae7d"
+    },
+    {
+      "path": "assets/p21/three/exports/rank-stone-low.glb",
+      "bytes": 98824,
+      "sha256": "e8f3774b66f056b85f547a77e056572ac4957ebb11425b1b6fc6659ea6f79203"
+    },
+    {
+      "path": "assets/p21/three/exports/rank-iron-high.glb",
+      "bytes": 227892,
+      "sha256": "1adaf60c159cf45222385e90a07d883157e9fa0abbcb511cb3a43cd0c364aca7"
+    },
+    {
+      "path": "assets/p21/three/exports/rank-iron-low.glb",
+      "bytes": 98792,
+      "sha256": "f4f03db20bbef351deba8b8fdbe2be493e8b142c57cc94515dbe8e20a96927ae"
+    },
+    {
+      "path": "assets/p21/three/exports/trophy-high.glb",
+      "bytes": 302120,
+      "sha256": "214d183127533e61a778588cf0041f5b2ef647c54a9b103243a29260182c0fce"
+    },
+    {
+      "path": "assets/p21/three/exports/trophy-low.glb",
+      "bytes": 108084,
+      "sha256": "baf6caba0e4b77a094ef5e3b4016ae102dde41e3c00ee839048b6adef0e723bc"
+    },
+    {
+      "path": "assets/p21/three/exports/reward-chest-high.glb",
+      "bytes": 262620,
+      "sha256": "ac86346e81bb17b9b1dd576a50dd3b994c418c61d4fb8f395b51aeb2d692cc46"
+    },
+    {
+      "path": "assets/p21/three/exports/reward-chest-low.glb",
+      "bytes": 55792,
+      "sha256": "ad83b9a707f296feef4712ada0c792c1ac459dc5e2ea3543acfad141fd4f6325"
+    },
+    {
+      "path": "assets/p21/three/exports/board-x-high.glb",
+      "bytes": 954532,
+      "sha256": "a6021c96555f200fd4e6440f2eb67fb3e626362530c7b6c532045baf2b69f879"
+    },
+    {
+      "path": "assets/p21/three/exports/board-x-low.glb",
+      "bytes": 318608,
+      "sha256": "a839fec3ce0e7842a297b768f9d36263b0a8139d514fa8e2c649e1aa8b8d0430"
+    },
+    {
+      "path": "assets/p21/three/exports/board-o-high.glb",
+      "bytes": 430152,
+      "sha256": "cd8f9074054c7d96f3f20ffc62e708a71c354b87e1b61784b8731e879299adcc"
+    },
+    {
+      "path": "assets/p21/three/exports/board-o-low.glb",
+      "bytes": 133596,
+      "sha256": "43431b5c6f850fc2d0039eec6c2ef65d2657e91c18172db823131d986a56c47c"
+    }
+  ]
+}

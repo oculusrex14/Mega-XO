@@ -35,7 +35,15 @@
     typeof module === 'object' && module.exports ? globalThis : root
   );
   if (typeof module === 'object' && module.exports) module.exports = api;
-  else root.MegaLanHost = api;
+  else {
+    /* The page needs a ready instance, and the shell needs a stable name to call for every HTTP
+     * request. Publishing the factory under both would leave the lobby calling factory methods,
+     * so the instance is created once here and exposed under both names. `create` stays available
+     * for tests and for a host that wants its own storage slot. */
+    root.MegaLanHostFactory = api;
+    root.MegaLanHost = api.create();
+    root.MegaLanRoom = root.MegaLanHost;
+  }
 })(typeof globalThis !== 'undefined' ? globalThis : this, function (deps, root) {
   const LAN = deps.LAN, HTTP = deps.HTTP;
   if (!LAN || !LAN.LanRoomStore) throw Error('LAN_ROOM_STORE_MISSING');

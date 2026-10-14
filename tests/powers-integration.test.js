@@ -724,3 +724,59 @@ test('stale Worker reply arriving after an undo is rejected by revision fencing'
  assert.equal(h.sandbox.MegaXO.getState().moves.length, currentMovesLength);
  assert.equal(h.sandbox.MegaXO.getState().turn, 'X');
 });
+
+/* ------------------------------------------------------------------------------------------- *
+ * The SHIPPED native lane, window.MegaAds. The injected-`bridge` tests above never exercise the
+ * adapter's own nativeBridge() wrapper, which is what actually runs on a signed Android/iOS build.
+ * The bug this covers: the native bridges resolve showRewarded with {earned, shown, outcome} and
+ * reject on ok:false, and ok === earned - so a shown-then-skipped ad arrived as a rejection and the
+ * exposure allowance plus the two-minute spacing were never consumed, silently bypassing the
+ * owner's frozen rule that "a shown and skipped ad consumes exposure and grants no item".
+ * ------------------------------------------------------------------------------------------- */
+test('the shipped window.MegaAds lane counts a shown-then-skipped ad as exposure and grants nothing', async () => {
+ let now = Date.parse('2026-10-14T12:00:00Z');
+ const terminalState = buildState(BOT_LOSS);
+ const context = {
+  id: 'm-megaaads-1', state: terminalState, mode: 'bot', first: 'X',
+  practice: false, online: false, reason: 'line', charges: 0, used: 0, botPending: false
+ };
+
+ /* Exactly what nativeBridge() wraps: platform, privacyState, isReady and showRewarded, with the
+    honest payload the native bridge produces when the ad was presented but the reward was skipped. */
+ const shownNotEarned = { earned: false, shown: true, outcome: 'DISMISSED' };
+ const host = {
+  MegaAds: {
+   platform: 'android',
+   privacyState: () => ({ canRequestAds: true, privacyOptionsRequired: false }),
+   isReady: () => true,
+   showRewarded: async () => shownNotEarned
+  }
+ };
+ const powers = PowersUI.createPowers({
+  enabled: () => true, clock: () => now, host,
+  issueTicket: async () => 'TICKET-1'
+ });
+
+ const skipped = await powers.request('undo', { match: context });
+ assert.equal(skipped.earned, false, 'a shown-skipped ad must not grant');
+ assert.equal(skipped.entitlement, null, 'no entitlement from a skipped ad');
+ assert.equal(powers.pacing().rewardedShownToday, 1, 'a shown ad MUST consume an exposure slot');
+ assert.equal(powers.inventory().undo.available, 0, 'a skipped ad must not bank an entitlement');
+ assert.ok(powers.pacing().nextEligibleAt > now, 'the two-minute spacing must advance after a shown ad');
+
+ /* And a genuine earned reward through the same lane still grants exactly one. */
+ host.MegaAds.showRewarded = async () => ({ earned: true, shown: true, outcome: 'EARNED' });
+ now = powers.pacing().nextEligibleAt; /* respect the spacing we just earned */
+ const earned = await powers.request('undo', { match: context });
+ assert.equal(earned.earned, true, 'an earned reward through window.MegaAds must grant');
+ assert.equal(earned.entitlement, 'undo');
+ assert.equal(powers.inventory().undo.available, 1, 'exactly one entitlement banked');
+ assert.equal(powers.pacing().rewardedShownToday, 2, 'the earned ad also counts as exposure');
+
+ /* A call that never presented anything must still count as nothing. */
+ now = powers.pacing().nextEligibleAt;
+ host.MegaAds.showRewarded = async () => ({ earned: false, shown: false, outcome: 'FAILED' });
+ const failed = await powers.request('undo', { match: context });
+ assert.equal(failed.earned, false);
+ assert.equal(powers.pacing().rewardedShownToday, 2, 'a never-presented ad consumes nothing');
+});

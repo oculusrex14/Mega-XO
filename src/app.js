@@ -473,16 +473,24 @@ const actions={
    used:match.powers?match.powers.botUndo.presses:0,
    botPending:false
   };
+  // The ticket fetch and the ad are awaited across an interactive window: the player can restart,
+  // leave or resign in the meantime, which replaces or clears `match`. Every resume must therefore
+  // re-check that we are still looking at the SAME pending-finalization match before touching state,
+  // or the earned entitlement would be spent and a bogus loss recorded on a live match.
+  const stillTerminal=()=>match&&match.id===ctx.id&&match.pendingTerminal;
   if(!match.powers||match.powers.botUndo.charges<1){
    const req=await powers.request('undo',ctx);
+   if(!stillTerminal())return;
    if(!req.earned){
     notify('No reward was earned. The loss stands.');
     offerTerminalUndo();
     return;
    }
   }
+  if(!stillTerminal())return;
   const applied=powers.apply('undo',ctx);
   if(!applied.applied){
+   if(!stillTerminal())return;
    notify('Could not rewind move.');
    offerTerminalUndo();
    return;

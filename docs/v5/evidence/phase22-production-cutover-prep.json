@@ -1,0 +1,131 @@
+{
+ "schema_version": 1,
+ "status": "EXECUTED",
+ "phase": "P22",
+ "task_ids": [
+  "V5-22-01"
+ ],
+ "case_ids": [
+  "A03",
+  "A06",
+  "A07",
+  "A09",
+  "A28",
+  "A38",
+  "A39"
+ ],
+ "observed_at_utc": "2026-10-14T02:55:00Z",
+ "source_sha": "07c9fbabf7107216c8ca727ed7f078d4d8db1c27",
+ "environment": "Oracle host `command` + owner Mac; production Neon `blue-sun-85454968`/`mega_xo_v5_production` (nonserving:true) and the V5-only R2 bucket `mega-xo-v5-dr-archives`. V4 authority never written.",
+ "commands": [
+  {
+   "action": "Apply the checksummed chain to production Neon",
+   "command": "node scripts/v5/migrate.js --execute --confirm-production --database-url <production direct>",
+   "exit_code": 0,
+   "result": {
+    "ok": true,
+    "appliedCount": 51
+   }
+  },
+  {
+   "action": "Provision the five runtime LOGIN roles",
+   "command": "node scripts/v5/provision-pg-roles.js --confirm-production --execute",
+   "exit_code": 0,
+   "result": {
+    "status": "active",
+    "roles": [
+     "api_runtime",
+     "core_runtime",
+     "worker_runtime",
+     "backup_reader",
+     "audit_runtime"
+    ]
+   }
+  },
+  {
+   "action": "Import the real V4 snapshot and reconcile",
+   "command": "node tools/v5-migration/cli.js load|verify --database-url <production direct>",
+   "exit_code": 0,
+   "result": {
+    "run": "e2-prod-20261014063136",
+    "batches": 77,
+    "unexplained": 0,
+    "coverageUnclassified": 0,
+    "equationsPassed": [
+     "C1",
+     "C2",
+     "C3",
+     "C4",
+     "C5",
+     "C6",
+     "C7",
+     "C8",
+     "C9"
+    ]
+   }
+  },
+  {
+   "action": "Real encrypted backup, R2 upload and independent retrieve",
+   "command": "scripts/v5/p15/backup-cli.js --source <production target> --recipient <rsa3072 public> --out <private> --confirm-nonserving-production-backup",
+   "exit_code": 0,
+   "result": {
+    "ciphertextBytes": 224362,
+    "ciphertextSha256": "9fc3fa9a0b80044b241736ea3c5a435cf5028824c4f2c1af7ab4b2ed804b9cd6",
+    "measuredBackupSeconds": 36.1,
+    "independentReaderRetrieve": "sha256 equal"
+   }
+  },
+  {
+   "action": "Complete DR restore into an isolated PG16",
+   "command": "migrate --execute then pg_restore --data-only --disable-triggers --single-transaction",
+   "exit_code": 0,
+   "result": {
+    "actors": 2,
+    "wallets": 2,
+    "matches": 2,
+    "profiles": 2,
+    "migrations": 51,
+    "coins": 307,
+    "learningCaptures": 0
+   }
+  },
+  {
+   "action": "Independent Neon PITR recovery point",
+   "command": "neon branches create --parent <past timestamp>",
+   "exit_code": 0,
+   "result": {
+    "reconstructedMigrations": 49,
+    "actors": 2,
+    "coins": 307
+   }
+  },
+  {
+   "action": "Delivered incident and recovery alerts",
+   "command": "ops-bin/host-health-monitor.sh (forced healthy->unhealthy->healthy)",
+   "exit_code": 0,
+   "result": {
+    "incident": "V5 alert path invoked",
+    "recovery": "V5 alert path invoked",
+    "sendPath": "HTTP 200, message id returned"
+   }
+  }
+ ],
+ "artifacts": [
+  "docs/v5.1/release/PRODUCTION-PG-PROVISIONED-20261014.md",
+  "docs/v5.1/release/E2-PRODUCTION-IMPORT-RECONCILIATION-20261014.md",
+  "docs/v5.1/release/P15-V5-BACKUP-RETRIEVE-MEASURED-20261014.md",
+  "docs/v5.1/release/P15-DR-RESTORE-PROVEN-20261014.md",
+  "docs/v5.1/release/NEON-PITR-VERIFIED-20261014.md",
+  "docs/v5.1/release/DELIVERED-ALERTS-20261014.md",
+  "docs/v5.1/release/E3-PRODUCTION-STACK-PROVISIONED-20261014.md",
+  "docs/v5.1/release/E5-PRODUCTION-STACK-REHEARSAL-20261014.md"
+ ],
+ "restricted_evidence_location": "~/MegaXO-private/{v5-e2,v5-drill,v5-r2,v5-recovery-key*}; host /opt/mega-xo-v5-production/{secrets,state,archives}. Never committed.",
+ "not_claimed": [
+  "No production authority transfer: `nonserving` is still true and the V4 SQLite writer is still the only writer.",
+  "No authority epoch and no first production application write.",
+  "No realistic-history RPO/RTO measurement (dataset is 2 actors).",
+  "No provider-approved commerce, no live ads, no store submission.",
+  "No iOS physical-device matrix (unsigned)."
+ ]
+}

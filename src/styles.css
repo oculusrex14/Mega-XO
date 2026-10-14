@@ -276,7 +276,7 @@ body{font-family:'Space Grotesk',ui-sans-serif,system-ui,-apple-system,BlinkMacS
   --panel-dark:#171a1f;--panel-dark-text:#ffffff;--grabber:#c7ccd2;--config-line:#d7dbe0;--route-edge:#9dbd39;--danger-line:#f29a9a;
   --hud:#171a1f;--on-hud:#ffffff;--hud-muted:#aeb5bd;--nav-glass:rgba(255,255,255,.94);
 }
-:root[data-theme="vector"] body{background:#e9ecef}
+:root[data-theme="vector"] body{background:var(--canvas)}
 :root[data-theme="vector"] .app{border-color:#bfc5cc;box-shadow:var(--shadow)}
 :root[data-theme="vector"] .theme-preview.vector{background:#f8f9fb;color:#246bfd;border-color:#cdd2d8}
 :root[data-theme="vector"] .theme-preview.vector .sample-o{color:#f45669}
@@ -736,3 +736,94 @@ body{font-family:'Space Grotesk',ui-sans-serif,system-ui,-apple-system,BlinkMacS
 .brand-theme-mark{display:block;width:100%;height:100%;object-fit:contain}
 .brand b{white-space:nowrap}
 @media(max-width:390px){.topbar{padding-left:12px;padding-right:12px;gap:4px}.brand{gap:4px}.brand b{font-size:clamp(12px,3.6vw,16px);letter-spacing:-.7px}.brand>#brandIcon{width:30px;height:30px}.header-actions{gap:4px}}
+
+/* ---------------- V5.1 narrow-phone topbar fit ----------------
+   At 360 CSS px the Paper Club (26px Caveat) and After Hours (Orbitron) wordmarks grew the
+   brand past the space between the topbar padding, pushing .header-actions off the right edge
+   (368.4 / 368.7 measured on a 360px OnePlus EB2101). The brand may now shrink and truncate its
+   wordmark; the wallet pill and the 44px icon buttons keep their authored size. Below 480px only. */
+@media(max-width:480px){
+ .topbar{gap:6px}
+ .brand{min-width:0;flex:0 1 auto;overflow:hidden}
+ .brand>span{flex:none}
+ .brand b{min-width:0;overflow:hidden;text-overflow:ellipsis;padding-right:2px}
+ .header-actions{flex:none;margin-left:auto}
+}
+/* Paper Club's hand-lettered wordmark is the only one big enough to push the header actions off
+   a phone; cap it on narrow screens only. The punched-rule binding artwork and its 40px reading
+   gutter are untouched at every width, so the notebook look is unchanged on wide screens. */
+@media(max-width:480px){
+ :root[data-theme="paperclub"] .brand b{font-size:19px;letter-spacing:0}
+ /* After Hours uses a wide display face with positive tracking; both have to give a little so the
+    whole wordmark stays inside a 360px topbar next to the wallet pill and two 44px buttons. */
+ :root[data-theme="afterhours"] .brand b{font-size:12px;letter-spacing:0}
+}
+@media(max-width:365px){
+ /* 17px keeps the whole hand-lettered wordmark inside a 360px topbar, so the only
+    ellipsis case left is a 320px phone. */
+ :root[data-theme="paperclub"] .brand b{font-size:17px;letter-spacing:0}
+}
+/* ---------------- V5.1 page canvas reaches the viewport edges ----------------
+   No hardcoded light value may sit under the app: the document canvas is the theme token and
+   the scroll container is the theme surface, so the host has a correct colour to bleed into
+   the status/navigation bars. Safe-area padding above stays exactly as authored. */
+html{background:var(--canvas);min-height:100%}
+html,body{min-height:100dvh}
+
+/* ---------------- V5.1 native-feeling motion (transform/opacity only, <=200ms) ----------------
+   Screens the router already swaps get a short fade + rise; taps get a subtle press; the
+   existing bottom sheet slides up. Everything is neutralised by [data-motion="reduced"],
+   prefers-reduced-motion and forced-colors, and nothing animates layout or colour. */
+@keyframes mega-screen-in{from{opacity:0;transform:translate3d(0,8px,0)}to{opacity:1;transform:translate3d(0,0,0)}}
+@keyframes mega-sheet-in{from{opacity:0;transform:translate3d(0,26px,0)}to{opacity:1;transform:translate3d(0,0,0)}}
+@keyframes mega-backdrop-in{from{opacity:0}to{opacity:1}}
+#page>*{animation:mega-screen-in .18s cubic-bezier(.22,.61,.36,1)}
+/* Party lobby/tables are the only party views that animate; the room and in-game views are
+   live-updating surfaces and must not re-enter on every poll. */
+.party-screen[data-view="hub"] .party-body>*,
+.party-screen[data-view="tables"] .party-body>*{animation:mega-screen-in .18s cubic-bezier(.22,.61,.36,1)}
+.bottom-sheet:not([hidden]){animation:mega-sheet-in .2s cubic-bezier(.22,.61,.36,1)}
+.sheet-backdrop:not([hidden]){animation:mega-backdrop-in .16s ease}
+/* Tactile press: rows, cards and buttons only. The 44px-floor primary navigation controls
+   (.nav-button, .icon-button) keep their authored size and selected styling. */
+.button:not(:disabled):active,.mode:not(:disabled):active,.rank-summary:active,.learn:active,
+.league:active,.tab:active,.setup-chip:not(:disabled):active,.wallet-pill:active,
+.friend-add:not(:disabled):active,.copy-friend:not(:disabled):active{transform:scale(.97)}
+@media(hover:hover){
+ .button:not(:disabled),.mode:not(:disabled),.rank-summary,.learn,.league,.tab,
+ .setup-chip:not(:disabled),.wallet-pill,.friend-add:not(:disabled),.copy-friend:not(:disabled),
+ .party-choice{transition:transform .14s ease}
+}
+/* Paper Club reads as pressed paper: keep its authored shadow language, change only direction. */
+:root[data-theme="paperclub"] .mode:not(:disabled):active,
+:root[data-theme="paperclub"] .rank-summary:active,
+:root[data-theme="paperclub"] .learn:active,
+:root[data-theme="paperclub"] .league:active{transform:translate(2px,3px)}
+/* After Hours is a hard-edged arcade panel: a crisp Y nudge, not a scale. */
+:root[data-theme="afterhours"] .mode:not(:disabled):active,
+:root[data-theme="afterhours"] .rank-summary:active,
+:root[data-theme="afterhours"] .learn:active,
+:root[data-theme="afterhours"] .league:active{transform:translateY(2px)}
+:root[data-motion="reduced"] #page>*,
+:root[data-motion="reduced"] .party-body>*,
+:root[data-motion="reduced"] .bottom-sheet:not([hidden]),
+:root[data-motion="reduced"] .sheet-backdrop:not([hidden]),
+:root[data-motion="reduced"] .button:active,
+:root[data-motion="reduced"] .mode:active,
+:root[data-motion="reduced"] .rank-summary:active,
+:root[data-motion="reduced"] .learn:active,
+:root[data-motion="reduced"] .league:active,
+:root[data-motion="reduced"] .tab:active,
+:root[data-motion="reduced"] .setup-chip:active,
+:root[data-motion="reduced"] .wallet-pill:active,
+:root[data-motion="reduced"] .friend-add:active,
+:root[data-motion="reduced"] .copy-friend:active,
+:root[data-motion="reduced"] .party-choice:active{animation:none!important;transition:none!important;transform:none!important}
+@media(prefers-reduced-motion:reduce){
+ #page>*,.party-body>*,.bottom-sheet:not([hidden]),.sheet-backdrop:not([hidden]),
+ .button:active,.mode:active,.rank-summary:active,.learn:active,.league:active,.tab:active,
+ .setup-chip:active,.wallet-pill:active,.friend-add:active,.copy-friend:active,.party-choice:active{animation:none!important;transition:none!important;transform:none!important}
+}
+@media(forced-colors:active){
+ #page>*,.party-body>*,.bottom-sheet:not([hidden]),.sheet-backdrop:not([hidden]){animation:none!important}
+}

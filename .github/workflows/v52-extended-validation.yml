@@ -119,7 +119,10 @@ jobs:
           mkdir -p .artifacts/v52-native
           apk=native/android/app/build/outputs/apk/offline/debug/app-offline-debug.apk
           test -s "$apk"
-          if "$ANDROID_HOME/build-tools/35.0.0/aapt" dump permissions "$apk" | grep -E 'android.permission.INTERNET|com.google.android.gms.permission.AD_ID'; then exit 1; fi
+          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump permissions "$apk" | grep -F "android.permission.INTERNET" >/dev/null || {
+            echo "Offline LAN host is missing INTERNET required for local room hosting" >&2; exit 1; }
+          if "$ANDROID_HOME/build-tools/35.0.0/aapt" dump permissions "$apk" | grep -F 'com.google.android.gms.permission.AD_ID'; then
+            echo "Advertising ID permission must stay removed" >&2; exit 1; fi
           unzip -p "$apk" assets/mega/client-bundle.manifest.json > .artifacts/v52-native/android-manifest.json
           sha256sum "$apk" > .artifacts/v52-native/apk-sha256.txt
           if [ -e /dev/kvm ]; then sudo chmod 666 /dev/kvm; fi

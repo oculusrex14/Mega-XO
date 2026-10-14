@@ -262,8 +262,12 @@ test('CI compiles and asserts BOTH flavors, and exercises the offline artifact o
   assert.match(workflow, /app-offline-debug\.apk/);
   assert.match(workflow, /app-online-debug\.apk/);
   assert.match(workflow, /for permission in android\.permission\.INTERNET android\.permission\.ACCESS_NETWORK_STATE; do/);
-  assert.match(workflow, /Online target must keep the advertising ID permission removed/);
-  assert.match(workflow, /Offline P20 host unexpectedly has network or advertising ID permissions/);
+  // INTERNET/ACCESS_NETWORK_STATE are deliberately present in BOTH flavors now: the
+  // owner-authorised LAN-local room host needs them (NsdManager refuses without INTERNET, and
+  // removing it made the host crash on start). Assert the property that still matters instead:
+  // the advertising ID permission stays removed from both, so no ad SDK can track.
+  assert.match(workflow, /Advertising ID permission must be removed from/);
+  assert.doesNotMatch(workflow, /Offline P20 host unexpectedly has network or advertising ID permissions/);
   // The new suite cannot silently stop running.
   assert.match(workflow, /node --test tests\/v5-native-foundations\.test\.js tests\/v5-native-online-target\.test\.js/);
   assert.match(workflow, /'tests\/v5-native-online-target\.test\.js'/);

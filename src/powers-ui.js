@@ -163,8 +163,8 @@ function createPowers(options={}){
   const ply=R.plies(summary);
   const press=pressFailure(summary,opts);
   const offerable=powers.botUndo.packages<R.POLICY.botUndoPackagesPerMatch&&pressFailure(summary,{used:opts.used,charges:1})===null;
-  if(press===null)return {eligible:true,reason:null,ply,charges:opts.charges,perMatchUsed:opts.used};
-  if(opts.charges<1&&offerable)return {eligible:true,reason:null,ply,charges:0,perMatchUsed:opts.used};
+  if(press===null)return {eligible:true,reason:'',ply,charges:opts.charges,perMatchUsed:opts.used};
+  if(opts.charges<1&&offerable)return {eligible:true,reason:'',ply,charges:0,perMatchUsed:opts.used};
   return {eligible:false,reason:opts.charges<1&&offerable===false&&powers.botUndo.packages>=R.POLICY.botUndoPackagesPerMatch?'PACKAGE_ALREADY_GRANTED':press,ply,charges:opts.charges,perMatchUsed:opts.used};
  }
  function redeem(summary){

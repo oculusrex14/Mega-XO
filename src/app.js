@@ -40,6 +40,14 @@ function initPowers(){
  if(!PW||powers)return powers;
  powers=PW.createPowers({
   enabled:()=>POWERS_ON||window.MEGA_POWERS_ENABLED===true,
+  /* The aggregate ceiling is shared with the cosmetic rewarded lane, which books its presentations
+     in the ad-cadence store. Report today's count from there so Credits and Undo cannot together
+     exceed the owner's ten-per-UTC-day ceiling. */
+  otherShown:()=>{
+   const M=window.MegaMonetization;if(!M)return 0;
+   try{const raw=JSON.parse(localStorage.getItem('mega_v35_ad_cadence')||'null');
+    return raw?M.rewardedExposure(raw).shownToday:0;}catch{return 0;}
+  },
   storage:{read:readPowersState,write:writePowersState},
   live:()=>match?{
    id:match.id,
@@ -473,16 +481,24 @@ const actions={
    used:match.powers?match.powers.botUndo.presses:0,
    botPending:false
   };
+  // The ticket fetch and the ad are awaited across an interactive window: the player can restart,
+  // leave or resign in the meantime, which replaces or clears `match`. Every resume must therefore
+  // re-check that we are still looking at the SAME pending-finalization match before touching state,
+  // or the earned entitlement would be spent and a bogus loss recorded on a live match.
+  const stillTerminal=()=>match&&match.id===ctx.id&&match.pendingTerminal;
   if(!match.powers||match.powers.botUndo.charges<1){
    const req=await powers.request('undo',ctx);
+   if(!stillTerminal())return;
    if(!req.earned){
     notify('No reward was earned. The loss stands.');
     offerTerminalUndo();
     return;
    }
   }
+  if(!stillTerminal())return;
   const applied=powers.apply('undo',ctx);
   if(!applied.applied){
+   if(!stillTerminal())return;
    notify('Could not rewind move.');
    offerTerminalUndo();
    return;
@@ -534,8 +550,7 @@ const actions={
  leave:()=>{if(!match||match.state.winner)return leave();if(match.online){actions.resign();return;}open('Leave this game?','<p>Your current offline match will be discarded. No coins or completed-game stats are awarded.</p>'+fullButton('Leave game','home')+fullButton('Keep playing','close','',true));},
  home:leave,restart:()=>{if(match?.online){actions.resign();return;}open('Start a new game?','<p>This discards the current match, without rewards.</p>'+fullButton('Start again','restartyes')+fullButton('Keep playing','close','',true));},restartyes:()=>{if(match?.pendingTerminal)finalizeTerminalResult();close();startGame(match?.practice||false);},
  rematch:()=>{if(match?.pendingTerminal)finalizeTerminalResult();if(match?.online){leave();page='friends';render();return;}close();startGame(match?.practice||false,true);},resign:()=>{if(!match||match.state.winner)return;open('Resign?','<p>'+(match.online?'Resigning ends this match as a loss. Ranked rating and the agreed pot will settle.':'A bot game resignation counts as a loss, but gives no coins.')+'</p>'+fullButton('Resign match','resignyes')+fullButton('Keep playing','close','',true));},
- resignyes:()=>{if(match?.online){onlineResign();return;}close();match.state={...match.state,winner:match.mode==='bot'?'O':match.state.turn==='X'?'O':'X'};finish('resign');}
-};
+ resignyes:()=>{if(match?.online){onlineResign();return;}close();match.state={...match.state,winner:match.mode==='bot'?'O':match.state.turn==='X'?'O':'X'};finish('resign');},queue:startQueue,settings,wallet,tutorial,rules,aipack:()=>window.MegaAiPack?.show(),matchstats:currentMatchStats,rankhelp:rankHelp,feehelp:feeHelp,weeklyhelp:weeklyHelp,onlineinfo:onlineInfo,retrybot:()=>{close();if(match){match.status='ready';scheduleBot();}},fallbackexpert:()=>{if(match&&LA){match=LA.expertFallback(match,{confirmed:true});$('#matchLevel').textContent='Expert (Fallback \u00b7 Unverified)';close();notify('Switched to Expert bot. Result remains unverified with no rewards.');scheduleBot();}}};
 document.addEventListener('click',e=>{const el=e.target.closest('[data-action]');if(!el||el.disabled)return;const fn=actions[el.dataset.action];if(fn)return fn(el.dataset.value||'');});
 document.addEventListener('keydown',e=>{const sheet=$('#sheet');if(sheet.hidden)return;if(e.key==='Escape'){e.preventDefault();actions.close();return;}if(e.key!=='Tab')return;const nodes=[...sheet.querySelectorAll('button:not([disabled]),input:not([disabled]),select:not([disabled]),a[href],[tabindex]:not([tabindex="-1"])')].filter(n=>n.getClientRects().length&&!n.inert);if(!nodes.length){e.preventDefault();sheet.focus();return;}const first=nodes[0],last=nodes.at(-1);if(e.shiftKey&&document.activeElement===first){e.preventDefault();last.focus();}else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first.focus();}});
 document.addEventListener('change',e=>{

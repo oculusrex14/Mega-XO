@@ -59,7 +59,12 @@ final class MegaAdsBridge: NSObject, WKScriptMessageHandlerWithReply {
         if (!validate()) return Promise.reject(new Error('ADS_UNAVAILABLE'));
         return bridge.postMessage({op, ...fields}).then(result => {
           if (result && result.state && typeof result.state === 'object') state = result.state;
-          if (result && result.ok === true) return result;
+          // showRewarded resolves the honest payload even when the reward was NOT earned, so the
+          // caller can distinguish a shown-then-skipped ad (which consumes the exposure allowance)
+          // from a call that never presented. Every other op still rejects on ok:false.
+          const presented = op === 'showRewarded'
+            && typeof result?.shown === 'boolean' && typeof result?.earned === 'boolean';
+          if (result && (result.ok === true || presented)) return result;
           throw new Error(typeof result?.error === 'string' ? result.error : 'ADS_UNAVAILABLE');
         });
       };

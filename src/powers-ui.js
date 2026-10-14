@@ -144,6 +144,11 @@ function createPowers(options={}){
  const live=typeof options.live==='function'?options.live:null;
  const commit=typeof options.commit==='function'?options.commit:null;
  const bridge=options.bridge||null;
+ /* The owner's ceiling is ONE aggregate ten-per-UTC-day across Credits, boost and Undo together, so
+    the powers lane must count presentations the cosmetic lane already booked. `otherShown` is a host
+    probe into that shared ledger; absent, it reports zero and behaviour is exactly the powers lane's
+    own count. */
+ const otherShown=typeof options.otherShown==='function'?options.otherShown:()=>0;
  const matchRevisions=new Map();
  let state=migrateState(storage&&typeof storage.read==='function'?storage.read():null,clock());
  let inFlight=false;
@@ -238,7 +243,10 @@ function createPowers(options={}){
     const adReady=activeBridge.ready?activeBridge.ready()===true:false;
     if(!R.rewardedAllowed(summary,{consentReady,adReady},kind))
      return {earned:false,reason:!consentReady?'CONSENT_UNAVAILABLE':'AD_UNAVAILABLE',entitlement:null};
-    const gate=R.offerAllowed(state.pacing,state.inventory,{kind,now});
+    const windowedNow=R.pacingWindow(state.pacing,now).pacing;
+    const others=Math.max(0,Number.isSafeInteger(otherShown())?otherShown():0);
+    const aggregate={...windowedNow,shown:Math.min(R.POLICY.rewardedDayCap,windowedNow.shown+others)};
+    const gate=R.offerAllowed(aggregate,state.inventory,{kind,now});
     if(!gate.ok)return {earned:false,reason:gate.reason,entitlement:null};
     const offer=eligibilityOf(summary);
     if(!offer.eligible||offer.charges>0)return {earned:false,reason:offer.charges>0?'CHARGE_AVAILABLE':offer.reason,entitlement:null};
@@ -276,7 +284,9 @@ function createPowers(options={}){
   },
   pacing(){
    const windowed=R.pacingWindow(state.pacing,clock());
-   return {rewardedShownToday:windowed.pacing.shown,rewardedDayCap:R.POLICY.rewardedDayCap,nextEligibleAt:windowed.nextEligibleAt};
+   const others=Math.max(0,Number.isSafeInteger(otherShown())?otherShown():0);
+   const total=Math.min(R.POLICY.rewardedDayCap,windowed.pacing.shown+others);
+   return {rewardedShownToday:total,rewardedDayCap:R.POLICY.rewardedDayCap,nextEligibleAt:windowed.nextEligibleAt};
   }
  });
 }

@@ -28,6 +28,8 @@
     "src/bot/local-ai.js",
     "src/bot/local-session.js",
     "src/bot/pack-ui.js",
+    "src/gameplay-rewind.js",
+    "src/powers-ui.js",
     "src/app.js",
     "src/tournament.js",
     "src/lan/lan-room-store.js",

@@ -289,14 +289,20 @@ internal class MegaAdsBridge private constructor(
                   if (!callbacks) return;
                   outstanding.delete(result.id);
                   if (result && result.state && typeof result.state === 'object') state = result.state;
-                  if (result.ok === true) callbacks.resolve(result);
+                  // showRewarded resolves the honest payload even when the reward was NOT earned:
+                  // the caller must be able to tell a shown-then-skipped ad (which consumes the
+                  // exposure allowance) from a call that never presented anything. Every other op
+                  // still rejects on ok:false, so a genuine failure is unchanged.
+                  const presented = callbacks.kind === 'showRewarded'
+                    && typeof result.shown === 'boolean' && typeof result.earned === 'boolean';
+                  if (result.ok === true || presented) callbacks.resolve(result);
                   else callbacks.reject(new Error(
                     typeof result.error === 'string' ? result.error : 'ADS_UNAVAILABLE'));
                 } catch (_) {}
               };
               const call = (op, fields) => new Promise((resolve, reject) => {
                 const id = ++next;
-                outstanding.set(id, {resolve, reject});
+                outstanding.set(id, {resolve, reject, kind: op});
                 try { channel.postMessage(JSON.stringify({id, op, ...fields})); }
                 catch (_) { outstanding.delete(id); reject(new Error('ADS_UNAVAILABLE')); }
               });

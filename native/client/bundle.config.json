@@ -30,6 +30,9 @@
     "src/bot/pack-ui.js",
     "src/app.js",
     "src/tournament.js",
+    "src/lan/lan-room-store.js",
+    "src/lan/lan-room-http.js",
+    "src/lan/lan-host.js",
     "src/party-ui.js",
     "src/community.js",
     "src/monetization-ui.js"

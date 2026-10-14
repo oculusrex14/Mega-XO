@@ -52,12 +52,20 @@ try:
   assert 'Challenge a friend (1v1)' in a.locator('#partyBody').inner_text()
   assert a.locator('.party-choice').count()>=4
   a.locator('[data-party="back"]').click()
-  # Actual separate-client free LAN room.
-  for page,name in [(a,'Alice'),(b,'Bob')]:
-   page.locator('[data-action="start"]').click();page.locator('[data-party="lan"]').click();page.locator('#partyName').fill(name)
-  a.locator('#partyFormat').select_option('duel');a.locator('[data-party="createRoom"]').click()
+  # Free LAN room on this origin: the host creates it, the second client joins by code.
+  a.locator('[data-action="start"]').click();a.locator('[data-party="hostlan"]').click()
+  a.locator('#partyName').fill('Alice');a.locator('#partyFormat').select_option('duel')
+  a.locator('[data-party="createRoom"]').click()
   code=a.locator('.note b').first.inner_text().split()[-1]
-  b.locator('[data-party="joinForm"]').click();b.locator('#partyName').fill('Bob');b.locator('#partyCode').fill(code);b.locator('[data-party="joinRoom"]').click()
+  b.locator('[data-action="start"]').click();b.locator('[data-party="joinlan"]').click()
+  # No native discovery service in this shell: the view degrades to honest copy, not a dead end.
+  b.locator('text=Searching needs the app').wait_for(timeout=8000)
+  # Back returns to the private hub, so the host choice is directly available.
+  b.locator('[data-party="back"]').click();b.locator('[data-party="hostlan"]').click()
+  # The join view is its own form: switch to it first, then fill the name it asks for.
+  b.locator('[data-party="joinForm"]').click()
+  b.locator('#partyName').fill('Bob');b.locator('#partyCode').fill(code)
+  b.locator('[data-party="joinRoom"]').click()
   for page in [a,b]:page.locator('[data-party="ready"]').click()
   a.locator('[data-party="start"]').click()
   for page in [a,b]:

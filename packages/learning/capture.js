@@ -9,6 +9,8 @@ const E = require('../../src/bot/encoding.js');
 const FORMAT = 'game-capture/v1';
 const RULES_HASH = crypto.createHash('sha256').update(fs.readFileSync(require.resolve('../../src/game.js'))).digest('hex');
 const MAX_BYTES = 64 * 1024;
+const SHAPE_KEYS = ['format','source','rules','provenance','consent','game','moves','final','qualityFlags'];
+const LEGACY_SHAPE_KEYS = ['format','source','rules','provenance','game','moves','final','qualityFlags'];
 const fail = code => { const e = new Error(code); e.code = code; throw e; };
 const integer = (n, lo = 0, hi = Number.MAX_SAFE_INTEGER) => Number.isSafeInteger(n) && n >= lo && n <= hi;
 const hex = n => typeof n === 'string' && /^[a-f0-9]{64}$/.test(n);
@@ -39,9 +41,10 @@ function board(state) { return {board: state.board, mini: state.mini, turn: stat
 const SOURCE_KEYS = ['kind','id','attempt','revision','status','settled','mode','rated','clockSeconds','incrementSeconds','players','symbols','moves','state','timings','winnerActor','reason','startedAt','endedAt','lastMoveAt','riskFlags','historyOnly'];
 /* source is the allowlisted DB projection, never an HTTP request. provenance is trusted deployment
  * metadata; population defaults to unknown unless explicitly classified in the private registry. */
-function seal(source, {sourceCommit, environment, population = 'unknown'} = {}) {
+function seal(source, {sourceCommit, environment, population = 'unknown', researchEligible = null} = {}) {
  object(source, SOURCE_KEYS, 'CAPTURE_SOURCE_SHAPE');
  if (!/^[a-f0-9]{40}$/.test(sourceCommit || '') || !['test','staging','production'].includes(environment) || !['human-v-human','server-bot','test-fixture','unknown'].includes(population)) fail('CAPTURE_PROVENANCE');
+ if (researchEligible !== null && typeof researchEligible !== 'boolean') fail('CAPTURE_RESEARCH_DECISION');
  if (!['match','fixture'].includes(source.kind) || !text(source.id,400) || !integer(source.attempt,0,10000) || !integer(source.revision,0,81)) fail('CAPTURE_SOURCE_ID');
  if (!['FINISHED','VOID'].includes(source.status) || source.settled !== true || !['line','draw','resign','timeout','no-show','void'].includes(source.reason) || (source.status === 'VOID') !== (source.reason === 'void')) fail('CAPTURE_NOT_TERMINAL');
  if (!Array.isArray(source.players) || source.players.length !== 2 || !source.players.every(p => text(p,160)) || source.players[0] === source.players[1]) fail('CAPTURE_PARTICIPANTS');
@@ -89,6 +92,11 @@ function seal(source, {sourceCommit, environment, population = 'unknown'} = {}) 
   source: {kind:source.kind,id:source.id,attempt:source.attempt,revision:source.revision,sha256:sha256(source)},
   rules: {id:'ultimate-3x3x3-v1',sha256:RULES_HASH,actionIndex:'b*9+c'},
   provenance: {sourceCommit,environment,population,verification:'server-authoritative'},
+  /* The subject's one-time research decision, recorded at capture time so the export never has to
+   * re-derive it from a later state. `null` means "no research decision recorded" (an operational
+   * trajectory): it is never read as a grant. Necessary operational processing is explained by its
+   * own notice version in learning.consent and does not depend on this value. */
+  consent: {researchEligible, basis:'one-time-subject-choice'},
   game: {mode:source.mode,rated:source.rated,clockSeconds:source.clockSeconds,incrementSeconds:source.incrementSeconds,firstSymbol:'X',
    seatSymbols: source.players.map(p => p === source.symbols.X ? 'X' : 'O'), status:source.status,reason:source.reason,
    startedAt:source.startedAt,endedAt:source.endedAt,boardWinner:state.winner,adjudicatedWinner:adjudicated},
@@ -101,7 +109,10 @@ function seal(source, {sourceCommit, environment, population = 'unknown'} = {}) 
 }
 /* Revalidation is deliberately usable without the private actor lookup or original DB. */
 function validate(p, expectedHash) {
- object(p,['format','source','rules','provenance','game','moves','final','qualityFlags'],'CAPTURE_SHAPE');
+ /* A pre-0052 archive carries no research decision; the field is OPTIONAL, so history keeps
+  * validating and is never reinterpreted as a grant (an absent field is not `true`). */
+ const hasConsent = p && Object.getPrototypeOf(p) === Object.prototype && Object.hasOwn(p, 'consent');
+ object(p, hasConsent ? SHAPE_KEYS : LEGACY_SHAPE_KEYS, 'CAPTURE_SHAPE');
  if (Buffer.byteLength(stable(p)) > MAX_BYTES || p.format !== FORMAT) fail('CAPTURE_FORMAT');
  if (expectedHash !== undefined && (!hex(expectedHash) || sha256(p) !== expectedHash)) fail('CAPTURE_HASH');
  object(p.source,['kind','id','attempt','revision','sha256'],'CAPTURE_SOURCE_SHAPE');
@@ -110,6 +121,10 @@ function validate(p, expectedHash) {
  if (p.rules.id !== 'ultimate-3x3x3-v1' || p.rules.sha256 !== RULES_HASH || p.rules.actionIndex !== 'b*9+c') fail('CAPTURE_RULES');
  object(p.provenance,['sourceCommit','environment','population','verification'],'CAPTURE_PROVENANCE');
  if (!/^[a-f0-9]{40}$/.test(p.provenance.sourceCommit) || !['test','staging','production'].includes(p.provenance.environment) || !['human-v-human','server-bot','test-fixture','unknown'].includes(p.provenance.population) || p.provenance.verification !== 'server-authoritative') fail('CAPTURE_PROVENANCE');
+ if (hasConsent) {
+  object(p.consent,['researchEligible','basis'],'CAPTURE_CONSENT_SHAPE');
+  if (p.consent.basis !== 'one-time-subject-choice' || (p.consent.researchEligible !== null && typeof p.consent.researchEligible !== 'boolean')) fail('CAPTURE_CONSENT_SHAPE');
+ }
  object(p.game,['mode','rated','clockSeconds','incrementSeconds','firstSymbol','seatSymbols','status','reason','startedAt','endedAt','boardWinner','adjudicatedWinner'],'CAPTURE_GAME');
  const game = p.game;
  if (game.firstSymbol !== 'X' || !['ranked','casual','direct-rated','direct-unrated','tournament'].includes(game.mode) || typeof game.rated !== 'boolean' || !integer(game.clockSeconds,0,86400) || !integer(game.incrementSeconds,0,3600) || !Array.isArray(game.seatSymbols) || [...game.seatSymbols].sort().join(',') !== 'O,X' || ![game.startedAt,game.endedAt].every(time)) fail('CAPTURE_GAME');

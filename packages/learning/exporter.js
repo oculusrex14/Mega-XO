@@ -26,7 +26,7 @@ async function exportDataset(db,{directory,key,keyId,pseudonymKey,splitSeed,priv
  const seen=index.prepare('SELECT rank FROM seen WHERE key=?');const first=index.prepare('INSERT OR IGNORE INTO trajectories VALUES(?,?)');const original=index.prepare('SELECT id FROM trajectories WHERE key=?');
  const scalar=async(s,a)=>(await db.query(s,a)).rows[0]?.value;
  const stop=()=>{if(signal?.aborted)fail('CAPTURE_EXPORT_ABORTED');};
- const stats={scanned:0,accepted:0,excludedPopulation:0,excludedRisk:0,excludedNoPlay:0,qualificationWithheld:0,duplicates:0,games:0,positions:0,crossSplitPositionsRemoved:0,openingPositionsOmitted:0,bySplit:{qualification:0,holdout:0,validation:0,train:0},byReason:{}};
+ const stats={scanned:0,accepted:0,excludedPopulation:0,excludedRisk:0,excludedNoPlay:0,excludedConsent:0,qualificationWithheld:0,duplicates:0,games:0,positions:0,crossSplitPositionsRemoved:0,openingPositionsOmitted:0,bySplit:{qualification:0,holdout:0,validation:0,train:0},byReason:{}};
  let writer,published=false,begun=false;
  async function *rows(){let after='';for(;;){stop();const page=(await db.query('SELECT * FROM learning.export_page($1,$2,$3)',[runId,after,100])).rows;if(!page.length)return;for(const r of page){if(typeof r.capture_id!=='string'||r.capture_id<=after||!/^[a-f0-9]{64}$/.test(r.capture_id))fail('CAPTURE_EXPORT_ORDER');after=r.capture_id;yield r;}}}
  try{
@@ -36,6 +36,9 @@ async function exportDataset(db,{directory,key,keyId,pseudonymKey,splitSeed,priv
   for await(const row of rows()){
    stop();stats.scanned++;const p=JSON.parse(row.payload);C.validate(p,row.payload_sha256);
    if(p.provenance.environment!=='production'||p.provenance.population!=='human-v-human'){stats.excludedPopulation++;continue;}
+   /* A recorded research decline or withdrawal is honoured here as well as in the DB fence, so a
+    * pre-existing sealed payload cannot reach a dataset through a path that predates the choice. */
+   if(p.consent?.researchEligible===false){stats.excludedConsent++;continue;}
    if(p.qualityFlags.includes('SOURCE_RISK_FLAGGED')){stats.excludedRisk++;continue;}
    if(!p.moves.length||p.game.reason==='no-show'){stats.excludedNoPlay++;continue;}
    const f=family(p),rank=splitFor(f,splitSeed),tr=hash(trajectory(p.moves));stats.accepted++;stats.bySplit[SPLITS[rank]]++;

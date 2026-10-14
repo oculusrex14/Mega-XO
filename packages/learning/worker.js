@@ -21,7 +21,12 @@ function createCaptureWorker(db, {workerId, batchSize = 8, leaseMs = 30000} = {}
     if (!p?.suppressed && !p?.excluded) {
      if (p?.rulesHash !== C.RULES_HASH) throw new Error('CAPTURE_RULES_MISMATCH');
      if (!p?.source) throw new Error('CAPTURE_SOURCE_MISSING');
-     body = C.stable(C.seal(p.source,p).payload);
+     /* The subject's one-time research choice is read once, here, and frozen into the archive. A
+      * subject who never chose is `null`, never `true`: operational capture is explained by its own
+      * notice and does not depend on the optional research decision. */
+     const decision = await scalar('SELECT learning.research_decision($1) AS value',[job.capture_id]);
+     const researchEligible = decision?.recorded ? decision.eligible === true : null;
+     body = C.stable(C.seal(p.source,{...p,researchEligible}).payload);
     }
     const state = await scalar('SELECT learning.finish($1,$2,$3,$4,$5) AS value',[job.capture_id,workerId,job.lease_token,body,p?.sourceToken || null]);
     if (!['sealed','quarantined','suppressed','excluded'].includes(state)) throw new Error('CAPTURE_WORKER_RESULT');

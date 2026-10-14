@@ -5,10 +5,10 @@
 const fs=require('node:fs'),crypto=require('node:crypto');
 const {createConnection,readKey}=require('../packages/learning/connection.js');
 const {createCaptureWorker}=require('../packages/learning/worker.js');
-const MODES=['worker','reconcile','metrics','erase','suppress','export','journal','restore-journal','purge-exports','gate'];
+const MODES=['worker','reconcile','metrics','erase','suppress','retention','withdraw','export','journal','restore-journal','purge-exports','gate'];
 async function main(argv=process.argv.slice(2),env=process.env){
  const mode=argv[0];if(!MODES.includes(mode)||argv.length!==1)throw Error('CAPTURE_COMMAND_REQUIRED:'+MODES.join(','));
- const role=['erase','suppress','journal','restore-journal'].includes(mode)?'capture_privacy':['export','purge-exports'].includes(mode)?'capture_exporter':'capture_runtime';
+ const role=['erase','suppress','retention','withdraw','journal','restore-journal'].includes(mode)?'capture_privacy':['export','purge-exports'].includes(mode)?'capture_exporter':'capture_runtime';
  const db=await createConnection(env,role);let key,pseudonymKey;
  const abort=new AbortController(),handler=()=>abort.abort();process.once('SIGTERM',handler);process.once('SIGINT',handler);
  try{
@@ -24,6 +24,11 @@ async function main(argv=process.argv.slice(2),env=process.env){
    }}return {scanned,repaired};
   }
   if(mode==='erase')return {erased:(await db.query('SELECT learning.erase(500) AS n')).rows[0].n};
+  if(mode==='retention')return await require('../packages/learning/policy.js').runRetention(db,{kind:env.CAPTURE_RETENTION_KIND});
+  if(mode==='withdraw'){
+   if(!env.CAPTURE_SUBJECT)throw Error('CAPTURE_VERIFIED_SUBJECT_REQUIRED');
+   const r=await db.query('SELECT learning.withdraw_research($1,$2) AS epoch',[env.CAPTURE_SUBJECT,'user-choice']);return {withdrawn:true,epoch:r.rows[0].epoch};
+  }
   if(mode==='suppress'){
    if(!env.CAPTURE_SUBJECT||!['user-choice','account-deletion'].includes(env.CAPTURE_SUPPRESSION_REASON))throw Error('CAPTURE_VERIFIED_SUBJECT_REQUIRED');
    const r=await db.query('SELECT learning.suppress($1,$2) AS epoch',[env.CAPTURE_SUBJECT,env.CAPTURE_SUPPRESSION_REASON]);return {suppressed:true,epoch:r.rows[0].epoch};
@@ -37,7 +42,18 @@ async function main(argv=process.argv.slice(2),env=process.env){
   }
   if(mode==='purge-exports')return await require('../packages/learning/exporter.js').purgeRevoked(db,env.CAPTURE_EXPORT_DIR);
   key=readKey(env.CAPTURE_KEY_FILE);
-  if(mode==='journal')return await require('../packages/learning/privacy.js').exportPrivacyJournal(db,{file:env.CAPTURE_JOURNAL_FILE,key,keyId:env.CAPTURE_KEY_ID});
+  if(mode==='journal'){
+   const P=require('../packages/learning/privacy.js');
+   /* One fixed path would collide with the no-replace publication on every rerun, so the scheduled
+    * job names a BASE and each run publishes a fresh timestamped sibling. */
+   const file=P.journalTarget(env.CAPTURE_JOURNAL_FILE,Date.now());
+   const receipt=await P.exportPrivacyJournal(db,{file,key,keyId:env.CAPTURE_KEY_ID});
+   /* The scheduled publication records which epoch/digest it covers, so the backup-retention
+    * obligation (a fresh journal is due before a restore is privacy-current) is a recorded fact. */
+   const watermark=await db.query('SELECT learning.record_journal_watermark($1,$2,$3,$4,$5) AS value',
+    [receipt.epoch,receipt.cipherSha256,receipt.plainSha256,receipt.records,env.CAPTURE_KEY_ID]);
+   return {...receipt,file,watermark:watermark.rows[0].value};
+  }
   if(mode==='restore-journal'){
    if(db.environment!=='test'&&!(db.target?.nonserving===true))throw Error('CAPTURE_RESTORE_ISOLATION_REQUIRED');
    return await require('../packages/learning/privacy.js').replayPrivacyJournal(db,{file:env.CAPTURE_JOURNAL_FILE,key,keyId:env.CAPTURE_KEY_ID,

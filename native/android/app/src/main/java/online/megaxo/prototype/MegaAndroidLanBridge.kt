@@ -163,9 +163,42 @@ internal class MegaAndroidLanBridge private constructor(
     private fun stopListening() {
         accepting.set(false)
         val open = server
+        val port = boundPort
         server = null
         boundPort = 0
         if (open != null) runCatching { open.close() }
+        // close() releases a listening socket immediately on every real stack, but a caller may
+        // stop and start again in the same process, so the release is verified rather than assumed.
+        if (open != null && port > 0) releasePort(port)
+    }
+
+    /**
+     * Waits, bounded, until `0.0.0.0:<port>` can be bound again - which is the only honest proof
+     * that `stop()` released it. A probe bind is a listener bind, so it leaves no TIME_WAIT behind.
+     * If the port stays held (another app took it in the meantime) this simply returns and [start]
+     * falls through to its requested+1/requested+2 retry, which is the right answer either way.
+     */
+    private fun releasePort(port: Int) {
+        for (attempt in 0 until RELEASE_ATTEMPTS) {
+            val probe = try {
+                ServerSocket().apply {
+                    reuseAddress = true
+                    bind(InetSocketAddress("0.0.0.0", port))
+                }
+            } catch (_: Throwable) {
+                null
+            }
+            if (probe != null) {
+                runCatching { probe.close() }
+                return
+            }
+            try {
+                Thread.sleep(RELEASE_INTERVAL_MS)
+            } catch (_: InterruptedException) {
+                Thread.currentThread().interrupt()
+                return
+            }
+        }
     }
 
     private fun stop(): JSONObject {
@@ -406,11 +439,19 @@ internal class MegaAndroidLanBridge private constructor(
             writeJson(socket, 404, """{"error":"NOT_FOUND"}""")
             return
         }
-        if (method != "GET") {
+        // A browser on this Wi-Fi probes /favicon.ico on its own; the bundle is not served with one,
+        // and a 200 carrying the SPA entry for an icon request would be a lie a client acts on.
+        if (path == "/favicon.ico") {
+            writeBytes(socket, 404, "application/json", null, null, """{"error":"NOT_FOUND"}""".toByteArray(Charsets.UTF_8))
+            return
+        }
+        // HEAD gets the same headers as GET with no body, so a client can learn the length first.
+        val headOnly = method == "HEAD"
+        if (method != "GET" && !headOnly) {
             writeJson(socket, 405, """{"error":"METHOD_NOT_ALLOWED"}""")
             return
         }
-        writeStatic(socket, path)
+        writeStatic(socket, path, headOnly)
     }
 
     /**
@@ -435,7 +476,10 @@ internal class MegaAndroidLanBridge private constructor(
         }
         val value = parsed.opt("body")
         val body = if (value == null || value == JSONObject.NULL) "{}" else value.toString()
-        return Answer(parsed.optInt("status", 503), body, parsed.optJSONObject("headers"))
+        // The page is the authority on its own status, but "no status" must never become a status
+        // line of 0: anything outside a legal HTTP code falls back to 503, not to an invalid one.
+        val status = parsed.optInt("status", 503).takeIf { it in 100..599 } ?: 503
+        return Answer(status, body, parsed.optJSONObject("headers"))
     }
 
     private fun callPage(requestJson: String): String? {
@@ -508,8 +552,16 @@ internal class MegaAndroidLanBridge private constructor(
      * The bundled client for a browser on this Wi-Fi: `/assets/mega/...` is read through the same
      * [WebViewAssetLoader] that serves the signed entry in the WebView, so a guest is served the
      * same bytes rather than a second copy of the app. A path the loader does not own is a 404.
+     *
+     * The status line is composed here from a known-good code rather than copied from the loader's
+     * response. `WebViewAssetLoader`'s own handler builds its answer with the three-argument
+     * `WebResourceResponse(mimeType, encoding, data)`, and that constructor never assigns
+     * `mStatusCode` - only the longer ones do - so `response.statusCode` is `0` and "HTTP/1.1 0"
+     * would be written. The loader's code is used when it is a legal HTTP status, and 200 otherwise,
+     * because this branch has already proved the resource exists. A guest browser's probe for
+     * `/favicon.ico` is likewise a real 404 rather than a 200 with a body.
      */
-    private fun writeStatic(socket: Socket, path: String) {
+    private fun writeStatic(socket: Socket, path: String, headOnly: Boolean) {
         val unsafe = path.isEmpty() || path.length > MAX_PATH_BYTES ||
             path.any { it.code !in 33..126 } ||
             listOf("..", "\\", "%", "//").any { path.contains(it) }
@@ -531,7 +583,7 @@ internal class MegaAndroidLanBridge private constructor(
             null
         }
         if (response == null) {
-            writeJson(socket, 404, """{"error":"NOT_FOUND"}""")
+            writeBytes(socket, 404, "application/json", null, null, """{"error":"NOT_FOUND"}""".toByteArray(Charsets.UTF_8))
             return
         }
         val data = try {
@@ -539,21 +591,51 @@ internal class MegaAndroidLanBridge private constructor(
         } catch (_: Throwable) {
             ByteArray(0)
         }
-        val mime = response.mimeType?.takeIf { it.isNotEmpty() } ?: "application/octet-stream"
-        val charset = response.encoding?.takeIf { it.isNotEmpty() }
+        // 0 is the loader's unassigned default, not a status; 1xx/3xx have no business in a static
+        // fetch either. Anything else the loader actually meant is honoured.
+        writeBytes(
+            socket, staticStatus(response.statusCode),
+            response.mimeType?.takeIf { it.isNotEmpty() } ?: "application/octet-stream",
+            response.encoding?.takeIf { it.isNotEmpty() }, response.reasonPhrase,
+            if (headOnly) null else data,
+            data.size
+        )
+    }
+
+    /**
+     * The HTTP status a served static file is written with. `WebViewAssetLoader`'s own asset handler
+     * builds its answer with the three-argument `WebResourceResponse(mimeType, encoding, data)`, and
+     * that constructor never assigns `mStatusCode` - only the longer ones do - so the code it reports
+     * is `0`. Writing that produced the malformed `HTTP/1.1 0 Status` line a client refuses with
+     * "Unsupported HTTP/1 subversion". Reaching this point already proves the resource exists
+     * (the handler returned a response), so a missing or redirect-shaped code means 200.
+     */
+    private fun staticStatus(declared: Int): Int =
+        if (declared in 200..599 && declared !in 300..399) declared else 200
+
+    /**
+     * Writes one response with an explicit body length, so a `HEAD` can carry the same headers and
+     * `Content-Length` as its `GET` while sending nothing. `body == null` means "no bytes", never
+     * "unknown length".
+     */
+    private fun writeBytes(
+        socket: Socket, status: Int, mime: String, charset: String?, phrase: String?,
+        body: ByteArray?, length: Int = body?.size ?: 0
+    ) {
         val head = StringBuilder()
-        head.append("HTTP/1.1 ").append(response.statusCode).append(' ')
-            .append(response.reasonPhrase ?: reason(response.statusCode)).append("\r\n")
+        head.append("HTTP/1.1 ").append(status).append(' ')
+            .append(phrase?.takeIf { it.isNotEmpty() && it.all { c -> c.code in 32..126 } } ?: reason(status))
+            .append("\r\n")
         head.append("Content-Type: ").append(mime)
         if (charset != null && mime.startsWith("text/")) head.append("; charset=").append(charset)
         head.append("\r\n")
-        head.append("Content-Length: ").append(data.size).append("\r\n")
+        head.append("Content-Length: ").append(length).append("\r\n")
         head.append("Cache-Control: no-store\r\n")
         head.append("X-Content-Type-Options: nosniff\r\n")
         head.append("Connection: close\r\n\r\n")
         val out = socket.getOutputStream()
         out.write(head.toString().toByteArray(Charsets.UTF_8))
-        out.write(data)
+        if (body != null && body.isNotEmpty()) out.write(body)
         out.flush()
     }
 
@@ -1013,6 +1095,8 @@ internal class MegaAndroidLanBridge private constructor(
         private const val LF: Byte = 10
         private const val MAX_STATIC_BYTES = 8 * 1024 * 1024
         private const val BACKLOG = 16
+        private const val RELEASE_ATTEMPTS = 40
+        private const val RELEASE_INTERVAL_MS = 25L
 
         /**
          * The headers a LAN guest legitimately presents. The bearer is what the page already

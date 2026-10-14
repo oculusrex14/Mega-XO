@@ -265,10 +265,22 @@ test('a production archive restores only into the quarantined nonproduction-rest
  const checked=requireRestore(nonproductionRestore(),productionManifest(),restoreEnv());
  assert.equal(checked.kind,'nonproduction-restore');
  assert.equal(checked.port,5432);
- const args=restoreArgs(checked.database);
+ const args=restoreArgs(checked.database,{dataOnly:true});
+ // `schema from the immutable migration chain + data from the archive`: the
+ // quarantined production target is migrated to the sealed head by the trusted
+ // runner, so pg_restore must load data only and must not fire the capture
+ // CONSTRAINT TRIGGERs that call `learning.*` while those capture tables are
+ // absent from the production archive.
+ assert.ok(args.includes('--data-only'));
+ assert.ok(args.includes('--disable-triggers'));
  assert.ok(args.includes('--single-transaction')&&args.includes('--exit-on-error'));
- assert.ok(!args.includes('--clean')&&!args.includes('--create')&&
-  !args.includes('--disable-triggers'));
+ assert.ok(!args.includes('--clean')&&!args.includes('--create'));
+ // The disposable/staging path keeps its exact full-fidelity argument vector.
+ const disposableArgs=restoreArgs(disposableRestore().database);
+ assert.ok(!disposableArgs.includes('--data-only'));
+ assert.ok(!disposableArgs.includes('--disable-triggers'));
+ assert.ok(disposableArgs.includes('--single-transaction'));
+ assert.ok(!disposableArgs.includes('--clean')&&!disposableArgs.includes('--create'));
 
  // A disposable archive keeps its exact previous target kind.
  assert.equal(requireRestore(disposableRestore(),disposableManifest(),restoreEnv()).kind,

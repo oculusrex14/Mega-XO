@@ -62,6 +62,9 @@ const {inspectPair,sourceKindMatchesEnvironment}=require('./archive-manifest.js'
 const {authenticateArchive,decryptToWritable}=require('./sealed-archive.js');
 const {connectSnapshot}=require('./data-integrity.js');
 const ROOT=path.join(__dirname,'../../..');
+// The sealed manifest's migrationManifestSha256 pins this exact immutable pack,
+// so its last id IS the sealed schema head the quarantined target must hold.
+const MIGRATION_PACK=require('../../../packages/migrations/manifest.json').migrations;
 function refuse(why){throw Error('P15_RESTORE_REFUSED: '+why);}
 function version(binary='pg_restore',env=process.env){
  const r=spawnSync(binary,['--version'],{encoding:'utf8',timeout:5000,
@@ -106,32 +109,107 @@ function requireRestore(target,manifest,env=process.env){
  }
  return checked;
 }
-function restoreArgs(db){
+function restoreArgs(db,{dataOnly=false}={}){
  if(typeof db!=='string'||!/^v5_p15_restore_[a-z0-9_]{6,48}$/.test(db)) {
   refuse('pg_restore can only target a uniquely provisioned recovery database');
  }
- return ['--dbname='+db,'--format=custom','--no-owner','--no-acl',
-  '--no-tablespaces','--single-transaction','--exit-on-error'];
+ const args=['--dbname='+db,'--format=custom','--no-owner','--no-acl',
+  '--no-tablespaces'];
+ // `schema from the immutable migration chain + data from the archive`: the
+ // quarantined production target is already migrated to the sealed head, so
+ // only data may be loaded. `--disable-triggers` is required because the
+ // capture CONSTRAINT TRIGGERs on match.matches, tournament.fixtures,
+ // tournament.rooms and privacy.requests call `learning.*` functions that must
+ // not fire while the capture tables are (deliberately) absent from the
+ // production archive; it is permitted only on this loopback superuser lab
+ // target. `--single-transaction` keeps the whole load atomic. The disposable
+ // and staging paths keep their exact previous argument vector.
+ if(dataOnly)args.push('--data-only','--disable-triggers');
+ args.push('--single-transaction','--exit-on-error');
+ return args;
 }
-async function ensureEmpty(target){
+// The immutable chain has no data of its own apart from four bootstrap rows it
+// mints on the way to the head: migration 0024 seeds the three singletons and
+// the ledger records itself. A sealed production archive carries the
+// authoritative production copies of all four, so the data load must REPLACE
+// these rows rather than merge into them (production's own season.league_week,
+// runtime.controls and economy.system_burns values are real durable state).
+const CHAIN_BOOTSTRAP_TABLES=Object.freeze([
+ 'meta.migrations','economy.system_burns','season.league_week','runtime.controls']);
+function pgClient(target){
  const {Client}=require('pg');
- const c=new Client({host:target.host,port:target.port,database:target.database,
+ return new Client({host:target.host,port:target.port,database:target.database,
   user:target.user,ssl:false,connectionTimeoutMillis:5000});
+}
+async function ensureEmpty(target,{connect=pgClient}={}){
+ const c=await connect(target);
  await c.connect();
  try{
   const r=await c.query(
    "SELECT count(*)::int AS n FROM pg_catalog.pg_class c "+
    "JOIN pg_catalog.pg_namespace n ON n.oid=c.relnamespace "+
    "WHERE c.relkind IN ('r','p','m','v','S') AND "+
-   "n.nspname NOT IN ('pg_catalog','information_schema') "+
-   "AND n.nspname NOT LIKE 'pg_toast%'");
+   "n.nspname NOT IN ('pg_catalog','information_schema') AND "+
+   "n.nspname NOT LIKE 'pg_toast%'");
   if(r.rows[0].n!==0)refuse('quarantined target contains application objects (no overwrite allowed)');
   const version=await c.query("SELECT current_setting('server_version_num') AS version");
   if(Math.floor(Number(version.rows[0].version)/10000)!==16)refuse('recovery target is not PostgreSQL16');
  }finally{await c.end();}
 }
+// Production path pre-flight. Building the schema is the trusted runner's job
+// (it applied the immutable chain); this VERIFIES that pre-state and refuses
+// with a precise code when it does not hold. It then removes exactly the
+// chain's own bootstrap rows so the archive's authoritative copies can load and
+// refuses any other pre-existing application row, so a half-used target can
+// never be silently scribbled over. `learning` is chain-owned and never present
+// in a production capture, so it is preserved untouched and not required empty.
+async function prepareProductionTarget(target,{connect=pgClient}={}){
+ const c=await connect(target);
+ let begun=false;
+ try{
+  const server=await c.query("SELECT current_setting('server_version_num') AS version");
+  if(Math.floor(Number(server.rows[0]?.version)/10000)!==16)refuse('recovery target is not PostgreSQL16');
+  const rows=(await c.query(
+   'SELECT id,name,checksum FROM meta.migrations WHERE id>0 ORDER BY id')).rows;
+  const head=MIGRATION_PACK[MIGRATION_PACK.length-1].id;
+  if(rows.length!==MIGRATION_PACK.length||
+     rows.some((r,i)=>Number(r.id)!==MIGRATION_PACK[i].id||r.name!==MIGRATION_PACK[i].name||
+      r.checksum!==MIGRATION_PACK[i].sha256)||
+     Number(rows[rows.length-1].id)!==head) {
+   refuse('quarantined production target is not at the sealed migration schema head '+head);
+  }
+  const learning=(await c.query(
+   "SELECT count(*)::int AS n FROM pg_catalog.pg_namespace WHERE nspname='learning'")).rows[0].n;
+  if(learning!==1)refuse('quarantined production target is missing the learning schema');
+  const relations=(await c.query(
+   "SELECT n.nspname AS schema, c.relname AS name FROM pg_catalog.pg_class c "+
+   "JOIN pg_catalog.pg_namespace n ON n.oid=c.relnamespace "+
+   "WHERE c.relkind IN ('r','p','m') AND "+
+   "n.nspname NOT IN ('pg_catalog','information_schema','learning') AND "+
+   "n.nspname NOT LIKE 'pg_toast%' ORDER BY n.nspname,c.relname")).rows;
+  await c.query('BEGIN');
+  begun=true;
+  for(const entry of relations){
+   const id=entry.schema+'.'+entry.name;
+   if(CHAIN_BOOTSTRAP_TABLES.includes(id))continue;
+   const count=(await c.query('SELECT count(*)::int AS n FROM "'+entry.schema+'"."'+entry.name+'"')).rows[0].n;
+   if(count!==0)refuse('quarantined production target already holds application rows in '+id);
+  }
+  const cleared={};
+  for(const table of CHAIN_BOOTSTRAP_TABLES){
+   cleared[table]=(await c.query('DELETE FROM '+table)).rowCount;
+  }
+  await c.query('COMMIT');
+  begun=false;
+  return {schemaHead:head,learningSchemaPresent:true,chainBootstrapRowsReplaced:cleared};
+ }catch(e){
+  if(begun)try{await c.query('ROLLBACK');}catch{}
+  throw e;
+ }finally{await c.end();}
+}
 async function restore({manifestPath,archivePath,privatePem,target,
- env=process.env,spawnCommand=spawn,versionCheck=version}){
+ env=process.env,spawnCommand=spawn,versionCheck=version,
+ connect=pgClient,snapshot=connectSnapshot}){
  const inspected=await inspectPair(manifestPath,archivePath,env.P15_SOURCE_SHA);
  const config=requireRestore(target,inspected.manifest,env);
  if(versionCheck('pg_restore',env)!==16)refuse('pg_restore major mismatch');
@@ -144,8 +222,16 @@ async function restore({manifestPath,archivePath,privatePem,target,
  // exposing plaintext to pg_restore, then the second re-verifies while
  // streaming. No plaintext file ever lands on disk.
  await authenticateArchive(archivePath,privatePem);
- await ensureEmpty(config);
- const child=spawnCommand('pg_restore',restoreArgs(config.database),{
+ // The production path loads data only, into a target the trusted runner already
+ // migrated; the disposable path restores the whole archive into an empty DB.
+ const dataOnly=config.kind==='nonproduction-restore';
+ let production;
+ if(dataOnly){
+  production=await prepareProductionTarget(config,{connect});
+ }else{
+  await ensureEmpty(config,{connect});
+ }
+ const child=spawnCommand('pg_restore',restoreArgs(config.database,{dataOnly}),{
   cwd:ROOT,env:buildPgEnv(config,env),stdio:['pipe','ignore','ignore']
  });
  if(!child||!child.stdin||typeof child.kill!=='function'||typeof child.once!=='function'){
@@ -166,7 +252,7 @@ async function restore({manifestPath,archivePath,privatePem,target,
   // for caller-specific cleanup, never reactivated or mistaken for success.
   refuse('restore failed; target remains quarantined and untrusted');
  }
- const snapshot=await connectSnapshot(config);
+ const snapshotResult=await snapshot(config);
  return {
   format:'mega-v5-p15-owned-restore-result/v1',
   sourceSha:config.sourceSha,
@@ -178,9 +264,14 @@ async function restore({manifestPath,archivePath,privatePem,target,
   manifestAndCiphertextHashVerified:true,
   preRestoreGcmAuthenticationVerified:true,
   singleTransactionRestoreCommitted:true,
-  applicationTables:snapshot.tableCount,
-  applicationRows:snapshot.totalRows,
-  completeDataDigest:snapshot.canonicalDigest,
+  dataOnlyProductionRestore:dataOnly,
+  productionSchemaHeadVerified:production?production.schemaHead:null,
+  productionLearningSchemaVerified:production?production.learningSchemaPresent:false,
+  productionChainBootstrapRowsReplaced:production?production.chainBootstrapRowsReplaced:null,
+  restoreTargetDisableTriggersUsed:dataOnly,
+  applicationTables:snapshotResult.tableCount,
+  applicationRows:snapshotResult.totalRows,
+  completeDataDigest:snapshotResult.canonicalDigest,
   actualSourceAndTargetDataComparisonPerformed:false,
   roleGrantsAndGlobalSecretsReconstructed:false,
   providerPitrObserved:false,encryptedR2DownloadObserved:false,
@@ -203,5 +294,5 @@ if(require.main===module){
  e=>{process.stderr.write(e.message&&e.message.startsWith('P15_')?e.message:
    'P15_RESTORE_REFUSED: quarantined restore failed');process.stderr.write('\n');process.exitCode=2;});
 }
-module.exports={version,readPrivateKey,RESTORE_TARGETS,requireRestore,restoreArgs,
- ensureEmpty,restore,run};
+module.exports={version,readPrivateKey,RESTORE_TARGETS,CHAIN_BOOTSTRAP_TABLES,
+ requireRestore,restoreArgs,ensureEmpty,prepareProductionTarget,restore,run};

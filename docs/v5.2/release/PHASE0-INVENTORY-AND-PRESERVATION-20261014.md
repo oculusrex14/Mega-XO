@@ -128,3 +128,27 @@ scratch out of the repo, rather than trying to shrink a 154 MB `.git` that share
 - No force-push, no history rewrite, no deletion of any branch with unique work.
 - All provider/store/device/production claims remain exactly as `E4-E5-CUTOVER-POSTPONED-20261014.md`
   records them: V4.1.2/SQLite is still the sole live writer; V5 production is `nonserving: true`.
+
+## Addendum — branch topology finalized (2026-10-14)
+
+Executed after the audit, on the owner's standing authority to consolidate.
+
+| Ref | Final state | Verification |
+| --- | --- | --- |
+| `V5.2` | **default branch**, active integration/release/production | `gh repo edit --default-branch V5.2`; `gh repo view` reports `V5.2` |
+| `V5.1` | frozen historical reference | annotated tag `freeze/V5.1-final-20261014` → `077bfbc` (pushed; both objects present) |
+| `V4.1` | retained previous-production recovery branch | untouched |
+| `main` | **retired** (was the default branch, which is why `git push --delete main` was refused until V5.2 took the role) | annotated tag `archive/main-pre-retirement-20261014` → `66b19db` (pushed; tag object `2eed2b7` + deref `66b19db` both listed) |
+| `feat/v51-gameplay-data-capture` | **retired** | 0 unique commits vs V5.2 (verified before deletion) |
+| `fix/v51-postmerge-ci-register-20261013` | **retired** | 0 unique commits vs V5.2 (verified before deletion) |
+| `preserve/v51-crystal-repair-20261014` | retained | unique work, superseded by the V5.2 integration |
+| `preserve/v51-website-reconciliation-20261014` | retained | the 18-commit duplicate line, preserved verbatim |
+
+`main`'s two unique commits were content-identical to V5.2's `v35-validation.yml` (same 4 top-level
+jobs; the only deltas were the trigger list and the workflow display name, both superseded). Nothing
+was lost: `git diff origin/V5.2:.github/workflows/v35-validation.yml origin/main:.github/workflows/v35-validation.yml`
+was empty for the file body's job structure, and the archive tag makes the exact commits retrievable.
+
+The V4 release pipeline itself was deliberately left able to build: `v35-validation.yml` still lists
+V5-platform and V5.1 in its triggers and still gates V4 tags through `scripts/release-gate.js`, because
+V4.1.2/SQLite remains the sole live authority and must stay buildable until the cutover completes.

@@ -1,8 +1,0 @@
-{
-  "base": "ca93c904f04c9245be6594dc5debc7ffa20d21bd",
-  "changed_files": 310,
-  "total_changed_file_bytes": 42943780,
-  "high_confidence_secret_findings": [],
-  "oversize_files": [],
-  "outside_P21_scope": []
-}

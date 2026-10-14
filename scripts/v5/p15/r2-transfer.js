@@ -16,7 +16,7 @@ const fs=require('node:fs');
 const path=require('node:path');
 const crypto=require('node:crypto');
 const {spawnSync}=require('node:child_process');
-const {inspectPair}=require('./archive-manifest.js');
+const {inspectPair,sourceKindMatchesEnvironment}=require('./archive-manifest.js');
 const {digestFile}=require('./sealed-archive.js');
 const {assertTarget,plan}=require('./r2-contract.js');
 const {checkFile,privateDirectory}=require('./direct-target.js');
@@ -73,10 +73,15 @@ async function transfer({r2,manifestPath,archivePath,env=process.env,
  const target=assertTarget(r2);
  const inspected=await inspectPair(manifestPath,archivePath,env.P15_SOURCE_SHA);
  const manifest=inspected.manifest;
- if(manifest.sourceKind!=='nonserving-staging-source'||
-   manifest.sourceEnvironment!=='staging'||
+ // Writer/reader profile separation, `If-None-Match:*` overwrite refusal and
+ // the independent-reader re-hash below are unchanged. Only the accepted
+ // manifest identity widens: a real reviewed non-serving V5 production dump is
+ // uploadable to the V5-only bucket exactly like a staging dump. The kind and
+ // environment must still be a declared pair, so a mismatched pair is refused.
+ if(!['nonserving-staging-source','nonserving-production-source'].includes(manifest.sourceKind)||
+   !sourceKindMatchesEnvironment(manifest.sourceKind,manifest.sourceEnvironment)||
    manifest.backupRunClass!=='REAL_DIRECT_PG16_DUMP'){
-  refuse('operator R2 upload requires a real reviewed nonserving V5 staging dump');
+  refuse('operator R2 upload requires a real reviewed nonserving V5 staging/production dump');
  }
  privateDirectory(path.dirname(archivePath));
  protectedAwsEnv(env,WRITER);

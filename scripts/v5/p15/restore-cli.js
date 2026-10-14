@@ -17,7 +17,7 @@ const path=require('node:path');
 const crypto=require('node:crypto');
 const {spawn,spawnSync}=require('node:child_process');
 const {readTarget,assertTarget,checkFile,buildPgEnv,fingerprint}=require('./direct-target.js');
-const {inspectPair}=require('./archive-manifest.js');
+const {inspectPair,sourceKindMatchesEnvironment}=require('./archive-manifest.js');
 const {authenticateArchive,decryptToWritable}=require('./sealed-archive.js');
 const {connectSnapshot}=require('./data-integrity.js');
 const ROOT=path.join(__dirname,'../../..');
@@ -38,12 +38,26 @@ function readPrivateKey(filepath){
  if(!pem.includes('PRIVATE KEY'))refuse('recovery private identity required');
  return pem;
 }
+// Which quarantine targets each source kind may be restored into. A
+// non-serving PRODUCTION archive is only ever restorable into the
+// `nonproduction-restore` kind (loopback disposable PG16, quarantined), never
+// into any other target. The disposable flow keeps its existing target.
+const RESTORE_TARGETS=Object.freeze({
+ 'disposable-source':['disposable-restore'],
+ 'nonserving-production-source':['nonproduction-restore']
+});
 function requireRestore(target,manifest,env=process.env){
  const checked=assertTarget(target,'restore',env);
+ // assertTarget above already pinned the target itself (both restore kinds are
+ // loopback disposable PG16 with the quarantine gates); this second check binds
+ // the manifest identity to the target kind, so a production archive can never
+ // be pointed at anything but `nonproduction-restore`. Unknown kinds and
+ // staging sources are still refused outright.
+ const permitted=RESTORE_TARGETS[manifest&&manifest.sourceKind]||[];
  if(checked.sourceSha!==env.P15_SOURCE_SHA||
     manifest.sourceSha!==checked.sourceSha||
-    manifest.sourceKind!=='disposable-source'||
-    manifest.sourceEnvironment!=='test'||
+    !permitted.includes(checked.kind)||
+    !sourceKindMatchesEnvironment(manifest.sourceKind,manifest.sourceEnvironment)||
     manifest.backupRunClass!=='REAL_DIRECT_PG16_DUMP'||
     env.P15_RESTORE_JOBS_DISABLED!=='1'||
     env.P15_RESTORE_PROVIDER_CALLBACKS_DISABLED!=='1') {
@@ -148,4 +162,5 @@ if(require.main===module){
  e=>{process.stderr.write(e.message&&e.message.startsWith('P15_')?e.message:
    'P15_RESTORE_REFUSED: quarantined restore failed');process.stderr.write('\n');process.exitCode=2;});
 }
-module.exports={version,readPrivateKey,requireRestore,restoreArgs,ensureEmpty,restore,run};
+module.exports={version,readPrivateKey,RESTORE_TARGETS,requireRestore,restoreArgs,
+ ensureEmpty,restore,run};

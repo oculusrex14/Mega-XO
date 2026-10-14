@@ -143,8 +143,23 @@ async function snapshot(client,{maxRows=1000000}={}){
   refuse('restricted data integrity inspection failed');
  }
 }
+// Readable clusters are loopback, non-TLS and CI-owned. `nonproduction-restore`
+// is the quarantined PG16 recovery kind the production chain restores into
+// (direct-target pins 127.0.0.1:5432, user postgres, db v5_p15_restore_*); it is
+// reached here only AFTER the single-transaction restore into that empty DB.
+// `nonserving-production-source` is deliberately NOT listed: reading live
+// production data is exactly what this PR verifier must never do, and the
+// non-loopback host check below keeps it unreachable even if a caller lies
+// about the kind. The source side of a production chain is compared by the
+// owning operator, not here.
+const ISOLATED_KINDS=Object.freeze({
+ 'disposable-source':'test',
+ 'disposable-restore':'test',
+ 'nonproduction-restore':'test'
+});
 async function connectSnapshot(target){
- if(!target||target.environment!=='test'||!['disposable-source','disposable-restore'].includes(target.kind)) {
+ if(!target||ISOLATED_KINDS[target.kind]!==target.environment||
+    target.host!=='127.0.0.1'||target.sslMode!=='disable') {
   refuse('only isolated disposable source/restore may be read by PR verifier');
  }
  const {Client}=require('pg');
@@ -153,4 +168,5 @@ async function connectSnapshot(target){
  await client.connect();
  try{return await snapshot(client);}finally{await client.end();}
 }
-module.exports={REQUIRED,SCHEMAS,quote,snapshot,comparison,connectSnapshot};
+module.exports={REQUIRED,SCHEMAS,ISOLATED_KINDS,quote,snapshot,comparison,
+ connectSnapshot};

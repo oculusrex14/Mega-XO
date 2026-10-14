@@ -7,7 +7,7 @@ const path=require('node:path');
 const crypto=require('node:crypto');
 const {Readable}=require('node:stream');
 const {sealStream}=require('../scripts/v5/p15/sealed-archive.js');
-const {validate,readManifest,inspectPair}=require('../scripts/v5/p15/archive-manifest.js');
+const {validate,readManifest,inspectPair,SOURCE_KIND_ENVIRONMENT}=require('../scripts/v5/p15/archive-manifest.js');
 const SHA='d'.repeat(40);
 const KEYS=crypto.generateKeyPairSync('rsa',{modulusLength:3072});
 const PUBLIC=KEYS.publicKey.export({format:'pem',type:'spki'});
@@ -48,6 +48,31 @@ test('rejects path injection, old manifest, false acceptance or altered provider
   assert.throws(()=>validate(m),/P15_MANIFEST_REFUSED/);
  }
 });
+test('a production source kind is accepted only with its exact environment pair',()=>{
+ assert.equal(SOURCE_KIND_ENVIRONMENT['nonserving-production-source'],'production');
+ const production=()=>{const m=sample();
+  m.sourceKind='nonserving-production-source';m.sourceEnvironment='production';return m;};
+ assert.equal(validate(production()).sourceKind,'nonserving-production-source');
+ for(const [kind,environment] of [
+  ['nonserving-production-source','test'],
+  ['nonserving-production-source','staging'],
+  ['disposable-source','production'],
+  ['nonserving-staging-source','production'],
+  ['nonserving-production-target','production']
+ ]){
+  const m=production();m.sourceKind=kind;m.sourceEnvironment=environment;
+  assert.throws(()=>validate(m),/P15_MANIFEST_REFUSED/);
+ }
+ assert.throws(()=>validate(productionManifestWith({sourceKind:'production-source'})),
+  /P15_MANIFEST_REFUSED/);
+ const stillStaging=sample();stillStaging.sourceKind='nonserving-staging-source';
+ stillStaging.sourceEnvironment='staging';
+ assert.equal(validate(stillStaging).sourceEnvironment,'staging');
+});
+function productionManifestWith(overrides){
+ const m=sample();m.sourceKind='nonserving-production-source';
+ m.sourceEnvironment='production';return {...m,...overrides};
+}
 test('a real sealed test artifact is hash-/context-bound before key authentication',async t=>{
  const dir=fs.mkdtempSync(path.join(os.tmpdir(),'mx-p15-manifest-'));
  t.after(()=>fs.rmSync(dir,{force:true,recursive:true}));

@@ -19,7 +19,7 @@ const R2={
  allowDeletion:false,independentReaderRequired:true
 };
 const id='v5-p15-2026-10-09T04-00-00-000Z-1234567890abcdef';
-async function fixture(t){
+async function fixture(t,overrides={}){
  const dir=fs.mkdtempSync(path.join(os.tmpdir(),'p15-r2-fake-'));
  t.after(()=>fs.rmSync(dir,{recursive:true,force:true}));
  const archive=path.join(dir,id+'.mxb');
@@ -41,7 +41,8 @@ async function fixture(t){
   plaintextTemporaryFileCreated:false,
   includesClusterGlobalRolesOrSecrets:false,
   remoteStorageVerified:false,independentRestoreVerified:false,
-  backupRunClass:'REAL_DIRECT_PG16_DUMP',g15Accepted:false
+  backupRunClass:'REAL_DIRECT_PG16_DUMP',g15Accepted:false,
+  ...overrides
  };
  const file=path.join(dir,id+'.manifest.json');
  fs.writeFileSync(file,JSON.stringify(manifest),{mode:0o600});
@@ -94,6 +95,32 @@ test('P15 R2 uploads sealed bytes conditionally and verifies independent-read-pr
  assert.equal(mock.records.filter(r=>r.command==='get-object').length,2);
  assert.equal(fs.readdirSync(f.dir).filter(x=>x.endsWith('.partial')).length,0);
  assert.ok(mock.records.every(r=>r.key.startsWith(R2.prefix)));
+});
+test('a nonserving production manifest is uploadable while every other kind is still refused',async t=>{
+ const f=await fixture(t,{sourceKind:'nonserving-production-source',
+  sourceEnvironment:'production'});
+ const mock=fakeS3();
+ const result=await transfer({r2:R2,manifestPath:f.manifestPath,
+  archivePath:f.archive,env:f.env,runner:mock.runner});
+ assert.equal(result.backupId,id);
+ assert.equal(result.separateWriterReaderProfilesUsed,true);
+ assert.equal(result.uploadUsedWriteOncePrecondition,true);
+ assert.equal(result.mockedCallsOnly,true);
+ assert.equal(result.g15Accepted,false);
+ // The staged pair is still enforced: a production kind with the staging
+ // environment (or any unlisted kind) must be refused before any R2 call.
+ for(const overrides of [{sourceKind:'nonserving-production-source',
+  sourceEnvironment:'staging'},
+  {sourceKind:'nonserving-staging-source',sourceEnvironment:'production'},
+  {sourceKind:'nonserving-production-backup',sourceEnvironment:'production'},
+  {sourceKind:'disposable-source',sourceEnvironment:'production'}]){
+  const g=await fixture(t,overrides);
+  const before=mock.records.length;
+  await assert.rejects(()=>transfer({r2:R2,manifestPath:g.manifestPath,
+   archivePath:g.archive,env:g.env,runner:mock.runner}),
+  /P15_R2_TRANSFER_REFUSED|P15_MANIFEST_REFUSED/);
+  assert.equal(mock.records.length,before,'no provider call may precede the kind refusal');
+ }
 });
 test('writer and reader credentials are scoped, and missing approvals never contact R2',async t=>{
  const f=await fixture(t);

@@ -4,7 +4,7 @@ const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const os=require('node:os');
 const path=require('node:path');
-const {requireRestore,restoreArgs,readPrivateKey}=require('../scripts/v5/p15/restore-cli.js');
+const {requireRestore,restoreArgs,readPrivateKey,RESTORE_TARGETS}=require('../scripts/v5/p15/restore-cli.js');
 const SOURCE='a'.repeat(40);
 const env=()=>({
  P15_SOURCE_SHA:SOURCE,V5_P15_DISPOSABLE:'1',
@@ -50,6 +50,28 @@ test('wrong source, successful-looking mock or active provider jobs cannot activ
  }
  for(const name of ['production','public','v5_test_p15_source_in_same_database','v5_p15_restore_../../']){
   assert.throws(()=>restoreArgs(name),/P15_RESTORE_REFUSED/);
+ }
+});
+test('a production-source manifest restores only into the quarantined nonproduction-restore target',()=>{
+ assert.deepEqual(RESTORE_TARGETS,{'disposable-source':['disposable-restore'],
+  'nonserving-production-source':['nonproduction-restore']});
+ const production={...manifest(),sourceKind:'nonserving-production-source',
+  sourceEnvironment:'production'};
+ const quarantine={...target(),kind:'nonproduction-restore',port:5432,
+  sourceId:'p15-prodchain-quarantine-target'};
+ const checked=requireRestore(quarantine,production,env());
+ assert.equal(checked.kind,'nonproduction-restore');
+ for(const [label,t,m] of [
+  ['production manifest at a disposable-restore target',target(),production],
+  ['disposable manifest at a nonproduction-restore target',quarantine,manifest()],
+  ['staging manifest at a quarantined target',quarantine,
+   {...manifest(),sourceKind:'nonserving-staging-source',sourceEnvironment:'staging'}],
+  ['unlisted source kind',quarantine,
+   {...manifest(),sourceKind:'nonserving-production-backup',sourceEnvironment:'production'}],
+  ['production kind with a mismatched environment',quarantine,
+   {...production,sourceEnvironment:'test'}]
+ ]){
+  assert.throws(()=>requireRestore(t,m,env()),/P15_RESTORE_REFUSED|P15_TARGET_REFUSED/,label);
  }
 });
 test('private recovery material must stay in 0600 file, never accept a symlink or public mode',t=>{

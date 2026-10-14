@@ -11,6 +11,20 @@ const crypto=require('node:crypto');
 const {openArchive,digestFile}=require('./sealed-archive.js');
 const SHA40=/^[a-f0-9]{40}$/,SHA64=/^[a-f0-9]{64}$/;
 const NAME=/^v5-p15-\d{4}-\d\d-\d\dT\d\d-\d\d-\d\d-\d{3}Z-[a-f0-9]{16}$/;
+// Each source kind is only meaningful together with the environment it was
+// captured from. The pair is enforced, so a non-serving production archive can
+// never masquerade as a disposable/staging capture (and vice versa). Adding the
+// production pair weakens nothing: every pre-existing pair still decides exactly
+// as before and every unlisted kind/environment is still refused.
+const SOURCE_KIND_ENVIRONMENT=Object.freeze({
+ 'disposable-source':'test',
+ 'nonserving-staging-source':'staging',
+ 'nonserving-production-source':'production'
+});
+function sourceKindMatchesEnvironment(kind,environment){
+ return typeof kind==='string'&&typeof environment==='string'&&
+  SOURCE_KIND_ENVIRONMENT[kind]===environment;
+}
 function refuse(reason){throw Error('P15_MANIFEST_REFUSED: '+reason);}
 function validate(manifest){
  const expected=[
@@ -27,8 +41,7 @@ function validate(manifest){
     typeof manifest.backupId!=='string'||!NAME.test(manifest.backupId)||
     manifest.ciphertextFile!==manifest.backupId+'.mxb'||
     typeof manifest.sourceId!=='string'||!/^[a-zA-Z][a-zA-Z0-9_-]{6,95}$/.test(manifest.sourceId)||
-    !['disposable-source','nonserving-staging-source'].includes(manifest.sourceKind)||
-    !['test','staging'].includes(manifest.sourceEnvironment)||
+    !sourceKindMatchesEnvironment(manifest.sourceKind,manifest.sourceEnvironment)||
     !SHA64.test(manifest.sourceFingerprint)||!SHA40.test(manifest.sourceSha)||
     !SHA64.test(manifest.migrationManifestSha256)||
     !SHA64.test(manifest.recipientSpkiSha256)||
@@ -84,4 +97,5 @@ async function inspectPair(manifestPath,archivePath,expectedSourceSha){
  return {manifest,archivePath,ciphertextVerified:true,
   authenticationTagVerified:false,sourceSha:manifest.sourceSha,g15Accepted:false};
 }
-module.exports={NAME,validate,readManifest,inspectPair};
+module.exports={NAME,SOURCE_KIND_ENVIRONMENT,sourceKindMatchesEnvironment,
+ validate,readManifest,inspectPair};

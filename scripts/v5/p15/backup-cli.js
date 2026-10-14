@@ -56,7 +56,12 @@ async function backup({source,recipientPublicPem,outputDirectory,env=process.env
  const pgEnv=buildPgEnv(target,env);
  const child=spawnCommand(command,[
   '--format=custom','--no-owner','--no-acl','--compress=6',
-  '--lock-wait-timeout=10s'
+  '--lock-wait-timeout=10s',
+  // Only the production source needs the private gameplay-capture schema excluded: 0044 makes
+  // its tables unreadable by backup_reader (0051 grants schema USAGE alone, never table access)
+  // and its contents are governed by the DC00 privacy/choice contract rather than by the
+  // disaster-recovery archive. Disposable and staging sources keep a full-fidelity dump.
+  ...(target.kind==='nonserving-production-source'?['--exclude-schema=learning']:[])
  ],{cwd:ROOT,env:pgEnv,stdio:['ignore','pipe','ignore']});
  if(!child||!child.stdout||typeof child.once!=='function'||typeof child.kill!=='function') {
   refuse('streaming pg_dump process required');
@@ -109,6 +114,7 @@ async function backup({source,recipientPublicPem,outputDirectory,env=process.env
   try{fs.unlinkSync(partial);}catch{}
   if(finalCreated)try{fs.unlinkSync(sealedFile);}catch{}
   try{fs.unlinkSync(manifestFile);}catch{}
+  if(process.env.P15_DEBUG_CAUSE){console.error('CAUSE',e&&e.message);}
   if(e.message&&e.message.startsWith('P15_BACKUP_REFUSED:'))throw e;
   refuse('backup aborted; no completed archive is published');
  }

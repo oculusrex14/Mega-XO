@@ -107,6 +107,12 @@ function buildPgEnv(target,env=process.env){
  if(target.environment==='staging'||target.environment==='production') {
   pg.PGPASSFILE=env.P15_PGPASSFILE;
  }
+ // verify-full needs the provider CA. The operator supplies it as an absolute, mode-0600
+ // regular file exactly like the password file; nothing is read from an ambient path.
+ if(target.sslMode==='verify-full') {
+  checkFile(env.P15_PGSSLROOTCERT,{secret:true});
+  pg.PGSSLROOTCERT=env.P15_PGSSLROOTCERT;
+ }
  return pg;
 }
 function fingerprint(target){

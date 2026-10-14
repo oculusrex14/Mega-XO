@@ -76,6 +76,16 @@ function initPowers(){
    match.recorded=false;
    save();render();paint();
    return true;
+  },
+  // Core issues the opaque reward ticket; the native lane re-validates it against the build's
+  // configured unit before the SDK runs. Without an account API the ticket is unavailable and the
+  // reward path fails closed, which is correct for browser/offline play.
+  issueTicket:info=>{
+   const API=window.MegaAccount;
+   if(!API||typeof API.request!=='function')return Promise.resolve(null);
+   return API.request('/api/monetization/reward-ticket',{kind:info.kind,platform:info.platform})
+    .then(r=>r&&r.ticket?r.ticket:null)
+    .catch(()=>null);
   }
  });
  if(POWERS_ON||window.MEGA_POWERS_ENABLED===true){

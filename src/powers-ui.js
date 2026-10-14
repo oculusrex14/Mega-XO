@@ -97,6 +97,31 @@ const powersOf=summary=>matchPowers(summary&&summary.powers);
 /* The host exposes the typed, origin-pinned reward bridge. Anything else — a browser page setting
    `watched=true`, a page-level flag, an SDK show call — is never proof of an earned reward. */
 function nativeBridge(host){
+ // Primary lane: window.MegaAds, the origin-pinned bridge the native hosts actually publish
+ // (MegaAdsBridge.kt / MegaAdsBridge.swift). The reward ticket is issued by Core and passed
+ // through; showRewarded() settles only on the SDK earned-reward callback, so this is not a
+ // client-watched grant. `present` keeps the generic outcome shape the caller already expects.
+ const ads=host&&host.MegaAds;
+ if(ads&&typeof ads.showRewarded==='function'){
+  return {
+   present:payload=>{
+    const issue=payload&&typeof payload.issueTicket==='function'?payload.issueTicket:null;
+    if(!issue)return Promise.resolve({outcome:'failed'});
+    return Promise.resolve()
+     .then(()=>issue({kind:payload.kind,platform:ads.platform,attemptId:payload.attemptId}))
+     .then(ticket=>{
+      if(!ticket)return {outcome:'no-fill'};
+      return Promise.resolve(ads.showRewarded(ticket));
+     })
+     .then(value=>({outcome:value&&value.earned===true?'earned':(value&&value.shown===true?'shown':'failed')}),
+           ()=>({outcome:'failed'}));
+   },
+   ready:typeof ads.isReady==='function'?()=>ads.isReady('rewarded')===true:null,
+   consent:typeof ads.privacyState==='function'?()=>{try{return ads.privacyState()?.canRequestAds===true;}catch{return false;}}:null
+  };
+ }
+ // Fallback lane: a host that publishes the typed reward bridge directly. Anything else — a page
+ // setting `watched=true`, a page-level flag, an SDK show call — is never proof of an earned reward.
  const api=host&&host.MegaNativeReward;
  if(!api||typeof api.present!=='function')return null;
  return {
@@ -203,7 +228,7 @@ function createPowers(options={}){
     const now=clock();
     if(!R.KINDS.includes(kind))throw Error('INVALID_KIND');
     if(!enabled())return {earned:false,reason:'FEATURE_DISABLED',entitlement:null};
-    const summary=summaryOf(context,live);
+    const summary=summaryOf(context&&context.match||context,live);
     if(!summary)return {earned:false,reason:'NO_MATCH',entitlement:null};
     if(!SHIPPED.includes(kind))return {earned:false,reason:'POWER_NOT_SHIPPED',entitlement:null};
     if(inFlight)return {earned:false,reason:'REQUEST_IN_FLIGHT',entitlement:null};
@@ -222,7 +247,7 @@ function createPowers(options={}){
     persist();
     inFlight=true;
     return Promise.resolve()
-     .then(()=>activeBridge.present({kind,attemptId:id,context:{matchId:summary.id||null,revision:summary.revision??null,ply:R.plies(summary)}}))
+     .then(()=>activeBridge.present({kind,match:summary,attemptId:id,issueTicket:typeof options.issueTicket==='function'?options.issueTicket:null,context:{matchId:summary.id||null,revision:summary.revision??null,ply:R.plies(summary)}}))
      .then(value=>({outcome:value&&R.OUTCOMES.includes(value.outcome)?value.outcome:'failed'}),
            ()=>({outcome:'failed'}))
      .then(result=>{

@@ -4,10 +4,51 @@
 /**
  * P15-03 independently quarantined restore from authenticated ciphertext.
  *
- * NO --clean/--create/--disable-triggers and NO arbitrary restore host.
- * Verify manifest SHA and full AES-GCM tag BEFORE starting pg_restore. Stream
- * decryption directly into one --single-transaction pg_restore in a newly
- * provisioned empty DB on a DIFFERENT disposable PG16 instance.
+ * NO --clean/--create and NO arbitrary restore host. Verify manifest SHA and
+ * full AES-GCM tag BEFORE starting pg_restore. Stream decryption directly into
+ * one --single-transaction pg_restore in a newly provisioned DB on a DIFFERENT
+ * disposable PG16 instance, with no plaintext file.
+ *
+ * TWO RESTORE PATHS
+ * -----------------
+ * (a) `disposable-source` -> `disposable-restore` (and any future staging pair)
+ *     keeps its exact previous behaviour: the archive carries schema AND data,
+ *     pg_restore loads both into an empty database, no `--data-only`.
+ * (b) `nonserving-production-source` -> `nonproduction-restore` runs
+ *     SCHEMA FROM THE IMMUTABLE MIGRATION CHAIN + DATA FROM THE ARCHIVE. The
+ *     production archive is taken with `--exclude-schema=learning`, while
+ *     migration 0044 installs CONSTRAINT TRIGGERs on match.matches,
+ *     tournament.fixtures, tournament.rooms and privacy.requests that call
+ *     `learning.*` functions. A whole-archive restore therefore cannot work:
+ *     the archived schema section has no `learning` schema, so those CREATE
+ *     CONSTRAINT TRIGGER statements fail, and pre-applying the chain instead
+ *     makes every CREATE collide with the objects the chain already made.
+ *     The quarantined `nonproduction-restore` target is therefore brought to
+ *     the sealed schema head by the trusted runner applying the immutable
+ *     migration chain, and pg_restore then loads DATA ONLY:
+ *
+ *       pg_restore --data-only --disable-triggers --single-transaction ...
+ *
+ *     `--data-only` skips the conflicting CREATE statements; the schema
+ *     (including `learning` and its capture functions) is the chain's.
+ *     `--disable-triggers` stops the capture CONSTRAINT TRIGGERs from firing
+ *     mid-load, which is required because the restore is a loopback
+ *     superuser target in the quarantined lab - the only place this kind of
+ *     load is permitted. `--single-transaction` keeps the load atomic.
+ *
+ *     restore-cli VERIFIES that pre-state (it never builds the schema itself):
+ *     `meta.migrations` max id must equal the schema head of the pinned
+ *     migration manifest and schema `learning` must exist, both refused with
+ *     a precise code otherwise.
+ *
+ *     The immutable chain mints four bootstrap rows of its own
+ *     (`meta.migrations`, `economy.system_burns`, `season.league_week`,
+ *     `runtime.controls`) and the production archive carries the authoritative
+ *     production copies of all four, so those exact rows are cleared after the
+ *     head is verified and before pg_restore runs; everything else must already
+ *     be empty, so no durable value is lost and no half-used target can be
+ *     scribbled over. `learning.*` is chain-owned and never present in a
+ *     production capture, so it is preserved untouched.
  *
  * No permission to enable jobs, deliver mail, replay payments or route
  * customers. A restore never automatically becomes live authority.

@@ -1,0 +1,69 @@
+{
+  "schemaVersion": 1,
+  "task": "V5-20-04",
+  "recordedAtUtc": "2026-10-14T13:05:00Z",
+  "subject": "Owner-reported mobile defects on the real devices: Impossible level, theme fit, press-hold preview, app fluidity, and LAN-local private rooms",
+  "devices": {
+    "android": { "model": "OnePlus Nord CE (EB2101)", "serial": "5199676e", "release": "13", "sdk": 33, "appTargetSdk": 35, "cssViewport": "360x745 @ DPR 3" },
+    "ios": { "model": "iPhone 16 Pro (iPhone17,1)", "udid": "00008140-0019711E2260801C", "state": "paired physical", "note": "simulator build verified; no install on the device (no Apple signing identity)" }
+  },
+  "defect1_impossible_level": {
+    "requirement": "hide the playable Impossible level; keep the training-data collection / pack engine",
+    "removedFromUi": [
+      "home(): the IMPOSSIBLE difficulty chip",
+      "home(): the 'Impossible AI pack' button block",
+      "statsView(): the 'Impossible (Local AI)' select option (both selects)",
+      "statsView(): the dedicated Impossible stats page and its recent-games ledger",
+      "statsView(): the on-device AI record card",
+      "a saved statsDifficulty of 'Impossible' is coerced to 'all' so it cannot reach a removed branch"
+    ],
+    "enginePreserved": ["src/bot/* untouched", "openNeuralRecovery, LA, MegaAiPack, the aipack handler, MegaApp.startImpossible"],
+    "tests": { "node": "62/62", "browser": "tests/bot/pack-browser.py passes with report.playableImpossibleHiddenFromUI=true and the engine exercised through its public APIs" }
+  },
+  "defect2_theme_fit_and_bars": {
+    "whiteBands_before": "status bar rows y=4..114 and nav bar y=2385..2399 were #f7f9fc in every theme",
+    "whiteBands_after": { "vector": "#f8f9fb", "midnight": "#101720", "paperclub": "#f6efdc", "afterhours": "#0f0722" },
+    "mechanism": "window.MegaNativeTheme.apply({theme,dark,surface}); MegaAndroidThemeBridge (WebViewCompat, origin- and entry-scoped, #rrggbb validated) and MegaNativeThemeBridge (WKScriptMessageHandler) paint the bars, inset background and icon appearance",
+    "topbarOverflow": {
+      "before": ".header-actions right edge 368.4 (paperclub) / 368.7 (afterhours) at 360px; settings button clipped",
+      "after": "348 (vector/midnight) and 346 (paperclub/afterhours); whole wordmark visible in all four themes"
+    },
+    "fluidity": "router-swapped screens fade+rise 180ms, taps press (theme-matched), the bottom sheet slides; all transform/opacity only and fully inert under Motion, prefers-reduced-motion and forced-colors; the 44px nav controls are deliberately not animated"
+  },
+  "defect5_press_hold_preview": {
+    "behaviour": "holding a cell ~200ms shows the cell highlight plus (when the Destination-preview setting is on) the destination mini-board highlight and 'This sends your opponent to the centre board.'; it places NO move; a plain tap still moves",
+    "deviceProof": {
+      "duringHold": { "text": "This sends your opponent to the centre board.", "previewEls": ["mini available preview|4"] },
+      "afterHold": { "marks": 0 },
+      "afterTap": { "marks": 1, "placed": true }
+    },
+    "bugFoundAndFixed": "paint() rebuilds each mini's className every ~900ms poller tick, wiping the highlight mid-hold; paint() now re-asserts the tracked preview cell"
+  },
+  "defect3_4_lan_local_private_rooms": {
+    "ownerRequirement": "one device hosts the room; anyone on the same Wi-Fi discovers and joins it with no internet",
+    "built": "src/lan/lan-room-store.js (portable rules + guest sessions + idempotency), src/lan/lan-room-http.js (/api/party/* contract, Host gate, CORS), src/lan/lan-host.js (window.MegaLanHost/MegaLanRoom); shell owns socket+discovery via frozen window.MegaLanSocket/MegaLanDiscovery",
+    "androidBridge": "MegaAndroidLanBridge.kt: ServerSocket, HTTP/1.1 parse, 16KiB cap, chunked decode, NsdManager _megaxo-v5._tcp, static serving via WebViewAssetLoader",
+    "iosBridge": "MegaNativeLan.swift: Network.framework NWListener/NWConnection, Bonjour NWBrowser, WKScriptMessageHandlerWithReply, chunked decode; no ATS key added",
+    "verifiedCrossDevice": [
+      "mac -> phone: capabilities, guest session, tokenless discover, create a real room that the phone's own lobby then lists",
+      "phone's WebView -> Mac host: clean 837-byte JSON (chunk framing decoded)",
+      "phone -> Mac host: guest session + create a room ON the Mac host",
+      "mDNS/Bonjour: the phone resolved 'MacBook Room' at http://192.168.0.8:8082",
+      "concurrent: 4 simultaneous guest joins all 200, room roster 5/10, two rooms discoverable at once",
+      "restart: refused during downtime, 200 with real JSON after relaunch (auto-resume)",
+      "static: GET / -> HTTP/1.1 200 OK; GET /favicon.ico -> 404"
+    ],
+    "bugsFoundByMeasurement": [
+      "relayed Transfer-Encoding: chunked responses leaked the chunk framing (fixed: decode chunked / honour Content-Length)",
+      "static status line was 'HTTP/1.1 0 Status' because AndroidX WebResourceResponse's 3-arg ctor never sets mStatusCode (fixed)",
+      "hosting died with the process and never returned (fixed: persisted intent + resume on load)",
+      "lan-host.js dropped the handler's CORS headers (fixed)"
+    ],
+    "networkPosture": "INTERNET + ACCESS_NETWORK_STATE granted in both flavors (LAN host cannot work without them; NsdManager refuses to run); AD_ID stays removed; usesCleartextTraffic stays false with a loopback-only network_security_config; RFC1918/link-local enforced in code because Android's config has no CIDR syntax"
+  },
+  "notClaimed": [
+    "iOS install/run on the physical iPhone (no Apple signing identity)",
+    "a two-phone no-internet run (the cross-device proof used this Mac as the second device)",
+    "runtime prompt behaviour for NEARBY_WIFI_DEVICES on Android 13+"
+  ]
+}

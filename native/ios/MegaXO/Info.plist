@@ -18,6 +18,15 @@
      https? content-block rule is unaffected: only the native shell may reach the API. -->
 <key>MegaApiOrigin</key><string>$(MEGA_API_ORIGIN)</string>
 <key>GADApplicationIdentifier</key><string>$(MEGA_ADMOB_APP_ID)</string>
+<!-- P20-06: the identifiers the NATIVE ads bridge (`MegaAdsBridge`) publishes `window.MegaAds`
+     from. Every one is a build setting. The Debug configuration names Google's own demo units
+     (ca-app-pub-3940256099942544/1712485313 rewarded, .../4411468910 interstitial) so the bridge is
+     exercisable on a simulator without touching live inventory; a Release configuration names none,
+     so it publishes no handler and requests nothing. No live unit id is committed here, and live
+     serving is still decided by the backend's MEGA_AD_MODE. -->
+<key>MegaAdMobAppID</key><string>$(MEGA_ADMOB_APP_ID)</string>
+<key>MegaAdMobRewardedUnit</key><string>$(MEGA_ADMOB_REWARDED_UNIT)</string>
+<key>MegaAdMobInterstitialUnit</key><string>$(MEGA_ADMOB_INTERSTITIAL_UNIT)</string>
 <!-- V5.1 same-Wi-Fi rooms. The signed app hosts a private Mega XOXO room on your Wi-Fi and looks
      for the ones other phones are hosting, so iOS asks for local-network access the first time a
      lobby actually opens. The Bonjour service type matches the Android NSD record exactly, which

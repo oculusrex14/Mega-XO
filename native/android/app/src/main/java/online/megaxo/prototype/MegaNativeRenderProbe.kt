@@ -31,7 +31,9 @@ internal class MegaNativeRenderProbe {
                 home && modes && nav >= 5,
                 p?.children.length || 0, nav,
                 !!window.MegaGame, !!window.MegaDomain,
-                !!window.MegaIcons, !!window.MegaNetwork
+                !!window.MegaIcons, !!window.MegaNetwork,
+                typeof window.MegaAds, (window.MegaAds && window.MegaAds.platform) || '',
+                !!(window.MegaAds && window.MegaAds.isReady && window.MegaAds.isReady('rewarded'))
             ]);
         })()
     """.trimIndent()
@@ -51,6 +53,12 @@ internal class MegaNativeRenderProbe {
             }.getOrNull()
             if (values?.optBoolean(0) == true) {
                 Log.i("MegaXOStartup", "READY game_initialized=true nav=5")
+                // Whether `window.MegaAds` is actually published, and by which platform. The debug
+                // build names Google demo units, so a configured online build must report
+                // ads=object android here; a release/unconfigured build legitimately reports
+                // ads=undefined.
+                Log.i("MegaXOStartup", "ADS surface=" + values.optString(7) +
+                    " platform=" + values.optString(8) + " rewardedReady=" + values.optBoolean(9))
                 return@evaluateJavascript
             }
             attempts += 1

@@ -125,7 +125,15 @@ No product price, territory or listing text is asserted here.
 
 ### 1.3 AdMob — `OWNER_ACTION_REQUIRED`
 
-Evidence:
+> **Status update (P20-06, same branch).** The three wiring findings below are now **superseded**:
+> `MegaAndroidAds`/`MegaIOSAds` *are* instantiated by their hosts, both reward callbacks are real
+> `EARNED` signals, and a typed origin-pinned bridge publishes `window.MegaAds` on both platforms
+> (`MegaAdsBridge.kt` / `MegaAdsBridge.swift`). Verified on a physical Android device: the page
+> reports `ads=object platform=android`, consent becomes true only after UMP answers, and every
+> failure path returns a clean rejection. The remaining owner actions (real units, UMP message
+> publication, SSV handler, store review) and `MEGA_AD_MODE=off` are unchanged and still required.
+
+Evidence (as of the freeze commit, before the update above):
 
 - `native/android/app/build.gradle.kts:79-81` → `manifestPlaceholders["megaAdMobAppId"]` falls back to
   `ca-app-pub-3940256099942544~3347511713`, the comment at `:77-78` calling it the "Official test app ID

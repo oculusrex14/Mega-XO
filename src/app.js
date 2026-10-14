@@ -6,9 +6,17 @@ const T=window.MegaTutorial;
 /* V5.1 worker bot hooks */
 const BR=window.MegaBotRuntime,BC=window.MegaBotContract,A=BR?new BR.Client():null;
 const LA=window.MegaLocalAI,LS=window.MegaLocalSession,BP=window.MegaBotPack;
+/* V5.2 rewarded powers: the pure rules module plus its frozen `window.MegaPowers` adapter. Both
+   stay inert while the kill switch is off. */
+const RW=window.MegaRewind,PW=window.MegaPowersAdapter;
+const POWERS_KEY='mega_v52_powers',POWERS_FLAG='mega_v52_powers_enabled';
+const POWERS_ON=(()=>{try{return localStorage.getItem(POWERS_FLAG)==='on';}catch{return false;}})();
+const POWERS_STATE=(()=>{try{return JSON.parse(localStorage.getItem(POWERS_KEY)||'null');}catch{return null;}})();
+function readPowersState(){try{return JSON.parse(localStorage.getItem(POWERS_KEY)||'null');}catch{return null;}}
+function writePowersState(value){try{localStorage.setItem(POWERS_KEY,JSON.stringify(value));}catch{}}
 let localSession=LS?LS.createSession({baseURL:location?.href}):null;
 const G=window.MegaGame,D=window.MegaDomain,I=window.MegaIcons,$=s=>document.querySelector(s);
-const KEY='mega_v32_state',escape=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const KEY='mega_v32_state',SNAPSHOT_VERSION=2,escape=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const parse=(key)=>{try{return JSON.parse(localStorage.getItem(key)||'null');}catch{return null;}};
 let data=parse(KEY);if(!data||data.version!==3.2){data=D.fresh();const old=parse('mega_v3_settings');if(old){Object.assign(data.settings,old);data.settings.haptics=old.haptic!==false;}data.legacy=parse('mega_v3_stats');}
 data.playSeconds=data.playSeconds||{};D.migrate(data);data.profile=data.profile||{};
@@ -19,7 +27,7 @@ if(!['vector','midnight','paperclub','afterhours'].includes(data.settings.theme)
 let page='play',mode='bot',difficulty='Medium',first='X',onlineType='ranked',statsMode='bot',statsDifficulty='all',rankLeague='all',rankScope='global',rankMetric='rating';
 let online={ready:false,profile:null,rows:[],invitations:[],products:[]},target=null,pendingExchange=null,refreshSerial=0,onlinePoll=null,onlinePollBusy=false,onlinePending=false,waitingId=null,queueSubmission=null,queueCancelling=false,connectionState='online';
 const NET=window.MegaNetwork,opId=()=>globalThis.crypto?.randomUUID?.()||String(Date.now())+'-'+Math.random().toString(36).slice(2);
-let match=null,botTimer=null,toastTimer=null,ctx=null,ambient=null,sheetKind='',sheetReturnFocus=null,lastTick=performance.now(),lastInput=performance.now(),lastSave=0;
+let match=null,botTimer=null,toastTimer=null,ctx=null,ambient=null,sheetKind='',sheetReturnFocus=null,lastTick=performance.now(),lastInput=performance.now(),lastSave=0,powers=null;
 const themeNames={vector:'Vector Light',midnight:'Midnight Club',paperclub:'Paper Club',afterhours:'After Hours'};
 const lightBadges=[['#ead9c5','#715234'],['#e3e8ed','#58646b'],['#dae3f0','#465c7d'],['#f4dfc6','#7c4b20'],['#e3edf4','#4a6276'],['#f5e7b2','#805b0c'],['#d7f0fa','#176d8a'],['#d7efdf','#23673f'],['#eed7f0','#784576'],['#e7defa','#644991'],['#faf0c7','#805b0c']];
 const darkBadges=[['#42372d','#e4c49c'],['#343f48','#d0dce5'],['#283b53','#b8d1f7'],['#4a3526','#f0bf91'],['#314455','#d6eafa'],['#4c4123','#f2d88d'],['#173e52','#9ce2f8'],['#233e31','#a5e4bf'],['#442e49','#e7b8ee'],['#362b51','#d9c2fc'],['#514224','#fff0aa']];
@@ -28,12 +36,100 @@ function refreshIcons(){requestAnimationFrame(()=>I.refresh?.());}
 function walletData(){return online.ready&&online.profile?online.profile.wallet:data.wallet;}
 function renderWalletSummary(){const w=walletData(),coins=w.coins.toLocaleString(),crowns=w.crowns.toLocaleString();$('#walletAmount').textContent=coins;$('#walletCrownAmount').textContent=crowns;$('#walletButton').setAttribute('aria-label','Open wallet. Coins '+coins+'. Crowns '+crowns+'.');}
 function myTier(){return online.profile?.tier||'wood';}
-function save(){try{
- if(match&&!match.online&&!match.recorded&&!match.state.winner&&!$('#gameScreen').hidden){
-  data.offlineMatch={id:match.id,first:match.first,mode:match.mode,difficulty:match.difficulty,practice:match.practice,tutorial:T?.snapshot(match)||null,bot:match.bot||null,moves:match.state.moves,active:match.active,turnLimit:match.turnLimit,turnRemaining:match.turnRemaining};
-  if(match.resultClass==='unverified-local-ai'||match.difficulty==='Impossible'||match.engine==='neural')data.offlineMatch.localAi=LA?LA.snapshot(match):null;
+function initPowers(){
+ if(!PW||powers)return powers;
+ powers=PW.createPowers({
+  enabled:()=>POWERS_ON||window.MEGA_POWERS_ENABLED===true,
+  storage:{read:readPowersState,write:writePowersState},
+  live:()=>match?{
+   id:match.id,
+   state:match.state,
+   mode:match.mode,
+   difficulty:match.difficulty,
+   first:match.first,
+   practice:match.practice,
+   online:!!match.online,
+   reason:match.pendingTerminal?match.pendingTerminal.reason:match.terminalReason||null,
+   revision:match.powersHistory?match.powersHistory.revision:match.state.moves.length,
+   generation:match.powersHistory?match.powersHistory.generation:0,
+   history:match.powersHistory||null,
+   powers:match.powers||null,
+   charges:match.powers?match.powers.botUndo.charges:0,
+   used:match.powers?match.powers.botUndo.presses:0,
+   botPending:!!botTimer
+  }:null,
+  commit:cmd=>{
+   if(!match)return false;
+   if(match.id!==cmd.matchId)return false;
+   if(cmd.type==='grant'){
+    match.powers=cmd.powers;
+    save();
+    return true;
+   }
+   if(cmd.type!=='rewind')return false;
+   if(match.powersHistory&&match.powersHistory.revision!==cmd.expectedRevision)return false;
+   match.state=cmd.state;
+   match.powers=cmd.powers;
+   match.powersHistory=cmd.history;
+   match.last=cmd.last;
+   match.pendingTerminal=null;
+   match.recorded=false;
+   save();render();paint();
+   return true;
+  },
+  // Core issues the opaque reward ticket; the native lane re-validates it against the build's
+  // configured unit before the SDK runs. Without an account API the ticket is unavailable and the
+  // reward path fails closed, which is correct for browser/offline play.
+  issueTicket:info=>{
+   const API=window.MegaAccount;
+   if(!API||typeof API.request!=='function')return Promise.resolve(null);
+   return API.request('/api/monetization/reward-ticket',{kind:info.kind,platform:info.platform})
+    .then(r=>r&&r.ticket?r.ticket:null)
+    .catch(()=>null);
+  }
+ });
+ if(POWERS_ON||window.MEGA_POWERS_ENABLED===true){
+  PW.install({root:window,api:powers});
  }
- else if(match?.recorded||match?.state.winner)delete data.offlineMatch;
+ return powers;
+}
+function attachPowers(m, saved){
+ initPowers();
+ const on=POWERS_ON||window.MEGA_POWERS_ENABLED===true;
+ if(!on||!PW||!RW)return;
+ m.powers=PW.matchPowers(saved?.powers);
+ if(saved?.powersHistory)m.powersHistory={...saved.powersHistory};
+ else{
+  m.powersHistory=RW.createHistory(m.first);
+  for(const ply of m.state.moves){
+   const rec=RW.record(m.powersHistory,m.powersHistory.nodes[m.powersHistory.active].state,ply,{revision:m.powersHistory.revision});
+   if(rec.ok)m.powersHistory=rec.history;
+  }
+ }
+ m.terminalUndoEligible=(target,reason,result)=>{
+  if(!powers||!(POWERS_ON||window.MEGA_POWERS_ENABLED===true))return false;
+  if(target.mode!=='bot'||target.practice||target.online||result!=='loss'||reason!=='line')return false;
+  const elig=powers.eligibility(target).undo;
+  return elig.eligible;
+ };
+}
+const offlineSnapshot=()=>{
+ const snapshot={id:match.id,version:SNAPSHOT_VERSION,first:match.first,mode:match.mode,difficulty:match.difficulty,practice:match.practice,tutorial:T?.snapshot(match)||null,bot:match.bot||null,moves:match.state.moves,active:match.active,turnLimit:match.turnLimit,turnRemaining:match.turnRemaining};
+ if(match.resultClass==='unverified-local-ai'||match.difficulty==='Impossible'||match.engine==='neural')snapshot.localAi=LA?LA.snapshot(match):null;
+ if(match.powers)snapshot.powers=match.powers;
+ if(match.powersHistory)snapshot.powersHistory={...match.powersHistory};
+ if(match.pendingTerminal){
+  /* A pending Bot loss survives an app restart with its original plies, result, quota use and
+     reward attempt, so the choice can be resolved honestly and no ad is ever assumed completed. */
+  const record=match.pendingTerminal.record||null;
+  snapshot.pendingTerminal={reason:match.pendingTerminal.reason,record:record?{...record,moves:match.state.moves.length,activeSeconds:Math.round(match.active)}:null};
+ }
+ return snapshot;
+};
+function save(){try{
+ const live=match&&!match.online&&!match.recorded&&!$('#gameScreen').hidden;
+ if(live&&(!match.state.winner||match.pendingTerminal))data.offlineMatch=offlineSnapshot();
+ else if(match?.recorded||(match?.state.winner&&!match?.pendingTerminal))delete data.offlineMatch;
  localStorage.setItem(KEY,JSON.stringify(data));window.dispatchEvent(new Event('mega:local-save'));
  }catch{notify('Storage is unavailable. Progress lasts for this session only.');}}
 function openNeuralRecovery(err){if(!match)return;const code=err?.code||err?.message||'INFERENCE_FAILED';open('Impossible Bot Recovery','<div class="ai-pack-recovery"><p><strong>Background thinking could not complete.</strong> ('+escape(code)+')</p><p class="caption">All completed human moves are preserved. Choose recovery:</p></div>'+fullButton('Retry move','retrybot')+fullButton('Continue with Expert bot (Unverified, no rewards)','fallbackexpert','',true)+fullButton('Resign match','resign','',true),'recovery');}
@@ -240,6 +336,7 @@ function startGame(practice=false,rematch=false,explicitPin=null){
  match={id:globalThis.crypto?.randomUUID?.()||String(Date.now())+Math.random(),state:G.create(starter),mode:practice?'bot':mode,difficulty:practice?'Beginner':difficulty,first:starter,practice,active:0,turnRemaining:Number(data.settings.timer)||0,turnLimit:Number(data.settings.timer)||0,last:null,recorded:false,pending:null};
  if(isNeural&&pin&&LA){match.version=LA.VERSION;match.resultClass=LA.RESULT_CLASS;match.engine='neural';match.pin={...pin};match.seed=seed;match.status='ready';}
  if(BR&&!isNeural)match.bot=BR.startInfo(null,practice);if(practice)T?.start(match);
+ attachPowers(match,{reason:null,record:null,attempt:null});
  $('#gameScreen').hidden=false;$('#matchMode').textContent=practice?'Tutorial practice':match.mode==='local'?'Pass & Play':'Vs Bot';$('#matchLevel').textContent=match.mode==='local'?'Two players, one device':match.difficulty==='Impossible'?'Impossible \u00b7 '+(match.pin?.packVersion||'Neural'):match.difficulty+' difficulty';$('#playerXName').textContent=match.mode==='local'?'Player X':'You';$('#playerOName').textContent=match.mode==='local'?'Player O':match.difficulty==='Impossible'?'Impossible Bot':'Bot';
  lastTick=lastInput=performance.now();paint();syncAudio();save();scheduleBot();
 }
@@ -266,14 +363,16 @@ function preview(b,c){if(!match||cellNodes[b][c].disabled)return;clearPreview();
 function animateRoute(b,c,next){const routeOverlay=$('#routeOverlay');routeOverlay.innerHTML='';if(next===null)return;requestAnimationFrame(()=>{const wrap=$('#boardWrap').getBoundingClientRect(),cell=cellNodes[b]?.[c],target=miniNodes[next]?.el;if(!cell||!target)return;const a=cell.getBoundingClientRect(),t=target.getBoundingClientRect();const x1=a.left+a.width/2-wrap.left,y1=a.top+a.height/2-wrap.top,x2=t.left+t.width/2-wrap.left,y2=t.top+t.height/2-wrap.top;routeOverlay.setAttribute('viewBox','0 0 '+wrap.width+' '+wrap.height);routeOverlay.innerHTML='<line x1="'+x1+'" y1="'+y1+'" x2="'+x2+'" y2="'+y2+'"/><circle cx="'+x2+'" cy="'+y2+'" r="5"/>';target.classList.add('route-target');setTimeout(()=>{routeOverlay.innerHTML='';target.classList.remove('route-target');},700);});}
 
 function humanMove(b,c){if(match?.online){onlineMove({b,c});return;}if(!match||match.state.winner||sheetOpen()||(match.mode==='bot'&&match.state.turn==='O'))return;if(T&&!T.allows(match,{b,c})){T.hint();return;}lastInput=performance.now();if(data.settings.confirm&&(!match.pending||match.pending.b!==b||match.pending.c!==c)){match.pending={b,c};preview(b,c);$('#previewText').textContent='Tap the same cell again to confirm.';return;}move({b,c},'human');}
+function recordPowersHistory(before,m){if(!match.powersHistory)return;const recorded=RW.record(match.powersHistory,before,m,{revision:match.powersHistory.revision});if(recorded.ok){match.powersHistory=recorded.history;match.stateVersion=recorded.node.stateVersion;}}
 function move(m,source){if(!match||match.state.winner)return;if(match.mode==='bot'&&((match.state.turn==='O')!==(source==='bot')))return;
  if(T&&!T.permits(match,m,source))return;const before=match.state;
  try{match.state=G.apply(match.state,m);}catch{notify('Choose an empty cell in the highlighted board.');return;}
  if(match.resultClass==='unverified-local-ai')match.status=match.state.winner?'finished':'ready';
- T?.after(match,before,m);match.last=m;match.pending=null;match.turnRemaining=match.turnLimit;tone(source==='bot'?370:540);haptic();paint();clearPreview();animateRoute(m.b,m.c,match.state.required);if(match.state.winner)finish(match.state.winner==='DRAW'?'draw':'line');else{save();scheduleBot();}
+ T?.after(match,before,m);recordPowersHistory(before,m);match.last=m;match.pending=null;match.turnRemaining=match.turnLimit;tone(source==='bot'?370:540);haptic();paint();clearPreview();animateRoute(m.b,m.c,match.state.required);if(match.state.winner)finish(match.state.winner==='DRAW'?'draw':'line');else{save();scheduleBot();}
 }
-function scheduleBot(){clearTimeout(botTimer);botTimer=null;A?.cancel();localSession?.cancel();if(!match||match.state.winner||match.mode!=='bot'||match.state.turn!=='O'||sheetOpen()||document.hidden||T?.blocked(match))return;const current=match,revision=match.state.moves.length;
- const valid=()=>match===current&&match.state.moves.length===revision&&!match.state.winner&&!sheetOpen()&&!document.hidden&&!T?.blocked(match);
+function scheduleBot(){clearTimeout(botTimer);botTimer=null;A?.cancel();localSession?.cancel();if(!match||match.state.winner||match.mode!=='bot'||match.state.turn!=='O'||sheetOpen()||document.hidden||T?.blocked(match))return;
+ const current=match,revision=match.state.moves.length,generation=match.powersHistory?match.powersHistory.generation:0;
+ const valid=()=>match===current&&match.state.moves.length===revision&&(match.powersHistory?match.powersHistory.generation:0)===generation&&!match.state.winner&&!sheetOpen()&&!document.hidden&&!T?.blocked(match);
  botTimer=setTimeout(async()=>{botTimer=null;if(!valid())return;const seed=((current.seed||current.bot?.seed||0)^Math.imul(revision+1,0x9e3779b9))>>>0;let m=null;
   if(current.engine==='neural'&&LA){
    try{
@@ -291,30 +390,136 @@ function scheduleBot(){clearTimeout(botTimer);botTimer=null;A?.cancel();localSes
     openNeuralRecovery(e);return;
    }
   }else{
-   try{if(!A)throw Error('BOT_WORKER_UNAVAILABLE');const result=await A.choose({state:current.state,gameId:current.id,revision,difficulty:current.difficulty,engine:current.bot?.engine||'legacy',seed});if(!valid())return;current.botDiagnostics=result.diagnostics;m=result.move;}
-   catch(e){if(e?.name==='AbortError'||!valid())return;const started=performance.now();m=G.choose(current.state,current.difficulty,BC?BC.seeded(seed):Math.random);current.botDiagnostics={engineVersion:'canonical-main-thread-recovery',rngSeed:seed,recoveryCode:e?.code||'BOT_WORKER_UNAVAILABLE',elapsedMs:performance.now()-started};if(!current.warnedBotFallback){notify('Background thinking is unavailable. Using the standard bot.');current.warnedBotFallback=true;}}
+   try{
+    if(!A)throw Error('BOT_WORKER_UNAVAILABLE');
+    const result=await A.choose({state:current.state,gameId:current.id,revision,difficulty:current.difficulty,engine:current.bot?.engine||'legacy',seed});
+    if(!valid()||result?.gameId!==current.id||result?.revision!==revision)return;
+    current.botDiagnostics=result.diagnostics;m=result.move;
+   }catch(e){
+    if(e?.name==='AbortError'||!valid())return;
+    const started=performance.now();m=G.choose(current.state,current.difficulty,BC?BC.seeded(seed):Math.random);current.botDiagnostics={engineVersion:'canonical-main-thread-recovery',rngSeed:seed,recoveryCode:e?.code||'BOT_WORKER_UNAVAILABLE',elapsedMs:performance.now()-started};if(!current.warnedBotFallback){notify('Background thinking is unavailable. Using the standard bot.');current.warnedBotFallback=true;}
+   }
   }
   if(valid()&&m)move(m,'bot');
  },850+Math.random()*220);
 }
-function finish(reason){if(!match||match.recorded)return;T?.stop();A?.cancel();localSession?.cancel();clearTimeout(botTimer);botTimer=null;match.recorded=true;
- const s=match.state,result=s.winner==='DRAW'?'draw':s.winner==='X'?'win':'loss';const record={id:match.id,at:Date.now(),mode:match.mode,difficulty:match.difficulty,practice:match.practice,result,reason,moves:s.moves.length,activeSeconds:Math.round(match.active),claimed:s.mini.filter(x=>x==='X').length};
+function terminalRecord(reason){const s=match.state,result=s.winner==='DRAW'?'draw':s.winner==='X'?'win':'loss';return {id:match.id,at:Date.now(),mode:match.mode,difficulty:match.difficulty,practice:match.practice,result,reason,moves:s.moves.length,activeSeconds:Math.round(match.active),claimed:s.mini.filter(x=>x==='X').length};}
+function finish(reason){
+ if(!match||match.recorded||match.pendingTerminal)return;
+ match.terminalReason=reason;
+ const prepared=prepareTerminalResult(reason);
+ if(prepared.pending){offerTerminalUndo();return;}
+ finalizeTerminalResult(reason);
+}
+/* Split terminal handling. `prepareTerminalResult` decides whether this result must wait for the
+   player: an eligible Bot 'O' loss on the last completed Bot move in a match where an earned
+   two-charge package can still be earned or spent. While it waits, nothing is settled — no
+   `D.complete`, no record, no Coins, no quest progress, no daily-cap increment and no interstitial
+   eligibility — and the discarded result is never awarded if the player rewinds instead. */
+function prepareTerminalResult(reason){
+ const s=match.state,result=s.winner==='DRAW'?'draw':s.winner==='X'?'win':'loss';
+ const record=terminalRecord(reason);
  if(match.resultClass==='unverified-local-ai'||match.difficulty==='Impossible'){record.resultClass='unverified-local-ai';if(LA)LA.record(data,match);}
- const award=D.complete(data,record);save();render();paint();open(result==='draw'?'A well-fought draw':match.mode==='local'?'Player '+s.winner+' wins':result==='win'?'Nicely played.':'One more try?',
- '<p class="caption">'+(reason==='line'?'Three Mini Boards in a row.':reason==='draw'?'All Mini Boards resolved without a big winning line.':reason==='timeout'?'The turn timer ran out.':'The match ended by resignation.')+'</p><div class="stats-grid"><div class="stat"><span>Moves</span><strong>'+s.moves.length+'</strong></div><div class="stat"><span>Active time</span><strong>'+seconds(match.active)+'</strong></div></div><div class="note">'+(match.practice?'Tutorial practice is not counted in your personal stats.':match.mode==='local'?'Pass & Play does not affect personal stats or rewards.':match.resultClass==='unverified-local-ai'||match.difficulty==='Impossible'?'Impossible local match recorded. No Coin, Crown or Elo rewards.':award?'You earned '+award+' Coins on this device.':'No coin reward for this result.')+'</div>'+fullButton('Rematch','rematch')+fullButton('Back to home','home','',true),'result');
+ const eligible=!!match.terminalUndoEligible&&match.terminalUndoEligible(match,reason,result);
+ if(!eligible)return {pending:false,record};
+ T?.stop();A?.cancel();localSession?.cancel();clearTimeout(botTimer);botTimer=null;
+ match.pendingTerminal={reason,record};
+ save();
+ if(!window.MegaPowers){finalizeTerminalResult();return {pending:false,record};}
+ return {pending:true,record};
+}
+function offerTerminalUndo(){open('One more try?','<p class="caption">The Bot closed the match with its last move.</p>'+fullButton('Accept loss','acceptloss')+fullButton('Undo with a rewarded ad','undooffer','',true),'terminal');}
+/* Exactly one settlement per real result. `match.recorded` is set before `D.complete`, so a repeated
+   call — a second click, a resumed snapshot, a late timer tick — cannot double-pay. */
+function finalizeTerminalResult(reasonOverride){
+ if(!match||match.recorded)return;
+ const pending=match.pendingTerminal,reason=reasonOverride||(pending?pending.reason:match.terminalReason||'line');
+ const record=(pending&&pending.record)?pending.record:terminalRecord(reason);
+ match.pendingTerminal=null;match.terminalReason=null;match.recorded=true;
+ T?.stop();A?.cancel();localSession?.cancel();clearTimeout(botTimer);botTimer=null;
+ const s=match.state,result=record.result;
+ const award=D.complete(data,record);save();render();paint();
+ open(result==='draw'?'A well-fought draw':match.mode==='local'?'Player '+s.winner+' wins':result==='win'?'Nicely played.':'One more try?',
+ '<p class="caption">'+(reason==='line'?'Three Mini Boards in a row.':reason==='draw'?'All Mini Boards resolved without a big winning line.':reason==='timeout'?'The turn timer ran out.':'The match ended by resignation.')+'</p><div class="stats-grid"><div class="stat"><span>Moves</span><strong>'+s.moves.length+'</strong></div><div class="stat"><span>Active time</span><strong>'+seconds(match.active)+'</strong></div></div><div class="note">'+(match.practice?'Tutorial practice is not counted in your personal stats.':match.mode==='local'?'Pass & Play does not affect personal stats or rewards.':match.resultClass==='unverified-local-ai'||match.difficulty==='Impossible'?'Impossible local match recorded. No Coin, Crown or Elo rewards.':award?'You earned '+award+' Coins on this device.':'No coin reward for this result.')+'</div>'+(match.assisted?'<div class="note">Assisted match. The rewind is not part of your personal history and earns nothing.</div>':'')+fullButton('Rematch','rematch')+fullButton('Back to home','home','',true),'result');
 }
 setInterval(()=>{const now=performance.now(),delta=Math.min(1,Math.max(0,(now-lastTick)/1000));lastTick=now;if(!match||match.state.winner||$('#gameScreen').hidden||sheetOpen()||document.hidden||T?.blocked(match))return;if(now-lastInput<60000){match.active+=delta;if(!match.online&&match.mode!=='local'&&!match.practice){const isUnverified=match.resultClass==='unverified-local-ai'||match.difficulty==='Impossible';if(isUnverified){data.localAiPlaySeconds=(data.localAiPlaySeconds||0)+delta;}else{const k=match.mode+':all',d=match.mode+':'+match.difficulty;data.playSeconds[k]=(data.playSeconds[k]||0)+delta;data.playSeconds[d]=(data.playSeconds[d]||0)+delta;}if(now-lastSave>5000){save();lastSave=now;}}}if(match.online){if(match.turnLimit)$('#clock').textContent=Math.max(0,Math.ceil((match.deadline-(Date.now()+match.clockOffset))/1000))+'s';return;}if(match.turnLimit){match.turnRemaining=Math.max(0,match.turnRemaining-delta);$('#clock').textContent=Math.ceil(match.turnRemaining)+'s';if(match.turnRemaining<=0){finish('timeout');return;}}paint();}
 ,100);
 document.addEventListener('visibilitychange',()=>{lastTick=performance.now();if(document.hidden){A?.cancel();localSession?.cancel();clearTimeout(botTimer);botTimer=null;}else{lastInput=lastTick;scheduleBot();}syncAudio();});
 document.addEventListener('pointerdown',()=>{lastInput=performance.now();},true);
-function currentMatchStats(){if(!match)return;const s=match.state;let extra='';if(match.resultClass==='unverified-local-ai'||match.difficulty==='Impossible'){extra='<div class="note">Impossible match &middot; Model: '+escape(match.pin?.packVersion||'none')+' &middot; Hash: '+escape(match.pin?.modelHash?.slice(0,12)||'none')+(match.fallbackFrom?'<br><small>Fallback from: '+escape(match.fallbackFrom.slice(0,12))+'</small>':'')+'</div>';}open('Current match','<div class="stats-grid"><div class="stat"><span>Moves</span><strong>'+s.moves.length+'</strong></div><div class="stat"><span>Active time</span><strong>'+seconds(match.active)+'</strong></div><div class="stat"><span>X Mini Boards</span><strong>'+s.mini.filter(x=>x==='X').length+'</strong></div><div class="stat"><span>O Mini Boards</span><strong>'+s.mini.filter(x=>x==='O').length+'</strong></div></div>'+extra+fullButton('Resign match','resign','',true),'matchstats');}
-function leave(){T?.stop();A?.cancel();localSession?.cancel();clearInterval(onlinePoll);onlinePoll=null;waitingId=null;delete data.offlineMatch;match=null;save();clearTimeout(botTimer);botTimer=null;$('#gameScreen').hidden=true;close();page='play';render();}
+function currentMatchStats(){if(!match)return;const s=match.state;let extra='';if(match.resultClass==='unverified-local-ai'||match.difficulty==='Impossible'){extra='<div class="note">Impossible match &middot; Model: '+escape(match.pin?.packVersion||'none')+' &middot; Hash: '+escape(match.pin?.modelHash?.slice(0,12)||'none')+(match.fallbackFrom?'<br><small>Fallback from: '+escape(match.fallbackFrom.slice(0,12))+'</small>':'')+'</div>';}
+ const canUndo=!s.winner&&powers&&powers.eligibility(match).undo.eligible&&match.powers?.botUndo?.charges>=1;
+ if(canUndo)extra+=fullButton('Undo last turn ('+match.powers.botUndo.charges+' left)','undoingame');
+ open('Current match','<div class="stats-grid"><div class="stat"><span>Moves</span><strong>'+s.moves.length+'</strong></div><div class="stat"><span>Active time</span><strong>'+seconds(match.active)+'</strong></div><div class="stat"><span>X Mini Boards</span><strong>'+s.mini.filter(x=>x==='X').length+'</strong></div><div class="stat"><span>O Mini Boards</span><strong>'+s.mini.filter(x=>x==='O').length+'</strong></div></div>'+extra+fullButton('Resign match','resign','',true),'matchstats');}
+function leave(){if(match?.pendingTerminal)finalizeTerminalResult();T?.stop();A?.cancel();localSession?.cancel();clearInterval(onlinePoll);onlinePoll=null;waitingId=null;delete data.offlineMatch;match=null;save();clearTimeout(botTimer);botTimer=null;$('#gameScreen').hidden=true;close();page='play';render();}
 const actions={
- nav:v=>{page=v;render();$('#contentScroll').scrollTop=0;if(['rank','friends'].includes(v))refreshOnline();},retrynetwork:()=>retryNetwork(),copydiagnostics:copySupportDiagnostics,mode:v=>{mode=v;render();},difficulty:v=>{if(v==='Impossible'&&!localSession?.isAvailable?.()&&window.MegaAiPack?.getState?.()?.status!=='ready'){window.MegaAiPack?.show();notify('Please set up and download the optional Impossible pack first.');return;}difficulty=v;render();},first:v=>{first=v;render();},settimer:v=>{data.settings.timer=Number(v);save();render();},onlinetype:v=>{onlineType=v;render();},start:()=>mode==='tournament'?(window.MegaParties?.tables?window.MegaParties.tables():notify('Tournaments are unavailable right now.')):['bot','local'].includes(mode)?startGame():onlineInfo(),queue:startQueue,settings,wallet,tutorial,rules,aipack:()=>window.MegaAiPack?.show(),matchstats:currentMatchStats,rankhelp:rankHelp,feehelp:feeHelp,weeklyhelp:weeklyHelp,onlineinfo:onlineInfo,retrybot:()=>{close();if(match){match.status='ready';scheduleBot();}},fallbackexpert:()=>{if(match&&LA){match=LA.expertFallback(match,{confirmed:true});$('#matchLevel').textContent='Expert (Fallback \u00b7 Unverified)';close();notify('Switched to Expert bot. Result remains unverified with no rewards.');scheduleBot();}},
+ nav:v=>{page=v;render();$('#contentScroll').scrollTop=0;if(['rank','friends'].includes(v))refreshOnline();},retrynetwork:()=>retryNetwork(),copydiagnostics:copySupportDiagnostics,mode:v=>{mode=v;render();},difficulty:v=>{if(v==='Impossible'&&!localSession?.isAvailable?.()&&window.MegaAiPack?.getState?.()?.status!=='ready'){window.MegaAiPack?.show();notify('Please set up and download the optional Impossible pack first.');return;}difficulty=v;render();},first:v=>{first=v;render();},settimer:v=>{data.settings.timer=Number(v);save();render();},onlinetype:v=>{onlineType=v;render();},start:()=>mode==='tournament'?(window.MegaParties?.tables?window.MegaParties.tables():notify('Tournaments are unavailable right now.')):['bot','local'].includes(mode)?startGame():onlineInfo(),
+ acceptloss:()=>{close();finalizeTerminalResult();},
+ undooffer:async()=>{
+  if(!powers||!match)return;
+  close();
+  const ctx={
+   id:match.id,
+   state:match.state,
+   mode:match.mode,
+   first:match.first,
+   reason:match.pendingTerminal?match.pendingTerminal.reason:'line',
+   practice:match.practice,
+   online:!!match.online,
+   revision:match.powersHistory?match.powersHistory.revision:match.state.moves.length,
+   generation:match.powersHistory?match.powersHistory.generation:0,
+   history:match.powersHistory||null,
+   powers:match.powers||null,
+   charges:match.powers?match.powers.botUndo.charges:0,
+   used:match.powers?match.powers.botUndo.presses:0,
+   botPending:false
+  };
+  if(!match.powers||match.powers.botUndo.charges<1){
+   const req=await powers.request('undo',ctx);
+   if(!req.earned){
+    notify('No reward was earned. The loss stands.');
+    offerTerminalUndo();
+    return;
+   }
+  }
+  const applied=powers.apply('undo',ctx);
+  if(!applied.applied){
+   notify('Could not rewind move.');
+   offerTerminalUndo();
+   return;
+  }
+  match.assisted=true;
+  notify('Turn rewound! Choose your move.');
+ },
+ undoingame:()=>{
+  if(!powers||!match||match.state.winner)return;
+  close();
+  const ctx={
+   id:match.id,
+   state:match.state,
+   mode:match.mode,
+   first:match.first,
+   reason:null,
+   practice:match.practice,
+   online:!!match.online,
+   revision:match.powersHistory?match.powersHistory.revision:match.state.moves.length,
+   generation:match.powersHistory?match.powersHistory.generation:0,
+   history:match.powersHistory||null,
+   powers:match.powers||null,
+   charges:match.powers?match.powers.botUndo.charges:0,
+   used:match.powers?match.powers.botUndo.presses:0,
+   botPending:false
+  };
+  const applied=powers.apply('undo',ctx);
+  if(!applied.applied)notify('Could not rewind move.');
+  else {
+   match.assisted=true;
+   notify('Turn rewound!');
+  }
+ },
  acceptfriend:async id=>{try{await NET.acceptFriend(id,opId());await refreshOnline();render();}catch(e){notify(friendlyError(e));}},
  cancelqueue:async()=>{if(queueCancelling)return;queueCancelling=true;clearInterval(onlinePoll);waitingId=null;try{if(queueSubmission)await queueSubmission.catch(()=>{});const r=await NET.cancelQueue(opId());if(r.state==='playing'){beginOnline(await NET.match(r.matchId));return;}}catch{notify('Cancellation could not be confirmed. Reconnect to check the match.');}finally{queueCancelling=false;}close();},
  cancelinvite:async()=>{const id=waitingId;if(!id)return;try{await NET.cancel(id,opId());clearInterval(onlinePoll);waitingId=null;close();}catch(e){notify(friendlyError(e));}},
- close:()=>{if(sheetKind==='queue')return actions.cancelqueue();if(sheetKind==='waiting'&&waitingId)return $('#sheet [data-action="cancelqueue"]')?actions.cancelqueue():actions.cancelinvite();close();},theme:v=>{if(!themeNames[v])return;data.settings.theme=v;applyTheme();save();if(sheetKind==='settings'){const top=$('#sheet').scrollTop;settings();$('#sheet').scrollTop=top;}render();paint();},
+ close:()=>{if(sheetKind==='terminal'){finalizeTerminalResult();close();return;}if(sheetKind==='queue')return actions.cancelqueue();if(sheetKind==='waiting'&&waitingId)return $('#sheet [data-action="cancelqueue"]')?actions.cancelqueue():actions.cancelinvite();close();},theme:v=>{if(!themeNames[v])return;data.settings.theme=v;applyTheme();save();if(sheetKind==='settings'){const top=$('#sheet').scrollTop;settings();$('#sheet').scrollTop=top;}render();paint();},
  statmode:v=>{statsMode=v;statsDifficulty='all';render();},metric:v=>{rankMetric=v;online.rows=[];render();refreshOnline();},league:v=>{rankLeague=v;online.rows=[];render();refreshOnline();},challenge,friendchallenge:v=>challenge(v,'friend'),sendchallenge:sendChallenge,reviewinvite:reviewInvite,
  acceptinvite:async v=>{const m=online.invitations.find(x=>x.id===v);if(!m)return;try{const accepted=await NET.accept(v,m.termsHash,opId());window.MegaCommunity?.refresh?.(false);if(accepted.status==='PLAYING')beginOnline(accepted);else watchInvitation(accepted.id,accepted.terms?.source==='queue'?'queue':'challenge',accepted);}catch(e){if(['REQUOTE_REQUIRED','OFFER_EXPIRED','TERMS_CHANGED'].includes(e?.message)){close();refreshOnline();window.MegaCommunity?.refresh?.(false);}notify(friendlyError(e));}},
  declineinvite:async v=>{try{await NET.decline(v,opId());close();await refreshOnline();window.MegaCommunity?.refresh?.(false);}catch(e){notify(friendlyError(e));}},
@@ -327,11 +532,11 @@ const actions={
  copyfriend:()=>{const code=online.profile?.friendCode;if(!code)return notify('Sign in to share your friend code.');if(navigator.clipboard?.writeText)navigator.clipboard.writeText(code).then(()=>notify('Friend code copied.')).catch(()=>notify(code));else notify(code);},
  practice:()=>{close();mode='bot';difficulty='Beginner';startGame(true);},
  leave:()=>{if(!match||match.state.winner)return leave();if(match.online){actions.resign();return;}open('Leave this game?','<p>Your current offline match will be discarded. No coins or completed-game stats are awarded.</p>'+fullButton('Leave game','home')+fullButton('Keep playing','close','',true));},
- home:leave,restart:()=>{if(match?.online){actions.resign();return;}open('Start a new game?','<p>This discards the current match, without rewards.</p>'+fullButton('Start again','restartyes')+fullButton('Keep playing','close','',true));},restartyes:()=>{close();startGame(match?.practice||false);},
- rematch:()=>{if(match?.online){leave();page='friends';render();return;}close();startGame(match?.practice||false,true);},resign:()=>{if(!match||match.state.winner)return;open('Resign?','<p>'+(match.online?'Resigning ends this match as a loss. Ranked rating and the agreed pot will settle.':'A bot game resignation counts as a loss, but gives no coins.')+'</p>'+fullButton('Resign match','resignyes')+fullButton('Keep playing','close','',true));},
+ home:leave,restart:()=>{if(match?.online){actions.resign();return;}open('Start a new game?','<p>This discards the current match, without rewards.</p>'+fullButton('Start again','restartyes')+fullButton('Keep playing','close','',true));},restartyes:()=>{if(match?.pendingTerminal)finalizeTerminalResult();close();startGame(match?.practice||false);},
+ rematch:()=>{if(match?.pendingTerminal)finalizeTerminalResult();if(match?.online){leave();page='friends';render();return;}close();startGame(match?.practice||false,true);},resign:()=>{if(!match||match.state.winner)return;open('Resign?','<p>'+(match.online?'Resigning ends this match as a loss. Ranked rating and the agreed pot will settle.':'A bot game resignation counts as a loss, but gives no coins.')+'</p>'+fullButton('Resign match','resignyes')+fullButton('Keep playing','close','',true));},
  resignyes:()=>{if(match?.online){onlineResign();return;}close();match.state={...match.state,winner:match.mode==='bot'?'O':match.state.turn==='X'?'O':'X'};finish('resign');}
 };
-document.addEventListener('click',e=>{const el=e.target.closest('[data-action]');if(!el||el.disabled)return;const fn=actions[el.dataset.action];if(fn)fn(el.dataset.value||'');});
+document.addEventListener('click',e=>{const el=e.target.closest('[data-action]');if(!el||el.disabled)return;const fn=actions[el.dataset.action];if(fn)return fn(el.dataset.value||'');});
 document.addEventListener('keydown',e=>{const sheet=$('#sheet');if(sheet.hidden)return;if(e.key==='Escape'){e.preventDefault();actions.close();return;}if(e.key!=='Tab')return;const nodes=[...sheet.querySelectorAll('button:not([disabled]),input:not([disabled]),select:not([disabled]),a[href],[tabindex]:not([tabindex="-1"])')].filter(n=>n.getClientRects().length&&!n.inert);if(!nodes.length){e.preventDefault();sheet.focus();return;}const first=nodes[0],last=nodes.at(-1);if(e.shiftKey&&document.activeElement===first){e.preventDefault();last.focus();}else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first.focus();}});
 document.addEventListener('change',e=>{
  const el=e.target;if(el.dataset.setting){const key=el.dataset.setting,value=el.type==='checkbox'?el.checked:Number(el.value);
@@ -343,7 +548,7 @@ document.addEventListener('change',e=>{
 });
 for(const [id,name] of [['brandIcon','board'],['coinIcon','coin'],['crownIcon','crown'],['notificationButton','bell'],['settingsButton','settings'],['sheetClose','close'],['backIcon','back'],['matchSettings','sliders'],['routeIcon','route'],['rulesIcon','help'],['restartIcon','refresh'],['statsIcon','chart']])$('#'+id).innerHTML=icon(name);
 T?.bind({getMatch:()=>match,notify,save,paint,scheduleBot,cancelBot:()=>A?.cancel(),commitBot:m=>move(m,'bot'),restart:()=>{close();startGame(true);}});
-refreshIcons();applyTheme();buildBoard();render();save();renderConnectivity(window.MegaAccount?.connectivity?.()||{state:navigator.onLine===false?'offline':'online'});refreshOnline();
+refreshIcons();applyTheme();buildBoard();render();save();renderConnectivity(window.MegaAccount?.connectivity?.()||{state:navigator.onLine===false?'offline':'online'});refreshOnline();initPowers();
 if(window.MegaBilling?.products)window.MegaBilling.products().then(items=>{online.products=items.filter(p=>D.CROWN_PACKS.some(q=>q.id===p.id));if(sheetKind==='wallet')wallet();}).catch(()=>{});
 
 // Explicit UI integration points; these never mutate a server wallet or server rating.
@@ -358,10 +563,11 @@ window.MegaApp=Object.freeze({
  reviewInvite:async id=>{await refreshOnline();reviewInvite(id);},
  resumeOnline:async id=>{await refreshOnline();if(!online.ready)throw Error('AUTH_REQUIRED');const m=await NET.match(id);if(m.status==='PLAYING')beginOnline(m);else if(m.status==='OFFERED')watchInvitation(id,m.terms.source==='queue'?'queue':'challenge');},
  resumeOffline:async()=>{
-  const old=data.offlineMatch;if(!old)return;
+  const old=data.offlineMatch||(parse(KEY)?.offlineMatch);if(!old)return;data.offlineMatch=old;
   let state=G.create(old.first);
   for(const m of old.moves||[])state=G.apply(state,m);
-  if(state.winner)throw Error('MATCH_FINISHED');
+  const isPendingLoss=!!(old.pendingTerminal&&state.winner==='O'&&old.mode==='bot'&&old.pendingTerminal.reason==='line');
+  if(state.winner&&!isPendingLoss)throw Error('MATCH_FINISHED');
   T?.stop();A?.cancel();localSession?.cancel();clearTimeout(botTimer);botTimer=null;
   mode=['bot','local'].includes(old.mode)?old.mode:'bot';
   difficulty=['Impossible',...G.LEVELS].includes(old.difficulty)?old.difficulty:'Medium';
@@ -369,6 +575,10 @@ window.MegaApp=Object.freeze({
   const isNeuralMatch=(old.localAi&&old.localAi.engine==='neural')||old.difficulty==='Impossible';
   match={id:old.id,state,mode,difficulty:old.difficulty,first:old.first,practice:old.practice===true,active:Math.max(0,Math.min(86400,Number(old.active)||0)),turnLimit:[0,30,60].includes(old.turnLimit)?old.turnLimit:0,turnRemaining:Math.min([0,30,60].includes(old.turnLimit)?old.turnLimit:0,Math.max(0,Number(old.turnRemaining)||0)),last:old.moves?.at(-1)||null,recorded:false,pending:null};
   if(BR&&!isNeuralMatch)match.bot=BR.startInfo(old.bot,old.practice===true);
+  if(isPendingLoss){
+   match.pendingTerminal={reason:old.pendingTerminal.reason,record:old.pendingTerminal.record||null};
+  }
+  attachPowers(match,old);
   if(old.localAi&&LA){
    const catalog=localSession?.getCatalog?.()||BP?.APPROVED_CATALOG||[];
    try{
@@ -410,7 +620,8 @@ window.MegaApp=Object.freeze({
   $('#playerXName').textContent=match.mode==='local'?'Player X':'You';
   $('#playerOName').textContent=match.mode==='local'?'Player O':match.difficulty==='Impossible'?'Impossible Bot':'Bot';
   lastTick=lastInput=performance.now();paint();save();
-  if(match.status==='ready')scheduleBot();
+  if(isPendingLoss)offerTerminalUndo();
+  else if(match.status==='ready')scheduleBot();
  },
  startImpossible:async info=>{
   if(!localSession)throw Error('LOCAL_SESSION_UNAVAILABLE');

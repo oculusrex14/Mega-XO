@@ -32,6 +32,8 @@ class MegaXOActivity : Activity() {
     private var lanBridge: MegaAndroidLanBridge? = null
     private var identityBridge: MegaAndroidIdentityBridge? = null
     private var apiBridge: MegaNativeApiBridge? = null
+    private var ads: MegaAndroidAds? = null
+    private var adsBridge: MegaAdsBridge? = null
     private var sessionManager: MegaNativeSessionManager? = null
     private var transport: MegaNativeHttpClient? = null
     private var vault: MegaSecureSessionVault? = null
@@ -173,6 +175,22 @@ class MegaXOActivity : Activity() {
             sessionManager = manager
             apiBridge = MegaNativeApiBridge.install(game, gameEntry, client, manager, identityBridge)
         }
+        // P20-06 REWARDED/INTERSTITIAL ADS. The real UMP + GMA Next-Gen wrappers are instantiated
+        // here and published to the page as `window.MegaAds`, which the shipped
+        // `src/monetization-ui.js` has always called and which nothing used to define. Two gates,
+        // the same ones the api bridge uses: only the ONLINE target, because the offline artifact
+        // is the network-isolated practice build and must not carry a provider surface it could
+        // never settle through; and only when an approved app id and at least one approved unit
+        // were named at build time, so a build that names none publishes nothing at all rather than
+        // a stub that reports failure. Nothing here makes an ad required: `MegaAds` absent (offline,
+        // or unconfigured) simply leaves the rewards page's own optional ad actions disabled.
+        if (BuildConfig.MEGA_ONLINE_TARGET) {
+            val adService = MegaAndroidAds(
+                this, BuildConfig.MEGA_ADMOB_APP_ID,
+                BuildConfig.MEGA_ADMOB_REWARDED_UNIT, BuildConfig.MEGA_ADMOB_INTERSTITIAL_UNIT)
+            ads = adService
+            adsBridge = MegaAdsBridge.install(this, game, gameEntry, adService)
+        }
         game.loadUrl(gameEntry)
     }
 
@@ -212,6 +230,12 @@ class MegaXOActivity : Activity() {
         notifications = null
         identityBridge?.close()
         identityBridge = null
+        // The bridge stops answering and every loaded ad is destroyed, so nothing survives the
+        // activity: no loaded ad, no in-flight presentation open waiting for a grant.
+        adsBridge?.close()
+        adsBridge = null
+        ads?.close()
+        ads = null
         // The access token is host memory only, so dropping it here is the whole local teardown.
         // The encrypted refresh credential survives in the Keystore vault across process death,
         // which is the point: a restart restores the same actor instead of minting a new one.

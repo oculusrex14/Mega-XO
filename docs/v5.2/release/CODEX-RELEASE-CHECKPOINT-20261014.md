@@ -125,3 +125,20 @@ authority with Main. No staging credentials, backups, account state or V4 recove
 - The new local Friends regression proves an error-versus-guest rendering defect and fixes it.
   The earlier apparent loading symptom was not reproduced as indefinite; it remains an observation
   requiring a timed deployed recheck. See `provider-evidence/20261015/website/FRIENDS-ACCOUNT-RETRY.md`.
+
+
+### Provider handoff state at 15 October continuation
+
+Apple's Business page currently shows DSA **In Review** (classification and submitting actor not
+verified). The unchanged Individual legal-entity save attempt reached account-holder MFA; no
+address proof or Paid Apps Agreement was submitted. The Mac was locked when attempting to present
+the exact tab. Owner unlock and private Apple two-factor completion are pending. The registered
+app/IAP drafts and approved prices remain preserved; no submission or sale is inferred.
+
+The saved disposable staging A fixture reached verification rather than a linked profile. No OTP
+was retrieved/submitted and no verified account was claimed. The normal private verification
+handoff is still required before authenticated two-actor browser acceptance.
+
+Follow-up PR #15 is the reviewable integration packet. Friends fix `d582dfe` and all sanitized
+receipts are pushed on `codex/v52-provider-release`; Main's active checkout and production remain
+untouched. No local source or evidence is intentionally left uncommitted.

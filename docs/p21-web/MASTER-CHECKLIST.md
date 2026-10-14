@@ -1,7 +1,8 @@
 # Mega XOXO — P21 Website & Browser Game Master Checklist
 
 **Canonical website:** https://megaxo.online  
-**Development branch:** V5.2 (active release integration; V5.1 is frozen historical evidence)  
+**Development branch:** V5.2 (active release integration; V5.1 is frozen historical evidence)
+
 **Product:** One Mega XOXO identity, inventory, wallet, competitive authority, matchmaking pool, and social graph across web, iOS, and Android.  
 **Visual master:** user-uploaded desktop mockup (1672 × 941) / Generated Image 1.  
 **Brand reference:** user-uploaded official Mega XOXO logo artwork (1600 × 1600), archived unchanged; the name is approved for web/iOS/Android.  

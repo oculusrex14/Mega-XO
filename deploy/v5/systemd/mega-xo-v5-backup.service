@@ -1,0 +1,26 @@
+[Unit]
+Description=Mega XO V5 production PostgreSQL backup (pg_dump -> sealed archive -> V5 R2)
+Documentation=file:/opt/mega-xo-v5-production/bin/v5-pg-backup.sh
+After=docker.service network-online.target
+Wants=docker.service network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/opt/mega-xo-v5-production/bin/v5-pg-backup.sh
+User=root
+Group=root
+# Serialization is inside the script (flock on state/backup.lock): a manually
+# started run and a timer run cannot overlap. Never leave a partial archive.
+TimeoutStartSec=1800
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectKernelTunables=true
+ProtectControlGroups=true
+ProtectClock=true
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+RestrictRealtime=true
+LockPersonality=true
+SystemCallArchitectures=native
+ReadWritePaths=/opt/mega-xo-v5-production/archives /opt/mega-xo-v5-production/state

@@ -1,0 +1,16 @@
+[Unit]
+Description=Check that the newest uploaded Mega XO V5 backup is inside the approved RPO
+
+[Timer]
+# Same cadence as the backup timer but offset by one minute, so a breach is
+# detected within one backup interval of appearing and the alert is never
+# evaluated against a half-written upload.
+OnBootSec=4min
+OnUnitActiveSec=5min
+AccuracySec=15s
+RandomizedDelaySec=20s
+Persistent=true
+Unit=mega-xo-v5-freshness.service
+
+[Install]
+WantedBy=timers.target

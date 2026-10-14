@@ -1,0 +1,24 @@
+[Unit]
+Description=Mega XO V5 backup freshness check (newest V5 R2 manifest vs approved RPO)
+Documentation=file:/opt/mega-xo-v5-production/bin/v5-freshness.js
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/opt/mega-xo-v5-production/bin/node-24/bin/node /opt/mega-xo-v5-production/bin/v5-freshness.js
+User=root
+Group=root
+TimeoutStartSec=300
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectKernelTunables=true
+ProtectControlGroups=true
+ProtectClock=true
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+RestrictRealtime=true
+LockPersonality=true
+SystemCallArchitectures=native
+ReadWritePaths=/opt/mega-xo-v5-production/state

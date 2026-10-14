@@ -291,7 +291,7 @@ test('hosting starts the native socket and advertises over the Wi-Fi', async () 
   try {
     const host = LanHost.create({ storage: memoryStorage(), now: () => 1750000000000 });
     const started = host.open('Kitchen phone', 8081);
-    assert.deepEqual(started, { ok: true, port: 8081, code: LanHost.VERSION, version: LanHost.VERSION });
+    assert.deepEqual(started, { ok: true, port: 8081, code: LanHost.VERSION, version: LanHost.VERSION, resumed: false });
     assert.deepEqual(shell.calls.start, [8081], 'the shell bound the requested port');
     assert.deepEqual(shell.calls.advertise, [['Kitchen phone', 8081]], 'and advertised it on the Wi-Fi');
     assert.deepEqual(host.ready(), { ok: true, port: 8081, origin: 'http://192.168.0.55:8081', rooms: 0, version: LanHost.VERSION });
@@ -373,5 +373,38 @@ test('a cross-origin app fetch is allowed: CORS on every response and OPTIONS an
     handler.handle({ method: 'GET', path: '/api/party/me', headers }),
   ]) {
     assert.equal(r.headers['access-control-allow-origin'], '*', 'even an error carries CORS, or the app sees only an opaque failure');
+  }
+});
+
+test('hosting survives a restart: the intent is persisted, resumed, and cleared by a real stop', () => {
+  const shell = fakeShell({ port: 8081, origin: 'http://192.168.0.55:8081' });
+  const savedS = globalThis.MegaLanSocket, savedD = globalThis.MegaLanDiscovery;
+  globalThis.MegaLanSocket = shell.MegaLanSocket; globalThis.MegaLanDiscovery = shell.MegaLanDiscovery;
+  // A localStorage stand-in the module can write its intent into.
+  const kv = new Map();
+  const savedLs = globalThis.localStorage;
+  globalThis.localStorage = { getItem: (k) => (kv.has(k) ? kv.get(k) : null), setItem: (k, v) => kv.set(k, String(v)), removeItem: (k) => kv.delete(k) };
+  try {
+    const host = LanHost.create({ now: () => 1750000000000 });
+    assert.equal(host.resume().error, 'NO_INTENT', 'nothing resumes before a host was ever started');
+    host.open('Kitchen phone', 8081);
+    const intent = JSON.parse(kv.get(LanHost.INTENT_KEY));
+    assert.deepEqual(intent, { name: 'Kitchen phone', port: 8081 });
+    // A cold start with only the persisted intent: hosting comes back on the same port.
+    const afterRestart = LanHost.create({ now: () => 1750000000000 });
+    const resumed = afterRestart.resume();
+    assert.equal(resumed.ok, true);
+    assert.equal(resumed.port, 8081);
+    assert.equal(resumed.resumed, true, 'a resume is distinguishable from a user action');
+    assert.deepEqual(shell.calls.advertise.at(-1), ['Kitchen phone', 8081], 'and it re-advertises');
+    // A deliberate stop must NOT resume: otherwise the player can never stop hosting.
+    afterRestart.close();
+    assert.equal(LanHost.create({ now: () => 1750000000000 }).resume().error, 'NO_INTENT');
+    // A deliberate close stops discovery once; a resume never leaves a stale advertisement behind.
+    assert.ok(shell.calls.discoveryStop >= 1, 'close() stopped the advertisement');
+  } finally {
+    if (savedS === undefined) delete globalThis.MegaLanSocket; else globalThis.MegaLanSocket = savedS;
+    if (savedD === undefined) delete globalThis.MegaLanDiscovery; else globalThis.MegaLanDiscovery = savedD;
+    if (savedLs === undefined) delete globalThis.localStorage; else globalThis.localStorage = savedLs;
   }
 });

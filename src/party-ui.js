@@ -113,6 +113,10 @@ document.addEventListener('click',async e=>{
  }}catch(error){message(errorText(error));}
 },true);
 setInterval(clock,200);
+/* If this device was hosting when the app last stopped, host again immediately: a room host that
+ * silently stopped would leave everyone who joined it staring at a room that no longer answers.
+ * The persisted rooms come back with an interrupted tournament PAUSED, never silently settled. */
+window.MegaLanHost?.resume?.();
 if(location.hash.startsWith('#party=')){const code=location.hash.slice(7);request('capabilities').then(c=>connect(c.lan?'lan':'online')).then(async()=>{if(viewName==='create'){if(transport==='online')await ensureOnlineActor();setup(true);$('#partyCode').value=code;}}).catch(()=>{hub();message('Open the invite on the room host address.');});}
 window.MegaParties=Object.freeze({open:hub,tables,version:'3.3.4'});
 })();

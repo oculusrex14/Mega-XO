@@ -50,6 +50,7 @@
   if (!HTTP || !HTTP.createLanRoomHandler) throw Error('LAN_ROOM_HTTP_MISSING');
 
   const STORAGE_KEY = 'mega_lan_host_v1';
+  const INTENT_KEY = 'mega_lan_host_intent_v1';
   const VERSION = 'lan-host-1';
 
   function create({ storageKey = STORAGE_KEY, now = () => Date.now(), storage = null } = {}) {
@@ -83,7 +84,17 @@
     const socket = () => root.MegaLanSocket || null;
     const discovery = () => root.MegaLanDiscovery || null;
 
-    function open(name, requestedPort) {
+    /* Hosting is persisted so it can resume after the process dies: a room host that silently
+     * stopped hosting would leave guests staring at a room that no longer answers. `auto` marks a
+     * resume so a failure there is not reported as a user action. */
+    function readHostIntent() {
+      try { return JSON.parse(root.localStorage?.getItem(INTENT_KEY) || 'null'); } catch { return null; }
+    }
+    function writeHostIntent(intent) {
+      try { intent ? root.localStorage?.setItem(INTENT_KEY, JSON.stringify(intent)) : root.localStorage?.removeItem(INTENT_KEY); } catch { /* a full store only costs a resume */ }
+    }
+
+    function open(name, requestedPort, { auto = false } = {}) {
       if (!store) boot();
       const p = Number(requestedPort);
       if (!Number.isInteger(p) || p < 1024 || p > 65535) return { ok: false, error: 'INVALID_PORT' };
@@ -95,10 +106,19 @@
       port = Number(started.port) || p;
       const d = discovery();
       if (d && typeof d.advertise === 'function') { try { d.advertise(hostName, port); } catch { /* discovery is best-effort */ } }
-      return { ok: true, port, code: VERSION, version: VERSION };
+      writeHostIntent({ name: hostName, port });
+      return { ok: true, port, code: VERSION, version: VERSION, resumed: auto };
+    }
+
+    /* Resume hosting after a cold start, if the player was hosting when the app last stopped. */
+    function resume() {
+      const intent = readHostIntent();
+      if (!intent || typeof intent.port !== 'number') return { ok: false, error: 'NO_INTENT' };
+      return open(intent.name, intent.port, { auto: true });
     }
 
     function close() {
+      writeHostIntent(null);
       const d = discovery();
       if (d && typeof d.stop === 'function') { try { d.stop(); } catch { /* ignore */ } }
       const s = socket();
@@ -162,8 +182,8 @@
       return JSON.stringify({ status: result.status, body: result.body, headers: { 'cache-control': 'no-store' } });
     }
 
-    return Object.freeze({ open, close, ready, info, handle, discover, VERSION });
+    return Object.freeze({ open, close, ready, info, handle, discover, resume, VERSION });
   }
 
-  return Object.freeze({ create, VERSION, STORAGE_KEY });
+  return Object.freeze({ create, VERSION, STORAGE_KEY, INTENT_KEY });
 });

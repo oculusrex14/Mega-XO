@@ -145,6 +145,56 @@ async function subscribeSocket(ui) {
   return socket;
 }
 
+test('P21-APP-FRIENDS-01 delayed anonymous account checks settle on Friends and remain settled across route visits',async()=>{
+ for(const code of ['AUTH_REQUIRED','LINK_ACCOUNT_REQUIRED'])for(const path of ['/friends','/account']){
+  const pending=deferred();
+  const ui=await harness({profile:()=>pending.promise},{},{path,session:null});
+  try{
+   ui.qa.navigate('/friends');
+   assert.equal(ui.qa.state().context.sessionStatus,'loading');
+   assert.match(ui.main.innerHTML,/Checking your account…/);
+   assert.doesNotMatch(ui.main.innerHTML,/data-friends-search|data-friend-action/);
+   await ui.advance(7999);
+   assert.equal(ui.qa.state().context.sessionStatus,'loading','an unresolved account check must not become a guest assumption');
+   pending.reject(Error(code));await flush();
+   assert.equal(ui.qa.state().context.sessionStatus,'guest');
+   assert.equal(ui.qa.state().context.profile,null);
+   assert.match(ui.main.innerHTML,/Sign in to find players and manage your friend requests here\./);
+   assert.doesNotMatch(ui.main.innerHTML,/Checking your account|data-friends-search|data-friend-action/);
+   for(const route of ['/settings','/account','/friends']){ui.qa.navigate(route);await flush();}
+   assert.match(ui.main.innerHTML,/Sign in to find players and manage your friend requests here\./);
+   assert.doesNotMatch(ui.main.innerHTML,/Checking your account|data-friends-search|data-friend-action/);
+   assert.equal(ui.profileReads(),1,'route visits reuse the completed anonymous account check');
+   assert.equal(ui.accountCalls.length,0,'anonymous browsing cannot bootstrap a session or request private friends');
+  }finally{pending.reject(Error(code));ui.destroy();}
+ }
+});
+
+test('P21-APP-FRIENDS-02 a timed-out account check offers retry without assuming a guest or exposing private Friends',async()=>{
+ const pending=deferred();
+ const ui=await harness({profile:()=>pending.promise},{},{path:'/friends',session:null});
+ try{
+  await ui.advance(8000);
+  assert.equal(ui.qa.state().context.sessionStatus,'error');
+  assert.equal(ui.qa.state().context.profile,null);
+  assert.doesNotMatch(ui.main.innerHTML,/Checking your account|data-friends-search|data-friend-action/);
+  assert.match(ui.main.innerHTML,/The service did not respond in time\. Try again\./);
+  assert.match(ui.main.innerHTML,/data-account-action="retry"/);
+  assert.doesNotMatch(ui.main.innerHTML,/Sign in to find players and manage your friend requests here\./);
+  assert.equal(ui.accountCalls.length,0);
+  ui.replies.profile=()=>{throw Error('AUTH_REQUIRED');};
+  ui.account('retry');await flush();
+  assert.equal(ui.profileReads(),2);
+  assert.equal(ui.qa.state().context.sessionStatus,'guest');
+  assert.match(ui.main.innerHTML,/Sign in to find players and manage your friend requests here\./);
+  pending.resolve({id:'late-private-actor',name:'Late private actor'});await flush();
+  assert.equal(ui.qa.state().context.sessionStatus,'guest');
+  assert.equal(ui.qa.state().context.profile,null);
+  assert.doesNotMatch(ui.main.innerHTML,/late-private-actor|Late private actor|data-friends-search|data-friend-action/);
+  assert.equal(ui.accountCalls.length,0);
+ }finally{pending.resolve({id:'late-private-actor'});ui.destroy();}
+});
+
 test('P21-APP-OFFLINE: verified fallback survives hydration at private, unknown and query URLs and can open practice',async()=>{
  for(const path of ['/account','/__offline_unknown__','/game?offline-qa=route']){
   const ui=await harness({profile:()=>{throw Error('REQUEST_TIMEOUT');}},{},{path,offlineFallback:true});

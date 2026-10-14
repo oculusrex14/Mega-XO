@@ -104,3 +104,24 @@ Codex did not edit native permissions, workflow checks, grants or game authority
 Rollback: reject/revert the scoped frontend commit; retain provider records and monitoring history.
 Before any future DNS change use the recorded zone/snapshot, and coordinate Core single-writer
 authority with Main. No staging credentials, backups, account state or V4 recovery were overwritten.
+
+
+## Superseding checkpoint — 15 October 2026
+
+- Main advanced V5.2 to `efeba70`, including the post-review power/consent fixes and forward-only
+  migration 0053. Codex merged this into its isolated branch without resetting or rebasing Main.
+- Independent HTTPS probes now identify staging frontend `3752383c4f4f8343ad6aeb00d2434beec3ef96f6`,
+  bundle `17b1d88e423d2aa4727a086b5908c7e8317b7594bcb7f04ec89a7a06c877bfb8`, 160 files /
+  3,688,654 bytes. `/livez` and `/readyz` return 200 and ready. This supersedes the earlier
+  `ad847de` frontend probe; the original local engine reports retain their own exact source.
+- Main's production candidate is built from `a3dc0c6058757143b3773434ff846a77c5a4b339`, image
+  `sha256:d6a9ab9846d59c47df8334b987806e21d30f3d702d1c2556b49256d39ed0f2f0`. Its rehearsal
+  is non-serving. V4 remains the sole live writer; this does not authorize a DNS/authority switch.
+- Main corrected the historical Android CI permission assertion; the red result recorded above
+  is historical, not the current branch status. Current V5.2 CI checks observed by Codex are green.
+- Apple app, membership and IAP pricing receipts are now preserved in follow-up PR #15. Main's
+  final-report references to unavailable console access/paid membership predate this provider
+  packet. Paid membership is verified; distributable signing and aligned binaries still need Main.
+- The new local Friends regression proves an error-versus-guest rendering defect and fixes it.
+  The earlier apparent loading symptom was not reproduced as indefinite; it remains an observation
+  requiring a timed deployed recheck. See `provider-evidence/20261015/website/FRIENDS-ACCOUNT-RETRY.md`.

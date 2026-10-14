@@ -183,7 +183,8 @@ function friendsPage(context) {
   };
   const list = (id, title, group, emptyCopy) => `<section class="pg-friend-section" id="${id}" aria-labelledby="${id}-title"><h3 id="${id}-title">${title} <span class="mx-muted">${state?.[group]?.length || 0}</span></h3>${state?.[group]?.length ? `<ul class="pg-friend-list">${state[group].map(player => row(player, group)).join('')}</ul>` : `<p class="mx-muted">${emptyCopy}</p>`}</section>`;
   let contents;
-  if (!profile) contents = context.sessionStatus === 'loading' ? '<p role="status">Checking your account…</p>' : signin('Sign in to find players and manage your friend requests here.');
+  if (context.sessionStatus === 'error') contents = `<h2>Your account could not be checked.</h2><p role="status" tabindex="-1" data-friends-status>${e(context.accountMessage || 'Try checking your account again.')}</p><button class="mx-button secondary" type="button" data-account-action="retry">Retry account check</button>`;
+  else if (!profile) contents = context.sessionStatus === 'loading' ? '<p role="status">Checking your account…</p>' : signin('Sign in to find players and manage your friend requests here.');
   else if (!state || ['idle','loading','refreshing'].includes(state.status)) contents = '<p role="status" tabindex="-1" data-friends-status>Checking your friends and requests…</p>';
   else if (['error','refresh-error'].includes(state.status)) contents = `<h2>Friends need a connection.</h2><p role="status" tabindex="-1" data-friends-status>${e(state.message)}</p><button class="mx-button secondary" type="button" data-friend-action="refresh">Try again</button>`;
   else {

@@ -1,11 +1,11 @@
 {
   "format": "day-one-gameplay-capture-receipt/v1",
-  "sourceCommit": "<stamped at issue time: git rev-parse HEAD>",
+  "sourceCommit": "320bb6900d6d4d3ce612de30acdd4da27a6811f0",
   "rulesHash": "e6e14c258b4db439eedf28090ebafd0962867bab5e64709d0d4438cb145b31e0",
-  "policyVersion": "mxv5-capture-2026Q4-stage1",
+  "policyVersion": "mxv5-capture-2026Q4-stage2",
   "environment": "staging",
   "privacyEpoch": 0,
-  "checkedAt": "<stamped at issue time: new Date().toISOString()>",
+  "checkedAt": "2026-10-14T19:28:02.788Z",
   "note": "Operator-implemented capture purpose and retention schedule for DC00 (migration 0052 + packages/learning/policy.js). The thirteen other classes below are the already-demonstrated staging canary evidence recorded at 3e51ba0c, whose 0044-0051 bytes are identical to this branch. A green result is NOT legal approval, NOT production authorization and NOT training authorization: productionAuthorized and trainingAuthorized stay false.",
   "evidence": {
     "privacyPurpose": {

@@ -213,6 +213,7 @@ function renderBoard(state, game, {
   guidedTargetCell = null,
   guidedDestination = null,
   botRecovery = null,
+  powersView = null,
 } = {}) {
   const copy = turnCopy(state, { preview, mode, thinking, snapshot, actorId, pending, error, botRecovery });
   const last = state.moves.at(-1);
@@ -235,6 +236,7 @@ function renderBoard(state, game, {
       ${snapshot ? '' : botRecovery ? '<button class="gb-reset" type="button" data-gb-action="bot-recovery" title="Calculate on device">Calculate</button>' : `<button class="gb-reset" type="button" data-gb-action="reset" aria-label="${preview ? 'Reset practice preview' : 'Start a new game'}" title="${preview ? 'Reset preview' : 'New game'}"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 8a8 8 0 1 1-1 7M5 3v5h5"/></svg></button>`}
     </div>
     ${preview ? '<a class="gb-preview-link" href="/game" data-route>Start a fresh game <span aria-hidden="true">↗</span></a>' : `<div class="gb-match-note"><span>${state.moves.length} ${state.moves.length === 1 ? 'move' : 'moves'} played${last ? ` · Last move: ${last.player}, ${POSITIONS[last.b].toLowerCase()} board, ${POSITIONS[last.c].toLowerCase()} cell` : ''}</span>${snapshot ? `${uncertain && error && !['AUTH_REQUIRED', 'LINK_ACCOUNT_REQUIRED'].includes(error) ? `<button type="button" data-gb-action="retry">Retry ${requestKind === 'resign' ? 'resignation' : 'move'}</button>` : ''}${canResign && snapshot.status === 'PLAYING' ? `<button type="button" data-gb-action="resign"${pending || uncertain || error ? ' disabled' : ''}>Resign</button>` : ''}` : botRecovery ? '<button type="button" data-gb-action="bot-recovery">Calculate on this device</button>' : '<button type="button" data-gb-action="fresh">Reset board</button>'}</div>`}
+    ${!preview && !snapshot && mode === 'bot' && !guidedView ? globalThis.MegaWebPowers?.render ? globalThis.MegaWebPowers.render(powersView || { mode: 'bot', available: false }) : '<section class="gb-powers" data-gb-powers aria-label="Optional powers"><h2>Bot Undo</h2><p>Power controls are unavailable until the verified powers service loads.</p><button type="button" disabled>Use earned Undo</button></section>' : ''}
   </section>`;
 }
 
@@ -285,6 +287,12 @@ export function mountBoard(host, {
   let request = null;
   let error = '';
   let botRecovery = null;
+  // Local practice has no verified permanent actor/match binding. Reader presentation
+  // is useful here; writes remain closed even if a powers/v1 object is present.
+  const powers = !preview && !online ? globalThis.MegaWebPowers?.createController?.({
+    getMatchSummary: () => ({ mode, difficulty, revision: session.getState().moves.length, status: session.getState().winner ? 'FINISHED' : 'PLAYING' }),
+    onChange: () => render(),
+  }) : null;
 
   const compat = injectedCompat || globalThis.MegaWebBotCompat || null;
   const botRunner = compat?.createBotRunner ? compat.createBotRunner({ game, workerFactory }) : null;
@@ -371,19 +379,26 @@ export function mountBoard(host, {
       guidedTargetCell,
       guidedDestination,
       botRecovery,
+      powersView: powers?.refresh(),
     });
     const stage = host.querySelector('[data-gb-stage]');
     if (stage && host.ownerDocument?.createElement) {
       const template = host.ownerDocument.createElement('template');
       template.innerHTML = html;
       const next = template.content;
-      for (const selector of ['.gb-guided-panel', '.gb-frame', '.gb-toolbar', '.gb-match-note']) {
+      for (const selector of ['.gb-guided-panel', '.gb-frame', '.gb-toolbar', '.gb-match-note', '.gb-powers']) {
         const currentPart = stage.querySelector(selector);
         const nextPart = next.querySelector(selector);
+        if (selector === '.gb-powers' && currentPart && nextPart) {
+          const details = currentPart.querySelector('details');
+          if (details?.open) nextPart.querySelector('details').open = true;
+        }
         if (currentPart && nextPart) currentPart.replaceWith(nextPart);
         else if (!currentPart && nextPart && selector === '.gb-guided-panel') {
           stage.querySelector('.gb-frame')?.before(nextPart);
-        } else if (currentPart && !nextPart && selector === '.gb-guided-panel') {
+        } else if (!currentPart && nextPart && selector === '.gb-powers') {
+          stage.append(nextPart);
+        } else if (currentPart && !nextPart && ['.gb-guided-panel', '.gb-powers'].includes(selector)) {
           currentPart.remove();
         }
       }
@@ -503,6 +518,15 @@ export function mountBoard(host, {
   const operation = (kind, move) => ({ kind, id: session.getSnapshot().id, revision: session.getState().moves.length, move, key: online.operationId ? online.operationId() : (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : String(Math.random())) });
 
   function onClick(event) {
+    const powerTarget = event.target.closest?.('[data-gb-power]');
+    if (powerTarget?.dataset?.gbPower && host.contains(powerTarget) && !destroyed && !host.ownerDocument?.hidden) {
+      if (powerTarget.dataset.gbPower === 'refresh') {
+        powers?.refresh({ notify: true });
+        host.querySelector('[data-gb-power="refresh"]')?.focus({ preventScroll: true });
+      }
+      // Local practice intentionally does not wire rewarded requests or application.
+      return;
+    }
     const target = event.target.closest?.('[data-gb-cell], [data-gb-action], [data-gb-guided]');
     if (!target || !host.contains(target) || destroyed || host.ownerDocument?.hidden) return;
 
@@ -742,6 +766,7 @@ export function mountBoard(host, {
       destroyed = true;
       cancelBot();
       botRunner?.destroy();
+      powers?.destroy();
       tutorialController?.stop();
       compat?.stopNarration?.();
       host.ownerDocument?.removeEventListener?.('visibilitychange', onVisibility);

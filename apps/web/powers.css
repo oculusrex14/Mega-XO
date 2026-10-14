@@ -1,0 +1,32 @@
+/* Shared board tokens preserve Neon and all four retained game themes. */
+.gb-powers { margin-top: 17px; padding: 17px; border: 1px solid var(--gb-line); border-radius: var(--gb-radius); background: var(--gb-surface); color: var(--gb-ink); font-family: var(--gb-font); }
+.gb-powers-heading { display: flex; align-items: start; justify-content: space-between; gap: 12px; }
+.gb-powers-eyebrow { display: block; font-size: 10px; font-weight: 700; letter-spacing: .12em; color: var(--gb-ink); }
+.gb-powers h2 { margin: 5px 0 0; font: 600 18px var(--gb-title); }
+.gb-powers-badge { padding: 5px 8px; border: 1px solid var(--gb-line); border-radius: 5px; font-size: 10px; line-height: 1.4; }
+.gb-powers p { margin: 10px 0; font-size: 12px; line-height: 1.6; }
+.gb-powers-charges { display: flex; gap: 8px; align-items: center; margin-top: 12px; }
+.gb-powers-charge { display: grid; place-items: center; width: 32px; height: 36px; flex-shrink: 0; border: 1px dashed var(--gb-line); border-radius: 6px; color: var(--gb-ink); background: var(--gb-raised); font: 600 20px system-ui, sans-serif; }
+.gb-powers-charge--earned { border: 2px solid var(--gb-x); color: var(--gb-x); }
+.gb-powers-charges p { margin: 0 0 0 3px; }
+.gb-powers-charges small { display: block; font-size: 10px; line-height: 1.5; color: var(--gb-ink); margin-top: 2px; }
+.gb-powers-status { border-left: 2px solid var(--gb-line); padding-left: 10px; }
+.gb-powers-actions, .gb-powers-counters { display: flex; gap: 8px; flex-wrap: wrap; }
+.gb-powers button, .gb-powers select { min-height: 44px; max-width: 100%; padding: 8px 12px; border: 1px solid var(--gb-line); border-radius: 6px; background: var(--gb-raised); color: var(--gb-ink); font: 500 12px var(--gb-font); line-height: 1.4; }
+.gb-powers button:not(:disabled) { cursor: pointer; }
+.gb-powers button:disabled, .gb-powers select:disabled { cursor: default; opacity: .7; }
+.gb-powers button:not(:disabled):hover { border-color: var(--gb-focus); }
+.gb-powers button:focus-visible, .gb-powers summary:focus-visible, .gb-powers select:focus-visible { outline: 3px solid var(--gb-focus); outline-offset: 3px; }
+.gb-powers-refresh { margin-left: auto; }
+.gb-powers-details { border-top: 1px solid var(--gb-line); margin-top: 14px; }
+.gb-powers summary { padding: 12px 0 0; cursor: pointer; font-size: 12px; line-height: 1.5; }
+.gb-powers-details-body { padding-top: 4px; }
+.gb-powers-bank { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 10px 0; }
+.gb-powers-bank > div { padding: 10px; border: 1px solid var(--gb-line); border-radius: 6px; background: var(--gb-raised); }
+.gb-powers-bank dt { font-size: 12px; font-weight: 600; }
+.gb-powers-bank dd { margin: 5px 0 0; font-size: 11px; line-height: 1.5; }
+.gb-powers-casual { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--gb-line); }
+.gb-powers-casual label { display: grid; gap: 6px; font-size: 12px; font-weight: 600; }
+.gb-stage[data-gb-theme="afterhours"] .gb-powers { border-radius: 3px; }
+@media (max-width: 420px) { .gb-powers { padding: 14px 12px; } .gb-powers-bank { grid-template-columns: 1fr; } .gb-powers-actions > button { flex: 1 1 135px; } .gb-powers-refresh { margin-left: 0; } }
+@media (forced-colors: active) { .gb-powers, .gb-powers-bank > div, .gb-powers button, .gb-powers select, .gb-powers-charge { color: CanvasText; background: Canvas; border-color: CanvasText; } .gb-powers-charge--earned { outline: 2px solid Highlight; } .gb-powers button:focus-visible, .gb-powers summary:focus-visible { outline-color: Highlight; } }

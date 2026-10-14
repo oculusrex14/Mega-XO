@@ -1,0 +1,48 @@
+{
+  "schemaVersion": 1,
+  "checkedAt": "2026-10-14T17:11:33.929Z",
+  "baselineCommit": "36c982fab6ca59e5ed0744d585175605050f9a9d",
+  "branch": "codex/v52-provider-release",
+  "environment": "local worktree, uncommitted source; no backend/provider/native acceptance",
+  "runtime": "v26.8.2",
+  "files": [
+    {
+      "file": "apps/web/powers.js",
+      "sha256": "b0519db6c43c03afcac005cb47dd9490e1f0b12c806d875513e0e410aafae830"
+    },
+    {
+      "file": "apps/web/powers.css",
+      "sha256": "5cdf8adfd9ef4d38db40e8ca4cb8f4e93058644c7d0c4245aa34a370f1a9c125"
+    },
+    {
+      "file": "apps/web/board.js",
+      "sha256": "0dcd75f6c033e884609abf0ac127e4f5564bdbca90dfa46a90f61cc070711fcb"
+    },
+    {
+      "file": "apps/web/board.css",
+      "sha256": "a400163d3ec5cfe898dd54069aa0441bdfcee9a9378f80f5638262e66a806d66"
+    },
+    {
+      "file": "tests/v52-p21-powers.test.js",
+      "sha256": "bee33acf4d2c2faa54911e43227d49127a4c084d90d9a31ed84bf3c7c36912c6"
+    }
+  ],
+  "targetedTests": {
+    "command": "node --test tests/v52-p21-powers.test.js tests/v5-p21-board.test.js tests/v51-p21-bot.test.js tests/v5-p21-app.test.js",
+    "result": "PASS",
+    "tests": 85,
+    "pass": 85,
+    "fail": 0,
+    "skip": 0,
+    "evidence": "targeted-tests.txt"
+  },
+  "fixtureMatrix": {
+    "command": "node docs/v5.2/provider-evidence/20261014/powers/local-fixture-qa.cjs",
+    "result": "PASS",
+    "checks": 185,
+    "fail": 0,
+    "screenshots": 20,
+    "evidence": "local-fixture-report.json"
+  },
+  "rollback": "Remove guarded powers board integration, new module/style and the container fallback; root removes registration. Preserve evidence and other owners' work."
+}

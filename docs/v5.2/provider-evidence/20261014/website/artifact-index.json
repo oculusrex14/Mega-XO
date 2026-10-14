@@ -1,0 +1,35 @@
+{
+  "schema_version": 1,
+  "source_commit": "599dcf9882485983340e19b4063d0b85f8eb0883",
+  "bundle_sha256": "745d305d6ffb63e6f9f79094ff4e96f474b77402a0039bbc84fef9db16f75935",
+  "reports": [
+    {
+      "artifact": "chromium-browser-qa.json.gz",
+      "uncompressed_sha256": "3d4d974166e313bf6d3e23b7b9b7c9ec7ae0a40d7758d5abaa94ac6a72236c66",
+      "compressed_sha256": "9e8a00a8ae234b29d8eaf44650d10d40750c1b7afca7faed01c769302f362a1a",
+      "uncompressed_bytes": 211654,
+      "compressed_bytes": 13604
+    },
+    {
+      "artifact": "firefox-browser-qa.json.gz",
+      "uncompressed_sha256": "b5ae64cfd7f54e494f504f1b50d5e106065158548a7fd1903fe63c22c47eca7c",
+      "compressed_sha256": "cd66559ead0b8f63eff7fe2a0cd851e887234161e2dc85bcd4b4b15a46fd5c6a",
+      "uncompressed_bytes": 215024,
+      "compressed_bytes": 13754
+    },
+    {
+      "artifact": "webkit-browser-qa.json.gz",
+      "uncompressed_sha256": "8b3e4f76d2a009852b4e3bea1e7d664f68cff2def58a5f9d82ac7f28cdb8a9e6",
+      "compressed_sha256": "32d5029e500bb210433d94499d476a0fc508e4ca0c3ff82e03903ea6baf0e477",
+      "uncompressed_bytes": 213708,
+      "compressed_bytes": 13668
+    },
+    {
+      "artifact": "accessibility-qa.json.gz",
+      "uncompressed_sha256": "dfaeec9ce4dd8269736f5ab4358b0b9ccf955e92ef581dc02938b021a32d3f0c",
+      "compressed_sha256": "b18bee62dd42062553409c7860694f36dea6f8a6e2b729598688597799045382",
+      "uncompressed_bytes": 1654604,
+      "compressed_bytes": 33381
+    }
+  ]
+}

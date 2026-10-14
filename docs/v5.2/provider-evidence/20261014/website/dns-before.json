@@ -1,0 +1,1 @@
+[{"name":"www","records":[{"content":"megaxo.online.","is_disabled":false}],"ttl":300,"type":"CNAME"},{"name":"core","records":[{"content":"129.80.67.164","is_disabled":false}],"ttl":300,"type":"A"},{"name":"@","records":[{"content":"2.57.91.91","is_disabled":false}],"ttl":50,"type":"A"}]

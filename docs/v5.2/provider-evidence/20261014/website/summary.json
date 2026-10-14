@@ -1,0 +1,57 @@
+{
+  "checks": [
+    {
+      "engine": "chromium",
+      "source_commit": "599dcf9882485983340e19b4063d0b85f8eb0883",
+      "bundle_sha256": "745d305d6ffb63e6f9f79094ff4e96f474b77402a0039bbc84fef9db16f75935",
+      "result": "PASS",
+      "checks": 890,
+      "failures": 0,
+      "environment": "local loopback chromium; new unauthenticated contexts; read proxy explicitly disabled; synthetic API fixtures only"
+    },
+    {
+      "engine": "firefox",
+      "source_commit": "599dcf9882485983340e19b4063d0b85f8eb0883",
+      "bundle_sha256": "745d305d6ffb63e6f9f79094ff4e96f474b77402a0039bbc84fef9db16f75935",
+      "result": "PASS",
+      "checks": 890,
+      "failures": 0,
+      "environment": "local loopback firefox; new unauthenticated contexts; read proxy explicitly disabled; synthetic API fixtures only"
+    },
+    {
+      "engine": "webkit",
+      "source_commit": "599dcf9882485983340e19b4063d0b85f8eb0883",
+      "bundle_sha256": "745d305d6ffb63e6f9f79094ff4e96f474b77402a0039bbc84fef9db16f75935",
+      "result": "PASS",
+      "checks": 890,
+      "failures": 0,
+      "environment": "local loopback webkit; new unauthenticated contexts; read proxy explicitly disabled; synthetic API fixtures only"
+    },
+    {
+      "check": "accessibility",
+      "source_commit": "599dcf9882485983340e19b4063d0b85f8eb0883",
+      "bundle_sha256": "745d305d6ffb63e6f9f79094ff4e96f474b77402a0039bbc84fef9db16f75935",
+      "result": "PASS",
+      "checks": 131,
+      "incomplete_views": 112,
+      "limitations": [
+        "Automated checks are not physical VoiceOver/TalkBack acceptance.",
+        "Prerender axe checks allow audit JavaScript, block all site scripts, verify no hydration and expose the noscript notice. Actual JavaScript-disabled rendering is verified separately by browser-qa.cjs.",
+        "Incomplete image/gradient contrast findings require human review.",
+        "No live account, native store, provider or production acceptance."
+      ]
+    }
+  ],
+  "unit_regression": {
+    "pass": 270,
+    "fail": 0,
+    "skip": 5,
+    "reason_skipped": "owned disposable PostgreSQL and Redis integration not provisioned for this UI run",
+    "source_commit": "599dcf9882485983340e19b4063d0b85f8eb0883",
+    "command": "node --test tests/v5-p21-*.test.js tests/v51-p21-*.test.js tests/v52-p21-powers.test.js",
+    "environment": "isolated local checkout; no staging/live database"
+  },
+  "physical_device": "NOT_RUN",
+  "authenticated_V52_staging": "NOT_RUN",
+  "public_V52_production": "NOT_RUN"
+}

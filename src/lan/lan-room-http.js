@@ -33,6 +33,19 @@
   const RATE_MAX = 2400;
   const MAX_TRACKED_REMOTES = 1000;
 
+  /* The app is served from its own asset origin (Android) or from file:// (iOS) and talks to a
+   * room host on a different origin, so every response is a cross-origin fetch and a bearer header
+   * forces an OPTIONS preflight. The room host holds no cookie-backed session and grants nothing
+   * but a guest seat in a private, economy-free room, so `*` is the honest policy: the bearer
+   * token is what authorises a command, and no browser on the Wi-Fi can be sent a user's cookie.
+   * `Access-Control-Allow-Credentials` is deliberately never set. */
+  const CORS = Object.freeze({
+    'access-control-allow-origin': '*',
+    'access-control-allow-methods': 'GET, POST, OPTIONS',
+    'access-control-allow-headers': 'authorization, content-type, idempotency-key',
+    'access-control-max-age': '600',
+  });
+
   /* Public error codes, matching the vocabulary src/party-ui.js already renders. */
   const PUBLIC = {
     AUTH_REQUIRED: 401, INVALID_NAME: 400, SESSION_LIMIT: 503, INVALID_COMMAND: 400,
@@ -50,7 +63,7 @@
     const hosts = allowedHosts ? new Set(allowedHosts) : null;
     const limits = new Map();
 
-    const send = (status, body) => ({ status, body });
+    const send = (status, body) => ({ status, body, headers: { ...CORS } });
 
     /* A LAN address is a private, link-local or loopback literal. Never a public name: a public
      * DNS name would reintroduce the internet dependency this whole path exists to avoid. */
@@ -106,6 +119,8 @@
         gateHost(req.headers);
         rateLimit(req.remote);
         const query = req.query || {};
+        // Cross-origin preflight from the app to this room host.
+        if (req.method === 'OPTIONS') return send(204, {});
         if (req.method === 'GET' && path === '/api/party/capabilities') {
           return send(200, { lan: true, online: false, publicEnabled: false, tables: Object.keys(T.TABLES).map(T.prize) });
         }

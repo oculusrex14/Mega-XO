@@ -355,3 +355,23 @@ test('handle() answers a real command round trip and always returns JSON, never 
   // A non-party path is reported as NOT_FOUND rather than silently 200.
   assert.equal(JSON.parse(host.handle(JSON.stringify({ method: 'GET', path: '/api/v1/profile', headers }))).error, 'NOT_FOUND');
 });
+
+test('a cross-origin app fetch is allowed: CORS on every response and OPTIONS answered', () => {
+  const { store } = makeStore();
+  const handler = createLanRoomHandler({ store });
+  const headers = { host: '192.168.0.55:8081', origin: 'https://appassets.androidplatform.net' };
+  const pre = handler.handle({ method: 'OPTIONS', path: '/api/party/capabilities', headers });
+  assert.equal(pre.status, 204);
+  assert.equal(pre.headers['access-control-allow-origin'], '*');
+  assert.ok(pre.headers['access-control-allow-headers'].includes('authorization'));
+  assert.ok(pre.headers['access-control-allow-headers'].includes('idempotency-key'));
+  assert.equal(pre.headers['access-control-allow-credentials'], undefined, 'never credentialled');
+  for (const r of [
+    handler.handle({ method: 'GET', path: '/api/party/capabilities', headers }),
+    handler.handle({ method: 'POST', path: '/api/party/session', headers, body: JSON.stringify({ name: 'G' }) }),
+    handler.handle({ method: 'GET', path: '/api/party/capabilities', headers: { host: 'evil.test' } }),
+    handler.handle({ method: 'GET', path: '/api/party/me', headers }),
+  ]) {
+    assert.equal(r.headers['access-control-allow-origin'], '*', 'even an error carries CORS, or the app sees only an opaque failure');
+  }
+});

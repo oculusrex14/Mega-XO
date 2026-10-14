@@ -216,10 +216,10 @@ test('1. Association endpoints: serves valid Android and iOS association files w
     'Relation must include delegate_permission/common.handle_all_urls'
   );
   assert.equal(statement.target.namespace, 'android_app', 'Target namespace must be android_app');
-  assert.match(
+  assert.equal(
     statement.target.package_name,
-    /com\.antimatter/,
-    'Package name matches antimatter app bundle'
+    'online.megaxo.prototype',
+    'Package name must be the BUILT application id, not an unregistered production package'
   );
   assert.ok(
     Array.isArray(statement.target.sha256_cert_fingerprints),
@@ -228,6 +228,11 @@ test('1. Association endpoints: serves valid Android and iOS association files w
   assert.ok(
     statement.target.sha256_cert_fingerprints.length > 0,
     'Must have at least one cert fingerprint'
+  );
+  assert.match(
+    statement.target.sha256_cert_fingerprints[0],
+    /^([0-9A-F]{2}:){31}[0-9A-F]{2}$/,
+    'Fingerprint must be a well-formed colon-separated SHA-256 even while it is a placeholder'
   );
 
   // 1.2 iOS Universal Links: GET /.well-known/apple-app-site-association

@@ -28,6 +28,15 @@ require(googleNativeServerClientId.isEmpty() ||
     "The native Google server audience must be an exact registered Google OAuth Web client ID"
 }
 
+// P20-03 authenticated API origin for the native session manager. Empty by default: a build that
+// does not name an approved origin has no host baked in and the native transport stays
+// unconfigured. Only an absolute, credential-free, path-free, query-free HTTPS origin is accepted,
+// so a debug build cannot be pointed at a plaintext or attacker-chosen endpoint by accident.
+val apiOrigin = (providers.gradleProperty("megaApiOrigin").orNull ?: "").trim()
+require(apiOrigin.isEmpty() || Regex("^https://[A-Za-z0-9.-]+(?::[0-9]{1,5})?$").matches(apiOrigin)) {
+    "megaApiOrigin must be an absolute HTTPS origin with no path, credentials or query"
+}
+
 // The shared P01 bundler correctly REFUSES all writes under native/. Stage
 // outside the checkout, then let Gradle Sync own the disposable build/ copy.
 val workspaceKey = MessageDigest.getInstance("SHA-256")
@@ -74,6 +83,13 @@ android {
         versionCode = nativeVersionCode
         versionName = nativeVersionName
         buildConfigField("String", "MEGA_GOOGLE_SERVER_CLIENT_ID", "\"$googleNativeServerClientId\"")
+        // P20-03: the authenticated API origin for the NATIVE session manager only. Empty by
+        // default, so an offline build (and any build that does not explicitly name an approved
+        // origin) bakes in no host at all and MegaNativeHttpClient stays unconfigured. The WebView's
+        // /api/* interception stays hard-blocked in BOTH flavors: the native shell, never JS, owns
+        // the bearer. Must be an absolute https origin with no path/credentials/query.
+        manifestPlaceholders["megaApiOrigin"] = apiOrigin
+        buildConfigField("String", "MEGA_API_ORIGIN", "\"$apiOrigin\"")
         // P20-03 ONLINE TARGET SWITCH. The `offline` flavor (the DEFAULT, and the only artifact the
         // release path builds without an explicit choice) keeps `tools:node="remove"` on
         // INTERNET/ACCESS_NETWORK_STATE, so an accidentally built APK cannot reach the network.

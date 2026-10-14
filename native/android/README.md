@@ -2,27 +2,58 @@
 
 This is an actual Android application target, not a WebView loading the deferred website. It packages the existing allowlisted Mega XO HTML/CSS/JS client at build time and serves it exclusively from AndroidX WebViewAssetLoader's HTTPS app-assets origin. Local bot/practice play needs no network.
 
-## Build
+## Build — two product flavors
 
-With Android SDK 35, JDK 17, Node 24 and Gradle 8.13 installed, from `native/android` run:
+The target has a `target` flavor dimension with two variants. **`offline` is the default and the
+offline-only product is never lost**: it keeps `tools:node="remove"` on `INTERNET` and
+`ACCESS_NETWORK_STATE`, so the artifact is network-isolated at the OS level.
 
 ```sh
-gradle :app:assembleDebug
+# Offline-only product (no network permission at all)
+gradle :app:assembleOfflineDebug
+
+# Authenticated online target. Adds exactly INTERNET + ACCESS_NETWORK_STATE (AD_ID stays removed
+# in BOTH flavors) and, only when an origin is named, installs the native session host.
+gradle :app:assembleOnlineDebug -PmegaApiOrigin=https://<approved-api-origin>
+
+# The same online target with NO origin: network permissions, but no host is baked in and the
+# native transport stays unconfigured (fail-closed ONLINE_UNAVAILABLE).
+gradle :app:assembleOnlineDebug
 ```
 
-The `stageMegaClient` task runs `scripts/v5/build-client.js` from the repository root. It stages under Gradle user-home (outside the protected repository), then `generateMegaClient` syncs into `app/build/generated/megaAssets/mega`. The generated bundle is a build output, never committed. `app/build/outputs/apk/debug/app-debug.apk` is the unsigned-development/testing artifact (Gradle debug-signed).
+`megaApiOrigin` defaults to **empty** and must be an absolute HTTPS origin with no path, credentials
+or query; the build refuses anything else. `megaGoogleServerClientId` is likewise opt-in and must be
+an exact `*.apps.googleusercontent.com` server client ID, otherwise the Google adapter is simply not
+compiled and the provider is not advertised.
 
-The temporary `online.megaxo.prototype` application ID is **not** an approved Play package or signing identity. No live OAuth, backend, store, ad or permission surfaces are configured by this commit. Real package/signing identifiers must be verified from authorized provider configuration before release. A Gradle wrapper binary and signed AAB remain separate follow-up requirements.
+The `stageMegaClient` task runs `scripts/v5/build-client.js` from the repository root. It stages under Gradle user-home (outside the protected repository), then `generateMegaClient` syncs into `app/build/generated/megaAssets/mega`. The generated bundle is a build output, never committed. `app/build/outputs/apk/<flavor>/debug/app-<flavor>-debug.apk` is the unsigned-development/testing artifact (Gradle debug-signed).
+
+The temporary `online.megaxo.prototype` application ID is **not** an approved Play package or signing identity. Store, ad and purchase surfaces remain unconfigured. Real package/signing identifiers must be verified from authorized provider configuration before release. A Gradle wrapper binary and signed AAB remain separate follow-up requirements.
 
 ## Trust boundary
 
 - Main frame: only `https://appassets.androidplatform.net/assets/mega/*` is rendered internally.
 - All HTTPS/HTTP remote subresources and unknown app-assets paths are refused. Only user-initiated external HTTPS links open in a system handler.
-- GET requests to `/api/*` currently return `503 ONLINE_UNAVAILABLE`. **The APK has no INTERNET permission yet**: WebView interception does not cover POST, so OS-level egress denial is essential until P05/P20-03 adds the authenticated native API transport. Nothing fabricates sessions or grants.
-- No JS bridge exists yet: no `addJavascriptInterface`, ID tokens, payment receipts, ad completion, or native notifications are simulated.
+- `/api/*` requests from the **page** return `503 ONLINE_UNAVAILABLE` in **both** flavors. The
+  offline APK additionally has no `INTERNET` permission, because WebView interception does not cover
+  POST and OS-level egress denial is the only real guarantee there. Nothing fabricates sessions.
+- **Online flavor only**, and only with `megaApiOrigin` set, the signed page receives
+  `window.MegaNativeApi`: `session()`, `refresh()`, `signOut(allDevices)`, `signIn(provider,intent)`
+  and `request(path, method, body, key)`. It is not a fetch proxy — JavaScript cannot name a host, a
+  scheme, a header, a redirect target or an `Authorization` value. The access token lives in
+  `MegaNativeSessionManager`'s memory, the refresh credential in the Keystore-backed
+  `MegaSecureSessionVault`, and provider ID tokens are exchanged to the bearer inside Kotlin.
+- There is still **no** `addJavascriptInterface`, and payment receipts, ad completion and any grant
+  are not simulated.
 - Local assets are signed as part of the APK; server authority, secrets and test code are omitted by the shared deterministic bundle builder.
 
-Keep the WebView security policy when the native API bridge is added; only a typed, main-frame, origin-allowlisted authenticated transport may replace the current fail-closed API response.
+## Authenticated online target (built, not yet live-verified)
+
+`POST /api/account/native/{challenge,token,refresh,logout}` is the cookie-free credential path this
+client speaks. Those routes are declared in `packages/contracts/routes.js` and validated by
+`packages/contracts/access-dto.js`, but the live API does not mount them yet, so a real sign-in
+cannot complete. See `docs/v5.1/release/NATIVE-ONLINE-TARGET-20261014.md` for the observed device
+results and the exact remaining owner actions.
 
 ## Compiled provider adapters (not activated)
 

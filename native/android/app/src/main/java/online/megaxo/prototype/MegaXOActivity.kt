@@ -28,6 +28,10 @@ class MegaXOActivity : Activity() {
     private lateinit var game: WebView
     private var notifications: MegaAndroidLocalNotifications? = null
     private var identityBridge: MegaAndroidIdentityBridge? = null
+    private var apiBridge: MegaNativeApiBridge? = null
+    private var sessionManager: MegaNativeSessionManager? = null
+    private var transport: MegaNativeHttpClient? = null
+    private var vault: MegaSecureSessionVault? = null
     private val startupProbe = MegaNativeRenderProbe()
     private val assetHost = "appassets.androidplatform.net"
     private val assetPrefix = "/assets/mega/"
@@ -111,6 +115,22 @@ class MegaXOActivity : Activity() {
         notifications = MegaAndroidLocalNotifications.install(this, game, gameEntry)
         identityBridge = MegaAndroidIdentityBridge.install(
             this, game, gameEntry, BuildConfig.MEGA_GOOGLE_SERVER_CLIENT_ID)
+        // P20-03 ONLINE TARGET. The native session host is installed ONLY in the online flavor and
+        // only when the build named an approved HTTPS origin; it owns the bearer, and the WebView's
+        // /api/* interception stays hard-blocked in both flavors. A build with no origin keeps the
+        // previous cookie-free `ONLINE_UNAVAILABLE` behaviour and no bridge at all.
+        if (BuildConfig.MEGA_ONLINE_TARGET && BuildConfig.MEGA_API_ORIGIN.isNotEmpty()) {
+            val client = MegaNativeHttpClient(BuildConfig.MEGA_API_ORIGIN)
+            val secretVault = MegaSecureSessionVault(this)
+            val manager = MegaNativeSessionManager(secretVault, client)
+            // Capability comes from what this build actually compiled, not from a claim: the Google
+            // adapter exists only when the authorized server client ID was supplied at build time.
+            manager.providerAdapters = if (identityBridge != null) setOf("google") else emptySet()
+            transport = client
+            vault = secretVault
+            sessionManager = manager
+            apiBridge = MegaNativeApiBridge.install(game, gameEntry, client, manager, identityBridge)
+        }
         game.loadUrl(gameEntry)
     }
 
@@ -144,6 +164,15 @@ class MegaXOActivity : Activity() {
         notifications = null
         identityBridge?.close()
         identityBridge = null
+        // The access token is host memory only, so dropping it here is the whole local teardown.
+        // The encrypted refresh credential survives in the Keystore vault across process death,
+        // which is the point: a restart restores the same actor instead of minting a new one.
+        apiBridge = null
+        sessionManager?.clearLocal()
+        sessionManager = null
+        transport?.close()
+        transport = null
+        vault = null
         game.stopLoading()
         game.destroy()
         super.onDestroy()

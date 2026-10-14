@@ -13,6 +13,7 @@ function publish(state,code='',supportId=''){
 }
 function classify(code){
  if(code==='AUTH_REQUIRED')return 'auth';
+ if(code==='REVOKED')return 'auth';
  if(code==='LINK_ACCOUNT_REQUIRED')return 'auth';
  if(code==='MAINTENANCE')return 'maintenance';
  if(code==='OFFLINE'||root.navigator?.onLine===false)return 'offline';
@@ -20,7 +21,24 @@ function classify(code){
  return 'degraded';
 }
 function transient(code){return ['SERVICE_UNAVAILABLE','ONLINE_UNAVAILABLE','REQUEST_TIMEOUT'].includes(code);}
+/* P20-03 native host transport. Present only in a signed native host whose Gradle build configured
+ * an API origin; absent in the browser and in the offline native flavor. It is NOT a fetch proxy:
+ * the host owns the bearer, the host/path allowlist and the redirect policy, and it returns only a
+ * validated JSON value. No token ever crosses this boundary in either direction. */
+const native=()=>root.MegaNativeApi&&typeof root.MegaNativeApi.request==='function'?root.MegaNativeApi:null;
+function nativeError(result){
+ const code=String(result?.error||'SERVICE_UNAVAILABLE');
+ const e=Error(/^[A-Z0-9_]+$/.test(code)?code:'SERVICE_UNAVAILABLE');
+ e.status=Number(result?.status||0);
+ return e;
+}
 async function once(path,body,operationKey,timeoutMs=8000){
+ const host=native();
+ if(host){
+  const result=await host.request(path,body===undefined?'GET':'POST',body===undefined?null:body,operationKey||null);
+  if(!result||result.ok!==true)throw nativeError(result);
+  return result.data;
+ }
  const ctrl=new AbortController(),timeout=setTimeout(()=>ctrl.abort(),timeoutMs);
  try{
   const headers=body===undefined?{}:{'Content-Type':'application/json','X-CSRF-Token':session?.csrf||'','Idempotency-Key':operationKey};
@@ -34,7 +52,46 @@ async function once(path,body,operationKey,timeoutMs=8000){
   throw Error(root.navigator?.onLine===false?'OFFLINE':'SERVICE_UNAVAILABLE');
  }finally{clearTimeout(timeout);}
 }
+/* Native session bootstrap. The host owns access+refresh; this module only receives the profile
+ * projection the signed game already renders. `/api/account/session` is deliberately NOT called
+ * here: in a native host it is cookie-only, and the native path has no cookie jar at all. */
+function nativeSessionFromProfile(profile){
+ if(!profile||typeof profile!=='object'||typeof profile.id!=='string'||!profile.id)return null;
+ return {linked:true,csrf:null,native:true,expiresAt:Date.now()+300000,actorId:profile.id,profile,providers:Object.fromEntries((profile.providers||[]).map(p=>[p,{web:false,native:true,linked:true}]))};
+}
+async function nativeEnsure(force=false){
+ if(session&&!force)return session;
+ if(loading)return loading;
+ loading=(async()=>{
+  const host=native();
+  const state=await host.session();
+  if(!state||state.online!==true)throw Error('ONLINE_UNAVAILABLE');
+  if(state.linked!==true)return {linked:false,csrf:null,actorId:state.actorId||null,profile:null,providers:{}};
+  // An expired access token is refreshed once before the profile read, never mid-flight.
+  if(Number(state.expiresAt||0)<=Date.now()+1000){
+   const rotated=await host.refresh();
+   if(!rotated||rotated.ok!==true){const error=nativeError(rotated||{error:'AUTH_REQUIRED'});publish(classify(error.message),error.message);throw error;}
+  }
+  const profile=await host.request('/api/account/profile','GET',null,null);
+  if(!profile||profile.ok!==true)throw nativeError(profile||{});
+  const parsed=nativeSessionFromProfile(profile.data);
+  if(!parsed)throw Error('SERVICE_UNAVAILABLE');
+  session=parsed;publish('online');return parsed;
+ })().finally(()=>{loading=null;});
+ return loading;
+}
+async function ensure(force=false){
+ if(!native())return cookieEnsure(force);
+ if(session&&!force)return session;
+ return nativeEnsure(force);
+}
+/* Every authenticated native call must re-prove itself after a terminal refresh revocation instead
+ * of replaying a dead bearer. The host refuses online use until a fresh sign-in installs a session. */
 async function call(path,body,operation){
+ if(native()&&session?.native&&Date.now()>=Number(session.expiresAt||0)){
+  const rotated=await native().refresh();
+  if(!rotated||rotated.ok!==true){session=null;publish('auth','AUTH_REQUIRED');throw nativeError(rotated||{error:'AUTH_REQUIRED'});}
+ }
  if(body!==undefined&&!session)await ensure();
  const operationKey=body===undefined?null:(operation||id()),attempts=body===undefined?3:2;
  let last;
@@ -54,7 +111,7 @@ async function call(path,body,operation){
  }
  throw last||Error('SERVICE_UNAVAILABLE');
 }
-async function ensure(force=false){
+async function cookieEnsure(force=false){
  if(session&&!force)return session;
  if(loading)return loading;
  loading=(async()=>{
@@ -81,7 +138,24 @@ async function ensure(force=false){
 }
 root.addEventListener?.('offline',()=>publish('offline','OFFLINE'));
 root.addEventListener?.('online',()=>publish('reconnecting','ONLINE'));
-root.MegaAccount=Object.freeze({request:call,session:ensure,peek:()=>session,reset:()=>{session=null;},id,connectivity:()=>({...connectivity})});
+/* Sign-out. The native host revokes the presenting family, wipes the Keystore vault and drops the
+ * in-memory access token; the cookie path keeps the retained /api/account/logout call exactly as it
+ * is. `allDevices` is best-effort: if the server rejects the field rather than ignoring it, retry
+ * once without it, and never let that field be the reason a sign-out fails. A genuine failure is
+ * surfaced rather than swallowed, so the user is never told they are signed out when the server
+ * still holds a live family. */
+async function logout(all){
+ const host=native();
+ if(host&&typeof host.signOut==='function'){
+  let result=await host.signOut(all===true);
+  if((!result||result.ok!==true)&&all===true)result=await host.signOut(false);
+  if(!result||result.ok!==true)throw nativeError(result||{error:'SERVICE_UNAVAILABLE'});
+  session=null;publish('online');return true;
+ }
+ await call('/api/account/logout',{allDevices:all});
+ session=null;return true;
+}
+root.MegaAccount=Object.freeze({request:call,session:ensure,logout,peek:()=>session,reset:()=>{session=null;},id,connectivity:()=>({...connectivity})});
 })(globalThis);
 
 /* The accepted party UI predates CSRF sessions. Adapt only its same-origin POSTs;

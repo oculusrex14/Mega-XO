@@ -46,6 +46,8 @@ final class MegaXOGameController: UIViewController, WKNavigationDelegate, WKUIDe
     private var clientRoot: URL?
     private var nativeNotifications: MegaLocalNotifications?
     private var identityBridge: MegaIOSIdentityBridge?
+    private var apiBridge: MegaIOSApiBridge?
+    private var nativeSession: MegaNativeSession?
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -88,6 +90,24 @@ final class MegaXOGameController: UIViewController, WKNavigationDelegate, WKUIDe
                 WKUserScript(source: MegaIOSIdentityBridge.bootstrap,
                              injectionTime: .atDocumentStart, forMainFrameOnly: true))
         }
+        // P20-03 ONLINE TARGET (iOS parity). Installed only when the built app names an approved
+        // HTTPS API origin; the WebView keeps its blanket https? block either way, so only the
+        // native shell can reach the API, and only through the typed bridge above.
+        let apiOrigin = (Bundle.main.object(forInfoDictionaryKey: "MegaApiOrigin") as? String) ?? ""
+        if !apiOrigin.isEmpty {
+            let http = MegaNativeHTTP(apiOrigin: apiOrigin)
+            let vault = MegaNativeSecretVault()
+            let session = MegaNativeSession(vault: vault, http: http)
+            nativeSession = session
+            let bridge = MegaIOSApiBridge(entry: entry, http: http, session: session,
+                                          apple: identityBridge)
+            apiBridge = bridge
+            configuration.userContentController.addScriptMessageHandler(
+                bridge, contentWorld: .page, name: "megaNativeApi")
+            configuration.userContentController.addUserScript(
+                WKUserScript(source: MegaIOSApiBridge.bootstrap,
+                             injectionTime: .atDocumentStart, forMainFrameOnly: true))
+        }
         let webView = WKWebView(frame: .zero, configuration: configuration)
         webView.navigationDelegate = self
         webView.uiDelegate = self
@@ -111,8 +131,8 @@ final class MegaXOGameController: UIViewController, WKNavigationDelegate, WKUIDe
             forIdentifier: "MegaXOOfflineNetworkDenyV1",
             encodedContentRuleList: offlineRules
         ) { [weak self, weak webView] rule, error in
-            DispatchQueue.main.async {
-                guard let self, let webView, let rule, error == nil else {
+            DispatchQueue.main.async { [weak self, weak webView] in
+                guard let webView, let rule, error == nil else {
                     // Fail closed: a rules compilation failure cannot turn the
                     // signed offline game into a remote-content browser.
                     self?.showMissingBundle()

@@ -11,6 +11,7 @@ on:
       - 'native/**'
       - 'scripts/v5/build-client.js'
       - 'tests/v5-native-foundations.test.js'
+      - 'tests/v5-native-online-target.test.js'
       - 'tests/v5-client-bundle.test.js'
       - 'scripts/v5/native-*'
       - 'scripts/v5/verify-native-bundle-parity.js'
@@ -29,6 +30,7 @@ on:
       - 'native/**'
       - 'scripts/v5/build-client.js'
       - 'tests/v5-native-foundations.test.js'
+      - 'tests/v5-native-online-target.test.js'
       - 'tests/v5-client-bundle.test.js'
       - 'scripts/v5/native-*'
       - 'scripts/v5/verify-native-bundle-parity.js'
@@ -56,7 +58,7 @@ jobs:
         with:
           node-version: '24'
       - name: Validate source and host boundaries
-        run: node --test tests/v5-native-foundations.test.js tests/v5-client-bundle.test.js
+        run: node --test tests/v5-native-foundations.test.js tests/v5-native-online-target.test.js tests/v5-client-bundle.test.js
       - uses: actions/setup-java@v5
         with:
           distribution: temurin
@@ -72,23 +74,40 @@ jobs:
         with:
           gradle-version: '8.13'
       - name: Compile signed-by-debug-key Android APK
-        run: gradle -p native/android :app:assembleDebug --no-daemon --stacktrace
+        # Both product flavors compile on every change: the offline artifact and the authenticated
+        # online target. The online build here names no origin, so it gains the network permissions
+        # and still bakes in no host.
+        run: |
+          gradle -p native/android :app:assembleOfflineDebug :app:assembleOnlineDebug --no-daemon --stacktrace
       - name: Assert bundled game and hash APK
         shell: bash
         run: |
           set -euo pipefail
-          apk=native/android/app/build/outputs/apk/debug/app-debug.apk
-          test -s "$apk"
-          unzip -l "$apk" | grep -F 'assets/mega/bundle-index.html'
-          unzip -l "$apk" | grep -F 'assets/mega/client-bundle.manifest.json'
-          # AAR manifests can silently re-add INTERNET/AD_ID even when our
-          # app manifest omits them. Assert effective installed APK permissions.
+          offline=native/android/app/build/outputs/apk/offline/debug/app-offline-debug.apk
+          online=native/android/app/build/outputs/apk/online/debug/app-online-debug.apk
+          test -s "$offline"
+          test -s "$online"
+          for apk in "$offline" "$online"; do
+            unzip -l "$apk" | grep -F 'assets/mega/bundle-index.html'
+            unzip -l "$apk" | grep -F 'assets/mega/client-bundle.manifest.json'
+          done
+          # AAR manifests can silently re-add INTERNET/AD_ID even when our app manifest omits them.
+          # Assert the EFFECTIVE installed permissions of each flavor, not our intent.
           aapt="$ANDROID_HOME/build-tools/35.0.0/aapt"
-          if "$aapt" dump permissions "$apk" | grep -E 'android.permission.INTERNET|com.google.android.gms.permission.AD_ID'; then
+          if "$aapt" dump permissions "$offline" | grep -E 'android.permission.INTERNET|android.permission.ACCESS_NETWORK_STATE|com.google.android.gms.permission.AD_ID'; then
             echo "Offline P20 host unexpectedly has network or advertising ID permissions" >&2
             exit 1
           fi
-          unzip -p "$apk" 'assets/mega/client-bundle.manifest.json' > "$RUNNER_TEMP/mega-native-android-manifest.json"
+          for permission in android.permission.INTERNET android.permission.ACCESS_NETWORK_STATE; do
+            "$aapt" dump permissions "$online" | grep -F "uses-permission: name='$permission'" >/dev/null || {
+              echo "Online target is missing $permission" >&2; exit 1;
+            }
+          done
+          if "$aapt" dump permissions "$online" | grep -F 'com.google.android.gms.permission.AD_ID'; then
+            echo "Online target must keep the advertising ID permission removed" >&2
+            exit 1
+          fi
+          unzip -p "$offline" 'assets/mega/client-bundle.manifest.json' > "$RUNNER_TEMP/mega-native-android-manifest.json"
           test -s "$RUNNER_TEMP/mega-native-android-manifest.json"
           sha256sum "$apk"
       - uses: actions/upload-artifact@v4
@@ -99,8 +118,8 @@ jobs:
           if-no-files-found: error
       - uses: actions/upload-artifact@v4
         with:
-          name: mega-xo-android-debug
-          path: native/android/app/build/outputs/apk/debug/app-debug.apk
+          name: mega-xo-android-offline
+          path: native/android/app/build/outputs/apk/offline/debug/app-offline-debug.apk
           retention-days: 7
           if-no-files-found: error
 
@@ -209,7 +228,7 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - uses: actions/download-artifact@v4
         with:
-          name: mega-xo-android-debug
+          name: mega-xo-android-offline
           path: ${{ runner.temp }}/mega-apk
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
@@ -224,7 +243,9 @@ jobs:
           arch: x86_64
           disable-animations: true
           script: |
-            APK_PATH="$RUNNER_TEMP/mega-apk/app-debug.apk" SCREENSHOT_DIR="$RUNNER_TEMP/mega-android-smoke" bash scripts/v5/native-smoke-android.sh
+            # The emulator exercises the OFFLINE artifact: its whole point is that the signed game
+            # boots and plays with no network path at all.
+            APK_PATH="$RUNNER_TEMP/mega-apk/app-offline-debug.apk" SCREENSHOT_DIR="$RUNNER_TEMP/mega-android-smoke" bash scripts/v5/native-smoke-android.sh
       - uses: actions/upload-artifact@v4
         if: always()
         with:

@@ -38,6 +38,28 @@ final class MegaIOSIdentityBridge: NSObject, WKScriptMessageHandlerWithReply {
     })();
     """#
 
+    /// P20-03 native-only Apple exchange used by MegaIOSApiBridge, so the transient ID token never
+    /// travels through JavaScript in the online target. The nonce is the server-issued challenge
+    /// nonce; any failure or cancellation yields nil, never an invented token.
+    func credential(nonce: String) async -> String? {
+        guard nonce.count >= 16, nonce.count <= 256,
+              nonce.unicodeScalars.allSatisfy({
+                  $0.value >= 33 && $0.value <= 126 && $0.value != 92
+              }),
+              let window = presentingController?.view.window else { return nil }
+        return await withCheckedContinuation { continuation in
+            apple.getCredential(nonce: nonce, window: window) { result in
+                switch result {
+                case .success(let token):
+                    let ok = token.utf8.count >= 24 && token.utf8.count <= 12000
+                    continuation.resume(returning: ok ? token : nil)
+                case .failure:
+                    continuation.resume(returning: nil)
+                }
+            }
+        }
+    }
+
     func userContentController(
         _ userContentController: WKUserContentController,
         didReceive message: WKScriptMessage,

@@ -17,6 +17,12 @@ actor MegaNativeHTTP {
         "/api/account/", "/api/community/", "/api/monetization/",
         "/api/v1/", "/api/party/"
     ]
+    /// The five cookie-free native credential routes, and ONLY those, may be called before a
+    /// session exists (challenge) or with a deliberate bearer supplied by the session owner.
+    private static let nativePaths: Set<String> = [
+        "/api/account/native/challenge", "/api/account/native/token",
+        "/api/account/native/refresh", "/api/account/native/logout"
+    ]
 
     init(apiOrigin: String?) {
         if let raw = apiOrigin, let parsed = URL(string: raw),
@@ -32,6 +38,48 @@ actor MegaNativeHTTP {
         config.requestCachePolicy = .reloadIgnoringLocalCacheData
         config.urlCache = nil
         session = URLSession(configuration: config, delegate: NoRedirectDelegate(), delegateQueue: nil)
+    }
+
+    /// True only when an approved HTTPS origin was configured for the built app.
+    /// The WebView never learns this value; it gates the native session host, not JS.
+    func isConfigured() -> Bool { origin != nil }
+
+    /// Cookie-free native credential exchange (challenge/token/refresh/logout). `bearer` is supplied
+    /// deliberately by MegaNativeSession, which owns the access token in memory, or is nil for a
+    /// first sign-in that has no session yet. The cookie jar is never consulted and no Idempotency
+    /// key is invented: these routes' idempotency is durable challenge/family state on the server.
+    func authRequest(path: String, bearer: String?, body: Data) async throws -> (Int, Data) {
+        guard let origin else { throw RequestError.unavailable }
+        guard Self.nativePaths.contains(path) else { throw RequestError.invalidPath }
+        guard body.count <= 65536 else { throw RequestError.invalidBody }
+        if let bearer {
+            guard bearer.utf8.count >= 24, bearer.utf8.count <= 8192,
+                  bearer.allSatisfy({ $0.isASCII && !$0.isWhitespace })
+            else { throw RequestError.invalidBody }
+        }
+        let url = origin.appendingPathComponent(String(path.dropFirst()))
+        guard url.host == origin.host, url.scheme == "https" else { throw RequestError.invalidPath }
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.timeoutInterval = 12
+        request.setValue("application/json", forHTTPHeaderField: "Accept")
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue("no-store", forHTTPHeaderField: "Cache-Control")
+        // No Cookie header is ever composed, and no access token is presented when the caller
+        // deliberately passes none (a first sign-in has no session).
+        if let bearer { request.setValue("Bearer " + bearer, forHTTPHeaderField: "Authorization") }
+        request.httpBody = body
+        let (data, response) = try await session.data(for: request)
+        guard data.count <= 524288 else { throw RequestError.tooLarge }
+        guard let http = response as? HTTPURLResponse,
+              http.url?.scheme == "https",
+              http.url?.host == origin.host,
+              http.url?.port == origin.port else { throw RequestError.responseInvalid }
+        if (300...399).contains(http.statusCode) { throw RequestError.redirected }
+        // A 401 is a REAL answer on these routes (terminal revocation on refresh), so it is
+        // returned to the caller rather than collapsed into `unauthorized`.
+        guard http.mimeType == "application/json" else { throw RequestError.responseInvalid }
+        return (http.statusCode, data)
     }
 
     /// Only a verified native P05 session exchange may install an access token.

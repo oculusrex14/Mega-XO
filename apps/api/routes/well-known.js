@@ -23,27 +23,46 @@ const { sendJson } = require('./helpers');
 // Root public assets directory (repo_root/public)
 const PUBLIC_DIR = path.resolve(__dirname, '../../../public');
 
-// Android App Links default configuration
+/* Android App Links default configuration.
+ *
+ * The package name is the BUILT application id (`megaApplicationId`, defaulting to
+ * `online.megaxo.prototype` in native/android/gradle.properties). It is deliberately NOT a
+ * production Play identity: no registered package, no release keystore and therefore no real
+ * signing certificate exists yet, so `sha256_cert_fingerprints` carries a clearly-labelled
+ * PLACEHOLDER. A statement with a wrong fingerprint associates nothing, which is the honest
+ * state until the owner supplies the real package id + upload-certificate fingerprint
+ * (owner action: P5 identifier resolution, docs/v5.1/release/NATIVE-AND-PROVIDER-STATE-20261013.md).
+ * Callers may replace this whole list through `context.assetlinks`/`context.assetLinks`. */
+const ASSOCIATION_PLACEHOLDER_FINGERPRINT =
+  '00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00';
+
 const DEFAULT_ASSET_LINKS = Object.freeze([
-  {
-    relation: ['delegate_permission/common.handle_all_urls'],
-    target: {
+  Object.freeze({
+    relation: Object.freeze(['delegate_permission/common.handle_all_urls']),
+    target: Object.freeze({
       namespace: 'android_app',
-      package_name: 'com.antimatterinnovations.megaxo',
-      sha256_cert_fingerprints: [
-        '14:6D:E9:D6:0F:7B:D1:72:3B:86:70:E8:6B:0A:86:B1:24:F2:88:18:C4:0D:02:D0:6A:40:06:50:57:3E:CA:3F'
-      ]
-    }
-  }
+      package_name: 'online.megaxo.prototype',
+      sha256_cert_fingerprints: Object.freeze([ASSOCIATION_PLACEHOLDER_FINGERPRINT])
+    })
+  })
 ]);
 
-// iOS Universal Links default configuration
+/* iOS Universal Links default configuration.
+ *
+ * `appIDs` uses the BUILT iOS bundle id (PRODUCT_BUNDLE_IDENTIFIER in
+ * native/ios/MegaXO.xcodeproj/project.pbxproj, both configurations) with the literal `TEAMID`
+ * placeholder standing in for the owner's Apple Team ID. An association with a placeholder team
+ * prefix matches no signed app, which is the honest state until the owner provides the Team ID
+ * and enables the associated-domains capability (owner action: Apple membership + App ID). */
+const ASSOCIATION_PLACEHOLDER_TEAM = 'TEAMID';
+const BUILT_IOS_BUNDLE_ID = 'online.megaxo.prototype';
+
 const DEFAULT_APPLE_ASSOCIATION = Object.freeze({
   applinks: {
     apps: [],
     details: [
       {
-        appIDs: ['TEAMID.com.antimatterinnovations.megaxo'],
+        appIDs: [`${ASSOCIATION_PLACEHOLDER_TEAM}.${BUILT_IOS_BUNDLE_ID}`],
         components: [
           { '/': '/auth/*' },
           { '/': '/community/*' },
@@ -53,7 +72,7 @@ const DEFAULT_APPLE_ASSOCIATION = Object.freeze({
     ]
   },
   webcredentials: {
-    apps: ['TEAMID.com.antimatterinnovations.megaxo']
+    apps: [`${ASSOCIATION_PLACEHOLDER_TEAM}.${BUILT_IOS_BUNDLE_ID}`]
   }
 });
 

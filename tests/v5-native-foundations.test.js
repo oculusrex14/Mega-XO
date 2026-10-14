@@ -177,13 +177,22 @@ test('native transport is bearer-only, host/path bound and refuses redirects', (
   assert.match(android, /URL\(host, path\)/);
   assert.match(android, /instanceFollowRedirects = false/);
   assert.match(android, /requestMethod = method/);
-  assert.match(android, /Authorization", "Bearer/);
-  assert.match(android, /host == null.*token == null/);
+  // The Authorization value is composed here from the token the session installed, and set on the
+  // one surface that has a session; the cookie-free exchange path passes its bearer explicitly.
+  assert.match(android, /conn\.setRequestProperty\("Authorization", authorization\)/);
+  assert.match(android, /transmit\(path, method, body, "Bearer \$token", operationKey, complete\)/);
+  // No caller-supplied Authorization value can reach the game surface: without an installed token
+  // the call fails closed before any socket is opened.
+  assert.match(android, /if \(origin == null \|\| token == null\)/);
+  // No Cookie header is ever composed, on either surface.
+  assert.doesNotMatch(android, /setRequestProperty\(\s*"Cookie"/i);
   assert.match(ios, /URLSessionConfiguration\.ephemeral/);
   assert.match(ios, /httpShouldSetCookies = false/);
   assert.match(ios, /NoRedirectDelegate/);
   assert.match(ios, /private var accessToken: String\?/);
   assert.match(ios, /Idempotency-Key/);
+  assert.match(ios, /func authRequest\(path: String, bearer: String\?, body: Data\) async throws -> \(Int, Data\)/);
+  assert.doesNotMatch(ios, /forHTTPHeaderField: "Cookie"/i);
   assert.doesNotMatch(ios, /refreshCredential.*Authorization/);
 });
 

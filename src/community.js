@@ -89,7 +89,14 @@ async function boot(){const id=++bootVersion;loading('Opening your board',true);
  if(location.hash.startsWith('#player=')){const tag=decodeURIComponent(location.hash.slice(8));if(session?.linked)openProfile(tag);else landing();}
  decorate();}
 async function signIn(provider,intent){if(APP.getContext().playing)return announce('Finish your current game before switching or linking profiles.',true);archiveCurrent();announce('Opening secure sign-in...');try{
- if(window.MegaNativeIdentity&&session?.providers?.[provider]?.native){const c=await API.request('/api/account/native/challenge',{provider,intent});const credential=await window.MegaNativeIdentity.getCredential({provider,nonce:c.nonce});await API.request('/api/account/native/finish',{provider,state:c.state,idToken:credential.idToken});API.reset();await boot();}
+ if(window.MegaNativeApi&&typeof window.MegaNativeApi.signIn==='function'&&session?.providers?.[provider]?.native){
+  // P20-03 native host: the challenge, the provider credential and the bearer exchange all run in
+  // Kotlin. No ID token and no session credential ever reaches this scope.
+  const result=await window.MegaNativeApi.signIn(provider,intent);
+  if(!result||result.ok!==true)throw Error(result?.error||'NATIVE_SIGNIN_FAILED');
+  API.reset();await boot();
+ }
+ else if(window.MegaNativeIdentity&&session?.providers?.[provider]?.native){const c=await API.request('/api/account/native/challenge',{provider,intent});const credential=await window.MegaNativeIdentity.getCredential({provider,nonce:c.nonce});await API.request('/api/account/native/finish',{provider,state:c.state,idToken:credential.idToken});API.reset();await boot();}
  else {const out=await API.request('/api/account/start',{provider,intent});location.assign(out.url);}
  }catch(e){announce(error(e),true);}}
 async function openProfile(id){if(!session?.linked){landing();return;}try{const p=await API.request('/api/community/profile/'+encodeURIComponent(id||session.profile.id));profile=p;profileMode='ranked';selectedAvatar=p.avatar;showProfile();}catch(e){APP.notify(error(e));}}
@@ -199,7 +206,7 @@ const actions={
  'restore-choice':async()=>{await adoptCloud(conflict.remote);conflict=null;},'device-choice':useDevice,
  'resume-online':async id=>{dismiss();await APP.resumeOnline(id);},'resume-offline':()=>{dismiss();APP.resumeOffline();}
 };
-async function signOut(all){if(APP.getContext().playing)return announce('Finish your current match before signing out.',true);if(!confirm('Sign out'+(all?' on all devices':'')+'? Your account progress remains saved.'))return;await saveNow();if(syncState==='conflict'||dirty)return announce('Resolve your cloud save before signing out.',true);archiveCurrent();await API.request('/api/account/logout',{allDevices:all});API.reset();session=null;social={friends:[],incoming:[],outgoing:[],blocked:[]};invites=[];challenges=[];updateNotificationButton();put(OWNER,null);suppressSave=true;APP.applyPractice(get('mega_v333_archive:guest')||D.fresh());suppressSave=false;syncState='device';APP.refresh();APP.render();landing();}
+async function signOut(all){if(APP.getContext().playing)return announce('Finish your current match before signing out.',true);if(!confirm('Sign out'+(all?' on all devices':'')+'? Your account progress remains saved.'))return;await saveNow();if(syncState==='conflict'||dirty)return announce('Resolve your cloud save before signing out.',true);archiveCurrent();await API.logout(all);API.reset();session=null;social={friends:[],incoming:[],outgoing:[],blocked:[]};invites=[];challenges=[];updateNotificationButton();put(OWNER,null);suppressSave=true;APP.applyPractice(get('mega_v333_archive:guest')||D.fresh());suppressSave=false;syncState='device';APP.refresh();APP.render();landing();}
 document.addEventListener('click',async e=>{const el=e.target.closest('[data-c]');if(!el||el.disabled)return;const fn=actions[el.dataset.c];if(!fn)return;e.preventDefault();e.stopImmediatePropagation();el.disabled=true;try{await fn(el.dataset.id||'',el);}catch(err){announce(error(err),true);}finally{if(el.isConnected)el.disabled=false;}},true);
 document.addEventListener('keydown',e=>{if(!panel)return;if(e.key==='Escape'&&$('[data-c="dismiss"]',panel)){e.preventDefault();dismiss();return;}if(e.key==='Tab'){const nodes=[...panel.querySelectorAll('button:not([disabled]),input,select,[tabindex="0"]')].filter(n=>n.getClientRects().length);if(nodes.length){const i=nodes.indexOf(document.activeElement);if(e.shiftKey&&(i<=0)){e.preventDefault();nodes.at(-1).focus();}else if(!e.shiftKey&&(i===nodes.length-1||i<0)){e.preventDefault();nodes[0].focus();}}}},true);
 document.addEventListener('submit',async e=>{if(e.target.id!=='cSearch')return;e.preventDefault();friendsQuery=$('#cQuery').value.trim();try{searchRows=friendsQuery?await API.request('/api/community/search?q='+encodeURIComponent(friendsQuery)):[];APP.render();}catch(err){APP.notify(error(err));}});

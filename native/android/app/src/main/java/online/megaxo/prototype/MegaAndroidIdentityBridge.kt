@@ -71,6 +71,31 @@ internal class MegaAndroidIdentityBridge private constructor(
         }
     }
 
+    /**
+     * P20-03 native-only provider exchange. The API bridge calls this so the transient provider ID
+     * token never has to travel through JavaScript in the online target: the nonce is the
+     * server-issued challenge nonce, the result goes straight into the bearer exchange. A provider
+     * that is not compiled in this build, or any failure/cancellation, yields null - never an
+     * invented token, and never a second identity system.
+     */
+    fun credential(provider: String, nonce: String, complete: (String?) -> Unit) {
+        if (provider != "google" || nonce.length !in 16..256 ||
+            nonce.any { it.code !in 33..126 || it == '\\' }) {
+            complete(null); return
+        }
+        scope.launch {
+            val token = try {
+                this@MegaAndroidIdentityBridge.provider.getCredential(nonce)
+                    .takeIf { it.length in 24..12000 }
+            } catch (_: CancellationException) {
+                null
+            } catch (_: Exception) {
+                null
+            }
+            complete(token)
+        }
+    }
+
     fun close() { scope.cancel() }
 
     companion object {

@@ -13,6 +13,10 @@
 <!-- Development test app ID only. Signed distribution requires exact owner's AdMob registration. -->
 <!-- Enable only on the real Apple App ID with Sign in with Apple capability. -->
 <key>MegaAppleNativeEnabled</key><string>$(MEGA_APPLE_NATIVE_ENABLED)</string>
+<!-- P20-03: approved HTTPS API origin for the NATIVE session host only. Empty by default, so an
+     offline build bakes in no host and MegaNativeHTTP stays unconfigured. The WebView's blanket
+     https? content-block rule is unaffected: only the native shell may reach the API. -->
+<key>MegaApiOrigin</key><string>$(MEGA_API_ORIGIN)</string>
 <key>GADApplicationIdentifier</key><string>$(MEGA_ADMOB_APP_ID)</string>
 <key>LSRequiresIPhoneOS</key><true/>
 <key>UIApplicationSceneManifest</key><dict>

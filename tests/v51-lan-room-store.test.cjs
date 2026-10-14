@@ -354,6 +354,14 @@ test('handle() answers a real command round trip and always returns JSON, never 
   }
   // A non-party path is reported as NOT_FOUND rather than silently 200.
   assert.equal(JSON.parse(host.handle(JSON.stringify({ method: 'GET', path: '/api/v1/profile', headers }))).error, 'NOT_FOUND');
+  // The response must carry the handler's CORS policy through to the shell, or a cross-origin
+  // guest fetch (the app's only case) fails opaquely instead of with the real code.
+  const cors = JSON.parse(host.handle(JSON.stringify({ method: 'GET', path: '/api/party/capabilities', headers }))).headers;
+  assert.equal(cors['access-control-allow-origin'], '*');
+  assert.ok(cors['access-control-allow-headers'].includes('authorization'));
+  assert.equal(cors['cache-control'], 'no-store');
+  const errCors = JSON.parse(host.handle(JSON.stringify({ method: 'GET', path: '/api/party/me', headers }))).headers;
+  assert.equal(errCors['access-control-allow-origin'], '*', 'an error carries CORS too');
 });
 
 test('a cross-origin app fetch is allowed: CORS on every response and OPTIONS answered', () => {

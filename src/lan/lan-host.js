@@ -179,7 +179,13 @@
         return JSON.stringify({ error: String((e && e.message) || 'SERVICE_UNAVAILABLE') });
       }
       if (result === null) return JSON.stringify({ error: 'NOT_FOUND' });
-      return JSON.stringify({ status: result.status, body: result.body, headers: { 'cache-control': 'no-store' } });
+      // Pass the handler's own headers through: they carry the CORS policy and no-store. A shell
+      // must not have to re-derive them, or a cross-origin guest fetch becomes an opaque failure.
+      return JSON.stringify({
+        status: result.status,
+        body: result.body,
+        headers: { 'cache-control': 'no-store', ...(result.headers || {}) },
+      });
     }
 
     return Object.freeze({ open, close, ready, info, handle, discover, resume, VERSION });

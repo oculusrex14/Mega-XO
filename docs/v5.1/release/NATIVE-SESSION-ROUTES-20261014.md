@@ -50,17 +50,23 @@ mount so a directly-invoked handler cannot bypass it. On `challenge`/`finish` a 
 still has to pass the declared CSRF check (JSON content type + `accounts.csrf`), exactly as
 `/api/account/logout` does today.
 
-**Body limits** are the contract's exact numbers, enforced by refusing:
+**Body limits** are the contract's exact numbers, enforced by refusing, never truncating, and the
+refusal precedes JSON parsing:
 `NATIVE_BODY_LIMITS = {challenge:300000, finish:300000, token:300000, refresh:16384, logout:16384}`.
-A declared `Content-Length` over the ceiling is refused before a byte is buffered (drained, then
-413); an undeclared stream is bounded by `parseJsonBody(req, limit)`. Never a truncation.
+`readNativeBody` refuses a declared `Content-Length` over the ceiling before a byte is buffered
+(the request is drained, never destroyed, so the 413 is actually written); an undeclared-length
+(chunked) stream is bounded by `readNativeStream`, which stops accumulating at the ceiling, drains
+the remainder and rejects. A platform pre-parsed `req.body` defers to the shared `parseJsonBody`.
+A declared-length oversize body is refused before any parse at all; the chunked case is the only
+one that must still read the stream, and it ends in the same honest 413 rather than a dropped
+connection.
 
 ### Plumbing changed (no service logic)
 
 | File | Change |
 |---|---|
 | `apps/api/routes/helpers.js` | new exported `resolveAccess(context)` (injected service, or lazy `createAccessService(context.pool, context.accessOptions)`); `resolveAuth` now uses it instead of an inline copy |
-| `apps/api/routes/account.js` | the five handlers, the shared `performNativeRotation`, `resolveNativeRefresh` (composes `refresh` with the REQUIRED `mintAccess` from `access`), `nativeAudience`, dispatch entries, exports |
+| `apps/api/routes/account.js` | the five handlers, the shared `performNativeRotation`, `readNativeBody`/`readNativeStream` (pre-buffer `Content-Length` refusal plus a bounded chunked reader), `resolveNativeRefresh` (composes `refresh` with the REQUIRED `mintAccess` from `access`), `nativeAudience`, dispatch entries, exports |
 | `apps/api/config.js` | `nativeSessionConfig(env)` -> `{nativeAudiences, accessOptions, refreshOptions}` from `MEGA_ACCESS_ISSUER/ENVIRONMENT/KEY_FILE/PLAYER_AUDIENCES/SERVICE_AUDIENCES`, `MEGA_NATIVE_AUDIENCES`, `MEGA_REFRESH_*`; a partial configuration stays `accessOptions:null` (honest 503), never a fallback issuer/key |
 | `apps/api/index.js` | `defaultHandler` passes `nativeSessionOptions(process.env)` into `createApiHandler` |
 
@@ -81,10 +87,43 @@ Environment used for the two lab-backed runs (the lab cluster at `127.0.0.1:5547
 the machine's staging lab, plus Redis at `redis://127.0.0.1:6391`):
 
 ```
-V5_PG_URL=postgres://postgres@127.0.0.1:55471/postgres V5_PG_DISPOSABLE=1 V5_PG_REQUIRED=1 \
+V5_PG_URL=postgres://postgres@127.0.0.1:55471/e2_probe2 V5_PG_DISPOSABLE=1 V5_PG_REQUIRED=1 \
 REDIS_URL=redis://127.0.0.1:6391 V5_REDIS_REQUIRED=1 V5_TARGET=test \
 node --test --test-force-exit <suite>
 ```
+
+**All p11 suites plus the two nearest neighbours, one command — PASS 61 / FAIL 0 / duration 6586.7 ms**
+
+```
+tests/v5-p11-native-session.test.js (new)     8/8
+tests/v5-p11-browser-compat.test.js           8/8
+tests/v5-p11-account-session-email.test.js
+tests/v5-p11-account-social.test.js
+tests/v5-p11-session-boundary.test.js
+tests/v5-p11-vercel-config.test.js
+tests/v5-community-http.test.js
+tests/v5-p05-integration.test.js
+```
+
+Separately re-confirmed the two suites that compose the services this change touches:
+`tests/v5-p05-integration.test.js` + `tests/community-http.test.js` -> 16/16 PASS.
+
+Literal status and body observed for just-over-limit payloads on the real services (probed
+directly, then pinned as assertions):
+
+| route | body | observed |
+|---|---|---|
+| challenge/finish/token | JSON, +34 B over 300000 | `413 {"error":"BODY_TOO_LARGE"}`, no `Set-Cookie` |
+| refresh/logout | JSON, 20043 B (> 16384) | `413 {"error":"BODY_TOO_LARGE"}` |
+| token/challenge | **not JSON**, 300034 B | `413 {"error":"BODY_TOO_LARGE"}` (refusal precedes parsing) |
+| refresh (chunked, no `Content-Length`) | 20000 B | `413 {"error":"BODY_TOO_LARGE"}` (not a dropped socket) |
+| token (chunked, no `Content-Length`) | 300034 B | `413 {"error":"BODY_TOO_LARGE"}` |
+| refresh | EXACTLY 16384 B, well-formed | `401 {"error":"SESSION_REVOKED"}` (read in full, not refused) |
+| token | small, not JSON | `409 {"error":"INVALID_JSON"}` (the ceiling is not a blanket denial) |
+
+The chunked case was initially a dropped connection rather than a 413; that is fixed in
+`readNativeStream` (see §2) and the four chunked/pre-parse lines above are now asserted by the
+suite.
 
 **`tests/v5-p11-native-session.test.js` (new, 8 tests) — PASS 8 / FAIL 0**
 
@@ -97,7 +136,7 @@ node --test --test-force-exit <suite>
 ✔ the contract body limits refuse an oversize payload instead of truncating it
 ✔ Origin and CSRF still bind cookie credentials; bearer credentials stay exempt
 ✔ an unconfigured P05 deployment refuses bearer issuance rather than inventing one
-tests 8 · pass 8 · fail 0 · duration_ms 4160.9
+tests 8 · pass 8 · fail 0 · duration_ms 3600.9 (shared lab 55471)
 ```
 
 Assertions actually exercised (not merely declared):
@@ -106,8 +145,13 @@ Assertions actually exercised (not merely declared):
   43-char base64url state and integer `expires`; finish 200 with `linked:true`, `created:true` and a
   body-only `sessionToken`; token 200 with a 3-segment access JWT, a 43-char refresh secret and
   `expiresIn:300`; refresh 200 with a DIFFERENT successor secret; logout 200 `{signedOut:true}`.
-- `Set-Cookie` was `undefined` on 13 distinct responses (10 probe shapes plus the four success
-  paths), and no response echoed a cookie back in the body.
+- limits: 1 byte over 300000 on challenge/finish/token -> 413 `BODY_TOO_LARGE`; over 16384 on
+  refresh/logout -> 413 `BODY_TOO_LARGE`; an oversize body that is not even JSON -> the same 413
+  (the refusal precedes parsing); a chunked body with no `Content-Length` over either ceiling ->
+  the same 413 rather than a dropped socket; EXACTLY 16384 bytes -> fully read and answered 401
+  `SESSION_REVOKED` (a ceiling, not a margin); a small invalid body -> 409 `INVALID_JSON`.
+- `Set-Cookie` was `undefined` on every response the suite observed, success and failure alike
+  (ten probe shapes plus four success paths), and no response echoed a cookie back in the body.
 - cookie+bearer on token/refresh/logout -> 401 `AMBIGUOUS_CREDENTIAL` (all three routes).
 - rotation: `access.verify` accepted the new token for `aud: mega-android`, `sub`/`sid` matched;
   `accounts.authenticateNative` accepted it as the same session; two CONCURRENT rotations of the
@@ -145,9 +189,10 @@ Mid-run the machine hit **"No space left on device"** on the Data volume (0 byte
 shared lab cluster on `127.0.0.1:55471` died (connection refused; it had already been down before
 any cleanup). Ten orphaned `v5-p05lab-pg-*` clusters under `$TMPDIR` (all reparented to PID 1,
 started Oct 12, no live parent) were stopped and removed; free space went ~0 -> 1.4 GiB. Main was
-notified. The 55471 URL is no longer served by anything on this machine, so the final re-runs were
-done with the lab's own self-spawned PG16 (`V5_PG_REQUIRED=1`, no `V5_PG_URL`), which needs no
-shared cluster — the new suite was green in BOTH modes.
+notified, confirmed the cleanup was correctly scoped (these are the disposable harness's own temp
+roots, which its cleanup would have removed), and then brought `55471` back up. **Every result in
+§3 was re-produced against that restored shared cluster** (as well as earlier against the lab's
+self-spawned PG16), so Main's final verification against `55471` will match.
 
 ## 5. Not proven
 

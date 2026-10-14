@@ -110,7 +110,7 @@
 .gb-preview-link { display: block; width: fit-content; margin: 8px auto 0; color: #91bcf1; font-size: 11px; text-decoration: none; }
 .gb-preview-link:hover { color: #d6ecff; }
 .gb-preview-link span { margin-left: 4px; }
-.gb-practice-page { width: min(1160px, calc(100% - 48px)); margin: 0 auto; padding: 45px 0 65px; }
+.gb-practice-page { width: min(1160px, calc(100% - 48px)); margin: 0 auto; padding: 45px 0 65px; container-type: inline-size; }
 .gb-page-heading { display: flex; justify-content: space-between; align-items: end; gap: 24px; margin-bottom: 34px; }
 .gb-eyebrow { display: inline-block; color: #80b4fb; font-size: 11px; font-weight: 600; letter-spacing: .2em; }
 .gb-page-heading h1 { margin: 16px 0; font-size: clamp(36px, 4.5vw, 60px); line-height: 1.06; letter-spacing: -.045em; color: #f6f8ff; }
@@ -183,6 +183,8 @@
 .gb-stage[data-gb-theme="afterhours"] .gb-turn-strip { background: #080416; border-radius: 3px; }
 
 @media (max-width: 800px) { .gb-practice-layout { grid-template-columns: minmax(0, 1fr); } .gb-help-panel { width: min(530px, 100%); margin: 0 auto; } .gb-page-heading { justify-content: center; flex-wrap: wrap; text-align: center; } }
+/* A zoomed or embedded practice page can be narrower than the viewport. */
+@container (max-width: 800px) { .gb-practice-layout { grid-template-columns: minmax(0, 1fr); } .gb-help-panel { width: min(530px, 100%); margin: 0 auto; } .gb-page-heading { justify-content: center; flex-wrap: wrap; text-align: center; } }
 @media (max-width: 420px) {
   .gb-frame { padding: 12px 10px 15px; border-radius: 20px; }
   .gb-grid { gap: 8px; margin-top: 12px; }

@@ -1,0 +1,1178 @@
+{
+  "environment": "LOCAL STATIC SOURCE FIXTURE ONLY; no network, provider, Core, signed device or released bundle",
+  "checkedAt": "2026-10-14T17:02:56.235Z",
+  "sourceCommit": "36c982fab6ca59e5ed0744d585175605050f9a9d",
+  "sourceHashes": {
+    "apps/web/board.js": "0dcd75f6c033e884609abf0ac127e4f5564bdbca90dfa46a90f61cc070711fcb",
+    "apps/web/board.css": "322596d481d564429ea61092bdf7b3c0c71f6c6ba62e1a2e9846971a94281889",
+    "apps/web/powers.js": "bda3022808319211d1f391537ea1254a0c6a1218f52f6449dba3e9a8512e2e34",
+    "apps/web/powers.css": "5cdf8adfd9ef4d38db40e8ca4cb8f4e93058644c7d0c4245aa34a370f1a9c125"
+  },
+  "browser": "Chromium",
+  "checks": [
+    {
+      "id": "cinematic-320-disabled",
+      "pass": true,
+      "observed": "Rewarded/use controls disabled with absent contract"
+    },
+    {
+      "id": "cinematic-320-unknown",
+      "pass": true,
+      "observed": "Missing authority shows unknown charges"
+    },
+    {
+      "id": "cinematic-320-drawer-keyboard",
+      "pass": true,
+      "observed": "Keyboard opens bank drawer"
+    },
+    {
+      "id": "cinematic-320-refresh-focus",
+      "pass": true,
+      "observed": "Refresh restores keyboard focus"
+    },
+    {
+      "id": "cinematic-320-drawer-retained",
+      "pass": true,
+      "observed": "Refresh retains expanded drawer"
+    },
+    {
+      "id": "cinematic-320-casual-disabled",
+      "pass": true,
+      "observed": "Casual ruleset activation unavailable"
+    },
+    {
+      "id": "cinematic-320-counters-disabled",
+      "pass": true,
+      "observed": "Counter and hint controls remain disabled"
+    },
+    {
+      "id": "cinematic-320-no-clipping",
+      "pass": true,
+      "observed": {
+        "client": 320,
+        "scroll": 320,
+        "panelWidth": 296
+      }
+    },
+    {
+      "id": "cinematic-320-text-contrast",
+      "pass": true,
+      "observed": {
+        "minimumRatio": 18.263609263210245,
+        "samples": 20
+      }
+    },
+    {
+      "id": "cinematic-320-focus-visible",
+      "pass": true,
+      "observed": {
+        "outlineStyle": "solid",
+        "outlineWidth": "3px"
+      }
+    },
+    {
+      "id": "cinematic-320-same-screen-hidden",
+      "pass": true,
+      "observed": "Same-screen mode has no powers"
+    },
+    {
+      "id": "cinematic-320-no-script-errors",
+      "pass": true,
+      "observed": []
+    },
+    {
+      "id": "cinematic-390-disabled",
+      "pass": true,
+      "observed": "Rewarded/use controls disabled with absent contract"
+    },
+    {
+      "id": "cinematic-390-unknown",
+      "pass": true,
+      "observed": "Missing authority shows unknown charges"
+    },
+    {
+      "id": "cinematic-390-drawer-keyboard",
+      "pass": true,
+      "observed": "Keyboard opens bank drawer"
+    },
+    {
+      "id": "cinematic-390-refresh-focus",
+      "pass": true,
+      "observed": "Refresh restores keyboard focus"
+    },
+    {
+      "id": "cinematic-390-drawer-retained",
+      "pass": true,
+      "observed": "Refresh retains expanded drawer"
+    },
+    {
+      "id": "cinematic-390-casual-disabled",
+      "pass": true,
+      "observed": "Casual ruleset activation unavailable"
+    },
+    {
+      "id": "cinematic-390-counters-disabled",
+      "pass": true,
+      "observed": "Counter and hint controls remain disabled"
+    },
+    {
+      "id": "cinematic-390-no-clipping",
+      "pass": true,
+      "observed": {
+        "client": 390,
+        "scroll": 390,
+        "panelWidth": 366
+      }
+    },
+    {
+      "id": "cinematic-390-text-contrast",
+      "pass": true,
+      "observed": {
+        "minimumRatio": 18.263609263210245,
+        "samples": 20
+      }
+    },
+    {
+      "id": "cinematic-390-focus-visible",
+      "pass": true,
+      "observed": {
+        "outlineStyle": "solid",
+        "outlineWidth": "3px"
+      }
+    },
+    {
+      "id": "cinematic-390-same-screen-hidden",
+      "pass": true,
+      "observed": "Same-screen mode has no powers"
+    },
+    {
+      "id": "cinematic-390-no-script-errors",
+      "pass": true,
+      "observed": []
+    },
+    {
+      "id": "cinematic-1280-disabled",
+      "pass": true,
+      "observed": "Rewarded/use controls disabled with absent contract"
+    },
+    {
+      "id": "cinematic-1280-unknown",
+      "pass": true,
+      "observed": "Missing authority shows unknown charges"
+    },
+    {
+      "id": "cinematic-1280-drawer-keyboard",
+      "pass": true,
+      "observed": "Keyboard opens bank drawer"
+    },
+    {
+      "id": "cinematic-1280-refresh-focus",
+      "pass": true,
+      "observed": "Refresh restores keyboard focus"
+    },
+    {
+      "id": "cinematic-1280-drawer-retained",
+      "pass": true,
+      "observed": "Refresh retains expanded drawer"
+    },
+    {
+      "id": "cinematic-1280-casual-disabled",
+      "pass": true,
+      "observed": "Casual ruleset activation unavailable"
+    },
+    {
+      "id": "cinematic-1280-counters-disabled",
+      "pass": true,
+      "observed": "Counter and hint controls remain disabled"
+    },
+    {
+      "id": "cinematic-1280-no-clipping",
+      "pass": true,
+      "observed": {
+        "client": 1280,
+        "scroll": 1280,
+        "panelWidth": 530
+      }
+    },
+    {
+      "id": "cinematic-1280-text-contrast",
+      "pass": true,
+      "observed": {
+        "minimumRatio": 18.263609263210245,
+        "samples": 20
+      }
+    },
+    {
+      "id": "cinematic-1280-focus-visible",
+      "pass": true,
+      "observed": {
+        "outlineStyle": "solid",
+        "outlineWidth": "3px"
+      }
+    },
+    {
+      "id": "cinematic-1280-zoom-200-no-clipping",
+      "pass": false,
+      "observed": {
+        "client": 640,
+        "scroll": 749,
+        "panelRight": 1104
+      }
+    },
+    {
+      "id": "cinematic-1280-same-screen-hidden",
+      "pass": true,
+      "observed": "Same-screen mode has no powers"
+    },
+    {
+      "id": "cinematic-1280-no-script-errors",
+      "pass": true,
+      "observed": []
+    },
+    {
+      "id": "vector-320-disabled",
+      "pass": true,
+      "observed": "Rewarded/use controls disabled with absent contract"
+    },
+    {
+      "id": "vector-320-unknown",
+      "pass": true,
+      "observed": "Missing authority shows unknown charges"
+    },
+    {
+      "id": "vector-320-drawer-keyboard",
+      "pass": true,
+      "observed": "Keyboard opens bank drawer"
+    },
+    {
+      "id": "vector-320-refresh-focus",
+      "pass": true,
+      "observed": "Refresh restores keyboard focus"
+    },
+    {
+      "id": "vector-320-drawer-retained",
+      "pass": true,
+      "observed": "Refresh retains expanded drawer"
+    },
+    {
+      "id": "vector-320-casual-disabled",
+      "pass": true,
+      "observed": "Casual ruleset activation unavailable"
+    },
+    {
+      "id": "vector-320-counters-disabled",
+      "pass": true,
+      "observed": "Counter and hint controls remain disabled"
+    },
+    {
+      "id": "vector-320-no-clipping",
+      "pass": true,
+      "observed": {
+        "client": 320,
+        "scroll": 320,
+        "panelWidth": 296
+      }
+    },
+    {
+      "id": "vector-320-text-contrast",
+      "pass": true,
+      "observed": {
+        "minimumRatio": 16.90362407722499,
+        "samples": 20
+      }
+    },
+    {
+      "id": "vector-320-focus-visible",
+      "pass": true,
+      "observed": {
+        "outlineStyle": "solid",
+        "outlineWidth": "3px"
+      }
+    },
+    {
+      "id": "vector-320-same-screen-hidden",
+      "pass": true,
+      "observed": "Same-screen mode has no powers"
+    },
+    {
+      "id": "vector-320-no-script-errors",
+      "pass": true,
+      "observed": []
+    },
+    {
+      "id": "vector-390-disabled",
+      "pass": true,
+      "observed": "Rewarded/use controls disabled with absent contract"
+    },
+    {
+      "id": "vector-390-unknown",
+      "pass": true,
+      "observed": "Missing authority shows unknown charges"
+    },
+    {
+      "id": "vector-390-drawer-keyboard",
+      "pass": true,
+      "observed": "Keyboard opens bank drawer"
+    },
+    {
+      "id": "vector-390-refresh-focus",
+      "pass": true,
+      "observed": "Refresh restores keyboard focus"
+    },
+    {
+      "id": "vector-390-drawer-retained",
+      "pass": true,
+      "observed": "Refresh retains expanded drawer"
+    },
+    {
+      "id": "vector-390-casual-disabled",
+      "pass": true,
+      "observed": "Casual ruleset activation unavailable"
+    },
+    {
+      "id": "vector-390-counters-disabled",
+      "pass": true,
+      "observed": "Counter and hint controls remain disabled"
+    },
+    {
+      "id": "vector-390-no-clipping",
+      "pass": true,
+      "observed": {
+        "client": 390,
+        "scroll": 390,
+        "panelWidth": 366
+      }
+    },
+    {
+      "id": "vector-390-text-contrast",
+      "pass": true,
+      "observed": {
+        "minimumRatio": 16.90362407722499,
+        "samples": 20
+      }
+    },
+    {
+      "id": "vector-390-focus-visible",
+      "pass": true,
+      "observed": {
+        "outlineStyle": "solid",
+        "outlineWidth": "3px"
+      }
+    },
+    {
+      "id": "vector-390-same-screen-hidden",
+      "pass": true,
+      "observed": "Same-screen mode has no powers"
+    },
+    {
+      "id": "vector-390-no-script-errors",
+      "pass": true,
+      "observed": []
+    },
+    {
+      "id": "vector-1280-disabled",
+      "pass": true,
+      "observed": "Rewarded/use controls disabled with absent contract"
+    },
+    {
+      "id": "vector-1280-unknown",
+      "pass": true,
+      "observed": "Missing authority shows unknown charges"
+    },
+    {
+      "id": "vector-1280-drawer-keyboard",
+      "pass": true,
+      "observed": "Keyboard opens bank drawer"
+    },
+    {
+      "id": "vector-1280-refresh-focus",
+      "pass": true,
+      "observed": "Refresh restores keyboard focus"
+    },
+    {
+      "id": "vector-1280-drawer-retained",
+      "pass": true,
+      "observed": "Refresh retains expanded drawer"
+    },
+    {
+      "id": "vector-1280-casual-disabled",
+      "pass": true,
+      "observed": "Casual ruleset activation unavailable"
+    },
+    {
+      "id": "vector-1280-counters-disabled",
+      "pass": true,
+      "observed": "Counter and hint controls remain disabled"
+    },
+    {
+      "id": "vector-1280-no-clipping",
+      "pass": true,
+      "observed": {
+        "client": 1280,
+        "scroll": 1280,
+        "panelWidth": 530
+      }
+    },
+    {
+      "id": "vector-1280-text-contrast",
+      "pass": true,
+      "observed": {
+        "minimumRatio": 16.90362407722499,
+        "samples": 20
+      }
+    },
+    {
+      "id": "vector-1280-focus-visible",
+      "pass": true,
+      "observed": {
+        "outlineStyle": "solid",
+        "outlineWidth": "3px"
+      }
+    },
+    {
+      "id": "vector-1280-zoom-200-no-clipping",
+      "pass": false,
+      "observed": {
+        "client": 640,
+        "scroll": 749,
+        "panelRight": 1104
+      }
+    },
+    {
+      "id": "vector-1280-same-screen-hidden",
+      "pass": true,
+      "observed": "Same-screen mode has no powers"
+    },
+    {
+      "id": "vector-1280-no-script-errors",
+      "pass": true,
+      "observed": []
+    },
+    {
+      "id": "midnight-320-disabled",
+      "pass": true,
+      "observed": "Rewarded/use controls disabled with absent contract"
+    },
+    {
+      "id": "midnight-320-unknown",
+      "pass": true,
+      "observed": "Missing authority shows unknown charges"
+    },
+    {
+      "id": "midnight-320-drawer-keyboard",
+      "pass": true,
+      "observed": "Keyboard opens bank drawer"
+    },
+    {
+      "id": "midnight-320-refresh-focus",
+      "pass": true,
+      "observed": "Refresh restores keyboard focus"
+    },
+    {
+      "id": "midnight-320-drawer-retained",
+      "pass": true,
+      "observed": "Refresh retains expanded drawer"
+    },
+    {
+      "id": "midnight-320-casual-disabled",
+      "pass": true,
+      "observed": "Casual ruleset activation unavailable"
+    },
+    {
+      "id": "midnight-320-counters-disabled",
+      "pass": true,
+      "observed": "Counter and hint controls remain disabled"
+    },
+    {
+      "id": "midnight-320-no-clipping",
+      "pass": true,
+      "observed": {
+        "client": 320,
+        "scroll": 320,
+        "panelWidth": 296
+      }
+    },
+    {
+      "id": "midnight-320-text-contrast",
+      "pass": true,
+      "observed": {
+        "minimumRatio": 13.014848104061006,
+        "samples": 20
+      }
+    },
+    {
+      "id": "midnight-320-focus-visible",
+      "pass": true,
+      "observed": {
+        "outlineStyle": "solid",
+        "outlineWidth": "3px"
+      }
+    },
+    {
+      "id": "midnight-320-same-screen-hidden",
+      "pass": true,
+      "observed": "Same-screen mode has no powers"
+    },
+    {
+      "id": "midnight-320-no-script-errors",
+      "pass": true,
+      "observed": []
+    },
+    {
+      "id": "midnight-390-disabled",
+      "pass": true,
+      "observed": "Rewarded/use controls disabled with absent contract"
+    },
+    {
+      "id": "midnight-390-unknown",
+      "pass": true,
+      "observed": "Missing authority shows unknown charges"
+    },
+    {
+      "id": "midnight-390-drawer-keyboard",
+      "pass": true,
+      "observed": "Keyboard opens bank drawer"
+    },
+    {
+      "id": "midnight-390-refresh-focus",
+      "pass": true,
+      "observed": "Refresh restores keyboard focus"
+    },
+    {
+      "id": "midnight-390-drawer-retained",
+      "pass": true,
+      "observed": "Refresh retains expanded drawer"
+    },
+    {
+      "id": "midnight-390-casual-disabled",
+      "pass": true,
+      "observed": "Casual ruleset activation unavailable"
+    },
+    {
+      "id": "midnight-390-counters-disabled",
+      "pass": true,
+      "observed": "Counter and hint controls remain disabled"
+    },
+    {
+      "id": "midnight-390-no-clipping",
+      "pass": true,
+      "observed": {
+        "client": 390,
+        "scroll": 390,
+        "panelWidth": 366
+      }
+    },
+    {
+      "id": "midnight-390-text-contrast",
+      "pass": true,
+      "observed": {
+        "minimumRatio": 13.014848104061006,
+        "samples": 20
+      }
+    },
+    {
+      "id": "midnight-390-focus-visible",
+      "pass": true,
+      "observed": {
+        "outlineStyle": "solid",
+        "outlineWidth": "3px"
+      }
+    },
+    {
+      "id": "midnight-390-same-screen-hidden",
+      "pass": true,
+      "observed": "Same-screen mode has no powers"
+    },
+    {
+      "id": "midnight-390-no-script-errors",
+      "pass": true,
+      "observed": []
+    },
+    {
+      "id": "midnight-1280-disabled",
+      "pass": true,
+      "observed": "Rewarded/use controls disabled with absent contract"
+    },
+    {
+      "id": "midnight-1280-unknown",
+      "pass": true,
+      "observed": "Missing authority shows unknown charges"
+    },
+    {
+      "id": "midnight-1280-drawer-keyboard",
+      "pass": true,
+      "observed": "Keyboard opens bank drawer"
+    },
+    {
+      "id": "midnight-1280-refresh-focus",
+      "pass": true,
+      "observed": "Refresh restores keyboard focus"
+    },
+    {
+      "id": "midnight-1280-drawer-retained",
+      "pass": true,
+      "observed": "Refresh retains expanded drawer"
+    },
+    {
+      "id": "midnight-1280-casual-disabled",
+      "pass": true,
+      "observed": "Casual ruleset activation unavailable"
+    },
+    {
+      "id": "midnight-1280-counters-disabled",
+      "pass": true,
+      "observed": "Counter and hint controls remain disabled"
+    },
+    {
+      "id": "midnight-1280-no-clipping",
+      "pass": true,
+      "observed": {
+        "client": 1280,
+        "scroll": 1280,
+        "panelWidth": 530
+      }
+    },
+    {
+      "id": "midnight-1280-text-contrast",
+      "pass": true,
+      "observed": {
+        "minimumRatio": 13.014848104061006,
+        "samples": 20
+      }
+    },
+    {
+      "id": "midnight-1280-focus-visible",
+      "pass": true,
+      "observed": {
+        "outlineStyle": "solid",
+        "outlineWidth": "3px"
+      }
+    },
+    {
+      "id": "midnight-1280-zoom-200-no-clipping",
+      "pass": false,
+      "observed": {
+        "client": 640,
+        "scroll": 749,
+        "panelRight": 1104
+      }
+    },
+    {
+      "id": "midnight-1280-same-screen-hidden",
+      "pass": true,
+      "observed": "Same-screen mode has no powers"
+    },
+    {
+      "id": "midnight-1280-no-script-errors",
+      "pass": true,
+      "observed": []
+    },
+    {
+      "id": "paperclub-320-disabled",
+      "pass": true,
+      "observed": "Rewarded/use controls disabled with absent contract"
+    },
+    {
+      "id": "paperclub-320-unknown",
+      "pass": true,
+      "observed": "Missing authority shows unknown charges"
+    },
+    {
+      "id": "paperclub-320-drawer-keyboard",
+      "pass": true,
+      "observed": "Keyboard opens bank drawer"
+    },
+    {
+      "id": "paperclub-320-refresh-focus",
+      "pass": true,
+      "observed": "Refresh restores keyboard focus"
+    },
+    {
+      "id": "paperclub-320-drawer-retained",
+      "pass": true,
+      "observed": "Refresh retains expanded drawer"
+    },
+    {
+      "id": "paperclub-320-casual-disabled",
+      "pass": true,
+      "observed": "Casual ruleset activation unavailable"
+    },
+    {
+      "id": "paperclub-320-counters-disabled",
+      "pass": true,
+      "observed": "Counter and hint controls remain disabled"
+    },
+    {
+      "id": "paperclub-320-no-clipping",
+      "pass": true,
+      "observed": {
+        "client": 320,
+        "scroll": 320,
+        "panelWidth": 296
+      }
+    },
+    {
+      "id": "paperclub-320-text-contrast",
+      "pass": true,
+      "observed": {
+        "minimumRatio": 13.749018535112654,
+        "samples": 20
+      }
+    },
+    {
+      "id": "paperclub-320-focus-visible",
+      "pass": true,
+      "observed": {
+        "outlineStyle": "solid",
+        "outlineWidth": "3px"
+      }
+    },
+    {
+      "id": "paperclub-320-same-screen-hidden",
+      "pass": true,
+      "observed": "Same-screen mode has no powers"
+    },
+    {
+      "id": "paperclub-320-no-script-errors",
+      "pass": true,
+      "observed": []
+    },
+    {
+      "id": "paperclub-390-disabled",
+      "pass": true,
+      "observed": "Rewarded/use controls disabled with absent contract"
+    },
+    {
+      "id": "paperclub-390-unknown",
+      "pass": true,
+      "observed": "Missing authority shows unknown charges"
+    },
+    {
+      "id": "paperclub-390-drawer-keyboard",
+      "pass": true,
+      "observed": "Keyboard opens bank drawer"
+    },
+    {
+      "id": "paperclub-390-refresh-focus",
+      "pass": true,
+      "observed": "Refresh restores keyboard focus"
+    },
+    {
+      "id": "paperclub-390-drawer-retained",
+      "pass": true,
+      "observed": "Refresh retains expanded drawer"
+    },
+    {
+      "id": "paperclub-390-casual-disabled",
+      "pass": true,
+      "observed": "Casual ruleset activation unavailable"
+    },
+    {
+      "id": "paperclub-390-counters-disabled",
+      "pass": true,
+      "observed": "Counter and hint controls remain disabled"
+    },
+    {
+      "id": "paperclub-390-no-clipping",
+      "pass": true,
+      "observed": {
+        "client": 390,
+        "scroll": 390,
+        "panelWidth": 366
+      }
+    },
+    {
+      "id": "paperclub-390-text-contrast",
+      "pass": true,
+      "observed": {
+        "minimumRatio": 13.749018535112654,
+        "samples": 20
+      }
+    },
+    {
+      "id": "paperclub-390-focus-visible",
+      "pass": true,
+      "observed": {
+        "outlineStyle": "solid",
+        "outlineWidth": "3px"
+      }
+    },
+    {
+      "id": "paperclub-390-same-screen-hidden",
+      "pass": true,
+      "observed": "Same-screen mode has no powers"
+    },
+    {
+      "id": "paperclub-390-no-script-errors",
+      "pass": true,
+      "observed": []
+    },
+    {
+      "id": "paperclub-1280-disabled",
+      "pass": true,
+      "observed": "Rewarded/use controls disabled with absent contract"
+    },
+    {
+      "id": "paperclub-1280-unknown",
+      "pass": true,
+      "observed": "Missing authority shows unknown charges"
+    },
+    {
+      "id": "paperclub-1280-drawer-keyboard",
+      "pass": true,
+      "observed": "Keyboard opens bank drawer"
+    },
+    {
+      "id": "paperclub-1280-refresh-focus",
+      "pass": true,
+      "observed": "Refresh restores keyboard focus"
+    },
+    {
+      "id": "paperclub-1280-drawer-retained",
+      "pass": true,
+      "observed": "Refresh retains expanded drawer"
+    },
+    {
+      "id": "paperclub-1280-casual-disabled",
+      "pass": true,
+      "observed": "Casual ruleset activation unavailable"
+    },
+    {
+      "id": "paperclub-1280-counters-disabled",
+      "pass": true,
+      "observed": "Counter and hint controls remain disabled"
+    },
+    {
+      "id": "paperclub-1280-no-clipping",
+      "pass": true,
+      "observed": {
+        "client": 1280,
+        "scroll": 1280,
+        "panelWidth": 530
+      }
+    },
+    {
+      "id": "paperclub-1280-text-contrast",
+      "pass": true,
+      "observed": {
+        "minimumRatio": 13.749018535112654,
+        "samples": 20
+      }
+    },
+    {
+      "id": "paperclub-1280-focus-visible",
+      "pass": true,
+      "observed": {
+        "outlineStyle": "solid",
+        "outlineWidth": "3px"
+      }
+    },
+    {
+      "id": "paperclub-1280-zoom-200-no-clipping",
+      "pass": false,
+      "observed": {
+        "client": 640,
+        "scroll": 749,
+        "panelRight": 1104
+      }
+    },
+    {
+      "id": "paperclub-1280-same-screen-hidden",
+      "pass": true,
+      "observed": "Same-screen mode has no powers"
+    },
+    {
+      "id": "paperclub-1280-no-script-errors",
+      "pass": true,
+      "observed": []
+    },
+    {
+      "id": "afterhours-320-disabled",
+      "pass": true,
+      "observed": "Rewarded/use controls disabled with absent contract"
+    },
+    {
+      "id": "afterhours-320-unknown",
+      "pass": true,
+      "observed": "Missing authority shows unknown charges"
+    },
+    {
+      "id": "afterhours-320-drawer-keyboard",
+      "pass": true,
+      "observed": "Keyboard opens bank drawer"
+    },
+    {
+      "id": "afterhours-320-refresh-focus",
+      "pass": true,
+      "observed": "Refresh restores keyboard focus"
+    },
+    {
+      "id": "afterhours-320-drawer-retained",
+      "pass": true,
+      "observed": "Refresh retains expanded drawer"
+    },
+    {
+      "id": "afterhours-320-casual-disabled",
+      "pass": true,
+      "observed": "Casual ruleset activation unavailable"
+    },
+    {
+      "id": "afterhours-320-counters-disabled",
+      "pass": true,
+      "observed": "Counter and hint controls remain disabled"
+    },
+    {
+      "id": "afterhours-320-no-clipping",
+      "pass": true,
+      "observed": {
+        "client": 320,
+        "scroll": 320,
+        "panelWidth": 296
+      }
+    },
+    {
+      "id": "afterhours-320-text-contrast",
+      "pass": true,
+      "observed": {
+        "minimumRatio": 16.71936273694602,
+        "samples": 20
+      }
+    },
+    {
+      "id": "afterhours-320-focus-visible",
+      "pass": true,
+      "observed": {
+        "outlineStyle": "solid",
+        "outlineWidth": "3px"
+      }
+    },
+    {
+      "id": "afterhours-320-same-screen-hidden",
+      "pass": true,
+      "observed": "Same-screen mode has no powers"
+    },
+    {
+      "id": "afterhours-320-no-script-errors",
+      "pass": true,
+      "observed": []
+    },
+    {
+      "id": "afterhours-390-disabled",
+      "pass": true,
+      "observed": "Rewarded/use controls disabled with absent contract"
+    },
+    {
+      "id": "afterhours-390-unknown",
+      "pass": true,
+      "observed": "Missing authority shows unknown charges"
+    },
+    {
+      "id": "afterhours-390-drawer-keyboard",
+      "pass": true,
+      "observed": "Keyboard opens bank drawer"
+    },
+    {
+      "id": "afterhours-390-refresh-focus",
+      "pass": true,
+      "observed": "Refresh restores keyboard focus"
+    },
+    {
+      "id": "afterhours-390-drawer-retained",
+      "pass": true,
+      "observed": "Refresh retains expanded drawer"
+    },
+    {
+      "id": "afterhours-390-casual-disabled",
+      "pass": true,
+      "observed": "Casual ruleset activation unavailable"
+    },
+    {
+      "id": "afterhours-390-counters-disabled",
+      "pass": true,
+      "observed": "Counter and hint controls remain disabled"
+    },
+    {
+      "id": "afterhours-390-no-clipping",
+      "pass": true,
+      "observed": {
+        "client": 390,
+        "scroll": 390,
+        "panelWidth": 366
+      }
+    },
+    {
+      "id": "afterhours-390-text-contrast",
+      "pass": true,
+      "observed": {
+        "minimumRatio": 16.71936273694602,
+        "samples": 20
+      }
+    },
+    {
+      "id": "afterhours-390-focus-visible",
+      "pass": true,
+      "observed": {
+        "outlineStyle": "solid",
+        "outlineWidth": "3px"
+      }
+    },
+    {
+      "id": "afterhours-390-same-screen-hidden",
+      "pass": true,
+      "observed": "Same-screen mode has no powers"
+    },
+    {
+      "id": "afterhours-390-no-script-errors",
+      "pass": true,
+      "observed": []
+    },
+    {
+      "id": "afterhours-1280-disabled",
+      "pass": true,
+      "observed": "Rewarded/use controls disabled with absent contract"
+    },
+    {
+      "id": "afterhours-1280-unknown",
+      "pass": true,
+      "observed": "Missing authority shows unknown charges"
+    },
+    {
+      "id": "afterhours-1280-drawer-keyboard",
+      "pass": true,
+      "observed": "Keyboard opens bank drawer"
+    },
+    {
+      "id": "afterhours-1280-refresh-focus",
+      "pass": true,
+      "observed": "Refresh restores keyboard focus"
+    },
+    {
+      "id": "afterhours-1280-drawer-retained",
+      "pass": true,
+      "observed": "Refresh retains expanded drawer"
+    },
+    {
+      "id": "afterhours-1280-casual-disabled",
+      "pass": true,
+      "observed": "Casual ruleset activation unavailable"
+    },
+    {
+      "id": "afterhours-1280-counters-disabled",
+      "pass": true,
+      "observed": "Counter and hint controls remain disabled"
+    },
+    {
+      "id": "afterhours-1280-no-clipping",
+      "pass": true,
+      "observed": {
+        "client": 1280,
+        "scroll": 1280,
+        "panelWidth": 530
+      }
+    },
+    {
+      "id": "afterhours-1280-text-contrast",
+      "pass": true,
+      "observed": {
+        "minimumRatio": 16.71936273694602,
+        "samples": 20
+      }
+    },
+    {
+      "id": "afterhours-1280-focus-visible",
+      "pass": true,
+      "observed": {
+        "outlineStyle": "solid",
+        "outlineWidth": "3px"
+      }
+    },
+    {
+      "id": "afterhours-1280-zoom-200-no-clipping",
+      "pass": false,
+      "observed": {
+        "client": 640,
+        "scroll": 749,
+        "panelRight": 1104
+      }
+    },
+    {
+      "id": "afterhours-1280-same-screen-hidden",
+      "pass": true,
+      "observed": "Same-screen mode has no powers"
+    },
+    {
+      "id": "afterhours-1280-no-script-errors",
+      "pass": true,
+      "observed": []
+    }
+  ],
+  "failures": [
+    {
+      "id": "cinematic-1280-zoom-200-no-clipping",
+      "pass": false,
+      "observed": {
+        "client": 640,
+        "scroll": 749,
+        "panelRight": 1104
+      }
+    },
+    {
+      "id": "vector-1280-zoom-200-no-clipping",
+      "pass": false,
+      "observed": {
+        "client": 640,
+        "scroll": 749,
+        "panelRight": 1104
+      }
+    },
+    {
+      "id": "midnight-1280-zoom-200-no-clipping",
+      "pass": false,
+      "observed": {
+        "client": 640,
+        "scroll": 749,
+        "panelRight": 1104
+      }
+    },
+    {
+      "id": "paperclub-1280-zoom-200-no-clipping",
+      "pass": false,
+      "observed": {
+        "client": 640,
+        "scroll": 749,
+        "panelRight": 1104
+      }
+    },
+    {
+      "id": "afterhours-1280-zoom-200-no-clipping",
+      "pass": false,
+      "observed": {
+        "client": 640,
+        "scroll": 749,
+        "panelRight": 1104
+      }
+    }
+  ],
+  "screenshots": [
+    "local-fixture-screenshots/cinematic-320-expanded.png",
+    "local-fixture-screenshots/cinematic-390-expanded.png",
+    "local-fixture-screenshots/cinematic-1280-expanded.png",
+    "local-fixture-screenshots/cinematic-zoom-200-expanded.png",
+    "local-fixture-screenshots/vector-320-expanded.png",
+    "local-fixture-screenshots/vector-390-expanded.png",
+    "local-fixture-screenshots/vector-1280-expanded.png",
+    "local-fixture-screenshots/vector-zoom-200-expanded.png",
+    "local-fixture-screenshots/midnight-320-expanded.png",
+    "local-fixture-screenshots/midnight-390-expanded.png",
+    "local-fixture-screenshots/midnight-1280-expanded.png",
+    "local-fixture-screenshots/midnight-zoom-200-expanded.png",
+    "local-fixture-screenshots/paperclub-320-expanded.png",
+    "local-fixture-screenshots/paperclub-390-expanded.png",
+    "local-fixture-screenshots/paperclub-1280-expanded.png",
+    "local-fixture-screenshots/paperclub-zoom-200-expanded.png",
+    "local-fixture-screenshots/afterhours-320-expanded.png",
+    "local-fixture-screenshots/afterhours-390-expanded.png",
+    "local-fixture-screenshots/afterhours-1280-expanded.png",
+    "local-fixture-screenshots/afterhours-zoom-200-expanded.png"
+  ]
+}

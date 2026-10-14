@@ -184,7 +184,16 @@ tasks.matching { it.name.startsWith("compile") && it.name.endsWith("Kotlin") }.c
     dependsOn(stageGoogleIdentitySource)
 }
 
-tasks.matching { it.name.startsWith("merge") && it.name.endsWith("Assets") }.configureEach {
+// Anything that consumes the generated asset directory must depend on its producer. Matching only
+// on "merge*Assets" task names missed the lint model tasks (generate<Variant>LintVitalReportModel),
+// which also read build/generated/megaAssets; ASSEMBLE RELEASE then failed with an implicit-dependency
+// error. Name both families explicitly rather than inspecting the whole task graph, which forced
+// lazy task properties to resolve too early and broke the debug build.
+tasks.matching {
+    (it.name.startsWith("merge") && it.name.endsWith("Assets")) ||
+        it.name.contains("LintVitalReportModel") || it.name.contains("LintVitalAnalyze") ||
+        it.name.startsWith("lintVitalAnalyze") || it.name.startsWith("lintAnalyze")
+}.configureEach {
     dependsOn(generateMegaClient)
 }
 

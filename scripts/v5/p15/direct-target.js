@@ -10,6 +10,7 @@ const fs=require('node:fs');
 const crypto=require('node:crypto');
 const path=require('node:path');
 const stage=require('../../../docs/v5/environments/staging.json');
+const production=require('../../../docs/v5/environments/production.json');
 const SHA40=/^[a-f0-9]{40}$/;
 function refuse(why){throw Error('P15_TARGET_REFUSED: '+why);}
 function checkFile(file,{secret=false}={}){
@@ -61,7 +62,21 @@ function assertTarget(value,operation,env=process.env){
    env.P15_OWNER_CONFIRMS_NONPRODUCTION==='1'&&
    value.projectId===stage.projectId&&value.host===stage.host&&
    value.database===stage.database&&value.port===5432&&
-   value.user==='backup_reader'&&value.sslMode==='verify-full'
+   value.user==='backup_reader'&&value.sslMode==='verify-full',
+  'nonserving-production-source':operation==='backup'&&
+   value.environment==='production'&&
+   env.P15_OWNER_APPROVE_PRODUCTION_BACKUP==='1'&&
+   env.P15_OWNER_CONFIRMS_PRODUCTION==='1'&&
+   value.projectId===production.projectId&&value.host===production.host&&
+   value.database===production.database&&value.port===5432&&
+   value.user==='backup_reader'&&value.sslMode==='verify-full',
+  'nonproduction-restore':operation==='restore'&&
+   value.environment==='test'&&
+   env.V5_P15_DISPOSABLE==='1'&&env.V5_P15_QUARANTINE==='1'&&
+   value.host==='127.0.0.1'&&value.port===5432&&
+   /^v5_p15_restore_[a-z0-9_]{6,48}$/.test(value.database)&&
+   value.projectId==='disposable-restore-pg16'&&value.user==='postgres'&&
+   value.sslMode==='disable'
  };
  if(allowed[value.kind]!==true)refuse('production/unknown environment or unapproved backup/restore target');
  if(env.PGPASSWORD||env.PGHOSTADDR||env.PGSERVICE||env.PGOPTIONS||env.DATABASE_URL||
@@ -75,6 +90,12 @@ function assertTarget(value,operation,env=process.env){
   }
   checkFile(env.P15_PGPASSFILE,{secret:true});
  }
+ if(value.kind==='nonserving-production-source') {
+  if(!production.nonserving){
+   refuse('nonserving production configuration is no longer isolated');
+  }
+  checkFile(env.P15_PGPASSFILE,{secret:true});
+ }
  return Object.freeze({...value});
 }
 function buildPgEnv(target,env=process.env){
@@ -83,7 +104,9 @@ function buildPgEnv(target,env=process.env){
   PGHOST:target.host,PGPORT:String(target.port),PGDATABASE:target.database,
   PGUSER:target.user,PGSSLMODE:target.sslMode,PGCONNECT_TIMEOUT:'10',
   PGAPPNAME:'mega-v5-p15-backup-restore'};
- if(target.environment==='staging')pg.PGPASSFILE=env.P15_PGPASSFILE;
+ if(target.environment==='staging'||target.environment==='production') {
+  pg.PGPASSFILE=env.P15_PGPASSFILE;
+ }
  return pg;
 }
 function fingerprint(target){

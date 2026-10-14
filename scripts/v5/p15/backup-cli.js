@@ -115,12 +115,16 @@ async function backup({source,recipientPublicPem,outputDirectory,env=process.env
 }
 async function run(argv,env=process.env){
  if(argv.length!==7||argv[0]!=='--source'||argv[2]!=='--recipient'||
-  argv[4]!=='--out'||!['--confirm-owned-backup','--confirm-nonserving-staging-backup'].includes(argv[6])) {
+  argv[4]!=='--out'||!['--confirm-owned-backup','--confirm-nonserving-staging-backup',
+  '--confirm-nonserving-production-backup'].includes(argv[6])) {
   refuse('usage: --source TARGET.json --recipient PUBLIC.pem --out PRIVATE_DIR --confirm-owned-backup');
  }
  const source=readTarget(argv[1],'backup',env);
  if(source.kind==='nonserving-staging-source'&&argv[6]!=='--confirm-nonserving-staging-backup') {
   refuse('staging requires distinct owner confirmation');
+ }
+ if(source.kind==='nonserving-production-source'&&argv[6]!=='--confirm-nonserving-production-backup') {
+  refuse('production requires distinct owner confirmation');
  }
  if(source.kind==='disposable-source'&&argv[6]!=='--confirm-owned-backup') {
   refuse('owned disposable confirmation required');

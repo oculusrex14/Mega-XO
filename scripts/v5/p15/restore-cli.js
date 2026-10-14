@@ -31,10 +31,15 @@
  *
  *     `--data-only` skips the conflicting CREATE statements; the schema
  *     (including `learning` and its capture functions) is the chain's.
- *     `--disable-triggers` stops the capture CONSTRAINT TRIGGERs from firing
- *     mid-load, which is required because the restore is a loopback
- *     superuser target in the quarantined lab - the only place this kind of
- *     load is permitted. `--single-transaction` keeps the load atomic.
+ *     `--disable-triggers` emits `ALTER TABLE ... DISABLE TRIGGER ALL` around
+ *     each table's COPY, which is what makes the data load succeed at all: the
+ *     archive's COPY order is the TOC order, and it loads `economy.daily_progress`
+ *     before `identity.actors`, so the immediate (non-deferrable) foreign keys
+ *     would otherwise abort the load. It equally keeps the deferred capture
+ *     CONSTRAINT TRIGGERs from firing mid-load, so a production capture can
+ *     never mint `learning.captures` rows on the way in. It is permitted only on
+ *     this loopback superuser lab target. `--single-transaction` keeps the whole
+ *     load atomic, so the temporarily disabled state can never outlive the load.
  *
  *     restore-cli VERIFIES that pre-state (it never builds the schema itself):
  *     `meta.migrations` max id must equal the schema head of the pinned
@@ -136,14 +141,18 @@ function restoreArgs(db,{dataOnly=false}={}){
 // runtime.controls and economy.system_burns values are real durable state).
 const CHAIN_BOOTSTRAP_TABLES=Object.freeze([
  'meta.migrations','economy.system_burns','season.league_week','runtime.controls']);
-function pgClient(target){
+// A single connection seam shared by every pre-flight. It resolves to an
+// already-connected pg-compatible client, so each operation owns exactly one
+// connection and tests can substitute an in-process fake.
+async function pgClient(target){
  const {Client}=require('pg');
- return new Client({host:target.host,port:target.port,database:target.database,
+ const c=new Client({host:target.host,port:target.port,database:target.database,
   user:target.user,ssl:false,connectionTimeoutMillis:5000});
+ await c.connect();
+ return c;
 }
 async function ensureEmpty(target,{connect=pgClient}={}){
  const c=await connect(target);
- await c.connect();
  try{
   const r=await c.query(
    "SELECT count(*)::int AS n FROM pg_catalog.pg_class c "+

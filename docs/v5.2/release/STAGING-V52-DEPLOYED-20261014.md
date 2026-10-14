@@ -7,10 +7,10 @@ mine recorded honestly.
 
 | Field | Value |
 | --- | --- |
-| Source commit | `33e2426316c0df248789c8f5e7fa4ead2f661e6e` (V5.2) |
-| Bundle sha256 | `55bbdae0aa4d97bf7bd3d4d38de2b32b348120f9b33b3603c18b096bdf0e4af8` |
-| Files | 158 |
-| Bytes | 3 660 319 |
+| Source commit | `ad847dea17c8becc2ac4f3dbbd2654e05c379fe4` (V5.2, after merging Codex's guarded power UI) |
+| Bundle sha256 | `d9e281c01003bf61082692258297fbeea692790f55daeaa19f63c0ae0cbdae31` |
+| Files | 160 |
+| Bytes | 3 685 921 |
 | Served at | `https://command.tail95c48c.ts.net/` (tailnet-only; `--web-build /opt/mega-xo-v51-staging/p21-web`) |
 
 **Byte parity is proved, not assumed**: the manifest the server publishes
@@ -60,3 +60,16 @@ capture is not enabled. `withdraw` has not been exercised on this host. The `p21
 symlink in `/opt/mega-xo-v51-staging` now dangles because I removed its target during the failed
 deploy and did not recreate it; the real prior release remains intact under
 `codex-frontend-releases/5897…/web`.
+
+## Update — merged bundle redeployed (same day)
+
+The bundle was rebuilt and redeployed after merging Codex's `codex/v52-provider-release` (its
+guarded power UI and tests). Served identity now `d9e281c0…` / `ad847de` / 160 files, byte-identical
+to the local build. Both Main's adapter (`legacy-game/src/powers-ui.js`) and Codex's UI
+(`powers.js`) serve `200`.
+
+The deploy was repeated with the fixes learned from the first failure: a real copy (not a symlink)
+as the rollback source, no AppleDouble sidecars, explicit `ubuntu:ubuntu` ownership and 755/644
+modes, and a restart of `p21-staging-server.cjs`. That restart is mandatory and easy to forget: the
+server builds its file allowlist from the artifact manifest **at startup**, so a new artifact is
+invisible - and if the process dies, the origin returns `502` - until it is restarted.

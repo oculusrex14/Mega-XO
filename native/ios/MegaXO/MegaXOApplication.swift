@@ -46,6 +46,7 @@ final class MegaXOGameController: UIViewController, WKNavigationDelegate, WKUIDe
     private var clientRoot: URL?
     private var nativeNotifications: MegaLocalNotifications?
     private var themeBridge: MegaNativeThemeBridge?
+    private var lanBridge: MegaNativeLanBridge?
     private var identityBridge: MegaIOSIdentityBridge?
     private var apiBridge: MegaIOSApiBridge?
     private var nativeSession: MegaNativeSession?
@@ -95,6 +96,17 @@ final class MegaXOGameController: UIViewController, WKNavigationDelegate, WKUIDe
         configuration.userContentController.addUserScript(
             WKUserScript(source: MegaNativeThemeBridge.bootstrap,
                          injectionTime: .atDocumentStart, forMainFrameOnly: true))
+        // V5.1 same-Wi-Fi room transport. The synchronous half (start/stop/status/advertise) rides
+        // `window.prompt`, which the UI delegate below answers only for this bridge's prefix and
+        // only from the exact signed entry document; the Promise half (`browse`) rides the reply
+        // channel like every other typed handler. It carries no credential and no actor id.
+        let lanBridge = MegaNativeLanBridge(entry: entry)
+        self.lanBridge = lanBridge
+        configuration.userContentController.addScriptMessageHandler(
+            lanBridge, contentWorld: .page, name: "megaLanDiscovery")
+        configuration.userContentController.addUserScript(
+            WKUserScript(source: MegaNativeLanBridge.bootstrap,
+                         injectionTime: .atDocumentStart, forMainFrameOnly: true))
         // Real native Apple sign-in must use the registered bundle/entitlement.
         // Default is disabled until authorized App ID and P05 API handshake.
         let appleEnabled = (Bundle.main.object(forInfoDictionaryKey: "MegaAppleNativeEnabled")
@@ -141,6 +153,9 @@ final class MegaXOGameController: UIViewController, WKNavigationDelegate, WKUIDe
             webView.trailingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.trailingAnchor)
         ])
         game = webView
+        // The LAN bridge answers page requests on its own queues and hops to the main thread only
+        // for the one synchronous `MegaLanRoom.handle` call the frozen contract requires.
+        lanBridge.host = webView
         // WKNavigationDelegate only governs frame navigations, not fetch/img/script
         // subresources. Refuse all network URLs with a WebKit content-blocking
         // rule before loading any of the bundled HTML.
@@ -252,7 +267,14 @@ final class MegaXOGameController: UIViewController, WKNavigationDelegate, WKUIDe
     func webView(_ webView: WKWebView, runJavaScriptTextInputPanelWithPrompt prompt: String,
                  defaultText: String?, initiatedByFrame frame: WKFrameInfo,
                  completionHandler: @escaping (String?) -> Void) {
-        // The approved client currently does not require arbitrary JS prompts.
+        // The page's one synchronous page-to-host channel: `window.MegaLanSocket.start/stop/status`
+        // and `MegaLanDiscovery.advertise/stop` are synchronous in the frozen contract, so
+        // `src/lan/lan-host.js` cannot await them. Only this bridge's own prefix is answered, only
+        // from the exact signed entry document; every other prompt keeps the previous nil answer.
+        if let reply = lanBridge?.handlePrompt(prompt, frame: frame) {
+            completionHandler(reply)
+            return
+        }
         completionHandler(nil)
     }
 

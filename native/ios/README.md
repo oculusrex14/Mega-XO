@@ -29,9 +29,10 @@ The Xcode shell phase invokes the shared deterministic `scripts/v5/build-client.
 ## Current security/feature boundary
 
 - Only signed `file://` resources **inside MegaClient/** may navigate inside WKWebView; external HTTPS links open only from direct user navigation. Redirects, additional windows, untrusted iframes and JavaScript dialogs are restricted.
-- No arbitrary `WKScriptMessageHandler` is attached. Two typed, main-frame-only handlers exist and
+- No arbitrary `WKScriptMessageHandler` is attached. Three typed, main-frame-only handlers exist and
   each checks that the sender is the exact signed `bundle-index.html`:
-  `megaNativeNotifications` (opt-in local alerts) and — only when `MEGA_API_ORIGIN` is set —
+  `megaNativeNotifications` (opt-in local alerts), `megaLanDiscovery` (the same-Wi-Fi room
+  transport, synchronous half excluded — see below) and — only when `MEGA_API_ORIGIN` is set —
   `megaNativeApi`.
   The API handler exposes `session()`, `refresh()`, `signOut(allDevices)`,
   `signIn(provider,intent)` and `request(path, method, body, key)`. It is **not** a fetch proxy:
@@ -39,7 +40,8 @@ The Xcode shell phase invokes the shared deterministic `scripts/v5/build-client.
   access token lives in `MegaNativeSession`'s memory and the refresh credential in
   `MegaNativeSecretVault` (Keychain, this-device-only, non-synchronizing); a provider ID token is
   exchanged to the bearer inside Swift. The WebView's blanket `https?` content-block rule is
-  unchanged, so the page itself still has no network path.
+  unchanged, so the page itself has no direct network path; the one exception is the same-Wi-Fi room
+  transport below, which relays only `/api/party/*` to a literal private address.
 - `POST /api/account/native/{challenge,token,refresh,logout}` is the cookie-free credential path this
   client speaks. Those routes are declared in `packages/contracts/routes.js` and validated by
   `packages/contracts/access-dto.js`, but the live API does not mount them yet, so a real sign-in
@@ -49,6 +51,59 @@ The Xcode shell phase invokes the shared deterministic `scripts/v5/build-client.
 - The shared asset manifest must match Android's bundle hash for the same source revision.
 
 No store upload, real device execution, login, purchasing or notification delivery is claimed here.
+
+## Same-Wi-Fi LAN room transport (`MegaNativeLan.swift`)
+
+The private lobby's host can be the phone itself. `src/lan/lan-host.js`, `lan-room-http.js` and
+`lan-room-store.js` already ship in this bundle and own every room rule; this bridge owns only the two
+things JavaScript cannot have — a real TCP listener and a Bonjour record — and publishes exactly the
+frozen primitives those modules read at call time:
+
+```js
+window.MegaLanSocket.start(port)  -> {ok:true, port} | {ok:false, error:'BIND_FAILED'|'START_FAILED'}
+window.MegaLanSocket.stop()       -> {ok:true}
+window.MegaLanSocket.status()     -> {listening, port, origin}
+window.MegaLanDiscovery.advertise(name, port) -> {ok:true} | {ok:false, error}
+window.MegaLanDiscovery.stop()    -> {ok:true}
+window.MegaLanDiscovery.browse(timeoutMs) -> Promise<[{name, origin, rooms}]>
+```
+
+- `start`, `stop`, `status` and `advertise` are **synchronous** in that frozen contract, so
+  `lan-host.js` reads their results without awaiting anything. They are answered through the one
+  synchronous page-to-host channel a WebView has: `window.prompt`, which the UI delegate answers only
+  for this bridge's own prefix and only when the initiating frame is the main frame with the exact
+  signed `bundle-index.html`. Any other prompt keeps the previous `nil` answer. `browse` and the
+  page's own `/api/party/*` calls are asynchronous and use the `megaLanDiscovery` reply channel.
+- Transport is `Network.framework` (`NWListener` on a TCP port, one `NWConnection` per peer, a small
+  bounded set of live connections released on completion, watchdog, state failure and `stop()`) plus
+  Bonjour via `NWBrowser` and `NWListener.service` with service type `_megaxo-v5._tcp`, identical to
+  Android's NSD type. No third-party dependency and no package-manager entry.
+- `0.0.0.0` is bound at the requested port; if that port is taken the next two candidates are tried
+  and the port that actually bound is reported back. `status().origin` is this device's first private
+  IPv4 literal and that real port, e.g. `http://192.168.0.42:8081`.
+- Each accepted connection parses HTTP/1.1 itself: request line, headers lower-cased and capped at
+  8 KiB (431 past that), a `Content-Length` body capped at 16 KiB (413 past that), and a chunked
+  **request** body refused with 400. The parsed request is handed to the page as one JSON string and
+  `window.MegaLanRoom.handle` answers it on the main thread with a 2 s ceiling; a `null`/empty answer
+  is a 404 and a bare `{error}` is a 503 with that code. `Content-Type: application/json`,
+  `Cache-Control: no-store` and the CORS headers `lan-room-http.js` defines are always written, and
+  page-supplied response headers are passed through except this listener's own framing headers.
+- A response relayed from a remote host has `Transfer-Encoding: chunked` decoded and
+  `Content-Length` honoured before the body reaches the page; a body whose framing cannot be undone
+  becomes an honest `502 UPSTREAM_DECODE` rather than a truncated parse.
+- The page's own room traffic is carried on this listener: a `file://`-relative call while this
+  device hosts, or a literal private / link-local / loopback IPv4 origin on a `/api/party/` path.
+  Another scheme, path, port or a public address is refused in code. This is the only way the page
+  reaches a room, because the WebView's blanket `https?` content-block rule stays in force.
+- `Info.plist` adds `NSLocalNetworkUsageDescription` (one sentence) and
+  `NSBonjourServices = ["_megaxo-v5._tcp"]`. **No ATS key is added at all** — not
+  `NSAllowsArbitraryLoads` and not `NSAllowsLocalNetworking`: the LAN path is a raw
+  `Network.framework` TCP socket that App Transport Security never sees, and the file-origin page
+  makes no `URLSession` request.
+- No bearer token, request body or actor id is logged, echoed into an error or stored.
+
+This is transport only. It is not evidence that two physical phones have discovered each other, and
+no physical-device acceptance is claimed here.
 
 ## Compiled Apple provider adapter (not activated)
 

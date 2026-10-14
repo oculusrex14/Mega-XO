@@ -18,6 +18,14 @@
      https? content-block rule is unaffected: only the native shell may reach the API. -->
 <key>MegaApiOrigin</key><string>$(MEGA_API_ORIGIN)</string>
 <key>GADApplicationIdentifier</key><string>$(MEGA_ADMOB_APP_ID)</string>
+<!-- V5.1 same-Wi-Fi rooms. The signed app hosts a private Mega XOXO room on your Wi-Fi and looks
+     for the ones other phones are hosting, so iOS asks for local-network access the first time a
+     lobby actually opens. The Bonjour service type matches the Android NSD record exactly, which
+     is what lets the two platforms find each other. No ATS exception is declared: the LAN path is
+     a raw Network.framework TCP socket that App Transport Security never sees, and the WebView's
+     own https? content-block rule is unchanged. -->
+<key>NSLocalNetworkUsageDescription</key><string>Mega XOXO hosts and finds private Mega XOXO rooms on your Wi-Fi.</string>
+<key>NSBonjourServices</key><array><string>_megaxo-v5._tcp</string></array>
 <key>LSRequiresIPhoneOS</key><true/>
 <key>UIApplicationSceneManifest</key><dict>
  <key>UIApplicationSupportsMultipleScenes</key><false/>

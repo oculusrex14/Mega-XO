@@ -15,6 +15,7 @@
   EE1000000000000000000041 /* MegaNativeSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE1000000000000000000040 /* MegaNativeSession.swift */; };
   EE1000000000000000000043 /* MegaIOSApiBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE1000000000000000000042 /* MegaIOSApiBridge.swift */; };
   EE1000000000000000000044 /* MegaNativeTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE1000000000000000000045 /* MegaNativeTheme.swift */; };
+  EE1000000000000000000047 /* MegaNativeLan.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE1000000000000000000048 /* MegaNativeLan.swift */; };
   EE1000000000000000000030 /* GoogleMobileAds in Frameworks */ = {isa = PBXBuildFile; productRef = EE1000000000000000000034 /* GoogleMobileAds */; };
   EE1000000000000000000031 /* GoogleUserMessagingPlatform in Frameworks */ = {isa = PBXBuildFile; productRef = EE1000000000000000000035 /* GoogleUserMessagingPlatform */; };
   EE1000000000000000000006 /* MegaXO.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MegaXO.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -29,9 +30,10 @@
   EE1000000000000000000040 /* MegaNativeSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MegaNativeSession.swift; sourceTree = "<group>"; };
   EE1000000000000000000042 /* MegaIOSApiBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MegaIOSApiBridge.swift; sourceTree = "<group>"; };
   EE1000000000000000000045 /* MegaNativeTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MegaNativeTheme.swift; sourceTree = "<group>"; };
+  EE1000000000000000000048 /* MegaNativeLan.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MegaNativeLan.swift; sourceTree = "<group>"; };
   EE1000000000000000000008 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
   EE1000000000000000000003 = {isa = PBXGroup; children = (EE1000000000000000000004, EE1000000000000000000005); sourceTree = "<group>"; };
-  EE1000000000000000000004 /* MegaXO */ = {isa = PBXGroup; children = (EE1000000000000000000007, EE1000000000000000000019, EE1000000000000000000021, EE1000000000000000000023, EE1000000000000000000025, EE1000000000000000000027, EE1000000000000000000036, EE1000000000000000000038, EE1000000000000000000040, EE1000000000000000000042, EE1000000000000000000045, EE1000000000000000000008); path = MegaXO; sourceTree = "<group>"; };
+  EE1000000000000000000004 /* MegaXO */ = {isa = PBXGroup; children = (EE1000000000000000000007, EE1000000000000000000019, EE1000000000000000000021, EE1000000000000000000023, EE1000000000000000000025, EE1000000000000000000027, EE1000000000000000000036, EE1000000000000000000038, EE1000000000000000000040, EE1000000000000000000042, EE1000000000000000000045, EE1000000000000000000048, EE1000000000000000000008); path = MegaXO; sourceTree = "<group>"; };
   EE1000000000000000000005 /* Products */ = {isa = PBXGroup; children = (EE1000000000000000000006); name = Products; sourceTree = "<group>"; };
   EE1000000000000000000002 /* MegaXO */ = {
    isa = PBXNativeTarget;
@@ -65,7 +67,7 @@
   EE1000000000000000000033 /* GoogleUserMessagingPlatform package */ = {isa = XCRemoteSwiftPackageReference; repositoryURL = "https://github.com/googleads/swift-package-manager-google-user-messaging-platform.git"; requirement = { kind = exactVersion; version = "3.0.0"; }; };
   EE1000000000000000000034 /* GoogleMobileAds */ = {isa = XCSwiftPackageProductDependency; package = EE1000000000000000000032; productName = GoogleMobileAds; };
   EE1000000000000000000035 /* GoogleUserMessagingPlatform */ = {isa = XCSwiftPackageProductDependency; package = EE1000000000000000000033; productName = GoogleUserMessagingPlatform; };
-  EE1000000000000000000010 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (EE1000000000000000000009, EE1000000000000000000020, EE1000000000000000000022, EE1000000000000000000024, EE1000000000000000000026, EE1000000000000000000028, EE1000000000000000000037, EE1000000000000000000039, EE1000000000000000000041, EE1000000000000000000043, EE1000000000000000000044); runOnlyForDeploymentPostprocessing = 0; };
+  EE1000000000000000000010 /* Sources */ = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (EE1000000000000000000009, EE1000000000000000000020, EE1000000000000000000022, EE1000000000000000000024, EE1000000000000000000026, EE1000000000000000000028, EE1000000000000000000037, EE1000000000000000000039, EE1000000000000000000041, EE1000000000000000000043, EE1000000000000000000044, EE1000000000000000000047); runOnlyForDeploymentPostprocessing = 0; };
   EE1000000000000000000011 /* Resources */ = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
   EE1000000000000000000012 /* Bundle approved client */ = {
    isa = PBXShellScriptBuildPhase;

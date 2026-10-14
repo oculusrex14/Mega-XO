@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at_utc": "2026-10-14T15:02:40Z",
+  "updated_at_utc": "2026-10-14T16:17:32Z",
   "goal": "Deliver the V5 hybrid platform and real Android/iOS applications with shared permanent actor/assets, preserved approved game and retained browser compatibility; do not build the new website/browser product.",
   "source": {
     "goal": "AGENT-GOAL.md",
@@ -46,14 +46,14 @@
     "installed_script_revision_status": "FOUR_INSTALLED_FILES_HASH_MATCH_SELECTED_CHECKOUT"
   },
   "current": {
-    "phase": "P20",
-    "active_task": "V5-20-04",
-    "next_action": "P22 live go/no-go pending: independent physical device/store/provider acceptance, nonserving V5 production staging, final V4 backup and one-writer cutover window; V4/SQLite remains sole live authority. G22/G23/G24 are not accepted. P21 remains owner-deferred.",
+    "phase": "V5.2",
+    "active_task": "V5.2 integration",
+    "next_action": "V5.2 is the sole active integration/release/production branch and the repo default branch. DC00 day-one capture gate now returns RECEIPTS_READY_FOR_MAIN_REVIEW (privacyPurpose and retention receipts produced); P22 still BLOCKED on OPERATOR_EVIDENCE_PACKET_MISSING (native device acceptance, provider channels, the one-time E4/E5 window). Next: rebuild the V5 production image from the final V5.2 SHA, deploy the corrected capture journal/retention systemd units on the host, then the gated V4 freeze + reconciliation + single-writer cutover. V4.1.2/SQLite remains the sole live writer.",
     "checkout_branch_at_setup": "V4.1",
     "integration_branch": "V5.2",
     "integration_branch_exists_at_setup": false,
-    "last_v5_commit": "e8d049bf50862897f546e531def12715a36c670c",
-    "last_pushed_v5_commit": "e8d049bf50862897f546e531def12715a36c670c",
+    "last_v5_commit": "47cd5b4946ee8f2d719992a7aeb6b6292ec54714",
+    "last_pushed_v5_commit": "47cd5b4946ee8f2d719992a7aeb6b6292ec54714",
     "completed_task_ids": [
       "V5-00-01",
       "V5-00-02",
@@ -702,7 +702,7 @@
       }
     ],
     "website_workstream": {
-      "branch": "V5.1",
+      "branch": "V5.2",
       "authorized_on": "2026-10-11",
       "status": "TESTED_LOCAL",
       "code_commit": "8520f1ca32bdcc830bfab6830e2292732849eae8",
@@ -6417,5 +6417,40 @@
     "committed": false,
     "pushed": false
   },
-  "next_action": "P22 live go/no-go pending: independent physical device/store/provider acceptance, nonserving V5 production staging, final V4 backup and one-writer cutover window; V4/SQLite remains sole live authority. G22/G23/G24 are not accepted. P21 remains owner-deferred."
+  "next_action": "P22 live go/no-go pending: independent physical device/store/provider acceptance, nonserving V5 production staging, final V4 backup and one-writer cutover window; V4/SQLite remains sole live authority. G22/G23/G24 are not accepted. P21 remains owner-deferred.",
+  "v52": {
+    "integration_branch": "V5.2",
+    "default_branch": true,
+    "frozen_reference": "V5.1 @ 077bfbc (tag freeze/V5.1-final-20261014)",
+    "archived_main": "66b19db (tag archive/main-pre-retirement-20261014)",
+    "tracked_bytes": {
+      "before": 185188875,
+      "after": 84039481,
+      "files_before": 1777,
+      "files_after": 1500,
+      "deleted_bytes": 101234524
+    },
+    "full_suite": {
+      "tests": 1672,
+      "pass": 1364,
+      "fail": 1,
+      "skipped": 307,
+      "failures": [
+        "pre-existing opsz backup-freshness (503!=200)"
+      ]
+    },
+    "dc00_gate": "RECEIPTS_READY_FOR_MAIN_REVIEW (verified independently by Main at 47cd5b4)",
+    "p22_gate": "BLOCKED: OPERATOR_EVIDENCE_PACKET_MISSING",
+    "artifacts": {
+      "android_signed_aab": "online.megaxo.game v1/1.0.0 sha256 3e61f4d05842acd38bfa123186727fd350fbca95ecd629c4911e8ea7e6498933 (upload key, NOT uploaded)",
+      "ios_device_build": "signed with free provisioning D5TQJ76T44, installed on the owner iPhone 16 Pro; launch awaits the physical trust tap"
+    },
+    "not_claimed": [
+      "Play/App Store submission",
+      "production cutover",
+      "V5 serving",
+      "physical iPhone launch",
+      "provider ad channel approval"
+    ]
+  }
 }

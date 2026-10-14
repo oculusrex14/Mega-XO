@@ -440,8 +440,9 @@ async function runVerify(options) {
     if (options.out) {
       const resolved = path.resolve(options.out);
       if (fs.existsSync(resolved)) throw cliError('OUTPUT_EXISTS', resolved);
-      fs.writeFileSync(resolved, differences.map((d) => JSON.stringify(d)).join('\n') + (differences.length ? '\n' : ''), {mode: 0o600, flag: 'wx'});
-      outFile = {path: resolved, rows: differences.length, sha256: hashText(fs.readFileSync(resolved))};
+      const outText = differences.map((d) => JSON.stringify(d)).join('\n') + (differences.length ? '\n' : '');
+      fs.writeFileSync(resolved, outText, {mode: 0o600, flag: 'wx'});
+      outFile = {path: resolved, rows: differences.length, sha256: hashText(outText)};
     }
     const summary = typeof report === 'function' ? report(result) : {byCategory: result.byCategory, unexplainedCount: result.unexplainedCount, explainedCount: result.explainedCount};
     return {

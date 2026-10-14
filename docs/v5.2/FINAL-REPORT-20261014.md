@@ -135,7 +135,9 @@ workflow and retrievable from the archive tag.
 
 ## 10. What this work fixed beyond the plan
 
-**Seven** genuine defects were found and corrected, each with evidence:
+**Eleven** genuine defects were found and corrected, each with evidence. The first seven were found
+by driving the code; the last four by an independent review of the powers/consent code, which is why
+that review existed:
 
 1. An undeclared Gradle lint dependency that broke the Android **release** build.
 2. The always-failing privacy-journal job (atomic no-replace `link()` against a fixed filename) that
@@ -155,3 +157,23 @@ landed was also corrected — its intent preserved, its premise updated.
 
 **Nothing was fabricated.** Where a check could not run — live ad fill, physical iPhone launch, store
 submission, the cutover — it is stated as pending rather than passed.
+
+## 11. Independent review of the powers and consent code
+
+A separate reviewing subagent audited the newest, least-reviewed code (the pure powers module, the
+`window.MegaPowers` adapter, the `app.js` lifecycle change, the monetization changes, the consent and
+retention engine, and both native ad bridges) against the owner's binding contract. It returned five
+findings; all five were reproduced, fixed and covered:
+
+| # | Severity | Defect | Fix |
+| --- | --- | --- | --- |
+| 1 | P1 | The shipped native lane mapped a shown-then-skipped rewarded ad to `failed`, so the exposure allowance and the two-minute gap were never consumed — bypassing the frozen "a shown and skipped ad consumes exposure" rule on the primary path | Both native shims now let `showRewarded` resolve its honest `{earned, shown}` payload; every other op still rejects on `ok:false`. New test drives the real `window.MegaAds` lane |
+| 2 | P1 | `undooffer` could reopen the terminal sheet after the match was replaced, letting "Accept loss" record a bogus loss on a live match and suppress its real settlement | Every resume re-checks it is still the same pending-finalization match before touching state |
+| 3 | P2 | The aggregate 10/day ceiling was split across two disjoint stores; `noteRewardedShown`/`rewardedExposure` were dead code, so cosmetic rewarded ads consumed nothing | The cosmetic lane books shown/earned; the powers lane counts that shared ledger before offering. New test proves the tenth is allowed and the eleventh is refused before any ad |
+| 4 | P3 | `record_consent`'s upsert cleared `withdrawn_at` on any later re-record, erasing a recorded withdrawal | Fixed forward-only in migration 0053; clearing is reserved for a fresh affirmative grant |
+| 5 | P3 | `close_expired_exports` never retired export runs stuck in `'building'`, so a crashed exporter's retention was never enforced | 0053 includes `'building'` in the sweep; it leaks nothing because the run is already fenced past expiry |
+
+Fixes 4 and 5 could not go into 0052 — it was already applied in staging and production, and editing
+an applied migration changes its checksum and rewrites the ledger. Migration **0053** was authored
+instead, applied to **both** databases, and both verify at **53 checksums + catalog conformance** with
+0052's own checksum untouched, which is the proof the ledger was not rewritten.

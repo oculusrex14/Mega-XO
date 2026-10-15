@@ -1,0 +1,122 @@
+{
+  "schema_version": 1,
+  "generator": "scripts/v5/export-native-icons.py",
+  "source": {
+    "path": "assets/p21/logos/mega-xoxo-icon-only-logo.png",
+    "bytes": 1327731,
+    "sha256": "3b3f7042c5826fcd31ba831d8546fccb5aea840c2c821627b6def2f4ce360286"
+  },
+  "alpha_crop": [
+    0,
+    85,
+    1244,
+    1238
+  ],
+  "color_profile": {
+    "path": "assets/p21/icons/native/srgb.icc",
+    "sha256": "85ecec0f261679a58a1a9228e33abedc31c0ae56f3c4b3f783aaa791fa53f2ac",
+    "extracted_from": "assets/p21/icons/pwa-512.png embedded ICC profile"
+  },
+  "tool": {
+    "pillow": "12.3.0"
+  },
+  "outputs": [
+    {
+      "path": "native/ios/MegaXO/Assets.xcassets/AppIcon.appiconset/AppIcon-1024.png",
+      "bytes": 534706,
+      "sha256": "0f9c18db1b251e1e6c5d637518cde0960b78062faaf7c0b83e9962eede26265f",
+      "size": [
+        1024,
+        1024
+      ],
+      "mode": "RGB",
+      "emblem_fraction": 0.8,
+      "opaque_background": "#030917"
+    },
+    {
+      "path": "assets/p21/icons/native/play-store-512.png",
+      "bytes": 172967,
+      "sha256": "f031abe7cc55b5c778bd251236a422814cc470752d5e98755c457818fbc8b8c3",
+      "size": [
+        512,
+        512
+      ],
+      "mode": "RGBA",
+      "emblem_fraction": 0.8,
+      "opaque_background": "#030917"
+    },
+    {
+      "path": "native/android/app/src/main/res/drawable-mdpi/ic_launcher_foreground.png",
+      "bytes": 6777,
+      "sha256": "fabec84d093338bafb2248fa5c64a258759cf864df06e704ae2012192fe6975d",
+      "size": [
+        108,
+        108
+      ],
+      "mode": "RGBA",
+      "emblem_fraction": 0.55,
+      "opaque_background": null,
+      "max_alpha_radius_dp": 30.041638
+    },
+    {
+      "path": "native/android/app/src/main/res/drawable-hdpi/ic_launcher_foreground.png",
+      "bytes": 12928,
+      "sha256": "ce8375c3f8d34ac5a68733af5f2cf576674d485559daa0a0a2411c404dcba29e",
+      "size": [
+        162,
+        162
+      ],
+      "mode": "RGBA",
+      "emblem_fraction": 0.55,
+      "opaque_background": null,
+      "max_alpha_radius_dp": 29.996296
+    },
+    {
+      "path": "native/android/app/src/main/res/drawable-xhdpi/ic_launcher_foreground.png",
+      "bytes": 20896,
+      "sha256": "66060dfb3af75ec78428a286787a2a3eaaff5b852be74511e71f41283f8653c8",
+      "size": [
+        216,
+        216
+      ],
+      "mode": "RGBA",
+      "emblem_fraction": 0.55,
+      "opaque_background": null,
+      "max_alpha_radius_dp": 30.135112
+    },
+    {
+      "path": "native/android/app/src/main/res/drawable-xxhdpi/ic_launcher_foreground.png",
+      "bytes": 41810,
+      "sha256": "b1cff82044bfaf43c2c2fe280364b9ee80d892bc843b48c0db0a7cf2c6ff2433",
+      "size": [
+        324,
+        324
+      ],
+      "mode": "RGBA",
+      "emblem_fraction": 0.55,
+      "opaque_background": null,
+      "max_alpha_radius_dp": 30.281091
+    },
+    {
+      "path": "native/android/app/src/main/res/drawable-xxxhdpi/ic_launcher_foreground.png",
+      "bytes": 69621,
+      "sha256": "03490c1ebbb3498c05e75c926f37098bdbd43554db0e990199dff82794dd8f97",
+      "size": [
+        432,
+        432
+      ],
+      "mode": "RGBA",
+      "emblem_fraction": 0.55,
+      "opaque_background": null,
+      "max_alpha_radius_dp": 31.839932
+    }
+  ],
+  "android_geometry": {
+    "layer_dp": 108,
+    "safe_circle_diameter_dp": 66,
+    "alpha_threshold": 0,
+    "prebaked_mask": false
+  },
+  "rights": "Deterministic exports of the owner-approved emblem; no new artwork or theme entitlement.",
+  "acceptance": "Source packaging only; signed archive/store/device appearance requires separate verification."
+}

@@ -1,0 +1,1026 @@
+TAP version 13
+# Subtest: rewind removes exactly the human/Bot pair and rebuilds by canonical replay
+ok 1 - rewind removes exactly the human/Bot pair and rebuilds by canonical replay
+  ---
+  duration_ms: 5.450625
+  type: 'test'
+  ...
+# Subtest: the removed Bot reply is not removed as a whole Mini Board
+ok 2 - the removed Bot reply is not removed as a whole Mini Board
+  ---
+  duration_ms: 0.76825
+  type: 'test'
+  ...
+# Subtest: legal routing and the free route are restored
+ok 3 - legal routing and the free route are restored
+  ---
+  duration_ms: 0.990667
+  type: 'test'
+  ...
+# Subtest: a Mini Board claimed by the removed human move is restored unclaimed
+ok 4 - a Mini Board claimed by the removed human move is restored unclaimed
+  ---
+  duration_ms: 3.972208
+  type: 'test'
+  ...
+# Subtest: a first-move Bot rematch keeps the unmatched opening ply and the X/O turn order
+ok 5 - a first-move Bot rematch keeps the unmatched opening ply and the X/O turn order
+  ---
+  duration_ms: 0.815875
+  type: 'test'
+  ...
+# Subtest: the eight-ply threshold guards only the first press; the second charge survives shrink
+ok 6 - the eight-ply threshold guards only the first press; the second charge survives shrink
+  ---
+  duration_ms: 1.113334
+  type: 'test'
+  ...
+# Subtest: practice, online, ranked, queued, party, staked and in-flight Bot contexts refuse a rewind
+ok 7 - practice, online, ranked, queued, party, staked and in-flight Bot contexts refuse a rewind
+  ---
+  duration_ms: 1.541583
+  type: 'test'
+  ...
+# Subtest: an application match descriptor works directly; opts always wins
+ok 8 - an application match descriptor works directly; opts always wins
+  ---
+  duration_ms: 3.387375
+  type: 'test'
+  ...
+# Subtest: Bot loss, human win, draw and timeout are decided by the engine result, not the caller
+ok 9 - Bot loss, human win, draw and timeout are decided by the engine result, not the caller
+  ---
+  duration_ms: 6.7235
+  type: 'test'
+  ...
+# Subtest: a tampered ply list is refused by canonical replay instead of replayed anyway
+ok 10 - a tampered ply list is refused by canonical replay instead of replayed anyway
+  ---
+  duration_ms: 0.290625
+  type: 'test'
+  ...
+# Subtest: immutable history keeps every branch with a monotone stateVersion
+ok 11 - immutable history keeps every branch with a monotone stateVersion
+  ---
+  duration_ms: 1.982333
+  type: 'test'
+  ...
+# Subtest: a stale Worker revision cannot be recorded over a rewound state
+ok 12 - a stale Worker revision cannot be recorded over a rewound state
+  ---
+  duration_ms: 0.351792
+  type: 'test'
+  ...
+# Subtest: a history whose prefix disagrees with the snapshot is refused
+ok 13 - a history whose prefix disagrees with the snapshot is refused
+  ---
+  duration_ms: 0.19775
+  type: 'test'
+  ...
+# Subtest: a sweep of random games: every accepted rewind is a canonical human-turn prefix
+ok 14 - a sweep of random games: every accepted rewind is a canonical human-turn prefix
+  ---
+  duration_ms: 122.150416
+  type: 'test'
+  ...
+# Subtest: exports stay pure and requirable without a browser or a clock
+ok 15 - exports stay pure and requirable without a browser or a clock
+  ---
+  duration_ms: 8.091834
+  type: 'test'
+  ...
+# Subtest: bank capacity is one available entitlement per type with a separate reserved bucket
+ok 16 - bank capacity is one available entitlement per type with a separate reserved bucket
+  ---
+  duration_ms: 3.75725
+  type: 'test'
+  ...
+# Subtest: reserve, commit and release cannot double-consume and never expire silently
+ok 17 - reserve, commit and release cannot double-consume and never expire silently
+  ---
+  duration_ms: 3.593792
+  type: 'test'
+  ...
+# Subtest: an earned reward that cannot be banked stays owed instead of vanishing
+ok 18 - an earned reward that cannot be banked stays owed instead of vanishing
+  ---
+  duration_ms: 4.056
+  type: 'test'
+  ...
+# Subtest: Bot Undo is one two-charge package with two presses, one per player decision
+ok 19 - Bot Undo is one two-charge package with two presses, one per player decision
+  ---
+  duration_ms: 0.425833
+  type: 'test'
+  ...
+# Subtest: Casual Undo counts three initiations per player and one applied Undo match-wide
+ok 20 - Casual Undo counts three initiations per player and one applied Undo match-wide
+  ---
+  duration_ms: 0.69
+  type: 'test'
+  ...
+# Subtest: the third initiation is reachable while an initiation cap remains
+ok 21 - the third initiation is reachable while an initiation cap remains
+  ---
+  duration_ms: 0.088917
+  type: 'test'
+  ...
+# Subtest: hints deliver twice within three activations and a blocked hint is never revealed early
+ok 22 - hints deliver twice within three activations and a blocked hint is never revealed early
+  ---
+  duration_ms: 0.544583
+  type: 'test'
+  ...
+# Subtest: Tactical Block succeeds twice within three activations and stays separate from Undo Block
+ok 23 - Tactical Block succeeds twice within three activations and stays separate from Undo Block
+  ---
+  duration_ms: 0.254375
+  type: 'test'
+  ...
+# Subtest: one aggregate ceiling of ten rewarded presentations per UTC day across all kinds
+ok 24 - one aggregate ceiling of ten rewarded presentations per UTC day across all kinds
+  ---
+  duration_ms: 4.55975
+  type: 'test'
+  ...
+# Subtest: the ceiling rolls over at UTC midnight and the two-minute gap still applies
+ok 25 - the ceiling rolls over at UTC midnight and the two-minute gap still applies
+  ---
+  duration_ms: 0.638625
+  type: 'test'
+  ...
+# Subtest: no-fill and failure consume nothing; a shown-then-skipped ad consumes exposure and grants no item
+ok 26 - no-fill and failure consume nothing; a shown-then-skipped ad consumes exposure and grants no item
+  ---
+  duration_ms: 0.32475
+  type: 'test'
+  ...
+# Subtest: a retried provider callback cannot double-grant or consume a second slot
+ok 27 - a retried provider callback cannot double-grant or consume a second slot
+  ---
+  duration_ms: 0.177458
+  type: 'test'
+  ...
+# Subtest: a full bank refuses the offer before any ad is shown
+ok 28 - a full bank refuses the offer before any ad is shown
+  ---
+  duration_ms: 2.689417
+  type: 'test'
+  ...
+# Subtest: powers are refused in ranked, direct/staked, tournament, party, LAN and practice modes
+ok 29 - powers are refused in ranked, direct/staked, tournament, party, LAN and practice modes
+  ---
+  duration_ms: 0.451667
+  type: 'test'
+  ...
+# Subtest: pacing state and inventory are pure: no argument is mutated and no timestamp expires
+ok 30 - pacing state and inventory are pure: no argument is mutated and no timestamp expires
+  ---
+  duration_ms: 0.443208
+  type: 'test'
+  ...
+# Subtest: Tactical Power is shipped while the two counter kinds stay refused
+ok 31 - Tactical Power is shipped while the two counter kinds stay refused
+  ---
+  duration_ms: 17.367042
+  type: 'test'
+  ...
+# Subtest: hint eligibility is pure, mode-gated and never available outside a Bot match
+ok 32 - hint eligibility is pure, mode-gated and never available outside a Bot match
+  ---
+  duration_ms: 3.063833
+  type: 'test'
+  ...
+# Subtest: the Expert engine is the only source of the recommendation and it is always a legal square
+ok 33 - the Expert engine is the only source of the recommendation and it is always a legal square
+  ---
+  duration_ms: 392.06825
+  type: 'test'
+  ...
+# Subtest: a hinted square comes from the engine, is legal, and caps refuse with the module reason
+ok 34 - a hinted square comes from the engine, is legal, and caps refuse with the module reason
+  ---
+  duration_ms: 106.538167
+  type: 'test'
+  ...
+# Subtest: the recommendation is re-validated and a bad engine answer is refused rather than shown
+ok 35 - the recommendation is re-validated and a bad engine answer is refused rather than shown
+  ---
+  duration_ms: 0.23175
+  type: 'test'
+  ...
+# Subtest: a stale revision refuses the hint and a refused commit preserves the earned item
+ok 36 - a stale revision refuses the hint and a refused commit preserves the earned item
+  ---
+  duration_ms: 0.159125
+  type: 'test'
+  ...
+# Subtest: the Tactical Power ad promise is what the native lane settles, and a skipped ad grants nothing
+ok 37 - the Tactical Power ad promise is what the native lane settles, and a skipped ad grants nothing
+  ---
+  duration_ms: 0.5205
+  type: 'test'
+  ...
+# Subtest: the Bot Undo control is visible in the match control zone with its charges, not buried in the sheet
+ok 38 - the Bot Undo control is visible in the match control zone with its charges, not buried in the sheet
+  ---
+  duration_ms: 15.87525
+  type: 'test'
+  ...
+# Subtest: a Tutorial practice and an online match never render a rewarded control
+ok 39 - a Tutorial practice and an online match never render a rewarded control
+  ---
+  duration_ms: 2.100875
+  type: 'test'
+  ...
+# Subtest: no charge banked: the control offers the ad and states exactly what it earns before it starts
+ok 40 - no charge banked: the control offers the ad and states exactly what it earns before it starts
+  ---
+  duration_ms: 4.030583
+  type: 'test'
+  ...
+# Subtest: a declined ad and a shown-then-skipped ad both change the board by nothing
+ok 41 - a declined ad and a shown-then-skipped ad both change the board by nothing
+  ---
+  duration_ms: 2.429042
+  type: 'test'
+  ...
+# Subtest: Tactical Power highlights an engine-legal square and still leaves every legal square playable
+ok 42 - Tactical Power highlights an engine-legal square and still leaves every legal square playable
+  ---
+  duration_ms: 250.734167
+  type: 'test'
+  ...
+# Subtest: an exhausted Undo package stays disabled, and the stats sheet keeps its own entry point
+ok 43 - an exhausted Undo package stays disabled, and the stats sheet keeps its own entry point
+  ---
+  duration_ms: 4.077125
+  type: 'test'
+  ...
+# Subtest: the two counter kinds are disclosed as unavailable and are never offered as controls
+ok 44 - the two counter kinds are disclosed as unavailable and are never offered as controls
+  ---
+  duration_ms: 2.482
+  type: 'test'
+  ...
+# Subtest: the kill switch off removes every control and leaves observable behaviour as it is today
+ok 45 - the kill switch off removes every control and leaves observable behaviour as it is today
+  ---
+  duration_ms: 1.756292
+  type: 'test'
+  ...
+# Subtest: the localStorage kill switch is a real off switch and the host flag can disable the lane
+ok 46 - the localStorage kill switch is a real off switch and the host flag can disable the lane
+  ---
+  duration_ms: 2.099334
+  type: 'test'
+  ...
+# Subtest: window.MegaPowers frozen contract matches exact names and shapes
+ok 47 - window.MegaPowers frozen contract matches exact names and shapes
+  ---
+  duration_ms: 4.996875
+  type: 'test'
+  ...
+# Subtest: eligibility is pure and side-effect free, refusing denied modes
+ok 48 - eligibility is pure and side-effect free, refusing denied modes
+  ---
+  duration_ms: 2.686
+  type: 'test'
+  ...
+# Subtest: the 8-ply first-use threshold and second charge surviving shrink
+ok 49 - the 8-ply first-use threshold and second charge surviving shrink
+  ---
+  duration_ms: 0.467
+  type: 'test'
+  ...
+# Subtest: request fails closed without native bridge, inventory or quota, and handles shown-not-earned
+ok 50 - request fails closed without native bridge, inventory or quota, and handles shown-not-earned
+  ---
+  duration_ms: 1.018833
+  type: 'test'
+  ...
+# Subtest: two earned presses per package and revision fencing in apply
+ok 51 - two earned presses per package and revision fencing in apply
+  ---
+  duration_ms: 1.088666
+  type: 'test'
+  ...
+# Subtest: aggregate 10-per-UTC-day ceiling across mixed kinds and UTC rollover
+ok 52 - aggregate 10-per-UTC-day ceiling across mixed kinds and UTC rollover
+  ---
+  duration_ms: 1.065042
+  type: 'test'
+  ...
+# Subtest: kill switch defaults to OFF and leaves observable behaviour unchanged
+ok 53 - kill switch defaults to OFF and leaves observable behaviour unchanged
+  ---
+  duration_ms: 0.129583
+  type: 'test'
+  ...
+# Subtest: exactly one D.complete per real result and kill switch preserves immediate finish when off
+ok 54 - exactly one D.complete per real result and kill switch preserves immediate finish when off
+  ---
+  duration_ms: 81.565084
+  type: 'test'
+  ...
+# Subtest: a pending Bot loss survives a simulated restart and completes D.complete exactly once on accept
+ok 55 - a pending Bot loss survives a simulated restart and completes D.complete exactly once on accept
+  ---
+  duration_ms: 13.756583
+  type: 'test'
+  ...
+# Subtest: undo after a Bot terminal loss returns to human turn and does NOT award the discarded result
+ok 56 - undo after a Bot terminal loss returns to human turn and does NOT award the discarded result
+  ---
+  duration_ms: 8.921708
+  type: 'test'
+  ...
+# Subtest: stale Worker reply arriving after an undo is rejected by revision fencing
+ok 57 - stale Worker reply arriving after an undo is rejected by revision fencing
+  ---
+  duration_ms: 3.602083
+  type: 'test'
+  ...
+# Subtest: the shipped window.MegaAds lane counts a shown-then-skipped ad as exposure and grants nothing
+ok 58 - the shipped window.MegaAds lane counts a shown-then-skipped ad as exposure and grants nothing
+  ---
+  duration_ms: 0.351541
+  type: 'test'
+  ...
+# Subtest: the aggregate rewarded ceiling is shared with the cosmetic lane, not a separate powers ledger
+ok 59 - the aggregate rewarded ceiling is shared with the cosmetic lane, not a separate powers ledger
+  ---
+  duration_ms: 0.290417
+  type: 'test'
+  ...
+# Subtest: builds an allowlisted bundle with manifest digests and no server/authority leakage
+ok 60 - builds an allowlisted bundle with manifest digests and no server/authority leakage
+  ---
+  duration_ms: 53.731791
+  type: 'test'
+  ...
+# Subtest: is deterministic: identical inputs produce an identical bundle hash
+ok 61 - is deterministic: identical inputs produce an identical bundle hash
+  ---
+  duration_ms: 17.698959
+  type: 'test'
+  ...
+# Subtest: bundle hash changes when one approved asset changes
+ok 62 - bundle hash changes when one approved asset changes
+  ---
+  duration_ms: 10.676417
+  type: 'test'
+  ...
+# Subtest: refuses authority.js, server, tests, deploy, docs and repository metadata sources
+ok 63 - refuses authority.js, server, tests, deploy, docs and repository metadata sources
+  ---
+  duration_ms: 19.875333
+  type: 'test'
+  ...
+# Subtest: refuses traversing and absolute sources and destinations
+ok 64 - refuses traversing and absolute sources and destinations
+  ---
+  duration_ms: 10.458041
+  type: 'test'
+  ...
+# Subtest: refuses symlinked sources, symlinked vendor entries and symlink outputs
+ok 65 - refuses symlinked sources, symlinked vendor entries and symlink outputs
+  ---
+  duration_ms: 17.539209
+  type: 'test'
+  ...
+# Subtest: refuses a non-empty output directory that this generator did not write
+ok 66 - refuses a non-empty output directory that this generator did not write
+  ---
+  duration_ms: 32.592292
+  type: 'test'
+  ...
+# Subtest: refuses to write the bundle into protected repository locations
+ok 67 - refuses to write the bundle into protected repository locations
+  ---
+  duration_ms: 1.587084
+  type: 'test'
+  ...
+# Subtest: refuses a font stylesheet that references an unvendored font resource
+ok 68 - refuses a font stylesheet that references an unvendored font resource
+  ---
+  duration_ms: 4.463209
+  type: 'test'
+  ...
+# Subtest: refuses html that keeps an unapproved dependency URL
+ok 69 - refuses html that keeps an unapproved dependency URL
+  ---
+  duration_ms: 4.573
+  type: 'test'
+  ...
+# Subtest: dependencyUrls ignores XML namespaces but reports real remote references
+ok 70 - dependencyUrls ignores XML namespaces but reports real remote references
+  ---
+  duration_ms: 0.378333
+  type: 'test'
+  ...
+# Subtest: a declared canonical page link resolves to its bundled page without weakening resource guards
+ok 71 - a declared canonical page link resolves to its bundled page without weakening resource guards
+  ---
+  duration_ms: 23.545208
+  type: 'test'
+  ...
+# Subtest: the repository root is not a permitted output and reads no mutable state
+ok 72 - the repository root is not a permitted output and reads no mutable state
+  ---
+  duration_ms: 0.10625
+  type: 'test'
+  ...
+# Subtest: invalid rebuild inputs preserve the previous verified client bundle
+ok 73 - invalid rebuild inputs preserve the previous verified client bundle
+  ---
+  duration_ms: 9.197083
+  type: 'test'
+  ...
+# Subtest: refuses to overwrite a bundle with unexpected, changed or linked contents
+ok 74 - refuses to overwrite a bundle with unexpected, changed or linked contents
+  ---
+  duration_ms: 41.571958
+  type: 'test'
+  ...
+# Subtest: a valid generated bundle can be rebuilt in place
+ok 75 - a valid generated bundle can be rebuilt in place
+  ---
+  duration_ms: 14.731125
+  type: 'test'
+  ...
+# Subtest: Android and iOS hosts derive their assets from exactly one frozen allowlist
+ok 76 - Android and iOS hosts derive their assets from exactly one frozen allowlist
+  ---
+  duration_ms: 128.425042
+  type: 'test'
+  ...
+# Subtest: Android enforces local HTTPS app assets, no insecure file access and no injected bridge
+ok 77 - Android enforces local HTTPS app assets, no insecure file access and no injected bridge
+  ---
+  duration_ms: 0.636458
+  type: 'test'
+  ...
+# Subtest: both flavors grant the LAN transport permissions while the advertising id stays removed
+ok 78 - both flavors grant the LAN transport permissions while the advertising id stays removed
+  ---
+  duration_ms: 0.522583
+  type: 'test'
+  ...
+# Subtest: iOS restricts the loaded signed file bundle and does not expose a bridge
+ok 79 - iOS restricts the loaded signed file bundle and does not expose a bridge
+  ---
+  duration_ms: 0.485
+  type: 'test'
+  ...
+# Subtest: native host version IDs are explicit nonproduction placeholders and offline UI is preserved
+ok 80 - native host version IDs are explicit nonproduction placeholders and offline UI is preserved
+  ---
+  duration_ms: 0.306166
+  type: 'test'
+  ...
+# Subtest: device refresh credentials use nonexportable Android keys and ThisDeviceOnly iOS Keychain items
+ok 81 - device refresh credentials use nonexportable Android keys and ThisDeviceOnly iOS Keychain items
+  ---
+  duration_ms: 0.879208
+  type: 'test'
+  ...
+# Subtest: Android bundle staging respects the generator protected-path refusal without disabling it
+ok 82 - Android bundle staging respects the generator protected-path refusal without disabling it
+  ---
+  duration_ms: 0.099792
+  type: 'test'
+  ...
+# Subtest: real Google and Apple provider helpers are compiled, not stubbed or exported to web content
+ok 83 - real Google and Apple provider helpers are compiled, not stubbed or exported to web content
+  ---
+  duration_ms: 0.395375
+  type: 'test'
+  ...
+# Subtest: offline Android host grants the LAN transport permission but keeps a narrow, private-only cleartext policy
+ok 84 - offline Android host grants the LAN transport permission but keeps a narrow, private-only cleartext policy
+  ---
+  duration_ms: 0.584083
+  type: 'test'
+  ...
+# Subtest: iOS blocks HTTP(S) subresources before loading signed local HTML
+ok 85 - iOS blocks HTTP(S) subresources before loading signed local HTML
+  ---
+  duration_ms: 0.137958
+  type: 'test'
+  ...
+# Subtest: StoreKit2 implements backend-verified four-product evidence and consumable-safe restore
+ok 86 - StoreKit2 implements backend-verified four-product evidence and consumable-safe restore
+  ---
+  duration_ms: 0.340333
+  type: 'test'
+  ...
+# Subtest: Android Play Billing 9 uses obfuscated actor binding and delegates all delivery/finalization
+ok 87 - Android Play Billing 9 uses obfuscated actor binding and delegates all delivery/finalization
+  ---
+  duration_ms: 0.304542
+  type: 'test'
+  ...
+# Subtest: native transport is bearer-only, host/path bound and refuses redirects
+ok 88 - native transport is bearer-only, host/path bound and refuses redirects
+  ---
+  duration_ms: 0.4335
+  type: 'test'
+  ...
+# Subtest: Android UMP and Next-Gen ads never grant rewards or bypass SDK consent
+ok 89 - Android UMP and Next-Gen ads never grant rewards or bypass SDK consent
+  ---
+  duration_ms: 1.7555
+  type: 'test'
+  ...
+# Subtest: iOS UMP and GoogleMobileAds SDKs are pinned and enforce SSV-only rewards
+ok 90 - iOS UMP and GoogleMobileAds SDKs are pinned and enforce SSV-only rewards
+  ---
+  duration_ms: 0.569334
+  type: 'test'
+  ...
+# Subtest: native CI includes actual emulator/simulator launch smoke separate from compiler checks
+ok 91 - native CI includes actual emulator/simulator launch smoke separate from compiler checks
+  ---
+  duration_ms: 1.146542
+  type: 'test'
+  ...
+# Subtest: native API transports reject redirects, non-success statuses and unsafe path bytes
+ok 92 - native API transports reject redirects, non-success statuses and unsafe path bytes
+  ---
+  duration_ms: 0.135209
+  type: 'test'
+  ...
+# Subtest: iOS optional local notifications are exact-main-frame only and opt-in
+ok 93 - iOS optional local notifications are exact-main-frame only and opt-in
+  ---
+  duration_ms: 0.184417
+  type: 'test'
+  ...
+# Subtest: Android opt-in local alerts require verified main-frame HTTPS app-assets origin
+ok 94 - Android opt-in local alerts require verified main-frame HTTPS app-assets origin
+  ---
+  duration_ms: 0.309459
+  type: 'test'
+  ...
+# Subtest: native manifest parity verifier rejects cross-platform drift and forbidden payload
+ok 95 - native manifest parity verifier rejects cross-platform drift and forbidden payload
+  ---
+  duration_ms: 1.767375
+  type: 'test'
+  ...
+# Subtest: Android native Google login bridge requires explicit registered server audience and trusted frame
+ok 96 - Android native Google login bridge requires explicit registered server audience and trusted frame
+  ---
+  duration_ms: 0.345083
+  type: 'test'
+  ...
+# Subtest: iOS Apple sign-in adapter is disabled by default and only callable from signed entry
+ok 97 - iOS Apple sign-in adapter is disabled by default and only callable from signed entry
+  ---
+  duration_ms: 0.324125
+  type: 'test'
+  ...
+# Subtest: Play Billing completes pending and mismatched-account callbacks without granting currency
+ok 98 - Play Billing completes pending and mismatched-account callbacks without granting currency
+  ---
+  duration_ms: 0.15425
+  type: 'test'
+  ...
+# Subtest: StoreKit finish safely tolerates already-finalized delivery without a second grant
+ok 99 - StoreKit finish safely tolerates already-finalized delivery without a second grant
+  ---
+  duration_ms: 0.09325
+  type: 'test'
+  ...
+# Subtest: iOS offline launch does not assert/crash if Keychain is unavailable
+ok 100 - iOS offline launch does not assert/crash if Keychain is unavailable
+  ---
+  duration_ms: 0.054459
+  type: 'test'
+  ...
+# Subtest: iOS simulator smoke rejects SpringBoard screenshots after app launch
+ok 101 - iOS simulator smoke rejects SpringBoard screenshots after app launch
+  ---
+  duration_ms: 0.259292
+  type: 'test'
+  ...
+# Subtest: Android emulator must assert signed JS UI readiness, not merely a running activity
+ok 102 - Android emulator must assert signed JS UI readiness, not merely a running activity
+  ---
+  duration_ms: 0.185416
+  type: 'test'
+  ...
+# Subtest: Android emulator also exercises real guest-to-bot gameplay using debug-only CDP
+ok 103 - Android emulator also exercises real guest-to-bot gameplay using debug-only CDP
+  ---
+  duration_ms: 0.24625
+  type: 'test'
+  ...
+# Subtest: Android release requires owner package/version and secret-backed signing, without affecting debug
+ok 104 - Android release requires owner package/version and secret-backed signing, without affecting debug
+  ---
+  duration_ms: 0.067542
+  type: 'test'
+  ...
+# Subtest: native signing scripts fail closed without owner identities or credentials
+ok 105 - native signing scripts fail closed without owner identities or credentials
+  ---
+  duration_ms: 48.967125
+  type: 'test'
+  ...
+# Subtest: iOS release archive uses portable macOS codesign verification and direct executable hash
+ok 106 - iOS release archive uses portable macOS codesign verification and direct executable hash
+  ---
+  duration_ms: 0.117333
+  type: 'test'
+  ...
+# Subtest: P21.03 practice showcase is a reproducible legal rules fixture with centre routing
+ok 107 - P21.03 practice showcase is a reproducible legal rules fixture with centre routing
+  ---
+  duration_ms: 2.327166
+  type: 'test'
+  ...
+# Subtest: P21.05 local practice enforces required board and preserves state after an illegal move
+ok 108 - P21.05 local practice enforces required board and preserves state after an illegal move
+  ---
+  duration_ms: 2.502375
+  type: 'test'
+  ...
+# Subtest: P21.05 preview reset replays the fixture and fresh practice clears every move
+ok 109 - P21.05 preview reset replays the fixture and fresh practice clears every move
+  ---
+  duration_ms: 2.91175
+  type: 'test'
+  ...
+# Subtest: P21.03 accessible board uses 81 real cells and truthful practice labels
+ok 110 - P21.03 accessible board uses 81 real cells and truthful practice labels
+  ---
+  duration_ms: 1.570584
+  type: 'test'
+  ...
+# Subtest: P21.05 bot cannot mutate a destroyed board mount
+ok 111 - P21.05 bot cannot mutate a destroyed board mount
+  ---
+  duration_ms: 322.586833
+  type: 'test'
+  ...
+# Subtest: P21.05 keyboard navigation crosses small boards in visual row order
+ok 112 - P21.05 keyboard navigation crosses small boards in visual row order
+  ---
+  duration_ms: 0.537791
+  type: 'test'
+  ...
+# Subtest: P21.05 theme switch changes presentation without resetting a mounted move
+ok 113 - P21.05 theme switch changes presentation without resetting a mounted move
+  ---
+  duration_ms: 0.449458
+  type: 'test'
+  ...
+# Subtest: P21.05 game route stays inside the website, sanitizes settings and preserves approved mode choices
+ok 114 - P21.05 game route stays inside the website, sanitizes settings and preserves approved mode choices
+  ---
+  duration_ms: 1.056708
+  type: 'test'
+  ...
+# Subtest: P21.05 browser Neon defaults apply to local and server boards while original themes stay selectable
+ok 115 - P21.05 browser Neon defaults apply to local and server boards while original themes stay selectable
+  ---
+  duration_ms: 0.608875
+  type: 'test'
+  ...
+# Subtest: P21.05 explicitly selected same-screen mode follows both turns without scheduling Bot
+ok 116 - P21.05 explicitly selected same-screen mode follows both turns without scheduling Bot
+  ---
+  duration_ms: 302.333041
+  type: 'test'
+  ...
+# Subtest: P21.05 Bot response uses the retained legal route and a fresh game fences its queued response
+ok 117 - P21.05 Bot response uses the retained legal route and a fresh game fences its queued response
+  ---
+  duration_ms: 606.451917
+  type: 'test'
+  ...
+# Subtest: P21.05 server session rejects stale history, changed identities and invalid board shapes
+ok 118 - P21.05 server session rejects stale history, changed identities and invalid board shapes
+  ---
+  duration_ms: 0.744792
+  type: 'test'
+  ...
+# Subtest: P21.05 online moves remain server-owned, serialize and use the authoritative move revision
+ok 119 - P21.05 online moves remain server-owned, serialize and use the authoritative move revision
+  ---
+  duration_ms: 1.40025
+  type: 'test'
+  ...
+# Subtest: P21.05 a failed online move retries its original idempotency key without optimistic mutation
+ok 120 - P21.05 a failed online move retries its original idempotency key without optimistic mutation
+  ---
+  duration_ms: 1.045166
+  type: 'test'
+  ...
+# Subtest: P21.05 auth-required online state offers sign in and never retries as a service outage
+ok 121 - P21.05 auth-required online state offers sign in and never retries as a service outage
+  ---
+  duration_ms: 0.816375
+  type: 'test'
+  ...
+# Subtest: P21.05 online callbacks cannot mutate a destroyed board and server names are escaped
+ok 122 - P21.05 online callbacks cannot mutate a destroyed board and server names are escaped
+  ---
+  duration_ms: 0.840167
+  type: 'test'
+  ...
+# Subtest: P21.05 resignation waits for a server result, supports cancelled confirmation, and excludes spectators
+ok 123 - P21.05 resignation waits for a server result, supports cancelled confirmation, and excludes spectators
+  ---
+  duration_ms: 1.326375
+  type: 'test'
+  ...
+# Subtest: the website shell and the retained-game entry resolve to the bundle
+ok 124 - the website shell and the retained-game entry resolve to the bundle
+  ---
+  duration_ms: 1.739125
+  type: 'test'
+  ...
+# Subtest: generated modules, art and fonts are served
+ok 125 - generated modules, art and fonts are served
+  ---
+  duration_ms: 0.264084
+  type: 'test'
+  ...
+# Subtest: a missing sub-resource is a real 404, never the HTML SPA fallback
+ok 126 - a missing sub-resource is a real 404, never the HTML SPA fallback
+  ---
+  duration_ms: 0.296834
+  type: 'test'
+  ...
+# Subtest: an unknown page route gets the branded 404 document, not a 200 shell
+ok 127 - an unknown page route gets the branded 404 document, not a 200 shell
+  ---
+  duration_ms: 0.075875
+  type: 'test'
+  ...
+# Subtest: a route not present in the bundle is not rewritten to a source file
+ok 128 - a route not present in the bundle is not rewritten to a source file
+  ---
+  duration_ms: 0.06
+  type: 'test'
+  ...
+# (node:8861) ExperimentalWarning: localStorage is not available because --localstorage-file was not provided.
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: P21-I01 sidebar starts its own tutorial and cannot reset a retired board
+ok 129 - P21-I01 sidebar starts its own tutorial and cannot reset a retired board
+  ---
+  duration_ms: 9.920791
+  type: 'test'
+  ...
+# Subtest: P21-I01 exact six halfmoves claim mini0 and preserve live free route without reset
+ok 130 - P21-I01 exact six halfmoves claim mini0 and preserve live free route without reset
+  ---
+  duration_ms: 1.228834
+  type: 'test'
+  ...
+# Subtest: P21 guidance locks bot mode and Beginner across settings, and finishes on the same board
+ok 131 - P21 guidance locks bot mode and Beginner across settings, and finishes on the same board
+  ---
+  duration_ms: 3.856084
+  type: 'test'
+  ...
+# Subtest: P21-I01 wrong taps are blocked during guided steps and state does not mutate
+ok 132 - P21-I01 wrong taps are blocked during guided steps and state does not mutate
+  ---
+  duration_ms: 0.462334
+  type: 'test'
+  ...
+# Subtest: P21-I01 skip guidance ends tutorial immediately, keeps live moves, and does not reset
+ok 133 - P21-I01 skip guidance ends tutorial immediately, keeps live moves, and does not reset
+  ---
+  duration_ms: 0.501417
+  type: 'test'
+  ...
+# Subtest: P21-I01 hint and replay explanation are strictly read-only and do not mutate state
+ok 134 - P21-I01 hint and replay explanation are strictly read-only and do not mutate state
+  ---
+  duration_ms: 0.27225
+  type: 'test'
+  ...
+# Subtest: P21-I01 canonical save and restore survives reload without committing extra moves
+ok 135 - P21-I01 canonical save and restore survives reload without committing extra moves
+  ---
+  duration_ms: 0.201833
+  type: 'test'
+  ...
+# Subtest: P21-I01 practice completion and guided play have zero economy or reward mutations
+ok 136 - P21-I01 practice completion and guided play have zero economy or reward mutations
+  ---
+  duration_ms: 0.167417
+  type: 'test'
+  ...
+# Subtest: P21-I02 Worker executes bot calculations for all five difficulty tiers
+ok 137 - P21-I02 Worker executes bot calculations for all five difficulty tiers
+  ---
+  duration_ms: 1.995917
+  type: 'test'
+  ...
+# Subtest: P21-I02 cancellation, gameId and revision fences prevent stale commits and duplicate turns
+ok 138 - P21-I02 cancellation, gameId and revision fences prevent stale commits and duplicate turns
+  ---
+  duration_ms: 1.006625
+  type: 'test'
+  ...
+# Subtest: P21-I02 hidden boards fence late Worker replies and resume the same human move
+ok 139 - P21-I02 hidden boards fence late Worker replies and resume the same human move
+  ---
+  duration_ms: 9.931125
+  type: 'test'
+  ...
+# Subtest: P21-I02 teardown destroys Worker and drops pending turns cleanly
+ok 140 - P21-I02 teardown destroys Worker and drops pending turns cleanly
+  ---
+  duration_ms: 353.247417
+  type: 'test'
+  ...
+# Subtest: P21-I02 labeled measured fallback activates when Worker is absent without server authority
+ok 141 - P21-I02 labeled measured fallback activates when Worker is absent without server authority
+  ---
+  duration_ms: 26.496959
+  type: 'test'
+  ...
+# Subtest: P21-I01 five themes stay selectable and theme switch does not reset game moves
+ok 142 - P21-I01 five themes stay selectable and theme switch does not reset game moves
+  ---
+  duration_ms: 0.301917
+  type: 'test'
+  ...
+# Subtest: P21 match recipe pins the flag across settings and visibility, then resets at a fresh match
+ok 143 - P21 match recipe pins the flag across settings and visibility, then resets at a fresh match
+  ---
+  duration_ms: 0.78475
+  type: 'test'
+  ...
+# Subtest: P21 guided skip and restore preserve unpaid legacy recipe and live moves under experimental flag
+ok 144 - P21 guided skip and restore preserve unpaid legacy recipe and live moves under experimental flag
+  ---
+  duration_ms: 0.644375
+  type: 'test'
+  ...
+# Subtest: P21 explicit recovery repeats canonical seeded legacy selection using the pinned recipe
+ok 145 - P21 explicit recovery repeats canonical seeded legacy selection using the pinned recipe
+  ---
+  duration_ms: 0.104833
+  type: 'test'
+  ...
+# Subtest: P21 old guided saves replay safely as legacy even when the experimental flag is enabled
+ok 146 - P21 old guided saves replay safely as legacy even when the experimental flag is enabled
+  ---
+  duration_ms: 0.204667
+  type: 'test'
+  ...
+# Subtest: game workspace keeps scores and move totals authoritative; home preview retains its HUD
+ok 147 - game workspace keeps scores and move totals authoritative; home preview retains its HUD
+  ---
+  duration_ms: 2.562458
+  type: 'test'
+  ...
+# Subtest: sharing an online game includes no private match or actor identifiers
+ok 148 - sharing an online game includes no private match or actor identifiers
+  ---
+  duration_ms: 0.666
+  type: 'test'
+  ...
+# Subtest: match markup separates its power bar from the three permanent match controls
+ok 149 - match markup separates its power bar from the three permanent match controls
+  ---
+  duration_ms: 1.146583
+  type: 'test'
+  ...
+# Subtest: Undo stays visible before eight plies with a truthful disabled state and zero earned inventory
+ok 150 - Undo stays visible before eight plies with a truthful disabled state and zero earned inventory
+  ---
+  duration_ms: 40.324916
+  type: 'test'
+  ...
+# Subtest: power badges follow actual match charges and banked hints, and Undo still rewinds through the existing action
+ok 151 - power badges follow actual match charges and banked hints, and Undo still rewinds through the existing action
+  ---
+  duration_ms: 12.355959
+  type: 'test'
+  ...
+# Subtest: spent Undo remains visible and disabled instead of inventing a new package
+ok 152 - spent Undo remains visible and disabled instead of inventing a new package
+  ---
+  duration_ms: 7.530834
+  type: 'test'
+  ...
+# Subtest: both counter cards are honestly unavailable while their explanation is keyboard reachable
+ok 153 - both counter cards are honestly unavailable while their explanation is keyboard reachable
+  ---
+  duration_ms: 4.490875
+  type: 'test'
+  ...
+# Subtest: Tactical Hint uses the existing authority and marks its active suggestion without forcing a move
+ok 154 - Tactical Hint uses the existing authority and marks its active suggestion without forcing a move
+  ---
+  duration_ms: 186.157459
+  type: 'test'
+  ...
+# Subtest: tutorial practice and an explicit feature off switch retain the no-powers contract
+ok 155 - tutorial practice and an explicit feature off switch retain the no-powers contract
+  ---
+  duration_ms: 4.542625
+  type: 'test'
+  ...
+# Subtest: V52-PW-01 missing and malformed contracts close all actions without inventing counts
+ok 156 - V52-PW-01 missing and malformed contracts close all actions without inventing counts
+  ---
+  duration_ms: 6.476083
+  type: 'test'
+  ...
+# Subtest: V52-PW-02 default host gate keeps a valid reader read-only
+ok 157 - V52-PW-02 default host gate keeps a valid reader read-only
+  ---
+  duration_ms: 0.446458
+  type: 'test'
+  ...
+# Subtest: V52-PW-03 forbidden modes hide the panel and feature-off eligibility never invokes writes
+ok 158 - V52-PW-03 forbidden modes hide the panel and feature-off eligibility never invokes writes
+  ---
+  duration_ms: 1.66575
+  type: 'test'
+  ...
+# Subtest: V52-PW-04 reported inventory, two charge positions, caps and counterable vocabulary are truthful
+ok 159 - V52-PW-04 reported inventory, two charge positions, caps and counterable vocabulary are truthful
+  ---
+  duration_ms: 0.610583
+  type: 'test'
+  ...
+# Subtest: V52-PW-05 daily cap, cooldown, reservation and existing charge block another rewarded request
+ok 160 - V52-PW-05 daily cap, cooldown, reservation and existing charge block another rewarded request
+  ---
+  duration_ms: 0.327041
+  type: 'test'
+  ...
+# Subtest: V52-PW-06 pending reward disables repeated actions and earning never grants or applies locally
+ok 161 - V52-PW-06 pending reward disables repeated actions and earning never grants or applies locally
+  ---
+  duration_ms: 0.305166
+  type: 'test'
+  ...
+# Subtest: V52-PW-07 late actor, match, revision, mode, settings, feature and adapter results are fenced
+ok 162 - V52-PW-07 late actor, match, revision, mode, settings, feature and adapter results are fenced
+  ---
+  duration_ms: 1.419167
+  type: 'test'
+  ...
+# Subtest: V52-PW-08 destroy prevents late reward rendering, retries or further reads
+ok 163 - V52-PW-08 destroy prevents late reward rendering, retries or further reads
+  ---
+  duration_ms: 1.8715
+  type: 'test'
+  ...
+# Subtest: V52-PW-08b unverified actor/context retirement clears inventory even before a refresh
+ok 164 - V52-PW-08b unverified actor/context retirement clears inventory even before a refresh
+  ---
+  duration_ms: 0.223708
+  type: 'test'
+  ...
+# Subtest: V52-PW-09 no-fill, skipped, pending and reconnect remain distinct without changing bank counts
+ok 165 - V52-PW-09 no-fill, skipped, pending and reconnect remain distinct without changing bank counts
+  ---
+  duration_ms: 0.409167
+  type: 'test'
+  ...
+# Subtest: V52-PW-10 incomplete reward/apply responses never imply successful use or reveal unapproved advice
+ok 166 - V52-PW-10 incomplete reward/apply responses never imply successful use or reveal unapproved advice
+  ---
+  duration_ms: 0.355666
+  type: 'test'
+  ...
+# Subtest: V52-PW-11 apply forwards the exact host context and leaves bank/match authority untouched
+ok 167 - V52-PW-11 apply forwards the exact host context and leaves bank/match authority untouched
+  ---
+  duration_ms: 1.286125
+  type: 'test'
+  ...
+# Subtest: V52-PW-11b Tactical advice is discarded throughout pending and blocked fixture responses
+ok 168 - V52-PW-11b Tactical advice is discarded throughout pending and blocked fixture responses
+  ---
+  duration_ms: 0.5655
+  type: 'test'
+  ...
+# Subtest: V52-PW-12 practice mounting remains read-only and preserves preview, tutorial and online exclusions
+ok 169 - V52-PW-12 practice mounting remains read-only and preserves preview, tutorial and online exclusions
+  ---
+  duration_ms: 4.723958
+  type: 'test'
+  ...
+1..169
+# tests 169
+# suites 0
+# pass 169
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 1375.985458

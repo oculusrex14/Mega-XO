@@ -18,7 +18,7 @@
    - Captured final post-stop SQLite WAL checkpoint & archive:
      - Path: `/opt/mega-xo/cutover-archive/v4-final-fenced-20261015T040452Z.tar.gz`
      - SHA-256: `f6c5fbea57dd0ee3538abd1f70845011809d31568173fef2983041471242e90d`
-     - Size: 362,443 bytes (8554 total rows, 2 actors, 0 uncommitted WAL changes).
+     - Size: 362,443 bytes (8570 total rows across 35 tables; 2 real actors; verified off-box with `PRAGMA integrity_check=ok`).
 
 2. **Arm V5 Authority Service on Host:**
    - Database: Neon PostgreSQL `blue-sun-85454968/br-dawn-dawn-b8f9n7zq/mega_xo_v5_production` (55 migrations applied).

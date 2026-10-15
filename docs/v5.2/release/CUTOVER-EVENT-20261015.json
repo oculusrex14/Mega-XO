@@ -16,6 +16,8 @@
     "RECOVERING_WITH_POSTGRES"
   ],
   "source_sha": "bb659df3951f251c6b1aee09d94943714b7e9b0d",
+  "web_bundle_source_commit": "c172aa57f49688c74bbb8761f785fc383a919b2b",
+  "web_bundle_sha256": "d4b4c3e73e46c43914513cebb179e40377bdb275556db95b625768ac2ebac4ed",
   "source_snapshot_hash": "f6c5fbea57dd0ee3538abd1f70845011809d31568173fef2983041471242e90d",
   "target_id": "blue-sun-85454968/br-dawn-dawn-b8f9n7zq/mega_xo_v5_production",
   "active_writer_authority": "PostgreSQL mega_xo_v5_production (authority epoch v5:1792037113917:153a8543d555682d)",
@@ -42,5 +44,5 @@
   ],
   "rollback_class": "FORWARD_FIX_ONLY (SQLite authority terminated, PostgreSQL is durable single authority)",
   "operator_or_agent_reference": "local implementation agent via owner authorization ('Cutover is explicitly authorised once you deem it ready, no issues from my side')",
-  "notes": "Full production cutover executed on 2026-10-15. V4 SQLite writer stopped and permanently fenced. Post-stop archive sha256 f6c5fbea57dd0ee3538abd1f70845011809d31568173fef2983041471242e90d preserved on host. Production database mega_xo_v5_production with 55 migrations, 2 imported actors, zero unexplained discrepancies. V5 authority service running under systemd on host port 8080. Caddy edge reverse proxy active. R2 automated backups running every 5 minutes."
+  "notes": "Full production cutover executed on 2026-10-15. V4 SQLite writer stopped and permanently fenced (container restart disabled, Exited 0). Post-stop archive sha256 f6c5fbea57dd0ee3538abd1f70845011809d31568173fef2983041471242e90d preserved on the Oracle host and pulled off-box to the owner Mac with an identical hash and PRAGMA integrity_check=ok (35 tables, 8570 rows). Production database mega_xo_v5_production carries 55 applied migrations and the E2-imported actors; the E2-to-fence delta is fully accounted (see V4-FENCE-RECONCILIATION-20261015.md), and the durable state(id=1,json) is byte-identical except one empty 2026-10-15 snapshot marker. V5 authority service runs under systemd on 172.18.0.1:8080 with the Caddy edge reverse-proxying to it; /, /livez, /readyz, /health and /opsz answer 200 publicly. R2 encrypted backups run on a 5-minute cadence with readback verification. Not claimed: any real rewarded ad was served, and the V5 support-telemetry history is ~19 events shorter than V4's final window."
 }

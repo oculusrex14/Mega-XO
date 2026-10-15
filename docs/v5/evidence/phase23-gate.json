@@ -10,7 +10,7 @@
   ],
   "case_ids": [],
   "recorded_at_utc": "2026-10-10T07:00:00.000Z",
-  "status": "REHEARSAL_VERIFIED_LIVE_AUTHORITY_REMAINS_V4_SQLITE",
+  "status": "REHEARSAL_VERIFIED_LIVE_AUTHORITY_NOW_POSTGRES_V5_G23_NOT_ACCEPTED",
   "source_state": {
     "base_sha": "76165cf0fc3779789b31689a83a8c8695d96ca2b",
     "target_branch": "V5-platform",
@@ -39,5 +39,8 @@
     }
   },
   "acceptance_state": "G23_OPEN_LIVE_V4_RETIRED_FALSE",
-  "proof_scope": "SYNTHETIC_V4_RETIREMENT_REHEARSAL_ONLY"
+  "proof_scope": "SYNTHETIC_V4_RETIREMENT_REHEARSAL_ONLY",
+  "superseded_note": "This gate was recorded 2026-10-10, when the live authority was still V4 SQLite. It is SUPERSEDED by the executed cutover on 2026-10-15: the V4 writer is fenced (container stopped with RestartPolicy=no, database bind read-only, file mtime frozen at 2026-10-15T04:04:52Z and no -wal) and V5 on Neon PostgreSQL is the single mutating authority under epoch v5:1792037113917:153a8543d555682d. G23 is still NOT accepted because the P23 retirement-readiness tool requires the G22 gate in the ledger, and G22 awaits the owner's go/no-go. The rehearsal points below remain accurate as rehearsals.",
+  "cutover_record": "docs/v5.2/release/CUTOVER-EVENT-20261015.json",
+  "single_authority_record": "docs/v5.2/release/SINGLE-AUTHORITY-FENCE-20261015.md"
 }

@@ -114,3 +114,21 @@ Loopback preview of that bundle at `http://127.0.0.1:4195`:
   profile is created."
 - `/settings` returns 404; no `data-offline-action` control renders on any checked page.
 - `/store` renders the updated Crown-pack description without unverified provider claims.
+
+## CI harness fixes and privacy link — 19a9051
+
+`19a9051` fixes the two local QA harnesses that the batch itself had made stale, and removes the
+last `/settings` navigation reference from the retained privacy document:
+
+- `browser-qa.cjs`: the Guided Practice panel contains a nested keyboard-controls disclosure, so
+  the guide locator now targets the outer `> summary` directly (Playwright strict mode had two
+  descendant summaries).
+- `accessibility-qa.cjs`: the workspace game setup renders the mode select as `data-game-mode`,
+  so the harness accepts either attribute.
+- `public/privacy.html`: the storage paragraph no longer promises a Settings opt-in and now says
+  a previously saved offline copy can be removed through browser storage controls.
+
+Local verification at `19a9051`, bundle `ded37fee15ad…`: presentation QA **934 checks, 0
+failures** across desktop, tablet, mobile390 and mobile320; accessibility QA **129 checks, 0
+violations**; 344 unit/contract tests pass. Loopback preview serves the corrected privacy text
+and 404s `/settings`.

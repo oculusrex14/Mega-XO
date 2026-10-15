@@ -254,14 +254,52 @@ async function handleAuthCallback(context, req, res, provider, url) {
     return true;
   }
 
-  // 3. Valid parameters: in full OAuth exchange this consumes attempt and sets session cookie.
-  // In the foundation contract, acknowledge successful parameter validation and redirect.
-  res.writeHead(303, {
+  // 3. A well-formed callback is NOT a successful sign-in. The real exchange consumes a one-use,
+  //    state/nonce-bound attempt, trades the provider code over TLS, verifies the identity and rotates
+  //    the session. That requires a composed provider client, and this deployment entry composes one
+  //    only when the account service exposes the web lane; without it, reporting `linked: true` would be
+  //    a false success that the client would believe. Fail closed instead, with a distinct reason the
+  //    client can surface honestly.
+  if (typeof context?.completeWebSignIn !== 'function') {
+    const errorReason = 'PROVIDER_SIGNIN_UNAVAILABLE';
+    const location = `/?authError=${encodeURIComponent(errorReason)}`;
+    res.writeHead(303, {
+      Location: location,
+      'Content-Type': 'application/json; charset=utf-8',
+      'Cache-Control': 'no-store',
+      'Referrer-Policy': 'no-referrer',
+    });
+    res.end(JSON.stringify({ error: errorReason, location }));
+    return true;
+  }
+
+  // 3b. A composed web lane exists: perform the real exchange and only then report success.
+  let outcome;
+  try {
+    outcome = await context.completeWebSignIn({ provider, state, code, cookie: req.headers?.cookie || null });
+  } catch (error) {
+    outcome = { ok: false, reason: (error && error.code) || 'SIGNIN_FAILED' };
+  }
+  if (!outcome || outcome.ok !== true) {
+    const errorReason = (outcome && outcome.reason) || 'SIGNIN_FAILED';
+    const location = `/?authError=${encodeURIComponent(errorReason)}`;
+    res.writeHead(303, {
+      Location: location,
+      'Content-Type': 'application/json; charset=utf-8',
+      'Cache-Control': 'no-store',
+      'Referrer-Policy': 'no-referrer',
+    });
+    res.end(JSON.stringify({ error: errorReason, location }));
+    return true;
+  }
+  const headers = {
     Location: '/?account=linked',
     'Content-Type': 'application/json; charset=utf-8',
     'Cache-Control': 'no-store',
     'Referrer-Policy': 'no-referrer',
-  });
+  };
+  if (typeof outcome.setCookie === 'string' && outcome.setCookie) headers['Set-Cookie'] = outcome.setCookie;
+  res.writeHead(303, headers);
   res.end(JSON.stringify({ ok: true, linked: true, provider, location: '/?account=linked' }));
   return true;
 }

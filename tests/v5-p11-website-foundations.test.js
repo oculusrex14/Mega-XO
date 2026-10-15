@@ -380,17 +380,51 @@ test('4. Callback contract: enforces OAuth callback parameter contracts for Goog
     'Redirect location preserves provider error reason'
   );
 
-  // 4.5 Valid parameters: code and state supplied redirect to linked completion
-  const validCallback = await httpRequest(
+  // 4.5 A well-formed callback with NO composed web lane must NOT report a false success: the
+  //     deployment cannot complete the exchange, so it redirects with an honest reason.
+  const noLane = await httpRequest(
     harness.url,
     '/auth/callback/google?code=valid_test_code_456&state=valid_state_abc'
   );
-  assert.equal(validCallback.status, 303, 'Valid callback redirects 303');
+  assert.equal(noLane.status, 303, 'Callback without a composed provider lane redirects 303');
   assert.match(
-    validCallback.headers['location'],
-    /account=linked/,
-    'Redirect location signals successful linking'
+    noLane.headers['location'],
+    /authError=PROVIDER_SIGNIN_UNAVAILABLE/,
+    'The unavailable reason is surfaced instead of a false linked success'
   );
+  assert.doesNotMatch(noLane.headers['location'], /account=linked/);
+
+  // 4.6 With a composed web lane the real exchange runs, and only a successful outcome links.
+  const withLane = await setupApiHarness(db, {
+    completeWebSignIn: async ({ provider, state, code }) => {
+      assert.equal(provider, 'google');
+      assert.equal(state, 'valid_state_abc');
+      assert.equal(code, 'valid_test_code_456');
+      return { ok: true, setCookie: '__Host-mega_session=rotated; Path=/; Secure; HttpOnly' };
+    },
+  });
+  t.after(async () => { await withLane.close(); });
+  const linked = await httpRequest(
+    withLane.url,
+    '/auth/callback/google?code=valid_test_code_456&state=valid_state_abc'
+  );
+  assert.equal(linked.status, 303, 'A completed exchange redirects 303');
+  assert.match(linked.headers['location'], /account=linked/, 'Only a real success links');
+  assert.match(String(linked.headers['set-cookie'] || ''), /__Host-mega_session=rotated/,
+    'The rotated session cookie from the exchange is forwarded');
+
+  // 4.7 A failed exchange must not link either.
+  const failing = await setupApiHarness(db, {
+    completeWebSignIn: async () => ({ ok: false, reason: 'INVALID_AUTH_STATE' }),
+  });
+  t.after(async () => { await failing.close(); });
+  const denied = await httpRequest(
+    failing.url,
+    '/auth/callback/google?code=consumed&state=replayed'
+  );
+  assert.equal(denied.status, 303);
+  assert.match(denied.headers['location'], /authError=INVALID_AUTH_STATE/);
+  assert.doesNotMatch(denied.headers['location'], /account=linked/);
 });
 
 /* ==========================================================================

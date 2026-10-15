@@ -103,8 +103,8 @@ async function main() {
       });
       page.on('pageerror', error => report.requests.javascript_errors.push(String(error.message).slice(0, 500)));
     };
-    // Compare rendered component styles with the homepage rather than just
-    // asserting the theme ID: practice overrides must not remove Neon effects.
+    // The owner redesigned /game while retaining home. Compare the shared Neon palette and
+    // luminous player marks; frame geometry and turn-panel treatment intentionally differ.
     const neonStyle = page => page.locator('[data-gb-stage]').evaluate(stage => {
       const tokens = ['--gb-surface', '--gb-raised', '--gb-ink', '--gb-muted', '--gb-line', '--gb-mini-border', '--gb-x', '--gb-o', '--gb-route', '--gb-focus', '--gb-radius', '--gb-font'];
       const properties = ['backgroundColor', 'backgroundImage', 'borderTopColor', 'boxShadow', 'borderRadius', 'color', 'filter'];
@@ -192,6 +192,7 @@ async function main() {
         if (route === '/') {
           homeNeon = await neonStyle(page);
           check('P21-BROWSER-BOARD', await page.locator('.gb-cell').count() === 81, { route, viewport: viewport.name });
+          check('P21-BROWSER-HOME-NO-GAME-WORKSPACE', await page.locator('.gb-dashboard').count() === 0, { route, viewport: viewport.name });
           await snapshot(page, 'home-' + viewport.name, false);
           await snapshot(page, 'home-' + viewport.name + '-full');
         } else {
@@ -201,7 +202,12 @@ async function main() {
             const themes = await page.locator('[data-gb-setting="theme"] option').evaluateAll(options => options.map(option => option.value));
             check('P21-BROWSER-NEON-DEFAULT', selected === 'cinematic' && themes.join(',') === 'cinematic,vector,midnight,paperclub,afterhours', { route, viewport: viewport.name, selected, themes });
             const gameNeon = await neonStyle(page);
-            check('P21-BROWSER-NEON-HOME-PARITY', JSON.stringify(homeNeon) === JSON.stringify(gameNeon), { route, viewport: viewport.name, homeNeon, gameNeon });
+            const samePalette = JSON.stringify(homeNeon.tokens) === JSON.stringify(gameNeon.tokens);
+            const markSelectors = ['.gb-avatar--x .gb-mark', '.gb-avatar--o .gb-mark'];
+            const luminousMarks = markSelectors.every(selector => gameNeon.components[selector].filter !== 'none' && gameNeon.components[selector].color === homeNeon.components[selector].color);
+            const activeBoardGlow = gameNeon.components['.gb-mini--active'].boxShadow !== 'none';
+            check('P21-BROWSER-NEON-PALETTE-AND-MARKS', samePalette && luminousMarks && activeBoardGlow, { route, viewport: viewport.name, samePalette, luminousMarks, activeBoardGlow, homeNeon, gameNeon });
+            check('P21-BROWSER-GAME-WORKSPACE', await page.locator('.gb-dashboard').count() === 1 && await page.locator('.gb-game-setup').count() === 1 && await page.locator('.gb-game-players').count() === 1 && await page.locator('.gb-game-right .gb-help-panel').count() === 1, { route, viewport: viewport.name });
             if (viewport.name !== 'desktop') await snapshot(page, 'game-neon-' + viewport.name);
           }
           if (viewport.name === 'desktop') await snapshot(page, 'page-' + route.slice(1).replaceAll('/', '-'));
@@ -263,6 +269,9 @@ async function main() {
       await safePage.setViewportSize(fixture.viewport);
       await safePage.evaluate(insets => {
         for (const [side, value] of Object.entries(insets)) document.documentElement.style.setProperty('--mx-web-safe-' + side, value + 'px');
+        // The preceding legal move may scroll the taller game workspace. Measure the normal-flow
+        // header at document origin; a scrolled-away header is not a cutout-padding failure.
+        window.scrollTo(0, 0);
       }, fixture.insets);
       const geometry = await safePage.evaluate(() => {
         const rect = element => {

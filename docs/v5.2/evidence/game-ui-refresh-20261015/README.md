@@ -92,3 +92,20 @@ still fail, ack/delta must keep the visible value exactly zero, committed moves 
 one/two in both contexts, and all authentication/idempotency/reconnect/settlement checks remain.
 The affected board/QA unit checks pass **24/24**. Browser rerun results belong to the PR checks;
 local unit parsing does not claim a realtime browser pass.
+
+## Browser presentation and native probe follow-up
+
+At `f8e4a23`, dedicated realtime browser acceptance passes in Chromium, Firefox and WebKit.
+The presentation job reported six failures: four assertions expected the redesigned `/game` to
+have identical component geometry to the untouched homepage, and two measured the normal-flow
+header after a legal move had scrolled the page. QA now checks the shared Neon palette, glowing
+marks and active-board glow, explicitly checks that only `/game` has the new workspace, and resets
+scroll before measuring synthetic cutout insets. Header/board padding checks remain intact. The
+full website unit suite still passes **238/238**. No CSS was changed to hide these test failures.
+
+Android CI now launches the actual app and records `READY game initialized`, but its subsequent
+gameplay probe failed with a generic debugger error. The probe now reports an allowlisted error
+code and gameplay phase, clears completed deadline timers, and rejects pending work on socket
+close. All seven gameplay checkpoints and the original 7-second/6-second deadlines remain.
+Pure mocked protocol/timer tests plus existing launcher/native checks pass **45/45**. These do not
+establish Android gameplay acceptance; the next CI run must identify or resolve the precise cause.

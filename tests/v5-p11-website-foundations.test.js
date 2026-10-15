@@ -218,7 +218,7 @@ test('1. Association endpoints: serves valid Android and iOS association files w
   assert.equal(statement.target.namespace, 'android_app', 'Target namespace must be android_app');
   assert.equal(
     statement.target.package_name,
-    'online.megaxo.prototype',
+    'online.megaxo.xoxo',
     'Package name must be the BUILT application id, not an unregistered production package'
   );
   assert.ok(

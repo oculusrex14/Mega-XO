@@ -93,8 +93,8 @@ test('iOS restricts the loaded signed file bundle and does not expose a bridge',
 test('native host version IDs are explicit nonproduction placeholders and offline UI is preserved', () => {
   const gradle = read('native/android/gradle.properties');
   const project = read('native/ios/MegaXO.xcodeproj/project.pbxproj');
-  assert.match(gradle, /megaApplicationId=online\.megaxo\.prototype/);
-  assert.match(project, /PRODUCT_BUNDLE_IDENTIFIER = online\.megaxo\.prototype/);
+  assert.match(gradle, /megaApplicationId=online\.megaxo\.xoxo/);
+  assert.match(project, /PRODUCT_BUNDLE_IDENTIFIER = online\.megaxo\.xoxo/);
   assert.doesNotMatch(read('native/android/app/src/main/java/online/megaxo/prototype/MegaXOActivity.kt'), /https:\/\/megaxo\.online/);
   assert.doesNotMatch(read('native/ios/MegaXO/MegaXOApplication.swift'), /https:\/\/megaxo\.online/);
 });

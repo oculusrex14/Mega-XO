@@ -300,8 +300,8 @@ test('association files match the BUILT app ids and keep signing material as lab
   assert.equal(statements.length, 1);
   assert.deepEqual(statements[0].relation, ['delegate_permission/common.handle_all_urls']);
   assert.equal(statements[0].target.namespace, 'android_app');
-  assert.equal(statements[0].target.package_name, 'online.megaxo.prototype');
-  assert.match(statements[0].target.package_name, /^online\.megaxo\.prototype$/);
+  assert.equal(statements[0].target.package_name, 'online.megaxo.xoxo');
+  assert.match(statements[0].target.package_name, /^online\.megaxo\.xoxo$/);
   assert.deepEqual(statements[0].target.sha256_cert_fingerprints,
     ['00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00']);
   // iOS: the bundle id is the built PRODUCT_BUNDLE_IDENTIFIER, and TEAMID stays a literal
@@ -312,11 +312,11 @@ test('association files match the BUILT app ids and keep signing material as lab
   const declared = association.applinks.details.flatMap(detail => detail.appIDs)
     .concat(association.webcredentials.apps);
   assert.ok(declared.length > 0);
-  for (const appId of declared) assert.equal(appId, 'TEAMID.online.megaxo.prototype');
+  for (const appId of declared) assert.equal(appId, 'TEAMID.online.megaxo.xoxo');
   // The association ids must be exactly the ids the native projects actually build.
-  assert.match(read('native/android/gradle.properties'), /megaApplicationId=online\.megaxo\.prototype/);
+  assert.match(read('native/android/gradle.properties'), /megaApplicationId=online\.megaxo\.xoxo/);
   assert.match(read('native/ios/MegaXO.xcodeproj/project.pbxproj'),
-    /PRODUCT_BUNDLE_IDENTIFIER = online\.megaxo\.prototype/);
+    /PRODUCT_BUNDLE_IDENTIFIER = online\.megaxo\.xoxo/);
   // Both routes answer as JSON and stay cacheable; neither is a private account response.
   assert.equal(links.out.status, 200);
   assert.match(links.out.headers['Content-Type'], /application\/json/);

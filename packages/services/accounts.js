@@ -164,6 +164,10 @@ async function createAccountService(pool, options = {}) {
  if (typeof options.otpSecret !== 'string' || options.otpSecret.length < 16) throw new ContextError('OTP_SECRET_REQUIRED');
  const otpSecret = Buffer.from(options.otpSecret);
  const securityNotify = typeof options.securityNotify === 'function' ? options.securityNotify : () => {};
+ /* The notice/consent versions the client must echo. A change here is a notice change and must be
+  * accompanied by a real notice update; the client never invents these. */
+ const RESEARCH_NOTICE_VERSION = options.researchNoticeVersion || 'mxv5-research-notice-1';
+ const RESEARCH_CONSENT_VERSION = options.researchConsentVersion || 'mxv5-research-consent-1';
  const deletionPolicy = {
   enabled: options.deletionPolicy ? options.deletionPolicy.enabled === true : false,
   policyVersion: options.deletionPolicy && typeof options.deletionPolicy.policyVersion === 'string' ? options.deletionPolicy.policyVersion : '',
@@ -1607,6 +1611,31 @@ async function createAccountService(pool, options = {}) {
       reportsSubmitted: submitted,
      },
     };
+   });
+  },
+  /* The one-time research choice. The actor comes from the SESSION, never from the request body, so
+    * there is no actor-id parameter anywhere on this path. A missing record reads as
+    * {recorded:false, research:false} - not consented - and is never promoted to a grant. */
+  async researchConsent(token) {
+   return run(async (repositories) => {
+    const session = await linkedRow(repositories, token);
+    return repositories.accounts.consent(session.actor);
+   });
+  },
+  /* Records the choice. `research:true` additionally requires an adult band; the database enforces
+    * that (CAPTURE_CONSENT_ADULT_ONLY) and this method does not soften it. An affirmative becoming
+    * "no" is a withdrawal, delegated to the 0052 semantics rather than reimplemented here. */
+  async recordResearchConsent(token, choice = {}) {
+   return run(async (repositories) => {
+    const session = await linkedRow(repositories, token);
+    const research = choice.research === true;
+    const band = typeof choice.ageBand === 'string' && choice.ageBand ? choice.ageBand : 'unknown';
+    const notice = typeof choice.noticeVersion === 'string' && choice.noticeVersion
+      ? choice.noticeVersion : RESEARCH_NOTICE_VERSION;
+    const version = typeof choice.consentVersion === 'string' && choice.consentVersion
+      ? choice.consentVersion : RESEARCH_CONSENT_VERSION;
+    if (notice.length > 120 || version.length > 120) fail('CONSENT_ARGUMENT_INVALID');
+    return repositories.accounts.recordConsent(session.actor, notice, research, version, band);
    });
   },
   async deletionStatus(token) {

@@ -52,6 +52,14 @@ const SECRET_READ_FUNCTIONS = Object.freeze({
   * monetization:{credits,equipped}}, competitive:{rating,peak,games,casualRating,casualGames,tier,
   * reachedAt,lastRatedAt,activeMatch}, season, seasonHistory, tournamentRecord, history} */
  accountState: 'profile.account_state',
+ /* learning.actor_consent(p_actor text) RETURNS json - the actor's OWN one-time research choice:
+  * {recorded, research, withdrawn, noticeVersion, consentVersion, ageBand, grantedAt, withdrawnAt}.
+  * `recorded:false` means NO record, which is NOT a grant. */
+ actorConsent: 'learning.actor_consent',
+ /* learning.set_consent(p_actor text, p_notice text, p_research boolean, p_version text, p_band text)
+  * RETURNS json - records the choice and returns the same shape. An affirmative that becomes "no" is
+  * a withdrawal; a withdrawn subject cannot silently re-consent. */
+ setConsent: 'learning.set_consent',
  /* identity.auth_credential(p_email text, p_actor text) RETURNS json - ONE row, the credential
   * identified by lower(email) when p_email is non-null, else by p_actor:
   * {email, actorId, salt, passwordHash, createdAt, verifiedAt} or SQL NULL. */
@@ -190,6 +198,48 @@ function accountRepositoryFor(context) {
     * (EXISTS predicates, no cap) so profile visibility and the deletion busy check never depend on
     * a pulled financial export. A missing function is a deployment failure and is surfaced, never
     * answered with a fabricated {deletionPending:false, competitiveBusy:false}. */
+  /* The authenticated actor's own consent record. A missing function is a deployment failure and
+    * is surfaced (the same 42883 discipline as account_state), never answered with a fabricated
+    * "not consented" or, worse, a fabricated grant. */
+  async consent(actor) {
+   try {
+    const r = await q(`SELECT ${SECRET_READ_FUNCTIONS.actorConsent}($1) AS consent`, [actor]);
+    const value = decodeJson(r.rows[0] ? r.rows[0].consent : null, null);
+    if (!value || typeof value !== 'object' || typeof value.recorded !== 'boolean') {
+     const wrapped = new ContextError('CONSENT_READ_UNAVAILABLE');
+     wrapped.detail = 'consent read returned no usable record';
+     throw wrapped;
+    }
+    return value;
+   } catch (error) {
+    if (error && error.code === '42883') {
+     const wrapped = new ContextError('CONSENT_READ_UNAVAILABLE');
+     wrapped.detail = `${SECRET_READ_FUNCTIONS.actorConsent}(text) is required by api_runtime`;
+     throw wrapped;
+    }
+    throw error;
+   }
+  },
+  async recordConsent(actor, notice, research, version, band) {
+   try {
+    const r = await q(`SELECT ${SECRET_READ_FUNCTIONS.setConsent}($1,$2,$3,$4,$5) AS consent`,
+      [actor, notice, research, version, band]);
+    const value = decodeJson(r.rows[0] ? r.rows[0].consent : null, null);
+    if (!value || typeof value !== 'object' || typeof value.recorded !== 'boolean') {
+     const wrapped = new ContextError('CONSENT_WRITE_UNAVAILABLE');
+     wrapped.detail = 'consent write returned no usable record';
+     throw wrapped;
+    }
+    return value;
+   } catch (error) {
+    if (error && error.code === '42883') {
+     const wrapped = new ContextError('CONSENT_WRITE_UNAVAILABLE');
+     wrapped.detail = `${SECRET_READ_FUNCTIONS.setConsent}(text,text,boolean,text,text) is required by api_runtime`;
+     throw wrapped;
+    }
+    throw error;
+   }
+  },
   async activity(actor) {
    try {
     const r = await q(`SELECT ${SECRET_READ_FUNCTIONS.activity}($1) AS activity`, [actor]);

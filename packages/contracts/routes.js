@@ -67,6 +67,11 @@ const ACCOUNT = Object.freeze([
  route('account.delete', 'POST', '/api/account/delete', { auth: AUTH.LINKED, csrf: true, bodyLimit: 300000 }),
  route('account.unlink', 'POST', '/api/account/unlink', { auth: AUTH.LINKED, csrf: true, bodyLimit: 300000 }),
  route('account.profile', 'POST', '/api/account/profile', { auth: AUTH.LINKED, csrf: true, bodyLimit: 300000 }),
+ /* The one-time research choice. Reads and writes the AUTHENTICATED actor's own record; no route
+  * accepts an actor id, and an absent record reads as not-consented (never as a grant). Withdrawal is
+  * implied by an affirmative becoming "no" and cannot be undone by re-ticking a box. */
+ route('account.research.read', 'GET', '/api/account/research', { auth: AUTH.LINKED, csrf: false, owner: 'A', note: 'the actor\'s own choice; recorded:false is NOT a grant' }),
+ route('account.research.write', 'POST', '/api/account/research', { auth: AUTH.LINKED, csrf: true, bodyLimit: 16384, owner: 'A', note: 'one-time choice; affirmative->no is a withdrawal' }),
  route('account.save.write', 'POST', '/api/account/save', { auth: AUTH.LINKED, csrf: true, bodyLimit: 300000 }),
  route('community.friends', 'GET', '/api/community/friends', { auth: AUTH.LINKED }),
  route('community.search', 'GET', '/api/community/search', { auth: AUTH.LINKED, note: 'durable rate budget written on GET' }),

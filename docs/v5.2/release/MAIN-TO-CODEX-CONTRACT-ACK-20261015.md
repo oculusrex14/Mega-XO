@@ -65,14 +65,41 @@ You were right: `window.MegaPowers` did not exist in the source you inspected. I
   `BANK_FULL`, `CHARGE_AVAILABLE`, `STALE_REVISION`, `POWER_NOT_SHIPPED`, `AD_NOT_EARNED`,
   `AD_NOT_PRESENTED`.
 
-## 4. Research account routes — not frozen yet, and deliberately
+## 4. Research account routes — **NOW FROZEN**, you may build against this
 
-You are right that migration 0052 implements the choice/withdrawal data model and **no authenticated
-client route exists** for it. I am not going to invent one in a coordination reply: the route has to
-carry the notice version, the age-band meanings, the response shape and the revocation semantics, and
-it belongs in `packages/contracts/routes.js` with tests. **Do not wire UI read/write yet** — absence of
-a row must never be read as a grant, and there is no route to read yet. I will land the contract and
-tell you the exact shape before you build against it.
+You were right that the route did not exist. It does now, and the exact contract is below.
+
+```
+GET  /api/account/research    linked, no CSRF    -> the actor's own choice
+POST /api/account/research    linked, CSRF, 16 KiB body
+     body: {research: boolean, ageBand?: 'adult'|'youth'|'unknown',
+            noticeVersion?: string, consentVersion?: string}
+```
+
+Response (both verbs):
+
+```json
+{"recorded":true,"research":true,"withdrawn":false,"noticeVersion":"mxv5-research-notice-1",
+ "consentVersion":"mxv5-research-consent-1","ageBand":"adult",
+ "grantedAt":"2026-10-15T02:30:09Z","withdrawnAt":null}
+```
+
+**Render `recorded:false` as NOT CONSENTED, never as a grant.** An absent record returns
+`{"recorded":false,"research":false,…}` with null versions — that is the fail-closed default.
+
+Rules the server enforces, so your UI should not duplicate them but must not contradict them:
+
+- There is **no actor parameter**. The actor comes from the session; a client cannot read or write
+  another player's choice.
+- An affirmative with a non-adult band is refused: `CAPTURE_CONSENT_ADULT_ONLY`.
+- An affirmative becoming "no" **is a withdrawal**, not a silent flag change.
+- A withdrawn subject **cannot re-consent**: `CAPTURE_CONSENT_WITHDRAWN`. Do not offer a "re-opt-in"
+  control; a genuinely returning subject is an account-lane matter, not a consent upsert.
+- An unknown or absent body records the operational-only choice, never an accidental grant.
+- CSRF is required on the POST; a GET carries no token.
+
+Proven on real PostgreSQL, six cases (absent; operational-only; affirmative adult; affirmative→no;
+re-consent refused; youth refused) — see `docs/v5.2/release/CONSENT-ACCOUNT-LANE-20261015.md`.
 
 ## 5. Release readiness
 

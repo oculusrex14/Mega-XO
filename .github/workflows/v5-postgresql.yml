@@ -215,6 +215,10 @@ jobs:
         run: |
           set -o pipefail
           node --test --test-reporter=tap --test-concurrency=1 tests/v5-p09-persistence.test.js tests/v5-p09-lifecycle.test.js tests/v5-p09-fencing.test.js tests/v5-p09-settlement.test.js tests/v5-p09-recovery.test.js 2>&1 | tee .evidence-logs/v5-p09-tournaments.tap
+      - name: Website tournament HTTP authority, timers and settlement
+        run: |
+          set -o pipefail
+          node --test --test-reporter=tap --test-concurrency=1 tests/v52-tournament-http.test.js 2>&1 | tee .evidence-logs/v52-tournament-http.tap
       - name: P10 worker budget and graceful stop hardening
         run: |
           set -o pipefail

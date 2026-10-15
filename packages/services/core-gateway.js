@@ -2,10 +2,20 @@
 
 const crypto = require('node:crypto');
 const { materializeLeaderboardProjection, normalizeLeaderboardFilter } = require('./read-cache.js');
+const { tournamentCommand, tournamentRoomId } = require('./tournament-http-contract.js');
+const T = require('../domain/index.js').tournament;
+const TOURNAMENT_CAPABILITIES_PATH = '/ingress/tournaments/capabilities';
+function tournamentTransportError(error) {
+  if (Number.isInteger(error?.status) && error.status < 500) return error;
+  const failure = Error('SERVICE_UNAVAILABLE');
+  failure.status = 503;
+  failure.code = 'SERVICE_UNAVAILABLE';
+  return failure;
+}
 
-/* The public leaderboard is an aggregate read: no actor is ever authenticated. The
- * single fixed public ingress path below is the ONLY place an empty actor header is
- * admitted, and its query surface is a bounded whitelist - never an arbitrary object. */
+/* Actor-free ingress is restricted to two exact reads: the public leaderboard
+ * and the canonical tournament capability catalogue. Both still carry a signed
+ * empty actor and bounded bodies; neither can execute a player command. */
 const LEADERBOARD_PATH = '/ingress/leaderboard';
 const LEADERBOARD_FIELDS = Object.freeze(['metric', 'scope', 'league', 'region']);
 const LEADERBOARD_METRICS = Object.freeze(['rating', 'wealth']);
@@ -283,6 +293,36 @@ function createCoreGateway({
   return {
     baseUrl,
     timeoutMs: timeout,
+
+    async tournamentCommand({ actor, opKey, command }) {
+      const projected = tournamentCommand(command);
+      try { return await this.forwardCommand({ actor, opKey, path: '/ingress/tournaments/command', command: projected }); }
+      catch (error) { throw tournamentTransportError(error); }
+    },
+    async tournamentView({ actor, id }) {
+      const roomId = tournamentRoomId(id);
+      try { return await this.forwardCommand({ actor, opKey: 'tournament-view', path: '/ingress/tournaments/view', command: { id: roomId } }); }
+      catch (error) { throw tournamentTransportError(error); }
+    },
+    async tournamentCapabilities() {
+      const timestamp = String(clock()), bodyString = '{}', path = TOURNAMENT_CAPABILITIES_PATH;
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(Error('CORE_GATEWAY_TIMEOUT')), timeout);
+      timer.unref?.();
+      try {
+        const res = await fetchFn(`${baseUrl}${path}`, { method: 'POST', body: bodyString, signal: controller.signal,
+          headers: { 'content-type': 'application/json', 'x-service-timestamp': timestamp,
+            'x-service-actor': '', 'x-service-opkey': '',
+            'x-service-signature': signRequest({ secret, timestamp, path, bodyString }) } });
+        const result = JSON.parse(await res.text());
+        if (res.status < 200 || res.status >= 300) {
+          const error = Error(result.error || 'TOURNAMENTS_UNAVAILABLE'); error.status = res.status; throw error;
+        }
+        return result.result;
+      } catch (error) {
+        throw tournamentTransportError(error);
+      } finally { clearTimeout(timer); }
+    },
 
     // Admission is a queue-service operation, never a player Core command.
     async join({ actor, opKey, mode, region, latencyMs }) {
@@ -628,6 +668,7 @@ function createCoreServiceIngress({
   coreService,
   ticketIssuer,
   queue,
+  tournaments,
   leaderboard,
   leaderboardPool,
   secret,
@@ -702,11 +743,10 @@ function createCoreServiceIngress({
         return sendIngressError(res, 403, 'INVALID_SERVICE_SIGNATURE');
       }
 
-      // 3. Verify actor match and presence. The public leaderboard is the ONLY
-      // actor-free call: it carries no principal, but its empty actor header is
-      // still signed (see signRequest) and only the exact fixed path is admitted.
-      const isPublicLeaderboard = pathname === LEADERBOARD_PATH;
-      if (!actorHeader && !isPublicLeaderboard) {
+      // 3. Actor-free capability/catalogue reads use exact paths. Their empty
+      // actor remains signed, so a read signature cannot authorize a command.
+      const isPublicRead = pathname === LEADERBOARD_PATH || pathname === TOURNAMENT_CAPABILITIES_PATH;
+      if (!actorHeader && !isPublicRead) {
         return sendIngressError(res, 403, 'INVALID_SERVICE_SIGNATURE');
       }
       if (parsedBody && typeof parsedBody === 'object' && parsedBody.actor && parsedBody.actor !== actorHeader) {
@@ -714,6 +754,40 @@ function createCoreServiceIngress({
       }
 
       // 4. Route dispatch
+      if (pathname === TOURNAMENT_CAPABILITIES_PATH) {
+        if (method !== 'POST') return sendIngressError(res, 405, 'METHOD_NOT_ALLOWED');
+        if (!parsedBody || typeof parsedBody !== 'object' || Array.isArray(parsedBody) || Object.keys(parsedBody).length) {
+          return sendIngressError(res, 400, 'INVALID_TOURNAMENT_COMMAND');
+        }
+        const online = typeof tournaments?.run === 'function' && typeof tournaments?.view === 'function' && typeof tournaments?.sweepTimers === 'function';
+        return sendIngressJson(res, 200, { ok: true, result: { online, publicEnabled: online,
+          tables: online ? Object.keys(T.TABLES).map(table => T.prize(table)) : [] } });
+      }
+
+      if (pathname === '/ingress/tournaments/command' || pathname === '/ingress/tournaments/view') {
+        if (method !== 'POST') return sendIngressError(res, 405, 'METHOD_NOT_ALLOWED');
+        if (!opKeyHeader || opKeyHeader.length > 160 || !/^[!-~]+$/.test(opKeyHeader)) return sendIngressError(res, 400, 'INVALID_IDEMPOTENCY_KEY');
+        if (typeof tournaments?.run !== 'function' || typeof tournaments?.view !== 'function') return sendIngressError(res, 503, 'TOURNAMENTS_UNAVAILABLE');
+        try {
+          let result;
+          if (pathname.endsWith('/command')) {
+            result = await tournaments.run({ actor: actorHeader, scope: 'player' }, opKeyHeader, tournamentCommand(parsedBody?.command));
+          } else {
+            const input = parsedBody?.command;
+            if (!input || Object.keys(input).length !== 1 || !Object.hasOwn(input, 'id')) return sendIngressError(res, 400, 'INVALID_TOURNAMENT_COMMAND');
+            result = await tournaments.view(tournamentRoomId(input.id), actorHeader);
+          }
+          return sendIngressJson(res, 200, { ok: true, result });
+        } catch (error) {
+          // Unexpected database/network faults reveal no internal detail and
+          // remain retryable with the SAME client operation key.
+          if (!error.status && (!/^[A-Z][A-Z0-9_]+$/.test(error.message || '') || /^[0-9A-Z]{5}$/.test(error.code || ''))) {
+            return sendIngressError(res, 503, 'SERVICE_UNAVAILABLE');
+          }
+          return sendIngressError(res, error.status || (['NOT_IN_ROOM', 'NOT_MATCH_PLAYER'].includes(error.message) ? 403 : error.message === 'ROOM_NOT_FOUND' ? 404 : 409), error.code || error.message);
+        }
+      }
+
       if (pathname === LEADERBOARD_PATH) {
         if (method !== 'POST') return sendIngressError(res, 405, 'METHOD_NOT_ALLOWED');
         if (typeof readLeaderboard !== 'function') {

@@ -38,6 +38,8 @@ const { createAccessService } = require(path.join(ROOT, 'packages/services/acces
 const { createTicketIssuer } = require(path.join(ROOT, 'packages/services/tickets.js'));
 const { createEphemeraService } = require(path.join(ROOT, 'packages/services/ephemera.js'));
 const { createQueueService } = require(path.join(ROOT, 'packages/services/queue.js'));
+const { createTournamentService } = require(path.join(ROOT, 'packages/services/tournaments.js'));
+const { createTournamentTimer } = require(path.join(ROOT, 'packages/services/tournament-timer.js'));
 const { createCoreGateway, createCoreServiceIngress } = require(path.join(ROOT, 'packages/services/core-gateway.js'));
 const { createRealtimeTransport } = require(path.join(ROOT, 'packages/services/realtime-transport.js'));
 const { createApiHandler } = require(path.join(ROOT, 'apps/api/index.js'));
@@ -193,12 +195,16 @@ async function main() {
   });
   const ticketIssuer = await createTicketIssuer(apiPool, { environment: 'stg', audience: 'mega-core' });
   const queue = await createQueueService({ ephemera, core, pool: corePool });
+  const tournaments = createTournamentService({ pool: corePool, core, ephemera });
+  await tournaments.ready;
+  const tournamentTimer = createTournamentTimer({ tournaments, owner: `stg_tournaments_${process.pid}`,
+    onError: error => console.error(JSON.stringify({ event: 'tournaments.tick_error', code: safeError(error) })) });
   // The signed Core-ingress secret must be STABLE across restarts and shared with any external
   // caller (e.g. the stateless Vercel API) that presents it, exactly like the OTP secret. A fresh
   // random secret per boot would invalidate every configured caller on every restart. The file is
   // 0600 and never printed.
   const GATEWAY_SECRET = loadStagingOtpSecret(path.join(path.dirname(CREDENTIALS_PATH), 'core-gateway.secret'));
-  const coreIngress = createCoreServiceIngress({ coreService: core, ticketIssuer, queue, leaderboardPool: corePool, secret: GATEWAY_SECRET });
+  const coreIngress = createCoreServiceIngress({ coreService: core, ticketIssuer, queue, tournaments, leaderboardPool: corePool, secret: GATEWAY_SECRET });
   const coreGateway = createCoreGateway({ coreUrl: `http://${host}:${port}`, secret: GATEWAY_SECRET, timeoutMs: GATEWAY_TIMEOUT_MS });
 
   const webArtifact = loadWebArtifact(webBuildDir);
@@ -295,12 +301,14 @@ async function main() {
 
   const shutdown = async () => {
     clearInterval(matchmakerTimer);
+    await tournamentTimer.stop();
     try { await realtime.close(); } catch {}
     try { await new Promise((r) => server.close(r)); } catch {}
-    for (const c of [() => queue.close(), () => ephemera.close(), () => ticketIssuer.close?.(), () => core.close(), () => accounts.close(), () => apiPool.end(), () => corePool.end()]) { try { await c(); } catch {} }
+    for (const c of [() => tournaments.close(), () => queue.close(), () => ephemera.close(), () => ticketIssuer.close?.(), () => core.close(), () => accounts.close(), () => apiPool.end(), () => corePool.end()]) { try { await c(); } catch {} }
     process.exit(0);
   };
   process.on('SIGINT', shutdown); process.on('SIGTERM', shutdown);
+  tournamentTimer.start();
   // Real matchmaking needs a matcher tick: two real browsers JOIN the queue over HTTP, but nothing
   // pairs them unless a matcher claims+commits. The production worker normally ticks; the isolated
   // staging origin had no loop, so a real two-browser queue join never produced a match. This tick

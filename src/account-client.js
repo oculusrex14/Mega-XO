@@ -97,6 +97,14 @@ async function ensure(force=false){
  * of replaying a dead bearer. The host refuses online use until a fresh sign-in installs a session. */
 async function call(path,body,operation){
  if(localOnly())throw localUnavailable();
+ /* A native host has no cookie jar, so EVERY account/API call needs the host's bearer - including
+  * public reads. Establishing the session state first means a signed-out guest gets the honest auth
+  * state ('Sign in to play online') from the caller, rather than the transport failure the host
+  * returns when no bearer is installed, which surfaced as a false "Connection interrupted" banner. */
+ if(native()&&!session){
+  const current=await ensure();
+  if(!current||current.linked!==true){const e=Error('LINK_ACCOUNT_REQUIRED');e.status=401;throw e;}
+ }
  if(native()&&session?.native&&Date.now()>=Number(session.expiresAt||0)){
   const rotated=await native().refresh();
   if(!rotated||rotated.ok!==true){session=null;publish('auth','AUTH_REQUIRED');throw nativeError(rotated||{error:'AUTH_REQUIRED'});}

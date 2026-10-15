@@ -278,7 +278,7 @@ test('CI compiles and asserts BOTH flavors, and exercises the offline artifact o
 
 /* -------------------------------------------------- association / continuity */
 
-test('association files match the BUILT app ids and keep signing material as labelled placeholders', () => {
+test('association files match the BUILT app ids, and the Android fingerprint is the REAL upload certificate', () => {
   const wellKnown = require('../apps/api/routes/well-known.js');
   const write = () => {
     const out = { status: 0, headers: {}, body: '' };
@@ -290,10 +290,11 @@ test('association files match the BUILT app ids and keep signing material as lab
       }
     };
   };
-  // Android: the package is the built application id (megaApplicationId default), NOT an
-  // unregistered production package, and the fingerprint is an explicit zero placeholder because no
-  // release keystore exists. A statement with a wrong fingerprint associates nothing - the honest
-  // state until the owner supplies the real package id and upload-certificate fingerprint.
+  // Android: the package is the built application id - the owner-requested permanent id - and the
+  // fingerprint is the REAL SHA-256 of the owner-held upload certificate that the artifacts built on
+  // this machine are signed with (96:1C:C0:54...). It is deliberately no longer an all-zero
+  // placeholder: a placeholder associates nothing, and the owner chose this id. Once the first AAB is
+  // uploaded, Play App Signing's own certificate fingerprint must be ADDED, not swapped in.
   const links = write();
   wellKnown.getAssetLinks({}, {}, links.res);
   const statements = JSON.parse(links.out.body);
@@ -303,7 +304,9 @@ test('association files match the BUILT app ids and keep signing material as lab
   assert.equal(statements[0].target.package_name, 'online.megaxo.xoxo');
   assert.match(statements[0].target.package_name, /^online\.megaxo\.xoxo$/);
   assert.deepEqual(statements[0].target.sha256_cert_fingerprints,
-    ['00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00']);
+    ['96:1C:C0:54:74:57:0E:60:58:4A:14:14:2B:B0:E3:D6:45:80:4B:CB:4C:16:88:62:A6:94:5E:41:75:32:93:37']);
+  // The all-zero placeholder must be gone: publishing it would associate nothing at all.
+  assert.doesNotMatch(links.out.body, /00:00:00:00:00:00:00:00:00:00/);
   // iOS: the bundle id is the built PRODUCT_BUNDLE_IDENTIFIER, and TEAMID stays a literal
   // placeholder until the owner's Apple Team ID exists.
   const apple = write();

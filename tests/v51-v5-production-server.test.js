@@ -269,6 +269,9 @@ test('bind: the production HTTP pattern is loopback only on the MEGA_HTTP_PORT d
       `port ${port} must be refused`);
   }
   assert.equal(mod.resolveHttpBinding({ port: '1024' }).port, 1024);
+  assert.deepEqual(mod.resolveHttpBinding({ host: '172.18.0.1', port: '8080', allowPrivate: true }), { host: '172.18.0.1', port: 8080 });
+  assert.throws(() => mod.resolveHttpBinding({ host: '0.0.0.0', port: '8080', allowPrivate: true }), code('REFUSED_NON_LOOPBACK_BIND'));
+  assert.throws(() => mod.resolveHttpBinding({ host: '100.64.128.46', port: '8080', allowPrivate: true }), code('REFUSED_NON_LOOPBACK_BIND'));
 });
 
 test('secrets: private material is read only from absolute, non-symlinked, mode-0600 regular files', (t) => {
@@ -326,7 +329,62 @@ test('surface: /livez and /readyz keep the API-handler semantics the deploy tool
   assert.equal(mod.classifyPath('/'), 'static');
   assert.equal(mod.classifyPath('/legacy-game/src/game.js'), 'static');
   assert.equal(mod.classifyPath('/livez/'), 'static', 'only the exact health paths are API routes');
+  assert.equal(mod.classifyPath('/opsz'), 'ops', 'the operations-health probe is its own surface');
+  assert.equal(mod.classifyPath('/opsz/'), 'static', 'only the exact ops path is the probe');
   assert.throws(() => mod.classifyPath(''), code('PATH_REQUIRED'));
+});
+
+test('ops: /opsz fails on a stale/missing backup and on dead letters, and never reports liveness-only green', async (t) => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'v5-ops-'));
+  t.after(() => fs.rmSync(dir, { force: true, recursive: true }));
+  const freshnessFile = path.join(dir, 'freshness-state.json');
+  const nowMs = Date.UTC(2026, 9, 15, 4, 30, 0);
+  const now = () => nowMs;
+  const poolWith = (dlq, backlog) => ({ query: async () => ({ rows: [{ dlq, backlog }] }) });
+
+  /* Fresh backup, empty queue -> ok. */
+  fs.writeFileSync(freshnessFile, JSON.stringify({ state: 'fresh', checkedAtUtc: new Date(nowMs - 60_000).toISOString() }));
+  let report = await mod.buildOpsReport({ pool: poolWith(0, 3), freshnessFile, now });
+  assert.equal(report.ok, true, JSON.stringify(report.failures));
+  assert.equal(report.backup.fresh, true);
+  assert.equal(report.worker.dlq, 0);
+
+  /* Missing report is never green. */
+  fs.rmSync(freshnessFile);
+  report = await mod.buildOpsReport({ pool: poolWith(0, 0), freshnessFile, now });
+  assert.equal(report.ok, false);
+  assert.equal(report.backup.fresh, false);
+  assert.ok(report.failures.some((f) => f.includes('missing')));
+
+  /* A stale declared state is red even when the file was just written. */
+  fs.writeFileSync(freshnessFile, JSON.stringify({ state: 'stale', checkedAtUtc: new Date(nowMs).toISOString() }));
+  report = await mod.buildOpsReport({ pool: poolWith(0, 0), freshnessFile, now });
+  assert.equal(report.ok, false);
+  assert.ok(report.failures.some((f) => f.includes('stale')));
+
+  /* A fresh-but-ancient report is red: the budget is enforced on the report age too. */
+  fs.writeFileSync(freshnessFile, JSON.stringify({
+    state: 'fresh', checkedAtUtc: new Date(nowMs - (mod.OPS_BACKUP_MAX_AGE_MS + 60_000)).toISOString(),
+  }));
+  report = await mod.buildOpsReport({ pool: poolWith(0, 0), freshnessFile, now });
+  assert.equal(report.ok, false);
+  assert.ok(report.failures.some((f) => f.includes('older than')));
+
+  /* Dead letters are red; backlog beyond the budget is red. */
+  fs.writeFileSync(freshnessFile, JSON.stringify({ state: 'fresh', checkedAtUtc: new Date(nowMs).toISOString() }));
+  report = await mod.buildOpsReport({ pool: poolWith(2, 0), freshnessFile, now });
+  assert.equal(report.ok, false);
+  assert.ok(report.failures.some((f) => f.includes('dead-lettered')));
+  report = await mod.buildOpsReport({ pool: poolWith(0, mod.OPS_OUTBOX_BACKLOG_MAX + 1), freshnessFile, now });
+  assert.equal(report.ok, false);
+  assert.ok(report.failures.some((f) => f.includes('backlog')));
+
+  /* An unreadable queue is red, never silently green. */
+  report = await mod.buildOpsReport({
+    pool: { query: async () => { throw new Error('down'); } }, freshnessFile, now,
+  });
+  assert.equal(report.ok, false);
+  assert.ok(report.failures.some((f) => f.includes('worker queue')));
 });
 
 test('module: requiring the entry point has no side effects and exposes no composer at import time', () => {

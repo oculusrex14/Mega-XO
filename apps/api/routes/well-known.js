@@ -34,8 +34,15 @@ const PUBLIC_DIR = path.resolve(__dirname, '../../../public');
  * state until the owner supplies the real package id + upload-certificate fingerprint
  * (owner action: P5 identifier resolution, docs/v5.1/release/NATIVE-AND-PROVIDER-STATE-20261013.md).
  * Callers may replace this whole list through `context.assetlinks`/`context.assetLinks`. */
-const ASSOCIATION_PLACEHOLDER_FINGERPRINT =
-  '00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00';
+/* The owner-held Android UPLOAD certificate's SHA-256. This is the certificate the artifacts built
+ * on this machine are actually signed with, so App Links associate for a sideloaded or pre-Play
+ * build. Play App Signing re-signs the distributed APK with Google's app-signing certificate; once
+ * the first AAB is uploaded, that certificate's fingerprint must be ADDED here (both may be listed)
+ * or App Links will not associate for store-installed builds. This is a real fingerprint, not a
+ * placeholder: it belongs to the key archived at
+ * ~/Downloads/Mega-XO-private-evidence/android-release/mega-xo-upload.jks. */
+const ASSOCIATION_UPLOAD_CERT_FINGERPRINT =
+  '96:1C:C0:54:74:57:0E:60:58:4A:14:14:2B:B0:E3:D6:45:80:4B:CB:4C:16:88:62:A6:94:5E:41:75:32:93:37';
 
 const DEFAULT_ASSET_LINKS = Object.freeze([
   Object.freeze({
@@ -43,7 +50,7 @@ const DEFAULT_ASSET_LINKS = Object.freeze([
     target: Object.freeze({
       namespace: 'android_app',
       package_name: 'online.megaxo.xoxo',
-      sha256_cert_fingerprints: Object.freeze([ASSOCIATION_PLACEHOLDER_FINGERPRINT])
+      sha256_cert_fingerprints: Object.freeze([ASSOCIATION_UPLOAD_CERT_FINGERPRINT])
     })
   })
 ]);
@@ -247,14 +254,52 @@ async function handleAuthCallback(context, req, res, provider, url) {
     return true;
   }
 
-  // 3. Valid parameters: in full OAuth exchange this consumes attempt and sets session cookie.
-  // In the foundation contract, acknowledge successful parameter validation and redirect.
-  res.writeHead(303, {
+  // 3. A well-formed callback is NOT a successful sign-in. The real exchange consumes a one-use,
+  //    state/nonce-bound attempt, trades the provider code over TLS, verifies the identity and rotates
+  //    the session. That requires a composed provider client, and this deployment entry composes one
+  //    only when the account service exposes the web lane; without it, reporting `linked: true` would be
+  //    a false success that the client would believe. Fail closed instead, with a distinct reason the
+  //    client can surface honestly.
+  if (typeof context?.completeWebSignIn !== 'function') {
+    const errorReason = 'PROVIDER_SIGNIN_UNAVAILABLE';
+    const location = `/?authError=${encodeURIComponent(errorReason)}`;
+    res.writeHead(303, {
+      Location: location,
+      'Content-Type': 'application/json; charset=utf-8',
+      'Cache-Control': 'no-store',
+      'Referrer-Policy': 'no-referrer',
+    });
+    res.end(JSON.stringify({ error: errorReason, location }));
+    return true;
+  }
+
+  // 3b. A composed web lane exists: perform the real exchange and only then report success.
+  let outcome;
+  try {
+    outcome = await context.completeWebSignIn({ provider, state, code, cookie: req.headers?.cookie || null });
+  } catch (error) {
+    outcome = { ok: false, reason: (error && error.code) || 'SIGNIN_FAILED' };
+  }
+  if (!outcome || outcome.ok !== true) {
+    const errorReason = (outcome && outcome.reason) || 'SIGNIN_FAILED';
+    const location = `/?authError=${encodeURIComponent(errorReason)}`;
+    res.writeHead(303, {
+      Location: location,
+      'Content-Type': 'application/json; charset=utf-8',
+      'Cache-Control': 'no-store',
+      'Referrer-Policy': 'no-referrer',
+    });
+    res.end(JSON.stringify({ error: errorReason, location }));
+    return true;
+  }
+  const headers = {
     Location: '/?account=linked',
     'Content-Type': 'application/json; charset=utf-8',
     'Cache-Control': 'no-store',
     'Referrer-Policy': 'no-referrer',
-  });
+  };
+  if (typeof outcome.setCookie === 'string' && outcome.setCookie) headers['Set-Cookie'] = outcome.setCookie;
+  res.writeHead(303, headers);
   res.end(JSON.stringify({ ok: true, linked: true, provider, location: '/?account=linked' }));
   return true;
 }

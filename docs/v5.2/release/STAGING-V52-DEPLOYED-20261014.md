@@ -92,3 +92,36 @@ Two operational lessons worth recording for the production cutover, both of whic
    error looks identical to a real schema divergence. Diagnosing it properly required reading the
    guard's own `detail` (which says `too many connections for role`), not the summary code. Repeated
    ad-hoc diagnostics that open their own pools make this worse; they must always close their pools.
+
+## Update — supervised service, and the powers bundle is live
+
+The staging server had been started as a detached `setsid` process, which **does not survive** the SSH
+session that launches it. It would boot, serve briefly, then vanish, leaving the origin at `502`. That
+is a bad property for anything a reviewer is meant to look at, so it is now a **supervised systemd
+service**:
+
+```
+mega-xo-v51-staging-web.service   Type=simple, Restart=always, RestartSec=3
+  ExecStart=/opt/mega-xo-v51-staging/run.sh   (logs to staging-web.log)
+```
+
+`systemctl is-active` now reports `active`, and the origin is stable.
+
+A second `SCHEMA_INCOMPATIBLE` at boot had a different cause this time — and it is the same lesson as
+before: **the deployed repo's `manifest.json` must match the database.** The database was at 55 while
+the deployed tree still carried 54, so the boot-time ledger check refused. Syncing the manifest and
+the three new migration files fixed it; the deployed manifest now reports 55 ending at
+`0055_restore_record_consent_body`.
+
+Serving identity after this deploy:
+
+| Field | Value |
+| --- | --- |
+| Bundle | `bundle_sha256 d4b4c3e73e46c43914513cebb179e40377bdb275556db95b625768ac2ebac4ed` |
+| Source commit | `2b60ed88` |
+| Files | 160 |
+| `GET /` | `200` |
+| `GET /livez` | `200` |
+| Served `legacy-game/src/app.js` | contains the new rewarded controls (`botundo` present) |
+
+So a reviewer opening the staging game now gets the powered build, not the pre-feature one.

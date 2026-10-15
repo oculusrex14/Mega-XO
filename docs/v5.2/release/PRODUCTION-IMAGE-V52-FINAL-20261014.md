@@ -55,3 +55,26 @@ The rehearsal process was then stopped. V4 was not touched at any point.
 - `P22 readiness` still returns `BLOCKED: OPERATOR_EVIDENCE_PACKET_MISSING`.
 - The production database is at **53** migrations (0053 applied forward-only to the non-serving
   target); the image expects exactly that and would refuse otherwise.
+
+## Update — image rebuilt again at the powered source (2026-10-15)
+
+The image was rebuilt once more after the rewarded powers were made visible, so the frozen artifact
+contains the feature build rather than the one whose controls were unreachable:
+
+| Field | Value |
+| --- | --- |
+| Source SHA | `153a8543d555682d3c94130eda19e3d1ae52a232` |
+| **Digest** | **`sha256:866b83cdf41a4188a95b86d95c6ce635a6d6e59f60fd836b38a7e5d4e874377c`** |
+| Size | 393 MB |
+| Rehearsal | started as a **supervised systemd unit** against the real production Neon + Redis, `servingEpoch: null`, `/livez` 200, `/readyz` 200, `/` 200, unknown path 404, profile `AUTH_REQUIRED`, leaderboard `[]` through the production pool; then stopped |
+
+The earlier rehearsals used a detached `setsid` process that did not reliably survive the SSH session.
+Both the staging web server and this rehearsal now run as systemd units with explicit logging, which is
+how any reviewer or operator should start them.
+
+## Before the cutover, one thing is still required
+
+The rehearsal's `--web-build` points at a bundle directory that is refreshed by hand. Before the
+authority transfer, the web bundle must be built from the **frozen release SHA** and that path pointed
+at it, so the served client is provably the released one rather than a stale directory. That is a
+one-line change to the unit, and it must be part of the same freeze step as the database snapshot.

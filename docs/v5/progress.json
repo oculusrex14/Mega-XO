@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at_utc": "2026-10-14T16:17:32Z",
+  "updated_at_utc": "2026-10-15T05:15:00Z",
   "goal": "Deliver the V5 hybrid platform and real Android/iOS applications with shared permanent actor/assets, preserved approved game and retained browser compatibility; do not build the new website/browser product.",
   "source": {
     "goal": "AGENT-GOAL.md",
@@ -48,12 +48,12 @@
   "current": {
     "phase": "V5.2",
     "active_task": "V5.2 integration",
-    "next_action": "V5.2 is the sole active integration/release/production branch and the repo default branch. DC00 day-one capture gate now returns RECEIPTS_READY_FOR_MAIN_REVIEW (privacyPurpose and retention receipts produced); P22 still BLOCKED on OPERATOR_EVIDENCE_PACKET_MISSING (native device acceptance, provider channels, the one-time E4/E5 window). Next: rebuild the V5 production image from the final V5.2 SHA, deploy the corrected capture journal/retention systemd units on the host, then the gated V4 freeze + reconciliation + single-writer cutover. V4.1.2/SQLite remains the sole live writer.",
+    "next_action": "CUTOVER EXECUTED 2026-10-15. V4.1.2/SQLite is fenced (container stopped, RestartPolicy=no, database bind read-only, mtime frozen at 2026-10-15T04:04:52.600305021Z) and V5 on Neon PostgreSQL is the single mutating authority under epoch v5:1792037113917:153a8543d555682d (mega-xo-v5-production.service active). The Caddy edge proxies play.antimatterinnovations.com to 172.18.0.1:8080. The web bundle is built from the frozen SHA c172aa57 (bundle_sha256 d4b4c3e7, 160 files, byte-identical to the deployed copy); the deployed server file matches HEAD (976c4b57). The E2 import reconciles to the final fence with zero unexplained differences (V4-FENCE-RECONCILIATION). /, /livez, /readyz, /health, /opsz and the API routes answer 200 publicly, a missing asset is a real 404. The Vercel API now has a Production-scoped database target and serves real routes (VERCEL-PRODUCTION-API-ENABLED); api.megaxo.online still lacks a DNS record and its MEGA_CORE_URL is a placeholder. Remaining external: DNS for api.megaxo.online, the permanent native package identity decision (online.megaxo.xoxo vs Codex's registered com.antimatterinnovations.megaxo), the Android upload keystore behind Codex's real fingerprint, store submission/provider approval, and a live rewarded ad. P22 operator packet and P24 scaling triggers remain.",
     "checkout_branch_at_setup": "V4.1",
     "integration_branch": "V5.2",
     "integration_branch_exists_at_setup": false,
-    "last_v5_commit": "47cd5b4946ee8f2d719992a7aeb6b6292ec54714",
-    "last_pushed_v5_commit": "47cd5b4946ee8f2d719992a7aeb6b6292ec54714",
+    "last_v5_commit": "8b4220cfc45ebc3f92709700304075a1c3b99b62",
+    "last_pushed_v5_commit": "8b4220cfc45ebc3f92709700304075a1c3b99b62",
     "completed_task_ids": [
       "V5-00-01",
       "V5-00-02",
@@ -326,7 +326,7 @@
           "docs/v5/evidence/phase05-foundations.json"
         ],
         "gate_evidence": "docs/v5/evidence/phase05-foundations.json",
-        "note": "G05 PASSED: sessions/access/realtime foundations executed on the real 42-migration chain — 78/78 PG service suites (access 7, refresh 8, tickets 9, integration 4 + full P04 regression 47+4), 36/36 migrations+guards, 16/16 contracts, 130/130 retained, all zero-skip on disposable PG16. Signing/refresh/ticket services composed with the account revocation hook; no provider/device/production claim."
+        "note": "G05 PASSED: sessions/access/realtime foundations executed on the real 42-migration chain \u2014 78/78 PG service suites (access 7, refresh 8, tickets 9, integration 4 + full P04 regression 47+4), 36/36 migrations+guards, 16/16 contracts, 130/130 retained, all zero-skip on disposable PG16. Signing/refresh/ticket services composed with the account revocation hook; no provider/device/production claim."
       },
       {
         "phase": "P06",

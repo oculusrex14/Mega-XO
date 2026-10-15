@@ -135,7 +135,7 @@
     return Object.freeze({ refresh, view, request, apply, destroy() { destroyed = true; sequence += 1; pending = null; uncertain = false; outcome = ''; cached = unavailable('retired'); currentKey = ''; currentAdapter = null; } });
   }
 
-  function render(view = { hidden: false, mode: 'bot', available: false }) {
+  function render(view = { hidden: false, mode: 'bot', available: false }, {workspace = false} = {}) {
     if (view.hidden) return '';
     const counts = view.available ? view.inventory : null;
     const undo = view.available ? view.eligibility.undo : null;
@@ -152,8 +152,8 @@
     const rows = [['undo','Undo','Revert your last turn'],['undoBlock','Undo Block','Counter an opponent’s Undo'],['hint','Tactical Hint','Show a suggested legal move'],['tacticalBlock','Hint Block','Counter an opponent’s hint']];
     const cards = `<div class="gb-power-cards">${rows.map(([kind,label,description])=>`<div class="gb-power-card gb-power-card--${kind}"><span class="gb-power-art"><svg viewBox="0 0 24 26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${shapes[kind]}</svg></span><span class="gb-power-label"><b>${label}</b><small>${description}</small></span><span class="gb-power-count" aria-label="${counts ? `${counts[kind].available} banked ${label}` : `${label} inventory unavailable`}">${counts?counts[kind].available:'—'}</span><span class="gb-power-state">${kind==='undo' ? view.canApplyUndo?'Earned charge ready':view.canRequestUndo?'Optional rewarded ad':'Unavailable here' : kind==='hint'?'Native app only':'Casual protocol pending'}</span></div>`).join('')}</div>`;
     return `<section class="gb-powers" aria-label="Bot Undo and optional powers" data-gb-powers>
-      <div class="gb-powers-heading"><div><span class="gb-powers-eyebrow">OPTIONAL POWERS</span><h2><svg class="gb-power-bolt" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="m14 1-11 13h8l-1 9L22 9h-9z"/></svg>Powers</h2></div><span class="gb-powers-badge">${view.available ? 'Inventory reported' : 'Unavailable'}</span></div>
-      ${cards}<details class="gb-powers-explainer"><summary>Availability &amp; rewarded-ad rules</summary>
+      <div class="gb-powers-heading"><div><span class="gb-powers-eyebrow">OPTIONAL POWERS</span><h2>${workspace ? '<svg class="gb-power-bolt" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="m14 1-11 13h8l-1 9L22 9h-9z"/></svg>Powers' : view.mode === 'bot' ? 'Bot Undo' : 'Undo Request'}</h2></div><span class="gb-powers-badge">${view.available ? 'Inventory reported' : 'Unavailable'}</span></div>
+      ${workspace ? cards+'<details class="gb-powers-explainer"><summary>Availability &amp; rewarded-ad rules</summary>' : ''}
       ${view.mode === 'bot' ? `<div class="gb-powers-charges" aria-label="${escape(chargeCopy)}">${[0, 1].map(i => `<span class="gb-powers-charge${undo && undo.charges > i ? ' gb-powers-charge--earned' : ''}" aria-hidden="true">${undo ? undo.charges > i ? '↶' : '·' : '?'}</span>`).join('')}<p>${escape(chargeCopy)}<small>One earned package supports up to two player decisions in a Bot match.</small></p></div>` : '<p class="gb-powers-copy">An Undo Request can be blocked by the opponent’s Undo Block. A token does not guarantee a rewind.</p>'}
       <p class="gb-powers-status" role="status" aria-live="polite" aria-atomic="true">${escape(status)}</p>
       <div class="gb-powers-actions"><button type="button" data-gb-power="apply"${view.canApplyUndo ? '' : ' disabled'}>${view.mode === 'bot' ? 'Use earned Undo' : 'Use Undo Request'}</button><button type="button" data-gb-power="request"${view.canRequestUndo ? '' : ' disabled'}>Choose rewarded ad</button><button class="gb-powers-refresh" type="button" data-gb-power="refresh">Refresh bank</button></div>
@@ -165,7 +165,7 @@
         <p>Powered Casual allows three Undo Request initiations per player and one successful rewind for the match. Tactical Power has three initiations and two uses per player; Tactical Block has three activations and two successful blocks. Undo Block and Tactical Block are separate items. Bot never secretly acquires counter powers.</p>
         <div class="gb-powers-counters"><button type="button" disabled>Undo Block</button><button type="button" disabled>Tactical Power</button><button type="button" disabled>Tactical Block</button></div>
         <p>Tactical Power recommends one legal square using Expert. You may choose any legal square. The suggestion stays hidden until the counter window settles; a blocked request reveals no suggestion. Counter controls are unavailable until authoritative resolution is supported.</p>
-      </div></details></details>
+      </div></details>${workspace ? '</details>' : ''}
     </section>`;
   }
   root.MegaWebPowers = Object.freeze({ createController, render });

@@ -211,7 +211,8 @@ test('P21.05 game route stays inside the website, sanitizes settings and preserv
     const unsafe = renderGame({ mode: '"><script>alert(1)</script>', theme: '"><img src=x onerror=alert(1)>', difficulty: 'Impossible' });
     assert.match(unsafe, /data-board-mode="bot" data-board-difficulty="Easy" data-board-theme="cinematic"/);
     assert.doesNotMatch(unsafe, /<script|onerror|Impossible|legacy-game/);
-    assert.equal(renderPractice(), renderGame());
+    assert.match(renderPractice(), /gb-legacy-practice-page/);
+    assert.doesNotMatch(renderPractice(), /gb-dashboard|data-board-layout="workspace"/);
   } finally { delete globalThis.MegaGame; }
 });
 

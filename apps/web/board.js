@@ -214,7 +214,7 @@ function gameDashboard(state, game, options) {
   const playerName = player => snapshot ? snapshot.symbols[player] === actorId ? 'You' : escapeText(snapshot.playerNames?.[snapshot.symbols[player]] || 'Opponent') : mode === 'local' ? `Player ${player}` : player === 'X' ? 'You' : 'Bot';
   const blocked = !!snapshot && (snapshot.status !== 'PLAYING' || snapshot.symbols[state.turn] !== actorId || pending || uncertain || !!error);
   const powerPanel = !snapshot && mode === 'bot' && !guidedView && globalThis.MegaWebPowers?.render
-    ? globalThis.MegaWebPowers.render(powersView || {mode:'bot', available:false}) : !snapshot && mode==='bot' && !guidedView ? '<section class="gb-powers" data-gb-powers aria-label="Optional powers"><h2>Powers</h2><p>Bot Undo and Tactical Hint controls are unavailable until the verified powers service loads.</p></section>' : '';
+    ? globalThis.MegaWebPowers.render(powersView || {mode:'bot', available:false}, {workspace:true}) : !snapshot && mode==='bot' && !guidedView ? '<section class="gb-powers" data-gb-powers aria-label="Optional powers"><h2>Powers</h2><p>Bot Undo and Tactical Hint controls are unavailable until the verified powers service loads.</p></section>' : '';
   return `<section class="gb-stage gb-stage--practice gb-dashboard" data-gb-stage data-gb-theme="${theme}" aria-label="${snapshot ? 'Online Mega XOXO match' : 'Local Mega XOXO game'}">
     <aside class="gb-game-left" aria-label="Game setup and players">
       <section class="gb-game-panel gb-game-setup"><h2>${gameIcon('setup')}Game Setup</h2>${toolbar({mode, difficulty, theme, snapshot, guidedLocked:!!guidedView})}<a class="gb-setup-online" href="/play" data-route>Explore online play modes <span aria-hidden="true">↗</span></a></section>
@@ -250,8 +250,9 @@ function renderBoard(state, game, {
   guidedDestination = null,
   botRecovery = null,
   powersView = null,
+  workspace = false,
 } = {}) {
-  if (!preview) return gameDashboard(state, game, {preview, mode, difficulty, theme, thinking, focus, snapshot, actorId, pending, error, uncertain, requestKind, canResign, guidedView, guidedTargetCell, guidedDestination, botRecovery, powersView});
+  if (!preview && workspace) return gameDashboard(state, game, {preview, mode, difficulty, theme, thinking, focus, snapshot, actorId, pending, error, uncertain, requestKind, canResign, guidedView, guidedTargetCell, guidedDestination, botRecovery, powersView});
   const copy = turnCopy(state, { preview, mode, thinking, snapshot, actorId, pending, error, botRecovery });
   const last = state.moves.at(-1);
   const playerName = player => snapshot ? snapshot.symbols[player] === actorId ? 'You' : escapeText(snapshot.playerNames?.[snapshot.symbols[player]] || 'Opponent') : mode === 'local' ? `Player ${player}` : player === 'X' ? 'You' : 'Bot';
@@ -290,11 +291,23 @@ export function renderGame(context = {}) {
   const actorId = typeof context.actorId === 'string' ? context.actorId : '';
   return `<section class="gb-practice-page gb-game-page" aria-labelledby="gb-game-title">
     <header class="gb-page-heading"><div><span class="gb-eyebrow">MEGA XOXO · ${snapshot ? 'ONLINE MATCH' : 'PLAY IN BROWSER'}</span><h1 id="gb-game-title">Your next <span>big move.</span></h1><p>${snapshot ? 'Every move matters. Think one board ahead.' : 'Play against Bot or share a screen with a friend.'}</p></div><a href="/play" data-route class="gb-back-link">Explore play modes <span aria-hidden="true">↗</span></a></header>
-    <div class="gb-practice-layout"><div class="gb-practice-host" data-board-host data-board-preview="false" data-board-mode="${options.mode}" data-board-difficulty="${options.difficulty}" data-board-theme="${options.theme}">${renderBoard(snapshot ? snapshot.state : game.create(), game, { preview: false, ...options, snapshot, actorId })}</div></div>
+    <div class="gb-practice-layout"><div class="gb-practice-host" data-board-host data-board-preview="false" data-board-layout="workspace" data-board-mode="${options.mode}" data-board-difficulty="${options.difficulty}" data-board-theme="${options.theme}">${renderBoard(snapshot ? snapshot.state : game.create(), game, { preview: false, workspace: true, ...options, snapshot, actorId })}</div></div>
   </section>`;
 }
 
-export const renderPractice = context => renderGame(context);
+export function renderPractice(context = {}) {
+  const game = rules();
+  const options = localOptions(context);
+  const snapshot = context.match ? serverSnapshot(context.match) : null;
+  const actorId = typeof context.actorId === 'string' ? context.actorId : '';
+  return `<section class="gb-practice-page gb-legacy-practice-page" aria-labelledby="gb-game-title">
+    <header class="gb-page-heading"><div><span class="gb-eyebrow">MEGA XOXO · ${snapshot ? 'ONLINE MATCH' : 'PLAY IN BROWSER'}</span><h1 id="gb-game-title">Your next <span>big move.</span></h1><p>${snapshot ? 'Every move matters. Think one board ahead.' : 'Play against Bot or share a screen with a friend.'}</p></div><a href="/play" data-route class="gb-back-link">Explore play modes <span aria-hidden="true">↗</span></a></header>
+    <div class="gb-practice-layout"><div class="gb-practice-host" data-board-host data-board-preview="false" data-board-mode="${options.mode}" data-board-difficulty="${options.difficulty}" data-board-theme="${options.theme}">${renderBoard(snapshot ? snapshot.state : game.create(), game, { preview: false, ...options, snapshot, actorId })}</div>
+      <aside class="gb-help-panel" aria-labelledby="gb-how-title"><span class="gb-eyebrow">HOW TO PLAY</span><h2 id="gb-how-title">Think one board ahead.</h2>${snapshot ? '' : `<div class="gb-guided-cta"><button class="gb-button gb-button--guided" type="button" data-gb-action="start-guided">Start guided practice</button><p class="gb-guided-subtext">Learn Mega XOXO in six interactive moves. Wrong taps blocked, no rewards or pressure.</p></div>`}<ol><li><b>Win the small boards.</b><p>Place three Xs or Os in a row to claim a small board.</p></li><li><b>Your move sets the route.</b><p>The cell you choose sends the next player to the matching small board. If that board is complete, they can choose any open board.</p></li><li><b>Win the big one.</b><p>Claim three small boards in a row to win the game.</p></li></ol><p class="gb-keyboard-note"><kbd>←</kbd> <kbd>↑</kbd> <kbd>↓</kbd> <kbd>→</kbd> to explore cells. <kbd>Enter</kbd> or <kbd>Space</kbd> to play a legal move.</p><p class="gb-local-note">${snapshot ? 'Watch the highlighted board for the next turn.' : 'Two players on the same screen or play against the offline bot.'}</p><div class="gb-mode-links"><a href="/ranked" data-route>Ranked</a><a href="/casual" data-route>Casual</a><a href="/friends" data-route>Play with a friend</a></div></aside>
+    </div>
+  </section>`;
+}
+
 
 /** Mount only the supplied board host. Routing owns its lifetime and calls destroy(). */
 export function mountBoard(host, {
@@ -306,6 +319,7 @@ export function mountBoard(host, {
   tutorial: initialTutorial = false,
   compat: injectedCompat = null,
   workerFactory = null,
+  workspace = host?.dataset?.boardLayout === 'workspace',
 } = {}) {
   if (!host || typeof host.addEventListener !== 'function') throw new TypeError('A board host is required.');
   const game = rules();
@@ -398,6 +412,7 @@ export function mountBoard(host, {
 
     const html = renderBoard(session.getState(), game, {
       preview,
+      workspace,
       mode,
       difficulty,
       theme,

@@ -87,3 +87,30 @@ Before deployment, revert these two implementation commits together to restore p
 behavior. After deployment, drain ongoing tournaments and disable admissions before removing a
 tournament writer; preserve PostgreSQL authority and records. Do not restart a stale SQLite writer.
 Settings removal does not erase an existing offline cache, browser opt-in or privacy preference.
+
+## Final annotation slice — d405091
+
+`d405091` finishes the last in-flight pieces of the batch: the offline-settings panel and
+`/settings` route removal (comments 27–28), the fenced tournament economy-profile refresh after
+reserve/settle transitions, and a store/tournament/account copy pass that keeps only verified
+claims. The P21.07 truthful mailbox-verification sentence is retained verbatim.
+
+At `d405091`:
+
+```sh
+env -u NODE_OPTIONS node --test --test-reporter=tap tests/v52-*.test.js tests/v5-p21-*.test.js tests/product-copy.test.js tests/monetization-ui-contract.test.js tests/legal-pages.test.js tests/design-invariants.test.js
+```
+
+**344 passed, zero failed, 2 environment-gated skips** (PostgreSQL lab helpers require local
+service dependencies not present in a bare checkout; they pass in the recorded service pass
+below and in CI).
+
+Allowlisted build at `d405091`: 163 files, 3,780,610 bytes,
+SHA-256 `ba6b82ef445cf7cda19e4401489dadbf21544b6b8f1e7b0b6d4ee87919283a97`.
+
+Loopback preview of that bundle at `http://127.0.0.1:4195`:
+
+- `/account` renders "New players verify mailbox ownership with a six-digit code before the
+  profile is created."
+- `/settings` returns 404; no `data-offline-action` control renders on any checked page.
+- `/store` renders the updated Crown-pack description without unverified provider claims.

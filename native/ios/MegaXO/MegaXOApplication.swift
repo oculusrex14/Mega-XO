@@ -133,8 +133,11 @@ final class MegaXOGameController: UIViewController, WKNavigationDelegate, WKUIDe
             let vault = MegaNativeSecretVault()
             let session = MegaNativeSession(vault: vault, http: http)
             nativeSession = session
+            let googleClientId = (Bundle.main.object(forInfoDictionaryKey: "MegaGoogleClientId")
+                                  as? String) ?? ""
             let bridge = MegaIOSApiBridge(entry: entry, http: http, session: session,
-                                          apple: identityBridge)
+                                          apple: identityBridge, googleClientId: googleClientId,
+                                          presenter: self)
             apiBridge = bridge
             configuration.userContentController.addScriptMessageHandler(
                 bridge, contentWorld: .page, name: "megaNativeApi")

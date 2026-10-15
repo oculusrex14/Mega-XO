@@ -1,3 +1,5 @@
+import AuthenticationServices
+import CryptoKit
 import Foundation
 import UIKit
 import WebKit
@@ -19,14 +21,20 @@ final class MegaIOSApiBridge: NSObject, WKScriptMessageHandlerWithReply {
     private let http: MegaNativeHTTP
     private let session: MegaNativeSession
     private let apple: MegaIOSIdentityBridge?
+    private let googleClientId: String
+    private weak var presentingController: UIViewController?
+    private var pendingAuthSession: ASWebAuthenticationSession?
     private let maxPathLength = 512
     private let maxBodyLength = 65536
 
-    init(entry: URL, http: MegaNativeHTTP, session: MegaNativeSession, apple: MegaIOSIdentityBridge?) {
+    init(entry: URL, http: MegaNativeHTTP, session: MegaNativeSession, apple: MegaIOSIdentityBridge?,
+         googleClientId: String = "", presenter: UIViewController? = nil) {
         trustedEntry = entry.standardizedFileURL.resolvingSymlinksInPath()
         self.http = http
         self.session = session
         self.apple = apple
+        self.googleClientId = googleClientId
+        self.presentingController = presenter
         super.init()
     }
 
@@ -79,7 +87,11 @@ final class MegaIOSApiBridge: NSObject, WKScriptMessageHandlerWithReply {
             let status = await session.status()
             // `providers` is reported as the capability that was actually compiled in, never as a
             // claim: no Apple adapter means Apple is not advertised as a native provider.
-            let providers: [String] = apple != nil ? ["apple"] : []
+            var providers: [String] = []
+            if apple != nil { providers.append("apple") }
+            // Google rides the documented installed-app web flow (PKCE + custom-scheme redirect),
+            // so a configured iOS client id is the only capability it needs.
+            if !googleClientId.isEmpty { providers.append("google") }
             reply(["ok": true,
                    "linked": status.linked,
                    "actorId": status.actorId as Any,
@@ -109,9 +121,10 @@ final class MegaIOSApiBridge: NSObject, WKScriptMessageHandlerWithReply {
 
     private func respondSignIn(_ body: [String: Any], _ reply: @escaping (Any?, String?) -> Void) {
         guard let provider = body["provider"] as? String,
-              let apple,
-              provider == "apple"
-        else {
+              ["google", "apple"].contains(provider)
+        else { reply(["ok": false, "error": "PROVIDER_NOT_CONFIGURED"], nil); return }
+        if provider == "google" { respondGoogleSignIn(body, reply); return }
+        guard let apple, provider == "apple" else {
             reply(["ok": false, "error": "PROVIDER_NOT_CONFIGURED"], nil)
             return
         }
@@ -126,10 +139,115 @@ final class MegaIOSApiBridge: NSObject, WKScriptMessageHandlerWithReply {
                     return
                 }
                 let outcome = await session.signIn(provider: provider,
-                                                   state: challenge.state, idToken: idToken)
+                                                   state: challenge.state, idToken: idToken,
+                                                   sessionToken: challenge.sessionToken)
                 reply(["ok": outcome == .ok, "outcome": outcome.rawValue], nil)
             }
         }
+    }
+
+    /// Google on iOS rides the installed-app web flow: a server challenge (state/nonce/session
+    /// binding) is followed by an ASWebAuthenticationSession against Google's authorization
+    /// endpoint with PKCE, and the returned code is exchanged for the ID token the native token
+    /// leg already knows how to verify. No Google SDK and no client secret: an iOS-class OAuth
+    /// client with its automatic reversed-scheme redirect is the whole contract.
+    private func respondGoogleSignIn(_ body: [String: Any], _ reply: @escaping (Any?, String?) -> Void) {
+        let intent = (body["intent"] as? String) ?? "login"
+        Task { @MainActor in
+            guard !googleClientId.isEmpty,
+                  let window = presentingController?.view?.window else {
+                reply(["ok": false, "error": "PROVIDER_NOT_CONFIGURED"], nil)
+                return
+            }
+            switch await session.challenge(provider: "google", intent: intent) {
+            case .failure:
+                reply(["ok": false, "error": "NATIVE_SIGNIN_FAILED"], nil)
+            case .success(let challenge):
+                var verifierBytes = [UInt8](repeating: 0, count: 32)
+                guard SecRandomCopyBytes(kSecRandomDefault, verifierBytes.count, &verifierBytes) == errSecSuccess else {
+                    reply(["ok": false, "error": "NATIVE_SIGNIN_FAILED"], nil)
+                    return
+                }
+                let verifier = Self.base64URL(Data(verifierBytes))
+                let codeChallenge = Self.base64URL(Data(SHA256.hash(data: Data(verifier.utf8))))
+                let scheme = "com.googleusercontent.apps." +
+                    googleClientId.replacingOccurrences(of: ".apps.googleusercontent.com", with: "")
+                let redirect = scheme + ":/oauthredirect"
+                var components = URLComponents(string: "https://accounts.google.com/o/oauth2/v2/auth")!
+                components.queryItems = [
+                    URLQueryItem(name: "client_id", value: googleClientId),
+                    URLQueryItem(name: "redirect_uri", value: redirect),
+                    URLQueryItem(name: "response_type", value: "code"),
+                    URLQueryItem(name: "scope", value: "openid email profile"),
+                    URLQueryItem(name: "state", value: challenge.state),
+                    URLQueryItem(name: "nonce", value: challenge.nonce),
+                    URLQueryItem(name: "code_challenge", value: codeChallenge),
+                    URLQueryItem(name: "code_challenge_method", value: "S256"),
+                    URLQueryItem(name: "prompt", value: "select_account"),
+                ]
+                guard let authorize = components.url else {
+                    reply(["ok": false, "error": "NATIVE_SIGNIN_FAILED"], nil)
+                    return
+                }
+                let authSession = ASWebAuthenticationSession(url: authorize, callbackURLScheme: scheme) { [weak self] callbackURL, error in
+                    Task { @MainActor in
+                        self?.pendingAuthSession = nil
+                        guard error == nil, let callbackURL else {
+                            reply(["ok": false, "error": "NATIVE_SIGNIN_FAILED"], nil)
+                            return
+                        }
+                        await self?.completeGoogleExchange(callbackURL: callbackURL,
+                                                           verifier: verifier,
+                                                           redirect: redirect,
+                                                           challenge: challenge,
+                                                           reply: reply)
+                    }
+                }
+                authSession.presentationContextProvider = self
+                pendingAuthSession = authSession
+                authSession.start()
+            }
+        }
+    }
+
+    private func completeGoogleExchange(callbackURL: URL, verifier: String, redirect: String,
+                                        challenge: (state: String, nonce: String, sessionToken: String),
+                                        reply: @escaping (Any?, String?) -> Void) async {
+        guard let params = URLComponents(url: callbackURL, resolvingAgainstBaseURL: false)?.queryItems,
+              let code = params.first(where: { $0.name == "code" })?.value,
+              let returnedState = params.first(where: { $0.name == "state" })?.value,
+              returnedState == challenge.state
+        else { reply(["ok": false, "error": "NATIVE_SIGNIN_FAILED"], nil); return }
+        var request = URLRequest(url: URL(string: "https://oauth2.googleapis.com/token")!)
+        request.httpMethod = "POST"
+        request.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
+        let form = [URLQueryItem(name: "code", value: code),
+                    URLQueryItem(name: "client_id", value: googleClientId),
+                    URLQueryItem(name: "code_verifier", value: verifier),
+                    URLQueryItem(name: "grant_type", value: "authorization_code"),
+                    URLQueryItem(name: "redirect_uri", value: redirect)]
+        var allowed = CharacterSet.alphanumerics
+        allowed.insert(charactersIn: "-._~")
+        request.httpBody = form.map { item -> String in
+            let raw = item.value ?? ""
+            return "\(item.name)=\(raw.addingPercentEncoding(withAllowedCharacters: allowed) ?? raw)"
+        }
+            .joined(separator: "&").data(using: .utf8)
+        guard let (data, response) = try? await URLSession.shared.data(for: request),
+              let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode),
+              let token = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let idToken = token["id_token"] as? String
+        else { reply(["ok": false, "error": "NATIVE_SIGNIN_FAILED"], nil); return }
+        let outcome = await session.signIn(provider: "google", state: challenge.state,
+                                           idToken: idToken, sessionToken: challenge.sessionToken)
+        reply(["ok": outcome == .ok, "outcome": outcome.rawValue], nil)
+    }
+
+    private static func base64URL(_ data: Data) -> String {
+        data.base64EncodedString()
+            .replacingOccurrences(of: "+", with: "-")
+            .replacingOccurrences(of: "/", with: "_")
+            .replacingOccurrences(of: "=", with: "")
     }
 
     private func respondRequest(_ body: [String: Any], _ reply: @escaping (Any?, String?) -> Void) {
@@ -183,5 +301,13 @@ final class MegaIOSApiBridge: NSObject, WKScriptMessageHandlerWithReply {
         case MegaNativeHTTP.RequestError.httpFailure(let status): return "HTTP_\(status)"
         default: return "SERVICE_UNAVAILABLE"
         }
+    }
+}
+
+extension MegaIOSApiBridge: ASWebAuthenticationPresentationContextProviding {
+    /// The host view controller's window anchors the Google sign-in sheet, mirroring how the
+    /// Apple bridge presents its controller.
+    func presentationAnchor(for session: ASWebAuthenticationSession) -> ASPresentationAnchor {
+        presentingController?.view.window ?? ASPresentationAnchor()
     }
 }

@@ -17,6 +17,7 @@
      offline build bakes in no host and MegaNativeHTTP stays unconfigured. The WebView's blanket
      https? content-block rule is unaffected: only the native shell may reach the API. -->
 <key>MegaApiOrigin</key><string>$(MEGA_API_ORIGIN)</string>
+<key>MegaGoogleClientId</key><string>$(MEGA_GOOGLE_CLIENT_ID)</string>
 <key>GADApplicationIdentifier</key><string>$(MEGA_ADMOB_APP_ID)</string>
 <!-- P20-06: the identifiers the NATIVE ads bridge (`MegaAdsBridge`) publishes `window.MegaAds`
      from. Every one is a build setting. The Debug configuration names Google's own demo units

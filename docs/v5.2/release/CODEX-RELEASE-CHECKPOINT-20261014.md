@@ -142,3 +142,18 @@ handoff is still required before authenticated two-actor browser acceptance.
 Follow-up PR #15 is the reviewable integration packet. Friends fix `d582dfe` and all sanitized
 receipts are pushed on `codex/v52-provider-release`; Main's active checkout and production remain
 untouched. No local source or evidence is intentionally left uncommitted.
+
+
+### App icon correction and Apple resumption — 15 October
+
+The owner explicitly requested correct app icons. Audit found browser icons present but both
+native launchers unwired. Commit `486466f` packages the approved emblem for iOS/Android/Play,
+preserving the source artwork, signing and IDs. Both complete Android debug-flavor builds and
+an unsigned iOS simulator build pass; 60 focused tests and deterministic export checks pass.
+Actual compiled icon metadata/resources were inspected. See the new native-icon build receipt.
+Existing signed/installed/store binaries predate this change and need a fresh release build.
+
+Apple MFA is no longer present and unchanged legal-entity details saved successfully. Current
+Paid Apps Agreement is Pending User Info, DSA In Review. No final agreement acceptance was
+performed/observed by Codex and no private proof/banking/tax document was uploaded. This supersedes
+the earlier MFA/New statuses without claiming an active paid contract or an app review submission.

@@ -1,0 +1,81 @@
+{
+  "schema_version": 1,
+  "observed_at_utc": "2026-10-15T02:22:13.570542+00:00",
+  "source_commit": "486466fc68e30adf1e925ab471076e86da52b902",
+  "source_binding": "Builds ran against the icon working payload subsequently committed unchanged at this SHA.",
+  "environment": {
+    "xcode": "27.0 (27A266a)",
+    "ios_target": "generic iOS Simulator / Debug / unsigned",
+    "gradle": "8.13",
+    "android_build_tools": "35.0.0",
+    "android_target": "OfflineDebug and OnlineDebug / debug-key signed",
+    "python": "bundled workspace Python; Pillow 12.3.0"
+  },
+  "checks": {
+    "icon_and_native_brand_unit_tests": {
+      "pass": 60,
+      "fail": 0,
+      "skip": 0
+    },
+    "ios_full_build": "PASS",
+    "android_offline_full_build": "PASS",
+    "android_online_full_build": "PASS",
+    "deterministic_export_check": "PASS",
+    "independent_pixel_safe_circle_check": "PASS",
+    "android_compiled_adaptive_xml": "PASS"
+  },
+  "ios_built_plist": {
+    "CFBundleIdentifier": "online.megaxo.prototype",
+    "CFBundleDisplayName": "Mega XOXO",
+    "CFBundleIcons": {
+      "CFBundlePrimaryIcon": {
+        "CFBundleIconFiles": [
+          "AppIcon60x60"
+        ],
+        "CFBundleIconName": "AppIcon"
+      }
+    },
+    "CFBundleIcons~ipad": {
+      "CFBundlePrimaryIcon": {
+        "CFBundleIconFiles": [
+          "AppIcon60x60",
+          "AppIcon76x76"
+        ],
+        "CFBundleIconName": "AppIcon"
+      }
+    }
+  },
+  "artifacts": [
+    {
+      "path": ".artifacts/native-icons/xcode/Build/Products/Debug-iphonesimulator/MegaXO.app/Assets.car",
+      "bytes": 1630072,
+      "sha256": "a95c128a20c223514c235f9ddea2ce3d13fa559a5e3e72c364af4b3ece5bee84"
+    },
+    {
+      "path": ".artifacts/native-icons/xcode/Build/Products/Debug-iphonesimulator/MegaXO.app/AppIcon60x60@2x.png",
+      "bytes": 14532,
+      "sha256": "26abe24d288166499a50ca0cd5bea9d90f5998fca04816003334f65edfb11959"
+    },
+    {
+      "path": ".artifacts/native-icons/xcode/Build/Products/Debug-iphonesimulator/MegaXO.app/AppIcon76x76@2x~ipad.png",
+      "bytes": 22055,
+      "sha256": "1e8b97453887b9878a50ab2d84df957c33ee2ccfa0a8aa6c8d534d2755c003d8"
+    },
+    {
+      "path": "native/android/app/build/outputs/apk/offline/debug/app-offline-debug.apk",
+      "bytes": 27777633,
+      "sha256": "1a5cae8cb273fdc8dfcbb220797ec3cf6b1b1486be2a05ffafe281d0f0a50296"
+    },
+    {
+      "path": "native/android/app/build/outputs/apk/online/debug/app-online-debug.apk",
+      "bytes": 27777945,
+      "sha256": "aade710ac6b76bba88df423246414d7042c4b4e5cfa10b5a5e7a6a7648bd6932"
+    }
+  ],
+  "limitations": [
+    "No physical device was installed, changed or inspected in this run.",
+    "No App Store distribution archive, upload or store approval is claimed.",
+    "Debug prototype IDs and test-ad defaults were preserved; accepted release artifacts still require aligned permanent IDs and production feature configuration.",
+    "System python3 lacked Pillow; that failed setup invocation was corrected by using the existing bundled runtime. No global packages were installed."
+  ]
+}

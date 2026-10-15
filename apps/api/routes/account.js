@@ -331,6 +331,17 @@ async function getSession(context, req, res) {
       providers[identity.provider] = Object.freeze({ web: true, linked: true });
     }
   }
+  /* Configured-but-unlinked providers are advertised so the account view can render honest
+   * buttons: a web:true entry is an active sign-in button, web:false a disabled one. A deployment
+   * with no composed provider client keeps the previous linked-only shape. */
+  const providerClient = resolveNativeProviders(context);
+  const providerCapabilities = typeof providerClient?.capabilities === "function" ? providerClient.capabilities() : null;
+  if (providerCapabilities) {
+    for (const provider of WEB_PROVIDERS) {
+      if (providers[provider]) continue;
+      providers[provider] = Object.freeze({ web: providerCapabilities[provider]?.web === true, linked: false });
+    }
+  }
   return sendJson(res, 200, {
     linked: Boolean(bootstrap.actor),
     actorId: bootstrap.actor || null,
@@ -589,6 +600,92 @@ function providerUnavailable(status) {
   return error;
 }
 
+/* ==========================================================================================
+ * WEB OAUTH LANE (contract: packages/contracts/routes.js lines 53-54)
+ *
+ * POST /api/account/start mints the durable one-use attempt (state/nonce/PKCE verifier) bound to
+ * the browser session and returns the provider authorize URL whose redirect_uri is the canonical
+ * production callback. The callback half is dispatched by well-known.js, which calls the
+ * deployment-composed completeWebSignIn (createWebSignInLane below): consume, exchange, verify,
+ * rotate session. Both legs reuse the SAME accounts service and IdentityProviders instance as the
+ * native family - nothing here invents a parallel auth path.
+ * ========================================================================================== */
+const WEB_PROVIDERS = Object.freeze(['google', 'apple']);
+
+/* The callback host must be the exact canonical apex the OAuth clients are registered with. A
+ * deployment may pin its own https origin; anything else falls back to the canonical apex. */
+function webCallbackOrigin(context) {
+  const value = context?.webCallbackOrigin;
+  return typeof value === 'string' && value.startsWith('https://') ? value : 'https://megaxo.online';
+}
+
+/* The session bearer a callback binds to. Order mirrors resolveAuth: the host cookie, then the
+ * dev-session fallback. A null result is AUTH_REQUIRED, never a guess. */
+function webSessionTokenFromCookie(cookie) {
+  if (typeof cookie !== 'string' || !cookie) return null;
+  const cookies = parseCookies(cookie);
+  for (const name of ['__Host-mega_session', 'mega_dev_session', 'session', 'token']) {
+    const value = cookies[name];
+    if (typeof value === 'string' && value) return value;
+  }
+  return null;
+}
+
+/* POST /api/account/start (contract: csrf: true, bodyLimit 300000). A first-ever visitor has no
+ * cookie yet, so the route bootstraps the session the attempt hangs off and sets it - exactly like
+ * the session endpoint; an existing cookie session is CSRF-validated like the native family. */
+async function postAccountStart(context, req, res) {
+  const accounts = await resolveService(context);
+  const providers = resolveNativeProviders(context);
+  if (!providers || typeof providers.authorization !== 'function') throw providerUnavailable(503);
+  const cookie = bearerFromCookies(req);
+  if (cookie) await enforceNativeCsrf(accounts, cookie, req);
+  const body = await parseJsonBody(req, 300 * 1024);
+  const input = validateChallengeRequest(body);
+  if (typeof providers.capabilities === 'function' && providers.capabilities()?.[input.provider]?.web !== true) {
+    throw providerUnavailable(409);
+  }
+  const bootstrap = await accounts.bootstrap(cookie);
+  const headers = { 'Cache-Control': CACHE_CONTROL_POLICIES.PRIVATE_NO_STORE };
+  if (bootstrap.token) headers['Set-Cookie'] = sessionCookieHeaders(bootstrap.token);
+  const token = bootstrap.token || cookie;
+  const attempt = await accounts.start(token, input.provider, input.intent, 'web');
+  const redirect = webCallbackOrigin(context) + '/auth/callback/' + input.provider;
+  return sendJson(res, 200, { url: providers.authorization(input.provider, attempt, redirect), state: attempt.state, expires: attempt.expires }, headers);
+}
+
+/* The service fails with bare Error(code) messages; the well-known callback maps error.code, so
+ * normalize here rather than leaking SIGNIN_FAILED for every distinct durable reason. */
+function normalizeLaneError(error) {
+  if (error && !error.code) error.code = /^[A-Z0-9_]+$/.test(error.message) ? error.message : 'SIGNIN_FAILED';
+  return error;
+}
+
+/* The deployment-composed web lane the well-known callback calls: consume the one-use attempt,
+ * exchange the code for tokens, verify the ID token for the attempt nonce (web audience), and
+ * rotate the session. Outcome contract (pinned by tests/v5-p11-website-foundations.test.js):
+ * {ok:true, setCookie} on success; a thrown error whose .code becomes the redirect authError. */
+function createWebSignInLane(context) {
+  return async function completeWebSignIn({ provider, state, code, cookie } = {}) {
+    try {
+      if (!WEB_PROVIDERS.includes(provider)) { const e = new Error('INVALID_PROVIDER'); e.code = 'INVALID_PROVIDER'; e.status = 400; throw e; }
+      const accounts = await resolveService(context);
+      const providers = resolveNativeProviders(context);
+      if (!providers || typeof providers.exchange !== 'function') { const e = new Error('PROVIDER_SIGNIN_UNAVAILABLE'); e.code = 'PROVIDER_SIGNIN_UNAVAILABLE'; e.status = 503; throw e; }
+      const token = webSessionTokenFromCookie(cookie);
+      if (!token) { const e = new Error('AUTH_REQUIRED'); e.code = 'AUTH_REQUIRED'; e.status = 401; throw e; }
+      const attempt = await accounts.consume(token, state, provider, 'web');
+      const identity = await providers.exchange(provider, code, attempt, webCallbackOrigin(context) + '/auth/callback/' + provider);
+      const logged = await accounts.finishVerified(token, attempt, identity);
+      /* A single cookie string is the pinned outcome shape. The __Host- pair member is the one the
+       * canonical https callback host honors; the dev-session member is an http-fallback only. */
+      return { ok: true, setCookie: sessionCookieHeaders(logged.token)[0] };
+    } catch (error) {
+      throw normalizeLaneError(error);
+    }
+  };
+}
+
 function nativeSessionUnavailable() {
   const error = new Error('NATIVE_SESSION_UNAVAILABLE');
   error.status = 503;
@@ -833,6 +930,13 @@ async function handleAccountRoute(context, req, res) {
     return true;
   }
 
+  /* Web OAuth start (contract line 53): the browser's own sign-in lane. The callback half is
+   * dispatched by well-known.js, which calls the deployment-composed completeWebSignIn. */
+  if (pathname === '/api/account/start' && method === 'POST') {
+    await postAccountStart(context, req, res);
+    return true;
+  }
+
   /* Cookie-free native session family (contract lines 55-61). Ordered before the generic
    * /api/account/native/* paths; each is POST-only and never sets a cookie. */
   if (pathname === '/api/account/native/challenge' && method === 'POST') {
@@ -941,11 +1045,13 @@ module.exports = {
   logout,
   getSession,
   postEmail,
+  postAccountStart,
   postNativeChallenge,
   postNativeFinish,
   postNativeToken,
   postNativeRefresh,
   postNativeLogout,
+  createWebSignInLane,
   NATIVE_BODY_LIMITS,
   handleAccountRoute,
 };

@@ -679,11 +679,38 @@ async function main() {
    * workflows on `worker_runtime`. Every pool's `describe().role` is asserted before any statement, and
    * the API context is asserted to carry no Core handle, so the boundary is structural: an API route
    * can reach Core only over the signed ingress, never by borrowing the Core connection. */
+  /* WEB OAUTH LANE (owner directive, 2026-10-15): the browser's Google/Apple sign-in. The provider
+   * client is composed from deployment env so the well-known callback completes a REAL exchange
+   * (consume -> code exchange -> verified identity -> rotated session) instead of the honest
+   * PROVIDER_SIGNIN_UNAVAILABLE fallback. Secrets arrive as env or env_FILE, never in Git. The
+   * redirect target is the exact canonical apex the OAuth clients are registered with (www is a
+   * JS origin only, never a callback host). The same nativeAudiences env the WebView lane reads
+   * keeps ONE audience source for both surfaces. */
+  const { IdentityProviders } = require(path.join(ROOT, 'server/identity-provider.js'));
+  const { secret: readProviderSecret } = require(path.join(ROOT, 'server/production/config.js'));
+  const webAccountRoutes = require(path.join(ROOT, 'apps/api/routes/account.js'));
+  const identityProviders = new IdentityProviders({config: {
+    google: {
+      clientId: process.env.GOOGLE_CLIENT_ID || '',
+      clientSecret: readProviderSecret(process.env, 'GOOGLE_CLIENT_SECRET'),
+      nativeAudiences: (process.env.GOOGLE_NATIVE_AUDIENCES || '').split(',').filter(Boolean),
+      authorizedParties: (process.env.GOOGLE_AUTHORIZED_PARTIES || '').split(',').filter(Boolean),
+    },
+    apple: {
+      clientId: process.env.APPLE_SERVICE_ID || '',
+      teamId: process.env.APPLE_TEAM_ID || '',
+      keyId: process.env.APPLE_KEY_ID || '',
+      privateKey: readProviderSecret(process.env, 'APPLE_PRIVATE_KEY').replace(/\\n/g, '\n'),
+      nativeAudiences: (process.env.APPLE_NATIVE_AUDIENCES || '').split(',').filter(Boolean),
+    },
+  }});
   const apiContext = {
     pool: apiPool, accounts, coreGateway, access, nativeAudiences: ['mega-ios', 'mega-android'],
     queue: coreGateway, leaderboard: (query) => coreGateway.leaderboard(query),
     otpSecret, ticketIssuer, allowedOrigins,
+    identityProviders, webCallbackOrigin: 'https://megaxo.online',
   };
+  apiContext.completeWebSignIn = webAccountRoutes.createWebSignInLane(apiContext);
   const apiRole = assertApiCompositionHoldsNoCoreAccess(apiContext);
   const apiHandler = createApiHandler(apiContext);
 

@@ -94,6 +94,7 @@
 .gb-cell--legal:hover .gb-move-dot { opacity: 1; box-shadow: 0 0 10px var(--gb-x); }
 .gb-claim { display: grid; place-items: center; position: absolute; inset: 0; background: color-mix(in srgb, var(--gb-raised) 86%, transparent); pointer-events: none; font-size: 14px; font-weight: 800; letter-spacing: .06em; }
 .gb-claim .gb-mark { width: 70%; height: 70%; }
+.gb-mini--claimed .gb-cell .gb-mark { visibility: hidden; }
 .gb-mini--winning { outline: 3px solid var(--gb-route); outline-offset: 2px; }
 .gb-turn-strip { display: flex; align-items: center; gap: 11px; min-height: 60px; margin: 5px 16px 0; padding: 9px 12px; border: 1px solid #42648b; border-radius: 20px; background: linear-gradient(130deg, rgba(4, 17, 38, .94), rgba(5, 14, 29, .95)); box-shadow: inset 0 1px rgba(156, 199, 255, .09); }
 .gb-turn-icon { display: grid; place-items: center; width: 31px; height: 31px; flex-shrink: 0; border: 1px solid currentColor; border-radius: 50%; font-size: 22px; }

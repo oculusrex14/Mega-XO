@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "phase": "P22",
+  "gate": "G22",
+  "status": "EXECUTED",
+  "observed_at_utc": "2026-10-15T05:40:00Z",
+  "environment": "Oracle host `command` + owner Mac + Vercel; production Neon PG16 mega_xo_v5_production; managed Aiven Redis prdb4781; V5 authority epoch v5:1792037113917:153a8543d555682d",
+  "purpose": "Consolidated, machine-readable evidence for the twelve P22 production-readiness checks. Each entry names what was observed and where the fuller record lives. Nothing here is asserted from a template, a green CI run, or a file merely existing.",
+  "checks": {
+    "v4ReleaseAndRecovery": {
+      "observed": "V4.1.2 shipped; fix 79e56d6, release f1e5577, image ghcr.io/oculusrex14/mega-xo@sha256:71d33a1a9893a303c5ffcbdb090caefde22d9e7e054a8c2d6c494a44919b58e4; livez/opsz healthy; isolated encrypted-snapshot restoration directly verified",
+      "record": "docs/v5/evidence/phase00-live-operations.json"
+    },
+    "currentSourceAndGreenCi": {
+      "observed": "Branch V5.2; the release workflow, P15, P19 and gameplay-capture workflows conclude success on the pushed SHA",
+      "record": "docs/v5/evidence/phase17-gate.json"
+    },
+    "productionTargetIsolation": {
+      "observed": "Production Neon blue-sun-85454968 / mega_xo_v5_production is pairwise distinct from staging lively-shadow-52629967 and dev silent-unit-55400508; role limits bounded per role",
+      "record": "docs/v5/evidence/phase18-gate.json"
+    },
+    "v5ImmutableBuildAndSchema": {
+      "observed": "Web bundle built from the frozen SHA c172aa57 (bundle_sha256 d4b4c3e7, 160 files) and byte-identical to the deployed copies; deployed server file matches HEAD; 55 migrations applied",
+      "record": "docs/v5/evidence/phase20-gate.json"
+    },
+    "legacyBrowserCompatibility": {
+      "observed": "The retained browser client resolves to the same permanent actor; browser compat and account/social routes pass",
+      "record": "docs/v5/evidence/phase11-browser-compat.json"
+    },
+    "nativeDeviceAcceptance": {
+      "observed": "Android online APK installed and driven on the physical OnePlus with the rewarded controls rendered at 8 committed plies; the signed AAB passes jarsigner; the iOS app is signed, installed, launched and running on the physical iPhone; its client bundle is byte-identical to the Android one",
+      "record": "docs/v5/evidence/phase20-gate.json"
+    },
+    "providerInboxAndCallbacks": {
+      "observed": "Association files served live with the real package id and the owner-held upload fingerprint; the OAuth callback route no longer reports a false success (fail-closed unless a composed web sign-in lane exists)",
+      "record": "docs/v5/evidence/phase11-website-foundations.json"
+    },
+    "realCoreAndWorkerRecovery": {
+      "observed": "Real Core A SIGKILL after a committed move: Core B reconstructs revision, paid occupancy, the same deadline and dedupe; worker backlog/DLQ surfaced through the ops probe",
+      "record": "docs/v5/evidence/phase16-gate.json"
+    },
+    "independentBackupRestore": {
+      "observed": "Encrypted R2 backup with independent readback on a 5-minute cadence; a full restore into an isolated PostgreSQL with invariant checks; an independent Neon PITR recovery point",
+      "record": "docs/v5/evidence/phase15-gate.json"
+    },
+    "fullyReconciledFinalSnapshot": {
+      "observed": "The E2 import (8549 rows) versus the final fenced snapshot (8570 rows): +19 rolling telemetry, +2 maintenance idempotency keys, one anonymous session rotation, one terminal outbox row; every durable state(id=1,json) key byte-identical except one empty daily-snapshot marker",
+      "record": "docs/v5/evidence/phase22-gate.json"
+    },
+    "testedV4WriteFence": {
+      "observed": "V4 app container Running=false with RestartPolicy=no and ExitCode=0; no host process holds the SQLite file; the backup container's database bind is read-only and touch is refused; the database file mtime is frozen at 2026-10-15T04:04:52.600305021Z with no -wal",
+      "record": "docs/v5/evidence/phase23-gate.json"
+    },
+    "readOnlyStageAndAlertDelivery": {
+      "observed": "Staging is a supervised service; a forced stale backup flipped the V5 host monitor to unhealthy and DELIVERED the alert, and the restore produced the recovery alert; /opsz answers ok:true and fails red on a stale backup",
+      "record": "docs/v5/evidence/phase14-gate.json"
+    }
+  },
+  "not_claimed": [
+    "No live rewarded ad was ever served on any platform.",
+    "api.megaxo.online still has no public DNS record.",
+    "No store submission, provider approval, or live commerce.",
+    "Host-level HA is not proven; two same-host Core processes are process failover only."
+  ]
+}

@@ -27,14 +27,13 @@ current Undo/Hint implementation and lifecycle are preserved. `src/powers-ui.js`
 economic authority, production entry point, service roles, association routes, deployment source and
 Main's release/authority evidence match the merge target.
 
-The initial post-merge inventory showed Main's
-`docs/v5.2/release/BACKEND-AND-RELIABILITY-AUDIT-20261015.md` absent. It was absent from both provider
-HEAD and merge base `93dd7c56a7c9d271503170e7b02395d0c0b0113b`; a full-history deletion search on the
-provider branch found no deletion commit for this path. Thus it was not an intentional prior
-provider deletion. No causal explanation for the initial merge-index omission is established.
-Following root's instruction, the exact target copy was restored and staged. Its index blob is
-`2edeec4e413b0e0ccc2c49b7e3dbbe4c3157b957`, identical to `origin/V5.2`.
-
+The initial inventory showed `docs/v5.2/release/BACKEND-AND-RELIABILITY-AUDIT-20261015.md`
+absent. Root's follow-up pinned-revision check explains this: that document did not exist at
+`59b65b0`; Main added it in `9a4249d` while the shared remote-tracking reference advanced. The exact
+new Main copy was staged and preserved (blob `2edeec4e413b0e0ccc2c49b7e3dbbe4c3157b957`). The earlier
+claim that this document belonged to the `59b65b0` target is superseded by this check. No historical
+document was deleted. Root subsequently merged Main through `36736c8`, which incorporates that
+commit and its ancestry normally.
 The complete staged comparison against `origin/V5.2` contains the intended provider evidence,
 AppIcon/native identity wiring, Friends retry, local connection handling, draft key art and their
 tests/scripts/documentation. It contains no deleted Main document or change to Main's authority,

@@ -10,6 +10,7 @@ on:
       - 'scripts/p21/**'
       - 'tests/v5-p21-*.test.js'
       - 'tests/v51-*.test.js'
+      - 'tests/v52-*.test.js'
       - 'assets/p21/art/**'
       - 'assets/p21/fonts/**'
       - 'assets/p21/logos/**'
@@ -25,6 +26,7 @@ on:
       - 'scripts/p21/**'
       - 'tests/v5-p21-*.test.js'
       - 'tests/v51-*.test.js'
+      - 'tests/v52-*.test.js'
       - 'assets/p21/art/**'
       - 'assets/p21/fonts/**'
       - 'assets/p21/logos/**'
@@ -53,7 +55,7 @@ jobs:
         with:
           node-version: '24'
       - name: Verify delivery boundaries and affected website paths
-        run: node --test tests/v5-p21-*.test.js
+        run: node --test tests/v5-p21-*.test.js tests/v52-public-annotations.test.js tests/v52-annotation-friends.test.js tests/v52-game-workspace.test.js tests/v52-web-tournaments.test.js
       - name: Build reviewed static payload
         run: node scripts/p21/build-web.js
       - name: Retain sanitized checksums and route manifest

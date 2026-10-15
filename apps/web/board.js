@@ -152,11 +152,11 @@ function turnCopy(state, { mode, thinking, preview, snapshot, actorId, pending, 
   return { title, detail };
 }
 
-function toolbar({ mode, difficulty, theme, snapshot, guidedLocked = false }) {
+function toolbar({ mode, difficulty, theme, snapshot, guidedLocked = false, workspace = false, gameMode = mode }) {
   return `<div class="gb-toolbar">
-    ${snapshot ? `<span class="gb-online-mode">${snapshot.quote?.rated ? 'Ranked' : snapshot.terms?.source === 'queue' ? 'Casual' : 'Friendly match'}</span>` : `<label>Play mode<select data-gb-setting="mode"${guidedLocked ? ' disabled aria-describedby="gb-guided-title"' : ''}><option value="bot"${mode === 'bot' ? ' selected' : ''}>Play against Bot</option><option value="local"${mode === 'local' ? ' selected' : ''}>Two players · same screen</option></select></label>
-    <label${mode === 'local' ? ' hidden' : ''}>Bot level<select data-gb-setting="difficulty"${guidedLocked ? ' disabled aria-describedby="gb-guided-title"' : ''}>${['Beginner', 'Easy', 'Medium', 'Hard', 'Expert'].map(level => `<option${difficulty === level ? ' selected' : ''}>${level}</option>`).join('')}</select></label>`}
-    <label>Game theme<select data-gb-setting="theme">${GAME_THEMES.map(item => `<option value="${item.id}"${theme === item.id ? ' selected' : ''}>${item.name}</option>`).join('')}</select></label>
+    ${snapshot ? `<span class="gb-online-mode">${snapshot.terms?.source === 'tournament' ? 'Tournament' : snapshot.quote?.rated ? 'Ranked' : snapshot.terms?.source === 'queue' ? 'Casual' : 'Friendly match'}</span>` : `<label>Play mode<select ${workspace ? 'data-game-mode' : 'data-gb-setting="mode"'}${guidedLocked ? ' disabled aria-describedby="gb-guided-title"' : ''}><option value="bot"${gameMode === 'bot' ? ' selected' : ''}>Play against Bot</option><option value="local"${gameMode === 'local' ? ' selected' : ''}>Two players · same screen</option>${workspace ? ['ranked','casual','friends'].map(value => `<option value="${value}"${gameMode === value ? ' selected' : ''}>${({ranked:'Ranked · online',casual:'Casual · online',friends:'Play with friends'})[value]}</option>`).join('') : ''}</select></label>
+    <label${gameMode !== 'bot' ? ' hidden' : ''}>Bot level<select aria-label="Bot level" data-gb-setting="difficulty"${guidedLocked ? ' disabled aria-describedby="gb-guided-title"' : ''}>${['Beginner', 'Easy', 'Medium', 'Hard', 'Expert'].map(level => `<option${difficulty === level ? ' selected' : ''}>${level}</option>`).join('')}</select></label>`}
+    <label>Game theme<select aria-label="Game theme" data-gb-setting="theme">${GAME_THEMES.map(item => `<option value="${item.id}"${theme === item.id ? ' selected' : ''}>${item.name}</option>`).join('')}</select></label>
   </div>`;
 }
 
@@ -209,24 +209,25 @@ const gameIcon = name => {
 };
 
 function gameDashboard(state, game, options) {
-  const {mode, difficulty, theme, snapshot, actorId, pending, error, uncertain, requestKind, canResign, guidedView, botRecovery, powersView} = options;
-  const copy = turnCopy(state, options);
-  const playerName = player => snapshot ? snapshot.symbols[player] === actorId ? 'You' : escapeText(snapshot.playerNames?.[snapshot.symbols[player]] || 'Opponent') : mode === 'local' ? `Player ${player}` : player === 'X' ? 'You' : 'Bot';
-  const blocked = !!snapshot && (snapshot.status !== 'PLAYING' || snapshot.symbols[state.turn] !== actorId || pending || uncertain || !!error);
-  const powerPanel = !snapshot && mode === 'bot' && !guidedView && globalThis.MegaWebPowers?.render
-    ? globalThis.MegaWebPowers.render(powersView || {mode:'bot', available:false}, {workspace:true}) : !snapshot && mode==='bot' && !guidedView ? '<section class="gb-powers" data-gb-powers aria-label="Optional powers"><h2>Powers</h2><p>Bot Undo and Tactical Hint controls are unavailable until the verified powers service loads.</p></section>' : '';
+  const {mode, difficulty, theme, snapshot, actorId, pending, error, uncertain, requestKind, canResign, guidedView, botRecovery, powersView, gameMode = mode, accountPending = false} = options;
+  const waitingOnline = !snapshot && ['ranked','casual','friends'].includes(gameMode);
+  const copy = waitingOnline ? {title:'Ready for your next rival',detail:gameMode === 'friends' ? 'Choose a friend in Game Setup to arrange your next match.' : `Use Game Setup to join the ${gameMode === 'ranked' ? 'Ranked' : 'Casual'} queue.`} : turnCopy(state, options);
+  const playerName = player => snapshot ? snapshot.symbols[player] === actorId ? 'You' : escapeText(snapshot.playerNames?.[snapshot.symbols[player]] || 'Opponent') : waitingOnline ? player === 'X' ? 'You' : 'Opponent' : mode === 'local' ? `Player ${player}` : player === 'X' ? 'You' : 'Bot';
+  const blocked = waitingOnline || !!snapshot && (snapshot.status !== 'PLAYING' || snapshot.symbols[state.turn] !== actorId || pending || uncertain || !!error || accountPending);
+  const powerPanel = !snapshot && !waitingOnline && mode === 'bot' && !guidedView && globalThis.MegaWebPowers?.render
+    ? globalThis.MegaWebPowers.render(powersView || {mode:'bot', available:false}, {workspace:true}) : !snapshot && !waitingOnline && mode==='bot' && !guidedView ? '<section class="gb-powers" data-gb-powers aria-label="Optional powers"><h2>Powers</h2><p>Bot Undo and Tactical Hint controls are unavailable until the verified powers service loads.</p></section>' : '';
   return `<section class="gb-stage gb-stage--practice gb-dashboard" data-gb-stage data-gb-theme="${theme}" aria-label="${snapshot ? 'Online Mega XOXO match' : 'Local Mega XOXO game'}">
     <aside class="gb-game-left" aria-label="Game setup and players">
-      <section class="gb-game-panel gb-game-setup"><h2>${gameIcon('setup')}Game Setup</h2>${toolbar({mode, difficulty, theme, snapshot, guidedLocked:!!guidedView})}<a class="gb-setup-online" href="/play" data-route>Explore online play modes <span aria-hidden="true">↗</span></a></section>
-      <section class="gb-game-panel gb-game-players"><h2>${gameIcon('players')}Players</h2>${['X','O'].map(player=>`<div class="gb-roster-player${state.turn===player&&!state.winner?' gb-roster-player--active':''}"><span class="gb-avatar gb-avatar--${player.toLowerCase()}">${mark(player)}</span><span><b>${playerName(player)}</b><small>${snapshot ? `Plays ${player}` : mode==='local' ? 'Same-screen player' : player==='X' ? 'Player' : `${difficulty} difficulty`}</small></span><strong aria-label="${state.mini.filter(v=>v===player).length} small boards won">${state.mini.filter(v=>v===player).length}<small>boards</small></strong></div>`).join('')}</section>
+      <section class="gb-game-panel gb-game-setup"><h2>${gameIcon('setup')}Game Setup</h2>${toolbar({mode, difficulty, theme, snapshot, workspace:true, gameMode, guidedLocked:!!guidedView})}<div class="mx-online-controls gb-online-controls" data-online-controls aria-live="polite"></div></section>
+      <section class="gb-game-panel gb-game-players"><h2>${gameIcon('players')}Players</h2>${['X','O'].map(player=>`<div class="gb-roster-player${state.turn===player&&!state.winner?' gb-roster-player--active':''}"><span class="gb-avatar gb-avatar--${player.toLowerCase()}">${mark(player)}</span><span><b>${playerName(player)}</b><small>${snapshot ? `Plays ${player}` : waitingOnline ? 'Online player' : mode==='local' ? 'Same-screen player' : player==='X' ? 'Player' : `${difficulty} difficulty`}</small></span><strong aria-label="${state.mini.filter(v=>v===player).length} small boards won">${state.mini.filter(v=>v===player).length}<small>boards</small></strong></div>`).join('')}</section>
       <div class="gb-turn-strip" role="status" aria-live="polite" aria-atomic="true"><span class="gb-turn-icon gb-turn-icon--${state.turn.toLowerCase()}">${state.winner==='DRAW'?'=':mark(state.winner||state.turn)}</span><div>${snapshot&&['AUTH_REQUIRED','LINK_ACCOUNT_REQUIRED'].includes(error)?'<a class="gb-sign-in" href="/account" data-route>Sign in to play online</a>':`<strong>${copy.title}</strong>`}<p>${copy.detail}</p></div>${botRecovery?'<button class="gb-reset" type="button" data-gb-action="bot-recovery">Calculate</button>':''}</div>
     </aside>
     <div class="gb-game-centre">${guidedPanel(guidedView)}<div class="gb-frame">${boardMarkup(state,game,{...options,blocked})}</div>
-      <div class="gb-match-note"><span class="gb-move-count">${gameIcon('stats')}<span>Moves<strong data-gb-move-total>${state.moves.length}</strong></span></span><div class="gb-game-actions">${snapshot ? `${uncertain&&error&&!['AUTH_REQUIRED','LINK_ACCOUNT_REQUIRED'].includes(error)?`<button type="button" data-gb-action="retry">Retry ${requestKind==='resign'?'resignation':'move'}</button>`:''}${canResign&&snapshot.status==='PLAYING'?`<button type="button" data-gb-action="resign"${pending||uncertain||error?' disabled':''}>Resign</button>`:''}` : `<button type="button" data-gb-action="fresh">${gameIcon('reset')}Reset board</button><button type="button" data-gb-action="rematch">${gameIcon('players')}New game</button>`}<button type="button" data-gb-action="share">${gameIcon('share')}Share game</button></div></div>
+      <div class="gb-match-note"><span class="gb-move-count">${gameIcon('stats')}<span>Moves<strong data-gb-move-total>${state.moves.length}</strong></span></span><div class="gb-game-actions">${snapshot ? `${uncertain&&error&&!['AUTH_REQUIRED','LINK_ACCOUNT_REQUIRED'].includes(error)?`<button type="button" data-gb-action="retry">Retry ${requestKind==='resign'?'resignation':'move'}</button>`:''}${canResign&&snapshot.status==='PLAYING'?`<button type="button" data-gb-action="resign"${pending||uncertain||error?' disabled':''}>Resign</button>`:''}` : waitingOnline ? '' : `<button type="button" data-gb-action="fresh">${gameIcon('reset')}Reset board</button><button type="button" data-gb-action="rematch">${gameIcon('players')}New game</button>`}<button type="button" data-gb-action="share">${gameIcon('share')}Share game</button></div></div>
       <p class="gb-route-note">Your cell determines the opponent’s next board.</p>
     </div>
     <aside class="gb-game-right" aria-label="Powers and game guide">${powerPanel}
-      <section class="gb-game-panel gb-help-panel" aria-labelledby="gb-how-title"><h2 id="gb-how-title">${gameIcon('guide')}Guided Practice</h2><div class="gb-route-diagram" aria-hidden="true"><span>×</span><span></span><span class="gb-route-diagram-target">×</span><span></span><span>×</span><span></span><span></span><span></span><span></span></div><p class="gb-guide-intro">Send your opponent to a small board by playing in the corresponding cell.</p><ol><li><b>Each cell sets the route.</b><p>Your move sends your opponent to the matching small board. If it is complete, they may choose any open board.</p></li><li><b>Win a small board with 3 in a row.</b></li><li><b>Win 3 small boards in a row to win the game.</b></li></ol>${snapshot?'':`<button class="gb-button gb-button--guided" type="button" data-gb-action="start-guided">${gameIcon('guide')}Start guided practice <span aria-hidden="true">→</span></button>`}<a class="gb-full-guide" href="/how-to-play" data-route>View full guide <span aria-hidden="true">→</span></a><details class="gb-game-shortcuts"><summary>Keyboard &amp; play modes</summary><p class="gb-keyboard-note"><kbd>←</kbd> <kbd>↑</kbd> <kbd>↓</kbd> <kbd>→</kbd> to explore cells. <kbd>Enter</kbd> or <kbd>Space</kbd> to play a legal move.</p><div class="gb-mode-links"><a href="/ranked" data-route>Ranked</a><a href="/casual" data-route>Casual</a><a href="/friends" data-route>Play with a friend</a></div></details></section>
+      <details class="gb-game-panel gb-help-panel" aria-labelledby="gb-how-title"><summary><span>${gameIcon('guide')}<span id="gb-how-title">Guided Practice<small>Learn in six interactive moves</small></span></span><span class="gb-guide-chevron" aria-hidden="true">⌄</span></summary><div class="gb-guide-content"><p class="gb-guide-intro">One cell sends your opponent to the matching small board. Try it step by step.</p><ol><li><b>Make your move.</b><p>See exactly where it sends your opponent.</p></li><li><b>Win three in a row.</b><p>Claim small boards, then connect three to win the game.</p></li></ol>${snapshot?'':waitingOnline?'<a class="gb-button gb-button--guided" href="/game?mode=bot&amp;tutorial=guided" data-route>Start guided practice →</a>':`<button class="gb-button gb-button--guided" type="button" data-gb-action="start-guided">Start guided practice <span aria-hidden="true">→</span></button>`}<a class="gb-full-guide" href="/how-to-play" data-route>Read the rules <span aria-hidden="true">→</span></a><details class="gb-game-shortcuts"><summary>Keyboard controls</summary><p class="gb-keyboard-note"><kbd>←</kbd> <kbd>↑</kbd> <kbd>↓</kbd> <kbd>→</kbd> to explore cells. <kbd>Enter</kbd> or <kbd>Space</kbd> to play a legal move.</p></details></div></details>
     </aside>
   </section>`;
 }
@@ -251,8 +252,10 @@ function renderBoard(state, game, {
   botRecovery = null,
   powersView = null,
   workspace = false,
+  gameMode = mode,
+  accountPending = false,
 } = {}) {
-  if (!preview && workspace) return gameDashboard(state, game, {preview, mode, difficulty, theme, thinking, focus, snapshot, actorId, pending, error, uncertain, requestKind, canResign, guidedView, guidedTargetCell, guidedDestination, botRecovery, powersView});
+  if (!preview && workspace) return gameDashboard(state, game, {preview, mode, difficulty, theme, thinking, focus, snapshot, actorId, pending, error, uncertain, requestKind, canResign, guidedView, guidedTargetCell, guidedDestination, botRecovery, powersView, gameMode, accountPending});
   const copy = turnCopy(state, { preview, mode, thinking, snapshot, actorId, pending, error, botRecovery });
   const last = state.moves.at(-1);
   const playerName = player => snapshot ? snapshot.symbols[player] === actorId ? 'You' : escapeText(snapshot.playerNames?.[snapshot.symbols[player]] || 'Opponent') : mode === 'local' ? `Player ${player}` : player === 'X' ? 'You' : 'Bot';
@@ -291,7 +294,7 @@ export function renderGame(context = {}) {
   const actorId = typeof context.actorId === 'string' ? context.actorId : '';
   return `<section class="gb-practice-page gb-game-page" aria-labelledby="gb-game-title">
     <header class="gb-page-heading"><div><span class="gb-eyebrow">MEGA XOXO · ${snapshot ? 'ONLINE MATCH' : 'PLAY IN BROWSER'}</span><h1 id="gb-game-title">Your next <span>big move.</span></h1><p>${snapshot ? 'Every move matters. Think one board ahead.' : 'Play against Bot or share a screen with a friend.'}</p></div><a href="/play" data-route class="gb-back-link">Explore play modes <span aria-hidden="true">↗</span></a></header>
-    <div class="gb-practice-layout"><div class="gb-practice-host" data-board-host data-board-preview="false" data-board-layout="workspace" data-board-mode="${options.mode}" data-board-difficulty="${options.difficulty}" data-board-theme="${options.theme}">${renderBoard(snapshot ? snapshot.state : game.create(), game, { preview: false, workspace: true, ...options, snapshot, actorId })}</div></div>
+    <div class="gb-practice-layout"><div class="gb-practice-host" data-board-host data-board-preview="false" data-board-layout="workspace" data-board-mode="${options.mode}" data-board-difficulty="${options.difficulty}" data-board-theme="${options.theme}">${renderBoard(snapshot ? snapshot.state : game.create(), game, { preview: false, workspace: true, ...options, gameMode: context.mode || options.mode, snapshot, actorId })}</div></div>
   </section>`;
 }
 
@@ -320,6 +323,7 @@ export function mountBoard(host, {
   compat: injectedCompat = null,
   workerFactory = null,
   workspace = host?.dataset?.boardLayout === 'workspace',
+  linked, sessionStatus, profile,
 } = {}) {
   if (!host || typeof host.addEventListener !== 'function') throw new TypeError('A board host is required.');
   const game = rules();
@@ -330,6 +334,8 @@ export function mountBoard(host, {
   let timer = null;
   let generation = 0;
   let { mode, difficulty, theme } = localOptions({ mode: initialMode ?? host.dataset?.boardMode, difficulty: initialDifficulty ?? host.dataset?.boardDifficulty, theme: initialTheme ?? host.dataset?.boardTheme });
+  let selectedMode = ['bot','local','ranked','casual','friends'].includes(initialMode) ? initialMode : mode;
+  let accountState = {linked:linked ?? Boolean(online), sessionStatus:sessionStatus || (online ? 'linked' : 'loading'), profile:profile || null};
   let focusedCell = null;
   let pending = false;
   let uncertain = false;
@@ -371,10 +377,11 @@ export function mountBoard(host, {
     if (!shouldStart && typeof window !== 'undefined') {
       try {
         const query = new URLSearchParams(window.location?.search);
-        if (query.get('tutorial') === '1' || query.get('mode') === 'tutorial') shouldStart = true;
+        if (['1','guided'].includes(query.get('tutorial')) || query.get('mode') === 'tutorial') shouldStart = true;
       } catch {}
     }
     if (shouldStart) {
+      selectedMode = 'bot';
       difficulty = 'Beginner';
       mode = 'bot';
       beginMatch(null, true);
@@ -413,6 +420,8 @@ export function mountBoard(host, {
     const html = renderBoard(session.getState(), game, {
       preview,
       workspace,
+      gameMode: selectedMode,
+      accountPending: Boolean(online) && (accountState.sessionStatus !== 'linked' || Boolean(accountState.profile?.id && accountState.profile.id !== online.actorId)),
       mode,
       difficulty,
       theme,
@@ -457,6 +466,7 @@ export function mountBoard(host, {
     } else host.innerHTML = html;
     if (focusCell && focusedCell) host.querySelector(`[data-gb-cell="${focusedCell}"]`)?.focus({ preventScroll: true });
     if (setting) host.querySelector(`[data-gb-setting="${setting}"]`)?.focus({ preventScroll: true });
+    if (workspace && typeof CustomEvent !== 'undefined') host.dispatchEvent?.(new CustomEvent('gb:render', {bubbles:true}));
   }
 
   function scheduleBot() {
@@ -518,6 +528,7 @@ export function mountBoard(host, {
     session.reset({ fresh: true });
     difficulty = 'Beginner';
     mode = 'bot';
+    selectedMode = 'bot';
     beginMatch(null, true);
     tutorialController.start(session.getState());
     saveGuided();
@@ -682,7 +693,7 @@ export function mountBoard(host, {
       }
       if (action === 'share') {
         const url = new URL('/game', window.location.href);
-        if (!online) { url.searchParams.set('mode', mode); url.searchParams.set('difficulty', difficulty); url.searchParams.set('theme', theme); }
+        if (!online) { url.searchParams.set('mode', workspace ? selectedMode : mode); url.searchParams.set('difficulty', difficulty); url.searchParams.set('theme', theme); }
         const notice = message => { const toast = host.ownerDocument?.querySelector('#notification'); if (toast) { toast.textContent = message; toast.hidden = false; } };
         if (navigator.share) navigator.share({title:'Mega XOXO', text:'Your next big move.', url:url.href}).catch(failure => { if (failure?.name !== 'AbortError') notice('Sharing is unavailable. Copy the page address to invite a friend.'); });
         else if (navigator.clipboard?.writeText) navigator.clipboard.writeText(url.href).then(()=>notice('Game link copied. Your current match stays private.'),()=>notice('Copy the page address to invite a friend.'));
@@ -690,6 +701,7 @@ export function mountBoard(host, {
         return;
       }
       if (online) {
+        if (accountState.sessionStatus !== 'linked') return;
         if (action === 'retry' && uncertain && request && !['AUTH_REQUIRED', 'LINK_ACCOUNT_REQUIRED'].includes(error)) submit(request);
         else if (action === 'resign' && typeof online.onResign === 'function' && !pending && !uncertain && session.getSnapshot().status === 'PLAYING' && Object.values(session.getSnapshot().symbols).includes(online.actorId)) submit(operation('resign'));
         return;
@@ -703,7 +715,7 @@ export function mountBoard(host, {
       return;
     }
 
-    if (isThinking() || pending || uncertain || error || target.getAttribute('aria-disabled') === 'true' || (online && !session.canPlay())) return;
+    if ((workspace && !online && ['ranked','casual','friends'].includes(selectedMode)) || (online && (accountState.sessionStatus !== 'linked' || (accountState.profile?.id && accountState.profile.id !== online.actorId))) || isThinking() || pending || uncertain || error || target.getAttribute('aria-disabled') === 'true' || (online && !session.canPlay())) return;
     const [b, c] = target.dataset.gbCell.split(':').map(Number);
     if (!session.legal().some(m => m.b === b && m.c === c)) return;
 
@@ -817,6 +829,15 @@ export function mountBoard(host, {
   return {
     reset,
     receive,
+    updateAccount(next = {}) {
+      const before = accountState.sessionStatus, previousMode = selectedMode;
+      accountState = {...accountState, ...next};
+      if (['bot','local','ranked','casual','friends'].includes(next.mode)) selectedMode = next.mode;
+      const picker = host.querySelector('[data-game-mode]');
+      if (picker) picker.value = selectedMode;
+      if ((online && before !== accountState.sessionStatus) || previousMode !== selectedMode) render();
+      return {...accountState};
+    },
     getState: session.getState,
     getTutorialSnapshot: () => tutorialController?.getSnapshot() || null,
     getBotState: () => botRunner?.getState?.() || null,

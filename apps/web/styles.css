@@ -114,3 +114,8 @@ main{position:relative;z-index:1}.mx-home{max-width:1920px;margin:auto;padding:1
 :root{--mx-web-safe-top:env(safe-area-inset-top,0px);--mx-web-safe-right:env(safe-area-inset-right,0px);--mx-web-safe-bottom:env(safe-area-inset-bottom,0px);--mx-web-safe-left:env(safe-area-inset-left,0px)}
 body.mx-web-shell{padding:var(--mx-web-safe-top) var(--mx-web-safe-right) var(--mx-web-safe-bottom) var(--mx-web-safe-left)}
 .mx-toast{bottom:calc(26px + var(--mx-web-safe-bottom))}
+
+/* Keep the game landscape visible at every scroll position, independent of page height. */
+body[data-page="game"]::before { position:fixed; inset:0; height:auto; background:linear-gradient(180deg,rgba(2,7,18,.3),rgba(2,7,18,.12) 55%,rgba(2,7,18,.4)),url('/assets/art/hero-wide.webp') center center/cover no-repeat; }
+body[data-page="game"]::after { position:fixed; inset:0; height:auto; }
+@media(max-width:720px) { body[data-page="game"]::before { background-image:linear-gradient(180deg,rgba(2,7,18,.28),rgba(2,7,18,.12) 55%,rgba(2,7,18,.4)),url('/assets/art/hero-small.webp'); background-size:cover; background-position:center; } }

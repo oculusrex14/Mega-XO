@@ -11,6 +11,8 @@ import {createReadModel, createProfileEditor, readJSON, authRequired, errorCopy}
 import {legalDocuments} from './legal-documents.js';
 import {createFriendsController} from './friends.js';
 import {createRealtimeReader, canApplyMatchSnapshot} from './realtime.js';
+import {createTournamentsController, tournamentRoomId, tournamentFixture, tournamentMatch} from './tournaments.js';
+import {renderTournamentControls} from './tournaments-view.js';
 
 let board=null;
 let tab='ranked';
@@ -23,7 +25,7 @@ const context={storeLinks,profile:null, sessionStatus:'loading', providers:{}, a
  products:{status:'ready',rows:productIds.map(id=>({id,enabled:false})),purchasesAvailable:false},
  leaderboard:{status:'loading',rows:[],metric:'rating',scope:'global',league:'all'}};
 const balance=value=>Number.isSafeInteger(value)&&value>=0?value.toLocaleString('en-US'):'—';
-const model=createReadModel({context,changed:()=>{if(normalizedPath()==='/game')synchronizeGameProfile();else normalizedPath()==='/friends'?renderFriendsView():renderProfileEditorView();}});
+const model=createReadModel({context,changed:()=>refreshSessionView()});
 let profileEditor;
 profileEditor=createProfileEditor({context,request:(path,body)=>globalThis.MegaAccount.request(path,body),changed:()=>renderProfileEditorView(),
  active:actor=>normalizedPath()==='/profile'&&context.sessionStatus==='linked'&&context.profile?.id===actor,
@@ -36,6 +38,13 @@ let boundOnlineActor=null,hydratingMatch='';
 let offlineBusy=false,offlineRevision=0;
 let onlineState={status:'idle',match:null,invitation:null,message:''};
 let settledProfileRefresh='',onlineSnapshotVersion=0;
+let boundTournamentMatch=null,tournamentTimer;
+const tournamentController=createTournamentsController({context,
+ request:(path,body,key)=>globalThis.MegaAccount.request(path,body,key),read:path=>readJSON(path),
+ active:()=>normalizedPath()==='/tournaments'||(normalizedPath()==='/game'&&Boolean(tournamentRouteRoom())),
+ changed:()=>synchronizeTournamentView(),operationKey:()=>globalThis.MegaAccount.id(),storage:globalThis.localStorage,session:()=>globalThis.MegaAccount.peek?.(),
+ onAuthRequired:error=>{model.invalidate();context.profile=null;context.sessionStatus='guest';context.accountMessage=errorCopy(error);refreshSessionView();},
+});
 const realtime=createRealtimeReader({
  getContext:()=>normalizedPath()==='/game'&&context.sessionStatus==='linked'&&visibleMatch()?.status==='PLAYING'?{actorId:context.profile.id,match:onlineState.match,epoch:onlineRevision,session:globalThis.MegaAccount.peek?.()}:null,
  request:(path,body)=>globalThis.MegaAccount.request(path,body),
@@ -54,12 +63,25 @@ function configureDownloadLinks(){
  document.querySelectorAll('[data-download-link]').forEach(anchor=>{anchor.href=downloadHref(device);});
 }
 function normalizedPath(){return main?.hasAttribute?.('data-offline-fallback')?'/offline':location.pathname.replace(/\/+$/,'')||'/';}
+function gameMode(){const mode=new URLSearchParams(location.search).get('mode');return ['bot','local','ranked','casual','friends'].includes(mode)?mode:'bot';}
+function tournamentRouteRoom(){const value=new URLSearchParams(location.search).get('tournament');return typeof value==='string'&&value.length>0&&value.length<=160&&!/[\x00-\x20]/.test(value)?value:null;}
+function visibleTournamentMatch(){return context.sessionStatus==='linked'&&tournamentRouteRoom()===context.tournaments?.room?.id?tournamentMatch(context.tournaments.room,context.profile?.id,new URLSearchParams(location.search).get('fixture')):null;}
+function gameAccount(){return {linked:context.sessionStatus==='linked'&&Boolean(context.profile?.id),sessionStatus:context.sessionStatus,profile:context.profile,mode:gameMode()};}
+function refreshSessionView(){
+ if(normalizedPath()==='/game')synchronizeGameProfile();
+ else if(normalizedPath()==='/friends')renderFriendsView();
+ else if(normalizedPath()==='/'&&board){header('/');board.updateAccount?.(gameAccount());const panel=main.querySelector('.mx-ranked');if(panel)panel.outerHTML=rankPanel();}
+ else renderProfileEditorView();
+ tournamentController.sync({roomId:normalizedPath()==='/game'?tournamentRouteRoom():null});
+}
 function render({focus=false}={}){
+ if(normalizedPath()==='/play'&&new URLSearchParams(location.search).get('mode')==='practice')history.replaceState?.({},'','/game?mode=bot');
  board?.destroy();board=null;
  const path=normalizedPath();
- document.body.dataset.page=path==='/'?'home':'inner';
+ const tournament=path==='/game'&&tournamentRouteRoom(),match=tournament?visibleTournamentMatch():visibleMatch();
+ document.body.dataset.page=path==='/'?'home':path==='/game'?'game':'inner';
  header(path);footer();configureDownloadLinks();
- main.innerHTML=path==='/'?home():path==='/game'?renderGame({match:visibleMatch(),actorId:context.profile?.id}):path==='/play'&&new URLSearchParams(location.search).get('mode')==='practice'?renderPractice():renderPage(path,context)||renderPage('/404',context);
+ main.innerHTML=path==='/'?home():path==='/game'?(tournament&&!match?'<div class="gb-game-page"><section class="mx-panel" data-tournament-controls aria-live="polite"></section><a class="mx-button secondary" href="/tournaments">Back to tournaments</a></div>':renderGame({match,actorId:context.profile?.id,...gameAccount()})):renderPage(path,context)||renderPage('/404',context);
  if(path==='/profile'){
   if(context.sessionStatus==='linked'){if(profileEditor.isSuspended())profileEditor.resume(context.profile?.id);else profileEditor.load();}
   else if(context.sessionStatus==='loading'){if(!profileEditor.suspend())profileEditor.deactivate();}
@@ -71,14 +93,34 @@ function render({focus=false}={}){
   else{context.friendConfirmation=null;friendsController.deactivate();}
  }else{context.friendConfirmation=null;friendsController.deactivate();}
  updateSeo(path);configureDownloadLinks();
- document.querySelectorAll('[data-board-host]').forEach(host=>{board=mountBoard(host,{preview:host.dataset.boardPreview!=='false'&&path==='/',mode:host.dataset.boardMode,difficulty:host.dataset.boardDifficulty,theme:host.dataset.boardTheme,...(path==='/game'&&visibleMatch()?{online:{match:visibleMatch(),actorId:context.profile?.id,onMove:sendOnlineMove,onResign:sendOnlineResign,onError:handleOnlineError}}:{})})});
- if(path==='/game'){boundOnlineActor=visibleMatch()?context.profile.id:null;updateOnlineControls();}
+ document.querySelectorAll('[data-board-host]').forEach(host=>{board=mountBoard(host,{preview:host.dataset.boardPreview!=='false'&&path==='/',...gameAccount(),mode:path==='/game'?gameMode():host.dataset.boardMode,difficulty:host.dataset.boardDifficulty,theme:host.dataset.boardTheme,tutorial:path==='/game'&&new URLSearchParams(location.search).get('tutorial')==='guided',...(path==='/game'&&match?{online:{match,actorId:context.profile?.id,onMove:tournament?sendTournamentMove:sendOnlineMove,onResign:tournament?sendTournamentResign:sendOnlineResign,onError:handleOnlineError}}:{})})});
+ if(path==='/game'){boundOnlineActor=match?context.profile.id:null;boundTournamentMatch=tournament?match:null;updateOnlineControls();}
  if(path==='/store'&&context.products.status!=='error')main.querySelector('[data-store-products]')?.insertAdjacentHTML('afterend','<div class="pg-actions"><button class="mx-button secondary" data-store-action="refresh">Check store availability</button></div>');
  if(path==='/account'&&context.sessionStatus==='guest'&&!context.providersLoaded){main.querySelector('.pg-auth-card')?.insertAdjacentHTML('beforeend','<button class="mx-button secondary" type="button" data-account-action="options">Check sign-in options</button>');}
  if(path==='/settings')refreshOfflineControls();
+ updateTournamentControls();tournamentController.sync({roomId:tournament||null});
  realtime.sync();
  if(focus){main.focus({preventScroll:true});window.scrollTo(0,0);}
 }
+function updateTournamentControls(){
+ const region=normalizedPath()==='/tournaments'||tournamentRouteRoom()?main.querySelector('[data-tournament-controls]')||main.querySelector('[data-online-controls]'):null;
+ if(region)region.innerHTML=renderTournamentControls(context,{fixtureId:new URLSearchParams(location.search).get('fixture')});
+}
+function synchronizeTournamentView(){
+ const room=context.tournaments?.room;
+ const polling=context.sessionStatus==='linked'&&(normalizedPath()==='/tournaments'||(normalizedPath()==='/game'&&tournamentRouteRoom()))&&room&&!['COMPLETE','VOID','CANCELLED','REVIEW'].includes(room.status);
+ if(polling&&!tournamentTimer)tournamentTimer=setInterval(()=>{if(!document.hidden)tournamentController.refresh();},2500);
+ if(!polling){clearInterval(tournamentTimer);tournamentTimer=null;}
+ if(normalizedPath()==='/game'&&tournamentRouteRoom()){
+  const next=visibleTournamentMatch();
+  if(next&&(!boundTournamentMatch||boundTournamentMatch.id!==next.id)){render();return;}
+  if(next&&boundTournamentMatch&&canApplyMatchSnapshot(next,boundTournamentMatch,context.profile?.id,next.id)&&board?.receive(next))boundTournamentMatch=next;
+  else if(!next&&boundTournamentMatch){boundTournamentMatch=null;render();return;}
+ }
+ updateTournamentControls();
+}
+async function sendTournamentMove(operation){await tournamentController.play(operation);return visibleTournamentMatch();}
+async function sendTournamentResign(operation){if(!globalThis.confirm('Resign this tournament fixture? This counts as a loss under the tournament rules.'))return false;await tournamentController.play(operation,true);return visibleTournamentMatch();}
 function renderProfileEditorView(){
  const path=normalizedPath(),actor=profileEditor?.actorId?.()||context.profile?.id||null,active=document.activeElement;
  const operationFeedback=path==='/profile'&&['saving','saved','error','refresh-error'].includes(context.profileEditor?.status);
@@ -145,17 +187,19 @@ document.addEventListener('keydown',event=>{
 });
 function activate(){
  const path=normalizedPath();
- if(path!==activePath){activePath=path;clearInterval(leaderboardTimer);clearInterval(onlineTimer);onlineRevision++;realtime.stop();
+ if(path!==activePath){activePath=path;clearInterval(leaderboardTimer);clearInterval(onlineTimer);clearInterval(tournamentTimer);tournamentTimer=null;onlineRevision++;realtime.stop();
   if(path==='/store'&&context.sessionStatus==='linked')refreshProducts();
   if(path==='/leaderboard'){model.leaderboard();leaderboardTimer=setInterval(()=>{if(!document.hidden&&context.leaderboard.status==='ready')model.leaderboard();},30000);}
   if(path==='/game'&&['queued','waiting','playing'].includes(onlineState.status))startOnlinePolling();
  }
+ tournamentController.sync({roomId:path==='/game'?tournamentRouteRoom():null});
+ if(context.tournaments?.room)synchronizeTournamentView();
  realtime.sync();
 }
 async function accountAction(task){
- if(serviceBusy)return;serviceBusy=true;context.accountBusy=true;context.accountMessage='';render();
+ if(serviceBusy)return;serviceBusy=true;context.accountBusy=true;context.accountMessage='';refreshSessionView();
  try{await task();}catch(error){context.accountMessage=errorCopy(error);}
- finally{serviceBusy=false;context.accountBusy=false;render();}
+ finally{serviceBusy=false;context.accountBusy=false;refreshSessionView();}
 }
 async function linkedAccount(){
  accountChallenge='';resetReady=false;context.accountView='email';onlineRevision++;realtime.stop();globalThis.MegaAccount.reset();
@@ -174,24 +218,30 @@ async function refreshProducts(){
 }
 function updateOnlineControls(){
  if(normalizedPath()!=='/game')return;
- let region=main.querySelector('.mx-online-controls');
- if(!region){main.querySelector('.gb-game-page')?.insertAdjacentHTML('beforeend','<section class="mx-panel mx-online-controls" aria-labelledby="online-title"></section>');region=main.querySelector('.mx-online-controls');}
+ if(tournamentRouteRoom()){updateTournamentControls();return;}
+ const region=main.querySelector('[data-online-controls]');
  if(!region)return;
  const linked=context.sessionStatus==='linked';const state=onlineState;
- let controls=linked?`<div class="pg-actions"><button class="mx-button primary" data-online-action="ranked" ${onlineBusy?'disabled':''}>${icon('swords')} Find Ranked Match</button><button class="mx-button secondary" data-online-action="casual" ${onlineBusy?'disabled':''}>${icon('globe')} Find Casual Match</button></div>`:button('Sign in to play online','/account','primary','user');
+ const confirming=context.sessionStatus==='loading',mode=gameMode();
+ region.hidden=['bot','local'].includes(mode)&&!['queued','waiting','review','playing','finished'].includes(state.status);
+ let controls=confirming?'<p role="status">Confirming your account…</p>':linked?(mode==='friends'?button('Choose a friend to challenge','/friends','primary','users'):`<div class="pg-actions"><button class="mx-button primary" data-online-action="${mode==='casual'?'casual':'ranked'}" ${onlineBusy?'disabled':''}>${icon(mode==='casual'?'globe':'swords')} Find ${mode==='casual'?'Casual':'Ranked'} Match</button></div>`):button('Sign in to play online','/account','primary','user');
  if(['queued','waiting'].includes(state.status))controls=`<p>Finding your next rival…</p><button class="mx-button secondary" data-online-action="cancel" ${onlineBusy?'disabled':''}>Leave matchmaking</button>`;
  if(state.status==='review'&&state.invitation){const m=state.invitation;const index=m.players.indexOf(context.profile?.id);const fee=m.quote?.contributions?.[index];controls=`<p>Review your match before accepting.</p><p>${m.quote?.rated?'Ranked':'Casual'} · Entry ${typeof fee==='number'?escapeHtml(fee):'—'} ${escapeHtml(m.quote?.currency||'Coins')}</p><p>Winner receives ${balance(m.quote?.payout)} · Retired from pot ${balance(m.quote?.burn)} · Turn timer ${balance(m.terms?.turnSeconds)} seconds</p><div class="pg-actions"><button class="mx-button primary" data-online-action="accept" ${onlineBusy?'disabled':''}>Accept match</button><button class="mx-button secondary" data-online-action="decline" ${onlineBusy?'disabled':''}>Decline</button></div>`;}
  if(state.message&&linked)controls+='<button class="mx-button secondary" data-online-action="retry">Retry connection</button>';
  if(state.match&&linked)controls=state.match.status==='PLAYING'?'<p>Your match is live. Moves are confirmed by the game service.</p>':'<button class="mx-button secondary" data-online-action="new">Choose your next match</button>';
  if(state.match&&linked&&state.message)controls+='<button class="mx-button secondary" data-online-action="retry">Retry connection</button>';
  const connection=state.match?.status==='PLAYING'?({live:'Live updates connected.',connecting:'Connecting live updates. Match checks continue.',fallback:'Live updates interrupted. Match checks continue.'}[realtime.status()]||'Checking the latest match.') : '';
- region.innerHTML=`<h2 id="online-title">Bring your strategy online.</h2><p class="mx-muted">One profile. The same Ranked and Casual competition.</p>${controls}<p role="status" class="mx-online-message">${escapeHtml(state.message||connection)}</p>`;
+ if(confirming)controls='<p role="status">Confirming your account…</p>';
+ region.innerHTML=`<h2 id="online-title">${mode==='friends'?'Play with friends':mode==='casual'?'Casual matchmaking':'Ranked matchmaking'}</h2>${controls}<p role="status" class="mx-online-message">${escapeHtml(state.message||connection)}</p>`;
 }
 function synchronizeGameProfile(){
  const actor=context.sessionStatus==='linked'?context.profile?.id:null;
+ board?.updateAccount?.(gameAccount());
  if(context.sessionStatus==='loading'){realtime.stop();header('/game');updateOnlineControls();return;}
- if(boundOnlineActor&&actor!==boundOnlineActor){onlineRevision++;clearInterval(onlineTimer);onlineState.status=actor?'idle':'auth';if(actor&&!onlineState.match?.players?.includes(actor))onlineState.match=null;render();}
- if(actor&&typeof context.profile.activeMatch==='string'&&context.profile.activeMatch&&(!onlineState.match||onlineState.match.id!==context.profile.activeMatch))hydrateMatch(context.profile.activeMatch,actor);
+ if(boundOnlineActor&&actor!==boundOnlineActor){onlineRevision++;clearInterval(onlineTimer);onlineState.status=actor?'idle':'auth';if(!onlineState.match?.players?.includes(actor))onlineState.match=null;boundTournamentMatch=null;render();}
+ if(tournamentRouteRoom()){tournamentController.sync({roomId:tournamentRouteRoom()});header('/game');updateTournamentControls();return;}
+ if(actor&&tournamentRoomId(context.profile)){onlineState.message='You have an active tournament. Return to its lobby to continue.';}
+ else if(actor&&typeof context.profile.activeMatch==='string'&&context.profile.activeMatch&&(!onlineState.match||onlineState.match.id!==context.profile.activeMatch))hydrateMatch(context.profile.activeMatch,actor);
  else if(actor&&visibleMatch()&&boundOnlineActor!==actor){onlineRevision++;onlineState.status='playing';render();startOnlinePolling();}
  realtime.sync();header('/game');updateOnlineControls();
 }
@@ -199,13 +249,13 @@ async function hydrateMatch(id,actor){
  const revision=onlineRevision,session=globalThis.MegaAccount.peek?.(),stamp=actor+':'+id+':'+revision;if(hydratingMatch===stamp)return;hydratingMatch=stamp;
  try{const match=await globalThis.MegaNetwork.match(id);if(!onlineBindingCurrent(revision,actor,session)||(onlineState.match&&onlineState.match.id!==id))return;reconcileMatch(match,true);}catch(error){if(onlineBindingCurrent(revision,actor,session))handleOnlineError(error);}finally{if(hydratingMatch===stamp)hydratingMatch='';}
 }
-function visibleMatch(){return context.sessionStatus==='linked'&&onlineState.match?.players?.includes(context.profile?.id)?onlineState.match:null;}
+function visibleMatch(){return !tournamentRouteRoom()&&context.sessionStatus==='linked'&&onlineState.match?.players?.includes(context.profile?.id)?onlineState.match:null;}
 function handleOnlineError(error){
  onlineState.message=errorCopy(error);
- if(authRequired(error)){clearInterval(onlineTimer);realtime.stop();onlineState.status='auth';onlineRevision++;model.invalidate();context.profile=null;context.sessionStatus='guest';render();}
+ if(authRequired(error)){clearInterval(onlineTimer);realtime.stop();onlineState.status='auth';onlineRevision++;model.invalidate();context.profile=null;context.sessionStatus='guest';refreshSessionView();}
  updateOnlineControls();
 }
-function onlineBindingCurrent(revision,actor,session){return revision===onlineRevision&&normalizedPath()==='/game'&&context.sessionStatus==='linked'&&context.profile?.id===actor&&(session===undefined||session===globalThis.MegaAccount.peek?.());}
+function onlineBindingCurrent(revision,actor,session){return revision===onlineRevision&&normalizedPath()==='/game'&&!tournamentRouteRoom()&&context.sessionStatus==='linked'&&context.profile?.id===actor&&(session===undefined||session===globalThis.MegaAccount.peek?.());}
 function acceptOnlineSnapshot(snapshot,revision,actor,id,session){
  if(!onlineBindingCurrent(revision,actor,session)||onlineState.match?.id!==id)return false;
  if(!canApplyMatchSnapshot(snapshot,onlineState.match,actor,id))return false;
@@ -233,9 +283,9 @@ function reconcileMatch(snapshot,accepted=false){
  else if(snapshot.status==='OFFERED'){onlineState.invitation=snapshot;onlineState.status=accepted?'waiting':'review';if(!accepted)clearInterval(onlineTimer);}
  else{onlineState.match=null;onlineState.invitation=null;onlineState.status='idle';onlineState.message='This invitation is complete. Search again when you are ready.';clearInterval(onlineTimer);}
 }
-function startOnlinePolling(){clearInterval(onlineTimer);if(onlineState.match&&onlineState.match.status!=='PLAYING')return;onlineTimer=setInterval(()=>{if(!document.hidden)pollOnline();},2500);}
+function startOnlinePolling(){clearInterval(onlineTimer);if(tournamentRouteRoom()||(onlineState.match&&onlineState.match.status!=='PLAYING'))return;onlineTimer=setInterval(()=>{if(!document.hidden)pollOnline();},2500);}
 async function pollOnline(){
- if(onlineBusy||normalizedPath()!=='/game'||context.sessionStatus!=='linked')return;
+ if(onlineBusy||normalizedPath()!=='/game'||tournamentRouteRoom()||context.sessionStatus!=='linked')return;
  const revision=onlineRevision,actor=context.profile.id,session=globalThis.MegaAccount.peek?.(),readVersion=onlineSnapshotVersion;onlineBusy=true;
  try{
   if(onlineState.match){const id=onlineState.match.id;const match=await globalThis.MegaNetwork.match(id);if(!acceptOnlineSnapshot(match,revision,actor,id,session))return;}
@@ -246,11 +296,16 @@ async function pollOnline(){
    else{const invites=await globalThis.MegaNetwork.invitations();if(!onlineBindingCurrent(revision,actor,session))return;const invitation=Array.isArray(invites)?invites.find(m=>m.terms?.source==='queue'&&m.players?.includes(context.profile.id)):null;if(invitation)reconcileMatch(invitation,false);}
 
   }
- }catch(error){if(revision===onlineRevision&&context.profile?.id===actor&&(session===undefined||session===globalThis.MegaAccount.peek?.()||(authRequired(error)&&globalThis.MegaAccount.peek?.()==null))){if(authRequired(error)&&readVersion!==onlineSnapshotVersion)model.profile();else{handleOnlineError(error);clearInterval(onlineTimer);}}}
+ }catch(error){if(revision===onlineRevision&&normalizedPath()==='/game'&&!tournamentRouteRoom()&&context.profile?.id===actor&&(session===undefined||session===globalThis.MegaAccount.peek?.()||(authRequired(error)&&globalThis.MegaAccount.peek?.()==null))){if(authRequired(error)&&readVersion!==onlineSnapshotVersion)model.profile();else{handleOnlineError(error);clearInterval(onlineTimer);}}}
  finally{onlineBusy=false;if(revision===onlineRevision)updateOnlineControls();}
 }
 function syncProfileDraft(form){if(form&&profileEditor.updateDraft(profileFormDraft(form))){const message=form.querySelector('[data-profile-message]');if(message){message.textContent='';message.hidden=true;}}}
 document.addEventListener('change',event=>{
+ const mode=event.target.closest('[data-game-mode]');if(mode){
+  const value=mode.value;if(!['bot','local','ranked','casual','friends'].includes(value))return;
+  if(visibleMatch()?.status==='PLAYING'||['queued','waiting','review'].includes(onlineState.status)||context.tournaments?.room?.status==='RUNNING'){mode.value=gameMode();notify('Finish the active match or leave matchmaking before changing modes.');return;}
+  navigate('/game?mode='+value);return;
+ }
  syncProfileDraft(event.target.closest('[data-profile-form]'));
  const filter=event.target.closest('[data-leaderboard-filter]');if(filter)model.leaderboard({[filter.dataset.leaderboardFilter]:filter.value});
 });
@@ -281,10 +336,20 @@ document.addEventListener('submit',event=>{
  });
 });
 document.addEventListener('click',event=>{
+ const tournament=event.target.closest('[data-tournament-action]');if(tournament&&!tournament.disabled){
+  const action=tournament.dataset.tournamentAction;
+  if(action==='open'){
+   const room=context.tournaments?.room,actor=context.sessionStatus==='linked'?context.profile?.id:null;
+   const fixture=tournamentFixture(room,actor,tournament.dataset.fixture);
+   if(fixture&&['READY','PLAYING'].includes(fixture.status))navigate('/game?tournament='+encodeURIComponent(room.id)+'&fixture='+encodeURIComponent(fixture.id));
+  }else tournamentController.action(action,tournament.dataset.table||tournament.dataset.fixture);
+  return;
+ }
  const friendAction=event.target.closest('[data-friend-action]');
  if(friendAction){
   const action=friendAction.dataset.friendAction,target=friendAction.dataset.friendTarget;
   if(action==='refresh'){context.friendConfirmation=null;friendsController.reload();}
+  else if(action==='page'){context.friendConfirmation=null;if(friendsController.setPage(Number(friendAction.dataset.friendPage)))main.querySelector('#friend-list-title')?.focus?.();}
   else if(action==='dismiss-confirm'){context.friendConfirmation=null;renderFriendsView();}
   else if(action==='confirm'){const pending=context.friendConfirmation;context.friendConfirmation=null;if(pending?.actorId===context.profile?.id)friendsController.action(pending.action,pending.target);}
   else if(action==='confirm-remove'||action==='confirm-block'){
@@ -305,7 +370,7 @@ document.addEventListener('click',event=>{
  }
  if(event.target.closest('[data-sponsor-action="clear"]')){try{localStorage.removeItem('mega-xoxo-sponsor-interests');}catch{}context.sponsorPreferences={};context.sponsorMessage='Saved choices cleared.';render();}
  const store=event.target.closest('[data-store-action]');if(store){if(store.dataset.storeAction==='refresh')refreshProducts();else if(store.dataset.storeAction==='purchase'&&context.products.purchasesAvailable&&!serviceBusy){accountAction(async()=>{const actor=context.profile?.id,id=store.dataset.productId,row=context.products.rows.find(x=>x.id===id);if(!actor||!row?.enabled||!row.localizedPrice)throw Error('STORE_UNAVAILABLE');const evidence=await globalThis.MegaBilling.purchase(id,context.products.storeContext);if(actor!==context.profile?.id)throw Error('AUTH_REQUIRED');const delivered=await globalThis.MegaNetwork.purchase(evidence,globalThis.MegaAccount.id());await globalThis.MegaBilling.finish?.(evidence,delivered);await model.profile();await refreshProducts();notify('Verified purchase delivered.');});}}
- const online=event.target.closest('[data-online-action]');if(online&&!onlineBusy){const action=online.dataset.onlineAction;
+ const online=event.target.closest('[data-online-action]');if(online&&!onlineBusy&&context.sessionStatus==='linked'&&!tournamentRouteRoom()){const action=online.dataset.onlineAction;
   if(action==='retry'){realtime.reconnect();startOnlinePolling();pollOnline();return;}
   if(action==='new'){onlineRevision++;realtime.stop();onlineState={status:'idle',match:null,invitation:null,message:''};clearInterval(onlineTimer);render();return;}
   onlineBusy=true;onlineState.message='';updateOnlineControls();const revision=onlineRevision;
@@ -320,7 +385,8 @@ document.addEventListener('click',event=>{
 });
 window.addEventListener('focus',()=>{if(context.sessionStatus==='linked')model.profile().then(()=>{if(normalizedPath()==='/game'&&visibleMatch()?.status==='PLAYING'){startOnlinePolling();pollOnline();}});});
 window.addEventListener('online',()=>{if(normalizedPath()==='/game'&&context.sessionStatus==='linked'){realtime.reconnect();startOnlinePolling();pollOnline();}});
-window.addEventListener('pagehide',event=>{onlineRevision++;realtime.stop();event.persisted?model.invalidate():model.destroy();event.persisted?profileEditor.deactivate():profileEditor.destroy();event.persisted?friendsController.deactivate():friendsController.destroy();clearInterval(leaderboardTimer);clearInterval(onlineTimer);board?.destroy();});
+document.addEventListener('gb:render',()=>{if(normalizedPath()==='/game')updateOnlineControls();});
+window.addEventListener('pagehide',event=>{onlineRevision++;realtime.stop();event.persisted?model.invalidate():model.destroy();event.persisted?profileEditor.deactivate():profileEditor.destroy();event.persisted?friendsController.deactivate():friendsController.destroy();event.persisted?tournamentController.deactivate():tournamentController.destroy();clearInterval(leaderboardTimer);clearInterval(onlineTimer);clearInterval(tournamentTimer);tournamentTimer=null;board?.destroy();});
 window.addEventListener('popstate',event=>{event.state?.mxOfflineFallback?main.setAttribute?.('data-offline-fallback',''):main.removeAttribute?.('data-offline-fallback');render({focus:true});activate();});
 window.addEventListener('pageshow',event=>{if(event.persisted){activePath='';render();activate();if(['linked','loading','error'].includes(context.sessionStatus))model.profile();}});
 render();activate();model.profile().then(()=>{if(normalizedPath()==='/store'&&context.sessionStatus==='linked')refreshProducts();});

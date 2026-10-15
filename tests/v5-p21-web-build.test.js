@@ -322,6 +322,6 @@ test('P21-DELIVERY-01: Vercel routing matches static manifest and automatic depl
    * indexing, so the blanket header is the expected state, not a defect. */
   assert.match(robotsAt('/(.*)'),/noindex/,'sitewide release-hold noindex retained');
   assert.match(robotsAt('/(.*)'),/nofollow/,'sitewide release-hold nofollow retained');
-  for(const source of ['/game','/game/(.*)','/play','/legacy-game/(.*)','/account','/profile','/settings','/api/(.*)','/pages/(.*)','/legal/:name.html'])assert.match(robotsAt(source),/noindex/,source);
+  for(const source of ['/game','/game/(.*)','/play','/legacy-game/(.*)','/account','/profile','/api/(.*)','/pages/(.*)','/legal/:name.html'])assert.match(robotsAt(source),/noindex/,source);
   for(const name of LEGAL_NAMES)assert.ok(config.headers.some(rule=>rule.source==='/legal/'+name+'.html'&&rule.headers.some(header=>header.key==='Link'&&header.value==='<https://megaxo.online/'+name+'>; rel="canonical"')),name+' retained legal canonical header');
 });

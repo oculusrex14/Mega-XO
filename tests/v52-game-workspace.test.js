@@ -36,3 +36,25 @@ test('sharing an online game includes no private match or actor identifiers',asy
     h.action('share');assert.equal(shared.length,1);assert.equal(shared[0].url,'https://megaxo.online/game');assert.equal(mounted.getState().moves.length,0);mounted.destroy();
   }finally{globalThis.window=originalWindow;if(originalNavigator)Object.defineProperty(globalThis,'navigator',originalNavigator);else delete globalThis.navigator;delete globalThis.MegaGame;}
 });
+
+test('account refresh preserves a local game and fences an online board until identity is confirmed',async()=>{
+  const ui=await modulePromise;globalThis.MegaGame=game;
+  const makeHost=()=>{
+    const listeners=new Map();
+    const host={dataset:{boardLayout:'workspace'},innerHTML:'',addEventListener:(type,fn)=>listeners.set(type,fn),removeEventListener:()=>{},contains:()=>true,querySelector:()=>null,querySelectorAll:()=>[]};
+    return {host,cell:key=>listeners.get('click')({target:{closest:()=>({dataset:{gbCell:key},getAttribute:()=> 'false'})}})};
+  };
+  try{
+    const local=makeHost(),board=ui.mountBoard(local.host,{preview:false,mode:'local'});
+    local.cell('0:4');const state=board.getState();
+    board.updateAccount({linked:false,sessionStatus:'loading',profile:null});
+    board.updateAccount({linked:true,sessionStatus:'linked',profile:{id:'actor-new'}});
+    assert.equal(board.getState(),state);assert.equal(state.moves.length,1);board.destroy();
+    const online=makeHost();let calls=0;
+    const remote=ui.mountBoard(online.host,{online:{match:{id:'match-auth',status:'PLAYING',state:game.create(),symbols:{X:'me',O:'other'}},actorId:'me',onMove:()=>{calls++;return new Promise(()=>{});}}});
+    remote.updateAccount({linked:false,sessionStatus:'loading'});online.cell('0:0');
+    assert.equal(calls,0);assert.equal(remote.getState().moves.length,0);
+    remote.updateAccount({linked:true,sessionStatus:'linked',profile:{id:'me'}});online.cell('0:0');
+    assert.equal(calls,1);assert.equal(remote.getState().moves.length,0,'HTTP authority still commits the move');remote.destroy();
+  }finally{delete globalThis.MegaGame;}
+});

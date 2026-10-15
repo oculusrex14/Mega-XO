@@ -203,9 +203,9 @@ test('P21.05 game route stays inside the website, sanitizes settings and preserv
     assert.match(html, /value="local" selected/);
     assert.equal((html.match(/data-gb-cell="/g) || []).length, 81);
     assert.equal((html.match(/, legal move"/g) || []).length, 81);
-    assert.match(html, /href="\/ranked" data-route/);
-    assert.match(html, /href="\/casual" data-route/);
-    assert.match(html, /href="\/friends" data-route/);
+    for (const mode of ['ranked','casual','friends']) assert.match(html, new RegExp(`value="${mode}"`));
+    assert.match(html, /<details class="gb-game-panel gb-help-panel"/);
+    assert.match(html, /data-online-controls/);
     for (const theme of GAME_THEMES) assert.match(html, new RegExp(`value="${theme.id}"`));
     for (const level of game.LEVELS) assert.match(html, new RegExp(`<option(?: selected)?>${level}</option>`));
     const unsafe = renderGame({ mode: '"><script>alert(1)</script>', theme: '"><img src=x onerror=alert(1)>', difficulty: 'Impossible' });

@@ -73,7 +73,9 @@ async function nativeEnsure(force=false){
   const host=native();
   const state=await host.session();
   if(!state||state.online!==true)throw Error('ONLINE_UNAVAILABLE');
-  if(state.linked!==true)return {linked:false,csrf:null,actorId:state.actorId||null,profile:null,providers:{}};
+ /* Guests still need the provider capability map: the sign-in buttons gate on it, and the host
+  * already reports which native adapters were compiled in (Android: google, iOS: apple). */
+ if(state.linked!==true)return {linked:false,csrf:null,actorId:state.actorId||null,profile:null,providers:Object.fromEntries((Array.isArray(state.providers)?state.providers:[]).map(p=>[p,{web:false,native:true}]))};
   // An expired access token is refreshed once before the profile read, never mid-flight.
   if(Number(state.expiresAt||0)<=Date.now()+1000){
    const rotated=await host.refresh();

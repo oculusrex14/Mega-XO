@@ -101,7 +101,12 @@ internal class MegaNativeSessionManager(
             ) {
                 complete(Result.failure(IllegalStateException("NATIVE_CHALLENGE_FAILED"))); return@authRequest
             }
-            complete(Result.success(JSONObject().put("state", state).put("nonce", nonce)))
+            val result = JSONObject().put("state", state).put("nonce", nonce)
+            // A first-ever sign-in bootstraps the session the attempt hangs off; the token
+            // call must present it or the server answers AUTH_REQUIRED.
+            val sessionToken = parsed.optString("sessionToken", "")
+            if (sessionToken.isNotEmpty()) result.put("sessionToken", sessionToken)
+            complete(Result.success(result))
         }
     }
 
@@ -113,6 +118,7 @@ internal class MegaNativeSessionManager(
         val provider = grant.optString("provider", "")
         val state = grant.optString("state", "")
         val idToken = grant.optString("idToken", "")
+        val sessionToken = grant.optString("sessionToken", "")
         // Mirrors native-bridge.js bounds: provider allowlist, state/nonce <=512 base64url, and a
         // 3-segment compact JWS <=16384. A body that could never verify is refused before any I/O.
         if (provider !in listOf("google", "apple") ||
@@ -126,6 +132,7 @@ internal class MegaNativeSessionManager(
             .put("provider", provider)
             .put("state", state)
             .put("idToken", idToken)
+            .put("sessionToken", sessionToken)
             .toString()
         transport.authRequest("/api/account/native/token", null, body) { result ->
             applyServerResponse(result, complete)
@@ -220,7 +227,7 @@ internal class MegaNativeSessionManager(
         if (response == null) { complete(Outcome.UNAVAILABLE); return }
         val (status, raw) = response
         if (status == 401 && rotating) { revokeEverything(); complete(Outcome.REVOKED); return }
-        if (status !in 200..299) { complete(Outcome.UNAVAILABLE); return }
+        if (status !in 200..299) { android.util.Log.d("MegaNativeDebug", ("finish_failed status=" + status + " body=" + raw.take(400))); complete(Outcome.UNAVAILABLE); return }
         val parsed = runCatching { JSONObject(raw) }.getOrNull()
         if (parsed == null) { complete(Outcome.INVALID); return }
         val access = parsed.optString("accessToken", "")

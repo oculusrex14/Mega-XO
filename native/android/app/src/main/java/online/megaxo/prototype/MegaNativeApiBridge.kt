@@ -144,6 +144,7 @@ internal class MegaNativeApiBridge private constructor(
                             JSONObject().put("provider", providerName)
                                 .put("state", issued.optString("state", ""))
                                 .put("idToken", idToken)
+                                .put("sessionToken", issued.optString("sessionToken", ""))
                         ) { outcome ->
                             send(reply, id, JSONObject()
                                 .put("ok", outcome == MegaNativeSessionManager.Outcome.OK)

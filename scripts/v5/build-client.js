@@ -224,8 +224,12 @@ function dependencyUrls(html) {
 // now-unused remote preconnects removed, and site-absolute internal routes onto bundled files.
 // No layout, script logic or theme content is altered. Applied to the generated index and to
 // the bundled copies of the legal pages; the root web sources are never modified.
-function localizeHtml(html, config, { requireDependencyLinks = false } = {}) {
+function localizeHtml(html, config, { requireDependencyLinks = false, nativeAccountTransport = false } = {}) {
   let output = html;
+  if (nativeAccountTransport) {
+    if (!/<head\b[^>]*>/i.test(output)) throw refuse('native bundle index requires a head element');
+    output = output.replace(/<head\b[^>]*>/i, '$&\n<meta name="mega-account-transport" content="native">');
+  }
   for (const [from, to] of Object.entries(config.index_rewrites).sort((a, b) => b[0].length - a[0].length)) {
     if (typeof from !== 'string' || from.length === 0) throw refuse('index rewrite source must be a non-empty string');
     output = output.split(from).join(normalizeBundlePath(to, 'index rewrite target'));
@@ -454,7 +458,7 @@ function build(options) {
     if (entry.generatedAsset) continue;
     const absolute = resolveSource(root, entry.source, entry.kind + ' source');
     if (entry.kind === 'index' || entry.kind === 'legal') {
-      localizeHtml(fs.readFileSync(absolute, 'utf8'), config, { requireDependencyLinks: entry.kind === 'index' });
+      localizeHtml(fs.readFileSync(absolute, 'utf8'), config, { requireDependencyLinks: entry.kind === 'index', nativeAccountTransport: entry.kind === 'index' });
     }
   }
   for (const relative of config.vendor_exclude || []) {
@@ -490,9 +494,9 @@ function build(options) {
     let buffer = fs.readFileSync(absolute);
     let generated;
     if (entry.kind === 'index' || entry.kind === 'legal') {
-      buffer = Buffer.from(localizeHtml(buffer.toString('utf8'), config, { requireDependencyLinks: entry.kind === 'index' }), 'utf8');
+      buffer = Buffer.from(localizeHtml(buffer.toString('utf8'), config, { requireDependencyLinks: entry.kind === 'index', nativeAccountTransport: entry.kind === 'index' }), 'utf8');
       generated = entry.kind === 'index'
-        ? 'external-dependency-urls-and-internal-routes-rewritten-to-local-paths'
+        ? 'external-dependency-urls-and-internal-routes-rewritten-to-local-paths-with-native-account-transport'
         : 'internal-routes-rewritten-to-local-paths';
     }
     write(entry.destination, buffer, {

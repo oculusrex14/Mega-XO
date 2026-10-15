@@ -75,3 +75,20 @@ Three new regressions cover distinct ID/namespace, relative/staging activities a
 metadata. Together with native foundations they pass **34/34**; shell syntax passes. These are
 metadata tests, not an emulator pass. CI is rerun on the pushed correction; its result must be read
 from the PR rather than inferred from these local checks.
+
+## Website regression and realtime presentation follow-up
+
+The full website suite subsequently completed **238/238 pass** with
+`env -u NODE_OPTIONS node --test tests/v5-p21-*.test.js`. The earlier stalled local diagnostic inherited
+an injected runtime preload; its interrupted result is not a source failure or a completed pass.
+Main's active-branch P21 workflow is now integrated in this PR, so dedicated realtime and visual
+checks run against its generated artifact.
+
+The first newly enabled realtime jobs passed the CSP and real WebSocket handshake checks but stopped
+on the old footer phrase `0 moves played`: the redesigned visible counter correctly read `Moves0`.
+The counter now exposes a stable `data-gb-move-total` marker on its visible numeric element; realtime
+and safe-area QA read that number instead of depending on sentence copy. Missing/invalid counters
+still fail, ack/delta must keep the visible value exactly zero, committed moves must advance it to
+one/two in both contexts, and all authentication/idempotency/reconnect/settlement checks remain.
+The affected board/QA unit checks pass **24/24**. Browser rerun results belong to the PR checks;
+local unit parsing does not claim a realtime browser pass.

@@ -18,7 +18,7 @@ test('game workspace keeps scores and move totals authoritative; home preview re
     const snapshot={id:'match-ui',status:'PLAYING',state,revision:state.moves.length,symbols:{X:'me',O:'them'},playerNames:{them:'<img onerror=alert(1)>'}};
     const html=ui.renderGame({match:snapshot,actorId:'me'});
     for(const player of ['X','O']) assert.ok(html.includes(`${state.mini.filter(v=>v===player).length} small boards won`));
-    assert.ok(html.includes(`<strong>${state.moves.length}</strong>`));
+    assert.ok(html.includes(`<strong data-gb-move-total>${state.moves.length}</strong>`));
     assert.ok(html.includes('&lt;img onerror=alert(1)&gt;'));
     assert.doesNotMatch(html,/data-gb-action="fresh"|data-gb-powers|data-gb-action="rematch"/);
     const preview=ui.renderPreview();

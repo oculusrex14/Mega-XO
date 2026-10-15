@@ -293,7 +293,7 @@ async function main() {
       const boardInSafeArea = geometry.board && geometry.board.left >= safeLeft && geometry.board.right <= safeRight && geometry.legalCells.length > 0 && geometry.legalCells.every(cell => cell.left >= safeLeft && cell.right <= safeRight);
       const paddingMatches = ['top', 'right', 'bottom', 'left'].every(side => Math.abs(geometry.bodyPadding[side] - geometry.safe[side]) <= 1);
       const movePreserved = await safePage.locator('[data-gb-cell="0:4"]').getAttribute('aria-label').then(label => label.includes('X, occupied'))
-        && /1 move played/.test(await safePage.locator('.gb-match-note').textContent().catch(() => ''));
+        && (await safePage.locator('[data-gb-move-total]').textContent().catch(() => '')).trim() === '1';
       check('P21-BROWSER-SYNTHETIC-SAFE-AREA-HEADER', headerInSafeArea, { fixture: fixture.name, source: 'synthetic CSS variables; not physical-device evidence', ...geometry });
       check('P21-BROWSER-SYNTHETIC-SAFE-AREA-BOARD', boardInSafeArea, { fixture: fixture.name, source: 'synthetic CSS variables; not physical-device evidence', ...geometry });
       check('P21-BROWSER-SYNTHETIC-SAFE-AREA-PADDING', paddingMatches, { fixture: fixture.name, source: 'synthetic CSS variables; not physical-device evidence', ...geometry });

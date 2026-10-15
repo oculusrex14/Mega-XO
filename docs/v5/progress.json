@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at_utc": "2026-10-15T05:15:00Z",
+  "updated_at_utc": "2026-10-15T06:05:00Z",
   "goal": "Deliver the V5 hybrid platform and real Android/iOS applications with shared permanent actor/assets, preserved approved game and retained browser compatibility; do not build the new website/browser product.",
   "source": {
     "goal": "AGENT-GOAL.md",
@@ -6351,7 +6351,8 @@
       "reported_suite": "340/342; the named opsz backup-freshness failure occurs on the clean tree too.",
       "rerun_to_confirm": false,
       "do_not_suppress_or_redefine_ops_health": true
-    }
+    },
+    "PRE-EXISTING (not from this session): tests/production-runtime.test.js 'public operational health is fail-closed on backup freshness without exposing diagnostics' fails identically on the pristine V4.1 baseline 455b8ec (verified in a throwaway worktree), and no V5.2 commit touches server/production/*. It exercises the V4 SQLite /opsz fixture, whose backup-freshness state file the fixture does not populate the way the V4 perimeter reads it. Not caused by the V5 cutover; not suppressed; left as-is. The V5 production /opsz (a separate implementation) is verified live: 200 {ok:true} healthy and 503 on a forced stale backup."
   ],
   "carried_local_work": {
     "entry_untracked_paths": [

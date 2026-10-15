@@ -1,0 +1,194 @@
+{
+  "tool": "p21-online-acceptance",
+  "runId": "b52cb268b2c2d5ccb9",
+  "origin": "https://command.tail95c48c.ts.net",
+  "timestampUtc": "2026-10-15T05:14:49.507Z",
+  "steps": [
+    {
+      "name": "P2_01_signup_verify_session_a",
+      "status": "PASSED"
+    },
+    {
+      "name": "P2_01_signup_verify_session_b",
+      "status": "PASSED"
+    },
+    {
+      "name": "P2_02_profile_read",
+      "status": "PASSED",
+      "httpStatus": 200
+    },
+    {
+      "name": "P2_02_profile_update",
+      "status": "PASSED",
+      "httpStatus": 200
+    },
+    {
+      "name": "P2_03_friend_request",
+      "status": "PASSED",
+      "httpStatus": 200
+    },
+    {
+      "name": "P2_03_friend_accept",
+      "status": "PASSED",
+      "httpStatus": 200
+    },
+    {
+      "name": "P2_03_friends_list_contains",
+      "status": "PASSED",
+      "count": 1
+    },
+    {
+      "name": "P2_09_direct_challenge_offer",
+      "status": "PASSED",
+      "httpStatus": 409,
+      "code": "COMPLETE_PLACEMENTS",
+      "id": "direct:b52cb268b"
+    },
+    {
+      "name": "P2_04_queue_join_a",
+      "status": "PASSED",
+      "httpStatus": 200
+    },
+    {
+      "name": "P2_04_queue_join_b",
+      "status": "PASSED",
+      "httpStatus": 200
+    },
+    {
+      "name": "P2_04_queue_join_c_ranked",
+      "status": "PASSED",
+      "httpStatus": 200
+    },
+    {
+      "name": "P2_04_queue_cancel",
+      "status": "PASSED",
+      "httpStatus": 200
+    },
+    {
+      "name": "P2_04_queue_idle_after_cancel",
+      "status": "PASSED",
+      "httpStatus": 200
+    },
+    {
+      "name": "P2_04_matchmaker_paired",
+      "status": "PASSED",
+      "matchId": "queue:2a"
+    },
+    {
+      "name": "P2_04_concurrent_accepts",
+      "status": "PASSED",
+      "accepts": [
+        {
+          "httpStatus": 200,
+          "ms": 506
+        },
+        {
+          "httpStatus": 200,
+          "ms": 749
+        }
+      ]
+    },
+    {
+      "name": "P2_05_realtime_ticket_subscribe",
+      "status": "PASSED"
+    },
+    {
+      "name": "P2_05_committed_move_ack",
+      "status": "PASSED"
+    },
+    {
+      "name": "P2_05_opponent_fanout",
+      "status": "PASSED",
+      "moves": 1
+    },
+    {
+      "name": "P2_06_duplicate_command_safe",
+      "status": "PASSED",
+      "outcome": "ack",
+      "revision": 1
+    },
+    {
+      "name": "P2_06_reconnect_resume",
+      "status": "PASSED",
+      "op": "delta"
+    },
+    {
+      "name": "P2_06_http_snapshot_fallback",
+      "status": "PASSED",
+      "httpStatus": 200
+    },
+    {
+      "name": "P2_06_snapshot_anon_401",
+      "status": "PASSED",
+      "httpStatus": 401
+    },
+    {
+      "name": "P2_08_actor_fencing_403",
+      "status": "PASSED",
+      "httpStatus": 403
+    },
+    {
+      "name": "P2_04_complete_legal_game_terminal",
+      "status": "PASSED",
+      "winner": "O",
+      "moves": 50,
+      "playError": null
+    },
+    {
+      "name": "P2_04_terminal_durable_settled",
+      "status": "PASSED",
+      "httpStatus": 200,
+      "matchStatus": "FINISHED",
+      "reason": "line",
+      "winnerId": "u_7c1f750a-8fa4-4212-b5c9-08d6459eb1be",
+      "payout": 0
+    },
+    {
+      "name": "P2_04_post_game_profiles_readable",
+      "status": "PASSED",
+      "aGames": 0,
+      "bGames": 0,
+      "aWalletReady": true,
+      "bWalletReady": true
+    },
+    {
+      "name": "P2_04_economy_and_progression_durable",
+      "status": "PASSED",
+      "aCoins": 150,
+      "bCoins": 150,
+      "aCasualGames": 1,
+      "bCasualGames": 1,
+      "lastReason": "line",
+      "aHistory": 1,
+      "bHistory": 1
+    },
+    {
+      "name": "P2_07_resign_terminal_delivery",
+      "status": "PASSED",
+      "httpStatus": 200,
+      "reason": "resign"
+    },
+    {
+      "name": "P2_08_logout",
+      "status": "PASSED",
+      "httpStatus": 200
+    },
+    {
+      "name": "P2_08_logout_revokes_cookie",
+      "status": "PASSED",
+      "httpStatus": 401
+    },
+    {
+      "name": "P2_08_other_actor_unaffected",
+      "status": "PASSED",
+      "httpStatus": 200
+    }
+  ],
+  "ok": true,
+  "summary": {
+    "total": 31,
+    "passed": 31,
+    "observed": 0,
+    "durationMs": 74912
+  }
+}

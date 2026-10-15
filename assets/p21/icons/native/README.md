@@ -19,7 +19,7 @@ the profile is copied byte-for-byte, rather than regenerated with a timestamp.
   centered at 80% of the canvas, matching the existing Apple browser treatment.
   The asset compiler generates smaller sizes and the system applies corner masks.
 - Android uses separate transparent foreground and opaque `#030917` background
-  layers. Five density PNGs represent a 108dp layer; the emblem uses 55% padding.
+  layers. Five density PNGs represent a 108dp layer; the emblem occupies 55% of the layer bounds.
   Every rendered nonzero-alpha pixel, including the halo, is checked inside the
   central **66dp diameter circle**. No PWA mask-safe-area assumption is used.
   Both launcher manifest attributes select the same adaptive icon. No new

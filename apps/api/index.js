@@ -6,6 +6,7 @@ const compatRoutes = require('./routes/compat');
 const accountRoutes = require('./routes/account');
 const socialRoutes = require('./routes/social');
 const competitiveRoutes = require('./routes/competitive');
+const tournamentRoutes = require('./routes/tournaments');
 const wellKnownRoutes = require('./routes/well-known');
 const { sendError, sendJson } = require('./routes/helpers');
 const path = require('node:path');
@@ -129,6 +130,9 @@ function createApiHandler(options = {}) {
       // 5. Try Social routes
       const handledSocial = await socialRoutes.handleSocialRoute(context, req, res);
       if (handledSocial) return;
+
+      const handledTournament = await tournamentRoutes.handleTournamentRoute(context, req, res);
+      if (handledTournament) return;
 
       // 6. Try Competitive routes
       const handledCompetitive = await competitiveRoutes.handleCompetitiveRoute(context, req, res);

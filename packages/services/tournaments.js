@@ -561,7 +561,9 @@ function createTournamentService(options = {}) {
      room = T.create({ id: crypto.randomUUID(), code: await generateCode(tx),
       owner: 'service', name: `${quote.name} table`, table: cmd.table, now });
     }
-    T.join(room, actor, principal.name || account.id, now);
+    // Public transports carry a verified actor only. Read its stored username
+    // rather than accepting a caller-supplied display name or a long actor ID.
+    T.join(room, actor, principal.name || account.name || account.id.slice(0, 32), now);
    } else {
     /* THE ROOM AGGREGATE ROW, FIRST (V5-09-04 global order, design 3.7): every command that names an
      * existing room serializes on that room's own row BEFORE it reads the document, so two commands
@@ -805,6 +807,76 @@ function createTournamentService(options = {}) {
   });
  }
 
+ /* A timer is Core work, never a player HTTP command. Claim, rule transition,
+  * settlement and lease release share ONE transaction under the room-row lock.
+  * The lease prevents another timer owner from stepping over a live claim; the
+  * row lock also serializes this transition against moves and resignations. */
+ async function tickTimer(roomId, { owner, leaseMs = 5000 } = {}) {
+  requireRoomClaimId(roomId);
+  requireLeaseOwner(owner);
+  requireLeaseMs(leaseMs);
+  if (leaseMs > 60000) fail('INVALID_LEASE');
+  await gate;
+  return uow.run(async (tx) => {
+   await lockRoomRow(tx, roomId);
+   const room = await tx.repositories.tournaments.room(roomId);
+   if (!room) fail('ROOM_NOT_FOUND');
+   if (!['LOBBY', 'RUNNING'].includes(room.status)) return { claimed: false, changed: false };
+   const now = tx.clock();
+   const claimed = await tx.query(
+    'UPDATE tournament.rooms SET timer_lease_owner = $1, timer_lease_epoch = revision, timer_lease_until = $2'
+    + ' WHERE room_id = $3 AND (timer_lease_owner IS NULL OR timer_lease_until <= $4 OR timer_lease_owner = $1)'
+    + ' RETURNING timer_lease_epoch', [owner, atMs(now + leaseMs), roomId, atMs(now)]);
+   if (!claimed.rowCount) return { claimed: false, changed: false };
+   const before = room.revision;
+   T.tick(room, now);
+   if (room.revision !== before) {
+    if (room.table && room.escrow && !room.settled && ['COMPLETE', 'VOID', 'CANCELLED'].includes(room.status)) {
+     const actors = new Set(room.players.map(player => player.id));
+     for (const contribution of room.contributions || []) actors.add(contribution.id);
+     if (actors.size) await tx.repositories.wallets.lock([...actors], { aggregate: { kind: 'tournament', id: roomId } });
+     const economy = await tx.repositories.state.refresh();
+     if (settleRoom(room, economy, now)) {
+      await tx.repositories.state.write(economy);
+      await emitSettlement(tx, roomId, { roomId, table: room.table, refunded: room.receipt.refunded === true,
+       actor: 'service', reason: room.reason ?? 'EVENT_COMPLETE', key: null }, now);
+     }
+    }
+    await tx.repositories.tournaments.save(room);
+   }
+   await tx.query('UPDATE tournament.rooms SET timer_lease_owner = NULL, timer_lease_epoch = NULL, timer_lease_until = NULL'
+    + ' WHERE room_id = $1 AND timer_lease_owner = $2', [roomId, owner]);
+   return { claimed: true, changed: room.revision !== before, id: room.id, revision: room.revision, status: room.status };
+  });
+ }
+
+ /* Bounded cursor rotation prevents a busy first page from starving later
+  * rooms. Restarting the process may revisit rooms, which is harmless because
+  * tickTimer re-reads their authoritative state and applies only due rules. */
+ let timerCursor = '';
+ async function sweepTimers({ owner, limit = 16, leaseMs = 5000 } = {}) {
+  requireLeaseOwner(owner);
+  if (!Number.isSafeInteger(limit) || limit < 1 || limit > 64) fail('INVALID_TIMER_LIMIT');
+  requireLeaseMs(leaseMs);
+  if (leaseMs > 60000) fail('INVALID_LEASE');
+  await gate;
+  const ids = await uow.run(async tx => {
+   let rows = (await tx.query("SELECT room_id FROM tournament.rooms WHERE status IN ('LOBBY', 'RUNNING') AND room_id > $1 ORDER BY room_id LIMIT $2", [timerCursor, limit])).rows;
+   if (!rows.length && timerCursor) {
+    rows = (await tx.query("SELECT room_id FROM tournament.rooms WHERE status IN ('LOBBY', 'RUNNING') ORDER BY room_id LIMIT $1", [limit])).rows;
+   }
+   return rows.map(row => row.room_id);
+  });
+  if (ids.length) timerCursor = ids.at(-1); else timerCursor = '';
+  const result = { scanned: ids.length, changed: 0, refused: 0 };
+  for (const id of ids) {
+   const ticked = await tickTimer(id, { owner, leaseMs });
+   if (ticked.changed) result.changed++;
+   if (!ticked.claimed) result.refused++;
+  }
+  return result;
+ }
+
  /* ------------------------------------------------------- fenced claims (V5-09-03) */
 
  /* THE ROUND/CLOCK SWEEP LEASE. One worker owns a RUNNING/PAUSED room's round and clock sweep at a
@@ -932,6 +1004,8 @@ function createTournamentService(options = {}) {
   /* The durable lifecycle command and its read-only view (V5-09-02). */
   run,
   view,
+  tickTimer,
+  sweepTimers,
   /* Indivisible settlement/refund of one room, in ONE locked transaction (V5-09-04). */
   settle,
   /* Fenced timer and progression claims (V5-09-03): the round/clock sweep lease and the per-fixture

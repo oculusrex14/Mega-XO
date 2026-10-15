@@ -1,0 +1,43 @@
+/* Friends: keep connections dominant and administrative lists within disclosures. */
+.pg-friends-page .pg-grid-sidebar{grid-template-columns:minmax(220px,.65fr) minmax(0,1.8fr);align-items:start}
+.pg-friends-page .pg-friends-heading{margin-bottom:16px;gap:12px}
+.pg-friends-page .pg-friends-heading h2{font-size:1.45rem}
+.pg-friends-page .pg-friends-heading p{font-size:.87rem;margin:5px 0 0}
+.pg-friends-page .pg-friends-heading>.mx-button{font-size:.82rem;padding:10px 13px;min-height:44px}
+.pg-friends-page .pg-friend-search{gap:8px;margin:18px 0 22px}
+.pg-friends-page .pg-friend-search .pg-profile-help{margin:0;font-size:.78rem}
+.pg-friends-page .pg-friend-search>p[data-friends-search-status]:empty{display:none}
+.pg-friends-page .pg-friend-primary-list{margin-top:0;padding-top:0;border-top:0}
+.pg-friend-list-heading{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:14px}
+.pg-friends-page .pg-friend-list-heading h3{margin:0;display:flex;align-items:center;gap:8px}
+.pg-friend-list-heading>span{font-size:.78rem}
+.pg-friend-count{display:inline-flex;align-items:center;justify-content:center;min-width:26px;height:26px;padding:0 7px;border:1px solid #3b5477;border-radius:8px;font-size:.76rem;font-weight:600;color:#c8dfff;background:#10203a}
+.pg-friends-page .pg-friend-list{gap:9px}
+.pg-friends-page .pg-friend-row{padding:12px;gap:12px;border-radius:12px}
+.pg-friends-page .pg-friend-avatar{flex-basis:36px;height:36px}
+.pg-friends-page .pg-friend-identity{gap:2px}
+.pg-friends-page .pg-friend-identity>strong{font-size:.9rem}
+.pg-friends-page .pg-friend-identity>span,.pg-friends-page .pg-friend-identity>small{font-size:.75rem;line-height:1.45}
+.pg-friend-tag{display:inline-block;margin-left:8px;color:#96b9de;font-family:ui-monospace,monospace;font-size:.69rem}
+.pg-friend-presence::before{content:'';display:inline-block;width:5px;height:5px;margin-right:6px;border-radius:50%;background:#607590;vertical-align:middle}
+.pg-friend-presence.is-online::before{background:#54e0b3}
+.pg-friends-page .pg-friend-manage summary{padding:12px 0;font-size:.77rem}
+.pg-friend-list-empty{padding:25px 18px;border:1px dashed #395476;border-radius:12px;font-size:.9rem;text-align:center}
+.pg-friend-pagination{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:16px}
+.pg-friend-pagination>span{font-size:.82rem;color:#a9c3e3;text-align:center}
+.pg-friend-pagination>.mx-button{min-height:44px;padding:10px 16px;font-size:.82rem}
+.pg-friend-request-groups{display:grid;gap:10px;margin-top:24px;padding-top:20px;border-top:1px solid #2b4260}
+.pg-friend-requests{min-width:0;border:1px solid #2d4465;background:#08182c;border-radius:12px}
+.pg-friend-requests>summary{display:flex;align-items:center;gap:10px;min-height:50px;padding:11px 14px;cursor:pointer;list-style:none;color:#d3e5fa;font-size:.86rem;font-weight:600}
+.pg-friend-requests>summary::-webkit-details-marker{display:none}
+.pg-friend-requests>summary::after{content:'+';font-size:1.1rem;font-weight:400;margin-left:auto;color:#a5c9ee}
+.pg-friend-requests[open]>summary::after{content:'−'}
+.pg-friend-requests>summary:focus-visible,.pg-friend-list-heading>h3:focus-visible{outline:3px solid #bce8ff;outline-offset:3px}
+.pg-friend-request-content{padding:0 12px 12px}
+.pg-friend-request-content>p{margin:6px 2px;font-size:.84rem}
+.pg-friend-request-content .pg-friend-actions>.mx-button{padding:10px 12px;font-size:.77rem}
+.pg-friend-challenge-link{display:flex;align-items:center;gap:10px;margin-top:14px;min-height:44px;font-size:.84rem}
+.pg-friends-page .pg-friends-main>.pg-signin{margin:0}
+@media(max-width:900px){.pg-friends-page .pg-grid-sidebar{grid-template-columns:1fr}.pg-friends-page .pg-grid-sidebar>aside.pg-stack{grid-template-columns:1fr;order:2}.pg-friends-page .pg-friends-main{order:1}}
+@media(max-width:650px){.pg-friends-page .pg-friend-search>div{flex-direction:row;gap:8px}.pg-friends-page .pg-friend-search input{font-size:1rem;padding:11px;min-width:0}.pg-friends-page .pg-friend-search button{padding:11px 12px;min-height:48px;font-size:.8rem}.pg-friends-page .pg-friend-search button>.mx-icon{display:none}.pg-friends-page .pg-friends-heading>.mx-button{width:auto}.pg-friends-page .pg-friend-row{gap:10px}.pg-friends-page .pg-friend-actions{padding-left:46px}.pg-friends-page .pg-friend-identity{flex-basis:calc(100% - 46px)}.pg-friend-pagination>.mx-button{padding:10px 12px}.pg-friend-pagination{gap:8px}.pg-friend-tag{margin-left:0;display:block}.pg-friend-request-content .pg-friend-actions{padding-left:0}}
+@media(forced-colors:active){.pg-friend-count,.pg-friend-requests{background:Canvas;color:CanvasText;border-color:CanvasText}.pg-friend-presence::before{background:CanvasText}.pg-friend-tag,.pg-friend-list-heading>span,.pg-friend-pagination>span{color:CanvasText}.pg-friend-requests>summary{color:LinkText}}

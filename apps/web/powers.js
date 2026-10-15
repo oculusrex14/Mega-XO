@@ -135,16 +135,25 @@
     return Object.freeze({ refresh, view, request, apply, destroy() { destroyed = true; sequence += 1; pending = null; uncertain = false; outcome = ''; cached = unavailable('retired'); currentKey = ''; currentAdapter = null; } });
   }
 
-  function render(view = { hidden: false, mode: 'bot', available: false }) {
+  function render(view = { hidden: false, mode: 'bot', available: false }, {workspace = false} = {}) {
     if (view.hidden) return '';
     const counts = view.available ? view.inventory : null;
     const undo = view.available ? view.eligibility.undo : null;
     const pacing = view.available ? view.pacing : null;
     const chargeCopy = undo ? `${undo.charges} of 2 earned charges available` : 'Earned charges unavailable';
-    const unavailableCopy = view.reason === 'context-unverified' ? 'Powers are unavailable. Your current account and match could not be verified.' : ['invalid-inventory', 'invalid-eligibility', 'invalid-pacing', 'reader-failed'].includes(view.reason) ? 'Power information could not be verified. Refresh the bank to check again.' : 'Powers are unavailable. The verified powers service has not loaded.';
+    const unavailableCopy = view.reason === 'context-unverified' ? 'Powers are unavailable for this game.' : ['invalid-inventory', 'invalid-eligibility', 'invalid-pacing', 'reader-failed'].includes(view.reason) ? 'Your power bank could not be loaded. Refresh to try again.' : 'Powers are unavailable right now.';
     const status = view.outcome || (view.pending ? 'Waiting for authority confirmation.' : !view.available ? unavailableCopy : !view.authorityReady ? 'Inventory loaded. Power actions are unavailable until this match is verified.' : !undo.eligible ? 'Powers are unavailable for the current match state.' : 'Choose whether to use an earned item.');
-    return `<section class="gb-powers" aria-label="Optional powers" data-gb-powers>
-      <div class="gb-powers-heading"><div><span class="gb-powers-eyebrow">OPTIONAL POWERS</span><h2>${view.mode === 'bot' ? 'Bot Undo' : 'Undo Request'}</h2></div><span class="gb-powers-badge">${view.available ? 'Inventory reported' : 'Unavailable'}</span></div>
+    const shapes = {
+      undo: '<path d="M4 10a8 8 0 1 1 1 8M4 4v6h6"/>',
+      undoBlock:'<path d="m12 3 8 4v5c0 5-8 9-8 9s-8-4-8-9V7z"/><circle cx="12" cy="11" r="4"/><path d="m9 8 6 6"/>',
+      hint:'<path d="M8 17c0-3-3-4-3-8a7 7 0 0 1 14 0c0 4-3 5-3 8M8 17h8M9 21h6M10 24h4"/>',
+      tacticalBlock:'<path d="m12 3 8 4v5c0 5-8 9-8 9s-8-4-8-9V7zM8 15l8-8"/>',
+    };
+    const rows = [['undo','Undo','Revert your last turn'],['undoBlock','Undo Block','Counter an opponent’s Undo'],['hint','Tactical Hint','Show a suggested legal move'],['tacticalBlock','Hint Block','Counter an opponent’s hint']];
+    const cards = `<div class="gb-power-cards">${rows.map(([kind,label,description])=>`<div class="gb-power-card gb-power-card--${kind}"><span class="gb-power-art"><svg viewBox="0 0 24 26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${shapes[kind]}</svg></span><span class="gb-power-label"><b>${label}</b><small>${description}</small></span><span class="gb-power-count" aria-label="${counts ? `${counts[kind].available} banked ${label}` : `${label} inventory unavailable`}">${counts?counts[kind].available:'—'}</span><span class="gb-power-state">${kind==='undo' ? view.canApplyUndo?'Earned charge ready':view.canRequestUndo?'Optional rewarded ad':'Unavailable here' : kind==='hint'?'Available in the app':'Coming later'}</span></div>`).join('')}</div>`;
+    return `<section class="gb-powers" aria-label="Bot Undo and optional powers" data-gb-powers>
+      <div class="gb-powers-heading"><div><span class="gb-powers-eyebrow">OPTIONAL POWERS</span><h2>${workspace ? '<svg class="gb-power-bolt" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="m14 1-11 13h8l-1 9L22 9h-9z"/></svg>Powers' : view.mode === 'bot' ? 'Bot Undo' : 'Undo Request'}</h2></div><span class="gb-powers-badge">${view.available ? 'Inventory reported' : 'Unavailable'}</span></div>
+      ${workspace ? cards+'<details class="gb-powers-explainer"><summary>Availability &amp; rewarded-ad rules</summary>' : ''}
       ${view.mode === 'bot' ? `<div class="gb-powers-charges" aria-label="${escape(chargeCopy)}">${[0, 1].map(i => `<span class="gb-powers-charge${undo && undo.charges > i ? ' gb-powers-charge--earned' : ''}" aria-hidden="true">${undo ? undo.charges > i ? '↶' : '·' : '?'}</span>`).join('')}<p>${escape(chargeCopy)}<small>One earned package supports up to two player decisions in a Bot match.</small></p></div>` : '<p class="gb-powers-copy">An Undo Request can be blocked by the opponent’s Undo Block. A token does not guarantee a rewind.</p>'}
       <p class="gb-powers-status" role="status" aria-live="polite" aria-atomic="true">${escape(status)}</p>
       <div class="gb-powers-actions"><button type="button" data-gb-power="apply"${view.canApplyUndo ? '' : ' disabled'}>${view.mode === 'bot' ? 'Use earned Undo' : 'Use Undo Request'}</button><button type="button" data-gb-power="request"${view.canRequestUndo ? '' : ' disabled'}>Choose rewarded ad</button><button class="gb-powers-refresh" type="button" data-gb-power="refresh">Refresh bank</button></div>
@@ -156,7 +165,7 @@
         <p>Powered Casual allows three Undo Request initiations per player and one successful rewind for the match. Tactical Power has three initiations and two uses per player; Tactical Block has three activations and two successful blocks. Undo Block and Tactical Block are separate items. Bot never secretly acquires counter powers.</p>
         <div class="gb-powers-counters"><button type="button" disabled>Undo Block</button><button type="button" disabled>Tactical Power</button><button type="button" disabled>Tactical Block</button></div>
         <p>Tactical Power recommends one legal square using Expert. You may choose any legal square. The suggestion stays hidden until the counter window settles; a blocked request reveals no suggestion. Counter controls are unavailable until authoritative resolution is supported.</p>
-      </div></details>
+      </div></details>${workspace ? '</details>' : ''}
     </section>`;
   }
   root.MegaWebPowers = Object.freeze({ createController, render });

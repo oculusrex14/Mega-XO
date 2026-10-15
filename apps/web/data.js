@@ -1,8 +1,9 @@
 // Same-origin read model. Browsing never creates an anonymous account session.
-export const authRequired = error => ['AUTH_REQUIRED', 'LINK_ACCOUNT_REQUIRED'].includes(error?.message);
+export const authRequired = error => ['AUTH_REQUIRED', 'LINK_ACCOUNT_REQUIRED', 'SESSION_REVOKED', 'REVOKED'].includes(error?.message);
 export const errorCopy = error => ({
  WEB_API_NOT_CONFIGURED: 'Account and online services are not connected in this preview. Local play is ready.',
  AUTH_REQUIRED: 'Sign in to play online.', LINK_ACCOUNT_REQUIRED: 'Sign in to play online.',
+ SESSION_REVOKED: 'Your session has expired. Sign in again to continue.', REVOKED: 'Your session has expired. Sign in again to continue.',
  EMAIL_DELIVERY_NOT_CONFIGURED: 'Email delivery is not available yet.',
  PROVIDER_NOT_CONFIGURED: 'This sign-in provider is not available yet.',
  INVALID_OTP: 'Check your verification code and try again.', OTP_EXPIRED: 'This code has expired. Request a new code.',

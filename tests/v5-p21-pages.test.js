@@ -172,7 +172,8 @@ test('P21 sponsor preferences require explicit local consent and no active adver
   assert.match(html, /name="consent" required/);
   assert.match(html, /saved only in this browser/);
   assert.equal((html.match(/class="pg-ad-label">Advertisement/g) || []).length, 3);
-  assert.match(html, /Sponsor placements are currently inactive/);
+  assert.doesNotMatch(html, /Sponsor placements are currently inactive/);
+  assert.match(html, /No active sponsor/);
   assert.doesNotMatch(html, /<script|<iframe|https:\/\/.*(?:doubleclick|googlesyndication)|click to earn|reward for clicking/i);
   assert.equal(html, renderPage('/ads', { sponsorPreferences: { consent: false, interests: [] } }));
 });
@@ -217,7 +218,7 @@ test('P21.07 guest account routes retain account continuation and truthful ident
   assert.match(text(account), /Continue with email/);
   assert.match(text(account), /New players verify mailbox ownership with a six-digit code before the profile is created/);
   assert.match(text(account), /Sign in to play online/);
-  assert.match(text(account), /At least one login method must remain linked/);
+  assert.doesNotMatch(text(account), /At least one login method must remain linked/);
   const friends = renderPage('/friends', { profile: null });
   const profile = renderPage('/profile', { profile: null });
   assert.match(friends, /Sign in to play online/);
@@ -321,7 +322,7 @@ test('P21 Friends renders only the current actor projection and escapes names wi
  const html=renderPage('/friends',{sessionStatus:'linked',profile:actor,friends:state});
  assert.match(html,/data-friends-search/);assert.match(html,/data-friend-action="confirm-remove"/);assert.match(html,/Presence hidden/);
  assert.match(html,/&lt;img src=x onerror=bad\(\)&gt;/);assert.doesNotMatch(html,/<img src=x|999999|secret|Open Friends in game/);
- assert.match(html,/limited list/);
+ assert.match(html,/partial list/);
  const switched=renderPage('/friends',{sessionStatus:'linked',profile:{...actor,id:'another'},friends:state});
  assert.doesNotMatch(switched,/MEGA-RIVAL|data-friend-target="friend-1"/);
  const guest=renderPage('/friends',{sessionStatus:'guest',friends:state});assert.doesNotMatch(guest,/MEGA-RIVAL|data-friends-search/);

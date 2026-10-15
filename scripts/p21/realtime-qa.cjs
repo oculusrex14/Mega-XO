@@ -468,6 +468,11 @@ async function waitForMatch(page, timeout = 9000) {
   await page.waitForFunction(() => document.querySelector('[data-gb-stage][aria-label="Online Mega XOXO match"]'), null, { timeout });
 }
 
+// Assert the visible numeric counter, independent of the old sentence-style footer copy.
+async function waitForMoveCount(page, expected, timeout) {
+  await page.waitForFunction(count => document.querySelector('[data-gb-move-total]')?.textContent?.trim() === String(count), expected, { timeout });
+}
+
 async function waitForConnected(page, timeout = 9000) {
   await page.waitForFunction(() => document.querySelector('.mx-online-message')?.textContent.includes('Live updates connected.'), null, { timeout });
 }
@@ -495,7 +500,7 @@ async function boardMetrics(page) {
       boardLeft: rect ? Math.round(rect.left) : null,
       boardRight: rect ? Math.round(rect.right) : null,
       boardWidth: rect ? Math.round(rect.width) : null,
-      moveText: document.querySelector('.gb-match-note span')?.textContent?.trim() || '',
+      moveCount: (() => { const text = document.querySelector('[data-gb-move-total]')?.textContent?.trim(); return /^\d+$/.test(text || '') ? Number(text) : null; })(),
     };
   });
 }
@@ -616,15 +621,15 @@ async function main() {
     sockets.broadcast(pushRoom, { protocol: PROTOCOL, operation: 'delta', match_id: pushRoom.match.id, revision: 24, delta: { move: { b: 4, c: 4, player: 'X' } } });
     await waitForCondition(() => first.fixture.snapshotResponses >= readsBeforeHints + 2);
     const afterHint = await boardMetrics(first.page);
-    assertCheck(report, 'P21-REALTIME-ACK-DELTA-DO-NOT-ADVANCE', beforeHint.moveText === afterHint.moveText && afterHint.moveText.startsWith('0 moves played') && first.fixture.snapshotResponses >= readsBeforeHints + 2, {
-      displayed_move_count_before: beforeHint.moveText, displayed_move_count_after: afterHint.moveText,
+    assertCheck(report, 'P21-REALTIME-ACK-DELTA-DO-NOT-ADVANCE', beforeHint.moveCount === afterHint.moveCount && afterHint.moveCount === 0 && first.fixture.snapshotResponses >= readsBeforeHints + 2, {
+      displayed_move_count_before: beforeHint.moveCount, displayed_move_count_after: afterHint.moveCount,
       complete_snapshot_recoveries: first.fixture.snapshotResponses - readsBeforeHints,
     });
 
     // A real UI move must issue the only state-changing request over HTTP.
     const moveButton = first.page.locator('[data-gb-cell="4:4"]');
     await clickAsForegroundTab(first.page, moveButton);
-    await first.page.getByText('1 move played', { exact: false }).waitFor({ timeout: 6000 });
+    await waitForMoveCount(first.page, 1, 6000);
     const movePost = first.fixture.events.find(event => event.method === 'POST' && event.path === '/api/v1/move');
     assertCheck(report, 'P21-REALTIME-HTTP-ONLY-MUTATION', Boolean(movePost) && movePost.csrf_header_present && movePost.idempotency_header_present && !Object.keys(sockets.stats.protocol_operations).some(operation => ['move', 'resign', 'mutate', 'settle'].includes(operation)), {
       http_move_post_seen: Boolean(movePost), csrf_header_present: Boolean(movePost?.csrf_header_present), idempotency_header_present: Boolean(movePost?.idempotency_header_present),
@@ -633,8 +638,8 @@ async function main() {
     const matchGetsBeforePush = second.fixture.matchReads;
     sockets.broadcast(pushRoom, snapshotFrame(pushRoom));
     await Promise.all([
-      first.page.getByText('1 move played', { exact: false }).waitFor({ timeout: 3500 }),
-      second.page.getByText('1 move played', { exact: false }).waitFor({ timeout: 3500 }),
+      waitForMoveCount(first.page, 1, 3500),
+      waitForMoveCount(second.page, 1, 3500),
     ]);
     // Simulate the other actor's accepted move, with no HTTP action in either
     // open page. Both boards must follow the subscribed socket before polling.
@@ -642,8 +647,8 @@ async function main() {
     const pushStarted = Date.now();
     sockets.broadcast(pushRoom, snapshotFrame(pushRoom));
     await Promise.all([
-      first.page.getByText('2 moves played', { exact: false }).waitFor({ timeout: 2200 }),
-      second.page.getByText('2 moves played', { exact: false }).waitFor({ timeout: 2200 }),
+      waitForMoveCount(first.page, 2, 2200),
+      waitForMoveCount(second.page, 2, 2200),
     ]);
     const pushLatencyMs = Date.now() - pushStarted;
     assertCheck(report, 'P21-REALTIME-TWO-CONTEXT-PUSH-WITHOUT-POLL', pushLatencyMs < 2200 && second.fixture.matchReads === matchGetsBeforePush, {
@@ -797,7 +802,7 @@ async function main() {
     const getsBeforeFallback = fallback.fixture.matchReads;
     fallbackRoom.match = snapshotFor(fallbackRoom.match.id, game.apply(fallbackRoom.match.state, { b: 4, c: 4 }), 'PLAYING');
     await fallback.page.evaluate(() => { window.__p21Hidden = false; window.dispatchEvent(new Event('online')); });
-    await fallback.page.getByText('1 move played', { exact: false }).waitFor({ timeout: 4500 });
+    await waitForMoveCount(fallback.page, 1, 4500);
     assertCheck(report, 'P21-REALTIME-SOCKET-DENIED-HTTP-FALLBACK', sockets.stats.upgrade_denials > deniedBefore && fallback.fixture.matchReads > getsBeforeFallback, {
       denied_loopback_upgrades: sockets.stats.upgrade_denials - deniedBefore, http_match_reads_after_denial: fallback.fixture.matchReads - getsBeforeFallback,
       match_updated_over_http: true,

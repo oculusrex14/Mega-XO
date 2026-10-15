@@ -10,7 +10,7 @@ const game = require('../src/game.js');
 // Execute the actual controller and its renderer, download, SEO, board and
 // read-model dependencies in browser module order inside an isolated DOM
 // harness. No provider connection, session, server mutation or browser is used.
-const sources = ['ui', 'downloads', 'pages', 'board', 'site', 'seo', 'data', 'friends', 'realtime', 'app'].map(name => ({ name, text: fs.readFileSync(path.join(__dirname, `../apps/web/${name}.js`), 'utf8') }));
+const sources = ['ui', 'downloads', 'friends', 'friends-view', 'pages', 'board', 'site', 'seo', 'data', 'realtime', 'tournaments', 'tournaments-view', 'app'].map(name => ({ name, text: fs.readFileSync(path.join(__dirname, `../apps/web/${name}.js`), 'utf8') }));
 const flush = () => new Promise(resolve => setImmediate(resolve));
 const json = value => JSON.parse(JSON.stringify(value));
 function deferred() { let resolve, reject; const promise = new Promise((yes, no) => { resolve = yes; reject = no; }); return { promise, resolve, reject }; }
@@ -42,7 +42,7 @@ async function harness(overrides = {}, profileExtra = {}, pageOptions = {}) {
     set innerHTML(value) {
       this.html = value;
       if (this === main) {
-        this.region = null;
+        this.region = value.includes('data-online-controls') ? new Element() : null;
         this.boardHost = value.includes('data-board-host') ? new Element() : null;
         if (this.boardHost) for (const key of ['mode', 'difficulty', 'theme']) this.boardHost.dataset['board' + key[0].toUpperCase() + key.slice(1)] = value.match(new RegExp(`data-board-${key}="([^"]+)"`))?.[1];
       }
@@ -54,7 +54,7 @@ async function harness(overrides = {}, profileExtra = {}, pageOptions = {}) {
     focus() {}
     querySelectorAll() { return []; }
     querySelector(selector) {
-      if (this === main && selector === '.mx-online-controls') return this.region;
+      if (this === main && selector === '[data-online-controls]') return this.region;
       if (this === main && selector === '.gb-game-page' && this.html.includes('gb-game-page')) return { insertAdjacentHTML() { main.region = new Element(); } };
       return null;
     }
@@ -80,7 +80,7 @@ async function harness(overrides = {}, profileExtra = {}, pageOptions = {}) {
     setInterval(fn, ms) { const id = ++timerId; timers.set(id, { fn, ms, at:clock+ms, interval: true }); return id; },
     clearInterval(id) { timers.delete(id); },
     localStorage: { getItem() { return null; }, setItem() {}, removeItem() {} },
-    history: { state:null, replaceState(state) { this.state=state; }, pushState(state, _title, url) { this.state=state;const parsed = new URL(url, location.origin); location.pathname = parsed.pathname; location.search = parsed.search; location.href = parsed.href; } },
+    history: { state:null, replaceState(state, _title, url) { this.state=state;if(url){const parsed=new URL(url,location.origin);Object.assign(location,{pathname:parsed.pathname,search:parsed.search,href:parsed.href});} }, pushState(state, _title, url) { this.state=state;const parsed = new URL(url, location.origin); location.pathname = parsed.pathname; location.search = parsed.search; location.href = parsed.href; } },
     fetch: async (resource,options) => { fetchCalls.push({resource,options});const result = replies.profile ? await replies.profile(resource,options) : profile; return { ok: true, json: async () => structuredClone(result) }; },
     MegaGame: game, MegaNetwork: network,
     confirm(message) { confirmations.push(message); return replies.confirm ? replies.confirm(message) : true; },
@@ -102,8 +102,12 @@ async function harness(overrides = {}, profileExtra = {}, pageOptions = {}) {
   if(pageOptions.realtime)sandbox.WebSocket=pageOptions.Socket || FakeSocket;
   const context = vm.createContext(sandbox);
   for (const { name, text } of sources) {
+    const exported = [...text.matchAll(/^export (?:async )?(?:function|const|let|class) (\w+)/gm)].map(match=>match[1]);
     const runnable = text.replace(/^import .*;\s*$/gm, '').replace(/^export /gm, '');
-    vm.runInContext(runnable + (name === 'app' ? '\nglobalThis.appTest={state:()=>({context,onlineState,onlineBusy,onlineRevision,activePath}),poll:pollOnline,navigate,board:()=>board};' : ''), context, { filename: `apps/web/${name}.js` });
+    const aliases = name==='friends-view' ? 'const e=escapeHtml;\n' : '';
+    // Preserve ES-module lexical boundaries instead of leaking private helper
+    // names from one module into another module's VM global scope.
+    vm.runInContext('(function(){\n'+aliases+runnable+(name === 'app' ? '\nglobalThis.appTest={state:()=>({context,onlineState,onlineBusy,onlineRevision,activePath}),poll:pollOnline,navigate,refresh:()=>model.profile(),board:()=>board};' : '\nObject.assign(globalThis,{'+exported.join(',')+'});')+'\n})();', context, { filename: `apps/web/${name}.js` });
   }
   await flush();
   const qa = context.appTest;
@@ -592,4 +596,49 @@ for(const result of ['snapshot','auth'])test(`P21-APP-RT-10-${result} a delayed 
   assert.equal(ui.qa.state().onlineState.match.revision,1);assert.equal(ui.qa.board().getState().moves.length,1);
   assert.equal(socket.closeCount,0);assert.equal(ui.profileReads(),1);assert.equal(ui.intervals().length,1);
  }finally{recovery.resolve(snapshotFrame(playing()));ui.destroy();}
+});
+
+test('P21-APP-ANNOTATION-AUTH refreshing a local game preserves its board and an expired session clears protected identity',async()=>{
+ const ui=await harness({},{},{path:'/game?mode=local'});
+ try{
+  const board=ui.qa.board();ui.cell('0:0');assert.equal(board.getState().moves.length,1);
+  await ui.qa.refresh();assert.equal(ui.qa.board(),board);assert.equal(board.getState().moves.length,1);
+  assert.equal(ui.qa.state().context.sessionStatus,'linked');
+  ui.replies.profile=()=>{throw Error('SESSION_REVOKED');};await ui.qa.refresh();
+  assert.equal(ui.qa.state().context.sessionStatus,'guest');assert.equal(ui.qa.state().context.profile,null);
+  assert.equal(ui.qa.board(),board);assert.equal(board.getState().moves.length,1);
+  ui.qa.navigate('/game?mode=ranked');assert.match(ui.main.region.innerHTML,/Sign in to play online/);
+ }finally{ui.destroy();}
+});
+
+test('P21-APP-ANNOTATION-PROMPTS public sign-in panels follow login, same-actor refresh and logout',async()=>{
+ for(const route of ['/rewards','/challenge','/leaderboard']){
+  const ui=await harness({profile:()=>{throw Error('AUTH_REQUIRED');}},{},{path:route});
+  try{
+   assert.match(ui.main.innerHTML,/Sign in to play online|Sign in to your profile/,route);
+   ui.replies.profile=()=>({id:'synthetic-x',name:'Actual signed-in player',tag:'MEGA-PLAYER',tier:'wood',rating:600,games:12,wallet:{coins:12,crowns:2}});
+   await ui.qa.refresh();assert.doesNotMatch(ui.main.innerHTML,/Sign in to play online|Sign in to your profile/,route);
+   await ui.qa.refresh();assert.doesNotMatch(ui.main.innerHTML,/Sign in to play online|Sign in to your profile/,route);
+   ui.replies.profile=()=>{throw Error('AUTH_REQUIRED');};await ui.qa.refresh();
+   assert.match(ui.main.innerHTML,/Sign in to play online|Sign in to your profile/,route);
+   assert.doesNotMatch(ui.main.innerHTML,/MEGA-PLAYER|Actual signed-in player/,route);
+  }finally{ui.destroy();}
+ }
+});
+
+test('P21-APP-ANNOTATION-TOURNAMENT tournament identities never enter the one-on-one match transport',async()=>{
+ const ui=await harness({},{activeMatch:'tournament:room-one'},{path:'/game'});
+ try{
+  await flush();assert.equal(ui.calls.filter(call=>call.name==='match').length,0);
+  ui.qa.navigate('/game?tournament=room-one');await flush();
+  const count=ui.calls.length;await ui.qa.poll();await ui.advance(5000);
+  assert.equal(ui.calls.length,count,'queue and one-on-one match readers stay retired on tournament routes');
+  assert.equal(ui.accountCalls.filter(call=>call.path==='/api/v1/ticket').length,0);
+ }finally{ui.destroy();}
+});
+
+test('P21-APP-ANNOTATION-ROUTE old practice URLs replace themselves with the canonical game route',async()=>{
+ const ui=await harness({},{},{path:'/play?mode=practice'});
+ try{assert.equal(ui.location.pathname,'/game');assert.equal(ui.location.search,'?mode=bot');assert.ok(ui.qa.board());}
+ finally{ui.destroy();}
 });

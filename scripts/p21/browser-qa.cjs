@@ -8,6 +8,7 @@ const crypto = require('node:crypto');
 const { once } = require('node:events');
 const { buildWeb, ROOT, MANIFEST, WEBSITE_ROUTES, LEGAL_NAMES } = require('./build-web.js');
 const { createPreviewServer } = require('./serve-web.js');
+const tournamentRules = require('../../src/tournament.js');
 
 async function main() {
   const requestedBrowser = process.env.P21_QA_BROWSER;
@@ -96,19 +97,19 @@ async function main() {
     };
     const track = page => {
       page.on('response', response => {
-        const intentional404 = new URL(response.url()).pathname === '/404' && response.request().resourceType() === 'document' && response.status() === 404;
+        const intentional404 = ['/404', '/settings'].includes(new URL(response.url()).pathname) && response.request().resourceType() === 'document' && response.status() === 404;
         if (response.url().startsWith(origin + '/') && response.status() >= 400 && !response.url().startsWith(origin + '/api/') && !intentional404) {
           report.requests.missing_local_resources.push({ path: new URL(response.url()).pathname, status: response.status() });
         }
       });
       page.on('pageerror', error => report.requests.javascript_errors.push(String(error.message).slice(0, 500)));
     };
-    // Compare rendered component styles with the homepage rather than just
-    // asserting the theme ID: practice overrides must not remove Neon effects.
+    // Dashboard controls differ from home, but the owner's restored frame, mini boards,
+    // cell grid and player marks must retain the same Neon presentation at each viewport.
     const neonStyle = page => page.locator('[data-gb-stage]').evaluate(stage => {
       const tokens = ['--gb-surface', '--gb-raised', '--gb-ink', '--gb-muted', '--gb-line', '--gb-mini-border', '--gb-x', '--gb-o', '--gb-route', '--gb-focus', '--gb-radius', '--gb-font'];
-      const properties = ['backgroundColor', 'backgroundImage', 'borderTopColor', 'boxShadow', 'borderRadius', 'color', 'filter'];
-      const selectors = ['.gb-frame', '.gb-mini--active', '.gb-avatar--x', '.gb-avatar--o', '.gb-avatar--x .gb-mark', '.gb-avatar--o .gb-mark', '.gb-move-dot', '.gb-turn-strip', '.gb-turn-strip p'];
+      const properties = ['backgroundColor', 'backgroundImage', 'borderTopColor', 'borderTopWidth', 'borderRightColor', 'borderRightWidth', 'borderBottomColor', 'borderBottomWidth', 'boxShadow', 'borderRadius', 'color', 'filter'];
+      const selectors = ['.gb-frame', '.gb-mini--active', '.gb-cell', '.gb-avatar--x .gb-mark', '.gb-avatar--o .gb-mark', '.gb-move-dot'];
       const style = getComputedStyle(stage);
       return {
         tokens: Object.fromEntries(tokens.map(token => [token, style.getPropertyValue(token).trim()])),
@@ -192,6 +193,7 @@ async function main() {
         if (route === '/') {
           homeNeon = await neonStyle(page);
           check('P21-BROWSER-BOARD', await page.locator('.gb-cell').count() === 81, { route, viewport: viewport.name });
+          check('P21-BROWSER-HOME-NO-GAME-WORKSPACE', await page.locator('.gb-dashboard').count() === 0, { route, viewport: viewport.name });
           await snapshot(page, 'home-' + viewport.name, false);
           await snapshot(page, 'home-' + viewport.name + '-full');
         } else {
@@ -201,7 +203,25 @@ async function main() {
             const themes = await page.locator('[data-gb-setting="theme"] option').evaluateAll(options => options.map(option => option.value));
             check('P21-BROWSER-NEON-DEFAULT', selected === 'cinematic' && themes.join(',') === 'cinematic,vector,midnight,paperclub,afterhours', { route, viewport: viewport.name, selected, themes });
             const gameNeon = await neonStyle(page);
-            check('P21-BROWSER-NEON-HOME-PARITY', JSON.stringify(homeNeon) === JSON.stringify(gameNeon), { route, viewport: viewport.name, homeNeon, gameNeon });
+            const samePalette = JSON.stringify(homeNeon.tokens) === JSON.stringify(gameNeon.tokens);
+            const markSelectors = ['.gb-avatar--x .gb-mark', '.gb-avatar--o .gb-mark'];
+            const luminousMarks = markSelectors.every(selector => gameNeon.components[selector].filter !== 'none' && gameNeon.components[selector].color === homeNeon.components[selector].color);
+            const activeBoardGlow = gameNeon.components['.gb-mini--active'].boxShadow !== 'none';
+            check('P21-BROWSER-NEON-PALETTE-AND-MARKS', samePalette && luminousMarks && activeBoardGlow, { route, viewport: viewport.name, samePalette, luminousMarks, activeBoardGlow, homeNeon, gameNeon });
+            const sharedComponentsMatch = JSON.stringify(homeNeon.components) === JSON.stringify(gameNeon.components) && homeNeon.frameEdge === gameNeon.frameEdge;
+            check('P21-BROWSER-NEON-SHARED-COMPONENT-PARITY', sharedComponentsMatch, { route, viewport: viewport.name, components: Object.keys(gameNeon.components), homeNeon, gameNeon });
+            check('P21-BROWSER-GAME-WORKSPACE', await page.locator('.gb-dashboard').count() === 1 && await page.locator('.gb-game-setup').count() === 1 && await page.locator('.gb-game-players').count() === 1 && await page.locator('.gb-game-right .gb-help-panel').count() === 1, { route, viewport: viewport.name });
+            const modeMenu = await page.locator('[data-game-mode]').evaluate(select => {
+              const style = getComputedStyle(select), option = getComputedStyle(select.options[0]);
+              return { colorScheme:style.colorScheme, background:style.backgroundColor, color:style.color, optionBackground:option.backgroundColor, optionColor:option.color };
+            });
+            const dark = value => {
+              const channels = value.match(/[\d.]+/g)?.map(Number);
+              return channels?.length >= 3 && Math.max(...channels.slice(0,3)) < 100 && (channels.length < 4 || channels[3] > 0);
+            };
+            check('P21-BROWSER-GAME-DARK-MODE-MENU', modeMenu.colorScheme.includes('dark') && dark(modeMenu.background) && dark(modeMenu.optionBackground) && modeMenu.color === modeMenu.optionColor, {route, viewport:viewport.name, ...modeMenu, scope:'computed select/option styles; native popup rendering remains visual browser acceptance'});
+            const guide = page.locator('details.gb-help-panel');
+            check('P21-BROWSER-GUIDE-COLLAPSED', await guide.count() === 1 && !(await guide.evaluate(element => element.open)) && await guide.locator('> summary').isVisible() && !(await guide.locator('[data-gb-action="start-guided"]').isVisible()), {route,viewport:viewport.name});
             if (viewport.name !== 'desktop') await snapshot(page, 'game-neon-' + viewport.name);
           }
           if (viewport.name === 'desktop') await snapshot(page, 'page-' + route.slice(1).replaceAll('/', '-'));
@@ -253,7 +273,7 @@ async function main() {
     const safePage = await safeContext.newPage();
     track(safePage);
     await safePage.goto(origin + '/game', { waitUntil: 'networkidle' });
-    await safePage.locator('[data-gb-setting="mode"]').selectOption('local');
+    await safePage.locator('[data-game-mode]').selectOption('local');
     await safePage.locator('[data-gb-cell="0:4"]').click();
     const safeFixtures = [
       { name: 'portrait', viewport: { width: 390, height: 844 }, insets: { top: 24, right: 18, bottom: 30, left: 18 } },
@@ -263,6 +283,9 @@ async function main() {
       await safePage.setViewportSize(fixture.viewport);
       await safePage.evaluate(insets => {
         for (const [side, value] of Object.entries(insets)) document.documentElement.style.setProperty('--mx-web-safe-' + side, value + 'px');
+        // The preceding legal move may scroll the taller game workspace. Measure the normal-flow
+        // header at document origin; a scrolled-away header is not a cutout-padding failure.
+        window.scrollTo(0, 0);
       }, fixture.insets);
       const geometry = await safePage.evaluate(() => {
         const rect = element => {
@@ -293,7 +316,7 @@ async function main() {
       const boardInSafeArea = geometry.board && geometry.board.left >= safeLeft && geometry.board.right <= safeRight && geometry.legalCells.length > 0 && geometry.legalCells.every(cell => cell.left >= safeLeft && cell.right <= safeRight);
       const paddingMatches = ['top', 'right', 'bottom', 'left'].every(side => Math.abs(geometry.bodyPadding[side] - geometry.safe[side]) <= 1);
       const movePreserved = await safePage.locator('[data-gb-cell="0:4"]').getAttribute('aria-label').then(label => label.includes('X, occupied'))
-        && /1 move played/.test(await safePage.locator('.gb-match-note').textContent().catch(() => ''));
+        && (await safePage.locator('[data-gb-move-total]').textContent().catch(() => '')).trim() === '1';
       check('P21-BROWSER-SYNTHETIC-SAFE-AREA-HEADER', headerInSafeArea, { fixture: fixture.name, source: 'synthetic CSS variables; not physical-device evidence', ...geometry });
       check('P21-BROWSER-SYNTHETIC-SAFE-AREA-BOARD', boardInSafeArea, { fixture: fixture.name, source: 'synthetic CSS variables; not physical-device evidence', ...geometry });
       check('P21-BROWSER-SYNTHETIC-SAFE-AREA-PADDING', paddingMatches, { fixture: fixture.name, source: 'synthetic CSS variables; not physical-device evidence', ...geometry });
@@ -312,7 +335,10 @@ async function main() {
     }
     const crawlable = [...rawMetadata.entries()].filter(([route, value]) => !/noindex/i.test(value.robots[0]) && value.canonical[0] === 'https://megaxo.online' + route);
     check('P21-BROWSER-PUBLIC-METADATA-UNIQUE', new Set(crawlable.map(([, value]) => value.title)).size === crawlable.length && new Set(crawlable.map(([, value]) => value.description[0])).size === crawlable.length && new Set(crawlable.map(([, value]) => value.canonical[0])).size === crawlable.length, { pages: crawlable.length });
-    for (const route of ['/game', '/play', '/account', '/profile', '/settings', '/offline', '/status', '/404']) check('P21-BROWSER-PRIVATE-NOINDEX', /noindex/i.test(rawMetadata.get(route)?.robots[0] || ''), { route });
+    for (const route of ['/game', '/play', '/account', '/profile', '/offline', '/status', '/404']) check('P21-BROWSER-PRIVATE-NOINDEX', /noindex/i.test(rawMetadata.get(route)?.robots[0] || ''), { route });
+    const removedSettings = await page.goto(origin + '/settings', {waitUntil:'networkidle'});
+    const settingsSeo = await metadata(page);
+    check('P21-BROWSER-SETTINGS-REMOVED', removedSettings?.status() === 404 && /noindex/i.test(settingsSeo.robots[0] || '') && await page.locator('.pg-error-code').count() === 1 && await page.locator('a[href="/settings"],[data-offline-action]').count() === 0, {route:'/settings',status:removedSettings?.status()});
     const unknown = await context.request.get(origin + '/missing-synthetic-website-route');
     check('P21-BROWSER-REAL-404', unknown.status() === 404 && /noindex/i.test(await unknown.text()), { route: '/missing-synthetic-website-route', status: unknown.status() });
     for (const name of LEGAL_NAMES) {
@@ -332,19 +358,27 @@ async function main() {
     await page.goto(origin + '/', { waitUntil: 'networkidle' });
     const homeSeo = await metadata(page);
     const primary = page.getByRole('link', { name: 'Play Now', exact: true });
-    check('P21-BROWSER-HERO-PLAY-DESTINATION', await primary.getAttribute('href') === '/game', { label: 'Play Now', href: await primary.getAttribute('href') });
+    check('P21-BROWSER-HERO-PLAY-DESTINATION', await primary.getAttribute('href') === '/play', { label: 'Play Now', href: await primary.getAttribute('href') });
     await primary.click();
-    await page.waitForURL(origin + '/game');
+    await page.waitForURL(origin + '/play');
+    const modeSeo = await metadata(page);
+    const practiceEntry = page.getByRole('link', {name:'Start practicing with bots',exact:true});
+    check('P21-BROWSER-PLAY-MODE-PRESTEP', modeSeo.canonical[0] === 'https://megaxo.online/play' && await practiceEntry.getAttribute('href') === '/game?mode=bot' && await page.locator('.gb-game-page').count() === 0, {from:'/',to:'/play',practiceHref:await practiceEntry.getAttribute('href')});
+    await practiceEntry.click();
+    await page.waitForURL(origin + '/game?mode=bot');
     await page.locator('.gb-game-page').waitFor();
     const gameSeo = await metadata(page);
     check('P21-BROWSER-SPA-GAME-METADATA', gameSeo.canonical[0] === 'https://megaxo.online/game' && /noindex/i.test(gameSeo.robots[0]) && gameSeo.title !== homeSeo.title && gameSeo.ogTitle[0] === gameSeo.title && gameSeo.twitterTitle[0] === gameSeo.title && gameSeo.ogUrl[0] === gameSeo.canonical[0], { from: '/', to: '/game', title: gameSeo.title, canonical: gameSeo.canonical, robots: gameSeo.robots });
+    await page.goBack();
+    await page.waitForURL(origin + '/play');
+    check('P21-BROWSER-SPA-MODE-METADATA-RESTORE', JSON.stringify(await metadata(page)) === JSON.stringify(modeSeo), {from:'/game?mode=bot',to:'/play',title:(await metadata(page)).title});
     await page.goBack();
     await page.waitForURL(origin + '/');
     await page.locator('#hero-title').waitFor();
     check('P21-BROWSER-SPA-METADATA-RESTORE', JSON.stringify(await metadata(page)) === JSON.stringify(homeSeo), { from: '/game', to: '/', title: (await metadata(page)).title });
     await page.goto(origin + '/game/', { waitUntil: 'networkidle' });
     check('P21-BROWSER-GAME-SLASH', await page.locator('.gb-game-page').count() === 1 && await page.locator('.mx-header').count() === 1, { route: '/game/' });
-    await page.locator('[data-gb-setting="mode"]').selectOption('local');
+    await page.locator('[data-game-mode]').selectOption('local');
     check('P21-BROWSER-PRACTICE-INITIAL', await page.locator('.gb-cell[aria-disabled="false"]').count() === 81, { route: '/game/' });
     await page.locator('[data-gb-cell="0:4"]').click();
     const legalMoves = await page.locator('.gb-cell[aria-disabled="false"]').evaluateAll(cells => cells.map(cell => cell.dataset.gbCell));
@@ -371,12 +405,44 @@ async function main() {
     check('P21-BROWSER-GAME-KEYBOARD-MOVE', (await page.locator('[data-gb-cell="4:1"]').getAttribute('aria-label')).includes('O, occupied') && afterKeyboard.length === 9 && afterKeyboard.every(key => key.startsWith('1:')), { move: '4:1', nextBoard: 1 });
     await page.locator('[data-gb-action="fresh"]').click();
     check('P21-BROWSER-GAME-NEW', await page.locator('.gb-cell[aria-disabled="false"]').count() === 81 && await page.locator('.gb-cell[aria-label*="occupied"]').count() === 0, { route: '/game/' });
-    await page.locator('[data-gb-setting="mode"]').selectOption('bot');
+    await page.locator('[data-game-mode]').selectOption('bot');
     await page.locator('[data-gb-setting="difficulty"]').selectOption('Beginner');
     await page.locator('[data-gb-cell="0:4"]').click();
     await page.waitForFunction(() => document.querySelectorAll('.gb-cell[aria-label*="occupied"]').length === 2);
     const botMove = await page.locator('.gb-cell[aria-label*="O, occupied"]').getAttribute('data-gb-cell');
     check('P21-BROWSER-GAME-BOT', botMove.startsWith('4:') && await page.locator('.gb-cell[aria-disabled="false"]').count() > 0, { difficulty: 'Beginner', botBoard: botMove.split(':')[0] });
+    const guide = page.locator('details.gb-help-panel');
+    if (!(await guide.evaluate(element => element.open))) {
+      await guide.locator('> summary').focus();
+      await page.keyboard.press('Space');
+    }
+    check('P21-BROWSER-GUIDE-KEYBOARD-EXPANSION', await guide.evaluate(element => element.open) && await guide.locator('[data-gb-action="start-guided"]').isVisible(), {route:'/game',interaction:'focused native details summary + Space'});
+    await guide.locator('[data-gb-action="start-guided"]').click();
+    await page.locator('.gb-guided-panel').waitFor();
+    check('P21-BROWSER-GUIDE-ENTRY-AND-LOCK', await page.locator('#gb-guided-title').evaluate(element => element === document.activeElement) && await page.locator('[data-game-mode]').isDisabled() && await page.locator('[data-gb-setting="difficulty"]').isDisabled() && await page.locator('[data-gb-setting="difficulty"]').inputValue() === 'Beginner', {route:'/game',source:'existing six-move tutorial; real local browser interaction'});
+    const guidedPlayerMoves = [];
+    for (let actions=0; actions<16 && await page.locator('.gb-guided-panel').count(); actions++) {
+      const phase = await page.locator('.gb-guided-panel').getAttribute('data-gb-guided-phase');
+      if (phase === 'AWAIT_MOVE') {
+        const target = page.locator('.gb-cell--guided-target');
+        guidedPlayerMoves.push(await target.getAttribute('data-gb-cell'));
+        await target.click();
+      } else if (phase === 'PROMPT' || phase === 'AWAIT_CONTINUE') {
+        await page.locator('[data-gb-guided="continue"]').click();
+      } else break;
+    }
+    const guidedResult = await page.evaluate(() => {
+      const saved = JSON.parse(localStorage.getItem('mega_v51_practice_save') || 'null');
+      return {moves:saved?.state?.moves?.length || 0, phase:saved?.lesson?.phase || '', total:document.querySelector('[data-gb-move-total]')?.textContent.trim() || '', claimed:document.querySelectorAll('.gb-claim .gb-mark--x').length};
+    });
+    check('P21-BROWSER-GUIDE-SIX-MOVE-HANDOFF', guidedPlayerMoves.join(',') === '0:4,0:3,0:5' && guidedResult.moves === 6 && guidedResult.phase === 'DONE' && guidedResult.total === '6' && guidedResult.claimed === 1, {route:'/game',guidedPlayerMoves,...guidedResult});
+    await page.goto(origin + '/how-to-play', {waitUntil:'networkidle'});
+    const tutorialEntry = page.getByRole('link', {name:'Play the guided tutorial',exact:true});
+    check('P21-BROWSER-RULES-GUIDED-DESTINATION', await tutorialEntry.getAttribute('href') === '/game?tutorial=guided', {route:'/how-to-play',href:await tutorialEntry.getAttribute('href')});
+    await tutorialEntry.click();
+    await page.waitForURL(origin + '/game?tutorial=guided');
+    await page.locator('.gb-guided-panel').waitFor();
+    check('P21-BROWSER-RULES-GUIDED-ENTRY', await page.locator('.gb-guided-panel').getAttribute('data-gb-guided-phase') === 'PROMPT' && await page.locator('[data-gb-move-total]').textContent().then(value => value.trim() === '0'), {from:'/how-to-play',to:'/game?tutorial=guided'});
     await page.setViewportSize({ width: 1151, height: 865 });
     await page.goto(origin + '/game', { waitUntil: 'networkidle' });
     check('P21-BROWSER-NEON-ANNOTATION-VIEWPORT', await page.locator('[data-gb-setting="theme"]').inputValue() === 'cinematic' && await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), { width: 1151, height: 865 });
@@ -391,13 +457,27 @@ async function main() {
       const fixtureContext = await browser.newContext({ viewport: { width: viewport.width, height: viewport.height }, reducedMotion: 'reduce' });
       await localOnly(fixtureContext);
       const reads = [];
+      const friend = (number, relation = 'friend') => {
+        const suffix = String(number).padStart(2, '0');
+        return {id:'fixture-friend-' + suffix,username:'fixture_friend_' + suffix,name:'Fixture Friend ' + suffix,
+          tag:'MEGA-F' + suffix,avatar:'rook',relation,presence:{state:'offline',online:false}};
+      };
+      const friends = Array.from({length:23}, (_, index) => friend(index + 1));
+      const friendProjection = {friends,incoming:[friend(31,'incoming')],outgoing:[friend(32,'outgoing')],blocked:[],truncated:false};
+      const tournamentCapabilities = {lan:false,online:true,publicEnabled:true,tables:Object.keys(tournamentRules.TABLES).map(tournamentRules.prize)};
+      let profileGate = null;
       await fixtureContext.route(origin + '/api/**', async route => {
         const request = route.request(), url = new URL(request.url());
         reads.push({ method: request.method(), path: url.pathname, query: url.search });
-        const profile = { id: 'fixture-player', name: 'Fixture Player', tier: 'emerald', rating: 1968.25, games: 24, region: 'IN', season: { qualified: true }, wallet: { coins: 2450, crowns: 12 } };
+        const profile = { id: 'fixture-player', tag: 'MEGA-FIXTURE', name: 'Fixture Player', tier: 'emerald', rating: 1968.25, games: 24, region: 'IN', season: { qualified: true }, wallet: { coins: 2450, crowns: 12 } };
         const rows = [{ id: 'fixture-rival', name: 'Fixture Rival', tier: 'gold', rating: 1591.25, games: 24, region: 'IN', wealth: 43210 }];
-        const known = request.method() === 'GET' && ['/api/v1/profile', '/api/v1/leaderboard'].includes(url.pathname);
-        await route.fulfill({ status: known ? 200 : 503, contentType: 'application/json', body: JSON.stringify(known ? url.pathname === '/api/v1/profile' ? profile : rows : { error: 'WEB_API_NOT_CONFIGURED' }) });
+        const projections = {'/api/v1/profile':profile,'/api/v1/leaderboard':rows,'/api/community/friends':friendProjection,'/api/party/capabilities':tournamentCapabilities};
+        const known = request.method() === 'GET' && Object.hasOwn(projections,url.pathname);
+        if (url.pathname === '/api/v1/profile' && profileGate) {
+          const gate = profileGate; profileGate = null;
+          await gate;
+        }
+        await route.fulfill({ status: known ? 200 : 503, contentType: 'application/json', body: JSON.stringify(known ? projections[url.pathname] : { error: 'WEB_API_NOT_CONFIGURED' }) });
       });
       const fixturePage = await fixtureContext.newPage();
       track(fixturePage);
@@ -409,6 +489,14 @@ async function main() {
       await fixturePage.goto(origin + '/leaderboard', { waitUntil: 'networkidle' });
       await fixturePage.locator('.pg-standings tbody tr').waitFor();
       check('P21-BROWSER-SYNTHETIC-STANDINGS', await fixturePage.locator('.pg-player-name').textContent() === 'Fixture Rival' && (await fixturePage.locator('.pg-score').textContent()).replaceAll(',', '') === '1591.25', { viewport: viewport.name, data: 'synthetic public rows only' });
+      const playerCard = fixturePage.locator('.pg-player-id-card');
+      const playerCardState = await playerCard.evaluate(element => ({
+        text:element.textContent,
+        rank:element.querySelector('.pg-player-card-rank')?.getAttribute('src'),
+        progress:Number(element.querySelector('progress')?.value),
+        maximum:Number(element.querySelector('progress')?.max),
+      }));
+      check('P21-BROWSER-SYNTHETIC-PLAYER-CARD', playerCardState.text.includes('Fixture Player') && playerCardState.text.includes('MEGA-FIXTURE') && playerCardState.rank === '/assets/art/ranks/emerald.webp' && playerCardState.maximum === 100 && Math.abs(playerCardState.progress - (1968.25 - 1900) / (2200 - 1900) * 100) < 0.01 && await playerCard.getByRole('link', {name:'Sign in to your profile',exact:true}).count() === 0, {viewport:viewport.name,data:'synthetic permanent profile and canonical rank floors only',...playerCardState});
       await fixturePage.locator('[data-leaderboard-filter="metric"]').selectOption('wealth');
       await fixturePage.waitForFunction(() => document.querySelector('.pg-score')?.textContent.replaceAll(',', '') === '43210');
       await fixturePage.locator('[data-leaderboard-filter="league"]').selectOption('gold');
@@ -420,6 +508,47 @@ async function main() {
       const reflow = await fixturePage.evaluate(() => ({ width: document.documentElement.clientWidth, scrollWidth: document.documentElement.scrollWidth }));
       check('P21-BROWSER-SYNTHETIC-REFLOW', reflow.scrollWidth <= reflow.width + 1, { viewport: viewport.name, ...reflow });
       await snapshot(fixturePage, 'synthetic-leaderboard-' + viewport.name);
+      for (const route of ['/rewards', '/challenge', '/tournaments']) {
+        await fixturePage.goto(origin + route, {waitUntil:'networkidle'});
+        await fixturePage.locator('#main h1').waitFor();
+        check('P21-BROWSER-SYNTHETIC-LINKED-PROMPTS-CLEARED', await fixturePage.locator('.pg-signin').count() === 0 && await fixturePage.getByRole('link', {name:'Open account',exact:true}).count() === 0, {route,viewport:viewport.name,data:'synthetic linked profile only'});
+        if (route === '/tournaments') {
+          await fixturePage.locator('[data-tournament-action="join"]').first().waitFor();
+          check('P21-BROWSER-SYNTHETIC-TOURNAMENT-CATALOG', await fixturePage.locator('[data-tournament-action="join"]').count() === tournamentCapabilities.tables.length && await fixturePage.getByRole('link', {name:'Sign in to join a tournament',exact:true}).count() === 0, {route,viewport:viewport.name,data:'synthetic enabled table catalog only; no join, entry reservation or service acceptance'});
+        }
+        let releaseProfile;
+        profileGate = new Promise(resolve => {releaseProfile = resolve;});
+        const profileStarted = fixturePage.waitForRequest(request => new URL(request.url()).pathname === '/api/v1/profile');
+        await fixturePage.evaluate(() => window.dispatchEvent(new Event('focus')));
+        await profileStarted;
+        await fixturePage.waitForFunction(() => /Checking your account|Confirming your account/.test(document.querySelector('#main')?.textContent || ''));
+        check('P21-BROWSER-SYNTHETIC-REFRESH-NEUTRAL-PROMPT', await fixturePage.locator('.pg-signin').count() === 0 && await fixturePage.getByRole('link', {name:'Open account',exact:true}).count() === 0 && await fixturePage.getByRole('link', {name:'Sign in to join a tournament',exact:true}).count() === 0, {route,viewport:viewport.name,data:'synthetic held profile refresh after focus; loading is not a signed-out transition'});
+        const profileReturned = fixturePage.waitForResponse(response => new URL(response.url()).pathname === '/api/v1/profile');
+        releaseProfile();
+        await profileReturned;
+        await fixturePage.waitForFunction(() => !/Checking your account|Confirming your account/.test(document.querySelector('#main')?.textContent || ''));
+        check('P21-BROWSER-SYNTHETIC-REFRESH-LINKED-PROMPT', await fixturePage.locator('.pg-signin').count() === 0 && await fixturePage.getByRole('link', {name:'Open account',exact:true}).count() === 0 && await fixturePage.getByRole('link', {name:'Sign in to join a tournament',exact:true}).count() === 0, {route,viewport:viewport.name,data:'same synthetic linked identity after profile refresh'});
+      }
+      await fixturePage.goto(origin + '/friends', {waitUntil:'networkidle'});
+      await fixturePage.locator('#friend-list-rows').waitFor();
+      const visibleFriends = () => fixturePage.locator('#friend-list-rows .pg-friend-identity strong').allTextContents();
+      const friendIds = pageNumber => friends.slice((pageNumber-1)*10,pageNumber*10).map(player => player.name);
+      const friendReads = () => reads.filter(read => read.path === '/api/community/friends').length;
+      const listReadCount = friendReads();
+      const requestsCollapsed = await fixturePage.locator('#friend-requests,#friend-outgoing').evaluateAll(elements => elements.length === 2 && elements.every(element => element.tagName === 'DETAILS' && !element.open));
+      check('P21-BROWSER-SYNTHETIC-FRIENDS-FIRST-PAGE', JSON.stringify(await visibleFriends()) === JSON.stringify(friendIds(1)) && await fixturePage.getByRole('button',{name:'Previous',exact:true}).isDisabled() && requestsCollapsed && await fixturePage.locator('#friend-query').isVisible() && await fixturePage.locator('.pg-signin').count() === 0, {route:'/friends',viewport:viewport.name,rows:10,total:23,requestsCollapsed,data:'synthetic protected social projection; no authentication/provider claim'});
+      let currentFriendPage = 1;
+      for (const pageNumber of [2,3,2,1]) {
+        const direction = pageNumber > currentFriendPage ? 'Next' : 'Previous';
+        await fixturePage.getByRole('button',{name:direction,exact:true}).click();
+        await fixturePage.waitForFunction(number => document.querySelector('.pg-friend-pagination')?.textContent.includes('Page ' + number + ' of 3'),pageNumber);
+        currentFriendPage = pageNumber;
+        const visible = await visibleFriends();
+        check('P21-BROWSER-SYNTHETIC-FRIENDS-PAGINATION', JSON.stringify(visible) === JSON.stringify(friendIds(pageNumber)) && friendReads() === listReadCount && await fixturePage.locator('#friend-list-title').evaluate(element => element === document.activeElement) && (pageNumber !== 3 || await fixturePage.getByRole('button',{name:'Next',exact:true}).isDisabled()), {route:'/friends',viewport:viewport.name,page:pageNumber,rows:visible.length,names:visible,friendReads:friendReads(),source:'actual in-page controls over one synthetic 23-friend response; no writes'});
+      }
+      const friendGeometry = await fixturePage.evaluate(() => ({width:document.documentElement.clientWidth,scrollWidth:document.documentElement.scrollWidth}));
+      check('P21-BROWSER-SYNTHETIC-FRIENDS-REFLOW', friendGeometry.scrollWidth <= friendGeometry.width + 1, {route:'/friends',viewport:viewport.name,...friendGeometry});
+      await snapshot(fixturePage, 'synthetic-friends-' + viewport.name);
       await fixturePage.goto(origin + '/store', { waitUntil: 'networkidle' });
       await fixturePage.locator('[data-store-products]').waitFor();
       check('P21-BROWSER-SYNTHETIC-STORE-UNAVAILABLE', await fixturePage.locator('[data-store-action="purchase"]').count() === 0, { viewport: viewport.name, source: 'synthetic unavailable provider response' });

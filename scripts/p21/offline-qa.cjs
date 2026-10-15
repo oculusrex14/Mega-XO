@@ -1,6 +1,8 @@
 'use strict';
 
-// Exact-artifact P21 offline acceptance. This runner never builds or contacts a live host.
+// Exact-artifact P21 legacy offline opt-in compatibility. The public settings/opt-in UI was removed.
+// Preparation and removal below are explicit test-only fixtures, never public app actions.
+// This runner never builds or contacts a live host.
 // It requires an explicit bundle path, source commit, and bundle digest from the caller.
 const fs = require('node:fs');
 const path = require('node:path');
@@ -250,7 +252,7 @@ async function main() {
     bundle_sha256: artifact.manifest.bundle_sha256,
     offline_version: artifact.offline.version,
     browser_engine: options.browser,
-    environment: 'Local loopback only; fresh unauthenticated contexts; API/read proxy disabled; guest-local state; fault and version fixtures are synthetic.',
+    environment: 'Local loopback only; fresh unauthenticated contexts; API/read proxy disabled; guest-local state. Legacy prior-opt-in compatibility is seeded by an explicit test-page offline.js call; no current public opt-in UI is claimed. Fault and version fixtures are synthetic.',
     acceptance_status: 'IN_PROGRESS',
     command: process.execPath + ' scripts/p21/offline-qa.cjs --bundle <exact-artifact> --expect-source ' + options['expect-source'] + ' --expect-bundle ' + options['expect-bundle'] + ' --browser ' + options.browser + ' --transport ' + options.transport + (options['diagnose-offline-bot'] ? ' --diagnose-offline-bot' : ''),
     qa_script_sha256: sha256(fs.readFileSync(__filename)),
@@ -353,59 +355,44 @@ async function main() {
       return targetPage.locator('main h1').first().innerText({ timeout: 1_000 }).catch(() => '');
     };
 
-    // 1. Fresh state: reading settings may inspect storage but must not register/fetch the worker.
-    await page.goto(origin + '/', { waitUntil: 'networkidle' });
-    await page.goto(origin + '/settings', { waitUntil: 'networkidle' });
+    // Preparation is a fixture for users who opted in before the public Settings page was removed.
+    // The dedicated QA page is outside the product UI and is never in the cache allowlist.
+    const legacyOfflineAction = async (targetPage, action) => targetPage.evaluate(async name => {
+      const client = await import('/offline.js');
+      const state = await client[name]();
+      return {status:state.status, canRemove:state.canRemove, version:state.version || '', reloadRequired:state.reloadRequired === true, message:state.message || ''};
+    }, action);
+    const counter = async targetPage => targetPage.locator('[data-gb-move-total]').textContent().then(value => /^\d+$/.test((value || '').trim()) ? Number(value.trim()) : null);
+
+    // 1. Current public pages expose neither the deleted Settings route nor offline install controls.
+    for (const route of ['/', '/game']) {
+      await page.goto(origin + route, {waitUntil:'networkidle'});
+      await expect(report, 'fresh.no-public-offline-or-settings-controls', async () => await page.locator('[data-offline-action],a[href="/settings"]').count() === 0, {route});
+    }
+    const removedSettings = await page.goto(origin + '/settings', {waitUntil:'networkidle'});
+    await expect(report, 'fresh.removed-settings-is-404', async () => removedSettings?.status() === 404 && await page.locator('[data-offline-action]').count() === 0, {route:'/settings', http_status:removedSettings?.status() ?? null});
     const initialRegistrations = await getRegistrations(page);
     const initialCaches = await page.evaluate(() => caches.keys());
     const workerRequestsBeforeOptIn = eventStore.total.filter(row => row.path === '/offline-sw.js').length;
-    await expect(report, 'fresh.no-registration-or-cache-before-optin', async () => initialRegistrations.length === 0 && initialCaches.length === 0 && workerRequestsBeforeOptIn === 0, { route: '/settings', registrations: initialRegistrations.length, cache_count: initialCaches.length, worker_fetches: workerRequestsBeforeOptIn });
-    await expect(report, 'fresh.visible-explicit-control', async () => await page.getByRole('button', { name: 'Save for offline practice' }).isVisible() && await page.getByRole('button', { name: 'Save for offline practice' }).isEnabled(), { route: '/settings' });
-    await screenshot(page, '01-settings-before-optin');
+    await expect(report, 'fresh.no-registration-or-cache-before-legacy-fixture', async () => initialRegistrations.length === 0 && initialCaches.length === 0 && workerRequestsBeforeOptIn === 0, {routes:['/','/game','/settings'], registrations:initialRegistrations.length, cache_count:initialCaches.length, worker_fetches:workerRequestsBeforeOptIn});
+    await screenshot(page, '01-removed-settings-no-offline-controls');
 
-    // 2. Only the visible public control starts registration; no page reload is triggered by install.
+    // 2. Test-only prepareOffline seeds a former user's explicit opt-in, with no automatic takeover.
+    await page.goto(origin + '/__p21_offline_qa__/blank.html', {waitUntil:'networkidle'});
     const timeOriginBeforeOptIn = await page.evaluate(() => performance.timeOrigin);
-    await page.getByRole('button', { name: 'Save for offline practice' }).click();
-    let installTransitionError = null;
-    try {
-      await page.waitForFunction(() => {
-        const status = document.querySelector('[data-offline-status]')?.textContent || '';
-        return status.includes('Reload this page once') || status.includes('The offline copy is ready on this device.') || status.includes('waiting for open tabs to close');
-      }, null, { timeout: 20_000 });
-    } catch (error) { installTransitionError = String(error?.message || error).slice(0, 240); }
-    const statusAfterInstall = await page.locator('[data-offline-status]').innerText();
+    const prepared = await legacyOfflineAction(page, 'prepareOffline');
     const postInstallRegistrations = await getRegistrations(page);
     const postInstallTimeOrigin = await page.evaluate(() => performance.timeOrigin);
     const ownedAfterInstall = await getOwnedCaches(page);
-    await expect(report, 'install.waiting-message-matches-actual-worker-state', async () => !statusAfterInstall.includes('waiting for open tabs to close') || postInstallRegistrations.some(row => Boolean(row.waiting || row.installing)), {
-      route: '/settings', status: statusAfterInstall,
-      registrations: postInstallRegistrations.map(row => ({ scope: row.scope, active: Boolean(row.active), installing: Boolean(row.installing), waiting: Boolean(row.waiting) })),
-      verified_cache_count: ownedAfterInstall.length,
-      classification: 'first-install UI message is checked against live registration state; a stale message remains a failure even if manual reload works',
+    await expect(report, 'legacy-optin-fixture.prepare-reaches-ready-or-waiting-state', async () => ['ready','waiting'].includes(prepared.status) && (prepared.status !== 'waiting' || postInstallRegistrations.some(row => Boolean(row.waiting || row.installing))), {
+      route:'/__p21_offline_qa__/blank.html', status:prepared.status,
+      registrations:postInstallRegistrations.map(row => ({scope:row.scope,active:Boolean(row.active),installing:Boolean(row.installing),waiting:Boolean(row.waiting)})),
+      verified_cache_count:ownedAfterInstall.length,
+      classification:'test-only legacy opt-in fixture; no current public install or ready-message UX is claimed',
     });
-    if (installTransitionError) {
-      const installDiagnostic = await page.evaluate(async () => ({
-        status: document.querySelector('[data-offline-status]')?.textContent || '',
-        registrations: (await navigator.serviceWorker.getRegistrations()).map(registration => ({
-          scope: new URL(registration.scope).pathname,
-          active: registration.active ? { script: registration.active.scriptURL, state: registration.active.state } : null,
-          installing: registration.installing ? { script: registration.installing.scriptURL, state: registration.installing.state } : null,
-          waiting: registration.waiting ? { script: registration.waiting.scriptURL, state: registration.waiting.state } : null,
-        })),
-        caches: await caches.keys(),
-      }));
-      check(report, 'install.prepare-status-transition', false, {
-        route: '/settings', status: statusAfterInstall, wait_error: installTransitionError,
-        diagnostic: installDiagnostic,
-        recent_server_requests: eventStore.server.slice(-24),
-        classification: 'exact-artifact local browser result; investigate before marking an application defect',
-      });
-      await screenshot(page, '02-settings-install-stalled');
-      throw new Error('offline prepare did not reach a ready/waiting result; see install.prepare-status-transition diagnostic');
-    }
-    await expect(report, 'install.explicit-root-registration', async () => postInstallRegistrations.some(row => row.scope === '/' && row.active.includes('/offline-sw.js')) && ownedAfterInstall.length === 1, { route: '/settings', status: statusAfterInstall, registration_count: postInstallRegistrations.length, owned_cache_count: ownedAfterInstall.length });
-    await expect(report, 'install.no-auto-reload-or-takeover', async () => timeOriginBeforeOptIn === postInstallTimeOrigin && !(await page.evaluate(() => Boolean(navigator.serviceWorker.controller))), { route: '/settings', page_time_origin_unchanged: timeOriginBeforeOptIn === postInstallTimeOrigin, controller_before_manual_reload: await page.evaluate(() => Boolean(navigator.serviceWorker.controller)) });
-    await screenshot(page, '02-settings-after-optin');
+    if (!['ready','waiting'].includes(prepared.status)) throw new Error('legacy offline opt-in fixture did not reach a ready/waiting result');
+    await expect(report, 'legacy-optin-fixture.explicit-root-registration', async () => postInstallRegistrations.some(row => row.scope === '/' && row.active.includes('/offline-sw.js')) && ownedAfterInstall.length === 1, {route:'/__p21_offline_qa__/blank.html',fixture_status:prepared.status,registration_count:postInstallRegistrations.length,owned_cache_count:ownedAfterInstall.length});
+    await expect(report, 'legacy-optin-fixture.no-auto-reload-or-takeover', async () => timeOriginBeforeOptIn === postInstallTimeOrigin && !(await page.evaluate(() => Boolean(navigator.serviceWorker.controller))), {route:'/__p21_offline_qa__/blank.html',page_time_origin_unchanged:timeOriginBeforeOptIn === postInstallTimeOrigin,controller_before_manual_navigation:await page.evaluate(() => Boolean(navigator.serviceWorker.controller))});
 
     // 3. Inspect exact cached bytes and prove private/API material did not enter Cache Storage.
     const cacheAudit = await page.evaluate(async ({ cacheName, assets }) => {
@@ -426,26 +413,26 @@ async function main() {
     }, { cacheName: ownedAfterInstall[0], assets: artifact.offline.assets });
     const exactCacheKeys = cacheAudit.actual.length === cacheAudit.expected.length && cacheAudit.actual.every(url => cacheAudit.expected.includes(url));
     const exactCacheDigests = cacheAudit.rows.every((row, index) => row.match && row.digest === artifact.offline.assets[index].sha256);
-    await expect(report, 'install.exact-static-allowlist-and-digests', async () => exactCacheKeys && exactCacheDigests, { expected_asset_count: artifact.offline.assets.length, cached_key_count: cacheAudit.actual.length, verified_asset_count: cacheAudit.rows.filter(row => row.match && row.digest === artifact.offline.assets.find(asset => asset.url === row.url)?.sha256).length });
-    await expect(report, 'install.no-private-api-auth-or-settings-cache-paths', async () => cacheAudit.actual.every(url => !PRIVATE_PATH.test(new URL(url).pathname)) && !cacheAudit.actual.some(url => new URL(url).search), { cached_key_count: cacheAudit.actual.length, private_path_matches: cacheAudit.actual.filter(url => PRIVATE_PATH.test(new URL(url).pathname)).length });
+    await expect(report, 'legacy-optin-fixture.exact-static-allowlist-and-digests', async () => exactCacheKeys && exactCacheDigests, { expected_asset_count: artifact.offline.assets.length, cached_key_count: cacheAudit.actual.length, verified_asset_count: cacheAudit.rows.filter(row => row.match && row.digest === artifact.offline.assets.find(asset => asset.url === row.url)?.sha256).length });
+    await expect(report, 'legacy-optin-fixture.no-private-api-auth-or-settings-cache-paths', async () => cacheAudit.actual.every(url => !PRIVATE_PATH.test(new URL(url).pathname)) && !cacheAudit.actual.some(url => new URL(url).search), { cached_key_count: cacheAudit.actual.length, private_path_matches: cacheAudit.actual.filter(url => PRIVATE_PATH.test(new URL(url).pathname)).length });
 
-    // 4. Manual reload gives the new root worker control; then exercise guest-only local play offline.
-    await page.reload({ waitUntil: 'networkidle' });
+    // 4. Canonical game navigation gives the previously opted-in worker control.
+    await page.goto(origin + '/game', { waitUntil: 'networkidle' });
     await page.waitForFunction(() => Boolean(navigator.serviceWorker.controller), null, { timeout: 10_000 });
-    await expect(report, 'reload.manual-control-after-reload', async () => await page.evaluate(() => Boolean(navigator.serviceWorker.controller)) && (await getOwnedCaches(page)).length === 1, { route: '/settings' });
+    await expect(report, 'legacy-optin-fixture.canonical-navigation-gives-worker-control', async () => await page.evaluate(() => Boolean(navigator.serviceWorker.controller)) && (await getOwnedCaches(page)).length === 1, { route: '/game' });
     await page.goto(origin + '/game', { waitUntil: 'networkidle' });
     if (options.transport === 'origin-drop') {
       proxyParts.setMode({ networkDisabled: true });
     } else await context.setOffline(true);
     await page.waitForTimeout(250);
-    await expect(report, 'offline.game-shell-available', async () => await page.locator('[data-gb-stage]').count() === 1 && await page.locator('[data-gb-setting="mode"]').count() === 1, { route: '/game', offline: true });
+    await expect(report, 'offline.game-shell-available', async () => await page.locator('[data-gb-stage]').count() === 1 && await page.locator('[data-game-mode]').count() === 1, { route: '/game', offline: true });
     const themes = ['cinematic', 'vector', 'midnight', 'paperclub', 'afterhours'];
     for (const theme of themes) {
       await page.locator('[data-gb-setting="theme"]').selectOption(theme);
       await expect(report, 'offline.theme.' + theme, async () => await page.locator('[data-gb-stage]').getAttribute('data-gb-theme') === theme, { route: '/game', offline: true, theme });
     }
     await page.locator('[data-gb-setting="theme"]').selectOption('cinematic');
-    await page.locator('[data-gb-setting="mode"]').selectOption('bot');
+    await page.locator('[data-game-mode]').selectOption('bot');
     const botDiagnosticStart = diagnosticEvents ? {
       requests: diagnosticEvents.requests.length,
       request_failures: diagnosticEvents.request_failures.length,
@@ -456,7 +443,7 @@ async function main() {
     } : null;
     await page.locator('.gb-cell[aria-disabled="false"]').first().click();
     try {
-      await page.waitForFunction(() => Number(document.querySelector('.gb-match-note')?.innerText.match(/(\d+) moves?/i)?.[1] || 0) >= 2, null, { timeout: 15_000 });
+      await page.waitForFunction(() => Number(document.querySelector('[data-gb-move-total]')?.textContent.trim()) >= 2, null, { timeout: 15_000 });
     } catch (error) {
       if (diagnosticEvents) {
         const botEventEnds = {
@@ -465,8 +452,8 @@ async function main() {
           server: eventStore.server.length,
         };
         const guestState = await page.evaluate(async prefix => {
-          const note = document.querySelector('.gb-match-note')?.innerText || '';
-          const moveCount = Number(note.match(/(\d+) moves?/i)?.[1] || 0);
+          const total = document.querySelector('[data-gb-move-total]')?.textContent.trim() || '';
+          const moveCount = /^\d+$/.test(total) ? Number(total) : null;
           const registrations = await navigator.serviceWorker.getRegistrations();
           const ownedCaches = (await caches.keys()).filter(name => name.startsWith(prefix));
           const rootRegistration = registrations.find(registration => new URL(registration.scope).pathname === '/');
@@ -477,7 +464,7 @@ async function main() {
             online: navigator.onLine,
             document_hidden: document.hidden,
             visibility_state: document.visibilityState,
-            mode: document.querySelector('[data-gb-setting="mode"]')?.value || '',
+            mode: document.querySelector('[data-game-mode]')?.value || '',
             difficulty: document.querySelector('[data-gb-setting="difficulty"]')?.value || '',
             theme: stage?.getAttribute('data-gb-theme') || '',
             move_count: moveCount,
@@ -543,8 +530,8 @@ async function main() {
     }
     if (diagnosticEvents) {
       const guestState = await page.evaluate(async prefix => {
-        const note = document.querySelector('.gb-match-note')?.innerText || '';
-        const moveCount = Number(note.match(/(\d+) moves?/i)?.[1] || 0);
+        const total = document.querySelector('[data-gb-move-total]')?.textContent.trim() || '';
+        const moveCount = /^\d+$/.test(total) ? Number(total) : null;
         const registrations = await navigator.serviceWorker.getRegistrations();
         const rootRegistration = registrations.find(registration => new URL(registration.scope).pathname === '/');
         const marks = [...document.querySelectorAll('.gb-cell .gb-mark')];
@@ -553,7 +540,7 @@ async function main() {
           online: navigator.onLine,
           document_hidden: document.hidden,
           visibility_state: document.visibilityState,
-          mode: document.querySelector('[data-gb-setting="mode"]')?.value || '',
+          mode: document.querySelector('[data-game-mode]')?.value || '',
           difficulty: document.querySelector('[data-gb-setting="difficulty"]')?.value || '',
           theme: document.querySelector('[data-gb-stage]')?.getAttribute('data-gb-theme') || '',
           move_count: moveCount,
@@ -577,12 +564,12 @@ async function main() {
         page_errors: diagnosticEvents.page_errors.slice(first.page_errors),
       };
     }
-    await expect(report, 'offline.bot-turn-completes', async () => Number((await page.locator('.gb-match-note').innerText()).match(/(\d+) moves?/i)?.[1] || 0) >= 2, { route: '/game', offline: true, expected_local_moves_minimum: 2 });
-    await page.locator('[data-gb-action="reset"]').click();
-    await page.locator('[data-gb-setting="mode"]').selectOption('local');
+    await expect(report, 'offline.bot-turn-completes', async () => (await counter(page)) >= 2, { route: '/game', offline: true, expected_local_moves_minimum: 2 });
+    await page.locator('[data-gb-action="fresh"]').click();
+    await page.locator('[data-game-mode]').selectOption('local');
     await page.locator('.gb-cell[aria-disabled="false"]').first().click();
     await page.locator('.gb-cell[aria-disabled="false"]').first().click();
-    const localMoveCount = Number((await page.locator('.gb-match-note').innerText()).match(/(\d+) moves?/i)?.[1] || 0);
+    const localMoveCount = (await counter(page));
     const localMarksBeforeReload = await page.locator('.gb-cell').evaluateAll(cells => cells.filter(cell => cell.querySelector('.gb-mark')).length);
     await expect(report, 'offline.two-player-same-screen', async () => localMoveCount === 2 && localMarksBeforeReload === 2, { route: '/game', offline: true, local_move_count: localMoveCount, visible_marks: localMarksBeforeReload });
     await page.setViewportSize({ width: 1280, height: 900 });
@@ -594,18 +581,21 @@ async function main() {
     }
     await expect(report, 'offline.responsive-reflow-preserves-board-without-horizontal-overflow', async () => viewportChecks.every(row => row.marks === 2 && row.client <= row.width && row.scroll <= row.client), { route: '/game', offline: true, viewports: viewportChecks });
     await page.setViewportSize({ width: 1280, height: 900 });
+    // Mode selection can leave a query URL; only the canonical navigation is cached.
+    await page.goto(origin + '/game', {waitUntil:'domcontentloaded'});
+    await page.locator('.gb-help-panel:not([open]) > summary').click();
     await page.locator('[data-gb-action="start-guided"]').click();
     await page.locator('[data-gb-guided="continue"]').click();
     const tutorialMoves = [];
-    // Complete one X/O pair, reload, and resume from that saved tutorial point.
+    // Complete one X/O pair, navigate to the canonical cached route, and resume that saved tutorial point.
     await page.locator('.gb-cell--guided-target').click();
-    tutorialMoves.push(await page.locator('.gb-match-note').innerText());
+    tutorialMoves.push(await counter(page));
     await page.locator('[data-gb-guided="continue"]').click();
     await page.waitForFunction(() => document.querySelector('.gb-guided-progress')?.textContent.includes('Guided move 2 / 6'));
-    await page.reload({ waitUntil: 'networkidle' });
+    await page.goto(origin + '/game', {waitUntil:'domcontentloaded'});
     await page.waitForFunction(() => document.querySelector('.gb-guided-progress')?.textContent.includes('Guided move 2 / 6'));
     const resumed = await page.evaluate(() => ({ progress: document.querySelector('.gb-guided-progress')?.innerText || '', moves: document.querySelectorAll('.gb-cell .gb-mark').length }));
-    await expect(report, 'offline.guided-tutorial-resumes-after-reload', async () => resumed.progress.toLowerCase().includes('guided move 2 / 6') && resumed.moves === 2, { route: '/game', offline: true, progress: resumed.progress, visible_moves: resumed.moves });
+    await expect(report, 'offline.guided-tutorial-resumes-after-canonical-navigation', async () => resumed.progress.toLowerCase().includes('guided move 2 / 6') && resumed.moves === 2, { route: '/game', offline: true, progress: resumed.progress, visible_moves: resumed.moves });
     for (let actions = 0; actions < 16 && await page.locator('.gb-guided-panel').count(); actions++) {
       const phase = await page.locator('.gb-guided-panel').getAttribute('data-gb-guided-phase');
       if (phase === 'AWAIT_MOVE') {
@@ -648,19 +638,18 @@ async function main() {
     await expect(report, 'network.no-write-requests', async () => eventStore.writes.length === 0, { write_count: eventStore.writes.length, writes: eventStore.writes });
     await expect(report, 'network.no-external-origins', async () => eventStore.blocked_external_origins.length === 0, { blocked_external_origin_count: eventStore.blocked_external_origins.length });
 
-    // 6. User-driven removal only deletes this product's root registration/cache.
+    // 6. Legacy compatibility removal calls the retained module and deletes only its own state.
     const sentinel = 'p21-offline-qa-unrelated';
     await page.evaluate(async sentinelName => { const cache = await caches.open(sentinelName); await cache.put('/sentinel.txt', new Response('keep')); }, sentinel);
     await page.evaluate(async () => {
       window.__p21OfflineQAForeignRegistration = await navigator.serviceWorker.register('/__p21_offline_qa__/foreign.js', { scope: '/__p21_offline_qa__/' });
     });
     await page.waitForFunction(() => window.__p21OfflineQAForeignRegistration?.active?.state === 'activated', null, { timeout: 10_000 });
-    await page.goto(origin + '/settings', { waitUntil: 'networkidle' });
-    await page.getByRole('button', { name: 'Remove offline copy' }).click();
-    await page.waitForFunction(() => document.querySelector('[data-offline-status]')?.textContent.includes('removed from this device'), null, { timeout: 10_000 });
+    await page.goto(origin + '/__p21_offline_qa__/blank.html', {waitUntil:'networkidle'});
+    const removal = await legacyOfflineAction(page, 'removeOffline');
     const cleanup = await page.evaluate(async sentinelName => ({ caches: await caches.keys(), registrations: (await navigator.serviceWorker.getRegistrations()).map(registration => new URL(registration.scope).pathname) }), sentinel);
-    await expect(report, 'remove.only-owned-worker-and-cache', async () => !cleanup.caches.some(name => name.startsWith(OFFLINE_CACHE_PREFIX)) && cleanup.caches.includes(sentinel) && !cleanup.registrations.includes('/') && cleanup.registrations.includes('/__p21_offline_qa__/'), { route: '/settings', unrelated_cache_preserved: cleanup.caches.includes(sentinel), unrelated_worker_preserved: cleanup.registrations.includes('/__p21_offline_qa__/'), owned_cache_remaining: cleanup.caches.filter(name => name.startsWith(OFFLINE_CACHE_PREFIX)).length, root_registration_remaining: cleanup.registrations.includes('/') });
-    await screenshot(page, '04-settings-after-owned-removal');
+    await expect(report, 'legacy-optin-fixture.remove-only-owned-worker-and-cache', async () => removal.status === 'absent' && !cleanup.caches.some(name => name.startsWith(OFFLINE_CACHE_PREFIX)) && cleanup.caches.includes(sentinel) && !cleanup.registrations.includes('/') && cleanup.registrations.includes('/__p21_offline_qa__/'), { route: '/__p21_offline_qa__/blank.html', fixture_status:removal.status, unrelated_cache_preserved: cleanup.caches.includes(sentinel), unrelated_worker_preserved: cleanup.registrations.includes('/__p21_offline_qa__/'), owned_cache_remaining: cleanup.caches.filter(name => name.startsWith(OFFLINE_CACHE_PREFIX)).length, root_registration_remaining: cleanup.registrations.includes('/') });
+    await screenshot(page, '04-legacy-fixture-after-owned-removal');
 
     // 7. A real browser context is used, while faults themselves are explicit synthetic injections.
     const runFault = async (faultName, injection) => {
@@ -669,19 +658,18 @@ async function main() {
       const original = artifact.workerSource;
       proxyParts.setMode({ workerSource: injection(original) });
       const oldName = `${OFFLINE_CACHE_PREFIX}previous-fixture:abc:verified`;
-      await faultPage.goto(origin + '/settings', { waitUntil: 'networkidle' });
+      await faultPage.goto(origin + '/__p21_offline_qa__/blank.html', {waitUntil:'networkidle'});
       await faultPage.evaluate(async ({ sentinel, old }) => {
         const unrelated = await caches.open(sentinel);
         await unrelated.put('/sentinel.txt', new Response('keep'));
         await caches.open(old);
       }, { sentinel: 'p21-offline-qa-unrelated-' + faultName, old: oldName });
-      await faultPage.getByRole('button', { name: 'Save for offline practice' }).click();
-      try { await faultPage.waitForFunction(() => /could not|failed|unavailable|blocked|storage|integrity/i.test(document.querySelector('[data-offline-status]')?.textContent || ''), null, { timeout: 20_000 }); } catch { /* record a non-failing install as a failed check below */ }
-      const errorStatus = await faultPage.locator('[data-offline-status]').innerText();
+      const failedPrepare = await legacyOfflineAction(faultPage, 'prepareOffline');
+      const errorStatus = failedPrepare.message;
       const owned = await getOwnedCaches(faultPage);
       const cacheNames = await faultPage.evaluate(() => caches.keys());
       const faultRegistrations = await getRegistrations(faultPage);
-      await expect(report, 'fault.' + faultName + '.fails-closed-and-cleans-candidate', async () => owned.length === 1 && owned[0] === oldName && cacheNames.includes('p21-offline-qa-unrelated-' + faultName) && /could not|failed|unavailable|blocked|storage|integrity/i.test(errorStatus), { route: '/settings', fault_fixture: faultName, status: errorStatus, registrations: faultRegistrations.map(row => ({ scope: row.scope, active: Boolean(row.active), installing: Boolean(row.installing), waiting: Boolean(row.waiting) })), worker_fetches: eventStore.server.filter(row => row.path === '/offline-sw.js').length, previous_feature_cache_preserved: owned.includes(oldName), unrelated_cache_preserved: cacheNames.includes('p21-offline-qa-unrelated-' + faultName), feature_cache_names: owned, classification: 'synthetic fault injection; not actual browser storage/quota proof' });
+      await expect(report, 'fault.' + faultName + '.fails-closed-and-cleans-candidate', async () => owned.length === 1 && owned[0] === oldName && failedPrepare.status === 'unavailable' && cacheNames.includes('p21-offline-qa-unrelated-' + faultName) && /could not|failed|unavailable|blocked|storage|integrity/i.test(errorStatus), { route: '/__p21_offline_qa__/blank.html', fixture_status:failedPrepare.status, fault_fixture: faultName, status: errorStatus, registrations: faultRegistrations.map(row => ({ scope: row.scope, active: Boolean(row.active), installing: Boolean(row.installing), waiting: Boolean(row.waiting) })), worker_fetches: eventStore.server.filter(row => row.path === '/offline-sw.js').length, previous_feature_cache_preserved: owned.includes(oldName), unrelated_cache_preserved: cacheNames.includes('p21-offline-qa-unrelated-' + faultName), feature_cache_names: owned, classification: 'synthetic fault injection; not actual browser storage/quota proof' });
       await faultContext.close();
       proxyParts.setMode({ kind: 'normal' });
     };
@@ -698,27 +686,24 @@ async function main() {
     if (!tamperPath) fail('no non-HTML declared static asset available for the integrity fixture');
     proxyParts.setMode({ tamperPath });
     const oldTamperName = `${OFFLINE_CACHE_PREFIX}previous-tamper-fixture:abc:verified`;
-    await tamperPage.goto(origin + '/settings', { waitUntil: 'networkidle' });
+    await tamperPage.goto(origin + '/__p21_offline_qa__/blank.html', {waitUntil:'networkidle'});
     await tamperPage.evaluate(async oldName => { await caches.open(oldName); await caches.open('p21-offline-qa-tamper-unrelated'); }, oldTamperName);
-    await tamperPage.getByRole('button', { name: 'Save for offline practice' }).click();
-    try { await tamperPage.waitForFunction(() => /could not|failed|unavailable|blocked|storage|integrity/i.test(document.querySelector('[data-offline-status]')?.textContent || ''), null, { timeout: 20_000 }); } catch { /* preserve an unexpected ready state as evidence */ }
-    const tamperStatus = await tamperPage.locator('[data-offline-status]').innerText();
+    const tamperPrepare = await legacyOfflineAction(tamperPage, 'prepareOffline');
+    const tamperStatus = tamperPrepare.message;
     const tamperOwned = await getOwnedCaches(tamperPage);
     const tamperCacheNames = await tamperPage.evaluate(() => caches.keys());
     const tamperRegistrations = await getRegistrations(tamperPage);
-    await expect(report, 'fault.tampered-static-digest-fails-closed', async () => tamperOwned.length === 1 && tamperOwned[0] === oldTamperName && tamperCacheNames.includes('p21-offline-qa-tamper-unrelated') && /failed|could not|unavailable|integrity/i.test(tamperStatus), { route: '/settings', tampered_path: tamperPath, status: tamperStatus, registrations: tamperRegistrations.map(row => ({ scope: row.scope, active: Boolean(row.active), installing: Boolean(row.installing), waiting: Boolean(row.waiting) })), previous_feature_cache_preserved: tamperOwned.includes(oldTamperName), unrelated_cache_preserved: tamperCacheNames.includes('p21-offline-qa-tamper-unrelated'), feature_cache_names: tamperOwned, classification: 'synthetic modified response; integrity path checked in local browser' });
+    await expect(report, 'fault.tampered-static-digest-fails-closed', async () => tamperOwned.length === 1 && tamperOwned[0] === oldTamperName && tamperPrepare.status === 'unavailable' && tamperCacheNames.includes('p21-offline-qa-tamper-unrelated') && /failed|could not|unavailable|integrity/i.test(tamperStatus), { route: '/__p21_offline_qa__/blank.html', fixture_status:tamperPrepare.status, tampered_path: tamperPath, status: tamperStatus, registrations: tamperRegistrations.map(row => ({ scope: row.scope, active: Boolean(row.active), installing: Boolean(row.installing), waiting: Boolean(row.waiting) })), previous_feature_cache_preserved: tamperOwned.includes(oldTamperName), unrelated_cache_preserved: tamperCacheNames.includes('p21-offline-qa-tamper-unrelated'), feature_cache_names: tamperOwned, classification: 'synthetic modified response; integrity path checked in local browser' });
     await tamperContext.close();
     proxyParts.setMode({ kind: 'normal' });
 
     // 8. Synthetic second version verifies normal waiting/activation boundaries only.
     const updateContext = await newContext(); contexts.push(updateContext);
     let updatePage = await updateContext.newPage();
-    await updatePage.goto(origin + '/settings', { waitUntil: 'networkidle' });
-    await updatePage.getByRole('button', { name: 'Save for offline practice' }).click();
-    await updatePage.waitForFunction(() => {
-      const status = document.querySelector('[data-offline-status]')?.textContent || '';
-      return status.includes('Reload this page once') || status.includes('ready on this device') || status.includes('waiting for open tabs to close');
-    }, null, { timeout: 20_000 });
+    await updatePage.goto(origin + '/__p21_offline_qa__/blank.html', {waitUntil:'networkidle'});
+    const updatePrepared = await legacyOfflineAction(updatePage, 'prepareOffline');
+    await expect(report, 'legacy-optin-fixture.update-prerequisite', async () => updatePrepared.status === 'ready', {fixture_status:updatePrepared.status});
+    if (updatePrepared.status !== 'ready') throw new Error('legacy offline update fixture could not be prepared');
     await updatePage.reload({ waitUntil: 'networkidle' });
     await updatePage.waitForFunction(() => Boolean(navigator.serviceWorker.controller));
     const oldOfflineAsset = artifact.offline.assets.find(asset => asset.url === '/pages/offline.html');

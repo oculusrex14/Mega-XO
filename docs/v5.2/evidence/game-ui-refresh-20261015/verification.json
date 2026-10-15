@@ -1,0 +1,83 @@
+{
+  "state": "LOCAL_BROWSER_AND_UNIT_VERIFIED_NOT_DEVICE_RELEASED",
+  "source_commit": "948902b6a5812326554e910ad568fc5816931442",
+  "base_commit": "59b65b0b26399d31f8ee55ac119a550a6c4a4519",
+  "web_bundle_sha256": "f67088ea5882e2830f1e85a19ccbe8b9a87825ea8f3f42d6fb623d3af619a44d",
+  "native_bundle_hash": "7fbd9c83aa4ef9c78123fc76ea2e9b327add3e304c4b2a54e7dabb38080de99d",
+  "targeted_tests": {
+    "pass": 169,
+    "fail": 0,
+    "skip": 0,
+    "evidence": "targeted-tests.tap"
+  },
+  "browser_checks": {
+    "web_1625": {
+      "horizontal_overflow": false,
+      "cells": 81,
+      "power_rows": 4
+    },
+    "web_390": {
+      "horizontal_overflow": false,
+      "board_width": 329,
+      "cells": 81,
+      "power_rows": 4
+    },
+    "shared_app_390": {
+      "horizontal_overflow": false,
+      "themes": [
+        "vector",
+        "midnight",
+        "paperclub",
+        "afterhours"
+      ],
+      "power_description_font_px": 10
+    },
+    "shared_app_320": {
+      "horizontal_overflow": false,
+      "board_width": 289,
+      "footer_button_height": 52,
+      "vertical_scroll": true
+    },
+    "home_preview_html": "byte-identical to Main baseline",
+    "tutorial": "launches, locks mode/difficulty and focuses heading",
+    "local_bot": "real legal player move and worker reply observed"
+  },
+  "not_run": [
+    "signed iOS/Android rebuild and physical-device acceptance",
+    "live rewarded-ad delivery",
+    "Casual counter protocol acceptance",
+    "production deployment"
+  ],
+  "images": [
+    {
+      "path": "docs/v5.2/evidence/game-ui-refresh-20261015/afterhours-390.jpg",
+      "sha256": "2da6dc2d06d3c6390141f918f7b69a853949c832b5e697e2c6dc715569a1fe0b",
+      "bytes": 53790
+    },
+    {
+      "path": "docs/v5.2/evidence/game-ui-refresh-20261015/midnight-390.jpg",
+      "sha256": "a5de42d7fba2e9495921421101ef37023f71b16ae60dd142fb3405b91d352406",
+      "bytes": 54367
+    },
+    {
+      "path": "docs/v5.2/evidence/game-ui-refresh-20261015/paperclub-390.jpg",
+      "sha256": "d42e76c5ef3af7959115b43046c21202d6c5d9b1d6482ebf4ca1a7bccd61d771",
+      "bytes": 50236
+    },
+    {
+      "path": "docs/v5.2/evidence/game-ui-refresh-20261015/vector-390.jpg",
+      "sha256": "47c9c5da09fde6b8758a015910393605a934e0934f262e085c8658c83ac00b34",
+      "bytes": 40930
+    },
+    {
+      "path": "docs/v5.2/evidence/game-ui-refresh-20261015/web-game-390.jpg",
+      "sha256": "e469e19c09a8bd408d43385fa081a4bc459c8a6dc05b6339961fb8c9f282c053",
+      "bytes": 137551
+    },
+    {
+      "path": "docs/v5.2/evidence/game-ui-refresh-20261015/web-game-desktop.jpg",
+      "sha256": "293554aa7458007436b1d0c69991fbd17be44062aaf8f61597b865472c281cf9",
+      "bytes": 217667
+    }
+  ]
+}

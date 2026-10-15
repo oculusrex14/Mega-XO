@@ -183,6 +183,12 @@ function powerReasonText(reason){
   CHARGE_AVAILABLE:'You still have a banked charge. Use it before earning another.',
   REQUEST_IN_FLIGHT:'An ad request is already in progress.',
   NO_ENTITLEMENT:'No earned item of that type is banked yet.',
+  FIRST_USE_NEEDS_8_PLIES:'Undo unlocks after eight committed moves.',
+  NOT_ENOUGH_PLIES:'Complete a player turn and Bot reply first.',
+  PAIR_NOT_HUMAN_BOT:'Wait for the Bot to complete its reply.',
+  PACKAGE_ALREADY_GRANTED:'Both Undo charges for this match have been used.',
+  NO_CHARGES:'No Undo charges remain in this match.',
+  CHARGE_CAP:'Both Undo charges for this match have been used.',
   ACTIVATION_CAP:'This match already used its three activations for that power.',
   DELIVERY_CAP:'This match already delivered the maximum number of that power.',
   HINT_PENDING:'A suggestion is already waiting to resolve.',
@@ -199,22 +205,19 @@ function powerReasonText(reason){
   AD_NOT_EARNED:'The ad did not earn a reward, so nothing was banked.',
   POWER_NOT_SHIPPED:'That power is not available yet.'})[reason]||'That did not complete. Nothing was spent.';
 }
-/* Host row for the rewarded controls. It is injected into the existing Bot match control zone beside
-   Rules/Restart/Stats, so a banked charge is one tap away instead of buried in the stats sheet, and
-   it reuses that zone's own button styles rather than adding a second visual convention. */
+/* A separate power bar keeps optional powers visible above Rules/Restart/Stats. Its counts come
+   from the adapter and live match; the two unavailable counters never imply an earned item. */
 function powerControlsHost(){
- const zone=$('.match-controls');
- if(!zone)return null;
- if(!powersControls){
-  powersControls=document.createElement('span');
-  powersControls.className='powers-slot';
-  /* The control zone is a grid, so the injected row spans every column and lays its own buttons out
-     in one flex row. No stylesheet change: the zone's own `.match-controls .button` styling applies. */
-  powersControls.style.cssText='grid-column:1 / -1;display:flex;gap:7px;padding-top:5px';
-  zone.appendChild(powersControls);
- }
- if(!powersControls.isConnected){zone.appendChild(powersControls);}
+ powersControls=$('#matchPowers');
  return powersControls;
+}
+function powerSymbol(kind){
+ const paths={undo:'<path d="M4 9V3m0 6h6M4 9a9 9 0 1 1-1 8"/>',
+  undoBlock:'<path d="M12 2l8 4v6c0 5-5 8-8 10-3-2-8-5-8-10V6z"/><circle cx="12" cy="11" r="4"/><path d="M9 8l6 6"/>',
+  hint:'<path d="M8 16c0-2-3-3-3-7a7 7 0 0 1 14 0c0 4-3 5-3 7zM9 19h6m-5 3h4M12 0v-2M1 9h-3m28 0h-3M3 0l-2-2m20 2 2-2"/>',
+  tacticalBlock:'<path d="M12 2l8 4v6c0 5-5 8-8 10-3-2-8-5-8-10V6zM8 15l8-8"/>',
+  bolt:'<path d="M14 1L3 14h8l-1 9 11-14h-8z"/>'};
+ return '<svg class="power-symbol" viewBox="-3 -3 30 30" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+paths[kind]+'</svg>';
 }
 function renderPowerControls(){
  const on=POWERS_ON;
@@ -229,15 +232,19 @@ function renderPowerControls(){
  const host=powerControlsHost();if(!host)return;
  const ctx=powerContext(null,!!botTimer);
  const elig=powers.eligibility(ctx);
- const charges=ctx.charges,banked=powers.inventory().hint.available>=1;
- const signature=[elig.undo.eligible,charges,elig.hint.eligible,banked,ctx.botPending].join('|');
+ const inventory=powers.inventory(),charges=ctx.charges,undoBank=inventory.undo.available,hintBank=inventory.hint.available;
+ const undoReason=!elig.undo.eligible?(ctx.used===0&&ctx.state.moves.length<8?'Unlocks at 8 moves · '+ctx.state.moves.length+'/8':powerReasonText(elig.undo.reason)):charges?charges+' earned charge'+(charges===1?'':'s'):undoBank?'Use banked package':'Optional rewarded ad';
+ const hintReason=!elig.hint.eligible?powerReasonText(elig.hint.reason):hintBank?'Use banked hint':'Optional rewarded ad';
+ const signature=[elig.undo.eligible,charges,undoBank,elig.hint.eligible,hintBank,undoReason,hintReason,!!hintSquare].join('|');
  if(signature===powersPainted&&!host.hidden)return;
  powersPainted=signature;host.hidden=false;
- const undo=elig.undo.eligible?'<button class="button quiet" data-action="botundo" aria-label="'+(charges?'Undo your last turn with '+charges+' earned charge'+(charges===1?'':'s')+' left':'Watch one optional ad to earn two Undo presses')+'">'+(charges?'Undo last turn ('+charges+' left)':'Undo with a rewarded ad')+'</button>':'';
- const hint=elig.hint.eligible?'<button class="button quiet" data-action="bothint" aria-label="'+(banked?'Tactical Power: show the recommended legal square':'Watch one optional ad to earn one Tactical Power')+'">'+(banked?'Tactical Power':'Tactical Power (rewarded)')+'</button>':'';
- /* The counter disclosure is always reachable in a Bot match so the two kinds are explained rather
-    than silently missing. */
- host.innerHTML=undo+hint+'<button class="button quiet" data-action="powercounters">Counters</button>';
+ const card=(kind,label,count,action,enabled,state,active=false)=>'<button type="button" class="power-card power-card--'+kind+(active?' is-active':'')+'" data-action="'+action+'" aria-describedby="power-state-'+kind+'"'+(enabled?'':' disabled')+(active?' aria-pressed="true"':'')+'><span class="power-count" aria-label="'+(count===null?'Unavailable':count+' '+(kind==='undo'&&charges?'earned charges':'banked items'))+'">'+(count===null?'—':count)+'</span>'+powerSymbol(kind)+'<span class="power-name">'+label+'</span><small id="power-state-'+kind+'">'+escape(state)+'</small></button>';
+ host.innerHTML='<div class="power-bar-heading"><h2 id="matchPowersTitle">'+powerSymbol('bolt')+'Power Bar</h2><span>Use strategically</span></div><div class="power-cards">'+
+  card('undo','Undo',charges||undoBank,'botundo',elig.undo.eligible,undoReason)+
+  card('undoBlock','Undo Block',null,'powercounters',false,'Unavailable')+
+  card('hint','Tactical Hint',hintBank,'bothint',elig.hint.eligible,hintReason,!!hintSquare)+
+  card('tacticalBlock','Hint Block',null,'powercounters',false,'Unavailable')+
+  '</div><button type="button" class="power-disclosure" data-action="powercounters">About unavailable counter powers</button>';
 }
 const offlineSnapshot=()=>{
  const snapshot={id:match.id,version:SNAPSHOT_VERSION,first:match.first,mode:match.mode,difficulty:match.difficulty,practice:match.practice,tutorial:T?.snapshot(match)||null,bot:match.bot||null,moves:match.state.moves,active:match.active,turnLimit:match.turnLimit,turnRemaining:match.turnRemaining};
@@ -480,7 +487,8 @@ function paint(){if(!match)return;const s=match.state,canHuman=!s.winner&&(match
  /* Tactical Power is a recommendation, not a forced move: the square is highlighted and named, and
     every legal square stays enabled until the player actually plays. */
  if(hintSquare&&!s.winner)$('#previewText').textContent='Tactical Power recommends '+G.NAMES[hintSquare.b].toLowerCase()+' board, '+G.NAMES[hintSquare.c].toLowerCase()+' cell. Any legal cell still plays.';
- $('#miniX').textContent=s.mini.filter(x=>x==='X').length;$('#miniO').textContent=s.mini.filter(x=>x==='O').length;$('#playerX').classList.toggle('active',!s.winner&&s.turn==='X');$('#playerO').classList.toggle('active',!s.winner&&s.turn==='O');
+ const miniX=s.mini.filter(x=>x==='X').length,miniO=s.mini.filter(x=>x==='O').length;
+ $('#miniX').textContent=miniX;$('#miniO').textContent=miniO;$('#miniX').setAttribute('aria-label','X: '+miniX+' Mini Boards won');$('#miniO').setAttribute('aria-label','O: '+miniO+' Mini Boards won');$('#playerX').classList.toggle('active',!s.winner&&s.turn==='X');$('#playerO').classList.toggle('active',!s.winner&&s.turn==='O');
  const who=match.online?(match.symbols[s.turn]===online.profile?.id?'YOUR TURN':'OPPONENT TURN'):match.mode==='local'?(s.turn==='X'?'PLAYER X':'PLAYER O'):(s.turn==='X'?'YOUR TURN':'BOT TURN');
  $('#turnText').textContent=s.winner?(s.winner==='DRAW'?'MATCH DRAWN':s.winner+' WINS'):s.required===null?'FREE ROUTE':who+' \u00b7 '+G.NAMES[s.required].toUpperCase();
  $('#destinationText').textContent=s.winner?'Review the board or start a rematch.':s.required===null?'CHOOSE ANY OPEN MINI BOARD':'PLAY ONLY IN THIS MINI BOARD';

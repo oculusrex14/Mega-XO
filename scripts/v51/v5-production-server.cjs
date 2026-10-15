@@ -513,6 +513,8 @@ async function main() {
   const { createAccessService } = require(path.join(ROOT, 'packages/services/access.js'));
   const { createTicketIssuer } = require(path.join(ROOT, 'packages/services/tickets.js'));
   const { createQueueService } = require(path.join(ROOT, 'packages/services/queue.js'));
+  const { createTournamentService } = require(path.join(ROOT, 'packages/services/tournaments.js'));
+  const { createTournamentTimer } = require(path.join(ROOT, 'packages/services/tournament-timer.js'));
   const { createCoreGateway, createCoreServiceIngress } = require(path.join(ROOT, 'packages/services/core-gateway.js'));
   const { createRealtimeTransport } = require(path.join(ROOT, 'packages/services/realtime-transport.js'));
   const { resolveManagedRedisTarget } = require(path.join(ROOT, 'packages/services/managed-ephemera.js'));
@@ -628,7 +630,11 @@ async function main() {
   });
   const ticketIssuer = await createTicketIssuer(apiPool, { environment: 'prd', audience: 'mega-core' });
   const queue = await createQueueService({ ephemera, core, pool: corePool });
-  const coreIngress = createCoreServiceIngress({ coreService: core, ticketIssuer, queue, leaderboardPool: corePool, secret: gatewaySecret });
+  const tournaments = createTournamentService({ pool: corePool, core, ephemera });
+  await tournaments.ready;
+  const tournamentTimer = createTournamentTimer({ tournaments, owner: `prd_tournaments_${process.pid}`,
+    onError: error => console.error(JSON.stringify({ event: 'tournaments.tick_error', code: safeError(error) })) });
+  const coreIngress = createCoreServiceIngress({ coreService: core, ticketIssuer, queue, tournaments, leaderboardPool: corePool, secret: gatewaySecret });
   /* The mirror of the API assertion: Core, the Core-owned queue, the leaderboard materializer and the
    * realtime pool all run on `core_runtime`; the API-owned ticket issuer is the one asserted API member. */
   const coreRole = assertCoreCompositionUsesCorePool({
@@ -767,12 +773,14 @@ async function main() {
 
   const shutdown = async () => {
     clearInterval(matchmakerTimer);
+    await tournamentTimer.stop();
     try { await realtime.close(); } catch {}
     try { await new Promise((r) => server.close(r)); } catch {}
-    for (const c of [() => worker.stop(), () => queue.close(), () => ephemera.close(), () => ticketIssuer.close?.(), () => core.close(), () => accounts.close(), () => access.close?.(), () => apiPool.end(), () => corePool.end(), () => workerPool.end()]) { try { await c(); } catch {} }
+    for (const c of [() => worker.stop(), () => tournaments.close(), () => queue.close(), () => ephemera.close(), () => ticketIssuer.close?.(), () => core.close(), () => accounts.close(), () => access.close?.(), () => apiPool.end(), () => corePool.end(), () => workerPool.end()]) { try { await c(); } catch {} }
     process.exit(0);
   };
   process.on('SIGINT', shutdown); process.on('SIGTERM', shutdown);
+  tournamentTimer.start();
 
   /* Real matchmaking needs a matcher tick: two real browsers JOIN the queue over HTTP, but nothing
    * pairs them unless a matcher claims+commits. Bounded, single-flight, best-effort, and it only pairs

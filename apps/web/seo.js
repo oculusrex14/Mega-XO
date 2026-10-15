@@ -3,7 +3,7 @@ import {escapeHtml} from './ui.js';
 
 export const SITE_ORIGIN = 'https://megaxo.online';
 const seoAliases = {'/help':'/support', '/ads':'/sponsors', ...Object.fromEntries(['privacy','terms','support','delete-account','privacy-choices'].map(name=>['/legal/'+name,'/'+name]))};
-const seoPrivatePaths = new Set(['/game','/play','/legacy-game','/account','/profile','/friends','/settings','/challenge','/offline','/status','/404']);
+const seoPrivatePaths = new Set(['/game','/play','/legacy-game','/account','/profile','/friends','/challenge','/offline','/status','/404']);
 const seoKnownPaths = new Set(['/', '/game', ...routes.map(route=>route.path)]);
 const seoDescriptionSuffix = ' Explore Mega XOXO by Antimatter Innovations.';
 
@@ -48,7 +48,7 @@ export function seoHead(path) {
 }
 
 export function robotsTxt() {
-  return 'User-agent: *\nAllow: /\n'+['/game','/play','/legacy-game','/api/','/pages/','/account','/profile','/friends','/settings','/challenge','/offline','/status','/404'].map(path=>'Disallow: '+path+'\n').join('')+'\nSitemap: '+SITE_ORIGIN+'/sitemap.xml\n';
+  return 'User-agent: *\nAllow: /\n'+['/game','/play','/legacy-game','/api/','/pages/','/account','/profile','/friends','/challenge','/offline','/status','/404'].map(path=>'Disallow: '+path+'\n').join('')+'\nSitemap: '+SITE_ORIGIN+'/sitemap.xml\n';
 }
 
 export function sitemapXml() {

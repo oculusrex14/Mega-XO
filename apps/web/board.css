@@ -94,6 +94,7 @@
 .gb-cell--legal:hover .gb-move-dot { opacity: 1; box-shadow: 0 0 10px var(--gb-x); }
 .gb-claim { display: grid; place-items: center; position: absolute; inset: 0; background: color-mix(in srgb, var(--gb-raised) 86%, transparent); pointer-events: none; font-size: 14px; font-weight: 800; letter-spacing: .06em; }
 .gb-claim .gb-mark { width: 70%; height: 70%; }
+.gb-mini--claimed .gb-cell .gb-mark { visibility: hidden; }
 .gb-mini--winning { outline: 3px solid var(--gb-route); outline-offset: 2px; }
 .gb-turn-strip { display: flex; align-items: center; gap: 11px; min-height: 60px; margin: 5px 16px 0; padding: 9px 12px; border: 1px solid #42648b; border-radius: 20px; background: linear-gradient(130deg, rgba(4, 17, 38, .94), rgba(5, 14, 29, .95)); box-shadow: inset 0 1px rgba(156, 199, 255, .09); }
 .gb-turn-icon { display: grid; place-items: center; width: 31px; height: 31px; flex-shrink: 0; border: 1px solid currentColor; border-radius: 50%; font-size: 22px; }
@@ -220,3 +221,91 @@
   .gb-cell:focus-visible { outline-color: Highlight; }
   .gb-claim { background: Canvas; }
 }
+
+/* /game workspace. Preview/home board styling above remains independent. */
+.gb-game-page { width:min(1580px,calc(100% - 64px)); padding:28px 0 48px; }
+.gb-game-page .gb-page-heading { display:block; text-align:center; margin:0 0 24px; }
+.gb-game-page .gb-page-heading h1 { font-size:clamp(32px,3vw,46px); margin:0 0 8px; }
+.gb-game-page .gb-page-heading .gb-eyebrow,.gb-game-page .gb-back-link { display:none; }
+.gb-game-page .gb-page-heading p { font-size:16px; }
+.gb-game-page .gb-practice-layout { display:block; }
+.gb-game-page .gb-dashboard { max-width:none; display:grid; grid-template-columns:minmax(235px,.92fr) minmax(340px,1.7fr) minmax(245px,.95fr); gap:24px; align-items:start; }
+.gb-game-page .gb-game-left,.gb-game-page .gb-game-right { display:grid; gap:18px; min-width:0; }
+.gb-game-page .gb-game-centre { min-width:0; }
+.gb-game-page .gb-game-panel,.gb-game-page .gb-powers { margin:0; padding:20px; border:1px solid var(--mx-web-border); border-radius:18px; background:linear-gradient(150deg,rgba(8,24,48,.94),rgba(3,11,23,.96)); box-shadow:inset 0 1px 0 #9dbfff0a,0 14px 35px #0003; color:var(--mx-web-text); }
+.gb-game-page .gb-game-panel h2 { display:flex; align-items:center; gap:12px; font:700 18px 'Space Grotesk',system-ui,sans-serif; margin:0 0 20px; letter-spacing:-.02em; }
+.gb-ui-icon { display:inline-block; width:23px; height:23px; flex-shrink:0; vertical-align:middle; }
+.gb-game-panel h2 .gb-ui-icon { color:#a8c7ff; }
+.gb-game-page .gb-toolbar { display:grid; gap:18px; margin:0; }
+.gb-game-page .gb-toolbar label { font:14px 'Space Grotesk',system-ui,sans-serif; gap:8px; }
+.gb-game-page .gb-toolbar select { min-height:46px; border-color:#3e507b; background:linear-gradient(100deg,#19253d,#141c33); border-radius:9px; padding:10px 12px; }
+.gb-game-page .gb-setup-online { display:block; margin-top:16px; color:#a9c9fa; font-size:12px; text-decoration:none; }
+.gb-game-page .gb-roster-player { display:flex; align-items:center; gap:12px; margin-top:10px; padding:12px; border:1px solid #293e63; border-radius:12px; background:linear-gradient(110deg,#10253d,#141c30); }
+.gb-game-page .gb-roster-player--active { border-color:#3b7ea8; }
+.gb-game-page .gb-roster-player>.gb-avatar { width:48px; height:48px; }
+.gb-game-page .gb-roster-player>b,.gb-game-page .gb-roster-player span>b { display:block; font-size:16px; overflow-wrap:anywhere; }
+.gb-game-page .gb-roster-player small { display:block; color:#b1c4e3; font-size:11px; line-height:1.5; margin-top:4px; }
+.gb-game-page .gb-roster-player>strong { margin-left:auto; text-align:center; font-size:23px; font-weight:600; }
+.gb-game-page .gb-roster-player>strong small { margin-top:0; font-size:9px; font-weight:400; }
+.gb-game-page .gb-turn-strip { margin:0; padding:20px 16px; gap:14px; border:1px solid #2bbcff; border-radius:14px; background:linear-gradient(115deg,#0c3157ef,#152141ef); box-shadow:inset 0 0 28px #168aff24,0 0 20px #1169ff12; }
+.gb-game-page .gb-turn-strip .gb-turn-icon { width:54px; height:54px; box-shadow:0 0 14px #2698ff57; }
+.gb-game-page .gb-turn-strip .gb-turn-icon .gb-mark { width:40px; height:40px; }
+.gb-game-page .gb-turn-strip strong { font-size:20px; font-weight:700; white-space:normal; }
+.gb-game-page .gb-turn-strip p { border:0; margin:8px 0 0; padding:0; color:#c0d2ed; font-size:13px; line-height:1.6; }
+.gb-game-page .gb-grid { max-width:none; width:100%; margin:0; gap:13px; }
+.gb-game-page .gb-match-note { margin:18px 0 0; padding:12px 16px; align-items:center; border:1px solid #35416c; border-radius:14px; background:linear-gradient(110deg,#131b34f0,#13172bef); }
+.gb-game-page .gb-match-note .gb-move-count { display:flex; align-items:center; gap:12px; flex:1 1 62px; color:#c2cee7; font-size:12px; }
+.gb-game-page .gb-move-count strong { display:block; color:#f4f6ff; font-size:18px; line-height:1.25; }
+.gb-game-page .gb-game-actions { display:flex; flex-wrap:wrap; gap:9px; }
+.gb-game-page .gb-game-actions button { display:flex; align-items:center; justify-content:center; gap:8px; min-height:44px; padding:8px 13px; border-color:#36466c; background:linear-gradient(145deg,#1d2844,#151d34); font-size:12px; }
+.gb-game-page .gb-game-actions .gb-ui-icon { width:18px; height:18px; color:#b8cef6; }
+.gb-game-page .gb-route-note { text-align:center; color:#9fb9de; font-size:12px; margin:12px 0 0; }
+.gb-game-page .gb-help-panel h2 .gb-ui-icon { color:#c27dff; }
+.gb-game-page .gb-help-panel { padding:20px; }
+.gb-game-page .gb-help-panel ol { clear:both; padding-top:16px; border-top:1px solid #344263; }
+.gb-game-page .gb-help-panel li { margin-bottom:14px; padding-left:29px; line-height:1.6; }
+.gb-game-page .gb-help-panel li::before { width:21px; height:21px; border:0; background:#293b60; border-radius:50%; color:#d8e5ff; font-size:12px; }
+.gb-game-page .gb-help-panel li b { font-size:12px; font-weight:500; }
+.gb-game-page .gb-help-panel li p { margin:4px 0 0; color:#b8c8e2; font-size:12px; }
+.gb-game-page .gb-guide-intro { color:#b8c8e2; font-size:13px; line-height:1.6; margin:0 0 18px; }
+.gb-game-page .gb-route-diagram { float:left; width:84px; height:72px; margin:0 15px 14px 0; display:grid; grid-template-columns:repeat(3,1fr); gap:3px; color:#6b80b7; font-size:20px; }
+.gb-route-diagram span { display:grid; place-items:center; border:1px solid #3e4f80; border-radius:3px; background:#101a32; }
+.gb-route-diagram .gb-route-diagram-target { border:1px solid #31cdff; color:#31cdff; box-shadow:0 0 7px #2499ff66; }
+.gb-game-page .gb-button--guided,.gb-game-page .gb-full-guide { width:100%; display:flex; align-items:center; gap:8px; justify-content:space-between; margin:10px 0 0; min-height:44px; padding:11px; border:1px solid #41517b; border-radius:9px; background:linear-gradient(120deg,#202c4d,#171e36); color:#e4edff; font:500 12px 'Space Grotesk',sans-serif; text-decoration:none; cursor:pointer; }
+.gb-game-page .gb-button--guided .gb-ui-icon { width:18px; height:18px; color:#a99bff; }
+.gb-game-page .gb-full-guide { background:transparent; border-color:transparent; color:#adc9f6; }
+.gb-game-shortcuts { border-top:1px solid #2c3e62; margin-top:10px; }
+.gb-game-shortcuts summary { cursor:pointer; padding-top:13px; color:#acbfdc; font-size:11px; }
+.gb-game-page .gb-keyboard-note { border:0; padding:0; display:block; }
+.gb-game-page button:focus-visible,.gb-game-page a:focus-visible,.gb-game-page summary:focus-visible { outline:2px solid #a2e5ff; outline-offset:4px; }
+/* Keep retained board palettes; the surrounding website continues to use its own Neon shell. */
+@media(min-width:1250px) { .gb-game-page .gb-page-heading { width:42%; margin-left:29%; } }
+@media(max-width:1200px) { .gb-game-page { width:calc(100% - 40px); } .gb-game-page .gb-dashboard { grid-template-columns:minmax(200px,.8fr) minmax(340px,1.6fr); gap:20px; } .gb-game-page .gb-game-right { grid-column:1/-1; grid-template-columns:1fr 1fr; } }
+@media(max-width:760px) { .gb-game-page { width:calc(100% - 28px); padding-top:24px; } .gb-game-page .gb-dashboard { grid-template-columns:minmax(0,1fr); gap:18px; } .gb-game-page .gb-game-left { grid-template-columns:1fr 1fr; gap:12px; } .gb-game-page .gb-game-setup { grid-row:span 2; } .gb-game-page .gb-game-players,.gb-game-page .gb-turn-strip { padding:14px; } .gb-game-page .gb-game-players h2 { margin-bottom:8px; } .gb-game-page .gb-roster-player { padding:8px; gap:8px; } .gb-game-page .gb-roster-player>.gb-avatar { width:34px; height:34px; } .gb-game-page .gb-roster-player .gb-avatar .gb-mark { width:25px; height:25px; } .gb-game-page .gb-roster-player>strong small { display:none; } .gb-game-page .gb-roster-player span>b { font-size:13px; } .gb-game-page .gb-roster-player small { font-size:10px; } .gb-game-page .gb-turn-strip { gap:10px; } .gb-game-page .gb-turn-strip .gb-turn-icon { width:34px; height:34px; } .gb-game-page .gb-turn-strip .gb-turn-icon .gb-mark { width:27px; height:27px; } .gb-game-page .gb-turn-strip strong { font-size:16px; } .gb-game-page .gb-turn-strip p { font-size:11px; } .gb-game-page .gb-game-right { grid-template-columns:1fr; grid-column:auto; } .gb-game-page .gb-grid { gap:10px; } }
+@media(max-width:420px) { .gb-game-page .gb-game-left { display:flex; flex-direction:column; } .gb-game-page .gb-toolbar { grid-template-columns:1fr 1fr; gap:12px; } .gb-game-page .gb-toolbar label:last-child { grid-column:1/-1; } .gb-game-page .gb-game-setup { padding:16px; } .gb-game-page .gb-game-setup h2 { margin-bottom:15px; } .gb-game-page .gb-game-players { padding:14px; display:grid; grid-template-columns:1fr 1fr; gap:10px; } .gb-game-page .gb-game-players h2 { grid-column:1/-1; margin:0; } .gb-game-page .gb-roster-player { margin:0; flex-wrap:wrap; } .gb-game-page .gb-turn-strip { padding:14px; } .gb-game-page .gb-grid { gap:8px; } .gb-game-page .gb-match-note { padding:12px; gap:12px; } .gb-game-page .gb-game-actions { width:100%; display:grid; grid-template-columns:repeat(3,1fr); } .gb-game-page .gb-game-actions button { padding:8px; font-size:11px; } .gb-game-page .gb-game-actions button .gb-ui-icon { display:none; } }
+@media(forced-colors:active) { .gb-game-page .gb-game-panel,.gb-game-page .gb-powers,.gb-game-page .gb-turn-strip,.gb-game-page .gb-match-note,.gb-game-page .gb-roster-player,.gb-game-page .gb-game-actions button { background:Canvas; color:CanvasText; border-color:CanvasText; } .gb-game-page :is(p,b,small,strong,.gb-ui-icon) { color:CanvasText; } .gb-game-page .gb-game-actions button:disabled { color:GrayText; } }
+
+/* Batch 1: the frame/mini/cell/mark/claim rules above are shared with home and legacy themes.
+   Workspace styling is limited to its surrounding controls and layout. */
+.gb-game-page .gb-toolbar select { color-scheme:dark; background:#0b1930; color:#edf4ff; border-color:#35537b; }
+.gb-game-page .gb-toolbar option { background:#0b1930; color:#edf4ff; }
+.gb-game-page .gb-online-controls { margin:18px 0 0; padding:16px 0 0; border:0; border-top:1px solid var(--mx-web-border); border-radius:0; background:none; box-shadow:none; width:auto; }
+.gb-game-page .gb-online-controls:empty { display:none; }
+.gb-game-page .gb-online-controls h2 { font-size:15px; margin-bottom:10px; }
+.gb-game-page .gb-online-controls p { font-size:13px; color:var(--mx-web-muted); line-height:1.6; }
+.gb-game-page .gb-online-controls .pg-actions { display:grid; gap:10px; margin:12px 0 0; }
+.gb-game-page .gb-online-controls .mx-button { min-height:44px; padding:10px 12px; font-size:13px; border-radius:11px; width:100%; }
+.gb-game-page .gb-online-controls .mx-online-message:empty { display:none; }
+.gb-game-page details.gb-help-panel { padding:0; overflow:hidden; }
+.gb-game-page details.gb-help-panel>summary { display:flex; justify-content:space-between; align-items:center; gap:12px; list-style:none; min-height:76px; padding:20px; cursor:pointer; color:var(--mx-web-text); font-weight:700; }
+.gb-game-page details.gb-help-panel>summary::-webkit-details-marker { display:none; }
+.gb-game-page details.gb-help-panel>summary>span:first-child { display:flex; align-items:center; gap:12px; }
+.gb-game-page details.gb-help-panel>summary .gb-ui-icon { color:#ba8bff; }
+.gb-game-page details.gb-help-panel>summary small { display:block; margin-top:4px; font-size:12px; font-weight:400; color:var(--mx-web-muted); }
+.gb-game-page .gb-guide-chevron { transition:transform .15s; }
+.gb-game-page details.gb-help-panel[open] .gb-guide-chevron { transform:rotate(180deg); }
+.gb-game-page .gb-guide-content { padding:0 20px 20px; }
+.gb-game-page .gb-help-panel li { counter-increment:none; padding-left:0; }
+.gb-game-page .gb-help-panel li::before { display:none; }
+.gb-game-page .gb-help-panel .gb-guide-intro { margin:0 0 14px; }
+@media(prefers-reduced-motion:reduce) { .gb-game-page .gb-guide-chevron { transition:none; } }

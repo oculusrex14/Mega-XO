@@ -7,6 +7,7 @@ const AVATARS = ['cross', 'ring', 'board', 'rook', 'crown', 'star'];
 const TIERS = ['wood', 'stone', 'iron', 'bronze', 'silver', 'gold', 'diamond', 'emerald', 'champion', 'master', 'grandmaster'];
 const ONLINE = ['online', 'in-match', 'queued', 'in-lobby'];
 const PRESENCE = [...ONLINE, 'hidden', 'offline', 'away'];
+export const FRIENDS_PAGE_SIZE = 10;
 const isAuth = error => ['AUTH_REQUIRED', 'LINK_ACCOUNT_REQUIRED'].includes(error?.message);
 const codeOf = error => /^[A-Z0-9_]+$/.test(error?.message || '') ? error.message : 'SERVICE_UNAVAILABLE';
 const copy = error => ({
@@ -26,7 +27,7 @@ const copy = error => ({
 
 export function emptyFriendsState() {
  return {
-  status:'idle', actorId:null, friends:[], incoming:[], outgoing:[], blocked:[], truncated:false,
+  status:'idle', actorId:null, friends:[], incoming:[], outgoing:[], blocked:[], truncated:false, page:1,
   query:'', results:[], resultQuery:'', searchStatus:'idle', searchMessage:'', searchErrorCode:'',
   busy:false, pendingAction:null, actionStatus:'idle', message:'', errorCode:'',
  };
@@ -105,7 +106,7 @@ function lists(value, actor) {
 export function createFriendsController({context, request = (...args) => globalThis.MegaAccount.request(...args),
  operationKey = () => globalThis.MegaAccount.id(), changed = () => {}, active = () => true, onAuthRequired = () => {}}) {
  let revision = 0, searchRevision = 0, activeActor = null, visible = false, suspended = false, destroyed = false;
- let query = '', protectedLists = null, protectedResults = Object.freeze([]);
+ let query = '', page = 1, protectedLists = null, protectedResults = Object.freeze([]);
  context.friends = emptyFriendsState();
 
  function current(actor, token = revision) {
@@ -114,7 +115,7 @@ export function createFriendsController({context, request = (...args) => globalT
  }
  function clearRows() {
   protectedLists = null; protectedResults = Object.freeze([]); searchRevision++;
-  return {friends:[], incoming:[], outgoing:[], blocked:[], truncated:false,
+  return {friends:[], incoming:[], outgoing:[], blocked:[], truncated:false, page:1,
    results:[], resultQuery:'', searchStatus:'idle', searchMessage:'', searchErrorCode:''};
  }
  function clearSearch() {
@@ -122,7 +123,7 @@ export function createFriendsController({context, request = (...args) => globalT
   return {results:[], resultQuery:'', searchStatus:'idle', searchMessage:'', searchErrorCode:''};
  }
  function deactivate() {
-  revision++; searchRevision++; activeActor = null; visible = false; suspended = false; query = '';
+  revision++; searchRevision++; activeActor = null; visible = false; suspended = false; query = ''; page = 1;
   protectedLists = null; protectedResults = Object.freeze([]);
   context.friends = emptyFriendsState();
  }
@@ -160,7 +161,7 @@ export function createFriendsController({context, request = (...args) => globalT
   const sameActor = visible && activeActor === actor;
   if (sameActor && context.friends.busy && context.friends.pendingAction) return false;
   if (!force && sameActor && context.friends.status !== 'idle') return false;
-  if (!sameActor) query = '';
+  if (!sameActor) { query = ''; page = 1; }
   const refresh = sameActor;
   visible = true; activeActor = actor; suspended = false;
   const token = ++revision;
@@ -171,7 +172,8 @@ export function createFriendsController({context, request = (...args) => globalT
    const result = await request('/api/community/friends');
    if (!current(actor, token)) return false;
    protectedLists = lists(result, actor);
-   context.friends = {...context.friends, ...protectedLists, status:'ready', busy:false,
+   page = Math.min(page, Math.max(1, Math.ceil(protectedLists.friends.length / FRIENDS_PAGE_SIZE)));
+   context.friends = {...context.friends, ...protectedLists, page, status:'ready', busy:false,
     message:protectedLists.truncated ? 'These lists are partial. The service has more players than it can show here.' : ''};
    changed();
    return true;
@@ -180,6 +182,20 @@ export function createFriendsController({context, request = (...args) => globalT
     status:refresh ? 'refresh-error' : 'error', message:copy(error),
    });
   }
+ }
+
+ // Pages are a view over the protected, bounded service response. Moving between
+ // them never sends another request or grants permission to mutate a player.
+ function setPage(value) {
+  if (!current(activeActor) || context.friends.busy || context.friends.status !== 'ready' ||
+      !protectedLists || !Number.isSafeInteger(value) || value < 1) return false;
+  const next = Math.min(value, Math.max(1, Math.ceil(protectedLists.friends.length / FRIENDS_PAGE_SIZE)));
+  if (page !== next) {
+   page = next;
+   context.friends = {...context.friends, page};
+   changed();
+  }
+  return true;
  }
 
  function setQuery(value) {
@@ -262,7 +278,8 @@ export function createFriendsController({context, request = (...args) => globalT
    const canonical = await request('/api/community/friends');
    if (!current(actor, token)) return false;
    protectedLists = lists(canonical, actor);
-   context.friends = {...context.friends, ...protectedLists, status:'ready', busy:false, pendingAction:null,
+   page = Math.min(page, Math.max(1, Math.ceil(protectedLists.friends.length / FRIENDS_PAGE_SIZE)));
+   context.friends = {...context.friends, ...protectedLists, page, status:'ready', busy:false, pendingAction:null,
     message:protectedLists.truncated ? 'Your change was accepted. These lists are partial; more players are available on the service.' : 'Your Friends lists are up to date.', errorCode:''};
    changed();
    return true;
@@ -280,6 +297,6 @@ export function createFriendsController({context, request = (...args) => globalT
   return true;
  }
  function destroy() { destroyed = true; deactivate(); }
- return {load, reload:() => load({force:true}), setQuery, search, action, allowedActions, clearError,
+ return {load, reload:() => load({force:true}), setQuery, search, setPage, action, allowedActions, clearError,
   suspend, resume, isSuspended:() => suspended, actorId:() => activeActor, deactivate, destroy};
 }

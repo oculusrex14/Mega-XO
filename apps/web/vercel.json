@@ -89,10 +89,6 @@
       "destination": "/pages/profile.html"
     },
     {
-      "source": "/settings",
-      "destination": "/pages/settings.html"
-    },
-    {
       "source": "/account",
       "destination": "/pages/account.html"
     },
@@ -272,15 +268,6 @@
     },
     {
       "source": "/friends",
-      "headers": [
-        {
-          "key": "X-Robots-Tag",
-          "value": "noindex, follow"
-        }
-      ]
-    },
-    {
-      "source": "/settings",
       "headers": [
         {
           "key": "X-Robots-Tag",

@@ -79,10 +79,10 @@ test('P21-DOWNLOAD-02 chooser has truthful launch status and web play remains av
   assert.deepEqual(configuredLinks, {ios: null, android: null});
   const html = renderDownloadPage({storeLinks: configuredLinks, query: new URLSearchParams('platform=ios&unavailable=1')});
   assert.equal((html.match(/<h1/g) || []).length, 1);
-  assert.equal((html.match(/Coming soon/g) || []).length, 2);
+  assert.equal((html.match(/>Coming soon<\/span>/g) || []).length, 2);
   assert.match(html, /href="\/api\/download\?platform=ios"/);
   assert.match(html, /href="\/api\/download\?platform=android"/);
-  assert.match(html, /href="\/game"/);
+  assert.match(html, /href="\/play"/);
   assert.match(text(html), /iPhone and iPad store listing is not available yet/);
   assert.doesNotMatch(html, /href="https:|\.apk|\.ipa|Download on the App Store/);
   const ready = renderDownloadPage({storeLinks: listings, platform: 'android'});

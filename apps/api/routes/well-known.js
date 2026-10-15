@@ -25,11 +25,12 @@ const PUBLIC_DIR = path.resolve(__dirname, '../../../public');
 
 /* Android App Links default configuration.
  *
- * The package name is the BUILT application id (`megaApplicationId`, defaulting to
- * `online.megaxo.prototype` in native/android/gradle.properties). It is deliberately NOT a
- * production Play identity: no registered package, no release keystore and therefore no real
- * signing certificate exists yet, so `sha256_cert_fingerprints` carries a clearly-labelled
- * PLACEHOLDER. A statement with a wrong fingerprint associates nothing, which is the honest
+ * The package name is the owner-requested permanent id `online.megaxo.xoxo`, matching the signed
+ * release AAB (sha256 8c53c5e440aba75f0d5de41e9bc5e2c70d365581da7c0517853274d36b0604b8) and the
+ * iOS bundle id. The FINGERPRINT is still a clearly-labelled PLACEHOLDER: the real certificate is
+ * the owner-held upload key's, and Play App Signing's app-signing certificate is not known until
+ * the app is uploaded, so a statement with a wrong fingerprint would associate nothing. That stays
+ * the honest state until the owner supplies it. A statement with a wrong fingerprint associates nothing, which is the honest
  * state until the owner supplies the real package id + upload-certificate fingerprint
  * (owner action: P5 identifier resolution, docs/v5.1/release/NATIVE-AND-PROVIDER-STATE-20261013.md).
  * Callers may replace this whole list through `context.assetlinks`/`context.assetLinks`. */
@@ -41,7 +42,7 @@ const DEFAULT_ASSET_LINKS = Object.freeze([
     relation: Object.freeze(['delegate_permission/common.handle_all_urls']),
     target: Object.freeze({
       namespace: 'android_app',
-      package_name: 'online.megaxo.prototype',
+      package_name: 'online.megaxo.xoxo',
       sha256_cert_fingerprints: Object.freeze([ASSOCIATION_PLACEHOLDER_FINGERPRINT])
     })
   })
@@ -55,7 +56,7 @@ const DEFAULT_ASSET_LINKS = Object.freeze([
  * prefix matches no signed app, which is the honest state until the owner provides the Team ID
  * and enables the associated-domains capability (owner action: Apple membership + App ID). */
 const ASSOCIATION_PLACEHOLDER_TEAM = 'TEAMID';
-const BUILT_IOS_BUNDLE_ID = 'online.megaxo.prototype';
+const BUILT_IOS_BUNDLE_ID = 'online.megaxo.xoxo';
 
 const DEFAULT_APPLE_ASSOCIATION = Object.freeze({
   applinks: {

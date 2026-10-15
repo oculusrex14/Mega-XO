@@ -132,3 +132,13 @@ Local verification at `19a9051`, bundle `ded37fee15ad…`: presentation QA **934
 failures** across desktop, tablet, mobile390 and mobile320; accessibility QA **129 checks, 0
 violations**; 344 unit/contract tests pass. Loopback preview serves the corrected privacy text
 and 404s `/settings`.
+
+## Won-board mark visibility — d1d33a8
+
+Owner-reported: a won mini board kept its three historical moves visible as faded ghosts behind
+the winner overlay (`gb-claim` background is intentionally translucent). `d1d33a8` hides cell
+marks inside claimed boards so only the winner mark (or DRAW label) renders over the clean grid.
+
+Local verification: real loopback local-two-player game claiming the top-left board reports one
+overlay mark and zero visible cell marks (screenshot captured); 344 v52/P21 and copy/UI-contract
+tests pass. The saved-state bot CI flow is unaffected because it asserts only the claimed class.

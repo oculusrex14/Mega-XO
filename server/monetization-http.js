@@ -8,7 +8,13 @@ function createMonetizationHandler({monetization,authenticate,guard,origin,store
  return async(req,res)=>{
   const path=new URL(req.url,origin).pathname;if(!path.startsWith('/api/monetization/')&&path!=='/api/v1/purchase')return false;
   try{
-   if(path==='/api/monetization/admob-ssv'){if(req.method!=='GET')return send(res,405,{error:'METHOD_NOT_ALLOWED'}),true;await monetization.callback(req.url);return send(res,200,{ok:true}),true;}
+   if(path==='/api/monetization/admob-ssv'){
+    if(req.method!=='GET')return send(res,405,{error:'METHOD_NOT_ALLOWED'}),true;
+    /* AdMob's reachability probe for the configured callback URL carries no parameters;
+       genuine SSV callbacks always do. Answer the probe 200 without touching tickets. */
+    if(!new URL(req.url,origin).search)return send(res,200,{ok:'probe'}),true;
+    await monetization.callback(req.url);return send(res,200,{ok:true}),true;
+   }
    if(path==='/api/monetization/google-play-rtdn'||path==='/api/monetization/apple-notifications'){
     if(req.method!=='POST')return send(res,405,{error:'METHOD_NOT_ALLOWED'}),true;C.guards.requireJson(req,'INVALID_STORE_NOTIFICATION');const b=await C.guards.readStoreNotification(req);
     const handler=path.endsWith('google-play-rtdn')?storeNotifications.google:storeNotifications.apple;if(!handler)throw Error('STORE_UNAVAILABLE');const result=path.endsWith('google-play-rtdn')?await handler.handle(req.headers.authorization,b):await handler.handle(b);return send(res,200,result),true;

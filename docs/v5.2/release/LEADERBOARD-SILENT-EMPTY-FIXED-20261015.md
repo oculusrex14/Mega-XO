@@ -16,8 +16,14 @@ GET https://play.antimatterinnovations.com/api/v1/leaderboard?metric=rating&limi
 
 `[]` is *correct today* only by coincidence: the rating metric filters `r.games >= 10` and both imported
 actors have `games = 0`. The defect is the mechanism — the API pool path can never serve a real row, so
-the moment a player reaches ten ranked games the board would still read `[]`. Staging exposed this
-loudly: it had eligible accounts (`games: 10`) and still returned `[]`.
+the moment a player reaches ten ranked games the board would still read `[]`. Staging carried the identical missing wiring (its `api_runtime`
+role is likewise granted `MUST FAIL` on `economy` reads per `0020_grants_api.sql`), *and* it has real
+eligible accounts (`games: 10`). **Honest correction:** I only sampled staging's leaderboard *after*
+applying the fix, so I did not observe the pre-fix staging response and do not claim I did. What I can
+state is the pre-fix source (`git show d20982b^` → 0 occurrences of the leaderboard wiring), the role
+grant that makes the pool path unable to serve `economy` rows, and the post-fix result: real rows. The
+running staging process was then restarted onto the committed fix and returned the same real rows, so the
+served rows come from the wired gateway rather than a stale process.
 
 ## Root cause
 

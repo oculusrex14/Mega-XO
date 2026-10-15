@@ -10,7 +10,10 @@ const LA=window.MegaLocalAI,LS=window.MegaLocalSession,BP=window.MegaBotPack;
    stay inert while the kill switch is off. */
 const RW=window.MegaRewind,PW=window.MegaPowersAdapter;
 const POWERS_KEY='mega_v52_powers',POWERS_FLAG='mega_v52_powers_enabled';
-const POWERS_ON=(()=>{try{return localStorage.getItem(POWERS_FLAG)==='on';}catch{return false;}})();
+/* The rewarded powers are a shipped feature, so they default ON. The flag remains an explicit
+   emergency off switch: 'off' disables them, anything else (including no preference) keeps them
+   available. A player without ad inventory simply sees a truthful 'unavailable' state. */
+const POWERS_ON=(()=>{try{return localStorage.getItem(POWERS_FLAG)!=='off';}catch{return true;}})();
 const POWERS_STATE=(()=>{try{return JSON.parse(localStorage.getItem(POWERS_KEY)||'null');}catch{return null;}})();
 function readPowersState(){try{return JSON.parse(localStorage.getItem(POWERS_KEY)||'null');}catch{return null;}}
 function writePowersState(value){try{localStorage.setItem(POWERS_KEY,JSON.stringify(value));}catch{}}

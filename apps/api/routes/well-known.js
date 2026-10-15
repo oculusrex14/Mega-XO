@@ -34,8 +34,15 @@ const PUBLIC_DIR = path.resolve(__dirname, '../../../public');
  * state until the owner supplies the real package id + upload-certificate fingerprint
  * (owner action: P5 identifier resolution, docs/v5.1/release/NATIVE-AND-PROVIDER-STATE-20261013.md).
  * Callers may replace this whole list through `context.assetlinks`/`context.assetLinks`. */
-const ASSOCIATION_PLACEHOLDER_FINGERPRINT =
-  '00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00';
+/* The owner-held Android UPLOAD certificate's SHA-256. This is the certificate the artifacts built
+ * on this machine are actually signed with, so App Links associate for a sideloaded or pre-Play
+ * build. Play App Signing re-signs the distributed APK with Google's app-signing certificate; once
+ * the first AAB is uploaded, that certificate's fingerprint must be ADDED here (both may be listed)
+ * or App Links will not associate for store-installed builds. This is a real fingerprint, not a
+ * placeholder: it belongs to the key archived at
+ * ~/Downloads/Mega-XO-private-evidence/android-release/mega-xo-upload.jks. */
+const ASSOCIATION_UPLOAD_CERT_FINGERPRINT =
+  '96:1C:C0:54:74:57:0E:60:58:4A:14:14:2B:B0:E3:D6:45:80:4B:CB:4C:16:88:62:A6:94:5E:41:75:32:93:37';
 
 const DEFAULT_ASSET_LINKS = Object.freeze([
   Object.freeze({
@@ -43,7 +50,7 @@ const DEFAULT_ASSET_LINKS = Object.freeze([
     target: Object.freeze({
       namespace: 'android_app',
       package_name: 'online.megaxo.xoxo',
-      sha256_cert_fingerprints: Object.freeze([ASSOCIATION_PLACEHOLDER_FINGERPRINT])
+      sha256_cert_fingerprints: Object.freeze([ASSOCIATION_UPLOAD_CERT_FINGERPRINT])
     })
   })
 ]);

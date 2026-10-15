@@ -195,6 +195,42 @@ function guidedPanel(view) {
   </section>`;
 }
 
+const gameIcon = name => {
+  const paths = {
+    setup: '<path d="M4 7h16M4 17h16M8 4v6M16 14v6"/>',
+    players: '<circle cx="9" cy="8" r="3"/><path d="M3 20v-2a6 6 0 0 1 12 0v2M17 5a3 3 0 0 1 0 6M18 14a5 5 0 0 1 3 4v2"/>',
+    guide: '<path d="M12 5v15M3 4c4-1 6 0 9 2 3-2 5-3 9-2v15c-4-1-6 0-9 2-3-2-5-3-9-2z"/>',
+    reset: '<path d="M4 10a8 8 0 1 1 1 8M4 4v6h6"/>',
+    share: '<circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m9 10 6-4M9 14l6 4"/>',
+    stats: '<path d="M5 20v-6h3v6M11 20V9h3v11M17 20V4h3v16"/>',
+    route: '<circle cx="6" cy="5" r="2"/><circle cx="18" cy="19" r="2"/><path d="M8 5h8a4 4 0 0 1 0 8H8a3 3 0 0 0 0 6h8"/>',
+  };
+  return `<svg class="gb-ui-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${paths[name] || paths.setup}</svg>`;
+};
+
+function gameDashboard(state, game, options) {
+  const {mode, difficulty, theme, snapshot, actorId, pending, error, uncertain, requestKind, canResign, guidedView, botRecovery, powersView} = options;
+  const copy = turnCopy(state, options);
+  const playerName = player => snapshot ? snapshot.symbols[player] === actorId ? 'You' : escapeText(snapshot.playerNames?.[snapshot.symbols[player]] || 'Opponent') : mode === 'local' ? `Player ${player}` : player === 'X' ? 'You' : 'Bot';
+  const blocked = !!snapshot && (snapshot.status !== 'PLAYING' || snapshot.symbols[state.turn] !== actorId || pending || uncertain || !!error);
+  const powerPanel = !snapshot && mode === 'bot' && !guidedView && globalThis.MegaWebPowers?.render
+    ? globalThis.MegaWebPowers.render(powersView || {mode:'bot', available:false}) : !snapshot && mode==='bot' && !guidedView ? '<section class="gb-powers" data-gb-powers aria-label="Optional powers"><h2>Powers</h2><p>Bot Undo and Tactical Hint controls are unavailable until the verified powers service loads.</p></section>' : '';
+  return `<section class="gb-stage gb-stage--practice gb-dashboard" data-gb-stage data-gb-theme="${theme}" aria-label="${snapshot ? 'Online Mega XOXO match' : 'Local Mega XOXO game'}">
+    <aside class="gb-game-left" aria-label="Game setup and players">
+      <section class="gb-game-panel gb-game-setup"><h2>${gameIcon('setup')}Game Setup</h2>${toolbar({mode, difficulty, theme, snapshot, guidedLocked:!!guidedView})}<a class="gb-setup-online" href="/play" data-route>Explore online play modes <span aria-hidden="true">↗</span></a></section>
+      <section class="gb-game-panel gb-game-players"><h2>${gameIcon('players')}Players</h2>${['X','O'].map(player=>`<div class="gb-roster-player${state.turn===player&&!state.winner?' gb-roster-player--active':''}"><span class="gb-avatar gb-avatar--${player.toLowerCase()}">${mark(player)}</span><span><b>${playerName(player)}</b><small>${snapshot ? `Plays ${player}` : mode==='local' ? 'Same-screen player' : player==='X' ? 'Player' : `${difficulty} difficulty`}</small></span><strong aria-label="${state.mini.filter(v=>v===player).length} small boards won">${state.mini.filter(v=>v===player).length}<small>boards</small></strong></div>`).join('')}</section>
+      <div class="gb-turn-strip" role="status" aria-live="polite" aria-atomic="true"><span class="gb-turn-icon gb-turn-icon--${state.turn.toLowerCase()}">${state.winner==='DRAW'?'=':mark(state.winner||state.turn)}</span><div>${snapshot&&['AUTH_REQUIRED','LINK_ACCOUNT_REQUIRED'].includes(error)?'<a class="gb-sign-in" href="/account" data-route>Sign in to play online</a>':`<strong>${copy.title}</strong>`}<p>${copy.detail}</p></div>${botRecovery?'<button class="gb-reset" type="button" data-gb-action="bot-recovery">Calculate</button>':''}</div>
+    </aside>
+    <div class="gb-game-centre">${guidedPanel(guidedView)}<div class="gb-frame">${boardMarkup(state,game,{...options,blocked})}</div>
+      <div class="gb-match-note"><span class="gb-move-count">${gameIcon('stats')}<span>Moves<strong>${state.moves.length}</strong></span></span><div class="gb-game-actions">${snapshot ? `${uncertain&&error&&!['AUTH_REQUIRED','LINK_ACCOUNT_REQUIRED'].includes(error)?`<button type="button" data-gb-action="retry">Retry ${requestKind==='resign'?'resignation':'move'}</button>`:''}${canResign&&snapshot.status==='PLAYING'?`<button type="button" data-gb-action="resign"${pending||uncertain||error?' disabled':''}>Resign</button>`:''}` : `<button type="button" data-gb-action="fresh">${gameIcon('reset')}Reset board</button><button type="button" data-gb-action="rematch">${gameIcon('players')}New game</button>`}<button type="button" data-gb-action="share">${gameIcon('share')}Share game</button></div></div>
+      <p class="gb-route-note">Your cell determines the opponent’s next board.</p>
+    </div>
+    <aside class="gb-game-right" aria-label="Powers and game guide">${powerPanel}
+      <section class="gb-game-panel gb-help-panel" aria-labelledby="gb-how-title"><h2 id="gb-how-title">${gameIcon('guide')}Guided Practice</h2><div class="gb-route-diagram" aria-hidden="true"><span>×</span><span></span><span class="gb-route-diagram-target">×</span><span></span><span>×</span><span></span><span></span><span></span><span></span></div><p class="gb-guide-intro">Send your opponent to a small board by playing in the corresponding cell.</p><ol><li><b>Each cell sets the route.</b><p>Your move sends your opponent to the matching small board. If it is complete, they may choose any open board.</p></li><li><b>Win a small board with 3 in a row.</b></li><li><b>Win 3 small boards in a row to win the game.</b></li></ol>${snapshot?'':`<button class="gb-button gb-button--guided" type="button" data-gb-action="start-guided">${gameIcon('guide')}Start guided practice <span aria-hidden="true">→</span></button>`}<a class="gb-full-guide" href="/how-to-play" data-route>View full guide <span aria-hidden="true">→</span></a><details class="gb-game-shortcuts"><summary>Keyboard &amp; play modes</summary><p class="gb-keyboard-note"><kbd>←</kbd> <kbd>↑</kbd> <kbd>↓</kbd> <kbd>→</kbd> to explore cells. <kbd>Enter</kbd> or <kbd>Space</kbd> to play a legal move.</p><div class="gb-mode-links"><a href="/ranked" data-route>Ranked</a><a href="/casual" data-route>Casual</a><a href="/friends" data-route>Play with a friend</a></div></details></section>
+    </aside>
+  </section>`;
+}
+
 function renderBoard(state, game, {
   preview = true,
   mode = 'bot',
@@ -215,6 +251,7 @@ function renderBoard(state, game, {
   botRecovery = null,
   powersView = null,
 } = {}) {
+  if (!preview) return gameDashboard(state, game, {preview, mode, difficulty, theme, thinking, focus, snapshot, actorId, pending, error, uncertain, requestKind, canResign, guidedView, guidedTargetCell, guidedDestination, botRecovery, powersView});
   const copy = turnCopy(state, { preview, mode, thinking, snapshot, actorId, pending, error, botRecovery });
   const last = state.moves.at(-1);
   const playerName = player => snapshot ? snapshot.symbols[player] === actorId ? 'You' : escapeText(snapshot.playerNames?.[snapshot.symbols[player]] || 'Opponent') : mode === 'local' ? `Player ${player}` : player === 'X' ? 'You' : 'Bot';
@@ -253,9 +290,7 @@ export function renderGame(context = {}) {
   const actorId = typeof context.actorId === 'string' ? context.actorId : '';
   return `<section class="gb-practice-page gb-game-page" aria-labelledby="gb-game-title">
     <header class="gb-page-heading"><div><span class="gb-eyebrow">MEGA XOXO · ${snapshot ? 'ONLINE MATCH' : 'PLAY IN BROWSER'}</span><h1 id="gb-game-title">Your next <span>big move.</span></h1><p>${snapshot ? 'Every move matters. Think one board ahead.' : 'Play against Bot or share a screen with a friend.'}</p></div><a href="/play" data-route class="gb-back-link">Explore play modes <span aria-hidden="true">↗</span></a></header>
-    <div class="gb-practice-layout"><div class="gb-practice-host" data-board-host data-board-preview="false" data-board-mode="${options.mode}" data-board-difficulty="${options.difficulty}" data-board-theme="${options.theme}">${renderBoard(snapshot ? snapshot.state : game.create(), game, { preview: false, ...options, snapshot, actorId })}</div>
-      <aside class="gb-help-panel" aria-labelledby="gb-how-title"><span class="gb-eyebrow">HOW TO PLAY</span><h2 id="gb-how-title">Think one board ahead.</h2>${snapshot ? '' : `<div class="gb-guided-cta"><button class="gb-button gb-button--guided" type="button" data-gb-action="start-guided">Start guided practice</button><p class="gb-guided-subtext">Learn Mega XOXO in six interactive moves. Wrong taps blocked, no rewards or pressure.</p></div>`}<ol><li><b>Win the small boards.</b><p>Place three Xs or Os in a row to claim a small board.</p></li><li><b>Your move sets the route.</b><p>The cell you choose sends the next player to the matching small board. If that board is complete, they can choose any open board.</p></li><li><b>Win the big one.</b><p>Claim three small boards in a row to win the game.</p></li></ol><p class="gb-keyboard-note"><kbd>←</kbd> <kbd>↑</kbd> <kbd>↓</kbd> <kbd>→</kbd> to explore cells. <kbd>Enter</kbd> or <kbd>Space</kbd> to play a legal move.</p><p class="gb-local-note">${snapshot ? 'Watch the highlighted board for the next turn.' : 'Two players on the same screen or play against the offline bot.'}</p><div class="gb-mode-links"><a href="/ranked" data-route>Ranked</a><a href="/casual" data-route>Casual</a><a href="/friends" data-route>Play with a friend</a></div></aside>
-    </div>
+    <div class="gb-practice-layout"><div class="gb-practice-host" data-board-host data-board-preview="false" data-board-mode="${options.mode}" data-board-difficulty="${options.difficulty}" data-board-theme="${options.theme}">${renderBoard(snapshot ? snapshot.state : game.create(), game, { preview: false, ...options, snapshot, actorId })}</div></div>
   </section>`;
 }
 
@@ -386,7 +421,7 @@ export function mountBoard(host, {
       const template = host.ownerDocument.createElement('template');
       template.innerHTML = html;
       const next = template.content;
-      for (const selector of ['.gb-guided-panel', '.gb-frame', '.gb-toolbar', '.gb-match-note', '.gb-powers']) {
+      for (const selector of ['.gb-guided-panel', '.gb-frame', '.gb-toolbar', '.gb-game-players', '.gb-match-note', '.gb-powers']) {
         const currentPart = stage.querySelector(selector);
         const nextPart = next.querySelector(selector);
         if (selector === '.gb-powers' && currentPart && nextPart) {
@@ -397,7 +432,7 @@ export function mountBoard(host, {
         else if (!currentPart && nextPart && selector === '.gb-guided-panel') {
           stage.querySelector('.gb-frame')?.before(nextPart);
         } else if (!currentPart && nextPart && selector === '.gb-powers') {
-          stage.append(nextPart);
+          (stage.querySelector('.gb-game-right') || stage).prepend(nextPart);
         } else if (currentPart && !nextPart && ['.gb-guided-panel', '.gb-powers'].includes(selector)) {
           currentPart.remove();
         }
@@ -474,6 +509,7 @@ export function mountBoard(host, {
     const view = tutorialController.getView(session.getState());
     if (view?.text) compat?.speakNarration?.(view.text, { enabled: view.narrationEnabled, volume: view.volume });
     render();
+    host.querySelector('#gb-guided-title')?.focus?.({preventScroll:false});
   }
 
   function receive(snapshot) {
@@ -629,6 +665,15 @@ export function mountBoard(host, {
         }
         return;
       }
+      if (action === 'share') {
+        const url = new URL('/game', window.location.href);
+        if (!online) { url.searchParams.set('mode', mode); url.searchParams.set('difficulty', difficulty); url.searchParams.set('theme', theme); }
+        const notice = message => { const toast = host.ownerDocument?.querySelector('#notification'); if (toast) { toast.textContent = message; toast.hidden = false; } };
+        if (navigator.share) navigator.share({title:'Mega XOXO', text:'Your next big move.', url:url.href}).catch(failure => { if (failure?.name !== 'AbortError') notice('Sharing is unavailable. Copy the page address to invite a friend.'); });
+        else if (navigator.clipboard?.writeText) navigator.clipboard.writeText(url.href).then(()=>notice('Game link copied. Your current match stays private.'),()=>notice('Copy the page address to invite a friend.'));
+        else notice('Copy the page address to invite a friend.');
+        return;
+      }
       if (online) {
         if (action === 'retry' && uncertain && request && !['AUTH_REQUIRED', 'LINK_ACCOUNT_REQUIRED'].includes(error)) submit(request);
         else if (action === 'resign' && typeof online.onResign === 'function' && !pending && !uncertain && session.getSnapshot().status === 'PLAYING' && Object.values(session.getSnapshot().symbols).includes(online.actorId)) submit(operation('resign'));
@@ -747,7 +792,7 @@ export function mountBoard(host, {
   host.ownerDocument?.addEventListener?.('visibilitychange', onVisibility);
 
   host.addEventListener('click', onClick);
-  guidedStart?.addEventListener('click', startGuided);
+  if (guidedStart && !host.contains(guidedStart)) guidedStart.addEventListener('click', startGuided);
   host.addEventListener('keydown', onKeydown);
   host.addEventListener('change', onChange);
   host.addEventListener('input', onInput);

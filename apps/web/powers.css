@@ -30,3 +30,26 @@
 .gb-stage[data-gb-theme="afterhours"] .gb-powers { border-radius: 3px; }
 @media (max-width: 420px) { .gb-powers { padding: 14px 12px; } .gb-powers-bank { grid-template-columns: 1fr; } .gb-powers-actions > button { flex: 1 1 135px; } .gb-powers-refresh { margin-left: 0; } }
 @media (forced-colors: active) { .gb-powers, .gb-powers-bank > div, .gb-powers button, .gb-powers select, .gb-powers-charge { color: CanvasText; background: Canvas; border-color: CanvasText; } .gb-powers-charge--earned { outline: 2px solid Highlight; } .gb-powers button:focus-visible, .gb-powers summary:focus-visible { outline-color: Highlight; } }
+/* Compact /game sidebar inspired by the owner’s power workspace mockup. */
+.gb-game-page .gb-powers-heading { align-items:center; margin-bottom:18px; }
+.gb-game-page .gb-powers h2 { margin:0; font:700 19px 'Space Grotesk',sans-serif; }
+.gb-game-page .gb-powers-eyebrow { display:none; }
+.gb-game-page .gb-power-bolt { width:24px; height:28px; color:#ce75ff; margin-right:12px; vertical-align:middle; }
+.gb-game-page .gb-powers-badge { border:0; padding:0; color:#b4c8e8; font-size:10px; }
+.gb-game-page .gb-power-cards { display:grid; gap:10px; }
+.gb-game-page .gb-power-card { --power-color:#35dcff; display:grid; grid-template-columns:42px minmax(0,1fr) 34px; gap:5px 12px; align-items:center; padding:10px; border:1px solid #263c61; border-radius:12px; background:linear-gradient(125deg,#12243c,#121c30); }
+.gb-game-page .gb-power-card--undoBlock { --power-color:#ff68b3; }
+.gb-game-page .gb-power-card--hint { --power-color:#ffcf4b; }
+.gb-game-page .gb-power-card--tacticalBlock { --power-color:#b68aff; }
+.gb-game-page .gb-power-art { display:grid; place-items:center; width:42px; height:44px; border:1px solid color-mix(in srgb,var(--power-color) 30%,transparent); border-radius:12px; background:radial-gradient(ellipse,color-mix(in srgb,var(--power-color) 18%,transparent),transparent); color:var(--power-color); }
+.gb-game-page .gb-power-art svg { width:27px; height:29px; filter:drop-shadow(0 0 5px color-mix(in srgb,var(--power-color) 60%,transparent)); }
+.gb-game-page .gb-power-label b { display:block; font-size:14px; color:#f0f4ff; }
+.gb-game-page .gb-power-label small { display:block; color:#b6c7e2; font-size:11px; margin-top:4px; line-height:1.5; }
+.gb-game-page .gb-power-count { display:grid; place-items:center; min-height:32px; border:1px solid #314564; border-radius:9px; background:#0b1426; color:#e5edff; font-size:15px; }
+.gb-game-page .gb-power-state { grid-column:2/-1; color:#a6b8d4; font-size:10px; line-height:1.5; }
+.gb-game-page .gb-powers-explainer { border-top:1px solid #2b3e60; margin-top:16px; }
+.gb-game-page .gb-powers-explainer>summary { padding-top:13px; color:#adc3e6; font-size:11px; }
+.gb-game-page .gb-powers-explainer .gb-powers-details { border-color:#3b4b66; }
+.gb-game-page .gb-powers-explainer p,.gb-game-page .gb-powers-explainer small { color:#c2d2e9; }
+.gb-game-page .gb-powers-explainer .gb-powers-charge,.gb-game-page .gb-powers-explainer button,.gb-game-page .gb-powers-explainer select,.gb-game-page .gb-powers-explainer .gb-powers-bank>div { background:#101f36; color:#e5edff; border-color:#405372; }
+@media(forced-colors:active) { .gb-game-page .gb-power-card,.gb-game-page .gb-power-count,.gb-game-page .gb-power-art { color:CanvasText; background:Canvas; border-color:CanvasText; } }

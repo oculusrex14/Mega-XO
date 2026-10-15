@@ -1,0 +1,52 @@
+{
+  "schema": "store-creatives/v1",
+  "created": "2026-10-15",
+  "state": "CREATIVE_DRAFTS_NOT_SUBMITTED",
+  "source_commit": "b5cdae26c62b1e35d032a063fce002eddf7eda3d",
+  "gameplay_claims": "No powers, ad earning, online availability, store approval, ratings or awards advertised.",
+  "screenshots": "DEFERRED by owner on 2026-10-15 until Undo and powers are complete. None included.",
+  "generator": "scripts/store/export-creatives.py",
+  "artwork": {
+    "source": "assets/store/v5.2/key-art-source.png",
+    "sha256": "26de011bfd1037a1b13de02caad94138ebf7f4e0329cf1ad303078a05d966376",
+    "method": "Built-in image_gen; standalone marketing illustration, not a screenshot"
+  },
+  "brand": {
+    "source": "assets/p21/logos/mega-xoxo-horizontal-logo.png",
+    "sha256": "4a22dbc289023dc0444b7b94400fda3e3e25c6e97e44b5302964b7214704bf9e",
+    "method": "Approved master composited unchanged in proportion; no AI redraw"
+  },
+  "font": {
+    "name": "Avenir Next (system)",
+    "redistributed": false
+  },
+  "assets": [
+    {
+      "path": "assets/store/v5.2/apple/product-page-header-3840x1646.png",
+      "width": 3840,
+      "height": 1646,
+      "mode": "RGB",
+      "bytes": 6684446,
+      "sha256": "7135ebfa4b9a5c2cb2e8dbdadf1004a043672b96ae5ee642fe246387fb989843",
+      "alt": "Cyan X and magenta O above a luminous mountain valley, with the Mega XOXO logo and Nine boards. One bigger game."
+    },
+    {
+      "path": "assets/store/v5.2/apple/search-results-1920x1280.png",
+      "width": 1920,
+      "height": 1280,
+      "mode": "RGB",
+      "bytes": 2635097,
+      "sha256": "e264a02999008a1c3228185ed265ca0f8c036782bdce5c01462f1d08c8d480f7",
+      "alt": "Mega XOXO Ultimate Tic-tac-toe artwork with cyan X, magenta O and Think one board ahead."
+    },
+    {
+      "path": "assets/store/v5.2/play/feature-graphic-1024x500.png",
+      "width": 1024,
+      "height": 500,
+      "mode": "RGB",
+      "bytes": 818126,
+      "sha256": "4f7e7fe1d16decd9487e8bf6efb0f489b8c60101a1f95504754f5cdc1dcbb505",
+      "alt": "Mega XOXO: Nine boards. One bigger game. Cyan X and magenta O in a blue and violet mountain valley."
+    }
+  ]
+}

@@ -269,6 +269,9 @@ test('bind: the production HTTP pattern is loopback only on the MEGA_HTTP_PORT d
       `port ${port} must be refused`);
   }
   assert.equal(mod.resolveHttpBinding({ port: '1024' }).port, 1024);
+  assert.deepEqual(mod.resolveHttpBinding({ host: '172.18.0.1', port: '8080', allowPrivate: true }), { host: '172.18.0.1', port: 8080 });
+  assert.throws(() => mod.resolveHttpBinding({ host: '0.0.0.0', port: '8080', allowPrivate: true }), code('REFUSED_NON_LOOPBACK_BIND'));
+  assert.throws(() => mod.resolveHttpBinding({ host: '100.64.128.46', port: '8080', allowPrivate: true }), code('REFUSED_NON_LOOPBACK_BIND'));
 });
 
 test('secrets: private material is read only from absolute, non-symlinked, mode-0600 regular files', (t) => {

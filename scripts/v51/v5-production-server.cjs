@@ -374,14 +374,17 @@ function resolveConnectionBudget(target, poolMax = { api: 6, core: 6, worker: 2 
   });
 }
 
-/* The HTTP bind. Production is loopback-only behind the co-located edge: no wildcard, no remote
- * interface, and no `--allow-host` escape hatch (unlike the staging entry, which may publish on an
- * explicit private tailnet address). `MEGA_HTTP_PORT` is read exactly as the deployment environment
- * exposes it; the public 80/443 remain the edge's alone, so a stack that tried to take them (or any
- * other privileged port) is refused rather than silently colliding with the sole V4 ingress. */
-function resolveHttpBinding({ host, port } = {}) {
+const PRIVATE_BIND = /^(10\.|172\.(1[6-9]|2[0-9]|3[01])\.|192\.168\.)/;
+
+/* The HTTP bind. Default is loopback (`127.0.0.1`). When colocated with a Docker ingress (e.g. Caddy
+ * edge container on the same host), `--allow-private-bind` allows binding to the bridge gateway
+ * (172.18.x.x, 10.x.x, 192.168.x) so the edge can proxy to it, exactly as core-edge-proxy.cjs does.
+ * Wildcard (`0.0.0.0`, `::`) and privileged ports (<1024) remain ALWAYS refused. */
+function resolveHttpBinding({ host, port, allowPrivate = false } = {}) {
   const resolvedHost = host === undefined || host === null || host === '' ? '127.0.0.1' : host;
-  if (!LOOPBACK.has(resolvedHost)) throw REFUSE('REFUSED_NON_LOOPBACK_BIND', resolvedHost);
+  if (!LOOPBACK.has(resolvedHost) && !(allowPrivate && PRIVATE_BIND.test(resolvedHost))) {
+    throw REFUSE('REFUSED_NON_LOOPBACK_BIND', resolvedHost);
+  }
   if (resolvedHost === '0.0.0.0' || resolvedHost === '::') throw REFUSE('REFUSED_WILDCARD_BIND');
   const resolvedPort = port === undefined || port === null || port === '' ? DEFAULT_HTTP_PORT : Number(port);
   if (!Number.isInteger(resolvedPort) || resolvedPort < 1 || resolvedPort > 65535) throw REFUSE('HTTP_PORT_INVALID', String(port));
@@ -471,6 +474,7 @@ async function main() {
   const httpBinding = resolveHttpBinding({
     host: arg('--host', '127.0.0.1'),
     port: arg('--port', process.env[HTTP_PORT_ENV] || String(DEFAULT_HTTP_PORT)),
+    allowPrivate: process.argv.includes('--allow-private-bind'),
   });
   const webBuildDir = path.resolve(arg('--web-build', path.join(ROOT, '.artifacts/p21-web')));
 

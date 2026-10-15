@@ -28,6 +28,10 @@ SERVICE=${V5_SERVICE:-mega-xo-v5-production.service}
 EDGE_CONTAINER=${V5_EDGE_CONTAINER:-mega-xo-production-edge-1}
 OPSZ_URL=${V5_OPSZ_URL:-http://172.18.0.1:8080/opsz}
 FRESHNESS_MAX_AGE_S=${V5_FRESHNESS_MAX_AGE_S:-1200}
+# The Resend key lives with the V4 ops material, which the V5 freshness tool ALSO reads
+# (v5-freshness.js: RESEND_KEY = /opt/mega-xo/secrets/resend_api_key). Keeping one path means one
+# operator alert stream across the cutover rather than two.
+RESEND_KEY_FILE=${V5_RESEND_KEY_FILE:-/opt/mega-xo/secrets/resend_api_key}
 
 mkdir -p "$root/monitoring"
 chmod 700 "$root/monitoring"
@@ -73,8 +77,8 @@ old_state=$(cat "$state_file" 2>/dev/null || echo unknown)
 
 send_alert(){
   local subject=$1 text=$2 key cfg payload
-  [[ -s "$root/secrets/resend_api_key" ]] || { echo 'Operations alert not sent: Resend key missing.' >&2; return 1; }
-  key=$(tr -d '\r\n' < "$root/secrets/resend_api_key")
+  [[ -s "$RESEND_KEY_FILE" ]] || { echo 'Operations alert not sent: Resend key missing.' >&2; return 1; }
+  key=$(tr -d '\r\n' < "$RESEND_KEY_FILE")
   [[ "$key" =~ ^re_[A-Za-z0-9_-]+$ ]] || { unset key; echo 'Operations alert not sent: invalid Resend key.' >&2; return 1; }
   cfg=$(mktemp)
   chmod 600 "$cfg"

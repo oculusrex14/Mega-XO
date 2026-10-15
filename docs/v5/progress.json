@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "updated_at_utc": "2026-10-14T16:17:32Z",
+  "updated_at_utc": "2026-10-15T03:49:03Z",
   "goal": "Deliver the V5 hybrid platform and real Android/iOS applications with shared permanent actor/assets, preserved approved game and retained browser compatibility; do not build the new website/browser product.",
   "source": {
     "goal": "AGENT-GOAL.md",
@@ -48,7 +48,7 @@
   "current": {
     "phase": "V5.2",
     "active_task": "V5.2 integration",
-    "next_action": "V5.2 is the sole active integration/release/production branch and the repo default branch. DC00 day-one capture gate now returns RECEIPTS_READY_FOR_MAIN_REVIEW (privacyPurpose and retention receipts produced); P22 still BLOCKED on OPERATOR_EVIDENCE_PACKET_MISSING (native device acceptance, provider channels, the one-time E4/E5 window). Next: rebuild the V5 production image from the final V5.2 SHA, deploy the corrected capture journal/retention systemd units on the host, then the gated V4 freeze + reconciliation + single-writer cutover. V4.1.2/SQLite remains the sole live writer.",
+    "next_action": "V5.2 remains the sole active integration/release/production branch. The rewarded powers now ship ON by default with a visible in-match control row (botundo/bothint/powercounters) and Tactical Power shipped; staging is a supervised service serving the powered bundle. DC00 gate passes live (RECEIPTS_READY_FOR_MAIN_REVIEW). Identities are aligned to the owner-requested online.megaxo.xoxo. Remaining: the V5 production image must be rebuilt from the current SHA before cutover, the production Vercel API needs a Production-scoped database target, and P22 still needs the operator packet. V4.1.2/SQLite remains the sole live writer until the owner-authorized cutover is performed.",
     "checkout_branch_at_setup": "V4.1",
     "integration_branch": "V5.2",
     "integration_branch_exists_at_setup": false,

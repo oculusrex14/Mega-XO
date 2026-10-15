@@ -24,6 +24,23 @@ Historic G00-G20 software gates do not close all original acceptance cases. The 
 
 Every checkpoint records IDs, exact SHA, command, target/environment, pass/fail/skip result, evidence path and rollback. Distinguish implemented/local/CI/staging/device/submitted/approved/live. Preserve historical evidence and explicitly supersede stale claims. Never suppress a real failure or substitute a simulator for device acceptance.
 
+## Canonical production domain (owner directive, 15 October 2026)
+
+The public game is **https://megaxo.online**, served by the Oracle V5 authority (web bundle + API +
+realtime from one process). `www.megaxo.online` 301-redirects to the apex; `core.megaxo.online` keeps
+the isolated `/ingress/*` Core edge. `play.antimatterinnovations.com` is **retired for the game** and
+308-redirects to the apex — that domain is reserved for the parent-company website, and only its
+`contact@` email may appear in product copy. Do not add the antimatter host back to app, CORS, CSRF or
+Vercel config. The Vercel `mega-xo-web`/`mega-xo-api` projects remain a separate, deferred surface and
+are not the game origin.
+
+The browser client reads `/api` and opens `new URL('/realtime/v1', page.origin)` same-origin, and the
+session cookie is `__Host-mega_session` (host-only, no `Domain`), so the whole app must stay on one
+hostname. Deploys use [scripts/v51/deploy-production.cjs](scripts/v51/deploy-production.cjs), which
+archives the live trees as a dated rollback point and carries the host-managed `serve.sh` and
+`docs/v5/environments/production.json` (`nonserving:false`) across the swap; losing either takes
+production down.
+
 ## Four-owner split
 
 **ChatGPT WebUI:** source/evidence audit, integration/CI hygiene, targeted tests and independent research-protocol review.

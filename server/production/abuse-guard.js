@@ -49,6 +49,7 @@ class AbuseGuard{
   if(path==='/api/account/export')return this.persistent(ip,'data-export',12,86400);
   if(path==='/api/account/delete')return this.persistent(ip,'account-delete',4,86400);
   if(path==='/api/monetization/google-play-rtdn'||path==='/api/monetization/apple-notifications')return this.persistent(ip,'store-notification',240,60);
+  if(path==='/api/monetization/cashfree/webhook')return this.persistent(ip,'cashfree-webhook',240,60);
   if(path==='/api/v1/purchase'||path==='/api/monetization/purchase'||path==='/api/monetization/restore')return this.persistent(ip,'store-purchase',20,300);
   if(path==='/api/monetization/reward-ticket')return this.persistent(ip,'reward-ticket',40,300);
   if(path==='/api/v1/queue'||path==='/api/v1/cancel-queue')return this.persistent(ip,'matchmaking-mutation',120,300);

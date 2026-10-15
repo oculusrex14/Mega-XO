@@ -19,10 +19,10 @@ function buildService({file,origin,providers:providerConfig={},providerInstance,
  const rooms=new RoomStore(file,{...storeOptions,lanOnly:false});
  community.isDeletionBusy=actor=>rooms.active().some(r=>r.players.some(p=>p.id===actor));
  const auth=async req=>accountHandler.authenticate(req);
- const {purchaseProviderFactory,notificationFactory,...monetizationConfig}=monetizationOptions,purchaseProvider=purchaseProviderFactory?purchaseProviderFactory(store):monetizationConfig.purchaseProvider;
+ const {purchaseProviderFactory,notificationFactory,cashfreeProvider,...monetizationConfig}=monetizationOptions,purchaseProvider=purchaseProviderFactory?purchaseProviderFactory(store):monetizationConfig.purchaseProvider;
  const monetization=new MonetizationStore(store,{...monetizationConfig,purchaseProvider,busy:actor=>matchmaker.busy(actor)||rooms.active().some(r=>r.players.some(p=>p.id===actor))});
  const storeNotifications=notificationFactory?notificationFactory({store,monetization,purchaseProvider}):{};
- const monetizationHandler=createMonetizationHandler({monetization,authenticate:auth,guard:accountHandler.guard,origin,storeNotifications});
+ const monetizationHandler=createMonetizationHandler({monetization,authenticate:auth,guard:accountHandler.guard,origin,storeNotifications,cashfreeProvider:cashfreeProvider||null});
  // The existing party router accepts principal resolution; no new guest-to-paid path.
  const {createPartyHandler:partyFactory}=require('./party-http.js');
  let partyHandler=partyFactory?partyFactory({store:rooms,rooms,authenticate:async req=>{const p=await auth(req);if(!p)return null;const row=community.profileRow(p.id);return {id:p.id,actor:p.id,name:row?.display_name||'Player'};},origin}):null;

@@ -71,3 +71,20 @@ name-based match.
 - Google's **closed-testing requirement for personal accounts** (if applicable) must be satisfied
   honestly; an internal/closed-test submission is not a production submission.
 - The AAB above is **not yet uploaded**. Nothing has been submitted.
+
+## Correction (2026-10-15) — the package id must be the OWNER's, not my inference
+
+Codex correctly caught that the archived AAB declared `online.megaxo.game`, which was **my** choice, not
+the owner's request. The owner asks for **`online.megaxo.xoxo`**. The bundle was rebuilt:
+
+| Field | Value |
+| --- | --- |
+| Package | **`online.megaxo.xoxo`** |
+| AAB | `app-online-release-online.megaxo.xoxo-v1.aab`, 10 200 224 bytes |
+| SHA-256 | **`8c53c5e440aba75f0d5de41e9bc5e2c70d365581da7c0517853274d36b0604b8`** |
+| Signed by | the same owner-held upload key, cert SHA-256 `96:1C:C0:54:…:93:37` |
+| Superseded | the `.game` AAB (`3e61f4d0…`) must **not** be uploaded |
+
+The iOS target still carries the prototype `online.megaxo.prototype`. That is **not** changed here:
+the Apple bundle id is what entitlements, the association file, the well-known route and any store
+record key off, so it changes once, in one commit, when the registered id is confirmed.

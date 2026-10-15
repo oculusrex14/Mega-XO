@@ -85,7 +85,11 @@ test('0055 restores record_consent EXACTLY as 0052 defined it, with only the wit
   const read55 = read('packages/migrations/migrations/0055_restore_record_consent_body.sql');
 
   const bodyOf = (sql) => {
-    const i = sql.indexOf('CREATE FUNCTION learning.record_consent(');
+    // 0052 introduced it with CREATE FUNCTION; 0055 must use CREATE OR REPLACE because 0053 had
+    // already defined it. Either form is acceptable; the BODY equivalence is what matters.
+    const plain = sql.indexOf('CREATE FUNCTION learning.record_consent(');
+    const replace = sql.indexOf('CREATE OR REPLACE FUNCTION learning.record_consent(');
+    const i = plain !== -1 ? plain : replace;
     assert.ok(i !== -1, 'record_consent must be defined');
     return sql.slice(i, sql.indexOf('$$;', i));
   };

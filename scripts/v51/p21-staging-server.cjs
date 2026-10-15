@@ -215,7 +215,7 @@ async function main() {
   if (publicOrigin) allowedOrigins.push(publicOrigin);
   const apiHandler = createApiHandler({
     pool: apiPool, accounts, coreGateway, access, nativeAudiences: ['mega-ios', 'mega-android'],
-    queue: coreGateway, otpSecret: stagingOtpSecret, otpSink,
+    queue: coreGateway, leaderboard: (query) => coreGateway.leaderboard(query), otpSecret: stagingOtpSecret, otpSink,
     // The realtime-ticket route (POST /api/v1/ticket) resolves a ticket issuer from context; without
     // it the route returns 503. Wire the SAME issuer the ingress uses, so browser/native clients can
     // obtain a realtime ticket in staging just as in production.

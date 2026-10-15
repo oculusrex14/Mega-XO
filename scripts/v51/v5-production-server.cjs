@@ -675,7 +675,8 @@ async function main() {
    * can reach Core only over the signed ingress, never by borrowing the Core connection. */
   const apiContext = {
     pool: apiPool, accounts, coreGateway, access, nativeAudiences: ['mega-ios', 'mega-android'],
-    queue: coreGateway, otpSecret, ticketIssuer, allowedOrigins,
+    queue: coreGateway, leaderboard: (query) => coreGateway.leaderboard(query),
+    otpSecret, ticketIssuer, allowedOrigins,
   };
   const apiRole = assertApiCompositionHoldsNoCoreAccess(apiContext);
   const apiHandler = createApiHandler(apiContext);

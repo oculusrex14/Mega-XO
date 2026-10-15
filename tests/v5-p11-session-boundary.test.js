@@ -103,7 +103,7 @@ test('P11: linked bearer token wins over forged actor headers for profile and Co
 test('P11: old-origin cookie sessions work, revoked sessions never forward', async () => {
   const { handler, forwarded, live } = fixture();
   const headers = {
-    origin: 'https://play.antimatterinnovations.com',
+    origin: 'https://megaxo.online',
     cookie: '__Host-mega_session=bob-session',
     'x-actor-id': 'svc_alice',
   };
@@ -292,7 +292,7 @@ test('P13: forged X-Forwarded-Origin cannot authorize cookie spending or CORS', 
     method: 'POST', url: '/api/v1/convert',
     headers: {
       cookie: '__Host-mega_session=alice-session',
-      'x-forwarded-origin': 'https://play.antimatterinnovations.com',
+      'x-forwarded-origin': 'https://megaxo.online',
     },
     body: { from: 'coins', amount: 100 },
   });
@@ -305,7 +305,7 @@ test('P13: forged X-Forwarded-Origin cannot authorize cookie spending or CORS', 
     method: 'POST', url: '/api/v1/convert',
     headers: {
       cookie: '__Host-mega_session=alice-session',
-      origin: 'https://play.antimatterinnovations.com',
+      origin: 'https://megaxo.online',
       'x-forwarded-origin': 'https://attacker.invalid',
       'idempotency-key': 'p13-real-origin',
     },
@@ -342,7 +342,7 @@ test('P11 money safety: missing or malformed operation keys never forward econom
 
 test('P13: conflicting or malformed Origin always outranks an allowed Referer', async () => {
   const { handler, forwarded } = fixture();
-  const allowedReferer = 'https://play.antimatterinnovations.com/game';
+  const allowedReferer = 'https://megaxo.online/game';
   for (const origin of ['https://attacker.invalid', 'not-a-valid-origin', '']) {
     const res = await request(handler, {
       method: 'POST',
@@ -399,7 +399,7 @@ test('P13: loopback is development-only, never credentialed production CORS/CSRF
     assert.equal(isAllowedOrigin(headers.origin, [headers.origin]), false,
       'an extra-origin override must not weaken live credentialed ingress');
     assert.equal(checkCsrf(request, { allowedOrigins: [headers.origin] }), false);
-    assert.equal(isAllowedOrigin('https://play.antimatterinnovations.com'), true,
+    assert.equal(isAllowedOrigin('https://megaxo.online'), true,
       'existing browser origin remains authorized');
 
     delete process.env.NODE_ENV;

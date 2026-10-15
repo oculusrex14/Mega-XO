@@ -7,7 +7,7 @@
   "host": "ep-mute-surf-b8v94ksa.c-14.us-east-1.aws.neon.tech",
   "database": "mega_xo_v5_production",
   "pgMajor": 16,
-  "nonserving": true,
+  "nonserving": false,
   "roleConnectionLimits": {
     "api_runtime": 16,
     "core_runtime": 8,

@@ -1,0 +1,46 @@
+{
+  "schema_version": 1,
+  "status": "EXECUTED",
+  "cutover_id": "cutover-v5-20261015t040452z",
+  "event_utc": "2026-10-15T04:13:22Z",
+  "state": "ACCEPTED",
+  "allowed_states": [
+    "PREPARED",
+    "DRAINING",
+    "FROZEN",
+    "IMPORTED_AND_VERIFIED",
+    "ARMED",
+    "V5_AUTHORITY",
+    "ACCEPTED",
+    "ABORTED_BEFORE_APPLICATION_WRITE",
+    "RECOVERING_WITH_POSTGRES"
+  ],
+  "source_sha": "bb659df3951f251c6b1aee09d94943714b7e9b0d",
+  "source_snapshot_hash": "f6c5fbea57dd0ee3538abd1f70845011809d31568173fef2983041471242e90d",
+  "target_id": "blue-sun-85454968/br-dawn-dawn-b8f9n7zq/mega_xo_v5_production",
+  "active_writer_authority": "PostgreSQL mega_xo_v5_production (authority epoch v5:1792037113917:153a8543d555682d)",
+  "old_writer_fenced": true,
+  "old_writer_status": "docker container mega-xo-production-app-1 stopped and restart disabled (Exited 0)",
+  "post_import_application_write_accepted": true,
+  "first_application_write_reference": "authority armed at epoch v5:1792037113917:153a8543d555682d; public livez/readyz/leaderboard 200 on play.antimatterinnovations.com",
+  "edge_reverse_proxy": {
+    "container": "mega-xo-production-edge-1",
+    "upstream": "172.18.0.1:8080",
+    "status": "active"
+  },
+  "read_only_checks": [
+    { "endpoint": "https://play.antimatterinnovations.com/livez", "status": 200, "result": "ok" },
+    { "endpoint": "https://play.antimatterinnovations.com/readyz", "status": 200, "result": "ok" },
+    { "endpoint": "https://play.antimatterinnovations.com/health", "status": 200, "result": "ok" },
+    { "endpoint": "https://play.antimatterinnovations.com/api/v1/leaderboard?metric=rating&limit=5", "status": 200, "result": "[]" },
+    { "endpoint": "https://play.antimatterinnovations.com/.well-known/assetlinks.json", "status": 200, "result": "valid json" },
+    { "endpoint": "https://play.antimatterinnovations.com/.well-known/apple-app-site-association", "status": 200, "result": "valid json" },
+    { "endpoint": "https://play.antimatterinnovations.com/", "status": 200, "result": "serves V5 powered bundle" }
+  ],
+  "gate_evidence": [
+    "A01", "A02", "A03", "A06", "A07", "A09", "A28", "A38", "A39"
+  ],
+  "rollback_class": "FORWARD_FIX_ONLY (SQLite authority terminated, PostgreSQL is durable single authority)",
+  "operator_or_agent_reference": "local implementation agent via owner authorization ('Cutover is explicitly authorised once you deem it ready, no issues from my side')",
+  "notes": "Full production cutover executed on 2026-10-15. V4 SQLite writer stopped and permanently fenced. Post-stop archive sha256 f6c5fbea57dd0ee3538abd1f70845011809d31568173fef2983041471242e90d preserved on host. Production database mega_xo_v5_production with 55 migrations, 2 imported actors, zero unexplained discrepancies. V5 authority service running under systemd on host port 8080. Caddy edge reverse proxy active. R2 automated backups running every 5 minutes."
+}

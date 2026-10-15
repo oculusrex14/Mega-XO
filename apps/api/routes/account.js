@@ -219,6 +219,41 @@ async function getDeletionStatus(context, req, res) {
   return sendJson(res, 200, status, { 'Cache-Control': CACHE_CONTROL_POLICIES.PRIVATE_NO_STORE });
 }
 
+/* GET /api/account/research - the authenticated actor's own one-time choice. No actor parameter is
+ * accepted: the actor comes from the session. An absent record is returned as recorded:false, which
+ * the client MUST render as "not consented", never as a grant. */
+async function getResearchConsent(context, req, res) {
+  const { actor, token, accounts } = await resolveAuth(context, req);
+  if (!actor) {
+    const err = new Error('AUTH_REQUIRED');
+    err.status = 401;
+    throw err;
+  }
+  const consent = await accounts.researchConsent(token);
+  return sendJson(res, 200, consent, { 'Cache-Control': CACHE_CONTROL_POLICIES.PRIVATE_NO_STORE });
+}
+
+/* POST /api/account/research - records the choice. CSRF-protected and linked-only. The body is a
+ * bounded {research, ageBand?, noticeVersion?, consentVersion?}; an unknown/absent body records the
+ * fail-closed operational-only choice rather than an accidental grant. */
+async function postResearchConsent(context, req, res) {
+  const { actor, token, accounts } = await resolveAuth(context, req);
+  if (!actor) {
+    const err = new Error('AUTH_REQUIRED');
+    err.status = 401;
+    throw err;
+  }
+  const body = await parseJsonBody(req, 16384);
+  const choice = body && typeof body === 'object' ? body : {};
+  const consent = await accounts.recordResearchConsent(token, {
+    research: choice.research === true,
+    ageBand: typeof choice.ageBand === 'string' ? choice.ageBand : 'unknown',
+    noticeVersion: typeof choice.noticeVersion === 'string' ? choice.noticeVersion : undefined,
+    consentVersion: typeof choice.consentVersion === 'string' ? choice.consentVersion : undefined
+  });
+  return sendJson(res, 200, consent, { 'Cache-Control': CACHE_CONTROL_POLICIES.PRIVATE_NO_STORE });
+}
+
 async function logout(context, req, res) {
   const { token, accounts, credentialMode } = await resolveAuth(context, req, { linked: false });
   if (!token) {
@@ -879,6 +914,16 @@ async function handleAccountRoute(context, req, res) {
     return true;
   }
 
+  if (pathname === '/api/account/research' && method === 'GET') {
+    await getResearchConsent(context, req, res);
+    return true;
+  }
+
+  if (pathname === '/api/account/research' && method === 'POST') {
+    await postResearchConsent(context, req, res);
+    return true;
+  }
+
   return false;
 }
 
@@ -891,6 +936,8 @@ module.exports = {
   deleteAccount,
   unlinkProvider,
   getDeletionStatus,
+  getResearchConsent,
+  postResearchConsent,
   logout,
   getSession,
   postEmail,

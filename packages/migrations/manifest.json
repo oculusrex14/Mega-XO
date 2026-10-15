@@ -321,6 +321,18 @@
       "name": "0053_consent_and_export_retention_fixes",
       "file": "migrations/0053_consent_and_export_retention_fixes.sql",
       "sha256": "15ed17e1282fa8d3d9247b60fef7d97e7565939c14bb0c60c6bdbc8658fb3939"
+    },
+    {
+      "id": 54,
+      "name": "0054_account_consent_lane",
+      "file": "migrations/0054_account_consent_lane.sql",
+      "sha256": "864fd33edbc0311ee1a31533f6f5de7a65e8ebf4bdf11b206a50b02b46bbb3f4"
+    },
+    {
+      "id": 55,
+      "name": "0055_restore_record_consent_body",
+      "file": "migrations/0055_restore_record_consent_body.sql",
+      "sha256": "64ecb73a6e6acfb0a9f4cb073af26736bfe0503e944ea65e88c6f11dd273bf53"
     }
   ]
 }

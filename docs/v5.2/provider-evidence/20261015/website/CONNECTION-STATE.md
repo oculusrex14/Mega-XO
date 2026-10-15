@@ -78,3 +78,15 @@ are deferred by the owner. No existing page or artifact was presented as fixed d
 
 Rollback: revert the bounded connectivity patch and regenerate the native bundle; no data migration
 or authority change is involved. Existing local saves and provider work remain intact.
+
+## Follow-up visible verification after recovery
+
+Root committed the recovered patch, reconciled it with Main and pushed the provider branch. The
+merged source `1776aaa55e5b0aaa30259c5aa8abc0680f4ee310` produced an isolated allowlisted bundle with
+hash `1d5d355aad1b10afca82806ba93de69161afe55b0a1b50c3c4dda370c10f5790`.
+In a real CUA browser session at `http://127.0.0.1:4189/bundle-index.html`, the guest home rendered
+without the outage banner: `#networkStatus.hidden === true`, computed display `none`. The screenshot
+`local-home-no-outage.jpg` records that local QA result. No account credential, injected account
+success, live provider or production service was used. Configured-native/browser genuine-error
+behavior remains covered by the tests above. The old deferred capture artifact at port 4186 was not
+replaced. Signed-device and deployed-build acceptance remain separate.

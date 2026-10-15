@@ -5,7 +5,14 @@
 let session=null,loading=null;
 const id=()=>globalThis.crypto?.randomUUID?.()||Date.now().toString(36)+'-'+Math.random().toString(36).slice(2);
 const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
-let connectivity={state:root.navigator?.onLine===false?'offline':'online',code:'',supportId:'',at:Date.now()};
+const native=()=>root.MegaNativeApi&&typeof root.MegaNativeApi.request==='function'?root.MegaNativeApi:null;
+/* Generated native bundles have no same-origin account API. An offline host (or a static browser
+ * preview of that bundle) must not probe its asset origin as though it were the web service.
+ * Unmarked website pages retain their same-origin cookie transport. A configured native bridge
+ * always takes precedence, including when its real requests fail. */
+const nativeTransport=root.document?.querySelector?.('meta[name="mega-account-transport"]')?.content==='native';
+const localOnly=()=>nativeTransport&&!native();
+let connectivity={state:localOnly()?'local':root.navigator?.onLine===false?'offline':'online',code:localOnly()?'ONLINE_NOT_CONFIGURED':'',supportId:'',at:Date.now()};
 function publish(state,code='',supportId=''){
  if(connectivity.state===state&&connectivity.code===code&&connectivity.supportId===supportId)return;
  connectivity={state,code,supportId:/^MX-[A-F0-9]{16}$/.test(supportId)?supportId:'',at:Date.now()};
@@ -21,11 +28,11 @@ function classify(code){
  return 'degraded';
 }
 function transient(code){return ['SERVICE_UNAVAILABLE','ONLINE_UNAVAILABLE','REQUEST_TIMEOUT'].includes(code);}
+function localUnavailable(){publish('local','ONLINE_NOT_CONFIGURED');return Error('ONLINE_NOT_CONFIGURED');}
 /* P20-03 native host transport. Present only in a signed native host whose Gradle build configured
  * an API origin; absent in the browser and in the offline native flavor. It is NOT a fetch proxy:
  * the host owns the bearer, the host/path allowlist and the redirect policy, and it returns only a
  * validated JSON value. No token ever crosses this boundary in either direction. */
-const native=()=>root.MegaNativeApi&&typeof root.MegaNativeApi.request==='function'?root.MegaNativeApi:null;
 function nativeError(result){
  const code=String(result?.error||'SERVICE_UNAVAILABLE');
  const e=Error(/^[A-Z0-9_]+$/.test(code)?code:'SERVICE_UNAVAILABLE');
@@ -77,10 +84,11 @@ async function nativeEnsure(force=false){
   const parsed=nativeSessionFromProfile(profile.data);
   if(!parsed)throw Error('SERVICE_UNAVAILABLE');
   session=parsed;publish('online');return parsed;
- })().finally(()=>{loading=null;});
+ })().catch(error=>{const code=error?.message&&/^[A-Z0-9_]+$/.test(error.message)?error.message:'SERVICE_UNAVAILABLE';publish(classify(code),code,error?.supportId||'');throw error;}).finally(()=>{loading=null;});
  return loading;
 }
 async function ensure(force=false){
+ if(localOnly())throw localUnavailable();
  if(!native())return cookieEnsure(force);
  if(session&&!force)return session;
  return nativeEnsure(force);
@@ -88,6 +96,7 @@ async function ensure(force=false){
 /* Every authenticated native call must re-prove itself after a terminal refresh revocation instead
  * of replaying a dead bearer. The host refuses online use until a fresh sign-in installs a session. */
 async function call(path,body,operation){
+ if(localOnly())throw localUnavailable();
  if(native()&&session?.native&&Date.now()>=Number(session.expiresAt||0)){
   const rotated=await native().refresh();
   if(!rotated||rotated.ok!==true){session=null;publish('auth','AUTH_REQUIRED');throw nativeError(rotated||{error:'AUTH_REQUIRED'});}
@@ -136,8 +145,8 @@ async function cookieEnsure(force=false){
  })().finally(()=>{loading=null;});
  return loading;
 }
-root.addEventListener?.('offline',()=>publish('offline','OFFLINE'));
-root.addEventListener?.('online',()=>publish('reconnecting','ONLINE'));
+root.addEventListener?.('offline',()=>localOnly()?publish('local','ONLINE_NOT_CONFIGURED'):publish('offline','OFFLINE'));
+root.addEventListener?.('online',()=>localOnly()?publish('local','ONLINE_NOT_CONFIGURED'):publish('reconnecting','ONLINE'));
 /* Sign-out. The native host revokes the presenting family, wipes the Keystore vault and drops the
  * in-memory access token; the cookie path keeps the retained /api/account/logout call exactly as it
  * is. `allDevices` is best-effort: if the server rejects the field rather than ignoring it, retry

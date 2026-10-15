@@ -1,11 +1,12 @@
 # Mega XOXO — P21 Website & Browser Game Master Checklist
 
 **Canonical website:** https://megaxo.online  
-**Development branch:** V5.1 (created from V5-platform, not the divergent main branch)  
+**Development branch:** V5.2 (active release integration; V5.1 is frozen historical evidence)
+
 **Product:** One Mega XOXO identity, inventory, wallet, competitive authority, matchmaking pool, and social graph across web, iOS, and Android.  
 **Visual master:** user-uploaded desktop mockup (1672 × 941) / Generated Image 1.  
 **Brand reference:** user-uploaded official Mega XOXO logo artwork (1600 × 1600), archived unchanged; the name is approved for web/iOS/Android.  
-**Execution status:** Tested local website payload: source `681f06bfad5e929cdda929cdf6d4486f5fff89ec`, bundle `9cfa78636df78528c6ae1fb95ee5afc845b787f796f17d91be5258d4b283aeef` (151 files / 3,474,873 bytes). Local UI automation passed 915/915 in [Chromium](../../tests-output/p21-web/9cfa78636df7/browser-qa.json), [Firefox](../../tests-output/p21-web/9cfa78636df7/firefox/20261012172200567-41942/browser-qa.json) and [WebKit](../../tests-output/p21-web/9cfa78636df7/webkit/20261012172405329-42892/browser-qa.json); axe passed 137/137 with zero violations and 116 incomplete manual views. Chromium 151 browser-offline QA passed 33/33; Firefox/WebKit browser-offline emulation remains incomplete. Origin-drop simulations passed 33/33 in Firefox/WebKit and Chromium 145; these are not physical offline acceptance. Codex local affected website/bot Node checks passed 138/138 ([saved log](evidence/20261012-recovery-validation/website-138-pass.log)). CUA verified the Main-hosted tailnet frontend 140/140 against source `f4851a568524846d981b351c659af4a9ee7479be` / bundle `8167f349fb16b303c9347ac544afc3f9c73b9ea5515b0a085a7f40a6d75f3ea3`; API/server boot SHA and authenticated flows remain unverified. Owner-reported account timeout is `OWNER_REPORTED_NOT_REPRODUCED`; R15 remains `AUTHENTICATED_ACCEPTANCE_PENDING`. See [staging evidence](evidence/20261012-staging-review/STAGING-READONLY-20261012.md), [detailed status and limitations](EXECUTION-STATUS-20261012.md), and [timeout receipt](evidence/20261012-staging-review/ACCOUNT-TIMEOUT-20261012.md). These results do not establish physical-device, screenreader, provider, production or release acceptance; website/provider/device/production release remains OPEN.
+**Historical execution status — 12 October:** Tested local website payload: source `681f06bfad5e929cdda929cdf6d4486f5fff89ec`, bundle `9cfa78636df78528c6ae1fb95ee5afc845b787f796f17d91be5258d4b283aeef` (151 files / 3,474,873 bytes). Local UI automation passed 915/915 in [Chromium](../../tests-output/p21-web/9cfa78636df7/browser-qa.json), [Firefox](../../tests-output/p21-web/9cfa78636df7/firefox/20261012172200567-41942/browser-qa.json) and [WebKit](../../tests-output/p21-web/9cfa78636df7/webkit/20261012172405329-42892/browser-qa.json); axe passed 137/137 with zero violations and 116 incomplete manual views. Chromium 151 browser-offline QA passed 33/33; Firefox/WebKit browser-offline emulation remains incomplete. Origin-drop simulations passed 33/33 in Firefox/WebKit and Chromium 145; these are not physical offline acceptance. Codex local affected website/bot Node checks passed 138/138 ([saved log](evidence/20261012-recovery-validation/website-138-pass.log)). CUA verified the Main-hosted tailnet frontend 140/140 against source `f4851a568524846d981b351c659af4a9ee7479be` / bundle `8167f349fb16b303c9347ac544afc3f9c73b9ea5515b0a085a7f40a6d75f3ea3`; API/server boot SHA and authenticated flows remain unverified. Owner-reported account timeout is `OWNER_REPORTED_NOT_REPRODUCED`; R15 remains `AUTHENTICATED_ACCEPTANCE_PENDING`. See [staging evidence](evidence/20261012-staging-review/STAGING-READONLY-20261012.md), [detailed status and limitations](EXECUTION-STATUS-20261012.md), and [timeout receipt](evidence/20261012-staging-review/ACCOUNT-TIMEOUT-20261012.md). These results do not establish physical-device, screenreader, provider, production or release acceptance; website/provider/device/production release remains OPEN.
 
 ## How to maintain this file
 
@@ -13,7 +14,7 @@ The owner annotation iteration adds cinematic `/game`, Store, Sponsors and full 
 
 The subsequent `/game` annotation authorizes **Mega XOXO Neon** (`cinematic`) as a fifth browser-only theme and default. [Theme and artwork handoff](BROWSER-NEON-THEME.md) records its implementation and the owner's future paid app-theme intent. The four retained theme IDs and native catalog remain intact.
 
-- This is the **living** P21 build ledger, not a conceptual wish list. On **V5.1 only**, update checkboxes after evidence-backed delivery, link file path(s), test(s) and commit SHAs, and keep open decisions explicit.
+- This is the **living** P21 build ledger, not a conceptual wish list. New work targets **V5.2** under the owner's 14 October release mission. Preserve V5.1 evidence; update checkboxes only after evidence-backed delivery, with paths, tests, SHAs and open decisions.
 - Check an item only when the asset/code/doc actually exists in the repository and is validated. Concept artwork is **not** a shippable, layered, licensed, responsive or accessible replacement.
 - Retain original references and source files; create separately optimized web exports. Never bake UI controls, text, live metrics or grid logic into a flat hero background.
 - Every visual deliverable requires source/master, format, dimensions, alpha/bleed, color profile, light/dark treatment, responsive variants, optimized exports, fallback and ownership/license record where applicable.
@@ -423,3 +424,29 @@ The read-only ticket/subscription/resume/full-snapshot reader is implemented, as
 ### Owner annotation review — 14 October 2026
 
 [OWNER-REVIEW-20261014.md](OWNER-REVIEW-20261014.md) records source `5897497`, exact staged backend/frontend identities, 256 website + 3 legal tests, 45 local three-engine checks and 10 real HTTPS desktop/mobile checks. Sponsor action spacing is fixed; the owner explicitly withdrew `/press` (superseding the press portion of the original compound scope); Privacy/Terms draft banners are removed and substantive wording completed under owner authorization. Settings is retained for offline-copy and privacy navigation. The original compound checkboxes and IDs remain intact: these visual/content passes do not close store, signed-device, legal retention/contact disclosure or production release gates.
+
+
+## V5.2 continuation — 15 October 2026
+
+The owner’s V5.2 mission supersedes the old branch restriction, without changing original phase
+IDs or closing combined production/device gates. Main merged the guarded power presentation in
+PR #14 and refreshed staging. Current independently probed frontend: `3752383c4f4f8343ad6aeb00d2434beec3ef96f6`,
+bundle `17b1d88e423d2aa4727a086b5908c7e8317b7594bcb7f04ec89a7a06c877bfb8`, 160 files /
+3,688,654 bytes; both health endpoints return 200/ready. Main’s backend authority remains separate.
+
+- [Provider/browser checkpoint](../v5.2/release/CODEX-RELEASE-CHECKPOINT-20261014.md): actual paid
+  Apple membership, app/IAP drafts and approved price schedules; Play draft/declarations; AdMob,
+  mail and real synthetic alert delivery states. Neither store is submitted and no public cutover
+  is asserted. PR #15 carries the follow-up source/evidence for Main integration.
+- [Exact local engine evidence](../v5.2/provider-evidence/20261014/website/README.md): three engines
+  at 890 assertions each, automated axe131, and explicitly retained manual/integration limits.
+- [Friends error fix](../v5.2/provider-evidence/20261015/website/FRIENDS-ACCOUNT-RETRY.md): `d582dfe`,
+  316 passes / 0 failures / 5 integration skips on the merged Main code. Timeout/error shows retry;
+  an unverified response cannot become guest or reveal private lists.
+- [Timed real staging recheck](../v5.2/provider-evidence/20261015/website/FRIENDS-STAGING-TIMED-RECHECK.md):
+  the guest prompt did resolve; indefinite loading was not reproduced. The new error fix is not
+  yet deployed. Anonymous/local Bot checks do not establish two-account WSS or settlement.
+
+Authenticated current-build signup/recovery, two-account full games, authoritative wallet/rank,
+provider callbacks, physical-device access, public production and store submission remain open
+at their actual evidence boundaries. No readiness percentage is inferred from overlapping tests.

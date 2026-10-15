@@ -1,0 +1,70 @@
+{
+  "sourceCommit": "b5cdae26c62b1e35d032a063fce002eddf7eda3d",
+  "environment": {
+    "node": "v26.8.2",
+    "platform": "darwin",
+    "arch": "arm64"
+  },
+  "target": "local synthetic module composition; no providers/devices; observations are gaps, not acceptance passes",
+  "observations": [
+    {
+      "id": "WEB_ACTUAL_ADAPTER_CONTRACT",
+      "observed": {
+        "reserved": null,
+        "websiteReason": "invalid-inventory"
+      }
+    },
+    {
+      "id": "WEB_SUCCESS_REASON_CONTRACT",
+      "observed": {
+        "websiteResult": {
+          "earned": false,
+          "reason": "INVALID_RESULT",
+          "entitlement": null
+        },
+        "actualBank": 1
+      }
+    },
+    {
+      "id": "UNEARNED_APPLY",
+      "observed": {
+        "applied": true,
+        "reason": null,
+        "revision": 9,
+        "grants": 1,
+        "bank": 0,
+        "remainingCharges": 1
+      }
+    },
+    {
+      "id": "BANK_CONSUMPTION_NOT_PERSISTED",
+      "observed": {
+        "inMemory": 0,
+        "persisted": 1,
+        "afterReload": 1
+      }
+    },
+    {
+      "id": "RELOAD_COOLDOWN_TRUNCATED",
+      "observed": {
+        "before": 1792065720000,
+        "after": 9999,
+        "now": 1792065600000
+      }
+    },
+    {
+      "id": "APP_TICKET_ENVELOPE_DROPPED",
+      "observed": {
+        "payloadType": "string",
+        "nativeRequires": "full ticket object"
+      }
+    },
+    {
+      "id": "TACTICAL_MODULE_IS_COUNTERS_ONLY",
+      "observed": {
+        "acceptsArbitrarySquare": true,
+        "casualHintAllowed": false
+      }
+    }
+  ]
+}

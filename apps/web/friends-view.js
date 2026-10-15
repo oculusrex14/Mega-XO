@@ -29,7 +29,12 @@ export function renderFriendsPage(context = {}) {
  const requestList = (id, title, group, emptyCopy) => `<details class="pg-friend-requests" id="${id}"><summary><span>${title}</span><span class="pg-friend-count">${countLabel(state?.[group]?.length || 0, state?.truncated)}</span></summary><div class="pg-friend-request-content">${state?.[group]?.length ? `<ul class="pg-friend-list" aria-label="${title}">${state[group].map(player => row(player, group)).join('')}</ul>` : `<p class="mx-muted">${emptyCopy}</p>`}</div></details>`;
 
  let contents;
- if (!profile) {
+ if (context.sessionStatus === 'error') {
+  // Carried over from PR #15: a failed account check must show the real error and a Retry action,
+  // never the guest sign-in prompt. PR #16 moved this renderer into its own module, so the fix is
+  // applied here rather than to the inline body it replaced.
+  contents = `<h2>Your account could not be checked.</h2><p role="status" tabindex="-1" data-friends-status>${e(context.accountMessage || 'Try checking your account again.')}</p><button class="mx-button secondary" type="button" data-account-action="retry">Retry account check</button>`;
+ } else if (!profile) {
   contents = context.sessionStatus === 'loading' ? '<p role="status">Checking your account…</p>' : `<div class="pg-signin"><span class="pg-row-icon">${icon('user')}</span><div><strong>Sign in to play online</strong><p>Find friends, manage requests and keep your people close.</p></div>${button('Open account', '/account', 'primary', 'arrow-right')}</div>`;
  } else if (!state || ['idle','loading','refreshing'].includes(state.status)) {
   contents = '<p role="status" tabindex="-1" data-friends-status>Checking your friends and requests…</p>';

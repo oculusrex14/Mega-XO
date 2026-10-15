@@ -140,6 +140,9 @@ test('builds an allowlisted bundle with manifest digests and no server/authority
   // Rewritten index and legal pages must not reference the removed external dependencies, and
   // the internal routes must resolve to bundled files.
   const index = fs.readFileSync(path.join(output, 'bundle-index.html'), 'utf8');
+  assert.ok(index.includes('<meta name="mega-account-transport" content="native">'));
+  assert.ok(!fs.readFileSync(path.join(root, 'index.html'), 'utf8').includes('mega-account-transport'), 'the browser source keeps its same-origin account transport');
+  assert.ok(!fs.readFileSync(path.join(output, 'privacy.html'), 'utf8').includes('mega-account-transport'), 'only the native game entry declares account transport');
   assert.ok(!/https?:\/\/fonts\.example\.test/.test(index));
   assert.ok(!/https?:\/\/unpkg\.example\.test/.test(index));
   assert.ok(!/preconnect/.test(index));

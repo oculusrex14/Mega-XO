@@ -10,11 +10,22 @@ const LA=window.MegaLocalAI,LS=window.MegaLocalSession,BP=window.MegaBotPack;
    stay inert while the kill switch is off. */
 const RW=window.MegaRewind,PW=window.MegaPowersAdapter;
 const POWERS_KEY='mega_v52_powers',POWERS_FLAG='mega_v52_powers_enabled';
-/* The rewarded powers are a shipped feature, so they default ON. The flag remains an explicit
-   emergency off switch: 'off' disables them, anything else (including no preference) keeps them
-   available. A player without ad inventory simply sees a truthful 'unavailable' state. */
-const POWERS_ON=(()=>{try{return localStorage.getItem(POWERS_FLAG)!=='off';}catch{return true;}})();
-const POWERS_STATE=(()=>{try{return JSON.parse(localStorage.getItem(POWERS_KEY)||'null');}catch{return null;}})();
+/* The rewarded powers are a shipped feature, so they default ON. Both switches are explicit off
+   switches and either one is enough: `localStorage['mega_v52_powers_enabled']==='off'` disables them,
+   and so does a host that publishes `window.MEGA_POWERS_ENABLED === false`. Anything else (including
+   no preference) keeps them available, and a player without ad inventory simply sees a truthful
+   'unavailable' state. */
+const POWERS_ON=(()=>{
+ /* The emergency switch is authoritative: a stored 'off' disables the lane even if a host flag
+    says otherwise. Without a stored preference an explicit host flag decides, and the shipped
+    default is available. */
+ try{if(localStorage.getItem(POWERS_FLAG)==='off')return false;}catch{}
+ if(window.MEGA_POWERS_ENABLED===true)return true;
+ if(window.MEGA_POWERS_ENABLED===false)return false;
+ return true;
+})();
+/* Persisted powers state lives in the adapter's own storage lane (`readPowersState`/
+   `writePowersState`), which migrates it leaf by leaf; the app never reads it directly. */
 function readPowersState(){try{return JSON.parse(localStorage.getItem(POWERS_KEY)||'null');}catch{return null;}}
 function writePowersState(value){try{localStorage.setItem(POWERS_KEY,JSON.stringify(value));}catch{}}
 let localSession=LS?LS.createSession({baseURL:location?.href}):null;
@@ -31,6 +42,9 @@ let page='play',mode='bot',difficulty='Medium',first='X',onlineType='ranked',sta
 let online={ready:false,profile:null,rows:[],invitations:[],products:[]},target=null,pendingExchange=null,refreshSerial=0,onlinePoll=null,onlinePollBusy=false,onlinePending=false,waitingId=null,queueSubmission=null,queueCancelling=false,connectionState='online';
 const NET=window.MegaNetwork,opId=()=>globalThis.crypto?.randomUUID?.()||String(Date.now())+'-'+Math.random().toString(36).slice(2);
 let match=null,botTimer=null,toastTimer=null,ctx=null,ambient=null,sheetKind='',sheetReturnFocus=null,lastTick=performance.now(),lastInput=performance.now(),lastSave=0,powers=null;
+/* Rewarded-power controls: the host row injected into the match control zone, its last painted
+   signature, and the square the shipped Tactical Power is currently recommending. */
+let powersControls=null,powersPainted='',hintSquare=null;
 const themeNames={vector:'Vector Light',midnight:'Midnight Club',paperclub:'Paper Club',afterhours:'After Hours'};
 const lightBadges=[['#ead9c5','#715234'],['#e3e8ed','#58646b'],['#dae3f0','#465c7d'],['#f4dfc6','#7c4b20'],['#e3edf4','#4a6276'],['#f5e7b2','#805b0c'],['#d7f0fa','#176d8a'],['#d7efdf','#23673f'],['#eed7f0','#784576'],['#e7defa','#644991'],['#faf0c7','#805b0c']];
 const darkBadges=[['#42372d','#e4c49c'],['#343f48','#d0dce5'],['#283b53','#b8d1f7'],['#4a3526','#f0bf91'],['#314455','#d6eafa'],['#4c4123','#f2d88d'],['#173e52','#9ce2f8'],['#233e31','#a5e4bf'],['#442e49','#e7b8ee'],['#362b51','#d9c2fc'],['#514224','#fff0aa']];
@@ -42,7 +56,7 @@ function myTier(){return online.profile?.tier||'wood';}
 function initPowers(){
  if(!PW||powers)return powers;
  powers=PW.createPowers({
-  enabled:()=>POWERS_ON||window.MEGA_POWERS_ENABLED===true,
+  enabled:()=>POWERS_ON,
   /* The aggregate ceiling is shared with the cosmetic rewarded lane, which books its presentations
      in the ad-cadence store. Report today's count from there so Credits and Undo cannot together
      exceed the owner's ten-per-UTC-day ceiling. */
@@ -52,6 +66,10 @@ function initPowers(){
     return raw?M.rewardedExposure(raw).shownToday:0;}catch{return 0;}
   },
   storage:{read:readPowersState,write:writePowersState},
+  /* Tactical Power recommends with the canonical Expert search — the same rules engine the match
+     already plays with — and never invents a square. The adapter re-validates the answer against
+     G.legal, so a bad recommendation is refused rather than highlighted. */
+  recommender:info=>G.choose(info.state,'Expert'),
   live:()=>match?{
    id:match.id,
    state:match.state,
@@ -77,6 +95,14 @@ function initPowers(){
     save();
     return true;
    }
+   if(cmd.type==='hint'){
+    match.powers=cmd.powers;
+    hintSquare={...cmd.square};
+    save();
+    renderPowerControls();
+    paint();
+    return true;
+   }
    if(cmd.type!=='rewind')return false;
    if(match.powersHistory&&match.powersHistory.revision!==cmd.expectedRevision)return false;
    match.state=cmd.state;
@@ -99,14 +125,14 @@ function initPowers(){
     .catch(()=>null);
   }
  });
- if(POWERS_ON||window.MEGA_POWERS_ENABLED===true){
+ if(POWERS_ON){
   PW.install({root:window,api:powers});
  }
  return powers;
 }
 function attachPowers(m, saved){
  initPowers();
- const on=POWERS_ON||window.MEGA_POWERS_ENABLED===true;
+ const on=POWERS_ON;
  if(!on||!PW||!RW)return;
  m.powers=PW.matchPowers(saved?.powers);
  if(saved?.powersHistory)m.powersHistory={...saved.powersHistory};
@@ -118,11 +144,100 @@ function attachPowers(m, saved){
   }
  }
  m.terminalUndoEligible=(target,reason,result)=>{
-  if(!powers||!(POWERS_ON||window.MEGA_POWERS_ENABLED===true))return false;
+  if(!powers||!POWERS_ON)return false;
   if(target.mode!=='bot'||target.practice||target.online||result!=='loss'||reason!=='line')return false;
   const elig=powers.eligibility(target).undo;
   return elig.eligible;
  };
+}
+/* One match summary for every power decision. The adapter's own eligibility, request and apply all
+   read this shape, so the control zone, the stats sheet and the terminal offer cannot disagree
+   about what is eligible. Consent and ad readiness are deliberately absent: `request` reads those
+   from the native lane itself, and an app that asserted them could only lie about them. */
+function powerContext(reason,botPending=!!botTimer){
+ const m=match;if(!m)return null;
+ return {id:m.id,state:m.state,mode:m.mode,first:m.first,reason,
+  practice:m.practice,online:!!m.online,
+  revision:m.powersHistory?m.powersHistory.revision:m.state.moves.length,
+  generation:m.powersHistory?m.powersHistory.generation:0,
+  history:m.powersHistory||null,powers:m.powers||null,
+  charges:m.powers?m.powers.botUndo.charges:0,used:m.powers?m.powers.botUndo.presses:0,
+  botPending};
+}
+/* Why a counter is not a control: Undo Block and Tactical Block answer ANOTHER PLAYER's power use,
+   so they only mean anything in the two-player Casual protocol with authoritative resolution. That
+   protocol is not built, and the owner's rule that a Bot never secretly gains counter powers means
+   no honest Bot-mode counter exists — so they are disclosed, disabled, and never faked. */
+const COUNTER_COPY='Counter controls are unavailable until authoritative resolution is supported.';
+function counterDisclosure(){return '<div class="note"><b>Undo Block &middot; Tactical Block</b><p class="caption">These answer another player\'s power use, so they need a two-player Casual match with authoritative resolution. '+COUNTER_COPY+' The Bot never secretly gains counter powers, so no Bot-mode counter is offered.</p><div class="split"><span>Undo Block</span><span class="pill">Unavailable</span></div><div class="split"><span>Tactical Block</span><span class="pill">Unavailable</span></div></div><p class="caption">A suggestion is never revealed to a counter while a counter window is open, and a counter never reveals a suggestion that was already shown.</p>';}
+/* The rewarded path is disclosed before it starts: the ad earns the item, and a shown-then-skipped
+   ad uses one of the ten daily rewarded views without earning anything. */
+function powerReasonText(reason){
+ return ({NO_MATCH:'No match is in progress.',FEATURE_DISABLED:'Rewarded powers are turned off.',
+  NATIVE_BRIDGE_UNAVAILABLE:'This build has no rewarded-ad lane, so no ad can be shown.',
+  CONSENT_UNAVAILABLE:'Ad consent is not available here, so no ad can be shown.',
+  AD_UNAVAILABLE:'No rewarded ad is available right now. Try again later.',
+  DAY_CAP:'Your ten rewarded views for today (UTC) are used up. They reset at 00:00 UTC.',
+  SPACING:'The next rewarded ad unlocks about two minutes after the last one.',
+  BANK_FULL:'You already hold the maximum of one earned item of that type.',
+  CHARGE_AVAILABLE:'You still have a banked charge. Use it before earning another.',
+  REQUEST_IN_FLIGHT:'An ad request is already in progress.',
+  NO_ENTITLEMENT:'No earned item of that type is banked yet.',
+  ACTIVATION_CAP:'This match already used its three activations for that power.',
+  DELIVERY_CAP:'This match already delivered the maximum number of that power.',
+  HINT_PENDING:'A suggestion is already waiting to resolve.',
+  BLOCK_WINDOW_OPEN:'A counter window is open, so the suggestion stays hidden.',
+  MODE_NOT_ELIGIBLE:'Powers are not available in this match.',
+  NOT_HUMAN_TURN:'Wait for your turn.',
+  MATCH_FINISHED:'This match is over.',
+  BOT_DECISION_IN_FLIGHT:'The Bot is still thinking. Wait for its reply.',
+  STALE_REVISION:'The match moved on. Try again.',
+  LIVE_MATCH_CHANGED:'The match changed before that could apply. Nothing was spent.',
+  ENGINE_ILLEGAL_RECOMMENDATION:'The engine could not name a legal square. Nothing was spent.',
+  NO_LEGAL_MOVE:'There is no legal square to recommend.',
+  AD_NOT_PRESENTED:'The ad never opened, so nothing was earned and no daily view was used.',
+  AD_NOT_EARNED:'The ad did not earn a reward, so nothing was banked.',
+  POWER_NOT_SHIPPED:'That power is not available yet.'})[reason]||'That did not complete. Nothing was spent.';
+}
+/* Host row for the rewarded controls. It is injected into the existing Bot match control zone beside
+   Rules/Restart/Stats, so a banked charge is one tap away instead of buried in the stats sheet, and
+   it reuses that zone's own button styles rather than adding a second visual convention. */
+function powerControlsHost(){
+ const zone=$('.match-controls');
+ if(!zone)return null;
+ if(!powersControls){
+  powersControls=document.createElement('span');
+  powersControls.className='powers-slot';
+  /* The control zone is a grid, so the injected row spans every column and lays its own buttons out
+     in one flex row. No stylesheet change: the zone's own `.match-controls .button` styling applies. */
+  powersControls.style.cssText='grid-column:1 / -1;display:flex;gap:7px;padding-top:5px';
+  zone.appendChild(powersControls);
+ }
+ if(!powersControls.isConnected){zone.appendChild(powersControls);}
+ return powersControls;
+}
+function renderPowerControls(){
+ const on=POWERS_ON;
+ /* A Bot match without practice or an online opponent is the only place a rewarded control may
+    exist. Ranked, casual, staked, tournament, party and LAN matches are never Bot matches, and the
+    pure module refuses every one of them anyway. With the switch off nothing is created at all. */
+ const live=on&&powers&&match&&match.mode==='bot'&&!match.practice&&!match.online;
+ if(!live){
+  if(powersControls){if(powersPainted!==''){powersControls.innerHTML='';powersPainted='';}powersControls.hidden=true;}
+  return;
+ }
+ const host=powerControlsHost();if(!host)return;
+ const ctx=powerContext(null,!!botTimer);
+ const elig=powers.eligibility(ctx);
+ const charges=ctx.charges,banked=powers.inventory().hint.available>=1;
+ const signature=[elig.undo.eligible,charges,elig.hint.eligible,banked,ctx.botPending].join('|');
+ if(signature===powersPainted&&!host.hidden)return;
+ powersPainted=signature;host.hidden=false;
+ const undo=elig.undo.eligible?'<button class="button quiet" data-action="botundo" aria-label="'+(charges?'Undo your last turn with '+charges+' earned charge'+(charges===1?'':'s')+' left':'Watch one optional ad to earn two Undo presses')+'">'+(charges?'Undo last turn ('+charges+' left)':'Undo with a rewarded ad')+'</button>':'';
+ const hint=elig.hint.eligible?'<button class="button quiet" data-action="bothint" aria-label="'+(banked?'Tactical Power: show the recommended legal square':'Watch one optional ad to earn one Tactical Power')+'">'+(banked?'Tactical Power':'Tactical Power (rewarded)')+'</button>':'';
+ /* The counter disclosure is always reachable in a Bot match so the two kinds are explained rather
+    than silently missing. */
+ host.innerHTML=undo+hint+'<button class="button quiet" data-action="powercounters">Counters</button>';
 }
 const offlineSnapshot=()=>{
  const snapshot={id:match.id,version:SNAPSHOT_VERSION,first:match.first,mode:match.mode,difficulty:match.difficulty,practice:match.practice,tutorial:T?.snapshot(match)||null,bot:match.bot||null,moves:match.state.moves,active:match.active,turnLimit:match.turnLimit,turnRemaining:match.turnRemaining};
@@ -355,18 +470,22 @@ function paint(){if(!match)return;const s=match.state,canHuman=!s.winner&&(match
  for(let b=0;b<9;b++){const {el,claim}=miniNodes[b],allowed=!s.mini[b]&&!s.winner&&(s.required===null||s.required===b);
   el.className='mini'+(allowed&&data.settings.legal?(s.required===null?' available':' active'):'')+(!allowed&&!s.mini[b]?' inactive':'')+(s.line?.includes(b)?' win':'');
   el.setAttribute('aria-label',G.NAMES[b]+' Mini Board'+(s.mini[b]?', '+(s.mini[b]==='DRAW'?'drawn':'won by '+s.mini[b]):allowed?', playable':''));
-  for(let c=0;c<9;c++){const n=cellNodes[b][c],v=s.board[b][c];if(n.dataset.mark!==(v||'')){n.innerHTML=v?mark(v):'';n.dataset.mark=v||'';}n.disabled=!canHuman||!choices.has(b*9+c);n.classList.toggle('last',!!match.last&&match.last.b===b&&match.last.c===c);n.setAttribute('aria-label',G.NAMES[b]+' board, '+G.NAMES[c]+' cell, '+(v||'empty'));}
+  for(let c=0;c<9;c++){const n=cellNodes[b][c],v=s.board[b][c];if(n.dataset.mark!==(v||'')){n.innerHTML=v?mark(v):'';n.dataset.mark=v||'';}n.disabled=!canHuman||!choices.has(b*9+c);n.classList.toggle('last',!!match.last&&match.last.b===b&&match.last.c===c);n.classList.toggle('cell-hint',!!hintSquare&&hintSquare.b===b&&hintSquare.c===c);n.setAttribute('aria-label',G.NAMES[b]+' board, '+G.NAMES[c]+' cell, '+(v||'empty')+(hintSquare&&hintSquare.b===b&&hintSquare.c===c?', recommended by Tactical Power':''));}
   claim.hidden=!s.mini[b];if(s.mini[b]&&claim.dataset.owner!==s.mini[b]){claim.className='claim '+s.mini[b].toLowerCase();claim.innerHTML=s.mini[b]==='DRAW'?'<span>DRAW</span>':mark(s.mini[b]);claim.dataset.owner=s.mini[b];}
  }
  // `el.className=...` above rebuilds each Mini Board's class list, which would silently drop an
  // active destination preview (the poller repaints about every 900 ms, and a press-and-hold lasts
  // longer than that). Re-assert the preview mark so a hold keeps its destination highlighted.
  if(previewCell){const {b,next}=previewCell;cellNodes[b][next].classList.add('cell-hover',s.turn==='X'?'hover-x':'hover-o');if(data.settings.preview&&!s.mini[next])miniNodes[next].el.classList.add('preview');}
+ /* Tactical Power is a recommendation, not a forced move: the square is highlighted and named, and
+    every legal square stays enabled until the player actually plays. */
+ if(hintSquare&&!s.winner)$('#previewText').textContent='Tactical Power recommends '+G.NAMES[hintSquare.b].toLowerCase()+' board, '+G.NAMES[hintSquare.c].toLowerCase()+' cell. Any legal cell still plays.';
  $('#miniX').textContent=s.mini.filter(x=>x==='X').length;$('#miniO').textContent=s.mini.filter(x=>x==='O').length;$('#playerX').classList.toggle('active',!s.winner&&s.turn==='X');$('#playerO').classList.toggle('active',!s.winner&&s.turn==='O');
  const who=match.online?(match.symbols[s.turn]===online.profile?.id?'YOUR TURN':'OPPONENT TURN'):match.mode==='local'?(s.turn==='X'?'PLAYER X':'PLAYER O'):(s.turn==='X'?'YOUR TURN':'BOT TURN');
  $('#turnText').textContent=s.winner?(s.winner==='DRAW'?'MATCH DRAWN':s.winner+' WINS'):s.required===null?'FREE ROUTE':who+' \u00b7 '+G.NAMES[s.required].toUpperCase();
  $('#destinationText').textContent=s.winner?'Review the board or start a rematch.':s.required===null?'CHOOSE ANY OPEN MINI BOARD':'PLAY ONLY IN THIS MINI BOARD';
  $('#clock').textContent=match.turnLimit?Math.ceil(match.turnRemaining)+'s':'\u221e';$('#clock').classList.toggle('urgent',match.turnLimit>0&&match.turnRemaining<=5);
+ renderPowerControls();
  T?.render(match);
 }
 function clearPreview(){previewCell=null;miniNodes.forEach(x=>x.el.classList.remove('preview'));cellNodes.flat().forEach(n=>n.classList.remove('cell-hover','hover-x','hover-o'));if(match)$('#previewText').textContent=match.pending?'Tap the same cell again to confirm.':"Your cell determines the opponent's next board.";}
@@ -379,7 +498,7 @@ function move(m,source){if(!match||match.state.winner)return;if(match.mode==='bo
  if(T&&!T.permits(match,m,source))return;const before=match.state;
  try{match.state=G.apply(match.state,m);}catch{notify('Choose an empty cell in the highlighted board.');return;}
  if(match.resultClass==='unverified-local-ai')match.status=match.state.winner?'finished':'ready';
- T?.after(match,before,m);recordPowersHistory(before,m);match.last=m;match.pending=null;match.turnRemaining=match.turnLimit;tone(source==='bot'?370:540);haptic();paint();clearPreview();animateRoute(m.b,m.c,match.state.required);if(match.state.winner)finish(match.state.winner==='DRAW'?'draw':'line');else{save();scheduleBot();}
+ T?.after(match,before,m);recordPowersHistory(before,m);match.last=m;match.pending=null;match.turnRemaining=match.turnLimit;hintSquare=null;tone(source==='bot'?370:540);haptic();paint();clearPreview();animateRoute(m.b,m.c,match.state.required);if(match.state.winner)finish(match.state.winner==='DRAW'?'draw':'line');else{save();scheduleBot();}
 }
 function scheduleBot(){clearTimeout(botTimer);botTimer=null;A?.cancel();localSession?.cancel();if(!match||match.state.winner||match.mode!=='bot'||match.state.turn!=='O'||sheetOpen()||document.hidden||T?.blocked(match))return;
  const current=match,revision=match.state.moves.length,generation=match.powersHistory?match.powersHistory.generation:0;
@@ -458,32 +577,33 @@ setInterval(()=>{const now=performance.now(),delta=Math.min(1,Math.max(0,(now-la
 document.addEventListener('visibilitychange',()=>{lastTick=performance.now();if(document.hidden){A?.cancel();localSession?.cancel();clearTimeout(botTimer);botTimer=null;}else{lastInput=lastTick;scheduleBot();}syncAudio();});
 document.addEventListener('pointerdown',()=>{lastInput=performance.now();},true);
 function currentMatchStats(){if(!match)return;const s=match.state;let extra='';if(match.resultClass==='unverified-local-ai'||match.difficulty==='Impossible'){extra='<div class="note">Impossible match &middot; Model: '+escape(match.pin?.packVersion||'none')+' &middot; Hash: '+escape(match.pin?.modelHash?.slice(0,12)||'none')+(match.fallbackFrom?'<br><small>Fallback from: '+escape(match.fallbackFrom.slice(0,12))+'</small>':'')+'</div>';}
- const canUndo=!s.winner&&powers&&powers.eligibility(match).undo.eligible&&match.powers?.botUndo?.charges>=1;
- if(canUndo)extra+=fullButton('Undo last turn ('+match.powers.botUndo.charges+' left)','undoingame');
+ /* The sheet keeps its own Undo entry point for a banked charge, judged by the same summary the
+    control zone uses. */
+ const banked=powers&&match.mode==='bot'&&match.powers?.botUndo?.charges>=1&&powers.eligibility(powerContext(null,false)).undo.eligible;
+ if(banked)extra+=fullButton('Undo last turn ('+match.powers.botUndo.charges+' left)','undoingame');
  open('Current match','<div class="stats-grid"><div class="stat"><span>Moves</span><strong>'+s.moves.length+'</strong></div><div class="stat"><span>Active time</span><strong>'+seconds(match.active)+'</strong></div><div class="stat"><span>X Mini Boards</span><strong>'+s.mini.filter(x=>x==='X').length+'</strong></div><div class="stat"><span>O Mini Boards</span><strong>'+s.mini.filter(x=>x==='O').length+'</strong></div></div>'+extra+fullButton('Resign match','resign','',true),'matchstats');}
-function leave(){if(match?.pendingTerminal)finalizeTerminalResult();T?.stop();A?.cancel();localSession?.cancel();clearInterval(onlinePoll);onlinePoll=null;waitingId=null;delete data.offlineMatch;match=null;save();clearTimeout(botTimer);botTimer=null;$('#gameScreen').hidden=true;close();page='play';render();}
+function leave(){if(match?.pendingTerminal)finalizeTerminalResult();T?.stop();A?.cancel();localSession?.cancel();clearInterval(onlinePoll);onlinePoll=null;waitingId=null;delete data.offlineMatch;match=null;save();clearTimeout(botTimer);botTimer=null;hintSquare=null;$('#gameScreen').hidden=true;close();page='play';render();}
+/* The reward copy promises the earned item, never an unconditional result, and it is shown BEFORE
+   the ad starts so the player can decline. `askReward` resolves true only on an explicit start. */
+function undoRewardCopy(){return '<p>Watch one optional ad to rewind your last move and the Bot\'s reply.</p><p class="caption">A completed ad earns two Undo presses for this Bot match. Skipping the ad earns nothing and still uses one of your ten rewarded views today. Nothing is charged and no ad plays automatically.</p>';}
+function hintRewardCopy(){return '<p>Watch one optional ad to earn one Tactical Power for this Bot match.</p><p class="caption">A completed ad earns one Tactical Power: the Expert engine highlights a recommended legal square and you may still play any legal square. It is advice, not a guaranteed win. Skipping the ad earns nothing and still uses one of your ten rewarded views today.</p>';}
+/* The sheet's own buttons answer the promise; a dismissed sheet is a refusal, never a grant. */
+let rewardAnswer=()=>{};
+function askReward(copy){
+ return new Promise(resolve=>{
+  let settled=false;
+  const done=value=>{if(settled)return;settled=true;resolve(value);};
+  open('Optional rewarded ad',copy+fullButton('Watch ad and earn','rewardyes')+fullButton('Not now','rewardno','',true),'reward');
+  rewardAnswer=done;
+ });
+}
 const actions={
  nav:v=>{page=v;render();$('#contentScroll').scrollTop=0;if(['rank','friends'].includes(v))refreshOnline();},retrynetwork:()=>retryNetwork(),copydiagnostics:copySupportDiagnostics,mode:v=>{mode=v;render();},difficulty:v=>{if(v==='Impossible'&&!localSession?.isAvailable?.()&&window.MegaAiPack?.getState?.()?.status!=='ready'){window.MegaAiPack?.show();notify('Please set up and download the optional Impossible pack first.');return;}difficulty=v;render();},first:v=>{first=v;render();},settimer:v=>{data.settings.timer=Number(v);save();render();},onlinetype:v=>{onlineType=v;render();},start:()=>mode==='tournament'?(window.MegaParties?.tables?window.MegaParties.tables():notify('Tournaments are unavailable right now.')):['bot','local'].includes(mode)?startGame():onlineInfo(),
  acceptloss:()=>{close();finalizeTerminalResult();},
  undooffer:async()=>{
   if(!powers||!match)return;
   close();
-  const ctx={
-   id:match.id,
-   state:match.state,
-   mode:match.mode,
-   first:match.first,
-   reason:match.pendingTerminal?match.pendingTerminal.reason:'line',
-   practice:match.practice,
-   online:!!match.online,
-   revision:match.powersHistory?match.powersHistory.revision:match.state.moves.length,
-   generation:match.powersHistory?match.powersHistory.generation:0,
-   history:match.powersHistory||null,
-   powers:match.powers||null,
-   charges:match.powers?match.powers.botUndo.charges:0,
-   used:match.powers?match.powers.botUndo.presses:0,
-   botPending:false
-  };
+  const ctx=powerContext(match.pendingTerminal?match.pendingTerminal.reason:'line',false);
   // The ticket fetch and the ad are awaited across an interactive window: the player can restart,
   // leave or resign in the meantime, which replaces or clears `match`. Every resume must therefore
   // re-check that we are still looking at the SAME pending-finalization match before touching state,
@@ -512,33 +632,61 @@ const actions={
  undoingame:()=>{
   if(!powers||!match||match.state.winner)return;
   close();
-  const ctx={
-   id:match.id,
-   state:match.state,
-   mode:match.mode,
-   first:match.first,
-   reason:null,
-   practice:match.practice,
-   online:!!match.online,
-   revision:match.powersHistory?match.powersHistory.revision:match.state.moves.length,
-   generation:match.powersHistory?match.powersHistory.generation:0,
-   history:match.powersHistory||null,
-   powers:match.powers||null,
-   charges:match.powers?match.powers.botUndo.charges:0,
-   used:match.powers?match.powers.botUndo.presses:0,
-   botPending:false
-  };
+  const ctx=powerContext(null,false);
   const applied=powers.apply('undo',ctx);
   if(!applied.applied)notify('Could not rewind move.');
   else {
    match.assisted=true;
    notify('Turn rewound!');
+   renderPowerControls();
   }
  },
+ /* The visible Bot control zone. Both buttons act only when the pure module says the kind is
+    eligible and the player can actually pay for it; a shown/skipped ad grants nothing and the
+    player is told the truth instead. */
+ botundo:async()=>{
+  if(!powers||!match||match.state.winner)return;
+  const ctx=powerContext(null,!!botTimer);
+  const elig=powers.eligibility(ctx);
+  if(!elig.undo.eligible)return notify(powerReasonText(R.powersAllowed(ctx,'undo')?elig.undo.reason:'MODE_NOT_ELIGIBLE'));
+  if(ctx.charges<1){
+   /* No charge is banked, so the offered path is the ad. The promise is stated before it starts. */
+   if(!await askReward(undoRewardCopy()))return;
+   const earned=await powers.request('undo',ctx);
+   if(!earned.earned)return notify(powerReasonText(earned.reason));
+   /* A restart, leave or resign during the ad replaces the match. The earned item stays banked
+      rather than being spent on a board the player is no longer looking at. */
+   if(!match||match.id!==ctx.id)return notify('Two Undo presses earned and banked.');
+  }
+  const applied=powers.apply('undo',powerContext(null,!!botTimer));
+  if(!applied.applied)return notify(powerReasonText(applied.reason));
+  match.assisted=true;hintSquare=null;
+  notify('Turn rewound! Choose your move.');
+  renderPowerControls();paint();
+ },
+ bothint:async()=>{
+  if(!powers||!match||match.state.winner)return;
+  const ctx=powerContext(null,!!botTimer);
+  const elig=powers.eligibility(ctx).hint;
+  if(!elig.eligible)return notify(powerReasonText(elig.reason));
+  if(powers.inventory().hint.available<1){
+   if(!await askReward(hintRewardCopy()))return;
+   const earned=await powers.request('hint',ctx);
+   if(!earned.earned)return notify(powerReasonText(earned.reason));
+   if(!match||match.id!==ctx.id)return notify('Tactical Power earned and banked.');
+  }
+  const applied=powers.apply('hint',powerContext(null,!!botTimer));
+  if(!applied.applied)return notify(powerReasonText(applied.reason));
+  notify('Recommended square highlighted. You can still play anywhere legal.');
+  renderPowerControls();paint();
+ },
+ /* Deliberately a disclosure, not a control: see counterDisclosure(). */
+ powercounters:()=>open('Counter powers',counterDisclosure()+'<p class="caption">Your Tactical Power suggestion is not revealed to a counter while a counter window is open, and a counter never reveals a suggestion that was already shown.</p>'+fullButton('Close','close','',true),'info'),
+ rewardyes:()=>{close();rewardAnswer(true);},rewardno:()=>{close();rewardAnswer(false);},
  acceptfriend:async id=>{try{await NET.acceptFriend(id,opId());await refreshOnline();render();}catch(e){notify(friendlyError(e));}},
  cancelqueue:async()=>{if(queueCancelling)return;queueCancelling=true;clearInterval(onlinePoll);waitingId=null;try{if(queueSubmission)await queueSubmission.catch(()=>{});const r=await NET.cancelQueue(opId());if(r.state==='playing'){beginOnline(await NET.match(r.matchId));return;}}catch{notify('Cancellation could not be confirmed. Reconnect to check the match.');}finally{queueCancelling=false;}close();},
  cancelinvite:async()=>{const id=waitingId;if(!id)return;try{await NET.cancel(id,opId());clearInterval(onlinePoll);waitingId=null;close();}catch(e){notify(friendlyError(e));}},
- close:()=>{if(sheetKind==='terminal'){finalizeTerminalResult();close();return;}if(sheetKind==='queue')return actions.cancelqueue();if(sheetKind==='waiting'&&waitingId)return $('#sheet [data-action="cancelqueue"]')?actions.cancelqueue():actions.cancelinvite();close();},theme:v=>{if(!themeNames[v])return;data.settings.theme=v;applyTheme();save();if(sheetKind==='settings'){const top=$('#sheet').scrollTop;settings();$('#sheet').scrollTop=top;}render();paint();},
+ close:()=>{if(sheetKind==='reward'){const answer=rewardAnswer;rewardAnswer=()=>{};const settle=()=>answer(false);close();return settle();}if(sheetKind==='terminal'){finalizeTerminalResult();close();return;}if(sheetKind==='queue')return actions.cancelqueue();if(sheetKind==='waiting'&&waitingId)return $('#sheet [data-action="cancelqueue"]')?actions.cancelqueue():actions.cancelinvite();close();},theme:v=>{if(!themeNames[v])return;data.settings.theme=v;applyTheme();save();if(sheetKind==='settings'){const top=$('#sheet').scrollTop;settings();$('#sheet').scrollTop=top;}render();paint();},
  statmode:v=>{statsMode=v;statsDifficulty='all';render();},metric:v=>{rankMetric=v;online.rows=[];render();refreshOnline();},league:v=>{rankLeague=v;online.rows=[];render();refreshOnline();},challenge,friendchallenge:v=>challenge(v,'friend'),sendchallenge:sendChallenge,reviewinvite:reviewInvite,
  acceptinvite:async v=>{const m=online.invitations.find(x=>x.id===v);if(!m)return;try{const accepted=await NET.accept(v,m.termsHash,opId());window.MegaCommunity?.refresh?.(false);if(accepted.status==='PLAYING')beginOnline(accepted);else watchInvitation(accepted.id,accepted.terms?.source==='queue'?'queue':'challenge',accepted);}catch(e){if(['REQUOTE_REQUIRED','OFFER_EXPIRED','TERMS_CHANGED'].includes(e?.message)){close();refreshOnline();window.MegaCommunity?.refresh?.(false);}notify(friendlyError(e));}},
  declineinvite:async v=>{try{await NET.decline(v,opId());close();await refreshOnline();window.MegaCommunity?.refresh?.(false);}catch(e){notify(friendlyError(e));}},

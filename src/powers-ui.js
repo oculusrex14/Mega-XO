@@ -9,21 +9,24 @@
    serving the account-bound cosmetic lane and is never consulted here. A browser or offline build
    has no native lane, so `request()` resolves `earned:false` and the game stays fully playable.
 
-   Shipped live scope: `undo` (Bot Undo). The other three kinds exist in the pure rules module and in
-   `inventory()`; the client refuses to earn or apply them until their UI and (for the separately
-   owner-gated Casual Undo protocol) the two-player Core agreement land.
+   Shipped live scope: `undo` (Bot Undo) and `hint` (Tactical Power in a Bot match). `undoBlock` and
+   `tacticalBlock` exist in the pure rules module and in `inventory()`, but the client refuses to earn
+   or apply them: a counter answers another player's power use, so it is only meaningful in the
+   two-player Casual protocol, which is not built. They are disclosed as unavailable, not faked.
 
    `eligibility` is side-effect free. `request` grants only from a native-confirmed EARNED and never
    from a shown/closed callback. `apply` is fenced on the live match revision, so a late Bot reply can
-   never land on a rewound board. */
+   never land on a rewound board and a hint can never describe a board that already moved. */
 (function(root,factory){
- const api=factory(typeof module==='object'?require('./gameplay-rewind.js'):root.MegaRewind);
+ const api=factory(typeof module==='object'?require('./gameplay-rewind.js'):root.MegaRewind,
+  typeof module==='object'?require('./game.js'):root.MegaGame);
  if(typeof module==='object')module.exports=api;else root.MegaPowersAdapter=api;
-})(globalThis,R=>{
+})(globalThis,(R,G)=>{
 'use strict';
 const VERSION='powers/v1',INVENTORY_VERSION='powers/inventory/v1',STATE_VERSION=1;
-/* Only Bot Undo is wired into the live client; the remaining kinds are refused, not stubbed. */
-const SHIPPED=Object.freeze(['undo']);
+/* Bot Undo and Tactical Power are wired into the live client; the two counter kinds are refused,
+   not stubbed. */
+const SHIPPED=Object.freeze(['undo','hint']);
 const isId=value=>typeof value==='string'&&value.length>0&&value.length<=160;
 const count=(value,fallback=0)=>{
  if(!Number.isSafeInteger(value)||value<0)return fallback;
@@ -149,6 +152,9 @@ function createPowers(options={}){
     probe into that shared ledger; absent, it reports zero and behaviour is exactly the powers lane's
     own count. */
  const otherShown=typeof options.otherShown==='function'?options.otherShown:()=>0;
+ /* The caller supplies the Expert recommender, so the suggestion is a real engine answer for the
+    board being hinted. The module still validates it against G.legal before showing anything. */
+ const recommender=typeof options.recommender==='function'?options.recommender:({state})=>G&&typeof G.choose==='function'?G.choose(state,'Expert'):null;
  const matchRevisions=new Map();
  let state=migrateState(storage&&typeof storage.read==='function'?storage.read():null,clock());
  let inFlight=false;
@@ -217,7 +223,72 @@ function createPowers(options={}){
   matchRevisions.set(summary.id, rewound.revision);
   return {applied:true,reason:null,revision:rewound.revision};
  }
- return Object.freeze({
+/* --- Tactical Power (hint) --------------------------------------------------------------------- */
+/* The recommendation comes from the caller's Expert engine through `recommender`, never invented
+   here, and it is filtered through G.legal so an engine that returns a non-legal square is refused
+   instead of shown. Caps, the pending window and every refusal reason are the pure module's own. */
+const hintSideOf=powers=>powers.hint[R.HUMAN];
+function hintEligibilityOf(summary,inventory){
+ const state_=summary&&summary.state;
+ const powers=powersOf(summary);
+ const side=hintSideOf(powers);
+ const shape={activations:side.activations,deliveries:side.delivered,
+  remaining:Math.max(0,Math.min(R.POLICY.hintDeliveries-side.delivered,R.POLICY.hintActivations-side.activations)),
+  charges:inventory?inventory.available.hint:0};
+ /* Ranked, staked/direct, tournament, party, LAN, tutorial and practice are refused by the mode gate
+    itself, and an unstated mode is not permission. */
+ const reason=
+  !summary?'NO_MATCH':
+  !state_||!Array.isArray(state_.moves)?'INVALID_STATE':
+  !R.powersAllowed(summary,'hint')?'MODE_NOT_ELIGIBLE':
+  side.activations>=R.POLICY.hintActivations?'ACTIVATION_CAP':
+  side.delivered>=R.POLICY.hintDeliveries?'DELIVERY_CAP':
+  powers.pending.block?'BLOCK_WINDOW_OPEN':
+  powers.pending.hint?'HINT_PENDING':
+  state_.winner?'MATCH_FINISHED':
+  summary.botPending?'BOT_DECISION_IN_FLIGHT':
+  state_.turn!==R.HUMAN?'NOT_HUMAN_TURN':
+  null;
+ return reason?{eligible:false,reason,...shape}:{eligible:true,reason:'',...shape};
+}
+function applyHint(summary){
+ const fence=live?live():null;
+ const expected=fence?fence.revision:(Number.isInteger(summary.expectedRevision)?summary.expectedRevision:(matchRevisions.has(summary.id)?matchRevisions.get(summary.id):(summary.history?summary.history.revision:summary.state?.moves?.length)));
+ if(fence&&(fence.id!==summary.id||(fence.revision||0)!==(summary.revision||0)))
+  return {applied:false,reason:'STALE_REVISION',revision:fence.revision||0};
+ if(expected!==undefined&&Number.isInteger(summary.revision)&&summary.revision!==expected)
+  return {applied:false,reason:'STALE_REVISION',revision:expected};
+ const revision=summary.revision||0;
+ const verdict=hintEligibilityOf(summary,state.inventory);
+ if(!verdict.eligible)return {applied:false,reason:verdict.reason,revision};
+ /* A hint is an earned item, never a free tip: the banked entitlement is reserved first so an
+    unbanked press refuses with the pure module's own NO_ENTITLEMENT and nothing is spent. */
+ const attemptId=newAttemptId(host,clock());
+ const held=R.reserve(state.inventory,'hint',{id:attemptId});
+ if(!held.ok)return {applied:false,reason:held.reason,revision};
+ const release=()=>{const back=R.release(held.inventory,'hint',{id:attemptId});if(back.ok){state.inventory=back.inventory;persist();}};
+ if(!commit){release();return {applied:false,reason:'NO_LIVE_MATCH',revision};}
+ /* The counters are spent purely before the match moves: an exhausted or already-pending slot
+    refuses with the module's own reason instead of stranding the reservation. */
+ const requested=R.hintRequest(powersOf(summary),R.HUMAN);
+ if(!requested.ok){release();return {applied:false,reason:requested.reason,revision};}
+ const square=recommender({state:summary.state,difficulty:summary.difficulty||null,first:summary.first||R.HUMAN});
+ const legal=G.legal(summary.state);
+ /* A recommendation the engine cannot make, or one that is not a legal square, is refused rather
+    than shown: the player keeps every legal choice because this only ever highlights one square. */
+ if(!square||!Number.isInteger(square.b)||!Number.isInteger(square.c)||!legal.some(move=>move.b===square.b&&move.c===square.c))
+  {release();return {applied:false,reason:legal.length?'ENGINE_ILLEGAL_RECOMMENDATION':'NO_LEGAL_MOVE',revision};}
+ const revealed=R.hintReveal(requested.powers,{square:{b:square.b,c:square.c}});
+ if(!revealed.ok){release();return {applied:false,reason:revealed.reason,revision};}
+ const installed=commit({type:'hint',matchId:summary.id||null,expectedRevision:summary.revision,
+  powers:revealed.powers,square:{b:square.b,c:square.c},player:R.HUMAN,revision});
+ if(installed===false){release();return {applied:false,reason:'LIVE_MATCH_CHANGED',revision};}
+ const settled=R.commit(held.inventory,'hint',{id:attemptId});
+ if(settled.ok)state.inventory=settled.inventory;
+ persist();
+ return {applied:true,reason:null,revision,square:{b:square.b,c:square.c},player:R.HUMAN};
+}
+return Object.freeze({
   version:VERSION,
   inventory(){
    const bucket=kind=>({available:state.inventory.available[kind],reserved:state.inventory.reserved[kind]?state.inventory.reserved[kind].token:null});
@@ -225,8 +296,9 @@ function createPowers(options={}){
   },
   eligibility(matchSummary){
    const summary=summaryOf(matchSummary,live);
-   if(!enabled())return {undo:{eligible:false,reason:'FEATURE_DISABLED',ply:summary?R.plies(summary):0,charges:summary?chargesOf(summary):0,perMatchUsed:summary?usedOf(summary):0}};
-   return {undo:eligibilityOf(summary)};
+   if(!enabled())return {undo:{eligible:false,reason:'FEATURE_DISABLED',ply:summary?R.plies(summary):0,charges:summary?chargesOf(summary):0,perMatchUsed:summary?usedOf(summary):0},
+    hint:{eligible:false,reason:'FEATURE_DISABLED',activations:0,deliveries:0,remaining:0,charges:0}};
+   return {undo:eligibilityOf(summary),hint:hintEligibilityOf(summary,state.inventory)};
   },
   request(kind,context){
    return Promise.resolve().then(()=>{
@@ -248,7 +320,7 @@ function createPowers(options={}){
     const aggregate={...windowedNow,shown:Math.min(R.POLICY.rewardedDayCap,windowedNow.shown+others)};
     const gate=R.offerAllowed(aggregate,state.inventory,{kind,now});
     if(!gate.ok)return {earned:false,reason:gate.reason,entitlement:null};
-    const offer=eligibilityOf(summary);
+    const offer=kind==='hint'?hintEligibilityOf(summary,state.inventory):eligibilityOf(summary);
     if(!offer.eligible||offer.charges>0)return {earned:false,reason:offer.charges>0?'CHARGE_AVAILABLE':offer.reason,entitlement:null};
     const id=newAttemptId(host,now);
     state={...state,attempt:{id,kind,at:now}};
@@ -280,7 +352,7 @@ function createPowers(options={}){
    if(!summary)return {applied:false,reason:'NO_MATCH',revision};
    if(!R.KINDS.includes(kind))throw Error('INVALID_KIND');
    if(!SHIPPED.includes(kind))return {applied:false,reason:'POWER_NOT_SHIPPED',revision};
-   return applyUndo(summary);
+   return kind==='hint'?applyHint(summary):applyUndo(summary);
   },
   pacing(){
    const windowed=R.pacingWindow(state.pacing,clock());

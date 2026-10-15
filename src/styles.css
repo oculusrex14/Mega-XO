@@ -827,3 +827,205 @@ html,body{min-height:100dvh}
 @media(forced-colors:active){
  #page>*,.party-body>*,.bottom-sheet:not([hidden]),.sheet-backdrop:not([hidden]){animation:none!important}
 }
+
+/* V5.2 match references. All tokens and overrides are scoped to the match screen; home, shop,
+   account and theme selection retain their existing design. A short phone scrolls this screen
+   instead of compressing the 81-cell board to make room for the optional powers. */
+#gameScreen{
+ --match-bg:#f8fafc;--match-panel:#fff;--match-ink:#101733;--match-muted:#647186;
+ --match-line:#e0e7ee;--match-grid:#dce3eb;--match-dot:#d1d9e2;--match-edge:#dbe3ec;
+ --match-shadow:0 3px 8px #2434490d,inset 0 1px 0 #fff;--match-active:#b9f52e;
+ --match-hud:#1e2931;--match-hud-text:#d0ff49;--match-hud-muted:#d0dbe7;
+ --power-undo:#0874e6;--power-undo-bg:#eaf6ff;--power-counter:#cb1953;--power-counter-bg:#fff0f5;
+ --power-hint:#9a6500;--power-hint-bg:#fff8dc;--power-shield:#6932c1;--power-shield-bg:#f4edff;
+ --x:#1983ff;--o:#f42168;--x-soft:#e7f2ff;--o-soft:#ffedf3;
+ overflow-x:hidden;overflow-y:auto;overscroll-behavior:contain;
+ padding:calc(14px + env(safe-area-inset-top)) 15px calc(18px + env(safe-area-inset-bottom));
+ gap:0;background:var(--match-bg);color:var(--match-ink);scrollbar-width:thin;
+}
+#gameScreen[hidden]{display:none}
+#gameScreen .match-top{height:auto;min-height:46px;gap:8px;padding:0;flex:none;margin-bottom:13px}
+#gameScreen .match-top>div{min-width:0;text-align:center}
+#gameScreen .match-top b{font:700 18px/1.2 var(--sans,var(--heading));letter-spacing:-.4px}
+#gameScreen .match-top small{font:500 10px/1.4 var(--mono);letter-spacing:.07em;margin-top:4px;color:var(--match-muted)}
+#gameScreen .match-top .icon-button,#gameScreen .timer{
+ width:44px;min-width:44px;height:44px;min-height:44px;padding:0;flex:none;
+ color:var(--match-ink);background:var(--match-panel);border:1px solid var(--match-line);
+ border-radius:12px;box-shadow:var(--match-shadow);display:grid;place-items:center;
+}
+#gameScreen .match-top .icon{width:23px;height:23px}
+#gameScreen .timer{font:600 14px/1 var(--sans,var(--heading));font-variant-numeric:tabular-nums}
+#gameScreen .timer.urgent{color:var(--danger);border-color:var(--danger);background:var(--danger-soft)}
+#gameScreen .players{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px;margin:0 0 10px}
+#gameScreen .player{min-height:63px;padding:9px 9px;gap:8px;border:1px solid var(--match-line);border-radius:18px;background:var(--match-panel);box-shadow:var(--match-shadow);color:var(--match-ink);outline:0}
+#gameScreen .player.active{border-color:color-mix(in srgb,var(--x) 30%,var(--match-line));box-shadow:var(--match-shadow);outline:0}
+#gameScreen #playerX.active{background:var(--x-soft)}
+#gameScreen #playerO.active{background:var(--o-soft);border-color:color-mix(in srgb,var(--o) 35%,var(--match-line))}
+#gameScreen .player-glyph{width:39px;height:39px;border-radius:11px;background:var(--x-soft);color:var(--x)}
+#gameScreen .player-glyph.o{background:var(--o-soft);color:var(--o)}
+#gameScreen .player-glyph svg{display:block;width:34px;height:34px;fill:none;stroke:currentColor;stroke-width:6;stroke-linecap:round}
+#gameScreen .player b{font:700 13px/1.3 var(--sans,var(--heading));overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#gameScreen .player small{font:500 10px/1.4 var(--mono);margin-top:3px;color:var(--match-muted)}
+#gameScreen .player strong{font:700 29px/1 var(--sans,var(--heading));font-variant-numeric:tabular-nums}
+#gameScreen .turn-hud{position:relative;overflow:hidden;min-height:51px;flex:none;margin:0 0 11px;padding:8px;gap:10px;background:var(--match-hud);color:var(--match-hud-text);border:1px solid var(--match-edge);border-radius:12px;box-shadow:var(--match-shadow)}
+#gameScreen .turn-hud::after{content:"";position:absolute;right:10px;top:10px;width:50px;height:28px;background:radial-gradient(circle,var(--match-muted) .6px,transparent 1px) 0 0/7px 7px;opacity:.3;pointer-events:none}
+#gameScreen .turn-hud>div{position:relative;z-index:1}
+#gameScreen .turn-hud .turn-icon{width:34px;height:34px;margin:0;border-radius:9px;background:var(--match-active);color:#142518;box-shadow:0 1px 5px #0002}
+#gameScreen .turn-hud .turn-icon .icon{width:22px;height:22px}
+#gameScreen .turn-hud b{font:700 12px/1.25 var(--sans,var(--heading));letter-spacing:.01em;color:var(--match-hud-text)}
+#gameScreen .turn-hud span:not(.turn-icon){font:500 9px/1.4 var(--mono);letter-spacing:.065em;color:var(--match-hud-muted);margin-top:3px}
+#gameScreen .board-wrap{width:100%;max-width:430px;aspect-ratio:1;flex:none;margin:0 auto;border:0;border-radius:14px;box-shadow:none}
+#gameScreen .mega-board{inset:0;gap:7px}
+#gameScreen .mini{border:2px solid var(--match-panel);border-radius:13px;background:var(--match-panel);box-shadow:var(--match-shadow);opacity:1;overflow:hidden}
+#gameScreen .mini.inactive{opacity:1;background:var(--match-panel)}
+#gameScreen .mini.available{box-shadow:var(--match-shadow);outline:1px solid var(--match-line);outline-offset:0}
+#gameScreen .mini.active{background:var(--match-panel);border-color:var(--match-active);outline:3px solid var(--match-active);outline-offset:0;box-shadow:inset 0 0 0 1px var(--match-panel),0 0 0 2px color-mix(in srgb,var(--match-active) 35%,transparent)}
+#gameScreen .mini.preview{outline:3px dashed var(--focus);outline-offset:-3px;opacity:1}
+#gameScreen .mini.win{outline:3px solid var(--success)}
+#gameScreen .cell{border-color:var(--match-grid);border-width:1px;background:transparent}
+#gameScreen .cell[data-mark=""]::before{content:"";position:absolute;left:50%;top:50%;width:3px;height:3px;transform:translate(-50%,-50%);border-radius:50%;background:var(--match-dot);opacity:.65}
+#gameScreen .cell:not(:disabled):hover{background:color-mix(in srgb,var(--match-active) 12%,transparent)}
+#gameScreen .mark-layer svg{width:64%;height:64%;stroke-width:4.6;filter:drop-shadow(0 1px 1px #fff8)}
+#gameScreen .claim{background:var(--match-panel);border-radius:9px}
+#gameScreen .claim.x{background:var(--x-soft)}
+#gameScreen .claim.o{background:var(--o-soft)}
+#gameScreen .claim .mark-layer{inset:10%}
+#gameScreen .board-note{font:500 10.5px/1.5 var(--sans,var(--heading));min-height:26px;margin:8px 0 9px;color:var(--match-muted);flex:none}
+#gameScreen .match-powers{flex:none;padding:10px 8px 6px;border:1px solid var(--match-line);border-radius:17px;background:var(--match-panel);box-shadow:var(--match-shadow);margin:0 0 12px}
+#gameScreen .match-powers[hidden]{display:none}
+#gameScreen .power-bar-heading{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:0 4px 8px}
+#gameScreen .power-bar-heading h2{display:flex;align-items:center;gap:7px;margin:0;font:700 12px/1 var(--sans,var(--heading));letter-spacing:.1em;text-transform:uppercase;color:var(--match-ink)}
+#gameScreen .power-bar-heading h2 .power-symbol{width:23px;height:23px;fill:#6964ff;color:#6964ff}
+#gameScreen .power-bar-heading>span{font:500 7px/1.3 var(--mono);letter-spacing:.075em;color:var(--match-muted);text-transform:uppercase}
+#gameScreen .power-cards{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
+#gameScreen .power-card{
+ --power-color:var(--power-undo);--power-bg:var(--power-undo-bg);
+ position:relative;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;
+ min-width:0;min-height:106px;padding:10px 3px 6px;gap:4px;border:1px solid color-mix(in srgb,var(--power-color) 35%,var(--match-panel));border-radius:12px;
+ color:var(--match-ink);background:var(--power-bg);box-shadow:inset 0 1px 0 #ffffff80,0 2px 4px #2434490a;font-family:var(--sans,var(--heading));
+}
+#gameScreen .power-card--undoBlock{--power-color:var(--power-counter);--power-bg:var(--power-counter-bg)}
+#gameScreen .power-card--hint{--power-color:var(--power-hint);--power-bg:var(--power-hint-bg)}
+#gameScreen .power-card--tacticalBlock{--power-color:var(--power-shield);--power-bg:var(--power-shield-bg)}
+#gameScreen .power-card>.power-symbol{width:36px;height:36px;color:var(--power-color);margin:5px 0 0;flex:none}
+#gameScreen .power-card--hint>.power-symbol{fill:color-mix(in srgb,var(--power-color) 12%,transparent)}
+#gameScreen .power-count{position:absolute;top:4px;right:4px;display:grid;place-items:center;width:19px;height:19px;border-radius:50%;background:var(--power-color);color:#fff;font:700 10px/1 var(--sans,var(--heading));font-variant-numeric:tabular-nums}
+#gameScreen .power-name{font-size:10.5px;font-weight:700;line-height:1.2;min-height:13px;text-align:center}
+#gameScreen .power-card small{font:500 8px/1.25 var(--sans,var(--heading));text-align:center;overflow-wrap:anywhere;color:var(--match-muted);min-height:20px}
+#gameScreen .power-card:disabled{cursor:default;opacity:1}
+#gameScreen .power-card:disabled>.power-symbol{opacity:.62}
+#gameScreen .power-card:disabled .power-count{background:var(--match-muted)}
+#gameScreen .power-card.is-active{outline:2px solid var(--power-color);outline-offset:1px}
+#gameScreen .power-disclosure{display:block;margin:3px auto -3px;min-height:32px;padding:5px 8px;border:0;background:none;color:var(--match-muted);font:500 9px/1.35 var(--sans,var(--heading));text-decoration:underline;text-underline-offset:2px}
+#gameScreen .match-controls{flex:none;grid-template-columns:72px minmax(0,1fr) 72px;gap:9px;padding:0;margin:0}
+#gameScreen .match-controls .button{height:52px;min-height:52px;border:1px solid var(--match-line);border-radius:13px;background:var(--match-panel);color:var(--match-ink);box-shadow:var(--match-shadow);font-size:11px;gap:3px}
+#gameScreen .match-controls .button:nth-child(2){font-size:16px;background:color-mix(in srgb,var(--match-panel) 60%,var(--match-bg));color:#c01d3c!important;gap:8px}
+#gameScreen .match-control-icon .icon{width:21px;height:21px}
+#gameScreen :is(button,.cell):focus-visible{outline:3px solid var(--focus);outline-offset:3px;z-index:4}
+
+/* Night references share a luminous cyan/pink board, with a distinct gold or lime routing key. */
+:root[data-theme="midnight"] #gameScreen,
+:root[data-theme="afterhours"] #gameScreen{
+ --match-bg:#030b20;--match-panel:#07132e;--match-ink:#f3f5ff;--match-muted:#a8bce9;
+ --match-line:#355caa;--match-grid:#254277;--match-dot:#4665a3;--match-edge:#416be6;
+ --match-shadow:inset 0 1px 4px #8aafff60,0 0 5px #295fe34d;--match-active:#c6ff36;
+ --match-hud:#030c22;--match-hud-text:#d5ff54;--match-hud-muted:#b8cbff;
+ --power-undo:#2ce5ff;--power-undo-bg:#063453;--power-counter:#ff59ba;--power-counter-bg:#3b123c;
+ --power-hint:#ffe238;--power-hint-bg:#3d3511;--power-shield:#ac7cff;--power-shield-bg:#291857;
+ --x:#25edff;--o:#ff44ae;--x-soft:#072954;--o-soft:#49103d;
+ background:radial-gradient(ellipse at 50% 20%,#10275d66,transparent 68%),var(--match-bg);
+}
+:root[data-theme="afterhours"] #gameScreen{
+ --match-bg:#100622;--match-panel:#180b34;--match-line:#6438b1;--match-grid:#3f256f;--match-dot:#5c3d95;--match-edge:#7945e2;
+ --match-shadow:inset 0 1px 4px #ae8cff50,0 0 7px #6f37db55;--match-active:#ffe14a;
+ --match-hud:#100624;--match-hud-text:#ffe75d;--match-hud-muted:#c6b5ff;--match-muted:#bba9eb;
+ background:radial-gradient(ellipse at 50% 25%,#27104488,transparent 65%),var(--match-bg);
+}
+:root[data-theme="midnight"] #gameScreen .player,
+:root[data-theme="afterhours"] #gameScreen .player{border-radius:12px;background:linear-gradient(120deg,var(--x-soft),var(--match-panel));border-color:color-mix(in srgb,var(--x) 65%,var(--match-line));box-shadow:inset 0 1px 4px #56dfff50,0 0 7px #18b8ff20}
+:root[data-theme="midnight"] #gameScreen #playerO,
+:root[data-theme="afterhours"] #gameScreen #playerO{background:linear-gradient(120deg,var(--o-soft),var(--match-panel));border-color:color-mix(in srgb,var(--o) 60%,var(--match-line));box-shadow:inset 0 1px 4px #ff7bc950,0 0 7px #ff44ae20}
+:root[data-theme="midnight"] #gameScreen .player.active,
+:root[data-theme="afterhours"] #gameScreen .player.active{border-width:2px;box-shadow:inset 0 0 9px color-mix(in srgb,var(--x) 30%,transparent),0 0 8px color-mix(in srgb,var(--x) 40%,transparent)}
+:root[data-theme="midnight"] #gameScreen .player-glyph,
+:root[data-theme="afterhours"] #gameScreen .player-glyph{background:transparent;filter:drop-shadow(0 0 5px currentColor)}
+:root[data-theme="midnight"] #gameScreen .board-wrap,
+:root[data-theme="afterhours"] #gameScreen .board-wrap{border:1px solid var(--match-edge);box-shadow:var(--match-shadow);background:#00000020}
+:root[data-theme="midnight"] #gameScreen .mega-board,
+:root[data-theme="afterhours"] #gameScreen .mega-board{inset:10px;gap:8px}
+:root[data-theme="midnight"] #gameScreen .mini,
+:root[data-theme="afterhours"] #gameScreen .mini{border:1px solid var(--match-edge);border-radius:9px;background:linear-gradient(135deg,var(--match-panel),color-mix(in srgb,var(--match-bg) 90%,#000));box-shadow:var(--match-shadow)}
+:root[data-theme="midnight"] #gameScreen .mini.active,
+:root[data-theme="afterhours"] #gameScreen .mini.active{border-color:var(--match-active);outline:3px solid var(--match-active);box-shadow:inset 0 0 8px color-mix(in srgb,var(--match-active) 40%,transparent),0 0 8px color-mix(in srgb,var(--match-active) 35%,transparent)}
+:root[data-theme="midnight"] #gameScreen .claim.o,
+:root[data-theme="afterhours"] #gameScreen .claim.o{background:radial-gradient(ellipse,var(--o-soft),#42102e);box-shadow:inset 0 0 0 2px #ff44ae80,inset 0 0 14px #ff44ae50}
+:root[data-theme="midnight"] #gameScreen .claim.x,
+:root[data-theme="afterhours"] #gameScreen .claim.x{box-shadow:inset 0 0 0 2px #25edff80}
+:root[data-theme="midnight"] #gameScreen .mark-layer svg,
+:root[data-theme="afterhours"] #gameScreen .mark-layer svg{filter:drop-shadow(0 0 4px currentColor)}
+:root[data-theme="midnight"] #gameScreen .power-card,
+:root[data-theme="afterhours"] #gameScreen .power-card{border-color:var(--power-color);background:linear-gradient(135deg,var(--power-bg),var(--match-panel));box-shadow:inset 0 1px 5px color-mix(in srgb,var(--power-color) 40%,transparent),0 0 6px color-mix(in srgb,var(--power-color) 18%,transparent)}
+:root[data-theme="midnight"] #gameScreen .power-count,
+:root[data-theme="afterhours"] #gameScreen .power-count{color:var(--power-color);background:var(--match-panel);border:1px solid var(--power-color)}
+:root[data-theme="midnight"] #gameScreen .power-card>.power-symbol,
+:root[data-theme="afterhours"] #gameScreen .power-card>.power-symbol{filter:drop-shadow(0 0 3px currentColor)}
+:root[data-theme="midnight"] #gameScreen .match-controls,
+:root[data-theme="afterhours"] #gameScreen .match-controls{padding:7px;border:1px solid var(--match-line);border-radius:15px;background:var(--match-panel);box-shadow:var(--match-shadow)}
+:root[data-theme="midnight"] #gameScreen .match-controls .button,
+:root[data-theme="afterhours"] #gameScreen .match-controls .button{height:44px;min-height:44px;border:0;box-shadow:none;background:none}
+:root[data-theme="midnight"] #gameScreen .match-controls .button:nth-child(2),
+:root[data-theme="afterhours"] #gameScreen .match-controls .button:nth-child(2){color:#ff6ebd!important;border:1px solid var(--match-line);background:linear-gradient(120deg,#ffffff08,transparent)}
+
+/* Paper Club uses ink outlines, warm grain and slightly uneven corners rather than neon glow. */
+:root[data-theme="paperclub"] #gameScreen{
+ --match-bg:#faf3df;--match-panel:#fff9e9;--match-ink:#302e2a;--match-muted:#665f52;
+ --match-line:#494539;--match-grid:#acbac1;--match-dot:transparent;--match-edge:#494539;
+ --match-shadow:2px 3px 0 #66552e30,inset 0 0 0 1px #ffffff80;--match-active:#ffc72e;
+ --match-hud:#fff0ba;--match-hud-text:#302e2a;--match-hud-muted:#494539;
+ --power-undo:#1267b8;--power-undo-bg:#dfeef8;--power-counter:#b62a45;--power-counter-bg:#ffe1e3;
+ --power-hint:#946100;--power-hint-bg:#fff0b5;--power-shield:#6032a2;--power-shield-bg:#ebdffc;
+ --x:#2879cb;--o:#c63b4e;--x-soft:#e5edf5;--o-soft:#ffe5e3;
+ background:var(--paper-grain),var(--match-bg);font-family:"Patrick Hand",cursive;
+}
+:root[data-theme="paperclub"] #gameScreen .match-top b{font-size:24px;letter-spacing:.01em}
+:root[data-theme="paperclub"] #gameScreen .match-top small{font-family:"Patrick Hand",cursive;font-size:13px;letter-spacing:.05em}
+:root[data-theme="paperclub"] #gameScreen :is(.icon-button,.timer,.player,.turn-hud,.power-card,.match-powers,.match-controls .button){border:1.5px solid var(--match-line);border-radius:9px 12px 8px 11px;box-shadow:var(--match-shadow)}
+:root[data-theme="paperclub"] #gameScreen .timer{font-size:19px}
+:root[data-theme="paperclub"] #gameScreen .player b{font-size:18px}
+:root[data-theme="paperclub"] #gameScreen .player small{font-family:"Patrick Hand",cursive;font-size:13px}
+:root[data-theme="paperclub"] #gameScreen .player strong{font-size:34px}
+:root[data-theme="paperclub"] #gameScreen .player-glyph{background:none}
+:root[data-theme="paperclub"] #gameScreen .turn-hud b{font-size:15px}
+:root[data-theme="paperclub"] #gameScreen .turn-hud span:not(.turn-icon){font:500 12px/1.3 "Patrick Hand",cursive;letter-spacing:.03em}
+:root[data-theme="paperclub"] #gameScreen .turn-hud .turn-icon{border:1px solid var(--match-line);background:#ffda62;box-shadow:2px 2px 0 #66552e30;border-radius:5px}
+:root[data-theme="paperclub"] #gameScreen .mini{background:var(--paper-grain),var(--match-panel);border:2px solid #77725f;border-radius:8px 10px 7px 9px;box-shadow:1px 2px 0 #66552e40,inset 0 0 0 1px #fff}
+:root[data-theme="paperclub"] #gameScreen .mini.active{border-color:#494539;outline-color:var(--match-active);box-shadow:inset 0 0 0 1px #fff,0 0 0 2px #d79500}
+:root[data-theme="paperclub"] #gameScreen .board-note{font-family:"Patrick Hand",cursive;font-size:13px}
+:root[data-theme="paperclub"] #gameScreen .power-bar-heading h2{font-size:16px;letter-spacing:.025em}
+:root[data-theme="paperclub"] #gameScreen .power-bar-heading h2 .power-symbol{fill:#ffce44;color:#302e2a}
+:root[data-theme="paperclub"] #gameScreen .power-bar-heading>span{font:500 10px/1.2 "Patrick Hand",cursive}
+:root[data-theme="paperclub"] #gameScreen .power-name{font-size:14px;font-weight:600}
+:root[data-theme="paperclub"] #gameScreen .power-card small{font:500 10px/1.15 "Patrick Hand",cursive}
+:root[data-theme="paperclub"] #gameScreen .power-count{font-size:14px;border:1px solid var(--match-line)}
+:root[data-theme="paperclub"] #gameScreen .match-controls .button{font-size:15px}
+:root[data-theme="paperclub"] #gameScreen .match-controls .button:nth-child(2){font-size:21px}
+@media(max-width:350px){
+ #gameScreen{padding-left:10px;padding-right:10px}
+ #gameScreen .player{gap:5px;padding:7px 6px}
+ #gameScreen .player-glyph{width:29px;height:33px}
+ #gameScreen .player-glyph svg{width:29px;height:29px}
+ #gameScreen .player small{font-size:9px}
+ #gameScreen .match-top small{font-size:8px}
+ #gameScreen .power-cards{gap:4px}
+ #gameScreen .power-name{font-size:9px}
+ #gameScreen .power-card small{font-size:7.5px}
+ #gameScreen .match-controls{grid-template-columns:60px minmax(0,1fr) 60px}
+}
+@media(forced-colors:active){
+ #gameScreen :is(.player,.mini,.power-card,.turn-hud,.match-powers,.match-controls,.match-top .icon-button,.timer){box-shadow:none;border:1px solid CanvasText}
+ #gameScreen .mini.active,#gameScreen .power-card.is-active{outline:3px solid Highlight}
+ #gameScreen .power-count{color:CanvasText;background:Canvas;border:1px solid CanvasText}
+ #gameScreen .power-card:disabled{color:GrayText;border-color:GrayText}
+}
+/* The new After Hours match reference uses clean glow rather than the home screen’s scanlines. */
+:root[data-theme="afterhours"] .app:has(#gameScreen:not([hidden]))::after{display:none}

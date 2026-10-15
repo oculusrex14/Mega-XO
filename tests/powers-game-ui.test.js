@@ -289,7 +289,7 @@ function createHarness({ powersEnabled = true, initialStore = new Map(), nativeB
  const zone = doc.querySelector('.match-controls');
  return {
   sandbox, doc, store, zone, clickAction,
-  controlsMarkup: () => (zone.children.length ? zone.children.map(child => child.innerHTML).join('') : ''),
+  controlsMarkup: () => doc.querySelector('#matchPowers').innerHTML,
   /* The real board: `buildBoard()` appends 9 Mini Boards to #board, each holding 9 cell buttons, so
      a click here is the same handler path a player's tap uses. */
   playCell(b, c) {
@@ -310,7 +310,7 @@ test('the Bot Undo control is visible in the match control zone with its charges
 
  /* Two plies is below the eight-ply floor, so no control is offered yet. */
  const markup = h.controlsMarkup();
- assert.equal(markup.includes('data-action="botundo"'), false, 'Undo must not appear before the first-use ply');
+ assert.match(markup, /data-action="botundo"[^>]* disabled/, 'Undo is visible but disabled before the first-use ply');
 
  /* Preseed an eight-ply live Bot match with one banked Undo package and one banked Tactical Power. */
  const live = JSON.parse(store.get('mega_v32_state'));
@@ -327,10 +327,10 @@ test('the Bot Undo control is visible in the match control zone with its charges
  const markup2 = h2.controlsMarkup();
  assert.ok(markup2.includes('data-action="botundo"'), 'the visible Undo control must render in the match control zone');
  assert.ok(markup2.includes('data-action="bothint"'), 'the visible Tactical Power control must render');
- assert.ok(markup2.includes('Undo last turn (2 left)'), 'the control must show its remaining charges');
+ assert.ok(markup2.includes('2 earned charges'), 'the control must show its remaining charges');
  /* It is the match control zone that carries it, beside Rules/Restart/Stats — not only the sheet. */
- const zone = h2.sandbox.document.querySelector('.match-controls');
- assert.ok(zone.children.length > 0, 'the control zone carries the rewarded row');
+ const bar = h2.sandbox.document.querySelector('#matchPowers');
+ assert.equal(bar.hidden, false, 'the dedicated bar above the control zone is visible');
  const sheet = h2.sandbox.document.getElementById('sheet');
  assert.equal(sheet.hidden, true, 'and it is visible without opening the stats sheet');
 });
@@ -358,7 +358,7 @@ test('no charge banked: the control offers the ad and states exactly what it ear
  const h2 = createHarness({ initialStore: store, nativeBridge: { present: async () => ({ outcome: 'earned' }), isReady: () => true, privacyState: () => ({ canRequestAds: true }) } });
  await h2.sandbox.MegaApp.resumeOffline();
  const before = h2.sandbox.MegaXO.getState();
- assert.ok(h2.controlsMarkup().includes('Undo with a rewarded ad'), 'with no charge the control offers the ad');
+ assert.ok(h2.controlsMarkup().includes('Optional rewarded ad'), 'with no charge the control offers the ad');
 
  /* The promise is stated BEFORE the ad starts, in the sheet the player answers. */
  const pendingClick = h2.clickAction('botundo');
@@ -448,7 +448,7 @@ test('Tactical Power highlights an engine-legal square and still leaves every le
  assert.deepEqual({ b: played.moves.at(-1).b, c: played.moves.at(-1).c }, { b: alternative.b, c: alternative.c }, 'the player played their own square, not the recommendation');
 });
 
-test('an exhausted Undo package offers no control, and the stats sheet keeps its own entry point', async () => {
+test('an exhausted Undo package stays disabled, and the stats sheet keeps its own entry point', async () => {
  const store = new Map();
  const h = createHarness();
  const live = JSON.parse(h.store.get('mega_v32_state'));
@@ -462,7 +462,7 @@ test('an exhausted Undo package offers no control, and the stats sheet keeps its
  const h2 = createHarness({ initialStore: store, nativeBridge: { present: async () => ({ outcome: 'earned' }), isReady: () => true, privacyState: () => ({ canRequestAds: true }) } });
  await h2.sandbox.MegaApp.resumeOffline();
  const markup = h2.controlsMarkup();
- assert.equal(markup.includes('data-action="botundo"'), false, 'a spent package must not render an Undo control');
+ assert.match(markup, /data-action="botundo"[^>]* disabled/, 'a spent package must not offer an enabled Undo');
  assert.ok(markup.includes('data-action="bothint"'), 'Tactical Power is still offered by its own caps');
  assert.ok(markup.includes('data-action="powercounters"'), 'the counter disclosure stays reachable');
 
@@ -492,8 +492,8 @@ test('the two counter kinds are disclosed as unavailable and are never offered a
  const h2 = createHarness({ initialStore: store });
  await h2.sandbox.MegaApp.resumeOffline();
  const markup = h2.controlsMarkup();
- assert.equal(markup.includes('undoBlock'), false, 'Undo Block must not be a live control');
- assert.equal(markup.includes('tacticalBlock'), false, 'Tactical Block must not be a live control');
+ assert.match(markup, /power-card--undoBlock[^>]* disabled/, 'Undo Block stays visibly unavailable');
+ assert.match(markup, /power-card--tacticalBlock[^>]* disabled/, 'Hint Block stays visibly unavailable');
  assert.ok(markup.includes('data-action="powercounters"'), 'the honest disclosure entry point is present');
 
  /* The disclosure states the real reason instead of faking a counter. */

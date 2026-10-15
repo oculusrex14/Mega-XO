@@ -219,7 +219,29 @@ async function main() {
   let origin = `http://${host}:${port}`;
   const allowedOrigins = ['https://megaxo.online', 'https://www.megaxo.online', origin];
   if (publicOrigin) allowedOrigins.push(publicOrigin);
-  const apiHandler = createApiHandler({
+  /* WEB OAUTH LANE (mirror of the production composition): the well-known callback completes a
+   * real exchange only when this lane is composed. Staging reads the same env names; the callback
+   * target is the staging --public-origin when it is an https origin, else the canonical apex
+   * default in the lane applies (http staging hosts cannot receive provider redirects anyway). */
+  const { IdentityProviders } = require(path.join(ROOT, 'server/identity-provider.js'));
+  const { secret: readProviderSecret } = require(path.join(ROOT, 'server/production/config.js'));
+  const webAccountRoutes = require(path.join(ROOT, 'apps/api/routes/account.js'));
+  const identityProviders = new IdentityProviders({config: {
+    google: {
+      clientId: process.env.GOOGLE_CLIENT_ID || '',
+      clientSecret: readProviderSecret(process.env, 'GOOGLE_CLIENT_SECRET'),
+      nativeAudiences: (process.env.GOOGLE_NATIVE_AUDIENCES || '').split(',').filter(Boolean),
+      authorizedParties: (process.env.GOOGLE_AUTHORIZED_PARTIES || '').split(',').filter(Boolean),
+    },
+    apple: {
+      clientId: process.env.APPLE_SERVICE_ID || '',
+      teamId: process.env.APPLE_TEAM_ID || '',
+      keyId: process.env.APPLE_KEY_ID || '',
+      privateKey: readProviderSecret(process.env, 'APPLE_PRIVATE_KEY').replace(/\\n/g, '\n'),
+      nativeAudiences: (process.env.APPLE_NATIVE_AUDIENCES || '').split(',').filter(Boolean),
+    },
+  }});
+  const apiContext = {
     pool: apiPool, accounts, coreGateway, access, nativeAudiences: ['mega-ios', 'mega-android'],
     queue: coreGateway, leaderboard: (query) => coreGateway.leaderboard(query), otpSecret: stagingOtpSecret, otpSink,
     // The realtime-ticket route (POST /api/v1/ticket) resolves a ticket issuer from context; without
@@ -227,7 +249,11 @@ async function main() {
     // obtain a realtime ticket in staging just as in production.
     ticketIssuer,
     allowedOrigins,
-  });
+    identityProviders,
+    webCallbackOrigin: typeof publicOrigin === 'string' && publicOrigin.startsWith('https://') ? publicOrigin : undefined,
+  };
+  apiContext.completeWebSignIn = webAccountRoutes.createWebSignInLane(apiContext);
+  const apiHandler = createApiHandler(apiContext);
 
   const artifactDir = webArtifact.dir;
   const server = http.createServer(async (req, res) => {

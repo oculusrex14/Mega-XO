@@ -7,7 +7,7 @@ const { ROOT, GENERATOR, MANIFEST } = require('./build-web.js');
 const {createDownloadHandler} = require('../../apps/web/download-config.cjs');
 const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.json': 'application/json; charset=utf-8', '.webmanifest':'application/manifest+json; charset=utf-8', '.ico':'image/x-icon', '.webp': 'image/webp', '.svg': 'image/svg+xml', '.png': 'image/png', '.woff2': 'font/woff2', '.woff': 'font/woff', '.txt': 'text/plain; charset=utf-8', '.xml':'application/xml; charset=utf-8' };
 const CSP = "default-src 'self'; script-src 'self' https://unpkg.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'";
-const READ_API_ORIGIN = 'https://play.antimatterinnovations.com';
+const READ_API_ORIGIN = 'https://megaxo.online';
 const LEAGUES = new Set(['all', 'wood', 'stone', 'iron', 'bronze', 'silver', 'gold', 'diamond', 'emerald', 'champion', 'master', 'grandmaster']);
 const READ_MAX_BYTES = 262144;
 const READ_TIMEOUT_MS = 5000;

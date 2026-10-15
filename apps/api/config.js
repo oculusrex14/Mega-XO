@@ -16,7 +16,7 @@ const VALID_ENVIRONMENTS = Object.freeze(['preview', 'staging', 'production']);
 const PROD_HOSTNAMES = Object.freeze([
   'api.megaxo.online',
   'megaxo.online',
-  'play.antimatterinnovations.com'
+  'www.megaxo.online'
 ]);
 
 /**

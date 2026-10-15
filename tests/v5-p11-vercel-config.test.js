@@ -281,7 +281,7 @@ test('3.4 apps/api/config.js: preview environment validation and strict secret i
   );
 
   // Preview MUST reject production hostname
-  for (const host of ['api.megaxo.online', 'megaxo.online', 'play.antimatterinnovations.com']) {
+  for (const host of ['api.megaxo.online', 'megaxo.online', 'www.megaxo.online']) {
     assert.throws(
       () => validateConfig({
         ...validPreviewEnv,

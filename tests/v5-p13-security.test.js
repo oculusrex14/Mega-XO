@@ -266,7 +266,7 @@ test('3. Credential separation: hybrid rejected, CSRF enforced for cookies, bear
         cookie: '__Host-mega_session=sess-mutating-cookie',
         method: 'POST',
         origin,
-        referer: 'https://play.antimatterinnovations.com/game',
+        referer: 'https://megaxo.online/game',
       }),
       (err) => err.code === 'CSRF_REJECTED' && err.status === 403
     );
@@ -274,7 +274,7 @@ test('3. Credential separation: hybrid rejected, CSRF enforced for cookies, bear
   assert.equal(validateCredentials({
     cookie: '__Host-mega_session=sess-mutating-cookie',
     method: 'POST',
-    referer: 'https://play.antimatterinnovations.com/game',
+    referer: 'https://megaxo.online/game',
   }).mode, 'cookie');
 
   // 3.6 Cookie credentials with mutating method (POST) from allowed origin -> succeeds

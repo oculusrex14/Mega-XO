@@ -5,7 +5,7 @@
  * Old-origin and multi-origin CORS middleware with preflight OPTIONS and credential support.
  *
  * Requirements:
- * - Allowed origins: https://play.antimatterinnovations.com, https://megaxo.online,
+ * - Allowed origins: https://megaxo.online, https://www.megaxo.online,
  *   https://api.megaxo.online, and local development origins (localhost, 127.0.0.1, [::1]).
  * - Supports preflight OPTIONS requests with 204 status.
  * - Supports credentials (Access-Control-Allow-Credentials: true).
@@ -13,8 +13,8 @@
  */
 
 const ALLOWED_ORIGINS = Object.freeze([
-  'https://play.antimatterinnovations.com',
   'https://megaxo.online',
+  'https://www.megaxo.online',
   'https://api.megaxo.online',
 ]);
 

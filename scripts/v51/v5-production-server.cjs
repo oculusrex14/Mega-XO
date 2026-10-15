@@ -665,7 +665,7 @@ async function main() {
     try { parsed = new URL(publicOrigin); } catch { throw new Error('INVALID_PUBLIC_ORIGIN'); }
     if (parsed.protocol !== 'https:' || parsed.origin !== publicOrigin.replace(/\/$/, '')) throw new Error('PUBLIC_ORIGIN_MUST_BE_HTTPS_ORIGIN');
   }
-  const allowedOrigins = ['https://megaxo.online', 'https://play.antimatterinnovations.com', origin];
+  const allowedOrigins = ['https://megaxo.online', 'https://www.megaxo.online', origin];
   if (publicOrigin) allowedOrigins.push(publicOrigin);
 
   /* The API handler context holds ONLY API-role material: no Core pool, no Core service. Queue and

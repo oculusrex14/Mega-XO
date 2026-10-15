@@ -64,7 +64,7 @@ function extractOrigin(value) {
     const url = new URL(trimmed);
     return `${url.protocol}//${url.host}`.toLowerCase();
   } catch {
-    // If it's already an origin without path, e.g. "https://play.antimatterinnovations.com"
+    // If it's already an origin without path, e.g. "https://megaxo.online"
     if (/^https?:\/\/[^/]+/i.test(trimmed)) {
       try {
         const url = new URL(trimmed.replace(/\/+$/, '') + '/');

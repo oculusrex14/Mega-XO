@@ -217,7 +217,7 @@ async function main() {
   } : undefined;
 
   let origin = `http://${host}:${port}`;
-  const allowedOrigins = ['https://megaxo.online', 'https://play.antimatterinnovations.com', origin];
+  const allowedOrigins = ['https://megaxo.online', 'https://www.megaxo.online', origin];
   if (publicOrigin) allowedOrigins.push(publicOrigin);
   const apiHandler = createApiHandler({
     pool: apiPool, accounts, coreGateway, access, nativeAudiences: ['mega-ios', 'mega-android'],

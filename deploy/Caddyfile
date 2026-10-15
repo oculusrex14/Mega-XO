@@ -24,7 +24,7 @@
  request_body {
   max_size 300000
  }
- reverse_proxy app:8080 {
+ reverse_proxy 172.18.0.1:8080 {
   header_up X-Mega-Proxy-Key {$MEGA_PROXY_SECRET}
   header_up X-Mega-Client-IP {client_ip}
   header_up -X-Forwarded-Host
@@ -33,6 +33,33 @@
    response_header_timeout 15s
   }
  }
+}
+
+# The public game origin. Serves the same V5 application (web bundle + API + realtime) as the
+# MEGA_HOSTNAME block, on the canonical hostname. The browser client reads the API and opens its
+# realtime socket same-origin, so the whole app must live on ONE hostname; this block is that host.
+megaxo.online {
+ encode zstd gzip
+ header -Server
+ header Strict-Transport-Security "max-age=31536000"
+ @private path /internal/* /metrics /status /server/* /scripts/* /deploy/* /tests/* /.git/* /.env* /src/authority.js
+ respond @private 404
+ request_body {
+  max_size 300000
+ }
+ reverse_proxy 172.18.0.1:8080 {
+  header_up X-Mega-Proxy-Key {$MEGA_PROXY_SECRET}
+  header_up X-Mega-Client-IP {client_ip}
+  header_up -X-Forwarded-Host
+  transport http {
+   dial_timeout 3s
+   response_header_timeout 15s
+  }
+ }
+}
+
+www.megaxo.online {
+ redir https://megaxo.online{uri} permanent
 }
 
 # V5.1 signed Game Core edge (additive). Routes ONLY /ingress/* to the isolated host Core proxy,

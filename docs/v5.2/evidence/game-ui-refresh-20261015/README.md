@@ -60,3 +60,18 @@ Review and merge the new UI PR when ready. Then regenerate signed iOS/Android ar
 this exact UI on hardware, especially safe areas, text scaling, small-phone scrolling, accessibility,
 ad presentation/return and real reward consumption. This PR performs no deployment or store upload.
 Provider PR #15 remains a separate review item and must not be auto-merged.
+
+## Android CI harness correction
+
+The first PR run built both Android debug flavors successfully, then both emulator jobs failed at
+launch because `native-smoke-android.sh` hard-coded `online.megaxo.prototype/.MegaXOActivity`.
+The application ID had already changed in Main, while Kotlin's activity namespace remained the
+prototype namespace. Jobs `116268741737` and `116269224326` report `Error type 3` before render smoke.
+The smoke launcher now reads the package and launchable activity from this APK's SDK `aapt` metadata,
+validates both names, and uses the actual package for process lookup. It changes no native identity,
+manifest or runtime setting. A local existing APK's metadata resolves to
+`online.megaxo.xoxo/online.megaxo.prototype.MegaXOActivity`.
+Three new regressions cover distinct ID/namespace, relative/staging activities and missing/unsafe
+metadata. Together with native foundations they pass **34/34**; shell syntax passes. These are
+metadata tests, not an emulator pass. CI is rerun on the pushed correction; its result must be read
+from the PR rather than inferred from these local checks.

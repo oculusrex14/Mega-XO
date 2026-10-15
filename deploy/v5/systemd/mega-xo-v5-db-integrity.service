@@ -1,0 +1,19 @@
+[Unit]
+Description=Mega XO V5 production PostgreSQL integrity check (ledger, checksums, catalog posture)
+Documentation=file:/opt/mega-xo-v5-production/bin/db-integrity-check.sh
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/opt/mega-xo-v5-production/bin/db-integrity-check.sh /opt/mega-xo-v5-production
+User=root
+Group=root
+TimeoutStartSec=600
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=/opt/mega-xo-v5-production/monitoring
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6

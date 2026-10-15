@@ -1,0 +1,12 @@
+[Unit]
+Description=Run the Mega XO V5 PostgreSQL integrity check daily
+
+[Timer]
+OnBootSec=10min
+OnUnitActiveSec=24h
+AccuracySec=5min
+Persistent=true
+Unit=mega-xo-v5-db-integrity.service
+
+[Install]
+WantedBy=timers.target

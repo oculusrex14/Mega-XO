@@ -93,6 +93,13 @@ const SERVING_EPOCH_ENV = 'MEGA_V5_PRODUCTION_SERVE';
 const HTTP_PORT_ENV = 'MEGA_HTTP_PORT';
 const REDIS_CREDENTIALS_ENV = 'MEGA_V5_PRODUCTION_REDIS_CREDENTIALS';
 
+/* The scheduled backup-freshness unit's state file. `/opsz` reads it to answer "is the newest
+ * verified backup inside the approved RPO", so the probe is backup-aware rather than a liveness
+ * echo. The production unit sets `MEGA_V5_PRODUCTION_STATE_DIR`; the default matches the deployed
+ * systemd unit's root. */
+const STATE_DIR = process.env.MEGA_V5_PRODUCTION_STATE_DIR || '/opt/mega-xo-v5-production/state';
+const FRESHNESS_STATE_FILE = path.join(STATE_DIR, 'freshness-state.json');
+
 /* The private-material filenames inside the secrets directory. All are absolute, regular,
  * non-symlinked, mode-0600 files; the two `.secret` files are created once (0600) and then reused, so
  * a restart never invalidates a one-time code or a configured ingress caller. */
@@ -413,15 +420,69 @@ function loadWebArtifact(dir) {
 
 /* Which surface a request path belongs to. Pure and total, so the routing decision can be asserted
  * offline: `ingress` (the signed Core ingress), `api` (the API handler, which also owns /livez,
- * /readyz and /health), `operator` (refused privately), `realtime` (owned by the transport) or
- * `static` (the generated bundle). */
+ * /readyz and /health), `ops` (the operations-health probe: the V5 equivalent of the V4 `/opsz`,
+ * which reads backup freshness and the durable worker queue rather than process liveness alone),
+ * `operator` (refused privately), `realtime` (owned by the transport) or `static` (the generated
+ * bundle). */
 function classifyPath(pathname) {
   if (typeof pathname !== 'string' || pathname.length === 0) throw REFUSE('PATH_REQUIRED');
   if (pathname === '/realtime/v1/snapshot' || pathname === '/realtime/v1/snapshot/' || pathname.startsWith('/realtime/v1/match/')) return 'realtime';
   if (pathname.startsWith('/ingress/')) return 'ingress';
+  if (pathname === '/opsz') return 'ops';
   if (pathname.startsWith('/api/') || pathname.startsWith('/auth/') || pathname.startsWith('/.well-known/') ||
       pathname === '/health' || pathname === '/livez' || pathname === '/readyz') return 'api';
   return 'static';
+}
+
+/* The operations-health budget: how stale a verified backup may be before `/opsz` reports red, and
+ * how much worker backlog is tolerable. The defaults mirror `packages/services/observability.js`
+ * (24 h backup age, 100 outbox rows) so the V5 probe keeps the SAME meaning the V4 `/opsz` carried
+ * (backup freshness + recovery/backlog), never a liveness-only green. */
+const OPS_BACKUP_MAX_AGE_MS = 24 * 60 * 60 * 1000;
+const OPS_OUTBOX_BACKLOG_MAX = 100;
+
+/* The V5 operations-health probe. It answers the SAME contract the V4 perimeter published -
+ * `200 {"ok":true}` when operations are healthy and `503 {"ok":false}` when they are not - so the
+ * existing external `mega-xo-opsz` monitor keeps its meaning across the cutover. It is NOT a
+ * liveness probe: it fails when the newest verified backup is stale, when the durable outbox has
+ * dead-lettered (`failed`) rows, or when the queue is far beyond the backlog budget. The backup
+ * freshness it reads is the SAME state the scheduled `mega-xo-v5-freshness` unit maintains. */
+async function buildOpsReport({ pool, freshnessFile, now }) {
+  const at = now();
+  const failures = [];
+
+  /* 1. Backup freshness from the scheduled freshness unit's state file. A missing or unreadable
+   * report is a failure: "no evidence" is never reported green. */
+  let backup = { fresh: false, state: 'unknown', checkedAtUtc: null, ageMs: null };
+  try {
+    const doc = JSON.parse(fs.readFileSync(freshnessFile, 'utf8'));
+    const checkedAt = doc.checkedAtUtc ? Date.parse(doc.checkedAtUtc) : NaN;
+    const ageMs = Number.isFinite(checkedAt) ? at - checkedAt : null;
+    const declaredFresh = doc.state === 'fresh';
+    const reportFresh = ageMs !== null && ageMs <= OPS_BACKUP_MAX_AGE_MS;
+    backup = { fresh: declaredFresh && reportFresh, state: doc.state || 'unknown', checkedAtUtc: doc.checkedAtUtc || null, ageMs };
+    if (!declaredFresh) failures.push('newest verified backup is stale');
+    else if (!reportFresh) failures.push('backup freshness report is older than the 24h budget');
+  } catch {
+    failures.push('backup freshness report is missing or unreadable');
+  }
+
+  /* 2. Worker queue health from the durable outbox: dead letters are terminal `failed` rows; backlog
+   * is work still queued or leased. Both are read on the worker's own role connection. */
+  let worker = { dlq: null, backlog: null };
+  try {
+    const counts = await pool.query(
+      "SELECT count(*) FILTER (WHERE state = 'failed')::int AS dlq, " +
+      "count(*) FILTER (WHERE state IN ('queued', 'sending'))::int AS backlog FROM ops.outbox");
+    worker = { dlq: counts.rows[0].dlq, backlog: counts.rows[0].backlog };
+    if (worker.dlq > 0) failures.push(`dead-lettered jobs in the outbox (${worker.dlq})`);
+    if (worker.backlog > OPS_OUTBOX_BACKLOG_MAX) failures.push(`outbox backlog (${worker.backlog}) exceeds the budget (${OPS_OUTBOX_BACKLOG_MAX})`);
+  } catch {
+    failures.push('worker queue could not be read');
+  }
+
+  const ok = failures.length === 0;
+  return { ok, failures, backup, worker, at };
 }
 
 const MIME_TYPES = Object.freeze({
@@ -633,6 +694,18 @@ async function main() {
        * and the host health monitor expect: 200 {"status":"ok","live":true,"ready":true} while the
        * database answers, 503 {"status":"degraded",...,"ready":false} when it does not. */
       if (surface === 'api') { await apiHandler(req, res); return; }
+      /* `/opsz` keeps the V4 external monitor's contract: 200 {"ok":true} while operations are
+       * healthy and 503 {"ok":false} when the newest verified backup is stale, the durable outbox
+       * has dead-lettered rows or the queue is far beyond budget. It never reports green on process
+       * liveness alone, and it leaks no schema/provider/host detail. */
+      if (surface === 'ops') {
+        const report = await buildOpsReport({ pool: workerPool, freshnessFile: FRESHNESS_STATE_FILE, now: Date.now });
+        res.statusCode = report.ok ? 200 : 503;
+        res.setHeader('Content-Type', 'application/json; charset=utf-8');
+        res.setHeader('Cache-Control', 'no-store');
+        res.end(JSON.stringify({ ok: report.ok }));
+        return;
+      }
       if (pathname === '/legacy-game') { res.statusCode = 308; res.setHeader('Location', '/legacy-game/' + (parsedUrl.search || '')); res.end(); return; }
       const resolved = resolveStatic(webArtifact, pathname);
       if (resolved.text !== null) { res.statusCode = resolved.status; res.setHeader('Content-Type', 'text/plain; charset=utf-8'); res.end(resolved.text); return; }
@@ -745,7 +818,8 @@ module.exports = {
   assertProviderClassesComposable,
   deriveNamespace, assertPoolRole, assertRoleSeparation, assertApiCompositionHoldsNoCoreAccess,
   assertCoreCompositionUsesCorePool,
-  resolveConnectionBudget, resolveHttpBinding, classifyPath,
+  resolveConnectionBudget, resolveHttpBinding, classifyPath, buildOpsReport,
+  FRESHNESS_STATE_FILE, OPS_BACKUP_MAX_AGE_MS, OPS_OUTBOX_BACKLOG_MAX,
   /* filesystem-bounded helpers used by the composition (never network) */
   secretPaths, readSecretFile, loadStableSecret, readInventory, loadWebArtifact,
   arg, safeError, main,

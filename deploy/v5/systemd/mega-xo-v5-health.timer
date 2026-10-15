@@ -1,0 +1,13 @@
+[Unit]
+Description=Run the Mega XO V5 operational health check every five minutes
+
+[Timer]
+OnBootSec=3min
+OnUnitActiveSec=5min
+AccuracySec=30s
+RandomizedDelaySec=15s
+Persistent=true
+Unit=mega-xo-v5-health.service
+
+[Install]
+WantedBy=timers.target

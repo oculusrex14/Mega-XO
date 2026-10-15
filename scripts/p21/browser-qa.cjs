@@ -221,7 +221,7 @@ async function main() {
             };
             check('P21-BROWSER-GAME-DARK-MODE-MENU', modeMenu.colorScheme.includes('dark') && dark(modeMenu.background) && dark(modeMenu.optionBackground) && modeMenu.color === modeMenu.optionColor, {route, viewport:viewport.name, ...modeMenu, scope:'computed select/option styles; native popup rendering remains visual browser acceptance'});
             const guide = page.locator('details.gb-help-panel');
-            check('P21-BROWSER-GUIDE-COLLAPSED', await guide.count() === 1 && !(await guide.evaluate(element => element.open)) && await guide.locator('summary').isVisible() && !(await guide.locator('[data-gb-action="start-guided"]').isVisible()), {route,viewport:viewport.name});
+            check('P21-BROWSER-GUIDE-COLLAPSED', await guide.count() === 1 && !(await guide.evaluate(element => element.open)) && await guide.locator('> summary').isVisible() && !(await guide.locator('[data-gb-action="start-guided"]').isVisible()), {route,viewport:viewport.name});
             if (viewport.name !== 'desktop') await snapshot(page, 'game-neon-' + viewport.name);
           }
           if (viewport.name === 'desktop') await snapshot(page, 'page-' + route.slice(1).replaceAll('/', '-'));
@@ -413,7 +413,7 @@ async function main() {
     check('P21-BROWSER-GAME-BOT', botMove.startsWith('4:') && await page.locator('.gb-cell[aria-disabled="false"]').count() > 0, { difficulty: 'Beginner', botBoard: botMove.split(':')[0] });
     const guide = page.locator('details.gb-help-panel');
     if (!(await guide.evaluate(element => element.open))) {
-      await guide.locator('summary').focus();
+      await guide.locator('> summary').focus();
       await page.keyboard.press('Space');
     }
     check('P21-BROWSER-GUIDE-KEYBOARD-EXPANSION', await guide.evaluate(element => element.open) && await guide.locator('[data-gb-action="start-guided"]').isVisible(), {route:'/game',interaction:'focused native details summary + Space'});

@@ -44,7 +44,7 @@ async function main() {
     if(result.incomplete.length)report.manual_review.push({route,width,items:result.incomplete});
    }
    await page.goto(origin+'/game',{waitUntil:'networkidle'});
-   await page.locator('[data-gb-setting="mode"]').selectOption('local');
+   await page.locator('[data-gb-setting="mode"],[data-game-mode]').selectOption('local');
    await page.locator('[data-gb-cell="0:4"]').click();
    for(const theme of ['cinematic','vector','midnight','paperclub','afterhours']) {
     await page.locator('[data-gb-setting="theme"]').selectOption(theme);await page.evaluate(axe.source);

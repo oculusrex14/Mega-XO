@@ -357,6 +357,12 @@
       "name": "0059_pass_subscriptions",
       "file": "migrations/0059_pass_subscriptions.sql",
       "sha256": "b993fef1b24aff959a6691820d2e73a0b3e4581d9166828bcc925630a4a4f365"
+    },
+    {
+      "id": 60,
+      "name": "0060_pass_allowances",
+      "file": "migrations/0060_pass_allowances.sql",
+      "sha256": "d1f3756cef82bb2b915b1f516ff35afe16e7985ae82a4486a24fdd473e29638d"
     }
   ]
 }

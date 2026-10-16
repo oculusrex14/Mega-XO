@@ -234,6 +234,47 @@ async function commerceHarness(t, family, overrides = {}) {
   return { commerce, provider, database, skipped: false };
 }
 
+test('commerce: an active Mega Pass reserves, charges and settles the two discounted packs', async (t) => {
+  const harness = await commerceHarness(t, 'discount');
+  if (!harness) return;
+  const { commerce, provider, database } = harness;
+  // Seed the pass: an active subscription plus the paid period covering the frozen clock.
+  const c0 = await adminClient(database);
+  try {
+    await c0.query("INSERT INTO monetization.polar_subscriptions (subscription_id, actor_id, product_id, price_id, status, cancel_at_period_end, current_period_start, current_period_end, created_at, updated_at) VALUES ('sub_disc', 'cf_alice', 'mega_pass', 'b7e2f1a0-3c4d-4e5f-8a9b-0c1d2e3f4a5b', 'active', false, $1, $2, $3, $3)", [new Date(CLOCK).toISOString(), new Date(CLOCK + 30 * 86400000).toISOString(), new Date(CLOCK).toISOString()]);
+    await c0.query("INSERT INTO monetization.pass_periods (subscription_id, actor_id, period_start, period_end, installments_granted, created_at) VALUES ('sub_disc', 'cf_alice', $1, $2, 3, $3)", [new Date(CLOCK).toISOString(), new Date(CLOCK + 30 * 86400000).toISOString(), new Date(CLOCK).toISOString()]);
+  } finally { await c0.end(); }
+  // 1. The first pack order reserves a use and charges 15% off the catalog price.
+  const first = await commerce.createCashfreeOrder('cf_alice', 'disc-key-1', 'crowns_100', { email: 'a@b.co', phone: '9876543210' });
+  assert.equal(provider.orders.get(first.orderId).amount, '75.65', 'the discounted INR amount is server-computed');
+  const reserved1 = await quotaOf(database);
+  assert.equal(reserved1.reserved, 1); assert.equal(reserved1.used, 0);
+  // 2. Verified settlement converts the reservation to used and grants the crowns once.
+  provider.orders.get(first.orderId).status = 'PAID';
+  const settled = await commerce.cashfreeOrderStatus('cf_alice', first.orderId);
+  assert.equal(settled.paid, true); assert.equal(settled.crowns, 100);
+  const used1 = await quotaOf(database);
+  assert.equal(used1.reserved, 0); assert.equal(used1.used, 1);
+  // 3. A second pack discounts again; a third finds the quota exhausted and pays full price.
+  const second = await commerce.createCashfreeOrder('cf_alice', 'disc-key-2', 'crowns_525', { email: 'a@b.co', phone: '9876543210' });
+  assert.equal(provider.orders.get(second.orderId).amount, '381.65', 'the second discount still applies');
+  const third = await commerce.createCashfreeOrder('cf_alice', 'disc-key-3', 'crowns_1100', { email: 'a@b.co', phone: '9876543210' });
+  assert.equal(provider.orders.get(third.orderId).amount, '899.00', 'the quota caps the discount at two packs');
+  // 4. A non-pack product never discounts even with quota left.
+  await adminClient(database).then(async c => { await c.query("UPDATE monetization.pass_periods SET pack_discounts_used = 0, pack_discounts_reserved = 0 WHERE subscription_id = 'sub_disc'"); await c.end(); });
+  const fourth = await commerce.createCashfreeOrder('cf_bob', 'disc-key-4', 'remove_ads', { email: 'b@b.co', phone: '9876543210' });
+  assert.equal(provider.orders.get(fourth.orderId).amount, '199.00', 'Remove Ads is not a Crown pack');
+  const bob = await quotaOfFor(database, 'cf_bob');
+  assert.equal(bob, null, 'an actor without a pass never gets a reservation');
+});
+
+async function quotaOf(database) { return quotaOfFor(database, 'cf_alice'); }
+async function quotaOfFor(database, actor) {
+  const c = await adminClient(database);
+  try { const r = await c.query('SELECT pp.pack_discounts_reserved AS reserved, pp.pack_discounts_used AS used FROM monetization.pass_periods pp JOIN monetization.polar_subscriptions ps ON ps.subscription_id = pp.subscription_id WHERE ps.actor_id = $1', [actor]); return r.rows[0] ? { reserved: Number(r.rows[0].reserved), used: Number(r.rows[0].used) } : null; }
+  finally { await c.end(); }
+}
+
 test('commerce: the order record is server-side, idempotent per key, and actor-bound', async (t) => {
   const harness = await commerceHarness(t, 'create');
   if (!harness) return;

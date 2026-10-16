@@ -714,14 +714,34 @@ async function createCommerceService(pool, options = {}) {
   const requestId = reservation.requestId;
   const provider = config.cashfreeProvider;
   const orderId = typeof provider.newOrderId === 'function' ? provider.newOrderId() : newOrderId();
+  /* B3: an active Mega Pass discounts at most two Crown packs per paid month. Only the
+   * reservation winner reaches this point; the use is RESERVED under a row lock in one write
+   * transaction and a terminal provider rejection releases it. An ambiguous outcome keeps the
+   * reservation because the order may exist - the recovery read resolves it. */
+  const packProduct = M.product(productId);
+  const isPack = Boolean(packProduct && packProduct.crowns > 0);
+  let charged = price;
+  let reservedPeriod = null;
+  if (isPack) {
+   const reserved = await uow.run(async (tx) => (await tx.query(
+    "UPDATE monetization.pass_periods pp SET pack_discounts_reserved = pp.pack_discounts_reserved + 1 FROM monetization.polar_subscriptions ps WHERE pp.subscription_id = ps.subscription_id AND ps.actor_id = $1 AND ps.status = 'active' AND pp.period_start <= $2 AND pp.period_end > $2 AND pp.pack_discounts_reserved + pp.pack_discounts_used < 2 RETURNING pp.period_start",
+    [actor, new Date(serviceNow()).toISOString()])).rows[0] || null);
+   if (reserved) {
+    reservedPeriod = new Date(reserved.period_start).toISOString();
+    charged = (Math.round(parseFloat(price) * (1 - M.PASS.packDiscount) * 100) / 100).toFixed(2);
+   }
+  }
   await markReservation(uow, requestId, 'PENDING', { providerObjectId: orderId });
   let created;
   try {
-   created = await withDeadline(provider.createOrder({ orderId, productId, amount: price, actor, email, phone, returnUrl: config.cashfreeReturnUrl, notifyUrl: config.cashfreeNotifyUrl }));
+   created = await withDeadline(provider.createOrder({ orderId, productId, amount: charged, actor, email, phone, returnUrl: config.cashfreeReturnUrl, notifyUrl: config.cashfreeNotifyUrl }));
   } catch (error) {
    /* An explicit provider rejection proving non-creation (auth/4xx) is terminal FAILED;
     * timeouts, disconnects and 5xx/429/408 are ambiguous UNKNOWN. Neither is ever re-created
     * automatically - the reservation records exactly what happened for the recovery read. */
+   if (reservedPeriod) await uow.run(async (tx) => {
+    await tx.query("UPDATE monetization.pass_periods pp SET pack_discounts_reserved = pp.pack_discounts_reserved - 1 FROM monetization.polar_subscriptions ps WHERE pp.subscription_id = ps.subscription_id AND ps.actor_id = $1 AND pp.period_start = $2 AND pp.pack_discounts_reserved > 0", [actor, reservedPeriod]);
+   });
    const code = String(error && error.message || 'CASHFREE_CREATE_UNKNOWN');
    const httpMatch = /^CASHFREE_HTTP_([0-9]{3})$/.exec(code);
    const terminal = code === 'CASHFREE_AUTH' || code === 'CASHFREE_CONFIG' || (!!httpMatch && httpMatch[1] !== '408' && httpMatch[1] !== '429');
@@ -734,7 +754,7 @@ async function createCommerceService(pool, options = {}) {
     * creates with one key record ONE row; the loser returns the winner's recorded order. */
    await tx.query(
     'INSERT INTO monetization.cashfree_orders (order_id, actor_id, product_id, amount, currency, status, session_id, op_key, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) ON CONFLICT (actor_id, op_key) DO NOTHING',
-    [created.orderId, actor, productId, price, 'INR', 'ACTIVE', created.paymentSessionId, key, iso(tx.clock())]);
+    [created.orderId, actor, productId, charged, 'INR', 'ACTIVE', created.paymentSessionId, key, iso(tx.clock())]);
    const row = (await tx.query('SELECT order_id, session_id FROM monetization.cashfree_orders WHERE actor_id = $1 AND op_key = $2', [actor, key])).rows[0];
    if (!row) throw Error('CASHFREE_RECORD_FAILED');
    /* The reservation completes in the SAME transaction as the ledger + outcome: a crash between
@@ -793,6 +813,14 @@ async function createCommerceService(pool, options = {}) {
    if (product.crowns) journal(graph, { id: 'purchase:cashfree:' + orderId, actor: recorded.actor_id, currency: 'crowns', amount: product.crowns, reason: 'Crown purchase', source: 'verified-store', at: tx.clock() });
    await event(tx, recorded.actor_id, 'purchase_verified', product.crowns);
    await tx.query('UPDATE monetization.cashfree_orders SET status = $2, settled_at = $3 WHERE order_id = $1', [orderId, 'PAID', iso(tx.clock())]);
+   /* B3: a discounted pack converts its reserved use to used on verified settlement; the CHECK
+    * constraint is the backstop, so an over-consume can never commit silently. */
+   if (product.crowns > 0) {
+    const catalogPrice = config.cashfreeCatalog && typeof config.cashfreeCatalog[product.id] === 'string' ? config.cashfreeCatalog[product.id] : null;
+    const wasDiscounted = catalogPrice !== null && Number(catalogPrice) > 0 && Math.abs(Number(recorded.amount) - Number(catalogPrice)) > 1e-9;
+    if (!wasDiscounted) return { productId: product.id, crowns: product.crowns, duplicate: false, settled: true };
+    await tx.query("UPDATE monetization.pass_periods pp SET pack_discounts_reserved = pp.pack_discounts_reserved - 1, pack_discounts_used = pp.pack_discounts_used + 1 FROM monetization.polar_subscriptions ps WHERE pp.subscription_id = ps.subscription_id AND ps.actor_id = $1 AND pp.pack_discounts_reserved > 0 AND pp.pack_discounts_used < 2", [recorded.actor_id]);
+   }
    return { productId: product.id, crowns: product.crowns, duplicate: false, settled: true };
   }, ['cashfree', orderId]);
  }

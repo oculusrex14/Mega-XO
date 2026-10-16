@@ -519,6 +519,7 @@ async function main() {
   const { createCommerceService } = require(path.join(ROOT, 'packages/services/commerce.js'));
   const { createCommerceIngressService } = require(path.join(ROOT, 'packages/services/commerce-ingress.js'));
   const { createCashfreeProvider } = require(path.join(ROOT, 'packages/services/cashfree.js'));
+  const { createRateLimiter } = require(path.join(ROOT, 'packages/services/rate-limit.js'));
   const { createAdMobVerifier } = require(path.join(ROOT, 'server/admob-ssv.js'));
   const { createPgStoreDb } = require(path.join(ROOT, 'packages/services/store-pg-adapter.js'));
   const { createMetricsSink } = require(path.join(ROOT, 'packages/services/metrics.js'));
@@ -834,8 +835,16 @@ async function main() {
    * literal above so parallel API-lane PRs merge without textual conflicts. ssv is the actor-free
    * provider-callback path: it signs with an EMPTY actor to the dedicated /ingress/commerce/ssv
    * route — the player command surface has no actor here and would drop the raw payload. */
+  /* LR12: the mounted commerce surface is rate-limited per actor (the legacy monetization-http
+   * contract: 60 requests per actor per minute -> 429 RATE_LIMITED) BEFORE any Core round-trip.
+   * The actor-free provider callbacks (ssv / the Cashfree webhook) stay signature-gated instead -
+   * they carry no session actor to key a budget on. */
+  const monetizationLimiter = createRateLimiter({ pool: apiPool, limit: 60, windowMs: 60000, prefix: 'monetization' });
   apiContext.monetization = {
-    command: (input) => coreGateway.commerceCommand(input),
+    command: async (input) => {
+      if (input && typeof input.actor === 'string' && input.actor) await monetizationLimiter.check(input.actor);
+      return coreGateway.commerceCommand(input);
+    },
     ssv: (raw) => coreGateway.commerceSsv({ raw }),
     cashfreeWebhook: (payload) => coreGateway.commerceCashfreeWebhook(payload),
   };

@@ -39,9 +39,12 @@ bug, Mega Pass recurring redesign, account-link completion, store/art assets, de
 - Native store subscription products: Google Play Billing + Apple auto-renewable for mega_pass,
   then RTBN/ASSN verification wiring into the same v52_pass row (PG commerce parity for
   subscriptions lives in packages/services/commerce.js - the legacy lane is authoritative today).
-- Conversion (8:1) and pack-discount (15%) ENFORCEMENT points: the entitlement + allowances
-  ledger ship and status exposes them; the Core convert command and Cashfree/Polar price
-  selection must read the pass block to apply member rates (documented, not yet wired).
+- Exchange 8:1 + pack discount 15% ENFORCED (fccce98): the standard 10:1 authority conversion
+  is untouched (purchased-coin provenance invariant intact) and a fresh Coins-to-Crowns
+  conversion earns an additive bonus of 1/40 Crown per Coin over the monthly 200-Coin allowance
+  (durable carry makes any amount compound to the effective 8:1 rate), granted in one keyed
+  transaction per operation; Cashfree crown-pack orders for members are priced at 15% off with
+  the use consumed at settlement only. tests/v52-pass-benefits.test.js 3/3.
 - Polar: create the recurring monthly price for mega_pass, set POLAR_PRICE_MEGA_PASS +
   POLAR_PRICE_CENTS_MEGA_PASS; Cashfree subscription mandate flow stays deferred (Polar is the
   Indian fallback per the owner decision).

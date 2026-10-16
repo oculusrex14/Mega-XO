@@ -149,4 +149,14 @@
 
 **Monetization enablement (Main, after #29 merges):** ads = ADMOB_* units + MEGA_AD_MODE=rewarded + the AdMob-console SSV URL (documented on the first addendum); store = GOOGLE_PLAY_SERVICE_ACCOUNT_JSON + GOOGLE_PLAY_PACKAGE_NAME + GOOGLE_PLAY_PRODUCT_* SKUs + MEGA_PURCHASES_ENABLED=true (documented on the second addendum). Until then every grant path refuses, exactly as the brief requires.
 
-**Remaining backlog lanes:** the device/native lane (LR08/LR20), the research-capture live posture (LR17 DB-level), and the deferred CI sweep (LR02).
+
+
+### Checkpoint 10 — 2026-10-16 (LR14 powers audit + LR06 gaps closed)
+
+**LR14:** the shipped powers-1 policy constants match EVERY owner-approved limit exactly (bot undo 2/match + 1 package, casual 3 initiations/1 applied, hints 3 activations/2 deliveries, blocks 3 activations/2 successes, banked capacity 1 with no expiry, the shared 10/UTC-day rewarded cap) — recorded in LR14-POWERS-AUDIT-20261016.md. Powers suites green (v52-p21-powers, staging-public-head). Remaining: the cross-device same-game pass (LR20) and the live-SSV proof (LR15 enablement).
+
+**LR06:** both named gaps CLOSED with evidence — the session-fixation refusal is asserted in v5-p04-repositories (rotate consumes exactly one row; the rotated bearer's live() is null; replaceSession refuses on double-consume) and npm audit returned ZERO vulnerabilities across 24 prod dependencies. The matrix now has two structural gaps remaining (LR12 rate-limit negatives with the routes, device-lane security).
+
+**LR18:** the P0 finding documented — production retention sweeps target the STAGING database (the DC00-installed units run the staging capture-job.sh); Main's six-step corrective procedure is on the report; the backup-prune gate is accidentally intact and must stay disabled until the safe-prune proof.
+
+**Queue for Main:** #29 (LR12+LR15 commerce/SSV/store), #28 (consent UI + harness fix), #27 (email + validate fix), #26 (AASA), #25 (deploy guards), #24 (compose fence), #23 (opsz), #22 (SEO/headers), #21 (board + six evidence reports), #20 (WebUI audit).**Remaining backlog lanes:** the device/native lane (LR08/LR20), the research-capture live posture (LR17 DB-level), and the deferred CI sweep (LR02).

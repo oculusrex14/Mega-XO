@@ -55,10 +55,41 @@ Covering suites run on the merged head: commerce-ingress, metrics, store-pg-adap
 apple-team-association, consent-ui, r2-list-pagination, compose-fence, deploy-production-guards,
 v5-production-server, p21-app, p21-seo, p21-web-build. Result recorded in the ledger/CI on the exact head.
 
+**CI on the consolidation head `911fad8`: 15/15 workflow runs SUCCESS, zero failures** — every
+workflow family (P15–P24, PostgreSQL integration, release engineering, native isolated-service,
+bot/tutorial, independent audit, website validation), including the two fixes below.
+
+## Fixes landed during consolidation
+
+1. **`ios` failed on every branch, including the pre-existing V5.2 base** — root cause: both native
+   workflows hardcoded `xcrun simctl launch "$udid" online.megaxo.prototype`, but the simulator host
+   builds with `PRODUCT_BUNDLE_IDENTIFIER = online.megaxo.xoxo` (the prototype id survives only as
+   the Android Java package namespace), so the launch failed with
+   `FBSOpenApplicationServiceErrorDomain code=4`. Fixed by reading the bundle id from the built
+   product; `ios` is now green (LR02/A01).
+2. **`validate` failed with `ENOENT: deploy/compose.yaml`** — a genuine PR-caused failure: PR #24
+   fenced the V4 compose to `legacy-v4-recovery/compose.yaml.fenced` and made
+   `deploy/compose-v5-edge.yaml` the only compose surface, but `tests/production-lifecycle.test.js`
+   still read the deleted path (a removed file is not a textual conflict, so no merge marker caught
+   it). Retargeted the perimeter/secrets/digest assertions to the V5 surface and strengthened them
+   (the edge publishes only 80/443; provider secrets are never mounted into the edge).
+
+## Security review
+
+An independent security review found one HIGH actor-isolation flaw (`core-gateway.js:981` spread
+the request command after the signed header actor) — fixed with a regression test proven to fail on
+the old order; plus a LOW idempotency-key precedence mismatch — fixed. Two MEDIUM items (actor-free
+lane rate limiting, Cashfree create-before-fence) are recorded as owner decisions. Detail:
+`V52-SECURITY-REVIEW-20261016.md`.
+
 ## Residual / honest limits
 
-- `ios` CI fails identically on the pre-existing V5.2 base (`FBSOpenApplicationServiceErrorDomain code=4`, stale
-  `online.megaxo.prototype` id / simulator data-migration timeout) — a pre-existing systematic failure owned by
-  LR02/A01, not caused by any merged branch.
-- Provider enablement (Apple credentials, AdMob SSV URL, Resend key, store credentials) and the device pass
-  (LR20) remain owner steps; no branch merge changes that.
+- **LR18 P0 (owner action, production host):** the production retention timers run the STAGING
+  capture job, so production retention is not enforced (and, as an accidental side-benefit, the
+  35-day backup prune gate is still intact). Corrective procedure in
+  `LR18-RETENTION-DR-LIVE-20261016.md`; high-impact host change, needs owner go-ahead.
+- Provider enablement (Apple credentials, AdMob SSV URL, Resend key, store credentials) and the
+  device pass (LR20) remain owner steps; no branch merge changes that.
+- `codex/v52-game-ui-refresh` / `codex/v52-provider-release` are stale-but-contained; the
+  `preserve/*` branches carry no genuine unmerged content (verified by `git cherry` + empty
+  content diff). Safe to delete if the owner wants the remote tidied.

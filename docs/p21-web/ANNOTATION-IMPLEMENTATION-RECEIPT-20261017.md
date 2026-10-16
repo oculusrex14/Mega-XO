@@ -36,6 +36,13 @@ Implementation branch: **V5.2**, baseline d6086a2 -> head 9d9f96f (receipt commi
 - B3 allowance ledger (21c36ab-era commit, migration 0060): pass_periods now carries the exchange ledger column plus reserved/used discounted-pack counters capped at two per paid month by CHECK. A crown-pack Cashfree order RESERVES one use under a row lock (only the reservation winner reaches it), charges the server-computed 15%-off INR amount on the provider call and the recorded order row, releases on a terminal provider rejection, and converts reserved to used on verified settlement - but only when the recorded amount is actually below the catalog price, so a full-price settlement can never eat another order's reservation. The disposable-PG journey proves the discounted charge, the once-only grant, the quota cap and the non-pack exclusion.
 - Remaining B3 constraints: (a) V5 has NO Coin-to-Crown exchange op at all today - the 8:1 exchange benefit exists only in the src/monetization.js reference, so its enforcement lands together with a future exchange lane (the 0060 ledger column is ready); (b) the Polar hosted checkout charges its fixed price_id, so a Polar-side discount needs a real Polar discount/price object before it can be honest - until then the discount applies to the Cashfree lane only and the Polar quote stays full price by design, never silently. UI copy already says the discount applies to Crown packs without naming a provider; the store shows each provider's actual quote.
 
+## Browser verification matrix - served bundle (port 4196, 2026-10-17)
+
+- Sponsors: 7 distinct data-sponsor-slot placements, the collapsed pg-sponsor-disclosure present, the duplicate privacy panel absent.
+- Tournaments: exactly one data-tournament-controls mount, zero static pg-tournament-table cards on the page, hero retained, no "View in game" button anywhere.
+- Themes: six pg-theme-card entries with "More coming soon!" present and no purchase/control action on it.
+- Store: the pass panel uses assets/art/mega-pass.webp; the error/loading shells keep the known product descriptions with prices hidden and actions off (verified earlier via the in-app browser AX tree and screenshots).
+
 ## Plan G - native presentation (implemented, device verification pending)
 
 - The shared party room (src/party-ui.js, used by both phone builds) renders Match / Players / Games tabs with 44px targets and live counts; the previous single scrolling screen is preserved inside the tabs and every original control keeps its exact command.

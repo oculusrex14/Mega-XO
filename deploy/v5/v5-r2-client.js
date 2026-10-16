@@ -122,11 +122,10 @@ const Client = {
     return this.headersOf(this.request(cred, ['--dump-header', '-', '--output', dest,
       this.url(cred, key)]));
   },
-  /** ListObjectsV2 for one prefix; returns [{key,lastModified,size}] sorted by key. */
-  list(cred, prefix) {
-    const query = '?list-type=2&prefix=' + encodeURIComponent(prefix) + '&max-keys=1000';
-    const body = this.request(cred, [cred.endpoint + '/' + cred.bucket + query]);
-    const out = [];
+  /** Pure ListObjectsV2 page parser (offline-testable): {entries, truncated, nextToken}. */
+  parseListPage(body) {
+    if (!/<ListBucketResult/.test(body)) refuse('list response was not an S3 listing');
+    const entries = [];
     const re = /<Contents>([\s\S]*?)<\/Contents>/g;
     let m;
     while ((m = re.exec(body)) !== null) {
@@ -135,14 +134,43 @@ const Client = {
       const lm = /<LastModified>([\s\S]*?)<\/LastModified>/.exec(block);
       const size = /<Size>([\s\S]*?)<\/Size>/.exec(block);
       if (!key || !lm || !size) refuse('list response entry unparsable');
-      out.push({
+      entries.push({
         key: key[1].replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>'),
         lastModified: lm[1],
         size: Number(size[1])
       });
     }
-    if (!/<ListBucketResult/.test(body)) refuse('list response was not an S3 listing');
-    return out;
+    const truncated = /<IsTruncated>true<\/IsTruncated>/.test(body);
+    const token = /<NextContinuationToken>([\s\S]*?)<\/NextContinuationToken>/.exec(body);
+    return { entries, truncated, nextToken: truncated && token ? token[1] : null };
+  },
+  /**
+   * Paginated ListObjectsV2 for one prefix; returns [{key,lastModified,size}] in S3 key order.
+   *
+   * PAGINATION IS LOAD-BEARING (LR05 fix, 2026-10-16): a single max-keys=1000 page silently
+   * truncated once the backup prefix grew past 500 backups (2 objects each). S3 pages are
+   * KEY-ordered and the backup keys embed a timestamp, so the truncated page contained only
+   * the OLDEST backups - the freshness check then red-lettered /opsz and failed its unit while
+   * the backup pipeline was healthy and uploading every 5 minutes. Follow continuation tokens
+   * to completion, and fail closed instead of silently returning partial evidence.
+   */
+  collectPages(fetchPage, prefix) {
+    const MAX_PAGES = 100; /* 100k objects; retention prunes far below this. */
+    const out = [];
+    let continuation = null;
+    for (let page = 0; page < MAX_PAGES; page++) {
+      const query = '?list-type=2&prefix=' + encodeURIComponent(prefix) + '&max-keys=1000' +
+        (continuation ? '&continuation-token=' + encodeURIComponent(continuation) : '');
+      const { entries, truncated, nextToken } = this.parseListPage(fetchPage(query));
+      out.push(...entries);
+      if (!truncated) return out;
+      if (!nextToken) refuse('list response truncated without a continuation token');
+      continuation = nextToken;
+    }
+    refuse('list exceeded the ' + MAX_PAGES + '-page safety cap; the prefix needs retention pruning');
+  },
+  list(cred, prefix) {
+    return this.collectPages((query) => this.request(cred, [cred.endpoint + '/' + cred.bucket + query]), prefix);
   }
 };
 module.exports = Client;

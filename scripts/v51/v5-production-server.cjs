@@ -518,6 +518,7 @@ async function main() {
   const { createCoreGateway, createCoreServiceIngress } = require(path.join(ROOT, 'packages/services/core-gateway.js'));
   const { createCommerceService } = require(path.join(ROOT, 'packages/services/commerce.js'));
   const { createCommerceIngressService } = require(path.join(ROOT, 'packages/services/commerce-ingress.js'));
+  const { createCashfreeProvider } = require(path.join(ROOT, 'packages/services/cashfree.js'));
   const { createAdMobVerifier } = require(path.join(ROOT, 'server/admob-ssv.js'));
   const { createPgStoreDb } = require(path.join(ROOT, 'packages/services/store-pg-adapter.js'));
   const { createMetricsSink } = require(path.join(ROOT, 'packages/services/metrics.js'));
@@ -710,6 +711,35 @@ async function main() {
       purchaseProvider = new StorePurchaseProvider({ google: googlePlay ? new GooglePlayBilling(storeDb, googlePlay) : null, apple: apple ? new AppleStoreKit(storeDb, apple) : null });
     }
   }
+  /* LR13: the Cashfree web-commerce lane. When CASHFREE_APP_ID is present the WHOLE configuration
+   * must be present (fail-loud, the legacy INCOMPLETE_CASHFREE_CONFIG contract): the secret comes
+   * from the file-backed secret reader (never a raw value in the process listing), the catalog
+   * prices are the server-authoritative INR amounts, and the return/notify URLs point at the
+   * canonical origin (overridable for staging). Absent env keeps the lane disabled -
+   * createOrder refuses CASHFREE_UNAVAILABLE and no provider order can ever be created. */
+  let cashfreeProvider = null;
+  let cashfreeCatalog = null;
+  if (process.env.CASHFREE_APP_ID) {
+    const cashfreeSecret = require(path.join(ROOT, 'server/production/config.js')).secret(process.env, 'CASHFREE_SECRET_KEY');
+    if (!cashfreeSecret) throw REFUSE('INCOMPLETE_CASHFREE_CONFIG');
+    const cashfreeEnv = process.env.CASHFREE_ENV || 'PRODUCTION';
+    if (!['PRODUCTION', 'TEST'].includes(cashfreeEnv)) throw REFUSE('INVALID_CASHFREE_ENV');
+    cashfreeCatalog = {};
+    for (const id of PRODUCT_IDS) {
+      const raw = process.env['CASHFREE_PRICE_' + id.toUpperCase()];
+      if (!raw) throw REFUSE('INCOMPLETE_CASHFREE_PRICE');
+      if (!/^\d+(\.\d{1,2})?$/.test(raw) || Number(raw) <= 0) throw REFUSE('INVALID_CASHFREE_PRICE');
+      cashfreeCatalog[id] = raw;
+    }
+    cashfreeProvider = createCashfreeProvider({
+      appId: process.env.CASHFREE_APP_ID,
+      secretKey: cashfreeSecret,
+      apiVersion: process.env.CASHFREE_API_VERSION || '2025-01-01',
+      env: cashfreeEnv,
+    });
+  }
+  const cashfreeReturnUrl = process.env.CASHFREE_RETURN_URL || 'https://megaxo.online';
+  const cashfreeNotifyUrl = process.env.CASHFREE_NOTIFY_URL || 'https://megaxo.online/api/monetization/cashfree/webhook';
   const commerce = await createCommerceService(corePool, {
     adMode: commerceAdMode,
     purchasesEnabled: process.env.MEGA_PURCHASES_ENABLED === 'true',
@@ -717,6 +747,10 @@ async function main() {
     adUnits,
     eligible: (account) => account && account.verified === true && account.suspended !== true && account.hold !== true,
     purchaseProvider,
+    cashfreeProvider,
+    cashfreeCatalog,
+    cashfreeReturnUrl,
+    cashfreeNotifyUrl,
   });
   const commerceIngress = createCommerceIngressService({ commerce });
   const coreIngress = createCoreServiceIngress({ coreService: core, ticketIssuer, queue, tournaments, commerce: commerceIngress, leaderboardPool: corePool, secret: gatewaySecret });
@@ -803,6 +837,7 @@ async function main() {
   apiContext.monetization = {
     command: (input) => coreGateway.commerceCommand(input),
     ssv: (raw) => coreGateway.commerceSsv({ raw }),
+    cashfreeWebhook: (payload) => coreGateway.commerceCashfreeWebhook(payload),
   };
   /* LR19: the OPTIONAL telemetry sink. Anonymous daily aggregates on ops.rate_buckets; the client
    * lane is opt-in and OFF by default, so this sink normally receives nothing until a player makes

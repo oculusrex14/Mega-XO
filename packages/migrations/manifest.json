@@ -333,6 +333,12 @@
       "name": "0055_restore_record_consent_body",
       "file": "migrations/0055_restore_record_consent_body.sql",
       "sha256": "64ecb73a6e6acfb0a9f4cb073af26736bfe0503e944ea65e88c6f11dd273bf53"
+    },
+    {
+      "id": 56,
+      "name": "0056_cashfree_orders",
+      "file": "migrations/0056_cashfree_orders.sql",
+      "sha256": "1fa0574015704c280311f247fc4b2b6044d26e8a3f983b9d1e15c4613fa2a7dc"
     }
   ]
 }

@@ -2420,6 +2420,66 @@
           "indexes": [
             "store_revocations_pkey"
           ]
+        },
+        "cashfree_orders": {
+          "columns": {
+            "order_id": {
+              "t": "text",
+              "nn": true
+            },
+            "actor_id": {
+              "t": "text",
+              "nn": true
+            },
+            "product_id": {
+              "t": "text",
+              "nn": true
+            },
+            "amount": {
+              "t": "numeric",
+              "nn": true
+            },
+            "currency": {
+              "t": "text",
+              "nn": true
+            },
+            "status": {
+              "t": "text",
+              "nn": true
+            },
+            "session_id": {
+              "t": "text"
+            },
+            "op_key": {
+              "t": "text",
+              "nn": true
+            },
+            "created_at": {
+              "t": "timestamp with time zone",
+              "nn": true
+            },
+            "settled_at": {
+              "t": "timestamp with time zone"
+            },
+            "refunded_at": {
+              "t": "timestamp with time zone"
+            }
+          },
+          "constraints": [
+            "cashfree_orders_pkey",
+            "cashfree_orders_order_id_check",
+            "cashfree_orders_amount_check",
+            "cashfree_orders_currency_check",
+            "cashfree_orders_status_check",
+            "cashfree_orders_op_key_check",
+            "cashfree_orders_actor_op_key_key",
+            "cashfree_orders_actor_id_fkey"
+          ],
+          "indexes": [
+            "cashfree_orders_pkey",
+            "cashfree_orders_actor_created_idx",
+            "cashfree_orders_actor_op_key_key"
+          ]
         }
       }
     },

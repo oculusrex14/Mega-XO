@@ -372,6 +372,35 @@ function createCoreGateway({
       } finally { clearTimeout(timer); }
     },
 
+    /** LR13: forward the Cashfree webhook to the Core commerce settlement. Actor-free by design
+     * (Cashfree's server calls it); the raw bytes + timestamp + signature headers are forwarded
+     * verbatim so the HMAC is verified against exactly what Cashfree signed. */
+    async commerceCashfreeWebhook({ raw, timestamp, signature } = {}) {
+      const path = '/ingress/commerce/cashfree/webhook';
+      const bodyString = JSON.stringify({ payload: { raw, timestamp, signature } });
+      const ts = String(clock());
+      const sig = signRequest({ secret, timestamp: ts, method: 'POST', path, actor: '', opKey: 'commerce-cashfree-webhook', bodyString });
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(Error('CORE_GATEWAY_TIMEOUT')), timeout);
+      timer.unref?.();
+      try {
+        const res = await fetchFn(baseUrl + path, { method: 'POST', body: bodyString, signal: controller.signal,
+          headers: { 'content-type': 'application/json', 'x-service-timestamp': ts,
+            'x-service-actor': '', 'x-service-opkey': 'commerce-cashfree-webhook',
+            'x-service-signature': sig } });
+        const text = await res.text();
+        let parsed; try { parsed = JSON.parse(text); } catch { parsed = null; }
+        if (res.status < 200 || res.status >= 300) {
+          const error = Error((parsed && parsed.error) || 'COMMERCE_CASHFREE_FAILED');
+          error.status = res.status;
+          throw error;
+        }
+        return parsed && parsed.result !== undefined ? parsed.result : parsed;
+      } catch (error) {
+        throw tournamentTransportError(error);
+      } finally { clearTimeout(timer); }
+    },
+
     /**
      * Forwards an economic or competitive command to Game Core ingress.
      * @param {Object} params
@@ -784,7 +813,7 @@ function createCoreServiceIngress({
       /* The commerce SSV callback is actor-free too: Google's server calls it, the provider proof
        * inside carries the actor, and the path stays signature-protected like every other ingress. */
       const isPublicRead = pathname === LEADERBOARD_PATH || pathname === TOURNAMENT_CAPABILITIES_PATH
-        || pathname === '/ingress/commerce/ssv';
+        || pathname === '/ingress/commerce/ssv' || pathname === '/ingress/commerce/cashfree/webhook';
       if (!actorHeader && !isPublicRead) {
         return sendIngressError(res, 403, 'INVALID_SERVICE_SIGNATURE');
       }
@@ -976,6 +1005,24 @@ function createCoreServiceIngress({
           return sendIngressJson(res, 200, { ok: true, result });
         } catch (error) {
           const code = error?.code || error?.message || 'SSV_FAILED';
+          if (error?.status) return sendIngressError(res, error.status, code);
+          if (!/^[A-Z][A-Z0-9_]+$/.test(code)) return sendIngressError(res, 503, 'SERVICE_UNAVAILABLE');
+          return sendIngressError(res, 400, code);
+        }
+      }
+
+      /* LR13: the Cashfree provider webhook. Actor-free like the SSV: the provider proof (the
+       * recorded order row + the independent verification) carries the actor; the HMAC binds the
+       * exact raw bytes. */
+      if (pathname === '/ingress/commerce/cashfree/webhook') {
+        if (method !== 'POST') return sendIngressError(res, 405, 'METHOD_NOT_ALLOWED');
+        if (!commerce || typeof commerce.command !== 'function') return sendIngressError(res, 503, 'COMMERCE_UNAVAILABLE');
+        const payload = parsedBody && typeof parsedBody === 'object' ? parsedBody.payload : null;
+        try {
+          const result = await commerce.command({ op: 'cashfree_webhook', payload });
+          return sendIngressJson(res, 200, { ok: true, result });
+        } catch (error) {
+          const code = error?.code || error?.message || 'CASHFREE_WEBHOOK_FAILED';
           if (error?.status) return sendIngressError(res, error.status, code);
           if (!/^[A-Z][A-Z0-9_]+$/.test(code)) return sendIngressError(res, 503, 'SERVICE_UNAVAILABLE');
           return sendIngressError(res, 400, code);

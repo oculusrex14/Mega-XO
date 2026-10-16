@@ -30,6 +30,12 @@ const OPS = {
 	 * the provider proof inside callback() and binds the grant to the ticket actor there. The raw
 	 * payload is the SSV QUERY STRING (what Google signs), never a re-encoded param map. */
   ssv: { args: ['raw'], method: 'callback', actorFree: true, call: (c, actor, a) => c.callback(a[0]) },
+  /* LR13: the Cashfree web-commerce lane. create/status are player commands (session actor);
+   * the webhook is actor-free (Cashfree's server calls it) and carries {raw, timestamp,
+   * signature} - the commerce service verifies the HMAC against the EXACT raw bytes. */
+  cashfree_create: { args: ['key', 'productId', 'customer'], method: 'createCashfreeOrder', call: (c, actor, a) => c.createCashfreeOrder(actor, a[0], a[1], a[2]) },
+  cashfree_status: { args: ['orderId'], method: 'cashfreeOrderStatus', call: (c, actor, a) => c.cashfreeOrderStatus(actor, a[0]) },
+  cashfree_webhook: { args: ['payload'], method: 'settleCashfreeWebhook', actorFree: true, call: (c, actor, a) => c.settleCashfreeWebhook(a[0]) },
 };
 
 function fail(code) { const e = Error(code); e.code = code; throw e; }
@@ -48,7 +54,7 @@ function createCommerceIngressService({ commerce }) {
   return Object.freeze({
     async command(input = {}) {
       if (!input || typeof input !== 'object' || Array.isArray(input)) fail('INVALID_COMMERCE_COMMAND');
-      const op = requireText(input.op, 'INVALID_COMMERCE_OP', /^[a-z]+$/);
+      const op = requireText(input.op, 'INVALID_COMMERCE_OP', /^[a-z_]+$/);
       const spec = OPS[op];
       if (!spec) fail('INVALID_COMMERCE_OP');
       /* Actor-free provider callbacks (the AdMob SSV) carry their actor INSIDE the verified proof;
@@ -72,7 +78,16 @@ function createCommerceIngressService({ commerce }) {
         else if (name === 'platform') args.push(requireText(value, 'INVALID_PLATFORM', /^(legacy|android|ios)$/));
         else if (name === 'kind') args.push(requireText(value, 'INVALID_AD_KIND', /^(rewarded|interstitial)$/));
         else if (name === 'itemId') args.push(requireText(value, 'INVALID_ITEM_ID', KEY_PATTERN));
-        else if (name === 'restore') args.push(value === true);
+        else if (name === 'productId' || name === 'orderId') args.push(requireText(value, 'INVALID_' + name.toUpperCase(), KEY_PATTERN));
+        else if (name === 'customer') {
+          if (!value || typeof value !== 'object' || Array.isArray(value)) fail('INVALID_CUSTOMER_DETAILS');
+          args.push(value);
+        } else if (name === 'payload') {
+          if (!value || typeof value !== 'object' || Array.isArray(value)) fail('INVALID_WEBHOOK');
+          if (typeof value.raw !== 'string' || value.raw.length === 0 || value.raw.length > 65536) fail('INVALID_WEBHOOK');
+          if (typeof value.timestamp !== 'string' || typeof value.signature !== 'string') fail('INVALID_WEBHOOK');
+          args.push(value);
+        } else if (name === 'restore') args.push(value === true);
         else if (name === 'evidence') {
           if (!value || typeof value !== 'object' || Array.isArray(value)) fail('INVALID_EVIDENCE');
           args.push(value);

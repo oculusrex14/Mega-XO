@@ -25,6 +25,9 @@ function fakeCommerce() {
     automaticPermit: record('automaticPermit'),
     purchase: record('purchase'),
     callback: record('callback'),
+    createCashfreeOrder: record('createCashfreeOrder'),
+    cashfreeOrderStatus: record('cashfreeOrderStatus'),
+    settleCashfreeWebhook: record('settleCashfreeWebhook'),
   };
 }
 

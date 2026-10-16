@@ -11,7 +11,7 @@
  *
  * VERIFICATION TARGETS:
  * 1. Old-origin CORS & Preflight handling:
- *    - Requests with Origin: https://play.antimatterinnovations.com receive Access-Control-Allow-Origin
+ *    - Requests with Origin: https://www.megaxo.online receive Access-Control-Allow-Origin
  *      matching the caller origin and Access-Control-Allow-Credentials: true.
  *    - Preflight OPTIONS returns status 204 with methods, headers, credentials, and allow-origin.
  *    - Approved origins (https://megaxo.online, https://api.megaxo.online) and local development origins
@@ -27,7 +27,7 @@
  * 3. CSRF enforcement on mutating requests:
  *    - Cookie-authenticated POST from forged/disallowed origin rejected with 403 ORIGIN_OR_CONTENT_TYPE.
  *    - Cookie-authenticated POST with missing Origin and Referer rejected with 403 ORIGIN_OR_CONTENT_TYPE.
- *    - Cookie-authenticated POST with allowed Origin (https://play.antimatterinnovations.com) passes CSRF.
+ *    - Cookie-authenticated POST with allowed Origin (https://www.megaxo.online) passes CSRF.
  *    - Cookie-authenticated POST with allowed Referer passes CSRF.
  *    - Non-cookie requests (Bearer token) pass CSRF check even without origin or from cross-origin.
  *    - Safe GET requests pass CSRF check regardless of origin.
@@ -290,7 +290,7 @@ test('1. CORS: verifies old-origin headers, preflight OPTIONS, allowed list, and
   const harness = await setupApiHarness(db);
   t.after(async () => { await harness.close(); });
 
-  const oldOrigin = 'https://play.antimatterinnovations.com';
+  const oldOrigin = 'https://www.megaxo.online';
   const standardOrigin = 'https://megaxo.online';
   const apiOrigin = 'https://api.megaxo.online';
   const localOrigin = 'http://localhost:3000';
@@ -405,7 +405,7 @@ test('2. Cookie auth continuity: resolves session via __Host-mega_session and de
     method: 'GET',
     headers: {
       cookie: `__Host-mega_session=${aliceSession.token}`,
-      origin: 'https://play.antimatterinnovations.com',
+      origin: 'https://www.megaxo.online',
     },
   });
   assert.equal(hostCookieRes.status, 200, '__Host-mega_session cookie authenticates with 200');
@@ -417,7 +417,7 @@ test('2. Cookie auth continuity: resolves session via __Host-mega_session and de
     method: 'GET',
     headers: {
       cookie: `mega_dev_session=${bobSession.token}`,
-      origin: 'https://play.antimatterinnovations.com',
+      origin: 'https://www.megaxo.online',
     },
   });
   assert.equal(devCookieRes.status, 200, 'mega_dev_session cookie authenticates with 200');
@@ -428,7 +428,7 @@ test('2. Cookie auth continuity: resolves session via __Host-mega_session and de
     method: 'GET',
     headers: {
       authorization: `Bearer ${aliceSession.token}`,
-      origin: 'https://play.antimatterinnovations.com',
+      origin: 'https://www.megaxo.online',
     },
   });
   assert.equal(bearerRes.status, 200, 'Bearer token authenticates with 200');
@@ -439,7 +439,7 @@ test('2. Cookie auth continuity: resolves session via __Host-mega_session and de
     method: 'GET',
     headers: {
       cookie: '__Host-mega_session=invalid_nonexistent_token_12345',
-      origin: 'https://play.antimatterinnovations.com',
+      origin: 'https://www.megaxo.online',
     },
   });
   assert.equal(invalidCookieRes.status, 401, 'Invalid cookie returns 401');
@@ -449,7 +449,7 @@ test('2. Cookie auth continuity: resolves session via __Host-mega_session and de
   const unauthRes = await httpRequest(harness.url, '/api/v1/profile', {
     method: 'GET',
     headers: {
-      origin: 'https://play.antimatterinnovations.com',
+      origin: 'https://www.megaxo.online',
     },
   });
   assert.equal(unauthRes.status, 401, 'Unauthenticated request returns 401');
@@ -487,6 +487,20 @@ test('3. CSRF: cookie-authenticated mutating requests require allowed Origin/Ref
     'Exact V4 perimeter error ORIGIN_OR_CONTENT_TYPE returned'
   );
 
+  // 3.1b The retired antimatter host is no longer an authorized origin (commit ae611c8 moved the
+  // public game to megaxo.online): a cookie-authenticated POST from it must be rejected exactly like
+  // any forged origin, not reflect CORS or pass CSRF. This is the detach invariant.
+  const retiredRes = await httpRequest(harness.url, '/api/account/profile', {
+    method: 'POST',
+    headers: {
+      cookie: cookieHeader,
+      origin: 'https://play.antimatterinnovations.com',
+    },
+    body: { displayName: 'Retired' },
+  });
+  assert.equal(retiredRes.status, 403, 'Retired antimatter origin rejected with 403');
+  assert.equal(retiredRes.headers['access-control-allow-origin'], undefined, 'Retired origin receives no CORS reflection');
+
   // 3.2 Cookie-authenticated POST with missing Origin and Referer rejected with 403 ORIGIN_OR_CONTENT_TYPE
   const noOriginRes = await httpRequest(harness.url, '/api/account/profile', {
     method: 'POST',
@@ -502,12 +516,12 @@ test('3. CSRF: cookie-authenticated mutating requests require allowed Origin/Ref
     'Exact V4 perimeter error ORIGIN_OR_CONTENT_TYPE returned'
   );
 
-  // 3.3 Cookie-authenticated POST with allowed Origin (play.antimatterinnovations.com) passes CSRF
+  // 3.3 Cookie-authenticated POST with allowed Origin (www.megaxo.online) passes CSRF
   const allowedOriginRes = await httpRequest(harness.url, '/api/account/profile', {
     method: 'POST',
     headers: {
       cookie: cookieHeader,
-      origin: 'https://play.antimatterinnovations.com',
+      origin: 'https://www.megaxo.online',
     },
     body: { displayName: 'Alice Approved' },
   });
@@ -524,7 +538,7 @@ test('3. CSRF: cookie-authenticated mutating requests require allowed Origin/Ref
     method: 'POST',
     headers: {
       cookie: cookieHeader,
-      referer: 'https://play.antimatterinnovations.com/settings/profile',
+      referer: 'https://www.megaxo.online/settings/profile',
     },
     body: { displayName: 'Alice Via Referer' },
   });
@@ -574,7 +588,7 @@ test('3. CSRF: cookie-authenticated mutating requests require allowed Origin/Ref
   assert.equal(
     csrfMiddleware.checkCsrf({
       method: 'POST',
-      headers: { cookie: cookieHeader, origin: 'https://play.antimatterinnovations.com' },
+      headers: { cookie: cookieHeader, origin: 'https://www.megaxo.online' },
     }),
     true,
     'Old origin accepted'
@@ -596,7 +610,7 @@ test('4. Genuinely read-only GETs: /api/v1/queue, /api/v1/match/:id, and /api/v1
   const aliceSession = await harness.accounts.issue('svc_alice', Date.now());
   const authHeaders = {
     authorization: `Bearer ${aliceSession.token}`,
-    origin: 'https://play.antimatterinnovations.com',
+    origin: 'https://www.megaxo.online',
   };
 
   // Baseline database snapshot before invoking read-only endpoints
@@ -671,7 +685,7 @@ test('5. Legacy /api/v1/profile compatibility: returns exact expected JSON shape
     method: 'GET',
     headers: {
       cookie: `__Host-mega_session=${aliceSession.token}`,
-      origin: 'https://play.antimatterinnovations.com',
+      origin: 'https://www.megaxo.online',
     },
   });
 
@@ -705,7 +719,7 @@ test('5. Legacy /api/v1/profile compatibility: returns exact expected JSON shape
     method: 'GET',
     headers: {
       cookie: `__Host-mega_session=${bobSession.token}`,
-      origin: 'https://play.antimatterinnovations.com',
+      origin: 'https://www.megaxo.online',
     },
   });
 
@@ -744,7 +758,7 @@ test('5b. Unconfigured Core: a queue-status read without a signed gateway fails 
   const aliceSession = await accounts.issue('svc_alice', Date.now());
   const res = await httpRequest(server.url, '/api/v1/queue', {
     method: 'GET',
-    headers: { authorization: `Bearer ${aliceSession.token}`, origin: 'https://play.antimatterinnovations.com' },
+    headers: { authorization: `Bearer ${aliceSession.token}`, origin: 'https://www.megaxo.online' },
   });
   assert.equal(res.status, 503, 'an unconfigured Core yields an honest service error, not 200');
   assert.notEqual(res.data?.state, 'idle', 'never fabricates an idle queue projection');

@@ -80,6 +80,7 @@ const http = require('node:http');
 const crypto = require('node:crypto');
 const fs = require('node:fs');
 const path = require('node:path');
+const { createResendMailTransport } = require(path.join(__dirname, '..', '..', 'packages', 'services', 'mail-resend.js'));
 
 const ROOT = path.resolve(__dirname, '..', '..');
 const PRODUCTION_TARGET_FILE = path.join(ROOT, 'docs/v5/environments/production.json');
@@ -263,27 +264,37 @@ function resolveOutboundPolicy(target, requested = {}) {
 
 /* A mail transport bound to the resolved policy. When email is disabled by the target the worker
  * defers every delivery (`enabled() === false`) instead of claiming work it must not send. */
-function createMailTransportForPolicy(policy) {
+function createMailTransportForPolicy(policy, options = {}) {
   if (!policy || typeof policy !== 'object') throw REFUSE('OUTBOUND_POLICY_REQUIRED');
-  if (policy.email !== 'disabled') throw REFUSE('OUTBOUND_CLASS_UNIMPLEMENTED', 'email');
-  const unreachable = (method) => () => { throw REFUSE('OUTBOUND_DISABLED_BY_TARGET', method); };
-  return Object.freeze({
-    enabled: () => false,
-    sendOtp: unreachable('sendOtp'),
-    sendPasswordChanged: unreachable('sendPasswordChanged'),
-    sendSecurityNotice: unreachable('sendSecurityNotice'),
-    sendMail: unreachable('sendMail'),
-  });
+  if (policy.email === 'disabled') {
+    const unreachable = (method) => () => { throw REFUSE('OUTBOUND_DISABLED_BY_TARGET', method); };
+    return Object.freeze({
+      enabled: () => false,
+      sendOtp: unreachable('sendOtp'),
+      sendPasswordChanged: unreachable('sendPasswordChanged'),
+      sendSecurityNotice: unreachable('sendSecurityNotice'),
+      sendMail: unreachable('sendMail'),
+    });
+  }
+  /* LR10: the Resend transport is the implemented email provider. The key arrives through the
+   * approved secret channel (RESEND_API_KEY or RESEND_API_KEY_FILE, mode 0600); a composition that
+   * enables email without it is refused here rather than at first send. */
+  const resendApiKey = options.resendApiKey;
+  if (typeof resendApiKey !== 'string' || resendApiKey.length === 0) {
+    throw REFUSE('OUTBOUND_EMAIL_KEY_REQUIRED');
+  }
+  return createResendMailTransport({ apiKey: resendApiKey, fetcher: options.emailFetch });
 }
 
 /* This entry point composes NO outbound provider: it has no mail provider, no store notification
  * verifier and no rewarded-ad service. A target file that ENABLES a class is therefore refused
  * explicitly rather than silently ignored - a declared outbound effect that nothing implements is a
  * configuration error, and the cutover inventory keeps all three disabled. */
-function assertProviderClassesComposable(policy) {
+function assertProviderClassesComposable(policy, capabilities = {}) {
   if (!policy || typeof policy !== 'object') throw REFUSE('OUTBOUND_POLICY_REQUIRED');
   const enabled = OUTBOUND_CLASSES.filter((klass) => policy[klass] === 'enabled');
-  if (enabled.length > 0) throw REFUSE('OUTBOUND_CLASS_UNIMPLEMENTED', enabled.join(','));
+  const unimplemented = enabled.filter((klass) => typeof capabilities[klass] !== 'string' || capabilities[klass].length === 0);
+  if (unimplemented.length > 0) throw REFUSE('OUTBOUND_CLASS_UNIMPLEMENTED', unimplemented.join(','));
   return Object.freeze({ composed: false, classes: Object.freeze({ ...policy }) });
 }
 
@@ -645,8 +656,15 @@ async function main() {
   /* 6. OUTBOUND PROVIDER CLASSES. Resolved from the bound inventory; the disabled mail transport is
    * the only one composed while the inventory disables email, and a class the inventory enables is
    * refused because no provider implementation is configured in this entry. */
-  const providerComposition = assertProviderClassesComposable(boundary.outbound);
-  const mailTransport = createMailTransportForPolicy(boundary.outbound);
+  /* LR10: email enabled in the inventory is legal now, but only with the Resend key present in the
+   * approved secret channel; the capability map tells the composability check which classes are
+   * actually implemented in this entry. */
+  const readProviderSecret = require(path.join(ROOT, 'server/production/config.js')).secret;
+  const emailEnabled = boundary.outbound.email === 'enabled';
+  const resendApiKey = emailEnabled ? readProviderSecret(process.env, 'RESEND_API_KEY', true) : '';
+  const providerCapabilities = emailEnabled ? { email: 'resend' } : {};
+  const providerComposition = assertProviderClassesComposable(boundary.outbound, providerCapabilities);
+  const mailTransport = createMailTransportForPolicy(boundary.outbound, { resendApiKey });
   const worker = createWorkerApp({
     pool: workerPool, redis: ephemera, secret: otpSecret, transport: mailTransport,
     /* The rate-bucket DELETE grant lives with api_runtime (0020; 0037 withholds it from the worker), so
@@ -687,8 +705,14 @@ async function main() {
    * JS origin only, never a callback host). The same nativeAudiences env the WebView lane reads
    * keeps ONE audience source for both surfaces. */
   const { IdentityProviders } = require(path.join(ROOT, 'server/identity-provider.js'));
-  const { secret: readProviderSecret } = require(path.join(ROOT, 'server/production/config.js'));
   const webAccountRoutes = require(path.join(ROOT, 'apps/api/routes/account.js'));
+  const { createOtpSink } = require(path.join(ROOT, 'packages/services/mail-enqueue.js'));
+  /* LR10: durable OTP delivery. When email is enabled the sink seals the challenge delivery into
+   * ops.outbox (api_runtime INSERT, migration 0038) with the SAME secret the mail worker derives
+   * its key from; the worker claims, opens and delivers through the Resend transport. When email is
+   * disabled the sink stays undefined - auth responses never depended on it, and enqueueing mail
+   * nothing may send would be dead-letter work by construction. */
+  const otpSink = emailEnabled ? createOtpSink({ pool: apiPool, secret: otpSecret }) : undefined;
   const identityProviders = new IdentityProviders({config: {
     google: {
       clientId: process.env.GOOGLE_CLIENT_ID || '',
@@ -708,6 +732,7 @@ async function main() {
     pool: apiPool, accounts, coreGateway, access, nativeAudiences: ['mega-ios', 'mega-android'],
     queue: coreGateway, leaderboard: (query) => coreGateway.leaderboard(query),
     otpSecret, ticketIssuer, allowedOrigins,
+    otpSink,
     identityProviders, webCallbackOrigin: 'https://megaxo.online',
     /* LR08: the iOS Universal Links association is served with the REAL Apple Team ID prefix
      * when configured (Apple sign-in requires it anyway); the well-known route fail-closes to the

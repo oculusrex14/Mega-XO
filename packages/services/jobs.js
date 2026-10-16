@@ -543,4 +543,4 @@ function createJobService(options = {}) {
  });
 }
 
-module.exports = { createJobService, WORKER_ROLE };
+module.exports = { createJobService, WORKER_ROLE, ENVELOPE_VERSION, ENQUEUE_SQL };

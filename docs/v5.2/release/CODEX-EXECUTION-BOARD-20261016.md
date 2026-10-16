@@ -167,4 +167,14 @@
 
 **LR06 final gaps:** the session-fixation and npm-audit gaps are CLOSED with evidence (the matrix updated); the two structural gaps remain (LR12 rate-limit negatives now UNBLOCKED by #29, device-lane security).
 
-**URGENT for Main (before Mon 2026-10-19):** the LR18 P0 finding — the production retention timers run the STAGING capture-job.sh; the corrective procedure is in LR18-RETENTION-DR-LIVE-20261016.md. The next scheduled retention run is Monday.**Remaining backlog lanes:** the device/native lane (LR08/LR20), the research-capture live posture (LR17 DB-level), and the deferred CI sweep (LR02).
+**URGENT for Main (before Mon 2026-10-19):** the LR18 P0 finding — the production retention timers run the STAGING capture-job.sh; the corrective procedure is in LR18-RETENTION-DR-LIVE-20261016.md. The next scheduled retention run is Monday.
+
+### Checkpoint 12 — 2026-10-16 (LR09 Vercel verification + LR06 gaps closed)
+
+**LR09:** live probes show NO live Vercel auxiliary surface — both project subdomains answer DEPLOYMENT_NOT_FOUND, so no reachable Vercel lane could bypass the signed ingress or the canonical-host checks. The canonical origin (200) and the Core edge (401 unsigned) are unaffected. The Hobby noncommercial constraint is moot while nothing is deployed. Recommendation: keep the projects parked. Report: LR09-VERCEL-AUX-LIVE-20261016.md.
+
+**LR06:** both named gaps CLOSED with evidence — the session-fixation refusal (v5-p04-repositories: rotate consumes exactly one row; the rotated bearer's live() is null; replaceSession refuses on double-consume) and npm audit ZERO vulnerabilities across 24 prod deps. Two structural gaps remain (LR12 rate-limit negatives, device-lane security). The matrix is current.
+
+**LR14:** the shipped powers-1 constants match EVERY owner-approved limit (recorded in LR14-POWERS-AUDIT-20261016.md); the powers/staging-head suites are green.
+
+**URGENT for Main (before Mon 2026-10-19):** the LR18 P0 finding — the production retention timers run the STAGING capture-job.sh; the corrective procedure is in LR18-RETENTION-DR-LIVE-20261016.md.**Remaining backlog lanes:** the device/native lane (LR08/LR20), the research-capture live posture (LR17 DB-level), and the deferred CI sweep (LR02).

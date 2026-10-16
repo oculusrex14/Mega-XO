@@ -51,7 +51,7 @@
 
 | ID | Brief | Task | Pri | Deps | Status | PR |
 | --- | --- | --- | --- | --- | --- | --- |
-| LR17 | E01–E03 | Verify the live collector (eligible modes, provenance, immutable superseded branches, no day-one training) and one-time consent UI/withdrawal. | P0 | LR05, LR07 | TODO | — |
+| LR17 | E01–E03 | Live verification DONE (LR17-CONSENT-CAPTURE-LIVE-20261016.md): consent routes fail closed, adult-band DB enforcement, real deletion state machine, capture migrations deployed. GAP FOUND + FIXED: no consent UI existed — research-consent card PR'd (#28, client-hydrated on /account, adult-gated, withdrawable). DB-level learning.policy posture check delegated to Main (exact SQL in the report). | P0 | LR05, LR07 | UI PR OPEN | #28 |
 | LR18 | E04 | Retention/DR: real encrypted restore incl. privacy journal; enable 35-day backup prune only after safe-prune proof; 730d/90d/7d policy reconciliation; withdrawal/tombstone/export-revocation tests. | P0 | LR17 | TODO | — |
 
 ## Stage 6 — Stores and release readiness
@@ -120,3 +120,9 @@
 **LR10:** full durable chain implemented as PR #27 (see LR10 row). 9/9 offline tests + production-lifecycle green.
 
 **PR queue for Main:** #22 SEO/headers, #23 /opsz root cause, #24 compose fence, #25 deploy guards, #26 AASA team id, #27 email (after #26), #21 board+evidence.
+
+### Checkpoint 5 — 2026-10-16 (LR06 matrix + LR17 consent UI)
+
+**LR06:** security evidence matrix (SECURITY-EVIDENCE-MATRIX-20261016.md): seven core suites executed green; every area mapped to concrete negative tests; four honest gaps documented for Main's audit (session-fixation named test, npm audit evidence, LR12 rate-limit negatives, device lane).
+
+**LR17:** live verification found the consent UI missing entirely (API/service/DB complete) — implemented as PR #28 with a new offline render suite (7/7) and the full web regression set (build/seo/foundations/client-bundle) green. The consent.js module also required a build-allowlist entry (the prerender failed without it — now tested by the build suite).

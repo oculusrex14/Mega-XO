@@ -7,6 +7,7 @@ import {storeLinks} from './store-links.js';
 import {renderPractice, renderGame, mountBoard} from './board.js';
 
 import {createReadModel, createProfileEditor, readJSON, authRequired, errorCopy} from './data.js';
+import {normalizeStoreStatus, WEB_PRODUCT_IDS} from './store.js';
 import {legalDocuments} from './legal-documents.js';
 import {createFriendsController} from './friends.js';
 import {createRealtimeReader, canApplyMatchSnapshot} from './realtime.js';
@@ -19,7 +20,7 @@ let tab='ranked';
 let toastTimer;
 const main=document.querySelector('#main');
 if(main?.hasAttribute?.('data-offline-fallback'))history.replaceState?.({...history.state,mxOfflineFallback:true},'',location.href);
-const productIds=['crowns_100','crowns_525','crowns_1100','remove_ads'];
+const productIds=WEB_PRODUCT_IDS;
 const context={storeLinks,profile:null, sessionStatus:'loading', providers:{}, accountView:'email',
  legalDocuments:Object.fromEntries(Object.entries(legalDocuments).map(([key,value])=>['/'+key,value])),
  products:{status:'ready',rows:productIds.map(id=>({id,enabled:false})),purchasesAvailable:false},
@@ -96,7 +97,6 @@ function render({focus=false}={}){
  updateSeo(path);configureDownloadLinks();
  document.querySelectorAll('[data-board-host]').forEach(host=>{board=mountBoard(host,{preview:host.dataset.boardPreview!=='false'&&path==='/',...gameAccount(),mode:path==='/game'?gameMode():host.dataset.boardMode,difficulty:host.dataset.boardDifficulty,theme:host.dataset.boardTheme,tutorial:path==='/game'&&new URLSearchParams(location.search).get('tutorial')==='guided',...(path==='/game'&&match?{online:{match,actorId:context.profile?.id,onMove:tournament?sendTournamentMove:sendOnlineMove,onResign:tournament?sendTournamentResign:sendOnlineResign,onError:handleOnlineError}}:{})})});
  if(path==='/game'){boundOnlineActor=match?context.profile.id:null;boundTournamentMatch=tournament?match:null;updateOnlineControls();}
- if(path==='/store'&&context.products.status!=='error')main.querySelector('[data-store-products]')?.insertAdjacentHTML('afterend','<div class="pg-actions"><button class="mx-button secondary" data-store-action="refresh">Check store availability</button></div>');
  if(path==='/account')loadProviders();
  if(path==='/account'&&context.sessionStatus==='linked')loadResearchConsent();
  if(path==='/privacy-choices')hydrateTelemetryPanel();
@@ -190,7 +190,7 @@ document.addEventListener('keydown',event=>{
 function activate(){
  const path=normalizedPath();
  if(path!==activePath){activePath=path;clearInterval(leaderboardTimer);clearInterval(onlineTimer);clearInterval(tournamentTimer);tournamentTimer=null;onlineRevision++;realtime.stop();
-  if(path==='/store'&&context.sessionStatus==='linked')refreshProducts();
+  if(path==='/store')refreshProducts();
   if(path==='/leaderboard'){model.leaderboard();leaderboardTimer=setInterval(()=>{if(!document.hidden&&context.leaderboard.status==='ready')model.leaderboard();},30000);}
   if(path==='/game'&&['queued','waiting','playing'].includes(onlineState.status))startOnlinePolling();
  }
@@ -208,20 +208,50 @@ async function linkedAccount(){
  await model.profile();if(context.sessionStatus==='linked')context.accountMessage='Your profile is ready.';
 }
 async function refreshProducts(){
- context.products={status:'loading',rows:[],purchasesAvailable:false};render();
+ context.products={status:'loading',rows:[],purchasesAvailable:false,webCheckoutAvailable:false};render();
  try{
   const status=await readJSON('/api/monetization/status');
   const bridge=globalThis.MegaBilling;
   const prices=bridge?.products?await bridge.products(status.storeContext||null):[];
-  context.products={status:'ready',purchasesAvailable:status.purchasesAvailable===true&&typeof bridge?.purchase==='function',storeContext:status.storeContext,
-   rows:productIds.map(id=>({id,owned:Array.isArray(status.products)&&status.products.includes(id),enabled:status.purchasesAvailable===true&&typeof bridge?.purchase==='function'&&!(id==='remove_ads'&&status.adMode!=='hybrid'),localizedPrice:Array.isArray(prices)?prices.find(row=>row.id===id&&typeof row.price==='string')?.price:undefined,inr:typeof status.cashfree?.products?.[id]==='string'?status.cashfree.products[id]:undefined}))};
- }catch(error){context.products={status:'error',rows:[],purchasesAvailable:false};notify(errorCopy(error));}
+  const normalized=normalizeStoreStatus(status);
+  if(!normalized.ok)throw Error(normalized.errorCode||'STORE_UNAVAILABLE');
+  context.products={status:'ready',
+   purchasesAvailable:status.purchasesAvailable===true&&typeof bridge?.purchase==='function',
+   webCheckoutAvailable:normalized.webCheckoutAvailable,
+   pass:normalized.pass,storeContext:status.storeContext,
+   rows:normalized.rows.map(row=>({...row,
+    enabled:status.purchasesAvailable===true&&typeof bridge?.purchase==='function'&&!(row.id==='remove_ads'&&status.adMode!=='hybrid'),
+    localizedPrice:Array.isArray(prices)?prices.find(entry=>entry.id===row.id&&typeof entry.price==='string')?.price:undefined}))};
+ }catch(error){context.products={status:'error',rows:[],purchasesAvailable:false,webCheckoutAvailable:false};notify(errorCopy(error));}
  if(normalizedPath()==='/store')render();
 }
 let cashfreeSdkPromise=null;
 function loadCashfreeSdk(){return cashfreeSdkPromise??=new Promise((resolve,reject)=>{const script=document.createElement('script');script.src='https://sdk.cashfree.com/js/v3/cashfree.js';script.onload=resolve;script.onerror=()=>{cashfreeSdkPromise=null;reject(Error('STORE_UNAVAILABLE'));};document.head.append(script);});}
-async function cashfreeCheckout(productId){const email=(globalThis.prompt('Email for the payment receipt:',context.profile?.email||context.accountEmail||'')||'').trim();const phone=(globalThis.prompt('Phone number for the payment receipt (digits only):','')||'').trim();if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)||!/^[0-9]{8,15}$/.test(phone))throw Error('INVALID_CUSTOMER_DETAILS');await loadCashfreeSdk();const key=globalThis.crypto?.randomUUID?.()||'cf'+Date.now();const order=await globalThis.MegaAccount.request('/api/monetization/cashfree/order',{product:productId,email,phone},key);if(!order?.paymentSessionId)throw Error('STORE_UNAVAILABLE');await new globalThis.Cashfree({mode:'production'}).checkout({paymentSessionId:order.paymentSessionId,redirectTarget:'_self'});}
+async function cashfreeCheckout(productId){const email=(globalThis.prompt('Email for the payment receipt:',context.profile?.email||context.accountEmail||'')||'').trim();const phone=(globalThis.prompt('Phone number for the payment receipt (digits only):','')||'').trim();if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)||!/^[0-9]{8,15}$/.test(phone))throw Error('INVALID_CUSTOMER_DETAILS');await loadCashfreeSdk();const key=globalThis.crypto?.randomUUID?.()||'cf'+Date.now();const order=await globalThis.MegaAccount.request('/api/monetization/cashfree/order',{product:productId,email,phone},key);if(!order?.paymentSessionId)throw Error('STORE_UNAVAILABLE');await new globalThis.Cashfree({mode:order.environment==='sandbox'?'sandbox':'production'}).checkout({paymentSessionId:order.paymentSessionId,redirectTarget:'_self'});}
 async function pollCashfreeStatus(orderId){for(let attempt=0;attempt<20;attempt++){try{const state=await readJSON('/api/monetization/cashfree/status?order_id='+encodeURIComponent(orderId));if(state?.paid){history.replaceState(null,'','/store');notify('Payment verified. Your purchase is on your profile.');await model.profile();await refreshProducts();return;}}catch(error){}await new Promise(resolve=>setTimeout(resolve,3000));}history.replaceState(null,'','/store');notify('The payment is still processing. Your profile updates the moment it clears.');}
+/* A3: the Polar hosted checkout opens in a new tab (same-tab fallback when popups are blocked)
+ * and the SAME durable key is reused on retry. Verification is actor-bound via /polar/status and
+ * only a durable server confirmation shows success - opening the gateway proves nothing. */
+let polarPending=null;
+async function polarCheckout(productId){
+ if(polarPending)throw Error('REQUEST_PENDING');
+ const key=globalThis.crypto?.randomUUID?.()||'pl'+Date.now();
+ const created=await globalThis.MegaAccount.request('/api/monetization/polar/checkout',{product:productId},key);
+ if(typeof created?.checkoutUrl!=='string'||!created.checkoutUrl.startsWith('https://'))throw Error('STORE_UNAVAILABLE');
+ polarPending={productId,checkoutId:typeof created.checkoutId==='string'?created.checkoutId:'',key};
+ const opened=globalThis.open?.(created.checkoutUrl,'_blank','noopener');
+ if(!opened)location.assign(created.checkoutUrl);
+ if(polarPending&&polarPending.checkoutId)pollPolarStatus(polarPending.checkoutId);
+}
+async function pollPolarStatus(checkoutId){
+ for(let attempt=0;attempt<40;attempt++){
+  await new Promise(resolve=>setTimeout(resolve,3000));
+  if(normalizedPath()!=='/store'||polarPending?.checkoutId!==checkoutId)return;
+  try{const state=await readJSON('/api/monetization/polar/status?checkout_id='+encodeURIComponent(checkoutId));
+   if(state?.paid){polarPending=null;notify('Payment verified. Your purchase is on your profile.');await model.profile();await refreshProducts();return;}
+  }catch(error){}
+ }
+}
 function updateOnlineControls(){
  if(normalizedPath()!=='/game')return;
  if(tournamentRouteRoom()){updateTournamentControls();return;}
@@ -348,7 +378,7 @@ document.addEventListener('click',event=>{
    const room=context.tournaments?.room,actor=context.sessionStatus==='linked'?context.profile?.id:null;
    const fixture=tournamentFixture(room,actor,tournament.dataset.fixture);
    if(fixture&&['READY','PLAYING'].includes(fixture.status))navigate('/game?tournament='+encodeURIComponent(room.id)+'&fixture='+encodeURIComponent(fixture.id));
-  }else tournamentController.action(action,tournament.dataset.table||tournament.dataset.fixture);
+  }else{const tableId=tournament.dataset.table||tournament.dataset.fixture;Promise.resolve(tournamentController.action(action,tableId)).then(result=>{if(action==='join'&&result&&result.id)navigate('/game?tournament='+encodeURIComponent(result.id));}).catch(()=>{});}
   return;
  }
  const friendAction=event.target.closest('[data-friend-action]');
@@ -386,7 +416,12 @@ document.addEventListener('click',event=>{
  if(action==='metrics-optin'||action==='metrics-optout'){setTelemetryOptIn(globalThis.localStorage,action==='metrics-optin');if(telemetryLane){telemetryLane.stop();telemetryLane=null;}hydrateTelemetryPanel();}
  }
  if(event.target.closest('[data-sponsor-action="clear"]')){try{localStorage.removeItem('mega-xoxo-sponsor-interests');}catch{}context.sponsorPreferences={};context.sponsorMessage='Saved choices cleared.';render();}
- const store=event.target.closest('[data-store-action]');if(store){if(store.dataset.storeAction==='refresh')refreshProducts();else if(store.dataset.storeAction==='purchase'&&context.products.purchasesAvailable&&!serviceBusy){accountAction(async()=>{const actor=context.profile?.id,id=store.dataset.productId,row=context.products.rows.find(x=>x.id===id);if(!actor||!row?.enabled||!row.localizedPrice)throw Error('STORE_UNAVAILABLE');const evidence=await globalThis.MegaBilling.purchase(id,context.products.storeContext);if(actor!==context.profile?.id)throw Error('AUTH_REQUIRED');const delivered=await globalThis.MegaNetwork.purchase(evidence,globalThis.MegaAccount.id());await globalThis.MegaBilling.finish?.(evidence,delivered);await model.profile();await refreshProducts();notify('Verified purchase delivered.');});}else if(store.dataset.storeAction==='purchase'&&!serviceBusy){const id=store.dataset.productId,row=context.products.rows.find(x=>x.id===id);if(row?.inr)accountAction(async()=>{await cashfreeCheckout(id);await model.profile();await refreshProducts();notify('Payment verified. Your purchase is on your profile.');});}}
+ const store=event.target.closest('[data-store-action]');if(store&&store.dataset.storeAction==='refresh')refreshProducts();
+ else if(store&&store.dataset.storeAction==='purchase'&&!serviceBusy){
+  const id=store.dataset.productId,row=context.products.rows.find(x=>x.id===id);
+  if(context.products.purchasesAvailable===true&&row?.enabled===true){accountAction(async()=>{const actor=context.profile?.id;if(!actor)throw Error('AUTH_REQUIRED');const evidence=await globalThis.MegaBilling.purchase(id,context.products.storeContext);if(actor!==context.profile?.id)throw Error('AUTH_REQUIRED');const delivered=await globalThis.MegaNetwork.purchase(evidence,globalThis.MegaAccount.id());await globalThis.MegaBilling.finish?.(evidence,delivered);await model.profile();await refreshProducts();notify('Verified purchase delivered.');});}
+  else if(row&&context.products.webCheckoutAvailable===true){accountAction(async()=>{if(row.inr&&row.id!=='mega_pass')await cashfreeCheckout(id);else await polarCheckout(id);await model.profile();await refreshProducts();});}
+ }
  const online=event.target.closest('[data-online-action]');if(online&&!onlineBusy&&context.sessionStatus==='linked'&&!tournamentRouteRoom()){const action=online.dataset.onlineAction;
   if(action==='retry'){realtime.reconnect();startOnlinePolling();pollOnline();return;}
   if(action==='new'){onlineRevision++;realtime.stop();onlineState={status:'idle',match:null,invitation:null,message:''};clearInterval(onlineTimer);render();return;}
@@ -442,4 +477,4 @@ function hydrateTelemetryPanel(){
  if(telemetryOptedIn(globalThis.localStorage)&&!telemetryLane){telemetryLane=createTelemetryLane({storage:globalThis.localStorage,request:(path,body)=>globalThis.MegaAccount.request(path,body),intervalMs:60000});if(telemetryLane)telemetryLane.start();}
  if(!telemetryOptedIn(globalThis.localStorage)&&telemetryLane){telemetryLane.stop();telemetryLane=null;}
 }
-render();activate();model.profile().then(()=>{if(normalizedPath()==='/store'&&context.sessionStatus==='linked')refreshProducts();});const bootOrder=new URLSearchParams(location.search).get('cf_order');if(normalizedPath()==='/store'&&bootOrder)pollCashfreeStatus(bootOrder);
+render();activate();model.profile().then(()=>{if(normalizedPath()==='/store')refreshProducts();});const bootOrder=new URLSearchParams(location.search).get('cf_order');if(normalizedPath()==='/store'&&bootOrder)pollCashfreeStatus(bootOrder);

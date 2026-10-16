@@ -437,7 +437,15 @@
 .pg-store-card>.mx-chip{align-self:start;margin-bottom:18px;font-size:.62rem}
 .pg-store-card>p{flex:1;font-size:.87rem}
 .pg-pass-card{grid-column:1/-1}
-.pg-pass-art{width:100%;height:auto;max-height:280px;object-fit:cover;border-radius:14px;margin-bottom:16px}
+.pg-pass-panel{display:grid;grid-template-columns:minmax(180px,260px) minmax(0,1fr);gap:24px;align-items:center;padding:25px 22px;border-radius:18px;border:1px solid rgba(126,148,255,.24);background:linear-gradient(160deg,rgba(64,52,140,.30),rgba(24,28,52,.55));margin:26px 0}
+.pg-pass-media{display:grid;place-items:center;min-width:0}
+.pg-pass-art{width:100%;height:auto;max-height:240px;object-fit:contain;filter:drop-shadow(0 12px 26px rgba(96,44,180,.35))}
+.pg-pass-copy{min-width:0}
+.pg-pass-copy>.mx-chip{margin-bottom:12px}
+.pg-pass-copy>h2{margin:0 0 6px;font-size:1.62rem}
+.pg-pass-action{display:flex;align-items:center;gap:18px;flex-wrap:wrap;margin-top:6px}
+.pg-pass-price{margin:0}
+.pg-pass-period{margin-left:8px;font-size:.85rem;font-weight:400;color:#a7bbd3;letter-spacing:0}
 .pg-pass-benefits{margin:10px 0 14px;padding-left:18px;display:grid;gap:6px;font-size:.85rem}
 .pg-store-card h2{font-size:1.45rem}
 .pg-store-art{height:93px;display:grid;place-items:center;margin-bottom:20px;border-radius:15px;background:radial-gradient(ellipse at 50% 70%,rgba(120,43,190,.23),transparent 70%)}
@@ -591,3 +599,22 @@
 @media(max-width:900px){.pg-sponsor-preferences-grid .pg-interest-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:650px){.pg-player-card-rank{width:70px;height:70px}.pg-player-card-heading{gap:14px}.pg-player-card-id{align-items:start;flex-direction:column;gap:8px}.pg-player-card-heading .mx-eyebrow{font-size:.6rem}.pg-sponsor-preferences-grid>.pg-panel{padding:21px 20px}.pg-sponsor-preferences-grid .pg-sponsor-form>.pg-text-button{display:inline-flex;margin-left:10px}.pg-sponsor-preferences-grid .pg-sponsor-form>.mx-button{width:auto}.pg-sponsor-preferences-grid .pg-interest-grid>label{font-size:.8rem}.pg-sponsor-preferences-grid .pg-consent-checkbox{font-size:.8rem}}
 @media(forced-colors:active){.pg-player-id-card progress{border-color:CanvasText}.pg-player-id-card progress::-webkit-progress-value{background:Highlight}.pg-player-id-card progress::-moz-progress-bar{background:Highlight}}
+
+
+/* Annotation 2/3 (2026-10-17): the compact sponsor inventory and collapsed disclosure. */
+.pg-ad-banner{margin:22px 0;padding:18px;border-radius:16px;border:1px dashed rgba(126,148,255,.28)}
+.pg-ad-banner .pg-ad-label{display:block;margin-bottom:10px;font-size:.62rem;letter-spacing:.14em;text-transform:uppercase;color:#8ea6c4}
+.pg-ad-wide{min-height:120px;display:grid;place-items:center;border-radius:12px;background:rgba(16,22,44,.5)}
+.pg-ad-placeholder{font-size:.9rem;color:#a7bbd3}
+.pg-sponsor-disclosure{margin:14px 0 4px;border:1px solid rgba(126,148,255,.22);border-radius:12px;background:rgba(16,22,44,.45)}
+.pg-sponsor-disclosure>summary{cursor:pointer;min-height:48px;display:flex;align-items:center;padding:12px 16px;font-weight:600;list-style:none}
+.pg-sponsor-disclosure>summary::-webkit-details-marker{display:none}
+.pg-sponsor-disclosure>summary::after{content:'▸';margin-left:auto;transition:transform .15s ease}
+.pg-sponsor-disclosure[open]>summary::after{transform:rotate(90deg)}
+.pg-sponsor-disclosure .pg-sponsor-form{padding:4px 16px 16px}
+.pg-sponsor-preferences>h2{margin-bottom:6px}
+/* Annotation 6 (2026-10-17): the restrained More coming soon! theme card. */
+.pg-theme-soon .pg-theme-board{display:grid;place-items:center;color:#8ea6c4;opacity:.8}
+.pg-theme-soon .pg-theme-board>.mx-icon{width:52px;height:52px}
+.pg-theme-soon .pg-theme-label{color:#a7bbd3}
+@media(max-width:900px){.pg-pass-panel{grid-template-columns:1fr}.pg-pass-media{max-width:300px}}

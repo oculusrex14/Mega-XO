@@ -171,7 +171,11 @@ test('P21 sponsor preferences require explicit local consent and no active adver
   assert.match(html, /data-sponsor-preferences/);
   assert.match(html, /name="consent" required/);
   assert.match(html, /saved only in this browser/);
-  assert.equal((html.match(/class="pg-ad-label">Advertisement/g) || []).length, 3);
+  /* Annotation 2: one wide banner plus six distinct cards of reserved inventory. */
+  assert.equal((html.match(/class="pg-ad-label">Advertisement/g) || []).length, 7);
+  assert.equal((html.match(/data-sponsor-slot="sponsors-/g) || []).length, 7);
+  assert.match(html, /pg-sponsor-disclosure/);
+  assert.doesNotMatch(html, /Your game. Your choice./);
   assert.doesNotMatch(html, /Sponsor placements are currently inactive/);
   assert.match(html, /No active sponsor/);
   assert.doesNotMatch(html, /<script|<iframe|https:\/\/.*(?:doubleclick|googlesyndication)|click to earn|reward for clicking/i);
@@ -244,24 +248,42 @@ test('P21.07 rendered league table matches approved domain floors, entry fees an
 test('P21.07 rendered tournament entries and payouts match approved tournament mathematics', async () => {
   const { renderPage } = await pages;
   const html = renderPage('/tournaments', { profile: null });
-  const cards = [...html.matchAll(/<section\b[^>]*pg-tournament-table[^>]*>([\s\S]*?)<\/section>/g)].map(match => match[1]);
+  /* Annotation 4: exactly ONE catalog mount, rendered client-side from the validated
+   * /api/party/capabilities catalog — no static duplicated table set on the page. */
+  assert.equal((html.match(/data-tournament-controls/g) || []).length, 1);
+  assert.doesNotMatch(html, /pg-tournament-table/);
+  const linked = renderPage('/tournaments', { profile: null });
+  assert.match(text(linked), /Choose your table/);
+  assert.match(text(html), /exactly ten players within a maximum 200 Elo spread/);
+  assert.match(text(html), /do not mint normal Ranked win bonuses/);
+});
+
+test('P21.07 the live tournament catalog renders the canonical table mathematics', async () => {
+  const view = await import(pathToFileURL(path.join(__dirname, '../apps/web/tournaments-view.js')).href);
+  const renderTournamentControls = view.renderTournamentControls;
+  const tables = Object.keys(tournament.TABLES).map(id => {
+    const quote = tournament.prize(id);
+    return { table: id, name: quote.name, currency: quote.currency, entry: quote.entry, pool: quote.pool, payouts: quote.payouts, seats: quote.seats };
+  });
+  const html = renderTournamentControls({ sessionStatus: 'linked', profile: { id: 'po_alice' }, tournaments: { status: 'ready', available: true, room: null, busy: false, tables, message: '', errorCode: '' } }, {});
+  const cards = [...html.matchAll(/<article class="pg-panel pg-tournament-table pg-tournament-live-card([^"]*)">([\s\S]*?)<\/article>/g)].map(match => match[2]);
   assert.equal(cards.length, Object.keys(tournament.TABLES).length);
   for (const [index, id] of Object.keys(tournament.TABLES).entries()) {
     const quote = tournament.prize(id);
     const card = cards[index];
     const visible = text(card);
-    assert.ok(visible.includes(quote.name.toUpperCase() + ' TABLE'));
-    const entry = number(text(card.match(/class="pg-price">([\s\S]*?)<span/)?.[1] || ''));
+    assert.ok(visible.includes(quote.name + ' table'));
+    const entry = number(text(card.match(/pg-tournament-entry"><strong>([\s\S]*?)<\/strong><span>/)?.[1] || ''));
     assert.equal(entry, quote.entry);
     assert.ok(visible.includes(quote.currency === 'crowns' ? 'Crowns entry' : 'Coins entry'));
-    const payoutList = card.match(/<ol class="pg-payouts">([\s\S]*?)<\/ol>/)?.[1];
+    const payoutList = card.match(/<ol class="pg-payouts pg-tournament-payouts">([\s\S]*?)<\/ol>/)?.[1];
     assert.ok(payoutList);
     const paid = [...payoutList.matchAll(/<strong>([^<]*)<\/strong>/g)].map(item => number(item[1]));
     assert.deepEqual(paid, quote.payouts.slice(0, 5));
     assert.match(visible, /10% of the original pool is retired/);
+    assert.match(card, /data-table="/);
+    assert.match(card, /aria-label="Join the /);
   }
-  assert.match(text(html), /exactly ten players within a maximum 200 Elo spread/);
-  assert.match(text(html), /do not mint normal Ranked win bonuses/);
 });
 
 test('P21.07 reward and challenge copy retain approved currency limits and archived cosmetic direction', async () => {

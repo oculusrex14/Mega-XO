@@ -29,7 +29,7 @@ const OPS = {
   /* The AdMob SSV provider callback is actor-free (Google calls it); the commerce service verifies
 	 * the provider proof inside callback() and binds the grant to the ticket actor there. The raw
 	 * payload is the SSV QUERY STRING (what Google signs), never a re-encoded param map. */
-  ssv: { args: ['raw'], method: 'callback', call: (c, actor, a) => c.callback(a[0]) },
+  ssv: { args: ['raw'], method: 'callback', actorFree: true, call: (c, actor, a) => c.callback(a[0]) },
 };
 
 function fail(code) { const e = Error(code); e.code = code; throw e; }
@@ -48,10 +48,14 @@ function createCommerceIngressService({ commerce }) {
   return Object.freeze({
     async command(input = {}) {
       if (!input || typeof input !== 'object' || Array.isArray(input)) fail('INVALID_COMMERCE_COMMAND');
-      const actor = requireText(input.actor, 'INVALID_ACTOR', /^[A-Za-z0-9][A-Za-z0-9:_-]{0,159}$/);
       const op = requireText(input.op, 'INVALID_COMMERCE_OP', /^[a-z]+$/);
       const spec = OPS[op];
       if (!spec) fail('INVALID_COMMERCE_OP');
+      /* Actor-free provider callbacks (the AdMob SSV) carry their actor INSIDE the verified proof;
+       * every player command requires the signed session actor. The gateway dispatches ssv with an
+       * EMPTY actor header by design, so demanding a session actor here refused every live callback. */
+      const actor = spec.actorFree && input.actor === undefined ? null
+        : requireText(input.actor, 'INVALID_ACTOR', /^[A-Za-z0-9][A-Za-z0-9:_-]{0,159}$/);
       /* The idempotency key: the command's explicit key wins; the client's durable operation key
        * (signed header) is the fallback. Only ops whose commerce method takes a key require one —
        * status is a pure read. */

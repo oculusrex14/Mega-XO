@@ -71,7 +71,11 @@ async function handleMonetizationRoute(context, req, res) {
         ? (new URL(req.url || '/', 'http://localhost').search || '').replace(/^\?/, '')
         : (typeof req.body === 'string' ? req.body : '');
       if (!raw) fail('INVALID_SSV_PAYLOAD', 400);
-      const result = await lane.command({ op: 'ssv', raw });
+      /* The SSV callback is actor-free: it MUST go through the dedicated signed gateway path
+       * (commerceSsv -> /ingress/commerce/ssv), not the player command surface — commerceCommand
+       * has no actor to sign with and drops the raw payload entirely. */
+      if (typeof lane.ssv !== 'function') fail('MONETIZATION_UNAVAILABLE', 503);
+      const result = await lane.ssv(raw);
       sendJson(res, 200, result, { 'Cache-Control': CACHE_CONTROL });
       return true;
     }

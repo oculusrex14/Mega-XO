@@ -797,8 +797,13 @@ async function main() {
   };
   apiContext.completeWebSignIn = webAccountRoutes.createWebSignInLane(apiContext);
   /* LR12: the signed commerce facade the monetization routes dispatch through. Kept OUT of the
-   * literal above so parallel API-lane PRs merge without textual conflicts. */
-  apiContext.monetization = { command: (input) => coreGateway.commerceCommand(input) };
+   * literal above so parallel API-lane PRs merge without textual conflicts. ssv is the actor-free
+   * provider-callback path: it signs with an EMPTY actor to the dedicated /ingress/commerce/ssv
+   * route — the player command surface has no actor here and would drop the raw payload. */
+  apiContext.monetization = {
+    command: (input) => coreGateway.commerceCommand(input),
+    ssv: (raw) => coreGateway.commerceSsv({ raw }),
+  };
   /* LR19: the OPTIONAL telemetry sink. Anonymous daily aggregates on ops.rate_buckets; the client
    * lane is opt-in and OFF by default, so this sink normally receives nothing until a player makes
    * the explicit choice on the privacy-choices page. No actor binding is possible by construction. */

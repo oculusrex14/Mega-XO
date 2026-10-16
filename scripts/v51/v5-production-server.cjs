@@ -794,10 +794,13 @@ async function main() {
    * settlement); secrets come from the file-backed reader. */
   let polarProvider = null;
   let polarCatalog = null;
-  if (process.env.POLAR_ACCESS_TOKEN) {
-    const polarToken = require(path.join(ROOT, 'server/production/config.js')).secret(process.env, 'POLAR_ACCESS_TOKEN');
-    const polarWebhookSecret = require(path.join(ROOT, 'server/production/config.js')).secret(process.env, 'POLAR_WEBHOOK_SECRET');
-    if (!polarToken) throw REFUSE('INCOMPLETE_POLAR_CONFIG');
+  {
+    /* A1b: presence detection goes through the SAME secret reader the value uses, so a
+     * file-backed POLAR_ACCESS_TOKEN configures the lane exactly like an inline token. */
+    const readSecret = require(path.join(ROOT, 'server/production/config.js')).secret;
+    const polarToken = readSecret(process.env, 'POLAR_ACCESS_TOKEN');
+    if (polarToken) {
+    const polarWebhookSecret = readSecret(process.env, 'POLAR_WEBHOOK_SECRET');
     if (!polarWebhookSecret) throw REFUSE('INCOMPLETE_POLAR_CONFIG');
     const polarOrgId = process.env.POLAR_ORGANIZATION_ID || '';
     if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(polarOrgId)) throw REFUSE('INVALID_POLAR_ORGANIZATION_ID');
@@ -810,12 +813,24 @@ async function main() {
       if (!/^\d{1,9}$/.test(cents) || Number(cents) <= 0) throw REFUSE('INVALID_POLAR_PRICE_CENTS');
       polarCatalog[id] = { priceId, amountCents: Number(cents) };
     }
+    /* B2: the recurring Mega Pass price is OPTIONAL - an absent one degrades only the pass,
+     * never the one-time products (the owner contract forbids one optional missing price from
+     * disabling every other offer). */
+    const passPriceId = process.env.POLAR_PRICE_MEGA_PASS;
+    const passCents = process.env.POLAR_PRICE_CENTS_MEGA_PASS;
+    if (passPriceId || passCents) {
+      if (!passPriceId || !passCents) throw REFUSE('INCOMPLETE_POLAR_PRICE');
+      if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(passPriceId)) throw REFUSE('INVALID_POLAR_PRICE_ID');
+      if (!/^\d{1,9}$/.test(passCents) || Number(passCents) <= 0) throw REFUSE('INVALID_POLAR_PRICE_CENTS');
+      polarCatalog['mega_pass'] = { priceId: passPriceId, amountCents: Number(passCents) };
+    }
     polarProvider = createPolarProvider({
       accessToken: polarToken,
       organizationId: polarOrgId,
       webhookSecret: polarWebhookSecret,
       apiBase: process.env.POLAR_API_BASE || undefined,
     });
+    }
   }
   const polarSuccessUrl = process.env.POLAR_SUCCESS_URL || 'https://megaxo.online';
   const commerce = await createCommerceService(corePool, {
@@ -827,6 +842,7 @@ async function main() {
     purchaseProvider,
     cashfreeProvider,
     cashfreeCatalog,
+    cashfreeEnv,
     cashfreeReturnUrl,
     cashfreeNotifyUrl,
     polarProvider,
@@ -1061,6 +1077,7 @@ async function main() {
 
   const shutdown = async () => {
     clearInterval(matchmakerTimer);
+    clearInterval(passGrantTimer);
     await tournamentTimer.stop();
     try { await realtime.close(); } catch {}
     try { await new Promise((r) => server.close(r)); } catch {}
@@ -1091,6 +1108,20 @@ async function main() {
     };
     matchmakerTimer = setInterval(tick, 3000);
     tick();
+  }
+
+  /* B2: the pass installment sweep. Bounded, single-flight, best-effort: every 50 Crowns credit
+   * commits inside the commerce service's own Core transaction, so a failed tick just retries. */
+  let passGrantTimer = null;
+  if (arg('--pass-grants', 'on') !== 'off') {
+    let passGrantsBusy = false;
+    passGrantTimer = setInterval(() => {
+      if (passGrantsBusy) return;
+      passGrantsBusy = true;
+      Promise.resolve(commerce.processPassGrants ? commerce.processPassGrants() : null)
+        .catch((error) => console.error(JSON.stringify({ event: 'pass_grant_error', code: safeError(error) })))
+        .finally(() => { passGrantsBusy = false; });
+    }, 50000);
   }
 
   /* The worker pass (worker_runtime): lapsed work, the privacy/retention sweeps and mail delivery.

@@ -202,6 +202,7 @@ async function createCommerceService(pool, options = {}) {
   verifyAd: options.verifyAd || null,
   purchaseProvider: options.purchaseProvider || null,
   cashfreeProvider: options.cashfreeProvider || null,
+  cashfreeEnv: options.cashfreeEnv || 'PRODUCTION',
   cashfreeCatalog: options.cashfreeCatalog || null,
   cashfreeReturnUrl: typeof options.cashfreeReturnUrl === 'string' ? options.cashfreeReturnUrl : '',
   cashfreeNotifyUrl: typeof options.cashfreeNotifyUrl === 'string' ? options.cashfreeNotifyUrl : '',
@@ -215,6 +216,9 @@ async function createCommerceService(pool, options = {}) {
  };
 
  const uow = createPgUnitOfWork(pool, { role: CORE_ROLE, now: options.now });
+ /* The service clock: the frozen test clock in harnesses, wall time in production. The ledger
+  * sweep and the subscription reconciliation use the SAME source as every other economic read. */
+ const serviceNow = typeof options.now === 'function' ? options.now : Date.now;
 
  function allowed(account) { return config.eligible(structuredClone(account)) === true; }
 
@@ -260,6 +264,8 @@ async function createCommerceService(pool, options = {}) {
  * settlement is recorded in monetization.polar_orders (0057), the additive data contract. */
 
  const POLAR_CENTS = /^\d{1,9}$/;
+ /* A3: the browser SDK must load the SAME environment the order was created in. */
+ const cashfreeSdkMode = config.cashfreeEnv === 'TEST' ? 'sandbox' : 'production';
  function polarCatalogEntry(productId) {
   if (!config.polarProvider || typeof config.polarProvider.createCheckout !== 'function') throw Error('POLAR_UNAVAILABLE');
   if (!config.polarCatalog || typeof config.polarCatalog !== 'object' || Array.isArray(config.polarCatalog)) throw Error('POLAR_UNAVAILABLE');
@@ -292,14 +298,34 @@ async function createCommerceService(pool, options = {}) {
   return r.rows;
  }
 
- /* owned() over the receipts UNION the settled Cashfree and Polar once-products. */
+ /* B2: the active-pass read projection. The ONE current-period rule: when an actor somehow holds
+  * more than one store subscription, the latest paid period wins and benefits never stack. */
+ async function activePassRow(tx, actor, now) {
+  const at = typeof now === 'number' ? new Date(now).toISOString() : now;
+  return (await tx.query(
+   "SELECT subscription_id, status, cancel_at_period_end, current_period_start, current_period_end FROM monetization.polar_subscriptions WHERE actor_id = $1 AND status = 'active' AND current_period_end IS NOT NULL AND current_period_end > $2 ORDER BY current_period_end DESC LIMIT 1",
+   [actor, at])).rows[0] || null;
+ }
+
+ /* owned() over the receipts UNION the settled Cashfree and Polar once-products, plus the active
+  * Mega Pass subscription: a pass is never 'owned' merely because a historical receipt exists -
+  * only a live paid period confers it, and it structurally revokes when the period lapses. */
  async function ownedWithCashfree(tx, graph, account, actor) {
   const receipts = await tx.repositories.purchases.forActor(actor);
   const cashfreeRows = await cashfreeOnceRows(tx, actor);
   const polarRows = await tx.query('SELECT product_id, refunded_at FROM monetization.polar_orders WHERE actor_id = $1 AND settled_at IS NOT NULL ORDER BY created_at LIMIT $2', [actor, 100]);
-  return owned(graph, account, [...receipts,
+  const projection = owned(graph, account, [...receipts,
    ...cashfreeRows.map((r) => ({ productId: r.product_id, refunded: r.refunded_at !== null })),
    ...polarRows.rows.map((r) => ({ productId: r.product_id, refunded: r.refunded_at !== null }))]);
+  const pass = await activePassRow(tx, actor, tx.clock());
+  if (pass) {
+   projection.products = [...new Set([...projection.products, 'mega_pass'])];
+   projection.removeAds = true;
+  }
+  projection.pass = pass
+   ? { active: true, periodEnd: Date.parse(pass.current_period_end), cancelAtPeriodEnd: pass.cancel_at_period_end === true }
+   : { active: false, periodEnd: null, cancelAtPeriodEnd: false };
+  return projection;
  }
 
  /* The shared RECEIPT-identity mutex namespace: `receipt` + [store, transactionId], the same
@@ -662,7 +688,7 @@ async function createCommerceService(pool, options = {}) {
   });
   if (previous) {
    if (previous.product_id !== productId) throw Error('IDEMPOTENCY_CONFLICT');
-   return { orderId: previous.order_id, productId: previous.product_id, paymentSessionId: previous.session_id };
+   return { orderId: previous.order_id, productId: previous.product_id, paymentSessionId: previous.session_id, environment: cashfreeSdkMode };
   }
   /* The account gate BEFORE the provider round-trip (the purchase preflight pattern): never spend
    * a provider call on an actor Core has not provisioned. */
@@ -681,7 +707,7 @@ async function createCommerceService(pool, options = {}) {
    /* READY/unknown-by-us: the ledger is the authority; a completed create replays from it. */
    if (r.state === 'READY' && r.provider_object_id) {
     const row = (await uow.run(async (tx) => { await tx.query('SET TRANSACTION READ ONLY'); return (await tx.query('SELECT order_id, session_id FROM monetization.cashfree_orders WHERE order_id = $1', [r.provider_object_id])).rows[0] || null; }));
-    if (row) return { orderId: row.order_id, productId, paymentSessionId: row.session_id };
+    if (row) return { orderId: row.order_id, productId, paymentSessionId: row.session_id, environment: cashfreeSdkMode };
    }
    const e = Error('CHECKOUT_CREATE_PENDING'); e.status = 503; e.retryAfter = 2; throw e;
   }
@@ -717,7 +743,7 @@ async function createCommerceService(pool, options = {}) {
    await tx.query(
     'UPDATE monetization.commerce_create_requests SET state = $2, provider_object_id = $3, response_text = $4, updated_at = $5 WHERE request_id = $1 AND state = $6',
     [requestId, 'READY', created.orderId, JSON.stringify(created).slice(0, 4096), iso(tx.clock()), 'PENDING']);
-   return { orderId: row.order_id, productId, paymentSessionId: row.session_id };
+   return { orderId: row.order_id, productId, paymentSessionId: row.session_id, environment: cashfreeSdkMode };
   }, null, { reservation: { requestId, won: true } });
  }
 
@@ -966,6 +992,15 @@ async function createCommerceService(pool, options = {}) {
    if (product.crowns) journal(graph, { id: 'purchase:polar:' + checkoutId, actor: recorded.actor_id, currency: 'crowns', amount: product.crowns, reason: 'Crown purchase', source: 'verified-store', at: tx.clock() });
    await event(tx, recorded.actor_id, 'purchase_verified', product.crowns);
    await tx.query('UPDATE monetization.polar_orders SET status = $2, settled_at = $3, polar_order_id = COALESCE($4, polar_order_id) WHERE checkout_id = $1', [checkoutId, 'succeeded', iso(tx.clock()), polarOrderId]);
+   /* B2: the first paid pass order binds the subscription row to the RECORDED checkout actor and
+    * product/price inside the settlement transaction - never from webhook payload fields alone.
+    * The grantable period window arrives with the provider-verified subscription events. */
+   const passSubscriptionId = typeof hints.subscriptionId === 'string' && hints.subscriptionId && hints.subscriptionId.length <= 160 ? hints.subscriptionId : null;
+   if (passSubscriptionId && product.id === 'mega_pass') {
+    await tx.query(
+     "INSERT INTO monetization.polar_subscriptions (subscription_id, actor_id, product_id, price_id, status, cancel_at_period_end, current_period_start, current_period_end, created_at, updated_at) VALUES ($1, $2, 'mega_pass', $3, 'active', false, NULL, NULL, $4, $4) ON CONFLICT (subscription_id) DO NOTHING",
+     [passSubscriptionId, recorded.actor_id, recorded.price_id, iso(tx.clock())]);
+   }
    return { productId: product.id, crowns: product.crowns, duplicate: false, settled: true };
   }, ['polar', checkoutId]);
  }
@@ -987,9 +1022,13 @@ async function createCommerceService(pool, options = {}) {
   const data = parsed && typeof parsed.data === 'object' && parsed.data ? parsed.data : {};
   if (type.startsWith('order.')) {
    const checkoutId = typeof data.checkout_id === 'string' ? data.checkout_id : '';
+   const subscriptionId = typeof data.subscription_id === 'string' && data.subscription_id && data.subscription_id.length <= 160 ? data.subscription_id : '';
    if (!UUID_V4.test(checkoutId)) return { handled: false, reason: 'NO_CHECKOUT' };
-   if (type === 'order.paid') return settlePolarOrder(checkoutId, { orderId: typeof data.id === 'string' ? data.id : undefined });
+   if (type === 'order.paid') return settlePolarOrder(checkoutId, { orderId: typeof data.id === 'string' ? data.id : undefined, subscriptionId: subscriptionId || undefined });
    return { handled: true, type, checkoutId };
+  }
+  if (type.startsWith('subscription.')) {
+   return reconcilePolarSubscription(type, data);
   }
   if (type.startsWith('refund.')) {
    const ref = typeof data.order_id === 'string' && data.order_id ? data.order_id : (typeof data.checkout_id === 'string' ? data.checkout_id : '');
@@ -997,6 +1036,93 @@ async function createCommerceService(pool, options = {}) {
    return refundPolarOrder(ref, 'provider-webhook');
   }
   return { handled: false, reason: 'UNROUTED_TYPE' };
+ }
+
+ /* B2: subscription lifecycle reconciliation. EVERY event is re-read from the provider before any
+  * write (the verifyCheckout pattern). The actor binding comes from the already-bound row or from a
+  * recorded pass checkout with matching actor/product/price - never from metadata.actor alone. A
+  * cancel keeps access until the paid period end; a revocation ends it immediately. A provider-
+  * verified active period (Polar only advances current_period after a successful billing payment;
+  * failed renewals go past_due and keep the old window) becomes a grantable paid period, and the
+  * sweep still bounds every installment by that window. */
+ async function reconcilePolarSubscription(type, data) {
+  const provider = config.polarProvider;
+  if (!provider || typeof provider.verifySubscription !== 'function') throw Error('POLAR_UNAVAILABLE');
+  const subscriptionId = typeof data.id === 'string' && data.id && data.id.length <= 160 ? data.id : '';
+  if (!subscriptionId) return { handled: false, reason: 'NO_SUBSCRIPTION' };
+  const verified = await provider.verifySubscription(subscriptionId);
+  if (!verified || typeof verified.status !== 'string') return { handled: false, reason: 'NOT_VERIFIABLE' };
+  const now = new Date(serviceNow());
+  const existing = (await pool.query('SELECT actor_id, price_id FROM monetization.polar_subscriptions WHERE subscription_id = $1', [subscriptionId])).rows[0] || null;
+  let actor = existing ? existing.actor_id : null;
+  const priceId = verified.priceId || (existing ? existing.price_id : '');
+  const entry = config.polarCatalog ? config.polarCatalog['mega_pass'] : null;
+  if (entry && priceId && priceId !== entry.priceId) return { handled: false, reason: 'INVALID_BINDING' };
+  if (!actor) {
+   const metaActor = typeof verified.metadata.actor === 'string' ? verified.metadata.actor.slice(0, 160) : '';
+   if (!metaActor || !priceId) return { handled: false, reason: 'NO_ACTOR_BINDING' };
+   const checkout = (await pool.query('SELECT actor_id FROM monetization.polar_orders WHERE actor_id = $1 AND product_id = $2 AND price_id = $3 LIMIT 1', [metaActor, 'mega_pass', priceId])).rows[0] || null;
+   if (!checkout) return { handled: false, reason: 'INVALID_BINDING' };
+   actor = metaActor;
+  }
+  if (type === 'subscription.revoked' || verified.status === 'revoked' || verified.status === 'inactive') {
+   await pool.query("INSERT INTO monetization.polar_subscriptions (subscription_id, actor_id, product_id, price_id, status, cancel_at_period_end, current_period_start, current_period_end, created_at, updated_at) VALUES ($1, $2, 'mega_pass', $3, 'revoked', false, $4, $5, $6, $6) ON CONFLICT (subscription_id) DO UPDATE SET status = 'revoked', updated_at = $6",
+    [subscriptionId, actor, priceId, verified.currentPeriodStart, verified.currentPeriodEnd, now]);
+   return { handled: true, subscriptionId, status: 'revoked' };
+  }
+  if (type === 'subscription.canceled' || type === 'subscription.uncanceled' || type === 'subscription.updated' || type === 'subscription.created' || type === 'subscription.active') {
+   const canceled = type === 'subscription.canceled' || verified.cancelAtPeriodEnd === true;
+   const lifecycled = ['active', 'trialing', 'past_due'].includes(verified.status);
+   const status = lifecycled ? 'active' : 'revoked';
+   await pool.query("INSERT INTO monetization.polar_subscriptions (subscription_id, actor_id, product_id, price_id, status, cancel_at_period_end, current_period_start, current_period_end, created_at, updated_at) VALUES ($1, $2, 'mega_pass', $3, $4, $5, $6, $7, $8, $8) ON CONFLICT (subscription_id) DO UPDATE SET status = $4, cancel_at_period_end = $5, current_period_start = $6, current_period_end = $7, updated_at = $8",
+    [subscriptionId, actor, priceId, status, canceled, verified.currentPeriodStart, verified.currentPeriodEnd, now]);
+   /* A provider-verified active window becomes a grantable paid period. */
+   const periodStart = verified.currentPeriodStart ? new Date(verified.currentPeriodStart) : null;
+   const periodEnd = verified.currentPeriodEnd ? new Date(verified.currentPeriodEnd) : null;
+   if (status === 'active' && periodStart && periodEnd && !Number.isNaN(periodStart.getTime()) && !Number.isNaN(periodEnd.getTime()) && periodEnd > periodStart) {
+    await pool.query('INSERT INTO monetization.pass_periods (subscription_id, actor_id, period_start, period_end, installments_granted, created_at) VALUES ($1, $2, $3, $4, 0, $5) ON CONFLICT (subscription_id, period_start) DO NOTHING',
+     [subscriptionId, actor, periodStart, periodEnd, now]);
+   }
+   return { handled: true, subscriptionId, status, canceled, periodStart: verified.currentPeriodStart, periodEnd: verified.currentPeriodEnd };
+  }
+  return { handled: false, reason: 'UNROUTED_SUBSCRIPTION_TYPE', type };
+ }
+
+ /* B2: the maintenance sweep for the canonical 150 Crowns / paid month as 50 on period day 1, 11
+  * and 21 (paid period start + 0/10/20 days, bounded by the paid period end). Each grant commits
+  * the wallet credit and its installment marker in ONE Core transaction; downtime catches up
+  * exactly once and a replayed grant is refused by the marker. Status reads stay read-only -
+  * this is the only catch-up path. */
+ async function processPassGrants() {
+  if (!config.purchasesEnabled) return { granted: 0, skipped: 'PURCHASES_DISABLED' };
+  const offsets = [0, 10, 20];
+  const due = await pool.query(
+   "SELECT pp.subscription_id, pp.actor_id, pp.period_start, pp.period_end, pp.installments_granted FROM monetization.pass_periods pp JOIN monetization.polar_subscriptions ps ON ps.subscription_id = pp.subscription_id WHERE ps.status = 'active' AND pp.installments_granted < 3 LIMIT 200");
+  let granted = 0;
+  const now = serviceNow();
+  for (const row of due.rows) {
+   const start = new Date(row.period_start).getTime(), end = new Date(row.period_end).getTime();
+   const n = Number(row.installments_granted);
+   const offset = offsets[n];
+   if (!Number.isFinite(offset)) continue;
+   if (now < start + offset * 86400000 || now > end) continue;
+   const result = await transaction(row.actor_id, 'pass-installment:' + row.subscription_id + ':' + new Date(row.period_start).toISOString().slice(0, 10) + ':' + n,
+    { type: 'pass-installment', subscriptionId: row.subscription_id, index: n },
+    async (tx, graph, current) => {
+     const fresh = (await tx.query('SELECT installments_granted FROM monetization.pass_periods WHERE subscription_id = $1 AND period_start = $2 FOR UPDATE', [row.subscription_id, row.period_start])).rows[0];
+     if (!fresh) return { granted: false, reason: 'PERIOD_GONE' };
+     if (Number(fresh.installments_granted) !== n) return { granted: false, duplicate: true };
+     if (!config.purchasesEnabled || !allowed(current)) return { granted: false, reason: 'PURCHASE_UNAVAILABLE' };
+     const amount = M.PASS.installments[n];
+     current.crowns = D.add(current.crowns, amount);
+     journal(graph, { id: 'pass:' + row.subscription_id + ':' + n, actor: row.actor_id, currency: 'crowns', amount, reason: 'Mega Pass monthly Crowns', source: 'verified-store', at: tx.clock() });
+     await event(tx, row.actor_id, 'pass_installment', amount);
+     await tx.query('UPDATE monetization.pass_periods SET installments_granted = $3 WHERE subscription_id = $1 AND period_start = $2', [row.subscription_id, row.period_start, n + 1]);
+     return { granted: true, amount };
+    });
+   if (result && result.granted) granted++;
+  }
+  return { granted };
  }
 
  /* The actor-bound status poll: hides other actors' orders and settles through the provider. */
@@ -1145,6 +1271,13 @@ async function createCommerceService(pool, options = {}) {
     storeContext: purchasesAvailable && binding ? binding : null,
     stores: purchasesAvailable && config.purchaseProvider && typeof config.purchaseProvider.stores === 'function' ? config.purchaseProvider.stores() : [],
     adPlatforms: adMode === 'off' ? [] : platforms,
+    /* A2: the web offer surface. Native purchasesAvailable semantics stay untouched - the lack of
+     * a native bridge must never disable browser checkout, and guests browsing prices never read
+     * another actor's entitlements (this whole reply stays actor-scoped and no-store). */
+    webCheckoutAvailable: eligible && config.purchasesEnabled && Boolean(config.polarProvider || config.cashfreeProvider),
+    polar: config.polarProvider ? { available: true, products: Object.fromEntries(Object.entries(config.polarCatalog || {}).map(([id, entry]) => [id, { amountCents: entry.amountCents, currency: 'usd' }])) } : { available: false, products: {} },
+    cashfree: config.cashfreeProvider ? { available: true, products: config.cashfreeCatalog || {} } : { available: false, products: {} },
+    pass: own.pass || { active: false, periodEnd: null, cancelAtPeriodEnd: false },
     policy: M.POLICY,
    };
   });
@@ -1177,6 +1310,7 @@ async function createCommerceService(pool, options = {}) {
   settlePolarWebhook,
   polarOrderStatus,
   refundPolarOrder,
+  processPassGrants,
   /* Releases this service's unit-of-work state only. The pool is caller-owned (it carries a
     cluster-wide connection-budget claim) and is NEVER closed here. */
   close() { uow.close(); },

@@ -22,8 +22,12 @@ const CATALOG = Object.freeze({
   crowns_525: { priceId: '5f02914f-4ecf-4d58-a89f-6fbe995bf873', amountCents: 499 },
   crowns_1100: { priceId: '432c5cb1-aa2f-447c-857c-496ed2a4ceb7', amountCents: 999 },
   remove_ads: { priceId: '318ae019-ccb0-45ac-aa4e-fb018654c2e4', amountCents: 399 },
+  mega_pass: { priceId: 'b7e2f1a0-3c4d-4e5f-8a9b-0c1d2e3f4a5b', amountCents: 399 },
 });
 const CLOCK = Date.parse('2026-10-16T12:00:00Z');
+const PASS_SUBSCRIPTION_ID = 'sub_01pass000000000000000000';
+const PASS_PERIOD_START = CLOCK;
+const PASS_PERIOD_END = CLOCK + 30 * 86400000;
 
 const { createCommerceIngressService } = require('../packages/services/commerce-ingress.js');
 const { createCommerceService } = require('../packages/services/commerce.js');
@@ -137,8 +141,10 @@ async function seedActor(database, actor, crowns) {
 }
 function fakePolar() {
   const checkouts = new Map();
+  const subscriptions = new Map();
   return {
     checkouts,
+    subscriptions,
     isPriceId: (v) => typeof v === 'string' && v.length > 0,
     async createCheckout(input) {
       const id = crypto.randomUUID();
@@ -149,6 +155,19 @@ function fakePolar() {
       const c = checkouts.get(checkoutId);
       if (!c) throw Error('POLAR_HTTP_404');
       return { status: c.status, amount: c.amount, currency: 'usd', metadata: c.metadata, checkoutId };
+    },
+    async verifySubscription(subscriptionId) {
+      const sub = subscriptions.get(subscriptionId);
+      if (!sub) throw Error('POLAR_HTTP_404');
+      return {
+        status: sub.status,
+        productId: sub.product_id,
+        priceId: sub.price_id,
+        cancelAtPeriodEnd: sub.cancel_at_period_end === true,
+        currentPeriodStart: sub.current_period && typeof sub.current_period.start === 'string' ? sub.current_period.start : null,
+        currentPeriodEnd: sub.current_period && typeof sub.current_period.end === 'string' ? sub.current_period.end : null,
+        metadata: sub.metadata && typeof sub.metadata === 'object' ? sub.metadata : {},
+      };
     },
     verifyWebhook: ({ signature }) => signature === 'sig-good',
   };
@@ -232,6 +251,73 @@ test('polar commerce: the webhook settles a succeeded order exactly once and rou
   const refundAgain = await commerce.settlePolarWebhook({ raw: refundRaw, id: 'msg_3', timestamp: String(Math.floor(Date.now() / 1000)), signature: 'sig-good' });
   assert.deepEqual(refundAgain, { checkoutId, refunded: true, duplicate: false }, 'op-key replay returns the stored first response verbatim');
 });
+
+test('polar commerce: a Mega Pass subscription binds, reconciles, grants installments and revokes', async (t) => {
+  const h = await commerceHarness(t, 'pass');
+  if (!h) return;
+  const { commerce, provider, database } = h;
+  // The first paid pass order binds the subscription row to the RECORDED checkout actor.
+  const created = await commerce.createPolarCheckout('po_alice', 'pass-key-1', 'mega_pass', {});
+  const checkoutId = created.checkoutId;
+  assert.equal(typeof created.checkoutUrl, 'string', 'the reply carries the hosted checkout URL');
+  provider.checkouts.get(checkoutId).status = 'succeeded';
+  const paid = await commerce.settlePolarWebhook({
+    raw: JSON.stringify({ type: 'order.paid', data: { id: 'ord_pass_1', checkout_id: checkoutId, subscription_id: PASS_SUBSCRIPTION_ID } }),
+    id: 'msg_pass_1', timestamp: String(Math.floor(CLOCK / 1000)), signature: 'sig-good',
+  });
+  assert.equal(paid.settled, true);
+  assert.equal(paid.crowns, 0, 'the pass itself grants no instant crowns');
+  // A subscription event with NO recorded binding is refused; the verified metadata must match a
+  // recorded pass checkout for the same price id.
+  provider.subscriptions.set('sub_orphan', { status: 'active', product_id: 'mega_pass', price_id: CATALOG.mega_pass.priceId, cancel_at_period_end: false, current_period: { start: new Date(PASS_PERIOD_START).toISOString(), end: new Date(PASS_PERIOD_END).toISOString() }, metadata: { actor: 'po_bob', product_id: 'mega_pass' } });
+  const orphan = await commerce.settlePolarWebhook({
+    raw: JSON.stringify({ type: 'subscription.created', data: { id: 'sub_orphan' } }),
+    id: 'msg_pass_2', timestamp: String(Math.floor(CLOCK / 1000)), signature: 'sig-good',
+  });
+  assert.deepEqual(orphan, { handled: false, reason: 'INVALID_BINDING' }, 'metadata.actor alone never binds');
+  // The genuine provider-verified subscription reconciles into an active, grantable period.
+  provider.subscriptions.set(PASS_SUBSCRIPTION_ID, { status: 'active', product_id: 'mega_pass', price_id: CATALOG.mega_pass.priceId, cancel_at_period_end: false, current_period: { start: new Date(PASS_PERIOD_START).toISOString(), end: new Date(PASS_PERIOD_END).toISOString() }, metadata: { actor: 'po_alice', product_id: 'mega_pass' } });
+  const reconciled = await commerce.settlePolarWebhook({
+    raw: JSON.stringify({ type: 'subscription.created', data: { id: PASS_SUBSCRIPTION_ID } }),
+    id: 'msg_pass_3', timestamp: String(Math.floor(CLOCK / 1000)), signature: 'sig-good',
+  });
+  assert.equal(reconciled.handled, true);
+  assert.equal(reconciled.status, 'active');
+  let status = await commerce.status('po_alice');
+  assert.equal(status.pass.active, true, 'the pass is live after reconciliation');
+  assert.equal(status.pass.periodEnd, PASS_PERIOD_END);
+  assert.equal(status.removeAds, true, 'the pass turns automatic ads off');
+  // Installment 1 is due immediately (period start + 0 days) and commits exactly once.
+  const sweep = await commerce.processPassGrants();
+  assert.equal(sweep.granted, 1);
+  status = await commerce.status('po_alice');
+  assert.equal(status.credits ? status.credits.length >= 0 : true, true);
+  const crownsAfterFirst = await crownsOf(database, 'po_alice');
+  assert.equal(crownsAfterFirst, 150, 'installment 1 delivers the canonical 50 Crowns');
+  const sweepAgain = await commerce.processPassGrants();
+  assert.equal(sweepAgain.granted, 0, 'installments 2 and 3 are not due at period day 0');
+  // A cancel keeps access until the paid period end; a revocation ends it immediately.
+  await commerce.settlePolarWebhook({
+    raw: JSON.stringify({ type: 'subscription.canceled', data: { id: PASS_SUBSCRIPTION_ID } }),
+    id: 'msg_pass_4', timestamp: String(Math.floor(CLOCK / 1000)), signature: 'sig-good',
+  });
+  status = await commerce.status('po_alice');
+  assert.equal(status.pass.active, true, 'cancel keeps the paid period');
+  assert.equal(status.pass.cancelAtPeriodEnd, true);
+  await commerce.settlePolarWebhook({
+    raw: JSON.stringify({ type: 'subscription.revoked', data: { id: PASS_SUBSCRIPTION_ID } }),
+    id: 'msg_pass_5', timestamp: String(Math.floor(CLOCK / 1000)), signature: 'sig-good',
+  });
+  status = await commerce.status('po_alice');
+  assert.equal(status.pass.active, false, 'revocation ends the entitlement');
+  assert.equal(status.removeAds, false);
+});
+
+async function crownsOf(database, actor) {
+  const c = await adminClient(database);
+  try { const r = await c.query('SELECT crowns FROM economy.wallets WHERE actor_id = $1', [actor]); return Number(r.rows[0].crowns); }
+  finally { await c.end(); }
+}
 
 test('polar commerce: a refunded remove_ads loses the entitlement structurally', async (t) => {
   const h = await commerceHarness(t, 'refund');

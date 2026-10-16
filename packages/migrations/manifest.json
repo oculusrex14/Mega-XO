@@ -351,6 +351,12 @@
       "name": "0058_commerce_create_requests",
       "file": "migrations/0058_commerce_create_requests.sql",
       "sha256": "f9e2e5f54dd153636fc3cbd9776204f9f22aaf4b9a9d55faa240f02442bc05a3"
+    },
+    {
+      "id": 59,
+      "name": "0059_pass_subscriptions",
+      "file": "migrations/0059_pass_subscriptions.sql",
+      "sha256": "b993fef1b24aff959a6691820d2e73a0b3e4581d9166828bcc925630a4a4f365"
     }
   ]
 }

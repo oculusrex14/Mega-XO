@@ -62,6 +62,25 @@ function createPolarProvider({ accessToken, organizationId, apiBase, webhookSecr
       if (!status) throw Error('POLAR_BAD_RESPONSE');
       return { status, amount, currency, metadata, checkoutId: checkout.id || checkoutId };
     },
+    /* B2: the independent subscription re-read. The lifecycle status, the recorded period
+     * window and the metadata binding all come back from Polar, so reconciliation decisions
+     * never rest on webhook payload fields alone. */
+    async verifySubscription(subscriptionId) {
+      if (typeof subscriptionId !== 'string' || !subscriptionId || subscriptionId.length > 160) throw Error('ORDER_NOT_FOUND');
+      const sub = await call('/v1/subscriptions/' + encodeURIComponent(subscriptionId), 'GET');
+      if (!sub || typeof sub.status !== 'string') throw Error('POLAR_BAD_RESPONSE');
+      const period = sub.current_period && typeof sub.current_period === 'object' ? sub.current_period : {};
+      return {
+        status: sub.status,
+        productId: typeof sub.product_id === 'string' ? sub.product_id : (sub.product && typeof sub.product.id === 'string' ? sub.product.id : ''),
+        priceId: typeof sub.price_id === 'string' ? sub.price_id : (sub.price && typeof sub.price.id === 'string' ? sub.price.id : ''),
+        cancelAtPeriodEnd: sub.cancel_at_period_end === true,
+        currentPeriodStart: typeof period.start === 'string' ? period.start : null,
+        currentPeriodEnd: typeof period.end === 'string' ? period.end : null,
+        metadata: sub.metadata && typeof sub.metadata === 'object' ? sub.metadata : {},
+      };
+    },
+
     verifyWebhook({ id, timestamp, signature, rawBody, now = Date.now() }) {
       const whId = String(id || ''), ts = String(timestamp || ''), sig = String(signature || '');
       if (!whId || whId.length > 128 || !/^\d+$/.test(ts) || !sig) return false;

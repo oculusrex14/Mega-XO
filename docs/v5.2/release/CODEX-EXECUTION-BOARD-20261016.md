@@ -202,3 +202,15 @@
 **PR #29 body updated for Main** with all three addenda (P0 SSV fix, LR13 Cashfree, LR12 rate limiting), the enablement env/URLs and the rollback note (0056 is additive and forward-only). CI was running on the pushed head at the time of writing.
 
 **Next:** the LR20 device lane (builds for the two USB phones) while CI completes, then review fixes from Main's audit. LR02 CI stays deferred to LAST per the owner directive.
+
+### Checkpoint 16 — 2026-10-16 (Polar console DONE + provider adapter; trunk reconciled)
+
+**OWNER DECISION (2026-10-16): Polar = PRIMARY GLOBAL payments + INDIAN FALLBACK behind Cashfree; Cashfree stays the Indian primary.** The Polar account (antimatter-innovations, contact@) is verified and can accept payments (Stripe payout connected; account review submission still needs the remaining checklist).
+
+**Polar console work completed via the owner's browser (all evidence in ~/Downloads/Mega-XO-private-evidence/polar/api-key.txt, mode 600, outside Git):** the least-privilege org access token (checkouts/orders/products/refunds READ + checkouts WRITE, never expires, name Mega XO V5 commerce adapter), the 4 products (100/525/1100 Crowns + Remove Ads at 0.99/4.99/9.99/3.99 USD with their price ids recorded), and the enabled webhook endpoint (https://megaxo.online/api/monetization/polar/webhook, Raw format, API version 2026-10, order.created/paid/refunded/updated + refund.created/updated) with its signing secret.
+
+**C05 provider adapter LANDED (PR #29 addendum 49854f6):** packages/services/polar.js — db-free, the browser only sees a checkout URL, the actor/product binding rides checkout metadata, and the webhook verification is the Standard Webhooks scheme Polar uses (base64 HMAC-SHA256 over id.timestamp.rawBody with the decoded whsec secret, 5-minute window, multi-signature). Offline tests 4/4. The adapter composes behind feature flags (POLAR_ACCESS_TOKEN + price map) and is DORMANT without env — no live charge is possible until Main enables it.
+
+**REMAINING Polar slice (next session, mirrors LR13 exactly):** migration 0057 monetization.polar_orders (USD amounts, checkout_id PK, actor+op_key unique fence, settled/refunded terminals), the commerce service settlement chain (createPolarCheckout/settlePolarWebhook/polarOrderStatus/refundPolarOrder), the ingress ops + the actor-free /ingress/commerce/polar/webhook path, session routes, and the fail-loud composition. The pattern is proven (LR13); the provider + tests are ready.
+
+**Trunk reconciliation:** Main merged #22/#23/#24/#26/#27/#28/#29 (pre-addenda state) into V5.2 @ c20f7c4 and is actively consolidating branches + fixing CI. The addenda (SSV fix, LR13, LR12 rate limits, Polar provider, the CI skip fix) merge CLEANLY into the new trunk (verified by a throwaway merge probe: zero conflicts, syntax OK). The Cashfree real-PG journeys now SKIP on runners without a PG16 binary (the frozen disposable-backend contract) instead of failing — that was the only delta-caused CI failure on my branch; the 3 remaining validate failures (production tests reading the removed deploy/compose.yaml) are the pre-existing family Main's consolidation is addressing.

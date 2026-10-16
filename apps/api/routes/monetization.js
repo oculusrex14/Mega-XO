@@ -130,6 +130,49 @@ async function handleMonetizationRoute(context, req, res) {
       return true;
     }
 
+    /* C05: the Polar surfaces (the owner decision: Polar = primary global + Indian fallback).
+     * Checkout creation is session-bound with the SERVER-AUTHORITATIVE catalog price id; the
+     * webhook is actor-free and verifies the Standard Webhooks HMAC over the EXACT raw bytes;
+     * the status poll is session-bound and hides other actors' orders. */
+    if (pathname === '/api/monetization/polar/checkout') {
+      if (method !== 'POST') fail('METHOD_NOT_ALLOWED', 405);
+      const actor = await actorOf(context, req);
+      const body = req.body && typeof req.body === 'object' && !Array.isArray(req.body) ? req.body : {};
+      if (typeof body.product !== 'string' || !body.product) fail('INVALID_PRODUCT', 400);
+      const email = typeof body.email === 'string' ? body.email.trim() : '';
+      if (email && (email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))) fail('INVALID_CUSTOMER_DETAILS', 400);
+      const key = opKeyFrom(req, body);
+      if (!key) fail('IDEMPOTENCY_KEY_REQUIRED', 400);
+      const result = await lane.command({ actor, op: 'polar_create', key, productId: body.product, customer: email ? { email } : undefined });
+      sendJson(res, 200, result, { 'Cache-Control': CACHE_CONTROL });
+      return true;
+    }
+
+    if (pathname === '/api/monetization/polar/status') {
+      if (method !== 'GET') fail('METHOD_NOT_ALLOWED', 405);
+      const actor = await actorOf(context, req);
+      const checkoutId = new URL(req.url || '/', 'http://localhost').searchParams.get('checkout_id') || '';
+      if (!checkoutId) fail('ORDER_NOT_FOUND', 404);
+      const result = await lane.command({ actor, op: 'polar_status', checkoutId });
+      sendJson(res, 200, result, { 'Cache-Control': CACHE_CONTROL });
+      return true;
+    }
+
+    if (pathname === '/api/monetization/polar/webhook') {
+      if (method !== 'POST') fail('METHOD_NOT_ALLOWED', 405);
+      const raw = typeof req.body === 'string' ? req.body : '';
+      if (!raw) fail('INVALID_WEBHOOK', 400);
+      if (typeof lane.polarWebhook !== 'function') fail('MONETIZATION_UNAVAILABLE', 503);
+      const result = await lane.polarWebhook({
+        raw,
+        id: String((req.headers && req.headers['webhook-id']) || ''),
+        timestamp: String((req.headers && req.headers['webhook-timestamp']) || ''),
+        signature: String((req.headers && req.headers['webhook-signature']) || ''),
+      });
+      sendJson(res, 200, result, { 'Cache-Control': CACHE_CONTROL });
+      return true;
+    }
+
     const spec = ROUTES[pathname];
     if (!spec) { sendJson(res, 404, { error: 'NOT_FOUND' }); return true; }
     if (spec.method !== method) fail('METHOD_NOT_ALLOWED', 405);

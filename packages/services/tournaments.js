@@ -670,6 +670,7 @@ function createTournamentService(options = {}) {
    requireRoom(room);
    await repositories.tournaments.save(room);
    const response = T.view(room, now);
+   response.members = await memberPresentation(tx, actor, response.players);
    /* Identity only, so a replay reads the committed room (see above) rather than a stale snapshot. */
    await repositories.outcomes.save(PARTY_COMMANDS, operation, fingerprint, JSON.stringify(response));
    return response;

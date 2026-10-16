@@ -305,3 +305,47 @@ resolved and verified on device (lr20.4). Evidence: ~/Downloads/Mega-XO-private-
 **Deployment notes for Main (with the next approved deploy):** the production secrets dir needs proxy.secret (the same value the Caddy edge sends as X-Mega-Proxy-Key; or set MEGA_PROXY_SECRET_FILE) and MEGA_TRUSTED_PROXIES should include the edge network (e.g. 172.18.0.0/16,127.0.0.1/32). No Caddyfile change is required.
 
 **Journey status:** 1 PASS, 6 PASS (medium), 15 PASS, plus the account lane verified live on device (Google chooser -> durable actor -> profile; provider buttons correct: Google enabled on Android, Apple disabled by design with iOS-only adapters). Journeys 2-5, 7-14, 16-18 continue next session with the CDP driver; journey 18 still needs the release-signed build (upload keystore secured).
+
+### Checkpoint 24 - 2026-10-16 (audit follow-ups executed: F1-F10 resolved, Decision 2 implemented end to end, F4 vault bound)
+
+**F1/F2/F3/F5 (native)**: the initiating rotation caller is answered (registered as a waiter);
+applyServerResponse is generation-fenced (stale replies can neither answer the current gate, revoke
+the family, nor downgrade newer state - credentials still persist because the server accepted the
+rotation); every watchdog answer posts to the main thread; close() settles waiters and stops its
+watchdogs, and the HTTP transport keeps its watchdog pool alive past the longest pending timer.
+**Verified on the OnePlus (lr20.4, versionCode 6):** cold start restores the session AND the
+community module adopts it (linked, syncState saved, revision 2) in 668ms - the guest-state
+adoption defect is closed.
+
+**F4 (vault)**: the three vault operations now acquire the serialization lock with a bounded 4s
+wait and answer an honest VAULT_BUSY failure instead of parking the second io thread behind a
+wedged Keystore call forever; operations stay serialized (no concurrent TEE access on one key).
+
+**F6/F10 (commerce integration, P1)**: the API handler collects stream request bodies (bounded,
+byte-faithful) so POST callbacks see their payloads; the routes pass the durable key as the signed
+opKey (creation) and fixed read-keys (status) so no commerce command dies at the gateway with
+OPKEY_REQUIRED; the gateway forwards the full creation arg set and both provider fetch wrappers
+preserve (url, init).
+
+**F7/F8/F9**: strict shared dotted-quad validation (standalone + embedded IPv4), zone ids and
+misplaced quads refused, strict CIDR prefix grammar with mixed-family entries refused at startup,
+and the GET SSV query sliced from the raw target (byte-exact).
+
+**Decision 2 (reserve-then-create) IMPLEMENTED**: migration 0058 (validated against real
+disposable PG, v5-migrations 11/11), the gateway arg fix, and the full commerce flow -
+reservation before any provider I/O, winner-only provider calls, atomic ledger+outcome+READY
+finalization, CHECKOUT_CREATE_PENDING for losers and crash-parked keys, terminal FAILED for
+explicit rejections, UNKNOWN for ambiguous transport outcomes with the reserved id recorded for
+the recovery read. tests/v52-commerce-create-race.test.js (5, TWO commerce instances on real
+disposable PG): the exact memo journeys, all green.
+
+**Suite status on the pushed head:** the audit's 13-suite family + the race suite, 115 pass /
+0 fail (provider-callback-rate-limit 11, rate-limit 4, commerce-ingress 7, polar-commerce 5,
+polar-provider 4, cashfree-v5 9, production-server 12, migrations 11, native-online-target 19,
+native-smoke 3, monetization-store 13, monetization-policy 8, account-deletion 4,
+create-race 5). The audit's release block lifts for everything except its process notes:
+LR20 journeys 2-5/7-14/16-18 and the iPhone lane remain, and LR02 stays deferred to last.
+
+Commits: 5c37ed6 (audit fixes F1-F3/F5-F10), 1d9283a (docs corrections), 34a57b6 (0058 schema),
+18ea57e (gateway/provider transport), 9367f32 (reserve-then-create + race suite). Post-rebase
+provenance for the earlier checkpoint: ff14dbc == 1dde7dd, 0e3c486 == 5c87b2e.

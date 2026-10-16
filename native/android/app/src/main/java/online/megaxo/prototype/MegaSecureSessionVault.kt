@@ -6,6 +6,8 @@ import android.security.keystore.KeyProperties
 import android.util.Base64
 import java.nio.charset.StandardCharsets
 import java.security.KeyStore
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.locks.ReentrantLock
 import javax.crypto.Cipher
 import javax.crypto.KeyGenerator
 import javax.crypto.SecretKey
@@ -22,7 +24,21 @@ internal class MegaSecureSessionVault(private val context: Context) {
     private val alias = "mega_xo_v5_native_refresh_v1"
     private val preferences = context.getSharedPreferences("mega_native_secrets_v1", Context.MODE_PRIVATE)
     private val field = "refresh_ciphertext"
+
     private val store = KeyStore.getInstance("AndroidKeyStore").apply { load(null) }
+
+    /* F4: the three vault operations used to share one implicit monitor, so a single wedged
+     * Keystore call held it forever and the second io thread blocked behind it indefinitely.
+     * The acquisition is now BOUNDED: a caller that cannot get the lock inside four seconds
+     * gets an honest VAULT_BUSY failure (which every session-manager call site already maps
+     * to its UNAVAILABLE/auth path) instead of hanging. The bounded-wait lock also keeps
+     * operations serialized - concurrent TEE access on one key stays off the table. */
+    private val lock = ReentrantLock()
+
+    private inline fun <T> withVaultLock(block: () -> T): T {
+        if (!lock.tryLock(4, TimeUnit.SECONDS)) throw IllegalStateException("VAULT_BUSY")
+        return try { block() } finally { lock.unlock() }
+    }
 
     private fun key(): SecretKey {
         val existing = store.getKey(alias, null) as? SecretKey
@@ -38,8 +54,11 @@ internal class MegaSecureSessionVault(private val context: Context) {
         return generator.generateKey()
     }
 
-    @Synchronized
-    fun saveRefreshCredential(credential: String) {
+    fun saveRefreshCredential(credential: String) = withVaultLock {
+        saveLocked(credential)
+    }
+
+    private fun saveLocked(credential: String) {
         require(credential.isNotBlank() && credential.length <= 8192) { "Invalid refresh credential length" }
         val cipher = Cipher.getInstance("AES/GCM/NoPadding")
         cipher.init(Cipher.ENCRYPT_MODE, key())
@@ -49,8 +68,11 @@ internal class MegaSecureSessionVault(private val context: Context) {
             .also { check(it) { "Failed to persist encrypted refresh credential" } }
     }
 
-    @Synchronized
-    fun loadRefreshCredential(): String? {
+    fun loadRefreshCredential(): String? = withVaultLock {
+        loadLocked()
+    }
+
+    private fun loadLocked(): String? {
         val encoded = preferences.getString(field, null) ?: return null
         val envelope = Base64.decode(encoded, Base64.NO_WRAP)
         require(envelope.size > 29 && envelope[0] == 1.toByte()) { "Invalid encrypted credential envelope" }
@@ -62,8 +84,11 @@ internal class MegaSecureSessionVault(private val context: Context) {
         return String(cipher.doFinal(payload), StandardCharsets.UTF_8)
     }
 
-    @Synchronized
-    fun clear() {
+    fun clear() = withVaultLock {
+        clearLocked()
+    }
+
+    private fun clearLocked() {
         check(preferences.edit().remove(field).commit()) { "Failed to remove refresh credential" }
         if (store.containsAlias(alias)) store.deleteEntry(alias)
     }

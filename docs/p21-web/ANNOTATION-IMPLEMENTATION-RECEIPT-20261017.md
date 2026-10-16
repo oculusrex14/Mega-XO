@@ -44,6 +44,12 @@ Implementation branch: **V5.2**, baseline d6086a2 -> head 9d9f96f (receipt commi
 - Command replies now carry the same members projection as GET room views, so join replies and polls agree (plan F2).
 - tests/party-browser.py NOT_RUN: playwright is not installed in the ambient python (pre-existing); the native device matrix on both phones remains the owner lane.
 
+## Android device verification (lr23, 2026-10-17)
+
+- Built the online-debug APK from current V5.2 HEAD with the recorded configuration (megaApiOrigin=https://megaxo.online, applicationId online.megaxo.xoxo, versionCode 13 / versionName 1.0.0-lr23, the recorded Google server client id and owner AdMob units), gradle 8.14.6 + JDK 17. APK sha256 ba198034f0ed47963585cfcf8778957db1e76722ec1d532ef1d5a76c710c7512. The bundle stages src/ (including the new party room tabs and spectator rules) through scripts/v5/build-client.js.
+- adb install -r over the lr22 install: Success (version downgrade refused first at vc 11; rebuilt at 13). Launch: pid live, ZERO entries in the crash buffer, and the home/rank panels render with the live production wallet (50 Coins / 10 Crowns). Evidence screenshots: docs/v5.2/release/evidence-lr23/.
+- NOT RUN on device: the signed-in party-room tab journey (needs the owner's interactive session) and the iPhone lane (device offline). The party tabs themselves are code-verified by the static/syntax checks and the shared-suite passes; the interactive pass belongs to the owner device matrix.
+
 ## Recorded deviations
 
 - Polar checkout opens a new tab with a bounded actor-bound status poll instead of a redirect round trip (plan A3 prefers fixed same-origin return routes); same-tab fallback when popups are blocked. The return-route variant needs a success-URL template decision with Main; recorded open.

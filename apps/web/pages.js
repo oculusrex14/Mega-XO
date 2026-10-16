@@ -407,6 +407,7 @@ function deletionPage() {
 function privacyChoicesPage() {
   return `<div class="pg-page">${heading('YOUR PROFILE. YOUR CHOICES.', 'Stay in control.', 'Find account privacy controls, data access and the permanent deletion process in one place.')}
     <div class="pg-grid pg-grid-two">${feature('user', 'Profile visibility', 'Choose stats visibility and online-presence visibility from your signed-in profile.', button('Open profile controls', '/profile', 'secondary', 'user'))}${feature('download', 'Download your data', 'Request a copy of your account data after signing in and verifying your identity again.', button('Open privacy controls', '/game', 'secondary', 'download'))}${feature('shield', 'Advertising privacy', 'Advertising and consent options vary by app version and platform. Open your app’s privacy controls to see the choices available.', `<a class="pg-text-link" href="/legal/privacy-choices">Read the full privacy choices ${icon('arrow-right')}</a>`)}${feature('user', 'Permanent deletion', 'Review the process and confirm your exact player tag in your verified account.', button('Deletion instructions', '/delete-account', 'secondary', 'arrow-right'))}</div>
+    <div data-metrics-host></div>
     ${panel(`<div class="pg-about-footer"><div><h2>Need help with a privacy request?</h2><p class="mx-muted">Contact Antimatter Innovations if your request cannot be completed through the available controls.</p></div>${button('Contact support', '/support', 'primary', 'mail')}</div>`)}
   </div>`;
 }

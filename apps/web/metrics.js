@@ -21,6 +21,24 @@ export function setTelemetryOptIn(storage, value) {
   } catch { /* storage unavailable: the lane simply stays off */ }
 }
 
+/* The privacy-choices panel. Rendered from the SAME storage the lane reads, so the displayed state
+ * and the lane's behavior can never disagree. Both actions are always present; the current one is
+ * disabled. */
+export function telemetryPanel(storage) {
+  const optedIn = telemetryOptedIn(storage);
+  const status = optedIn
+    ? 'Sharing daily anonymous counters. No name, account id, IP address, gameplay moves or research data is included, and you can stop at any time.'
+    : 'Not sharing. No usage counters leave this browser.';
+  return '<div class="pg-consent" data-telemetry-panel>'
+    + '<h3>Product telemetry</h3>'
+    + '<p><strong>Optional and separate from research.</strong> If you allow it, Mega XOXO counts daily, anonymous product-usage totals (for example ads shown or matches completed) to find broken flows and measure whether ads actually pay out.</p>'
+    + '<p class="mx-muted">' + status + '</p>'
+    + '<div class="pg-actions">'
+    + '<button class="mx-button primary" type="button" data-metrics-action="optin"' + (optedIn ? ' disabled' : '') + '>Share daily anonymous counters</button>'
+    + '<button class="pg-text-button" type="button" data-metrics-action="optout"' + (optedIn ? '' : ' disabled') + '>Stop sharing</button>'
+    + '</div></div>';
+}
+
 export function createTelemetryLane({ storage, request, now = Date.now, intervalMs = FLUSH_MS } = {}) {
   if (!storage || storage.getItem(FLAG) !== 'opted-in') return null;
   if (typeof request !== 'function') return null;

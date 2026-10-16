@@ -1,0 +1,49 @@
+###########################################################################
+# V5 PUBLIC EDGE - the ONLY docker compose surface for production.        #
+#                                                                         #
+# Contract (LR03A, 2026-10-16):                                           #
+#   * This file declares ONLY the Caddy edge. There is NO app service,    #
+#     NO depends_on, NO database volume, and NO SQLite path anywhere.     #
+#     Adding one here is a release-blocking security regression.          #
+#   * The game authority is the host systemd unit                        #
+#     mega-xo-v5-production.service (PostgreSQL + Core + API + realtime)  #
+#     bound to 172.18.0.1:8080. The edge proxies public traffic to it.    #
+#   * The retired V4 compose (SQLite app + backup loop) is fenced at      #
+#     deploy/legacy-v4-recovery/compose.yaml.fenced - it must never run.  #
+#   * Project name and volume names match the previous deployment so the  #
+#     Caddy TLS/data volumes survive the migration unchanged.             #
+###########################################################################
+name: mega-xo-production
+services:
+  edge:
+    image: caddy@sha256:d8542f48d34a9cf4e4c11a478865229840e87e4c96ea3f439101f31a5d35f75f
+    restart: unless-stopped
+    read_only: true
+    cap_drop: [ALL]
+    cap_add: [NET_BIND_SERVICE, DAC_READ_SEARCH]
+    security_opt: [no-new-privileges:true]
+    pids_limit: 128
+    mem_limit: 256m
+    cpus: 0.5
+    entrypoint: ['/bin/sh', '-ec']
+    command: ['export MEGA_PROXY_SECRET="$(cat /run/secrets/proxy_secret)"; export MEGA_STAGING_PASSWORD_HASH="$(cat /run/secrets/staging_password_hash 2>/dev/null || true)"; exec caddy run --config /etc/caddy/Caddyfile --adapter caddyfile']
+    environment:
+      MEGA_HOSTNAME: megaxo.online
+      ACME_EMAIL: contact@antimatterinnovations.com
+      MEGA_TRUSTED_PROXIES: 127.0.0.1/32
+    secrets: [proxy_secret, staging_password_hash]
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    tmpfs: ['/tmp:size=16m,mode=1777']
+    ports: ['0.0.0.0:80:80', '0.0.0.0:443:443']
+    logging:
+      driver: json-file
+      options: {max-size: '5m', max-file: '2'}
+volumes:
+  caddy-data:
+  caddy-config:
+secrets:
+  proxy_secret: {file: '${MEGA_ROOT}/secrets/proxy_secret'}
+  staging_password_hash: {file: '${MEGA_ROOT}/secrets/staging_password_hash'}

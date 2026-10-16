@@ -1,6 +1,22 @@
+###########################################################################
+# FENCED V4-ERA COMPOSE FILE - DO NOT RUN.                                #
+#                                                                         #
+# This file still declares the retired V4 SQLite writer (app: with        #
+# MEGA_DB=/data/mega.sqlite and restart: unless-stopped) and an edge      #
+# that depends on it. The V4 to PostgreSQL cutover happened on            #
+# 2026-10-15; restarting this project could resurrect a SECOND writer     #
+# over current player data. It is kept ONLY as a byte-for-byte recovery   #
+# artifact.                                                               #
+#                                                                         #
+# The extension is deliberately ".fenced" so "docker compose -f" cannot   #
+# load it. The live V5 public edge is deploy/compose-v5-edge.yaml; the    #
+# V5 authority is the systemd unit mega-xo-v5-production.service.         #
+# See deploy/legacy-v4-recovery/README.md.                                #
+###########################################################################
 name: ${MEGA_PROJECT:-mega-xo}
 services:
   app:
+    profiles: [v4-fenced-do-not-run]
     image: ${MEGA_IMAGE:?Set an immutable tested image digest}
     restart: unless-stopped
     init: true
@@ -39,6 +55,7 @@ services:
       driver: json-file
       options: {max-size: '10m', max-file: '3'}
   edge:
+    profiles: [v4-fenced-do-not-run]
     image: ${CADDY_IMAGE:-caddy@sha256:d8542f48d34a9cf4e4c11a478865229840e87e4c96ea3f439101f31a5d35f75f}
     restart: unless-stopped
     read_only: true
@@ -68,7 +85,7 @@ services:
       driver: json-file
       options: {max-size: '5m', max-file: '2'}
   backup:
-    profiles: [backup]
+    profiles: [backup, v4-fenced-do-not-run]
     image: ${MEGA_IMAGE}
     restart: unless-stopped
     init: true

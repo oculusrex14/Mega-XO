@@ -243,3 +243,26 @@
 Both MEDIUMs are recorded with dispositions in the review document — no unilateral change was made, per the review's own scope note.
 
 **CI:** Main recorded 15/15-green on the merged head (including the Advanced-#29 suites). The PR #29 delta is now exactly the Polar settlement slice.
+
+### Checkpoint 19 — 2026-10-16 (LR20 Android device lane UNBLOCKED — root cause found, build verified on the OnePlus)
+
+**ROOT CAUSE of the device "Connection interrupted" (LR20 blocker): the previously installed AAB (app-online-release-online.megaxo.xoxo-v1.aab, Oct 15) was built with an EMPTY megaApiOrigin** — BuildConfig.MEGA_API_ORIGIN was empty, so MegaXOActivity never configured MegaNativeHttpClient and every online surface read as unavailable while offline modes worked (exactly the observed state; dex inspection confirmed no https://megaxo.online string anywhere in the APK). TCP 443 to megaxo.online from the phone was always fine (toybox nc OK; the earlier ping loss is just ICMP filtering).
+
+**Fix verified on the device (OnePlus Nord CE EB2101, usb 5199676e):** gradle 8.14.6 installed (AGP 8.13.2 compatible), the ONLINE DEBUG variant built with the full configuration (megaApiOrigin=https://megaxo.online, megaApplicationId=online.megaxo.xoxo, versionCode 2 / versionName 1.0.0-lr20, the real Google server client id 334987882979-…, and the owner-recorded AdMob ids: app ca-app-pub-5255314563073178~4393199164, rewarded /9122606653, interstitial /5293761020), installed via adb install -r (Success, updated in place over the Oct 15 install, firstInstall 2026-10-15 preserved). Evidence: the app launches with NO fatal/crash (pid live), the crash/resume journey WORKS (the "Continue your game?" restore of the previously saved unfinished game), and after Back-to-home the "Connection interrupted" banner is GONE — the production wallet (150 Coins / 0 Crowns) loads over the live megaxo.online API. Screenshots captured (/tmp/oneplus-*.png — to be copied into the evidence dir).
+
+**What this unblocks:** the LR20 Android journeys can now run against production from the physical device (sign-in continuity, wallet, matchmaking, powers, ads with the real unit ids). The build command + parameters are recorded here and in the private evidence; gradle 8.14.6 (+ gradle 9.8.1, both via brew) and local.properties (sdk.dir) now exist on this machine.
+
+**Remaining LR20 work (next sessions):** the 18 acceptance journeys on the OnePlus + the iPhone lane (iOS build via native-release-ios.sh with the secured signing material), then the recorded evidence per journey. The release-signing question for the store lane: the device builds are DEBUG-signed; the store AAB must be UPLOAD-key-signed (the keystore + credentials are secured) — a release build with the same properties for the Play upload is a separate step.
+
+### Checkpoint 20 — 2026-10-16 (PR #29 MERGED — the entire Codex lane is in trunk)
+
+**Main merged PR #29 in full (including the Polar settlement).** Trunk now carries ALL Codex commits from this run: the SSV chain fix, LR13 Cashfree (0056), LR12 rate limiting, the disposable-backend skip contract, the C05 Polar provider AND the Polar settlement (0057 + the commerce chain + routes + composition), plus the board checkpoints. Verified: trunk has 0057, all four polar commerce methods, and all three polar routes. The temporary codex/v52-polar-settlement branch pushed during the reconciliation was deleted (the content was already merged).
+
+**Current trunk state (V5.2 @ 64bc163+):** the monetization lane is COMPLETE for all three providers (Cashfree Indian primary, Polar global primary + Indian fallback, google/apple native stores), the security review is recorded with its two owner decisions, and Main logged 15/15-green CI on the merged head.
+
+**Remaining open items (Codex lane):**
+1. **LR20 device journeys** — UNBLOCKED (the OnePlus runs the verified online build); the 18 journeys remain to be executed and evidenced. No devices were attached for most of the run; both are attached as of the end of this run (OnePlus 5199676e + the iPhone udid 00008140-0019711E2260801C).
+2. **LR02 final CI sweep** — deferred to LAST; Main recorded 15/15-green, so this reduces to a re-verification on the final head (plus the android-emulator runner failure seen on the pre-rebase PR head, which is the known native family).
+3. **The two MEDIUM owner decisions** from the security review (surfaced in checkpoint 18) — for the human.
+
+The goal continues with LR20 as the primary lane; the monetization, hardening, identity, consent and security-prep slices are all merged and evidenced.

@@ -30,26 +30,27 @@ test('Linux production launcher rejects a second coordinator and releases lock a
 
 test('production runtime dependencies are pinned by immutable multi-arch digest',()=>{
  const dockerfile=fs.readFileSync(path.join(ROOT,'Dockerfile'),'utf8');
- const compose=fs.readFileSync(path.join(ROOT,'deploy','compose.yaml'),'utf8');
+ const compose=fs.readFileSync(path.join(ROOT,'deploy','compose-v5-edge.yaml'),'utf8');
  const smoke=fs.readFileSync(path.join(ROOT,'scripts','image-smoke.sh'),'utf8');
  assert.match(dockerfile,/ARG NODE_IMAGE=node@sha256:[a-f0-9]{64}/);
- assert.match(compose,/CADDY_IMAGE:-caddy@sha256:[a-f0-9]{64}/);
+ assert.match(compose,/image:\s*caddy@sha256:[a-f0-9]{64}/);
  assert.match(smoke,/caddy_image='caddy@sha256:[a-f0-9]{64}'/);
  assert.equal(dockerfile.includes('ARG NODE_IMAGE=node:24-bookworm-slim'),false);
- assert.equal(compose.includes('CADDY_IMAGE:-caddy:2-alpine'),false);
+ assert.equal(/image:\s*caddy:(?!.*@sha256)/.test(compose),false,'the edge image must be digest-pinned, never a mutable tag');
 });
 
-test('VPS initialization and Compose keep provider credentials in secret files',()=>{
+test('VPS initialization and the V5 edge keep provider credentials in secret files',()=>{
  const init=fs.readFileSync(path.join(ROOT,'scripts','init-vps.js'),'utf8');
- const compose=fs.readFileSync(path.join(ROOT,'deploy','compose.yaml'),'utf8');
+ const compose=fs.readFileSync(path.join(ROOT,'deploy','compose-v5-edge.yaml'),'utf8');
  const installer=fs.readFileSync(path.join(ROOT,'deploy','install-secrets.sh'),'utf8');
  for(const name of ['resend_api_key','google_client_secret','apple_private_key'])assert.ok(init.includes(name));
- assert.ok(compose.includes('GOOGLE_CLIENT_SECRET_FILE: /run/secrets/google_client_secret'));
- assert.ok(compose.includes('APPLE_PRIVATE_KEY_FILE: /run/secrets/apple_private_key'));
- assert.ok(compose.includes("google_client_secret: {file: '\${MEGA_ROOT}/secrets/google_client_secret'}"));
- assert.ok(compose.includes("apple_private_key: {file: '\${MEGA_ROOT}/secrets/apple_private_key'}"));
+ // The edge never carries provider secrets; only the proxy/staging secrets it needs. The systemd
+ // authority reads the provider secrets as files directly from MEGA_ROOT/secrets (mode 600).
+ assert.ok(compose.includes("secret")&&!/GOOGLE_CLIENT_SECRET|APPLE_PRIVATE_KEY/.test(compose),'provider secrets must not be mounted into the edge');
+ assert.ok(compose.includes("proxy_secret: {file: '\${MEGA_ROOT}/secrets/proxy_secret'}"));
  assert.ok(installer.includes('No secret values were printed.'));
- assert.equal(installer.includes('printf \'%s\\n\' "$resend"'),false);
+ assert.ok(installer.includes("chmod 600"));
+ assert.equal(installer.includes('echo "$resend"'),false);
 });
 
 test('staging initialization uses real HTTPS and isolated access credentials',t=>{
@@ -80,12 +81,15 @@ test('backup and monitoring assets preserve environment isolation and private di
 });
 
 test('production perimeter assets keep only edge web ports public',()=>{
- const compose=fs.readFileSync(path.join(ROOT,'deploy','compose.yaml'),'utf8');
+ const compose=fs.readFileSync(path.join(ROOT,'deploy','compose-v5-edge.yaml'),'utf8');
  const caddy=fs.readFileSync(path.join(ROOT,'deploy','Caddyfile'),'utf8');
  const audit=fs.readFileSync(path.join(ROOT,'deploy','audit-perimeter.sh'),'utf8');
  const outside=fs.readFileSync(path.join(ROOT,'scripts','external-perimeter-probe.js'),'utf8');
- assert.ok(compose.includes("'127.0.0.1:\${MEGA_LOCAL_METRICS_PORT:-9091}:9091'"));
+ // Only the edge publishes ports, and only 80/443. No public 8080 and no metrics port anywhere in
+ // the compose surface; the authority is bound to loopback and systemd-owned.
+ assert.ok(compose.includes("ports: ['0.0.0.0:80:80', '0.0.0.0:443:443']"));
  assert.equal(compose.includes(':8080:8080'),false);
+ assert.equal(/ports:.*9091/.test(compose),false,'the metrics port must never be published by the edge');
  assert.ok(caddy.includes('header -Server'));
  assert.ok(caddy.includes('Strict-Transport-Security'));
  for(const port of ['22','2375','2376','8080','9091'])assert.ok(outside.includes(port));

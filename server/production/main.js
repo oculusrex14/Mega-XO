@@ -18,6 +18,7 @@ const {GooglePlayNotifications}=require('../google-play-notifications');
 const {AppleStoreKit}=require('../apple-storekit');
 const {AppleStoreNotifications}=require('../apple-store-notifications');
 const {StorePurchaseProvider}=require('../store-purchase-provider');
+const {createCashfreeProvider}=require('../cashfree');
 const {createAdMobVerifier}=require('../admob-ssv');
 function recover(service) {
  const c=service.community;
@@ -49,7 +50,8 @@ async function createRuntime(config,{transport,log=()=>{}}={}) {
   apple:purchaseProvider.apple?new AppleStoreNotifications(store.db,{storeKit:purchaseProvider.apple,monetization}):null
  }):null;
  const verifyAd=config.ads?.mode&&config.ads.mode!=='off'?createAdMobVerifier():null;
- const service=buildService({file:config.file,origin:config.origin,providers:config.providers,storeOptions:{otpSecret:config.otpSecret},communityOptions:{deletionPolicy:{enabled:config.privacy.deletionEnabled,policyVersion:config.privacy.policyVersion}},emailInstance:{enabled:()=>false},monetizationOptions:{adMode:config.ads?.mode||'off',adUnits:config.ads?.platforms||{},rewardItem:'cosmetic_reward',verifyAd,purchasesEnabled:config.purchases.enabled,eligible:()=>true,purchaseProviderFactory,notificationFactory}});
+ const cashfreeProvider=config.purchases.cashfree?createCashfreeProvider(config.purchases.cashfree):null;
+ const service=buildService({file:config.file,origin:config.origin,providers:config.providers,storeOptions:{otpSecret:config.otpSecret},communityOptions:{deletionPolicy:{enabled:config.privacy.deletionEnabled,policyVersion:config.privacy.policyVersion}},emailInstance:{enabled:()=>false},monetizationOptions:{adMode:config.ads?.mode||'off',adUnits:config.ads?.platforms||{},rewardItem:'cosmetic_reward',verifyAd,purchasesEnabled:config.purchases.enabled,eligible:()=>true,purchaseProviderFactory,notificationFactory,cashfreeProvider,cashfreeCatalog:config.purchases.cashfree?config.purchases.cashfree.prices:null}});
  let telemetry,passwords,outbox,metrics,timer,slowTimer,reads,closed=false;
  try {
   migrate(service.store.db);service.rooms.db.exec('PRAGMA synchronous=FULL; PRAGMA foreign_keys=ON; PRAGMA busy_timeout=1000;');

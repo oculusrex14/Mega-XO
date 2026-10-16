@@ -87,7 +87,17 @@ function config(env = process.env) {
   if(appleEnvironment==='Production'&&!appleAppId)throw Error('APPLE_STORE_APP_ID_REQUIRED');
   const googlePlay=playJson?{packageName:playPackage,serviceAccount:playAccount,products:playProducts,pubsubAudience:playAudience,pubsubServiceAccount:playPushEmail}:null;
   const appleStore=rootsFile?{bundleId:appleBundle,environment:appleEnvironment,appAppleId:appleAppId,products:appleProducts,trustedRoots:appleRoots}:null;
-  if(purchasesEnabled&&!googlePlay&&!appleStore)throw Error('STORE_PROVIDER_NOT_CONFIGURED');
+  const cashfreePriceValues=productKeys.map(k=>env['CASHFREE_PRICE_'+k]||'');if(cashfreePriceValues.some(Boolean)&&!cashfreePriceValues.every(Boolean))throw Error('INCOMPLETE_CASHFREE_PRICE');
+  if(new Set(cashfreePriceValues.filter(Boolean)).size!==cashfreePriceValues.filter(Boolean).length)throw Error('DUPLICATE_CASHFREE_PRICE');
+  const cashfreePrices={};productKeys.forEach((k,i)=>{const v=cashfreePriceValues[i];if(v){if(!/^\d{1,6}(\.\d{1,2})?$/.test(v))throw Error('INVALID_CASHFREE_PRICE');cashfreePrices[internal[i]]=v;}});
+  const cashfreeAppId=env.CASHFREE_APP_ID||'',cashfreeSecret=secret(env,'CASHFREE_SECRET_KEY'),cashfreeEnv=env.CASHFREE_ENV||'PRODUCTION';
+  if((cashfreeAppId?1:0)+(cashfreeSecret?1:0)===1)throw Error('INCOMPLETE_CASHFREE_CONFIG');
+  if(cashfreeAppId&&(!Object.keys(cashfreePrices).length))throw Error('CASHFREE_PRICE_REQUIRED');
+  if(cashfreeAppId&&!['PRODUCTION','TEST'].includes(cashfreeEnv))throw Error('INVALID_CASHFREE_ENV');
+  const cashfreeVersion=env.CASHFREE_API_VERSION||'2025-01-01';if(cashfreeAppId&&!/^\d{4}-\d{2}-\d{2}$/.test(cashfreeVersion))throw Error('INVALID_CASHFREE_API_VERSION');
+  if(cashfreeAppId&&purchasesEnabled===false)throw Error('CASHFREE_REQUIRES_PURCHASES_ENABLED');
+  const cashfree=cashfreeAppId?{appId:cashfreeAppId,secretKey:cashfreeSecret,env:cashfreeEnv,apiVersion:cashfreeVersion,prices:Object.freeze(cashfreePrices),webhookPath:'/api/monetization/cashfree/webhook'}:null;
+  if(purchasesEnabled&&!googlePlay&&!appleStore&&!cashfree)throw Error('STORE_PROVIDER_NOT_CONFIGURED');
   return Object.freeze({stage, origin: origin.origin, file, otpSecret, proxySecret, auditSecret,
     host: env.MEGA_BIND || '0.0.0.0', port: integer(env, 'PORT', 8080, 1024, 65535),
     adminPort: integer(env, 'MEGA_METRICS_PORT', 9091, 1024, 65535),
@@ -104,7 +114,7 @@ function config(env = process.env) {
     email: {apiKey, from, domain:emailDomain},
     privacy: {deletionEnabled, policyVersion:privacyPolicyVersion, retentionVersion:retentionPolicyVersion},
     ads: {mode:adMode,consentVersion,platforms:Object.freeze(adPlatforms)},
-    purchases: {enabled:purchasesEnabled,googlePlay,appleStore},
+    purchases: {enabled:purchasesEnabled,googlePlay,appleStore,cashfree},
     providers: {google: {clientId: googleId, clientSecret: googleSecret, nativeAudiences: (env.GOOGLE_NATIVE_AUDIENCES || '').split(',').filter(Boolean), authorizedParties: (env.GOOGLE_AUTHORIZED_PARTIES || '').split(',').filter(Boolean)}, apple}
   });
 }

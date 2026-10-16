@@ -559,6 +559,7 @@ async function main() {
   const { createCommerceService } = require(path.join(ROOT, 'packages/services/commerce.js'));
   const { createCommerceIngressService } = require(path.join(ROOT, 'packages/services/commerce-ingress.js'));
   const { createCashfreeProvider } = require(path.join(ROOT, 'packages/services/cashfree.js'));
+  const { createPolarProvider } = require(path.join(ROOT, 'packages/services/polar.js'));
   const { createRateLimiter } = require(path.join(ROOT, 'packages/services/rate-limit.js'));
   const { createAdMobVerifier } = require(path.join(ROOT, 'server/admob-ssv.js'));
   const { createPgStoreDb } = require(path.join(ROOT, 'packages/services/store-pg-adapter.js'));
@@ -781,6 +782,37 @@ async function main() {
   }
   const cashfreeReturnUrl = process.env.CASHFREE_RETURN_URL || 'https://megaxo.online';
   const cashfreeNotifyUrl = process.env.CASHFREE_NOTIFY_URL || 'https://megaxo.online/api/monetization/cashfree/webhook';
+  /* C05: the Polar lane (the owner decision: Polar = primary global payments, the Indian
+   * fallback behind Cashfree). Fail-loud like Cashfree: POLAR_ACCESS_TOKEN without the org id,
+   * the webhook secret, or the complete price catalog refuses boot; absent env keeps the lane
+   * disabled. Prices are the recorded catalog cents (server-authoritative, compared exactly at
+   * settlement); secrets come from the file-backed reader. */
+  let polarProvider = null;
+  let polarCatalog = null;
+  if (process.env.POLAR_ACCESS_TOKEN) {
+    const polarToken = require(path.join(ROOT, 'server/production/config.js')).secret(process.env, 'POLAR_ACCESS_TOKEN');
+    const polarWebhookSecret = require(path.join(ROOT, 'server/production/config.js')).secret(process.env, 'POLAR_WEBHOOK_SECRET');
+    if (!polarToken) throw REFUSE('INCOMPLETE_POLAR_CONFIG');
+    if (!polarWebhookSecret) throw REFUSE('INCOMPLETE_POLAR_CONFIG');
+    const polarOrgId = process.env.POLAR_ORGANIZATION_ID || '';
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(polarOrgId)) throw REFUSE('INVALID_POLAR_ORGANIZATION_ID');
+    polarCatalog = {};
+    for (const id of PRODUCT_IDS) {
+      const priceId = process.env['POLAR_PRICE_' + id.toUpperCase()];
+      const cents = process.env['POLAR_PRICE_CENTS_' + id.toUpperCase()];
+      if (!priceId || !cents) throw REFUSE('INCOMPLETE_POLAR_PRICE');
+      if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(priceId)) throw REFUSE('INVALID_POLAR_PRICE_ID');
+      if (!/^\d{1,9}$/.test(cents) || Number(cents) <= 0) throw REFUSE('INVALID_POLAR_PRICE_CENTS');
+      polarCatalog[id] = { priceId, amountCents: Number(cents) };
+    }
+    polarProvider = createPolarProvider({
+      accessToken: polarToken,
+      organizationId: polarOrgId,
+      webhookSecret: polarWebhookSecret,
+      apiBase: process.env.POLAR_API_BASE || undefined,
+    });
+  }
+  const polarSuccessUrl = process.env.POLAR_SUCCESS_URL || 'https://megaxo.online';
   const commerce = await createCommerceService(corePool, {
     adMode: commerceAdMode,
     purchasesEnabled: process.env.MEGA_PURCHASES_ENABLED === 'true',
@@ -792,6 +824,9 @@ async function main() {
     cashfreeCatalog,
     cashfreeReturnUrl,
     cashfreeNotifyUrl,
+    polarProvider,
+    polarCatalog,
+    polarSuccessUrl,
   });
   const commerceIngress = createCommerceIngressService({ commerce });
   const coreIngress = createCoreServiceIngress({ coreService: core, ticketIssuer, queue, tournaments, commerce: commerceIngress, leaderboardPool: corePool, secret: gatewaySecret });
@@ -905,6 +940,7 @@ async function main() {
     },
     ssv: (raw) => coreGateway.commerceSsv({ raw }),
     cashfreeWebhook: (payload) => coreGateway.commerceCashfreeWebhook(payload),
+    polarWebhook: (payload) => coreGateway.commercePolarWebhook(payload),
   };
   /* LR19: the OPTIONAL telemetry sink. Anonymous daily aggregates on ops.rate_buckets; the client
    * lane is opt-in and OFF by default, so this sink normally receives nothing until a player makes

@@ -664,6 +664,7 @@ async function main() {
     verifyAd,
     adUnits,
     eligible: (account) => account && account.verified === true && account.suspended !== true && account.hold !== true,
+    purchaseProvider,
   });
   const commerceIngress = createCommerceIngressService({ commerce });
   const coreIngress = createCoreServiceIngress({ coreService: core, ticketIssuer, queue, tournaments, commerce: commerceIngress, leaderboardPool: corePool, secret: gatewaySecret });

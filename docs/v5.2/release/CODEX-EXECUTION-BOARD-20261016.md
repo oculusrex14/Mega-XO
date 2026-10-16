@@ -349,3 +349,28 @@ LR20 journeys 2-5/7-14/16-18 and the iPhone lane remain, and LR02 stays deferred
 Commits: 5c37ed6 (audit fixes F1-F3/F5-F10), 1d9283a (docs corrections), 34a57b6 (0058 schema),
 18ea57e (gateway/provider transport), 9367f32 (reserve-then-create + race suite). Post-rebase
 provenance for the earlier checkpoint: ff14dbc == 1dde7dd, 0e3c486 == 5c87b2e.
+
+### Checkpoint 25 - 2026-10-16 (journeys J2/J5/J6/J7/J11/J16/J17 executed; a device-side network block on the app stopped the lane - OWNER ACTION REQUIRED)
+
+**Journeys executed with the lr20.4 build (evidence in the private evidence dir, j5-*/j6-*/j7-*/j11-*/j17-*):**
+- **J5 wallet PASS** - the wallet sheet renders with Exchange / Get Crowns / Activity and the persisted 150/0.
+- **J6 difficulty extension PASS** - Expert bot match: move, bot reply, power bar counting.
+- **J7 friends PASS (signed-in)** - profile, player tag with copy/share, search field (Username or MEGA-tag), the honest empty squad state; search could not complete a live lookup because of the network state below.
+- **J11 themes PASS** - all four retained themes (vector/midnight/paperclub/afterhours) switch with the applied attribute following; screenshots per theme.
+- **J16 error banner PASS** - the degraded and reconnecting states render with the documented copy and Try again/retry actions (multiple screenshots).
+- **J17 accessibility PASS** - no unnamed visible buttons, sane body contrast sample, viewport meta with viewport-fit=cover (safe-area).
+
+**DEVICE BLOCKER (owner action required):** mid-journey the app lost ALL network access - every
+transport call (account, /api/v1/*, community) fails FAST with zero packets leaving the device
+(tcpdump on the VPS), the app's own WebView cannot reach ANY site (google.com and megaxo.online
+both hang past 6s while Chrome on the same device gets an instant 200), and it persists across a
+fresh app restart. Android netpolicy shows UID 10267 NOT blocked and INTERNET granted, so this is
+NOT an OS firewall rule I can see; the phone-side checks are: Settings > Apps > Mega XOXO >
+Mobile data & Wi-Fi (Wi-Fi + Mobile data must both be ON), any VPN/firewall app (NetGuard/
+AdGuard) per-app rules, Digital Wellbeing / Focus mode, and Data Saver exemptions. The lane
+resumes the moment the app can reach megaxo.online again - verify with the in-app friends page
+or a fresh install of the same APK.
+
+**Still open:** J8 tournaments, J9/J10 online queue+match, J12 full power-counter spend, J13
+320px layout check, J18 release-signed deep link, and the iPhone lane - all blocked on the
+device network state above. LR02 stays deferred to last.

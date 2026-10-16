@@ -31,7 +31,10 @@ function lanHost(){viewName='lanhost';activeFixture=null;shell('Host on this Wi-
   fullButton(icon('wifi')+(status.ok?'Host a room':'Try again'),'lanStart')+
   button('Stop hosting','lanStop','',true)+button('Back','hub','',true));}
 function lanOrigin(status){if(status?.origin)return status.origin;if(status?.port)return 'Port '+status.port;return 'Waiting for this device\'s network address';}
-async function lanStart(){const H=window.MegaLanHost;if(!H)return lanStartLocal();const name=$('#lanHostName')?.value.trim()||'Host';const started=H.open(name,8081);if(!started.ok){message('Could not start the room on this device ('+errorText(Error(started.error||'HOST_UNAVAILABLE'))+').');lanHost();return;}session={actor:'host-local',name};transport='lan';localStorage.setItem('mega_party_session',JSON.stringify(session));capabilities=await request('capabilities').catch(()=>null);setup(false);}
+async function lanStart(){const H=window.MegaLanHost;if(!H)return lanStartLocal();const name=$('#lanHostName')?.value.trim()||'Host';const started=H.open(name,8081);if(!started.ok){message('Could not start the room on this device ('+errorText(Error(started.error||'HOST_UNAVAILABLE'))+').');lanHost();return;}  /* The host is a player on the room server too: clear any stale tokenless session marker so
+     identity() mints a real LAN guest session (with token) - otherwise createRoom posts
+     without a token and fails AUTH_REQUIRED. The stored LAN origin still reconnects via resume(). */
+  session=null;transport='lan';localStorage.removeItem('mega_party_session');capabilities=await request('capabilities').catch(()=>null);setup(false);}
 /* The device already serving the LAN build is itself the host: name yourself, then create. */
 async function lanStartLocal(){const name=$('#lanHostName')?.value.trim();if(!name){message('Enter your name first.');return;}transport='lan';lanBase=null;try{session=await request('session',{method:'POST',body:JSON.stringify({name})});localStorage.setItem('mega_party_session',JSON.stringify(session));capabilities=await request('capabilities');setup(false);}catch(e){message(errorText(e));}}
 function lanJoin(){viewName='lanjoin';activeFixture=null;shell('Join a room near me');setBody('<p>Looking for rooms hosted on this Wi-Fi…</p>'+button('Search again','lanScan')+button('Back','hub','',true));lanScan();}

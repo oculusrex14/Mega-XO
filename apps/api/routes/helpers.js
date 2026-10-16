@@ -246,10 +246,43 @@ async function resolveAuth(context, req, { linked = true } = {}) {
   return { actor: session.actor, token, accounts, credentialMode };
 }
 
+/* Bounded, byte-faithful raw-body collection for stream requests (the production listener
+ * passes a plain Node request whose body nothing pre-reads). Returns a UTF-8 STRING of the
+ * exact bytes for the routes that sign or HMAC over them (the SSV callback and the provider
+ * webhooks); pre-populated bodies pass through unchanged. The cap matches the API body
+ * contract, so an oversized body refuses 413 instead of being read unbounded. */
+async function collectRawBody(req, limit = 100 * 1024) {
+  if (req.body !== undefined && req.body !== null) {
+    if (typeof req.body === 'string') return req.body;
+    if (Buffer.isBuffer(req.body)) return req.body.toString('utf8');
+    if (typeof req.body === 'object') return JSON.stringify(req.body);
+  }
+  return new Promise((resolve, reject) => {
+    const chunks = [];
+    let bytes = 0;
+    let settled = false;
+    const done = (fn, v) => { if (!settled) { settled = true; fn(v); } };
+    req.on('data', (chunk) => {
+      bytes += chunk.length;
+      if (bytes > limit) {
+        const err = new Error('BODY_TOO_LARGE');
+        err.status = 413;
+        done(reject, err);
+        req.destroy();
+        return;
+      }
+      chunks.push(chunk);
+    });
+    req.on('end', () => done(resolve, Buffer.concat(chunks).toString('utf8')));
+    req.on('error', (e) => done(reject, e));
+  });
+}
+
 module.exports = {
   STATUS_MAP,
   parseCookies,
   parseJsonBody,
+  collectRawBody,
   sendJson,
   sendError,
   resolveService,

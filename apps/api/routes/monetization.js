@@ -103,8 +103,13 @@ async function handleMonetizationRoute(context, req, res) {
        * an exhausted or unavailable budget never acknowledges the callback with 200. */
       if (!(await admitCallback(lane, req, res, 'admob'))) return true;
       /* The raw SSV QUERY STRING is exactly what Google signs — never re-encode or reorder it. */
+      /* The raw SSV bytes are exactly what Google signs; never re-encode, reorder or
+       * URL-normalize them: slice the query straight out of the raw target instead of
+       * new URL(), whose .search normalizes legal characters and changes signed bytes. */
+      const rawTarget = String(req.url || '/');
+      const queryStart = rawTarget.indexOf('?');
       const raw = method === 'GET'
-        ? (new URL(req.url || '/', 'http://localhost').search || '').replace(/^\?/, '')
+        ? (queryStart >= 0 ? rawTarget.slice(queryStart + 1) : '')
         : (typeof req.body === 'string' ? req.body : '');
       if (!raw) fail('INVALID_SSV_PAYLOAD', 400);
       /* The SSV callback is actor-free: it MUST go through the dedicated signed gateway path
@@ -130,7 +135,7 @@ async function handleMonetizationRoute(context, req, res) {
       if (typeof body.product !== 'string' || !body.product) fail('INVALID_PRODUCT', 400);
       const key = opKeyFrom(req, body);
       if (!key) fail('IDEMPOTENCY_KEY_REQUIRED', 400);
-      const result = await lane.command({ actor, op: 'cashfree_create', key, productId: body.product, customer: { email, phone } });
+      const result = await lane.command({ actor, op: 'cashfree_create', opKey: key, key, productId: body.product, customer: { email, phone } });
       sendJson(res, 200, result, { 'Cache-Control': CACHE_CONTROL });
       return true;
     }
@@ -140,7 +145,7 @@ async function handleMonetizationRoute(context, req, res) {
       const actor = await actorOf(context, req);
       const orderId = new URL(req.url || '/', 'http://localhost').searchParams.get('order_id') || '';
       if (!orderId) fail('ORDER_NOT_FOUND', 404);
-      const result = await lane.command({ actor, op: 'cashfree_status', orderId });
+      const result = await lane.command({ actor, op: 'cashfree_status', opKey: 'cashfree-status', orderId });
       sendJson(res, 200, result, { 'Cache-Control': CACHE_CONTROL });
       return true;
     }
@@ -173,7 +178,7 @@ async function handleMonetizationRoute(context, req, res) {
       if (email && (email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))) fail('INVALID_CUSTOMER_DETAILS', 400);
       const key = opKeyFrom(req, body);
       if (!key) fail('IDEMPOTENCY_KEY_REQUIRED', 400);
-      const result = await lane.command({ actor, op: 'polar_create', key, productId: body.product, customer: email ? { email } : undefined });
+      const result = await lane.command({ actor, op: 'polar_create', opKey: key, key, productId: body.product, customer: email ? { email } : undefined });
       sendJson(res, 200, result, { 'Cache-Control': CACHE_CONTROL });
       return true;
     }
@@ -183,7 +188,7 @@ async function handleMonetizationRoute(context, req, res) {
       const actor = await actorOf(context, req);
       const checkoutId = new URL(req.url || '/', 'http://localhost').searchParams.get('checkout_id') || '';
       if (!checkoutId) fail('ORDER_NOT_FOUND', 404);
-      const result = await lane.command({ actor, op: 'polar_status', checkoutId });
+      const result = await lane.command({ actor, op: 'polar_status', opKey: 'polar-status', checkoutId });
       sendJson(res, 200, result, { 'Cache-Control': CACHE_CONTROL });
       return true;
     }
@@ -212,6 +217,7 @@ async function handleMonetizationRoute(context, req, res) {
     const body = req.body && typeof req.body === 'object' && !Array.isArray(req.body) ? req.body : {};
     const command = { actor, op: spec.op };
     if (method === 'POST') command.opKey = opKeyFrom(req, body);
+    else command.opKey = opKeyFrom(req, {}) || 'commerce-status';
     for (const name of spec.args) {
       if (Object.prototype.hasOwnProperty.call(body, name)) command[name] = body[name];
     }

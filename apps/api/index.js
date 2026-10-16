@@ -10,7 +10,7 @@ const tournamentRoutes = require('./routes/tournaments');
 const wellKnownRoutes = require('./routes/well-known');
 const monetizationRoutes = require('./routes/monetization');
 const metricsRoutes = require('./routes/metrics');
-const { sendError, sendJson } = require('./routes/helpers');
+const { sendError, sendJson, collectRawBody } = require('./routes/helpers');
 const path = require('node:path');
 const { createReadCache } = require(path.join(__dirname, '../../packages/services/read-cache.js'));
 const security = require(path.join(__dirname, '../../packages/services/security.js'));
@@ -111,6 +111,19 @@ function createApiHandler(options = {}) {
       if (!credResult.csrfExempt) {
         const csrfPassed = await csrfMiddleware.handleCsrf(context, req, res);
         if (!csrfPassed) return;
+      }
+
+      // Raw-body collection for stream requests: the production listener passes a plain Node
+      // request and nothing pre-reads it, so routes that need the exact bytes (the SSV
+      // callback and the provider webhooks) or any JSON body would otherwise see undefined.
+      // Bounded at the same contract limit; an oversized body refuses 413.
+      if (req.body === undefined && ['POST', 'PUT', 'PATCH'].includes((req.method || '').toUpperCase())) {
+        try {
+          req.body = await collectRawBody(req, 100 * 1024);
+        } catch (error) {
+          if (error && error.status === 413) { sendJson(res, 413, { error: 'BODY_TOO_LARGE' }); return; }
+          throw error;
+        }
       }
 
       // 4. Body size limit (100KB)

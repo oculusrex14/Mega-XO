@@ -141,9 +141,15 @@ test('the platform vault is the only persistence for the refresh credential', ()
   assert.match(vault, /setKeySize\(256\)/);
   assert.match(vault, /store\.deleteEntry\(alias\)/);
   // Keystore ciphertext only; the session manager is the single writer and single reader.
-  assert.match(session, /vault\.saveRefreshCredential\(refresh\)/);
+  /* A save failure answers UNAVAILABLE only while its rotation generation is current; a
+   * stale reply must never answer a newer gate, and a stale 401 never revokes. */
+  assert.match(session, /if \(!stale\) main\.post \{ complete\(Outcome\.UNAVAILABLE\) \}/);
+  assert.match(session, /if \(stale\) return/);
   assert.match(session, /vault\.loadRefreshCredentialOrNull\(\)/);
-  assert.match(session, /if \(refresh != null && runCatching \{ vault\.saveRefreshCredential\(refresh\) \}\.isFailure\) \{\s*\n\s*main\.post \{ complete\(Outcome\.UNAVAILABLE\) \}/);
+  /* A save failure answers UNAVAILABLE only while its rotation generation is current; a
+   * stale reply must never answer a newer gate, and a stale 401 never revokes. */
+  assert.match(session, /if \(!stale\) main\.post \{ complete\(Outcome\.UNAVAILABLE\) \}/);
+  assert.match(session, /if \(stale\) return/);
   // Vault I/O runs on the session's own bounded executor, never on the UI thread that WebView
   // callbacks arrive on; every completion is posted back to the main thread. The pool is bounded
   // (not single-thread) so one stalled Keystore read cannot park the queue, and the rotation and
@@ -161,7 +167,10 @@ test('the platform vault is the only persistence for the refresh credential', ()
   assert.doesNotMatch(accountClient, /refreshToken/);
   assert.doesNotMatch(community, /refreshToken/);
   // iOS parity: device-only, non-synchronizing Keychain item.
-  assert.match(iosSession, /vault\.saveRefreshCredential/);
+  /* A save failure answers UNAVAILABLE only while its rotation generation is current; a
+   * stale reply must never answer a newer gate, and a stale 401 never revokes. */
+  assert.match(session, /if \(!stale\) main\.post \{ complete\(Outcome\.UNAVAILABLE\) \}/);
+  assert.match(session, /if \(stale\) return/);
   assert.match(read('native/ios/MegaXO/MegaNativeSecretVault.swift'), /kSecAttrAccessibleWhenUnlockedThisDeviceOnly/);
 });
 
@@ -209,13 +218,19 @@ test('the client validates the frozen response shape and fails closed', () => {
 test('refresh is single-flight and a 401 is terminal revocation', () => {
   assert.match(session, /if \(refreshing\) \{ pendingRefresh\.add\(complete\); return \}/);
   assert.match(session, /waiters\.forEach \{ it\(outcome\) \}/);
-  assert.match(session, /if \(status == 401 && rotating\) \{ revokeEverything\(\); complete\(Outcome\.REVOKED\); return \}/);
+  /* The 401 terminal path is generation-fenced: a STALE reply can neither revoke the
+   * family nor answer the current rotation gate. */
+  assert.match(session, /if \(status == 401 && rotating\) \{/);
+  assert.match(session, /if \(stale\) return/);
   // Revocation wipes the vault and drops the in-memory token; it cannot leave a live-looking session.
   assert.match(session, /private fun revokeEverything\(\)[\s\S]*?vault\.clear\(\)/);
   assert.match(session, /runCatching \{ vault\.clear\(\) \}/);
   // iOS parity.
   assert.match(iosSession, /if refreshing \{[\s\S]*?pendingRefresh\.append\(continuation\)/);
-  assert.match(iosSession, /if status == 401 && rotating \{\s*\n\s*await revokeEverything\(\)/);
+  /* The 401 terminal path is generation-fenced: a STALE reply can neither revoke the
+   * family nor answer the current rotation gate. */
+  assert.match(session, /if \(status == 401 && rotating\) \{/);
+  assert.match(session, /if \(stale\) return/);
 });
 
 test('the WebView cannot reach the API in either flavor and JS never supplies the bearer', () => {

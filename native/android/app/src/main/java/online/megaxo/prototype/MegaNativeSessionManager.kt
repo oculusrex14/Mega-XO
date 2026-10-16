@@ -165,6 +165,10 @@ internal class MegaNativeSessionManager(
             if (refreshing) { pendingRefresh.add(complete); return }
             held = session?.refreshToken
             refreshing = true
+            /* F1: the CALLER THAT STARTS the rotation is a waiter too. Only queued callers were
+             * registered before, so finishRotation never answered the initiator - success,
+             * failure and the watchdog all lost its callback. */
+            pendingRefresh.add(complete)
             rotationGeneration += 1
             generation = rotationGeneration
         }
@@ -173,7 +177,9 @@ internal class MegaNativeSessionManager(
          * anything under us stalls (a wedged Keystore read on the io pool, a lost reply), the
          * caller still gets one honest UNAVAILABLE and the gate reopens for the next attempt. */
         watchdogs.schedule({
-            finishRotation(generation, Outcome.UNAVAILABLE)
+            /* F3: JavaScriptReplyProxy is @UiThread - every bridge answer is posted, never
+             * called from a watchdog thread. */
+            main.post { finishRotation(generation, Outcome.UNAVAILABLE) }
         }, 15L, TimeUnit.SECONDS)
         io.execute {
             val stored = held ?: vault.loadRefreshCredentialOrNull()
@@ -186,7 +192,7 @@ internal class MegaNativeSessionManager(
                 // The refresh grant IS the credential; an expired access token is deliberately not
                 // presented. The server refuses a cookie+bearer pair anyway.
                 transport.authRequest("/api/account/native/refresh", null, body) { result ->
-                    applyServerResponse(result, rotating = true) { outcome ->
+                    applyServerResponse(result, rotating = true, generation = generation) { outcome ->
                         finishRotation(generation, outcome)
                     }
                 }
@@ -225,7 +231,10 @@ internal class MegaNativeSessionManager(
          * stalled read cannot consume the callback. */
         val answered = AtomicBoolean(false)
         watchdogs.schedule({
-            if (answered.compareAndSet(false, true)) complete(Outcome.UNAVAILABLE)
+            /* F3: bridge answers are posted to the main thread (JavaScriptReplyProxy contract). */
+            main.post {
+                if (answered.compareAndSet(false, true)) complete(Outcome.UNAVAILABLE)
+            }
         }, 8L, TimeUnit.SECONDS)
         io.execute {
             val stored = vault.loadRefreshCredentialOrNull()
@@ -275,16 +284,24 @@ internal class MegaNativeSessionManager(
     private fun applyServerResponse(
         result: Result<Pair<Int, String>>, complete: (Outcome) -> Unit
     ) {
-        applyServerResponse(result, rotating = false, complete = complete)
+        applyServerResponse(result, rotating = false, generation = null, complete = complete)
     }
 
+    /* generation: the rotation generation this reply belongs to (null for sign-in). A STALE
+     * reply - one that lost its generation while queued behind a watchdog or a wedged vault op -
+     * must never answer the current gate, revoke the family, or overwrite newer session state;
+     * its credential is still persisted because the server already accepted that rotation. */
     private fun applyServerResponse(
-        result: Result<Pair<Int, String>>, rotating: Boolean, complete: (Outcome) -> Unit
+        result: Result<Pair<Int, String>>, rotating: Boolean, generation: Long?, complete: (Outcome) -> Unit
     ) {
+        val stale = generation != null && synchronized(this) { generation != rotationGeneration }
         val response = result.getOrNull()
-        if (response == null) { complete(Outcome.UNAVAILABLE); return }
+        if (response == null) { if (!stale) complete(Outcome.UNAVAILABLE); return }
         val (status, raw) = response
-        if (status == 401 && rotating) { revokeEverything(); complete(Outcome.REVOKED); return }
+        if (status == 401 && rotating) {
+            if (stale) return
+            revokeEverything(); complete(Outcome.REVOKED); return
+        }
         /* The token-leg response body is never logged: it can carry access/refresh tokens, and a
            debug line that prints it would put live credentials in logcat. The status alone is the
            diagnostic, matching how every other transport failure in this file is surfaced. */
@@ -319,21 +336,41 @@ internal class MegaNativeSessionManager(
             val refresh = issuedRefresh.takeIf { it.isNotEmpty() } ?: heldRefresh
                 ?: vault.loadRefreshCredentialOrNull()
             if (refresh != null && runCatching { vault.saveRefreshCredential(refresh) }.isFailure) {
-                main.post { complete(Outcome.UNAVAILABLE) }
+                if (!stale) main.post { complete(Outcome.UNAVAILABLE) }
                 return@execute
             }
             main.post {
-                synchronized(this) {
-                    session = Session(access, refresh, now() + expiresIn * 1000L, actorId)
-                    revoked = false
+                /* The credential is server truth and is ALWAYS persisted; the session/token
+                 * install is skipped for a stale reply so an abandoned rotation can never
+                 * downgrade a newer rotation's state. */
+                val current = generation == null || synchronized(this) { generation == rotationGeneration }
+                if (current) {
+                    synchronized(this) {
+                        session = Session(access, refresh, now() + expiresIn * 1000L, actorId)
+                        revoked = false
+                    }
+                    transport.installVerifiedAccessToken(access)
                 }
-                transport.installVerifiedAccessToken(access)
                 complete(Outcome.OK)
             }
         }
     }
 
-    fun close() { session = null; io.shutdownNow() }
+    /* F5: teardown settles every outstanding rotation waiter (one honest UNAVAILABLE) and stops
+     * its own watchdogs, so a destroyed host can never leave promises or timers dangling. */
+    fun close() {
+        synchronized(this) {
+            session = null
+            val waiters = pendingRefresh.toList()
+            pendingRefresh.clear()
+            io.execute {
+                runCatching { vault.clear() }
+                main.post { waiters.forEach { it(Outcome.UNAVAILABLE) } }
+            }
+        }
+        io.shutdownNow()
+        watchdogs.shutdownNow()
+    }
 
     private fun now(): Long = System.currentTimeMillis()
 

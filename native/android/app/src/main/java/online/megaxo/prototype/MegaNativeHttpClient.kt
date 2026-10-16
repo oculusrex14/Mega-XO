@@ -180,5 +180,26 @@ internal class MegaNativeHttpClient(apiOrigin: String?) {
         }
     }
 
-    fun close() { accessToken = null; executor.shutdownNow(); watchdogs.shutdownNow() }
+    fun close() {
+
+
+        accessToken = null
+
+
+        executor.shutdownNow()
+
+
+        /* Queued transmits are dropped by shutdownNow, but their callers must still get one
+
+
+         * bounded answer: keep the watchdog pool alive past the longest pending timer and let
+
+
+         * it stop itself afterwards. */
+
+
+        watchdogs.schedule({ watchdogs.shutdownNow() }, 25L, TimeUnit.SECONDS)
+
+
+    }
 }

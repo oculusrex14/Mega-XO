@@ -41,48 +41,55 @@ function fail(code, status) {
   throw error;
 }
 
+/* Strict dotted-quad parser shared by the standalone and embedded paths: exactly four
+ * components, each 0-255 with no leading zeros, so '192.0.2.01', '192.0.2.256' and
+ * '192.0.2.' can never alias into a valid address. */
+function parseIpv4Bytes(raw) {
+  if (typeof raw !== 'string' || !raw || !/^[0-9.]+$/.test(raw)) return null;
+  const parts = raw.split('.');
+  if (parts.length !== 4) return null;
+  const out = Buffer.alloc(4);
+  for (let i = 0; i < 4; i += 1) {
+    const p = parts[i];
+    if (p.length === 0 || p.length > 3 || (p.length > 1 && p[0] === '0')) return null;
+    const v = Number(p);
+    if (!Number.isInteger(v) || v > 255) return null;
+    out[i] = v;
+  }
+  return out;
+}
+
 /* Parse an IP literal into its canonical raw bytes: 4 bytes for IPv4 (including any
  * IPv4-mapped IPv6 form) or 16 bytes for IPv6. Returns null for anything malformed. */
 function canonicalIpBytes(raw) {
   if (typeof raw !== 'string') return null;
   let ip = raw.trim().toLowerCase();
   if (!ip) return null;
-  if (!ip.includes(':')) {
-    if (!/^[0-9.]+$/.test(ip)) return null;
-    const parts = ip.split('.');
-    if (parts.length !== 4) return null;
-    const out = Buffer.alloc(4);
-    for (let i = 0; i < 4; i += 1) {
-      const p = parts[i];
-      if (p.length === 0 || p.length > 3 || (p.length > 1 && p[0] === '0')) return null;
-      const v = Number(p);
-      if (!Number.isInteger(v) || v > 255) return null;
-      out[i] = v;
-    }
-    return out;
-  }
-  const zone = ip.indexOf('%');
-  if (zone >= 0) ip = ip.slice(0, zone);
+  if (ip.includes('%')) return null; /* a zone id is not a routable source identity */
+  if (!ip.includes(':')) return parseIpv4Bytes(ip);
   if (!/^[0-9a-f:.]+$/.test(ip)) return null;
   const sections = ip.split('::');
   if (sections.length > 2) return null;
   const head = sections[0] ? sections[0].split(':') : [];
   const tail = sections.length === 2 ? (sections[1] ? sections[1].split(':') : []) : [];
-  /* Embedded IPv4 (the ::ffff:a.b.c.d form and IPv4-compatible spellings) becomes the final
-   * two hex groups before the general validation. */
+  /* Embedded IPv4 is legal ONLY as the final group of the address (the ::ffff:a.b.c.d form
+   * and its no-:: spelling). It is expanded with the SAME strict component rules as a
+   * standalone IPv4 literal, so malformed quads can never alias to a valid address, and a
+   * misplaced quad (e.g. before ::) is refused. */
   if (tail.length && tail[tail.length - 1].includes('.')) {
-    const v4 = tail[tail.length - 1].split('.');
-    if (v4.length !== 4) return null;
+    const v4 = parseIpv4Bytes(tail[tail.length - 1]);
+    if (!v4) return null;
     tail.splice(tail.length - 1, 1,
-      ((Number(v4[0]) << 8) | Number(v4[1])).toString(16).padStart(4, '0'),
-      ((Number(v4[2]) << 8) | Number(v4[3])).toString(16).padStart(4, '0'));
-  }
-  if (head.length && head[head.length - 1].includes('.') && !tail.length) {
-    const v4 = head[head.length - 1].split('.');
-    if (v4.length !== 4) return null;
+      ((v4[0] << 8) | v4[1]).toString(16).padStart(4, '0'),
+      ((v4[2] << 8) | v4[3]).toString(16).padStart(4, '0'));
+  } else if (sections.length === 1 && head.length && head[head.length - 1].includes('.')) {
+    const v4 = parseIpv4Bytes(head[head.length - 1]);
+    if (!v4) return null;
     head.splice(head.length - 1, 1,
-      ((Number(v4[0]) << 8) | Number(v4[1])).toString(16).padStart(4, '0'),
-      ((Number(v4[2]) << 8) | Number(v4[3])).toString(16).padStart(4, '0'));
+      ((v4[0] << 8) | v4[1]).toString(16).padStart(4, '0'),
+      ((v4[2] << 8) | v4[3]).toString(16).padStart(4, '0'));
+  } else if (head.concat(tail).some((g) => g.includes('.'))) {
+    return null;
   }
   const missing = 8 - head.length - tail.length;
   if (sections.length === 2 && missing < 1) return null;
@@ -104,11 +111,16 @@ function canonicalIpBytes(raw) {
   return bytes;
 }
 
-function ipToCidrBytes(ip, prefixLen) {
+function ipToCidrBytes(ip, prefixLen, writtenFamilyBits) {
   const bytes = canonicalIpBytes(ip);
   if (!bytes) return null;
+  /* The prefix is validated against the WRITTEN literal's family, and a written-IPv6 entry
+   * whose base canonicalizes down to IPv4 bytes is refused outright: silently re-interpreting
+   * the mask (e.g. ::ffff:127.0.0.1/128) is how trust widens by accident. The operator writes
+   * the clean family instead, and a malformed entry fails closed at startup. */
   const total = bytes.length * 8;
   if (!Number.isInteger(prefixLen) || prefixLen < 0 || prefixLen > total) return null;
+  if (writtenFamilyBits === 128 && total === 32) return null;
   return { bytes, prefixLen };
 }
 
@@ -131,8 +143,22 @@ function parseTrustedProxies(spec) {
     if (!item) continue;
     const slash = item.indexOf('/');
     const ip = slash >= 0 ? item.slice(0, slash) : item;
-    const prefixLen = slash >= 0 ? Number(item.slice(slash + 1)) : (canonicalIpBytes(ip) || { length: 0 }).length * 8;
-    const entry = ipToCidrBytes(ip, prefixLen);
+    let prefixLen;
+    let writtenFamilyBits;
+    if (slash >= 0) {
+      const raw = item.slice(slash + 1);
+      /* Strict prefix grammar: digits only, no sign, no hex, no empty, and no redundant
+       * leading zeros (so '127.0.0.1/' can never become /0 and '0x20' can never parse). */
+      if (!/^[0-9]+$/.test(raw) || (raw.length > 1 && raw[0] === '0')) fail('TRUSTED_PROXY_CONFIG', 503);
+      prefixLen = Number(raw);
+      writtenFamilyBits = ip.includes(':') ? 128 : 32;
+      if (prefixLen > writtenFamilyBits) fail('TRUSTED_PROXY_CONFIG', 503);
+    } else {
+      const bytes = canonicalIpBytes(ip);
+      if (!bytes) fail('TRUSTED_PROXY_CONFIG', 503);
+      prefixLen = bytes.length * 8;
+    }
+    const entry = ipToCidrBytes(ip, prefixLen, writtenFamilyBits);
     if (!entry) fail('TRUSTED_PROXY_CONFIG', 503);
     list.push(entry);
   }

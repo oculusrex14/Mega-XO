@@ -27,7 +27,8 @@ const OPS = {
   permit: { args: ['key', 'platform'], method: 'automaticPermit', call: (c, actor, a) => c.automaticPermit(actor, a[0], a[1]) },
   purchase: { args: ['key', 'evidence', 'restore'], method: 'purchase', call: (c, actor, a) => c.purchase(actor, a[0], a[1], a[2]) },
   /* The AdMob SSV provider callback is actor-free (Google calls it); the commerce service verifies
-   * the provider proof inside callback() and binds the grant to the ticket actor there. */
+	 * the provider proof inside callback() and binds the grant to the ticket actor there. The raw
+	 * payload is the SSV QUERY STRING (what Google signs), never a re-encoded param map. */
   ssv: { args: ['raw'], method: 'callback', call: (c, actor, a) => c.callback(a[0]) },
 };
 
@@ -72,7 +73,7 @@ function createCommerceIngressService({ commerce }) {
           if (!value || typeof value !== 'object' || Array.isArray(value)) fail('INVALID_EVIDENCE');
           args.push(value);
         } else if (name === 'raw') {
-          if (!value || typeof value !== 'object' || Array.isArray(value)) fail('INVALID_SSV_PAYLOAD');
+          if (typeof value !== 'string' || value.length === 0 || value.length > 8192) fail('INVALID_SSV_PAYLOAD');
           args.push(value);
         } else fail('INVALID_COMMERCE_COMMAND');
       }

@@ -1,0 +1,102 @@
+'use strict';
+
+/* LR12 (2026-10-16): the authenticated player surface for the V5 commerce service. This file holds
+ * NO economic logic and NO database handle: every command forwards through the SIGNED commerce
+ * ingress (context.monetization.command -> core-gateway -> /ingress/commerce/command -> the
+ * Core-owned commerce service on its core_runtime pool). The API tier never touches
+ * monetization.* tables and never mints a grant: the only shapes here are session resolution,
+ * input projection, and the sanitized reply.
+ *
+ * IDEMPOTENCY: mutating routes take the CLIENT'S durable operation key (Idempotency-Key /
+ * X-Opkey header, or an explicit body.key). Retrying after an ambiguous timeout must reuse the
+ * same key or the same economic action could settle twice. A body.key (the commerce-native key
+ * grammar) wins over the header when both are present.
+ *
+ * ADMOB SSV: GET/POST /api/monetization/admob-ssv is actor-free by design — Google's server calls
+ * it; the provider proof inside is verified by the commerce service (verifyAd) BEFORE any grant,
+ * and the grant binds to the ticket's actor. Fail-closed: an absent/unconfigured verifier answers
+ * ADS_UNAVAILABLE, never a silent OK. */
+
+const CACHE_CONTROL = 'private, no-store';
+
+function fail(code, status) {
+  const error = new Error(code);
+  error.code = code;
+  error.status = status || 400;
+  throw error;
+}
+
+function resolveMonetization(context) {
+  const lane = context && context.monetization;
+  if (lane && typeof lane.command === 'function') return lane;
+  fail('MONETIZATION_UNAVAILABLE', 503);
+}
+
+async function actorOf(context, req) {
+  const { resolveAuth } = require('./helpers');
+  const { actor } = await resolveAuth(context, req);
+  if (typeof actor === 'string' && actor) return actor;
+  fail('AUTH_REQUIRED', 401);
+}
+
+function opKeyFrom(req, body) {
+  const header = req.headers && (req.headers['idempotency-key'] || req.headers['x-opkey']);
+  if (typeof header === 'string' && header.length > 0) return header.slice(0, 160);
+  if (body && typeof body.key === 'string' && body.key.length > 0) return body.key.slice(0, 160);
+  return undefined;
+}
+
+const ROUTES = Object.freeze({
+  '/api/monetization/status': { op: 'status', method: 'GET', args: [] },
+  '/api/monetization/ticket': { op: 'ticket', method: 'POST', args: ['kind', 'platform'] },
+  '/api/monetization/claim': { op: 'claim', method: 'POST', args: [] },
+  '/api/monetization/permit': { op: 'permit', method: 'POST', args: ['platform'] },
+  '/api/monetization/purchase': { op: 'purchase', method: 'POST', args: ['evidence', 'restore'] },
+  '/api/monetization/cosmetic': { op: 'cosmetic', method: 'POST', args: ['itemId'] },
+});
+
+async function handleMonetizationRoute(context, req, res) {
+  const method = (req.method || 'GET').toUpperCase();
+  let pathname = new URL(req.url || '/', 'http://localhost').pathname;
+  if (pathname.length > 1 && pathname.endsWith('/')) pathname = pathname.slice(0, -1);
+  if (!pathname.startsWith('/api/monetization/')) return false;
+
+  try {
+    const lane = resolveMonetization(context);
+
+    if (pathname === '/api/monetization/admob-ssv') {
+      if (method !== 'GET' && method !== 'POST') fail('METHOD_NOT_ALLOWED', 405);
+      /* The raw SSV QUERY STRING is exactly what Google signs — never re-encode or reorder it. */
+      const raw = method === 'GET'
+        ? (new URL(req.url || '/', 'http://localhost').search || '').replace(/^\?/, '')
+        : (typeof req.body === 'string' ? req.body : '');
+      if (!raw) fail('INVALID_SSV_PAYLOAD', 400);
+      const result = await lane.command({ op: 'ssv', raw });
+      sendJson(res, 200, result, { 'Cache-Control': CACHE_CONTROL });
+      return true;
+    }
+
+    const spec = ROUTES[pathname];
+    if (!spec) { sendJson(res, 404, { error: 'NOT_FOUND' }); return true; }
+    if (spec.method !== method) fail('METHOD_NOT_ALLOWED', 405);
+
+    const actor = await actorOf(context, req);
+    const body = req.body && typeof req.body === 'object' && !Array.isArray(req.body) ? req.body : {};
+    const command = { actor, op: spec.op };
+    if (method === 'POST') command.opKey = opKeyFrom(req, body);
+    for (const name of spec.args) {
+      if (Object.prototype.hasOwnProperty.call(body, name)) command[name] = body[name];
+    }
+    const result = await lane.command(command);
+    sendJson(res, 200, result, { 'Cache-Control': CACHE_CONTROL });
+    return true;
+  } catch (error) {
+    if (error && (error.status || (typeof error.code === 'string' && /^[A-Z][A-Z0-9_]+$/.test(error.code)))) {
+      sendJson(res, error.status || 400, { error: error.code || error.message });
+      return true;
+    }
+    return false; /* transport/unknown faults fall through to the API's own handler */
+  }
+}
+
+module.exports = { handleMonetizationRoute };

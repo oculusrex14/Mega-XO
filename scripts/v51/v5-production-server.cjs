@@ -518,6 +518,7 @@ async function main() {
   const { createCoreGateway, createCoreServiceIngress } = require(path.join(ROOT, 'packages/services/core-gateway.js'));
   const { createCommerceService } = require(path.join(ROOT, 'packages/services/commerce.js'));
   const { createCommerceIngressService } = require(path.join(ROOT, 'packages/services/commerce-ingress.js'));
+  const { createAdMobVerifier } = require(path.join(ROOT, 'server/admob-ssv.js'));
   const { createRealtimeTransport } = require(path.join(ROOT, 'packages/services/realtime-transport.js'));
   const { resolveManagedRedisTarget } = require(path.join(ROOT, 'packages/services/managed-ephemera.js'));
   const { createEphemeraService } = require(path.join(ROOT, 'packages/services/ephemera.js'));
@@ -642,9 +643,27 @@ async function main() {
    * policy are configured in a later provider lane — the mounted routes answer honestly with
    * adMode 'off' / purchasesAvailable false until then. */
   const commerceAdMode = ['rewarded', 'hybrid'].includes(process.env.MEGA_AD_MODE) ? process.env.MEGA_AD_MODE : 'off';
+  /* LR15: the AdMob SSV verifier is composed whenever rewarded ads are enabled. It verifies the
+   * ECDSA signature against Google's PUBLISHED verifier keys (gstatic, 24h cache) — no secret
+   * material here. Store verifiers (verifyPurchase/purchaseProvider) remain a later lane; the
+   * eligibility gate stays conservative (verified, unheld accounts — the accountOf gate enforces
+   * the same invariants again inside the service). Client-side UMP/ATT consent remains the native
+   * apps' own gate before any ad request. */
+  const adUnitPattern = /^ca-app-pub-\d{16}\/\d{10}$/;
+  const adUnit = (value) => (typeof value === 'string' && adUnitPattern.test(value) ? value : '');
+  const adUnits = {};
+  for (const platform of ['android', 'ios']) {
+    const rewarded = adUnit(process.env['ADMOB_' + platform.toUpperCase() + '_REWARDED_UNIT']);
+    const interstitial = adUnit(process.env['ADMOB_' + platform.toUpperCase() + '_INTERSTITIAL_UNIT']);
+    if (rewarded || interstitial) adUnits[platform] = { rewarded, interstitial };
+  }
+  const verifyAd = commerceAdMode !== 'off' ? createAdMobVerifier() : null;
   const commerce = await createCommerceService(corePool, {
     adMode: commerceAdMode,
     purchasesEnabled: process.env.MEGA_PURCHASES_ENABLED === 'true',
+    verifyAd,
+    adUnits,
+    eligible: (account) => account && account.verified === true && account.suspended !== true && account.hold !== true,
   });
   const commerceIngress = createCommerceIngressService({ commerce });
   const coreIngress = createCoreServiceIngress({ coreService: core, ticketIssuer, queue, tournaments, commerce: commerceIngress, leaderboardPool: corePool, secret: gatewaySecret });

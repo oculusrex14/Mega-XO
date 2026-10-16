@@ -60,7 +60,8 @@ test('dispatch: unknown ops, bad shapes, and missing keys refuse with stable cod
 test('ssv path: actor-free but signature-verified (sign/verify roundtrip)', () => {
   const secret = 'unit-test-gateway-secret-0123456789abcdef';
   const timestamp = String(Date.now());
-  const bodyString = JSON.stringify({ raw: { ticket: 't1' } });
+  /* The raw SSV QUERY STRING is what Google signs — the ingress forwards it verbatim. */
+  const bodyString = JSON.stringify({ raw: 'ad_unit=ca-app-pub-3940256099942544%2F5224354917&signature=abc&key_id=1' });
   const signature = signRequest({ secret, timestamp, method: 'POST', path: '/ingress/commerce/ssv', actor: '', opKey: 'commerce-ssv', bodyString });
   const verified = verifyRequest({ secret, timestamp, method: 'POST', path: '/ingress/commerce/ssv', actor: '', opKey: 'commerce-ssv', bodyString, signature, now: () => Date.now() });
   assert.equal(verified.valid, true);
@@ -77,4 +78,12 @@ test('source integrity: the ingress and the API dispatch are wired', () => {
   const routes = fs.readFileSync(path.join(__dirname, '..', 'apps', 'api', 'routes', 'monetization.js'), 'utf8');
   assert.match(routes, /admob-ssv/);
   assert.doesNotMatch(routes, /require\([^)]*commerce\.js|INSERT INTO monetization|UPDATE monetization|FROM monetization\./, 'the API tier imports no commerce service and touches no monetization tables');
+});
+
+test('composition: the AdMob verifier is composed only when rewarded ads are enabled', () => {
+  const source = fs.readFileSync(path.join(__dirname, '..', 'scripts', 'v51', 'v5-production-server.cjs'), 'utf8');
+  assert.match(source, /createAdMobVerifier\(\)/, 'verifyAd composed from the published-keys verifier');
+  assert.match(source, /const verifyAd = commerceAdMode !== 'off' \? createAdMobVerifier\(\) : null/, 'verifyAd stays null while adMode is off');
+  assert.match(source, /ADMOB_' \+ platform\.toUpperCase\(\) \+ '_REWARDED_UNIT'/, 'ad units read from the deployment env');
+  assert.match(source, /account\.verified === true && account\.suspended !== true && account\.hold !== true/, 'eligibility stays the conservative verified/unheld gate');
 });

@@ -13,7 +13,9 @@ const newOrderId = () => 'cfmx' + crypto.randomBytes(12).toString('hex');
 function createCashfreeProvider({ appId, secretKey, apiVersion, env, fetchImpl = null } = {}) {
   if (!appId || !secretKey) throw Error('CASHFREE_CONFIG');
   if (!['PRODUCTION', 'TEST'].includes(env)) throw Error('CASHFREE_CONFIG');
-  const http = fetchImpl || (input => fetch(input));
+/* (url, init) BOTH reach native fetch: a wrapper that dropped the second argument
+   * silently downgraded every provider call to a bare GET. */
+  const http = fetchImpl || ((input, init) => fetch(input, init));
   const headers = { 'x-client-id': appId, 'x-client-secret': secretKey, 'x-api-version': apiVersion, 'Content-Type': 'application/json' };
   async function call(path, method, body) {
     const response = await http(API_BASE + path, { method, headers, body: body === undefined ? undefined : JSON.stringify(body) });

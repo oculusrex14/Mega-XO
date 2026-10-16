@@ -339,10 +339,15 @@ function createCoreGateway({
 
     /** LR12: the signed commerce command surface. The op allow-list lives Core-side
      * (packages/services/commerce-ingress.js); the gateway only signs and forwards. */
-    async commerceCommand({ actor, opKey, op, key, kind, platform, itemId, evidence, restore } = {}) {
+    /* The command projection carries the FULL creation/status argument set: the Cashfree and
+     * Polar lanes pass productId/orderId/checkoutId/customer, and dropping them silently
+     * turned every provider create into an INVALID_COMMERCE_ARG (the audit F-series finding).
+     * The Core ingress re-validates each field against its own grammar; nothing unlisted is
+     * ever forwarded. */
+    async commerceCommand({ actor, opKey, op, key, kind, platform, itemId, evidence, restore, productId, orderId, checkoutId, customer } = {}) {
       return this.forwardCommand({ actor, opKey,
         path: '/ingress/commerce/command',
-        command: { op, key, kind, platform, itemId, evidence, restore } });
+        command: { op, key, kind, platform, itemId, evidence, restore, productId, orderId, checkoutId, customer } });
     },
 
     /** LR12: forward the AdMob SSV query to the Core commerce callback. Actor-free by design. */

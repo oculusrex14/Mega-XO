@@ -19,7 +19,9 @@ const PRICE_PATTERN = /^[A-Za-z0-9._-]{1,160}$/;
 function createPolarProvider({ accessToken, organizationId, apiBase, webhookSecret, fetchImpl = null } = {}) {
   if (!accessToken || typeof accessToken !== 'string') throw Error('POLAR_CONFIG');
   if (!organizationId || !UUID_V4.test(organizationId)) throw Error('POLAR_CONFIG');
-  const http = fetchImpl || (input => fetch(input));
+/* (url, init) BOTH reach native fetch: a wrapper that dropped the second argument
+   * silently downgraded every provider call to a bare GET. */
+  const http = fetchImpl || ((input, init) => fetch(input, init));
   const base = apiBase || API_BASE;
   const headers = { Authorization: 'Bearer ' + accessToken, 'Content-Type': 'application/json' };
   async function call(path, method, body) {

@@ -328,8 +328,14 @@ export function mountBoard(host, {
   if (!host || typeof host.addEventListener !== 'function') throw new TypeError('A board host is required.');
   const game = rules();
   if (online) preview = false;
-  if (online && typeof online.onMove !== 'function') throw new TypeError('An online move callback is required.');
-  const session = online ? createServerBoardSession(game, online.match, { actorId: online.actorId }) : createBoardSession(game, { preview });
+  /* F3: a spectator session has no actorId at all (canPlay/legal are structurally false), needs
+   * no move callback, and any stale dispatch that reaches the guarded callback fails loudly
+   * instead of silently dropping a move or faking participation. */
+  if (online && !online.spectator && typeof online.onMove !== 'function') throw new TypeError('An online move callback is required.');
+  const deniedMove = () => { throw new Error('SPECTATOR_MOVE_DENIED'); };
+  const activeMove = online?.spectator ? deniedMove : online?.onMove;
+  const activeResign = online?.spectator ? deniedMove : online?.onResign;
+  const session = online ? createServerBoardSession(game, online.match, { actorId: online.spectator ? null : online.actorId }) : createBoardSession(game, { preview });
   let destroyed = false;
   let timer = null;
   let generation = 0;
@@ -433,7 +439,7 @@ export function mountBoard(host, {
       error,
       uncertain,
       requestKind: request?.kind,
-      canResign: typeof online?.onResign === 'function' && Object.values(session.getSnapshot().symbols).includes(online.actorId),
+      canResign: typeof activeResign === 'function' && Object.values(session.getSnapshot().symbols).includes(online.actorId),
       guidedView,
       guidedTargetCell,
       guidedDestination,
@@ -559,7 +565,7 @@ export function mountBoard(host, {
     error = '';
     render();
     const active = operation;
-    const callback = operation.kind === 'resign' ? online.onResign : online.onMove;
+    const callback = operation.kind === 'resign' ? activeResign : activeMove;
     let result;
     try { result = callback(Object.freeze({ id: operation.id, revision: operation.revision, ...(operation.move ? { move: Object.freeze({ ...operation.move }) } : {}), key: operation.key })); }
     catch (failure) { result = Promise.reject(failure); }
@@ -703,7 +709,7 @@ export function mountBoard(host, {
       if (online) {
         if (accountState.sessionStatus !== 'linked') return;
         if (action === 'retry' && uncertain && request && !['AUTH_REQUIRED', 'LINK_ACCOUNT_REQUIRED'].includes(error)) submit(request);
-        else if (action === 'resign' && typeof online.onResign === 'function' && !pending && !uncertain && session.getSnapshot().status === 'PLAYING' && Object.values(session.getSnapshot().symbols).includes(online.actorId)) submit(operation('resign'));
+        else if (action === 'resign' && typeof activeResign === 'function' && !pending && !uncertain && session.getSnapshot().status === 'PLAYING' && Object.values(session.getSnapshot().symbols).includes(online.actorId)) submit(operation('resign'));
         return;
       }
       reset({ fresh: action === 'fresh' || !preview });

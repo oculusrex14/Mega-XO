@@ -174,6 +174,15 @@
 .pg-tournament-signin .mx-button,.pg-tournament-pending .mx-button{min-height:44px;font-size:.83rem;padding:11px 15px}
 .pg-tournament-message{padding:14px 16px;border:1px solid #314c71;border-radius:12px;background:rgba(13,32,56,.65);color:#c3d6ed;font-size:.9rem;line-height:1.6;margin:16px 0}
 .pg-tournament-catalog{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,220px),1fr));gap:16px;margin:20px 0;min-width:0}
+.pg-tournament-workspace{display:grid;grid-template-columns:minmax(220px,.8fr) minmax(440px,2fr) minmax(240px,.9fr);gap:18px;align-items:start;margin:20px 0;min-width:0}
+.pg-tournament-col{min-width:0}
+.pg-tournament-col>h3{margin:0 0 12px;font-size:1.02rem}
+.pg-tournament-center>.pg-tournament-room-heading{margin-top:0}
+.pg-tournament-others .pg-tournament-other{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 12px;border:1px solid rgba(126,148,255,.18);border-radius:10px;margin-bottom:10px;font-size:.88rem}
+.pg-tournament-others .pg-tournament-other>.mx-button{min-height:38px;padding:6px 12px}
+.pg-tournament-roster-table td{font-size:.85rem}
+.pg-tournament-roster-table small{display:block;color:#a7bbd3;font-size:.72rem}
+@media(max-width:1100px){.pg-tournament-workspace{grid-template-columns:1fr}.pg-tournament-center{order:-1}}
 .pg-tournament-live-card{display:flex;flex-direction:column;min-width:0;padding:20px;border-radius:16px}
 .pg-tournament-live-card>.mx-chip{align-self:start;font-size:.72rem}
 .pg-tournament-live-card>h3{margin:16px 0 14px;font-size:1.14rem}

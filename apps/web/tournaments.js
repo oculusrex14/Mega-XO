@@ -19,6 +19,32 @@ export function tournamentFixture(room, actor, fixtureId) {
   fixtures.find(fixture => fixture.players?.includes(actor) && fixture.status === 'READY') || null;
 }
 
+/* F3: the read-only spectator projection. A SEATED room member may watch another fixture in
+ * the same room; the viewer must be a member (the server view is member-only anyway), the
+ * fixture must be watchable, and the returned identity carries a :spectate suffix so this
+ * board can never be confused with a participation board. It contains no actor binding at all:
+ * the session is built with a null actorId, which structurally refuses canPlay/legal input. */
+export function tournamentSpectatorMatch(room, actor, fixtureId) {
+ if (!room?.players?.some(player => player.id === actor)) return null;
+ if (!safeTournamentId(fixtureId)) return null;
+ const fixture = (room.fixtures || []).find(entry => entry.id === fixtureId);
+ if (!fixture?.state || !Array.isArray(fixture.players) || fixture.players.length !== 2) return null;
+ if (!['PLAYING', 'DONE'].includes(fixture.status)) return null;
+ const status = room.status === 'RUNNING' && fixture.status === 'PLAYING' ? 'PLAYING' : fixture.status === 'DONE' ? 'FINISHED' : 'VOID';
+ if (status === 'VOID') return null;
+ return {
+  id: 'tournament:' + room.id + ':' + fixture.id + ':' + (fixture.attempt || 0) + ':spectate',
+  status,
+  players: fixture.players,
+  symbols: { X: fixture.players[0], O: fixture.players[1] },
+  state: fixture.state, revision: fixture.state.moves.length,
+  playerNames: Object.fromEntries(room.players.map(player => [player.id, player.name])),
+  terms: { source: 'tournament', roomId: room.id, fixtureId: fixture.id, spectate: true },
+  quote: { rated: false },
+  receipt: fixture.status === 'DONE' ? { winner: fixture.winner, reason: fixture.reason } : null,
+ };
+}
+
 /** Presentation projection only. A lobby/READY fixture never invents a game.
  * A replay gets a new board identity because its sides/move history can reset. */
 export function tournamentMatch(room, actor, fixtureId) {

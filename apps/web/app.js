@@ -11,7 +11,7 @@ import {normalizeStoreStatus, WEB_PRODUCT_IDS} from './store.js';
 import {legalDocuments} from './legal-documents.js';
 import {createFriendsController} from './friends.js';
 import {createRealtimeReader, canApplyMatchSnapshot} from './realtime.js';
-import {createTournamentsController, tournamentRoomId, tournamentFixture, tournamentMatch} from './tournaments.js';
+import {createTournamentsController, tournamentRoomId, tournamentFixture, tournamentMatch, tournamentSpectatorMatch} from './tournaments.js';
 import {renderTournamentControls} from './tournaments-view.js';
 import {createTelemetryLane, telemetryPanel, setTelemetryOptIn} from './metrics.js';
 
@@ -38,7 +38,7 @@ let activePath='',leaderboardTimer,accountChallenge='',resetReady=false,serviceB
 let boundOnlineActor=null,hydratingMatch='';
 let onlineState={status:'idle',match:null,invitation:null,message:''};
 let settledProfileRefresh='',onlineSnapshotVersion=0;
-let boundTournamentMatch=null,tournamentTimer;
+let boundTournamentMatch=null,boundSpectatorMatch=null,tournamentTimer;
 let tournamentProfileActor=null;
 const tournamentProfileTransitions=new Set();
 const tournamentController=createTournamentsController({context,
@@ -68,6 +68,7 @@ function normalizedPath(){return main?.hasAttribute?.('data-offline-fallback')?'
 function gameMode(){const mode=new URLSearchParams(location.search).get('mode');return ['bot','local','ranked','casual','friends'].includes(mode)?mode:'bot';}
 function tournamentRouteRoom(){const value=new URLSearchParams(location.search).get('tournament');return typeof value==='string'&&value.length>0&&value.length<=160&&!/[\x00-\x20]/.test(value)?value:null;}
 function visibleTournamentMatch(){return context.sessionStatus==='linked'&&tournamentRouteRoom()===context.tournaments?.room?.id?tournamentMatch(context.tournaments.room,context.profile?.id,new URLSearchParams(location.search).get('fixture')):null;}
+function visibleTournamentSpectatorMatch(){const room=context.tournaments?.room;if(context.sessionStatus!=='linked'||tournamentRouteRoom()!==room?.id)return null;const fixtureId=new URLSearchParams(location.search).get('fixture');if(!fixtureId||tournamentMatch(room,context.profile?.id,fixtureId))return null;return tournamentSpectatorMatch(room,context.profile?.id,fixtureId);}
 function gameAccount(){return {linked:context.sessionStatus==='linked'&&Boolean(context.profile?.id),sessionStatus:context.sessionStatus,profile:context.profile,mode:gameMode()};}
 function refreshSessionView(){
  if(normalizedPath()==='/game')synchronizeGameProfile();
@@ -80,10 +81,10 @@ function render({focus=false}={}){
  if(normalizedPath()==='/play'&&new URLSearchParams(location.search).get('mode')==='practice')history.replaceState?.({},'','/game?mode=bot');
  board?.destroy();board=null;
  const path=normalizedPath();
- const tournament=path==='/game'&&tournamentRouteRoom(),match=tournament?visibleTournamentMatch():visibleMatch();
+ const tournament=path==='/game'&&tournamentRouteRoom(),spectator=tournament?visibleTournamentSpectatorMatch():null,match=tournament?visibleTournamentMatch():visibleMatch();
  document.body.dataset.page=path==='/'?'home':path==='/game'?'game':'inner';
  header(path);footer();configureDownloadLinks();
- main.innerHTML=path==='/'?home():path==='/game'?(tournament&&!match?'<div class="gb-game-page"><section class="mx-panel" data-tournament-controls aria-live="polite"></section><a class="mx-button secondary" href="/tournaments">Back to tournaments</a></div>':renderGame({match,actorId:context.profile?.id,...gameAccount()})):renderPage(path,context)||renderPage('/404',context);
+ main.innerHTML=path==='/'?home():path==='/game'?(tournament&&!(match||spectator)?'<div class="gb-game-page"><section class="mx-panel" data-tournament-controls aria-live="polite"></section><a class="mx-button secondary" href="/tournaments">Back to tournaments</a></div>':renderGame({match:match||spectator,spectator:Boolean(spectator),actorId:spectator?null:context.profile?.id,...gameAccount()})):renderPage(path,context)||renderPage('/404',context);
  if(path==='/profile'){
   if(context.sessionStatus==='linked'){if(profileEditor.isSuspended())profileEditor.resume(context.profile?.id);else profileEditor.load();}
   else if(context.sessionStatus==='loading'){if(!profileEditor.suspend())profileEditor.deactivate();}
@@ -95,8 +96,8 @@ function render({focus=false}={}){
   else{context.friendConfirmation=null;friendsController.deactivate();}
  }else{context.friendConfirmation=null;friendsController.deactivate();}
  updateSeo(path);configureDownloadLinks();
- document.querySelectorAll('[data-board-host]').forEach(host=>{board=mountBoard(host,{preview:host.dataset.boardPreview!=='false'&&path==='/',...gameAccount(),mode:path==='/game'?gameMode():host.dataset.boardMode,difficulty:host.dataset.boardDifficulty,theme:host.dataset.boardTheme,tutorial:path==='/game'&&new URLSearchParams(location.search).get('tutorial')==='guided',...(path==='/game'&&match?{online:{match,actorId:context.profile?.id,onMove:tournament?sendTournamentMove:sendOnlineMove,onResign:tournament?sendTournamentResign:sendOnlineResign,onError:handleOnlineError}}:{})})});
- if(path==='/game'){boundOnlineActor=match?context.profile.id:null;boundTournamentMatch=tournament?match:null;updateOnlineControls();}
+ document.querySelectorAll('[data-board-host]').forEach(host=>{board=mountBoard(host,{preview:host.dataset.boardPreview!=='false'&&path==='/',...gameAccount(),mode:path==='/game'?gameMode():host.dataset.boardMode,difficulty:host.dataset.boardDifficulty,theme:host.dataset.boardTheme,tutorial:path==='/game'&&new URLSearchParams(location.search).get('tutorial')==='guided',...(path==='/game'&&match?{online:spectator?{match:spectator,actorId:null,spectator:true}:{match,actorId:context.profile?.id,onMove:tournament?sendTournamentMove:sendOnlineMove,onResign:tournament?sendTournamentResign:sendOnlineResign,onError:handleOnlineError}}:{})})});
+ if(path==='/game'){boundOnlineActor=match?context.profile.id:null;boundTournamentMatch=tournament?match:null;boundSpectatorMatch=spectator||null;updateOnlineControls();}
  if(path==='/account')loadProviders();
  if(path==='/account'&&context.sessionStatus==='linked')loadResearchConsent();
  if(path==='/privacy-choices')hydrateTelemetryPanel();
@@ -119,6 +120,9 @@ function synchronizeTournamentView(){
   if(next&&(!boundTournamentMatch||boundTournamentMatch.id!==next.id)){render();return;}
   if(next&&boundTournamentMatch&&canApplyMatchSnapshot(next,boundTournamentMatch,context.profile?.id,next.id)&&board?.receive(next))boundTournamentMatch=next;
   else if(!next&&boundTournamentMatch){boundTournamentMatch=null;render();return;}
+  const spectate=visibleTournamentSpectatorMatch();
+  if(spectate&&board&&boundSpectatorMatch&&spectate.id===boundSpectatorMatch.id&&spectate.terms?.spectate===true&&board.receive(spectate))boundSpectatorMatch=spectate;
+  else if(!spectate&&boundSpectatorMatch){boundSpectatorMatch=null;render();return;}
  }
  updateTournamentControls();
 }
@@ -173,6 +177,10 @@ function renderFriendsView(){
 function navigate(href){main.removeAttribute?.('data-offline-fallback');history.pushState({},'',href);render({focus:true});activate();}
 function notify(message){const el=document.querySelector('#notification');el.textContent=message;el.hidden=false;clearTimeout(toastTimer);toastTimer=setTimeout(()=>{el.hidden=true},4500);}
 document.addEventListener('click',event=>{
+ /* F2: the tournament roster's friend button goes straight to the existing community endpoint
+  * with one durable operation key; the API owns every permission decision. */
+ const friendRequest=event.target.closest('[data-friend-request]');
+ if(friendRequest&&!friendRequest.disabled){const target=friendRequest.dataset.friendRequest;friendRequest.disabled=true;globalThis.MegaAccount.request('/api/community/friend',{action:'request',target},globalThis.MegaAccount.id()).then(()=>notify('Friend request sent.')).catch(error=>notify(errorCopy(error)));return;}
  const menu=event.target.closest('.mx-menu-button');if(menu){const nav=document.querySelector('#mobile-menu');nav.hidden=!nav.hidden;menu.setAttribute('aria-expanded',String(!nav.hidden));return;}
  const mode=event.target.closest('[data-mode]');if(mode){tab=mode.dataset.mode;document.querySelector('.mx-ranked').outerHTML=rankPanel();document.querySelector(`#tab-${tab}`).focus();return;}
  const action=event.target.closest('[data-page-action]');if(action){const name=action.dataset.pageAction;
@@ -378,6 +386,7 @@ document.addEventListener('click',event=>{
    const room=context.tournaments?.room,actor=context.sessionStatus==='linked'?context.profile?.id:null;
    const fixture=tournamentFixture(room,actor,tournament.dataset.fixture);
    if(fixture&&['READY','PLAYING'].includes(fixture.status))navigate('/game?tournament='+encodeURIComponent(room.id)+'&fixture='+encodeURIComponent(fixture.id));
+   }else if(action==='watch'){const fid=tournament.dataset.fixture,watchRoom=context.tournaments?.room;if(watchRoom&&fid)navigate('/game?tournament='+encodeURIComponent(watchRoom.id)+'&fixture='+encodeURIComponent(fid));
   }else{const tableId=tournament.dataset.table||tournament.dataset.fixture;Promise.resolve(tournamentController.action(action,tableId)).then(result=>{if(action==='join'&&result&&result.id)navigate('/game?tournament='+encodeURIComponent(result.id));}).catch(()=>{});}
   return;
  }

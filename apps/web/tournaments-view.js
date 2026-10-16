@@ -43,27 +43,53 @@ export function renderTournamentControls(context, {fixtureId} = {}) {
   return html + '<p class="pg-tournament-footnote">Choose an entry that fits your balance. Coins and Crowns are virtual currency with no cash-out.</p>';
  }
  const playerName = id => room.players.find(player => player.id === id)?.name || 'Player';
-  const memberOf = id => (room.members || []).find(member => member.id === id) || null;
  const mine = room.players.find(player => player.id === context.profile.id);
- html += `<div class="pg-tournament-room-heading"><div><h3>${escapeHtml(room.name || 'Your tournament')}</h3><p>${tournamentCount(room.players.length)} / ${tournamentCount(room.capacity)} players</p></div><span class="mx-chip">${roomStatus(room.status)}</span></div>`;
+  /* F2: the server-projected members carry the honest rank visibility; the friend action
+  * goes straight to the existing /api/community/friend endpoint with one operation key and
+  * lets the API decide permissions - the roster button never bypasses a controller. */
+  const memberOf = id => (room.members || []).find(member => member.id === id) || null;
+  const rankText = member => {
+   if (!member) return 'Rank unavailable';
+   if (member.statsVisible && member.tier) return member.tier.charAt(0).toUpperCase() + member.tier.slice(1) + ' · ' + Math.round(member.rating || 0);
+   return 'Rank unavailable';
+  };
+ let center = `<div class="pg-tournament-room-heading"><div><h3>${escapeHtml(room.name || 'Your tournament')}</h3><p>${tournamentCount(room.players.length)} / ${tournamentCount(room.capacity)} players</p></div><span class="mx-chip">${roomStatus(room.status)}</span></div>`;
  if (room.status === 'LOBBY') {
-  html += `<div class="pg-tournament-lobby"><section class="pg-tournament-roster"><h4>Players at your table</h4><ul>${room.players.map(player => `<li><strong>${escapeHtml(player.name)}${player.id === context.profile.id ? ' (you)' : ''}</strong><small>${(() => { const m = memberOf(player.id); return m && m.statsVisible && m.tier ? m.tier.charAt(0).toUpperCase() + m.tier.slice(1) + ' · ' + m.rating.toFixed(0) : m && m.id === context.profile.id ? 'Rank unavailable' : ''; })()}</small><span class="${player.ready ? 'pg-tournament-ready' : ''}">${player.ready ? 'Ready' : 'Not ready'}</span></li>`).join('')}</ul></section><section class="pg-tournament-entry-terms"><h4>Your entry</h4>`;
-  if (room.quote) html += `<p class="pg-tournament-entry"><strong>${tournamentCount(room.quote.entry)}</strong><span>${currencyName(room.quote.currency)}</span></p><p>Entries are reserved together only when all ten players are ready. Your readiness approves this entry.</p><details class="pg-tournament-terms"><summary>Review payouts and entry terms</summary><ol>${room.quote.payouts.map((amount,index) => `<li><span>Place ${index+1}</span><strong>${tournamentCount(amount)} ${currencyName(room.quote.currency)}</strong></li>`).join('')}</ol><p>Pool ${tournamentCount(room.quote.pool)} ${currencyName(room.quote.currency)}. Retired from the pool ${tournamentCount(room.quote.burn)} ${currencyName(room.quote.currency)}. No rebuys or extra per-game fees. Once the event starts, entries stay reserved until it ends. Voided or cancelled events refund their entries.</p></details>`;
-  html += `<div class="pg-actions">${tournamentAction(mine?.ready ? 'Withdraw readiness' : 'Ready — approve entry','ready','',blocked,'primary')}${tournamentAction('Leave lobby','leave','',blocked)}</div></section></div>`;
+  center += `<div class="pg-tournament-lobby"><section class="pg-tournament-roster"><h4>Players at your table</h4><ul>${room.players.map(player => `<li><strong>${escapeHtml(player.name)}${player.id === context.profile.id ? ' (you)' : ''}</strong><small>${(() => { const m = memberOf(player.id); return m && m.statsVisible && m.tier ? m.tier.charAt(0).toUpperCase() + m.tier.slice(1) + ' · ' + m.rating.toFixed(0) : m && m.id === context.profile.id ? 'Rank unavailable' : ''; })()}</small><span class="${player.ready ? 'pg-tournament-ready' : ''}">${player.ready ? 'Ready' : 'Not ready'}</span></li>`).join('')}</ul></section><section class="pg-tournament-entry-terms"><h4>Your entry</h4>`;
+  if (room.quote) center += `<p class="pg-tournament-entry"><strong>${tournamentCount(room.quote.entry)}</strong><span>${currencyName(room.quote.currency)}</span></p><p>Entries are reserved together only when all ten players are ready. Your readiness approves this entry.</p><details class="pg-tournament-terms"><summary>Review payouts and entry terms</summary><ol>${room.quote.payouts.map((amount,index) => `<li><span>Place ${index+1}</span><strong>${tournamentCount(amount)} ${currencyName(room.quote.currency)}</strong></li>`).join('')}</ol><p>Pool ${tournamentCount(room.quote.pool)} ${currencyName(room.quote.currency)}. Retired from the pool ${tournamentCount(room.quote.burn)} ${currencyName(room.quote.currency)}. No rebuys or extra per-game fees. Once the event starts, entries stay reserved until it ends. Voided or cancelled events refund their entries.</p></details>`;
+  center += `<div class="pg-actions">${tournamentAction(mine?.ready ? 'Withdraw readiness' : 'Ready — approve entry','ready','',blocked,'primary')}${tournamentAction('Leave lobby','leave','',blocked)}</div></section></div>`;
  } else if (room.status === 'COMPLETE') {
-  html += `<h3>Final standings</h3><ol class="pg-tournament-standings">${(room.ranking || []).map((id,index) => `<li><strong>${escapeHtml(playerName(id))}</strong>${room.quote ? '<span>'+tournamentCount(room.quote.payouts[index])+' '+currencyName(room.quote.currency)+'</span>' : ''}</li>`).join('')}</ol>`;
+  center += `<h3>Final standings</h3><ol class="pg-tournament-standings">${(room.ranking || []).map((id,index) => `<li><strong>${escapeHtml(playerName(id))}</strong>${room.quote ? '<span>'+tournamentCount(room.quote.payouts[index])+' '+currencyName(room.quote.currency)+'</span>' : ''}</li>`).join('')}</ol>`;
  } else if (['VOID','CANCELLED','REVIEW','PAUSED'].includes(room.status)) {
-  html += `<p class="pg-tournament-message">${escapeHtml({VOID:'Tournament voided.',CANCELLED:'Tournament cancelled.',REVIEW:'Tournament settlement is under review.',PAUSED:'Tournament paused.'}[room.status])}${room.receipt?.refunded === true ? ' Your entry has been refunded.' : ''}</p>`;
+  center += `<p class="pg-tournament-message">${escapeHtml({VOID:'Tournament voided.',CANCELLED:'Tournament cancelled.',REVIEW:'Tournament settlement is under review.',PAUSED:'Tournament paused.'}[room.status])}${room.receipt?.refunded === true ? ' Your entry has been refunded.' : ''}</p>`;
  }
  const fixture = tournamentFixture(room,context.profile.id,fixtureId);
+  /* F1: the room workspace - Players left, your match center, other games right; the columns
+  * stack with the match first on narrow screens. Spectating reuses the member-authorized room
+  * view payload only; a Watch button navigates to the same room route with the fixture id. */
+  const rosterRows = room.players.map(player => {
+   const member = memberOf(player.id);
+   const you = player.id === context.profile.id;
+   const friend = !you && member && member.tag ? '<button type="button" class="pg-text-button" data-friend-request="' + escapeHtml(player.id) + '">Add friend</button>' : '<span class="mx-muted">—</span>';
+   return '<tr><td>' + escapeHtml(player.name) + (you ? ' <span class="mx-muted">(you)</span>' : '') + '</td><td>' + escapeHtml(rankText(member)) + '</td><td>' + (player.ready ? 'Ready' : 'Waiting') + '</td><td>' + friend + '</td></tr>';
+  }).join('');
+  const rosterCol = '<section class="pg-tournament-col pg-tournament-players" aria-labelledby="tournament-players-title"><h3 id="tournament-players-title">Players</h3><div class="pg-table-wrap"><table class="pg-table pg-tournament-roster-table"><thead><tr><th scope="col">Player</th><th scope="col">Rank</th><th scope="col">Status</th><th scope="col">Friend</th></tr></thead><tbody>' + rosterRows + '</tbody></table></div></section>';
+  const otherFixtures = (room.fixtures || []).filter(entry => Array.isArray(entry.players) && !entry.players.includes(context.profile.id));
+  const othersRows = otherFixtures.map(entry => {
+   const label = playerName(entry.players[0]) + ' vs ' + playerName(entry.players[1]);
+   const control = entry.status === 'PLAYING' ? '<button type="button" class="mx-button secondary" data-tournament-action="watch" data-fixture="' + escapeHtml(entry.id) + '">Watch</button>' : entry.status === 'DONE' ? '<button type="button" class="mx-button secondary" data-tournament-action="watch" data-fixture="' + escapeHtml(entry.id) + '">View result</button>' : '<span class="mx-muted">' + escapeHtml(entry.status.toLowerCase()) + '</span>';
+   return '<div class="pg-tournament-other"><span>' + escapeHtml(label) + '</span>' + control + '</div>';
+  }).join('');
+  const othersCol = '<section class="pg-tournament-col pg-tournament-others" aria-labelledby="tournament-others-title"><h3 id="tournament-others-title">Other games</h3>' + (othersRows || '<p class="mx-muted">No other games in the current round.</p>') + '</section>';
+  html += '<div class="pg-tournament-workspace">' + rosterCol + '<div class="pg-tournament-col pg-tournament-center">' + center + '</div>' + othersCol + '</div>';
  if (fixture) {
-  html += `<section class="pg-tournament-fixture"><span class="mx-eyebrow">${fixture.status === 'DONE' ? 'MATCH RESULT' : 'YOUR NEXT MATCH'}</span><h3>${escapeHtml(fixture.label || 'Your match')}</h3><p><strong>${escapeHtml(playerName(fixture.players[0]))}</strong> vs <strong>${escapeHtml(playerName(fixture.players[1]))}</strong> · ${escapeHtml(fixture.status.toLowerCase())}</p>`;
+  center += `<section class="pg-tournament-fixture"><span class="mx-eyebrow">${fixture.status === 'DONE' ? 'MATCH RESULT' : 'YOUR NEXT MATCH'}</span><h3>${escapeHtml(fixture.label || 'Your match')}</h3><p><strong>${escapeHtml(playerName(fixture.players[0]))}</strong> vs <strong>${escapeHtml(playerName(fixture.players[1]))}</strong> · ${escapeHtml(fixture.status.toLowerCase())}</p>`;
   if (room.status === 'RUNNING' && fixture.status === 'READY') {
    const waiting = Number(room.serverNow) < Number(fixture.opens), ready = fixture.ready?.includes(context.profile.id);
-   html += `<p>${waiting ? 'Your match opens in '+Math.ceil((Number(fixture.opens)-Number(room.serverNow))/1000)+' seconds.' : ready ? 'You are ready. Waiting for your opponent.' : 'Your next match is ready. Confirm when you are ready to play.'}</p><div class="pg-actions">${tournamentAction(ready ? 'Waiting for opponent' : waiting ? 'Round countdown' : 'Ready to play','match-ready',`data-fixture="${escapeHtml(fixture.id)}"`,blocked || waiting || ready,'primary')}`;
+   center += `<p>${waiting ? 'Your match opens in '+Math.ceil((Number(fixture.opens)-Number(room.serverNow))/1000)+' seconds.' : ready ? 'You are ready. Waiting for your opponent.' : 'Your next match is ready. Confirm when you are ready to play.'}</p><div class="pg-actions">${tournamentAction(ready ? 'Waiting for opponent' : waiting ? 'Round countdown' : 'Ready to play','match-ready',`data-fixture="${escapeHtml(fixture.id)}"`,blocked || waiting || ready,'primary')}`;
   } else html += '<div class="pg-actions">';
   if (['READY','PLAYING'].includes(fixture.status)) html += tournamentAction('Open tournament game','open',`data-fixture="${escapeHtml(fixture.id)}"`,state.busy);
-  html += '</div></section>';
+  center += '</div></section>';
  } else if (room.status === 'RUNNING') html += '<p class="pg-tournament-message">Your next match has not opened yet. Refresh to check the current schedule.</p>';
  html += '<p class="pg-tournament-footnote">Tournament results do not change your Ranked rating. Your match clock keeps running if you lose your connection.</p>';
  return html;

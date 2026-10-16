@@ -33,6 +33,30 @@ async function fixture(request,options={}){
 }
 async function enter(f,roomId){f.controller.sync({roomId});for(let i=0;i<3;i++)await flush();}
 
+test('the spectator projection serves seated members watching a foreign fixture only',async()=>{
+ const {tournamentSpectatorMatch}=await modulePromise;
+ const room=running();
+ const foreign=(room.fixtures||[]).find(f=>f.players&&!f.players.includes('actor-one')&&f.status==='READY');
+ assert.ok(foreign,'the seed has a foreign READY fixture');
+ for(const actor of foreign.players)T.readyGame(room,foreign.id,actor,foreign.opens);
+ assert.equal(foreign.status,'PLAYING');assert.ok(foreign.state);
+ const spectate=tournamentSpectatorMatch(room,'actor-one',foreign.id);
+ assert.ok(spectate,'a seated member can project a foreign fixture');
+ assert.ok(spectate.id.endsWith(':spectate'),'the spectator identity can never collide with a participation board');
+ assert.equal(spectate.terms.spectate,true);
+ assert.equal(spectate.status,'PLAYING');
+ assert.deepEqual(spectate.players,foreign.players);
+ assert.equal(spectate.revision,foreign.state.moves.length);
+ assert.equal(tournamentSpectatorMatch({players:[{id:'someone-else'}]},'actor-one',foreign.id),null,'an outsider never gets a projection');
+ assert.equal(tournamentSpectatorMatch(room,'actor-one','../escape'),null,'an unsafe fixture id is refused');
+ const ownReady=(room.fixtures||[]).find(f=>f.players&&f.players.includes('actor-one')&&f.status==='READY');
+ assert.ok(ownReady);
+ assert.equal(tournamentSpectatorMatch(room,'actor-one',ownReady.id),null,'a READY fixture never projects a game');
+ const done=structuredClone(room);done.status='COMPLETE';
+ const doneView=tournamentSpectatorMatch(done,'actor-one',foreign.id);
+ assert.ok(doneView===null||doneView.status==='FINISHED','a complete room settles the projection to FINISHED or drops it');
+});
+
 test('tournament catalog is service-supplied and guest browsing never sends a join or bootstraps a session',async()=>{
  const f=await fixture(()=>{throw Error('UNEXPECTED_MUTATION');});f.context.profile=null;f.context.sessionStatus='guest';
  await enter(f);assert.deepEqual(f.context.tournaments.tables,caps().tables);

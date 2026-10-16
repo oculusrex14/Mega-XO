@@ -72,6 +72,11 @@ internal class MegaNativeApiBridge private constructor(
                 }
                 send(reply, id, body)
             }
+            "restore" -> session.restoreIfStored { outcome ->
+                send(reply, id, JSONObject()
+                    .put("ok", outcome == MegaNativeSessionManager.Outcome.OK)
+                    .put("outcome", outcome.name))
+            }
             "signOut" -> session.signOut(command.optBoolean("allDevices", false)) { outcome ->
                 send(reply, id, JSONObject().put("ok", outcome == MegaNativeSessionManager.Outcome.OK))
             }
@@ -183,6 +188,7 @@ internal class MegaNativeApiBridge private constructor(
                 configurable: false, enumerable: false,
                 value: Object.freeze({
                   session: () => call('session'),
+                  restore: () => call('restore'),
                   refresh: () => call('refresh'),
                   signOut: allDevices => call('signOut', {allDevices: allDevices === true}),
                   signIn: (provider, intent) => call('signIn', {provider, intent}),

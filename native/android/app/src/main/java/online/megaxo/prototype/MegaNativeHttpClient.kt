@@ -7,6 +7,9 @@ import java.io.ByteArrayOutputStream
 import java.net.HttpURLConnection
 import java.net.URL
 import java.util.concurrent.Executors
+import java.util.concurrent.ScheduledThreadPoolExecutor
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicBoolean
 
 /**
  * P20-03 native HTTPS transport. This is not a JS fetch proxy: no caller can name an arbitrary
@@ -31,7 +34,15 @@ internal class MegaNativeHttpClient(apiOrigin: String?) {
             url.query == null && url.ref == null)
         url
     }.getOrNull()
-    private val executor = Executors.newSingleThreadExecutor()
+    /* A bounded pool, not a single thread: one wedged connection (a DNS lookup, which ignores
+     * connectTimeout) must never park every later request behind it. The watchdog below still
+     * bounds each caller to one honest timeout, so the user-visible contract holds either way. */
+    private val executor = Executors.newFixedThreadPool(4) { runnable ->
+        Thread(runnable, "megaxo-api-http").apply { isDaemon = true }
+    }
+    private val watchdogs = ScheduledThreadPoolExecutor(1) { runnable ->
+        Thread(runnable, "megaxo-api-watchdog").apply { isDaemon = true }
+    }
     private val main = Handler(Looper.getMainLooper())
     @Volatile private var accessToken: String? = null
     private val prefixes = listOf(
@@ -111,6 +122,15 @@ internal class MegaNativeHttpClient(apiOrigin: String?) {
         val host = origin ?: run {
             complete(Result.failure(IllegalStateException("ONLINE_UNAVAILABLE"))); return
         }
+        /* Exactly-once completion. The watchdog fires when a transmit outlives its own timeouts
+         * (DNS has none), so the caller always gets one answer and the pool is never the reason
+         * a request hangs. A thread still stuck in the OS resolver eventually dies on its own. */
+        val finished = AtomicBoolean(false)
+        val watchdog = watchdogs.schedule({
+            if (finished.compareAndSet(false, true)) {
+                main.post { complete(Result.failure(IllegalStateException("REQUEST_TIMEOUT"))) }
+            }
+        }, 20L, TimeUnit.SECONDS)
         executor.execute {
             val result = runCatching {
                 val url = URL(host, path)
@@ -153,9 +173,12 @@ internal class MegaNativeHttpClient(apiOrigin: String?) {
                     conn.disconnect()
                 }
             }
-            main.post { complete(result) }
+            watchdog.cancel(false)
+            if (finished.compareAndSet(false, true)) {
+                main.post { complete(result) }
+            }
         }
     }
 
-    fun close() { accessToken = null; executor.shutdownNow() }
+    fun close() { accessToken = null; executor.shutdownNow(); watchdogs.shutdownNow() }
 }

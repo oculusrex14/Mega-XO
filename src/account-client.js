@@ -71,15 +71,29 @@ async function nativeEnsure(force=false){
  if(loading)return loading;
  loading=(async()=>{
   const host=native();
-  const state=await host.session();
+  let state=await host.session();
   if(!state||state.online!==true)throw Error('ONLINE_UNAVAILABLE');
+  /* A cold process reports no live session even when a durable refresh credential is vaulted.
+   * Ask the host ONCE to restore it before concluding that the user is a guest; an absent or
+   * failed restore keeps the honest guest answer. No credential value crosses the bridge. */
+  if(state.linked!==true&&typeof host.restore==='function'){
+   const restored=await Promise.race([host.restore().catch(()=>null),sleep(10000).then(()=>null)]);
+   if(restored&&restored.ok===true){
+    const again=await host.session().catch(()=>null);
+    if(again&&again.online===true&&again.linked===true)state=again;
+   }
+  }
  /* Guests still need the provider capability map: the sign-in buttons gate on it, and the host
   * already reports which native adapters were compiled in (Android: google, iOS: apple). */
  if(state.linked!==true)return {linked:false,csrf:null,actorId:state.actorId||null,profile:null,providers:Object.fromEntries((Array.isArray(state.providers)?state.providers:[]).map(p=>[p,{web:false,native:true}]))};
   // An expired access token is refreshed once before the profile read, never mid-flight.
   if(Number(state.expiresAt||0)<=Date.now()+1000){
-   const rotated=await host.refresh();
-   if(!rotated||rotated.ok!==true){const error=nativeError(rotated||{error:'AUTH_REQUIRED'});publish(classify(error.message),error.message);throw error;}
+  /* A rotation that never answers must not wedge the whole ensure: race it, and on a timeout
+   * fall through to the profile read with the token still held. If that token is truly dead the
+   * profile read answers 401 and the honest auth state follows; if the expiry was merely
+   * conservative the read succeeds and the user stays signed in. */
+   const rotated=await Promise.race([host.refresh().catch(()=>null),sleep(15000).then(()=>null)]);
+   if(rotated!==null&&rotated.ok!==true){const error=nativeError(rotated||{error:'AUTH_REQUIRED'});publish(classify(error.message),error.message);throw error;}
   }
   const profile=await host.request('/api/account/profile','GET',null,null);
   if(!profile||profile.ok!==true)throw nativeError(profile||{});

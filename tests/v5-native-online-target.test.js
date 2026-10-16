@@ -144,9 +144,14 @@ test('the platform vault is the only persistence for the refresh credential', ()
   assert.match(session, /vault\.saveRefreshCredential\(refresh\)/);
   assert.match(session, /vault\.loadRefreshCredentialOrNull\(\)/);
   assert.match(session, /if \(refresh != null && runCatching \{ vault\.saveRefreshCredential\(refresh\) \}\.isFailure\) \{\s*\n\s*main\.post \{ complete\(Outcome\.UNAVAILABLE\) \}/);
-  // Vault I/O runs on the session's own single-thread executor, never on the UI thread that
-  // WebView callbacks arrive on; every completion is posted back to the main thread.
-  assert.match(session, /private val io = Executors\.newSingleThreadExecutor\(\)/);
+  // Vault I/O runs on the session's own bounded executor, never on the UI thread that WebView
+  // callbacks arrive on; every completion is posted back to the main thread. The pool is bounded
+  // (not single-thread) so one stalled Keystore read cannot park the queue, and the rotation and
+  // restore watchdogs bound every caller to one honest outcome even if a vault op never returns.
+  assert.match(session, /megaxo-session-watchdog/);
+  assert.match(session, /finishRotation\(generation, Outcome\.UNAVAILABLE\)/);
+  assert.match(session, /if \(generation != rotationGeneration\) return/);
+  assert.match(session, /private val io = Executors\.newFixedThreadPool\(2\)/);
   assert.match(session, /io\.execute \{/);
   // The access token is memory-only; it is never written to prefs, a file or JS.
   assert.match(session, /transport\.installVerifiedAccessToken\(access\)/);

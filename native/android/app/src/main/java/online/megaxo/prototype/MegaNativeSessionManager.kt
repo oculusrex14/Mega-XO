@@ -3,6 +3,9 @@ package online.megaxo.prototype
 import android.os.Handler
 import android.os.Looper
 import org.json.JSONObject
+import java.util.concurrent.ScheduledThreadPoolExecutor
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.Executors
 
 /**
@@ -45,10 +48,21 @@ internal class MegaNativeSessionManager(
      * on. Callbacks are posted back to the main thread so the session state is always observed in
      * one place.
      */
-    private val io = Executors.newSingleThreadExecutor()
+    /* Vault I/O is real Android Keystore work and has been observed to stall indefinitely on at
+     * least one device (OnePlus Nord CE, Android 13). Two threads plus per-operation watchdogs
+     * below mean one stalled Keystore call can no longer poison the rotation gate or the whole
+     * queue: callers get an honest UNAVAILABLE and later operations keep a free thread. */
+    private val io = Executors.newFixedThreadPool(2) { runnable ->
+        Thread(runnable, "megaxo-session-io").apply { isDaemon = true }
+    }
+    private val watchdogs = ScheduledThreadPoolExecutor(1) { runnable ->
+        Thread(runnable, "megaxo-session-watchdog").apply { isDaemon = true }
+    }
     private val main = Handler(Looper.getMainLooper())
     private var session: Session? = null
     private var refreshing = false
+    /** Bumped at every accepted rotation start; gates stale completions from older rotations. */
+    private var rotationGeneration = 0L
     private val pendingRefresh = mutableListOf<(Outcome) -> Unit>()
     /** Set once a refresh returned 401. Until a fresh sign-in succeeds, online use is refused. */
     @Volatile private var revoked = false
@@ -145,16 +159,26 @@ internal class MegaNativeSessionManager(
      */
     fun refresh(complete: (Outcome) -> Unit) {
         val held: String?
+        val generation: Long
         synchronized(this) {
             if (revoked) { complete(Outcome.REVOKED); return }
             if (refreshing) { pendingRefresh.add(complete); return }
             held = session?.refreshToken
             refreshing = true
+            rotationGeneration += 1
+            generation = rotationGeneration
         }
+        /* The gate is released by finishRotation(generation) ONLY, and the transport callback
+         * beneath this rotation is itself watchdog-bounded, so this timer is the second belt: if
+         * anything under us stalls (a wedged Keystore read on the io pool, a lost reply), the
+         * caller still gets one honest UNAVAILABLE and the gate reopens for the next attempt. */
+        watchdogs.schedule({
+            finishRotation(generation, Outcome.UNAVAILABLE)
+        }, 15L, TimeUnit.SECONDS)
         io.execute {
             val stored = held ?: vault.loadRefreshCredentialOrNull()
             main.post {
-                if (stored == null) { finishRotation(Outcome.INVALID); return@post }
+                if (stored == null) { finishRotation(generation, Outcome.INVALID); return@post }
                 val body = JSONObject()
                     .put("grant", "refresh_token")
                     .put("refreshToken", stored)
@@ -163,22 +187,56 @@ internal class MegaNativeSessionManager(
                 // presented. The server refuses a cookie+bearer pair anyway.
                 transport.authRequest("/api/account/native/refresh", null, body) { result ->
                     applyServerResponse(result, rotating = true) { outcome ->
-                        finishRotation(outcome)
+                        finishRotation(generation, outcome)
                     }
                 }
             }
         }
     }
 
-    /** Releases the single-flight gate and answers every waiter exactly once. */
-    private fun finishRotation(outcome: Outcome) {
+    /** Releases the single-flight gate for one rotation generation; stale releases are ignored. */
+    private fun finishRotation(generation: Long, outcome: Outcome) {
         val waiters: List<(Outcome) -> Unit>
         synchronized(this) {
+            if (generation != rotationGeneration) return
             refreshing = false
             waiters = pendingRefresh.toList()
             pendingRefresh.clear()
         }
         waiters.forEach { it(outcome) }
+    }
+
+    /**
+     * Cold-start vault restore. [status] is memory-only, so after process death a vaulted refresh
+     * credential would otherwise never be used again and a signed-in owner would silently become
+     * a guest on every relaunch. The JS adapter calls this ONCE per process when the first
+     * session read reports no live session; the host then runs the same single-flight rotation as
+     * [refresh]. Outcomes: OK restores the session, INVALID means nothing usable is stored,
+     * REVOKED honours a prior terminal revocation, UNAVAILABLE is a transport/storage failure.
+     * No credential value ever crosses the bridge in either direction.
+     */
+    fun restoreIfStored(complete: (Outcome) -> Unit) {
+        synchronized(this) {
+            if (session != null) { complete(Outcome.OK); return }
+            if (revoked) { complete(Outcome.REVOKED); return }
+        }
+        /* The vault read below has no intrinsic timeout (Android Keystore can stall on a wedged
+         * TEE), so bound the whole restore: the caller gets UNAVAILABLE rather than a hang, and a
+         * stalled read cannot consume the callback. */
+        val answered = AtomicBoolean(false)
+        watchdogs.schedule({
+            if (answered.compareAndSet(false, true)) complete(Outcome.UNAVAILABLE)
+        }, 8L, TimeUnit.SECONDS)
+        io.execute {
+            val stored = vault.loadRefreshCredentialOrNull()
+            main.post {
+                if (!answered.compareAndSet(false, true)) return@post
+                if (stored == null) { complete(Outcome.INVALID); return@post }
+                // Called from main, never from inside an io task: refresh enqueues its own work
+                // on the same single-thread io executor, and nesting here would self-deadlock.
+                refresh(complete)
+            }
+        }
     }
 
     /** Best-effort family revocation. A 2xx is treated as revoked; a failure never blocks logout. */

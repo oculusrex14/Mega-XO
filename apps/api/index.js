@@ -8,6 +8,8 @@ const socialRoutes = require('./routes/social');
 const competitiveRoutes = require('./routes/competitive');
 const tournamentRoutes = require('./routes/tournaments');
 const wellKnownRoutes = require('./routes/well-known');
+const monetizationRoutes = require('./routes/monetization');
+const metricsRoutes = require('./routes/metrics');
 const { sendError, sendJson } = require('./routes/helpers');
 const path = require('node:path');
 const { createReadCache } = require(path.join(__dirname, '../../packages/services/read-cache.js'));
@@ -133,6 +135,14 @@ function createApiHandler(options = {}) {
 
       const handledTournament = await tournamentRoutes.handleTournamentRoute(context, req, res);
       if (handledTournament) return;
+
+      // 6b. Monetization routes (LR12): authenticated surface + the actor-free AdMob SSV callback.
+      const handledMonetization = await monetizationRoutes.handleMonetizationRoute(context, req, res);
+      if (handledMonetization) return;
+
+      // 6c. Metrics routes (LR19): anonymous daily aggregates, opt-in client-side.
+      const handledMetrics = await metricsRoutes.handleMetricsRoute(context, req, res);
+      if (handledMetrics) return;
 
       // 6. Try Competitive routes
       const handledCompetitive = await competitiveRoutes.handleCompetitiveRoute(context, req, res);

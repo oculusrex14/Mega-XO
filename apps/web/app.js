@@ -12,6 +12,7 @@ import {createFriendsController} from './friends.js';
 import {createRealtimeReader, canApplyMatchSnapshot} from './realtime.js';
 import {createTournamentsController, tournamentRoomId, tournamentFixture, tournamentMatch} from './tournaments.js';
 import {renderTournamentControls} from './tournaments-view.js';
+import {createTelemetryLane, telemetryPanel, setTelemetryOptIn} from './metrics.js';
 
 let board=null;
 let tab='ranked';
@@ -98,6 +99,7 @@ function render({focus=false}={}){
  if(path==='/store'&&context.products.status!=='error')main.querySelector('[data-store-products]')?.insertAdjacentHTML('afterend','<div class="pg-actions"><button class="mx-button secondary" data-store-action="refresh">Check store availability</button></div>');
  if(path==='/account')loadProviders();
  if(path==='/account'&&context.sessionStatus==='linked')loadResearchConsent();
+ if(path==='/privacy-choices')hydrateTelemetryPanel();
  updateTournamentControls();tournamentController.sync({roomId:tournament||null});
  realtime.sync();
  if(focus){main.focus({preventScroll:true});window.scrollTo(0,0);}
@@ -381,6 +383,7 @@ document.addEventListener('click',event=>{
   accountAction(async()=>{try{await globalThis.MegaAccount.request('/api/account/research',{research,ageBand:band});}finally{context.researchBusy=false;}await loadResearchConsent(true);});
  }
  if(action==='research-edit'){context.researchOpen=true;context.researchAgeBand=context.researchConsent?.ageBand||'adult';render();}
+ if(action==='metrics-optin'||action==='metrics-optout'){setTelemetryOptIn(globalThis.localStorage,action==='metrics-optin');if(telemetryLane){telemetryLane.stop();telemetryLane=null;}hydrateTelemetryPanel();}
  }
  if(event.target.closest('[data-sponsor-action="clear"]')){try{localStorage.removeItem('mega-xoxo-sponsor-interests');}catch{}context.sponsorPreferences={};context.sponsorMessage='Saved choices cleared.';render();}
  const store=event.target.closest('[data-store-action]');if(store){if(store.dataset.storeAction==='refresh')refreshProducts();else if(store.dataset.storeAction==='purchase'&&context.products.purchasesAvailable&&!serviceBusy){accountAction(async()=>{const actor=context.profile?.id,id=store.dataset.productId,row=context.products.rows.find(x=>x.id===id);if(!actor||!row?.enabled||!row.localizedPrice)throw Error('STORE_UNAVAILABLE');const evidence=await globalThis.MegaBilling.purchase(id,context.products.storeContext);if(actor!==context.profile?.id)throw Error('AUTH_REQUIRED');const delivered=await globalThis.MegaNetwork.purchase(evidence,globalThis.MegaAccount.id());await globalThis.MegaBilling.finish?.(evidence,delivered);await model.profile();await refreshProducts();notify('Verified purchase delivered.');});}else if(store.dataset.storeAction==='purchase'&&!serviceBusy){const id=store.dataset.productId,row=context.products.rows.find(x=>x.id===id);if(row?.inr)accountAction(async()=>{await cashfreeCheckout(id);await model.profile();await refreshProducts();notify('Payment verified. Your purchase is on your profile.');});}}
@@ -427,5 +430,16 @@ function loadResearchConsent(force){
   context.researchLoaded=true;context.researchOpen=false;
   if(normalizedPath()==='/account')render();
  }).catch(()=>{context.researchLoaded=true;});
+}
+/* LR19: the telemetry opt-in/out surface on the privacy-choices page. The panel reads the SAME
+ * storage the lane uses, so the display and the lane behavior can never disagree. The lane starts
+ * and stops with the choice; the counters stay empty until a player explicitly opts in. */
+let telemetryLane=null;
+function hydrateTelemetryPanel(){
+ const host=main.querySelector('[data-metrics-host]');
+ if(!host)return;
+ host.innerHTML=telemetryPanel(globalThis.localStorage);
+ if(telemetryOptedIn(globalThis.localStorage)&&!telemetryLane){telemetryLane=createTelemetryLane({storage:globalThis.localStorage,request:(path,body)=>globalThis.MegaAccount.request(path,body),intervalMs:60000});if(telemetryLane)telemetryLane.start();}
+ if(!telemetryOptedIn(globalThis.localStorage)&&telemetryLane){telemetryLane.stop();telemetryLane=null;}
 }
 render();activate();model.profile().then(()=>{if(normalizedPath()==='/store'&&context.sessionStatus==='linked')refreshProducts();});const bootOrder=new URLSearchParams(location.search).get('cf_order');if(normalizedPath()==='/store'&&bootOrder)pollCashfreeStatus(bootOrder);

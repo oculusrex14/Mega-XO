@@ -556,6 +556,14 @@ async function main() {
   const { createTournamentService } = require(path.join(ROOT, 'packages/services/tournaments.js'));
   const { createTournamentTimer } = require(path.join(ROOT, 'packages/services/tournament-timer.js'));
   const { createCoreGateway, createCoreServiceIngress } = require(path.join(ROOT, 'packages/services/core-gateway.js'));
+  const { createCommerceService } = require(path.join(ROOT, 'packages/services/commerce.js'));
+  const { createCommerceIngressService } = require(path.join(ROOT, 'packages/services/commerce-ingress.js'));
+  const { createAdMobVerifier } = require(path.join(ROOT, 'server/admob-ssv.js'));
+  const { createPgStoreDb } = require(path.join(ROOT, 'packages/services/store-pg-adapter.js'));
+  const { createMetricsSink } = require(path.join(ROOT, 'packages/services/metrics.js'));
+  const { StorePurchaseProvider } = require(path.join(ROOT, 'server/store-purchase-provider.js'));
+  const { GooglePlayBilling } = require(path.join(ROOT, 'server/google-play-billing.js'));
+  const { AppleStoreKit } = require(path.join(ROOT, 'server/apple-storekit.js'));
   const { createRealtimeTransport } = require(path.join(ROOT, 'packages/services/realtime-transport.js'));
   const { resolveManagedRedisTarget } = require(path.join(ROOT, 'packages/services/managed-ephemera.js'));
   const { createEphemeraService } = require(path.join(ROOT, 'packages/services/ephemera.js'));
@@ -674,7 +682,84 @@ async function main() {
   await tournaments.ready;
   const tournamentTimer = createTournamentTimer({ tournaments, owner: `prd_tournaments_${process.pid}`,
     onError: error => console.error(JSON.stringify({ event: 'tournaments.tick_error', code: safeError(error) })) });
-  const coreIngress = createCoreServiceIngress({ coreService: core, ticketIssuer, queue, tournaments, leaderboardPool: corePool, secret: gatewaySecret });
+  /* LR12: the commerce service runs on the Core-owned pool inside the Core process; the API tier
+   * reaches it ONLY through the signed commerce ingress. Grants stay disabled until the provider
+   * verifiers (AdMob SSV verifyAd / store verifyPurchase + purchaseProvider) and the eligibility
+   * policy are configured in a later provider lane — the mounted routes answer honestly with
+   * adMode 'off' / purchasesAvailable false until then. */
+  const commerceAdMode = ['rewarded', 'hybrid'].includes(process.env.MEGA_AD_MODE) ? process.env.MEGA_AD_MODE : 'off';
+  /* LR15: the AdMob SSV verifier is composed whenever rewarded ads are enabled. It verifies the
+   * ECDSA signature against Google's PUBLISHED verifier keys (gstatic, 24h cache) — no secret
+   * material here. Store verifiers (verifyPurchase/purchaseProvider) remain a later lane; the
+   * eligibility gate stays conservative (verified, unheld accounts — the accountOf gate enforces
+   * the same invariants again inside the service). Client-side UMP/ATT consent remains the native
+   * apps' own gate before any ad request. */
+  const adUnitPattern = /^ca-app-pub-\d{16}\/\d{10}$/;
+  const adUnit = (value) => (typeof value === 'string' && adUnitPattern.test(value) ? value : '');
+  const adUnits = {};
+  for (const platform of ['android', 'ios']) {
+    const rewarded = adUnit(process.env['ADMOB_' + platform.toUpperCase() + '_REWARDED_UNIT']);
+    const interstitial = adUnit(process.env['ADMOB_' + platform.toUpperCase() + '_INTERSTITIAL_UNIT']);
+    if (rewarded || interstitial) adUnits[platform] = { rewarded, interstitial };
+  }
+  const verifyAd = commerceAdMode !== 'off' ? createAdMobVerifier() : null;
+  /* LR15 store lane: when purchases are enabled AND the store env is present, the Google Play /
+   * Apple StoreKit verifiers run through the PG adapter with the DEPLOYED role split - the
+   * revocation check on the core pool (0021), every store_finalize write/read on the worker pool
+   * (0022). Missing or incomplete store env refuses loudly rather than enabling a half-configured
+   * verifier; the product map mirrors the legacy config grammar (external sku -> internal id). */
+  const PRODUCT_IDS = ['crowns_100', 'crowns_525', 'crowns_1100', 'remove_ads'];
+  const mapProducts = (prefix) => {
+    const values = PRODUCT_IDS.map((id) => process.env[prefix + id] || '');
+    if (values.some(Boolean) && !values.every(Boolean)) throw REFUSE('INCOMPLETE_' + prefix + 'PRODUCTS');
+    if (new Set(values.filter(Boolean)).size !== values.filter(Boolean).length) throw REFUSE('DUPLICATE_' + prefix + 'PRODUCT');
+    const map = {};
+    values.forEach((v, i) => {
+      if (v) {
+        if (!/^[A-Za-z0-9._-]{1,160}$/.test(v)) throw REFUSE('INVALID_' + prefix + 'PRODUCT');
+        map[v] = PRODUCT_IDS[i];
+      }
+    });
+    return map;
+  };
+  let purchaseProvider = null;
+  if (process.env.MEGA_PURCHASES_ENABLED === 'true') {
+    const storeSecretReader = require(path.join(ROOT, 'server/production/config.js')).secret;
+    const googleJson = storeSecretReader(process.env, 'GOOGLE_PLAY_SERVICE_ACCOUNT_JSON');
+    const googleProducts = mapProducts('GOOGLE_PLAY_PRODUCT_');
+    let googlePlay = null;
+    if (googleJson) {
+      if (!process.env.GOOGLE_PLAY_PACKAGE_NAME) throw REFUSE('INVALID_GOOGLE_PLAY_PACKAGE_NAME');
+      const serviceAccount = JSON.parse(googleJson);
+      if (!serviceAccount || !/^[^@\s]+@[^@\s]+\.iam\.gserviceaccount\.com$/.test(serviceAccount.client_email || '') || typeof serviceAccount.private_key !== 'string' || !serviceAccount.private_key.includes('BEGIN PRIVATE KEY')) throw REFUSE('INVALID_GOOGLE_PLAY_SERVICE_ACCOUNT');
+      googlePlay = { packageName: process.env.GOOGLE_PLAY_PACKAGE_NAME, serviceAccount, products: googleProducts, pubsubAudience: process.env.GOOGLE_PLAY_PUBSUB_AUDIENCE || '', pubsubServiceAccount: process.env.GOOGLE_PLAY_PUBSUB_SERVICE_ACCOUNT || '' };
+    }
+    let apple = null;
+    const rootsPath = process.env.APPLE_STORE_ROOTS_FILE || '';
+    if (rootsPath) {
+      if (!path.isAbsolute(rootsPath)) throw REFUSE('ABSOLUTE_APPLE_ROOTS_PATH_REQUIRED');
+      const stat = fs.statSync(rootsPath);
+      if (!stat.isFile() || stat.size > 65536 || (stat.mode & 0o007)) throw REFUSE('INSECURE_APPLE_ROOTS_FILE');
+      const pem = fs.readFileSync(rootsPath, 'utf8');
+      const trustedRoots = pem.match(/-----BEGIN CERTIFICATE-----[\s\S]*?-----END CERTIFICATE-----/g) || [];
+      if (!trustedRoots.length) throw REFUSE('INVALID_APPLE_ROOTS_FILE');
+      apple = { bundleId: process.env.APPLE_STORE_BUNDLE_ID || 'online.megaxo.xoxo', environment: process.env.APPLE_STORE_ENVIRONMENT || 'Production', appAppleId: Number(process.env.APPLE_STORE_APP_ID) || null, products: mapProducts('APPLE_STORE_PRODUCT_'), trustedRoots };
+    }
+    if (googlePlay || apple) {
+      const storeDb = createPgStoreDb({ corePool, workerPool });
+      purchaseProvider = new StorePurchaseProvider({ google: googlePlay ? new GooglePlayBilling(storeDb, googlePlay) : null, apple: apple ? new AppleStoreKit(storeDb, apple) : null });
+    }
+  }
+  const commerce = await createCommerceService(corePool, {
+    adMode: commerceAdMode,
+    purchasesEnabled: process.env.MEGA_PURCHASES_ENABLED === 'true',
+    verifyAd,
+    adUnits,
+    eligible: (account) => account && account.verified === true && account.suspended !== true && account.hold !== true,
+    purchaseProvider,
+  });
+  const commerceIngress = createCommerceIngressService({ commerce });
+  const coreIngress = createCoreServiceIngress({ coreService: core, ticketIssuer, queue, tournaments, commerce: commerceIngress, leaderboardPool: corePool, secret: gatewaySecret });
   /* The mirror of the API assertion: Core, the Core-owned queue, the leaderboard materializer and the
    * realtime pool all run on `core_runtime`; the API-owned ticket issuer is the one asserted API member. */
   const coreRole = assertCoreCompositionUsesCorePool({
@@ -769,6 +854,13 @@ async function main() {
     appleTeamId: process.env.APPLE_TEAM_ID || '',
   };
   apiContext.completeWebSignIn = webAccountRoutes.createWebSignInLane(apiContext);
+  /* LR12: the signed commerce facade the monetization routes dispatch through. Kept OUT of the
+   * literal above so parallel API-lane PRs merge without textual conflicts. */
+  apiContext.monetization = { command: (input) => coreGateway.commerceCommand(input) };
+  /* LR19: the OPTIONAL telemetry sink. Anonymous daily aggregates on ops.rate_buckets; the client
+   * lane is opt-in and OFF by default, so this sink normally receives nothing until a player makes
+   * the explicit choice on the privacy-choices page. No actor binding is possible by construction. */
+  apiContext.metrics = createMetricsSink({ pool: apiPool });
   const apiRole = assertApiCompositionHoldsNoCoreAccess(apiContext);
   const apiHandler = createApiHandler(apiContext);
 

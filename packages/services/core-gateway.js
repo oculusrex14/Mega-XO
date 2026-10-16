@@ -337,6 +337,41 @@ function createCoreGateway({
         path: '/ingress/queue/status', command: {} });
     },
 
+    /** LR12: the signed commerce command surface. The op allow-list lives Core-side
+     * (packages/services/commerce-ingress.js); the gateway only signs and forwards. */
+    async commerceCommand({ actor, opKey, op, key, kind, platform, itemId, evidence, restore } = {}) {
+      return this.forwardCommand({ actor, opKey,
+        path: '/ingress/commerce/command',
+        command: { op, key, kind, platform, itemId, evidence, restore } });
+    },
+
+    /** LR12: forward the AdMob SSV query to the Core commerce callback. Actor-free by design. */
+    async commerceSsv({ raw } = {}) {
+      const path = '/ingress/commerce/ssv';
+      const bodyString = JSON.stringify({ raw });
+      const timestamp = String(clock());
+      const signature = signRequest({ secret, timestamp, method: 'POST', path, actor: '', opKey: 'commerce-ssv', bodyString });
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(Error('CORE_GATEWAY_TIMEOUT')), timeout);
+      timer.unref?.();
+      try {
+        const res = await fetchFn(baseUrl + path, { method: 'POST', body: bodyString, signal: controller.signal,
+          headers: { 'content-type': 'application/json', 'x-service-timestamp': timestamp,
+            'x-service-actor': '', 'x-service-opkey': 'commerce-ssv',
+            'x-service-signature': signature } });
+        const text = await res.text();
+        let parsed; try { parsed = JSON.parse(text); } catch { parsed = null; }
+        if (res.status < 200 || res.status >= 300) {
+          const error = Error((parsed && parsed.error) || 'COMMERCE_SSV_FAILED');
+          error.status = res.status;
+          throw error;
+        }
+        return parsed && parsed.result !== undefined ? parsed.result : parsed;
+      } catch (error) {
+        throw tournamentTransportError(error);
+      } finally { clearTimeout(timer); }
+    },
+
     /**
      * Forwards an economic or competitive command to Game Core ingress.
      * @param {Object} params
@@ -669,6 +704,7 @@ function createCoreServiceIngress({
   ticketIssuer,
   queue,
   tournaments,
+  commerce,
   leaderboard,
   leaderboardPool,
   secret,
@@ -745,7 +781,10 @@ function createCoreServiceIngress({
 
       // 3. Actor-free capability/catalogue reads use exact paths. Their empty
       // actor remains signed, so a read signature cannot authorize a command.
-      const isPublicRead = pathname === LEADERBOARD_PATH || pathname === TOURNAMENT_CAPABILITIES_PATH;
+      /* The commerce SSV callback is actor-free too: Google's server calls it, the provider proof
+       * inside carries the actor, and the path stays signature-protected like every other ingress. */
+      const isPublicRead = pathname === LEADERBOARD_PATH || pathname === TOURNAMENT_CAPABILITIES_PATH
+        || pathname === '/ingress/commerce/ssv';
       if (!actorHeader && !isPublicRead) {
         return sendIngressError(res, 403, 'INVALID_SERVICE_SIGNATURE');
       }
@@ -895,6 +934,51 @@ function createCoreServiceIngress({
           const errCode = err?.code || err?.message || 'TICKET_FAILED';
           const status = err?.status || 409;
           return sendIngressJson(res, status, { ok: false, error: errCode, message: errCode });
+        }
+      }
+
+      /* LR12: the signed commerce command surface. One allow-listed dispatcher
+       * (packages/services/commerce-ingress.js) maps {op, ...args} to exactly one commerce call on
+       * the Core-owned pool; the actor comes from the signed header, the idempotency key from the
+       * client's durable operation key. */
+      if (pathname === '/ingress/commerce/command') {
+        if (method !== 'POST') return sendIngressError(res, 405, 'METHOD_NOT_ALLOWED');
+        if (!opKeyHeader || opKeyHeader.length > 160 || !/^[!-~]+$/.test(opKeyHeader)) return sendIngressError(res, 400, 'INVALID_IDEMPOTENCY_KEY');
+        if (!actorHeader) return sendIngressError(res, 403, 'INVALID_SERVICE_SIGNATURE');
+        if (!commerce || typeof commerce.command !== 'function') return sendIngressError(res, 503, 'COMMERCE_UNAVAILABLE');
+        const input = parsedBody?.command;
+        if (!input || typeof input !== 'object' || Array.isArray(input)) return sendIngressError(res, 400, 'INVALID_COMMERCE_COMMAND');
+        try {
+          const result = await commerce.command({ actor: actorHeader, opKey: opKeyHeader, ...input });
+          return sendIngressJson(res, 200, { ok: true, result });
+        } catch (error) {
+          const code = error?.code || error?.message || 'COMMERCE_FAILED';
+          if (error?.status) return sendIngressError(res, error.status, code);
+          if (!/^[A-Z][A-Z0-9_]+$/.test(code)) return sendIngressError(res, 503, 'SERVICE_UNAVAILABLE');
+          const status = /INVALID_|MISSING_|REQUIRED_/.test(code) ? 400
+            : code === 'COMMERCE_METHOD_MISSING' || code === 'COMMERCE_SERVICE_REQUIRED' ? 503
+            : 409;
+          return sendIngressError(res, status, code);
+        }
+      }
+
+      /* LR12: the AdMob SSV provider callback. Actor-free by design (the provider proof inside
+       * carries the actor); signature-protected like every other ingress; GET (Google's shape) or
+       * POST with {raw}. */
+      if (pathname === '/ingress/commerce/ssv') {
+        if (method !== 'GET' && method !== 'POST') return sendIngressError(res, 405, 'METHOD_NOT_ALLOWED');
+        if (!commerce || typeof commerce.command !== 'function') return sendIngressError(res, 503, 'COMMERCE_UNAVAILABLE');
+        const raw = method === 'GET'
+          ? Object.fromEntries(url.searchParams)
+          : (parsedBody && typeof parsedBody === 'object' ? parsedBody.raw : null);
+        try {
+          const result = await commerce.command({ op: 'ssv', raw });
+          return sendIngressJson(res, 200, { ok: true, result });
+        } catch (error) {
+          const code = error?.code || error?.message || 'SSV_FAILED';
+          if (error?.status) return sendIngressError(res, error.status, code);
+          if (!/^[A-Z][A-Z0-9_]+$/.test(code)) return sendIngressError(res, 503, 'SERVICE_UNAVAILABLE');
+          return sendIngressError(res, 400, code);
         }
       }
 

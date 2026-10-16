@@ -20,7 +20,8 @@
 | LR03 | A03 | Separate immutable deployment artifact from mutable epoch/serving authority state; fail-closed predeploy checks (epoch, schema, DB, host config, release image); wrong-target refusal + rollback tests. | P0 | LR01 | TODO | — |
 | LR03A | A02 | Retire V4 Compose dependency: dedicated V5 edge-only orchestration; offline render test proving Caddy updates cannot recreate the SQLite app; V4 assets archived isolated. No live-host docker compose up. | P0 | LR03 | TODO | — |
 | LR04 | A04 | Selective X-Robots-Tag: indexable approved public pages, noindex retained for private/auth/staging/operator routes; external HTTP audit of robots/sitemap/canonical/redirects/404s. | P0 | LR01 | TODO | — |
-| LR05 | A05 | Read-only live health report: /livez /readyz /opsz, deployed SHA vs source, PG migration head, backups freshness, Redis, HTTPS/WSS, session, matchmaking/reconnect, alerts. | P0 | LR01 | TODO | — |
+| LR04 | A04 | Selective X-Robots-Tag: indexable approved public pages, noindex retained for private/auth/staging/operator routes; external HTTP audit of robots/sitemap/canonical/redirects/404s. | P0 | LR01 | PR OPEN | #22 |
+| LR05 | A05 | Read-only live health report: /livez /readyz /opsz, deployed SHA vs source, PG migration head, backups freshness, Redis, HTTPS/WSS, session, matchmaking/reconnect, alerts. | P0 | LR01 | IN PROGRESS | — |
 
 ## Stage 2 — Identity, native and security preparation
 
@@ -85,4 +86,12 @@
 
 ## Checkpoint log (append per substantial milestone — Workstream J format)
 
-_(none yet — first checkpoint lands with the Stage 1 PRs)_
+### Checkpoint 1 — 2026-10-16 (Stage 1 start)
+
+**Completed:** Phase 0 reconciliation; LR04 implemented end-to-end (source + tests + live-probe evidence) and pushed as PR #22; board created as PR #21. Stray AuthKey_*.p8 files secured out of Git (mode 600).
+
+**LR05 partial evidence (external HTTP, 2026-10-16 ~03:00 UTC):** apex 200; www 301→apex; retired play.antimatterinnovations.com 308→apex; unsigned core ingress 401 (fail-closed); /livez + /readyz 200 JSON; **/opsz 503 {ok:false}** (backup-freshness or outbox contract red — needs VPS read-only confirmation); /api/monetization/* 404 (expected until LR12); global noindex + missing CSP confirmed (fixed by PR #22, pending merge/deploy).
+
+**Testing:** v5 production server 12/12 (2 new LR04 tests); web-build all pass (updated DELIVERY-01); p21-seo 6/6; production-lifecycle all pass. Node --test runner leaks zero-concurrency children in this environment — per-file direct runs used; CI on PR SHA will confirm.
+
+**Open work:** LR05 VPS-side checks (deployed SHA vs origin/V5.2, freshness file, migration head); then LR03/LR03A; LR02 stays deferred (Main).

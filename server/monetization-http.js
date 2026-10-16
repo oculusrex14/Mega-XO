@@ -2,7 +2,7 @@
 'use strict';
 const C=require('../packages/contracts');
 const send=(res,status,value)=>C.guards.writeJson(res,status,value,{noReferrer:true});
-function createMonetizationHandler({monetization,authenticate,guard,origin,storeNotifications={},cashfreeProvider=null}){
+function createMonetizationHandler({monetization,authenticate,guard,origin,storeNotifications={},cashfreeProvider=null,polarProvider=null}){
  const rates=new Map();
   const readRawText=async(req,limit)=>{let text='';for await(const chunk of req){text+=chunk;if(text.length>limit)throw Error('BODY_TOO_LARGE');}return text;};
  return async(req,res)=>{
@@ -21,6 +21,15 @@ function createMonetizationHandler({monetization,authenticate,guard,origin,store
    if(path==='/api/monetization/google-play-rtdn'||path==='/api/monetization/apple-notifications'){
     if(req.method!=='POST')return send(res,405,{error:'METHOD_NOT_ALLOWED'}),true;C.guards.requireJson(req,'INVALID_STORE_NOTIFICATION');const b=await C.guards.readStoreNotification(req);
     const handler=path.endsWith('google-play-rtdn')?storeNotifications.google:storeNotifications.apple;if(!handler)throw Error('STORE_UNAVAILABLE');const result=path.endsWith('google-play-rtdn')?await handler.handle(req.headers.authorization,b):await handler.handle(b);return send(res,200,result),true;
+   }
+   if(path==='/api/monetization/polar/webhook'){
+    /* Provider-to-server: the Standard Webhooks signature covers the exact raw body. Only
+       mega_pass subscription lifecycle events mutate the entitlement row. */
+    if(req.method!=='POST')return send(res,405,{error:'METHOD_NOT_ALLOWED'}),true;
+    if(!polarProvider)throw Error('STORE_UNAVAILABLE');
+    const raw=await readRawText(req,262144);
+    const result=await monetization.polarPassWebhook({id:req.headers['webhook-id'],timestamp:req.headers['webhook-timestamp'],signature:req.headers['webhook-signature'],raw});
+    return send(res,200,result),true;
    }
    if(path==='/api/monetization/cashfree/webhook'){
     /* Provider-to-server: the signature covers the exact raw body, then every grant is backed

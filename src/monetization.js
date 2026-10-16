@@ -17,8 +17,31 @@ const FRAMES=Object.freeze([
 const PRODUCTS=Object.freeze([
  ...D.CROWN_PACKS.map(p=>({...p,name:p.crowns+' Crowns',type:'consumable',once:false,frames:[],removeAds:false})),
  {id:'remove_ads',name:'Remove Ads',type:'non-consumable',once:true,crowns:0,frames:[],removeAds:true,suggestedUSD:3.99},
- {id:'mega_pass',name:'Mega Pass',type:'non-consumable',once:true,crowns:0,frames:[],removeAds:true,suggestedUSD:4.99}
+ {id:'mega_pass',name:'Mega Pass',type:'subscription',period:'month',once:false,crowns:0,frames:[],removeAds:true,suggestedUSD:3.99}
 ].map(p=>Object.freeze({...p,frames:Object.freeze(p.frames)})));
+/* Mega Pass (owner decision 2026-10-16, priced by the Planck economy review): 3.99 USD per month
+   auto-renewing. 150 Crowns per paid month delivered as three 50-Crown installments on
+   billing-days 1/11/21; 2x bot-win Coins applied BEFORE the existing daily cap (the multiplier
+   never raises maximum daily issuance); Coin-to-Crown exchange at 8:1 for the first 200 Coins per
+   billing month (then the standard 10:1; the reverse stays 1 Crown to 10 Coins); 15 percent off
+   up to two Crown packs per billing month, any size, no stacking. Delivered Crowns/Coins/banked
+   powers are kept on lapse; the booster, discounted exchange and pack eligibility end at expiry.
+   The pass disables automatic interstitials only - rewarded ads stay an explicit choice. */
+const PASS=Object.freeze({id:'mega_pass',priceSuggestedUSD:3.99,monthlyCrowns:150,installments:[50,50,50],installmentDays:[1,11,21],coinBoost:2,exchangeCoinsPerCrown:8,exchangeMonthlyCoinAllowance:200,packDiscount:0.15,packDiscountMaxUses:2});
+/* Status-shaped pass read: an active row with periodEnd in the future, plus the allowance state a
+   billing month tracks. allowances is the durable per-month ledger holding monthKey,
+   exchangeCoinsUsed, packDiscountsUsed. */
+function passActive(pass,now=Date.now()){return !!(pass&&pass.status==='active'&&Number.isFinite(pass.periodEnd)&&pass.periodEnd>now);}
+function passMonthKey(now=Date.now()){return day(now).slice(0,7);}
+function passAllowanceUsed(pass,field,now=Date.now()){return Math.max(0,passActive(pass,now)&&pass.allowances&&pass.allowances.monthKey===passMonthKey(now)?Number(pass.allowances[field])||0:0);}
+function passExchangeRate(pass,now=Date.now()){if(!passActive(pass,now))return D.POLICY.coinsPerCrown;return passAllowanceUsed(pass,'exchangeCoinsUsed',now)<PASS.exchangeMonthlyCoinAllowance?PASS.exchangeCoinsPerCrown:D.POLICY.coinsPerCrown;}
+function passExchangeRemaining(pass,now=Date.now()){return Math.max(0,PASS.exchangeMonthlyCoinAllowance-passAllowanceUsed(pass,'exchangeCoinsUsed',now));}
+function passPackDiscountedPrice(pass,packId,now=Date.now()){
+ const p=product(packId),suggested=Math.round((p.suggestedUSD||0)*100);
+ const usesLeft=Math.max(0,PASS.packDiscountMaxUses-passAllowanceUsed(pass,'packDiscountsUsed',now));
+ if(!passActive(pass,now)||!usesLeft||!p.crowns)return {cents:suggested,discounted:false,usesLeft};
+ return {cents:Math.max(1,Math.round(suggested*(1-PASS.packDiscount))),discounted:true,usesLeft};
+}
 const product=id=>PRODUCTS.find(p=>p.id===id)||null;
 const frame=id=>FRAMES.find(f=>f.id===id)||null;
 const positive=n=>Number.isFinite(n)&&n>=0;
@@ -93,5 +116,5 @@ function revenueScenario(x){
  const interstitial=x.dau*x.automaticOpportunities*x.fill*x.interstitialEcpm/1000,rewarded=x.dau*x.rewardOptIn*x.rewardsPerViewer*x.fill*x.rewardedEcpm/1000,iap=x.dau*x.dailyPayerShare*x.payerSpend*(1-x.refundRate)*(1-x.platformFee);
  return {interstitial,rewarded,netIap:iap,totalBeforeOperatingCosts:interstitial+rewarded+iap,netPerDau:x.dau?(interstitial+rewarded+iap)/x.dau:0};
 }
-return Object.freeze({POLICY,FRAMES,PRODUCTS,MINUTE,DAY,CADENCE_VERSION,product,frame,day,startSession,freshProgress,migrateCadence,meaningfulBot,noteGame,interstitialAllowed,noteFullScreen,noteRewardedShown,noteRewardedEarned,rewardedExposure,cohort,qualifiedCasual,boostApplies,packInfo,revenueScenario});
+return Object.freeze({POLICY,PASS,FRAMES,PRODUCTS,MINUTE,DAY,CADENCE_VERSION,product,frame,day,startSession,freshProgress,migrateCadence,meaningfulBot,noteGame,interstitialAllowed,noteFullScreen,noteRewardedShown,noteRewardedEarned,rewardedExposure,cohort,qualifiedCasual,boostApplies,packInfo,passActive,passMonthKey,passAllowanceUsed,passExchangeRate,passExchangeRemaining,passPackDiscountedPrice,revenueScenario});
 });

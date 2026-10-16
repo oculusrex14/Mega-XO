@@ -188,7 +188,9 @@ jobs:
           # falsely PASS if Mega XO crashes and returns to SpringBoard.
           sleep 2
           xcrun simctl io "$udid" screenshot "$RUNNER_TEMP/mega-ios-smoke/home-before-launch.png"
-          xcrun simctl launch "$udid" online.megaxo.prototype
+          bundle_id="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$app/Info.plist")"
+          test -n "$bundle_id"
+          xcrun simctl launch "$udid" "$bundle_id"
           sleep 7
           xcrun simctl io "$udid" screenshot "$RUNNER_TEMP/mega-ios-smoke/first-launch.png"
           test -s "$RUNNER_TEMP/mega-ios-smoke/first-launch.png"

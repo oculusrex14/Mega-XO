@@ -165,7 +165,9 @@ jobs:
           xcrun simctl bootstatus "$udid" -b
           xcrun simctl install "$udid" "$app"
           xcrun simctl io "$udid" screenshot .artifacts/v52-native/home.png
-          xcrun simctl launch "$udid" online.megaxo.prototype
+          bundle_id="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$app/Info.plist")"
+          test -n "$bundle_id"
+          xcrun simctl launch "$udid" "$bundle_id"
           sleep 7
           xcrun simctl io "$udid" screenshot .artifacts/v52-native/first-launch.png
           swift scripts/v5/verify-ios-launch.swift .artifacts/v52-native/home.png .artifacts/v52-native/first-launch.png

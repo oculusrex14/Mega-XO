@@ -66,6 +66,14 @@ function initPowers(){
     return raw?M.rewardedExposure(raw).shownToday:0;}catch{return 0;}
   },
   storage:{read:readPowersState,write:writePowersState},
+  /* Crown purchases bank a charge without an ad. The spend is the same lane the bot-mode rewards
+     use (this device's save wallet), idempotent by operation id, and the adapter banks only after
+     the debit succeeded. */
+  spend:async(kind,id)=>{
+   const cost=kind==='undo'?2:3;
+   D.spendCurrency(data,'crowns',cost,id,'Power-up purchase');
+   save();renderWalletSummary();
+  },
   /* Tactical Power recommends with the canonical Expert search — the same rules engine the match
      already plays with — and never invents a square. The adapter re-validates the answer against
      G.legal, so a bad recommendation is refused rather than highlighted. */
@@ -170,12 +178,18 @@ function powerContext(reason,botPending=!!botTimer){
    no honest Bot-mode counter exists — so they are disclosed, disabled, and never faked. */
 const COUNTER_COPY='Counter controls are unavailable until authoritative resolution is supported.';
 function counterDisclosure(){return '<div class="note"><b>Undo Block &middot; Tactical Block</b><p class="caption">These answer another player\'s power use, so they need a two-player Casual match with authoritative resolution. '+COUNTER_COPY+' The Bot never secretly gains counter powers, so no Bot-mode counter is offered.</p><div class="split"><span>Undo Block</span><span class="pill">Unavailable</span></div><div class="split"><span>Tactical Block</span><span class="pill">Unavailable</span></div></div><p class="caption">A suggestion is never revealed to a counter while a counter window is open, and a counter never reveals a suggestion that was already shown.</p>';}
-/* The rewarded path is disclosed before it starts: the ad earns the item, and a shown-then-skipped
-   ad uses one of the ten daily rewarded views without earning anything. */
+/* When the ad lane is simply unavailable (no consent yet, no fill, no bridge), the power is still
+   obtainable: the owner's rule is that installing the app grants ad consent by default, and Crowns
+   are always the fallback path. This sheet offers the Crown purchase instead of a dead end. */
+function offerPowerPurchase(kind,reason){
+ if(!powers)return notify(powerReasonText(reason));
+ const label=kind==='undo'?'Undo':'Hint',cost=kind==='undo'?2:3;
+ open(label+' charge','<p>'+escape(powerReasonText(reason))+'</p><p>You can still bank a '+label.toLowerCase()+' charge with Crowns. It stays banked until you use it.</p><div class="split"><span>'+label+' charge</span><b>'+cost+' Crowns</b></div>'+fullButton('Buy for '+cost+' Crowns','powerbuy',kind)+fullButton('Not now','close','',true),'powerbuy');
+}
 function powerReasonText(reason){
  return ({NO_MATCH:'No match is in progress.',FEATURE_DISABLED:'Rewarded powers are turned off.',
   NATIVE_BRIDGE_UNAVAILABLE:'This build has no rewarded-ad lane, so no ad can be shown.',
-  CONSENT_UNAVAILABLE:'Ad consent is not available here, so no ad can be shown.',
+  CONSENT_UNAVAILABLE:'Ads are unavailable right now. You can still get this power with Crowns.',
   AD_UNAVAILABLE:'No rewarded ad is available right now. Try again later.',
   DAY_CAP:'Your ten rewarded views for today (UTC) are used up. They reset at 00:00 UTC.',
   SPACING:'The next rewarded ad unlocks about two minutes after the last one.',
@@ -307,9 +321,14 @@ function home(){
  '<div class="section-heading"><h3>Choose mode</h3><span class="eyebrow">YOUR MOVE</span></div><div class="mode-list">'+modes.map(([id,sym,title,desc])=>'<button class="mode '+(id===mode?'active':'')+'" data-action="mode" data-value="'+id+'" aria-pressed="'+(id===mode)+'"><span class="mode-symbol">'+icon(sym)+'</span><span class="mode-copy"><strong>'+title+'</strong><small>'+desc+'</small></span>'+icon('arrow')+'</button>').join('')+'</div>'+setup+
  fullButton(icon('play')+(mode==='tournament'?'Browse Tournaments':mode==='private'?'Open Private Lobby':mode==='online'?'Find Match':'Start Match'),'start')+
  '<button class="learn" data-action="tutorial">'+icon('tutorial')+'<span><strong>New to Mega XOXO?</strong><small>Learn the rules in under a minute</small></span>'+icon('arrow')+'</button>'+
- '<div class="home-quests"><span><b>Daily quests</b><small>Earn coins through play.</small></span>'+button('View quests','nav','quests',true)+'</div>';
+ (()=>{const account=window.MegaCommunity?.getStatus?.()||{},linked=account.linked===true,name=linked?(account.profileName||'Your profile'):'';
+  return '<div class="home-sections">'+
+   '<section class="card home-section home-quests" aria-labelledby="home-quests-title"><div><h3 id="home-quests-title">Daily quest</h3><p class="caption">Small goals. More Coins through play.</p></div>'+button('View quests','nav','quests',true)+'</section>'+
+   '<section class="card home-section" aria-labelledby="home-store-title"><div><h3 id="home-store-title">Store</h3><p class="caption">Cosmetics, themes and power-ups.</p></div><button type="button" class="button quiet" data-monetization="open">Open store</button></section>'+
+   '<section class="card home-section home-account" aria-labelledby="home-account-title"><div><h3 id="home-account-title">Save your progress</h3><p class="caption">Keep your profile, friends and progress with you.</p><p class="home-account-name caption"'+(linked?'':' hidden')+'>'+escape(name)+'</p></div><button type="button" class="button quiet" data-c="'+(linked?'profile':'login')+'">'+(linked?'View profile':'Sign in')+'</button></section>'+
+  '</div>';})();
 }
-function rewards(){return window.MegaMonetizationUI?.pageMarkup?.()||'<div class="mono-page"><div class="mono-page-head"><p class="mono-kicker">STYLE &amp; REWARDS</p><h2>Rewards &amp; Themes</h2><p class="caption">Loading your rewards...</p></div></div>';}
+function rewards(){return window.MegaMonetizationUI?.pageMarkup?.()||'<div class="mono-page"><div class="mono-page-head"><p class="mono-kicker">STORE</p><h2>Store</h2><p class="caption">Cosmetics, themes and power-ups.</p><p class="caption" role="status">Loading the store...</p></div></div>';}
 function friends(){if(window.MegaCommunity?.friendsMarkup)return window.MegaCommunity.friendsMarkup();return '<div class="panel-head friends-head"><div class="eyebrow">Social</div><h2>Friends</h2><p>Challenge people you know, or add someone you just played.</p></div>'+
  '<div class="friend-search"><div class="friend-search-wrap">'+icon('search')+'<input id="friendName" aria-label="Search username" placeholder="Search username" maxlength="30" autocomplete="off"></div><button class="friend-add" data-action="findfriend">'+icon('userPlus')+'<span>Add</span></button></div>'+
  '<div class="friend-code-card"><div><span>YOUR FRIEND CODE</span><div class="friend-code">'+escape(online.profile?.friendCode||'Sign in')+'</div></div><button class="copy-friend" data-action="copyfriend" aria-label="Copy friend code">'+icon('copy')+'</button></div>'+
@@ -661,7 +680,7 @@ const actions={
    /* No charge is banked, so the offered path is the ad. The promise is stated before it starts. */
    if(!await askReward(undoRewardCopy()))return;
    const earned=await powers.request('undo',ctx);
-   if(!earned.earned)return notify(powerReasonText(earned.reason));
+   if(!earned.earned){if(['CONSENT_UNAVAILABLE','AD_UNAVAILABLE','NATIVE_BRIDGE_UNAVAILABLE'].includes(earned.reason))return offerPowerPurchase('undo',earned.reason);return notify(powerReasonText(earned.reason));}
    /* A restart, leave or resign during the ad replaces the match. The earned item stays banked
       rather than being spent on a board the player is no longer looking at. */
    if(!match||match.id!==ctx.id)return notify('Two Undo presses earned and banked.');
@@ -680,7 +699,7 @@ const actions={
   if(powers.inventory().hint.available<1){
    if(!await askReward(hintRewardCopy()))return;
    const earned=await powers.request('hint',ctx);
-   if(!earned.earned)return notify(powerReasonText(earned.reason));
+   if(!earned.earned){if(['CONSENT_UNAVAILABLE','AD_UNAVAILABLE','NATIVE_BRIDGE_UNAVAILABLE'].includes(earned.reason))return offerPowerPurchase('hint',earned.reason);return notify(powerReasonText(earned.reason));}
    if(!match||match.id!==ctx.id)return notify('Tactical Power earned and banked.');
   }
   const applied=powers.apply('hint',powerContext(null,!!botTimer));
@@ -689,6 +708,7 @@ const actions={
   renderPowerControls();paint();
  },
  /* Deliberately a disclosure, not a control: see counterDisclosure(). */
+ powerbuy:async kind=>{if(!powers||!['undo','hint'].includes(kind))return;try{await powers.purchase(kind);close();notify('Charge banked. It stays until you use it.');}catch(e){notify(({INSUFFICIENT_CROWNS:'Not enough Crowns. Exchange Coins in the wallet, or get a Crown pack.',BANK_FULL:'You already hold the maximum of one earned item of that type.',FEATURE_DISABLED:'Rewarded powers are turned off.',PURCHASE_UNAVAILABLE:'Purchases are unavailable right now.'})[e.message]||'Could not complete the purchase. Your Crowns are unchanged.');}},
  powercounters:()=>open('Counter powers',counterDisclosure()+'<p class="caption">Your Tactical Power suggestion is not revealed to a counter while a counter window is open, and a counter never reveals a suggestion that was already shown.</p>'+fullButton('Close','close','',true),'info'),
  rewardyes:()=>{close();rewardAnswer(true);},rewardno:()=>{close();rewardAnswer(false);},
  acceptfriend:async id=>{try{await NET.acceptFriend(id,opId());await refreshOnline();render();}catch(e){notify(friendlyError(e));}},

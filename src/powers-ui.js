@@ -345,6 +345,26 @@ return Object.freeze({
            error=>{inFlight=false;throw error;});
    });
   },
+  /* Crown purchase: debit the injected spend lane first, then bank the charge. The pre-check
+     guarantees the bank has room, so the grant is always an 'available' credit - the caller's
+     Crowns can never be taken without a charge landing. */
+  async purchase(kind){
+   return Promise.resolve().then(()=>{
+    if(!enabled())throw Error('FEATURE_DISABLED');
+    if(!SHIPPED.includes(kind))throw Error('INVALID_KIND');
+    if(R.banked(state.inventory,kind))throw Error('BANK_FULL');
+    const spend=options.spend;
+    if(typeof spend!=='function')throw Error('PURCHASE_UNAVAILABLE');
+    const id='purchase-'+clock()+'-'+Math.random().toString(36).slice(2,10);
+    return Promise.resolve().then(()=>spend(kind,id)).then(()=>{
+     const added=R.bank(state.inventory,kind,{id});
+     if(!added.ok)throw Error(added.reason||'BANK_FAILED');
+     state={...state,inventory:added.inventory};
+     persist();
+     return {ok:true,kind};
+    });
+   });
+  },
   apply(kind,context){
    const summary=summaryOf(context,live);
    const revision=summary&&Number.isInteger(summary.revision)?summary.revision:0;

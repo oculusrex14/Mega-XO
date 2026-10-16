@@ -184,7 +184,13 @@ function decorate(){let changed=false;const sheet=$('#sheet');if(sheet&&!sheet.h
  const party=$('#partyScreen');if(party?.dataset.view==='room'){
   const roster=$('.party-roster',party);if(roster&&!$('.lobby-wait',party)){const joined=roster.querySelectorAll('.ledger').length,ready=[...roster.querySelectorAll('.ledger b')].filter(x=>x.textContent==='Ready').length;roster.insertAdjacentHTML('afterend','<div class="lobby-wait">'+loader(true)+'<div><b>Waiting in the lobby</b><small>'+joined+' joined - '+ready+' ready</small><small>The game starts when everyone is ready.</small></div></div>');changed=true;}
  }
- const home=$('#page .home-quests');if(home&&!$('#page .community-profile-cta')){home.insertAdjacentHTML('afterend','<button class="community-profile-cta" data-c="'+(session?.linked?'profile':'login')+'">'+icon('shield')+'<span><strong>'+(session?.linked?'Your profile':'Save your progress')+'</strong><small>'+(session?.linked?'Tag, linked accounts and cloud save':'Playing as guest - stored on this device')+'</small></span>'+icon('arrow')+'</button>');changed=true;}
+ /* The home page owns its three cards (app.js). Keep the Save-your-progress card in step with the
+  * session without re-rendering the page or appending a second CTA. */
+ const homeAccount=$('#page .home-account');
+ if(homeAccount){const linked=session?.linked===true,name=linked?(session.profile?.name||session.profile?.username||'Your profile'):'',action=linked?'profile':'login',label=linked?'View profile':'Sign in';
+  const nameNode=$('.home-account-name',homeAccount),entry=$('[data-c]',homeAccount);
+  if(nameNode){if(nameNode.textContent!==name)nameNode.textContent=name;if(nameNode.hidden!==!linked)nameNode.hidden=!linked;}
+  if(entry){if(entry.dataset.c!==action)entry.dataset.c=action;if(entry.textContent!==label)entry.textContent=label;}}
  if(changed)I?.refresh?.();}
 function resumePrompt(id){frame('Your match is still running','<p>Reconnect to continue. Online clocks do not pause when you leave the app.</p>'+btn('Reconnect to match','resume-online',id),'resume',true);}
 async function presence(){if(!session?.linked)return;try{await API.request('/api/community/presence',{foreground:!document.hidden});lastPresence=Date.now();}catch{} }
@@ -229,6 +235,6 @@ document.addEventListener('visibilitychange',()=>{presence();if(!document.hidden
 window.addEventListener('pagehide',()=>{if(!session?.linked)return;fetch('/api/community/presence',{method:'POST',credentials:'same-origin',keepalive:true,headers:{'Content-Type':'application/json','X-CSRF-Token':session.csrf},body:JSON.stringify({foreground:false})}).catch(()=>{});});
 setInterval(()=>{presence();refreshFriends();if(dirty)saveNow();if(!session?.linked)reconnectSync();},15000);
 setInterval(()=>{const q=$('[data-queue-time]');if(q)q.textContent=fmtTime((performance.now()-queuedAt)/1000);},1000);
-window.MegaCommunity=Object.freeze({friendsMarkup,openProfile,login:landing,loader,refresh:refreshFriends,requestNotificationPermission,notificationPreferencesChanged:()=>{updateNotificationButton();rewardReminder();},challengeAccepted:(id,name='Opponent')=>deviceAlert('notifyMatches','Challenge accepted',name+' accepted your challenge. Your match is starting now.','challenge-start:'+id),getStatus:()=>({linked:!!session?.linked,syncState,revision:syncRevision,pendingNotifications:(session?.linked?social.incoming.length+directIncoming().length:0)})});
+window.MegaCommunity=Object.freeze({friendsMarkup,openProfile,login:landing,loader,refresh:refreshFriends,requestNotificationPermission,notificationPreferencesChanged:()=>{updateNotificationButton();rewardReminder();},challengeAccepted:(id,name='Opponent')=>deviceAlert('notifyMatches','Challenge accepted',name+' accepted your challenge. Your match is starting now.','challenge-start:'+id),getStatus:()=>({linked:!!session?.linked,profileName:session?.linked?(session.profile?.name||session.profile?.username||'Your profile'):'',syncState,revision:syncRevision,pendingNotifications:(session?.linked?social.incoming.length+directIncoming().length:0)})});
 APP.render();updateNotificationButton();boot();
 })();

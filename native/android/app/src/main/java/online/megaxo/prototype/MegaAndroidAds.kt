@@ -111,7 +111,11 @@ internal class MegaAndroidAds(
         }, { _ -> done(false) })
     }
 
-    fun canRequestAds(): Boolean = updatedThisLaunch && consent.canRequestAds()
+    /* Owner rule (2026-10-16): installing the app is implicit consent to ads. UMP's persisted
+     * consent status is authoritative the moment it has ever answered; a first-session gather is
+     * kicked off at bridge install, so waiting for updatedThisLaunch only produced a false
+     * CONSENT_UNAVAILABLE dead end on the powers path. */
+    fun canRequestAds(): Boolean = consent.canRequestAds()
     fun isPrivacyOptionsRequired(): Boolean = updatedThisLaunch &&
         consent.privacyOptionsRequirementStatus ==
         ConsentInformation.PrivacyOptionsRequirementStatus.REQUIRED

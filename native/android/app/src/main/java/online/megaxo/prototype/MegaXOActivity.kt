@@ -190,6 +190,9 @@ class MegaXOActivity : Activity() {
                 BuildConfig.MEGA_ADMOB_REWARDED_UNIT, BuildConfig.MEGA_ADMOB_INTERSTITIAL_UNIT)
             ads = adService
             adsBridge = MegaAdsBridge.install(this, game, gameEntry, adService)
+            // Install = consent (owner rule): gather immediately at startup so the first-session
+            // powers/ads surfaces never report CONSENT_UNAVAILABLE while UMP is still answering.
+            adService.gatherConsent { }
         }
         game.loadUrl(gameEntry)
     }

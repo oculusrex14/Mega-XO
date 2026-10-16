@@ -5,7 +5,7 @@ const T=window.MegaTournament,G=window.MegaGame,I=window.MegaIcons;
 if(!T||!G)return;
 const $=(s,root=document)=>root.querySelector(s),esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const uid=()=>crypto.randomUUID?.()||Date.now().toString(36)+Math.random().toString(36).slice(2),fmt=n=>n===null?'\u221e':Math.floor(Math.ceil(Math.max(0,n))/60)+':'+String(Math.ceil(Math.max(0,n))%60).padStart(2,'0'),num=n=>Number(n).toLocaleString('en-US');
-const icon=n=>I?.icon(n)||'',button=(text,action,extra='',quiet=false)=>'<button type="button" class="button '+(quiet?'quiet':'')+'" data-party="'+action+'" '+extra+'>'+text+'</button>';
+const icon=n=>I?.icon(n)||'',button=(text,action,extra='',quiet=false)=>'<button type="button" class="button '+(quiet?'quiet':'')+'" data-party="'+action+'" '+extra+'>'+text+'</button>',fullButton=(text,action,extra='',quiet=false)=>'<button type="button" class="button full '+(quiet?'quiet':'')+'" data-party="'+action+'" '+extra+'>'+text+'</button>';
 let screen=null,body=null,room=null,session=null,transport='local',activeFixture=null,poll=null,viewName='hub',lastRevision=-1,offset=0,capabilities=null,busy=false,savedFocus=null,lanBase=null;
 try{session=JSON.parse(localStorage.getItem('mega_party_session')||'null');}catch{}
 const saved=()=>{try{return JSON.parse(localStorage.getItem('mega_party_local')||'null');}catch{return null;}};
@@ -28,7 +28,7 @@ function lanHost(){viewName='lanhost';activeFixture=null;shell('Host on this Wi-
  setBody('<div class="party-page-intro"><span class="party-kicker">HOSTING</span><h3>Your phone is the room.</h3><p>Everyone on this Wi-Fi can find it and join. No internet needed.</p></div>'+
   '<label class="field">Your name in the room<input id="lanHostName" maxlength="32" value="'+esc(name)+'" autocomplete="nickname"></label>'+
   '<div class="note"><b>'+(status.ok?'Room server ready':'Starting…')+'</b><br>'+esc(lanOrigin(status))+'</div>'+
-  fullButton(icon('wifi'),status.ok?'Host a room':'Try again','lanStart')+
+  fullButton(icon('wifi')+(status.ok?'Host a room':'Try again'),'lanStart')+
   button('Stop hosting','lanStop','',true)+button('Back','hub','',true));}
 function lanOrigin(status){if(status?.origin)return status.origin;if(status?.port)return 'Port '+status.port;return 'Waiting for this device\'s network address';}
 async function lanStart(){const H=window.MegaLanHost;if(!H)return lanStartLocal();const name=$('#lanHostName')?.value.trim()||'Host';const started=H.open(name,8081);if(!started.ok){message('Could not start the room on this device ('+errorText(Error(started.error||'HOST_UNAVAILABLE'))+').');lanHost();return;}session={actor:'host-local',name};transport='lan';localStorage.setItem('mega_party_session',JSON.stringify(session));capabilities=await request('capabilities').catch(()=>null);setup(false);}

@@ -127,6 +127,16 @@ function claim(data,id,now=Date.now()){
  const earned=credit(data,'quest:'+day(now)+':'+id,q.reward,q.title,now);d.claimed.push(id);return earned;
 }
 function spend(data,id,cost){integer(cost);if(!cost)throw Error('INVALID_COST');if(data.wallet.owned.includes(id))return false;if(data.wallet.coins<cost)throw Error('INSUFFICIENT_COINS');data.wallet.coins-=cost;data.wallet.owned.push(id);data.wallet.ledger.push({id:'cosmetic:'+id,currency:'coins',amount:-cost,reason:id,at:Date.now()});return true;}
+/* Idempotent device-wallet debit for power-up charges. Mirrors convert()'s operation ledger so a
+   retried tap can never double-spend: the same operation id always answers the same result. */
+function spendCurrency(data,id,currency,amount,reason,now=Date.now()){
+ migrate(data);if(!['coins','crowns'].includes(currency))throw Error('INVALID_CURRENCY');integer(amount);if(amount<=0)throw Error('INVALID_COST');
+ if(typeof id!=='string'||!/^[A-Za-z0-9][A-Za-z0-9:_-]{0,159}$/.test(id))throw Error('INVALID_OPERATION');
+ const previous=Object.hasOwn(data.wallet.operations,id)?data.wallet.operations[id]:null,fingerprint=JSON.stringify({currency,amount});
+ if(previous){if(previous.fingerprint!==fingerprint)throw Error('IDEMPOTENCY_CONFLICT');return {duplicate:true,amount};}
+ const w=data.wallet;if(w[currency]<amount)throw Error('INSUFFICIENT_'+currency.toUpperCase());
+ w[currency]-=amount;w.operations[id]={fingerprint,result:{currency,amount}};
+ w.ledger.push({id:id+':spend',operation:id,currency,amount:-amount,reason:reason||'Purchase',at:now});return {duplicate:false,amount};}
 function tournamentStats(record={}){const num=k=>Number.isSafeInteger(record?.[k])&&record[k]>=0?record[k]:0,entered=num('entered'),wins=num('wins'),runnerUp=num('runnerUp'),top3=num('top3'),top5=num('top5'),finishSum=num('finishSum'),premiumWins=num('premiumWins'),best=Number.isSafeInteger(record?.bestFinish)&&record.bestFinish>=1&&record.bestFinish<=10?record.bestFinish:null;return {entered,wins,runnerUp,top3,top5,bestFinish:best,averageFinish:entered?finishSum/entered:null,premiumWins,winRate:entered?wins/entered:null};}
 /* One unified wealth table, not lifetime gross purchase volume. Held balances count once. */
 function leaderboard(rows,{scope='global',region='',league='all',metric='rating',limit=20,now=Date.now()}={}){
@@ -142,5 +152,5 @@ function weeklyReward({dailyTiers=[],endTier='wood',games=0,queueGames=0,uniqueO
  const indices=dailyTiers.map(x=>requireTier(x).index).sort((a,b)=>a-b),median=indices[Math.floor((indices.length-1)/2)],t=TIERS[Math.min(end.index,median)];
  return {amount:Math.floor(t.weekly*dailyTiers.length/7),tier:t.id,eligible:true,days:dailyTiers.length};
 }
-return {TIERS,QUESTS,BOT_PAY,POLICY,CROWN_PACKS,DAY,tier,requireTier,integer,add,day,week,weekStart,season,seasonQualified,skillLeaderboardEligible,eligible,basicTier,rankedWinBonus,assignTiers,elo,quote,conversion,wealth,migrate,convert,aggregate,fresh,getDaily,complete,claim,spend,tournamentStats,leaderboard,weeklyReward};
+return {TIERS,QUESTS,BOT_PAY,POLICY,CROWN_PACKS,DAY,tier,requireTier,integer,add,day,week,weekStart,season,seasonQualified,skillLeaderboardEligible,eligible,basicTier,rankedWinBonus,assignTiers,elo,quote,conversion,wealth,migrate,convert,aggregate,fresh,getDaily,complete,claim,spend,spendCurrency,tournamentStats,leaderboard,weeklyReward};
 });

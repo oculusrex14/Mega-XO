@@ -519,6 +519,10 @@ async function main() {
   const { createCommerceService } = require(path.join(ROOT, 'packages/services/commerce.js'));
   const { createCommerceIngressService } = require(path.join(ROOT, 'packages/services/commerce-ingress.js'));
   const { createAdMobVerifier } = require(path.join(ROOT, 'server/admob-ssv.js'));
+  const { createPgStoreDb } = require(path.join(ROOT, 'packages/services/store-pg-adapter.js'));
+  const { StorePurchaseProvider } = require(path.join(ROOT, 'server/store-purchase-provider.js'));
+  const { GooglePlayBilling } = require(path.join(ROOT, 'server/google-play-billing.js'));
+  const { AppleStoreKit } = require(path.join(ROOT, 'server/apple-storekit.js'));
   const { createRealtimeTransport } = require(path.join(ROOT, 'packages/services/realtime-transport.js'));
   const { resolveManagedRedisTarget } = require(path.join(ROOT, 'packages/services/managed-ephemera.js'));
   const { createEphemeraService } = require(path.join(ROOT, 'packages/services/ephemera.js'));
@@ -658,6 +662,53 @@ async function main() {
     if (rewarded || interstitial) adUnits[platform] = { rewarded, interstitial };
   }
   const verifyAd = commerceAdMode !== 'off' ? createAdMobVerifier() : null;
+  /* LR15 store lane: when purchases are enabled AND the store env is present, the Google Play /
+   * Apple StoreKit verifiers run through the PG adapter with the DEPLOYED role split - the
+   * revocation check on the core pool (0021), every store_finalize write/read on the worker pool
+   * (0022). Missing or incomplete store env refuses loudly rather than enabling a half-configured
+   * verifier; the product map mirrors the legacy config grammar (external sku -> internal id). */
+  const PRODUCT_IDS = ['crowns_100', 'crowns_525', 'crowns_1100', 'remove_ads'];
+  const mapProducts = (prefix) => {
+    const values = PRODUCT_IDS.map((id) => process.env[prefix + id] || '');
+    if (values.some(Boolean) && !values.every(Boolean)) throw REFUSE('INCOMPLETE_' + prefix + 'PRODUCTS');
+    if (new Set(values.filter(Boolean)).size !== values.filter(Boolean).length) throw REFUSE('DUPLICATE_' + prefix + 'PRODUCT');
+    const map = {};
+    values.forEach((v, i) => {
+      if (v) {
+        if (!/^[A-Za-z0-9._-]{1,160}$/.test(v)) throw REFUSE('INVALID_' + prefix + 'PRODUCT');
+        map[v] = PRODUCT_IDS[i];
+      }
+    });
+    return map;
+  };
+  let purchaseProvider = null;
+  if (process.env.MEGA_PURCHASES_ENABLED === 'true') {
+    const storeSecretReader = require(path.join(ROOT, 'server/production/config.js')).secret;
+    const googleJson = storeSecretReader(process.env, 'GOOGLE_PLAY_SERVICE_ACCOUNT_JSON');
+    const googleProducts = mapProducts('GOOGLE_PLAY_PRODUCT_');
+    let googlePlay = null;
+    if (googleJson) {
+      if (!process.env.GOOGLE_PLAY_PACKAGE_NAME) throw REFUSE('INVALID_GOOGLE_PLAY_PACKAGE_NAME');
+      const serviceAccount = JSON.parse(googleJson);
+      if (!serviceAccount || !/^[^@\s]+@[^@\s]+\.iam\.gserviceaccount\.com$/.test(serviceAccount.client_email || '') || typeof serviceAccount.private_key !== 'string' || !serviceAccount.private_key.includes('BEGIN PRIVATE KEY')) throw REFUSE('INVALID_GOOGLE_PLAY_SERVICE_ACCOUNT');
+      googlePlay = { packageName: process.env.GOOGLE_PLAY_PACKAGE_NAME, serviceAccount, products: googleProducts, pubsubAudience: process.env.GOOGLE_PLAY_PUBSUB_AUDIENCE || '', pubsubServiceAccount: process.env.GOOGLE_PLAY_PUBSUB_SERVICE_ACCOUNT || '' };
+    }
+    let apple = null;
+    const rootsPath = process.env.APPLE_STORE_ROOTS_FILE || '';
+    if (rootsPath) {
+      if (!path.isAbsolute(rootsPath)) throw REFUSE('ABSOLUTE_APPLE_ROOTS_PATH_REQUIRED');
+      const stat = fs.statSync(rootsPath);
+      if (!stat.isFile() || stat.size > 65536 || (stat.mode & 0o007)) throw REFUSE('INSECURE_APPLE_ROOTS_FILE');
+      const pem = fs.readFileSync(rootsPath, 'utf8');
+      const trustedRoots = pem.match(/-----BEGIN CERTIFICATE-----[\s\S]*?-----END CERTIFICATE-----/g) || [];
+      if (!trustedRoots.length) throw REFUSE('INVALID_APPLE_ROOTS_FILE');
+      apple = { bundleId: process.env.APPLE_STORE_BUNDLE_ID || 'online.megaxo.xoxo', environment: process.env.APPLE_STORE_ENVIRONMENT || 'Production', appAppleId: Number(process.env.APPLE_STORE_APP_ID) || null, products: mapProducts('APPLE_STORE_PRODUCT_'), trustedRoots };
+    }
+    if (googlePlay || apple) {
+      const storeDb = createPgStoreDb({ corePool, workerPool });
+      purchaseProvider = new StorePurchaseProvider({ google: googlePlay ? new GooglePlayBilling(storeDb, googlePlay) : null, apple: apple ? new AppleStoreKit(storeDb, apple) : null });
+    }
+  }
   const commerce = await createCommerceService(corePool, {
     adMode: commerceAdMode,
     purchasesEnabled: process.env.MEGA_PURCHASES_ENABLED === 'true',

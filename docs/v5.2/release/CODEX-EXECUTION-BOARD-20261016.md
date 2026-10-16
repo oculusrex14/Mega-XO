@@ -36,7 +36,7 @@
 
 | ID | Brief | Task | Pri | Deps | Status | PR |
 | --- | --- | --- | --- | --- | --- | --- |
-| LR12 | C01–C03 | Mount V5 monetization: apps/api routes → signed Core commerce facade → PG. Reward ticket/claim, interstitial permit, store purchase/restore, AdMob SSV (no grant from empty probe / show() success / WebView flag), 10/UTC-day shared cap, replay/idempotency. API must hold no core_runtime privileges. Keep live rewards OFF until real provider earned/SSV/UMP proof. | P0 | LR05, LR07 | TODO | — |
+| LR12 | C01–C03 | Mount V5 monetization: DONE as PR #29 — signed commerce ingress (one allow-listed dispatcher), gateway commerceCommand/commerceSsv, apps/api/routes/monetization.js (status/ticket/claim/permit/purchase/cosmetic + actor-free AdMob SSV), commerce service composed on the Core-owned pool. Grants stay disabled until the provider verifiers land (next slice reuses server/admob-ssv.js createAdMobVerifier as verifyAd). API imports no commerce service and touches no monetization tables (asserted). | P0 | LR05, LR07 | PR OPEN | #29 |
 | LR13 | C04 | Cashfree → additive PG commerce.cashfree_orders + Core-verified idempotent settlement/refunds, raw-body webhook verification, independent provider paid-status retrieval, actor-bound access. Reuse PR #19 provider adapter; do not grant on browser return. | P0 | LR12 | TODO | — |
 | C05 | C05 | Polar (primary) / Paddle (fallback) global adapters behind feature flags: catalogs, server-side price/currency validation, signed webhooks, subscription lifecycle, sandbox evidence only. No live charge without owner authorization. | P0 | LR13 | TODO | — |
 | LR15 | C06 | Entitlement semantics: Remove Ads suppresses only automatic ads (never voluntary rewarded ads); cosmetic credits; Premium Pass constraints; no Coins/Crowns rule changes; cross-device recoverable. | P0 | LR12 | TODO | — |
@@ -120,3 +120,9 @@
 **LR10:** full durable chain implemented as PR #27 (see LR10 row). 9/9 offline tests + production-lifecycle green.
 
 **PR queue for Main:** #22 SEO/headers, #23 /opsz root cause, #24 compose fence, #25 deploy guards, #26 AASA team id, #27 email (after #26), #21 board+evidence.
+
+### Checkpoint 6 — 2026-10-16 (LR12 commerce mount)
+
+**LR12 implemented as PR #29** (based on origin/V5.2 @ e4e2ee4 — Main landed a monetization-browser-fixture SIGTERM fix there; that fixture exercises the legacy V4 lane and is untouched). Full chain: API route (actor resolution + client op keys) → signed /ingress/commerce/command → one allow-listed dispatcher → the Core-owned commerce service. SSV path is actor-free + signature-protected; grants fail closed until verifyAd/verifyPurchase/eligibility are configured (next slice). 4/4 ingress tests + production-server/gateway/contracts/lifecycle suites green.
+
+**Next:** LR15 provider verification slice (AdMob SSV verifier wiring + store verifier) to make the mounted surface enableable, then LR16 flags/enablement runbook.

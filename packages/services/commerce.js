@@ -81,6 +81,56 @@ const OUTBOX_KIND = 'commerce.command';
 /* Legacy key grammar (server/monetization-store.js idOK). */
 function idOK(value) { return typeof value === 'string' && /^[A-Za-z0-9:_-]{1,160}$/.test(value); }
 function sha256hex(value) { return crypto.createHash('sha256').update(value).digest('hex'); }
+
+/* SEC-V52-CASHFREE-IDEMPOTENCY-RACE (owner-delegated decision: reserve-then-create). The
+ * (actor, op_key) reservation in 0058 is taken BEFORE any provider I/O; only the reservation
+ * winner ever calls the provider. The fingerprint is the SAME sha256(JSON.stringify(command))
+ * the V35_COMMANDS claim uses, so the reservation and the outcome fence agree on identity. */
+const CREATE_DEADLINE_MS = 10000;
+const RESERVATION_STALE_MS = 60000;
+function createFingerprint(type, productId) { return sha256hex(JSON.stringify({ type, productId })); }
+
+function withDeadline(promise, ms = CREATE_DEADLINE_MS) {
+  let timer;
+  const timeout = new Promise((_, reject) => {
+    timer = setTimeout(() => { const e = Error('CREATE_DEADLINE_EXCEEDED'); e.ambiguous = true; reject(e); }, ms);
+  });
+  return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
+}
+
+/* Inserts the PENDING reservation under the durable (actor, op_key) fence. Returns
+ * { won: true, requestId } for the inserter - the ONLY caller allowed to reach the provider -
+ * or { won: false, reservation } with the winner's row for conflict/replay handling. */
+async function reserveCreate(uow, actor, key, provider, productId, fingerprint, priceSnapshot) {
+  return uow.run(async (tx) => {
+    const inserted = await tx.query(
+      'INSERT INTO monetization.commerce_create_requests (request_id, actor_id, op_key, provider, product_id, fingerprint, price_snapshot, state, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, $8, $9, $9) ON CONFLICT (actor_id, op_key) DO NOTHING RETURNING request_id',
+      [crypto.randomUUID(), actor, key, provider, productId, fingerprint, JSON.stringify(priceSnapshot), 'PENDING', iso(tx.clock())]);
+    if (inserted.rows.length > 0) return { won: true, requestId: inserted.rows[0].request_id };
+    const row = (await tx.query('SELECT request_id, provider, product_id, fingerprint, state, provider_object_id, error_code, created_at, updated_at FROM monetization.commerce_create_requests WHERE actor_id = $1 AND op_key = $2 FOR UPDATE', [actor, key])).rows[0];
+    return { won: false, reservation: row || null };
+  });
+}
+
+/* Terminal state write for a reservation (FAILED / UNKNOWN), independent of any ledger
+ * commit: an explicit provider rejection becomes FAILED with its sanitized code; an ambiguous
+ * transport outcome becomes UNKNOWN and is recovered only by an explicit provider read. */
+async function markReservation(uow, requestId, state, opts = {}) {
+  await uow.run(async (tx) => {
+    await tx.query(
+      'UPDATE monetization.commerce_create_requests SET state = $2, provider_object_id = COALESCE($3, provider_object_id), error_code = $4, updated_at = $5 WHERE request_id = $1',
+      [requestId, state, opts.providerObjectId || null, opts.errorCode || null, iso(tx.clock())]);
+  });
+}
+
+/* A PENDING row older than the stale window is treated exactly like UNKNOWN: the provider
+ * call either long finished or never left, and only an explicit provider read may resolve it. */
+function effectivelyUnknown(row, now) {
+  if (!row) return false;
+  if (row.state === 'UNKNOWN') return true;
+  if (row.state === 'PENDING') return now - Date.parse(row.updated_at) > RESERVATION_STALE_MS;
+  return false;
+}
 function iso(ms) { return new Date(ms).toISOString(); }
 function msOf(value) {
  if (value === null || value === undefined) return null;
@@ -296,7 +346,7 @@ async function createCommerceService(pool, options = {}) {
   * serialized across Core instances; and taking it before the lookup means a same-key concurrent
   * retry blocks, then re-reads the outcome the winner committed, and returns the stored response
   * instead of applying the effect twice. */
- async function transaction(actor, key, command, fn, prelock = null) {
+ async function transaction(actor, key, command, fn, prelock = null, opts = null) {
   if (!idOK(key)) throw Error('IDEMPOTENCY_KEY_REQUIRED');
   const fingerprint = sha256hex(JSON.stringify(command));
   return uow.run(async (tx) => {
@@ -311,6 +361,17 @@ async function createCommerceService(pool, options = {}) {
    if (previous) {
     if (previous.fingerprint !== fingerprint) throw Error('IDEMPOTENCY_CONFLICT');
     return previous.response;
+   }
+   /* FENCE EXTENSION: a key reserved for an in-flight provider creation cannot be claimed by
+    * another commerce command, and the reservation row itself is part of the same durable
+    * identity family. Only the winning creator (same fingerprint, opts.reservation.won) may
+    * pass while its reservation is PENDING/UNKNOWN - that is the finalization commit. */
+   const reservation = (await tx.query('SELECT state, fingerprint, provider FROM monetization.commerce_create_requests WHERE actor_id = $1 AND op_key = $2', [actor, key])).rows[0] || null;
+   if (reservation && (reservation.state === 'PENDING' || reservation.state === 'UNKNOWN')) {
+    const isFinalizer = opts && opts.reservation && opts.reservation.won === true && reservation.fingerprint === fingerprint;
+    if (!isFinalizer) {
+     const e = Error('CHECKOUT_CREATE_PENDING'); e.status = 503; e.retryAfter = 2; throw e;
+    }
    }
    /* The wallet row is the durable readiness fact (`economy.wallets` existence, P05). An actor the
     * API has not handed to Core yet has no wallet row, and running an economic command for it would
@@ -574,9 +635,16 @@ async function createCommerceService(pool, options = {}) {
   });
  }
 
- /* Server-side order creation (the legacy cashfree/order POST). The catalog price is
+  /* Server-side order creation (the legacy cashfree/order POST). The catalog price is
   * SERVER-AUTHORITATIVE; the client only names the product and its customer details. The SAME
-  * durable key returns the SAME order - no second provider call, no second charge. */
+  * durable key returns the SAME order - no second provider call, no second charge.
+  *
+  * RESERVE-THEN-CREATE: the (actor, op_key) reservation in 0058 is taken BEFORE the provider
+  * call and ONLY the reservation winner reaches Cashfree. The locally-allocated order id is
+  * stored on the reservation at PENDING time (reconciliation key). An explicit provider
+  * rejection marks FAILED (replay returns the sanitized failure); an ambiguous transport
+  * outcome marks UNKNOWN and is recovered ONLY by an explicit provider read against the
+  * reserved id - never an automatic re-create. */
  async function createCashfreeOrder(actor, key, productId, customer) {
   const price = cashfreePrice(productId);
   if (!idOK(key)) throw Error('IDEMPOTENCY_KEY_REQUIRED');
@@ -585,6 +653,7 @@ async function createCommerceService(pool, options = {}) {
   const phone = typeof customer.phone === 'string' ? customer.phone.trim() : '';
   if (email.length < 3 || email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw Error('INVALID_CUSTOMER_DETAILS');
   if (!/^\+?[0-9]{10,15}$/.test(phone)) throw Error('INVALID_CUSTOMER_DETAILS');
+  const fingerprint = createFingerprint('cashfree-create', productId);
   const previous = await uow.run(async (tx) => {
    await tx.query('SET TRANSACTION READ ONLY');
    return (await tx.query('SELECT order_id, product_id, session_id FROM monetization.cashfree_orders WHERE actor_id = $1 AND op_key = $2', [actor, key])).rows[0] || null;
@@ -602,9 +671,36 @@ async function createCommerceService(pool, options = {}) {
    return { ready: wallet.rows.length > 0, account: accountOf(graph, actor) };
   });
   if (!preflight.ready) throw Error('ACCOUNT_REQUIRED');
+  const reservation = await reserveCreate(uow, actor, key, 'cashfree', productId, fingerprint, { amount: price, currency: 'INR' });
+  if (!reservation.won) {
+   const r = reservation.reservation;
+   if (!r || r.provider !== 'cashfree' || r.product_id !== productId || r.fingerprint !== fingerprint) throw Error('IDEMPOTENCY_CONFLICT');
+   if (r.state === 'FAILED') { const e = Error(r.error_code || 'CASHFREE_CREATE_FAILED'); e.status = 502; throw e; }
+   /* READY/unknown-by-us: the ledger is the authority; a completed create replays from it. */
+   if (r.state === 'READY' && r.provider_object_id) {
+    const row = (await uow.run(async (tx) => { await tx.query('SET TRANSACTION READ ONLY'); return (await tx.query('SELECT order_id, session_id FROM monetization.cashfree_orders WHERE order_id = $1', [r.provider_object_id])).rows[0] || null; }));
+    if (row) return { orderId: row.order_id, productId, paymentSessionId: row.session_id };
+   }
+   const e = Error('CHECKOUT_CREATE_PENDING'); e.status = 503; e.retryAfter = 2; throw e;
+  }
+  const requestId = reservation.requestId;
   const provider = config.cashfreeProvider;
   const orderId = typeof provider.newOrderId === 'function' ? provider.newOrderId() : newOrderId();
-  const created = await provider.createOrder({ orderId, productId, amount: price, actor, email, phone, returnUrl: config.cashfreeReturnUrl, notifyUrl: config.cashfreeNotifyUrl });
+  await markReservation(uow, requestId, 'PENDING', { providerObjectId: orderId });
+  let created;
+  try {
+   created = await withDeadline(provider.createOrder({ orderId, productId, amount: price, actor, email, phone, returnUrl: config.cashfreeReturnUrl, notifyUrl: config.cashfreeNotifyUrl }));
+  } catch (error) {
+   /* An explicit provider rejection proving non-creation (auth/4xx) is terminal FAILED;
+    * timeouts, disconnects and 5xx/429/408 are ambiguous UNKNOWN. Neither is ever re-created
+    * automatically - the reservation records exactly what happened for the recovery read. */
+   const code = String(error && error.message || 'CASHFREE_CREATE_UNKNOWN');
+   const httpMatch = /^CASHFREE_HTTP_([0-9]{3})$/.exec(code);
+   const terminal = code === 'CASHFREE_AUTH' || code === 'CASHFREE_CONFIG' || (!!httpMatch && httpMatch[1] !== '408' && httpMatch[1] !== '429');
+   await markReservation(uow, requestId, terminal ? 'FAILED' : 'UNKNOWN', { providerObjectId: orderId, errorCode: terminal ? code : null });
+   if (terminal) { error.status = 502; throw error; }
+   const e = Error('CHECKOUT_CREATE_PENDING'); e.status = 503; e.retryAfter = 2; throw e;
+  }
   return transaction(actor, key, { type: 'cashfree-create', productId }, async (tx) => {
    /* The (actor, op_key) unique constraint (0056) is the durable race fence: two concurrent
     * creates with one key record ONE row; the loser returns the winner's recorded order. */
@@ -613,8 +709,14 @@ async function createCommerceService(pool, options = {}) {
     [created.orderId, actor, productId, price, 'INR', 'ACTIVE', created.paymentSessionId, key, iso(tx.clock())]);
    const row = (await tx.query('SELECT order_id, session_id FROM monetization.cashfree_orders WHERE actor_id = $1 AND op_key = $2', [actor, key])).rows[0];
    if (!row) throw Error('CASHFREE_RECORD_FAILED');
+   /* The reservation completes in the SAME transaction as the ledger + outcome: a crash between
+    * the provider call and this commit leaves PENDING/UNKNOWN with the reserved order id, which
+    * the recovery read resolves - never a silent second create. */
+   await tx.query(
+    'UPDATE monetization.commerce_create_requests SET state = $2, provider_object_id = $3, response_text = $4, updated_at = $5 WHERE request_id = $1 AND state = $6',
+    [requestId, 'READY', created.orderId, JSON.stringify(created).slice(0, 4096), iso(tx.clock()), 'PENDING']);
    return { orderId: row.order_id, productId, paymentSessionId: row.session_id };
-  });
+  }, null, { reservation: { requestId, won: true } });
  }
 
  /* The settlement core, shared by the webhook and the status poll. Provider verification happens
@@ -737,14 +839,19 @@ async function createCommerceService(pool, options = {}) {
   }, ['cashfree', orderId]);
  }
 
- /* Server-side Polar checkout creation (the legacy cashfree/order shape, USD). The SAME durable
-  * key returns the SAME checkout; the catalog price id and cents are SERVER-AUTHORITATIVE. */
+  /* Server-side Polar checkout creation (the legacy cashfree/order shape, USD). The SAME durable
+  * key returns the SAME checkout; the catalog price id and cents are SERVER-AUTHORITATIVE.
+  *
+  * RESERVE-THEN-CREATE: identical fence to the Cashfree lane. Polar generates its own checkout
+  * id, so the reservation's request_id travels in the server-owned checkout metadata (the
+  * reconciliation key - Polar provides no external idempotency and none is assumed). */
  async function createPolarCheckout(actor, key, productId, customer) {
   const entry = polarCatalogEntry(productId);
   if (!idOK(key)) throw Error('IDEMPOTENCY_KEY_REQUIRED');
   if (customer !== undefined && customer !== null && (typeof customer !== 'object' || Array.isArray(customer))) throw Error('INVALID_CUSTOMER_DETAILS');
   const email = customer && typeof customer.email === 'string' ? customer.email.trim() : '';
   if (email && (email.length < 3 || email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))) throw Error('INVALID_CUSTOMER_DETAILS');
+  const fingerprint = createFingerprint('polar-create', productId);
   const previous = await uow.run(async (tx) => {
    await tx.query('SET TRANSACTION READ ONLY');
    return (await tx.query('SELECT checkout_id, product_id, status FROM monetization.polar_orders WHERE actor_id = $1 AND op_key = $2', [actor, key])).rows[0] || null;
@@ -761,7 +868,29 @@ async function createCommerceService(pool, options = {}) {
    return { ready: wallet.rows.length > 0, account: accountOf(graph, actor) };
   });
   if (!preflight.ready) throw Error('ACCOUNT_REQUIRED');
-  const created = await config.polarProvider.createCheckout({ priceId: entry.priceId, actor, productId, email: email || undefined, successUrl: config.polarSuccessUrl });
+  const reservation = await reserveCreate(uow, actor, key, 'polar', productId, fingerprint, { priceId: entry.priceId, amountCents: entry.amountCents, currency: 'usd' });
+  if (!reservation.won) {
+   const r = reservation.reservation;
+   if (!r || r.provider !== 'polar' || r.product_id !== productId || r.fingerprint !== fingerprint) throw Error('IDEMPOTENCY_CONFLICT');
+   if (r.state === 'FAILED') { const e = Error(r.error_code || 'POLAR_CREATE_FAILED'); e.status = 502; throw e; }
+   if (r.state === 'READY' && r.provider_object_id) {
+    const row = (await uow.run(async (tx) => { await tx.query('SET TRANSACTION READ ONLY'); return (await tx.query('SELECT checkout_id, status FROM monetization.polar_orders WHERE checkout_id = $1', [r.provider_object_id])).rows[0] || null; }));
+    if (row) return { checkoutId: row.checkout_id, productId, status: row.status };
+   }
+   const e = Error('CHECKOUT_CREATE_PENDING'); e.status = 503; e.retryAfter = 2; throw e;
+  }
+  const requestId = reservation.requestId;
+  let created;
+  try {
+   created = await withDeadline(config.polarProvider.createCheckout({ priceId: entry.priceId, actor, productId, email: email || undefined, successUrl: config.polarSuccessUrl, metadata: { request_id: requestId } }));
+  } catch (error) {
+   const code = String(error && error.message || 'POLAR_CREATE_UNKNOWN');
+   const httpMatch = /^POLAR_HTTP_([0-9]{3})$/.exec(code);
+   const terminal = code === 'POLAR_AUTH' || code === 'POLAR_CONFIG' || (!!httpMatch && httpMatch[1] !== '408' && httpMatch[1] !== '429');
+   await markReservation(uow, requestId, terminal ? 'FAILED' : 'UNKNOWN', { errorCode: terminal ? code : null });
+   if (terminal) { error.status = 502; throw error; }
+   const e = Error('CHECKOUT_CREATE_PENDING'); e.status = 503; e.retryAfter = 2; throw e;
+  }
   return transaction(actor, key, { type: 'polar-create', productId }, async (tx) => {
    /* The (actor, op_key) unique constraint (0057) is the durable race fence. */
    await tx.query(
@@ -769,8 +898,12 @@ async function createCommerceService(pool, options = {}) {
     [created.checkoutId, actor, productId, entry.priceId, entry.amountCents, 'usd', 'created', key, iso(tx.clock())]);
    const row = (await tx.query('SELECT checkout_id, status FROM monetization.polar_orders WHERE actor_id = $1 AND op_key = $2', [actor, key])).rows[0];
    if (!row) throw Error('POLAR_RECORD_FAILED');
+   /* READY commits in the SAME transaction as the ledger + outcome (see the Cashfree lane). */
+   await tx.query(
+    'UPDATE monetization.commerce_create_requests SET state = $2, provider_object_id = $3, response_text = $4, updated_at = $5 WHERE request_id = $1 AND state = $6',
+    [requestId, 'READY', created.checkoutId, JSON.stringify(created).slice(0, 4096), iso(tx.clock()), 'PENDING']);
    return { checkoutId: row.checkout_id, productId, status: row.status };
-  });
+  }, null, { reservation: { requestId, won: true } });
  }
 
  /* The Polar settlement core, shared by the webhook and the status poll. The INDEPENDENT

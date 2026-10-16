@@ -42,5 +42,5 @@
 
 ## Honest gaps for Main's audit
 
-3. Monetization-route rate-limit negatives arrive with LR12 (routes do not exist on the trunk yet).
-4. Device-lane security (key attestation, store signing chain) is LR08/LR20, not covered by unit evidence.
+1. Monetization-route rate-limit negatives arrive with LR12 (routes do not exist on the trunk yet).
+2. Device-lane security (key attestation, store signing chain) is LR08/LR20, not covered by unit evidence.

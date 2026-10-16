@@ -93,3 +93,20 @@ lane rate limiting, Cashfree create-before-fence) are recorded as owner decision
 - `codex/v52-game-ui-refresh` / `codex/v52-provider-release` are stale-but-contained; the
   `preserve/*` branches carry no genuine unmerged content (verified by `git cherry` + empty
   content diff). Safe to delete if the owner wants the remote tidied.
+
+## Later Codex advances merged (after the first record)
+
+Codex kept committing while this work ran (the working directory is shared). Two additional genuine
+commits landed after the initial merge set and were then merged here:
+
+- **PR #29 advance `49854f6`** — Polar global payment adapter (C05), `packages/services/polar.js` +
+  `tests/v52-polar-provider.test.js`. `polar.js` is DB-free, uses a timing-safe HMAC over the exact
+  raw webhook bytes with a 5-minute replay window, and re-verifies via `GET /v1/checkouts/{id}`
+  before any grant. It is **defined but not composed into any server boot path**, so it is dormant
+  until `POLAR_ACCESS_TOKEN` + the price map are configured — matching its stated contract. No route
+  reaches it yet, so it adds no live attack surface.
+- **PR #21 advance `4b83df1`** — board checkpoint 16 (docs only).
+
+Both merged clean (no conflicts). After them, **every PR head #20–#29 is again an ancestor of
+`origin/V5.2`** (final head `31fac23`), and there are 0 open PRs.
+

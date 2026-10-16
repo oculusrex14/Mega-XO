@@ -28,6 +28,9 @@ function fakeCommerce() {
     createCashfreeOrder: record('createCashfreeOrder'),
     cashfreeOrderStatus: record('cashfreeOrderStatus'),
     settleCashfreeWebhook: record('settleCashfreeWebhook'),
+    createPolarCheckout: record('createPolarCheckout'),
+    polarOrderStatus: record('polarOrderStatus'),
+    settlePolarWebhook: record('settlePolarWebhook'),
   };
 }
 

@@ -71,6 +71,7 @@ const { lockTransactionIdentity } = require('../db/pg/locks.js');
 const M = require('../../src/monetization.js');
 const D = require('../../src/domain.js');
 const { newOrderId } = require('./cashfree.js');
+const { UUID_V4 } = require('./polar.js');
 
 const CORE_ROLE = 'core_runtime';
 const DAY = 86400000;
@@ -154,6 +155,9 @@ async function createCommerceService(pool, options = {}) {
   cashfreeCatalog: options.cashfreeCatalog || null,
   cashfreeReturnUrl: typeof options.cashfreeReturnUrl === 'string' ? options.cashfreeReturnUrl : '',
   cashfreeNotifyUrl: typeof options.cashfreeNotifyUrl === 'string' ? options.cashfreeNotifyUrl : '',
+  polarProvider: options.polarProvider || null,
+  polarCatalog: options.polarCatalog || null,
+  polarSuccessUrl: typeof options.polarSuccessUrl === 'string' ? options.polarSuccessUrl : '',
   adMode,
   rewardItem: typeof options.rewardItem === 'string' && options.rewardItem ? options.rewardItem : 'cosmetic_reward',
   adUnits: normalizeAdUnits(options.adUnits, options.adUnit),
@@ -196,7 +200,41 @@ async function createCommerceService(pool, options = {}) {
  }
  validateCashfreeCatalog();
 
- /* Settled Cashfree once-products for the owned() projection: the additive receipt contract. */
+/* ---------------------------------------------------------------------- polar (C05)
+ *
+ * The Polar lane (the owner decision: PRIMARY GLOBAL payments, the INDIAN FALLBACK behind
+ * Cashfree) mirrors the Cashfree contract exactly: the server-side catalog price is recorded at
+ * creation, the settlement requires an INDEPENDENT provider verification with the exact recorded
+ * amount AND the metadata actor/product binding, and the refund is a terminal refunded_at under
+ * the same order-identity mutex. The receipts table keeps its ('google','apple') CHECK - a Polar
+ * settlement is recorded in monetization.polar_orders (0057), the additive data contract. */
+
+ const POLAR_CENTS = /^\d{1,9}$/;
+ function polarCatalogEntry(productId) {
+  if (!config.polarProvider || typeof config.polarProvider.createCheckout !== 'function') throw Error('POLAR_UNAVAILABLE');
+  if (!config.polarCatalog || typeof config.polarCatalog !== 'object' || Array.isArray(config.polarCatalog)) throw Error('POLAR_UNAVAILABLE');
+  const entry = config.polarCatalog[productId];
+  if (!entry || typeof entry !== 'object' || Array.isArray(entry)) throw Error('INVALID_PRODUCT');
+  if (typeof entry.priceId !== 'string' || !UUID_V4.test(entry.priceId)) throw Error('INVALID_PRODUCT');
+  if (typeof entry.amountCents !== 'number' || !POLAR_CENTS.test(String(entry.amountCents)) || entry.amountCents <= 0) throw Error('INVALID_PRODUCT');
+  if (!M.product(productId)) throw Error('INVALID_PRODUCT');
+  return entry;
+ }
+
+ function validatePolarCatalog() {
+  if (!config.polarProvider) return;
+  if (!config.polarCatalog || typeof config.polarCatalog !== 'object' || Array.isArray(config.polarCatalog)) throw new PgGuardError('POLAR_CATALOG_REQUIRED');
+  for (const [productId, entry] of Object.entries(config.polarCatalog)) {
+   if (!M.product(productId)) throw new PgGuardError('INVALID_POLAR_PRODUCT', { productId });
+   if (!entry || typeof entry !== 'object' || typeof entry.priceId !== 'string' || !UUID_V4.test(entry.priceId)) throw new PgGuardError('INVALID_POLAR_PRICE_ID', { productId });
+   if (typeof entry.amountCents !== 'number' || !POLAR_CENTS.test(String(entry.amountCents)) || entry.amountCents <= 0) throw new PgGuardError('INVALID_POLAR_PRICE_CENTS', { productId });
+  }
+ }
+ validatePolarCatalog();
+
+ /* Settled Cashfree AND Polar once-products for the owned() projection: the additive receipt
+  * contracts (0056/0057). Both tables carry the terminal refunded_at, so a refunded
+  * once-product (remove_ads) is revoked structurally in the same projection. */
  async function cashfreeOnceRows(tx, actor) {
   const r = await tx.query(
    'SELECT product_id, refunded_at FROM monetization.cashfree_orders WHERE actor_id = $1 AND settled_at IS NOT NULL ORDER BY created_at LIMIT $2',
@@ -204,11 +242,14 @@ async function createCommerceService(pool, options = {}) {
   return r.rows;
  }
 
- /* owned() over the receipts UNION the settled Cashfree once-products. */
+ /* owned() over the receipts UNION the settled Cashfree and Polar once-products. */
  async function ownedWithCashfree(tx, graph, account, actor) {
   const receipts = await tx.repositories.purchases.forActor(actor);
-  const rows = await cashfreeOnceRows(tx, actor);
-  return owned(graph, account, [...receipts, ...rows.map((r) => ({ productId: r.product_id, refunded: r.refunded_at !== null }))]);
+  const cashfreeRows = await cashfreeOnceRows(tx, actor);
+  const polarRows = await tx.query('SELECT product_id, refunded_at FROM monetization.polar_orders WHERE actor_id = $1 AND settled_at IS NOT NULL ORDER BY created_at LIMIT $2', [actor, 100]);
+  return owned(graph, account, [...receipts,
+   ...cashfreeRows.map((r) => ({ productId: r.product_id, refunded: r.refunded_at !== null })),
+   ...polarRows.rows.map((r) => ({ productId: r.product_id, refunded: r.refunded_at !== null }))]);
  }
 
  /* The shared RECEIPT-identity mutex namespace: `receipt` + [store, transactionId], the same
@@ -696,6 +737,166 @@ async function createCommerceService(pool, options = {}) {
   }, ['cashfree', orderId]);
  }
 
+ /* Server-side Polar checkout creation (the legacy cashfree/order shape, USD). The SAME durable
+  * key returns the SAME checkout; the catalog price id and cents are SERVER-AUTHORITATIVE. */
+ async function createPolarCheckout(actor, key, productId, customer) {
+  const entry = polarCatalogEntry(productId);
+  if (!idOK(key)) throw Error('IDEMPOTENCY_KEY_REQUIRED');
+  if (customer !== undefined && customer !== null && (typeof customer !== 'object' || Array.isArray(customer))) throw Error('INVALID_CUSTOMER_DETAILS');
+  const email = customer && typeof customer.email === 'string' ? customer.email.trim() : '';
+  if (email && (email.length < 3 || email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))) throw Error('INVALID_CUSTOMER_DETAILS');
+  const previous = await uow.run(async (tx) => {
+   await tx.query('SET TRANSACTION READ ONLY');
+   return (await tx.query('SELECT checkout_id, product_id, status FROM monetization.polar_orders WHERE actor_id = $1 AND op_key = $2', [actor, key])).rows[0] || null;
+  });
+  if (previous) {
+   if (previous.product_id !== productId) throw Error('IDEMPOTENCY_CONFLICT');
+   return { checkoutId: previous.checkout_id, productId: previous.product_id, status: previous.status };
+  }
+  /* The account gate BEFORE the provider round-trip (the purchase preflight pattern). */
+  const preflight = await uow.run(async (tx) => {
+   await tx.query('SET TRANSACTION READ ONLY');
+   const graph = await tx.repositories.domain();
+   const wallet = await tx.query('SELECT 1 AS ok FROM economy.wallets WHERE actor_id = $1', [actor]);
+   return { ready: wallet.rows.length > 0, account: accountOf(graph, actor) };
+  });
+  if (!preflight.ready) throw Error('ACCOUNT_REQUIRED');
+  const created = await config.polarProvider.createCheckout({ priceId: entry.priceId, actor, productId, email: email || undefined, successUrl: config.polarSuccessUrl });
+  return transaction(actor, key, { type: 'polar-create', productId }, async (tx) => {
+   /* The (actor, op_key) unique constraint (0057) is the durable race fence. */
+   await tx.query(
+    'INSERT INTO monetization.polar_orders (checkout_id, actor_id, product_id, price_id, amount_cents, currency, status, op_key, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) ON CONFLICT (actor_id, op_key) DO NOTHING',
+    [created.checkoutId, actor, productId, entry.priceId, entry.amountCents, 'usd', 'created', key, iso(tx.clock())]);
+   const row = (await tx.query('SELECT checkout_id, status FROM monetization.polar_orders WHERE actor_id = $1 AND op_key = $2', [actor, key])).rows[0];
+   if (!row) throw Error('POLAR_RECORD_FAILED');
+   return { checkoutId: row.checkout_id, productId, status: row.status };
+  });
+ }
+
+ /* The Polar settlement core, shared by the webhook and the status poll. The INDEPENDENT
+  * verification returns the price amount, currency AND the metadata binding; all three must match
+  * the recorded row before any economic transaction (the provider boundary). */
+ async function settlePolarOrder(checkoutId, hints = {}) {
+  const provider = config.polarProvider;
+  if (!provider || typeof provider.verifyCheckout !== 'function') throw Error('POLAR_UNAVAILABLE');
+  if (typeof checkoutId !== 'string' || !UUID_V4.test(checkoutId)) throw Error('ORDER_NOT_FOUND');
+  const recorded = await uow.run(async (tx) => {
+   await tx.query('SET TRANSACTION READ ONLY');
+   return (await tx.query('SELECT checkout_id, actor_id, product_id, price_id, amount_cents, currency, status, polar_order_id, settled_at, refunded_at FROM monetization.polar_orders WHERE checkout_id = $1', [checkoutId])).rows[0] || null;
+  });
+  if (!recorded) throw Error('ORDER_NOT_FOUND');
+  if (recorded.refunded_at) throw Error('ORDER_REFUNDED');
+  const verified = await provider.verifyCheckout(checkoutId);
+  if (!verified || verified.status !== 'succeeded') return { checkoutId, settled: false, status: verified ? verified.status : null };
+  if (verified.currency !== recorded.currency || Number(recorded.amount_cents) !== verified.amount) throw Error('ORDER_AMOUNT_MISMATCH');
+  const metaActor = verified.metadata && typeof verified.metadata.actor === 'string' ? verified.metadata.actor : '';
+  const metaProduct = verified.metadata && typeof verified.metadata.product_id === 'string' ? verified.metadata.product_id : '';
+  if (metaActor !== recorded.actor_id || metaProduct !== recorded.product_id) throw Error('INVALID_RECEIPT');
+  const product = M.product(recorded.product_id);
+  if (!product) throw Error('INVALID_PRODUCT');
+  const polarOrderId = typeof hints.orderId === 'string' && hints.orderId && hints.orderId.length <= 160 ? hints.orderId : null;
+  return transaction(recorded.actor_id, 'polar:' + checkoutId, { type: 'polar-settle', checkoutId }, async (tx, graph, current) => {
+   if (!config.purchasesEnabled || !allowed(current)) throw Error('PURCHASE_UNAVAILABLE');
+   const row = (await tx.query('SELECT settled_at, refunded_at FROM monetization.polar_orders WHERE checkout_id = $1 FOR UPDATE', [checkoutId])).rows[0];
+   if (!row) throw Error('ORDER_NOT_FOUND');
+   if (row.refunded_at) throw Error('ORDER_REFUNDED');
+   if (row.settled_at) return { productId: product.id, duplicate: true, settled: true };
+   if (product.once) {
+    for (const r of await tx.repositories.purchases.forActor(recorded.actor_id)) {
+     if (r.productId !== product.id) continue;
+     if (r.refunded) throw Error('PRODUCT_PREVIOUSLY_REFUNDED');
+     return { productId: product.id, alreadyOwned: true, settled: true };
+    }
+    const prev = (await tx.query('SELECT refunded_at FROM monetization.polar_orders WHERE actor_id = $1 AND product_id = $2 AND settled_at IS NOT NULL AND checkout_id <> $3 ORDER BY created_at LIMIT 1', [recorded.actor_id, product.id, checkoutId])).rows[0];
+    if (prev) {
+     if (prev.refunded_at) throw Error('PRODUCT_PREVIOUSLY_REFUNDED');
+     return { productId: product.id, alreadyOwned: true, settled: true };
+    }
+   }
+   current.crowns = D.add(current.crowns, product.crowns);
+   if (product.crowns) current.purchaseInfluenced = true;
+   if (product.crowns) journal(graph, { id: 'purchase:polar:' + checkoutId, actor: recorded.actor_id, currency: 'crowns', amount: product.crowns, reason: 'Crown purchase', source: 'verified-store', at: tx.clock() });
+   await event(tx, recorded.actor_id, 'purchase_verified', product.crowns);
+   await tx.query('UPDATE monetization.polar_orders SET status = $2, settled_at = $3, polar_order_id = COALESCE($4, polar_order_id) WHERE checkout_id = $1', [checkoutId, 'succeeded', iso(tx.clock()), polarOrderId]);
+   return { productId: product.id, crowns: product.crowns, duplicate: false, settled: true };
+  }, ['polar', checkoutId]);
+ }
+
+ /* The provider webhook (actor-free): the Standard Webhooks HMAC binds the EXACT raw bytes, then
+  * the recorded order is settled through the INDEPENDENT verification above; refund events route
+  * to the trusted lane by checkout_id or polar_order_id. */
+ async function settlePolarWebhook(payload) {
+  const provider = config.polarProvider;
+  if (!provider || typeof provider.verifyWebhook !== 'function') throw Error('POLAR_UNAVAILABLE');
+  const raw = payload && typeof payload.raw === 'string' ? payload.raw : '';
+  const id = payload && typeof payload.id === 'string' ? payload.id : '';
+  const timestamp = payload && typeof payload.timestamp === 'string' ? payload.timestamp : '';
+  const signature = payload && typeof payload.signature === 'string' ? payload.signature : '';
+  if (!raw || raw.length > 262144) throw Error('INVALID_WEBHOOK');
+  if (!provider.verifyWebhook({ id, timestamp, signature, rawBody: raw })) throw Error('INVALID_WEBHOOK_SIGNATURE');
+  let parsed; try { parsed = JSON.parse(raw); } catch { throw Error('INVALID_WEBHOOK'); }
+  const type = parsed && typeof parsed.type === 'string' ? parsed.type : '';
+  const data = parsed && typeof parsed.data === 'object' && parsed.data ? parsed.data : {};
+  if (type.startsWith('order.')) {
+   const checkoutId = typeof data.checkout_id === 'string' ? data.checkout_id : '';
+   if (!UUID_V4.test(checkoutId)) return { handled: false, reason: 'NO_CHECKOUT' };
+   if (type === 'order.paid') return settlePolarOrder(checkoutId, { orderId: typeof data.id === 'string' ? data.id : undefined });
+   return { handled: true, type, checkoutId };
+  }
+  if (type.startsWith('refund.')) {
+   const ref = typeof data.order_id === 'string' && data.order_id ? data.order_id : (typeof data.checkout_id === 'string' ? data.checkout_id : '');
+   if (!ref) return { handled: false, reason: 'NO_REFERENCE' };
+   return refundPolarOrder(ref, 'provider-webhook');
+  }
+  return { handled: false, reason: 'UNROUTED_TYPE' };
+ }
+
+ /* The actor-bound status poll: hides other actors' orders and settles through the provider. */
+ async function polarOrderStatus(actor, checkoutId) {
+  if (typeof actor !== 'string' || !actor || typeof checkoutId !== 'string' || !checkoutId) throw Error('ORDER_NOT_FOUND');
+  const row = await uow.run(async (tx) => {
+   await tx.query('SET TRANSACTION READ ONLY');
+   return (await tx.query('SELECT checkout_id, product_id, status, settled_at, refunded_at FROM monetization.polar_orders WHERE checkout_id = $1 AND actor_id = $2', [checkoutId, actor])).rows[0] || null;
+  });
+  if (!row) throw Error('ORDER_NOT_FOUND');
+  if (row.settled_at) {
+   const product = M.product(row.product_id);
+   return { checkoutId, paid: true, productId: row.product_id, crowns: product ? product.crowns : 0, refunded: row.refunded_at !== null };
+  }
+  const result = await settlePolarOrder(checkoutId);
+  return {
+   checkoutId,
+   paid: result.settled === true,
+   productId: row.product_id,
+   crowns: result.settled ? (result.crowns || 0) : 0,
+   status: result.settled ? undefined : result.status,
+   duplicate: result.duplicate === true || result.alreadyOwned === true,
+  };
+ }
+
+ /* The trusted Polar refund lane: finds the order by checkout_id OR polar_order_id, marks the
+  * terminal refunded_at under the SAME identity mutex the settlement takes; the owned()
+  * projection revokes a refunded remove_ads structurally. */
+ async function refundPolarOrder(reference, reason = 'refund') {
+  if (typeof reference !== 'string' || !reference) throw Error('ORDER_NOT_FOUND');
+  const recorded = await uow.run(async (tx) => {
+   await tx.query('SET TRANSACTION READ ONLY');
+   return (await tx.query('SELECT checkout_id, actor_id, settled_at, refunded_at FROM monetization.polar_orders WHERE checkout_id = $1 OR polar_order_id = $1', [reference])).rows[0] || null;
+  });
+  if (!recorded) throw Error('ORDER_NOT_FOUND');
+  const checkoutId = recorded.checkout_id;
+  if (!recorded.settled_at) return { checkoutId, refunded: false, reason: 'UNSETTLED' };
+  return transaction(recorded.actor_id, 'polar-refund:' + checkoutId, { type: 'polar-refund', checkoutId }, async (tx) => {
+   const row = (await tx.query('SELECT refunded_at FROM monetization.polar_orders WHERE checkout_id = $1 FOR UPDATE', [checkoutId])).rows[0];
+   if (!row) throw Error('ORDER_NOT_FOUND');
+   if (row.refunded_at) return { checkoutId, refunded: true, duplicate: true };
+   await tx.query('UPDATE monetization.polar_orders SET refunded_at = $2 WHERE checkout_id = $1', [checkoutId, iso(tx.clock())]);
+   await emitOutbox(tx, { id: 'commerce.polar-refund:' + checkoutId, event: { checkoutId, actor: recorded.actor_id, known: true, reason: String(reason).slice(0, 120) } });
+   await event(tx, recorded.actor_id, 'purchase_refunded', 0);
+   return { checkoutId, refunded: true, duplicate: false };
+  }, ['polar', checkoutId]);
+ }
+
  /* Trusted store-notification integration only. Never mount as a player endpoint. The refund
   * freezes the receipt and the account (security_hold) rather than clawing funds from an innocent
   * opponent, and records the permanent revocation tombstone so a later purchase of the same store
@@ -824,6 +1025,10 @@ async function createCommerceService(pool, options = {}) {
   settleCashfreeWebhook,
   cashfreeOrderStatus,
   refundCashfreeOrder,
+  createPolarCheckout,
+  settlePolarWebhook,
+  polarOrderStatus,
+  refundPolarOrder,
   /* Releases this service's unit-of-work state only. The pool is caller-owned (it carries a
     cluster-wide connection-budget claim) and is NEVER closed here. */
   close() { uow.close(); },

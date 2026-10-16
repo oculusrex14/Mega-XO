@@ -36,6 +36,11 @@ const OPS = {
   cashfree_create: { args: ['key', 'productId', 'customer'], method: 'createCashfreeOrder', call: (c, actor, a) => c.createCashfreeOrder(actor, a[0], a[1], a[2]) },
   cashfree_status: { args: ['orderId'], method: 'cashfreeOrderStatus', call: (c, actor, a) => c.cashfreeOrderStatus(actor, a[0]) },
   cashfree_webhook: { args: ['payload'], method: 'settleCashfreeWebhook', actorFree: true, call: (c, actor, a) => c.settleCashfreeWebhook(a[0]) },
+  /* C05: the Polar lane. create/status are player commands (session actor); the webhook is
+   * actor-free (Polar's server calls it) and carries {raw, id, timestamp, signature}. */
+  polar_create: { args: ['key', 'productId', 'customer'], method: 'createPolarCheckout', call: (c, actor, a) => c.createPolarCheckout(actor, a[0], a[1], a[2]) },
+  polar_status: { args: ['checkoutId'], method: 'polarOrderStatus', call: (c, actor, a) => c.polarOrderStatus(actor, a[0]) },
+  polar_webhook: { args: ['payload'], method: 'settlePolarWebhook', actorFree: true, call: (c, actor, a) => c.settlePolarWebhook(a[0]) },
 };
 
 function fail(code) { const e = Error(code); e.code = code; throw e; }
@@ -79,6 +84,7 @@ function createCommerceIngressService({ commerce }) {
         else if (name === 'kind') args.push(requireText(value, 'INVALID_AD_KIND', /^(rewarded|interstitial)$/));
         else if (name === 'itemId') args.push(requireText(value, 'INVALID_ITEM_ID', KEY_PATTERN));
         else if (name === 'productId' || name === 'orderId') args.push(requireText(value, 'INVALID_' + name.toUpperCase(), KEY_PATTERN));
+        else if (name === 'checkoutId') args.push(requireText(value, 'INVALID_CHECKOUTID', /^[!-~]{1,160}$/));
         else if (name === 'customer') {
           if (!value || typeof value !== 'object' || Array.isArray(value)) fail('INVALID_CUSTOMER_DETAILS');
           args.push(value);

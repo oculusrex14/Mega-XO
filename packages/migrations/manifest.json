@@ -339,6 +339,12 @@
       "name": "0056_cashfree_orders",
       "file": "migrations/0056_cashfree_orders.sql",
       "sha256": "1fa0574015704c280311f247fc4b2b6044d26e8a3f983b9d1e15c4613fa2a7dc"
+    },
+    {
+      "id": 57,
+      "name": "0057_polar_orders",
+      "file": "migrations/0057_polar_orders.sql",
+      "sha256": "add1ae5daa11d65e22b57f9b08b953d39aee0ec40451a5fa75a597dfb1ce2876"
     }
   ]
 }

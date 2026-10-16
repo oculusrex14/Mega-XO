@@ -224,3 +224,17 @@
 **The monetization lane is now COMPLETE on this PR for all three recorded providers**: Cashfree (Indian primary), Polar (global primary + Indian fallback), and the native stores (google/apple via the store-pg-adapter). Paddle remains the documented fallback-of-last-resort and needs no code until the owner asks (the provider decision record stands).
 
 **Next:** the LR20 device lane when the phones are attached (no devices were visible on USB this run), then review fixes from Main's audit. LR02 CI stays deferred to LAST per the owner directive. Note: the machine's data volume ran at 100% mid-run (stale PG datadirs from interrupted runs, ~800 MB recovered by cleanup); worth freeing space before the device-lane builds.
+
+### Checkpoint 18 — 2026-10-16 (trunk reconciliation after Main's consolidation + security review)
+
+**Main merged EVERYTHING except the Polar settlement.** V5.2 @ 64bc163 now carries the SSV chain fix, LR13 (Cashfree 0056), LR12 rate limiting, the CI skip contract, the Polar provider (C05), PR #21 board checkpoints, and the independent security review (docs/v5.2/release/V52-SECURITY-REVIEW-20261016.md). Only the Polar SETTLEMENT slice (migration 0057 + the commerce chain + routes + composition, commit cc7711c) remained on the PR branch.
+
+**Rebased and pushed:** the settlement commit is now 24991de on origin/V5.2's new head — the rebase was CONFLICT-FREE (Main's security fix 4d4caa8 and the settlement touch different regions), the security fix's spread order is intact on the merged branch, and the full neighborhood is green on the rebased head: polar-commerce 5/5, polar-provider 4/4, cashfree-v5 9/9, commerce-ingress 7/7 (incl. Main's actor-override regression), rate-limit 4/4, migrations 11/11, production-server 12/12, monetization-store 13/13, monetization-policy 8/8, and production-lifecycle fully green (the two compose-related failures from the old base are fixed by Main's fence on the new trunk).
+
+**Main's independent security review (read; two recorded owner decisions for the human):**
+1. **SEC-V52-SSV-UNLIMITED-DOS (MEDIUM)** — the actor-free provider-callback lanes (admob-ssv, the cashfree/polar webhooks) have no IP/edge rate limit; a per-actor limiter cannot apply. The review explicitly reserves the trust-model/threshold decision for the owner (Caddy rate_limit or a durable IP-window limiter). The same exposure applies to the new polar webhook lane by construction.
+2. **SEC-V52-CASHFREE-IDEMPOTENCY-RACE (MEDIUM)** — createCashfreeOrder (and, by the same pattern, createPolarCheckout) calls the provider before the (actor, op_key) fence; a concurrent same-key race orphans one provider order but NEVER double-grants. The recorded fix is a reserve-then-create flow — an economic-state-model change the review reserves for an owner-level call. If the owner approves it, the change is mechanical: insert a PENDING row under the fence first, then create the provider order and fill the id (needs a surrogate PK or a nullable-provider-id migration).
+
+Both MEDIUMs are recorded with dispositions in the review document — no unilateral change was made, per the review's own scope note.
+
+**CI:** Main recorded 15/15-green on the merged head (including the Advanced-#29 suites). The PR #29 delta is now exactly the Polar settlement slice.

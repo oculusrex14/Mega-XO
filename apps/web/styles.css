@@ -115,6 +115,13 @@ main{position:relative;z-index:1}.mx-home{max-width:1920px;margin:auto;padding:1
 body.mx-web-shell{padding:var(--mx-web-safe-top) var(--mx-web-safe-right) var(--mx-web-safe-bottom) var(--mx-web-safe-left)}
 .mx-toast{bottom:calc(26px + var(--mx-web-safe-bottom))}
 
+/* LR17 research-consent card: a quiet, separated block inside the signed-in account panel. */
+.pg-consent{margin-top:26px;padding-top:20px;border-top:1px solid color-mix(in srgb,currentColor 14%,transparent);display:grid;gap:10px;font-size:15px}
+.pg-consent h3{margin:0;font-size:17px}
+.pg-consent label{font-size:14px}
+.pg-consent select{max-width:280px}
+.pg-consent .pg-actions{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+
 /* Keep the game landscape visible at every scroll position, independent of page height. */
 body[data-page="game"]::before { position:fixed; inset:0; height:auto; background:linear-gradient(180deg,rgba(2,7,18,.3),rgba(2,7,18,.12) 55%,rgba(2,7,18,.4)),url('/assets/art/hero-wide.webp') center center/cover no-repeat; }
 body[data-page="game"]::after { position:fixed; inset:0; height:auto; }

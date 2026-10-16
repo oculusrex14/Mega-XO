@@ -97,6 +97,7 @@ function render({focus=false}={}){
  if(path==='/game'){boundOnlineActor=match?context.profile.id:null;boundTournamentMatch=tournament?match:null;updateOnlineControls();}
  if(path==='/store'&&context.products.status!=='error')main.querySelector('[data-store-products]')?.insertAdjacentHTML('afterend','<div class="pg-actions"><button class="mx-button secondary" data-store-action="refresh">Check store availability</button></div>');
  if(path==='/account')loadProviders();
+ if(path==='/account'&&context.sessionStatus==='linked')loadResearchConsent();
  updateTournamentControls();tournamentController.sync({roomId:tournament||null});
  realtime.sync();
  if(focus){main.focus({preventScroll:true});window.scrollTo(0,0);}
@@ -369,6 +370,17 @@ document.addEventListener('click',event=>{
   if(action==='retry')model.profile();
   if(action==='provider')accountAction(async()=>{const session=await globalThis.MegaAccount.session();if(session.providers?.[account.dataset.provider]?.web!==true)throw Error('PROVIDER_NOT_CONFIGURED');const result=await globalThis.MegaAccount.request('/api/account/start',{provider:account.dataset.provider,intent:'login'});const url=new URL(result.url);if(url.protocol!=='https:')throw Error('SERVICE_UNAVAILABLE');location.assign(url.href);});
   if(action==='logout')accountAction(async()=>{await globalThis.MegaAccount.request('/api/account/logout',{});globalThis.MegaAccount.reset();model.invalidate();context.profile=null;resetReady=false;accountChallenge='';context.sessionStatus='guest';context.accountMessage='You are signed out.';context.products.purchasesAvailable=false;onlineState={status:'idle',match:null,invitation:null,message:''};clearInterval(onlineTimer);onlineRevision++;realtime.stop();});
+ /* LR17: the one-time research choice. Adult-band-only is enforced server-side (CAPTURE_CONSENT_ADULT_ONLY)
+  * and pre-empted here so a youth/unknown band records its decline client-side with a clear note instead
+  * of a raw provider error. Withdrawal is the same endpoint with research:false (0052 semantics). */
+ if(action==='research-allow'||action==='research-decline'||action==='research-withdraw'){
+  const research=action==='research-allow';
+  const band=research?(document.querySelector('#research-age-band')?.value||'unknown'):'unknown';
+  if(research&&band!=='adult'){context.researchMessage='Optional research is only available to adult accounts. Choose Adult (18 or older) to allow it, or select No thanks.';render();main.querySelector('[data-research-consent]')?.focus?.();return;}
+  context.researchBusy=true;context.researchMessage='';render();
+  accountAction(async()=>{try{await globalThis.MegaAccount.request('/api/account/research',{research,ageBand:band});}finally{context.researchBusy=false;}await loadResearchConsent(true);});
+ }
+ if(action==='research-edit'){context.researchOpen=true;context.researchAgeBand=context.researchConsent?.ageBand||'adult';render();}
  }
  if(event.target.closest('[data-sponsor-action="clear"]')){try{localStorage.removeItem('mega-xoxo-sponsor-interests');}catch{}context.sponsorPreferences={};context.sponsorMessage='Saved choices cleared.';render();}
  const store=event.target.closest('[data-store-action]');if(store){if(store.dataset.storeAction==='refresh')refreshProducts();else if(store.dataset.storeAction==='purchase'&&context.products.purchasesAvailable&&!serviceBusy){accountAction(async()=>{const actor=context.profile?.id,id=store.dataset.productId,row=context.products.rows.find(x=>x.id===id);if(!actor||!row?.enabled||!row.localizedPrice)throw Error('STORE_UNAVAILABLE');const evidence=await globalThis.MegaBilling.purchase(id,context.products.storeContext);if(actor!==context.profile?.id)throw Error('AUTH_REQUIRED');const delivered=await globalThis.MegaNetwork.purchase(evidence,globalThis.MegaAccount.id());await globalThis.MegaBilling.finish?.(evidence,delivered);await model.profile();await refreshProducts();notify('Verified purchase delivered.');});}else if(store.dataset.storeAction==='purchase'&&!serviceBusy){const id=store.dataset.productId,row=context.products.rows.find(x=>x.id===id);if(row?.inr)accountAction(async()=>{await cashfreeCheckout(id);await model.profile();await refreshProducts();notify('Payment verified. Your purchase is on your profile.');});}}
@@ -403,5 +415,17 @@ function loadProviders(){
   context.providers=s.providers||{};context.providersLoaded=true;
   if(normalizedPath()==='/account')refreshSessionView();
  }).catch(()=>{});
+}
+/* LR17: the research-consent card hydrates from the actor's own one-time choice. The fetch happens
+ * only for a linked session on the account view, once, and failures leave the card unloaded rather
+ * than fabricating a state (the API answers 401 for guests and CONSENT_READ_UNAVAILABLE surfaces
+ * honestly). */
+function loadResearchConsent(force){
+ if(!force&&context.researchLoaded)return;
+ readJSON('/api/account/research').then(state=>{
+  if(state&&typeof state==='object'&&typeof state.recorded==='boolean'){context.researchConsent=state;}
+  context.researchLoaded=true;context.researchOpen=false;
+  if(normalizedPath()==='/account')render();
+ }).catch(()=>{context.researchLoaded=true;});
 }
 render();activate();model.profile().then(()=>{if(normalizedPath()==='/store'&&context.sessionStatus==='linked')refreshProducts();});const bootOrder=new URLSearchParams(location.search).get('cf_order');if(normalizedPath()==='/store'&&bootOrder)pollCashfreeStatus(bootOrder);

@@ -595,7 +595,7 @@ function finalizeTerminalResult(reasonOverride){
  match.pendingTerminal=null;match.terminalReason=null;match.recorded=true;
  T?.stop();A?.cancel();localSession?.cancel();clearTimeout(botTimer);botTimer=null;
  const s=match.state,result=record.result;
- const award=D.complete(data,record);save();render();paint();
+ const award=D.complete(data,record,Date.now(),(window.MegaMonetizationUI?.pass?.()?.active===true)?{coinBoost:window.MegaMonetizationUI.pass().benefits?.coinBoost===2?2:1}:null);save();render();paint();
  open(result==='draw'?'A well-fought draw':match.mode==='local'?'Player '+s.winner+' wins':result==='win'?'Nicely played.':'One more try?',
  '<p class="caption">'+(reason==='line'?'Three Mini Boards in a row.':reason==='draw'?'All Mini Boards resolved without a big winning line.':reason==='timeout'?'The turn timer ran out.':'The match ended by resignation.')+'</p><div class="stats-grid"><div class="stat"><span>Moves</span><strong>'+s.moves.length+'</strong></div><div class="stat"><span>Active time</span><strong>'+seconds(match.active)+'</strong></div></div><div class="note">'+(match.practice?'Tutorial practice is not counted in your personal stats.':match.mode==='local'?'Pass & Play does not affect personal stats or rewards.':match.resultClass==='unverified-local-ai'||match.difficulty==='Impossible'?'Impossible local match recorded. No Coin, Crown or Elo rewards.':award?'You earned '+award+' Coins on this device.':'No coin reward for this result.')+'</div>'+(match.assisted?'<div class="note">Assisted match. The rewind is not part of your personal history and earns nothing.</div>':'')+fullButton('Rematch','rematch')+fullButton('Back to home','home','',true),'result');
 }

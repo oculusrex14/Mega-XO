@@ -83,5 +83,5 @@ window.addEventListener('mega:sheet',decorate);new MutationObserver(decorate).ob
 setInterval(()=>{if(who()!==actor){status=null;refresh().then(()=>show());}},2000);
 document.addEventListener('visibilitychange',()=>{adGeneration++;if(!document.hidden)refresh().then(()=>show());});
 window.MegaXO=Object.freeze({...window.MegaXO,version:'3.5.1-auth-themes'});
-window.MegaMonetizationUI=Object.freeze({open,refresh,pageMarkup});decorate();refresh();
+window.MegaMonetizationUI=Object.freeze({open,refresh,pageMarkup,pass:()=>status?.pass||null});decorate();refresh();
 })();

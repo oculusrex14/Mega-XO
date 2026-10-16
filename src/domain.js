@@ -107,7 +107,7 @@ function credit(data,id,amount,reason,now=Date.now()){
  data.wallet.coins=next;data.wallet.ledger.push({id,currency:'coins',amount,reason,at:now});return amount;
 }
 /* Only offline results enter here. No public browser method can submit a verified online result. */
-function complete(data,record,now=Date.now()){
+function complete(data,record,now=Date.now(),opts=null){
  if(data.processed.includes(record.id))return 0;
  if(!record.id||!['bot','local','ranked','casual','friend'].includes(record.mode)||!['win','loss','draw'].includes(record.result))throw Error('INVALID_RESULT');
  if(['ranked','casual','friend'].includes(record.mode))throw Error('SERVER_RESULT_REQUIRED');
@@ -118,7 +118,11 @@ function complete(data,record,now=Date.now()){
  if(!['line','draw'].includes(record.reason)||record.activeSeconds<POLICY.minRewardSeconds||record.moves<POLICY.minRewardMoves)return 0;
  d.finished++;d.seconds+=Math.min(900,Math.max(0,record.activeSeconds));d.boards+=Math.min(9,Math.max(0,record.claimed||0));
  let earned=0;if(record.mode==='bot'&&record.result==='win'){
-  const count=d.botWins[record.difficulty]||0,amount=BOT_PAY[record.difficulty];
+  /* Mega Pass (owner decision 2026-10-16): a verified 2x Coin boost doubles the per-win payment
+     BEFORE the existing daily cap, so the 20-Coin botDailyCap is never raised - the most the pass
+     can add is the Planck-bounded 10 extra Coins per day. No flag, no change. */
+  const boost=opts&&opts.coinBoost===2?2:1;
+  const count=d.botWins[record.difficulty]||0,amount=(BOT_PAY[record.difficulty]||0)*boost;
   if(amount&&count<POLICY.botWinsPerLevel){earned=Math.min(amount,Math.max(0,POLICY.botDailyCap-d.botPaid));d.botWins[record.difficulty]=count+1;d.botPaid+=earned;credit(data,'bot:'+record.id,earned,record.difficulty+' bot win',now);}
  }return earned;
 }

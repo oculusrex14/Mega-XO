@@ -267,6 +267,14 @@ Both MEDIUMs are recorded with dispositions in the review document — no unilat
 
 The goal continues with LR20 as the primary lane; the monetization, hardening, identity, consent and security-prep slices are all merged and evidenced.
 
+### Checkpoint 22 — 2026-10-16 (LR20 Journey 6 EXECUTED on the OnePlus — the bot game works end to end)
+
+**Journey 6 (bot games) EXECUTED on the OnePlus Nord CE (5199676e) with the verified online build (versionCode 2, 1.0.0-lr20):** a full Vs Bot match at MEDIUM difficulty is playable end to end — the X move placed, the bot responded with an O, the FORCED-BOARD ROUTING advanced correctly ("FREE ROUTE" → "YOUR TURN · CENTRE — play only in this mini board" with the green highlight → "YOUR TURN · BOTTOM LEFT" after the centre cell decided the bot's next board), and the LR14 POWER BAR renders the exact owner labels (Undo "Unlocks at 8 moves · 4/8" counting moves, Undo Block "Unavailable", Tactical Hint "Optional rewarded ad" with the 0-badge, Hint Block "Unavailable"). Screenshots: ~/Downloads/Mega-XO-private-evidence/20261016-lr20-device/ (botgame*.png + the launch/retry/online sequence).
+
+**Also verified this checkpoint:** the CDP WebView driver (adb forward tcp:9222 → the debuggable WebView, node native WebSocket) gives deterministic DOM-level input for the journeys — the raw input taps are unreliable on the WebView rows, so the journey driver uses Runtime.evaluate clicks. Note: the https deep link does NOT resolve on the DEBUG build ("unable to resolve Intent") — App Links verify against the release/play-signing fingerprint, so journey 18 needs the release-signed build (recorded as a device-lane constraint).
+
+**Journey status so far:** 1 (fresh launch, no crash) PASS; 15 (crash/resume) PASS (the saved game restore); 6 (bot games) PASS at medium — the remaining difficulties + the full 18-journey matrix continue next session with the same driver.
+
 ### Checkpoint 21 - 2026-10-16 (branch consolidation: one V5.2, archive tags for everything else)
 
 **Owner request executed:** all Codex branches merged into ONE V5.2 (the merge candidate for the default branch) and the rest deleted with recoverable archive tags.

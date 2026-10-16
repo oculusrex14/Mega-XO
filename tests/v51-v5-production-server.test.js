@@ -303,7 +303,7 @@ test('secrets: private material is read only from absolute, non-symlinked, mode-
   assert.throws(() => mod.secretPaths('relative/dir'), code('SECRETS_DIR_MUST_BE_ABSOLUTE'));
 
   const paths = mod.secretPaths(dir);
-  assert.deepEqual(Object.keys(paths).sort(), ['ca', 'credentials', 'gateway', 'keys', 'otp', 'runtimeRoles']);
+  assert.deepEqual(Object.keys(paths).sort(), ['ca', 'credentials', 'gateway', 'keys', 'otp', 'proxy', 'runtimeRoles']);
   for (const file of Object.values(paths)) assert.ok(path.isAbsolute(file) && file.startsWith(dir + path.sep));
 
   /* A stable secret is minted once (0600) and reused, so a restart never invalidates a code. */
@@ -313,7 +313,7 @@ test('secrets: private material is read only from absolute, non-symlinked, mode-
   assert.equal(fs.statSync(paths.otp).mode & 0o777, 0o600);
   /* Only these six private files exist, and the module mints only the two generated-once secrets. */
   assert.deepEqual(Object.values(mod.SECRET_FILES).sort(),
-    ['ca.pem', 'core-gateway.secret', 'credentials.json', 'keys.sealed.json', 'otp.secret', 'runtime-roles.json']);
+    ['ca.pem', 'core-gateway.secret', 'credentials.json', 'keys.sealed.json', 'otp.secret', 'proxy.secret', 'runtime-roles.json']);
   /* A too-short existing secret is refused rather than silently accepted. */
   const short = path.join(dir, 'short.secret');
   fs.writeFileSync(short, 'abc\n', { mode: 0o600 });

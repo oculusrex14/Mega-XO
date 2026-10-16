@@ -108,6 +108,10 @@ const FRESHNESS_STATE_FILE = path.join(STATE_DIR, 'freshness-state.json');
 const SECRET_FILES = Object.freeze({
   credentials: 'credentials.json', runtimeRoles: 'runtime-roles.json', keys: 'keys.sealed.json',
   ca: 'ca.pem', otp: 'otp.secret', gateway: 'core-gateway.secret',
+  /* SEC-V52: the edge proxy assertion secret (the same value Caddy sends as X-Mega-Proxy-Key).
+   * Deployed from the host-managed proxy secret file; MEGA_PROXY_SECRET_FILE may point at the
+   * absolute deployment path instead. Never reused as the Core ingress HMAC key. */
+  proxy: 'proxy.secret',
 });
 
 /* The exact production identity. Pinned here as well as read from the inventory: a drift in either
@@ -561,6 +565,7 @@ async function main() {
   const { createCashfreeProvider } = require(path.join(ROOT, 'packages/services/cashfree.js'));
   const { createPolarProvider } = require(path.join(ROOT, 'packages/services/polar.js'));
   const { createRateLimiter } = require(path.join(ROOT, 'packages/services/rate-limit.js'));
+  const { createProviderCallbackLimiter, createCallbackSourceIp } = require(path.join(ROOT, 'packages', 'services', 'provider-callback-limit.js'));
   const { createAdMobVerifier } = require(path.join(ROOT, 'server/admob-ssv.js'));
   const { createPgStoreDb } = require(path.join(ROOT, 'packages/services/store-pg-adapter.js'));
   const { createMetricsSink } = require(path.join(ROOT, 'packages/services/metrics.js'));
@@ -930,9 +935,17 @@ async function main() {
    * route — the player command surface has no actor here and would drop the raw payload. */
   /* LR12: the mounted commerce surface is rate-limited per actor (the legacy monetization-http
    * contract: 60 requests per actor per minute -> 429 RATE_LIMITED) BEFORE any Core round-trip.
-   * The actor-free provider callbacks (ssv / the Cashfree webhook) stay signature-gated instead -
-   * they carry no session actor to key a budget on. */
+   * SEC-V52: the actor-free provider callbacks now ALSO carry an admission budget - 600 requests
+   * per canonical source IP per minute per provider lane, resolved through the deployment edge
+   * (X-Mega-Client-IP only from a trusted proxy peer presenting the host-managed proxy key, the
+   * address HMAC-hashed before it becomes a bucket key). A callback that exhausts its budget is
+   * never acknowledged with 200. */
   const monetizationLimiter = createRateLimiter({ pool: apiPool, limit: 60, windowMs: 60000, prefix: 'monetization' });
+  const callbackSourceIp = createCallbackSourceIp({
+    proxySecret: readSecretFile(process.env.MEGA_PROXY_SECRET_FILE || secrets.proxy, { label: 'proxy.secret' }).trim(),
+    trustedProxies: process.env.MEGA_TRUSTED_PROXIES || '127.0.0.1/32,::1/128',
+  });
+  const callbackLimiter = createProviderCallbackLimiter({ pool: apiPool, limit: 600, windowMs: 60000 });
   apiContext.monetization = {
     command: async (input) => {
       if (input && typeof input.actor === 'string' && input.actor) await monetizationLimiter.check(input.actor);
@@ -941,6 +954,7 @@ async function main() {
     ssv: (raw) => coreGateway.commerceSsv({ raw }),
     cashfreeWebhook: (payload) => coreGateway.commerceCashfreeWebhook(payload),
     polarWebhook: (payload) => coreGateway.commercePolarWebhook(payload),
+    checkCallback: async (req, provider) => callbackLimiter.check(provider, callbackSourceIp.resolve(req)),
   };
   /* LR19: the OPTIONAL telemetry sink. Anonymous daily aggregates on ops.rate_buckets; the client
    * lane is opt-in and OFF by default, so this sink normally receives nothing until a player makes

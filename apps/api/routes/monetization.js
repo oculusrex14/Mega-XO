@@ -17,6 +17,31 @@
  * and the grant binds to the ticket's actor. Fail-closed: an absent/unconfigured verifier answers
  * ADS_UNAVAILABLE, never a silent OK. */
 
+/* The shared reply helpers. WITHOUT this import every sendJson call below is a ReferenceError
+ * that the route's own catch cannot classify, so the request falls through to the API's 404 and
+ * NO monetization surface (including the webhooks and the SSV callback) can ever answer. */
+const { sendJson } = require('./helpers');
+
+/* SEC-V52: one admission gate for the three actor-free callback lanes. A RATE_LIMITED refusal is
+ * answered here (429 + Retry-After + no-store) so the callback is never acknowledged with 200 and
+ * never reaches the provider verification or the Core round-trip; any other admission error
+ * propagates to the route catch with its own stable code and status. */
+async function admitCallback(lane, req, res, provider) {
+  if (typeof lane.checkCallback !== 'function') fail('CALLBACK_ADMISSION_UNAVAILABLE', 503);
+  try {
+    await lane.checkCallback(req, provider);
+    return true;
+  } catch (error) {
+    if (error && error.code === 'RATE_LIMITED') {
+      const headers = { 'Cache-Control': 'no-store' };
+      if (Number.isFinite(error.retryAfter)) headers['Retry-After'] = String(Math.max(1, Math.ceil(error.retryAfter)));
+      sendJson(res, 429, { error: 'RATE_LIMITED' }, headers);
+      return false;
+    }
+    throw error;
+  }
+}
+
 const CACHE_CONTROL = 'private, no-store';
 
 function fail(code, status) {
@@ -73,6 +98,10 @@ async function handleMonetizationRoute(context, req, res) {
 
     if (pathname === '/api/monetization/admob-ssv') {
       if (method !== 'GET' && method !== 'POST') fail('METHOD_NOT_ALLOWED', 405);
+      /* SEC-V52-SSV-UNLIMITED-DOS: the actor-free callback lanes admit by canonical source IP
+       * BEFORE any signature work or Core round-trip. Missing admission protection is a 503, and
+       * an exhausted or unavailable budget never acknowledges the callback with 200. */
+      if (!(await admitCallback(lane, req, res, 'admob'))) return true;
       /* The raw SSV QUERY STRING is exactly what Google signs — never re-encode or reorder it. */
       const raw = method === 'GET'
         ? (new URL(req.url || '/', 'http://localhost').search || '').replace(/^\?/, '')
@@ -118,6 +147,7 @@ async function handleMonetizationRoute(context, req, res) {
 
     if (pathname === '/api/monetization/cashfree/webhook') {
       if (method !== 'POST') fail('METHOD_NOT_ALLOWED', 405);
+      if (!(await admitCallback(lane, req, res, 'cashfree'))) return true;
       const raw = typeof req.body === 'string' ? req.body : '';
       if (!raw) fail('INVALID_WEBHOOK', 400);
       if (typeof lane.cashfreeWebhook !== 'function') fail('MONETIZATION_UNAVAILABLE', 503);
@@ -160,6 +190,7 @@ async function handleMonetizationRoute(context, req, res) {
 
     if (pathname === '/api/monetization/polar/webhook') {
       if (method !== 'POST') fail('METHOD_NOT_ALLOWED', 405);
+      if (!(await admitCallback(lane, req, res, 'polar'))) return true;
       const raw = typeof req.body === 'string' ? req.body : '';
       if (!raw) fail('INVALID_WEBHOOK', 400);
       if (typeof lane.polarWebhook !== 'function') fail('MONETIZATION_UNAVAILABLE', 503);

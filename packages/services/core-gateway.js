@@ -978,7 +978,10 @@ function createCoreServiceIngress({
         const input = parsedBody?.command;
         if (!input || typeof input !== 'object' || Array.isArray(input)) return sendIngressError(res, 400, 'INVALID_COMMERCE_COMMAND');
         try {
-          const result = await commerce.command({ actor: actorHeader, opKey: opKeyHeader, ...input });
+          /* SEC: the SIGNED header actor and opKey are authoritative and must never be overridable
+           * by the command body. Spread the (untrusted) input FIRST, then force the header values,
+           * so a command carrying its own `actor`/`opKey` cannot impersonate another player. */
+          const result = await commerce.command({ ...input, actor: actorHeader, opKey: opKeyHeader });
           return sendIngressJson(res, 200, { ok: true, result });
         } catch (error) {
           const code = error?.code || error?.message || 'COMMERCE_FAILED';

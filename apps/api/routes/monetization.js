@@ -40,9 +40,12 @@ async function actorOf(context, req) {
 }
 
 function opKeyFrom(req, body) {
+  /* Contract (LR12): a body.key (the commerce-native key grammar) WINS over the header when both
+   * are present. Read the body first so the documented precedence actually holds — a mismatched
+   * header can otherwise silently drift the idempotency identity. */
+  if (body && typeof body.key === 'string' && body.key.length > 0) return body.key.slice(0, 160);
   const header = req.headers && (req.headers['idempotency-key'] || req.headers['x-opkey']);
   if (typeof header === 'string' && header.length > 0) return header.slice(0, 160);
-  if (body && typeof body.key === 'string' && body.key.length > 0) return body.key.slice(0, 160);
   return undefined;
 }
 

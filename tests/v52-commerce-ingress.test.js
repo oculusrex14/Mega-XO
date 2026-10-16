@@ -105,3 +105,16 @@ test('composition: the AdMob verifier is composed only when rewarded ads are ena
   assert.match(source, /ADMOB_' \+ platform\.toUpperCase\(\) \+ '_REWARDED_UNIT'/, 'ad units read from the deployment env');
   assert.match(source, /account\.verified === true && account\.suspended !== true && account\.hold !== true/, 'eligibility stays the conservative verified/unheld gate');
 });
+
+test('security: the SIGNED ingress actor/opKey are authoritative over any command body (no override)', () => {
+  /* SEC-V52-ACTOR-OVERRIDE regression. The dispatcher previously spread the request-supplied
+   * `command` object AFTER `actor: actorHeader, opKey: opKeyHeader`, so a signed caller could put
+   * its own `actor` in the command and act on an arbitrary player. Guard the exact order now. */
+  const gateway = fs.readFileSync(path.join(__dirname, '..', 'packages', 'services', 'core-gateway.js'), 'utf8');
+  const dispatch = gateway.match(/commerce\.command\(\{[^}]*\}\)/g) || [];
+  const commandSpread = dispatch.find((call) => call.includes('...input'));
+  assert.ok(commandSpread, 'the commerce command dispatch still spreads the request input');
+  /* The header actor/opKey must come AFTER the spread so they always win. */
+  assert.match(commandSpread, /\{\s*\.\.\.input,\s*actor:\s*actorHeader,\s*opKey:\s*opKeyHeader\s*\}/, 'the signed header actor and opKey must be forced AFTER the untrusted input spread');
+  assert.doesNotMatch(commandSpread, /actor:\s*actorHeader[^}]*\.\.\.input/, 'the untrusted input must never be spread after the signed header actor');
+});

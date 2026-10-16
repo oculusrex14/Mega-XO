@@ -55,6 +55,10 @@ const ROUTES = Object.freeze({
   '/api/monetization/cosmetic': { op: 'cosmetic', method: 'POST', args: ['itemId'] },
 });
 
+/* LR13: the Cashfree customer-contact grammar (the legacy cashfree/order route). */
+const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const PHONE = /^\+?[0-9]{10,15}$/;
+
 async function handleMonetizationRoute(context, req, res) {
   const method = (req.method || 'GET').toUpperCase();
   let pathname = new URL(req.url || '/', 'http://localhost').pathname;
@@ -71,7 +75,54 @@ async function handleMonetizationRoute(context, req, res) {
         ? (new URL(req.url || '/', 'http://localhost').search || '').replace(/^\?/, '')
         : (typeof req.body === 'string' ? req.body : '');
       if (!raw) fail('INVALID_SSV_PAYLOAD', 400);
-      const result = await lane.command({ op: 'ssv', raw });
+      /* The SSV callback is actor-free: it MUST go through the dedicated signed gateway path
+       * (commerceSsv -> /ingress/commerce/ssv), not the player command surface — commerceCommand
+       * has no actor to sign with and drops the raw payload entirely. */
+      if (typeof lane.ssv !== 'function') fail('MONETIZATION_UNAVAILABLE', 503);
+      const result = await lane.ssv(raw);
+      sendJson(res, 200, result, { 'Cache-Control': CACHE_CONTROL });
+      return true;
+    }
+
+    /* LR13: the Cashfree web-commerce surfaces. Order creation is session-bound (the actor is
+     * the payer; the catalog price is server-side); the webhook is actor-free and verifies the
+     * HMAC over the EXACT raw bytes Cashfree signed; the status poll is session-bound and hides
+     * other actors' orders. */
+    if (pathname === '/api/monetization/cashfree/order') {
+      if (method !== 'POST') fail('METHOD_NOT_ALLOWED', 405);
+      const actor = await actorOf(context, req);
+      const body = req.body && typeof req.body === 'object' && !Array.isArray(req.body) ? req.body : {};
+      const email = typeof body.email === 'string' ? body.email.trim() : '';
+      const phone = typeof body.phone === 'string' ? body.phone.trim() : '';
+      if (!EMAIL.test(email) || email.length > 254 || !PHONE.test(phone)) fail('INVALID_CUSTOMER_DETAILS', 400);
+      if (typeof body.product !== 'string' || !body.product) fail('INVALID_PRODUCT', 400);
+      const key = opKeyFrom(req, body);
+      if (!key) fail('IDEMPOTENCY_KEY_REQUIRED', 400);
+      const result = await lane.command({ actor, op: 'cashfree_create', key, productId: body.product, customer: { email, phone } });
+      sendJson(res, 200, result, { 'Cache-Control': CACHE_CONTROL });
+      return true;
+    }
+
+    if (pathname === '/api/monetization/cashfree/status') {
+      if (method !== 'GET') fail('METHOD_NOT_ALLOWED', 405);
+      const actor = await actorOf(context, req);
+      const orderId = new URL(req.url || '/', 'http://localhost').searchParams.get('order_id') || '';
+      if (!orderId) fail('ORDER_NOT_FOUND', 404);
+      const result = await lane.command({ actor, op: 'cashfree_status', orderId });
+      sendJson(res, 200, result, { 'Cache-Control': CACHE_CONTROL });
+      return true;
+    }
+
+    if (pathname === '/api/monetization/cashfree/webhook') {
+      if (method !== 'POST') fail('METHOD_NOT_ALLOWED', 405);
+      const raw = typeof req.body === 'string' ? req.body : '';
+      if (!raw) fail('INVALID_WEBHOOK', 400);
+      if (typeof lane.cashfreeWebhook !== 'function') fail('MONETIZATION_UNAVAILABLE', 503);
+      const result = await lane.cashfreeWebhook({
+        raw,
+        timestamp: String((req.headers && req.headers['x-webhook-timestamp']) || ''),
+        signature: String((req.headers && req.headers['x-webhook-signature']) || ''),
+      });
       sendJson(res, 200, result, { 'Cache-Control': CACHE_CONTROL });
       return true;
     }

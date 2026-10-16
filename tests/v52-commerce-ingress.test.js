@@ -25,6 +25,9 @@ function fakeCommerce() {
     automaticPermit: record('automaticPermit'),
     purchase: record('purchase'),
     callback: record('callback'),
+    createCashfreeOrder: record('createCashfreeOrder'),
+    cashfreeOrderStatus: record('cashfreeOrderStatus'),
+    settleCashfreeWebhook: record('settleCashfreeWebhook'),
   };
 }
 
@@ -69,6 +72,17 @@ test('ssv path: actor-free but signature-verified (sign/verify roundtrip)', () =
   assert.equal(verifyRequest({ secret, timestamp, method: 'POST', path: '/ingress/commerce/ssv', actor: '', opKey: 'commerce-ssv', bodyString, signature: forged, now: () => Date.now() }).valid, false);
 });
 
+test('ssv dispatch: the provider callback is actor-free END TO END through the real ingress', async () => {
+  const commerce = fakeCommerce();
+  const ingress = createCommerceIngressService({ commerce });
+  /* This is the exact shape the gateway dispatches (core-gateway.js /ingress/commerce/ssv): no
+   * actor at all. Requiring a session actor here refused every live AdMob callback. */
+  await ingress.command({ op: 'ssv', raw: 'ad_unit=ca-app-pub-3940256099942544%2F5224354917&signature=abc' });
+  assert.deepEqual(commerce.calls[0].args, ['ad_unit=ca-app-pub-3940256099942544%2F5224354917&signature=abc']);
+  /* A player command still requires the signed session actor. */
+  await assert.rejects(() => ingress.command({ op: 'status' }), /INVALID_ACTOR/);
+});
+
 test('source integrity: the ingress and the API dispatch are wired', () => {
   const gateway = fs.readFileSync(path.join(__dirname, '..', 'packages', 'services', 'core-gateway.js'), 'utf8');
   assert.match(gateway, /pathname === '\/ingress\/commerce\/ssv'/, 'actor-free ssv path present');
@@ -77,6 +91,10 @@ test('source integrity: the ingress and the API dispatch are wired', () => {
   assert.match(apiIndex, /monetizationRoutes\.handleMonetizationRoute/, 'route registered in the API dispatch');
   const routes = fs.readFileSync(path.join(__dirname, '..', 'apps', 'api', 'routes', 'monetization.js'), 'utf8');
   assert.match(routes, /admob-ssv/);
+  assert.match(routes, /lane\.ssv\(/, 'the SSV route uses the dedicated actor-free gateway lane');
+  assert.doesNotMatch(routes, /op: 'ssv'/, 'the SSV route never rides the player command surface');
+  const server = fs.readFileSync(path.join(__dirname, '..', 'scripts', 'v51', 'v5-production-server.cjs'), 'utf8');
+  assert.match(server, /ssv: \(raw\) => coreGateway\.commerceSsv/, 'the facade exposes the actor-free ssv lane');
   assert.doesNotMatch(routes, /require\([^)]*commerce\.js|INSERT INTO monetization|UPDATE monetization|FROM monetization\./, 'the API tier imports no commerce service and touches no monetization tables');
 });
 

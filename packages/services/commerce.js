@@ -70,6 +70,7 @@ const { lockEligibility } = require('./core.js');
 const { lockTransactionIdentity } = require('../db/pg/locks.js');
 const M = require('../../src/monetization.js');
 const D = require('../../src/domain.js');
+const { newOrderId } = require('./cashfree.js');
 
 const CORE_ROLE = 'core_runtime';
 const DAY = 86400000;
@@ -149,6 +150,10 @@ async function createCommerceService(pool, options = {}) {
   verifyPurchase: options.verifyPurchase || null,
   verifyAd: options.verifyAd || null,
   purchaseProvider: options.purchaseProvider || null,
+  cashfreeProvider: options.cashfreeProvider || null,
+  cashfreeCatalog: options.cashfreeCatalog || null,
+  cashfreeReturnUrl: typeof options.cashfreeReturnUrl === 'string' ? options.cashfreeReturnUrl : '',
+  cashfreeNotifyUrl: typeof options.cashfreeNotifyUrl === 'string' ? options.cashfreeNotifyUrl : '',
   adMode,
   rewardItem: typeof options.rewardItem === 'string' && options.rewardItem ? options.rewardItem : 'cosmetic_reward',
   adUnits: normalizeAdUnits(options.adUnits, options.adUnit),
@@ -158,6 +163,53 @@ async function createCommerceService(pool, options = {}) {
  const uow = createPgUnitOfWork(pool, { role: CORE_ROLE, now: options.now });
 
  function allowed(account) { return config.eligible(structuredClone(account)) === true; }
+
+/* ------------------------------------------------------------------- cashfree (LR13)
+ *
+ * The authoritative Cashfree web-commerce lane (owner brief C04): the provider order is created
+ * server-side from a SERVER-AUTHORITATIVE catalog price (never a client amount), recorded in the
+ * Core-owned monetization.cashfree_orders table (0056), and settled only after an INDEPENDENT
+ * provider verification - a browser returning from checkout, a captured webhook or a replayed
+ * signed webhook alone never grants. The receipts table keeps its ('google','apple') CHECK: a
+ * Cashfree settlement is recorded in cashfree_orders (the additive contract), and once-products
+ * are projected from it by cashfreeOnceRows below. */
+
+ const CASHFREE_PRICE = /^\d+(\.\d{1,2})?$/;
+ function cashfreePrice(productId) {
+  if (!config.cashfreeProvider || typeof config.cashfreeProvider.createOrder !== 'function') throw Error('CASHFREE_UNAVAILABLE');
+  if (!config.cashfreeCatalog || typeof config.cashfreeCatalog !== 'object' || Array.isArray(config.cashfreeCatalog)) throw Error('CASHFREE_UNAVAILABLE');
+  const price = config.cashfreeCatalog[productId];
+  if (typeof price !== 'string' || !CASHFREE_PRICE.test(price) || Number(price) <= 0) throw Error('INVALID_PRODUCT');
+  if (!M.product(productId)) throw Error('INVALID_PRODUCT');
+  return price;
+ }
+
+ /* Boot-time catalog validation: a partially configured catalog must refuse loudly, exactly like
+  * the legacy production config (INCOMPLETE_CASHFREE_PRICE / INVALID_CASHFREE_PRICE). */
+ function validateCashfreeCatalog() {
+  if (!config.cashfreeProvider) return;
+  if (!config.cashfreeCatalog || typeof config.cashfreeCatalog !== 'object' || Array.isArray(config.cashfreeCatalog)) throw new PgGuardError('CASHFREE_CATALOG_REQUIRED');
+  for (const [productId, price] of Object.entries(config.cashfreeCatalog)) {
+   if (!M.product(productId)) throw new PgGuardError('INVALID_CASHFREE_PRODUCT', { productId });
+   if (typeof price !== 'string' || !CASHFREE_PRICE.test(price) || Number(price) <= 0) throw new PgGuardError('INVALID_CASHFREE_PRICE', { productId });
+  }
+ }
+ validateCashfreeCatalog();
+
+ /* Settled Cashfree once-products for the owned() projection: the additive receipt contract. */
+ async function cashfreeOnceRows(tx, actor) {
+  const r = await tx.query(
+   'SELECT product_id, refunded_at FROM monetization.cashfree_orders WHERE actor_id = $1 AND settled_at IS NOT NULL ORDER BY created_at LIMIT $2',
+   [actor, 100]);
+  return r.rows;
+ }
+
+ /* owned() over the receipts UNION the settled Cashfree once-products. */
+ async function ownedWithCashfree(tx, graph, account, actor) {
+  const receipts = await tx.repositories.purchases.forActor(actor);
+  const rows = await cashfreeOnceRows(tx, actor);
+  return owned(graph, account, [...receipts, ...rows.map((r) => ({ productId: r.product_id, refunded: r.refunded_at !== null }))]);
+ }
 
  /* The shared RECEIPT-identity mutex namespace: `receipt` + [store, transactionId], the same
   * vocabulary `lockTransactionIdentity` documents and the Core boundary uses. Purchase grants and
@@ -367,7 +419,7 @@ async function createCommerceService(pool, options = {}) {
  function automaticPermit(actor, key, platform = 'legacy') {
   return transaction(actor, key, { type: 'automatic-permit', platform }, async (tx, graph, account) => {
    const adUnit = assertAdSafe(account, platform, 'interstitial');
-   if (M.cohort(actor, config.adMode) !== 'hybrid' || owned(graph, account, await tx.repositories.purchases.forActor(actor)).removeAds) throw Error('AUTOMATIC_AD_DISABLED');
+   if (M.cohort(actor, config.adMode) !== 'hybrid' || (await ownedWithCashfree(tx, graph, account, actor)).removeAds) throw Error('AUTOMATIC_AD_DISABLED');
    const s = account.monetization, now = tx.clock();
    const d = s.daily[M.day(now)] || (s.daily[M.day(now)] = { base: 0, bonus: 0, automatic: 0 });
    if (now - account.createdAt < M.POLICY.firstAdAge || now - s.lastAdAt < M.POLICY.fullScreenGap) throw Error('AD_COOLDOWN');
@@ -386,7 +438,7 @@ async function createCommerceService(pool, options = {}) {
    const frame = M.frame(id);
    if (!frame) throw Error('INVALID_FRAME');
    const s = account.monetization;
-   if (!owned(graph, account, await tx.repositories.purchases.forActor(actor)).frames.includes(id)) {
+   if (!(await ownedWithCashfree(tx, graph, account, actor)).frames.includes(id)) {
     if (equip || frame.credits === null) throw Error('FRAME_NOT_OWNED');
     if (s.credits < frame.credits) throw Error('INSUFFICIENT_COSMETIC_CREDITS');
     s.credits -= frame.credits;
@@ -481,6 +533,169 @@ async function createCommerceService(pool, options = {}) {
   });
  }
 
+ /* Server-side order creation (the legacy cashfree/order POST). The catalog price is
+  * SERVER-AUTHORITATIVE; the client only names the product and its customer details. The SAME
+  * durable key returns the SAME order - no second provider call, no second charge. */
+ async function createCashfreeOrder(actor, key, productId, customer) {
+  const price = cashfreePrice(productId);
+  if (!idOK(key)) throw Error('IDEMPOTENCY_KEY_REQUIRED');
+  if (!customer || typeof customer !== 'object' || Array.isArray(customer)) throw Error('INVALID_CUSTOMER_DETAILS');
+  const email = typeof customer.email === 'string' ? customer.email.trim() : '';
+  const phone = typeof customer.phone === 'string' ? customer.phone.trim() : '';
+  if (email.length < 3 || email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw Error('INVALID_CUSTOMER_DETAILS');
+  if (!/^\+?[0-9]{10,15}$/.test(phone)) throw Error('INVALID_CUSTOMER_DETAILS');
+  const previous = await uow.run(async (tx) => {
+   await tx.query('SET TRANSACTION READ ONLY');
+   return (await tx.query('SELECT order_id, product_id, session_id FROM monetization.cashfree_orders WHERE actor_id = $1 AND op_key = $2', [actor, key])).rows[0] || null;
+  });
+  if (previous) {
+   if (previous.product_id !== productId) throw Error('IDEMPOTENCY_CONFLICT');
+   return { orderId: previous.order_id, productId: previous.product_id, paymentSessionId: previous.session_id };
+  }
+  /* The account gate BEFORE the provider round-trip (the purchase preflight pattern): never spend
+   * a provider call on an actor Core has not provisioned. */
+  const preflight = await uow.run(async (tx) => {
+   await tx.query('SET TRANSACTION READ ONLY');
+   const graph = await tx.repositories.domain();
+   const wallet = await tx.query('SELECT 1 AS ok FROM economy.wallets WHERE actor_id = $1', [actor]);
+   return { ready: wallet.rows.length > 0, account: accountOf(graph, actor) };
+  });
+  if (!preflight.ready) throw Error('ACCOUNT_REQUIRED');
+  const provider = config.cashfreeProvider;
+  const orderId = typeof provider.newOrderId === 'function' ? provider.newOrderId() : newOrderId();
+  const created = await provider.createOrder({ orderId, productId, amount: price, actor, email, phone, returnUrl: config.cashfreeReturnUrl, notifyUrl: config.cashfreeNotifyUrl });
+  return transaction(actor, key, { type: 'cashfree-create', productId }, async (tx) => {
+   /* The (actor, op_key) unique constraint (0056) is the durable race fence: two concurrent
+    * creates with one key record ONE row; the loser returns the winner's recorded order. */
+   await tx.query(
+    'INSERT INTO monetization.cashfree_orders (order_id, actor_id, product_id, amount, currency, status, session_id, op_key, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) ON CONFLICT (actor_id, op_key) DO NOTHING',
+    [created.orderId, actor, productId, price, 'INR', 'ACTIVE', created.paymentSessionId, key, iso(tx.clock())]);
+   const row = (await tx.query('SELECT order_id, session_id FROM monetization.cashfree_orders WHERE actor_id = $1 AND op_key = $2', [actor, key])).rows[0];
+   if (!row) throw Error('CASHFREE_RECORD_FAILED');
+   return { orderId: row.order_id, productId, paymentSessionId: row.session_id };
+  });
+ }
+
+ /* The settlement core, shared by the webhook and the status poll. Provider verification happens
+  * BEFORE any economic transaction (the provider boundary, spec 03 section 1); the grant then
+  * commits in the same keyed transaction as its idempotency outcome, under the order-identity
+  * mutex so a webhook racing the status poll settles exactly once. */
+ async function settleCashfreeOrder(orderId) {
+  const provider = config.cashfreeProvider;
+  if (!provider || typeof provider.verifyOrder !== 'function') throw Error('CASHFREE_UNAVAILABLE');
+  if (typeof orderId !== 'string' || !provider.isOrderId(orderId)) throw Error('ORDER_NOT_FOUND');
+  /* The recorded row is the authority on WHO and WHAT: a provider proof alone carries no product,
+   * no price and no actor binding, so it can never grant by itself. */
+  const recorded = await uow.run(async (tx) => {
+   await tx.query('SET TRANSACTION READ ONLY');
+   return (await tx.query('SELECT order_id, actor_id, product_id, amount, status, settled_at, refunded_at FROM monetization.cashfree_orders WHERE order_id = $1', [orderId])).rows[0] || null;
+  });
+  if (!recorded) throw Error('ORDER_NOT_FOUND');
+  if (recorded.refunded_at) throw Error('ORDER_REFUNDED');
+  const verified = await provider.verifyOrder(orderId);
+  if (!verified || verified.status !== 'PAID') return { orderId, settled: false, status: verified ? verified.status : null };
+  if (verified.currency !== 'INR' || Math.abs(Number(recorded.amount) - verified.amount) > 1e-9) throw Error('ORDER_AMOUNT_MISMATCH');
+  const product = M.product(recorded.product_id);
+  if (!product) throw Error('INVALID_PRODUCT');
+  return transaction(recorded.actor_id, 'cashfree:' + orderId, { type: 'cashfree-settle', orderId }, async (tx, graph, current) => {
+   if (!config.purchasesEnabled || !allowed(current)) throw Error('PURCHASE_UNAVAILABLE');
+   const row = (await tx.query('SELECT settled_at, refunded_at FROM monetization.cashfree_orders WHERE order_id = $1 FOR UPDATE', [orderId])).rows[0];
+   if (!row) throw Error('ORDER_NOT_FOUND');
+   if (row.refunded_at) throw Error('ORDER_REFUNDED');
+   if (row.settled_at) return { productId: product.id, duplicate: true, settled: true };
+   if (product.once) {
+    for (const r of await tx.repositories.purchases.forActor(recorded.actor_id)) {
+     if (r.productId !== product.id) continue;
+     if (r.refunded) throw Error('PRODUCT_PREVIOUSLY_REFUNDED');
+     return { productId: product.id, alreadyOwned: true, settled: true };
+    }
+    const prev = (await tx.query('SELECT refunded_at FROM monetization.cashfree_orders WHERE actor_id = $1 AND product_id = $2 AND settled_at IS NOT NULL AND order_id <> $3 ORDER BY created_at LIMIT 1', [recorded.actor_id, product.id, orderId])).rows[0];
+    if (prev) {
+     if (prev.refunded_at) throw Error('PRODUCT_PREVIOUSLY_REFUNDED');
+     return { productId: product.id, alreadyOwned: true, settled: true };
+    }
+   }
+   current.crowns = D.add(current.crowns, product.crowns);
+   if (product.crowns) current.purchaseInfluenced = true;
+   /* The ledger source stays within the frozen 0010 CHECK vocabulary: a server-verified Cashfree
+    * payment is a verified-store purchase, exactly like the native store grants. */
+   if (product.crowns) journal(graph, { id: 'purchase:cashfree:' + orderId, actor: recorded.actor_id, currency: 'crowns', amount: product.crowns, reason: 'Crown purchase', source: 'verified-store', at: tx.clock() });
+   await event(tx, recorded.actor_id, 'purchase_verified', product.crowns);
+   await tx.query('UPDATE monetization.cashfree_orders SET status = $2, settled_at = $3 WHERE order_id = $1', [orderId, 'PAID', iso(tx.clock())]);
+   return { productId: product.id, crowns: product.crowns, duplicate: false, settled: true };
+  }, ['cashfree', orderId]);
+ }
+
+ /* The provider webhook (actor-free): the HMAC binds the EXACT raw bytes + timestamp to the
+  * secret within a five-minute window, then the recorded order is settled through the INDEPENDENT
+  * verification above - a captured or replayed webhook alone never grants. Refund events route to
+  * the trusted refund below. */
+ async function settleCashfreeWebhook(payload) {
+  const provider = config.cashfreeProvider;
+  if (!provider || typeof provider.verifyWebhook !== 'function') throw Error('CASHFREE_UNAVAILABLE');
+  const raw = payload && typeof payload.raw === 'string' ? payload.raw : '';
+  const timestamp = payload && typeof payload.timestamp === 'string' ? payload.timestamp : '';
+  const signature = payload && typeof payload.signature === 'string' ? payload.signature : '';
+  if (!raw || raw.length > 65536) throw Error('INVALID_WEBHOOK');
+  if (!provider.verifyWebhook({ timestamp, signature, rawBody: raw })) throw Error('INVALID_WEBHOOK_SIGNATURE');
+  let parsed; try { parsed = JSON.parse(raw); } catch { throw Error('INVALID_WEBHOOK'); }
+  const orderId = parsed && parsed.data && parsed.data.order && parsed.data.order.order_id;
+  if (typeof orderId !== 'string' || !provider.isOrderId(orderId)) throw Error('INVALID_WEBHOOK');
+  const type = typeof parsed.type === 'string' ? parsed.type : '';
+  if (type.includes('refund')) return refundCashfreeOrder(orderId, 'provider-webhook');
+  return settleCashfreeOrder(orderId);
+ }
+
+ /* The actor-bound status poll (the legacy cashfree/status GET): hides other actors' orders and
+  * settles through the provider, so a missed webhook still grants. */
+ async function cashfreeOrderStatus(actor, orderId) {
+  if (typeof actor !== 'string' || !actor || typeof orderId !== 'string' || !orderId) throw Error('ORDER_NOT_FOUND');
+  const row = await uow.run(async (tx) => {
+   await tx.query('SET TRANSACTION READ ONLY');
+   return (await tx.query('SELECT order_id, product_id, status, settled_at, refunded_at FROM monetization.cashfree_orders WHERE order_id = $1 AND actor_id = $2', [orderId, actor])).rows[0] || null;
+  });
+  if (!row) throw Error('ORDER_NOT_FOUND');
+  if (row.settled_at) {
+   const product = M.product(row.product_id);
+   return { orderId, paid: true, productId: row.product_id, crowns: product ? product.crowns : 0, refunded: row.refunded_at !== null };
+  }
+  const result = await settleCashfreeOrder(orderId);
+  return {
+   orderId,
+   paid: result.settled === true,
+   productId: row.product_id,
+   crowns: result.settled ? (result.crowns || 0) : 0,
+   status: result.settled ? undefined : result.status,
+   duplicate: result.duplicate === true || result.alreadyOwned === true,
+  };
+ }
+
+ /* The trusted refund lane (provider webhook or a later operator surface): marks the terminal
+  * refunded_at (never a DELETE - the order row is permanent evidence), under the SAME order
+  * identity mutex the settlement takes. The owned() projection reads refunded_at, so a refunded
+  * once-product (remove_ads) is revoked structurally; spent Crowns stay spent - the ledger is
+  * append-only and clawing funds from an innocent opponent is not a refund, it is a second bug. */
+ async function refundCashfreeOrder(orderId, reason = 'refund') {
+  const provider = config.cashfreeProvider;
+  if (provider && typeof provider.isOrderId === 'function' && !provider.isOrderId(orderId)) throw Error('ORDER_NOT_FOUND');
+  if (typeof orderId !== 'string' || !orderId) throw Error('ORDER_NOT_FOUND');
+  const recorded = await uow.run(async (tx) => {
+   await tx.query('SET TRANSACTION READ ONLY');
+   return (await tx.query('SELECT order_id, actor_id, settled_at, refunded_at FROM monetization.cashfree_orders WHERE order_id = $1', [orderId])).rows[0] || null;
+  });
+  if (!recorded) throw Error('ORDER_NOT_FOUND');
+  if (!recorded.settled_at) return { orderId, refunded: false, reason: 'UNSETTLED' };
+  return transaction(recorded.actor_id, 'cashfree-refund:' + orderId, { type: 'cashfree-refund', orderId }, async (tx) => {
+   const row = (await tx.query('SELECT refunded_at FROM monetization.cashfree_orders WHERE order_id = $1 FOR UPDATE', [orderId])).rows[0];
+   if (!row) throw Error('ORDER_NOT_FOUND');
+   if (row.refunded_at) return { orderId, refunded: true, duplicate: true };
+   await tx.query('UPDATE monetization.cashfree_orders SET refunded_at = $2 WHERE order_id = $1', [orderId, iso(tx.clock())]);
+   await emitOutbox(tx, { id: 'commerce.cashfree-refund:' + orderId, event: { orderId, actor: recorded.actor_id, known: true, reason: String(reason).slice(0, 120) } });
+   await event(tx, recorded.actor_id, 'purchase_refunded', 0);
+   return { orderId, refunded: true, duplicate: false };
+  }, ['cashfree', orderId]);
+ }
+
  /* Trusted store-notification integration only. Never mount as a player endpoint. The refund
   * freezes the receipt and the account (security_hold) rather than clawing funds from an innocent
   * opponent, and records the permanent revocation tombstone so a later purchase of the same store
@@ -561,7 +776,7 @@ async function createCommerceService(pool, options = {}) {
    await tx.query('SET TRANSACTION READ ONLY');
    const graph = await tx.repositories.domain();
    const account = accountOf(graph, actor);
-   const s = account.monetization, own = owned(graph, account, await tx.repositories.purchases.forActor(actor)), now = tx.clock(), eligible = allowed(account);
+   const s = account.monetization, own = await ownedWithCashfree(tx, graph, account, actor), now = tx.clock(), eligible = allowed(account);
    const platforms = Object.entries(config.adUnits).filter(([, v]) => v.rewarded).map(([k]) => k);
    const adMode = eligible && platforms.length && typeof config.verifyAd === 'function' ? M.cohort(actor, config.adMode) : 'off';
    const verifier = config.purchaseProvider || config.verifyPurchase;
@@ -605,6 +820,10 @@ async function createCommerceService(pool, options = {}) {
   status,
   report,
   processPurchaseFinalizations,
+  createCashfreeOrder,
+  settleCashfreeWebhook,
+  cashfreeOrderStatus,
+  refundCashfreeOrder,
   /* Releases this service's unit-of-work state only. The pool is caller-owned (it carries a
     cluster-wide connection-budget claim) and is NEVER closed here. */
   close() { uow.close(); },

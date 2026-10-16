@@ -516,6 +516,8 @@ async function main() {
   const { createTournamentService } = require(path.join(ROOT, 'packages/services/tournaments.js'));
   const { createTournamentTimer } = require(path.join(ROOT, 'packages/services/tournament-timer.js'));
   const { createCoreGateway, createCoreServiceIngress } = require(path.join(ROOT, 'packages/services/core-gateway.js'));
+  const { createCommerceService } = require(path.join(ROOT, 'packages/services/commerce.js'));
+  const { createCommerceIngressService } = require(path.join(ROOT, 'packages/services/commerce-ingress.js'));
   const { createRealtimeTransport } = require(path.join(ROOT, 'packages/services/realtime-transport.js'));
   const { resolveManagedRedisTarget } = require(path.join(ROOT, 'packages/services/managed-ephemera.js'));
   const { createEphemeraService } = require(path.join(ROOT, 'packages/services/ephemera.js'));
@@ -634,7 +636,18 @@ async function main() {
   await tournaments.ready;
   const tournamentTimer = createTournamentTimer({ tournaments, owner: `prd_tournaments_${process.pid}`,
     onError: error => console.error(JSON.stringify({ event: 'tournaments.tick_error', code: safeError(error) })) });
-  const coreIngress = createCoreServiceIngress({ coreService: core, ticketIssuer, queue, tournaments, leaderboardPool: corePool, secret: gatewaySecret });
+  /* LR12: the commerce service runs on the Core-owned pool inside the Core process; the API tier
+   * reaches it ONLY through the signed commerce ingress. Grants stay disabled until the provider
+   * verifiers (AdMob SSV verifyAd / store verifyPurchase + purchaseProvider) and the eligibility
+   * policy are configured in a later provider lane — the mounted routes answer honestly with
+   * adMode 'off' / purchasesAvailable false until then. */
+  const commerceAdMode = ['rewarded', 'hybrid'].includes(process.env.MEGA_AD_MODE) ? process.env.MEGA_AD_MODE : 'off';
+  const commerce = await createCommerceService(corePool, {
+    adMode: commerceAdMode,
+    purchasesEnabled: process.env.MEGA_PURCHASES_ENABLED === 'true',
+  });
+  const commerceIngress = createCommerceIngressService({ commerce });
+  const coreIngress = createCoreServiceIngress({ coreService: core, ticketIssuer, queue, tournaments, commerce: commerceIngress, leaderboardPool: corePool, secret: gatewaySecret });
   /* The mirror of the API assertion: Core, the Core-owned queue, the leaderboard materializer and the
    * realtime pool all run on `core_runtime`; the API-owned ticket issuer is the one asserted API member. */
   const coreRole = assertCoreCompositionUsesCorePool({
@@ -711,6 +724,9 @@ async function main() {
     identityProviders, webCallbackOrigin: 'https://megaxo.online',
   };
   apiContext.completeWebSignIn = webAccountRoutes.createWebSignInLane(apiContext);
+  /* LR12: the signed commerce facade the monetization routes dispatch through. Kept OUT of the
+   * literal above so parallel API-lane PRs merge without textual conflicts. */
+  apiContext.monetization = { command: (input) => coreGateway.commerceCommand(input) };
   const apiRole = assertApiCompositionHoldsNoCoreAccess(apiContext);
   const apiHandler = createApiHandler(apiContext);
 

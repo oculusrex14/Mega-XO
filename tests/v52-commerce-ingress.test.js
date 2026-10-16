@@ -1,0 +1,80 @@
+'use strict';
+
+/* Offline unit proof for the LR12 commerce ingress: the op allow-list maps ONE signed command to
+ * exactly ONE commerce call with the right argument order; unknown ops/args/platforms/kinds refuse
+ * with stable codes; status needs no idempotency key; the SSV path is actor-free but
+ * signature-verified. No database, no network: the commerce service is a recording fake. */
+const test = require('node:test');
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
+
+const { createCommerceIngressService } = require('../packages/services/commerce-ingress.js');
+const { signRequest, verifyRequest } = require('../packages/services/core-gateway.js');
+
+function fakeCommerce() {
+  const calls = [];
+  const record = (method) => async (...args) => { calls.push({ method, args }); return { method, args }; };
+  return {
+    calls,
+    status: record('status'),
+    claim: record('claim'),
+    cosmetic: record('cosmetic'),
+    ticket: record('ticket'),
+    permit: record('permit'),
+    automaticPermit: record('automaticPermit'),
+    purchase: record('purchase'),
+    callback: record('callback'),
+  };
+}
+
+const ACTOR = 'player_abc123';
+
+test('dispatch: each op maps to exactly one commerce call with ordered arguments', async () => {
+  const commerce = fakeCommerce();
+  const ingress = createCommerceIngressService({ commerce });
+  await ingress.command({ actor: ACTOR, op: 'status' });
+  await ingress.command({ actor: ACTOR, op: 'claim', key: 'op-1' });
+  await ingress.command({ actor: ACTOR, op: 'ticket', key: 'op-2', kind: 'rewarded', platform: 'android' });
+  await ingress.command({ actor: ACTOR, op: 'permit', opKey: 'hdr-op-key', platform: 'ios' });
+  await ingress.command({ actor: ACTOR, op: 'purchase', key: 'op-3', evidence: { store: 'google', token: 't' }, restore: true });
+  const byMethod = Object.fromEntries(commerce.calls.map((c) => [c.method, c.args]));
+  assert.deepEqual(byMethod.status, [ACTOR]);
+  assert.deepEqual(byMethod.claim, [ACTOR, 'op-1']);
+  assert.deepEqual(byMethod.ticket, [ACTOR, 'op-2', 'rewarded', 'android']);
+  /* The signed header op key becomes the idempotency key when the body carries none. */
+  assert.deepEqual(byMethod.automaticPermit, [ACTOR, 'hdr-op-key', 'ios']);
+  assert.deepEqual(byMethod.purchase, [ACTOR, 'op-3', { store: 'google', token: 't' }, true]);
+});
+
+test('dispatch: unknown ops, bad shapes, and missing keys refuse with stable codes', async () => {
+  const ingress = createCommerceIngressService({ commerce: fakeCommerce() });
+  await assert.rejects(() => ingress.command({ actor: ACTOR, op: 'selfDestruct' }), /INVALID_COMMERCE_OP/);
+  await assert.rejects(() => ingress.command({ actor: ACTOR, op: 'claim' }), /INVALID_IDEMPOTENCY_KEY/);
+  await assert.rejects(() => ingress.command({ actor: ACTOR, op: 'ticket', key: 'k', kind: 'banner', platform: 'android' }), /INVALID_AD_KIND/);
+  await assert.rejects(() => ingress.command({ actor: ACTOR, op: 'ticket', key: 'k', kind: 'rewarded', platform: 'web' }), /INVALID_PLATFORM/);
+  await assert.rejects(() => ingress.command({ actor: 'bad actor', op: 'status' }), /INVALID_ACTOR/);
+  await assert.rejects(() => ingress.command({ actor: ACTOR, op: 'ssv' }), /INVALID_SSV_PAYLOAD/);
+});
+
+test('ssv path: actor-free but signature-verified (sign/verify roundtrip)', () => {
+  const secret = 'unit-test-gateway-secret-0123456789abcdef';
+  const timestamp = String(Date.now());
+  const bodyString = JSON.stringify({ raw: { ticket: 't1' } });
+  const signature = signRequest({ secret, timestamp, method: 'POST', path: '/ingress/commerce/ssv', actor: '', opKey: 'commerce-ssv', bodyString });
+  const verified = verifyRequest({ secret, timestamp, method: 'POST', path: '/ingress/commerce/ssv', actor: '', opKey: 'commerce-ssv', bodyString, signature, now: () => Date.now() });
+  assert.equal(verified.valid, true);
+  const forged = signRequest({ secret: 'an-entirely-different-secret-key-123456', timestamp, method: 'POST', path: '/ingress/commerce/ssv', actor: '', opKey: 'commerce-ssv', bodyString });
+  assert.equal(verifyRequest({ secret, timestamp, method: 'POST', path: '/ingress/commerce/ssv', actor: '', opKey: 'commerce-ssv', bodyString, signature: forged, now: () => Date.now() }).valid, false);
+});
+
+test('source integrity: the ingress and the API dispatch are wired', () => {
+  const gateway = fs.readFileSync(path.join(__dirname, '..', 'packages', 'services', 'core-gateway.js'), 'utf8');
+  assert.match(gateway, /pathname === '\/ingress\/commerce\/ssv'/, 'actor-free ssv path present');
+  assert.match(gateway, /commerce: createCommerceIngressService|commerce,/);
+  const apiIndex = fs.readFileSync(path.join(__dirname, '..', 'apps', 'api', 'index.js'), 'utf8');
+  assert.match(apiIndex, /monetizationRoutes\.handleMonetizationRoute/, 'route registered in the API dispatch');
+  const routes = fs.readFileSync(path.join(__dirname, '..', 'apps', 'api', 'routes', 'monetization.js'), 'utf8');
+  assert.match(routes, /admob-ssv/);
+  assert.doesNotMatch(routes, /require\([^)]*commerce\.js|INSERT INTO monetization|UPDATE monetization|FROM monetization\./, 'the API tier imports no commerce service and touches no monetization tables');
+});

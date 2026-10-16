@@ -138,6 +138,50 @@ test('PG16 website tournament HTTP, idempotency, actor isolation, canonical cloc
   assert.equal(await raw(forced, actor, String(clock), signRequest({ secret: SECRET, timestamp: String(clock), path, actor, opKey, bodyString: forced })), 400);
   assert.equal((await tournaments.view(room.id, roster[0])).players.length, 1);
  });
+ await t.test('the room view carries the member presentation projection with honest visibility', async () => {
+  const viewed = await tournaments.view(room.id, roster[0]);
+  assert.equal(viewed.members.length, 1);
+  const self = viewed.members[0];
+  assert.equal(self.id, roster[0]);
+  assert.equal(self.relationship, 'self');
+  assert.equal(self.statsVisible, true, 'the viewer always sees their own stats');
+  assert.equal(self.tier, 'gold');
+  assert.equal(self.rating, 1500);
+  assert.equal(self.games, 30);
+  assert.ok(self.tag && self.tag.startsWith('MEGA-'), 'the tag comes from the authoritative profile');
+  // Two fresh seats on a DIFFERENT table: a public-visibility profile and a friends-visibility
+  // profile. publicJoin only matches an open lobby at the same table, so neither perturbs the
+  // ten-seat low-table journey below.
+  const pub = 'svc_webtpub', priv = 'svc_webtfr';
+  await lab.seedActors(database, [
+   { actor: pub, coins: 1000, crowns: 1000, rating: 1660, games: 40, stats: 'public' },
+   { actor: priv, coins: 1000, crowns: 1000, rating: 1600, games: 25, stats: 'friends' },
+  ]);
+  for (const actor of [pub, priv]) sessions.set(actor, (await accounts.issue(actor, clock)).token);
+  for (const [actor, key] of [[pub, 'join-pub'], [priv, 'join-priv']]) {
+   const next = await request('/api/party/command', { actor, key, body: { type: 'publicJoin', table: 'medium' } });
+   assert.equal(next.status, 200);
+   assert.equal(next.data.table, 'medium');
+  }
+  // The stored-key replay re-returns the SAME shared medium room for the public viewer.
+  const mediumRoom = await request('/api/party/command', { actor: pub, key: 'join-pub', body: { type: 'publicJoin', table: 'medium' } });
+  assert.equal(mediumRoom.status, 200);
+  const mediumView = await tournaments.view(mediumRoom.data.id, pub);
+  assert.equal(mediumView.members.length, 2);
+  const pubMember = mediumView.members.find(m => m.id === pub);
+  assert.equal(pubMember.statsVisible, true, 'the viewer sees their own rank');
+  assert.equal(pubMember.tier, 'gold');
+  assert.equal(pubMember.rating, 1660);
+  assert.equal(pubMember.games, 40);
+  const privMember = mediumView.members.find(m => m.id === priv);
+  assert.equal(privMember.statsVisible, false, 'friends-visibility roommates never expose their rank to Core');
+  assert.equal(privMember.tier, null);
+  assert.equal(privMember.rating, null);
+  assert.equal(privMember.games, null);
+  assert.equal(privMember.relationship, 'room');
+  assert.ok(privMember.tag && privMember.name, 'name and tag still render');
+ });
+
  await t.test('ten real HTTP seats ready once; entry reservation remains Core-only and API role cannot mutate it', async () => {
   for (const actor of roster.slice(1, 10)) {
    const next = await request('/api/party/command', { actor, key: `join-${actor}`, body: { type: 'publicJoin', table: 'low' } });

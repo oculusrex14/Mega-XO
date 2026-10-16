@@ -795,6 +795,33 @@ function createTournamentService(options = {}) {
 
  /* The delivered room view for one member - the same `T.view` DTO every command returns, with the
   * review-only abuse metadata stripped. Read-only: it mutates nothing. */
+ /* F2: the read-only member presentation projection. Name/tag come from the authoritative
+  * profile; tier/rating/games ride economy.ratings ONLY when the viewer is the actor or the
+  * profile's stats_visibility is 'public' - the API-owned social tables are never read here, so
+  * a 'friends' visibility renders an honest Rank unavailable instead of a guessed tier. No new
+  * rank is persisted and no competitive state is touched by this read. */
+ async function memberPresentation(tx, viewer, players) {
+  const ids = players.map((p) => p.id);
+  const rows = (await tx.query(
+   'SELECT p.actor_id, p.tag, p.display_name, p.stats_visibility, r.tier, r.rating, r.games FROM identity.profiles p LEFT JOIN economy.ratings r ON r.actor_id = p.actor_id WHERE p.actor_id = ANY($1::text[])', [ids])).rows;
+  const byId = new Map(rows.map((row) => [row.actor_id, row]));
+  return players.map((player) => {
+   const self = player.id === viewer;
+   const row = byId.get(player.id) || null;
+   const visible = self || (row !== null && row.stats_visibility === 'public');
+   return {
+    id: player.id,
+    name: player.name,
+    tag: row !== null && row.tag !== null ? String(row.tag) : null,
+    tier: visible && row !== null && row.tier !== null ? String(row.tier) : null,
+    rating: visible && row !== null && row.rating !== null ? Number(row.rating) : null,
+    games: visible && row !== null && row.games !== null ? Number(row.games) : null,
+    statsVisible: visible,
+    relationship: self ? 'self' : 'room',
+   };
+  });
+ }
+
  async function view(roomId, actor) {
   requireRoomLookup(roomId);
   if (typeof actor !== 'string' || actor.length === 0) fail('AUTH_REQUIRED');
@@ -803,7 +830,9 @@ function createTournamentService(options = {}) {
    const room = await tx.repositories.tournaments.room(roomId);
    if (!room) fail('ROOM_NOT_FOUND');
    if (!room.players.some((p) => p.id === actor)) fail('NOT_IN_ROOM');
-   return T.view(room, tx.clock());
+   const view = T.view(room, tx.clock());
+   view.members = await memberPresentation(tx, actor, view.players);
+   return view;
   });
  }
 

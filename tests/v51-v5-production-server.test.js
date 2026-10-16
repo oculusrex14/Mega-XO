@@ -218,7 +218,7 @@ test('roles: a pool whose described role is not the expected one is refused in B
     code('INVENTORY_ROLE_LIMITS_INVALID'));
 });
 
-test('outbound: a class the target file disables cannot be enabled, for all three classes', () => {
+test('outbound: a class the target file disables cannot be enabled, for all three classes', async () => {
   /* The checked-in production inventory disables every outbound provider class right now. */
   const resolved = mod.resolveOutboundPolicy(production);
   assert.deepEqual(resolved, { email: 'disabled', storeNotifications: 'disabled', adRewards: 'disabled' });
@@ -247,10 +247,18 @@ test('outbound: a class the target file disables cannot be enabled, for all thre
   for (const method of ['sendOtp', 'sendPasswordChanged', 'sendSecurityNotice', 'sendMail']) {
     assert.throws(() => transport[method]({}), code('OUTBOUND_DISABLED_BY_TARGET'));
   }
-  assert.throws(() => mod.createMailTransportForPolicy({ ...resolved, email: 'enabled' }), code('OUTBOUND_CLASS_UNIMPLEMENTED'));
+  /* LR10: email ENABLED is legal now, but only with the Resend key in the approved channel. */
+  assert.throws(() => mod.createMailTransportForPolicy({ ...resolved, email: 'enabled' }),
+    code('OUTBOUND_EMAIL_KEY_REQUIRED'), 'an enabled class without its provider secret refuses');
+  const live = mod.createMailTransportForPolicy({ ...resolved, email: 'enabled' },
+    { resendApiKey: 're_test_key_1234567890', emailFetch: async () => ({ ok: true, json: async () => ({}) }) });
+  assert.equal(live.enabled(), true);
+  await live.sendOtp({ to: 'player@example.com', code: '123456', purpose: 'signup', idempotencyKey: 'k' });
 
-  /* This entry composes NO provider for any class, so an inventory that enables one is refused. */
+  /* This entry composes a provider ONLY for a class with a declared capability (LR10: email/resend). */
   assert.deepEqual(mod.assertProviderClassesComposable(resolved), { composed: false, classes: resolved });
+  assert.deepEqual(mod.assertProviderClassesComposable({ ...resolved, email: 'enabled' }, { email: 'resend' }),
+    { composed: false, classes: { ...resolved, email: 'enabled' } });
   assert.throws(() => mod.assertProviderClassesComposable(mod.resolveOutboundPolicy(enabling, { storeNotifications: 'enabled' })),
     code('OUTBOUND_CLASS_UNIMPLEMENTED'));
   assert.throws(() => mod.assertProviderClassesComposable({ email: 'enabled', storeNotifications: 'disabled', adRewards: 'disabled' }),

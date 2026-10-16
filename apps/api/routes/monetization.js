@@ -20,7 +20,7 @@
 /* The shared reply helpers. WITHOUT this import every sendJson call below is a ReferenceError
  * that the route's own catch cannot classify, so the request falls through to the API's 404 and
  * NO monetization surface (including the webhooks and the SSV callback) can ever answer. */
-const { sendJson } = require('./helpers');
+const { sendJson, parseJsonBody } = require('./helpers');
 
 /* SEC-V52: one admission gate for the three actor-free callback lanes. A RATE_LIMITED refusal is
  * answered here (429 + Retry-After + no-store) so the callback is never acknowledged with 200 and
@@ -49,6 +49,15 @@ function fail(code, status) {
   error.code = code;
   error.status = status || 400;
   throw error;
+}
+
+/* A1b: the mounted API collects the raw JSON bytes into req.body, so the player POST surfaces
+ * must parse the string (or Buffer) into the validated object shape before any field validation.
+ * parseJsonBody classifies oversize (BODY_TOO_LARGE/413) and malformed (INVALID_JSON/409) inputs;
+ * webhook lanes deliberately stay on the EXACT raw bytes and never pass through here. */
+async function bodyObject(req) {
+  if (req.body === undefined || req.body === null) return {};
+  return parseJsonBody(req);
 }
 
 function resolveMonetization(context) {
@@ -128,7 +137,7 @@ async function handleMonetizationRoute(context, req, res) {
     if (pathname === '/api/monetization/cashfree/order') {
       if (method !== 'POST') fail('METHOD_NOT_ALLOWED', 405);
       const actor = await actorOf(context, req);
-      const body = req.body && typeof req.body === 'object' && !Array.isArray(req.body) ? req.body : {};
+      const body = await bodyObject(req);
       const email = typeof body.email === 'string' ? body.email.trim() : '';
       const phone = typeof body.phone === 'string' ? body.phone.trim() : '';
       if (!EMAIL.test(email) || email.length > 254 || !PHONE.test(phone)) fail('INVALID_CUSTOMER_DETAILS', 400);
@@ -172,13 +181,13 @@ async function handleMonetizationRoute(context, req, res) {
     if (pathname === '/api/monetization/polar/checkout') {
       if (method !== 'POST') fail('METHOD_NOT_ALLOWED', 405);
       const actor = await actorOf(context, req);
-      const body = req.body && typeof req.body === 'object' && !Array.isArray(req.body) ? req.body : {};
+      const body = await bodyObject(req);
       if (typeof body.product !== 'string' || !body.product) fail('INVALID_PRODUCT', 400);
       const email = typeof body.email === 'string' ? body.email.trim() : '';
       if (email && (email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))) fail('INVALID_CUSTOMER_DETAILS', 400);
       const key = opKeyFrom(req, body);
       if (!key) fail('IDEMPOTENCY_KEY_REQUIRED', 400);
-      const result = await lane.command({ actor, op: 'polar_create', opKey: key, key, productId: body.product, customer: email ? { email } : undefined });
+      const result = await lane.command({ actor, op: 'polar_create', opKey: key, key, productId: body.product, customer: email ? { email } : {} });
       sendJson(res, 200, result, { 'Cache-Control': CACHE_CONTROL });
       return true;
     }
@@ -214,7 +223,7 @@ async function handleMonetizationRoute(context, req, res) {
     if (spec.method !== method) fail('METHOD_NOT_ALLOWED', 405);
 
     const actor = await actorOf(context, req);
-    const body = req.body && typeof req.body === 'object' && !Array.isArray(req.body) ? req.body : {};
+    const body = await bodyObject(req);
     const command = { actor, op: spec.op };
     if (method === 'POST') command.opKey = opKeyFrom(req, body);
     else command.opKey = opKeyFrom(req, {}) || 'commerce-status';

@@ -46,7 +46,7 @@ function createPolarProvider({ accessToken, organizationId, apiBase, webhookSecr
         success_url: typeof successUrl === 'string' && successUrl ? successUrl : undefined,
         metadata: { actor: String(actor), product_id: String(productId), ...metadata },
       });
-      if (typeof checkout.id !== 'string' || !UUID_V4.test(checkout.id) || typeof checkout.url !== 'string' || !checkout.url) throw Error('POLAR_BAD_RESPONSE');
+      if (typeof checkout.id !== 'string' || !UUID_V4.test(checkout.id) || typeof checkout.url !== 'string' || !checkout.url.startsWith('https://')) throw Error('POLAR_BAD_RESPONSE');
       return { checkoutId: checkout.id, checkoutUrl: checkout.url };
     },
     /* The independent re-verification: status, amount, currency and the metadata binding are all
@@ -72,8 +72,12 @@ function createPolarProvider({ accessToken, organizationId, apiBase, webhookSecr
       let key; try { key = Buffer.from(secret, 'base64'); } catch { return false; }
       if (key.length < 16) return false;
       const expected = crypto.createHmac('sha256', key).update(whId + '.' + ts + '.' + rawBody).digest('base64');
-      /* Polar signs with space-separated multiple signatures; any one match verifies. */
-      for (const candidate of sig.split(' ')) {
+      /* Standard Webhooks signature framing: space-separated entries, each "v1,<base64 sig>";
+       * some senders comma-separate the list. Version-prefixed candidates take precedence; a bare
+       * space-separated HMAC stays accepted for the synthetic fixtures. Any one match verifies. */
+      const versioned = [...sig.matchAll(/(?:^|\s)v1,([A-Za-z0-9+/=]+)/g)].map((m) => m[1]);
+      const bare = versioned.length ? [] : sig.split(' ').filter(Boolean);
+      for (const candidate of [...versioned, ...bare]) {
         const a = Buffer.from(expected), b = Buffer.from(candidate);
         if (a.length === b.length && crypto.timingSafeEqual(a, b)) return true;
       }

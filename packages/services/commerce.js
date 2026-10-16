@@ -841,7 +841,19 @@ async function createCommerceService(pool, options = {}) {
   }, ['cashfree', orderId]);
  }
 
-  /* Server-side Polar checkout creation (the legacy cashfree/order shape, USD). The SAME durable
+  /* A1b: the browser needs the hosted checkout URL. It is stored durably on the READY reservation
+  * (response_text) and re-read on every replay path, so the SAME durable key always returns the
+  * SAME checkout without a second provider create and without trusting any client value. */
+ async function polarReadyCheckoutUrl(checkoutId) {
+  const row = (await uow.run(async (tx) => {
+   await tx.query('SET TRANSACTION READ ONLY');
+   return (await tx.query("SELECT response_text FROM monetization.commerce_create_requests WHERE provider = 'polar' AND provider_object_id = $1 AND state = 'READY' AND response_text IS NOT NULL LIMIT 1", [checkoutId])).rows[0] || null;
+  }));
+  if (!row) return null;
+  try { const parsed = JSON.parse(row.response_text); return typeof parsed.checkoutUrl === 'string' && parsed.checkoutUrl.startsWith('https://') ? parsed.checkoutUrl : null; } catch { return null; }
+ }
+
+ /* Server-side Polar checkout creation (the legacy cashfree/order shape, USD). The SAME durable
   * key returns the SAME checkout; the catalog price id and cents are SERVER-AUTHORITATIVE.
   *
   * RESERVE-THEN-CREATE: identical fence to the Cashfree lane. Polar generates its own checkout
@@ -860,7 +872,8 @@ async function createCommerceService(pool, options = {}) {
   });
   if (previous) {
    if (previous.product_id !== productId) throw Error('IDEMPOTENCY_CONFLICT');
-   return { checkoutId: previous.checkout_id, productId: previous.product_id, status: previous.status };
+   const replayUrl = await polarReadyCheckoutUrl(previous.checkout_id);
+   return { checkoutId: previous.checkout_id, productId: previous.product_id, status: previous.status, ...(replayUrl ? { checkoutUrl: replayUrl } : {}) };
   }
   /* The account gate BEFORE the provider round-trip (the purchase preflight pattern). */
   const preflight = await uow.run(async (tx) => {
@@ -877,7 +890,7 @@ async function createCommerceService(pool, options = {}) {
    if (r.state === 'FAILED') { const e = Error(r.error_code || 'POLAR_CREATE_FAILED'); e.status = 502; throw e; }
    if (r.state === 'READY' && r.provider_object_id) {
     const row = (await uow.run(async (tx) => { await tx.query('SET TRANSACTION READ ONLY'); return (await tx.query('SELECT checkout_id, status FROM monetization.polar_orders WHERE checkout_id = $1', [r.provider_object_id])).rows[0] || null; }));
-    if (row) return { checkoutId: row.checkout_id, productId, status: row.status };
+    if (row) { const readyUrl = await polarReadyCheckoutUrl(row.checkout_id); return { checkoutId: row.checkout_id, productId, status: row.status, ...(readyUrl ? { checkoutUrl: readyUrl } : {}) }; }
    }
    const e = Error('CHECKOUT_CREATE_PENDING'); e.status = 503; e.retryAfter = 2; throw e;
   }
@@ -904,7 +917,7 @@ async function createCommerceService(pool, options = {}) {
    await tx.query(
     'UPDATE monetization.commerce_create_requests SET state = $2, provider_object_id = $3, response_text = $4, updated_at = $5 WHERE request_id = $1 AND state = $6',
     [requestId, 'READY', created.checkoutId, JSON.stringify(created).slice(0, 4096), iso(tx.clock()), 'PENDING']);
-   return { checkoutId: row.checkout_id, productId, status: row.status };
+   return { checkoutId: row.checkout_id, productId, status: row.status, checkoutUrl: created.checkoutUrl };
   }, null, { reservation: { requestId, won: true } });
  }
 

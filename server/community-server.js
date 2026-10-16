@@ -14,13 +14,15 @@ const {createMonetizationHandler}=require('./monetization-http.js');
 const ROOT=path.resolve(__dirname,'..');
 function buildService({file,origin,providers:providerConfig={},providerInstance,emailOptions={},emailInstance,storeOptions={},communityOptions={},monetizationOptions={},allowLocalHttp=false,networkContext=()=>({})}={}){
  if(!emailInstance&&emailOptions.apiKey&&!storeOptions.otpSecret)throw Error('MEGA_OTP_SECRET_REQUIRED');
- const store=new DurableStore(file,storeOptions),community=new CommunityStore({store,origin,now:storeOptions.now||Date.now,otpSecret:storeOptions.otpSecret,...communityOptions}),providers=providerInstance||new IdentityProviders({config:providerConfig}),emailer=emailInstance||new TransactionalEmail(emailOptions),matchmaker=new QueueSession({store,now:storeOptions.now||Date.now}),accountHandler=createCommunityHandler({store,community,providers,emailer,matchmaker,origin,allowLocalHttp,networkContext});
+ const store=new DurableStore(file,storeOptions),community=new CommunityStore({store,origin,now:storeOptions.now||Date.now,otpSecret:storeOptions.otpSecret,...communityOptions}),providers=providerInstance||new IdentityProviders({config:providerConfig}),emailer=emailInstance||new TransactionalEmail(emailOptions),matchmaker=new QueueSession({store,now:storeOptions.now||Date.now}),accountHandler=createCommunityHandler({store,community,providers,emailer,matchmaker,origin,allowLocalHttp,networkContext,exchangeBonus:(actor,coins,op)=>passExchangeHook?passExchangeHook(actor,coins,op):null});
  community.isQueued=actor=>matchmaker.busy(actor);
  const rooms=new RoomStore(file,{...storeOptions,lanOnly:false});
  community.isDeletionBusy=actor=>rooms.active().some(r=>r.players.some(p=>p.id===actor));
  const auth=async req=>accountHandler.authenticate(req);
+ let passExchangeHook=null
  const {purchaseProviderFactory,notificationFactory,cashfreeProvider,polarProvider:legacyPolarProvider,...monetizationConfig}=monetizationOptions,purchaseProvider=purchaseProviderFactory?purchaseProviderFactory(store):monetizationConfig.purchaseProvider;
  const monetization=new MonetizationStore(store,{...monetizationConfig,purchaseProvider,busy:actor=>matchmaker.busy(actor)||rooms.active().some(r=>r.players.some(p=>p.id===actor))});
+ passExchangeHook=(actor,coins,op)=>monetization.passExchangeBonus?monetization.passExchangeBonus(actor,coins,op):null;
  const storeNotifications=notificationFactory?notificationFactory({store,monetization,purchaseProvider}):{};
  const monetizationHandler=createMonetizationHandler({monetization,authenticate:auth,guard:accountHandler.guard,origin,storeNotifications,cashfreeProvider:cashfreeProvider||null,polarProvider:legacyPolarProvider||monetizationConfig.polarProvider||null});
  // The existing party router accepts principal resolution; no new guest-to-paid path.

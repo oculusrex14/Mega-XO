@@ -79,11 +79,13 @@ function createMonetizationHandler({monetization,authenticate,guard,origin,store
      if(!cashfreeProvider)throw Error('STORE_UNAVAILABLE');
      const productId=typeof b.product==='string'?b.product:'',email=typeof b.email==='string'?b.email.trim().slice(0,254):'',phone=typeof b.phone==='string'?b.phone.trim().slice(0,20):'';
      if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)||!/^[0-9]{8,15}$/.test(phone))throw Error('INVALID_CUSTOMER_DETAILS');
-     const amount=(monetization.cashfreeCatalog||{})[productId];if(typeof amount!=='string')throw Error('INVALID_PRODUCT');
+     const catalogAmount=(monetization.cashfreeCatalog||{})[productId];if(typeof catalogAmount!=='string')throw Error('INVALID_PRODUCT');
+     const pricing=monetization.passPackPrice?monetization.passPackPrice(actor,productId):null;
+     const amount=pricing&&pricing.discounted?pricing.amount:catalogAmount;
      const existing=monetization.existingCashfree(actor,key);
      if(existing){result={...existing};break;}
      const created=await cashfreeProvider.createOrder({orderId:cashfreeProvider.newOrderId(),productId,amount,actor,email,phone,returnUrl:origin+'/store?cf_order={order_id}',notifyUrl:origin+'/api/monetization/cashfree/webhook'});
-     result={...await monetization.recordCashfreeOrder(actor,key,created.orderId,productId,amount),paymentSessionId:created.paymentSessionId};
+     result={...await monetization.recordCashfreeOrder(actor,key,created.orderId,productId,amount),paymentSessionId:created.paymentSessionId,memberPrice:pricing?pricing.discounted:false};
      break;}
     default:return send(res,404,{error:'NOT_FOUND'}),true;
    }

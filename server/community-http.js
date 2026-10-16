@@ -9,7 +9,7 @@ const key=C.guards.operationKey;
 const send=(res,status,value)=>C.guards.writeJson(res,status,value,{noReferrer:true});
 const readBody=(req,limit=300000)=>C.guards.readJsonBody(req,limit);
 const cookies=C.guards.cookies;
-function createCommunityHandler({community,providers,emailer,store,matchmaker,origin,allowLocalHttp=false,networkContext=()=>({})}){
+function createCommunityHandler({community,providers,emailer,store,matchmaker,origin,allowLocalHttp=false,networkContext=()=>({}),exchangeBonus=null}){
  const url=new URL(origin),secure=url.protocol==='https:';if(!secure&&(!allowLocalHttp||!['localhost','127.0.0.1','[::1]'].includes(url.hostname)))throw Error('HTTPS_REQUIRED');
  const cookieName=secure?'__Host-mega_session':'mega_dev_session',token=req=>C.guards.sessionToken(req,cookieName);
  const setCookie=(res,value,age)=>res.setHeader('Set-Cookie',cookieName+'='+value+'; Path=/; HttpOnly; SameSite=Lax; Max-Age='+age+(secure?'; Secure':''));
@@ -124,7 +124,12 @@ function createCommunityHandler({community,providers,emailer,store,matchmaker,or
     case '/api/v1/purchase':cmd=C.commands.purchase(b);break;
     default:return send(res,404,{error:'NOT_FOUND'}),true;
    }
-   const result=store.run({actor,scope:'player'},key(req),cmd);return send(res,200,result?.players?display(result,actor):result),true;
+   const result=store.run({actor,scope:'player'},key(req),cmd);
+   /* Mega Pass member exchange (owner decision 2026-10-16): a fresh Coins->Crowns conversion earns
+      the additive bonus grant from the verified entitlement. The conversion itself already ran
+      untouched through the authority, so purchased-coin provenance is unaffected. */
+   if(path==='/api/v1/convert'&&result&&result.from==='coins'&&result.credit>0&&result.duplicate!==true&&typeof exchangeBonus==='function'){try{result.passBonus=(exchangeBonus(actor,result.debit,result.id)||{}).bonus||0;}catch{result.passBonus=0;}}
+   return send(res,200,result?.players?display(result,actor):result),true;
   }catch(e){return send(res,C.guards.accountStatus(e.message),{error:safeError(e)}),true;}
  }
  handler.authenticate=authenticate;handler.token=token;handler.guard=req=>{if(req.method==='POST'){C.guards.requireExactOrigin(req,origin);community.csrf(token(req),req.headers['x-csrf-token']);}};return handler;

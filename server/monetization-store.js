@@ -98,7 +98,55 @@ CREATE INDEX IF NOT EXISTS v52_pass_due ON v52_pass(period_end);`);
  existingCashfree(actor,key){if(!idOK(key))throw Error('IDEMPOTENCY_KEY_REQUIRED');const row=this.db.prepare('SELECT response FROM v35_commands WHERE actor=? AND key=?').get(actor,key);if(!row)return null;try{const parsed=JSON.parse(row.response);return parsed&&typeof parsed.orderId==='string'?parsed:null;}catch{return null;}}
  recordCashfreeOrder(actor,key,orderId,product,amount){return this.transaction(actor,key,{type:'cashfree-order',orderId},(a,p)=>{if(!this.purchasesEnabled||!this.allowed(p))throw Error('PURCHASE_UNAVAILABLE');const item=M.product(product);if(!item)throw Error('INVALID_PRODUCT');this.db.prepare('INSERT OR IGNORE INTO v52_cashfree_orders(order_id,actor,product,amount,currency,status,created_at) VALUES(?,?,?,?,?,?,?)').run(orderId,actor,item.id,amount,'INR','ACTIVE',this.now());const row=this.db.prepare('SELECT actor FROM v52_cashfree_orders WHERE order_id=?').get(orderId);if(row.actor!==actor)throw Error('STORE_CONFLICT');return {orderId,productId:item.id};});}
  settleCashfree(orderId,verified){const row=this.db.prepare('SELECT * FROM v52_cashfree_orders WHERE order_id=?').get(orderId);if(!row)throw Error('ORDER_NOT_FOUND');if(verified.status!=='PAID')return {orderId,settled:false,status:verified.status};if(verified.currency!=='INR'||Number(row.amount)!==verified.amount)throw Error('ORDER_AMOUNT_MISMATCH');const actor=row.actor,product=M.product(row.product);if(!product)throw Error('INVALID_PRODUCT');
-  return this.transaction(actor,'cashfree:'+orderId,{type:'cashfree-settle',orderId},(a,p)=>{if(!this.purchasesEnabled||!this.allowed(p))throw Error('PURCHASE_UNAVAILABLE');const id='cashfree:'+orderId,old=a.receipts.get(id);if(old){if(old.actor!==actor||old.productId!==product.id)throw Error('RECEIPT_REPLAY');if(old.refunded)throw Error('RECEIPT_REFUNDED');return {productId:product.id,duplicate:true,settled:true};}if(product.once){const previous=[...a.receipts.values()].find(r=>r.actor===actor&&r.productId===product.id);if(previous){if(previous.refunded)throw Error('PRODUCT_PREVIOUSLY_REFUNDED');return {productId:product.id,alreadyOwned:true,settled:true};}}p.crowns=D.add(p.crowns,product.crowns);if(product.crowns)p.purchaseInfluenced=true;a.receipts.set(id,{actor,productId:product.id,crowns:product.crowns,refunded:false,at:this.now()});if(product.crowns)a._entry('purchase:'+id,actor,'crowns',product.crowns,'Crown purchase','cashfree-web');this.db.prepare('UPDATE v52_cashfree_orders SET status=?,settled_at=? WHERE order_id=?').run('PAID',this.now(),orderId);this.event(actor,'purchase_verified',product.crowns);return {productId:product.id,crowns:product.crowns,duplicate:false,settled:true};});}
+  return this.transaction(actor,'cashfree:'+orderId,{type:'cashfree-settle',orderId},(a,p)=>{if(!this.purchasesEnabled||!this.allowed(p))throw Error('PURCHASE_UNAVAILABLE');const id='cashfree:'+orderId,old=a.receipts.get(id);if(old){if(old.actor!==actor||old.productId!==product.id)throw Error('RECEIPT_REPLAY');if(old.refunded)throw Error('RECEIPT_REFUNDED');return {productId:product.id,duplicate:true,settled:true};}if(product.once){const previous=[...a.receipts.values()].find(r=>r.actor===actor&&r.productId===product.id);if(previous){if(previous.refunded)throw Error('PRODUCT_PREVIOUSLY_REFUNDED');return {productId:product.id,alreadyOwned:true,settled:true};}}p.crowns=D.add(p.crowns,product.crowns);if(product.crowns)p.purchaseInfluenced=true;a.receipts.set(id,{actor,productId:product.id,crowns:product.crowns,refunded:false,at:this.now()});if(product.crowns)a._entry('purchase:'+id,actor,'crowns',product.crowns,'Crown purchase','cashfree-web');
+   /* A pass-discounted pack consumed one of the monthly discount uses at SETTLEMENT (never at
+      creation, so abandoned orders stay free). Detection is the recorded amount differing from
+      the catalog price for a crown pack - the creation path writes the discounted amount. */
+   if(product.crowns&&this.cashfreeCatalog&&typeof this.cashfreeCatalog[product.id]==='string'&&row.amount!==this.cashfreeCatalog[product.id]){const passRow=this.passRow(actor),now=this.now();if(M.passActive({status:passRow?.status,periodEnd:passRow?.period_end},now)){const allowances=passRow?JSON.parse(passRow.allowances||'{}'):{monthKey:M.passMonthKey(now),exchangeCoinsUsed:0,exchangeCarry:0,packDiscountsUsed:0};if(allowances.monthKey!==M.passMonthKey(now)){allowances.monthKey=M.passMonthKey(now);allowances.exchangeCoinsUsed=0;allowances.exchangeCarry=0;allowances.packDiscountsUsed=0;}allowances.packDiscountsUsed=(allowances.packDiscountsUsed||0)+1;this.db.prepare('UPDATE v52_pass SET allowances=? WHERE actor=?').run(JSON.stringify(allowances),actor);}}
+   this.db.prepare('UPDATE v52_cashfree_orders SET status=?,settled_at=? WHERE order_id=?').run('PAID',this.now(),orderId);this.event(actor,'purchase_verified',product.crowns);return {productId:product.id,crowns:product.crowns,duplicate:false,settled:true};});}
+ /* Mega Pass member exchange: the STANDARD 10:1 conversion runs untouched in the authority (the
+    purchased-coin provenance invariant stays exactly intact); this ADDITIVE bonus credits the
+    Planck-bounded difference. 40 Coins converted at the 10:1 base earn 1/40 Crown of bonus per
+    Coin, which compounds to the effective 8:1 rate over the monthly 200-Coin allowance. The
+    fractional remainder rides the durable carry in the allowances ledger, and the whole grant is
+    one keyed transaction per conversion operation - a replay can never double-pay. */
+ passExchangeBonus(actor,coins,opKey){
+  if(!this.polarProvider||!Number.isSafeInteger(coins)||coins<=0||!idOK(opKey))return null;
+  const row=this.passRow(actor),now=this.now();
+  if(!M.passActive({status:row?.status,periodEnd:row?.period_end},now))return null;
+  const allowances=row?JSON.parse(row.allowances||'{}'):{monthKey:M.passMonthKey(now),exchangeCoinsUsed:0,exchangeCarry:0,packDiscountsUsed:0};
+  if(allowances.monthKey!==M.passMonthKey(now)){allowances.monthKey=M.passMonthKey(now);allowances.exchangeCoinsUsed=0;allowances.exchangeCarry=0;allowances.packDiscountsUsed=0;}
+  const remaining=Math.max(0,M.PASS.exchangeMonthlyCoinAllowance-(allowances.exchangeCoinsUsed||0)),usable=Math.min(coins,remaining);
+  if(usable<=0)return {bonus:0,usable:0};
+  allowances.exchangeCarry=(allowances.exchangeCarry||0)+usable;
+  const bonus=Math.floor(allowances.exchangeCarry/40);
+  allowances.exchangeCarry=allowances.exchangeCarry%40;
+  allowances.exchangeCoinsUsed=(allowances.exchangeCoinsUsed||0)+usable;
+  return this.transaction(actor,'pass-exchange:'+opKey,{type:'pass-exchange-bonus',op:opKey},(a,p)=>{
+   /* The allowance ledger updates INSIDE the keyed transaction, so a replayed call re-reads the
+      committed state instead of consuming the allowance twice. */
+   this.db.prepare('UPDATE v52_pass SET allowances=? WHERE actor=?').run(JSON.stringify(allowances),actor);
+   if(bonus>0){p.crowns=D.add(p.crowns,bonus);p.purchaseInfluenced=true;}
+   else return {bonus:0};
+   a._entry('pass-exchange:'+opKey,actor,'crowns',bonus,'Mega Pass exchange bonus','verified-store');
+   this.event(actor,'pass_exchange_bonus',bonus);
+   return {bonus};
+  });
+ }
+ /* The member price for a Cashfree crown-pack order: 15% off while the pass is active and the
+    monthly discount uses remain. Nothing is consumed here - the allowance increments at
+    SETTLEMENT, so an abandoned order never burns a discount. */
+ passPackPrice(actor,productId){
+  const catalogAmount=(this.cashfreeCatalog||{})[productId];
+  if(typeof catalogAmount!=='string')return null;
+  const row=this.passRow(actor),now=this.now();
+  if(!M.passActive({status:row?.status,periodEnd:row?.period_end},now))return {amount:catalogAmount,discounted:false};
+  const allowances=row?JSON.parse(row.allowances||'{}'):{};
+  const used=(allowances.monthKey===M.passMonthKey(now)?allowances.packDiscountsUsed:0)||0;
+  const product=M.product(productId);
+  if(!product||!product.crowns||used>=M.PASS.packDiscountMaxUses)return {amount:catalogAmount,discounted:false};
+  return {amount:(Number(catalogAmount)*(1-M.PASS.packDiscount)).toFixed(2),discounted:true};
+ }
  cashfreeStatus(orderId){const row=this.db.prepare('SELECT order_id,actor,product,amount,currency,status,created_at,settled_at FROM v52_cashfree_orders WHERE order_id=?').get(orderId);return row||null;}
 }
 module.exports={MonetizationStore};

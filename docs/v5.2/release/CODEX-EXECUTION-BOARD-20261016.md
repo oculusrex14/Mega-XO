@@ -28,7 +28,7 @@
 | --- | --- | --- | --- | --- | --- | --- |
 | LR07 | B01 | Verify provider sign-in live end-to-end (browser, Android, iOS; same permanent actor; refresh/rotation/logout/revocation/expiry/cancellation). Fix gaps found in the integrated PR #18 implementation. | P0 | LR05 | TODO | — |
 | LR08 | B03 | Align release identity online.megaxo.xoxo against real Apple/Google records; signing chains, entitlements, App/Universal Links, AdMob app IDs; reproducible signed AAB/IPA; device tests on owner phones without touching personal data. AASA placeholder fix PR'd (#26): live AASA served the literal TEAMID prefix — now substituted from APPLE_TEAM_ID fail-closed. assetlinks.json verified live (real upload-key fingerprint; Play App Signing cert to be added after first AAB). | P0 | LR07 | PR OPEN (partial) | #26 |
-| LR10 | B02 | Transactional email (Resend): verify real V5 delivery for verify/OTP/recovery; deployment-ready enablement procedure for Main. SCOPED 2026-10-16: no Resend transport exists in V5 (createMailTransportForPolicy refuses unless disabled; assertProviderClassesComposable refuses any enabled class); the V4-era provider (server/email-provider.js) already has the exact worker interface + Resend HTTP shape to port; ops.outbox INSERT is granted to api_runtime (migration 0038) so the API can enqueue OTP jobs directly; otpSink is absent in production composition (auth responses never depend on it). Implementation slice next: port provider → packages/services, extend policy factory with secret-sourced key, add otpSink sealing to ops.outbox, enablement runbook for Main. | P0 | LR05, LR07 | SCOPED | — |
+| LR10 | B02 | Transactional email (Resend): IMPLEMENTED as PR #27 — Resend transport (packages/services/mail-resend.js, ported from the proven V4 provider), durable OTP sink on ops.outbox (api_runtime INSERT per 0038; deterministic per-challenge ids; sealed with the worker-shared secret), policy factory extended (enabled requires the key via RESEND_API_KEY_FILE; disabled = unchanged stub), capability map for composability, enablement runbook in the PR for Main. Real-inbox delivery verification is the owner enablement step (Resend key + inventory flip). Merge order: after #26 (one-line conflict in v5-production-server.cjs). | P0 | LR05, LR07 | PR OPEN | #27 |
 | LR06 | A06 | Security preparation evidence: session fixation, CSRF/CORS/origin, Core HMAC ingress, impersonation, ticket replay, rate limits, wallet integrity, idempotency, OAuth nonce/state/PKCE, payment/ad callback verification, caching, supply chain. Negative tests; Main signs off. | P0 | parallel | TODO | — |
 | LR09 | — | Vercel auxiliary routing: canonical-origin HMAC path check; decide whether the two Hobby projects are needed; no commercial use on Hobby. | P1 | LR05 | TODO | — |
 
@@ -110,3 +110,13 @@
 **Testing:** deploy guards 4/4; compose-fence 4/4 (real docker compose config renders); r2-pagination 4/4; prod-server headers 12/12.
 
 **Open work:** Stage 2 (LR07 provider sign-in verification, LR08 native identity, LR10 email, LR06 security prep). LR02 CI deferred to last (Main actively landing CI docs commits on V5.2: 2d08b84).
+
+### Checkpoint 4 — 2026-10-16 (LR07 live verification + LR08 AASA fix + LR10 implemented)
+
+**LR07:** Google sign-in verified END-TO-END on production (initiation with PKCE/nonce/state + canonical redirect, consent, callback, permanent actor player_f6ecb6a6f4, sign-out invalidation, re-sign-in restores THE SAME actor + wallet). Apple initiation verified correct (canonical Services ID, redirect, state/nonce); roundtrip blocked on owner Apple credentials (documented in LR07-PROVIDER-SIGNIN-LIVE-20261016.md). Native device lane deferred to LR20.
+
+**LR08:** live AASA served the literal TEAMID placeholder — fix PR #26 substitutes the real team id from APPLE_TEAM_ID fail-closed (4/4 tests; p11 foundations green). assetlinks.json verified live.
+
+**LR10:** full durable chain implemented as PR #27 (see LR10 row). 9/9 offline tests + production-lifecycle green.
+
+**PR queue for Main:** #22 SEO/headers, #23 /opsz root cause, #24 compose fence, #25 deploy guards, #26 AASA team id, #27 email (after #26), #21 board+evidence.

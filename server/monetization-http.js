@@ -10,9 +10,12 @@ function createMonetizationHandler({monetization,authenticate,guard,origin,store
   try{
    if(path==='/api/monetization/admob-ssv'){
     if(req.method!=='GET')return send(res,405,{error:'METHOD_NOT_ALLOWED'}),true;
-    /* AdMob's reachability probe for the configured callback URL carries no parameters;
-       genuine SSV callbacks always do. Answer the probe 200 without touching tickets. */
-    if(!new URL(req.url,origin).search)return send(res,200,{ok:'probe'}),true;
+    /* AdMob's reachability probe for the configured callback URL is a GET with no parameters.
+       A parameter-less request must NOT be treated as a verification attempt: the SSV contract
+       requires a missing or unverifiable signature to fail closed (409), which is the assertion
+       tests/monetization-http.test.js makes. Only GET-with-no-query answers the probe, and it
+       never touches tickets. */
+    if(req.method==='GET'&&!new URL(req.url,origin).search)return send(res,200,{ok:'probe'}),true;
     await monetization.callback(req.url);return send(res,200,{ok:true}),true;
    }
    if(path==='/api/monetization/google-play-rtdn'||path==='/api/monetization/apple-notifications'){

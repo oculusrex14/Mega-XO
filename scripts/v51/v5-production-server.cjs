@@ -38,7 +38,8 @@
  *     because no provider implementation is configured here.
  *   - NO V4 COUPLING. This module never reads, writes, starts or stops a V4 path, container,
  *     database or service, and never shells out to Docker. It binds loopback only (never a
- *     wildcard), keeps `X-Robots-Tag: noindex, nofollow` and serves the generated bundle only.
+ *     wildcard), applies a route-aware crawl policy (blanket noindex; manifest-indexable 200 pages
+ *     released, per owner directive A04 2026-10-16) and serves the generated bundle only.
  *
  * OPERATOR SEQUENCE (E5 - every step below is a deliberate, separate switch):
  *   1. E1-E4 complete: the legacy V4 authority is frozen and fenced, its writers stopped by the
@@ -71,7 +72,7 @@
  *      target whose epoch is missing or malformed is REFUSED, and an epoch supplied while the target
  *      is still nonserving is REFUSED (never arm early).
  *   7. Verify: /livez and /readyz answer 200 {"status":"ok","live":true,"ready":true}; / serves the
- *      bundle shell; a missing asset is a real 404, never an HTML fallback; X-Robots-Tag noindex.
+ *      bundle shell; a missing asset is a real 404, never an HTML fallback; route-aware robots header.
  *
  * Usage: MEGA_V5_PRODUCTION_SERVER=blue-sun-85454968/br-dawn-dawn-b8f9n7zq/mega_xo_v5_production \
  *          node scripts/v51/v5-production-server.cjs [--port 8080] [--web-build .artifacts/p21-web]
@@ -414,6 +415,7 @@ function loadWebArtifact(dir) {
   }
   return Object.freeze({
     dir, routes: manifest.routes || {}, files: new Set(['web-build.manifest.json', ...manifest.files.map((f) => f.path)]),
+    seo: manifest.seo || null,
     sourceCommit: manifest.source_commit || null, bundleSha256: manifest.bundle_sha256 || null, fileCount: manifest.file_count || manifest.files.length,
   });
 }
@@ -432,6 +434,33 @@ function classifyPath(pathname) {
   if (pathname.startsWith('/api/') || pathname.startsWith('/auth/') || pathname.startsWith('/.well-known/') ||
       pathname === '/health' || pathname === '/livez' || pathname === '/readyz') return 'api';
   return 'static';
+}
+
+/* Route-aware crawl policy (LR04, owner directive A04 2026-10-16). The generated bundle already
+ * ships per-page <meta name="robots"> plus a per-route metadata map (manifest.seo.metadata, built
+ * from apps/web/seo.js); the old blanket production noindex header used to override that contract
+ * sitewide. The header policy now mirrors the preview/vercel contract exactly: every response
+ * defaults to noindex, nofollow, and ONLY a 200 response for a manifest route whose metadata marks
+ * it indexable is released with the manifest's robots value. 404s, static assets, private routes
+ * (game shell, account, ...), APIs, health/ops probes and unknown paths keep the noindex header.
+ * Staging keeps its own unconditional noindex in scripts/v51/p21-staging-server.cjs, untouched. */
+const DEFAULT_ROBOTS_HEADER = 'noindex, nofollow';
+function robotsHeaderFor({ pathname, status, seo }) {
+  if (typeof pathname !== 'string' || pathname.length === 0) return DEFAULT_ROBOTS_HEADER;
+  const route = pathname.length > 1 ? pathname.replace(/\/$/, '') : pathname;
+  const meta = seo && seo.metadata ? seo.metadata[route] : null;
+  if (status === 200 && meta && meta.indexable === true && typeof meta.robots === 'string' && meta.robots) return meta.robots;
+  return DEFAULT_ROBOTS_HEADER;
+}
+
+/* Legal files (e.g. /legal/privacy.html) additionally carry the canonical Link header their alias
+ * route (e.g. /privacy) declares, exactly like the preview server does. */
+function legalCanonicalLink({ pathname, seo }) {
+  if (typeof pathname !== 'string') return null;
+  const rawLegal = /^\/legal\/([a-z-]+)\.html$/.exec(pathname);
+  if (!rawLegal || !seo || !seo.metadata) return null;
+  const meta = seo.metadata['/' + rawLegal[1]];
+  return meta && typeof meta.canonical === 'string' ? '<' + meta.canonical + '>; rel="canonical"' : null;
 }
 
 /* The operations-health budget: how stale a verified backup may be before `/opsz` reports red, and
@@ -523,7 +552,7 @@ async function main() {
   const { createApiHandler } = require(path.join(ROOT, 'apps/api/index.js'));
   const security = require(path.join(ROOT, 'packages/services/security.js'));
   const { resolveAuth } = require(path.join(ROOT, 'apps/api/routes/helpers.js'));
-  const { resolveStatic } = require(path.join(ROOT, 'scripts/p21/serve-web.js'));
+  const { resolveStatic, CSP } = require(path.join(ROOT, 'scripts/p21/serve-web.js'));
 
   /* 1. TARGET BINDING. Explicit, exact and fail-closed; the process refuses to start otherwise. */
   const binding = process.env[BINDING_ENV];
@@ -719,7 +748,14 @@ async function main() {
     try {
       const parsedUrl = new URL(req.url || '/', origin);
       const pathname = parsedUrl.pathname;
-      res.setHeader('X-Robots-Tag', 'noindex, nofollow');
+      /* Security headers mirror the preview/vercel contract for the SAME bundle; the CSP string is
+       * reused from scripts/p21/serve-web.js so it cannot drift into a third copy. The crawl header
+       * defaults to noindex and is released per-route in the static branch below. */
+      res.setHeader('X-Content-Type-Options', 'nosniff');
+      res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+      res.setHeader('X-Frame-Options', 'DENY');
+      res.setHeader('Content-Security-Policy', CSP);
+      res.setHeader('X-Robots-Tag', DEFAULT_ROBOTS_HEADER);
       if (security.isOperatorRoute(pathname)) { res.statusCode = 403; res.setHeader('Content-Type', 'application/json'); res.end(JSON.stringify({ error: 'PRIVATE_OPERATOR_ROUTE' })); return; }
       const surface = classifyPath(pathname);
       if (surface === 'realtime') return;
@@ -747,6 +783,11 @@ async function main() {
       if (!absolute.startsWith(artifactDir + path.sep) || !fs.existsSync(absolute) || !fs.statSync(absolute).isFile()) {
         res.statusCode = 404; res.setHeader('Content-Type', 'text/plain; charset=utf-8'); res.end('Not found'); return;
       }
+      /* LR04 route-aware crawl policy: only a 200 manifest route marked indexable is released from
+       * the default noindex; everything else (404s, assets, private pages) keeps it. */
+      res.setHeader('X-Robots-Tag', robotsHeaderFor({ pathname, status: resolved.status, seo: webArtifact.seo }));
+      const legalLink = legalCanonicalLink({ pathname, seo: webArtifact.seo });
+      if (legalLink) res.setHeader('Link', legalLink);
       res.statusCode = resolved.status;
       res.setHeader('Content-Type', MIME_TYPES[path.extname(absolute).toLowerCase()] || 'application/octet-stream');
       fs.createReadStream(absolute).pipe(res); return;
@@ -795,7 +836,7 @@ async function main() {
     webBuild: { dir: artifactDir, sourceCommit: webArtifact.sourceCommit, bundleSha256: webArtifact.bundleSha256, fileCount: webArtifact.fileCount },
     websiteServesShell: shell.includes('mx-web-shell'), livezStatus: livez.status, readyzStatus: readyz.status,
     assets, missingAssetStatus: missing.status, assetSelfCheck,
-    note: 'production composition; loopback only; noindex enforced; no legacy-authority path touched; serves the generated P21 bundle',
+    note: 'production composition; loopback only; route-aware crawl policy (approved public pages indexable); no legacy-authority path touched; serves the generated P21 bundle',
   }, null, 2));
 
   const shutdown = async () => {
@@ -855,6 +896,7 @@ module.exports = {
   deriveNamespace, assertPoolRole, assertRoleSeparation, assertApiCompositionHoldsNoCoreAccess,
   assertCoreCompositionUsesCorePool,
   resolveConnectionBudget, resolveHttpBinding, classifyPath, buildOpsReport,
+  robotsHeaderFor, legalCanonicalLink, DEFAULT_ROBOTS_HEADER,
   FRESHNESS_STATE_FILE, OPS_BACKUP_MAX_AGE_MS, OPS_OUTBOX_BACKLOG_MAX,
   /* filesystem-bounded helpers used by the composition (never network) */
   secretPaths, readSecretFile, loadStableSecret, readInventory, loadWebArtifact,

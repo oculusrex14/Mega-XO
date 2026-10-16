@@ -403,3 +403,46 @@ test('module: requiring the entry point has no side effects and exposes no compo
     assert.equal(key.startsWith('MEGA_V51_'), false);
   }
 });
+
+test('headers: route-aware crawl policy mirrors the bundle manifest (LR04)', () => {
+  const seo = { metadata: {
+    '/': { indexable: true, robots: 'index, follow, max-image-preview:large', canonical: 'https://megaxo.online/' },
+    '/about': { indexable: true, robots: 'index, follow, max-image-preview:large', canonical: 'https://megaxo.online/about' },
+    '/game': { indexable: false, robots: 'noindex, follow', canonical: 'https://megaxo.online/game' },
+    '/privacy': { indexable: true, robots: 'index, follow, max-image-preview:large', canonical: 'https://megaxo.online/privacy' },
+  } };
+  /* Public pages are released from the blanket noindex with the manifest robots value. */
+  assert.equal(mod.robotsHeaderFor({ pathname: '/', status: 200, seo }), 'index, follow, max-image-preview:large');
+  assert.equal(mod.robotsHeaderFor({ pathname: '/about/', status: 200, seo }), 'index, follow, max-image-preview:large');
+  /* Private game-shell routes, unknown assets, errors and missing metadata keep the blanket noindex. */
+  assert.equal(mod.robotsHeaderFor({ pathname: '/game', status: 200, seo }), mod.DEFAULT_ROBOTS_HEADER);
+  assert.equal(mod.robotsHeaderFor({ pathname: '/assets/art/mark.webp', status: 200, seo }), mod.DEFAULT_ROBOTS_HEADER);
+  assert.equal(mod.robotsHeaderFor({ pathname: '/about', status: 404, seo }), mod.DEFAULT_ROBOTS_HEADER);
+  assert.equal(mod.robotsHeaderFor({ pathname: '/about', status: 200, seo: null }), mod.DEFAULT_ROBOTS_HEADER);
+  assert.equal(mod.robotsHeaderFor({ pathname: '/about', status: 200 }), mod.DEFAULT_ROBOTS_HEADER);
+  /* Legal files keep the canonical Link header their alias route declares. */
+  assert.equal(mod.legalCanonicalLink({ pathname: '/legal/privacy.html', seo }), '<https://megaxo.online/privacy>; rel="canonical"');
+  assert.equal(mod.legalCanonicalLink({ pathname: '/game', seo }), null);
+  assert.equal(mod.legalCanonicalLink({ pathname: '/legal/unknown-name.html', seo }), null);
+  /* The production entry reuses the preview CSP string instead of carrying a third copy. */
+  const { CSP } = require('../scripts/p21/serve-web.js');
+  assert.match(CSP, /default-src 'self'/);
+  const serverSource = fs.readFileSync(path.join(__dirname, '..', 'scripts', 'v51', 'v5-production-server.cjs'), 'utf8');
+  assert.match(serverSource, /Content-Security-Policy', CSP\)/, 'production handler applies the shared CSP');
+  assert.match(serverSource, /robotsHeaderFor\(\{ pathname, status: resolved\.status/, 'static responses use the route-aware policy');
+});
+
+test('loadWebArtifact: carries manifest seo metadata for the crawl policy', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'mx-web-artifact-'));
+  try {
+    fs.writeFileSync(path.join(dir, 'web-build.manifest.json'), JSON.stringify({
+      generator: 'scripts/p21/build-web.js',
+      files: [{ path: 'index.html' }],
+      routes: { '/': 'index.html' },
+      seo: { metadata: { '/': { indexable: true, robots: 'index, follow', canonical: 'https://megaxo.online/' } } },
+    }));
+    const artifact = mod.loadWebArtifact(dir);
+    assert.equal(artifact.seo.metadata['/'].indexable, true);
+    assert.equal(mod.robotsHeaderFor({ pathname: '/', status: 200, seo: artifact.seo }), 'index, follow');
+  } finally { fs.rmSync(dir, { recursive: true, force: true }); }
+});

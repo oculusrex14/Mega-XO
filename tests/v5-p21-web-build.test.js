@@ -318,10 +318,12 @@ test('P21-DELIVERY-01: Vercel routing matches static manifest and automatic depl
   assert.ok(!config.rewrites.some(rule => rule.source.includes('/api') || rule.destination.startsWith('http')));
   assert.ok(config.redirects.some(rule => rule.source === '/legacy-game' && rule.destination === '/legacy-game/'));
   const robotsAt=source=>config.headers.find(rule=>rule.source===source)?.headers.find(header=>header.key==='X-Robots-Tag')?.value;
-  /* The owner release hold REQUIRES a sitewide noindex until the SEO/release owner authorizes
-   * indexing, so the blanket header is the expected state, not a defect. */
-  assert.match(robotsAt('/(.*)'),/noindex/,'sitewide release-hold noindex retained');
-  assert.match(robotsAt('/(.*)'),/nofollow/,'sitewide release-hold nofollow retained');
+  /* Owner directive A04 (2026-10-16): approved public pages are indexable, so the former sitewide
+   * release-hold noindex is retired from the blanket rule. Private, game-shell, API and legal-file
+   * routes keep explicit noindex headers, and the blanket rule keeps the security header set. */
+  const blanket=config.headers.find(rule=>rule.source==='/(.*)')?.headers??[];
+  assert.ok(!blanket.some(header=>header.key==='X-Robots-Tag'),'blanket rule must not carry a sitewide noindex');
+  assert.ok(blanket.some(header=>header.key==='Content-Security-Policy'),'blanket security headers retained');
   for(const source of ['/game','/game/(.*)','/play','/legacy-game/(.*)','/account','/profile','/api/(.*)','/pages/(.*)','/legal/:name.html'])assert.match(robotsAt(source),/noindex/,source);
   for(const name of LEGAL_NAMES)assert.ok(config.headers.some(rule=>rule.source==='/legal/'+name+'.html'&&rule.headers.some(header=>header.key==='Link'&&header.value==='<https://megaxo.online/'+name+'>; rel="canonical"')),name+' retained legal canonical header');
 });

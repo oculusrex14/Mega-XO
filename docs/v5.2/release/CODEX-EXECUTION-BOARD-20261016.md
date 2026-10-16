@@ -266,3 +266,14 @@ Both MEDIUMs are recorded with dispositions in the review document — no unilat
 3. **The two MEDIUM owner decisions** from the security review (surfaced in checkpoint 18) — for the human.
 
 The goal continues with LR20 as the primary lane; the monetization, hardening, identity, consent and security-prep slices are all merged and evidenced.
+
+### Checkpoint 21 - 2026-10-16 (branch consolidation: one V5.2, archive tags for everything else)
+
+**Owner request executed:** all Codex branches merged into ONE V5.2 (the merge candidate for the default branch) and the rest deleted with recoverable archive tags.
+
+- **Merged into V5.2:** the board branch (codex/v52-execution-board-20261016, checkpoints 19-20 docs-only) was the only content not already in trunk; merged clean (a8a60cf, 23 lines, zero conflicts). Everything else was ALREADY in trunk via the PR merges (verified by merge-base containment for all 22 branches + the Main consolidation candidate + the WebUI audit branch).
+- **Deleted (local + remote):** 20 local branches and 16 remote branches - every codex/* PR branch, backup/pre-rebase-polar, merge-probe, pr18-review, v52-final, V5-platform, feat/v5.1-bot-ai-tutorial leftovers, v52-codex-integration (Main consolidation candidate, fully merged) and review/v52-architecture-and-launch-audit-20261016 (the WebUI audit, fully merged).
+- **Archive:** every deleted branch head is reachable as a tag archive/20261016-<name> (22 tags pushed to origin; all 22 verified resolvable). Nothing is lost - any branch can be restored with git checkout archive/20261016-<name> -b <name>.
+- **Retained:** V4.1 (old V4 production), V5.1 (frozen prior trunk), V5.2 (the consolidation trunk + default branch), and the two deliberate origin/preserve/v51-* archives (V5.1-era evidence branches, not mine to delete).
+- **Worktrees:** 8 stale worktrees removed (all clean; one had only an untracked node_modules). Only the primary checkout remains.
+- **Verification before push:** the key suites on the consolidated V5.2 head - polar-commerce 5/5, cashfree-v5 9/9, commerce-ingress 7/7, rate-limit 4/4, migrations 11/11, all fail 0.

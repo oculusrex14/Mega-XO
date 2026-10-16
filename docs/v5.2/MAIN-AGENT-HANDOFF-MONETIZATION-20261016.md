@@ -24,7 +24,11 @@ Owner priorities this cycle: ads live, Cashfree on the website, Paddle as the fi
 2. `packages/services/commerce.js`: port the three methods from PR #19 `server/monetization-store.js` (`existingCashfreeOrder/recordCashfreeOrder/settleCashfree`) - same idempotency family, amount+currency re-verified against an independent `GET /pg/orders/{id}`.
 3. Route the new `/api/monetization/cashfree/*` paths through the ingress like section 2; provider keys already on the VPS at `secrets/cashfree.env` (mode 600). Register the webhook `https://megaxo.online/api/monetization/cashfree/webhook` in the Cashfree dashboard.
 
-## 4. Paddle (final global PG) - status and next steps
+## 4. Global PG decision - Polar primary, Paddle fallback (owner-approved 2026-10-16)
+
+- DECISION: Polar is the primary global PG. Fees are tied with Paddle at the headline rate for new accounts (5% plus 50 cents) and cheaper at volume (Pro: 20 USD/mo at 3.8% plus 40 cents; Growth: 100 USD/mo at 3.6% plus 35 cents). India payouts are direct-to-bank over Stripe Connect with small payout fees, and the owner has ALREADY completed the Polar payout-account setup (bank linked). Paddle remains a fallback: a flat 5% plus 50 cents with NO non-US-card surcharge (Polar adds 1.5% for non-US cards - relevant for an international audience), but its India payouts need a Payoneer intermediary and its payout setup is locked behind account verification (owner is In progress). Revisit Paddle if the non-US surcharge shows up badly in real statements.
+
+- Polar account: Antimatter Innovations on polar.sh, business onboarding submitted, payout account configured (bank linked). API key still needed: Polar dashboard > Developer > API keys - create it and pipe it to secrets/polar.env on the VPS (mode 600, never committed; same no-print pipeline as Cashfree).
 
 - Live account exists (Antimatter Innovations, live mode). Verification (step 02) is the owner's action. The Codex plugin `paddle@paddle-agent-skills` is installed with `paddle-live` MCP (browser OAuth, starts read-only; owner grants write under Connectors > MCP at vendors.paddle.com/mcps).
 - Product structure (policy-compliant; Paddle prohibits virtual currency but allows game items/entitlements): (a) Remove Ads - one-time, tax `digital-goods`; (b) Premium Pass - recurring month/year, grants ad removal + daily banked power + cosmetics (NO crowns); (c) Power Packs - consumable banked-power bundles (in-game items). Crowns stay Cashfree-India + mobile IAP only.

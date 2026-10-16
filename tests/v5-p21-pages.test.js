@@ -159,10 +159,17 @@ test('P21 store only renders approved returned products and provider prices', as
   assert.doesNotMatch(html, /style_collection|Buy archived frames|\$9\.99|0\.99/);
   const unavailableProvider = renderPage('/store', { sessionStatus: 'linked', products: { status: 'ready', purchasesAvailable: false, rows } });
   assert.match(unavailableProvider, /data-product-id="crowns_100" disabled/);
-  for (const status of ['error', 'loading']) {
-    const unavailable = renderPage('/store', { products: { status, rows } });
-    assert.doesNotMatch(unavailable, /pg-store-card|₹89\.00|\$0\.99/);
-  }
+  const errored = renderPage('/store', { products: { status: 'error', rows } });
+  /* A2: a failed read keeps the known product shell visible with prices hidden and every
+   * action off, plus one inline retry - it never wipes the page or invents a price. */
+  assert.doesNotMatch(errored, /₹89.00|$0.99/);
+  assert.equal((errored.match(/pg-store-card/g) || []).length, 4);
+  assert.equal((errored.match(/Price unavailable/g) || []).length, 5, 'the pass panel plus the four cards stay honest');
+  assert.doesNotMatch(errored, /data-store-action="purchase"/);
+  assert.match(errored, /data-store-action="refresh"/);
+  const loading = renderPage('/store', { products: { status: 'loading', rows } });
+  assert.doesNotMatch(loading, /₹89.00|$0.99|data-store-action="purchase"|pg-store-card/);
+  assert.match(loading, /Loading the store/);
 });
 
 test('P21 sponsor preferences require explicit local consent and no active advertising', async () => {

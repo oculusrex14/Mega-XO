@@ -340,7 +340,15 @@ function storePage(context) {
   };
   let products;
   if (state.status === 'loading') products = '<div class="pg-loading-state" role="status">' + icon('refresh') + '<h2>Loading the store…</h2><p>Checking current availability and prices.</p></div>';
-  else if (state.status === 'error') products = empty('crown', 'The store could not be loaded.', 'Product availability and prices are unavailable right now. The store stays open — try again when your connection is ready.', '<button class="mx-button secondary" type="button" data-store-action="refresh">' + icon('refresh') + ' Retry store check</button>');
+  else if (state.status === 'error') {
+    /* A2: a failed read never wipes the page - the known product descriptions stay visible
+     * without prices, with one inline retry for the real failed fetch. */
+    const fallbackRows = Object.keys(allowed).map(id => ({ id, owned: false }));
+    products = '<p class="pg-store-error" role="status">The store could not be checked just now — prices are hidden and actions are off until a retry succeeds. <button class="mx-button secondary" type="button" data-store-action="refresh">' + icon('refresh') + ' Retry store check</button></p><div class="pg-grid pg-grid-four pg-store-grid">' + fallbackRows.map(row => {
+      const item = allowed[row.id];
+      return panel('<div class="pg-store-art" aria-hidden="true">' + icon(item.amount ? 'crown' : 'shield') + '</div>' + pill(item.amount ? 'CROWN PACK' : 'PERMANENT AD REMOVAL') + '<h2>' + item.title + '</h2><p>' + (item.amount ? 'Works the same way in the game as earned Crowns.' : 'Turn off automatic ads where supported. Optional rewarded ads remain a separate choice.') + '</p><div class="pg-store-price"><span class="mx-muted">Price unavailable</span></div><button class="mx-button secondary" type="button" disabled>Unavailable here</button>', 'pg-store-card');
+    }).join('') + '</div>';
+  }
   else if (!rows.length) products = empty('crown', 'No products are available here yet.', 'Check back for products and prices available on your platform.');
   else products = '<div class="pg-grid pg-grid-four pg-store-grid">' + rows.map(row => {
     const item = allowed[row.id], price = priceText(row);

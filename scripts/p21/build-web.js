@@ -149,6 +149,7 @@ function createPlan(root) {
     const destination = source.startsWith('assets/p21/ranks/') ? 'assets/art/ranks/' + source.slice('assets/p21/ranks/'.length) : 'assets/art/' + source.slice('assets/p21/art/'.length);
     add(source, destination);
   }
+  add('assets/p21/art/mega-pass.png', 'assets/art/mega-pass.png');
   for (const required of ['assets/art/header.webp', 'assets/art/mark.webp']) {
     if (!entries.some(entry => entry.path === required)) refuse('required optimized brand export is missing: ' + required);
   }

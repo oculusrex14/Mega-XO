@@ -51,7 +51,10 @@ function refresh(){
  root.lucide.createIcons({attrs:{"stroke-width":2}});
  return true;
 }
-root.MegaIcons={icon,refresh,badge(t,large=false){
+root.MegaIcons={icon,refresh,pass(large=false){
+ /* Mega Pass emblem: a crown set on a rounded ticket, echoing the rank badges' stroke style. */
+ return '<svg class="rank-badge pass-badge'+(large?' large':'')+'" viewBox="0 0 64 64" role="img" aria-label="Mega Pass emblem"><g fill="var(--badge-bg,#1d2b4f)" stroke="var(--badge-ink,#c9a227)" stroke-width="2" stroke-linejoin="round"><rect x="8" y="14" width="48" height="36" rx="10"/><path d="M22 14v36M42 14v36" stroke-dasharray="3 4"/></g><g fill="none" stroke="var(--badge-ink,#c9a227)" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><path d="m32 22 5 8 9 2-7 6 1 9-8-5-8 5 1-9-7-6 9-2z"/><path d="M18 48h6m16 0h6"/></g></svg>';
+},badge(t,large=false){
  const i=t.index||0;let outer=i<2?'<rect x="14" y="14" width="36" height="36" rx="10"/>':i<5?'<path d="m32 7 22 11v20L32 57 10 38V18z"/>':i<8?'<path d="m32 4 25 28-25 28L7 32z"/>':'<path d="m32 4 21 12 5 23-26 21L6 39l5-23z"/>';
  const glyphs=[
  '<path d="M23 24h18M21 32h20M23 40h18m-10-18-3 20"/>',

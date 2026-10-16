@@ -202,7 +202,15 @@ function fakeProvider() {
 }
 const { createPgPool } = require('../packages/db/pg/pool.js');
 async function commerceHarness(t, family, overrides = {}) {
-  await ensureBackend();
+  try {
+    await ensureBackend();
+  } catch (err) {
+    /* The frozen disposable-backend contract (tests/v5-p04-services.test.js): no installed PG16
+     * binary and no V5_PG_URL means the real-PG journeys SKIP with the explicit reason - they
+     * never fail a runner that simply has no local database. The offline journeys above still run. */
+    t.skip(err.message);
+    return null;
+  }
   const database = await createDatabase(family);
   await seedActor(database, 'cf_alice', 100);
   await seedActor(database, 'cf_bob', 100);
@@ -220,11 +228,13 @@ async function commerceHarness(t, family, overrides = {}) {
     cashfreeNotifyUrl: 'https://megaxo.online/api/monetization/cashfree/webhook',
   });
   t.after(async () => { commerce.close(); await corePool.end(); });
-  return { commerce, provider, database };
+  return { commerce, provider, database, skipped: false };
 }
 
 test('commerce: the order record is server-side, idempotent per key, and actor-bound', async (t) => {
-  const { commerce, provider } = await commerceHarness(t, 'create');
+  const harness = await commerceHarness(t, 'create');
+  if (!harness) return;
+  const { commerce, provider } = harness;
   const first = await commerce.createCashfreeOrder('cf_alice', 'order-key-1', 'crowns_100', { email: 'a@b.co', phone: '9876543210' });
   assert.match(first.orderId, /^cfmx[0-9a-f]{24}$/);
   assert.equal(first.productId, 'crowns_100');
@@ -240,7 +250,9 @@ test('commerce: the order record is server-side, idempotent per key, and actor-b
 });
 
 test('commerce: settlement grants only after an independent PAID verification with the exact amount', async (t) => {
-  const { commerce, provider } = await commerceHarness(t, 'settle');
+  const harness = await commerceHarness(t, 'settle');
+  if (!harness) return;
+  const { commerce, provider } = harness;
   const created = await commerce.createCashfreeOrder('cf_alice', 'settle-key-1', 'crowns_525', { email: 'a@b.co', phone: '9876543210' });
   const orderId = created.orderId;
   const status = await commerce.cashfreeOrderStatus('cf_alice', orderId);
@@ -258,7 +270,9 @@ test('commerce: settlement grants only after an independent PAID verification wi
 });
 
 test('commerce: the webhook settles a PAID order exactly once and routes refunds', async (t) => {
-  const { commerce, provider } = await commerceHarness(t, 'webhook');
+  const harness = await commerceHarness(t, 'webhook');
+  if (!harness) return;
+  const { commerce, provider } = harness;
   const created = await commerce.createCashfreeOrder('cf_alice', 'hook-key-1', 'crowns_100', { email: 'a@b.co', phone: '9876543210' });
   const orderId = created.orderId;
   provider.orders.get(orderId).status = 'PAID';
@@ -279,7 +293,9 @@ test('commerce: the webhook settles a PAID order exactly once and routes refunds
 });
 
 test('commerce: a refunded remove_ads loses the entitlement structurally', async (t) => {
-  const { commerce, provider } = await commerceHarness(t, 'refund');
+  const harness = await commerceHarness(t, 'refund');
+  if (!harness) return;
+  const { commerce, provider } = harness;
   const created = await commerce.createCashfreeOrder('cf_alice', 'ads-key-1', 'remove_ads', { email: 'a@b.co', phone: '9876543210' });
   provider.orders.get(created.orderId).status = 'PAID';
   const settled = await commerce.cashfreeOrderStatus('cf_alice', created.orderId);

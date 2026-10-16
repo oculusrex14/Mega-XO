@@ -738,6 +738,10 @@ async function main() {
     queue: coreGateway, leaderboard: (query) => coreGateway.leaderboard(query),
     otpSecret, ticketIssuer, allowedOrigins,
     identityProviders, webCallbackOrigin: 'https://megaxo.online',
+    /* LR08: the iOS Universal Links association is served with the REAL Apple Team ID prefix
+     * when configured (Apple sign-in requires it anyway); the well-known route fail-closes to the
+     * documented placeholder if this is absent or malformed. */
+    appleTeamId: process.env.APPLE_TEAM_ID || '',
   };
   apiContext.completeWebSignIn = webAccountRoutes.createWebSignInLane(apiContext);
   const apiRole = assertApiCompositionHoldsNoCoreAccess(apiContext);

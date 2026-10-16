@@ -126,3 +126,11 @@
 **LR12 implemented as PR #29** (based on origin/V5.2 @ e4e2ee4 — Main landed a monetization-browser-fixture SIGTERM fix there; that fixture exercises the legacy V4 lane and is untouched). Full chain: API route (actor resolution + client op keys) → signed /ingress/commerce/command → one allow-listed dispatcher → the Core-owned commerce service. SSV path is actor-free + signature-protected; grants fail closed until verifyAd/verifyPurchase/eligibility are configured (next slice). 4/4 ingress tests + production-server/gateway/contracts/lifecycle suites green.
 
 **Next:** LR15 provider verification slice (AdMob SSV verifier wiring + store verifier) to make the mounted surface enableable, then LR16 flags/enablement runbook.
+
+### Checkpoint 7 — 2026-10-16 (LR15 AdMob verifier wired; store-port plan)
+
+**LR15 AdMob SSV: WIRED (PR #29 addendum commit 06f36cb, stacked on the LR12 mount).** verifyAd composed from server/admob-ssv.js whenever MEGA_AD_MODE is rewarded/hybrid (ECDSA vs Google's published gstatic keys, 24h cache — no secret material); ad units from ADMOB_* env; the SSV route forwards the RAW query string Google signs (the object shape would have failed the ECDSA check — fixed and tested). Fail-closed: adMode off → verifyAd null → ADS_UNAVAILABLE. Enablement for Main: set the ADMOB_* units + MEGA_AD_MODE=rewarded, register the SSV URL in the AdMob console (documented on PR #29).
+
+**Store verifier (verifyPurchase/purchaseProvider): PORT PLAN, deliberately not half-wired.** Survey: StorePurchaseProvider({google,apple}) is db-free, but GooglePlayBilling(db,...) and AppleStoreKit(db,...) persist against V4 SQLite tables v41_store_revocations / v41_store_finalize via db.prepare. A correct V5 port needs: (1) additive PG tables for revocations/finalizations, (2) a prepared-statement adapter or rewritten statements per provider, (3) the notifications lane (GooglePlayNotifications/AppleStoreNotifications) for renewals, (4) tests incl. refund-revocation ordering. Rushing it would risk purchases without refund propagation — deferred to a dedicated slice with the schema migration.
+
+**Next:** the store-verifier PG port slice (schema + adapter + notifications), or the native device lane if the owner prefers builds first.

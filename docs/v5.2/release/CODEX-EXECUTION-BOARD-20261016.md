@@ -21,7 +21,7 @@
 | LR03A | A02 | Retire V4 Compose dependency: dedicated V5 edge-only orchestration; offline render test proving Caddy updates cannot recreate the SQLite app; V4 assets archived isolated. No live-host docker compose up. | P0 | LR03 | TODO | — |
 | LR04 | A04 | Selective X-Robots-Tag: indexable approved public pages, noindex retained for private/auth/staging/operator routes; external HTTP audit of robots/sitemap/canonical/redirects/404s. | P0 | LR01 | TODO | — |
 | LR04 | A04 | Selective X-Robots-Tag: indexable approved public pages, noindex retained for private/auth/staging/operator routes; external HTTP audit of robots/sitemap/canonical/redirects/404s. | P0 | LR01 | PR OPEN | #22 |
-| LR05 | A05 | Read-only live health report: /livez /readyz /opsz, deployed SHA vs source, PG migration head, backups freshness, Redis, HTTPS/WSS, session, matchmaking/reconnect, alerts. | P0 | LR01 | IN PROGRESS | — |
+| LR05 | A05 | Read-only live health report: /livez /readyz /opsz, deployed SHA vs source, PG migration head, backups freshness, Redis, HTTPS/WSS, session, matchmaking/reconnect, alerts. /opsz 503 ROOT-CAUSED (R2 listing truncation) and fix PR'd. Remaining: deployed SHA vs source, migration head, Redis/WSS/session/matchmaking probes. | P0 | LR01 | IN PROGRESS | #23 |
 
 ## Stage 2 — Identity, native and security preparation
 
@@ -95,3 +95,11 @@
 **Testing:** v5 production server 12/12 (2 new LR04 tests); web-build all pass (updated DELIVERY-01); p21-seo 6/6; production-lifecycle all pass. Node --test runner leaks zero-concurrency children in this environment — per-file direct runs used; CI on PR SHA will confirm.
 
 **Open work:** LR05 VPS-side checks (deployed SHA vs origin/V5.2, freshness file, migration head); then LR03/LR03A; LR02 stays deferred (Main).
+
+### Checkpoint 2 — 2026-10-16 (LR05 VPS read-only audit)
+
+**Finding (P0, fixed by PR #23):** /opsz 503 + mega-xo-v5-freshness.service failed + mega-xo-v5-health.service failed. Backup pipeline HEALTHY (verified R2 upload+readback every 5 min). Root cause: v5-r2-client.js list() used a single max-keys=1000 page — at 500 backups (2 objects each) the key-ordered page truncated to the OLDEST backups, so freshness never saw manifests newer than 2026-10-15T21:51:31Z (consecutiveUnhealthy: 60, V5_BACKUP_STALE beyond the 900 s RPO). Fix: paginated list with fail-closed cap; 4/4 offline regression tests. Main deploys the bin script per PR #23 steps; expected /opsz to return 200 within one 5-min cycle.
+
+**Other observations:** mega-xo-v5-production.service (the authority) stayed active/running — no player-facing impact. Legacy mega-xo-health.service unit failed (V4-era, flagged for LR03A cleanup). Backup prefix grows unboundedly until LR18 safe-prune — the 100-page cap fails closed loudly if retention lags. Host backup-policy.json RPO=900 s confirmed.
+
+**Next:** remaining LR05 probes (deployed SHA vs source, migration head, Redis, WSS, session/matchmaking), then LR03/LR03A deployment-safety PRs.

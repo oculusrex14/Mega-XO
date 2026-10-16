@@ -179,7 +179,7 @@ test('all 35 tables and all eight serialized roots are accounted for with no los
   db.prepare('INSERT INTO v4_outbox VALUES(?,?,?,?,?,?,?,?,?)').run('o-1', 'cipher.text', 'reset', 'queued', CLOCK, CLOCK + 60000, CLOCK, 0, 0);
   db.prepare('INSERT INTO v4_limits VALUES(?,?,?)').run('mail-budget:2026-10', 3, CLOCK + 40 * 86400000);
   db.prepare('INSERT INTO community_limits VALUES(?,?)').run('search:p0', 1);
-  db.prepare('INSERT INTO identities VALUES(?,?,?,?)').run('apple', 'synthetic-apple', 'p0', CLOCK);
+  db.prepare('INSERT INTO identities(provider,subject,actor,created) VALUES(?,?,?,?)').run('apple', 'synthetic-apple', 'p0', CLOCK);
   db.prepare('INSERT INTO profiles VALUES(?,?,?,?,?,?,?,?,?,?)').run('p0', 'MEGA-AAAAAA', 'alice', 'Alice', 'ring', 'friends', 'friends', CLOCK, 0, 1);
   db.close();
 
@@ -325,9 +325,9 @@ test('non-UUID identity, linked providers and a bought-Crown reservation survive
     }]]
   });
   const db = new DatabaseSync(source.file);
-  db.prepare('INSERT INTO identities VALUES(?,?,?,?)').run('google', 'google-subject-legacy', actor, CLOCK);
-  db.prepare('INSERT INTO identities VALUES(?,?,?,?)').run('apple', 'apple-subject-legacy', actor, CLOCK);
-  db.prepare('INSERT INTO identities VALUES(?,?,?,?)').run('email', 'Legacy.User@Example.test', actor, CLOCK);
+  db.prepare('INSERT INTO identities(provider,subject,actor,created) VALUES(?,?,?,?)').run('google', 'google-subject-legacy', actor, CLOCK);
+  db.prepare('INSERT INTO identities(provider,subject,actor,created) VALUES(?,?,?,?)').run('apple', 'apple-subject-legacy', actor, CLOCK);
+  db.prepare('INSERT INTO identities(provider,subject,actor,created) VALUES(?,?,?,?)').run('email', 'Legacy.User@Example.test', actor, CLOCK);
   db.prepare('INSERT INTO profiles VALUES(?,?,?,?,?,?,?,?,?,?)').run(actor, 'MEGA-LEGACY1', 'legacy_user', 'Legacy', 'board', 'friends', 'friends', CLOCK, 0, 1);
   db.prepare('INSERT INTO email_credentials VALUES(?,?,?,?,?,?)').run('Legacy.User@Example.test', actor, 'c2FsdA', 'aGFzaA', CLOCK, CLOCK);
   db.prepare('INSERT INTO v41_store_bindings VALUES(?,?,?,?)').run(actor, 'obfuscated-account-id', 'apple-app-account-uuid', CLOCK);

@@ -10,7 +10,7 @@ function fixture(t){
  const authority=store.read(),actor='u_'+crypto.randomUUID();authority.addAccount(actor,{verified:true,createdAt:Date.now()});c.ensureProfile(actor,authority);authority.account(actor).coins=321;authority.account(actor).crowns=45;c.write(authority);
  const p=c.profileRow(actor),salt=crypto.randomBytes(16).toString('base64url');
  store.db.prepare('INSERT INTO email_credentials(email,actor,salt,password_hash,created,verified_at) VALUES(?,?,?,?,?,?)').run('player@example.com',actor,salt,'legacy-placeholder',Date.now(),Date.now());
- store.db.prepare('INSERT INTO identities VALUES(?,?,?,?)').run('email','player@example.com',actor,Date.now());
+ store.db.prepare('INSERT INTO identities(provider,subject,actor,created) VALUES(?,?,?,?)').run('email','player@example.com',actor,Date.now());
  const issued=c._issue(actor,Date.now()),service={store,community:c},ops=new OperatorService(service,{secret:'b'.repeat(64)});
  t.after(()=>{store.close();fs.rmSync(dir,{recursive:true,force:true});});
  return {store,c,actor,p,issued,ops};

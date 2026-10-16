@@ -13,8 +13,8 @@ function fixture(t,{enabled=true}={}){
  const actor=add(c,store,now),friend=add(c,store,now),other=add(c,store,now),profile=c.profileRow(actor);
  const salt='delete-salt',password='delete-password-hash';
  store.db.prepare('INSERT INTO email_credentials(email,actor,salt,password_hash,created,verified_at) VALUES(?,?,?,?,?,?)').run('delete@example.com',actor,salt,password,now,now);
- store.db.prepare('INSERT INTO identities VALUES(?,?,?,?)').run('email','delete@example.com',actor,now);
- store.db.prepare('INSERT INTO identities VALUES(?,?,?,?)').run('google','google-delete-subject',actor,now);
+ store.db.prepare('INSERT INTO identities(provider,subject,actor,created) VALUES(?,?,?,?)').run('email','delete@example.com',actor,now);
+ store.db.prepare('INSERT INTO identities(provider,subject,actor,created) VALUES(?,?,?,?)').run('google','google-delete-subject',actor,now);
  store.db.prepare('INSERT INTO profile_saves VALUES(?,?,?,?)').run(actor,1,JSON.stringify({version:3.2,economyVersion:3.2,settings:{theme:'vector'},records:[],processed:[],playSeconds:0,wallet:{coins:0,crowns:0,ledger:[],owned:[]},daily:{},weekly:{},legacy:{},profile:{},offlineMatch:null}),now);
  const a=store.read();
  a.account(actor).friends=[friend];a.account(friend).friends=[actor];a.account(other).friendRequests=[actor];a.account(friend).blocked=[actor];

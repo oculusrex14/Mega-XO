@@ -35,6 +35,16 @@ CREATE INDEX IF NOT EXISTS email_credentials_actor ON email_credentials(actor);
 CREATE INDEX IF NOT EXISTS email_challenges_session ON email_challenges(session);
 CREATE INDEX IF NOT EXISTS email_challenges_email ON email_challenges(email);`);
   const credentialColumns=this.db.prepare('PRAGMA table_info(email_credentials)').all();if(!credentialColumns.some(c=>c.name==='verified_at'))this.db.exec('ALTER TABLE email_credentials ADD COLUMN verified_at INTEGER');
+  /* Account-link decision columns (owner decision 2026-10-16 + Sol security review): a consumed
+   * login attempt whose provider-verified email matches exactly one existing account persists a
+   * SINGLE-USE, expiry-bounded, session-bound decision (the verified provider subject, the matched
+   * actor, the verified email, the absolute expiry and a pending/complete state). 'link' and any
+   * deletion scheduling REQUIRE ownership proof of the matched actor; 'new' alone never deletes. */
+  const signinColumns=this.db.prepare('PRAGMA table_info(signin_attempts)').all();
+  if(signinColumns.length){
+   for(const [name,ddl] of [['decision_subject','TEXT'],['decision_email','TEXT'],['decision_actor','TEXT'],['decision_expires','INTEGER'],['decision_state','TEXT']])if(!signinColumns.some(c=>c.name===name))this.db.exec('ALTER TABLE signin_attempts ADD COLUMN '+name+' '+ddl);
+  }
+  const identityColumns=this.db.prepare('PRAGMA table_info(identities)').all();if(identityColumns.length&&!identityColumns.some(c=>c.name==='verified_email'))this.db.exec('ALTER TABLE identities ADD COLUMN verified_email TEXT');
  }
  /* Existing account/social transaction seam: the store's OWN connection scope.
   * Nested calls borrow it, so signup/social/deletion effects (identity, graph,
@@ -100,9 +110,9 @@ CREATE INDEX IF NOT EXISTS email_challenges_email ON email_challenges(email);`);
   if(!equal(this._otpHash(row.id,row.email,row.purpose,code),row.code_hash)){this.db.prepare('UPDATE email_challenges SET attempts=attempts+1 WHERE id=?').run(id);fail('INVALID_OTP');}
   return this.tx(()=>{row=this.db.prepare('SELECT * FROM email_challenges WHERE id=? AND session=?').get(id,session.hash);if(!row||row.consumed||row.expires<=this.now()||row.verified_at)fail('INVALID_OTP');
    if(row.purpose==='reset'){if(!row.actor)fail('INVALID_OTP');this.db.prepare('UPDATE email_challenges SET verified_at=? WHERE id=?').run(this.now(),id);return {resetReady:true,challengeId:id};}
-   if(row.purpose==='signup'){if(this.db.prepare('SELECT actor FROM email_credentials WHERE email=?').get(row.email))fail('EMAIL_IN_USE');const authority=this.read(),actor='u_'+crypto.randomUUID();authority.addAccount(actor,{verified:true,createdAt:this.now()});this.ensureProfile(actor,authority);this.db.prepare('INSERT INTO email_credentials(email,actor,salt,password_hash,created,verified_at) VALUES(?,?,?,?,?,?)').run(row.email,actor,row.password_salt,row.password_hash,this.now(),this.now());this.db.prepare('INSERT INTO identities VALUES(?,?,?,?)').run('email',row.email,actor,this.now());this.write(authority);this.db.prepare('UPDATE email_challenges SET verified_at=?,consumed=1,actor=? WHERE id=?').run(this.now(),actor,id);return this._replaceSession(session,actor,true);}
+   if(row.purpose==='signup'){if(this.db.prepare('SELECT actor FROM email_credentials WHERE email=?').get(row.email))fail('EMAIL_IN_USE');const authority=this.read(),actor='u_'+crypto.randomUUID();authority.addAccount(actor,{verified:true,createdAt:this.now()});this.ensureProfile(actor,authority);this.db.prepare('INSERT INTO email_credentials(email,actor,salt,password_hash,created,verified_at) VALUES(?,?,?,?,?,?)').run(row.email,actor,row.password_salt,row.password_hash,this.now(),this.now());this.db.prepare('INSERT INTO identities(provider,subject,actor,created) VALUES(?,?,?,?)').run('email',row.email,actor,this.now());this.write(authority);this.db.prepare('UPDATE email_challenges SET verified_at=?,consumed=1,actor=? WHERE id=?').run(this.now(),actor,id);return this._replaceSession(session,actor,true);}
    if(row.purpose==='verify-existing'){const credential=this.db.prepare('SELECT actor FROM email_credentials WHERE email=?').get(row.email);if(!credential||credential.actor!==row.actor)fail('INVALID_OTP');this.db.prepare('UPDATE email_credentials SET verified_at=? WHERE email=?').run(this.now(),row.email);this.db.prepare('UPDATE email_challenges SET verified_at=?,consumed=1 WHERE id=?').run(this.now(),id);return this._replaceSession(session,row.actor,false);}
-   if(row.purpose==='link'){if(!session.actor||session.actor!==row.actor)fail('ACCOUNT_CHANGED');if(this.db.prepare('SELECT actor FROM email_credentials WHERE email=?').get(row.email))fail('EMAIL_IN_USE');this.db.prepare('INSERT INTO email_credentials(email,actor,salt,password_hash,created,verified_at) VALUES(?,?,?,?,?,?)').run(row.email,row.actor,row.password_salt,row.password_hash,this.now(),this.now());this.db.prepare('INSERT INTO identities VALUES(?,?,?,?)').run('email',row.email,row.actor,this.now());this.db.prepare('UPDATE email_challenges SET verified_at=?,consumed=1 WHERE id=?').run(this.now(),id);return {linked:true,profile:this.profile(row.actor,row.actor)};}
+   if(row.purpose==='link'){if(!session.actor||session.actor!==row.actor)fail('ACCOUNT_CHANGED');if(this.db.prepare('SELECT actor FROM email_credentials WHERE email=?').get(row.email))fail('EMAIL_IN_USE');this.db.prepare('INSERT INTO email_credentials(email,actor,salt,password_hash,created,verified_at) VALUES(?,?,?,?,?,?)').run(row.email,row.actor,row.password_salt,row.password_hash,this.now(),this.now());this.db.prepare('INSERT INTO identities(provider,subject,actor,created) VALUES(?,?,?,?)').run('email',row.email,row.actor,this.now());this.db.prepare('UPDATE email_challenges SET verified_at=?,consumed=1 WHERE id=?').run(this.now(),id);return {linked:true,profile:this.profile(row.actor,row.actor)};}
    if(row.purpose==='change-email'){if(!session.actor||session.actor!==row.actor||this.now()-session.authAt>15*60000)fail('REAUTH_REQUIRED');const current=this.db.prepare('SELECT * FROM email_credentials WHERE actor=? AND verified_at IS NOT NULL').get(row.actor);if(!current)fail('EMAIL_NOT_LINKED');if(this.db.prepare('SELECT actor FROM email_credentials WHERE email=?').get(row.email))fail('EMAIL_IN_USE');const oldEmail=current.email;this.db.prepare('UPDATE email_credentials SET email=?,verified_at=? WHERE actor=?').run(row.email,this.now(),row.actor);this.db.prepare("UPDATE identities SET subject=? WHERE actor=? AND provider='email'").run(row.email,row.actor);this.db.prepare('UPDATE email_challenges SET verified_at=?,consumed=1 WHERE id=?').run(this.now(),id);this.db.prepare('UPDATE email_challenges SET consumed=1 WHERE actor=? AND id<>?').run(row.actor,id);this.db.prepare('DELETE FROM session_presence WHERE actor=? AND session<>?').run(row.actor,session.hash);this.db.prepare('DELETE FROM account_sessions WHERE actor=? AND token<>?').run(row.actor,session.hash);this._security(row.actor,'email_changed',{oldEmail,newEmail:row.email});return {linked:true,emailChanged:true,oldEmail,newEmail:row.email,profile:this.profile(row.actor,row.actor)};}
    fail('INVALID_OTP');
   });
@@ -129,25 +139,144 @@ CREATE INDEX IF NOT EXISTS email_challenges_email ON email_challenges(email);`);
   if(intent==='reauth'&&!session.actor)fail('LINK_ACCOUNT_REQUIRED');
   if(intent==='link'&&session.actor&&this.now()-session.authAt>15*60000)fail('REAUTH_REQUIRED');this.rate(session.hash,'signin',15,300);
   const attempt={state:crypto.randomBytes(32).toString('base64url'),nonce:crypto.randomBytes(32).toString('base64url'),verifier:crypto.randomBytes(32).toString('base64url'),provider,kind,intent,target:['link','reauth'].includes(intent)?session.actor:null,expires:this.now()+5*60000};
-  this.db.prepare('INSERT INTO signin_attempts VALUES(?,?,?,?,?,?,?,?,?,0)').run(sha(attempt.state),session.hash,provider,kind,intent,attempt.target,attempt.nonce,attempt.verifier,attempt.expires);
+  this.db.prepare('INSERT INTO signin_attempts(state,session,provider,kind,intent,target,nonce,verifier,expires,used) VALUES(?,?,?,?,?,?,?,?,?,0)').run(sha(attempt.state),session.hash,provider,kind,intent,attempt.target,attempt.nonce,attempt.verifier,attempt.expires);
   return attempt;
  }
  consume(token,state,provider,kind){const s=this.requireSession(token);if(typeof state!=='string')fail('INVALID_AUTH_STATE');return this.tx(()=>{const row=this.db.prepare('SELECT * FROM signin_attempts WHERE state=?').get(sha(state));if(!row||row.used||row.expires<=this.now()||row.session!==s.hash||row.provider!==provider||row.kind!==kind)fail('INVALID_AUTH_STATE');this.db.prepare('UPDATE signin_attempts SET used=1 WHERE state=?').run(sha(state));return row;});}
+ /* Provider-verified email -> the ONE existing account it matches, or null. email_credentials
+   * (verified) and identities.verified_email are the only trusted sources; ambiguity never wins. */
+ _emailMatches(verifiedEmail){
+  const actors=new Set(),cred=this.db.prepare('SELECT actor FROM email_credentials WHERE email=? AND verified_at IS NOT NULL').get(verifiedEmail);
+  if(cred)actors.add(cred.actor);
+  for(const r of this.db.prepare('SELECT actor FROM identities WHERE verified_email=? ORDER BY created').all(verifiedEmail))actors.add(r.actor);
+  return [...actors];
+ }
+ _identityInsert(provider,subject,actor,verifiedEmail){
+  const r=verifiedEmail?this.db.prepare('INSERT OR IGNORE INTO identities(provider,subject,actor,created,verified_email) VALUES(?,?,?,?,?)').run(provider,subject,actor,this.now(),verifiedEmail):this.db.prepare('INSERT OR IGNORE INTO identities(provider,subject,actor,created) VALUES(?,?,?,?)').run(provider,subject,actor,this.now());
+  return r.changes>0;
+ }
+ /* Ownership proof of the matched actor: a VERIFIED email credential of THAT actor whose password
+  * verifies. The incoming provider identity can never prove the old profile (Sol review, blocker 1/7). */
+ _proofVerified(actor,proof){
+  if(!proof||typeof proof!=='object')return false;
+  const email=typeof proof.email==='string'?normalizeEmail(proof.email):null,password=typeof proof.password==='string'?proof.password:null;
+  if(!email||!password)return false;
+  this.rate('proof:'+actor,'decision-proof',10,300);
+  const row=this.db.prepare('SELECT actor,salt,password_hash,verified_at FROM email_credentials WHERE email=?').get(email);
+  if(!row||row.actor!==actor||row.verified_at==null)return false;
+  return this._password(password,row.salt,row.password_hash);
+ }
  // Called ONLY with claims already verified by IdentityProviders, not public JSON.
- finishVerified(token,attempt,{provider,subject}){
+ finishVerified(token,attempt,{provider,subject,email}){
   const session=this.requireSession(token);if(provider!==attempt.provider||typeof subject!=='string'||!subject||subject.length>255)fail('INVALID_IDENTITY');
+  const verifiedEmail=typeof email==='string'&&email.length<=254&&/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)?normalizeEmail(email):null;
   return this.tx(()=>{const authority=this.read();const found=this.db.prepare('SELECT actor FROM identities WHERE provider=? AND subject=?').get(provider,subject);let actor=attempt.target,created=false;
    if(actor&&actor!==session.actor)fail('ACCOUNT_CHANGED');
    if(attempt.intent==='reauth'&&(!actor||!found||found.actor!==actor))fail('REAUTH_ACCOUNT_MISMATCH');
    if(actor&&found&&found.actor!==actor)fail('ACCOUNT_LINKED_ELSEWHERE');
    if(!actor&&found)actor=found.actor;
+   /* Owner-decided choice flow: a login intent, no provider identity yet, and a verified email
+     * that matches exactly one existing account -> persist a pending decision on the CONSUMED
+     * attempt and ask. The decision is single-use, expires with the attempt TTL and is bound to
+     * this session. Ambiguous matches persist an actor-less decision: 'new' stays possible, 'link'
+     * and deletion do not. Anything else behaves exactly as before. */
+   if(!actor&&!found&&verifiedEmail&&attempt.intent==='login'){
+    const matches=this._emailMatches(verifiedEmail);
+    if(matches.length===1){
+     const matched=matches[0],acct=authority.account(matched);
+     if(!acct.suspended&&!acct.hold){
+      this.rate(session.hash,'decision',10,300);this.rate('dec-email:'+sha(verifiedEmail),'decision-email',10,300);
+      const updated=this.db.prepare("UPDATE signin_attempts SET decision_state='pending',decision_subject=?,decision_email=?,decision_actor=?,decision_expires=? WHERE state=? AND session=? AND used=1 AND decision_state IS NULL").run(subject,verifiedEmail,matched,attempt.expires,attempt.state,session.hash);
+      if(updated.changes===1)return {choiceRequired:true,maskedEmail:maskEmail(verifiedEmail),provider};
+     }
+    }else if(matches.length>1){
+     const updated=this.db.prepare("UPDATE signin_attempts SET decision_state='pending',decision_subject=?,decision_email=?,decision_actor=NULL,decision_expires=? WHERE state=? AND session=? AND used=1 AND decision_state IS NULL").run(subject,verifiedEmail,attempt.expires,attempt.state,session.hash);
+     if(updated.changes===1)return {choiceRequired:true,ambiguous:true,maskedEmail:maskEmail(verifiedEmail),provider};
+    }
+   }
    if(!actor){actor='u_'+crypto.randomUUID();authority.addAccount(actor,{verified:true,createdAt:this.now()});created=true;}
    const a=authority.account(actor);if(a.suspended||a.hold)fail('ACCOUNT_UNAVAILABLE');
    const prior=this.db.prepare('SELECT subject FROM identities WHERE actor=? AND provider=?').get(actor,provider);if(prior&&prior.subject!==subject)fail('PROVIDER_ALREADY_LINKED');
-   this.ensureProfile(actor,authority);const inserted=this.db.prepare('INSERT OR IGNORE INTO identities VALUES(?,?,?,?)').run(provider,subject,actor,this.now()).changes>0;this.write(authority);
+   this.ensureProfile(actor,authority);const inserted=this._identityInsert(provider,subject,actor,verifiedEmail);this.write(authority);
+   if(!inserted&&verifiedEmail)this.db.prepare('UPDATE identities SET verified_email=? WHERE provider=? AND subject=? AND verified_email IS NULL').run(verifiedEmail,provider,subject);
    if(inserted&&!created)this._security(actor,'provider_linked',{provider});
    return this._replaceSession(session,actor,created);
   });
+ }
+ /* The persisted decision's single terminal apply. 'link' attaches the provider identity to the
+   * matched actor ONLY with valid ownership proof; 'new' always creates a fresh actor for the
+   * provider identity, and schedules the OLD actor's deletion ONLY with valid proof (plus the
+   * client-side confirmation screen that precedes this call). Without proof, 'new' leaves the old
+   * profile completely untouched. Expiry is the attempt's absolute TTL; a completed/absent
+   * decision, a different session or an expired row all fail closed. */
+ decide(token,state,choice,proof=null){
+  const session=this.requireSession(token);
+  if(typeof state!=='string'||!['link','new'].includes(choice))fail('INVALID_AUTH_STATE');
+  return this.tx(()=>{
+  /* The grace-period ledger is created on first use, never at boot: databases that never touch
+   * the account-link choice flow keep their exact table inventory. */
+  this.db.exec("CREATE TABLE IF NOT EXISTS scheduled_deletions(id TEXT PRIMARY KEY,actor TEXT NOT NULL UNIQUE,due INTEGER NOT NULL,created INTEGER NOT NULL,policy_version TEXT NOT NULL,note TEXT NOT NULL DEFAULT '');");
+  this.db.exec('CREATE INDEX IF NOT EXISTS scheduled_deletions_due ON scheduled_deletions(due);');
+   const row=this.db.prepare('SELECT * FROM signin_attempts WHERE state=?').get(sha(state));
+   if(!row||row.used!==1||row.session!==session.hash||!row.decision_subject||!row.decision_email||!row.decision_expires||row.decision_expires<=this.now()||row.decision_state!=='pending')fail('INVALID_AUTH_STATE');
+   this.rate(session.hash,'decision',10,300);
+   const authority=this.read(),verified=row.decision_actor?this._proofVerified(row.decision_actor,proof):false;
+   if(choice==='link'){
+    if(!row.decision_actor)fail('DECISION_UNAVAILABLE');
+    if(!verified)fail('PROOF_REQUIRED');
+    if(this.db.prepare('SELECT actor FROM identities WHERE provider=? AND subject=?').get(row.provider,row.decision_subject))fail('INVALID_AUTH_STATE');
+    const a=authority.account(row.decision_actor);if(a.suspended||a.hold)fail('ACCOUNT_UNAVAILABLE');
+    const prior=this.db.prepare('SELECT subject FROM identities WHERE actor=? AND provider=?').get(row.decision_actor,row.provider);if(prior&&prior.subject!==row.decision_subject)fail('PROVIDER_ALREADY_LINKED');
+    this.ensureProfile(row.decision_actor,authority);
+    this._identityInsert(row.provider,row.decision_subject,row.decision_actor,row.decision_email);this.write(authority);
+    this._security(row.decision_actor,'provider_linked',{provider:row.provider});
+    this.db.prepare("UPDATE signin_attempts SET decision_state='complete' WHERE state=? AND decision_state='pending'").run(row.state);
+    return this._replaceSession(session,row.decision_actor,false);
+   }
+   const actor='u_'+crypto.randomUUID();authority.addAccount(actor,{verified:true,createdAt:this.now()});
+   const a=authority.account(actor);if(a.suspended||a.hold)fail('ACCOUNT_UNAVAILABLE');
+   this.ensureProfile(actor,authority);
+   this._identityInsert(row.provider,row.decision_subject,actor,row.decision_email);this.write(authority);
+   if(row.decision_actor&&verified){
+    const due=this.now()+30*DAY,id='sdel_'+crypto.randomUUID();
+    this.db.prepare('INSERT INTO scheduled_deletions(id,actor,due,created,policy_version,note) VALUES(?,?,?,?,?,?) ON CONFLICT(actor) DO NOTHING').run(id,row.decision_actor,due,this.now(),this.deletionPolicy.policyVersion||'','account-link replacement by '+actor);
+    this._security(row.decision_actor,'deletion_scheduled',{dueAt:due,replacement:actor,provider:row.provider,decisionEmail:maskEmail(row.decision_email)});
+   }
+   this.db.prepare("UPDATE signin_attempts SET decision_state='complete' WHERE state=? AND decision_state='pending'").run(row.state);
+   return this._replaceSession(session,actor,true);
+  });
+ }
+ /* Proof-only check for the confirmation screen: verifies ownership and returns the existing
+   * profile's public tag/username WITHOUT changing any state and WITHOUT consuming the decision. */
+ decisionVerify(token,state,proof){
+  const session=this.requireSession(token);
+  return this.tx(()=>{
+   const row=this.db.prepare('SELECT * FROM signin_attempts WHERE state=?').get(sha(state));
+   if(!row||row.used!==1||row.session!==session.hash||!row.decision_subject||!row.decision_expires||row.decision_expires<=this.now()||row.decision_state!=='pending')fail('INVALID_AUTH_STATE');
+   this.rate(session.hash,'decision',10,300);
+   if(!row.decision_actor)fail('DECISION_UNAVAILABLE');
+   if(!this._proofVerified(row.decision_actor,proof))fail('PROOF_REQUIRED');
+   const p=this.profileRow(row.decision_actor);
+   return {verified:true,existing:{tag:p?.tag||'',username:p?.username||''}};
+  });
+ }
+ /* The cancellable 30-day grace: due rows are wiped with the SAME coordinated deletion as
+   * deleteAccount, but a busy actor is POSTPONED, never deleted mid-match. */
+ runDueDeletions(){
+ if(!this.db.prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name='scheduled_deletions'").get())return {processed:0};
+  const now=this.now(),due=this.db.prepare('SELECT id,actor FROM scheduled_deletions WHERE due<=? ORDER BY due LIMIT 10').all(now);
+  let processed=0;
+  for(const row of due){
+   const a=this.read();
+   if(!a.accounts.has(row.actor)){this.db.prepare('DELETE FROM scheduled_deletions WHERE id=?').run(row.id);continue;}
+   const account=a.account(row.actor);
+   if(account.activeMatch||this.isQueued?.(row.actor)||this.isDeletionBusy?.(row.actor)||[...a.matches.values()].some(m=>m.players.includes(row.actor)&&['OFFERED','PLAYING'].includes(m.status))){
+    this.db.prepare('UPDATE scheduled_deletions SET due=?,note=note WHERE id=?').run(this.now()+3600000,row.id);continue;
+   }
+   this.tx(()=>{this._deleteActor(row.actor,'scheduled account-link replacement (30-day grace elapsed)');this.db.prepare('DELETE FROM scheduled_deletions WHERE id=?').run(row.id);});
+   processed++;
+  }
+  return {processed};
  }
  logout(token,all=false){const s=this.requireSession(token);return this.tx(()=>{const repositories=this.repositories();if(all&&s.actor){repositories.sessions.clearActorPresence(s.actor);repositories.sessions.revokeAll(s.actor);}else{repositories.sessions.clearPresence(s.hash);repositories.sessions.rotate(s.hash);}return {signedOut:true};});}
  unlink(token,provider){const s=this.requireLinked(token);if(this.now()-s.authAt>15*60000)fail('REAUTH_REQUIRED');return this.tx(()=>{const list=this.identities(s.actor);if(list.length<=1)fail('LAST_LOGIN_METHOD');if(!list.some(i=>i.provider===provider))fail('PROVIDER_NOT_LINKED');this.db.prepare('DELETE FROM identities WHERE actor=? AND provider=?').run(s.actor,provider);if(provider==='email')this.db.prepare('DELETE FROM email_credentials WHERE actor=?').run(s.actor);this._security(s.actor,'provider_unlinked',{provider});return {providers:this.identities(s.actor)};});}
@@ -212,11 +341,16 @@ CREATE INDEX IF NOT EXISTS email_challenges_email ON email_challenges(email);`);
   const session=this.requireLinked(token);if(!this.deletionPolicy.enabled||!this.deletionPolicy.policyVersion)fail('ACCOUNT_DELETION_UNAVAILABLE');if(this.now()-session.authAt>15*60000)fail('REAUTH_REQUIRED');
   const actor=session.actor,profile=this.profileRow(actor);if(!profile||confirmation!==profile.tag)fail('DELETE_CONFIRMATION_REQUIRED');this.rate(actor,'account-delete',2,86400);
   const a=this.read(),account=a.account(actor);if(account.activeMatch||this.isQueued?.(actor)||this.isDeletionBusy?.(actor)||[...a.matches.values()].some(m=>m.players.includes(actor)&&['OFFERED','PLAYING'].includes(m.status)))fail('ACCOUNT_BUSY');
-  const tombstone='deleted_'+crypto.randomUUID().replace(/-/g,''),receiptId='del_'+crypto.randomUUID(),now=this.now(),policyVersion=this.deletionPolicy.policyVersion,actorHash=crypto.createHash('sha256').update('mega-xo-deleted-account:'+actor).digest('base64url');
-  return this.tx(()=>{
+  return this.tx(()=>this._deleteActor(actor,'api-initiated coordinated deletion'));
+ }
+ /* The full coordinated wipe, shared by deleteAccount and the scheduled-deletion sweep. The caller
+   * owns every pre-check (policy, authorization, busy state) and runs it inside ITS transaction. */
+ _deleteActor(actor,reason){
+   {
    const authority=this.read(),current=authority.account(actor);if(current.activeMatch||[...authority.matches.values()].some(m=>m.players.includes(actor)&&['OFFERED','PLAYING'].includes(m.status)))fail('ACCOUNT_BUSY');
    const sessions=this.db.prepare('SELECT token FROM account_sessions WHERE actor=?').all(actor).map(r=>r.token);
-   this.db.prepare('INSERT INTO v41_privacy_requests(id,actor,kind,state,requested_at,updated_at,policy_version,note) VALUES(?,?,?,?,?,?,?,?)').run(receiptId,actor,'deletion','processing',now,now,policyVersion,'');
+   const receiptId='del_'+crypto.randomUUID(),tombstone='deleted_'+crypto.randomUUID().replace(/-/g,''),now=this.now(),policyVersion=this.deletionPolicy.policyVersion,actorHash=crypto.createHash('sha256').update('mega-xo-deleted-account:'+actor).digest('base64url');
+   this.db.prepare('INSERT INTO v41_privacy_requests(id,actor,kind,state,requested_at,updated_at,policy_version,note) VALUES(?,?,?,?,?,?,?,?)').run(receiptId,actor,'deletion','processing',now,now,policyVersion,reason||'');
    for(const other of authority.accounts.values())if(other.id!==actor){
     other.friends=(other.friends||[]).filter(x=>x!==actor);other.friendRequests=(other.friendRequests||[]).filter(x=>x!==actor);other.blocked=(other.blocked||[]).filter(x=>x!==actor);
     for(const h of other.history||[])if(h.opponent===actor)h.opponent=tombstone;
@@ -247,10 +381,10 @@ CREATE INDEX IF NOT EXISTS email_challenges_email ON email_challenges(email);`);
    this.db.prepare('UPDATE v41_privacy_requests SET actor=?,state=?,updated_at=?,completed_at=?,note=? WHERE id=?').run(tombstone,'completed',now,now,'',receiptId);
    this.db.prepare('INSERT INTO v41_deletion_receipts VALUES(?,?,?,?,?,?)').run(receiptId,actorHash,tombstone,now,policyVersion,json(['purchase_replay_records','operator_security_audit','pseudonymized_moderation_outcomes']));
    return {deleted:true,receiptId,policyVersion};
-  });
+ };
  }
  save(actor,expected,payload){this.requireAccount(actor);if(!Number.isSafeInteger(expected)||expected<0)fail('INVALID_REVISION');this.rate(actor,'save',20);const clean=sanitizePractice(payload);return this.tx(()=>{const current=this.repositories().saves.revisionOf(actor);if(current!==expected)fail('SAVE_CONFLICT');const revision=expected+1;this.db.prepare('INSERT INTO profile_saves VALUES(?,?,?,?) ON CONFLICT(actor) DO UPDATE SET revision=excluded.revision,payload=excluded.payload,updated=excluded.updated').run(actor,revision,json(clean),this.now());return {revision,updated:this.now()};});}
  restore(actor){this.requireAccount(actor);const row=this.repositories().saves.for(actor);return row?{revision:row.revision,updated:row.updated,practice:JSON.parse(row.payload)}:{revision:0,practice:null};}
- cleanup(){const now=this.now();this.db.prepare('DELETE FROM signin_attempts WHERE expires<?').run(now-3600000);this.db.prepare('DELETE FROM email_challenges WHERE expires<? OR consumed=1 AND created<?').run(now-3600000,now-DAY);this.db.prepare('DELETE FROM account_sessions WHERE expires<?').run(now);this.db.prepare('DELETE FROM session_presence WHERE seen<?').run(now-3600000);if(this.db.prepare('SELECT COUNT(*) n FROM community_limits').get().n>10000)this.db.prepare('DELETE FROM community_limits WHERE rowid IN (SELECT rowid FROM community_limits ORDER BY rowid LIMIT 1000)').run();}
+ cleanup(){const now=this.now();try{this.runDueDeletions();}catch{}this.db.prepare('DELETE FROM signin_attempts WHERE expires<?').run(now-3600000);this.db.prepare('DELETE FROM email_challenges WHERE expires<? OR consumed=1 AND created<?').run(now-3600000,now-DAY);this.db.prepare('DELETE FROM account_sessions WHERE expires<?').run(now);this.db.prepare('DELETE FROM session_presence WHERE seen<?').run(now-3600000);if(this.db.prepare('SELECT COUNT(*) n FROM community_limits').get().n>10000)this.db.prepare('DELETE FROM community_limits WHERE rowid IN (SELECT rowid FROM community_limits ORDER BY rowid LIMIT 1000)').run();}
 }
 module.exports={CommunityStore,AVATARS,sanitizePractice};

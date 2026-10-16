@@ -13,8 +13,8 @@ function fixture(t){
  const actor=add(c,store),friend=add(c,store),other=add(c,store),profile=c.profileRow(actor);
  const salt='SECRET-SALT-VALUE',passwordHash='SECRET-PASSWORD-HASH';
  store.db.prepare('INSERT INTO email_credentials(email,actor,salt,password_hash,created,verified_at) VALUES(?,?,?,?,?,?)').run('owner@example.com',actor,salt,passwordHash,now,now);
- store.db.prepare('INSERT INTO identities VALUES(?,?,?,?)').run('email','owner@example.com',actor,now);
- store.db.prepare('INSERT INTO identities VALUES(?,?,?,?)').run('google','google-subject-123',actor,now);
+ store.db.prepare('INSERT INTO identities(provider,subject,actor,created) VALUES(?,?,?,?)').run('email','owner@example.com',actor,now);
+ store.db.prepare('INSERT INTO identities(provider,subject,actor,created) VALUES(?,?,?,?)').run('google','google-subject-123',actor,now);
  const a=store.read();a.account(actor).friends.push(friend);a.account(friend).friends.push(actor);a.account(actor).blocked.push(other);a.account(actor).coins=777;a.account(actor).crowns=12;a.receipts.set('google:tx-private',{actor,productId:'crowns_100',crowns:100,refunded:false,at:now});c.write(a);
  store.db.prepare('INSERT INTO profile_saves VALUES(?,?,?,?)').run(actor,1,JSON.stringify({version:3.2,economyVersion:3.2,settings:{theme:'vector'},records:[],processed:[],playSeconds:0,wallet:{coins:0,crowns:0,ledger:[],owned:[]},daily:{},weekly:{},legacy:{},profile:{},offlineMatch:null}),now);
  const session=c._issue(actor,now);

@@ -23,7 +23,9 @@ function createCommunityHandler({community,providers,emailer,store,matchmaker,or
  async function handler(req,res){
   const path=new URL(req.url,origin).pathname,q=new URL(req.url,origin).searchParams;
   if(path.startsWith('/auth/callback/')){
-   try{if(req.method!=='GET')throw Error('INVALID_CALLBACK');const p=path.slice('/auth/callback/'.length);const attempt=community.consume(token(req),q.get('state'),p,'web');if(q.has('error'))throw Error('SIGNIN_CANCELLED');const identity=await providers.exchange(p,q.get('code'),attempt,origin+'/auth/callback/'+p);const logged=community.finishVerified(token(req),attempt,identity);setCookie(res,logged.token,14*86400);res.writeHead(303,{Location:'/?account=linked','Cache-Control':'no-store','Referrer-Policy':'no-referrer'});res.end();}
+   try{if(req.method!=='GET')throw Error('INVALID_CALLBACK');const p=path.slice('/auth/callback/'.length);const attempt=community.consume(token(req),q.get('state'),p,'web');if(q.has('error'))throw Error('SIGNIN_CANCELLED');const identity=await providers.exchange(p,q.get('code'),attempt,origin+'/auth/callback/'+p);const logged=community.finishVerified(token(req),attempt,identity);
+    if(logged.choiceRequired){setCookie(res,token(req),86400);const loc='/?accountChoice='+encodeURIComponent(q.get('state')||'')+'&masked='+encodeURIComponent(logged.maskedEmail||'')+'&provider='+encodeURIComponent(p)+(logged.ambiguous?'&ambiguous=1':'');res.writeHead(303,{Location:loc,'Cache-Control':'no-store','Referrer-Policy':'no-referrer'});res.end();return true;}
+    setCookie(res,logged.token,14*86400);res.writeHead(303,{Location:'/?account=linked','Cache-Control':'no-store','Referrer-Policy':'no-referrer'});res.end();}
    catch(e){res.writeHead(303,{Location:'/?authError='+encodeURIComponent(safeError(e)),'Cache-Control':'no-store','Referrer-Policy':'no-referrer'});res.end();}return true;
   }
   if(!path.startsWith('/api/account')&&!path.startsWith('/api/community')&&!path.startsWith('/api/v1'))return false;
@@ -84,7 +86,11 @@ function createCommunityHandler({community,providers,emailer,store,matchmaker,or
     const p=b.provider;if(!providers.enabled(p))throw Error('PROVIDER_NOT_CONFIGURED');const attempt=community.start(token(req),p,b.intent||'login','web');return send(res,200,{url:providers.authorization(p,attempt,origin+'/auth/callback/'+p)}),true;
    }
    if(path==='/api/account/native/challenge'){if(!providers.capabilities()[b.provider]?.native)throw Error('PROVIDER_NOT_CONFIGURED');const attempt=community.start(token(req),b.provider,b.intent||'login','native');return send(res,200,{state:attempt.state,nonce:attempt.nonce,expires:attempt.expires}),true;}
-   if(path==='/api/account/native/finish'){const attempt=community.consume(token(req),b.state,b.provider,'native'),identity=await providers.verify(b.provider,b.idToken,attempt.nonce,'native'),logged=community.finishVerified(token(req),attempt,identity);setCookie(res,logged.token,14*86400);return send(res,200,{linked:true,csrf:logged.csrf,profile:logged.profile,created:logged.created}),true;}
+   if(path==='/api/account/native/finish'){const attempt=community.consume(token(req),b.state,b.provider,'native'),identity=await providers.verify(b.provider,b.idToken,attempt.nonce,'native'),logged=community.finishVerified(token(req),attempt,identity);
+   if(logged.choiceRequired)return send(res,200,{choiceRequired:true,provider:b.provider,maskedEmail:logged.maskedEmail,ambiguous:logged.ambiguous===true}),true;
+   setCookie(res,logged.token,14*86400);return send(res,200,{linked:true,csrf:logged.csrf,profile:logged.profile,created:logged.created}),true;}
+  if(path==='/api/account/decision/verify')return send(res,200,community.decisionVerify(token(req),b.state,b.proof||null)),true;
+  if(path==='/api/account/decision'||path==='/api/account/native/decision'){const result=community.decide(token(req),b.state,b.choice,b.proof||null);setCookie(res,result.token,14*86400);return send(res,200,{linked:true,csrf:result.csrf,profile:result.profile,created:result.created}),true;}
    if(path==='/api/account/logout'){const result=community.logout(token(req),b.allDevices===true);setCookie(res,'',0);return send(res,200,result),true;}
    if(path==='/api/account/sessions/revoke')return send(res,200,b.allOthers===true?community.revokeOtherSessions(token(req)):community.revokeSession(token(req),b.id)),true;
    const actor=mine(req).actor;

@@ -18,7 +18,7 @@ class IdentityProviders {
  capabilities(){return Object.fromEntries(Object.keys(PROVIDERS).map(p=>[p,{web:this.enabled(p),native:!!this.config[p]?.nativeAudiences?.length}]));}
  audience(provider,kind){const c=this.config[provider];return kind==='native'?c?.nativeAudiences||[]:[c?.clientId].filter(Boolean);}
  authorization(provider,attempt,redirect){if(!this.enabled(provider))throw Error('PROVIDER_NOT_CONFIGURED');const p=PROVIDERS[provider],c=this.config[provider],u=new URL(p.authorize);u.search=new URLSearchParams({client_id:c.clientId,redirect_uri:redirect,response_type:'code',state:attempt.state,nonce:attempt.nonce});
-  if(provider==='google'){u.searchParams.set('scope','openid profile');u.searchParams.set('code_challenge',sha(attempt.verifier));u.searchParams.set('code_challenge_method','S256');u.searchParams.set('prompt','select_account');}
+  if(provider==='google'){u.searchParams.set('scope','openid profile email');u.searchParams.set('code_challenge',sha(attempt.verifier));u.searchParams.set('code_challenge_method','S256');u.searchParams.set('prompt','select_account');}
   // No personal-name/email scopes required: a user chooses a game profile. Apple
   // allows a query callback for this code-only, no-scopes request (not form_post).
   else u.searchParams.set('response_mode','query');return u.href;
@@ -31,7 +31,14 @@ class IdentityProviders {
   let keys=await this.keys(provider),jwk=keys.find(k=>k.kid===header.kid&&k.kty==='RSA'&&(!k.use||k.use==='sig')&&(!k.alg||k.alg==='RS256'));if(!jwk){keys=await this.keys(provider,true);jwk=keys.find(k=>k.kid===header.kid&&k.kty==='RSA'&&(!k.use||k.use==='sig')&&(!k.alg||k.alg==='RS256'));}if(!jwk)throw Error('UNKNOWN_SIGNING_KEY');
   const key=crypto.createPublicKey({key:jwk,format:'jwk'});if(!crypto.verify('RSA-SHA256',Buffer.from(parts[0]+'.'+parts[1]),key,Buffer.from(parts[2],'base64url')))throw Error('INVALID_SIGNATURE');const now=Math.floor(this.now()/1000),aud=this.audience(provider,kind);
   if(!PROVIDERS[provider].issuers.includes(claims.iss)||!aud.includes(claims.aud)||!Number.isFinite(claims.exp)||claims.exp<=now||!Number.isFinite(claims.iat)||claims.iat>now+30||now-claims.iat>600||claims.nbf&&claims.nbf>now+30||!equal(claims.nonce,nonce)||typeof claims.sub!=='string'||!claims.sub||claims.sub.length>255||claims.azp&&![...aud,...(this.config[provider]?.authorizedParties||[])].includes(claims.azp))throw Error('INVALID_TOKEN_CLAIMS');
-  return {provider,subject:claims.sub}; // Intentionally no email-based identity or linking.
+  /* Owner decision (2026-10-16): the PROVIDER-VERIFIED email rides alongside the subject for the
+   * account-link choice flow. It is never an identity by itself and never a client-supplied value:
+   * Google only when the email_verified claim is exactly boolean true, Apple only when
+   * email_verified is true or the literal string "true" (Apple documents both shapes). Absent or
+   * unverified emails return null and the sign-in behaves exactly as before. */
+  const verifiedShape=v=>v===true||v==='true';
+  const email=typeof claims.email==='string'&&claims.email.length<=254&&claims.email.includes('@')&&verifiedShape(claims.email_verified)?claims.email:null;
+  return {provider,subject:claims.sub,email};
  }
 }
 module.exports={IdentityProviders,PROVIDERS,equal,sha};

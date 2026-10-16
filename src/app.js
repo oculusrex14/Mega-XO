@@ -71,7 +71,7 @@ function initPowers(){
      the debit succeeded. */
   spend:async(kind,id)=>{
    const cost=kind==='undo'?2:3;
-   D.spendCurrency(data,'crowns',cost,id,'Power-up purchase');
+   D.spendCurrency(data,id,'crowns',cost,'Power-up purchase');
    save();renderWalletSummary();
   },
   /* Tactical Power recommends with the canonical Expert search — the same rules engine the match

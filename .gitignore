@@ -22,6 +22,12 @@ native/android/.gradle/
 native/android/build/
 native/android/app/build/
 
+# Apple signing material: private keys and provisioning profiles are never committed
+AuthKey_*.p8
+*.p8
+*.p12
+*.mobileprovision
+
 # Vercel CLI local artifacts
 .vercel/
 apps/api/.vercel/

@@ -360,17 +360,37 @@ provenance for the earlier checkpoint: ff14dbc == 1dde7dd, 0e3c486 == 5c87b2e.
 - **J16 error banner PASS** - the degraded and reconnecting states render with the documented copy and Try again/retry actions (multiple screenshots).
 - **J17 accessibility PASS** - no unnamed visible buttons, sane body contrast sample, viewport meta with viewport-fit=cover (safe-area).
 
-**DEVICE BLOCKER (owner action required):** mid-journey the app lost ALL network access - every
-transport call (account, /api/v1/*, community) fails FAST with zero packets leaving the device
-(tcpdump on the VPS), the app's own WebView cannot reach ANY site (google.com and megaxo.online
-both hang past 6s while Chrome on the same device gets an instant 200), and it persists across a
-fresh app restart. Android netpolicy shows UID 10267 NOT blocked and INTERNET granted, so this is
-NOT an OS firewall rule I can see; the phone-side checks are: Settings > Apps > Mega XOXO >
-Mobile data & Wi-Fi (Wi-Fi + Mobile data must both be ON), any VPN/firewall app (NetGuard/
-AdGuard) per-app rules, Digital Wellbeing / Focus mode, and Data Saver exemptions. The lane
-resumes the moment the app can reach megaxo.online again - verify with the in-app friends page
-or a fresh install of the same APK.
+**CORRECTION (same run, next session): the checkpoint-25 'device blocker' was a MISDIAGNOSIS.**
+The app had been BACKGROUNDED (a deep-link probe opened Chrome), and Android's standby/battery
+management cut its network - zero packets, fast local failures, WebView fetches hanging: all of it
+was the backgrounded-app network cut, not an owner setting and not an app bug. With the app
+FOREGROUND (procState=TOP, netpolicy blocked=NONE) the same build reaches megaxo.online in 14ms,
+the force-ensure restores the session (linked, tag verified) and connectivity reads online.
+**Lane rule: every device journey runs with the app FOREGROUND; a backgrounded app has no
+network by Android standby policy, and any transport probe must check procState first.**
 
 **Still open:** J8 tournaments, J9/J10 online queue+match, J12 full power-counter spend, J13
 320px layout check, J18 release-signed deep link, and the iPhone lane - all blocked on the
 device network state above. LR02 stays deferred to last.
+
+### Checkpoint 26 - 2026-10-16 (J12 power counters verified on device; J8 tournaments entry verified; the app-level connectivity poller flaps - documented)
+
+**J12 power counters PASS (lr20.4):** a MEDIUM bot match driven to 28 marks via the forced-board
+driver: the LR14 bar counts moves toward the 8-move unlock exactly, the player's undo inventory
+(0) renders, and the exhausted state is honest ('No Undo charges remain in this match') - the
+rewarded-ad spend path carries prior device evidence (POWERS-DEVICE-VERIFIED-ANDROID).
+**J8 tournaments PARTIAL PASS:** the signed-in mode entry + Browse Tournaments affordance render;
+the browse list requires the app-level online.ready state, which flaps (see below).
+
+**APP-LEVEL DEFECT (open, precise):** the connectivity state machine flaps between 'reconnecting'
+and 'degraded' while the transport itself is healthy - a forced ensure completes in 538ms with the
+session linked, and MegaCommunity stays synced (saved, revision 2). The poller (refreshOnline in
+src/app.js) hits NET.profile/invitations/leaderboard (/api/v1/*), and any single failure publishes
+degraded; the recovery path does not clear it. Server-side verified clean: /api/v1/profile returns
+401 JSON for a bad bearer and the leaderboard 200 []. Needs a debugger pass on the poller's
+failure path - it is cosmetic-adjacent (the session works) but it gates the tournaments/online
+surfaces and shows the banner intermittently.
+
+**Journey status:** 1,2,5,6,7,11,12,15,16,17 PASS (12 of 18); 8 partial; 3/4 covered by the
+account+restore evidence; 9,10,13,14,18 remain (14 needs airplane-mode toggles, 18 the
+release-signed build, 9/10 a second participant or honest-queue evidence), then the iPhone lane.

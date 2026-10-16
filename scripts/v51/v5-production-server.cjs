@@ -520,6 +520,7 @@ async function main() {
   const { createCommerceIngressService } = require(path.join(ROOT, 'packages/services/commerce-ingress.js'));
   const { createAdMobVerifier } = require(path.join(ROOT, 'server/admob-ssv.js'));
   const { createPgStoreDb } = require(path.join(ROOT, 'packages/services/store-pg-adapter.js'));
+  const { createMetricsSink } = require(path.join(ROOT, 'packages/services/metrics.js'));
   const { StorePurchaseProvider } = require(path.join(ROOT, 'server/store-purchase-provider.js'));
   const { GooglePlayBilling } = require(path.join(ROOT, 'server/google-play-billing.js'));
   const { AppleStoreKit } = require(path.join(ROOT, 'server/apple-storekit.js'));
@@ -798,6 +799,10 @@ async function main() {
   /* LR12: the signed commerce facade the monetization routes dispatch through. Kept OUT of the
    * literal above so parallel API-lane PRs merge without textual conflicts. */
   apiContext.monetization = { command: (input) => coreGateway.commerceCommand(input) };
+  /* LR19: the OPTIONAL telemetry sink. Anonymous daily aggregates on ops.rate_buckets; the client
+   * lane is opt-in and OFF by default, so this sink normally receives nothing until a player makes
+   * the explicit choice on the privacy-choices page. No actor binding is possible by construction. */
+  apiContext.metrics = createMetricsSink({ pool: apiPool });
   const apiRole = assertApiCompositionHoldsNoCoreAccess(apiContext);
   const apiHandler = createApiHandler(apiContext);
 

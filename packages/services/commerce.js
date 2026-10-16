@@ -332,7 +332,9 @@ async function createCommerceService(pool, options = {}) {
    if (product.once) products.push(product.id);
    for (const frame of product.frames) frames.add(frame);
   }
-  return { frames: [...frames], products: [...new Set(products)], removeAds: products.includes('remove_ads') };
+  /* Mega Pass is the premium-pass entitlement (owner-approved): one purchase, ads off for good,
+     same structural revoke-on-refund as remove_ads. */
+  return { frames: [...frames], products: [...new Set(products)], removeAds: products.includes('remove_ads')||products.includes('mega_pass') };
  }
 
  /* The one keyed transaction boundary (server/monetization-store.js:23-26): key grammar, canonical

@@ -16,7 +16,8 @@ const FRAMES=Object.freeze([
 ].map(Object.freeze));
 const PRODUCTS=Object.freeze([
  ...D.CROWN_PACKS.map(p=>({...p,name:p.crowns+' Crowns',type:'consumable',once:false,frames:[],removeAds:false})),
- {id:'remove_ads',name:'Remove Ads',type:'non-consumable',once:true,crowns:0,frames:[],removeAds:true,suggestedUSD:3.99}
+ {id:'remove_ads',name:'Remove Ads',type:'non-consumable',once:true,crowns:0,frames:[],removeAds:true,suggestedUSD:3.99},
+ {id:'mega_pass',name:'Mega Pass',type:'non-consumable',once:true,crowns:0,frames:[],removeAds:true,suggestedUSD:4.99}
 ].map(p=>Object.freeze({...p,frames:Object.freeze(p.frames)})));
 const product=id=>PRODUCTS.find(p=>p.id===id)||null;
 const frame=id=>FRAMES.find(f=>f.id===id)||null;

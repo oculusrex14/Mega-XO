@@ -79,13 +79,11 @@ const account = { id: 'synthetic-account', name: 'Synthetic player', tag: 'MEGA-
 const guest = { status: 401, body: { error: 'AUTH_REQUIRED' } };
 const capabilities = { linked: false, csrf: 'synthetic-csrf', providers: { google: { web: true }, apple: { web: false } } };
 
-test('P21-ACCOUNT-01 browsing only reads the protected profile; sign-in options explicitly bootstrap', async t => {
+test('P21-ACCOUNT-01 browsing loads sign-in provider capabilities automatically', async t => {
   const f = await fixture(request => request.path === '/api/account/session' ? { body: capabilities } : guest);
   t.after(() => f.destroy());
-  assert.deepEqual(f.calls.map(call => call.path), ['/api/v1/profile']);
   assert.equal(f.state().sessionStatus, 'guest');
-  await f.action('options');
-  assert.deepEqual(f.calls.map(call => call.path), ['/api/v1/profile', '/api/account/session']);
+  assert.deepEqual(f.calls.map(call => call.path).sort(), ['/api/account/session', '/api/v1/profile']);
   assert.equal(f.state().providers.google.web, true);
   assert.equal(f.state().providers.apple.web, false);
 });
@@ -169,7 +167,6 @@ test('P21-ACCOUNT-05 provider starts require published capability and use the ex
     throw Error('Unexpected fixture request');
   });
   t.after(() => f.destroy());
-  await f.action('options');
   await f.action('provider', { provider: 'apple' });
   assert.equal(f.calls.filter(call => call.path === '/api/account/start').length, 0);
   await f.action('provider', { provider: 'google' });
@@ -191,7 +188,7 @@ test('P21-ACCOUNT-06 account continuation does not claim success when the protec
   assert.doesNotMatch(f.state().accountMessage, /profile is ready/, 'a failed protected read must retain its actual account state');
 });
 
-test('P21-ACCOUNT-07 explicit options discovers a session linked in another tab', async t => {
+test('P21-ACCOUNT-07 boot provider discovery notices a session linked in another tab', async t => {
   let linked = false;
   const f = await fixture(request => {
     if (request.path === '/api/v1/profile') return linked ? { body: account } : guest;
@@ -199,8 +196,6 @@ test('P21-ACCOUNT-07 explicit options discovers a session linked in another tab'
     throw Error('Unexpected fixture request');
   });
   t.after(() => f.destroy());
-  assert.equal(f.state().sessionStatus, 'guest');
-  await f.action('options');
   assert.equal(f.state().sessionStatus, 'linked', 'an actual linked session should replace the stale guest continuation state');
   assert.equal(f.state().profile.id, account.id);
 });

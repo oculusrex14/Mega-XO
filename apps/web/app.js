@@ -96,7 +96,6 @@ function render({focus=false}={}){
  document.querySelectorAll('[data-board-host]').forEach(host=>{board=mountBoard(host,{preview:host.dataset.boardPreview!=='false'&&path==='/',...gameAccount(),mode:path==='/game'?gameMode():host.dataset.boardMode,difficulty:host.dataset.boardDifficulty,theme:host.dataset.boardTheme,tutorial:path==='/game'&&new URLSearchParams(location.search).get('tutorial')==='guided',...(path==='/game'&&match?{online:{match,actorId:context.profile?.id,onMove:tournament?sendTournamentMove:sendOnlineMove,onResign:tournament?sendTournamentResign:sendOnlineResign,onError:handleOnlineError}}:{})})});
  if(path==='/game'){boundOnlineActor=match?context.profile.id:null;boundTournamentMatch=tournament?match:null;updateOnlineControls();}
  if(path==='/store'&&context.products.status!=='error')main.querySelector('[data-store-products]')?.insertAdjacentHTML('afterend','<div class="pg-actions"><button class="mx-button secondary" data-store-action="refresh">Check store availability</button></div>');
- if(path==='/account'&&context.sessionStatus==='guest'&&!context.providersLoaded){main.querySelector('.pg-auth-card')?.insertAdjacentHTML('beforeend','<button class="mx-button secondary" type="button" data-account-action="options">Check sign-in options</button>');}
  updateTournamentControls();tournamentController.sync({roomId:tournament||null});
  realtime.sync();
  if(focus){main.focus({preventScroll:true});window.scrollTo(0,0);}
@@ -363,7 +362,6 @@ document.addEventListener('click',event=>{
  const account=event.target.closest('[data-account-action]');if(account){const action=account.dataset.accountAction;
   if(action==='view'||action==='resend'){resetReady=false;accountChallenge='';context.accountView=action==='resend'?'email':account.dataset.accountView;context.accountMessage=action==='resend'?'Continue with your email and password again to request a new code.':'';render();}
   if(action==='retry')model.profile();
-  if(action==='options')accountAction(async()=>{const session=await globalThis.MegaAccount.session();context.providers=session.providers||{};context.providersLoaded=true;if(session.linked)await model.profile();else context.accountMessage='Choose an available sign-in method.';});
   if(action==='provider')accountAction(async()=>{const session=await globalThis.MegaAccount.session();if(session.providers?.[account.dataset.provider]?.web!==true)throw Error('PROVIDER_NOT_CONFIGURED');const result=await globalThis.MegaAccount.request('/api/account/start',{provider:account.dataset.provider,intent:'login'});const url=new URL(result.url);if(url.protocol!=='https:')throw Error('SERVICE_UNAVAILABLE');location.assign(url.href);});
   if(action==='logout')accountAction(async()=>{await globalThis.MegaAccount.request('/api/account/logout',{});globalThis.MegaAccount.reset();model.invalidate();context.profile=null;resetReady=false;accountChallenge='';context.sessionStatus='guest';context.accountMessage='You are signed out.';context.products.purchasesAvailable=false;onlineState={status:'idle',match:null,invitation:null,message:''};clearInterval(onlineTimer);onlineRevision++;realtime.stop();});
  }
@@ -388,4 +386,15 @@ document.addEventListener('gb:render',()=>{if(normalizedPath()==='/game')updateO
 window.addEventListener('pagehide',event=>{onlineRevision++;realtime.stop();event.persisted?model.invalidate():model.destroy();event.persisted?profileEditor.deactivate():profileEditor.destroy();event.persisted?friendsController.deactivate():friendsController.destroy();event.persisted?tournamentController.deactivate():tournamentController.destroy();clearInterval(leaderboardTimer);clearInterval(onlineTimer);clearInterval(tournamentTimer);tournamentTimer=null;board?.destroy();});
 window.addEventListener('popstate',event=>{event.state?.mxOfflineFallback?main.setAttribute?.('data-offline-fallback',''):main.removeAttribute?.('data-offline-fallback');render({focus:true});activate();});
 window.addEventListener('pageshow',event=>{if(event.persisted){activePath='';render();activate();if(['linked','loading','error'].includes(context.sessionStatus))model.profile();}});
-render();activate();model.profile().then(()=>{if(normalizedPath()==='/store'&&context.sessionStatus==='linked')refreshProducts();});
+function loadProviders(){
+ if(context.providersLoaded)return;
+ // Provider capability advertising must not wait for a manual button: the account page renders
+ // the Google/Apple buttons on every visit, so the session providers are loaded eagerly and the
+ // view is refreshed once they arrive. Failure leaves the buttons honestly disabled.
+ globalThis.MegaAccount.session().then(s=>{
+  context.providers=s.providers||{};context.providersLoaded=true;
+  if(s.linked&&context.sessionStatus==='guest')model.profile();
+  else if(normalizedPath()==='/account')refreshSessionView();
+ }).catch(()=>{});
+}
+render();activate();model.profile().then(()=>{if(normalizedPath()==='/store'&&context.sessionStatus==='linked')refreshProducts();});loadProviders();

@@ -63,7 +63,7 @@ actor MegaNativeSession {
 
     /// Server-issued challenge for a first sign-in: the only native route legitimately called with
     /// no access token. No state or nonce is ever generated locally.
-    func challenge(provider: String, intent: String) async -> Result<(state: String, nonce: String), Error> {
+    func challenge(provider: String, intent: String) async -> Result<(state: String, nonce: String, sessionToken: String), Error> {
         guard ["google", "apple"].contains(provider),
               ["login", "link", "reauth"].contains(intent) else {
             return .failure(RequestError.invalidBody)
@@ -80,21 +80,24 @@ actor MegaNativeSession {
                   Self.isBase64URL(state), state.utf8.count <= 512,
                   Self.isBase64URL(nonce), nonce.utf8.count <= 512
             else { return .failure(RequestError.responseInvalid) }
-            return .success((state, nonce))
+            // A first-ever sign-in bootstraps the session the attempt hangs off; the server
+            // returns its bearer in the body and the follow-up token leg must present it.
+            let sessionToken = object["sessionToken"] as? String ?? ""
+            return .success((state, nonce, sessionToken))
         } catch {
             return .failure(error)
         }
     }
 
     /// Provider grant. Every value is server-issued; nothing here mints a credential.
-    func signIn(provider: String, state: String, idToken: String) async -> Outcome {
+    func signIn(provider: String, state: String, idToken: String, sessionToken: String = "") async -> Outcome {
         guard ["google", "apple"].contains(provider),
               Self.isBase64URL(state), state.utf8.count <= 512,
-              idToken.utf8.count <= 16384,
-              let body = try? JSONSerialization.data(withJSONObject: [
-                  "provider": provider, "state": state, "idToken": idToken
-              ])
+              idToken.utf8.count <= 16384
         else { return .invalid }
+        var payload: [String: Any] = ["provider": provider, "state": state, "idToken": idToken]
+        if !sessionToken.isEmpty { payload["sessionToken"] = sessionToken }
+        guard let body = try? JSONSerialization.data(withJSONObject: payload) else { return .invalid }
         return await exchange(path: "/api/account/native/token", body: body, rotating: false)
     }
 

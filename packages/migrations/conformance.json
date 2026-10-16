@@ -2545,6 +2545,76 @@
             "polar_orders_actor_created_idx",
             "polar_orders_actor_op_key_key"
           ]
+        },
+        "commerce_create_requests": {
+          "columns": {
+            "request_id": {
+              "t": "uuid",
+              "nn": true
+            },
+            "actor_id": {
+              "t": "text",
+              "nn": true
+            },
+            "op_key": {
+              "t": "text",
+              "nn": true
+            },
+            "provider": {
+              "t": "text",
+              "nn": true
+            },
+            "product_id": {
+              "t": "text",
+              "nn": true
+            },
+            "fingerprint": {
+              "t": "text",
+              "nn": true
+            },
+            "price_snapshot": {
+              "t": "jsonb",
+              "nn": true
+            },
+            "state": {
+              "t": "text",
+              "nn": true
+            },
+            "provider_object_id": {
+              "t": "text"
+            },
+            "response_text": {
+              "t": "text"
+            },
+            "error_code": {
+              "t": "text"
+            },
+            "created_at": {
+              "t": "timestamp with time zone",
+              "nn": true
+            },
+            "updated_at": {
+              "t": "timestamp with time zone",
+              "nn": true
+            }
+          },
+          "constraints": [
+            "commerce_create_requests_pkey",
+            "commerce_create_requests_op_key_check",
+            "commerce_create_requests_provider_check",
+            "commerce_create_requests_fingerprint_check",
+            "commerce_create_requests_state_check",
+            "commerce_create_requests_actor_op_key_key",
+            "commerce_create_requests_provider_object_id_key",
+            "commerce_create_requests_ready_complete",
+            "commerce_create_requests_actor_id_fkey"
+          ],
+          "indexes": [
+            "commerce_create_requests_pkey",
+            "commerce_create_requests_state_updated_idx",
+            "commerce_create_requests_actor_op_key_key",
+            "commerce_create_requests_provider_object_id_key"
+          ]
         }
       }
     },

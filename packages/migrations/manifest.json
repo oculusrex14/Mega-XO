@@ -345,6 +345,12 @@
       "name": "0057_polar_orders",
       "file": "migrations/0057_polar_orders.sql",
       "sha256": "add1ae5daa11d65e22b57f9b08b953d39aee0ec40451a5fa75a597dfb1ce2876"
+    },
+    {
+      "id": 58,
+      "name": "0058_commerce_create_requests",
+      "file": "migrations/0058_commerce_create_requests.sql",
+      "sha256": "f9e2e5f54dd153636fc3cbd9776204f9f22aaf4b9a9d55faa240f02442bc05a3"
     }
   ]
 }

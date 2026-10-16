@@ -49,4 +49,6 @@ bug, Mega Pass recurring redesign, account-link completion, store/art assets, de
   .artifacts/lr21-review-web && node scripts/p21/serve-web.js --port 4195 --directory
   $PWD/.artifacts/lr21-review-web" (the game app with the purchase fix + account-link prompt
   is under /legacy-game/).
+- 2x bot-win Coins ENFORCED (10940c5): D.complete takes {coinBoost} threaded from the verified
+  pass entitlement (MegaMonetizationUI.pass()); the 20-Coin botDailyCap is never raised.
 - LR02 final CI re-verification stays LAST per the standing register.

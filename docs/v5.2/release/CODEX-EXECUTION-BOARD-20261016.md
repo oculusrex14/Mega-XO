@@ -159,4 +159,12 @@
 
 **LR18:** the P0 finding documented — production retention sweeps target the STAGING database (the DC00-installed units run the staging capture-job.sh); Main's six-step corrective procedure is on the report; the backup-prune gate is accidentally intact and must stay disabled until the safe-prune proof.
 
-**Queue for Main:** #29 (LR12+LR15 commerce/SSV/store), #28 (consent UI + harness fix), #27 (email + validate fix), #26 (AASA), #25 (deploy guards), #24 (compose fence), #23 (opsz), #22 (SEO/headers), #21 (board + six evidence reports), #20 (WebUI audit).**Remaining backlog lanes:** the device/native lane (LR08/LR20), the research-capture live posture (LR17 DB-level), and the deferred CI sweep (LR02).
+**Queue for Main:** #29 (LR12+LR15 commerce/SSV/store), #28 (consent UI + harness fix), #27 (email + validate fix), #26 (AASA), #25 (deploy guards), #24 (compose fence), #23 (opsz), #22 (SEO/headers), #21 (board + six evidence reports), #20 (WebUI audit).
+
+### Checkpoint 11 — 2026-10-16 (merge-order proven by dry-run)
+
+**The full eight-PR stack merges CLEANLY.** A throwaway worktree at origin/V5.2 (e4e2ee4) merged all eight PR heads in sequence — 29, 28, 27, 26, 25, 24, 23, 22 — every merge exited 0 with ZERO conflicts, the merged tree passes node --check on all five touched runtime files, and the five new test suites (commerce-ingress, store-pg-adapter, mail-resend, consent-ui, apple-team-association) all pass on the merged tree (EXIT 0). **Main can merge in any order; the documented order is confirmed safe.**
+
+**LR06 final gaps:** the session-fixation and npm-audit gaps are CLOSED with evidence (the matrix updated); the two structural gaps remain (LR12 rate-limit negatives now UNBLOCKED by #29, device-lane security).
+
+**URGENT for Main (before Mon 2026-10-19):** the LR18 P0 finding — the production retention timers run the STAGING capture-job.sh; the corrective procedure is in LR18-RETENTION-DR-LIVE-20261016.md. The next scheduled retention run is Monday.**Remaining backlog lanes:** the device/native lane (LR08/LR20), the research-capture live posture (LR17 DB-level), and the deferred CI sweep (LR02).

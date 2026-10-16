@@ -177,4 +177,10 @@
 
 **LR14:** the shipped powers-1 constants match EVERY owner-approved limit (recorded in LR14-POWERS-AUDIT-20261016.md); the powers/staging-head suites are green.
 
-**URGENT for Main (before Mon 2026-10-19):** the LR18 P0 finding — the production retention timers run the STAGING capture-job.sh; the corrective procedure is in LR18-RETENTION-DR-LIVE-20261016.md.**Remaining backlog lanes:** the device/native lane (LR08/LR20), the research-capture live posture (LR17 DB-level), and the deferred CI sweep (LR02).
+**URGENT for Main (before Mon 2026-10-19):** the LR18 P0 finding — the production retention timers run the STAGING capture-job.sh; the corrective procedure is in LR18-RETENTION-DR-LIVE-20261016.md.
+
+### Checkpoint 13 — 2026-10-16 (LR19 telemetry implemented)
+
+**LR19 telemetry LANDED as PR #29 addendum bfd1b8c:** the minimal OPTIONAL lane per the P1 brief item — daily-aggregate counters on ops.rate_buckets (one row per day per event kind; no actor column, no per-event history, no free text, no age/gender/geo/location kinds — all asserted), an anonymous POST /api/metrics/batch route (no session resolution, bounded batch, 405/400/503 shapes), and a client lane that is OFF by default (only an explicit storage flag enables it; the privacy-choices toggle is the next UI touch). ZERO schema change. Tests: metrics 4/4 + production-server/migrations/monetization-policy all EXIT 0. The counters stay EMPTY until a player opts in — dormant by construction.
+
+**ALL IMPLEMENTABLE BACKLOG SLICES ARE NOW PR'D.** The remaining lanes are: Main's merges/deploys + the LR18 retention retarget (before Mon 2026-10-19) + the DB-level passes + the independent security audit; the owner's enablement steps (Apple credentials, AdMob console SSV URL, Resend key, store credentials) and the two phones for the device pass (LR20); and the deferred CI sweep (LR02) — which Codex takes LAST on the merged head once the queue lands.**Remaining backlog lanes:** the device/native lane (LR08/LR20), the research-capture live posture (LR17 DB-level), and the deferred CI sweep (LR02).

@@ -14,8 +14,13 @@ class MonetizationStore{
    CREATE TABLE IF NOT EXISTS v35_tickets(id TEXT PRIMARY KEY,actor TEXT,kind TEXT,issued INTEGER,expires INTEGER,day TEXT,settled INTEGER DEFAULT 0,transaction_id TEXT UNIQUE);
    CREATE TABLE IF NOT EXISTS v35_casual(actor TEXT,match_id TEXT,base INTEGER,bonus INTEGER,PRIMARY KEY(actor,match_id));
    CREATE TABLE IF NOT EXISTS v35_events(id INTEGER PRIMARY KEY,actor TEXT,kind TEXT,at INTEGER,value INTEGER);
-   CREATE TABLE IF NOT EXISTS v41_ad_ticket_context(ticket TEXT PRIMARY KEY,platform TEXT NOT NULL,ad_unit TEXT NOT NULL);
-   CREATE TABLE IF NOT EXISTS v52_cashfree_orders(order_id TEXT PRIMARY KEY,actor TEXT NOT NULL,product TEXT NOT NULL,amount TEXT NOT NULL,currency TEXT NOT NULL DEFAULT 'INR',status TEXT NOT NULL,created_at INTEGER NOT NULL,settled_at INTEGER);`);
+   CREATE TABLE IF NOT EXISTS v41_ad_ticket_context(ticket TEXT PRIMARY KEY,platform TEXT NOT NULL,ad_unit TEXT NOT NULL);`);
+  /* The Cashfree order ledger exists only where the provider is configured. The frozen V4.1.2
+     migration source (tools/v5-migration/mapping.json) describes 35 tables and does not, and must
+     not, know about a V5.2-only provider: creating this table unconditionally made the P03 extractor
+     fail closed with COVERAGE_INCOMPLETE('table:v52_cashfree_orders') on every snapshot taken from a
+     running store. Gate creation on the catalog the provider is wired through. */
+  if(this.cashfreeCatalog)this.db.exec(`CREATE TABLE IF NOT EXISTS v52_cashfree_orders(order_id TEXT PRIMARY KEY,actor TEXT NOT NULL,product TEXT NOT NULL,amount TEXT NOT NULL,currency TEXT NOT NULL DEFAULT 'INR',status TEXT NOT NULL,created_at INTEGER NOT NULL,settled_at INTEGER);`);
  }
  account(a,id){const p=a.account(id);if(!p.verified)throw Error('LINK_ACCOUNT_REQUIRED');if(p.suspended||p.hold)throw Error('ACCOUNT_HELD');return p;}
  allowed(p){return this.eligible(structuredClone(p))===true;}

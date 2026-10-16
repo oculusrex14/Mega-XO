@@ -227,7 +227,10 @@ internal class MegaNativeSessionManager(
         if (response == null) { complete(Outcome.UNAVAILABLE); return }
         val (status, raw) = response
         if (status == 401 && rotating) { revokeEverything(); complete(Outcome.REVOKED); return }
-        if (status !in 200..299) { android.util.Log.d("MegaNativeDebug", ("finish_failed status=" + status + " body=" + raw.take(400))); complete(Outcome.UNAVAILABLE); return }
+        /* The token-leg response body is never logged: it can carry access/refresh tokens, and a
+           debug line that prints it would put live credentials in logcat. The status alone is the
+           diagnostic, matching how every other transport failure in this file is surfaced. */
+        if (status !in 200..299) { complete(Outcome.UNAVAILABLE); return }
         val parsed = runCatching { JSONObject(raw) }.getOrNull()
         if (parsed == null) { complete(Outcome.INVALID); return }
         val access = parsed.optString("accessToken", "")

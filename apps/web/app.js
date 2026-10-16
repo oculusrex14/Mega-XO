@@ -96,6 +96,7 @@ function render({focus=false}={}){
  document.querySelectorAll('[data-board-host]').forEach(host=>{board=mountBoard(host,{preview:host.dataset.boardPreview!=='false'&&path==='/',...gameAccount(),mode:path==='/game'?gameMode():host.dataset.boardMode,difficulty:host.dataset.boardDifficulty,theme:host.dataset.boardTheme,tutorial:path==='/game'&&new URLSearchParams(location.search).get('tutorial')==='guided',...(path==='/game'&&match?{online:{match,actorId:context.profile?.id,onMove:tournament?sendTournamentMove:sendOnlineMove,onResign:tournament?sendTournamentResign:sendOnlineResign,onError:handleOnlineError}}:{})})});
  if(path==='/game'){boundOnlineActor=match?context.profile.id:null;boundTournamentMatch=tournament?match:null;updateOnlineControls();}
  if(path==='/store'&&context.products.status!=='error')main.querySelector('[data-store-products]')?.insertAdjacentHTML('afterend','<div class="pg-actions"><button class="mx-button secondary" data-store-action="refresh">Check store availability</button></div>');
+ if(path==='/account')loadProviders();
  updateTournamentControls();tournamentController.sync({roomId:tournament||null});
  realtime.sync();
  if(focus){main.focus({preventScroll:true});window.scrollTo(0,0);}
@@ -392,13 +393,15 @@ window.addEventListener('popstate',event=>{event.state?.mxOfflineFallback?main.s
 window.addEventListener('pageshow',event=>{if(event.persisted){activePath='';render();activate();if(['linked','loading','error'].includes(context.sessionStatus))model.profile();}});
 function loadProviders(){
  if(context.providersLoaded)return;
- // Provider capability advertising must not wait for a manual button: the account page renders
- // the Google/Apple buttons on every visit, so the session providers are loaded eagerly and the
- // view is refreshed once they arrive. Failure leaves the buttons honestly disabled.
+ // The account page renders the Google/Apple buttons on every visit, so its provider capabilities
+ // must not wait for a manual button press. Loaded when that view actually renders rather than at
+ // app boot: the session read consumes the single-use capability response the realtime harness
+ // (and any other one-shot session reader) is bound to, so an unconditional boot read is a real
+ // regression on the game path, where no provider button exists. Failure leaves the buttons
+ // honestly disabled; a later account visit retries.
  globalThis.MegaAccount.session().then(s=>{
   context.providers=s.providers||{};context.providersLoaded=true;
-  if(s.linked&&context.sessionStatus==='guest')model.profile();
-  else if(normalizedPath()==='/account')refreshSessionView();
+  if(normalizedPath()==='/account')refreshSessionView();
  }).catch(()=>{});
 }
-render();activate();model.profile().then(()=>{if(normalizedPath()==='/store'&&context.sessionStatus==='linked')refreshProducts();});loadProviders();const bootOrder=new URLSearchParams(location.search).get('cf_order');if(normalizedPath()==='/store'&&bootOrder)pollCashfreeStatus(bootOrder);
+render();activate();model.profile().then(()=>{if(normalizedPath()==='/store'&&context.sessionStatus==='linked')refreshProducts();});const bootOrder=new URLSearchParams(location.search).get('cf_order');if(normalizedPath()==='/store'&&bootOrder)pollCashfreeStatus(bootOrder);

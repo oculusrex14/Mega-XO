@@ -65,6 +65,33 @@ const DEFAULT_ASSET_LINKS = Object.freeze([
 const ASSOCIATION_PLACEHOLDER_TEAM = 'TEAMID';
 const BUILT_IOS_BUNDLE_ID = 'online.megaxo.xoxo';
 
+/* LR08 (2026-10-16): the owner's Apple Team ID is now known and configured server-side (Apple
+ * sign-in works live, which requires APPLE_TEAM_ID), so the placeholder no longer has to be the
+ * honest state. When a syntactically valid 10-character Team ID is provided the association is
+ * served with the REAL prefix; anything else (missing, malformed) fail-closes to the placeholder
+ * rather than guessing. */
+function appleTeamPrefixFor(teamId) {
+  return typeof teamId === 'string' && /^[A-Z0-9]{10}$/.test(teamId) ? teamId : ASSOCIATION_PLACEHOLDER_TEAM;
+}
+
+function appleAssociationForTeam(teamId) {
+  const appId = `${appleTeamPrefixFor(teamId)}.${BUILT_IOS_BUNDLE_ID}`;
+  return {
+    applinks: {
+      apps: [],
+      details: [
+        {
+          appIDs: [appId],
+          components: DEFAULT_APPLE_ASSOCIATION.applinks.details[0].components,
+        }
+      ]
+    },
+    webcredentials: {
+      apps: [appId]
+    }
+  };
+}
+
 const DEFAULT_APPLE_ASSOCIATION = Object.freeze({
   applinks: {
     apps: [],
@@ -136,7 +163,7 @@ function getAssetLinks(context, req, res) {
  * Returns iOS Universal Links association specification.
  */
 function getAppleAppSiteAssociation(context, req, res) {
-  const data = context.appleAssociation || context.appleAppSiteAssociation || DEFAULT_APPLE_ASSOCIATION;
+  const data = context.appleAssociation || context.appleAppSiteAssociation || appleAssociationForTeam(context.appleTeamId);
   const body = JSON.stringify(data, null, 2);
   res.writeHead(200, {
     'Content-Type': 'application/json; charset=utf-8',
@@ -373,5 +400,7 @@ module.exports = {
   handleWellKnownRoute,
   DEFAULT_ASSET_LINKS,
   DEFAULT_APPLE_ASSOCIATION,
+  appleAssociationForTeam,
+  appleTeamPrefixFor,
   LEGAL_PAGES,
 };

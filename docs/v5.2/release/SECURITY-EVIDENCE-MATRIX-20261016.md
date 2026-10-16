@@ -18,7 +18,7 @@
 
 | Area | Concrete tests (negative paths) | Status | Notes / gaps |
 | --- | --- | --- | --- |
-| Authentication & session fixation | v5-p11-native-session, community.test, community-http.test, v52-web-oauth | suites present; web-oauth RUN green today | rotation-on-privilege-change assertions live in the community suites; a dedicated fixation negative test does not exist by name — Main's audit should confirm the rotation is asserted somewhere explicit or add one. |
+| Authentication & session fixation | v5-p04-repositories (sessions.rotate consumes EXACTLY one row; the rotated bearer's live() returns null), v5-p11-native-session, community.test, community-http.test, v52-web-oauth, production-auth (RUN green) | green + explicit | replaceSession refuses with AUTH_REQUIRED when the old bearer was already consumed — fixation cannot survive a privilege change. RESOLVED 2026-10-16. |
 | CSRF / CORS / origin | v5-p13-security (RUN green), v5-p11-session-boundary (RUN green), v5-p11-browser-compat | green | The retired-host origin expectations were retargeted at d8d304b; browser-compat suite pins the canonical origin. |
 | Core HMAC ingress | v5-p11-core-gateway, v5-p04-services, v51-v5-production-server | green (composition role/refusal tests), gateway suite present | Live unsigned probe returns 401 (LR05 report, 2026-10-16) — fail-closed observed in production. |
 | Actor impersonation / authorization | v5-p04-differential, v5-p21-realtime, authority.test, v5-p09-fencing, provider-authorization (RUN green) | green | Differential suite proves cross-actor access refusals. |
@@ -32,7 +32,7 @@
 | SQL permissions / role separation | v51-v5-production-server (role assertion, composition separation, wrong-target deploy refusal), v5-migrations (grant chain), v5-p04-differential | green | PR #25 adds DEPLOY_REFUSED_WRONG_TARGET + schema-regression guards. |
 | Sensitive endpoint caching | v5-contracts, v5-p21-seo (no-store on private/auth), v5-p11-session-boundary | green | Live: /livez//readyz//opsz + API answers carry no-store (LR05 probes). |
 | Age / consent / deletion access | v52-consent-retention, v52-research-consent-routes, account-deletion, privacy-export, v5-p23-retention-manifest | present | Live consent-route verification is LR17 (scheduled after Stage 2). |
-| Supply chain / dependency advisories | production-lifecycle: runtime dependencies pinned by immutable multi-arch digest; GitHub release workflow uses immutable action revisions | green | A live npm audit advisory scan was NOT run (network/policy); recommend Main or a scheduled job run it against the release lockfile and file advisories as issues. |
+| Supply chain / dependency advisories | production-lifecycle: runtime dependencies pinned by immutable multi-arch digest; GitHub release workflow uses immutable action revisions; npm audit against the release lockfile (2026-10-16) | green | RESOLVED 2026-10-16: npm audit returned ZERO vulnerabilities (0 info/low/moderate/high/critical across 24 prod dependencies). Re-run in CI or on dependency bumps. |
 
 ## Fixes this cycle contributed to the evidence base
 
@@ -42,7 +42,5 @@
 
 ## Honest gaps for Main's audit
 
-1. No single named session-fixation negative test — confirm existing rotation assertions or add one.
-2. No live npm audit/lockfile advisory evidence — run against the release lockfile.
 3. Monetization-route rate-limit negatives arrive with LR12 (routes do not exist on the trunk yet).
 4. Device-lane security (key attestation, store signing chain) is LR08/LR20, not covered by unit evidence.

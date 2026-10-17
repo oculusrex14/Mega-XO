@@ -18,7 +18,7 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
-const { sendJson } = require('./helpers');
+const { sendJson, requestIsSecure } = require('./helpers');
 
 // Root public assets directory (repo_root/public)
 const PUBLIC_DIR = path.resolve(__dirname, '../../../public');
@@ -318,7 +318,7 @@ async function handleAuthCallback(context, req, res, provider, url) {
   // 3b. A composed web lane exists: perform the real exchange and only then report success.
   let outcome;
   try {
-    outcome = await context.completeWebSignIn({ provider, state, code, cookie: req.headers?.cookie || null });
+    outcome = await context.completeWebSignIn({ provider, state, code, cookie: req.headers?.cookie || null, secure: requestIsSecure(req) });
   } catch (error) {
     outcome = { ok: false, reason: (error && error.code) || 'SIGNIN_FAILED' };
   }

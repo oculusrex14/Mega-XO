@@ -286,7 +286,13 @@ const SESSION_COOKIE_NAMES = ['__Host-mega_session', 'mega_dev_session', 'sessio
 
 function bearerFromCookies(req) {
   const cookies = parseCookies(req.headers?.cookie);
-  for (const name of SESSION_COOKIE_NAMES) if (cookies[name]) return cookies[name];
+  /* MXA-SEC-001: on a secure request only the __Host- credential may authenticate - the
+   * development fallback names are an http-staging affordance and must not reach bootstrap. */
+  const secure = requestIsSecure(req);
+  for (const name of SESSION_COOKIE_NAMES) {
+    if (name !== '__Host-mega_session' && secure) continue;
+    if (cookies[name]) return cookies[name];
+  }
   return null;
 }
 
@@ -624,10 +630,11 @@ function webCallbackOrigin(context) {
 
 /* The session bearer a callback binds to. Order mirrors resolveAuth: the host cookie, then the
  * dev-session fallback. A null result is AUTH_REQUIRED, never a guess. */
-function webSessionTokenFromCookie(cookie) {
+function webSessionTokenFromCookie(cookie, secure) {
   if (typeof cookie !== 'string' || !cookie) return null;
   const cookies = parseCookies(cookie);
   for (const name of ['__Host-mega_session', 'mega_dev_session', 'session', 'token']) {
+    if (secure && name !== '__Host-mega_session') continue;
     const value = cookies[name];
     if (typeof value === 'string' && value) return value;
   }
@@ -669,13 +676,13 @@ function normalizeLaneError(error) {
  * rotate the session. Outcome contract (pinned by tests/v5-p11-website-foundations.test.js):
  * {ok:true, setCookie} on success; a thrown error whose .code becomes the redirect authError. */
 function createWebSignInLane(context) {
-  return async function completeWebSignIn({ provider, state, code, cookie } = {}) {
+  return async function completeWebSignIn({ provider, state, code, cookie, secure } = {}) {
     try {
       if (!WEB_PROVIDERS.includes(provider)) { const e = new Error('INVALID_PROVIDER'); e.code = 'INVALID_PROVIDER'; e.status = 400; throw e; }
       const accounts = await resolveService(context);
       const providers = resolveNativeProviders(context);
       if (!providers || typeof providers.exchange !== 'function') { const e = new Error('PROVIDER_SIGNIN_UNAVAILABLE'); e.code = 'PROVIDER_SIGNIN_UNAVAILABLE'; e.status = 503; throw e; }
-      const token = webSessionTokenFromCookie(cookie);
+      const token = webSessionTokenFromCookie(cookie, secure === true);
       if (!token) { const e = new Error('AUTH_REQUIRED'); e.code = 'AUTH_REQUIRED'; e.status = 401; throw e; }
       const attempt = await accounts.consume(token, state, provider, 'web');
       const identity = await providers.exchange(provider, code, attempt, webCallbackOrigin(context) + '/auth/callback/' + provider);

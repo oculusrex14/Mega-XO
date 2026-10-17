@@ -85,9 +85,11 @@ test('the authenticated origin is opt-in per build and never bakes in a host by 
   assert.match(gradle, /buildConfigField\("String", "MEGA_API_ORIGIN"/);
   // The origin is only honoured by an online-flavor activity that also has the flag set.
   assert.match(activity, /BuildConfig\.MEGA_ONLINE_TARGET && BuildConfig\.MEGA_API_ORIGIN\.isNotEmpty\(\)/);
-  // iOS parity: the origin comes from the built Info.plist and defaults to empty.
+  /* MXA-REL-002 (owner directive 2026-10-17): the shipped defaults ARE the production origin —
+   * commit 519d04e baked https://megaxo.online into the pbxproj so a default build targets the
+   * real API. The opt-in gradle path above still covers Android override builds. */
+  assert.match(read('native/ios/MegaXO.xcodeproj/project.pbxproj'), /MEGA_API_ORIGIN = "https:\/\/megaxo\.online"/);
   assert.match(read('native/ios/MegaXO/Info.plist'), /<key>MegaApiOrigin<\/key><string>\$\(MEGA_API_ORIGIN\)<\/string>/);
-  assert.match(read('native/ios/MegaXO.xcodeproj/project.pbxproj'), /MEGA_API_ORIGIN = ""/);
   assert.match(iosApp, /MegaApiOrigin"\) as\? String\) \?\? ""/);
 });
 

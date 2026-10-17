@@ -417,7 +417,10 @@ test('iOS Apple sign-in adapter is disabled by default and only callable from si
   assert.match(host, /if appleEnabled \{/);
   assert.match(host, /forMainFrameOnly: true/);
   assert.match(pbx, /MegaIOSIdentityBridge\.swift in Sources/);
-  assert.match(pbx, /MEGA_APPLE_NATIVE_ENABLED = NO/);
+  /* MXA-REL-002 (owner directive 2026-10-17): the native Apple adapter ships ENABLED by default
+   * now that the provider contract is verified on-device; the signed-entry-only callability
+   * assertions above stay the security boundary. */
+  assert.match(pbx, /MEGA_APPLE_NATIVE_ENABLED = YES/);
   assert.doesNotMatch(code, /mintCrowns|createActor|signInComplete/);
 });
 

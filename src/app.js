@@ -301,6 +301,30 @@ const opts=(items,selected)=>items.map(([value,label])=>'<option value="'+value+
 const publicLink=(key,label)=>'<a class="button quiet legal-link" '+(window.MegaPublicLinks?.attributes?.(key)||'href="https://megaxo.online/'+key+'" target="_blank" rel="noopener noreferrer"')+'>'+escape(label)+'</a>';
 const field=(title,id,options)=>'<label class="field">'+title+'<select id="'+id+'">'+options+'</select></label>';
 const empty=(symbol,title,text)=>'<div class="empty">'+icon(symbol)+'<h3>'+title+'</h3><p>'+text+'</p></div>';
+/* C3/APP-014: the Home setup fragment is a stable mount. Mode, difficulty, first-move, timer
+   and queue-type selections update it in place; they never replay a full Home render, so no
+   entrance animation fires on an ordinary selection. C1/APP-011: this helper always returns
+   balanced markup — the old inline string never closed .old-setup, which nested the Start
+   button, tutorial and utility cards inside the match-setup box. */
+const setupChip=(label,action,value,active)=>'<button class="setup-chip '+(active?'active':'')+'" data-action="'+action+'" data-value="'+value+'" aria-pressed="'+active+'">'+label+'</button>';
+const homeCtaLabel=()=>mode==='tournament'?'Browse Tournaments':mode==='private'?'Open Private Lobby':mode==='online'?'Find Match':'Start Match';
+function renderHomeSetup(){
+ if(['bot','local'].includes(mode)){
+  return '<div class="setup old-setup">'+(mode==='bot'?'<div class="setup-block"><div class="setup-title"><b>Bot difficulty</b><span>Strategy depth</span></div><div class="setup-chips">'+G.LEVELS.map(x=>setupChip(x.toUpperCase(),'difficulty',x,difficulty===x)).join('')+'</div></div>':'')+'<div class="setup-block"><div class="setup-title"><b>First move</b><span>Who starts</span></div><div class="setup-chips two">'+setupChip('X STARTS','first','X',first==='X')+setupChip('O STARTS','first','O',first==='O')+'</div></div><div class="setup-block"><div class="setup-title"><b>Turn timer</b><span>Optional</span></div><div class="setup-chips three">'+[['0','OFF'],['30','30 SEC'],['60','60 SEC']].map(([v,l])=>setupChip(l,'settimer',v,String(data.settings.timer||0)===v)).join('')+'</div></div></div>';
+ }
+ if(mode==='online'){
+  const rankTier=D.tier(myTier());
+  return '<div class="setup old-setup"><div class="setup-block"><div class="setup-title"><b>Match type</b><span>Choose your queue</span></div><div class="setup-chips two">'+setupChip('RANKED','onlinetype','ranked',onlineType==='ranked')+setupChip('CASUAL','onlinetype','casual',onlineType==='casual')+'</div></div><p class="setup-note">'+(onlineType==='ranked'?'Entry cost: '+rankTier.fee+' Coins at your current '+rankTier.name+' league. Skill rating applies.':'Free to play. No rating changes.')+'</p></div>';
+ }
+ return '';
+}
+function updateHomeSetup(){
+ if(page!=='play')return;
+ document.querySelectorAll('#page .mode-list .mode').forEach(b=>{const active=b.dataset.value===mode;b.classList.toggle('active',active);b.setAttribute('aria-pressed',String(active));});
+ const mount=$('#homeSetupMount');if(mount)mount.innerHTML=renderHomeSetup();
+ const cta=$('#homePrimaryCta');if(cta)cta.innerHTML=icon('play')+homeCtaLabel();
+ refreshIcons();
+}
 function seasonProgress(s){if(!s)return '';return Math.min(s.games||0,s.requirements?.games||5)+' / '+(s.requirements?.games||5)+' games · '+Math.min(s.queueGames||0,s.requirements?.queueGames||3)+' / '+(s.requirements?.queueGames||3)+' matchmade · '+Math.min(s.uniqueOpponents||0,s.requirements?.uniqueOpponents||3)+' / '+(s.requirements?.uniqueOpponents||3)+' opponents';}
 function seasonName(s){return s?.id?s.id.replace('-', ' '):'Current season';}
 function render(){
@@ -309,26 +333,20 @@ function render(){
  $('#page').innerHTML=({play:home,friends:friends,rank:ranks,stats:statsView,quests:quests,rewards:rewards})[page]();refreshIcons();
 }
 function home(){
- const chip=(label,action,value,active)=>'<button class="setup-chip '+(active?'active':'')+'" data-action="'+action+'" data-value="'+value+'" aria-pressed="'+active+'">'+label+'</button>';
  const modes=[['bot','bot','Vs Bot','Five skill levels, fully offline'],['local','users','Pass & Play','Two players on one device'],['online','swords','Play Online','Ranked or casual matchmaking'],['private','link','Private Match','Create or join a friend room'],['tournament','trophy','Tournaments','Ten players. One table. Bigger prizes.']];
- const rankTier=D.tier(myTier()),rankFee=rankTier.fee;
- let setup='';
- if(['bot','local'].includes(mode)){
-  setup='<div class="setup old-setup">'+(mode==='bot'?'<div class="setup-block"><div class="setup-title"><b>Bot difficulty</b><span>Strategy depth</span></div><div class="setup-chips">'+G.LEVELS.map(x=>chip(x.toUpperCase(),'difficulty',x,difficulty===x)).join('')+'</div></div>':'')+'<div class="setup-block"><div class="setup-title"><b>First move</b><span>Who starts</span></div><div class="setup-chips two">'+chip('X STARTS','first','X',first==='X')+chip('O STARTS','first','O',first==='O')+'</div></div><div class="setup-block"><div class="setup-title"><b>Turn timer</b><span>Optional</span></div><div class="setup-chips three">'+[['0','OFF'],['30','30 SEC'],['60','60 SEC']].map(([v,l])=>chip(l,'settimer',v,String(data.settings.timer||0)===v)).join('')+'</div></div>';
- }
- else if(mode==='online')setup='<div class="setup old-setup"><div class="setup-block"><div class="setup-title"><b>Match type</b><span>Choose your queue</span></div><div class="setup-chips two">'+chip('RANKED','onlinetype','ranked',onlineType==='ranked')+chip('CASUAL','onlinetype','casual',onlineType==='casual')+'</div></div><p class="setup-note">'+(onlineType==='ranked'?'Entry cost: '+rankFee+' Coins at your current '+rankTier.name+' league. Skill rating applies.':'Free to play. No rating changes.')+'</p></div>';
  const placed=online.profile?.games>=D.POLICY.placements,s=online.profile?.season,seasonReady=!!s?.qualified,rankTitle=!placed?'Your ranked journey starts here':!seasonReady?'Season requalification':D.tier(myTier()).name,rankSub=!placed?'Unranked &middot; '+Math.min(10,online.profile?.games||0)+' / 10 placement games':!seasonReady?seasonProgress(s):online.profile.rating+' Elo · '+seasonName(s);
  return '<div class="hero home-hero"><h1><span class="home-title-main">The Ultimate <span class="home-game-name">Tic-tac-toe.</span></span><br><em>Think bigger.</em></h1><p>Win the small boards to win the big one. Every move also decides where your opponent plays next.</p></div>'+
  '<button class="card rank-summary" data-action="nav" data-value="rank">'+badge(D.tier(myTier()))+'<span class="grow"><b>'+rankTitle+'</b><small>'+rankSub+'</small></span>'+icon('arrow')+'</button>'+
- '<div class="section-heading"><h3>Choose mode</h3><span class="eyebrow">YOUR MOVE</span></div><div class="mode-list">'+modes.map(([id,sym,title,desc])=>'<button class="mode '+(id===mode?'active':'')+'" data-action="mode" data-value="'+id+'" aria-pressed="'+(id===mode)+'"><span class="mode-symbol">'+icon(sym)+'</span><span class="mode-copy"><strong>'+title+'</strong><small>'+desc+'</small></span>'+icon('arrow')+'</button>').join('')+'</div>'+setup+
- fullButton(icon('play')+(mode==='tournament'?'Browse Tournaments':mode==='private'?'Open Private Lobby':mode==='online'?'Find Match':'Start Match'),'start')+
+ '<div class="section-heading"><h3>Choose mode</h3><span class="eyebrow">YOUR MOVE</span></div><div class="mode-list">'+modes.map(([id,sym,title,desc])=>'<button class="mode '+(id===mode?'active':'')+'" data-action="mode" data-value="'+id+'" aria-pressed="'+(id===mode)+'"><span class="mode-symbol">'+icon(sym)+'</span><span class="mode-copy"><strong>'+title+'</strong><small>'+desc+'</small></span>'+icon('arrow')+'</button>').join('')+'</div>'+
+ '<div id="homeSetupMount">'+renderHomeSetup()+'</div>'+
+ '<button class="button full" id="homePrimaryCta" data-action="start">'+icon('play')+homeCtaLabel()+'</button>'+
  '<button class="learn" data-action="tutorial">'+icon('tutorial')+'<span><strong>New to Mega XOXO?</strong><small>Learn the rules in under a minute</small></span>'+icon('arrow')+'</button>'+
  (()=>{const account=window.MegaCommunity?.getStatus?.()||{},linked=account.linked===true,name=linked?(account.profileName||'Your profile'):'';
-  return '<div class="home-sections">'+
+  return '<section class="home-utilities" aria-label="More from Mega XOXO"><div class="home-sections">'+
    '<section class="card home-section home-quests" aria-labelledby="home-quests-title"><div><h3 id="home-quests-title">Daily quest</h3><p class="caption">Small goals. More Coins through play.</p></div>'+button('View quests','nav','quests',true)+'</section>'+
    '<section class="card home-section" aria-labelledby="home-store-title"><div><h3 id="home-store-title">Store</h3><p class="caption">Cosmetics, themes and power-ups.</p></div><button type="button" class="button quiet" data-monetization="open">Open store</button></section>'+
    '<section class="card home-section home-account" aria-labelledby="home-account-title"><div><h3 id="home-account-title">Save your progress</h3><p class="caption">Keep your profile, friends and progress with you.</p><p class="home-account-name caption"'+(linked?'':' hidden')+'>'+escape(name)+'</p></div><button type="button" class="button quiet" data-c="'+(linked?'profile':'login')+'">'+(linked?'View profile':'Sign in')+'</button></section>'+
-  '</div>';})();
+  '</div></section>';})();
 }
 function rewards(){return window.MegaMonetizationUI?.pageMarkup?.()||'<div class="mono-page"><div class="mono-page-head"><p class="mono-kicker">STORE</p><h2>Store</h2><p class="caption">Cosmetics, themes and power-ups.</p><p class="caption" role="status">Loading the store...</p></div></div>';}
 function friends(){if(window.MegaCommunity?.friendsMarkup)return window.MegaCommunity.friendsMarkup();return '<div class="panel-head friends-head"><div class="eyebrow">Social</div><h2>Friends</h2><p>Challenge people you know, or add someone you just played.</p></div>'+
@@ -627,7 +645,7 @@ function askReward(copy){
  });
 }
 const actions={
- nav:v=>{page=v;render();$('#contentScroll').scrollTop=0;if(['rank','friends'].includes(v))refreshOnline();},retrynetwork:()=>retryNetwork(),copydiagnostics:copySupportDiagnostics,mode:v=>{mode=v;render();},difficulty:v=>{if(v==='Impossible'&&!localSession?.isAvailable?.()&&window.MegaAiPack?.getState?.()?.status!=='ready'){window.MegaAiPack?.show();notify('Please set up and download the optional Impossible pack first.');return;}difficulty=v;render();},first:v=>{first=v;render();},settimer:v=>{data.settings.timer=Number(v);save();render();},onlinetype:v=>{onlineType=v;render();},start:()=>mode==='tournament'?(window.MegaParties?.tables?window.MegaParties.tables():notify('Tournaments are unavailable right now.')):['bot','local'].includes(mode)?startGame():onlineInfo(),
+ nav:v=>{page=v;render();$('#contentScroll').scrollTop=0;if(['rank','friends'].includes(v))refreshOnline();},retrynetwork:()=>retryNetwork(),copydiagnostics:copySupportDiagnostics,mode:v=>{mode=v;updateHomeSetup();},difficulty:v=>{if(v==='Impossible'&&!localSession?.isAvailable?.()&&window.MegaAiPack?.getState?.()?.status!=='ready'){window.MegaAiPack?.show();notify('Please set up and download the optional Impossible pack first.');return;}difficulty=v;updateHomeSetup();},first:v=>{first=v;updateHomeSetup();},settimer:v=>{data.settings.timer=Number(v);save();updateHomeSetup();},onlinetype:v=>{onlineType=v;updateHomeSetup();},start:()=>mode==='tournament'?(window.MegaParties?.tables?window.MegaParties.tables():notify('Tournaments are unavailable right now.')):['bot','local'].includes(mode)?startGame():onlineInfo(),
  acceptloss:()=>{close();finalizeTerminalResult();},
  undooffer:async()=>{
   if(!powers||!match)return;

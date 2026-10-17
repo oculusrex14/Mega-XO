@@ -86,7 +86,9 @@ test('V4.1 home and rank polish exposes both currencies and concrete ranked entr
   assert.ok(html.includes('id="walletCrownAmount"'));
   assert.ok(app.includes('The Ultimate '));
   assert.ok(app.includes('Tic-tac-toe.'));
-  assert.ok(app.includes("Entry cost: '+rankFee+' Coins"));
+  // C3/APP-014 moved the setup fragment into renderHomeSetup(); the ranked entry cost is
+  // still concrete in the markup, now built from the tier lookup.
+  assert.ok(app.includes("Entry cost: '+rankTier.fee+' Coins"));
   assert.ok(app.includes('rank-season-progress'));
   assert.ok(styles.includes('.content-scroll,.bottom-sheet{scrollbar-width:none'));
   assert.ok(styles.includes('.content-scroll::-webkit-scrollbar,.bottom-sheet::-webkit-scrollbar'));

@@ -1031,6 +1031,8 @@ html,body{min-height:100dvh}
 :root[data-theme="afterhours"] .app:has(#gameScreen:not([hidden]))::after{display:none}
 
 /* Home page sections: Daily quest, Store and Save your progress each live in their own card. */
+.home-utilities{margin-top:18px;padding:14px 12px 12px;border:1px solid var(--line);border-radius:var(--radius);background:var(--soft-panel)}
+.home-utilities .home-sections{margin-top:0}
 .home-sections{display:grid;grid-template-columns:minmax(0,1fr);gap:12px;margin-top:16px}
 .home-sections>.home-section{display:grid;gap:12px;min-width:0;margin:0;padding:16px}
 .home-section h3{margin:0;font-size:16px}

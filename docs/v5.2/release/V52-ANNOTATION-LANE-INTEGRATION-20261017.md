@@ -1,7 +1,7 @@
 # V5.2 annotation-lane integration — Main (2026-10-17)
 
-Outcome of Main's independent review of the Codex annotation lane on `V5.2`, ending with three
-fixes Main authored. All work is on `V5.2`; nothing was merged to `main` and nothing was deployed.
+Outcome of Main's independent review of the Codex annotation lane on `V5.2`. Main authored seven
+fixes. All work is on `V5.2`; nothing was merged to `main` and nothing was deployed.
 
 ## Regressions found in review and fixed
 
@@ -16,6 +16,7 @@ positional `INSERT … VALUES(?,…)` and broke at runtime. All three now name t
 | Guard test | `1170a36` | none (preventive) | `tests/v5-schema-insert-drift.test.js` catches the exact regression when reintroduced |
 | Web test fixtures | `c1632d1` | the lane added `apps/web/store.js` (imported by `app.js`) but the `v5-p21-account-web` sandbox did not spread it → 7 × `WEB_PRODUCT_IDS is not defined`; the sponsors redesign renamed the preferences panel and copy, leaving `v52-public-annotations` asserting dead markup | account-web 7/7, annotations 7/7, affected web suites 90/90 |
 | Frozen-contract tests | `716c5b1` | `f02f3ec` added the crown-banked `purchase` lane (pre-existing: fails on `493b2ec`/`f02f3ec`/`9ef2ebf`); `8b8d811` added the owner-decided Google `email` scope | powers + provider-authorization 31/31 |
+| **Retained client syntax error** | `2616d68` | `8b8d811` wrote raw apostrophes inside single-quoted JS strings in `src/community.js` (`couldn't`/`We'll`/`profile's`/`won't`), so the file failed to parse, `MegaCommunity` never loaded, and the browser client never reached the guest control — the real cause of the `v52-bot-tutorial` `[data-c="guest"]` timeout | `node --check src/community.js` passes; affected tests 56/56; gate added |
 
 ## What Main verified on the lane (unchanged from the review record)
 

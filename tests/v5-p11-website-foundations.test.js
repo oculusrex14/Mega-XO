@@ -221,6 +221,14 @@ test('1. Association endpoints: serves valid Android and iOS association files w
     'online.megaxo.xoxo',
     'Package name must be the BUILT application id, not an unregistered production package'
   );
+  /* Audit MXA-REL-001 (2026-10-17): the owner-approved release build distributed from the
+   * website uses MEGA_ANDROID_APPLICATION_ID=online.megaxo.game and the same upload key, so
+   * the association must carry BOTH application ids or App Links fails closed for one of them. */
+  const servedPackages = assetLinksRes.data.map((entry) => entry.target && entry.target.package_name);
+  assert.ok(
+    servedPackages.includes('online.megaxo.game'),
+    'assetlinks.json must also associate the store-bound release application id online.megaxo.game'
+  );
   assert.ok(
     Array.isArray(statement.target.sha256_cert_fingerprints),
     'Target must have sha256_cert_fingerprints array'

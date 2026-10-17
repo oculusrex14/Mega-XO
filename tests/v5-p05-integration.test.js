@@ -337,6 +337,24 @@ test('P05 HTTP: signed native and browser sessions share one actor without confu
  assert.equal(allLogout.status, 200);
  for (const token of [bob.token, nullDevice.token]) assert.equal((await apiRequest(handler, { headers: bearer(token) })).status, 401);
  const anonymous = await accounts.issue();
+ /* MXA-SEC-001: the development cookie is refused on secure request paths (x-forwarded-proto:
+  * https); only __Host-mega_session authenticates there. The http staging fallback keeps working.
+  * A secure request presenting ONLY the dev cookie is unauthenticated. */
+ /* The session route is public, so the discriminator is the Set-Cookie behaviour: a refused dev
+  * cookie bootstraps a FRESH anonymous session (Set-Cookie present); a recognized dev session
+  * returns the caller facts without re-issuing. */
+ const secureDevProbe = await apiRequest(handler, {
+  url: '/api/account/session',
+  headers: { cookie: `mega_dev_session=${anonymous.token}`, 'x-forwarded-proto': 'https' },
+ });
+ assert.equal(secureDevProbe.status, 200, 'session route stays reachable on a secure path');
+ assert.ok(secureDevProbe.headers['set-cookie'], 'secure path must NOT recognize the dev cookie and bootstraps a fresh session');
+ const insecureDevProbe = await apiRequest(handler, {
+  url: '/api/account/session',
+  headers: { cookie: `mega_dev_session=${anonymous.token}` },
+ });
+ assert.equal(insecureDevProbe.status, 200, 'mega_dev_session still authenticates the http staging path');
+ assert.equal(insecureDevProbe.headers['set-cookie'], undefined, 'http staging path recognizes the dev session without re-issuing');
  const anonymousLogout = await apiRequest(handler, {
   method: 'POST', url: '/api/account/logout',
   headers: { cookie: `mega_dev_session=${anonymous.token}`, origin: 'https://megaxo.online', 'content-type': 'application/json', 'x-csrf-token': anonymous.csrf },

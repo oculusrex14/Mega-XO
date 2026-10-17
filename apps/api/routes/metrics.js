@@ -1,7 +1,16 @@
 'use strict';
 
 const path = require('node:path');
-const { sendJson } = require('./helpers');
+/* MXA-INF-008: parseJsonBody (not a raw-string assumption) and a real error constructor -
+ * the previous undefined fail() turned every validation failure into a silent 404 fall-through. */
+const { sendJson, parseJsonBody } = require('./helpers');
+
+function fail(code, status) {
+  const err = new Error(code);
+  err.code = code;
+  err.status = status;
+  throw err;
+}
 
 /* LR19: the anonymous metrics batch endpoint. NO session resolution, NO actor binding, NO CSRF
  * surface (nothing identifiable is stored), NO free text - the sink enforces the frozen kind
@@ -27,9 +36,11 @@ async function handleMetricsRoute(context, req, res) {
   try {
     if (method !== 'POST') { sendJson(res, 405, { error: 'METHOD_NOT_ALLOWED' }); return true; }
     const sink = resolveMetrics(context);
-    const body = req.body && typeof req.body === 'object' && Array.isArray(req.body.events) ? req.body.events : null;
-    if (!body) fail('METRICS_BATCH_INVALID', 400);
-    const result = await sink.batch(body);
+    /* The canonical handler collects the RAW body as a UTF-8 string; parse it bounded here. */
+    const parsed = await parseJsonBody(req, 100 * 1024);
+    const events = parsed && typeof parsed === 'object' && Array.isArray(parsed.events) ? parsed.events : null;
+    if (!events) fail('METRICS_BATCH_INVALID', 400);
+    const result = await sink.batch(events);
     sendJson(res, 200, { ok: true, accepted: result.accepted }, { 'Cache-Control': 'no-store' });
     return true;
   } catch (error) {

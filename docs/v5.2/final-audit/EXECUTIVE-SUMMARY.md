@@ -1,0 +1,68 @@
+# Executive Summary — Mega XOXO V5.2 Final Engineering Audit
+
+**Audit date:** 2026-10-17. **Branch:** codex, PR #30 to V5.2. **Method:** three-agent audit (Codex integrator + Planck security/backend/economy/infrastructure + Sagan features/architecture/UI/gameplay), every claim tied to file:line, live curl, or CI runs. No production mutation; no local suite runs (GitHub Actions only).
+
+## A. Security
+
+| Severity | Found | Fixed | Remaining | Release blocking |
+|---|---|---|---|---|
+| P0 | 2 | 0 | 2 | YES - MXA-INF-001 (rollback safety), MXA-INF-002 (retention target) |
+| P1 | 35 | 4 | 31 | The commerce cluster + live-deploy gap block launch; others are hardening |
+| P2 | 19 | 1 | 18 | No - tracked with owners |
+
+Fixed this audit: MXA-REL-001 (assetlinks dual id), MXA-ECO-002 (rewarded-ad routing), MXA-UI-001 (320px reflow), MXA-SEC-001 (dev-cookie hardening), MXA-SEC-010 (sponsor report dispatch), SAGAN-001/003/012 (theme override, security deep link, native provider truth).
+
+## B. Guardrails
+
+| Category | Found | Removed | Retained | Externally blocked |
+|---|---|---|---|---|
+| Artificial / config drift | 2 | 1 (GR-005 assetlinks) | 0 | 1 (GR-004 APPLE_TEAM_ID env - owner) |
+| Security | 3 | 0 | 2 (LAN allowlist, AASA fail-close) | 0 (GR-008 was a defect, fixed) |
+| Economy integrity | 1 | 0 | 1 (server-enforced ad caps) | 0 |
+| Operational | 2 | 0 | 2 (outbound refusal, maintenance) | 0 |
+| External dependency | 3 | 0 | 2 (Impossible pack, iOS Coming-soon) | 1 (deletion-cancellation design decision) |
+
+Full register: GUARDRAIL-INVENTORY.csv; rationale: RETAINED-PROTECTIONS.md.
+
+## C. Feature coverage
+
+| Platform | Features | Verified | Partial | Blocked/Unverified |
+|---|---|---|---|---|
+| Web | 98 inventoried | 33 VERIFIED_WORKING (CI-evidenced) | majority IMPLEMENTED_UNVERIFIED (honest) | commerce cluster BLOCKED_EXTERNAL |
+| Android | parity matrix in features/ | engine + offline + LAN | store/billing BLOCKED_EXTERNAL | device purchase pass NOT_RUN |
+| iOS | parity matrix in features/ | engine + offline | store/billing BLOCKED_EXTERNAL | device purchase pass NOT_RUN |
+
+## D. UI coverage
+
+| Platform | Screens/Pages | Interactions | Tested (CI) | Failed | Untested |
+|---|---|---|---|---|---|
+| Web | 37 routes | 568 | 935-check presentation matrix green + realtime x3 | 0 on final head | visual/device acceptance |
+| Android | 87 screen/state rows | 277 | emulator smoke green (flake confirmed fixed) | 0 on final head | physical device pass |
+| iOS | 87 screen/state rows | 276 | ios-simulator green | 0 on final head | physical device pass |
+
+## E. Release readiness
+
+| Area | Status | Evidence | Remaining action |
+|---|---|---|---|
+| Security | HARDENED (candidate) | SECURITY-AUDIT.md | deploy + live header verification (MXA-SEC-002) |
+| Android | CODE-READY | release/ANDROID-RELEASE-CHECKLIST.md | billing mount (MXA-ECO-004/005), AAB, store console items |
+| iOS | CODE-READY | release/IOS-RELEASE-CHECKLIST.md | profile renewal, StoreKit pass, privacy manifest |
+| Website | READY (post-deploy checks) | WEB-RELEASE-CHECKLIST.md | authorized deploy + live verification |
+| Backend | AUTHORITY OK | PostgreSQL confirmed; writer-fence green | MXA-INF-001/002 P0s |
+| Multiplayer | PASS (candidate) | realtime x3 + P18 journeys | cross-phone LAN device pass |
+| Store | BLOCKED | MXA-ECO-004..017 | Main-lane commerce closure or honest descoping |
+| Advertising | PARTIAL | routing contract fixed (MXA-ECO-002) | SSV/AdMob device pass |
+| Economy | RULES PASS | frozen policy tests | provider/ledger P1 cluster |
+| Infrastructure | BLOCKED | MXA-INF-001/002 | rollback proof + retention rebinding |
+
+## Verdict
+
+**NO-GO today; CONDITIONAL GO path defined.** See release/FINAL-LAUNCH-VERDICT.md for the exact blockers, the five conditional-GO criteria, the safe deployment sequence, and the human approvals required. The release candidate is the final audit head on codex (SHA recorded in TEST-RESULTS.md); the two P0s and the commerce P1 cluster are the only things between this audit and an authorized deploy.
+
+## Architecture graph
+
+Viewer: architecture/graph-viewer/index.html (self-contained). Regenerate: node scripts/audit/generate-architecture-graph.cjs (deterministic, pinned-revision, byte-identical verified). Coverage: 3,175 nodes / 8,167 edges across 15 node types and 13 edge types. Limitation: static extraction of the pinned revision - runtime-only relationships (dynamic imports, native bridge dispatch) are annotated where the contracts registry records them.
+
+## Specialist reports
+
+Planck: SECURITY-AUDIT.md, monetization/MONETIZATION-LAUNCH-AUDIT.md, infrastructure/INFRASTRUCTURE-AUDIT.md, evidence/planck-findings.csv (38 findings). Sagan: features/, architecture/, ui/, gameplay/, evidence/sagan-findings.csv (13 findings). Integrator: evidence/integrator-findings.csv (6 findings). Consolidated: MASTER-FINDINGS.csv (56 rows with source attribution).

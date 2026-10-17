@@ -34,7 +34,9 @@ test('theme-matched header mark is in V5 native bundle allowlist',()=>{
  assert.match(app,/updateBrandMark\(\);/);
  const config=JSON.parse(source('native/client/bundle.config.json'));
  assert.ok(config.allowed_source_prefixes.includes('assets/p21/logos/'));
- assert.equal(config.client_assets.length,8);
+ // 8 theme-matched p21 logos + the sponsors catalog (C7/APP-021) packaged with the same
+ // allowlisted client-asset mechanism.
+ assert.equal(config.client_assets.length,9);
  for(const theme of themes)for(const suffix of ['-app.webp','-mark.webp']){
   const f='assets/p21/logos/mega-xoxo-'+theme+suffix;
   assert.ok(config.client_assets.some(x=>x.source===f&&x.destination===f),f);

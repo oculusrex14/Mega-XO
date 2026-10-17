@@ -8,6 +8,7 @@ const {
   resolveAuth,
   resolveService,
   resolveAccess,
+  requestIsSecure,
 } = require('./helpers');
 const {
   defaultReadCache,
@@ -285,7 +286,13 @@ const SESSION_COOKIE_NAMES = ['__Host-mega_session', 'mega_dev_session', 'sessio
 
 function bearerFromCookies(req) {
   const cookies = parseCookies(req.headers?.cookie);
-  for (const name of SESSION_COOKIE_NAMES) if (cookies[name]) return cookies[name];
+  /* MXA-SEC-001: on a secure request only the __Host- credential may authenticate - the
+   * development fallback names are an http-staging affordance and must not reach bootstrap. */
+  const secure = requestIsSecure(req);
+  for (const name of SESSION_COOKIE_NAMES) {
+    if (name !== '__Host-mega_session' && secure) continue;
+    if (cookies[name]) return cookies[name];
+  }
   return null;
 }
 
@@ -293,11 +300,13 @@ function bearerFromCookies(req) {
  * Sets the anonymous/refreshed session cookie pair. `__Host-` requires Secure and no Domain, so it is
  * only usable over HTTPS; `mega_dev_session` carries the same token for the http staging origin.
  */
-function sessionCookieHeaders(token) {
-  return [
-    `__Host-mega_session=${token}; Path=/; HttpOnly; SameSite=Lax; Secure`,
-    `mega_dev_session=${token}; Path=/; HttpOnly; SameSite=Lax`,
-  ];
+/* MXA-SEC-001: the non-Secure mega_dev_session member is an http-staging fallback only and is
+ * never emitted for a secure request (TLS directly or x-forwarded-proto: https). The canonical
+ * https callback lane passes req=true because it only ever serves the __Host- member. */
+function sessionCookieHeaders(token, req) {
+  const cookies = [`__Host-mega_session=${token}; Path=/; HttpOnly; SameSite=Lax; Secure`];
+  if (!requestIsSecure(req)) cookies.push(`mega_dev_session=${token}; Path=/; HttpOnly; SameSite=Lax`);
+  return cookies;
 }
 
 /**
@@ -324,7 +333,7 @@ async function getSession(context, req, res) {
   const accounts = await resolveService(context);
   const bootstrap = await accounts.bootstrap(bearerFromCookies(req));
   const headers = { 'Cache-Control': CACHE_CONTROL_POLICIES.PRIVATE_NO_STORE };
-  if (bootstrap.token) headers['Set-Cookie'] = sessionCookieHeaders(bootstrap.token);
+  if (bootstrap.token) headers['Set-Cookie'] = sessionCookieHeaders(bootstrap.token, req);
   const providers = {};
   if (bootstrap.actor) {
     for (const identity of await accounts.identities(bootstrap.actor)) {
@@ -363,7 +372,7 @@ async function postEmail(context, req, res) {
   const bootstrap = await accounts.bootstrap(bearerFromCookies(req));
   const token = bootstrap.token || bearerFromCookies(req);
   const headers = { 'Cache-Control': CACHE_CONTROL_POLICIES.PRIVATE_NO_STORE };
-  if (bootstrap.token) headers['Set-Cookie'] = sessionCookieHeaders(bootstrap.token);
+  if (bootstrap.token) headers['Set-Cookie'] = sessionCookieHeaders(bootstrap.token, req);
   const body = await parseJsonBody(req, 300 * 1024);
   const action = body.action;
   let result;
@@ -385,7 +394,7 @@ async function postEmail(context, req, res) {
     return sendJson(res, 200, { challengeId: result.challengeId, message: 'If this email has an account, a recovery code has been sent.' }, headers);
   }
   if (result && typeof result === 'object' && typeof result.token === 'string') {
-    headers['Set-Cookie'] = sessionCookieHeaders(result.token);
+    headers['Set-Cookie'] = sessionCookieHeaders(result.token, req);
     const { token: issued, ...publicResult } = result;
     // A result carrying a freshly issued token AND a durable actor IS a linked sign-in; expose the
     // boolean the shared client keys on (`if (result.linked)`) and a stable actor id. Never invented:
@@ -621,10 +630,11 @@ function webCallbackOrigin(context) {
 
 /* The session bearer a callback binds to. Order mirrors resolveAuth: the host cookie, then the
  * dev-session fallback. A null result is AUTH_REQUIRED, never a guess. */
-function webSessionTokenFromCookie(cookie) {
+function webSessionTokenFromCookie(cookie, secure) {
   if (typeof cookie !== 'string' || !cookie) return null;
   const cookies = parseCookies(cookie);
   for (const name of ['__Host-mega_session', 'mega_dev_session', 'session', 'token']) {
+    if (secure && name !== '__Host-mega_session') continue;
     const value = cookies[name];
     if (typeof value === 'string' && value) return value;
   }
@@ -647,7 +657,7 @@ async function postAccountStart(context, req, res) {
   }
   const bootstrap = await accounts.bootstrap(cookie);
   const headers = { 'Cache-Control': CACHE_CONTROL_POLICIES.PRIVATE_NO_STORE };
-  if (bootstrap.token) headers['Set-Cookie'] = sessionCookieHeaders(bootstrap.token);
+  if (bootstrap.token) headers['Set-Cookie'] = sessionCookieHeaders(bootstrap.token, req);
   const token = bootstrap.token || cookie;
   const attempt = await accounts.start(token, input.provider, input.intent, 'web');
   const redirect = webCallbackOrigin(context) + '/auth/callback/' + input.provider;
@@ -666,20 +676,20 @@ function normalizeLaneError(error) {
  * rotate the session. Outcome contract (pinned by tests/v5-p11-website-foundations.test.js):
  * {ok:true, setCookie} on success; a thrown error whose .code becomes the redirect authError. */
 function createWebSignInLane(context) {
-  return async function completeWebSignIn({ provider, state, code, cookie } = {}) {
+  return async function completeWebSignIn({ provider, state, code, cookie, secure } = {}) {
     try {
       if (!WEB_PROVIDERS.includes(provider)) { const e = new Error('INVALID_PROVIDER'); e.code = 'INVALID_PROVIDER'; e.status = 400; throw e; }
       const accounts = await resolveService(context);
       const providers = resolveNativeProviders(context);
       if (!providers || typeof providers.exchange !== 'function') { const e = new Error('PROVIDER_SIGNIN_UNAVAILABLE'); e.code = 'PROVIDER_SIGNIN_UNAVAILABLE'; e.status = 503; throw e; }
-      const token = webSessionTokenFromCookie(cookie);
+      const token = webSessionTokenFromCookie(cookie, secure === true);
       if (!token) { const e = new Error('AUTH_REQUIRED'); e.code = 'AUTH_REQUIRED'; e.status = 401; throw e; }
       const attempt = await accounts.consume(token, state, provider, 'web');
       const identity = await providers.exchange(provider, code, attempt, webCallbackOrigin(context) + '/auth/callback/' + provider);
       const logged = await accounts.finishVerified(token, attempt, identity);
       /* A single cookie string is the pinned outcome shape. The __Host- pair member is the one the
        * canonical https callback host honors; the dev-session member is an http-fallback only. */
-      return { ok: true, setCookie: sessionCookieHeaders(logged.token)[0] };
+      return { ok: true, setCookie: sessionCookieHeaders(logged.token, true)[0] };
     } catch (error) {
       throw normalizeLaneError(error);
     }

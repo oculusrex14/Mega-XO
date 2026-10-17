@@ -76,15 +76,25 @@ test('P21-DOWNLOAD-01 browser device detection handles mobile, desktop and iPadO
 
 test('P21-DOWNLOAD-02 chooser has truthful launch status and web play remains available', async () => {
   const {renderDownloadPage} = await browser;
-  assert.deepEqual(configuredLinks, {ios: null, android: null});
+  // Owner 2026-10-17: the shipped configuration carries no store listings but pins the direct
+  // Android APK; the chooser must show the truthful per-platform status for exactly that state.
+  assert.equal(configuredLinks.ios, null);
+  assert.equal(configuredLinks.android, null);
+  assert.equal(configuredLinks.androidApk.path, '/downloads/android/megaxo-1.0.0.apk');
+  assert.equal(configuredLinks.androidApk.versionName, '1.0.0');
   const html = renderDownloadPage({storeLinks: configuredLinks, query: new URLSearchParams('platform=ios&unavailable=1')});
   assert.equal((html.match(/<h1/g) || []).length, 1);
-  assert.equal((html.match(/>Coming soon<\/span>/g) || []).length, 2);
+  assert.equal((html.match(/>Coming soon<\/span>/g) || []).length, 1);
   assert.match(html, /href="\/api\/download\?platform=ios"/);
   assert.match(html, /href="\/api\/download\?platform=android"/);
   assert.match(html, /href="\/play"/);
+  assert.match(html, /href="\/downloads\/android\/megaxo-1\.0\.0\.apk"/);
   assert.match(text(html), /iPhone and iPad store listing is not available yet/);
-  assert.doesNotMatch(html, /href="https:|\.apk|\.ipa|Download on the App Store/);
+  assert.doesNotMatch(html, /href="https:|\.ipa|Download on the App Store/);
+  // With nothing configured at all, the chooser stays honest: no store links and no APK card.
+  const none = renderDownloadPage({storeLinks: {ios: null, android: null}, query: new URLSearchParams('platform=ios&unavailable=1')});
+  assert.equal((none.match(/>Coming soon<\/span>/g) || []).length, 2);
+  assert.doesNotMatch(none, /\.apk/);
   const ready = renderDownloadPage({storeLinks: listings, platform: 'android'});
   assert.doesNotMatch(ready, /Coming soon|href="https:/);
   assert.match(ready, /For your device/);
@@ -115,6 +125,21 @@ test('P21-DOWNLOAD-03 only official listing configuration is accepted', () => {
     {ios: null, android: 'https://play.google.com\\evil.example/store/apps/details?id=test.example'},
   ];
   for (const value of refused) assert.throws(() => validateStoreLinks(value), /INVALID_STORE_LINKS/);
+  // Owner 2026-10-17: optional direct Android APK. A well-formed entry survives round-trip;
+  // traversal, non-hex digests, bad versions, unknown keys and non-objects are refused.
+  const apk = {path: '/downloads/android/megaxo-1.0.0.apk', sha256: 'a'.repeat(64), versionName: '1.0.0', versionCode: 1, bytes: 23982165};
+  assert.deepEqual(validateStoreLinks({...configuredLinks, androidApk: apk}).androidApk, apk);
+  assert.deepEqual(validateStoreLinks(configuredLinks).androidApk, configuredLinks.androidApk);
+  for (const bad of [
+    {...configuredLinks, androidApk: {...apk, path: '/downloads/other/app.apk'}},
+    {...configuredLinks, androidApk: {...apk, path: '/downloads/android/../secret.apk'}},
+    {...configuredLinks, androidApk: {...apk, sha256: 'ZZ'}},
+    {...configuredLinks, androidApk: {...apk, versionName: '1.0'}},
+    {...configuredLinks, androidApk: {...apk, versionCode: 0}},
+    {...configuredLinks, androidApk: {...apk, bytes: 12}},
+    {...configuredLinks, androidApk: 'not-an-object'},
+    {...configuredLinks, androidApk: {...apk, extra: true}},
+  ]) assert.throws(() => validateStoreLinks(bad), /INVALID_STORE_LINKS/);
 });
 
 test('P21-DOWNLOAD-04 mobile uses configured listing or explicit unavailable chooser; desktop chooses', () => {

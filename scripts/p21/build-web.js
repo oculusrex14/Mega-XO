@@ -15,7 +15,7 @@ const WEB_FILES = ['index.html', 'app.js', 'store.js', 'styles.css', 'ui.js', 'p
 const ICON_FILES = ['favicon-16.png', 'favicon-32.png', 'favicon-48.png', 'favicon.ico', 'apple-touch-icon.png', 'pwa-192.png', 'pwa-512.png', 'pwa-maskable-512.png'];
 const OFFLINE_NAVIGATIONS = Object.freeze({'/game':'/pages/game.html','/offline':'/pages/offline.html','/how-to-play':'/pages/how-to-play.html'});
 const OPTIONAL_WEB_FILES = ['data.js', 'friends.js', 'friends-view.js', 'friends.css', 'tournaments.js', 'tournaments-view.js', 'game-runtime.js', 'bot-compat.js', 'bot-compat.css'];
-const GAME_FILES = ['bot/pack.js', 'bot/pack-ui.js', 'bot/pack.css', 'bot/contracts.js', 'bot/runtime.js', 'bot/worker.js', 'bot/board.js', 'bot/search.js', 'bot/encoding.js', 'bot/onnx.js', 'bot/neural-search.js', 'bot/neural-runtime.js', 'bot/neural-worker.js', 'bot/local-ai.js', 'bot/local-session.js', 'tutorial/lesson.js', 'tutorial/client.js', 'tutorial/tutorial.css', 'game.js', 'domain.js', 'gameplay-rewind.js', 'powers-ui.js', 'monetization.js', 'lan-icons.js', 'icons.js', 'account-client.js', 'network.js', 'app.js', 'tournament.js', 'lan/lan-room-store.js', 'lan/lan-room-http.js', 'lan/lan-host.js', 'party-ui.js', 'community.js', 'monetization-ui.js', 'styles.css', 'party.css', 'community.css', 'monetization.css'];
+const GAME_FILES = ['bot/pack.js', 'bot/pack-ui.js', 'bot/pack.css', 'bot/contracts.js', 'bot/runtime.js', 'bot/worker.js', 'bot/board.js', 'bot/search.js', 'bot/encoding.js', 'bot/onnx.js', 'bot/neural-search.js', 'bot/neural-runtime.js', 'bot/neural-worker.js', 'bot/local-ai.js', 'bot/local-session.js', 'tutorial/lesson.js', 'tutorial/client.js', 'tutorial/tutorial.css', 'game.js', 'domain.js', 'gameplay-rewind.js', 'powers-ui.js', 'monetization.js', 'lan-icons.js', 'icons.js', 'account-client.js', 'network.js', 'app.js', 'tournament.js', 'lan/lan-room-store.js', 'lan/lan-room-http.js', 'lan/lan-host.js', 'party-ui.js', 'community.js', 'monetization-ui.js', 'public-links.js', 'sponsors-ui.js', 'styles.css', 'party.css', 'community.css', 'monetization.css', 'sponsors.css'];
 const LEGAL_NAMES = ['privacy', 'terms', 'support', 'delete-account', 'privacy-choices'];
 const WEBSITE_ROUTES = ['/', '/download', '/faq', '/play', '/game', '/casual', '/ranked', '/tournaments', '/season', '/friends', '/challenge', '/leaderboard', '/rewards', '/store', '/sponsors', '/ads', '/themes', '/profile', '/account', '/how-to-play', '/support', '/about', '/privacy', '/terms', '/delete-account', '/privacy-choices', ...LEGAL_NAMES.map(name => '/legal/' + name), '/help', '/news', '/status', '/accessibility', '/offline', '/404'];
 const routeFile = route => route==='/'?'index.html':route==='/404'?'404.html':'pages'+route+'.html';
@@ -127,7 +127,18 @@ function createPlan(root) {
   const legalBytes = Buffer.from('// Generated from the retained public documents; wording is preserved.\nexport const legalDocuments = Object.freeze(' + JSON.stringify(documents, null, 2) + ');\n');
   entries.push({ source: null, sources: legalSources, path: 'legal-documents.js', bytes: legalBytes, sha256: sha256(legalBytes), transformation: 'trusted-main-inner-markup-to-es-module' });
   const configSource='apps/web/store-links.json';
-  const storeLinks=validateStoreLinks(JSON.parse(readSource(root,configSource).toString('utf8')));
+  const storeLinksRaw=JSON.parse(readSource(root,configSource).toString('utf8'));
+  const storeLinks=validateStoreLinks(storeLinksRaw);
+  // C7/owner 2026-10-17: distribute the signed Android release APK from the website until the
+  // Play listing is live. The artifact is committed under downloads/android/ and its digest and
+  // size are pinned by the validated configuration; a mismatch refuses the build.
+  if (storeLinks.androidApk) {
+    const apkSource = 'downloads/android/' + storeLinks.androidApk.path.split('/').pop();
+    const apkBytes = readSource(root, apkSource);
+    if (sha256(apkBytes) !== storeLinks.androidApk.sha256) refuse('android apk sha256 mismatch: ' + apkSource);
+    if (apkBytes.length !== storeLinks.androidApk.bytes) refuse('android apk size mismatch: ' + apkSource);
+    add(apkSource, storeLinks.androidApk.path.replace(/^\//, ''));
+  }
   const renderSources=[...WEB_FILES.map(name=>'apps/web/'+name),'src/game.js','scripts/p21/prerender-web.mjs',configSource,...legalSources.map(row=>row.source)].map(source=>({source,source_sha256:sha256(readSource(root,source))}));
   const rendered=JSON.parse(execFileSync(process.execPath,[path.join(__dirname,'prerender-web.mjs')],{
     input:JSON.stringify({root,template,storeLinks,legalDocuments:documents,routes:WEBSITE_ROUTES}),encoding:'utf8',maxBuffer:12*1024*1024,

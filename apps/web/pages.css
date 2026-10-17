@@ -26,7 +26,7 @@
 .pg-section-title h2{margin:0 0 8px}
 .pg-section-title p{font-size:.93rem;line-height:1.55;margin:0;max-width:700px}
 .pg-page>.pg-section-title{margin-top:36px}
-.pg-actions{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-top:23px}
+.pg-actions{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-top:14px}
 .pg-divider{height:1px;background:linear-gradient(90deg,#294367,rgba(41,67,103,.15));margin:25px 0}
 .pg-text-link{display:inline-flex;align-items:center;justify-content:center;gap:8px;color:#9fceff;font-size:.95rem;line-height:1.45;text-decoration:none;min-height:44px;font-weight:600}
 .pg-text-link .mx-icon{width:18px;height:18px}
@@ -39,6 +39,13 @@
 .pg-page .pg-chip-blue{color:#99d8ff;border-color:#2c6c9b;background:rgba(3,94,164,.15)}
 .pg-page .pg-chip-amber{color:#ffd38b;border-color:#806132;background:rgba(170,110,25,.13)}
 .pg-feature{display:flex;flex-direction:column}
+/* Owner 2026-10-17: the platform status chip sits beside the platform logo, and the
+   heading/body follow immediately with even spacing — no dead gap under the icon. */
+.pg-download-page .pg-feature-top{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:14px}
+.pg-download-page .pg-feature-top .pg-feature-icon{margin-bottom:0}
+.pg-download-page .pg-actions{margin-top:0}
+.pg-download-page .pg-feature h2{margin-bottom:10px}
+.pg-download-page .pg-feature .pg-apk-direct{margin-top:14px}
 .pg-feature>p{flex:1}
 .pg-feature-icon{width:53px;height:53px;display:grid;place-items:center;color:#9fcaff;background:radial-gradient(circle at 35% 20%,#18476c,#101e38);border:1px solid #355987;border-radius:15px;margin-bottom:23px}
 .pg-feature-icon>.mx-icon{width:28px;height:28px;filter:drop-shadow(0 0 8px rgba(53,159,255,.25))}
@@ -627,3 +634,13 @@
 .pg-theme-soon .pg-theme-board>.mx-icon{width:52px;height:52px}
 .pg-theme-soon .pg-theme-label{color:#a7bbd3}
 @media(max-width:900px){.pg-pass-panel{grid-template-columns:1fr}.pg-pass-media{max-width:300px}}
+
+/* Owner 2026-10-17: direct Android APK distribution until the Play listing is live. */
+.pg-apk-direct{display:grid;gap:8px;margin-top:12px;padding-top:12px;border-top:1px dashed var(--line)}
+.pg-apk-meta{display:flex;gap:6px;flex-wrap:wrap}
+.pg-apk-direct p,.pg-apk-direct a,.pg-apk-direct .mx-chip{overflow-wrap:anywhere;min-width:0}
+.pg-apk-direct{max-width:100%;overflow:hidden}
+
+/* Audit 2026-10-17: the support email is a single long token and overflowed 320px viewports
+/* on /sponsors and /ads (P21-BROWSER-REFLOW). Let it wrap like the APK metadata does. */
+.pg-sponsor-enquiry p,.pg-sponsor-enquiry strong{overflow-wrap:anywhere;min-width:0}

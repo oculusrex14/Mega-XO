@@ -318,11 +318,18 @@ test('association files match the BUILT app ids, and the Android fingerprint is 
   const links = write();
   wellKnown.getAssetLinks({}, {}, links.res);
   const statements = JSON.parse(links.out.body);
-  assert.equal(statements.length, 1);
+  /* Audit MXA-REL-001 (2026-10-17): the association now carries TWO statements - the built
+   * default id online.megaxo.xoxo AND the store-bound release id online.megaxo.game that the
+   * website distributes (same owner upload key). One statement per application id. */
+  assert.equal(statements.length, 2);
   assert.deepEqual(statements[0].relation, ['delegate_permission/common.handle_all_urls']);
   assert.equal(statements[0].target.namespace, 'android_app');
   assert.equal(statements[0].target.package_name, 'online.megaxo.xoxo');
   assert.match(statements[0].target.package_name, /^online\.megaxo\.xoxo$/);
+  assert.equal(statements[1].target.namespace, 'android_app');
+  assert.equal(statements[1].target.package_name, 'online.megaxo.game');
+  assert.deepEqual(statements[1].target.sha256_cert_fingerprints,
+    ['96:1C:C0:54:74:57:0E:60:58:4A:14:14:2B:B0:E3:D6:45:80:4B:CB:4C:16:88:62:A6:94:5E:41:75:32:93:37']);
   assert.deepEqual(statements[0].target.sha256_cert_fingerprints,
     ['96:1C:C0:54:74:57:0E:60:58:4A:14:14:2B:B0:E3:D6:45:80:4B:CB:4C:16:88:62:A6:94:5E:41:75:32:93:37']);
   // The all-zero placeholder must be gone: publishing it would associate nothing at all.

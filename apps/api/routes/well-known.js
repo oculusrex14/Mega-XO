@@ -18,7 +18,7 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
-const { sendJson } = require('./helpers');
+const { sendJson, requestIsSecure } = require('./helpers');
 
 // Root public assets directory (repo_root/public)
 const PUBLIC_DIR = path.resolve(__dirname, '../../../public');
@@ -44,12 +44,27 @@ const PUBLIC_DIR = path.resolve(__dirname, '../../../public');
 const ASSOCIATION_UPLOAD_CERT_FINGERPRINT =
   '96:1C:C0:54:74:57:0E:60:58:4A:14:14:2B:B0:E3:D6:45:80:4B:CB:4C:16:88:62:A6:94:5E:41:75:32:93:37';
 
+/* The website ships the store-bound release build under `online.megaxo.game` (release contract
+ * MEGA_ANDROID_APPLICATION_ID), signed with the same owner-held upload key, while the default
+ * Gradle id is `online.megaxo.xoxo`. Both statements must be served or App Links silently fail
+ * to associate for whichever build is missing (audit MXA-REL-001, 2026-10-17).
+ */
+const RELEASE_APPLICATION_ID = 'online.megaxo.game';
+
 const DEFAULT_ASSET_LINKS = Object.freeze([
   Object.freeze({
     relation: Object.freeze(['delegate_permission/common.handle_all_urls']),
     target: Object.freeze({
       namespace: 'android_app',
       package_name: 'online.megaxo.xoxo',
+      sha256_cert_fingerprints: Object.freeze([ASSOCIATION_UPLOAD_CERT_FINGERPRINT])
+    })
+  })
+  ,Object.freeze({
+    relation: Object.freeze(['delegate_permission/common.handle_all_urls']),
+    target: Object.freeze({
+      namespace: 'android_app',
+      package_name: RELEASE_APPLICATION_ID,
       sha256_cert_fingerprints: Object.freeze([ASSOCIATION_UPLOAD_CERT_FINGERPRINT])
     })
   })
@@ -303,7 +318,7 @@ async function handleAuthCallback(context, req, res, provider, url) {
   // 3b. A composed web lane exists: perform the real exchange and only then report success.
   let outcome;
   try {
-    outcome = await context.completeWebSignIn({ provider, state, code, cookie: req.headers?.cookie || null });
+    outcome = await context.completeWebSignIn({ provider, state, code, cookie: req.headers?.cookie || null, secure: requestIsSecure(req) });
   } catch (error) {
     outcome = { ok: false, reason: (error && error.code) || 'SIGNIN_FAILED' };
   }

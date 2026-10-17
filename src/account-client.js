@@ -62,9 +62,14 @@ async function once(path,body,operationKey,timeoutMs=8000){
 /* Native session bootstrap. The host owns access+refresh; this module only receives the profile
  * projection the signed game already renders. `/api/account/session` is deliberately NOT called
  * here: in a native host it is cookie-only, and the native path has no cookie jar at all. */
-function nativeSessionFromProfile(profile){
+/* SAGAN-012: a linked identity is only NATIVE-capable when this host actually installs an
+ * adapter for it (Android currently ships Google only, iOS its own set). The host advertises
+ * its capability list in the native session op; intersect it with the profile's linked set
+ * instead of marking every linked provider native-supported (dead Verify/Link controls). */
+function nativeSessionFromProfile(profile,hostProviders){
  if(!profile||typeof profile!=='object'||typeof profile.id!=='string'||!profile.id)return null;
- return {linked:true,csrf:null,native:true,expiresAt:Date.now()+300000,actorId:profile.id,profile,providers:Object.fromEntries((profile.providers||[]).map(p=>[p,{web:false,native:true,linked:true}]))};
+ const capable=new Set(Array.isArray(hostProviders)?hostProviders:[]);
+ return {linked:true,csrf:null,native:true,expiresAt:Date.now()+300000,actorId:profile.id,profile,providers:Object.fromEntries((profile.providers||[]).map(p=>[p,{web:false,native:capable.has(p),linked:true}]))};
 }
 async function nativeEnsure(force=false){
  if(session&&!force)return session;
@@ -97,7 +102,7 @@ async function nativeEnsure(force=false){
   }
   const profile=await host.request('/api/account/profile','GET',null,null);
   if(!profile||profile.ok!==true)throw nativeError(profile||{});
-  const parsed=nativeSessionFromProfile(profile.data);
+  const parsed=nativeSessionFromProfile(profile.data,state.providers);
   if(!parsed)throw Error('SERVICE_UNAVAILABLE');
   session=parsed;publish('online');return parsed;
  })().catch(error=>{const code=error?.message&&/^[A-Z0-9_]+$/.test(error.message)?error.message:'SERVICE_UNAVAILABLE';publish(classify(code),code,error?.supportId||'');throw error;}).finally(()=>{loading=null;});

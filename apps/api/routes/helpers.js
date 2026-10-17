@@ -201,6 +201,15 @@ async function resolveAccess(context) {
   return context._accessPromise;
 }
 
+// MXA-SEC-001: a request is secure when it arrived over TLS directly or through a proxy
+// that sets x-forwarded-proto. Development fallback credentials are refused on such paths.
+function requestIsSecure(req) {
+  if (!req || typeof req !== 'object') return false;
+  if (req.socket && req.socket.encrypted === true) return true;
+  const forwarded = req.headers ? req.headers['x-forwarded-proto'] : null;
+  return String(forwarded || '').split(',')[0].trim().toLowerCase() === 'https';
+}
+
 // HTTP requests must prove the actor by presenting a live linked session.
 // Request properties and x-actor-* headers are untrusted client input, even
 // when passed through a proxy. Never mint sessions here from an actor ID.
@@ -211,7 +220,14 @@ async function resolveAuth(context, req, { linked = true } = {}) {
   const bearer = typeof authorization === 'string' && /^Bearer /i.test(authorization)
     ? authorization.slice(7).trim() : null;
   const cookies = parseCookies(req.headers?.cookie);
-  const cookieToken = cookies['__Host-mega_session'] || cookies['mega_dev_session'] || cookies['session'] || cookies['token'] || null;
+  /* MXA-SEC-001: the non-Secure development/legacy cookie names must never authenticate on a
+   * secure request path. Production HTTPS (direct or behind a proxy that sets
+   * x-forwarded-proto) accepts only the __Host- credential; the http staging origin keeps its
+   * development fallback. */
+  const devCookieAllowed = !requestIsSecure(req);
+  const cookieToken = cookies['__Host-mega_session']
+    || (devCookieAllowed ? (cookies['mega_dev_session'] || cookies['session'] || cookies['token']) : null)
+    || null;
   if (bearer && cookieToken) {
     const error = new Error('AMBIGUOUS_CREDENTIAL');
     error.status = 401;
@@ -288,6 +304,7 @@ module.exports = {
   parseCookies,
   parseJsonBody,
   collectRawBody,
+  requestIsSecure,
   sendJson,
   sendError,
   resolveService,

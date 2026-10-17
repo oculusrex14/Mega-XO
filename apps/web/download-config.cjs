@@ -25,8 +25,34 @@ function listingURL(value, platform) {
 }
 
 function validateStoreLinks(value) {
-  if (!value || typeof value !== 'object' || Array.isArray(value) || Object.keys(value).length !== 2 || !Object.hasOwn(value, 'ios') || !Object.hasOwn(value, 'android')) return invalidConfig();
-  return Object.freeze({ios: listingURL(value.ios, 'ios'), android: listingURL(value.android, 'android')});
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return invalidConfig();
+  const keys = Object.keys(value);
+  if (!Object.hasOwn(value, 'ios') || !Object.hasOwn(value, 'android')) return invalidConfig();
+  if (keys.some(key => key !== 'ios' && key !== 'android' && key !== 'androidApk')) return invalidConfig();
+  const result = {ios: listingURL(value.ios, 'ios'), android: listingURL(value.android, 'android')};
+  // Optional direct Android APK (owner decision: distribute the signed release APK from the
+  // website until Play is live). The path is same-origin, the digest/size pin the exact
+  // artifact, and the version is display metadata only — never parsed from the binary here.
+  if (Object.hasOwn(value, 'androidApk')) {
+    const apk = apkEntry(value.androidApk);
+    if (apk === null) return invalidConfig();
+    result.androidApk = apk;
+  }
+  return Object.freeze(result);
+}
+
+function apkEntry(value) {
+  if (value === null || value === undefined) return null;
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return invalidConfig();
+  const keys = Object.keys(value);
+  if (keys.length !== 5 || !['path', 'sha256', 'versionName', 'versionCode', 'bytes'].every(key => Object.hasOwn(value, key))) return invalidConfig();
+  const filePath = typeof value.path === 'string' ? value.path : '';
+  if (!/^\/downloads\/android\/[A-Za-z0-9][A-Za-z0-9._-]*\.apk$/.test(filePath) || filePath.includes('..')) return invalidConfig();
+  if (typeof value.sha256 !== 'string' || !/^[0-9a-f]{64}$/.test(value.sha256)) return invalidConfig();
+  if (typeof value.versionName !== 'string' || !/^[0-9]+\.[0-9]+\.[0-9]+$/.test(value.versionName)) return invalidConfig();
+  if (!Number.isInteger(value.versionCode) || value.versionCode < 1 || value.versionCode > 2100000000) return invalidConfig();
+  if (!Number.isInteger(value.bytes) || value.bytes < 1000000 || value.bytes > 200000000) return invalidConfig();
+  return Object.freeze({path: filePath, sha256: value.sha256, versionName: value.versionName, versionCode: value.versionCode, bytes: value.bytes});
 }
 
 function resolveDownload({links = configuredLinks, userAgent = '', platform} = {}) {

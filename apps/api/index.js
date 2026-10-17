@@ -10,6 +10,7 @@ const tournamentRoutes = require('./routes/tournaments');
 const wellKnownRoutes = require('./routes/well-known');
 const monetizationRoutes = require('./routes/monetization');
 const metricsRoutes = require('./routes/metrics');
+const sponsorsRoutes = require('./routes/sponsors');
 const { sendError, sendJson, collectRawBody } = require('./routes/helpers');
 const path = require('node:path');
 const { createReadCache } = require(path.join(__dirname, '../../packages/services/read-cache.js'));
@@ -161,6 +162,11 @@ function createApiHandler(options = {}) {
       // 6c. Metrics routes (LR19): anonymous daily aggregates, opt-in client-side.
       const handledMetrics = await metricsRoutes.handleMetricsRoute(context, req, res);
       if (handledMetrics) return;
+
+      // 6d. Sponsors moderation intake (C7.2): durable report-and-hide tickets; fails closed
+      // to 503 until Main mounts context.sponsors.storeReport. MXA-SEC-010.
+      const handledSponsors = await sponsorsRoutes.handleSponsorsRoute(context, req, res);
+      if (handledSponsors) return;
 
       // 6. Try Competitive routes
       const handledCompetitive = await competitiveRoutes.handleCompetitiveRoute(context, req, res);

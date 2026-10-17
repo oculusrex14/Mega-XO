@@ -8,6 +8,7 @@ const {
   resolveAuth,
   resolveService,
   resolveAccess,
+  requestIsSecure,
 } = require('./helpers');
 const {
   defaultReadCache,
@@ -293,11 +294,13 @@ function bearerFromCookies(req) {
  * Sets the anonymous/refreshed session cookie pair. `__Host-` requires Secure and no Domain, so it is
  * only usable over HTTPS; `mega_dev_session` carries the same token for the http staging origin.
  */
-function sessionCookieHeaders(token) {
-  return [
-    `__Host-mega_session=${token}; Path=/; HttpOnly; SameSite=Lax; Secure`,
-    `mega_dev_session=${token}; Path=/; HttpOnly; SameSite=Lax`,
-  ];
+/* MXA-SEC-001: the non-Secure mega_dev_session member is an http-staging fallback only and is
+ * never emitted for a secure request (TLS directly or x-forwarded-proto: https). The canonical
+ * https callback lane passes req=true because it only ever serves the __Host- member. */
+function sessionCookieHeaders(token, req) {
+  const cookies = [`__Host-mega_session=${token}; Path=/; HttpOnly; SameSite=Lax; Secure`];
+  if (!requestIsSecure(req)) cookies.push(`mega_dev_session=${token}; Path=/; HttpOnly; SameSite=Lax`);
+  return cookies;
 }
 
 /**
@@ -324,7 +327,7 @@ async function getSession(context, req, res) {
   const accounts = await resolveService(context);
   const bootstrap = await accounts.bootstrap(bearerFromCookies(req));
   const headers = { 'Cache-Control': CACHE_CONTROL_POLICIES.PRIVATE_NO_STORE };
-  if (bootstrap.token) headers['Set-Cookie'] = sessionCookieHeaders(bootstrap.token);
+  if (bootstrap.token) headers['Set-Cookie'] = sessionCookieHeaders(bootstrap.token, req);
   const providers = {};
   if (bootstrap.actor) {
     for (const identity of await accounts.identities(bootstrap.actor)) {
@@ -363,7 +366,7 @@ async function postEmail(context, req, res) {
   const bootstrap = await accounts.bootstrap(bearerFromCookies(req));
   const token = bootstrap.token || bearerFromCookies(req);
   const headers = { 'Cache-Control': CACHE_CONTROL_POLICIES.PRIVATE_NO_STORE };
-  if (bootstrap.token) headers['Set-Cookie'] = sessionCookieHeaders(bootstrap.token);
+  if (bootstrap.token) headers['Set-Cookie'] = sessionCookieHeaders(bootstrap.token, req);
   const body = await parseJsonBody(req, 300 * 1024);
   const action = body.action;
   let result;
@@ -385,7 +388,7 @@ async function postEmail(context, req, res) {
     return sendJson(res, 200, { challengeId: result.challengeId, message: 'If this email has an account, a recovery code has been sent.' }, headers);
   }
   if (result && typeof result === 'object' && typeof result.token === 'string') {
-    headers['Set-Cookie'] = sessionCookieHeaders(result.token);
+    headers['Set-Cookie'] = sessionCookieHeaders(result.token, req);
     const { token: issued, ...publicResult } = result;
     // A result carrying a freshly issued token AND a durable actor IS a linked sign-in; expose the
     // boolean the shared client keys on (`if (result.linked)`) and a stable actor id. Never invented:
@@ -647,7 +650,7 @@ async function postAccountStart(context, req, res) {
   }
   const bootstrap = await accounts.bootstrap(cookie);
   const headers = { 'Cache-Control': CACHE_CONTROL_POLICIES.PRIVATE_NO_STORE };
-  if (bootstrap.token) headers['Set-Cookie'] = sessionCookieHeaders(bootstrap.token);
+  if (bootstrap.token) headers['Set-Cookie'] = sessionCookieHeaders(bootstrap.token, req);
   const token = bootstrap.token || cookie;
   const attempt = await accounts.start(token, input.provider, input.intent, 'web');
   const redirect = webCallbackOrigin(context) + '/auth/callback/' + input.provider;
@@ -679,7 +682,7 @@ function createWebSignInLane(context) {
       const logged = await accounts.finishVerified(token, attempt, identity);
       /* A single cookie string is the pinned outcome shape. The __Host- pair member is the one the
        * canonical https callback host honors; the dev-session member is an http-fallback only. */
-      return { ok: true, setCookie: sessionCookieHeaders(logged.token)[0] };
+      return { ok: true, setCookie: sessionCookieHeaders(logged.token, true)[0] };
     } catch (error) {
       throw normalizeLaneError(error);
     }

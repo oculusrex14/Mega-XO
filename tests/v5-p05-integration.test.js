@@ -337,6 +337,17 @@ test('P05 HTTP: signed native and browser sessions share one actor without confu
  assert.equal(allLogout.status, 200);
  for (const token of [bob.token, nullDevice.token]) assert.equal((await apiRequest(handler, { headers: bearer(token) })).status, 401);
  const anonymous = await accounts.issue();
+ /* MXA-SEC-001: the development cookie is refused on secure request paths (x-forwarded-proto:
+  * https); only __Host-mega_session authenticates there. The http staging fallback keeps working.
+  * A secure request presenting ONLY the dev cookie is unauthenticated. */
+ const secureDevProbe = await apiRequest(handler, {
+  headers: { cookie: `mega_dev_session=${anonymous.token}`, 'x-forwarded-proto': 'https' },
+ });
+ assert.equal(secureDevProbe.status, 401, 'mega_dev_session must not authenticate a secure request');
+ const insecureDevProbe = await apiRequest(handler, {
+  headers: { cookie: `mega_dev_session=${anonymous.token}` },
+ });
+ assert.equal(insecureDevProbe.status, 200, 'mega_dev_session still authenticates the http staging path');
  const anonymousLogout = await apiRequest(handler, {
   method: 'POST', url: '/api/account/logout',
   headers: { cookie: `mega_dev_session=${anonymous.token}`, origin: 'https://megaxo.online', 'content-type': 'application/json', 'x-csrf-token': anonymous.csrf },

@@ -170,4 +170,3 @@ Main's verification was local (disposable PG16) + CI run status. Main did **not*
 - deploy anything.
 "CI green" is not device/provider/production proof. Production `opsz` is not healthy (`{"ok":false}`)
 and was not re-diagnosed here.
-</content>

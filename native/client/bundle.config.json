@@ -30,6 +30,7 @@
     "src/bot/pack-ui.js",
     "src/gameplay-rewind.js",
     "src/powers-ui.js",
+    "src/public-links.js",
     "src/app.js",
     "src/tournament.js",
     "src/lan/lan-room-store.js",

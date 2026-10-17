@@ -18,6 +18,22 @@ const builder = require('../scripts/v5/build-client.js');
 
 const REPO_ROOT = path.resolve(__dirname, '..');
 
+// A0/APP-010: every classic client script the native bundle loads must parse on its own. A
+// syntax error in one of them silently breaks the retained client at boot (an unescaped
+// apostrophe did exactly that). Files are compiled separately; concatenation could hide or
+// invent scope problems.
+test('every declared native client script parses as a classic script', () => {
+  const vm = require('node:vm');
+  const config = JSON.parse(
+    fs.readFileSync(path.join(REPO_ROOT, 'native', 'client', 'bundle.config.json'), 'utf8'),
+  );
+  assert.ok(Array.isArray(config.client_scripts) && config.client_scripts.length > 0);
+  for (const relative of config.client_scripts) {
+    const source = fs.readFileSync(path.join(REPO_ROOT, relative), 'utf8');
+    new vm.Script(source, { filename: relative });
+  }
+});
+
 // Private copy root holding just enough approved structure for real builds. Nothing here is the
 // repository's mutable progress/evidence state.
 function fixture(t) {

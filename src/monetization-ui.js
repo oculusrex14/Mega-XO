@@ -61,7 +61,6 @@ async function watch(kind){await execute(async()=>{if(!safe(true)||!privacyReady
   if(shown?.earned===true)M.noteRewardedEarned(progress);
   persist();
   if(who()!==user)return;await refresh();if(safe())show();APP.notify('Your reward may take a moment to appear.');});}
-function decorate(){const page=$('#page'),c=APP.getContext();if(page&&c.page==='quests'&&!page.querySelector('[data-monetization="open"]')){const div=document.createElement('div');div.className='mono-entry';div.innerHTML=button('Store','open')+'<p class="caption">Cosmetics, themes and power-ups.</p>';page.append(div);}if(['wallet','settings'].includes(c.sheetKind)&&!$('#sheetBody')?.querySelector('[data-monetization="open"]'))$('#sheetBody')?.insertAdjacentHTML('beforeend','<div class="mono-entry">'+button('Store','open')+'</div>');}
 function adContext(){const c=APP.getContext();return {adMode:status?.adMode,entitlementsKnown:!!status&&status.actor===who(),removeAds:status?.removeAds,consentReady:privacyReady(),adReady:adReady('interstitial'),transition:'result_to_home',gameMode:'bot',safe:safe(),playing:c.playing,onlineMatch:c.onlineMatch,queued:!!c.waitingId,partyOpen:!!$('#partyScreen'),hidden:document.hidden,modalOpen:!!c.sheetKind};}
 async function automatic(generation){if(busy||!M.interstitialAllowed(progress,adContext()))return;const user=who(),started=Date.now();let presenting=false;try{const platform=adPlatform();if(!platform)return;const permit=await request('interstitial-permit',{platform});if(busy||Date.now()-started>1500||generation!==adGeneration||user!==who()||!permit.allowed||!M.interstitialAllowed(progress,adContext()))return;busy=true;presenting=true;M.noteFullScreen(progress,'interstitial');persist();await window.MegaAds.showInterstitial(permit);}catch{}finally{if(presenting)busy=false;}}
 window.addEventListener('mega:local-save',()=>{const r=APP.getSave().records?.at(-1);if(M.noteGame(progress,r)){freshBotResult=r.id;persist();const c=APP.getContext();if(!document.hidden&&!c.playing&&!c.onlineMatch&&!c.waitingId&&!$('#partyScreen')&&!$('#identityScreen')&&c.mode==='bot'&&status?.adMode==='hybrid'&&!status.removeAds&&privacyReady()&&progress.sessions>1&&Date.now()-progress.firstSeenAt>=M.POLICY.firstAdAge&&progress.totalGames>=M.POLICY.firstAdGames)Promise.resolve(window.MegaAds?.prepare?.('interstitial')).catch(()=>{});}});
@@ -79,9 +78,8 @@ document.addEventListener('click',e=>{
  else if(action==='prepare')execute(async()=>{if(!safe(true)||!status||status.adMode==='off')return;await window.MegaAds.privacyOptions?.();if(!safe(true)||!privacyReady())return;await window.MegaAds.prepare('rewarded');});
  else if(action==='privacy')execute(()=>window.MegaAds.privacyOptions());else if(action==='report')execute(()=>window.MegaAds.reportAd());
 },true);
-window.addEventListener('mega:sheet',decorate);new MutationObserver(decorate).observe($('#page'),{childList:true});
 setInterval(()=>{if(who()!==actor){status=null;refresh().then(()=>show());}},2000);
 document.addEventListener('visibilitychange',()=>{adGeneration++;if(!document.hidden)refresh().then(()=>show());});
 window.MegaXO=Object.freeze({...window.MegaXO,version:'3.5.1-auth-themes'});
-window.MegaMonetizationUI=Object.freeze({open,refresh,pageMarkup,pass:()=>status?.pass||null});decorate();refresh();
+window.MegaMonetizationUI=Object.freeze({open,refresh,pageMarkup,pass:()=>status?.pass||null});refresh();
 })();

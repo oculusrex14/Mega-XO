@@ -41,5 +41,10 @@ test('privacy and terms publish owner-approved wording without activating new da
 
 test('settings exposes privacy policy terms privacy choices and support inside the app',()=>{
  const app=fs.readFileSync(path.join(__dirname,'..','src','app.js'),'utf8');
- for(const route of ['/privacy','/privacy-choices','/terms','/support'])assert(app.includes('href="'+route+'"'),route);
+ // B2/APP-002: app surfaces open the canonical public documents, never relative bundle paths.
+ const links=fs.readFileSync(path.join(__dirname,'..','src','public-links.js'),'utf8');
+ for(const route of ['privacy','privacy-choices','terms','support']){
+  assert(links.includes('https://megaxo.online/'+route),route);
+  assert(app.includes("publicLink('"+route+"',"),route);
+ }
 });

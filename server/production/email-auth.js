@@ -112,7 +112,7 @@ class EmailAuth {
    if(row.purpose==='signup'){authority.addAccount(actor,{verified:true,createdAt:this.now()});this.c.ensureProfile(actor,authority);this.c.write(authority);}
    else this.c.requireAccount(actor);
    this.db.prepare('INSERT INTO email_credentials(email,actor,salt,password_hash,created,verified_at) VALUES(?,?,?,?,?,?)').run(row.email,actor,row.password_salt,row.password_hash,this.now(),this.now());
-   this.db.prepare('INSERT INTO identities VALUES(?,?,?,?)').run('email',row.email,actor,this.now());
+   this.db.prepare('INSERT INTO identities(provider,subject,actor,created) VALUES(?,?,?,?)').run('email',row.email,actor,this.now());
    this.db.prepare('UPDATE email_challenges SET consumed=1,verified_at=?,password_hash=NULL,password_salt=NULL WHERE id=?').run(this.now(),id);
    return row.purpose==='link'?{linked:true,profile:this.c.profile(actor,actor)}:this.c._replaceSession(session,actor,true);
   });

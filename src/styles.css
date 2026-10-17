@@ -1033,6 +1033,16 @@ html,body{min-height:100dvh}
 /* Home page sections: Daily quest, Store and Save your progress each live in their own card. */
 .home-utilities{margin-top:18px;padding:14px 12px 12px;border:1px solid var(--line);border-radius:var(--radius);background:var(--soft-panel)}
 .home-utilities .home-sections{margin-top:0}
+.rank-help{display:grid;gap:20px}
+.rank-help-section h3{margin:0 0 8px;font-size:18px;line-height:1.25}
+.rank-help-section p{margin:0 0 8px;line-height:1.55}
+.rank-help-section p:last-child{margin-bottom:0}
+.rank-help-list{margin:0 0 8px;padding-left:20px;display:grid;gap:4px}
+.rank-help-list li{line-height:1.5}
+.weekly-reward-card{display:grid;gap:12px;padding:18px}
+.weekly-reward-amount{font-size:22px;line-height:1.2}
+.weekly-reward-requirements{margin:0;padding-left:20px;display:grid;gap:4px}
+.weekly-reward-requirements li{line-height:1.5}
 .home-sections{display:grid;grid-template-columns:minmax(0,1fr);gap:12px;margin-top:16px}
 .home-sections>.home-section{display:grid;gap:12px;min-width:0;margin:0;padding:16px}
 .home-section h3{margin:0;font-size:16px}

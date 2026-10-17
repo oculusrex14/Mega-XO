@@ -22,6 +22,9 @@ Trunk: codex → PR #30 → V5.2. GitHub Actions is the only suite runner (owner
 
 ## Revalidation
 
+- Run set on 446b68b (all functional audit changes): **28/28 checks green, 0 failed, 0 pending** — includes validate (1921-test regression with the updated p05 contract), Android emulator offline first-launch (1m58s), browser-presentation (4m13s, 935 checks), PG schema/guards, P18 journeys, disposable services, ios-simulator. The 446b68b SHA is the audit functional head of record.
+- Terminal commit note: the final audit commit is the MXA-INF-008 metrics intake fix plus docs-only SHA pinning; its own push-triggered Actions run is the authoritative final validation and its result is visible via `gh pr checks 30`.
+
 - Run 39009250346 (head ce97b36): browser-presentation PASS 3m59s (the 320px fix holds in CI). validate + source-and-android FAILED on tests/v5-native-online-target.test.js:321 - a second frozen contract pinning assetlinks to exactly 1 statement (2 !== 1). Contract updated to require both statements; re-run on next head.
 
 - Run 39009250346 (head ce97b36): browser-presentation pending at time of writing; static-website pass; realtime lanes pending.

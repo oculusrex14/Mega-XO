@@ -37,4 +37,4 @@ Engine and rules (CI-verified), website presentation matrix (935 checks green), 
 4. Codex re-audits only the changed files (delta review).
 5. Authorized deploy via the verified rollback plan; live checks; device pass; then store tracks.
 
-Release candidate at time of writing: codex @ ecab098. Regenerate the architecture graph with: node scripts/audit/generate-architecture-graph.cjs
+Release candidate at time of writing: codex @ 446b68b (28/28 CI green; the terminal audit commit carries only the MXA-INF-008 metrics intake fix plus docs). Regenerate the architecture graph with: node scripts/audit/generate-architecture-graph.cjs

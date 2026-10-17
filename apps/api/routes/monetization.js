@@ -85,9 +85,13 @@ function opKeyFrom(req, body) {
 
 const ROUTES = Object.freeze({
   '/api/monetization/status': { op: 'status', method: 'GET', args: [] },
-  '/api/monetization/ticket': { op: 'ticket', method: 'POST', args: ['kind', 'platform'] },
+  /* MXA-ECO-002 (audit 2026-10-17): the shipped client and the contracts registry
+   * (packages/contracts/routes.js monetization.reward-ticket) both use this path; the previous
+   * key /ticket was undocumented and unreachable from every client, so rewarded ads would 404.
+   * The commerce op stays canonical. */
+  '/api/monetization/reward-ticket': { op: 'ticket', method: 'POST', args: ['kind', 'platform'] },
   '/api/monetization/claim': { op: 'claim', method: 'POST', args: [] },
-  '/api/monetization/permit': { op: 'permit', method: 'POST', args: ['platform'] },
+  '/api/monetization/interstitial-permit': { op: 'permit', method: 'POST', args: ['platform'] },
   '/api/monetization/purchase': { op: 'purchase', method: 'POST', args: ['evidence', 'restore'] },
   '/api/monetization/cosmetic': { op: 'cosmetic', method: 'POST', args: ['itemId'] },
 });

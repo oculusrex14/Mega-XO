@@ -11,7 +11,7 @@ const accountSource = fs.readFileSync(path.join(__dirname, '../src/account-clien
 const helpers = Promise.all([
   import('../apps/web/ui.js'), import('../apps/web/downloads.js'), import('../apps/web/pages.js'),
   import('../apps/web/site.js'), import('../apps/web/seo.js'), import('../apps/web/data.js'), import('../apps/web/friends.js'), import('../apps/web/realtime.js'),
-  import('../apps/web/tournaments.js'), import('../apps/web/tournaments-view.js'),
+  import('../apps/web/tournaments.js'), import('../apps/web/tournaments-view.js'), import('../apps/web/store.js'),
 ]);
 const tick = () => new Promise(resolve => setImmediate(resolve));
 
@@ -19,7 +19,7 @@ const tick = () => new Promise(resolve => setImmediate(resolve));
  * synthetic service replies. The DOM adapter covers controller dispatch only;
  * layout and browser rendering are verified by the separate browser QA. */
 async function fixture(handler) {
-  const [ui, downloads, pages, site, seo, data, friends, realtime, tournaments, tournamentsView] = await helpers;
+  const [ui, downloads, pages, site, seo, data, friends, realtime, tournaments, tournamentsView, store] = await helpers;
   const calls = [], listeners = new Map(), nodes = new Map(), storage = new Map();
   const location = { href: 'https://website.test/account', origin: 'https://website.test', pathname: '/account', search: '', assign(url) { this.assigned = url; } };
   const node = () => ({ innerHTML: '', content: '', textContent: '', hidden: false, focus() {}, querySelector: () => null, querySelectorAll: () => [], insertAdjacentHTML() {} });
@@ -31,7 +31,7 @@ async function fixture(handler) {
     addEventListener(type, callback) { const list = listeners.get(type) || []; list.push(callback); listeners.set(type, list); },
   };
   const sandbox = {
-    ...ui, ...downloads, ...pages, ...site, ...seo, ...data, ...friends, ...realtime, ...tournaments, ...tournamentsView, document, location,
+    ...ui, ...downloads, ...pages, ...site, ...seo, ...data, ...friends, ...realtime, ...tournaments, ...tournamentsView, ...store, document, location,
     legalDocuments: {},
     storeLinks: { ios: null, android: null },
     renderPreview: () => '', renderPractice: () => '', renderGame: () => '', mountBoard: () => ({ destroy() {} }),

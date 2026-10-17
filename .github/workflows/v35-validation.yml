@@ -81,6 +81,10 @@ jobs:
           node --check scripts/db-growth-smoke.js
           node --check scripts/mail-domain-audit.js
           node --check server/competitive-abuse.js
+          # Every legacy client script index.html loads as a classic (non-module) <script>.
+          # A syntax error in any of them silently breaks the retained browser client at boot
+          # (as an unescaped apostrophe did), so parse all of them here.
+          for f in $(grep -oE 'src="src/[^"]+\.js"' index.html | sed 's/src="//;s/"$//'); do node --check "$f"; done
       - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
         with:
           python-version: '3.12'

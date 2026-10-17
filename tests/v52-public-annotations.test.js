@@ -102,10 +102,11 @@ test('P21 annotations: compact sponsor choices keep explicit consent and truthfu
   const {renderPage} = await pages;
   const html = renderPage('/sponsors',{sponsorPreferences:{consent:false,interests:[]}});
   assert.doesNotMatch(html, /Sponsor placements are currently inactive|tracking scripts|reserved space/i);
-  assert.match(html, /pg-sponsor-preferences-grid/);
+  assert.match(html, /pg-sponsor-preferences-panel/);
+  assert.match(html, /class="pg-sponsor-disclosure"/);
   assert.match(html, /name="consent" required/);
   assert.match(html, /No active sponsor/);
-  assert.match(html, /enable no third-party tracking/);
+  assert.match(html, /never enable third-party tracking/);
   assert.doesNotMatch(html, /<iframe|<script|click to earn/i);
 });
 

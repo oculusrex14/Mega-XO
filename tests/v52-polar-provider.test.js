@@ -64,3 +64,22 @@ test('polar: the webhook HMAC binds the exact raw bytes within a five minute win
   /* Polar may send space-separated multiple signatures: any one match verifies. */
   assert.equal(provider.verifyWebhook({ id, timestamp: ts, signature: 'bogus ' + sig, rawBody: raw }), true);
 });
+
+test('polar: the Standard Webhooks v1,-framed signatures verify (single, rotated and comma-separated) and wrong versions are refused', () => {
+  const provider = createPolarProvider({ accessToken: 'tok', organizationId: ORG, webhookSecret: 'whsec_' + SECRET_B64 });
+  const raw = JSON.stringify({ type: 'order.paid', data: { id: 'ord-1' } });
+  const id = 'msg_v1';
+  const ts = String(Math.floor(Date.now() / 1000));
+  const sig = sign(SECRET_B64, id, ts, raw);
+  const other = sign(SECRET_B64, 'msg_x', ts, raw);
+  /* Single v1 entry. */
+  assert.equal(provider.verifyWebhook({ id, timestamp: ts, signature: 'v1,' + sig, rawBody: raw }), true);
+  /* Rotated: a stale/other signature followed by the valid one. */
+  assert.equal(provider.verifyWebhook({ id, timestamp: ts, signature: 'v1,' + other + ' v1,' + sig, rawBody: raw }), true);
+  /* Comma-separated list (no whitespace between entries). */
+  assert.equal(provider.verifyWebhook({ id, timestamp: ts, signature: 'v1,' + other + ',v1,' + sig, rawBody: raw }), true);
+  /* A wrong-version-prefixed signature alone is refused (never falls through to a bare match). */
+  assert.equal(provider.verifyWebhook({ id, timestamp: ts, signature: 'v2,' + sig, rawBody: raw }), false);
+  /* A v1 framing over different bytes is refused. */
+  assert.equal(provider.verifyWebhook({ id, timestamp: ts, signature: 'v1,' + sig, rawBody: raw.replace('order.paid', 'order.refunded') }), false);
+});

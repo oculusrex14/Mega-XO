@@ -91,10 +91,10 @@ function createPolarProvider({ accessToken, organizationId, apiBase, webhookSecr
       let key; try { key = Buffer.from(secret, 'base64'); } catch { return false; }
       if (key.length < 16) return false;
       const expected = crypto.createHmac('sha256', key).update(whId + '.' + ts + '.' + rawBody).digest('base64');
-      /* Standard Webhooks signature framing: space-separated entries, each "v1,<base64 sig>";
-       * some senders comma-separate the list. Version-prefixed candidates take precedence; a bare
-       * space-separated HMAC stays accepted for the synthetic fixtures. Any one match verifies. */
-      const versioned = [...sig.matchAll(/(?:^|\s)v1,([A-Za-z0-9+/=]+)/g)].map((m) => m[1]);
+      /* Standard Webhooks signature framing: entries are each "v1,<base64 sig>", separated by
+       * whitespace or commas. Version-prefixed candidates take precedence; a bare space-separated
+       * HMAC stays accepted for the synthetic fixtures. Any one match verifies. */
+      const versioned = [...sig.matchAll(/(?:^|[\s,])v1,([A-Za-z0-9+/=]+)/g)].map((m) => m[1]);
       const bare = versioned.length ? [] : sig.split(' ').filter(Boolean);
       for (const candidate of [...versioned, ...bare]) {
         const a = Buffer.from(expected), b = Buffer.from(candidate);

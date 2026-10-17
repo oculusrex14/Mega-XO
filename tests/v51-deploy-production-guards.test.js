@@ -49,4 +49,11 @@ test('source integrity: host-managed launchers are ALWAYS restored, never condit
   assert.match(SOURCE, /assertSchemaNotRegressing\(localMigrations/);
   assert.match(SOURCE, /DEPLOY_REFUSED_NO_AUTHORITY_EPOCH/);
   assert.match(SOURCE, /ROLLED_BACK/);
+  /* MXA-INF-001: the carry must COPY from the rollback archive (never move), because the
+   * unhealthy path restores the archive verbatim - a moved-out node_modules or authority file
+   * would leave the restored tree unstartable. The rollback path must also refuse to start
+   * without the launcher rather than silently emitting a dead service. */
+  assert.match(SOURCE, /cp -a \$\{archive\}\/src-final\/\$\{f\} \$\{PROD_ROOT\}\/src-final\/\$\{f\}/);
+  assert.doesNotMatch(SOURCE, /mv \$\{archive\}\/src-final\/\$\{f\} \$\{PROD_ROOT\}\/src-final\/\$\{f\}/);
+  assert.match(SOURCE, /ROLLBACK_LAUNCHER_MISSING/);
 });

@@ -89,20 +89,33 @@ function appleTeamPrefixFor(teamId) {
   return typeof teamId === 'string' && /^[A-Z0-9]{10}$/.test(teamId) ? teamId : ASSOCIATION_PLACEHOLDER_TEAM;
 }
 
+/* MXA-REL-002 (2026-10-17): the association may need MULTIPLE team prefixes - the
+ * device-development team AND the store team (the store build is signed under the current
+ * membership, the review device under the legacy one). APPLE_TEAM_ID accepts a comma- or
+ * space-separated list; every valid 10-character entry becomes an appID, duplicates collapse,
+ * and an empty or fully-invalid list fail-closes to the placeholder. Single-team values behave
+ * exactly as before. */
+function appleTeamPrefixesFor(teamId) {
+  const raw = typeof teamId === 'string' ? teamId : '';
+  const valid = raw.split(/[,\s]+/).map((s) => s.trim()).filter((p) => /^[A-Z0-9]{10}$/.test(p));
+  if (valid.length === 0) return [ASSOCIATION_PLACEHOLDER_TEAM];
+  return [...new Set(valid)];
+}
+
 function appleAssociationForTeam(teamId) {
-  const appId = `${appleTeamPrefixFor(teamId)}.${BUILT_IOS_BUNDLE_ID}`;
+  const appIDs = appleTeamPrefixesFor(teamId).map((prefix) => `${prefix}.${BUILT_IOS_BUNDLE_ID}`);
   return {
     applinks: {
       apps: [],
       details: [
         {
-          appIDs: [appId],
+          appIDs,
           components: DEFAULT_APPLE_ASSOCIATION.applinks.details[0].components,
         }
       ]
     },
     webcredentials: {
-      apps: [appId]
+      apps: appIDs
     }
   };
 }

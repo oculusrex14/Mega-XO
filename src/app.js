@@ -358,12 +358,18 @@ function home(){
    '<section class="card home-section home-quests" aria-labelledby="home-quests-title"><div><h3 id="home-quests-title">Daily quest</h3><p class="caption">Small goals. More Coins through play.</p></div>'+button('View quests','nav','quests',true)+'</section>'+
    '<section class="card home-section" aria-labelledby="home-store-title"><div><h3 id="home-store-title">Store</h3><p class="caption">Cosmetics, themes and power-ups.</p></div><button type="button" class="button quiet" data-monetization="open">Open store</button></section>'+
    '<section class="card home-section home-account" aria-labelledby="home-account-title"><div><h3 id="home-account-title">Save your progress</h3><p class="caption">Keep your profile, friends and progress with you.</p><p class="home-account-name caption"'+(linked?'':' hidden')+'>'+escape(name)+'</p></div><button type="button" class="button quiet" data-c="'+(linked?'profile':'login')+'">'+(linked?'View profile':'Sign in')+'</button></section>'+
+   '<section class="card home-section home-sponsors" aria-labelledby="home-sponsors-title"><div><h3 id="home-sponsors-title">Sponsors</h3><p class="caption">Support the game. Clearly labeled and always optional.</p></div><button type="button" class="button quiet" data-action="nav" data-value="sponsors">Explore sponsors</button></section>'+
   '</div></section>';})();
 }
 function rewards(){return window.MegaMonetizationUI?.pageMarkup?.()||'<div class="mono-page"><div class="mono-page-head"><p class="mono-kicker">STORE</p><h2>Store</h2><p class="caption">Cosmetics, themes and power-ups.</p><p class="caption" role="status">Loading the store...</p></div></div>';}
-/* C7/APP-021: the voluntary Sponsors destination. The catalog loads after first paint; an
+/* C7/APP-021: the voluntary Sponsors destination. The catalog is fetched once, after first
+   paint; re-rendering must never schedule another render or the page would hot-loop. An
    unavailable catalog still renders the page with the honest empty state. */
-function sponsorsPage(){window.MegaSponsors?.loadCatalog?.().then(()=>{if(page==='sponsors')render();}).catch(()=>{});return window.MegaSponsors?.sponsorsPage?.()||'<div class="sponsor-page"><header class="sponsor-head"><button type="button" class="button quiet" data-action="nav" data-value="play">Back to Play</button></header><p class="caption">Sponsors are unavailable right now.</p></div>';}
+let sponsorsCatalogStarted=false;
+function sponsorsPage(){
+ if(!sponsorsCatalogStarted){sponsorsCatalogStarted=true;window.MegaSponsors?.loadCatalog?.().then(()=>{if(page==='sponsors')render();}).catch(()=>{});}
+ return window.MegaSponsors?.sponsorsPage?.()||'<div class="sponsor-page"><header class="sponsor-head"><button type="button" class="button quiet" data-action="nav" data-value="play">Back to Play</button></header><p class="caption">Sponsors are unavailable right now.</p></div>';
+}
 function friends(){if(window.MegaCommunity?.friendsMarkup)return window.MegaCommunity.friendsMarkup();return '<div class="panel-head friends-head"><div class="eyebrow">Social</div><h2>Friends</h2><p>Challenge people you know, or add someone you just played.</p></div>'+
  '<div class="friend-search"><div class="friend-search-wrap">'+icon('search')+'<input id="friendName" aria-label="Search username" placeholder="Search username" maxlength="30" autocomplete="off"></div><button class="friend-add" data-action="findfriend">'+icon('userPlus')+'<span>Add</span></button></div>'+
  '<div class="friend-code-card"><div><span>YOUR FRIEND CODE</span><div class="friend-code">'+escape(online.profile?.friendCode||'Sign in')+'</div></div><button class="copy-friend" data-action="copyfriend" aria-label="Copy friend code">'+icon('copy')+'</button></div>'+

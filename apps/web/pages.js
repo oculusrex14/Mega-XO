@@ -491,7 +491,7 @@ export const faqEntries = [
   {question:'How does a move decide where the opponent plays?', answer:'The cell you choose sends the next player to the corresponding small board. If that board is complete, they can choose any open board.'},
   {question:'Can I play in a browser without an account?', answer:'Yes. Play against Bot or share a screen with a friend without linking an account. Online play requires signing in to your permanent Mega XOXO profile.'},
   {question:'Do themes change the rules or give an advantage?', answer:'No. Themes change the appearance, while legal moves and competitive balance stay the same. The browser offers Mega XOXO Neon plus Vector Light, Midnight Club, Paper Club and After Hours.'},
-  {question:'Where can I download the mobile apps?', answer:'The Download page will link to the official Google Play and App Store listings when they are available. Until then, you can play Mega XOXO in your browser.'},
+  {question:'Where can I download the mobile apps?', answer:'The Download page links to the official Google Play and App Store listings when they are available. Until the Play listing is live, Android can install the signed APK directly from the Download page; iPhone and iPad can play in the browser meanwhile.'},
   {question:'What is the official game website?', answer:'The official Mega XOXO website is megaxo.online. Mega XOXO is made by Antimatter Innovations.'},
 ];
 

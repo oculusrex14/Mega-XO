@@ -115,6 +115,21 @@ test('P21-DOWNLOAD-03 only official listing configuration is accepted', () => {
     {ios: null, android: 'https://play.google.com\\evil.example/store/apps/details?id=test.example'},
   ];
   for (const value of refused) assert.throws(() => validateStoreLinks(value), /INVALID_STORE_LINKS/);
+  // Owner 2026-10-17: optional direct Android APK. A well-formed entry survives round-trip;
+  // traversal, non-hex digests, bad versions, unknown keys and non-objects are refused.
+  const apk = {path: '/downloads/android/megaxo-1.0.0.apk', sha256: 'a'.repeat(64), versionName: '1.0.0', versionCode: 1, bytes: 23982165};
+  assert.deepEqual(validateStoreLinks({...configuredLinks, androidApk: apk}).androidApk, apk);
+  assert.equal(validateStoreLinks(configuredLinks).androidApk, undefined);
+  for (const bad of [
+    {...configuredLinks, androidApk: {...apk, path: '/downloads/other/app.apk'}},
+    {...configuredLinks, androidApk: {...apk, path: '/downloads/android/../secret.apk'}},
+    {...configuredLinks, androidApk: {...apk, sha256: 'ZZ'}},
+    {...configuredLinks, androidApk: {...apk, versionName: '1.0'}},
+    {...configuredLinks, androidApk: {...apk, versionCode: 0}},
+    {...configuredLinks, androidApk: {...apk, bytes: 12}},
+    {...configuredLinks, androidApk: 'not-an-object'},
+    {...configuredLinks, androidApk: {...apk, extra: true}},
+  ]) assert.throws(() => validateStoreLinks(bad), /INVALID_STORE_LINKS/);
 });
 
 test('P21-DOWNLOAD-04 mobile uses configured listing or explicit unavailable chooser; desktop chooses', () => {

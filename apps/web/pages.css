@@ -627,3 +627,7 @@
 .pg-theme-soon .pg-theme-board>.mx-icon{width:52px;height:52px}
 .pg-theme-soon .pg-theme-label{color:#a7bbd3}
 @media(max-width:900px){.pg-pass-panel{grid-template-columns:1fr}.pg-pass-media{max-width:300px}}
+
+/* Owner 2026-10-17: direct Android APK distribution until the Play listing is live. */
+.pg-apk-direct{display:grid;gap:8px;margin-top:12px;padding-top:12px;border-top:1px dashed var(--line)}
+.pg-apk-meta{display:flex;gap:6px;flex-wrap:wrap}

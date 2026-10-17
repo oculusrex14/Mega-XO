@@ -487,8 +487,11 @@ test('8. End-to-end ingress integration: hybrid rejected (401), actor spoof stri
   assert.equal(spoofRes.status, 401, 'Spoofed x-actor-id must be stripped and fail with 401');
   assert.equal(spoofRes.data?.error, 'AUTH_REQUIRED');
 
-  // 8.3 Body size limit rejected with 413 BODY_TOO_LARGE
-  const oversizedPayload = { data: 'x'.repeat(120 * 1024) }; // > 100KB
+  // 8.3 Body size limit rejected with 413 BODY_TOO_LARGE.
+  // The pipeline ceiling is the largest declared route contract (native challenge/finish/token
+  // allow 300000), not a blanket 100KB; a per-route cap below cannot reject a body a route
+  // accepts. So the global refusal is exercised one byte over 300000.
+  const oversizedPayload = { data: 'x'.repeat(300001) }; // > 300KB, beyond every route contract
   const sizeRes = await apiRequest(handler, '/api/account/profile', {
     method: 'POST',
     headers: {
@@ -496,6 +499,6 @@ test('8. End-to-end ingress integration: hybrid rejected (401), actor spoof stri
     },
     body: oversizedPayload
   });
-  assert.equal(sizeRes.status, 413, 'Body > 100KB must be rejected with 413');
+  assert.equal(sizeRes.status, 413, 'Body beyond every route contract must be rejected with 413');
   assert.equal(sizeRes.data?.error, 'BODY_TOO_LARGE');
 });

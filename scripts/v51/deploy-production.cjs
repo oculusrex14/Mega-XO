@@ -152,9 +152,13 @@ tee ${PROD_ROOT}/state/deploy-receipt.json <<'EOF'\n${JSON.stringify(receipt, nu
   // authority declaration with repository values.
   const CARRY = ['node_modules'];
   const RESTORE = ['docs/v5/environments/production.json', 'serve.sh', 'rehearse.sh'];
+  /* MXA-INF-001: the archive is the rollback point and must stay COMPLETE. The old mv-based
+   * carry stripped node_modules and the host-managed authority files out of it, so the unhealthy
+   * path restored an unstartable tree and deleted the only complete copy with the swap. Copy
+   * from the archive instead; the archive is never mutated after it is written. */
   const carry = [
-    ...CARRY.map((f) => `    if [ -e ${archive}/src-final/${f} ] && [ ! -e ${PROD_ROOT}/src-final/${f} ]; then sudo -n mv ${archive}/src-final/${f} ${PROD_ROOT}/src-final/${f}; fi`),
-    ...RESTORE.map((f) => `    if [ -e ${archive}/src-final/${f} ]; then sudo -n rm -rf ${PROD_ROOT}/src-final/${f} && sudo -n mv ${archive}/src-final/${f} ${PROD_ROOT}/src-final/${f}; fi`),
+    ...CARRY.map((f) => `    if [ -e ${archive}/src-final/${f} ] && [ ! -e ${PROD_ROOT}/src-final/${f} ]; then sudo -n cp -a ${archive}/src-final/${f} ${PROD_ROOT}/src-final/${f}; fi`),
+    ...RESTORE.map((f) => `    if [ -e ${archive}/src-final/${f} ]; then sudo -n rm -rf ${PROD_ROOT}/src-final/${f} && sudo -n cp -a ${archive}/src-final/${f} ${PROD_ROOT}/src-final/${f}; fi`),
   ].join('\n');
   run('ssh', [host, `set -e
     sudo -n mkdir -p ${archive}
@@ -187,6 +191,7 @@ ${carry}
       sudo -n rm -rf ${PROD_ROOT}/src-final ${PROD_ROOT}/web-build
       sudo -n mv ${archive}/src-final ${PROD_ROOT}/src-final
       sudo -n mv ${archive}/web-build ${PROD_ROOT}/web-build
+      test -x ${PROD_ROOT}/src-final/serve.sh || { echo ROLLBACK_LAUNCHER_MISSING; exit 1; }
       sudo -n systemctl start ${SERVICE}
       sleep 8
       echo "ROLLED_BACK: previous trees restored from ${archive}" >&2

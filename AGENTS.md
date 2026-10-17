@@ -41,6 +41,18 @@ archives the live trees as a dated rollback point and carries the host-managed `
 `docs/v5/environments/production.json` (`nonserving:false`) across the swap; losing either takes
 production down.
 
+## CI execution (owner directive, 17 October 2026)
+
+**Do not run CI locally.** The repository is public and GitHub Actions is effectively unlimited on
+GitHub's servers, so validation runs happen there, not on the Mac mini. Local work is: author the
+change, commit, push to the lane branch, then read the Actions result. Do not spend local disk/CPU on
+the test suite or workflow emulation unless the owner explicitly asks. Exception: a single targeted
+smoke for a specific behaviour is fine; "run the CI" is not.
+
+Also record: the current integration trunk is **`V5.2`** (superseding the 12 October "V5.1 only
+trunk" directive). Both lanes commit via branches with PRs to `V5.2` — Codex uses a general `codex`
+branch for all its work, Main uses `main/integration`. Never force-push `V5.2`/`V5.1`/`V4.1`.
+
 ## Four-owner split
 
 **ChatGPT WebUI:** source/evidence audit, integration/CI hygiene, targeted tests and independent research-protocol review.

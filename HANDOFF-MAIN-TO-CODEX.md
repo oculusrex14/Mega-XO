@@ -130,6 +130,9 @@ integration branch:
 4. **File claim before edit** on the §4 overlap list (a one-line note in the PR or the board).
 5. **Every claimed verification records** task/case IDs, exact SHA, command, environment, result.
 6. **No deployment by either lane** without the owner's explicit go-ahead (see §8).
+7. **Do not run CI locally.** The repo is public and GitHub Actions is effectively unlimited on
+   GitHub's servers — push to your branch and read the Actions result there. Don't spend the Mac
+   mini's disk/CPU on the suite. (Targeted one-off smoke for a specific behaviour is fine.)
 
 ---
 

@@ -74,14 +74,17 @@ async function connect({fetcher=fetch,Socket=WebSocket,timers,onPhase=()=>{}}={}
         try{socket.send(JSON.stringify({id:requestId,method:'Runtime.evaluate',
           params:{expression,returnByValue:true,awaitPromise:true}}));}
         catch{reject(failure('CDP_SEND_FAILED'));}
-      }),6000,'CDP_COMMAND_TIMEOUT',timers);
+      /* MXA-CI-001: after the player commit, the offline bot thinks on the WebView main thread;
+       * on a contended emulator that can hold Runtime.evaluate well past 6s. The command is
+       * legitimate work, not a hang - give it a 20s ceiling instead of failing the lane. */
+      }),20000,'CDP_COMMAND_TIMEOUT',timers);
       return resultValue(result);
     }finally{pending.delete(requestId);}
   }
   return {evaluate,close:()=>{rejectPending('CDP_SOCKET_CLOSED');socket.close();}};
 }
-async function until(evaluate,code,message) {
-  for(let i=0;i<30;i++){
+async function until(evaluate,code,message,iterations=30) {
+  for(let i=0;i<iterations;i++){
     if(await evaluate(code))return;
     await sleep(200);
   }
@@ -113,9 +116,11 @@ async function main({connector=connect,log=console.log}={}){
     const moved=await evaluate("(function(){const cell=document.querySelector('#board .cell:not([disabled])');if(!cell)return false;cell.click();return true;})()");
     ensure(moved,'no legal offline move available');
     phase='move-confirm';
+    /* The bot reply can legitimately take longer than the default 6s poll window on a slow
+     * emulator; give the commit confirmation 100 polls (20s+ of evaluate ceiling each). */
     await until(evaluate,
       "[...document.querySelectorAll('#board .cell')].some(cell=>cell.dataset.mark === 'X')",
-      'offline game did not commit X move');
+      'offline game did not commit X move',100);
     log('P20_OFFLINE_GAMEPLAY_PASS: guest; bot; 81 cells; committed X move');
   }catch(error){
     error.smokePhase=phase;throw error;

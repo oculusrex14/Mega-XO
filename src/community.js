@@ -64,7 +64,7 @@ function decisionConfirmNew(){
  const date=new Date(Date.now()+30*86400000).toLocaleDateString(undefined,{year:'numeric',month:'long',day:'numeric'});
  frame('Create a new profile and delete the old one?',
   '<p>Your new profile will start fresh. Progress, Coins, Crowns, rank and friends won\'t carry over, and purchases stay with the profile that bought them.</p>'+
-  '<p>Your existing profile, <strong>'+esc(d.existing.username||'your profile')+' ('+esc(d.existing.tag||'')+')</strong>, will be scheduled for permanent deletion on <strong>'+esc(date)+'</strong> — 30 days from now. You can cancel before then by signing in to that profile and choosing Cancel deletion.</p>'+
+  '<p>Your existing profile, <strong>'+esc(d.existing.username||'your profile')+' ('+esc(d.existing.tag||'')+')</strong>, will be scheduled for permanent deletion on <strong>'+esc(date)+'</strong> — 30 days from now. every sign-in method on that profile stops working immediately and there is no in-app cancellation. If this was a mistake, contact '+esc('contact@antimatterinnovations.com')+' before the window closes.</p>'+
   '<p>Some purchase and security records are retained as explained in our '+publicLink('privacy','Privacy Policy')+'.</p>'+
   btn('Create profile and schedule deletion','decision-new-confirm')+
   btn('Go back','decision-back','',true),
@@ -299,5 +299,10 @@ window.addEventListener('pagehide',()=>{if(!session?.linked)return;fetch('/api/c
 setInterval(()=>{presence();refreshFriends();if(dirty)saveNow();if(!session?.linked)reconnectSync();},15000);
 setInterval(()=>{const q=$('[data-queue-time]');if(q)q.textContent=fmtTime((performance.now()-queuedAt)/1000);},1000);
 window.MegaCommunity=Object.freeze({friendsMarkup,openProfile,login:landing,loader,refresh:refreshFriends,requestNotificationPermission,notificationPreferencesChanged:()=>{updateNotificationButton();rewardReminder();},challengeAccepted:(id,name='Opponent')=>deviceAlert('notifyMatches','Challenge accepted',name+' accepted your challenge. Your match is starting now.','challenge-start:'+id),getStatus:()=>({linked:!!session?.linked,profileName:session?.linked?(session.profile?.name||session.profile?.username||'Your profile'):'',syncState,revision:syncRevision,pendingNotifications:(session?.linked?social.incoming.length+directIncoming().length:0)})});
-APP.render();updateNotificationButton();boot();
+APP.render();updateNotificationButton();
+/* SAGAN-003: the website account card deep-links here (/game?security=1) so the
+ * Linked accounts and recovery button opens the real panel instead of dropping
+ * the player on the bot workspace. */
+const securityDeepLink=(typeof location!=='undefined')&&new URLSearchParams(location.search||'').get('security')==='1';
+const booted=boot();if(securityDeepLink)booted.then(()=>{if(session?.linked)connections();}).catch(()=>{});
 })();

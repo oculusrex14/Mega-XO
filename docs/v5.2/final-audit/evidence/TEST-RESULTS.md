@@ -22,6 +22,8 @@ Trunk: codex → PR #30 → V5.2. GitHub Actions is the only suite runner (owner
 
 ## Revalidation
 
+- Run set on 8886a8d (final functional head): **28/28 checks green** — including Android emulator offline first-launch 2m25s WITH the hardened smoke (evaluate ceiling 20s, move-confirm window 100 polls), validating the MXA-CI-001 fix. The terminal closure commit is docs-only (MXA-CI-001 resolution + regenerated MASTER-FINDINGS + this note); its push-triggered run is the authoritative final validation.
+
 - Run set on 446b68b (all functional audit changes): **28/28 checks green, 0 failed, 0 pending** — includes validate (1921-test regression with the updated p05 contract), Android emulator offline first-launch (1m58s), browser-presentation (4m13s, 935 checks), PG schema/guards, P18 journeys, disposable services, ios-simulator. The 446b68b SHA is the audit functional head of record.
 - Terminal commit note: the final audit commit is the MXA-INF-008 metrics intake fix plus docs-only SHA pinning; its own push-triggered Actions run is the authoritative final validation and its result is visible via `gh pr checks 30`.
 

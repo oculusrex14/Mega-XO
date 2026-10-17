@@ -134,6 +134,25 @@ async function handleMonetizationRoute(context, req, res) {
       return true;
     }
 
+    /* MXA-ECO-005 (audit 2026-10-17): the trusted store-notification lanes the contracts
+     * registry already names (monetization.google-play-rtdn / apple-notifications, owner 'W').
+     * They are provider-to-server: credential verification happens INSIDE the composed handler
+     * (Google push JWT / Apple signedPayload JWS), which then drives the Core-owned refund
+     * workflow with durable dedupe. With no handler composed the lane fails closed 503 — it
+     * never answers 200 to an unverified callback. */
+    if (pathname === '/api/monetization/google-play-rtdn' || pathname === '/api/monetization/apple-notifications') {
+      if (method !== 'POST') fail('METHOD_NOT_ALLOWED', 405);
+      const handlers = context.storeNotifications || null;
+      const handler = handlers ? (pathname.endsWith('google-play-rtdn') ? handlers.google : handlers.apple) : null;
+      if (!handler || typeof handler.handle !== 'function') fail('STORE_UNAVAILABLE', 503);
+      const notification = await parseJsonBody(req);
+      const result = pathname.endsWith('google-play-rtdn')
+        ? await handler.handle(String((req.headers && req.headers.authorization) || ''), notification)
+        : await handler.handle(notification);
+      sendJson(res, 200, result, { 'Cache-Control': CACHE_CONTROL });
+      return true;
+    }
+
     /* LR13: the Cashfree web-commerce surfaces. Order creation is session-bound (the actor is
      * the payer; the catalog price is server-side); the webhook is actor-free and verifies the
      * HMAC over the EXACT raw bytes Cashfree signed; the status poll is session-bound and hides

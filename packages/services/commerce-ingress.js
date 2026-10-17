@@ -81,7 +81,10 @@ function createCommerceIngressService({ commerce }) {
         if (value === undefined) fail('INVALID_COMMERCE_ARG: ' + name);
         if (name === 'key') { args.push(requireText(value, 'INVALID_IDEMPOTENCY_KEY', KEY_PATTERN)); }
         else if (name === 'platform') args.push(requireText(value, 'INVALID_PLATFORM', /^(legacy|android|ios)$/));
-        else if (name === 'kind') args.push(requireText(value, 'INVALID_AD_KIND', /^(rewarded|interstitial)$/));
+        /* MXA-ECO-003 (audit 2026-10-17): `kind` on the ticket op is the REWARD kind the client
+         * selects (credits/boost), matching commerce.ticket and the reward-ticket contract; the
+         * rewarded format is implicit and the automatic lane (permit) carries no kind at all. */
+        else if (name === 'kind') args.push(requireText(value, 'INVALID_REWARD', /^(credits|boost)$/));
         else if (name === 'itemId') args.push(requireText(value, 'INVALID_ITEM_ID', KEY_PATTERN));
         else if (name === 'productId' || name === 'orderId') args.push(requireText(value, 'INVALID_' + name.toUpperCase(), KEY_PATTERN));
         else if (name === 'checkoutId') args.push(requireText(value, 'INVALID_CHECKOUTID', /^[!-~]{1,160}$/));

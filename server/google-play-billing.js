@@ -40,19 +40,22 @@ class GooglePlayBilling{
   if(!cleanToken(purchaseToken))throw Error('INVALID_RECEIPT');
   return this.call('/purchases/productsv2/tokens/'+encodeURIComponent(purchaseToken));
  }
- normalize(value,purchaseToken,actor,binding){
+ async normalize(value,purchaseToken,actor,binding){
   if(value?.purchaseStateContext?.purchaseState!=='PURCHASED'||value.obfuscatedExternalAccountId!==binding.googleAccountId)throw Error('INVALID_RECEIPT');
   if(!Array.isArray(value.productLineItem)||value.productLineItem.length!==1)throw Error('INVALID_RECEIPT');
   const line=value.productLineItem[0],storeProduct=line?.productId,offer=line?.productOfferDetails||{},internal=this.products[storeProduct];
   if(!cleanProduct(storeProduct)||!internal||Number(offer.quantity??1)!==1)throw Error('INVALID_RECEIPT');
-  const transactionId=sha(purchaseToken),revoked=this.db.prepare('SELECT 1 FROM v41_store_revocations WHERE store=? AND transaction_id=?').get('google',transactionId);
+  const transactionId=sha(purchaseToken);
+  /* MXA-ECO-017 (audit 2026-10-17): await the async facade get() so `revoked` is a real row and
+   * not a truthy Promise that refunded every receipt. */
+  const revoked=await this.db.prepare('SELECT 1 FROM v41_store_revocations WHERE store=? AND transaction_id=?').get('google',transactionId);
   if(revoked)throw Error('RECEIPT_REFUNDED');
   return {valid:true,accountId:actor,store:'google',transactionId,productId:internal,refunded:false,providerProductId:storeProduct,finalizeKind:internal==='remove_ads'?'acknowledge':'consume'};
  }
  async verify(evidence,actor,binding){
   if(!evidence||evidence.store!=='google'||!binding?.googleAccountId||!cleanToken(evidence.purchaseToken))throw Error('INVALID_RECEIPT');
-  const value=await this.lookup(evidence.purchaseToken),receipt=this.normalize(value,evidence.purchaseToken,actor,binding),now=this.now();
-  this.db.prepare(`INSERT INTO v41_store_finalize(store,transaction_id,product_id,purchase_token,kind,state,attempts,next_at,created,updated)
+  const value=await this.lookup(evidence.purchaseToken),receipt=await this.normalize(value,evidence.purchaseToken,actor,binding),now=this.now();
+  await this.db.prepare(`INSERT INTO v41_store_finalize(store,transaction_id,product_id,purchase_token,kind,state,attempts,next_at,created,updated)
    VALUES('google',?,?,?,?, 'pending',0,?,?,?)
    ON CONFLICT(store,transaction_id) DO UPDATE SET product_id=excluded.product_id,purchase_token=CASE WHEN v41_store_finalize.state='done' THEN v41_store_finalize.purchase_token ELSE excluded.purchase_token END,kind=excluded.kind,updated=excluded.updated`).run(receipt.transactionId,receipt.providerProductId,evidence.purchaseToken,receipt.finalizeKind,now,now,now);
   return receipt;
@@ -61,16 +64,16 @@ class GooglePlayBilling{
   if(!row||row.store!=='google'||!cleanProduct(row.product_id)||!cleanToken(row.purchase_token))throw Error('INVALID_FINALIZATION');
   const suffix='/purchases/products/'+encodeURIComponent(row.product_id)+'/tokens/'+encodeURIComponent(row.purchase_token)+':'+(row.kind==='consume'?'consume':'acknowledge');
   await this.call(suffix,{method:'POST',body:{}});
-  this.db.prepare("UPDATE v41_store_finalize SET state='done',purchase_token='',updated=? WHERE store='google' AND transaction_id=?").run(this.now(),row.transaction_id);
+  await this.db.prepare("UPDATE v41_store_finalize SET state='done',purchase_token='',updated=? WHERE store='google' AND transaction_id=?").run(this.now(),row.transaction_id);
   return true;
  }
  async finalize(transactionId){
-  const row=this.db.prepare("SELECT * FROM v41_store_finalize WHERE store='google' AND transaction_id=?").get(transactionId);if(!row||row.state==='done')return true;
-  try{return await this.finalizeRow(row);}catch(e){const attempts=row.attempts+1,next=this.now()+Math.min(3600000,15000*2**Math.min(8,attempts));this.db.prepare("UPDATE v41_store_finalize SET attempts=?,next_at=?,updated=? WHERE store='google' AND transaction_id=?").run(attempts,next,this.now(),transactionId);return false;}
+  const row=await this.db.prepare("SELECT * FROM v41_store_finalize WHERE store='google' AND transaction_id=?").get(transactionId);if(!row||row.state==='done')return true;
+  try{return await this.finalizeRow(row);}catch(e){const attempts=row.attempts+1,next=this.now()+Math.min(3600000,15000*2**Math.min(8,attempts));await this.db.prepare("UPDATE v41_store_finalize SET attempts=?,next_at=?,updated=? WHERE store='google' AND transaction_id=?").run(attempts,next,this.now(),transactionId);return false;}
  }
  async processDue(hasReceipt){
-  const rows=this.db.prepare("SELECT * FROM v41_store_finalize WHERE store='google' AND state='pending' AND next_at<=? ORDER BY created LIMIT 10").all(this.now()),out={processed:0,completed:0};
-  for(const row of rows){out.processed++;if(!hasReceipt('google',row.transaction_id)){if(this.now()-row.created>3600000)this.db.prepare("DELETE FROM v41_store_finalize WHERE store='google' AND transaction_id=?").run(row.transaction_id);continue;}if(await this.finalize(row.transaction_id))out.completed++;}
+  const rows=await this.db.prepare("SELECT * FROM v41_store_finalize WHERE store='google' AND state='pending' AND next_at<=? ORDER BY created LIMIT 10").all(this.now()),out={processed:0,completed:0};
+  for(const row of rows){out.processed++;if(!hasReceipt('google',row.transaction_id)){if(this.now()-row.created>3600000)await this.db.prepare("DELETE FROM v41_store_finalize WHERE store='google' AND transaction_id=?").run(row.transaction_id);continue;}if(await this.finalize(row.transaction_id))out.completed++;}
   return out;
  }
  async currentByToken(purchaseToken){const value=await this.lookup(purchaseToken);return {value,transactionId:sha(purchaseToken)};}

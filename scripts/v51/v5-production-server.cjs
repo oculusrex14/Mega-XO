@@ -1124,6 +1124,22 @@ async function main() {
     }, 50000);
   }
 
+  /* MXA-ECO-016 (audit 2026-10-17): the durable provider finalization sweep. The grant path
+   * reports an interrupted consume/acknowledge as finalizationPending; without a retry caller
+   * the job could stall into a store auto-refund. Single-flight like the pass sweep - the
+   * provider's own processDue lease bounds each tick, and a failed tick just retries. */
+  let storeFinalizationTimer = null;
+  if (arg('--store-finalization', 'on') !== 'off') {
+    let storeFinalizationBusy = false;
+    storeFinalizationTimer = setInterval(() => {
+      if (storeFinalizationBusy) return;
+      storeFinalizationBusy = true;
+      Promise.resolve(commerce.processPurchaseFinalizations ? commerce.processPurchaseFinalizations() : null)
+        .catch((error) => console.error(JSON.stringify({ event: 'store_finalization_error', code: safeError(error) })))
+        .finally(() => { storeFinalizationBusy = false; });
+    }, 30000);
+  }
+
   /* The worker pass (worker_runtime): lapsed work, the privacy/retention sweeps and mail delivery.
    * Mail delivery is DEFERRED while the bound inventory disables email, so this can run safely on the
    * production target without a provider. `start()` arms the periodic pass and `stop()` clears it

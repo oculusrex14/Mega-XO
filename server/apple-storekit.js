@@ -34,9 +34,11 @@ class AppleStoreKit{
   if(payload.bundleId!==this.bundleId||payload.environment!==this.environment||!safe(String(payload.transactionId||''))||!safe(payload.productId)||Number(payload.quantity??1)!==1)throw Error('INVALID_RECEIPT');
   const internal=this.products[payload.productId];if(!internal)throw Error('INVALID_RECEIPT');return {transactionId:String(payload.transactionId),productId:internal,providerProductId:payload.productId,appAccountToken:payload.appAccountToken,revoked:payload.revocationDate!=null,payload};
  }
- validateTransaction(payload,actor,binding,{allowRevoked=false}={}){
+ async validateTransaction(payload,actor,binding,{allowRevoked=false}={}){
   const tx=this.inspectTransaction(payload);if(!binding?.appleAppAccountToken||tx.appAccountToken!==binding.appleAppAccountToken)throw Error('INVALID_RECEIPT');
-  const revoked=tx.revoked||this.db.prepare("SELECT 1 FROM v41_store_revocations WHERE store='apple' AND transaction_id=?").get(tx.transactionId);if(revoked&&!allowRevoked)throw Error('RECEIPT_REFUNDED');
+  /* MXA-ECO-017 (audit 2026-10-17): the PG facade's get() is async - awaiting it keeps the
+   * revocation read a real row; a truthy Promise used to fail EVERY receipt as RECEIPT_REFUNDED. */
+  const revoked=tx.revoked||!!(await this.db.prepare("SELECT 1 FROM v41_store_revocations WHERE store='apple' AND transaction_id=?").get(tx.transactionId));if(revoked&&!allowRevoked)throw Error('RECEIPT_REFUNDED');
   return {valid:!revoked,accountId:actor,store:'apple',transactionId:tx.transactionId,productId:tx.productId,refunded:!!revoked,providerProductId:tx.providerProductId,payload};
  }
  async verify(evidence,actor,binding){

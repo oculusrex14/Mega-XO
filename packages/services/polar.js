@@ -24,6 +24,25 @@ function createPolarProvider({ accessToken, organizationId, apiBase, webhookSecr
   const http = fetchImpl || ((input, init) => fetch(input, init));
   const base = apiBase || API_BASE;
   const headers = { Authorization: 'Bearer ' + accessToken, 'Content-Type': 'application/json' };
+  /* MXA-ECO-007 (audit 2026-10-17): POST /v1/checkouts `products` accepts PRODUCT ids only -
+   * the sandbox API rejected a price id with 422 "Product does not exist" (verified 2026-10-17).
+   * The catalog maps product -> priceId, so the adapter resolves the parent product id from the
+   * price id once per process and caches it; an unknown price fails closed. */
+  const productIdByPrice = new Map();
+  async function productIdForPrice(priceId) {
+    const cached = productIdByPrice.get(priceId);
+    if (cached) return cached;
+    const list = await call('/v1/products/?limit=100', 'GET');
+    for (const product of (list && Array.isArray(list.items) ? list.items : [])) {
+      for (const price of (product && Array.isArray(product.prices) ? product.prices : [])) {
+        if (price && price.id === priceId && typeof product.id === 'string' && UUID_V4.test(product.id)) {
+          productIdByPrice.set(priceId, product.id);
+          return product.id;
+        }
+      }
+    }
+    throw Error('POLAR_PRICE_NOT_FOUND');
+  }
   async function call(path, method, body) {
     const response = await http(base + path, { method, headers, body: body === undefined ? undefined : JSON.stringify(body) });
     const text = await response.text(); let parsed = null; try { parsed = text ? JSON.parse(text) : null; } catch { throw Error('POLAR_BAD_RESPONSE'); }
@@ -41,7 +60,7 @@ function createPolarProvider({ accessToken, organizationId, apiBase, webhookSecr
       if (!this.isPriceId(priceId)) throw Error('INVALID_PRICE_ID');
       if (!UUID_V4.test(priceId)) throw Error('INVALID_PRICE_ID');
       const checkout = await call('/v1/checkouts', 'POST', {
-        products: [priceId],
+        products: [await productIdForPrice(priceId)],
         customer_email: typeof email === 'string' && email ? email : undefined,
         success_url: typeof successUrl === 'string' && successUrl ? successUrl : undefined,
         metadata: { actor: String(actor), product_id: String(productId), ...metadata },
@@ -69,14 +88,19 @@ function createPolarProvider({ accessToken, organizationId, apiBase, webhookSecr
       if (typeof subscriptionId !== 'string' || !subscriptionId || subscriptionId.length > 160) throw Error('ORDER_NOT_FOUND');
       const sub = await call('/v1/subscriptions/' + encodeURIComponent(subscriptionId), 'GET');
       if (!sub || typeof sub.status !== 'string') throw Error('POLAR_BAD_RESPONSE');
+      /* MXA-ECO-006 (audit 2026-10-17): the official subscription response carries TOP-LEVEL
+       * current_period_start/current_period_end; the nested current_period.{start,end} shape is
+       * kept only as a compatibility fallback so a provider shape change cannot null the window. */
+      const topLevelStart = typeof sub.current_period_start === 'string' ? sub.current_period_start : null;
+      const topLevelEnd = typeof sub.current_period_end === 'string' ? sub.current_period_end : null;
       const period = sub.current_period && typeof sub.current_period === 'object' ? sub.current_period : {};
       return {
         status: sub.status,
         productId: typeof sub.product_id === 'string' ? sub.product_id : (sub.product && typeof sub.product.id === 'string' ? sub.product.id : ''),
         priceId: typeof sub.price_id === 'string' ? sub.price_id : (sub.price && typeof sub.price.id === 'string' ? sub.price.id : ''),
         cancelAtPeriodEnd: sub.cancel_at_period_end === true,
-        currentPeriodStart: typeof period.start === 'string' ? period.start : null,
-        currentPeriodEnd: typeof period.end === 'string' ? period.end : null,
+        currentPeriodStart: topLevelStart !== null ? topLevelStart : (typeof period.start === 'string' ? period.start : null),
+        currentPeriodEnd: topLevelEnd !== null ? topLevelEnd : (typeof period.end === 'string' ? period.end : null),
         metadata: sub.metadata && typeof sub.metadata === 'object' ? sub.metadata : {},
       };
     },

@@ -41,13 +41,13 @@ test('dispatch: each op maps to exactly one commerce call with ordered arguments
   const ingress = createCommerceIngressService({ commerce });
   await ingress.command({ actor: ACTOR, op: 'status' });
   await ingress.command({ actor: ACTOR, op: 'claim', key: 'op-1' });
-  await ingress.command({ actor: ACTOR, op: 'ticket', key: 'op-2', kind: 'rewarded', platform: 'android' });
+  await ingress.command({ actor: ACTOR, op: 'ticket', key: 'op-2', kind: 'credits', platform: 'android' });
   await ingress.command({ actor: ACTOR, op: 'permit', opKey: 'hdr-op-key', platform: 'ios' });
   await ingress.command({ actor: ACTOR, op: 'purchase', key: 'op-3', evidence: { store: 'google', token: 't' }, restore: true });
   const byMethod = Object.fromEntries(commerce.calls.map((c) => [c.method, c.args]));
   assert.deepEqual(byMethod.status, [ACTOR]);
   assert.deepEqual(byMethod.claim, [ACTOR, 'op-1']);
-  assert.deepEqual(byMethod.ticket, [ACTOR, 'op-2', 'rewarded', 'android']);
+  assert.deepEqual(byMethod.ticket, [ACTOR, 'op-2', 'credits', 'android']);
   /* The signed header op key becomes the idempotency key when the body carries none. */
   assert.deepEqual(byMethod.automaticPermit, [ACTOR, 'hdr-op-key', 'ios']);
   assert.deepEqual(byMethod.purchase, [ACTOR, 'op-3', { store: 'google', token: 't' }, true]);
@@ -57,8 +57,9 @@ test('dispatch: unknown ops, bad shapes, and missing keys refuse with stable cod
   const ingress = createCommerceIngressService({ commerce: fakeCommerce() });
   await assert.rejects(() => ingress.command({ actor: ACTOR, op: 'selfDestruct' }), /INVALID_COMMERCE_OP/);
   await assert.rejects(() => ingress.command({ actor: ACTOR, op: 'claim' }), /INVALID_IDEMPOTENCY_KEY/);
-  await assert.rejects(() => ingress.command({ actor: ACTOR, op: 'ticket', key: 'k', kind: 'banner', platform: 'android' }), /INVALID_AD_KIND/);
-  await assert.rejects(() => ingress.command({ actor: ACTOR, op: 'ticket', key: 'k', kind: 'rewarded', platform: 'web' }), /INVALID_PLATFORM/);
+  /* MXA-ECO-003: ticket kind is the REWARD kind (credits/boost); the rewarded format is implicit. */
+  await assert.rejects(() => ingress.command({ actor: ACTOR, op: 'ticket', key: 'k', kind: 'banner', platform: 'android' }), /INVALID_REWARD/);
+  await assert.rejects(() => ingress.command({ actor: ACTOR, op: 'ticket', key: 'k', kind: 'credits', platform: 'web' }), /INVALID_PLATFORM/);
   await assert.rejects(() => ingress.command({ actor: 'bad actor', op: 'status' }), /INVALID_ACTOR/);
   await assert.rejects(() => ingress.command({ actor: ACTOR, op: 'ssv' }), /INVALID_SSV_PAYLOAD/);
 });

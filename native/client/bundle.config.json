@@ -195,7 +195,8 @@
     "src/",
     "public/",
     "assets/vendor/",
-    "assets/p21/logos/"
+    "assets/p21/logos/",
+    "assets/sponsors/"
   ],
   "forbidden_source_prefixes": [
     "src/authority.js",

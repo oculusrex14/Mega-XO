@@ -22,6 +22,13 @@ function fixture(t) {
   }
   const retained = ['index.html', ...GAME_FILES.map(name => 'src/' + name), ...LEGAL_NAMES.map(name => 'public/' + name + '.html'), 'public/legal.css', 'public/app-ads.txt', 'scripts/p21/offline-worker.cjs', 'scripts/p21/prerender-web.mjs', ...ICON_FILES.map(name=>'assets/p21/icons/'+name)];
   for (const theme of ['vector', 'midnight', 'paperclub', 'afterhours']) for (const kind of ['app', 'mark']) retained.push('assets/p21/logos/mega-xoxo-' + theme + '-' + kind + '.webp');
+  /* The configured direct Android APK is a retained source: the build verifies its digest
+     against apps/web/store-links.json and fails closed when the artifact is absent. */
+  const fixtureConfig = JSON.parse(fs.readFileSync(path.join(ROOT, 'apps/web', 'store-links.json'), 'utf8'));
+  if (fixtureConfig.androidApk) {
+    const apkRelative = 'downloads/android/' + fixtureConfig.androidApk.path.split('/').pop();
+    retained.push(apkRelative);
+  }
   for (const relative of retained) write(relative, fs.readFileSync(path.join(ROOT, relative)));
   const webp = Buffer.from('5249464610000000574542505650384c00000000', 'hex');
   for (const name of ['header', 'mark', 'hero-landscape']) write('assets/p21/art/' + name + '.webp', webp);

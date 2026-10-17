@@ -1,0 +1,30 @@
+/* C7/APP-021 voluntary Sponsors destination. Uses the shared app theme tokens; no separate skin. */
+.sponsor-page{display:grid;gap:16px;color:var(--ink)}
+.sponsor-head .button{justify-self:start}
+.sponsor-kicker{margin:10px 0 0;font-size:11px;letter-spacing:.14em;font-weight:700;color:var(--muted)}
+.sponsor-head h2{margin:4px 0 6px}
+.sponsor-head p{margin:0;color:var(--muted);font-size:16px;line-height:1.5}
+.sponsor-interests,.sponsor-enquiry{padding:16px;background:var(--raised);border:1px solid var(--line);border-radius:var(--radius);display:grid;gap:10px}
+.sponsor-interests h3,.sponsor-enquiry h3{margin:0;font-size:17px}
+.sponsor-interests h3 small{font-weight:400;color:var(--muted);font-size:14px}
+.sponsor-topic-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.sponsor-topic{display:flex;align-items:center;gap:8px;min-height:44px;padding:8px 10px;border:1px solid var(--line);border-radius:10px;background:var(--soft);color:var(--ink);font-size:14px}
+.sponsor-topic input{accent-color:var(--accent);width:18px;height:18px}
+.sponsor-interest-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.sponsor-agree{display:flex;align-items:center;gap:8px;font-size:14px;color:var(--ink)}
+.sponsor-agree input{accent-color:var(--accent);width:18px;height:18px}
+.sponsor-feed{display:grid;gap:12px}
+.sponsor-card{display:grid;gap:6px;padding:16px;background:var(--raised);border:1px solid var(--line);border-radius:var(--radius)}
+.sponsor-label{justify-self:start;font-size:11px;font-weight:700;letter-spacing:.1em;color:var(--muted);border:1px solid var(--line);border-radius:999px;padding:3px 8px}
+.sponsor-card h3{margin:2px 0 0;font-size:17px}
+.sponsor-advertiser{margin:0;font-size:14px;color:var(--muted)}
+.sponsor-description{margin:0;font-size:14px;line-height:1.5;color:var(--ink)}
+.sponsor-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:4px}
+.sponsor-hidden{border-style:dashed;gap:8px}
+.sponsor-hidden-note{margin:0;font-size:14px;color:var(--ink)}
+.sponsor-empty{padding:18px;background:var(--soft);border:1px dashed var(--border-strong);border-radius:var(--radius)}
+.sponsor-empty p{margin:0;font-size:14px;line-height:1.5;color:var(--ink)}
+.sponsor-report{display:grid;gap:12px}
+.sponsor-report-reasons{display:grid;gap:6px}
+.sponsor-report-reason{display:flex;align-items:center;gap:8px;min-height:44px;font-size:15px;color:var(--ink)}
+.sponsor-report-reason input{accent-color:var(--accent);width:18px;height:18px}

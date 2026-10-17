@@ -38,13 +38,15 @@
     "src/lan/lan-host.js",
     "src/party-ui.js",
     "src/community.js",
-    "src/monetization-ui.js"
+    "src/monetization-ui.js",
+    "src/sponsors-ui.js"
   ],
   "client_styles": [
     "src/styles.css",
     "src/party.css",
     "src/community.css",
     "src/monetization.css",
+    "src/sponsors.css",
     "src/tutorial/tutorial.css",
     "src/bot/pack.css"
   ],
@@ -261,6 +263,10 @@
     {
       "source": "assets/p21/logos/mega-xoxo-afterhours-mark.webp",
       "destination": "assets/p21/logos/mega-xoxo-afterhours-mark.webp"
+    },
+    {
+      "source": "assets/sponsors/catalog.json",
+      "destination": "assets/sponsors/catalog.json"
     }
   ]
 }

@@ -342,7 +342,7 @@ function seasonName(s){return s?.id?s.id.replace('-', ' '):'Current season';}
 function render(){
  renderWalletSummary();
  $('#navigation').innerHTML=[['play','Play','board'],['friends','Friends','users'],['rank','Rank','trophy'],['stats','Stats','chart'],['quests','Quests','quest']].map(([id,name,symbol])=>'<button class="nav-button '+(id===page?'active':'')+'" data-action="nav" data-value="'+id+'" '+(id===page?'aria-current="page"':'')+'>'+icon(symbol)+'<span>'+name+'</span></button>').join('');
- $('#page').innerHTML=({play:home,friends:friends,rank:ranks,stats:statsView,quests:quests,rewards:rewards})[page]();refreshIcons();
+ $('#page').innerHTML=({play:home,friends:friends,rank:ranks,stats:statsView,quests:quests,rewards:rewards,sponsors:sponsorsPage})[page]();refreshIcons();
 }
 function home(){
  const modes=[['bot','bot','Vs Bot','Five skill levels, fully offline'],['local','users','Pass & Play','Two players on one device'],['online','swords','Play Online','Ranked or casual matchmaking'],['private','link','Private Match','Create or join a friend room'],['tournament','trophy','Tournaments','Ten players. One table. Bigger prizes.']];
@@ -361,6 +361,9 @@ function home(){
   '</div></section>';})();
 }
 function rewards(){return window.MegaMonetizationUI?.pageMarkup?.()||'<div class="mono-page"><div class="mono-page-head"><p class="mono-kicker">STORE</p><h2>Store</h2><p class="caption">Cosmetics, themes and power-ups.</p><p class="caption" role="status">Loading the store...</p></div></div>';}
+/* C7/APP-021: the voluntary Sponsors destination. The catalog loads after first paint; an
+   unavailable catalog still renders the page with the honest empty state. */
+function sponsorsPage(){window.MegaSponsors?.loadCatalog?.().then(()=>{if(page==='sponsors')render();}).catch(()=>{});return window.MegaSponsors?.sponsorsPage?.()||'<div class="sponsor-page"><header class="sponsor-head"><button type="button" class="button quiet" data-action="nav" data-value="play">Back to Play</button></header><p class="caption">Sponsors are unavailable right now.</p></div>';}
 function friends(){if(window.MegaCommunity?.friendsMarkup)return window.MegaCommunity.friendsMarkup();return '<div class="panel-head friends-head"><div class="eyebrow">Social</div><h2>Friends</h2><p>Challenge people you know, or add someone you just played.</p></div>'+
  '<div class="friend-search"><div class="friend-search-wrap">'+icon('search')+'<input id="friendName" aria-label="Search username" placeholder="Search username" maxlength="30" autocomplete="off"></div><button class="friend-add" data-action="findfriend">'+icon('userPlus')+'<span>Add</span></button></div>'+
  '<div class="friend-code-card"><div><span>YOUR FRIEND CODE</span><div class="friend-code">'+escape(online.profile?.friendCode||'Sign in')+'</div></div><button class="copy-friend" data-action="copyfriend" aria-label="Copy friend code">'+icon('copy')+'</button></div>'+

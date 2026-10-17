@@ -1049,3 +1049,11 @@ html,body{min-height:100dvh}
 .home-section p{margin:4px 0 0;color:var(--muted);font-size:12px;line-height:1.5;overflow-wrap:anywhere}
 .home-section .home-account-name{color:var(--ink);font-weight:700}
 .home-section>.button{justify-self:start;max-width:100%;white-space:normal;text-align:center}
+/* B6.1/APP-007 Mega Pass emblem: size + theme palette. Higher specificity overrides the
+   shared .rank-badge width rules; rank badges themselves are untouched. */
+.rank-badge.pass-badge{width:64px;height:64px}
+.rank-badge.pass-badge.large{width:92px;height:92px}
+:root[data-theme="vector"] .rank-badge.pass-badge{--pass-bg:#f5e7b2;--pass-ink:#805b0c}
+:root[data-theme="midnight"] .rank-badge.pass-badge{--pass-bg:#4c4123;--pass-ink:#f2d88d}
+:root[data-theme="paperclub"] .rank-badge.pass-badge{--pass-bg:#ead6aa;--pass-ink:#6f4d14}
+:root[data-theme="afterhours"] .rank-badge.pass-badge{--pass-bg:#4c4123;--pass-ink:#f2d88d}

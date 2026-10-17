@@ -51,9 +51,12 @@ function refresh(){
  root.lucide.createIcons({attrs:{"stroke-width":2}});
  return true;
 }
-root.MegaIcons={icon,refresh,pass(large=false){
- /* Mega Pass emblem: a crown set on a rounded ticket, echoing the rank badges' stroke style. */
- return '<svg class="rank-badge pass-badge'+(large?' large':'')+'" viewBox="0 0 64 64" role="img" aria-label="Mega Pass emblem"><g fill="var(--badge-bg,#1d2b4f)" stroke="var(--badge-ink,#c9a227)" stroke-width="2" stroke-linejoin="round"><rect x="8" y="14" width="48" height="36" rx="10"/><path d="M22 14v36M42 14v36" stroke-dasharray="3 4"/></g><g fill="none" stroke="var(--badge-ink,#c9a227)" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><path d="m32 22 5 8 9 2-7 6 1 9-8-5-8 5 1-9-7-6 9-2z"/><path d="M18 48h6m16 0h6"/></g></svg>';
+root.MegaIcons={icon,refresh,pass(large=false,opts={}){
+ /* B6.1/APP-007: a broad notched membership ticket carrying a three-point crown. It shares
+    the rank badges' two-color stroke family but is a distinct membership silhouette. A second
+    {decorative:true} argument renders it aria-hidden beside a visible heading; the standalone
+    default keeps the accessible name. Theme palettes are scoped to .pass-badge in styles.css. */
+ return passSvg(large,opts);
 },badge(t,large=false){
  const i=t.index||0;let outer=i<2?'<rect x="14" y="14" width="36" height="36" rx="10"/>':i<5?'<path d="m32 7 22 11v20L32 57 10 38V18z"/>':i<8?'<path d="m32 4 25 28-25 28L7 32z"/>':'<path d="m32 4 21 12 5 23-26 21L6 39l5-23z"/>';
  const glyphs=[
@@ -73,4 +76,12 @@ root.MegaIcons={icon,refresh,pass(large=false){
  const extras=i>=9?'<path d="M6 20 2 31l5 14m51-25 4 11-5 14"/>':'';
  return '<svg class="rank-badge '+(large?'large':'')+'" viewBox="0 0 64 64" role="img" aria-label="'+t.name+' emblem"><g fill="var(--badge-bg)" stroke="var(--badge-ink)" stroke-width="2" stroke-linejoin="round">'+outer+'</g><g fill="none" stroke="var(--badge-ink)" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round">'+centre+extras+'</g>'+(i===10?'<circle cx="32" cy="12" r="3" fill="var(--badge-ink)"/>':'')+'</svg>';
 }};
+function passSvg(large=false,opts={}){
+ const decorative=opts&&opts.decorative===true;
+ const open='<svg class="rank-badge pass-badge'+(large?' large':'')+'" viewBox="0 0 64 64"'+(decorative?' aria-hidden="true" focusable="false"':' role="img" aria-label="Mega Pass"')+'>';
+ const ticket='<path d="M14 10H50Q58 10 58 18V26C51 26 51 38 58 38V46Q58 54 50 54H14Q6 54 6 46V38C13 38 13 26 6 26V18Q6 10 14 10Z" fill="var(--pass-bg,var(--badge-bg,#f5e7b2))" stroke="var(--pass-ink,var(--badge-ink,#805b0c))" stroke-width="2.4" stroke-linejoin="round"/>';
+ const ink='var(--pass-ink,var(--badge-ink,#805b0c))';
+ const crown='<g fill="none" stroke="'+ink+'" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M18 24 26 30 32 20 38 30 46 24 42 40H22Z"/><path d="M24 46H40"/></g>';
+ return open+ticket+crown+'</svg>';
+}
 })(globalThis);

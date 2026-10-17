@@ -1,7 +1,30 @@
 /* Rewards & Themes uses the same four app theme tokens; no separate visual skin. */
 .mono-hub,.mono-page{color:var(--ink);overflow-wrap:anywhere}.mono-hub p,.mono-page p{line-height:1.6}.mono-kicker{margin:0 0 6px;font-size:10px;letter-spacing:.16em;font-weight:700;color:var(--muted)}
 .mono-page-head{padding:2px 0 10px}.mono-page-head h2{font-size:30px;line-height:1.05;margin:8px 0}.mono-page-head>p:last-child{font-size:13px;color:var(--muted);margin:0}.mono-back{margin:0 0 18px;padding-inline:12px}
-.mono-balance{display:grid;grid-template-columns:minmax(110px,.72fr) 1.28fr;align-items:center;gap:18px;padding:18px;background:var(--accent-soft);border:1px solid var(--accent-edge);border-radius:var(--radius);margin:8px 0 12px}.mono-balance>div{display:grid;gap:2px}.mono-balance strong{font-size:42px;line-height:1;font-variant-numeric:tabular-nums}.mono-balance-label{font:700 9px var(--mono);letter-spacing:.12em;color:var(--muted)}.mono-balance p{margin:0;font-size:12px;color:var(--muted)}.mono-balance-guest{grid-template-columns:1fr}.mono-balance-guest .mono-button{justify-self:start}
+.mono-balance{display:grid;gap:10px;padding:18px;background:var(--raised);border:1px solid var(--line);border-left:3px solid var(--accent-edge);border-radius:var(--radius);margin:8px 0 12px}
+.mono-balance-copy{display:grid;gap:3px;min-width:0}
+.mono-balance-label{font-weight:700;font-size:14px;letter-spacing:.06em;color:var(--ink)}
+.mono-balance-amount{font-size:42px;line-height:1;font-variant-numeric:tabular-nums;color:var(--ink)}
+.mono-balance-guest-note{font-size:16px;line-height:1.5;color:var(--ink)}
+.mono-balance-description{margin:0;font-size:16px;line-height:1.5;color:var(--ink)}
+.mono-balance .mono-button{justify-self:start}
+.mono-pass-card{display:grid;grid-template-columns:minmax(0,1fr);gap:16px;padding:20px;align-items:stretch}
+.mono-pass-head{display:grid;grid-template-columns:64px minmax(0,1fr);gap:14px;align-items:center}
+.mono-pass-emblem{display:block;flex:none}
+.mono-pass-emblem .pass-badge{width:64px;height:64px}
+.mono-pass-heading h3{margin:0;font-size:22px;line-height:1.2}
+.mono-pass-subtitle{margin:6px 0 0;font-size:14px;line-height:1.45;color:var(--muted)}
+.mono-pass-benefits{list-style:none;margin:0;padding:0;display:grid;gap:12px}
+.mono-pass-benefits li{display:grid;gap:2px;min-width:0}
+.mono-pass-benefits li b{font-size:16px;line-height:1.45}
+.mono-pass-benefits li span{font-size:14px;line-height:1.5;color:var(--muted)}
+.mono-pass-purchase{display:grid;gap:10px;padding-top:16px;border-top:1px solid var(--line)}
+.mono-pass-price{display:grid;gap:2px}
+.mono-pass-price b{font-size:24px;line-height:1.2;font-variant-numeric:tabular-nums}
+.mono-pass-period{font-size:14px;line-height:1.5;color:var(--muted)}
+.mono-pass-active{font-size:24px;line-height:1.2;font-weight:700;color:var(--ink)}
+.mono-pass-renewal,.mono-pass-retention{margin:0;font-size:14px;line-height:1.5;color:var(--muted)}
+.mono-pass-cta{width:100%;max-width:none;margin:0;min-height:50px;white-space:normal;text-align:center}
 .mono-section{margin-top:12px;padding:16px;background:var(--raised);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow)}.mono-section>p{font-size:12px;color:var(--muted);margin:7px 0 11px}.mono-section-head{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}.mono-section-head h3{margin:0;font-size:17px}.mono-section-head .pill{flex:none}
 .mono-reward-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin-top:12px}.mono-reward-card{display:flex;flex-direction:column;min-width:0;padding:13px;background:var(--soft);border:1px solid var(--line);border-radius:10px}.mono-reward-card>b{font-size:13px}.mono-reward-card p{flex:1;margin:6px 0 10px;font-size:10px;color:var(--muted);line-height:1.5}.mono-reward-card .mono-button{width:100%;margin:0}
 .mono-theme-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin-top:12px}.mono-theme-card{min-width:0;margin:0}.mono-theme-card .theme-preview{height:68px}.mono-theme-card small{line-height:1.35}
@@ -12,3 +35,4 @@
 :root[data-theme="paperclub"] :is(.mono-balance,.mono-section,.mono-reward-card,.mono-product){border-radius:16px 8px 15px 9px/9px 15px 8px 16px}
 :root[data-theme="afterhours"] :is(.mono-balance,.mono-section,.mono-reward-card,.mono-product){border-radius:3px}:root[data-theme="afterhours"] .mono-section{box-shadow:3px 3px 0 #2a1566}
 @media(max-width:359px){.mono-balance{grid-template-columns:1fr;padding:14px;gap:10px}.mono-reward-grid,.mono-theme-grid{grid-template-columns:1fr}.mono-product{grid-template-columns:1fr}.mono-product .mono-button{max-width:none;width:100%;margin:0}.mono-section{padding:13px}}
+@media(max-width:359px){.mono-pass-card{padding:16px;gap:14px}.mono-pass-head{grid-template-columns:48px minmax(0,1fr);gap:12px}.mono-pass-emblem .pass-badge{width:48px;height:48px}}

@@ -45,7 +45,7 @@ function decisionChoice(){
   (d.ambiguous?'':'<div class="profile-fields">'+btn('Log in to that account','decision-link')+'</div>')+
   '<div class="profile-fields">'+btn('Create new profile','decision-new','',true)+'</div>'+
   btn('Not now','decision-dismiss','',true)+
-  (d.ambiguous?'<p class="caption">We couldn't safely tell which profile matches this email. You can still create a new profile; to use an existing one, sign in with its current login method and add '+esc(providerName(d.provider))+' from Linked accounts. No profiles have been changed.</p>':'<p class="caption">We'll ask you to verify the existing profile before anything changes.</p>'),
+  (d.ambiguous?'<p class="caption">We couldn\'t safely tell which profile matches this email. You can still create a new profile; to use an existing one, sign in with its current login method and add '+esc(providerName(d.provider))+' from Linked accounts. No profiles have been changed.</p>':'<p class="caption">We\'ll ask you to verify the existing profile before anything changes.</p>'),
   'decision');
 }
 function decisionProof(mode){
@@ -54,14 +54,14 @@ function decisionProof(mode){
   '<p>Enter the <strong>email address and password of your existing Mega XOXO profile</strong>'+(mode==='link'?' to sign in to it.':' to schedule its deletion 30 days from now.')+'</p>'+
   '<div class="profile-fields"><label>Email<input id="cProofEmail" type="email" inputmode="email" autocomplete="email" maxlength="254"></label><label>Password<input id="cProofPassword" type="password" autocomplete="current-password" maxlength="128"></label></div>'+
   btn(mode==='link'?'Verify and log in':'Verify and continue','decision-proof',mode)+btn('Back','decision-back','',true)+
-  (mode==='link'?'<p class="caption">Verification uses the profile's existing email login. '+esc(providerName(d.provider))+' is added as a new sign-in method after this.</p>':'<p class="caption">Not sure, or forgot the password? Skip verification and we'll create a fresh profile without touching the old one. You can always delete the old profile later from its own settings.</p>'),
+  (mode==='link'?'<p class="caption">Verification uses the profile\'s existing email login. '+esc(providerName(d.provider))+' is added as a new sign-in method after this.</p>':'<p class="caption">Not sure, or forgot the password? Skip verification and we\'ll create a fresh profile without touching the old one. You can always delete the old profile later from its own settings.</p>'),
   'decision');
 }
 function decisionConfirmNew(){
  const d=decision;if(!d||!d.existing)return decisionProof('new');
  const date=new Date(Date.now()+30*86400000).toLocaleDateString(undefined,{year:'numeric',month:'long',day:'numeric'});
  frame('Create a new profile and delete the old one?',
-  '<p>Your new profile will start fresh. Progress, Coins, Crowns, rank and friends won't carry over, and purchases stay with the profile that bought them.</p>'+
+  '<p>Your new profile will start fresh. Progress, Coins, Crowns, rank and friends won\'t carry over, and purchases stay with the profile that bought them.</p>'+
   '<p>Your existing profile, <strong>'+esc(d.existing.username||'your profile')+' ('+esc(d.existing.tag||'')+')</strong>, will be scheduled for permanent deletion on <strong>'+esc(date)+'</strong> — 30 days from now. You can cancel before then by signing in to that profile and choosing Cancel deletion.</p>'+
   '<p>Some purchase and security records are retained as explained in our <a href="/privacy" target="_blank" rel="noopener">Privacy Policy</a>.</p>'+
   btn('Create profile and schedule deletion','decision-new-confirm')+

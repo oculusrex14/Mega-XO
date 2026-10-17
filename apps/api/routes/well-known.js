@@ -44,12 +44,27 @@ const PUBLIC_DIR = path.resolve(__dirname, '../../../public');
 const ASSOCIATION_UPLOAD_CERT_FINGERPRINT =
   '96:1C:C0:54:74:57:0E:60:58:4A:14:14:2B:B0:E3:D6:45:80:4B:CB:4C:16:88:62:A6:94:5E:41:75:32:93:37';
 
+/* The website ships the store-bound release build under `online.megaxo.game` (release contract
+ * MEGA_ANDROID_APPLICATION_ID), signed with the same owner-held upload key, while the default
+ * Gradle id is `online.megaxo.xoxo`. Both statements must be served or App Links silently fail
+ * to associate for whichever build is missing (audit MXA-REL-001, 2026-10-17).
+ */
+const RELEASE_APPLICATION_ID = 'online.megaxo.game';
+
 const DEFAULT_ASSET_LINKS = Object.freeze([
   Object.freeze({
     relation: Object.freeze(['delegate_permission/common.handle_all_urls']),
     target: Object.freeze({
       namespace: 'android_app',
       package_name: 'online.megaxo.xoxo',
+      sha256_cert_fingerprints: Object.freeze([ASSOCIATION_UPLOAD_CERT_FINGERPRINT])
+    })
+  })
+  ,Object.freeze({
+    relation: Object.freeze(['delegate_permission/common.handle_all_urls']),
+    target: Object.freeze({
+      namespace: 'android_app',
+      package_name: RELEASE_APPLICATION_ID,
       sha256_cert_fingerprints: Object.freeze([ASSOCIATION_UPLOAD_CERT_FINGERPRINT])
     })
   })

@@ -116,6 +116,7 @@ const MONETIZATION = Object.freeze([
  route('monetization.purchase', 'POST', '/api/monetization/purchase', { auth: AUTH.LINKED, csrf: true, key: KEY.REQUIRED, bodyLimit: 16384, owner: 'C' }),
  route('monetization.restore', 'POST', '/api/monetization/restore', { auth: AUTH.LINKED, csrf: true, key: KEY.REQUIRED, bodyLimit: 16384, owner: 'C' }),
  route('monetization.reward-ticket', 'POST', '/api/monetization/reward-ticket', { auth: AUTH.LINKED, csrf: true, key: KEY.REQUIRED, bodyLimit: 16384, owner: 'C' }),
+  route('monetization.exchange', 'POST', '/api/monetization/exchange', { auth: AUTH.LINKED, csrf: true, key: KEY.REQUIRED, bodyLimit: 16384, owner: 'C', note: 'MXA-ECO-011 pass exchange; Core-owned allowance ledger' }),
  route('monetization.interstitial-permit', 'POST', '/api/monetization/interstitial-permit', { auth: AUTH.LINKED, csrf: true, key: KEY.REQUIRED, bodyLimit: 16384, owner: 'C' }),
  route('v1.purchase', 'POST', '/api/v1/purchase', { auth: AUTH.LINKED, csrf: true, key: KEY.REQUIRED, bodyLimit: 16384, owner: 'C', note: 'community fallback is SHADOWED by the earlier monetization mount' }),
  route('monetization.admob-ssv', 'GET', '/api/monetization/admob-ssv', { auth: AUTH.VERIFIED_PROVIDER, origin: ORIGIN.NONE, owner: 'C', note: 'economic GET; signed query is the credential' }),

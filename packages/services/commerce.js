@@ -1,3 +1,17 @@
+/* MXA-ECO-011 (2026-10-18): the pass exchange split. Coins -> Crowns at the pass rate for the
+ * first PASS.exchangeMonthlyCoinAllowance Coins of each billing month (the durable 0060
+ * exchange_coins_used ledger), the rest at the frozen 10:1 policy rate. The discounted tranche
+ * comes from EARNED coins only - purchased coins keep the 10:1 provenance rate, so a
+ * crowns->coins->crowns round trip can never mint value. Pure and exported for tests. */
+function passExchangeSplit(amount, allowanceRemaining, earnedAvailable) {
+ if (!Number.isSafeInteger(amount) || amount <= 0) throw Error('INVALID_AMOUNT');
+ const cap = Math.max(0, Math.min(amount, allowanceRemaining, earnedAvailable));
+ let discounted = 8 * Math.floor(cap / 8);
+ while (discounted >= 0 && (amount - discounted) % 10 !== 0) discounted -= 8;
+ if (discounted < 0) throw Error('EXCHANGE_AMOUNT_INVALID');
+ return { discounted, standard: amount - discounted, crowns: discounted / 8 + (amount - discounted) / 10 };
+}
+
 /* packages/services/commerce.js - V5 P04 PostgreSQL store/monetization service (Core authority).
  *
  * The PostgreSQL successor of `server/monetization-store.js` (MonetizationStore). Every RULE stays
@@ -1201,6 +1215,47 @@ async function createCommerceService(pool, options = {}) {
   return { granted };
  }
 
+ /* The player-facing pass exchange: an idempotent Core command that debits Coins and credits
+  * Crowns inside ONE transaction with the period row locked, so two concurrent exchanges can
+  * never over-consume the monthly allowance. */
+ async function exchangeCoins(actor, key, amount) {
+  if (!idOK(key)) throw Error('IDEMPOTENCY_KEY_REQUIRED');
+  if (!Number.isSafeInteger(amount) || amount <= 0 || amount > 1000000) throw Error('INVALID_AMOUNT');
+  return transaction(actor, key, { type: 'pass-exchange', amount }, async (tx, graph, current) => {
+   if (!config.purchasesEnabled || !allowed(current)) throw Error('PURCHASE_UNAVAILABLE');
+   const now = tx.clock();
+   const passRow = await activePassRow(tx, actor, now);
+   const at = typeof now === 'number' ? new Date(now).toISOString() : now;
+   let periodRow = null;
+   if (passRow) {
+    periodRow = (await tx.query(
+     'SELECT subscription_id, period_start, exchange_coins_used FROM monetization.pass_periods WHERE subscription_id = $1 AND period_start <= $2 AND period_end > $2 ORDER BY period_start DESC LIMIT 1 FOR UPDATE',
+     [passRow.subscription_id, at])).rows[0] || null;
+   }
+   const used = periodRow ? Math.max(0, Number(periodRow.exchange_coins_used) || 0) : 0;
+   const allowanceRemaining = periodRow ? Math.max(0, M.PASS.exchangeMonthlyCoinAllowance - used) : 0;
+   const totalCoins = Number(current.coins) || 0;
+   const purchasedCoins = Number(current.purchasedCoins) || 0;
+   if (amount > totalCoins) throw Error('INSUFFICIENT_COINS');
+   const earnedAvailable = Math.max(0, totalCoins - purchasedCoins);
+   const split = passExchangeSplit(amount, allowanceRemaining, earnedAvailable);
+   /* Purchased coins are consumed by the standard-rate tranche first and keep the frozen 10:1
+    * provenance rate; purchasedCoins only ever enters at multiples of 10 (crowns->coins mints
+    * 10 per Crown), so the restricted-provenance invariant holds by construction. */
+   const purchasedUsed = Math.min(split.standard, purchasedCoins);
+   current.coins = (Number(current.coins) || 0) - amount;
+   current.purchasedCoins = purchasedCoins - purchasedUsed;
+   current.crowns = D.add(current.crowns || 0, split.crowns);
+   if (periodRow && split.discounted > 0) {
+    await tx.query('UPDATE monetization.pass_periods SET exchange_coins_used = exchange_coins_used + $2 WHERE subscription_id = $1 AND period_start = $3', [periodRow.subscription_id, split.discounted, periodRow.period_start]);
+   }
+   journal(graph, { id: 'exchange:' + key + ':out', actor, currency: 'coins', amount: -amount, reason: 'Pass exchange', source: 'conversion', at: now });
+   journal(graph, { id: 'exchange:' + key + ':in', actor, currency: 'crowns', amount: split.crowns, reason: 'Pass exchange', source: 'conversion', at: now });
+   await event(tx, actor, 'pass_exchange', split.crowns);
+   return { crowns: split.crowns, discountedCoins: split.discounted, standardCoins: split.standard, allowanceRemaining: Math.max(0, allowanceRemaining - split.discounted) };
+  });
+ }
+
  /* The actor-bound status poll: hides other actors' orders and settles through the provider. */
  async function polarOrderStatus(actor, checkoutId) {
   if (typeof actor !== 'string' || !actor || typeof checkoutId !== 'string' || !checkoutId) throw Error('ORDER_NOT_FOUND');
@@ -1358,6 +1413,15 @@ async function createCommerceService(pool, options = {}) {
     polar: config.polarProvider ? { available: true, products: Object.fromEntries(Object.entries(config.polarCatalog || {}).map(([id, entry]) => [id, { amountCents: entry.amountCents, currency: 'usd' }])) } : { available: false, products: {} },
     cashfree: config.cashfreeProvider ? { available: true, products: config.cashfreeCatalog || {} } : { available: false, products: {} },
     pass: own.pass || { active: false, periodEnd: null, cancelAtPeriodEnd: false },
+    /* MXA-ECO-011: the exchange surface the client needs to construct valid amounts. */
+    passExchange: await (async () => {
+     if (!own.pass || own.pass.active !== true) return { active: false, rate: D.POLICY.coinsPerCrown, remaining: 0, allowance: 0 };
+     const periodRow = (await tx.query(
+      'SELECT pp.exchange_coins_used FROM monetization.pass_periods pp JOIN monetization.polar_subscriptions ps ON ps.subscription_id = pp.subscription_id WHERE ps.actor_id = $1 AND ps.status = $2 AND pp.period_start <= $3 AND pp.period_end > $3 ORDER BY ps.created_at DESC, pp.period_start DESC LIMIT 1',
+      [actor, 'active', iso(now)])).rows[0] || null;
+     const used = periodRow ? Math.max(0, Number(periodRow.exchange_coins_used) || 0) : 0;
+     return { active: true, rate: M.PASS.exchangeCoinsPerCrown, remaining: Math.max(0, M.PASS.exchangeMonthlyCoinAllowance - used), allowance: M.PASS.exchangeMonthlyCoinAllowance };
+    })(),
     policy: M.POLICY,
    };
   });
@@ -1391,10 +1455,12 @@ async function createCommerceService(pool, options = {}) {
   polarOrderStatus,
   refundPolarOrder,
   processPassGrants,
+  passExchangeSplit,
+  exchangeCoins,
   /* Releases this service's unit-of-work state only. The pool is caller-owned (it carries a
     cluster-wide connection-budget claim) and is NEVER closed here. */
   close() { uow.close(); },
  });
 }
 
-module.exports = { createCommerceService, CORE_ROLE, normalizeAdUnits };
+module.exports = { createCommerceService, CORE_ROLE, normalizeAdUnits, passExchangeSplit };

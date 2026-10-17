@@ -90,6 +90,8 @@ const ROUTES = Object.freeze({
    * key /ticket was undocumented and unreachable from every client, so rewarded ads would 404.
    * The commerce op stays canonical. */
   '/api/monetization/reward-ticket': { op: 'ticket', method: 'POST', args: ['kind', 'platform'] },
+  /* MXA-ECO-011: the player-facing pass exchange (Coins -> Crowns, Core-owned allowance). */
+  '/api/monetization/exchange': { op: 'exchange', method: 'POST', args: ['amount'] },
   '/api/monetization/claim': { op: 'claim', method: 'POST', args: [] },
   '/api/monetization/interstitial-permit': { op: 'permit', method: 'POST', args: ['platform'] },
   '/api/monetization/purchase': { op: 'purchase', method: 'POST', args: ['evidence', 'restore'] },

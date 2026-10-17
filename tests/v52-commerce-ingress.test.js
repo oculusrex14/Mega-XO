@@ -32,6 +32,7 @@ function fakeCommerce() {
     polarOrderStatus: record('polarOrderStatus'),
     settlePolarWebhook: record('settlePolarWebhook'),
     exchangeCoins: record('exchangeCoins'),
+    handleStoreNotification: record('handleStoreNotification'),
   };
 }
 

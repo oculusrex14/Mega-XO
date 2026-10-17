@@ -377,6 +377,35 @@ function createCoreGateway({
       } finally { clearTimeout(timer); }
     },
 
+    /** MXA-ECO-005: forward the verified-provider store notification to the Core commerce lane.
+     * Actor-free by design; the credential rides as an argument so the Core-side handler can
+     * verify it against the provider before any dedupe or refund. */
+    async commerceStoreNotification({ kind, credential, payload } = {}) {
+      const path = '/ingress/commerce/command';
+      const bodyString = JSON.stringify({ op: 'store_notification', kind, credential, payload });
+      const timestamp = String(clock());
+      const signature = signRequest({ secret, timestamp, method: 'POST', path, actor: '', opKey: 'commerce-store-notification', bodyString });
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(Error('CORE_GATEWAY_TIMEOUT')), timeout);
+      timer.unref?.();
+      try {
+        const res = await fetchFn(baseUrl + path, { method: 'POST', body: bodyString, signal: controller.signal,
+          headers: { 'content-type': 'application/json', 'x-service-timestamp': timestamp,
+            'x-service-actor': '', 'x-service-opkey': 'commerce-store-notification',
+            'x-service-signature': signature } });
+        const text = await res.text();
+        let parsed; try { parsed = JSON.parse(text); } catch { parsed = null; }
+        if (res.status < 200 || res.status >= 300) {
+          const error = Error((parsed && parsed.error) || 'COMMERCE_STORE_NOTIFICATION_FAILED');
+          error.status = res.status;
+          throw error;
+        }
+        return parsed && parsed.result !== undefined ? parsed.result : parsed;
+      } catch (error) {
+        throw tournamentTransportError(error);
+      } finally { clearTimeout(timer); }
+    },
+
     /** LR13: forward the Cashfree webhook to the Core commerce settlement. Actor-free by design
      * (Cashfree's server calls it); the raw bytes + timestamp + signature headers are forwarded
      * verbatim so the HMAC is verified against exactly what Cashfree signed. */

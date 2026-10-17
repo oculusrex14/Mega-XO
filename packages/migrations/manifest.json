@@ -364,5 +364,12 @@
       "file": "migrations/0060_pass_allowances.sql",
       "sha256": "d1f3756cef82bb2b915b1f516ff35afe16e7985ae82a4486a24fdd473e29638d"
     }
+    ,
+    {
+      "id": 61,
+      "name": "0061_store_notifications",
+      "file": "migrations/0061_store_notifications.sql",
+      "sha256": "b1a406e3f4b2cb346ef188951d4957c08f811f5d4437cdb6b60b87e00bc89b28"
+    }
   ]
 }

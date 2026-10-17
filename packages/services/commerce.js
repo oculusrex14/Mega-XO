@@ -223,6 +223,8 @@ async function createCommerceService(pool, options = {}) {
   polarProvider: options.polarProvider || null,
   polarCatalog: options.polarCatalog || null,
   polarSuccessUrl: typeof options.polarSuccessUrl === 'string' ? options.polarSuccessUrl : '',
+  /* MXA-ECO-005: the composed verification classes (server/v5-store-notifications.js). */
+  storeNotificationHandlers: options.storeNotificationHandlers || null,
   /* Sol review 2026-10-18: the discount id must reach the service or the pack-discount guard is dead. */
   polarPackDiscountId: typeof options.polarPackDiscountId === 'string' && options.polarPackDiscountId ? options.polarPackDiscountId : null,
   adMode,
@@ -1257,6 +1259,33 @@ async function createCommerceService(pool, options = {}) {
  }
 
  /* The actor-bound status poll: hides other actors' orders and settles through the provider. */
+ /* MXA-ECO-005 (2026-10-18): the durable provider-notification dedupe. The verification classes
+  * stay DB-free; these two methods are the ONLY writers/readers of monetization.store_notifications
+  * and run on this service's core_runtime pool, keeping the API tier out of the ledger. */
+ async function storeNotificationSeen(store, notificationId) {
+  if (!['google', 'apple'].includes(store) || typeof notificationId !== 'string' || notificationId.length < 1 || notificationId.length > 200) return true; /* fail closed: an unreadable id is treated as seen */
+  const r = await pool.query('SELECT 1 FROM monetization.store_notifications WHERE store = $1 AND notification_id = $2 LIMIT 1', [store, notificationId]);
+  return r.rows.length > 0;
+ }
+ async function storeNotificationRecord(store, notificationId) {
+  if (!['google', 'apple'].includes(store) || typeof notificationId !== 'string' || notificationId.length < 1 || notificationId.length > 200) throw Error('INVALID_STORE_NOTIFICATION');
+  await pool.query('INSERT INTO monetization.store_notifications (store, notification_id, received_at) VALUES ($1, $2, $3) ON CONFLICT (store, notification_id) DO NOTHING', [store, notificationId, new Date(serviceNow()).toISOString()]);
+ }
+
+ /* The Core-side notification lane: the composed verifier class (credential + parse) runs
+  * OUTSIDE any wallet lock, then dedupe + the trusted refund route execute inside this service's
+  * own pool. A notification can never mint: the only economic path is commerce.refund. */
+ async function handleStoreNotification(provider, credential, payload) {
+  const handlers = config.storeNotificationHandlers || null;
+  const handler = handlers ? (provider === 'google' ? handlers.google : provider === 'apple' ? handlers.apple : null) : null;
+  if (!handler || typeof handler.handle !== 'function') throw Error('STORE_UNAVAILABLE');
+  return handler.handle(credential, payload, {
+   seen: (store, id) => storeNotificationSeen(store, id),
+   record: (store, id) => storeNotificationRecord(store, id),
+   onRefund: (store, transactionId) => refund(store, transactionId),
+  });
+ }
+
  async function polarOrderStatus(actor, checkoutId) {
   if (typeof actor !== 'string' || !actor || typeof checkoutId !== 'string' || !checkoutId) throw Error('ORDER_NOT_FOUND');
   const row = await uow.run(async (tx) => {
@@ -1457,6 +1486,9 @@ async function createCommerceService(pool, options = {}) {
   processPassGrants,
   passExchangeSplit,
   exchangeCoins,
+  storeNotificationSeen,
+  storeNotificationRecord,
+  handleStoreNotification,
   /* Releases this service's unit-of-work state only. The pool is caller-owned (it carries a
     cluster-wide connection-budget claim) and is NEVER closed here. */
   close() { uow.close(); },

@@ -572,6 +572,7 @@ async function main() {
   const { StorePurchaseProvider } = require(path.join(ROOT, 'server/store-purchase-provider.js'));
   const { GooglePlayBilling } = require(path.join(ROOT, 'server/google-play-billing.js'));
   const { AppleStoreKit } = require(path.join(ROOT, 'server/apple-storekit.js'));
+  const { GooglePlayStoreNotifications, AppleStoreNotificationsV5 } = require(path.join(ROOT, 'server/v5-store-notifications.js'));
   const { createRealtimeTransport } = require(path.join(ROOT, 'packages/services/realtime-transport.js'));
   const { resolveManagedRedisTarget } = require(path.join(ROOT, 'packages/services/managed-ephemera.js'));
   const { createEphemeraService } = require(path.join(ROOT, 'packages/services/ephemera.js'));
@@ -731,6 +732,7 @@ async function main() {
     return map;
   };
   let purchaseProvider = null;
+  let storeNotificationHandlers = null;
   if (process.env.MEGA_PURCHASES_ENABLED === 'true') {
     const storeSecretReader = require(path.join(ROOT, 'server/production/config.js')).secret;
     const googleJson = storeSecretReader(process.env, 'GOOGLE_PLAY_SERVICE_ACCOUNT_JSON');
@@ -755,7 +757,22 @@ async function main() {
     }
     if (googlePlay || apple) {
       const storeDb = createPgStoreDb({ corePool, workerPool });
-      purchaseProvider = new StorePurchaseProvider({ google: googlePlay ? new GooglePlayBilling(storeDb, googlePlay) : null, apple: apple ? new AppleStoreKit(storeDb, apple) : null });
+      const googlePlayInstance = googlePlay ? new GooglePlayBilling(storeDb, googlePlay) : null;
+      const appleStoreKitInstance = apple ? new AppleStoreKit(storeDb, apple) : null;
+      purchaseProvider = new StorePurchaseProvider({ google: googlePlayInstance, apple: appleStoreKitInstance });
+      /* MXA-ECO-005: the trusted store-notification verification classes. Composed only when the
+       * matching store verifier config exists; the Google lane additionally needs its push
+       * identity (service-account email and/or expected audience). Absent config keeps the
+       * notification routes honestly 503 — the API never accepts an unverifiable callback. */
+      storeNotificationHandlers = {
+        google: googlePlayInstance ? new GooglePlayStoreNotifications({
+          packageName: googlePlay.packageName,
+          serviceAccountEmail: googlePlay.pubsubServiceAccount || null,
+          expectedAudience: googlePlay.pubsubAudience || null,
+          billing: googlePlayInstance,
+        }) : null,
+        apple: appleStoreKitInstance ? new AppleStoreNotificationsV5({ storeKit: appleStoreKitInstance }) : null,
+      };
     }
   }
   /* LR13: the Cashfree web-commerce lane. When CASHFREE_APP_ID is present the WHOLE configuration
@@ -840,6 +857,7 @@ async function main() {
     adUnits,
     eligible: (account) => account && account.verified === true && account.suspended !== true && account.hold !== true,
     purchaseProvider,
+    storeNotificationHandlers,
     cashfreeProvider,
     cashfreeCatalog,
     cashfreeEnv,
@@ -968,6 +986,7 @@ async function main() {
       return coreGateway.commerceCommand(input);
     },
     ssv: (raw) => coreGateway.commerceSsv({ raw }),
+    storeNotification: (input) => coreGateway.commerceStoreNotification(input),
     cashfreeWebhook: (payload) => coreGateway.commerceCashfreeWebhook(payload),
     polarWebhook: (payload) => coreGateway.commercePolarWebhook(payload),
     checkCallback: async (req, provider) => callbackLimiter.check(provider, callbackSourceIp.resolve(req)),

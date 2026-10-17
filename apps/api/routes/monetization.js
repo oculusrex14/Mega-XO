@@ -138,19 +138,20 @@ async function handleMonetizationRoute(context, req, res) {
 
     /* MXA-ECO-005 (audit 2026-10-17): the trusted store-notification lanes the contracts
      * registry already names (monetization.google-play-rtdn / apple-notifications, owner 'W').
-     * They are provider-to-server: credential verification happens INSIDE the composed handler
-     * (Google push JWT / Apple signedPayload JWS), which then drives the Core-owned refund
-     * workflow with durable dedupe. With no handler composed the lane fails closed 503 — it
-     * never answers 200 to an unverified callback. */
+     * They are provider-to-server: the Core-side handler verifies the credential (Google push
+     * JWT against Google's JWKS / Apple signedPayload JWS against the pinned roots) BEFORE any
+     * dedupe or refund, through the same signed ingress as the SSV callback. With no composed
+     * verifier the lane fails closed 503 — it never acknowledges an unverifiable callback. */
     if (pathname === '/api/monetization/google-play-rtdn' || pathname === '/api/monetization/apple-notifications') {
       if (method !== 'POST') fail('METHOD_NOT_ALLOWED', 405);
-      const handlers = context.storeNotifications || null;
-      const handler = handlers ? (pathname.endsWith('google-play-rtdn') ? handlers.google : handlers.apple) : null;
-      if (!handler || typeof handler.handle !== 'function') fail('STORE_UNAVAILABLE', 503);
-      const notification = await parseJsonBody(req);
-      const result = pathname.endsWith('google-play-rtdn')
-        ? await handler.handle(String((req.headers && req.headers.authorization) || ''), notification)
-        : await handler.handle(notification);
+      if (!(await admitCallback(lane, req, res, 'store'))) return true;
+      if (typeof lane.storeNotification !== 'function') fail('STORE_UNAVAILABLE', 503);
+      const body = await bodyObject(req);
+      const result = await lane.storeNotification({
+        provider: pathname.endsWith('google-play-rtdn') ? 'google' : 'apple',
+        credential: pathname.endsWith('google-play-rtdn') ? String((req.headers && req.headers.authorization) || '') : '',
+        payload: body,
+      });
       sendJson(res, 200, result, { 'Cache-Control': CACHE_CONTROL });
       return true;
     }

@@ -282,7 +282,7 @@ class Fixture {
     const salt = crypto.randomBytes(16).toString('base64url');
     const passwordHash = crypto.scryptSync('SyntheticFixture1', Buffer.from(salt, 'base64url'), 32, { N: 16384, r: 8, p: 1, maxmem: 64 * 1024 * 1024 }).toString('base64url');
     const insertCredential = this.community.db.prepare('INSERT INTO email_credentials(email,actor,salt,password_hash,created,verified_at) VALUES(?,?,?,?,?,?)');
-    const insertIdentity = this.community.db.prepare('INSERT INTO identities VALUES(?,?,?,?)');
+    const insertIdentity = this.community.db.prepare('INSERT INTO identities(provider,subject,actor,created) VALUES(?,?,?,?)');
     insertCredential.run('Alice.Fixture@Example.test', 'alice-1', salt, passwordHash, this.now - 10 * DAY, this.now - 10 * DAY);
     insertIdentity.run('email', 'Alice.Fixture@Example.test', 'alice-1', this.now - 10 * DAY);
     insertCredential.run('bob.fixture@example.test', 'bob_2', salt, passwordHash, this.now - 9 * DAY, null);
@@ -706,7 +706,7 @@ class Fixture {
     insertPresence.run(sha('sess-live-alice-1'), 'alice-1', this.now - 5000, 1);
     insertPresence.run(sha('sess-expired-bob-2'), 'bob_2', this.now - 20 * DAY, 0);
 
-    const insertAttempt = this.community.db.prepare('INSERT INTO signin_attempts VALUES(?,?,?,?,?,?,?,?,?,?)');
+    const insertAttempt = this.community.db.prepare('INSERT INTO signin_attempts(state,session,provider,kind,intent,target,nonce,verifier,expires,used) VALUES(?,?,?,?,?,?,?,?,?,?)');
     insertAttempt.run(sha('attempt-used-1'), sha('sess-live-alice-1'), 'google', 'native', 'link', 'alice-1', 'nonce-used-1', 'verifier-used-1', this.now + 300000, 1);
     insertAttempt.run(sha('attempt-open-1'), sha('sess-live-alice-1'), 'apple', 'native', 'link', 'alice-1', 'nonce-open-1', 'verifier-open-1', this.now + 300000, 0);
 

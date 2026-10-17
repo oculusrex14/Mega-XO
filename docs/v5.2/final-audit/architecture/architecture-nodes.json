@@ -19038,7 +19038,7 @@
         "line": 378,
         "symbol": "/ads"
       },
-      "status": "IMPLEMENTED_UNVERIFIED",
+      "status": "BROKEN",
       "route": "/ads",
       "renderer": "sponsorsPage",
       "platform": "web",
@@ -19364,7 +19364,7 @@
         "line": 201,
         "symbol": "android:async function connections:Linked identities and sessions"
       },
-      "status": "IMPLEMENTED_UNVERIFIED",
+      "status": "BROKEN",
       "platform": "android",
       "state": "reauth/link/unlink/revoke"
     },
@@ -19675,7 +19675,7 @@
         "line": 378,
         "symbol": "/sponsors"
       },
-      "status": "IMPLEMENTED_UNVERIFIED",
+      "status": "BROKEN",
       "route": "/sponsors",
       "renderer": "sponsorsPage",
       "platform": "web",
@@ -20631,7 +20631,7 @@
         "line": 201,
         "symbol": "ios:async function connections:Linked identities and sessions"
       },
-      "status": "IMPLEMENTED_UNVERIFIED",
+      "status": "BROKEN",
       "platform": "ios",
       "state": "reauth/link/unlink/revoke"
     },

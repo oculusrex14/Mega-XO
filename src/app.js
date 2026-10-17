@@ -32,10 +32,11 @@ let localSession=LS?LS.createSession({baseURL:location?.href}):null;
 const G=window.MegaGame,D=window.MegaDomain,I=window.MegaIcons,$=s=>document.querySelector(s);
 const KEY='mega_v32_state',SNAPSHOT_VERSION=2,escape=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const parse=(key)=>{try{return JSON.parse(localStorage.getItem(key)||'null');}catch{return null;}};
-let data=parse(KEY);if(!data||data.version!==3.2){data=D.fresh();const old=parse('mega_v3_settings');if(old){Object.assign(data.settings,old);data.settings.haptics=old.haptic!==false;}data.legacy=parse('mega_v3_stats');}
-/* C8/APP-022: a freshly downloaded native app starts in After Hours (owner decision). A saved
-   or migrated theme always wins; browser and web defaults are unchanged. */
-if(data.settings.theme==='vector'&&!parse('mega_v3_settings')&&document.querySelector?.('meta[name="mega-account-transport"]')?.content==='native')data.settings.theme='afterhours';
+let data=parse(KEY);const firstRun=!data;if(!data||data.version!==3.2){data=D.fresh();const old=parse('mega_v3_settings');if(old){Object.assign(data.settings,old);data.settings.haptics=old.haptic!==false;}data.legacy=parse('mega_v3_stats');}
+/* C8/APP-022 (SAGAN-001): After Hours applies ONLY on a true first run of the native app; a
+   saved current-version theme (e.g. Vector) must survive relaunch. Migrated legacy themes are
+   handled by the legacy map below; browser and web defaults are unchanged. */
+if(firstRun&&document.querySelector?.('meta[name="mega-account-transport"]')?.content==='native')data.settings.theme='afterhours';
 data.playSeconds=data.playSeconds||{};D.migrate(data);data.profile=data.profile||{};
 const legacyThemeMap={dark:'midnight',paper:'paperclub',neon:'afterhours',light:'vector'};
 if(legacyThemeMap[data.settings.theme])data.settings.theme=legacyThemeMap[data.settings.theme];

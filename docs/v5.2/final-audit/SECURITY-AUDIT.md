@@ -10,6 +10,8 @@ The shared checkout advanced during the audit to a385774ef24ebbecb71ec9d73cd2e65
 
 Full descriptions, primary file/symbol/line, commands, owner and permitted status are in [the finding register](evidence/planck-findings.csv). None of the proposed remediations was implemented by this workstream.
 
+Security register: 11 entries — 4 P1, 7 P2; 5 verified defects, 3 suspected risks and 3 NOT_RUN checks. Across all three Planck reports the register has 38 entries: 2 P0, 26 P1, 10 P2 (23 VERIFIED_DEFECT, 6 SUSPECTED_RISK, 2 UNTESTED_ASSUMPTION, 7 NOT_RUN). Severity totals include evidence gaps; they are not 38 proven exploits.
+
 | ID | Priority / status | Evidence and required action |
 |---|---|---|
 | MXA-SEC-001 | P1 VERIFIED_DEFECT | account.js:296-300 emits the same token in a non-Secure development cookie on production paths; helpers.js:214 accepts it. Production must issue only the host-prefixed secure credential. |
@@ -30,7 +32,7 @@ Infrastructure P0s MXA-INF-001/002 and monetization P1s MXA-ECO-001–012 also a
 
 - **Observed live:** retired host /game → 308 to https://megaxo.online/game → 200; www → 301 to apex → 200; /livez 200; guest /api/account/profile 401; guest /api/monetization/status 404; /opsz 503; unsigned core.megaxo.online/ingress/command 401. No player response body was collected.
 - **Observed source:** controls and gaps described below. Source existence does not mean deployed or provider-approved.
-- **Observed GitHub:** exact-baseline audit/PG service jobs succeeded; native gameplay and browser presentation had failures. See infrastructure report for exact run/job IDs and cancelled retry.
+- **Observed GitHub:** runs associated with the baseline head include successful audit/PG service jobs; native gameplay and browser presentation had failures. See infrastructure report for run/job IDs, the cancelled retry and separate checkout/build provenance.
 - **Not executed:** authenticated production probes, receipt/ad replay against providers, economic writes, exploit traffic, physical device acceptance, DB catalog queries and a new vulnerability scan.
 
 ## Identity, authentication and authorization
@@ -58,8 +60,8 @@ Abbreviations: P=public; S=live session; L=linked verified actor; N=native verif
 | OPTIONS on API routes | P; CORS preflight 204 before route handlers; no actor grant | index:75; middleware/cors:100 |
 | GET /api/account/session | P/S; explicit durable anonymous bootstrap/own session; no wallet | account:getSession:323 |
 | POST /api/account/start | P/S; provider allowlist, one-use state/nonce/PKCE; explicit first-use bootstrap; cookie CSRF | account:postAccountStart:637 |
-| POST /api/account/email | S/explicit auth bootstrap flow; validated action, OTP/address/session budgets, delivery material stripped | account:postEmail:355; accounts:583 |
-| POST /api/account/logout, /auth/logout | S; own session or all-device revocation; CSRF; clear cookie aliases | account:handleLogout:253; dispatcher:928 |
+| POST /api/account/email | S/explicit auth bootstrap flow; validated action, OTP/address/session budgets, delivery material stripped | account:postEmail:361; accounts:583 |
+| POST /api/account/logout, /auth/logout | S; own session or all-device revocation; CSRF; clear cookie aliases | account:logout:257; dispatcher:928 |
 | GET /api/account/profile | L; caller projection only | account:getProfile:25 |
 | POST /api/account/profile | L; explicit profile-field allowlist, no wallet fields | account:updateProfile:65 |
 | GET /api/account/save | L; caller practice archive only | account:getSave:92 |
@@ -68,8 +70,8 @@ Abbreviations: P=public; S=live session; L=linked verified actor; N=native verif
 | POST /api/account/delete | L; confirmation/recent-auth and durable deletion policy; writes | account:deleteAccount:162 |
 | POST /api/account/unlink | L; own provider only; last-login-method protection | account:unlinkProvider:189 |
 | GET /api/account/deletion | L; own deletion availability/policy | account:getDeletionStatus:209 |
-| GET /api/account/research | L; own consent record only | account:getResearch:222 |
-| POST /api/account/research | L; validated own choice, CSRF; no economic write | account:postResearch:236 |
+| GET /api/account/research | L; own consent record only | account:getResearchConsent:225 |
+| POST /api/account/research | L; validated own choice, CSRF; no economic write | account:postResearchConsent:239 |
 | POST /api/account/native/challenge | P/N/S; validated provider, explicit anonymous attempt if needed, no cookie response | account:773 |
 | POST /api/account/native/finish | Bound attempt + verified provider ID token; rotates session, no cookie response | account:806 |
 | POST /api/account/native/token | Bound provider grant or refresh secret; configured signer/audience; refuses mixed credentials | account:838 |

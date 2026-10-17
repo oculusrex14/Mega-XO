@@ -1,6 +1,6 @@
 # V5.2 infrastructure and recovery audit — Planck
 
-Requested source baseline: **7f582b749a1128b86e53ddcbcda57b569b0953cf**, PR #30 → V5.2. Live observations were read-only on 17 October 2026, approximately 06:05–06:18 UTC. Source, current working checkout, CI run head and actual deployed runtime are separate evidence identities.
+Requested source baseline: **7f582b749a1128b86e53ddcbcda57b569b0953cf**, PR #30 → V5.2. Audit/evidence window: 17 October 2026, approximately 06:05–06:24 UTC. Source, current working checkout, CI run head and actual deployed runtime are separate evidence identities.
 
 The canonical game is https://megaxo.online. PostgreSQL is the serving authority; the stopped SQLite application is retained recovery material, not an acceptable fallback writer. Vercel projects are a separate deferred surface and are not the game's origin.
 
@@ -22,6 +22,8 @@ Only the assigned reports/register were written. No local test suite, deployment
 | MXA-INF-010 | P2 NOT_RUN | Prove restoration of an actual production archive, storage/retention policy and alert delivery without substituting disposable tests. |
 
 Full file/symbol/line, impact and command evidence: [planck-findings.csv](../evidence/planck-findings.csv). The integrator owns overall release certification; this workstream has unresolved release-blocking findings.
+
+Infrastructure register: 10 entries — 2 P0, 5 P1, 3 P2; 5 VERIFIED_DEFECT, 1 SUSPECTED_RISK, 1 UNTESTED_ASSUMPTION and 3 NOT_RUN.
 
 ## Observed serving topology
 

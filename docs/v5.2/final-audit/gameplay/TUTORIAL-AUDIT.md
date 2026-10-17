@@ -40,7 +40,7 @@ The app uses `src/tutorial/client.js` and the website uses `apps/web/bot-compat.
 - `tests/v51-bot-tutorial.test.js`, `tests/v51-p21-bot.test.js`: integration/adapter/rule and unpaid-practice boundaries.
 - `tests/bot/tutorial-browser.py`, `worker-browser.py`, `pack-browser.py`: existing scripted browser harnesses.
 - [GitHub Actions bot/tutorial job](https://github.com/oculusrex14/Mega-XO/actions/runs/39006747072/job/117320656188): observed SUCCESS for the PR source; `.github/workflows/v52-bot-tutorial.yml` includes Node regression, tutorial/browser, worker/pack and accessibility harness stages.
-- [Canonical benchmark ledger](../../../../v5.1/bot-ai/BENCHMARKS.md) explicitly records fresh-user onboarding/physical accessibility as unmeasured in its evidence scope.
+- [Canonical benchmark ledger](../../../v5.1/bot-ai/BENCHMARKS.md) explicitly records fresh-user onboarding/physical accessibility as unmeasured in its evidence scope.
 
 The exact PR input head was `7f582b7`; GitHub pull-request jobs can execute the synthetic merge. Do not relabel this as a physical Android/iPhone study or live-user completion rate. The current P21 presentation failure also skipped that workflow's automatic accessibility stage; another harness's success does not erase the skip.
 

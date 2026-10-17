@@ -4,6 +4,8 @@ Baseline: **7f582b749a1128b86e53ddcbcda57b569b0953cf**, PR #30 → V5.2; 17 Octo
 
 This report distinguishes reviewed implementation, isolated GitHub evidence, observed live behavior and provider/device acceptance. It does not certify store/provider approval. Finding statuses and exact primary anchors are in [planck-findings.csv](../evidence/planck-findings.csv); the full route matrix is in [SECURITY-AUDIT.md](../SECURITY-AUDIT.md).
 
+Economy/monetization register: 17 P1 entries — 13 VERIFIED_DEFECT, 2 SUSPECTED_RISK, 1 UNTESTED_ASSUMPTION and 1 NOT_RUN. Non-executed provider acceptance is not represented as a verified vulnerability.
+
 ## Launch-relevant findings
 
 | ID | Priority / status | Evidence-backed finding |
@@ -61,7 +63,7 @@ Positive controls present in candidate source:
 - Google checks purchased state/account binding through the provider; Apple pins ES256 JWS roots/chain, bundle, environment, quantity and app-account token (server/google-play-billing.js:normalize/verify; server/apple-storekit.js:18-44).
 - Native Kotlin treats PENDING as STORE_PENDING (:137-138), not success. Both native classes produce evidence only. Neither a client success flag nor SDK display callback is a server mint.
 
-These source controls do **not** close ECO-017 or actual store acceptance. Exact-SHA isolated CI tests separate components; it does not establish the real async-provider composition.
+These source controls do **not** close ECO-017 or actual store acceptance. Isolated CI associated with the baseline tests separate components; it does not establish the real async-provider composition. Preserve the run-head and checkout/build identities separately as noted in the infrastructure report.
 
 Finalization is intended after durable receipt credit (commerce.js:645-663). On failure purchase returns finalizationPending. The candidate exports processPurchaseFinalizations but the production entry/worker never calls it (ECO-016); a compiled retry method is not a running recovery service.
 

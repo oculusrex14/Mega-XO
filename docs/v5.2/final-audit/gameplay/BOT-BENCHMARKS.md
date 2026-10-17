@@ -1,6 +1,6 @@
 # Bot benchmarks — existing measurements only
 
-Audit source context: `7f582b749a1128b86e53ddcbcda57b569b0953cf`, 2026-10-17. **No benchmark, league, training run or local product test was executed for this report.** Only existing measurements in [the canonical benchmark ledger](../../../../v5.1/bot-ai/BENCHMARKS.md) and existing measured league artifacts are reproduced. Unmeasured current behavior is NOT_RUN.
+Audit source context: `7f582b749a1128b86e53ddcbcda57b569b0953cf`, 2026-10-17. **No benchmark, league, training run or local product test was executed for this report.** Only existing measurements in [the canonical benchmark ledger](../../../v5.1/bot-ai/BENCHMARKS.md) and existing measured league artifacts are reproduced. Unmeasured current behavior is NOT_RUN.
 
 ## Measured provenance
 

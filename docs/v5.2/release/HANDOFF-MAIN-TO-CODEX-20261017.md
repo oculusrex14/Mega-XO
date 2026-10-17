@@ -14,13 +14,13 @@ the files both lanes have already edited (§4). Claim a file before editing it.
 
 | Thing | Value |
 | --- | --- |
-| `origin/V5.2` | `9706d7c` — the default branch, the single integration candidate |
-| Working dir `/Users/oculus/Downloads/Test XO` | on `V5.2` @ `9706d7c`, **0 uncommitted**, in sync with origin |
+| `origin/V5.2` | the default branch, the single integration candidate (tip moves as docs land; re-resolve with `git rev-parse origin/V5.2` — this handoff itself is one such commit) |
+| Working dir `/Users/oculus/Downloads/Test XO` | on `V5.2`, **0 uncommitted**, in sync with origin at handoff time |
 | `main` | **does not exist** on origin — V5 is not promoted (correct) |
 | `V4.1` | `455b8ec`, untouched — shipped v4.1.2 production lane |
 | Other remote heads | `V5.1`, 2 × `preserve/v51-*` (deliberate archives) |
 | Open PRs | **0** |
-| CI on `9706d7c` | 6/6 path-filtered workflows green (gameplay capture, P15, P18, P19, PostgreSQL integration, release engineering) |
+| CI | path-filtered workflows green at handoff time (gameplay capture, P15, P18, P19, PostgreSQL integration, release engineering) |
 | Production `megaxo.online` | live, `/livez` ok, **but serving a ~Oct 15 build** (§5) |
 
 Both lanes commit **directly to `V5.2`**, interleaved by time, as the same git identity
@@ -117,20 +117,19 @@ built is deployed.
 
 ---
 
-## 6. Process ask — do not keep committing to V5.2 directly
+## 6. Process change — OWNER-APPROVED (effective now)
 
-Both of us committing to the same branch is exactly the overlap you were worried about. Main's
-proposal (owner can overrule):
+The owner has approved this switch for all future work. Both lanes stop committing directly to the
+integration branch:
 
-1. **Codex branch:** `codex/app-ui` for further app-UI work; open a PR targeting `V5.2`.
-2. **Main branch:** `main/integration` for review fixes; PR targeting `V5.2`.
-3. **One merge owner at a time.** V5.2's tip is the integration point; rebase your branch on it and
-   merge in order. Never force-push `V5.2`/`V5.1`/`V4.1`.
-4. **File claim before edit** on the §4 overlap list.
+1. **Codex branch:** a single general-purpose **`codex`** branch for *all* Codex work (not
+   app-UI-only); open a PR targeting `V5.2`.
+2. **Main branch:** `main/integration` for Main's review/integration work; PR targeting `V5.2`.
+3. **One merge owner at a time.** `V5.2` is the integration point; rebase your branch on its tip and
+   merge in order. **Never force-push** `V5.2` / `V5.1` / `V4.1`.
+4. **File claim before edit** on the §4 overlap list (a one-line note in the PR or the board).
 5. **Every claimed verification records** task/case IDs, exact SHA, command, environment, result.
-
-If the owner prefers the current direct-to-V5.2 model, then at minimum: only ever `git pull --rebase`
-your own commits and never rewrite a commit the other lane might have based on.
+6. **No deployment by either lane** without the owner's explicit go-ahead (see §8).
 
 ---
 
@@ -138,6 +137,7 @@ your own commits and never rewrite a commit the other lane might have based on.
 
 1. **Confirm or correct** §2 — especially the two judgement calls (7bedd6c body ceiling; 716c5b1's
    Google `email` scope pin). If the OIDC `email` scope was not an owner decision, say so.
+   (The branch/PR process question is now settled by the owner — §6.)
 2. **Own the app-UI receipt** as the single source of truth for APP-001…APP-022; Main did not review
    those 16 commits and will not claim them.
 3. **Don't edit Main's review-fix files** without saying so: `apps/api/index.js`,
@@ -152,13 +152,16 @@ your own commits and never rewrite a commit the other lane might have based on.
 
 ## 8. Residual / pre-deploy (owner-actionable)
 
+**DEPLOYMENT IS ON HOLD by the owner** (2026-10-17): the owner is making one more small change
+first. Neither lane deploys the website until the owner explicitly says go.
+
 - Add `POLAR_PRICE_MEGA_PASS` / `POLAR_PRICE_CENTS_MEGA_PASS` to the approved env (optional; an absent
   price degrades only the pass). Verify the Polar **sandbox** price ids for all five products.
 - Point webhooks at `https://megaxo.online/api/monetization/{polar,cashfree}/webhook`.
 - **LR02 final CI stays last** per the owner's standing order.
 - iPhone device-matrix pass outstanding.
-- Deploy the annotation bundle from a pinned `V5.2` SHA + the matching API deployment, then re-run the
-  §5 live checks.
+- **When the owner lifts the hold:** deploy the annotation bundle from a pinned `V5.2` SHA + the
+  matching API deployment, then re-run the §5 live checks.
 
 ---
 

@@ -14,6 +14,8 @@ positional `INSERT … VALUES(?,…)` and broke at runtime. All three now name t
 | Migration fixture inserts | `20cc65c` | `table identities has 5 columns but 4 values were supplied`; P18 disposable job's `sqlite-snapshot-to-postgres-import` suite failing since `5977dcfc` (last green `493b2ec`) | full P18 disposable suite 61 assertions / 6 suites green locally |
 | Production email write | `18035c2` | same error in `server/production/email-auth.js` verify() — every email signup/link/verify aborted; failed P1-9 OTP-abuse + account-enumeration acceptance tests | p1-abuse-acceptance 9/9, affected account suites 41/41 |
 | Guard test | `1170a36` | none (preventive) | `tests/v5-schema-insert-drift.test.js` catches the exact regression when reintroduced |
+| Web test fixtures | `c1632d1` | the lane added `apps/web/store.js` (imported by `app.js`) but the `v5-p21-account-web` sandbox did not spread it → 7 × `WEB_PRODUCT_IDS is not defined`; the sponsors redesign renamed the preferences panel and copy, leaving `v52-public-annotations` asserting dead markup | account-web 7/7, annotations 7/7, affected web suites 90/90 |
+| Frozen-contract tests | `716c5b1` | `f02f3ec` added the crown-banked `purchase` lane (pre-existing: fails on `493b2ec`/`f02f3ec`/`9ef2ebf`); `8b8d811` added the owner-decided Google `email` scope | powers + provider-authorization 31/31 |
 
 ## What Main verified on the lane (unchanged from the review record)
 

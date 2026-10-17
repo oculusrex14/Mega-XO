@@ -31,6 +31,17 @@ test('appleTeamPrefixFor: accepts exactly 10 A-Z0-9 characters', () => {
   assert.equal(wellKnown.appleTeamPrefixFor('ABCDE1234'), 'TEAMID', '9 chars refused');
 });
 
+test('appleAssociationForTeam: a comma-separated team list serves one appID per team (MXA-REL-002)', () => {
+  const doc = wellKnown.appleAssociationForTeam('D5TQJ76T44, 6N6C9338NX');
+  assert.deepEqual(doc.applinks.details[0].appIDs, ['D5TQJ76T44.online.megaxo.xoxo', '6N6C9338NX.online.megaxo.xoxo']);
+  assert.deepEqual(doc.webcredentials.apps, ['D5TQJ76T44.online.megaxo.xoxo', '6N6C9338NX.online.megaxo.xoxo']);
+});
+
+test('appleAssociationForTeam: invalid entries are dropped and a fully-invalid list fails closed', () => {
+  const doc = wellKnown.appleAssociationForTeam('nope, alsobad');
+  assert.deepEqual(doc.applinks.details[0].appIDs, ['TEAMID.online.megaxo.xoxo']);
+});
+
 test('getAppleAppSiteAssociation: context.appleTeamId flows into the served document', async () => {
   /* Capture the written body through a minimal response stub — no socket. */
   let body = null;

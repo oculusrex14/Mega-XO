@@ -2,11 +2,11 @@
   "metadata": {
     "schema": "mega-xoxo-final-audit-graph/v1",
     "generator": "scripts/audit/generate-architecture-graph.cjs",
-    "source_commit": "2714204b67b29e45a0990a1c02bba836cbf2c8d3",
-    "source_digest": "8908a2d8213b7a09e48d0cec73c76505e066f022b2374f1e01d0c1bde378c6bb",
+    "source_commit": "7f582b749a1128b86e53ddcbcda57b569b0953cf",
+    "source_digest": "1a07d02231e2f6a93590f940c91f6f8cef98e176e67b9d81adb6967bcba8d49b",
     "method": "deterministic literal/regex extraction plus explicit curated feature/screen/provider mappings; not a complete AST/call graph",
-    "source_file_count": 737,
-    "node_count": 2979,
+    "source_file_count": 747,
+    "node_count": 2983,
     "edge_count": 7748,
     "feature_count": 96,
     "website_route_count": 37,
@@ -1697,7 +1697,7 @@
       "label": "appleAssociationForTeam",
       "source": {
         "path": "apps/api/routes/well-known.js",
-        "line": 92,
+        "line": 77,
         "symbol": "appleAssociationForTeam"
       },
       "status": "IMPLEMENTED_UNVERIFIED"
@@ -1873,7 +1873,7 @@
       "label": "sendPublicAsset",
       "source": {
         "path": "apps/api/routes/well-known.js",
-        "line": 233,
+        "line": 218,
         "symbol": "sendPublicAsset"
       },
       "status": "IMPLEMENTED_UNVERIFIED"
@@ -1961,7 +1961,7 @@
       "label": "getAssetLinks",
       "source": {
         "path": "apps/api/routes/well-known.js",
-        "line": 165,
+        "line": 150,
         "symbol": "getAssetLinks"
       },
       "status": "IMPLEMENTED_UNVERIFIED"
@@ -2038,7 +2038,7 @@
       "label": "handleWellKnownRoute",
       "source": {
         "path": "apps/api/routes/well-known.js",
-        "line": 356,
+        "line": 341,
         "symbol": "handleWellKnownRoute"
       },
       "status": "IMPLEMENTED_UNVERIFIED"
@@ -2071,7 +2071,7 @@
       "label": "appleTeamPrefixFor",
       "source": {
         "path": "apps/api/routes/well-known.js",
-        "line": 88,
+        "line": 73,
         "symbol": "appleTeamPrefixFor"
       },
       "status": "IMPLEMENTED_UNVERIFIED"
@@ -2148,7 +2148,7 @@
       "label": "getAppleAppSiteAssociation",
       "source": {
         "path": "apps/api/routes/well-known.js",
-        "line": 180,
+        "line": 165,
         "symbol": "getAppleAppSiteAssociation"
       },
       "status": "IMPLEMENTED_UNVERIFIED"
@@ -2291,7 +2291,7 @@
       "label": "readStaticFile",
       "source": {
         "path": "apps/api/routes/well-known.js",
-        "line": 146,
+        "line": 131,
         "symbol": "readStaticFile"
       },
       "status": "IMPLEMENTED_UNVERIFIED"
@@ -2313,7 +2313,7 @@
       "label": "sendLegalHtml",
       "source": {
         "path": "apps/api/routes/well-known.js",
-        "line": 217,
+        "line": 202,
         "symbol": "sendLegalHtml"
       },
       "status": "IMPLEMENTED_UNVERIFIED"
@@ -2445,7 +2445,7 @@
       "label": "getHealth",
       "source": {
         "path": "apps/api/routes/well-known.js",
-        "line": 195,
+        "line": 180,
         "symbol": "getHealth"
       },
       "status": "IMPLEMENTED_UNVERIFIED"
@@ -2709,7 +2709,7 @@
       "label": "handleAuthCallback",
       "source": {
         "path": "apps/api/routes/well-known.js",
-        "line": 261,
+        "line": 246,
         "symbol": "handleAuthCallback"
       },
       "status": "IMPLEMENTED_UNVERIFIED"
@@ -9687,17 +9687,6 @@
       "status": "IMPLEMENTED_UNVERIFIED"
     },
     {
-      "id": "ConfigFlag_435330d18b45de20",
-      "type": "Config-Flag",
-      "label": "apps/api/.vercel/project.json",
-      "source": {
-        "path": "apps/api/.vercel/project.json",
-        "line": 1,
-        "symbol": "module"
-      },
-      "status": "IMPLEMENTED_UNVERIFIED"
-    },
-    {
       "id": "ConfigFlag_4366b3dc6b2256c0",
       "type": "Config-Flag",
       "label": "DATABASE_URL",
@@ -10574,17 +10563,6 @@
         "path": "scripts/v5/pg-smoke.js",
         "line": 88,
         "symbol": "env:V5_PG_URL"
-      },
-      "status": "IMPLEMENTED_UNVERIFIED"
-    },
-    {
-      "id": "ConfigFlag_84f9e733b0976e2d",
-      "type": "Config-Flag",
-      "label": "apps/api/.vercel/node/package-manifest.json",
-      "source": {
-        "path": "apps/api/.vercel/node/package-manifest.json",
-        "line": 1,
-        "symbol": "module"
       },
       "status": "IMPLEMENTED_UNVERIFIED"
     },
@@ -15180,7 +15158,7 @@
       "label": "Native deep links and app associations",
       "source": {
         "path": "apps/api/routes/well-known.js",
-        "line": 54,
+        "line": 47,
         "symbol": "DEFAULT_ASSET_LINKS"
       },
       "status": "IMPLEMENTED_UNVERIFIED",
@@ -23020,6 +22998,17 @@
       "status": "IMPLEMENTED_UNVERIFIED"
     },
     {
+      "id": "Utility_0cbc812cdc6493cd",
+      "type": "Utility",
+      "label": "native/android/build.gradle.kts",
+      "source": {
+        "path": "native/android/build.gradle.kts",
+        "line": 1,
+        "symbol": "module"
+      },
+      "status": "IMPLEMENTED_UNVERIFIED"
+    },
+    {
       "id": "Utility_0cc1b2398532be68",
       "type": "Utility",
       "label": "scripts/v51/v5-production-server.cjs",
@@ -25110,6 +25099,17 @@
       "status": "IMPLEMENTED_UNVERIFIED"
     },
     {
+      "id": "Utility_338605f263c1d635",
+      "type": "Utility",
+      "label": "native/android/app/build.gradle.kts",
+      "source": {
+        "path": "native/android/app/build.gradle.kts",
+        "line": 1,
+        "symbol": "module"
+      },
+      "status": "IMPLEMENTED_UNVERIFIED"
+    },
+    {
       "id": "Utility_33f191e2c6d3b0ad",
       "type": "Utility",
       "label": "jwkThumbprint",
@@ -26866,6 +26866,17 @@
         "path": "packages/services/provider-workflows.js",
         "line": 356,
         "symbol": "createProviderWorkflow"
+      },
+      "status": "IMPLEMENTED_UNVERIFIED"
+    },
+    {
+      "id": "Utility_560ea04da108b9fe",
+      "type": "Utility",
+      "label": "native/ios/MegaXO/Info.plist",
+      "source": {
+        "path": "native/ios/MegaXO/Info.plist",
+        "line": 1,
+        "symbol": "module"
       },
       "status": "IMPLEMENTED_UNVERIFIED"
     },
@@ -31633,6 +31644,17 @@
       "status": "IMPLEMENTED_UNVERIFIED"
     },
     {
+      "id": "Utility_ad911166e7c1ba16",
+      "type": "Utility",
+      "label": "native/ios/MegaXO/MegaXO.dev-entitlements.plist",
+      "source": {
+        "path": "native/ios/MegaXO/MegaXO.dev-entitlements.plist",
+        "line": 1,
+        "symbol": "module"
+      },
+      "status": "IMPLEMENTED_UNVERIFIED"
+    },
+    {
       "id": "Utility_ad979a5584de4e14",
       "type": "Utility",
       "label": "packages/migrations/migrations/0026_backup_reader_explicit_read_grants.sql",
@@ -32916,6 +32938,17 @@
         "path": "packages/services/read-cache.js",
         "line": 331,
         "symbol": "canUpdateProjection"
+      },
+      "status": "IMPLEMENTED_UNVERIFIED"
+    },
+    {
+      "id": "Utility_c3b19f10e2277064",
+      "type": "Utility",
+      "label": "native/ios/MegaXO.xcodeproj/project.pbxproj",
+      "source": {
+        "path": "native/ios/MegaXO.xcodeproj/project.pbxproj",
+        "line": 1,
+        "symbol": "module"
       },
       "status": "IMPLEMENTED_UNVERIFIED"
     },
@@ -35083,6 +35116,17 @@
         "path": "src/powers-ui.js",
         "line": 36,
         "symbol": "mergeInventory"
+      },
+      "status": "IMPLEMENTED_UNVERIFIED"
+    },
+    {
+      "id": "Utility_eeb8e50de6df8ef8",
+      "type": "Utility",
+      "label": "native/android/settings.gradle.kts",
+      "source": {
+        "path": "native/android/settings.gradle.kts",
+        "line": 1,
+        "symbol": "module"
       },
       "status": "IMPLEMENTED_UNVERIFIED"
     },

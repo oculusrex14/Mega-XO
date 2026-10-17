@@ -1057,3 +1057,29 @@ html,body{min-height:100dvh}
 :root[data-theme="midnight"] .rank-badge.pass-badge{--pass-bg:#4c4123;--pass-ink:#f2d88d}
 :root[data-theme="paperclub"] .rank-badge.pass-badge{--pass-bg:#ead6aa;--pass-ink:#6f4d14}
 :root[data-theme="afterhours"] .rank-badge.pass-badge{--pass-bg:#4c4123;--pass-ink:#f2d88d}
+/* ---- B0/APP-008 readable app type scale (owner annotation, 2026-10-17).
+   Baseline: paragraphs 1rem/1.5, supporting text >=14px, short metadata floor 12px,
+   buttons 1rem, per the researched Apple HIG / Material 3 / WCAG reflow starting points.
+   These overrides sit after the compressed base rules so the cascade applies them without
+   rewriting those lines. Intentional exceptions keep their own geometry: board glyphs,
+   SVG marks, X/O board letters and icons. ---- */
+.hero p{font-size:16px}
+.mode-copy strong{font-size:15px}.mode-copy small{font-size:12px}
+.setup-title span{font-size:10px}
+.nav-button{font-size:11px}
+.tab{font-size:13px}
+.stat span{font-size:12px}
+.league{font-size:12px}
+.standing small{font-size:12px}.standing .position{font-size:12px}
+.quest strong{font-size:15px}.quest p{font-size:13px}
+.status-line{font-size:12px}
+.setting-row label{font-size:15px}.setting-row small{font-size:13px}
+.field{font-size:14px}
+.button{font-size:16px}
+.learn strong{font-size:15px}.learn small{font-size:13px}
+.empty p{font-size:14px}.empty h3{font-size:17px}
+.wallet-pill b{font-size:14px}
+.rank-summary b{font-size:15px}.rank-summary small{font-size:13px}
+.pill{font-size:12px}
+.home-section h3{font-size:17px}.home-section p{font-size:14px}
+.rank-season-progress{font-size:13px}

@@ -134,3 +134,18 @@
 :root[data-theme='afterhours'] .notification-preferences-link small{font-size:11px}
 :root[data-theme='afterhours'] .notification-item .button{font-size:11px}
 :root[data-theme='afterhours'] .notification-badge{font-size:10px}
+/* ---- B0/APP-008 readable app type scale: account/friends/notification surfaces. ---- */
+.profile-fields label{font-size:15px}.profile-fields small{font-size:13px}
+.friend-person strong{font-size:15px}.friend-person small{font-size:13px}
+.presence{font-size:12px!important}
+.friend-request .request-actions .button{font-size:13px}
+.community-profile-cta strong{font-size:15px}.community-profile-cta small{font-size:13px}
+.lobby-wait b{font-size:15px}.lobby-wait small{font-size:13px}
+.party-network-status{font-size:13px}
+.challenge-opponent b{font-size:15px}.challenge-opponent small{font-size:13px}
+.notification-item b{font-size:15px}.notification-item small{font-size:12px}.notification-item .button{font-size:13px}
+.notification-preferences-link b{font-size:14px}.notification-preferences-link small{font-size:12px}
+.notification-badge{font-size:11px;min-width:20px;height:20px}
+:root[data-theme='midnight'] .notification-item .button,:root[data-theme='afterhours'] .notification-item .button{font-size:13px}
+:root[data-theme='afterhours'] .notification-badge{font-size:11px}
+:root[data-theme] .identity-eyebrow{font-size:12px}

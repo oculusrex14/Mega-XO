@@ -154,6 +154,26 @@
 :root[data-theme="afterhours"] .party-table .button,
 :root[data-theme="afterhours"] .party-room-heading .button,
 :root[data-theme="afterhours"] .party-host-controls .button{font-size:11.5px}
+
+/* ---- B0/APP-008 readable type floor for party surfaces, applied across all four themes.
+   Placed after the per-theme blocks; equal-or-higher specificity wins the cascade. ---- */
+#partyMessage{font-size:14px}
+:root[data-theme] .party-kicker{font-size:11px}
+:root[data-theme] .party-page-intro p{font-size:14px}
+:root[data-theme] .party-info-card b{font-size:14px}
+:root[data-theme] .party-info-card p{font-size:13px}
+:root[data-theme] .party-choice-copy strong{font-size:15px}
+:root[data-theme] .party-choice-copy small{font-size:12px}
+:root[data-theme] .party-currency{font-size:10px}
+:root[data-theme] .party-entry>span{font-size:10px}
+:root[data-theme] .party-entry small{font-size:11px}
+:root[data-theme] .party-table-stats span{font-size:10px}
+:root[data-theme] .party-table-stats b{font-size:13px}
+:root[data-theme] .party-table .button{font-size:13px}
+:root[data-theme] .party-room-heading .button,
+:root[data-theme] .party-host-controls .button{font-size:12px}
+:root[data-theme] .party-standings table{font-size:14px}
+:root[data-theme] .party-room-heading{font-size:13px}
 :root[data-theme="afterhours"] .party-table{min-height:238px}
 
 /* G (2026-10-17): the Match/Players/Games room tabs and the spectate banner. */

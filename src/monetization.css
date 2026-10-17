@@ -36,3 +36,13 @@
 :root[data-theme="afterhours"] :is(.mono-balance,.mono-section,.mono-reward-card,.mono-product){border-radius:3px}:root[data-theme="afterhours"] .mono-section{box-shadow:3px 3px 0 #2a1566}
 @media(max-width:359px){.mono-balance{grid-template-columns:1fr;padding:14px;gap:10px}.mono-reward-grid,.mono-theme-grid{grid-template-columns:1fr}.mono-product{grid-template-columns:1fr}.mono-product .mono-button{max-width:none;width:100%;margin:0}.mono-section{padding:13px}}
 @media(max-width:359px){.mono-pass-card{padding:16px;gap:14px}.mono-pass-head{grid-template-columns:48px minmax(0,1fr);gap:12px}.mono-pass-emblem .pass-badge{width:48px;height:48px}}
+/* ---- B0/APP-008 readable type floor for store surfaces (all themes). ---- */
+.mono-kicker{font-size:11px}
+.mono-page-head>p:last-child{font-size:15px}
+.mono-section>p{font-size:14px}
+.mono-reward-card b{font-size:15px}
+.mono-reward-card p{font-size:14px}
+.mono-product h3{font-size:16px}
+.mono-product p{font-size:14px}
+.mono-notice{font-size:14px!important}
+.mono-frame p{font-size:14px}

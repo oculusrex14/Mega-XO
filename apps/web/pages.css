@@ -631,3 +631,5 @@
 /* Owner 2026-10-17: direct Android APK distribution until the Play listing is live. */
 .pg-apk-direct{display:grid;gap:8px;margin-top:12px;padding-top:12px;border-top:1px dashed var(--line)}
 .pg-apk-meta{display:flex;gap:6px;flex-wrap:wrap}
+.pg-apk-direct p,.pg-apk-direct a,.pg-apk-direct .mx-chip{overflow-wrap:anywhere;min-width:0}
+.pg-apk-direct{max-width:100%;overflow:hidden}

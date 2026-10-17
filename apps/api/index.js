@@ -116,19 +116,24 @@ function createApiHandler(options = {}) {
       // Raw-body collection for stream requests: the production listener passes a plain Node
       // request and nothing pre-reads it, so routes that need the exact bytes (the SSV
       // callback and the provider webhooks) or any JSON body would otherwise see undefined.
-      // Bounded at the same contract limit; an oversized body refuses 413.
+      // Bounded at the LARGEST declared route contract (native challenge/finish/token 300000),
+      // so a body no route accepts is refused 413 here, while a body a route does accept reaches
+      // that route, which enforces its own precise limit.
       if (req.body === undefined && ['POST', 'PUT', 'PATCH'].includes((req.method || '').toUpperCase())) {
         try {
-          req.body = await collectRawBody(req, 100 * 1024);
+          req.body = await collectRawBody(req, 300000);
         } catch (error) {
           if (error && error.status === 413) { sendJson(res, 413, { error: 'BODY_TOO_LARGE' }); return; }
           throw error;
         }
       }
 
-      // 4. Body size limit (100KB)
+      // 4. Body size limit: the pipeline ceiling is the largest declared route contract, NOT a
+      //    blanket 100KB. A per-request 100KB cap here wrongly rejected the native challenge/
+      //    finish/token bodies the contract allows up to 300000 (and rejected them 413 instead
+      //    of letting the route answer). Routes enforce their own limits below.
       if (req.body !== undefined && req.body !== null) {
-        security.enforceBodyLimit(req.body, 100 * 1024);
+        security.enforceBodyLimit(req.body, 300000);
       }
       // 3. Try Well-known & technical foundation routes (app links, health, legal, callback)
       const handledWellKnown = await wellKnownRoutes.handleWellKnownRoute(context, req, res);

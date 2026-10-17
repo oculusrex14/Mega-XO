@@ -1,6 +1,6 @@
 # V5.2 annotation-lane integration — Main (2026-10-17)
 
-Outcome of Main's independent review of the Codex annotation lane on `V5.2`. Main authored seven
+Outcome of Main's independent review of the Codex annotation lane on `V5.2`. Main authored nine
 fixes. All work is on `V5.2`; nothing was merged to `main` and nothing was deployed.
 
 ## Regressions found in review and fixed
@@ -17,6 +17,8 @@ positional `INSERT … VALUES(?,…)` and broke at runtime. All three now name t
 | Web test fixtures | `c1632d1` | the lane added `apps/web/store.js` (imported by `app.js`) but the `v5-p21-account-web` sandbox did not spread it → 7 × `WEB_PRODUCT_IDS is not defined`; the sponsors redesign renamed the preferences panel and copy, leaving `v52-public-annotations` asserting dead markup | account-web 7/7, annotations 7/7, affected web suites 90/90 |
 | Frozen-contract tests | `716c5b1` | `f02f3ec` added the crown-banked `purchase` lane (pre-existing: fails on `493b2ec`/`f02f3ec`/`9ef2ebf`); `8b8d811` added the owner-decided Google `email` scope | powers + provider-authorization 31/31 |
 | **Retained client syntax error** | `2616d68` | `8b8d811` wrote raw apostrophes inside single-quoted JS strings in `src/community.js` (`couldn't`/`We'll`/`profile's`/`won't`), so the file failed to parse, `MegaCommunity` never loaded, and the browser client never reached the guest control — the real cause of the `v52-bot-tutorial` `[data-c="guest"]` timeout | `node --check src/community.js` passes; affected tests 56/56; gate added |
+| P21 store-unavailable QA | `bd02ae1` | the Mega Pass panel kept `data-store-action="purchase"` on its disabled button, so the P21 browser QA `P21-BROWSER-SYNTHETIC-STORE-UNAVAILABLE` check (and `v5-p21-pages:168`) found a purchase action while the provider was unavailable; P21 web was green at `493b2ec` and red from `5977dcfc` | P21 browser QA 934 checks / 0 failures; v5-p21-pages 18/18; broad web suites 106/106 |
+| API body ceiling | `7bedd6c` | `5c37ed6` capped every POST/PUT/PATCH body at 100 KiB and `req.destroy()`d on overflow, so the native challenge/finish/token contract (300000) was unreachable — a legitimate 200 KiB native body answered 413 — and genuine overflow reached the client as ECONNRESET; `v5-p11-native-session` body-limit test broke | native-session 8/8; p13-security + contracts + monetization-http + ingress-bounds 40/40 at CI concurrency; 200 KiB native body reaches the route; p13 8.3 re-pinned to the real >300000 ceiling |
 
 ## What Main verified on the lane (unchanged from the review record)
 

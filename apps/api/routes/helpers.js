@@ -249,9 +249,12 @@ async function resolveAuth(context, req, { linked = true } = {}) {
 /* Bounded, byte-faithful raw-body collection for stream requests (the production listener
  * passes a plain Node request whose body nothing pre-reads). Returns a UTF-8 STRING of the
  * exact bytes for the routes that sign or HMAC over them (the SSV callback and the provider
- * webhooks); pre-populated bodies pass through unchanged. The cap matches the API body
- * contract, so an oversized body refuses 413 instead of being read unbounded. */
-async function collectRawBody(req, limit = 100 * 1024) {
+ * webhooks); pre-populated bodies pass through unchanged. The default cap is the LARGEST
+ * declared route contract (the native challenge/finish/token 300000), so this collector never
+ * truncates or refuses a body that a route legitimately accepts; a body beyond even that is
+ * refused 413 and the stream is DRAINED (not destroyed), so the peer reads the response instead
+ * of seeing ECONNRESET. Each route still enforces its own precise contract limit afterwards. */
+async function collectRawBody(req, limit = 300000) {
   if (req.body !== undefined && req.body !== null) {
     if (typeof req.body === 'string') return req.body;
     if (Buffer.isBuffer(req.body)) return req.body.toString('utf8');
@@ -268,7 +271,9 @@ async function collectRawBody(req, limit = 100 * 1024) {
         const err = new Error('BODY_TOO_LARGE');
         err.status = 413;
         done(reject, err);
-        req.destroy();
+        /* Drain the remainder so the response can be written and read instead of the
+         * connection being reset mid-upload (a bare destroy() surfaces as ECONNRESET). */
+        if (typeof req.resume === 'function') req.resume();
         return;
       }
       chunks.push(chunk);

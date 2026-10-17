@@ -66,6 +66,11 @@ The owner reported the iPhone could not find an Android-hosted LAN room on the s
 - Conclusion: the failure is on the iPhone side, in one of exactly three places: (1) the iOS Local Network permission for Mega XOXO denied (iOS 14+ silently returns an empty Bonjour result) - check Settings > Privacy & Security > Local Network > Mega XOXO; (2) the two phones were on different bands/subnets with multicast isolation; (3) the iPhone was not on Wi-Fi at that moment. The app-side protocols match exactly (both advertise and browse _megaxo-v5._tcp).
 - Owner two-tap retest: with the Android room EG4VW still hosted, on the iPhone open Mega XOXO > Play > Private Match > Join a room near me > Search again. If it still lists nothing, flip the Local Network permission toggle and scan again.
 
+## iOS crash FIXED + the app-UI annotation surface (2026-10-17 late)
+
+- The lr23 iOS launch crash was diagnosed from the device crash log: DYLD "Library not loaded: @rpath/MegaXO.debug.dylib - missing code signature" - the debug build ships an Xcode debug dylib that the manual re-sign had missed. Re-signed EVERY nested Mach-O (MegaXO.debug.dylib, __preview.dylib, both frameworks) deepest-first, then the outer app; reinstalled and the app now LAUNCHES and stays alive (pid verified). The owner-facing fix script pattern: sign dylibs > frameworks > app, never the outer bundle alone.
+- The app-UI annotation surface the owner asked for is LIVE: http://127.0.0.1:4197/bundle-index.html serves the exact client bundle the phones render (102 files, bundle hash 4dc58797d1fb3df7220edb9e4502ee846c58ebb083557bad6dd6ac5b34ab4c2d, built from current HEAD), via scripts/v5/serve-client-review.cjs (review-only static server; no API, no store, no credentials - the same honest degradation the phones show pre-sign-in). Opened in the owner's in-app browser for annotation.
+
 ## Recorded deviations
 
 - Polar checkout opens a new tab with a bounded actor-bound status poll instead of a redirect round trip (plan A3 prefers fixed same-origin return routes); same-tab fallback when popups are blocked. The return-route variant needs a success-URL template decision with Main; recorded open.

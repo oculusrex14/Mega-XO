@@ -1,4 +1,4 @@
-import {icon, button, pageHeading} from './ui.js';
+import {icon, button, pageHeading, escapeHtml as e} from './ui.js';
 
 const emptyLinks = Object.freeze({ios: null, android: null});
 const mobilePlatform = value => value === 'ios' || value === 'android' ? value : null;

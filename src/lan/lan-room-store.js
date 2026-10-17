@@ -234,7 +234,10 @@
         // A LAN host never runs prize tables: that would need the account/economy authority.
         err('FREE_PRIVATE_ONLY');
       } else {
-        r = this.get(cmd.id);
+        /* C5.4: a join key may be an exact room id or this host's five-character code;
+           every other command still resolves by exact id. */
+        r = cmd.type === 'join' ? this.resolveJoin(cmd.id) : this.get(cmd.id);
+        if (!r) err('ROOM_NOT_FOUND');
         if (cmd.type === 'join') {
           if (r.table) err('USE_PUBLIC_QUEUE');
           if (r.players.length >= r.capacity) err('ROOM_FULL');
@@ -294,10 +297,22 @@
     /* The room list a guest on the same Wi-Fi may discover before joining. */
     discover() {
       return this.active().filter((r) => !r.table && r.status === 'LOBBY').map((r) => ({
-        id: r.id, code: r.code, name: r.name, owner: r.owner,
+        /* C5.4: status is part of the DTO so consumers can filter joinable lobbies without
+           relying on a fixture to inject it. */
+        id: r.id, code: r.code, name: r.name, owner: r.owner, status: r.status,
         players: r.players.length, capacity: r.capacity,
         format: r.format, clock: r.clock, increment: r.increment,
       }));
+    }
+    /* C5.4.2: resolve an exact room id or this host's emitted normalized five-character
+       code. Codes are uppercased on lookup only, ids stay case-sensitive, and code
+       uniqueness is per host. Capacity/membership guards stay in the join path. */
+    resolveJoin(idOrCode) {
+      if (typeof idOrCode !== 'string' || !idOrCode) err('ROOM_NOT_FOUND');
+      const direct = this._roomIndex.get(idOrCode) || this.state.rooms.find((x) => x.id === idOrCode);
+      if (direct) return direct;
+      if (/^[A-Z0-9]{5}$/.test(idOrCode)) return this.active().find((r) => !r.table && r.code === idOrCode) || null;
+      return null;
     }
     close() { this.persist(); }
   }

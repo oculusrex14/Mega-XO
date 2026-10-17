@@ -267,7 +267,10 @@ body{font-family:'Space Grotesk',ui-sans-serif,system-ui,-apple-system,BlinkMacS
 /* ---------------- Vector Light ---------------- */
 :root[data-theme="vector"]{
   color-scheme:light;
-  --canvas:#e9ecef;--surface:#f8f9fb;--raised:#ffffff;--soft:#f0f2f5;--ink:#15181c;--muted:#747b84;--line:#cdd2d8;--border-strong:#bfc5cc;
+  /* C6/APP-020: --muted darkened #747b84 -> #616a74; the old value measured 4.28/4.06/3.81
+     against this theme's raised/surface/soft, below the 4.5:1 floor for essential copy.
+     #616a74 measures ~5.5/5.2/4.9 on the same surfaces with no visible hue shift. */
+  --canvas:#e9ecef;--surface:#f8f9fb;--raised:#ffffff;--soft:#f0f2f5;--ink:#15181c;--muted:#616a74;--line:#cdd2d8;--border-strong:#bfc5cc;
   --cta:#15181c;--on-cta:#ffffff;--accent:#c6ff42;--on-accent:#27310a;--accent-soft:#d9e9a6;--accent-edge:#9dbd39;--focus:#246bfd;
   --x:#246bfd;--x-soft:#dfe9ff;--o:#f45669;--o-soft:#ffe1e6;--danger:#a82424;--danger-soft:#ffe4e4;--success:#81c784;
   --badge-bg:#e9edda;--badge-ink:#4b581c;--radius:16px;--mini-radius:16px;--shadow:0 18px 50px rgba(21,24,28,.14);--nav-shadow:0 8px 24px rgba(21,24,28,.09);

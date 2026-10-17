@@ -29,7 +29,7 @@ function buildState(moves, first = 'X') {
 test('window.MegaPowers frozen contract matches exact names and shapes', () => {
  const powers = PowersUI.createPowers({ enabled: () => true });
  assert.equal(powers.version, 'powers/v1');
- assert.deepEqual(Object.keys(powers).sort(), ['apply', 'eligibility', 'inventory', 'pacing', 'request', 'version']);
+ assert.deepEqual(Object.keys(powers).sort(), ['apply', 'eligibility', 'inventory', 'pacing', 'purchase', 'request', 'version']);
  const inv = powers.inventory();
  assert.equal(inv.version, 'powers/inventory/v1');
  for (const k of ['undo', 'hint', 'undoBlock', 'tacticalBlock']) {

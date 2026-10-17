@@ -27,7 +27,7 @@ test('Tactical Power is shipped while the two counter kinds stay refused', async
  assert.deepEqual([...PowersUI.SHIPPED], ['undo', 'hint']);
  const powers = PowersUI.createPowers({ enabled: () => true });
  assert.equal(powers.version, 'powers/v1');
- assert.deepEqual(Object.keys(powers).sort(), ['apply', 'eligibility', 'inventory', 'pacing', 'request', 'version']);
+ assert.deepEqual(Object.keys(powers).sort(), ['apply', 'eligibility', 'inventory', 'pacing', 'purchase', 'request', 'version']);
 
  /* A counter answers another player's power use, so it must not become earnable in Bot mode. */
  for (const kind of ['undoBlock', 'tacticalBlock']) {

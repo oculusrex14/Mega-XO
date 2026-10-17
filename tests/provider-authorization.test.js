@@ -17,8 +17,10 @@ test('Google production authorization uses exact code flow, nonce, state and sup
  assert.equal(url.searchParams.get('code_challenge'),sha(attempt.verifier));
  assert.equal(url.searchParams.get('code_challenge_method'),'S256');
  const scopes=new Set(url.searchParams.get('scope').split(/\s+/));
- assert.deepEqual(scopes,new Set(['openid','profile']));
- assert.equal(scopes.has('email'),false);
+ /* Owner decision (2026-10-16): `email` is requested alongside openid/profile so the
+  * provider-verified address can prove ownership during account linking; the claim is only
+  * trusted when email_verified is exactly boolean true (see server/identity-provider.js). */
+ assert.deepEqual(scopes,new Set(['openid','profile','email']));
 });
 
 test('Apple production authorization uses exact registered return URL and code-only query response',()=>{

@@ -229,6 +229,9 @@ function localizeHtml(html, config, { requireDependencyLinks = false, nativeAcco
   if (nativeAccountTransport) {
     if (!/<head\b[^>]*>/i.test(output)) throw refuse('native bundle index requires a head element');
     output = output.replace(/<head\b[^>]*>/i, '$&\n<meta name="mega-account-transport" content="native">');
+    // C8/APP-022: a new native install boots in After Hours. The stored-theme choice in
+    // app.js still wins for existing users; this only removes the light first-paint flash.
+    output = output.replace(/(<html\b[^>]*\bdata-theme=")[^"]*(")/i, '$1afterhours$2');
   }
   for (const [from, to] of Object.entries(config.index_rewrites).sort((a, b) => b[0].length - a[0].length)) {
     if (typeof from !== 'string' || from.length === 0) throw refuse('index rewrite source must be a non-empty string');

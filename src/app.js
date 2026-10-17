@@ -33,6 +33,9 @@ const G=window.MegaGame,D=window.MegaDomain,I=window.MegaIcons,$=s=>document.que
 const KEY='mega_v32_state',SNAPSHOT_VERSION=2,escape=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const parse=(key)=>{try{return JSON.parse(localStorage.getItem(key)||'null');}catch{return null;}};
 let data=parse(KEY);if(!data||data.version!==3.2){data=D.fresh();const old=parse('mega_v3_settings');if(old){Object.assign(data.settings,old);data.settings.haptics=old.haptic!==false;}data.legacy=parse('mega_v3_stats');}
+/* C8/APP-022: a freshly downloaded native app starts in After Hours (owner decision). A saved
+   or migrated theme always wins; browser and web defaults are unchanged. */
+if(data.settings.theme==='vector'&&!parse('mega_v3_settings')&&document.querySelector?.('meta[name="mega-account-transport"]')?.content==='native')data.settings.theme='afterhours';
 data.playSeconds=data.playSeconds||{};D.migrate(data);data.profile=data.profile||{};
 const legacyThemeMap={dark:'midnight',paper:'paperclub',neon:'afterhours',light:'vector'};
 if(legacyThemeMap[data.settings.theme])data.settings.theme=legacyThemeMap[data.settings.theme];

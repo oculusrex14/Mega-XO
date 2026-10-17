@@ -57,6 +57,15 @@ Implementation branch: **V5.2**, baseline d6086a2 -> head 9d9f96f (receipt commi
 - adb install -r over the lr22 install: Success (version downgrade refused first at vc 11; rebuilt at 13). Launch: pid live, ZERO entries in the crash buffer, and the home/rank panels render with the live production wallet (50 Coins / 10 Crowns). Evidence screenshots: docs/v5.2/release/evidence-lr23/.
 - **Party-room tab journey VERIFIED on the device** via the debug WebView DevTools channel: a local two-player room (Ada/Brin) was created from the home Play tab, and the room renders the Match / Players (2) / Games (0) tab bar with working switches - the Players tab lists Ada (host) and Brin each with the honest Rank unavailable (a LOCAL room has no server members, exactly per plan G), the Match tab keeps the lobby controls, and the Games tab is correctly empty before the bracket exists. Screenshots: docs/v5.2/release/evidence-lr23/lr23-tab-{players,games,match}.png. NOT RUN on device: a SIGNED-IN online room (server members rank path - covered by the disposable-PG suite) and the iPhone lane (device offline).
 
+## LAN discovery diagnosis (2026-10-17, both devices connected)
+
+The owner reported the iPhone could not find an Android-hosted LAN room on the same Wi-Fi. Diagnosed live:
+
+- The Android (192.168.0.111) hosted a real LAN room (code EG4VW) and its own mDNS self-discovery WORKS: the native discover bridge returned ok:true with the room at origin http://192.168.0.111:8081, and the LAN HTTP serve chain answers /api/party/discover correctly. The Android advertise + serve chain is fully healthy.
+- The Mac dns-sd probe is NOT a witness: the Mac sits on a different subnet (10.0.0.1 vs the phones 192.168.0.x), and mDNS does not cross subnets. Two stale _megaxo-v5._tcp advertisements ("MacBook Room", "iOS sim host") exist on the Mac own network from old dev processes - worth cleaning up so they can never confuse a phone on that subnet.
+- Conclusion: the failure is on the iPhone side, in one of exactly three places: (1) the iOS Local Network permission for Mega XOXO denied (iOS 14+ silently returns an empty Bonjour result) - check Settings > Privacy & Security > Local Network > Mega XOXO; (2) the two phones were on different bands/subnets with multicast isolation; (3) the iPhone was not on Wi-Fi at that moment. The app-side protocols match exactly (both advertise and browse _megaxo-v5._tcp).
+- Owner two-tap retest: with the Android room EG4VW still hosted, on the iPhone open Mega XOXO > Play > Private Match > Join a room near me > Search again. If it still lists nothing, flip the Local Network permission toggle and scan again.
+
 ## Recorded deviations
 
 - Polar checkout opens a new tab with a bounded actor-bound status poll instead of a redirect round trip (plan A3 prefers fixed same-origin return routes); same-tab fallback when popups are blocked. The return-route variant needs a success-URL template decision with Main; recorded open.

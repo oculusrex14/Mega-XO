@@ -392,9 +392,14 @@ function sponsorsPage(context) {
     slot('sponsors-next', 'Coming up next', 'More sponsor placements roll in as the community grows.', 'trophy'),
   ];
   const banner = '<div class="pg-ad-banner" data-sponsor-slot="sponsors-leaderboard" role="complementary" aria-label="Advertisement space"><span class="pg-ad-label">Advertisement</span><div class="pg-ad-slot pg-ad-wide"><span class="pg-ad-placeholder">Your brand in front of the sharpest players on the internet. <a class="pg-text-link" href="/support">Become a sponsor</a>.</span></div></div>';
+  /* C7.3: direct enquiries open a pre-filled draft at the parent-company contact address.
+   * Nothing is sent automatically and no account data is attached to the message. */
+  const enquiryBody = encodeURIComponent('Hello Mega XOXO team,\n\nI\'d like to discuss a direct sponsorship for Mega XOXO.\n\nBrand or project:\nWebsite:\nProduct or service:\nPreferred dates:\nTarget audience or regions (optional):\nBudget range (optional):\nContact name:\n\nPlease share available placements and the next steps.');
+  const enquiry = panel('<div class="pg-sponsor-enquiry"><h2>Advertise with us</h2><p class="mx-muted">Reach Mega XOXO players with a clearly labeled sponsorship. This opens an email draft at <strong>contact@antimatterinnovations.com</strong>; you review and send it yourself, and no account data is attached.</p><a class="mx-button primary" href="mailto:contact@antimatterinnovations.com?subject=' + encodeURIComponent('Mega XOXO sponsorship enquiry') + '&body=' + enquiryBody + '">Open email draft</a><p class="pg-small mx-muted">No mail app? Copy the address: contact@antimatterinnovations.com</p></div>', 'pg-sponsor-enquiry-panel');
   return '<div class="pg-page pg-sponsors-page">' + heading('A LITTLE SUPPORT FOR A BIGGER GAME', 'Discover our supporters.', 'Optional, clearly labeled sponsorship can help support Mega XOXO. Your game and your competitive standing stay independent.')
     + banner
     + '<div class="pg-grid pg-grid-three pg-sponsor-grid">' + slots.join('') + '</div>'
+    + enquiry
     + panel('<div class="pg-sponsor-preferences"><h2>Your advertising interests</h2><p class="mx-muted">Optional interests, saved only in this browser after you agree. They never enable third-party tracking and never change your gameplay.</p>' + interests + '<p class="pg-small mx-muted">Change or clear them any time. <a class="pg-text-link" href="/privacy-choices">Privacy choices</a>.</p></div>', 'pg-sponsor-preferences-panel')
     + '</div>';
 }

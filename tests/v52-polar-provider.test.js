@@ -28,6 +28,8 @@ test('polar: checkout creation is server-side with the actor binding in metadata
   const provider = createPolarProvider({
     accessToken: 'polar_oat_test', organizationId: ORG,
     fetchImpl: async (url, init) => {
+      /* MXA-ECO-007: checkout creation now resolves the parent product id first. */
+      if (String(url).includes('/v1/products/')) return { ok: true, status: 200, text: async () => JSON.stringify({ items: [{ id: '9d3af6c2-0000-4000-8000-000000000009', prices: [{ id: PRICE }] }] }) };
       calls.push({ url, body: JSON.parse(init.body) });
       return { ok: true, status: 201, text: async () => JSON.stringify({ id: 'c0a80101-0000-4000-8000-000000000001', url: 'https://polar.sh/checkout/x' }) };
     },
@@ -35,7 +37,8 @@ test('polar: checkout creation is server-side with the actor binding in metadata
   const created = await provider.createCheckout({ priceId: PRICE, actor: 'player_abc', productId: 'crowns_100', email: 'a@b.co', successUrl: 'https://megaxo.online' });
   assert.equal(created.checkoutUrl, 'https://polar.sh/checkout/x');
   assert.equal(UUID_V4.test(created.checkoutId), true);
-  assert.deepEqual(calls[0].body.products, [PRICE], 'the price id comes from the SERVER catalog, never a client value');
+  /* MXA-ECO-007: products carries the resolved PRODUCT id; the catalog price id is never sent. */
+  assert.deepEqual(calls[0].body.products, ['9d3af6c2-0000-4000-8000-000000000009'], 'the price id is resolved to the provider product id server-side, never a client value');
   assert.equal(calls[0].body.metadata.actor, 'player_abc');
   assert.equal(calls[0].body.metadata.product_id, 'crowns_100');
   await assert.rejects(() => provider.createCheckout({ priceId: 'not-a-uuid', actor: 'x', productId: 'p' }), /INVALID_PRICE_ID/);

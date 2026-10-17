@@ -56,11 +56,12 @@ function createPolarProvider({ accessToken, organizationId, apiBase, webhookSecr
     /* Server-side checkout creation: the browser only ever sees checkout.url. The price id comes
      * from the SERVER-SIDE catalog map, never a client value, and the actor/product ride the
      * metadata so an independent re-verification can bind the grant. */
-    async createCheckout({ priceId, actor, productId, email, successUrl, metadata = {} }) {
+    async createCheckout({ priceId, actor, productId, email, successUrl, metadata = {}, discountId }) {
       if (!this.isPriceId(priceId)) throw Error('INVALID_PRICE_ID');
       if (!UUID_V4.test(priceId)) throw Error('INVALID_PRICE_ID');
       const checkout = await call('/v1/checkouts', 'POST', {
         products: [await productIdForPrice(priceId)],
+        discount_id: typeof discountId === 'string' && discountId ? discountId : undefined,
         customer_email: typeof email === 'string' && email ? email : undefined,
         success_url: typeof successUrl === 'string' && successUrl ? successUrl : undefined,
         metadata: { actor: String(actor), product_id: String(productId), ...metadata },
@@ -75,7 +76,9 @@ function createPolarProvider({ accessToken, organizationId, apiBase, webhookSecr
       const checkout = await call('/v1/checkouts/' + encodeURIComponent(checkoutId), 'GET');
       const status = typeof checkout.status === 'string' ? checkout.status : '';
       const price = checkout && checkout.product_price && typeof checkout.product_price === 'object' ? checkout.product_price : {};
-      const amount = Number(price.price_amount);
+      /* Sol review 2026-10-18: price_amount is the PRE-discount catalog amount; the settlement
+       * comparison needs the actually CHARGED total, which Polar exposes as total_amount. */
+      const amount = Number(typeof checkout.total_amount === 'number' ? checkout.total_amount : price.price_amount);
       const currency = String(price.price_currency || '').toLowerCase();
       const metadata = checkout && typeof checkout.metadata === 'object' && checkout.metadata ? checkout.metadata : {};
       if (!status) throw Error('POLAR_BAD_RESPONSE');

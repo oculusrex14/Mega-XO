@@ -209,6 +209,8 @@ async function createCommerceService(pool, options = {}) {
   polarProvider: options.polarProvider || null,
   polarCatalog: options.polarCatalog || null,
   polarSuccessUrl: typeof options.polarSuccessUrl === 'string' ? options.polarSuccessUrl : '',
+  /* Sol review 2026-10-18: the discount id must reach the service or the pack-discount guard is dead. */
+  polarPackDiscountId: typeof options.polarPackDiscountId === 'string' && options.polarPackDiscountId ? options.polarPackDiscountId : null,
   adMode,
   rewardItem: typeof options.rewardItem === 'string' && options.rewardItem ? options.rewardItem : 'cosmetic_reward',
   adUnits: normalizeAdUnits(options.adUnits, options.adUnit),
@@ -724,10 +726,12 @@ async function createCommerceService(pool, options = {}) {
   let reservedPeriod = null;
   if (isPack) {
    const reserved = await uow.run(async (tx) => (await tx.query(
-    "UPDATE monetization.pass_periods pp SET pack_discounts_reserved = pp.pack_discounts_reserved + 1 FROM monetization.polar_subscriptions ps WHERE pp.subscription_id = ps.subscription_id AND ps.actor_id = $1 AND ps.status = 'active' AND pp.period_start <= $2 AND pp.period_end > $2 AND pp.pack_discounts_reserved + pp.pack_discounts_used < 2 AND pp.subscription_id = (SELECT ps2.subscription_id FROM monetization.polar_subscriptions ps2 WHERE ps2.actor_id = $1 AND ps2.status = 'active' ORDER BY ps2.created_at DESC LIMIT 1) RETURNING pp.period_start",
+    "UPDATE monetization.pass_periods pp SET pack_discounts_reserved = pp.pack_discounts_reserved + 1 FROM monetization.polar_subscriptions ps WHERE pp.subscription_id = ps.subscription_id AND ps.actor_id = $1 AND ps.status = 'active' AND pp.period_start <= $2 AND pp.period_end > $2 AND pp.pack_discounts_reserved + pp.pack_discounts_used < 2 AND pp.subscription_id = (SELECT ps2.subscription_id FROM monetization.polar_subscriptions ps2 WHERE ps2.actor_id = $1 AND ps2.status = 'active' ORDER BY ps2.created_at DESC LIMIT 1) AND pp.period_start = (SELECT MAX(pp3.period_start) FROM monetization.pass_periods pp3 WHERE pp3.subscription_id = pp.subscription_id AND pp3.period_start <= $2 AND pp3.period_end > $2) RETURNING pp.subscription_id, pp.period_start",
     [actor, new Date(serviceNow()).toISOString()])).rows[0] || null);
    if (reserved) {
-    reservedPeriod = new Date(reserved.period_start).toISOString();
+    /* Sol review 2026-10-18: record the EXACT reserved (subscription, period) pair so the
+     * release can never decrement a same-date period of a second subscription. */
+    reservedPeriod = { subscriptionId: reserved.subscription_id, start: new Date(reserved.period_start).toISOString() };
     charged = (Math.round(parseFloat(price) * (1 - M.PASS.packDiscount) * 100) / 100).toFixed(2);
    }
   }
@@ -747,7 +751,7 @@ async function createCommerceService(pool, options = {}) {
     * recovery read resolves it. The previous unconditional release contradicted the contract
     * comment above and let a discounted retry consume the same budget twice. */
    if (terminal && reservedPeriod) await uow.run(async (tx) => {
-    await tx.query("UPDATE monetization.pass_periods pp SET pack_discounts_reserved = pp.pack_discounts_reserved - 1 FROM monetization.polar_subscriptions ps WHERE pp.subscription_id = ps.subscription_id AND ps.actor_id = $1 AND pp.period_start = $2 AND pp.pack_discounts_reserved > 0", [actor, reservedPeriod]);
+    await tx.query("UPDATE monetization.pass_periods pp SET pack_discounts_reserved = pp.pack_discounts_reserved - 1 WHERE pp.subscription_id = $2 AND pp.period_start = $3 AND pp.pack_discounts_reserved > 0", [actor, reservedPeriod.subscriptionId, reservedPeriod.start]);
    });
    await markReservation(uow, requestId, terminal ? 'FAILED' : 'UNKNOWN', { providerObjectId: orderId, errorCode: terminal ? code : null });
    if (terminal) { error.status = 502; throw error; }
@@ -823,7 +827,7 @@ async function createCommerceService(pool, options = {}) {
     const catalogPrice = config.cashfreeCatalog && typeof config.cashfreeCatalog[product.id] === 'string' ? config.cashfreeCatalog[product.id] : null;
     const wasDiscounted = catalogPrice !== null && Number(catalogPrice) > 0 && Math.abs(Number(recorded.amount) - Number(catalogPrice)) > 1e-9;
     if (!wasDiscounted) return { productId: product.id, crowns: product.crowns, duplicate: false, settled: true };
-    await tx.query("UPDATE monetization.pass_periods pp SET pack_discounts_reserved = pp.pack_discounts_reserved - 1, pack_discounts_used = pp.pack_discounts_used + 1 FROM monetization.polar_subscriptions ps WHERE pp.subscription_id = ps.subscription_id AND ps.actor_id = $1 AND pp.pack_discounts_reserved > 0 AND pp.pack_discounts_used < 2 AND pp.period_start <= $2 AND pp.period_end > $2 AND pp.subscription_id = (SELECT ps2.subscription_id FROM monetization.polar_subscriptions ps2 WHERE ps2.actor_id = $1 AND ps2.status = 'active' ORDER BY ps2.created_at DESC LIMIT 1)", [recorded.actor_id, iso(tx.clock())]);
+    await tx.query("UPDATE monetization.pass_periods pp SET pack_discounts_reserved = pp.pack_discounts_reserved - 1, pack_discounts_used = pp.pack_discounts_used + 1 FROM monetization.polar_subscriptions ps WHERE pp.subscription_id = ps.subscription_id AND ps.actor_id = $1 AND pp.pack_discounts_reserved > 0 AND pp.pack_discounts_used < 2 AND pp.period_start <= $2 AND pp.period_end > $2 AND pp.subscription_id = (SELECT ps2.subscription_id FROM monetization.polar_subscriptions ps2 WHERE ps2.actor_id = $1 AND ps2.status = 'active' ORDER BY ps2.created_at DESC LIMIT 1) AND pp.period_start = (SELECT MAX(pp3.period_start) FROM monetization.pass_periods pp3 WHERE pp3.subscription_id = pp.subscription_id AND pp3.period_start <= $2 AND pp3.period_end > $2)", [recorded.actor_id, iso(tx.clock())]);
    }
    return { productId: product.id, crowns: product.crowns, duplicate: false, settled: true };
   }, ['cashfree', orderId]);
@@ -969,10 +973,10 @@ async function createCommerceService(pool, options = {}) {
   let expectedCents = entry.amountCents;
   if (isPack) {
    const reserved = await uow.run(async (tx) => (await tx.query(
-    "UPDATE monetization.pass_periods pp SET pack_discounts_reserved = pp.pack_discounts_reserved + 1 FROM monetization.polar_subscriptions ps WHERE pp.subscription_id = ps.subscription_id AND ps.actor_id = $1 AND ps.status = 'active' AND pp.period_start <= $2 AND pp.period_end > $2 AND pp.pack_discounts_reserved + pp.pack_discounts_used < 2 AND pp.subscription_id = (SELECT ps2.subscription_id FROM monetization.polar_subscriptions ps2 WHERE ps2.actor_id = $1 AND ps2.status = 'active' ORDER BY ps2.created_at DESC LIMIT 1) RETURNING pp.period_start",
+    "UPDATE monetization.pass_periods pp SET pack_discounts_reserved = pp.pack_discounts_reserved + 1 FROM monetization.polar_subscriptions ps WHERE pp.subscription_id = ps.subscription_id AND ps.actor_id = $1 AND ps.status = 'active' AND pp.period_start <= $2 AND pp.period_end > $2 AND pp.pack_discounts_reserved + pp.pack_discounts_used < 2 AND pp.subscription_id = (SELECT ps2.subscription_id FROM monetization.polar_subscriptions ps2 WHERE ps2.actor_id = $1 AND ps2.status = 'active' ORDER BY ps2.created_at DESC LIMIT 1) AND pp.period_start = (SELECT MAX(pp3.period_start) FROM monetization.pass_periods pp3 WHERE pp3.subscription_id = pp.subscription_id AND pp3.period_start <= $2 AND pp3.period_end > $2) RETURNING pp.subscription_id, pp.period_start",
     [actor, new Date(serviceNow()).toISOString()])).rows[0] || null);
    if (reserved) {
-    reservedPeriod = new Date(reserved.period_start).toISOString();
+    reservedPeriod = { subscriptionId: reserved.subscription_id, start: new Date(reserved.period_start).toISOString() };
     expectedCents = Math.round(entry.amountCents * (1 - M.PASS.packDiscount));
    }
   }
@@ -984,7 +988,7 @@ async function createCommerceService(pool, options = {}) {
    const httpMatch = /^POLAR_HTTP_([0-9]{3})$/.exec(code);
    const terminal = code === 'POLAR_AUTH' || code === 'POLAR_CONFIG' || (!!httpMatch && httpMatch[1] !== '408' && httpMatch[1] !== '429');
    if (terminal && reservedPeriod) await uow.run(async (tx) => {
-    await tx.query("UPDATE monetization.pass_periods pp SET pack_discounts_reserved = pp.pack_discounts_reserved - 1 FROM monetization.polar_subscriptions ps WHERE pp.subscription_id = ps.subscription_id AND ps.actor_id = $1 AND pp.period_start = $2 AND pp.pack_discounts_reserved > 0", [actor, reservedPeriod]);
+    await tx.query("UPDATE monetization.pass_periods pp SET pack_discounts_reserved = pp.pack_discounts_reserved - 1 WHERE pp.subscription_id = $2 AND pp.period_start = $3 AND pp.pack_discounts_reserved > 0", [actor, reservedPeriod.subscriptionId, reservedPeriod.start]);
    });
    await markReservation(uow, requestId, terminal ? 'FAILED' : 'UNKNOWN', { errorCode: terminal ? code : null });
    if (terminal) { error.status = 502; throw error; }
@@ -1055,7 +1059,7 @@ async function createCommerceService(pool, options = {}) {
    const catalogEntry = config.polarCatalog && config.polarCatalog[product.id];
    const catalogCents = catalogEntry && Number.isFinite(Number(catalogEntry.amountCents)) ? Number(catalogEntry.amountCents) : null;
    if (product.crowns > 0 && catalogCents !== null && Number(recorded.amount_cents) < catalogCents) {
-    await tx.query("UPDATE monetization.pass_periods pp SET pack_discounts_reserved = pp.pack_discounts_reserved - 1, pack_discounts_used = pp.pack_discounts_used + 1 FROM monetization.polar_subscriptions ps WHERE pp.subscription_id = ps.subscription_id AND ps.actor_id = $1 AND pp.pack_discounts_reserved > 0 AND pp.pack_discounts_used < 2 AND pp.period_start <= $2 AND pp.period_end > $2 AND pp.subscription_id = (SELECT ps2.subscription_id FROM monetization.polar_subscriptions ps2 WHERE ps2.actor_id = $1 AND ps2.status = 'active' ORDER BY ps2.created_at DESC LIMIT 1)", [recorded.actor_id, iso(tx.clock())]);
+    await tx.query("UPDATE monetization.pass_periods pp SET pack_discounts_reserved = pp.pack_discounts_reserved - 1, pack_discounts_used = pp.pack_discounts_used + 1 FROM monetization.polar_subscriptions ps WHERE pp.subscription_id = ps.subscription_id AND ps.actor_id = $1 AND pp.pack_discounts_reserved > 0 AND pp.pack_discounts_used < 2 AND pp.period_start <= $2 AND pp.period_end > $2 AND pp.subscription_id = (SELECT ps2.subscription_id FROM monetization.polar_subscriptions ps2 WHERE ps2.actor_id = $1 AND ps2.status = 'active' ORDER BY ps2.created_at DESC LIMIT 1) AND pp.period_start = (SELECT MAX(pp3.period_start) FROM monetization.pass_periods pp3 WHERE pp3.subscription_id = pp.subscription_id AND pp3.period_start <= $2 AND pp3.period_end > $2)", [recorded.actor_id, iso(tx.clock())]);
    }
    /* B2: the first paid pass order binds the subscription row to the RECORDED checkout actor and
     * product/price inside the settlement transaction - never from webhook payload fields alone.
@@ -1167,7 +1171,7 @@ async function createCommerceService(pool, options = {}) {
   /* MXA-ECO-009 (audit 2026-10-17): ONE paid pass per actor - the newest active subscription
    * owns the grantable period; duplicates are skipped explicitly instead of stacking 3x50. */
   const due = await pool.query(
-   "SELECT DISTINCT ON (pp.actor_id) pp.subscription_id, pp.actor_id, pp.period_start, pp.period_end, pp.installments_granted FROM monetization.pass_periods pp JOIN monetization.polar_subscriptions ps ON ps.subscription_id = pp.subscription_id WHERE ps.status = 'active' AND pp.installments_granted < 3 ORDER BY pp.actor_id, ps.created_at DESC, pp.period_end DESC LIMIT 200");
+   "SELECT DISTINCT ON (pp.actor_id) pp.subscription_id, pp.actor_id, pp.period_start, pp.period_end, pp.installments_granted FROM monetization.pass_periods pp JOIN monetization.polar_subscriptions ps ON ps.subscription_id = pp.subscription_id WHERE ps.status = 'active' AND pp.installments_granted < 3 AND pp.subscription_id = (SELECT ps2.subscription_id FROM monetization.polar_subscriptions ps2 WHERE ps2.actor_id = pp.actor_id AND ps2.status = 'active' ORDER BY ps2.created_at DESC LIMIT 1) ORDER BY pp.actor_id, ps.created_at DESC, pp.period_end DESC LIMIT 200");
   let granted = 0;
   const now = serviceNow();
   for (const row of due.rows) {

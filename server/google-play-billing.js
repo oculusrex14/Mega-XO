@@ -73,7 +73,7 @@ class GooglePlayBilling{
  }
  async processDue(hasReceipt){
   const rows=await this.db.prepare("SELECT * FROM v41_store_finalize WHERE store='google' AND state='pending' AND next_at<=? ORDER BY created LIMIT 10").all(this.now()),out={processed:0,completed:0};
-  for(const row of rows){out.processed++;if(!hasReceipt('google',row.transaction_id)){if(this.now()-row.created>3600000)await this.db.prepare("DELETE FROM v41_store_finalize WHERE store='google' AND transaction_id=?").run(row.transaction_id);continue;}if(await this.finalize(row.transaction_id))out.completed++;}
+  for(const row of rows){out.processed++;/* Sol review 2026-10-18: the receipt predicate is async - a truthy Promise used to finalize ungranted purchases. */if(!await hasReceipt('google',row.transaction_id)){if(this.now()-row.created>3600000)await this.db.prepare("DELETE FROM v41_store_finalize WHERE store='google' AND transaction_id=?").run(row.transaction_id);continue;}if(await this.finalize(row.transaction_id))out.completed++;}
   return out;
  }
  async currentByToken(purchaseToken){const value=await this.lookup(purchaseToken);return {value,transactionId:sha(purchaseToken)};}

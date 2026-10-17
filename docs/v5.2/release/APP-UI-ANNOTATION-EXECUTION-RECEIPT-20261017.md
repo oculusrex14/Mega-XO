@@ -56,3 +56,43 @@ v35 CI parse gate).
 - Full device matrix (audio audibility, text enlargement, theme switches, report flow on device) — the phones are installed and launching; interactive owner acceptance is next.
 - **LR02 final CI re-verification is LAST**, after Main's current CI run finishes; this receipt's local results are a subset, not a replacement.
 
+
+
+## Store annotation follow-up + APK distribution (2026-10-17 late, codex branch)
+
+The owner annotated the fresh 4198 bundle (two new store items) and ordered the process
+change to a **codex branch + PR #30** (no more direct V5.2 commits, no local CI). All
+subsequent work is on `codex` (PR https://github.com/oculusrex14/Mega-XO/pull/30).
+
+| Commit | Item | Summary |
+| --- | --- | --- |
+| e08ac99 | APP-024 | The pass-card CSS sat before .mono-product with equal specificity, so the generic two-column grid, 13px title and 145px CTA cap won the cascade and crushed the card into vertical text. The block now sits after .mono-product, scoped .mono-product.mono-pass-card / descendants, raised material. |
+| 385ee36 | APP-023 | Guest balance description reworded — the button is the only sign-in invitation. |
+| 908885b | (contract) | v5-p21-brand client_assets count 8→9 (sponsors catalog) — same frozen-contract class as 716c5b1. |
+| 90cf2ee | APK | Direct Android APK distribution: validated androidApk config, digest/size-pinned build copy, Download-page card with honest Play Protect note, GAME_FILES + public-links/sponsors files. |
+| 535779b | (CI) | The full SHA-256 hex overflowed the 320px P21-BROWSER-REFLOW check; the APK card now wraps/clips. |
+
+### Device evidence (OnePlus Nord CE 5199676e, 360x745 CSS viewport, dpr 3)
+
+- Fresh debug build (bundle d3e3ff60…) installed and launched; same PID alive across the
+  whole check; zero FATAL exceptions in logcat.
+- Driven over the WebView DevTools protocol (debug build only): store page renders,
+  .mono-pass-card present, #mega-pass-title 166x26.4px (horizontal), emblem exactly
+  64x64, .mono-balance contains exactly one 'sign in' mention. Screenshots:
+  /tmp/dev-passcard.png, /tmp/dev-home.png (transient).
+
+### Release APK
+
+- downloads/android/megaxo-1.0.0.apk — online.megaxo.game v1.0.0 (versionCode 1), minSdk 28,
+  signed with the owner-held upload key; apksigner certificate SHA-256
+  961cc054… matches ANDROID-RELEASE-SIGNING-20261014 byte-for-byte; artifact sha256
+  b7000b4dc25a558cf95c8814bbf98cc958e06df26debe48fcdbed6f9502e865f, 23,982,165 bytes.
+- The build refuses a digest/size mismatch, so the committed config cannot ship a different
+  binary silently. Play App Signing remains the store authority.
+
+### CI (GitHub, per the owner's §6.7 decision)
+
+- PR #30 checks: static-website, v5-p21-brand, web-build, download suites green after the
+  client_assets-count and GAME_FILES alignments; browser-presentation was red once on the
+  320px reflow (fixed by 535779b) — final state recorded in the PR checks, not here.
+

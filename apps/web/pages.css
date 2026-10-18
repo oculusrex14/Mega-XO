@@ -645,3 +645,4 @@
 /* on /sponsors and /ads (P21-BROWSER-REFLOW). Let it wrap like the APK metadata does. */
 .pg-sponsor-enquiry p,.pg-sponsor-enquiry strong{overflow-wrap:anywhere;min-width:0}
 .pg-sponsor-enquiry>p.pg-small.mx-muted:last-child{margin-top:18px}
+.pg-store-error{display:flex;flex-wrap:wrap;align-items:center;gap:12px;margin:2px 0 26px;padding:14px 16px;border:1px solid #294367;border-radius:14px;background:linear-gradient(138deg,rgba(9,23,43,.95),rgba(3,11,25,.9))}

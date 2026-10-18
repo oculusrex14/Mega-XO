@@ -12,6 +12,29 @@ The web layer never decides a grant.
 - Consent is evaluated by the native Google User Messaging Platform integration before any ad request.
 - A native bridge must never return a fabricated successful receipt or fabricated rewarded completion.
 
+## Android distribution routing
+
+Android distribution is an explicit build property, separate from the existing `offline`/`online`
+network-target flavor. The Gradle property is `megaStoreDistribution`; it accepts only
+`google-play` or `direct-apk` and defaults to `google-play`. A directly downloadable APK opts in
+with `-PmegaStoreDistribution=direct-apk`. Do not infer distribution from the package name, install
+source at runtime, API origin, debug/release build type, or presence of a native bridge. The trusted
+native host publishes the compiled value to the bundled client as the read-only
+`window.MegaNativeStore.distribution` string.
+
+Only `direct-apk` routes product purchase actions to the fixed HTTPS URL
+`https://megaxo.online/store`. Render a real user-activated link so the native WebView's existing
+top-level external-link handler opens the system browser. Do not use `window.open`, scripted
+navigation, checkout inside the app WebView, or a product/account/query token in the URL. The browser
+store has its own login: the player must sign in there with the same linked account. Native access
+and refresh credentials, actor IDs, purchase evidence, and account tokens must never be copied to
+the browser or included in the link.
+
+`google-play`, an absent/unknown distribution value, and iOS retain their native purchase paths.
+Google Play must continue to use Play Billing; iOS must continue to use StoreKit. A direct APK build
+must set `direct-apk` explicitly, while every other Android build remains on the Play route by
+default. This routing switch does not enable billing, grant products, or change receipt verification.
+
 ## `window.MegaBilling`
 
 The native host exposes:

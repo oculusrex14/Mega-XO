@@ -18,6 +18,8 @@ import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.webkit.WebViewAssetLoader
+import androidx.webkit.WebViewCompat
+import androidx.webkit.WebViewFeature
 import java.io.ByteArrayInputStream
 
 /**
@@ -63,6 +65,7 @@ class MegaXOActivity : Activity() {
             setSupportZoom(false)
         }
         CookieManager.getInstance().setAcceptThirdPartyCookies(game, false)
+        installStoreDistribution()
         game.webChromeClient = object : WebChromeClient() {
             /**
              * The LAN bridge's frozen primitives (`start`/`stop`/`status`/`advertise`) are
@@ -195,6 +198,30 @@ class MegaXOActivity : Activity() {
             adService.gatherConsent { }
         }
         game.loadUrl(gameEntry)
+    }
+
+    /**
+     * Publish the signed build's store distribution to the bundled game before its scripts run.
+     * Only the exact game document receives it; the distribution string contains no account data.
+     * Unknown/unsupported builds expose no marker and the web UI therefore keeps native billing.
+     */
+    private fun installStoreDistribution() {
+        if (!WebViewFeature.isFeatureSupported(WebViewFeature.DOCUMENT_START_SCRIPT)) return
+        val distribution = BuildConfig.MEGA_STORE_DISTRIBUTION
+        val bootstrap = """
+            (() => {
+              if (window.top !== window) return;
+              const current = new URL(window.location.href);
+              if (current.origin !== 'https://$assetHost' ||
+                  current.pathname !== '${assetPrefix}bundle-index.html' || current.search) return;
+              if (Object.prototype.hasOwnProperty.call(window, 'MegaNativeStore')) return;
+              Object.defineProperty(window, 'MegaNativeStore', {
+                configurable: false, enumerable: false, writable: false,
+                value: Object.freeze({distribution: '$distribution'})
+              });
+            })();
+        """.trimIndent()
+        WebViewCompat.addDocumentStartJavaScript(game, bootstrap, setOf("https://$assetHost"))
     }
 
     private fun blocked(): WebResourceResponse = WebResourceResponse(

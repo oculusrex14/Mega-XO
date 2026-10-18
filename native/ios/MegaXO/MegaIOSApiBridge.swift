@@ -25,7 +25,9 @@ final class MegaIOSApiBridge: NSObject, WKScriptMessageHandlerWithReply {
     private weak var presentingController: UIViewController?
     private var pendingAuthSession: ASWebAuthenticationSession?
     private let maxPathLength = 512
-    private let maxBodyLength = 65536
+    // Mirror of the transport cap: the largest declared route contract (300000,
+    // packages/contracts/routes.js account.save.write).
+    private let maxBodyLength = 300000
 
     init(entry: URL, http: MegaNativeHTTP, session: MegaNativeSession, apple: MegaIOSIdentityBridge?,
          googleClientId: String = "", presenter: UIViewController? = nil) {

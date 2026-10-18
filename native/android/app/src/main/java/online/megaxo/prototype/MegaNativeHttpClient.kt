@@ -56,7 +56,12 @@ internal class MegaNativeHttpClient(apiOrigin: String?) {
         "/api/account/native/refresh",
         "/api/account/native/logout"
     )
-    private val maxBodyBytes = 65536
+    /* The largest declared route contract (packages/contracts/routes.js): account.save.write and
+     * every other authenticated POST allow 300000. The previous 64 KiB cap refused large cloud
+     * saves device-side with no server contact, which the client classified as a degraded
+     * connection - a permanent "Connection interrupted" banner for anyone with a long play
+     * history. Stay at the contract ceiling; the server still enforces its own precise limits. */
+    private val maxBodyBytes = 300000
     private val maxResponseBytes = 524288
 
     /** True only when a valid HTTPS origin was configured (Gradle `megaApiOrigin`). */

@@ -30,7 +30,10 @@ internal class MegaNativeApiBridge private constructor(
     private val provider: MegaAndroidIdentityBridge?
 ) {
     private val maxPathLength = 512
-    private val maxBodyLength = 65536
+    /* Mirror of the transport cap: the largest declared route contract (300000, see
+     * packages/contracts/routes.js account.save.write). A 64 KiB bridge reject refused large
+     * cloud saves before any server contact and surfaced as a permanent degraded banner. */
+    private val maxBodyLength = 300000
 
     private fun send(reply: JavaScriptReplyProxy, id: Int, payload: JSONObject) {
         runCatching { reply.postMessage(payload.put("id", id).toString()) }

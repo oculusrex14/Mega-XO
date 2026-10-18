@@ -290,9 +290,10 @@ function validateProductionBinding({ binding, target, servingEpoch = null } = {}
   }
   if (typeof target.nonserving !== 'boolean') throw REFUSE('REFUSED_NONSERVING_FLAG_INVALID');
   const outbound = resolveOutboundPolicy(target);
-  /* No outbound provider exists in this entry, so a target file that ENABLES one is refused here
-   * rather than silently composed without it. */
-  assertProviderClassesComposable(outbound);
+  /* LR10 production-bug fix (2026-10-19): provider composition is asserted in main() WITH the
+   * entry's capability map — an enabled class without an implemented provider still refuses there.
+   * Refusing here made boot depend on provider wiring the validator cannot see and blocked a
+   * correctly provisioned inventory from ever starting. The declaration itself stays validated. */
   /* Switch A is the first production write and switch B is the authority epoch; nothing here can
    * reach a serving target by accident, and nothing arms early. */
   if (target.nonserving === true) {

@@ -105,6 +105,52 @@ function mark(player, extra = '') {
   return `<svg class="gb-mark gb-mark--${player.toLowerCase()} ${extra}" viewBox="0 0 40 40" fill="none" aria-hidden="true">${shape}</svg>`;
 }
 
+/* Attributes that identify a rendered node across renders. Everything else on an element is state.
+ * WebKit (iOS Chrome/Safari) re-anchors the page when a tapped element is destroyed and recreated,
+ * so stable parts of the board are updated in place and only genuinely diverged structures are
+ * replaced. Exported for regression tests; the DOM subset used here is intentionally tiny. */
+const RENDER_IDENTITY_ATTRIBUTES = ['id', 'name', 'type', 'role', 'for', 'data-action', 'data-c', 'data-gb-cell', 'data-gb-mini', 'data-gb-setting', 'data-gb-tool', 'data-gb-power', 'data-id', 'data-monetization', 'data-value'];
+
+function renderIdentity(node) {
+  if (!node || node.nodeType !== 1 || typeof node.tagName !== 'string') return null;
+  const parts = [node.tagName.toLowerCase()];
+  for (const name of RENDER_IDENTITY_ATTRIBUTES) {
+    const value = typeof node.getAttribute === 'function' ? node.getAttribute(name) : null;
+    if (value) parts.push(`${name}=${value}`);
+  }
+  for (const attribute of (typeof node.attributes === 'object' && node.attributes !== null) ? node.attributes : []) {
+    if (typeof attribute.name === 'string' && attribute.name.startsWith('data-gb-')) parts.push(`${attribute.name}=${attribute.value}`);
+  }
+  return parts.join('|');
+}
+
+export function mergeRenderedElement(current, next) {
+  if (renderIdentity(current) === null || renderIdentity(current) !== renderIdentity(next)) return false;
+  const nextChildren = [...next.children];
+  const currentChildren = [...current.children];
+  if (nextChildren.length > 0 && currentChildren.length !== nextChildren.length) return false;
+  for (const attribute of [...current.attributes]) {
+    if (!next.hasAttribute(attribute.name) && !RENDER_IDENTITY_ATTRIBUTES.includes(attribute.name) && !attribute.name.startsWith('data-gb-')) current.removeAttribute(attribute.name);
+  }
+  for (const attribute of [...next.attributes]) {
+    if (!RENDER_IDENTITY_ATTRIBUTES.includes(attribute.name) && !attribute.name.startsWith('data-gb-')) current.setAttribute(attribute.name, attribute.value);
+  }
+  if (nextChildren.length === 0) {
+    if (current.textContent !== next.textContent) current.textContent = next.textContent;
+    return true;
+  }
+  for (let index = 0; index < nextChildren.length; index++) {
+    if (renderIdentity(currentChildren[index]) !== renderIdentity(nextChildren[index])) {
+      /* A divergent child is repaired locally (only that element is replaced) without discarding the
+       * stable parent — an X/O mark swap must never recreate the cell button that was tapped. */
+      currentChildren[index].replaceWith(nextChildren[index]);
+      continue;
+    }
+    mergeRenderedElement(currentChildren[index], nextChildren[index]);
+  }
+  return true;
+}
+
 function boardMarkup(state, game, { thinking = false, blocked = false, focus = null, guidedTargetCell = null, guidedDestination = null } = {}) {
   const legal = new Set(game.legal(state).map(move => `${move.b}:${move.c}`));
   const legalList = game.legal(state);
@@ -458,7 +504,9 @@ export function mountBoard(host, {
           const details = currentPart.querySelector('details');
           if (details?.open) nextPart.querySelector('details').open = true;
         }
-        if (currentPart && nextPart) currentPart.replaceWith(nextPart);
+        if (currentPart && nextPart) {
+          if (!mergeRenderedElement(currentPart, nextPart)) currentPart.replaceWith(nextPart);
+        }
         else if (!currentPart && nextPart && selector === '.gb-guided-panel') {
           stage.querySelector('.gb-frame')?.before(nextPart);
         } else if (!currentPart && nextPart && selector === '.gb-powers') {
@@ -470,8 +518,10 @@ export function mountBoard(host, {
       stage.querySelector('.gb-turn-strip').innerHTML = next.querySelector('.gb-turn-strip').innerHTML;
       stage.dataset.gbTheme = preview ? 'cinematic' : theme;
     } else host.innerHTML = html;
-    if (focusCell && focusedCell) host.querySelector(`[data-gb-cell="${focusedCell}"]`)?.focus({ preventScroll: true });
-    if (setting) host.querySelector(`[data-gb-setting="${setting}"]`)?.focus({ preventScroll: true });
+    /* Touch input never needs synthetic focus restoration: on WebKit, focusing a freshly rendered
+     * element scrolls it into view even with preventScroll. Keyboard users keep the restoration. */
+    if (focusCell && focusedCell && lastInputWasKeyboard) host.querySelector(`[data-gb-cell="${focusedCell}"]`)?.focus({ preventScroll: true });
+    if (setting && lastInputWasKeyboard) host.querySelector(`[data-gb-setting="${setting}"]`)?.focus({ preventScroll: true });
     if (workspace && typeof CustomEvent !== 'undefined') host.dispatchEvent?.(new CustomEvent('gb:render', {bubbles:true}));
   }
 
@@ -812,6 +862,12 @@ export function mountBoard(host, {
     }
   }
 
+  /* Captured on the host: pointerdown covers touch/mouse/pen and keydown covers keyboard. */
+  let lastInputWasKeyboard = false;
+  const noteInputType = event => { lastInputWasKeyboard = event.type === 'keydown'; };
+  host.addEventListener('pointerdown', noteInputType);
+  host.addEventListener('keydown', noteInputType);
+
   const onVisibility = () => {
     if (destroyed) return;
     if (host.ownerDocument?.hidden) {
@@ -858,6 +914,8 @@ export function mountBoard(host, {
       compat?.stopNarration?.();
       host.ownerDocument?.removeEventListener?.('visibilitychange', onVisibility);
       host.removeEventListener('click', onClick);
+      host.removeEventListener('pointerdown', noteInputType);
+      host.removeEventListener('keydown', noteInputType);
       guidedStart?.removeEventListener('click', startGuided);
       host.removeEventListener('keydown', onKeydown);
       host.removeEventListener('change', onChange);

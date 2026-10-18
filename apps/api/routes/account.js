@@ -317,8 +317,23 @@ function sessionCookieHeaders(token, req) {
 async function dispatchDelivery(context, result) {
   if (!result || typeof result !== 'object' || !result.delivery) return result;
   const { delivery, ...rest } = result;
-  if (typeof context?.otpSink === 'function') {
-    try { await context.otpSink(Object.freeze({ ...delivery, challengeId: rest.challengeId || null })); } catch { /* a sink failure must never alter the auth response */ }
+  /* Production-bug fix (2026-10-19): a challenge that cannot be queued must never answer 200 with
+   * "check your inbox". Without a sink the deployment has no mail lane (503, honest unavailability);
+   * a sink failure (database write, sealed envelope) surfaces as EMAIL_DELIVERY_FAILED so the client
+   * can retry instead of waiting for mail that was never produced. Delivery material still never
+   * reaches a caller. */
+  if (typeof context?.otpSink !== 'function') {
+    const error = new Error('EMAIL_DELIVERY_NOT_CONFIGURED');
+    error.status = 503;
+    throw error;
+  }
+  try {
+    await context.otpSink(Object.freeze({ ...delivery, challengeId: rest.challengeId || null }));
+  } catch (cause) {
+    const error = new Error('EMAIL_DELIVERY_FAILED');
+    error.status = 503;
+    error.cause = cause;
+    throw error;
   }
   return rest;
 }

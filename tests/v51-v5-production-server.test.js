@@ -107,10 +107,12 @@ test('binding: a staging target string and a malformed/missing binding are refus
     code('REFUSED_PRODUCTION_TARGET_FILE'));
   assert.throws(() => mod.validateProductionBinding({ binding: PROD_BINDING, target: staging }),
     code('REFUSED_PRODUCTION_TARGET_FILE'));
-  /* A production target that ENABLES an outbound class cannot be composed by this entry point. */
-  assert.throws(() => mod.validateProductionBinding({
+  /* An enabled outbound class validates: composition (with the capability map) owns the
+   * implemented-provider refusal, so a provisioned inventory can boot (LR10 production fix). */
+  const enabling = mod.validateProductionBinding({
     binding: PROD_BINDING, target: { ...production, outbound: { ...production.outbound, adRewards: 'enabled' } },
-  }), code('OUTBOUND_CLASS_UNIMPLEMENTED'));
+  });
+  assert.equal(enabling.outbound.adRewards, 'enabled');
 
   for (const bad of [undefined, null, '', 0, {}, [], `${production.projectId}/${production.branchId}`,
     `${production.projectId}/${production.branchId}/${production.database}/extra`,

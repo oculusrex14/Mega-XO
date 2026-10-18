@@ -39,7 +39,8 @@ function stubContext({ emailResult, linked = false } = {}) {
       emailContinue: async (token, email, password) => {
         context.seen = { op: 'continue', token, email, password };
         if (linked) return { token: 'rotated-linked-token', profile: { id: 'u_actor1' } };
-        return { linked: false, verificationRequired: true, challengeId: 'chal_1', maskedEmail: 'm***@x.co', expiresAt: 1, resendAt: 2 };
+        return { linked: false, verificationRequired: true, challengeId: 'chal_1', maskedEmail: 'm***@x.co', expiresAt: 1, resendAt: 2,
+          delivery: { to: 'a@b.co', code: '654321', purpose: 'verify', idempotencyKey: 'otp-smoke-key' } };
       },
       emailVerify: async (token) => { context.seen = { op: 'verify', token }; return { token: 'rotated-linked-token', profile: { id: 'u_actor1' } }; },
       emailResetStart: async () => ({ challengeId: 'chal_2' }),
@@ -56,6 +57,7 @@ function stubContext({ emailResult, linked = false } = {}) {
       rotate: async () => ({}),
       startFamily: async (input) => { context.family = input; return { refreshSecret: 'test-refresh-secret' }; },
     },
+    otpSink: async () => {},
     nativeAudiences: ['mega-android', 'mega-ios'],
     get bootstraps() { return bootstrapped; },
   };
@@ -138,4 +140,26 @@ test('reset mints an OTP-authenticated family after reset proof succeeds', async
   await accountRoutes.postNativeEmail(context, makeReq(JSON.stringify({ action: 'reset', challengeId: 'chal_2', password: 'testingpass12' }),
     { bearer: 'anon-session-token' }), makeRes());
   assert.deepEqual(context.issued.amr, ['otp']);
+});
+
+test('a delivery result without a configured sink fails loudly instead of promising an email', async () => {
+  const context = stubContext({ linked: false });
+  delete context.otpSink;
+  const res = makeRes();
+  await assert.rejects(
+    () => accountRoutes.postNativeEmail(context, makeReq(JSON.stringify({ action: 'continue', email: 'a@b.co', password: 'testingpass12' })), res),
+    /EMAIL_DELIVERY_NOT_CONFIGURED/,
+  );
+  assert.equal(res.body, null, 'no challenge or session token is emitted for an undeliverable signup');
+});
+
+test('a sink failure surfaces EMAIL_DELIVERY_FAILED and never reports the challenge', async () => {
+  const context = stubContext({ linked: false });
+  context.otpSink = async () => { throw Error('OUTBOX_WRITE_FAILED'); };
+  const res = makeRes();
+  await assert.rejects(
+    () => accountRoutes.postNativeEmail(context, makeReq(JSON.stringify({ action: 'continue', email: 'a@b.co', password: 'testingpass12' })), res),
+    /EMAIL_DELIVERY_FAILED/,
+  );
+  assert.equal(res.body, null);
 });

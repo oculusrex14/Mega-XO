@@ -161,12 +161,18 @@ test('P21 store only renders approved returned products and provider prices', as
   assert.match(unavailableProvider, /data-product-id="crowns_100" disabled/);
   const errored = renderPage('/store', { products: { status: 'error', rows } });
   /* A2: a failed read keeps the known product shell visible with prices hidden and every
-   * action off, plus one inline retry - it never wipes the page or invents a price. */
+   * action off. A guest gets a sign-in prompt instead of error text - the check cannot
+   * succeed without an account, and neither state ever invents a price. */
   assert.doesNotMatch(errored, /₹89.00|$0.99/);
   assert.equal((errored.match(/pg-store-card/g) || []).length, 4);
-  assert.equal((errored.match(/Price unavailable/g) || []).length, 5, 'the pass panel plus the four cards stay honest');
+  assert.equal((errored.match(/Sign in to see the price/g) || []).length, 5, 'the pass panel plus the four cards prompt the guest to sign in');
+  assert.equal((errored.match(/Sign in to buy/g) || []).length, 5, 'every card links to sign-in instead of a dead button');
   assert.doesNotMatch(errored, /data-store-action="purchase"/);
-  assert.match(errored, /data-store-action="refresh"/);
+  assert.doesNotMatch(errored, /data-store-action="refresh"/);
+  const erroredLinked = renderPage('/store', { sessionStatus: 'linked', profile: { wallet: { coins: 47, crowns: 6 } }, products: { status: 'error', rows } });
+  assert.equal((erroredLinked.match(/Price unavailable/g) || []).length, 5, 'a signed-in failure keeps the honest unavailable labels');
+  assert.match(erroredLinked, /data-store-action="refresh"/);
+  assert.doesNotMatch(erroredLinked, /data-store-action="purchase"/);
   const loading = renderPage('/store', { products: { status: 'loading', rows } });
   assert.doesNotMatch(loading, /₹89.00|$0.99|data-store-action="purchase"|pg-store-card/);
   assert.match(loading, /Loading the store/);

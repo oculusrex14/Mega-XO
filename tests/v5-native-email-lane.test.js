@@ -33,6 +33,7 @@ function makeRes() {
 function stubContext({ emailResult, linked = false } = {}) {
   let bootstrapped = 0;
   const context = {
+    checkNativeEmail: async () => {},
     accounts: {
       bootstrap: async () => { bootstrapped += 1; return { token: 'anon-session-token', actor: null }; },
       emailContinue: async (token, email, password) => {
@@ -118,4 +119,23 @@ test('unknown actions are refused with a 409', async () => {
     () => accountRoutes.postNativeEmail(context, makeReq(JSON.stringify({ action: 'delete-everything' })), res),
     /INVALID_OPERATION/,
   );
+});
+
+test('admission fails closed before allocating a guest session or checking credentials', async () => {
+  const context = stubContext({ linked: true });
+  context.checkNativeEmail = async () => { throw Error('RATE_LIMITED'); };
+  await assert.rejects(() => accountRoutes.postNativeEmail(context,
+    makeReq(JSON.stringify({ action: 'continue', email: 'a@b.co', password: 'testingpass12' })), makeRes()), /RATE_LIMITED/);
+  assert.equal(context.bootstraps, 0);
+  assert.equal(context.seen, undefined);
+  delete context.checkNativeEmail;
+  await assert.rejects(() => accountRoutes.postNativeEmail(context,
+    makeReq(JSON.stringify({ action: 'continue', email: 'a@b.co', password: 'testingpass12' })), makeRes()), /RATE_LIMIT_UNAVAILABLE/);
+});
+
+test('reset mints an OTP-authenticated family after reset proof succeeds', async () => {
+  const context = stubContext({ linked: true });
+  await accountRoutes.postNativeEmail(context, makeReq(JSON.stringify({ action: 'reset', challengeId: 'chal_2', password: 'testingpass12' }),
+    { bearer: 'anon-session-token' }), makeRes());
+  assert.deepEqual(context.issued.amr, ['otp']);
 });

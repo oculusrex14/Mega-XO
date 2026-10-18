@@ -806,6 +806,14 @@ async function mintNativeCredentialFamily(context, accounts, logged, amr) {
  */
 async function postNativeEmail(context, req, res) {
   refuseNativeAmbiguity(req);
+  // Admission precedes anonymous-session allocation and password hashing; rotating guest
+  // sessions cannot reset the deployment's durable, trusted-source request budget.
+  if (typeof context.checkNativeEmail !== 'function') {
+    const error = new Error('RATE_LIMIT_UNAVAILABLE');
+    error.status = 503;
+    throw error;
+  }
+  await context.checkNativeEmail(req);
   const accounts = await resolveService(context);
   const body = await readNativeBody(req, NATIVE_BODY_LIMITS.challenge);
   const action = typeof body.action === 'string' ? body.action : '';
@@ -820,7 +828,7 @@ async function postNativeEmail(context, req, res) {
   /* The frozen P05 amr allowlist (pwd/otp/google/apple) has no 'email': a password lane result
    * authenticates with 'pwd' and an OTP-code result with 'otp', exactly like the web flow's
    * credentials. Anything else is refused by authenticateNative before the session is read. */
-  const amr = action === 'verify' ? ['otp'] : ['pwd'];
+  const amr = action === 'verify' || action === 'reset' ? ['otp'] : ['pwd'];
   let token = bearer || cookie || null;
   let sessionToken = null;
   if (!token) {

@@ -990,6 +990,8 @@ async function main() {
     trustedProxies: process.env.MEGA_TRUSTED_PROXIES || '127.0.0.1/32,::1/128',
   });
   const callbackLimiter = createProviderCallbackLimiter({ pool: apiPool, limit: 600, windowMs: 60000 });
+  const nativeEmailLimiter = createRateLimiter({ pool: apiPool, limit: 30, windowMs: 300000, prefix: 'native-email' });
+  apiContext.checkNativeEmail = (req) => nativeEmailLimiter.check(callbackSourceIp.resolve(req));
   apiContext.monetization = {
     command: async (input) => {
       if (input && typeof input.actor === 'string' && input.actor) await monetizationLimiter.check(input.actor);

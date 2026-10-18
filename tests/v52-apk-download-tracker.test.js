@@ -194,21 +194,24 @@ test('database errors propagate to the caller but never become leaked secrets or
   await assert.rejects(work(), /PG_CONN_FAIL/);
 });
 
-test('real HTTP file stream counts only a completed 200 response', async t => {
+test('real HTTP file stream counts only a completed 200 response', {timeout:5000}, async t => {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'apk-stream-success-'));
   t.after(() => fs.rmSync(directory, {recursive: true, force: true}));
   const absolute = path.join(directory, 'app.apk');
   const bytes = Buffer.from('synthetic APK bytes');
   fs.writeFileSync(absolute, bytes);
-  let completed = 0;
+  let completed = 0, recordFinished;
+  const recorded = new Promise(resolve => { recordFinished = resolve; });
   const origin = await loopback(t, (_req, res) => {
     res.statusCode = 200;
     res.setHeader('Content-Length', String(bytes.length));
-    streamApkFile(absolute, res, () => { completed += 1; });
+    streamApkFile(absolute, res, () => { completed += 1; recordFinished(); });
   });
 
   const response = await get(origin + '/apk');
-  await new Promise(resolve => setImmediate(resolve));
+  // The client can receive its declared Content-Length before fs emits the final EOF and the
+  // server finishes its response. Wait for that actual completion, with the test deadline above.
+  await recorded;
   assert.equal(response.statusCode, 200);
   assert.equal(response.body, bytes.toString());
   assert.equal(completed, 1);

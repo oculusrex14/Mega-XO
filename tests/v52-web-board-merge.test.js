@@ -69,6 +69,21 @@ test('diverged structures refuse to merge so the caller replaces that part', () 
   assert.equal(current.children[0], before, 'nothing is mutated when the merge refuses');
 });
 
+test('a count change deep in the tree replaces only that subtree', () => {
+  const actions = (buttons) => {
+    const div = new FakeElement('div', [['class', 'gb-game-actions']]);
+    for (const [action, label] of buttons) div.appendChild(new FakeElement('button', [['data-gb-action', action]], label));
+    return div;
+  };
+  const current = new FakeElement('div', []);
+  current.appendChild(actions([['share', 'Share game']]));
+  const next = new FakeElement('div', []);
+  next.appendChild(actions([['resign', 'Resign'], ['share', 'Share game']]));
+  assert.equal(mergeRenderedElement(current, next), true, 'the stable parent survives');
+  assert.equal(current.children[0].children.length, 2);
+  assert.equal(current.children[0].children[0].getAttribute('data-gb-action'), 'resign');
+});
+
 test('identity attributes gate the merge and text-only leaves update in place', () => {
   const current = new FakeElement('p', [['data-gb-match-note', 'your move']]);
   const next = new FakeElement('p', [['data-gb-match-note', 'opponent thinking']]);

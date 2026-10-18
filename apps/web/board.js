@@ -140,13 +140,12 @@ export function mergeRenderedElement(current, next) {
     return true;
   }
   for (let index = 0; index < nextChildren.length; index++) {
-    if (renderIdentity(currentChildren[index]) !== renderIdentity(nextChildren[index])) {
-      /* A divergent child is repaired locally (only that element is replaced) without discarding the
-       * stable parent — an X/O mark swap must never recreate the cell button that was tapped. */
+    /* A divergent child — different identity or a deeper count change such as a resign button
+     * appearing — is repaired locally: only that element is replaced, the stable parent survives. */
+    if (renderIdentity(currentChildren[index]) !== renderIdentity(nextChildren[index])
+      || !mergeRenderedElement(currentChildren[index], nextChildren[index])) {
       currentChildren[index].replaceWith(nextChildren[index]);
-      continue;
     }
-    mergeRenderedElement(currentChildren[index], nextChildren[index]);
   }
   return true;
 }
@@ -505,7 +504,10 @@ export function mountBoard(host, {
           if (details?.open) nextPart.querySelector('details').open = true;
         }
         if (currentPart && nextPart) {
-          if (!mergeRenderedElement(currentPart, nextPart)) currentPart.replaceWith(nextPart);
+          /* Only the board frame updates in place: recreating it is what re-anchors iOS WebKit's
+           * scroll after every move. Every other part is small and structurally variable, so it
+           * keeps the proven full-replacement behavior. */
+          if (selector !== '.gb-frame' || !mergeRenderedElement(currentPart, nextPart)) currentPart.replaceWith(nextPart);
         }
         else if (!currentPart && nextPart && selector === '.gb-guided-panel') {
           stage.querySelector('.gb-frame')?.before(nextPart);

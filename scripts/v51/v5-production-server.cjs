@@ -572,6 +572,7 @@ async function main() {
   const { StorePurchaseProvider } = require(path.join(ROOT, 'server/store-purchase-provider.js'));
   const { GooglePlayBilling } = require(path.join(ROOT, 'server/google-play-billing.js'));
   const { AppleStoreKit } = require(path.join(ROOT, 'server/apple-storekit.js'));
+  const { GooglePlayStoreNotifications, AppleStoreNotificationsV5 } = require(path.join(ROOT, 'server/v5-store-notifications.js'));
   const { createRealtimeTransport } = require(path.join(ROOT, 'packages/services/realtime-transport.js'));
   const { resolveManagedRedisTarget } = require(path.join(ROOT, 'packages/services/managed-ephemera.js'));
   const { createEphemeraService } = require(path.join(ROOT, 'packages/services/ephemera.js'));
@@ -731,6 +732,7 @@ async function main() {
     return map;
   };
   let purchaseProvider = null;
+  let storeNotificationHandlers = null;
   if (process.env.MEGA_PURCHASES_ENABLED === 'true') {
     const storeSecretReader = require(path.join(ROOT, 'server/production/config.js')).secret;
     const googleJson = storeSecretReader(process.env, 'GOOGLE_PLAY_SERVICE_ACCOUNT_JSON');
@@ -755,7 +757,22 @@ async function main() {
     }
     if (googlePlay || apple) {
       const storeDb = createPgStoreDb({ corePool, workerPool });
-      purchaseProvider = new StorePurchaseProvider({ google: googlePlay ? new GooglePlayBilling(storeDb, googlePlay) : null, apple: apple ? new AppleStoreKit(storeDb, apple) : null });
+      const googlePlayInstance = googlePlay ? new GooglePlayBilling(storeDb, googlePlay) : null;
+      const appleStoreKitInstance = apple ? new AppleStoreKit(storeDb, apple) : null;
+      purchaseProvider = new StorePurchaseProvider({ google: googlePlayInstance, apple: appleStoreKitInstance });
+      /* MXA-ECO-005: the trusted store-notification verification classes. Composed only when the
+       * matching store verifier config exists; the Google lane additionally needs its push
+       * identity (service-account email and/or expected audience). Absent config keeps the
+       * notification routes honestly 503 — the API never accepts an unverifiable callback. */
+      storeNotificationHandlers = {
+        google: googlePlayInstance ? new GooglePlayStoreNotifications({
+          packageName: googlePlay.packageName,
+          serviceAccountEmail: googlePlay.pubsubServiceAccount || null,
+          expectedAudience: googlePlay.pubsubAudience || null,
+          billing: googlePlayInstance,
+        }) : null,
+        apple: appleStoreKitInstance ? new AppleStoreNotificationsV5({ storeKit: appleStoreKitInstance }) : null,
+      };
     }
   }
   /* LR13: the Cashfree web-commerce lane. When CASHFREE_APP_ID is present the WHOLE configuration
@@ -766,10 +783,11 @@ async function main() {
    * createOrder refuses CASHFREE_UNAVAILABLE and no provider order can ever be created. */
   let cashfreeProvider = null;
   let cashfreeCatalog = null;
+  let cashfreeEnv = 'PRODUCTION';
   if (process.env.CASHFREE_APP_ID) {
     const cashfreeSecret = require(path.join(ROOT, 'server/production/config.js')).secret(process.env, 'CASHFREE_SECRET_KEY');
     if (!cashfreeSecret) throw REFUSE('INCOMPLETE_CASHFREE_CONFIG');
-    const cashfreeEnv = process.env.CASHFREE_ENV || 'PRODUCTION';
+    cashfreeEnv = process.env.CASHFREE_ENV || 'PRODUCTION';
     if (!['PRODUCTION', 'TEST'].includes(cashfreeEnv)) throw REFUSE('INVALID_CASHFREE_ENV');
     cashfreeCatalog = {};
     for (const id of PRODUCT_IDS) {
@@ -840,6 +858,7 @@ async function main() {
     adUnits,
     eligible: (account) => account && account.verified === true && account.suspended !== true && account.hold !== true,
     purchaseProvider,
+    storeNotificationHandlers,
     cashfreeProvider,
     cashfreeCatalog,
     cashfreeEnv,
@@ -848,6 +867,9 @@ async function main() {
     polarProvider,
     polarCatalog,
     polarSuccessUrl,
+    /* Sol review round 2: wired but inert until the env var exists - a discount id that is not
+     * configured can never silently charge a wrong amount, and the pack-discount guard stays off. */
+    polarPackDiscountId: process.env.POLAR_PACK_DISCOUNT_ID || undefined,
   });
   const commerceIngress = createCommerceIngressService({ commerce });
   const coreIngress = createCoreServiceIngress({ coreService: core, ticketIssuer, queue, tournaments, commerce: commerceIngress, leaderboardPool: corePool, secret: gatewaySecret });
@@ -968,6 +990,7 @@ async function main() {
       return coreGateway.commerceCommand(input);
     },
     ssv: (raw) => coreGateway.commerceSsv({ raw }),
+    storeNotification: (input) => coreGateway.commerceStoreNotification(input),
     cashfreeWebhook: (payload) => coreGateway.commerceCashfreeWebhook(payload),
     polarWebhook: (payload) => coreGateway.commercePolarWebhook(payload),
     checkCallback: async (req, provider) => callbackLimiter.check(provider, callbackSourceIp.resolve(req)),
@@ -1122,6 +1145,22 @@ async function main() {
         .catch((error) => console.error(JSON.stringify({ event: 'pass_grant_error', code: safeError(error) })))
         .finally(() => { passGrantsBusy = false; });
     }, 50000);
+  }
+
+  /* MXA-ECO-016 (audit 2026-10-17): the durable provider finalization sweep. The grant path
+   * reports an interrupted consume/acknowledge as finalizationPending; without a retry caller
+   * the job could stall into a store auto-refund. Single-flight like the pass sweep - the
+   * provider's own processDue lease bounds each tick, and a failed tick just retries. */
+  let storeFinalizationTimer = null;
+  if (arg('--store-finalization', 'on') !== 'off') {
+    let storeFinalizationBusy = false;
+    storeFinalizationTimer = setInterval(() => {
+      if (storeFinalizationBusy) return;
+      storeFinalizationBusy = true;
+      Promise.resolve(commerce.processPurchaseFinalizations ? commerce.processPurchaseFinalizations() : null)
+        .catch((error) => console.error(JSON.stringify({ event: 'store_finalization_error', code: safeError(error) })))
+        .finally(() => { storeFinalizationBusy = false; });
+    }, 30000);
   }
 
   /* The worker pass (worker_runtime): lapsed work, the privacy/retention sweeps and mail delivery.

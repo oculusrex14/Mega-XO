@@ -63,6 +63,11 @@ function pageMarkup(){
    '<article class="mono-product"><div><h3>Undo charge</h3><p>Take back a move in an eligible Bot match.</p></div>'+button('Buy for 2 Crowns','powerbuy','undo',busy||!window.MegaPowers?.purchase)+'</article>'+
    '<article class="mono-product"><div><h3>Hint charge</h3><p>Get a suggested move in an eligible Bot match.</p></div>'+button('Buy for 3 Crowns','powerbuy','hint',busy||!window.MegaPowers?.purchase)+'</article>'+
   '</div></section>'+
+  '<section class="mono-section"><div class="mono-section-head"><div><p class="mono-kicker">PASS BENEFIT</p><h3>Coin exchange</h3></div>'+(status?.passExchange?.active?'<span class="pill">'+esc(status.passExchange.rate)+':1</span>':'')+'</div>'+
+   (status?.passExchange?.active
+    ?'<p>Exchange profile Coins for Crowns at '+esc(status.passExchange.rate)+':1 &mdash; the first '+esc(status.passExchange.allowance)+' Coins each billing month get the pass rate. <strong><bdi>'+esc(status.passExchange.remaining)+'</bdi></strong> Coins of pass-rate allowance remain this month.</p><div class="mono-product-list"><article class="mono-product"><div><h3>Coins to Crowns</h3><p>Runs on your profile wallet. Use a multiple of 8 while the pass rate covers the amount.</p><input id="monoExchangeAmount" type="number" min="8" step="8" inputmode="numeric" placeholder="Coins" aria-label="Coins to exchange"></div>'+button('Exchange','exchange','',busy||!connected)+'</article></div>'
+    :'<p class="caption">Coin exchange at 8:1 is a Mega Pass benefit.'+(status?.pass?' Your allowance resets with your billing month.':' See the Mega Pass above.')+'</p>')+
+  '</section>'+
   '<section class="mono-section mono-shop"><div class="mono-section-head"><div><p class="mono-kicker">STORE</p><h3>Crowns, Mega Pass &amp; Remove Ads</h3></div></div><p>Optional purchases do not change skill rating or game rules.</p><div class="mono-product-list">'+products+'</div></section>'+
   '<div class="mono-footer">'+button('Restore purchases','restore','',busy||!connected||!window.MegaBilling?.restore)+button('Ad privacy options','privacy','',!window.MegaAds?.privacyOptions)+button('Report an ad','report','',!window.MegaAds?.reportAd)+'</div>'+
  '</div>';
@@ -102,6 +107,7 @@ document.addEventListener('click',e=>{
  else if(action==='confirm')execute(async()=>{const p=selected;if(!p||p.actor!==who()||!safe(true))return;selected=null;const evidence=await window.MegaBilling.purchase(p.id,status?.storeContext||null);if(who()!==p.actor)throw Error('AUTH_REQUIRED');const delivered=await request('purchase',{evidence});await window.MegaBilling.finish?.(evidence,delivered);await APP.refresh();await refresh();APP.close();show();APP.notify('Verified purchase delivered.');});
  else if(action==='restore')execute(async()=>{const user=who(),receipts=await window.MegaBilling.restore(status?.storeContext||null);if(user!==who()||!Array.isArray(receipts)||receipts.length>50)throw Error('INVALID_RECEIPT');for(const evidence of receipts)await request('restore',{evidence});APP.notify('Verified non-consumable purchases restored.');});
  else if(action==='powerbuy')execute(async()=>{if(!['undo','hint'].includes(value))return;await window.MegaPowers.purchase(value);APP.notify('Charge banked. It stays until you use it.');});
+ else if(action==='exchange')execute(async()=>{const input=document.getElementById('monoExchangeAmount');const amount=Number(input&&input.value);if(!Number.isInteger(amount)||amount<=0)throw Error('Enter the Coin amount to exchange first.');const user=who();const r=await request('exchange',{amount});if(who()!==user)throw Error('AUTH_REQUIRED');await APP.refresh();await refresh();show();APP.notify('Exchanged for '+r.crowns+' Crowns.');});
  else if(action==='claim')execute(async()=>{const r=await request('claim',{});APP.notify((r.base+r.bonus)+' earned Cosmetic Credits collected.');});
  else if(action==='prepare')execute(async()=>{if(!safe(true)||!status||status.adMode==='off')return;await window.MegaAds.privacyOptions?.();if(!safe(true)||!privacyReady())return;await window.MegaAds.prepare('rewarded');});
  else if(action==='privacy')execute(()=>window.MegaAds.privacyOptions());else if(action==='report')execute(()=>window.MegaAds.reportAd());
@@ -109,5 +115,7 @@ document.addEventListener('click',e=>{
 setInterval(()=>{if(who()!==actor){status=null;refresh().then(()=>show());}},2000);
 document.addEventListener('visibilitychange',()=>{adGeneration++;if(!document.hidden)refresh().then(()=>show());});
 window.MegaXO=Object.freeze({...window.MegaXO,version:'3.5.1-auth-themes'});
-window.MegaMonetizationUI=Object.freeze({open,refresh,pageMarkup,pass:()=>status?.pass||null});refresh();
+/* MXA-ECO-011: pass() carries the benefit constants the device economy needs (the 2x bot-Coin
+   boost reads benefits.coinBoost); the server status owns active/periodEnd. */
+window.MegaMonetizationUI=Object.freeze({open,refresh,pageMarkup,pass:()=>{const p=status&&status.pass?status.pass:null;return p&&p.active===true?{...p,benefits:{coinBoost:M.PASS.coinBoost,exchangeCoinsPerCrown:M.PASS.exchangeCoinsPerCrown,exchangeMonthlyCoinAllowance:M.PASS.exchangeMonthlyCoinAllowance,packDiscount:M.PASS.packDiscount}}:p;}});refresh();
 })();

@@ -41,6 +41,12 @@ const OPS = {
   polar_create: { args: ['key', 'productId', 'customer'], method: 'createPolarCheckout', call: (c, actor, a) => c.createPolarCheckout(actor, a[0], a[1], a[2]) },
   polar_status: { args: ['checkoutId'], method: 'polarOrderStatus', call: (c, actor, a) => c.polarOrderStatus(actor, a[0]) },
   polar_webhook: { args: ['payload'], method: 'settlePolarWebhook', actorFree: true, call: (c, actor, a) => c.settlePolarWebhook(a[0]) },
+  /* MXA-ECO-005: the trusted store-notification lane (Google RTDN / Apple ASNv2). Actor-free:
+   * the provider credential rides as an argument and the Core-side handler verifies it before
+   * any dedupe or refund; the only economic path is the idempotent commerce.refund. */
+  store_notification: { args: ['provider', 'credential', 'body'], method: 'handleStoreNotification', actorFree: true, call: (c, actor, a) => c.handleStoreNotification(a[0], a[1], a[2]) },
+  /* MXA-ECO-011: the player-facing pass exchange (Coins -> Crowns with the monthly allowance). */
+  exchange: { args: ['key', 'amount'], method: 'exchangeCoins', call: (c, actor, a) => c.exchangeCoins(actor, a[0], a[1]) },
 };
 
 function fail(code) { const e = Error(code); e.code = code; throw e; }
@@ -81,8 +87,15 @@ function createCommerceIngressService({ commerce }) {
         if (value === undefined) fail('INVALID_COMMERCE_ARG: ' + name);
         if (name === 'key') { args.push(requireText(value, 'INVALID_IDEMPOTENCY_KEY', KEY_PATTERN)); }
         else if (name === 'platform') args.push(requireText(value, 'INVALID_PLATFORM', /^(legacy|android|ios)$/));
-        else if (name === 'kind') args.push(requireText(value, 'INVALID_AD_KIND', /^(rewarded|interstitial)$/));
+        /* MXA-ECO-003 (audit 2026-10-17): `kind` on the ticket op is the REWARD kind the client
+         * selects (credits/boost), matching commerce.ticket and the reward-ticket contract; the
+         * rewarded format is implicit and the automatic lane (permit) carries no kind at all. */
+        else if (name === 'kind') args.push(requireText(value, 'INVALID_REWARD', /^(credits|boost)$/));
         else if (name === 'itemId') args.push(requireText(value, 'INVALID_ITEM_ID', KEY_PATTERN));
+        else if (name === 'amount') {
+         if (!Number.isInteger(value) || value <= 0 || value > 1000000) fail('INVALID_AMOUNT');
+         args.push(value);
+        }
         else if (name === 'productId' || name === 'orderId') args.push(requireText(value, 'INVALID_' + name.toUpperCase(), KEY_PATTERN));
         else if (name === 'checkoutId') args.push(requireText(value, 'INVALID_CHECKOUTID', /^[!-~]{1,160}$/));
         else if (name === 'customer') {
@@ -96,6 +109,13 @@ function createCommerceIngressService({ commerce }) {
         } else if (name === 'restore') args.push(value === true);
         else if (name === 'evidence') {
           if (!value || typeof value !== 'object' || Array.isArray(value)) fail('INVALID_EVIDENCE');
+          args.push(value);
+        } else if (name === 'provider') {
+          args.push(requireText(value, 'INVALID_STORE_NOTIFICATION', /^(google|apple)$/));
+        } else if (name === 'credential') {
+          args.push(requireText(value, 'INVALID_STORE_NOTIFICATION', /^[\u0020-\u007e]{0,8192}$/));
+        } else if (name === 'body') {
+          if (!value || typeof value !== 'object' || Array.isArray(value)) fail('INVALID_STORE_NOTIFICATION');
           args.push(value);
         } else if (name === 'raw') {
           if (typeof value !== 'string' || value.length === 0 || value.length > 8192) fail('INVALID_SSV_PAYLOAD');

@@ -31,6 +31,8 @@ function fakeCommerce() {
     createPolarCheckout: record('createPolarCheckout'),
     polarOrderStatus: record('polarOrderStatus'),
     settlePolarWebhook: record('settlePolarWebhook'),
+    exchangeCoins: record('exchangeCoins'),
+    handleStoreNotification: record('handleStoreNotification'),
   };
 }
 
@@ -41,13 +43,13 @@ test('dispatch: each op maps to exactly one commerce call with ordered arguments
   const ingress = createCommerceIngressService({ commerce });
   await ingress.command({ actor: ACTOR, op: 'status' });
   await ingress.command({ actor: ACTOR, op: 'claim', key: 'op-1' });
-  await ingress.command({ actor: ACTOR, op: 'ticket', key: 'op-2', kind: 'rewarded', platform: 'android' });
+  await ingress.command({ actor: ACTOR, op: 'ticket', key: 'op-2', kind: 'credits', platform: 'android' });
   await ingress.command({ actor: ACTOR, op: 'permit', opKey: 'hdr-op-key', platform: 'ios' });
   await ingress.command({ actor: ACTOR, op: 'purchase', key: 'op-3', evidence: { store: 'google', token: 't' }, restore: true });
   const byMethod = Object.fromEntries(commerce.calls.map((c) => [c.method, c.args]));
   assert.deepEqual(byMethod.status, [ACTOR]);
   assert.deepEqual(byMethod.claim, [ACTOR, 'op-1']);
-  assert.deepEqual(byMethod.ticket, [ACTOR, 'op-2', 'rewarded', 'android']);
+  assert.deepEqual(byMethod.ticket, [ACTOR, 'op-2', 'credits', 'android']);
   /* The signed header op key becomes the idempotency key when the body carries none. */
   assert.deepEqual(byMethod.automaticPermit, [ACTOR, 'hdr-op-key', 'ios']);
   assert.deepEqual(byMethod.purchase, [ACTOR, 'op-3', { store: 'google', token: 't' }, true]);
@@ -57,8 +59,9 @@ test('dispatch: unknown ops, bad shapes, and missing keys refuse with stable cod
   const ingress = createCommerceIngressService({ commerce: fakeCommerce() });
   await assert.rejects(() => ingress.command({ actor: ACTOR, op: 'selfDestruct' }), /INVALID_COMMERCE_OP/);
   await assert.rejects(() => ingress.command({ actor: ACTOR, op: 'claim' }), /INVALID_IDEMPOTENCY_KEY/);
-  await assert.rejects(() => ingress.command({ actor: ACTOR, op: 'ticket', key: 'k', kind: 'banner', platform: 'android' }), /INVALID_AD_KIND/);
-  await assert.rejects(() => ingress.command({ actor: ACTOR, op: 'ticket', key: 'k', kind: 'rewarded', platform: 'web' }), /INVALID_PLATFORM/);
+  /* MXA-ECO-003: ticket kind is the REWARD kind (credits/boost); the rewarded format is implicit. */
+  await assert.rejects(() => ingress.command({ actor: ACTOR, op: 'ticket', key: 'k', kind: 'banner', platform: 'android' }), /INVALID_REWARD/);
+  await assert.rejects(() => ingress.command({ actor: ACTOR, op: 'ticket', key: 'k', kind: 'credits', platform: 'web' }), /INVALID_PLATFORM/);
   await assert.rejects(() => ingress.command({ actor: 'bad actor', op: 'status' }), /INVALID_ACTOR/);
   await assert.rejects(() => ingress.command({ actor: ACTOR, op: 'ssv' }), /INVALID_SSV_PAYLOAD/);
 });
@@ -85,6 +88,30 @@ test('ssv dispatch: the provider callback is actor-free END TO END through the r
   /* A player command still requires the signed session actor. */
   await assert.rejects(() => ingress.command({ op: 'status' }), /INVALID_ACTOR/);
 });
+
+ test('store_notification dispatch: actor-free end to end, provider and body validated', async () => {
+  const commerce = fakeCommerce();
+  const ingress = createCommerceIngressService({ commerce });
+  /* The exact shape the gateway dispatches (core-gateway.js /ingress/commerce/store-notification). */
+  const body = { signedPayload: 'good' };
+  await ingress.command({ op: 'store_notification', provider: 'apple', credential: '', body });
+  assert.deepEqual(commerce.calls.at(-1).args, ['apple', '', body]);
+  await ingress.command({ op: 'store_notification', provider: 'google', credential: 'Bearer push-token', body: { message: { messageId: 'm1', data: 'ZGF0YQ==' } } });
+  assert.deepEqual(commerce.calls.at(-1).args, ['google', 'Bearer push-token', { message: { messageId: 'm1', data: 'ZGF0YQ==' } }]);
+  await assert.rejects(() => ingress.command({ op: 'store_notification', provider: 'com.evil', credential: 'x', body }), /INVALID_STORE_NOTIFICATION/);
+  await assert.rejects(() => ingress.command({ op: 'store_notification', provider: 'google', credential: 'x', body: 'not-an-object' }), /INVALID_STORE_NOTIFICATION/);
+ });
+
+ test('exchange dispatch: the pass exchange is a session command with a validated amount', async () => {
+  const commerce = fakeCommerce();
+  const ingress = createCommerceIngressService({ commerce });
+  await ingress.command({ actor: ACTOR, op: 'exchange', key: 'xchg-1', amount: 80 });
+  assert.deepEqual(commerce.calls.at(-1).args, [ACTOR, 'xchg-1', 80]);
+  await assert.rejects(() => ingress.command({ actor: ACTOR, op: 'exchange', key: 'xchg-2', amount: 0 }), /INVALID_AMOUNT/);
+  await assert.rejects(() => ingress.command({ actor: ACTOR, op: 'exchange', key: 'xchg-2', amount: 10.5 }), /INVALID_AMOUNT/);
+  /* A missing amount never reaches the validator: the generic arg-required gate fires first. */
+  await assert.rejects(() => ingress.command({ actor: ACTOR, op: 'exchange', key: 'xchg-2' }), /INVALID_COMMERCE_ARG: amount/);
+ });
 
 test('source integrity: the ingress and the API dispatch are wired', () => {
   const gateway = fs.readFileSync(path.join(__dirname, '..', 'packages', 'services', 'core-gateway.js'), 'utf8');

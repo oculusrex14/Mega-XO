@@ -344,10 +344,10 @@ function createCoreGateway({
      * turned every provider create into an INVALID_COMMERCE_ARG (the audit F-series finding).
      * The Core ingress re-validates each field against its own grammar; nothing unlisted is
      * ever forwarded. */
-    async commerceCommand({ actor, opKey, op, key, kind, platform, itemId, evidence, restore, productId, orderId, checkoutId, customer } = {}) {
+    async commerceCommand({ actor, opKey, op, key, kind, platform, itemId, evidence, restore, productId, orderId, checkoutId, customer, amount } = {}) {
       return this.forwardCommand({ actor, opKey,
         path: '/ingress/commerce/command',
-        command: { op, key, kind, platform, itemId, evidence, restore, productId, orderId, checkoutId, customer } });
+        command: { op, key, kind, platform, itemId, evidence, restore, productId, orderId, checkoutId, customer, amount } });
     },
 
     /** LR12: forward the AdMob SSV query to the Core commerce callback. Actor-free by design. */
@@ -368,6 +368,35 @@ function createCoreGateway({
         let parsed; try { parsed = JSON.parse(text); } catch { parsed = null; }
         if (res.status < 200 || res.status >= 300) {
           const error = Error((parsed && parsed.error) || 'COMMERCE_SSV_FAILED');
+          error.status = res.status;
+          throw error;
+        }
+        return parsed && parsed.result !== undefined ? parsed.result : parsed;
+      } catch (error) {
+        throw tournamentTransportError(error);
+      } finally { clearTimeout(timer); }
+    },
+
+    /** MXA-ECO-005: forward the verified-provider store notification to the Core commerce lane.
+     * Actor-free by design; the credential rides as an argument so the Core-side handler can
+     * verify it against the provider before any dedupe or refund. */
+    async commerceStoreNotification({ provider, credential, payload } = {}) {
+      const path = '/ingress/commerce/store-notification';
+      const bodyString = JSON.stringify({ provider, credential, body: payload });
+      const timestamp = String(clock());
+      const signature = signRequest({ secret, timestamp, method: 'POST', path, actor: '', opKey: 'commerce-store-notification', bodyString });
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(Error('CORE_GATEWAY_TIMEOUT')), timeout);
+      timer.unref?.();
+      try {
+        const res = await fetchFn(baseUrl + path, { method: 'POST', body: bodyString, signal: controller.signal,
+          headers: { 'content-type': 'application/json', 'x-service-timestamp': timestamp,
+            'x-service-actor': '', 'x-service-opkey': 'commerce-store-notification',
+            'x-service-signature': signature } });
+        const text = await res.text();
+        let parsed; try { parsed = JSON.parse(text); } catch { parsed = null; }
+        if (res.status < 200 || res.status >= 300) {
+          const error = Error((parsed && parsed.error) || 'COMMERCE_STORE_NOTIFICATION_FAILED');
           error.status = res.status;
           throw error;
         }
@@ -847,7 +876,8 @@ function createCoreServiceIngress({
       /* The commerce SSV callback is actor-free too: Google's server calls it, the provider proof
        * inside carries the actor, and the path stays signature-protected like every other ingress. */
       const isPublicRead = pathname === LEADERBOARD_PATH || pathname === TOURNAMENT_CAPABILITIES_PATH
-        || pathname === '/ingress/commerce/ssv' || pathname === '/ingress/commerce/cashfree/webhook'
+        || pathname === '/ingress/commerce/ssv' || pathname === '/ingress/commerce/store-notification'
+        || pathname === '/ingress/commerce/cashfree/webhook'
         || pathname === '/ingress/commerce/polar/webhook';
       if (!actorHeader && !isPublicRead) {
         return sendIngressError(res, 403, 'INVALID_SERVICE_SIGNATURE');
@@ -1043,6 +1073,26 @@ function createCoreServiceIngress({
           return sendIngressJson(res, 200, { ok: true, result });
         } catch (error) {
           const code = error?.code || error?.message || 'SSV_FAILED';
+          if (error?.status) return sendIngressError(res, error.status, code);
+          if (!/^[A-Z][A-Z0-9_]+$/.test(code)) return sendIngressError(res, 503, 'SERVICE_UNAVAILABLE');
+          return sendIngressError(res, 400, code);
+        }
+      }
+
+      /* MXA-ECO-005: the trusted store-notification lane. Actor-free like the SSV: the composed
+       * verification class binds the push identity (Google JWKS / Apple roots) BEFORE any dedupe
+       * or refund; the only economic path is the idempotent commerce.refund tombstone workflow. */
+      if (pathname === '/ingress/commerce/store-notification') {
+        if (method !== 'POST') return sendIngressError(res, 405, 'METHOD_NOT_ALLOWED');
+        if (!commerce || typeof commerce.command !== 'function') return sendIngressError(res, 503, 'COMMERCE_UNAVAILABLE');
+        const provider = parsedBody && typeof parsedBody === 'object' ? parsedBody.provider : null;
+        const credential = parsedBody && typeof parsedBody === 'object' ? parsedBody.credential : null;
+        const notificationBody = parsedBody && typeof parsedBody === 'object' ? parsedBody.body : null;
+        try {
+          const result = await commerce.command({ op: 'store_notification', provider, credential, body: notificationBody });
+          return sendIngressJson(res, 200, { ok: true, result });
+        } catch (error) {
+          const code = error?.code || error?.message || 'STORE_NOTIFICATION_FAILED';
           if (error?.status) return sendIngressError(res, error.status, code);
           if (!/^[A-Z][A-Z0-9_]+$/.test(code)) return sendIngressError(res, 503, 'SERVICE_UNAVAILABLE');
           return sendIngressError(res, 400, code);

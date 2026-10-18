@@ -41,6 +41,7 @@ function ingressFake() {
     permit: record('permit'), automaticPermit: record('automaticPermit'), purchase: record('purchase'), callback: record('callback'),
     createCashfreeOrder: record('createCashfreeOrder'), cashfreeOrderStatus: record('cashfreeOrderStatus'), settleCashfreeWebhook: record('settleCashfreeWebhook'),
     createPolarCheckout: record('createPolarCheckout'), polarOrderStatus: record('polarOrderStatus'), settlePolarWebhook: record('settlePolarWebhook'),
+    exchangeCoins: record('exchangeCoins'), handleStoreNotification: record('handleStoreNotification'),
   };
 }
 

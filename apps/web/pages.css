@@ -644,3 +644,4 @@
 /* Audit 2026-10-17: the support email is a single long token and overflowed 320px viewports
 /* on /sponsors and /ads (P21-BROWSER-REFLOW). Let it wrap like the APK metadata does. */
 .pg-sponsor-enquiry p,.pg-sponsor-enquiry strong{overflow-wrap:anywhere;min-width:0}
+.pg-sponsor-enquiry>p.pg-small.mx-muted:last-child{margin-top:18px}

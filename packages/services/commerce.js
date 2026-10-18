@@ -1,3 +1,17 @@
+/* MXA-ECO-011 (2026-10-18): the pass exchange split. Coins -> Crowns at the pass rate for the
+ * first PASS.exchangeMonthlyCoinAllowance Coins of each billing month (the durable 0060
+ * exchange_coins_used ledger), the rest at the frozen 10:1 policy rate. The discounted tranche
+ * comes from EARNED coins only - purchased coins keep the 10:1 provenance rate, so a
+ * crowns->coins->crowns round trip can never mint value. Pure and exported for tests. */
+function passExchangeSplit(amount, allowanceRemaining, earnedAvailable) {
+ if (!Number.isSafeInteger(amount) || amount <= 0) throw Error('INVALID_AMOUNT');
+ const cap = Math.max(0, Math.min(amount, allowanceRemaining, earnedAvailable));
+ let discounted = 8 * Math.floor(cap / 8);
+ while (discounted >= 0 && (amount - discounted) % 10 !== 0) discounted -= 8;
+ if (discounted < 0) throw Error('EXCHANGE_AMOUNT_INVALID');
+ return { discounted, standard: amount - discounted, crowns: discounted / 8 + (amount - discounted) / 10 };
+}
+
 /* packages/services/commerce.js - V5 P04 PostgreSQL store/monetization service (Core authority).
  *
  * The PostgreSQL successor of `server/monetization-store.js` (MonetizationStore). Every RULE stays
@@ -186,7 +200,9 @@ async function createCommerceService(pool, options = {}) {
  if (options.now !== undefined && typeof options.now !== 'function') throw new PgGuardError('CLOCK_REQUIRED');
  if (options.eligible !== undefined && typeof options.eligible !== 'function') throw new PgGuardError('ELIGIBILITY_POLICY_REQUIRED');
  for (const name of ['verifyPurchase', 'verifyAd']) {
-  if (options[name] !== undefined && typeof options[name] !== 'function') throw new PgGuardError('VERIFIER_REQUIRED', { verifier: name });
+  /* null is the legitimate 'lane off' value (adMode off composes verifyAd: null); only a
+   * NON-NULL non-function is a composition error. */
+  if (options[name] != null && typeof options[name] !== 'function') throw new PgGuardError('VERIFIER_REQUIRED', { verifier: name });
  }
  /* The legacy constructor validated the mode through the pure cohort function; an unknown mode is
   * refused (INVALID_AD_MODE) before any statement. */
@@ -209,6 +225,10 @@ async function createCommerceService(pool, options = {}) {
   polarProvider: options.polarProvider || null,
   polarCatalog: options.polarCatalog || null,
   polarSuccessUrl: typeof options.polarSuccessUrl === 'string' ? options.polarSuccessUrl : '',
+  /* MXA-ECO-005: the composed verification classes (server/v5-store-notifications.js). */
+  storeNotificationHandlers: options.storeNotificationHandlers || null,
+  /* Sol review 2026-10-18: the discount id must reach the service or the pack-discount guard is dead. */
+  polarPackDiscountId: typeof options.polarPackDiscountId === 'string' && options.polarPackDiscountId ? options.polarPackDiscountId : null,
   adMode,
   rewardItem: typeof options.rewardItem === 'string' && options.rewardItem ? options.rewardItem : 'cosmetic_reward',
   adUnits: normalizeAdUnits(options.adUnits, options.adUnit),
@@ -724,10 +744,12 @@ async function createCommerceService(pool, options = {}) {
   let reservedPeriod = null;
   if (isPack) {
    const reserved = await uow.run(async (tx) => (await tx.query(
-    "UPDATE monetization.pass_periods pp SET pack_discounts_reserved = pp.pack_discounts_reserved + 1 FROM monetization.polar_subscriptions ps WHERE pp.subscription_id = ps.subscription_id AND ps.actor_id = $1 AND ps.status = 'active' AND pp.period_start <= $2 AND pp.period_end > $2 AND pp.pack_discounts_reserved + pp.pack_discounts_used < 2 RETURNING pp.period_start",
+    "UPDATE monetization.pass_periods pp SET pack_discounts_reserved = pp.pack_discounts_reserved + 1 FROM monetization.polar_subscriptions ps WHERE pp.subscription_id = ps.subscription_id AND ps.actor_id = $1 AND ps.status = 'active' AND pp.period_start <= $2 AND pp.period_end > $2 AND pp.pack_discounts_reserved + pp.pack_discounts_used < 2 AND pp.subscription_id = (SELECT ps2.subscription_id FROM monetization.polar_subscriptions ps2 WHERE ps2.actor_id = $1 AND ps2.status = 'active' ORDER BY ps2.created_at DESC LIMIT 1) AND pp.period_start = (SELECT MAX(pp3.period_start) FROM monetization.pass_periods pp3 WHERE pp3.subscription_id = pp.subscription_id AND pp3.period_start <= $2 AND pp3.period_end > $2) RETURNING pp.subscription_id, pp.period_start",
     [actor, new Date(serviceNow()).toISOString()])).rows[0] || null);
    if (reserved) {
-    reservedPeriod = new Date(reserved.period_start).toISOString();
+    /* Sol review 2026-10-18: record the EXACT reserved (subscription, period) pair so the
+     * release can never decrement a same-date period of a second subscription. */
+    reservedPeriod = { subscriptionId: reserved.subscription_id, start: new Date(reserved.period_start).toISOString() };
     charged = (Math.round(parseFloat(price) * (1 - M.PASS.packDiscount) * 100) / 100).toFixed(2);
    }
   }
@@ -739,12 +761,16 @@ async function createCommerceService(pool, options = {}) {
    /* An explicit provider rejection proving non-creation (auth/4xx) is terminal FAILED;
     * timeouts, disconnects and 5xx/429/408 are ambiguous UNKNOWN. Neither is ever re-created
     * automatically - the reservation records exactly what happened for the recovery read. */
-   if (reservedPeriod) await uow.run(async (tx) => {
-    await tx.query("UPDATE monetization.pass_periods pp SET pack_discounts_reserved = pp.pack_discounts_reserved - 1 FROM monetization.polar_subscriptions ps WHERE pp.subscription_id = ps.subscription_id AND ps.actor_id = $1 AND pp.period_start = $2 AND pp.pack_discounts_reserved > 0", [actor, reservedPeriod]);
-   });
    const code = String(error && error.message || 'CASHFREE_CREATE_UNKNOWN');
    const httpMatch = /^CASHFREE_HTTP_([0-9]{3})$/.exec(code);
    const terminal = code === 'CASHFREE_AUTH' || code === 'CASHFREE_CONFIG' || (!!httpMatch && httpMatch[1] !== '408' && httpMatch[1] !== '429');
+   /* MXA-ECO-012 (audit 2026-10-17): the discount reservation is released ONLY for a terminal,
+    * proven non-creation; an ambiguous outcome keeps it because the order may still exist - the
+    * recovery read resolves it. The previous unconditional release contradicted the contract
+    * comment above and let a discounted retry consume the same budget twice. */
+   if (terminal && reservedPeriod) await uow.run(async (tx) => {
+    await tx.query("UPDATE monetization.pass_periods pp SET pack_discounts_reserved = pp.pack_discounts_reserved - 1 WHERE pp.subscription_id = $2 AND pp.period_start = $3 AND pp.pack_discounts_reserved > 0", [actor, reservedPeriod.subscriptionId, reservedPeriod.start]);
+   });
    await markReservation(uow, requestId, terminal ? 'FAILED' : 'UNKNOWN', { providerObjectId: orderId, errorCode: terminal ? code : null });
    if (terminal) { error.status = 502; throw error; }
    const e = Error('CHECKOUT_CREATE_PENDING'); e.status = 503; e.retryAfter = 2; throw e;
@@ -753,8 +779,8 @@ async function createCommerceService(pool, options = {}) {
    /* The (actor, op_key) unique constraint (0056) is the durable race fence: two concurrent
     * creates with one key record ONE row; the loser returns the winner's recorded order. */
    await tx.query(
-    'INSERT INTO monetization.cashfree_orders (order_id, actor_id, product_id, amount, currency, status, session_id, op_key, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) ON CONFLICT (actor_id, op_key) DO NOTHING',
-    [created.orderId, actor, productId, charged, 'INR', 'ACTIVE', created.paymentSessionId, key, iso(tx.clock())]);
+    'INSERT INTO monetization.cashfree_orders (order_id, actor_id, product_id, amount, currency, status, session_id, op_key, created_at, discount_subscription_id, discount_period_start) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) ON CONFLICT (actor_id, op_key) DO NOTHING',
+    [created.orderId, actor, productId, charged, 'INR', 'ACTIVE', created.paymentSessionId, key, iso(tx.clock()), reservedPeriod ? reservedPeriod.subscriptionId : null, reservedPeriod ? reservedPeriod.start : null]);
    const row = (await tx.query('SELECT order_id, session_id FROM monetization.cashfree_orders WHERE actor_id = $1 AND op_key = $2', [actor, key])).rows[0];
    if (!row) throw Error('CASHFREE_RECORD_FAILED');
    /* The reservation completes in the SAME transaction as the ledger + outcome: a crash between
@@ -779,7 +805,7 @@ async function createCommerceService(pool, options = {}) {
    * no price and no actor binding, so it can never grant by itself. */
   const recorded = await uow.run(async (tx) => {
    await tx.query('SET TRANSACTION READ ONLY');
-   return (await tx.query('SELECT order_id, actor_id, product_id, amount, status, settled_at, refunded_at FROM monetization.cashfree_orders WHERE order_id = $1', [orderId])).rows[0] || null;
+   return (await tx.query('SELECT order_id, actor_id, product_id, amount, status, settled_at, refunded_at, discount_subscription_id, discount_period_start FROM monetization.cashfree_orders WHERE order_id = $1', [orderId])).rows[0] || null;
   });
   if (!recorded) throw Error('ORDER_NOT_FOUND');
   if (recorded.refunded_at) throw Error('ORDER_REFUNDED');
@@ -819,7 +845,7 @@ async function createCommerceService(pool, options = {}) {
     const catalogPrice = config.cashfreeCatalog && typeof config.cashfreeCatalog[product.id] === 'string' ? config.cashfreeCatalog[product.id] : null;
     const wasDiscounted = catalogPrice !== null && Number(catalogPrice) > 0 && Math.abs(Number(recorded.amount) - Number(catalogPrice)) > 1e-9;
     if (!wasDiscounted) return { productId: product.id, crowns: product.crowns, duplicate: false, settled: true };
-    await tx.query("UPDATE monetization.pass_periods pp SET pack_discounts_reserved = pp.pack_discounts_reserved - 1, pack_discounts_used = pp.pack_discounts_used + 1 FROM monetization.polar_subscriptions ps WHERE pp.subscription_id = ps.subscription_id AND ps.actor_id = $1 AND pp.pack_discounts_reserved > 0 AND pp.pack_discounts_used < 2", [recorded.actor_id]);
+    await tx.query("UPDATE monetization.pass_periods pp SET pack_discounts_reserved = pp.pack_discounts_reserved - 1, pack_discounts_used = pp.pack_discounts_used + 1 WHERE pp.subscription_id = $1 AND pp.period_start = $2 AND pp.pack_discounts_reserved > 0 AND pp.pack_discounts_used < 2", [recorded.discount_subscription_id, recorded.discount_period_start]);
    }
    return { productId: product.id, crowns: product.crowns, duplicate: false, settled: true };
   }, ['cashfree', orderId]);
@@ -880,15 +906,21 @@ async function createCommerceService(pool, options = {}) {
   if (typeof orderId !== 'string' || !orderId) throw Error('ORDER_NOT_FOUND');
   const recorded = await uow.run(async (tx) => {
    await tx.query('SET TRANSACTION READ ONLY');
-   return (await tx.query('SELECT order_id, actor_id, settled_at, refunded_at FROM monetization.cashfree_orders WHERE order_id = $1', [orderId])).rows[0] || null;
+   return (await tx.query('SELECT order_id, actor_id, product_id, settled_at, refunded_at FROM monetization.cashfree_orders WHERE order_id = $1', [orderId])).rows[0] || null;
   });
   if (!recorded) throw Error('ORDER_NOT_FOUND');
   if (!recorded.settled_at) return { orderId, refunded: false, reason: 'UNSETTLED' };
-  return transaction(recorded.actor_id, 'cashfree-refund:' + orderId, { type: 'cashfree-refund', orderId }, async (tx) => {
+ return transaction(recorded.actor_id, 'cashfree-refund:' + orderId, { type: 'cashfree-refund', orderId }, async (tx, graph) => {
    const row = (await tx.query('SELECT refunded_at FROM monetization.cashfree_orders WHERE order_id = $1 FOR UPDATE', [orderId])).rows[0];
    if (!row) throw Error('ORDER_NOT_FOUND');
    if (row.refunded_at) return { orderId, refunded: true, duplicate: true };
    await tx.query('UPDATE monetization.cashfree_orders SET refunded_at = $2 WHERE order_id = $1', [orderId, iso(tx.clock())]);
+   /* MXA-ECO-013 (audit 2026-10-17): parity with the native refund lane - a refunded pack that
+    * granted Crowns puts the account in review hold (never clawing from opponents); remove_ads
+    * is revoked structurally by the owned() projection reading refunded_at. */
+   const refundedProduct = M.product(recorded.product_id);
+   const heldAccount = refundedProduct && refundedProduct.crowns > 0 ? graph.accounts.get(recorded.actor_id) : null;
+   if (heldAccount) heldAccount.hold = true;
    await emitOutbox(tx, { id: 'commerce.cashfree-refund:' + orderId, event: { orderId, actor: recorded.actor_id, known: true, reason: String(reason).slice(0, 120) } });
    await event(tx, recorded.actor_id, 'purchase_refunded', 0);
    return { orderId, refunded: true, duplicate: false };
@@ -949,13 +981,33 @@ async function createCommerceService(pool, options = {}) {
    const e = Error('CHECKOUT_CREATE_PENDING'); e.status = 503; e.retryAfter = 2; throw e;
   }
   const requestId = reservation.requestId;
+  /* MXA-ECO-011 (audit 2026-10-17): B3 parity for the Polar lane - an active Mega Pass discounts
+   * at most two Crown packs per paid month. The use is RESERVED under a row lock before the
+   * provider call (single actor-level period, mirroring the Cashfree lane) and released only on
+   * a terminal, proven non-creation; verified settlement converts it to used. */
+  const packProduct = M.product(productId);
+  const isPack = Boolean(packProduct && packProduct.crowns > 0) && typeof config.polarPackDiscountId === 'string' && config.polarPackDiscountId.length > 0;
+  let reservedPeriod = null;
+  let expectedCents = entry.amountCents;
+  if (isPack) {
+   const reserved = await uow.run(async (tx) => (await tx.query(
+    "UPDATE monetization.pass_periods pp SET pack_discounts_reserved = pp.pack_discounts_reserved + 1 FROM monetization.polar_subscriptions ps WHERE pp.subscription_id = ps.subscription_id AND ps.actor_id = $1 AND ps.status = 'active' AND pp.period_start <= $2 AND pp.period_end > $2 AND pp.pack_discounts_reserved + pp.pack_discounts_used < 2 AND pp.subscription_id = (SELECT ps2.subscription_id FROM monetization.polar_subscriptions ps2 WHERE ps2.actor_id = $1 AND ps2.status = 'active' ORDER BY ps2.created_at DESC LIMIT 1) AND pp.period_start = (SELECT MAX(pp3.period_start) FROM monetization.pass_periods pp3 WHERE pp3.subscription_id = pp.subscription_id AND pp3.period_start <= $2 AND pp3.period_end > $2) RETURNING pp.subscription_id, pp.period_start",
+    [actor, new Date(serviceNow()).toISOString()])).rows[0] || null);
+   if (reserved) {
+    reservedPeriod = { subscriptionId: reserved.subscription_id, start: new Date(reserved.period_start).toISOString() };
+    expectedCents = Math.round(entry.amountCents * (1 - M.PASS.packDiscount));
+   }
+  }
   let created;
   try {
-   created = await withDeadline(config.polarProvider.createCheckout({ priceId: entry.priceId, actor, productId, email: email || undefined, successUrl: config.polarSuccessUrl, metadata: { request_id: requestId } }));
+   created = await withDeadline(config.polarProvider.createCheckout({ priceId: entry.priceId, actor, productId, email: email || undefined, successUrl: config.polarSuccessUrl, metadata: { request_id: requestId }, discountId: reservedPeriod ? config.polarPackDiscountId : undefined }));
   } catch (error) {
    const code = String(error && error.message || 'POLAR_CREATE_UNKNOWN');
    const httpMatch = /^POLAR_HTTP_([0-9]{3})$/.exec(code);
    const terminal = code === 'POLAR_AUTH' || code === 'POLAR_CONFIG' || (!!httpMatch && httpMatch[1] !== '408' && httpMatch[1] !== '429');
+   if (terminal && reservedPeriod) await uow.run(async (tx) => {
+    await tx.query("UPDATE monetization.pass_periods pp SET pack_discounts_reserved = pp.pack_discounts_reserved - 1 WHERE pp.subscription_id = $2 AND pp.period_start = $3 AND pp.pack_discounts_reserved > 0", [actor, reservedPeriod.subscriptionId, reservedPeriod.start]);
+   });
    await markReservation(uow, requestId, terminal ? 'FAILED' : 'UNKNOWN', { errorCode: terminal ? code : null });
    if (terminal) { error.status = 502; throw error; }
    const e = Error('CHECKOUT_CREATE_PENDING'); e.status = 503; e.retryAfter = 2; throw e;
@@ -963,8 +1015,8 @@ async function createCommerceService(pool, options = {}) {
   return transaction(actor, key, { type: 'polar-create', productId }, async (tx) => {
    /* The (actor, op_key) unique constraint (0057) is the durable race fence. */
    await tx.query(
-    'INSERT INTO monetization.polar_orders (checkout_id, actor_id, product_id, price_id, amount_cents, currency, status, op_key, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) ON CONFLICT (actor_id, op_key) DO NOTHING',
-    [created.checkoutId, actor, productId, entry.priceId, entry.amountCents, 'usd', 'created', key, iso(tx.clock())]);
+    'INSERT INTO monetization.polar_orders (checkout_id, actor_id, product_id, price_id, amount_cents, currency, status, op_key, created_at, discount_subscription_id, discount_period_start) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) ON CONFLICT (actor_id, op_key) DO NOTHING',
+    [created.checkoutId, actor, productId, entry.priceId, expectedCents, 'usd', 'created', key, iso(tx.clock()), reservedPeriod ? reservedPeriod.subscriptionId : null, reservedPeriod ? reservedPeriod.start : null]);
    const row = (await tx.query('SELECT checkout_id, status FROM monetization.polar_orders WHERE actor_id = $1 AND op_key = $2', [actor, key])).rows[0];
    if (!row) throw Error('POLAR_RECORD_FAILED');
    /* READY commits in the SAME transaction as the ledger + outcome (see the Cashfree lane). */
@@ -984,7 +1036,7 @@ async function createCommerceService(pool, options = {}) {
   if (typeof checkoutId !== 'string' || !UUID_V4.test(checkoutId)) throw Error('ORDER_NOT_FOUND');
   const recorded = await uow.run(async (tx) => {
    await tx.query('SET TRANSACTION READ ONLY');
-   return (await tx.query('SELECT checkout_id, actor_id, product_id, price_id, amount_cents, currency, status, polar_order_id, settled_at, refunded_at FROM monetization.polar_orders WHERE checkout_id = $1', [checkoutId])).rows[0] || null;
+   return (await tx.query('SELECT checkout_id, actor_id, product_id, price_id, amount_cents, currency, status, polar_order_id, settled_at, refunded_at, discount_subscription_id, discount_period_start FROM monetization.polar_orders WHERE checkout_id = $1', [checkoutId])).rows[0] || null;
   });
   if (!recorded) throw Error('ORDER_NOT_FOUND');
   if (recorded.refunded_at) throw Error('ORDER_REFUNDED');
@@ -1020,6 +1072,13 @@ async function createCommerceService(pool, options = {}) {
    if (product.crowns) journal(graph, { id: 'purchase:polar:' + checkoutId, actor: recorded.actor_id, currency: 'crowns', amount: product.crowns, reason: 'Crown purchase', source: 'verified-store', at: tx.clock() });
    await event(tx, recorded.actor_id, 'purchase_verified', product.crowns);
    await tx.query('UPDATE monetization.polar_orders SET status = $2, settled_at = $3, polar_order_id = COALESCE($4, polar_order_id) WHERE checkout_id = $1', [checkoutId, 'succeeded', iso(tx.clock()), polarOrderId]);
+   /* MXA-ECO-011: a discounted pack converts its reserved use to used on verified settlement;
+    * the CHECK constraint is the backstop, so an over-consume can never commit silently. */
+   const catalogEntry = config.polarCatalog && config.polarCatalog[product.id];
+   const catalogCents = catalogEntry && Number.isFinite(Number(catalogEntry.amountCents)) ? Number(catalogEntry.amountCents) : null;
+   if (product.crowns > 0 && catalogCents !== null && Number(recorded.amount_cents) < catalogCents) {
+    await tx.query('UPDATE monetization.pass_periods pp SET pack_discounts_reserved = pp.pack_discounts_reserved - 1, pack_discounts_used = pp.pack_discounts_used + 1 WHERE pp.subscription_id = $1 AND pp.period_start = $2 AND pp.pack_discounts_reserved > 0 AND pp.pack_discounts_used < 2', [recorded.discount_subscription_id, recorded.discount_period_start]);
+   }
    /* B2: the first paid pass order binds the subscription row to the RECORDED checkout actor and
     * product/price inside the settlement transaction - never from webhook payload fields alone.
     * The grantable period window arrives with the provider-verified subscription events. */
@@ -1107,7 +1166,10 @@ async function createCommerceService(pool, options = {}) {
    /* A provider-verified active window becomes a grantable paid period. */
    const periodStart = verified.currentPeriodStart ? new Date(verified.currentPeriodStart) : null;
    const periodEnd = verified.currentPeriodEnd ? new Date(verified.currentPeriodEnd) : null;
-   if (status === 'active' && periodStart && periodEnd && !Number.isNaN(periodStart.getTime()) && !Number.isNaN(periodEnd.getTime()) && periodEnd > periodStart) {
+   /* MXA-ECO-008 (audit 2026-10-17): a grantable PAID period requires the PROVIDER-verified
+    * status 'active'. trialing/past_due keep row access ('active' per the 0059 CHECK) but can
+    * never mint pass_periods, so an unpaid window can never qualify for Crown installments. */
+   if (verified.status === 'active' && status === 'active' && periodStart && periodEnd && !Number.isNaN(periodStart.getTime()) && !Number.isNaN(periodEnd.getTime()) && periodEnd > periodStart) {
     await pool.query('INSERT INTO monetization.pass_periods (subscription_id, actor_id, period_start, period_end, installments_granted, created_at) VALUES ($1, $2, $3, $4, 0, $5) ON CONFLICT (subscription_id, period_start) DO NOTHING',
      [subscriptionId, actor, periodStart, periodEnd, now]);
    }
@@ -1124,8 +1186,10 @@ async function createCommerceService(pool, options = {}) {
  async function processPassGrants() {
   if (!config.purchasesEnabled) return { granted: 0, skipped: 'PURCHASES_DISABLED' };
   const offsets = [0, 10, 20];
+  /* MXA-ECO-009 (audit 2026-10-17): ONE paid pass per actor - the newest active subscription
+   * owns the grantable period; duplicates are skipped explicitly instead of stacking 3x50. */
   const due = await pool.query(
-   "SELECT pp.subscription_id, pp.actor_id, pp.period_start, pp.period_end, pp.installments_granted FROM monetization.pass_periods pp JOIN monetization.polar_subscriptions ps ON ps.subscription_id = pp.subscription_id WHERE ps.status = 'active' AND pp.installments_granted < 3 LIMIT 200");
+   "SELECT DISTINCT ON (pp.actor_id) pp.subscription_id, pp.actor_id, pp.period_start, pp.period_end, pp.installments_granted FROM monetization.pass_periods pp JOIN monetization.polar_subscriptions ps ON ps.subscription_id = pp.subscription_id WHERE ps.status = 'active' AND pp.installments_granted < 3 AND pp.subscription_id = (SELECT ps2.subscription_id FROM monetization.polar_subscriptions ps2 WHERE ps2.actor_id = pp.actor_id AND ps2.status = 'active' ORDER BY ps2.created_at DESC LIMIT 1) ORDER BY pp.actor_id, ps.created_at DESC, pp.period_end DESC LIMIT 200");
   let granted = 0;
   const now = serviceNow();
   for (const row of due.rows) {
@@ -1139,11 +1203,18 @@ async function createCommerceService(pool, options = {}) {
     async (tx, graph, current) => {
      const fresh = (await tx.query('SELECT installments_granted FROM monetization.pass_periods WHERE subscription_id = $1 AND period_start = $2 FOR UPDATE', [row.subscription_id, row.period_start])).rows[0];
      if (!fresh) return { granted: false, reason: 'PERIOD_GONE' };
+     /* Sol review round 2: reconciliation can install a newer active subscription between the
+      * due query and this lock - the actor-level single-pass policy is re-checked INSIDE the
+      * transaction, so a superseded subscription can never mint alongside the new one. */
+     const stillNewest = (await tx.query("SELECT 1 FROM monetization.polar_subscriptions ps WHERE ps.subscription_id = $1 AND ps.status = 'active' AND ps.subscription_id = (SELECT ps2.subscription_id FROM monetization.polar_subscriptions ps2 WHERE ps2.actor_id = $2 AND ps2.status = 'active' ORDER BY ps2.created_at DESC LIMIT 1)", [row.subscription_id, row.actor_id])).rows.length > 0;
+     if (!stillNewest) return { granted: false, reason: 'SUPERSEDED_SUBSCRIPTION' };
      if (Number(fresh.installments_granted) !== n) return { granted: false, duplicate: true };
      if (!config.purchasesEnabled || !allowed(current)) return { granted: false, reason: 'PURCHASE_UNAVAILABLE' };
      const amount = M.PASS.installments[n];
      current.crowns = D.add(current.crowns, amount);
-     journal(graph, { id: 'pass:' + row.subscription_id + ':' + n, actor: row.actor_id, currency: 'crowns', amount, reason: 'Mega Pass monthly Crowns', source: 'verified-store', at: tx.clock() });
+     /* MXA-ECO-010 (audit 2026-10-17): the append-only ledger id needs the immutable paid-period
+      * identity - without it, month two reuses month one's id and the credit is silently lost. */
+     journal(graph, { id: 'pass:' + row.subscription_id + ':' + new Date(row.period_start).toISOString().slice(0, 10) + ':' + n, actor: row.actor_id, currency: 'crowns', amount, reason: 'Mega Pass monthly Crowns', source: 'verified-store', at: tx.clock() });
      await event(tx, row.actor_id, 'pass_installment', amount);
      await tx.query('UPDATE monetization.pass_periods SET installments_granted = $3 WHERE subscription_id = $1 AND period_start = $2', [row.subscription_id, row.period_start, n + 1]);
      return { granted: true, amount };
@@ -1153,7 +1224,84 @@ async function createCommerceService(pool, options = {}) {
   return { granted };
  }
 
+ /* The player-facing pass exchange: an idempotent Core command that debits Coins and credits
+  * Crowns inside ONE transaction with the period row locked, so two concurrent exchanges can
+  * never over-consume the monthly allowance. */
+ async function exchangeCoins(actor, key, amount) {
+  if (!idOK(key)) throw Error('IDEMPOTENCY_KEY_REQUIRED');
+  if (!Number.isSafeInteger(amount) || amount <= 0 || amount > 1000000) throw Error('INVALID_AMOUNT');
+  return transaction(actor, key, { type: 'pass-exchange', amount }, async (tx, graph, current) => {
+   if (!config.purchasesEnabled || !allowed(current)) throw Error('PURCHASE_UNAVAILABLE');
+   const now = tx.clock();
+   const passRow = await activePassRow(tx, actor, now);
+   const at = typeof now === 'number' ? new Date(now).toISOString() : now;
+   let periodRow = null;
+   if (passRow) {
+    periodRow = (await tx.query(
+     'SELECT subscription_id, period_start, exchange_coins_used FROM monetization.pass_periods WHERE subscription_id = $1 AND period_start <= $2 AND period_end > $2 ORDER BY period_start DESC LIMIT 1 FOR UPDATE',
+     [passRow.subscription_id, at])).rows[0] || null;
+   }
+   const used = periodRow ? Math.max(0, Number(periodRow.exchange_coins_used) || 0) : 0;
+   const allowanceRemaining = periodRow ? Math.max(0, M.PASS.exchangeMonthlyCoinAllowance - used) : 0;
+   const totalCoins = Number(current.coins) || 0;
+   const purchasedCoins = Number(current.purchasedCoins) || 0;
+   if (amount > totalCoins) throw Error('INSUFFICIENT_COINS');
+   const earnedAvailable = Math.max(0, totalCoins - purchasedCoins);
+   const split = passExchangeSplit(amount, allowanceRemaining, earnedAvailable);
+   /* Purchased coins are consumed by the standard-rate tranche first and keep the frozen 10:1
+    * provenance rate; purchasedCoins only ever enters at multiples of 10 (crowns->coins mints
+    * 10 per Crown), so the restricted-provenance invariant holds by construction. */
+   const purchasedUsed = Math.min(split.standard, purchasedCoins);
+   current.coins = (Number(current.coins) || 0) - amount;
+   current.purchasedCoins = purchasedCoins - purchasedUsed;
+   current.crowns = D.add(current.crowns || 0, split.crowns);
+   /* Sol review round 2: the purchased tranche keeps its RESTRICTED provenance on the Crowns side
+    * too, exactly like the canonical conversion - otherwise a crowns->coins->crowns round trip
+    * launders purchased Crowns into earned ones and the next month's 8:1 tranche mints value. */
+   current.purchasedCrowns = D.add(current.purchasedCrowns || 0, purchasedUsed / 10);
+   if (periodRow && split.discounted > 0) {
+    await tx.query('UPDATE monetization.pass_periods SET exchange_coins_used = exchange_coins_used + $2 WHERE subscription_id = $1 AND period_start = $3', [periodRow.subscription_id, split.discounted, periodRow.period_start]);
+   }
+   /* Sol review round 2: economy.ledger entry ids are GLOBALLY unique - two actors sharing a
+    * legal key must not collide, or the second mutation commits without its audit entries. */
+   journal(graph, { id: 'exchange:' + actor + ':' + key + ':out', actor, currency: 'coins', amount: -amount, reason: 'Pass exchange', source: 'conversion', at: now });
+   journal(graph, { id: 'exchange:' + actor + ':' + key + ':in', actor, currency: 'crowns', amount: split.crowns, reason: 'Pass exchange', source: 'conversion', at: now });
+   await event(tx, actor, 'pass_exchange', split.crowns);
+   return { crowns: split.crowns, discountedCoins: split.discounted, standardCoins: split.standard, allowanceRemaining: Math.max(0, allowanceRemaining - split.discounted) };
+  });
+ }
+
  /* The actor-bound status poll: hides other actors' orders and settles through the provider. */
+ /* MXA-ECO-005 (2026-10-18): the durable provider-notification dedupe. The verification classes
+  * stay DB-free; these two methods are the ONLY writers/readers of monetization.store_notifications
+  * and run on this service's core_runtime pool, keeping the API tier out of the ledger. */
+ async function storeNotificationSeen(store, notificationId) {
+  if (!['google', 'apple'].includes(store) || typeof notificationId !== 'string' || notificationId.length < 1 || notificationId.length > 200) return true; /* fail closed: an unreadable id is treated as seen */
+  const r = await pool.query('SELECT 1 FROM monetization.provider_notifications WHERE store = $1 AND notification_id = $2 LIMIT 1', [store, notificationId]);
+  return r.rows.length > 0;
+ }
+ async function storeNotificationRecord(store, notificationId) {
+  if (!['google', 'apple'].includes(store) || typeof notificationId !== 'string' || notificationId.length < 1 || notificationId.length > 200) throw Error('INVALID_STORE_NOTIFICATION');
+  await pool.query('INSERT INTO monetization.provider_notifications (store, notification_id, received_at) VALUES ($1, $2, $3) ON CONFLICT (store, notification_id) DO NOTHING', [store, notificationId, new Date(serviceNow()).toISOString()]);
+ }
+
+ /* The Core-side notification lane: the composed verifier class (credential + parse) runs
+  * OUTSIDE any wallet lock, then dedupe + the trusted refund route execute inside this service's
+  * own pool. A notification can never mint: the only economic path is commerce.refund. */
+ async function handleStoreNotification(provider, credential, payload) {
+  const handlers = config.storeNotificationHandlers || null;
+  const handler = handlers ? (provider === 'google' ? handlers.google : provider === 'apple' ? handlers.apple : null) : null;
+  if (!handler || typeof handler.handle !== 'function') throw Error('STORE_UNAVAILABLE');
+  /* The Google lane takes (push credential, envelope); the Apple lane takes (body) and verifies
+   * the signedPayload itself. */
+  const hooks = {
+   seen: (store, id) => storeNotificationSeen(store, id),
+   record: (store, id) => storeNotificationRecord(store, id),
+   onRefund: (store, transactionId) => refund(store, transactionId),
+  };
+  return provider === 'google' ? handler.handle(credential, payload, hooks) : handler.handle(payload, hooks);
+ }
+
  async function polarOrderStatus(actor, checkoutId) {
   if (typeof actor !== 'string' || !actor || typeof checkoutId !== 'string' || !checkoutId) throw Error('ORDER_NOT_FOUND');
   const row = await uow.run(async (tx) => {
@@ -1183,16 +1331,20 @@ async function createCommerceService(pool, options = {}) {
   if (typeof reference !== 'string' || !reference) throw Error('ORDER_NOT_FOUND');
   const recorded = await uow.run(async (tx) => {
    await tx.query('SET TRANSACTION READ ONLY');
-   return (await tx.query('SELECT checkout_id, actor_id, settled_at, refunded_at FROM monetization.polar_orders WHERE checkout_id = $1 OR polar_order_id = $1', [reference])).rows[0] || null;
+   return (await tx.query('SELECT checkout_id, actor_id, product_id, settled_at, refunded_at FROM monetization.polar_orders WHERE checkout_id = $1 OR polar_order_id = $1', [reference])).rows[0] || null;
   });
   if (!recorded) throw Error('ORDER_NOT_FOUND');
   const checkoutId = recorded.checkout_id;
   if (!recorded.settled_at) return { checkoutId, refunded: false, reason: 'UNSETTLED' };
-  return transaction(recorded.actor_id, 'polar-refund:' + checkoutId, { type: 'polar-refund', checkoutId }, async (tx) => {
+ return transaction(recorded.actor_id, 'polar-refund:' + checkoutId, { type: 'polar-refund', checkoutId }, async (tx, graph) => {
    const row = (await tx.query('SELECT refunded_at FROM monetization.polar_orders WHERE checkout_id = $1 FOR UPDATE', [checkoutId])).rows[0];
    if (!row) throw Error('ORDER_NOT_FOUND');
    if (row.refunded_at) return { checkoutId, refunded: true, duplicate: true };
    await tx.query('UPDATE monetization.polar_orders SET refunded_at = $2 WHERE checkout_id = $1', [checkoutId, iso(tx.clock())]);
+   /* MXA-ECO-013: the same review-hold parity as the Cashfree lane. */
+   const refundedProduct = M.product(recorded.product_id);
+   const heldAccount = refundedProduct && refundedProduct.crowns > 0 ? graph.accounts.get(recorded.actor_id) : null;
+   if (heldAccount) heldAccount.hold = true;
    await emitOutbox(tx, { id: 'commerce.polar-refund:' + checkoutId, event: { checkoutId, actor: recorded.actor_id, known: true, reason: String(reason).slice(0, 120) } });
    await event(tx, recorded.actor_id, 'purchase_refunded', 0);
    return { checkoutId, refunded: true, duplicate: false };
@@ -1306,6 +1458,15 @@ async function createCommerceService(pool, options = {}) {
     polar: config.polarProvider ? { available: true, products: Object.fromEntries(Object.entries(config.polarCatalog || {}).map(([id, entry]) => [id, { amountCents: entry.amountCents, currency: 'usd' }])) } : { available: false, products: {} },
     cashfree: config.cashfreeProvider ? { available: true, products: config.cashfreeCatalog || {} } : { available: false, products: {} },
     pass: own.pass || { active: false, periodEnd: null, cancelAtPeriodEnd: false },
+    /* MXA-ECO-011: the exchange surface the client needs to construct valid amounts. */
+    passExchange: await (async () => {
+     if (!own.pass || own.pass.active !== true) return { active: false, rate: D.POLICY.coinsPerCrown, remaining: 0, allowance: 0 };
+     const periodRow = (await tx.query(
+      'SELECT pp.exchange_coins_used FROM monetization.pass_periods pp JOIN monetization.polar_subscriptions ps ON ps.subscription_id = pp.subscription_id WHERE ps.actor_id = $1 AND ps.status = $2 AND pp.period_start <= $3 AND pp.period_end > $3 ORDER BY ps.created_at DESC, pp.period_start DESC LIMIT 1',
+      [actor, 'active', iso(now)])).rows[0] || null;
+     const used = periodRow ? Math.max(0, Number(periodRow.exchange_coins_used) || 0) : 0;
+     return { active: true, rate: M.PASS.exchangeCoinsPerCrown, remaining: Math.max(0, M.PASS.exchangeMonthlyCoinAllowance - used), allowance: M.PASS.exchangeMonthlyCoinAllowance };
+    })(),
     policy: M.POLICY,
    };
   });
@@ -1339,10 +1500,15 @@ async function createCommerceService(pool, options = {}) {
   polarOrderStatus,
   refundPolarOrder,
   processPassGrants,
+  passExchangeSplit,
+  exchangeCoins,
+  storeNotificationSeen,
+  storeNotificationRecord,
+  handleStoreNotification,
   /* Releases this service's unit-of-work state only. The pool is caller-owned (it carries a
     cluster-wide connection-budget claim) and is NEVER closed here. */
   close() { uow.close(); },
  });
 }
 
-module.exports = { createCommerceService, CORE_ROLE, normalizeAdUnits };
+module.exports = { createCommerceService, CORE_ROLE, normalizeAdUnits, passExchangeSplit };

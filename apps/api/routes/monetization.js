@@ -90,6 +90,8 @@ const ROUTES = Object.freeze({
    * key /ticket was undocumented and unreachable from every client, so rewarded ads would 404.
    * The commerce op stays canonical. */
   '/api/monetization/reward-ticket': { op: 'ticket', method: 'POST', args: ['kind', 'platform'] },
+  /* MXA-ECO-011: the player-facing pass exchange (Coins -> Crowns, Core-owned allowance). */
+  '/api/monetization/exchange': { op: 'exchange', method: 'POST', args: ['amount'] },
   '/api/monetization/claim': { op: 'claim', method: 'POST', args: [] },
   '/api/monetization/interstitial-permit': { op: 'permit', method: 'POST', args: ['platform'] },
   '/api/monetization/purchase': { op: 'purchase', method: 'POST', args: ['evidence', 'restore'] },
@@ -130,6 +132,26 @@ async function handleMonetizationRoute(context, req, res) {
        * has no actor to sign with and drops the raw payload entirely. */
       if (typeof lane.ssv !== 'function') fail('MONETIZATION_UNAVAILABLE', 503);
       const result = await lane.ssv(raw);
+      sendJson(res, 200, result, { 'Cache-Control': CACHE_CONTROL });
+      return true;
+    }
+
+    /* MXA-ECO-005 (audit 2026-10-17): the trusted store-notification lanes the contracts
+     * registry already names (monetization.google-play-rtdn / apple-notifications, owner 'W').
+     * They are provider-to-server: the Core-side handler verifies the credential (Google push
+     * JWT against Google's JWKS / Apple signedPayload JWS against the pinned roots) BEFORE any
+     * dedupe or refund, through the same signed ingress as the SSV callback. With no composed
+     * verifier the lane fails closed 503 — it never acknowledges an unverifiable callback. */
+    if (pathname === '/api/monetization/google-play-rtdn' || pathname === '/api/monetization/apple-notifications') {
+      if (method !== 'POST') fail('METHOD_NOT_ALLOWED', 405);
+      if (!(await admitCallback(lane, req, res, 'store'))) return true;
+      if (typeof lane.storeNotification !== 'function') fail('STORE_UNAVAILABLE', 503);
+      const body = await bodyObject(req);
+      const result = await lane.storeNotification({
+        provider: pathname.endsWith('google-play-rtdn') ? 'google' : 'apple',
+        credential: pathname.endsWith('google-play-rtdn') ? String((req.headers && req.headers.authorization) || '') : '',
+        payload: body,
+      });
       sendJson(res, 200, result, { 'Cache-Control': CACHE_CONTROL });
       return true;
     }

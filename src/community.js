@@ -156,7 +156,7 @@ async function boot(){const id=++bootVersion;loading('Opening your board',true);
  if(location.hash.startsWith('#player=')){const tag=decodeURIComponent(location.hash.slice(8));if(session?.linked)openProfile(tag);else landing();}
  decorate();}
 async function signIn(provider,intent){if(APP.getContext().playing)return announce('Finish your current game before switching or linking profiles.',true);archiveCurrent();announce('Opening secure sign-in...');try{
- if(window.MegaNativeApi&&typeof window.MegaNativeApi.signIn==='function'&&session?.providers?.[provider]?.native){
+ if(window.MegaNativeApi&&typeof window.MegaNativeApi.signIn==='function'){
   // P20-03 native host: the challenge, the provider credential and the bearer exchange all run in
   // Kotlin. No ID token and no session credential ever reaches this scope.
   const result=await window.MegaNativeApi.signIn(provider,intent);

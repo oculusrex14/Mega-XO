@@ -59,3 +59,28 @@
  FIX (apps/web/pages.js + pages.css, commit e9b3037 + test fix 6138d59, PRs #35/#36): guests now get 'Sign in to see live prices and buy. Everything in the store is optional and never changes gameplay.' with a Sign in to buy button; all four cards show 'Sign in to see the price' + a Sign in to buy LINK (not a dead disabled button); the pass panel uses the same guest copy; a SIGNED-IN failed check keeps the honest 'Price unavailable' labels, a disabled 'Temporarily unavailable' button and the Retry store check control (a retry cannot help a guest, so it is guest-gated). .pg-store-error gained flex layout + margins so the note is no longer crammed.
  CI NOTE: the owner merged PR #35 at e9b3037 before the test-update commit landed, which left validate + static-website red on V5.2; PR #36 (test-only, 21/21 green) repaired V5.2 at 174ebb8.
  DEPLOY: web-only bundle swap (bundle f87addbf3423f6ae6eeee22bc66f9434e58f6545c41e9524a130e87ac4a8d69f, 171 files, source content 6138d59 = V5.2 174ebb8); archive rollback/2026-10-18T11-15-00Z-webfix-6138d59; NO server-code change and NO restart (static asset swap only, src-final untouched at 0c4b9ac). VERIFIED LIVE: /pages.js serves the new copy, /pages.css serves the spaced rule, /livez 200, full-page browser capture shows the new guest state on every card and the spaced note.
+
+## INCIDENT 2026-10-18 ~12:00 IST - /api/download 404 (fixed + deployed)
+
+- SYMPTOM: every homepage/download-page download button hit a JSON 404 because the production
+  composition classified /api/download as the API surface (apps/api has no such route) while the
+  redirect handler lives in the web bundle. The APK itself (/downloads/android/megaxo-1.0.0.apk)
+  was always served correctly (200, 23,982,197 bytes) - only the redirect endpoint was missing.
+- FIX: commits 754dad1 + e0f072b (PR #38) - v5-production-server.cjs now mounts the identical
+  handler (apps/web/download-config.cjs + shipped store-links.json) before the API dispatch and
+  probes /api/download?platform=android with redirect:'manual' in the boot self-check
+  (downloadSelfCheck must be true). Web copy commit e415c48: the android unavailable notice now
+  points at the direct APK (dynamic-render surfaces only; the static download page already shows
+  the APK panel).
+- DEPLOY: src-final/scripts/v51/v5-production-server.cjs synced host-side (pre-change backup at
+  .pre-download-mount-20261018; sha verified 4588d52c then 99150cc8 after the self-check fix);
+  web-build swapped in place with bundle dddbbe91011d3d9aecb144ab6e732da3632e15be6954d2b10a1fc4cc9a4edcfc
+  (171 files, source e415c48); archive rollback/2026-10-18T12-05Z-webfix-754dad1 (full web-build);
+  src-final tree otherwise untouched at 0c4b9ac. Two clean restarts (server file, then self-check
+  fix); boot log: assetSelfCheck true, downloadRedirectStatus 303, downloadSelfCheck true.
+- VERIFIED LIVE (megaxo.online): /api/download?platform=android -> 303 /download?platform=android&unavailable=1;
+  ?platform=ios -> 303 ios chooser; desktop -> 303 /download; Android UA -> 303; POST -> 405
+  (Allow: GET, HEAD); ?platform=windows -> 400; /download 200; / 200; /readyz 200; APK 200.
+- NON-BLOCKING: the static file server ignores Range headers, so an interrupted APK download
+  cannot resume (full download works). Candidate follow-up: honor single Range requests for
+  /downloads/* paths only.

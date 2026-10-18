@@ -83,6 +83,7 @@ function main() {
 
   const localHead = run('git', ['-C', ROOT, 'rev-parse', 'HEAD']).trim();
   if (localHead !== commit) throw new Error(`LOCAL_HEAD_MISMATCH: HEAD ${localHead} != ${commit}`);
+  run('git', ['-C', ROOT, 'diff', '--quiet', 'HEAD', '--']);
 
   const manifest = JSON.parse(fs.readFileSync(path.join(bundle, 'web-build.manifest.json'), 'utf8'));
   if (manifest.source_commit !== commit) {
@@ -131,7 +132,19 @@ function main() {
     # rsync runs as the unprivileged ssh user, so hand it ownership of the throwaway stage dirs only.
     # The live tree stays root-owned; the swap re-applies root ownership.
     sudo -n chown -R \$(id -un):\$(id -gn) ${PROD_ROOT}/.stage-src ${PROD_ROOT}/.stage-web`]);
-  run('rsync', ['-az', '--delete', ...excludes, `${ROOT}/`, `${host}:${PROD_ROOT}/.stage-src/`], { stdio: 'inherit' });
+  // Send only committed bytes. Copying ROOT also copied ignored native builds, scratch diagnostics
+  // and private/untracked files, so the deployed tree did not reliably equal the approved SHA.
+  const sourceTemp = fs.mkdtempSync(path.join(os.tmpdir(), 'megaxo-deploy-'));
+  try {
+    const sourceArchive = path.join(sourceTemp, 'source.tar');
+    const sourceDir = path.join(sourceTemp, 'source');
+    fs.mkdirSync(sourceDir);
+    run('git', ['-C', ROOT, 'archive', '--format=tar', '--output', sourceArchive, commit]);
+    run('tar', ['-xf', sourceArchive, '-C', sourceDir]);
+    run('rsync', ['-az', '--delete', ...excludes, `${sourceDir}/`, `${host}:${PROD_ROOT}/.stage-src/`], { stdio: 'inherit' });
+  } finally {
+    fs.rmSync(sourceTemp, { recursive: true, force: true });
+  }
   run('rsync', ['-az', '--delete', `${bundle}/`, `${host}:${PROD_ROOT}/.stage-web/`], { stdio: 'inherit' });
 
   // 2. Receipt before the swap, so a failed swap still leaves identity evidence.

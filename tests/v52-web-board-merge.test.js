@@ -9,7 +9,7 @@ const path = require('node:path');
 const vm = require('node:vm');
 
 class FakeElement {
-  constructor(tagName, attributes = {}, text = '') {
+  constructor(tagName, attributes = [], text = '') {
     this.nodeType = 1;
     this.tagName = tagName.toUpperCase();
     this._attributes = new Map(attributes.map(([name, value]) => [name, value]));
@@ -181,7 +181,7 @@ test('opened disclosure and unchanged form controls retain their live interactiv
 
 test('render updates every stacked mobile anchor in place instead of assigning turn-strip innerHTML', () => {
   const source = fs.readFileSync(path.join(__dirname, '..', 'apps', 'web', 'board.js'), 'utf8');
-  assert.match(source, /'\\.gb-game-players', '\\.gb-turn-strip', '\\.gb-match-note'/);
-  assert.doesNotMatch(source, /stage\\.querySelector\\('\.gb-turn-strip'\\)\\.innerHTML\\s*=/);
-  assert.match(source, /if \\(!mergeRenderedElement\\(currentPart, nextPart\\)\\) currentPart\\.replaceWith\\(nextPart\\)/);
+  assert.match(source, /'\.gb-game-players', '\.gb-turn-strip', '\.gb-match-note'/);
+  assert.doesNotMatch(source, /stage\.querySelector\('\.gb-turn-strip'\)\.innerHTML\s*=/);
+  assert.match(source, /if \(!mergeRenderedElement\(currentPart, nextPart\)\) currentPart\.replaceWith\(nextPart\)/);
 });

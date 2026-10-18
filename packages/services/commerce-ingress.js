@@ -113,7 +113,7 @@ function createCommerceIngressService({ commerce }) {
         } else if (name === 'provider') {
           args.push(requireText(value, 'INVALID_STORE_NOTIFICATION', /^(google|apple)$/));
         } else if (name === 'credential') {
-          args.push(requireText(value, 'INVALID_STORE_NOTIFICATION', /^[!-~]{0,8192}$/));
+          args.push(requireText(value, 'INVALID_STORE_NOTIFICATION', /^[\u0020-\u007e]{0,8192}$/));
         } else if (name === 'body') {
           if (!value || typeof value !== 'object' || Array.isArray(value)) fail('INVALID_STORE_NOTIFICATION');
           args.push(value);

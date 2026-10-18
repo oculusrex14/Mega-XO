@@ -89,6 +89,30 @@ test('ssv dispatch: the provider callback is actor-free END TO END through the r
   await assert.rejects(() => ingress.command({ op: 'status' }), /INVALID_ACTOR/);
 });
 
+ test('store_notification dispatch: actor-free end to end, provider and body validated', async () => {
+  const commerce = fakeCommerce();
+  const ingress = createCommerceIngressService({ commerce });
+  /* The exact shape the gateway dispatches (core-gateway.js /ingress/commerce/store-notification). */
+  const body = { signedPayload: 'good' };
+  await ingress.command({ op: 'store_notification', provider: 'apple', credential: '', body });
+  assert.deepEqual(commerce.calls.at(-1).args, ['apple', '', body]);
+  await ingress.command({ op: 'store_notification', provider: 'google', credential: 'Bearer push-token', body: { message: { messageId: 'm1', data: 'ZGF0YQ==' } } });
+  assert.deepEqual(commerce.calls.at(-1).args, ['google', 'Bearer push-token', { message: { messageId: 'm1', data: 'ZGF0YQ==' } }]);
+  await assert.rejects(() => ingress.command({ op: 'store_notification', provider: 'com.evil', credential: 'x', body }), /INVALID_STORE_NOTIFICATION/);
+  await assert.rejects(() => ingress.command({ op: 'store_notification', provider: 'google', credential: 'x', body: 'not-an-object' }), /INVALID_STORE_NOTIFICATION/);
+ });
+
+ test('exchange dispatch: the pass exchange is a session command with a validated amount', async () => {
+  const commerce = fakeCommerce();
+  const ingress = createCommerceIngressService({ commerce });
+  await ingress.command({ actor: ACTOR, op: 'exchange', key: 'xchg-1', amount: 80 });
+  assert.deepEqual(commerce.calls.at(-1).args, [ACTOR, 'xchg-1', 80]);
+  await assert.rejects(() => ingress.command({ actor: ACTOR, op: 'exchange', key: 'xchg-2', amount: 0 }), /INVALID_AMOUNT/);
+  await assert.rejects(() => ingress.command({ actor: ACTOR, op: 'exchange', key: 'xchg-2', amount: 10.5 }), /INVALID_AMOUNT/);
+  /* A missing amount never reaches the validator: the generic arg-required gate fires first. */
+  await assert.rejects(() => ingress.command({ actor: ACTOR, op: 'exchange', key: 'xchg-2' }), /INVALID_COMMERCE_ARG: amount/);
+ });
+
 test('source integrity: the ingress and the API dispatch are wired', () => {
   const gateway = fs.readFileSync(path.join(__dirname, '..', 'packages', 'services', 'core-gateway.js'), 'utf8');
   assert.match(gateway, /pathname === '\/ingress\/commerce\/ssv'/, 'actor-free ssv path present');

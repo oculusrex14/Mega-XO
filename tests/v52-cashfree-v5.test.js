@@ -276,6 +276,45 @@ async function quotaOfFor(database, actor) {
   finally { await c.end(); }
 }
 
+test('commerce: the pass exchange applies 8:1 to earned coins only and tracks the monthly allowance', async (t) => {
+  const harness = await commerceHarness(t, 'exchange');
+  if (!harness) return;
+  const { commerce, database } = harness;
+  // Seed the pass period and a wallet with PURCHASED coins: the discounted tranche must never
+  // touch them (the provenance loop guard), and the purchased tranche keeps 10:1 provenance.
+  const c0 = await adminClient(database);
+  try {
+    await c0.query("INSERT INTO monetization.polar_subscriptions (subscription_id, actor_id, product_id, price_id, status, cancel_at_period_end, current_period_start, current_period_end, created_at, updated_at) VALUES ('sub_ex', 'cf_alice', 'mega_pass', 'b7e2f1a0-3c4d-4e5f-8a9b-0c1d2e3f4a5b', 'active', false, $1, $2, $3, $3)", [new Date(CLOCK).toISOString(), new Date(CLOCK + 30 * 86400000).toISOString(), new Date(CLOCK).toISOString()]);
+    await c0.query("INSERT INTO monetization.pass_periods (subscription_id, actor_id, period_start, period_end, installments_granted, created_at) VALUES ('sub_ex', 'cf_alice', $1, $2, 3, $3)", [new Date(CLOCK).toISOString(), new Date(CLOCK + 30 * 86400000).toISOString(), new Date(CLOCK).toISOString()]);
+    await c0.query('UPDATE economy.wallets SET coins = 1080, purchased_coins = 80, crowns = 0, purchased_crowns = 0 WHERE actor_id = \'cf_alice\'');
+  } finally { await c0.end(); }
+  // 1. 400 Coins: the first 200 (the monthly allowance, all earned) take 8:1; the rest 10:1 —
+  // and the 80 purchased Coins land in the standard tranche with their Crowns provenance intact.
+  const first = await commerce.exchangeCoins('cf_alice', 'ex-key-1', 400);
+  assert.equal(first.discountedCoins, 200); assert.equal(first.standardCoins, 200); assert.equal(first.crowns, 45);
+  const w1 = await walletOf(database, 'cf_alice');
+  assert.equal(Number(w1.coins), 680); assert.equal(Number(w1.purchased_coins), 0);
+  assert.equal(Number(w1.crowns), 45); assert.equal(Number(w1.purchased_crowns), 8);
+  const used1 = await exchangeUsedOf(database);
+  assert.equal(used1, 200);
+  // 2. The allowance is exhausted: the same amount converts at the frozen 10:1 with no ledger drift.
+  const second = await commerce.exchangeCoins('cf_alice', 'ex-key-2', 80);
+  assert.equal(second.discountedCoins, 0); assert.equal(second.standardCoins, 80); assert.equal(second.crowns, 8);
+  const used2 = await exchangeUsedOf(database);
+  assert.equal(used2, 200);
+});
+
+async function walletOf(database, actor) {
+  const c = await adminClient(database);
+  try { const r = await c.query('SELECT coins, purchased_coins, crowns, purchased_crowns FROM economy.wallets WHERE actor_id = $1', [actor]); return r.rows[0]; }
+  finally { await c.end(); }
+}
+async function exchangeUsedOf(database) {
+  const c = await adminClient(database);
+  try { const r = await c.query('SELECT exchange_coins_used FROM monetization.pass_periods WHERE subscription_id = \'sub_ex\''); return Number(r.rows[0].exchange_coins_used); }
+  finally { await c.end(); }
+}
+
 test('commerce: the order record is server-side, idempotent per key, and actor-bound', async (t) => {
   const harness = await commerceHarness(t, 'create');
   if (!harness) return;

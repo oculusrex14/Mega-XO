@@ -15,7 +15,7 @@ function pushToken(opts = {}) {
   const aud = opts.aud || 'https://megaxo.online/api/monetization/google-play-rtdn';
   const header = b64u(JSON.stringify({ alg: 'RS256', kid: KID }));
   const now = Math.floor(Date.now() / 1000);
-  const payload = b64u(JSON.stringify({ iss: 'https://accounts.google.com', aud, email, email_verified: true, exp: now + 300, iat: now }));
+  const payload = b64u(JSON.stringify({ iss: 'https://accounts.google.com', aud, email: opts.email === null ? undefined : email, email_verified: opts.email === null ? undefined : true, exp: now + 300, iat: now }));
   const sig = crypto.sign('RSA-SHA256', Buffer.from(header + '.' + payload), privateKey).toString('base64url');
   return header + '.' + payload + '.' + sig;
 }
@@ -97,4 +97,10 @@ test('apple notifications: the verifyJws result drives the revocation branch', a
   const res = await handler.handle({ signedPayload: 'good' }, { seen: async () => false, record: async () => {}, onRefund: async (store, id) => { refunds.push([store, id]); } });
   assert.equal(res.refunded, 1);
   assert.deepEqual(refunds, [['apple', 'tx-1']]);
+});
+
+test('google rtdn: a missing or unverified email claim fails the push identity binding', async () => {
+  const { handler, hooks, refunds } = rtdn();
+  await assert.rejects(() => handler.handle('Bearer ' + pushToken({ email: null }), envelope({ packageName: 'online.megaxo.game', voidedPurchaseNotification: { purchaseToken: 'x' } }), hooks), /INVALID_STORE_NOTIFICATION/);
+  assert.equal(refunds.length, 0);
 });

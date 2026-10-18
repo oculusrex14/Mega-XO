@@ -503,11 +503,12 @@ export function mountBoard(host, {
 
   const view = host.ownerDocument?.defaultView;
   let viewportFrames = [], pointerViewport = null, viewportRevision = 0, scrollQuietUntil = 0;
+  let gestureLast = null, gestureDistance = 0;
   function cancelViewportCorrection(event) {
     viewportRevision++;
     pointerViewport = null;
     for (const id of viewportFrames.splice(0)) view?.cancelAnimationFrame?.(id);
-    if (event?.type === 'touchmove' || event?.type === 'wheel') scrollQuietUntil = Date.now() + 180;
+    if (event?.type === 'wheel') scrollQuietUntil = Date.now() + 180;
   }
 
   function render({ focusCell = false, setting = null } = {}) {
@@ -930,15 +931,28 @@ export function mountBoard(host, {
   let lastInputWasKeyboard = false;
   const noteInputType = event => {
     lastInputWasKeyboard = event.type === 'keydown';
+    if (event.type === 'touchstart') {
+      const touch = event.touches?.[0];
+      if (touch) { gestureLast = {x: touch.clientX, y: touch.clientY}; gestureDistance = 0; }
+    }
     if (lastInputWasKeyboard) cancelViewportCorrection();
     else if (Date.now() >= scrollQuietUntil && event.target.closest?.('[data-gb-cell]')) {
       pointerViewport = captureBoardViewport(host.querySelector('.gb-frame'), view);
     }
   };
+  /* Only a genuine drag or wheel is a user scroll: a stationary tap can still emit sub-pixel
+   * touchmove events on some engines, and it must keep its anchor. */
+  function onGestureMove(event) {
+    const touch = event.touches?.[0];
+    if (!touch || !gestureLast) return;
+    gestureDistance += Math.hypot(touch.clientX - gestureLast.x, touch.clientY - gestureLast.y);
+    gestureLast = {x: touch.clientX, y: touch.clientY};
+    if (gestureDistance > 8) cancelViewportCorrection(event);
+  }
   /* Some touch sequences skip pointer events; the pre-gesture position is still the anchor. */
   host.addEventListener('touchstart', noteInputType, {passive: true});
   host.ownerDocument?.addEventListener?.('pointerdown', cancelViewportCorrection, {capture:true, passive:true});
-  host.ownerDocument?.addEventListener?.('touchmove', cancelViewportCorrection, {passive:true});
+  host.ownerDocument?.addEventListener?.('touchmove', onGestureMove, {passive:true});
   host.ownerDocument?.addEventListener?.('wheel', cancelViewportCorrection, {passive:true});
   view?.addEventListener?.('resize', cancelViewportCorrection, {passive:true});
   host.addEventListener('pointerdown', noteInputType);
@@ -995,7 +1009,7 @@ export function mountBoard(host, {
       host.removeEventListener('touchstart', noteInputType);
       host.removeEventListener('keydown', noteInputType);
       host.ownerDocument?.removeEventListener?.('pointerdown', cancelViewportCorrection, true);
-      host.ownerDocument?.removeEventListener?.('touchmove', cancelViewportCorrection);
+      host.ownerDocument?.removeEventListener?.('touchmove', onGestureMove);
       host.ownerDocument?.removeEventListener?.('wheel', cancelViewportCorrection);
       view?.removeEventListener?.('resize', cancelViewportCorrection);
       guidedStart?.removeEventListener('click', startGuided);

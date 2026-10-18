@@ -54,9 +54,13 @@ class GooglePlayStoreNotifications {
     const nowSec = Math.floor(this.now() / 1000);
     const issuers = ['https://accounts.google.com', 'accounts.google.com'];
     if (!issuers.includes(claims.iss) || !Number.isFinite(claims.exp) || claims.exp <= nowSec || !Number.isFinite(claims.iat) || claims.iat > nowSec + 30 || nowSec - claims.iat > 600) throw Error('INVALID_STORE_NOTIFICATION');
-    const emailOk = this.serviceAccountEmail !== null && claims.email === this.serviceAccountEmail;
+    /* Sol review round 2: when BOTH identities are configured the token must satisfy BOTH - an
+     * OR would accept a wrong service account with the right audience (or vice versa). The
+     * email binding additionally requires Google's email_verified exactly true. */
+    const emailOk = this.serviceAccountEmail !== null && claims.email === this.serviceAccountEmail && claims.email_verified === true;
     const audOk = Array.isArray(claims.aud) ? claims.aud.includes(this.expectedAudience) : claims.aud === this.expectedAudience;
-    if (!emailOk && !audOk) throw Error('INVALID_STORE_NOTIFICATION');
+    const needEmail = this.serviceAccountEmail !== null, needAud = this.expectedAudience !== null;
+    if ((needEmail && !emailOk) || (needAud && !audOk)) throw Error('INVALID_STORE_NOTIFICATION');
     return claims;
   }
   async handle(authorization, envelope, { seen, record, onRefund } = {}) {

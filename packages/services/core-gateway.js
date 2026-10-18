@@ -344,10 +344,10 @@ function createCoreGateway({
      * turned every provider create into an INVALID_COMMERCE_ARG (the audit F-series finding).
      * The Core ingress re-validates each field against its own grammar; nothing unlisted is
      * ever forwarded. */
-    async commerceCommand({ actor, opKey, op, key, kind, platform, itemId, evidence, restore, productId, orderId, checkoutId, customer } = {}) {
+    async commerceCommand({ actor, opKey, op, key, kind, platform, itemId, evidence, restore, productId, orderId, checkoutId, customer, amount } = {}) {
       return this.forwardCommand({ actor, opKey,
         path: '/ingress/commerce/command',
-        command: { op, key, kind, platform, itemId, evidence, restore, productId, orderId, checkoutId, customer } });
+        command: { op, key, kind, platform, itemId, evidence, restore, productId, orderId, checkoutId, customer, amount } });
     },
 
     /** LR12: forward the AdMob SSV query to the Core commerce callback. Actor-free by design. */
@@ -380,9 +380,9 @@ function createCoreGateway({
     /** MXA-ECO-005: forward the verified-provider store notification to the Core commerce lane.
      * Actor-free by design; the credential rides as an argument so the Core-side handler can
      * verify it against the provider before any dedupe or refund. */
-    async commerceStoreNotification({ kind, credential, payload } = {}) {
+    async commerceStoreNotification({ provider, credential, payload } = {}) {
       const path = '/ingress/commerce/command';
-      const bodyString = JSON.stringify({ op: 'store_notification', kind, credential, payload });
+      const bodyString = JSON.stringify({ op: 'store_notification', provider, credential, payload });
       const timestamp = String(clock());
       const signature = signRequest({ secret, timestamp, method: 'POST', path, actor: '', opKey: 'commerce-store-notification', bodyString });
       const controller = new AbortController();

@@ -44,7 +44,7 @@ const OPS = {
   /* MXA-ECO-005: the trusted store-notification lane (Google RTDN / Apple ASNv2). Actor-free:
    * the provider credential rides as an argument and the Core-side handler verifies it before
    * any dedupe or refund; the only economic path is the idempotent commerce.refund. */
-  store_notification: { args: ['provider', 'credential', 'payload'], method: 'handleStoreNotification', actorFree: true, call: (c, actor, a) => c.handleStoreNotification(a[0], a[1], a[2]) },
+  store_notification: { args: ['provider', 'credential', 'body'], method: 'handleStoreNotification', actorFree: true, call: (c, actor, a) => c.handleStoreNotification(a[0], a[1], a[2]) },
   /* MXA-ECO-011: the player-facing pass exchange (Coins -> Crowns with the monthly allowance). */
   exchange: { args: ['key', 'amount'], method: 'exchangeCoins', call: (c, actor, a) => c.exchangeCoins(actor, a[0], a[1]) },
 };
@@ -114,6 +114,9 @@ function createCommerceIngressService({ commerce }) {
           args.push(requireText(value, 'INVALID_STORE_NOTIFICATION', /^(google|apple)$/));
         } else if (name === 'credential') {
           args.push(requireText(value, 'INVALID_STORE_NOTIFICATION', /^[!-~]{0,8192}$/));
+        } else if (name === 'body') {
+          if (!value || typeof value !== 'object' || Array.isArray(value)) fail('INVALID_STORE_NOTIFICATION');
+          args.push(value);
         } else if (name === 'raw') {
           if (typeof value !== 'string' || value.length === 0 || value.length > 8192) fail('INVALID_SSV_PAYLOAD');
           args.push(value);

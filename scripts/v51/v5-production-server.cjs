@@ -866,6 +866,9 @@ async function main() {
     polarProvider,
     polarCatalog,
     polarSuccessUrl,
+    /* Sol review round 2: wired but inert until the env var exists - a discount id that is not
+     * configured can never silently charge a wrong amount, and the pack-discount guard stays off. */
+    polarPackDiscountId: process.env.POLAR_PACK_DISCOUNT_ID || undefined,
   });
   const commerceIngress = createCommerceIngressService({ commerce });
   const coreIngress = createCoreServiceIngress({ coreService: core, ticketIssuer, queue, tournaments, commerce: commerceIngress, leaderboardPool: corePool, secret: gatewaySecret });

@@ -15,7 +15,7 @@ function pushToken(opts = {}) {
   const aud = opts.aud || 'https://megaxo.online/api/monetization/google-play-rtdn';
   const header = b64u(JSON.stringify({ alg: 'RS256', kid: KID }));
   const now = Math.floor(Date.now() / 1000);
-  const payload = b64u(JSON.stringify({ iss: 'https://accounts.google.com', aud, email, exp: now + 300, iat: now }));
+  const payload = b64u(JSON.stringify({ iss: 'https://accounts.google.com', aud, email, email_verified: true, exp: now + 300, iat: now }));
   const sig = crypto.sign('RSA-SHA256', Buffer.from(header + '.' + payload), privateKey).toString('base64url');
   return header + '.' + payload + '.' + sig;
 }
@@ -31,6 +31,7 @@ function rtdn() {
   const handler = new GooglePlayStoreNotifications({
     packageName: 'online.megaxo.game',
     serviceAccountEmail: 'push@megaxo.iam.gserviceaccount.com',
+    expectedAudience: 'https://megaxo.online/api/monetization/google-play-rtdn',
     jwksUrl: 'https://jwks.test/certs',
     fetcher: async () => ({ json: async () => JSON.parse(jwksBody) }),
   });
@@ -62,6 +63,8 @@ test('google rtdn: a wrong-package or forged push is refused', async () => {
   await assert.rejects(() => handler.handle('Bearer ' + pushToken(), envelope({ packageName: 'com.evil.app', voidedPurchaseNotification: { purchaseToken: 'x' } }), hooks), /INVALID_STORE_NOTIFICATION/);
   await assert.rejects(() => handler.handle('Bearer not-a-jwt', envelope({})), /INVALID_STORE_NOTIFICATION/);
   await assert.rejects(() => handler.handle('Bearer ' + pushToken({ email: 'attacker@evil.test' }), envelope({ packageName: 'online.megaxo.game', voidedPurchaseNotification: { purchaseToken: 'x' } }), hooks), /INVALID_STORE_NOTIFICATION/);
+  /* AND binding: the right service account with the WRONG audience is refused too. */
+  await assert.rejects(() => handler.handle('Bearer ' + pushToken({ aud: 'https://evil.test/push' }), envelope({ packageName: 'online.megaxo.game', voidedPurchaseNotification: { purchaseToken: 'x' } }), hooks), /INVALID_STORE_NOTIFICATION/);
 });
 
 test('google rtdn: type 1 with no provider read refunds nothing', async () => {

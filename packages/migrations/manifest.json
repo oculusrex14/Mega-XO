@@ -363,13 +363,18 @@
       "name": "0060_pass_allowances",
       "file": "migrations/0060_pass_allowances.sql",
       "sha256": "d1f3756cef82bb2b915b1f516ff35afe16e7985ae82a4486a24fdd473e29638d"
-    }
-    ,
+    },
     {
       "id": 61,
       "name": "0061_store_notifications",
       "file": "migrations/0061_store_notifications.sql",
-      "sha256": "b1a406e3f4b2cb346ef188951d4957c08f811f5d4437cdb6b60b87e00bc89b28"
+      "sha256": "419c7d4f8771b169d7be9b9ae74d136a5fb4ac8cfe4016203891a46fbd40d5bf"
+    },
+    {
+      "id": 62,
+      "name": "0062_order_discount_binding",
+      "file": "migrations/0062_order_discount_binding.sql",
+      "sha256": "126814d7885734f34b4ebefd6c4e339053cbd55314ccf907a494ba5e4cfa01ee"
     }
   ]
 }

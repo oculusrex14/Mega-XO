@@ -100,9 +100,11 @@ internal class MegaNativeSessionManager(
      * The reply carries only safe auth-state fields - no credential value ever reaches the page.
      */
     fun email(body: JSONObject, complete: (JSONObject) -> Unit) {
-        synchronized(this) {
-            if (revoked) { complete(MegaNativeEmailProtocol.error("REVOKED")); return }
-        }
+        // A revoked *old session* must never bar a fresh explicit sign-in. Google signIn() already
+        // permits recovery from this state, but email previously returned REVOKED immediately,
+        // leaving users unable to log in with email until reinstall/process replacement.
+        // revokeEverything() clears both old credentials; this fresh exchange is still vetted by
+        // the server and installs a new family only after password/OTP verification.
         val bearer = synchronized(this) { session?.accessToken } ?: emailSessionToken
         val action = body.optString("action", "")
         io.execute {

@@ -817,6 +817,10 @@ async function postNativeEmail(context, req, res) {
   const bearer = nativeBearer(req);
   const cookie = bearerFromCookies(req);
   if (cookie && !bearer) await enforceNativeCsrf(accounts, cookie, req);
+  /* The frozen P05 amr allowlist (pwd/otp/google/apple) has no 'email': a password lane result
+   * authenticates with 'pwd' and an OTP-code result with 'otp', exactly like the web flow's
+   * credentials. Anything else is refused by authenticateNative before the session is read. */
+  const amr = action === 'verify' ? ['otp'] : ['pwd'];
   let token = bearer || cookie || null;
   let sessionToken = null;
   if (!token) {
@@ -840,7 +844,7 @@ async function postNativeEmail(context, req, res) {
   }
   const linked = result && typeof result.token === 'string';
   if (linked) {
-    const family = await mintNativeCredentialFamily(context, accounts, result, ['email']);
+    const family = await mintNativeCredentialFamily(context, accounts, result, amr);
     return sendNativeSession(res, family);
   }
   return sendJson(res, 200, {

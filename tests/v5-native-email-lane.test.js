@@ -86,7 +86,7 @@ test('guest continue against an existing verified address mints the frozen nativ
   assert.equal(body.refreshToken, 'test-refresh-secret');
   assert.equal(body.actorId, 'u_actor1');
   assert.equal(body.sessionToken, undefined, 'an authenticated family never rides with a bootstrap token');
-  assert.equal(context.issued.amr[0], 'email');
+  assert.deepEqual(context.issued.amr, ['pwd'], 'the password lane authenticates with the pwd amr');
 });
 
 test('verify continuation presents the challenge token as the bearer and mints the family on success', async () => {
@@ -98,6 +98,7 @@ test('verify continuation presents the challenge token as the bearer and mints t
   const body = JSON.parse(res.body);
   assert.equal(body.accessToken, 'test-access-token');
   assert.equal(body.actorId, 'u_actor1');
+  assert.deepEqual(context.issued.amr, ['otp'], 'verified email codes authenticate with the otp amr');
 });
 
 test('forgot answers with the challenge id and never discloses existence', async () => {

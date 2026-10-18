@@ -581,6 +581,12 @@ async function main() {
   const security = require(path.join(ROOT, 'packages/services/security.js'));
   const { resolveAuth } = require(path.join(ROOT, 'apps/api/routes/helpers.js'));
   const { resolveStatic, CSP } = require(path.join(ROOT, 'scripts/p21/serve-web.js'));
+  /* The web bundle's /api/download redirect handler (same contract as the preview server
+   * and the P21-DOWNLOAD tests): GET/HEAD only, no-store, Vary: User-Agent, and it never
+   * guesses a launch link - it sends the caller to the download page. Mounted on this
+   * origin so the homepage and download-page buttons resolve instead of falling into the
+   * API JSON 404. It shares no state with the API handler and touches no database. */
+  const downloadHandler = require(path.join(ROOT, 'apps/web/download-config.cjs')).createDownloadHandler();
 
   /* 1. TARGET BINDING. Explicit, exact and fail-closed; the process refuses to start otherwise. */
   const binding = process.env[BINDING_ENV];
@@ -1019,6 +1025,9 @@ async function main() {
       const surface = classifyPath(pathname);
       if (surface === 'realtime') return;
       if (surface === 'ingress') { await coreIngress(req, res); return; }
+      /* /api/download is a web-bundle redirect service, not an API endpoint: dispatch it
+       * before the API surface so it keeps its exact P21 contract (303/302/400/405). */
+      if (pathname === '/api/download') { downloadHandler(req, res); return; }
       /* /livez and /readyz are served by the API handler with the SAME semantics the deploy tooling
        * and the host health monitor expect: 200 {"status":"ok","live":true,"ready":true} while the
        * database answers, 503 {"status":"degraded",...,"ready":false} when it does not. */
@@ -1085,6 +1094,8 @@ async function main() {
     assets[p] = await probe(p);
   }
   const missing = await probe('/legacy-game/src/does-not-exist.js');
+  const downloadRedirectStatus = (await probe('/api/download?platform=android')).status;
+  const downloadSelfCheck = downloadRedirectStatus === 303;
   const assetSelfCheck = Object.values(assets).every((a) => a.status === 200);
   console.log(JSON.stringify({
     ok: true, origin, publicOrigin, allowedOrigins, binding: `${boundary.projectId}/${boundary.branchId}/${boundary.database}`,
@@ -1094,7 +1105,7 @@ async function main() {
     roleSeparation, apiRole, coreRole, budget,
     webBuild: { dir: artifactDir, sourceCommit: webArtifact.sourceCommit, bundleSha256: webArtifact.bundleSha256, fileCount: webArtifact.fileCount },
     websiteServesShell: shell.includes('mx-web-shell'), livezStatus: livez.status, readyzStatus: readyz.status,
-    assets, missingAssetStatus: missing.status, assetSelfCheck,
+    assets, missingAssetStatus: missing.status, assetSelfCheck, downloadRedirectStatus, downloadSelfCheck,
     note: 'production composition; loopback only; route-aware crawl policy (approved public pages indexable); no legacy-authority path touched; serves the generated P21 bundle',
   }, null, 2));
 

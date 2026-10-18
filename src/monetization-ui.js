@@ -121,7 +121,7 @@ document.addEventListener('click',e=>{
  else if(action==='powerbuy')execute(async()=>{if(!['undo','hint'].includes(value))return;await window.MegaPowers.purchase(value);APP.notify('Charge banked. It stays until you use it.');});
  else if(action==='exchange')execute(async()=>{const input=document.getElementById('monoExchangeAmount');const amount=Number(input&&input.value);if(!Number.isInteger(amount)||amount<=0)throw Error('Enter the Coin amount to exchange first.');const user=who();const r=await request('exchange',{amount});if(who()!==user)throw Error('AUTH_REQUIRED');await APP.refresh();await refresh();show();APP.notify('Exchanged for '+r.crowns+' Crowns.');});
  else if(action==='claim')execute(async()=>{const r=await request('claim',{});APP.notify((r.base+r.bonus)+' earned Cosmetic Credits collected.');});
- else if(action==='prepare')execute(async()=>{if(!safe(true)||!status||status.adMode==='off')return;await window.MegaAds.privacyOptions?.();if(!safe(true)||!privacyReady())return;await window.MegaAds.prepare('rewarded');});
+ else if(action==='prepare')execute(async()=>{if(!safe(true)||!status||status.adMode==='off'||!window.MegaAds?.prepare)return;await window.MegaAds.prepare('rewarded');});
  else if(action==='privacy')execute(()=>window.MegaAds.privacyOptions());else if(action==='report')execute(()=>window.MegaAds.reportAd());
 },true);
 setInterval(()=>{if(who()!==actor){status=null;refresh().then(()=>show());}},2000);

@@ -155,10 +155,8 @@ internal class MegaAdsBridge private constructor(
      */
     private fun privacyOptions(reply: JavaScriptReplyProxy, id: Int) {
         fun stepForm() {
-            if (!ads.canRequestAds()) {
-                send(reply, id, JSONObject().put("ok", false).put("error", "ADS_CONSENT_NOT_GRANTED"))
-                return
-            }
+            // A denied/limited consent choice must not hide the control that lets the user review
+            // privacy choices. Ad loading remains separately gated by withConsentAndSdk/prepare.
             ads.privacyOptions { shown ->
                 send(reply, id, JSONObject()
                     .put("ok", shown)

@@ -109,6 +109,13 @@ require(adMobInterstitialUnit.isEmpty() ||
     Regex("^ca-app-pub-[0-9]{16}/[0-9]{10}$").matches(adMobInterstitialUnit)) {
     "megaAdMobInterstitialUnit must be an exact AdMob ad unit id"
 }
+val adMobPublisherId = adMobAppId.substringBefore('~')
+require(adMobRewardedUnit.isEmpty() || adMobRewardedUnit.substringBefore('/') == adMobPublisherId) {
+    "megaAdMobRewardedUnit must belong to the megaAdMobAppId publisher"
+}
+require(adMobInterstitialUnit.isEmpty() || adMobInterstitialUnit.substringBefore('/') == adMobPublisherId) {
+    "megaAdMobInterstitialUnit must belong to the megaAdMobAppId publisher"
+}
 // A DEBUG build defaults to Google's own demo units - the documented test units, never live
 // inventory - so `window.MegaAds` is actually exercisable on an emulator or device, exactly like the
 // test AdMob app id above. An explicit -P value wins, and a RELEASE build names only what the owner

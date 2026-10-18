@@ -145,6 +145,69 @@ const GATEWAY_TIMEOUT_MS = 30000;
 const SECRET_MAX_BYTES = 4 * 1024 * 1024;
 const REFUSE = (code, detail) => { const error = new Error(detail === undefined ? code : `${code}: ${String(detail).slice(0, 200)}`); error.code = code; return error; };
 
+/* Native AdMob configuration is a single fail-closed boundary: reject typoed modes/IDs rather
+ * than quietly composing an ad-enabled status with no usable inventory. Google SSV signs
+ * `ad_unit` as the provider's numeric unit suffix; translate that verified suffix back to the
+ * exact configured full unit before Core compares it with the ticket's stored binding. */
+function resolveCommerceAdsConfig(env = process.env) {
+  const mode = env.MEGA_AD_MODE || 'off';
+  if (!['off', 'rewarded', 'hybrid'].includes(mode)) throw REFUSE('INVALID_AD_MODE');
+  const deletion = env.MEGA_ACCOUNT_DELETION_ENABLED || 'false';
+  if (!['true', 'false'].includes(deletion)) throw REFUSE('INVALID_ACCOUNT_DELETION_FLAG');
+  const validVersion = (value) => typeof value === 'string' && /^[A-Za-z0-9._-]{3,64}$/.test(value);
+  const privacyVersion = env.MEGA_PRIVACY_POLICY_VERSION || '';
+  const retentionVersion = env.MEGA_RETENTION_POLICY_VERSION || '';
+  const consentVersion = env.MEGA_AD_CONSENT_VERSION || '';
+  const unitPattern = /^ca-app-pub-\d{16}\/\d{10}$/;
+  const adUnits = {};
+  for (const platform of ['ANDROID', 'IOS']) {
+    const readUnit = (name) => {
+      const value = env[name] || '';
+      if (value && (typeof value !== 'string' || !unitPattern.test(value))) {
+        throw REFUSE('INVALID_ADMOB_UNIT', name);
+      }
+      return value;
+    };
+    const rewarded = readUnit(`ADMOB_${platform}_REWARDED_UNIT`);
+    const interstitial = readUnit(`ADMOB_${platform}_INTERSTITIAL_UNIT`);
+    if (interstitial && !rewarded) throw REFUSE('ADMOB_REWARDED_UNIT_REQUIRED', platform.toLowerCase());
+    if (rewarded || interstitial) adUnits[platform.toLowerCase()] = Object.freeze({ rewarded, interstitial });
+  }
+  // The callback includes only the numeric unit suffix. It must resolve to exactly one full unit.
+  const unitByCallbackId = new Map();
+  for (const units of Object.values(adUnits)) {
+    for (const fullUnit of [units.rewarded, units.interstitial].filter(Boolean)) {
+      const callbackId = fullUnit.slice(fullUnit.lastIndexOf('/') + 1);
+      const previous = unitByCallbackId.get(callbackId);
+      if (previous && previous !== fullUnit) throw REFUSE('AMBIGUOUS_ADMOB_UNIT_BINDING');
+      unitByCallbackId.set(callbackId, fullUnit);
+    }
+  }
+  if (mode !== 'off') {
+    if (deletion !== 'true' || !validVersion(privacyVersion) || !validVersion(retentionVersion)) {
+      throw REFUSE('ADS_REQUIRE_PRIVACY_RELEASE');
+    }
+    if (!validVersion(consentVersion)) throw REFUSE('ADS_REQUIRE_CONSENT_RELEASE');
+    if (!adUnits.android || !adUnits.android.rewarded) throw REFUSE('ADMOB_ANDROID_REWARDED_UNIT_REQUIRED');
+    if (mode === 'hybrid' && Object.values(adUnits).some((units) => !units.interstitial)) {
+      throw REFUSE('INCOMPLETE_ADMOB_UNITS');
+    }
+  }
+  return Object.freeze({ mode, adUnits: Object.freeze(adUnits), unitByCallbackId });
+}
+
+function bindAdMobVerifier(baseVerifier, adsConfig) {
+  if (typeof baseVerifier !== 'function') throw REFUSE('AD_VERIFIER_REQUIRED');
+  return async (raw) => {
+    const event = await baseVerifier(raw);
+    const callbackId = event && typeof event.adUnit === 'string' ? event.adUnit : '';
+    const configuredUnit = Object.values(adsConfig.adUnits).flatMap((units) => [units.rewarded, units.interstitial])
+      .find((unit) => unit && unit === callbackId) || adsConfig.unitByCallbackId.get(callbackId);
+    if (!configuredUnit) throw REFUSE('UNCONFIGURED_ADMOB_UNIT');
+    return { ...event, adUnit: configuredUnit };
+  };
+}
+
 function arg(flag, fallback) {
   const i = process.argv.indexOf(flag);
   return i !== -1 && process.argv[i + 1] ? process.argv[i + 1] : fallback;
@@ -288,7 +351,9 @@ function createMailTransportForPolicy(policy, options = {}) {
   if (typeof resendApiKey !== 'string' || resendApiKey.length === 0) {
     throw REFUSE('OUTBOUND_EMAIL_KEY_REQUIRED');
   }
-  return createResendMailTransport({ apiKey: resendApiKey, fetcher: options.emailFetch });
+  const emailFetch = options.emailFetch || globalThis.fetch;
+  if (typeof emailFetch !== 'function') throw REFUSE('OUTBOUND_EMAIL_FETCH_REQUIRED');
+  return createResendMailTransport({ apiKey: resendApiKey, fetcher: emailFetch });
 }
 
 /* This entry point composes NO outbound provider: it has no mail provider, no store notification
@@ -702,22 +767,17 @@ async function main() {
    * verifiers (AdMob SSV verifyAd / store verifyPurchase + purchaseProvider) and the eligibility
    * policy are configured in a later provider lane — the mounted routes answer honestly with
    * adMode 'off' / purchasesAvailable false until then. */
-  const commerceAdMode = ['rewarded', 'hybrid'].includes(process.env.MEGA_AD_MODE) ? process.env.MEGA_AD_MODE : 'off';
+  const commerceAds = resolveCommerceAdsConfig(process.env);
+  const commerceAdMode = commerceAds.mode;
   /* LR15: the AdMob SSV verifier is composed whenever rewarded ads are enabled. It verifies the
    * ECDSA signature against Google's PUBLISHED verifier keys (gstatic, 24h cache) — no secret
    * material here. Store verifiers (verifyPurchase/purchaseProvider) remain a later lane; the
    * eligibility gate stays conservative (verified, unheld accounts — the accountOf gate enforces
    * the same invariants again inside the service). Client-side UMP/ATT consent remains the native
    * apps' own gate before any ad request. */
-  const adUnitPattern = /^ca-app-pub-\d{16}\/\d{10}$/;
-  const adUnit = (value) => (typeof value === 'string' && adUnitPattern.test(value) ? value : '');
-  const adUnits = {};
-  for (const platform of ['android', 'ios']) {
-    const rewarded = adUnit(process.env['ADMOB_' + platform.toUpperCase() + '_REWARDED_UNIT']);
-    const interstitial = adUnit(process.env['ADMOB_' + platform.toUpperCase() + '_INTERSTITIAL_UNIT']);
-    if (rewarded || interstitial) adUnits[platform] = { rewarded, interstitial };
-  }
-  const verifyAd = commerceAdMode !== 'off' ? createAdMobVerifier() : null;
+  const adUnits = commerceAds.adUnits;
+  const baseAdVerifier = commerceAdMode !== 'off' ? createAdMobVerifier() : null;
+  const verifyAd = baseAdVerifier ? bindAdMobVerifier(baseAdVerifier, commerceAds) : null;
   /* LR15 store lane: when purchases are enabled AND the store env is present, the Google Play /
    * Apple StoreKit verifiers run through the PG adapter with the DEPLOYED role split - the
    * revocation check on the core pool (0021), every store_finalize write/read on the worker pool
@@ -897,7 +957,9 @@ async function main() {
   const resendApiKey = emailEnabled ? readProviderSecret(process.env, 'RESEND_API_KEY', true) : '';
   const providerCapabilities = emailEnabled ? { email: 'resend' } : {};
   const providerComposition = assertProviderClassesComposable(boundary.outbound, providerCapabilities);
-  const mailTransport = createMailTransportForPolicy(boundary.outbound, { resendApiKey });
+  const mailTransport = createMailTransportForPolicy(boundary.outbound, {
+    resendApiKey, emailFetch: globalThis.fetch,
+  });
   const worker = createWorkerApp({
     pool: workerPool, redis: ephemera, secret: otpSecret, transport: mailTransport,
     /* The rate-bucket DELETE grant lives with api_runtime (0020; 0037 withholds it from the worker), so
@@ -1197,6 +1259,7 @@ module.exports = {
   BINDING_ENV, SERVING_EPOCH_ENV, HTTP_PORT_ENV, REDIS_CREDENTIALS_ENV, SECRET_FILES, OUTBOUND_CLASSES,
   REQUIRED_ROLE, DEFAULT_HTTP_PORT,
   parseProductionBinding, validateProductionBinding, resolveOutboundPolicy, createMailTransportForPolicy,
+  resolveCommerceAdsConfig, bindAdMobVerifier,
   assertProviderClassesComposable,
   deriveNamespace, assertPoolRole, assertRoleSeparation, assertApiCompositionHoldsNoCoreAccess,
   assertCoreCompositionUsesCorePool,

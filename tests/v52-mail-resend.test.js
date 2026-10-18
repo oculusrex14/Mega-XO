@@ -66,8 +66,36 @@ test('policy factory: disabled keeps the fail-closed stub; enabled requires the 
   assert.equal(disabled.enabled(), false);
   assert.throws(() => disabled.sendOtp({}), /OUTBOUND_DISABLED_BY_TARGET/);
   assert.throws(() => deploy.createMailTransportForPolicy({ email: 'enabled' }), /OUTBOUND_EMAIL_KEY_REQUIRED/);
-  const enabled = deploy.createMailTransportForPolicy({ email: 'enabled' }, { resendApiKey: KEY, emailFetch: async () => okResponse });
+  assert.throws(() => deploy.createMailTransportForPolicy({ email: 'enabled' }, { resendApiKey: KEY, emailFetch: 'invalid' }), /OUTBOUND_EMAIL_FETCH_REQUIRED/);
+});
+
+test('policy factory: enabled transport falls back to global fetch when caller omits an override', async () => {
+  const originalFetch = globalThis.fetch;
+  const calls = [];
+  globalThis.fetch = async (url, init) => { calls.push({ url, init }); return okResponse; };
+  try {
+    /* The main composition supplies fetch explicitly; preserve the factory's safe default too. */
+    const enabled = deploy.createMailTransportForPolicy({ email: 'enabled' }, { resendApiKey: KEY });
+    assert.equal(enabled.enabled(), true);
+    await enabled.sendOtp({ to: 'player@example.com', code: '123456', purpose: 'reset', idempotencyKey: 'k' });
+    assert.equal(calls.length, 1);
+    assert.equal(calls[0].url, RESEND_ENDPOINT);
+    assert.equal(calls[0].init.headers.Authorization, 'Bearer ' + KEY);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test('policy factory: explicit fetch injection remains supported', async () => {
+  const calls = [];
+  const enabled = deploy.createMailTransportForPolicy({ email: 'enabled' }, {
+    resendApiKey: KEY,
+    emailFetch: async (url, init) => { calls.push({ url, init }); return okResponse; },
+  });
   assert.equal(enabled.enabled(), true);
+  await enabled.sendOtp({ to: 'player@example.com', code: '123456', purpose: 'signup', idempotencyKey: 'k2' });
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].url, RESEND_ENDPOINT);
 });
 
 test('composability: an enabled class is legal only with a declared capability', () => {
@@ -117,4 +145,5 @@ test('source integrity: the composition wires the sink and the capability map', 
   assert.match(source, /otpSink,/);
   assert.match(source, /createOtpSink\(\{ pool: apiPool, secret: otpSecret \}\)/);
   assert.match(source, /providerCapabilities = emailEnabled \? \{ email: 'resend' \} : \{\}/);
+  assert.match(source, /createMailTransportForPolicy\(boundary\.outbound,\s*\{\s*resendApiKey,\s*emailFetch: globalThis\.fetch,/);
 });

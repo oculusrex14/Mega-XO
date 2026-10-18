@@ -2,10 +2,10 @@
   "ios": null,
   "android": null,
   "androidApk": {
-    "path": "/downloads/android/megaxo-1.0.2.apk",
-  "sha256": "ffbf6a189f6add04b20bd73ab6ce1f21d25a400eb6b057758eddb49392148428",
-    "versionName": "1.0.2",
-    "versionCode": 3,
-  "bytes": 23990171
+    "path": "/downloads/android/megaxo-1.0.3.apk",
+    "sha256": "50c3c01bf909f048fffe23f9c55d445c762d42f7165658c6368024dc4e43be53",
+    "versionName": "1.0.3",
+    "versionCode": 4,
+    "bytes": 23993495
   }
 }

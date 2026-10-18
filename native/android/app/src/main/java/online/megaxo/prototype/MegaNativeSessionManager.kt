@@ -100,40 +100,67 @@ internal class MegaNativeSessionManager(
      * The reply carries only safe auth-state fields - no credential value ever reaches the page.
      */
     fun email(body: JSONObject, complete: (JSONObject) -> Unit) {
-        synchronized(this) { if (revoked) { complete(JSONObject().put("ok", false).put("error", "REVOKED")); return } }
+        // A revoked *old session* must never bar a fresh explicit sign-in. Google signIn() already
+        // permits recovery from this state, but email previously returned REVOKED immediately,
+        // leaving users unable to log in with email until reinstall/process replacement.
+        // revokeEverything() clears both old credentials; this fresh exchange is still vetted by
+        // the server and installs a new family only after password/OTP verification.
         val bearer = synchronized(this) { session?.accessToken } ?: emailSessionToken
+        val action = body.optString("action", "")
         io.execute {
             transport.authRequest("/api/account/native/email", bearer, body.toString()) { result ->
                 val response = result.getOrNull()
-                if (response == null) { main.post { complete(JSONObject().put("ok", false).put("error", "SERVICE_UNAVAILABLE")) }; return@authRequest }
-                val (status, raw) = response
-                val parsed = runCatching { JSONObject(raw) }.getOrNull()
-                if (parsed == null) { main.post { complete(JSONObject().put("ok", false).put("error", "SERVICE_UNAVAILABLE")) }; return@authRequest }
-                if (status !in 200..299) {
-                    val code = parsed.optString("error", "SERVICE_UNAVAILABLE")
-                    main.post { complete(JSONObject().put("ok", false).put("error", if (code.isNotEmpty()) code else "SERVICE_UNAVAILABLE")) }
+                if (response == null) {
+                    // Only bounded public fault codes cross the bridge; never raw transport errors.
+                    val code = result.exceptionOrNull()?.message ?: "SERVICE_UNAVAILABLE"
+                    main.post { complete(MegaNativeEmailProtocol.error(code)) }
                     return@authRequest
                 }
-                val continuation = parsed.optString("sessionToken", "").takeIf { it.isNotEmpty() && it.length <= 2048 }
-                if (continuation != null && parsed.has("accessToken").not()) {
-                    synchronized(this) { emailSessionToken = continuation }
+                val (status, raw) = response
+                val parsed = runCatching { JSONObject(raw) }.getOrNull()
+                if (parsed == null) {
+                    main.post { complete(MegaNativeEmailProtocol.error("EMAIL_RESPONSE_INVALID", status)) }
+                    return@authRequest
                 }
+                if (status !in 200..299) {
+                    // An expired anonymous challenge must not poison every subsequent sign-in.
+                    // Clearing only this exact held token lets the user retry a fresh 'continue'
+                    // without touching an authenticated access/refresh family.
+                    if (status == 401 && bearer != null) synchronized(this) {
+                        if (session == null && emailSessionToken == bearer) emailSessionToken = null
+                    }
+                    val code = parsed.optString("error", "SERVICE_UNAVAILABLE")
+                    main.post { complete(MegaNativeEmailProtocol.error(code, status)) }
+                    return@authRequest
+                }
+
                 if (parsed.has("accessToken")) {
-                    synchronized(this) { emailSessionToken = null }
+                    // A linked response is handled by the same vetted vault/session installer as
+                    // Google sign-in; no access/refresh token is forwarded to JavaScript.
                     applyServerResponse(result, rotating = false, generation = null) { outcome ->
                         val reply = if (outcome == Outcome.OK) {
+                            synchronized(this) { emailSessionToken = null }
                             JSONObject().put("ok", true).put("linked", true)
                                 .put("actorId", parsed.optString("actorId", ""))
                         } else {
-                            JSONObject().put("ok", false).put("error", outcome.name)
+                            MegaNativeEmailProtocol.error(outcome.name)
                         }
                         main.post { complete(reply) }
                     }
                     return@authRequest
                 }
-                val reply = JSONObject().put("ok", true).put("linked", false)
-                for (key in listOf("verificationRequired", "challengeId", "maskedEmail", "message", "resetReady", "expiresAt", "resendAt")) {
-                    if (parsed.has(key) && !parsed.isNull(key)) reply.put(key, parsed.get(key))
+
+                // Account creation/forgot/reset-proof must return a real, action-matched challenge.
+                // Never answer ok:true for an empty/malformed success response.
+                val reply = runCatching { MegaNativeEmailProtocol.unlinked(action, parsed) }
+                    .getOrElse { MegaNativeEmailProtocol.error("EMAIL_RESPONSE_INVALID", status) }
+                if (reply.optBoolean("ok", false)) {
+                    val continuation = MegaNativeEmailProtocol.anonymousContinuation(parsed)
+                    if (bearer == null && continuation == null) {
+                        main.post { complete(MegaNativeEmailProtocol.error("EMAIL_RESPONSE_INVALID", status)) }
+                        return@authRequest
+                    }
+                    if (continuation != null) synchronized(this) { emailSessionToken = continuation }
                 }
                 main.post { complete(reply) }
             }

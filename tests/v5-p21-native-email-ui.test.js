@@ -113,3 +113,20 @@ test('APK email route errors show a coded failure without exposing the destinati
   assert.deepEqual(failures.at(-1), ['sign-in failed (EMAIL_RESPONSE_INVALID)', true]);
   assert.doesNotMatch(failures.at(-1)[0], /hidden@example.com|securepass123/);
 });
+
+test('revocation blocks old access refresh but never blocks a new email sign-in', () => {
+  const manager = fs.readFileSync(path.resolve(__dirname,
+    '../native/android/app/src/main/java/online/megaxo/prototype/MegaNativeSessionManager.kt'), 'utf8');
+  const emailStart = manager.indexOf('fun email(body: JSONObject');
+  const challengeStart = manager.indexOf('fun challenge(provider:', emailStart);
+  assert.ok(emailStart >= 0 && challengeStart > emailStart);
+  const emailHandler = manager.slice(emailStart, challengeStart);
+  assert.doesNotMatch(emailHandler, /if\s*\(revoked\)/,
+    'a revoked previous session cannot lock out a fresh email/password or OTP flow');
+  assert.match(manager, /fun refresh\(complete: \(Outcome\) -> Unit\)[\s\S]*?if \(revoked\)/,
+    'old revoked credentials must remain blocked on refresh');
+  assert.match(manager, /private fun revokeEverything\(\)[\s\S]*?revoked = true/,
+    'terminal refresh revocation must still clear and fence the old credentials');
+  assert.match(manager, /session = Session\(access, refresh,[\s\S]*?revoked = false/,
+    'a successful verified login clears the stale revocation state');
+});

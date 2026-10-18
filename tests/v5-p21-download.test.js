@@ -80,15 +80,15 @@ test('P21-DOWNLOAD-02 chooser has truthful launch status and web play remains av
   // Android APK; the chooser must show the truthful per-platform status for exactly that state.
   assert.equal(configuredLinks.ios, null);
   assert.equal(configuredLinks.android, null);
-  assert.equal(configuredLinks.androidApk.path, '/downloads/android/megaxo-1.0.1.apk');
-  assert.equal(configuredLinks.androidApk.versionName, '1.0.1');
+  assert.equal(configuredLinks.androidApk.path, '/downloads/android/megaxo-1.0.2.apk');
+  assert.equal(configuredLinks.androidApk.versionName, '1.0.2');
   const html = renderDownloadPage({storeLinks: configuredLinks, query: new URLSearchParams('platform=ios&unavailable=1')});
   assert.equal((html.match(/<h1/g) || []).length, 1);
   assert.equal((html.match(/>Coming soon<\/span>/g) || []).length, 1);
   assert.match(html, /href="\/api\/download\?platform=ios"/);
   assert.match(html, /href="\/api\/download\?platform=android"/);
   assert.match(html, /href="\/play"/);
-  assert.match(html, /href="\/downloads\/android\/megaxo-1\.0\.1\.apk"/);
+  assert.match(html, /href="\/downloads\/android\/megaxo-1\.0\.2\.apk"/);
   assert.match(text(html), /iPhone and iPad store listing is not available yet/);
   assert.doesNotMatch(html, /href="https:|\.ipa|Download on the App Store/);
   // With nothing configured at all, the chooser stays honest: no store links and no APK card.

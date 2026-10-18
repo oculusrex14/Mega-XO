@@ -84,3 +84,32 @@
 - NON-BLOCKING: the static file server ignores Range headers, so an interrupted APK download
   cannot resume (full download works). Candidate follow-up: honor single Range requests for
   /downloads/* paths only.
+
+## INCIDENT 2026-10-18 ~12:45 IST - website APK was the pre-Google build; native email sign-in gap
+
+- SYMPTOM (owner device test): after installing the APK from megaxo.online/download, Continue with
+  Google/Apple greyed out and email sign-in answered 'Create or link a profile first.'
+- ROOT CAUSE 1 (greyed buttons): the distributed APK (d01d35ee, pinned in store-links.json) was an
+  OLDER build without MEGA_GOOGLE_SERVER_CLIENT_ID - the identity bridge never installs, the Google
+  adapter is absent (manager.providerAdapters emptySet) and the landing providerButtons enabler
+  (src/community.js providerButtons) requires caps.web OR (MegaNativeIdentity AND caps.native), so
+  both provider buttons stayed disabled. The device-verified build (5913136f) HAS the client id.
+- ROOT CAUSE 2 (email): 'Continue with email' on the native target has never been functional for a
+  guest: src/account-client.js call() throws LINK_ACCOUNT_REQUIRED for an unlinked native session
+  before the request, MegaNativeHttpClient.request() refuses ALL /api calls while no access token is
+  installed, and POST /api/account/email binds its session from a cookie the native host cannot send.
+  Even without the guard, a successful emailContinue returns a cookie-lane session token, not the
+  native access/refresh family the host owns. A native email lane needs a server bearer path for the
+  email route plus a session-to-native-family exchange grant on /native/token (frozen-contract
+  addition) - designed, not yet implemented.
+- FIX DEPLOYED: downloads/android/megaxo-1.0.0.apk replaced with the 5913136f online release build
+  (same signing cert 961cc054..., package online.megaxo.game 1.0.0, API origin megaxo.online, web
+  client id 334987882979-6rpkpikqno1ci22bdpunab0d557hq9kd = GOOGLE_NATIVE_AUDIENCES[0]); pin updated
+  (commit 207778b); web bundle b55d379f deployed via web-build swap, NO restart (same filenames);
+  archive rollback/2026-10-18T12-40Z-apk-swap. Live APK sha verified by full download.
+- OWNER STATE (read-only DB check, existence only): mothervader693@gmail.com EXISTS, VERIFIED,
+  profile username 'oculus', created 2026-10-07, linked identities: email ONLY (no google yet).
+  Google sign-in with a fresh subject creates a NEW profile (createIdentityHalf does not match by
+  email), so the owner must LINK Google to the oculus profile once from the website
+  (/account -> Linked accounts & recovery -> Link Google) before the app's Google sign-in lands on
+  the real profile. App install over the old build is safe (identical signing cert).

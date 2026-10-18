@@ -47,6 +47,33 @@
 - Native email lane (fresh-install email sign-in) is still unimplemented; production composes NO
   mail transport (mail_deferred transport_disabled), so verification/reset mail cannot send yet.
 - iOS mirror caps fixed in source but no new iOS build was produced this block.
+
+## NATIVE EMAIL LANE SHIPPED + GOAL PAUSED (2026-10-18 ~21:00-22:20 IST)
+
+- SERVER: contract route account.native.email (POST /api/account/native/email) implemented in
+  8b9f979 - guest bootstraps its own anonymous session and returns that sessionToken IN THE BODY
+  for challenge/verify/reset continuity; a linked result mints the frozen native credential family
+  via the shared mint helper (extracted from postNativeToken so the two lanes cannot drift).
+  Five-route test file tests/v5-native-email-lane.test.js; frozen transport-pin test updated.
+  DEPLOYED host-side (contracts+account.js synced, restart, live probe: bad action 409, unknown
+  email returns verificationRequired + sessionToken). CI on PR #38: 32/32 pass incl.
+  ios-simulator (8m28s) at head 7bf3024, MERGEABLE.
+- CLIENT: Android bridge/session-manager gained the email op (memory-only challenge continuity,
+  no credential ever reaches JS); the shared email form routes through the host when
+  window.MegaNativeApi.email exists. iOS allowlist + bridge cap mirrors updated in source.
+- DISTRIBUTION: v1.0.2 (versionCode 3, sha256 ffbf6a189f6add04b20bd73ab6ce1f21d25a400eb6b057758e
+  db49392148428) built with the lane, installed on device 5199676e, and published to the website
+  (live download hash verified). Rollback: web-build archived pre-swap. NOTE: v1.0.1 pins/tests
+  superseded - tests/v5-p21-download.test.js now pins 1.0.2.
+- DEVICE EMAIL SIGN-IN: NOT verified this block. The automated attempt could not complete the
+  WebView form (the email field swallowed the @ character from adb input text, and the device
+  then locked, asking for its PIN, which the agent does not hold). Server-side correctness is
+  proven; the on-device pass needs either the owner or an unlocked device.
+- OWNER-PENDING (unchanged): GOOGLE_CLIENT_SECRET rotation (Brave tab 1438672729 parked at the
+  Google re-auth screen; the org policy demands a fresh password every visit) + Resend account
+  for OTP delivery (mail_deferred transport_disabled) + iOS rebuild for the body-cap fix.
+- GOAL: paused at the owner's explicit request; resume on return for the remaining plan items
+  (ads/billing integration, Polar E2E, SEO/AEO, device matrices, Sol review, deployment).
  
  ## PRODUCTION DEPLOY c66626c + live verification
  

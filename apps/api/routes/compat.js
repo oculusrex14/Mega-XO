@@ -362,6 +362,13 @@ async function handleGetInvitations(context, req, res) {
     try {
       invitations = await context.getInvitations(actor);
     } catch {}
+  } else if (typeof context?.challengesFor === 'function') {
+    /* Migration 0063 projection: the sanctioned durable read for the caller's own OFFERED
+     * matches. The API-role pool has no match.* grants (0020), so the raw pool query below can
+     * never answer on a conforming production composition - this provider is the real path. */
+    try {
+      invitations = await context.challengesFor(actor);
+    } catch {}
   } else if (context?.pool && typeof context.pool.query === 'function') {
     try {
       const resInv = await context.pool.query(

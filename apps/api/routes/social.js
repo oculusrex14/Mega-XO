@@ -11,6 +11,95 @@ const {
   CACHE_CONTROL_POLICIES,
 } = require(path.join(__dirname, '../../../packages/services/read-cache.js'));
 
+/* The durable challenge projection (migration 0063): the caller's own OFFERED, unaccepted,
+ * unexpired matches, read through the sanctioned profile.challenges_for(text) SECURITY DEFINER
+ * export. The API tier never gains direct match.* grants. */
+const CHALLENGES_SQL = 'SELECT * FROM profile.challenges_for($1)';
+
+/**
+ * Formats one durable challenge row into the display shape the shipped clients already parse
+ * (id, terms.source, quote, players, playerNames, challengerName). The queue source is carried
+ * so callers can filter it; the challenges route excludes it server-side like the legacy store.
+ */
+function formatChallengeRow(row, now = Date.now()) {
+  if (!row || typeof row !== 'object') return row;
+  const players = Array.isArray(row.players) ? row.players : [];
+  const playerNames = row.player_names && typeof row.player_names === 'object' ? row.player_names : {};
+  return {
+    id: row.match_id,
+    status: row.status,
+    terms: { source: row.source, ...(row.terms && typeof row.terms === 'object' ? row.terms : {}) },
+    termsHash: row.terms_hash,
+    quote: row.quote,
+    created: row.created,
+    expires: row.expires,
+    players,
+    accepted: Array.isArray(row.accepted) ? row.accepted : [],
+    playerNames,
+    challengerName: playerNames[players[0]] || 'Player',
+    serverNow: now,
+  };
+}
+
+/**
+ * GET /api/community/challenges
+ * Offfered direct challenges addressed to the caller (contract community.challenges). Answers
+ * with the same display shape the legacy community store produced; a missing projection
+ * function or pool is an honest 503, never an empty success.
+ */
+async function getChallenges(context, req, res) {
+  const { actor } = await resolveAuth(context, req);
+  if (!actor) {
+    const err = new Error('AUTH_REQUIRED');
+    err.status = 401;
+    throw err;
+  }
+  if (!context?.pool || typeof context.pool.query !== 'function') {
+    const err = new Error('SERVICE_UNAVAILABLE');
+    err.status = 503;
+    throw err;
+  }
+  const result = await context.pool.query(CHALLENGES_SQL, [actor]);
+  const now = Date.now();
+  const display = (result.rows || [])
+    .filter((row) => row && row.source !== 'queue')
+    .map((row) => formatChallengeRow(row, now));
+  return sendJson(res, 200, display, {
+    'Cache-Control': CACHE_CONTROL_POLICIES.PRIVATE_NO_STORE,
+  });
+}
+
+/**
+ * POST /api/community/presence
+ * Per-session presence heartbeat (contract community.presence). The accounts service owns the
+ * durable-session fence, the rate spend and the Redis write; this route only forwards the
+ * caller's token and the foreground flag and reports the conservative result.
+ */
+async function postPresence(context, req, res) {
+  const { token, accounts } = await resolveAuth(context, req);
+  if (!token) {
+    const err = new Error('AUTH_REQUIRED');
+    err.status = 401;
+    throw err;
+  }
+  let body = {};
+  try {
+    body = await parseJsonBody(req, 65536);
+  } catch (error) {
+    if (error?.status === 413) throw error;
+    body = {};
+  }
+  if (body === null || typeof body !== 'object' || Array.isArray(body)) body = {};
+  const result = await accounts.heartbeat(token, body.foreground === true);
+  return sendJson(res, 200, {
+    ok: true,
+    state: result && typeof result === 'object' ? result.state || null : null,
+    online: result?.online === true,
+  }, {
+    'Cache-Control': CACHE_CONTROL_POLICIES.PRIVATE_NO_STORE,
+  });
+}
+
 /**
  * GET /api/community/profile/:id
  * Privacy-aware player profile lookup:
@@ -155,6 +244,16 @@ async function handleSocialRoute(context, req, res) {
     return true;
   }
 
+  if (pathname === '/api/community/challenges' && method === 'GET') {
+    await getChallenges(context, req, res);
+    return true;
+  }
+
+  if (pathname === '/api/community/presence' && method === 'POST') {
+    await postPresence(context, req, res);
+    return true;
+  }
+
   return false;
 }
 
@@ -163,5 +262,9 @@ module.exports = {
   getFriends,
   handleFriendAction,
   searchProfiles,
+  getChallenges,
+  postPresence,
+  formatChallengeRow,
+  CHALLENGES_SQL,
   handleSocialRoute,
 };

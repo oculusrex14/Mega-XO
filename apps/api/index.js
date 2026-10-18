@@ -29,6 +29,16 @@ function createApiHandler(options = {}) {
   if (!context.readCache) {
     context.readCache = createReadCache(context.readCacheOptions || {});
   }
+  if (!context.challengesFor && context.pool && typeof context.pool.query === 'function') {
+    // The contracted challenge/invitation projection (migration 0063) is the one sanctioned
+    // read path for the caller's own OFFERED matches; both /api/community/challenges and
+    // /api/v1/invitations consume it so neither route needs a direct match.* grant.
+    context.challengesFor = async (actor) => {
+      const result = await context.pool.query(socialRoutes.CHALLENGES_SQL, [actor]);
+      const now = Date.now();
+      return (result.rows || []).map((row) => socialRoutes.formatChallengeRow(row, now));
+    };
+  }
   if (!context.queue) {
     // The public API holds only API-role credentials. Queue admission and
     // ephemeral status execute in the Core-owned service over signed ingress.

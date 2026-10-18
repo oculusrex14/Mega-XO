@@ -20,7 +20,7 @@ actor MegaNativeHTTP {
     /// The five cookie-free native credential routes, and ONLY those, may be called before a
     /// session exists (challenge) or with a deliberate bearer supplied by the session owner.
     private static let nativePaths: Set<String> = [
-        "/api/account/native/challenge", "/api/account/native/token",
+        "/api/account/native/challenge", "/api/account/native/email", "/api/account/native/token",
         "/api/account/native/refresh", "/api/account/native/logout"
     ]
 

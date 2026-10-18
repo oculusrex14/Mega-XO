@@ -771,6 +771,84 @@ async function completeNativeProviderGrant(context, accounts, binding, grant) {
   return accounts.finishVerified(binding, attempt, identity);
 }
 
+/* Mints the frozen cookie-free credential family for an ALREADY-LINKED session token (the
+ * provider grant and the native email lane share this): the durable session is bound to a
+ * refresh family and an access token is issued against the SAME audiences the native bridge
+ * verifies. Extracted verbatim from postNativeToken so the two lanes cannot drift. */
+async function mintNativeCredentialFamily(context, accounts, logged, amr) {
+  const access = await resolveNativeAccess(context);
+  const refresh = await resolveNativeRefresh(context);
+  if (!access || !refresh) throw nativeSessionUnavailable();
+  const bound = await accounts.accessBinding(logged.token);
+  const family = await refresh.startFamily({ actor: bound.actor, sessionId: bound.sessionId, deviceId: null });
+  const session = await accounts.session(logged.token);
+  const accessToken = await access.issue({
+    actor: bound.actor,
+    sessionId: bound.sessionId,
+    generation: bound.generation,
+    amr,
+    authAt: session ? session.authAt : Date.now(),
+    audience: nativeAudience(context),
+  });
+  return { accessToken, refreshToken: family.refreshSecret, actorId: bound.actor };
+}
+
+/**
+ * POST /api/account/native/email (contract: csrf: true, bodyLimit 300000)
+ *
+ * The cookie-free native email lane. A fresh native install presents no credential: the route
+ * bootstraps the anonymous session the flow continues on and returns its token IN THE BODY
+ * (sessionToken) alongside the verification challenge, so the follow-up verify/reset call can
+ * present it as a bearer. A linked result (existing verified address, verify or reset success)
+ * mints the frozen native credential family exactly like the provider grant. The response NEVER
+ * carries a credential the page can read for a linked result; the sessionToken for a
+ * still-unlinked continuation is an anonymous guest session, never an authenticated one.
+ */
+async function postNativeEmail(context, req, res) {
+  refuseNativeAmbiguity(req);
+  const accounts = await resolveService(context);
+  const body = await readNativeBody(req, NATIVE_BODY_LIMITS.challenge);
+  const action = typeof body.action === 'string' ? body.action : '';
+  if (!['continue', 'verify', 'forgot', 'reset'].includes(action)) {
+    const error = new Error('INVALID_OPERATION');
+    error.status = 409;
+    throw error;
+  }
+  const bearer = nativeBearer(req);
+  const cookie = bearerFromCookies(req);
+  if (cookie && !bearer) await enforceNativeCsrf(accounts, cookie, req);
+  let token = bearer || cookie || null;
+  let sessionToken = null;
+  if (!token) {
+    const bootstrap = await accounts.bootstrap(null);
+    token = bootstrap.token;
+    sessionToken = bootstrap.token;
+  }
+  let result;
+  if (action === 'continue') result = await accounts.emailContinue(token, body.email, body.password);
+  else if (action === 'verify') result = await accounts.emailVerify(token, body.challengeId, body.code);
+  else if (action === 'forgot') result = await accounts.emailResetStart(token, body.email);
+  else result = await accounts.emailResetComplete(token, body.challengeId, body.password);
+  result = await dispatchDelivery(context, result);
+  if (action === 'forgot') {
+    // Same non-disclosure rule as the web lane: the challenge id travels, existence does not.
+    return sendJson(res, 200, {
+      challengeId: result.challengeId || null,
+      message: 'If this email has an account, a recovery code has been sent.',
+      ...(sessionToken ? { sessionToken } : {}),
+    }, { 'Cache-Control': CACHE_CONTROL_POLICIES.PRIVATE_NO_STORE });
+  }
+  const linked = result && typeof result.token === 'string';
+  if (linked) {
+    const family = await mintNativeCredentialFamily(context, accounts, result, ['email']);
+    return sendNativeSession(res, family);
+  }
+  return sendJson(res, 200, {
+    ...(result || {}),
+    ...(sessionToken ? { sessionToken } : {}),
+  }, { 'Cache-Control': CACHE_CONTROL_POLICIES.PRIVATE_NO_STORE });
+}
+
 /**
  * POST /api/account/native/challenge (contract: csrf: true, bodyLimit 300000)
  *
@@ -969,6 +1047,11 @@ async function handleAccountRoute(context, req, res) {
     return true;
   }
 
+  if (pathname === '/api/account/native/email' && method === 'POST') {
+    await postNativeEmail(context, req, res);
+    return true;
+  }
+
   if (pathname === '/api/account/native/logout' && method === 'POST') {
     await postNativeLogout(context, req, res);
     return true;
@@ -1058,6 +1141,7 @@ module.exports = {
   postAccountStart,
   postNativeChallenge,
   postNativeFinish,
+  postNativeEmail,
   postNativeToken,
   postNativeRefresh,
   postNativeLogout,

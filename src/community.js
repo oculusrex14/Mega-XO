@@ -94,7 +94,9 @@ async function emailAuth(action){
  if(confirm!==undefined&&password!==confirm)return announce('Passwords do not match.',true);
  if(action==='continue')archiveCurrent();announce(action==='continue'?'Checking your profile...':'Sending verification code...');
  try{
-  const out=await API.request('/api/account/email',{action,email,password});
+  const ne=window.MegaNativeApi&&typeof window.MegaNativeApi.email==='function'?window.MegaNativeApi.email:null;
+  const out=ne?await ne({action,email,password}):await API.request('/api/account/email',{action,email,password});
+  if(ne&&out.ok!==true)throw Error(out.error||'NATIVE_SIGNIN_FAILED');
   if(out.verificationRequired){otpForm(out,action==='link'?'link':action==='change'?'change':'verify');return;}
   if(action==='continue'){API.reset();await boot();return;}
   session=await API.session(true);profile=session.profile;if(action==='reauth')return connections();connections();
@@ -103,19 +105,27 @@ async function emailAuth(action){
 async function verifyEmailOtp(purpose){
  if(!emailChallenge)return emailForm();
  const code=$('#cEmailOtp')?.value||'';announce('Checking code...');
- try{const out=await API.request('/api/account/email',{action:'verify',challengeId:emailChallenge.challengeId,code});
+ try{const ne=window.MegaNativeApi&&typeof window.MegaNativeApi.email==='function'?window.MegaNativeApi.email:null;
+  const out=ne?await ne({action:'verify',challengeId:emailChallenge.challengeId,code}):await API.request('/api/account/email',{action:'verify',challengeId:emailChallenge.challengeId,code});
+  if(ne&&out.ok!==true)throw Error(out.error||'NATIVE_SIGNIN_FAILED');
   if(out.resetReady){resetPasswordForm(out.challengeId);return;}
-  if(out.linked&&out.profile&&!out.csrf){session=await API.session(true);profile=session.profile;emailChallenge=null;connections();return;}
+  if(out.linked&&out.profile&&!out.csrf&&!ne){session=await API.session(true);profile=session.profile;emailChallenge=null;connections();return;}
   if(out.linked){emailChallenge=null;API.reset();await boot();}
  }catch(e){announce(error(e),true);}
 }
 async function forgotPassword(){
  const email=$('#cEmailAddress')?.value||'';announce('Sending reset instructions...');
- try{const out=await API.request('/api/account/email',{action:'forgot',email});otpForm(out,'reset');announce(out.message||'If this email has an account, a code has been sent.');}catch(e){announce(error(e),true);}
+ try{const ne=window.MegaNativeApi&&typeof window.MegaNativeApi.email==='function'?window.MegaNativeApi.email:null;
+  const out=ne?await ne({action:'forgot',email}):await API.request('/api/account/email',{action:'forgot',email});
+  if(ne&&out.ok!==true)throw Error(out.error||'NATIVE_SIGNIN_FAILED');
+  otpForm(out,'reset');announce(out.message||'If this email has an account, a code has been sent.');}catch(e){announce(error(e),true);}
 }
 async function resetPassword(){
  if(!emailChallenge)return forgotForm();const password=$('#cResetPassword')?.value||'',confirm=$('#cResetPasswordConfirm')?.value||'';if(password!==confirm)return announce('Passwords do not match.',true);announce('Updating password...');
- try{await API.request('/api/account/email',{action:'reset',challengeId:emailChallenge.challengeId,password});emailChallenge=null;API.reset();await boot();APP.notify('Password updated. Other signed-in sessions were revoked.');}catch(e){announce(error(e),true);}
+ try{const ne=window.MegaNativeApi&&typeof window.MegaNativeApi.email==='function'?window.MegaNativeApi.email:null;
+  if(ne){const out=await ne({action:'reset',challengeId:emailChallenge.challengeId,password});if(out.ok!==true)throw Error(out.error||'NATIVE_SIGNIN_FAILED');}
+  else await API.request('/api/account/email',{action:'reset',challengeId:emailChallenge.challengeId,password});
+  emailChallenge=null;API.reset();await boot();APP.notify('Password updated. Other signed-in sessions were revoked.');}catch(e){announce(error(e),true);}
 }
 function archiveCurrent(){const owner=get(OWNER)||'guest';put('mega_v333_archive:'+owner,APP.getSave());}
 async function becomeGuest(){bootVersion++;if(!session)try{session=await API.session();}catch{}if(APP.getContext().playing&&get(OWNER))return announce('Finish your current match before switching profiles.',true);

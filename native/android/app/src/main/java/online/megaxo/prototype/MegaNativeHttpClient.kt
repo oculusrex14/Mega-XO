@@ -52,6 +52,7 @@ internal class MegaNativeHttpClient(apiOrigin: String?) {
     /** The cookie-free native credential routes, and ONLY those, may be called without a session. */
     private val nativePaths = setOf(
         "/api/account/native/challenge",
+        "/api/account/native/email",
         "/api/account/native/token",
         "/api/account/native/refresh",
         "/api/account/native/logout"

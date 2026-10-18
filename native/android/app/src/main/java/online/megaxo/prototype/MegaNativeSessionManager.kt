@@ -61,6 +61,10 @@ internal class MegaNativeSessionManager(
     private val main = Handler(Looper.getMainLooper())
     private var session: Session? = null
     private var refreshing = false
+    /** Anonymous-session continuity token for the native email challenge/verify/reset lane.
+     * Issued by the server with the challenge, held in memory only, never crosses to the page,
+     * and cleared on any linked install, sign-out or revocation. */
+    @Volatile private var emailSessionToken: String? = null
     /** Bumped at every accepted rotation start; gates stale completions from older rotations. */
     private var rotationGeneration = 0L
     private val pendingRefresh = mutableListOf<(Outcome) -> Unit>()
@@ -84,7 +88,56 @@ internal class MegaNativeSessionManager(
     @Synchronized
     fun clearLocal() {
         session = null
+        emailSessionToken = null
         transport.revokeLocalAccess()
+    }
+
+    /**
+     * Cookie-free native email lane (contract account.native.email). A fresh install presents no
+     * credential: the server bootstraps the anonymous session the flow continues on and returns
+     * its token IN THE BODY; it is held in memory only. A linked response is the frozen
+     * {accessToken, refreshToken, expiresIn, actorId} family, installed exactly like a sign-in.
+     * The reply carries only safe auth-state fields - no credential value ever reaches the page.
+     */
+    fun email(body: JSONObject, complete: (JSONObject) -> Unit) {
+        synchronized(this) { if (revoked) { complete(JSONObject().put("ok", false).put("error", "REVOKED")); return } }
+        val bearer = synchronized(this) { session?.accessToken } ?: emailSessionToken
+        io.execute {
+            transport.authRequest("/api/account/native/email", bearer, body.toString()) { result ->
+                val response = result.getOrNull()
+                if (response == null) { main.post { complete(JSONObject().put("ok", false).put("error", "SERVICE_UNAVAILABLE")) }; return@authRequest }
+                val (status, raw) = response
+                val parsed = runCatching { JSONObject(raw) }.getOrNull()
+                if (parsed == null) { main.post { complete(JSONObject().put("ok", false).put("error", "SERVICE_UNAVAILABLE")) }; return@authRequest }
+                if (status !in 200..299) {
+                    val code = parsed.optString("error", "SERVICE_UNAVAILABLE")
+                    main.post { complete(JSONObject().put("ok", false).put("error", if (code.isNotEmpty()) code else "SERVICE_UNAVAILABLE")) }
+                    return@authRequest
+                }
+                val continuation = parsed.optString("sessionToken", "").takeIf { it.isNotEmpty() && it.length <= 2048 }
+                if (continuation != null && parsed.has("accessToken").not()) {
+                    synchronized(this) { emailSessionToken = continuation }
+                }
+                if (parsed.has("accessToken")) {
+                    synchronized(this) { emailSessionToken = null }
+                    applyServerResponse(result, rotating = false, generation = null) { outcome ->
+                        val reply = if (outcome == Outcome.OK) {
+                            JSONObject().put("ok", true).put("linked", true)
+                                .put("actorId", parsed.optString("actorId", ""))
+                        } else {
+                            JSONObject().put("ok", false).put("error", outcome.name)
+                        }
+                        main.post { complete(reply) }
+                    }
+                    return@authRequest
+                }
+                val reply = JSONObject().put("ok", true).put("linked", false)
+                for (key in listOf("verificationRequired", "challengeId", "maskedEmail", "message", "resetReady", "expiresAt", "resendAt")) {
+                    if (parsed.has(key) && !parsed.isNull(key)) reply.put(key, parsed.get(key))
+                }
+                main.post { complete(reply) }
+            }
+        }
     }
 
     /**
@@ -255,6 +308,7 @@ internal class MegaNativeSessionManager(
         val finish = { outcome: Outcome ->
             synchronized(this) {
                 session = null
+                emailSessionToken = null
                 revoked = false
                 transport.revokeLocalAccess()
             }
@@ -271,6 +325,7 @@ internal class MegaNativeSessionManager(
     private fun revokeEverything() {
         synchronized(this) {
             session = null
+            emailSessionToken = null
             revoked = true
             transport.revokeLocalAccess()
         }

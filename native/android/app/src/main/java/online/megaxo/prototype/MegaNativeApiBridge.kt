@@ -68,6 +68,9 @@ internal class MegaNativeApiBridge private constructor(
             }
             "request" -> request(command, reply, id)
             "signIn" -> signIn(command, reply, id)
+            "email" -> session.email(command.optJSONObject("payload") ?: JSONObject()) { payload ->
+                send(reply, id, payload)
+            }
             "refresh" -> session.refresh { outcome ->
                 val body = JSONObject().put("ok", outcome == MegaNativeSessionManager.Outcome.OK)
                 if (outcome != MegaNativeSessionManager.Outcome.OK) {
@@ -195,6 +198,7 @@ internal class MegaNativeApiBridge private constructor(
                   refresh: () => call('refresh'),
                   signOut: allDevices => call('signOut', {allDevices: allDevices === true}),
                   signIn: (provider, intent) => call('signIn', {provider, intent}),
+                  email: payload => call('email', {payload: payload || {}}),
                   request: (path, method, body, key) => call('request', {path, method, body, key})
                 })
               });

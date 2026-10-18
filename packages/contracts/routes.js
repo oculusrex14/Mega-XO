@@ -54,6 +54,13 @@ const ACCOUNT = Object.freeze([
  route('account.callback', 'GET', '/auth/callback/:provider', { auth: AUTH.SESSION, csrf: false, origin: ORIGIN.NONE, owner: 'A', note: 'state/nonce/PKCE bound; no CSRF header, redirects 303' }),
  route('account.native.challenge', 'POST', '/api/account/native/challenge', { csrf: true, bodyLimit: 300000 }),
  route('account.native.finish', 'POST', '/api/account/native/finish', { csrf: true, bodyLimit: 300000 }),
+  /* Cookie-free native email lane (launch fix 2026-10-18): /api/account/email binds its session
+   * from a cookie the native host cannot send, so a fresh install could never sign in by email.
+   * This route bootstraps its own anonymous session for guests (returning that sessionToken IN
+   * THE BODY for challenge/verify/reset continuity) and mints the frozen native credential family
+   * on a linked result. The password path needs no mail transport; OTP deliveries ride the same
+   * durable outbox as the web lane. */
+  route('account.native.email', 'POST', '/api/account/native/email', { csrf: true, bodyLimit: 300000, owner: 'A' }),
  /* Cookie-free native credential path (design B4.2/C5). No Origin/CSRF because there is no cookie to
   * protect; the bearer credential (or the provider challenge+finish) is the authentication. */
  route('account.native.token', 'POST', '/api/account/native/token', { auth: AUTH.BEARER, origin: ORIGIN.NONE, csrf: false, bodyLimit: 300000, owner: 'A', note: 'challenge+finish or refresh grant; cookie+bearer together is AMBIGUOUS_CREDENTIAL' }),

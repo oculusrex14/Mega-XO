@@ -124,28 +124,47 @@ function renderIdentity(node) {
   return parts.join('|');
 }
 
+/* Reconcile text nodes as well as element nodes. The first iOS hotfix preserved .gb-frame,
+ * but still replaced cells when a legal-move dot was added to an empty button: the old merge
+ * returned false whenever child counts differed. Never discard a stable cell (or a status
+ * panel) merely because its display children appear, disappear, or change shape. */
 export function mergeRenderedElement(current, next) {
   if (renderIdentity(current) === null || renderIdentity(current) !== renderIdentity(next)) return false;
-  const nextChildren = [...next.children];
-  const currentChildren = [...current.children];
-  if (nextChildren.length > 0 && currentChildren.length !== nextChildren.length) return false;
+  const detailsOpen = current.tagName === 'DETAILS' ? current.open : null;
   for (const attribute of [...current.attributes]) {
+    if (attribute.name === 'open' && detailsOpen !== null) continue;
     if (!next.hasAttribute(attribute.name) && !RENDER_IDENTITY_ATTRIBUTES.includes(attribute.name) && !attribute.name.startsWith('data-gb-')) current.removeAttribute(attribute.name);
   }
   for (const attribute of [...next.attributes]) {
-    if (!RENDER_IDENTITY_ATTRIBUTES.includes(attribute.name) && !attribute.name.startsWith('data-gb-')) current.setAttribute(attribute.name, attribute.value);
+    if (attribute.name === 'open' && detailsOpen !== null) continue;
+    if (!RENDER_IDENTITY_ATTRIBUTES.includes(attribute.name) && !attribute.name.startsWith('data-gb-')
+      && current.getAttribute(attribute.name) !== attribute.value) current.setAttribute(attribute.name, attribute.value);
   }
-  if (nextChildren.length === 0) {
-    if (current.textContent !== next.textContent) current.textContent = next.textContent;
-    return true;
+
+  /* A rendered board cell may gain or lose a dot or SVG. Reconcile the children without
+   * replacing the button, and keep direct text nodes (scores/live status) up to date. */
+  if (current.childNodes.length === 0 && next.childNodes.length === 0 && current.textContent !== next.textContent) {
+    current.textContent = next.textContent;
   }
-  for (let index = 0; index < nextChildren.length; index++) {
-    /* A divergent child — different identity or a deeper count change such as a resign button
-     * appearing — is repaired locally: only that element is replaced, the stable parent survives. */
-    if (renderIdentity(currentChildren[index]) !== renderIdentity(nextChildren[index])
-      || !mergeRenderedElement(currentChildren[index], nextChildren[index])) {
-      currentChildren[index].replaceWith(nextChildren[index]);
+  const existing = [...current.childNodes];
+  const incoming = [...next.childNodes];
+  for (let index = 0; index < Math.max(existing.length, incoming.length); index++) {
+    const before = existing[index], after = incoming[index];
+    if (!after) before.remove();
+    else if (!before) current.appendChild(after);
+    else if (before.nodeType === after.nodeType && (before.nodeType === 3 || before.nodeType === 8)) {
+      if (before.textContent !== after.textContent) before.textContent = after.textContent;
+    } else if (before.nodeType !== 1 || after.nodeType !== 1 || !mergeRenderedElement(before, after)) {
+      before.replaceWith(after);
     }
+  }
+
+  /* Native form and disclosure state must not regress just because a render ran. */
+  if (detailsOpen !== null) current.open = detailsOpen;
+  if (current.tagName === 'SELECT' && current.value !== next.value) current.value = next.value;
+  if (current.tagName === 'INPUT') {
+    if (current.type === 'checkbox' || current.type === 'radio') current.checked = next.checked;
+    else if (current.type !== 'file' && current.value !== next.value) current.value = next.value;
   }
   return true;
 }
@@ -496,18 +515,17 @@ export function mountBoard(host, {
       const template = host.ownerDocument.createElement('template');
       template.innerHTML = html;
       const next = template.content;
-      for (const selector of ['.gb-guided-panel', '.gb-frame', '.gb-toolbar', '.gb-game-players', '.gb-match-note', '.gb-powers']) {
+      for (const selector of ['.gb-guided-panel', '.gb-frame', '.gb-toolbar', '.gb-game-players', '.gb-turn-strip', '.gb-match-note', '.gb-powers']) {
         const currentPart = stage.querySelector(selector);
         const nextPart = next.querySelector(selector);
         if (selector === '.gb-powers' && currentPart && nextPart) {
           const details = currentPart.querySelector('details');
-          if (details?.open) nextPart.querySelector('details').open = true;
+          if (details?.open && nextPart.querySelector('details')) nextPart.querySelector('details').open = true;
         }
         if (currentPart && nextPart) {
-          /* Only the board frame updates in place: recreating it is what re-anchors iOS WebKit's
-           * scroll after every move. Every other part is small and structurally variable, so it
-           * keeps the proven full-replacement behavior. */
-          if (selector !== '.gb-frame' || !mergeRenderedElement(currentPart, nextPart)) currentPart.replaceWith(nextPart);
+          /* All gameplay sections, including the panels ABOVE the mobile board and the live
+           * turn strip, retain their DOM identity. Only genuinely different roots are replaced. */
+          if (!mergeRenderedElement(currentPart, nextPart)) currentPart.replaceWith(nextPart);
         }
         else if (!currentPart && nextPart && selector === '.gb-guided-panel') {
           stage.querySelector('.gb-frame')?.before(nextPart);
@@ -517,7 +535,6 @@ export function mountBoard(host, {
           currentPart.remove();
         }
       }
-      stage.querySelector('.gb-turn-strip').innerHTML = next.querySelector('.gb-turn-strip').innerHTML;
       stage.dataset.gbTheme = preview ? 'cinematic' : theme;
     } else host.innerHTML = html;
     /* Touch input never needs synthetic focus restoration: on WebKit, focusing a freshly rendered

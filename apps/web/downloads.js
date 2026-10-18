@@ -32,7 +32,9 @@ export function renderDownloadPage(context = {}) {
   const available = id => typeof links[id] === 'string' && links[id].length > 0;
   const anyAvailable = platforms.some(item => available(item.id)) || !!apk;
   const notice = unavailable && (!platform || !available(platform))
-    ? `<div class="pg-note" role="status">${icon('info')}<p>${platform === 'ios' ? 'The iPhone and iPad' : platform === 'android' ? 'The Android' : 'The requested'} store listing is not available yet. Play in your browser while you wait.</p></div>`
+    ? `<div class="pg-note" role="status">${icon('info')}<p>${platform === 'android' && apk
+      ? 'The Google Play listing is not live yet. Use the direct Android APK below — it is fully functional.'
+      : `${platform === 'ios' ? 'The iPhone and iPad' : platform === 'android' ? 'The Android' : 'The requested'} store listing is not available yet. Play in your browser while you wait.`}</p></div>`
     : '';
   return `<div class="pg-page pg-download-page">${pageHeading('YOUR NEXT MOVE. ANYWHERE.', 'Take the bigger game with you.', anyAvailable ? 'Choose your platform or play now in your browser. Your linked Mega XOXO profile keeps your rank, friends and progress together.' : 'Play instantly in your browser. Coming soon to iPhone, iPad and Android.')}
     ${notice}

@@ -333,9 +333,9 @@ function storePage(context) {
   const purchaseButton = row => {
     const price = priceText(row);
     const available = row.owned !== true && Boolean(price) && ((state.purchasesAvailable === true && row.enabled === true) || webReady);
-    if (!isLinked(context)) return context.sessionStatus === 'loading' ? '<button class="mx-button secondary" type="button" disabled>Checking your account…</button>' : button('Sign in to continue', '/account', 'secondary', 'user');
+    if (!isLinked(context)) return context.sessionStatus === 'loading' ? '<button class="mx-button secondary" type="button" disabled>Checking your account…</button>' : button('Sign in to buy', '/account', 'secondary', 'user');
     if (row.owned === true) return '<span class="mx-chip">Owned</span>';
-    const label = available ? (row.localizedPrice ? 'Purchase options' : row.inr ? 'Buy · UPI or card' : 'Buy now') : 'Unavailable here';
+    const label = available ? (row.localizedPrice ? 'Purchase options' : row.inr ? 'Buy · UPI or card' : 'Buy now') : 'Temporarily unavailable';
     return '<button class="mx-button ' + (available ? 'primary' : 'secondary') + '" type="button" data-store-action="purchase" data-product-id="' + row.id + '"' + (available ? '' : ' disabled') + '>' + label + '</button>';
   };
   let products;
@@ -344,16 +344,23 @@ function storePage(context) {
     /* A2: a failed read never wipes the page - the known product descriptions stay visible
      * without prices, with one inline retry for the real failed fetch. */
     const fallbackRows = Object.keys(allowed).map(id => ({ id, owned: false }));
-    products = '<p class="pg-store-error" role="status">The store could not be checked just now — prices are hidden and actions are off until a retry succeeds. <button class="mx-button secondary" type="button" data-store-action="refresh">' + icon('refresh') + ' Retry store check</button></p><div class="pg-grid pg-grid-four pg-store-grid">' + fallbackRows.map(row => {
+    const guestStore = !isLinked(context);
+    const storeNote = guestStore
+      ? '<p class="pg-store-error" role="status">Sign in to see live prices and buy. Everything in the store is optional and never changes gameplay. ' + button('Sign in to buy', '/account', 'secondary', 'user') + '</p>'
+      : '<p class="pg-store-error" role="status">The store check did not finish just now — prices and buying come back as soon as it succeeds. <button class="mx-button secondary" type="button" data-store-action="refresh">' + icon('refresh') + ' Retry store check</button></p>';
+    products = storeNote + '<div class="pg-grid pg-grid-four pg-store-grid">' + fallbackRows.map(row => {
       const item = allowed[row.id];
-      return panel('<div class="pg-store-art" aria-hidden="true">' + icon(item.amount ? 'crown' : 'shield') + '</div>' + pill(item.amount ? 'CROWN PACK' : 'PERMANENT AD REMOVAL') + '<h2>' + item.title + '</h2><p>' + (item.amount ? 'Works the same way in the game as earned Crowns.' : 'Turn off automatic ads where supported. Optional rewarded ads remain a separate choice.') + '</p><div class="pg-store-price"><span class="mx-muted">Price unavailable</span></div><button class="mx-button secondary" type="button" disabled>Unavailable here</button>', 'pg-store-card');
+      const guestCard = '<div class="pg-store-price"><span class="mx-muted">Sign in to see the price</span></div>' + button('Sign in to buy', '/account', 'secondary', 'user');
+      const failedCard = '<div class="pg-store-price"><span class="mx-muted">Price unavailable</span></div><button class="mx-button secondary" type="button" disabled>Temporarily unavailable</button>';
+      return panel('<div class="pg-store-art" aria-hidden="true">' + icon(item.amount ? 'crown' : 'shield') + '</div>' + pill(item.amount ? 'CROWN PACK' : 'PERMANENT AD REMOVAL') + '<h2>' + item.title + '</h2><p>' + (item.amount ? 'Works the same way in the game as earned Crowns.' : 'Turn off automatic ads where supported. Optional rewarded ads remain a separate choice.') + '</p>' + (guestStore ? guestCard : failedCard), 'pg-store-card');
     }).join('') + '</div>';
   }
   else if (!rows.length) products = empty('crown', 'No products are available here yet.', 'Check back for products and prices available on your platform.');
   else products = '<div class="pg-grid pg-grid-four pg-store-grid">' + rows.map(row => {
     const item = allowed[row.id], price = priceText(row);
     const overlap = row.id === 'remove_ads' && passState.active === true ? '<p class="pg-small mx-muted">Your Mega Pass already keeps automatic ads off. This permanent removal keeps working after the pass ends.</p>' : '';
-    return panel('<div class="pg-store-art" aria-hidden="true">' + icon(item.amount ? 'crown' : 'shield') + '</div>' + pill(item.amount ? 'CROWN PACK' : 'PERMANENT AD REMOVAL') + '<h2>' + item.title + '</h2><p>' + (item.amount ? 'Works the same way in the game as earned Crowns.' : 'Turn off automatic ads where supported. Optional rewarded ads remain a separate choice.') + '</p>' + overlap + '<div class="pg-store-price">' + (price ? e(price) : '<span class="mx-muted">Price unavailable</span>') + '</div>' + purchaseButton(row), 'pg-store-card');
+    const priceFallback = isLinked(context) ? '<span class="mx-muted">Price unavailable</span>' : '<span class="mx-muted">Sign in to see the price</span>';
+    return panel('<div class="pg-store-art" aria-hidden="true">' + icon(item.amount ? 'crown' : 'shield') + '</div>' + pill(item.amount ? 'CROWN PACK' : 'PERMANENT AD REMOVAL') + '<h2>' + item.title + '</h2><p>' + (item.amount ? 'Works the same way in the game as earned Crowns.' : 'Turn off automatic ads where supported. Optional rewarded ads remain a separate choice.') + '</p>' + overlap + '<div class="pg-store-price">' + (price ? e(price) : priceFallback) + '</div>' + purchaseButton(row), 'pg-store-card');
   }).join('') + '</div>';
   const passRow = state.status === 'ready' && Array.isArray(state.rows) ? (state.rows.find(row => row && row.id === 'mega_pass') || null) : null;
   const passOwned = passState.active === true || (passRow ? passRow.owned === true : false);
@@ -363,9 +370,10 @@ function storePage(context) {
     ? (context.sessionStatus === 'loading' ? '<button class="mx-button secondary" type="button" disabled>Checking your account…</button>' : button('Sign in to subscribe', '/account', 'secondary', 'user'))
     : passOwned
       ? '<span class="mx-chip">Active — thank you!</span>'
-      : '<button class="mx-button ' + (passAvailable ? 'primary' : 'secondary') + '" type="button"' + (passAvailable ? ' data-store-action="purchase" data-product-id="mega_pass"' : '') + (passAvailable ? '' : ' disabled') + '>' + (passAvailable ? 'Subscribe · renews monthly' : 'Unavailable here') + '</button>';
+      : '<button class="mx-button ' + (passAvailable ? 'primary' : 'secondary') + '" type="button"' + (passAvailable ? ' data-store-action="purchase" data-product-id="mega_pass"' : '') + (passAvailable ? '' : ' disabled') + '>' + (passAvailable ? 'Subscribe · renews monthly' : 'Temporarily unavailable') + '</button>';
   const passPeriod = passOwned && passState.periodEnd ? '<p class="pg-small mx-muted">Your pass is paid through ' + new Date(passState.periodEnd).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) + (passState.cancelAtPeriodEnd ? ' and will not renew.' : '.') + '</p>' : (passOwned ? '' : '<p class="pg-small mx-muted">Auto-renewing subscription. Cancel anytime in your store subscriptions. Crowns and Coins you already have are kept if the pass lapses.</p>');
-  const passPanel = '<div class="pg-pass-panel" data-mega-pass><div class="pg-pass-media"><img class="pg-pass-art" src="/assets/art/mega-pass.webp" alt="" loading="lazy" width="768" height="481"></div><div class="pg-pass-copy"><span class="mx-chip">MEGA PASS · MONTHLY</span><h2>Mega Pass</h2><ul class="pg-pass-benefits"><li>150 Crowns every billing month, delivered 50 on days 1, 11 and 21</li><li>2× Coins from bot wins — daily caps still apply</li><li>Coin-to-Crown exchange at 8:1 for the first 200 Coins each month</li><li>15% off up to two Crown packs per month</li><li>Automatic ads off; rewarded ads stay your choice</li></ul><div class="pg-pass-action"><div class="pg-store-price pg-pass-price">' + (passPrice ? e(passPrice) + '<span class="pg-pass-period">/ month</span>' : '<span class="mx-muted">Price unavailable</span>') + '</div>' + passAction + '</div>' + passPeriod + '</div></div>';
+  const passPriceFallback = isLinked(context) ? '<span class="mx-muted">Price unavailable</span>' : '<span class="mx-muted">Sign in to see the price</span>';
+  const passPanel = '<div class="pg-pass-panel" data-mega-pass><div class="pg-pass-media"><img class="pg-pass-art" src="/assets/art/mega-pass.webp" alt="" loading="lazy" width="768" height="481"></div><div class="pg-pass-copy"><span class="mx-chip">MEGA PASS · MONTHLY</span><h2>Mega Pass</h2><ul class="pg-pass-benefits"><li>150 Crowns every billing month, delivered 50 on days 1, 11 and 21</li><li>2× Coins from bot wins — daily caps still apply</li><li>Coin-to-Crown exchange at 8:1 for the first 200 Coins each month</li><li>15% off up to two Crown packs per month</li><li>Automatic ads off; rewarded ads stay your choice</li></ul><div class="pg-pass-action"><div class="pg-store-price pg-pass-price">' + (passPrice ? e(passPrice) + '<span class="pg-pass-period">/ month</span>' : passPriceFallback) + '</div>' + passAction + '</div>' + passPeriod + '</div></div>';
   const wallet = isLinked(context) ? panel('<div class="pg-store-wallet"><span>' + icon('coin') + ' Coins <strong>' + numeric(context.profile?.wallet?.coins) + '</strong></span><span>' + icon('crown') + ' Crowns <strong>' + numeric(context.profile?.wallet?.crowns) + '</strong></span>' + (passState.active === true ? '<span class="mx-chip">Mega Pass active</span>' : '') + button('Your rewards', '/rewards', 'secondary', 'arrow-right') + '</div>') : sessionPrompt(context, 'Link your permanent profile before making a purchase.');
   return '<div class="pg-page">' + heading('MORE POSSIBILITIES. THE SAME SKILL.', 'Your game, your choice.', 'The monthly Mega Pass, Crown packs and permanent Remove Ads in one store. Purchases never change Elo, legal moves or competitive balance.')
     + passPanel

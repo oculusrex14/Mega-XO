@@ -134,5 +134,5 @@ test('production integration counts the pinned static artifact, never the redire
   assert.match(source, /apkDownloadTracker\.observe\(req, res, webArtifact\.androidApk\)/);
   assert.match(source, /res\.once\('finish', \(\) =>/);
   assert.doesNotMatch(source, /if \(pathname === '\/api\/download'\).*apkDownloadTracker/);
-  assert.match(source, /pool: apiPool, secret: otpSecret/);
+  assert.match(source, /pool: apiPool, secret: apkDownloadSecret/);
 });

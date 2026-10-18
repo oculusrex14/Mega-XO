@@ -112,6 +112,8 @@ const SECRET_FILES = Object.freeze({
    * Deployed from the host-managed proxy secret file; MEGA_PROXY_SECRET_FILE may point at the
    * absolute deployment path instead. Never reused as the Core ingress HMAC key. */
   proxy: 'proxy.secret',
+  /* Dedicated key. Analytics rotation must never rotate OTPs or the reverse. */
+  apkDownloads: 'apk-download.secret',
 });
 
 /* The exact production identity. Pinned here as well as read from the inventory: a drift in either
@@ -754,6 +756,7 @@ async function main() {
    * mints/hashes a code) and the API handler (which verifies it), and by the worker (whose mail body
    * seal is HKDF over the same operator secret in V4 and V5). */
   const otpSecret = loadStableSecret(secrets.otp, 'PRODUCTION_OTP_SECRET');
+  const apkDownloadSecret = loadStableSecret(secrets.apkDownloads, 'PRODUCTION_APK_DOWNLOAD_SECRET');
   const access = await createAccessService(apiPool, {
     issuer: 'https://api.megaxo.online', environment: 'prd', keyFile,
     playerAudiences: ['mega-browser', 'mega-android', 'mega-ios'], serviceAudiences: ['mega-core'],
@@ -986,7 +989,7 @@ async function main() {
    * responses of the manifest-pinned APK. The identity is an anonymous signed, path-scoped cookie;
    * no user account, IP address, device identifier, or optional gameplay telemetry is joined. */
   const { createApkDownloadTracker } = require(path.join(ROOT, 'packages/services/apk-download-tracker.js'));
-  const apkDownloadTracker = createApkDownloadTracker({ pool: apiPool, secret: otpSecret });
+  const apkDownloadTracker = createApkDownloadTracker({ pool: apiPool, secret: apkDownloadSecret });
   let origin = `http://${httpBinding.host}:${httpBinding.port}`;
   const publicOrigin = arg('--public-origin', null);
   if (publicOrigin !== null) {

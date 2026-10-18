@@ -6,6 +6,18 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class MegaNativeWirePolicyTest {
+    @Test fun bridgeDeliversListsAndPreservesAuthenticationErrors() {
+        val list = MegaNativeWirePolicy.responseEnvelope(200, "[{\"id\":\"invite_1\"}]")
+        assertTrue(list.getBoolean("ok"))
+        assertEquals("invite_1", list.getJSONArray("data").getJSONObject(0).getString("id"))
+        val expired = MegaNativeWirePolicy.responseEnvelope(401, "{\"error\":\"AUTH_REQUIRED\"}")
+        assertFalse(expired.getBoolean("ok"))
+        assertEquals(401, expired.getInt("status"))
+        assertEquals("AUTH_REQUIRED", expired.getString("error"))
+        assertEquals("SERVICE_UNAVAILABLE", MegaNativeWirePolicy.responseEnvelope(502,
+            "{\"error\":\"<html>provider failure</html>\"}").getString("error"))
+    }
+
     @Test fun readsObjectsAndArraysWithoutReshaping() {
         assertTrue(MegaNativeWirePolicy.parseResponse("[]") is JSONArray)
         assertEquals("invite_1", (MegaNativeWirePolicy.parseResponse("[{\"id\":\"invite_1\"}]") as JSONArray)

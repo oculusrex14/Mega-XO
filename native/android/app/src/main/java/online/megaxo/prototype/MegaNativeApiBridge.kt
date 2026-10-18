@@ -29,7 +29,6 @@ internal class MegaNativeApiBridge private constructor(
     private val session: MegaNativeSessionManager,
     private val provider: MegaAndroidIdentityBridge?
 ) {
-    private val maxPathLength = 512
     /* Mirror of the transport cap: the largest declared route contract (300000, see
      * packages/contracts/routes.js account.save.write). A 64 KiB bridge reject refused large
      * cloud saves before any server contact and surfaced as a permanent degraded banner. */
@@ -114,17 +113,10 @@ internal class MegaNativeApiBridge private constructor(
                     // Read routes may answer with an array (invitations, leaderboard) or an object.
                     // Both are legal JSON bodies; pass the parsed value through unchanged and let
                     // the JS adapter unwrap, so nothing is reshaped or lost here.
-                    val value = runCatching { MegaNativeWirePolicy.parseResponse(text) }.getOrNull()
-                    if (value == null) {
+                    val payload = runCatching { MegaNativeWirePolicy.responseEnvelope(status, text) }.getOrNull()
+                    if (payload == null) {
                         fail(reply, id, "INVALID_NATIVE_RESPONSE", status)
                     } else {
-                        val payload = JSONObject().put("ok", status in 200..299)
-                            .put("status", status).put("data", value)
-                        if (status !in 200..299) {
-                            val code = (value as? JSONObject)?.optString("error", "") ?: ""
-                            payload.put("error", code.takeIf { Regex("^[A-Z0-9_]{1,80}$").matches(it) }
-                                ?: "SERVICE_UNAVAILABLE")
-                        }
                         send(reply, id, payload)
                     }
                 },

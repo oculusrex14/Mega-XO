@@ -42,4 +42,14 @@ internal object MegaNativeWirePolicy {
         require(parser.nextClean() == '\u0000') { "INVALID_NATIVE_RESPONSE" }
         return value
     }
+
+    fun responseEnvelope(status: Int, text: String): JSONObject {
+        val value = parseResponse(text)
+        val payload = JSONObject().put("ok", status in 200..299).put("status", status).put("data", value)
+        if (status !in 200..299) {
+            val code = (value as? JSONObject)?.optString("error", "") ?: ""
+            payload.put("error", code.takeIf { Regex("^[A-Z0-9_]{1,80}$").matches(it) } ?: "SERVICE_UNAVAILABLE")
+        }
+        return payload
+    }
 }

@@ -22,7 +22,7 @@ const COOKIE = 'mx_apk_dl';
 const COOKIE_AGE_SECONDS = 365 * 24 * 60 * 60;
 const DEDUP_AGE_MS = 400 * 24 * 60 * 60 * 1000;
 const COOKIE_GRAMMAR = /^v1\.([0-9a-f]{32})\.([0-9a-f]{64})$/;
-const BOT = /\b(?:bot|crawler|spider|slurp|preview|monitor|headless|wget|curl|python-requests)\b/i;
+const BOT = /(?:bot|crawler|spider|slurp|preview|monitor|headless|wget|curl|python-requests)/i;
 const INSERT_UNIQUE = 'INSERT INTO ops.rate_buckets (bucket_id, hits, expires_at) VALUES ($1, 1, $2) '
   + 'ON CONFLICT (bucket_id) DO NOTHING RETURNING bucket_id';
 const UPSERT = 'INSERT INTO ops.rate_buckets (bucket_id, hits, expires_at) VALUES ($1, 1, $2) '
@@ -55,9 +55,10 @@ function createApkDownloadTracker({ pool, secret, now = Date.now, randomId } = {
     const ua = String(req?.headers?.['user-agent'] || '');
     if (method !== 'GET' || !apk || !Number.isSafeInteger(apk.versionCode) || apk.versionCode < 1 ||
         BOT.test(ua) || req?.headers?.purpose === 'prefetch' || req?.headers?.['sec-purpose'] === 'prefetch') return null;
-    const id = checkedCookie(req.headers?.cookie) || nonce();
+    const existingId = checkedCookie(req.headers?.cookie);
+    const id = existingId || nonce();
     if (!/^[0-9a-f]{32}$/.test(id)) throw Error('APK_METRICS_RANDOM_INVALID');
-    if (!checkedCookie(req.headers?.cookie)) {
+    if (!existingId) {
       // Narrowly scoped, non-auth cookie; no IP/user-agent fingerprint and no cross-page tracking.
       res.setHeader('Set-Cookie',
         `${COOKIE}=${publicCookie(id)}; Max-Age=${COOKIE_AGE_SECONDS}; Path=/downloads/android/; Secure; HttpOnly; SameSite=Lax`);

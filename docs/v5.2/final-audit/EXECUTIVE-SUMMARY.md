@@ -77,8 +77,9 @@ Planck: SECURITY-AUDIT.md, monetization/MONETIZATION-LAUNCH-AUDIT.md, infrastruc
  VERDICT: CONDITIONAL GO. Code and infrastructure are launch-ready; every remaining item is an owner-external action:
  1. Store consoles: create the Play Billing + StoreKit products (mega_pass + four IAPs) per the ECO-004 handoff plan, then map GOOGLE_PLAY_PRODUCT_MEGA_PASS / MegaStoreProductIDs.
  2. ECO-014 physical-device commerce/ads acceptance matrix (owner-authorized, not run).
- 3. Polar live mode: enable the live org, create live price IDs, set the POLAR production env (sandbox IDs recorded in the takeover ledger).
  4. ECO-005 activation: set the store notification provider env and enable the storeNotifications outbound class in the live inventory (routes currently fail closed 503).
  5. Store submission: Data Safety inventory attestation (final-audit/release/DATA-SAFETY-INVENTORY.md), content ratings, listing assets.
  6. SECRET ROTATION at the next maintenance window: the R2 reader token (cfat_..., read-only DR-bucket scope) was displayed once in a tool result during the /opsz diagnosis, and runtime-roles.json contents were displayed in an earlier session. Nothing was committed.
  7. R2 retention policy (non-blocking): the pg16-encrypted prefix grows 2 objects per 5-minute backup with no pruning; the client now paginates to a 100-page cap, so define retention before 100k objects.
+ 3. Polar live mode: enable the live org, create live price IDs, set the POLAR production env (sandbox IDs recorded in the takeover ledger).
+ 3. Polar live mode (UPDATED 2026-10-18): the lane is WIRED and LIVE for the four one-time products (token, org id, webhook secret, price catalog, MEGA_PURCHASES_ENABLED - boot verified). Remaining: create the live Mega Pass subscription product (3.99 USD/mo) and the 15% pack discount in the Polar dashboard (needs an owner login on polar.sh; existing tokens lack write scopes), then add POLAR_PRICE_MEGA_PASS / POLAR_PRICE_CENTS_MEGA_PASS=399 / POLAR_PACK_DISCOUNT_ID to provider-signin.env and restart. Until then the pass and pack discounts are honestly unavailable while one-time purchases work.

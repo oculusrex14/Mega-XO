@@ -114,9 +114,9 @@ test('transport refuses cookies, arbitrary hosts, non-https and client-supplied 
   assert.match(transport, /val token = accessToken/);
   assert.match(transport, /if \(origin == null \|\| token == null\)/);
   assert.match(transport, /transmit\(path, method, body, "Bearer \$token", operationKey, complete\)/);
-  // The path grammar mirrors the frozen allowlist prefixes.
-  assert.match(transport, /prefixes\.none \{ path\.startsWith\(it\) \}/);
-  assert.match(transport, /listOf\("\.\.", "\/\/", "%", "#", "\?"\)\.any \{ path\.contains\(it\) \}/);
+  // Both boundaries share the allowlist policy, including the existing search/rank queries.
+  assert.match(transport, /MegaNativeWirePolicy\.acceptsPath\(path\)/);
+  assert.match(apiBridge, /MegaNativeWirePolicy\.acceptsPath\(path\)/);
 });
 
 test('the cookie-free native route set is closed and re-validated at the transport', () => {

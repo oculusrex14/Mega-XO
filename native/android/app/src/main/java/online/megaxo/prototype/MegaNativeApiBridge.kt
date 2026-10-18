@@ -95,10 +95,7 @@ internal class MegaNativeApiBridge private constructor(
         val method = command.optString("method", "GET").uppercase()
         // The transport re-validates the same grammar; this is the reject-early mirror so an
         // obviously impossible path never reaches the network layer at all.
-        if (method !in listOf("GET", "POST") || path.isEmpty() || path.length > maxPathLength ||
-            !path.startsWith("/api/") || path.any { it.code !in 33..126 || it == '\\' } ||
-            listOf("..", "//", "%", "#", "?").any { path.contains(it) }
-        ) {
+        if (method !in listOf("GET", "POST") || !MegaNativeWirePolicy.acceptsPath(path)) {
             fail(reply, id, "INVALID_NATIVE_REQUEST"); return
         }
         val rawBody = command.opt("body")
@@ -117,12 +114,19 @@ internal class MegaNativeApiBridge private constructor(
                     // Read routes may answer with an array (invitations, leaderboard) or an object.
                     // Both are legal JSON bodies; pass the parsed value through unchanged and let
                     // the JS adapter unwrap, so nothing is reshaped or lost here.
-                    val value = runCatching {
-                        if (text.trimStart().startsWith("[")) JSONArray(text)
-                        else JSONObject(text) as Any
-                    }.getOrElse { JSONObject() }
-                    send(reply, id, JSONObject().put("ok", status in 200..299)
-                        .put("status", status).put("data", value))
+                    val value = runCatching { MegaNativeWirePolicy.parseResponse(text) }.getOrNull()
+                    if (value == null) {
+                        fail(reply, id, "INVALID_NATIVE_RESPONSE", status)
+                    } else {
+                        val payload = JSONObject().put("ok", status in 200..299)
+                            .put("status", status).put("data", value)
+                        if (status !in 200..299) {
+                            val code = (value as? JSONObject)?.optString("error", "") ?: ""
+                            payload.put("error", code.takeIf { Regex("^[A-Z0-9_]{1,80}$").matches(it) }
+                                ?: "SERVICE_UNAVAILABLE")
+                        }
+                        send(reply, id, payload)
+                    }
                 },
                 onFailure = { error -> fail(reply, id, error.message ?: "ONLINE_UNAVAILABLE") }
             )

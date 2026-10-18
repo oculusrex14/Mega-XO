@@ -78,7 +78,7 @@ jobs:
         # online target. The online build here names no origin, so it gains the network permissions
         # and still bakes in no host.
         run: |
-          gradle -p native/android :app:assembleOfflineDebug :app:assembleOnlineDebug --no-daemon --stacktrace
+          gradle -p native/android :app:assembleOfflineDebug :app:assembleOnlineDebug :app:testOnlineDebugUnitTest --no-daemon --stacktrace
       - name: Assert bundled game and hash APK
         shell: bash
         run: |

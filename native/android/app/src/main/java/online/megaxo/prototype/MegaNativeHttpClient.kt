@@ -45,9 +45,6 @@ internal class MegaNativeHttpClient(apiOrigin: String?) {
     }
     private val main = Handler(Looper.getMainLooper())
     @Volatile private var accessToken: String? = null
-    private val prefixes = listOf(
-        "/api/account/", "/api/community/", "/api/monetization/", "/api/v1/", "/api/party/"
-    )
 
     /** The cookie-free native credential routes, and ONLY those, may be called without a session. */
     private val nativePaths = setOf(
@@ -86,10 +83,7 @@ internal class MegaNativeHttpClient(apiOrigin: String?) {
             complete(Result.failure(IllegalStateException("ONLINE_UNAVAILABLE"))); return
         }
         if (method !in listOf("GET", "POST") ||
-            !path.startsWith("/api/") || path.length > 512 ||
-            path.any { it.code !in 33..126 || it == '\\' } ||
-            listOf("..", "//", "%", "#", "?").any { path.contains(it) } ||
-            prefixes.none { path.startsWith(it) } ||
+            !MegaNativeWirePolicy.acceptsPath(path) ||
             (method == "GET" && body != null) ||
             (method == "POST" && (body == null || body.toByteArray().size > maxBodyBytes)) ||
             (method == "POST" && (operationKey.isNullOrEmpty() || operationKey.length > 128 ||
@@ -173,7 +167,7 @@ internal class MegaNativeHttpClient(apiOrigin: String?) {
                         }
                         output.toString("UTF-8")
                     } ?: "{}"
-                    JSONObject(bytes) // Always validate response as JSON.
+                    MegaNativeWirePolicy.parseResponse(bytes)
                     status to bytes
                 } finally {
                     conn.disconnect()

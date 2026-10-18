@@ -143,6 +143,9 @@ export function mergeRenderedElement(current, next) {
 
   /* A rendered board cell may gain or lose a dot or SVG. Reconcile the children without
    * replacing the button, and keep direct text nodes (scores/live status) up to date. */
+  if (current.childNodes.length === 0 && next.childNodes.length === 0 && current.textContent !== next.textContent) {
+    current.textContent = next.textContent;
+  }
   const existing = [...current.childNodes];
   const incoming = [...next.childNodes];
   for (let index = 0; index < Math.max(existing.length, incoming.length); index++) {

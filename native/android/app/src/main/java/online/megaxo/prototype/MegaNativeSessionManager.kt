@@ -121,6 +121,12 @@ internal class MegaNativeSessionManager(
                     return@authRequest
                 }
                 if (status !in 200..299) {
+                    // An expired anonymous challenge must not poison every subsequent sign-in.
+                    // Clearing only this exact held token lets the user retry a fresh 'continue'
+                    // without touching an authenticated access/refresh family.
+                    if (status == 401 && bearer != null) synchronized(this) {
+                        if (session == null && emailSessionToken == bearer) emailSessionToken = null
+                    }
                     val code = parsed.optString("error", "SERVICE_UNAVAILABLE")
                     main.post { complete(MegaNativeEmailProtocol.error(code, status)) }
                     return@authRequest

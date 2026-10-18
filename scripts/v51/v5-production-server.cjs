@@ -494,9 +494,18 @@ function loadWebArtifact(dir) {
   if (manifest.generator !== 'scripts/p21/build-web.js' || !Array.isArray(manifest.files)) {
     throw new Error('WEB_BUILD_ARTIFACT_INVALID');
   }
+  const apk = manifest.store_links?.androidApk || null;
+  if (apk) {
+    const entry = manifest.files.find(file => file.path === apk.path.slice(1));
+    if (!/^\\/downloads\\/android\\/[A-Za-z0-9._-]+\\.apk$/.test(apk.path) ||
+        !Number.isSafeInteger(apk.versionCode) || apk.versionCode < 1 ||
+        !entry || entry.sha256 !== apk.sha256 || entry.bytes !== apk.bytes) {
+      throw new Error('WEB_BUILD_APK_MISMATCH');
+    }
+  }
   return Object.freeze({
     dir, routes: manifest.routes || {}, files: new Set(['web-build.manifest.json', ...manifest.files.map((f) => f.path)]),
-    seo: manifest.seo || null,
+    seo: manifest.seo || null, androidApk: apk,
     sourceCommit: manifest.source_commit || null, bundleSha256: manifest.bundle_sha256 || null, fileCount: manifest.file_count || manifest.files.length,
   });
 }
@@ -972,6 +981,11 @@ async function main() {
   });
 
   const webArtifact = loadWebArtifact(webBuildDir);
+  /* The binary is streamed by THIS Node server (Caddy proxies it unchanged). Count only completed
+   * responses of the manifest-pinned APK. The identity is an anonymous signed, path-scoped cookie;
+   * no user account, IP address, device identifier, or optional gameplay telemetry is joined. */
+  const { createApkDownloadTracker } = require(path.join(ROOT, 'packages/services/apk-download-tracker.js'));
+  const apkDownloadTracker = createApkDownloadTracker({ pool: apiPool, secret: otpSecret });
   let origin = `http://${httpBinding.host}:${httpBinding.port}`;
   const publicOrigin = arg('--public-origin', null);
   if (publicOrigin !== null) {
@@ -1123,7 +1137,36 @@ async function main() {
       if (legalLink) res.setHeader('Link', legalLink);
       res.statusCode = resolved.status;
       res.setHeader('Content-Type', MIME_TYPES[path.extname(absolute).toLowerCase()] || 'application/octet-stream');
-      fs.createReadStream(absolute).pipe(res); return;
+      const pinnedApk = resolved.status === 200 && webArtifact.androidApk &&
+        pathname === webArtifact.androidApk.path && resolved.file === pathname.slice(1);
+      if (pinnedApk) {
+        if (req.method !== 'GET' && req.method !== 'HEAD') {
+          res.statusCode = 405;
+          res.setHeader('Allow', 'GET, HEAD');
+          res.end(); return;
+        }
+        /* HEAD probes, bots, invalid paths and failed/aborted transfers never create counters. */
+        const size = fs.statSync(absolute).size;
+        if (size !== webArtifact.androidApk.bytes) throw new Error('WEB_BUILD_APK_SIZE_MISMATCH');
+        res.setHeader('Content-Length', String(size));
+        res.setHeader('Content-Disposition', 'attachment; filename="' + path.basename(absolute) + '"');
+        if (req.method === 'HEAD') { res.end(); return; }
+        try {
+          const recordCompleted = apkDownloadTracker.observe(req, res, webArtifact.androidApk);
+          if (recordCompleted) res.once('finish', () => {
+            // The file has already been delivered: an analytics outage must never break an APK.
+            recordCompleted().catch(() => console.error(JSON.stringify({
+              event: 'apk.metrics_write_failed', code: 'APK_METRICS_PERSIST_FAILED',
+            })));
+          });
+        } catch { /* analytics never gates file availability */ }
+      }
+      const stream = fs.createReadStream(absolute);
+      stream.once('error', () => {
+        if (!res.headersSent) { res.statusCode = 500; res.end('File unavailable'); }
+        else res.destroy();
+      });
+      stream.pipe(res); return;
     } catch (err) { if (!res.headersSent) { res.statusCode = 500; res.setHeader('Content-Type', 'application/json'); } res.end(JSON.stringify({ error: safeError(err) })); }
   });
 

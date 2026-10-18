@@ -169,6 +169,26 @@ export function mergeRenderedElement(current, next) {
   return true;
 }
 
+/* Stable nodes do not by themselves preserve the viewport: mobile status text can reflow above
+ * the board and WebKit may apply a deferred focus/scroll adjustment. Anchor only a visible board
+ * during a state render; user scroll/zoom/navigation is never locked. */
+export function captureBoardViewport(frame, view) {
+  if (!frame?.getBoundingClientRect || !view?.scrollTo) return null;
+  const rect = frame.getBoundingClientRect();
+  const viewport = view.visualViewport;
+  const offset = viewport?.offsetTop || 0;
+  const height = viewport?.height || view.innerHeight;
+  if (!(height > 0) || rect.bottom <= offset || rect.top >= offset + height) return null;
+  return {frame, top:rect.top - offset, x:view.scrollX, scale:viewport?.scale || 1};
+}
+
+export function restoreBoardViewport(anchor, view) {
+  if (!anchor || anchor.frame.isConnected === false || !view?.scrollTo) return;
+  if ((view.visualViewport?.scale || 1) !== anchor.scale) return;
+  const delta = anchor.frame.getBoundingClientRect().top - (view.visualViewport?.offsetTop || 0) - anchor.top;
+  if (Math.abs(delta) > 0.5) view.scrollTo({left:anchor.x, top:view.scrollY + delta, behavior:'instant'});
+}
+
 function boardMarkup(state, game, { thinking = false, blocked = false, focus = null, guidedTargetCell = null, guidedDestination = null } = {}) {
   const legal = new Set(game.legal(state).map(move => `${move.b}:${move.c}`));
   const legalList = game.legal(state);
@@ -481,8 +501,24 @@ export function mountBoard(host, {
 
   const isThinking = () => !online && !host.ownerDocument?.hidden && (!tutorialController || !tutorialController.isActive()) && !session.getState().winner && mode === 'bot' && session.getState().turn === 'O';
 
+  const view = host.ownerDocument?.defaultView;
+  let viewportFrame = null, pointerViewport = null, viewportRevision = 0, scrollQuietUntil = 0;
+  function cancelViewportCorrection(event) {
+    viewportRevision++;
+    pointerViewport = null;
+    if (viewportFrame !== null) view?.cancelAnimationFrame?.(viewportFrame);
+    viewportFrame = null;
+    if (event?.type === 'touchmove' || event?.type === 'wheel') scrollQuietUntil = Date.now() + 180;
+  }
+
   function render({ focusCell = false, setting = null } = {}) {
     if (destroyed) return;
+    const anchor = !lastInputWasKeyboard && Date.now() >= scrollQuietUntil
+      ? pointerViewport || captureBoardViewport(host.querySelector('.gb-frame'), view) : null;
+    pointerViewport = null;
+    if (viewportFrame !== null) view?.cancelAnimationFrame?.(viewportFrame);
+    viewportFrame = null;
+    const revision = ++viewportRevision;
     const guidedView = tutorialController && (tutorialController.isActive() || tutorialController.isConfirmRestart()) ? tutorialController.getView(session.getState()) : null;
     const guidedTargetCell = guidedView?.phase === 'AWAIT_MOVE' && guidedView.move ? `${guidedView.move.b}:${guidedView.move.c}` : null;
     const guidedDestination = guidedView?.phase === 'AWAIT_CONTINUE' ? session.getState().required : null;
@@ -542,6 +578,13 @@ export function mountBoard(host, {
     if (focusCell && focusedCell && lastInputWasKeyboard) host.querySelector(`[data-gb-cell="${focusedCell}"]`)?.focus({ preventScroll: true });
     if (setting && lastInputWasKeyboard) host.querySelector(`[data-gb-setting="${setting}"]`)?.focus({ preventScroll: true });
     if (workspace && typeof CustomEvent !== 'undefined') host.dispatchEvent?.(new CustomEvent('gb:render', {bubbles:true}));
+    if (anchor) {
+      restoreBoardViewport(anchor, view);
+      if (view?.requestAnimationFrame) viewportFrame = view.requestAnimationFrame(() => {
+        viewportFrame = null;
+        if (!destroyed && revision === viewportRevision) restoreBoardViewport(anchor, view);
+      });
+    }
   }
 
   function scheduleBot() {
@@ -883,7 +926,17 @@ export function mountBoard(host, {
 
   /* Captured on the host: pointerdown covers touch/mouse/pen and keydown covers keyboard. */
   let lastInputWasKeyboard = false;
-  const noteInputType = event => { lastInputWasKeyboard = event.type === 'keydown'; };
+  const noteInputType = event => {
+    lastInputWasKeyboard = event.type === 'keydown';
+    if (lastInputWasKeyboard) cancelViewportCorrection();
+    else if (Date.now() >= scrollQuietUntil && event.target.closest?.('[data-gb-cell]')) {
+      pointerViewport = captureBoardViewport(host.querySelector('.gb-frame'), view);
+    }
+  };
+  host.ownerDocument?.addEventListener?.('pointerdown', cancelViewportCorrection, {capture:true, passive:true});
+  host.ownerDocument?.addEventListener?.('touchmove', cancelViewportCorrection, {passive:true});
+  host.ownerDocument?.addEventListener?.('wheel', cancelViewportCorrection, {passive:true});
+  view?.addEventListener?.('resize', cancelViewportCorrection, {passive:true});
   host.addEventListener('pointerdown', noteInputType);
   host.addEventListener('keydown', noteInputType);
 
@@ -926,6 +979,7 @@ export function mountBoard(host, {
     destroy() {
       if (destroyed) return;
       destroyed = true;
+      cancelViewportCorrection();
       cancelBot();
       botRunner?.destroy();
       powers?.destroy();
@@ -935,6 +989,10 @@ export function mountBoard(host, {
       host.removeEventListener('click', onClick);
       host.removeEventListener('pointerdown', noteInputType);
       host.removeEventListener('keydown', noteInputType);
+      host.ownerDocument?.removeEventListener?.('pointerdown', cancelViewportCorrection, true);
+      host.ownerDocument?.removeEventListener?.('touchmove', cancelViewportCorrection);
+      host.ownerDocument?.removeEventListener?.('wheel', cancelViewportCorrection);
+      view?.removeEventListener?.('resize', cancelViewportCorrection);
       guidedStart?.removeEventListener('click', startGuided);
       host.removeEventListener('keydown', onKeydown);
       host.removeEventListener('change', onChange);

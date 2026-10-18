@@ -64,10 +64,10 @@ function cell(id, player, extraClass = '') {
   return button;
 }
 
-const { mergeRenderedElement } = (() => {
+const { mergeRenderedElement, captureBoardViewport, restoreBoardViewport } = (() => {
   const source = fs.readFileSync(path.join(__dirname, '..', 'apps', 'web', 'board.js'), 'utf8').replace(/^export /gm, '');
   const sandbox = {};
-  vm.runInNewContext(`${source}\n;globalThis.__merge = { mergeRenderedElement };`, sandbox);
+  vm.runInNewContext(`${source}\n;globalThis.__merge = { mergeRenderedElement, captureBoardViewport, restoreBoardViewport };`, sandbox);
   return sandbox.__merge;
 })();
 
@@ -184,4 +184,34 @@ test('render updates every stacked mobile anchor in place instead of assigning t
   assert.match(source, /'\.gb-game-players', '\.gb-turn-strip', '\.gb-match-note'/);
   assert.doesNotMatch(source, /stage\.querySelector\('\.gb-turn-strip'\)\.innerHTML\s*=/);
   assert.match(source, /if \(!mergeRenderedElement\(currentPart, nextPart\)\) currentPart\.replaceWith\(nextPart\)/);
+});
+
+test('a visible board keeps its viewport position across status reflow and deferred WebKit scrolling', () => {
+  let documentTop = 700, scrollY = 560;
+  const calls = [];
+  const frame = {isConnected:true, getBoundingClientRect:()=>({top:documentTop-scrollY, bottom:documentTop-scrollY+350})};
+  const view = {innerHeight:844, scrollX:0, get scrollY(){return scrollY;}, scrollTo:options=>{calls.push(options);scrollY=options.top;}};
+  const anchor = captureBoardViewport(frame, view);
+  documentTop += 22;
+  restoreBoardViewport(anchor, view);
+  assert.equal(scrollY, 582, 'reflow above the board is compensated, leaving the board at the same visible position');
+  scrollY += 180;
+  restoreBoardViewport(anchor, view);
+  assert.equal(scrollY, 582, 'a deferred browser scroll is corrected only within the render transaction');
+  assert.equal(calls.every(call=>call.behavior==='instant'), true, 'global smooth scrolling cannot animate the correction');
+});
+
+test('viewport correction skips offscreen boards, detached routes and changed pinch zoom', () => {
+  let top = 900, scale = 1;
+  const calls = [];
+  const frame = {isConnected:true, getBoundingClientRect:()=>({top,bottom:top+350})};
+  const view = {innerHeight:844, scrollX:0, scrollY:0, visualViewport:{height:844,offsetTop:0,get scale(){return scale;}},scrollTo:options=>calls.push(options)};
+  assert.equal(captureBoardViewport(frame,view), null);
+  top=100;
+  const anchor=captureBoardViewport(frame,view);
+  top=140;scale=2;
+  restoreBoardViewport(anchor,view);
+  scale=1;frame.isConnected=false;
+  restoreBoardViewport(anchor,view);
+  assert.equal(calls.length,0);
 });

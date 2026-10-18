@@ -112,6 +112,8 @@ const SECRET_FILES = Object.freeze({
    * Deployed from the host-managed proxy secret file; MEGA_PROXY_SECRET_FILE may point at the
    * absolute deployment path instead. Never reused as the Core ingress HMAC key. */
   proxy: 'proxy.secret',
+  /* Dedicated key. Analytics rotation must never rotate OTPs or the reverse. */
+  apkDownloads: 'apk-download.secret',
 });
 
 /* The exact production identity. Pinned here as well as read from the inventory: a drift in either
@@ -494,9 +496,19 @@ function loadWebArtifact(dir) {
   if (manifest.generator !== 'scripts/p21/build-web.js' || !Array.isArray(manifest.files)) {
     throw new Error('WEB_BUILD_ARTIFACT_INVALID');
   }
+  const apk = manifest.store_links?.androidApk || null;
+  if (apk) {
+    const entry = typeof apk.path === 'string'
+      ? manifest.files.find(file => file.path === apk.path.slice(1)) : null;
+    if (typeof apk.path !== 'string' || !/^\/downloads\/android\/[A-Za-z0-9._-]+\.apk$/.test(apk.path) ||
+        !Number.isSafeInteger(apk.versionCode) || apk.versionCode < 1 ||
+        !entry || entry.sha256 !== apk.sha256 || entry.bytes !== apk.bytes) {
+      throw new Error('WEB_BUILD_APK_MISMATCH');
+    }
+  }
   return Object.freeze({
     dir, routes: manifest.routes || {}, files: new Set(['web-build.manifest.json', ...manifest.files.map((f) => f.path)]),
-    seo: manifest.seo || null,
+    seo: manifest.seo || null, androidApk: apk,
     sourceCommit: manifest.source_commit || null, bundleSha256: manifest.bundle_sha256 || null, fileCount: manifest.file_count || manifest.files.length,
   });
 }
@@ -602,6 +614,46 @@ const MIME_TYPES = Object.freeze({
   '.ico': 'image/x-icon', '.woff': 'font/woff', '.woff2': 'font/woff2', '.txt': 'text/plain; charset=utf-8',
   '.xml': 'application/xml; charset=utf-8', '.webmanifest': 'application/manifest+json',
 });
+
+/** Stream a pinned APK and record only a fully ended source stream sent as HTTP 200. */
+function streamApkFile(absolute, res, recordCompleted = null) {
+  let streamEnded = false, streamFailed = false, responseAborted = false;
+  const stream = fs.createReadStream(absolute);
+  stream.once('end', () => { streamEnded = true; });
+  stream.once('error', () => {
+    streamFailed = true;
+    if (!res.headersSent) {
+      res.statusCode = 500;
+      res.removeHeader('Content-Length');
+      res.removeHeader('Content-Disposition');
+      res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+      res.end('File unavailable');
+    }
+    else res.destroy();
+  });
+  res.once('close', () => {
+    if (!res.writableFinished) {
+      responseAborted = true;
+      stream.destroy();
+    }
+  });
+  if (typeof recordCompleted === 'function') res.once('finish', () => {
+    const expectedBytes = Number(res.getHeader('Content-Length'));
+    if (res.statusCode !== 200 || !streamEnded || streamFailed || responseAborted ||
+        !Number.isSafeInteger(expectedBytes) || stream.bytesRead !== expectedBytes) return;
+    // The file has already been delivered to Node's HTTP response: analytics must never gate it.
+    Promise.resolve().then(recordCompleted).catch(() => console.error(JSON.stringify({
+      event: 'apk.metrics_write_failed', code: 'APK_METRICS_PERSIST_FAILED',
+    })));
+  });
+  stream.pipe(res);
+  return stream;
+}
+
+function wantsApkMetrics(searchParams) {
+  const values = searchParams?.getAll?.('metrics') || [];
+  return values.length === 1 && values[0] === '1';
+}
 
 /* Reads a non-secret JSON inventory (a checked-in allowlisted manifest, never secret material). */
 function readInventory(file) {
@@ -744,6 +796,7 @@ async function main() {
    * mints/hashes a code) and the API handler (which verifies it), and by the worker (whose mail body
    * seal is HKDF over the same operator secret in V4 and V5). */
   const otpSecret = loadStableSecret(secrets.otp, 'PRODUCTION_OTP_SECRET');
+  const apkDownloadSecret = loadStableSecret(secrets.apkDownloads, 'PRODUCTION_APK_DOWNLOAD_SECRET');
   const access = await createAccessService(apiPool, {
     issuer: 'https://api.megaxo.online', environment: 'prd', keyFile,
     playerAudiences: ['mega-browser', 'mega-android', 'mega-ios'], serviceAudiences: ['mega-core'],
@@ -972,6 +1025,11 @@ async function main() {
   });
 
   const webArtifact = loadWebArtifact(webBuildDir);
+  /* The binary is streamed by THIS Node server (Caddy proxies it unchanged). Count only completed
+   * responses of the manifest-pinned APK. The identity is an anonymous signed, path-scoped cookie;
+   * no user account, IP address, device identifier, or optional gameplay telemetry is joined. */
+  const { createApkDownloadTracker } = require(path.join(ROOT, 'packages/services/apk-download-tracker.js'));
+  const apkDownloadTracker = createApkDownloadTracker({ pool: apiPool, secret: apkDownloadSecret });
   let origin = `http://${httpBinding.host}:${httpBinding.port}`;
   const publicOrigin = arg('--public-origin', null);
   if (publicOrigin !== null) {
@@ -1123,7 +1181,36 @@ async function main() {
       if (legalLink) res.setHeader('Link', legalLink);
       res.statusCode = resolved.status;
       res.setHeader('Content-Type', MIME_TYPES[path.extname(absolute).toLowerCase()] || 'application/octet-stream');
-      fs.createReadStream(absolute).pipe(res); return;
+      const pinnedApk = resolved.status === 200 && webArtifact.androidApk &&
+        pathname === webArtifact.androidApk.path && resolved.file === pathname.slice(1);
+      if (pinnedApk) {
+        if (req.method !== 'GET' && req.method !== 'HEAD') {
+          res.statusCode = 405;
+          res.setHeader('Allow', 'GET, HEAD');
+          res.end(); return;
+        }
+        /* HEAD probes, bots, invalid paths and failed/aborted transfers never create counters. */
+        const size = fs.statSync(absolute).size;
+        if (size !== webArtifact.androidApk.bytes) throw new Error('WEB_BUILD_APK_SIZE_MISMATCH');
+        res.setHeader('Content-Length', String(size));
+        res.setHeader('Content-Disposition', 'attachment; filename="' + path.basename(absolute) + '"');
+        res.setHeader('Cache-Control', 'private, no-store');
+        if (req.method === 'HEAD') { res.end(); return; }
+        let recordCompleted = null;
+        try {
+          recordCompleted = apkDownloadTracker.observe(req, res, webArtifact.androidApk, {
+            metricsEnabled: wantsApkMetrics(parsedUrl.searchParams),
+          });
+        } catch { /* analytics never gates file availability */ }
+        streamApkFile(absolute, res, recordCompleted);
+        return;
+      }
+      const stream = fs.createReadStream(absolute);
+      stream.once('error', () => {
+        if (!res.headersSent) { res.statusCode = 500; res.end('File unavailable'); }
+        else res.destroy();
+      });
+      stream.pipe(res); return;
     } catch (err) { if (!res.headersSent) { res.statusCode = 500; res.setHeader('Content-Type', 'application/json'); } res.end(JSON.stringify({ error: safeError(err) })); }
   });
 
@@ -1268,6 +1355,6 @@ module.exports = {
   robotsHeaderFor, legalCanonicalLink, DEFAULT_ROBOTS_HEADER,
   FRESHNESS_STATE_FILE, OPS_BACKUP_MAX_AGE_MS, OPS_OUTBOX_BACKLOG_MAX,
   /* filesystem-bounded helpers used by the composition (never network) */
-  secretPaths, readSecretFile, loadStableSecret, readInventory, loadWebArtifact,
+  secretPaths, readSecretFile, loadStableSecret, readInventory, loadWebArtifact, streamApkFile, wantsApkMetrics,
   arg, safeError, main,
 };

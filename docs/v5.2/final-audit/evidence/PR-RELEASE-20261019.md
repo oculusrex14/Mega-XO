@@ -83,3 +83,20 @@ No key was rotated during the proxy repair. The overall launch goal remains inco
 ## Completion entry
 
 Pending final integrated CI, independent approval, V5.2 merge and verified Oracle deployment.
+
+## Addendum — synthetic WebKit anchor failure and fix (2026-10-19, ~04:45 IST)
+
+The release head `7803f60` was green everywhere except one of 937 presentation checks:
+`P21-BROWSER-TOUCH-BOT-REPEATED-ANCHOR` on desktop WebKit. The synthetic run held the anchor
+through the first move plus bot reply, then desktop WebKit applied a one-time deferred scroll
+after the second move's render (`703.09 → 156.09`, then stable). The real iPhone had already
+passed on `db6ea37`, so this is a synthetic-engine timing gap, but the code fix is proper either
+way: commit `09d422b` extends the render correction over three bounded animation frames (still
+cancelling instantly on user scroll/zoom/input) and captures the pre-tap position from
+`touchstart` as well, because some WebKit tap sequences skip pointer events. The repeated-move
+QA now measures after the correction window settles.
+
+Owner re-verification on the physical iPhone is pending for the final build; the fresh preview is
+served at `http://192.168.0.9:4200/game?mode=bot&check=3`. Sol's final deploy verdict is pending
+until its usage window resets (~08:41 IST); deployment holds for that review per the standing
+two-reviewer order. CI on `09d422b` is the exact-head validation.

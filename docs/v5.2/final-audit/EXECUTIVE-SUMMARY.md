@@ -70,3 +70,15 @@ Viewer: architecture/graph-viewer/index.html (self-contained). Regenerate: node 
 ## Specialist reports
 
 Planck: SECURITY-AUDIT.md, monetization/MONETIZATION-LAUNCH-AUDIT.md, infrastructure/INFRASTRUCTURE-AUDIT.md, evidence/planck-findings.csv (38 findings). Sagan: features/, architecture/, ui/, gameplay/, evidence/sagan-findings.csv (13 findings). Integrator: evidence/integrator-findings.csv (6 findings). Consolidated: MASTER-FINDINGS.csv (56 rows with source attribution).
+
+## FINAL LAUNCH STATE (2026-10-18, release candidate 0c4b9ac43ae4992ea974bdc6fc76e3f900b01111)
+
+ DEPLOYED AND VERIFIED: 0c4b9ac is live on https://megaxo.online (bundle 0fdfc28f..., 172 files). Live checks all pass: /readyz /livez /opsz 200, guest monetization routes 401, exchange route live, AASA two-team appIDs, CSP+HSTS+XCTO+XFO, sponsor caption spacing (P21-W-011) served, browser smoke of home and /sponsors. PR #31 merged to V5.2 after 32/32 green checks; the deploy archive rollback/2026-10-18T04-12-00Z-manual-0c4b9ac43ae is the tested rollback point.
+ VERDICT: CONDITIONAL GO. Code and infrastructure are launch-ready; every remaining item is an owner-external action:
+ 1. Store consoles: create the Play Billing + StoreKit products (mega_pass + four IAPs) per the ECO-004 handoff plan, then map GOOGLE_PLAY_PRODUCT_MEGA_PASS / MegaStoreProductIDs.
+ 2. ECO-014 physical-device commerce/ads acceptance matrix (owner-authorized, not run).
+ 3. Polar live mode: enable the live org, create live price IDs, set the POLAR production env (sandbox IDs recorded in the takeover ledger).
+ 4. ECO-005 activation: set the store notification provider env and enable the storeNotifications outbound class in the live inventory (routes currently fail closed 503).
+ 5. Store submission: Data Safety inventory attestation (final-audit/release/DATA-SAFETY-INVENTORY.md), content ratings, listing assets.
+ 6. SECRET ROTATION at the next maintenance window: the R2 reader token (cfat_..., read-only DR-bucket scope) was displayed once in a tool result during the /opsz diagnosis, and runtime-roles.json contents were displayed in an earlier session. Nothing was committed.
+ 7. R2 retention policy (non-blocking): the pg16-encrypted prefix grows 2 objects per 5-minute backup with no pruning; the client now paginates to a 100-page cap, so define retention before 100k objects.

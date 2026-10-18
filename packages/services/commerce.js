@@ -200,7 +200,9 @@ async function createCommerceService(pool, options = {}) {
  if (options.now !== undefined && typeof options.now !== 'function') throw new PgGuardError('CLOCK_REQUIRED');
  if (options.eligible !== undefined && typeof options.eligible !== 'function') throw new PgGuardError('ELIGIBILITY_POLICY_REQUIRED');
  for (const name of ['verifyPurchase', 'verifyAd']) {
-  if (options[name] !== undefined && typeof options[name] !== 'function') throw new PgGuardError('VERIFIER_REQUIRED', { verifier: name });
+  /* null is the legitimate 'lane off' value (adMode off composes verifyAd: null); only a
+   * NON-NULL non-function is a composition error. */
+  if (options[name] != null && typeof options[name] !== 'function') throw new PgGuardError('VERIFIER_REQUIRED', { verifier: name });
  }
  /* The legacy constructor validated the mode through the pure cohort function; an unknown mode is
   * refused (INVALID_AD_MODE) before any statement. */

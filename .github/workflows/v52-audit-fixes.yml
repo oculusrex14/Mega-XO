@@ -25,14 +25,20 @@ jobs:
           node-version: '24'
       - run: npm ci --ignore-scripts
       - name: Verify APK email, mail delivery, download metrics, board and deployment regressions
-        run: >-
-          node --test tests/v5-native-email-lane.test.js
-          tests/v5-p21-native-email-ui.test.js
-          tests/v51-v5-production-server.test.js
-          tests/v51-deploy-production-guards.test.js
-          tests/v52-mail-resend.test.js
-          tests/v52-web-board-merge.test.js
-          tests/v52-apk-download-tracker.test.js
+        shell: bash
+        run: |
+          set -euo pipefail
+          suites=(
+            tests/v5-native-email-lane.test.js
+            tests/v5-p21-native-email-ui.test.js
+            tests/v51-v5-production-server.test.js
+            tests/v51-deploy-production-guards.test.js
+            tests/v52-mail-resend.test.js
+            tests/v52-web-board-merge.test.js
+            tests/v52-apk-download-tracker.test.js
+          )
+          for suite in "${suites[@]}"; do test -f "$suite"; done
+          node --test "${suites[@]}"
   audited-boundaries:
     runs-on: ubuntu-latest
     timeout-minutes: 30

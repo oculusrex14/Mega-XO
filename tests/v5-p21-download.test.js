@@ -94,9 +94,8 @@ test('P21-DOWNLOAD-02 chooser has truthful launch status and web play remains av
   assert.match(html, /href="\/downloads\/android\/megaxo-1\.0\.3\.apk"/);
   assert.match(html, /<input type="checkbox" data-apk-metrics-opt-in> Help count unique downloads \(optional\)/);
   assert.doesNotMatch(html, /data-apk-metrics-opt-in[^>]*checked/);
-  assert.match(text(html), /server-completed APK responses, including retries/);
-  assert.match(text(html), /participating browsers only/);
-  assert.match(text(html), /aggregate lifetime totals: kept indefinitely/);
+  assert.match(text(html), /download-only cookie/);
+  assert.match(html, /href="\/privacy">Privacy details/);
   assert.match(text(html), /iPhone and iPad store listing is not available yet/);
   assert.doesNotMatch(html, /href="https:|\.ipa|Download on the App Store/);
   // With nothing configured at all, the chooser stays honest: no store links and no APK card.

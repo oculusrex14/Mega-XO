@@ -88,7 +88,7 @@ test('P21-DOWNLOAD-02 chooser has truthful launch status and web play remains av
   assert.match(html, /href="\/api\/download\?platform=ios"/);
   assert.match(html, /href="\/api\/download\?platform=android"/);
   assert.match(html, /href="\/play"/);
-  assert.match(html, /href="\/downloads\/android\/megaxo-1\.0\.2\.apk"/);
+  assert.match(html, /href="\/downloads\/android\/megaxo-1\.0\.3\.apk"/);
   assert.match(text(html), /iPhone and iPad store listing is not available yet/);
   assert.doesNotMatch(html, /href="https:|\.ipa|Download on the App Store/);
   // With nothing configured at all, the chooser stays honest: no store links and no APK card.

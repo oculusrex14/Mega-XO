@@ -33,7 +33,7 @@ export function renderDownloadPage(context = {}) {
   const anyAvailable = platforms.some(item => available(item.id)) || !!apk;
   const notice = unavailable && (!platform || !available(platform))
     ? `<div class="pg-note" role="status">${icon('info')}<p>${platform === 'android' && apk
-      ? 'The Google Play listing is not live yet. Use the direct Android APK below — it is fully functional.'
+      ? 'The Google Play listing is not live yet. Install the signed Android app using the direct download below.'
       : `${platform === 'ios' ? 'The iPhone and iPad' : platform === 'android' ? 'The Android' : 'The requested'} store listing is not available yet. Play in your browser while you wait.`}</p></div>`
     : '';
   return `<div class="pg-page pg-download-page">${pageHeading('YOUR NEXT MOVE. ANYWHERE.', 'Take the bigger game with you.', anyAvailable ? 'Choose your platform or play now in your browser. Your linked Mega XOXO profile keeps your rank, friends and progress together.' : 'Play instantly in your browser. Coming soon to iPhone, iPad and Android.')}
@@ -45,7 +45,7 @@ export function renderDownloadPage(context = {}) {
       const body = available(item.id)
         ? `Continue to the official Mega XOXO listing on ${item.store}. The store shows the current release and device requirements.`
         : item.id === 'android' && apkForItem
-          ? `The official Google Play listing is not live yet. Until it is, install the signed Mega XOXO APK directly — it is the fully functional app.`
+          ? `The official Google Play listing is not live yet. Install the signed Mega XOXO app directly while we prepare the Google Play release.`
           : `The official Mega XOXO listing on ${item.store} is not available here yet. You can start a game in your browser today.`;
       const direct = apkForItem
         ? `<div class="pg-apk-direct"><div class="pg-apk-meta"><span class="mx-chip">Version ${e(apkForItem.versionName)}</span><span class="mx-chip">${Math.round(apkForItem.bytes / 1048576)} MB</span></div><a class="mx-button primary" href="${e(apkForItem.path)}" download>Download the Android APK</a><p class="pg-small mx-muted">Android shows a Play Protect warning for apps installed outside the Play Store; choose “Install anyway” to continue.</p></div>`

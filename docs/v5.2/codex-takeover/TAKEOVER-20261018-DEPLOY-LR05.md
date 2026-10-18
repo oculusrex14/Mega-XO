@@ -2,6 +2,31 @@
  
  Companion to TAKEOVER-20261017.md (kept open for context; this file records the deploy and the monitoring fix).
 
+## TAKEOVER RESUMED — final direct APK repair (18 October 2026, after 17:16 UTC)
+
+- Owner resumed execution and requested temporary takeover from the local GLM agent, Luna Max
+  helpers, and a fixed downloadable APK. The active scope is the existing launch-completion plan;
+  store submission/formal attestations remain separate. Credential rotation is deferred exactly as
+  requested: **to be done when owner prompts it**. Earlier statements that it blocks this run are
+  superseded.
+- AUTH-02 regression confirmed and fixed in `1e46105`: `/native/email` issued `amr:['email']`,
+  while `authenticateNative` correctly accepts only pwd/otp/google/apple. Continue/reset now mint
+  pwd and email verification mints otp. Targeted route smoke: 5/5 PASS. The existing production
+  patch was verified on physical Android 5199676e, installed website APK 1.0.2/code 3: email sign-in
+  reached the existing profile and server wallet; native email, profile, save and online profile
+  requests all returned 200. No identity reassignment occurred in this takeover.
+- AUTH-04 remains open until the rebuilt APK passes: the device displayed a connection warning
+  even though invitations/challenges returned 200. Confirmed actual defect:
+  `MegaNativeHttpClient.transmit` called `JSONObject(bytes)` for every response, rejecting the
+  array bodies required by those read endpoints. Both native request boundaries also rejected all
+  query strings, making search/leaderboard reads unreachable. Repairs add one shared path policy,
+  allow only the existing search/leaderboard query keys, accept objects/lists, preserve server
+  error codes, and retain origin, bearer, redirect and size protections. Runtime JVM regressions
+  are included in GitHub native validation. Device acceptance is pending the rebuilt artifact.
+- Parallel Luna Max ownership: Goodall ads/consent; Confucius direct-APK commerce routing;
+  Popper independent auth/wire review; Ampere existing mail transport/configuration investigation.
+  Parent owns integration, physical device, release signing and deployment. No local CI suite.
+
 ## AUTH LOOP REPAIR (2026-10-18 ~15:00-19:45 IST, goal-driven continuation)
 
 ### Google sign-in unblocked (owner profile preserved)

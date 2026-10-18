@@ -2,6 +2,46 @@
  
  Companion to TAKEOVER-20261017.md (kept open for context; this file records the deploy and the monitoring fix).
 
+## PRODUCTION BUGFIX DEPLOY — OTP delivery + iOS board scroll (2026-10-19)
+
+Owner bug report (P0 OTP not delivered, P1 iOS Chrome scroll jump) fixed, deployed and verified.
+
+- P0 ROOT CAUSES: (1) host inventory `outbound.email: "disabled"` with no RESEND key — the mail lane
+  never composed; (2) `validateProductionBinding` refused ANY enabled outbound class at boot
+  (premature provider validation), so enabling email could not even start; (3) `dispatchDelivery`
+  swallowed queue failures — a challenge returned 200 "check your inbox" with nothing queued.
+- P0 FIXES (commits 34a962f mail fetcher, f1c4834/5c3787c hardening, 39eb203 fail-loud + boot fix):
+  enabled-outbound now boots when the provider is provisioned (`assertProviderClassesComposable`
+  moved to composition with the capability map); delivery without a sink answers 503
+  EMAIL_DELIVERY_NOT_CONFIGURED and a sink failure 503 EMAIL_DELIVERY_FAILED (challenge never
+  claimed when undeliverable); Resend fetcher wired. HOST CHANGES: `secrets/resend-api-key`
+  (0600, copied from the V4 send-only key), `RESEND_API_KEY_FILE` in provider-signin.env (backup
+  provider-signin.env.bak-20261019-mail), inventory `outbound.email: enabled` (backup
+  production.json.bak-20261019-mail). The existing antimatterinnovations.com sender/domain still
+  verifies at Resend (smoke send accepted from the host, key never left the machine).
+- P0 DEPLOY: 30565fbc1730ed9ee9b2a0cc3acb6e63793b8a9a + bundle
+  084642701e3e3443ad6cdcdb4878ad45ed0379c9d997fc5f5271633f9cd3bd6a (171 files). First swap failed
+  SERVE_LAUNCHER_MISSING (git-archive staging omitted host-managed files; recovered from
+  rollback/2026-10-18T19-49-27-645Z-65437-30565fbc1730/src-final — serve.sh, rehearse.sh,
+  authoritative inventory restored; node_modules verified identical; no downtime, old process kept
+  serving until the successful restart). Post-restart: readyz 200 ready:true, boot self-checks true,
+  log clean. DEPLOY-SCRIPT DEBT: staging must carry host-managed files and verify the launcher
+  before the swap — tracked, not yet committed.
+- P0 E2E (real Resend send, code never printed): signup 200 + challenge, NO delivery fields in the
+  HTTP response; durable outbox row sealed -> worker claim -> provider 2xx -> state `sent`; verify
+  with the mailed code -> 200 activated; profile readable; test account deleted (3 created, 3
+  deleted, only send-lane rows remain; owner inbox got the messages). Rate limits and address budget
+  active during the test.
+- P1 (iOS Chrome scroll jump): `mountBoard` render destroyed and recreated `.gb-frame` (81 buttons)
+  and refocused the new cell — WebKit re-anchored the page to the top. FIX (30565fb): the frame now
+  updates in place (shared identity-based merge, divergent children repaired locally, structure
+  changes still replaced) and touch input skips focus restoration (keyboard keeps it).
+  VERIFIED: full realtime QA chromium 21/21 locally; GitHub Actions 32/32 on 30565fb (includes
+  webkit/firefox/chromium realtime + native + PostgreSQL). Android physical regression: 5 moves in
+  Chrome on the live site, stable anchor. iOS Chrome on-device pass needs the owner (30s).
+- LIVE AFTER DEPLOY: readyz 200; APK download 200 (1.0.3, 23,993,495 bytes); /api/download 303;
+  credentials table clean (no test rows); server log clean of email/refuse errors.
+
 ## TAKEOVER RESUMED — final direct APK repair (18 October 2026, after 17:16 UTC)
 
 - Owner resumed execution and requested temporary takeover from the local GLM agent, Luna Max

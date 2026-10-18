@@ -502,12 +502,11 @@ export function mountBoard(host, {
   const isThinking = () => !online && !host.ownerDocument?.hidden && (!tutorialController || !tutorialController.isActive()) && !session.getState().winner && mode === 'bot' && session.getState().turn === 'O';
 
   const view = host.ownerDocument?.defaultView;
-  let viewportFrame = null, pointerViewport = null, viewportRevision = 0, scrollQuietUntil = 0;
+  let viewportFrames = [], pointerViewport = null, viewportRevision = 0, scrollQuietUntil = 0;
   function cancelViewportCorrection(event) {
     viewportRevision++;
     pointerViewport = null;
-    if (viewportFrame !== null) view?.cancelAnimationFrame?.(viewportFrame);
-    viewportFrame = null;
+    for (const id of viewportFrames.splice(0)) view?.cancelAnimationFrame?.(id);
     if (event?.type === 'touchmove' || event?.type === 'wheel') scrollQuietUntil = Date.now() + 180;
   }
 
@@ -516,8 +515,7 @@ export function mountBoard(host, {
     const anchor = !lastInputWasKeyboard && Date.now() >= scrollQuietUntil
       ? pointerViewport || captureBoardViewport(host.querySelector('.gb-frame'), view) : null;
     pointerViewport = null;
-    if (viewportFrame !== null) view?.cancelAnimationFrame?.(viewportFrame);
-    viewportFrame = null;
+    for (const id of viewportFrames.splice(0)) view?.cancelAnimationFrame?.(id);
     const revision = ++viewportRevision;
     const guidedView = tutorialController && (tutorialController.isActive() || tutorialController.isConfirmRestart()) ? tutorialController.getView(session.getState()) : null;
     const guidedTargetCell = guidedView?.phase === 'AWAIT_MOVE' && guidedView.move ? `${guidedView.move.b}:${guidedView.move.c}` : null;
@@ -580,10 +578,14 @@ export function mountBoard(host, {
     if (workspace && typeof CustomEvent !== 'undefined') host.dispatchEvent?.(new CustomEvent('gb:render', {bubbles:true}));
     if (anchor) {
       restoreBoardViewport(anchor, view);
-      if (view?.requestAnimationFrame) viewportFrame = view.requestAnimationFrame(() => {
-        viewportFrame = null;
-        if (!destroyed && revision === viewportRevision) restoreBoardViewport(anchor, view);
-      });
+      /* Engines differ in when they apply their own deferred adjustment (desktop WebKit can act a
+       * frame after the render), so ride out a few frames. User input cancels immediately. */
+      for (let frame = 1; frame <= 3 && view?.requestAnimationFrame; frame++) {
+        viewportFrames.push(view.requestAnimationFrame(() => {
+          viewportFrames = viewportFrames.filter(id => id !== frame);
+          if (!destroyed && revision === viewportRevision) restoreBoardViewport(anchor, view);
+        }));
+      }
     }
   }
 
@@ -933,6 +935,8 @@ export function mountBoard(host, {
       pointerViewport = captureBoardViewport(host.querySelector('.gb-frame'), view);
     }
   };
+  /* Some touch sequences skip pointer events; the pre-gesture position is still the anchor. */
+  host.addEventListener('touchstart', noteInputType, {passive: true});
   host.ownerDocument?.addEventListener?.('pointerdown', cancelViewportCorrection, {capture:true, passive:true});
   host.ownerDocument?.addEventListener?.('touchmove', cancelViewportCorrection, {passive:true});
   host.ownerDocument?.addEventListener?.('wheel', cancelViewportCorrection, {passive:true});
@@ -988,6 +992,7 @@ export function mountBoard(host, {
       host.ownerDocument?.removeEventListener?.('visibilitychange', onVisibility);
       host.removeEventListener('click', onClick);
       host.removeEventListener('pointerdown', noteInputType);
+      host.removeEventListener('touchstart', noteInputType);
       host.removeEventListener('keydown', noteInputType);
       host.ownerDocument?.removeEventListener?.('pointerdown', cancelViewportCorrection, true);
       host.ownerDocument?.removeEventListener?.('touchmove', cancelViewportCorrection);

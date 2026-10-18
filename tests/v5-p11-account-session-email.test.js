@@ -25,6 +25,7 @@ const assert = require('node:assert/strict');
 const { EventEmitter } = require('node:events');
 const lab = require('./v5-pg-lab.js');
 const { createApiHandler } = require('../apps/api/index.js');
+const { Passwords } = require('../server/production/passwords.js');
 
 lab.installCleanup(test);
 
@@ -32,6 +33,8 @@ const ORIGIN = 'https://megaxo.online';
 const OTP_SECRET = 'v5-account-session-email-test-otp-secret';
 const EMAIL = 'new.player@example.test';
 const PASSWORD = 'correct horse 42';
+const WRONG_PASSWORD = 'incorrect horse 99';
+const EMAIL_CONTINUE_ADDRESS_LIMIT = 10;
 
 async function setupServer(database) {
   const pools = lab.poolsFor(database);
@@ -150,6 +153,50 @@ test('POST /api/account/email signup round-trip: OTP stays out of HTTP and verif
   assert.equal(session.data.linked, true);
   assert.equal(session.data.actorId, verified.data.actorId);
   assert.equal(session.data.providers.email?.linked, true);
+});
+
+test('emailContinue address budget caps wrong passwords across fresh guest sessions', async (t) => {
+  if (!(await lab.boot(t))) return;
+  const db = await lab.createDatabase('acct_email_address_rate');
+  const server = await setupServer(db);
+  t.after(async () => { await server.close(); });
+
+  // Create one real verified credential through the service's OTP flow, then attack it through
+  // distinct anonymous sessions. Varying case also proves the budget keys on normalized address.
+  const signupSession = await server.accounts.issue();
+  const pending = await server.accounts.emailContinue(signupSession.token, EMAIL, PASSWORD);
+  assert.equal(pending.verificationRequired, true);
+  await server.accounts.emailVerify(signupSession.token, pending.challengeId, pending.delivery.code);
+
+  for (let attempt = 0; attempt < EMAIL_CONTINUE_ADDRESS_LIMIT; attempt += 1) {
+    const freshSession = await server.accounts.issue();
+    const address = attempt % 2 === 0 ? EMAIL.toUpperCase() : EMAIL;
+    await assert.rejects(
+      server.accounts.emailContinue(freshSession.token, address, WRONG_PASSWORD),
+      (error) => error.message === 'INVALID_CREDENTIALS',
+    );
+  }
+
+  const addressHits = async () => Number(await lab.scalar(
+    db,
+    'SELECT COALESCE(SUM(hits), 0)::int FROM ops.rate_buckets WHERE bucket_id LIKE $1',
+    ['email-continue-address:%'],
+  ));
+  assert.equal(await addressHits(), EMAIL_CONTINUE_ADDRESS_LIMIT, 'each failed password spend commits to the shared address bucket');
+
+  const anotherFreshSession = await server.accounts.issue();
+  const originalVerify = Passwords.prototype.verify;
+  Passwords.prototype.verify = async () => { throw Error('PASSWORD_VERIFIER_REACHED'); };
+  try {
+    await assert.rejects(
+      server.accounts.emailContinue(anotherFreshSession.token, EMAIL, WRONG_PASSWORD),
+      (error) => error.message === 'RATE_LIMITED',
+      'an over-budget fresh session must be refused before scrypt verification starts',
+    );
+  } finally {
+    Passwords.prototype.verify = originalVerify;
+  }
+  assert.equal(await addressHits(), EMAIL_CONTINUE_ADDRESS_LIMIT, 'over-budget denial does not extend or roll back the committed cap');
 });
 
 test('POST /api/account/email forgot does not disclose whether an address exists', async (t) => {

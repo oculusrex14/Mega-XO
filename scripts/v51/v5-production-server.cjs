@@ -496,8 +496,9 @@ function loadWebArtifact(dir) {
   }
   const apk = manifest.store_links?.androidApk || null;
   if (apk) {
-    const entry = manifest.files.find(file => file.path === apk.path.slice(1));
-    if (!/^\\/downloads\\/android\\/[A-Za-z0-9._-]+\\.apk$/.test(apk.path) ||
+    const entry = typeof apk.path === 'string'
+      ? manifest.files.find(file => file.path === apk.path.slice(1)) : null;
+    if (typeof apk.path !== 'string' || !/^\/downloads\/android\/[A-Za-z0-9._-]+\.apk$/.test(apk.path) ||
         !Number.isSafeInteger(apk.versionCode) || apk.versionCode < 1 ||
         !entry || entry.sha256 !== apk.sha256 || entry.bytes !== apk.bytes) {
       throw new Error('WEB_BUILD_APK_MISMATCH');

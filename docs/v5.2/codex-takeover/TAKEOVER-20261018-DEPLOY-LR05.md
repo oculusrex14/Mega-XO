@@ -1,6 +1,52 @@
  # Takeover record, 2026-10-18 - production deploy + LR05 host sync
  
  Companion to TAKEOVER-20261017.md (kept open for context; this file records the deploy and the monitoring fix).
+
+## AUTH LOOP REPAIR (2026-10-18 ~15:00-19:45 IST, goal-driven continuation)
+
+### Google sign-in unblocked (owner profile preserved)
+
+- DIAGNOSIS: the app's Credential Manager returns an ID token whose azp is the ANDROID OAuth
+  client 334987882979-1t6srjoefs0f6hbavq7klp4g7d7r6o7n (not the Web client). Verification refused
+  it with INVALID_TOKEN_CLAIMS because GOOGLE_AUTHORIZED_PARTIES listed only the Web client.
+  A temporary error-code diagnostic on completeNativeProviderGrant (no token material) identified
+  this; it stays as permanent minimal telemetry.
+- FIX: GOOGLE_AUTHORIZED_PARTIES gained the Android client id (backup
+  secrets/provider-signin.env.bak-20261018-azp). NOTE: the client id was first transcribed
+  TRUNCATED from a 40-char log slice and had to be corrected - the widened diagnostic then
+  captured the full id.
+- REBIND: google subject 105341… (bound to throwaway player_be5a0fd4ad since Oct 15) was moved to
+  the owner actor u_e17f44f4-8… (mothervader693@gmail.com) via UPDATE in one transaction, after
+  uniqueness/profile checks. Restore SQL + full previous row:
+  state/identity-rebind-backup-2026-10-18T09-34-50-824Z.json (an earlier 09-34-15 file from a
+  dry variant is superseded). OWNER SHOULD CONFIRM the orphaned player_* profile may stay.
+- VERIFIED ON DEVICE 5199676e: fresh app sign-in lands on Oculus-Rex @oculus (MEGA-A889B432),
+  wallet Coins 157. Refresh family rf_78c652ed… active (abs-exp Nov 1).
+
+### Connection-interrupted banner root-caused and fixed (v1.0.1)
+
+- The contracted POST /api/community/presence and GET /api/community/challenges had NO V5
+  implementation (404s, logged via new api_error_response telemetry) - fixed by commits 37ac90d
+  (routes + migration 0063 profile.challenges_for SECURITY DEFINER + tests) applied live
+  (verify OK: 63 checksums).
+- The PERSISTENT banner after that: native bridge+transport capped POST bodies at 64 KiB while
+  account.save.write contracts 300000 - large cloud saves were refused device-side with no server
+  contact and classified 'degraded'. Fixed in 66cbd5c (Android Kotlin bridge+transport, iOS Swift
+  mirror) and shipped as online.megaxo.game v1.0.1 (versionCode 2, sha256
+  9dbbd4d6786412550be2565da2d37729d8e35f404330caa2e227cfe4d1b50d95), distributed from the website
+  (store-links pin; live full-download hash verified). Rollback point:
+  rollback/web-build-pre-1.0.1-20261018.tar.gz; src-final file backups *.pre-challenge-fix-20261018.
+- DEVICE VERIFIED after v1.0.1: force-stop relaunch restores the Oculus-Rex session, NO banner,
+  zero api_error_response during the window. The earlier 401 bursts were the pre-fix build's
+  stale-token poll; not reproduced after.
+
+### Open from this block (tracked in docs/v5.2/release/AUTH-AND-LAUNCH-COMPLETION-PLAN-20261018.md)
+
+- GOOGLE_CLIENT_SECRET must rotate: it was displayed once in a diagnostic output this session
+  (GOOGLE_CLIENT_SECRET line of provider-signin.env) - owner-approved browser rotation pending.
+- Native email lane (fresh-install email sign-in) is still unimplemented; production composes NO
+  mail transport (mail_deferred transport_disabled), so verification/reset mail cannot send yet.
+- iOS mirror caps fixed in source but no new iOS build was produced this block.
  
  ## PRODUCTION DEPLOY c66626c + live verification
  

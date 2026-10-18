@@ -1094,7 +1094,9 @@ async function main() {
     assets[p] = await probe(p);
   }
   const missing = await probe('/legacy-game/src/does-not-exist.js');
-  const downloadRedirectStatus = (await probe('/api/download?platform=android')).status;
+  /* The plain probe follows redirects, so this one is measured with redirect: 'manual'
+   * to assert the handler's actual 303 instead of the download page's final 200. */
+  const downloadRedirectStatus = await fetch(origin + '/api/download?platform=android', { redirect: 'manual' }).then((r) => r.status).catch(() => 0);
   const downloadSelfCheck = downloadRedirectStatus === 303;
   const assetSelfCheck = Object.values(assets).every((a) => a.status === 200);
   console.log(JSON.stringify({

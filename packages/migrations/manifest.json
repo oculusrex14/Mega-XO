@@ -375,6 +375,12 @@
       "name": "0062_order_discount_binding",
       "file": "migrations/0062_order_discount_binding.sql",
       "sha256": "126814d7885734f34b4ebefd6c4e339053cbd55314ccf907a494ba5e4cfa01ee"
+    },
+    {
+      "id": 63,
+      "name": "0063_api_challenge_projection",
+      "file": "migrations/0063_api_challenge_projection.sql",
+      "sha256": "b565b25cf4c8a85f061f68de9774d6ad3e377b9290b22a43ac62d8ae0c0971ee"
     }
   ]
 }

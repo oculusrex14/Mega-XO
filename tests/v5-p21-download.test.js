@@ -62,7 +62,7 @@ async function loopback(t, handler) {
 }
 
 test('P21-DOWNLOAD-01 browser device detection handles mobile, desktop and iPadOS desktop Safari', async () => {
-  const {detectDownloadPlatform, downloadHref} = await browser;
+  const {detectDownloadPlatform, downloadHref, apkMetricsHref} = await browser;
   assert.equal(detectDownloadPlatform({userAgent: agents.android, platform: 'Linux armv8l'}), 'android');
   for (const ua of [agents.iphone, agents.ipad]) assert.equal(detectDownloadPlatform({userAgent: ua}), 'ios');
   assert.equal(detectDownloadPlatform({userAgent: agents.ipadDesktop, platform: 'MacIntel', maxTouchPoints: 5}), 'ios');
@@ -72,6 +72,9 @@ test('P21-DOWNLOAD-01 browser device detection handles mobile, desktop and iPadO
   assert.equal(downloadHref('android'), '/api/download?platform=android');
   assert.equal(downloadHref('ios'), '/api/download?platform=ios');
   for (const device of ['desktop', undefined, 'https://evil.example']) assert.equal(downloadHref(device), '/api/download');
+  assert.equal(apkMetricsHref('/downloads/android/app.apk', false), '/downloads/android/app.apk');
+  assert.equal(apkMetricsHref('/downloads/android/app.apk?metrics=1', false), '/downloads/android/app.apk');
+  assert.equal(apkMetricsHref('/downloads/android/app.apk', true), '/downloads/android/app.apk?metrics=1');
 });
 
 test('P21-DOWNLOAD-02 chooser has truthful launch status and web play remains available', async () => {
@@ -89,6 +92,11 @@ test('P21-DOWNLOAD-02 chooser has truthful launch status and web play remains av
   assert.match(html, /href="\/api\/download\?platform=android"/);
   assert.match(html, /href="\/play"/);
   assert.match(html, /href="\/downloads\/android\/megaxo-1\.0\.3\.apk"/);
+  assert.match(html, /<input type="checkbox" data-apk-metrics-opt-in> Help count unique downloads \(optional\)/);
+  assert.doesNotMatch(html, /data-apk-metrics-opt-in[^>]*checked/);
+  assert.match(text(html), /server-completed APK responses, including retries/);
+  assert.match(text(html), /participating browsers only/);
+  assert.match(text(html), /aggregate lifetime totals: kept indefinitely/);
   assert.match(text(html), /iPhone and iPad store listing is not available yet/);
   assert.doesNotMatch(html, /href="https:|\.ipa|Download on the App Store/);
   // With nothing configured at all, the chooser stays honest: no store links and no APK card.

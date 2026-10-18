@@ -6,18 +6,22 @@
 
 | Metric | Stored PostgreSQL key in `ops.rate_buckets` | Meaning |
 | --- | --- | --- |
-| Total APK responses | `apkdl:total` | Successfully streamed GET response completions since this feature was deployed |
-| Estimated distinct download browsers | `apkdl:unique` | Number of new verified first-party anonymous download-cookie identities seen |
-| Total by APK release | `apkdl:version:<versionCode>:total` | Successful GET responses for the pinned manifest release |
-| Estimated distinct by release | `apkdl:version:<versionCode>:unique` | First response of this release by each observed anonymous browser |
-| Daily responses | `apkdl:day:<YYYY-MM-DD>:total` | Successful GET responses on the UTC day |
-| Daily first-time browsers | `apkdl:day:<YYYY-MM-DD>:unique-new` | Browser identities first observed overall on that UTC day |
-| Daily per-release responses | `apkdl:day:<YYYY-MM-DD>:version:<versionCode>:total` | Successful release responses on the UTC day |
-| Daily first-time browsers for release | `apkdl:day:<YYYY-MM-DD>:version:<versionCode>:unique-new` | First release responses by browser identities on that day |
+| Server-completed APK responses | `apkdl:total` | Eligible completed GET responses since deployment, including retries; opt-in is not required |
+| Participating browsers | `apkdl:unique` | Estimated new opted-in browser identities; only requests with explicit `metrics=1` participate |
+| Responses by APK release | `apkdl:version:<versionCode>:total` | Eligible completed GET responses for the pinned manifest release, including retries |
+| Participating browsers by release | `apkdl:version:<versionCode>:unique` | First opted-in response of this release by each observed participating browser |
+| Daily responses | `apkdl:day:<YYYY-MM-DD>:total` | Eligible completed GET responses on the UTC day |
+| Daily new participating browsers | `apkdl:day:<YYYY-MM-DD>:unique-new` | Opted-in browser identities first observed overall on that UTC day |
+| Daily per-release responses | `apkdl:day:<YYYY-MM-DD>:version:<versionCode>:total` | Eligible completed release responses on the UTC day |
+| Daily new participating browsers for release | `apkdl:day:<YYYY-MM-DD>:version:<versionCode>:unique-new` | First opted-in release responses by participating browsers on that day |
 
-**This is estimated unique browsers, not unique people/devices and not confirmed installations.** Two humans sharing a browser count as one; a person using multiple browsers or clearing cookies may count multiple times. Download managers blocking cookies and adversarial/bot requests can bias results. The cookie is random and signed, only placed on an eligible actual APK GET; the server stores just an HMAC-derived hash for deduplication. No email, profile ID, exact IP address, fingerprint or full user-agent is persisted by this feature, and nothing is joined to identity/game/advertising events.
+The download panel's **“Help count unique downloads (optional)”** checkbox is off by default and applies only to that APK request. It is a separate choice from optional game-usage telemetry and research-data collection. Unchecked requests still add eligible server-completed response totals, including retries, but do not parse or persist a browser identity; if an old download cookie is sent, the server clears it. Checking the box adds `?metrics=1` to that request and permits the download-only cookie and deduplication hash. The APK remains available either way.
 
-Cookie `mx_apk_dl` is first party, `Secure; HttpOnly; SameSite=Lax; Path=/downloads/android/`, expires after 365 days. Pseudonymous deduplication buckets expire after 400 days; stored aggregate lifetime totals do not expire. A returning browser after expiry is classified as a new browser. This is deliberately a bounded-retention estimate. No counters are reconstructed from old web logs; day 1 is when this instrumented server version is deployed.
+`HEAD` probes do not count. The APK route currently ignores `Range` and returns the full file with HTTP 200, not a partial 206 response; a repeated or retried GET counts another response only if its full source stream completes. Each such response increments totals, while the opted-in participating-browser estimate is deduplicated by cookie.
+
+**“Participating browsers” is an estimate for opted-in requests only, not unique people/devices and not confirmed installations.** Two humans sharing a browser may count as one; a person using multiple browsers, concurrent first requests, or clearing cookies may count multiple times. Download managers that block cookies and adversarial/bot requests can bias results. The cookie is random and signed, only set on an opted-in eligible APK GET; the server stores just an HMAC-derived hash for deduplication. No email, profile ID, exact IP address, fingerprint or full user-agent is persisted by this feature, and nothing is joined to identity/game/advertising events.
+
+Cookie `mx_apk_dl` is first party, `Secure; HttpOnly; SameSite=Lax; Path=/downloads/android/`, and expires after at most 365 days. Pseudonymous deduplication hashes and daily aggregate buckets expire within 400 days; cumulative aggregate response and participating-browser totals do not expire. A returning browser after deduplication expiry may be classified as new. No counters are reconstructed from old web logs; day 1 is when this instrumented server version is deployed.
 
 ## Private operations reporting
 
@@ -55,8 +59,8 @@ ORDER BY bucket_id;
 ## Safety and rollout
 
 - `loadWebArtifact()` verifies the APK path, SHA-256 and size against the generated bundle manifest. Only that exact APK path is instrumented; `/api/download` store/chooser redirects, `HEAD` probes, stale filenames, missing artifacts, crawlers and prefetch do not count.
-- The `finish` listener records a successful file-stream response (as observed by Node), **after** it has been sent to the HTTP response. An interrupted stream should not count; a network loss after the server finishes may still count.
+- A response counts only when the source file stream emits `end`, the HTTP status is 200, no stream error occurred, and the response did not close before writable completion. This is server-side completion, not proof the browser received or installed the APK; a network loss after Node finishes may still count.
 - Insertion and increments are one PostgreSQL transaction using `api_runtime`'s existing `ops.rate_buckets` grants and a dedicated auto-minted mode-0600 `apk-download.secret` (independent of OTP and proxy secrets); no migration, Core, API identity, mail, Redis, worker grant or native app change is needed.
 - Analytics database failures are logged as `apk.metrics_write_failed` (constant error code only; no cookies, identifiers or IPs) and do not fail or delay a completed download.
-- Before shipping, run `node --test tests/v52-apk-download-tracker.test.js tests/v5-p21-download.test.js tests/v51-v5-production-server.test.js` and all web static/build checks. Perform a real browser download from the deployed artifact; confirm first GET increments both totals, repeat with same cookie increments only total, second browser increments unique; `HEAD` and redirects do not. Confirm file digest/size, 200 GET, Caddy proxy headers and unchanged Android installation.
+- Before shipping, use the owner-approved CI flow and perform a real browser download from the deployed artifact. Confirm an unchecked GET increments only response totals and clears any old cookie; an opted-in GET increments totals and the participating-browser estimate; a retry with the same cookie increments only totals; `HEAD`, redirects, stream errors and client aborts do not record a completed response. Confirm file digest/size, 200 GET, Caddy proxy headers and unchanged Android installation.
 - Record deployed source/bundle hash and an independent rollback point. The privacy-policy disclosure and the handler must deploy together to the Oracle V5 production stack (not Vercel). Do not record historic downloads as if this counter existed before deployment.

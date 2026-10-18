@@ -615,6 +615,46 @@ const MIME_TYPES = Object.freeze({
   '.xml': 'application/xml; charset=utf-8', '.webmanifest': 'application/manifest+json',
 });
 
+/** Stream a pinned APK and record only a fully ended source stream sent as HTTP 200. */
+function streamApkFile(absolute, res, recordCompleted = null) {
+  let streamEnded = false, streamFailed = false, responseAborted = false;
+  const stream = fs.createReadStream(absolute);
+  stream.once('end', () => { streamEnded = true; });
+  stream.once('error', () => {
+    streamFailed = true;
+    if (!res.headersSent) {
+      res.statusCode = 500;
+      res.removeHeader('Content-Length');
+      res.removeHeader('Content-Disposition');
+      res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+      res.end('File unavailable');
+    }
+    else res.destroy();
+  });
+  res.once('close', () => {
+    if (!res.writableFinished) {
+      responseAborted = true;
+      stream.destroy();
+    }
+  });
+  if (typeof recordCompleted === 'function') res.once('finish', () => {
+    const expectedBytes = Number(res.getHeader('Content-Length'));
+    if (res.statusCode !== 200 || !streamEnded || streamFailed || responseAborted ||
+        !Number.isSafeInteger(expectedBytes) || stream.bytesRead !== expectedBytes) return;
+    // The file has already been delivered to Node's HTTP response: analytics must never gate it.
+    Promise.resolve().then(recordCompleted).catch(() => console.error(JSON.stringify({
+      event: 'apk.metrics_write_failed', code: 'APK_METRICS_PERSIST_FAILED',
+    })));
+  });
+  stream.pipe(res);
+  return stream;
+}
+
+function wantsApkMetrics(searchParams) {
+  const values = searchParams?.getAll?.('metrics') || [];
+  return values.length === 1 && values[0] === '1';
+}
+
 /* Reads a non-secret JSON inventory (a checked-in allowlisted manifest, never secret material). */
 function readInventory(file) {
   if (!fs.existsSync(file)) throw REFUSE('INVENTORY_MISSING', path.basename(file));
@@ -1154,16 +1194,16 @@ async function main() {
         if (size !== webArtifact.androidApk.bytes) throw new Error('WEB_BUILD_APK_SIZE_MISMATCH');
         res.setHeader('Content-Length', String(size));
         res.setHeader('Content-Disposition', 'attachment; filename="' + path.basename(absolute) + '"');
+        res.setHeader('Cache-Control', 'private, no-store');
         if (req.method === 'HEAD') { res.end(); return; }
+        let recordCompleted = null;
         try {
-          const recordCompleted = apkDownloadTracker.observe(req, res, webArtifact.androidApk);
-          if (recordCompleted) res.once('finish', () => {
-            // The file has already been delivered: an analytics outage must never break an APK.
-            recordCompleted().catch(() => console.error(JSON.stringify({
-              event: 'apk.metrics_write_failed', code: 'APK_METRICS_PERSIST_FAILED',
-            })));
+          recordCompleted = apkDownloadTracker.observe(req, res, webArtifact.androidApk, {
+            metricsEnabled: wantsApkMetrics(parsedUrl.searchParams),
           });
         } catch { /* analytics never gates file availability */ }
+        streamApkFile(absolute, res, recordCompleted);
+        return;
       }
       const stream = fs.createReadStream(absolute);
       stream.once('error', () => {
@@ -1315,6 +1355,6 @@ module.exports = {
   robotsHeaderFor, legalCanonicalLink, DEFAULT_ROBOTS_HEADER,
   FRESHNESS_STATE_FILE, OPS_BACKUP_MAX_AGE_MS, OPS_OUTBOX_BACKLOG_MAX,
   /* filesystem-bounded helpers used by the composition (never network) */
-  secretPaths, readSecretFile, loadStableSecret, readInventory, loadWebArtifact,
+  secretPaths, readSecretFile, loadStableSecret, readInventory, loadWebArtifact, streamApkFile, wantsApkMetrics,
   arg, safeError, main,
 };

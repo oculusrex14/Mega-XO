@@ -2,17 +2,20 @@
 
 /* First-party download counts for the DIRECT Android APK, not store redirects or button clicks.
  * A completed GET is a download response, NOT evidence of installation. A signed, random,
- * HttpOnly cookie estimates distinct browsers; it is never tied to identity, IP or User-Agent.
+ * HttpOnly cookie estimates participating browsers only when the individual request explicitly
+ * opts in; it is never tied to identity, IP or User-Agent.
  *
  * Existing ops.rate_buckets (api_runtime SELECT/INSERT/UPDATE) stores:
  *   apkdl:total                         all completed responses
- *   apkdl:unique                        first-seen anonymous browser IDs
+ *   apkdl:unique                        first-seen participating browser IDs
  *   apkdl:version:<code>:{total,unique}  cumulative per pinned APK versionCode
- *   apkdl:day:<date>:{total,unique-new}  requests + first-seen browser IDs that day
+ *   apkdl:day:<date>:{total,unique-new}  responses + first-seen opted-in browser IDs that day
  *   apkdl:day:<date>:version:<code>:{total,unique-new}
  * Visitor deduplication hashes expire after 400 days and never store the raw cookie ID. Aggregate
  * cumulative counts persist; return visits after the retention window may count as new, so this
- * is an ESTIMATE, not an exact count of people, installs, or fully received file bytes.
+ * is an ESTIMATE, not an exact count of people, installs, or fully received file bytes. Requests
+ * without explicit per-request consent still record completed-response totals, but never read or
+ * store a cookie identity or create a deduplication hash.
  *
  * Server-only: not an alternate path to client opt-in gameplay telemetry or account profiling.
  */
@@ -50,11 +53,27 @@ function createApkDownloadTracker({ pool, secret, now = Date.now, randomId } = {
     return presented.length === expected.length && crypto.timingSafeEqual(presented, expected) ? match[1] : null;
   }
 
-  function observe(req, res, apk) {
+  function hasCookieName(raw, name) {
+    return typeof raw === 'string' && raw.split(';').some(part => part.trim().split('=', 1)[0] === name);
+  }
+
+  function observe(req, res, apk, { metricsEnabled = false } = {}) {
     const method = String(req?.method || 'GET').toUpperCase();
     const ua = String(req?.headers?.['user-agent'] || '');
     if (method !== 'GET' || !apk || !Number.isSafeInteger(apk.versionCode) || apk.versionCode < 1 ||
         BOT.test(ua) || req?.headers?.purpose === 'prefetch' || req?.headers?.['sec-purpose'] === 'prefetch') return null;
+
+    res.setHeader('Cache-Control', 'private, no-store');
+    if (metricsEnabled !== true) {
+      // An unchecked request revokes this download-only opt-in on the next APK GET. Inspect only
+      // the cookie name; do not parse, validate, hash, or otherwise use the presented identifier.
+      if (hasCookieName(req.headers?.cookie, COOKIE)) {
+        res.setHeader('Set-Cookie',
+          `${COOKIE}=; Max-Age=0; Path=/downloads/android/; Secure; HttpOnly; SameSite=Lax`);
+      }
+      return () => record({ versionCode: apk.versionCode });
+    }
+
     const existingId = checkedCookie(req.headers?.cookie);
     const id = existingId || nonce();
     if (!/^[0-9a-f]{32}$/.test(id)) throw Error('APK_METRICS_RANDOM_INVALID');
@@ -63,32 +82,38 @@ function createApkDownloadTracker({ pool, secret, now = Date.now, randomId } = {
       res.setHeader('Set-Cookie',
         `${COOKIE}=${publicCookie(id)}; Max-Age=${COOKIE_AGE_SECONDS}; Path=/downloads/android/; Secure; HttpOnly; SameSite=Lax`);
     }
-    res.setHeader('Cache-Control', 'private, no-store');
     return () => record({ id, versionCode: apk.versionCode });
   }
 
   async function record({ id, versionCode }) {
-    if (!/^[0-9a-f]{32}$/.test(id) || !Number.isSafeInteger(versionCode) || versionCode < 1) throw Error('APK_METRICS_INVALID_EVENT');
+    const participating = id !== undefined;
+    if ((participating && !/^[0-9a-f]{32}$/.test(id)) || !Number.isSafeInteger(versionCode) || versionCode < 1) {
+      throw Error('APK_METRICS_INVALID_EVENT');
+    }
     const at = now(), day = new Date(at).toISOString().slice(0, 10);
     const expire = new Date(at + DEDUP_AGE_MS);
-    const digest = mac('visitor:' + id); // raw cookie IDs never enter PostgreSQL
     const version = 'version:' + versionCode;
-    const globalVisitorKey = 'apkdl:visitor:' + digest;
-    const releaseVisitorKey = 'apkdl:visitor:' + version + ':' + digest;
     return pool.withTransaction(async tx => {
-      const global = await tx.query(INSERT_UNIQUE, [globalVisitorKey, expire]);
-      const release = await tx.query(INSERT_UNIQUE, [releaseVisitorKey, expire]);
-      const newGlobal = global.rows.length > 0, newRelease = release.rows.length > 0;
+      let newGlobal = false, newRelease = false;
+      if (participating) {
+        const digest = mac('visitor:' + id); // raw cookie IDs never enter PostgreSQL
+        const globalVisitorKey = 'apkdl:visitor:' + digest;
+        const releaseVisitorKey = 'apkdl:visitor:' + version + ':' + digest;
+        const global = await tx.query(INSERT_UNIQUE, [globalVisitorKey, expire]);
+        const release = await tx.query(INSERT_UNIQUE, [releaseVisitorKey, expire]);
+        newGlobal = global.rows.length > 0;
+        newRelease = release.rows.length > 0;
+      }
       const counters = [
         ['apkdl:total', null],
         ['apkdl:' + version + ':total', null],
         ['apkdl:day:' + day + ':total', expire],
         ['apkdl:day:' + day + ':' + version + ':total', expire],
       ];
-      if (newGlobal) {
+      if (participating && newGlobal) {
         counters.push(['apkdl:unique', null], ['apkdl:day:' + day + ':unique-new', expire]);
       }
-      if (newRelease) {
+      if (participating && newRelease) {
         counters.push(['apkdl:' + version + ':unique', null],
           ['apkdl:day:' + day + ':' + version + ':unique-new', expire]);
       }

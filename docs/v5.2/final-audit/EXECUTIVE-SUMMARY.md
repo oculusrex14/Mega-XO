@@ -59,6 +59,10 @@ Full register: GUARDRAIL-INVENTORY.csv; rationale: RETAINED-PROTECTIONS.md.
 
 **NO-GO today; CONDITIONAL GO path defined.** See release/FINAL-LAUNCH-VERDICT.md for the exact blockers, the five conditional-GO criteria, the safe deployment sequence, and the human approvals required. The release candidate is the final audit head on codex (SHA recorded in TEST-RESULTS.md); the two P0s and the commerce P1 cluster are the only things between this audit and an authorized deploy.
 
+## Post-audit remediation (Codex takeover lane, 2026-10-18)
+
+Both P0s are closed (MXA-INF-001 rollback copy-semantics + rehearsal proofs; MXA-INF-002 retention timers disabled fail-closed on the VPS, journal-verified). The commerce P1 cluster is resolved on the takeover lane through d272777: ECO-003/006/007/008/009/010/012/013/016/017 FIXED, ECO-011 FIXED (pass exchange lane + benefit wiring), ECO-005 CODE COMPLETE (verification classes, migration 0061, ingress + routes, composition; live 200 answers still require the provider env + inventory flip - the routes fail closed 503 until then), ECO-015 SCOPED, ECO-004 has a precise handoff plan (takeover ledger 2026-10-18 section; console product setup is owner-external). PR #31 carries all of it to V5.2; MASTER-FINDINGS.csv statuses reflect this record row-by-row. Remaining owner-external items: store console products + Data Safety/rating attestations, physical-device acceptance matrix (ECO-014), Polar live-mode enablement, and the storeNotifications inventory flip.
+
 ## Architecture graph
 
 Viewer: architecture/graph-viewer/index.html (self-contained). Regenerate: node scripts/audit/generate-architecture-graph.cjs (deterministic, pinned-revision, byte-identical verified). Coverage: 3,175 nodes / 8,167 edges across 15 node types and 13 edge types. Limitation: static extraction of the pinned revision - runtime-only relationships (dynamic imports, native bridge dispatch) are annotated where the contracts registry records them.

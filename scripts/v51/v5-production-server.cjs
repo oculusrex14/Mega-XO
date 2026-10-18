@@ -783,10 +783,11 @@ async function main() {
    * createOrder refuses CASHFREE_UNAVAILABLE and no provider order can ever be created. */
   let cashfreeProvider = null;
   let cashfreeCatalog = null;
+  let cashfreeEnv = 'PRODUCTION';
   if (process.env.CASHFREE_APP_ID) {
     const cashfreeSecret = require(path.join(ROOT, 'server/production/config.js')).secret(process.env, 'CASHFREE_SECRET_KEY');
     if (!cashfreeSecret) throw REFUSE('INCOMPLETE_CASHFREE_CONFIG');
-    const cashfreeEnv = process.env.CASHFREE_ENV || 'PRODUCTION';
+    cashfreeEnv = process.env.CASHFREE_ENV || 'PRODUCTION';
     if (!['PRODUCTION', 'TEST'].includes(cashfreeEnv)) throw REFUSE('INVALID_CASHFREE_ENV');
     cashfreeCatalog = {};
     for (const id of PRODUCT_IDS) {

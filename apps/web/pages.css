@@ -468,6 +468,10 @@
 .pg-store-art>.mx-icon{width:55px;height:55px;color:#d899ff;filter:drop-shadow(0 0 10px rgba(165,78,244,.25))}
 .pg-store-price{min-height:40px;margin:6px 0 19px;font-size:1.8rem;font-weight:600;letter-spacing:-.025em;line-height:1.25;font-variant-numeric:tabular-nums}
 .pg-store-price>.mx-muted{font-size:.88rem;font-weight:400;letter-spacing:0}
+/* 2026-10-19: the launch-offer was/now comparison. The struck regular price stays readable but
+ * clearly superseded; the promo note carries the end date so the offer is honest about its window. */
+.pg-store-price>.pg-price-was{font-size:.92em;font-weight:500;opacity:.55;text-decoration:line-through;margin-right:.45em}
+.pg-promo-note{margin:-12px 0 14px;font-size:.82rem;color:var(--mx-accent,#7cc4ff)}
 .pg-store-card>.mx-button{width:100%;font-size:.83rem;padding-left:10px;padding-right:10px}
 .pg-store-wallet{display:flex;align-items:center;gap:27px;flex-wrap:wrap}
 .pg-store-wallet>span{display:flex;align-items:center;gap:10px;font-size:.88rem;color:#b8cce5}

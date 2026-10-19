@@ -59,12 +59,14 @@ export function normalizeStoreStatus(status, options = {}) {
     const inr = cashfree.available === true && typeof cashfree.products[id] === 'string' && cashfree.products[id].trim() ? cashfree.products[id] : null;
     const usdMinor = polar && polar.available === true && polarEntry ? polarEntry.amountCents : null;
     const dodoRegionPrices = dodo.available === true && dodo.regions[id] && typeof dodo.regions[id] === 'object' && !Array.isArray(dodo.regions[id]) ? dodo.regions[id] : null;
+    const dodoRegularRegions = dodo.available === true && dodo.regularRegions && typeof dodo.regularRegions === 'object' && !Array.isArray(dodo.regularRegions) && dodo.regularRegions[id] && typeof dodo.regularRegions[id] === 'object' && !Array.isArray(dodo.regularRegions[id]) ? dodo.regularRegions[id] : null;
     if (dodo.available === true && dodo.products[id] !== undefined && dodo.products[id] !== null) {
       const base = dodo.products[id];
       if (!base || typeof base !== 'object' || Array.isArray(base) || !Number.isSafeInteger(base.amountCents) || base.amountCents <= 0 || typeof base.currency !== 'string') return { ok: false, errorCode: 'STORE_UNAVAILABLE' };
     }
     const dodoMinor = dodoRegionPrices && regionCurrency && Number.isSafeInteger(dodoRegionPrices[regionCurrency]) ? dodoRegionPrices[regionCurrency] : (dodoRegionPrices && Number.isSafeInteger(dodoRegionPrices.usd) ? dodoRegionPrices.usd : null);
     const dodoCurrency = dodoMinor !== null ? (regionCurrency && dodoRegionPrices && Number.isSafeInteger(dodoRegionPrices[regionCurrency]) ? regionCurrency : 'usd') : null;
+    const dodoRegularMinor = dodoRegularRegions && dodoCurrency && Number.isSafeInteger(dodoRegularRegions[dodoCurrency]) ? dodoRegularRegions[dodoCurrency] : null;
     rows.push({
       id,
       kind: id === 'mega_pass' ? 'subscription' : 'once',
@@ -74,6 +76,7 @@ export function normalizeStoreStatus(status, options = {}) {
       inr,
       dodoPrice: dodoMinor !== null ? formatMinor(dodoMinor, dodoCurrency) : null,
       dodoCurrency,
+      dodoRegularPrice: dodoRegularMinor !== null && dodoMinor !== null && dodoRegularMinor > dodoMinor ? formatMinor(dodoRegularMinor, dodoCurrency) : null,
     });
   }
   const rawPass = status.pass && typeof status.pass === 'object' && !Array.isArray(status.pass) ? status.pass : {};

@@ -236,6 +236,9 @@ async function createCommerceService(pool, options = {}) {
    * metadata only - the charged amount is whatever the configured Dodo product price says. */
   dodoProvider: options.dodoProvider || null,
   dodoCatalog: options.dodoCatalog || null,
+  /* 2026-10-19: the REGULAR (pre-intro) price catalog, display-only (the slashed-price promo).
+   * Optional: absent config simply means the client renders no was/now comparison. */
+  dodoRegularCatalog: options.dodoRegularCatalog || null,
   dodoSuccessUrl: typeof options.dodoSuccessUrl === 'string' ? options.dodoSuccessUrl : '',
   dodoPackDiscountId: typeof options.dodoPackDiscountId === 'string' && options.dodoPackDiscountId ? options.dodoPackDiscountId : null,
   dodoIntroEndsAt: typeof options.dodoIntroEndsAt === 'string' && options.dodoIntroEndsAt ? options.dodoIntroEndsAt : null,
@@ -366,6 +369,17 @@ async function createCommerceService(pool, options = {}) {
    }
   }
   if (config.dodoIntroEndsAt !== null && Number.isNaN(Date.parse(config.dodoIntroEndsAt))) throw new PgGuardError('INVALID_DODO_INTRO_ENDS_AT');
+  if (config.dodoRegularCatalog !== null) {
+   if (typeof config.dodoRegularCatalog !== 'object' || Array.isArray(config.dodoRegularCatalog)) throw new PgGuardError('INVALID_DODO_REGULAR_CATALOG');
+   for (const [productId, entry] of Object.entries(config.dodoRegularCatalog)) {
+    if (!M.product(productId)) throw new PgGuardError('INVALID_DODO_PRODUCT', { productId });
+    if (!entry || typeof entry !== 'object' || Array.isArray(entry) || !entry.prices || typeof entry.prices !== 'object' || Array.isArray(entry.prices) || !Object.keys(entry.prices).length) throw new PgGuardError('INVALID_DODO_REGULAR_PRICE', { productId });
+    for (const [currency, cents] of Object.entries(entry.prices)) {
+     if (!SUPPORTED_CURRENCIES.has(currency)) throw new PgGuardError('INVALID_DODO_CURRENCY', { productId, currency });
+     if (typeof cents !== 'number' || !DODO_CENTS.test(String(cents)) || cents <= 0) throw new PgGuardError('INVALID_DODO_PRICE_CENTS', { productId, currency });
+    }
+   }
+  }
  }
  validateDodoCatalog();
 
@@ -1847,6 +1861,9 @@ async function createCommerceService(pool, options = {}) {
       /* Region-aware display prices in minor units (the localized Dodo prices); the client picks
        * its currency and the checkout charges exactly the recorded amount for that currency. */
       regions: Object.fromEntries(Object.entries(config.dodoCatalog || {}).map(([id, entry]) => [id, Object.fromEntries(Object.entries(entry.prices).map(([currency, cents]) => [currency, cents]))])),
+      /* The REGULAR (pre-intro) prices for the slashed-price promo, in the same per-currency
+       * minor-unit shape; absent config renders as null and the client shows no comparison. */
+      regularRegions: config.dodoRegularCatalog ? Object.fromEntries(Object.entries(config.dodoRegularCatalog).map(([id, entry]) => [id, Object.fromEntries(Object.entries(entry.prices).map(([currency, cents]) => [currency, cents]))])) : null,
       intro: config.dodoIntroEndsAt ? { active: dodoIntroActive(), endsAt: config.dodoIntroEndsAt } : null,
     } : { available: false, products: {}, regions: {} },
     pass: own.pass || { active: false, periodEnd: null, cancelAtPeriodEnd: false },

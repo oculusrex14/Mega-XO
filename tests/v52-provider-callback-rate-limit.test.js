@@ -172,5 +172,5 @@ test('route: missing admission protection is a fail-closed 503', async () => {
 });
 
 test('every provider lane is covered by the shared limiter', () => {
-  assert.deepEqual(PROVIDERS, ['admob', 'cashfree', 'polar']);
+  assert.deepEqual(PROVIDERS, ['admob', 'cashfree', 'polar', 'dodo']);
 });

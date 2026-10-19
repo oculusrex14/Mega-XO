@@ -54,15 +54,22 @@ function recordedLsn() {
 }
 
 function queryLsn() {
+  // The P15 environment intentionally strips ambient variables. Carry ONLY the deployment
+  // root so the pinned psql wrapper reads the same root's protected image identity when
+  // an isolated rehearsal uses V5_ROOT rather than the host production default.
+  const pgEnv = { ...buildTargetEnv(), V5_ROOT: ROOT };
   const probe = spawnSync(process.env.V5_PSQL_BIN || 'psql',
     ['-X', '-t', '-A', '-c', 'SELECT pg_current_wal_lsn()::text'],
-    { env: buildTargetEnv(), encoding: 'utf8', timeout: 30000 });
+    { env: pgEnv, encoding: 'utf8', timeout: 30000 });
   if (probe.error || probe.status !== 0) refuse(probe.error ? String(probe.error.code || probe.error.message) : 'psql-exit-' + probe.status);
   const value = String(probe.stdout || '').trim();
   if (!/^[0-9A-F]+\/[0-9A-F]+$/.test(value)) refuse('lsn-unparsable');
   return value;
 }
 if (printLsn) { process.stdout.write(queryLsn() + '\n'); process.exit(0); }
+/* A recovery drill's --force must NEVER be downgraded into an unchanged skip. Still
+ * validate the exact source binding and live LSN query before authorizing the dump. */
+if (force) { queryLsn(); process.exit(0); }
 const previous = recordedLsn();
 if (!previous) process.exit(0); // fail open: unknown state dumps
 const current = queryLsn();

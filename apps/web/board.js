@@ -173,6 +173,7 @@ export function mergeRenderedElement(current, next) {
  * the board and WebKit may apply a deferred focus/scroll adjustment. Anchor only a visible board
  * during a state render; user scroll/zoom/navigation is never locked. */
 export function captureBoardViewport(frame, view) {
+  if (globalThis.__VP_DEBUG) globalThis.__VP_DEBUG.push({capture:true, at:Date.now()%1000000, top:Math.round((frame?.getBoundingClientRect?.().top||0)*100)/100, scrollY:view?.scrollY});
   if (!frame?.getBoundingClientRect || !view?.scrollTo) return null;
   const rect = frame.getBoundingClientRect();
   const viewport = view.visualViewport;
@@ -183,6 +184,7 @@ export function captureBoardViewport(frame, view) {
 }
 
 export function restoreBoardViewport(anchor, view) {
+  if (globalThis.__VP_DEBUG) globalThis.__VP_DEBUG.push({restore:true, at:Date.now()%1000000, target:anchor.top, current:Math.round((anchor.frame?.getBoundingClientRect?.().top||0)*100)/100, scrollY:view?.scrollY});
   if (!anchor || anchor.frame.isConnected === false || !view?.scrollTo) return;
   if ((view.visualViewport?.scale || 1) !== anchor.scale) return;
   const delta = anchor.frame.getBoundingClientRect().top - (view.visualViewport?.offsetTop || 0) - anchor.top;
@@ -502,21 +504,39 @@ export function mountBoard(host, {
   const isThinking = () => !online && !host.ownerDocument?.hidden && (!tutorialController || !tutorialController.isActive()) && !session.getState().winner && mode === 'bot' && session.getState().turn === 'O';
 
   const view = host.ownerDocument?.defaultView;
-  let viewportFrames = [], pointerViewport = null, viewportRevision = 0, scrollQuietUntil = 0;
+  let viewportFrames = [], viewportTimers = [], pointerViewport = null, viewportRevision = 0, scrollQuietUntil = 0;
   let gestureLast = null, gestureDistance = 0;
+  /* The board viewport position last verified without a user gesture in between, plus the
+   * gesture epoch it was verified under. A position change with no gesture is an engine-side
+   * jump (some WebKit builds adjust late), and it is undone; a genuine drag or wheel bumps the
+   * epoch so the next capture re-baselines to where the user actually scrolled. */
+  let viewportLastGood = null, gestureEpoch = 0;
+  /* Only undo small unexplained drifts: a large change means the page itself moved (navigation,
+   * layout collapse, programmatic scroll) and the board's new position belongs to the user. */
+  const VIEWPORT_JUMP_ADOPT_PX = 120;
   function cancelViewportCorrection(event) {
     viewportRevision++;
     pointerViewport = null;
     for (const id of viewportFrames.splice(0)) view?.cancelAnimationFrame?.(id);
+    for (const id of viewportTimers.splice(0)) view?.clearTimeout?.(id);
     if (event?.type === 'wheel') scrollQuietUntil = Date.now() + 180;
+  }
+  function stabilizeAnchor(anchor) {
+    if (!anchor) return null;
+    if (viewportLastGood && viewportLastGood.epoch === gestureEpoch
+      && Math.abs(anchor.top - viewportLastGood.top) > 0.5
+      && Math.abs(anchor.top - viewportLastGood.top) <= VIEWPORT_JUMP_ADOPT_PX) anchor.top = viewportLastGood.top;
+    viewportLastGood = {top: anchor.top, epoch: gestureEpoch};
+    return anchor;
   }
 
   function render({ focusCell = false, setting = null } = {}) {
     if (destroyed) return;
     const anchor = !lastInputWasKeyboard && Date.now() >= scrollQuietUntil
-      ? pointerViewport || captureBoardViewport(host.querySelector('.gb-frame'), view) : null;
+      ? stabilizeAnchor(pointerViewport || captureBoardViewport(host.querySelector('.gb-frame'), view)) : null;
     pointerViewport = null;
     for (const id of viewportFrames.splice(0)) view?.cancelAnimationFrame?.(id);
+    for (const id of viewportTimers.splice(0)) view?.clearTimeout?.(id);
     const revision = ++viewportRevision;
     const guidedView = tutorialController && (tutorialController.isActive() || tutorialController.isConfirmRestart()) ? tutorialController.getView(session.getState()) : null;
     const guidedTargetCell = guidedView?.phase === 'AWAIT_MOVE' && guidedView.move ? `${guidedView.move.b}:${guidedView.move.c}` : null;
@@ -579,13 +599,21 @@ export function mountBoard(host, {
     if (workspace && typeof CustomEvent !== 'undefined') host.dispatchEvent?.(new CustomEvent('gb:render', {bubbles:true}));
     if (anchor) {
       restoreBoardViewport(anchor, view);
-      /* Engines differ in when they apply their own deferred adjustment (desktop WebKit can act a
-       * frame after the render), so ride out a few frames. User input cancels immediately. */
+      /* Engines differ in when they apply their own deferred adjustment (desktop WebKit can act
+       * several hundred milliseconds after the render), so ride out a bounded wall-clock window.
+       * User input cancels immediately; each attempt is a no-op once the delta is under half a
+       * pixel. */
       for (let frame = 1; frame <= 3 && view?.requestAnimationFrame; frame++) {
         viewportFrames.push(view.requestAnimationFrame(() => {
           viewportFrames = viewportFrames.filter(id => id !== frame);
           if (!destroyed && revision === viewportRevision) restoreBoardViewport(anchor, view);
         }));
+      }
+      for (const delay of [120, 250, 500]) {
+        viewportTimers.push(setTimeout(() => {
+          viewportTimers = viewportTimers.filter(id => id !== delay);
+          if (!destroyed && revision === viewportRevision) restoreBoardViewport(anchor, view);
+        }, delay));
       }
     }
   }
@@ -947,14 +975,14 @@ export function mountBoard(host, {
     if (!touch || !gestureLast) return;
     gestureDistance += Math.hypot(touch.clientX - gestureLast.x, touch.clientY - gestureLast.y);
     gestureLast = {x: touch.clientX, y: touch.clientY};
-    if (gestureDistance > 8) cancelViewportCorrection(event);
+    if (gestureDistance > 8) { gestureEpoch++; cancelViewportCorrection(event); }
   }
   /* Some touch sequences skip pointer events; the pre-gesture position is still the anchor. */
   host.addEventListener('touchstart', noteInputType, {passive: true});
   host.ownerDocument?.addEventListener?.('pointerdown', cancelViewportCorrection, {capture:true, passive:true});
   host.ownerDocument?.addEventListener?.('touchmove', onGestureMove, {passive:true});
   host.ownerDocument?.addEventListener?.('wheel', cancelViewportCorrection, {passive:true});
-  view?.addEventListener?.('resize', cancelViewportCorrection, {passive:true});
+  view?.addEventListener?.('resize', event => { viewportLastGood = null; cancelViewportCorrection(event); }, {passive:true});
   host.addEventListener('pointerdown', noteInputType);
   host.addEventListener('keydown', noteInputType);
 

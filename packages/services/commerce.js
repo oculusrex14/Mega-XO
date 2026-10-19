@@ -760,6 +760,7 @@ async function createCommerceService(pool, options = {}) {
     }
    }
    current.crowns = D.add(current.crowns, product.crowns);
+   current.purchasedCrowns = D.add(current.purchasedCrowns || 0, product.crowns);
    if (product.crowns) current.purchaseInfluenced = true;
    graph.receipts.set(id, { actor, productId: product.id, crowns: product.crowns, refunded: false, at: tx.clock() });
    if (product.crowns) journal(graph, { id: 'purchase:' + id, actor, currency: 'crowns', amount: product.crowns, reason: 'Crown purchase', source: 'verified-store', at: tx.clock() });
@@ -937,6 +938,7 @@ async function createCommerceService(pool, options = {}) {
     }
    }
    current.crowns = D.add(current.crowns, product.crowns);
+   current.purchasedCrowns = D.add(current.purchasedCrowns || 0, product.crowns);
    if (product.crowns) current.purchaseInfluenced = true;
    /* The ledger source stays within the frozen 0010 CHECK vocabulary: a server-verified Cashfree
     * payment is a verified-store purchase, exactly like the native store grants. */
@@ -1172,6 +1174,7 @@ async function createCommerceService(pool, options = {}) {
     }
    }
    current.crowns = D.add(current.crowns, product.crowns);
+   current.purchasedCrowns = D.add(current.purchasedCrowns || 0, product.crowns);
    if (product.crowns) current.purchaseInfluenced = true;
    if (product.crowns) journal(graph, { id: 'purchase:polar:' + checkoutId, actor: recorded.actor_id, currency: 'crowns', amount: product.crowns, reason: 'Crown purchase', source: 'verified-store', at: tx.clock() });
    await event(tx, recorded.actor_id, 'purchase_verified', product.crowns);
@@ -1746,6 +1749,7 @@ async function createCommerceService(pool, options = {}) {
     }
    }
    current.crowns = D.add(current.crowns, product.crowns);
+   current.purchasedCrowns = D.add(current.purchasedCrowns || 0, product.crowns);
    if (product.crowns) current.purchaseInfluenced = true;
    if (product.crowns) journal(graph, { id: 'purchase:dodo:' + checkoutId, actor: recorded.actor_id, currency: 'crowns', amount: product.crowns, reason: 'Crown purchase', source: 'verified-store', at: tx.clock() });
    await event(tx, recorded.actor_id, 'purchase_verified', product.crowns);

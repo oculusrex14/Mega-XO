@@ -52,7 +52,7 @@ export function normalizeStoreStatus(status, options = {}) {
   const rows = [];
   /* MXA-PROMO-CODE: the server decides when the launch code applies; the display discounts the
   * current price by the promo percentage only for products the server listed. */
-  const dodoPromoBlock = dodo.available === true && dodo.promo && typeof dodo.promo === 'object' && !Array.isArray(dodo.promo) && Array.isArray(dodo.promo.products) && Number.isSafeInteger(dodo.promo.percentBps) && dodo.promo.percentBps > 0 && dodo.promo.percentBps < 10000 && !(dodo.intro && dodo.intro.active === true) ? dodo.promo : null;
+  const dodoPromoBlock = dodo.available === true && dodo.promo && typeof dodo.promo === 'object' && !Array.isArray(dodo.promo) && Array.isArray(dodo.promo.products) && Number.isSafeInteger(dodo.promo.percentBps) && dodo.promo.percentBps > 0 && dodo.promo.percentBps < 10000 && Number.isFinite(Date.parse(String(dodo.promo.expiresAt))) && Date.now() < Date.parse(String(dodo.promo.expiresAt)) ? dodo.promo : null;
   const dodoPromoFor = id => dodoPromoBlock && dodoPromoBlock.products.includes(id) ? dodoPromoBlock : null;
   for (const id of WEB_PRODUCT_IDS) {
     const polarEntry = polar.products[id];
@@ -82,7 +82,7 @@ export function normalizeStoreStatus(status, options = {}) {
       inr,
       dodoPrice: dodoDisplayMinor !== null ? formatMinor(dodoDisplayMinor, dodoCurrency) : null,
       dodoCurrency,
-      dodoRegularPrice: dodoRegularMinor !== null && dodoMinor !== null && dodoRegularMinor > dodoMinor ? formatMinor(dodoRegularMinor, dodoCurrency) : null,
+    dodoRegularPrice: dodoRegularMinor !== null && dodoDisplayMinor !== null && dodoRegularMinor > dodoDisplayMinor ? formatMinor(dodoRegularMinor, dodoCurrency) : null,
     });
   }
   const rawPass = status.pass && typeof status.pass === 'object' && !Array.isArray(status.pass) ? status.pass : {};

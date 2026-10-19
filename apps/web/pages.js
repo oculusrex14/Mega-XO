@@ -330,7 +330,7 @@ function storePage(context) {
   /* 2026-10-19: the Dodo region price (the player's currency, from the server-validated catalog)
    * wins over the legacy USD/INR quotes; the native localized price still leads for store builds. */
   const priceText = row => typeof row.localizedPrice === 'string' && row.localizedPrice.trim() ? row.localizedPrice : typeof row.dodoPrice === 'string' && row.dodoPrice.trim() ? row.dodoPrice : typeof row.polarPrice === 'string' && row.polarPrice.trim() ? row.polarPrice : typeof row.inr === 'string' && row.inr.trim() ? '₹' + row.inr : null;
-  const introBadge = state.dodoIntro && state.dodoIntro.active === true ? '<span class="mx-chip pg-chip-blue">50% LAUNCH PRICE</span>' : '';
+  const introBadge = state.dodoIntro && state.dodoIntro.active === true ? '<span class="mx-chip pg-chip-blue">50% launch price using code LAUNCH50 at checkout</span>' : '';
   /* 2026-10-19: the launch-offer was/now comparison. The server-validated regular price renders
    * struck through next to the intro price; the end date keeps the window honest. No comparison
    * (regular price absent or not above the current price) renders exactly the plain price. */

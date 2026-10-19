@@ -1217,7 +1217,10 @@ async function createCommerceService(pool, options = {}) {
  }
  function dodoPromoFor(productId) {
   const promo = config.dodoPromo;
-  if (!promo || dodoIntroPricingActive() || !promo.products.includes(productId)) return null;
+  /* The promo window is the launch-discount mechanism itself: the products sit at BASE prices
+   * and the code delivers the 50% at checkout, so it applies for the whole configured window -
+   * there is no separate intro-price state to collide with any more. */
+  if (!promo || !promo.products.includes(productId)) return null;
   const end = Date.parse(promo.expiresAt);
   if (!Number.isFinite(end) || serviceNow() >= end) return null;
   return promo;

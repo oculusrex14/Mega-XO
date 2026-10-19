@@ -52,12 +52,12 @@ async function reserve(tx, actor, key, provider, product, acceptanceHash = null)
   [id, actor, VERSION, provider, key, product.id, product.crowns, iso(tx.clock()), acceptanceHash]);
  return { allocation_id: id, ...state, remaining: state.remaining - product.crowns };
 }
-async function creditLot(tx, actor, provider, key, grantId, crowns) {
+async function creditLot(tx, actor, provider, key, grantId, crowns, payment = null) {
  if (!crowns) return;
  const allocation = (await tx.query('SELECT allocation_id FROM monetization.promotion_allocations WHERE actor_id = $1 AND provider = $2 AND op_key = $3', [actor, provider, key])).rows[0];
  // An older server-approved checkout remains valid, but is never evidence of an accepted breach.
  if (!allocation) return;
- await tx.query('INSERT INTO monetization.promotion_lots (grant_id,allocation_id,actor_id,held_crowns,held_coins,credited_at) VALUES ($1,$2,$3,$4,0,$5) ON CONFLICT (grant_id) DO NOTHING', [grantId, allocation.allocation_id, actor, crowns, iso(tx.clock())]);
+ await tx.query('INSERT INTO monetization.promotion_lots (grant_id,allocation_id,actor_id,held_crowns,held_coins,credited_at,provider_order_ref,verified_price) VALUES ($1,$2,$3,$4,0,$5,$6,$7::jsonb) ON CONFLICT (grant_id) DO NOTHING', [grantId, allocation.allocation_id, actor, crowns, iso(tx.clock()), payment && payment.providerOrderRef, payment ? JSON.stringify({amount:payment.amount,currency:payment.currency}) : null]);
 }
 
 // Conservative attribution: charge EVERY debit against every extant lot. Only the portion a

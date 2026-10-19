@@ -955,7 +955,7 @@ async function createCommerceService(pool, options = {}) {
    /* The ledger source stays within the frozen 0010 CHECK vocabulary: a server-verified Cashfree
     * payment is a verified-store purchase, exactly like the native store grants. */
    if (product.crowns) journal(graph, { id: 'purchase:cashfree:' + orderId, actor: recorded.actor_id, currency: 'crowns', amount: product.crowns, reason: 'Crown purchase', source: 'verified-store', at: tx.clock() });
-   await creditWebPromotion(tx, recorded.actor_id, 'cashfree', orderId, 'purchase:cashfree:' + orderId, product.crowns);
+   await creditWebPromotion(tx, recorded.actor_id, 'cashfree', orderId, 'purchase:cashfree:' + orderId, product.crowns, verified);
    await event(tx, recorded.actor_id, 'purchase_verified', product.crowns);
    await tx.query('UPDATE monetization.cashfree_orders SET status = $2, settled_at = $3 WHERE order_id = $1', [orderId, 'PAID', iso(tx.clock())]);
    /* B3: a discounted pack converts its reserved use to used on verified settlement; the CHECK
@@ -1190,7 +1190,7 @@ async function createCommerceService(pool, options = {}) {
    current.purchasedCrowns = D.add(current.purchasedCrowns || 0, product.crowns);
    if (product.crowns) current.purchaseInfluenced = true;
    if (product.crowns) journal(graph, { id: 'purchase:polar:' + checkoutId, actor: recorded.actor_id, currency: 'crowns', amount: product.crowns, reason: 'Crown purchase', source: 'verified-store', at: tx.clock() });
-   await creditWebPromotion(tx, recorded.actor_id, 'polar', checkoutId, 'purchase:polar:' + checkoutId, product.crowns);
+   await creditWebPromotion(tx, recorded.actor_id, 'polar', checkoutId, 'purchase:polar:' + checkoutId, product.crowns, verified);
    await event(tx, recorded.actor_id, 'purchase_verified', product.crowns);
    await tx.query('UPDATE monetization.polar_orders SET status = $2, settled_at = $3, polar_order_id = COALESCE($4, polar_order_id) WHERE checkout_id = $1', [checkoutId, 'succeeded', iso(tx.clock()), polarOrderId]);
    /* MXA-ECO-011: a discounted pack converts its reserved use to used on verified settlement;
@@ -1766,7 +1766,7 @@ async function createCommerceService(pool, options = {}) {
    current.purchasedCrowns = D.add(current.purchasedCrowns || 0, product.crowns);
    if (product.crowns) current.purchaseInfluenced = true;
    if (product.crowns) journal(graph, { id: 'purchase:dodo:' + checkoutId, actor: recorded.actor_id, currency: 'crowns', amount: product.crowns, reason: 'Crown purchase', source: 'verified-store', at: tx.clock() });
-   await creditWebPromotion(tx, recorded.actor_id, 'dodo', checkoutId, 'purchase:dodo:' + checkoutId, product.crowns);
+   await creditWebPromotion(tx, recorded.actor_id, 'dodo', checkoutId, 'purchase:dodo:' + checkoutId, product.crowns, verified);
    await event(tx, recorded.actor_id, 'purchase_verified', product.crowns);
    await tx.query('UPDATE monetization.dodo_orders SET status = $2, settled_at = $3, dodo_payment_id = COALESCE($4, dodo_payment_id) WHERE checkout_id = $1', [checkoutId, 'succeeded', iso(tx.clock()), dodoPaymentId]);
    /* MXA-ECO-011: a discounted pack converts its reserved use to used on verified settlement. */
@@ -2018,10 +2018,10 @@ async function createCommerceService(pool, options = {}) {
    return { acceptanceHash, ...state };
   });
  }
- async function creditWebPromotion(tx, actor, provider, orderId, grantId, crowns) {
+ async function creditWebPromotion(tx, actor, provider, orderId, grantId, crowns, verified) {
   if (!crowns) return;
   const row = (await tx.query('SELECT op_key FROM monetization.commerce_create_requests WHERE actor_id = $1 AND provider = $2 AND provider_object_id = $3', [actor, provider, orderId])).rows[0];
-  if (row) await Promotion.creditLot(tx, actor, provider, row.op_key, grantId, crowns);
+  if (row) await Promotion.creditLot(tx, actor, provider, row.op_key, grantId, crowns, {providerOrderRef:orderId,amount:verified.amount,currency:verified.currency});
  }
 
  /* ---------------------------------------------------------------- reads */

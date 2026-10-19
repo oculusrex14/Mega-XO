@@ -44,6 +44,8 @@ CREATE TABLE monetization.promotion_lots (
   actor_id TEXT NOT NULL REFERENCES identity.actors(actor_id),
   held_crowns BIGINT NOT NULL CHECK (held_crowns >= 0),
   held_coins BIGINT NOT NULL CHECK (held_coins >= 0),
+  provider_order_ref TEXT,
+  verified_price JSONB,
   credited_at timestamptz NOT NULL
 );
 -- Append-only evidence/cases and outcomes. A case packet contains immutable frozen evidence;

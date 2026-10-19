@@ -10,6 +10,7 @@ const { createPromotionOperatorService } = require('../packages/services/promoti
 const { createPromotionAuditDelivery } = require('../packages/services/promotion-audit.js');
 const { createCommerceIngressService } = require('../packages/services/commerce-ingress.js');
 const { hash, VERSION } = require('../packages/services/promotion-allocation.js');
+const { readPromotionMetrics } = require('../packages/services/promotion-metrics.js');
 const DAY = 86400000, START = Date.parse('2026-11-01T12:00:00Z');
 lab.installCleanup(test);
 
@@ -39,7 +40,7 @@ test('promotion enforcement: real Core transactions, all providers, due process 
   dodoSuccessUrl: 'https://megaxo.online',
   polarProvider: { createCheckout: input => fakeCreate('polar',input), verifyCheckout: async id => verifies.get(id) },
   polarCatalog: Object.fromEntries(products.map(id => [id,{priceId,amountCents:499}])), polarSuccessUrl: 'https://megaxo.online',
-  cashfreeProvider: { createOrder: input => fakeCreate('cashfree',input), verifyOrder: async id => verifies.get(id), newOrderId: () => 'mxo_' + crypto.randomBytes(12).toString('hex'), isOrderId: () => true },
+  cashfreeProvider: { createOrder: input => fakeCreate('cashfree',input), verifyOrder: async id => verifies.get(id), newOrderId: () => 'cfmx' + crypto.randomBytes(12).toString('hex'), isOrderId: () => true },
   cashfreeCatalog: Object.fromEntries(products.map(id => [id,'250.00'])), cashfreeReturnUrl: 'https://megaxo.online',
  });
  const core = await createCoreService(pool, { now: () => clock });
@@ -55,7 +56,7 @@ test('promotion enforcement: real Core transactions, all providers, due process 
  await t.test('reserve across native and all web providers; race cannot take payment beyond cap', async () => {
   for (let i=0;i<19;i++) await commerce.reservePromotionCheckout('svc_alice','native-'+i,'crowns_1100',i%2?'apple':'google');
   const attempts = await Promise.allSettled(['dodo','polar','cashfree'].map((p,i)=>create(p,'race-'+i)));
-  assert.equal(attempts.filter(r=>r.status==='fulfilled').length,1);
+  assert.equal(attempts.filter(r=>r.status==='fulfilled').length,1,attempts.filter(r=>r.status==='rejected').map(r=>r.reason.message).join(', '));
   assert.equal(calls,1,'only one provider may create a payable checkout');
   for (const r of attempts.filter(r=>r.status==='rejected')) assert.match(r.reason.message,/PROMOTION_ALLOCATION_CAP/);
   assert.equal((await commerce.status('svc_alice')).promotionAllocation.remaining,0);
@@ -65,7 +66,7 @@ test('promotion enforcement: real Core transactions, all providers, due process 
   }
   assert.equal(calls,1);
  });
- await t.test('spend, convert, refund and failed provider creation do not replenish allocation', async () => {
+ await t.test('spend, convert and actual provider refund do not replenish allocation', async () => {
   const row = (await admin.query('SELECT provider,provider_object_id FROM monetization.commerce_create_requests WHERE actor_id=$1 AND state=$2',['svc_alice','READY'])).rows[0];
   const bobBefore = await wallet('svc_bob');
   if(row.provider==='dodo') await commerce.dodoOrderStatus('svc_alice',row.provider_object_id);
@@ -99,10 +100,18 @@ test('promotion enforcement: real Core transactions, all providers, due process 
  await t.test('power ledger source is admitted by the real migrated database', async () => {
   await admin.query("INSERT INTO economy.ledger (entry_id,actor_id,currency,amount,reason,source,at) VALUES ('power:source-probe','svc_carol','crowns',-2,'Synthetic coverage probe','power',$1)",[new Date(clock).toISOString()]);
  });
+ await t.test('private metrics SQL runs read-only and retains exact queries and frozen rows', async () => {
+  const report=await readPromotionMetrics(pool,{actor:'svc_bob',launchStart:new Date(START-DAY).toISOString(),launchEnd:new Date(clock).toISOString(),now:clock,sourceSha:'c'.repeat(40)});
+  assert.equal(report.signals.qualifyingCrowns,1100);
+  assert.equal(report.signals.S3.enabled,false);
+  assert.equal(report.signals.automaticRestriction,false);
+  assert.equal(report.evidence.queries.length,4);
+  assert.equal(report.evidence.frozenRows.purchases.length,1);
+ });
  await t.test('private command requires case evidence, elapsed notice and actual second approval', async () => {
   clock += 11*DAY;
   packet = {
-   transactions:[{grantId:lot.grant_id,allocationId:lot.allocation_id,providerOrderRef:order.checkoutId,verifiedPrice:{amountCents:499,currency:'usd'},priceVerificationHash:'b'.repeat(64)}],response:null,
+   transactions:[{grantId:lot.grant_id,allocationId:lot.allocation_id,providerOrderRef:order.checkoutId,verifiedPrice:{amount:499,currency:'usd'},priceVerificationHash:'b'.repeat(64)}],response:null,
    evidence:{policyHash:'a'.repeat(64),acceptanceHash:acceptance.acceptanceHash,sourceSha:'c'.repeat(40),sql:'SELECT * FROM frozen synthetic evidence WHERE actor_id=$1',params:['svc_bob'],snapshotAt:new Date(START).toISOString(),frozenRows:[{grantId:lot.grant_id,crowns:1100}],provenance:'verified synthetic order and matching grant'},
    notice:{rule:VERSION,transactions:order.checkoutId,figures:'Proposed 100 Crowns',appealRoute:'/appeals',inAccountReceipt:'delivered-in-account',emailReceipt:'delivered-email',deliveredAt:new Date(START).toISOString()},
    decision:{finding:'proven_breach',basis:'independent-evidence',reason:'Synthetic proven breach of accepted rule',reference:'decision:one',reviewer:first.actor,secondReviewer:second.actor,decidedAt:new Date(clock).toISOString(),appealUntil:new Date(clock+30*DAY).toISOString(),amounts:[{grantId:lot.grant_id,crowns:100,coins:0}]},

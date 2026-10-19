@@ -1,7 +1,7 @@
 'use strict';
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { requireCapacity, remaining, moveLot } = require('../packages/services/promotion-allocation.js');
+const { requireCapacity, remaining, moveLot, hash } = require('../packages/services/promotion-allocation.js');
 const { promotionSignals } = require('../packages/services/promotion-metrics.js');
 const { validateCase, debitHeld } = require('../packages/services/promotion-operator.js');
 const DAY = 86400000, NOW = Date.parse('2026-12-01T00:00:00Z');
@@ -63,3 +63,7 @@ test('due process rejects missing notice, ten-day wait, second reviewer and shor
  }
 });
 module.exports = { packet };
+test('case fingerprints survive JSONB key ordering without changing array order', () => {
+ assert.equal(hash({b:2,a:{z:3,c:1}}),hash({a:{c:1,z:3},b:2}));
+ assert.notEqual(hash([{crowns:1},{crowns:2}]),hash([{crowns:2},{crowns:1}]));
+});

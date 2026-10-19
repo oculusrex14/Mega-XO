@@ -113,7 +113,8 @@ async function createPromotionOperatorService(pool, { authorize, now = Date.now 
     if (!acceptance || acceptance.rule_hash !== lot.rule_hash || Date.parse(acceptance.accepted_at) < Date.parse(lot.published_at)
      || Date.parse(acceptance.accepted_at) > Date.parse(lot.reserved_at)) throw Error('ACCEPTED_POLICY_REQUIRED');
     const evidence = packet.transactions.find(t => t.grantId === a.grantId);
-    if (!evidence || !text(evidence.providerOrderRef) || !evidence.verifiedPrice || !text(evidence.priceVerificationHash)
+    if (!evidence || !text(evidence.providerOrderRef) || !evidence.verifiedPrice || !HEX.test(evidence.priceVerificationHash)
+     || evidence.providerOrderRef !== lot.provider_order_ref || !lot.verified_price || hash(evidence.verifiedPrice) !== hash(lot.verified_price)
      || evidence.allocationId !== lot.allocation_id) throw Error('GRANT_EVIDENCE_REQUIRED');
     // Defensive lower bound covers ALL ledger writers (including tournament/reservation paths),
     // even when their service did not maintain lots. Historic balances alone are never proof.

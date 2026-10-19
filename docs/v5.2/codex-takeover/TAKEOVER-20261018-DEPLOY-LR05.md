@@ -251,3 +251,43 @@ Owner bug report (P0 OTP not delivered, P1 iOS Chrome scroll jump) fixed, deploy
   email), so the owner must LINK Google to the oculus profile once from the website
   (/account -> Linked accounts & recovery -> Link Google) before the app's Google sign-in lands on
   the real profile. App install over the old build is safe (identical signing cert).
+
+## DODO PAYMENTS PRIMARY LANE + 50% INTRO PRICING (2026-10-19, in progress)
+
+OWNER DECISION (2026-10-19): Dodo Payments becomes the PRIMARY web checkout gateway under
+Antimatter Innovations (account approved by the founder; live API key provided to Codex and stored
+at ~/Downloads/Mega-XO-private-evidence/dodo/api.key, mode 600, never sent to subagents or logs).
+The Polar code stays composed but DORMANT (it composes only from POLAR_* env; the web client now
+prefers the Dodo lane when the status reports it). Cashfree stays dormant as before. Existing
+Polar/Cashfree orders keep settling through their own lanes.
+
+- VERIFIED LIVE (read-only + inert writes): the Dodo contracts were probed with the real live key -
+  product create/patch/delete, localized by-country INR prices on one-time AND recurring products,
+  checkout session creation (USD + INR + discount codes), Standard Webhooks signing (same scheme as
+  Polar), GET /checkouts/{id} (payment_id/payment_status nulls pre-payment), GET /payments/{id}
+  (total_amount/currency/metadata/subscription_id), GET /subscriptions/{id}
+  (previous/next_billing_date). Probe artifacts were DELETED (probe product + discount).
+- CATALOG CREATED LIVE (50% introductory prices, minor units): crowns_100 49/INR2500,
+  crowns_525 249/INR12500, crowns_1100 499/INR25000, remove_ads 199/INR9900,
+  mega_pass 199/mo/INR9900. IDs in ~/Downloads/Mega-XO-private-evidence/dodo/catalog.json (0600).
+  INR is a by-country localized price (IN). Base (post-window) prices:
+  99/499/999/399/399 USD, 4900/24900/49900/19900/19900 INR.
+- WEBHOOK registered live: ep_3Ku70eZ1Y68O94xU3AvrdRz99k4 ->
+  https://megaxo.online/api/monetization/dodo/webhook (payment.*, refund.succeeded,
+  subscription.active/updated/renewed/cancelled/expired). Signing secret retrieved via
+  GET /webhooks/{id}/secret and stored at ~/Downloads/Mega-XO-private-evidence/dodo/webhook-secret.raw (0600).
+- CODE (branch codex/dodo-primary-store): packages/services/dodo.js (provider), commerce.js
+  (dodo_create/status/webhook + settlement/refund/reconciliation mirroring Polar, with the shared
+  pass ledger via polar_subscriptions.provider='dodo' and the unified store_subscriptions/store_orders
+  views), migration 0064 (dodo_orders + provider CHECK widening + views), routes
+  /api/monetization/dodo/{checkout,status,webhook}, core-gateway forwarding, production composition
+  (fail-loud DODO_* env), region-aware store prices (India INR via the localized catalog; USD base
+  elsewhere) and the 50% intro display window (DODO_INTRO_ENDS_AT, display metadata only).
+  scripts/v5/dodo-price-window.cjs flips intro<->base with per-product verification and prints the
+  exact env block. The lane is INERT until DODO_API_KEY is configured on the host.
+- KEY SEMANTICS: the intro price is a DIRECT product price (no discount codes, so the settlement
+  amount comparison stays exact; the pass-holder pack discount keeps its code path post-window with
+  a +-1 minor-unit tolerance for provider rounding). Pass subscriptions bought during the window
+  keep the intro recurring price (grandfathered) unless the owner reprices later; extend the window
+  by bumping DODO_INTRO_ENDS_AT only.
+

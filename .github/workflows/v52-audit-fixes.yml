@@ -36,6 +36,8 @@ jobs:
             tests/v52-mail-resend.test.js
             tests/v52-web-board-merge.test.js
             tests/v52-apk-download-tracker.test.js
+          tests/v52-dodo-provider.test.js
+          tests/v52-dodo-store.test.js
           )
           for suite in "${suites[@]}"; do test -f "$suite"; done
           node --test "${suites[@]}"

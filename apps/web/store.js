@@ -26,11 +26,28 @@ function providerBlock(status, name) {
   return block;
 }
 
-export function normalizeStoreStatus(status) {
+/* 2026-10-19: the Dodo lane is optional in the shape (absent or available:false keeps every
+ * legacy reply valid). When present it carries the SERVER-AUTHORITATIVE per-currency display
+ * prices per product; the caller's region currency picks among the CONFIGURED currencies only —
+ * an unknown or unsupported region falls back to the base USD price, never an estimate. The
+ * intro window is display metadata only; the charged amount is the configured price. */
+function dodoBlock(status) {
+  const block = status.dodo;
+  if (block === undefined || block === null) return { available: false, products: {}, regions: {}, intro: null };
+  if (typeof block !== 'object' || Array.isArray(block)) return { malformed: true };
+  if (typeof block.available !== 'boolean' || !block.products || typeof block.products !== 'object' || Array.isArray(block.products) || !block.regions || typeof block.regions !== 'object' || Array.isArray(block.regions)) return { malformed: true };
+  if (block.intro !== undefined && block.intro !== null && (typeof block.intro !== 'object' || Array.isArray(block.intro) || typeof block.intro.active !== 'boolean' || typeof block.intro.endsAt !== 'string')) return { malformed: true };
+  return block;
+}
+
+export function normalizeStoreStatus(status, options = {}) {
   if (!status || typeof status !== 'object' || Array.isArray(status)) return { ok: false, errorCode: 'STORE_UNAVAILABLE' };
   const polar = providerBlock(status, 'polar');
   const cashfree = providerBlock(status, 'cashfree');
   if (!polar || !cashfree) return { ok: false, errorCode: 'STORE_UNAVAILABLE' };
+  const dodo = dodoBlock(status);
+  if (dodo.malformed) return { ok: false, errorCode: 'STORE_UNAVAILABLE' };
+  const regionCurrency = typeof options.regionCurrency === 'string' && CURRENCY_EXPONENTS[options.regionCurrency.toLowerCase()] !== undefined ? options.regionCurrency.toLowerCase() : null;
   const owned = Array.isArray(status.products) ? status.products : [];
   const rows = [];
   for (const id of WEB_PRODUCT_IDS) {
@@ -41,6 +58,13 @@ export function normalizeStoreStatus(status) {
     }
     const inr = cashfree.available === true && typeof cashfree.products[id] === 'string' && cashfree.products[id].trim() ? cashfree.products[id] : null;
     const usdMinor = polar && polar.available === true && polarEntry ? polarEntry.amountCents : null;
+    const dodoRegionPrices = dodo.available === true && dodo.regions[id] && typeof dodo.regions[id] === 'object' && !Array.isArray(dodo.regions[id]) ? dodo.regions[id] : null;
+    if (dodo.available === true && dodo.products[id] !== undefined && dodo.products[id] !== null) {
+      const base = dodo.products[id];
+      if (!base || typeof base !== 'object' || Array.isArray(base) || !Number.isSafeInteger(base.amountCents) || base.amountCents <= 0 || typeof base.currency !== 'string') return { ok: false, errorCode: 'STORE_UNAVAILABLE' };
+    }
+    const dodoMinor = dodoRegionPrices && regionCurrency && Number.isSafeInteger(dodoRegionPrices[regionCurrency]) ? dodoRegionPrices[regionCurrency] : (dodoRegionPrices && Number.isSafeInteger(dodoRegionPrices.usd) ? dodoRegionPrices.usd : null);
+    const dodoCurrency = dodoMinor !== null ? (regionCurrency && dodoRegionPrices && Number.isSafeInteger(dodoRegionPrices[regionCurrency]) ? regionCurrency : 'usd') : null;
     rows.push({
       id,
       kind: id === 'mega_pass' ? 'subscription' : 'once',
@@ -48,6 +72,8 @@ export function normalizeStoreStatus(status) {
       usdMinor,
       polarPrice: usdMinor !== null ? formatMinor(usdMinor, polarEntry.currency) : null,
       inr,
+      dodoPrice: dodoMinor !== null ? formatMinor(dodoMinor, dodoCurrency) : null,
+      dodoCurrency,
     });
   }
   const rawPass = status.pass && typeof status.pass === 'object' && !Array.isArray(status.pass) ? status.pass : {};
@@ -59,6 +85,8 @@ export function normalizeStoreStatus(status) {
       periodEnd: Number.isFinite(rawPass.periodEnd) ? rawPass.periodEnd : null,
       cancelAtPeriodEnd: rawPass.cancelAtPeriodEnd === true,
     },
-    webCheckoutAvailable: status.webCheckoutAvailable === true && (polar.available === true || cashfree.available === true),
+    webCheckoutAvailable: status.webCheckoutAvailable === true && (polar.available === true || cashfree.available === true || dodo.available === true),
+    webCheckoutProvider: typeof status.webCheckoutProvider === 'string' && ['dodo', 'polar', 'cashfree'].includes(status.webCheckoutProvider) ? status.webCheckoutProvider : null,
+    dodoIntro: dodo.intro ? { active: dodo.intro.active === true, endsAt: dodo.intro.endsAt } : null,
   };
 }

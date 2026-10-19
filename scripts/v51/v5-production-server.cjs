@@ -682,6 +682,7 @@ async function main() {
   const { createCommerceIngressService } = require(path.join(ROOT, 'packages/services/commerce-ingress.js'));
   const { createCashfreeProvider } = require(path.join(ROOT, 'packages/services/cashfree.js'));
   const { createPolarProvider } = require(path.join(ROOT, 'packages/services/polar.js'));
+  const { createDodoProvider } = require(path.join(ROOT, 'packages/services/dodo.js'));
   const { createRateLimiter } = require(path.join(ROOT, 'packages/services/rate-limit.js'));
   const { createProviderCallbackLimiter, createCallbackSourceIp } = require(path.join(ROOT, 'packages', 'services', 'provider-callback-limit.js'));
   const { createAdMobVerifier } = require(path.join(ROOT, 'server/admob-ssv.js'));
@@ -971,6 +972,64 @@ async function main() {
     }
   }
   const polarSuccessUrl = process.env.POLAR_SUCCESS_URL || 'https://megaxo.online';
+  /* 2026-10-19: the Dodo lane (owner decision: Dodo = PRIMARY web checkout; the Polar code stays
+   * composed but dormant, and existing Polar orders keep settling). Fail-loud like Polar:
+   * DODO_API_KEY without the webhook secret, the complete product catalog or the intro window
+   * grammar refuses boot; absent env keeps the lane disabled. Catalog entries map each store
+   * product to its Dodo product id plus the SERVER-AUTHORITATIVE per-currency amounts (usd base
+   * + localized inr), which the settlement re-verifies exactly. DODO_INTRO_ENDS_AT is display
+   * metadata: the charged price is whatever the configured Dodo product price says, and the
+   * documented price-window flip keeps the env and Dodo in agreement. */
+  let dodoProvider = null;
+  let dodoCatalog = null;
+  {
+    const readSecret = require(path.join(ROOT, 'server/production/config.js')).secret;
+    const dodoKey = readSecret(process.env, 'DODO_API_KEY');
+    if (dodoKey) {
+      const dodoWebhookSecret = readSecret(process.env, 'DODO_WEBHOOK_SECRET');
+      if (!dodoWebhookSecret) throw REFUSE('INCOMPLETE_DODO_CONFIG');
+      const dodoMode = process.env.DODO_MODE || 'live';
+      if (!['live', 'test'].includes(dodoMode)) throw REFUSE('INVALID_DODO_MODE');
+      dodoCatalog = {};
+      for (const id of PRODUCT_IDS) {
+        const productId = process.env['DODO_PRODUCT_' + id.toUpperCase()];
+        const usd = process.env['DODO_PRICE_CENTS_' + id.toUpperCase()];
+        if (!productId || !usd) throw REFUSE('INCOMPLETE_DODO_PRICE');
+        if (!/^pdt_[A-Za-z0-9]{6,64}$/.test(productId)) throw REFUSE('INVALID_DODO_PRODUCT_ID');
+        if (!/^\d{1,9}$/.test(usd) || Number(usd) <= 0) throw REFUSE('INVALID_DODO_PRICE_CENTS');
+        const entry = { productId, prices: { usd: Number(usd) } };
+        const inr = process.env['DODO_REGION_IN_' + id.toUpperCase()];
+        if (inr !== undefined) {
+          if (!/^\d{1,9}$/.test(inr) || Number(inr) <= 0) throw REFUSE('INVALID_DODO_PRICE_CENTS');
+          entry.prices.inr = Number(inr);
+        }
+        dodoCatalog[id] = entry;
+      }
+      const passProductId = process.env.DODO_PRODUCT_MEGA_PASS;
+      const passUsd = process.env.DODO_PRICE_CENTS_MEGA_PASS;
+      if (passProductId || passUsd) {
+        if (!passProductId || !passUsd) throw REFUSE('INCOMPLETE_DODO_PRICE');
+        if (!/^pdt_[A-Za-z0-9]{6,64}$/.test(passProductId)) throw REFUSE('INVALID_DODO_PRODUCT_ID');
+        if (!/^\d{1,9}$/.test(passUsd) || Number(passUsd) <= 0) throw REFUSE('INVALID_DODO_PRICE_CENTS');
+        const entry = dodoCatalog['mega_pass'] || { productId: passProductId, prices: {} };
+        entry.productId = passProductId;
+        entry.prices.usd = Number(passUsd);
+        const passInr = process.env.DODO_REGION_IN_MEGA_PASS;
+        if (passInr !== undefined) {
+          if (!/^\d{1,9}$/.test(passInr) || Number(passInr) <= 0) throw REFUSE('INVALID_DODO_PRICE_CENTS');
+          entry.prices.inr = Number(passInr);
+        }
+        dodoCatalog['mega_pass'] = entry;
+      }
+      dodoProvider = createDodoProvider({
+        apiKey: dodoKey,
+        webhookSecret: dodoWebhookSecret,
+        mode: dodoMode,
+      });
+    }
+  }
+  const dodoSuccessUrl = process.env.DODO_SUCCESS_URL || 'https://megaxo.online';
+  const dodoIntroEndsAt = process.env.DODO_INTRO_ENDS_AT || null;
   const commerce = await createCommerceService(corePool, {
     adMode: commerceAdMode,
     purchasesEnabled: process.env.MEGA_PURCHASES_ENABLED === 'true',
@@ -990,6 +1049,11 @@ async function main() {
     /* Sol review round 2: wired but inert until the env var exists - a discount id that is not
      * configured can never silently charge a wrong amount, and the pack-discount guard stays off. */
     polarPackDiscountId: process.env.POLAR_PACK_DISCOUNT_ID || undefined,
+    dodoProvider,
+    dodoCatalog,
+    dodoSuccessUrl,
+    dodoPackDiscountId: process.env.DODO_PACK_DISCOUNT_CODE || undefined,
+    dodoIntroEndsAt,
   });
   const commerceIngress = createCommerceIngressService({ commerce });
   const coreIngress = createCoreServiceIngress({ coreService: core, ticketIssuer, queue, tournaments, commerce: commerceIngress, leaderboardPool: corePool, secret: gatewaySecret });
@@ -1122,6 +1186,7 @@ async function main() {
     storeNotification: (input) => coreGateway.commerceStoreNotification(input),
     cashfreeWebhook: (payload) => coreGateway.commerceCashfreeWebhook(payload),
     polarWebhook: (payload) => coreGateway.commercePolarWebhook(payload),
+    dodoWebhook: (payload) => coreGateway.commerceDodoWebhook(payload),
     checkCallback: async (req, provider) => callbackLimiter.check(provider, callbackSourceIp.resolve(req)),
   };
   /* LR19: the OPTIONAL telemetry sink. Anonymous daily aggregates on ops.rate_buckets; the client

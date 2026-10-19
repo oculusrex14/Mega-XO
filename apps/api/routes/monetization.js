@@ -244,6 +244,54 @@ async function handleMonetizationRoute(context, req, res) {
       return true;
     }
 
+    /* 2026-10-19: the Dodo surfaces (owner decision: Dodo = PRIMARY web checkout, Polar
+     * dormant). Checkout creation is session-bound with the SERVER-AUTHORITATIVE per-currency
+     * catalog (the player's region hint only selects among configured currencies); the webhook is
+     * actor-free and verifies the Standard Webhooks HMAC over the EXACT raw bytes; the status
+     * poll is session-bound and hides other actors' orders. */
+    if (pathname === '/api/monetization/dodo/checkout') {
+      if (method !== 'POST') fail('METHOD_NOT_ALLOWED', 405);
+      const actor = await actorOf(context, req);
+      const body = await bodyObject(req);
+      if (typeof body.product !== 'string' || !body.product) fail('INVALID_PRODUCT', 400);
+      const email = typeof body.email === 'string' ? body.email.trim() : '';
+      if (email && (email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))) fail('INVALID_CUSTOMER_DETAILS', 400);
+      const region = {};
+      if (typeof body.currency === 'string' && body.currency) region.currency = body.currency;
+      if (typeof body.country === 'string' && body.country) region.country = body.country;
+      const key = opKeyFrom(req, body);
+      if (!key) fail('IDEMPOTENCY_KEY_REQUIRED', 400);
+      const result = await lane.command({ actor, op: 'dodo_create', opKey: key, key, productId: body.product, customer: email ? { email } : {}, region });
+      sendJson(res, 200, result, { 'Cache-Control': CACHE_CONTROL });
+      return true;
+    }
+
+    if (pathname === '/api/monetization/dodo/status') {
+      if (method !== 'GET') fail('METHOD_NOT_ALLOWED', 405);
+      const actor = await actorOf(context, req);
+      const checkoutId = new URL(req.url || '/', 'http://localhost').searchParams.get('checkout_id') || '';
+      if (!checkoutId) fail('ORDER_NOT_FOUND', 404);
+      const result = await lane.command({ actor, op: 'dodo_status', opKey: 'dodo-status', checkoutId });
+      sendJson(res, 200, result, { 'Cache-Control': CACHE_CONTROL });
+      return true;
+    }
+
+    if (pathname === '/api/monetization/dodo/webhook') {
+      if (method !== 'POST') fail('METHOD_NOT_ALLOWED', 405);
+      if (!(await admitCallback(lane, req, res, 'dodo'))) return true;
+      const raw = typeof req.body === 'string' ? req.body : '';
+      if (!raw) fail('INVALID_WEBHOOK', 400);
+      if (typeof lane.dodoWebhook !== 'function') fail('MONETIZATION_UNAVAILABLE', 503);
+      const result = await lane.dodoWebhook({
+        raw,
+        id: String((req.headers && req.headers['webhook-id']) || ''),
+        timestamp: String((req.headers && req.headers['webhook-timestamp']) || ''),
+        signature: String((req.headers && req.headers['webhook-signature']) || ''),
+      });
+      sendJson(res, 200, result, { 'Cache-Control': CACHE_CONTROL });
+      return true;
+    }
+
     const spec = ROUTES[pathname];
     if (!spec) { sendJson(res, 404, { error: 'NOT_FOUND' }); return true; }
     if (spec.method !== method) fail('METHOD_NOT_ALLOWED', 405);

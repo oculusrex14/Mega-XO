@@ -37,8 +37,10 @@ function createDodoProvider({ apiKey, webhookSecret, mode = 'live', fetchImpl = 
   const base = mode === 'test' ? TEST_BASE : LIVE_BASE;
   const headers = { Authorization: 'Bearer ' + apiKey, 'Content-Type': 'application/json' };
 
+  /* Sol P1 (promo audit): provider calls need an explicit deadline - a hung restore must tick
+   * back as a failure for the retry/alert path instead of pinning the sweep forever. */
   async function call(path, method, body) {
-    const response = await http(base + path, { method, headers, body: body === undefined ? undefined : JSON.stringify(body) });
+    const response = await http(base + path, { method, headers, body: body === undefined ? undefined : JSON.stringify(body), signal: AbortSignal.timeout(30000) });
     const text = await response.text();
     let parsed = null;
     try { parsed = text ? JSON.parse(text) : null; } catch { throw Error('DODO_BAD_RESPONSE'); }
@@ -76,7 +78,13 @@ function createDodoProvider({ apiKey, webhookSecret, mode = 'live', fetchImpl = 
       if (typeof actor !== 'string' || !actor || actor.length > 160) throw Error('DODO_METADATA_INVALID');
       if (typeof storeProductId !== 'string' || !storeProductId) throw Error('DODO_METADATA_INVALID');
       const cart = [{ product_id: productId, quantity: 1 }];
-      const body = { product_cart: cart, metadata: cleanMetadata({ ...metadata, actor, product_id: storeProductId }) };
+      /* Sol P1 (promo audit, round 2): currency changes are OFF for server-created checkouts -
+       * the recorded region owns the currency, so a checkout-page edit can never diverge the
+       * charged currency from the recorded order. Discount-code entry is OFF for one-time
+       * products (the provider price IS the promo; a customer code could only stack) but ON
+       * for the Mega Pass, whose ONLY discount is the player-entered LAUNCH50 code. */
+      const allowDiscountCode = storeProductId === 'mega_pass';
+      const body = { product_cart: cart, metadata: cleanMetadata({ ...metadata, actor, product_id: storeProductId }), feature_flags: { allow_discount_code: allowDiscountCode, allow_currency_selection: false } };
       if (email !== undefined && email !== null) {
         if (typeof email !== 'string' || email.length < 3 || email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw Error('INVALID_CUSTOMER_DETAILS');
         body.customer = { email };
@@ -158,6 +166,45 @@ function createDodoProvider({ apiKey, webhookSecret, mode = 'live', fetchImpl = 
         subscriptionId: typeof payment.subscription_id === 'string' && payment.subscription_id ? payment.subscription_id.slice(0, 160) : null,
         paymentId,
       };
+    },
+
+    /* MXA-PROMO-RESTORE (2026-10-19): verify-then-patch one one-time product back to its base
+     * price (the USD base price plus the INR localized rule), mirroring the dodo-price-window
+     * flip procedure. Idempotent per call - a verified product returns 'already' without any
+     * write - and every write is re-read afterwards, so a silently failed patch throws instead
+     * of reporting success. Only ever called for once-products; the Mega Pass price never flips
+     * because its promo discount is the customer-entered code on a base-priced subscription. */
+    async restoreProductPrice({ dodoProductId, base }) {
+      if (!this.isProductId(dodoProductId) || !base || typeof base !== 'object' || Array.isArray(base)) throw Error('DODO_RESTORE_INVALID');
+      const usd = Number(base.usd);
+      if (!Number.isSafeInteger(usd) || usd <= 0) throw Error('DODO_RESTORE_INVALID');
+      const inrTarget = Number.isSafeInteger(Number(base.inr)) && Number(base.inr) > 0 ? Number(base.inr) : null;
+      const product = await call('/products/' + encodeURIComponent(dodoProductId), 'GET');
+      const currentUsd = product && product.price ? Number(product.price.price) : null;
+      let inrRule = null;
+      if (inrTarget !== null) {
+        const localized = await call('/products/' + encodeURIComponent(dodoProductId) + '/localized-prices', 'GET');
+        const rules = localized && Array.isArray(localized.items) ? localized.items : [];
+        inrRule = rules.find(rule => String(rule.currency).toUpperCase() === 'INR' && rule.id) || null;
+      }
+      const usdOk = currentUsd === usd;
+      const inrOk = inrTarget === null ? true : (inrRule ? Number(inrRule.amount) === inrTarget : false);
+      if (usdOk && inrOk) return 'already';
+      if (!usdOk) await call('/products/' + encodeURIComponent(dodoProductId), 'PATCH', { price: { type: 'one_time_price', currency: 'USD', price: usd } });
+      if (!inrOk) {
+        if (!inrRule) await call('/products/' + encodeURIComponent(dodoProductId) + '/localized-prices', 'POST', { currency: 'INR', country_code: 'IN', amount: inrTarget });
+        else await call('/products/' + encodeURIComponent(dodoProductId) + '/localized-prices/' + encodeURIComponent(inrRule.id), 'PATCH', { amount: inrTarget });
+      }
+      const after = await call('/products/' + encodeURIComponent(dodoProductId), 'GET');
+      const afterUsd = after && after.price ? Number(after.price.price) : null;
+      if (afterUsd !== usd) throw Error('DODO_RESTORE_VERIFY_FAILED');
+      if (inrTarget !== null) {
+        const afterLocalized = await call('/products/' + encodeURIComponent(dodoProductId) + '/localized-prices', 'GET');
+        const afterRules = afterLocalized && Array.isArray(afterLocalized.items) ? afterLocalized.items : [];
+        const afterInr = afterRules.find(rule => String(rule.currency).toUpperCase() === 'INR');
+        if (!afterInr || Number(afterInr.amount) !== inrTarget) throw Error('DODO_RESTORE_VERIFY_FAILED');
+      }
+      return 'patched';
     },
 
     /* Standard Webhooks verification (shared scheme with Polar): entries are "v1,<base64>";

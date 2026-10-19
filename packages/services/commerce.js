@@ -239,6 +239,12 @@ async function createCommerceService(pool, options = {}) {
   /* 2026-10-19: the REGULAR (pre-intro) price catalog, display-only (the slashed-price promo).
    * Optional: absent config simply means the client renders no was/now comparison. */
   dodoRegularCatalog: options.dodoRegularCatalog || null,
+  /* MXA-PROMO-RESTORE-LEDGER (Sol round 2): the INTRO price catalog is RETAINED after the
+   * restore so settlement keeps knowing every price the product legitimately carried during the
+   * promo era - a legacy or boundary-crossing order then verifies at its recorded amount, the
+   * current catalog, the regular price or the intro price (all the product's own prices), no
+   * matter how many flips, restarts or partial restores happened since creation. */
+  dodoIntroCatalog: options.dodoIntroCatalog || null,
   dodoSuccessUrl: typeof options.dodoSuccessUrl === 'string' ? options.dodoSuccessUrl : '',
   dodoPackDiscountId: typeof options.dodoPackDiscountId === 'string' && options.dodoPackDiscountId ? options.dodoPackDiscountId : null,
   dodoIntroEndsAt: typeof options.dodoIntroEndsAt === 'string' && options.dodoIntroEndsAt ? options.dodoIntroEndsAt : null,
@@ -1217,10 +1223,54 @@ async function createCommerceService(pool, options = {}) {
  }
  function dodoPromoFor(productId) {
   const promo = config.dodoPromo;
-  if (!promo || dodoIntroPricingActive() || !promo.products.includes(productId)) return null;
+  /* The promo window is the launch-discount mechanism itself: the products sit at BASE prices
+   * and the code delivers the 50% at checkout, so it applies for the whole configured window -
+   * there is no separate intro-price state to collide with any more. */
+  if (!promo || !promo.products.includes(productId)) return null;
   const end = Date.parse(promo.expiresAt);
   if (!Number.isFinite(end) || serviceNow() >= end) return null;
   return promo;
+ }
+
+ /* MXA-PROMO-RESTORE (2026-10-19): the unattended promo-expiry restore. After the intro window
+  * the one-time Dodo products must return to their base prices WITHOUT a human SSH step: the
+  * provider state is verified first, only mismatches are patched, every write is re-verified,
+  * and only then does the running catalog flip to the regular prices so new orders record the
+  * base amount. A failed restore keeps the intro catalog serving (so the recorded amount always
+  * equals the provider charge), returns the failure list, and the caller raises the operational
+  * alert. Idempotent and retryable by construction; a restart simply re-verifies. The Mega Pass
+  * is excluded - its price never flips because its promo discount is the customer-entered code. */
+ let introRestoreDone = false;
+ async function processIntroPriceRestore() {
+  if (introRestoreDone) return { done: true, restored: 0, already: 0 };
+  const provider = config.dodoProvider;
+  if (!provider || typeof provider.restoreProductPrice !== 'function') return { skipped: 'no-provider' };
+  if (!config.dodoCatalog || !config.dodoRegularCatalog || !config.dodoIntroEndsAt) return { skipped: 'not-configured' };
+  const end = Date.parse(config.dodoIntroEndsAt);
+  if (!Number.isFinite(end)) return { skipped: 'invalid-window' };
+  if (serviceNow() < end) return { pending: true, endsAt: config.dodoIntroEndsAt };
+  const targets = Object.entries(config.dodoCatalog).filter(([productId, entry]) =>
+   productId !== 'mega_pass' && entry && typeof entry.productId === 'string' &&
+   config.dodoRegularCatalog[productId] && config.dodoRegularCatalog[productId].prices);
+  if (!targets.length) { introRestoreDone = true; return { done: true, restored: 0, already: 0 }; }
+  const failures = [];
+  let restored = 0, already = 0;
+  for (const [productId, entry] of targets) {
+   try {
+    const result = await provider.restoreProductPrice({ dodoProductId: entry.productId, base: config.dodoRegularCatalog[productId].prices });
+    if (result === 'patched') restored++; else already++;
+    /* MXA-PROMO-RESTORE-PARTIAL (Sol P1): flip each product's catalog prices the moment ITS
+     * provider restore is verified, so a later product's failure can never leave an
+     * already-restored product recording intro prices the provider no longer charges. */
+    entry.prices = { ...config.dodoRegularCatalog[productId].prices };
+   } catch (error) { failures.push({ productId, code: String(error && error.message || error).slice(0, 120) }); }
+  }
+  if (failures.length) return { pending: true, failures, restored, already };
+  /* Sol round 2: a successful unattended restore also resumes the pack discount - the explicit
+   * env flag must not stay true forever after the prices it guarded are gone. */
+  config.dodoIntroPricingActive = false;
+  introRestoreDone = true;
+  return { done: true, restored, already };
  }
 
  async function createDodoCheckout(actor, key, productId, customer, region = {}) {
@@ -1232,12 +1282,14 @@ async function createCommerceService(pool, options = {}) {
   const { currency, amountCents } = dodoPriceFor(entry, region && region.currency);
   const country = region && typeof region.country === 'string' && DODO_COUNTRY.test(region.country) ? region.country : null;
   const fingerprint = createFingerprint('dodo-create', productId + ':' + currency);
-  /* The promo (if any) decides the RECORDED amount: settlement re-verifies the charged total
-   * against exactly this value, so a Dodo-side discount code MUST be reflected here or every
-   * discounted payment would fail verification. Mutually exclusive with the pass pack
-   * discount, which the intro/pricing gate already keeps off during promo windows. */
-  const promo = dodoPromoFor(productId);
-  const recordedCents = promo ? Math.max(1, Math.round(amountCents * (1 - promo.percentBps / 10000))) : amountCents;
+  /* MXA-PROMO-SPLIT (2026-10-19, owner model, FINAL): the recorded amount is exactly the
+   * configured catalog price. During the launch window the Dodo product itself carries the
+   * intro price (the provider's own pricing mechanism - no code, no player action), and the
+   * Mega Pass stays at its base price because its discount is the LAUNCH50 code the player
+   * enters on the Dodo checkout. Recorded price and provider charge are therefore the same
+   * number by construction, and the settlement boundary tolerance below covers only the
+   * promo-boundary race and the code-applied pass total. */
+  const recordedCents = amountCents;
   const previous = await uow.run(async (tx) => {
    await tx.query('SET TRANSACTION READ ONLY');
    return (await tx.query('SELECT checkout_id, product_id, status FROM monetization.dodo_orders WHERE actor_id = $1 AND op_key = $2', [actor, key])).rows[0] || null;
@@ -1271,10 +1323,10 @@ async function createCommerceService(pool, options = {}) {
    * only on a terminal, proven non-creation; verified settlement converts it to used. During the
    * intro window the launch price is already the deeper discount, so the pack code never stacks. */
   const packProduct = M.product(productId);
-   const packDiscountUsable = Boolean(packProduct && packProduct.crowns > 0) && !promo && typeof config.dodoPackDiscountId === 'string' && config.dodoPackDiscountId.length > 0 && !dodoIntroPricingActive();
+   const packDiscountUsable = Boolean(packProduct && packProduct.crowns > 0) && !dodoPromoFor(productId) && typeof config.dodoPackDiscountId === 'string' && config.dodoPackDiscountId.length > 0 && !dodoIntroPricingActive();
   let reservedPeriod = null;
    let expectedCents = recordedCents;
-   if (packDiscountUsable && !promo) {
+   if (packDiscountUsable) {
    const reserved = await uow.run(async (tx) => (await tx.query(
     "UPDATE monetization.pass_periods pp SET pack_discounts_reserved = pp.pack_discounts_reserved + 1 FROM monetization.store_subscriptions ps WHERE pp.subscription_id = ps.subscription_id AND ps.actor_id = $1 AND ps.status = 'active' AND pp.period_start <= $2 AND pp.period_end > $2 AND pp.pack_discounts_reserved + pp.pack_discounts_used < 2 AND pp.subscription_id = (SELECT ps2.subscription_id FROM monetization.store_subscriptions ps2 WHERE ps2.actor_id = $1 AND ps2.status = 'active' ORDER BY ps2.created_at DESC LIMIT 1) AND pp.period_start = (SELECT MAX(pp3.period_start) FROM monetization.pass_periods pp3 WHERE pp3.subscription_id = pp.subscription_id AND pp3.period_start <= $2 AND pp3.period_end > $2) RETURNING pp.subscription_id, pp.period_start",
     [actor, new Date(serviceNow()).toISOString()])).rows[0] || null);
@@ -1289,7 +1341,10 @@ async function createCommerceService(pool, options = {}) {
     productId: entry.productId, actor, storeProductId: productId, email: email || undefined,
     successUrl: config.dodoSuccessUrl, metadata: { request_id: requestId, op_key: key },
     billingCurrency: currency, country,
-    discountCodes: reservedPeriod ? [config.dodoPackDiscountId] : promo ? [promo.code] : null,
+    /* No launch code is ever attached here: one-time products are discounted by the provider
+     * price itself, and the Mega Pass code is the player's own checkout action. The pack
+     * discount (15% off up to two packs per pass month) is the only server-attached code. */
+    discountCodes: reservedPeriod ? [config.dodoPackDiscountId] : null,
    }));
   } catch (error) {
    const code = String(error && error.message || 'DODO_CREATE_UNKNOWN');
@@ -1626,13 +1681,46 @@ async function createCommerceService(pool, options = {}) {
   if (typeof checkoutId !== 'string' || !provider.isSessionId(checkoutId)) throw Error('ORDER_NOT_FOUND');
   const recorded = await uow.run(async (tx) => {
    await tx.query('SET TRANSACTION READ ONLY');
-   return (await tx.query('SELECT checkout_id, actor_id, product_id, price_id, amount_cents, currency, status, dodo_payment_id, settled_at, refunded_at FROM monetization.dodo_orders WHERE checkout_id = $1', [checkoutId])).rows[0] || null;
+   return (await tx.query('SELECT checkout_id, actor_id, product_id, price_id, amount_cents, currency, status, dodo_payment_id, settled_at, refunded_at, created_at FROM monetization.dodo_orders WHERE checkout_id = $1', [checkoutId])).rows[0] || null;
   });
   if (!recorded) throw Error('ORDER_NOT_FOUND');
   if (recorded.refunded_at) throw Error('ORDER_REFUNDED');
   const verified = await provider.verifyCheckout(checkoutId);
   if (!verified || verified.status !== 'succeeded') return { checkoutId, settled: false, status: verified ? verified.status : null };
-  if (verified.currency !== recorded.currency || Math.abs(Number(recorded.amount_cents) - verified.amount) > 1) throw Error('ORDER_AMOUNT_MISMATCH');
+  /* MXA-PROMO-BOUNDARY (2026-10-19, owner model): the recorded amount is the catalog price at
+   * creation. A checkout that crosses the promo boundary - or predates a flip, a restore or a
+   * restart - may legitimately complete at ANY price the product actually carried in its promo
+   * era: the current catalog, the retained intro catalog, the regular (base) catalog, and for
+   * the Mega Pass the code-applied half of its base. Every candidate is one of the product's
+   * OWN configured prices; the accepted set can never contain a stacked or invented amount.
+   * The Dodo code expiry (provider-enforced) bounds the whole branch, and Dodo's own
+   * checkout-session expiry stops an old discounted checkout from living indefinitely. */
+  const promoConfig = config.dodoPromo && Array.isArray(config.dodoPromo.products) && config.dodoPromo.products.includes(recorded.product_id) ? config.dodoPromo : null;
+  const recordedAt = Date.parse(recorded.created_at);
+  /* The currency binds EVERY accepted amount: a matching number in the wrong currency is a
+   * mismatch (Sol P1: the fallback branches previously skipped this and a numerically equal
+   * cross-currency price verified). The structural candidates (current catalog, retained
+   * intro, regular base) are unconditional - they are prices the product really carried, so
+   * a flip/restore/restart between creation and payment can never strand the order. The
+   * code-applied half is the ONE promo-gated candidate: it verifies only for an order created
+   * inside the code window (Dodo itself rejects expired codes afterwards). */
+  if (verified.currency !== recorded.currency) throw Error('ORDER_AMOUNT_MISMATCH');
+  let amountVerified = Math.abs(Number(recorded.amount_cents) - verified.amount) <= 1;
+  if (!amountVerified) {
+   const candidates = new Set();
+   const addPrice = (entry) => { const cents = entry && entry.prices ? entry.prices[recorded.currency] : null; if (Number.isSafeInteger(cents)) candidates.add(cents); };
+   addPrice(config.dodoCatalog && config.dodoCatalog[recorded.product_id]);
+   addPrice(config.dodoRegularCatalog && config.dodoRegularCatalog[recorded.product_id]);
+   addPrice(config.dodoIntroCatalog && config.dodoIntroCatalog[recorded.product_id]);
+   if (promoConfig && recorded.product_id === 'mega_pass' && Number.isFinite(recordedAt) && recordedAt < Date.parse(promoConfig.expiresAt)) {
+    const passEntry = config.dodoCatalog && config.dodoCatalog.mega_pass;
+    const passBaseCents = passEntry && passEntry.prices ? passEntry.prices[recorded.currency] : null;
+    const promoCents = Number.isSafeInteger(passBaseCents) ? Math.max(1, Math.round(passBaseCents * (1 - promoConfig.percentBps / 10000))) : null;
+    if (promoCents !== null) candidates.add(promoCents);
+   }
+   if (candidates.has(verified.amount)) amountVerified = true;
+  }
+  if (!amountVerified) throw Error('ORDER_AMOUNT_MISMATCH');
   const metaActor = verified.metadata && typeof verified.metadata.actor === 'string' ? verified.metadata.actor : '';
   const metaProduct = verified.metadata && typeof verified.metadata.product_id === 'string' ? verified.metadata.product_id : '';
   if (metaActor !== recorded.actor_id || metaProduct !== recorded.product_id) throw Error('INVALID_RECEIPT');
@@ -1984,6 +2072,7 @@ async function createCommerceService(pool, options = {}) {
   settleDodoWebhook,
   dodoOrderStatus,
   refundDodoOrder,
+  processIntroPriceRestore,
   processPassGrants,
   passExchangeSplit,
   exchangeCoins,

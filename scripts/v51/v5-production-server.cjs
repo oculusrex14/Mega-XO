@@ -1052,6 +1052,29 @@ async function main() {
    }
    if (Object.keys(regular).length > 0) dodoRegularCatalog = regular;
   }
+  /* MXA-PROMO-RESTORE-LEDGER: the intro price table is RETAINED after the flip (it is the
+   * settlement boundary's price ledger, not a display input). Absent env keeps the lane
+   * running - the tolerance simply loses the intro candidate. */
+  let dodoIntroCatalog = null;
+  {
+   const intro = {};
+   for (const id of [...PRODUCT_IDS, 'mega_pass']) {
+    const usd = process.env['DODO_INTRO_CENTS_' + id.toUpperCase()];
+    const inr = process.env['DODO_INTRO_IN_' + id.toUpperCase()];
+    if (usd === undefined && inr === undefined) continue;
+    const prices = {};
+    if (usd !== undefined) {
+     if (!/^\d{1,9}$/.test(usd) || Number(usd) <= 0) throw REFUSE('INVALID_DODO_PRICE_CENTS');
+     prices.usd = Number(usd);
+    }
+    if (inr !== undefined) {
+     if (!/^\d{1,9}$/.test(inr) || Number(inr) <= 0) throw REFUSE('INVALID_DODO_PRICE_CENTS');
+     prices.inr = Number(inr);
+    }
+    intro[id] = { prices };
+   }
+   if (Object.keys(intro).length > 0) dodoIntroCatalog = intro;
+  }
   const commerce = await createCommerceService(corePool, {
     adMode: commerceAdMode,
     purchasesEnabled: process.env.MEGA_PURCHASES_ENABLED === 'true',
@@ -1074,6 +1097,7 @@ async function main() {
     dodoProvider,
     dodoCatalog,
     dodoRegularCatalog,
+    dodoIntroCatalog,
     dodoSuccessUrl,
     dodoPackDiscountId: process.env.DODO_PACK_DISCOUNT_CODE || undefined,
     dodoIntroEndsAt,
@@ -1425,6 +1449,47 @@ async function main() {
         .catch((error) => console.error(JSON.stringify({ event: 'store_finalization_error', code: safeError(error) })))
         .finally(() => { storeFinalizationBusy = false; });
     }, 30000);
+  }
+
+  /* MXA-PROMO-RESTORE: the unattended intro-price expiry sweep. Single-flight like the other
+   * jobs; the first tick after boot re-verifies provider state (so a restart or a missed window
+   * self-heals), a failed restore re-runs on the next tick and raises a RATE-LIMITED operations
+   * email so a silently discounted charge state cannot persist. While the restore is failing the
+   * commerce service keeps serving intro prices, so the recorded amount always equals the
+   * provider charge - no stuck orders, and the alert names the exact failure. */
+  if (arg('--intro-restore', 'on') !== 'off') {
+    let introRestoreBusy = false;
+    let lastRestoreAlertAt = 0;
+    const restoreAlert = async (result) => {
+      const nowAt = Date.now();
+      if (nowAt - lastRestoreAlertAt < 60 * 60 * 1000) return;
+      const to = process.env.OPERATIONS_ALERT_EMAIL || 'contact@antimatterinnovations.com';
+      try {
+        await mailTransport.sendMail({ to, subject: 'Mega XOXO — promo price restore needs attention', text: 'The scheduled Dodo intro-price restore did not complete: ' + JSON.stringify(result).slice(0, 800) + '. New orders are still recorded at intro prices until the restore succeeds. Investigate the Dodo API response, or apply the base-price env flip manually (scripts/v5/dodo-price-window.cjs --mode base).' });
+        /* Sol P2 (promo audit): the hourly allowance is consumed by a SENT alert only - a
+         * transient send failure retries on the next tick instead of silencing an hour. */
+        lastRestoreAlertAt = nowAt;
+      } catch (error) { console.error(JSON.stringify({ event: 'intro_restore_alert_error', code: safeError(error) })); }
+    };
+    const restoreTick = async () => {
+      const result = commerce.processIntroPriceRestore ? await commerce.processIntroPriceRestore() : null;
+      if (result && Array.isArray(result.failures) && result.failures.length) {
+        console.error(JSON.stringify({ event: 'intro_restore_failed', failures: result.failures }));
+        await restoreAlert(result);
+      } else if (result && result.done === true && ((result.restored || 0) + (result.already || 0)) > 0) {
+        console.log(JSON.stringify({ event: 'intro_restore_done', restored: result.restored || 0, already: result.already || 0, at: new Date().toISOString() }));
+      }
+      return result;
+    };
+    let introRestoreTimer = setInterval(() => {
+      if (introRestoreBusy) return;
+      introRestoreBusy = true;
+      Promise.resolve(restoreTick()).catch((error) => console.error(JSON.stringify({ event: 'intro_restore_error', code: safeError(error) }))).finally(() => { introRestoreBusy = false; });
+    }, 5 * 60 * 1000);
+    /* The boot tick shares the interval's single-flight guard so a slow first restore can never
+     * overlap the first timer tick. */
+    introRestoreBusy = true;
+    Promise.resolve(restoreTick()).catch((error) => console.error(JSON.stringify({ event: 'intro_restore_error', code: safeError(error) }))).finally(() => { introRestoreBusy = false; });
   }
 
   /* The worker pass (worker_runtime): lapsed work, the privacy/retention sweeps and mail delivery.

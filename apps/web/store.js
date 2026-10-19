@@ -52,8 +52,7 @@ export function normalizeStoreStatus(status, options = {}) {
   const rows = [];
   /* MXA-PROMO-CODE: the server decides when the launch code applies; the display discounts the
   * current price by the promo percentage only for products the server listed. */
-  const dodoPromoBlock = dodo.available === true && dodo.promo && typeof dodo.promo === 'object' && !Array.isArray(dodo.promo) && Array.isArray(dodo.promo.products) && Number.isSafeInteger(dodo.promo.percentBps) && dodo.promo.percentBps > 0 && dodo.promo.percentBps < 10000 && !(dodo.intro && dodo.intro.active === true) ? dodo.promo : null;
-  const dodoPromoFor = id => dodoPromoBlock && dodoPromoBlock.products.includes(id) ? dodoPromoBlock : null;
+  const dodoPromoBlock = dodo.available === true && dodo.promo && typeof dodo.promo === 'object' && !Array.isArray(dodo.promo) && Array.isArray(dodo.promo.products) && Number.isSafeInteger(dodo.promo.percentBps) && dodo.promo.percentBps > 0 && dodo.promo.percentBps < 10000 && Number.isFinite(Date.parse(String(dodo.promo.expiresAt))) && Date.now() < Date.parse(String(dodo.promo.expiresAt)) ? dodo.promo : null;
   for (const id of WEB_PRODUCT_IDS) {
     const polarEntry = polar.products[id];
     if (polarEntry !== undefined && polarEntry !== null) {
@@ -70,8 +69,11 @@ export function normalizeStoreStatus(status, options = {}) {
     }
     const dodoMinor = dodoRegionPrices && regionCurrency && Number.isSafeInteger(dodoRegionPrices[regionCurrency]) ? dodoRegionPrices[regionCurrency] : (dodoRegionPrices && Number.isSafeInteger(dodoRegionPrices.usd) ? dodoRegionPrices.usd : null);
     const dodoCurrency = dodoMinor !== null ? (regionCurrency && dodoRegionPrices && Number.isSafeInteger(dodoRegionPrices[regionCurrency]) ? regionCurrency : 'usd') : null;
-    const dodoPromo = dodoPromoFor(id);
-    const dodoDisplayMinor = dodoMinor !== null && dodoPromo ? Math.max(1, Math.round(dodoMinor * (1 - dodoPromo.percentBps / 10000))) : dodoMinor;
+    /* MXA-PROMO-SPLIT (2026-10-19, owner model): the server sends the CHARGEABLE price - the
+     * Dodo intro price during the launch window, the base price after it. The client never
+     * estimates a discount; the server-validated regular price renders struck through, and the
+     * LAUNCH50 code travels only in the promo block for the Mega Pass badge. */
+    const dodoDisplayMinor = dodoMinor;
     const dodoRegularMinor = dodoRegularRegions && dodoCurrency && Number.isSafeInteger(dodoRegularRegions[dodoCurrency]) ? dodoRegularRegions[dodoCurrency] : null;
     rows.push({
       id,
@@ -82,7 +84,7 @@ export function normalizeStoreStatus(status, options = {}) {
       inr,
       dodoPrice: dodoDisplayMinor !== null ? formatMinor(dodoDisplayMinor, dodoCurrency) : null,
       dodoCurrency,
-      dodoRegularPrice: dodoRegularMinor !== null && dodoMinor !== null && dodoRegularMinor > dodoMinor ? formatMinor(dodoRegularMinor, dodoCurrency) : null,
+    dodoRegularPrice: dodoRegularMinor !== null && dodoDisplayMinor !== null && dodoRegularMinor > dodoDisplayMinor ? formatMinor(dodoRegularMinor, dodoCurrency) : null,
     });
   }
   const rawPass = status.pass && typeof status.pass === 'object' && !Array.isArray(status.pass) ? status.pass : {};
@@ -97,6 +99,6 @@ export function normalizeStoreStatus(status, options = {}) {
     webCheckoutAvailable: status.webCheckoutAvailable === true && (polar.available === true || cashfree.available === true || dodo.available === true),
     webCheckoutProvider: typeof status.webCheckoutProvider === 'string' && ['dodo', 'polar', 'cashfree'].includes(status.webCheckoutProvider) ? status.webCheckoutProvider : null,
     dodoIntro: dodo.intro ? { active: dodo.intro.active === true, endsAt: dodo.intro.endsAt } : null,
-    dodoPromo: dodoPromoBlock ? { code: dodoPromoBlock.code, percentBps: dodoPromoBlock.percentBps, endsAt: dodoPromoBlock.expiresAt } : null,
+    dodoPromo: dodoPromoBlock ? { code: dodoPromoBlock.code, percentBps: dodoPromoBlock.percentBps, products: dodoPromoBlock.products, endsAt: dodoPromoBlock.expiresAt } : null,
   };
 }

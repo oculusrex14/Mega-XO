@@ -184,8 +184,25 @@ function main(argv) {
   }
 
   if (newest && newest.ageSeconds > opts.rpoEffective) {
-    problems.push('newest uploaded backup is ' + newest.ageSeconds + ' s old, beyond the ' +
+   /* Change-aware honesty (brief part G): an archive older than the RPO is NOT a violation if
+    * the host has a verified-unchanged marker written AFTER that archive by the backup unit -
+    * the marker proves a change check ran recently and the WAL LSN is unchanged, so every
+    * committed row is inside that archive. A missing, stale or unparsable marker fails closed
+    * exactly as before. */
+   const markerFile = path.join(STATE, 'backup-unchanged.json');
+   let marker = null;
+   try {
+     marker = JSON.parse(fs.readFileSync(markerFile, 'utf8'));
+   } catch {}
+   const markerValid = marker && typeof marker.checkedAt === 'string' && /^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(\.\d{3})?Z$/.test(marker.checkedAt)
+     && typeof marker.lsn === 'string' && Date.parse(marker.checkedAt) > now - opts.rpoEffective * 1000;
+   if (markerValid) {
+     newest.verifiedUnchangedUtc = utc(marker.checkedAt);
+     newest.verifiedUnchangedLsn = String(marker.lsn);
+   } else {
+     problems.push('newest uploaded backup is ' + newest.ageSeconds + ' s old, beyond the ' +
       opts.rpoEffective + ' s RPO (limit source: ' + (opts.rpo !== null ? '--rpo-seconds' : rpoSource) + ')');
+   }
   }
 
   const healthy = problems.length === 0;

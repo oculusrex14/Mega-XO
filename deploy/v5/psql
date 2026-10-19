@@ -1,0 +1,42 @@
+#!/bin/sh
+# Host-side PostgreSQL 16 psql wrapper.
+#
+# Mirrors deploy/v5/pg_dump exactly: same pinned image reference from the
+# host's protected state file, same allowlist of libpq environment, same
+# read-only secret bind mounts, same host network. Used by the change-aware
+# backup skip (v5-pg-backup.sh) for the single pg_current_wal_lsn() probe -
+# a query that returns a few bytes and never touches user tables.
+set -eu
+
+ROOT=${V5_ROOT:-/opt/mega-xo-v5-production}
+image_file=$ROOT/state/pg-image-ref
+[ -f "$image_file" ] || { echo 'V5_PSQL_REFUSED: pinned image reference missing' >&2; exit 64; }
+image=$(tr -d '\r\n' < "$image_file")
+case "$image" in
+  postgres:16-alpine@sha256:????????????????????????????????????????????????????????????????) ;;
+  *) echo 'V5_PSQL_REFUSED: unpinned postgres image reference' >&2; exit 64 ;;
+esac
+if [ -n "${V5_PG_IMAGE:-}" ] && [ "$V5_PG_IMAGE" != "$image" ]; then
+  echo 'V5_PSQL_REFUSED: V5_PG_IMAGE does not match the pinned reference' >&2
+  exit 64
+fi
+
+mounts=''
+for var in PGPASSFILE PGSSLROOTCERT; do
+  eval "value=\${$var:-}"
+  if [ -n "$value" ]; then
+    case "$value" in
+      /*) ;;
+      *) echo "V5_PSQL_REFUSED: $var must be absolute" >&2; exit 64 ;;
+    esac
+    [ -f "$value" ] || { echo "V5_PSQL_REFUSED: $var missing" >&2; exit 64; }
+    mounts="$mounts -v $value:$value:ro"
+  fi
+done
+
+# shellcheck disable=SC2086
+exec docker run --rm -i --user 0:0 --network host \
+  -e PGHOST -e PGPORT -e PGDATABASE -e PGUSER -e PGSSLMODE -e PGCONNECT_TIMEOUT \
+  -e PGAPPNAME -e PGPASSFILE -e PGSSLROOTCERT $mounts \
+  "$image" psql "$@"
+

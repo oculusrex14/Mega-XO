@@ -1,0 +1,83 @@
+{
+ "format": "mega-v5-provider-budget/v1",
+ "updatedAt": "2026-10-19T21:50:00+05:30",
+ "confidenceScale": {
+  "verified": "measured from live account/plan pages or API",
+  "documented": "from provider docs without account verification",
+  "estimated": "engineering estimate, flagged"
+ },
+ "allowances": {
+  "neon": {
+   "account": "org-bold-silence-37218003 (contact@antimatterinnovations.com, free plan)",
+   "projects": {
+    "mega-xo-v5-production": {
+     "id": "blue-sun-85454968",
+     "endpoint": "ep-mute-surf-b8v94ksa.c-14.us-east-1.aws.neon.tech"
+    },
+    "mega-xo-v5-staging": {
+     "id": "lively-shadow-52629967"
+    },
+    "mega-xo-v5-dev": {
+     "id": "silent-unit-55400508"
+    }
+   },
+   "perProjectLimits": {
+    "storageGb": 1,
+    "computeHoursPerMonth": 100,
+    "autoscaleCu": 2,
+    "branches": 10,
+    "source": "verified: destination org billing page 2026-10-19"
+   },
+   "measured20261005to1019": {
+    "computeHours": 67.69,
+    "dataTransferGb": 5.87,
+    "storageGb": 0.12,
+    "source": "verified: old org projects dashboard 2026-10-19; usage followed the transfer (did NOT reset)"
+   },
+   "warning": "mega-xo-v5-production nearing monthly free plan limit (over 80%) per console banner 2026-10-19",
+   "notes": "Transfer allowance value not displayed on the free-plan billing page; budget against compute + storage until verified. Idle compute after fixes A-F is the primary lever."
+  },
+  "aiven": {
+   "status": "documented-in-provider-inventory",
+   "action": "reverify live: maxmemory + eviction policy on the production Valkey service"
+  },
+  "upstash": {
+   "status": "documented-in-provider-inventory",
+   "action": "reverify live: staging command allowance; prove no idle loops consume it"
+  },
+  "resend": {
+   "status": "operational",
+   "limits": "verify daily AND monthly email allowances; dedupe alert storms"
+  },
+  "cloudflareR2": {
+   "status": "operational",
+   "notes": "backup ciphertext + manifests; no automatic destructive retention"
+  },
+  "oracle": {
+   "status": "operational",
+   "notes": "Always Free entitlements to be reverified; the V5 production stack is host-served"
+  },
+  "github": {
+   "status": "operational",
+   "notes": "public repo, Actions effectively unlimited; chromium presentation lane has a documented safe-area flake (rerun failed jobs)"
+  }
+ },
+ "forecast": {
+  "ownerOnly31Day": {
+   "neon": "after fixes A-G: idle system scales to zero; measured target <30 CU-hrs/month and <1GB public transfer/month; owner testing adds minutes-scale wake windows",
+   "confidence": "estimated pending the 24-48h soak (measurement job documented below)"
+  }
+ },
+ "earlyUserCapacity": {
+  "method": "measure per-operation units (SQL statements, bytes, wake count) after fixes; forecast at 10/50/100 DAU",
+  "status": "PENDING_MEASUREMENT - do not quote capacity until the soak produces numbers"
+ },
+ "warningThresholds": {
+  "consumed50": "info",
+  "consumed70": "warn",
+  "consumed85": "critical",
+  "unexpectedIdleActivity": "critical",
+  "projectedExhaustionBeforeReset": "critical"
+ },
+ "monitoringOwner": "contact@antimatterinnovations.com"
+}

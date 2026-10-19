@@ -58,6 +58,22 @@ SOURCE_SHA=$("$NODE" -e '
 started=$(date +%s)
 before=$(date +%s%N)
 
+ # ---- change-aware skip (infrastructure brief 2026-10-19, part G) -----------
+ # A full dump every cycle streams the whole database from Neon even when not a
+ # single row changed. The WAL LSN is server-side durable state that advances for
+ # EVERY writer commit, and the recorded value is taken BEFORE a dump starts, so
+ # any later commit forces the next cycle to dump: a skip only ever happens when
+ # nothing at all changed. Losing the state file fails open to a full dump.
+ CURRENT_LSN=$("$NODE" "$LIB/deploy/v5-change-check.js" --print-lsn \
+   --source "$STATE/prod-source.json") || die 'change-check LSN probe failed'
+ "$NODE" "$LIB/deploy/v5-change-check.js" --source "$STATE/prod-source.json" \
+   --skip-marker "$STATE/backup-unchanged.json" || status=$?
+ if [[ ${status:-0} -eq 42 ]]; then
+   log "backup skipped: no change since $STATE/last-backup-lsn"
+   exit 0
+ fi
+ [[ ${status:-0} -eq 0 ]] || die 'change check failed closed'
+
 # PATH puts the docker pg_dump wrapper first; the sealer resolves `pg_dump`
 # through it exactly as it would a local client binary (same argv, byte-exact
 # stdout, propagated exit status).
@@ -100,6 +116,9 @@ before=$(date +%s%N)
   --source-sha "$SOURCE_SHA" || die 'R2 upload/independent readback failed (no object rollback attempted)'
 transferred=$(( ($(date +%s%N) - before) / 1000000 ))
 log "r2 upload+readback verified receipt=$ARCHIVES/$backup_id.r2-receipt.json ms=$transferred"
+# The pre-dump LSN is now the durable watermark: any commit after it (during or
+# after this dump) makes the next comparison unequal and forces a fresh dump.
+umask 077; printf '%s\n' "$CURRENT_LSN" > "$STATE/last-backup-lsn"; rm -f "$STATE/backup-unchanged.json"
 
 # ---- bounded local retention (never touches the remote bucket) ------------
 mapfile -t local_manifests < <(find "$ARCHIVES" -maxdepth 1 -type f -name 'v5-p15-*.manifest.json' -printf '%T@ %p\n' | sort -rn | cut -d' ' -f2-)

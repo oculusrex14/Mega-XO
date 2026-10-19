@@ -63,18 +63,28 @@ CREATE TABLE monetization.promotion_events (
   actor_id TEXT NOT NULL,
   fingerprint TEXT NOT NULL,
   response JSONB NOT NULL,
-  outbox_id TEXT NOT NULL UNIQUE REFERENCES ops.outbox(outbox_id),
+  outbox_id TEXT NOT NULL UNIQUE,
   operator_id TEXT NOT NULL,
   reason_code TEXT NOT NULL,
   created_at timestamptz NOT NULL
 );
+CREATE TABLE monetization.promotion_case_approvals (
+  case_id TEXT NOT NULL REFERENCES monetization.promotion_cases(case_id),
+  reviewer_id TEXT NOT NULL,
+  decision_reference TEXT NOT NULL,
+  amounts_hash TEXT NOT NULL,
+  approved_at timestamptz NOT NULL,
+  PRIMARY KEY (case_id, reviewer_id)
+);
 GRANT SELECT ON monetization.promotion_policies TO core_runtime;
 GRANT SELECT, INSERT ON monetization.promotion_acceptances, monetization.promotion_allocations,
-  monetization.promotion_cases, monetization.promotion_events TO core_runtime;
+  monetization.promotion_cases, monetization.promotion_events,
+  monetization.promotion_case_approvals TO core_runtime;
 GRANT SELECT, INSERT, UPDATE ON monetization.promotion_lots TO core_runtime;
 GRANT SELECT ON monetization.promotion_policies, monetization.promotion_acceptances,
   monetization.promotion_allocations, monetization.promotion_lots,
-  monetization.promotion_cases, monetization.promotion_events TO backup_reader;
+  monetization.promotion_cases, monetization.promotion_events,
+  monetization.promotion_case_approvals TO backup_reader;
 -- Audit delivery reads only immutable enforcement events, on its OWN pool. Core has no audit grant.
 GRANT USAGE ON SCHEMA monetization TO audit_runtime;
 GRANT SELECT ON monetization.promotion_events TO audit_runtime;

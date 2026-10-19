@@ -1938,6 +1938,10 @@
           "columns": { "event_id": { "t": "text", "nn": true }, "outbox_id": { "t": "text", "nn": true } },
           "constraints": ["promotion_events_pkey"]
         },
+        "promotion_case_approvals": {
+          "columns": { "reviewer_id": { "t": "text", "nn": true } },
+          "constraints": ["promotion_case_approvals_pkey"]
+        },
         "ad_ticket_context": {
           "columns": {
             "ticket_id": {

@@ -246,6 +246,12 @@ function createAuditLogger(options = {}) {
      * Appends a new audit record to audit.operator_audit, calculating prev_hash and entry_hash.
      */
     async append(operator, action, actor = null, reason, detail = {}) {
+      if (!options.transaction && typeof pool.withTransaction === 'function') {
+        return pool.withTransaction(async tx => {
+          await require('../db/pg/locks.js').lockTransactionIdentity(tx, 'audit', ['operator-chain']);
+          return createAuditLogger({ ...options, pool: tx, transaction: true }).append(operator, action, actor, reason, detail);
+        });
+      }
       if (!operator || typeof operator !== 'string') fail('INVALID_OPERATOR', 400);
       if (!action || typeof action !== 'string') fail('INVALID_ACTION', 400);
       if (!reason || typeof reason !== 'string') fail('INVALID_REASON', 400);
@@ -255,11 +261,11 @@ function createAuditLogger(options = {}) {
 
       // Fetch current tail entry
       const lastRes = await pool.query(
-        'SELECT entry_hash FROM audit.operator_audit ORDER BY at DESC, audit_id DESC LIMIT 1'
+        'SELECT entry_hash, at FROM audit.operator_audit ORDER BY at DESC, audit_id DESC LIMIT 1'
       );
       const prevHash = lastRes.rows[0]?.entry_hash || 'GENESIS';
 
-      const atMs = clock();
+      const atMs = Math.max(clock(), lastRes.rows[0] ? new Date(lastRes.rows[0].at).getTime() + 1 : 0);
       const atIso = new Date(atMs).toISOString();
       const auditId = 'op_' + crypto.randomUUID();
 

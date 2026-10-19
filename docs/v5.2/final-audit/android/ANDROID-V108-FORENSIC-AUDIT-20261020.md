@@ -48,7 +48,11 @@ The in-client `src/monetization-ui.js:120` sends `POST /api/monetization/restore
 ### APK-108-07 | P2 legacy friend routes
 `src/network.js` still has `/api/v1/friend` and `/api/v1/accept-friend`, while the mounted `apps/api/routes/social.js` serves `/api/community/friend` and the live community UI uses that newer path. `apps/api/routes/competitive.js` does not dispatch these legacy paths. Review whether any rendered legacy buttons still reach them; remove dead handlers or consolidate to the current actor-authorized social API. Avoid duplicating friend mutation semantics.
 
-### APK-108-08 | P2 transfer/free-tier efficiency
+### APK-108-08 | P1 offline flavor isolation contract violation
+`native/android/app/src/main/AndroidManifest.xml` declares `INTERNET` and `ACCESS_NETWORK_STATE` without a removal directive. The sole flavor overlay present is `src/online/AndroidManifest.xml`, which explicitly **replaces** the same permissions; there is NO `src/offline/AndroidManifest.xml` removing either one. Consequently, unlike `native/android/README.md`'s "no OS network permission" claim, the offline flavor appears to inherit outbound internet permission. Since the app's WebView interception does not cover every POST/network stack, this defeats the intended offline OS-level defense in depth. The distributed **1.0.8 is the ONLINE flavor and intentionally requires these permissions**; this is not evidence of credentials leaking or of a broken 1.0.8 native request.
+**Fix:** add a narrowly scoped `src/offline/AndroidManifest.xml` with `tools:node="remove"` declarations, keep `src/online` unchanged, then assert actual merged manifest permissions for both release variants. Test a direct unauthorized POST from offline WebView and a LAN-only feature according to the product decision; the offline flavor currently documents LAN-local hosting, so decide explicitly whether complete network denial is compatible with LAN functionality. Do not quietly remove LAN capability while claiming feature parity.
+
+### APK-108-09 | P2 transfer/free-tier efficiency
 Signed-in community client polls presence/friends about every 15s while foregrounded; active queue polls queue status/invitations every 1s (`src/app.js:480–484`). These are **not zero-user idle polls**, but multiple active phones can amplify Neon transfer. Benchmark per-session payload/SQL counts, use request dedupe or trustworthy event notification when justified. Never give up match correctness or prompt incoming requests to save quota.
 
 ## Feature inventory: code state versus real-world proof

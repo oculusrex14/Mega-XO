@@ -76,7 +76,9 @@ async function main() {
     const wanted = CODE_PRODUCTS.map(id => { const entry = catalog[id]; if (!entry || !entry.productId) { process.stderr.write('UNKNOWN_PRODUCT ' + id + '\n'); process.exitCode = 1; return null; } return entry.productId; });
     if (wanted.some(id => id === null)) return;
     let discount = null;
-    for (let page = 1; page <= 10 && !discount; page++) {
+    /* Sol round 2: Dodo's discount list pagination is 0-based - a code in the first page is
+     * missed when the scan starts at 1. */
+    for (let page = 0; page <= 10 && !discount; page++) {
       const listed = await call('/discounts?page_number=' + page + '&page_size=100', 'GET');
       const items = listed && Array.isArray(listed.items) ? listed.items : [];
       discount = items.find(item => typeof item.code === 'string' && item.code.toUpperCase() === RESTRICT_CODE.toUpperCase()) || null;
@@ -92,7 +94,9 @@ async function main() {
     await call('/discounts/' + discountId, 'PATCH', patchBody);
     const after = await call('/discounts/' + discountId, 'GET');
     const scoped = after && Array.isArray(after.restricted_to) ? after.restricted_to : [];
-    const ok = wanted.every(id => scoped.includes(id)) && scoped.length === wanted.length;
+    const expiryOk = !CODE_EXPIRY || after.expires_at === CODE_EXPIRY;
+    const ok = wanted.every(id => scoped.includes(id)) && scoped.length === wanted.length && expiryOk;
+    if (!expiryOk) process.stderr.write('EXPIRY_MISMATCH ' + String(after && after.expires_at) + '\n');
     process.stdout.write((ok ? 'restricted ' : 'RESTRICT_MISMATCH ') + discount.code + ' -> ' + JSON.stringify(scoped) + '\n');
     if (!ok) process.exitCode = 1;
     return;

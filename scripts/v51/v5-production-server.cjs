@@ -1052,6 +1052,29 @@ async function main() {
    }
    if (Object.keys(regular).length > 0) dodoRegularCatalog = regular;
   }
+  /* MXA-PROMO-RESTORE-LEDGER: the intro price table is RETAINED after the flip (it is the
+   * settlement boundary's price ledger, not a display input). Absent env keeps the lane
+   * running - the tolerance simply loses the intro candidate. */
+  let dodoIntroCatalog = null;
+  {
+   const intro = {};
+   for (const id of [...PRODUCT_IDS, 'mega_pass']) {
+    const usd = process.env['DODO_INTRO_CENTS_' + id.toUpperCase()];
+    const inr = process.env['DODO_INTRO_IN_' + id.toUpperCase()];
+    if (usd === undefined && inr === undefined) continue;
+    const prices = {};
+    if (usd !== undefined) {
+     if (!/^\d{1,9}$/.test(usd) || Number(usd) <= 0) throw REFUSE('INVALID_DODO_PRICE_CENTS');
+     prices.usd = Number(usd);
+    }
+    if (inr !== undefined) {
+     if (!/^\d{1,9}$/.test(inr) || Number(inr) <= 0) throw REFUSE('INVALID_DODO_PRICE_CENTS');
+     prices.inr = Number(inr);
+    }
+    intro[id] = { prices };
+   }
+   if (Object.keys(intro).length > 0) dodoIntroCatalog = intro;
+  }
   const commerce = await createCommerceService(corePool, {
     adMode: commerceAdMode,
     purchasesEnabled: process.env.MEGA_PURCHASES_ENABLED === 'true',
@@ -1074,6 +1097,7 @@ async function main() {
     dodoProvider,
     dodoCatalog,
     dodoRegularCatalog,
+    dodoIntroCatalog,
     dodoSuccessUrl,
     dodoPackDiscountId: process.env.DODO_PACK_DISCOUNT_CODE || undefined,
     dodoIntroEndsAt,

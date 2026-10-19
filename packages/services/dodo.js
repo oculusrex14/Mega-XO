@@ -78,11 +78,13 @@ function createDodoProvider({ apiKey, webhookSecret, mode = 'live', fetchImpl = 
       if (typeof actor !== 'string' || !actor || actor.length > 160) throw Error('DODO_METADATA_INVALID');
       if (typeof storeProductId !== 'string' || !storeProductId) throw Error('DODO_METADATA_INVALID');
       const cart = [{ product_id: productId, quantity: 1 }];
-      /* Sol P1 (promo audit): customer-chosen discount codes and currency changes are OFF for
-       * server-created checkouts. The server owns the price (intro catalog or none) and the
-       * currency (the recorded region), so a checkout-page edit can never diverge the charged
-       * amount/currency from the recorded order - the exact class that strands paid orders. */
-      const body = { product_cart: cart, metadata: cleanMetadata({ ...metadata, actor, product_id: storeProductId }), feature_flags: { allow_discount_code: false, allow_currency_selection: false } };
+      /* Sol P1 (promo audit, round 2): currency changes are OFF for server-created checkouts -
+       * the recorded region owns the currency, so a checkout-page edit can never diverge the
+       * charged currency from the recorded order. Discount-code entry is OFF for one-time
+       * products (the provider price IS the promo; a customer code could only stack) but ON
+       * for the Mega Pass, whose ONLY discount is the player-entered LAUNCH50 code. */
+      const allowDiscountCode = storeProductId === 'mega_pass';
+      const body = { product_cart: cart, metadata: cleanMetadata({ ...metadata, actor, product_id: storeProductId }), feature_flags: { allow_discount_code: allowDiscountCode, allow_currency_selection: false } };
       if (email !== undefined && email !== null) {
         if (typeof email !== 'string' || email.length < 3 || email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw Error('INVALID_CUSTOMER_DETAILS');
         body.customer = { email };

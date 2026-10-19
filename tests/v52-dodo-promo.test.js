@@ -50,6 +50,13 @@ const DODO_REGULAR = Object.freeze({
   remove_ads: { prices: { usd: 399, inr: 19900 } },
   mega_pass: { prices: { usd: 399, inr: 19900 } },
 });
+const DODO_INTRO = Object.freeze({
+  crowns_100: { prices: { usd: 49, inr: 2500 } },
+  crowns_525: { prices: { usd: 249, inr: 12500 } },
+  crowns_1100: { prices: { usd: 499, inr: 25000 } },
+  remove_ads: { prices: { usd: 199, inr: 9900 } },
+  mega_pass: { prices: { usd: 199, inr: 9900 } },
+});
 
 /* ---------------------------------------------------------------- 1. provider restore */
 
@@ -106,10 +113,14 @@ test('provider: checkout creation locks the price and the currency against check
     return { ok: true, status: 200, text: async () => JSON.stringify({ session_id: 'cks_' + 'a'.repeat(12), checkout_url: 'https://checkout.dodopayments.com/x' }) };
   } });
   await provider.createCheckout({ productId: 'pdt_crowns100', actor: 'dp_x', storeProductId: 'crowns_100', email: 'a@b.co', successUrl: 'https://megaxo.online', metadata: { request_id: 'r1' }, discountCodes: null, billingCurrency: 'inr', country: 'IN' });
+  await provider.createCheckout({ productId: 'pdt_megapass', actor: 'dp_x', storeProductId: 'mega_pass', email: 'a@b.co', successUrl: 'https://megaxo.online', metadata: { request_id: 'r2' }, discountCodes: null, billingCurrency: 'inr', country: 'IN' });
   const body = bodies[0].body;
-  assert.deepEqual(body.feature_flags, { allow_discount_code: false, allow_currency_selection: false }, 'no code entry and no currency change on the checkout page');
+  assert.deepEqual(body.feature_flags, { allow_discount_code: false, allow_currency_selection: false }, 'a one-time checkout allows neither code entry nor a currency change');
   assert.equal(body.discount_codes, undefined, 'no server-attached code either');
   assert.equal(body.billing_currency, 'INR');
+  const passBody = bodies[1].body;
+  assert.equal(passBody.feature_flags.allow_discount_code, true, 'the Mega Pass checkout MUST accept the player-entered LAUNCH50 code');
+  assert.equal(passBody.feature_flags.allow_currency_selection, false);
 });
 
 /* ---------------------------------------------------------------- 2. disposable backend */
@@ -244,6 +255,7 @@ async function promoHarness(t, family, clock) {
     dodoProvider: fakeDodoProvider(state),
     dodoCatalog: JSON.parse(JSON.stringify(DODO_CATALOG)),
     dodoRegularCatalog: JSON.parse(JSON.stringify(DODO_REGULAR)),
+    dodoIntroCatalog: JSON.parse(JSON.stringify(DODO_INTRO)),
     dodoSuccessUrl: 'https://megaxo.online',
     dodoPackDiscountId: 'PACKCODE15',
     dodoIntroEndsAt: '2026-12-31T18:29:59Z',
@@ -418,4 +430,29 @@ test('restore: a failed provider restore surfaces failures and keeps the intro c
   assert.equal(result.failures.length, 4, 'every failure is named for the operations alert');
   const order = await h.commerce.createDodoCheckout('dp_fail', 'fail-key-1', 'crowns_100', { email: 'f@b.co' }, { currency: 'inr' });
   assert.equal(Number((await recordedOrder(h.database, order.checkoutId)).amount_cents), 2500, 'a failing restore keeps the intro catalog so recorded always equals the provider charge');
+});
+
+test('restore: the pack discount resumes automatically and pre-restore orders survive the restart window', async (t) => {
+  const h = await promoHarness(t, 'packresume', AFTER);
+  if (!h) return;
+  await seedActor(h.database, 'dp_resume', 100);
+  const c0 = await adminClient(h.database);
+  try {
+    await c0.query("INSERT INTO monetization.polar_subscriptions (subscription_id, actor_id, product_id, price_id, status, cancel_at_period_end, current_period_start, current_period_end, created_at, updated_at, provider) VALUES ('sub_resume', 'dp_resume', 'mega_pass', 'pdt_megapass', 'active', false, $1, $2, $3, $3, 'dodo')", [new Date(AFTER - 86400000).toISOString(), new Date(AFTER + 30 * 86400000).toISOString(), new Date(AFTER - 86400000).toISOString()]);
+    await c0.query("INSERT INTO monetization.pass_periods (subscription_id, actor_id, period_start, period_end, installments_granted, pack_discounts_reserved, created_at) VALUES ('sub_resume', 'dp_resume', $1, $2, 3, 0, $3)", [new Date(AFTER - 86400000).toISOString(), new Date(AFTER + 30 * 86400000).toISOString(), new Date(AFTER - 86400000).toISOString()]);
+  } finally { await c0.end(); }
+  /* The restart window: an order created BEFORE the first restore tick (the stale intro env)
+   * records the intro price while the provider is at base - it must still settle. */
+  const pre = await h.commerce.createDodoCheckout('dp_resume', 'resume-key-1', 'crowns_100', { email: 'r@b.co' }, { currency: 'inr' });
+  assert.equal(Number((await recordedOrder(h.database, pre.checkoutId)).amount_cents), 2500, 'the stale intro env records the intro price');
+  h.state.verifies.set(pre.checkoutId, { status: 'succeeded', amount: 4900, currency: 'inr', metadata: { actor: 'dp_resume', product_id: 'crowns_100' } });
+  const result = await h.commerce.processIntroPriceRestore();
+  assert.equal(result.done, true, 'the restore completes on the first tick');
+  const settled = await h.commerce.dodoOrderStatus('dp_resume', pre.checkoutId);
+  assert.equal(settled.paid, true, 'a pre-restore order settles at the restored provider price');
+  /* Post-expiry pack resumption: the restore clears the intro-pricing gate in memory, so the
+   * 15% pack code attaches again without any env edit or restart. */
+  const pack = await h.commerce.createDodoCheckout('dp_resume', 'resume-key-2', 'crowns_100', { email: 'r@b.co' }, { currency: 'inr' });
+  const packSent = h.state.creates.find(c => c.metadata && c.metadata.op_key === 'resume-key-2');
+  assert.deepEqual(packSent.discountCodes, ['PACKCODE15'], 'PACKCODE15 resumes automatically after the verified restore');
 });

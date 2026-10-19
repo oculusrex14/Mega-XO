@@ -239,6 +239,12 @@ async function createCommerceService(pool, options = {}) {
   /* 2026-10-19: the REGULAR (pre-intro) price catalog, display-only (the slashed-price promo).
    * Optional: absent config simply means the client renders no was/now comparison. */
   dodoRegularCatalog: options.dodoRegularCatalog || null,
+  /* MXA-PROMO-RESTORE-LEDGER (Sol round 2): the INTRO price catalog is RETAINED after the
+   * restore so settlement keeps knowing every price the product legitimately carried during the
+   * promo era - a legacy or boundary-crossing order then verifies at its recorded amount, the
+   * current catalog, the regular price or the intro price (all the product's own prices), no
+   * matter how many flips, restarts or partial restores happened since creation. */
+  dodoIntroCatalog: options.dodoIntroCatalog || null,
   dodoSuccessUrl: typeof options.dodoSuccessUrl === 'string' ? options.dodoSuccessUrl : '',
   dodoPackDiscountId: typeof options.dodoPackDiscountId === 'string' && options.dodoPackDiscountId ? options.dodoPackDiscountId : null,
   dodoIntroEndsAt: typeof options.dodoIntroEndsAt === 'string' && options.dodoIntroEndsAt ? options.dodoIntroEndsAt : null,
@@ -1260,6 +1266,9 @@ async function createCommerceService(pool, options = {}) {
    } catch (error) { failures.push({ productId, code: String(error && error.message || error).slice(0, 120) }); }
   }
   if (failures.length) return { pending: true, failures, restored, already };
+  /* Sol round 2: a successful unattended restore also resumes the pack discount - the explicit
+   * env flag must not stay true forever after the prices it guarded are gone. */
+  config.dodoIntroPricingActive = false;
   introRestoreDone = true;
   return { done: true, restored, already };
  }
@@ -1679,37 +1688,37 @@ async function createCommerceService(pool, options = {}) {
   const verified = await provider.verifyCheckout(checkoutId);
   if (!verified || verified.status !== 'succeeded') return { checkoutId, settled: false, status: verified ? verified.status : null };
   /* MXA-PROMO-BOUNDARY (2026-10-19, owner model): the recorded amount is the catalog price at
-   * creation. A checkout that crosses the promo boundary may legitimately complete at either
-   * of the product's two configured prices - the promo price (the provider intro pricing, or
-   * the LAUNCH50 code on the Mega Pass) or the regular price. Both are the product's OWN
-   * configured prices, so both verify when the order was created inside the promo window;
-   * anything else is a mismatch. The Dodo code expiry (provider-enforced) bounds the pass
-   * branch, and Dodo's own checkout-session expiry stops an old discounted checkout from
-   * living indefinitely. No third amount ever verifies. */
+   * creation. A checkout that crosses the promo boundary - or predates a flip, a restore or a
+   * restart - may legitimately complete at ANY price the product actually carried in its promo
+   * era: the current catalog, the retained intro catalog, the regular (base) catalog, and for
+   * the Mega Pass the code-applied half of its base. Every candidate is one of the product's
+   * OWN configured prices; the accepted set can never contain a stacked or invented amount.
+   * The Dodo code expiry (provider-enforced) bounds the whole branch, and Dodo's own
+   * checkout-session expiry stops an old discounted checkout from living indefinitely. */
   const promoConfig = config.dodoPromo && Array.isArray(config.dodoPromo.products) && config.dodoPromo.products.includes(recorded.product_id) ? config.dodoPromo : null;
   const recordedAt = Date.parse(recorded.created_at);
   /* The currency binds EVERY accepted amount: a matching number in the wrong currency is a
    * mismatch (Sol P1: the fallback branches previously skipped this and a numerically equal
-   * cross-currency price verified). */
-  let amountVerified = verified.currency === recorded.currency && Math.abs(Number(recorded.amount_cents) - verified.amount) <= 1;
-  if (!amountVerified && promoConfig && Number.isFinite(recordedAt) && recordedAt < Date.parse(promoConfig.expiresAt)) {
-   if (verified.currency !== recorded.currency) throw Error('ORDER_AMOUNT_MISMATCH');
-   if (recorded.product_id === 'mega_pass') {
-    /* The code-applied total is half of the pass BASE price - taken from the catalog entry
-     * (which never flips), never from the recorded amount: halving a legacy attach-design
-     * record (already base*(1-bps)) would manufacture a 25%-of-base acceptance. */
+   * cross-currency price verified). The structural candidates (current catalog, retained
+   * intro, regular base) are unconditional - they are prices the product really carried, so
+   * a flip/restore/restart between creation and payment can never strand the order. The
+   * code-applied half is the ONE promo-gated candidate: it verifies only for an order created
+   * inside the code window (Dodo itself rejects expired codes afterwards). */
+  if (verified.currency !== recorded.currency) throw Error('ORDER_AMOUNT_MISMATCH');
+  let amountVerified = Math.abs(Number(recorded.amount_cents) - verified.amount) <= 1;
+  if (!amountVerified) {
+   const candidates = new Set();
+   const addPrice = (entry) => { const cents = entry && entry.prices ? entry.prices[recorded.currency] : null; if (Number.isSafeInteger(cents)) candidates.add(cents); };
+   addPrice(config.dodoCatalog && config.dodoCatalog[recorded.product_id]);
+   addPrice(config.dodoRegularCatalog && config.dodoRegularCatalog[recorded.product_id]);
+   addPrice(config.dodoIntroCatalog && config.dodoIntroCatalog[recorded.product_id]);
+   if (recorded.product_id === 'mega_pass' && Number.isFinite(recordedAt) && recordedAt < Date.parse(promoConfig.expiresAt)) {
     const passEntry = config.dodoCatalog && config.dodoCatalog.mega_pass;
     const passBaseCents = passEntry && passEntry.prices ? passEntry.prices[recorded.currency] : null;
     const promoCents = Number.isSafeInteger(passBaseCents) ? Math.max(1, Math.round(passBaseCents * (1 - promoConfig.percentBps / 10000))) : null;
-    if (promoCents !== null && Math.abs(promoCents - verified.amount) <= 1) amountVerified = true;
-   } else {
-    const regularEntry = config.dodoRegularCatalog && config.dodoRegularCatalog[recorded.product_id];
-    const regularCents = regularEntry && regularEntry.prices ? regularEntry.prices[recorded.currency] : null;
-    const catalogEntry = config.dodoCatalog && config.dodoCatalog[recorded.product_id];
-    const catalogCents = catalogEntry && catalogEntry.prices ? catalogEntry.prices[recorded.currency] : null;
-    if (Number.isSafeInteger(regularCents) && Math.abs(regularCents - verified.amount) <= 1) amountVerified = true;
-    if (!amountVerified && Number.isSafeInteger(catalogCents) && Math.abs(catalogCents - verified.amount) <= 1 && catalogCents !== Number(recorded.amount_cents)) amountVerified = true;
+    if (promoCents !== null) candidates.add(promoCents);
    }
+   if (candidates.has(verified.amount)) amountVerified = true;
   }
   if (!amountVerified) throw Error('ORDER_AMOUNT_MISMATCH');
   const metaActor = verified.metadata && typeof verified.metadata.actor === 'string' ? verified.metadata.actor : '';

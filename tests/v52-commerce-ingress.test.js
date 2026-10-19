@@ -137,6 +137,8 @@ test('source integrity: the ingress and the API dispatch are wired', () => {
   const fenceAuthorizations = commerceService.match(/\{ reservation: \{ requestId, won: true \} \}/g) || [];
   assert.ok(fenceAuthorizations.length >= 2,
     'every provider create finalization passes the fence authorization (the dodo one missing left its own PENDING row refusing the creator)');
+  assert.match(commerceService, /UPDATE monetization\.commerce_create_requests SET state = \$2, provider_object_id = \$3, response_text = \$4, updated_at = \$5 WHERE request_id = \$1 AND state = \$6/,
+    'the fence-close statement uses the canonical $1 request_id WHERE + PENDING guard (an unused $1 is pg 42P18)');
   assert.match(gateway, /pathname === '\/ingress\/commerce\/ssv'/, 'actor-free ssv path present');
   assert.match(gateway, /commerce: createCommerceIngressService|commerce,/);
   const apiIndex = fs.readFileSync(path.join(__dirname, '..', 'apps', 'api', 'index.js'), 'utf8');

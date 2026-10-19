@@ -1261,9 +1261,12 @@ async function createCommerceService(pool, options = {}) {
     [created.checkoutId, actor, productId, entry.productId, expectedCents, currency, 'created', key, iso(tx.clock())]);
    const row = (await tx.query('SELECT checkout_id, status FROM monetization.dodo_orders WHERE actor_id = $1 AND op_key = $2', [actor, key])).rows[0];
    if (!row) throw Error('DODO_RECORD_FAILED');
+   /* Canonical fence-close (Cashfree/Polar 853/1087): $1 is the request_id in the WHERE and the
+    * PENDING guard is part of the fence; the previous shape left $1 unused (pg 42P18) and shifted
+    * every value one slot. */
    await tx.query(
-    'UPDATE monetization.commerce_create_requests SET state = $2, provider_object_id = $3, response_text = $4, updated_at = $5 WHERE request_id = $6',
-    ['READY', 'succeeded', created.checkoutId, JSON.stringify({ checkoutUrl: created.checkoutUrl, checkoutId: created.checkoutId }), iso(tx.clock()), requestId]);
+    'UPDATE monetization.commerce_create_requests SET state = $2, provider_object_id = $3, response_text = $4, updated_at = $5 WHERE request_id = $1 AND state = $6',
+    [requestId, 'READY', created.checkoutId, JSON.stringify({ checkoutUrl: created.checkoutUrl, checkoutId: created.checkoutId }).slice(0, 4096), iso(tx.clock()), 'PENDING']);
    await event(tx, actor, 'checkout_created', 0);
    return { checkoutId: created.checkoutId, productId, status: 'created', checkoutUrl: created.checkoutUrl };
   /* Same fence authorization the Cashfree finalization passes: without it the PENDING fence

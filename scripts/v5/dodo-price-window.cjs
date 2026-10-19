@@ -62,16 +62,33 @@ async function main() {
       else patchPrice = { type: 'one_time_price', currency: 'USD', price: target.usd };
       await call('/products/' + entry.productId, 'PATCH', { price: patchPrice });
     }
+    /* MXA-INTRO-FLIP-INR (2026-10-19, Sol research): the USD PATCH alone leaves the INR
+     * localized rule at its old amount - the verified production bug class this script exists
+     * to close. Localized rules are separate entities (GET /products/{id}/localized-prices,
+     * id lcp_*); PATCH only the amount, then re-read and MISMATCH-check against the table. */
+    const localizedBefore = MODE === 'verify' ? null : await call('/products/' + entry.productId + '/localized-prices', 'GET');
+    const rules = localizedBefore && Array.isArray(localizedBefore.items) ? localizedBefore.items : [];
+    const inrRule = rules.find(rule => String(rule.currency).toUpperCase() === 'INR');
+    if (MODE !== 'verify' && target) {
+     if (!inrRule) {
+      await call('/products/' + entry.productId + '/localized-prices', 'POST', { currency: 'INR', country_code: 'IN', amount: target.inr });
+     } else if (Number(inrRule.amount) !== target.inr) {
+      await call('/products/' + entry.productId + '/localized-prices/' + inrRule.id, 'PATCH', { amount: target.inr });
+     }
+    }
     const after = await call('/products/' + entry.productId, 'GET');
     const actualUsd = after && after.price && Number(after.price.price);
     const expectedUsd = MODE === 'verify' ? null : (target ? target.usd : null);
     if (MODE !== 'verify' && actualUsd !== expectedUsd) { process.stderr.write('MISMATCH ' + productId + ': expected ' + expectedUsd + ' got ' + actualUsd + '\n'); failures++; }
+    const inrAfter = (Array.isArray(after.localized_prices) ? after.localized_prices : rules).find(p => String(p.currency).toUpperCase() === 'INR');
+    const actualInr = inrAfter ? Number(inrAfter.amount) : null;
+    if (MODE !== 'verify' && target && actualInr !== target.inr) { process.stderr.write('MISMATCH ' + productId + ' INR: expected ' + target.inr + ' got ' + actualInr + '\n'); failures++; }
     envLines.push('DODO_PRICE_CENTS_' + productId.toUpperCase() + '=' + actualUsd);
-    const inrEntry = Array.isArray(after.localized_prices) ? after.localized_prices.find(p => p.currency === 'INR') : null;
-    if (inrEntry) envLines.push('DODO_REGION_IN_' + productId.toUpperCase() + '=' + Number(inrEntry.amount));
-    process.stdout.write((MODE === 'verify' ? 'verify ' : 'flipped ') + productId + ' usd=' + actualUsd + (inrEntry ? ' inr=' + Number(inrEntry.amount) : '') + '\n');
+    if (actualInr !== null) envLines.push('DODO_REGION_IN_' + productId.toUpperCase() + '=' + actualInr);
+    process.stdout.write((MODE === 'verify' ? 'verify ' : 'flipped ') + productId + ' usd=' + actualUsd + (actualInr !== null ? ' inr=' + actualInr : '') + '\n');
   }
-  if (MODE === 'base') envLines.push('DODO_INTRO_ENDS_AT=');
+  if (MODE === 'base') { envLines.push('DODO_INTRO_ENDS_AT='); envLines.push('DODO_INTRO_PRICING_ACTIVE=false'); }
+  if (MODE === 'intro') envLines.push('DODO_INTRO_PRICING_ACTIVE=true');
   process.stdout.write('\n# provider-signin.env block for the host (then restart mega-xo-v5-production):\n' + envLines.join('\n') + '\n');
   if (failures) { process.exitCode = 1; }
 }

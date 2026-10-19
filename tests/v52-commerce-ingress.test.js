@@ -32,6 +32,7 @@ function fakeCommerce() {
     polarOrderStatus: record('polarOrderStatus'),
     settlePolarWebhook: record('settlePolarWebhook'),
     createDodoCheckout: record('createDodoCheckout'), dodoOrderStatus: record('dodoOrderStatus'), settleDodoWebhook: record('settleDodoWebhook'),
+    powerSpend: record('powerSpend'),
     exchangeCoins: record('exchangeCoins'),
     handleStoreNotification: record('handleStoreNotification'),
   };
@@ -65,6 +66,17 @@ test('dispatch: dodo_create forwards the region hint and the full ordered argume
   await ingress.command({ actor: ACTOR, op: 'dodo_create', key: 'op-dodo-1', productId: 'crowns_100', customer: {}, region: { currency: 'inr', country: 'IN' } });
   const call = commerce.calls.find((c) => c.method === 'createDodoCheckout');
   assert.deepEqual(call.args, [ACTOR, 'op-dodo-1', 'crowns_100', {}, { currency: 'inr', country: 'IN' }]);
+});
+
+test('dispatch: power_spend forwards the power kind as the priced argument', async () => {
+  /* MXA-WALLET-PATH (2026-10-19): the client names the power; the commerce service owns the
+   * cost table (undo=2, hint=3) and refuses unknown kinds with INVALID_POWER_KIND. */
+  const commerce = fakeCommerce();
+  const ingress = createCommerceIngressService({ commerce });
+  await ingress.command({ actor: ACTOR, op: 'power_spend', key: 'op-power-1', itemId: 'undo' });
+  const call = commerce.calls.find((c) => c.method === 'powerSpend');
+  assert.deepEqual(call.args, [ACTOR, 'op-power-1', 'undo']);
+  await assert.rejects(() => ingress.command({ actor: ACTOR, op: 'power_spend', key: 'op-power-2' }), /INVALID_COMMERCE_ARG: itemId/);
 });
 
 test('dispatch: unknown ops, bad shapes, and missing keys refuse with stable codes', async () => {

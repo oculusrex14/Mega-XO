@@ -50,6 +50,10 @@ export function normalizeStoreStatus(status, options = {}) {
   const regionCurrency = typeof options.regionCurrency === 'string' && CURRENCY_EXPONENTS[options.regionCurrency.toLowerCase()] !== undefined ? options.regionCurrency.toLowerCase() : null;
   const owned = Array.isArray(status.products) ? status.products : [];
   const rows = [];
+  /* MXA-PROMO-CODE: the server decides when the launch code applies; the display discounts the
+  * current price by the promo percentage only for products the server listed. */
+  const dodoPromoBlock = dodo.available === true && dodo.promo && typeof dodo.promo === 'object' && !Array.isArray(dodo.promo) && Array.isArray(dodo.promo.products) && Number.isSafeInteger(dodo.promo.percentBps) && dodo.promo.percentBps > 0 && dodo.promo.percentBps < 10000 && !(dodo.intro && dodo.intro.active === true) ? dodo.promo : null;
+  const dodoPromoFor = id => dodoPromoBlock && dodoPromoBlock.products.includes(id) ? dodoPromoBlock : null;
   for (const id of WEB_PRODUCT_IDS) {
     const polarEntry = polar.products[id];
     if (polarEntry !== undefined && polarEntry !== null) {
@@ -66,6 +70,8 @@ export function normalizeStoreStatus(status, options = {}) {
     }
     const dodoMinor = dodoRegionPrices && regionCurrency && Number.isSafeInteger(dodoRegionPrices[regionCurrency]) ? dodoRegionPrices[regionCurrency] : (dodoRegionPrices && Number.isSafeInteger(dodoRegionPrices.usd) ? dodoRegionPrices.usd : null);
     const dodoCurrency = dodoMinor !== null ? (regionCurrency && dodoRegionPrices && Number.isSafeInteger(dodoRegionPrices[regionCurrency]) ? regionCurrency : 'usd') : null;
+    const dodoPromo = dodoPromoFor(id);
+    const dodoDisplayMinor = dodoMinor !== null && dodoPromo ? Math.max(1, Math.round(dodoMinor * (1 - dodoPromo.percentBps / 10000))) : dodoMinor;
     const dodoRegularMinor = dodoRegularRegions && dodoCurrency && Number.isSafeInteger(dodoRegularRegions[dodoCurrency]) ? dodoRegularRegions[dodoCurrency] : null;
     rows.push({
       id,
@@ -74,7 +80,7 @@ export function normalizeStoreStatus(status, options = {}) {
       usdMinor,
       polarPrice: usdMinor !== null ? formatMinor(usdMinor, polarEntry.currency) : null,
       inr,
-      dodoPrice: dodoMinor !== null ? formatMinor(dodoMinor, dodoCurrency) : null,
+      dodoPrice: dodoDisplayMinor !== null ? formatMinor(dodoDisplayMinor, dodoCurrency) : null,
       dodoCurrency,
       dodoRegularPrice: dodoRegularMinor !== null && dodoMinor !== null && dodoRegularMinor > dodoMinor ? formatMinor(dodoRegularMinor, dodoCurrency) : null,
     });
@@ -91,5 +97,6 @@ export function normalizeStoreStatus(status, options = {}) {
     webCheckoutAvailable: status.webCheckoutAvailable === true && (polar.available === true || cashfree.available === true || dodo.available === true),
     webCheckoutProvider: typeof status.webCheckoutProvider === 'string' && ['dodo', 'polar', 'cashfree'].includes(status.webCheckoutProvider) ? status.webCheckoutProvider : null,
     dodoIntro: dodo.intro ? { active: dodo.intro.active === true, endsAt: dodo.intro.endsAt } : null,
+    dodoPromo: dodoPromoBlock ? { code: dodoPromoBlock.code, percentBps: dodoPromoBlock.percentBps, endsAt: dodoPromoBlock.expiresAt } : null,
   };
 }

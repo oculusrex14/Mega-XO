@@ -242,6 +242,27 @@ async function createCommerceService(pool, options = {}) {
   dodoSuccessUrl: typeof options.dodoSuccessUrl === 'string' ? options.dodoSuccessUrl : '',
   dodoPackDiscountId: typeof options.dodoPackDiscountId === 'string' && options.dodoPackDiscountId ? options.dodoPackDiscountId : null,
   dodoIntroEndsAt: typeof options.dodoIntroEndsAt === 'string' && options.dodoIntroEndsAt ? options.dodoIntroEndsAt : null,
+  /* MXA-INTRO-STACKING (2026-10-19): the pass pack discount must key off whether the INTRO
+   * PRICES are actually live, not merely whether the display timestamp has passed - a delayed
+   * Nov 18 flip would otherwise stack the 15% pass discount on top of intro prices (42.5% of
+   * regular). The flag is set by the price-flip procedure together with the price env; absent
+   * flag falls back to the timestamp check (backward compatible with today's deployment). */
+  dodoIntroPricingActive: options.dodoIntroPricingActive === true ? true : options.dodoIntroPricingActive === false ? false : null,
+  /* MXA-PROMO-CODE (2026-10-19): the owner's launch-price bridge. After the intro flip, the
+   * LAUNCH50 Dodo discount code keeps the Mega Pass at 50% off until it expires (2027-01-01);
+   * the SERVER decides when to attach it (never the client) and records the DISCOUNTED amount
+   * so settlement verification matches the actually charged total. products: the game product
+   * ids the promo applies to; the Dodo code itself is restricted to the same product set. */
+  dodoPromo: (() => {
+   const promo = options.dodoPromo;
+   if (!promo || typeof promo !== 'object') return null;
+   const code = typeof promo.code === 'string' ? promo.code.trim() : '';
+   const percentBps = Number(promo.percentBps);
+   const expiresAt = typeof promo.expiresAt === 'string' ? promo.expiresAt : '';
+   const products = Array.isArray(promo.products) ? promo.products.filter(id => typeof id === 'string' && M.product(id)) : [];
+   if (!code || !/^[A-Za-z0-9_-]{3,64}$/.test(code) || !Number.isSafeInteger(percentBps) || percentBps <= 0 || percentBps >= 10000 || !Number.isFinite(Date.parse(expiresAt)) || products.length === 0) return null;
+   return Object.freeze({ code, percentBps, expiresAt, products: Object.freeze(products) });
+  })(),
   adMode,
   rewardItem: typeof options.rewardItem === 'string' && options.rewardItem ? options.rewardItem : 'cosmetic_reward',
   adUnits: normalizeAdUnits(options.adUnits, options.adUnit),
@@ -1190,6 +1211,17 @@ async function createCommerceService(pool, options = {}) {
   const end = Date.parse(config.dodoIntroEndsAt);
   return Number.isFinite(end) && serviceNow() < end;
  }
+ function dodoIntroPricingActive() {
+  if (config.dodoIntroPricingActive === true || config.dodoIntroPricingActive === false) return config.dodoIntroPricingActive;
+  return dodoIntroActive();
+ }
+ function dodoPromoFor(productId) {
+  const promo = config.dodoPromo;
+  if (!promo || dodoIntroPricingActive() || !promo.products.includes(productId)) return null;
+  const end = Date.parse(promo.expiresAt);
+  if (!Number.isFinite(end) || serviceNow() >= end) return null;
+  return promo;
+ }
 
  async function createDodoCheckout(actor, key, productId, customer, region = {}) {
   const entry = dodoCatalogEntry(productId);
@@ -1200,6 +1232,12 @@ async function createCommerceService(pool, options = {}) {
   const { currency, amountCents } = dodoPriceFor(entry, region && region.currency);
   const country = region && typeof region.country === 'string' && DODO_COUNTRY.test(region.country) ? region.country : null;
   const fingerprint = createFingerprint('dodo-create', productId + ':' + currency);
+  /* The promo (if any) decides the RECORDED amount: settlement re-verifies the charged total
+   * against exactly this value, so a Dodo-side discount code MUST be reflected here or every
+   * discounted payment would fail verification. Mutually exclusive with the pass pack
+   * discount, which the intro/pricing gate already keeps off during promo windows. */
+  const promo = dodoPromoFor(productId);
+  const recordedCents = promo ? Math.max(1, Math.round(amountCents * (1 - promo.percentBps / 10000))) : amountCents;
   const previous = await uow.run(async (tx) => {
    await tx.query('SET TRANSACTION READ ONLY');
    return (await tx.query('SELECT checkout_id, product_id, status FROM monetization.dodo_orders WHERE actor_id = $1 AND op_key = $2', [actor, key])).rows[0] || null;
@@ -1216,7 +1254,7 @@ async function createCommerceService(pool, options = {}) {
    return { ready: wallet.rows.length > 0, account: accountOf(graph, actor) };
   });
   if (!preflight.ready) throw Error('ACCOUNT_REQUIRED');
-  const reservation = await reserveCreate(uow, actor, key, 'dodo', productId, fingerprint, { productId: entry.productId, amountCents, currency });
+   const reservation = await reserveCreate(uow, actor, key, 'dodo', productId, fingerprint, { productId: entry.productId, amountCents: recordedCents, currency });
   if (!reservation.won) {
    const r = reservation.reservation;
    if (!r || r.provider !== 'dodo' || r.product_id !== productId || r.fingerprint !== fingerprint) throw Error('IDEMPOTENCY_CONFLICT');
@@ -1233,10 +1271,10 @@ async function createCommerceService(pool, options = {}) {
    * only on a terminal, proven non-creation; verified settlement converts it to used. During the
    * intro window the launch price is already the deeper discount, so the pack code never stacks. */
   const packProduct = M.product(productId);
-  const packDiscountUsable = Boolean(packProduct && packProduct.crowns > 0) && typeof config.dodoPackDiscountId === 'string' && config.dodoPackDiscountId.length > 0 && !dodoIntroActive();
+   const packDiscountUsable = Boolean(packProduct && packProduct.crowns > 0) && !promo && typeof config.dodoPackDiscountId === 'string' && config.dodoPackDiscountId.length > 0 && !dodoIntroPricingActive();
   let reservedPeriod = null;
-  let expectedCents = amountCents;
-  if (packDiscountUsable) {
+   let expectedCents = recordedCents;
+   if (packDiscountUsable && !promo) {
    const reserved = await uow.run(async (tx) => (await tx.query(
     "UPDATE monetization.pass_periods pp SET pack_discounts_reserved = pp.pack_discounts_reserved + 1 FROM monetization.store_subscriptions ps WHERE pp.subscription_id = ps.subscription_id AND ps.actor_id = $1 AND ps.status = 'active' AND pp.period_start <= $2 AND pp.period_end > $2 AND pp.pack_discounts_reserved + pp.pack_discounts_used < 2 AND pp.subscription_id = (SELECT ps2.subscription_id FROM monetization.store_subscriptions ps2 WHERE ps2.actor_id = $1 AND ps2.status = 'active' ORDER BY ps2.created_at DESC LIMIT 1) AND pp.period_start = (SELECT MAX(pp3.period_start) FROM monetization.pass_periods pp3 WHERE pp3.subscription_id = pp.subscription_id AND pp3.period_start <= $2 AND pp3.period_end > $2) RETURNING pp.subscription_id, pp.period_start",
     [actor, new Date(serviceNow()).toISOString()])).rows[0] || null);
@@ -1251,7 +1289,7 @@ async function createCommerceService(pool, options = {}) {
     productId: entry.productId, actor, storeProductId: productId, email: email || undefined,
     successUrl: config.dodoSuccessUrl, metadata: { request_id: requestId, op_key: key },
     billingCurrency: currency, country,
-    discountCodes: reservedPeriod ? [config.dodoPackDiscountId] : null,
+    discountCodes: reservedPeriod ? [config.dodoPackDiscountId] : promo ? [promo.code] : null,
    }));
   } catch (error) {
    const code = String(error && error.message || 'DODO_CREATE_UNKNOWN');
@@ -1464,6 +1502,36 @@ async function createCommerceService(pool, options = {}) {
    journal(graph, { id: 'exchange:' + actor + ':' + key + ':in', actor, currency: 'crowns', amount: split.crowns, reason: 'Pass exchange', source: 'conversion', at: now });
    await event(tx, actor, 'pass_exchange', split.crowns);
    return { crowns: split.crowns, discountedCoins: split.discounted, standardCoins: split.standard, allowanceRemaining: Math.max(0, allowanceRemaining - split.discounted) };
+  });
+ }
+
+ /* MXA-WALLET-PATH (2026-10-19): the SERVER-side Crown debit for power-up charges. The native
+  * adapter previously debited only the DEVICE save wallet while purchased Crowns credited the
+  * ACCOUNT wallet - two ledgers that never met, so purchased Crowns could not fund a single
+  * Undo. This op makes the online path spend from the authoritative account wallet with the
+  * same idempotent transaction fence as every other economic command. Earned Crowns are
+  * consumed first so the restricted purchased provenance survives as long as possible (the
+  * same direction the exchange uses). Offline play keeps using the device wallet. */
+ const POWER_COSTS = Object.freeze({ undo: 2, hint: 3 });
+ async function powerSpend(actor, key, itemId) {
+  if (!idOK(key)) throw Error('IDEMPOTENCY_KEY_REQUIRED');
+  const cost = POWER_COSTS[itemId];
+  if (!cost) throw Error('INVALID_POWER_KIND');
+  return transaction(actor, key, { type: 'power-spend', kind: itemId }, async (tx, graph, current) => {
+   if (!config.purchasesEnabled || !allowed(current)) throw Error('PURCHASE_UNAVAILABLE');
+   const total = Number(current.crowns) || 0;
+   if (total < cost) throw Error('INSUFFICIENT_CROWNS');
+   const purchased = Number(current.purchasedCrowns) || 0;
+   const earned = Math.max(0, total - purchased);
+   const earnedSpent = Math.min(earned, cost);
+   current.purchasedCrowns = Math.max(0, purchased - (cost - earnedSpent));
+   current.crowns = total - cost;
+   /* Sol review round 2 convention: ledger entry ids are GLOBALLY unique per mutation. */
+   /* source='spend' stays inside the frozen 0010 ledger CHECK (no migration needed); the
+    * reason carries the power kind for the audit trail. */
+   journal(graph, { id: 'power:' + actor + ':' + key, actor, currency: 'crowns', amount: -cost, reason: 'Power-up purchase (' + itemId + ')', source: 'spend', at: tx.clock() });
+   await event(tx, actor, 'power_spend', cost);
+   return { kind: itemId, cost, crowns: current.crowns };
   });
  }
 
@@ -1864,6 +1932,10 @@ async function createCommerceService(pool, options = {}) {
       /* The REGULAR (pre-intro) prices for the slashed-price promo, in the same per-currency
        * minor-unit shape; absent config renders as null and the client shows no comparison. */
       regularRegions: config.dodoRegularCatalog ? Object.fromEntries(Object.entries(config.dodoRegularCatalog).map(([id, entry]) => [id, Object.fromEntries(Object.entries(entry.prices).map(([currency, cents]) => [currency, cents]))])) : null,
+      /* The owner's launch-price bridge: while this promo is active the SERVER attaches the
+       * Dodo discount code to qualifying checkouts and records the discounted amount, so the
+       * client display and the settlement verification agree without any client input. */
+      promo: config.dodoPromo && serviceNow() < Date.parse(config.dodoPromo.expiresAt) ? { code: config.dodoPromo.code, percentBps: config.dodoPromo.percentBps, products: config.dodoPromo.products, expiresAt: config.dodoPromo.expiresAt } : null,
       intro: config.dodoIntroEndsAt ? { active: dodoIntroActive(), endsAt: config.dodoIntroEndsAt } : null,
     } : { available: false, products: {}, regions: {} },
     pass: own.pass || { active: false, periodEnd: null, cancelAtPeriodEnd: false },
@@ -1915,6 +1987,7 @@ async function createCommerceService(pool, options = {}) {
   processPassGrants,
   passExchangeSplit,
   exchangeCoins,
+  powerSpend,
   storeNotificationSeen,
   storeNotificationRecord,
   handleStoreNotification,

@@ -1077,6 +1077,17 @@ async function main() {
     dodoSuccessUrl,
     dodoPackDiscountId: process.env.DODO_PACK_DISCOUNT_CODE || undefined,
     dodoIntroEndsAt,
+    /* MXA-INTRO-STACKING: the flip procedure sets this together with the price env; absent env
+     * falls back to the DODO_INTRO_ENDS_AT timestamp (today's deployment behavior). */
+    dodoIntroPricingActive: process.env.DODO_INTRO_PRICING_ACTIVE === 'true' ? true : process.env.DODO_INTRO_PRICING_ACTIVE === 'false' ? false : undefined,
+    /* MXA-PROMO-CODE: the LAUNCH50 bridge (see the decision log). Inert unless all four vars
+     * are present; products is a comma list of game product ids the promo applies to. */
+    dodoPromo: process.env.DODO_PROMO_CODE && process.env.DODO_PROMO_PERCENT_BPS && process.env.DODO_PROMO_EXPIRES_AT ? {
+      code: process.env.DODO_PROMO_CODE,
+      percentBps: Number(process.env.DODO_PROMO_PERCENT_BPS),
+      expiresAt: process.env.DODO_PROMO_EXPIRES_AT,
+      products: (process.env.DODO_PROMO_PRODUCTS || 'mega_pass').split(',').map(s => s.trim()).filter(Boolean),
+    } : undefined,
   });
   const commerceIngress = createCommerceIngressService({ commerce });
   const coreIngress = createCoreServiceIngress({ coreService: core, ticketIssuer, queue, tournaments, commerce: commerceIngress, leaderboardPool: corePool, secret: gatewaySecret });

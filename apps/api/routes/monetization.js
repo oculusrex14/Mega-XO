@@ -93,6 +93,10 @@ const ROUTES = Object.freeze({
   /* MXA-ECO-011: the player-facing pass exchange (Coins -> Crowns, Core-owned allowance). */
   '/api/monetization/exchange': { op: 'exchange', method: 'POST', args: ['amount'] },
   '/api/monetization/claim': { op: 'claim', method: 'POST', args: [] },
+  /* MXA-WALLET-PATH (2026-10-19): the native powers adapter spends ACCOUNT Crowns online
+   * (the device wallet stays the offline lane); itemId is the power kind, the SERVER owns the
+   * cost table so a client can never name its own price. */
+  '/api/monetization/powers/spend': { op: 'power_spend', method: 'POST', args: ['itemId'] },
   '/api/monetization/interstitial-permit': { op: 'permit', method: 'POST', args: ['platform'] },
   '/api/monetization/purchase': { op: 'purchase', method: 'POST', args: ['evidence', 'restore'] },
   '/api/monetization/cosmetic': { op: 'cosmetic', method: 'POST', args: ['itemId'] },

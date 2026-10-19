@@ -75,8 +75,19 @@ function initPowers(){
      the debit succeeded. */
   spend:async(kind,id)=>{
    const cost=kind==='undo'?2:3;
-   D.spendCurrency(data,id,'crowns',cost,'Power-up purchase');
-   save();renderWalletSummary();
+   /* MXA-WALLET-PATH (2026-10-19): when signed in, the debit is the AUTHORITATIVE account
+      wallet (server-side, idempotent) so purchased Crowns actually fund power-ups - the device
+      save wallet and the account wallet are different ledgers and the old local-only debit made
+      every purchased Crown unusable for powers. Offline keeps the device wallet. The bank itself
+      stays device-local, exactly like the shipped charges UX. */
+   if(online.ready){
+    try{await NET.powersSpend(kind,id);await refreshOnline();}
+    catch(e){throw e;}
+   }else{
+    D.spendCurrency(data,id,'crowns',cost,'Power-up purchase');
+    save();
+   }
+   renderWalletSummary();
   },
   /* Tactical Power recommends with the canonical Expert search — the same rules engine the match
      already plays with — and never invents a square. The adapter re-validates the answer against

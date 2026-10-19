@@ -41,6 +41,15 @@ class TransactionalEmail {
   const html=`<div style="font-family:system-ui,-apple-system,sans-serif;max-width:520px;margin:auto;padding:28px"><p style="font-size:12px;letter-spacing:.12em;text-transform:uppercase">${DEVELOPER}</p><h1 style="font-size:24px">${BRAND}</h1><p>Your password was changed successfully.</p><p>If this was not you, contact <a href="mailto:contact@antimatterinnovations.com">contact@antimatterinnovations.com</a> immediately.</p><p style="font-size:12px;color:#666">${BRAND} is developed by ${DEVELOPER}.</p></div>`;
   return this._send({to,subject,text,html,idempotencyKey});
  }
+ /* MXA-PRICE-NOTICE (2026-10-19): the owner's term is that a price change is announced by
+    email BEFORE it takes effect - this is the lane that makes that term real. Same transport
+    and budget posture as the OTP mail; the notice text is supplied by the operator script. */
+ async sendPriceChangeNotice({to,noticeId,subject,bodyText,bodyHtml}){
+  if(!this.enabled())throw Error('EMAIL_DELIVERY_NOT_CONFIGURED');
+  const text=bodyText||`Mega XOXO pricing update (effective ${noticeId}).\n\nDetails: https://megaxo.online/terms\n\nMega XO is developed by Antimatter Innovations.\n`;
+  const html=bodyHtml||`<div style="font-family:system-ui,-apple-system,sans-serif;max-width:520px;margin:auto;padding:28px"><p style="font-size:12px;letter-spacing:.12em;text-transform:uppercase">${DEVELOPER}</p><h1 style="font-size:24px">${BRAND}</h1><p><strong>Pricing update</strong> — effective ${esc(noticeId)}.</p><p>Full details are on our <a href="https://megaxo.online/terms">Terms page</a>.</p><p style="font-size:12px;color:#666">${BRAND} is developed by ${DEVELOPER}.</p></div>`;
+  return this._send({to,subject:subject||'Mega XOXO pricing update',text,html,idempotencyKey:'price-notice-'+noticeId+'-'+crypto.createHash('sha256').update(String(to)).digest('hex').slice(0,24)});
+ }
  async _send({to,subject,text,html,idempotencyKey}){
   const response=await this.fetcher('https://api.resend.com/emails',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+this.apiKey,...(idempotencyKey?{'Idempotency-Key':idempotencyKey}:{})},body:JSON.stringify({from:this.from,to:[to],subject,text,html})});
   let body={};try{body=await response.json();}catch{}

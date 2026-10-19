@@ -94,6 +94,7 @@ function fakeCommerce() {
     createDodoCheckout: record('createDodoCheckout'),
     dodoOrderStatus: record('dodoOrderStatus'),
     settleDodoWebhook: record('settleDodoWebhook'),
+    powerSpend: record('powerSpend'),
     exchangeCoins: record('exchangeCoins'), handleStoreNotification: record('handleStoreNotification'),
   };
 }

@@ -84,26 +84,33 @@ function nativeSessionFromProfile(profile,hostProviders,hostExpiresAt){
 }
 /* Single-flight rotation shared by the bootstrap and the call path. Returns the host outcome
  * ({ok:true}|{ok:false,error}) or null on a bounded timeout (the caller may still attempt the
- * request with the held token; a genuinely dead token 401s into the honest AUTH path). */
+ * request with the held token; a genuinely dead token 401s into the honest AUTH path).
+ * Sol P2 #9: ONE 15s deadline covers the rotation AND the metadata re-read - a wedged bridge
+ * call resolves the shared promise honestly instead of wedging every later caller. */
 function refreshNativeSession(){
  if(nativeRefreshInFlight)return nativeRefreshInFlight;
  const host=native();
  if(!host||typeof host.refresh!=='function')return Promise.resolve({ok:false,error:'ONLINE_UNAVAILABLE'});
  const generation=sessionGeneration;
- nativeRefreshInFlight=(async()=>{
-  const rotated=await Promise.race([host.refresh().catch(()=>null),sleep(15000).then(()=>null)]);
-  if(rotated===null)return null; // bounded timeout: caller decides, no looping retry here
-  if(rotated.ok!==true)return rotated;
+ const work=(async()=>{
+  const rotated=await host.refresh().catch(()=>null);
+  if(rotated===null||rotated.ok!==true)return rotated||{ok:false,error:"UNAVAILABLE"};
   if(generation!==sessionGeneration)return rotated; // identity changed mid-flight; install nothing
   /* Advance the cached expiry from the host's own metadata (a memory read, not a network hop).
    * The host is the only authority on lifetime; the cache never fabricates one. */
   const state=await host.session().catch(()=>null);
+  if(generation!==sessionGeneration)return rotated; // Sol P2 #7: re-check after EVERY await
   if(state&&state.linked===true&&session&&session.native){
    const fresh=Number(state.expiresAt);
    if(Number.isFinite(fresh)&&fresh>0)session={...session,expiresAt:fresh};
   }
   return rotated;
- })().finally(()=>{if(generation===sessionGeneration)nativeRefreshInFlight=null;});
+ })();
+ const outcome=Promise.race([work,sleep(15000).then(()=>"timeout")]).then(value=>value==="timeout"?null:value);
+ nativeRefreshInFlight=outcome;
+ /* Sol P2 #7: clear by PROMISE IDENTITY regardless of generation - a generation bump during
+  * the flight must not strand the settled promise here for later callers to reuse. */
+ nativeRefreshInFlight.finally(()=>{if(nativeRefreshInFlight===outcome)nativeRefreshInFlight=null;});
  return nativeRefreshInFlight;
 }
 async function nativeEnsure(force=false){
@@ -134,6 +141,11 @@ async function nativeEnsure(force=false){
    * conservative the read succeeds and the user stays signed in. */
    const rotated=await refreshNativeSession();
    if(rotated!==null&&rotated.ok!==true){const error=nativeError(rotated||{error:'AUTH_REQUIRED'});publish(classify(error.message),error.message);throw error;}
+   /* Sol P2 #8: the rotation renewed the host's own credential; the snapshot read before it is
+    * stale. Re-read the host metadata so the built session carries the POST-rotation expiry -
+    * otherwise the next request rotates a second time. */
+   const refreshed=await host.session().catch(()=>null);
+   if(refreshed&&refreshed.online===true&&refreshed.linked===true&&Number(refreshed.expiresAt)>0)state=refreshed;
   }
   const profile=await host.request('/api/account/profile','GET',null,null);
   if(!profile||profile.ok!==true)throw nativeError(profile||{});

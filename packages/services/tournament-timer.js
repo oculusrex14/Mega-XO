@@ -21,6 +21,11 @@ function createTournamentTimer({ tournaments, owner, intervalMs = 1000, activeMa
      !Number.isSafeInteger(idleIntervalMs) || idleIntervalMs < 30000 ||
      !Number.isSafeInteger(activeMaxMs) || activeMaxMs < intervalMs) throw Error('INVALID_TOURNAMENT_TIMER');
  let timer = null, pending = null, stopped = false, wakeScheduled = false;
+ /* Sol P1 #6: a wake arriving DURING a sweep is latched, not discarded - the in-flight sweep
+  * read its room/deadline snapshot before that mutation, so its computed delay is stale. The
+  * completion handler re-sweeps immediately when latched instead of sleeping out the idle
+  * ceiling; a second mutation during the catch-up sweep latches again (bounded by real work). */
+ let wakeLatched = false;
  function schedule(delayMs) {
   if (stopped) return;
   if (timer) { clearTimeout(timer); timer = null; }
@@ -34,12 +39,13 @@ function createTournamentTimer({ tournaments, owner, intervalMs = 1000, activeMa
    .then((result) => {
     const scanned = Number(result?.scanned || 0);
     const nextDue = Number(result?.nextDueMs);
+    const latched = wakeLatched; wakeLatched = false;
     /* Active rooms: honour the next real deadline, clamped to a bounded ceiling so one stale
      * computed deadline can never silence a live room for long. Idle: the slow sweep. */
     const delay = scanned > 0 && Number.isSafeInteger(nextDue) && nextDue >= 0
      ? Math.min(Math.max(nextDue + 50, intervalMs), activeMaxMs)
      : idleIntervalMs;
-    schedule(delay);
+   schedule(latched ? intervalMs : delay);
     return result;
    })
    .catch((error) => { onError(error); schedule(intervalMs); return null; })
@@ -48,7 +54,7 @@ function createTournamentTimer({ tournaments, owner, intervalMs = 1000, activeMa
  }
  function wake() {
   if (stopped) return;
-  if (pending) return; // the in-flight sweep reschedules with fresher information than we have
+  if (pending) { wakeLatched = true; return; }
   if (wakeScheduled) return;
   wakeScheduled = true;
   const t = setTimeout(() => { wakeScheduled = false; if (!stopped && !pending) tick(); }, 0);

@@ -822,7 +822,7 @@ async function main() {
    const base = queue[method];
    if (typeof base === 'function') acc[method] = async (...args) => { const out = await base.apply(queue, args); wakeMatchmaker(); return out; };
    return acc;
-  }, Object.create(queue));
+  }, { ...queue }); // a frozen service's own methods are non-writable: a derived object cannot override them (Sol P1 #1)
   const tournaments = createTournamentService({ pool: corePool, core, ephemera });
   await tournaments.ready;
   const tournamentTimer = createTournamentTimer({ tournaments, owner: `prd_tournaments_${process.pid}`,
@@ -836,7 +836,7 @@ async function main() {
    if (typeof base !== 'function') return acc;
    acc[method] = async (...args) => { const out = await base.apply(tournaments, args); tournamentTimer.wake(); return out; };
    return acc;
-  }, Object.create(tournaments));
+  }, { ...tournaments }); // same frozen-object constraint (Sol P1 #1)
   /* LR12: the commerce service runs on the Core-owned pool inside the Core process; the API tier
    * reaches it ONLY through the signed commerce ingress. Grants stay disabled until the provider
    * verifiers (AdMob SSV verifyAd / store verifyPurchase + purchaseProvider) and the eligibility
@@ -1405,9 +1405,16 @@ async function main() {
     assets, missingAssetStatus: missing.status, assetSelfCheck, downloadRedirectStatus, downloadSelfCheck,
     note: 'production composition; loopback only; route-aware crawl policy (approved public pages indexable); no legacy-authority path touched; serves the generated P21 bundle',
   }, null, 2));
+  /* Matchmaker timer + stopped flag live ABOVE the shutdown closure so an early signal can never
+   * touch a TDZ binding (Sol P1 #2). */
+  let matchmakerTimer = null;
+  let matchmakerStopped = false;
 
   const shutdown = async () => {
-    clearInterval(matchmakerTimer);
+   /* Sol P1 #2: the adaptive matchmaker re-arms itself; a plain clear would race a finally-block
+    * reschedule. The stopped flag makes every future arm() a no-op. */
+   matchmakerStopped = true;
+   if (matchmakerTimer) clearTimeout(matchmakerTimer);
     clearInterval(passGrantTimer);
     await tournamentTimer.stop();
     try { await realtime.close(); } catch {}
@@ -1418,10 +1425,12 @@ async function main() {
   process.on('SIGINT', shutdown); process.on('SIGTERM', shutdown);
   tournamentTimer.start();
 
+  /* Matchmaker timer + stopped flag live ABOVE the shutdown closure so an early signal can never
+   * touch a TDZ binding (Sol P1 #2). */
+
   /* Real matchmaking needs a matcher tick: two real browsers JOIN the queue over HTTP, but nothing
    * pairs them unless a matcher claims+commits. Bounded, single-flight, best-effort, and it only pairs
    * actors ALREADY in the durable queue; it changes no matching rule, TTL or economy. */
-  let matchmakerTimer = null;
   if (arg('--matchmaker', 'on') !== 'off') {
     const matcherId = `prd_matcher_${process.pid}`;
     let ticking = false;
@@ -1430,6 +1439,14 @@ async function main() {
     * (or pairing) resets it to fast so waiting players never lose latency. */
    let emptyStreak = 0;
    const FAST_MS = 3000, MAX_MS = 30000;
+   /* Sol P1 #2: the rearmer must EXIST and must stop on shutdown - a lost arm() call would
+    * leave the finally block rejecting forever and a wake could throw after a committed join. */
+   const arm = (delay) => {
+    if (matchmakerStopped) return;
+    if (matchmakerTimer) clearTimeout(matchmakerTimer);
+    matchmakerTimer = setTimeout(tick, delay);
+    matchmakerTimer.unref?.();
+   };
    const tick = async () => {
     if (ticking) return;
     ticking = true;

@@ -29,6 +29,9 @@ let directTarget = null;
 for (const candidate of contractPaths) { try { directTarget = require(candidate); break; } catch {} }
 if (!directTarget) refuse('P15_DIRECT_TARGET_CONTRACT_MISSING');
 const { readTarget, assertTarget, buildPgEnv } = directTarget;
+/* Sol P1 #3: the source argument is a PATH - readTarget parses it, then assertTarget validates
+ * the parsed object. assertTarget on the raw string always refuses. */
+const target = readTarget(source, 'backup', process.env);
 
 const ROOT = process.env.V5_ROOT || '/opt/mega-xo-v5-production';
 const STATE = path.join(ROOT, 'state');
@@ -50,7 +53,7 @@ function recordedLsn() {
 function queryLsn() {
   const probe = spawnSync(process.env.V5_PSQL_BIN || 'psql',
     ['-X', '-t', '-A', '-c', 'SELECT pg_current_wal_lsn()::text'],
-    { env: buildPgEnv(assertTarget(source, 'backup', process.env), process.env), encoding: 'utf8', timeout: 30000 });
+    { env: buildPgEnv(target, process.env), encoding: 'utf8', timeout: 30000 });
   if (probe.error || probe.status !== 0) refuse(probe.error ? String(probe.error.code || probe.error.message) : 'psql-exit-' + probe.status);
   const value = String(probe.stdout || '').trim();
   if (!/^[0-9A-F]+\/[0-9A-F]+$/.test(value)) refuse('lsn-unparsable');
@@ -60,18 +63,9 @@ if (printLsn) { process.stdout.write(queryLsn() + '\n'); process.exit(0); }
 const previous = recordedLsn();
 if (!previous) process.exit(0); // fail open: unknown state dumps
 const current = queryLsn();
- if (current === previous) {
-  /* Honest freshness handoff: the newest archive is an ARTIFACT older than the RPO but still
-   * contains every committed row, because nothing changed since its pre-dump LSN. The marker
-   * (0600, host-local) tells v5-freshness.js exactly that; it is deleted on the next real dump.
-   * Fail-closed default: a missing/stale/unparsable marker is treated as no marker at all. */
-  const marker = JSON.stringify({ checkedAt: new Date().toISOString(), lsn: current, previous }) + '\n';
-  const tmp = LSN_FILE + '.unchanged.tmp';
-  fs.writeFileSync(tmp, marker, { mode: 0o600 });
-  fs.renameSync(tmp, path.join(STATE, 'backup-unchanged.json'));
- } else {
-  try { fs.unlinkSync(path.join(STATE, 'backup-unchanged.json')); } catch {}
- }
+ /* Sol P1 #5: the changed/unchanged decision is ALL this script owns. The freshness marker is
+  * written by v5-pg-backup.sh, which can bind it to the newest VERIFIED archive identity - a
+  * marker written here could not be bound and might vouch for the wrong recovery point. */
 process.stdout.write(JSON.stringify({ event: 'change_check', changed: current !== previous, current, previous }) + '\n');
 process.exit(current !== previous ? 0 : 42);
 

@@ -194,8 +194,15 @@ function main(argv) {
    try {
      marker = JSON.parse(fs.readFileSync(markerFile, 'utf8'));
    } catch {}
+   /* Sol P1 #5: the marker must name EXACTLY the recovery point under evaluation and be an
+    * internally-consistent no-change proof (lsn === previous), recent within the same RPO, and
+    * not from the future. Any mismatch - including an archive that changed since the marker was
+    * written - fails closed to the ordinary RPO violation. */
    const markerValid = marker && typeof marker.checkedAt === 'string' && /^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(\.\d{3})?Z$/.test(marker.checkedAt)
-     && typeof marker.lsn === 'string' && Date.parse(marker.checkedAt) > now - opts.rpoEffective * 1000;
+     && typeof marker.lsn === 'string' && /^[0-9A-F]+\/[0-9A-F]+$/.test(marker.lsn)
+     && marker.lsn === marker.previous
+     && typeof marker.backupId === 'string' && marker.backupId === newest.backupId
+     && Date.parse(marker.checkedAt) > now - opts.rpoEffective * 1000 && Date.parse(marker.checkedAt) <= now;
    if (markerValid) {
      newest.verifiedUnchangedUtc = utc(marker.checkedAt);
      newest.verifiedUnchangedLsn = String(marker.lsn);

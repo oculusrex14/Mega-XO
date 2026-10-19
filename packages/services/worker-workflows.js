@@ -579,7 +579,17 @@ function createWorkerApp(options = {}) {
  function tickOnce({ includeSlow = true } = {}) {
   if (closed) fail('WORKER_CLOSED');
   if (inFlight === null) {
-   inFlight = runTick({ includeSlow }).finally(() => { inFlight = null; });
+   /* The lane tag rides the EXACT promise stored in inFlight, so an explicit full tick can
+    * detect a fast-only pass still in flight (Sol review note on C). */
+   const pass = runTick({ includeSlow });
+   const tagged = pass.finally(() => { inFlight = null; });
+   tagged.includeSlow = includeSlow;
+   inFlight = tagged;
+  } else if (includeSlow === true && inFlight.includeSlow === false) {
+   /* Sol review note on C: an explicit tick() must never silently join a fast-only pass.
+    * Chain the full pass behind the in-flight one; the fast lane has already run, so no work
+    * is duplicated and the caller still gets a real full-pass receipt. */
+   return inFlight.then(() => tickOnce({ includeSlow: true }));
   }
   return inFlight;
  }

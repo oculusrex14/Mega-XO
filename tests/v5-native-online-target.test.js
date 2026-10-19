@@ -417,9 +417,14 @@ test('the shared client routes every API call through the native host, never glo
 });
 
 test('a linked native session refreshes on expiry before the next authenticated call', async () => {
+  /* The REAL host owns credentials and republishes the rotated expiry: the session manager
+   * installs the renewed access token + expiresAt before answering refresh (MegaNativeSessionManager),
+   * so session() observes the post-rotation truth. A host that kept advertising a dead expiry
+   * would be a host bug; the client must not paper over it with an invented lifetime. */
+  let hostExpiresAt = Date.now() - 1000;
   const client = nativeClient({
-    session: () => ({ ok: true, linked: true, online: true, actorId: 'actor-one', expiresAt: Date.now() - 1000, providers: [] }),
-    refresh: () => ({ ok: true }),
+    session: () => ({ ok: true, linked: true, online: true, actorId: "actor-one", expiresAt: hostExpiresAt, providers: [] }),
+    refresh: () => { hostExpiresAt = Date.now() + 300000; return Promise.resolve({ ok: true }); },
     signOut: () => ({ ok: true }),
     signIn: () => ({ ok: true }),
     request: () => ({ ok: true, status: 200, data: profile })

@@ -58,21 +58,6 @@ SOURCE_SHA=$("$NODE" -e '
 started=$(date +%s)
 before=$(date +%s%N)
 
- # ---- change-aware skip (infrastructure brief 2026-10-19, part G) -----------
- # A full dump every cycle streams the whole database from Neon even when not a
- # single row changed. The WAL LSN is server-side durable state that advances for
- # EVERY writer commit, and the recorded value is taken BEFORE a dump starts, so
- # any later commit forces the next cycle to dump: a skip only ever happens when
- # nothing at all changed. Losing the state file fails open to a full dump.
- CURRENT_LSN=$("$NODE" "$LIB/deploy/v5-change-check.js" --print-lsn \
-   --source "$STATE/prod-source.json") || die 'change-check LSN probe failed'
- "$NODE" "$LIB/deploy/v5-change-check.js" --source "$STATE/prod-source.json" \
-   --skip-marker "$STATE/backup-unchanged.json" || status=$?
- if [[ ${status:-0} -eq 42 ]]; then
-   log "backup skipped: no change since $STATE/last-backup-lsn"
-   exit 0
- fi
- [[ ${status:-0} -eq 0 ]] || die 'change check failed closed'
 
 # PATH puts the docker pg_dump wrapper first; the sealer resolves `pg_dump`
 # through it exactly as it would a local client binary (same argv, byte-exact
@@ -84,6 +69,37 @@ export P15_OWNER_APPROVE_PRODUCTION_BACKUP=1
 export P15_OWNER_CONFIRMS_PRODUCTION=1
 export P15_PGPASSFILE=$STATE/pgpass
 export P15_PGSSLROOTCERT=$STATE/neon-ca.pem
+
+ # ---- change-aware skip (infrastructure brief 2026-10-19, part G) -----------
+ # Sol P1 #3b: this probe runs AFTER the approval flags, credential paths and CA
+ # are exported (readTarget/assertTarget refuse a production backup source
+ # without them) and after PATH carries the docker wrapper, so the probe uses the
+ # exact same pinned image and protected inputs as the dump itself.
+ # A full dump every cycle streams the whole database from Neon even when not a
+ # single row changed. The WAL LSN is server-side durable state that advances for
+ # EVERY writer commit, and the recorded value is taken BEFORE a dump starts, so
+ # any later commit forces the next cycle to dump: a skip only ever happens when
+ # nothing at all changed. Losing the state file fails open to a full dump.
+ CURRENT_LSN=$("$NODE" "$LIB/deploy/v5-change-check.js" --print-lsn \
+   --source "$STATE/prod-source.json") || die 'change-check LSN probe failed'
+ "$NODE" "$LIB/deploy/v5-change-check.js" --source "$STATE/prod-source.json" || status=$?
+ if [[ ${status:-0} -eq 42 ]]; then
+   # Sol P1 #5: the marker binds the verified-unchanged proof to the newest LOCAL archive
+   # identity. v5-freshness.js refuses a marker whose backupId is not the newest R2 manifest,
+   # whose lsn != previous, or whose checkedAt falls outside the RPO - a stale, moved or
+   # mismatched recovery point can never be vouched for by a newer probe.
+   NEWEST_MANIFEST=$(find "$ARCHIVES" -maxdepth 1 -type f -name 'v5-p15-*.manifest.json' -printf '%T@ %p\n' | sort -rn | cut -d' ' -f2- | head -1)
+   [[ -n $NEWEST_MANIFEST ]] || die 'skip refused: no local manifest to bind the marker to'
+   MARKER_BACKUP_ID=$(basename "$NEWEST_MANIFEST" .manifest.json)
+   "$NODE" -e '
+    const fs=require("node:fs"),p=process.argv[1],id=process.argv[2],lsn=process.argv[3];
+    const marker=JSON.stringify({checkedAt:new Date().toISOString(),backupId:id,lsn,previous:lsn})+"\n";
+    const tmp=p+".tmp";fs.writeFileSync(tmp,marker,{mode:0o600});fs.renameSync(tmp,p);
+   ' "$STATE/backup-unchanged.json" "$MARKER_BACKUP_ID" "$CURRENT_LSN" || die 'marker write failed'
+   log "backup skipped: no change since $STATE/last-backup-lsn (marker bound to $MARKER_BACKUP_ID)"
+   exit 0
+ fi
+ [[ ${status:-0} -eq 0 ]] || die 'change check failed closed'
 
 log "backup start sourceSha=$SOURCE_SHA image=$IMAGE"
 summary=$("$NODE" "$LIB/scripts/v5/p15/backup-cli.js" \
@@ -133,3 +149,5 @@ fi
 
 elapsed=$(( $(date +%s) - started ))
 log "backup complete backupId=$backup_id elapsed_s=$elapsed"
+ "$NODE" "$LIB/deploy/v5-change-check.js" --source "$STATE/prod-source.json" \
+   --skip-marker "$STATE/backup-unchanged.json" || status=$?

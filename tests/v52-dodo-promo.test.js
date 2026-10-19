@@ -248,7 +248,7 @@ async function promoHarness(t, family, clock) {
   const BUDGET = Object.freeze({ totalConnections: 12, roleConnections: Object.freeze({ core_runtime: 6, api_runtime: 4, worker_runtime: 2 }) });
   const make = (role, max) => { const { createPgPool } = require('../packages/db/pg/pool.js'); return createPgPool({ host: new URL(backend.adminUrl).hostname, port: Number(new URL(backend.adminUrl).port || 5432), database, user: role, role, label: 'test', service: 'v52dodopromo-test', revision: 'mxa-promo-split', allowLocalNoTls: true, pool: { max, idleTimeoutMillis: 5000, connectionTimeoutMillis: 5000, queueLimit: 16 }, budget: BUDGET }); };
   const corePool = make('core_runtime', 6);
-  const commerce = await createCommerceService(corePool, {
+  const options = {
     now: () => (clock || CLOCK),
     eligible: (account) => account && account.verified === true && account.suspended !== true && account.hold !== true,
     purchasesEnabled: true,
@@ -260,8 +260,9 @@ async function promoHarness(t, family, clock) {
     dodoPackDiscountId: 'PACKCODE15',
     dodoIntroEndsAt: '2026-12-31T18:29:59Z',
     dodoIntroPricingActive: true,
-    dodoPromo: { ...PROMO },
-  });
+  };
+  if (family !== 'nopromo') options.dodoPromo = { ...PROMO };
+  const commerce = await createCommerceService(corePool, options);
   t.after(async () => { commerce.close(); await corePool.end(); });
   return { commerce, state, database, skipped: false };
 }
@@ -455,4 +456,30 @@ test('restore: the pack discount resumes automatically and pre-restore orders su
   const pack = await h.commerce.createDodoCheckout('dp_resume', 'resume-key-2', 'crowns_100', { email: 'r@b.co' }, { currency: 'inr' });
   const packSent = h.state.creates.find(c => c.metadata && c.metadata.op_key === 'resume-key-2');
   assert.deepEqual(packSent.discountCodes, ['PACKCODE15'], 'PACKCODE15 resumes automatically after the verified restore');
+});
+
+test('settlement: structural candidates verify even after the promo configuration is retired', async (t) => {
+  /* Sol round 3 P1: the structural branch previously dereferenced the optional promo config -
+   * retiring DODO_PROMO_* (or excluding the pass) used to TypeError before the candidates
+   * were consulted, stranding every legacy promo-era payment. */
+  const h = await promoHarness(t, 'nopromo', CLOCK);
+  if (!h) return;
+  await seedActor(h.database, 'dp_retire', 100);
+  const legacy = await h.commerce.createDodoCheckout('dp_retire', 'retire-key-1', 'mega_pass', { email: 'n@b.co' }, { currency: 'inr' });
+  const c0 = await adminClient(h.database);
+  try { await c0.query('UPDATE monetization.dodo_orders SET amount_cents = 9950 WHERE checkout_id = $1', [legacy.checkoutId]); } finally { await c0.end(); }
+  h.state.verifies.set(legacy.checkoutId, { status: 'succeeded', amount: 19900, currency: 'inr', metadata: { actor: 'dp_retire', product_id: 'mega_pass' } });
+  const settled = await h.commerce.dodoOrderStatus('dp_retire', legacy.checkoutId);
+  assert.equal(settled.paid, true, 'the legacy pass record verifies at the base price with no promo config present');
+  const once = await h.commerce.createDodoCheckout('dp_retire', 'retire-key-2', 'crowns_100', { email: 'n@b.co' }, { currency: 'inr' });
+  const c1 = await adminClient(h.database);
+  try { await c1.query('UPDATE monetization.dodo_orders SET amount_cents = 2450 WHERE checkout_id = $1', [once.checkoutId]); } finally { await c1.end(); }
+  h.state.verifies.set(once.checkoutId, { status: 'succeeded', amount: 2500, currency: 'inr', metadata: { actor: 'dp_retire', product_id: 'crowns_100' } });
+  const onceSettled = await h.commerce.dodoOrderStatus('dp_retire', once.checkoutId);
+  assert.equal(onceSettled.paid, true, 'the legacy once-product record verifies at the current intro catalog price');
+  const stacked = await h.commerce.createDodoCheckout('dp_retire', 'retire-key-3', 'mega_pass', { email: 'n@b.co' }, { currency: 'inr' });
+  const c2 = await adminClient(h.database);
+  try { await c2.query('UPDATE monetization.dodo_orders SET amount_cents = 9950 WHERE checkout_id = $1', [stacked.checkoutId]); } finally { await c2.end(); }
+  h.state.verifies.set(stacked.checkoutId, { status: 'succeeded', amount: 4975, currency: 'inr', metadata: { actor: 'dp_retire', product_id: 'mega_pass' } });
+  await assert.rejects(() => h.commerce.dodoOrderStatus('dp_retire', stacked.checkoutId), /ORDER_AMOUNT_MISMATCH/, 'a quarter-of-base total never verifies with or without promo config');
 });

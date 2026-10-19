@@ -1712,7 +1712,7 @@ async function createCommerceService(pool, options = {}) {
    addPrice(config.dodoCatalog && config.dodoCatalog[recorded.product_id]);
    addPrice(config.dodoRegularCatalog && config.dodoRegularCatalog[recorded.product_id]);
    addPrice(config.dodoIntroCatalog && config.dodoIntroCatalog[recorded.product_id]);
-   if (recorded.product_id === 'mega_pass' && Number.isFinite(recordedAt) && recordedAt < Date.parse(promoConfig.expiresAt)) {
+   if (promoConfig && recorded.product_id === 'mega_pass' && Number.isFinite(recordedAt) && recordedAt < Date.parse(promoConfig.expiresAt)) {
     const passEntry = config.dodoCatalog && config.dodoCatalog.mega_pass;
     const passBaseCents = passEntry && passEntry.prices ? passEntry.prices[recorded.currency] : null;
     const promoCents = Number.isSafeInteger(passBaseCents) ? Math.max(1, Math.round(passBaseCents * (1 - promoConfig.percentBps / 10000))) : null;

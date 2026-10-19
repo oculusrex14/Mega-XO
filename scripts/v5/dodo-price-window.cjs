@@ -9,7 +9,8 @@
  *
  *   node scripts/v5/dodo-price-window.cjs --mode intro   # before the window opens (already done)
  *   node scripts/v5/dodo-price-window.cjs --mode base    # when the window closes
- *   node scripts/v5/dodo-price-window.cjs --verify       # read-only: confirm env matches Dodo
+   *   node scripts/v5/dodo-price-window.cjs --verify --expect intro|base
+   *     # read-only: compare BOTH currencies against the explicit expected table
  *   node scripts/v5/dodo-price-window.cjs --restrict-code LAUNCH50 --code-products mega_pass
  *     # scope the launch code so it can never discount the intro-priced one-time products
  *
@@ -68,6 +69,8 @@ async function main() {
   };
   let failures = 0;
   const envLines = [];
+  const expectMode = arg('expect');
+  if (MODE === 'verify' && expectMode && !PRICES[expectMode]) { process.stderr.write('UNKNOWN_EXPECT ' + expectMode + '\n'); process.exitCode = 1; return; }
   if (MODE === 'restrict-code') {
     if (!RESTRICT_CODE || RESTRICT_CODE.length < 3) { process.stderr.write('restrict-code needs a code\n'); process.exitCode = 1; return; }
     /* Sol P1 (promo audit): the list endpoint paginates with page_number/page_size and returns
@@ -103,7 +106,7 @@ async function main() {
   }
   for (const [productId, entry] of Object.entries(catalog)) {
     const skipFlip = productId === 'mega_pass';
-    const target = MODE === 'verify' ? null : PRICES[productId] && PRICES[productId][MODE];
+    const target = MODE === 'verify' ? (expectMode ? PRICES[productId] && PRICES[productId][expectMode] : null) : (PRICES[productId] && PRICES[productId][MODE]);
     if (MODE !== 'verify' && target && !skipFlip) {
       let patchPrice;
       if (productId === 'mega_pass') patchPrice = { type: 'recurring_price', currency: 'USD', price: target.usd, payment_frequency_count: 1, payment_frequency_interval: 'Month', subscription_period_count: 10, subscription_period_interval: 'Year' };
@@ -126,11 +129,12 @@ async function main() {
     }
     const after = await call('/products/' + entry.productId, 'GET');
     const actualUsd = after && after.price && Number(after.price.price);
-    const expectedUsd = MODE === 'verify' ? null : (target ? target.usd : null);
-    if (MODE !== 'verify' && actualUsd !== expectedUsd) { process.stderr.write('MISMATCH ' + productId + ': expected ' + expectedUsd + ' got ' + actualUsd + '\n'); failures++; }
-    const inrAfter = (Array.isArray(after.localized_prices) ? after.localized_prices : rules).find(p => String(p.currency).toUpperCase() === 'INR');
+    if (target && actualUsd !== target.usd) { process.stderr.write('MISMATCH ' + productId + ': expected ' + target.usd + ' got ' + actualUsd + '\n'); failures++; }
+    const localizedAfter = await call('/products/' + entry.productId + '/localized-prices', 'GET');
+    const rulesAfter = localizedAfter && Array.isArray(localizedAfter.items) ? localizedAfter.items : rules;
+    const inrAfter = rulesAfter.find(p => String(p.currency).toUpperCase() === 'INR');
     const actualInr = inrAfter ? Number(inrAfter.amount) : null;
-    if (MODE !== 'verify' && target && actualInr !== target.inr) { process.stderr.write('MISMATCH ' + productId + ' INR: expected ' + target.inr + ' got ' + actualInr + '\n'); failures++; }
+    if (target && target.inr !== undefined && actualInr !== target.inr) { process.stderr.write('MISMATCH ' + productId + ' INR: expected ' + target.inr + ' got ' + actualInr + '\n'); failures++; }
     envLines.push('DODO_PRICE_CENTS_' + productId.toUpperCase() + '=' + actualUsd);
     if (actualInr !== null) envLines.push('DODO_REGION_IN_' + productId.toUpperCase() + '=' + actualInr);
     process.stdout.write((MODE === 'verify' ? 'verify ' : 'flipped ') + productId + ' usd=' + actualUsd + (actualInr !== null ? ' inr=' + actualInr : '') + '\n');

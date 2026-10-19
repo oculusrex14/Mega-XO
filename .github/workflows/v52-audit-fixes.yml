@@ -36,11 +36,6 @@ jobs:
             tests/v52-mail-resend.test.js
             tests/v52-web-board-merge.test.js
             tests/v52-apk-download-tracker.test.js
-<<<<<<< HEAD
-            tests/v52-android-108-api-contract.test.js
-=======
-            tests/v52-neon-post-deploy-gates.test.js
->>>>>>> f82498f (ci(audit): run Neon idle/backup release safety checks in dedicated hotfix lane)
             tests/v52-android-108-api-contract.test.js
             tests/v52-neon-post-deploy-gates.test.js
           tests/v52-dodo-provider.test.js

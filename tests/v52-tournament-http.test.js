@@ -57,6 +57,33 @@ test('tournament timer coalesces ticks, reports failures, and waits for the acti
  assert.equal(await failed.tick(), null); assert.deepEqual(seen, ['DATABASE_UNAVAILABLE']); await failed.stop();
 });
 
+test('tournament timer sleeps until the next real deadline and wakes on mutation', async () => {
+ // The scheduler must derive its delay from the reported nextDueMs, not a fixed 1s poll, and a
+ // wake() after a mutation must reschedule immediately (never wait out the idle sweep). No
+ // database, no network.
+ // poll, and a wake() after a mutation must reschedule immediately (never wait out the idle
+ // sweep). No database, no network.
+ const seen = [];
+ let sweepResult = { scanned: 0, nextDueMs: null };
+ const timer = createTournamentTimer({
+  owner: 'deadline-timer', intervalMs: 250, activeMaxMs: 1000, idleIntervalMs: 30_000,
+  tournaments: { sweepTimers: async () => { seen.push(Date.now()); return sweepResult; } },
+ });
+ const delays = [];
+ // Delays are observed through a recording setTimeout with REAL delay semantics; stop() clears
+ // whatever is still armed, so no stray timer outlives the test.
+ const realSetTimeout = globalThis.setTimeout;
+ globalThis.setTimeout = (fn, ms) => { delays.push(ms); return realSetTimeout(fn, ms); };
+ try {
+  await timer.tick(); // idle: schedules the slow reconciliation sweep
+  assert.deepEqual(delays, [30_000], 'idle systems must not poll at the fast interval');
+  sweepResult = { scanned: 1, changed: 0, refused: 0, nextDueMs: 400 }; // active room, due in 400ms
+  timer.wake(); await new Promise(r => realSetTimeout(r, 10));
+  assert.equal(seen.length, 2, 'wake() after a mutation must re-sweep promptly');
+  assert.equal(delays.at(-1), 450, 'active scheduling honours the next real deadline');
+ } finally { globalThis.setTimeout = realSetTimeout; await timer.stop(); }
+});
+
 test('an ambiguous Core network failure is retryable with the same tournament operation key', async () => {
  let observed;
  const gateway = createCoreGateway({ secret: SECRET, fetcher: async (_url, init) => { observed = JSON.parse(init.body); throw TypeError('fetch failed'); } });

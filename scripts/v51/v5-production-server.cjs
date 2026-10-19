@@ -817,6 +817,16 @@ async function main() {
   await tournaments.ready;
   const tournamentTimer = createTournamentTimer({ tournaments, owner: `prd_tournaments_${process.pid}`,
     onError: error => console.error(JSON.stringify({ event: 'tournaments.tick_error', code: safeError(error) })) });
+  /* Deadline-driven scheduling needs wake-on-mutation: any successful run/settle/completeFixture
+   * may create or advance a real deadline, so the timer must recompute immediately instead of
+   * waiting out the idle reconciliation sweep. Only the mutating entry points are wrapped; the
+   * raw frozen service stays the owner of close() and every read path. */
+  const tournamentActivity = ['run', 'settle', 'completeFixture'].reduce((acc, method) => {
+   const base = tournaments[method];
+   if (typeof base !== 'function') return acc;
+   acc[method] = async (...args) => { const out = await base.apply(tournaments, args); tournamentTimer.wake(); return out; };
+   return acc;
+  }, Object.create(tournaments));
   /* LR12: the commerce service runs on the Core-owned pool inside the Core process; the API tier
    * reaches it ONLY through the signed commerce ingress. Grants stay disabled until the provider
    * verifiers (AdMob SSV verifyAd / store verifyPurchase + purchaseProvider) and the eligibility
@@ -1114,7 +1124,7 @@ async function main() {
     } : undefined,
   });
   const commerceIngress = createCommerceIngressService({ commerce });
-  const coreIngress = createCoreServiceIngress({ coreService: core, ticketIssuer, queue, tournaments, commerce: commerceIngress, leaderboardPool: corePool, secret: gatewaySecret });
+  const coreIngress = createCoreServiceIngress({ coreService: core, ticketIssuer, queue, tournaments: tournamentActivity, commerce: commerceIngress, leaderboardPool: corePool, secret: gatewaySecret });
   /* The mirror of the API assertion: Core, the Core-owned queue, the leaderboard materializer and the
    * realtime pool all run on `core_runtime`; the API-owned ticket issuer is the one asserted API member. */
   const coreRole = assertCoreCompositionUsesCorePool({

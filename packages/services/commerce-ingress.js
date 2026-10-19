@@ -108,6 +108,14 @@ function createCommerceIngressService({ commerce }) {
         else if (name === 'customer') {
           if (!value || typeof value !== 'object' || Array.isArray(value)) fail('INVALID_CUSTOMER_DETAILS');
           args.push(value);
+        } else if (name === 'region') {
+          /* The player's region HINT only selects among server-configured prices; an unknown
+           * currency falls back to the USD base inside the commerce service. Shape-validated
+           * here so garbage never reaches the provider call. */
+          if (!value || typeof value !== 'object' || Array.isArray(value)) fail('INVALID_REGION');
+          if (value.currency !== undefined && (typeof value.currency !== 'string' || !/^[a-z]{2,8}$/.test(value.currency))) fail('INVALID_REGION');
+          if (value.country !== undefined && (typeof value.country !== 'string' || !/^[A-Za-z]{2}$/.test(value.country))) fail('INVALID_REGION');
+          args.push(value);
         } else if (name === 'payload') {
           if (!value || typeof value !== 'object' || Array.isArray(value)) fail('INVALID_WEBHOOK');
           if (typeof value.raw !== 'string' || value.raw.length === 0 || value.raw.length > 65536) fail('INVALID_WEBHOOK');

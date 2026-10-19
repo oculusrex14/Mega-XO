@@ -1030,6 +1030,28 @@ async function main() {
   }
   const dodoSuccessUrl = process.env.DODO_SUCCESS_URL || 'https://megaxo.online';
   const dodoIntroEndsAt = process.env.DODO_INTRO_ENDS_AT || null;
+  /* The REGULAR (pre-intro) display prices for the slashed-price promo. Optional per product:
+   * absent env keeps the lane running and the client simply renders no was/now comparison. */
+  let dodoRegularCatalog = null;
+  {
+   const regular = {};
+   for (const id of [...PRODUCT_IDS, 'mega_pass']) {
+    const usd = process.env['DODO_REGULAR_CENTS_' + id.toUpperCase()];
+    const inr = process.env['DODO_REGULAR_IN_' + id.toUpperCase()];
+    if (usd === undefined && inr === undefined) continue;
+    const prices = {};
+    if (usd !== undefined) {
+     if (!/^\d{1,9}$/.test(usd) || Number(usd) <= 0) throw REFUSE('INVALID_DODO_PRICE_CENTS');
+     prices.usd = Number(usd);
+    }
+    if (inr !== undefined) {
+     if (!/^\d{1,9}$/.test(inr) || Number(inr) <= 0) throw REFUSE('INVALID_DODO_PRICE_CENTS');
+     prices.inr = Number(inr);
+    }
+    regular[id] = { prices };
+   }
+   if (Object.keys(regular).length > 0) dodoRegularCatalog = regular;
+  }
   const commerce = await createCommerceService(corePool, {
     adMode: commerceAdMode,
     purchasesEnabled: process.env.MEGA_PURCHASES_ENABLED === 'true',
@@ -1051,6 +1073,7 @@ async function main() {
     polarPackDiscountId: process.env.POLAR_PACK_DISCOUNT_ID || undefined,
     dodoProvider,
     dodoCatalog,
+    dodoRegularCatalog,
     dodoSuccessUrl,
     dodoPackDiscountId: process.env.DODO_PACK_DISCOUNT_CODE || undefined,
     dodoIntroEndsAt,

@@ -331,6 +331,18 @@ function storePage(context) {
    * wins over the legacy USD/INR quotes; the native localized price still leads for store builds. */
   const priceText = row => typeof row.localizedPrice === 'string' && row.localizedPrice.trim() ? row.localizedPrice : typeof row.dodoPrice === 'string' && row.dodoPrice.trim() ? row.dodoPrice : typeof row.polarPrice === 'string' && row.polarPrice.trim() ? row.polarPrice : typeof row.inr === 'string' && row.inr.trim() ? '₹' + row.inr : null;
   const introBadge = state.dodoIntro && state.dodoIntro.active === true ? '<span class="mx-chip pg-chip-blue">50% LAUNCH PRICE</span>' : '';
+  /* 2026-10-19: the launch-offer was/now comparison. The server-validated regular price renders
+   * struck through next to the intro price; the end date keeps the window honest. No comparison
+   * (regular price absent or not above the current price) renders exactly the plain price. */
+  const promoEnds = state.dodoIntro && state.dodoIntro.active === true && typeof state.dodoIntro.endsAt === 'string' && Number.isFinite(Date.parse(state.dodoIntro.endsAt))
+    ? new Date(state.dodoIntro.endsAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : null;
+  const promoNote = promoEnds ? '<p class="pg-promo-note">Launch offer — 50% off every product until ' + e(promoEnds) + '.</p>' : '';
+  const priceHtml = row => {
+    const price = priceText(row);
+    if (!price) return null;
+    return state.dodoIntro && state.dodoIntro.active === true && typeof row.dodoRegularPrice === 'string' && row.dodoRegularPrice.trim()
+      ? '<del class="pg-price-was">' + e(row.dodoRegularPrice) + '</del>' + e(price) : e(price);
+  };
   const webReady = state.webCheckoutAvailable === true;
   const passState = state.pass && typeof state.pass === 'object' ? state.pass : { active: false, periodEnd: null, cancelAtPeriodEnd: false };
   const purchaseButton = row => {
@@ -363,7 +375,7 @@ function storePage(context) {
     const item = allowed[row.id], price = priceText(row);
     const overlap = row.id === 'remove_ads' && passState.active === true ? '<p class="pg-small mx-muted">Your Mega Pass already keeps automatic ads off. This permanent removal keeps working after the pass ends.</p>' : '';
     const priceFallback = isLinked(context) ? '<span class="mx-muted">Price unavailable</span>' : '<span class="mx-muted">Sign in to see the price</span>';
-    return panel('<div class="pg-store-art" aria-hidden="true">' + icon(item.amount ? 'crown' : 'shield') + '</div>' + pill(item.amount ? 'CROWN PACK' : 'PERMANENT AD REMOVAL') + introBadge + '<h2>' + item.title + '</h2><p>' + (item.amount ? 'Works the same way in the game as earned Crowns.' : 'Turn off automatic ads where supported. Optional rewarded ads remain a separate choice.') + '</p>' + overlap + '<div class="pg-store-price">' + (price ? e(price) : priceFallback) + '</div>' + purchaseButton(row), 'pg-store-card');
+    return panel('<div class="pg-store-art" aria-hidden="true">' + icon(item.amount ? 'crown' : 'shield') + '</div>' + pill(item.amount ? 'CROWN PACK' : 'PERMANENT AD REMOVAL') + introBadge + '<h2>' + item.title + '</h2><p>' + (item.amount ? 'Works the same way in the game as earned Crowns.' : 'Turn off automatic ads where supported. Optional rewarded ads remain a separate choice.') + '</p>' + overlap + '<div class="pg-store-price">' + (priceHtml(row) || priceFallback) + '</div>' + purchaseButton(row), 'pg-store-card');
   }).join('') + '</div>';
   const passRow = state.status === 'ready' && Array.isArray(state.rows) ? (state.rows.find(row => row && row.id === 'mega_pass') || null) : null;
   const passOwned = passState.active === true || (passRow ? passRow.owned === true : false);
@@ -376,12 +388,13 @@ function storePage(context) {
       : '<button class="mx-button ' + (passAvailable ? 'primary' : 'secondary') + '" type="button"' + (passAvailable ? ' data-store-action="purchase" data-product-id="mega_pass"' : '') + (passAvailable ? '' : ' disabled') + '>' + (passAvailable ? 'Subscribe · renews monthly' : 'Temporarily unavailable') + '</button>';
   const passPeriod = passOwned && passState.periodEnd ? '<p class="pg-small mx-muted">Your pass is paid through ' + new Date(passState.periodEnd).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) + (passState.cancelAtPeriodEnd ? ' and will not renew.' : '.') + '</p>' : (passOwned ? '' : '<p class="pg-small mx-muted">Auto-renewing subscription. Cancel anytime in your store subscriptions. Crowns and Coins you already have are kept if the pass lapses.</p>');
   const passPriceFallback = isLinked(context) ? '<span class="mx-muted">Price unavailable</span>' : '<span class="mx-muted">Sign in to see the price</span>';
-  const passPanel = '<div class="pg-pass-panel" data-mega-pass><div class="pg-pass-media"><img class="pg-pass-art" src="/assets/art/mega-pass.webp" alt="" loading="lazy" width="768" height="481"></div><div class="pg-pass-copy"><span class="mx-chip">MEGA PASS · MONTHLY</span>' + introBadge + '<h2>Mega Pass</h2><ul class="pg-pass-benefits"><li>150 Crowns every billing month, delivered 50 on days 1, 11 and 21</li><li>2× Coins from bot wins — daily caps still apply</li><li>Coin-to-Crown exchange at 8:1 for the first 200 Coins each month</li><li>15% off up to two Crown packs per month</li><li>Automatic ads off; rewarded ads stay your choice</li></ul><div class="pg-pass-action"><div class="pg-store-price pg-pass-price">' + (passPrice ? e(passPrice) + '<span class="pg-pass-period">/ month</span>' : passPriceFallback) + '</div>' + passAction + '</div>' + passPeriod + '</div></div>';
+  const passPanel = '<div class="pg-pass-panel" data-mega-pass><div class="pg-pass-media"><img class="pg-pass-art" src="/assets/art/mega-pass.webp" alt="" loading="lazy" width="768" height="481"></div><div class="pg-pass-copy"><span class="mx-chip">MEGA PASS · MONTHLY</span>' + introBadge + '<h2>Mega Pass</h2><ul class="pg-pass-benefits"><li>150 Crowns every billing month, delivered 50 on days 1, 11 and 21</li><li>2× Coins from bot wins — daily caps still apply</li><li>Coin-to-Crown exchange at 8:1 for the first 200 Coins each month</li><li>15% off up to two Crown packs per month</li><li>Automatic ads off; rewarded ads stay your choice</li></ul><div class="pg-pass-action"><div class="pg-store-price pg-pass-price">' + (passPrice ? (priceHtml(passRow) || e(passPrice)) + '<span class="pg-pass-period">/ month</span>' : passPriceFallback) + '</div>' + passAction + '</div>' + passPeriod + '</div></div>';
   const wallet = isLinked(context) ? panel('<div class="pg-store-wallet"><span>' + icon('coin') + ' Coins <strong>' + numeric(context.profile?.wallet?.coins) + '</strong></span><span>' + icon('crown') + ' Crowns <strong>' + numeric(context.profile?.wallet?.crowns) + '</strong></span>' + (passState.active === true ? '<span class="mx-chip">Mega Pass active</span>' : '') + button('Your rewards', '/rewards', 'secondary', 'arrow-right') + '</div>') : sessionPrompt(context, 'Link your permanent profile before making a purchase.');
   return '<div class="pg-page">' + heading('MORE POSSIBILITIES. THE SAME SKILL.', 'Your game, your choice.', 'The monthly Mega Pass, Crown packs and permanent Remove Ads in one store. Purchases never change Elo, legal moves or competitive balance.')
     + passPanel
     + wallet
     + '<div data-store-products>' + products + '</div>'
+    + (promoNote && state.status === 'ready' ? promoNote : '')
     + note('Prices come from your store’s current catalog. Coins and Crowns cannot be cashed out or redeemed for real-world money. For a store issue, include the platform, product and approximate purchase time. <a class="pg-text-link" href="/support">Purchase support</a>.')
     + '</div>';
 }

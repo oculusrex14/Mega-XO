@@ -277,6 +277,17 @@ const DODO_REGION_MAP={India:{currency:'inr',country:'IN'},Australia:{currency:'
 function dodoRegion(){
  const region=context.profile?.region;
  const mapped=typeof region==='string'?DODO_REGION_MAP[region]:null;
+ /* 2026-10-19: a player whose leaderboard region is unset (or not one of the mapped strings)
+  * still gets the localized charge where the device gives a confident signal — the IANA timezone
+  * and the browser locale. The explicit profile region always wins when it is set. */
+ if(!mapped){
+  try{
+   const timeZone=Intl.DateTimeFormat().resolvedOptions().timeZone||'';
+   if(/Kolkata|Calcutta|Colombo/.test(timeZone))return{currency:'inr',country:'IN'};
+   const language=(globalThis.navigator&&navigator.language)||'';
+   if(/-IN\b/i.test(language))return{currency:'inr',country:'IN'};
+  }catch(error){}
+ }
  return mapped||{currency:'usd',country:null};
 }
 let dodoPending=null;

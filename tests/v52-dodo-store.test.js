@@ -58,6 +58,22 @@ test('region currency picks a configured localized price and falls back to USD',
   assert.equal(unknownRow.dodoCurrency, 'usd', 'an unsupported region falls back to the USD base, never an estimate');
 });
 
+test('the launch-offer was/now comparison only renders from a server-validated regular price', () => {
+  /* 2026-10-19: the slashed-price promo. regularRegions is display-only; a regular price that is
+   * not ABOVE the current one never renders as a comparison (no fake discounts). */
+  const status = { ...baseStatus(), dodo: { ...dodoBlock(), regularRegions: { crowns_100: { usd: 99, inr: 5000 } } } };
+  const usd = normalizeStoreStatus(status, { regionCurrency: 'usd' });
+  const crowns = usd.rows.find(row => row.id === 'crowns_100');
+  assert.equal(crowns.dodoPrice, '$0.49');
+  assert.equal(crowns.dodoRegularPrice, '$0.99');
+  const india = normalizeStoreStatus(status, { regionCurrency: 'inr' });
+  const indiaRow = india.rows.find(row => row.id === 'crowns_100');
+  assert.equal(indiaRow.dodoPrice, '₹25.00');
+  assert.equal(indiaRow.dodoRegularPrice, '₹50.00');
+  const notAbove = normalizeStoreStatus({ ...status, dodo: { ...dodoBlock(), regularRegions: { crowns_100: { usd: 49 } } } }, { regionCurrency: 'usd' });
+  assert.equal(notAbove.rows.find(row => row.id === 'crowns_100').dodoRegularPrice, null);
+});
+
 test('the intro window is display metadata and the checkout provider passes through', () => {
   const normalized = normalizeStoreStatus({ ...baseStatus(), dodo: dodoBlock() });
   assert.deepEqual(normalized.dodoIntro, { active: true, endsAt: '2026-11-18T20:29:59.000Z' });

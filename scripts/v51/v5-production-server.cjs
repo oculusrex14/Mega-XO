@@ -813,6 +813,16 @@ async function main() {
   });
   const ticketIssuer = await createTicketIssuer(apiPool, { environment: 'prd', audience: 'mega-core' });
   const queue = await createQueueService({ ephemera, core, pool: corePool });
+  /* Matchmaker wake-on-join (infrastructure brief 2026-10-19, part B/F): the adaptive matcher
+   * loop backs off when nobody is queued, so a fresh join must re-arm it immediately or the
+   * first candidate could wait out the whole backoff ceiling. Only the mutating entry point is
+   * wrapped; status/cancel and every other method delegate untouched. */
+  let wakeMatchmaker = () => {};
+  const queueActivity = ['join'].reduce((acc, method) => {
+   const base = queue[method];
+   if (typeof base === 'function') acc[method] = async (...args) => { const out = await base.apply(queue, args); wakeMatchmaker(); return out; };
+   return acc;
+  }, Object.create(queue));
   const tournaments = createTournamentService({ pool: corePool, core, ephemera });
   await tournaments.ready;
   const tournamentTimer = createTournamentTimer({ tournaments, owner: `prd_tournaments_${process.pid}`,
@@ -1124,7 +1134,7 @@ async function main() {
     } : undefined,
   });
   const commerceIngress = createCommerceIngressService({ commerce });
-  const coreIngress = createCoreServiceIngress({ coreService: core, ticketIssuer, queue, tournaments: tournamentActivity, commerce: commerceIngress, leaderboardPool: corePool, secret: gatewaySecret });
+   const coreIngress = createCoreServiceIngress({ coreService: core, ticketIssuer, queue: queueActivity, tournaments: tournamentActivity, commerce: commerceIngress, leaderboardPool: corePool, secret: gatewaySecret });
   /* The mirror of the API assertion: Core, the Core-owned queue, the leaderboard materializer and the
    * realtime pool all run on `core_runtime`; the API-owned ticket issuer is the one asserted API member. */
   const coreRole = assertCoreCompositionUsesCorePool({
@@ -1415,20 +1425,31 @@ async function main() {
   if (arg('--matchmaker', 'on') !== 'off') {
     const matcherId = `prd_matcher_${process.pid}`;
     let ticking = false;
-    const tick = async () => {
-      if (ticking) return;
-      ticking = true;
-      try {
-        for (const mode of ['casual', 'ranked']) {
-          const result = await queue.matchTick({ mode, matcherId, limit: 4, makeId: () => crypto.randomUUID() });
-          if (result.matched) console.log(JSON.stringify({ event: 'matchmaker.pairing', mode, matched: result.matched, at: new Date().toISOString() }));
-        }
-      } catch (error) {
-        console.error(JSON.stringify({ event: 'matchmaker.tick_error', code: safeError(error) }));
-      } finally { ticking = false; }
-    };
-    matchmakerTimer = setInterval(tick, 3000);
-    tick();
+   /* Adaptive cadence (brief part F): an empty queue must not poll the database every 3s
+    * forever - the tick backs off to a 30s ceiling after repeated empty passes, and any join
+    * (or pairing) resets it to fast so waiting players never lose latency. */
+   let emptyStreak = 0;
+   const FAST_MS = 3000, MAX_MS = 30000;
+   const tick = async () => {
+    if (ticking) return;
+    ticking = true;
+    let anyMatched = false;
+    try {
+     for (const mode of ['casual', 'ranked']) {
+      const result = await queue.matchTick({ mode, matcherId, limit: 4, makeId: () => crypto.randomUUID() });
+      if (result.matched) { anyMatched = true; console.log(JSON.stringify({ event: 'matchmaker.pairing', mode, matched: result.matched, at: new Date().toISOString() })); }
+     }
+    } catch (error) {
+     console.error(JSON.stringify({ event: 'matchmaker.tick_error', code: safeError(error) }));
+    } finally {
+     ticking = false;
+     emptyStreak = anyMatched ? 0 : Math.min(emptyStreak + 1, 12);
+     arm(Math.min(FAST_MS * 2 ** Math.min(emptyStreak, 10), MAX_MS));
+    }
+   };
+   wakeMatchmaker = () => { emptyStreak = 0; if (!ticking) arm(0); };
+   matchmakerTimer = setTimeout(tick, FAST_MS);
+   matchmakerTimer.unref?.();
   }
 
   /* B2: the pass installment sweep. Bounded, single-flight, best-effort: every 50 Crowns credit

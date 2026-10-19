@@ -56,6 +56,17 @@ test('dispatch: each op maps to exactly one commerce call with ordered arguments
   assert.deepEqual(byMethod.purchase, [ACTOR, 'op-3', { store: 'google', token: 't' }, true]);
 });
 
+test('dispatch: dodo_create forwards the region hint and the full ordered argument set', async () => {
+  /* Regression (2026-10-19 production e2e): the gateway dropped the region hint, the ingress
+   * answered INVALID_COMMERCE_ARG (masked upstream as a bare 503), and no reservation row was
+   * ever written. Pin the exact ordered arguments so the arg set cannot drift again. */
+  const commerce = fakeCommerce();
+  const ingress = createCommerceIngressService({ commerce });
+  await ingress.command({ actor: ACTOR, op: 'dodo_create', key: 'op-dodo-1', productId: 'crowns_100', customer: {}, region: { currency: 'inr', country: 'IN' } });
+  const call = commerce.calls.find((c) => c.method === 'createDodoCheckout');
+  assert.deepEqual(call.args, [ACTOR, 'op-dodo-1', 'crowns_100', {}, { currency: 'inr', country: 'IN' }]);
+});
+
 test('dispatch: unknown ops, bad shapes, and missing keys refuse with stable codes', async () => {
   const ingress = createCommerceIngressService({ commerce: fakeCommerce() });
   await assert.rejects(() => ingress.command({ actor: ACTOR, op: 'selfDestruct' }), /INVALID_COMMERCE_OP/);
@@ -116,6 +127,13 @@ test('ssv dispatch: the provider callback is actor-free END TO END through the r
 
 test('source integrity: the ingress and the API dispatch are wired', () => {
   const gateway = fs.readFileSync(path.join(__dirname, '..', 'packages', 'services', 'core-gateway.js'), 'utf8');
+  assert.match(gateway, /op, key, kind, platform, itemId, evidence, restore, productId, orderId, checkoutId, customer, region, amount \} = \{\}/,
+    'the gateway forwards the region hint (dropping it masked every dodo create as a bare 503)');
+  const commerceService = fs.readFileSync(path.join(__dirname, '..', 'packages', 'services', 'commerce.js'), 'utf8');
+  assert.match(commerceService, /createFingerprint\('dodo-create', productId \+ ':' \+ currency\)/,
+    'the reservation fingerprint is currency-scoped');
+  assert.match(commerceService, /\{ type: 'dodo-create', productId: productId \+ ':' \+ currency \}/,
+    'the finalization command fingerprint equals the reservation fingerprint (mismatch left every create CHECKOUT_CREATE_PENDING)');
   assert.match(gateway, /pathname === '\/ingress\/commerce\/ssv'/, 'actor-free ssv path present');
   assert.match(gateway, /commerce: createCommerceIngressService|commerce,/);
   const apiIndex = fs.readFileSync(path.join(__dirname, '..', 'apps', 'api', 'index.js'), 'utf8');

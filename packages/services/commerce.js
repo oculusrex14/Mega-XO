@@ -1250,7 +1250,12 @@ async function createCommerceService(pool, options = {}) {
    if (terminal) { error.status = 502; throw error; }
    const e = Error('CHECKOUT_CREATE_PENDING'); e.status = 503; e.retryAfter = 2; throw e;
   }
-  return transaction(actor, key, { type: 'dodo-create', productId }, async (tx) => {
+  /* The finalization command fingerprint MUST equal the reservation fingerprint exactly
+   * (createFingerprint('dodo-create', productId + ':' + currency)): transaction() recomputes
+   * sha256(JSON.stringify(command)) and only the winning creator (same fingerprint) may pass
+   * the PENDING fence. Currency-scoped idempotency is deliberate - a retry with a different
+   * currency must never replay the first currency's checkout - so the currency rides here. */
+  return transaction(actor, key, { type: 'dodo-create', productId: productId + ':' + currency }, async (tx) => {
    await tx.query(
     'INSERT INTO monetization.dodo_orders (checkout_id, actor_id, product_id, price_id, amount_cents, currency, status, op_key, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) ON CONFLICT (actor_id, op_key) DO NOTHING',
     [created.checkoutId, actor, productId, entry.productId, expectedCents, currency, 'created', key, iso(tx.clock())]);

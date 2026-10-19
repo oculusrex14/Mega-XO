@@ -381,6 +381,12 @@
       "name": "0063_api_challenge_projection",
       "file": "migrations/0063_api_challenge_projection.sql",
       "sha256": "b565b25cf4c8a85f061f68de9774d6ad3e377b9290b22a43ac62d8ae0c0971ee"
+    },
+    {
+      "id": 64,
+      "name": "0064_dodo_store_lane",
+      "file": "migrations/0064_dodo_store_lane.sql",
+      "sha256": "934c8d07ed96c89ca4d9f913e59fabeed7743eafde1daed685f27073bd77d12d"
     }
   ]
 }

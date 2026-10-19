@@ -31,7 +31,7 @@ const { createRateLimiter, KEY_PATTERN } = require('./rate-limit');
 
 const DEFAULT_LIMIT = 600;
 const WINDOW_MS = 60000;
-const PROVIDERS = Object.freeze(['admob', 'cashfree', 'polar']);
+const PROVIDERS = Object.freeze(['admob', 'cashfree', 'polar', 'dodo']);
 const PURPOSE = 'megaxo:callback-ip-bucket:v1';
 
 function fail(code, status) {

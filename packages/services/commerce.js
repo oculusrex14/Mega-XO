@@ -86,6 +86,7 @@ const M = require('../../src/monetization.js');
 const D = require('../../src/domain.js');
 const { newOrderId } = require('./cashfree.js');
 const { UUID_V4 } = require('./polar.js');
+const { SESSION_ID, SUPPORTED_CURRENCIES } = require('./dodo.js');
 
 const CORE_ROLE = 'core_runtime';
 const DAY = 86400000;
@@ -229,6 +230,15 @@ async function createCommerceService(pool, options = {}) {
   storeNotificationHandlers: options.storeNotificationHandlers || null,
   /* Sol review 2026-10-18: the discount id must reach the service or the pack-discount guard is dead. */
   polarPackDiscountId: typeof options.polarPackDiscountId === 'string' && options.polarPackDiscountId ? options.polarPackDiscountId : null,
+  /* 2026-10-19: the Dodo lane (owner decision: Dodo = PRIMARY web checkout, Polar dormant).
+   * The catalog price per product is a per-currency map of the SERVER-AUTHORITATIVE amounts
+   * configured on the Dodo product (usd base + localized inr); the intro window is display
+   * metadata only - the charged amount is whatever the configured Dodo product price says. */
+  dodoProvider: options.dodoProvider || null,
+  dodoCatalog: options.dodoCatalog || null,
+  dodoSuccessUrl: typeof options.dodoSuccessUrl === 'string' ? options.dodoSuccessUrl : '',
+  dodoPackDiscountId: typeof options.dodoPackDiscountId === 'string' && options.dodoPackDiscountId ? options.dodoPackDiscountId : null,
+  dodoIntroEndsAt: typeof options.dodoIntroEndsAt === 'string' && options.dodoIntroEndsAt ? options.dodoIntroEndsAt : null,
   adMode,
   rewardItem: typeof options.rewardItem === 'string' && options.rewardItem ? options.rewardItem : 'cosmetic_reward',
   adUnits: normalizeAdUnits(options.adUnits, options.adUnit),
@@ -308,6 +318,57 @@ async function createCommerceService(pool, options = {}) {
  }
  validatePolarCatalog();
 
+/* -------------------------------------------------------------------- dodo (2026-10-19)
+ *
+ * The Dodo lane (owner decision: Dodo = PRIMARY web checkout; Polar stays composed but dormant).
+ * Mirrors the Polar contract exactly: the server-side catalog price is recorded at creation, the
+ * settlement requires an INDEPENDENT provider verification with the exact recorded amount AND the
+ * metadata actor/product binding, and the refund is a terminal refunded_at under the same
+ * order-identity mutex. Orders live in monetization.dodo_orders (0064 - Dodo ids are not UUIDs
+ * and settlement can be a localized currency, so the 0057 CHECKs cannot carry this lane); the
+ * Mega Pass subscription ledger is SHARED (polar_subscriptions.provider='dodo') because
+ * pass_periods.subscription_id carries its foreign key there. */
+
+ const DODO_CENTS = /^\d{1,9}$/;
+ const DODO_COUNTRY = /^[A-Z]{2}$/;
+ function dodoCatalogEntry(productId) {
+  if (!config.dodoProvider || typeof config.dodoProvider.createCheckout !== 'function') throw Error('DODO_UNAVAILABLE');
+  if (!config.dodoCatalog || typeof config.dodoCatalog !== 'object' || Array.isArray(config.dodoCatalog)) throw Error('DODO_UNAVAILABLE');
+  const entry = config.dodoCatalog[productId];
+  if (!entry || typeof entry !== 'object' || Array.isArray(entry)) throw Error('INVALID_PRODUCT');
+  if (typeof entry.productId !== 'string' || !config.dodoProvider.isProductId(entry.productId)) throw Error('INVALID_PRODUCT');
+  if (!entry.prices || typeof entry.prices !== 'object' || Array.isArray(entry.prices)) throw Error('INVALID_PRODUCT');
+  for (const [currency, cents] of Object.entries(entry.prices)) {
+   if (!SUPPORTED_CURRENCIES.has(currency) || typeof cents !== 'number' || !DODO_CENTS.test(String(cents)) || cents <= 0) throw Error('INVALID_PRODUCT');
+  }
+  if (!M.product(productId)) throw Error('INVALID_PRODUCT');
+  return entry;
+ }
+
+ /* The checkout currency comes from the player's region hint and MUST exist in the configured
+  * catalog; anything else (including a guessed region) falls back to the base USD price. */
+ function dodoPriceFor(entry, currency) {
+  const normalized = config.dodoProvider.supportedCurrency(currency);
+  const resolved = normalized && typeof entry.prices[normalized] === 'number' ? normalized : 'usd';
+  return { currency: resolved, amountCents: entry.prices[resolved] };
+ }
+
+ function validateDodoCatalog() {
+  if (!config.dodoProvider) return;
+  if (!config.dodoCatalog || typeof config.dodoCatalog !== 'object' || Array.isArray(config.dodoCatalog)) throw new PgGuardError('DODO_CATALOG_REQUIRED');
+  for (const [productId, entry] of Object.entries(config.dodoCatalog)) {
+   if (!M.product(productId)) throw new PgGuardError('INVALID_DODO_PRODUCT', { productId });
+   if (!entry || typeof entry !== 'object' || typeof entry.productId !== 'string' || !config.dodoProvider.isProductId(entry.productId)) throw new PgGuardError('INVALID_DODO_PRODUCT_ID', { productId });
+   if (!entry.prices || typeof entry.prices !== 'object' || Array.isArray(entry.prices) || !Object.keys(entry.prices).length) throw new PgGuardError('DODO_PRICE_REQUIRED', { productId });
+   for (const [currency, cents] of Object.entries(entry.prices)) {
+    if (!SUPPORTED_CURRENCIES.has(currency)) throw new PgGuardError('INVALID_DODO_CURRENCY', { productId, currency });
+    if (typeof cents !== 'number' || !DODO_CENTS.test(String(cents)) || cents <= 0) throw new PgGuardError('INVALID_DODO_PRICE_CENTS', { productId, currency });
+   }
+  }
+  if (config.dodoIntroEndsAt !== null && Number.isNaN(Date.parse(config.dodoIntroEndsAt))) throw new PgGuardError('INVALID_DODO_INTRO_ENDS_AT');
+ }
+ validateDodoCatalog();
+
  /* Settled Cashfree AND Polar once-products for the owned() projection: the additive receipt
   * contracts (0056/0057). Both tables carry the terminal refunded_at, so a refunded
   * once-product (remove_ads) is revoked structurally in the same projection. */
@@ -323,7 +384,7 @@ async function createCommerceService(pool, options = {}) {
  async function activePassRow(tx, actor, now) {
   const at = typeof now === 'number' ? new Date(now).toISOString() : now;
   return (await tx.query(
-   "SELECT subscription_id, status, cancel_at_period_end, current_period_start, current_period_end FROM monetization.polar_subscriptions WHERE actor_id = $1 AND status = 'active' AND current_period_end IS NOT NULL AND current_period_end > $2 ORDER BY current_period_end DESC LIMIT 1",
+   "SELECT subscription_id, status, cancel_at_period_end, current_period_start, current_period_end FROM monetization.store_subscriptions WHERE actor_id = $1 AND status = 'active' AND current_period_end IS NOT NULL AND current_period_end > $2 ORDER BY current_period_end DESC LIMIT 1",
    [actor, at])).rows[0] || null;
  }
 
@@ -334,9 +395,11 @@ async function createCommerceService(pool, options = {}) {
   const receipts = await tx.repositories.purchases.forActor(actor);
   const cashfreeRows = await cashfreeOnceRows(tx, actor);
   const polarRows = await tx.query('SELECT product_id, refunded_at FROM monetization.polar_orders WHERE actor_id = $1 AND settled_at IS NOT NULL ORDER BY created_at LIMIT $2', [actor, 100]);
+  const dodoRows = await tx.query('SELECT product_id, refunded_at FROM monetization.dodo_orders WHERE actor_id = $1 AND settled_at IS NOT NULL ORDER BY created_at LIMIT $2', [actor, 100]);
   const projection = owned(graph, account, [...receipts,
    ...cashfreeRows.map((r) => ({ productId: r.product_id, refunded: r.refunded_at !== null })),
-   ...polarRows.rows.map((r) => ({ productId: r.product_id, refunded: r.refunded_at !== null }))]);
+   ...polarRows.rows.map((r) => ({ productId: r.product_id, refunded: r.refunded_at !== null })),
+   ...dodoRows.rows.map((r) => ({ productId: r.product_id, refunded: r.refunded_at !== null }))]);
   const pass = await activePassRow(tx, actor, tx.clock());
   if (pass) {
    projection.products = [...new Set([...projection.products, 'mega_pass'])];
@@ -744,7 +807,7 @@ async function createCommerceService(pool, options = {}) {
   let reservedPeriod = null;
   if (isPack) {
    const reserved = await uow.run(async (tx) => (await tx.query(
-    "UPDATE monetization.pass_periods pp SET pack_discounts_reserved = pp.pack_discounts_reserved + 1 FROM monetization.polar_subscriptions ps WHERE pp.subscription_id = ps.subscription_id AND ps.actor_id = $1 AND ps.status = 'active' AND pp.period_start <= $2 AND pp.period_end > $2 AND pp.pack_discounts_reserved + pp.pack_discounts_used < 2 AND pp.subscription_id = (SELECT ps2.subscription_id FROM monetization.polar_subscriptions ps2 WHERE ps2.actor_id = $1 AND ps2.status = 'active' ORDER BY ps2.created_at DESC LIMIT 1) AND pp.period_start = (SELECT MAX(pp3.period_start) FROM monetization.pass_periods pp3 WHERE pp3.subscription_id = pp.subscription_id AND pp3.period_start <= $2 AND pp3.period_end > $2) RETURNING pp.subscription_id, pp.period_start",
+    "UPDATE monetization.pass_periods pp SET pack_discounts_reserved = pp.pack_discounts_reserved + 1 FROM monetization.store_subscriptions ps WHERE pp.subscription_id = ps.subscription_id AND ps.actor_id = $1 AND ps.status = 'active' AND pp.period_start <= $2 AND pp.period_end > $2 AND pp.pack_discounts_reserved + pp.pack_discounts_used < 2 AND pp.subscription_id = (SELECT ps2.subscription_id FROM monetization.store_subscriptions ps2 WHERE ps2.actor_id = $1 AND ps2.status = 'active' ORDER BY ps2.created_at DESC LIMIT 1) AND pp.period_start = (SELECT MAX(pp3.period_start) FROM monetization.pass_periods pp3 WHERE pp3.subscription_id = pp.subscription_id AND pp3.period_start <= $2 AND pp3.period_end > $2) RETURNING pp.subscription_id, pp.period_start",
     [actor, new Date(serviceNow()).toISOString()])).rows[0] || null);
    if (reserved) {
     /* Sol review 2026-10-18: record the EXACT reserved (subscription, period) pair so the
@@ -991,7 +1054,7 @@ async function createCommerceService(pool, options = {}) {
   let expectedCents = entry.amountCents;
   if (isPack) {
    const reserved = await uow.run(async (tx) => (await tx.query(
-    "UPDATE monetization.pass_periods pp SET pack_discounts_reserved = pp.pack_discounts_reserved + 1 FROM monetization.polar_subscriptions ps WHERE pp.subscription_id = ps.subscription_id AND ps.actor_id = $1 AND ps.status = 'active' AND pp.period_start <= $2 AND pp.period_end > $2 AND pp.pack_discounts_reserved + pp.pack_discounts_used < 2 AND pp.subscription_id = (SELECT ps2.subscription_id FROM monetization.polar_subscriptions ps2 WHERE ps2.actor_id = $1 AND ps2.status = 'active' ORDER BY ps2.created_at DESC LIMIT 1) AND pp.period_start = (SELECT MAX(pp3.period_start) FROM monetization.pass_periods pp3 WHERE pp3.subscription_id = pp.subscription_id AND pp3.period_start <= $2 AND pp3.period_end > $2) RETURNING pp.subscription_id, pp.period_start",
+    "UPDATE monetization.pass_periods pp SET pack_discounts_reserved = pp.pack_discounts_reserved + 1 FROM monetization.store_subscriptions ps WHERE pp.subscription_id = ps.subscription_id AND ps.actor_id = $1 AND ps.status = 'active' AND pp.period_start <= $2 AND pp.period_end > $2 AND pp.pack_discounts_reserved + pp.pack_discounts_used < 2 AND pp.subscription_id = (SELECT ps2.subscription_id FROM monetization.store_subscriptions ps2 WHERE ps2.actor_id = $1 AND ps2.status = 'active' ORDER BY ps2.created_at DESC LIMIT 1) AND pp.period_start = (SELECT MAX(pp3.period_start) FROM monetization.pass_periods pp3 WHERE pp3.subscription_id = pp.subscription_id AND pp3.period_start <= $2 AND pp3.period_end > $2) RETURNING pp.subscription_id, pp.period_start",
     [actor, new Date(serviceNow()).toISOString()])).rows[0] || null);
    if (reserved) {
     reservedPeriod = { subscriptionId: reserved.subscription_id, start: new Date(reserved.period_start).toISOString() };
@@ -1092,6 +1155,115 @@ async function createCommerceService(pool, options = {}) {
   }, ['polar', checkoutId]);
  }
 
+ /* The Dodo lane (2026-10-19): identical reserve-then-create fence, independent verification and
+  * settlement semantics as the Polar lane, against monetization.dodo_orders (0064). The player's
+  * region hint picks the catalog currency (validated against the SERVER-SIDE per-currency prices,
+  * never a client amount); the recorded (currency, amount_cents) is what settlement requires the
+  * verified payment to match exactly. During the intro window the pack-discount code is NOT
+  * stacked on top of the intro pricing - the deeper launch price already applies, so the pass
+  * holder's two-per-month pack discounts stay reserved for the standard price window. */
+ async function dodoReadyCheckoutUrl(checkoutId) {
+  const row = (await uow.run(async (tx) => {
+   await tx.query('SET TRANSACTION READ ONLY');
+   return (await tx.query("SELECT response_text FROM monetization.commerce_create_requests WHERE provider = 'dodo' AND provider_object_id = $1 AND state = 'READY' AND response_text IS NOT NULL LIMIT 1", [checkoutId])).rows[0] || null;
+  }));
+  if (!row) return null;
+  try { const parsed = JSON.parse(row.response_text); return typeof parsed.checkoutUrl === 'string' && parsed.checkoutUrl.startsWith('https://') ? parsed.checkoutUrl : null; } catch { return null; }
+ }
+
+ function dodoIntroActive() {
+  if (!config.dodoIntroEndsAt) return false;
+  const end = Date.parse(config.dodoIntroEndsAt);
+  return Number.isFinite(end) && serviceNow() < end;
+ }
+
+ async function createDodoCheckout(actor, key, productId, customer, region = {}) {
+  const entry = dodoCatalogEntry(productId);
+  if (!idOK(key)) throw Error('IDEMPOTENCY_KEY_REQUIRED');
+  if (customer !== undefined && customer !== null && (typeof customer !== 'object' || Array.isArray(customer))) throw Error('INVALID_CUSTOMER_DETAILS');
+  const email = customer && typeof customer.email === 'string' ? customer.email.trim() : '';
+  if (email && (email.length < 3 || email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))) throw Error('INVALID_CUSTOMER_DETAILS');
+  const { currency, amountCents } = dodoPriceFor(entry, region && region.currency);
+  const country = region && typeof region.country === 'string' && DODO_COUNTRY.test(region.country) ? region.country : null;
+  const fingerprint = createFingerprint('dodo-create', productId + ':' + currency);
+  const previous = await uow.run(async (tx) => {
+   await tx.query('SET TRANSACTION READ ONLY');
+   return (await tx.query('SELECT checkout_id, product_id, status FROM monetization.dodo_orders WHERE actor_id = $1 AND op_key = $2', [actor, key])).rows[0] || null;
+  });
+  if (previous) {
+   if (previous.product_id !== productId) throw Error('IDEMPOTENCY_CONFLICT');
+   const replayUrl = await dodoReadyCheckoutUrl(previous.checkout_id);
+   return { checkoutId: previous.checkout_id, productId: previous.product_id, status: previous.status, ...(replayUrl ? { checkoutUrl: replayUrl } : {}) };
+  }
+  const preflight = await uow.run(async (tx) => {
+   await tx.query('SET TRANSACTION READ ONLY');
+   const graph = await tx.repositories.domain();
+   const wallet = await tx.query('SELECT 1 AS ok FROM economy.wallets WHERE actor_id = $1', [actor]);
+   return { ready: wallet.rows.length > 0, account: accountOf(graph, actor) };
+  });
+  if (!preflight.ready) throw Error('ACCOUNT_REQUIRED');
+  const reservation = await reserveCreate(uow, actor, key, 'dodo', productId, fingerprint, { productId: entry.productId, amountCents, currency });
+  if (!reservation.won) {
+   const r = reservation.reservation;
+   if (!r || r.provider !== 'dodo' || r.product_id !== productId || r.fingerprint !== fingerprint) throw Error('IDEMPOTENCY_CONFLICT');
+   if (r.state === 'FAILED') { const e = Error(r.error_code || 'DODO_CREATE_FAILED'); e.status = 502; throw e; }
+   if (r.state === 'READY' && r.provider_object_id) {
+    const row = (await uow.run(async (tx) => { await tx.query('SET TRANSACTION READ ONLY'); return (await tx.query('SELECT checkout_id, status FROM monetization.dodo_orders WHERE checkout_id = $1', [r.provider_object_id])).rows[0] || null; }));
+    if (row) { const readyUrl = await dodoReadyCheckoutUrl(row.checkout_id); return { checkoutId: row.checkout_id, productId, status: row.status, ...(readyUrl ? { checkoutUrl: readyUrl } : {}) }; }
+   }
+   const e = Error('CHECKOUT_CREATE_PENDING'); e.status = 503; e.retryAfter = 2; throw e;
+  }
+  const requestId = reservation.requestId;
+  /* MXA-ECO-011 parity for the Dodo lane: an active Mega Pass discounts at most two Crown packs
+   * per paid month. The use is RESERVED under a row lock before the provider call and released
+   * only on a terminal, proven non-creation; verified settlement converts it to used. During the
+   * intro window the launch price is already the deeper discount, so the pack code never stacks. */
+  const packProduct = M.product(productId);
+  const packDiscountUsable = Boolean(packProduct && packProduct.crowns > 0) && typeof config.dodoPackDiscountId === 'string' && config.dodoPackDiscountId.length > 0 && !dodoIntroActive();
+  let reservedPeriod = null;
+  let expectedCents = amountCents;
+  if (packDiscountUsable) {
+   const reserved = await uow.run(async (tx) => (await tx.query(
+    "UPDATE monetization.pass_periods pp SET pack_discounts_reserved = pp.pack_discounts_reserved + 1 FROM monetization.store_subscriptions ps WHERE pp.subscription_id = ps.subscription_id AND ps.actor_id = $1 AND ps.status = 'active' AND pp.period_start <= $2 AND pp.period_end > $2 AND pp.pack_discounts_reserved + pp.pack_discounts_used < 2 AND pp.subscription_id = (SELECT ps2.subscription_id FROM monetization.store_subscriptions ps2 WHERE ps2.actor_id = $1 AND ps2.status = 'active' ORDER BY ps2.created_at DESC LIMIT 1) AND pp.period_start = (SELECT MAX(pp3.period_start) FROM monetization.pass_periods pp3 WHERE pp3.subscription_id = pp.subscription_id AND pp3.period_start <= $2 AND pp3.period_end > $2) RETURNING pp.subscription_id, pp.period_start",
+    [actor, new Date(serviceNow()).toISOString()])).rows[0] || null);
+   if (reserved) {
+    reservedPeriod = { subscriptionId: reserved.subscription_id, start: new Date(reserved.period_start).toISOString() };
+    expectedCents = Math.round(amountCents * (1 - M.PASS.packDiscount));
+   }
+  }
+  let created;
+  try {
+   created = await withDeadline(config.dodoProvider.createCheckout({
+    productId: entry.productId, actor, storeProductId: productId, email: email || undefined,
+    successUrl: config.dodoSuccessUrl, metadata: { request_id: requestId, op_key: key },
+    billingCurrency: currency, country,
+    discountCodes: reservedPeriod ? [config.dodoPackDiscountId] : null,
+   }));
+  } catch (error) {
+   const code = String(error && error.message || 'DODO_CREATE_UNKNOWN');
+   const httpMatch = /^DODO_HTTP_([0-9]{3})$/.exec(code);
+   const terminal = code === 'DODO_AUTH' || code === 'DODO_CONFIG' || (!!httpMatch && httpMatch[1] !== '408' && httpMatch[1] !== '429');
+   if (terminal && reservedPeriod) await uow.run(async (tx) => {
+    await tx.query("UPDATE monetization.pass_periods pp SET pack_discounts_reserved = pp.pack_discounts_reserved - 1 WHERE pp.subscription_id = $2 AND pp.period_start = $3 AND pp.pack_discounts_reserved > 0", [actor, reservedPeriod.subscriptionId, reservedPeriod.start]);
+   });
+   await markReservation(uow, requestId, terminal ? 'FAILED' : 'UNKNOWN', { errorCode: terminal ? code : null });
+   if (terminal) { error.status = 502; throw error; }
+   const e = Error('CHECKOUT_CREATE_PENDING'); e.status = 503; e.retryAfter = 2; throw e;
+  }
+  return transaction(actor, key, { type: 'dodo-create', productId }, async (tx) => {
+   await tx.query(
+    'INSERT INTO monetization.dodo_orders (checkout_id, actor_id, product_id, price_id, amount_cents, currency, status, op_key, created_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) ON CONFLICT (actor_id, op_key) DO NOTHING',
+    [created.checkoutId, actor, productId, entry.productId, expectedCents, currency, 'created', key, iso(tx.clock())]);
+   const row = (await tx.query('SELECT checkout_id, status FROM monetization.dodo_orders WHERE actor_id = $1 AND op_key = $2', [actor, key])).rows[0];
+   if (!row) throw Error('DODO_RECORD_FAILED');
+   await tx.query(
+    'UPDATE monetization.commerce_create_requests SET state = $2, provider_object_id = $3, response_text = $4, updated_at = $5 WHERE request_id = $6',
+    ['READY', 'succeeded', created.checkoutId, JSON.stringify({ checkoutUrl: created.checkoutUrl, checkoutId: created.checkoutId }), iso(tx.clock()), requestId]);
+   await event(tx, actor, 'checkout_created', 0);
+   return { checkoutId: created.checkoutId, productId, status: 'created', checkoutUrl: created.checkoutUrl };
+  });
+ }
+
  /* The provider webhook (actor-free): the Standard Webhooks HMAC binds the EXACT raw bytes, then
   * the recorded order is settled through the INDEPENDENT verification above; refund events route
   * to the trusted lane by checkout_id or polar_order_id. */
@@ -1189,7 +1361,7 @@ async function createCommerceService(pool, options = {}) {
   /* MXA-ECO-009 (audit 2026-10-17): ONE paid pass per actor - the newest active subscription
    * owns the grantable period; duplicates are skipped explicitly instead of stacking 3x50. */
   const due = await pool.query(
-   "SELECT DISTINCT ON (pp.actor_id) pp.subscription_id, pp.actor_id, pp.period_start, pp.period_end, pp.installments_granted FROM monetization.pass_periods pp JOIN monetization.polar_subscriptions ps ON ps.subscription_id = pp.subscription_id WHERE ps.status = 'active' AND pp.installments_granted < 3 AND pp.subscription_id = (SELECT ps2.subscription_id FROM monetization.polar_subscriptions ps2 WHERE ps2.actor_id = pp.actor_id AND ps2.status = 'active' ORDER BY ps2.created_at DESC LIMIT 1) ORDER BY pp.actor_id, ps.created_at DESC, pp.period_end DESC LIMIT 200");
+   "SELECT DISTINCT ON (pp.actor_id) pp.subscription_id, pp.actor_id, pp.period_start, pp.period_end, pp.installments_granted FROM monetization.pass_periods pp JOIN monetization.store_subscriptions ps ON ps.subscription_id = pp.subscription_id WHERE ps.status = 'active' AND pp.installments_granted < 3 AND pp.subscription_id = (SELECT ps2.subscription_id FROM monetization.store_subscriptions ps2 WHERE ps2.actor_id = pp.actor_id AND ps2.status = 'active' ORDER BY ps2.created_at DESC LIMIT 1) ORDER BY pp.actor_id, ps.created_at DESC, pp.period_end DESC LIMIT 200");
   let granted = 0;
   const now = serviceNow();
   for (const row of due.rows) {
@@ -1206,7 +1378,7 @@ async function createCommerceService(pool, options = {}) {
      /* Sol review round 2: reconciliation can install a newer active subscription between the
       * due query and this lock - the actor-level single-pass policy is re-checked INSIDE the
       * transaction, so a superseded subscription can never mint alongside the new one. */
-     const stillNewest = (await tx.query("SELECT 1 FROM monetization.polar_subscriptions ps WHERE ps.subscription_id = $1 AND ps.status = 'active' AND ps.subscription_id = (SELECT ps2.subscription_id FROM monetization.polar_subscriptions ps2 WHERE ps2.actor_id = $2 AND ps2.status = 'active' ORDER BY ps2.created_at DESC LIMIT 1)", [row.subscription_id, row.actor_id])).rows.length > 0;
+     const stillNewest = (await tx.query("SELECT 1 FROM monetization.store_subscriptions ps WHERE ps.subscription_id = $1 AND ps.status = 'active' AND ps.subscription_id = (SELECT ps2.subscription_id FROM monetization.store_subscriptions ps2 WHERE ps2.actor_id = $2 AND ps2.status = 'active' ORDER BY ps2.created_at DESC LIMIT 1)", [row.subscription_id, row.actor_id])).rows.length > 0;
      if (!stillNewest) return { granted: false, reason: 'SUPERSEDED_SUBSCRIPTION' };
      if (Number(fresh.installments_granted) !== n) return { granted: false, duplicate: true };
      if (!config.purchasesEnabled || !allowed(current)) return { granted: false, reason: 'PURCHASE_UNAVAILABLE' };
@@ -1351,6 +1523,205 @@ async function createCommerceService(pool, options = {}) {
   }, ['polar', checkoutId]);
  }
 
+ /* The Dodo settlement core, shared by the webhook and the status poll. The INDEPENDENT
+  * verification (session -> payment) returns the charged amount, currency AND the metadata
+  * binding; all must match the recorded row before any economic transaction. A ±1 minor-unit
+  * tolerance absorbs provider rounding on pass-discounted packs - the binding checks, not the
+  * penny, are what stand between a player and an economic grant. */
+ async function settleDodoOrder(checkoutId, hints = {}) {
+  const provider = config.dodoProvider;
+  if (!provider || typeof provider.verifyCheckout !== 'function') throw Error('DODO_UNAVAILABLE');
+  if (typeof checkoutId !== 'string' || !provider.isSessionId(checkoutId)) throw Error('ORDER_NOT_FOUND');
+  const recorded = await uow.run(async (tx) => {
+   await tx.query('SET TRANSACTION READ ONLY');
+   return (await tx.query('SELECT checkout_id, actor_id, product_id, price_id, amount_cents, currency, status, dodo_payment_id, settled_at, refunded_at FROM monetization.dodo_orders WHERE checkout_id = $1', [checkoutId])).rows[0] || null;
+  });
+  if (!recorded) throw Error('ORDER_NOT_FOUND');
+  if (recorded.refunded_at) throw Error('ORDER_REFUNDED');
+  const verified = await provider.verifyCheckout(checkoutId);
+  if (!verified || verified.status !== 'succeeded') return { checkoutId, settled: false, status: verified ? verified.status : null };
+  if (verified.currency !== recorded.currency || Math.abs(Number(recorded.amount_cents) - verified.amount) > 1) throw Error('ORDER_AMOUNT_MISMATCH');
+  const metaActor = verified.metadata && typeof verified.metadata.actor === 'string' ? verified.metadata.actor : '';
+  const metaProduct = verified.metadata && typeof verified.metadata.product_id === 'string' ? verified.metadata.product_id : '';
+  if (metaActor !== recorded.actor_id || metaProduct !== recorded.product_id) throw Error('INVALID_RECEIPT');
+  const product = M.product(recorded.product_id);
+  if (!product) throw Error('INVALID_PRODUCT');
+  const dodoPaymentId = typeof hints.paymentId === 'string' && hints.paymentId && hints.paymentId.length <= 160 ? hints.paymentId : (verified.paymentId || null);
+  return transaction(recorded.actor_id, 'dodo:' + checkoutId, { type: 'dodo-settle', checkoutId }, async (tx, graph, current) => {
+   if (!config.purchasesEnabled || !allowed(current)) throw Error('PURCHASE_UNAVAILABLE');
+   const row = (await tx.query('SELECT settled_at, refunded_at FROM monetization.dodo_orders WHERE checkout_id = $1 FOR UPDATE', [checkoutId])).rows[0];
+   if (!row) throw Error('ORDER_NOT_FOUND');
+   if (row.refunded_at) throw Error('ORDER_REFUNDED');
+   if (row.settled_at) return { productId: product.id, duplicate: true, settled: true };
+   if (product.once) {
+    for (const r of await tx.repositories.purchases.forActor(recorded.actor_id)) {
+     if (r.productId !== product.id) continue;
+     if (r.refunded) throw Error('PRODUCT_PREVIOUSLY_REFUNDED');
+     return { productId: product.id, alreadyOwned: true, settled: true };
+    }
+    const prev = (await tx.query('SELECT refunded_at FROM monetization.dodo_orders WHERE actor_id = $1 AND product_id = $2 AND settled_at IS NOT NULL AND checkout_id <> $3 ORDER BY created_at LIMIT 1', [recorded.actor_id, product.id, checkoutId])).rows[0];
+    if (prev) {
+     if (prev.refunded_at) throw Error('PRODUCT_PREVIOUSLY_REFUNDED');
+     return { productId: product.id, alreadyOwned: true, settled: true };
+    }
+   }
+   current.crowns = D.add(current.crowns, product.crowns);
+   if (product.crowns) current.purchaseInfluenced = true;
+   if (product.crowns) journal(graph, { id: 'purchase:dodo:' + checkoutId, actor: recorded.actor_id, currency: 'crowns', amount: product.crowns, reason: 'Crown purchase', source: 'verified-store', at: tx.clock() });
+   await event(tx, recorded.actor_id, 'purchase_verified', product.crowns);
+   await tx.query('UPDATE monetization.dodo_orders SET status = $2, settled_at = $3, dodo_payment_id = COALESCE($4, dodo_payment_id) WHERE checkout_id = $1', [checkoutId, 'succeeded', iso(tx.clock()), dodoPaymentId]);
+   /* MXA-ECO-011: a discounted pack converts its reserved use to used on verified settlement. */
+   const catalogEntry = config.dodoCatalog && config.dodoCatalog[product.id];
+   const baseForCurrency = catalogEntry && catalogEntry.prices && Number.isFinite(Number(catalogEntry.prices[recorded.currency])) ? Number(catalogEntry.prices[recorded.currency]) : null;
+   if (product.crowns > 0 && baseForCurrency !== null && Number(recorded.amount_cents) < baseForCurrency) {
+    await tx.query('UPDATE monetization.pass_periods pp SET pack_discounts_reserved = pp.pack_discounts_reserved - 1, pack_discounts_used = pp.pack_discounts_used + 1 WHERE pp.subscription_id = (SELECT ps.subscription_id FROM monetization.store_subscriptions ps WHERE ps.actor_id = $1 AND ps.status = $2 ORDER BY ps.created_at DESC LIMIT 1) AND pp.period_start <= $3 AND pp.period_end > $3 AND pp.pack_discounts_reserved > 0 AND pp.pack_discounts_used < 2', [recorded.actor_id, 'active', new Date(iso(tx.clock())).toISOString()]);
+   }
+   /* B2: the first paid pass order binds the subscription row to the RECORDED checkout actor and
+    * product/price inside the settlement transaction - never from webhook payload fields alone. */
+   const passSubscriptionId = typeof hints.subscriptionId === 'string' && hints.subscriptionId && hints.subscriptionId.length <= 160 ? hints.subscriptionId : (verified.subscriptionId || null);
+   if (passSubscriptionId && product.id === 'mega_pass') {
+    await tx.query(
+     "INSERT INTO monetization.polar_subscriptions (subscription_id, actor_id, product_id, price_id, status, cancel_at_period_end, current_period_start, current_period_end, created_at, updated_at, provider) VALUES ($1, $2, 'mega_pass', $3, 'active', false, NULL, NULL, $4, $4, 'dodo') ON CONFLICT (subscription_id) DO NOTHING",
+     [passSubscriptionId, recorded.actor_id, recorded.price_id, iso(tx.clock())]);
+   }
+   return { productId: product.id, crowns: product.crowns, duplicate: false, settled: true };
+  }, ['dodo', checkoutId]);
+ }
+
+ /* The Dodo subscription lifecycle reconciliation: EVERY event is re-read from the provider
+  * before any write; the actor binding comes from the already-bound row (provider='dodo') or a
+  * recorded pass checkout with matching actor/product/price. Dodo statuses map to the shared
+  * ledger's 'active'/'revoked' pair; only a provider-verified 'active' status can mint a
+  * grantable paid period (trialing/past_due/on_hold never do). */
+ async function reconcileDodoSubscription(type, data) {
+  const provider = config.dodoProvider;
+  if (!provider || typeof provider.verifySubscription !== 'function') throw Error('DODO_UNAVAILABLE');
+  const subscriptionId = typeof data.id === 'string' && data.id && data.id.length <= 160 ? data.id : '';
+  if (!subscriptionId) return { handled: false, reason: 'NO_SUBSCRIPTION' };
+  const verified = await provider.verifySubscription(subscriptionId);
+  if (!verified || typeof verified.status !== 'string') return { handled: false, reason: 'NOT_VERIFIABLE' };
+  const now = new Date(serviceNow());
+  const existing = (await pool.query('SELECT actor_id, price_id, provider FROM monetization.polar_subscriptions WHERE subscription_id = $1', [subscriptionId])).rows[0] || null;
+  let actor = existing && existing.provider === 'dodo' ? existing.actor_id : null;
+  const priceId = existing && existing.provider === 'dodo' ? existing.price_id : (config.dodoCatalog && config.dodoCatalog.mega_pass ? config.dodoCatalog.mega_pass.productId : '');
+  const entry = config.dodoCatalog ? config.dodoCatalog['mega_pass'] : null;
+  if (entry && priceId && priceId !== entry.productId) return { handled: false, reason: 'INVALID_BINDING' };
+  if (!actor) {
+   const metaActor = typeof verified.metadata.actor === 'string' ? verified.metadata.actor.slice(0, 160) : '';
+   if (!metaActor || !priceId) return { handled: false, reason: 'NO_ACTOR_BINDING' };
+   const checkout = (await pool.query("SELECT actor_id FROM monetization.dodo_orders WHERE actor_id = $1 AND product_id = 'mega_pass' AND price_id = $2 LIMIT 1", [metaActor, priceId])).rows[0] || null;
+   if (!checkout) return { handled: false, reason: 'INVALID_BINDING' };
+   actor = metaActor;
+  }
+  if (type === 'subscription.cancelled' || type === 'subscription.expired' || type === 'subscription.failed' || verified.status === 'cancelled' || verified.status === 'expired' || verified.status === 'failed') {
+   await pool.query("INSERT INTO monetization.polar_subscriptions (subscription_id, actor_id, product_id, price_id, status, cancel_at_period_end, current_period_start, current_period_end, created_at, updated_at, provider) VALUES ($1, $2, 'mega_pass', $3, 'revoked', false, $4, $5, $6, $6, 'dodo') ON CONFLICT (subscription_id) DO UPDATE SET status = 'revoked', updated_at = $6",
+    [subscriptionId, actor, priceId, verified.currentPeriodStart, verified.currentPeriodEnd, now]);
+   return { handled: true, subscriptionId, status: 'revoked' };
+  }
+  if (type === 'subscription.active' || type === 'subscription.updated' || type === 'subscription.renewed' || type === 'subscription.unpaused' || ['active', 'past_due', 'on_hold', 'paused'].includes(verified.status)) {
+   const canceled = type === 'subscription.cancelled' || verified.cancelAtPeriodEnd === true;
+   const lifecycled = verified.status === 'active';
+   const status = lifecycled ? 'active' : 'revoked';
+   await pool.query("INSERT INTO monetization.polar_subscriptions (subscription_id, actor_id, product_id, price_id, status, cancel_at_period_end, current_period_start, current_period_end, created_at, updated_at, provider) VALUES ($1, $2, 'mega_pass', $3, $4, $5, $6, $7, $8, $8, 'dodo') ON CONFLICT (subscription_id) DO UPDATE SET status = $4, cancel_at_period_end = $5, current_period_start = $6, current_period_end = $7, updated_at = $8",
+    [subscriptionId, actor, priceId, status, canceled, verified.currentPeriodStart, verified.currentPeriodEnd, now]);
+   const periodStart = verified.currentPeriodStart ? new Date(verified.currentPeriodStart) : null;
+   const periodEnd = verified.currentPeriodEnd ? new Date(verified.currentPeriodEnd) : null;
+   if (verified.status === 'active' && status === 'active' && periodStart && periodEnd && !Number.isNaN(periodStart.getTime()) && !Number.isNaN(periodEnd.getTime()) && periodEnd > periodStart) {
+    await pool.query('INSERT INTO monetization.pass_periods (subscription_id, actor_id, period_start, period_end, installments_granted, created_at) VALUES ($1, $2, $3, $4, 0, $5) ON CONFLICT (subscription_id, period_start) DO NOTHING',
+     [subscriptionId, actor, periodStart, periodEnd, now]);
+   }
+   return { handled: true, subscriptionId, status, canceled, periodStart: verified.currentPeriodStart, periodEnd: verified.currentPeriodEnd };
+  }
+  return { handled: false, reason: 'UNROUTED_SUBSCRIPTION_TYPE', type };
+ }
+
+ /* The provider webhook (actor-free): the Standard Webhooks HMAC binds the EXACT raw bytes, then
+  * the event routes on its type. Payment settlement resolves the recorded row through the VERIFIED
+  * payment metadata (op_key/actor), never the webhook payload alone; refunds route by payment id. */
+ async function settleDodoWebhook(payload) {
+  const provider = config.dodoProvider;
+  if (!provider || typeof provider.verifyWebhook !== 'function') throw Error('DODO_UNAVAILABLE');
+  const raw = payload && typeof payload.raw === 'string' ? payload.raw : '';
+  const id = payload && typeof payload.id === 'string' ? payload.id : '';
+  const timestamp = payload && typeof payload.timestamp === 'string' ? payload.timestamp : '';
+  const signature = payload && typeof payload.signature === 'string' ? payload.signature : '';
+  if (!raw || raw.length > 262144) throw Error('INVALID_WEBHOOK');
+  if (!provider.verifyWebhook({ id, timestamp, signature, rawBody: raw })) throw Error('INVALID_WEBHOOK_SIGNATURE');
+  let parsed; try { parsed = JSON.parse(raw); } catch { throw Error('INVALID_WEBHOOK'); }
+  const type = parsed && typeof parsed.type === 'string' ? parsed.type : '';
+  const data = parsed && typeof parsed.data === 'object' && parsed.data ? parsed.data : {};
+  if (type === 'payment.succeeded' || type === 'payment.processing' || type === 'payment.failed') {
+   const paymentId = typeof data.payment_id === 'string' && data.payment_id ? data.payment_id : (typeof data.id === 'string' && data.id ? data.id : '');
+   if (!paymentId || paymentId.length > 160) return { handled: false, reason: 'NO_PAYMENT' };
+   const payment = await provider.verifyPayment(paymentId).catch(() => null);
+   const opKey = payment && payment.metadata && typeof payment.metadata.op_key === 'string' ? payment.metadata.op_key : '';
+   const metaActor = payment && payment.metadata && typeof payment.metadata.actor === 'string' ? payment.metadata.actor : '';
+   if (!opKey || !metaActor) return { handled: true, type, paymentId, reason: 'NO_ORDER_BINDING' };
+   const recorded = (await pool.query('SELECT checkout_id FROM monetization.dodo_orders WHERE actor_id = $1 AND op_key = $2', [metaActor, opKey])).rows[0] || null;
+   if (!recorded) return { handled: true, type, paymentId, reason: 'NO_ORDER_ROW' };
+   if (type !== 'payment.succeeded') return { handled: true, type, checkoutId: recorded.checkout_id };
+   return settleDodoOrder(recorded.checkout_id, { paymentId });
+  }
+  if (type.startsWith('subscription.')) {
+   return reconcileDodoSubscription(type, data);
+  }
+  if (type === 'refund.succeeded' || type === 'refund.failed') {
+   const ref = typeof data.payment_id === 'string' && data.payment_id ? data.payment_id : '';
+   if (!ref) return { handled: false, reason: 'NO_REFERENCE' };
+   return refundDodoOrder(ref, 'provider-webhook');
+  }
+  return { handled: false, reason: 'UNROUTED_TYPE' };
+ }
+
+ /* The actor-bound status poll: hides other actors' orders and settles through the provider. */
+ async function dodoOrderStatus(actor, checkoutId) {
+  if (typeof actor !== 'string' || !actor || typeof checkoutId !== 'string' || !checkoutId) throw Error('ORDER_NOT_FOUND');
+  const row = await uow.run(async (tx) => {
+   await tx.query('SET TRANSACTION READ ONLY');
+   return (await tx.query('SELECT checkout_id, product_id, status, settled_at, refunded_at FROM monetization.dodo_orders WHERE checkout_id = $1 AND actor_id = $2', [checkoutId, actor])).rows[0] || null;
+  });
+  if (!row) throw Error('ORDER_NOT_FOUND');
+  if (row.settled_at) {
+   const product = M.product(row.product_id);
+   return { checkoutId, paid: true, productId: row.product_id, crowns: product ? product.crowns : 0, refunded: row.refunded_at !== null };
+  }
+  const result = await settleDodoOrder(checkoutId);
+  return {
+   checkoutId,
+   paid: result.settled === true,
+   productId: row.product_id,
+   crowns: result.settled ? (result.crowns || 0) : 0,
+   status: result.settled ? undefined : result.status,
+   duplicate: result.duplicate === true || result.alreadyOwned === true,
+  };
+ }
+
+ /* The trusted Dodo refund lane: finds the order by checkout_id OR dodo_payment_id, marks the
+  * terminal refunded_at under the SAME identity mutex the settlement takes; the owned()
+  * projection revokes a refunded remove_ads structurally. */
+ async function refundDodoOrder(reference, reason = 'refund') {
+  if (typeof reference !== 'string' || !reference) throw Error('ORDER_NOT_FOUND');
+  const recorded = await uow.run(async (tx) => {
+   await tx.query('SET TRANSACTION READ ONLY');
+   return (await tx.query('SELECT checkout_id, actor_id, product_id, settled_at, refunded_at FROM monetization.dodo_orders WHERE checkout_id = $1 OR dodo_payment_id = $1', [reference])).rows[0] || null;
+  });
+  if (!recorded) throw Error('ORDER_NOT_FOUND');
+  const checkoutId = recorded.checkout_id;
+  if (!recorded.settled_at) return { checkoutId, refunded: false, reason: 'UNSETTLED' };
+  return transaction(recorded.actor_id, 'dodo-refund:' + checkoutId, { type: 'dodo-refund', checkoutId }, async (tx, graph) => {
+   const row = (await tx.query('SELECT refunded_at FROM monetization.dodo_orders WHERE checkout_id = $1 FOR UPDATE', [checkoutId])).rows[0];
+   if (!row) throw Error('ORDER_NOT_FOUND');
+   if (row.refunded_at) return { checkoutId, refunded: true, duplicate: true };
+   await tx.query('UPDATE monetization.dodo_orders SET refunded_at = $2 WHERE checkout_id = $1', [checkoutId, iso(tx.clock())]);
+   const refundedProduct = M.product(recorded.product_id);
+   const heldAccount = refundedProduct && refundedProduct.crowns > 0 ? graph.accounts.get(recorded.actor_id) : null;
+   if (heldAccount) heldAccount.hold = true;
+   await emitOutbox(tx, { id: 'commerce.dodo-refund:' + checkoutId, event: { checkoutId, actor: recorded.actor_id, known: true, reason: String(reason).slice(0, 120) } });
+   await event(tx, recorded.actor_id, 'purchase_refunded', 0);
+   return { checkoutId, refunded: true, duplicate: false };
+  }, ['dodo', checkoutId]);
+ }
+
  /* Trusted store-notification integration only. Never mount as a player endpoint. The refund
   * freezes the receipt and the account (security_hold) rather than clawing funds from an innocent
   * opponent, and records the permanent revocation tombstone so a later purchase of the same store
@@ -1454,15 +1825,26 @@ async function createCommerceService(pool, options = {}) {
     /* A2: the web offer surface. Native purchasesAvailable semantics stay untouched - the lack of
      * a native bridge must never disable browser checkout, and guests browsing prices never read
      * another actor's entitlements (this whole reply stays actor-scoped and no-store). */
-    webCheckoutAvailable: eligible && config.purchasesEnabled && Boolean(config.polarProvider || config.cashfreeProvider),
+    webCheckoutAvailable: eligible && config.purchasesEnabled && Boolean(config.dodoProvider || config.polarProvider || config.cashfreeProvider),
+    /* 2026-10-19: which provider NEW web checkouts use (the owner decision: Dodo primary, Polar
+     * dormant). Existing Polar/Cashfree orders keep settling through their own lanes. */
+    webCheckoutProvider: config.dodoProvider ? 'dodo' : config.polarProvider ? 'polar' : config.cashfreeProvider ? 'cashfree' : null,
     polar: config.polarProvider ? { available: true, products: Object.fromEntries(Object.entries(config.polarCatalog || {}).map(([id, entry]) => [id, { amountCents: entry.amountCents, currency: 'usd' }])) } : { available: false, products: {} },
     cashfree: config.cashfreeProvider ? { available: true, products: config.cashfreeCatalog || {} } : { available: false, products: {} },
+    dodo: config.dodoProvider ? {
+      available: true,
+      products: Object.fromEntries(Object.entries(config.dodoCatalog || {}).filter(([id, entry]) => entry && Number.isFinite(Number(entry.prices.usd))).map(([id, entry]) => [id, { amountCents: entry.prices.usd, currency: 'usd' }])),
+      /* Region-aware display prices in minor units (the localized Dodo prices); the client picks
+       * its currency and the checkout charges exactly the recorded amount for that currency. */
+      regions: Object.fromEntries(Object.entries(config.dodoCatalog || {}).map(([id, entry]) => [id, Object.fromEntries(Object.entries(entry.prices).map(([currency, cents]) => [currency, cents]))])),
+      intro: config.dodoIntroEndsAt ? { active: dodoIntroActive(), endsAt: config.dodoIntroEndsAt } : null,
+    } : { available: false, products: {}, regions: {} },
     pass: own.pass || { active: false, periodEnd: null, cancelAtPeriodEnd: false },
     /* MXA-ECO-011: the exchange surface the client needs to construct valid amounts. */
     passExchange: await (async () => {
      if (!own.pass || own.pass.active !== true) return { active: false, rate: D.POLICY.coinsPerCrown, remaining: 0, allowance: 0 };
      const periodRow = (await tx.query(
-      'SELECT pp.exchange_coins_used FROM monetization.pass_periods pp JOIN monetization.polar_subscriptions ps ON ps.subscription_id = pp.subscription_id WHERE ps.actor_id = $1 AND ps.status = $2 AND pp.period_start <= $3 AND pp.period_end > $3 ORDER BY ps.created_at DESC, pp.period_start DESC LIMIT 1',
+      'SELECT pp.exchange_coins_used FROM monetization.pass_periods pp JOIN monetization.store_subscriptions ps ON ps.subscription_id = pp.subscription_id WHERE ps.actor_id = $1 AND ps.status = $2 AND pp.period_start <= $3 AND pp.period_end > $3 ORDER BY ps.created_at DESC, pp.period_start DESC LIMIT 1',
       [actor, 'active', iso(now)])).rows[0] || null;
      const used = periodRow ? Math.max(0, Number(periodRow.exchange_coins_used) || 0) : 0;
      return { active: true, rate: M.PASS.exchangeCoinsPerCrown, remaining: Math.max(0, M.PASS.exchangeMonthlyCoinAllowance - used), allowance: M.PASS.exchangeMonthlyCoinAllowance };
@@ -1499,6 +1881,10 @@ async function createCommerceService(pool, options = {}) {
   settlePolarWebhook,
   polarOrderStatus,
   refundPolarOrder,
+  createDodoCheckout,
+  settleDodoWebhook,
+  dodoOrderStatus,
+  refundDodoOrder,
   processPassGrants,
   passExchangeSplit,
   exchangeCoins,

@@ -41,6 +41,13 @@ const OPS = {
   polar_create: { args: ['key', 'productId', 'customer'], method: 'createPolarCheckout', call: (c, actor, a) => c.createPolarCheckout(actor, a[0], a[1], a[2]) },
   polar_status: { args: ['checkoutId'], method: 'polarOrderStatus', call: (c, actor, a) => c.polarOrderStatus(actor, a[0]) },
   polar_webhook: { args: ['payload'], method: 'settlePolarWebhook', actorFree: true, call: (c, actor, a) => c.settlePolarWebhook(a[0]) },
+  /* 2026-10-19: the Dodo lane (owner decision: Dodo = PRIMARY web checkout, Polar dormant).
+   * Same contract shape: create/status are player commands (the region hint rides the create so
+   * the SERVER-SIDE catalog picks the charge currency); the webhook is actor-free and carries
+   * {raw, id, timestamp, signature} verified against the exact raw bytes. */
+  dodo_create: { args: ['key', 'productId', 'customer', 'region'], method: 'createDodoCheckout', call: (c, actor, a) => c.createDodoCheckout(actor, a[0], a[1], a[2], a[3]) },
+  dodo_status: { args: ['checkoutId'], method: 'dodoOrderStatus', call: (c, actor, a) => c.dodoOrderStatus(actor, a[0]) },
+  dodo_webhook: { args: ['payload'], method: 'settleDodoWebhook', actorFree: true, call: (c, actor, a) => c.settleDodoWebhook(a[0]) },
   /* MXA-ECO-005: the trusted store-notification lane (Google RTDN / Apple ASNv2). Actor-free:
    * the provider credential rides as an argument and the Core-side handler verifies it before
    * any dedupe or refund; the only economic path is the idempotent commerce.refund. */

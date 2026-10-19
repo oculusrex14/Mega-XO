@@ -58,6 +58,18 @@ test('region currency picks a configured localized price and falls back to USD',
   assert.equal(unknownRow.dodoCurrency, 'usd', 'an unsupported region falls back to the USD base, never an estimate');
 });
 
+test('the launch code promo discounts the display only after the intro window closes', () => {
+  /* MXA-PROMO-CODE (2026-10-19): the server attaches LAUNCH50 to qualifying checkouts and
+   * records the discounted amount; the display must match that. During the intro window the
+   * promo never applies (no stacking) - the intro price IS the launch price. */
+  const base = { ...baseStatus(), dodo: { ...dodoBlock(), promo: { code: 'LAUNCH50', percentBps: 5000, products: ['crowns_100'], expiresAt: '2027-01-01T00:00:00Z' } } };
+  const duringIntro = normalizeStoreStatus({ ...base, dodo: { ...base.dodo, intro: { active: true, endsAt: '2026-11-18T20:29:59Z' } } }, { regionCurrency: 'usd' });
+  assert.equal(duringIntro.rows.find(row => row.id === 'crowns_100').dodoPrice, '$0.49', 'no promo stacking during the intro window');
+  const afterIntro = normalizeStoreStatus({ ...base, dodo: { ...base.dodo, intro: { active: false, endsAt: '2026-11-18T20:29:59Z' } } }, { regionCurrency: 'usd' });
+  assert.equal(afterIntro.rows.find(row => row.id === 'crowns_100').dodoPrice, '$0.25');
+  const otherProduct = normalizeStoreStatus({ ...base, dodo: { ...base.dodo, intro: { active: false, endsAt: '2026-11-18T20:29:59Z' } } }, { regionCurrency: 'usd' });
+  assert.equal(otherProduct.rows.find(row => row.id === 'crowns_525').dodoPrice, '$2.49', 'the promo applies only to the listed products');
+});
 test('the launch-offer was/now comparison only renders from a server-validated regular price', () => {
   /* 2026-10-19: the slashed-price promo. regularRegions is display-only; a regular price that is
    * not ABOVE the current one never renders as a comparison (no fake discounts). */

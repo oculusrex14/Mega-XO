@@ -91,6 +91,9 @@ function fakeCommerce() {
     createPolarCheckout: record('createPolarCheckout'),
     polarOrderStatus: record('polarOrderStatus'),
     settlePolarWebhook: record('settlePolarWebhook'),
+    createDodoCheckout: record('createDodoCheckout'),
+    dodoOrderStatus: record('dodoOrderStatus'),
+    settleDodoWebhook: record('settleDodoWebhook'),
     exchangeCoins: record('exchangeCoins'), handleStoreNotification: record('handleStoreNotification'),
   };
 }

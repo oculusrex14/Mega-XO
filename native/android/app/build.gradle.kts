@@ -37,6 +37,14 @@ require(apiOrigin.isEmpty() || Regex("^https://[A-Za-z0-9.-]+(?::[0-9]{1,5})?$")
     "megaApiOrigin must be an absolute HTTPS origin with no path, credentials or query"
 }
 
+// Store routing is an explicit distribution choice, independent of the online/offline target.
+// Play is the safe default; direct-download APKs opt in at build time. Never infer this from the
+// package name or runtime install source.
+val storeDistribution = (providers.gradleProperty("megaStoreDistribution").orNull ?: "google-play").trim()
+require(storeDistribution in setOf("google-play", "direct-apk")) {
+    "megaStoreDistribution must be exactly google-play or direct-apk"
+}
+
 // The shared P01 bundler correctly REFUSES all writes under native/. Stage
 // outside the checkout, then let Gradle Sync own the disposable build/ copy.
 val workspaceKey = MessageDigest.getInstance("SHA-256")
@@ -101,6 +109,13 @@ require(adMobInterstitialUnit.isEmpty() ||
     Regex("^ca-app-pub-[0-9]{16}/[0-9]{10}$").matches(adMobInterstitialUnit)) {
     "megaAdMobInterstitialUnit must be an exact AdMob ad unit id"
 }
+val adMobPublisherId = adMobAppId.substringBefore('~')
+require(adMobRewardedUnit.isEmpty() || adMobRewardedUnit.substringBefore('/') == adMobPublisherId) {
+    "megaAdMobRewardedUnit must belong to the megaAdMobAppId publisher"
+}
+require(adMobInterstitialUnit.isEmpty() || adMobInterstitialUnit.substringBefore('/') == adMobPublisherId) {
+    "megaAdMobInterstitialUnit must belong to the megaAdMobAppId publisher"
+}
 // A DEBUG build defaults to Google's own demo units - the documented test units, never live
 // inventory - so `window.MegaAds` is actually exercisable on an emulator or device, exactly like the
 // test AdMob app id above. An explicit -P value wins, and a RELEASE build names only what the owner
@@ -130,6 +145,7 @@ android {
         // the bearer. Must be an absolute https origin with no path/credentials/query.
         manifestPlaceholders["megaApiOrigin"] = apiOrigin
         buildConfigField("String", "MEGA_API_ORIGIN", "\"$apiOrigin\"")
+        buildConfigField("String", "MEGA_STORE_DISTRIBUTION", "\"$storeDistribution\"")
         // P20-03 ONLINE TARGET SWITCH. The `offline` flavor (the DEFAULT, and the only artifact the
         // release path builds without an explicit choice) keeps `tools:node="remove"` on
         // INTERNET/ACCESS_NETWORK_STATE, so an accidentally built APK cannot reach the network.
@@ -256,4 +272,6 @@ dependencies {
     implementation("com.android.billingclient:billing:9.1.0")
     implementation("com.google.android.ump:user-messaging-platform:4.0.0")
     implementation("com.google.android.libraries.ads.mobile.sdk:ads-mobile-sdk:1.4.0")
+    testImplementation("junit:junit:4.13.2")
+    testImplementation("org.json:json:20240303")
 }

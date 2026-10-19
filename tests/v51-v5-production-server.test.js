@@ -107,10 +107,12 @@ test('binding: a staging target string and a malformed/missing binding are refus
     code('REFUSED_PRODUCTION_TARGET_FILE'));
   assert.throws(() => mod.validateProductionBinding({ binding: PROD_BINDING, target: staging }),
     code('REFUSED_PRODUCTION_TARGET_FILE'));
-  /* A production target that ENABLES an outbound class cannot be composed by this entry point. */
-  assert.throws(() => mod.validateProductionBinding({
+  /* An enabled outbound class validates: composition (with the capability map) owns the
+   * implemented-provider refusal, so a provisioned inventory can boot (LR10 production fix). */
+  const enabling = mod.validateProductionBinding({
     binding: PROD_BINDING, target: { ...production, outbound: { ...production.outbound, adRewards: 'enabled' } },
-  }), code('OUTBOUND_CLASS_UNIMPLEMENTED'));
+  });
+  assert.equal(enabling.outbound.adRewards, 'enabled');
 
   for (const bad of [undefined, null, '', 0, {}, [], `${production.projectId}/${production.branchId}`,
     `${production.projectId}/${production.branchId}/${production.database}/extra`,
@@ -303,7 +305,7 @@ test('secrets: private material is read only from absolute, non-symlinked, mode-
   assert.throws(() => mod.secretPaths('relative/dir'), code('SECRETS_DIR_MUST_BE_ABSOLUTE'));
 
   const paths = mod.secretPaths(dir);
-  assert.deepEqual(Object.keys(paths).sort(), ['ca', 'credentials', 'gateway', 'keys', 'otp', 'proxy', 'runtimeRoles']);
+  assert.deepEqual(Object.keys(paths).sort(), ['apkDownloads', 'ca', 'credentials', 'gateway', 'keys', 'otp', 'proxy', 'runtimeRoles']);
   for (const file of Object.values(paths)) assert.ok(path.isAbsolute(file) && file.startsWith(dir + path.sep));
 
   /* A stable secret is minted once (0600) and reused, so a restart never invalidates a code. */
@@ -311,9 +313,14 @@ test('secrets: private material is read only from absolute, non-symlinked, mode-
   assert.equal(first.length, 64);
   assert.equal(mod.loadStableSecret(paths.otp, 'PRODUCTION_OTP_SECRET'), first);
   assert.equal(fs.statSync(paths.otp).mode & 0o777, 0o600);
-  /* Only these six private files exist, and the module mints only the two generated-once secrets. */
+  const anonymousKey = mod.loadStableSecret(paths.apkDownloads, 'PRODUCTION_APK_DOWNLOAD_SECRET');
+  assert.equal(anonymousKey.length, 64);
+  assert.notEqual(anonymousKey, first, 'analytics and OTP must never share a secret');
+  assert.equal(mod.loadStableSecret(paths.apkDownloads, 'PRODUCTION_APK_DOWNLOAD_SECRET'), anonymousKey);
+  assert.equal(fs.statSync(paths.apkDownloads).mode & 0o777, 0o600);
+  /* Each generated-once secret is purpose-scoped; analytics adds its own private key. */
   assert.deepEqual(Object.values(mod.SECRET_FILES).sort(),
-    ['ca.pem', 'core-gateway.secret', 'credentials.json', 'keys.sealed.json', 'otp.secret', 'proxy.secret', 'runtime-roles.json']);
+    ['apk-download.secret', 'ca.pem', 'core-gateway.secret', 'credentials.json', 'keys.sealed.json', 'otp.secret', 'proxy.secret', 'runtime-roles.json']);
   /* A too-short existing secret is refused rather than silently accepted. */
   const short = path.join(dir, 'short.secret');
   fs.writeFileSync(short, 'abc\n', { mode: 0o600 });

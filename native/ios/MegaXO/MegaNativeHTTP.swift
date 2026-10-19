@@ -20,7 +20,7 @@ actor MegaNativeHTTP {
     /// The five cookie-free native credential routes, and ONLY those, may be called before a
     /// session exists (challenge) or with a deliberate bearer supplied by the session owner.
     private static let nativePaths: Set<String> = [
-        "/api/account/native/challenge", "/api/account/native/token",
+        "/api/account/native/challenge", "/api/account/native/email", "/api/account/native/token",
         "/api/account/native/refresh", "/api/account/native/logout"
     ]
 
@@ -51,7 +51,10 @@ actor MegaNativeHTTP {
     func authRequest(path: String, bearer: String?, body: Data) async throws -> (Int, Data) {
         guard let origin else { throw RequestError.unavailable }
         guard Self.nativePaths.contains(path) else { throw RequestError.invalidPath }
-        guard body.count <= 65536 else { throw RequestError.invalidBody }
+        // The largest declared route contract (packages/contracts/routes.js) is 300000
+        // (account.save.write); a 64 KiB client cap refused large cloud saves before any
+        // server contact. Stay at the contract ceiling; the server enforces its own limits.
+        guard body.count <= 300000 else { throw RequestError.invalidBody }
         if let bearer {
             guard bearer.utf8.count >= 24, bearer.utf8.count <= 8192,
                   bearer.allSatisfy({ $0.isASCII && !$0.isWhitespace })
@@ -106,7 +109,7 @@ actor MegaNativeHTTP {
               Self.allowedPrefixes.contains(where: { path.hasPrefix($0) })
         else { throw RequestError.invalidPath }
         if method == "GET" && body != nil { throw RequestError.invalidBody }
-        if method == "POST" && (body == nil || body!.count > 65536) {
+        if method == "POST" && (body == nil || body!.count > 300000) {
             throw RequestError.invalidBody
         }
         if method == "POST" {

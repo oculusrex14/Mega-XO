@@ -29,8 +29,10 @@ internal class MegaNativeApiBridge private constructor(
     private val session: MegaNativeSessionManager,
     private val provider: MegaAndroidIdentityBridge?
 ) {
-    private val maxPathLength = 512
-    private val maxBodyLength = 65536
+    /* Mirror of the transport cap: the largest declared route contract (300000, see
+     * packages/contracts/routes.js account.save.write). A 64 KiB bridge reject refused large
+     * cloud saves before any server contact and surfaced as a permanent degraded banner. */
+    private val maxBodyLength = 300000
 
     private fun send(reply: JavaScriptReplyProxy, id: Int, payload: JSONObject) {
         runCatching { reply.postMessage(payload.put("id", id).toString()) }
@@ -65,6 +67,9 @@ internal class MegaNativeApiBridge private constructor(
             }
             "request" -> request(command, reply, id)
             "signIn" -> signIn(command, reply, id)
+            "email" -> session.email(command.optJSONObject("payload") ?: JSONObject()) { payload ->
+                send(reply, id, payload)
+            }
             "refresh" -> session.refresh { outcome ->
                 val body = JSONObject().put("ok", outcome == MegaNativeSessionManager.Outcome.OK)
                 if (outcome != MegaNativeSessionManager.Outcome.OK) {
@@ -89,10 +94,7 @@ internal class MegaNativeApiBridge private constructor(
         val method = command.optString("method", "GET").uppercase()
         // The transport re-validates the same grammar; this is the reject-early mirror so an
         // obviously impossible path never reaches the network layer at all.
-        if (method !in listOf("GET", "POST") || path.isEmpty() || path.length > maxPathLength ||
-            !path.startsWith("/api/") || path.any { it.code !in 33..126 || it == '\\' } ||
-            listOf("..", "//", "%", "#", "?").any { path.contains(it) }
-        ) {
+        if (method !in listOf("GET", "POST") || !MegaNativeWirePolicy.acceptsPath(path)) {
             fail(reply, id, "INVALID_NATIVE_REQUEST"); return
         }
         val rawBody = command.opt("body")
@@ -111,12 +113,12 @@ internal class MegaNativeApiBridge private constructor(
                     // Read routes may answer with an array (invitations, leaderboard) or an object.
                     // Both are legal JSON bodies; pass the parsed value through unchanged and let
                     // the JS adapter unwrap, so nothing is reshaped or lost here.
-                    val value = runCatching {
-                        if (text.trimStart().startsWith("[")) JSONArray(text)
-                        else JSONObject(text) as Any
-                    }.getOrElse { JSONObject() }
-                    send(reply, id, JSONObject().put("ok", status in 200..299)
-                        .put("status", status).put("data", value))
+                    val payload = runCatching { MegaNativeWirePolicy.responseEnvelope(status, text) }.getOrNull()
+                    if (payload == null) {
+                        fail(reply, id, "INVALID_NATIVE_RESPONSE", status)
+                    } else {
+                        send(reply, id, payload)
+                    }
                 },
                 onFailure = { error -> fail(reply, id, error.message ?: "ONLINE_UNAVAILABLE") }
             )
@@ -192,6 +194,7 @@ internal class MegaNativeApiBridge private constructor(
                   refresh: () => call('refresh'),
                   signOut: allDevices => call('signOut', {allDevices: allDevices === true}),
                   signIn: (provider, intent) => call('signIn', {provider, intent}),
+                  email: payload => call('email', {payload: payload || {}}),
                   request: (path, method, body, key) => call('request', {path, method, body, key})
                 })
               });

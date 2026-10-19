@@ -131,8 +131,9 @@ test('source integrity: the ingress and the API dispatch are wired', () => {
 test('composition: the AdMob verifier is composed only when rewarded ads are enabled', () => {
   const source = fs.readFileSync(path.join(__dirname, '..', 'scripts', 'v51', 'v5-production-server.cjs'), 'utf8');
   assert.match(source, /createAdMobVerifier\(\)/, 'verifyAd composed from the published-keys verifier');
-  assert.match(source, /const verifyAd = commerceAdMode !== 'off' \? createAdMobVerifier\(\) : null/, 'verifyAd stays null while adMode is off');
-  assert.match(source, /ADMOB_' \+ platform\.toUpperCase\(\) \+ '_REWARDED_UNIT'/, 'ad units read from the deployment env');
+  assert.match(source, /const baseAdVerifier = commerceAdMode !== 'off' \? createAdMobVerifier\(\) : null/, 'provider verifier stays absent while ads are off');
+  assert.match(source, /const verifyAd = baseAdVerifier \? bindAdMobVerifier\(baseAdVerifier, commerceAds\) : null/, 'unit binding only wraps a real provider verifier');
+  assert.match(source, /ADMOB_\$\{platform\}_REWARDED_UNIT/, 'ad units read from the deployment env');
   assert.match(source, /account\.verified === true && account\.suspended !== true && account\.hold !== true/, 'eligibility stays the conservative verified/unheld gate');
 });
 

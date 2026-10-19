@@ -332,7 +332,9 @@ test('native API transports reject redirects, non-success statuses and unsafe pa
   assert.match(ios, /\(300\.\.\.399\)\.contains\(http\.statusCode\)/);
   assert.match(ios, /\(200\.\.\.299\)\.contains\(http\.statusCode\)/);
   assert.match(ios, /http\.url\?\.host == origin\.host/);
-  assert.match(android, /path\.any \{ it\.code !in 33\.\.126/);
+  assert.match(android, /MegaNativeWirePolicy\.acceptsPath\(path\)/);
+  const wire = read('native/android/app/src/main/java/online/megaxo/prototype/MegaNativeWirePolicy.kt');
+  assert.match(wire, /value\.all \{ it\.code in 33\.\.126/);
   assert.match(android, /instanceFollowRedirects = false/);
   assert.match(android, /status !in 300\.\.399/);
 });

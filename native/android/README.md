@@ -26,6 +26,23 @@ or query; the build refuses anything else. `megaGoogleServerClientId` is likewis
 an exact `*.apps.googleusercontent.com` server client ID, otherwise the Google adapter is simply not
 compiled and the provider is not advertised.
 
+### Store distribution
+
+`megaStoreDistribution` is independent of the `offline`/`online` target flavor. It defaults to
+`google-play`, which keeps the native billing route. Only a direct-download APK opts in to the web
+store with the explicit value `direct-apk`:
+
+```sh
+gradle :app:assembleOnlineDebug -PmegaApiOrigin=https://megaxo.online \
+  -PmegaStoreDistribution=direct-apk
+```
+
+Release builds use the same property together with the normal owner-approved package, version, API
+origin and signing inputs. The direct build opens the fixed `https://megaxo.online/store` link in
+the system browser after a user tap. The player signs in there with the same linked account; the app
+does not transfer its native session. Omit the property for Google Play builds. iOS continues to
+use StoreKit.
+
 The `stageMegaClient` task runs `scripts/v5/build-client.js` from the repository root. It stages under Gradle user-home (outside the protected repository), then `generateMegaClient` syncs into `app/build/generated/megaAssets/mega`. The generated bundle is a build output, never committed. `app/build/outputs/apk/<flavor>/debug/app-<flavor>-debug.apk` is the unsigned-development/testing artifact (Gradle debug-signed).
 
 The temporary `online.megaxo.prototype` application ID is **not** an approved Play package or signing identity. Store, ad and purchase surfaces remain unconfigured. Real package/signing identifiers must be verified from authorized provider configuration before release. A Gradle wrapper binary and signed AAB remain separate follow-up requirements.

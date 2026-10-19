@@ -114,15 +114,16 @@ test('transport refuses cookies, arbitrary hosts, non-https and client-supplied 
   assert.match(transport, /val token = accessToken/);
   assert.match(transport, /if \(origin == null \|\| token == null\)/);
   assert.match(transport, /transmit\(path, method, body, "Bearer \$token", operationKey, complete\)/);
-  // The path grammar mirrors the frozen allowlist prefixes.
-  assert.match(transport, /prefixes\.none \{ path\.startsWith\(it\) \}/);
-  assert.match(transport, /listOf\("\.\.", "\/\/", "%", "#", "\?"\)\.any \{ path\.contains\(it\) \}/);
+  // Both boundaries share the allowlist policy, including the existing search/rank queries.
+  assert.match(transport, /MegaNativeWirePolicy\.acceptsPath\(path\)/);
+  assert.match(apiBridge, /MegaNativeWirePolicy\.acceptsPath\(path\)/);
 });
 
 test('the cookie-free native route set is closed and re-validated at the transport', () => {
   const declared = [...transport.matchAll(/"(\/api\/account\/native\/[a-z]+)"/g)].map(m => m[1]);
   assert.deepEqual(declared.sort(), [
     '/api/account/native/challenge',
+    '/api/account/native/email',
     '/api/account/native/logout',
     '/api/account/native/refresh',
     '/api/account/native/token'
@@ -193,7 +194,7 @@ test('native credential requests carry bearer, no cookie, and the frozen grant b
   assert.match(session, /const val MAX_REFRESH_TOKEN_LENGTH = 512/);
   assert.match(read('packages/contracts/access-dto.js'), /MAX_REFRESH_TOKEN_LENGTH = 512/);
   // iOS parity for the same four routes and the same grant bodies.
-  assert.match(iosHttp, /"\/api\/account\/native\/challenge", "\/api\/account\/native\/token",/);
+  assert.match(iosHttp, /"\/api\/account\/native\/challenge", "\/api\/account\/native\/email", "\/api\/account\/native\/token",/);
   assert.match(iosHttp, /"\/api\/account\/native\/refresh", "\/api\/account\/native\/logout"/);
   assert.match(iosSession, /"grant": "refresh_token", "refreshToken": stored/);
   assert.doesNotMatch(iosHttp, /setValue\(.*forHTTPHeaderField: "Cookie"/);

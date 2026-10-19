@@ -2,7 +2,7 @@ import {icon, button, escapeHtml} from './ui.js';
 import {renderPage} from './pages.js';
 import {renderHeader, renderFooter, renderHome, renderRankPanel} from './site.js';
 import {updateSeo} from './seo.js';
-import {detectDownloadPlatform, downloadHref} from './downloads.js';
+import {detectDownloadPlatform, downloadHref, apkMetricsHref} from './downloads.js';
 import {storeLinks} from './store-links.js';
 import {renderPractice, renderGame, mountBoard} from './board.js';
 
@@ -63,6 +63,12 @@ function configureDownloadLinks(){
  const device=detectDownloadPlatform({userAgent:navigator.userAgent,platform:navigator.platform,maxTouchPoints:navigator.maxTouchPoints});
  context.device=device;context.query=new URLSearchParams(location.search);
  document.querySelectorAll('[data-download-link]').forEach(anchor=>{anchor.href=downloadHref(device);});
+ configureApkMetricsLink();
+}
+function configureApkMetricsLink(){
+ const anchor=main?.querySelector('[data-apk-download-link]');if(!anchor)return;
+ const optedIn=main.querySelector('[data-apk-metrics-opt-in]')?.checked===true;
+ anchor.href=apkMetricsHref(anchor.dataset.apkBaseHref,optedIn);
 }
 function normalizedPath(){return main?.hasAttribute?.('data-offline-fallback')?'/offline':location.pathname.replace(/\/+$/,'')||'/';}
 function gameMode(){const mode=new URLSearchParams(location.search).get('mode');return ['bot','local','ranked','casual','friends'].includes(mode)?mode:'bot';}
@@ -345,6 +351,7 @@ async function pollOnline(){
 }
 function syncProfileDraft(form){if(form&&profileEditor.updateDraft(profileFormDraft(form))){const message=form.querySelector('[data-profile-message]');if(message){message.textContent='';message.hidden=true;}}}
 document.addEventListener('change',event=>{
+ if(event.target.matches('[data-apk-metrics-opt-in]'))configureApkMetricsLink();
  const mode=event.target.closest('[data-game-mode]');if(mode){
   const value=mode.value;if(!['bot','local','ranked','casual','friends'].includes(value))return;
   if(visibleMatch()?.status==='PLAYING'||['queued','waiting','review'].includes(onlineState.status)||context.tournaments?.room?.status==='RUNNING'){mode.value=gameMode();notify('Finish the active match or leave matchmaking before changing modes.');return;}

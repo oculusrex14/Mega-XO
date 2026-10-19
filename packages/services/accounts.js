@@ -80,6 +80,10 @@ const SESSION_LINKED_TTL = 14 * DAY;
 const SESSION_ANON_TTL = DAY;
 const SESSION_KEEP = 5;
 const SIGNIN_TTL = 5 * 60000;
+/* Password login is bounded both per anonymous session and per normalized address. The shared
+ * address window means a caller cannot reset the existing attempt budget by bootstrapping guests. */
+const EMAIL_CONTINUE_LIMIT = 10;
+const EMAIL_CONTINUE_WINDOW_SECONDS = 300;
 /* Per-session presence (P06 manager Redis). The lease TTL follows the client heartbeat cadence
  * (15 s) with comfortable slack; the read window is the legacy 45 s. Both are internal to this
  * manager - the ephemera adapter owns the Redis side, this service never speaks Redis. */
@@ -1244,11 +1248,12 @@ async function createAccountService(pool, options = {}) {
    return run((repositories) => repositories.credentials.read({ email: address }));
   },
   /* Async because the credential verification runs OUTSIDE the transaction (bounded scrypt worker).
-    * ORDER: a cheap in-tx PREFLIGHT validates the source bearer and commits the durable rate spend
-    * BEFORE any expensive crypto, so an over-budget or stale-bearer caller never incurs a scrypt.
+    * ORDER: a cheap in-tx PREFLIGHT validates the source bearer and commits both durable session- and
+    * address-scoped rate spends BEFORE any expensive crypto, so an over-budget or stale-bearer caller
+    * never incurs a scrypt.
     * The crypto then runs outside the tx, and a SECOND short transaction re-reads the locked
-    * target/credential before granting. Exactly one rate spend per call; the denial count is durable
-    * (the preflight commits) while a wrong password is still reported as INVALID_CREDENTIALS. */
+    * target/credential before granting. Both budgets are spent once per call; the denial count is
+    * durable (the preflight commits) while a wrong password is still reported as INVALID_CREDENTIALS. */
   async emailContinue(token, email, password) {
    const address = policy.normalizeEmail(email);
    policy.validatePassword(password);
@@ -1266,7 +1271,8 @@ async function createAccountService(pool, options = {}) {
     const live = await repositories.sessions.live(tokenHash(token), clock());
     if (!live) fail('AUTH_REQUIRED');
     if (live.actor) fail('ALREADY_LINKED');
-    await rate(repositories, live.token, 'email-continue', 10, 300);
+    await rate(repositories, live.token, 'email-continue', EMAIL_CONTINUE_LIMIT, EMAIL_CONTINUE_WINDOW_SECONDS);
+    await rate(repositories, address, 'email-continue-address', EMAIL_CONTINUE_LIMIT, EMAIL_CONTINUE_WINDOW_SECONDS);
    });
    /* EXPENSIVE CRYPTO, outside any transaction. A worker failure propagates (never misreported). */
    const okPassword = await verifyStoredPassword(password, known.salt, known.passwordHash);

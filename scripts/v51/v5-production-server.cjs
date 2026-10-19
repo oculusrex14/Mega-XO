@@ -112,6 +112,8 @@ const SECRET_FILES = Object.freeze({
    * Deployed from the host-managed proxy secret file; MEGA_PROXY_SECRET_FILE may point at the
    * absolute deployment path instead. Never reused as the Core ingress HMAC key. */
   proxy: 'proxy.secret',
+  /* Dedicated key. Analytics rotation must never rotate OTPs or the reverse. */
+  apkDownloads: 'apk-download.secret',
 });
 
 /* The exact production identity. Pinned here as well as read from the inventory: a drift in either
@@ -144,6 +146,69 @@ const DEFAULT_HTTP_PORT = 8080;
 const GATEWAY_TIMEOUT_MS = 30000;
 const SECRET_MAX_BYTES = 4 * 1024 * 1024;
 const REFUSE = (code, detail) => { const error = new Error(detail === undefined ? code : `${code}: ${String(detail).slice(0, 200)}`); error.code = code; return error; };
+
+/* Native AdMob configuration is a single fail-closed boundary: reject typoed modes/IDs rather
+ * than quietly composing an ad-enabled status with no usable inventory. Google SSV signs
+ * `ad_unit` as the provider's numeric unit suffix; translate that verified suffix back to the
+ * exact configured full unit before Core compares it with the ticket's stored binding. */
+function resolveCommerceAdsConfig(env = process.env) {
+  const mode = env.MEGA_AD_MODE || 'off';
+  if (!['off', 'rewarded', 'hybrid'].includes(mode)) throw REFUSE('INVALID_AD_MODE');
+  const deletion = env.MEGA_ACCOUNT_DELETION_ENABLED || 'false';
+  if (!['true', 'false'].includes(deletion)) throw REFUSE('INVALID_ACCOUNT_DELETION_FLAG');
+  const validVersion = (value) => typeof value === 'string' && /^[A-Za-z0-9._-]{3,64}$/.test(value);
+  const privacyVersion = env.MEGA_PRIVACY_POLICY_VERSION || '';
+  const retentionVersion = env.MEGA_RETENTION_POLICY_VERSION || '';
+  const consentVersion = env.MEGA_AD_CONSENT_VERSION || '';
+  const unitPattern = /^ca-app-pub-\d{16}\/\d{10}$/;
+  const adUnits = {};
+  for (const platform of ['ANDROID', 'IOS']) {
+    const readUnit = (name) => {
+      const value = env[name] || '';
+      if (value && (typeof value !== 'string' || !unitPattern.test(value))) {
+        throw REFUSE('INVALID_ADMOB_UNIT', name);
+      }
+      return value;
+    };
+    const rewarded = readUnit(`ADMOB_${platform}_REWARDED_UNIT`);
+    const interstitial = readUnit(`ADMOB_${platform}_INTERSTITIAL_UNIT`);
+    if (interstitial && !rewarded) throw REFUSE('ADMOB_REWARDED_UNIT_REQUIRED', platform.toLowerCase());
+    if (rewarded || interstitial) adUnits[platform.toLowerCase()] = Object.freeze({ rewarded, interstitial });
+  }
+  // The callback includes only the numeric unit suffix. It must resolve to exactly one full unit.
+  const unitByCallbackId = new Map();
+  for (const units of Object.values(adUnits)) {
+    for (const fullUnit of [units.rewarded, units.interstitial].filter(Boolean)) {
+      const callbackId = fullUnit.slice(fullUnit.lastIndexOf('/') + 1);
+      const previous = unitByCallbackId.get(callbackId);
+      if (previous && previous !== fullUnit) throw REFUSE('AMBIGUOUS_ADMOB_UNIT_BINDING');
+      unitByCallbackId.set(callbackId, fullUnit);
+    }
+  }
+  if (mode !== 'off') {
+    if (deletion !== 'true' || !validVersion(privacyVersion) || !validVersion(retentionVersion)) {
+      throw REFUSE('ADS_REQUIRE_PRIVACY_RELEASE');
+    }
+    if (!validVersion(consentVersion)) throw REFUSE('ADS_REQUIRE_CONSENT_RELEASE');
+    if (!adUnits.android || !adUnits.android.rewarded) throw REFUSE('ADMOB_ANDROID_REWARDED_UNIT_REQUIRED');
+    if (mode === 'hybrid' && Object.values(adUnits).some((units) => !units.interstitial)) {
+      throw REFUSE('INCOMPLETE_ADMOB_UNITS');
+    }
+  }
+  return Object.freeze({ mode, adUnits: Object.freeze(adUnits), unitByCallbackId });
+}
+
+function bindAdMobVerifier(baseVerifier, adsConfig) {
+  if (typeof baseVerifier !== 'function') throw REFUSE('AD_VERIFIER_REQUIRED');
+  return async (raw) => {
+    const event = await baseVerifier(raw);
+    const callbackId = event && typeof event.adUnit === 'string' ? event.adUnit : '';
+    const configuredUnit = Object.values(adsConfig.adUnits).flatMap((units) => [units.rewarded, units.interstitial])
+      .find((unit) => unit && unit === callbackId) || adsConfig.unitByCallbackId.get(callbackId);
+    if (!configuredUnit) throw REFUSE('UNCONFIGURED_ADMOB_UNIT');
+    return { ...event, adUnit: configuredUnit };
+  };
+}
 
 function arg(flag, fallback) {
   const i = process.argv.indexOf(flag);
@@ -227,9 +292,10 @@ function validateProductionBinding({ binding, target, servingEpoch = null } = {}
   }
   if (typeof target.nonserving !== 'boolean') throw REFUSE('REFUSED_NONSERVING_FLAG_INVALID');
   const outbound = resolveOutboundPolicy(target);
-  /* No outbound provider exists in this entry, so a target file that ENABLES one is refused here
-   * rather than silently composed without it. */
-  assertProviderClassesComposable(outbound);
+  /* LR10 production-bug fix (2026-10-19): provider composition is asserted in main() WITH the
+   * entry's capability map — an enabled class without an implemented provider still refuses there.
+   * Refusing here made boot depend on provider wiring the validator cannot see and blocked a
+   * correctly provisioned inventory from ever starting. The declaration itself stays validated. */
   /* Switch A is the first production write and switch B is the authority epoch; nothing here can
    * reach a serving target by accident, and nothing arms early. */
   if (target.nonserving === true) {
@@ -288,7 +354,9 @@ function createMailTransportForPolicy(policy, options = {}) {
   if (typeof resendApiKey !== 'string' || resendApiKey.length === 0) {
     throw REFUSE('OUTBOUND_EMAIL_KEY_REQUIRED');
   }
-  return createResendMailTransport({ apiKey: resendApiKey, fetcher: options.emailFetch });
+  const emailFetch = options.emailFetch || globalThis.fetch;
+  if (typeof emailFetch !== 'function') throw REFUSE('OUTBOUND_EMAIL_FETCH_REQUIRED');
+  return createResendMailTransport({ apiKey: resendApiKey, fetcher: emailFetch });
 }
 
 /* This entry point composes NO outbound provider: it has no mail provider, no store notification
@@ -428,9 +496,19 @@ function loadWebArtifact(dir) {
   if (manifest.generator !== 'scripts/p21/build-web.js' || !Array.isArray(manifest.files)) {
     throw new Error('WEB_BUILD_ARTIFACT_INVALID');
   }
+  const apk = manifest.store_links?.androidApk || null;
+  if (apk) {
+    const entry = typeof apk.path === 'string'
+      ? manifest.files.find(file => file.path === apk.path.slice(1)) : null;
+    if (typeof apk.path !== 'string' || !/^\/downloads\/android\/[A-Za-z0-9._-]+\.apk$/.test(apk.path) ||
+        !Number.isSafeInteger(apk.versionCode) || apk.versionCode < 1 ||
+        !entry || entry.sha256 !== apk.sha256 || entry.bytes !== apk.bytes) {
+      throw new Error('WEB_BUILD_APK_MISMATCH');
+    }
+  }
   return Object.freeze({
     dir, routes: manifest.routes || {}, files: new Set(['web-build.manifest.json', ...manifest.files.map((f) => f.path)]),
-    seo: manifest.seo || null,
+    seo: manifest.seo || null, androidApk: apk,
     sourceCommit: manifest.source_commit || null, bundleSha256: manifest.bundle_sha256 || null, fileCount: manifest.file_count || manifest.files.length,
   });
 }
@@ -537,6 +615,46 @@ const MIME_TYPES = Object.freeze({
   '.xml': 'application/xml; charset=utf-8', '.webmanifest': 'application/manifest+json',
 });
 
+/** Stream a pinned APK and record only a fully ended source stream sent as HTTP 200. */
+function streamApkFile(absolute, res, recordCompleted = null) {
+  let streamEnded = false, streamFailed = false, responseAborted = false;
+  const stream = fs.createReadStream(absolute);
+  stream.once('end', () => { streamEnded = true; });
+  stream.once('error', () => {
+    streamFailed = true;
+    if (!res.headersSent) {
+      res.statusCode = 500;
+      res.removeHeader('Content-Length');
+      res.removeHeader('Content-Disposition');
+      res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+      res.end('File unavailable');
+    }
+    else res.destroy();
+  });
+  res.once('close', () => {
+    if (!res.writableFinished) {
+      responseAborted = true;
+      stream.destroy();
+    }
+  });
+  if (typeof recordCompleted === 'function') res.once('finish', () => {
+    const expectedBytes = Number(res.getHeader('Content-Length'));
+    if (res.statusCode !== 200 || !streamEnded || streamFailed || responseAborted ||
+        !Number.isSafeInteger(expectedBytes) || stream.bytesRead !== expectedBytes) return;
+    // The file has already been delivered to Node's HTTP response: analytics must never gate it.
+    Promise.resolve().then(recordCompleted).catch(() => console.error(JSON.stringify({
+      event: 'apk.metrics_write_failed', code: 'APK_METRICS_PERSIST_FAILED',
+    })));
+  });
+  stream.pipe(res);
+  return stream;
+}
+
+function wantsApkMetrics(searchParams) {
+  const values = searchParams?.getAll?.('metrics') || [];
+  return values.length === 1 && values[0] === '1';
+}
+
 /* Reads a non-secret JSON inventory (a checked-in allowlisted manifest, never secret material). */
 function readInventory(file) {
   if (!fs.existsSync(file)) throw REFUSE('INVENTORY_MISSING', path.basename(file));
@@ -581,6 +699,12 @@ async function main() {
   const security = require(path.join(ROOT, 'packages/services/security.js'));
   const { resolveAuth } = require(path.join(ROOT, 'apps/api/routes/helpers.js'));
   const { resolveStatic, CSP } = require(path.join(ROOT, 'scripts/p21/serve-web.js'));
+  /* The web bundle's /api/download redirect handler (same contract as the preview server
+   * and the P21-DOWNLOAD tests): GET/HEAD only, no-store, Vary: User-Agent, and it never
+   * guesses a launch link - it sends the caller to the download page. Mounted on this
+   * origin so the homepage and download-page buttons resolve instead of falling into the
+   * API JSON 404. It shares no state with the API handler and touches no database. */
+  const downloadHandler = require(path.join(ROOT, 'apps/web/download-config.cjs')).createDownloadHandler();
 
   /* 1. TARGET BINDING. Explicit, exact and fail-closed; the process refuses to start otherwise. */
   const binding = process.env[BINDING_ENV];
@@ -672,6 +796,7 @@ async function main() {
    * mints/hashes a code) and the API handler (which verifies it), and by the worker (whose mail body
    * seal is HKDF over the same operator secret in V4 and V5). */
   const otpSecret = loadStableSecret(secrets.otp, 'PRODUCTION_OTP_SECRET');
+  const apkDownloadSecret = loadStableSecret(secrets.apkDownloads, 'PRODUCTION_APK_DOWNLOAD_SECRET');
   const access = await createAccessService(apiPool, {
     issuer: 'https://api.megaxo.online', environment: 'prd', keyFile,
     playerAudiences: ['mega-browser', 'mega-android', 'mega-ios'], serviceAudiences: ['mega-core'],
@@ -696,22 +821,17 @@ async function main() {
    * verifiers (AdMob SSV verifyAd / store verifyPurchase + purchaseProvider) and the eligibility
    * policy are configured in a later provider lane — the mounted routes answer honestly with
    * adMode 'off' / purchasesAvailable false until then. */
-  const commerceAdMode = ['rewarded', 'hybrid'].includes(process.env.MEGA_AD_MODE) ? process.env.MEGA_AD_MODE : 'off';
+  const commerceAds = resolveCommerceAdsConfig(process.env);
+  const commerceAdMode = commerceAds.mode;
   /* LR15: the AdMob SSV verifier is composed whenever rewarded ads are enabled. It verifies the
    * ECDSA signature against Google's PUBLISHED verifier keys (gstatic, 24h cache) — no secret
    * material here. Store verifiers (verifyPurchase/purchaseProvider) remain a later lane; the
    * eligibility gate stays conservative (verified, unheld accounts — the accountOf gate enforces
    * the same invariants again inside the service). Client-side UMP/ATT consent remains the native
    * apps' own gate before any ad request. */
-  const adUnitPattern = /^ca-app-pub-\d{16}\/\d{10}$/;
-  const adUnit = (value) => (typeof value === 'string' && adUnitPattern.test(value) ? value : '');
-  const adUnits = {};
-  for (const platform of ['android', 'ios']) {
-    const rewarded = adUnit(process.env['ADMOB_' + platform.toUpperCase() + '_REWARDED_UNIT']);
-    const interstitial = adUnit(process.env['ADMOB_' + platform.toUpperCase() + '_INTERSTITIAL_UNIT']);
-    if (rewarded || interstitial) adUnits[platform] = { rewarded, interstitial };
-  }
-  const verifyAd = commerceAdMode !== 'off' ? createAdMobVerifier() : null;
+  const adUnits = commerceAds.adUnits;
+  const baseAdVerifier = commerceAdMode !== 'off' ? createAdMobVerifier() : null;
+  const verifyAd = baseAdVerifier ? bindAdMobVerifier(baseAdVerifier, commerceAds) : null;
   /* LR15 store lane: when purchases are enabled AND the store env is present, the Google Play /
    * Apple StoreKit verifiers run through the PG adapter with the DEPLOYED role split - the
    * revocation check on the core pool (0021), every store_finalize write/read on the worker pool
@@ -891,7 +1011,9 @@ async function main() {
   const resendApiKey = emailEnabled ? readProviderSecret(process.env, 'RESEND_API_KEY', true) : '';
   const providerCapabilities = emailEnabled ? { email: 'resend' } : {};
   const providerComposition = assertProviderClassesComposable(boundary.outbound, providerCapabilities);
-  const mailTransport = createMailTransportForPolicy(boundary.outbound, { resendApiKey });
+  const mailTransport = createMailTransportForPolicy(boundary.outbound, {
+    resendApiKey, emailFetch: globalThis.fetch,
+  });
   const worker = createWorkerApp({
     pool: workerPool, redis: ephemera, secret: otpSecret, transport: mailTransport,
     /* The rate-bucket DELETE grant lives with api_runtime (0020; 0037 withholds it from the worker), so
@@ -903,6 +1025,11 @@ async function main() {
   });
 
   const webArtifact = loadWebArtifact(webBuildDir);
+  /* The binary is streamed by THIS Node server (Caddy proxies it unchanged). Count only completed
+   * responses of the manifest-pinned APK. The identity is an anonymous signed, path-scoped cookie;
+   * no user account, IP address, device identifier, or optional gameplay telemetry is joined. */
+  const { createApkDownloadTracker } = require(path.join(ROOT, 'packages/services/apk-download-tracker.js'));
+  const apkDownloadTracker = createApkDownloadTracker({ pool: apiPool, secret: apkDownloadSecret });
   let origin = `http://${httpBinding.host}:${httpBinding.port}`;
   const publicOrigin = arg('--public-origin', null);
   if (publicOrigin !== null) {
@@ -984,6 +1111,8 @@ async function main() {
     trustedProxies: process.env.MEGA_TRUSTED_PROXIES || '127.0.0.1/32,::1/128',
   });
   const callbackLimiter = createProviderCallbackLimiter({ pool: apiPool, limit: 600, windowMs: 60000 });
+  const nativeEmailLimiter = createRateLimiter({ pool: apiPool, limit: 30, windowMs: 300000, prefix: 'native-email' });
+  apiContext.checkNativeEmail = (req) => nativeEmailLimiter.check(callbackSourceIp.resolve(req));
   apiContext.monetization = {
     command: async (input) => {
       if (input && typeof input.actor === 'string' && input.actor) await monetizationLimiter.check(input.actor);
@@ -1019,6 +1148,9 @@ async function main() {
       const surface = classifyPath(pathname);
       if (surface === 'realtime') return;
       if (surface === 'ingress') { await coreIngress(req, res); return; }
+      /* /api/download is a web-bundle redirect service, not an API endpoint: dispatch it
+       * before the API surface so it keeps its exact P21 contract (303/302/400/405). */
+      if (pathname === '/api/download') { downloadHandler(req, res); return; }
       /* /livez and /readyz are served by the API handler with the SAME semantics the deploy tooling
        * and the host health monitor expect: 200 {"status":"ok","live":true,"ready":true} while the
        * database answers, 503 {"status":"degraded",...,"ready":false} when it does not. */
@@ -1049,7 +1181,36 @@ async function main() {
       if (legalLink) res.setHeader('Link', legalLink);
       res.statusCode = resolved.status;
       res.setHeader('Content-Type', MIME_TYPES[path.extname(absolute).toLowerCase()] || 'application/octet-stream');
-      fs.createReadStream(absolute).pipe(res); return;
+      const pinnedApk = resolved.status === 200 && webArtifact.androidApk &&
+        pathname === webArtifact.androidApk.path && resolved.file === pathname.slice(1);
+      if (pinnedApk) {
+        if (req.method !== 'GET' && req.method !== 'HEAD') {
+          res.statusCode = 405;
+          res.setHeader('Allow', 'GET, HEAD');
+          res.end(); return;
+        }
+        /* HEAD probes, bots, invalid paths and failed/aborted transfers never create counters. */
+        const size = fs.statSync(absolute).size;
+        if (size !== webArtifact.androidApk.bytes) throw new Error('WEB_BUILD_APK_SIZE_MISMATCH');
+        res.setHeader('Content-Length', String(size));
+        res.setHeader('Content-Disposition', 'attachment; filename="' + path.basename(absolute) + '"');
+        res.setHeader('Cache-Control', 'private, no-store');
+        if (req.method === 'HEAD') { res.end(); return; }
+        let recordCompleted = null;
+        try {
+          recordCompleted = apkDownloadTracker.observe(req, res, webArtifact.androidApk, {
+            metricsEnabled: wantsApkMetrics(parsedUrl.searchParams),
+          });
+        } catch { /* analytics never gates file availability */ }
+        streamApkFile(absolute, res, recordCompleted);
+        return;
+      }
+      const stream = fs.createReadStream(absolute);
+      stream.once('error', () => {
+        if (!res.headersSent) { res.statusCode = 500; res.end('File unavailable'); }
+        else res.destroy();
+      });
+      stream.pipe(res); return;
     } catch (err) { if (!res.headersSent) { res.statusCode = 500; res.setHeader('Content-Type', 'application/json'); } res.end(JSON.stringify({ error: safeError(err) })); }
   });
 
@@ -1085,6 +1246,10 @@ async function main() {
     assets[p] = await probe(p);
   }
   const missing = await probe('/legacy-game/src/does-not-exist.js');
+  /* The plain probe follows redirects, so this one is measured with redirect: 'manual'
+   * to assert the handler's actual 303 instead of the download page's final 200. */
+  const downloadRedirectStatus = await fetch(origin + '/api/download?platform=android', { redirect: 'manual' }).then((r) => r.status).catch(() => 0);
+  const downloadSelfCheck = downloadRedirectStatus === 303;
   const assetSelfCheck = Object.values(assets).every((a) => a.status === 200);
   console.log(JSON.stringify({
     ok: true, origin, publicOrigin, allowedOrigins, binding: `${boundary.projectId}/${boundary.branchId}/${boundary.database}`,
@@ -1094,7 +1259,7 @@ async function main() {
     roleSeparation, apiRole, coreRole, budget,
     webBuild: { dir: artifactDir, sourceCommit: webArtifact.sourceCommit, bundleSha256: webArtifact.bundleSha256, fileCount: webArtifact.fileCount },
     websiteServesShell: shell.includes('mx-web-shell'), livezStatus: livez.status, readyzStatus: readyz.status,
-    assets, missingAssetStatus: missing.status, assetSelfCheck,
+    assets, missingAssetStatus: missing.status, assetSelfCheck, downloadRedirectStatus, downloadSelfCheck,
     note: 'production composition; loopback only; route-aware crawl policy (approved public pages indexable); no legacy-authority path touched; serves the generated P21 bundle',
   }, null, 2));
 
@@ -1182,6 +1347,7 @@ module.exports = {
   BINDING_ENV, SERVING_EPOCH_ENV, HTTP_PORT_ENV, REDIS_CREDENTIALS_ENV, SECRET_FILES, OUTBOUND_CLASSES,
   REQUIRED_ROLE, DEFAULT_HTTP_PORT,
   parseProductionBinding, validateProductionBinding, resolveOutboundPolicy, createMailTransportForPolicy,
+  resolveCommerceAdsConfig, bindAdMobVerifier,
   assertProviderClassesComposable,
   deriveNamespace, assertPoolRole, assertRoleSeparation, assertApiCompositionHoldsNoCoreAccess,
   assertCoreCompositionUsesCorePool,
@@ -1189,6 +1355,6 @@ module.exports = {
   robotsHeaderFor, legalCanonicalLink, DEFAULT_ROBOTS_HEADER,
   FRESHNESS_STATE_FILE, OPS_BACKUP_MAX_AGE_MS, OPS_OUTBOX_BACKLOG_MAX,
   /* filesystem-bounded helpers used by the composition (never network) */
-  secretPaths, readSecretFile, loadStableSecret, readInventory, loadWebArtifact,
+  secretPaths, readSecretFile, loadStableSecret, readInventory, loadWebArtifact, streamApkFile, wantsApkMetrics,
   arg, safeError, main,
 };

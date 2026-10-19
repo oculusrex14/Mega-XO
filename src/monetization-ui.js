@@ -8,6 +8,15 @@ const progress=M.startSession(parse());let status=null,prices=[],actor=null,busy
 const persist=()=>{try{localStorage.setItem(KEY,JSON.stringify(progress));}catch{}},who=()=>API.peek()?.linked?API.peek()?.profile?.id:null;
 for(const r of APP.getSave().records||[])if(!progress.seen.includes(r.id))progress.seen.push(r.id);progress.seen=progress.seen.slice(-500);persist();
 const button=(label,action,value='',disabled=false)=>'<button class="button quiet mono-button" data-monetization="'+action+'" data-value="'+esc(value)+'" '+(disabled?'disabled':'')+'>'+esc(label)+'</button>';
+const WEBSITE_STORE_URL='https://megaxo.online/store';
+function directApkDistribution(){return window.MegaNativeStore?.distribution==='direct-apk';}
+function websiteStoreLink(label,extraClass=''){
+ const classes='button quiet mono-button'+(extraClass?' '+esc(extraClass):'');
+ return '<a class="'+classes+'" href="'+WEBSITE_STORE_URL+'" referrerpolicy="no-referrer">'+esc(label)+'</a>';
+}
+function storePurchaseAction(fallback,label='Open website store'){
+ return directApkDistribution()?websiteStoreLink(label):fallback;
+}
 const request=(path,body,key)=>API.request('/api/monetization/'+path,body,key);
 function adPlatform(){const p=window.MegaAds?.platform;return p==='android'||p==='ios'?p:null;}
 function privacyReady(){try{return window.MegaAds?.privacyState?.()?.canRequestAds===true;}catch{return false;}}
@@ -17,7 +26,7 @@ async function refresh(){
  if(refreshing)return refreshing;const user=who();if(!user){status=null;actor=null;return null;}
  refreshing=(async()=>{try{const value=await request('status');if(who()!==user)return null;actor=user;status=value;return value;}catch{status=null;return null;}finally{refreshing=null;}})();return refreshing;
 }
-async function loadPrices(){try{const list=await window.MegaBilling?.products?.(status?.storeContext||null);prices=Array.isArray(list)?list.filter(p=>M.product(p.id)&&typeof p.price==='string'&&p.price.trim()):[];}catch{prices=[];}}
+async function loadPrices(){if(directApkDistribution()){prices=[];return;}try{const list=await window.MegaBilling?.products?.(status?.storeContext||null);prices=Array.isArray(list)?list.filter(p=>M.product(p.id)&&typeof p.price==='string'&&p.price.trim()):[];}catch{prices=[];}}
 function passDetails(){const P=M.PASS;return 'Auto-renewing monthly pass. '+(P.monthlyCrowns+' Crowns per paid month, delivered as '+P.installments.join(' + ')+' on billing days '+P.installmentDays.join(', ')+'. ')+'2x Coins from bot wins (existing daily caps still apply). Coin-to-Crown exchange at '+P.exchangeCoinsPerCrown+':1 for the first '+P.exchangeMonthlyCoinAllowance+' Coins each billing month. '+(P.packDiscount*100)+'% off up to '+P.packDiscountMaxUses+' Crown packs per billing month. Automatic ads are off; rewarded ads stay optional. Crowns and Coins you already have are kept if the pass lapses. Cancel anytime from your store subscriptions.';}
 /* B6.3: the five member benefits come from M.PASS, never duplicated magic numbers. */
 function passBenefitItems(){const P=M.PASS;return [[''+P.installments.join(' + ')+' Crowns per paid month','Delivered on billing days '+P.installmentDays.join(', ')+'.'],['2x Coins from bot wins','Existing daily caps still apply.'],[''+P.exchangeCoinsPerCrown+':1 Coin-to-Crown exchange','For the first '+P.exchangeMonthlyCoinAllowance+' Coins each billing month.'],[''+Math.round(P.packDiscount*100)+'% off Crown packs','Up to '+P.packDiscountMaxUses+' packs per billing month.'],['Automatic ads off','Rewarded ads stay your choice.']].map(([title,support])=>'<li><b>'+title+'</b><span>'+support+'</span></li>').join('');}
@@ -25,15 +34,17 @@ function passBenefitItems(){const P=M.PASS;return [[''+P.installments.join(' + '
    side-CTA row. Presentation states per B6.3: active, guest, unpriced/unavailable, eligible,
    busy. No fake entitlement: 'Active' only when status.pass.active is verified by the API. */
 function renderMegaPassCard(p,price,owned,busy){
- const guest=!who(),canBuy=!!status?.purchasesAvailable&&!!price&&!!window.MegaBilling?.purchase;
+ const direct=directApkDistribution(),guest=!who(),canBuy=!!status?.purchasesAvailable&&!!price&&!!window.MegaBilling?.purchase;
  const label=owned?'Active':guest?'Sign in to subscribe':canBuy?'Review '+price.price:'Price unavailable right now';
- const action=owned?'<span class="mono-pass-active">Active</span>':'<button type="button" class="button quiet mono-button mono-pass-cta" data-monetization="review" data-value="'+esc(p.id)+'" aria-describedby="mega-pass-renewal"'+(owned||guest||!canBuy?' disabled':'')+'>'+esc(label)+'</button>';
- const priceBlock=owned?'<b class="mono-pass-price">Active</b><span class="mono-pass-period">Thanks for supporting Mega XOXO.</span>':price?'<b class="mono-pass-price"><bdi>'+esc(price.price)+'</bdi></b><span class="mono-pass-period">per month</span>':'<span class="mono-pass-period">The price is not available in this store right now. Check again later, or use Restore purchases once you are signed in.</span>';
+ const nativeAction='<button type="button" class="button quiet mono-button mono-pass-cta" data-monetization="review" data-value="'+esc(p.id)+'" aria-describedby="mega-pass-renewal"'+(guest||!canBuy?' disabled':'')+'>'+esc(label)+'</button>';
+ const action=owned?'<span class="mono-pass-active">Active</span>':storePurchaseAction(nativeAction,'Open website store');
+ const priceBlock=owned?'<b class="mono-pass-price">Active</b><span class="mono-pass-period">Thanks for supporting Mega XOXO.</span>':direct?'<span class="mono-pass-period">View the current price in the website store.</span>':price?'<b class="mono-pass-price"><bdi>'+esc(price.price)+'</bdi></b><span class="mono-pass-period">per month</span>':'<span class="mono-pass-period">The price is not available in this store right now. Check again later, or use Restore purchases once you are signed in.</span>';
+ const renewal=direct?'Sign in in your browser with the same linked account to view prices and continue. Your app sign-in is not shared with the browser.':'Auto-renews monthly until cancelled. Cancel through your device store\'s subscriptions.';
  return '<article class="mono-product mono-pass-card" aria-labelledby="mega-pass-title">'+
   '<header class="mono-pass-head"><span class="mono-pass-emblem">'+(window.MegaIcons?.pass?window.MegaIcons.pass(false,{decorative:true}):'')+'</span><div class="mono-pass-heading"><h3 id="mega-pass-title">'+esc(p.name)+'</h3><p class="mono-pass-subtitle">Monthly subscription</p></div></header>'+
   '<ul class="mono-pass-benefits" aria-label="Mega Pass benefits">'+passBenefitItems()+'</ul>'+
   '<footer class="mono-pass-purchase"><div class="mono-pass-price">'+priceBlock+'</div>'+
-  '<p class="mono-pass-renewal" id="mega-pass-renewal">Auto-renews monthly until cancelled. Cancel through your device store\'s subscriptions.</p>'+
+  '<p class="mono-pass-renewal" id="mega-pass-renewal">'+esc(renewal)+'</p>'+
   action+
   '<p class="mono-pass-retention">Crowns, Coins and banked power-ups already received are kept if your Pass expires.</p>'+
   '</footer></article>';
@@ -41,10 +52,10 @@ function renderMegaPassCard(p,price,owned,busy){
 function details(p){if(p.id==='mega_pass')return passDetails();return (p.crowns?p.crowns+' Crowns = '+(p.crowns*10).toLocaleString()+' Coins of purchasing capacity. ':'')+(p.removeAds?'Permanently removes automatic ads. Optional rewarded ads remain your choice. ':'')+(p.once?'One-time purchase. No subscription.':'Repeatable currency pack. No subscription.');}
 function themeGallery(){const active=APP.getSave()?.settings?.theme||'vector',themes=[['vector','Vector Light','Clean lines and bright contrast.'],['midnight','Midnight Club','Slate surfaces with soft light and lime accents.'],['paperclub','Paper Club','Warm paper, ink and hand-drawn character.'],['afterhours','After Hours','Arcade glow with no strobe effects.']];return '<div class="mono-theme-grid" aria-label="Themes">'+themes.map(([id,name,desc])=>'<button class="theme-card mono-theme-card '+(active===id?'active':'')+'" data-action="theme" data-value="'+id+'" aria-pressed="'+(active===id)+'"><span class="theme-preview '+id+'"><span class="sample-x">X</span><span class="sample-o">O</span></span><b>'+name+'</b><small>'+desc+'</small></button>').join('')+'</div>';}
 function pageMarkup(){
- const connected=!!status,remaining=status?.rewardedRemaining??0,ready=connected&&status.adMode!=='off'&&privacyReady()&&adReady('rewarded'),canReward=ready&&remaining>0&&status.serverNow>=status.rewardReadyAt;
+ const direct=directApkDistribution(),connected=!!status,remaining=status?.rewardedRemaining??0,ready=connected&&status.adMode!=='off'&&privacyReady()&&adReady('rewarded'),canReward=ready&&remaining>0&&status.serverNow>=status.rewardReadyAt;
  /* B6.3.1: only the standalone Remove Ads product is excluded in adMode 'off'; the Mega Pass
    keeps its other benefits visible there instead of inheriting the removeAds shortcut. */
- const products=M.PRODUCTS.map(p=>{const price=prices.find(x=>x.id===p.id),owned=p.id==='mega_pass'?(status?.pass?.active===true):(status?.products.includes(p.id)),unneeded=!owned&&p.id==='remove_ads'&&status?.adMode!=='hybrid';if(p.id==='mega_pass')return renderMegaPassCard(p,price,owned,busy);return '<article class="mono-product"><div><h3>'+esc(p.name)+'</h3><p>'+esc(details(p))+'</p></div>'+button(owned?'Active':unneeded?'No automatic ads in this mode':price?'Review '+price.price:'Store unavailable','review',p.id,busy||owned||unneeded||!price||!status?.purchasesAvailable||!window.MegaBilling?.purchase)+'</article>';}).join('');
+ const products=M.PRODUCTS.map(p=>{const price=prices.find(x=>x.id===p.id),owned=p.id==='mega_pass'?(status?.pass?.active===true):(status?.products.includes(p.id)),unneeded=!owned&&p.id==='remove_ads'&&status?.adMode!=='hybrid';if(p.id==='mega_pass')return renderMegaPassCard(p,price,owned,busy);const fallback=button(owned?'Active':unneeded?'No automatic ads in this mode':price?'Review '+price.price:'Store unavailable','review',p.id,busy||owned||unneeded||!price||!status?.purchasesAvailable||!window.MegaBilling?.purchase),action=owned||unneeded?fallback:storePurchaseAction(fallback);return '<article class="mono-product"><div><h3>'+esc(p.name)+'</h3><p>'+esc(details(p))+'</p></div>'+action+'</article>';}).join('');
  const boost=status?.boost?'<p class="mono-notice">2x cosmetic boost active. Games started before '+esc(new Date(status.boost.endsAt).toLocaleTimeString())+' qualify even if they finish later.</p>':'';
  /* B5/APP-006: neutral raised panel with a small accent edge; no full-bleed accent wash, and
    the guest state never shows a misleading large placeholder amount. */
@@ -52,6 +63,7 @@ function pageMarkup(){
  const balance=connected?'<div class="mono-balance"><div class="mono-balance-copy"><span class="mono-balance-label">Cosmetic Credits</span><strong class="mono-balance-amount">'+esc(status.credits)+'</strong></div><p class="mono-balance-description">Earn them through play or optional rewarded ads. Cosmetic Credits can be used for future cosmetic releases.</p></div>':'<div class="mono-balance mono-balance-guest"><div class="mono-balance-copy"><span class="mono-balance-label">Cosmetic Credits</span></div><p class="mono-balance-description">Save your Cosmetic Credits and access rewards and purchases with a profile.</p>'+button('Sign in or create profile','signin')+'</div>';
  return '<div class="mono-page">'+
   '<header class="mono-page-head"><button class="button quiet mono-back" data-action="nav" data-value="play">Back to Play</button><p class="mono-kicker">STORE</p><h2>Store</h2><p>Cosmetics, themes and power-ups. Earn cosmetic rewards, choose your look and manage optional purchases in one place.</p></header>'+
+  (direct?'<p class="caption">This direct-download APK opens the website store in your browser. Sign in there with the same linked account; app sign-in and purchase credentials are not shared.</p>':'')+
   balance+
   '<section class="mono-section"><div class="mono-section-head"><div><p class="mono-kicker">PLAY TO EARN</p><h3>Casual rewards</h3></div><span class="pill">2 Credits / game</span></div><p>Complete a qualifying free Casual queue game for 2 Cosmetic Credits, up to 10 per UTC day.</p>'+button('Collect earned credits','claim','',busy||!connected)+'</section>'+
   '<section class="mono-section"><div class="mono-section-head"><div><p class="mono-kicker">OPTIONAL REWARDS</p><h3>Watch &amp; earn</h3></div><span class="pill">'+(connected?remaining+' / 4 left':'Sign in')+'</span></div><p>Choose a reward. Up to four rewarded ads per UTC day, at least two minutes apart.</p>'+boost+
@@ -69,7 +81,7 @@ function pageMarkup(){
     :'<p class="caption">Coin exchange at 8:1 is a Mega Pass benefit.'+(status?.pass?' Your allowance resets with your billing month.':' See the Mega Pass above.')+'</p>')+
   '</section>'+
   '<section class="mono-section mono-shop"><div class="mono-section-head"><div><p class="mono-kicker">STORE</p><h3>Crowns, Mega Pass &amp; Remove Ads</h3></div></div><p>Optional purchases do not change skill rating or game rules.</p><div class="mono-product-list">'+products+'</div></section>'+
-  '<div class="mono-footer">'+button('Restore purchases','restore','',busy||!connected||!window.MegaBilling?.restore)+button('Ad privacy options','privacy','',!window.MegaAds?.privacyOptions)+button('Report an ad','report','',!window.MegaAds?.reportAd)+'</div>'+
+  '<div class="mono-footer">'+(direct?websiteStoreLink('View purchases on website'):button('Restore purchases','restore','',busy||!connected||!window.MegaBilling?.restore))+button('Ad privacy options','privacy','',!window.MegaAds?.privacyOptions)+button('Report an ad','report','',!window.MegaAds?.reportAd)+'</div>'+
  '</div>';
 }
 function show(){if(APP.getContext().page==='rewards')APP.render();}
@@ -109,7 +121,7 @@ document.addEventListener('click',e=>{
  else if(action==='powerbuy')execute(async()=>{if(!['undo','hint'].includes(value))return;await window.MegaPowers.purchase(value);APP.notify('Charge banked. It stays until you use it.');});
  else if(action==='exchange')execute(async()=>{const input=document.getElementById('monoExchangeAmount');const amount=Number(input&&input.value);if(!Number.isInteger(amount)||amount<=0)throw Error('Enter the Coin amount to exchange first.');const user=who();const r=await request('exchange',{amount});if(who()!==user)throw Error('AUTH_REQUIRED');await APP.refresh();await refresh();show();APP.notify('Exchanged for '+r.crowns+' Crowns.');});
  else if(action==='claim')execute(async()=>{const r=await request('claim',{});APP.notify((r.base+r.bonus)+' earned Cosmetic Credits collected.');});
- else if(action==='prepare')execute(async()=>{if(!safe(true)||!status||status.adMode==='off')return;await window.MegaAds.privacyOptions?.();if(!safe(true)||!privacyReady())return;await window.MegaAds.prepare('rewarded');});
+ else if(action==='prepare')execute(async()=>{if(!safe(true)||!status||status.adMode==='off'||!window.MegaAds?.prepare)return;await window.MegaAds.prepare('rewarded');});
  else if(action==='privacy')execute(()=>window.MegaAds.privacyOptions());else if(action==='report')execute(()=>window.MegaAds.reportAd());
 },true);
 setInterval(()=>{if(who()!==actor){status=null;refresh().then(()=>show());}},2000);

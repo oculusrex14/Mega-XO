@@ -105,6 +105,92 @@ function mark(player, extra = '') {
   return `<svg class="gb-mark gb-mark--${player.toLowerCase()} ${extra}" viewBox="0 0 40 40" fill="none" aria-hidden="true">${shape}</svg>`;
 }
 
+/* Attributes that identify a rendered node across renders. Everything else on an element is state.
+ * WebKit (iOS Chrome/Safari) re-anchors the page when a tapped element is destroyed and recreated,
+ * so stable parts of the board are updated in place and only genuinely diverged structures are
+ * replaced. Exported for regression tests; the DOM subset used here is intentionally tiny. */
+const RENDER_IDENTITY_ATTRIBUTES = ['id', 'name', 'type', 'role', 'for', 'data-action', 'data-c', 'data-gb-cell', 'data-gb-mini', 'data-gb-setting', 'data-gb-tool', 'data-gb-power', 'data-id', 'data-monetization', 'data-value'];
+
+function renderIdentity(node) {
+  if (!node || node.nodeType !== 1 || typeof node.tagName !== 'string') return null;
+  const parts = [node.tagName.toLowerCase()];
+  for (const name of RENDER_IDENTITY_ATTRIBUTES) {
+    const value = typeof node.getAttribute === 'function' ? node.getAttribute(name) : null;
+    if (value) parts.push(`${name}=${value}`);
+  }
+  for (const attribute of (typeof node.attributes === 'object' && node.attributes !== null) ? node.attributes : []) {
+    if (typeof attribute.name === 'string' && attribute.name.startsWith('data-gb-')) parts.push(`${attribute.name}=${attribute.value}`);
+  }
+  return parts.join('|');
+}
+
+/* Reconcile text nodes as well as element nodes. The first iOS hotfix preserved .gb-frame,
+ * but still replaced cells when a legal-move dot was added to an empty button: the old merge
+ * returned false whenever child counts differed. Never discard a stable cell (or a status
+ * panel) merely because its display children appear, disappear, or change shape. */
+export function mergeRenderedElement(current, next) {
+  if (renderIdentity(current) === null || renderIdentity(current) !== renderIdentity(next)) return false;
+  const detailsOpen = current.tagName === 'DETAILS' ? current.open : null;
+  for (const attribute of [...current.attributes]) {
+    if (attribute.name === 'open' && detailsOpen !== null) continue;
+    if (!next.hasAttribute(attribute.name) && !RENDER_IDENTITY_ATTRIBUTES.includes(attribute.name) && !attribute.name.startsWith('data-gb-')) current.removeAttribute(attribute.name);
+  }
+  for (const attribute of [...next.attributes]) {
+    if (attribute.name === 'open' && detailsOpen !== null) continue;
+    if (!RENDER_IDENTITY_ATTRIBUTES.includes(attribute.name) && !attribute.name.startsWith('data-gb-')
+      && current.getAttribute(attribute.name) !== attribute.value) current.setAttribute(attribute.name, attribute.value);
+  }
+
+  /* A rendered board cell may gain or lose a dot or SVG. Reconcile the children without
+   * replacing the button, and keep direct text nodes (scores/live status) up to date. */
+  if (current.childNodes.length === 0 && next.childNodes.length === 0 && current.textContent !== next.textContent) {
+    current.textContent = next.textContent;
+  }
+  const existing = [...current.childNodes];
+  const incoming = [...next.childNodes];
+  for (let index = 0; index < Math.max(existing.length, incoming.length); index++) {
+    const before = existing[index], after = incoming[index];
+    if (!after) before.remove();
+    else if (!before) current.appendChild(after);
+    else if (before.nodeType === after.nodeType && (before.nodeType === 3 || before.nodeType === 8)) {
+      if (before.textContent !== after.textContent) before.textContent = after.textContent;
+    } else if (before.nodeType !== 1 || after.nodeType !== 1 || !mergeRenderedElement(before, after)) {
+      before.replaceWith(after);
+    }
+  }
+
+  /* Native form and disclosure state must not regress just because a render ran. */
+  if (detailsOpen !== null) current.open = detailsOpen;
+  if (current.tagName === 'SELECT' && current.value !== next.value) current.value = next.value;
+  if (current.tagName === 'INPUT') {
+    if (current.type === 'checkbox' || current.type === 'radio') current.checked = next.checked;
+    else if (current.type !== 'file' && current.value !== next.value) current.value = next.value;
+  }
+  return true;
+}
+
+/* Stable nodes do not by themselves preserve the viewport: mobile status text can reflow above
+ * the board and WebKit may apply a deferred focus/scroll adjustment. Anchor only a visible board
+ * during a state render; user scroll/zoom/navigation is never locked. */
+export function captureBoardViewport(frame, view) {
+  if (globalThis.__VP_DEBUG) globalThis.__VP_DEBUG.push({capture:true, at:Date.now()%1000000, top:Math.round((frame?.getBoundingClientRect?.().top||0)*100)/100, scrollY:view?.scrollY});
+  if (!frame?.getBoundingClientRect || !view?.scrollTo) return null;
+  const rect = frame.getBoundingClientRect();
+  const viewport = view.visualViewport;
+  const offset = viewport?.offsetTop || 0;
+  const height = viewport?.height || view.innerHeight;
+  if (!(height > 0) || rect.bottom <= offset || rect.top >= offset + height) return null;
+  return {frame, top:rect.top - offset, x:view.scrollX, scale:viewport?.scale || 1};
+}
+
+export function restoreBoardViewport(anchor, view) {
+  if (globalThis.__VP_DEBUG) globalThis.__VP_DEBUG.push({restore:true, at:Date.now()%1000000, target:anchor.top, current:Math.round((anchor.frame?.getBoundingClientRect?.().top||0)*100)/100, scrollY:view?.scrollY});
+  if (!anchor || anchor.frame.isConnected === false || !view?.scrollTo) return;
+  if ((view.visualViewport?.scale || 1) !== anchor.scale) return;
+  const delta = anchor.frame.getBoundingClientRect().top - (view.visualViewport?.offsetTop || 0) - anchor.top;
+  if (Math.abs(delta) > 0.5) view.scrollTo({left:anchor.x, top:view.scrollY + delta, behavior:'instant'});
+}
+
 function boardMarkup(state, game, { thinking = false, blocked = false, focus = null, guidedTargetCell = null, guidedDestination = null } = {}) {
   const legal = new Set(game.legal(state).map(move => `${move.b}:${move.c}`));
   const legalList = game.legal(state);
@@ -417,8 +503,41 @@ export function mountBoard(host, {
 
   const isThinking = () => !online && !host.ownerDocument?.hidden && (!tutorialController || !tutorialController.isActive()) && !session.getState().winner && mode === 'bot' && session.getState().turn === 'O';
 
+  const view = host.ownerDocument?.defaultView;
+  let viewportFrames = [], viewportTimers = [], pointerViewport = null, viewportRevision = 0, scrollQuietUntil = 0;
+  let gestureLast = null, gestureDistance = 0;
+  /* The board viewport position last verified without a user gesture in between, plus the
+   * gesture epoch it was verified under. A position change with no gesture is an engine-side
+   * jump (some WebKit builds adjust late), and it is undone; a genuine drag or wheel bumps the
+   * epoch so the next capture re-baselines to where the user actually scrolled. */
+  let viewportLastGood = null, gestureEpoch = 0;
+  /* Only undo small unexplained drifts: a large change means the page itself moved (navigation,
+   * layout collapse, programmatic scroll) and the board's new position belongs to the user. */
+  const VIEWPORT_JUMP_ADOPT_PX = 120;
+  function cancelViewportCorrection(event) {
+    viewportRevision++;
+    pointerViewport = null;
+    for (const id of viewportFrames.splice(0)) view?.cancelAnimationFrame?.(id);
+    for (const id of viewportTimers.splice(0)) view?.clearTimeout?.(id);
+    if (event?.type === 'wheel') scrollQuietUntil = Date.now() + 180;
+  }
+  function stabilizeAnchor(anchor) {
+    if (!anchor) return null;
+    if (viewportLastGood && viewportLastGood.epoch === gestureEpoch
+      && Math.abs(anchor.top - viewportLastGood.top) > 0.5
+      && Math.abs(anchor.top - viewportLastGood.top) <= VIEWPORT_JUMP_ADOPT_PX) anchor.top = viewportLastGood.top;
+    viewportLastGood = {top: anchor.top, epoch: gestureEpoch};
+    return anchor;
+  }
+
   function render({ focusCell = false, setting = null } = {}) {
     if (destroyed) return;
+    const anchor = !lastInputWasKeyboard && Date.now() >= scrollQuietUntil
+      ? stabilizeAnchor(pointerViewport || captureBoardViewport(host.querySelector('.gb-frame'), view)) : null;
+    pointerViewport = null;
+    for (const id of viewportFrames.splice(0)) view?.cancelAnimationFrame?.(id);
+    for (const id of viewportTimers.splice(0)) view?.clearTimeout?.(id);
+    const revision = ++viewportRevision;
     const guidedView = tutorialController && (tutorialController.isActive() || tutorialController.isConfirmRestart()) ? tutorialController.getView(session.getState()) : null;
     const guidedTargetCell = guidedView?.phase === 'AWAIT_MOVE' && guidedView.move ? `${guidedView.move.b}:${guidedView.move.c}` : null;
     const guidedDestination = guidedView?.phase === 'AWAIT_CONTINUE' ? session.getState().required : null;
@@ -451,14 +570,18 @@ export function mountBoard(host, {
       const template = host.ownerDocument.createElement('template');
       template.innerHTML = html;
       const next = template.content;
-      for (const selector of ['.gb-guided-panel', '.gb-frame', '.gb-toolbar', '.gb-game-players', '.gb-match-note', '.gb-powers']) {
+      for (const selector of ['.gb-guided-panel', '.gb-frame', '.gb-toolbar', '.gb-game-players', '.gb-turn-strip', '.gb-match-note', '.gb-powers']) {
         const currentPart = stage.querySelector(selector);
         const nextPart = next.querySelector(selector);
         if (selector === '.gb-powers' && currentPart && nextPart) {
           const details = currentPart.querySelector('details');
-          if (details?.open) nextPart.querySelector('details').open = true;
+          if (details?.open && nextPart.querySelector('details')) nextPart.querySelector('details').open = true;
         }
-        if (currentPart && nextPart) currentPart.replaceWith(nextPart);
+        if (currentPart && nextPart) {
+          /* All gameplay sections, including the panels ABOVE the mobile board and the live
+           * turn strip, retain their DOM identity. Only genuinely different roots are replaced. */
+          if (!mergeRenderedElement(currentPart, nextPart)) currentPart.replaceWith(nextPart);
+        }
         else if (!currentPart && nextPart && selector === '.gb-guided-panel') {
           stage.querySelector('.gb-frame')?.before(nextPart);
         } else if (!currentPart && nextPart && selector === '.gb-powers') {
@@ -467,12 +590,32 @@ export function mountBoard(host, {
           currentPart.remove();
         }
       }
-      stage.querySelector('.gb-turn-strip').innerHTML = next.querySelector('.gb-turn-strip').innerHTML;
       stage.dataset.gbTheme = preview ? 'cinematic' : theme;
     } else host.innerHTML = html;
-    if (focusCell && focusedCell) host.querySelector(`[data-gb-cell="${focusedCell}"]`)?.focus({ preventScroll: true });
-    if (setting) host.querySelector(`[data-gb-setting="${setting}"]`)?.focus({ preventScroll: true });
+    /* Touch input never needs synthetic focus restoration: on WebKit, focusing a freshly rendered
+     * element scrolls it into view even with preventScroll. Keyboard users keep the restoration. */
+    if (focusCell && focusedCell && lastInputWasKeyboard) host.querySelector(`[data-gb-cell="${focusedCell}"]`)?.focus({ preventScroll: true });
+    if (setting && lastInputWasKeyboard) host.querySelector(`[data-gb-setting="${setting}"]`)?.focus({ preventScroll: true });
     if (workspace && typeof CustomEvent !== 'undefined') host.dispatchEvent?.(new CustomEvent('gb:render', {bubbles:true}));
+    if (anchor) {
+      restoreBoardViewport(anchor, view);
+      /* Engines differ in when they apply their own deferred adjustment (desktop WebKit can act
+       * several hundred milliseconds after the render), so ride out a bounded wall-clock window.
+       * User input cancels immediately; each attempt is a no-op once the delta is under half a
+       * pixel. */
+      for (let frame = 1; frame <= 3 && view?.requestAnimationFrame; frame++) {
+        viewportFrames.push(view.requestAnimationFrame(() => {
+          viewportFrames = viewportFrames.filter(id => id !== frame);
+          if (!destroyed && revision === viewportRevision) restoreBoardViewport(anchor, view);
+        }));
+      }
+      for (const delay of [120, 250, 500]) {
+        viewportTimers.push(setTimeout(() => {
+          viewportTimers = viewportTimers.filter(id => id !== delay);
+          if (!destroyed && revision === viewportRevision) restoreBoardViewport(anchor, view);
+        }, delay));
+      }
+    }
   }
 
   function scheduleBot() {
@@ -812,6 +955,37 @@ export function mountBoard(host, {
     }
   }
 
+  /* Captured on the host: pointerdown covers touch/mouse/pen and keydown covers keyboard. */
+  let lastInputWasKeyboard = false;
+  const noteInputType = event => {
+    lastInputWasKeyboard = event.type === 'keydown';
+    if (event.type === 'touchstart') {
+      const touch = event.touches?.[0];
+      if (touch) { gestureLast = {x: touch.clientX, y: touch.clientY}; gestureDistance = 0; }
+    }
+    if (lastInputWasKeyboard) cancelViewportCorrection();
+    else if (Date.now() >= scrollQuietUntil && event.target.closest?.('[data-gb-cell]')) {
+      pointerViewport = captureBoardViewport(host.querySelector('.gb-frame'), view);
+    }
+  };
+  /* Only a genuine drag or wheel is a user scroll: a stationary tap can still emit sub-pixel
+   * touchmove events on some engines, and it must keep its anchor. */
+  function onGestureMove(event) {
+    const touch = event.touches?.[0];
+    if (!touch || !gestureLast) return;
+    gestureDistance += Math.hypot(touch.clientX - gestureLast.x, touch.clientY - gestureLast.y);
+    gestureLast = {x: touch.clientX, y: touch.clientY};
+    if (gestureDistance > 8) { gestureEpoch++; cancelViewportCorrection(event); }
+  }
+  /* Some touch sequences skip pointer events; the pre-gesture position is still the anchor. */
+  host.addEventListener('touchstart', noteInputType, {passive: true});
+  host.ownerDocument?.addEventListener?.('pointerdown', cancelViewportCorrection, {capture:true, passive:true});
+  host.ownerDocument?.addEventListener?.('touchmove', onGestureMove, {passive:true});
+  host.ownerDocument?.addEventListener?.('wheel', cancelViewportCorrection, {passive:true});
+  view?.addEventListener?.('resize', event => { viewportLastGood = null; cancelViewportCorrection(event); }, {passive:true});
+  host.addEventListener('pointerdown', noteInputType);
+  host.addEventListener('keydown', noteInputType);
+
   const onVisibility = () => {
     if (destroyed) return;
     if (host.ownerDocument?.hidden) {
@@ -851,6 +1025,7 @@ export function mountBoard(host, {
     destroy() {
       if (destroyed) return;
       destroyed = true;
+      cancelViewportCorrection();
       cancelBot();
       botRunner?.destroy();
       powers?.destroy();
@@ -858,6 +1033,13 @@ export function mountBoard(host, {
       compat?.stopNarration?.();
       host.ownerDocument?.removeEventListener?.('visibilitychange', onVisibility);
       host.removeEventListener('click', onClick);
+      host.removeEventListener('pointerdown', noteInputType);
+      host.removeEventListener('touchstart', noteInputType);
+      host.removeEventListener('keydown', noteInputType);
+      host.ownerDocument?.removeEventListener?.('pointerdown', cancelViewportCorrection, true);
+      host.ownerDocument?.removeEventListener?.('touchmove', onGestureMove);
+      host.ownerDocument?.removeEventListener?.('wheel', cancelViewportCorrection);
+      view?.removeEventListener?.('resize', cancelViewportCorrection);
       guidedStart?.removeEventListener('click', startGuided);
       host.removeEventListener('keydown', onKeydown);
       host.removeEventListener('change', onChange);

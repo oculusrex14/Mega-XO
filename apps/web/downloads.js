@@ -18,6 +18,14 @@ export function downloadHref(device) {
   return `/api/download${platform ? `?platform=${platform}` : ''}`;
 }
 
+/** Add the opt-in only to this APK request; the checkbox preference is not persisted. */
+export function apkMetricsHref(path, optedIn) {
+  const url = new URL(path, 'https://megaxo.online');
+  url.searchParams.delete('metrics');
+  if (optedIn === true) url.searchParams.set('metrics', '1');
+  return url.pathname + url.search + url.hash;
+}
+
 /** The parent supplies storeLinks generated from the validated central JSON.
  * Every platform anchor goes through the same server-side availability check. */
 export function renderDownloadPage(context = {}) {
@@ -32,7 +40,9 @@ export function renderDownloadPage(context = {}) {
   const available = id => typeof links[id] === 'string' && links[id].length > 0;
   const anyAvailable = platforms.some(item => available(item.id)) || !!apk;
   const notice = unavailable && (!platform || !available(platform))
-    ? `<div class="pg-note" role="status">${icon('info')}<p>${platform === 'ios' ? 'The iPhone and iPad' : platform === 'android' ? 'The Android' : 'The requested'} store listing is not available yet. Play in your browser while you wait.</p></div>`
+    ? `<div class="pg-note" role="status">${icon('info')}<p>${platform === 'android' && apk
+      ? 'The Google Play listing is not live yet. Install the signed Android app using the direct download below.'
+      : `${platform === 'ios' ? 'The iPhone and iPad' : platform === 'android' ? 'The Android' : 'The requested'} store listing is not available yet. Play in your browser while you wait.`}</p></div>`
     : '';
   return `<div class="pg-page pg-download-page">${pageHeading('YOUR NEXT MOVE. ANYWHERE.', 'Take the bigger game with you.', anyAvailable ? 'Choose your platform or play now in your browser. Your linked Mega XOXO profile keeps your rank, friends and progress together.' : 'Play instantly in your browser. Coming soon to iPhone, iPad and Android.')}
     ${notice}
@@ -43,10 +53,10 @@ export function renderDownloadPage(context = {}) {
       const body = available(item.id)
         ? `Continue to the official Mega XOXO listing on ${item.store}. The store shows the current release and device requirements.`
         : item.id === 'android' && apkForItem
-          ? `The official Google Play listing is not live yet. Until it is, install the signed Mega XOXO APK directly — it is the fully functional app.`
+          ? `The official Google Play listing is not live yet. Install the signed Mega XOXO app directly while we prepare the Google Play release.`
           : `The official Mega XOXO listing on ${item.store} is not available here yet. You can start a game in your browser today.`;
       const direct = apkForItem
-        ? `<div class="pg-apk-direct"><div class="pg-apk-meta"><span class="mx-chip">Version ${e(apkForItem.versionName)}</span><span class="mx-chip">${Math.round(apkForItem.bytes / 1048576)} MB</span></div><a class="mx-button primary" href="${e(apkForItem.path)}" download>Download the Android APK</a><p class="pg-small mx-muted">Android shows a Play Protect warning for apps installed outside the Play Store; choose “Install anyway” to continue.</p></div>`
+        ? `<div class="pg-apk-direct"><div class="pg-apk-meta"><span class="mx-chip">Version ${e(apkForItem.versionName)}</span><span class="mx-chip">${Math.round(apkForItem.bytes / 1048576)} MB</span></div><a class="mx-button primary" data-apk-download-link data-apk-base-href="${e(apkForItem.path)}" href="${e(apkForItem.path)}" download>Download the Android APK</a><label class="pg-small mx-muted"><input type="checkbox" data-apk-metrics-opt-in> Help count unique downloads (optional)</label><p class="pg-small mx-muted">Uses a download-only cookie for this choice. Your account and gameplay aren’t tracked. <a href="/privacy">Privacy details</a>.</p><p class="pg-small mx-muted">Android shows a Play Protect warning for apps installed outside the Play Store; choose “Install anyway” to continue.</p></div>`
         : '';
       return `<article class="mx-panel pg-panel pg-feature" aria-labelledby="download-${item.id}-title">${featureTop}<div class="pg-actions">${platform === item.id ? '<span class="mx-chip">For your device</span>' : ''}</div><h2 id="download-${item.id}-title">${item.name}</h2><p class="mx-muted">${body}</p>${button(available(item.id) ? `Open ${item.store === 'the App Store' ? 'App Store' : item.store}` : `Check ${item.id === 'ios' ? 'iOS' : 'Android'} availability`, downloadHref(item.id), available(item.id) ? 'primary' : 'secondary', 'download')}${direct}</article>`;
     }).join('')}</div>

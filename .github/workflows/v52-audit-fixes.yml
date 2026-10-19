@@ -13,6 +13,32 @@ concurrency:
   group: v52-audit-${{ github.ref }}
   cancel-in-progress: true
 jobs:
+  production-hotfix-contracts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '24'
+      - run: npm ci --ignore-scripts
+      - name: Verify APK email, mail delivery, download metrics, board and deployment regressions
+        shell: bash
+        run: |
+          set -euo pipefail
+          suites=(
+            tests/v5-native-email-lane.test.js
+            tests/v5-p21-native-email-ui.test.js
+            tests/v51-v5-production-server.test.js
+            tests/v51-deploy-production-guards.test.js
+            tests/v52-mail-resend.test.js
+            tests/v52-web-board-merge.test.js
+            tests/v52-apk-download-tracker.test.js
+          )
+          for suite in "${suites[@]}"; do test -f "$suite"; done
+          node --test "${suites[@]}"
   audited-boundaries:
     runs-on: ubuntu-latest
     timeout-minutes: 30

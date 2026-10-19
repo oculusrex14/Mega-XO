@@ -393,6 +393,12 @@
       "name": "0065_ledger_power_source",
       "file": "migrations/0065_ledger_power_source.sql",
       "sha256": "3e1c8a9b4420d25890593b56e10d81360679bfd964b48c7a0b36bee808d713d5"
+    },
+    {
+      "id": 66,
+      "name": "0066_promotion_enforcement",
+      "file": "migrations/0066_promotion_enforcement.sql",
+      "sha256": "ca33a921688da4a418925a6fa9e89770ad62832c1a52f2c16eb59823455292a6"
     }
   ]
 }

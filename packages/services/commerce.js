@@ -87,6 +87,7 @@ const D = require('../../src/domain.js');
 const { newOrderId } = require('./cashfree.js');
 const { UUID_V4 } = require('./polar.js');
 const { SESSION_ID, SUPPORTED_CURRENCIES } = require('./dodo.js');
+const Promotion = require('./promotion-allocation.js');
 
 const CORE_ROLE = 'core_runtime';
 const DAY = 86400000;
@@ -116,8 +117,16 @@ function withDeadline(promise, ms = CREATE_DEADLINE_MS) {
 /* Inserts the PENDING reservation under the durable (actor, op_key) fence. Returns
  * { won: true, requestId } for the inserter - the ONLY caller allowed to reach the provider -
  * or { won: false, reservation } with the winner's row for conflict/replay handling. */
-async function reserveCreate(uow, actor, key, provider, productId, fingerprint, priceSnapshot) {
+async function reserveCreate(uow, actor, key, provider, productId, fingerprint, priceSnapshot, acceptanceHash = null) {
   return uow.run(async (tx) => {
+    await lockEligibility(tx.query, [actor]);
+    const locked = await tx.repositories.wallets.lock([actor]);
+    if (!locked.wallets) throw Error('ACCOUNT_REQUIRED');
+    const prior = (await tx.query('SELECT request_id FROM monetization.commerce_create_requests WHERE actor_id = $1 AND op_key = $2', [actor, key])).rows[0];
+    if (!prior) {
+      const allocation = await Promotion.reserve(tx, actor, key, provider, M.product(productId), acceptanceHash);
+      if (allocation) priceSnapshot = { ...priceSnapshot, promotion: allocation };
+    }
     const inserted = await tx.query(
       'INSERT INTO monetization.commerce_create_requests (request_id, actor_id, op_key, provider, product_id, fingerprint, price_snapshot, state, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, $8, $9, $9) ON CONFLICT (actor_id, op_key) DO NOTHING RETURNING request_id',
       [crypto.randomUUID(), actor, key, provider, productId, fingerprint, JSON.stringify(priceSnapshot), 'PENDING', iso(tx.clock())]);
@@ -536,7 +545,9 @@ async function createCommerceService(pool, options = {}) {
     * which row is absent, so the command fails closed rather than applying a degraded effect. */
    if (graph.complete !== true) throw Error('STATE_TRUNCATED');
    const account = accountOf(graph, actor);
+   const promotionBefore = Promotion.capture(graph);
    const result = await fn(tx, graph, account);
+   await Promotion.track(tx, graph, promotionBefore);
    const stats = await repositories.commitDomain();
    /* Strict claim: the operation identity lock above means this insert cannot legitimately conflict,
     * so a conflict aborts the transaction (business effect included) instead of committing a second
@@ -764,6 +775,7 @@ async function createCommerceService(pool, options = {}) {
    if (product.crowns) current.purchaseInfluenced = true;
    graph.receipts.set(id, { actor, productId: product.id, crowns: product.crowns, refunded: false, at: tx.clock() });
    if (product.crowns) journal(graph, { id: 'purchase:' + id, actor, currency: 'crowns', amount: product.crowns, reason: 'Crown purchase', source: 'verified-store', at: tx.clock() });
+   await Promotion.creditLot(tx, actor, receipt.store, key, 'purchase:' + id, product.crowns);
    await event(tx, actor, restore ? 'purchase_restored' : 'purchase_verified', product.crowns);
    return { productId: product.id, crowns: product.crowns, duplicate: false };
   }, [receipt.store, receipt.transactionId]);
@@ -824,7 +836,7 @@ async function createCommerceService(pool, options = {}) {
    return { ready: wallet.rows.length > 0, account: accountOf(graph, actor) };
   });
   if (!preflight.ready) throw Error('ACCOUNT_REQUIRED');
-  const reservation = await reserveCreate(uow, actor, key, 'cashfree', productId, fingerprint, { amount: price, currency: 'INR' });
+  const reservation = await reserveCreate(uow, actor, key, 'cashfree', productId, fingerprint, { amount: price, currency: 'INR' }, customer.promotionAcceptanceHash);
   if (!reservation.won) {
    const r = reservation.reservation;
    if (!r || r.provider !== 'cashfree' || r.product_id !== productId || r.fingerprint !== fingerprint) throw Error('IDEMPOTENCY_CONFLICT');
@@ -943,6 +955,7 @@ async function createCommerceService(pool, options = {}) {
    /* The ledger source stays within the frozen 0010 CHECK vocabulary: a server-verified Cashfree
     * payment is a verified-store purchase, exactly like the native store grants. */
    if (product.crowns) journal(graph, { id: 'purchase:cashfree:' + orderId, actor: recorded.actor_id, currency: 'crowns', amount: product.crowns, reason: 'Crown purchase', source: 'verified-store', at: tx.clock() });
+   await creditWebPromotion(tx, recorded.actor_id, 'cashfree', orderId, 'purchase:cashfree:' + orderId, product.crowns);
    await event(tx, recorded.actor_id, 'purchase_verified', product.crowns);
    await tx.query('UPDATE monetization.cashfree_orders SET status = $2, settled_at = $3 WHERE order_id = $1', [orderId, 'PAID', iso(tx.clock())]);
    /* B3: a discounted pack converts its reserved use to used on verified settlement; the CHECK
@@ -1075,7 +1088,7 @@ async function createCommerceService(pool, options = {}) {
    return { ready: wallet.rows.length > 0, account: accountOf(graph, actor) };
   });
   if (!preflight.ready) throw Error('ACCOUNT_REQUIRED');
-  const reservation = await reserveCreate(uow, actor, key, 'polar', productId, fingerprint, { priceId: entry.priceId, amountCents: entry.amountCents, currency: 'usd' });
+  const reservation = await reserveCreate(uow, actor, key, 'polar', productId, fingerprint, { priceId: entry.priceId, amountCents: entry.amountCents, currency: 'usd' }, customer && customer.promotionAcceptanceHash);
   if (!reservation.won) {
    const r = reservation.reservation;
    if (!r || r.provider !== 'polar' || r.product_id !== productId || r.fingerprint !== fingerprint) throw Error('IDEMPOTENCY_CONFLICT');
@@ -1177,6 +1190,7 @@ async function createCommerceService(pool, options = {}) {
    current.purchasedCrowns = D.add(current.purchasedCrowns || 0, product.crowns);
    if (product.crowns) current.purchaseInfluenced = true;
    if (product.crowns) journal(graph, { id: 'purchase:polar:' + checkoutId, actor: recorded.actor_id, currency: 'crowns', amount: product.crowns, reason: 'Crown purchase', source: 'verified-store', at: tx.clock() });
+   await creditWebPromotion(tx, recorded.actor_id, 'polar', checkoutId, 'purchase:polar:' + checkoutId, product.crowns);
    await event(tx, recorded.actor_id, 'purchase_verified', product.crowns);
    await tx.query('UPDATE monetization.polar_orders SET status = $2, settled_at = $3, polar_order_id = COALESCE($4, polar_order_id) WHERE checkout_id = $1', [checkoutId, 'succeeded', iso(tx.clock()), polarOrderId]);
    /* MXA-ECO-011: a discounted pack converts its reserved use to used on verified settlement;
@@ -1309,7 +1323,7 @@ async function createCommerceService(pool, options = {}) {
    return { ready: wallet.rows.length > 0, account: accountOf(graph, actor) };
   });
   if (!preflight.ready) throw Error('ACCOUNT_REQUIRED');
-   const reservation = await reserveCreate(uow, actor, key, 'dodo', productId, fingerprint, { productId: entry.productId, amountCents: recordedCents, currency });
+   const reservation = await reserveCreate(uow, actor, key, 'dodo', productId, fingerprint, { productId: entry.productId, amountCents: recordedCents, currency }, customer && customer.promotionAcceptanceHash);
   if (!reservation.won) {
    const r = reservation.reservation;
    if (!r || r.provider !== 'dodo' || r.product_id !== productId || r.fingerprint !== fingerprint) throw Error('IDEMPOTENCY_CONFLICT');
@@ -1752,6 +1766,7 @@ async function createCommerceService(pool, options = {}) {
    current.purchasedCrowns = D.add(current.purchasedCrowns || 0, product.crowns);
    if (product.crowns) current.purchaseInfluenced = true;
    if (product.crowns) journal(graph, { id: 'purchase:dodo:' + checkoutId, actor: recorded.actor_id, currency: 'crowns', amount: product.crowns, reason: 'Crown purchase', source: 'verified-store', at: tx.clock() });
+   await creditWebPromotion(tx, recorded.actor_id, 'dodo', checkoutId, 'purchase:dodo:' + checkoutId, product.crowns);
    await event(tx, recorded.actor_id, 'purchase_verified', product.crowns);
    await tx.query('UPDATE monetization.dodo_orders SET status = $2, settled_at = $3, dodo_payment_id = COALESCE($4, dodo_payment_id) WHERE checkout_id = $1', [checkoutId, 'succeeded', iso(tx.clock()), dodoPaymentId]);
    /* MXA-ECO-011: a discounted pack converts its reserved use to used on verified settlement. */
@@ -1976,6 +1991,39 @@ async function createCommerceService(pool, options = {}) {
   });
  }
 
+ // Private service integration for native stores: call BEFORE opening native billing. No
+ // operator command is added to commerce ingress. Existing pre-policy receipts stay valid.
+ async function reservePromotionCheckout(actor, key, productId, provider, acceptanceHash) {
+  if (!['apple', 'google'].includes(provider) || !idOK(key)) throw Error('INVALID_PROMOTION_CHECKOUT');
+  return uow.run(async tx => {
+   await lockEligibility(tx.query, [actor]);
+   if (!(await tx.repositories.wallets.lock([actor])).wallets) throw Error('ACCOUNT_REQUIRED');
+   return Promotion.reserve(tx, actor, key, provider, M.product(productId), acceptanceHash);
+  });
+ }
+ async function acceptPromotionPolicy(actor, receipt) {
+  // Caller supplies an authenticated delivery/acceptance attestation verifier at composition.
+  // A body saying accepted:true is insufficient and cannot establish retrospective acceptance.
+  if (typeof options.verifyPromotionAcceptance !== 'function'
+   || await options.verifyPromotionAcceptance(actor, receipt) !== true) throw Error('PROMOTION_ACCEPTANCE_UNVERIFIED');
+  return uow.run(async tx => {
+   await lockEligibility(tx.query, [actor]);
+   await tx.repositories.wallets.lock([actor]);
+   const state = await Promotion.allowance(tx, actor);
+   if (!state.publishedAt || !state.ruleHash || receipt.policyVersion !== state.policyVersion
+    || receipt.ruleHash !== state.ruleHash || receipt.remaining !== state.remaining
+    || Date.parse(state.publishedAt) > tx.clock()) throw Error('PROMOTION_DISCLOSURE_STALE');
+   const acceptanceHash = Promotion.hash({ actor, ...receipt });
+   await tx.query('INSERT INTO monetization.promotion_acceptances (actor_id,policy_version,acceptance_hash,rule_hash,accepted_at,disclosed_remaining) VALUES ($1,$2,$3,$4,$5,$6) ON CONFLICT DO NOTHING', [actor, state.policyVersion, acceptanceHash, state.ruleHash, iso(tx.clock()), state.remaining]);
+   return { acceptanceHash, ...state };
+  });
+ }
+ async function creditWebPromotion(tx, actor, provider, orderId, grantId, crowns) {
+  if (!crowns) return;
+  const row = (await tx.query('SELECT op_key FROM monetization.commerce_create_requests WHERE actor_id = $1 AND provider = $2 AND provider_object_id = $3', [actor, provider, orderId])).rows[0];
+  if (row) await Promotion.creditLot(tx, actor, provider, row.op_key, grantId, crowns);
+ }
+
  /* ---------------------------------------------------------------- reads */
 
  /* The legacy `status()` projection. `purchasesAvailable` is false when the deployment has no
@@ -1995,6 +2043,7 @@ async function createCommerceService(pool, options = {}) {
    return {
     actor,
     serverNow: now,
+    promotionAllocation: await Promotion.allowance(tx, actor),
     credits: s.credits,
     ...own,
     equipped: own.frames.includes(s.equipped) ? s.equipped : 'classic',
@@ -2060,6 +2109,8 @@ async function createCommerceService(pool, options = {}) {
   callback,
   automaticPermit,
   purchase,
+  reservePromotionCheckout,
+  acceptPromotionPolicy,
   refund,
   status,
   report,

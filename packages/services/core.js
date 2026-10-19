@@ -115,6 +115,7 @@ const { CAP } = require('../db/pg/repositories.js');
 const { validateInvocation } = require('../contracts/invocation.js');
 const { executeCommand } = require('../domain/commands.js');
 const { Authority } = require('../../src/authority.js');
+const Promotion = require('./promotion-allocation.js');
 
 /* The one runtime identity that may own the economic/competitive writes this service performs. */
 const CORE_ROLE = 'core_runtime';
@@ -455,7 +456,9 @@ async function createCoreService(pool, options = {}) {
     * degraded effect. (A bounded GLOBAL HISTORY overflow is classified separately and only
     * suppresses that table's delete pass; it never sets this flag.) */
    if (graph.complete !== true) throw Error('STATE_TRUNCATED');
+   const promotionBefore = Promotion.capture(graph);
    const result = executeCommand(graph.authority, principal, key, command);
+   await Promotion.track(tx, graph, promotionBefore);
    /* `executeCommand` already applies the legacy nullish semantics (an undefined result becomes
     * {ok:true}); the null check is a belt-and-braces guard on the frozen dispatcher. */
    const response = result === undefined || result === null ? { ok: true } : result;

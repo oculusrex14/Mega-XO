@@ -28,10 +28,7 @@ const contractPaths = [
 let directTarget = null;
 for (const candidate of contractPaths) { try { directTarget = require(candidate); break; } catch {} }
 if (!directTarget) refuse('P15_DIRECT_TARGET_CONTRACT_MISSING');
-const { readTarget, assertTarget, buildPgEnv } = directTarget;
-/* Sol P1 #3: the source argument is a PATH - readTarget parses it, then assertTarget validates
- * the parsed object. assertTarget on the raw string always refuses. */
-const target = readTarget(source, 'backup', process.env);
+const { readTarget, buildPgEnv } = directTarget;
 
 const ROOT = process.env.V5_ROOT || '/opt/mega-xo-v5-production';
 const STATE = path.join(ROOT, 'state');
@@ -42,6 +39,12 @@ const source = args[args.indexOf('--source') + 1] || path.join(STATE, 'prod-sour
 const printLsn = args.includes('--print-lsn');
 
 function refuse(code) { process.stderr.write('V5_CHANGE_CHECK_REFUSED: ' + code + '\n'); process.exit(2); }
+/* Sol P1 #3: the source argument is a PATH - readTarget parses it, then assertTarget validates
+ * the parsed object. assertTarget on the raw string always refuses. Read LAZILY so the argument
+ * parsing above has run (Sol round-2: readTarget executed before its const was initialized). */
+function buildTargetEnv() {
+  return buildPgEnv(readTarget(source, 'backup', process.env), process.env);
+}
 
 function recordedLsn() {
   try {
@@ -53,7 +56,7 @@ function recordedLsn() {
 function queryLsn() {
   const probe = spawnSync(process.env.V5_PSQL_BIN || 'psql',
     ['-X', '-t', '-A', '-c', 'SELECT pg_current_wal_lsn()::text'],
-    { env: buildPgEnv(target, process.env), encoding: 'utf8', timeout: 30000 });
+    { env: buildTargetEnv(), encoding: 'utf8', timeout: 30000 });
   if (probe.error || probe.status !== 0) refuse(probe.error ? String(probe.error.code || probe.error.message) : 'psql-exit-' + probe.status);
   const value = String(probe.stdout || '').trim();
   if (!/^[0-9A-F]+\/[0-9A-F]+$/.test(value)) refuse('lsn-unparsable');

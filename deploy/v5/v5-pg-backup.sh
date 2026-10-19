@@ -80,9 +80,9 @@ export P15_PGSSLROOTCERT=$STATE/neon-ca.pem
  # EVERY writer commit, and the recorded value is taken BEFORE a dump starts, so
  # any later commit forces the next cycle to dump: a skip only ever happens when
  # nothing at all changed. Losing the state file fails open to a full dump.
- CURRENT_LSN=$("$NODE" "$LIB/deploy/v5-change-check.js" --print-lsn \
+ CURRENT_LSN=$("$NODE" "$BIN/v5-change-check.js" --print-lsn \
    --source "$STATE/prod-source.json") || die 'change-check LSN probe failed'
- "$NODE" "$LIB/deploy/v5-change-check.js" --source "$STATE/prod-source.json" || status=$?
+ "$NODE" "$BIN/v5-change-check.js" --source "$STATE/prod-source.json" || status=$?
  if [[ ${status:-0} -eq 42 ]]; then
    # Sol P1 #5: the marker binds the verified-unchanged proof to the newest LOCAL archive
    # identity. v5-freshness.js refuses a marker whose backupId is not the newest R2 manifest,
@@ -149,5 +149,3 @@ fi
 
 elapsed=$(( $(date +%s) - started ))
 log "backup complete backupId=$backup_id elapsed_s=$elapsed"
- "$NODE" "$LIB/deploy/v5-change-check.js" --source "$STATE/prod-source.json" \
-   --skip-marker "$STATE/backup-unchanged.json" || status=$?

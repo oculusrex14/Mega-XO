@@ -126,7 +126,7 @@ const OWNED_PREFIX = 'v5_test_v52dodopromo_';
 const RUNTIME_ROLES = ['api_runtime', 'core_runtime', 'worker_runtime'];
 const LOOPBACK = new Set(['127.0.0.1', 'localhost', '::1']);
 let backend = null, backendError = null;
-function stopBackendOnce() { if (backend) { const b = backend; backend = null; b.stop(); } }
+function stopBackendOnce() { if (backend && typeof backend.stop === 'function') { const b = backend; backend = null; b.stop(); } else { backend = null; } }
 process.on('exit', stopBackendOnce);
 process.on('SIGINT', () => { stopBackendOnce(); process.exit(130); });
 process.on('SIGTERM', () => { stopBackendOnce(); process.exit(143); });

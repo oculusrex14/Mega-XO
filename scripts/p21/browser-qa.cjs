@@ -275,6 +275,11 @@ async function main() {
     await safePage.goto(origin + '/game', { waitUntil: 'networkidle' });
     await safePage.locator('[data-game-mode]').selectOption('local');
     await safePage.locator('[data-gb-cell="0:4"]').click();
+    // The render after the practice move runs a bounded scroll-correction window
+    // (three frames plus 120/250/500ms attempts). Let it fully expire before the
+    // fixture loop, otherwise a late correction can re-scroll the workspace after
+    // the per-fixture scrollTo(0,0) and race the header geometry measurement.
+    await safePage.waitForTimeout(700);
     const safeFixtures = [
       { name: 'portrait', viewport: { width: 390, height: 844 }, insets: { top: 24, right: 18, bottom: 30, left: 18 } },
       { name: 'landscape', viewport: { width: 844, height: 390 }, insets: { top: 0, right: 44, bottom: 21, left: 44 } },

@@ -64,8 +64,8 @@ async function createPromotionOperatorService(pool, { authorize, now = Date.now 
   return uow.run(async tx => {
    await lockTransactionIdentity(tx, 'operation', ['promotion-case', caseId]);
    await lockActors(tx, [targetActor]); // register the TARGET, never an opponent/virtual operator
-   const old = (await tx.query('SELECT evidence_hash FROM monetization.promotion_cases WHERE case_id = $1', [caseId])).rows[0];
-   if (old) { if (old.evidence_hash !== evidenceHash) throw Error('IDEMPOTENCY_CONFLICT'); return { caseId }; }
+   const old = (await tx.query('SELECT evidence_hash,actor_id,policy_version FROM monetization.promotion_cases WHERE case_id = $1', [caseId])).rows[0];
+   if (old) { if (old.evidence_hash !== evidenceHash || old.actor_id !== targetActor || old.policy_version !== policyVersion) throw Error('IDEMPOTENCY_CONFLICT'); return { caseId }; }
    await tx.query('INSERT INTO monetization.promotion_cases (case_id,actor_id,policy_version,evidence_hash,packet,recorded_by,recorded_at) VALUES ($1,$2,$3,$4,$5::jsonb,$6,$7)', [caseId, targetActor, policyVersion, evidenceHash, JSON.stringify(packet), principal.actor, iso(tx.clock())]);
    if (principal.actor !== packet.decision.reviewer) throw Error('REVIEWER_MISMATCH');
    await tx.query('INSERT INTO monetization.promotion_case_approvals (case_id,reviewer_id,decision_reference,amounts_hash,approved_at) VALUES ($1,$2,$3,$4,$5)', [caseId, principal.actor, packet.decision.reference, hash(packet.decision.amounts), iso(tx.clock())]);

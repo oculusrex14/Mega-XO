@@ -4,7 +4,14 @@
 const CAP = 22000;
 const VERSION = 'promotion-allocation-v1';
 const iso = n => new Date(n).toISOString();
-const hash = v => require('node:crypto').createHash('sha256').update(JSON.stringify(v)).digest('hex');
+// JSONB changes object-key order. Hash canonical JSON, preserving array order, so a frozen
+// decision has the same identity before and after its PostgreSQL round trip.
+function canonical(v) {
+ if (Array.isArray(v)) return v.map(canonical);
+ if (v && typeof v === 'object') return Object.fromEntries(Object.keys(v).sort().map(k => [k, canonical(v[k])]));
+ return v;
+}
+const hash = v => require('node:crypto').createHash('sha256').update(JSON.stringify(canonical(JSON.parse(JSON.stringify(v))))).digest('hex');
 
 function remaining(allocated) {
  if (!Number.isSafeInteger(allocated) || allocated < 0) throw Error('INVALID_ALLOCATION');

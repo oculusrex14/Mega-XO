@@ -48,6 +48,10 @@ const OPS = {
   dodo_create: { args: ['key', 'productId', 'customer', 'region'], method: 'createDodoCheckout', call: (c, actor, a) => c.createDodoCheckout(actor, a[0], a[1], a[2], a[3]) },
   dodo_status: { args: ['checkoutId'], method: 'dodoOrderStatus', call: (c, actor, a) => c.dodoOrderStatus(actor, a[0]) },
   dodo_webhook: { args: ['payload'], method: 'settleDodoWebhook', actorFree: true, call: (c, actor, a) => c.settleDodoWebhook(a[0]) },
+  /* MXA-WALLET-PATH (2026-10-19): the server-side Crown debit for power-up charges. itemId is
+   * the power kind (undo/hint); the cost table lives in the commerce service so the client can
+   * never name its own price. */
+  power_spend: { args: ['key', 'itemId'], method: 'powerSpend', call: (c, actor, a) => c.powerSpend(actor, a[0], a[1]) },
   /* MXA-ECO-005: the trusted store-notification lane (Google RTDN / Apple ASNv2). Actor-free:
    * the provider credential rides as an argument and the Core-side handler verifies it before
    * any dedupe or refund; the only economic path is the idempotent commerce.refund. */

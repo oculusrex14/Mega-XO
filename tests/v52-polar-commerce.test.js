@@ -41,7 +41,7 @@ function ingressFake() {
     permit: record('permit'), automaticPermit: record('automaticPermit'), purchase: record('purchase'), callback: record('callback'),
     createCashfreeOrder: record('createCashfreeOrder'), cashfreeOrderStatus: record('cashfreeOrderStatus'), settleCashfreeWebhook: record('settleCashfreeWebhook'),
     createPolarCheckout: record('createPolarCheckout'), polarOrderStatus: record('polarOrderStatus'), settlePolarWebhook: record('settlePolarWebhook'),
-    createDodoCheckout: record('createDodoCheckout'), dodoOrderStatus: record('dodoOrderStatus'), settleDodoWebhook: record('settleDodoWebhook'),
+    createDodoCheckout: record('createDodoCheckout'), dodoOrderStatus: record('dodoOrderStatus'), settleDodoWebhook: record('settleDodoWebhook'), powerSpend: record('powerSpend'),
     exchangeCoins: record('exchangeCoins'), handleStoreNotification: record('handleStoreNotification'),
   };
 }

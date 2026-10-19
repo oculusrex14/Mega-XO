@@ -337,6 +337,12 @@ function storePage(context) {
   const promoEnds = state.dodoIntro && state.dodoIntro.active === true && typeof state.dodoIntro.endsAt === 'string' && Number.isFinite(Date.parse(state.dodoIntro.endsAt))
     ? new Date(state.dodoIntro.endsAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : null;
   const promoNote = promoEnds ? '<p class="pg-promo-note">Launch offer — 50% off every product until ' + e(promoEnds) + '.</p>' : '';
+  /* MXA-PROMO-CODE: after the intro window, the server-applied launch code keeps the listed
+   * products at their launch price until the code expires; the note states that window. */
+  const promoCodeEnds = state.dodoPromo && typeof state.dodoPromo.endsAt === 'string' && Number.isFinite(Date.parse(state.dodoPromo.endsAt))
+    ? new Date(state.dodoPromo.endsAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : null;
+  const promoCodeNote = state.dodoPromo && !(state.dodoIntro && state.dodoIntro.active === true) && promoCodeEnds
+    ? '<p class="pg-promo-note">Launch offer — code ' + e(state.dodoPromo.code) + ' is applied automatically at checkout: ' + Math.round(state.dodoPromo.percentBps / 100) + '% off until ' + e(promoCodeEnds) + '.</p>' : '';
   const priceHtml = row => {
     const price = priceText(row);
     if (!price) return null;
@@ -393,6 +399,7 @@ function storePage(context) {
   return '<div class="pg-page">' + heading('MORE POSSIBILITIES. THE SAME SKILL.', 'Your game, your choice.', 'The monthly Mega Pass, Crown packs and permanent Remove Ads in one store. Purchases never change Elo, legal moves or competitive balance.')
     + passPanel
     + wallet
+    + (promoCodeNote && state.status === 'ready' ? promoCodeNote : '')
     + '<div data-store-products>' + products + '</div>'
     + (promoNote && state.status === 'ready' ? promoNote : '')
     + note('Prices come from your store’s current catalog. Coins and Crowns cannot be cashed out or redeemed for real-world money. For a store issue, include the platform, product and approximate purchase time. <a class="pg-text-link" href="/support">Purchase support</a>.')

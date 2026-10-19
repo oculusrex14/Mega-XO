@@ -94,7 +94,12 @@ function refreshNativeSession(){
  const generation=sessionGeneration;
  const work=(async()=>{
   const rotated=await host.refresh().catch(()=>null);
-  if(rotated===null||rotated.ok!==true)return {rotated:rotated||{ok:false,error:"UNAVAILABLE"}};
+   /* A REJECTED rotation is treated exactly like the 1.0.4 fallback: null, i.e. "no rotation
+    * happened", so the caller falls through to the held-token attempt instead of tearing the
+    * session down (a transient WebView bridge hiccup must never sign the player out). Only an
+    * EXPLICIT {ok:false} outcome from the host is a real answer. */
+   if(rotated===null)return null;
+   if(rotated.ok!==true)return {rotated};
   if(generation!==sessionGeneration)return {rotated}; // identity changed mid-flight; install nothing
   /* Advance the cached expiry from the host's own metadata (a memory read, not a network hop).
    * The host is the only authority on lifetime; the cache never fabricates one. The validated
@@ -136,7 +141,11 @@ async function nativeEnsure(force=false){
   * already reports which native adapters were compiled in (Android: google, iOS: apple). */
  if(state.linked!==true)return {linked:false,csrf:null,actorId:state.actorId||null,profile:null,providers:Object.fromEntries((Array.isArray(state.providers)?state.providers:[]).map(p=>[p,{web:false,native:true}]))};
   // An expired access token is refreshed once before the profile read, never mid-flight.
-  if(Number(state.expiresAt||0)<=Date.now()+1000){
+  /* Rotate ONLY on a positively-advertised expiry. A zero/absent one (bridge that does not
+   * advertise TTL) never triggers a rotation: the held token is simply used, and a genuinely
+   * dead credential 401s into the honest AUTH path. This is the anti-storm guard - the 1.0.4
+   * invented-lifetime behavior is gone, but so is rotate-on-every-call. */
+  if(Number(state.expiresAt||0)>0 && state.expiresAt<=Date.now()+1000){
   /* A rotation that never answers must not wedge the whole ensure: race it, and on a timeout
    * fall through to the profile read with the token still held. If that token is truly dead the
    * profile read answers 401 and the honest auth state follows; if the expiry was merely
@@ -175,7 +184,10 @@ async function call(path,body,operation){
   const current=await ensure();
   if(!current||current.linked!==true){const e=Error('LINK_ACCOUNT_REQUIRED');e.status=401;throw e;}
  }
- if(native()&&session?.native&&Date.now()>=Number(session.expiresAt||0)){
+ /* Rotate ONLY on a positively-advertised expired expiry (see the bootstrap note). A zero or
+  * missing expiry never triggers a rotation - the held token is used and a dead one 401s
+  * honestly, so a bridge that does not advertise TTL cannot cause rotate-on-every-call. */
+ if(native()&&session?.native&&Number(session.expiresAt||0)>0&&Date.now()>=Number(session.expiresAt)){
   /* Concurrent expiry-triggered calls share one rotation; a bounded timeout still lets the held
    * token attempt the request (a conservative expiry then costs nothing, a dead token 401s into
    * the honest AUTH path). A terminal failure is never retried in a loop. */

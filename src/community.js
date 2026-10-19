@@ -300,9 +300,17 @@ window.addEventListener('mega:local-save',()=>{
  if(!active){syncState='offline';return;}
  clearTimeout(syncTimer);syncTimer=setTimeout(saveNow,3000);
 });
+/* Bounded restore backoff (infrastructure brief 2026-10-19, part F): a signed-out client with a
+ * durable owner used to retry the session restore every 15s forever - the "thousands of refresh
+ * tokens from a handful of session families" finding. Attempts now back off exponentially to a
+ * 5-minute ceiling, never run in a hidden document, and reset on a successful relink. */
+let reconnectAttempts=0,lastReconnectAt=0;
 async function reconnectSync(){
- if(reconnecting||session?.linked||!get(OWNER)||APP.getContext().playing||panel)return;
- reconnecting=true;try{const linked=await API.session(true);if(!linked.linked||linked.profile.id!==get(OWNER))return;await syncBoot(bootVersion);await presence();await refreshFriends();}catch{syncState='offline';}finally{reconnecting=false;}
+ if(reconnecting||session?.linked||document.hidden||!get(OWNER)||APP.getContext().playing||panel)return;
+ const waitMs=Math.min(15000*2**reconnectAttempts,300000);
+ if(reconnectAttempts>0&&Date.now()-lastReconnectAt<waitMs)return;
+ reconnecting=true;lastReconnectAt=Date.now();
+ try{const linked=await API.session(true);if(!linked.linked||linked.profile.id!==get(OWNER)){reconnectAttempts++;return;}reconnectAttempts=0;await syncBoot(bootVersion);await presence();await refreshFriends();}catch{syncState='offline';reconnectAttempts++;}finally{reconnecting=false;}
 }
 window.addEventListener('online',()=>{if(session?.linked){if(dirty)saveNow();presence();refreshFriends();}else reconnectSync();});
 window.addEventListener('mega:sheet',decorate);
@@ -310,7 +318,10 @@ const observer=new MutationObserver(()=>{if(!panel)decorate();});observer.observ
 document.addEventListener('mega:party-transport',e=>{const party=$('#partyScreen');if(!party)return;party.setAttribute('aria-busy',String(e.detail.pending));});
 document.addEventListener('visibilitychange',()=>{presence();if(!document.hidden){refreshFriends();if(dirty)saveNow();}});
 window.addEventListener('pagehide',()=>{if(!session?.linked)return;fetch('/api/community/presence',{method:'POST',credentials:'same-origin',keepalive:true,headers:{'Content-Type':'application/json','X-CSRF-Token':session.csrf},body:JSON.stringify({foreground:false})}).catch(()=>{});});
-setInterval(()=>{presence();refreshFriends();if(dirty)saveNow();if(!session?.linked)reconnectSync();},15000);
+/* Background-tab gating (part F): a hidden document makes zero community requests - the
+ * visibilitychange handler re-syncs immediately on return, and the pagehide handler has already
+ * sent the single foreground:false presence beat. Active gameplay clocks are unaffected. */
+setInterval(()=>{if(document.hidden)return;presence();refreshFriends();if(dirty)saveNow();if(!session?.linked)reconnectSync();},15000);
 setInterval(()=>{const q=$('[data-queue-time]');if(q)q.textContent=fmtTime((performance.now()-queuedAt)/1000);},1000);
 window.MegaCommunity=Object.freeze({friendsMarkup,openProfile,login:landing,loader,refresh:refreshFriends,requestNotificationPermission,notificationPreferencesChanged:()=>{updateNotificationButton();rewardReminder();},challengeAccepted:(id,name='Opponent')=>deviceAlert('notifyMatches','Challenge accepted',name+' accepted your challenge. Your match is starting now.','challenge-start:'+id),getStatus:()=>({linked:!!session?.linked,profileName:session?.linked?(session.profile?.name||session.profile?.username||'Your profile'):'',syncState,revision:syncRevision,pendingNotifications:(session?.linked?social.incoming.length+directIncoming().length:0)})});
 APP.render();updateNotificationButton();

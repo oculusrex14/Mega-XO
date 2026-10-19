@@ -890,15 +890,27 @@ function createTournamentService(options = {}) {
   requireLeaseMs(leaseMs);
   if (leaseMs > 60000) fail('INVALID_LEASE');
   await gate;
-  const ids = await uow.run(async tx => {
+  const sweep = await uow.run(async tx => {
+   const now = tx.clock();
    let rows = (await tx.query("SELECT room_id FROM tournament.rooms WHERE status IN ('LOBBY', 'RUNNING') AND room_id > $1 ORDER BY room_id LIMIT $2", [timerCursor, limit])).rows;
    if (!rows.length && timerCursor) {
     rows = (await tx.query("SELECT room_id FROM tournament.rooms WHERE status IN ('LOBBY', 'RUNNING') ORDER BY room_id LIMIT $1", [limit])).rows;
    }
-   return rows.map(row => row.room_id);
+   /* The next REAL deadline across every active room and ready fixture, read in the same unit of
+    * work as the scan so the deadline-driven scheduler can sleep until work is actually due
+    * instead of polling. Null when nothing is scheduled (the idle case). */
+   const deadlines = (await tx.query(
+    "SELECT LEAST("
+    + "(SELECT MIN(deadline) FROM tournament.rooms WHERE status IN ('LOBBY', 'RUNNING') AND deadline IS NOT NULL), "
+    + "(SELECT MIN(ready_deadline) FROM tournament.fixtures f JOIN tournament.rooms r ON r.room_id = f.room_id WHERE r.status IN ('LOBBY', 'RUNNING') AND f.status = 'READY' AND f.ready_deadline IS NOT NULL)"
+    + ") AS next_deadline")).rows;
+   const nextDeadline = deadlines[0]?.next_deadline ? new Date(deadlines[0].next_deadline).getTime() : null;
+   const nextDueMs = nextDeadline === null ? null : Math.max(0, nextDeadline - now);
+   return { ids: rows.map(row => row.room_id), nextDueMs };
   });
+  const ids = sweep.ids;
   if (ids.length) timerCursor = ids.at(-1); else timerCursor = '';
-  const result = { scanned: ids.length, changed: 0, refused: 0 };
+  const result = { scanned: ids.length, changed: 0, refused: 0, nextDueMs: sweep.nextDueMs };
   for (const id of ids) {
    const ticked = await tickTimer(id, { owner, leaseMs });
    if (ticked.changed) result.changed++;

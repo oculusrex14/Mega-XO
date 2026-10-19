@@ -525,6 +525,12 @@ function createWorkerApp(options = {}) {
  const now = resolveClock(options);
  const log = requireLog(options.log);
  const intervalMs = options.intervalMs === undefined ? 1000 : requireInterval(options.intervalMs);
+ /* Housekeeping separation (infrastructure brief 2026-10-19, part C): retention/privacy sweeps
+  * and rate-bucket expiry are slow housekeeping and must not ride inside the every-few-seconds
+  * delivery pass forever. The scheduled loop runs the fast lane (lapsed-work recovery + prompt
+  * outbox/mail delivery) and piggybacks the slow lane only once per slow interval; an explicit
+  * operator tick() always runs the full pass (restart reconciliation, drills, tests). */
+ const slowIntervalMs = options.slowIntervalMs === undefined ? 60000 : requireInterval(options.slowIntervalMs);
  /* The job service is created from the worker pool unless the caller shares one (the same service can
   * drive every worker workflow). `createJobService` verifies the pool's role and the live chain. */
  const jobService = options.jobService === undefined
@@ -544,6 +550,7 @@ function createWorkerApp(options = {}) {
  let timer = null;
  let closed = false;
  let inFlight = null;
+ let lastSlowSweepAt = 0;
 
  const logEvent = (event, fields) => {
   try { log(Object.freeze({ event, ...fields })); } catch { /* telemetry must never break the worker */ }
@@ -552,10 +559,14 @@ function createWorkerApp(options = {}) {
  /* One pass of the worker's whole responsibility, in the order that keeps the queue honest: lapsed work
   * leaves first, then the retention/privacy sweeps, then delivery. A mail worker never claims a job it
   * cannot service (`kinds`), so the maintenance pass cannot be starved by another worker's backlog. */
- async function runTick() {
+ async function runTick({ includeSlow = true } = {}) {
   const expired = await jobService.expireDueJobs();
-  const retentionPurged = await privacy.purgeExpiredRetention();
-  const rateBucketsPurged = privacyPool === null ? null : await privacy.purgeExpiredRateBuckets(privacyPool);
+  /* Slow housekeeping is opt-in per pass: the scheduled loop piggybacks it once per slow
+   * interval, an explicit tick() always runs it (restart reconciliation, drills, tests), and a
+   * skipped sweep reports null exactly like the optional rate-bucket sweep already does. */
+  const retentionPurged = includeSlow ? await privacy.purgeExpiredRetention() : null;
+  const rateBucketsPurged = !includeSlow || privacyPool === null ? null : await privacy.purgeExpiredRateBuckets(privacyPool);
+  if (includeSlow) lastSlowSweepAt = now();
   const mail = await mailWorker.tick();
   if (mail.failed > 0) logEvent('worker_tick_degraded', { failed: mail.failed });
   return { mail, expired, retentionPurged, rateBucketsPurged };
@@ -565,10 +576,20 @@ function createWorkerApp(options = {}) {
   * an interval and an operator's manual tick) can never double-claim a batch or run two retention sweeps
   * concurrently. The promise is held in a closure binding, not read off the frozen object, so the
   * scheduled callback and the manual call are provably the same function. */
- function tickOnce() {
+ function tickOnce({ includeSlow = true } = {}) {
   if (closed) fail('WORKER_CLOSED');
   if (inFlight === null) {
-   inFlight = runTick().finally(() => { inFlight = null; });
+   /* The lane tag rides the EXACT promise stored in inFlight, so an explicit full tick can
+    * detect a fast-only pass still in flight (Sol review note on C). */
+   const pass = runTick({ includeSlow });
+   const tagged = pass.finally(() => { inFlight = null; });
+   tagged.includeSlow = includeSlow;
+   inFlight = tagged;
+  } else if (includeSlow === true && inFlight.includeSlow === false) {
+   /* Sol review note on C: an explicit tick() must never silently join a fast-only pass.
+    * Chain the full pass behind the in-flight one; the fast lane has already run, so no work
+    * is duplicated and the caller still gets a real full-pass receipt. */
+   return inFlight.then(() => tickOnce({ includeSlow: true }));
   }
   return inFlight;
  }
@@ -592,7 +613,10 @@ function createWorkerApp(options = {}) {
    if (timer === null && intervalMs > 0) {
     timer = setInterval(() => {
      /* A rejected tick must not become an unhandled rejection: the schedule is not a control path. */
-     Promise.resolve(tickOnce()).catch((error) => {
+     /* Fast lane by default; the slow housekeeping piggybacks once per slow interval. A skipped
+      * slow sweep is reported as null in the pass result, never silently dropped forever. */
+     const due = lastSlowSweepAt === 0 || now() - lastSlowSweepAt >= slowIntervalMs;
+     Promise.resolve(tickOnce({ includeSlow: due })).catch((error) => {
       logEvent('worker_tick_failed', { code: faultCode(error) });
      });
     }, intervalMs);
@@ -601,7 +625,7 @@ function createWorkerApp(options = {}) {
   },
 
   /* One tick on demand. */
-  tick() { return tickOnce(); },
+  tick(options) { return tickOnce(options); },
 
   /* Stop. The interval is cleared SYNCHRONOUSLY, so the moment this promise settles the process holds no
   * worker timer and can exit on its own. The pool and the job service are caller-owned: nothing borrowed

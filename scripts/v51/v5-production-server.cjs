@@ -813,10 +813,30 @@ async function main() {
   });
   const ticketIssuer = await createTicketIssuer(apiPool, { environment: 'prd', audience: 'mega-core' });
   const queue = await createQueueService({ ephemera, core, pool: corePool });
+  /* Matchmaker wake-on-join (infrastructure brief 2026-10-19, part B/F): the adaptive matcher
+   * loop backs off when nobody is queued, so a fresh join must re-arm it immediately or the
+   * first candidate could wait out the whole backoff ceiling. Only the mutating entry point is
+   * wrapped; status/cancel and every other method delegate untouched. */
+  let wakeMatchmaker = () => {};
+  const queueActivity = ['join'].reduce((acc, method) => {
+   const base = queue[method];
+   if (typeof base === 'function') acc[method] = async (...args) => { const out = await base.apply(queue, args); wakeMatchmaker(); return out; };
+   return acc;
+  }, { ...queue }); // a frozen service's own methods are non-writable: a derived object cannot override them (Sol P1 #1)
   const tournaments = createTournamentService({ pool: corePool, core, ephemera });
   await tournaments.ready;
   const tournamentTimer = createTournamentTimer({ tournaments, owner: `prd_tournaments_${process.pid}`,
     onError: error => console.error(JSON.stringify({ event: 'tournaments.tick_error', code: safeError(error) })) });
+  /* Deadline-driven scheduling needs wake-on-mutation: any successful run/settle/completeFixture
+   * may create or advance a real deadline, so the timer must recompute immediately instead of
+   * waiting out the idle reconciliation sweep. Only the mutating entry points are wrapped; the
+   * raw frozen service stays the owner of close() and every read path. */
+  const tournamentActivity = ['run', 'settle', 'completeFixture'].reduce((acc, method) => {
+   const base = tournaments[method];
+   if (typeof base !== 'function') return acc;
+   acc[method] = async (...args) => { const out = await base.apply(tournaments, args); tournamentTimer.wake(); return out; };
+   return acc;
+  }, { ...tournaments }); // same frozen-object constraint (Sol P1 #1)
   /* LR12: the commerce service runs on the Core-owned pool inside the Core process; the API tier
    * reaches it ONLY through the signed commerce ingress. Grants stay disabled until the provider
    * verifiers (AdMob SSV verifyAd / store verifyPurchase + purchaseProvider) and the eligibility
@@ -1114,7 +1134,7 @@ async function main() {
     } : undefined,
   });
   const commerceIngress = createCommerceIngressService({ commerce });
-  const coreIngress = createCoreServiceIngress({ coreService: core, ticketIssuer, queue, tournaments, commerce: commerceIngress, leaderboardPool: corePool, secret: gatewaySecret });
+   const coreIngress = createCoreServiceIngress({ coreService: core, ticketIssuer, queue: queueActivity, tournaments: tournamentActivity, commerce: commerceIngress, leaderboardPool: corePool, secret: gatewaySecret });
   /* The mirror of the API assertion: Core, the Core-owned queue, the leaderboard materializer and the
    * realtime pool all run on `core_runtime`; the API-owned ticket issuer is the one asserted API member. */
   const coreRole = assertCoreCompositionUsesCorePool({
@@ -1385,9 +1405,16 @@ async function main() {
     assets, missingAssetStatus: missing.status, assetSelfCheck, downloadRedirectStatus, downloadSelfCheck,
     note: 'production composition; loopback only; route-aware crawl policy (approved public pages indexable); no legacy-authority path touched; serves the generated P21 bundle',
   }, null, 2));
+  /* Matchmaker timer + stopped flag live ABOVE the shutdown closure so an early signal can never
+   * touch a TDZ binding (Sol P1 #2). */
+  let matchmakerTimer = null;
+  let matchmakerStopped = false;
 
   const shutdown = async () => {
-    clearInterval(matchmakerTimer);
+   /* Sol P1 #2: the adaptive matchmaker re-arms itself; a plain clear would race a finally-block
+    * reschedule. The stopped flag makes every future arm() a no-op. */
+   matchmakerStopped = true;
+   if (matchmakerTimer) clearTimeout(matchmakerTimer);
     clearInterval(passGrantTimer);
     await tournamentTimer.stop();
     try { await realtime.close(); } catch {}
@@ -1398,27 +1425,48 @@ async function main() {
   process.on('SIGINT', shutdown); process.on('SIGTERM', shutdown);
   tournamentTimer.start();
 
+  /* Matchmaker timer + stopped flag live ABOVE the shutdown closure so an early signal can never
+   * touch a TDZ binding (Sol P1 #2). */
+
   /* Real matchmaking needs a matcher tick: two real browsers JOIN the queue over HTTP, but nothing
    * pairs them unless a matcher claims+commits. Bounded, single-flight, best-effort, and it only pairs
    * actors ALREADY in the durable queue; it changes no matching rule, TTL or economy. */
-  let matchmakerTimer = null;
   if (arg('--matchmaker', 'on') !== 'off') {
     const matcherId = `prd_matcher_${process.pid}`;
     let ticking = false;
-    const tick = async () => {
-      if (ticking) return;
-      ticking = true;
-      try {
-        for (const mode of ['casual', 'ranked']) {
-          const result = await queue.matchTick({ mode, matcherId, limit: 4, makeId: () => crypto.randomUUID() });
-          if (result.matched) console.log(JSON.stringify({ event: 'matchmaker.pairing', mode, matched: result.matched, at: new Date().toISOString() }));
-        }
-      } catch (error) {
-        console.error(JSON.stringify({ event: 'matchmaker.tick_error', code: safeError(error) }));
-      } finally { ticking = false; }
-    };
-    matchmakerTimer = setInterval(tick, 3000);
-    tick();
+   /* Adaptive cadence (brief part F): an empty queue must not poll the database every 3s
+    * forever - the tick backs off to a 30s ceiling after repeated empty passes, and any join
+    * (or pairing) resets it to fast so waiting players never lose latency. */
+   let emptyStreak = 0;
+   const FAST_MS = 3000, MAX_MS = 30000;
+   /* Sol P1 #2: the rearmer must EXIST and must stop on shutdown - a lost arm() call would
+    * leave the finally block rejecting forever and a wake could throw after a committed join. */
+   const arm = (delay) => {
+    if (matchmakerStopped) return;
+    if (matchmakerTimer) clearTimeout(matchmakerTimer);
+    matchmakerTimer = setTimeout(tick, delay);
+    matchmakerTimer.unref?.();
+   };
+   const tick = async () => {
+    if (ticking) return;
+    ticking = true;
+    let anyMatched = false;
+    try {
+     for (const mode of ['casual', 'ranked']) {
+      const result = await queue.matchTick({ mode, matcherId, limit: 4, makeId: () => crypto.randomUUID() });
+      if (result.matched) { anyMatched = true; console.log(JSON.stringify({ event: 'matchmaker.pairing', mode, matched: result.matched, at: new Date().toISOString() })); }
+     }
+    } catch (error) {
+     console.error(JSON.stringify({ event: 'matchmaker.tick_error', code: safeError(error) }));
+    } finally {
+     ticking = false;
+     emptyStreak = anyMatched ? 0 : Math.min(emptyStreak + 1, 12);
+     arm(Math.min(FAST_MS * 2 ** Math.min(emptyStreak, 10), MAX_MS));
+    }
+   };
+   wakeMatchmaker = () => { emptyStreak = 0; if (!ticking) arm(0); };
+   matchmakerTimer = setTimeout(tick, FAST_MS);
+   matchmakerTimer.unref?.();
   }
 
   /* B2: the pass installment sweep. Bounded, single-flight, best-effort: every 50 Crowns credit

@@ -205,14 +205,46 @@ function getAppleAppSiteAssociation(context, req, res) {
  * GET /health, /livez, /readyz
  * Edge health and readiness check.
  */
-async function getHealth(context, req, res) {
-  let dbOk = true;
-  if (context.pool && typeof context.pool.query === 'function') {
+/* Sleep-compatible health (infrastructure brief 2026-10-19, part E). /livez is PROCESS liveness
+ * only and never touches the database. /health and /readyz report dependency readiness from a
+ * timestamped, single-flight, TTL-cached probe, so an external monitor polling every few seconds
+ * cannot keep a scale-to-zero database awake on its own; a failed probe retries sooner so
+ * recovery is prompt. The response keeps the exact status/live/ready/time fields the deploy
+ * tooling and the host health monitor parse, and adds an honest db state + age. */
+const HEALTH_PROBE_TTL_MS = 60000;
+const HEALTH_RETRY_MS = 10000;
+const healthProbe = { lastOk: null, at: 0, inFlight: null };
+function probeDbHealth(context) {
+  if (healthProbe.inFlight) return healthProbe.inFlight;
+  const pool = context.pool && typeof context.pool.query === 'function' ? context.pool : null;
+  if (!pool) return Promise.resolve(null);
+  healthProbe.inFlight = (async () => {
     try {
-      await context.pool.query('SELECT 1');
+      await pool.query('SELECT 1');
+      healthProbe.lastOk = true;
     } catch {
-      dbOk = false;
+      healthProbe.lastOk = false;
+    } finally {
+      healthProbe.at = (context.now && typeof context.now === 'function' ? context.now() : Date.now());
+      healthProbe.inFlight = null;
     }
+  })();
+  return healthProbe.inFlight;
+}
+async function getHealth(context, req, res) {
+  const nowMs = (context.now && typeof context.now === 'function') ? context.now() : Date.now();
+  const wantsDb = req.url && String(req.url).startsWith('/livez') ? false : true;
+  let dbOk = true;
+  let db = null;
+  if (wantsDb && context.pool && typeof context.pool.query === 'function') {
+    const age = nowMs - healthProbe.at;
+    if (healthProbe.at === 0 || age >= (healthProbe.lastOk === false ? HEALTH_RETRY_MS : HEALTH_PROBE_TTL_MS)) await probeDbHealth(context);
+    dbOk = healthProbe.lastOk === true;
+    db = { state: dbOk ? 'verified' : 'unavailable', checkedAt: healthProbe.at, ageMs: Math.max(0, nowMs - healthProbe.at), ttlMs: HEALTH_PROBE_TTL_MS };
+  } else if (wantsDb) {
+    db = { state: 'not_configured' };
+  } else {
+    db = { state: 'not_probed', reason: 'liveness-does-not-touch-the-database' };
   }
   const status = dbOk ? 'ok' : 'degraded';
   const statusCode = dbOk ? 200 : 503;
@@ -221,6 +253,7 @@ async function getHealth(context, req, res) {
     live: true,
     ready: dbOk,
     time: (context.now && typeof context.now === 'function') ? context.now() : Date.now(),
+    db,
   });
 }
 

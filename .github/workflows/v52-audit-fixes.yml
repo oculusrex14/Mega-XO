@@ -74,5 +74,5 @@ jobs:
       - name: Dodo promo pricing, settlement boundary and unattended expiry restore (real disposable PG)
         run: |
           mkdir -p .artifacts
-          node --test --test-concurrency=1 --test-force-exit tests/v52-dodo-promo.test.js 2>&1 | tee .artifacts/v52-dodo-promo.log
+          node --test --test-reporter=tap --test-concurrency=1 --test-force-exit tests/v52-dodo-promo.test.js 2>&1 | tee .artifacts/v52-dodo-promo.log
           grep -q '^# skipped 0$' .artifacts/v52-dodo-promo.log

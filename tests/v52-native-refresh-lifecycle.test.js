@@ -179,3 +179,35 @@ test('Sol round-3 #2: bootstrap settles even when the post-rotation metadata rea
  assert.equal(f.host.refreshCount,1,'the rotation itself completed');
  assert.equal(f.host.requests,1,'bootstrap still performs its single profile read');
 });
+
+
+test('Sol round-4: provider buttons render by capability - Apple never falsely enabled on Android', async function(){
+ // The device regression Sol caught: an empty/failed capability check must render the buttons
+ // DISABLED (visible, with the boot error), never ENABLED - the Android bridge serves Google only.
+ const fs2=require('node:fs'), vm2=require('node:vm'), path2=require('node:path');
+ const cs=fs2.readFileSync(path2.resolve(__dirname,'..','src/community.js'),'utf8');
+ const context={console, Date:{now:()=>1700000000000}, document:{hidden:false}, setTimeout:function(f){return f();}, clearTimeout, crypto, MegaNativeApi:{}, MegaNativeIdentity:{},
+  location:{href:'https://megaxo.online/game', origin:'https://megaxo.online'},
+  CustomEvent:class{constructor(t,o){this.type=t;this.detail=o&&o.detail;}}, navigator:{onLine:true},
+  fetch:async function(){throw Error('FORBIDDEN');}};
+ context.globalThis=context; context.window=context;
+ const esc=function(s){return String(s).replace(/[&<>]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;'}[c];});};
+ context.esc=esc; context.bootError='SIGNIN_UNAVAILABLE';
+ context.session=null;
+ vm2.createContext(context);
+ const marker='/* Provider buttons';
+ const start=cs.indexOf(marker);
+ assert.ok(start>0, 'providerButtons block found');
+ const end=cs.indexOf(String.fromCharCode(10)+'function landing(', start);
+ const snippet=cs.slice(start, end>start?end:undefined);
+ vm2.runInContext(snippet, context, {filename:'community.js:providerButtons'});
+ const emptyCaps=vm2.runInContext('providerButtons("login")', context);
+ assert.match(emptyCaps, /Continue with Google/, 'Google must always render on native');
+ assert.doesNotMatch(emptyCaps, /Sign in with Apple/, 'Apple stays hidden on Android (the documented unsupported-provider decision)');
+ assert.match(emptyCaps, /data-id="google"[^>]*disabled/, 'empty caps: Google DISABLED, never falsely enabled');
+ console.log("EMPTYCAPS:", emptyCaps);
+ assert.doesNotMatch(emptyCaps, /SIGNIN_UNAVAILABLE/, 'the boot error code belongs to the landing foot, not the button list');
+ const googleOnly=vm2.runInContext('bootError="";(function(){session={linked:false,providers:{google:{web:false,native:true}}};return providerButtons("login");})()', context);
+ assert.match(googleOnly, /data-id="google"[^>]*>Continue with Google/, 'google-only caps: Google renders enabled');
+ assert.doesNotMatch(googleOnly, /Sign in with Apple/, 'google-only caps: Apple stays hidden on Android');
+});

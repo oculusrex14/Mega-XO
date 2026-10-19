@@ -145,7 +145,7 @@ async function nativeEnsure(force=false){
    * advertise TTL) never triggers a rotation: the held token is simply used, and a genuinely
    * dead credential 401s into the honest AUTH path. This is the anti-storm guard - the 1.0.4
    * invented-lifetime behavior is gone, but so is rotate-on-every-call. */
-  if(Number(state.expiresAt||0)>0 && state.expiresAt<=Date.now()+1000){
+  if(Number(state.expiresAt||0)>0 && state.expiresAt<=Date.now()){
   /* A rotation that never answers must not wedge the whole ensure: race it, and on a timeout
    * fall through to the profile read with the token still held. If that token is truly dead the
    * profile read answers 401 and the honest auth state follows; if the expiry was merely

@@ -83,15 +83,15 @@ test('P21-DOWNLOAD-02 chooser has truthful launch status and web play remains av
   // Android APK; the chooser must show the truthful per-platform status for exactly that state.
   assert.equal(configuredLinks.ios, null);
   assert.equal(configuredLinks.android, null);
-  assert.equal(configuredLinks.androidApk.path, '/downloads/android/megaxo-1.0.6.apk');
-  assert.equal(configuredLinks.androidApk.versionName, '1.0.6');
+  assert.equal(configuredLinks.androidApk.path, '/downloads/android/megaxo-1.0.7.apk');
+  assert.equal(configuredLinks.androidApk.versionName, '1.0.7');
   const html = renderDownloadPage({storeLinks: configuredLinks, query: new URLSearchParams('platform=ios&unavailable=1')});
   assert.equal((html.match(/<h1/g) || []).length, 1);
   assert.equal((html.match(/>Coming soon<\/span>/g) || []).length, 1);
   assert.match(html, /href="\/api\/download\?platform=ios"/);
   assert.match(html, /href="\/api\/download\?platform=android"/);
   assert.match(html, /href="\/play"/);
-  assert.match(html, /href="\/downloads\/android\/megaxo-1\.0\.6\.apk"/);
+  assert.match(html, /href="\/downloads\/android\/megaxo-1\.0\.7\.apk"/);
   assert.match(html, /<input type="checkbox" data-apk-metrics-opt-in> Help count unique downloads \(optional\)/);
   assert.doesNotMatch(html, /data-apk-metrics-opt-in[^>]*checked/);
   assert.match(text(html), /download-only cookie/);

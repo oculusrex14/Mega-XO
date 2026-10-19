@@ -29,8 +29,9 @@ function validateCase(packet, now) {
   || !Number.isFinite(Date.parse(d.decidedAt)) || Date.parse(d.decidedAt) < Date.parse(n.deliveredAt) + 10 * DAY
   || Date.parse(d.decidedAt) > now || Date.parse(d.appealUntil) < Date.parse(d.decidedAt) + 30 * DAY
   || !Number.isFinite(Date.parse(d.appealUntil)) || !Array.isArray(d.amounts) || !d.amounts.length) throw Error('DUE_PROCESS_REQUIRED');
- // Email is conservatively required for every case. No credential-table grant to Core is needed.
- if (!text(n.emailReceipt)) throw Error('NOTICE_DELIVERY_REQUIRED');
+ // Where no verified address exists, retain the evidence of that check. Core never gains
+ // credential-table access merely to inspect an address.
+ if (!text(n.emailReceipt) && !(n.emailRequired === false && HEX.test(n.noVerifiedEmailEvidenceHash))) throw Error('NOTICE_DELIVERY_REQUIRED');
  if (packet.response === null && d.basis === 'silence') throw Error('SILENCE_IS_NOT_ADMISSION');
  const seen = new Set();
  for (const a of d.amounts) {
@@ -42,7 +43,9 @@ function validateCase(packet, now) {
  return packet;
 }
 function debitHeld(wallet, approved, held) {
- if (approved.crowns > held.crowns || approved.coins > held.coins
+ if (!Number.isSafeInteger(approved.crowns) || approved.crowns < 0
+  || !Number.isSafeInteger(approved.coins) || approved.coins < 0
+  || approved.crowns > held.crowns || approved.coins > held.coins
   || approved.crowns > wallet.crowns || approved.coins > wallet.coins
   || approved.crowns > wallet.purchasedCrowns || approved.coins > wallet.purchasedCoins) throw Error('BENEFITS_NOT_HELD');
  return { crowns: wallet.crowns - approved.crowns, coins: wallet.coins - approved.coins,

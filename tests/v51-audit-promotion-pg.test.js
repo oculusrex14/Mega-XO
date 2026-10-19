@@ -3,6 +3,8 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const crypto = require('node:crypto');
+const { spawnSync } = require('node:child_process');
+const path = require('node:path');
 const lab = require('./v5-pg-lab.js');
 const { createCommerceService } = require('../packages/services/commerce.js');
 const { createCoreService } = require('../packages/services/core.js');
@@ -20,6 +22,8 @@ test('promotion enforcement: real Core transactions, all providers, due process 
  await lab.seedActors(db);
  const admin = await lab.adminClient(db);
  t.after(() => admin.end());
+ const verification=spawnSync(process.execPath,[path.join(lab.ROOT,'scripts/v5/migrate.js'),'--verify','--json','--database-url',lab.dbUrl(db)],{cwd:lab.ROOT,encoding:'utf8',env:{...process.env,V5_TARGET:'test',V5_MIGRATE_ALLOW_INSECURE_LOOPBACK:'1'}});
+ assert.equal(verification.status,0,verification.stdout+verification.stderr);
  await admin.query('UPDATE monetization.promotion_policies SET effective_at = $1 WHERE policy_version = $2', [new Date(START - DAY).toISOString(), VERSION]);
  const pool = lab.poolsFor(db).core;
  let clock = START, calls = 0;
@@ -123,6 +127,8 @@ test('promotion enforcement: real Core transactions, all providers, due process 
   await operators.approveForfeiture(second,command);
   const ingress=createCommerceIngressService({commerce});
   await assert.rejects(ingress.command({op:'confiscate_promotion_benefits',actor:'svc_bob'}),/INVALID_COMMERCE_OP/);
+  await assert.rejects(pool.query('UPDATE monetization.promotion_cases SET evidence_hash=evidence_hash WHERE false'),/permission denied/);
+  await assert.rejects(pool.query('DELETE FROM monetization.promotion_events WHERE false'),/permission denied/);
  });
  await t.test('concurrent operator retries debit once, preserve opponent, and commit journal/outbox/outcome', async () => {
   const opponent = await wallet('svc_alice');

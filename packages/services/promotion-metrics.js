@@ -52,8 +52,9 @@ const DEPLETION_SQL = `SELECT COALESCE(-sum(CASE WHEN currency='coins' THEN amou
 const INTEGRITY_SQL = `SELECT pp.subscription_id,pp.period_start,pp.installments_granted,pp.exchange_coins_used,
  count(l.entry_id)::int AS journal_installments,COALESCE(array_agg(l.amount) FILTER(WHERE l.entry_id IS NOT NULL),'{}') AS installment_amounts
  FROM monetization.pass_periods pp JOIN monetization.store_subscriptions ps USING(subscription_id)
- LEFT JOIN economy.ledger l ON l.actor_id=ps.actor_id AND l.entry_id LIKE
- ('pass:' || pp.subscription_id || ':' || to_char(pp.period_start AT TIME ZONE 'UTC','YYYY-MM-DD') || ':%')
+ LEFT JOIN economy.ledger l ON l.actor_id=ps.actor_id AND
+ left(l.entry_id,length('pass:' || pp.subscription_id || ':' || to_char(pp.period_start AT TIME ZONE 'UTC','YYYY-MM-DD') || ':')) =
+ ('pass:' || pp.subscription_id || ':' || to_char(pp.period_start AT TIME ZONE 'UTC','YYYY-MM-DD') || ':')
  WHERE ps.actor_id=$1 GROUP BY pp.subscription_id,pp.period_start,pp.installments_granted,pp.exchange_coins_used`;
 async function readPromotionMetrics(pool, { actor, launchStart, launchEnd, now = Date.now(), spendingCoverageComplete = false, coverageEvidenceHash = null, sourceSha = null }) {
  if (!pool || !['core_runtime','backup_reader'].includes(pool.describe().role)) throw Error('PRIVATE_METRICS_POOL_REQUIRED');
@@ -61,17 +62,24 @@ async function readPromotionMetrics(pool, { actor, launchStart, launchEnd, now =
   || !Number.isFinite(Date.parse(launchEnd)) || Date.parse(launchEnd)<Date.parse(launchStart)) throw Error('INVALID_METRIC_WINDOW');
  if (spendingCoverageComplete && !/^[0-9a-f]{64}$/.test(coverageEvidenceHash)) throw Error('SPENDING_COVERAGE_EVIDENCE_REQUIRED');
  return pool.withTransaction(async tx => {
-  await tx.query('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ, READ ONLY');
+  await tx.query('SET TRANSACTION READ ONLY');
   const purchaseParams=[actor,launchStart,launchEnd], depletionParams=[actor,new Date(now-14*DAY).toISOString(),new Date(now).toISOString()];
-  const purchases=(await tx.query(PURCHASES_SQL,purchaseParams)).rows;
-  const wallet=(await tx.query(HOLDINGS_SQL,[actor])).rows[0];
+  // The guarded pool verifies session identity before invoking us. PostgreSQL cannot change
+  // isolation after that probe. ONE report statement gives all four slices one MVCC snapshot.
+  const sql=`WITH purchases AS (${PURCHASES_SQL}),wallet AS (${HOLDINGS_SQL}),
+   depletion AS (${DEPLETION_SQL.replaceAll('$2','$4').replaceAll('$3','$5')}),integrity AS (${INTEGRITY_SQL})
+   SELECT COALESCE((SELECT jsonb_agg(p) FROM purchases p),'[]') AS purchases,
+   (SELECT to_jsonb(w) FROM wallet w) AS wallet,(SELECT depletion FROM depletion) AS depletion,
+   COALESCE((SELECT jsonb_agg(i) FROM integrity i),'[]') AS integrity`;
+  const params=[...purchaseParams,...depletionParams.slice(1)];
+  const result=(await tx.query(sql,params)).rows[0];
+  const {purchases,wallet,integrity}=result;
   if(!wallet) throw Error('ACCOUNT_REQUIRED');
-  const depletion=Number((await tx.query(DEPLETION_SQL,depletionParams)).rows[0].depletion);
-  const integrity=(await tx.query(INTEGRITY_SQL,[actor])).rows;
+  const depletion=Number(result.depletion);
   const holdings=Number(wallet.crowns)+Number(wallet.reserved_crowns)+(Number(wallet.coins)+Number(wallet.reserved_coins))/10;
   const signals=promotionSignals({purchases:purchases.map(p=>({at:new Date(p.at).getTime(),crowns:Number(p.amount),credited:true,launchWindow:true,refunded:p.refunded_at!==null})),now,holdings,netDepletion14Days:depletion,spendingCoverageComplete,
    integrity:integrity.map(p=>({installments:Number(p.installments_granted),journalInstallments:p.journal_installments,installmentAmounts:p.installment_amounts.map(Number),exchangeCoinsUsed:Number(p.exchange_coins_used)}))});
-  return {signals,evidence:{sourceSha,snapshotAt:new Date(now).toISOString(),coverageEvidenceHash,queries:[{sql:PURCHASES_SQL,params:purchaseParams},{sql:HOLDINGS_SQL,params:[actor]},{sql:DEPLETION_SQL,params:depletionParams},{sql:INTEGRITY_SQL,params:[actor]}],frozenRows:{purchases,wallet,depletion,integrity}}};
+  return {signals,evidence:{sourceSha,snapshotAt:new Date(now).toISOString(),coverageEvidenceHash,sql,params,queries:[{sql:PURCHASES_SQL,params:purchaseParams},{sql:HOLDINGS_SQL,params:[actor]},{sql:DEPLETION_SQL,params:depletionParams},{sql:INTEGRITY_SQL,params:[actor]}],frozenRows:{purchases,wallet,depletion,integrity}}};
  });
 }
 module.exports = { promotionSignals, readPromotionMetrics };

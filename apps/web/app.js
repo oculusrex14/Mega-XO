@@ -283,7 +283,8 @@ function dodoRegion(){
  if(!mapped){
   try{
    const timeZone=Intl.DateTimeFormat().resolvedOptions().timeZone||'';
-   if(/Kolkata|Calcutta|Colombo/.test(timeZone))return{currency:'inr',country:'IN'};
+   /* Asia/Colombo is Sri Lanka, NOT India - a wrong INR charge for Sri Lankan players. */
+   if(/Kolkata|Calcutta/.test(timeZone))return{currency:'inr',country:'IN'};
    const language=(globalThis.navigator&&navigator.language)||'';
    if(/-IN\b/i.test(language))return{currency:'inr',country:'IN'};
   }catch(error){}

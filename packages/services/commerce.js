@@ -1266,7 +1266,9 @@ async function createCommerceService(pool, options = {}) {
     ['READY', 'succeeded', created.checkoutId, JSON.stringify({ checkoutUrl: created.checkoutUrl, checkoutId: created.checkoutId }), iso(tx.clock()), requestId]);
    await event(tx, actor, 'checkout_created', 0);
    return { checkoutId: created.checkoutId, productId, status: 'created', checkoutUrl: created.checkoutUrl };
-  });
+  /* Same fence authorization the Cashfree finalization passes: without it the PENDING fence
+   * refuses the creator itself and every create dies CHECKOUT_CREATE_PENDING (2026-10-19 e2e). */
+  }, null, { reservation: { requestId, won: true } });
  }
 
  /* The provider webhook (actor-free): the Standard Webhooks HMAC binds the EXACT raw bytes, then

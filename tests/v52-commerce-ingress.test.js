@@ -134,6 +134,9 @@ test('source integrity: the ingress and the API dispatch are wired', () => {
     'the reservation fingerprint is currency-scoped');
   assert.match(commerceService, /\{ type: 'dodo-create', productId: productId \+ ':' \+ currency \}/,
     'the finalization command fingerprint equals the reservation fingerprint (mismatch left every create CHECKOUT_CREATE_PENDING)');
+  const fenceAuthorizations = commerceService.match(/\{ reservation: \{ requestId, won: true \} \}/g) || [];
+  assert.ok(fenceAuthorizations.length >= 2,
+    'every provider create finalization passes the fence authorization (the dodo one missing left its own PENDING row refusing the creator)');
   assert.match(gateway, /pathname === '\/ingress\/commerce\/ssv'/, 'actor-free ssv path present');
   assert.match(gateway, /commerce: createCommerceIngressService|commerce,/);
   const apiIndex = fs.readFileSync(path.join(__dirname, '..', 'apps', 'api', 'index.js'), 'utf8');

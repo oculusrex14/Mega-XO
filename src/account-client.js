@@ -94,17 +94,19 @@ function refreshNativeSession(){
  const generation=sessionGeneration;
  const work=(async()=>{
   const rotated=await host.refresh().catch(()=>null);
-  if(rotated===null||rotated.ok!==true)return rotated||{ok:false,error:"UNAVAILABLE"};
-  if(generation!==sessionGeneration)return rotated; // identity changed mid-flight; install nothing
+  if(rotated===null||rotated.ok!==true)return {rotated:rotated||{ok:false,error:"UNAVAILABLE"}};
+  if(generation!==sessionGeneration)return {rotated}; // identity changed mid-flight; install nothing
   /* Advance the cached expiry from the host's own metadata (a memory read, not a network hop).
-   * The host is the only authority on lifetime; the cache never fabricates one. */
+   * The host is the only authority on lifetime; the cache never fabricates one. The validated
+   * state rides the result so bootstrap needs NO second post-rotation bridge call (Sol P2 #2:
+   * every post-rotation read stays inside the one deadline). */
   const state=await host.session().catch(()=>null);
-  if(generation!==sessionGeneration)return rotated; // Sol P2 #7: re-check after EVERY await
+  if(generation!==sessionGeneration)return {rotated}; // Sol P2 #7: re-check after EVERY await
   if(state&&state.linked===true&&session&&session.native){
    const fresh=Number(state.expiresAt);
    if(Number.isFinite(fresh)&&fresh>0)session={...session,expiresAt:fresh};
   }
-  return rotated;
+  return {rotated,state};
  })();
  const outcome=Promise.race([work,sleep(15000).then(()=>"timeout")]).then(value=>value==="timeout"?null:value);
  nativeRefreshInFlight=outcome;
@@ -139,12 +141,12 @@ async function nativeEnsure(force=false){
    * fall through to the profile read with the token still held. If that token is truly dead the
    * profile read answers 401 and the honest auth state follows; if the expiry was merely
    * conservative the read succeeds and the user stays signed in. */
-   const rotated=await refreshNativeSession();
-   if(rotated!==null&&rotated.ok!==true){const error=nativeError(rotated||{error:'AUTH_REQUIRED'});publish(classify(error.message),error.message);throw error;}
-   /* Sol P2 #8: the rotation renewed the host's own credential; the snapshot read before it is
-    * stale. Re-read the host metadata so the built session carries the POST-rotation expiry -
-    * otherwise the next request rotates a second time. */
-   const refreshed=await host.session().catch(()=>null);
+   const result=await refreshNativeSession();
+   if(result!==null&&result.rotated&&result.rotated.ok!==true){const error=nativeError(result.rotated||{error:'AUTH_REQUIRED'});publish(classify(error.message),error.message);throw error;}
+   /* Sol P2 #8: the rotation renewed the host credential; the snapshot read before it is stale.
+    * The validated post-rotation metadata rides the bounded refresh result - no second unbounded
+    * bridge call here (Sol round-3 #2: bootstrap must never hang past the 15s deadline). */
+   const refreshed=result===null?null:result.state;
    if(refreshed&&refreshed.online===true&&refreshed.linked===true&&Number(refreshed.expiresAt)>0)state=refreshed;
   }
   const profile=await host.request('/api/account/profile','GET',null,null);
@@ -177,7 +179,8 @@ async function call(path,body,operation){
   /* Concurrent expiry-triggered calls share one rotation; a bounded timeout still lets the held
    * token attempt the request (a conservative expiry then costs nothing, a dead token 401s into
    * the honest AUTH path). A terminal failure is never retried in a loop. */
-  const rotated=await refreshNativeSession();
+  const result=await refreshNativeSession();
+  const rotated=result===null?null:result.rotated;
   if(rotated!==null&&rotated.ok!==true){
    sessionGeneration++;session=null;publish('auth','AUTH_REQUIRED');
    throw nativeError(rotated||{error:'AUTH_REQUIRED'});

@@ -14,10 +14,13 @@ const accountSource=fs.readFileSync(path.join(ROOT,'src/account-client.js'),'utf
 function fixture({fastTimers=false}={}){
  const clock={ms:1_700_000_000_000};
  let refreshCount=0,sessionReads=0,profileReads=0,requests=0;
+let hangSessionReads=false;
  let hostExpiry=clock.ms+60_000; // the host owns the real expiry
  let refreshOutcome=null; // null = OK; otherwise {ok:false,error}
  let refreshDelay=0;
  const host={
+ get hangSessionReads(){return hangSessionReads;},
+ set hangSessionReads(value){hangSessionReads=value;},
   get refreshCount(){return refreshCount;},
   get sessionReads(){return sessionReads;},
   get profileReads(){return profileReads;},
@@ -25,7 +28,7 @@ function fixture({fastTimers=false}={}){
   setRefreshOutcome(o){refreshOutcome=o;},
   setRefreshDelay(ms){refreshDelay=ms;},
   setHostExpiry(ms){hostExpiry=ms;},
-  session:async()=>{sessionReads++;return {ok:true,online:true,linked:true,actorId:'actor-1',expiresAt:hostExpiry,providers:['google']};},
+  session:async()=>{sessionReads++;if(hangSessionReads&&refreshCount>0)return new Promise(()=>{});return {ok:true,online:true,linked:true,actorId:'actor-1',expiresAt:hostExpiry,providers:['google']};},
   request:async(path)=>{requests++;return {ok:true,data:{id:'actor-1',providers:['google']}};},
   refresh:async()=>{refreshCount++;if(refreshDelay)await new Promise(r=>setTimeout(r,refreshDelay));if(refreshOutcome)return refreshOutcome;hostExpiry=clock.ms+60_000;return {ok:true};},
   signOut:async()=>({ok:true}),
@@ -141,4 +144,38 @@ test('a stale rotation completion cannot overwrite a newer identity (account swi
  await flight;
  const s=f.account.peek();
  if(s)assert.ok(s.expiresAt===0||s.expiresAt>f.clock.ms,'a stale completion must never install an expired or invented lifetime');
+});
+
+test('Sol #7: a generation bump must not strand the refresh promise (next expiry rotates again)',async()=>{
+ const f=fixture();
+ await f.account.session();
+ f.host.setRefreshDelay(30);
+ f.bumpPastExpiry();
+ const flight=f.account.request('/api/account/profile','GET');
+ f.account.reset(); // generation bump while the rotation is in flight
+ await flight;
+ f.bumpPastExpiry();
+ const before=f.host.refreshCount;
+ await f.account.request('/api/account/profile','GET');
+ assert.equal(f.host.refreshCount,before+1,'a stranded in-flight promise must never satisfy a later rotation');
+});
+
+test('Sol #8: bootstrap after an expired snapshot carries the POST-rotation expiry',async()=>{
+ const f=fixture();
+ f.host.setHostExpiry(f.clock.ms-1000); // host reports an expired access token at cold start
+ await f.account.session(); // bootstrap rotates once, then reads the profile
+ assert.equal(f.host.refreshCount,1,'cold-start restore rotates exactly once');
+ await f.account.request('/api/account/profile','GET');
+ assert.equal(f.host.refreshCount,1,'the cached session must carry the post-rotation expiry, not the stale snapshot');
+});
+
+test('Sol round-3 #2: bootstrap settles even when the post-rotation metadata read never resolves',async()=>{
+ // The metadata re-read rides the ONE 15s deadline; a wedged bridge call must not block
+ // session() forever. The deadline path falls back to the pre-rotation snapshot honestly.
+ const f=fixture({fastTimers:true});
+ f.host.hangSessionReads=true;
+ f.host.setHostExpiry(f.clock.ms-1000);
+ await f.account.session(); // must SETTLE (not hang) with the rotation already counted
+ assert.equal(f.host.refreshCount,1,'the rotation itself completed');
+ assert.equal(f.host.requests,1,'bootstrap still performs its single profile read');
 });

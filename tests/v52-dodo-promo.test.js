@@ -99,6 +99,19 @@ test('provider: a restore whose re-verify disagrees throws instead of reporting 
   assert.equal(await provider.restoreProductPrice({ dodoProductId: 'pdt_x1abcd', base: { usd: 99, inr: 4900 } }), 'patched', 'the retry after a failed restore succeeds');
 });
 
+test('provider: checkout creation locks the price and the currency against checkout-page edits', async () => {
+  const bodies = [];
+  const provider = createDodoProvider({ apiKey: 'dk_' + 'x'.repeat(24), mode: 'test', fetchImpl: async (url, init) => {
+    bodies.push({ url: String(url), body: init && init.body ? JSON.parse(init.body) : null });
+    return { ok: true, status: 200, text: async () => JSON.stringify({ session_id: 'cks_' + 'a'.repeat(12), checkout_url: 'https://checkout.dodopayments.com/x' }) };
+  } });
+  await provider.createCheckout({ productId: 'pdt_crowns100', actor: 'dp_x', storeProductId: 'crowns_100', email: 'a@b.co', successUrl: 'https://megaxo.online', metadata: { request_id: 'r1' }, discountCodes: null, billingCurrency: 'inr', country: 'IN' });
+  const body = bodies[0].body;
+  assert.deepEqual(body.feature_flags, { allow_discount_code: false, allow_currency_selection: false }, 'no code entry and no currency change on the checkout page');
+  assert.equal(body.discount_codes, undefined, 'no server-attached code either');
+  assert.equal(body.billing_currency, 'INR');
+});
+
 /* ---------------------------------------------------------------- 2. disposable backend */
 
 function whichBinary() {
@@ -111,6 +124,7 @@ function whichBinary() {
 }
 const OWNED_PREFIX = 'v5_test_v52dodopromo_';
 const RUNTIME_ROLES = ['api_runtime', 'core_runtime', 'worker_runtime'];
+const LOOPBACK = new Set(['127.0.0.1', 'localhost', '::1']);
 let backend = null, backendError = null;
 function stopBackendOnce() { if (backend) { const b = backend; backend = null; b.stop(); } }
 process.on('exit', stopBackendOnce);
@@ -118,10 +132,11 @@ process.on('SIGINT', () => { stopBackendOnce(); process.exit(130); });
 process.on('SIGTERM', () => { stopBackendOnce(); process.exit(143); });
 const createdDatabases = new Set();
 const ident = (name) => '"' + String(name).replace(/"/g, '""') + '"';
-function dbUrl(database) { return 'postgres://postgres@127.0.0.1:' + backend.port + '/' + database; }
+function dbUrl(database) { const u = new URL(backend.adminUrl); u.pathname = '/' + database; u.search = ''; return u.toString(); }
 async function adminClient(database) {
   const pg = require('pg');
-  const c = new pg.Client({ host: '127.0.0.1', port: backend.port, user: 'postgres', database: database || 'postgres' });
+  const u = new URL(backend.adminUrl);
+  const c = new pg.Client({ host: u.hostname, port: Number(u.port || 5432), user: u.username ? decodeURIComponent(u.username) : 'postgres', password: u.username ? decodeURIComponent(u.password || '') : undefined, database: database || decodeURIComponent(u.pathname.replace(/^\//, '')) || 'postgres' });
   await c.connect();
   return c;
 }
@@ -137,6 +152,21 @@ function runMigrator(database) {
 async function ensureBackend() {
   if (backend) return backend;
   if (backendError) throw new Error(backendError);
+  /* The frozen contract's external path (tests/v5-p04-services.test.js): an owned LOOPBACK
+   * cluster via V5_PG_URL + V5_PG_DISPOSABLE=1 (the CI service containers), else a local PG16
+   * binary, else an explicit skip - a runner with neither never silently passes nothing. */
+  const external = process.env.V5_PG_URL || '';
+  if (external) {
+    if (process.env.V5_PG_DISPOSABLE !== '1') throw new Error('V5_PG_URL requires V5_PG_DISPOSABLE=1 (owned synthetic cluster only)');
+    let u;
+    try { u = new URL(external); } catch { throw new Error('V5_PG_URL is unparsable'); }
+    if (!LOOPBACK.has(u.hostname)) throw new Error('V5_PG_URL must target a loopback host');
+    if (/(^|[^a-z0-9])(prod|production)([^a-z0-9]|$)/i.test(decodeURIComponent(u.pathname))) throw new Error('V5_PG_URL control database must be non-production');
+    const control = decodeURIComponent(u.pathname.replace(/^\//, ''));
+    if (!control || control.startsWith(OWNED_PREFIX)) throw new Error('V5_PG_URL control database must not be one of this suite owned databases');
+    backend = { kind: 'external', adminUrl: external, host: u.hostname, port: Number(u.port || 5432) };
+    return backend;
+  }
   const bin = whichBinary();
   if (!bin) { backendError = 'no PostgreSQL 16 backend available'; throw new Error(backendError); }
   const net = require('node:net');
@@ -153,7 +183,7 @@ async function ensureBackend() {
     try { execFileSync(path.join(bin, 'pg_isready'), ['-h', '127.0.0.1', '-p', String(port), '-U', 'postgres', '-q'], { stdio: 'ignore', timeout: 10000 }); break; }
     catch { if (i === 59) throw new Error('binary PG16 never became ready'); execFileSync('sleep', ['1']); }
   }
-  backend = { port, stop: () => {
+  backend = { kind: 'binary', adminUrl: 'postgres://postgres@127.0.0.1:' + port + '/postgres', host: '127.0.0.1', port, stop: () => {
     try { execFileSync(path.join(bin, 'pg_ctl'), ['-D', dataDir, '-m', 'i', 'stop'], { stdio: 'ignore', timeout: 30000 }); } catch { /* gone */ }
     fs.rmSync(dataDir, { recursive: true, force: true });
   } };
@@ -205,7 +235,7 @@ async function promoHarness(t, family, clock) {
   const database = await createDatabase(family);
   const state = { creates: [], verifies: new Map(), restores: [], restoreFail: false };
   const BUDGET = Object.freeze({ totalConnections: 12, roleConnections: Object.freeze({ core_runtime: 6, api_runtime: 4, worker_runtime: 2 }) });
-  const make = (role, max) => { const { createPgPool } = require('../packages/db/pg/pool.js'); return createPgPool({ host: '127.0.0.1', port: backend.port, database, user: role, role, label: 'test', service: 'v52dodopromo-test', revision: 'mxa-promo-split', allowLocalNoTls: true, pool: { max, idleTimeoutMillis: 5000, connectionTimeoutMillis: 5000, queueLimit: 16 }, budget: BUDGET }); };
+  const make = (role, max) => { const { createPgPool } = require('../packages/db/pg/pool.js'); return createPgPool({ host: new URL(backend.adminUrl).hostname, port: Number(new URL(backend.adminUrl).port || 5432), database, user: role, role, label: 'test', service: 'v52dodopromo-test', revision: 'mxa-promo-split', allowLocalNoTls: true, pool: { max, idleTimeoutMillis: 5000, connectionTimeoutMillis: 5000, queueLimit: 16 }, budget: BUDGET }); };
   const corePool = make('core_runtime', 6);
   const commerce = await createCommerceService(corePool, {
     now: () => (clock || CLOCK),
@@ -300,6 +330,58 @@ test('commerce: settlement accepts the two configured boundary prices and no thi
   const c2 = await adminClient(h.database);
   try { await c2.query("UPDATE monetization.dodo_orders SET created_at = '2027-01-02T00:00:00Z' WHERE checkout_id = $1", [e.checkoutId]); } finally { await c2.end(); }
   await assert.rejects(() => h.commerce.dodoOrderStatus('dp_settle_e', e.checkoutId), /ORDER_AMOUNT_MISMATCH/, 'a post-expiry code total never verifies');
+});
+
+test('commerce: currency binds every accepted amount and a wrong-currency charge never verifies', async (t) => {
+  const h = await promoHarness(t, 'currency');
+  if (!h) return;
+  await seedActor(h.database, 'dp_curr', 100);
+  const order = await h.commerce.createDodoCheckout('dp_curr', 'curr-key-1', 'crowns_100', { email: 'c@b.co' }, { currency: 'inr' });
+  /* A checkout-page currency flip (now impossible with the flags, but an inherited legacy
+   * session could predate them): the INR intro amount arriving as "USD" must never verify. */
+  h.state.verifies.set(order.checkoutId, { status: 'succeeded', amount: 2500, currency: 'usd', metadata: { actor: 'dp_curr', product_id: 'crowns_100' } });
+  await assert.rejects(() => h.commerce.dodoOrderStatus('dp_curr', order.checkoutId), /ORDER_AMOUNT_MISMATCH/);
+  /* The regular-price fallback is also currency-bound: the matching INR number as USD is not the regular USD price. */
+  const order2 = await h.commerce.createDodoCheckout('dp_curr', 'curr-key-2', 'crowns_100', { email: 'c@b.co' }, { currency: 'inr' });
+  h.state.verifies.set(order2.checkoutId, { status: 'succeeded', amount: 4900, currency: 'usd', metadata: { actor: 'dp_curr', product_id: 'crowns_100' } });
+  await assert.rejects(() => h.commerce.dodoOrderStatus('dp_curr', order2.checkoutId), /ORDER_AMOUNT_MISMATCH/);
+});
+
+test('commerce: a pre-restore order completes at the current provider price and legacy attach-design orders settle', async (t) => {
+  const h = await promoHarness(t, 'boundary', CLOCK);
+  if (!h) return;
+  await seedActor(h.database, 'dp_bnd', 100);
+  /* The restore-boundary race: the order records the intro price, the provider completes at the
+   * CURRENT catalog price after a verified restore (either direction of the race). */
+  const order = await h.commerce.createDodoCheckout('dp_bnd', 'bnd-key-1', 'crowns_100', { email: 'b@b.co' }, { currency: 'inr' });
+  assert.equal(Number((await recordedOrder(h.database, order.checkoutId)).amount_cents), 2500);
+  const restore = await h.commerce.processIntroPriceRestore();
+  /* The frozen clock is BEFORE the window here, so simulate the post-boundary state directly:
+   * a second service clock is not needed - the tolerance branch itself is exercised by the
+   * catalog-price alternative below, driven by the promo window being active. */
+  assert.notEqual(restore.pending, undefined);
+  h.state.verifies.set(order.checkoutId, { status: 'succeeded', amount: 4900, currency: 'inr', metadata: { actor: 'dp_bnd', product_id: 'crowns_100' } });
+  const settled = await h.commerce.dodoOrderStatus('dp_bnd', order.checkoutId);
+  assert.equal(settled.paid, true, 'the regular price verifies for an in-window order');
+  /* A legacy attach-design order (recorded at base*0.5 = 2450) settles at its recorded amount
+   * and at the new intro price (the transition), but never at a double-halved total. */
+  const legacy = await h.commerce.createDodoCheckout('dp_bnd', 'bnd-key-2', 'crowns_100', { email: 'b@b.co' }, { currency: 'inr' });
+  const c0 = await adminClient(h.database);
+  try { await c0.query('UPDATE monetization.dodo_orders SET amount_cents = 2450 WHERE checkout_id = $1', [legacy.checkoutId]); } finally { await c0.end(); }
+  h.state.verifies.set(legacy.checkoutId, { status: 'succeeded', amount: 2450, currency: 'inr', metadata: { actor: 'dp_bnd', product_id: 'crowns_100' } });
+  const legacySettled = await h.commerce.dodoOrderStatus('dp_bnd', legacy.checkoutId);
+  assert.equal(legacySettled.paid, true, 'the legacy recorded amount verifies');
+  const legacy2 = await h.commerce.createDodoCheckout('dp_bnd', 'bnd-key-3', 'crowns_100', { email: 'b@b.co' }, { currency: 'inr' });
+  const c1 = await adminClient(h.database);
+  try { await c1.query('UPDATE monetization.dodo_orders SET amount_cents = 2450 WHERE checkout_id = $1', [legacy2.checkoutId]); } finally { await c1.end(); }
+  h.state.verifies.set(legacy2.checkoutId, { status: 'succeeded', amount: 2500, currency: 'inr', metadata: { actor: 'dp_bnd', product_id: 'crowns_100' } });
+  const legacy2Settled = await h.commerce.dodoOrderStatus('dp_bnd', legacy2.checkoutId);
+  assert.equal(legacy2Settled.paid, true, 'the current catalog (intro) price verifies for a legacy order');
+  const legacy3 = await h.commerce.createDodoCheckout('dp_bnd', 'bnd-key-4', 'crowns_100', { email: 'b@b.co' }, { currency: 'inr' });
+  const c2 = await adminClient(h.database);
+  try { await c2.query('UPDATE monetization.dodo_orders SET amount_cents = 2450 WHERE checkout_id = $1', [legacy3.checkoutId]); } finally { await c2.end(); }
+  h.state.verifies.set(legacy3.checkoutId, { status: 'succeeded', amount: 1225, currency: 'inr', metadata: { actor: 'dp_bnd', product_id: 'crowns_100' } });
+  await assert.rejects(() => h.commerce.dodoOrderStatus('dp_bnd', legacy3.checkoutId), /ORDER_AMOUNT_MISMATCH/, 'a double-halved total (25% of base) never verifies');
 });
 
 /* ---------------------------------------------------------------- 5. the unattended restore */

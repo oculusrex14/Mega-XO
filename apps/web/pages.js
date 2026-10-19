@@ -336,8 +336,8 @@ function storePage(context) {
   const introBadge = state.dodoIntro && state.dodoIntro.active === true ? '<span class="mx-chip pg-chip-blue">50% launch price</span>' : '';
   /* The Mega Pass discount is the code the player enters on the Dodo checkout, so its badge
    * names the server-sent code; the one-time buys are slashed directly at checkout (no code). */
-  const passCodeSuffix = state.dodoPromo && Array.isArray(state.dodoPromo.products) && state.dodoPromo.products.includes('mega_pass') && typeof state.dodoPromo.code === 'string' && state.dodoPromo.code.trim() ? ' using code ' + e(state.dodoPromo.code.trim()) + ' at checkout' : '';
-  const passIntroBadge = state.dodoIntro && state.dodoIntro.active === true ? '<span class="mx-chip pg-chip-blue">50% launch price' + passCodeSuffix + '</span>' : introBadge;
+  const passCodeSuffix = state.dodoPromo && Array.isArray(state.dodoPromo.products) && state.dodoPromo.products.includes('mega_pass') && typeof state.dodoPromo.code === 'string' && state.dodoPromo.code.trim() ? ' — code ' + e(state.dodoPromo.code.trim()) + ' at checkout' : '';
+  const passIntroBadge = state.dodoIntro && state.dodoIntro.active === true ? '<span class="mx-chip pg-chip-blue">50% off the first month' + passCodeSuffix + '</span>' : introBadge;
   /* 2026-10-19: the launch-offer was/now comparison. The server-validated regular price renders
    * struck through next to the intro price; the end date keeps the window honest. No comparison
    * (regular price absent or not above the current price) renders exactly the plain price. */

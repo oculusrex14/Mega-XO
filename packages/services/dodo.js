@@ -37,8 +37,10 @@ function createDodoProvider({ apiKey, webhookSecret, mode = 'live', fetchImpl = 
   const base = mode === 'test' ? TEST_BASE : LIVE_BASE;
   const headers = { Authorization: 'Bearer ' + apiKey, 'Content-Type': 'application/json' };
 
+  /* Sol P1 (promo audit): provider calls need an explicit deadline - a hung restore must tick
+   * back as a failure for the retry/alert path instead of pinning the sweep forever. */
   async function call(path, method, body) {
-    const response = await http(base + path, { method, headers, body: body === undefined ? undefined : JSON.stringify(body) });
+    const response = await http(base + path, { method, headers, body: body === undefined ? undefined : JSON.stringify(body), signal: AbortSignal.timeout(30000) });
     const text = await response.text();
     let parsed = null;
     try { parsed = text ? JSON.parse(text) : null; } catch { throw Error('DODO_BAD_RESPONSE'); }
@@ -76,7 +78,11 @@ function createDodoProvider({ apiKey, webhookSecret, mode = 'live', fetchImpl = 
       if (typeof actor !== 'string' || !actor || actor.length > 160) throw Error('DODO_METADATA_INVALID');
       if (typeof storeProductId !== 'string' || !storeProductId) throw Error('DODO_METADATA_INVALID');
       const cart = [{ product_id: productId, quantity: 1 }];
-      const body = { product_cart: cart, metadata: cleanMetadata({ ...metadata, actor, product_id: storeProductId }) };
+      /* Sol P1 (promo audit): customer-chosen discount codes and currency changes are OFF for
+       * server-created checkouts. The server owns the price (intro catalog or none) and the
+       * currency (the recorded region), so a checkout-page edit can never diverge the charged
+       * amount/currency from the recorded order - the exact class that strands paid orders. */
+      const body = { product_cart: cart, metadata: cleanMetadata({ ...metadata, actor, product_id: storeProductId }), feature_flags: { allow_discount_code: false, allow_currency_selection: false } };
       if (email !== undefined && email !== null) {
         if (typeof email !== 'string' || email.length < 3 || email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw Error('INVALID_CUSTOMER_DETAILS');
         body.customer = { email };

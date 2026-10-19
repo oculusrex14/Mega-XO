@@ -1439,10 +1439,12 @@ async function main() {
     const restoreAlert = async (result) => {
       const nowAt = Date.now();
       if (nowAt - lastRestoreAlertAt < 60 * 60 * 1000) return;
-      lastRestoreAlertAt = nowAt;
       const to = process.env.OPERATIONS_ALERT_EMAIL || 'contact@antimatterinnovations.com';
       try {
         await mailTransport.sendMail({ to, subject: 'Mega XOXO — promo price restore needs attention', text: 'The scheduled Dodo intro-price restore did not complete: ' + JSON.stringify(result).slice(0, 800) + '. New orders are still recorded at intro prices until the restore succeeds. Investigate the Dodo API response, or apply the base-price env flip manually (scripts/v5/dodo-price-window.cjs --mode base).' });
+        /* Sol P2 (promo audit): the hourly allowance is consumed by a SENT alert only - a
+         * transient send failure retries on the next tick instead of silencing an hour. */
+        lastRestoreAlertAt = nowAt;
       } catch (error) { console.error(JSON.stringify({ event: 'intro_restore_alert_error', code: safeError(error) })); }
     };
     const restoreTick = async () => {
@@ -1460,7 +1462,10 @@ async function main() {
       introRestoreBusy = true;
       Promise.resolve(restoreTick()).catch((error) => console.error(JSON.stringify({ event: 'intro_restore_error', code: safeError(error) }))).finally(() => { introRestoreBusy = false; });
     }, 5 * 60 * 1000);
-    Promise.resolve(restoreTick()).catch((error) => console.error(JSON.stringify({ event: 'intro_restore_error', code: safeError(error) })));
+    /* The boot tick shares the interval's single-flight guard so a slow first restore can never
+     * overlap the first timer tick. */
+    introRestoreBusy = true;
+    Promise.resolve(restoreTick()).catch((error) => console.error(JSON.stringify({ event: 'intro_restore_error', code: safeError(error) }))).finally(() => { introRestoreBusy = false; });
   }
 
   /* The worker pass (worker_runtime): lapsed work, the privacy/retention sweeps and mail delivery.

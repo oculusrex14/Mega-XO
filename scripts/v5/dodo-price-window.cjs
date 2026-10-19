@@ -47,6 +47,10 @@ const PRICES = {
 
 const RESTRICT_CODE = arg('restrict-code');
 const CODE_PRODUCTS = (arg('code-products') || 'mega_pass').split(',').map(s => s.trim()).filter(Boolean);
+/* The ONE authoritative promo end: the display window, the Dodo code expiry and the env
+ * DODO_PROMO_EXPIRES_AT must all carry the same instant, so no gap exists where the site shows
+ * normal prices while the code still discounts (or vice versa). */
+const CODE_EXPIRY = arg('code-expiry');
 
 async function main() {
   if (!MODE || !['intro', 'base', 'verify', 'restrict-code'].includes(MODE)) {
@@ -66,14 +70,29 @@ async function main() {
   const envLines = [];
   if (MODE === 'restrict-code') {
     if (!RESTRICT_CODE || RESTRICT_CODE.length < 3) { process.stderr.write('restrict-code needs a code\n'); process.exitCode = 1; return; }
-    const listed = await call('/discounts?limit=100', 'GET');
-    const items = listed && Array.isArray(listed.items) ? listed.items : [];
-    const discount = items.find(item => typeof item.code === 'string' && item.code.toUpperCase() === RESTRICT_CODE.toUpperCase());
-    if (!discount || !discount.id) { process.stderr.write('DISCOUNT_NOT_FOUND ' + RESTRICT_CODE + '\n'); process.exitCode = 1; return; }
-    await call('/discounts/' + discount.id, 'PATCH', { restricted_to: CODE_PRODUCTS });
-    const after = await call('/discounts/' + discount.id, 'GET');
+    /* Sol P1 (promo audit): the list endpoint paginates with page_number/page_size and returns
+     * items carrying discount_id (not id); restricted_to carries PROVIDER product ids (pdt_*),
+     * so the internal game names are mapped through the catalog first. */
+    const wanted = CODE_PRODUCTS.map(id => { const entry = catalog[id]; if (!entry || !entry.productId) { process.stderr.write('UNKNOWN_PRODUCT ' + id + '\n'); process.exitCode = 1; return null; } return entry.productId; });
+    if (wanted.some(id => id === null)) return;
+    let discount = null;
+    for (let page = 1; page <= 10 && !discount; page++) {
+      const listed = await call('/discounts?page_number=' + page + '&page_size=100', 'GET');
+      const items = listed && Array.isArray(listed.items) ? listed.items : [];
+      discount = items.find(item => typeof item.code === 'string' && item.code.toUpperCase() === RESTRICT_CODE.toUpperCase()) || null;
+      if (!items.length) break;
+    }
+    if (!discount || !(discount.discount_id || discount.id)) { process.stderr.write('DISCOUNT_NOT_FOUND ' + RESTRICT_CODE + '\n'); process.exitCode = 1; return; }
+    const discountId = discount.discount_id || discount.id;
+    const patchBody = { restricted_to: wanted };
+    if (CODE_EXPIRY) {
+      if (!Number.isFinite(Date.parse(CODE_EXPIRY))) { process.stderr.write('INVALID_CODE_EXPIRY\n'); process.exitCode = 1; return; }
+      patchBody.expires_at = CODE_EXPIRY;
+    }
+    await call('/discounts/' + discountId, 'PATCH', patchBody);
+    const after = await call('/discounts/' + discountId, 'GET');
     const scoped = after && Array.isArray(after.restricted_to) ? after.restricted_to : [];
-    const ok = CODE_PRODUCTS.every(id => scoped.includes(id)) && scoped.length === CODE_PRODUCTS.length;
+    const ok = wanted.every(id => scoped.includes(id)) && scoped.length === wanted.length;
     process.stdout.write((ok ? 'restricted ' : 'RESTRICT_MISMATCH ') + discount.code + ' -> ' + JSON.stringify(scoped) + '\n');
     if (!ok) process.exitCode = 1;
     return;

@@ -1253,13 +1253,13 @@ async function createCommerceService(pool, options = {}) {
    try {
     const result = await provider.restoreProductPrice({ dodoProductId: entry.productId, base: config.dodoRegularCatalog[productId].prices });
     if (result === 'patched') restored++; else already++;
+    /* MXA-PROMO-RESTORE-PARTIAL (Sol P1): flip each product's catalog prices the moment ITS
+     * provider restore is verified, so a later product's failure can never leave an
+     * already-restored product recording intro prices the provider no longer charges. */
+    entry.prices = { ...config.dodoRegularCatalog[productId].prices };
    } catch (error) { failures.push({ productId, code: String(error && error.message || error).slice(0, 120) }); }
   }
   if (failures.length) return { pending: true, failures, restored, already };
-  for (const [productId] of targets) {
-   const entry = config.dodoCatalog[productId];
-   entry.prices = { ...config.dodoRegularCatalog[productId].prices };
-  }
   introRestoreDone = true;
   return { done: true, restored, already };
  }
@@ -1317,7 +1317,7 @@ async function createCommerceService(pool, options = {}) {
    const packDiscountUsable = Boolean(packProduct && packProduct.crowns > 0) && !dodoPromoFor(productId) && typeof config.dodoPackDiscountId === 'string' && config.dodoPackDiscountId.length > 0 && !dodoIntroPricingActive();
   let reservedPeriod = null;
    let expectedCents = recordedCents;
-   if (packDiscountUsable && !promo) {
+   if (packDiscountUsable) {
    const reserved = await uow.run(async (tx) => (await tx.query(
     "UPDATE monetization.pass_periods pp SET pack_discounts_reserved = pp.pack_discounts_reserved + 1 FROM monetization.store_subscriptions ps WHERE pp.subscription_id = ps.subscription_id AND ps.actor_id = $1 AND ps.status = 'active' AND pp.period_start <= $2 AND pp.period_end > $2 AND pp.pack_discounts_reserved + pp.pack_discounts_used < 2 AND pp.subscription_id = (SELECT ps2.subscription_id FROM monetization.store_subscriptions ps2 WHERE ps2.actor_id = $1 AND ps2.status = 'active' ORDER BY ps2.created_at DESC LIMIT 1) AND pp.period_start = (SELECT MAX(pp3.period_start) FROM monetization.pass_periods pp3 WHERE pp3.subscription_id = pp.subscription_id AND pp3.period_start <= $2 AND pp3.period_end > $2) RETURNING pp.subscription_id, pp.period_start",
     [actor, new Date(serviceNow()).toISOString()])).rows[0] || null);
@@ -1688,15 +1688,27 @@ async function createCommerceService(pool, options = {}) {
    * living indefinitely. No third amount ever verifies. */
   const promoConfig = config.dodoPromo && Array.isArray(config.dodoPromo.products) && config.dodoPromo.products.includes(recorded.product_id) ? config.dodoPromo : null;
   const recordedAt = Date.parse(recorded.created_at);
+  /* The currency binds EVERY accepted amount: a matching number in the wrong currency is a
+   * mismatch (Sol P1: the fallback branches previously skipped this and a numerically equal
+   * cross-currency price verified). */
   let amountVerified = verified.currency === recorded.currency && Math.abs(Number(recorded.amount_cents) - verified.amount) <= 1;
   if (!amountVerified && promoConfig && Number.isFinite(recordedAt) && recordedAt < Date.parse(promoConfig.expiresAt)) {
+   if (verified.currency !== recorded.currency) throw Error('ORDER_AMOUNT_MISMATCH');
    if (recorded.product_id === 'mega_pass') {
-    const promoCents = Math.max(1, Math.round(Number(recorded.amount_cents) * (1 - promoConfig.percentBps / 10000)));
-    if (Math.abs(promoCents - verified.amount) <= 1) amountVerified = true;
+    /* The code-applied total is half of the pass BASE price - taken from the catalog entry
+     * (which never flips), never from the recorded amount: halving a legacy attach-design
+     * record (already base*(1-bps)) would manufacture a 25%-of-base acceptance. */
+    const passEntry = config.dodoCatalog && config.dodoCatalog.mega_pass;
+    const passBaseCents = passEntry && passEntry.prices ? passEntry.prices[recorded.currency] : null;
+    const promoCents = Number.isSafeInteger(passBaseCents) ? Math.max(1, Math.round(passBaseCents * (1 - promoConfig.percentBps / 10000))) : null;
+    if (promoCents !== null && Math.abs(promoCents - verified.amount) <= 1) amountVerified = true;
    } else {
     const regularEntry = config.dodoRegularCatalog && config.dodoRegularCatalog[recorded.product_id];
     const regularCents = regularEntry && regularEntry.prices ? regularEntry.prices[recorded.currency] : null;
+    const catalogEntry = config.dodoCatalog && config.dodoCatalog[recorded.product_id];
+    const catalogCents = catalogEntry && catalogEntry.prices ? catalogEntry.prices[recorded.currency] : null;
     if (Number.isSafeInteger(regularCents) && Math.abs(regularCents - verified.amount) <= 1) amountVerified = true;
+    if (!amountVerified && Number.isSafeInteger(catalogCents) && Math.abs(catalogCents - verified.amount) <= 1 && catalogCents !== Number(recorded.amount_cents)) amountVerified = true;
    }
   }
   if (!amountVerified) throw Error('ORDER_AMOUNT_MISMATCH');

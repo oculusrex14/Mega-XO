@@ -100,3 +100,23 @@ Owner re-verification on the physical iPhone is pending for the final build; the
 served at `http://192.168.0.9:4200/game?mode=bot&check=3`. Sol's final deploy verdict is pending
 until its usage window resets (~08:41 IST); deployment holds for that review per the standing
 two-reviewer order. CI on `09d422b` is the exact-head validation.
+
+## Addendum 2 — root cause of the synthetic WebKit failure (2026-10-19, ~05:35 IST)
+
+Running the real QA harness locally on desktop WebKit reproduced and then cleared the failure,
+which let the defect be fixed from evidence instead of guesses:
+
+1. With only the three-frame correction window, the full harness failed both touch checks with a
+   jump to `scrollY 0` on the first tap. Tracing showed the stabilization anchor seeded at mount
+   time (board at `691px` while the page was at the top) was being enforced against every later
+   render: the correction itself scrolled the page to satisfy a stale position.
+2. Fix `8cf46aa`: stabilization now undoes only small unexplained drifts (≤120px, the engine-jump
+   class) and re-baselines on larger changes, so navigation, layout collapse and programmatic
+   scrolls always belong to the user. Combined with the extended correction window and
+   gesture-gated quiet logic, a simulated late engine scroll is corrected and a simulated user
+   drag is respected (verified in `.scratch/webkit-anchor-repro.cjs`, which also caught that an
+   earlier repro validated a stale bundle — the harness itself is the evidence of record).
+3. Full local WebKit QA on `a9e5770` + the threshold: **PASS, 937 checks, 0 failures**
+   (`tests-output/p21-web/5c1146f5885e/webkit/…/browser-qa.json`). The focused unit suite passes
+   10/10. Physical-iPhone re-check on the final build remains the owner's acceptance step; the
+   preview serves the fixed build.

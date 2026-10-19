@@ -70,7 +70,7 @@ async function main() {
   let failures = 0;
   const envLines = [];
   const expectMode = arg('expect');
-  if (MODE === 'verify' && expectMode && !PRICES[expectMode]) { process.stderr.write('UNKNOWN_EXPECT ' + expectMode + '\n'); process.exitCode = 1; return; }
+  if (MODE === 'verify' && expectMode && !['intro', 'base'].includes(expectMode)) { process.stderr.write('UNKNOWN_EXPECT ' + expectMode + '\n'); process.exitCode = 1; return; }
   if (MODE === 'restrict-code') {
     if (!RESTRICT_CODE || RESTRICT_CODE.length < 3) { process.stderr.write('restrict-code needs a code\n'); process.exitCode = 1; return; }
     /* Sol P1 (promo audit): the list endpoint paginates with page_number/page_size and returns

@@ -3,6 +3,13 @@
 (function(root){
 'use strict';
 let session=null,loading=null;
+/* One coherent native refresh lifecycle. The host owns the credentials AND the authoritative
+ * expiry; this module is a cache that must never invent a lifetime. Concurrent expiry-triggered
+ * calls share one rotation; a success advances the cached expiry from validated host metadata
+ * before waiters continue; a stale completion (generation changed mid-flight) never overwrites
+ * newer state. Ordinary local play and background clients never renew anything just to stay warm
+ * (no timers here — refresh happens only when a request actually needs the bearer). */
+let nativeRefreshInFlight=null,sessionGeneration=0;
 const id=()=>globalThis.crypto?.randomUUID?.()||Date.now().toString(36)+'-'+Math.random().toString(36).slice(2);
 const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 const native=()=>root.MegaNativeApi&&typeof root.MegaNativeApi.request==='function'?root.MegaNativeApi:null;
@@ -66,10 +73,38 @@ async function once(path,body,operationKey,timeoutMs=8000){
  * adapter for it (Android currently ships Google only, iOS its own set). The host advertises
  * its capability list in the native session op; intersect it with the profile's linked set
  * instead of marking every linked provider native-supported (dead Verify/Link controls). */
-function nativeSessionFromProfile(profile,hostProviders){
+function nativeSessionFromProfile(profile,hostProviders,hostExpiresAt){
  if(!profile||typeof profile!=='object'||typeof profile.id!=='string'||!profile.id)return null;
  const capable=new Set(Array.isArray(hostProviders)?hostProviders:[]);
- return {linked:true,csrf:null,native:true,expiresAt:Date.now()+300000,actorId:profile.id,profile,providers:Object.fromEntries((profile.providers||[]).map(p=>[p,{web:false,native:capable.has(p),linked:true}]))};
+ /* The host advertises the real session expiry with the profile projection. Never stamp a fresh
+  * invented lifetime merely because a profile was fetched: an absent/zero expiry stays 0, which
+  * the call path treats as "stale, rotate once via single-flight, then read the host truth". */
+ const advertised=Number(hostExpiresAt);
+ return {linked:true,csrf:null,native:true,expiresAt:Number.isFinite(advertised)&&advertised>0?advertised:0,actorId:profile.id,profile,providers:Object.fromEntries((profile.providers||[]).map(p=>[p,{web:false,native:capable.has(p),linked:true}]))};
+}
+/* Single-flight rotation shared by the bootstrap and the call path. Returns the host outcome
+ * ({ok:true}|{ok:false,error}) or null on a bounded timeout (the caller may still attempt the
+ * request with the held token; a genuinely dead token 401s into the honest AUTH path). */
+function refreshNativeSession(){
+ if(nativeRefreshInFlight)return nativeRefreshInFlight;
+ const host=native();
+ if(!host||typeof host.refresh!=='function')return Promise.resolve({ok:false,error:'ONLINE_UNAVAILABLE'});
+ const generation=sessionGeneration;
+ nativeRefreshInFlight=(async()=>{
+  const rotated=await Promise.race([host.refresh().catch(()=>null),sleep(15000).then(()=>null)]);
+  if(rotated===null)return null; // bounded timeout: caller decides, no looping retry here
+  if(rotated.ok!==true)return rotated;
+  if(generation!==sessionGeneration)return rotated; // identity changed mid-flight; install nothing
+  /* Advance the cached expiry from the host's own metadata (a memory read, not a network hop).
+   * The host is the only authority on lifetime; the cache never fabricates one. */
+  const state=await host.session().catch(()=>null);
+  if(state&&state.linked===true&&session&&session.native){
+   const fresh=Number(state.expiresAt);
+   if(Number.isFinite(fresh)&&fresh>0)session={...session,expiresAt:fresh};
+  }
+  return rotated;
+ })().finally(()=>{if(generation===sessionGeneration)nativeRefreshInFlight=null;});
+ return nativeRefreshInFlight;
 }
 async function nativeEnsure(force=false){
  if(session&&!force)return session;
@@ -97,14 +132,14 @@ async function nativeEnsure(force=false){
    * fall through to the profile read with the token still held. If that token is truly dead the
    * profile read answers 401 and the honest auth state follows; if the expiry was merely
    * conservative the read succeeds and the user stays signed in. */
-   const rotated=await Promise.race([host.refresh().catch(()=>null),sleep(15000).then(()=>null)]);
+   const rotated=await refreshNativeSession();
    if(rotated!==null&&rotated.ok!==true){const error=nativeError(rotated||{error:'AUTH_REQUIRED'});publish(classify(error.message),error.message);throw error;}
   }
   const profile=await host.request('/api/account/profile','GET',null,null);
   if(!profile||profile.ok!==true)throw nativeError(profile||{});
-  const parsed=nativeSessionFromProfile(profile.data,state.providers);
+  const parsed=nativeSessionFromProfile(profile.data,state.providers,state.expiresAt);
   if(!parsed)throw Error('SERVICE_UNAVAILABLE');
-  session=parsed;publish('online');return parsed;
+  sessionGeneration++;session=parsed;publish('online');return parsed;
  })().catch(error=>{const code=error?.message&&/^[A-Z0-9_]+$/.test(error.message)?error.message:'SERVICE_UNAVAILABLE';publish(classify(code),code,error?.supportId||'');throw error;}).finally(()=>{loading=null;});
  return loading;
 }
@@ -127,8 +162,14 @@ async function call(path,body,operation){
   if(!current||current.linked!==true){const e=Error('LINK_ACCOUNT_REQUIRED');e.status=401;throw e;}
  }
  if(native()&&session?.native&&Date.now()>=Number(session.expiresAt||0)){
-  const rotated=await native().refresh();
-  if(!rotated||rotated.ok!==true){session=null;publish('auth','AUTH_REQUIRED');throw nativeError(rotated||{error:'AUTH_REQUIRED'});}
+  /* Concurrent expiry-triggered calls share one rotation; a bounded timeout still lets the held
+   * token attempt the request (a conservative expiry then costs nothing, a dead token 401s into
+   * the honest AUTH path). A terminal failure is never retried in a loop. */
+  const rotated=await refreshNativeSession();
+  if(rotated!==null&&rotated.ok!==true){
+   sessionGeneration++;session=null;publish('auth','AUTH_REQUIRED');
+   throw nativeError(rotated||{error:'AUTH_REQUIRED'});
+  }
  }
  if(body!==undefined&&!session)await ensure();
  const operationKey=body===undefined?null:(operation||id()),attempts=body===undefined?3:2;
@@ -188,12 +229,12 @@ async function logout(all){
   let result=await host.signOut(all===true);
   if((!result||result.ok!==true)&&all===true)result=await host.signOut(false);
   if(!result||result.ok!==true)throw nativeError(result||{error:'SERVICE_UNAVAILABLE'});
-  session=null;publish('online');return true;
+  sessionGeneration++;session=null;publish('online');return true;
  }
  await call('/api/account/logout',{allDevices:all});
  session=null;return true;
 }
-root.MegaAccount=Object.freeze({request:call,session:ensure,logout,peek:()=>session,reset:()=>{session=null;},id,connectivity:()=>({...connectivity})});
+root.MegaAccount=Object.freeze({request:call,session:ensure,logout,peek:()=>session,reset:()=>{sessionGeneration++;session=null;},id,connectivity:()=>({...connectivity})});
 })(globalThis);
 
 /* The accepted party UI predates CSRF sessions. Adapt only its same-origin POSTs;

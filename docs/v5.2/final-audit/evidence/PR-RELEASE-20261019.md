@@ -120,3 +120,32 @@ which let the defect be fixed from evidence instead of guesses:
    (`tests-output/p21-web/5c1146f5885e/webkit/…/browser-qa.json`). The focused unit suite passes
    10/10. Physical-iPhone re-check on the final build remains the owner's acceptance step; the
    preview serves the fixed build.
+
+## DEPLOYMENT RECORD — PRODUCTION LIVE (2026-10-19, ~06:05 IST)
+
+The owner authorized deployment without waiting for Sol: the final stable APK with working
+authentication was the remaining condition, and the jumping fix was owner-confirmed. Sol's
+independent review remains recorded as requested-but-unavailable (usage limit until ~08:41 IST).
+
+- **Deployed source:** `69e58c309b7fc2fdb6849262b605e63aadf8b8db` (PR #38 merge into V5.2).
+- **Bundle:** `5c1146f5885e7d51a0f3423af1fe35eb24a610869604fbaa2337b33d3cbfc6b9`, 171 files,
+  27,971,030 bytes; deploy script validated the host, staged committed bytes only, and verified
+  `readyz` `ready:true` after restart.
+- **Rollback point:** `/opt/mega-xo-v5-production/rollback/2026-10-19T00-33-27-758Z-31343-69e58c309b7f`
+  (complete prior trees; restore by copy and restart the same reviewed build).
+- **Live verification:** `/livez` and `/readyz` 200 `ready:true`; download page shows
+  `Version 1.0.4`; `GET /downloads/android/megaxo-1.0.4.apk` streams HTTP 200,
+  `Content-Disposition: attachment`, 23,996,435 bytes, SHA-256
+  `eb0f519cf492b2fe18928cc0dd3d97f5cf467e4322d73aaa97439375458bd675` (exact signed artifact);
+  `/api/download?platform=android` 303-redirects to the chooser; public SSV probe reaches the API
+  (`INVALID_SSV_PAYLOAD`); direct wrong-key proxy assertion still refused
+  (`UNTRUSTED_PROXY_ASSERTION`).
+- **OTP end-to-end on the deployed authority** (`mothervader693+deploy-e2e-20261019b@gmail.com`):
+  signup 200 with challenge and no code leak, sealed outbox `sent` (provider accepted), verify 200
+  activated, profile with tag, deletion 200 — test account removed.
+- **Known tooling follow-up:** the QA measurement-window change (`browser-qa.cjs`, 650 ms settle)
+  is test tooling only and lands as the fast-follow PR; the shipped bundle contains no test
+  scripts. The runner WebKit presentation check may flag the older settle timing until it lands.
+- **Not certified by this deploy:** live ads (off; AdMob review/setup pending), native-store
+  billing, store submissions, real-money purchase acceptance. Credential rotation stays deferred
+  until the owner prompts it.

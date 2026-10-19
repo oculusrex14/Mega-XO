@@ -378,8 +378,9 @@ async function main() {
       await cell.waitFor({state:'visible'});
       await cell.tap();
       await touchPage.waitForFunction(()=>document.querySelector('.gb-turn-strip strong')?.textContent==='Your move');
-      // Allow the render's bounded correction window (three frames) to settle.
-      await touchPage.evaluate(()=>new Promise(resolve=>{let n=0;const tick=()=>n++<5?requestAnimationFrame(tick):resolve();tick();}));
+      // Measure the settled position after the render's bounded correction window (three frames
+      // plus 120/250/500ms attempts for engines that adjust late).
+      await touchPage.waitForTimeout(650);
       botPositions.push(await touchPage.locator('.gb-frame').evaluate(frame=>frame.getBoundingClientRect().top));
     }
     check('P21-BROWSER-TOUCH-BOT-REPEATED-ANCHOR', botPositions.every(top=>Math.abs(top-botAnchor)<=3),

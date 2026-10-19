@@ -1427,6 +1427,42 @@ async function main() {
     }, 30000);
   }
 
+  /* MXA-PROMO-RESTORE: the unattended intro-price expiry sweep. Single-flight like the other
+   * jobs; the first tick after boot re-verifies provider state (so a restart or a missed window
+   * self-heals), a failed restore re-runs on the next tick and raises a RATE-LIMITED operations
+   * email so a silently discounted charge state cannot persist. While the restore is failing the
+   * commerce service keeps serving intro prices, so the recorded amount always equals the
+   * provider charge - no stuck orders, and the alert names the exact failure. */
+  if (arg('--intro-restore', 'on') !== 'off') {
+    let introRestoreBusy = false;
+    let lastRestoreAlertAt = 0;
+    const restoreAlert = async (result) => {
+      const nowAt = Date.now();
+      if (nowAt - lastRestoreAlertAt < 60 * 60 * 1000) return;
+      lastRestoreAlertAt = nowAt;
+      const to = process.env.OPERATIONS_ALERT_EMAIL || 'contact@antimatterinnovations.com';
+      try {
+        await mailTransport.sendMail({ to, subject: 'Mega XOXO — promo price restore needs attention', text: 'The scheduled Dodo intro-price restore did not complete: ' + JSON.stringify(result).slice(0, 800) + '. New orders are still recorded at intro prices until the restore succeeds. Investigate the Dodo API response, or apply the base-price env flip manually (scripts/v5/dodo-price-window.cjs --mode base).' });
+      } catch (error) { console.error(JSON.stringify({ event: 'intro_restore_alert_error', code: safeError(error) })); }
+    };
+    const restoreTick = async () => {
+      const result = commerce.processIntroPriceRestore ? await commerce.processIntroPriceRestore() : null;
+      if (result && Array.isArray(result.failures) && result.failures.length) {
+        console.error(JSON.stringify({ event: 'intro_restore_failed', failures: result.failures }));
+        await restoreAlert(result);
+      } else if (result && result.done === true && ((result.restored || 0) + (result.already || 0)) > 0) {
+        console.log(JSON.stringify({ event: 'intro_restore_done', restored: result.restored || 0, already: result.already || 0, at: new Date().toISOString() }));
+      }
+      return result;
+    };
+    let introRestoreTimer = setInterval(() => {
+      if (introRestoreBusy) return;
+      introRestoreBusy = true;
+      Promise.resolve(restoreTick()).catch((error) => console.error(JSON.stringify({ event: 'intro_restore_error', code: safeError(error) }))).finally(() => { introRestoreBusy = false; });
+    }, 5 * 60 * 1000);
+    Promise.resolve(restoreTick()).catch((error) => console.error(JSON.stringify({ event: 'intro_restore_error', code: safeError(error) })));
+  }
+
   /* The worker pass (worker_runtime): lapsed work, the privacy/retention sweeps and mail delivery.
    * Mail delivery is DEFERRED while the bound inventory disables email, so this can run safely on the
    * production target without a provider. `start()` arms the periodic pass and `stop()` clears it

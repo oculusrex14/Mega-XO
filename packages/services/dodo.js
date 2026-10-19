@@ -160,6 +160,45 @@ function createDodoProvider({ apiKey, webhookSecret, mode = 'live', fetchImpl = 
       };
     },
 
+    /* MXA-PROMO-RESTORE (2026-10-19): verify-then-patch one one-time product back to its base
+     * price (the USD base price plus the INR localized rule), mirroring the dodo-price-window
+     * flip procedure. Idempotent per call - a verified product returns 'already' without any
+     * write - and every write is re-read afterwards, so a silently failed patch throws instead
+     * of reporting success. Only ever called for once-products; the Mega Pass price never flips
+     * because its promo discount is the customer-entered code on a base-priced subscription. */
+    async restoreProductPrice({ dodoProductId, base }) {
+      if (!this.isProductId(dodoProductId) || !base || typeof base !== 'object' || Array.isArray(base)) throw Error('DODO_RESTORE_INVALID');
+      const usd = Number(base.usd);
+      if (!Number.isSafeInteger(usd) || usd <= 0) throw Error('DODO_RESTORE_INVALID');
+      const inrTarget = Number.isSafeInteger(Number(base.inr)) && Number(base.inr) > 0 ? Number(base.inr) : null;
+      const product = await call('/products/' + encodeURIComponent(dodoProductId), 'GET');
+      const currentUsd = product && product.price ? Number(product.price.price) : null;
+      let inrRule = null;
+      if (inrTarget !== null) {
+        const localized = await call('/products/' + encodeURIComponent(dodoProductId) + '/localized-prices', 'GET');
+        const rules = localized && Array.isArray(localized.items) ? localized.items : [];
+        inrRule = rules.find(rule => String(rule.currency).toUpperCase() === 'INR' && rule.id) || null;
+      }
+      const usdOk = currentUsd === usd;
+      const inrOk = inrTarget === null ? true : (inrRule ? Number(inrRule.amount) === inrTarget : false);
+      if (usdOk && inrOk) return 'already';
+      if (!usdOk) await call('/products/' + encodeURIComponent(dodoProductId), 'PATCH', { price: { type: 'one_time_price', currency: 'USD', price: usd } });
+      if (!inrOk) {
+        if (!inrRule) await call('/products/' + encodeURIComponent(dodoProductId) + '/localized-prices', 'POST', { currency: 'INR', country_code: 'IN', amount: inrTarget });
+        else await call('/products/' + encodeURIComponent(dodoProductId) + '/localized-prices/' + encodeURIComponent(inrRule.id), 'PATCH', { amount: inrTarget });
+      }
+      const after = await call('/products/' + encodeURIComponent(dodoProductId), 'GET');
+      const afterUsd = after && after.price ? Number(after.price.price) : null;
+      if (afterUsd !== usd) throw Error('DODO_RESTORE_VERIFY_FAILED');
+      if (inrTarget !== null) {
+        const afterLocalized = await call('/products/' + encodeURIComponent(dodoProductId) + '/localized-prices', 'GET');
+        const afterRules = afterLocalized && Array.isArray(afterLocalized.items) ? afterLocalized.items : [];
+        const afterInr = afterRules.find(rule => String(rule.currency).toUpperCase() === 'INR');
+        if (!afterInr || Number(afterInr.amount) !== inrTarget) throw Error('DODO_RESTORE_VERIFY_FAILED');
+      }
+      return 'patched';
+    },
+
     /* Standard Webhooks verification (shared scheme with Polar): entries are "v1,<base64>";
      * the signed content is id.timestamp.rawBody; the secret is base64 after the whsec_ prefix. */
     verifyWebhook({ id, timestamp, signature, rawBody, now = Date.now() }) {

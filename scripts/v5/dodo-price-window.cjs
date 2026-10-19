@@ -1,12 +1,17 @@
 #!/usr/bin/env node
 'use strict';
 
-/* 2026-10-19: the Dodo intro-price window flip. The 50% launch prices live DIRECTLY on the Dodo
- * products (never discount codes), so the window boundary is an explicit, verified price flip:
+/* 2026-10-19: the Dodo intro-price window flip (owner two-mechanism model). The ONE-TIME 50%
+ * launch prices live DIRECTLY on the Dodo products (the provider pricing mechanism - no code,
+ * no player action), so the window boundary is an explicit, verified price flip. The Mega Pass
+ * is NOT flipped: its product keeps the base recurring price and the discount is the LAUNCH50
+ * code the player enters on the Dodo checkout, which expires provider-side on its own date.
  *
  *   node scripts/v5/dodo-price-window.cjs --mode intro   # before the window opens (already done)
  *   node scripts/v5/dodo-price-window.cjs --mode base    # when the window closes
  *   node scripts/v5/dodo-price-window.cjs --verify       # read-only: confirm env matches Dodo
+ *   node scripts/v5/dodo-price-window.cjs --restrict-code LAUNCH50 --code-products mega_pass
+ *     # scope the launch code so it can never discount the intro-priced one-time products
  *
  * The script NEVER prints the API key or the webhook secret, only talks to the configured mode's
  * host, verifies every change with a follow-up GET, and prints the EXACT provider-signin.env
@@ -24,7 +29,7 @@ function arg(name) {
 function flag(name) { return process.argv.includes('--' + name); }
 
 const PRIVATE_DIR = process.env.DODO_PRIVATE_DIR || '/Users/oculus/Downloads/Mega-XO-private-evidence/dodo';
-const MODE = arg('mode') || (flag('verify') ? 'verify' : null);
+const MODE = arg('mode') || (flag('verify') ? 'verify' : (arg('restrict-code') ? 'restrict-code' : null));
 const API_BASE = (flag('mode-test') ? 'https://test.dodopayments.com' : 'https://live.dodopayments.com');
 
 /* The launch price table. INTRO is the live 50%-off launch price; BASE is the standard price the
@@ -35,12 +40,17 @@ const PRICES = {
   crowns_525: { base: { usd: 499, inr: 24900 }, intro: { usd: 249, inr: 12500 } },
   crowns_1100: { base: { usd: 999, inr: 49900 }, intro: { usd: 499, inr: 25000 } },
   remove_ads: { base: { usd: 399, inr: 19900 }, intro: { usd: 199, inr: 9900 } },
-  mega_pass: { base: { usd: 399, inr: 19900 }, intro: { usd: 199, inr: 9900 } },
+  /* The Mega Pass never flips: the intro entry equals base so even a stray loop is a no-op, and
+   * the flip loop skips it outright - its discount is the customer-entered LAUNCH50 code. */
+  mega_pass: { base: { usd: 399, inr: 19900 }, intro: { usd: 399, inr: 19900 } },
 };
 
+const RESTRICT_CODE = arg('restrict-code');
+const CODE_PRODUCTS = (arg('code-products') || 'mega_pass').split(',').map(s => s.trim()).filter(Boolean);
+
 async function main() {
-  if (!MODE || !['intro', 'base', 'verify'].includes(MODE)) {
-    process.stderr.write('usage: node scripts/v5/dodo-price-window.cjs --mode intro|base | --verify [--mode-test] [--private-dir <dir>]\n');
+  if (!MODE || !['intro', 'base', 'verify', 'restrict-code'].includes(MODE)) {
+    process.stderr.write('usage: node scripts/v5/dodo-price-window.cjs --mode intro|base | --verify | --restrict-code <CODE> [--code-products id,id] [--mode-test] [--private-dir <dir>]\n');
     process.exitCode = 1;
     return;
   }
@@ -54,9 +64,24 @@ async function main() {
   };
   let failures = 0;
   const envLines = [];
+  if (MODE === 'restrict-code') {
+    if (!RESTRICT_CODE || RESTRICT_CODE.length < 3) { process.stderr.write('restrict-code needs a code\n'); process.exitCode = 1; return; }
+    const listed = await call('/discounts?limit=100', 'GET');
+    const items = listed && Array.isArray(listed.items) ? listed.items : [];
+    const discount = items.find(item => typeof item.code === 'string' && item.code.toUpperCase() === RESTRICT_CODE.toUpperCase());
+    if (!discount || !discount.id) { process.stderr.write('DISCOUNT_NOT_FOUND ' + RESTRICT_CODE + '\n'); process.exitCode = 1; return; }
+    await call('/discounts/' + discount.id, 'PATCH', { restricted_to: CODE_PRODUCTS });
+    const after = await call('/discounts/' + discount.id, 'GET');
+    const scoped = after && Array.isArray(after.restricted_to) ? after.restricted_to : [];
+    const ok = CODE_PRODUCTS.every(id => scoped.includes(id)) && scoped.length === CODE_PRODUCTS.length;
+    process.stdout.write((ok ? 'restricted ' : 'RESTRICT_MISMATCH ') + discount.code + ' -> ' + JSON.stringify(scoped) + '\n');
+    if (!ok) process.exitCode = 1;
+    return;
+  }
   for (const [productId, entry] of Object.entries(catalog)) {
+    const skipFlip = productId === 'mega_pass';
     const target = MODE === 'verify' ? null : PRICES[productId] && PRICES[productId][MODE];
-    if (MODE !== 'verify' && target) {
+    if (MODE !== 'verify' && target && !skipFlip) {
       let patchPrice;
       if (productId === 'mega_pass') patchPrice = { type: 'recurring_price', currency: 'USD', price: target.usd, payment_frequency_count: 1, payment_frequency_interval: 'Month', subscription_period_count: 10, subscription_period_interval: 'Year' };
       else patchPrice = { type: 'one_time_price', currency: 'USD', price: target.usd };
@@ -69,7 +94,7 @@ async function main() {
     const localizedBefore = MODE === 'verify' ? null : await call('/products/' + entry.productId + '/localized-prices', 'GET');
     const rules = localizedBefore && Array.isArray(localizedBefore.items) ? localizedBefore.items : [];
     const inrRule = rules.find(rule => String(rule.currency).toUpperCase() === 'INR');
-    if (MODE !== 'verify' && target) {
+    if (MODE !== 'verify' && target && !skipFlip) {
      if (!inrRule) {
       await call('/products/' + entry.productId + '/localized-prices', 'POST', { currency: 'INR', country_code: 'IN', amount: target.inr });
      } else if (Number(inrRule.amount) !== target.inr) {

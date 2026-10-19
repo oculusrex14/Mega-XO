@@ -29,6 +29,7 @@ async function allowance(tx, actor) {
  return { policyVersion: VERSION, campaignId: policy.campaign_id, cap: CAP, allocated,
   remaining: remaining(allocated), effectiveAt: new Date(policy.effective_at).toISOString(),
   expiresAt: new Date(policy.expires_at).toISOString(),
+  retiredAt: policy.retired_at ? new Date(policy.retired_at).toISOString() : null,
   publishedAt: policy.published_at, ruleHash: policy.rule_hash };
 }
 // Caller holds eligibility -> occupancy/wallet before this insert. Every provider shares it.
@@ -40,7 +41,9 @@ async function reserve(tx, actor, key, provider, product, acceptanceHash = null)
   return old;
  }
  const state = await allowance(tx, actor);
- if (tx.clock() < Date.parse(state.effectiveAt) || tx.clock() >= Date.parse(state.expiresAt)) return null;
+ // Display/code expiry is NOT proof that a provider stopped charging promotional prices.
+ // Retire a campaign only on separately verified price eligibility; never release on a timer.
+ if (tx.clock() < Date.parse(state.effectiveAt) || (state.retiredAt && tx.clock() >= Date.parse(state.retiredAt))) return null;
  requireCapacity(state.allocated, product.crowns);
  if (state.publishedAt && !acceptanceHash) throw Error('PROMOTION_ACCEPTANCE_REQUIRED');
  if (acceptanceHash) {

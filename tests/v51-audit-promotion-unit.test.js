@@ -9,8 +9,8 @@ function packet() {
  return {
   transactions: [{ grantId: 'purchase:dodo:cks_test' }], response: null,
   evidence: { policyHash: 'a'.repeat(64), acceptanceHash: 'b'.repeat(64), sourceSha: 'c'.repeat(40), sql: 'SELECT frozen evidence', params: [], snapshotAt: new Date(NOW - 12 * DAY).toISOString(), frozenRows: [{ crowns: 100 }], provenance: 'verified order + immutable grant' },
-  notice: { rule: 'v1 rule', transactions: 'order one', figures: '100 Crowns', appealRoute: '/appeals', inAccountReceipt: 'delivered:1', emailReceipt: 'delivered:2', deliveredAt: new Date(NOW - 11 * DAY).toISOString() },
-  decision: { finding: 'proven_breach', reason: 'Independent payment evidence', basis: 'evidence', reference: 'decision:1', reviewer: 'operator:1', secondReviewer: 'operator:2', decidedAt: new Date(NOW).toISOString(), appealUntil: new Date(NOW + 30 * DAY).toISOString(), amounts: [{ grantId: 'purchase:dodo:cks_test', crowns: 100, coins: 0 }] },
+  notice: { rule: 'v1 rule', transactions: 'order one', figures: '100 Crowns', proposedAmounts:{crowns:100,coins:0}, appealRoute: '/appeals', inAccountReceipt: 'delivered:1', emailReceipt: 'delivered:2', deliveredAt: new Date(NOW - 11 * DAY).toISOString() },
+  decision: { finding: 'proven_breach', reason: 'Independent payment evidence', basis: 'evidence', breachedRule:'accepted promotion v1', breachEvidenceHash:'d'.repeat(64), reference: 'decision:1', reviewer: 'operator:1', secondReviewer: 'operator:2', decidedAt: new Date(NOW).toISOString(),deliveredAt:new Date(NOW).toISOString(),deliveryReceipt:'decision:delivered', appealUntil: new Date(NOW + 30 * DAY).toISOString(), amounts: [{ grantId: 'purchase:dodo:cks_test', crowns: 100, coins: 0 }] },
  };
 }
 test('allocation: every pack size consumes one non-replenishing 22,000-Crown budget', () => {

@@ -9,7 +9,7 @@ const lab = require('./v5-pg-lab.js');
 const { createCommerceService } = require('../packages/services/commerce.js');
 const { createCoreService } = require('../packages/services/core.js');
 const { createPromotionOperatorService } = require('../packages/services/promotion-operator.js');
-const { createPromotionAuditDelivery } = require('../packages/services/promotion-audit.js');
+const { createPromotionAuditDelivery, createPromotionAuditWorker } = require('../packages/services/promotion-audit.js');
 const { createCommerceIngressService } = require('../packages/services/commerce-ingress.js');
 const { hash, VERSION } = require('../packages/services/promotion-allocation.js');
 const { readPromotionMetrics } = require('../packages/services/promotion-metrics.js');
@@ -87,7 +87,12 @@ test('promotion enforcement: real Core transactions, all providers, due process 
   await assert.rejects(commerce.reservePromotionCheckout('svc_alice','after-all-effects','crowns_100','apple'),/PROMOTION_ALLOCATION_CAP/);
   assert.equal(calls,1);
  });
- let order, acceptance, lot, packet, command;
+ let order, acceptance, lot, packet, command, auditWorker, auditPool;
+ await t.test('display expiry does not retire unverified provider promotional prices',async()=>{
+  const prior=clock;clock=Date.parse('2027-01-01T00:00:00Z');
+  await assert.rejects(commerce.reservePromotionCheckout('svc_alice','after-display-expiry','crowns_100','apple'),/PROMOTION_ALLOCATION_CAP/);
+  clock=prior;
+ });
  await t.test('published policy requires verified disclosure/acceptance before provider I/O', async () => {
   const policyHash = 'a'.repeat(64);
   await admin.query('UPDATE monetization.promotion_policies SET published_at=$1,rule_hash=$2 WHERE policy_version=$3',[new Date(START-DAY).toISOString(),policyHash,VERSION]);
@@ -117,8 +122,8 @@ test('promotion enforcement: real Core transactions, all providers, due process 
   packet = {
    transactions:[{grantId:lot.grant_id,allocationId:lot.allocation_id,providerOrderRef:order.checkoutId,verifiedPrice:{amount:499,currency:'usd'},priceVerificationHash:'b'.repeat(64)}],response:null,
    evidence:{policyHash:'a'.repeat(64),acceptanceHash:acceptance.acceptanceHash,sourceSha:'c'.repeat(40),sql:'SELECT * FROM frozen synthetic evidence WHERE actor_id=$1',params:['svc_bob'],snapshotAt:new Date(START).toISOString(),frozenRows:[{grantId:lot.grant_id,crowns:1100}],provenance:'verified synthetic order and matching grant'},
-   notice:{rule:VERSION,transactions:order.checkoutId,figures:'Proposed 100 Crowns',appealRoute:'/appeals',inAccountReceipt:'delivered-in-account',emailReceipt:'delivered-email',deliveredAt:new Date(START).toISOString()},
-   decision:{finding:'proven_breach',basis:'independent-evidence',reason:'Synthetic proven breach of accepted rule',reference:'decision:one',reviewer:first.actor,secondReviewer:second.actor,decidedAt:new Date(clock).toISOString(),appealUntil:new Date(clock+30*DAY).toISOString(),amounts:[{grantId:lot.grant_id,crowns:100,coins:0}]},
+   notice:{rule:VERSION,transactions:order.checkoutId,figures:'Proposed 100 Crowns',proposedAmounts:{crowns:100,coins:0},appealRoute:'/appeals',inAccountReceipt:'delivered-in-account',emailReceipt:'delivered-email',deliveredAt:new Date(START).toISOString()},
+   decision:{finding:'proven_breach',basis:'independent-evidence',breachedRule:VERSION,breachEvidenceHash:'e'.repeat(64),reason:'Synthetic proven breach of accepted rule',reference:'decision:one',reviewer:first.actor,secondReviewer:second.actor,decidedAt:new Date(clock).toISOString(),deliveredAt:new Date(clock).toISOString(),deliveryReceipt:'decision:delivered',appealUntil:new Date(clock+30*DAY).toISOString(),amounts:[{grantId:lot.grant_id,crowns:100,coins:0}]},
   };
   command={caseId:'case-one',targetActor:'svc_bob',approvedAmounts:packet.decision.amounts,policyVersion:VERSION,reasonCode:'proven-promotion-breach',evidenceHash:hash(packet),decisionReference:packet.decision.reference};
   await assert.rejects(operators.recordCase({scope:'player',actor:'svc_bob'},{...command,packet}),/OPERATOR_REQUIRED/);
@@ -145,7 +150,7 @@ test('promotion enforcement: real Core transactions, all providers, due process 
  await t.test('over-recovery and injected journal failure roll back the entire transaction', async () => {
   const before = await wallet('svc_bob');
   for (const [id,amount] of [['too-much',5000],['rollback',50]]) {
-   const p=structuredClone(packet);p.decision.amounts[0].crowns=amount;
+   const p=structuredClone(packet);p.decision.amounts[0].crowns=amount;p.notice.proposedAmounts.crowns=amount;
    const cmd={...command,caseId:id,approvedAmounts:p.decision.amounts,evidenceHash:hash(p)};
    await operators.recordCase(first,{...cmd,packet:p});await operators.approveForfeiture(second,cmd);
    if(id==='rollback') await admin.query("CREATE FUNCTION economy.promotion_test_fail() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.entry_id='confiscation:rollback:crowns' THEN RAISE EXCEPTION 'synthetic-journal-failure'; END IF; RETURN NEW; END $$; CREATE TRIGGER promotion_test_fail BEFORE INSERT ON economy.ledger FOR EACH ROW EXECUTE FUNCTION economy.promotion_test_fail()");
@@ -158,13 +163,17 @@ test('promotion enforcement: real Core transactions, all providers, due process 
   await admin.query('ALTER ROLE audit_runtime LOGIN');
   const { createPgPool }=require('../packages/db/pg/pool.js');
   const u=new URL(lab.dbUrl(db));
-  const auditPool=createPgPool({host:u.hostname,port:Number(u.port),database:db,user:'audit_runtime',role:'audit_runtime',label:'test',service:'promotion-audit-test',revision:'promotion',allowLocalNoTls:true,pool:{max:2},budget:lab.BUDGET});
+  auditPool=createPgPool({host:u.hostname,port:Number(u.port),database:db,user:'audit_runtime',role:'audit_runtime',label:'test',service:'promotion-audit-test',revision:'promotion',allowLocalNoTls:true,pool:{max:2},budget:lab.BUDGET});
   t.after(()=>auditPool.end());
   const audit=createPromotionAuditDelivery(auditPool,{secret:'synthetic-audit-secret-for-test-only',now:()=>clock});
   const results=await Promise.all([audit.deliver({eventId:'confiscation:case-one'}),audit.deliver({eventId:'confiscation:case-one'})]);
   assert.deepEqual(results[0],results[1]);
   assert.equal(await lab.scalar(db,'SELECT count(*) FROM audit.operator_audit'),'1');
   await assert.rejects(pool.query('SELECT * FROM audit.operator_audit'),/permission denied/);
+  const jobs=require('../packages/services/jobs.js').createJobService({pool:lab.poolsFor(db).worker,now:()=>clock});
+  auditWorker=createPromotionAuditWorker({jobs,audit});
+  await auditWorker.tick();
+  assert.equal(await lab.scalar(db,"SELECT state FROM ops.outbox WHERE outbox_id='promotion.audit:confiscation:case-one'"),'sent');
  });
  await t.test('successful appeals restore through compensating entries without renewing allocation', async () => {
   const cmd={caseId:'case-one',appealReference:'appeal-upheld:one',appealEvidenceHash:'d'.repeat(64),reviewer:first.actor,secondReviewer:second.actor,reason:'Synthetic successful appeal'};
@@ -173,5 +182,8 @@ test('promotion enforcement: real Core transactions, all providers, due process 
   assert.equal((await wallet('svc_bob')).purchased_crowns,'1100');
   assert.equal(await lab.scalar(db,"SELECT count(*) FROM economy.ledger WHERE entry_id='compensation:case-one:crowns'"),'1');
   assert.equal((await commerce.status('svc_bob')).promotionAllocation.remaining,20900);
+  await auditWorker.tick();
+  const logger=require('../packages/services/security.js').createAuditLogger({pool:auditPool,secret:'synthetic-audit-secret-for-test-only'});
+  const verified=await logger.verifyChain();assert.equal(verified.valid,true);assert.equal(verified.count,2);
  });
 });

@@ -398,7 +398,7 @@
       "id": 66,
       "name": "0066_promotion_enforcement",
       "file": "migrations/0066_promotion_enforcement.sql",
-      "sha256": "ada16a9540212ce1170b66bfa5901234cd21038451b7b8b48b3b6f4fdacd7dd6"
+      "sha256": "703418c045dfd689d0ce2af4dae1537efbf0ce7489b1b2947e0b58ddc08dbc4c"
     }
   ]
 }

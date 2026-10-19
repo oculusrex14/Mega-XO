@@ -25,9 +25,13 @@ function validateCase(packet, now) {
   || !text(n.inAccountReceipt) || !Number.isFinite(Date.parse(n.deliveredAt))
   || Date.parse(n.deliveredAt) > now - 10 * DAY || !Object.hasOwn(packet, 'response')
   || d.finding !== 'proven_breach' || !text(d.reason) || !text(d.reference)
+  || !HEX.test(d.breachEvidenceHash) || !text(d.breachedRule) || d.serverApprovedCapExcess === true
   || !text(d.reviewer) || !text(d.secondReviewer) || d.reviewer === d.secondReviewer
   || !Number.isFinite(Date.parse(d.decidedAt)) || Date.parse(d.decidedAt) < Date.parse(n.deliveredAt) + 10 * DAY
   || Date.parse(d.decidedAt) > now || Date.parse(d.appealUntil) < Date.parse(d.decidedAt) + 30 * DAY
+  || !text(d.deliveryReceipt) || !Number.isFinite(Date.parse(d.deliveredAt))
+  || Date.parse(d.deliveredAt) < Date.parse(d.decidedAt) || Date.parse(d.deliveredAt) > now
+  || Date.parse(d.appealUntil) < Date.parse(d.deliveredAt) + 30 * DAY
   || !Number.isFinite(Date.parse(d.appealUntil)) || !Array.isArray(d.amounts) || !d.amounts.length) throw Error('DUE_PROCESS_REQUIRED');
  // Where no verified address exists, retain the evidence of that check. Core never gains
  // credential-table access merely to inspect an address.
@@ -40,6 +44,9 @@ function validateCase(packet, now) {
    || a.crowns + a.coins <= 0) throw Error('INVALID_APPROVED_AMOUNTS');
   seen.add(a.grantId);
  }
+ const totals=d.amounts.reduce((s,a)=>({crowns:s.crowns+a.crowns,coins:s.coins+a.coins}),{crowns:0,coins:0});
+ if(!n.proposedAmounts || !Number.isSafeInteger(n.proposedAmounts.crowns) || !Number.isSafeInteger(n.proposedAmounts.coins)
+  || totals.crowns>n.proposedAmounts.crowns || totals.coins>n.proposedAmounts.coins) throw Error('NOTICE_AMOUNT_MISMATCH');
  return packet;
 }
 function debitHeld(wallet, approved, held) {

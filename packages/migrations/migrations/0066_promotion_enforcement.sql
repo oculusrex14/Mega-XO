@@ -6,6 +6,7 @@ CREATE TABLE monetization.promotion_policies (
   campaign_id TEXT NOT NULL,
   effective_at timestamptz NOT NULL,
   expires_at timestamptz NOT NULL,
+  retired_at timestamptz,
   cap INTEGER NOT NULL CHECK (cap = 22000),
   published_at timestamptz,
   rule_hash TEXT CHECK (rule_hash ~ '^[0-9a-f]{64}$')

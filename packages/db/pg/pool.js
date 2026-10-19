@@ -272,10 +272,22 @@ function sanitizeStatements(resolved) {
 function createPgPool(input = {}) {
  const resolved = normalizeConfig(input);
  const { Pool } = driver();
+
+  /* Static-attestation cache (infrastructure brief 2026-10-19, part D). verifySession ran its
+   * full catalog posture (schema-privilege aggregate + cross-role membership) on EVERY checkout,
+   * multiplying one business statement into 3-4 SQL round trips. The posture is cluster-static
+   * for the login role; it is now attested once per BACKEND and re-attested only past a TTL.
+   * Authoritative enforcement never moved: the role grants themselves refuse revoked access,
+   * and the per-transaction identity/timer checks stay inside BEGIN (see withIdempotentTransaction).
+   * A destroyed backend (error path) drops its cache with the socket. */
+  const SESSION_ATTEST = Symbol('megaPgSessionAttest');
+  const attestTtlMs = input.sessionAttestTtlMs === undefined ? 60000 : input.sessionAttestTtlMs;
+  if (!Number.isSafeInteger(attestTtlMs) || attestTtlMs < 5000 || attestTtlMs > 600000) throw new PgGuardError('SESSION_ATTEST_TTL_INVALID', { sessionAttestTtlMs: input.sessionAttestTtlMs });
  // Mode boundary decided by the verified host normalization, not by guesswork:
  // a Neon '-pooler' endpoint is transaction pooling; everything else is a
  // direct/session backend.
  const pooled = isPoolerHost(resolved.host);
+  const attestFingerprint = JSON.stringify([resolved.role, resolved.service, resolved.revision, resolved.schemas, resolved.applicationName, resolved.timings.statementTimeoutMs, resolved.timings.lockTimeoutMs, resolved.timings.idleInTransactionTimeoutMs, resolved.expectedServerMajor, pooled]);
  const raw = new Pool({
   host: resolved.host,
   port: resolved.port,
@@ -352,7 +364,14 @@ function createPgPool(input = {}) {
    throw new PgGuardError('PG_CONNECT_FAILED', { target: resolved.database, reason: message }, error);
   }
   try {
-   await verifySession(client, { ...expectations, checkSearchPath });
+   /* Full posture attestation only when this backend has none, or its cache is stale, or the
+    * expectations fingerprint changed (reconfiguration). A fresh cache skips straight to the
+    * caller\'s work. */
+   const cached = client[SESSION_ATTEST];
+   if (!cached || cached.fingerprint !== attestFingerprint || Date.now() - cached.at >= attestTtlMs) {
+    await verifySession(client, { ...expectations, checkSearchPath });
+    client[SESSION_ATTEST] = { fingerprint: attestFingerprint, at: Date.now() };
+   }
   } catch (error) {
    outstanding -= 1;
    if (gateQueued) queued = Math.max(0, queued - 1);
@@ -576,6 +595,18 @@ function requirePgScope(client) {
 }
 
 async function withIdempotentTransaction(client, fn, options = {}) {
+/* set_config returns the canonical display form ("5s"), pg_settings the raw unit count
+ * ("5000"); accept either by normalizing to milliseconds. Unknown forms fail the comparison
+ * and surface as drift rather than being waved through. */
+function normalizeGucMs(value) {
+  const s = String(value === undefined || value === null ? '' : value).trim();
+  if (/^-?\d+$/.test(s)) return Number(s);
+  const m = /^([-\d.]+)\s*(us|ms|s|min|h|d)$/.exec(s);
+  if (!m) return null;
+  const n = Number(m[1]);
+  switch (m[2]) { case 'us': return n / 1000; case 'ms': return n; case 's': return n * 1000; case 'min': return n * 60000; case 'h': return n * 3600000; case 'd': return n * 86400000; default: return null; }
+}
+
  if (!client || typeof client.query !== 'function') throw new ContextError('PG_CLIENT_REQUIRED');
  if (typeof fn !== 'function') throw new ContextError('CALLBACK_REQUIRED');
  if (client[RELEASED]) throw new ContextError('CLIENT_RELEASED');
@@ -628,13 +659,33 @@ async function withIdempotentTransaction(client, fn, options = {}) {
    // values it bypasses the SET parser's identifier quoting of 'none'
    // entirely). The read-back in verifySession below proves they landed.
    const t = options.expectSession;
-   await client.query(
-    `SELECT pg_catalog.set_config('search_path', ${quoteLiteral(t.searchPath)}, true),`
-    + ` pg_catalog.set_config('application_name', ${quoteLiteral(t.applicationName)}, true),`
-    + ` pg_catalog.set_config('statement_timeout', ${quoteLiteral(String(t.statementTimeoutMs))}, true),`
-    + ` pg_catalog.set_config('lock_timeout', ${quoteLiteral(String(t.lockTimeoutMs))}, true),`
-    + ` pg_catalog.set_config('idle_in_transaction_session_timeout', ${quoteLiteral(String(t.idleInTransactionTimeoutMs))}, true);`);
-   await verifySession(client, { ...options.expectSession, phase: 'transaction-open' });
+   /* Single-round-trip pin+prove: set_config returns the value it just installed, and
+    * current_user/session_user are read in the SAME statement on the backend actually serving
+    * this transaction. This keeps the authoritative identity + timer + search_path verification
+    * inside the borrowed transaction (mandatory under transaction pooling) while dropping the
+    * expensive static posture re-checks from the per-transaction hot path - those are
+    * cluster-static for the login role and are attested per backend at checkout (with a TTL
+    * revalidation). Real enforcement on revocation is the grants themselves, which refuse the
+    * next statement regardless of any cached posture row. */
+   const pinnedResult = await client.query(
+    `SELECT pg_catalog.set_config('search_path', ${quoteLiteral(t.searchPath)}, true) AS pinned_search_path,`
+    + ` pg_catalog.set_config('application_name', ${quoteLiteral(t.applicationName)}, true) AS pinned_application_name,`
+    + ` pg_catalog.set_config('statement_timeout', ${quoteLiteral(String(t.statementTimeoutMs))}, true) AS pinned_statement_timeout,`
+    + ` pg_catalog.set_config('lock_timeout', ${quoteLiteral(String(t.lockTimeoutMs))}, true) AS pinned_lock_timeout,`
+    + ` pg_catalog.set_config('idle_in_transaction_session_timeout', ${quoteLiteral(String(t.idleInTransactionTimeoutMs))}, true) AS pinned_idle_timeout,`
+    + ` current_user AS \"current_user\", session_user AS \"session_user\";`);
+   const pinned = pinnedResult && pinnedResult.rows && pinnedResult.rows[0];
+   if (!pinned) throw new PgGuardError('ROLE_CHECK_FAILED', { reason: 'empty-pin-probe', phase: 'transaction-open' });
+   if (pinned.current_user !== t.role || pinned.session_user !== t.role) {
+    throw new PgGuardError('ROLE_MISMATCH', { expected: t.role, current_user: pinned.current_user, session_user: pinned.session_user, phase: 'transaction-open' });
+   }
+   const drift = [];
+   if (String(pinned.pinned_search_path || '').replace(/\s+/g, '') !== String(t.searchPath).replace(/\s+/g, '')) drift.push({ setting: 'search_path', expected: t.searchPath, observed: String(pinned.pinned_search_path) });
+   if (String(pinned.pinned_application_name || '') !== t.applicationName) drift.push({ setting: 'application_name', expected: t.applicationName, observed: String(pinned.pinned_application_name) });
+   if (normalizeGucMs(pinned.pinned_statement_timeout) !== t.statementTimeoutMs) drift.push({ setting: 'statement_timeout', expected: String(t.statementTimeoutMs), observed: String(pinned.pinned_statement_timeout) });
+   if (normalizeGucMs(pinned.pinned_lock_timeout) !== t.lockTimeoutMs) drift.push({ setting: 'lock_timeout', expected: String(t.lockTimeoutMs), observed: String(pinned.pinned_lock_timeout) });
+   if (normalizeGucMs(pinned.pinned_idle_timeout) !== t.idleInTransactionTimeoutMs) drift.push({ setting: 'idle_in_transaction_session_timeout', expected: String(t.idleInTransactionTimeoutMs), observed: String(pinned.pinned_idle_timeout) });
+   if (drift.length) throw new PgGuardError('SESSION_SETTINGS_DRIFT', { role: t.role, phase: 'transaction-open', drift });
   } else if (options.expectRole !== undefined && options.expectRole !== null) {
    let idRow = null;
    try {

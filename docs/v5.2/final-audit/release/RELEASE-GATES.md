@@ -81,3 +81,23 @@ continuation lane, purchase-time grandfathering plus durable rejection reconcili
 Exact-candidate CI on the final source: run 39382503049 (base 05b3ee4, docs-only tip 68cc9d6)
 - ALL FIVE jobs success. Verdict: PENDING the fresh independent review of 68cc9d6 and the
 A4 verdict (2026-10-21); the Play internal AAB for vc12 still needs uploading (operational).
+ 
+ ## V6 batch deployment gates at the deployed release 0a67857 (2026-10-20, live)
+ 
+ | Gate | Verdict | Evidence |
+ |---|---|---|
+ | No unresolved P0 vulnerabilities | PASS | Sol final GO for f14dcba; native billing unmounted (verified twice); no secrets printed or committed |
+ | No unresolved P0 data-integrity defects | PASS | Migration chain 0065-0069 verified 69/69 (SCRAM-SHA-256-PLUS) on production; the verified pre-migration checkpoint 10:46:54Z plus dated rollback archives for 2bfdf24c5529 and 0a6785782d80 |
+ | Core gameplay validated | PASS | Device 1.0.11 post-deploy: launch, session persistence (wallet 157 Coins), all screens render |
+ | Production identity and wallet authority verified | PASS | readyz ready:true db verified; the served APK sha256 20d7efb3 EXACT match; all 12 public routes 200; llms.txt and security.txt now live |
+ | Purchases validated where enabled | PASS (scoped) | Web checkout lanes live (Dodo primary); the promotion policy PUBLISHED (rule_hash 09cfc1a1..., cap 22,000); native billing stays unmounted until N6/N7 |
+ | Required platform compliance | PARTIAL | Data Safety and listing saved; the 12-tester/14-day closed test and the final submission click remain owner gates |
+ | Successful production-equivalent build | PASS | CI 39409424251 all five jobs on f14dcba; deploy receipts for 2bfdf24 and 0a67857 |
+ | Critical end-to-end tests passing | PASS | 28/28 in the promotion-postgres lane including the four behavioral presence cases; device email sign-in and the online-play queue verified |
+ | Rollback procedure documented AND tested | PASS | Two dated rollback archives; the forward-recovery rehearsal on a Neon branch (chain verified); the failure-handler fail-safe tested |
+ | Required human approvals identified | PASS | The owner standing order (deploy when ready) plus the Sol GO; the store submissions remain owner-click gates |
+ | No unexplained critical disabled features | PASS | The presence noise fix documented (decision log 15:05/16:00/17:20 IST 2026-10-20); the guardrail register unchanged |
+ 
+ A4 (Neon idle budget) sequencing live: the pre-deploy window FAILED with the root cause recorded (ambient presence writes forced full dumps, ~600MB/day); the fix is deployed and verified (durable presence rows FROZE post-deploy); the post-deploy 48h two-snapshot soak (baseline snapshot-postdeploy-baseline.json, 11:22:33Z) is the gate of record - 24h interim check Oct 21, final verdict Oct 22.
+ 
+ Verdict at the deployed release 0a67857: the batch is LIVE and verified; the remaining owner gates are the store submissions, the on-device rewarded-ad impression, and the A4 48h measurement.

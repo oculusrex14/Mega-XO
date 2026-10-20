@@ -264,6 +264,15 @@ test('1. Association endpoints: serves valid Android and iOS association files w
   );
   assert.ok(appleRes.data.webcredentials, 'Must contain webcredentials section');
 
+  /* D1 (2026-10-20): the RFC 9116 security disclosure serves at the canonical path. */
+  const secRes = await httpRequest(harness.url, '/.well-known/security.txt');
+  assert.equal(secRes.status, 200, 'GET /.well-known/security.txt returns 200');
+  assert.match(secRes.headers['content-type'], /text[\/]plain/, 'Content-Type must be text/plain');
+  const secBody = typeof secRes.data === 'string' ? secRes.data : String(secRes.data);
+  assert.match(secBody, /^Contact: mailto:contact@antimatterinnovations.com$/m, 'Contact field required');
+  assert.ok(secBody.split('\n').some((line) => /^Expires: \d{4}-\d{2}-\d{2}T/.test(line)), 'Expires field required (RFC 9116)');
+  assert.match(secBody, /^Canonical: https:[\\/\\/]megaxo.online[\\/]\.well-known[\\/]security\.txt$/m);
+
   // 1.3 Non-GET method on association files returns 404
   const postAssoc = await httpRequest(harness.url, '/.well-known/assetlinks.json', {
     method: 'POST',

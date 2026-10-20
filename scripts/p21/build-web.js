@@ -117,6 +117,7 @@ function createPlan(root) {
   for (const name of LEGAL_NAMES) add('public/' + name + '.html', 'legal/' + name + '.html', html => html.replaceAll('/public/legal.css', '/legal/legal.css'));
   add('public/legal.css', 'legal/legal.css');
   add('public/app-ads.txt', 'app-ads.txt');
+  generated('llms.txt',rendered.llms,renderSources,'canonical-llms-site-map');
   const documents = {}, legalSources = [];
   for (const name of LEGAL_NAMES) {
     const source = 'public/' + name + '.html';

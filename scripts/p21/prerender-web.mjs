@@ -21,4 +21,4 @@ for(const route of input.routes){
   .replace('<footer id="footer" class="mx-footer"></footer>',`<footer id="footer" class="mx-footer">${site.renderFooter()}</footer>`);
  documents[route]=html; metadata[route]=seo.metadataFor(route);
 }
-process.stdout.write(JSON.stringify({documents,metadata,publicRoutes:seo.publicRoutes,origin:seo.SITE_ORIGIN,robots:seo.robotsTxt(),sitemap:seo.sitemapXml()}));
+process.stdout.write(JSON.stringify({documents,metadata,publicRoutes:seo.publicRoutes,origin:seo.SITE_ORIGIN,robots:seo.robotsTxt(),sitemap:seo.sitemapXml(),llms:seo.llmsTxt()}));

@@ -49,13 +49,15 @@ batch deploy requires the Sol 6.1 review (owner standing order) and the owner re
 | Core gameplay validated | PASS (engine + CI); device replay owner item | No gameplay changes in the cycle; 1.0.9 device install verified (7228a41e→01ac4736 final) |
 | Production identity and wallet authority verified | PASS (unchanged) | Oracle V5 authority untouched during the cycle; readyz healthy at every check |
 | Purchases validated where enabled | PARTIAL → STRONGER | Dodo live + intro pricing + LAUNCH50 promo (auto-revert armed); power-spend contract fixed (#54); promotion cap enforced pre-billing (#55/#56); native RTDN/store notifications remain owner-external |
-| Required platform compliance | PARTIAL → STRONGER | Deletion cooling-off + in-app cancellation + worker completion IMPLEMENTED (#57, SAGAN-004/F054 closed in V6); Play Data safety draft 8/11 tasks, IARC ratings issued; iOS console owner-blocked (auth) |
-| Successful production-equivalent build | PASS | 1.0.9/versionCode 10 APK+AAB with production AdMob units verified in-artifact (01ac4736 APK / 45272a37 AAB); the embedded bundle carries the B4 cooling UI |
+| Required platform compliance | PARTIAL → STRONGER | Deletion cooling-off + in-app cancellation + worker completion IMPLEMENTED (#57, SAGAN-004/F054 closed in V6); Play forms 11/11 COMPLETE (PR #60, db071f7): Data safety all types saved, IARC ratings, category, listing with creatives; iOS console owner-blocked (auth) |
+| Successful production-equivalent build | PASS | 1.0.10/versionCode 11 APK+AAB rebuilt for the Play API-36 requirement (compileSdk/targetSdk 36, commit 13086f5) with production AdMob units verified in-artifact (84c1c2b5 APK / 044ee08a AAB, direct-apk vs google-play distributions verified in dex); device 5199676e reinstalled and launched. Supersedes the 1.0.9 45272a37 build which Play REJECTED for targetSdk 35 |
 | Critical end-to-end tests passing | PASS | Audit regression, account-deletion lifecycle, promotion unit+PG, foundations suites green on merged heads |
 | Rollback procedure documented AND tested | PASS (unchanged) | ROLLBACK-PLAN.md + the deployed change-aware backup gate with LSN watermarks |
 | Required human approvals identified | PASS | Owner items: Play closed-test (12 testers, 14 days) before production, iOS console auth, secret rotation (deferred per owner), final batch-deploy say-so |
 | No unexplained critical disabled features | PASS | Polar dormant BY OWNER DECISION (Dodo primary); Apple sign-in hidden on Android BY DESIGN; every flag documented |
 
-**V6-cycle verdict: CONDITIONAL GO for the batch update.** Remaining before deploy: Newton's B2
-forms (Data safety completion, category, listing), owner's Play closed-test + iOS console, D2
-on-device rewarded-ad pass, A4 48h verdict (2026-10-21), A5 final reconciliation, Sol 6.1 review.
+**V6-cycle verdict: CONDITIONAL GO for the batch update.** Remaining before deploy: owner's Play
+closed-test (12 physical testers, 14 days; internal track already ACTIVE with release 11 (1.0.10)
+published 2026-10-20 11:07 IST to the 2-tester email list, opt-in
+https://play.google.com/apps/internaltest/4700778741227096719) + iOS console auth, D2 on-device
+rewarded-ad pass, A4 48h verdict (2026-10-21), A5 final reconciliation, Sol 6.1 review.

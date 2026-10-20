@@ -241,6 +241,21 @@ recover_on_exit() {
     echo "DEPLOY_FAILED_BEFORE_SWAP status=$status" >&2
     exit "$status"
   fi
+  # R6 (Sol review): after a forward migration the archived schema-old application cannot boot
+  # (packages/db/pg/readiness.js refuses a migration ledger shorter than its manifest).
+  # Restoring the archive in that state would replace a recoverable failure with a certain
+  # outage, and the trap fires precisely when recovery is needed. Compare manifests and switch
+  # to forward recovery when the live schema has moved past the archived application.
+  OLD_MANIFEST_COUNT=$("$NODE" -e 'const m=require(process.argv[1]);console.log(m.migrations.length)' "$ARCHIVED_SOURCE/packages/migrations/manifest.json" 2>/dev/null || echo 0)
+  NEW_MANIFEST_COUNT=$("$NODE" -e 'const m=require(process.argv[1]);console.log(m.migrations.length)' "$LIVE_SOURCE/packages/migrations/manifest.json" 2>/dev/null || echo 0)
+  case "$OLD_MANIFEST_COUNT" in ''|*[!0-9]*) OLD_MANIFEST_COUNT=0 ;; esac
+  case "$NEW_MANIFEST_COUNT" in ''|*[!0-9]*) NEW_MANIFEST_COUNT=0 ;; esac
+  if [ "$OLD_MANIFEST_COUNT" -gt 0 ] && [ "$NEW_MANIFEST_COUNT" -gt 0 ] && [ "$NEW_MANIFEST_COUNT" -gt "$OLD_MANIFEST_COUNT" ]; then
+    echo "FORWARD_RECOVERY_REQUIRED: live schema moved past the archived app (old manifest $OLD_MANIFEST_COUNT < new $NEW_MANIFEST_COUNT); the archived application cannot boot against it" >&2
+    echo "FORWARD_RECOVERY: keeping the NEW trees in place; diagnose the readiness failure, fix forward and restart $SERVICE; archive preserved at $ARCHIVE" >&2
+    rm -f "$READY_FILE"
+    exit "$status"
+  fi
   echo "DEPLOY_FAILED: restoring complete archive $ARCHIVE" >&2
   ${sudo}systemctl stop "$SERVICE" >/dev/null 2>&1 || true
   if ! ${sudo}rm -rf "$LIVE_SOURCE" "$LIVE_WEB"; then

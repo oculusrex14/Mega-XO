@@ -1103,8 +1103,10 @@ async function main() {
      * published anti-hoarding policy. The API tier issues HMAC disclosure tokens derived
      * from the same stable secret; this adapter re-verifies the token inside the receipt
      * before acceptPromotionPolicy records anything, so a forged body can never attest. */
+    /* Sol review R2: the verifier takes the RAW secret string and derives internally; a
+     * pre-derived Buffer was rejected with DISCLOSURE_SECRET_REQUIRED. */
     verifyPromotionAcceptance: (actor, receipt) => require(path.join(ROOT, 'packages/services/promotion-disclosure.js'))
-      .verifyAcceptanceReceipt(require(path.join(ROOT, 'packages/services/promotion-disclosure.js')).deriveSecret(otpSecret), actor, receipt),
+      .verifyAcceptanceReceipt(String(otpSecret), actor, receipt),
     adUnits,
     eligible: (account) => account && account.verified === true && account.suspended !== true && account.hold !== true,
     purchaseProvider,

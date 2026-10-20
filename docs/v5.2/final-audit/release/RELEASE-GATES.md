@@ -56,8 +56,16 @@ batch deploy requires the Sol 6.1 review (owner standing order) and the owner re
 | Required human approvals identified | PASS | Owner items: Play closed-test (12 testers, 14 days) before production, iOS console auth, secret rotation (deferred per owner), final batch-deploy say-so |
 | No unexplained critical disabled features | PASS | Polar dormant BY OWNER DECISION (Dodo primary); Apple sign-in hidden on Android BY DESIGN; every flag documented |
 
-**V6-cycle verdict: CONDITIONAL GO for the batch update.** Remaining before deploy: owner's Play
-closed-test (12 physical testers, 14 days; internal track already ACTIVE with release 11 (1.0.10)
-published 2026-10-20 11:07 IST to the 2-tester email list, opt-in
-https://play.google.com/apps/internaltest/4700778741227096719) + iOS console auth, D2 on-device
-rewarded-ad pass, A4 48h verdict (2026-10-21), A5 final reconciliation, Sol 6.1 review.
+**V6-cycle verdict: NO-GO for the batch update (Sol 6.1 independent review, 2026-10-20,
+/tmp/sol-v6-review/REVIEW.md).** The review found nine findings R1-R9 (P1): the website builder
+TDZ (R1), the disclosure-HMAC composition (R2), the signed-gateway projection (R3), the native
+promotion bypass (R4), the undo/hint ticket schema gap (R5), the schema-incompatible rollback
+trap (R6), the dropped PR #53 protections (R7), the stale 1.0.8 download pin (R8 - FIXED in
+2ee0c38), and the SDK-36 predictive-back regression (R9). The earlier "merged-head end-to-end
+PASS / unchanged tested rollback" claims in this table are NOT supported for the candidate and
+are superseded by the review. Deployment is blocked until every finding is fixed, a new
+integration SHA is pinned, exact-SHA GitHub CI is green, and a fresh independent review passes.
+Owner items unchanged: Play closed-test (12 physical testers, 14 days; internal track already
+ACTIVE with release 11 (1.0.10) published 2026-10-20 11:07 IST, opt-in
+https://play.google.com/apps/internaltest/4700778741227096719), iOS console auth, D2 on-device
+rewarded-ad pass, A4 48h verdict (2026-10-21), A5 final reconciliation.

@@ -185,11 +185,9 @@ function main(argv) {
 
   if (newest && newest.ageSeconds > opts.rpoEffective) {
    /* Change-aware honesty (brief part G): an archive older than the RPO is NOT a violation if
-   * the host has a verified-unchanged marker written AFTER that archive by the backup unit -
-   * the marker proves a change check ran recently and no tracked-table row changed since the
-   * dump was authorized (ephemeral counter tables are the documented exception - see
-   * v5-change-check.js), so every committed row is inside that archive. A missing, stale or
-   * unparsable marker fails closed
+    * the host has a verified-unchanged marker written AFTER that archive by the backup unit -
+    * the marker proves a change check ran recently and the WAL LSN is unchanged, so every
+    * committed row is inside that archive. A missing, stale or unparsable marker fails closed
     * exactly as before. */
    const markerFile = path.join(STATE, 'backup-unchanged.json');
    let marker = null;

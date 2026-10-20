@@ -13,7 +13,7 @@ const CHANGE = path.join(ROOT, 'deploy/v5/v5-change-check.js');
 const IDLE = path.join(ROOT, 'deploy/v5/v5-idle-probe.js');
 const INSTALL = path.join(ROOT, 'deploy/v5/install-change-aware.sh');
 
-function changeCheck(argv, recorded = '0/A1', current = '0/A1', recordedTables = null, currentCounters = null) {
+function changeCheck(argv, recorded = '0/A1', current = '0/A1') {
   const source = fs.readFileSync(CHANGE, 'utf8');
   const output = [], requests = [];
   const fakeProcess = {
@@ -29,30 +29,21 @@ function changeCheck(argv, recorded = '0/A1', current = '0/A1', recordedTables =
         if (recorded === null) throw Error('ENOENT');
         return recorded;
       }
-      if (String(filename).endsWith('last-backup-tables.json')) {
-        if (recordedTables === null) throw Error('ENOENT');
-        return JSON.stringify({ format: 'mega-v5-backup-table-deltas/v1', capturedAtUtc: '2026-10-20T00:00:00Z', counters: recordedTables });
-      }
       throw Error('UNEXPECTED_FILE_READ');
     }
-    , writeFileSync: (filename, data) => { tableWrites.push({ filename: String(filename), data }); }
-    , renameSync: (from, to) => { tableRenames.push({ from: String(from), to: String(to) }); }
   };
-  const tableWrites = [], tableRenames = [];
-  const countersPayload = current + '\n' + JSON.stringify(currentCounters === null ? {} : currentCounters);
   const mocks = {
     'node:fs': fsMock, 'node:path': path,
     'node:child_process': {
       spawnSync: (bin, args, options) => {
         requests.push({ bin, args, options });
-        const sql = String(args[4] || '');
-        const stdout = sql.startsWith("SELECT (SELECT pg_current_wal_lsn()::text) ||") ? countersPayload : current + '\n';
-        return { status: 0, stdout };
+        return { status: 0, stdout: current + '\n' };
       }
     }
   };
-  const fakeModule = { exports: {} };
-  const fakeRequire = name => {
+  const context = {
+    process: fakeProcess,
+    require: name => {
       if (Object.hasOwn(mocks, name)) return mocks[name];
       if (String(name).endsWith('direct-target.js')) {
         return {
@@ -61,18 +52,13 @@ function changeCheck(argv, recorded = '0/A1', current = '0/A1', recordedTables =
         };
       }
       throw Error('UNEXPECTED_REQUIRE:' + name);
-  };
-  fakeRequire.main = fakeModule;
-  const context = {
-    process: fakeProcess,
-    module: fakeModule,
-    require: fakeRequire,
+    }
   };
   let exit;
   try { vm.runInNewContext(source, context, { filename: CHANGE, timeout: 1000 }); }
   catch (e) { if (e.exitCode === undefined) throw e; exit = e.exitCode; }
   assert.notEqual(exit, undefined, 'the CLI must terminate with a documented status');
-  return { exit, output: output.join(''), requests, tableWrites, tableRenames };
+  return { exit, output: output.join(''), requests };
 }
 
 test('an unchanged LSN returns skip=42 without force', () => {
@@ -99,40 +85,6 @@ test('the LSN probe works even without a prior snapshot watermark', () => {
 test('no prior watermark fails open to a full dump, not a misleading unchanged skip', () => {
   const r = changeCheck([], null);
   assert.equal(r.exit, 0);
-});
-
-test('an LSN advance confined to the ephemeral ignore list still skips and refreshes the counter baseline', () => {
-  const r = changeCheck(['--source', '/isolated/backup-target.json'], '0/A1', '0/A2',
-    { 'ops.rate_buckets': [9, 9, 9] }, { 'ops.rate_buckets': [10, 9, 9] });
-  assert.equal(r.exit, 42);
-  assert.match(r.output, /ONLY_IGNORED_TABLES_CHANGED/);
-  const payload = JSON.parse(r.output.trim().split('\n').pop());
-  const doc = JSON.parse(payload.tablesStateDoc);
-  assert.equal(doc.format, 'mega-v5-backup-table-deltas/v1');
-  assert.deepEqual(doc.counters['ops.rate_buckets'], [10, 9, 9]);
-  assert.equal(payload.current, '0/A2');
-});
-
-test('a tracked-table write between probes always dumps', () => {
-  const r = changeCheck(['--source', '/isolated/backup-target.json'], '0/A1', '0/A2',
-    { 'ops.rate_buckets': [9, 9, 9] }, { 'economy.wallets': [1, 0, 0], 'ops.rate_buckets': [10, 9, 9] });
-  assert.equal(r.exit, 0);
-  assert.match(r.output, /TABLE_CHANGED/);
-  assert.match(r.output, /economy\.wallets/);
-});
-
-test('a counter reset (compute restart) fails open to a dump', () => {
-  const r = changeCheck(['--source', '/isolated/backup-target.json'], '0/A1', '0/A2',
-    { 'economy.wallets': [5, 5, 5] }, {});
-  assert.equal(r.exit, 0);
-  assert.match(r.output, /TABLE_CHANGED/);
-});
-
-test('a lost counter baseline fails open to a dump', () => {
-  const r = changeCheck(['--source', '/isolated/backup-target.json'], '0/A1', '0/A2', null,
-    { 'ops.rate_buckets': [1, 1, 1] });
-  assert.equal(r.exit, 0);
-  assert.match(r.output, /NO_COUNTER_BASELINE/);
 });
 
 function withSamples(before, after, args = [], input = '') {
@@ -215,3 +167,4 @@ test('host installer validates staged scripts before modifying bin and snapshots
   assert.equal(spawnSync('bash', ['-n', path.join(ROOT, 'deploy/v5/v5-pg-backup.sh')], {encoding:'utf8'}).status, 0);
   assert.equal(spawnSync('sh', ['-n', path.join(ROOT, 'deploy/v5/psql')], {encoding:'utf8'}).status, 0);
 });
+// PROBE_MARKER

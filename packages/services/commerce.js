@@ -622,6 +622,22 @@ async function createCommerceService(pool, options = {}) {
   });
  }
 
+ /* Sol re-review N7: durable reconciliation for refused paid purchases. A purchase the
+  * promotion guard refuses is charged-but-ungranted: the refusal is recorded in its OWN
+  * transaction (the economic one rolled back), the provider purchase is never acknowledged
+  * or consumed, and the store's own unacknowledged-purchase refund is the documented
+  * backstop. The record makes the refusal supportable and reconcilable; the operator query
+  * for outstanding refusals is
+  *   SELECT * FROM monetization.store_purchase_rejections WHERE resolved_at IS NULL;
+  * and rows are marked resolved once the provider refund/revocation is confirmed. */
+ async function recordPurchaseRejection(actorId, verifiedReceipt, reason) {
+  if (!verifiedReceipt || !verifiedReceipt.store || !verifiedReceipt.transactionId) return;
+  await uow.run(async (tx) => {
+   await tx.query(`INSERT INTO monetization.store_purchase_rejections (store, transaction_id, actor_id, product_id, reason) VALUES ($1,$2,$3,$4,$5)
+    ON CONFLICT (store, transaction_id) DO NOTHING`, [verifiedReceipt.store, verifiedReceipt.transactionId, actorId, verifiedReceipt.productId, reason]);
+  });
+ }
+
  /* Reward-ticket issuance. A ticket is a durable REQUEST; the grant happens only in `callback`
   * after the provider independently confirms the impression. */
  function ticket(actor, key, kind, platform = 'legacy') {
@@ -754,7 +770,11 @@ async function createCommerceService(pool, options = {}) {
   const product = M.product(receipt.productId);
   if (!product || (restore && !product.once)) throw Error('INVALID_PRODUCT');
   const safeReceipt = { valid: true, accountId: receipt.accountId, store: receipt.store, transactionId: receipt.transactionId, productId: product.id, refunded: false };
-  const result = await transaction(actor, key, { type: restore ? 'restore' : 'purchase', receipt: safeReceipt }, async (tx, graph, current) => {
+  /* Sol re-review N7: a refused paid purchase is recorded durably (best effort) before the
+   * error propagates, so the charge is always reconcilable even if the client dies. */
+  let result;
+  try {
+   result = await transaction(actor, key, { type: restore ? 'restore' : 'purchase', receipt: safeReceipt }, async (tx, graph, current) => {
    if (!restore && (!config.purchasesEnabled || !allowed(current))) throw Error('PURCHASE_UNAVAILABLE');
    /* The receipt identity mutex is already held by `transaction` (see `prelock`), so a refund of
     * this exact store transaction can never interleave between the tombstone check and the grant. */
@@ -789,9 +809,18 @@ async function createCommerceService(pool, options = {}) {
    if (product.crowns && !restore) {
     const policy = (await tx.query('SELECT published_at FROM monetization.promotion_policies WHERE policy_version = $1', [Promotion.VERSION])).rows[0];
     if (policy && policy.published_at) {
-     const allocation = (await tx.query('SELECT 1 FROM monetization.promotion_allocations WHERE actor_id = $1 AND provider = $2 AND op_key = $3', [actor, receipt.store, key])).rows[0];
-     if (!allocation) throw Error('PROMOTION_RESERVATION_REQUIRED');
+     /* Sol re-review N1: the reservation must match the independently verified receipt's
+      * product AND quantity, so a small-pack reservation can never authorize a larger pack. */
+     /* Sol re-review N7: a verifiably PRE-POLICY purchase (trusted provider purchase time
+      * before publication) delivered after publication is grandfathered - no reservation was
+      * possible when the policy did not exist yet. Post-publication purchases need it. */
+     const prePolicyPurchase = Number(receipt.purchaseTimeMs) > 0 && Number(receipt.purchaseTimeMs) < Date.parse(policy.published_at);
+     if (!prePolicyPurchase) {
+      const allocation = (await tx.query('SELECT product_id, crowns FROM monetization.promotion_allocations WHERE actor_id = $1 AND provider = $2 AND op_key = $3', [actor, receipt.store, key])).rows[0];
+      if (!allocation) throw Error('PROMOTION_RESERVATION_REQUIRED');
+      if (allocation.product_id !== product.id || Number(allocation.crowns) !== Number(product.crowns)) throw Error('PROMOTION_RESERVATION_MISMATCH');
     }
+   }
    }
    current.crowns = D.add(current.crowns, product.crowns);
    current.purchasedCrowns = D.add(current.purchasedCrowns || 0, product.crowns);
@@ -802,6 +831,12 @@ async function createCommerceService(pool, options = {}) {
    await event(tx, actor, restore ? 'purchase_restored' : 'purchase_verified', product.crowns);
    return { productId: product.id, crowns: product.crowns, duplicate: false };
   }, [receipt.store, receipt.transactionId]);
+  } catch (error) {
+   if (error && (error.message === 'PROMOTION_RESERVATION_REQUIRED' || error.message === 'PROMOTION_RESERVATION_MISMATCH')) {
+    await recordPurchaseRejection(actor, { store: receipt.store, transactionId: receipt.transactionId, productId: product.id }, error.message).catch(() => {});
+   }
+   throw error;
+  }
   /* Provider consume/acknowledge is requested only AFTER the durable grant. A failure is reported
     as pending (the worker's finalization sweep owns retries) instead of being silently dropped. */
   if (provider && typeof provider.finalize === 'function') {

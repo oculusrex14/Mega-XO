@@ -23,7 +23,36 @@ jobs:
           node-version: '24'
       - run: npm ci
       - name: Disclosure composition and signed-gateway projection (Sol R2/R3)
-        run: node --test --test-reporter=tap tests/v6-promotion-wiring.test.js tests/v52-promotion-disclosure.test.js tests/v6-deletion-ui.test.js tests/monetization-policy.test.js tests/monetization-store.test.js
+        run: node --test --test-reporter=tap tests/v6-promotion-wiring.test.js tests/v52-promotion-disclosure.test.js tests/v6-deletion-ui.test.js tests/monetization-policy.test.js tests/monetization-store.test.js tests/v52-commerce-ingress.test.js
+  native-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '24'
+      - run: npm ci
+      - name: Android manifest parses and keeps the predictive-back opt-out (Sol R9/N3)
+        shell: bash
+        run: |
+          set -euo pipefail
+          xmllint --noout native/android/app/src/main/AndroidManifest.xml
+          grep -q 'android:enableOnBackInvokedCallback="false"' native/android/app/src/main/AndroidManifest.xml
+      - name: Native client bundle carries the promotion gate and durable pending key (Sol R4/N7)
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/v5/build-client.js --output .artifacts/v6-native-bundle
+          grep -q 'promotionGate' .artifacts/v6-native-bundle/src/monetization-ui.js
+          grep -q 'PROMOTION_RESERVATION_REQUIRED' .artifacts/v6-native-bundle/src/monetization-ui.js
+          grep -q 'PROMOTION_PENDING_KEY' .artifacts/v6-native-bundle/src/monetization-ui.js
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: v6-native-bundle
+          path: .artifacts/v6-native-bundle
+          retention-days: 7
   promotion-postgres:
     runs-on: ubuntu-latest
     timeout-minutes: 25

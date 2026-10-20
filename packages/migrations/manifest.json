@@ -411,6 +411,12 @@
       "name": "0068_reward_ticket_powers",
       "file": "migrations/0068_reward_ticket_powers.sql",
       "sha256": "c7d72d1468a3b4b1f9055272289e475167d9b2eed00835c0d1cbb52fc215f7ba"
+    },
+    {
+      "id": 69,
+      "name": "0069_store_purchase_rejections",
+      "file": "migrations/0069_store_purchase_rejections.sql",
+      "sha256": "ae7a324481a8972254027218e955bd2ee58183d6c5dba3765c6d11da1b54484f"
     }
   ]
 }

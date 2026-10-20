@@ -241,16 +241,19 @@ recover_on_exit() {
     echo "DEPLOY_FAILED_BEFORE_SWAP status=$status" >&2
     exit "$status"
   fi
-  # R6 (Sol review): after a forward migration the archived schema-old application cannot boot
-  # (packages/db/pg/readiness.js refuses a migration ledger shorter than its manifest).
-  # Restoring the archive in that state would replace a recoverable failure with a certain
-  # outage, and the trap fires precisely when recovery is needed. Compare manifests and switch
-  # to forward recovery when the live schema has moved past the archived application.
-  OLD_MANIFEST_COUNT=$("$NODE" -e 'const m=require(process.argv[1]);console.log(m.migrations.length)' "$ARCHIVED_SOURCE/packages/migrations/manifest.json" 2>/dev/null || echo 0)
-  NEW_MANIFEST_COUNT=$("$NODE" -e 'const m=require(process.argv[1]);console.log(m.migrations.length)' "$LIVE_SOURCE/packages/migrations/manifest.json" 2>/dev/null || echo 0)
-  case "$OLD_MANIFEST_COUNT" in ''|*[!0-9]*) OLD_MANIFEST_COUNT=0 ;; esac
-  case "$NEW_MANIFEST_COUNT" in ''|*[!0-9]*) NEW_MANIFEST_COUNT=0 ;; esac
-  if [ "$OLD_MANIFEST_COUNT" -gt 0 ] && [ "$NEW_MANIFEST_COUNT" -gt 0 ] && [ "$NEW_MANIFEST_COUNT" -gt "$OLD_MANIFEST_COUNT" ]; then
+  # R6/N5: use the compatibility facts recorded BEFORE the swap; unknown facts fail closed,
+  # because a live manifest lost in a partial swap must never authorize an unbootable restart.
+  . "$ARCHIVE/manifest-counts.env" 2>/dev/null || true
+  OLD_MANIFEST_COUNT=\${OLD_MANIFEST_COUNT:-unknown}
+  NEW_MANIFEST_COUNT=\${NEW_MANIFEST_COUNT:-unknown}
+  case "$OLD_MANIFEST_COUNT$NEW_MANIFEST_COUNT" in *unknown*|*[!0-9]*)
+    echo "FORWARD_RECOVERY_REQUIRED: migration compatibility facts missing or unreadable; the archived application cannot be trusted against the live schema" >&2
+    echo "FORWARD_RECOVERY: keeping the NEW trees in place; diagnose the readiness failure, fix forward and restart $SERVICE; archive preserved at $ARCHIVE" >&2
+    rm -f "$READY_FILE"
+    exit "$status"
+    ;;
+  esac
+  if [ "$NEW_MANIFEST_COUNT" -gt "$OLD_MANIFEST_COUNT" ]; then
     echo "FORWARD_RECOVERY_REQUIRED: live schema moved past the archived app (old manifest $OLD_MANIFEST_COUNT < new $NEW_MANIFEST_COUNT); the archived application cannot boot against it" >&2
     echo "FORWARD_RECOVERY: keeping the NEW trees in place; diagnose the readiness failure, fix forward and restart $SERVICE; archive preserved at $ARCHIVE" >&2
     rm -f "$READY_FILE"
@@ -292,6 +295,16 @@ ${sudo}cp -a "$LIVE_SOURCE" "$ARCHIVED_SOURCE"
 ${sudo}cp -a "$LIVE_WEB" "$ARCHIVED_WEB"
 [ -d "$ARCHIVED_SOURCE" ] && [ -d "$ARCHIVED_WEB" ] && [ -x "$ARCHIVED_SOURCE/serve.sh" ] && [ -f "$ARCHIVED_SOURCE/docs/v5/environments/production.json" ] && [ -d "$ARCHIVED_SOURCE/node_modules" ] || { echo ROLLBACK_ARCHIVE_INCOMPLETE >&2; exit 1; }
 ARCHIVE_COMPLETE=1
+
+# R6/N5 (Sol re-review): record the migration-compatibility facts BEFORE the destructive
+# swap - a later swap failure can leave the live manifest absent, and the failure trap must
+# fail closed on unknown facts instead of restarting an unbootable archive. Both counts are
+# mandatory; an unreadable manifest refuses the deploy BEFORE anything is touched.
+OLD_MANIFEST_COUNT=$("$NODE" -e 'const m=require(process.argv[1]);console.log(m.migrations.length)' "$LIVE_SOURCE/packages/migrations/manifest.json" 2>/dev/null || echo unreadable)
+NEW_MANIFEST_COUNT=$("$NODE" -e 'const m=require(process.argv[1]);console.log(m.migrations.length)' "$STAGE_SOURCE/packages/migrations/manifest.json" 2>/dev/null || echo unreadable)
+  case "$OLD_MANIFEST_COUNT$NEW_MANIFEST_COUNT" in *unreadable*|*[!0-9]*) echo DEPLOY_REFUSED_MANIFEST_UNREADABLE old=$OLD_MANIFEST_COUNT new=$NEW_MANIFEST_COUNT >&2; exit 1 ;; esac
+printf "OLD=%s\\nNEW=%s\\n" "$OLD_MANIFEST_COUNT" "$NEW_MANIFEST_COUNT" | ${sudo}tee "$ARCHIVE/manifest-counts.env" >/dev/null
+COMPAT_RECORDED=1
 
 ${sudoRemove} "$LIVE_SOURCE"
 ${sudo}mv "$STAGE_SOURCE" "$LIVE_SOURCE"

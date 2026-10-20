@@ -166,8 +166,8 @@ test('ssv dispatch: the provider callback is actor-free END TO END through the r
 
 test('source integrity: the ingress and the API dispatch are wired', () => {
   const gateway = fs.readFileSync(path.join(__dirname, '..', 'packages', 'services', 'core-gateway.js'), 'utf8');
-  assert.match(gateway, /op, key, kind, platform, itemId, evidence, restore, productId, orderId, checkoutId, customer, region, amount \} = \{\}/,
-    'the gateway forwards the region hint (dropping it masked every dodo create as a bare 503)');
+  assert.match(gateway, /op, key, kind, platform, itemId, evidence, restore, productId, orderId, checkoutId, customer, region, amount, receipt, provider, acceptanceHash \} = \{\}/,
+    'the gateway forwards the region hint AND the promotion arguments (dropping either masked every dodo create or promotion command as an INVALID_COMMERCE_ARG)');
   const commerceService = fs.readFileSync(path.join(__dirname, '..', 'packages', 'services', 'commerce.js'), 'utf8');
   assert.match(commerceService, /createFingerprint\('dodo-create', productId \+ ':' \+ currency\)/,
     'the reservation fingerprint is currency-scoped');

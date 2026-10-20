@@ -50,7 +50,10 @@ class GooglePlayBilling{
    * not a truthy Promise that refunded every receipt. */
   const revoked=await this.db.prepare('SELECT 1 FROM v41_store_revocations WHERE store=? AND transaction_id=?').get('google',transactionId);
   if(revoked)throw Error('RECEIPT_REFUNDED');
-  return {valid:true,accountId:actor,store:'google',transactionId,productId:internal,refunded:false,providerProductId:storeProduct,finalizeKind:internal==='remove_ads'?'acknowledge':'consume'};
+  /* Sol re-review N7: the provider purchase timestamp is the trusted purchase moment. It lets
+   * settlement grandfather a verifiably pre-policy purchase first delivered after the policy
+   * published (promotion guard), independent of delivery timing. */
+  return {valid:true,accountId:actor,store:'google',transactionId,productId:internal,refunded:false,providerProductId:storeProduct,finalizeKind:internal==='remove_ads'?'acknowledge':'consume',purchaseTimeMs:Number(value.purchaseTime)>0?Number(value.purchaseTime):0};
  }
  async verify(evidence,actor,binding){
   if(!evidence||evidence.store!=='google'||!binding?.googleAccountId||!cleanToken(evidence.purchaseToken))throw Error('INVALID_RECEIPT');

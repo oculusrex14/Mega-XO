@@ -22,21 +22,33 @@ const request=(path,body,key)=>API.request('/api/monetization/'+path,body,key);
    discloses (shown once per account), reserves BEFORE the billing sheet opens, and delivers
    the receipt with the SAME durable key so settlement finds the reservation. */
 const PROMOTION_CROWN_PACKS=['crowns_100','crowns_525','crowns_1100'];
+/* Sol re-review N7: the pending reservation key is persisted so an interrupted purchase
+   (reload/process death between reserve and delivery) finds the SAME durable reservation
+   instead of leaking promotion capacity. */
+const PROMOTION_PENDING_KEY='mega_v35_promotion_pending';
+function readPromotionPending(){try{return JSON.parse(localStorage.getItem(PROMOTION_PENDING_KEY))||null;}catch{return null;}}
+function writePromotionPending(v){try{if(v)localStorage.setItem(PROMOTION_PENDING_KEY,JSON.stringify(v));else localStorage.removeItem(PROMOTION_PENDING_KEY);}catch{}}
 let promotionPending=null; /* {productId,provider,key,actor,disclosure} */
-function nativeProvider(){const c=status&&status.storeContext;if(!c)return null;if(c.googleAccountId)return 'google';if(c.appleAppAccountToken)return 'apple';return null;}
+/* Sol re-review N2: the provider is the DEVICE's native billing platform (trusted host
+   capability), never inferred from the account binding - a binding may hold both stores.
+   No mounted billing bridge means no native purchase is possible. */
+function nativeProvider(){if(!window.MegaBilling||typeof window.MegaBilling.purchase!=='function')return null;const p=window.MegaAds&&window.MegaAds.platform;return p==='ios'?'apple':p==='android'?'google':null;}
 async function promotionGate(productId,provider){
  if(!PROMOTION_CROWN_PACKS.includes(productId))return {proceed:true,key:null};
+ const stored=readPromotionPending();
+ const key=(stored&&stored.productId===productId&&stored.provider===provider&&stored.key)?stored.key:(globalThis.crypto&&globalThis.crypto.randomUUID?globalThis.crypto.randomUUID():'promo'+Date.now());
  let d;try{d=await request('promotion/disclosure');}catch(error){throw Error('PROMOTION_CHECK_FAILED');}
  if(!d||d.published!==true)return {proceed:true,key:null}; /* policy not published: settlement does not enforce either */
- const key=globalThis.crypto&&globalThis.crypto.randomUUID?globalThis.crypto.randomUUID():'promo'+Date.now();
  if(d.accepted!==true||!d.token){
   if(!provider)throw Error('PROMOTION_RESERVATION_REQUIRED');
   promotionPending={productId,provider,key,actor:who(),disclosure:d};
+  writePromotionPending({productId,provider,key});
   return {proceed:false,key:null};
  }
  const accepted=await request('promotion/accept',{token:d.token},'promotion-accept');
  if(!accepted||typeof accepted.acceptanceHash!=='string')throw Error('PROMOTION_ACCEPT_FAILED');
  await request('promotion/reserve',{product:productId,provider,acceptanceHash:accepted.acceptanceHash},key);
+ writePromotionPending({productId,provider,key});
  return {proceed:true,key};
 }
 function showPromotionPanel(){
@@ -142,9 +154,9 @@ document.addEventListener('click',e=>{
  if(node.dataset.action==='buy'||node.dataset.action==='billing'){e.preventDefault();e.stopImmediatePropagation();const id=node.dataset.value;open().then(()=>{if(node.dataset.action==='buy')review(id);});return;}
  if(!action||node.disabled)return;e.preventDefault();e.stopPropagation();const value=node.dataset.value;
  if(action==='open')open();else if(action==='signin'){APP.close();window.MegaCommunity?.login?.();}else if(action==='review')review(value);else if(action==='reward')reward(value);else if(action==='watch')watch(value);
- else if(action==='confirm')execute(async()=>{const p=selected;if(!p||p.actor!==who()||!safe(true))return;selected=null;const provider=nativeProvider();const gate=await promotionGate(p.id,provider);if(!gate.proceed){showPromotionPanel();return;}const evidence=await window.MegaBilling.purchase(p.id,status?.storeContext||null);if(who()!==p.actor)throw Error('AUTH_REQUIRED');const delivered=await request('purchase',{evidence},gate.key||undefined);await window.MegaBilling.finish?.(evidence,delivered);await APP.refresh();await refresh();APP.close();show();APP.notify('Verified purchase delivered.');});
- else if(action==='promotion-agree')execute(async()=>{const pending=promotionPending;if(!pending||!pending.disclosure||!pending.disclosure.token||pending.actor!==who())return;const accepted=await request('promotion/accept',{token:pending.disclosure.token},'promotion-accept');if(!accepted||typeof accepted.acceptanceHash!=='string')throw Error('PROMOTION_ACCEPT_FAILED');await request('promotion/reserve',{product:pending.productId,provider:pending.provider,acceptanceHash:accepted.acceptanceHash},pending.key);promotionPending=null;const evidence=await window.MegaBilling.purchase(pending.productId,status?.storeContext||null);if(who()!==pending.actor)throw Error('AUTH_REQUIRED');const delivered=await request('purchase',{evidence},pending.key);await window.MegaBilling.finish?.(evidence,delivered);await APP.refresh();await refresh();APP.close();show();APP.notify('Verified purchase delivered.');});
- else if(action==='promotion-decline'){promotionPending=null;APP.close();show();}
+ else if(action==='confirm')execute(async()=>{const p=selected;if(!p||p.actor!==who()||!safe(true))return;selected=null;const provider=nativeProvider();const gate=await promotionGate(p.id,provider);if(!gate.proceed){showPromotionPanel();return;}const evidence=await window.MegaBilling.purchase(p.id,status?.storeContext||null);if(who()!==p.actor)throw Error('AUTH_REQUIRED');const delivered=await request('purchase',{evidence},gate.key||undefined);await window.MegaBilling.finish?.(evidence,delivered);writePromotionPending(null);await APP.refresh();await refresh();APP.close();show();APP.notify('Verified purchase delivered.');});
+ else if(action==='promotion-agree')execute(async()=>{const pending=promotionPending;if(!pending||!pending.disclosure||!pending.disclosure.token||pending.actor!==who())return;const accepted=await request('promotion/accept',{token:pending.disclosure.token},'promotion-accept');if(!accepted||typeof accepted.acceptanceHash!=='string')throw Error('PROMOTION_ACCEPT_FAILED');await request('promotion/reserve',{product:pending.productId,provider:pending.provider,acceptanceHash:accepted.acceptanceHash},pending.key);promotionPending=null;const evidence=await window.MegaBilling.purchase(pending.productId,status?.storeContext||null);if(who()!==pending.actor)throw Error('AUTH_REQUIRED');const delivered=await request('purchase',{evidence},pending.key);await window.MegaBilling.finish?.(evidence,delivered);writePromotionPending(null);await APP.refresh();await refresh();APP.close();show();APP.notify('Verified purchase delivered.');});
+ else if(action==='promotion-decline'){promotionPending=null;writePromotionPending(null);APP.close();show();}
  else if(action==='restore')execute(async()=>{const user=who(),receipts=await window.MegaBilling.restore(status?.storeContext||null);if(user!==who()||!Array.isArray(receipts)||receipts.length>50)throw Error('INVALID_RECEIPT');for(const evidence of receipts)await request('restore',{evidence});APP.notify('Verified non-consumable purchases restored.');});
  else if(action==='powerbuy')execute(async()=>{if(!['undo','hint'].includes(value))return;await window.MegaPowers.purchase(value);APP.notify('Charge banked. It stays until you use it.');});
  else if(action==='exchange')execute(async()=>{const input=document.getElementById('monoExchangeAmount');const amount=Number(input&&input.value);if(!Number.isInteger(amount)||amount<=0)throw Error('Enter the Coin amount to exchange first.');const user=who();const r=await request('exchange',{amount});if(who()!==user)throw Error('AUTH_REQUIRED');await APP.refresh();await refresh();show();APP.notify('Exchanged for '+r.crowns+' Crowns.');});

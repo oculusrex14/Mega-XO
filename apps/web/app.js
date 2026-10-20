@@ -317,12 +317,18 @@ async function pollDodoStatus(checkoutId){
  * checkout. The full panel shows once per account; a repeat checkout re-attests silently with
  * the fresh remaining (commerce.reserve pairs disclosed_remaining with the reservation). */
 const WEB_PROMOTION_CROWN_PACKS = ['crowns_100', 'crowns_525', 'crowns_1100'];
-async function ensurePromotionAccepted(productId){
+/* Sol re-review N6/N7: the pending checkout lane and the durable reservation key survive
+   reloads, so a first-time native acceptance resumes NATIVE billing and an interrupted
+   reservation is found again instead of leaking promotion capacity. */
+const NATIVE_PROMOTION_PENDING_KEY='mega_promotion_native_pending';
+function readNativePromotionPending(){try{return JSON.parse(localStorage.getItem(NATIVE_PROMOTION_PENDING_KEY))||null;}catch{return null;}}
+function writeNativePromotionPending(v){try{if(v)localStorage.setItem(NATIVE_PROMOTION_PENDING_KEY,JSON.stringify(v));else localStorage.removeItem(NATIVE_PROMOTION_PENDING_KEY);}catch{}}
+async function ensurePromotionAccepted(productId, lane){
  if(!WEB_PROMOTION_CROWN_PACKS.includes(productId))return false;
  try{
   const d=await readJSON('/api/monetization/promotion/disclosure');
   if(d?.published!==true||!d.token)return false;
-  if(d.accepted!==true){context.promotionDisclosure=d;context.promotionPendingPurchase=productId;render();return true;}
+  if(d.accepted!==true){context.promotionDisclosure=d;context.promotionPendingPurchase=productId;context.promotionPendingLane=lane||'web';render();return true;}
   const result=await globalThis.MegaAccount.request('/api/monetization/promotion/accept',{token:d.token},'promotion-accept');
   if(typeof result?.acceptanceHash==='string')context.promotionAcceptanceHash=result.acceptanceHash;
  }catch(error){}
@@ -332,7 +338,19 @@ async function acceptPromotionDisclosure(){
  const d=context.promotionDisclosure;if(!d?.token)return;
  const result=await globalThis.MegaAccount.request('/api/monetization/promotion/accept',{token:d.token},'promotion-accept');
  if(typeof result?.acceptanceHash==='string')context.promotionAcceptanceHash=result.acceptanceHash;
- context.promotionDisclosure=null;const pending=context.promotionPendingPurchase;context.promotionPendingPurchase=null;render();
+ context.promotionDisclosure=null;const pending=context.promotionPendingPurchase;const pendingLane=context.promotionPendingLane||'web';const pendingNative=context.promotionPendingNative||null;context.promotionPendingPurchase=null;context.promotionPendingLane=null;context.promotionPendingNative=null;render();
+ /* Sol re-review N6: a pending NATIVE checkout resumes native reservation -> billing ->
+    delivery with the SAME durable key; only web checkouts resume the provider lanes. */
+ if(pendingLane==='native'&&pendingNative&&pending===pendingNative.productId){
+  await reserveNativePromotionIfRequired(pendingNative.productId,pendingNative.provider,pendingNative.key);
+  writeNativePromotionPending({productId:pendingNative.productId,provider:pendingNative.provider,key:pendingNative.key});
+  const evidence=await globalThis.MegaBilling.purchase(pendingNative.productId,context.products.storeContext);
+  const delivered=await globalThis.MegaNetwork.purchase(evidence,pendingNative.key);
+  await globalThis.MegaBilling.finish?.(evidence,delivered);
+  writeNativePromotionPending(null);
+  await model.profile();await refreshProducts();notify('Verified purchase delivered.');
+  return;
+ }
  const row=pending&&context.products.rows.find(x=>x.id===pending);
  if(row&&context.products.webCheckoutAvailable===true){
   if(context.products.webCheckoutProvider==='dodo')await dodoCheckout(pending);
@@ -345,7 +363,10 @@ async function acceptPromotionDisclosure(){
    the same pre-billing reservation the web checkout does, and deliver the receipt with the
    SAME durable key so settlement finds the allocation. Provider comes from the store binding
    the API issued (googleAccountId / appleAppAccountToken). */
-function nativeStoreProvider(){const c=context.products&&context.products.storeContext;if(!c)return null;if(c.googleAccountId)return 'google';if(c.appleAppAccountToken)return 'apple';return null;}
+/* Sol re-review N2: the provider is the DEVICE's native billing platform (trusted host
+   capability), never inferred from the account binding - a binding may hold both stores.
+   No mounted billing bridge means no native purchase is possible. */
+function nativeStoreProvider(){const bridge=globalThis.MegaBilling;if(!bridge||typeof bridge.purchase!=='function')return null;const p=globalThis.MegaAds&&globalThis.MegaAds.platform;return p==='ios'?'apple':p==='android'?'google':null;}
 async function reserveNativePromotionIfRequired(productId,provider,key){
  if(!WEB_PROMOTION_CROWN_PACKS.includes(productId))return;
  const d=await readJSON('/api/monetization/promotion/disclosure');
@@ -523,7 +544,7 @@ document.addEventListener('click',event=>{
  const store=event.target.closest('[data-store-action]');if(store&&store.dataset.storeAction==='refresh')refreshProducts();
  else if(store&&store.dataset.storeAction==='purchase'&&!serviceBusy){
   const id=store.dataset.productId,row=context.products.rows.find(x=>x.id===id);
-  if(context.products.purchasesAvailable===true&&row?.enabled===true){accountAction(async()=>{const actor=context.profile?.id;if(!actor)throw Error('AUTH_REQUIRED');if(await ensurePromotionAccepted(id))return;const provider=nativeStoreProvider();if(!provider)throw Error('PROMOTION_RESERVATION_REQUIRED');const key=globalThis.crypto?.randomUUID?.()||'nb'+Date.now();await reserveNativePromotionIfRequired(id,provider,key);const evidence=await globalThis.MegaBilling.purchase(id,context.products.storeContext);if(actor!==context.profile?.id)throw Error('AUTH_REQUIRED');const delivered=await globalThis.MegaNetwork.purchase(evidence,key);await globalThis.MegaBilling.finish?.(evidence,delivered);await model.profile();await refreshProducts();notify('Verified purchase delivered.');});}
+  if(context.products.purchasesAvailable===true&&row?.enabled===true){accountAction(async()=>{const actor=context.profile?.id;if(!actor)throw Error('AUTH_REQUIRED');const provider=nativeStoreProvider();if(!provider)throw Error('PROMOTION_RESERVATION_REQUIRED');const previous=readNativePromotionPending();const key=(previous&&previous.productId===id&&previous.provider===provider&&previous.key)?previous.key:(globalThis.crypto?.randomUUID?.()||'nb'+Date.now());if(await ensurePromotionAccepted(id,'native'))return;await reserveNativePromotionIfRequired(id,provider,key);writeNativePromotionPending({productId:id,provider,key});const evidence=await globalThis.MegaBilling.purchase(id,context.products.storeContext);if(actor!==context.profile?.id)throw Error('AUTH_REQUIRED');const delivered=await globalThis.MegaNetwork.purchase(evidence,key);await globalThis.MegaBilling.finish?.(evidence,delivered);writeNativePromotionPending(null);await model.profile();await refreshProducts();notify('Verified purchase delivered.');});}
  else if(row&&context.products.webCheckoutAvailable===true){accountAction(async()=>{if(await ensurePromotionAccepted(id))return;if(context.products.webCheckoutProvider==='dodo')await dodoCheckout(id);else if(row.inr&&row.id!=='mega_pass')await cashfreeCheckout(id);else await polarCheckout(id);await model.profile();await refreshProducts();});}
  }
  const promo=event.target.closest('[data-promotion-action]');

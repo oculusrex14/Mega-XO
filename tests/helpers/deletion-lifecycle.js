@@ -54,6 +54,12 @@ async function exerciseCancellation(h) {
 }
 
 async function exerciseCompletion(h) {
+ const admin = await lab.adminClient(h.db);
+ try {
+  await admin.query("INSERT INTO monetization.receipts(store,transaction_id,actor_id,product_id,crowns,purchased_at) VALUES('google','b4-retained-purchase',$1,'crowns_100',100,$2)", [h.owner.actor, new Date(h.now())]);
+  await admin.query("INSERT INTO privacy.reports(report_id,reporter_id,target_id,category,detail,created_at,state,outcome) VALUES('b4-reviewed',$1,$2,'other','private note',$3,'reviewed','no_action')", [h.owner.actor, h.viewer.actor, new Date(h.now())]);
+  await admin.query("INSERT INTO audit.operator_audit(audit_id,\"at\",operator,action,actor_id,reason,detail,prev_hash,entry_hash) VALUES('b4-audit',$2,'test-operator','test',$1,'synthetic fixture','{}',$3,$4)", [h.owner.actor, new Date(h.now()), '0'.repeat(64), '1'.repeat(64)]);
+ } finally { await admin.end(); }
  await h.accounts.save(h.owner.actor, 0, lab.practicePayload(h.owner.actor));
  const ack = await h.cool();
  assert.equal(await h.scalar('SELECT count(*)::int FROM profile.profile_saves WHERE actor_id=$1'), 1);
@@ -76,6 +82,10 @@ async function exerciseCompletion(h) {
  assert.equal(await h.scalar('SELECT state FROM ops.outbox WHERE outbox_id=$1', [`account.deletion:${ack.receiptId}`]), 'sent');
  assert.equal(await h.scalar('SELECT payload FROM ops.outbox WHERE outbox_id=$1', [`account.deletion:${ack.receiptId}`]), null);
  assert.ok(await h.scalar('SELECT count(*)::int FROM economy.ledger WHERE actor_id=$1') > 0, 'immutable journal is explicitly follow-up, never silently deleted');
+ assert.equal(await h.scalar("SELECT crowns::int FROM monetization.receipts WHERE transaction_id='b4-retained-purchase'"), 100, 'purchase replay record retained unchanged');
+ assert.equal(await h.scalar("SELECT actor_id FROM audit.operator_audit WHERE audit_id='b4-audit'"), h.owner.actor, 'operator security audit retained unchanged');
+ assert.equal(await h.scalar("SELECT outcome FROM privacy.reports WHERE report_id='b4-reviewed'"), 'no_action', 'moderation outcome retained');
+ assert.equal(await h.scalar("SELECT reporter_id FROM privacy.reports WHERE report_id='b4-reviewed'"), ack.tombstone, 'moderation retained pseudonymously');
  await assert.rejects(h.accounts.cancelDeletion(login.token, h.profile.tag), /AUTH_REQUIRED/);
  assert.deepEqual(await h.worker.tick(), { claimed: 0, completed: 0, failed: 0 });
  return { cooling: true, completed: true, credentialsErased: true, walletErasedByCore: true, permanentReceipt: true, operatorFollowUpExplicit: true };

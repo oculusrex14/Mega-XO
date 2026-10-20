@@ -846,7 +846,7 @@ function accountRepositoryFor(context) {
  /* API intake and narrowly granted cancellation; completion remains worker/Core owned. */
  const deletion = {
   async latest(actor) {
-   const r = await q("SELECT request_id, state, execute_at FROM privacy.requests WHERE actor_id=$1 AND kind='deletion' ORDER BY requested_at DESC, request_id DESC LIMIT 1", [actor]);
+   const r = await q("SELECT request_id, state, execute_at FROM privacy.requests WHERE actor_id=$1 AND kind='deletion' ORDER BY (state NOT IN ('cancelled','completed')) DESC, requested_at DESC, request_id DESC LIMIT 1", [actor]);
    const row = r.rows[0];
    return row ? { receiptId: row.request_id, state: row.state, executeAt: row.execute_at ? new Date(row.execute_at).getTime() : null } : null;
   },

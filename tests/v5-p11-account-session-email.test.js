@@ -89,6 +89,38 @@ test('B4 worker fails closed without Core, resumes after restart, and does not g
  assert.deepEqual(await h.worker.tick(), { claimed: 1, completed: 1, failed: 0 });
 });
 
+test('B4 rescheduling after cancellation uses a fresh job and deadline, even within one clock instant', async (t) => {
+ if (!(await lab.boot(t))) return;
+ const h = await setupDeletion(t, 'b4_reschedule');
+ const first = await h.cool();
+ const login = await h.signIn();
+ await h.accounts.cancelDeletion(login.token, h.profile.tag);
+ const second = await h.cool(login.token);
+ assert.notEqual(first.receiptId, second.receiptId);
+ const nextLogin = await h.signIn();
+ assert.equal((await h.accounts.deletionStatus(nextLogin.token)).request.receiptId, second.receiptId);
+ await h.accounts.cancelDeletion(nextLogin.token, h.profile.tag);
+ assert.equal(await h.scalar("SELECT count(*)::int FROM ops.outbox WHERE kind='account.deletion' AND state='cancelled'"), 2);
+});
+
+test('B4 restart between Core erasure and identity cleanup resumes without a second economic mutation', async (t) => {
+ if (!(await lab.boot(t))) return;
+ const h = await setupDeletion(t, 'b4_core_restart');
+ const ack = await h.cool();
+ h.advance(30 * 86400000);
+ const { createDeletionWorker } = require('../packages/services/worker-workflows.js');
+ const interrupted = createDeletionWorker({ pool: h.pools.worker, now: h.now,
+  eraseDeletion: async (input) => { await h.core.eraseDeletion(input); throw Error('SIMULATED_PROCESS_INTERRUPTION'); } });
+ assert.equal((await interrupted.tick()).failed, 1);
+ const firstErasure = await h.scalar('SELECT core_erased_at::text FROM privacy.requests WHERE request_id=$1', [ack.receiptId]);
+ assert.ok(firstErasure);
+ assert.equal(await h.scalar('SELECT count(*)::int FROM economy.wallets WHERE actor_id=$1'), 0);
+ assert.equal(await h.scalar('SELECT count(*)::int FROM identity.email_credentials WHERE actor_id=$1'), 1);
+ h.advance(60000);
+ assert.equal((await h.worker.tick()).completed, 1);
+ assert.equal(await h.scalar('SELECT core_erased_at::text FROM privacy.requests WHERE request_id=$1', [ack.receiptId]), firstErasure);
+});
+
 async function setupServer(database) {
   const pools = lab.poolsFor(database);
   const accounts = await lab.accountsFor(database, { otpSecret: OTP_SECRET });

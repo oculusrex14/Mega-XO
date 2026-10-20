@@ -229,7 +229,7 @@ async function deleteAccount(){
  const actor=session?.profile?.id,confirmation=$('#cDeleteConfirmation')?.value.trim()||'';
  if(!actor)return;
  const result=await API.request('/api/account/delete',{confirmation});
- drop('mega_v333_archive:'+actor);drop(META);drop(OWNER);API.reset();session=null;social={friends:[],incoming:[],outgoing:[],blocked:[]};invites=[];challenges=[];profile=null;conflict=null;dirty=false;syncRevision=0;syncState='device';updateNotificationButton();
+ archiveCurrent();drop(META);drop(OWNER);API.reset();session=null;social={friends:[],incoming:[],outgoing:[],blocked:[]};invites=[];challenges=[];profile=null;conflict=null;dirty=false;syncRevision=0;syncState='device';updateNotificationButton();
  suppressSave=true;APP.applyPractice(get('mega_v333_archive:guest')||D.fresh());suppressSave=false;dismiss();APP.refresh();APP.render();APP.notify('Deletion scheduled for '+new Date(result.executeAt).toLocaleDateString()+'. Sign back in to cancel in account settings before that date.');
  return result;
 }

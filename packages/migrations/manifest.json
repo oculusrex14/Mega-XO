@@ -404,7 +404,7 @@
       "id": 67,
       "name": "0067_account_deletion_cooling",
       "file": "migrations/0067_account_deletion_cooling.sql",
-      "sha256": "df77143342c4f6817cbb859d160ce84f14e277ce3c676fe5f8668ec1ef8a4a42"
+      "sha256": "0173582937d09f4f11ecd5e6f7c1c7e6dfea8e420238a9af452ca1b9cc977158"
     }
   ]
 }

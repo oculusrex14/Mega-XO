@@ -40,7 +40,7 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p .artifacts/b4
-          node --test --test-concurrency=1 tests/v5-migrations.test.js tests/v5-p04-services.test.js tests/v5-p10-workflows.test.js tests/v5-p10-worker-hardening.test.js tests/v5-p11-account-session-email.test.js tests/v5-p11-account-social.test.js tests/v5-p12-read-cache.test.js tests/v5-p21-native-email-ui.test.js tests/v6-deletion-ui.test.js 2>&1 | tee .artifacts/b4/regressions.tap
+          node --test --test-reporter=tap --test-concurrency=1 tests/v5-migrations.test.js tests/v5-p04-services.test.js tests/v5-p10-workflows.test.js tests/v5-p10-worker-hardening.test.js tests/v5-p11-account-session-email.test.js tests/v5-p11-account-social.test.js tests/v5-p12-read-cache.test.js tests/v5-p21-native-email-ui.test.js tests/v6-deletion-ui.test.js 2>&1 | tee .artifacts/b4/regressions.tap
           if ! grep -Eq '^# skipped 0$' .artifacts/b4/regressions.tap; then exit 1; fi
       - name: Both scheduled-deletion lifecycle paths
         shell: bash

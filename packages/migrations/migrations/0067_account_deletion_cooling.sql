@@ -54,6 +54,9 @@ BEGIN
      OR EXISTS (SELECT 1 FROM economy.wallets WHERE actor_id=p_actor AND (reserved_coins<>0 OR reserved_crowns<>0)) THEN
     RAISE EXCEPTION 'ACCOUNT_BUSY'; END IF;
   DELETE FROM economy.daily_progress WHERE actor_id=p_actor;
+  DELETE FROM economy.wallet_operations WHERE actor_id=p_actor;
+  DELETE FROM economy.wallet_ledger_entries WHERE actor_id=p_actor;
+  DELETE FROM economy.command_outcomes WHERE actor_id=p_actor;
   DELETE FROM economy.match_history WHERE actor_id=p_actor;
   DELETE FROM economy.season_history WHERE actor_id=p_actor;
   DELETE FROM economy.season_state WHERE actor_id=p_actor;
@@ -70,6 +73,8 @@ BEGIN
   DELETE FROM monetization.redeemed_frames WHERE actor_id=p_actor;
   DELETE FROM monetization.boosts WHERE actor_id=p_actor;
   DELETE FROM monetization.reward_daily WHERE actor_id=p_actor;
+  DELETE FROM monetization.casual_rewards WHERE actor_id=p_actor;
+  DELETE FROM monetization.reward_events WHERE actor_id=p_actor;
   UPDATE privacy.requests SET core_erased_at=p_at, updated_at=p_at WHERE request_id=p_request;
 END $$;
 
@@ -90,11 +95,12 @@ BEGIN
   IF NOT FOUND THEN RAISE EXCEPTION 'STALE_LEASE'; END IF;
   IF p_tombstone !~ '^deleted_[0-9a-f]{32}$' OR p_hash !~ '^[A-Za-z0-9_-]{43}$' THEN
     RAISE EXCEPTION 'INVALID_DELETION_PAYLOAD'; END IF;
+  DELETE FROM identity.signin_attempts WHERE target_actor=p_actor OR session_hash IN
+    (SELECT token_hash FROM identity.sessions WHERE actor_id=p_actor);
   DELETE FROM identity.sessions WHERE actor_id=p_actor;
   DELETE FROM identity.refresh_families WHERE actor_id=p_actor;
   DELETE FROM identity.realtime_tickets WHERE actor_id=p_actor;
   DELETE FROM identity.devices WHERE actor_id=p_actor;
-  DELETE FROM identity.signin_attempts WHERE target_actor=p_actor;
   DELETE FROM identity.email_challenges WHERE actor_id=p_actor OR email IN
     (SELECT email FROM identity.email_credentials WHERE actor_id=p_actor);
   DELETE FROM identity.identities WHERE actor_id=p_actor;
@@ -107,9 +113,10 @@ BEGIN
   DELETE FROM social.friend_requests WHERE from_id=p_actor OR to_id=p_actor;
   DELETE FROM social.blocks WHERE blocker_id=p_actor OR blocked_id=p_actor;
   DELETE FROM social.command_outcomes WHERE actor_id=p_actor;
-  DELETE FROM privacy.reports WHERE reporter_id=p_actor;
+  DELETE FROM privacy.reports WHERE reporter_id=p_actor AND state='open';
+  UPDATE privacy.reports SET reporter_id=p_tombstone, detail='' WHERE reporter_id=p_actor;
   UPDATE privacy.reports SET target_id=p_tombstone, detail='' WHERE target_id=p_actor;
-  n := 'operator-follow-up: immutable economy ledger and weekly payouts; shared match/tournament history and command outcomes; learning captures/consent; provider subscriptions. These are not certified erased.';
+  n := 'operator-follow-up: immutable economy ledger and weekly payouts; shared match/tournament history and command outcomes; learning captures/consent; provider subscriptions and promotion/monetization replay history. These are not certified erased.';
   INSERT INTO privacy.deletion_receipts(receipt_id,actor_hash,tombstone,completed_at,policy_version,retained,note)
     VALUES(p_request,p_hash,p_tombstone,p_at,r.policy_version,
       '["purchase_replay_records","operator_security_audit","pseudonymized_moderation_outcomes"]'::jsonb,n);

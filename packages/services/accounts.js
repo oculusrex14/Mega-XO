@@ -1689,6 +1689,7 @@ async function createAccountService(pool, options = {}) {
     await repositories.accounts.lockEligibility([actor]);
     const live = await liveSession(repositories, token);
     if (live.actor !== actor) fail('ACCOUNT_CHANGED');
+    if (clock() - live.authAt > REAUTH_WINDOW) fail('REAUTH_REQUIRED');
     await verifiedRow(repositories, actor);
     const activity = await repositories.accounts.activity(actor);
     if (activity?.deletionPending) fail('DELETION_ALREADY_PENDING');
@@ -1700,9 +1701,9 @@ async function createAccountService(pool, options = {}) {
     const executeAt = now + 30 * DAY;
     await repositories.deletion.insertRequest({ id: receiptId, actor, kind: 'deletion', state: 'cooling', executeAt, requestedAt: now, updatedAt: now, policyVersion: deletionPolicy.policyVersion, note: '30-day cooling; cancellable in app before executeAt' });
     capturedRevokedIds.push(...(await repositories.sessions.list(actor, clock())).map((r) => sessionId(r.hash)));
-    await repositories.sessions.revokeAll(actor);
     await repositories.signin.cancelForActor(actor);
     await repositories.challenges.consumeAllFor(actor);
+    await repositories.sessions.revokeAll(actor);
     await repositories.outbox.enqueue({
      id: `${DELETION_KIND}:${receiptId}`, kind: DELETION_KIND,
      payload: { actor, receiptId, tombstone, actorHash, executeAt, policyVersion: deletionPolicy.policyVersion, retained: DELETION_RETAINED },

@@ -15,10 +15,10 @@ R6 forward-recovery behavior now wired into scripts/v51/deploy-production.cjs.
 3. A4 verdict recorded: TWO sanitized Neon usage snapshots (mega-v5-neon-usage-snapshot/v1)
    around the 48h idle window, evaluated with deploy/v5/v5-idle-probe.js (fail-closed).
 4. Website bundle rebuilt from the pinned SHA and its web-build.manifest.json source_commit
-   equals the SHA; the bundle carries downloads/android/megaxo-1.0.10.apk (store-links pin).
+   equals the SHA; the bundle carries downloads/android/megaxo-1.0.11.apk (store-links pin; the CI website-build job derives the pin path, so it cannot drift).
 5. Native artifacts rebuilt from the same source if any native file changed after
    13086f5/2dc4718: AAB for Play (google-play), APK for the website (direct-apk), both
-   targetSdk 36. Play internal track already has 11 (1.0.10); a changed native artifact means
+   targetSdk 36. Play internal track already serves release 12 (1.0.11); a changed native artifact means
    a new Play upload before the batch.
 6. Operator (owner) availability for the maintenance window; rollback decision authority.
 

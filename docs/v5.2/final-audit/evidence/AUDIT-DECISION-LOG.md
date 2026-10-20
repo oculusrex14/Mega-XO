@@ -156,3 +156,18 @@ Format: date time IST — decision — rationale — evidence
 ## 2026-10-20 (D2 production ad-config validated; final 1.0.9 artifacts rebuilt WITH production AdMob units)
 
 - 09:55 IST — D2 CONFIG DEFECT FOUND AND FIXED: the first 1.0.9 rebuild (09:40) silently used the gradle demo defaults (Google test app id; empty rewarded/interstitial units publish NO window.MegaAds) because the production -PmegaAdMob* flags were not passed — aapt2/dexdump on the artifact proved the demo app id. The production units live in docs/v5.2/provider-evidence/20261014/admob/ADMOB-READINESS-20261014.md (public provider identifiers, not credentials): Android app ca-app-pub-5255314563073178~4393199164, rewarded .../9122606653, interstitial .../5293761020. REBUILT with all three flags and VERIFIED in-artifact via aapt2 (manifest APPLICATION_ID) + dexdump (BuildConfig units). FINAL artifacts: APK sha256 01ac473767d30e5be614d436eae09dbcb38015cf34fcb028f90f0fcd64dc4ebc, AAB sha256 45272a372db5a48cb8efacca5f0caf26c84af51dc0fd96715f26c58e2ea48306 (both 1.0.9/versionCode 10, embedded bundle with the B4 cooling UI). Device reinstalled (Success). NOTE for the AAB upload: the Play-uploaded AAB MUST be this 45272a37 build, never the earlier 132a52bf/29fd4105 ones. — d2
+
+## 2026-10-20 (B2 COMPLETE — Newton's Data safety + listing merged; device sign-in verified)
+
+- 10:35 IST — B2 CLOSED: Newton (Sol xhigh, 01a15780) completed ALL SIX Data safety per-type questionnaires (counters 3/3, 1/1, 1/1, 1/1 — Data safety FULLY SAVED), the Game>Board category + contact@antimatterinnovations.com + https website, and the default store listing (name Mega XOXO, icon, feature graphic, two 1080x1920 screenshots captured from the live site). PR #60 merged to V6 as db071f7 after integrating the trunk docs (its branch codex-v6-data-safety, evidence B2-PLAY-CONSOLE.md). NOTHING was submitted for review; AAB upload and releases untouched per the scope guard. The remaining B2 gates are the OWNER's: the 12-tester/14-day closed test before production, and the final submission click. — b2
+- 10:40 IST — B1 DEVICE SIGN-IN VERIFIED with the owner's test account: the 'Create link or profile first' defect from the owner's earlier report is FIXED in 1.0.9 — email sign-in with mothervader693@gmail.com succeeded on device (home shows the Oculus-Rex profile, player tag MEGA-A889B432, guest CTA gone, wallet Coins 157). D2 ON-DEVICE REWARDED-AD PASS: requires a real ad impression and the account's daily caps — recorded as the OWNER device pass (the config side is complete: production units in-artifact, SSV route live server-side). — b1/d2
+
+## REMAINING BLOCKERS (exact, as of db071f7)
+
+1. OWNER: Play closed testing — create the closed track, upload AAB 45272a37 to it, recruit 12 testers opted-in continuously for 14 days, then apply for production access. (The agent can do the upload on request; the testers and the 14 days are physical.)
+2. OWNER: Apple App Store Connect authentication (the login tab shows authResult=FAILED) — then B3 can proceed.
+3. OWNER: Search Console + Bing Webmaster verification (needs the owner's Google/Bing console access or a DNS TXT record the agent can add on request).
+4. OWNER: D2 on-device rewarded-ad pass (a real ad impression on the owner's account; config side complete).
+5. OWNER: secret rotation — explicitly deferred per owner ("to be done when owner prompts it").
+6. AGENT: A4 final verdict 2026-10-21 (two sanitized Neon usage snapshots + the fail-closed evaluator; the Neon console tab is open for the owner's account).
+7. AGENT: Sol 6.1 batch-deploy review, then the ONE authorized deploy (server + site + APK download swap).

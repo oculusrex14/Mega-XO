@@ -1,0 +1,8 @@
+{
+  "format": "mega-v5-neon-usage-snapshot/v1",
+  "sampledAtUtc": "2026-10-20T11:22:33Z",
+  "projectId": "blue-sun-85454968",
+  "consumptionPeriodStart": "2026-10-19T13:12:28Z",
+  "activeTimeSeconds": 14778,
+  "dataTransferBytes": 626316655
+}

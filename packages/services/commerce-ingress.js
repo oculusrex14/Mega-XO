@@ -58,7 +58,17 @@ const OPS = {
   store_notification: { args: ['provider', 'credential', 'body'], method: 'handleStoreNotification', actorFree: true, call: (c, actor, a) => c.handleStoreNotification(a[0], a[1], a[2]) },
   /* MXA-ECO-011: the player-facing pass exchange (Coins -> Crowns with the monthly allowance). */
   exchange: { args: ['key', 'amount'], method: 'exchangeCoins', call: (c, actor, a) => c.exchangeCoins(actor, a[0], a[1]) },
+  /* MXA-PROMOTION-DISCLOSURE (2026-10-20): the native pre-billing reservation gate (PR #55
+   * contract: call BEFORE presenting promotional billing, then deliver with the SAME key) and
+   * the disclosure acceptance recorder (receipt carries the signed disclosure token the Core
+   * side re-verifies; a body saying accepted:true is never sufficient). */
+  promotion_reserve: { args: ['key', 'productId', 'provider', 'acceptanceHash'], method: 'reservePromotionCheckout', call: (c, actor, a) => c.reservePromotionCheckout(actor, a[0], a[1], a[2], a[3]) },
+  promotion_accept: { args: ['receipt'], method: 'acceptPromotionPolicy', call: (c, actor, a) => c.acceptPromotionPolicy(actor, a[0]) },
 };
+
+/* Optional trailing args: a promotion_reserve may run before the policy is published, where no
+ * acceptance hash exists yet. Every other arg stays required exactly as before. */
+const OPTIONAL_ARGS = new Set(['acceptanceHash']);
 
 function fail(code) { const e = Error(code); e.code = code; throw e; }
 
@@ -95,13 +105,15 @@ function createCommerceIngressService({ commerce }) {
         const value = input[name] !== undefined ? input[name] : (name === 'key' ? key : undefined);
         if (value === undefined && name === 'key') fail('INVALID_IDEMPOTENCY_KEY');
         if (value === undefined && name === 'raw') fail('INVALID_SSV_PAYLOAD');
+        if (value === undefined && OPTIONAL_ARGS.has(name)) { args.push(undefined); continue; }
         if (value === undefined) fail('INVALID_COMMERCE_ARG: ' + name);
         if (name === 'key') { args.push(requireText(value, 'INVALID_IDEMPOTENCY_KEY', KEY_PATTERN)); }
         else if (name === 'platform') args.push(requireText(value, 'INVALID_PLATFORM', /^(legacy|android|ios)$/));
-        /* MXA-ECO-003 (audit 2026-10-17): `kind` on the ticket op is the REWARD kind the client
-         * selects (credits/boost), matching commerce.ticket and the reward-ticket contract; the
+        /* MXA-ECO-003 (audit 2026-10-17) + MXA-ADS-D2 (2026-10-20): `kind` on the ticket op is
+         * the REWARD kind the client selects (credits/boost) or the power a rewarded ad earns
+         * (undo/hint, the powers lane), matching commerce.ticket and the reward-ticket contract; the
          * rewarded format is implicit and the automatic lane (permit) carries no kind at all. */
-        else if (name === 'kind') args.push(requireText(value, 'INVALID_REWARD', /^(credits|boost)$/));
+        else if (name === 'kind') args.push(requireText(value, 'INVALID_REWARD', /^(credits|boost|undo|hint)$/));
         else if (name === 'itemId') args.push(requireText(value, 'INVALID_ITEM_ID', KEY_PATTERN));
         else if (name === 'amount') {
          if (!Number.isInteger(value) || value <= 0 || value > 1000000) fail('INVALID_AMOUNT');
@@ -138,6 +150,17 @@ function createCommerceIngressService({ commerce }) {
           args.push(value);
         } else if (name === 'raw') {
           if (typeof value !== 'string' || value.length === 0 || value.length > 8192) fail('INVALID_SSV_PAYLOAD');
+          args.push(value);
+        } else if (name === 'acceptanceHash') {
+          args.push(requireText(value, 'INVALID_PROMOTION_ACCEPTANCE', /^[0-9a-f]{64}$/));
+        } else if (name === 'receipt') {
+          /* Shape only: the token inside is verified against the disclosure secret on the Core
+           * side before any acceptance is recorded; this tier cannot attest anything. */
+          if (!value || typeof value !== 'object' || Array.isArray(value)) fail('INVALID_PROMOTION_RECEIPT');
+          if (typeof value.policyVersion !== 'string' || !value.policyVersion
+            || typeof value.ruleHash !== 'string' || !/^[0-9a-f]{64}$/.test(value.ruleHash)
+            || !Number.isSafeInteger(value.remaining) || value.remaining < 0
+            || typeof value.disclosureReceipt !== 'string' || value.disclosureReceipt.length > 4096) fail('INVALID_PROMOTION_RECEIPT');
           args.push(value);
         } else fail('INVALID_COMMERCE_COMMAND');
       }

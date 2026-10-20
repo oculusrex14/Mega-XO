@@ -243,7 +243,7 @@ async function refreshProducts(){
 }
 let cashfreeSdkPromise=null;
 function loadCashfreeSdk(){return cashfreeSdkPromise??=new Promise((resolve,reject)=>{const script=document.createElement('script');script.src='https://sdk.cashfree.com/js/v3/cashfree.js';script.onload=resolve;script.onerror=()=>{cashfreeSdkPromise=null;reject(Error('STORE_UNAVAILABLE'));};document.head.append(script);});}
-async function cashfreeCheckout(productId){const email=(globalThis.prompt('Email for the payment receipt:',context.profile?.email||context.accountEmail||'')||'').trim();const phone=(globalThis.prompt('Phone number for the payment receipt (digits only):','')||'').trim();if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)||!/^[0-9]{8,15}$/.test(phone))throw Error('INVALID_CUSTOMER_DETAILS');await loadCashfreeSdk();const key=globalThis.crypto?.randomUUID?.()||'cf'+Date.now();const order=await globalThis.MegaAccount.request('/api/monetization/cashfree/order',{product:productId,email,phone},key);if(!order?.paymentSessionId)throw Error('STORE_UNAVAILABLE');await new globalThis.Cashfree({mode:order.environment==='sandbox'?'sandbox':'production'}).checkout({paymentSessionId:order.paymentSessionId,redirectTarget:'_self'});}
+async function cashfreeCheckout(productId){const email=(globalThis.prompt('Email for the payment receipt:',context.profile?.email||context.accountEmail||'')||'').trim();const phone=(globalThis.prompt('Phone number for the payment receipt (digits only):','')||'').trim();if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)||!/^[0-9]{8,15}$/.test(phone))throw Error('INVALID_CUSTOMER_DETAILS');await loadCashfreeSdk();const key=globalThis.crypto?.randomUUID?.()||'cf'+Date.now();const order=await globalThis.MegaAccount.request('/api/monetization/cashfree/order',{product:productId,email,phone,promotionAcceptanceHash:context.promotionAcceptanceHash||undefined},key);if(!order?.paymentSessionId)throw Error('STORE_UNAVAILABLE');await new globalThis.Cashfree({mode:order.environment==='sandbox'?'sandbox':'production'}).checkout({paymentSessionId:order.paymentSessionId,redirectTarget:'_self'});}
 async function pollCashfreeStatus(orderId){for(let attempt=0;attempt<20;attempt++){try{const state=await readJSON('/api/monetization/cashfree/status?order_id='+encodeURIComponent(orderId));if(state?.paid){history.replaceState(null,'','/store');notify('Payment verified. Your purchase is on your profile.');await model.profile();await refreshProducts();return;}}catch(error){}await new Promise(resolve=>setTimeout(resolve,3000));}history.replaceState(null,'','/store');notify('The payment is still processing. Your profile updates the moment it clears.');}
 /* A3: the Polar hosted checkout opens in a new tab (same-tab fallback when popups are blocked)
  * and the SAME durable key is reused on retry. Verification is actor-bound via /polar/status and
@@ -252,7 +252,7 @@ let polarPending=null;
 async function polarCheckout(productId){
  if(polarPending)throw Error('REQUEST_PENDING');
  const key=globalThis.crypto?.randomUUID?.()||'pl'+Date.now();
- const created=await globalThis.MegaAccount.request('/api/monetization/polar/checkout',{product:productId},key);
+ const created=await globalThis.MegaAccount.request('/api/monetization/polar/checkout',{product:productId,promotionAcceptanceHash:context.promotionAcceptanceHash||undefined},key);
  if(typeof created?.checkoutUrl!=='string'||!created.checkoutUrl.startsWith('https://'))throw Error('STORE_UNAVAILABLE');
  polarPending={productId,checkoutId:typeof created.checkoutId==='string'?created.checkoutId:'',key};
  const opened=globalThis.open?.(created.checkoutUrl,'_blank','noopener');
@@ -296,7 +296,7 @@ async function dodoCheckout(productId){
  if(dodoPending)throw Error('REQUEST_PENDING');
  const key=globalThis.crypto?.randomUUID?.()||'dd'+Date.now();
  const {currency,country}=dodoRegion();
- const created=await globalThis.MegaAccount.request('/api/monetization/dodo/checkout',{product:productId,currency,country},key);
+ const created=await globalThis.MegaAccount.request('/api/monetization/dodo/checkout',{product:productId,currency,country,promotionAcceptanceHash:context.promotionAcceptanceHash||undefined},key);
  if(typeof created?.checkoutUrl!=='string'||!created.checkoutUrl.startsWith('https://'))throw Error('STORE_UNAVAILABLE');
  dodoPending={productId,checkoutId:typeof created.checkoutId==='string'?created.checkoutId:'',key};
  const opened=globalThis.open?.(created.checkoutUrl,'_blank','noopener');
@@ -310,6 +310,35 @@ async function pollDodoStatus(checkoutId){
   try{const state=await readJSON('/api/monetization/dodo/status?checkout_id='+encodeURIComponent(checkoutId));
    if(state?.paid){dodoPending=null;notify('Payment verified. Your purchase is on your profile.');await model.profile();await refreshProducts();return;}
   }catch(error){}
+ }
+}
+/* MXA-PROMOTION-DISCLOSURE (2026-10-20): the published launch-promotion cap requires a
+ * disclosure acceptance paired to the CURRENT remaining allowance before any promotional Crown
+ * checkout. The full panel shows once per account; a repeat checkout re-attests silently with
+ * the fresh remaining (commerce.reserve pairs disclosed_remaining with the reservation). */
+const WEB_PROMOTION_CROWN_PACKS = ['crowns_100', 'crowns_525', 'crowns_1100'];
+async function ensurePromotionAccepted(productId){
+ if(!WEB_PROMOTION_CROWN_PACKS.includes(productId))return false;
+ try{
+  const d=await readJSON('/api/monetization/promotion/disclosure');
+  if(d?.published!==true||!d.token)return false;
+  if(d.accepted!==true){context.promotionDisclosure=d;context.promotionPendingPurchase=productId;render();return true;}
+  const result=await globalThis.MegaAccount.request('/api/monetization/promotion/accept',{token:d.token},'promotion-accept');
+  if(typeof result?.acceptanceHash==='string')context.promotionAcceptanceHash=result.acceptanceHash;
+ }catch(error){}
+ return false;
+}
+async function acceptPromotionDisclosure(){
+ const d=context.promotionDisclosure;if(!d?.token)return;
+ const result=await globalThis.MegaAccount.request('/api/monetization/promotion/accept',{token:d.token},'promotion-accept');
+ if(typeof result?.acceptanceHash==='string')context.promotionAcceptanceHash=result.acceptanceHash;
+ context.promotionDisclosure=null;const pending=context.promotionPendingPurchase;context.promotionPendingPurchase=null;render();
+ const row=pending&&context.products.rows.find(x=>x.id===pending);
+ if(row&&context.products.webCheckoutAvailable===true){
+  if(context.products.webCheckoutProvider==='dodo')await dodoCheckout(pending);
+  else if(row.inr&&pending!=='mega_pass')await cashfreeCheckout(pending);
+  else await polarCheckout(pending);
+  await model.profile();await refreshProducts();
  }
 }
 function updateOnlineControls(){
@@ -482,8 +511,11 @@ document.addEventListener('click',event=>{
  else if(store&&store.dataset.storeAction==='purchase'&&!serviceBusy){
   const id=store.dataset.productId,row=context.products.rows.find(x=>x.id===id);
   if(context.products.purchasesAvailable===true&&row?.enabled===true){accountAction(async()=>{const actor=context.profile?.id;if(!actor)throw Error('AUTH_REQUIRED');const evidence=await globalThis.MegaBilling.purchase(id,context.products.storeContext);if(actor!==context.profile?.id)throw Error('AUTH_REQUIRED');const delivered=await globalThis.MegaNetwork.purchase(evidence,globalThis.MegaAccount.id());await globalThis.MegaBilling.finish?.(evidence,delivered);await model.profile();await refreshProducts();notify('Verified purchase delivered.');});}
-  else if(row&&context.products.webCheckoutAvailable===true){accountAction(async()=>{if(context.products.webCheckoutProvider==='dodo')await dodoCheckout(id);else if(row.inr&&row.id!=='mega_pass')await cashfreeCheckout(id);else await polarCheckout(id);await model.profile();await refreshProducts();});}
+ else if(row&&context.products.webCheckoutAvailable===true){accountAction(async()=>{if(await ensurePromotionAccepted(id))return;if(context.products.webCheckoutProvider==='dodo')await dodoCheckout(id);else if(row.inr&&row.id!=='mega_pass')await cashfreeCheckout(id);else await polarCheckout(id);await model.profile();await refreshProducts();});}
  }
+ const promo=event.target.closest('[data-promotion-action]');
+ if(promo&&promo.dataset.promotionAction==='accept'&&!serviceBusy)accountAction(()=>acceptPromotionDisclosure());
+ else if(promo&&promo.dataset.promotionAction==='decline'){context.promotionDisclosure=null;context.promotionPendingPurchase=null;render();}
  const online=event.target.closest('[data-online-action]');if(online&&!onlineBusy&&context.sessionStatus==='linked'&&!tournamentRouteRoom()){const action=online.dataset.onlineAction;
   if(action==='retry'){realtime.reconnect();startOnlinePolling();pollOnline();return;}
   if(action==='new'){onlineRevision++;realtime.stop();onlineState={status:'idle',match:null,invitation:null,message:''};clearInterval(onlineTimer);render();return;}

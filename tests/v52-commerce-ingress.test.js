@@ -32,6 +32,9 @@ function fakeCommerce() {
     polarOrderStatus: record('polarOrderStatus'),
     settlePolarWebhook: record('settlePolarWebhook'),
     createDodoCheckout: record('createDodoCheckout'), dodoOrderStatus: record('dodoOrderStatus'), settleDodoWebhook: record('settleDodoWebhook'),
+    /* MXA-PROMOTION-DISCLOSURE: the native pre-billing gate and the acceptance recorder. */
+    reservePromotionCheckout: record('reservePromotionCheckout'),
+    acceptPromotionPolicy: record('acceptPromotionPolicy'),
     powerSpend: record('powerSpend'),
     exchangeCoins: record('exchangeCoins'),
     handleStoreNotification: record('handleStoreNotification'),
@@ -79,12 +82,36 @@ test('dispatch: power_spend forwards the power kind as the priced argument', asy
   await assert.rejects(() => ingress.command({ actor: ACTOR, op: 'power_spend', key: 'op-power-2' }), /INVALID_COMMERCE_ARG: itemId/);
 });
 
+test('dispatch: promotion reserve/accept forward the PR #55 argument shapes', async () => {
+  /* MXA-PROMOTION-DISCLOSURE (2026-10-20): reserve is the native pre-billing gate
+   * (acceptanceHash OPTIONAL — a pre-publication reserve has none yet); accept carries the
+   * receipt whose token the Core side re-verifies. */
+  const commerce = fakeCommerce();
+  const ingress = createCommerceIngressService({ commerce });
+  await ingress.command({ actor: ACTOR, op: 'promotion_reserve', key: 'native-1', productId: 'crowns_1100', provider: 'google' });
+  let call = commerce.calls.find((c) => c.method === 'reservePromotionCheckout');
+  assert.deepEqual(call.args, [ACTOR, 'native-1', 'crowns_1100', 'google', undefined]);
+  await ingress.command({ actor: ACTOR, op: 'promotion_reserve', key: 'native-2', productId: 'crowns_1100', provider: 'apple', acceptanceHash: 'a'.repeat(64) });
+  call = commerce.calls.find((c) => c.method === 'reservePromotionCheckout' && c.args[1] === 'native-2');
+  assert.deepEqual(call.args, [ACTOR, 'native-2', 'crowns_1100', 'apple', 'a'.repeat(64)]);
+  await assert.rejects(() => ingress.command({ actor: ACTOR, op: 'promotion_reserve', key: 'native-3', productId: 'crowns_1100', provider: 'polar' }), /INVALID_STORE_NOTIFICATION|INVALID_COMMERCE_ARG/);
+  await assert.rejects(() => ingress.command({ actor: ACTOR, op: 'promotion_reserve', key: 'native-4', productId: 'crowns_1100', provider: 'google', acceptanceHash: 'nothex' }), /INVALID_PROMOTION_ACCEPTANCE/);
+  const receipt = { policyVersion: 'promotion-allocation-v1', ruleHash: 'a'.repeat(64), remaining: 22000, disclosureReceipt: 'v1.payload.sig' };
+  await ingress.command({ actor: ACTOR, op: 'promotion_accept', opKey: 'promotion-accept', receipt });
+  call = commerce.calls.find((c) => c.method === 'acceptPromotionPolicy');
+  assert.deepEqual(call.args, [ACTOR, receipt]);
+  await assert.rejects(() => ingress.command({ actor: ACTOR, op: 'promotion_accept', opKey: 'promotion-accept', receipt: { ...receipt, remaining: -1 } }), /INVALID_PROMOTION_RECEIPT/);
+});
+
 test('dispatch: unknown ops, bad shapes, and missing keys refuse with stable codes', async () => {
   const ingress = createCommerceIngressService({ commerce: fakeCommerce() });
   await assert.rejects(() => ingress.command({ actor: ACTOR, op: 'selfDestruct' }), /INVALID_COMMERCE_OP/);
   await assert.rejects(() => ingress.command({ actor: ACTOR, op: 'claim' }), /INVALID_IDEMPOTENCY_KEY/);
   /* MXA-ECO-003: ticket kind is the REWARD kind (credits/boost); the rewarded format is implicit. */
   await assert.rejects(() => ingress.command({ actor: ACTOR, op: 'ticket', key: 'k', kind: 'banner', platform: 'android' }), /INVALID_REWARD/);
+  /* MXA-ADS-D2: the powers lane earns undo/hint charges through rewarded ads with the power kind. */
+  await ingress.command({ actor: ACTOR, op: 'ticket', key: 'k-undo', kind: 'undo', platform: 'android' });
+  await ingress.command({ actor: ACTOR, op: 'ticket', key: 'k-hint', kind: 'hint', platform: 'ios' });
   await assert.rejects(() => ingress.command({ actor: ACTOR, op: 'ticket', key: 'k', kind: 'credits', platform: 'web' }), /INVALID_PLATFORM/);
   await assert.rejects(() => ingress.command({ actor: 'bad actor', op: 'status' }), /INVALID_ACTOR/);
   await assert.rejects(() => ingress.command({ actor: ACTOR, op: 'ssv' }), /INVALID_SSV_PAYLOAD/);

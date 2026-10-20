@@ -129,7 +129,13 @@ const MONETIZATION = Object.freeze([
  route('v1.purchase', 'POST', '/api/v1/purchase', { auth: AUTH.LINKED, csrf: true, key: KEY.REQUIRED, bodyLimit: 16384, owner: 'C', note: 'community fallback is SHADOWED by the earlier monetization mount' }),
  route('monetization.admob-ssv', 'GET', '/api/monetization/admob-ssv', { auth: AUTH.VERIFIED_PROVIDER, origin: ORIGIN.NONE, owner: 'C', note: 'economic GET; signed query is the credential' }),
  route('monetization.google-play-rtdn', 'POST', '/api/monetization/google-play-rtdn', { auth: AUTH.VERIFIED_PROVIDER, origin: ORIGIN.NONE, bodyLimit: 131072, owner: 'W', note: 'push authorization header is the credential' }),
- route('monetization.apple-notifications', 'POST', '/api/monetization/apple-notifications', { auth: AUTH.VERIFIED_PROVIDER, origin: ORIGIN.NONE, bodyLimit: 131072, owner: 'W', note: 'signed JWS body is the credential' })
+ route('monetization.apple-notifications', 'POST', '/api/monetization/apple-notifications', { auth: AUTH.VERIFIED_PROVIDER, origin: ORIGIN.NONE, bodyLimit: 131072, owner: 'W', note: 'signed JWS body is the credential' }),
+ /* MXA-PROMOTION-DISCLOSURE (2026-10-20): the anti-hoarding disclosure/acceptance/pre-billing
+  * gate. The acceptance records the signed disclosure receipt; reserve is the native
+  * pre-billing allocation from the PR #55 contract. */
+ route('monetization.promotion-disclosure', 'GET', '/api/monetization/promotion/disclosure', { auth: AUTH.LINKED, owner: 'C', note: 'policy state + short-lived actor-bound disclosure token' }),
+ route('monetization.promotion-accept', 'POST', '/api/monetization/promotion/accept', { auth: AUTH.LINKED, csrf: true, bodyLimit: 16384, owner: 'C', note: 'token -> recorded acceptance hash' }),
+ route('monetization.promotion-reserve', 'POST', '/api/monetization/promotion/reserve', { auth: AUTH.LINKED, csrf: true, key: KEY.REQUIRED, bodyLimit: 16384, owner: 'C', note: 'native pre-billing allocation; same key delivers the purchase' })
 ]);
 
 /* ------------------------------------------------------------ party (C/local) */

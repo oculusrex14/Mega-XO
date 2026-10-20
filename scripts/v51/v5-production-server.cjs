@@ -1164,6 +1164,7 @@ async function main() {
   });
   const worker = createWorkerApp({
     pool: workerPool, redis: ephemera, secret: otpSecret, transport: mailTransport,
+    eraseDeletion: (request) => core.eraseDeletion(request),
     /* The rate-bucket DELETE grant lives with api_runtime (0020; 0037 withholds it from the worker), so
      * the one sweep that needs it runs on the API connection, exactly as in the proven staging stack. */
     privacyPool: apiPool,

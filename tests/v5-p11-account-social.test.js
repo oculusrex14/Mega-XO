@@ -634,8 +634,9 @@ test('6. Account export, deletion status, deletion tag check, coordinated deleti
     body: { confirmation: lab.tagFor('svc_alice') },
   });
   assert.equal(okDelete.status, 200, 'Matching tag confirmation deletes with 200');
-  assert.equal(okDelete.data.deleted, true, 'Acknowledgement reports deleted:true');
-  assert.equal(okDelete.data.status, 'pending', 'Acknowledgement is pending (completion belongs to the worker)');
+  assert.equal(okDelete.data.deletionPending, true, 'Acknowledgement reports pending, never deleted');
+  assert.equal(okDelete.data.status, 'cooling', 'Completion belongs to the scheduled worker');
+  assert.ok(okDelete.data.executeAt > Date.now(), 'The cancellation deadline is in the future');
   assert.match(okDelete.data.receiptId, /^del_/, 'Acknowledgement carries the durable privacy-request id');
   assert.match(okDelete.data.tombstone, /^deleted_[0-9a-f]{32}$/, 'Acknowledgement carries the tombstone written to the profile and the outbox payload');
   assert.equal(typeof okDelete.data.actorHash, 'string', 'Acknowledgement carries the pseudonymized actor hash');
@@ -645,11 +646,11 @@ test('6. Account export, deletion status, deletion tag check, coordinated deleti
   // 6.3c Post-conditions: the bearer is revoked and the login identity is gone
   const afterDelete = await apiRequest(harness.baseUrl, '/api/account/profile', { method: 'GET', actor: 'svc_alice' });
   assert.equal(afterDelete.status, 401, 'The deleted actor bearer is revoked');
-  assert.equal(await lab.scalar(db, 'SELECT count(*)::int FROM identity.email_credentials WHERE actor_id = $1', ['svc_alice']), 0, 'No credential survives deletion');
+  assert.equal(await lab.scalar(db, 'SELECT count(*)::int FROM identity.email_credentials WHERE actor_id = $1', ['svc_alice']), 1, 'Credential survives cooling');
   assert.equal(await lab.scalar(db, 'SELECT count(*)::int FROM identity.sessions WHERE actor_id = $1', ['svc_alice']), 0, 'No session survives deletion');
-  assert.equal(await lab.scalar(db, 'SELECT count(*)::int FROM identity.identities WHERE actor_id = $1', ['svc_alice']), 0, 'No linked identity survives deletion');
-  assert.equal(await lab.scalar(db, 'SELECT count(*)::int FROM profile.profile_saves WHERE actor_id = $1', ['svc_alice']), 0, 'No cloud save survives deletion');
-  assert.equal(await lab.scalar(db, 'SELECT verified FROM identity.eligibility WHERE actor_id = $1', ['svc_alice']), false, 'The account is marked unverified');
+  assert.equal(await lab.scalar(db, 'SELECT count(*)::int FROM identity.identities WHERE actor_id = $1', ['svc_alice']), 1, 'Identity survives cooling');
+  assert.equal(await lab.scalar(db, 'SELECT count(*)::int FROM profile.profile_saves WHERE actor_id = $1', ['svc_alice']), 1, 'Cloud save survives cooling');
+  assert.equal(await lab.scalar(db, 'SELECT verified FROM identity.eligibility WHERE actor_id = $1', ['svc_alice']), true, 'Cooling does not mark the account unverified');
   const tombstoneAdmin = await lab.adminClient(db);
   let tombstoned;
   try {
@@ -658,12 +659,10 @@ test('6. Account export, deletion status, deletion tag check, coordinated deleti
       ['svc_alice']
     )).rows[0];
   } finally { await tombstoneAdmin.end(); }
-  assert.equal(tombstoned.username, okDelete.data.tombstone.slice(0, 24), 'The username is scrubbed to the tombstone');
-  assert.equal(tombstoned.display_name, okDelete.data.tombstone.slice(0, 24), 'The display name is scrubbed to the tombstone');
-  assert.equal(tombstoned.stats_visibility, 'private', 'Stats visibility closes');
-  assert.equal(tombstoned.presence_visibility, 'hidden', 'Presence visibility closes');
+  assert.notEqual(tombstoned.username, okDelete.data.tombstone.slice(0, 24), 'Username survives cooling');
+  assert.notEqual(tombstoned.display_name, okDelete.data.tombstone.slice(0, 24), 'Display name survives cooling');
   assert.equal(tombstoned.tag, lab.tagFor('svc_alice'), 'The tag row is retained as a soft reference');
-  assert.equal(await lab.scalar(db, 'SELECT state FROM privacy.requests WHERE request_id = $1', [okDelete.data.receiptId]), 'requested', 'The privacy.request intake row is recorded (worker owns the state machine)');
+  assert.equal(await lab.scalar(db, 'SELECT state FROM privacy.requests WHERE request_id = $1', [okDelete.data.receiptId]), 'cooling', 'The privacy.request drives cooling visibility');
   assert.equal(await lab.scalar(db, 'SELECT count(*)::int FROM privacy.deletion_receipts WHERE receipt_id = $1', [okDelete.data.receiptId]), 0, 'The API writes no permanent receipt (worker-owned completion)');
 
   // 6.4 POST /api/account/unlink rejects unlinking when only one identity exists (LAST_LOGIN_METHOD)

@@ -54,6 +54,8 @@
 'use strict';
 const crypto = require('node:crypto');
 const { createJobService } = require('./jobs.js');
+const { verifyRuntimeSchema } = require('../db/pg/readiness.js');
+const { lockTransactionIdentity } = require('../db/pg/locks.js');
 
 /* ---------------------------------------------------------------- constants */
 
@@ -519,6 +521,49 @@ function createPrivacyWorkflow(options = {}) {
 
 /* ------------------------------------------------------------- worker app */
 
+/* Deletions are durable obligations, not expiring mail. Claim only their due rows, retry without
+ * dead-lettering away the body, and fence finalization in the same transaction as its receipt.
+ * A restart after Core erasure resumes idempotently from core_erased_at. */
+function createDeletionWorker({ pool, eraseDeletion, now = Date.now, workerId = 'deletion-worker', log = () => {} }) {
+ const gate = verifyRuntimeSchema(pool).then((ready) => {
+  if (ready.role !== 'worker_runtime') fail('ROLE_REQUIRED');
+ });
+ gate.catch(() => {});
+ return Object.freeze({ async tick() {
+  await gate;
+  const at = new Date(now());
+  const jobs = await pool.withTransaction(async (tx) => {
+   const due = await tx.query("SELECT outbox_id FROM ops.outbox WHERE kind='account.deletion' AND ((state='queued' AND next_at<=$1) OR (state='sending' AND lease_until<=$1)) ORDER BY next_at,outbox_id LIMIT 8 FOR UPDATE SKIP LOCKED", [at]);
+   if (!due.rows.length) return [];
+   return (await tx.query("UPDATE ops.outbox SET state='sending',lease_owner=$2,lease_token=COALESCE(lease_token,0)+1,lease_until=$3,attempts=attempts+1 WHERE outbox_id=ANY($1::text[]) RETURNING outbox_id,payload,lease_token", [due.rows.map((r) => r.outbox_id), workerId, new Date(now() + 300000)])).rows;
+  });
+  let completed = 0, failed = 0;
+  for (const job of jobs) {
+   try {
+    const raw = JSON.parse(job.payload);
+    const body = raw?.version ? raw.payload : raw;
+    if (!body || typeof body.actor !== 'string' || typeof body.receiptId !== 'string'
+      || ![ `account.deletion:${body.receiptId}`, `account.deletion:${body.actor}` ].includes(job.outbox_id)) fail('INVALID_DELETION_PAYLOAD');
+    const prepared = await pool.query("UPDATE privacy.requests SET state='processing',updated_at=$3 WHERE request_id=$1 AND actor_id=$2 AND state IN ('cooling','requested','processing') AND COALESCE(execute_at,requested_at)<=$3 RETURNING request_id", [body.receiptId, body.actor, new Date(now())]);
+    if (!prepared.rowCount) fail('DELETION_NOT_DUE');
+    if (typeof eraseDeletion !== 'function') fail('DELETION_CORE_UNAVAILABLE');
+    await eraseDeletion({ receiptId: body.receiptId, actor: body.actor });
+    await pool.withTransaction(async (tx) => {
+     await lockTransactionIdentity(tx, 'aggregate', ['auth', body.actor]);
+     await tx.query('SELECT privacy.finish_account_deletion($1,$2,$3,$4,$5,$6,$7,$8)',
+      [body.receiptId, body.actor, job.outbox_id, workerId, job.lease_token, new Date(now()), body.tombstone, body.actorHash]);
+    });
+    completed += 1;
+   } catch (error) {
+    failed += 1;
+    await pool.query("UPDATE ops.outbox SET state='queued',next_at=$4,lease_owner=NULL,lease_until='1970-01-01T00:00:00Z' WHERE outbox_id=$1 AND state='sending' AND lease_owner=$2 AND lease_token=$3", [job.outbox_id, workerId, job.lease_token, new Date(now() + 60000)]);
+    try { log({ event: 'account_deletion_retry', code: faultCode(error) }); } catch { /* telemetry */ }
+   }
+  }
+  return { claimed: jobs.length, completed, failed };
+ } });
+}
+
 function createWorkerApp(options = {}) {
  if (!options || typeof options !== 'object') fail('OPTIONS_REQUIRED');
  const pool = requirePool(options.pool);
@@ -546,6 +591,7 @@ function createWorkerApp(options = {}) {
   * that sweep: the rate-bucket DELETE grant lives with `api_runtime` (0020:55). */
  const privacy = createPrivacyWorkflow({ pool, jobService, now });
  const mailWorker = createMailWorker({ ...options, jobService, now });
+ const deletionWorker = options.deletionWorker || createDeletionWorker({ pool, eraseDeletion: options.eraseDeletion, now, workerId: options.workerId, log });
 
  let timer = null;
  let closed = false;
@@ -568,8 +614,9 @@ function createWorkerApp(options = {}) {
   const rateBucketsPurged = !includeSlow || privacyPool === null ? null : await privacy.purgeExpiredRateBuckets(privacyPool);
   if (includeSlow) lastSlowSweepAt = now();
   const mail = await mailWorker.tick();
+  const deletion = await deletionWorker.tick();
   if (mail.failed > 0) logEvent('worker_tick_degraded', { failed: mail.failed });
-  return { mail, expired, retentionPurged, rateBucketsPurged };
+  return { mail, deletion, expired, retentionPurged, rateBucketsPurged };
  }
 
  /* The single-flight entry point: ticks that overlap SHARE the one in-flight pass, so two intervals (or
@@ -597,6 +644,7 @@ function createWorkerApp(options = {}) {
  return Object.freeze({
   jobService,
   mailWorker,
+  deletionWorker,
   privacy,
   /* Redis is the caller's accelerator handle (P06). This task's workflows touch PostgreSQL only and
    * never invent an ephemeral key, so the handle is carried, not used - a null Redis is legitimate. */
@@ -647,6 +695,7 @@ function createWorkerApp(options = {}) {
 }
 
 module.exports = {
+ createDeletionWorker,
  createMailWorker,
  createPrivacyWorkflow,
  createWorkerApp,

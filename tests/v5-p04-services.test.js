@@ -1804,7 +1804,7 @@ test('P04 account service: deletion hides the disabled profile without hiding a 
  assert.equal((await accounts.search('svc_alice', tag)).length, 0, 'a disabled actor is absent from search even by its retained tag');
  assert.deepEqual((await accounts.friends('svc_alice')).friends, [], 'and absent from friend lists');
  const durable = await (async () => { const cc = await adminClient(database); try { return (await cc.query('SELECT verified FROM identity.eligibility WHERE actor_id = $1', ['svc_bob'])).rows[0]; } finally { await cc.end(); } })();
- assert.equal(durable.verified, false, 'the API performed the REAL disable');
+ assert.equal(durable.verified, true, 'cooling preserves verification and login credentials');
  await accounts.close();
  await closeDatabasePools(database);
 });
@@ -1844,11 +1844,12 @@ test('P04 account service: a forced Core admission during deletion yields either
  const state = await (async () => {
   const r = {};
   r.verified = (await admin.query('SELECT verified FROM identity.eligibility WHERE actor_id = $1', ['svc_bob'])).rows[0].verified;
+  r.pending = (await admin.query("SELECT EXISTS(SELECT 1 FROM privacy.requests WHERE actor_id='svc_bob' AND state NOT IN ('cancelled','completed')) AS pending")).rows[0].pending;
   r.status = (await admin.query("SELECT status FROM match.matches WHERE match_id = 'match-adm'")).rows[0];
   r.participants = (await admin.query("SELECT count(*)::int AS n FROM match.participants WHERE match_id = 'match-adm'")).rows[0].n;
   return r;
  })();
- const disabled = state.verified === false;
+ const disabled = state.verified === false || state.pending;
  const admitted = !!state.status && ['OFFERED', 'PLAYING'].includes(state.status.status) && state.participants > 0;
  assert.equal(disabled && admitted, false, `a disabled actor must never hold an active match (del=${del.status}/${del.reason && del.reason.message}, adm=${adm.status}/${adm.reason && adm.reason.message}, contended=${contended})`);
  /* Explicit safe implications: a committed OFFERED match forces the deletion to refuse ACCOUNT_BUSY

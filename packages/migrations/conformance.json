@@ -2791,6 +2791,10 @@
               "t": "text",
               "nn": true
             },
+            "note": {
+              "t": "text",
+              "nn": true
+            },
             "retained": {
               "t": "jsonb",
               "nn": true
@@ -2863,6 +2867,12 @@
         },
         "requests": {
           "columns": {
+            "execute_at": {
+              "t": "timestamp with time zone"
+            },
+            "core_erased_at": {
+              "t": "timestamp with time zone"
+            },
             "request_id": {
               "t": "text",
               "nn": true
@@ -2901,11 +2911,13 @@
           },
           "constraints": [
             "requests_kind_check",
+            "requests_cooling_deadline_ck",
             "requests_pkey",
             "requests_state_check"
           ],
           "indexes": [
             "requests_actor_requested_idx",
+            "requests_one_cooling_actor_idx",
             "requests_pkey",
             "requests_state_updated_idx"
           ]

@@ -35,6 +35,114 @@ const EMAIL = 'new.player@example.test';
 const PASSWORD = 'correct horse 42';
 const WRONG_PASSWORD = 'incorrect horse 99';
 const EMAIL_CONTINUE_ADDRESS_LIMIT = 10;
+const { setupDeletion, exerciseCancellation, exerciseCompletion } = require('./helpers/deletion-lifecycle.js');
+
+test('B4 cooling intake preserves credentials/saves; in-app cancellation restores visibility and sign-in', async (t) => {
+ if (!(await lab.boot(t))) return;
+ const h = await setupDeletion(t, 'b4_cancel');
+ await exerciseCancellation(h);
+});
+
+test('B4 scheduled worker completes exactly once at the deadline, erases via Core, and records follow-up honestly', async (t) => {
+ if (!(await lab.boot(t))) return;
+ const h = await setupDeletion(t, 'b4_complete');
+ await exerciseCompletion(h);
+});
+
+test('B4 cancellation route enforces auth, tag and recent verification; repeat cancellation is stable', async (t) => {
+ if (!(await lab.boot(t))) return;
+ const h = await setupDeletion(t, 'b4_http');
+ const handler = createApiHandler({ pool: h.pools.api, accounts: h.accounts, allowedOrigins: [ORIGIN] });
+ const route = '/api/account/deletion/cancel';
+ assert.equal((await request(handler, route, { method: 'POST', body: { confirmation: h.profile.tag } })).status, 401);
+ await h.cool();
+ const login = await h.signIn();
+ const post = (confirmation, token = login.token) => request(handler, route, { method: 'POST', token, body: { confirmation } });
+ const crossOrigin = await request(handler, route, { method: 'POST', cookie: `mega_dev_session=${login.token}`, origin: 'https://foreign.example', body: { confirmation: h.profile.tag } });
+ assert.equal(crossOrigin.status, 403, 'cookie cancellation keeps the existing CSRF perimeter');
+ const bad = await post('wrong-tag');
+ assert.equal(bad.status, 409); assert.equal(bad.data.error, 'DELETE_CONFIRMATION_REQUIRED');
+ h.advance(16 * 60000);
+ const stale = await post(h.profile.tag);
+ assert.equal(stale.status, 401); assert.equal(stale.data.error, 'REAUTH_REQUIRED');
+ const fresh = await h.signIn();
+ const ok = await post(h.profile.tag, fresh.token);
+ assert.equal(ok.status, 200); assert.equal(ok.data.cancelled, true);
+ const twice = await post(h.profile.tag, fresh.token);
+ assert.equal(twice.status, 409); assert.equal(twice.data.error, 'DELETION_NOT_PENDING');
+});
+
+test('B4 intake guards preserve the account; cancellation obeys its actor rate budget', async (t) => {
+ if (!(await lab.boot(t))) return;
+ const h = await setupDeletion(t, 'b4_guards');
+ await assert.rejects(h.accounts.deleteAccount(h.owner.token, 'wrong-tag'), /DELETE_CONFIRMATION_REQUIRED/);
+ h.advance(16 * 60000);
+ await assert.rejects(h.cool(), /REAUTH_REQUIRED/);
+ const login = await h.signIn();
+ const admin = await lab.adminClient(h.db);
+ try {
+  await admin.query("INSERT INTO core.actor_occupancy(actor_id,kind,ref_id,claimed_at) VALUES($1,'match','b4-busy',$2)", [h.owner.actor, new Date(h.now())]);
+  await assert.rejects(h.cool(login.token), /ACCOUNT_BUSY/);
+  await admin.query('DELETE FROM core.actor_occupancy WHERE actor_id=$1', [h.owner.actor]);
+  await h.cool(login.token);
+  const recovery = await h.signIn();
+  const bucket = `account-delete-cancel:${h.owner.actor}:${Math.floor(h.now()/1000/86400)}`;
+  await admin.query('INSERT INTO ops.rate_buckets(bucket_id,hits) VALUES($1,5)', [bucket]);
+  await assert.rejects(h.accounts.cancelDeletion(recovery.token, h.profile.tag), /RATE_LIMITED/);
+  assert.equal((await h.accounts.deletionStatus(recovery.token)).cooling, true);
+ } finally { await admin.end(); }
+});
+
+test('B4 worker fails closed without Core, resumes after restart, and does not gain economy grants', async (t) => {
+ if (!(await lab.boot(t))) return;
+ const h = await setupDeletion(t, 'b4_retry');
+ const ack = await h.cool();
+ h.advance(30 * 86400000);
+ const { createDeletionWorker } = require('../packages/services/worker-workflows.js');
+ const missingCore = createDeletionWorker({ pool: h.pools.worker, now: h.now });
+ assert.deepEqual(await missingCore.tick(), { claimed: 1, completed: 0, failed: 1 });
+ assert.equal(await h.scalar('SELECT count(*)::int FROM identity.email_credentials WHERE actor_id=$1'), 1);
+ assert.equal(await h.scalar('SELECT count(*)::int FROM privacy.deletion_receipts WHERE receipt_id=$1', [ack.receiptId]), 0);
+ for (const pool of [h.pools.api, h.pools.worker]) {
+  await assert.rejects(pool.query('SELECT privacy.erase_account_core_state($1,$2,$3)', [ack.receiptId, h.owner.actor, new Date(h.now())]), (e) => e.code === '42501');
+ }
+ await assert.rejects(h.pools.worker.query('DELETE FROM economy.wallets WHERE actor_id=$1', [h.owner.actor]), (e) => e.code === '42501');
+ await assert.rejects(h.pools.api.query("UPDATE ops.outbox SET state='cancelled',payload=NULL WHERE outbox_id=$1", [`account.deletion:${ack.receiptId}`]), (e) => e.code === '42501');
+ h.advance(60000);
+ assert.deepEqual(await h.worker.tick(), { claimed: 1, completed: 1, failed: 0 });
+});
+
+test('B4 rescheduling after cancellation uses a fresh job and deadline, even within one clock instant', async (t) => {
+ if (!(await lab.boot(t))) return;
+ const h = await setupDeletion(t, 'b4_reschedule');
+ const first = await h.cool();
+ const login = await h.signIn();
+ await h.accounts.cancelDeletion(login.token, h.profile.tag);
+ const second = await h.cool(login.token);
+ assert.notEqual(first.receiptId, second.receiptId);
+ const nextLogin = await h.signIn();
+ assert.equal((await h.accounts.deletionStatus(nextLogin.token)).request.receiptId, second.receiptId);
+ await h.accounts.cancelDeletion(nextLogin.token, h.profile.tag);
+ assert.equal(await h.scalar("SELECT count(*)::int FROM ops.outbox WHERE kind='account.deletion' AND state='cancelled'"), 2);
+});
+
+test('B4 restart between Core erasure and identity cleanup resumes without a second economic mutation', async (t) => {
+ if (!(await lab.boot(t))) return;
+ const h = await setupDeletion(t, 'b4_core_restart');
+ const ack = await h.cool();
+ h.advance(30 * 86400000);
+ const { createDeletionWorker } = require('../packages/services/worker-workflows.js');
+ const interrupted = createDeletionWorker({ pool: h.pools.worker, now: h.now,
+  eraseDeletion: async (input) => { await h.core.eraseDeletion(input); throw Error('SIMULATED_PROCESS_INTERRUPTION'); } });
+ assert.equal((await interrupted.tick()).failed, 1);
+ const firstErasure = await h.scalar('SELECT core_erased_at::text FROM privacy.requests WHERE request_id=$1', [ack.receiptId]);
+ assert.ok(firstErasure);
+ assert.equal(await h.scalar('SELECT count(*)::int FROM economy.wallets WHERE actor_id=$1'), 0);
+ assert.equal(await h.scalar('SELECT count(*)::int FROM identity.email_credentials WHERE actor_id=$1'), 1);
+ h.advance(60000);
+ assert.equal((await h.worker.tick()).completed, 1);
+ assert.equal(await h.scalar('SELECT core_erased_at::text FROM privacy.requests WHERE request_id=$1', [ack.receiptId]), firstErasure);
+});
 
 async function setupServer(database) {
   const pools = lab.poolsFor(database);
@@ -50,13 +158,14 @@ async function setupServer(database) {
   return { handler, accounts, deliveries, close };
 }
 
-async function request(server, routePath, { method = 'GET', cookie = null, origin = null, body = null } = {}) {
+async function request(server, routePath, { method = 'GET', cookie = null, token = null, origin = null, body = null } = {}) {
   const handler = server && typeof server.handler === 'function' ? server.handler : server;
   const req = new EventEmitter();
   req.method = method;
   req.url = routePath;
   req.headers = {};
   if (cookie) req.headers.cookie = cookie;
+  if (token) req.headers.authorization = `Bearer ${token}`;
   if (origin) req.headers.origin = origin;
   if (body) { req.body = body; req.headers['content-type'] = 'application/json'; }
   return new Promise((resolve, reject) => {

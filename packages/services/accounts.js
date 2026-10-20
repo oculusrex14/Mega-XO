@@ -15,7 +15,6 @@
  *     deletionPolicy,       // {enabled, policyVersion}
  *     provisionActor,       // async (actor) => void, Core-owned (awaited AFTER the API commit)
  *     cancelSocialOffers,   // async (actor, target) => void, Core-owned (awaited AFTER the commit)
- *     completeDeletion,     // async ({actor, receiptId, tombstone, ...}) => void, worker/Core-owned
  *   });
  *
  * Factory contract: construction runs `verifyRuntimeSchema(pool)` and REJECTS with
@@ -32,10 +31,8 @@
  *     (V5 P06) after the durable session/rate work commits; no durable presence row exists because
  *     that would be a second source of truth for an ephemeral fact. Without an adapter the
  *     projection stays conservatively hidden and heartbeat reports offline.
- *   - `deleteAccount` performs the API's real disable (sessions/challenges/identities/credential
- *     removal, profile tombstone, unverified account) plus a durable privacy request, receipt and
- *     Core hand-off outbox row. The economic/competitive erasure is Core's, so no economic row is
- *     touched here and no no-op "deleted" is returned.
+ *   - `deleteAccount` schedules a 30-day cooling request and revokes sessions; credentials/profile/
+ *     saves survive until worker/Core completion. `cancelDeletion` restores visibility in-app.
  *   - The cross-platform token/refresh/ticket machinery is P05's; `issue`/`bootstrap` keep exactly
  *     the V4 session semantics (14-day linked / 1-day anonymous bearer + CSRF).
  *   - Economic mutation is Core's: this service never touches economy.wallets/ledger/ratings.
@@ -181,7 +178,6 @@ async function createAccountService(pool, options = {}) {
   * simply stays pending in ops.outbox. Neither is ever a stub or a no-op fallback. */
  const provisionActor = typeof options.provisionActor === 'function' ? options.provisionActor : null;
  const cancelSocialOffers = typeof options.cancelSocialOffers === 'function' ? options.cancelSocialOffers : null;
- const completeDeletion = typeof options.completeDeletion === 'function' ? options.completeDeletion : null;
  /* P05 integration point: refresh families are bound to a public session id; when this service
   * revokes sessions the owner of those families must revoke them too. The callback is awaited
   * AFTER the commit (at-least-once; the durable family state stays authoritative) and is optional
@@ -368,6 +364,7 @@ async function createAccountService(pool, options = {}) {
   * identity work stay available. */
  const requireReady = async (repositories, actor) => {
   const account = await verifiedRow(repositories, actor);
+  if ((await repositories.accounts.activity(actor))?.deletionPending) fail('ACCOUNT_DELETION_PENDING');
   if (!(await repositories.accounts.walletReady(actor))) fail('ACCOUNT_UNAVAILABLE');
   return account;
  };
@@ -1648,19 +1645,29 @@ async function createAccountService(pool, options = {}) {
    return run(async (repositories) => {
     const session = await linkedRow(repositories, token);
     const row = await repositories.profiles.for(session.actor);
-    return { available: deletionPolicy.enabled === true, policyVersion: deletionPolicy.policyVersion || null, confirmation: row ? row.tag : null, recentlyVerified: clock() - session.authAt <= REAUTH_WINDOW };
+    const request = await repositories.deletion.latest(session.actor);
+    return { available: deletionPolicy.enabled === true, policyVersion: deletionPolicy.policyVersion || null, confirmation: row ? row.tag : null, recentlyVerified: clock() - session.authAt <= REAUTH_WINDOW,
+     request, cooling: request?.state === 'cooling', cancellable: request?.state === 'cooling' && request.executeAt > clock() };
    });
   },
-  /* Coordinated deletion. The API half is a REAL disable, not a stub: every session and durable
-    * sign-in/challenge is revoked (the actor's login stops working immediately), every linked
-    * identity and the credential are removed, and the public profile is scrubbed and the account
-    * marked unverified so no read path serves it. A durable `privacy.requests` row ('requested') plus
-    * an `account.deletion` outbox row record the intake and hand the worker/Core-owned remainder
-    * (request completion, the permanent deletion receipt, economic/competitive erasure) over with
-    * exactly the values they need. The API NEVER writes a receipt, NEVER stamps completion, and
-    * NEVER claims `{deleted:true}`: while economic rows are still present and the worker has not
-    * completed the state machine the only honest answer is a pending acknowledgment. No economic
-    * row is touched here. */
+  async cancelDeletion(token, confirmation) {
+   return run(async (repositories) => {
+    const session = await sessionGuard(repositories, token, { linked: true });
+    await repositories.accounts.lockEligibility([session.actor]);
+    const live = await liveSession(repositories, token);
+    if (clock() - live.authAt > REAUTH_WINDOW) fail('REAUTH_REQUIRED');
+    const row = await repositories.profiles.for(session.actor);
+    if (!row || confirmation !== row.tag) fail('DELETE_CONFIRMATION_REQUIRED');
+    await rate(repositories, session.actor, 'account-delete-cancel', 5, 86400);
+    const request = await repositories.deletion.latest(session.actor);
+    if (!request || request.state === 'cancelled') fail('DELETION_NOT_PENDING');
+    if (request.state !== 'cooling' || request.executeAt <= clock()) fail('DELETION_CANCELLATION_CLOSED');
+    await repositories.deletion.cancel(session.actor, request.receiptId, clock());
+    return { cancelled: true, receiptId: request.receiptId };
+   });
+  },
+  /* Non-destructive intake. The request itself drives existing visibility filtering. Credentials
+   * remain usable to sign in and cancel; competitive admission is fenced while it is pending. */
   async deleteAccount(token, confirmation) {
    const capturedRevokedIds = [];
    let deletedActor = null;
@@ -1682,47 +1689,35 @@ async function createAccountService(pool, options = {}) {
     await repositories.accounts.lockEligibility([actor]);
     const live = await liveSession(repositories, token);
     if (live.actor !== actor) fail('ACCOUNT_CHANGED');
+    if (clock() - live.authAt > REAUTH_WINDOW) fail('REAUTH_REQUIRED');
     await verifiedRow(repositories, actor);
     const activity = await repositories.accounts.activity(actor);
+    if (activity?.deletionPending) fail('DELETION_ALREADY_PENDING');
     if (activity && activity.competitiveBusy === true) fail('ACCOUNT_BUSY');
     const now = clock();
     const tombstone = `deleted_${crypto.randomUUID().replace(/-/g, '')}`;
     const receiptId = `del_${crypto.randomUUID()}`;
     const actorHash = crypto.createHash('sha256').update(`mega-xo-deleted-account:${actor}`).digest('base64url');
-    await repositories.deletion.insertRequest({ id: receiptId, actor, kind: 'deletion', state: 'requested', requestedAt: now, updatedAt: now, policyVersion: deletionPolicy.policyVersion, note: 'api-initiated coordinated deletion' });
-    await repositories.accounts.setUnverified(actor);
+    const executeAt = now + 30 * DAY;
+    await repositories.deletion.insertRequest({ id: receiptId, actor, kind: 'deletion', state: 'cooling', executeAt, requestedAt: now, updatedAt: now, policyVersion: deletionPolicy.policyVersion, note: '30-day cooling; cancellable in app before executeAt' });
     capturedRevokedIds.push(...(await repositories.sessions.list(actor, clock())).map((r) => sessionId(r.hash)));
-    await repositories.sessions.revokeAll(actor);
     await repositories.signin.cancelForActor(actor);
     await repositories.challenges.consumeAllFor(actor);
-    /* EVERY linked login identity is removed, not just email: the disabled account keeps no usable
-      * sign-in method at all. */
-    await repositories.identities.removeAll(actor);
-    await repositories.credentials.remove(actor);
-    await repositories.profiles.tombstone(actor, tombstone);
-    await repositories.saves.remove(actor);
+    await repositories.sessions.revokeAll(actor);
     await repositories.outbox.enqueue({
-     id: `${DELETION_KIND}:${actor}`, kind: DELETION_KIND,
-     payload: { actor, receiptId, tombstone, actorHash, policyVersion: deletionPolicy.policyVersion, retained: DELETION_RETAINED },
-     created: now, expires: now + 30 * DAY,
+     id: `${DELETION_KIND}:${receiptId}`, kind: DELETION_KIND,
+     payload: { actor, receiptId, tombstone, actorHash, executeAt, policyVersion: deletionPolicy.policyVersion, retained: DELETION_RETAINED },
+     created: now, nextAt: executeAt, expires: Date.parse('9999-12-31T00:00:00Z'),
     });
-    return { receiptId, tombstone, policyVersion: deletionPolicy.policyVersion, actorHash };
+    return { receiptId, tombstone, policyVersion: deletionPolicy.policyVersion, actorHash, executeAt };
    });
-   /* Worker/Core-owned remainder (request completion + permanent receipt + economic erasure). The
-    * outbox row already makes it durable; a supplied hook just runs it inline. Completion is the
-    * worker's to record, so this method always reports PENDING. The acknowledgement carries the
-    * tombstone and the pseudonymized actor hash the durable hand-off was addressed by: the receipt
-    * `privacy.requests` row and the `account.deletion` outbox payload both hold them, and the
-    * route response contract exposes them to the caller, so returning only `{deletionPending}` would
-    * silently drop durable facts the API already committed. */
-   if (completeDeletion) await afterCommit(() => completeDeletion({ ...result }));
    await afterRevocation(capturedRevokedIds);
    /* Post-commit: the revocation hints fence any in-flight heartbeat, then the deleted actor's
     * presence is cleared for good, so a stale heartbeat cannot resurrect it (heartbeat itself rejects
     * the now-absent session and writes nothing). */
    await setRevocationHints(capturedRevokedIds);
    await dropActorPresence(deletedActor, capturedRevokedIds);
-   return { deletionPending: true, receiptId: result.receiptId, tombstone: result.tombstone, policyVersion: result.policyVersion, actorHash: result.actorHash };
+   return { deletionPending: true, ...result };
   },
 
   /* --- maintenance --- */

@@ -843,17 +843,20 @@ function accountRepositoryFor(context) {
   },
  };
 
- /* --- coordinated-deletion intake. The API's grants on privacy are INSERT on `requests` and
-  * SELECT/UPDATE on `reports` only (0020); the request STATE MACHINE and the permanent
-  * `deletion_receipts` row belong to worker_runtime (0022). So the API records the request at
-  * 'requested' and hands the rest over as a durable ops.outbox row - writing the worker-owned rows
-  * from here would simply be denied, and widening the API's grants to "finish the job" would blur
-  * the ownership register. --- */
+ /* API intake and narrowly granted cancellation; completion remains worker/Core owned. */
  const deletion = {
+  async latest(actor) {
+   const r = await q("SELECT request_id, state, execute_at FROM privacy.requests WHERE actor_id=$1 AND kind='deletion' ORDER BY (state NOT IN ('cancelled','completed')) DESC, requested_at DESC, request_id DESC LIMIT 1", [actor]);
+   const row = r.rows[0];
+   return row ? { receiptId: row.request_id, state: row.state, executeAt: row.execute_at ? new Date(row.execute_at).getTime() : null } : null;
+  },
+  async cancel(actor, receiptId, at) {
+   await q('SELECT privacy.cancel_account_deletion($1,$2,$3)', [actor, receiptId, iso(at, 'deletion.cancel')]);
+  },
   async insertRequest(row) {
    await q(
-    'INSERT INTO privacy.requests (request_id, actor_id, kind, state, requested_at, updated_at, policy_version, note) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)',
-    [row.id, row.actor, row.kind, row.state, iso(row.requestedAt, 'requests.requested_at'), iso(row.updatedAt, 'requests.updated_at'), row.policyVersion, row.note || '']);
+    'INSERT INTO privacy.requests (request_id, actor_id, kind, state, requested_at, updated_at, policy_version, note, execute_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)',
+    [row.id, row.actor, row.kind, row.state, iso(row.requestedAt, 'requests.requested_at'), iso(row.updatedAt, 'requests.updated_at'), row.policyVersion, row.note || '', iso(row.executeAt, 'requests.execute_at')]);
   },
  };
 

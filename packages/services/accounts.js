@@ -1086,10 +1086,18 @@ async function createAccountService(pool, options = {}) {
    if (typeof foreground !== 'boolean') fail('INVALID_PRESENCE');
    const session = await run(async (repositories) => {
     /* The durable session row is the authority (legacy requireLinked semantics): a revoked/expired/
-      * suspended/unverified bearer is refused HERE and nothing is written. The rate spend is durable
-      * in PostgreSQL, so a wiped Redis cannot bypass it. */
+      * suspended/unverified bearer is refused HERE and nothing is written. The fine-grained presence
+      * budget is Redis-class (P06 non-security tier): a per-heartbeat durable write streamed the whole
+      * database out of Neon on every backup cycle (A4 root cause, 2026-10-20). When Redis is
+      * unavailable the spend falls back to the durable budget so an outage cannot OPEN the floodgate;
+      * a wiped Redis only relaxes the budget until the next durable fallback window. */
     const live = await linkedRow(repositories, token);
-    await rate(repositories, live.hash, 'presence', 12, 60);
+    const windowId = Math.floor(clock() / 60000);
+    const redisBudget = ephemera && typeof ephemera.rateHit === 'function'
+     ? await ephemera.rateHit(`presence:${live.hash}:${windowId}`, 12, 60000).catch(() => ({ available: false }))
+     : { available: false };
+    if (!redisBudget.available) await rate(repositories, live.hash, 'presence', 12, 60);
+    else if (!redisBudget.allowed) fail('RATE_LIMITED');
     return { actor: live.actor, hash: live.hash };
    });
    const ref = sessionId(session.hash);

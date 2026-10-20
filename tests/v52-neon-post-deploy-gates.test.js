@@ -167,4 +167,3 @@ test('host installer validates staged scripts before modifying bin and snapshots
   assert.equal(spawnSync('bash', ['-n', path.join(ROOT, 'deploy/v5/v5-pg-backup.sh')], {encoding:'utf8'}).status, 0);
   assert.equal(spawnSync('sh', ['-n', path.join(ROOT, 'deploy/v5/psql')], {encoding:'utf8'}).status, 0);
 });
-// PROBE_MARKER

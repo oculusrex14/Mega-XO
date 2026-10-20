@@ -114,4 +114,4 @@ jobs:
           node-version: '24'
       - run: npm ci
       - name: Restored PR #53 post-deploy gate protections (Sol R7)
-        run: node --test --test-reporter=tap tests/v52-neon-post-deploy-gates.test.js
+        run: node --test --test-reporter=tap tests/v52-neon-post-deploy-gates.test.js tests/v6-presence-budget.test.js

@@ -82,9 +82,22 @@ export P15_PGSSLROOTCERT=$STATE/neon-ca.pem
  # no tracked-table row changed since the recorded probe (the change-check owns
  # the ephemeral-table exception; see v5-change-check.js). Losing the state file
  # fails open to a full dump.
- CURRENT_LSN=$("$NODE" "$BIN/v5-change-check.js" --print-lsn \
-   --source "$STATE/prod-source.json") || die 'change-check LSN probe failed'
- "$NODE" "$BIN/v5-change-check.js" --source "$STATE/prod-source.json" || status=$?
+ # ONE atomic probe moment for the whole decision: the change-check prints the LSN and the
+ # per-table counters captured in the same query, and the caller persists BOTH halves from
+ # THIS payload - never from a second, later probe (a state pair from different moments
+ # could silently exclude writes between them from every future delta).
+ CC_STATUS=0
+ CC_OUT=$("$NODE" "$BIN/v5-change-check.js" --source "$STATE/prod-source.json") || CC_STATUS=$?
+ if [[ $CC_STATUS -ne 0 && $CC_STATUS -ne 42 ]]; then die 'change check failed closed'; fi
+ IFS='|' read -r CURRENT_LSN TABLES_STATE_DOC <<<"$("$NODE" -e '
+  let raw="";process.stdin.on("data",d=>{raw+=d;}).on("end",()=>{
+   const lines=raw.trim().split("\n");const last=lines[lines.length-1];
+   let doc;try{doc=JSON.parse(last);}catch{process.exit(3);}
+   if(doc.event!=="change_check"||!/^[0-9A-F]+\/[0-9A-F]+$/.test(doc.current||"")||typeof doc.tablesStateDoc!=="string"||!doc.tablesStateDoc.startsWith("{"))process.exit(4);
+   process.stdout.write(doc.current+"|"+doc.tablesStateDoc);
+  });' <<<"$CC_OUT")" || die 'change check output unparsable'
+ [[ -n $CURRENT_LSN && -n $TABLES_STATE_DOC ]] || die 'change check output incomplete'
+ status=$CC_STATUS
  if [[ ${status:-0} -eq 42 ]]; then
    # Sol P1 #5: the marker binds the verified-unchanged proof to the newest LOCAL archive
    # identity. v5-freshness.js refuses a marker whose backupId is not the newest R2 manifest,
@@ -98,7 +111,10 @@ export P15_PGSSLROOTCERT=$STATE/neon-ca.pem
     const marker=JSON.stringify({checkedAt:new Date().toISOString(),backupId:id,lsn,previous:lsn})+"\n";
     const tmp=p+".tmp";fs.writeFileSync(tmp,marker,{mode:0o600});fs.renameSync(tmp,p);
    ' "$STATE/backup-unchanged.json" "$MARKER_BACKUP_ID" "$CURRENT_LSN" || die 'marker write failed'
-   log "backup skipped: no change since $STATE/last-backup-lsn (marker bound to $MARKER_BACKUP_ID)"
+   # The counter baseline advances with a proven no-data-change skip; the LSN watermark
+   # deliberately stays at the last dump so any data write still forces the next dump.
+   umask 077; printf '%s\n' "$TABLES_STATE_DOC" > "$STATE/last-backup-tables.json"
+   log "backup skipped: no tracked-table change since the last dump (marker bound to $MARKER_BACKUP_ID)"
    exit 0
  fi
  [[ ${status:-0} -eq 0 ]] || die 'change check failed closed'
@@ -136,7 +152,12 @@ transferred=$(( ($(date +%s%N) - before) / 1000000 ))
 log "r2 upload+readback verified receipt=$ARCHIVES/$backup_id.r2-receipt.json ms=$transferred"
 # The pre-dump LSN is now the durable watermark: any commit after it (during or
 # after this dump) makes the next comparison unequal and forces a fresh dump.
-umask 077; printf '%s\n' "$CURRENT_LSN" > "$STATE/last-backup-lsn"; rm -f "$STATE/backup-unchanged.json"
+ # Persist BOTH halves of the decision probe (LSN + counter baseline) from the SAME atomic
+ # moment, so no write can ever fall between the two baselines.
+ umask 077
+ printf '%s\n' "$CURRENT_LSN" > "$STATE/last-backup-lsn"
+ printf '%s\n' "$TABLES_STATE_DOC" > "$STATE/last-backup-tables.json"
+ rm -f "$STATE/backup-unchanged.json"
 
 # ---- bounded local retention (never touches the remote bucket) ------------
 mapfile -t local_manifests < <(find "$ARCHIVES" -maxdepth 1 -type f -name 'v5-p15-*.manifest.json' -printf '%T@ %p\n' | sort -rn | cut -d' ' -f2-)

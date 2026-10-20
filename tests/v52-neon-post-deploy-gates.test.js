@@ -106,11 +106,11 @@ test('an LSN advance confined to the ephemeral ignore list still skips and refre
     { 'ops.rate_buckets': [9, 9, 9] }, { 'ops.rate_buckets': [10, 9, 9] });
   assert.equal(r.exit, 42);
   assert.match(r.output, /ONLY_IGNORED_TABLES_CHANGED/);
-  assert.equal(r.tableWrites.length, 1);
-  const written = JSON.parse(r.tableWrites[0].data);
-  assert.equal(written.format, 'mega-v5-backup-table-deltas/v1');
-  assert.deepEqual(written.counters['ops.rate_buckets'], [10, 9, 9]);
-  assert.equal(r.tableRenames.length, 1);
+  const payload = JSON.parse(r.output.trim().split('\n').pop());
+  const doc = JSON.parse(payload.tablesStateDoc);
+  assert.equal(doc.format, 'mega-v5-backup-table-deltas/v1');
+  assert.deepEqual(doc.counters['ops.rate_buckets'], [10, 9, 9]);
+  assert.equal(payload.current, '0/A2');
 });
 
 test('a tracked-table write between probes always dumps', () => {

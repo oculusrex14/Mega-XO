@@ -64,6 +64,7 @@ test('P10 stop waits for a delivery already in progress before acknowledging shu
  const pool = { async query() { return { rowCount: 0, rows: [] }; } };
  const app = createWorkerApp({
   pool, jobService: jobs, transport, secret: SECRET, intervalMs: 0,
+  deletionWorker: { async tick() { return { claimed: 0, completed: 0, failed: 0 }; } },
   now: () => AT, workerId: 'worker:shutdown-drain', limit: 1,
  });
  const tick = app.tick();

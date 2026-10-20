@@ -80,7 +80,7 @@ function decisionConfirmNew(){
  const date=new Date(Date.now()+30*86400000).toLocaleDateString(undefined,{year:'numeric',month:'long',day:'numeric'});
  frame('Create a new profile and delete the old one?',
   '<p>Your new profile will start fresh. Progress, Coins, Crowns, rank and friends won\'t carry over, and purchases stay with the profile that bought them.</p>'+
-  '<p>Your existing profile, <strong>'+esc(d.existing.username||'your profile')+' ('+esc(d.existing.tag||'')+')</strong>, will be scheduled for permanent deletion on <strong>'+esc(date)+'</strong> — 30 days from now. every sign-in method on that profile stops working immediately and there is no in-app cancellation. If this was a mistake, contact '+esc('contact@antimatterinnovations.com')+' before the window closes.</p>'+
+  '<p>Your existing profile, <strong>'+esc(d.existing.username||'your profile')+' ('+esc(d.existing.tag||'')+')</strong>, will be scheduled for permanent deletion on <strong>'+esc(date)+'</strong> — 30 days from now. You will be signed out and your profile will be hidden during this window. Sign back in to that profile and cancel deletion in account settings before this date.</p>'+
   '<p>Some purchase and security records are retained as explained in our '+publicLink('privacy','Privacy Policy')+'.</p>'+
   btn('Create profile and schedule deletion','decision-new-confirm')+
   btn('Go back','decision-back','',true),
@@ -213,7 +213,16 @@ async function downloadMyData(){
 }
 function deleteAccountForm(){
  const tag=session?.profile?.tag;if(!tag)return connections();
- frame('Delete account','<p>This permanently deletes your Mega XOXO profile and removes your sign-in methods, cloud practice save, friends and active profile data.</p><p>This cannot be undone. Purchases or security records that must be retained may remain only as non-profile records under the applicable policy.</p><div class="profile-fields"><label>Type your player tag to confirm<input id="cDeleteConfirmation" autocomplete="off" spellcheck="false" placeholder="'+esc(tag)+'"></label></div>'+btn('Permanently delete account','delete-account-confirm')+btn('Cancel','connections','',true),'delete-account');
+ const date=new Date(Date.now()+30*86400000).toLocaleDateString();
+ frame('Schedule account deletion','<p>Your account will be scheduled for permanent deletion on <strong>'+esc(date)+'</strong> — 30 days from now. You will be signed out, hidden from other players and unable to play online while deletion is pending.</p><p>You can sign back in and cancel deletion in account settings before that date. Sign-in methods, cloud saves and progress remain until completion. Purchase replay, security audit and pseudonymized moderation records are retained; some history may require operator cleanup.</p><div class="profile-fields"><label>Type your player tag to confirm<input id="cDeleteConfirmation" autocomplete="off" spellcheck="false" placeholder="'+esc(tag)+'"></label></div>'+btn('Schedule deletion in 30 days','delete-account-confirm')+btn('Go back','connections','',true),'delete-account');
+}
+function cancelDeletionForm(){
+ const tag=session?.profile?.tag;if(!tag)return connections();
+ frame('Cancel account deletion','<p>Keep this profile, sign-in methods, cloud saves and progress. Verify your account again if prompted.</p><div class="profile-fields"><label>Type your player tag to confirm<input id="cDeleteConfirmation" autocomplete="off" spellcheck="false" placeholder="'+esc(tag)+'"></label></div>'+btn('Keep my account','cancel-deletion-confirm')+btn('Go back','connections','',true),'cancel-deletion');
+}
+async function cancelDeletion(){
+ await API.request('/api/account/deletion/cancel',{confirmation:$('#cDeleteConfirmation')?.value.trim()||''});
+ session=await API.session(true);await connections();APP.notify('Deletion cancelled. Your account is available again.');
 }
 async function deleteAccount(){
  if(APP.getContext().playing)return announce('Finish your current match before deleting your account.',true);
@@ -221,7 +230,7 @@ async function deleteAccount(){
  if(!actor)return;
  const result=await API.request('/api/account/delete',{confirmation});
  drop('mega_v333_archive:'+actor);drop(META);drop(OWNER);API.reset();session=null;social={friends:[],incoming:[],outgoing:[],blocked:[]};invites=[];challenges=[];profile=null;conflict=null;dirty=false;syncRevision=0;syncState='device';updateNotificationButton();
- suppressSave=true;APP.applyPractice(get('mega_v333_archive:guest')||D.fresh());suppressSave=false;dismiss();APP.refresh();APP.render();APP.notify('Your Mega XOXO account has been deleted.');
+ suppressSave=true;APP.applyPractice(get('mega_v333_archive:guest')||D.fresh());suppressSave=false;dismiss();APP.refresh();APP.render();APP.notify('Deletion scheduled for '+new Date(result.executeAt).toLocaleDateString()+'. Sign back in to cancel in account settings before that date.');
  return result;
 }
 async function connections(){
@@ -238,7 +247,7 @@ async function connections(){
   return '<div class="profile-card"><b>'+name+'</b><p>'+(exists?'Linked':'Not linked')+'</p>'+(exists?
    '<button class="button full quiet" data-c="signin" data-id="'+provider+'" data-intent="reauth" '+(available(provider)?'':'disabled')+'>Verify with '+name+'</button><button class="button full quiet" data-c="unlink" data-id="'+provider+'" '+(linked.length<=1?'disabled':'')+'>Unlink</button>':
    '<button class="button full quiet" data-c="signin" data-id="'+provider+'" data-intent="link" '+(available(provider)?'':'disabled')+'>Link '+name+'</button>')+'</div>';
- }).join('')+'<p>Verify again before changing linked accounts. At least one sign-in method must remain linked.</p>'+sessions+'<h3 class="identity-section">Privacy</h3>'+btn('Download my data','download-data','',true)+(deletion.available?btn('Delete account','delete-account-form','',true):'')+btn('Sign out on this device','signout','',true)+btn('Sign out everywhere','signout-all','',true),'connections');
+ }).join('')+'<p>Verify again before changing linked accounts. At least one sign-in method must remain linked.</p>'+sessions+'<h3 class="identity-section">Privacy</h3>'+btn('Download my data','download-data','',true)+(deletion.cooling?'<p>Deletion scheduled for <strong>'+esc(when(deletion.request.executeAt))+'</strong>. Your profile is hidden and online play is paused.</p>'+(deletion.cancellable?btn('Cancel deletion','cancel-deletion-form'):'<p>The cancellation window has closed. Deletion is awaiting completion.</p>'):(deletion.available?btn('Delete account','delete-account-form','',true):''))+btn('Sign out on this device','signout','',true)+btn('Sign out everywhere','signout-all','',true),'connections');
 }
 function person(p){return '<button type="button" class="friend-person" data-c="profile" data-id="'+esc(p.id)+'">'+avatar(p.avatar,true)+'<span class="person-copy"><strong>'+esc(p.name)+'</strong><small>@'+esc(p.username)+'</small>'+state(p)+'</span>'+icon('arrow')+'</button>';}
 function requestCard(p,kind){return '<div class="friend-request">'+person(p)+'<div class="request-actions">'+(kind==='incoming'?btn('Accept','social','accept:'+p.id)+btn('Decline','social','decline:'+p.id,true):btn('Cancel request','social','cancel:'+p.id,true))+'</div></div>';}
@@ -296,6 +305,7 @@ const actions={
  'revoke-session':async id=>{if(!confirm('Sign out this device?'))return;await API.request('/api/account/sessions/revoke',{id});await connections();APP.notify('Device signed out.');},
  'revoke-other-sessions':async()=>{if(!confirm('Sign out all other devices?'))return;const out=await API.request('/api/account/sessions/revoke',{allOthers:true});await connections();APP.notify(out.revoked+' other device'+(out.revoked===1?' was':'s were')+' signed out.');},
  'download-data':downloadMyData,'delete-account-form':deleteAccountForm,'delete-account-confirm':deleteAccount,
+ 'cancel-deletion-form':cancelDeletionForm,'cancel-deletion-confirm':cancelDeletion,
  signout:async()=>signOut(false),'signout-all':async()=>signOut(true),
  sync:async()=>{if(syncState==='conflict'&&conflict?.remote)return chooseSave(conflict.remote);dirty=true;await saveNow();announce(syncState==='saved'?'Progress saved.':syncState==='conflict'?'A newer cloud save needs your choice.':'Will retry when connected.',syncState!=='saved');},
  'restore-choice':async()=>{await adoptCloud(conflict.remote);conflict=null;},'device-choice':useDevice,

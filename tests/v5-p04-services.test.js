@@ -1804,7 +1804,7 @@ test('P04 account service: deletion hides the disabled profile without hiding a 
  assert.equal((await accounts.search('svc_alice', tag)).length, 0, 'a disabled actor is absent from search even by its retained tag');
  assert.deepEqual((await accounts.friends('svc_alice')).friends, [], 'and absent from friend lists');
  const durable = await (async () => { const cc = await adminClient(database); try { return (await cc.query('SELECT verified FROM identity.eligibility WHERE actor_id = $1', ['svc_bob'])).rows[0]; } finally { await cc.end(); } })();
- assert.equal(durable.verified, false, 'the API performed the REAL disable');
+ assert.equal(durable.verified, true, 'cooling preserves verification and login credentials');
  await accounts.close();
  await closeDatabasePools(database);
 });

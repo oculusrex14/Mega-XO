@@ -1,0 +1,55 @@
+name: V6 account deletion lifecycle
+on:
+  push:
+    branches: [codex-v6-deletion-cooling]
+  pull_request:
+    branches: [V6]
+    paths: ['packages/**', 'apps/api/**', 'src/community.js', 'tests/**', 'scripts/v51/**', '.github/workflows/v6-account-deletion.yml']
+permissions:
+  contents: read
+concurrency:
+  group: b4-deletion-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  deletion:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: mirror.gcr.io/library/postgres:16@sha256:ca0bd484cb98bf4b24eb1010e73fb3fcbd6714d240fbc1a10eea5b7dbecb641d
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_DB: postgres
+          POSTGRES_HOST_AUTH_METHOD: trust
+        ports: ['127.0.0.1:5432:5432']
+        options: --health-cmd "pg_isready -U postgres -q" --health-interval 5s --health-timeout 5s --health-retries 24
+    env:
+      V5_PG_URL: postgres://postgres@127.0.0.1:5432/postgres
+      V5_PG_DISPOSABLE: '1'
+      V5_PG_REQUIRED: '1'
+      V5_TARGET: test
+      V5_MIGRATE_ALLOW_INSECURE_LOOPBACK: '1'
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '24'
+      - run: npm ci
+      - name: Migration, account, worker and privacy regressions on real PostgreSQL
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p .artifacts/b4
+          node --test --test-concurrency=1 tests/v5-migrations.test.js tests/v5-p04-services.test.js tests/v5-p10-workflows.test.js tests/v5-p10-worker-hardening.test.js tests/v5-p11-account-session-email.test.js tests/v5-p11-account-social.test.js tests/v5-p12-read-cache.test.js tests/v5-p21-native-email-ui.test.js tests/v6-deletion-ui.test.js 2>&1 | tee .artifacts/b4/regressions.tap
+          if ! grep -Eq '^# skipped 0$' .artifacts/b4/regressions.tap; then exit 1; fi
+      - name: Both scheduled-deletion lifecycle paths
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/v51/p21-account-deletion-lifecycle.cjs 2>&1 | tee .artifacts/b4/lifecycle.tap
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: b4-account-deletion-evidence
+          path: .artifacts/b4
+          retention-days: 14

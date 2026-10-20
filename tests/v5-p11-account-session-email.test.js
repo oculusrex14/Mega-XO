@@ -35,6 +35,59 @@ const EMAIL = 'new.player@example.test';
 const PASSWORD = 'correct horse 42';
 const WRONG_PASSWORD = 'incorrect horse 99';
 const EMAIL_CONTINUE_ADDRESS_LIMIT = 10;
+const { setupDeletion, exerciseCancellation, exerciseCompletion } = require('./helpers/deletion-lifecycle.js');
+
+test('B4 cooling intake preserves credentials/saves; in-app cancellation restores visibility and sign-in', async (t) => {
+ if (!(await lab.boot(t))) return;
+ const h = await setupDeletion(t, 'b4_cancel');
+ await exerciseCancellation(h);
+});
+
+test('B4 scheduled worker completes exactly once at the deadline, erases via Core, and records follow-up honestly', async (t) => {
+ if (!(await lab.boot(t))) return;
+ const h = await setupDeletion(t, 'b4_complete');
+ await exerciseCompletion(h);
+});
+
+test('B4 cancellation route enforces auth, tag and recent verification; repeat cancellation is stable', async (t) => {
+ if (!(await lab.boot(t))) return;
+ const h = await setupDeletion(t, 'b4_http');
+ const handler = createApiHandler({ pool: h.pools.api, accounts: h.accounts, allowedOrigins: [ORIGIN] });
+ const route = '/api/account/deletion/cancel';
+ assert.equal((await request(handler, route, { method: 'POST', body: { confirmation: h.profile.tag } })).status, 401);
+ await h.cool();
+ const login = await h.signIn();
+ const post = (confirmation, token = login.token) => request(handler, route, { method: 'POST', token, body: { confirmation } });
+ const bad = await post('wrong-tag');
+ assert.equal(bad.status, 409); assert.equal(bad.data.error, 'DELETE_CONFIRMATION_REQUIRED');
+ h.advance(16 * 60000);
+ const stale = await post(h.profile.tag);
+ assert.equal(stale.status, 401); assert.equal(stale.data.error, 'REAUTH_REQUIRED');
+ const fresh = await h.signIn();
+ const ok = await post(h.profile.tag, fresh.token);
+ assert.equal(ok.status, 200); assert.equal(ok.data.cancelled, true);
+ const twice = await post(h.profile.tag, fresh.token);
+ assert.equal(twice.status, 409); assert.equal(twice.data.error, 'DELETION_NOT_PENDING');
+});
+
+test('B4 worker fails closed without Core, resumes after restart, and does not gain economy grants', async (t) => {
+ if (!(await lab.boot(t))) return;
+ const h = await setupDeletion(t, 'b4_retry');
+ const ack = await h.cool();
+ h.advance(30 * 86400000);
+ const { createDeletionWorker } = require('../packages/services/worker-workflows.js');
+ const missingCore = createDeletionWorker({ pool: h.pools.worker, now: h.now });
+ assert.deepEqual(await missingCore.tick(), { claimed: 1, completed: 0, failed: 1 });
+ assert.equal(await h.scalar('SELECT count(*)::int FROM identity.email_credentials WHERE actor_id=$1'), 1);
+ assert.equal(await h.scalar('SELECT count(*)::int FROM privacy.deletion_receipts WHERE receipt_id=$1', [ack.receiptId]), 0);
+ for (const pool of [h.pools.api, h.pools.worker]) {
+  await assert.rejects(pool.query('SELECT privacy.erase_account_core_state($1,$2,$3)', [ack.receiptId, h.owner.actor, new Date(h.now())]), (e) => e.code === '42501');
+ }
+ await assert.rejects(h.pools.worker.query('DELETE FROM economy.wallets WHERE actor_id=$1', [h.owner.actor]), (e) => e.code === '42501');
+ await assert.rejects(h.pools.api.query("UPDATE ops.outbox SET state='cancelled',payload=NULL WHERE outbox_id=$1", [`account.deletion:${ack.receiptId}`]), (e) => e.code === '42501');
+ h.advance(60000);
+ assert.deepEqual(await h.worker.tick(), { claimed: 1, completed: 1, failed: 0 });
+});
 
 async function setupServer(database) {
   const pools = lab.poolsFor(database);
@@ -50,13 +103,14 @@ async function setupServer(database) {
   return { handler, accounts, deliveries, close };
 }
 
-async function request(server, routePath, { method = 'GET', cookie = null, origin = null, body = null } = {}) {
+async function request(server, routePath, { method = 'GET', cookie = null, token = null, origin = null, body = null } = {}) {
   const handler = server && typeof server.handler === 'function' ? server.handler : server;
   const req = new EventEmitter();
   req.method = method;
   req.url = routePath;
   req.headers = {};
   if (cookie) req.headers.cookie = cookie;
+  if (token) req.headers.authorization = `Bearer ${token}`;
   if (origin) req.headers.origin = origin;
   if (body) { req.body = body; req.headers['content-type'] = 'application/json'; }
   return new Promise((resolve, reject) => {

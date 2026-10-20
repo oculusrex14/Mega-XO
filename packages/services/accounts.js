@@ -1086,20 +1086,27 @@ async function createAccountService(pool, options = {}) {
    if (typeof foreground !== 'boolean') fail('INVALID_PRESENCE');
    const session = await run(async (repositories) => {
     /* The durable session row is the authority (legacy requireLinked semantics): a revoked/expired/
-      * suspended/unverified bearer is refused HERE and nothing is written. The fine-grained presence
-      * budget is Redis-class (P06 non-security tier): a per-heartbeat durable write streamed the whole
-      * database out of Neon on every backup cycle (A4 root cause, 2026-10-20). When Redis is
-      * unavailable the spend falls back to the durable budget so an outage cannot OPEN the floodgate;
-      * a wiped Redis only relaxes the budget until the next durable fallback window. */
+    * suspended/unverified bearer is refused HERE and nothing is written. */
     const live = await linkedRow(repositories, token);
-    const windowId = Math.floor(clock() / 60000);
-    const redisBudget = ephemera && typeof ephemera.rateHit === 'function'
-     ? await ephemera.rateHit(`presence:${live.hash}:${windowId}`, 12, 60000).catch(() => ({ available: false }))
-     : { available: false };
-    if (!redisBudget.available) await rate(repositories, live.hash, 'presence', 12, 60);
-    else if (!redisBudget.allowed) fail('RATE_LIMITED');
     return { actor: live.actor, hash: live.hash };
    });
+   /* The fine-grained presence budget is Redis-class (P06 non-security tier) and MUST run OUTSIDE
+    * any PostgreSQL transaction: a per-heartbeat durable spend streamed the whole database out of
+    * Neon on every backup cycle (A4 root cause, 2026-10-20), and holding an API connection across
+    * Redis latency pins the pool. When Redis is unavailable, a FRESH transaction revalidates the
+    * session (a revoke that committed since the first read is still honored) and spends the durable
+    * fallback budget - an outage cannot open the floodgate; a wiped Redis only relaxes the budget
+    * until the next durable fallback window. */
+   const windowId = Math.floor(clock() / 60000);
+   const redisBudget = ephemera && typeof ephemera.rateHit === 'function'
+    ? await ephemera.rateHit(`presence:${session.hash}:${windowId}`, 12, 60000).catch(() => ({ available: false }))
+    : { available: false };
+   if (!redisBudget.available) {
+    await run(async (repositories) => {
+     const live = await linkedRow(repositories, token);
+     await rate(repositories, live.hash, 'presence', 12, 60);
+    });
+   } else if (!redisBudget.allowed) fail('RATE_LIMITED');
    const ref = sessionId(session.hash);
    if (!ephemera) return { state: 'offline', online: false };
    /* (1a) A revoker that committed before this point left a hint: do not write at all. */

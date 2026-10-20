@@ -23,7 +23,7 @@ async function setupDeletion(t, family) {
  const worker = createDeletionWorker({ pool: pools.worker, now: () => at,
   eraseDeletion: (input) => core.eraseDeletion(input), workerId: 'b4-worker' });
  const signIn = async () => accounts.emailContinue((await accounts.issue()).token, email, password);
- const scalar = (sql, args = [owner.actor]) => lab.scalar(db, sql, args);
+ const scalar = (sql, args = sql.includes('$1') ? [owner.actor] : []) => lab.scalar(db, sql, args);
  const cool = async (token = owner.token) => accounts.deleteAccount(token, profile.tag);
  return { db, accounts, core, pools, worker, owner, viewer, profile, signIn, scalar, cool,
   now: () => at, advance: (ms) => { at += ms; } };
@@ -75,6 +75,7 @@ async function exerciseCompletion(h) {
   assert.equal(await h.scalar(`SELECT count(*)::int FROM ${table} WHERE actor_id=$1`), 0, `${table} erased`);
  }
  assert.equal(await h.scalar('SELECT verified FROM identity.eligibility WHERE actor_id=$1'), false);
+ await assert.rejects(h.core.provisionActor(h.owner.actor), /ACCOUNT_UNAVAILABLE/, 'late provisioning cannot recreate an erased wallet');
  assert.equal(await h.scalar('SELECT username FROM identity.profiles WHERE actor_id=$1'), ack.tombstone.slice(0, 24));
  assert.equal(await h.scalar('SELECT state FROM privacy.requests WHERE request_id=$1', [ack.receiptId]), 'completed');
  assert.equal(await h.scalar('SELECT count(*)::int FROM privacy.deletion_receipts WHERE receipt_id=$1', [ack.receiptId]), 1);

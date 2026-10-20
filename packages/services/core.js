@@ -536,7 +536,7 @@ async function createCoreService(pool, options = {}) {
     * business aggregate is named, so this is the actor-scoped half of the global order (eligibility
     * -> occupancy -> wallet), exactly like a conversion or a purchase. The locked wallet count is
     * the readiness answer. */
-   const eligibility = await tx.query('SELECT actor_id FROM identity.eligibility WHERE actor_id = $1 FOR UPDATE', [actor]);
+   const eligibility = await tx.query('SELECT actor_id, verified FROM identity.eligibility WHERE actor_id = $1 FOR UPDATE', [actor]);
    if (eligibility.rows.length === 0) throw Error('ACCOUNT_REQUIRED');
    if ((await tx.query('SELECT privacy.account_deletion_pending($1) AS pending', [actor])).rows[0].pending) throw Error('ACCOUNT_DELETION_PENDING');
    const locked = await repositories.wallets.lock([actor]);
@@ -545,6 +545,9 @@ async function createCoreService(pool, options = {}) {
    if (locked.wallets > 0) {
     return { actor, ready: true, created: false, coins: skeleton.coins, crowns: skeleton.crowns, rating: skeleton.rating };
    }
+   /* Completion keeps the permanent actor/store bindings but clears verification and erases the
+    * wallet. A delayed provisioning job must not re-grant the opening balance to that actor. */
+   if (eligibility.rows[0].verified !== true) throw Error('ACCOUNT_UNAVAILABLE');
    /* A participant row for this actor that no match row can explain is a torn aggregate, not a new
     * account: refuse rather than provisioning on top of it. */
    const orphan = await tx.query(

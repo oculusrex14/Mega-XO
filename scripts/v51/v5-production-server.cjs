@@ -808,6 +808,7 @@ async function main() {
   const core = await createCoreService(corePool, { ephemera });
   const accounts = await createAccountService(apiPool, {
     deletionPolicy: { enabled: true, policyVersion: 'v51-production' }, otpSecret,
+    ephemera,
     provisionActor: async (actor) => { await core.provisionActor(actor); },
     cancelSocialOffers: async (actor, targetActor) => { await core.cancelSocialOffers(actor, targetActor); },
   });

@@ -96,7 +96,8 @@ jobs:
           test -f .artifacts/v6-web-build/llms.txt
           test -f .artifacts/v6-web-build/robots.txt
           test -f .artifacts/v6-web-build/sitemap.xml
-          test -f .artifacts/v6-web-build/downloads/android/megaxo-1.0.10.apk
+          APK_PATH=$(node -e "const c=require('./apps/web/download-config.cjs'); const links=require('./apps/web/store-links.json'); const apk=c.validateStoreLinks(links).androidApk; if(!apk) throw Error('no apk pin'); process.stdout.write(apk.path.slice(1))")
+          test -f ".artifacts/v6-web-build/$APK_PATH"
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         if: always()
         with:

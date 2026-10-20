@@ -1844,11 +1844,12 @@ test('P04 account service: a forced Core admission during deletion yields either
  const state = await (async () => {
   const r = {};
   r.verified = (await admin.query('SELECT verified FROM identity.eligibility WHERE actor_id = $1', ['svc_bob'])).rows[0].verified;
+  r.pending = (await admin.query("SELECT EXISTS(SELECT 1 FROM privacy.requests WHERE actor_id='svc_bob' AND state NOT IN ('cancelled','completed')) AS pending")).rows[0].pending;
   r.status = (await admin.query("SELECT status FROM match.matches WHERE match_id = 'match-adm'")).rows[0];
   r.participants = (await admin.query("SELECT count(*)::int AS n FROM match.participants WHERE match_id = 'match-adm'")).rows[0].n;
   return r;
  })();
- const disabled = state.verified === false;
+ const disabled = state.verified === false || state.pending;
  const admitted = !!state.status && ['OFFERED', 'PLAYING'].includes(state.status.status) && state.participants > 0;
  assert.equal(disabled && admitted, false, `a disabled actor must never hold an active match (del=${del.status}/${del.reason && del.reason.message}, adm=${adm.status}/${adm.reason && adm.reason.message}, contended=${contended})`);
  /* Explicit safe implications: a committed OFFERED match forces the deletion to refuse ACCOUNT_BUSY

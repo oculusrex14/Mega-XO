@@ -58,6 +58,8 @@ test('B4 cancellation route enforces auth, tag and recent verification; repeat c
  await h.cool();
  const login = await h.signIn();
  const post = (confirmation, token = login.token) => request(handler, route, { method: 'POST', token, body: { confirmation } });
+ const crossOrigin = await request(handler, route, { method: 'POST', cookie: `mega_dev_session=${login.token}`, origin: 'https://foreign.example', body: { confirmation: h.profile.tag } });
+ assert.equal(crossOrigin.status, 403, 'cookie cancellation keeps the existing CSRF perimeter');
  const bad = await post('wrong-tag');
  assert.equal(bad.status, 409); assert.equal(bad.data.error, 'DELETE_CONFIRMATION_REQUIRED');
  h.advance(16 * 60000);
@@ -68,6 +70,27 @@ test('B4 cancellation route enforces auth, tag and recent verification; repeat c
  assert.equal(ok.status, 200); assert.equal(ok.data.cancelled, true);
  const twice = await post(h.profile.tag, fresh.token);
  assert.equal(twice.status, 409); assert.equal(twice.data.error, 'DELETION_NOT_PENDING');
+});
+
+test('B4 intake guards preserve the account; cancellation obeys its actor rate budget', async (t) => {
+ if (!(await lab.boot(t))) return;
+ const h = await setupDeletion(t, 'b4_guards');
+ await assert.rejects(h.accounts.deleteAccount(h.owner.token, 'wrong-tag'), /DELETE_CONFIRMATION_REQUIRED/);
+ h.advance(16 * 60000);
+ await assert.rejects(h.cool(), /REAUTH_REQUIRED/);
+ const login = await h.signIn();
+ const admin = await lab.adminClient(h.db);
+ try {
+  await admin.query("INSERT INTO core.actor_occupancy(actor_id,kind,ref_id) VALUES($1,'match','b4-busy')", [h.owner.actor]);
+  await assert.rejects(h.cool(login.token), /ACCOUNT_BUSY/);
+  await admin.query('DELETE FROM core.actor_occupancy WHERE actor_id=$1', [h.owner.actor]);
+  await h.cool(login.token);
+  const recovery = await h.signIn();
+  const bucket = `account-delete-cancel:${h.owner.actor}:${Math.floor(h.now()/1000/86400)}`;
+  await admin.query('INSERT INTO ops.rate_buckets(bucket_id,hits) VALUES($1,5)', [bucket]);
+  await assert.rejects(h.accounts.cancelDeletion(recovery.token, h.profile.tag), /RATE_LIMITED/);
+  assert.equal((await h.accounts.deletionStatus(recovery.token)).cooling, true);
+ } finally { await admin.end(); }
 });
 
 test('B4 worker fails closed without Core, resumes after restart, and does not gain economy grants', async (t) => {

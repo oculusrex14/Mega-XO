@@ -117,7 +117,6 @@ function createPlan(root) {
   for (const name of LEGAL_NAMES) add('public/' + name + '.html', 'legal/' + name + '.html', html => html.replaceAll('/public/legal.css', '/legal/legal.css'));
   add('public/legal.css', 'legal/legal.css');
   add('public/app-ads.txt', 'app-ads.txt');
-  generated('llms.txt',rendered.llms,renderSources,'canonical-llms-site-map');
   const documents = {}, legalSources = [];
   for (const name of LEGAL_NAMES) {
     const source = 'public/' + name + '.html';
@@ -151,6 +150,7 @@ function createPlan(root) {
   for(const route of WEBSITE_ROUTES)generated(routeFile(route),rendered.documents[route]);
   generated('robots.txt',rendered.robots,renderSources,'canonical-crawl-policy');
   generated('sitemap.xml',rendered.sitemap,renderSources,'canonical-public-route-sitemap');
+  generated('llms.txt',rendered.llms,renderSources,'canonical-llms-site-map');
   generated('store-links.js','// Generated from validated public store configuration.\nexport const storeLinks = Object.freeze('+JSON.stringify(storeLinks)+');\n',[{source:configSource,source_sha256:sha256(readSource(root,configSource))}],'validated-store-links-to-es-module');
   entries.seo={origin:rendered.origin,public_routes:rendered.publicRoutes,metadata:rendered.metadata};
   entries.storeLinks=storeLinks;

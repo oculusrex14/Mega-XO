@@ -1,0 +1,87 @@
+name: V6 batch-deploy validation
+on:
+  push:
+    branches: ['V6', 'codex-v6-*']
+    paths-ignore: ['docs/**', '*.md']
+  pull_request:
+    branches: ['V6']
+    paths-ignore: ['docs/**', '*.md']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: v6-batch-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  promotion-wiring:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '24'
+      - run: npm ci
+      - name: Disclosure composition and signed-gateway projection (Sol R2/R3)
+        run: node --test --test-reporter=tap tests/v6-promotion-wiring.test.js tests/v52-promotion-disclosure.test.js tests/v6-deletion-ui.test.js tests/monetization-policy.test.js tests/monetization-store.test.js
+  promotion-postgres:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    services:
+      postgres:
+        image: mirror.gcr.io/library/postgres:16@sha256:ca0bd484cb98bf4b24eb1010e73fb3fcbd6714d240fbc1a10eea5b7dbecb641d
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_DB: postgres
+          POSTGRES_HOST_AUTH_METHOD: trust
+        ports: ['127.0.0.1:5432:5432']
+        options: --health-cmd "pg_isready -U postgres -q" --health-interval 5s --health-timeout 5s --health-retries 24
+    env:
+      V5_PG_URL: postgres://postgres@127.0.0.1:5432/postgres
+      V5_PG_DISPOSABLE: '1'
+      V5_PG_REQUIRED: '1'
+      V5_TARGET: test
+      V5_MIGRATE_ALLOW_INSECURE_LOOPBACK: '1'
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '24'
+      - run: npm ci
+      - name: Reward-ticket powers on real PostgreSQL (Sol R5) plus promotion enforcement
+        run: node --test --test-reporter=tap --test-concurrency=1 tests/v6-reward-ticket-powers-pg.test.js tests/v51-audit-promotion-pg.test.js tests/v5-migrations.test.js
+  website-build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '24'
+      - run: npm ci
+      - name: Website builder completes and emits the generated SEO files (Sol R1/R8)
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/p21/build-web.js --output .artifacts/v6-web-build
+          test -f .artifacts/v6-web-build/llms.txt
+          test -f .artifacts/v6-web-build/robots.txt
+          test -f .artifacts/v6-web-build/sitemap.xml
+          test -f .artifacts/v6-web-build/downloads/android/megaxo-1.0.10.apk
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: v6-web-build
+          path: .artifacts/v6-web-build
+          retention-days: 7
+  post-deploy-gates:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '24'
+      - run: npm ci
+      - name: Restored PR #53 post-deploy gate protections (Sol R7)
+        run: node --test --test-reporter=tap tests/v52-neon-post-deploy-gates.test.js

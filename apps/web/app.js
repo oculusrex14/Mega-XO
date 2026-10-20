@@ -341,6 +341,19 @@ async function acceptPromotionDisclosure(){
   await model.profile();await refreshProducts();
  }
 }
+/* Sol review R4: NATIVE store purchases (website opened with the device billing bridge) make
+   the same pre-billing reservation the web checkout does, and deliver the receipt with the
+   SAME durable key so settlement finds the allocation. Provider comes from the store binding
+   the API issued (googleAccountId / appleAppAccountToken). */
+function nativeStoreProvider(){const c=context.products&&context.products.storeContext;if(!c)return null;if(c.googleAccountId)return 'google';if(c.appleAppAccountToken)return 'apple';return null;}
+async function reserveNativePromotionIfRequired(productId,provider,key){
+ if(!WEB_PROMOTION_CROWN_PACKS.includes(productId))return;
+ const d=await readJSON('/api/monetization/promotion/disclosure');
+ if(!d||d.published!==true)return; /* policy not published: settlement does not enforce either */
+ const acceptanceHash=context.promotionAcceptanceHash;
+ if(!acceptanceHash)throw Error('PROMOTION_ACCEPT_FAILED');
+ await globalThis.MegaAccount.request('/api/monetization/promotion/reserve',{product:productId,provider,acceptanceHash},key);
+}
 function updateOnlineControls(){
  if(normalizedPath()!=='/game')return;
  if(tournamentRouteRoom()){updateTournamentControls();return;}
@@ -510,7 +523,7 @@ document.addEventListener('click',event=>{
  const store=event.target.closest('[data-store-action]');if(store&&store.dataset.storeAction==='refresh')refreshProducts();
  else if(store&&store.dataset.storeAction==='purchase'&&!serviceBusy){
   const id=store.dataset.productId,row=context.products.rows.find(x=>x.id===id);
-  if(context.products.purchasesAvailable===true&&row?.enabled===true){accountAction(async()=>{const actor=context.profile?.id;if(!actor)throw Error('AUTH_REQUIRED');const evidence=await globalThis.MegaBilling.purchase(id,context.products.storeContext);if(actor!==context.profile?.id)throw Error('AUTH_REQUIRED');const delivered=await globalThis.MegaNetwork.purchase(evidence,globalThis.MegaAccount.id());await globalThis.MegaBilling.finish?.(evidence,delivered);await model.profile();await refreshProducts();notify('Verified purchase delivered.');});}
+  if(context.products.purchasesAvailable===true&&row?.enabled===true){accountAction(async()=>{const actor=context.profile?.id;if(!actor)throw Error('AUTH_REQUIRED');if(await ensurePromotionAccepted(id))return;const provider=nativeStoreProvider();if(!provider)throw Error('PROMOTION_RESERVATION_REQUIRED');const key=globalThis.crypto?.randomUUID?.()||'nb'+Date.now();await reserveNativePromotionIfRequired(id,provider,key);const evidence=await globalThis.MegaBilling.purchase(id,context.products.storeContext);if(actor!==context.profile?.id)throw Error('AUTH_REQUIRED');const delivered=await globalThis.MegaNetwork.purchase(evidence,key);await globalThis.MegaBilling.finish?.(evidence,delivered);await model.profile();await refreshProducts();notify('Verified purchase delivered.');});}
  else if(row&&context.products.webCheckoutAvailable===true){accountAction(async()=>{if(await ensurePromotionAccepted(id))return;if(context.products.webCheckoutProvider==='dodo')await dodoCheckout(id);else if(row.inr&&row.id!=='mega_pass')await cashfreeCheckout(id);else await polarCheckout(id);await model.profile();await refreshProducts();});}
  }
  const promo=event.target.closest('[data-promotion-action]');

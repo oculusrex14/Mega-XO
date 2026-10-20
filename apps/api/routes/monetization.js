@@ -339,7 +339,9 @@ async function handleMonetizationRoute(context, req, res) {
        * each checkout re-attests the fresh allowance. The panel itself is only shown when
        * accepted is false; a repeat acceptance is a silent mechanical pairing. */
       if (published && response.policyVersion && allocation.ruleHash === response.ruleHash) {
-        response.token = Disclosure.issueToken({ actor, policyVersion: response.policyVersion, ruleHash: allocation.ruleHash, remaining: response.remaining ?? 0, now: Date.now() }, Disclosure.deriveSecret(String(context.otpSecret)));
+        /* The disclosure helpers derive internally: they take the RAW secret string, never a
+         * pre-derived subkey (Sol review R2 - a pre-derived Buffer failed DISCLOSURE_SECRET_REQUIRED). */
+        response.token = Disclosure.issueToken({ actor, policyVersion: response.policyVersion, ruleHash: allocation.ruleHash, remaining: response.remaining ?? 0, now: Date.now() }, String(context.otpSecret));
       }
       sendJson(res, 200, response, { 'Cache-Control': CACHE_CONTROL });
       return true;
@@ -350,7 +352,7 @@ async function handleMonetizationRoute(context, req, res) {
       const actor = await actorOf(context, req);
       const body = await bodyObject(req);
       if (typeof body.token !== 'string' || !body.token || body.token.length > 4096) fail('INVALID_PROMOTION_TOKEN', 400);
-      const receipt = Disclosure.receiptFromToken(body.token, Disclosure.deriveSecret(String(context.otpSecret)), actor);
+      const receipt = Disclosure.receiptFromToken(body.token, String(context.otpSecret), actor);
       const result = await lane.command({ actor, op: 'promotion_accept', opKey: 'promotion-accept', receipt });
       sendJson(res, 200, result, { 'Cache-Control': CACHE_CONTROL });
       return true;

@@ -778,6 +778,21 @@ async function createCommerceService(pool, options = {}) {
      return { productId: product.id, alreadyOwned: true };
     }
    }
+   /* Sol review R4: a published promotion policy caps promotional Crowns across EVERY checkout
+    * method. Native settlement previously credited valid receipts without a matching
+    * reservation (Promotion.creditLot silently returned when none existed), bypassing the cap.
+    * With a published policy a crown-granting store purchase MUST carry the reservation the
+    * upgraded client makes BEFORE billing (same actor/provider/delivery key). A legacy client's
+    * delivery is refused with PROMOTION_RESERVATION_REQUIRED: the provider purchase is left
+    * unacknowledged, so the store's own auto-refund returns the money - no player is charged
+    * for an ungranted grant, and the cap cannot be bypassed by skipping the reserve call. */
+   if (product.crowns && !restore) {
+    const policy = (await tx.query('SELECT published_at FROM monetization.promotion_policies WHERE policy_version = $1', [Promotion.VERSION])).rows[0];
+    if (policy && policy.published_at) {
+     const allocation = (await tx.query('SELECT 1 FROM monetization.promotion_allocations WHERE actor_id = $1 AND provider = $2 AND op_key = $3', [actor, receipt.store, key])).rows[0];
+     if (!allocation) throw Error('PROMOTION_RESERVATION_REQUIRED');
+    }
+   }
    current.crowns = D.add(current.crowns, product.crowns);
    current.purchasedCrowns = D.add(current.purchasedCrowns || 0, product.crowns);
    if (product.crowns) current.purchaseInfluenced = true;

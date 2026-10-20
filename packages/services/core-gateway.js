@@ -344,10 +344,13 @@ function createCoreGateway({
      * turned every provider create into an INVALID_COMMERCE_ARG (the audit F-series finding).
      * The Core ingress re-validates each field against its own grammar; nothing unlisted is
      * ever forwarded. */
-    async commerceCommand({ actor, opKey, op, key, kind, platform, itemId, evidence, restore, productId, orderId, checkoutId, customer, region, amount } = {}) {
+    /* Sol review R3: the promotion commands ride the same surface - promotion_reserve carries
+     * provider/acceptanceHash and promotion_accept carries the signed receipt; dropping them
+     * turned every mounted promotion command into INVALID_COMMERCE_ARG at the Core ingress. */
+    async commerceCommand({ actor, opKey, op, key, kind, platform, itemId, evidence, restore, productId, orderId, checkoutId, customer, region, amount, receipt, provider, acceptanceHash } = {}) {
       return this.forwardCommand({ actor, opKey,
         path: '/ingress/commerce/command',
-        command: { op, key, kind, platform, itemId, evidence, restore, productId, orderId, checkoutId, customer, region, amount } });
+        command: { op, key, kind, platform, itemId, evidence, restore, productId, orderId, checkoutId, customer, region, amount, receipt, provider, acceptanceHash } });
     },
 
     /** LR12: forward the AdMob SSV query to the Core commerce callback. Actor-free by design. */

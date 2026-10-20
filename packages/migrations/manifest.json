@@ -405,6 +405,12 @@
       "name": "0067_account_deletion_cooling",
       "file": "migrations/0067_account_deletion_cooling.sql",
       "sha256": "0173582937d09f4f11ecd5e6f7c1c7e6dfea8e420238a9af452ca1b9cc977158"
+    },
+    {
+      "id": 68,
+      "name": "0068_reward_ticket_powers",
+      "file": "migrations/0068_reward_ticket_powers.sql",
+      "sha256": "c7d72d1468a3b4b1f9055272289e475167d9b2eed00835c0d1cbb52fc215f7ba"
     }
   ]
 }

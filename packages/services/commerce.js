@@ -836,7 +836,7 @@ async function createCommerceService(pool, options = {}) {
    return { ready: wallet.rows.length > 0, account: accountOf(graph, actor) };
   });
   if (!preflight.ready) throw Error('ACCOUNT_REQUIRED');
-  const reservation = await reserveCreate(uow, actor, key, 'cashfree', productId, fingerprint, { amount: price, currency: 'INR' }, customer.promotionAcceptanceHash);
+  const reservation = await reserveCreate(uow, actor, key, 'cashfree', productId, fingerprint, { amount: price, currency: 'INR' }, customer && customer.promotionAcceptanceHash);
   if (!reservation.won) {
    const r = reservation.reservation;
    if (!r || r.provider !== 'cashfree' || r.product_id !== productId || r.fingerprint !== fingerprint) throw Error('IDEMPOTENCY_CONFLICT');

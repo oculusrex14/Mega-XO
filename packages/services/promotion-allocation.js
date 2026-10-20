@@ -26,11 +26,12 @@ async function allowance(tx, actor) {
  const policy = (await tx.query('SELECT * FROM monetization.promotion_policies WHERE policy_version = $1', [VERSION])).rows[0];
  if (!policy) throw Error('PROMOTION_POLICY_REQUIRED');
  const allocated = Number((await tx.query('SELECT COALESCE(sum(crowns),0) AS total FROM monetization.promotion_allocations WHERE actor_id = $1', [actor])).rows[0].total);
+ const accepted = (await tx.query('SELECT 1 FROM monetization.promotion_acceptances WHERE actor_id = $1 AND policy_version = $2 LIMIT 1', [actor, VERSION])).rows.length > 0;
  return { policyVersion: VERSION, campaignId: policy.campaign_id, cap: CAP, allocated,
   remaining: remaining(allocated), effectiveAt: new Date(policy.effective_at).toISOString(),
   expiresAt: new Date(policy.expires_at).toISOString(),
   retiredAt: policy.retired_at ? new Date(policy.retired_at).toISOString() : null,
-  publishedAt: policy.published_at, ruleHash: policy.rule_hash };
+  publishedAt: policy.published_at, ruleHash: policy.rule_hash, accepted };
 }
 // Caller holds eligibility -> occupancy/wallet before this insert. Every provider shares it.
 async function reserve(tx, actor, key, provider, product, acceptanceHash = null) {

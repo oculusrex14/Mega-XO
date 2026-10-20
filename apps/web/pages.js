@@ -395,11 +395,22 @@ function storePage(context) {
       : '<button class="mx-button ' + (passAvailable ? 'primary' : 'secondary') + '" type="button"' + (passAvailable ? ' data-store-action="purchase" data-product-id="mega_pass"' : '') + (passAvailable ? '' : ' disabled') + '>' + (passAvailable ? 'Subscribe · renews monthly' : 'Temporarily unavailable') + '</button>';
   const passPeriod = passOwned && passState.periodEnd ? '<p class="pg-small mx-muted">Your pass is paid through ' + new Date(passState.periodEnd).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) + (passState.cancelAtPeriodEnd ? ' and will not renew.' : '.') + '</p>' : (passOwned ? '' : '<p class="pg-small mx-muted">Auto-renewing subscription. Cancel anytime in your store subscriptions. Crowns and Coins you already have are kept if the pass lapses.</p>');
   const passPriceFallback = isLinked(context) ? '<span class="mx-muted">Price unavailable</span>' : '<span class="mx-muted">Sign in to see the price</span>';
+  /* MXA-PROMOTION-DISCLOSURE (2026-10-20): the launch-promotion cap panel. Shown once per
+   * account before the first promotional Crown checkout; the accept action records the signed
+   * disclosure and resumes the pending purchase. The rule text is the server-shipped exact
+   * text (the same bytes the published rule_hash pins), never a client-side rewrite. */
+  const promoDisclosure = context.promotionDisclosure && context.promotionDisclosure.token ? panel(
+    '<h2>Before you buy promotional Crowns</h2>'
+    + '<p class="pg-small">A launch-promotion cap limits promotional Crowns per account across every payment method and checkout. Your remaining allowance right now: <strong>' + e(String(context.promotionDisclosure.remaining ?? 'unknown')) + '</strong> of ' + e(String(context.promotionDisclosure.cap ?? 22000)) + '.</p>'
+    + '<pre class="pg-promotion-rule">' + e(context.promotionDisclosure.ruleText || '') + '</pre>'
+    + '<div class="pg-actions"><button class="mx-button primary" type="button" data-promotion-action="accept">I understand — continue to checkout</button><button class="mx-button secondary" type="button" data-promotion-action="decline">Not now</button></div>',
+    'pg-promotion-disclosure') : '';
   const passPanel = '<div class="pg-pass-panel" data-mega-pass><div class="pg-pass-media"><img class="pg-pass-art" src="/assets/art/mega-pass.webp" alt="" loading="lazy" width="768" height="481"></div><div class="pg-pass-copy"><span class="mx-chip">MEGA PASS · MONTHLY</span>' + passIntroBadge + '<h2>Mega Pass</h2><ul class="pg-pass-benefits"><li>150 Crowns every billing month, delivered 50 on days 1, 11 and 21</li><li>2× Coins from bot wins — daily caps still apply</li><li>Coin-to-Crown exchange at 8:1 for the first 200 Coins each month</li><li>15% off up to two Crown packs per month</li><li>Automatic ads off; rewarded ads stay your choice</li></ul><div class="pg-pass-action"><div class="pg-store-price pg-pass-price">' + (passPrice ? (priceHtml(passRow) || e(passPrice)) + '<span class="pg-pass-period">/ month</span>' : passPriceFallback) + '</div>' + passAction + '</div>' + passPeriod + '</div></div>';
   const wallet = isLinked(context) ? panel('<div class="pg-store-wallet"><span>' + icon('coin') + ' Coins <strong>' + numeric(context.profile?.wallet?.coins) + '</strong></span><span>' + icon('crown') + ' Crowns <strong>' + numeric(context.profile?.wallet?.crowns) + '</strong></span>' + (passState.active === true ? '<span class="mx-chip">Mega Pass active</span>' : '') + button('Your rewards', '/rewards', 'secondary', 'arrow-right') + '</div>') : sessionPrompt(context, 'Link your permanent profile before making a purchase.');
   return '<div class="pg-page">' + heading('MORE POSSIBILITIES. THE SAME SKILL.', 'Your game, your choice.', 'The monthly Mega Pass, Crown packs and permanent Remove Ads in one store. Purchases never change Elo, legal moves or competitive balance.')
     + passPanel
     + wallet
+    + promoDisclosure
     + '<div data-store-products>' + products + '</div>'
     + (promoNote && state.status === 'ready' ? promoNote : '')
     + note('Prices come from your store’s current catalog. Coins and Crowns cannot be cashed out or redeemed for real-world money. For a store issue, include the platform, product and approximate purchase time. <a class="pg-text-link" href="/support">Purchase support</a>.')

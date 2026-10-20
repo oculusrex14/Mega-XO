@@ -22,6 +22,13 @@
  * NO monetization surface (including the webhooks and the SSV callback) can ever answer. */
 const { sendJson, parseJsonBody } = require('./helpers');
 
+/* MXA-PROMOTION-DISCLOSURE (2026-10-20): the anti-hoarding disclosure lane. The rule text and
+ * the HMAC attestation token live in ONE module so the published rule_hash and the rendered
+ * text can never drift; this tier issues/verifies tokens and the Core side re-verifies the
+ * receipt inside acceptPromotionPolicy. */
+const path = require('node:path');
+const Disclosure = require(path.join(__dirname, '../../packages/services/promotion-disclosure.js'));
+
 /* SEC-V52: one admission gate for the three actor-free callback lanes. A RATE_LIMITED refusal is
  * answered here (429 + Retry-After + no-store) so the callback is never acknowledged with 200 and
  * never reaches the provider verification or the Core round-trip; any other admission error
@@ -81,6 +88,14 @@ function opKeyFrom(req, body) {
   const header = req.headers && (req.headers['idempotency-key'] || req.headers['x-opkey']);
   if (typeof header === 'string' && header.length > 0) return header.slice(0, 160);
   return undefined;
+}
+
+/* The acceptance hash recorded by POST /promotion/accept rides the checkout customer object so
+ * commerce.reserveCreate can bind the allocation to the acceptance. Absent/invalid simply means
+ * "no acceptance presented" - the commerce service enforces the requirement when published. */
+function promotionAcceptanceHashOf(body) {
+  return typeof body.promotionAcceptanceHash === 'string' && /^[0-9a-f]{64}$/.test(body.promotionAcceptanceHash)
+    ? { promotionAcceptanceHash: body.promotionAcceptanceHash } : {};
 }
 
 const ROUTES = Object.freeze({
@@ -174,7 +189,7 @@ async function handleMonetizationRoute(context, req, res) {
       if (typeof body.product !== 'string' || !body.product) fail('INVALID_PRODUCT', 400);
       const key = opKeyFrom(req, body);
       if (!key) fail('IDEMPOTENCY_KEY_REQUIRED', 400);
-      const result = await lane.command({ actor, op: 'cashfree_create', opKey: key, key, productId: body.product, customer: { email, phone } });
+      const result = await lane.command({ actor, op: 'cashfree_create', opKey: key, key, productId: body.product, customer: { email, phone, ...promotionAcceptanceHashOf(body) } });
       sendJson(res, 200, result, { 'Cache-Control': CACHE_CONTROL });
       return true;
     }
@@ -217,7 +232,7 @@ async function handleMonetizationRoute(context, req, res) {
       if (email && (email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))) fail('INVALID_CUSTOMER_DETAILS', 400);
       const key = opKeyFrom(req, body);
       if (!key) fail('IDEMPOTENCY_KEY_REQUIRED', 400);
-      const result = await lane.command({ actor, op: 'polar_create', opKey: key, key, productId: body.product, customer: email ? { email } : {} });
+      const result = await lane.command({ actor, op: 'polar_create', opKey: key, key, productId: body.product, customer: { ...(email ? { email } : {}), ...promotionAcceptanceHashOf(body) } });
       sendJson(res, 200, result, { 'Cache-Control': CACHE_CONTROL });
       return true;
     }
@@ -265,7 +280,7 @@ async function handleMonetizationRoute(context, req, res) {
       if (typeof body.country === 'string' && body.country) region.country = body.country;
       const key = opKeyFrom(req, body);
       if (!key) fail('IDEMPOTENCY_KEY_REQUIRED', 400);
-      const result = await lane.command({ actor, op: 'dodo_create', opKey: key, key, productId: body.product, customer: email ? { email } : {}, region });
+      const result = await lane.command({ actor, op: 'dodo_create', opKey: key, key, productId: body.product, customer: { ...(email ? { email } : {}), ...promotionAcceptanceHashOf(body) }, region });
       sendJson(res, 200, result, { 'Cache-Control': CACHE_CONTROL });
       return true;
     }
@@ -292,6 +307,65 @@ async function handleMonetizationRoute(context, req, res) {
         timestamp: String((req.headers && req.headers['webhook-timestamp']) || ''),
         signature: String((req.headers && req.headers['webhook-signature']) || ''),
       });
+      sendJson(res, 200, result, { 'Cache-Control': CACHE_CONTROL });
+      return true;
+    }
+
+    /* MXA-PROMOTION-DISCLOSURE (2026-10-20): the anti-hoarding disclosure surfaces.
+     * GET returns the policy state plus (when published, unaccepted and matching the shipped
+     * rule text) a short-lived actor-bound token; POST /accept exchanges that token for the
+     * recorded acceptance hash; POST /reserve is the native pre-billing gate from the PR #55
+     * contract (call BEFORE presenting promotional billing, deliver with the SAME key). */
+    if (pathname === '/api/monetization/promotion/disclosure') {
+      if (method !== 'GET') fail('METHOD_NOT_ALLOWED', 405);
+      const actor = await actorOf(context, req);
+      const status = await lane.command({ actor, op: 'status', opKey: 'promotion-disclosure' });
+      const allocation = status && typeof status === 'object' ? status.promotionAllocation : null;
+      if (!allocation || typeof allocation !== 'object') fail('PROMOTION_POLICY_REQUIRED', 503);
+      const published = allocation.publishedAt != null && typeof allocation.ruleHash === 'string' && /^[0-9a-f]{64}$/.test(allocation.ruleHash);
+      const response = {
+        published,
+        ruleText: Disclosure.ruleText(),
+        ruleHash: Disclosure.ruleHash(),
+        policyVersion: allocation.policyVersion || null,
+        cap: Number.isSafeInteger(allocation.cap) ? allocation.cap : null,
+        remaining: Number.isSafeInteger(allocation.remaining) ? allocation.remaining : null,
+        accepted: allocation.accepted === true,
+      };
+      /* A token only issues when the published hash equals the shipped rule text — a policy
+       * published with different words is a stale deployment, never a silently new rule. */
+      /* The token issues whenever the published hash matches the shipped text, including for
+       * already-accepted actors: reserve() pairs the acceptance with the CURRENT remaining, so
+       * each checkout re-attests the fresh allowance. The panel itself is only shown when
+       * accepted is false; a repeat acceptance is a silent mechanical pairing. */
+      if (published && response.policyVersion && allocation.ruleHash === response.ruleHash) {
+        response.token = Disclosure.issueToken({ actor, policyVersion: response.policyVersion, ruleHash: allocation.ruleHash, remaining: response.remaining ?? 0, now: Date.now() }, Disclosure.deriveSecret(String(context.otpSecret)));
+      }
+      sendJson(res, 200, response, { 'Cache-Control': CACHE_CONTROL });
+      return true;
+    }
+
+    if (pathname === '/api/monetization/promotion/accept') {
+      if (method !== 'POST') fail('METHOD_NOT_ALLOWED', 405);
+      const actor = await actorOf(context, req);
+      const body = await bodyObject(req);
+      if (typeof body.token !== 'string' || !body.token || body.token.length > 4096) fail('INVALID_PROMOTION_TOKEN', 400);
+      const receipt = Disclosure.receiptFromToken(body.token, Disclosure.deriveSecret(String(context.otpSecret)), actor);
+      const result = await lane.command({ actor, op: 'promotion_accept', opKey: 'promotion-accept', receipt });
+      sendJson(res, 200, result, { 'Cache-Control': CACHE_CONTROL });
+      return true;
+    }
+
+    if (pathname === '/api/monetization/promotion/reserve') {
+      if (method !== 'POST') fail('METHOD_NOT_ALLOWED', 405);
+      const actor = await actorOf(context, req);
+      const body = await bodyObject(req);
+      if (typeof body.product !== 'string' || !body.product) fail('INVALID_PRODUCT', 400);
+      if (body.provider !== 'apple' && body.provider !== 'google') fail('INVALID_PROMOTION_PROVIDER', 400);
+      const key = opKeyFrom(req, body);
+      if (!key) fail('IDEMPOTENCY_KEY_REQUIRED', 400);
+      const acceptanceHash = promotionAcceptanceHashOf(body).promotionAcceptanceHash;
+      const result = await lane.command({ actor, op: 'promotion_reserve', opKey: key, key, productId: body.product, provider: body.provider, ...(acceptanceHash ? { acceptanceHash } : {}) });
       sendJson(res, 200, result, { 'Cache-Control': CACHE_CONTROL });
       return true;
     }

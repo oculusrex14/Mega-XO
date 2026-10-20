@@ -27,7 +27,7 @@ const { sendJson, parseJsonBody } = require('./helpers');
  * text can never drift; this tier issues/verifies tokens and the Core side re-verifies the
  * receipt inside acceptPromotionPolicy. */
 const path = require('node:path');
-const Disclosure = require(path.join(__dirname, '../../packages/services/promotion-disclosure.js'));
+const Disclosure = require(path.join(__dirname, '../../../packages/services/promotion-disclosure.js'));
 
 /* SEC-V52: one admission gate for the three actor-free callback lanes. A RATE_LIMITED refusal is
  * answered here (429 + Retry-After + no-store) so the callback is never acknowledged with 200 and

@@ -19,9 +19,10 @@ const REQUIRED_RELATIONS = {
 const REQUIRED_FUNCTIONS = {
  api_runtime: ['identity.auth_credential(text,text)', 'identity.auth_challenge(text,text)',
   'identity.auth_signin_attempt(text)', 'profile.account_state(text)',
-  'profile.account_activity(text)', 'profile.account_export(text)'],
- core_runtime: [],
- worker_runtime: [],
+  'profile.account_activity(text)', 'profile.account_export(text)',
+  'privacy.cancel_account_deletion(text,text,timestamp with time zone)'],
+ core_runtime: ['privacy.account_deletion_pending(text)', 'privacy.erase_account_core_state(text,text,timestamp with time zone)'],
+ worker_runtime: ['privacy.finish_account_deletion(text,text,text,text,bigint,timestamp with time zone,text,text)'],
 };
 
 /* Runtime boot checks the exact supported migration chain; only the migrator can repair it.

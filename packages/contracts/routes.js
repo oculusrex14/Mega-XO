@@ -49,6 +49,7 @@ const ACCOUNT = Object.freeze([
  route('account.save.read', 'GET', '/api/account/save', { auth: AUTH.LINKED }),
  route('account.sessions', 'GET', '/api/account/sessions', { auth: AUTH.LINKED }),
  route('account.deletion', 'GET', '/api/account/deletion', { auth: AUTH.LINKED }),
+ route('account.deletion.cancel', 'POST', '/api/account/deletion/cancel', { auth: AUTH.LINKED, csrf: true, bodyLimit: 300000 }),
  route('account.email', 'POST', '/api/account/email', { csrf: true, bodyLimit: 300000, owner: 'A', note: 'production perimeter supersedes this mount with EmailAuth.dispatch' }),
  route('account.start', 'POST', '/api/account/start', { csrf: true, bodyLimit: 300000 }),
  route('account.callback', 'GET', '/auth/callback/:provider', { auth: AUTH.SESSION, csrf: false, origin: ORIGIN.NONE, owner: 'A', note: 'state/nonce/PKCE bound; no CSRF header, redirects 303' }),

@@ -126,12 +126,12 @@ val debugAdMobInterstitialUnit =
 
 android {
     namespace = "online.megaxo.prototype"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         applicationId = nativeAppId
         minSdk = 28
-        targetSdk = 35
+        targetSdk = 36
         versionCode = nativeVersionCode
         versionName = nativeVersionName
         buildConfigField("String", "MEGA_GOOGLE_SERVER_CLIENT_ID", "\"$googleNativeServerClientId\"")

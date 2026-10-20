@@ -70,6 +70,17 @@ const DEFAULT_ASSET_LINKS = Object.freeze([
   })
 ]);
 
+/* D1 (2026-10-20): the RFC 9116 security.txt disclosure, served as plain text at the canonical
+ * path. Contact is the parent-company address permitted in product copy (AGENTS.md, 15 Oct);
+ * Expires is the mandatory refresh reminder, renewed on each review. */
+const SECURITY_TXT = Object.freeze([
+  'Contact: mailto:contact@antimatterinnovations.com',
+  'Expires: 2027-12-31T00:00:00.000Z',
+  'Preferred-Languages: en',
+  'Canonical: https://megaxo.online/.well-known/security.txt',
+  'Policy: https://megaxo.online/privacy',
+].join('\n') + '\n');
+
 /* iOS Universal Links default configuration.
  *
  * `appIDs` uses the BUILT iOS bundle id (PRODUCT_BUNDLE_IDENTIFIER in
@@ -415,6 +426,12 @@ async function handleWellKnownRoute(context, req, res) {
 
   if (pathname === '/.well-known/apple-app-site-association' && method === 'GET') {
     getAppleAppSiteAssociation(context, req, res);
+    return true;
+  }
+
+  if (pathname === '/.well-known/security.txt' && method === 'GET') {
+    res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'public, max-age=604800' });
+    res.end(SECURITY_TXT);
     return true;
   }
 

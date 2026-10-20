@@ -55,6 +55,35 @@ export function sitemapXml() {
   return '<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'+publicRoutes.map(path=>`  <url><loc>${escapeHtml(metadataFor(path).canonical)}</loc></url>`).join('\n')+'\n</urlset>\n';
 }
 
+/* D1/AEO (2026-10-20): the llms.txt site map for answer engines, derived from the same route
+ * table as robots.txt/sitemap.xml so the three crawl files can never disagree. */
+export function llmsTxt() {
+  const safe=escapeHtml;
+  const lines=[
+    '# Mega XOXO',
+    '',
+    '> Mega XOXO is an ultimate tic-tac-toe strategy game by Antimatter Innovations: nine small boards, one big board, and every move sends your opponent to the small board matching the cell you played. Playable free in the browser and on Android. The game is skill-based; purchases never change Elo, legal moves or competitive balance.',
+    '',
+    'The canonical game is always served from '+SITE_ORIGIN+'. www.megaxo.online redirects to this apex domain.',
+    '',
+  ];
+  const sections=[
+    ['Play',['/how-to-play','/faq','/casual','/ranked','/tournaments','/season','/leaderboard','/themes']],
+    ['Get the app',['/download']],
+    ['Accounts and economy',['/account','/rewards','/store','/sponsors']],
+    ['Company and legal',['/about','/support','/accessibility','/privacy','/terms','/delete-account','/privacy-choices']],
+  ];
+  for (const [title,paths] of sections) {
+    lines.push('## '+title+'\n');
+    for (const path of paths) {
+      const meta=metadataFor(path);
+      lines.push('- ['+safe(meta.title.replace(' — Mega XOXO',''))+']('+meta.canonical+'): '+safe(meta.description)+'\n');
+    }
+    lines.push('');
+  }
+  return lines.join('\n');
+}
+
 /** Update the same metadata used by the static renderer after SPA navigation. */
 export function updateSeo(path, document=globalThis.document) {
   if (!document) return;

@@ -27,7 +27,13 @@ const ORIGIN = 'https://megaxo.online';
 function startApiServer(handler) {
   return new Promise((resolve, reject) => {
     const server = http.createServer(handler);
-    server.listen(0, '127.0.0.1', () => resolve({ url: 'http://127.0.0.1:' + server.address().port }));
+    const sockets = new Set();
+    server.on('connection', (s) => { sockets.add(s); s.on('close', () => sockets.delete(s)); });
+    server.listen(0, '127.0.0.1', () => resolve({
+      handler, server,
+      url: 'http://127.0.0.1:' + server.address().port,
+      close: async () => { for (const s of sockets) s.destroy(); await new Promise((r) => server.close(r)); },
+    }));
     server.on('error', reject);
   });
 }

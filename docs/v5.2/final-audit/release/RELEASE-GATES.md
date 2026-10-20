@@ -35,3 +35,27 @@ Gate verdicts from the owner brief (Part 10.4). Evidence: MASTER-FINDINGS.csv, p
 | No unexplained critical disabled features | PASS | GUARDRAIL-INVENTORY.csv; B3 Apple-on-Android = documented HIDE; ECO-015 scoped |
 
 **Final verdict: CONDITIONAL GO - production is live and healthy on 0c4b9ac.** Every remaining item is an owner-external dependency (store console products, Data Safety and rating attestations, ECO-014 device matrix, Polar live-mode, storeNotifications inventory flip, secret rotation), not a code or infrastructure defect. See EXECUTIVE-SUMMARY.md for the exact list.
+
+## V6 cycle gate reconciliation (2026-10-20, trunk 0493d3d, NOT yet deployed)
+
+Production still serves the V5.2 line (edbf8f4 bundle 6e9e1c8d…, megaxo-1.0.8.apk). The V6 trunk
+is the single batch-update candidate; this table records the CYCLE's verified movement only. The
+batch deploy requires the Sol 6.1 review (owner standing order) and the owner release approval.
+
+| Gate | V6-cycle verdict | Evidence |
+|---|---|---|
+| No unresolved P0 vulnerabilities | PASS (unchanged) | No new P0s; PR #56/#57/#58 lanes green incl. audited-boundaries |
+| No unresolved P0 data-integrity defects | PASS (unchanged) | 0065-0067 additive migrations with manifest SHA + conformance; promotion cap and deletion cooling PG-tested (39314412514, 39350358485, 39352353682) |
+| Core gameplay validated | PASS (engine + CI); device replay owner item | No gameplay changes in the cycle; 1.0.9 device install verified (7228a41e→01ac4736 final) |
+| Production identity and wallet authority verified | PASS (unchanged) | Oracle V5 authority untouched during the cycle; readyz healthy at every check |
+| Purchases validated where enabled | PARTIAL → STRONGER | Dodo live + intro pricing + LAUNCH50 promo (auto-revert armed); power-spend contract fixed (#54); promotion cap enforced pre-billing (#55/#56); native RTDN/store notifications remain owner-external |
+| Required platform compliance | PARTIAL → STRONGER | Deletion cooling-off + in-app cancellation + worker completion IMPLEMENTED (#57, SAGAN-004/F054 closed in V6); Play Data safety draft 8/11 tasks, IARC ratings issued; iOS console owner-blocked (auth) |
+| Successful production-equivalent build | PASS | 1.0.9/versionCode 10 APK+AAB with production AdMob units verified in-artifact (01ac4736 APK / 45272a37 AAB); the embedded bundle carries the B4 cooling UI |
+| Critical end-to-end tests passing | PASS | Audit regression, account-deletion lifecycle, promotion unit+PG, foundations suites green on merged heads |
+| Rollback procedure documented AND tested | PASS (unchanged) | ROLLBACK-PLAN.md + the deployed change-aware backup gate with LSN watermarks |
+| Required human approvals identified | PASS | Owner items: Play closed-test (12 testers, 14 days) before production, iOS console auth, secret rotation (deferred per owner), final batch-deploy say-so |
+| No unexplained critical disabled features | PASS | Polar dormant BY OWNER DECISION (Dodo primary); Apple sign-in hidden on Android BY DESIGN; every flag documented |
+
+**V6-cycle verdict: CONDITIONAL GO for the batch update.** Remaining before deploy: Newton's B2
+forms (Data safety completion, category, listing), owner's Play closed-test + iOS console, D2
+on-device rewarded-ad pass, A4 48h verdict (2026-10-21), A5 final reconciliation, Sol 6.1 review.

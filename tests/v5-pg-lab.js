@@ -94,7 +94,7 @@ const poolSets = new Map();
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 const { createPgPool } = require(path.join(ROOT, 'packages/db/pg/pool.js'));
-const BUDGET = Object.freeze({ totalConnections: 30, roleConnections: Object.freeze({ core_runtime: 12, api_runtime: 12, worker_runtime: 4 }) });
+const BUDGET = Object.freeze({ totalConnections: 30, roleConnections: Object.freeze({ core_runtime: 12, api_runtime: 12, worker_runtime: 4, audit_runtime: 2 }) });
 function poolsFor(database) {
  if (poolSets.has(database)) return poolSets.get(database);
  const make = (role, max) => createPgPool({
@@ -256,7 +256,7 @@ async function sessionBindingFor(database, actor, { now = () => CLOCK, connectio
 }
 
 module.exports = {
- ROOT, OTP_SECRET, CLOCK, DAY, CHAIN_LENGTH, RUNTIME_ROLES, SEED_ACTORS, OWNED_PREFIX,
+ ROOT, OTP_SECRET, CLOCK, DAY, CHAIN_LENGTH, RUNTIME_ROLES, SEED_ACTORS, OWNED_PREFIX, BUDGET,
  ensureBackend, adminClient, dbUrl, poolsFor, closeDatabasePools, accountsFor, coreFor,
  createDatabase, runMigrator, boot, installCleanup, seedActors, seedFor, tagFor, USERNAME, practicePayload,
  scalar, installSql, waitForLockWaiter, holdGate, releaseGate, installAdvisoryGate, throwsCode, sleep,

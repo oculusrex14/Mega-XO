@@ -78,7 +78,7 @@ jobs:
           node-version: '24'
       - run: npm ci
       - name: Reward-ticket powers on real PostgreSQL (Sol R5) plus promotion enforcement
-        run: node --test --test-reporter=tap --test-concurrency=1 tests/v6-reward-ticket-powers-pg.test.js tests/v51-audit-promotion-pg.test.js tests/v5-migrations.test.js
+        run: node --test --test-reporter=tap --test-concurrency=1 tests/v6-reward-ticket-powers-pg.test.js tests/v51-audit-promotion-pg.test.js tests/v5-migrations.test.js tests/v6-presence-budget-pg.test.js
   website-build:
     runs-on: ubuntu-latest
     timeout-minutes: 10

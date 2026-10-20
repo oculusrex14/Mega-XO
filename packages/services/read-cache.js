@@ -773,6 +773,7 @@ async function materializeLeaderboardProjection(pool, filter = {}) {
 
   const predicates = [
     'e.verified = true', 'e.suspended = false', 'e.security_hold = false',
+    'NOT privacy.account_deletion_pending(a.actor_id)',
     "p.stats_visibility = 'public'",
   ];
   const args = [];

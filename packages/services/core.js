@@ -234,6 +234,8 @@ function matchHintId(text) {
 async function lockEligibility(q, actors) {
  if (actors.length === 0) return;
  await q('SELECT actor_id FROM identity.eligibility WHERE actor_id = ANY($1::text[]) ORDER BY actor_id FOR UPDATE', [actors]);
+ const pending = await q('SELECT 1 FROM unnest($1::text[]) a(actor) WHERE privacy.account_deletion_pending(a.actor) LIMIT 1', [actors]);
+ if (pending.rows.length) throw Error('ACCOUNT_DELETION_PENDING');
 }
 
 /* `FOR UPDATE` on the business aggregate row (match/tournament). The row may not exist yet (an
@@ -536,6 +538,7 @@ async function createCoreService(pool, options = {}) {
     * the readiness answer. */
    const eligibility = await tx.query('SELECT actor_id FROM identity.eligibility WHERE actor_id = $1 FOR UPDATE', [actor]);
    if (eligibility.rows.length === 0) throw Error('ACCOUNT_REQUIRED');
+   if ((await tx.query('SELECT privacy.account_deletion_pending($1) AS pending', [actor])).rows[0].pending) throw Error('ACCOUNT_DELETION_PENDING');
    const locked = await repositories.wallets.lock([actor]);
    const graph = await repositories.domain();
    const skeleton = graph.account(actor);
@@ -795,6 +798,12 @@ async function createCoreService(pool, options = {}) {
   readMatch,
   watchMatch,
   provisionActor,
+  /* Request-specific erasure runs ONLY over this service's verified core_runtime pool. It never
+   * receives worker credentials; the database refuses this capability to API/worker roles. */
+  eraseDeletion({ receiptId, actor }) {
+   if (typeof receiptId !== 'string' || typeof actor !== 'string' || !actor) throw Error('INVALID_DELETION_PAYLOAD');
+   return uow.run((tx) => tx.query('SELECT privacy.erase_account_core_state($1,$2,$3)', [receiptId, actor, new Date(tx.clock())]));
+  },
   cancelSocialOffers,
   /* Releases this service's unit-of-work state only. The pool is caller-owned (it carries a
     * cluster-wide connection-budget claim) and is NEVER closed here. Every live `watchMatch` is torn

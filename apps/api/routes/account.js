@@ -174,13 +174,21 @@ async function deleteAccount(context, req, res) {
   const result = await accounts.deleteAccount(token, confirmation);
 
   return sendJson(res, 200, {
-    deleted: true,
-    status: 'pending',
+    deletionPending: true,
+    status: 'cooling',
+    executeAt: result.executeAt,
     receiptId: result.receiptId,
     tombstone: result.tombstone,
     policyVersion: result.policyVersion,
     actorHash: result.actorHash,
   });
+}
+
+async function cancelDeletion(context, req, res) {
+  const { actor, token, accounts } = await resolveAuth(context, req);
+  if (!actor) { const err = new Error('AUTH_REQUIRED'); err.status = 401; throw err; }
+  const body = await parseJsonBody(req);
+  return sendJson(res, 200, await accounts.cancelDeletion(token, body.confirmation), { 'Cache-Control': CACHE_CONTROL_POLICIES.PRIVATE_NO_STORE });
 }
 
 /**
@@ -1138,6 +1146,11 @@ async function handleAccountRoute(context, req, res) {
     return true;
   }
 
+  if (pathname === '/api/account/deletion/cancel' && method === 'POST') {
+    await cancelDeletion(context, req, res);
+    return true;
+  }
+
   if (pathname === '/api/account/research' && method === 'GET') {
     await getResearchConsent(context, req, res);
     return true;
@@ -1158,6 +1171,7 @@ module.exports = {
   postSave,
   getExport,
   deleteAccount,
+  cancelDeletion,
   unlinkProvider,
   getDeletionStatus,
   getResearchConsent,

@@ -79,7 +79,9 @@ export P15_PGSSLROOTCERT=$STATE/neon-ca.pem
  # single row changed. The WAL LSN is server-side durable state that advances for
  # EVERY writer commit, and the recorded value is taken BEFORE a dump starts, so
  # any later commit forces the next cycle to dump: a skip only ever happens when
- # nothing at all changed. Losing the state file fails open to a full dump.
+ # no tracked-table row changed since the recorded probe (the change-check owns
+ # the ephemeral-table exception; see v5-change-check.js). Losing the state file
+ # fails open to a full dump.
  CURRENT_LSN=$("$NODE" "$BIN/v5-change-check.js" --print-lsn \
    --source "$STATE/prod-source.json") || die 'change-check LSN probe failed'
  "$NODE" "$BIN/v5-change-check.js" --source "$STATE/prod-source.json" || status=$?

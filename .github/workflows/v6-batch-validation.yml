@@ -37,7 +37,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          xmllint --noout native/android/app/src/main/AndroidManifest.xml
+          python3 -c "import xml.dom.minidom; xml.dom.minidom.parse('native/android/app/src/main/AndroidManifest.xml')"
           grep -q 'android:enableOnBackInvokedCallback="false"' native/android/app/src/main/AndroidManifest.xml
       - name: Native client bundle carries the promotion gate and durable pending key (Sol R4/N7)
         shell: bash

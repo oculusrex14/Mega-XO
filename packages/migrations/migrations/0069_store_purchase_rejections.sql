@@ -18,3 +18,11 @@ CREATE TABLE IF NOT EXISTS monetization.store_purchase_rejections (
 );
 CREATE INDEX IF NOT EXISTS store_purchase_rejections_open_idx
   ON monetization.store_purchase_rejections (refused_at) WHERE resolved_at IS NULL;
+-- Role grants (Sol CI run 39381820229: the backup contract requires backup_reader SELECT on
+-- every monetization sequence; Core records refusals, the worker reconciles resolved rows).
+GRANT SELECT ON monetization.store_purchase_rejections TO backup_reader;
+GRANT USAGE, SELECT ON SEQUENCE monetization.store_purchase_rejections_id_seq TO backup_reader;
+GRANT INSERT ON monetization.store_purchase_rejections TO core_runtime;
+GRANT USAGE, SELECT ON SEQUENCE monetization.store_purchase_rejections_id_seq TO core_runtime;
+GRANT SELECT ON monetization.store_purchase_rejections TO worker_runtime;
+GRANT UPDATE (resolved_at) ON monetization.store_purchase_rejections TO worker_runtime;

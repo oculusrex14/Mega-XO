@@ -416,7 +416,7 @@
       "id": 69,
       "name": "0069_store_purchase_rejections",
       "file": "migrations/0069_store_purchase_rejections.sql",
-      "sha256": "ae7a324481a8972254027218e955bd2ee58183d6c5dba3765c6d11da1b54484f"
+      "sha256": "811fc3fb3c1225c3a9f3aad1afcb31db49a12f79b54057d8166d0b604ba64045"
     }
   ]
 }

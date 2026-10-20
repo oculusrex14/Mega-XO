@@ -41,15 +41,36 @@ R6 forward-recovery behavior now wired into scripts/v51/deploy-production.cjs.
    node scripts/v51/deploy-production.cjs --commit <FULL_SHA> --bundle <VERIFIED_BUNDLE_DIR>
    --host command
    Record the generated source/web archive path.
-7. Verify: readyz ready:true; exact source/bundle/download hashes (sha256 of the served APK
+7. Refresh the host-managed backup scripts from the freshly staged tree so the
+   ephemeral-table-aware change-check (V6 cd32103) takes effect:
+   sudo $ROOT/src-final/deploy/v5/install-change-aware.sh $ROOT
+   (stages, preflights a real probe, installs, and rolls itself back on any failure;
+   no service restart is needed - the next backup timer cycle picks it up).
+8. Verify: readyz ready:true; exact source/bundle/download hashes (sha256 of the served APK
    must equal the store-links pin); same-origin API/realtime/session behavior; promotion
    disclosure/accept/reserve authorization; llms.txt, robots.txt, sitemap.xml, security.txt
    served; download page functional.
-8. Policy publication is a DISTINCT approved step, only after step 7 acceptance:
+9. Policy publication is a DISTINCT approved step, only after step 8 acceptance:
    scripts/v5/publish-promotion-policy.cjs --dry-run first, then the real run, then verify
    the published hash matches Disclosure.ruleHash(). Reopen traffic only after acceptance.
-9. Reopen traffic; monitor readyz, provider callbacks, promotion reservations and the
+10. Reopen traffic; monitor readyz, provider callbacks, promotion reservations and the
    rewarded-ad lane for at least one hour.
+
+## Post-deploy A4 soak (the gate of record)
+
+The pre-deploy soak window is polluted by launch-day device testing and was made unwinnable
+by the ambient-write amplification the batch fixes (decision log 15:05 IST 2026-10-20). The
+A4 verdict that certifies the Neon free-plan budget is therefore a NEW clean 24-48h soak run
+AFTER this deploy:
+
+1. With all owner devices idle (no app foreground, no browser tabs on megaxo.online), take
+   sanitized snapshot 1 via the Neon consumption API (same schema as snapshot-1-*.json; the
+   consumption period label must be the API value, currently 2026-10-19T13:12:28Z).
+2. Leave the system untouched for 24-48h, then take sanitized snapshot 2 and evaluate:
+   ssh command "sudo -n journalctl -u mega-xo-v5-production.service -u mega-xo-v5-backup.service
+   -o cat --since '<window start> UTC'" | node deploy/v5/v5-idle-probe.js --before <1> --after <2>
+3. Record the verdict in the decision log. With the fix live, idle windows must skip every
+   cycle (0 dumps, 0 egress); any dump observed with no tracked-table writer is a defect.
 
 ## Rollback / forward recovery
 

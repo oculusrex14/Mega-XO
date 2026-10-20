@@ -18,13 +18,11 @@
  *      Neon idle budget unwinnable (2026-10-20 A4 pre-flight, AUDIT-DECISION-LOG.md).
  *      Identity, economy, core, monetization, audit and every other schema always dump.
  *
- * State files (host STATE dir, root-only):
- *   last-backup-lsn       - the LSN captured BEFORE the last dump started (bare LSN text).
- *   last-backup-tables.json - the per-table write counters captured by the SAME probe that
- *                             authorized that dump (or the latest noise-skip), so counter
- *                             deltas are always measured against a known moment. Losing
- *                             either file fails open to a full dump. A counter RESET
- *                             (compute restart) reads as a negative delta and dumps.
+ * State files (host STATE dir, root-only) are OWNED BY THE CALLER (v5-pg-backup.sh), which
+ * writes BOTH the LSN watermark and the counter baseline from this probe's single atomic
+ * JSON payload - the pair must always describe the same moment, and only a VERIFIED dump (or
+ * a proven no-data-change skip) may advance them. Losing either file fails open to a full
+ * dump. A counter RESET (compute restart) reads as a negative delta and dumps.
  *
  *   exit 0  - must dump (changed, first run, state lost, counter reset, or --force)
  *   exit 42 - skip: no tracked-table change since the recorded state
@@ -129,13 +127,6 @@ function recordedCounters() {
   } catch { return null; }
 }
 
-function writeCounters(counters) {
-  const doc = JSON.stringify({ format: TABLES_FORMAT, capturedAtUtc: new Date().toISOString(), counters }) + '\n';
-  const tmp = TABLES_FILE + '.tmp';
-  fs.writeFileSync(tmp, doc, { mode: 0o600 });
-  fs.renameSync(tmp, TABLES_FILE);
-}
-
 /* Pure decision core (unit-tested): given the recorded and current states, decide dump/skip.
  *  - any tracked-table delta (including a counter RESET, current < recorded) dumps;
  *  - deltas confined to IGNORED_TABLES skip;
@@ -158,19 +149,17 @@ function decide({ previousLsn, currentLsn, recordedCounters: recorded, currentCo
 
 if (require.main === module) {
   const previous = recordedLsn();
-  if (force) { queryLsn(); process.exit(0); } // A drill's --force is never downgraded to a skip.
-  if (!previous) {
-    // Fail open: unknown state dumps. Record the counters so the NEXT decision has a baseline.
-    const snap = parseCounters(runProbe(COMBINED_SQL));
-    if (!snap) refuse('probe-unparsable');
-    writeCounters(snap.counters);
-    process.exit(0);
-  }
+  // --force is never downgraded to a skip; it still probes through the same atomic snapshot
+  // so the caller can persist a coherent LSN+counter pair from the forced dump.
   const snap = parseCounters(runProbe(COMBINED_SQL));
   if (!snap) refuse('probe-unparsable');
-  const verdict = decide({ previousLsn: previous, currentLsn: snap.lsn, recordedCounters: recordedCounters(), currentCounters: snap.counters });
-  writeCounters(snap.counters);
-  process.stdout.write(JSON.stringify({ event: 'change_check', ...verdict, current: snap.lsn, previous }) + '\n');
+  const verdict = force || !previous
+    ? { dump: true, reason: force ? 'FORCED' : 'NO_RECORDED_STATE' }
+    : decide({ previousLsn: previous, currentLsn: snap.lsn, recordedCounters: recordedCounters(), currentCounters: snap.counters });
+  process.stdout.write(JSON.stringify({
+    event: 'change_check', ...verdict, current: snap.lsn, previous,
+    tablesStateDoc: JSON.stringify({ format: TABLES_FORMAT, capturedAtUtc: new Date().toISOString(), counters: snap.counters }),
+  }) + '\n');
   process.exit(verdict.dump ? 0 : 42);
 }
 

@@ -109,6 +109,9 @@ test('dispatch: unknown ops, bad shapes, and missing keys refuse with stable cod
   await assert.rejects(() => ingress.command({ actor: ACTOR, op: 'claim' }), /INVALID_IDEMPOTENCY_KEY/);
   /* MXA-ECO-003: ticket kind is the REWARD kind (credits/boost); the rewarded format is implicit. */
   await assert.rejects(() => ingress.command({ actor: ACTOR, op: 'ticket', key: 'k', kind: 'banner', platform: 'android' }), /INVALID_REWARD/);
+  /* MXA-ADS-D2: the powers lane earns undo/hint charges through rewarded ads with the power kind. */
+  await ingress.command({ actor: ACTOR, op: 'ticket', key: 'k-undo', kind: 'undo', platform: 'android' });
+  await ingress.command({ actor: ACTOR, op: 'ticket', key: 'k-hint', kind: 'hint', platform: 'ios' });
   await assert.rejects(() => ingress.command({ actor: ACTOR, op: 'ticket', key: 'k', kind: 'credits', platform: 'web' }), /INVALID_PLATFORM/);
   await assert.rejects(() => ingress.command({ actor: 'bad actor', op: 'status' }), /INVALID_ACTOR/);
   await assert.rejects(() => ingress.command({ actor: ACTOR, op: 'ssv' }), /INVALID_SSV_PAYLOAD/);

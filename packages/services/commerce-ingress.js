@@ -109,10 +109,11 @@ function createCommerceIngressService({ commerce }) {
         if (value === undefined) fail('INVALID_COMMERCE_ARG: ' + name);
         if (name === 'key') { args.push(requireText(value, 'INVALID_IDEMPOTENCY_KEY', KEY_PATTERN)); }
         else if (name === 'platform') args.push(requireText(value, 'INVALID_PLATFORM', /^(legacy|android|ios)$/));
-        /* MXA-ECO-003 (audit 2026-10-17): `kind` on the ticket op is the REWARD kind the client
-         * selects (credits/boost), matching commerce.ticket and the reward-ticket contract; the
+        /* MXA-ECO-003 (audit 2026-10-17) + MXA-ADS-D2 (2026-10-20): `kind` on the ticket op is
+         * the REWARD kind the client selects (credits/boost) or the power a rewarded ad earns
+         * (undo/hint, the powers lane), matching commerce.ticket and the reward-ticket contract; the
          * rewarded format is implicit and the automatic lane (permit) carries no kind at all. */
-        else if (name === 'kind') args.push(requireText(value, 'INVALID_REWARD', /^(credits|boost)$/));
+        else if (name === 'kind') args.push(requireText(value, 'INVALID_REWARD', /^(credits|boost|undo|hint)$/));
         else if (name === 'itemId') args.push(requireText(value, 'INVALID_ITEM_ID', KEY_PATTERN));
         else if (name === 'amount') {
          if (!Number.isInteger(value) || value <= 0 || value > 1000000) fail('INVALID_AMOUNT');

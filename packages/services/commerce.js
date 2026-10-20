@@ -627,7 +627,12 @@ async function createCommerceService(pool, options = {}) {
  function ticket(actor, key, kind, platform = 'legacy') {
   return transaction(actor, key, { type: 'ticket', kind, platform }, async (tx, _graph, account) => {
    const adUnit = assertAdSafe(account, platform, 'rewarded');
-   if (!['credits', 'boost'].includes(kind)) throw Error('INVALID_REWARD');
+   /* MXA-ADS-D2 (2026-10-20): the powers lane earns undo/hint charges through rewarded ads
+    * and requests its ticket with the POWER kind (src/powers-ui.js request(kind)); the old
+    * credits/boost-only rule answered INVALID_REWARD for every power-ad request and left the
+    * native rewarded-for-powers flow dead. The ticket stays a REQUEST: pacing, daily caps and
+    * the single-outstanding-ticket rule apply identically, and the SSV callback settles it. */
+   if (!['credits', 'boost', 'undo', 'hint'].includes(kind)) throw Error('INVALID_REWARD');
    const now = tx.clock(), s = account.monetization;
    if (now - s.lastRewardStart < M.POLICY.rewardedGap) throw Error('AD_COOLDOWN');
    if (kind === 'boost' && s.boosts.some((b) => b.endsAt > now)) throw Error('BOOST_ACTIVE');
@@ -668,11 +673,14 @@ async function createCommerceService(pool, options = {}) {
    const s = account.monetization;
    let boost = null;
    if (row.kind === 'credits') s.credits = D.add(s.credits, M.POLICY.rewardCredits);
-   else {
+   else if (row.kind === 'boost') {
     if (s.boosts.some((b) => b.endsAt > now)) throw Error('BOOST_ACTIVE');
     boost = { startedAt: now, endsAt: now + M.POLICY.boostDuration };
     s.boosts.push(boost);
    }
+   /* undo/hint: the power charge itself is device-side inventory granted by the powers lane
+    * after the verified presentation (the same model as a Crowns-bought charge). The server
+    * grant for these kinds is the settled, SSV-verified ticket - no wallet mutation. */
    s.lastAdAt = now;
    await tx.query('UPDATE monetization.reward_tickets SET settled = true, transaction_id = $2 WHERE ticket_id = $1', [e.ticket, e.transactionId]);
    await event(tx, e.actor, 'reward_verified', row.kind === 'credits' ? M.POLICY.rewardCredits : 0);

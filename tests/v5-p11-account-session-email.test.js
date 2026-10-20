@@ -81,7 +81,7 @@ test('B4 intake guards preserve the account; cancellation obeys its actor rate b
  const login = await h.signIn();
  const admin = await lab.adminClient(h.db);
  try {
-  await admin.query("INSERT INTO core.actor_occupancy(actor_id,kind,ref_id) VALUES($1,'match','b4-busy')", [h.owner.actor]);
+  await admin.query("INSERT INTO core.actor_occupancy(actor_id,kind,ref_id,claimed_at) VALUES($1,'match','b4-busy',$2)", [h.owner.actor, new Date(h.now())]);
   await assert.rejects(h.cool(login.token), /ACCOUNT_BUSY/);
   await admin.query('DELETE FROM core.actor_occupancy WHERE actor_id=$1', [h.owner.actor]);
   await h.cool(login.token);

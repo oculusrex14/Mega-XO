@@ -69,3 +69,15 @@ Owner items unchanged: Play closed-test (12 physical testers, 14 days; internal 
 ACTIVE with release 11 (1.0.10) published 2026-10-20 11:07 IST, opt-in
 https://play.google.com/apps/internaltest/4700778741227096719), iOS console auth, D2 on-device
 rewarded-ad pass, A4 48h verdict (2026-10-21), A5 final reconciliation.
+
+**Second-round update (Sol re-review of b7530b5, 2026-10-20,
+/tmp/sol-v6-review/REVIEW-b7530b5.md):** R1/R2/R3/R5/R7 verified FIXED; R8 config fixed.
+Remaining N1-N8 were then corrected on V6 (commits d16e76d, cd518e4, 9e2be6b, 05b3ee4, 68cc9d6):
+reservation product/quantity binding, device-platform provider selection, valid manifest XML
+with the compiled opt-out, pre-swap compatibility facts with fail-closed recovery, native
+continuation lane, purchase-time grandfathering plus durable rejection reconciliation
+(migration 0069), and the updated gateway assertion. Native artifacts REBUILT at
+1.0.11/versionCode 12 (APK 20d7efb3... / AAB c79b905b...), download pin megaxo-1.0.11.apk.
+Exact-candidate CI on the final source: run 39382503049 (base 05b3ee4, docs-only tip 68cc9d6)
+- ALL FIVE jobs success. Verdict: PENDING the fresh independent review of 68cc9d6 and the
+A4 verdict (2026-10-21); the Play internal AAB for vc12 still needs uploading (operational).

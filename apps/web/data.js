@@ -19,6 +19,8 @@ export const errorCopy = error => ({
  PROFILE_NOT_FOUND: 'This profile is no longer available. Sign in again to continue.',
  REQUEST_TIMEOUT: 'The service did not respond in time. Try again.',
  RATE_LIMITED: 'Please wait a moment before trying again.',
+ REQUEST_PENDING: 'You already have a checkout in progress. Finish that payment, or wait two minutes and try again.',
+ STORE_UNAVAILABLE: 'The store could not be reached just now. Check your connection and try again.',
 })[error?.message] || 'The service is unavailable right now. Please try again.';
 
 export async function readJSON(path, {fetcher = globalThis.fetch, signal} = {}) {

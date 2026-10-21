@@ -249,14 +249,16 @@ async function pollCashfreeStatus(orderId){for(let attempt=0;attempt<20;attempt+
  * and the SAME durable key is reused on retry. Verification is actor-bound via /polar/status and
  * only a durable server confirmation shows success - opening the gateway proves nothing. */
 let polarPending=null;
+let polarPendingAt=0;
 async function polarCheckout(productId){
- if(polarPending)throw Error('REQUEST_PENDING');
+ if(polarPending&&Date.now()-polarPendingAt<120000)throw Error('REQUEST_PENDING');
  const key=globalThis.crypto?.randomUUID?.()||'pl'+Date.now();
  const created=await globalThis.MegaAccount.request('/api/monetization/polar/checkout',{product:productId,promotionAcceptanceHash:context.promotionAcceptanceHash||undefined},key);
  if(typeof created?.checkoutUrl!=='string'||!created.checkoutUrl.startsWith('https://'))throw Error('STORE_UNAVAILABLE');
  polarPending={productId,checkoutId:typeof created.checkoutId==='string'?created.checkoutId:'',key};
- const opened=globalThis.open?.(created.checkoutUrl,'_blank','noopener');
- if(!opened)location.assign(created.checkoutUrl);
+ polarPendingAt=Date.now();
+ notify('Opening the Polar secure checkout in this tab. Complete your payment there and you will be brought back automatically.');
+ location.assign(created.checkoutUrl);
  if(polarPending&&polarPending.checkoutId)pollPolarStatus(polarPending.checkoutId);
 }
 async function pollPolarStatus(checkoutId){
@@ -292,15 +294,17 @@ function dodoRegion(){
  return mapped||{currency:'usd',country:null};
 }
 let dodoPending=null;
+let dodoPendingAt=0;
 async function dodoCheckout(productId){
- if(dodoPending)throw Error('REQUEST_PENDING');
+ if(dodoPending&&Date.now()-dodoPendingAt<120000)throw Error('REQUEST_PENDING');
  const key=globalThis.crypto?.randomUUID?.()||'dd'+Date.now();
  const {currency,country}=dodoRegion();
  const created=await globalThis.MegaAccount.request('/api/monetization/dodo/checkout',{product:productId,currency,country,promotionAcceptanceHash:context.promotionAcceptanceHash||undefined},key);
  if(typeof created?.checkoutUrl!=='string'||!created.checkoutUrl.startsWith('https://'))throw Error('STORE_UNAVAILABLE');
  dodoPending={productId,checkoutId:typeof created.checkoutId==='string'?created.checkoutId:'',key};
- const opened=globalThis.open?.(created.checkoutUrl,'_blank','noopener');
- if(!opened)location.assign(created.checkoutUrl);
+ dodoPendingAt=Date.now();
+ notify('Opening the Dodo secure checkout in this tab. Complete your payment there and you will be brought back automatically.');
+ location.assign(created.checkoutUrl);
  if(dodoPending&&dodoPending.checkoutId)pollDodoStatus(dodoPending.checkoutId);
 }
 async function pollDodoStatus(checkoutId){

@@ -218,6 +218,7 @@ function normalizeConfig(input = {}) {
   expectedServerMajor, schemas, searchPath: SEARCH_PATH,
   sanitizeOnRelease: cfg.sanitizeOnRelease !== false,
   budgetClaim,
+  onCommit: typeof cfg.onCommit === 'function' ? cfg.onCommit : undefined,
  };
 }
 
@@ -420,7 +421,7 @@ function createPgPool(input = {}) {
    client.__mxWriteSniff = true;
    const guarded = client.query.bind(client);
     client.query = (text, params) => {
-     if (isWriteSql(typeof text === 'string' ? text : text && text.text)) client.__mxWrote = true;
+    if (isWriteSql(typeof text === 'string' ? text : text && text.text)) client.__mxWrote = true;
     return guarded(text, params);
    };
   }

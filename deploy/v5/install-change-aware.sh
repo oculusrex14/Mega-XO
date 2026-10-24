@@ -70,6 +70,13 @@ cleanup() {
         rm -f -- "$BIN/$f" || restored=false
       fi
     done
+    for f in "${LIB_FILES[@]}"; do
+      if [[ -f "$ROLLBACK/lib-$f" ]]; then
+        cp -p -- "$ROLLBACK/lib-$f" "$LIB/$f" || restored=false
+      else
+        rm -f -- "$LIB/$f" || restored=false
+      fi
+    done
     if [[ "$restored" == true ]]; then
       echo "INSTALL_ROLLED_BACK: restored all host scripts from $ROLLBACK" >&2
     else
@@ -125,6 +132,9 @@ ROLLBACK="$STATE/install-rollback-$STAMP"
 mkdir -m 0700 -- "$ROLLBACK"
 for f in "${FILES[@]}"; do
   if [[ -f "$BIN/$f" ]]; then cp -p -- "$BIN/$f" "$ROLLBACK/$f"; fi
+done
+for f in "${LIB_FILES[@]}"; do
+  if [[ -f "$LIB/$f" ]]; then cp -p -- "$LIB/$f" "$ROLLBACK/lib-$f"; fi
 done
 mutation_started=1
 for f in "${FILES[@]}"; do install -m 0755 "$STAGE/$f" "$BIN/$f"; done

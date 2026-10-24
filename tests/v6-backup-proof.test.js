@@ -2,7 +2,7 @@
 const test=require('node:test'),assert=require('node:assert/strict');
 const {unchanged,proofValid}=require('../deploy/v5/v5-change-check.js');
 const token={format:'mega-v5-db-change/v1',database:'fixture',epoch:'a'.repeat(32),
-  covered:true,revisions:Array(64).fill('0'),sequences:[['ops','seq','1',false]]};
+  covered:true,excludedSchemas:[],revisions:Array(64).fill('0'),sequences:[['ops','seq','1',false]]};
 const watermark={format:'mega-v5-backup-watermark/v2',target:'a'.repeat(64),backupId:'v5-p15-fixture',token};
 test('only the exact covered source/epoch/revisions/sequence state can authorize a skip',()=>{
   const same=current=>unchanged(watermark,{token:current},watermark.target);

@@ -14,9 +14,6 @@ INSERT INTO ops.backup_change_clock(lane, epoch)
 SELECT lane, seed.epoch FROM generate_series(0,63) lane CROSS JOIN seed;
 REVOKE ALL ON ops.backup_change_clock FROM PUBLIC, api_runtime, core_runtime, worker_runtime, audit_runtime;
 GRANT SELECT ON ops.backup_change_clock TO backup_reader;
--- The historical learning sequence lacked the read permission required for an
--- exact (including never-called) sequence snapshot. This is read-only backup access.
-GRANT SELECT ON SEQUENCE learning.journal_watermarks_watermark_id_seq TO backup_reader;
 
 CREATE FUNCTION ops.backup_mark_change() RETURNS trigger
 LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_catalog AS $$
@@ -81,7 +78,7 @@ ALTER EVENT TRIGGER mega_backup_drop ENABLE ALWAYS;
 -- STABLE keeps catalog/clock reads on the statement's MVCC snapshot. Sequence
 -- last_value AND is_called are read directly (pg_sequences hides an uncalled value).
 -- nextval/setval need no xid and therefore require their own exact token component.
-CREATE FUNCTION ops.backup_change_probe() RETURNS jsonb
+CREATE FUNCTION ops.backup_change_probe(exclude_learning boolean DEFAULT false) RETURNS jsonb
 LANGUAGE plpgsql STABLE SET search_path=pg_catalog AS $$
 DECLARE covered boolean; seq record; value bigint; called boolean;
   sequence_state jsonb := '[]'::jsonb; revisions jsonb; epoch_value text;
@@ -91,6 +88,7 @@ BEGIN
   covered := covered AND NOT EXISTS (
     SELECT 1 FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
     WHERE n.nspname NOT LIKE 'pg_%' AND n.nspname<>'information_schema'
+      AND (NOT exclude_learning OR n.nspname<>'learning')
       AND c.oid<>'ops.backup_change_clock'::regclass
       AND ((c.relkind IN ('r','p','m') AND c.relpersistence='u') OR
         (c.relkind IN ('r','p') AND (NOT EXISTS (
@@ -107,14 +105,16 @@ BEGIN
   FOR seq IN SELECT c.oid,n.nspname,c.relname FROM pg_class c
       JOIN pg_namespace n ON n.oid=c.relnamespace WHERE c.relkind='S'
       AND n.nspname NOT LIKE 'pg_%' AND n.nspname<>'information_schema'
+      AND (NOT exclude_learning OR n.nspname<>'learning')
       ORDER BY n.nspname,c.relname
   LOOP
     EXECUTE format('SELECT last_value,is_called FROM %I.%I',seq.nspname,seq.relname) INTO value,called;
     sequence_state := sequence_state || jsonb_build_array(jsonb_build_array(seq.nspname,seq.relname,value::text,called));
   END LOOP;
   RETURN jsonb_build_object('format','mega-v5-db-change/v1','database',current_database(),
+    'excludedSchemas',CASE WHEN exclude_learning THEN '["learning"]'::jsonb ELSE '[]'::jsonb END,
     'epoch',epoch_value,'covered',covered,'revisions',revisions,'sequences',sequence_state);
 END $$;
-ALTER FUNCTION ops.backup_change_probe() OWNER TO v5_owner;
-REVOKE ALL ON FUNCTION ops.backup_change_probe() FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION ops.backup_change_probe() TO backup_reader;
+ALTER FUNCTION ops.backup_change_probe(boolean) OWNER TO v5_owner;
+REVOKE ALL ON FUNCTION ops.backup_change_probe(boolean) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION ops.backup_change_probe(boolean) TO backup_reader;

@@ -14,12 +14,14 @@ function validToken(token) {
     typeof token.database === 'string' && /^[a-f0-9]{32}$/.test(token.epoch || '') &&
     Array.isArray(token.revisions) && token.revisions.length === 64 &&
     token.revisions.every(v => typeof v === 'string' && /^(0|[1-9][0-9]*)$/.test(v)) &&
+    Array.isArray(token.excludedSchemas) &&
+    ['', 'learning'].includes(token.excludedSchemas.join(',')) && token.excludedSchemas.length <= 1 &&
     Array.isArray(token.sequences) && token.sequences.every(s => Array.isArray(s) &&
       s.length === 4 && typeof s[0] === 'string' && typeof s[1] === 'string' &&
       typeof s[2] === 'string' && /^-?[0-9]+$/.test(s[2]) && typeof s[3] === 'boolean');
 }
 function tokenText(token) {
-  return JSON.stringify([token.database, token.epoch, token.revisions, token.sequences]);
+  return JSON.stringify([token.database, token.epoch, token.excludedSchemas, token.revisions, token.sequences]);
 }
 function unchanged(previous, current, target) {
   return previous && previous.format === 'mega-v5-backup-watermark/v2' &&
@@ -52,8 +54,10 @@ function main() {
     targetDoc.projectId,targetDoc.sourceId,targetDoc.host,targetDoc.port,targetDoc.database
   ])).digest('hex');
   const lsnOnly = args.includes('--print-lsn');
+  const excludeLearning = targetDoc.kind === 'nonserving-production-source';
   const sql = lsnOnly ? 'SELECT pg_current_wal_lsn()::text' :
-    "SELECT json_build_object('lsn',pg_current_wal_lsn()::text,'token',ops.backup_change_probe())::text";
+    "SELECT json_build_object('lsn',pg_current_wal_lsn()::text,'token',ops.backup_change_probe("+
+      (excludeLearning ? 'true' : 'false')+"))::text";
   const probe = spawnSync(process.env.V5_PSQL_BIN || 'psql',
     ['-X','-v','ON_ERROR_STOP=1','-t','-A','-c',sql],
     {env:pgEnv,encoding:'utf8',timeout:30000,maxBuffer:1024*1024});
@@ -66,7 +70,8 @@ function main() {
   let current;
   try { current = JSON.parse(probe.stdout); } catch { refuse('INVALID_PROBE'); }
   if (!current || !/^[0-9A-F]+\/[0-9A-F]+$/.test(current.lsn || '') ||
-      current.token?.database !== targetDoc.database) refuse('PROBE_TARGET_MISMATCH');
+      current.token?.database !== targetDoc.database ||
+      JSON.stringify(current.token.excludedSchemas) !== JSON.stringify(excludeLearning ? ['learning'] : [])) refuse('PROBE_TARGET_MISMATCH');
   let previous = null;
   try { previous = JSON.parse(fs.readFileSync(path.join(ROOT,'state/last-backup-state.json'),'utf8')); } catch {}
   const skip = !args.includes('--force') && unchanged(previous,current,target);

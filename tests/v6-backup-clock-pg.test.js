@@ -14,7 +14,8 @@ test('database-local backup clock covers actual writes, late commits, DDL, seque
   const other=new Client({connectionString:lab.dbUrl(database)});
   const reader=new Client({connectionString:lab.dbUrl(database)});
   await Promise.all([admin.connect(),writer.connect(),other.connect(),reader.connect()]);
-  const probe=async()=> (await reader.query('SELECT ops.backup_change_probe() AS token')).rows[0].token;
+  // Production's P15 dump deliberately excludes the private learning schema.
+  const probe=async()=> (await reader.query('SELECT ops.backup_change_probe(true) AS token')).rows[0].token;
   const baseline=token=>({format:'mega-v5-backup-watermark/v2',target:'fixture',backupId:'v5-p15-fixture',token});
   const same=(before,after)=>unchanged(baseline(before),{token:after},'fixture');
   try{

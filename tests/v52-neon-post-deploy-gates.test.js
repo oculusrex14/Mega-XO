@@ -15,7 +15,7 @@ const INSTALL = path.join(ROOT, 'deploy/v5/install-change-aware.sh');
 
 function changeCheck(argv, recorded = '0/A1', current = '0/A1') {
   const token = {format:'mega-v5-db-change/v1',database:'test_db',epoch:'a'.repeat(32),
-    covered:true,revisions:Array(64).fill('0'),sequences:[]};
+    covered:true,excludedSchemas:['learning'],revisions:Array(64).fill('0'),sequences:[]};
   const target = require('node:crypto').createHash('sha256').update(JSON.stringify([
     undefined,undefined,undefined,undefined,'test_db'
   ])).digest('hex');

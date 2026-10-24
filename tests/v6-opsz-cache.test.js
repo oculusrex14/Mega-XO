@@ -39,3 +39,19 @@ test('missing/malformed observations and stale backup stay red without SQL', asy
   fs.writeFileSync(f.freshnessFile, JSON.stringify({ state: 'fresh', checkedAtUtc: new Date(0).toISOString() }));
   report = await mod.buildOpsReport(f); assert.equal(report.ok, false); assert.match(report.failures[0], /24h/); assert.equal(f.calls, 0);
 });
+test('worker observations older than three hours turn red without erasing queue failures or querying SQL', async (t) => {
+  const f = fixture(t);
+  const write = (age, dlq = 0, backlog = 0) => fs.writeFileSync(f.observationFile,
+    JSON.stringify({ at: f.now() - age, dlq, backlog, source: 'worker-tick' }));
+  write(mod.OPS_WORKER_MAX_AGE_MS);
+  assert.equal((await mod.buildOpsReport(f)).ok, true, 'the exact three-hour boundary is still current');
+  write(mod.OPS_WORKER_MAX_AGE_MS + 1);
+  let report = await mod.buildOpsReport(f); assert.equal(report.ok, false);
+  assert.deepEqual(report.failures, ['worker observation is stale']);
+  write(mod.OPS_WORKER_MAX_AGE_MS + 1, 1, 101);
+  report = await mod.buildOpsReport(f); assert.equal(report.failures.length, 3);
+  assert.ok(report.failures.some((failure) => failure.includes('dead-lettered')));
+  assert.ok(report.failures.some((failure) => failure.includes('backlog')));
+  assert.ok(report.failures.includes('worker observation is stale'));
+  assert.equal(f.calls, 0);
+});

@@ -81,7 +81,7 @@ const http = require('node:http');
 const crypto = require('node:crypto');
 const fs = require('node:fs');
 const path = require('node:path');
-const { AsyncLocalStorage } = require('node:async_hooks');
+const { spawn } = require('node:child_process');
 const { createResendMailTransport } = require(path.join(__dirname, '..', '..', 'packages', 'services', 'mail-resend.js'));
 
 const ROOT = path.resolve(__dirname, '..', '..');
@@ -102,12 +102,12 @@ const REDIS_CREDENTIALS_ENV = 'MEGA_V5_PRODUCTION_REDIS_CREDENTIALS';
  * systemd unit's root. */
 const STATE_DIR = process.env.MEGA_V5_PRODUCTION_STATE_DIR || '/opt/mega-xo-v5-production/state';
 const FRESHNESS_STATE_FILE = path.join(STATE_DIR, 'freshness-state.json');
-/* These live in the PROTECTED deployment state dir (the same one the backup gate and
- * freshness checker read), never inside the swappable src-final tree. */
+/* Observations live outside the swappable src-final tree. They never authorize a backup skip. */
 const WORKER_OBSERVATION_FILE = path.join(STATE_DIR, 'worker-observation.json');
-const DB_WRITE_JOURNAL_FILE = path.join(STATE_DIR, 'db-write-journal');
 const DEFAULT_IDLE_PULSE_MS = 2 * 60 * 60 * 1000;
-const commerceSweepContext = new AsyncLocalStorage();
+const BACKUP_BATCH_MS = 5 * 60 * 1000;
+const WORKER_DEADLINE_RETRY_MS = 10000;
+const BACKUP_RETRY_MS = 60000;
 
 /* The private-material filenames inside the secrets directory. All are absolute, regular,
  * non-symlinked, mode-0600 files; the two `.secret` files are created once (0600) and then reused, so
@@ -224,7 +224,7 @@ function arg(flag, fallback) {
 const safeError = (err) => (err && err.message) ? String(err.message).slice(0, 120) : 'ERROR';
 
 /* One shared idle wake, with independent single-flight lanes. A wake arriving during a pass is
- * latched until it finishes; a deadline re-arm can never overwrite an earlier insert wake. */
+ * latched until it finishes; a deadline re-arm can never overwrite an earlier commit wake. */
 function createIdlePulseScheduler({ intervalMs = DEFAULT_IDLE_PULSE_MS, now = Date.now, timers = globalThis, onError = () => {} } = {}) {
   if (!Number.isSafeInteger(intervalMs) || intervalMs < 1 || intervalMs > 0x7fffffff) throw REFUSE('INVALID_IDLE_PULSE');
   const lanes = new Map();
@@ -238,7 +238,7 @@ function createIdlePulseScheduler({ intervalMs = DEFAULT_IDLE_PULSE_MS, now = Da
     lane.timerAt = at;
     lane.timer = timers.setTimeout(() => {
       lane.timer = null;
-      if (lane.pending) { lane.latched = true; return; }
+      if (lane.pending) { lane.wakeLatched = true; return; }
       run(name);
     }, Math.max(0, at - now()));
     lane.timer.unref?.();
@@ -251,7 +251,9 @@ function createIdlePulseScheduler({ intervalMs = DEFAULT_IDLE_PULSE_MS, now = Da
     if (lane.wakeAt !== null && lane.wakeAt <= now()) lane.wakeAt = null;
     lane.pending = Promise.resolve().then(lane.callback).catch((error) => report(name, error)).finally(() => {
       lane.pending = null;
-      if (lane.latched) { lane.latched = false; armAt(name, now()); }
+      if (lane.pulseLatched || lane.wakeLatched) {
+        lane.pulseLatched = false; lane.wakeLatched = false; armAt(name, now());
+      }
       else if (lane.wakeAt !== null) armAt(name, lane.wakeAt);
     });
     return lane.pending;
@@ -261,16 +263,24 @@ function createIdlePulseScheduler({ intervalMs = DEFAULT_IDLE_PULSE_MS, now = Da
     get pulseCount() { return pulseCount; },
     add(name, callback) {
       if (lanes.has(name)) throw REFUSE('DUPLICATE_IDLE_LANE');
-      lanes.set(name, { callback, pending: null, timer: null, timerAt: 0, wakeAt: null, latched: false });
+      lanes.set(name, { callback, pending: null, timer: null, timerAt: 0, wakeAt: null,
+        wakeVersion: 0, wakeLatched: false, pulseLatched: false });
     },
     run, armAt,
     wake(name, delayMs) {
       const lane = lanes.get(name);
       if (stopped || !lane) return;
-      // An earlier deadline/pulse must not consume the delayed write wake before its
-      // transaction has had a chance to commit (the pool hook fires before sending SQL).
+      lane.wakeVersion++;
       lane.wakeAt = Math.min(lane.wakeAt ?? Infinity, now() + delayMs);
       armAt(name, lane.wakeAt);
+    },
+    waitFor(names) { return Promise.all(names.map((name) => lanes.get(name).pending)); },
+    wakeVersion(name) { return lanes.get(name).wakeVersion; },
+    acknowledgeWake(name, version) {
+      const lane = lanes.get(name);
+      if (lane.wakeVersion !== version) return;
+      lane.wakeAt = null; lane.wakeLatched = false;
+      if (lane.timer !== null) { timers.clearTimeout(lane.timer); lane.timer = null; }
     },
     start() {
       if (stopped || interval !== null) return;
@@ -280,7 +290,7 @@ function createIdlePulseScheduler({ intervalMs = DEFAULT_IDLE_PULSE_MS, now = Da
         nextPulseAt = now() + intervalMs;
         for (const [name, lane] of lanes) {
           // A pass that began before the pulse may have skipped a now-due slow sweep.
-          if (lane.pending) lane.latched = true;
+          if (lane.pending) lane.pulseLatched = true;
           run(name);
         }
       }, intervalMs);
@@ -295,52 +305,58 @@ function createIdlePulseScheduler({ intervalMs = DEFAULT_IDLE_PULSE_MS, now = Da
   };
 }
 
-const WRITE_SQL = /^(?:(?:insert|update|delete|truncate|merge|create|alter|drop|grant|revoke|comment|do|call|copy|refresh|reindex|lock)\b|with\b)/i;
-function createWriteWakeHooks({ journalFile = DB_WRITE_JOURNAL_FILE, wakeWorker = () => {}, wakeCommerce = () => {} } = {}) {
-  let lastTouchAt = 0;
-  function journalTouch(sql) {
-    if (!WRITE_SQL.test(sql)) return;
-    try {
-      fs.mkdirSync(path.dirname(journalFile), { recursive: true });
-      if (!fs.existsSync(journalFile)) fs.closeSync(fs.openSync(journalFile, 'a', 0o600));
-      // Distinct mtimes even when several statements arrive in the same millisecond.
-      lastTouchAt = Math.max(Date.now(), lastTouchAt + 1);
-      fs.utimesSync(journalFile, lastTouchAt / 1000, lastTouchAt / 1000);
-    } catch { /* A journal/wake failure must never reject a database statement. */ }
-  }
-  function wakeOnInsert(sql) {
-    try { if (/insert\s+into\s+ops\.outbox\b/i.test(sql)) wakeWorker(); } catch {}
-    // Sweep-owned writes must not recursively start a permanent two-second SQL loop. Async
-    // context suppresses only those writes; concurrent purchase/webhook writes still latch a pass.
-    try { if (WRITE_SQL.test(sql) && /\bmonetization\./i.test(sql) && !commerceSweepContext.getStore()) wakeCommerce(); } catch {}
-  }
-  return { journalTouch, wakeOnInsert, onWrite(sql) { try { journalTouch(sql); } catch {} try { wakeOnInsert(sql); } catch {} } };
+/* Advisory scheduling only. The pool calls this after commit; the backup unit alone decides
+ * whether the transactional database clock permits a skip or requires a verified dump. */
+function createWriteWakeHooks({ wakeWorker = () => {}, wakeCommerce = () => {}, armBackup = () => {} } = {}) {
+  let commitCount = 0;
+  return {
+    get commitCount() { return commitCount; },
+    onCommit() {
+      commitCount++;
+      try { wakeWorker(); } catch {}
+      try { wakeCommerce(); } catch {}
+      try { armBackup(); } catch {}
+    },
+  };
 }
 
-/* The gate consumes an observation only when a probe is being considered/run. The health route
- * calls it at probe start too, so boot/retry/pulse probes establish the same journal baseline. */
-function createDbProbeGate({ journalFile = DB_WRITE_JOURNAL_FILE, pulseCount = () => 0 } = {}) {
-  let lastMtime = null, lastPulse = -1;
+/* Commit/pulse counters gate readiness probes, never backup authority. */
+function createDbProbeGate({ commitCount = () => 0, pulseCount = () => 0 } = {}) {
+  let lastCommit = -1, lastPulse = -1;
   return () => {
-    let mtime = null;
-    try { mtime = fs.statSync(journalFile).mtimeMs; } catch {}
+    const commits = commitCount();
     const pulse = pulseCount();
-    const changed = mtime !== lastMtime || pulse !== lastPulse;
-    lastMtime = mtime; lastPulse = pulse;
+    const changed = commits !== lastCommit || pulse !== lastPulse;
+    lastCommit = commits; lastPulse = pulse;
     return changed;
   };
 }
 
+function startBackupService({ spawnProcess = spawn, log = () => {} } = {}) {
+  return new Promise((resolve, reject) => {
+    const child = spawnProcess('systemctl', ['start', 'mega-xo-v5-backup.service'], { stdio: ['ignore', 'pipe', 'pipe'] });
+    let output = '';
+    const collect = (chunk) => { output = (output + String(chunk)).slice(0, 4096); };
+    child.stdout?.on('data', collect); child.stderr?.on('data', collect);
+    child.once('error', reject);
+    child.once('close', (code, signal) => {
+      try { log({ event: 'backup.service', code, signal, output }); } catch {}
+      if (code === 0) resolve(); else reject(REFUSE('BACKUP_SERVICE_FAILED'));
+    });
+  });
+}
+
 /* Worker deadlines and observation reads are part of a pass, never a monitor request. */
-function createIdleMaintenance({ worker, pool, commerceTasks = {}, tournamentTick = async () => {}, probeDb = async () => {}, observationFile = WORKER_OBSERVATION_FILE,
+function createIdleMaintenance({ worker, pool, commerceTasks = {}, tournamentTick = async () => {}, probeDb = async () => {},
+  backup = startBackupService, observationFile = WORKER_OBSERVATION_FILE,
   intervalMs = DEFAULT_IDLE_PULSE_MS, now = Date.now, timers = globalThis, onError = () => {} } = {}) {
   const scheduler = createIdlePulseScheduler({ intervalMs, now, timers, onError });
   let lastSlowAt = null;
-  scheduler.add('commerce', () => commerceSweepContext.run(true, async () => {
+  scheduler.add('commerce', async () => {
     await Promise.all(Object.entries(commerceTasks).map(async ([name, task]) => {
       try { await task(); } catch (error) { onError(name, error); }
     }));
-  }));
+  });
   scheduler.add('worker', async () => {
     const startedAt = now();
     const includeSlow = lastSlowAt === null || startedAt - lastSlowAt >= DEFAULT_IDLE_PULSE_MS;
@@ -349,30 +365,43 @@ function createIdleMaintenance({ worker, pool, commerceTasks = {}, tournamentTic
       if (includeSlow) lastSlowAt = startedAt;
     } finally {
       await refreshWorkerObservation({ pool, observationFile, now });
+      // Every pass commits the expiry UPDATE, even for an empty queue. Its own wake is
+      // satisfied by this final read. Commits DURING the read retain a latched follow-up.
+      const observedWake = scheduler.wakeVersion('worker');
       let nextAt = null;
-      try { nextAt = await worker.nextWakeAt(); } catch (error) { onError('worker_deadline', error); }
+      let deadlineFailed = false;
+      try { nextAt = await worker.nextWakeAt(); } catch (error) { deadlineFailed = true; onError('worker_deadline', error); }
+      scheduler.acknowledgeWake('worker', observedWake);
       const deadline = typeof nextAt === 'number' && Number.isFinite(nextAt)
         ? (nextAt <= now() ? now() + 1000 : nextAt) : Infinity;
-      scheduler.armAt('worker', Math.min(deadline, scheduler.nextPulseAt));
+      scheduler.armAt('worker', Math.min(deadlineFailed ? now() + WORKER_DEADLINE_RETRY_MS : deadline, scheduler.nextPulseAt));
     }
   });
   // The timer still owns active deadlines/wake(), but an idle sweep is realigned to this pulse
   // after activity, rather than keeping a second two-hour cadence at a different wall-clock phase.
   scheduler.add('tournaments', tournamentTick);
   scheduler.add('db_health', async () => {
-    // Snapshot the journal after the pulse's writes, so a monitor cannot extend the suspend tail
+    // Snapshot commit counters after the pulse's writes, so a monitor cannot extend the suspend tail
     // by treating those same maintenance writes as fresh traffic one minute later.
-    await Promise.all(['commerce', 'worker', 'tournaments'].map((name) => scheduler.run(name)));
+    await scheduler.waitFor(['commerce', 'worker', 'tournaments']);
     await probeDb();
+  });
+  scheduler.add('backup', async () => {
+    await scheduler.waitFor(['commerce', 'worker', 'tournaments']);
+    // Preserve future commit deadlines even when a pulse starts this lane early. systemctl
+    // may join an already-started unit whose snapshot predates those commits.
+    try { await backup(); }
+    catch (error) { scheduler.wake('backup', BACKUP_RETRY_MS); throw error; }
   });
   return {
     get pulseCount() { return scheduler.pulseCount; },
-    wakeWorker() { scheduler.wake('worker', 1000); },
-    wakeCommerce() { scheduler.wake('commerce', 2000); },
+    wakeWorker() { scheduler.wake('worker', 0); },
+    wakeCommerce() { scheduler.wake('commerce', 0); },
+    armBackup() { scheduler.wake('backup', BACKUP_BATCH_MS); },
     async start() {
       worker.start(); // intervalMs: 0; only the composition arms worker deadlines.
       scheduler.start();
-      await Promise.all(['commerce', 'worker', 'tournaments', 'db_health'].map((name) => scheduler.run(name)));
+      await Promise.all(['commerce', 'worker', 'tournaments', 'db_health', 'backup'].map((name) => scheduler.run(name)));
     },
     stop() { return scheduler.stop(); },
   };
@@ -724,6 +753,7 @@ function legalCanonicalLink({ pathname, seo }) {
  * (backup freshness + recovery/backlog), never a liveness-only green. */
 const OPS_BACKUP_MAX_AGE_MS = 24 * 60 * 60 * 1000;
 const OPS_OUTBOX_BACKLOG_MAX = 100;
+const OPS_WORKER_MAX_AGE_MS = 3 * 60 * 60 * 1000;
 let cachedWorkerObservation = null;
 let cachedWorkerObservationFile = null;
 const WORKER_COUNTS_SQL = "SELECT count(*) FILTER (WHERE state = 'failed')::int AS dlq, " +
@@ -792,6 +822,7 @@ async function buildOpsReport({ freshnessFile, observationFile = WORKER_OBSERVAT
     if (observation && Number.isFinite(observation.at)) worker.ageMs = Math.max(0, at - observation.at);
     failures.push('worker queue could not be read');
   }
+  if (worker.ageMs !== null && worker.ageMs > OPS_WORKER_MAX_AGE_MS) failures.push('worker observation is stale');
 
   const ok = failures.length === 0;
   return { ok, failures, backup, worker, at };
@@ -957,9 +988,10 @@ async function main() {
    * rejectUnauthorized: true}` plus the pinned `sslRootCertPath` is the whole TLS contract here. */
   const { budget, poolMax } = resolveConnectionBudget(target);
   let idleMaintenance = null;
-  const { onWrite } = createWriteWakeHooks({
+  const writeHooks = createWriteWakeHooks({
     wakeWorker: () => idleMaintenance?.wakeWorker(),
     wakeCommerce: () => idleMaintenance?.wakeCommerce(),
+    armBackup: () => idleMaintenance?.armBackup(),
   });
   const mkPool = (role, max) => createPgPool({
     host: runtimeRoles.host, port: 5432, database: runtimeRoles.database, user: role,
@@ -967,7 +999,7 @@ async function main() {
     ssl: { ca: caPem, rejectUnauthorized: true }, sslRootCertPath: secrets.ca,
     targetFile: PRODUCTION_TARGET_FILE, budget, pool: { max, idleTimeoutMillis: 5000, connectionTimeoutMillis: 15000 },
     lockTimeoutMs: 15000, statementTimeoutMs: 30000, idleInTransactionTimeoutMs: 15000,
-    onWrite,
+    onCommit: writeHooks.onCommit,
   });
   const apiPool = mkPool(REQUIRED_ROLE.api, poolMax.api);
   const corePool = mkPool(REQUIRED_ROLE.core, poolMax.core);
@@ -1433,7 +1465,7 @@ async function main() {
   }});
   const apiContext = {
     pool: apiPool, accounts, coreGateway, access, nativeAudiences: ['mega-ios', 'mega-android'],
-    dbProbeGate: createDbProbeGate({ pulseCount: () => idleMaintenance?.pulseCount || 0 }),
+    dbProbeGate: createDbProbeGate({ commitCount: () => writeHooks.commitCount, pulseCount: () => idleMaintenance?.pulseCount || 0 }),
     queue: coreGateway, leaderboard: (query) => coreGateway.leaderboard(query),
     otpSecret, ticketIssuer, allowedOrigins,
     otpSink,
@@ -1733,6 +1765,7 @@ async function main() {
     tournamentTick: () => tournamentTimer.tick(),
     intervalMs: Number(arg('--idle-pulse-minutes', '120')) * 60 * 1000,
     probeDb: () => probeDbHealth(apiContext),
+    backup: () => startBackupService({ log: (event) => console.log(JSON.stringify(event)) }),
     onError: (lane, error) => console.error(JSON.stringify({ event: `${lane}_error`, code: safeError(error) })),
   });
   await idleMaintenance.start();
@@ -1754,9 +1787,9 @@ module.exports = {
   assertCoreCompositionUsesCorePool,
   resolveConnectionBudget, resolveHttpBinding, classifyPath, buildOpsReport,
   robotsHeaderFor, legalCanonicalLink, DEFAULT_ROBOTS_HEADER,
-  FRESHNESS_STATE_FILE, OPS_BACKUP_MAX_AGE_MS, OPS_OUTBOX_BACKLOG_MAX,
-  WORKER_OBSERVATION_FILE, DB_WRITE_JOURNAL_FILE, DEFAULT_IDLE_PULSE_MS,
-  createIdlePulseScheduler, createIdleMaintenance, createWriteWakeHooks, createDbProbeGate, refreshWorkerObservation,
+  FRESHNESS_STATE_FILE, OPS_BACKUP_MAX_AGE_MS, OPS_OUTBOX_BACKLOG_MAX, OPS_WORKER_MAX_AGE_MS,
+  WORKER_OBSERVATION_FILE, DEFAULT_IDLE_PULSE_MS, BACKUP_BATCH_MS, WORKER_DEADLINE_RETRY_MS, BACKUP_RETRY_MS,
+  createIdlePulseScheduler, createIdleMaintenance, createWriteWakeHooks, createDbProbeGate, refreshWorkerObservation, startBackupService,
   /* filesystem-bounded helpers used by the composition (never network) */
   secretPaths, readSecretFile, loadStableSecret, readInventory, loadWebArtifact, streamApkFile, wantsApkMetrics,
   arg, safeError, main,

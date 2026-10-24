@@ -219,7 +219,7 @@ function getAppleAppSiteAssociation(context, req, res) {
 /* Sleep-compatible health (infrastructure brief 2026-10-19, part E). /livez is PROCESS liveness
  * only and never touches the database. /health and /readyz report dependency readiness from a
  * timestamped, single-flight, TTL-cached probe. A composition may gate healthy re-probes on
- * writes/pulses, so external monitors alone cannot keep a scale-to-zero database awake. Failed
+ * commits/pulses, so external monitors alone cannot keep a scale-to-zero database awake. Failed
  * probes still retry after ten seconds. The response retains an honest db state + age. */
 const HEALTH_PROBE_TTL_MS = 60000;
 const HEALTH_RETRY_MS = 10000;
@@ -228,7 +228,7 @@ function probeDbHealth(context) {
   if (healthProbe.inFlight) return healthProbe.inFlight;
   const pool = context.pool && typeof context.pool.query === 'function' ? context.pool : null;
   if (!pool) return Promise.resolve(null);
-  // Boot, failed-probe retries and composition pulses also consume the journal/pulse baseline.
+  // Boot, failed-probe retries and composition pulses also consume the commit/pulse baseline.
   try { if (typeof context.dbProbeGate === 'function') context.dbProbeGate(); } catch {}
   healthProbe.inFlight = Promise.resolve().then(async () => {
     try {

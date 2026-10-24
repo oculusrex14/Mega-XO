@@ -4,6 +4,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
+const { EventEmitter } = require('node:events');
 const ROOT = path.resolve(__dirname, '..');
 const mod = require(path.join(ROOT, 'scripts/v51/v5-production-server.cjs'));
 const healthPath = path.join(ROOT, 'apps/api/routes/well-known.js');
@@ -51,6 +52,7 @@ function fixture(t, extra = {}) {
     observationFile: path.join(dir, 'worker.json'),
     commerceTasks: Object.fromEntries(['pass', 'finalization', 'intro'].map((name) => [name, async () => calls.push([name, clock.now()])])),
     tournamentTick: async () => calls.push(['tournaments', clock.now()]),
+    backup: async () => calls.push(['backup', clock.now()]),
     probeDb: async () => calls.push(['health', clock.now()]), onError: (lane, error) => errors.push([lane, error.message]), ...extra });
   t.after(() => maintenance.stop());
   return { dir, clock, calls, worker, pool, maintenance, errors,
@@ -65,52 +67,52 @@ test('one interval clusters all idle work; no SQL until the two-hour pulse', asy
   await f.clock.advance(1);
   assert.equal(f.maintenance.pulseCount, 1);
   const pulse = f.calls.slice(before);
-  assert.deepEqual(pulse.filter(([name]) => ['pass', 'finalization', 'intro', 'worker', 'counts', 'health', 'tournaments'].includes(name)).map(([name]) => name).sort(), ['counts', 'finalization', 'health', 'intro', 'pass', 'tournaments', 'worker']);
+  assert.deepEqual(pulse.filter(([name]) => ['pass', 'finalization', 'intro', 'worker', 'counts', 'health', 'tournaments', 'backup'].includes(name)).map(([name]) => name).sort(), ['backup', 'counts', 'finalization', 'health', 'intro', 'pass', 'tournaments', 'worker']);
   assert.equal(new Set(pulse.map(([, at]) => at)).size, 1);
   assert.equal(pulse.find(([name]) => name === 'worker')[2], true);
-  assert.equal(pulse.at(-1)[0], 'health');
+  assert.ok(pulse.findIndex(([name]) => name === 'health') > pulse.findIndex(([name]) => name === 'counts'));
   await f.maintenance.stop(); assert.equal(f.clock.pending, 0);
 });
-test('insert wakes worker once after one second; commerce coalesces after two', async (t) => {
-  const f = fixture(t); await f.maintenance.start();
-  const hooks = mod.createWriteWakeHooks({ journalFile: path.join(f.dir, 'journal'), wakeWorker: () => f.maintenance.wakeWorker(), wakeCommerce: () => f.maintenance.wakeCommerce() });
-  const before = f.calls.length;
-  for (let i = 0; i < 20; i++) { hooks.onWrite('INSERT INTO ops.outbox VALUES ($1)'); hooks.onWrite('UPDATE monetization.store_finalize SET state=$1'); }
-  await f.clock.advance(999); assert.equal(f.calls.length, before);
-  await f.clock.advance(1);
+function hooksFor(f) {
+  return mod.createWriteWakeHooks({ wakeWorker: () => f.maintenance.wakeWorker(),
+    wakeCommerce: () => f.maintenance.wakeCommerce(), armBackup: () => f.maintenance.armBackup() });
+}
+test('commits wake worker and commerce immediately, coalescing a burst into one pass', async (t) => {
+  const f = fixture(t); await f.maintenance.start(); const hooks = hooksFor(f), before = f.calls.length;
+  for (let i = 0; i < 20; i++) hooks.onCommit();
+  assert.equal(f.calls.length, before); await f.clock.advance(0);
   assert.equal(f.calls.slice(before).filter(([name]) => name === 'worker').length, 1);
-  assert.equal(f.calls.slice(before).find(([name]) => name === 'worker')[2], false); // prompt delivery skips slow housekeeping
-  await f.clock.advance(1000);
+  assert.equal(f.calls.slice(before).find(([name]) => name === 'worker')[2], false);
   assert.equal(f.calls.slice(before).filter(([name]) => name === 'finalization').length, 1);
-  await f.clock.advance(10000);
-  assert.equal(f.calls.slice(before).filter(([name]) => name === 'worker').length, 1);
+  assert.equal(f.calls.slice(before).filter(([name]) => name === 'backup').length, 0);
+  const after = f.calls.length; await f.clock.advance(1000); assert.equal(f.calls.length, after);
 });
-test('wake during in-flight pass is latched, single-flight and not lost to re-arm', async (t) => {
-  const f = fixture(t); await f.maintenance.start();
-  let release, active = 0, maxActive = 0;
-  f.setTick(async () => { active++; maxActive = Math.max(maxActive, active); await new Promise((r) => { release = r; }); active--; });
-  f.maintenance.wakeWorker(); await f.clock.advance(1000);
-  f.maintenance.wakeWorker(); f.maintenance.wakeWorker(); await f.clock.advance(1000);
-  assert.equal(maxActive, 1);
-  f.setTick(null); release(); await flush(); await f.clock.advance(0);
-  assert.equal(f.calls.filter(([name]) => name === 'worker').length, 3);
-  assert.equal(maxActive, 1);
-});
-test('an earlier deadline cannot consume a delayed pre-send insert wake', async (t) => {
-  const f = fixture(t); f.setDue(f.clock.now() + 500); await f.maintenance.start(); f.setDue(null);
-  f.maintenance.wakeWorker(); await f.clock.advance(500);
+test('commits during the final deadline read remain latched and single-flight', async (t) => {
+  const f = fixture(t); await f.maintenance.start(); let release, reads = 0;
+  f.worker.nextWakeAt = async () => { if (++reads === 1) await new Promise((r) => { release = r; }); return null; };
+  f.maintenance.wakeWorker(); await f.clock.advance(0);
+  f.maintenance.wakeWorker(); f.maintenance.wakeWorker(); await f.clock.advance(0);
   assert.equal(f.calls.filter(([name]) => name === 'worker').length, 2);
-  await f.clock.advance(500);
+  release(); await flush(); await f.clock.advance(0);
   assert.equal(f.calls.filter(([name]) => name === 'worker').length, 3);
 });
-test('durable deadline beats pulse; null and failed deadline reads park until pulse', async (t) => {
+test('an empty worker consumes its own expiry-commit wake after the final queue read', async (t) => {
+  const f = fixture(t), hooks = hooksFor(f); f.setTick(() => hooks.onCommit());
+  await f.maintenance.start(); await f.clock.advance(0);
+  assert.equal(f.calls.filter(([name]) => name === 'worker').length, 1);
+  const before = f.calls.length, at = f.clock.now(); await f.clock.advance(mod.BACKUP_BATCH_MS);
+  assert.deepEqual(f.calls.slice(before), [['backup', at + mod.BACKUP_BATCH_MS]],
+    'a commit keeps its backup deadline even if the boot unit was already running');
+});
+test('durable deadlines beat pulse; failed deadline reads retry after ten seconds', async (t) => {
   const f = fixture(t); f.setDue(f.clock.now() + 45000); await f.maintenance.start(); f.setDue(null);
   await f.clock.advance(44999); assert.equal(f.calls.filter(([name]) => name === 'worker').length, 1);
   await f.clock.advance(1); assert.equal(f.calls.filter(([name]) => name === 'worker').length, 2);
-  f.worker.nextWakeAt = async () => { throw Error('deadline unavailable'); };
-  f.maintenance.wakeWorker(); await f.clock.advance(1000);
-  assert.equal(f.errors.at(-1)[0], 'worker_deadline');
-  const count = f.calls.length; await f.clock.advance(60000); assert.equal(f.calls.length, count);
+  let failures = 1; f.worker.nextWakeAt = async () => { if (failures-- > 0) throw Error('deadline unavailable'); return null; };
+  f.maintenance.wakeWorker(); await f.clock.advance(0); assert.equal(f.errors.at(-1)[0], 'worker_deadline');
+  const before = f.calls.length; await f.clock.advance(9999); assert.equal(f.calls.length, before);
+  await f.clock.advance(1); assert.equal(f.calls.filter(([name]) => name === 'worker').length, 4);
+  const after = f.calls.length; await f.clock.advance(60000); assert.equal(f.calls.length, after);
 });
 test('an idle day has twelve clustered pulses and no intervening worker reads', async (t) => {
   const f = fixture(t); await f.maintenance.start(); const before = f.calls.length;
@@ -119,6 +121,7 @@ test('an idle day has twelve clustered pulses and no intervening worker reads', 
   assert.equal(f.maintenance.pulseCount, 12);
   assert.equal(calls.filter(([name]) => name === 'worker').length, 12);
   assert.equal(calls.filter(([name]) => name === 'counts').length, 12);
+  assert.equal(calls.filter(([name]) => name === 'backup').length, 12);
   assert.equal(new Set(calls.map(([, at]) => at)).size, 12);
 });
 test('fast delivery crossing a pulse cannot lose the due slow sweep', async (t) => {
@@ -126,9 +129,9 @@ test('fast delivery crossing a pulse cannot lose the due slow sweep', async (t) 
   await f.clock.advance(mod.DEFAULT_IDLE_PULSE_MS - 1500);
   let release;
   f.setTick(() => new Promise((r) => { release = r; }));
-  f.maintenance.wakeWorker(); await f.clock.advance(1000);
+  f.maintenance.wakeWorker(); await f.clock.advance(0);
   assert.equal(f.calls.filter(([name]) => name === 'worker').at(-1)[2], false);
-  await f.clock.advance(500); f.setTick(null); release(); await flush(); await f.clock.advance(0);
+  await f.clock.advance(1500); f.setTick(null); release(); await flush(); await f.clock.advance(0);
   assert.equal(f.calls.filter(([name]) => name === 'worker').at(-1)[2], true);
 });
 test('worker failure still records counts and re-arms; shutdown drains and cancels pending wakes', async (t) => {
@@ -138,38 +141,72 @@ test('worker failure still records counts and re-arms; shutdown drains and cance
   f.maintenance.wakeWorker(); f.maintenance.wakeCommerce(); await f.maintenance.stop();
   const count = f.calls.length; await f.clock.advance(mod.DEFAULT_IDLE_PULSE_MS * 2); assert.equal(f.calls.length, count); assert.equal(f.clock.pending, 0);
 });
-test('commerce sweep writes do not self-wake, but concurrent external writes do latch', async (t) => {
-  const dir = temp(t), clock = fakeClock(); let maintenance, hooks, count = 0, release;
-  maintenance = mod.createIdleMaintenance({ now: clock.now, timers: clock.timers, observationFile: path.join(dir, 'observation.json'),
-    worker: { start() {}, async tick() {}, async nextWakeAt() { return null; } }, pool: { async query() { return { rows: [{ dlq: 0, backlog: 0 }] }; } },
-    commerceTasks: { async commerce() { count++; hooks.onWrite('UPDATE monetization.store_finalize SET attempts=1'); if (count === 1) await new Promise((r) => { release = r; }); } } });
-  hooks = mod.createWriteWakeHooks({ journalFile: path.join(dir, 'journal'), wakeCommerce: () => maintenance.wakeCommerce() });
-  const start = maintenance.start(); await flush();
-  hooks.onWrite('INSERT INTO monetization.store_finalize VALUES ($1)'); await clock.advance(2000); release(); await start; await clock.advance(0);
-  assert.equal(count, 2); await clock.advance(60000); assert.equal(count, 2); await maintenance.stop();
+test('backup batching keeps the earliest commit deadline under sustained writes', async (t) => {
+  const f = fixture(t); await f.maintenance.start(); const hooks = hooksFor(f), initial = f.clock.now();
+  hooks.onCommit(); await f.clock.advance(0);
+  for (let i = 0; i < 4; i++) { await f.clock.advance(60000); hooks.onCommit(); await f.clock.advance(0); }
+  assert.equal(f.calls.filter(([name]) => name === 'backup').length, 1);
+  await f.clock.advance(59999); assert.equal(f.calls.filter(([name]) => name === 'backup').length, 1);
+  const before = f.calls.length; await f.clock.advance(1);
+  assert.deepEqual(f.calls.slice(before), [['backup', initial + 300000]], 'backup must not start another worker/commerce pass');
+  hooks.onCommit(); await f.clock.advance(0); await f.clock.advance(300000);
+  assert.equal(f.calls.filter(([name]) => name === 'backup').length, 3);
 });
-test('shutdown drains an in-flight tick and clears insert/commerce wakes before pools close', async (t) => {
+test('commit during a backup keeps its own bounded, single-flight follow-up', async (t) => {
+  let attempts = 0, release;
+  const f = fixture(t, { backup: async () => { if (++attempts === 2) await new Promise((r) => { release = r; }); } });
+  await f.maintenance.start(); f.maintenance.armBackup(); await f.clock.advance(300000);
+  assert.equal(attempts, 2); f.maintenance.armBackup(); await f.clock.advance(300000);
+  assert.equal(attempts, 2); release(); await flush(); await f.clock.advance(0); assert.equal(attempts, 3);
+});
+test('a pulse cannot discard a future commit backup deadline by joining an older unit', async (t) => {
+  const f = fixture(t, { intervalMs: 200000 }); await f.maintenance.start(); const at = f.clock.now();
+  f.maintenance.armBackup(); await f.clock.advance(200000);
+  assert.deepEqual(f.calls.filter(([name]) => name === 'backup').map(([, time]) => time), [at, at + 200000]);
+  await f.clock.advance(100000);
+  assert.deepEqual(f.calls.filter(([name]) => name === 'backup').map(([, time]) => time), [at, at + 200000, at + 300000]);
+});
+test('backup failure retries after one minute and is not parked until the pulse', async (t) => {
+  let attempts = 0;
+  const f = fixture(t, { backup: async () => { if (++attempts === 1) throw Error('unit failed'); } });
+  await f.maintenance.start(); assert.equal(f.errors[0][0], 'backup');
+  await f.clock.advance(59999); assert.equal(attempts, 1); await f.clock.advance(1); assert.equal(attempts, 2);
+});
+test('backup lane invokes the exact systemctl argv and captures bounded output', async (t) => {
+  const calls = [], logs = [];
+  const spawnProcess = (...args) => {
+    calls.push(args); const child = new EventEmitter(); child.stdout = new EventEmitter(); child.stderr = new EventEmitter();
+    queueMicrotask(() => { child.stdout.emit('data', 'started'); child.stderr.emit('data', '!'); child.emit('close', 0, null); }); return child;
+  };
+  const f = fixture(t, { backup: () => mod.startBackupService({ spawnProcess, log: (event) => logs.push(event) }) });
+  await f.maintenance.start(); f.maintenance.armBackup(); await f.clock.advance(300000);
+  assert.equal(calls.length, 2);
+  for (const args of calls) assert.deepEqual(args, ['systemctl', ['start', 'mega-xo-v5-backup.service'], { stdio: ['ignore', 'pipe', 'pipe'] }]);
+  assert.equal(logs.at(-1).output, 'started!');
+  await assert.rejects(mod.startBackupService({ spawnProcess() { throw Error('spawn unavailable'); } }), /spawn unavailable/);
+  await assert.rejects(mod.startBackupService({ spawnProcess() {
+    const child = new EventEmitter(); queueMicrotask(() => child.emit('close', 1, null)); return child;
+  } }), /BACKUP_SERVICE_FAILED/);
+});
+test('shutdown drains an in-flight tick and clears commit/commerce/backup wakes before pools close', async (t) => {
   const f = fixture(t); await f.maintenance.start(); let release, drained = false;
   f.setTick(() => new Promise((r) => { release = r; }));
-  f.maintenance.wakeWorker(); await f.clock.advance(1000);
-  f.maintenance.wakeWorker(); f.maintenance.wakeCommerce();
+  f.maintenance.wakeWorker(); await f.clock.advance(0);
+  f.maintenance.wakeWorker(); f.maintenance.wakeCommerce(); f.maintenance.armBackup();
   const stopping = f.maintenance.stop().then(() => { drained = true; });
   await flush(); assert.equal(drained, false); assert.equal(f.clock.pending, 0);
   release(); await stopping; const count = f.calls.length;
   f.maintenance.wakeWorker(); f.maintenance.wakeCommerce();
   await f.clock.advance(mod.DEFAULT_IDLE_PULSE_MS); assert.equal(f.calls.length, count); assert.equal(f.clock.pending, 0);
 });
-test('journal ignores reads, advances per write, pulse/write gate is exception-proof', (t) => {
-  const dir = temp(t), journalFile = path.join(dir, 'journal'); let pulse = 0;
-  const hooks = mod.createWriteWakeHooks({ journalFile }); const gate = mod.createDbProbeGate({ journalFile, pulseCount: () => pulse });
-  assert.equal(gate(), true); assert.equal(gate(), false);
-  hooks.onWrite('SELECT 1'); assert.equal(fs.existsSync(journalFile), false); assert.equal(gate(), false);
-  hooks.onWrite('UPDATE identity.accounts SET tag=$1'); const first = fs.statSync(journalFile).mtimeMs;
-  assert.equal(gate(), true); assert.equal(gate(), false);
-  hooks.onWrite('WITH changed AS (DELETE FROM ops.outbox RETURNING 1) SELECT 1'); assert.ok(fs.statSync(journalFile).mtimeMs > first); assert.equal(gate(), true);
-  pulse++; assert.equal(gate(), true); assert.equal(gate(), false);
-  const broken = mod.createWriteWakeHooks({ journalFile: path.join(journalFile, 'cannot-exist'), wakeWorker() { throw Error('wake'); }, wakeCommerce() { throw Error('wake'); } });
-  assert.doesNotThrow(() => broken.onWrite('INSERT INTO ops.outbox SELECT * FROM monetization.store_finalize'));
+test('onCommit calls every advisory hook independently and never rejects the query path', () => {
+  const calls = [], hooks = mod.createWriteWakeHooks({
+    wakeWorker() { calls.push('worker'); throw Error('wake failed'); },
+    wakeCommerce() { calls.push('commerce'); throw Error('wake failed'); },
+    armBackup() { calls.push('backup'); throw Error('wake failed'); },
+  });
+  assert.doesNotThrow(() => hooks.onCommit()); assert.equal(hooks.commitCount, 1);
+  assert.deepEqual(calls, ['worker', 'commerce', 'backup']); assert.equal(hooks.onWrite, undefined);
 });
 function freshHealth() { delete require.cache[require.resolve(healthPath)]; return require(healthPath); }
 async function healthRequest(routes, context, url = '/readyz') {
@@ -193,13 +230,12 @@ test('readiness preserves default 60-second TTL and retries failed probes after 
   context.dbProbeGate = () => false; now += 9999; assert.equal((await healthRequest(routes, context)).statusCode, 503); assert.equal(queries, 2);
   now++; broken = false; assert.equal((await healthRequest(routes, context)).statusCode, 200); assert.equal(queries, 3);
 });
-test('journal changes unlock healthy TTL probes; pulses probe before TTL and consume the baseline', async (t) => {
-  const routes = freshHealth(), dir = temp(t), journalFile = path.join(dir, 'journal');
-  let now = 1000000, pulse = 0, queries = 0;
-  const hooks = mod.createWriteWakeHooks({ journalFile });
-  const context = { now: () => now, dbProbeGate: mod.createDbProbeGate({ journalFile, pulseCount: () => pulse }), pool: { async query() { queries++; } } };
+test('commits unlock healthy TTL probes; pulses probe before TTL and consume the baseline', async () => {
+  const routes = freshHealth(); let now = 1000000, pulse = 0, queries = 0;
+  const hooks = mod.createWriteWakeHooks();
+  const context = { now: () => now, dbProbeGate: mod.createDbProbeGate({ commitCount: () => hooks.commitCount, pulseCount: () => pulse }), pool: { async query() { queries++; } } };
   await healthRequest(routes, context); now += 60001; await healthRequest(routes, context); assert.equal(queries, 1);
-  hooks.onWrite('UPDATE identity.accounts SET tag=$1'); await healthRequest(routes, context); assert.equal(queries, 2);
+  hooks.onCommit(); await healthRequest(routes, context); assert.equal(queries, 2);
   pulse++; now++; await routes.probeDbHealth(context); assert.equal(queries, 3);
   now += 60001; await healthRequest(routes, context); assert.equal(queries, 3);
 });

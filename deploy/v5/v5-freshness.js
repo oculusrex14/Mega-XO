@@ -26,7 +26,7 @@ const r2 = require('./v5-lib.js');
 const { assertTarget } = r2.contract();
 const { readManifest } = r2.manifest();
 const client = require('./v5-r2-client.js');
-const { proofValid, tokenText, validToken } = require('./v5-change-check.js');
+const { proofValid, tokenText, validToken, targetFingerprint } = require('./v5-change-check.js');
 
 const ROOT = process.env.V5_ROOT || '/opt/mega-xo-v5-production';
 const STATE = path.join(ROOT, 'state');
@@ -170,6 +170,7 @@ function main(argv) {
           backupId: manifest.backupId, sourceSha: manifest.sourceSha,
           ciphertextKey: cipherKey, ciphertextBytes: manifest.ciphertextBytes,
           ciphertextSha256: manifest.ciphertextSha256,
+          manifestSha256: client.sha256File(local),
           createdAtUtc: manifest.createdAtUtc,
           manifestValidatedByContract: true,
           ciphertextHeadVerified: true
@@ -200,10 +201,16 @@ function main(argv) {
     * not from the future. Any mismatch - including an archive that changed since the marker was
     * written - fails closed to the ordinary RPO violation. */
    let watermark = null;
+   let expectedTarget = null;
    try { watermark = JSON.parse(fs.readFileSync(path.join(STATE,'last-backup-state.json'),'utf8')); } catch {}
+   try { expectedTarget=targetFingerprint(JSON.parse(fs.readFileSync(path.join(STATE,'prod-source.json'),'utf8'))); } catch {}
    const markerValid = proofValid(marker,newest.backupId,now,opts.rpoEffective) &&
      watermark?.format === 'mega-v5-backup-watermark/v2' && watermark.backupId === newest.backupId &&
-     watermark.target === marker.target && validToken(watermark.token) &&
+     watermark.target === marker.target && marker.target===expectedTarget &&
+     marker.ciphertextSha256===integrity?.ciphertextSha256 &&
+     marker.manifestSha256===integrity?.manifestSha256 &&
+     watermark.ciphertextSha256===marker.ciphertextSha256 && watermark.manifestSha256===marker.manifestSha256 &&
+     !fs.existsSync(path.join(STATE,'backup-skip-disabled')) && validToken(watermark.token) &&
      tokenText(watermark.token) === tokenText(marker.previous);
    if (markerValid) {
      newest.verifiedUnchangedUtc = utc(marker.checkedAt);

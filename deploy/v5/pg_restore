@@ -1,0 +1,13 @@
+#!/bin/sh
+# Inspect the SAME custom dump stream with the pinned PostgreSQL16 tooling.
+# No database/network access or recovery private key is needed.
+set -eu
+ROOT=${V5_ROOT:-/opt/mega-xo-v5-production}
+image_file=$ROOT/state/pg-image-ref
+[ -f "$image_file" ] || { echo 'V5_PG_RESTORE_REFUSED: image missing' >&2; exit 64; }
+image=$(tr -d '\r\n' < "$image_file")
+case "$image" in
+ postgres:16-alpine@sha256:????????????????????????????????????????????????????????????????) ;;
+ *) echo 'V5_PG_RESTORE_REFUSED: unpinned image' >&2; exit 64 ;;
+esac
+exec docker run --rm -i --user 0:0 --network none "$image" pg_restore "$@"

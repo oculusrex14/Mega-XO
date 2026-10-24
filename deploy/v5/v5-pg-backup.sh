@@ -90,8 +90,9 @@ export P15_PGSSLROOTCERT=$STATE/neon-ca.pem
    "$NODE" -e '
     const fs=require("node:fs"),p=process.argv[1],id=process.argv[2],d=JSON.parse(process.argv[3]);
     if(d.changed!==false||d.previous.backupId!==id)process.exit(2);
-    const marker={format:"mega-v5-backup-unchanged/v2",checkedAt:new Date().toISOString(),
-      backupId:id,target:d.target,token:d.current.token,previous:d.previous.token};
+    const marker={format:"mega-v5-backup-unchanged/v2",checkedAt:d.checkedAt,
+      backupId:id,target:d.target,token:d.current.token,previous:d.previous.token,
+      ciphertextSha256:d.previous.ciphertextSha256,manifestSha256:d.previous.manifestSha256};
     const tmp=p+".tmp";fs.writeFileSync(tmp,JSON.stringify(marker)+"\n",{mode:0o600});fs.renameSync(tmp,p);
    ' "$STATE/backup-unchanged.json" "$MARKER_BACKUP_ID" "$DECISION" || die 'marker write failed'
    log "backup skipped: no database-local change (marker bound to $MARKER_BACKUP_ID)"
@@ -100,6 +101,11 @@ export P15_PGSSLROOTCERT=$STATE/neon-ca.pem
  [[ ${status:-0} -eq 0 ]] || die 'change check failed closed'
 
 log "backup start sourceSha=$SOURCE_SHA image=$IMAGE"
+P15_SEQUENCE_IDENTITIES=$("$NODE" -e '
+ const d=JSON.parse(process.argv[1]);if(d.current.token?.covered===true)
+   process.stdout.write(JSON.stringify(d.current.token.sequences));
+' "$DECISION") || die 'sequence inspection input invalid'
+export P15_SEQUENCE_IDENTITIES
 summary=$("$NODE" "$LIB/scripts/v5/p15/backup-cli.js" \
   --source "$STATE/prod-source.json" \
   --recipient "$STATE/recovery-public.pem" \
@@ -133,11 +139,16 @@ log "r2 upload+readback verified receipt=$ARCHIVES/$backup_id.r2-receipt.json ms
 # Never record a post-dump token: a writer committing during/after the dump must
 # advance beyond this PRE-dump watermark and force the next backup.
 "$NODE" -e '
- const fs=require("node:fs"),p=process.argv[1],id=process.argv[2],d=JSON.parse(process.argv[3]);
+ const fs=require("node:fs"),crypto=require("node:crypto"),p=process.argv[1],id=process.argv[2],d=JSON.parse(process.argv[3]);
+ const capture=JSON.parse(process.argv[4]).sequenceCapture;
+ const manifest=JSON.parse(fs.readFileSync(process.argv[5],"utf8"));
+ const token=d.current.token && capture && capture.hasLargeObjects===false
+   ? {...d.current.token,sequences:capture.sequences} : null;
  const state={format:"mega-v5-backup-watermark/v2",backupId:id,target:d.target,
-   token:d.current.token,lsn:d.current.lsn};
+   token,lsn:d.current.lsn,ciphertextSha256:manifest.ciphertextSha256,
+   manifestSha256:crypto.createHash("sha256").update(fs.readFileSync(process.argv[5])).digest("hex")};
  const tmp=p+".tmp";fs.writeFileSync(tmp,JSON.stringify(state)+"\n",{mode:0o600});fs.renameSync(tmp,p);
-' "$STATE/last-backup-state.json" "$backup_id" "$DECISION" || die 'watermark write failed'
+' "$STATE/last-backup-state.json" "$backup_id" "$DECISION" "$summary" "$manifest" || die 'watermark write failed'
 rm -f "$STATE/backup-unchanged.json"
 
 # ---- bounded local retention (never touches the remote bucket) ------------

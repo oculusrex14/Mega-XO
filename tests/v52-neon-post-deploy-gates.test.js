@@ -19,7 +19,8 @@ function changeCheck(argv, recorded = '0/A1', current = '0/A1') {
   const target = require('node:crypto').createHash('sha256').update(JSON.stringify([
     undefined,undefined,undefined,undefined,'test_db'
   ])).digest('hex');
-  const watermark = {format:'mega-v5-backup-watermark/v2',backupId:'v5-p15-fixture',target,token};
+  const watermark = {format:'mega-v5-backup-watermark/v2',backupId:'v5-p15-fixture',target,token,
+    ciphertextSha256:'a'.repeat(64),manifestSha256:'b'.repeat(64)};
   const source = fs.readFileSync(CHANGE, 'utf8');
   const output = [], requests = [];
   const fakeProcess = {
@@ -30,6 +31,7 @@ function changeCheck(argv, recorded = '0/A1', current = '0/A1') {
     exit: code => { throw Object.assign(Error('MOCK_EXIT'), {exitCode: code}); }
   };
   const fsMock = {
+    existsSync:()=>false,
     readFileSync: (filename) => {
       if (String(filename).endsWith('last-backup-state.json')) {
         if (recorded === null) throw Error('ENOENT');

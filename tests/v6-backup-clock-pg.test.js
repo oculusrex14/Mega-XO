@@ -16,7 +16,8 @@ test('database-local backup clock covers actual writes, late commits, DDL, seque
   await Promise.all([admin.connect(),writer.connect(),other.connect(),reader.connect()]);
   // Production's P15 dump deliberately excludes the private learning schema.
   const probe=async()=> (await reader.query('SELECT ops.backup_change_probe(true) AS token')).rows[0].token;
-  const baseline=token=>({format:'mega-v5-backup-watermark/v2',target:'fixture',backupId:'v5-p15-fixture',token});
+  const baseline=token=>({format:'mega-v5-backup-watermark/v2',target:'fixture',backupId:'v5-p15-fixture',token,
+    ciphertextSha256:'a'.repeat(64),manifestSha256:'b'.repeat(64)});
   const same=(before,after)=>unchanged(baseline(before),{token:after},'fixture');
   try{
     await admin.query('CREATE TABLE ops.backup_clock_fixture(id integer PRIMARY KEY,value integer NOT NULL)');
@@ -63,6 +64,19 @@ test('database-local backup clock covers actual writes, late commits, DDL, seque
     assert.equal(uncovered.covered,false);
     assert.equal(same(uncovered,uncovered),false);
     await admin.query('ALTER EVENT TRIGGER mega_backup_ddl ENABLE ALWAYS');
+    await admin.query('SELECT ops.backup_enroll_tables()');
+    assert.equal((await probe()).covered,true);
+    await admin.query('CREATE SCHEMA pgx');
+    await admin.query('GRANT USAGE ON SCHEMA pgx TO backup_reader');
+    await admin.query('CREATE TABLE pgx.fixture(id integer)');
+    const beforePgx=await probe();
+    await admin.query('INSERT INTO pgx.fixture VALUES(1)');
+    assert.equal(same(beforePgx,await probe()),false,'pgx is a user schema, not the reserved pg_ prefix');
+    await admin.query('DROP TRIGGER backup_change_row ON pgx.fixture');
+    await admin.query('CREATE TRIGGER backup_change_row AFTER INSERT OR UPDATE OR DELETE ON pgx.fixture FOR EACH ROW WHEN (false) EXECUTE FUNCTION ops.backup_mark_change()');
+    await admin.query('ALTER TABLE pgx.fixture ENABLE ALWAYS TRIGGER backup_change_row');
+    assert.equal((await probe()).covered,false,'a filtered trigger cannot establish coverage');
+    await admin.query('DROP TRIGGER backup_change_row ON pgx.fixture');
     await admin.query('SELECT ops.backup_enroll_tables()');
     assert.equal((await probe()).covered,true);
     await reader.query('RESET ROLE');

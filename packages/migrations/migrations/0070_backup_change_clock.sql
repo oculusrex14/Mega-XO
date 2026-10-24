@@ -35,7 +35,7 @@ BEGIN
   FOR t IN SELECT c.oid,n.nspname,c.relname FROM pg_class c
     JOIN pg_namespace n ON n.oid=c.relnamespace
     WHERE c.relkind IN ('r','p') AND c.relpersistence='p'
-      AND n.nspname NOT LIKE 'pg_%' AND n.nspname<>'information_schema'
+      AND left(n.nspname,3)<>'pg_' AND n.nspname<>'information_schema'
       AND c.oid<>'ops.backup_change_clock'::regclass
   LOOP
     IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgrelid=t.oid AND tgname='backup_change_row') THEN
@@ -44,8 +44,12 @@ BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgrelid=t.oid AND tgname='backup_change_truncate') THEN
       EXECUTE format('CREATE TRIGGER backup_change_truncate AFTER TRUNCATE ON %I.%I FOR EACH STATEMENT EXECUTE FUNCTION ops.backup_mark_change()',t.nspname,t.relname);
     END IF;
-    EXECUTE format('ALTER TABLE %I.%I ENABLE ALWAYS TRIGGER backup_change_row',t.nspname,t.relname);
-    EXECUTE format('ALTER TABLE %I.%I ENABLE ALWAYS TRIGGER backup_change_truncate',t.nspname,t.relname);
+    IF EXISTS (SELECT 1 FROM pg_trigger WHERE tgrelid=t.oid AND tgname='backup_change_row' AND tgenabled<>'A') THEN
+      EXECUTE format('ALTER TABLE %I.%I ENABLE ALWAYS TRIGGER backup_change_row',t.nspname,t.relname);
+    END IF;
+    IF EXISTS (SELECT 1 FROM pg_trigger WHERE tgrelid=t.oid AND tgname='backup_change_truncate' AND tgenabled<>'A') THEN
+      EXECUTE format('ALTER TABLE %I.%I ENABLE ALWAYS TRIGGER backup_change_truncate',t.nspname,t.relname);
+    END IF;
   END LOOP;
 END $$;
 -- Keep this function owned by the privileged migration identity: historical objects
@@ -87,24 +91,27 @@ BEGIN
     INTO covered,revisions,epoch_value FROM ops.backup_change_clock;
   covered := covered AND NOT EXISTS (
     SELECT 1 FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
-    WHERE n.nspname NOT LIKE 'pg_%' AND n.nspname<>'information_schema'
+    WHERE left(n.nspname,3)<>'pg_' AND n.nspname<>'information_schema'
       AND (NOT exclude_learning OR n.nspname<>'learning')
       AND c.oid<>'ops.backup_change_clock'::regclass
-      AND ((c.relkind IN ('r','p','m') AND c.relpersistence='u') OR
+      AND ((c.relkind IN ('r','p','m','S') AND c.relpersistence='u') OR
         (c.relkind IN ('r','p') AND (NOT EXISTS (
           SELECT 1 FROM pg_trigger WHERE tgrelid=c.oid AND tgname='backup_change_row'
             AND tgfoid='ops.backup_mark_change()'::regprocedure AND tgenabled='A' AND tgtype=29
+            AND tgqual IS NULL AND tgattr=''::int2vector AND tgnargs=0
         ) OR NOT EXISTS (
           SELECT 1 FROM pg_trigger WHERE tgrelid=c.oid AND tgname='backup_change_truncate'
             AND tgfoid='ops.backup_mark_change()'::regprocedure AND tgenabled='A' AND tgtype=32
+            AND tgqual IS NULL AND tgattr=''::int2vector AND tgnargs=0
         ))))
   ) AND (SELECT count(*)=2 FROM pg_event_trigger
-      WHERE evtname IN ('mega_backup_ddl','mega_backup_drop') AND evtenabled='A'
+      WHERE ((evtname='mega_backup_ddl' AND evtevent='ddl_command_end') OR
+        (evtname='mega_backup_drop' AND evtevent='sql_drop')) AND evtenabled='A' AND evttags IS NULL
         AND evtfoid='ops.backup_mark_ddl()'::regprocedure)
     AND NOT EXISTS (SELECT 1 FROM pg_largeobject_metadata);
   FOR seq IN SELECT c.oid,n.nspname,c.relname FROM pg_class c
       JOIN pg_namespace n ON n.oid=c.relnamespace WHERE c.relkind='S'
-      AND n.nspname NOT LIKE 'pg_%' AND n.nspname<>'information_schema'
+      AND left(n.nspname,3)<>'pg_' AND n.nspname<>'information_schema'
       AND (NOT exclude_learning OR n.nspname<>'learning')
       ORDER BY n.nspname,c.relname
   LOOP

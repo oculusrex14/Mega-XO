@@ -101,3 +101,16 @@ A4 verdict (2026-10-21); the Play internal AAB for vc12 still needs uploading (o
  A4 (Neon idle budget) sequencing live: the pre-deploy window FAILED with the root cause recorded (ambient presence writes forced full dumps, ~600MB/day); the fix is deployed and verified (durable presence rows FROZE post-deploy); the post-deploy 48h two-snapshot soak (baseline snapshot-postdeploy-baseline.json, 11:22:33Z) is the gate of record - 24h interim check Oct 21, final verdict Oct 22.
  
  Verdict at the deployed release 0a67857: the batch is LIVE and verified; the remaining owner gates are the store submissions, the on-device rewarded-ad impression, and the A4 48h measurement.
+
+## Store payment + A4 permanent fix at the deployed release 5a524dc (2026-10-25, live)
+
+| Gate | Verdict | Evidence |
+|---|---|---|
+| Independent review | PASS | Sol GO for 5a524dc (REVIEW-5A524DC.md) after two NO-GO rounds (REVIEW-8e26ec6 PF1/PF2, REVIEW-PF-20261024 PF24-R1/R2, A4-DESIGN-20261024) — all blockers closed with regression coverage |
+| Exact-candidate CI | PASS | GitHub run 40126289457 on 5a524dc: all five jobs (73 wiring / 32 real-PG / 13 gates / native-contract / website-build), zero failures or skips |
+| Payment recovery | PASS | Actor-bound disposition endpoint with conservative provenNonCreation; IndexedDB CAS records (stale K1 put throws, stale retire is a no-op, K2 survives); stranded create-failure test; failed payments stay resumable; verified/refunded only from the actor-bound status endpoint |
+| Backup no-change proof | PASS | Migration 0070 (64 transactional lanes + ALWAYS triggers incl partitions + DDL event triggers); archive-bound sequence identities via the SAME pg_dump bytes; setval ABA counterexample refused; proofs bound to manifest+archive hashes and the live prod-source target; unavailable probe fails open to a full dump |
+| Production deployment | PASS | Writers fenced 19:42Z; checkpoint archive v5-p15-...-75c5663f8f72c76c; source 5a524dc + bundle bedc18a1 (172 files) deployed; the new server REFUSED schema-69 (SCHEMA_INCOMPATIBLE, fail-closed) then 0070 applied (SCRAM-SHA-256-PLUS); change-aware scripts installed with preflight OK (rollback install-rollback-20261024T194922Z) |
+| Live verification | PASS | readyz ready:true db verified; 12/12 public routes 200; served APK sha256 20d7efb3 EXACT pin; security.txt + llms.txt 200; store renders data-checkout-status |
+
+ A4 sequencing CORRECTED: the Oct-20 root cause was incomplete — Neon's CONTROL database writes the same cluster WAL (measured: source counters static, postgres tup_updated +1, WAL +248B/46s), so a cluster LSN can never prove game-data idleness; the old snapshots also stored CU-seconds under activeTimeSeconds. The corrected v2 collector separates wall-clock active time from compute-unit seconds, and snapshot-soak-baseline-v2.json (19:50:42Z) is the gate of record: <=5% wall-clock awake and <=50MB/day over the next 48h. The first new-gate cycle (19:53Z) took a full dump to establish the watermark; subsequent idle cycles must skip. REMAINING for the compute half of A4: park the worker/matcher/commerce timers behind real deadlines per the sidecar plan (idle SQL polling every 5-30s keeps the compute awake regardless of backup skips) — not yet implemented.

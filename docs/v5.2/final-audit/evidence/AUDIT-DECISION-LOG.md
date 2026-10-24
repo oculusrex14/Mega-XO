@@ -251,3 +251,15 @@ Format: date time IST — decision — rationale — evidence
 
 
 - 18:15 IST — STORE PAYMENT HOTFIX DEPLOYED + VERIFIED: 8e26ec6 live (DEPLOY_VERIFIED, readyz healthy, rollback archive 2026-10-21T04-42-23-855Z-84528-8e26ec6d29ec; CI 39545349790 all five jobs green). FULL DIAGNOSIS: the server side was CLEAN (checkout cks_0NqCBbYA5i9 created, reservation READY) - three stacked client defects: the gateway opened in a blockable _blank tab instead of redirecting; dodoPending was never cleared or aged (every later Buy Now threw REQUEST_PENDING); and that error had no human copy and rendered nowhere on the store page. FIXED: same-tab redirect, 120s pending staleness on both dodo and polar lanes, plain-language error copy, and DODO_SUCCESS_URL corrected to the store page host-side (was the bare root - paid sessions returned to the landing page). The owner should hard-refresh the store and retry; the abandoned checkout cks_0NqCBbYA5i9 expires harmlessly on Dodo's side. — store-hotfix
+
+- 03:40 IST 2026-10-25 - A4 COMPUTE GATE: OWNER DECISION REQUIRED. Sol reviewed four rounds
+  (REVIEW-596B714, REVIEW-A4-R4): the journal bypass and the SQL-text classifier are unsound,
+  the 5-min backup timer must stay enabled for the 15-min RPO/freshness contract, and idle
+  housekeeping still arms probes - the <=5% compute gate is architecturally unreachable on the
+  Neon free tier with the current durability contract. All scheduling work (pool onCommit,
+  worker/commerce deadline parking, opsz cache, installer lib rollback) is committed on V6
+  (00038c5) but NOT deployed; production stays on 5a524dc with the timer enabled and healthy
+  (readyz 200). Four options documented in docs/v5.2/final-audit/infrastructure/neon-idle/
+  A4-COMPUTE-DECISION.md (A accept usage / B relax RPO to 2h / C move PostgreSQL to the Oracle
+  VPS / D paid Neon plan) - owner decision required. The 48h egress soak continues regardless
+  (baseline snapshot-soak-baseline-v2.json, 19:50:42Z 2026-10-24). - a4-compute-decision

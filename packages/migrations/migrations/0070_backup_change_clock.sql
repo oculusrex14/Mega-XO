@@ -14,6 +14,9 @@ INSERT INTO ops.backup_change_clock(lane, epoch)
 SELECT lane, seed.epoch FROM generate_series(0,63) lane CROSS JOIN seed;
 REVOKE ALL ON ops.backup_change_clock FROM PUBLIC, api_runtime, core_runtime, worker_runtime, audit_runtime;
 GRANT SELECT ON ops.backup_change_clock TO backup_reader;
+-- The historical learning sequence lacked the read permission required for an
+-- exact (including never-called) sequence snapshot. This is read-only backup access.
+GRANT SELECT ON SEQUENCE learning.journal_watermarks_watermark_id_seq TO backup_reader;
 
 CREATE FUNCTION ops.backup_mark_change() RETURNS trigger
 LANGUAGE plpgsql SECURITY DEFINER SET search_path = pg_catalog AS $$

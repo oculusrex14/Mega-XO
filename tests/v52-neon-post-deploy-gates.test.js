@@ -114,11 +114,13 @@ function withSamples(before, after, args = [], input = '') {
   }
 }
 const first = {
-  format: 'mega-v5-neon-usage-snapshot/v1',
+  format: 'mega-v5-neon-usage-snapshot/v2',
   sampledAtUtc: '2026-10-19T01:00:00Z',
   consumptionPeriodStart: '2026-10-19T00:00:00Z',
   projectId: 'blue-sun-85454968',
   activeTimeSeconds: 100,
+  computeTimeSeconds:25,
+  metricSources:{activeTimeSeconds:'project.active_time_seconds',computeTimeSeconds:'consumption.compute_time_seconds',dataTransferBytes:'consumption.data_transfer_bytes'},
   dataTransferBytes: 4000000,
 };
 const later = {
@@ -148,6 +150,14 @@ test('frequent wake-ups or high transfer fail the measured gate', () => {
   const egress = withSamples(first, {...later, dataTransferBytes: 100000000});
   assert.equal(egress.status, 2);
   assert.equal(egress.report.gates.verdict, 'FAIL_IDLE_BUDGET');
+});
+
+test('historical CU-seconds snapshots cannot certify wall-clock sleep',()=>{
+ const old=withSamples({...first,format:'mega-v5-neon-usage-snapshot/v1'},later);
+ assert.equal(old.status,2);
+ assert.equal(old.report.gates.reason,'LEGACY_COUNTER_UNIT_UNVERIFIED');
+ const mislabeled=withSamples({...first,metricSources:{...first.metricSources,activeTimeSeconds:'consumption.compute_time_seconds'}},later);
+ assert.equal(mislabeled.status,2);
 });
 
 test('billing-period rollover, changed projects, short windows and counter rollback fail closed', () => {

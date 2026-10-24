@@ -23,7 +23,7 @@
 const fs = require('node:fs');
 const readline = require('node:readline');
 
-const FORMAT = 'mega-v5-neon-usage-snapshot/v1';
+const FORMAT = 'mega-v5-neon-usage-snapshot/v2';
 const EVENTS_LIMIT = 200000;
 const MAX_FILE_BYTES = 16384;
 const MB = 1000000;
@@ -54,17 +54,22 @@ function snapshot(filename) {
   const stat = fs.statSync(filename);
   if (!stat.isFile() || stat.size > MAX_FILE_BYTES) throw Error('INVALID_USAGE_SNAPSHOT_FILE');
   const doc = JSON.parse(fs.readFileSync(filename, 'utf8'));
+  if(doc.format==='mega-v5-neon-usage-snapshot/v1')throw Error('LEGACY_COUNTER_UNIT_UNVERIFIED');
   if (doc.format !== FORMAT || typeof doc.sampledAtUtc !== 'string' ||
       typeof doc.consumptionPeriodStart !== 'string' ||
       !/^[a-z0-9-]{4,80}$/.test(doc.projectId || '')) throw Error('INVALID_USAGE_SNAPSHOT');
   const at = Date.parse(doc.sampledAtUtc), period = Date.parse(doc.consumptionPeriodStart);
   if (!Number.isFinite(at) || !Number.isFinite(period) || period > at ||
+      doc.metricSources?.activeTimeSeconds!=='project.active_time_seconds' ||
+      doc.metricSources?.computeTimeSeconds!=='consumption.compute_time_seconds' ||
+      doc.metricSources?.dataTransferBytes!=='consumption.data_transfer_bytes' ||
+      !Number.isSafeInteger(doc.computeTimeSeconds) || doc.computeTimeSeconds<0 ||
       !Number.isSafeInteger(doc.activeTimeSeconds) || doc.activeTimeSeconds < 0 ||
       !Number.isSafeInteger(doc.dataTransferBytes) || doc.dataTransferBytes < 0) {
     throw Error('INVALID_USAGE_SNAPSHOT');
   }
   return { projectId: doc.projectId, at, period,
-    activeSeconds: doc.activeTimeSeconds, egressBytes: doc.dataTransferBytes };
+    activeSeconds: doc.activeTimeSeconds, computeSeconds:doc.computeTimeSeconds,egressBytes: doc.dataTransferBytes };
 }
 
 function evaluate(first, last, conf) {
@@ -75,7 +80,8 @@ function evaluate(first, last, conf) {
   if (seconds < conf.minHours * 3600) throw Error('OBSERVATION_WINDOW_TOO_SHORT');
   const activeSeconds = last.activeSeconds - first.activeSeconds;
   const egressBytes = last.egressBytes - first.egressBytes;
-  if (activeSeconds < 0 || egressBytes < 0 || activeSeconds > seconds * 1.05) {
+  const computeSeconds=last.computeSeconds-first.computeSeconds;
+  if (activeSeconds < 0 || computeSeconds<0 || egressBytes < 0 || activeSeconds > seconds * 1.05) {
     throw Error('CONSUMPTION_COUNTERS_INVALID');
   }
   const activePercent = (activeSeconds / seconds) * 100;
@@ -83,7 +89,7 @@ function evaluate(first, last, conf) {
   return {
     windowHours: Math.round(seconds / 3600 * 100) / 100,
     projectId: first.projectId,
-    activeSeconds, egressBytes,
+    activeSeconds, egressBytes,computeUnitHours:Math.round(computeSeconds/3600*10000)/10000,
     activePercent: Math.round(activePercent * 100) / 100,
     egressMbPerDay: Math.round(egressMbPerDay * 100) / 100,
     maxActivePercent: conf.maxActivePercent,

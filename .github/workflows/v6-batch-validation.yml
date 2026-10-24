@@ -25,7 +25,7 @@ jobs:
       - name: PostgreSQL 16 client tools for the archive identity proof
         run: sudo apt-get install -y --no-install-recommends postgresql-client-16
       - name: Disclosure composition and signed-gateway projection (Sol R2/R3)
-        run: node --test --test-reporter=tap tests/v6-promotion-wiring.test.js tests/v52-promotion-disclosure.test.js tests/v6-deletion-ui.test.js tests/monetization-policy.test.js tests/monetization-store.test.js tests/v52-commerce-ingress.test.js tests/v6-hosted-checkout-recovery.test.js tests/v6-hosted-checkout-render.test.js
+        run: node --test --test-reporter=tap tests/v6-promotion-wiring.test.js tests/v52-promotion-disclosure.test.js tests/v6-deletion-ui.test.js tests/monetization-policy.test.js tests/monetization-store.test.js tests/v52-commerce-ingress.test.js tests/v6-hosted-checkout-recovery.test.js tests/v6-hosted-checkout-render.test.js tests/v6-idle-scheduler.test.js tests/v6-opsz-cache.test.js
   native-contract:
     runs-on: ubuntu-latest
     timeout-minutes: 10

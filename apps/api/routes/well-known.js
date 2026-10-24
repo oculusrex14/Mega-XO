@@ -218,10 +218,9 @@ function getAppleAppSiteAssociation(context, req, res) {
  */
 /* Sleep-compatible health (infrastructure brief 2026-10-19, part E). /livez is PROCESS liveness
  * only and never touches the database. /health and /readyz report dependency readiness from a
- * timestamped, single-flight, TTL-cached probe, so an external monitor polling every few seconds
- * cannot keep a scale-to-zero database awake on its own; a failed probe retries sooner so
- * recovery is prompt. The response keeps the exact status/live/ready/time fields the deploy
- * tooling and the host health monitor parse, and adds an honest db state + age. */
+ * timestamped, single-flight, TTL-cached probe. A composition may gate healthy re-probes on
+ * writes/pulses, so external monitors alone cannot keep a scale-to-zero database awake. Failed
+ * probes still retry after ten seconds. The response retains an honest db state + age. */
 const HEALTH_PROBE_TTL_MS = 60000;
 const HEALTH_RETRY_MS = 10000;
 const healthProbe = { lastOk: null, at: 0, inFlight: null };
@@ -229,7 +228,9 @@ function probeDbHealth(context) {
   if (healthProbe.inFlight) return healthProbe.inFlight;
   const pool = context.pool && typeof context.pool.query === 'function' ? context.pool : null;
   if (!pool) return Promise.resolve(null);
-  healthProbe.inFlight = (async () => {
+  // Boot, failed-probe retries and composition pulses also consume the journal/pulse baseline.
+  try { if (typeof context.dbProbeGate === 'function') context.dbProbeGate(); } catch {}
+  healthProbe.inFlight = Promise.resolve().then(async () => {
     try {
       await pool.query('SELECT 1');
       healthProbe.lastOk = true;
@@ -239,7 +240,7 @@ function probeDbHealth(context) {
       healthProbe.at = (context.now && typeof context.now === 'function' ? context.now() : Date.now());
       healthProbe.inFlight = null;
     }
-  })();
+  });
   return healthProbe.inFlight;
 }
 async function getHealth(context, req, res) {
@@ -249,7 +250,14 @@ async function getHealth(context, req, res) {
   let db = null;
   if (wantsDb && context.pool && typeof context.pool.query === 'function') {
     const age = nowMs - healthProbe.at;
-    if (healthProbe.at === 0 || age >= (healthProbe.lastOk === false ? HEALTH_RETRY_MS : HEALTH_PROBE_TTL_MS)) await probeDbHealth(context);
+    let shouldProbe = healthProbe.at === 0 || (healthProbe.lastOk === false && age >= HEALTH_RETRY_MS);
+    if (!shouldProbe && !healthProbe.inFlight && healthProbe.lastOk !== false && age >= HEALTH_PROBE_TTL_MS) {
+      // No gate preserves the existing sixty-second policy. A broken optional gate fails open
+      // to a real probe rather than hiding dependency failure behind a stale healthy cache.
+      try { shouldProbe = typeof context.dbProbeGate !== 'function' || context.dbProbeGate() === true; }
+      catch { shouldProbe = true; }
+    }
+    if (shouldProbe || healthProbe.inFlight) await probeDbHealth(context);
     dbOk = healthProbe.lastOk === true;
     db = { state: dbOk ? 'verified' : 'unavailable', checkedAt: healthProbe.at, ageMs: Math.max(0, nowMs - healthProbe.at), ttlMs: HEALTH_PROBE_TTL_MS };
   } else if (wantsDb) {
@@ -472,6 +480,7 @@ module.exports = {
   getAssetLinks,
   getAppleAppSiteAssociation,
   getHealth,
+  probeDbHealth,
   sendLegalHtml,
   sendPublicAsset,
   handleAuthCallback,

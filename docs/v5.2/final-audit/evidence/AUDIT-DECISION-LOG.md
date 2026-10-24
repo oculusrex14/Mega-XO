@@ -221,3 +221,30 @@ Format: date time IST — decision — rationale — evidence
 - 17:20 IST — V6 BATCH DEPLOYED TO PRODUCTION + VERIFIED: TWO deploy cycles (both DEPLOY_VERIFIED with healthy PostgreSQL-backed readyz): 2bfdf24 (the full batch: migrations 0065-0069 applied and verified 69/69 with SCRAM-SHA-256-PLUS; bundle 037100ac, 172 files, the pinned megaxo-1.0.11.apk serving sha256 20d7efb3... EXACT match; llms.txt and security.txt now 200; all 12 public routes 200) then 0a67857 (the composition fix: the ephemera adapter is now passed to createAccountService - the production composition never wired it, so the Redis presence budget was unreachable and heartbeats kept spending durably). Rollback archives: rollback/2026-10-20T11-08-15-164Z-94369-2bfdf24c5529 and rollback/2026-10-20T11-25-33-048Z-97848-0a6785782d80. PROMOTION POLICY PUBLISHED (dry-run then real per the runbook): rule_hash 09cfc1a15cf66631c3386fe6e40d04683c46aa202d95c5c31e31a15e89ad6a85 matches the shipped disclosure, cap 22,000 verified. DEVICE VERIFIED post-deploy: 1.0.11 launches against the new backend, the session persisted (wallet 157 Coins), all screens render. PRESENCE FIX VERIFIED LIVE: the durable presence row count FROZE at 568-575 across 10+ minutes of foreground device heartbeats (pre-fix: +4 per minute); the recent-writes query shows only apkdl/email-continue/signin rows; the remaining writes are usage-driven (the device token rotation ~1/5min while active). A4 SEQUENCING LIVE: the pre-deploy FAIL is recorded with its root cause; the post-deploy 48h soak is the gate of record with the baseline snapshot-postdeploy-baseline.json (11:22:33Z, active 14778, transfer 626316655); quiet-window backup skips are expected from the next cycles with no tracked-table writer. All transient DSN material destroyed on both machines. — deploy-live
 
 - 18:15 IST — STORE PAYMENT HOTFIX DEPLOYED + VERIFIED: 8e26ec6 live (DEPLOY_VERIFIED, readyz healthy, rollback archive 2026-10-21T04-42-23-855Z-84528-8e26ec6d29ec; CI 39545349790 all five jobs green). FULL DIAGNOSIS: the server side was CLEAN (checkout cks_0NqCBbYA5i9 created, reservation READY) - three stacked client defects: the gateway opened in a blockable _blank tab instead of redirecting; dodoPending was never cleared or aged (every later Buy Now threw REQUEST_PENDING); and that error had no human copy and rendered nowhere on the store page. FIXED: same-tab redirect, 120s pending staleness on both dodo and polar lanes, plain-language error copy, and DODO_SUCCESS_URL corrected to the store page host-side (was the bare root - paid sessions returned to the landing page). The owner should hard-refresh the store and retry; the abandoned checkout cks_0NqCBbYA5i9 expires harmlessly on Dodo's side. — store-hotfix
+
+- 21:55 IST 2026-10-24 - A4 ROOT CAUSE CORRECTED + PERMANENT FIX DEPLOYED. The Oct-20 root
+  cause (presence) was INCOMPLETE: the durable presence rows are frozen (575) but dumps still
+  fired every 5-min cycle. Measured WAL advanced ~500B/min with ALL source-table counters
+  static; the writer is Neon's CONTROL database in the same cluster (postgres tup_updated
+  +1 while game tables static) - cluster WAL can never prove game-data idleness.
+  PAYMENT (owner-reported popup-then-dead Buy Now): deployed hotfix 8e26ec6 had PF1/PF2
+  open (Sol NO-GO); permanent fix: actor-bound disposition endpoint (provenNonCreation
+  conservative), IndexedDB atomic claim/put/retire with CAS, legacy import, visible store
+  errors/busy. A4 FIX: migration 0070 ops.backup_change_clock (64 transactional lanes,
+  ALWAYS row+truncate triggers on every permanent table incl partitions, DDL event triggers
+  auto-enroll, literal pg_ prefix), archive-bound sequence identities (pg_restore data-only
+  readers over the SAME dump bytes; setval ABA counterexample test), proofs bound to
+  manifest+archive hashes and the live prod-source target; unavailable probe => full dump,
+  no baseline. AUDIT UNITS CORRECTED: old snapshots stored CU-seconds (compute_time_seconds)
+  under activeTimeSeconds - v2 schema separates project.active_time_seconds (wall clock)
+  from consumption.compute_time_seconds; old verdicts INVALID as awake measurement.
+  CANDIDATE 5a524dc: Sol GO (REVIEW-5A524DC), exact CI 40126289457 all five jobs (73/32/13).
+  DEPLOYED 01:15-01:55 IST: writers fenced 19:42Z, checkpoint v5-p15-...-75c5663f8f72c76c,
+  source 5a524dc + bundle bedc18a1... (172 files) via deploy-production.cjs; the new server
+  refuses schema-69 (SCHEMA_INCOMPATIBLE, fail-closed as designed) so 0070 applied from the
+  new tree (SCRAM-SHA-256-PLUS), then change-aware scripts installed (preflight OK,
+  rollback install-rollback-20261024T194922Z). VERIFIED: readyz ready:true db verified,
+  12/12 routes 200, served APK 20d7efb3 EXACT pin, security.txt+llms 200, store renders
+  data-checkout-status. NEXT: new 48h soak with the v2 corrected collector (old baseline
+  invalid); worker/matcher/timer SQL parking remains the open A4-compute item
+  (Halley plan); native billing stays unmounted.

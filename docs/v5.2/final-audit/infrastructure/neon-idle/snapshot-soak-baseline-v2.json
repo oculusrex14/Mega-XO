@@ -1,0 +1,14 @@
+{
+  "format": "mega-v5-neon-usage-snapshot/v2",
+  "sampledAtUtc": "2026-10-24T19:50:42.831Z",
+  "projectId": "blue-sun-85454968",
+  "consumptionPeriodStart": "2026-10-19T13:12:28Z",
+  "activeTimeSeconds": 435996,
+  "computeTimeSeconds": 109003,
+  "dataTransferBytes": 4442365981,
+  "metricSources": {
+    "activeTimeSeconds": "project.active_time_seconds",
+    "computeTimeSeconds": "consumption.compute_time_seconds",
+    "dataTransferBytes": "consumption.data_transfer_bytes"
+  }
+}

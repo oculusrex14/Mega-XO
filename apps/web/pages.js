@@ -322,6 +322,10 @@ function accountPage(context) {
 
 function storePage(context) {
   const state = context.products || { status: 'error', rows: [] };
+  const checkout = isLinked(context) && context.checkoutState?.actorId === context.profile?.id ? context.checkoutState : null;
+  const checkoutBusy = checkout?.busy === true;
+  const checkoutDisabled = checkoutBusy ? ' disabled aria-disabled="true"' : '';
+  const checkoutStatus = '<p class="pg-form-message" id="store-checkout-status" data-checkout-status tabindex="-1" role="' + (checkout?.kind === 'error' ? 'alert' : 'status') + '" aria-live="' + (checkout?.kind === 'error' ? 'assertive' : 'polite') + '" aria-atomic="true">' + e(checkout?.message || '') + '</p>';
   const allowed = { crowns_100: { title: '100 Crowns', amount: 100 }, crowns_525: { title: '525 Crowns', amount: 525 }, crowns_1100: { title: '1,100 Crowns', amount: 1100 }, remove_ads: { title: 'Remove Ads', amount: 0 } };
   const rows = state.status === 'ready' && Array.isArray(state.rows) ? state.rows.filter(row => row && Object.hasOwn(allowed, row.id)) : [];
   /* A2: the price precedence is the native localized price, then the server web quote (Polar minor
@@ -358,7 +362,7 @@ function storePage(context) {
     if (!isLinked(context)) return context.sessionStatus === 'loading' ? '<button class="mx-button secondary" type="button" disabled>Checking your account…</button>' : button('Sign in to buy', '/account', 'secondary', 'user');
     if (row.owned === true) return '<span class="mx-chip">Owned</span>';
     const label = available ? (row.localizedPrice ? 'Purchase options' : row.inr ? 'Buy · UPI or card' : 'Buy now') : 'Temporarily unavailable';
-    return '<button class="mx-button ' + (available ? 'primary' : 'secondary') + '" type="button" data-store-action="purchase" data-product-id="' + row.id + '"' + (available ? '' : ' disabled') + '>' + label + '</button>';
+    return '<button class="mx-button ' + (available ? 'primary' : 'secondary') + '" type="button" data-store-action="purchase" data-product-id="' + row.id + '" aria-describedby="store-checkout-status"' + (available ? checkoutDisabled : ' disabled') + '>' + (checkoutBusy && checkout.productId === row.id ? 'Preparing checkout…' : label) + '</button>';
   };
   let products;
   if (state.status === 'loading') products = '<div class="pg-loading-state" role="status">' + icon('refresh') + '<h2>Loading the store…</h2><p>Checking current availability and prices.</p></div>';
@@ -392,7 +396,7 @@ function storePage(context) {
     ? (context.sessionStatus === 'loading' ? '<button class="mx-button secondary" type="button" disabled>Checking your account…</button>' : button('Sign in to subscribe', '/account', 'secondary', 'user'))
     : passOwned
       ? '<span class="mx-chip">Active — thank you!</span>'
-      : '<button class="mx-button ' + (passAvailable ? 'primary' : 'secondary') + '" type="button"' + (passAvailable ? ' data-store-action="purchase" data-product-id="mega_pass"' : '') + (passAvailable ? '' : ' disabled') + '>' + (passAvailable ? 'Subscribe · renews monthly' : 'Temporarily unavailable') + '</button>';
+      : '<button class="mx-button ' + (passAvailable ? 'primary' : 'secondary') + '" type="button" aria-describedby="store-checkout-status"' + (passAvailable ? ' data-store-action="purchase" data-product-id="mega_pass"' : '') + (passAvailable ? checkoutDisabled : ' disabled') + '>' + (checkoutBusy && checkout.productId === 'mega_pass' ? 'Preparing checkout…' : passAvailable ? 'Subscribe · renews monthly' : 'Temporarily unavailable') + '</button>';
   const passPeriod = passOwned && passState.periodEnd ? '<p class="pg-small mx-muted">Your pass is paid through ' + new Date(passState.periodEnd).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) + (passState.cancelAtPeriodEnd ? ' and will not renew.' : '.') + '</p>' : (passOwned ? '' : '<p class="pg-small mx-muted">Auto-renewing subscription. Cancel anytime in your store subscriptions. Crowns and Coins you already have are kept if the pass lapses.</p>');
   const passPriceFallback = isLinked(context) ? '<span class="mx-muted">Price unavailable</span>' : '<span class="mx-muted">Sign in to see the price</span>';
   /* MXA-PROMOTION-DISCLOSURE (2026-10-20): the launch-promotion cap panel. Shown once per
@@ -403,11 +407,12 @@ function storePage(context) {
     '<h2>Before you buy promotional Crowns</h2>'
     + '<p class="pg-small">A launch-promotion cap limits promotional Crowns per account across every payment method and checkout. Your remaining allowance right now: <strong>' + e(String(context.promotionDisclosure.remaining ?? 'unknown')) + '</strong> of ' + e(String(context.promotionDisclosure.cap ?? 22000)) + '.</p>'
     + '<pre class="pg-promotion-rule">' + e(context.promotionDisclosure.ruleText || '') + '</pre>'
-    + '<div class="pg-actions"><button class="mx-button primary" type="button" data-promotion-action="accept">I understand — continue to checkout</button><button class="mx-button secondary" type="button" data-promotion-action="decline">Not now</button></div>',
+    + '<div class="pg-actions"><button class="mx-button primary" type="button" data-promotion-action="accept" aria-describedby="store-checkout-status"' + checkoutDisabled + '>I understand — continue to checkout</button><button class="mx-button secondary" type="button" data-promotion-action="decline"' + checkoutDisabled + '>Not now</button></div>',
     'pg-promotion-disclosure') : '';
   const passPanel = '<div class="pg-pass-panel" data-mega-pass><div class="pg-pass-media"><img class="pg-pass-art" src="/assets/art/mega-pass.webp" alt="" loading="lazy" width="768" height="481"></div><div class="pg-pass-copy"><span class="mx-chip">MEGA PASS · MONTHLY</span>' + passIntroBadge + '<h2>Mega Pass</h2><ul class="pg-pass-benefits"><li>150 Crowns every billing month, delivered 50 on days 1, 11 and 21</li><li>2× Coins from bot wins — daily caps still apply</li><li>Coin-to-Crown exchange at 8:1 for the first 200 Coins each month</li><li>15% off up to two Crown packs per month</li><li>Automatic ads off; rewarded ads stay your choice</li></ul><div class="pg-pass-action"><div class="pg-store-price pg-pass-price">' + (passPrice ? (priceHtml(passRow) || e(passPrice)) + '<span class="pg-pass-period">/ month</span>' : passPriceFallback) + '</div>' + passAction + '</div>' + passPeriod + '</div></div>';
   const wallet = isLinked(context) ? panel('<div class="pg-store-wallet"><span>' + icon('coin') + ' Coins <strong>' + numeric(context.profile?.wallet?.coins) + '</strong></span><span>' + icon('crown') + ' Crowns <strong>' + numeric(context.profile?.wallet?.crowns) + '</strong></span>' + (passState.active === true ? '<span class="mx-chip">Mega Pass active</span>' : '') + button('Your rewards', '/rewards', 'secondary', 'arrow-right') + '</div>') : sessionPrompt(context, 'Link your permanent profile before making a purchase.');
-  return '<div class="pg-page">' + heading('MORE POSSIBILITIES. THE SAME SKILL.', 'Your game, your choice.', 'The monthly Mega Pass, Crown packs and permanent Remove Ads in one store. Purchases never change Elo, legal moves or competitive balance.')
+  return '<div class="pg-page" data-store-checkout aria-busy="' + checkoutBusy + '">' + heading('MORE POSSIBILITIES. THE SAME SKILL.', 'Your game, your choice.', 'The monthly Mega Pass, Crown packs and permanent Remove Ads in one store. Purchases never change Elo, legal moves or competitive balance.')
+    + checkoutStatus
     + passPanel
     + wallet
     + promoDisclosure

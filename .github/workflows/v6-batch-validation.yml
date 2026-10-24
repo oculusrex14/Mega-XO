@@ -23,7 +23,7 @@ jobs:
           node-version: '24'
       - run: npm ci
       - name: Disclosure composition and signed-gateway projection (Sol R2/R3)
-        run: node --test --test-reporter=tap tests/v6-promotion-wiring.test.js tests/v52-promotion-disclosure.test.js tests/v6-deletion-ui.test.js tests/monetization-policy.test.js tests/monetization-store.test.js tests/v52-commerce-ingress.test.js
+        run: node --test --test-reporter=tap tests/v6-promotion-wiring.test.js tests/v52-promotion-disclosure.test.js tests/v6-deletion-ui.test.js tests/monetization-policy.test.js tests/monetization-store.test.js tests/v52-commerce-ingress.test.js tests/v6-hosted-checkout-recovery.test.js tests/v6-hosted-checkout-render.test.js
   native-contract:
     runs-on: ubuntu-latest
     timeout-minutes: 10

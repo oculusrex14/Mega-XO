@@ -19,9 +19,133 @@ export const errorCopy = error => ({
  PROFILE_NOT_FOUND: 'This profile is no longer available. Sign in again to continue.',
  REQUEST_TIMEOUT: 'The service did not respond in time. Try again.',
  RATE_LIMITED: 'Please wait a moment before trying again.',
- REQUEST_PENDING: 'You already have a checkout in progress. Finish that payment, or wait two minutes and try again.',
+ REQUEST_PENDING: 'Your checkout is still being prepared. Try the same product again to resume that checkout.',
+ CHECKOUT_CREATE_PENDING: 'Your checkout is still being prepared. Try the same product again to resume that checkout.',
+ CHECKOUT_RECOVERY_UNAVAILABLE: 'Checkout recovery could not be saved in this browser. Allow site storage and try again before starting a payment.',
+ PROMOTION_ACCEPT_FAILED: 'The purchase disclosure could not be accepted. Please review it and try again.',
  STORE_UNAVAILABLE: 'The store could not be reached just now. Check your connection and try again.',
 })[error?.message] || 'The service is unavailable right now. Please try again.';
+
+/** Hosted checkout identity is saved BEFORE the create request. A timeout, navigation,
+ * reload or elapsed time never authorizes a replacement operation. Only the actor-bound
+ * status endpoint can close an attempt; catalog prices and economic effects stay server-owned.
+ * Kept here because data.js is already in the static bundle's explicit allowlist. */
+export function createHostedCheckout({actor, request, read = readJSON, storage = () => globalThis.localStorage,
+ operationKey = () => globalThis.crypto.randomUUID(), navigate = url => globalThis.location.assign(url), locks = globalThis.navigator?.locks} = {}) {
+ const prefix = 'mega-xoxo-hosted-checkout:v1:';
+ const busy = new Set();
+ let generation = 0;
+ const providers = ['dodo', 'polar'];
+ // Dodo's `failed` is a payment status, not proof the hosted session cannot be
+ // paid on retry. Keep it (and unknown/processing statuses) under the same key.
+ const terminal = ['expired', 'canceled', 'cancelled'];
+ const slot = record => JSON.stringify([record.provider, record.productId, record.currency]);
+ const storageKey = actorId => prefix + encodeURIComponent(actorId);
+ const safeUrl = value => {
+  try { const url = new URL(value); return url.protocol === 'https:' && !url.username && !url.password ? url.href : null; }
+  catch { return null; }
+ };
+ function records(actorId) {
+  try {
+   const raw = storage().getItem(storageKey(actorId));
+   if (raw === null) return [];
+   const saved = JSON.parse(raw);
+   if (saved?.version !== 1 || !Array.isArray(saved.records)) throw Error();
+   if (saved.records.some(r => !r || r.actorId !== actorId || !providers.includes(r.provider) ||
+    typeof r.productId !== 'string' || !r.productId || !/^[a-z]{3}$/.test(r.currency) ||
+    typeof r.key !== 'string' || !r.key || typeof r.checkoutId !== 'string' ||
+    (r.checkoutUrl !== null && !safeUrl(r.checkoutUrl)))) throw Error();
+   if (new Set(saved.records.map(slot)).size !== saved.records.length) throw Error();
+   return saved.records;
+  } catch { throw Error('CHECKOUT_RECOVERY_UNAVAILABLE'); }
+ }
+ function save(record, remove = false) {
+  const rows = records(record.actorId).filter(r => slot(r) !== slot(record));
+  if (!remove) rows.push(record);
+  try { storage().setItem(storageKey(record.actorId), JSON.stringify({version:1, records:rows})); }
+  catch { throw Error('CHECKOUT_RECOVERY_UNAVAILABLE'); }
+ }
+ function current(actorId, epoch = generation) { if (!actorId || actor() !== actorId || epoch !== generation) throw Error('AUTH_REQUIRED'); }
+ async function exclusive(actorId, scope, task) {
+  const id = storageKey(actorId) + ':' + scope;
+  const epoch = generation;
+  if (busy.has(id)) throw Error('REQUEST_PENDING');
+  busy.add(id);
+  try {
+   // Web Locks also serialize two tabs trying to resume the same purchase.
+   const run = () => { current(actorId, epoch); return task(epoch); };
+   return locks?.request ? await locks.request(id, run) : await run();
+  } finally { busy.delete(id); }
+ }
+ async function check(record, epoch) {
+  current(record.actorId, epoch);
+  if (!record.checkoutId) return {outcome:'pending', record};
+  const state = await read('/api/monetization/' + record.provider + '/status?checkout_id=' + encodeURIComponent(record.checkoutId));
+  current(record.actorId, epoch);
+  if (!state || state.checkoutId !== record.checkoutId || state.productId !== record.productId || typeof state.paid !== 'boolean') throw Error('STORE_UNAVAILABLE');
+  const status = typeof state.status === 'string' ? state.status.toLowerCase() : '';
+  const outcome = state.refunded === true ? 'refunded' : state.paid === true ? 'verified' : terminal.includes(status) ? 'terminal' : 'pending';
+  if (outcome !== 'pending') save(record, true);
+  return {outcome, status, record};
+ }
+ async function start({provider, productId, currency = 'usd', country = null, acceptanceHash} = {}) {
+  const actorId = actor(); current(actorId);
+  if (!providers.includes(provider) || typeof productId !== 'string' || !productId || !/^[a-z]{3}$/.test(currency)) throw Error('STORE_UNAVAILABLE');
+  const scope = slot({provider, productId, currency});
+  return exclusive(actorId, scope, async epoch => {
+   let record = records(actorId).find(r => slot(r) === scope);
+   if (record) {
+    const result = await check(record, epoch);
+    // Finishing an old purchase never implicitly starts another one in this click.
+    if (result.outcome !== 'pending') return result;
+   } else {
+    record = {actorId, provider, productId, currency, country, key:operationKey(), checkoutId:'', checkoutUrl:null};
+    save(record);
+   }
+   if (!record.checkoutUrl) {
+    const created = await request('/api/monetization/' + provider + '/checkout', {
+     product:productId, ...(provider === 'dodo' ? {currency:record.currency, country:record.country} : {}),
+     promotionAcceptanceHash:acceptanceHash || undefined,
+    }, record.key);
+    current(actorId, epoch);
+    if (created?.productId !== undefined && created.productId !== productId) throw Error('STORE_UNAVAILABLE');
+    record = {...record, checkoutId:typeof created?.checkoutId === 'string' ? created.checkoutId : '', checkoutUrl:safeUrl(created?.checkoutUrl)};
+    save(record);
+    // Replays of a completed checkout may have no URL. Verify rather than reporting
+    // a create response's status (or the return query string) as payment success.
+    if (!record.checkoutUrl || (created?.status && created.status !== 'open' && created.status !== 'pending')) {
+     const result = await check(record, epoch);
+     if (result.outcome !== 'pending') return result;
+    }
+   }
+   if (!record.checkoutUrl) throw Error('STORE_UNAVAILABLE');
+   current(actorId, epoch);
+   navigate(record.checkoutUrl);
+   return {outcome:'opening', record};
+  });
+ }
+ function pending() { const actorId = actor(); return actorId ? records(actorId) : []; }
+ async function recover() {
+  const actorId = actor(); current(actorId);
+  const results = [];
+  for (const record of records(actorId)) {
+   try {
+    const result = await exclusive(actorId, slot(record), async epoch => {
+     const latest = records(actorId).find(r => slot(r) === slot(record));
+     return latest ? check(latest, epoch) : null;
+    });
+    if (result) results.push(result);
+   } catch (error) {
+    current(actorId);
+    if (authRequired(error)) throw error;
+    // One unavailable provider must not hide a different verified purchase.
+    results.push({outcome:'error', error, record});
+   }
+  }
+  return results;
+ }
+ return {start, pending, recover, invalidate:() => { generation++; }};
+}
 
 export async function readJSON(path, {fetcher = globalThis.fetch, signal} = {}) {
  const controller = new AbortController();

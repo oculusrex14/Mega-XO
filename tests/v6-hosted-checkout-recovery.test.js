@@ -72,6 +72,14 @@ test('PF2 interrupted same-tab navigation preserves the URL for return and reloa
  assert.equal(f.navigations[0], restored.pending()[0].checkoutUrl);
 });
 
+test('a newly created server checkout redirects without waiting for an additional provider status read', async()=>{
+ const f=await fixture();
+ const client=f.fresh({request:async(...args)=>({...await f.options.request(...args),status:'created'})});
+ assert.equal((await client.start(choice)).outcome,'opening');
+ assert.equal(f.reads.length,0);
+ assert.equal(f.navigations.length,1);
+});
+
 test('PF2 different product, provider and currency are independent intentional purchases', async () => {
  const f = await fixture(), client = f.fresh();
  await client.start(choice);

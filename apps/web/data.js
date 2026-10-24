@@ -113,7 +113,7 @@ export function createHostedCheckout({actor, request, read = readJSON, storage =
     save(record);
     // Replays of a completed checkout may have no URL. Verify rather than reporting
     // a create response's status (or the return query string) as payment success.
-    if (!record.checkoutUrl || (created?.status && created.status !== 'open' && created.status !== 'pending')) {
+    if (!record.checkoutUrl || (created?.status && !['created','open','pending'].includes(created.status))) {
      const result = await check(record, epoch);
      if (result.outcome !== 'pending') return result;
     }

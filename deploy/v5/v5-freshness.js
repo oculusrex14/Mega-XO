@@ -212,26 +212,9 @@ function main(argv) {
      watermark.ciphertextSha256===marker.ciphertextSha256 && watermark.manifestSha256===marker.manifestSha256 &&
      !fs.existsSync(path.join(STATE,'backup-skip-disabled')) && validToken(watermark.token) &&
      tokenText(watermark.token) === tokenText(marker.previous);
-   /* Journal-clean freshness: the pool's write hook touches db-write-journal
-    * BEFORE any write is sent, and the watermark records the mtime observed
-    * before the dump. An unchanged mtime proves no pool writer committed since
-    * the verified archive, so the archive is current at ANY age. A non-pool
-    * writer is bounded by migrations touching the journal plus the backup
-    * unit's 12h forced probe on the same 0070 transactional clock. */
-   let journalMtime = null;
-   try { journalMtime = String(Math.round(fs.statSync(path.join(STATE,'db-write-journal')).mtimeMs)); } catch {}
-   const journalCleanFresh = !fs.existsSync(path.join(STATE,'backup-skip-disabled')) &&
-    watermark?.format === 'mega-v5-backup-watermark/v2' && watermark.backupId === newest.backupId &&
-    watermark.target === expectedTarget && watermark.ciphertextSha256 === integrity?.ciphertextSha256 &&
-    watermark.manifestSha256 === integrity?.manifestSha256 &&
-    watermark.journalMtime !== undefined && journalMtime !== null &&
-    String(watermark.journalMtime) === journalMtime && validToken(watermark.token);
    if (markerValid) {
      newest.verifiedUnchangedUtc = utc(marker.checkedAt);
      newest.verifiedUnchangedProof = 'database-local-clock-and-sequences/v1';
-   } else if (journalCleanFresh) {
-    newest.verifiedUnchangedUtc = utc(new Date(now).toISOString());
-    newest.verifiedUnchangedProof = 'write-journal-unchanged-since-archive/v1';
    } else {
      problems.push('newest uploaded backup is ' + newest.ageSeconds + ' s old, beyond the ' +
       opts.rpoEffective + ' s RPO (limit source: ' + (opts.rpo !== null ? '--rpo-seconds' : rpoSource) + ')');

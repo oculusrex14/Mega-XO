@@ -183,7 +183,7 @@ test('host installer validates staged scripts before modifying bin and snapshots
   assert.match(source, /P15_PGSSLROOTCERT="\$STATE\/neon-ca\.pem"/);
   assert.match(source, /P15_OWNER_APPROVE_PRODUCTION_BACKUP=1/);
   assert.match(source, /flock -n 9/);
-  assert.match(source, /FILES=\(v5-pg-backup\.sh v5-freshness\.js v5-change-check\.js v5-journal-check\.js psql v5-idle-probe\.js pg_restore\)/);
+  assert.match(source, /FILES=\(v5-pg-backup\.sh v5-freshness\.js v5-change-check\.js psql v5-idle-probe\.js pg_restore\)/);
   assert.match(source, /INSTALL_ROLLED_BACK/);
   assert.equal(spawnSync('bash', ['-n', INSTALL], {encoding:'utf8'}).status, 0);
   assert.equal(spawnSync('bash', ['-n', path.join(ROOT, 'deploy/v5/v5-pg-backup.sh')], {encoding:'utf8'}).status, 0);

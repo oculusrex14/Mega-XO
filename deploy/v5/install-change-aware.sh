@@ -18,7 +18,7 @@ BIN="$ROOT/bin"
 STATE="$ROOT/state"
 NODE="$BIN/node-24/bin/node"
 STAMP=$(date -u +%Y%m%dT%H%M%SZ)
-FILES=(v5-pg-backup.sh v5-freshness.js v5-change-check.js v5-journal-check.js psql v5-idle-probe.js pg_restore)
+FILES=(v5-pg-backup.sh v5-freshness.js v5-change-check.js psql v5-idle-probe.js pg_restore)
 
 [[ "$EUID" -eq 0 ]] || { echo 'INSTALL_REFUSED: root required for host-managed scripts' >&2; exit 64; }
 [[ -x "$NODE" && -d "$BIN" && -d "$STATE" ]] || {

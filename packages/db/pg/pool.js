@@ -271,7 +271,7 @@ function sanitizeStatements(resolved) {
 
 function createPgPool(input = {}) {
  const resolved = normalizeConfig(input);
- const onWrite = typeof resolved.onWrite === 'function' ? resolved.onWrite : null;
+ const onCommit = typeof resolved.onCommit === 'function' ? resolved.onCommit : null;
  const { Pool } = driver();
  // Mode boundary decided by the verified host normalization, not by guesswork:
  // a Neon '-pooler' endpoint is transaction pooling; everything else is a
@@ -416,18 +416,20 @@ function createPgPool(input = {}) {
   // The private acquire is shared by both modes; POOLED defers ONLY
   // search_path (re-established and fully verified inside BEGIN).
   const { client, release } = await acquire({ checkSearchPath: !pooled, sanitize: !pooled });
-  if (onWrite && !client.__mxWriteSniff) {
+ if (onCommit && !client.__mxWriteSniff) {
    client.__mxWriteSniff = true;
    const guarded = client.query.bind(client);
-   client.query = (text, params) => {
-    if (isWriteSql(typeof text === 'string' ? text : text && text.text)) {
-     try { onWrite(typeof text === 'string' ? text : text.text); } catch { /* the hook must never break a query */ }
-    }
+    client.query = (text, params) => {
+     if (isWriteSql(typeof text === 'string' ? text : text && text.text)) client.__mxWrote = true;
     return guarded(text, params);
    };
   }
   try {
-   return await withIdempotentTransaction(client, fn, { ...options, connected: true, expectSession: expectations });
+   client.__mxWrote = false;
+   const result = await withIdempotentTransaction(client, fn, { ...options, connected: true, expectSession: expectations });
+   // Post-commit signal: the work is now durable and visible to every reader.
+   if (onCommit && client.__mxWrote) { client.__mxWrote = false; try { onCommit(); } catch { /* the hook must never break a query */ } }
+   return result;
   } finally {
    await release();
   }
@@ -554,9 +556,11 @@ function fromEnvironment(env = process.env, overrides = {}) {
  */
 const SCOPES = new WeakMap();
 
-/* A4 idle-budget hook: a write-class statement is reported to config.onWrite BEFORE it is
- * sent (a rolled-back write still counts - fail-safe direction). Never throws into the query
- * path, and each pooled client is wrapped at most once. Read-only statements never fire. */
+/* A4 idle-budget hook: config.onCommit() fires ONCE after a lease whose transaction
+ * COMMITTED at least one write-class statement. A rolled-back or statement-less lease
+ * never fires, so consumers only learn about durable state changes they can observe.
+ * The callback must never throw into the query path; each pooled client is wrapped at
+ * most once. */
 const WRITE_SQL_RE = /^(insert|update|delete|truncate|merge|create|alter|drop|grant|revoke|comment|do|call|copy|refresh|reindex|lock)\b/i;
 function isWriteSql(text) {
  return typeof text === 'string' && (WRITE_SQL_RE.test(text) || /^with\b/i.test(text));

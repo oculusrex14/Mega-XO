@@ -70,26 +70,6 @@ export P15_OWNER_CONFIRMS_PRODUCTION=1
 export P15_PGPASSFILE=$STATE/pgpass
 export P15_PGSSLROOTCERT=$STATE/neon-ca.pem
 
- # A4 compute budget: the journal fast path. db-write-journal is touched by the
- # pool's write hook BEFORE any write is sent, so an mtime equal to the PRE-DUMP
- # observation in the watermark proves no pool writer committed since the newest
- # verified archive - the cycle exits WITHOUT opening a database connection.
- # Non-pool writers are bounded: migrations touch the journal, and a journal-clean
- # skip is only allowed while the archive is <12h old (older forces the SQL probe,
- # which the 0070 transactional clock covers for ANY committed writer).
- JOURNAL=$STATE/db-write-journal
- JMT_BEFORE=$(stat -c %Y "$JOURNAL" 2>/dev/null || echo 0)
- if [[ -f $STATE/last-backup-state.json && -f $JOURNAL && $JMT_BEFORE != 0 ]]; then
-  FAST=$([[ -n ${1:-} ]] && echo probe || true)
-  if [[ -z $FAST ]]; then
-   FAST=$("$NODE" "$BIN/v5-journal-check.js" --watermark "$STATE/last-backup-state.json" --journal "$JOURNAL" 2>/dev/null || echo probe)
-  fi
-  if [[ $FAST == clean ]]; then
-   log "backup skipped: write journal unchanged since the newest verified archive (no SQL probe)"
-   exit 0
-  fi
- fi
-
  # ---- change-aware skip (infrastructure brief 2026-10-19, part G) -----------
  # Sol P1 #3b: this probe runs AFTER the approval flags, credential paths and CA
  # are exported (readTarget/assertTarget refuse a production backup source
@@ -100,7 +80,6 @@ export P15_PGSSLROOTCERT=$STATE/neon-ca.pem
  # Missing coverage/watermark forces a dump. The unchanged proof is bound to the
  # exact verified archive and source target, and only advances AFTER upload/readback.
  status=0
- JMT_PREPROBE=$(stat -c %Y "$JOURNAL" 2>/dev/null || echo 0)
  DECISION=$("$NODE" "$BIN/v5-change-check.js" --source "$STATE/prod-source.json" "$@") || status=$?
  [[ $status -eq 0 || $status -eq 42 ]] || die 'change check failed closed'
  printf '%s\n' "$DECISION"
@@ -114,13 +93,8 @@ export P15_PGSSLROOTCERT=$STATE/neon-ca.pem
     const marker={format:"mega-v5-backup-unchanged/v2",checkedAt:d.checkedAt,
       backupId:id,target:d.target,token:d.current.token,previous:d.previous.token,
       ciphertextSha256:d.previous.ciphertextSha256,manifestSha256:d.previous.manifestSha256};
-    // The probe proved no committed change as of d.checkedAt; advance the
-    // watermark journal observation so false-dirty touches do not re-probe forever.
-    try{const wf=process.argv[5],w=JSON.parse(fs.readFileSync(wf,"utf8"));
-     if(w.format==="mega-v5-backup-watermark/v2"){w.journalMtime=process.argv[6];
-      const t=wf+".tmp";fs.writeFileSync(t,JSON.stringify(w)+"\n",{mode:0o600});fs.renameSync(t,wf);}}catch{}
     const tmp=p+".tmp";fs.writeFileSync(tmp,JSON.stringify(marker)+"\n",{mode:0o600});fs.renameSync(tmp,p);
-   ' "$STATE/backup-unchanged.json" "$MARKER_BACKUP_ID" "$DECISION" "$JMT_PREPROBE" || die 'marker write failed'
+   ' "$STATE/backup-unchanged.json" "$MARKER_BACKUP_ID" "$DECISION" || die 'marker write failed'
    log "backup skipped: no database-local change (marker bound to $MARKER_BACKUP_ID)"
    exit 0
  fi
@@ -175,9 +149,9 @@ log "r2 upload+readback verified receipt=$ARCHIVES/$backup_id.r2-receipt.json ms
  const state={format:"mega-v5-backup-watermark/v2",backupId:id,target:d.target,
    token,lsn:d.current.lsn,ciphertextSha256:manifest.ciphertextSha256,
    manifestSha256:crypto.createHash("sha256").update(fs.readFileSync(process.argv[5])).digest("hex"),
-   journalMtime:process.argv[6],archivedAtUtc:manifest.createdAtUtc};
+   archivedAtUtc:manifest.createdAtUtc};
  const tmp=p+".tmp";fs.writeFileSync(tmp,JSON.stringify(state)+"\n",{mode:0o600});fs.renameSync(tmp,p);
-' "$STATE/last-backup-state.json" "$backup_id" "$DECISION" "$summary" "$manifest" "$(stat -c %Y "$JOURNAL" 2>/dev/null || echo 0)" || die 'watermark write failed'
+' "$STATE/last-backup-state.json" "$backup_id" "$DECISION" "$summary" "$manifest" || die 'watermark write failed'
 rm -f "$STATE/backup-unchanged.json"
 
 # ---- bounded local retention (never touches the remote bucket) ------------

@@ -22,6 +22,8 @@ jobs:
         with:
           node-version: '24'
       - run: npm ci
+      - name: PostgreSQL 16 client tools for the archive identity proof
+        run: sudo apt-get install -y --no-install-recommends postgresql-client-16
       - name: Disclosure composition and signed-gateway projection (Sol R2/R3)
         run: node --test --test-reporter=tap tests/v6-promotion-wiring.test.js tests/v52-promotion-disclosure.test.js tests/v6-deletion-ui.test.js tests/monetization-policy.test.js tests/monetization-store.test.js tests/v52-commerce-ingress.test.js tests/v6-hosted-checkout-recovery.test.js tests/v6-hosted-checkout-render.test.js
   native-contract:
@@ -78,7 +80,7 @@ jobs:
           node-version: '24'
       - run: npm ci
       - name: Reward-ticket powers on real PostgreSQL (Sol R5) plus promotion enforcement
-        run: node --test --test-reporter=tap --test-concurrency=1 tests/v6-reward-ticket-powers-pg.test.js tests/v51-audit-promotion-pg.test.js tests/v5-migrations.test.js tests/v6-presence-budget-pg.test.js tests/v6-backup-clock-pg.test.js
+        run: node --test --test-reporter=tap --test-concurrency=1 tests/v6-reward-ticket-powers-pg.test.js tests/v51-audit-promotion-pg.test.js tests/v5-migrations.test.js tests/v6-presence-budget-pg.test.js tests/v6-backup-clock-pg.test.js tests/v6-backup-archive-pg.test.js
   website-build:
     runs-on: ubuntu-latest
     timeout-minutes: 10

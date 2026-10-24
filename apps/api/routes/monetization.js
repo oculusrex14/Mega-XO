@@ -130,6 +130,19 @@ async function handleMonetizationRoute(context, req, res) {
   try {
     const lane = resolveMonetization(context);
 
+    if (pathname === '/api/monetization/dodo/disposition' || pathname === '/api/monetization/polar/disposition') {
+      if (method !== 'GET') fail('METHOD_NOT_ALLOWED', 405);
+      const actor = await actorOf(context, req);
+      const params = new URL(req.url || '/', 'http://localhost').searchParams;
+      const key = params.get('key'), productId = params.get('product'), currency = params.get('currency');
+      if (!key || !/^[A-Za-z0-9:_-]{1,160}$/.test(key)) fail('IDEMPOTENCY_KEY_REQUIRED', 400);
+      if (!productId || !/^[A-Za-z0-9:_-]{1,160}$/.test(productId) || !/^[a-z]{3}$/.test(currency || '')) fail('INVALID_PRODUCT', 400);
+      const provider = pathname.includes('/dodo/') ? 'dodo' : 'polar';
+      const result = await lane.command({actor, op:provider + '_disposition', opKey:key, key, productId, region:{currency}});
+      sendJson(res, 200, result, {'Cache-Control':CACHE_CONTROL});
+      return true;
+    }
+
     if (pathname === '/api/monetization/admob-ssv') {
       if (method !== 'GET' && method !== 'POST') fail('METHOD_NOT_ALLOWED', 405);
       /* SEC-V52-SSV-UNLIMITED-DOS: the actor-free callback lanes admit by canonical source IP

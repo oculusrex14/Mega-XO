@@ -6,7 +6,7 @@ import {detectDownloadPlatform, downloadHref, apkMetricsHref} from './downloads.
 import {storeLinks} from './store-links.js';
 import {renderPractice, renderGame, mountBoard} from './board.js';
 
-import {createReadModel, createProfileEditor, createHostedCheckout, readJSON, authRequired, errorCopy} from './data.js';
+import {createReadModel, createProfileEditor, createHostedCheckout, createHostedCheckoutStore, readJSON, authRequired, errorCopy} from './data.js';
 import {normalizeStoreStatus, WEB_PRODUCT_IDS} from './store.js';
 import {legalDocuments} from './legal-documents.js';
 import {createFriendsController} from './friends.js';
@@ -236,8 +236,8 @@ let checkoutActor=null,checkoutRecoveryStamp='',checkoutRecoveryTimer=null,check
 const hostedCheckout=createHostedCheckout({
  actor:()=>context.sessionStatus==='linked'?context.profile?.id:null,
  request:(path,body,key)=>globalThis.MegaAccount.request(path,body,key),
- read:path=>readJSON(path),storage:()=>globalThis.localStorage,
- navigate:url=>location.assign(url),locks:globalThis.navigator?.locks,
+ read:path=>readJSON(path),store:createHostedCheckoutStore({indexedDB:globalThis.indexedDB,legacyStorage:()=>globalThis.localStorage}),
+ navigate:url=>location.assign(url),
  operationKey:()=>globalThis.MegaAccount.id(),
 });
 function syncCheckoutActor(){
@@ -251,6 +251,7 @@ function syncCheckoutActor(){
 }
 function checkoutFeedback(result){
  const message=result.outcome==='error'?errorCopy(result.error):
+  result.outcome==='not-created'?'The provider confirmed that no checkout was created. Select the product again to start a new purchase.':
   result.outcome==='verified'?'Payment verified. Your purchase is on your profile.':
   result.outcome==='refunded'?'This checkout was refunded. Check your profile for the current purchase status.':
   result.outcome==='terminal'?'The payment provider reports this checkout as '+result.status+'. Select the product again to start a new purchase.':
@@ -271,7 +272,7 @@ function resumeHostedCheckouts(){
   checkoutRecoveryBusy=true;
   let pending=false;
   try{
-   const records=hostedCheckout.pending();if(!records.length)return;
+   const records=await hostedCheckout.pending();if(!records.length)return;
    context.checkoutState={actorId:actor,busy:true,kind:'status',message:'Checking your previous checkout…'};render();
    const results=await hostedCheckout.recover();
    if(context.sessionStatus!=='linked'||context.profile?.id!==actor||normalizedPath()!=='/store')return;
@@ -360,13 +361,13 @@ async function dodoCheckout(productId){
  checkoutFeedback(result);
  if(['verified','refunded'].includes(result.outcome)){await model.profile();await refreshProducts();}
 }
-function hasHostedCheckout(productId){
+async function hasHostedCheckout(productId){
  const provider=context.products.webCheckoutProvider;
  if(!['dodo','polar'].includes(provider))return false;
  const row=context.products.rows.find(row=>row.id===productId);
  if(provider==='polar'&&row?.inr&&productId!=='mega_pass')return false;
  const currency=provider==='dodo'?(row?.dodoCurrency||dodoRegion().currency):(row?.polarCurrency||'usd');
- return hostedCheckout.pending().some(record=>record.provider===provider&&record.productId===productId&&record.currency===currency&&Boolean(record.checkoutId||record.checkoutUrl));
+ return (await hostedCheckout.pending()).some(record=>record.provider===provider&&record.productId===productId&&record.currency===currency&&Boolean(record.checkoutId||record.checkoutUrl));
 }
 /* MXA-PROMOTION-DISCLOSURE (2026-10-20): the published launch-promotion cap requires a
  * disclosure acceptance paired to the CURRENT remaining allowance before any promotional Crown
@@ -606,7 +607,7 @@ document.addEventListener('click',event=>{
  else if(store&&store.dataset.storeAction==='purchase'&&!serviceBusy&&!context.checkoutState?.busy&&!store.disabled){
   const id=store.dataset.productId,row=context.products.rows.find(x=>x.id===id);
   if(context.products.purchasesAvailable===true&&row?.enabled===true){accountAction(async()=>{const actor=context.profile?.id;if(!actor)throw Error('AUTH_REQUIRED');const provider=nativeStoreProvider();if(!provider)throw Error('PROMOTION_RESERVATION_REQUIRED');const previous=readNativePromotionPending();const key=(previous&&previous.productId===id&&previous.provider===provider&&previous.key)?previous.key:(globalThis.crypto?.randomUUID?.()||'nb'+Date.now());if(await ensurePromotionAccepted(id,'native'))return;await reserveNativePromotionIfRequired(id,provider,key);writeNativePromotionPending({productId:id,provider,key});const evidence=await globalThis.MegaBilling.purchase(id,context.products.storeContext);if(actor!==context.profile?.id)throw Error('AUTH_REQUIRED');const delivered=await globalThis.MegaNetwork.purchase(evidence,key);await globalThis.MegaBilling.finish?.(evidence,delivered);writeNativePromotionPending(null);await model.profile();await refreshProducts();notify('Verified purchase delivered.');},{checkout:true,productId:id});}
- else if(row&&context.products.webCheckoutAvailable===true){accountAction(async()=>{if(!hasHostedCheckout(id)&&await ensurePromotionAccepted(id))return;if(context.products.webCheckoutProvider==='dodo')await dodoCheckout(id);else if(row.inr&&row.id!=='mega_pass')await cashfreeCheckout(id);else await polarCheckout(id);},{checkout:true,productId:id});}
+ else if(row&&context.products.webCheckoutAvailable===true){accountAction(async()=>{if(!await hasHostedCheckout(id)&&await ensurePromotionAccepted(id))return;if(context.products.webCheckoutProvider==='dodo')await dodoCheckout(id);else if(row.inr&&row.id!=='mega_pass')await cashfreeCheckout(id);else await polarCheckout(id);},{checkout:true,productId:id});}
  }
  const promo=event.target.closest('[data-promotion-action]');
  if(promo&&promo.dataset.promotionAction==='accept'&&!serviceBusy&&!context.checkoutState?.busy&&!promo.disabled)accountAction(()=>acceptPromotionDisclosure(),{checkout:true,productId:context.promotionPendingPurchase});

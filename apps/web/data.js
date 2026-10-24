@@ -26,81 +26,157 @@ export const errorCopy = error => ({
  STORE_UNAVAILABLE: 'The store could not be reached just now. Check your connection and try again.',
 })[error?.message] || 'The service is unavailable right now. Please try again.';
 
-/** Hosted checkout identity is saved BEFORE the create request. A timeout, navigation,
- * reload or elapsed time never authorizes a replacement operation. Only the actor-bound
- * status endpoint can close an attempt; catalog prices and economic effects stay server-owned.
- * Kept here because data.js is already in the static bundle's explicit allowlist. */
-export function createHostedCheckout({actor, request, read = readJSON, storage = () => globalThis.localStorage,
- operationKey = () => globalThis.crypto.randomUUID(), navigate = url => globalThis.location.assign(url), locks = globalThis.navigator?.locks} = {}) {
- const prefix = 'mega-xoxo-hosted-checkout:v1:';
- const busy = new Set();
- let generation = 0;
- const providers = ['dodo', 'polar'];
- // Dodo's `failed` is a payment status, not proof the hosted session cannot be
- // paid on retry. Keep it (and unknown/processing statuses) under the same key.
- const terminal = ['expired', 'canceled', 'cancelled'];
- const slot = record => JSON.stringify([record.provider, record.productId, record.currency]);
- const storageKey = actorId => prefix + encodeURIComponent(actorId);
- const safeUrl = value => {
-  try { const url = new URL(value); return url.protocol === 'https:' && !url.username && !url.password ? url.href : null; }
-  catch { return null; }
- };
- function records(actorId) {
+// Every record mutation uses an IndexedDB read/write transaction on the attempts store.
+// Transactions serialize across tabs even without Web Locks; compare-and-set by operation
+// key prevents a late response/retirement from overwriting a newer intentional purchase.
+const hostedScope = r => JSON.stringify([r.actorId, r.provider, r.productId, r.currency]);
+function hostedHttps(value) {
+ try { const url = new URL(value); return url.protocol === 'https:' && !url.username && !url.password ? url.href : null; }
+ catch { return null; }
+}
+function validHostedRecord(r, actorId) {
+ return r && r.actorId === actorId && ['dodo','polar'].includes(r.provider) &&
+  typeof r.productId === 'string' && /^[A-Za-z0-9:_-]{1,160}$/.test(r.productId) && /^[a-z]{3}$/.test(r.currency) &&
+  typeof r.key === 'string' && /^[A-Za-z0-9:_-]{1,160}$/.test(r.key) && typeof r.checkoutId === 'string' &&
+  (r.checkoutUrl === null || typeof r.checkoutUrl === 'string' && Boolean(hostedHttps(r.checkoutUrl)));
+}
+export function createHostedCheckoutStore({indexedDB = globalThis.indexedDB, legacyStorage = () => globalThis.localStorage} = {}) {
+ let opening;
+ function database() {
+  if (!opening) opening = new Promise((resolve, reject) => {
+   if (!indexedDB?.open) { reject(Error('CHECKOUT_RECOVERY_UNAVAILABLE')); return; }
+   const request = indexedDB.open('mega-xoxo-hosted-checkout', 1);
+   request.onupgradeneeded = () => {
+    const db = request.result;
+    db.createObjectStore('attempts', {keyPath:'scope'}).createIndex('actor', 'record.actorId');
+    db.createObjectStore('imports', {keyPath:'actorId'});
+   };
+   request.onerror = request.onblocked = () => reject(Error('CHECKOUT_RECOVERY_UNAVAILABLE'));
+   request.onsuccess = () => { request.result.onversionchange = () => request.result.close(); resolve(request.result); };
+  });
+  return opening;
+ }
+ async function transaction(names, mode, work) {
   try {
-   const raw = storage().getItem(storageKey(actorId));
-   if (raw === null) return [];
-   const saved = JSON.parse(raw);
-   if (saved?.version !== 1 || !Array.isArray(saved.records)) throw Error();
-   if (saved.records.some(r => !r || r.actorId !== actorId || !providers.includes(r.provider) ||
-    typeof r.productId !== 'string' || !r.productId || !/^[a-z]{3}$/.test(r.currency) ||
-    typeof r.key !== 'string' || !r.key || typeof r.checkoutId !== 'string' ||
-    (r.checkoutUrl !== null && !safeUrl(r.checkoutUrl)))) throw Error();
-   if (new Set(saved.records.map(slot)).size !== saved.records.length) throw Error();
-   return saved.records;
-  } catch { throw Error('CHECKOUT_RECOVERY_UNAVAILABLE'); }
+   const db = await database();
+   return await new Promise((resolve, reject) => {
+    const tx = db.transaction(names, mode); let result, fault;
+    const abort = error => { fault = error; tx.abort(); };
+    tx.oncomplete = () => resolve(result);
+    tx.onabort = tx.onerror = () => reject(fault || Error('CHECKOUT_RECOVERY_UNAVAILABLE'));
+    try { work(tx, value => { result = value; }, abort); } catch (error) { abort(error); }
+   });
+  } catch (error) { throw Error(error?.message === 'CHECKOUT_RECOVERY_CONFLICT' ? error.message : 'CHECKOUT_RECOVERY_UNAVAILABLE'); }
  }
- function save(record, remove = false) {
-  const rows = records(record.actorId).filter(r => slot(r) !== slot(record));
-  if (!remove) rows.push(record);
-  try { storage().setItem(storageKey(record.actorId), JSON.stringify({version:1, records:rows})); }
-  catch { throw Error('CHECKOUT_RECOVERY_UNAVAILABLE'); }
+ async function importActor(actorId) {
+  await transaction(['imports','attempts'], 'readwrite', (tx, done, abort) => {
+   const imports = tx.objectStore('imports'), attempts = tx.objectStore('attempts');
+   const request = imports.get(actorId);
+   request.onsuccess = () => {
+    if (request.result) return;
+    try {
+     const raw = legacyStorage()?.getItem('mega-xoxo-hosted-checkout:v1:' + encodeURIComponent(actorId)) ?? null;
+     const saved = raw === null ? {version:1, records:[]} : JSON.parse(raw);
+     if (saved?.version !== 1 || !Array.isArray(saved.records) || saved.records.some(r => !validHostedRecord(r, actorId)) || new Set(saved.records.map(hostedScope)).size !== saved.records.length) throw Error();
+     for (const record of saved.records) {
+      const prior = attempts.get(hostedScope(record));
+      prior.onsuccess = () => {
+       if (prior.result && prior.result.record.key !== record.key) { abort(Error('CHECKOUT_RECOVERY_CONFLICT')); return; }
+       if (!prior.result) attempts.put({scope:hostedScope(record), record});
+      };
+     }
+     // The marker and all imports commit together. Leave legacy evidence untouched;
+     // never re-import a retired attempt from that historical document.
+     imports.put({actorId});
+    } catch (error) { abort(error); }
+   };
+  });
  }
+ async function mutate(record, kind) {
+  if (!validHostedRecord(record, record?.actorId)) throw Error('CHECKOUT_RECOVERY_UNAVAILABLE');
+  await importActor(record.actorId);
+  return transaction(['attempts'], 'readwrite', (tx, done, abort) => {
+   const store = tx.objectStore('attempts'), request = store.get(hostedScope(record));
+   request.onsuccess = () => {
+    const prior = request.result?.record;
+    if (prior && !validHostedRecord(prior, record.actorId)) { abort(Error('CHECKOUT_RECOVERY_UNAVAILABLE')); return; }
+    if (kind === 'claim') {
+     if (!prior) store.add({scope:hostedScope(record), record});
+     done({record:prior || record, created:!prior}); return;
+    }
+    if (!prior || prior.key !== record.key) {
+     if (kind === 'retire') { done(false); return; }
+     abort(Error('CHECKOUT_RECOVERY_CONFLICT')); return;
+    }
+    if (kind === 'retire') store.delete(hostedScope(record));
+    else store.put({scope:hostedScope(record), record});
+    done(true);
+   };
+  });
+ }
+ async function list(actorId) {
+  await importActor(actorId);
+  return transaction(['attempts'], 'readonly', (tx, done, abort) => {
+   const request = tx.objectStore('attempts').index('actor').getAll(actorId);
+   request.onsuccess = () => {
+    const rows = request.result.map(row => row.record);
+    if (rows.some(r => !validHostedRecord(r, actorId))) { abort(Error('CHECKOUT_RECOVERY_UNAVAILABLE')); return; }
+    done(rows);
+   };
+  });
+ }
+ return {claim:record => mutate(record, 'claim'), put:record => mutate(record, 'put'), retire:record => mutate(record, 'retire'), list};
+}
+
+/** Save before POST; no timer or transport error grants permission to replace an attempt.
+ * The actor-bound disposition read alone may prove non-creation. Status alone proves payment.
+ * Both server reservations and promotion allocations remain permanently server-owned. */
+export function createHostedCheckout({actor, request, read = readJSON, store = createHostedCheckoutStore(),
+ operationKey = () => globalThis.crypto.randomUUID(), navigate = url => globalThis.location.assign(url)} = {}) {
+ const busy = new Set(); let generation = 0;
  function current(actorId, epoch = generation) { if (!actorId || actor() !== actorId || epoch !== generation) throw Error('AUTH_REQUIRED'); }
  async function exclusive(actorId, scope, task) {
-  const id = storageKey(actorId) + ':' + scope;
   const epoch = generation;
-  if (busy.has(id)) throw Error('REQUEST_PENDING');
-  busy.add(id);
-  try {
-   // Web Locks also serialize two tabs trying to resume the same purchase.
-   const run = () => { current(actorId, epoch); return task(epoch); };
-   return locks?.request ? await locks.request(id, run) : await run();
-  } finally { busy.delete(id); }
+  if (busy.has(scope)) throw Error('REQUEST_PENDING');
+  busy.add(scope);
+  try { current(actorId, epoch); return await task(epoch); }
+  finally { busy.delete(scope); }
  }
  async function check(record, epoch) {
   current(record.actorId, epoch);
-  if (!record.checkoutId) return {outcome:'pending', record};
+  if (!record.checkoutId) {
+   const params = new URLSearchParams({key:record.key, product:record.productId, currency:record.currency});
+   const state = await read('/api/monetization/' + record.provider + '/disposition?' + params);
+   current(record.actorId, epoch);
+   if (!state || state.actorId !== record.actorId || state.provider !== record.provider || state.key !== record.key || state.productId !== record.productId || state.currency !== record.currency) throw Error('STORE_UNAVAILABLE');
+   if (state.disposition === 'not_created') {
+    await store.retire(record); current(record.actorId, epoch);
+    return {outcome:'not-created', record};
+   }
+   if (state.disposition === 'ambiguous') return {outcome:'pending', record, retrySameKey:state.retrySameKey === true};
+   if (state.disposition !== 'ready' || typeof state.checkoutId !== 'string' || !state.checkoutId) throw Error('STORE_UNAVAILABLE');
+   record = {...record, checkoutId:state.checkoutId, checkoutUrl:hostedHttps(state.checkoutUrl)};
+   await store.put(record); current(record.actorId, epoch);
+  }
   const state = await read('/api/monetization/' + record.provider + '/status?checkout_id=' + encodeURIComponent(record.checkoutId));
   current(record.actorId, epoch);
   if (!state || state.checkoutId !== record.checkoutId || state.productId !== record.productId || typeof state.paid !== 'boolean') throw Error('STORE_UNAVAILABLE');
   const status = typeof state.status === 'string' ? state.status.toLowerCase() : '';
-  const outcome = state.refunded === true ? 'refunded' : state.paid === true ? 'verified' : terminal.includes(status) ? 'terminal' : 'pending';
-  if (outcome !== 'pending') save(record, true);
+  // `failed` is a payment failure, not proof that the session cannot be retried.
+  const outcome = state.refunded === true ? 'refunded' : state.paid === true ? 'verified' : ['expired','canceled','cancelled'].includes(status) ? 'terminal' : 'pending';
+  if (outcome !== 'pending') { await store.retire(record); current(record.actorId, epoch); }
   return {outcome, status, record};
  }
  async function start({provider, productId, currency = 'usd', country = null, acceptanceHash} = {}) {
   const actorId = actor(); current(actorId);
-  if (!providers.includes(provider) || typeof productId !== 'string' || !productId || !/^[a-z]{3}$/.test(currency)) throw Error('STORE_UNAVAILABLE');
-  const scope = slot({provider, productId, currency});
-  return exclusive(actorId, scope, async epoch => {
-   let record = records(actorId).find(r => slot(r) === scope);
-   if (record) {
-    const result = await check(record, epoch);
-    // Finishing an old purchase never implicitly starts another one in this click.
-    if (result.outcome !== 'pending') return result;
-   } else {
-    record = {actorId, provider, productId, currency, country, key:operationKey(), checkoutId:'', checkoutUrl:null};
-    save(record);
+  const candidate = {actorId, provider, productId, currency, country, key:operationKey(), checkoutId:'', checkoutUrl:null};
+  if (!validHostedRecord(candidate, actorId)) throw Error('STORE_UNAVAILABLE');
+  return exclusive(actorId, hostedScope(candidate), async epoch => {
+   const claimed = await store.claim(candidate); current(actorId, epoch);
+   let record = claimed.record;
+   if (!claimed.created) {
+    const result = await check(record, epoch); record = result.record;
+    if (result.outcome !== 'pending' || (!record.checkoutId && !result.retrySameKey)) return result;
    }
    if (!record.checkoutUrl) {
     const created = await request('/api/monetization/' + provider + '/checkout', {
@@ -109,36 +185,30 @@ export function createHostedCheckout({actor, request, read = readJSON, storage =
     }, record.key);
     current(actorId, epoch);
     if (created?.productId !== undefined && created.productId !== productId) throw Error('STORE_UNAVAILABLE');
-    record = {...record, checkoutId:typeof created?.checkoutId === 'string' ? created.checkoutId : '', checkoutUrl:safeUrl(created?.checkoutUrl)};
-    save(record);
-    // Replays of a completed checkout may have no URL. Verify rather than reporting
-    // a create response's status (or the return query string) as payment success.
+    record = {...record, checkoutId:typeof created?.checkoutId === 'string' ? created.checkoutId : '', checkoutUrl:hostedHttps(created?.checkoutUrl)};
+    await store.put(record); current(actorId, epoch);
     if (!record.checkoutUrl || (created?.status && !['created','open','pending'].includes(created.status))) {
-     const result = await check(record, epoch);
+     const result = await check(record, epoch); record = result.record;
      if (result.outcome !== 'pending') return result;
     }
    }
    if (!record.checkoutUrl) throw Error('STORE_UNAVAILABLE');
-   current(actorId, epoch);
-   navigate(record.checkoutUrl);
+   current(actorId, epoch); navigate(record.checkoutUrl);
    return {outcome:'opening', record};
   });
  }
- function pending() { const actorId = actor(); return actorId ? records(actorId) : []; }
+ async function pending() {
+  const actorId = actor(), epoch = generation;
+  if (!actorId) return [];
+  const rows = await store.list(actorId); current(actorId, epoch); return rows;
+ }
  async function recover() {
-  const actorId = actor(); current(actorId);
-  const results = [];
-  for (const record of records(actorId)) {
-   try {
-    const result = await exclusive(actorId, slot(record), async epoch => {
-     const latest = records(actorId).find(r => slot(r) === slot(record));
-     return latest ? check(latest, epoch) : null;
-    });
-    if (result) results.push(result);
-   } catch (error) {
-    current(actorId);
-    if (authRequired(error)) throw error;
-    // One unavailable provider must not hide a different verified purchase.
+  const actorId = actor(), epoch = generation; current(actorId, epoch);
+  const results = [], records = await store.list(actorId); current(actorId, epoch);
+  for (const record of records) {
+   try { results.push(await exclusive(actorId, hostedScope(record), token => check(record, token))); }
+   catch (error) {
+    current(actorId, epoch); if (authRequired(error)) throw error;
     results.push({outcome:'error', error, record});
    }
   }

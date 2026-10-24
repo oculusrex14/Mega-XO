@@ -40,6 +40,7 @@ const OPS = {
    * actor-free (Polar's server calls it) and carries {raw, id, timestamp, signature}. */
   polar_create: { args: ['key', 'productId', 'customer'], method: 'createPolarCheckout', call: (c, actor, a) => c.createPolarCheckout(actor, a[0], a[1], a[2]) },
   polar_status: { args: ['checkoutId'], method: 'polarOrderStatus', call: (c, actor, a) => c.polarOrderStatus(actor, a[0]) },
+  polar_disposition: { args: ['key', 'productId', 'region'], method: 'polarOrderStatus', call: (c, actor, a) => c.polarOrderStatus(actor, null, {key:a[0], productId:a[1], currency:a[2].currency}) },
   polar_webhook: { args: ['payload'], method: 'settlePolarWebhook', actorFree: true, call: (c, actor, a) => c.settlePolarWebhook(a[0]) },
   /* 2026-10-19: the Dodo lane (owner decision: Dodo = PRIMARY web checkout, Polar dormant).
    * Same contract shape: create/status are player commands (the region hint rides the create so
@@ -47,6 +48,7 @@ const OPS = {
    * {raw, id, timestamp, signature} verified against the exact raw bytes. */
   dodo_create: { args: ['key', 'productId', 'customer', 'region'], method: 'createDodoCheckout', call: (c, actor, a) => c.createDodoCheckout(actor, a[0], a[1], a[2], a[3]) },
   dodo_status: { args: ['checkoutId'], method: 'dodoOrderStatus', call: (c, actor, a) => c.dodoOrderStatus(actor, a[0]) },
+  dodo_disposition: { args: ['key', 'productId', 'region'], method: 'dodoOrderStatus', call: (c, actor, a) => c.dodoOrderStatus(actor, null, {key:a[0], productId:a[1], currency:a[2].currency}) },
   dodo_webhook: { args: ['payload'], method: 'settleDodoWebhook', actorFree: true, call: (c, actor, a) => c.settleDodoWebhook(a[0]) },
   /* MXA-WALLET-PATH (2026-10-19): the server-side Crown debit for power-up charges. itemId is
    * the power kind (undo/hint); the cost table lives in the commerce service so the client can

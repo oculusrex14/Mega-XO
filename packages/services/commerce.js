@@ -88,6 +88,7 @@ const { newOrderId } = require('./cashfree.js');
 const { UUID_V4 } = require('./polar.js');
 const { SESSION_ID, SUPPORTED_CURRENCIES } = require('./dodo.js');
 const Promotion = require('./promotion-allocation.js');
+const {createHostedCheckoutDisposition, provenNonCreation} = require('./hosted-checkout-disposition.js');
 
 const CORE_ROLE = 'core_runtime';
 const DAY = 86400000;
@@ -285,6 +286,7 @@ async function createCommerceService(pool, options = {}) {
  };
 
  const uow = createPgUnitOfWork(pool, { role: CORE_ROLE, now: options.now });
+ const hostedCheckoutDisposition = createHostedCheckoutDisposition(uow);
  /* The service clock: the frozen test clock in harnesses, wall time in production. The ledger
   * sweep and the subscription reconciliation use the SAME source as every other economic read. */
  const serviceNow = typeof options.now === 'function' ? options.now : Date.now;
@@ -1180,8 +1182,7 @@ async function createCommerceService(pool, options = {}) {
    created = await withDeadline(config.polarProvider.createCheckout({ priceId: entry.priceId, actor, productId, email: email || undefined, successUrl: config.polarSuccessUrl, metadata: { request_id: requestId }, discountId: reservedPeriod ? config.polarPackDiscountId : undefined }));
   } catch (error) {
    const code = String(error && error.message || 'POLAR_CREATE_UNKNOWN');
-   const httpMatch = /^POLAR_HTTP_([0-9]{3})$/.exec(code);
-   const terminal = code === 'POLAR_AUTH' || code === 'POLAR_CONFIG' || (!!httpMatch && httpMatch[1] !== '408' && httpMatch[1] !== '429');
+   const terminal = provenNonCreation('polar', code);
    if (terminal && reservedPeriod) await uow.run(async (tx) => {
     await tx.query("UPDATE monetization.pass_periods pp SET pack_discounts_reserved = pp.pack_discounts_reserved - 1 WHERE pp.subscription_id = $2 AND pp.period_start = $3 AND pp.pack_discounts_reserved > 0", [actor, reservedPeriod.subscriptionId, reservedPeriod.start]);
    });
@@ -1423,8 +1424,7 @@ async function createCommerceService(pool, options = {}) {
    }));
   } catch (error) {
    const code = String(error && error.message || 'DODO_CREATE_UNKNOWN');
-   const httpMatch = /^DODO_HTTP_([0-9]{3})$/.exec(code);
-   const terminal = code === 'DODO_AUTH' || code === 'DODO_CONFIG' || (!!httpMatch && httpMatch[1] !== '408' && httpMatch[1] !== '429');
+   const terminal = provenNonCreation('dodo', code);
    if (terminal && reservedPeriod) await uow.run(async (tx) => {
     await tx.query("UPDATE monetization.pass_periods pp SET pack_discounts_reserved = pp.pack_discounts_reserved - 1 WHERE pp.subscription_id = $2 AND pp.period_start = $3 AND pp.pack_discounts_reserved > 0", [actor, reservedPeriod.subscriptionId, reservedPeriod.start]);
    });
@@ -1696,7 +1696,8 @@ async function createCommerceService(pool, options = {}) {
   return provider === 'google' ? handler.handle(credential, payload, hooks) : handler.handle(payload, hooks);
  }
 
- async function polarOrderStatus(actor, checkoutId) {
+ async function polarOrderStatus(actor, checkoutId, operation = null) {
+  if (operation) return hostedCheckoutDisposition(actor, 'polar', operation.key, operation.productId, operation.currency);
   if (typeof actor !== 'string' || !actor || typeof checkoutId !== 'string' || !checkoutId) throw Error('ORDER_NOT_FOUND');
   const row = await uow.run(async (tx) => {
    await tx.query('SET TRANSACTION READ ONLY');
@@ -1931,7 +1932,8 @@ async function createCommerceService(pool, options = {}) {
  }
 
  /* The actor-bound status poll: hides other actors' orders and settles through the provider. */
- async function dodoOrderStatus(actor, checkoutId) {
+ async function dodoOrderStatus(actor, checkoutId, operation = null) {
+  if (operation) return hostedCheckoutDisposition(actor, 'dodo', operation.key, operation.productId, operation.currency);
   if (typeof actor !== 'string' || !actor || typeof checkoutId !== 'string' || !checkoutId) throw Error('ORDER_NOT_FOUND');
   const row = await uow.run(async (tx) => {
    await tx.query('SET TRANSACTION READ ONLY');

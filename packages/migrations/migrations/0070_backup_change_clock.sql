@@ -115,7 +115,9 @@ BEGIN
       AND (NOT exclude_learning OR n.nspname<>'learning')
       ORDER BY n.nspname,c.relname
   LOOP
-    EXECUTE format('SELECT last_value,is_called FROM %I.%I',seq.nspname,seq.relname) INTO value,called;
+    -- pg_dump emits setval(seq, 1, false) for a never-called sequence, so the
+    -- archived value (what a restore would produce) is the comparison basis.
+    EXECUTE format('SELECT COALESCE(last_value,1),is_called FROM %I.%I',seq.nspname,seq.relname) INTO value,called;
     sequence_state := sequence_state || jsonb_build_array(jsonb_build_array(seq.nspname,seq.relname,value::text,called));
   END LOOP;
   RETURN jsonb_build_object('format','mega-v5-db-change/v1','database',current_database(),

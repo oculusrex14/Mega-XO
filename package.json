@@ -40,5 +40,8 @@
   "dependencies": {
     "pg": "^8.23.1",
     "redis": "4.7.0"
+  },
+  "devDependencies": {
+    "fake-indexeddb": "6.2.6"
   }
 }

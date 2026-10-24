@@ -5,19 +5,21 @@ const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
 const crypto = require('node:crypto');
+const {IDBFactory} = require('fake-indexeddb');
 
 // Execute the actual app event handlers, data controller and page renderer in isolated
 // browser-module scopes. All actors, transport replies, storage and navigation are synthetic.
 // This exercises the rendered store, not just source strings or dictionary membership.
 const names = ['ui', 'downloads', 'friends', 'friends-view', 'consent', 'pages', 'store', 'board', 'site', 'seo', 'data', 'realtime', 'tournaments', 'tournaments-view', 'app'];
 const sources = names.map(name => ({name, source:fs.readFileSync(path.join(__dirname, '../apps/web/' + name + '.js'), 'utf8')}));
-const flush = async () => { for (let i = 0; i < 4; i++) await new Promise(resolve => setImmediate(resolve)); };
+const flush = async () => { for (let i = 0; i < 30; i++) await new Promise(resolve => setImmediate(resolve)); };
 function deferred() { let resolve, reject; const promise = new Promise((yes, no) => { resolve = yes; reject = no; }); return {promise, resolve, reject}; }
 
 async function browser(options = {}) {
  const documentListeners = new Map(), windowListeners = new Map(), timers = new Map();
  const calls = [], reads = [], navigations = [], popupCalls = [];
  const storage = options.storage || new Map(), states = options.states || new Map();
+ const indexedDB = options.indexedDB || new IDBFactory();
  let timer = 0, sequence = 0, statusFocus = 0, profileReads = 0;
  const f = {provider:options.provider || 'dodo', disclosure:{published:false},
   profile:{id:'synthetic-a', region:'United States', wallet:{coins:17, crowns:3}},
@@ -48,7 +50,7 @@ async function browser(options = {}) {
    dodo:{available:f.provider === 'dodo', products, regions:Object.fromEntries(Object.keys(products).map(id => [id, {usd:100}]))}};
  }
  const sandbox = {
-  document, window, location, navigator:{language:'en-US'}, console, URL, URLSearchParams, AbortController, structuredClone, crypto:crypto.webcrypto,
+  indexedDB, document, window, location, navigator:{language:'en-US'}, console, URL, URLSearchParams, AbortController, structuredClone, crypto:crypto.webcrypto,
   setTimeout(fn, ms) { const id = ++timer; timers.set(id, {fn, ms}); return id; }, clearTimeout:id => timers.delete(id),
   setInterval(fn, ms) { const id = ++timer; timers.set(id, {fn, ms}); return id; }, clearInterval:id => timers.delete(id),
   localStorage:{getItem:key => storage.get(key) ?? null, setItem:(key, value) => storage.set(key, value), removeItem:key => storage.delete(key)},
@@ -60,6 +62,12 @@ async function browser(options = {}) {
    if (resource === '/api/v1/profile') { profileReads++; result = f.profile; }
    else if (resource === '/api/monetization/status') result = catalog();
    else if (resource === '/api/monetization/promotion/disclosure') result = f.disclosure;
+   else if (resource.includes('/disposition?')) {
+    const parsed = new URL(resource, location.origin), params = parsed.searchParams, key = params.get('key');
+    const ready = states.get('checkout-' + key);
+    result = {actorId:f.profile.id, provider:parsed.pathname.split('/')[3], key, productId:params.get('product'), currency:params.get('currency'),
+     ...(ready ? {disposition:'ready', checkoutId:ready.checkoutId, checkoutUrl:'https://checkout.example/' + ready.checkoutId} : {disposition:'ambiguous', retrySameKey:true})};
+   }
    else if (/\/status\?checkout_id=/.test(resource)) result = states.get(new URL(resource, location.origin).searchParams.get('checkout_id'));
    else throw Error('Unexpected synthetic read: ' + resource);
    return {ok:true, json:async () => structuredClone(result)};
@@ -92,7 +100,7 @@ async function browser(options = {}) {
   const target = {closest:selector => selector === '[data-' + kind + '-action]' ? node : null};
   for (const listener of documentListeners.get('click') || []) listener({target, defaultPrevented:false, button:0});
  }
- return {...f, control:f, main, calls, reads, states, storage, navigations, popupCalls, click,
+ return {...f, control:f, main, calls, reads, states, storage, indexedDB, navigations, popupCalls, click,
   qa:runtime.checkoutTest, focusCount:() => statusFocus, profileReads:() => profileReads};
 }
 
@@ -169,7 +177,7 @@ test('PF2 return and reload verify the stored attempt then refresh the authorita
  const first = await browser();
  first.click('store', 'remove_ads'); await flush();
  const state = [...first.states.values()][0]; state.paid = true;
- const returned = await browser({storage:first.storage, states:first.states, search:'?payment=success'});
+ const returned = await browser({indexedDB:first.indexedDB, storage:first.storage, states:first.states, search:'?payment=success'});
  assert.match(returned.main.innerHTML, /Payment verified/);
  assert.ok(returned.profileReads() >= 2, 'verified return refreshes canonical profile data');
  assert.equal(returned.calls.length, 0, 'no create or replacement allocation on return');
@@ -181,7 +189,7 @@ test('PF2 return and reload verify the stored attempt then refresh the authorita
 
 test('PF2 unpaid return checks status and resumes its saved URL without another create', async () => {
  const first = await browser(); first.click('store', 'remove_ads'); await flush();
- const returned = await browser({storage:first.storage, states:first.states, search:'?payment=success'});
+ const returned = await browser({indexedDB:first.indexedDB, storage:first.storage, states:first.states, search:'?payment=success'});
  assert.ok(returned.reads.some(url => /\/dodo\/status\?checkout_id=/.test(url)));
  assert.match(returned.main.innerHTML, /Your checkout is still pending/);
  assert.doesNotMatch(returned.main.innerHTML, /Payment verified/);
@@ -195,7 +203,7 @@ test('PF2 ambiguous create return replays its durable operation instead of repla
  first.control.request = async () => { throw Error('REQUEST_TIMEOUT'); };
  first.click('store', 'remove_ads'); await flush();
  const key = first.calls[0].key;
- const returned = await browser({storage:first.storage});
+ const returned = await browser({indexedDB:first.indexedDB, storage:first.storage});
  assert.match(returned.main.innerHTML, /Your checkout is still pending/);
  assert.equal(returned.calls.length, 0, 'no automatic create on return');
  returned.click('store', 'remove_ads'); await flush();
@@ -207,7 +215,7 @@ test('PF2 ambiguous create return replays its durable operation instead of repla
 test('PF2 refunded returns show refund state without reporting delivery success', async () => {
  const first = await browser(); first.click('store', 'remove_ads'); await flush();
  Object.assign([...first.states.values()][0], {paid:true, refunded:true});
- const returned = await browser({storage:first.storage, states:first.states});
+ const returned = await browser({indexedDB:first.indexedDB, storage:first.storage, states:first.states});
  assert.match(returned.main.innerHTML, /checkout was refunded/);
  assert.doesNotMatch(returned.main.innerHTML, /Payment verified/);
 });

@@ -11,7 +11,9 @@ const fs=require('node:fs');
 const path=require('node:path');
 const crypto=require('node:crypto');
 const {spawn,spawnSync}=require('node:child_process');
+const {PassThrough}=require('node:stream');
 const {sealStream}=require('./sealed-archive.js');
+const {startCapture}=require('./sequence-capture.js');
 const {readTarget,assertTarget,privateDirectory,buildPgEnv,fingerprint,checkFile}=require('./direct-target.js');
 const ROOT=path.join(__dirname,'../../..');
 const SCHEMA_FILE=path.join(ROOT,'packages/migrations/manifest.json');
@@ -66,6 +68,19 @@ async function backup({source,recipientPublicPem,outputDirectory,env=process.env
  if(!child||!child.stdout||typeof child.once!=='function'||typeof child.kill!=='function') {
   refuse('streaming pg_dump process required');
  }
+ // The EXACT bytes sealed are also parsed for sequence identities and large objects.
+ // An identity mismatch between the pre-dump probe and the archive fails the backup
+// closed, so the stored watermark can never claim a sequence value the archive
+// does not restore. Without identities requested, no capture runs.
+ let capture=null,dumpSource=child.stdout;
+ if(process.env.P15_SEQUENCE_IDENTITIES!==undefined) {
+  let expected;
+  try{expected=JSON.parse(process.env.P15_SEQUENCE_IDENTITIES);}catch{refuse('P15_SEQUENCE_IDENTITIES_INVALID');}
+  capture=startCapture({command:process.env.V5_PG_RESTORE_BIN||'pg_restore',env:pgEnv,expectedSequences:expected});
+  dumpSource=new PassThrough();
+  child.stdout.pipe(dumpSource);
+  child.stdout.pipe(capture.input);
+ }
  const exit=new Promise((resolve,reject)=>{
   child.once('error',()=>reject(Error('PG_DUMP_PROCESS_FAILED')));
   child.once('close',code=>code===0?resolve():reject(Error('PG_DUMP_FAILED')));
@@ -75,11 +90,12 @@ async function backup({source,recipientPublicPem,outputDirectory,env=process.env
  exit.catch(()=>{});
  let finalCreated=false;
  try{
-  const sealed=await sealStream(child.stdout,recipientPublicPem,partial,{
+  const sealed=await sealStream(dumpSource,recipientPublicPem,partial,{
    createdAtUtc:now.toISOString(),sourceFingerprint:fingerprint(target),
    schemaManifestSha256:schemaSha,sourceSha:target.sourceSha
   });
   await exit;
+  const sequenceCapture=capture?(await capture.result):null;
   if(fs.existsSync(sealedFile)||fs.existsSync(manifestFile))refuse('random archive name collision');
   // Link is EXCLUSIVE (unlike rename's overwrite behavior); same private
   // directory/filesystem ensures immutable authenticated archive bytes.
@@ -108,7 +124,7 @@ async function backup({source,recipientPublicPem,outputDirectory,env=process.env
   }finally{fs.closeSync(fd);}
   const encryptedFd=fs.openSync(sealedFile,'r');
   try{fs.fsyncSync(encryptedFd);}finally{fs.closeSync(encryptedFd);}
-  return {manifest,manifestFile,sealedFile};
+  return {manifest,manifestFile,sealedFile,sequenceCapture};
  }catch(e){
   try{child.kill('SIGTERM');}catch{}
   try{fs.unlinkSync(partial);}catch{}
@@ -142,6 +158,7 @@ if(require.main===module){
  run(process.argv.slice(2)).then(({manifest})=>{
   process.stdout.write(JSON.stringify({format:manifest.format,backupId:manifest.backupId,
    ciphertextBytes:manifest.ciphertextBytes,ciphertextSha256:manifest.ciphertextSha256,
+   sequenceCapture,
    realSourceDump:manifest.backupRunClass==='REAL_DIRECT_PG16_DUMP',
    independentRestoreVerified:false,g15Accepted:false})+'\n');
  },e=>{process.stderr.write(e.message&&e.message.startsWith('P15_')?e.message:

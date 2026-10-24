@@ -105,7 +105,9 @@ P15_SEQUENCE_IDENTITIES=$("$NODE" -e '
  const d=JSON.parse(process.argv[1]);if(d.current.token?.covered===true)
    process.stdout.write(JSON.stringify(d.current.token.sequences));
 ' "$DECISION") || die 'sequence inspection input invalid'
-export P15_SEQUENCE_IDENTITIES
+# An unavailable probe (or an ineligible token) requests NO capture: the full
+# backup still runs and the watermark records no baseline for that cycle.
+[[ -n $P15_SEQUENCE_IDENTITIES ]] && export P15_SEQUENCE_IDENTITIES || unset P15_SEQUENCE_IDENTITIES
 summary=$("$NODE" "$LIB/scripts/v5/p15/backup-cli.js" \
   --source "$STATE/prod-source.json" \
   --recipient "$STATE/recovery-public.pem" \

@@ -219,6 +219,67 @@ test('PF2 unavailable IndexedDB or corrupt legacy data refuses a new create', as
  assert.equal(f.requests.length, 0);
 });
 
+test('PF24-R1 a proven non-created checkout retires and the next click starts a fresh purchase', async () => {
+ const f = await fixture();
+ let disposition = 'ambiguous';
+ const attempts = [];
+ const failingRequest = async (url, body, key) => { attempts.push(key); throw Error('DODO_CONFIG'); };
+ const scopedReader = extra => f.fresh({read:async url => {
+  const reply = await f.options.read(url);
+  return url.includes('/disposition') ? {...reply, disposition} : reply;
+ }, ...extra});
+ // A terminal provider rejection with no checkout is retained as ambiguous by
+ // default: the server may have created something the reply did not carry.
+ const stranded = scopedReader({request:failingRequest});
+ await assert.rejects(stranded.start(choice), /DODO_CONFIG/);
+ const strandedKey = attempts[0];
+ // Retry BEFORE the disposition confirms non-creation reuses the same key.
+ const retried = scopedReader({request:failingRequest});
+ await assert.rejects(retried.start(choice), /DODO_CONFIG/);
+ assert.deepEqual(attempts, [strandedKey, strandedKey], 'the stranded key is still the operation');
+ // Once the actor-bound disposition proves non-creation, the identity retires.
+ disposition = 'not_created';
+ const recovered = await scopedReader({}).recover();
+ assert.equal(recovered[0].outcome, 'not-created');
+ // The NEXT explicit purchase is a new operation, not a replay of the poison.
+ const fresh = await f.fresh({}).start(choice);
+ assert.equal(fresh.outcome, 'opening');
+ assert.notEqual(fresh.record.key, strandedKey);
+});
+
+test('PF24-R2 interleaved different-scope writes keep every live checkout identity', async () => {
+ const f = await fixture(), gate = deferred();
+ const first = f.fresh({request:async (...args) => { await gate.promise; return f.options.request(...args); }});
+ const slow = first.start(choice);
+ // A second tab buys a different product while the first create is in flight.
+ const other = await f.fresh().start({...choice, productId:'crowns_525'});
+ gate.resolve({checkoutId:'late', productId:choice.productId, checkoutUrl:'https://checkout.example/late'});
+ const resumed = await slow;
+ const pending = await f.fresh().pending();
+ assert.deepEqual(pending.map(r => r.productId).sort(), ['crowns_100', 'crowns_525'],
+  'the late reply must not erase the other scope and vice versa');
+ assert.equal(pending.find(r => r.productId === 'crowns_100').key, resumed.record.key);
+ assert.equal(pending.find(r => r.productId === 'crowns_525').key, other.record.key);
+});
+
+test('PF24-R2 a retired attempt cannot overwrite a newer intentional purchase', async () => {
+ const f = await fixture();
+ let disposition = 'not_created';
+ const staleReader = f.fresh({read:async url => {
+  const reply = await f.options.read(url);
+  return url.includes('/disposition') ? {...reply, disposition} : reply;
+ }});
+ const client = f.fresh({});
+ await client.start(choice);
+ // A stale tab (old generation) reconciles and retires the visible record while
+ // a newer tab has just replaced it with a different key on the same scope.
+ const newer = await f.fresh().start(choice);
+ await staleReader.recover();
+ const pending = await f.fresh().pending();
+ assert.equal(pending.length, 1);
+ assert.equal(pending[0].key, newer.record.key, 'compare-and-set keeps the newer operation');
+});
+
 test('PF2 duplicate in-flight attempts report REQUEST_PENDING and preserve the original operation', async () => {
  const f = await fixture(), gate = deferred();
  const client = f.fresh({request:async (...args) => { await gate.promise; return f.options.request(...args); }});

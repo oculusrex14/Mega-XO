@@ -73,7 +73,7 @@ async function backup({source,recipientPublicPem,outputDirectory,env=process.env
 // closed, so the stored watermark can never claim a sequence value the archive
 // does not restore. Without identities requested, no capture runs.
  let capture=null,dumpSource=child.stdout;
- if(env.P15_SEQUENCE_IDENTITIES!==undefined) {
+ if(env.P15_SEQUENCE_IDENTITIES) {
   let expected;
   try{expected=JSON.parse(env.P15_SEQUENCE_IDENTITIES);}catch{refuse('P15_SEQUENCE_IDENTITIES_INVALID');}
   capture=startCapture({command:process.env.V5_PG_RESTORE_BIN||'pg_restore',env:pgEnv,expectedSequences:expected});
@@ -155,7 +155,7 @@ async function run(argv,env=process.env){
   outputDirectory:argv[5],env});
 }
 if(require.main===module){
- run(process.argv.slice(2)).then(({manifest})=>{
+ run(process.argv.slice(2)).then(({manifest,sequenceCapture})=>{
   process.stdout.write(JSON.stringify({format:manifest.format,backupId:manifest.backupId,
    ciphertextBytes:manifest.ciphertextBytes,ciphertextSha256:manifest.ciphertextSha256,
    sequenceCapture,

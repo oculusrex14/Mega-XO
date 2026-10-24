@@ -264,20 +264,22 @@ test('PF24-R2 interleaved different-scope writes keep every live checkout identi
 
 test('PF24-R2 a retired attempt cannot overwrite a newer intentional purchase', async () => {
  const f = await fixture();
- let disposition = 'not_created';
- const staleReader = f.fresh({read:async url => {
-  const reply = await f.options.read(url);
-  return url.includes('/disposition') ? {...reply, disposition} : reply;
- }});
- const client = f.fresh({});
- await client.start(choice);
- // A stale tab (old generation) reconciles and retires the visible record while
- // a newer tab has just replaced it with a different key on the same scope.
- const newer = await f.fresh().start(choice);
- await staleReader.recover();
+ const store = f.store();
+ const record = key => ({actorId:'synthetic-a', provider:'dodo', productId:'crowns_100',
+  currency:'usd', key, checkoutId:'', checkoutUrl:null});
+ await store.claim(record('K1'));
+ const resumed = await store.claim(record('K2'));
+ assert.equal(resumed.created, false, 'an existing attempt is resumed, not replaced');
+ assert.equal(resumed.record.key, 'K1');
+ // A NEW intentional purchase after the old one ended replaces the identity.
+ await store.retire(record('K1'));
+ await store.claim(record('K2'));
+ // A stale tab still holding K1 can neither overwrite nor retire K2.
+ await assert.rejects(store.put(record('K1')), /CHECKOUT_RECOVERY_CONFLICT/);
+ assert.equal(await store.retire(record('K1')), false, 'a stale retire is a no-op');
  const pending = await f.fresh().pending();
  assert.equal(pending.length, 1);
- assert.equal(pending[0].key, newer.record.key, 'compare-and-set keeps the newer operation');
+ assert.equal(pending[0].key, 'K2', 'compare-and-set keeps the newer operation');
 });
 
 test('PF2 duplicate in-flight attempts report REQUEST_PENDING and preserve the original operation', async () => {

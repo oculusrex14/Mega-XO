@@ -85,3 +85,35 @@ test('an identity mismatch with the archive fails the backup closed',async t=>{
   assert.deepEqual(fs.readdirSync(dir),[],'no archive or manifest survives an identity mismatch');
  }finally{await admin.end();}
 });
+
+test('the executable CLI reports the capture summary and skips it without identities',async t=>{
+ if(!await lab.boot(t))return;
+ assert.ok(clientBin,'PostgreSQL 16 client tools required');
+ const database=await lab.createDatabase('p15_source_3');
+ const admin=new Client({connectionString:lab.dbUrl(database)});
+ await admin.connect();
+ try{
+  const dir=fs.mkdtempSync(path.join(os.tmpdir(),'v6-cli-'));
+  t.after(()=>fs.rmSync(dir,{force:true,recursive:true}));
+  const target=path.join(dir,'target.json');
+  fs.writeFileSync(target,JSON.stringify(disposableTarget(lab.dbUrl(database),database)));
+  const baseEnv={...process.env,V5_P15_DISPOSABLE:'1',V5_PG_DISPOSABLE:'1',P15_SOURCE_SHA:SHA};
+  const argv=['scripts/v5/p15/backup-cli.js','--source',target,'--recipient',path.join(dir,'pub.pem'),
+   '--out',dir,'--confirm-owned-backup'];
+  fs.writeFileSync(path.join(dir,'pub.pem'),pub);
+  // Probe unavailable: NO identities requested -> a full backup with no capture.
+  const plain=JSON.parse(require('node:child_process').execFileSync(process.execPath,argv,
+   {cwd:path.join(__dirname,'..'),env:{...baseEnv},encoding:'utf8',timeout:120000}));
+  assert.equal(plain.realSourceDump,true);
+  assert.equal(plain.sequenceCapture,null);
+  assert.ok(fs.existsSync(path.join(dir,plain.backupId+'.mxb')));
+  // With a covered token the same subprocess emits the archived identities.
+  const token=(await admin.query('SELECT ops.backup_change_probe(false) AS t')).rows[0].t;
+  const withCapture=JSON.parse(require('node:child_process').execFileSync(process.execPath,argv,
+   {cwd:path.join(__dirname,'..'),env:{...baseEnv,P15_SEQUENCE_IDENTITIES:JSON.stringify(token.sequences)},
+    encoding:'utf8',timeout:120000}));
+  assert.equal(withCapture.realSourceDump,true);
+  assert.ok(Array.isArray(withCapture.sequenceCapture.sequences)&&withCapture.sequenceCapture.sequences.length>=3);
+  assert.equal(withCapture.sequenceCapture.hasLargeObjects,false);
+ }finally{await admin.end();}
+});

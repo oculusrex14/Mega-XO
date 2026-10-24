@@ -34,6 +34,16 @@ for f in "${FILES[@]}"; do
     echo "INSTALL_REFUSED: missing, unexpected or symlinked $f" >&2; exit 64;
   }
 done
+# The P15 CLI that v5-pg-backup.sh invokes lives in $LIB, not $BIN; a stale lib
+# silently degrades every cycle to a full dump (token:null baseline), so keep it
+# in lockstep with the staged source.
+LIB="$ROOT/lib/scripts/v5/p15"
+LIB_FILES=(backup-cli.js sequence-capture.js)
+for f in "${LIB_FILES[@]}"; do
+  [[ -f "$ROOT/src-final/scripts/v5/p15/$f" ]] || {
+    echo "INSTALL_REFUSED: missing P15 library source $f" >&2; exit 64;
+  }
+done
 for f in pgpass neon-ca.pem pg-image-ref prod-source.json; do
   [[ -f "$STATE/$f" && ! -L "$STATE/$f" && $(stat -c '%a' "$STATE/$f") == 600 ]] || {
     echo "INSTALL_REFUSED: unsafe or missing protected $f" >&2; exit 64;
@@ -118,6 +128,7 @@ for f in "${FILES[@]}"; do
 done
 mutation_started=1
 for f in "${FILES[@]}"; do install -m 0755 "$STAGE/$f" "$BIN/$f"; done
+for f in "${LIB_FILES[@]}"; do install -m 0755 "$ROOT/src-final/scripts/v5/p15/$f" "$LIB/$f"; done
 mutation_started=0
 echo "INSTALL_OK: five host-managed files installed; rollback=$ROLLBACK"
 echo 'One-shot backup and freshness units use the new files on their next scheduled invocation.'

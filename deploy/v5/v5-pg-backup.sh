@@ -75,28 +75,26 @@ export P15_PGSSLROOTCERT=$STATE/neon-ca.pem
  # are exported (readTarget/assertTarget refuse a production backup source
  # without them) and after PATH carries the docker wrapper, so the probe uses the
  # exact same pinned image and protected inputs as the dump itself.
- # A full dump every cycle streams the whole database from Neon even when not a
- # single row changed. The WAL LSN is server-side durable state that advances for
- # EVERY writer commit, and the recorded value is taken BEFORE a dump starts, so
- # any later commit forces the next cycle to dump: a skip only ever happens when
- # nothing at all changed. Losing the state file fails open to a full dump.
- CURRENT_LSN=$("$NODE" "$BIN/v5-change-check.js" --print-lsn \
-   --source "$STATE/prod-source.json") || die 'change-check LSN probe failed'
- "$NODE" "$BIN/v5-change-check.js" --source "$STATE/prod-source.json" || status=$?
+ # One pre-dump probe/decision: a second query must never shift the watermark.
+ # The clock is database-local and transactional; cluster/control WAL is diagnostic.
+ # Missing coverage/watermark forces a dump. The unchanged proof is bound to the
+ # exact verified archive and source target, and only advances AFTER upload/readback.
+ status=0
+ DECISION=$("$NODE" "$BIN/v5-change-check.js" --source "$STATE/prod-source.json" "$@") || status=$?
+ [[ $status -eq 0 || $status -eq 42 ]] || die 'change check failed closed'
+ printf '%s\n' "$DECISION"
  if [[ ${status:-0} -eq 42 ]]; then
-   # Sol P1 #5: the marker binds the verified-unchanged proof to the newest LOCAL archive
-   # identity. v5-freshness.js refuses a marker whose backupId is not the newest R2 manifest,
-   # whose lsn != previous, or whose checkedAt falls outside the RPO - a stale, moved or
-   # mismatched recovery point can never be vouched for by a newer probe.
    NEWEST_MANIFEST=$(find "$ARCHIVES" -maxdepth 1 -type f -name 'v5-p15-*.manifest.json' -printf '%T@ %p\n' | sort -rn | cut -d' ' -f2- | head -1)
    [[ -n $NEWEST_MANIFEST ]] || die 'skip refused: no local manifest to bind the marker to'
    MARKER_BACKUP_ID=$(basename "$NEWEST_MANIFEST" .manifest.json)
    "$NODE" -e '
-    const fs=require("node:fs"),p=process.argv[1],id=process.argv[2],lsn=process.argv[3];
-    const marker=JSON.stringify({checkedAt:new Date().toISOString(),backupId:id,lsn,previous:lsn})+"\n";
-    const tmp=p+".tmp";fs.writeFileSync(tmp,marker,{mode:0o600});fs.renameSync(tmp,p);
-   ' "$STATE/backup-unchanged.json" "$MARKER_BACKUP_ID" "$CURRENT_LSN" || die 'marker write failed'
-   log "backup skipped: no change since $STATE/last-backup-lsn (marker bound to $MARKER_BACKUP_ID)"
+    const fs=require("node:fs"),p=process.argv[1],id=process.argv[2],d=JSON.parse(process.argv[3]);
+    if(d.changed!==false||d.previous.backupId!==id)process.exit(2);
+    const marker={format:"mega-v5-backup-unchanged/v2",checkedAt:new Date().toISOString(),
+      backupId:id,target:d.target,token:d.current.token,previous:d.previous.token};
+    const tmp=p+".tmp";fs.writeFileSync(tmp,JSON.stringify(marker)+"\n",{mode:0o600});fs.renameSync(tmp,p);
+   ' "$STATE/backup-unchanged.json" "$MARKER_BACKUP_ID" "$DECISION" || die 'marker write failed'
+   log "backup skipped: no database-local change (marker bound to $MARKER_BACKUP_ID)"
    exit 0
  fi
  [[ ${status:-0} -eq 0 ]] || die 'change check failed closed'
@@ -132,9 +130,15 @@ before=$(date +%s%N)
   --source-sha "$SOURCE_SHA" || die 'R2 upload/independent readback failed (no object rollback attempted)'
 transferred=$(( ($(date +%s%N) - before) / 1000000 ))
 log "r2 upload+readback verified receipt=$ARCHIVES/$backup_id.r2-receipt.json ms=$transferred"
-# The pre-dump LSN is now the durable watermark: any commit after it (during or
-# after this dump) makes the next comparison unequal and forces a fresh dump.
-umask 077; printf '%s\n' "$CURRENT_LSN" > "$STATE/last-backup-lsn"; rm -f "$STATE/backup-unchanged.json"
+# Never record a post-dump token: a writer committing during/after the dump must
+# advance beyond this PRE-dump watermark and force the next backup.
+"$NODE" -e '
+ const fs=require("node:fs"),p=process.argv[1],id=process.argv[2],d=JSON.parse(process.argv[3]);
+ const state={format:"mega-v5-backup-watermark/v2",backupId:id,target:d.target,
+   token:d.current.token,lsn:d.current.lsn};
+ const tmp=p+".tmp";fs.writeFileSync(tmp,JSON.stringify(state)+"\n",{mode:0o600});fs.renameSync(tmp,p);
+' "$STATE/last-backup-state.json" "$backup_id" "$DECISION" || die 'watermark write failed'
+rm -f "$STATE/backup-unchanged.json"
 
 # ---- bounded local retention (never touches the remote bucket) ------------
 mapfile -t local_manifests < <(find "$ARCHIVES" -maxdepth 1 -type f -name 'v5-p15-*.manifest.json' -printf '%T@ %p\n' | sort -rn | cut -d' ' -f2-)

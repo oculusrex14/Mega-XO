@@ -14,6 +14,12 @@ const IDLE = path.join(ROOT, 'deploy/v5/v5-idle-probe.js');
 const INSTALL = path.join(ROOT, 'deploy/v5/install-change-aware.sh');
 
 function changeCheck(argv, recorded = '0/A1', current = '0/A1') {
+  const token = {format:'mega-v5-db-change/v1',database:'test_db',epoch:'a'.repeat(32),
+    covered:true,revisions:Array(64).fill('0'),sequences:[]};
+  const target = require('node:crypto').createHash('sha256').update(JSON.stringify([
+    undefined,undefined,undefined,undefined,'test_db'
+  ])).digest('hex');
+  const watermark = {format:'mega-v5-backup-watermark/v2',backupId:'v5-p15-fixture',target,token};
   const source = fs.readFileSync(CHANGE, 'utf8');
   const output = [], requests = [];
   const fakeProcess = {
@@ -25,44 +31,48 @@ function changeCheck(argv, recorded = '0/A1', current = '0/A1') {
   };
   const fsMock = {
     readFileSync: (filename) => {
-      if (String(filename).endsWith('last-backup-lsn')) {
+      if (String(filename).endsWith('last-backup-state.json')) {
         if (recorded === null) throw Error('ENOENT');
-        return recorded;
+        return JSON.stringify(watermark);
       }
       throw Error('UNEXPECTED_FILE_READ');
     }
   };
   const mocks = {
-    'node:fs': fsMock, 'node:path': path,
+    'node:fs': fsMock, 'node:path': path, 'node:crypto': require('node:crypto'),
     'node:child_process': {
       spawnSync: (bin, args, options) => {
         requests.push({ bin, args, options });
-        return { status: 0, stdout: current + '\n' };
+        return { status: 0, stdout: args.includes('SELECT pg_current_wal_lsn()::text')
+          ? current + '\n' : JSON.stringify({lsn:current,token}) };
       }
     }
   };
+  const mockModule = {exports:{}};
+  const req = name => {
+    if (Object.hasOwn(mocks,name)) return mocks[name];
+    if (String(name).endsWith('direct-target.js')) return {
+      readTarget:()=>({kind:'nonserving-production-source',database:'test_db'}),
+      buildPgEnv:()=>({PGHOST:'test-host.invalid',PATH:'/usr/bin:/bin'})
+    };
+    throw Error('UNEXPECTED_REQUIRE:'+name);
+  };
+  req.main=mockModule;
   const context = {
+    module: mockModule,
     process: fakeProcess,
-    require: name => {
-      if (Object.hasOwn(mocks, name)) return mocks[name];
-      if (String(name).endsWith('direct-target.js')) {
-        return {
-          readTarget: () => ({ kind: 'nonserving-production-source' }),
-          buildPgEnv: () => ({ PGHOST: 'test-host.invalid', PATH: '/usr/bin:/bin' })
-        };
-      }
-      throw Error('UNEXPECTED_REQUIRE:' + name);
-    }
+    require: req
   };
   let exit;
   try { vm.runInNewContext(source, context, { filename: CHANGE, timeout: 1000 }); }
   catch (e) { if (e.exitCode === undefined) throw e; exit = e.exitCode; }
+  exit ??= fakeProcess.exitCode;
   assert.notEqual(exit, undefined, 'the CLI must terminate with a documented status');
   return { exit, output: output.join(''), requests };
 }
 
-test('an unchanged LSN returns skip=42 without force', () => {
-  const r = changeCheck(['--source', '/isolated/backup-target.json']);
+test('an unchanged protected database token returns skip=42 even when cluster WAL advances', () => {
+  const r = changeCheck(['--source', '/isolated/backup-target.json'],'0/A1','0/B2');
   assert.equal(r.exit, 42);
   assert.equal(r.requests.length, 1);
 });

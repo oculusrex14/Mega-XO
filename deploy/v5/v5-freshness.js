@@ -26,6 +26,7 @@ const r2 = require('./v5-lib.js');
 const { assertTarget } = r2.contract();
 const { readManifest } = r2.manifest();
 const client = require('./v5-r2-client.js');
+const { proofValid, tokenText, validToken } = require('./v5-change-check.js');
 
 const ROOT = process.env.V5_ROOT || '/opt/mega-xo-v5-production';
 const STATE = path.join(ROOT, 'state');
@@ -186,7 +187,7 @@ function main(argv) {
   if (newest && newest.ageSeconds > opts.rpoEffective) {
    /* Change-aware honesty (brief part G): an archive older than the RPO is NOT a violation if
     * the host has a verified-unchanged marker written AFTER that archive by the backup unit -
-    * the marker proves a change check ran recently and the WAL LSN is unchanged, so every
+    * the marker proves a change check ran recently and the database clock is unchanged, so every
     * committed row is inside that archive. A missing, stale or unparsable marker fails closed
     * exactly as before. */
    const markerFile = path.join(STATE, 'backup-unchanged.json');
@@ -194,18 +195,19 @@ function main(argv) {
    try {
      marker = JSON.parse(fs.readFileSync(markerFile, 'utf8'));
    } catch {}
-   /* Sol P1 #5: the marker must name EXACTLY the recovery point under evaluation and be an
-    * internally-consistent no-change proof (lsn === previous), recent within the same RPO, and
+   /* The marker must name EXACTLY the recovery point under evaluation and be an
+    * internally-consistent no-change proof, recent within the same RPO, and
     * not from the future. Any mismatch - including an archive that changed since the marker was
     * written - fails closed to the ordinary RPO violation. */
-   const markerValid = marker && typeof marker.checkedAt === 'string' && /^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(\.\d{3})?Z$/.test(marker.checkedAt)
-     && typeof marker.lsn === 'string' && /^[0-9A-F]+\/[0-9A-F]+$/.test(marker.lsn)
-     && marker.lsn === marker.previous
-     && typeof marker.backupId === 'string' && marker.backupId === newest.backupId
-     && Date.parse(marker.checkedAt) > now - opts.rpoEffective * 1000 && Date.parse(marker.checkedAt) <= now;
+   let watermark = null;
+   try { watermark = JSON.parse(fs.readFileSync(path.join(STATE,'last-backup-state.json'),'utf8')); } catch {}
+   const markerValid = proofValid(marker,newest.backupId,now,opts.rpoEffective) &&
+     watermark?.format === 'mega-v5-backup-watermark/v2' && watermark.backupId === newest.backupId &&
+     watermark.target === marker.target && validToken(watermark.token) &&
+     tokenText(watermark.token) === tokenText(marker.previous);
    if (markerValid) {
      newest.verifiedUnchangedUtc = utc(marker.checkedAt);
-     newest.verifiedUnchangedLsn = String(marker.lsn);
+     newest.verifiedUnchangedProof = 'database-local-clock-and-sequences/v1';
    } else {
      problems.push('newest uploaded backup is ' + newest.ageSeconds + ' s old, beyond the ' +
       opts.rpoEffective + ' s RPO (limit source: ' + (opts.rpo !== null ? '--rpo-seconds' : rpoSource) + ')');

@@ -34,7 +34,7 @@ test('the watermark carries archive-restored sequence values through a setval AB
  await admin.connect();
  try{
   await admin.query('CREATE SCHEMA pgx');
-  await admin.query('CREATE SEQUENCE pgx.\\"Weird Name\\"');
+  await admin.query('CREATE SEQUENCE pgx."Weird Name"');
   await admin.query('SELECT setval(\'pgx."Weird Name"\',40,true)');
   const probe=async()=> (await admin.query('SELECT ops.backup_change_probe(false) AS token')).rows[0].token;
   const preDump=await probe();
@@ -50,8 +50,8 @@ test('the watermark carries archive-restored sequence values through a setval AB
    command:clientBin.dump,versionCheck:()=>16});
   const result=await run(preDump.sequences);
   const captured=Object.fromEntries(result.sequenceCapture.sequences.map(row=>[row[0]+'.'+row[1],[row[2],row[3]]]));
-  assert.deepEqual(captured['monetization.reward_events_event_id_seq'],['20','true'],'the dump recorded 20, not the stale pre-probe 9');
-  assert.deepEqual(captured['pgx."Weird Name"'],['40','true'],'quoted cross-schema identities survive');
+  assert.deepEqual(captured['monetization.reward_events_event_id_seq'],['20',true],'the dump recorded 20, not the stale pre-probe 9');
+  assert.deepEqual(captured['pgx.Weird Name'],['40',true],'quoted cross-schema identities survive');
   assert.equal(result.sequenceCapture.hasLargeObjects,false);
   const watermark={format:'mega-v5-backup-watermark/v2',target:'fixture',backupId:'v5-p15-fixture',
    token:{...preDump,sequences:result.sequenceCapture.sequences},
@@ -65,7 +65,7 @@ test('the watermark carries archive-restored sequence values through a setval AB
   await admin.query('SELECT lo_create(42)');
   const withLob=await run(preDump.sequences);
   assert.equal(withLob.sequenceCapture.hasLargeObjects,true);
-  assert.equal(withLob.sequenceCapture.sequences,result.sequenceCapture.sequences);
+  assert.deepEqual(withLob.sequenceCapture.sequences,result.sequenceCapture.sequences);
  }finally{await admin.end();}
 });
 test('an identity mismatch with the archive fails the backup closed',async t=>{

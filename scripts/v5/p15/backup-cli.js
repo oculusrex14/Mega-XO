@@ -47,7 +47,7 @@ async function backup({source,recipientPublicPem,outputDirectory,env=process.env
  const target=requireSource(source,env);
  privateDirectory(outputDirectory);
  if(typeof recipientPublicPem!=='string'||recipientPublicPem.length>12000)refuse('valid public recovery recipient required');
- if(command!=='pg_dump')refuse('only pg_dump binary may produce the sealed archive');
+ if(path.basename(String(command))!=='pg_dump')refuse('only pg_dump binary may produce the sealed archive');
  const observed=versionCheck(command,env);
  if(observed!==16)refuse('source pg_dump must be compatible PostgreSQL16');
  const schemaBytes=fs.readFileSync(SCHEMA_FILE);
@@ -73,9 +73,9 @@ async function backup({source,recipientPublicPem,outputDirectory,env=process.env
 // closed, so the stored watermark can never claim a sequence value the archive
 // does not restore. Without identities requested, no capture runs.
  let capture=null,dumpSource=child.stdout;
- if(process.env.P15_SEQUENCE_IDENTITIES!==undefined) {
+ if(env.P15_SEQUENCE_IDENTITIES!==undefined) {
   let expected;
-  try{expected=JSON.parse(process.env.P15_SEQUENCE_IDENTITIES);}catch{refuse('P15_SEQUENCE_IDENTITIES_INVALID');}
+  try{expected=JSON.parse(env.P15_SEQUENCE_IDENTITIES);}catch{refuse('P15_SEQUENCE_IDENTITIES_INVALID');}
   capture=startCapture({command:process.env.V5_PG_RESTORE_BIN||'pg_restore',env:pgEnv,expectedSequences:expected});
   dumpSource=new PassThrough();
   child.stdout.pipe(dumpSource);

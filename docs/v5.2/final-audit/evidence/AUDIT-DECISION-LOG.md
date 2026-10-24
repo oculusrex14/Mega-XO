@@ -249,29 +249,5 @@ Format: date time IST — decision — rationale — evidence
   invalid); worker/matcher/timer SQL parking remains the open A4-compute item
   (Halley plan); native billing stays unmounted.
 
-- 21:55 IST 2026-10-24 - A4 ROOT CAUSE CORRECTED + PERMANENT FIX DEPLOYED. The Oct-20 root
-  cause (presence) was INCOMPLETE: the durable presence rows are frozen (575) but dumps still
-  fired every 5-min cycle. Measured WAL advanced ~500B/min with ALL source-table counters
-  static; the writer is Neon's CONTROL database in the same cluster (postgres tup_updated
-  +1 while game tables static) - cluster WAL can never prove game-data idleness.
-  PAYMENT (owner-reported popup-then-dead Buy Now): deployed hotfix 8e26ec6 had PF1/PF2
-  open (Sol NO-GO); permanent fix: actor-bound disposition endpoint (provenNonCreation
-  conservative), IndexedDB atomic claim/put/retire with CAS, legacy import, visible store
-  errors/busy. A4 FIX: migration 0070 ops.backup_change_clock (64 transactional lanes,
-  ALWAYS row+truncate triggers on every permanent table incl partitions, DDL event triggers
-  auto-enroll, literal pg_ prefix), archive-bound sequence identities (pg_restore data-only
-  readers over the SAME dump bytes; setval ABA counterexample test), proofs bound to
-  manifest+archive hashes and the live prod-source target; unavailable probe => full dump,
-  no baseline. AUDIT UNITS CORRECTED: old snapshots stored CU-seconds (compute_time_seconds)
-  under activeTimeSeconds - v2 schema separates project.active_time_seconds (wall clock)
-  from consumption.compute_time_seconds; old verdicts INVALID as awake measurement.
-  CANDIDATE 5a524dc: Sol GO (REVIEW-5A524DC), exact CI 40126289457 all five jobs (73/32/13).
-  DEPLOYED 01:15-01:55 IST: writers fenced 19:42Z, checkpoint v5-p15-...-75c5663f8f72c76c,
-  source 5a524dc + bundle bedc18a1... (172 files) via deploy-production.cjs; the new server
-  refuses schema-69 (SCHEMA_INCOMPATIBLE, fail-closed as designed) so 0070 applied from the
-  new tree (SCRAM-SHA-256-PLUS), then change-aware scripts installed (preflight OK,
-  rollback install-rollback-20261024T194922Z). VERIFIED: readyz ready:true db verified,
-  12/12 routes 200, served APK 20d7efb3 EXACT pin, security.txt+llms 200, store renders
-  data-checkout-status. NEXT: new 48h soak with the v2 corrected collector (old baseline
-  invalid); worker/matcher/timer SQL parking remains the open A4-compute item
-  (Halley plan); native billing stays unmounted.
+
+- 18:15 IST — STORE PAYMENT HOTFIX DEPLOYED + VERIFIED: 8e26ec6 live (DEPLOY_VERIFIED, readyz healthy, rollback archive 2026-10-21T04-42-23-855Z-84528-8e26ec6d29ec; CI 39545349790 all five jobs green). FULL DIAGNOSIS: the server side was CLEAN (checkout cks_0NqCBbYA5i9 created, reservation READY) - three stacked client defects: the gateway opened in a blockable _blank tab instead of redirecting; dodoPending was never cleared or aged (every later Buy Now threw REQUEST_PENDING); and that error had no human copy and rendered nowhere on the store page. FIXED: same-tab redirect, 120s pending staleness on both dodo and polar lanes, plain-language error copy, and DODO_SUCCESS_URL corrected to the store page host-side (was the bare root - paid sessions returned to the landing page). The owner should hard-refresh the store and retry; the abandoned checkout cks_0NqCBbYA5i9 expires harmlessly on Dodo's side. — store-hotfix

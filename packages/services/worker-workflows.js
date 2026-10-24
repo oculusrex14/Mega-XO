@@ -652,6 +652,17 @@ function createWorkerApp(options = {}) {
 
   get started() { return timer !== null; },
 
+  /* A4 idle budget: the earliest durable deadline across every lane. ALL worker queues
+   * live in ops.outbox (mail, deletion, jobs) with next_at/lease_until, so one query
+   * covers them; retention/rate-bucket purges are housekeeping and ride the pulse.
+   * Null/unknown means "no schedulable deadline" - the caller parks to its pulse. */
+  async nextWakeAt() {
+   const r = await pool.query("SELECT min(due) AS due FROM (SELECT min(next_at) AS due FROM ops.outbox WHERE state='queued' UNION ALL SELECT min(lease_until) AS due FROM ops.outbox WHERE state='sending') t");
+   const raw = r.rows[0] && r.rows[0].due;
+   const at = raw ? new Date(raw).getTime() : NaN;
+   return Number.isFinite(at) ? at : null;
+  },
+
   /* Arm the periodic maintenance tick. The FIRST tick happens on the interval, never inside `start()`:
   * a caller that wants an immediate pass awaits `tick()`, and a test that arms then stops the app
   * observes the timer appear and disappear without a delivery in between. `intervalMs: 0` arms nothing

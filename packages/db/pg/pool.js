@@ -271,6 +271,7 @@ function sanitizeStatements(resolved) {
 
 function createPgPool(input = {}) {
  const resolved = normalizeConfig(input);
+ const onWrite = typeof resolved.onWrite === 'function' ? resolved.onWrite : null;
  const { Pool } = driver();
  // Mode boundary decided by the verified host normalization, not by guesswork:
  // a Neon '-pooler' endpoint is transaction pooling; everything else is a
@@ -415,6 +416,16 @@ function createPgPool(input = {}) {
   // The private acquire is shared by both modes; POOLED defers ONLY
   // search_path (re-established and fully verified inside BEGIN).
   const { client, release } = await acquire({ checkSearchPath: !pooled, sanitize: !pooled });
+  if (onWrite && !client.__mxWriteSniff) {
+   client.__mxWriteSniff = true;
+   const guarded = client.query.bind(client);
+   client.query = (text, params) => {
+    if (isWriteSql(typeof text === 'string' ? text : text && text.text)) {
+     try { onWrite(typeof text === 'string' ? text : text.text); } catch { /* the hook must never break a query */ }
+    }
+    return guarded(text, params);
+   };
+  }
   try {
    return await withIdempotentTransaction(client, fn, { ...options, connected: true, expectSession: expectations });
   } finally {
@@ -542,6 +553,14 @@ function fromEnvironment(env = process.env, overrides = {}) {
  *    result (single-flight), mirroring how command outcomes replay.
  */
 const SCOPES = new WeakMap();
+
+/* A4 idle-budget hook: a write-class statement is reported to config.onWrite BEFORE it is
+ * sent (a rolled-back write still counts - fail-safe direction). Never throws into the query
+ * path, and each pooled client is wrapped at most once. Read-only statements never fire. */
+const WRITE_SQL_RE = /^(insert|update|delete|truncate|merge|create|alter|drop|grant|revoke|comment|do|call|copy|refresh|reindex|lock)\b/i;
+function isWriteSql(text) {
+ return typeof text === 'string' && (WRITE_SQL_RE.test(text) || /^with\b/i.test(text));
+}
 
 class PgTransactionScope {
  constructor(client, clock) {

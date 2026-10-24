@@ -638,6 +638,17 @@ async function main() {
       }
       emit(flags, { tool: 'v5-migrate', mode: 'execute', ok: true, code: 'OK', database: cfg.database, target: target.kind, channelBinding, plan: results, appliedCount: applied.length },
         applied.length ? applied.map((n) => `applied ${n}`) : ['no pending migrations (idempotent no-op)']);
+      /* A4 write journal: migrations are non-pool writers, so the backup fast
+       * path must learn about them. Best-effort and host-local only; a failure
+       * here leaves the journal dirty-side unknown, and the backup unit's 12h
+       * forced probe covers the 0070 transactional clock for ANY writer. */
+      if (applied.length && process.env.V5_ROOT && process.env.V5_TARGET === 'production') {
+        try {
+          const journalPath = path.join(process.env.V5_ROOT, 'state', 'db-write-journal');
+          const now = new Date();
+          try { fs.utimesSync(journalPath, now, now); } catch { fs.closeSync(fs.openSync(journalPath, 'a', 0o600)); fs.utimesSync(journalPath, now, now); }
+        } catch { /* the 12h forced probe is the backstop */ }
+      }
       return EXIT.OK;
     } finally {
       try { await client.query('SELECT pg_advisory_unlock($1)', [String(ADVISORY_LOCK_KEY)]); } catch { /* dropped */ }

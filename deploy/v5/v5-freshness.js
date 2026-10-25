@@ -97,7 +97,23 @@ function policy() {
     if (Number.isSafeInteger(doc.rpoSeconds) && doc.rpoSeconds > 0) { rpo = doc.rpoSeconds; source = file; }
   } catch {}
   if (process.env.V5_RPO_SECONDS) { rpo = Number(process.env.V5_RPO_SECONDS); source = 'V5_RPO_SECONDS'; }
-  return { rpo, source };
+  /* A4 idle policy (owner-approved 2026-10-25, Option B): with backups driven by the
+   * commit-bound lane plus a 2h idle pulse, a verified unchanged proof may be up to
+   * idleProofWindowSeconds old (default 2.5h = pulse cadence + slop) while the newest
+   * archive is older than the RPO. Every POOL write is still backed up within ~5 minutes
+   * by the commit-bound lane; non-pool writers are bounded by this window and the
+   * documented migration-checkpoint runbook rule. */
+  let idleProof = 9000, idleSource = 'default';
+  try {
+    const doc = JSON.parse(fs.readFileSync(file, 'utf8'));
+    if (Number.isSafeInteger(doc.idleProofWindowSeconds) && doc.idleProofWindowSeconds >= rpo) {
+      idleProof = doc.idleProofWindowSeconds; idleSource = file;
+    }
+  } catch {}
+  if (process.env.V5_IDLE_PROOF_WINDOW_SECONDS) {
+    idleProof = Number(process.env.V5_IDLE_PROOF_WINDOW_SECONDS); idleSource = 'V5_IDLE_PROOF_WINDOW_SECONDS';
+  }
+  return { rpo, source, idleProof, idleSource };
 }
 
 function stateRead() {
@@ -111,13 +127,15 @@ function stateWrite(doc) {
 
 function main(argv) {
   const opts = parseArgs(argv);
-  const { rpo, source: rpoSource } = policy();
+  const { rpo, source: rpoSource, idleProof, idleSource } = policy();
   if (opts.rpo !== null) {
     if (!Number.isSafeInteger(opts.rpo) || opts.rpo <= 0) fail('--rpo-seconds must be a positive integer');
     opts.rpoEffective = opts.rpo;
   } else {
     opts.rpoEffective = rpo;
   }
+  opts.idleProofEffective = idleProof;
+  opts.idleProofSource = idleSource;
   let now = Date.now();
   if (opts.at) {
     if (!/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(\.\d{3})?Z$/.test(opts.at) || !Number.isFinite(Date.parse(opts.at))) {
@@ -212,12 +230,31 @@ function main(argv) {
      watermark.ciphertextSha256===marker.ciphertextSha256 && watermark.manifestSha256===marker.manifestSha256 &&
      !fs.existsSync(path.join(STATE,'backup-skip-disabled')) && validToken(watermark.token) &&
      tokenText(watermark.token) === tokenText(marker.previous);
+   /* The idle-policy proof window: the same internally-consistent proof is accepted up to
+    * idleProofWindowSeconds old (owner-approved 2026-10-25, Option B — the commit-bound
+    * backup lane covers pool writes within ~5 minutes and the 2h idle pulse renews the
+    * proof; a probe at T proves the clock was unchanged until T, and later pool writes
+    * are captured by their own lane while non-pool writers are bounded by this window). */
+   const idleMarkerValid = proofValid(marker,newest.backupId,now,opts.idleProofEffective) &&
+     watermark?.format === 'mega-v5-backup-watermark/v2' && watermark.backupId === newest.backupId &&
+     watermark.target === marker.target && marker.target===expectedTarget &&
+     marker.ciphertextSha256===integrity?.ciphertextSha256 &&
+     marker.manifestSha256===integrity?.manifestSha256 &&
+     watermark.ciphertextSha256===marker.ciphertextSha256 && watermark.manifestSha256===marker.manifestSha256 &&
+     !fs.existsSync(path.join(STATE,'backup-skip-disabled')) && validToken(watermark.token) &&
+     tokenText(watermark.token) === tokenText(marker.previous);
    if (markerValid) {
      newest.verifiedUnchangedUtc = utc(marker.checkedAt);
      newest.verifiedUnchangedProof = 'database-local-clock-and-sequences/v1';
+   } else if (idleMarkerValid) {
+    newest.verifiedUnchangedUtc = utc(marker.checkedAt);
+    newest.verifiedUnchangedProof = 'database-local-clock-and-sequences/v1 (idle policy window)';
    } else {
-     problems.push('newest uploaded backup is ' + newest.ageSeconds + ' s old, beyond the ' +
-      opts.rpoEffective + ' s RPO (limit source: ' + (opts.rpo !== null ? '--rpo-seconds' : rpoSource) + ')');
+    problems.push('newest uploaded backup is ' + newest.ageSeconds + ' s old, beyond the ' +
+     opts.rpoEffective + ' s RPO, and no verified unchanged proof exists within the ' +
+     opts.idleProofEffective + ' s idle window (limit sources: ' +
+     (opts.rpo !== null ? '--rpo-seconds' : rpoSource) + ' / ' +
+     (opts.idleProofSource || 'default') + ')');
    }
   }
 
@@ -230,6 +267,8 @@ function main(argv) {
     evaluatedAtUtc: nowIso,
     rpoSeconds: opts.rpoEffective,
     rpoSource: opts.rpo !== null ? '--rpo-seconds' : rpoSource,
+    idleProofWindowSeconds: opts.idleProofEffective,
+    idleProofSource: opts.idleProofSource,
     manifestObjectsUnderPrefix: manifestCount,
     newestManifestKey: newest ? newest.key : null,
     newestManifestLastModifiedUtc: newest ? utc(newest.lastModified) : null,

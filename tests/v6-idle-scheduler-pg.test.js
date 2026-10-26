@@ -60,8 +60,11 @@ test('a producer held open past the former debounce is delivered by its post-com
   const worker = {
     start: () => app.start(),
     async tick(options) {
-      passes++;
       const result = await app.tick(options);
+      // Count COMPLETED passes: an invocation (e.g. armed by an unrelated read lease's
+      // advisory wake) can be in flight across the producer commit, so an invocation
+      // counter would credit the delivery to a pass captured before beforeCommit.
+      passes++;
       if (result.mail.sent === 1) settled.resolve();
       return result;
     },

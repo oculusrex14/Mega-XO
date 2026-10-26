@@ -1,8 +1,9 @@
 'use strict';
-/* Real PostgreSQL regressions for the A4 idle-compute work (Sol C3 post-commit visibility and
- * Sol R5-3 deadline scoping). Only an owned v5-pg-lab database is used. The worker, guarded
- * pool, transaction boundary and outbox are real; external mail delivery is a recording
- * callback. Run in the promotion-postgres CI job. */
+/* Real PostgreSQL regressions for the A4 idle-compute work (Sol C3 post-commit visibility,
+ * Sol R5-3 deadline scoping, Sol R6-2 claim-budget mirroring and Sol R6-3 budget resets).
+ * Only an owned v5-pg-lab database is used. The worker, guarded pool, transaction boundary
+ * and outbox are real; external mail delivery is a recording callback. Run in the
+ * promotion-postgres CI job. */
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
@@ -231,4 +232,94 @@ test('deadlines come only from claimable kinds: strangers never poll, owned work
   const deferredTick = await budgetApp.tick({ includeSlow: false });
   assert.equal(deferredTick.mail.sent, 0);
   assert.equal(deferredTick.mail.deferred, true);
+});
+
+test('a last-attempt lease abandoned mid-send never polls; the configured budget governs', { timeout: 240000 }, async (t) => {
+  if (!(await lab.boot(t))) return;
+  const database = await lab.createDatabase('idle_r62');
+  const backend = await lab.ensureBackend();
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'v6-idle-r62-'));
+  const makePool = (role) => createPgPool({
+    host: backend.host, port: backend.port, database, user: role, role, label: 'test',
+    service: 'v6-idle-r62', revision: 'r62', allowLocalNoTls: true, budget: lab.BUDGET,
+    pool: { max: 2, idleTimeoutMillis: 5000, connectionTimeoutMillis: 5000, queueLimit: 16 },
+    statementTimeoutMs: 30000, lockTimeoutMs: 20000, idleInTransactionTimeoutMs: 30000,
+  });
+  const producer = makePool('api_runtime');
+  const pool = makePool('worker_runtime');
+  const admin = await lab.adminClient(database);
+  t.after(() => admin.end());
+  const deliveries = [], strictDeliveries = [];
+  const appDefault = createWorkerApp({
+    pool, redis: null, secret: 'synthetic-a4-r62-mail-secret', intervalMs: 0, slowIntervalMs: DEFAULT_IDLE_PULSE_MS,
+    transport: { async sendOtp(message) { deliveries.push(message); }, async sendPasswordChanged() {}, async sendSecurityNotice() {} },
+    log: () => {},
+  });
+  t.after(async () => { try { await appDefault.stop(); } finally { await Promise.allSettled([producer.end(), pool.end()]); fs.rmSync(dir, { recursive: true, force: true }); } });
+  /* The default factory budget, visible through the deadline path - never hardcoded. */
+  assert.equal(appDefault.jobService.attemptBudget, 3);
+
+  /* A crash mid-LAST-attempt: state=sending, attempts=3 (= budget), lapsed lease, unexpired.
+   * No claim can ever take this row again; its stale lease_until must not create a deadline. */
+  await admin.query("INSERT INTO ops.outbox (outbox_id, payload, kind, state, created_at, expires_at, next_at, lease_until, lease_owner, lease_token, attempts) VALUES"
+    + " ('r6_dead_default', '{}', 'otp', 'sending', now() - interval '10 minutes', now() + interval '1 day', now() - interval '10 minutes', now() - interval '2 minutes', 'ghost', 7, 3)");
+  const mailFutureAt = Date.now() + 3600000;
+  await appDefault.jobService.enqueueJob({ id: 'r6_future_mail', kind: 'otp', payload: appDefault.mailWorker.seal({ marker: 'r6-future' }), nextAt: mailFutureAt }, producer);
+
+  const parked = await appDefault.nextWakeAt();
+  assert.ok(parked !== null && parked > Date.now() && Math.abs(parked - mailFutureAt) < 60000,
+    'the deadline is the future claimable row, not the abandoned last-attempt lease');
+  assert.equal(await observePasses(appDefault, 2600), 0, 'an abandoned last-attempt lease must not produce a one-second loop');
+  assert.equal(await outboxState(pool, 'r6_dead_default'), 'sending', 'the orphaned row is left for bounded housekeeping, never deleted');
+
+  // A recoverable lapsed lease (attempts 2 < 3) still reclaims and delivers in exactly one pass.
+  const recoveredMessage = { marker: 'r6-recovered' };
+  await appDefault.jobService.enqueueJob({ id: 'r6_recoverable', kind: 'otp', payload: appDefault.mailWorker.seal(recoveredMessage) }, producer);
+  await admin.query("UPDATE ops.outbox SET state='sending', attempts=2, lease_until=now() - interval '1 minute', lease_owner='ghost', lease_token=COALESCE(lease_token,0)+1 WHERE outbox_id='r6_recoverable'");
+  assert.equal(await observePasses(appDefault, 6000), 1);
+  assert.deepEqual(deliveries, [recoveredMessage]);
+  assert.equal(await outboxState(pool, 'r6_recoverable'), 'sent');
+  assert.equal(await observePasses(appDefault, 2600), 0, 'after settlement only the dead row and the future deadline remain');
+
+  // The deadline path must see a CONFIGURED non-default budget: attempts=2 is the last attempt here.
+  const appStrict = createWorkerApp({
+    pool, redis: null, secret: 'synthetic-a4-r62-strict-secret', intervalMs: 0, slowIntervalMs: DEFAULT_IDLE_PULSE_MS, maxAttempts: 2,
+    transport: { async sendOtp(message) { strictDeliveries.push(message); }, async sendPasswordChanged() {}, async sendSecurityNotice() {} },
+    log: () => {},
+  });
+  t.after(() => appStrict.stop());
+  assert.equal(appStrict.jobService.attemptBudget, 2);
+  await admin.query("INSERT INTO ops.outbox (outbox_id, payload, kind, state, created_at, expires_at, next_at, lease_until, lease_owner, lease_token, attempts) VALUES"
+    + " ('r6_strict_dead', '{}', 'otp', 'sending', now() - interval '40 minutes', now() + interval '1 day', now() - interval '40 minutes', now() - interval '30 minutes', 'ghost', 9, 2)");
+  const strictMessage = { marker: 'r6-strict-recovered' };
+  await appStrict.jobService.enqueueJob({ id: 'r6_strict_recover', kind: 'otp', payload: appStrict.mailWorker.seal(strictMessage) }, producer);
+  await admin.query("UPDATE ops.outbox SET state='sending', attempts=1, lease_until=now() - interval '1 minute', lease_owner='ghost', lease_token=COALESCE(lease_token,0)+1 WHERE outbox_id='r6_strict_recover'");
+  const strictWake = await appStrict.nextWakeAt();
+  assert.ok(strictWake !== null && strictWake <= Date.now() && strictWake > Date.now() - 5 * 60000,
+    'the attempts=1 lease is due, and the attempts=2 lease is excluded by the configured budget of two');
+  assert.equal(await observePasses(appStrict, 6000), 1);
+  assert.deepEqual(strictDeliveries, [strictMessage]);
+  assert.equal(await outboxState(pool, 'r6_strict_dead'), 'sending');
+  assert.equal(await observePasses(appStrict, 2600), 0, 'the strict abandoned last attempt never polls');
+
+  // R6-3: with day AND month both exhausted the useful wake is the MONTH rollover, not midnight.
+  const exhaustBoth = async (fixedAt, secret) => {
+    const seen = [];
+    const fixedApp = createWorkerApp({
+      pool, redis: null, secret, intervalMs: 0, slowIntervalMs: DEFAULT_IDLE_PULSE_MS,
+      dailyLimit: 1, monthlyLimit: 1, now: () => fixedAt,
+      transport: { async sendOtp(message) { seen.push(message); }, async sendPasswordChanged() {}, async sendSecurityNotice() {} },
+      log: () => {},
+    });
+    t.after(() => fixedApp.stop());
+    await fixedApp.jobService.enqueueJob({ id: `r6_both_${fixedAt}`, kind: 'otp', payload: fixedApp.mailWorker.seal({ marker: `r6-both-${fixedAt}` }) }, producer);
+    await fixedApp.tick({ includeSlow: false });
+    assert.equal(await fixedApp.mailWorker.deferment(), 'budget');
+    return fixedApp.mailWorker.budgetResetAt();
+  };
+  const midMonthReset = await exhaustBoth(Date.parse('2026-11-15T12:00:00.000Z'), 'synthetic-a4-r62-both-secret');
+  assert.equal(midMonthReset, Date.parse('2026-12-01T00:00:00.000Z'), 'both exhausted: the reset is the month start, not midnight');
+  assert.ok(midMonthReset > Date.parse('2026-11-16T00:00:00.000Z'), 'midnight frees only the daily allowance and stays useless');
+  const yearEndReset = await exhaustBoth(Date.parse('2026-12-15T12:00:00.000Z'), 'synthetic-a4-r62-year-secret');
+  assert.equal(yearEndReset, Date.parse('2027-01-01T00:00:00.000Z'), 'the month rollover crosses the year boundary');
 });

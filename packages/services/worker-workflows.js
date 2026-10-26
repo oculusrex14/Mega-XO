@@ -53,7 +53,7 @@
  */
 'use strict';
 const crypto = require('node:crypto');
-const { createJobService } = require('./jobs.js');
+const { createJobService, DEFAULT_MAX_ATTEMPTS } = require('./jobs.js');
 const { verifyRuntimeSchema } = require('../db/pg/readiness.js');
 const { lockTransactionIdentity } = require('../db/pg/locks.js');
 
@@ -340,7 +340,8 @@ function createMailWorker(options = {}) {
   },
 
   /* For a 'budget' deferral: the UTC ms when THIS process's allowance next frees a claim - the
-   * binding day or month rollover. Null when allowance remains (not deferring on budget). */
+   * LATEST applicable rollover (Sol R6-3): with day AND month both exhausted, midnight frees
+   * only the daily counter, so the wake must wait for the month start, December's included. */
   budgetResetAt() {
    const day = new Date(requireClock(now)).toISOString().slice(0, 10);
    const resets = [];
@@ -348,7 +349,7 @@ function createMailWorker(options = {}) {
    /* The slice is the 1-based month; handed to Date.UTC as its 0-based index + 1 this yields the
     * NEXT month's first day, rollover years included. */
    if (monthlyLimit - budget.monthCount < 1) resets.push(Date.UTC(Number(day.slice(0, 4)), Number(day.slice(5, 7)), 1));
-   return resets.length ? Math.min(...resets) : null;
+   return resets.length ? Math.max(...resets) : null;
   },
 
   /* One bounded tick: claim the mail kinds this worker services, open each sealed body, dispatch it and
@@ -602,7 +603,7 @@ function createWorkerApp(options = {}) {
  /* The job service is created from the worker pool unless the caller shares one (the same service can
   * drive every worker workflow). `createJobService` verifies the pool's role and the live chain. */
  const jobService = options.jobService === undefined
-  ? createJobService({ pool, now })
+  ? createJobService({ pool, now, maxAttempts: options.maxAttempts })
   : requireJobService(options.jobService);
  /* The rate-bucket sweep needs a connection whose role holds the DELETE (the API's). It is OPTIONAL:
   * without it the sweep is skipped and reported as null, never attempted on the worker's connection. */
@@ -684,16 +685,25 @@ function createWorkerApp(options = {}) {
    * rate-buckets) rides the slow sweep and never creates a deadline. Null means "nothing
    * schedulable" - the caller parks to its pulse. */
   async nextWakeAt() {
+   /* Sol R6-2: mirror the claim's FULL eligibility. The attempt budget is the job service's
+    * ACTUAL configured value, never a hardcoded default; a custom service that does not expose
+    * one falls back to the documented factory default. `expires_at > next_at` / `> lease_until`
+    * are the claim's own `expires_at > now` bound expressed as exact column comparisons, so a
+    * row that can never satisfy the claim cannot create a deadline at all. The deletion arms
+    * stay unfiltered: the deletion claim has no attempts or expiry predicate. */
+   const attemptBudget = typeof jobService.attemptBudget === 'number'
+    && Number.isSafeInteger(jobService.attemptBudget) && jobService.attemptBudget >= 1
+    ? jobService.attemptBudget : DEFAULT_MAX_ATTEMPTS;
    const r = await pool.query(
     'SELECT (SELECT min(due) FROM (SELECT min(next_at) AS due FROM ops.outbox'
-    + " WHERE state = 'queued' AND kind = ANY($1::text[])"
+    + " WHERE state = 'queued' AND kind = ANY($1::text[]) AND attempts < $2 AND expires_at > next_at"
     + ' UNION ALL SELECT min(lease_until) AS due FROM ops.outbox'
-    + " WHERE state = 'sending' AND kind = ANY($1::text[])) mail) AS mail_due,"
+    + " WHERE state = 'sending' AND kind = ANY($1::text[]) AND attempts < $2 AND expires_at > lease_until) mail) AS mail_due,"
     + ' (SELECT min(due) FROM (SELECT min(next_at) AS due FROM ops.outbox'
     + " WHERE state = 'queued' AND kind = 'account.deletion'"
     + ' UNION ALL SELECT min(lease_until) AS due FROM ops.outbox'
     + " WHERE state = 'sending' AND kind = 'account.deletion') deletion) AS deletion_due",
-    [MAIL_KINDS]);
+    [MAIL_KINDS, attemptBudget]);
    const row = r.rows[0] || {};
    const toMs = (raw) => { const at = raw ? new Date(raw).getTime() : NaN; return Number.isFinite(at) ? at : null; };
    let due = null;

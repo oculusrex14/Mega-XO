@@ -366,7 +366,13 @@ function createJobService(options = {}) {
   return clientOrTx.query(text, params);
  };
 
- return Object.freeze({
+  return Object.freeze({
+  /* The attempt budget the due-scan statements enforce (`attempts < attemptBudget`). Deadline
+   * derivation MUST read this actual configured value - never a hardcoded default - so an
+   * abandoned last-attempt lease cannot park a scheduler on a row no claim can ever take
+   * (Sol R6-2). Read-only; raising it is a deliberate operator option, never an internal act. */
+  attemptBudget: maxAttempts,
+
   /* A typed, versioned job in an explicit transaction (or on the service pool when none is given). */
   async enqueueJob(job = {}, clientOrTx = null) {
    requireOpen();

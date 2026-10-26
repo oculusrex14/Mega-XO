@@ -328,6 +328,29 @@ function createMailWorker(options = {}) {
   seal(value) { return sealWithKey(key, value); },
   open(text) { return openWithKey(key, text); },
 
+  /* Why the NEXT tick would defer without claiming: null means a claim would proceed. The
+   * in-process burst guard is this process's own allowance, and a disabled transport can never
+   * claim. Exposed so a scheduler can park instead of polling an unserviceable deadline every
+   * second (Sol R5-3); the durable spend records stay the producer's. */
+  deferment() {
+   if (closed) return 'stopped';
+   if (!transportEnabled()) return 'transport_disabled';
+   if (budgetRemaining(budget, requireClock(now), dailyLimit, monthlyLimit) < 1) return 'budget';
+   return null;
+  },
+
+  /* For a 'budget' deferral: the UTC ms when THIS process's allowance next frees a claim - the
+   * binding day or month rollover. Null when allowance remains (not deferring on budget). */
+  budgetResetAt() {
+   const day = new Date(requireClock(now)).toISOString().slice(0, 10);
+   const resets = [];
+   if (dailyLimit - budget.dayCount < 1) resets.push(Date.parse(`${day}T00:00:00.000Z`) + DAY_MS);
+   /* The slice is the 1-based month; handed to Date.UTC as its 0-based index + 1 this yields the
+    * NEXT month's first day, rollover years included. */
+   if (monthlyLimit - budget.monthCount < 1) resets.push(Date.UTC(Number(day.slice(0, 4)), Number(day.slice(5, 7)), 1));
+   return resets.length ? Math.min(...resets) : null;
+  },
+
   /* One bounded tick: claim the mail kinds this worker services, open each sealed body, dispatch it and
   * settle the row. A job whose body cannot be opened is FAILED (and eventually dead-lettered) rather
   * than redelivered forever - an unreadable row is a producer fault, and the durable `failed` state is
@@ -652,15 +675,40 @@ function createWorkerApp(options = {}) {
 
   get started() { return timer !== null; },
 
-  /* A4 idle budget: the earliest durable deadline across every lane. ALL worker queues
-   * live in ops.outbox (mail, deletion, jobs) with next_at/lease_until, so one query
-   * covers them; retention/rate-bucket purges are housekeeping and ride the pulse.
-   * Null/unknown means "no schedulable deadline" - the caller parks to its pulse. */
+  /* A4 idle budget (Sol R5-3): the earliest deadline across ONLY the work this app's claim
+   * paths can service - the mail kinds under this process's own deferment gates (transport,
+   * budget) and the durable account.deletion claim, each across queued.next_at and lapsed
+   * sending.lease_until exactly as the claim statements read them. commerce.command,
+   * tournament.settle and every other kind belong to other workers: a past-due row of those
+   * kinds must never produce a one-second re-arm loop here. Housekeeping (expiry, retention,
+   * rate-buckets) rides the slow sweep and never creates a deadline. Null means "nothing
+   * schedulable" - the caller parks to its pulse. */
   async nextWakeAt() {
-   const r = await pool.query("SELECT min(due) AS due FROM (SELECT min(next_at) AS due FROM ops.outbox WHERE state='queued' UNION ALL SELECT min(lease_until) AS due FROM ops.outbox WHERE state='sending') t");
-   const raw = r.rows[0] && r.rows[0].due;
-   const at = raw ? new Date(raw).getTime() : NaN;
-   return Number.isFinite(at) ? at : null;
+   const r = await pool.query(
+    'SELECT (SELECT min(due) FROM (SELECT min(next_at) AS due FROM ops.outbox'
+    + " WHERE state = 'queued' AND kind = ANY($1::text[])"
+    + ' UNION ALL SELECT min(lease_until) AS due FROM ops.outbox'
+    + " WHERE state = 'sending' AND kind = ANY($1::text[])) mail) AS mail_due,"
+    + ' (SELECT min(due) FROM (SELECT min(next_at) AS due FROM ops.outbox'
+    + " WHERE state = 'queued' AND kind = 'account.deletion'"
+    + ' UNION ALL SELECT min(lease_until) AS due FROM ops.outbox'
+    + " WHERE state = 'sending' AND kind = 'account.deletion') deletion) AS deletion_due",
+    [MAIL_KINDS]);
+   const row = r.rows[0] || {};
+   const toMs = (raw) => { const at = raw ? new Date(raw).getTime() : NaN; return Number.isFinite(at) ? at : null; };
+   let due = null;
+   const consider = (at) => { if (at !== null && (due === null || at < due)) due = at; };
+   const deferment = typeof mailWorker.deferment === 'function' ? mailWorker.deferment() : null;
+   if (deferment !== 'stopped' && deferment !== 'transport_disabled') {
+    let mailDue = toMs(row.mail_due);
+    if (mailDue !== null && deferment === 'budget' && typeof mailWorker.budgetResetAt === 'function') {
+     const resetAt = mailWorker.budgetResetAt();
+     if (resetAt !== null) mailDue = Math.max(mailDue, resetAt);
+    }
+    consider(mailDue);
+   }
+   consider(toMs(row.deletion_due));
+   return due;
   },
 
   /* Arm the periodic maintenance tick. The FIRST tick happens on the interval, never inside `start()`:

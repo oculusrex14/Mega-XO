@@ -232,7 +232,10 @@ function probeDbHealth(context) {
   try { if (typeof context.dbProbeGate === 'function') context.dbProbeGate(); } catch {}
   healthProbe.inFlight = Promise.resolve().then(async () => {
     try {
-      await pool.query('SELECT 1');
+      // Sol R5-1: the probe's own lease must not count as fresh application activity (or wake
+      // maintenance), else every monitor poll re-dirties the gate it just consumed.
+      const observe = typeof context.runObservation === 'function' ? context.runObservation : (fn) => fn();
+      await observe(() => pool.query('SELECT 1'));
       healthProbe.lastOk = true;
     } catch {
       healthProbe.lastOk = false;

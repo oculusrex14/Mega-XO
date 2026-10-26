@@ -226,7 +226,11 @@ const safeError = (err) => (err && err.message) ? String(err.message).slice(0, 1
 
 /* One shared idle wake, with independent single-flight lanes. A wake arriving during a pass is
  * latched until it finishes; a deadline re-arm can never overwrite an earlier commit wake. */
-function createIdlePulseScheduler({ intervalMs = DEFAULT_IDLE_PULSE_MS, now = Date.now, timers = globalThis, onError = () => {} } = {}) {
+/* Sol R5-2: the lane exemption must belong to the PULSE pass that the backup lane's
+ * waitFor barrier covers - never to deadline-, wake- or latched-follow-up passes, whose
+ * writes would otherwise wait up to a full pulse for a backup. The composition supplies
+ * wrap=hooks.runInLane; only pulse-triggered runs are wrapped. */
+function createIdlePulseScheduler({ intervalMs = DEFAULT_IDLE_PULSE_MS, now = Date.now, timers = globalThis, onError = () => {}, wrap = null } = {}) {
   if (!Number.isSafeInteger(intervalMs) || intervalMs < 1 || intervalMs > 0x7fffffff) throw REFUSE('INVALID_IDLE_PULSE');
   const lanes = new Map();
   let interval = null, stopped = false, pulseCount = 0, nextPulseAt = now() + intervalMs;
@@ -244,13 +248,14 @@ function createIdlePulseScheduler({ intervalMs = DEFAULT_IDLE_PULSE_MS, now = Da
     }, Math.max(0, at - now()));
     lane.timer.unref?.();
   }
-  function run(name) {
+  function run(name, opts = {}) {
     const lane = lanes.get(name);
     if (stopped || !lane) return Promise.resolve();
     if (lane.pending) return lane.pending;
     if (lane.timer !== null) { timers.clearTimeout(lane.timer); lane.timer = null; }
     if (lane.wakeAt !== null && lane.wakeAt <= now()) lane.wakeAt = null;
-    lane.pending = Promise.resolve().then(lane.callback).catch((error) => report(name, error)).finally(() => {
+    const body = wrap ? () => wrap(lane.callback, opts.pulse === true) : lane.callback;
+    lane.pending = Promise.resolve().then(body).catch((error) => report(name, error)).finally(() => {
       lane.pending = null;
       if (lane.pulseLatched || lane.wakeLatched) {
         lane.pulseLatched = false; lane.wakeLatched = false; armAt(name, now());
@@ -292,7 +297,7 @@ function createIdlePulseScheduler({ intervalMs = DEFAULT_IDLE_PULSE_MS, now = Da
         for (const [name, lane] of lanes) {
           // A pass that began before the pulse may have skipped a now-due slow sweep.
           if (lane.pending) lane.pulseLatched = true;
-          run(name);
+          run(name, { pulse: true });
         }
       }, intervalMs);
       interval.unref?.();
@@ -313,14 +318,32 @@ function createIdlePulseScheduler({ intervalMs = DEFAULT_IDLE_PULSE_MS, now = Da
  * self-wake their own lane (Sol R3-4). The pulse's backup lane runs LAST and covers all
  * lane-owned commits; HTTP-context leases keep waking worker/commerce and arming the backup. */
 const IDLE_LANE_CONTEXT = new AsyncLocalStorage();
+/* Sol R5-1: readiness observations run inside this context; their own lease must not
+ * count as application activity (or wake maintenance), or a monitor polling /readyz
+ * keeps the gate - and the database - permanently dirty. Concurrent REAL commits stay
+ * outside it and keep counting. */
+const OBSERVATION_CONTEXT = new AsyncLocalStorage();
 function createWriteWakeHooks({ wakeWorker = () => {}, wakeCommerce = () => {}, armBackup = () => {} } = {}) {
   let commitCount = 0;
   return {
     get commitCount() { return commitCount; },
-    runInLane(fn) { return IDLE_LANE_CONTEXT.run(true, fn); },
+    /* Every maintenance pass runs in the lane context so its own observation/expiry leases can
+     * never self-wake the lane. The covered flag marks PULSE passes: the backup lane's waitFor
+     * barrier runs last over everything they commit, so they arm nothing (Sol R3-4). Bare passes
+     * (deadline, wake, latched follow-up) are NOT covered - their observed commits arm the
+     * backup themselves (Sol R5-2). */
+    runInLane(fn, covered = true) { return IDLE_LANE_CONTEXT.run({ covered }, fn); },
+    runObservation(fn) { return OBSERVATION_CONTEXT.run(true, fn); },
     onCommit() {
+      const lane = IDLE_LANE_CONTEXT.getStore();
+      if (lane) {
+        // Maintenance-owned lease: never self-wake the lane. A bare pass's writes are only
+        // covered by its own arm; a covered pulse pass is handled by the backup barrier.
+        if (!lane.covered) { commitCount++; try { armBackup(); } catch {} }
+        return;
+      }
+      if (OBSERVATION_CONTEXT.getStore() === true) return;
       commitCount++;
-      if (IDLE_LANE_CONTEXT.getStore() === true) return;
       try { wakeWorker(); } catch {}
       try { wakeCommerce(); } catch {}
       try { armBackup(); } catch {}
@@ -358,24 +381,25 @@ function startBackupService({ spawnProcess = spawn, log = () => {} } = {}) {
 function createIdleMaintenance({ worker, pool, commerceTasks = {}, tournamentTick = async () => {}, probeDb = async () => {},
   backup = startBackupService, hooks = createWriteWakeHooks(), observationFile = WORKER_OBSERVATION_FILE,
   intervalMs = DEFAULT_IDLE_PULSE_MS, now = Date.now, timers = globalThis, onError = () => {} } = {}) {
-  const scheduler = createIdlePulseScheduler({ intervalMs, now, timers, onError });
+  const scheduler = createIdlePulseScheduler({ intervalMs, now, timers, onError, wrap: hooks.runInLane });
   let lastSlowAt = null;
   /* Pulse order: commerce first so its inserted mail is claimed by the worker lane in the SAME
-   * wake, and the backup unit runs LAST over everything the pulse just committed. Every lane is
-   * wrapped in the hook's lane context, so lane-owned leases arm nothing. */
-  scheduler.add('commerce', () => hooks.runInLane(async () => {
+   * wake, and the backup unit runs LAST over everything the pulse just committed. Only
+   * PULSE-triggered runs are wrapped in the lane context (Sol R5-2): deadline-, wake- and
+   * latched-follow-up passes run bare, so their observed commits keep arming the backup. */
+  scheduler.add('commerce', async () => {
     await Promise.all(Object.entries(commerceTasks).map(async ([name, task]) => {
       try { await task(); } catch (error) { onError(name, error); }
     }));
-  }));
+  });
   // The timer still owns active deadlines/wake(), but an idle sweep is realigned to this pulse
   // after activity, rather than keeping a second two-hour cadence at a different wall-clock phase.
-  scheduler.add('tournaments', () => hooks.runInLane(tournamentTick));
-  scheduler.add('db_health', () => hooks.runInLane(async () => {
+  scheduler.add('tournaments', tournamentTick);
+  scheduler.add('db_health', async () => {
     await scheduler.waitFor(['commerce', 'worker', 'tournaments']);
     await probeDb();
-  }));
-  scheduler.add('worker', () => hooks.runInLane(async () => {
+  });
+  scheduler.add('worker', async () => {
     const startedAt = now();
     const includeSlow = lastSlowAt === null || startedAt - lastSlowAt >= DEFAULT_IDLE_PULSE_MS;
     try {
@@ -395,14 +419,14 @@ function createIdleMaintenance({ worker, pool, commerceTasks = {}, tournamentTic
         ? (nextAt <= now() ? now() + 1000 : nextAt) : Infinity;
       scheduler.armAt('worker', Math.min(deadlineFailed ? now() + WORKER_DEADLINE_RETRY_MS : deadline, scheduler.nextPulseAt));
     }
-  }));
-  scheduler.add('backup', () => hooks.runInLane(async () => {
+  });
+  scheduler.add('backup', async () => {
     await scheduler.waitFor(['commerce', 'tournaments', 'db_health', 'worker']);
     // A commit during the attempt keeps its own <=300s wake; never certify it from the
     // subprocess result. A pulse that starts this lane early joins the already-running unit.
     try { await backup(); }
     catch (error) { scheduler.wake('backup', BACKUP_RETRY_MS); throw error; }
-  }));
+  });
   return {
     get pulseCount() { return scheduler.pulseCount; },
     wakeWorker() { scheduler.wake('worker', 0); },
@@ -411,7 +435,7 @@ function createIdleMaintenance({ worker, pool, commerceTasks = {}, tournamentTic
     async start() {
       worker.start(); // intervalMs: 0; only the composition arms worker deadlines.
       scheduler.start();
-      await Promise.all(['commerce', 'tournaments', 'db_health', 'worker', 'backup'].map((name) => scheduler.run(name)));
+      await Promise.all(['commerce', 'tournaments', 'db_health', 'worker', 'backup'].map((name) => scheduler.run(name, { pulse: true })));
     },
     stop() { return scheduler.stop(); },
   };
@@ -1476,6 +1500,7 @@ async function main() {
   const apiContext = {
     pool: apiPool, accounts, coreGateway, access, nativeAudiences: ['mega-ios', 'mega-android'],
     dbProbeGate: createDbProbeGate({ commitCount: () => writeHooks.commitCount, pulseCount: () => idleMaintenance?.pulseCount || 0 }),
+    runObservation: writeHooks.runObservation,
     queue: coreGateway, leaderboard: (query) => coreGateway.leaderboard(query),
     otpSecret, ticketIssuer, allowedOrigins,
     otpSink,

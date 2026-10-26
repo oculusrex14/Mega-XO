@@ -8,6 +8,7 @@ const { EventEmitter } = require('node:events');
 const ROOT = path.resolve(__dirname, '..');
 const mod = require(path.join(ROOT, 'scripts/v51/v5-production-server.cjs'));
 const healthPath = path.join(ROOT, 'apps/api/routes/well-known.js');
+const health = require(healthPath);
 const flush = async () => { for (let i = 0; i < 80; i++) await Promise.resolve(); };
 function fakeClock() {
   let at = 1000000, seq = 0, intervalCount = 0;
@@ -52,7 +53,8 @@ function fixture(t, extra = {}) {
     async tick(options) { calls.push(['worker', clock.now(), options.includeSlow]); if (tickHook) await tickHook(); },
     async nextWakeAt() { calls.push(['deadline', clock.now()]); return due; },
   };
-  const pool = { async query(sql) { assert.match(sql, /FROM ops\.outbox/); calls.push(['counts', clock.now()]); return { rows: [{ dlq: 0, backlog: 0 }] }; } };
+  let emitPoolCommits = false;
+  const pool = { async query(sql) { assert.match(sql, /FROM ops\.outbox/); calls.push(['counts', clock.now()]); if (emitPoolCommits) hooks.onCommit(); return { rows: [{ dlq: 0, backlog: 0 }] }; } };
   maintenance = mod.createIdleMaintenance({ worker, pool, hooks, now: clock.now, timers: clock.timers,
     observationFile: path.join(dir, 'worker.json'),
     commerceTasks: Object.fromEntries(['pass', 'finalization', 'intro'].map((name) => [name, async () => calls.push([name, clock.now()])])),
@@ -61,7 +63,8 @@ function fixture(t, extra = {}) {
     probeDb: async () => calls.push(['health', clock.now()]), onError: (lane, error) => errors.push([lane, error.message]), ...extra });
   t.after(() => maintenance.stop());
   return { dir, clock, calls, worker, pool, maintenance, hooks, errors,
-    setDue(value) { due = value; }, setTick(value) { tickHook = value; } };
+    setDue(value) { due = value; }, setTick(value) { tickHook = value; },
+    setPoolCommits(value) { emitPoolCommits = value; } };
 }
 test('one interval clusters all idle work; no SQL until the two-hour pulse', async (t) => {
   const f = fixture(t); await f.maintenance.start();
@@ -262,4 +265,47 @@ test('createApiHandler threads optional gate without editing its existing spread
   const handler = createApiHandler({ now: () => now, dbProbeGate: () => false, pool: { async query() { queries++; } }, queue: {}, leaderboard: async () => [] });
   const request = async () => { const res = { setHeader() {}, writeHead() {}, end() {} }; await handler({ url: '/readyz', method: 'GET', headers: {} }, res); };
   await request(); now += 3600000; await request(); assert.equal(queries, 1);
+});
+
+
+test('a bare deadline pass arms the backup its commits need; a covered pulse pass never does', async (t) => {
+  const f = fixture(t); f.setPoolCommits(true);
+  f.setDue(f.clock.now() + 45000);
+  await f.maintenance.start(); await f.clock.advance(0);
+  const boot = f.clock.now();
+  assert.equal(f.calls.filter(([name]) => name === 'backup').length, 1, 'the boot unit runs once, without an arming commit');
+  f.setDue(null); // the pass consumes the due work; the next deadline read parks to the pulse
+  await f.clock.advance(45000); await flush(); // the durable deadline fires a bare, timer-driven pass
+  assert.equal(f.calls.filter(([name]) => name === 'worker').length, 2, 'the deadline pass ran outside a pulse');
+  assert.equal(f.calls.filter(([name]) => name === 'backup').length, 1, 'arming is scheduled, not yet running');
+  const armedAt = f.clock.now() + mod.BACKUP_BATCH_MS;
+  await f.clock.advance(mod.BACKUP_BATCH_MS);
+  assert.deepEqual(f.calls.filter(([name]) => name === 'backup').map(([, at]) => at), [boot, armedAt],
+    'the bare pass armed a bounded backup for its own observed commits');
+  // The next pulse is covered: its own expiry/observation leases arm nothing beyond the backstop.
+  await f.clock.advance(mod.DEFAULT_IDLE_PULSE_MS - mod.BACKUP_BATCH_MS - 45000);
+  await f.clock.advance(1);
+  assert.equal(f.calls.filter(([name]) => name === 'backup').length, 3, 'the pulse backstop joins the unit');
+  await f.clock.advance(mod.BACKUP_BATCH_MS);
+  assert.equal(f.calls.filter(([name]) => name === 'backup').length, 3, 'covered pulse commits never arm a post-pulse probe');
+});
+
+test('a readiness probe observes without dirtying its own gate, waking lanes, or arming a backup', async (t) => {
+  const f = fixture(t); const hooks = hooksFor(f);
+  await f.maintenance.start(); await f.clock.advance(0);
+  const bootBackups = f.calls.filter(([name]) => name === 'backup').length;
+  const gate = mod.createDbProbeGate({ commitCount: () => hooks.commitCount, pulseCount: () => f.maintenance.pulseCount });
+  const context = {
+    pool: { query: async (sql) => { assert.match(sql, /SELECT 1/); hooks.onCommit(); } },
+    dbProbeGate: gate, runObservation: hooks.runObservation, now: f.clock.now,
+  };
+  assert.equal(gate(), true, 'the first gate read consumes the boot baseline');
+  await health.probeDbHealth(context);
+  assert.equal(hooks.commitCount, 0, 'the observation lease never counts as application activity');
+  assert.equal(gate(), false, 'the probe left its own gate clean');
+  await f.clock.advance(mod.BACKUP_BATCH_MS);
+  assert.equal(f.calls.filter(([name]) => name === 'backup').length, bootBackups, 'a probe never arms a delayed backup by itself');
+  hooks.onCommit(); // concurrent REAL activity, outside the observation context
+  assert.equal(hooks.commitCount, 1);
+  assert.equal(gate(), true, 'real commits still open the gate');
 });

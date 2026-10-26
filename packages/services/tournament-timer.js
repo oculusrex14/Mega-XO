@@ -15,11 +15,19 @@
  *  - duplicate execution stays fenced by the existing compare-and-set leases inside tickTimer;
  *    nothing here stretches a deadline or requires a player request to settle an overdue one.
  */
-function createTournamentTimer({ tournaments, owner, intervalMs = 1000, activeMaxMs = 15000, idleIntervalMs = 10 * 60 * 1000, onError = () => {} } = {}) {
+/* Sol R6-1: a pulse-invoked sweep runs inside the composition's covered lane context, but the
+ * timer's own setTimeout/wake callbacks would inherit that context and suppress backup arming
+ * for LATER autonomous sweeps. When supplied, wrapTick explicitly re-classifies every
+ * timer-originated execution at its boundary (the composition passes the bare-lane runner), so
+ * coverage follows the invocation path, not ALS inheritance. The timers object is injectable
+ * for deterministic tests. */
+function createTournamentTimer({ tournaments, owner, intervalMs = 1000, activeMaxMs = 15000, idleIntervalMs = 10 * 60 * 1000, onError = () => {}, wrapTick = null, timers = globalThis } = {}) {
  if (typeof tournaments?.sweepTimers !== 'function' || typeof owner !== 'string' || !owner ||
      !Number.isSafeInteger(intervalMs) || intervalMs < 250 || intervalMs > 60000 ||
      !Number.isSafeInteger(idleIntervalMs) || idleIntervalMs < 30000 ||
-     !Number.isSafeInteger(activeMaxMs) || activeMaxMs < intervalMs) throw Error('INVALID_TOURNAMENT_TIMER');
+     !Number.isSafeInteger(activeMaxMs) || activeMaxMs < intervalMs ||
+     (wrapTick !== null && typeof wrapTick !== 'function')) throw Error('INVALID_TOURNAMENT_TIMER');
+ const runTick = () => (wrapTick ? wrapTick(tick) : tick());
  let timer = null, pending = null, stopped = false, wakeScheduled = false;
  /* Sol P1 #6: a wake arriving DURING a sweep is latched, not discarded - the in-flight sweep
   * read its room/deadline snapshot before that mutation, so its computed delay is stale. The
@@ -29,7 +37,7 @@ function createTournamentTimer({ tournaments, owner, intervalMs = 1000, activeMa
  function schedule(delayMs) {
   if (stopped) return;
   if (timer) { clearTimeout(timer); timer = null; }
-  timer = setTimeout(tick, delayMs);
+  timer = timers.setTimeout(runTick, delayMs);
   timer.unref?.();
  }
  function tick() {
@@ -57,14 +65,14 @@ function createTournamentTimer({ tournaments, owner, intervalMs = 1000, activeMa
   if (pending) { wakeLatched = true; return; }
   if (wakeScheduled) return;
   wakeScheduled = true;
-  const t = setTimeout(() => { wakeScheduled = false; if (!stopped && !pending) tick(); }, 0);
+  const t = timers.setTimeout(() => { wakeScheduled = false; if (!stopped && !pending) runTick(); }, 0);
   t.unref?.();
  }
  return {
   tick,
   wake,
-  start() { if (timer || stopped) return; tick(); },
-  async stop() { stopped = true; if (timer) { clearTimeout(timer); timer = null; } await pending; },
+  start() { if (timer || stopped) return; runTick(); },
+  async stop() { stopped = true; if (timer) { timers.clearTimeout(timer); timer = null; } await pending; },
  };
 }
 

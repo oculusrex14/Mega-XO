@@ -9,6 +9,7 @@ const ROOT = path.resolve(__dirname, '..');
 const mod = require(path.join(ROOT, 'scripts/v51/v5-production-server.cjs'));
 const healthPath = path.join(ROOT, 'apps/api/routes/well-known.js');
 const health = require(healthPath);
+const { createTournamentTimer } = require(path.join(ROOT, 'packages/services/tournament-timer.js'));
 const flush = async () => { for (let i = 0; i < 80; i++) await Promise.resolve(); };
 function fakeClock() {
   let at = 1000000, seq = 0, intervalCount = 0;
@@ -43,11 +44,12 @@ function temp(t) {
 function fixture(t, extra = {}) {
   const dir = temp(t), clock = fakeClock(), calls = [], errors = [];
   let due = null, tickHook = null, maintenance = null;
-  const hooks = mod.createWriteWakeHooks({
+  const hooks = extra.hooks || mod.createWriteWakeHooks({
     wakeWorker: () => maintenance?.wakeWorker(),
     wakeCommerce: () => maintenance?.wakeCommerce(),
     armBackup: () => maintenance?.armBackup(),
   });
+  delete extra.hooks;
   const worker = {
     start() { calls.push(['start', clock.now()]); },
     async tick(options) { calls.push(['worker', clock.now(), options.includeSlow]); if (tickHook) await tickHook(); },
@@ -308,4 +310,82 @@ test('a readiness probe observes without dirtying its own gate, waking lanes, or
   hooks.onCommit(); // concurrent REAL activity, outside the observation context
   assert.equal(hooks.commitCount, 1);
   assert.equal(gate(), true, 'real commits still open the gate');
+});
+
+
+test('autonomous tournament sweeps run bare and arm their own backup; the pulse sweep stays covered', async (t) => {
+  let maintenanceRef = null;
+  const hooks = mod.createWriteWakeHooks({
+    wakeWorker: () => maintenanceRef?.wakeWorker(),
+    wakeCommerce: () => maintenanceRef?.wakeCommerce(),
+    armBackup: () => maintenanceRef?.armBackup(),
+  });
+  let activeRooms = true;
+  let sweeps = 0;
+  const tournaments = {
+    async sweepTimers(options) {
+      sweeps += 1;
+      if (activeRooms) hooks.onCommit(); // a real room-lease/payout write inside the sweep
+      return { scanned: activeRooms ? 1 : 0, nextDueMs: 5000 };
+    },
+  };
+  let timer;
+  const f = fixture(t, { hooks, tournamentTick: () => timer.tick() });
+  timer = createTournamentTimer({ tournaments, owner: 'unit', intervalMs: 1000,
+    activeMaxMs: 15000, idleIntervalMs: 600000,
+    wrapTick: (fn) => hooks.runInLane(fn, false), timers: f.clock.timers });
+  maintenanceRef = f.maintenance;
+  await f.maintenance.start(); await f.clock.advance(0);
+  const boot = f.clock.now();
+  assert.equal(sweeps, 1, 'the boot wave swept through the real timer');
+  assert.equal(f.calls.filter(([name]) => name === 'backup').length, 1, 'the covered boot sweep arms nothing beyond the boot unit');
+  await f.clock.advance(5050); await flush(); // the sweep scheduled an active autonomous tick at nextDue+50
+  assert.equal(sweeps, 2, 'the autonomous tick fired outside any pulse');
+  assert.equal(f.calls.filter(([name]) => name === 'backup').length, 1, 'arming is scheduled, not yet running');
+  const armedAt = f.clock.now() + mod.BACKUP_BATCH_MS;
+  await f.clock.advance(mod.BACKUP_BATCH_MS);
+  assert.deepEqual(f.calls.filter(([name]) => name === 'backup').map(([, at]) => at), [boot, armedAt],
+    'the bare autonomous sweep armed a bounded backup for its own commits');
+  activeRooms = false; // from here on, sweeps write nothing
+  await f.clock.advance(mod.DEFAULT_IDLE_PULSE_MS - mod.BACKUP_BATCH_MS - 5050);
+  await f.clock.advance(1); // the pulse: its tournament lane runs the real timer, covered
+  assert.equal(f.calls.filter(([name]) => name === 'backup').length, 3, 'the pulse adds exactly its backstop unit');
+  await f.clock.advance(600000 + mod.BACKUP_BATCH_MS); // an idle autonomous sweep plus a full probe window
+  assert.equal(f.calls.filter(([name]) => name === 'backup').length, 3, 'idle sweeps write nothing and covered pulse commits never arm a probe');
+  await timer.stop();
+});
+
+test('a tournament sweep already pending when the pulse arrives is not double-run and still arms bare', async (t) => {
+  let maintenanceRef = null;
+  const hooks = mod.createWriteWakeHooks({
+    wakeWorker: () => maintenanceRef?.wakeWorker(),
+    wakeCommerce: () => maintenanceRef?.wakeCommerce(),
+    armBackup: () => maintenanceRef?.armBackup(),
+  });
+  let release;
+  let sweeps = 0;
+  const tournaments = {
+    async sweepTimers(options) {
+      sweeps += 1;
+      hooks.onCommit(); // room-lease write
+      if (sweeps === 2) await new Promise((r) => { release = r; }); // hold the autonomous sweep across the pulse
+      return { scanned: 1, nextDueMs: 5000 };
+    },
+  };
+  let timer;
+  const f = fixture(t, { hooks, tournamentTick: () => timer.tick() });
+  timer = createTournamentTimer({ tournaments, owner: 'unit', intervalMs: 1000,
+    activeMaxMs: 15000, idleIntervalMs: 600000,
+    wrapTick: (fn) => hooks.runInLane(fn, false), timers: f.clock.timers });
+  maintenanceRef = f.maintenance;
+  await f.maintenance.start(); await f.clock.advance(0);
+  await f.clock.advance(5050); await flush(); // the autonomous sweep starts and holds
+  assert.equal(sweeps, 2);
+  const armedAt = f.clock.now() + mod.BACKUP_BATCH_MS; // armed by the bare sweep's own commit
+  await f.clock.advance(mod.DEFAULT_IDLE_PULSE_MS - 5050 - 1); await f.clock.advance(1); // the pulse arrives mid-sweep
+  assert.equal(sweeps, 2, 'the pulse reused the pending sweep instead of double-running it');
+  release(); await flush();
+  const backupTimes = f.calls.filter(([name]) => name === 'backup').map(([, at]) => at);
+  assert.ok(backupTimes.includes(armedAt), 'the bare pending sweep still armed its own bounded backup');
+  await timer.stop();
 });

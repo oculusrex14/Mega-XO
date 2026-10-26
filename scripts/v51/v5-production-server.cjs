@@ -1090,6 +1090,9 @@ async function main() {
   await tournaments.ready;
   const tournamentTimer = createTournamentTimer({ tournaments, owner: `prd_tournaments_${process.pid}`,
     idleIntervalMs: DEFAULT_IDLE_PULSE_MS, activeMaxMs: 15000,
+    /* Sol R6-1: timer/wake-originated sweeps are BARE lane passes whose observed commits arm
+     * their own bounded backup; the pulse-invoked sweep stays covered by the backup barrier. */
+    wrapTick: (fn) => writeHooks.runInLane(fn, false),
     onError: error => console.error(JSON.stringify({ event: 'tournaments.tick_error', code: safeError(error) })) });
   /* Deadline-driven scheduling needs wake-on-mutation: any successful run/settle/completeFixture
    * may create or advance a real deadline, so the timer must recompute immediately instead of

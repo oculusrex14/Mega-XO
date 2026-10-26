@@ -263,3 +263,28 @@ Format: date time IST — decision — rationale — evidence
   A4-COMPUTE-DECISION.md (A accept usage / B relax RPO to 2h / C move PostgreSQL to the Oracle
   VPS / D paid Neon plan) - owner decision required. The 48h egress soak continues regardless
   (baseline snapshot-soak-baseline-v2.json, 19:50:42Z 2026-10-24). - a4-compute-decision
+
+- 14:30 IST 2026-10-26 - A4 OPTION B DEPLOYED + 5-MIN TIMER RETIRED (Sol GO, exact SHA
+  da888ac949cd7a10090f4cea375a92cba4558b15, CI 40294645431 all five jobs green incl. 35/35
+  PG). OWNER DECISION: "Option B sounds like the only reasonable one. As of now C and D are
+  outright rejected." IMPLEMENTATION ROUNDS R4-R7 (Sol review loop, reports in
+  /tmp/sol-v6-review/): every-lease onCommit with the SQL-text classifier deleted (R3-2);
+  covered-vs-bare lane passes - pulse passes covered by the backup waitFor barrier arm
+  nothing, bare deadline/wake/latched passes count and arm their own bounded backup (R5-2,
+  R6-1 tournament timer wrapTick); readiness probes observe in a dedicated context and never
+  count/wake/arm themselves (R5-1); the worker deadline mirrors the FULL claim eligibility -
+  mail kinds + account.deletion only, attempts < configured budget, exact expires_at bounds,
+  budget/transport deferral parking (R5-3, R6-2); budgetResetAt returns the latest applicable
+  rollover (R6-3). DEPLOYED 14:25-14:27 IST via deploy-production.cjs (DEPLOY_VERIFIED,
+  readyz ready:true db verified, rollback archive
+  2026-10-26T08-55-17-749Z-49259-da888ac949cd), change-aware installer OK (preflight
+  verified scoped TLS backup_reader LSN, rollback install-rollback-20261026T085639Z),
+  mega-xo-v5-backup.timer DISABLED (freshness.timer stays active), backup-policy.json
+  idleProofWindowSeconds=9000. VERIFIED: host source hashes match the pinned tree
+  (pool.js 60edddcd, tournament-timer.js 37e8bc4d), served APK 20d7efb3 EXACT pin, 12/12
+  public routes 200 + /readyz /livez /health /.well-known/security.txt 200. SOAK RESTARTED:
+  baseline snapshot-soak2-baseline-20261026T0858Z.json (sampled 08:58:15Z,
+  computeTimeSeconds 142711); 24h interim check due ~08:58Z Oct 27, final verdict 48h.
+  NON-BLOCKING FOLLOW-UPS (documented, not deployed): R7-F1 export the custom-service
+  attempt-budget fallback constant; R7-F2 tournament-timer cancellation should use the
+  injected timers object consistently. - a4-option-b-deploy

@@ -114,3 +114,17 @@ A4 verdict (2026-10-21); the Play internal AAB for vc12 still needs uploading (o
 | Live verification | PASS | readyz ready:true db verified; 12/12 public routes 200; served APK sha256 20d7efb3 EXACT pin; security.txt + llms.txt 200; store renders data-checkout-status |
 
  A4 sequencing CORRECTED: the Oct-20 root cause was incomplete — Neon's CONTROL database writes the same cluster WAL (measured: source counters static, postgres tup_updated +1, WAL +248B/46s), so a cluster LSN can never prove game-data idleness; the old snapshots also stored CU-seconds under activeTimeSeconds. The corrected v2 collector separates wall-clock active time from compute-unit seconds, and snapshot-soak-baseline-v2.json (19:50:42Z) is the gate of record: <=5% wall-clock awake and <=50MB/day over the next 48h. The first new-gate cycle (19:53Z) took a full dump to establish the watermark; subsequent idle cycles must skip. REMAINING for the compute half of A4: park the worker/matcher/commerce timers behind real deadlines per the sidecar plan (idle SQL polling every 5-30s keeps the compute awake regardless of backup skips) — not yet implemented.
+
+
+## A4 compute close-out (Option B) at the deployed release da888ac (2026-10-26, live)
+
+| Item | Status | Evidence |
+| --- | --- | --- |
+| Owner decision | CLOSED | "Option B sounds like the only reasonable one. As of now C and D are outright rejected." (2026-10-26) |
+| Independent review | PASS | Sol GO for da888ac (REVIEW-A4-R7.md) after NO-GO rounds R4/R5/R6 (REVIEW-A4-R5.md, REVIEW-A4-R6.md) - every blocker closed with regression coverage |
+| Exact-SHA CI | PASS | run 40294645431, all five jobs (promotion-postgres 35/35, promotion-wiring 100/100, post-deploy-gates, website-build, native-contract) |
+| Deployment | LIVE | DEPLOY_VERIFIED 14:25-14:27 IST; readyz ready:true db verified; rollback archive 2026-10-26T08-55-17-749Z-49259-da888ac949cd |
+| Backup policy | APPLIED | change-aware installer OK (preflight verified scoped TLS backup_reader LSN; rollback install-rollback-20261026T085639Z); mega-xo-v5-backup.timer DISABLED; freshness timer active; backup-policy.json idleProofWindowSeconds=9000 |
+| Route/hash verification | PASS | host source hashes match the pinned tree (pool.js 60edddcd, tournament-timer.js 37e8bc4d); served APK 20d7efb3 EXACT pin; 12/12 public routes 200 + /readyz /livez /health /.well-known/security.txt 200 |
+| A4 verdict | PENDING SOAK | NOT an A4 PASS: 48h soak restarted with snapshot-soak2-baseline-20261026T0858Z.json (08:58:15Z, computeTimeSeconds 142711); 24h interim check ~08:58Z Oct 27, final verdict ~08:58Z Oct 28 via v5-idle-probe.js (fail-closed) |
+| Non-blocking follow-ups | DOCUMENTED | R7-F1 export the custom-service attempt-budget fallback constant; R7-F2 tournament-timer cancellation should use the injected timers object consistently |

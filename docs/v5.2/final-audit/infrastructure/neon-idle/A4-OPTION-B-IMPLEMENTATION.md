@@ -38,3 +38,26 @@ commit-bound lane.
 - The proof is bound to the archive identity, the source fingerprint, and the archived
   sequence values exactly as reviewed in the round-2 GO; the window change alters only
   how old a proof may be, not what it proves.
+
+
+## Implemented outcome (rounds R4-R7, deployed da888ac 2026-10-26)
+
+- Every successful guarded-pool lease fires onCommit once; the SQL-text classifier is
+  deleted, so mutating SELECTs and raw leases are covered by the same signal (R3-2).
+- Every maintenance pass runs in the lane context so its own observation/expiry leases
+  can never self-wake the lane; the context carries a covered flag: pulse passes (and
+  the boot wave) are covered by the backup lane waitFor barrier and arm nothing, while
+  bare deadline/wake/latched passes count and arm their own bounded backup (R5-2).
+- Autonomous tournament sweeps are re-classified bare at the timer boundary via the
+  injected wrapTick runner, so coverage follows the invocation path instead of ALS
+  inheritance (R6-1); the pulse-invoked sweep stays covered.
+- Readiness observations run in a dedicated observation context: a probe never counts
+  itself as activity, wakes lanes, or arms a backup (R5-1); concurrent real commits
+  still count, and no blanket post-probe acknowledgment exists.
+- The worker deadline mirrors the FULL claim eligibility: serviceable kinds only
+  (mail kinds + account.deletion), attempts < the configured attempt budget, exact
+  expires_at column bounds, and budget/transport deferral parking (R5-3, R6-2);
+  budgetResetAt returns the latest applicable rollover (R6-3).
+- Deployed per REVIEW-A4-R7.md with exact-SHA CI 40294645431; the 5-minute backup
+  timer is disabled, the freshness timer and the backup unit remain, and the 48h soak
+  (snapshot-soak2-baseline-20261026T0858Z.json) is the gate of record.

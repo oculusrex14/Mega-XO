@@ -82,6 +82,7 @@ const crypto = require('node:crypto');
 const fs = require('node:fs');
 const path = require('node:path');
 const { spawn } = require('node:child_process');
+const { AsyncLocalStorage } = require('node:async_hooks');
 const { createResendMailTransport } = require(path.join(__dirname, '..', '..', 'packages', 'services', 'mail-resend.js'));
 
 const ROOT = path.resolve(__dirname, '..', '..');
@@ -305,14 +306,21 @@ function createIdlePulseScheduler({ intervalMs = DEFAULT_IDLE_PULSE_MS, now = Da
   };
 }
 
-/* Advisory scheduling only. The pool calls this after commit; the backup unit alone decides
- * whether the transactional database clock permits a skip or requires a verified dump. */
+/* Advisory scheduling only. The pool calls onCommit() after EVERY successful lease (read or
+ * write); the backup unit's transactional database clock is the only authoritative write
+ * detector. Lanes run inside runInLane(): pulse-owned leases (the worker's empty-queue expiry
+ * UPDATE, sweeps, readiness probes) must never re-arm a +300s probe after every pulse or
+ * self-wake their own lane (Sol R3-4). The pulse's backup lane runs LAST and covers all
+ * lane-owned commits; HTTP-context leases keep waking worker/commerce and arming the backup. */
+const IDLE_LANE_CONTEXT = new AsyncLocalStorage();
 function createWriteWakeHooks({ wakeWorker = () => {}, wakeCommerce = () => {}, armBackup = () => {} } = {}) {
   let commitCount = 0;
   return {
     get commitCount() { return commitCount; },
+    runInLane(fn) { return IDLE_LANE_CONTEXT.run(true, fn); },
     onCommit() {
       commitCount++;
+      if (IDLE_LANE_CONTEXT.getStore() === true) return;
       try { wakeWorker(); } catch {}
       try { wakeCommerce(); } catch {}
       try { armBackup(); } catch {}
@@ -348,16 +356,26 @@ function startBackupService({ spawnProcess = spawn, log = () => {} } = {}) {
 
 /* Worker deadlines and observation reads are part of a pass, never a monitor request. */
 function createIdleMaintenance({ worker, pool, commerceTasks = {}, tournamentTick = async () => {}, probeDb = async () => {},
-  backup = startBackupService, observationFile = WORKER_OBSERVATION_FILE,
+  backup = startBackupService, hooks = createWriteWakeHooks(), observationFile = WORKER_OBSERVATION_FILE,
   intervalMs = DEFAULT_IDLE_PULSE_MS, now = Date.now, timers = globalThis, onError = () => {} } = {}) {
   const scheduler = createIdlePulseScheduler({ intervalMs, now, timers, onError });
   let lastSlowAt = null;
-  scheduler.add('commerce', async () => {
+  /* Pulse order: commerce first so its inserted mail is claimed by the worker lane in the SAME
+   * wake, and the backup unit runs LAST over everything the pulse just committed. Every lane is
+   * wrapped in the hook's lane context, so lane-owned leases arm nothing. */
+  scheduler.add('commerce', () => hooks.runInLane(async () => {
     await Promise.all(Object.entries(commerceTasks).map(async ([name, task]) => {
       try { await task(); } catch (error) { onError(name, error); }
     }));
-  });
-  scheduler.add('worker', async () => {
+  }));
+  // The timer still owns active deadlines/wake(), but an idle sweep is realigned to this pulse
+  // after activity, rather than keeping a second two-hour cadence at a different wall-clock phase.
+  scheduler.add('tournaments', () => hooks.runInLane(tournamentTick));
+  scheduler.add('db_health', () => hooks.runInLane(async () => {
+    await scheduler.waitFor(['commerce', 'worker', 'tournaments']);
+    await probeDb();
+  }));
+  scheduler.add('worker', () => hooks.runInLane(async () => {
     const startedAt = now();
     const includeSlow = lastSlowAt === null || startedAt - lastSlowAt >= DEFAULT_IDLE_PULSE_MS;
     try {
@@ -365,8 +383,9 @@ function createIdleMaintenance({ worker, pool, commerceTasks = {}, tournamentTic
       if (includeSlow) lastSlowAt = startedAt;
     } finally {
       await refreshWorkerObservation({ pool, observationFile, now });
-      // Every pass commits the expiry UPDATE, even for an empty queue. Its own wake is
-      // satisfied by this final read. Commits DURING the read retain a latched follow-up.
+      // Every pass commits the expiry UPDATE, even for an empty queue; inside the lane context
+      // that commit arms nothing. Its own wake is satisfied by this final read, and commits
+      // DURING the read retain a latched follow-up.
       const observedWake = scheduler.wakeVersion('worker');
       let nextAt = null;
       let deadlineFailed = false;
@@ -376,23 +395,14 @@ function createIdleMaintenance({ worker, pool, commerceTasks = {}, tournamentTic
         ? (nextAt <= now() ? now() + 1000 : nextAt) : Infinity;
       scheduler.armAt('worker', Math.min(deadlineFailed ? now() + WORKER_DEADLINE_RETRY_MS : deadline, scheduler.nextPulseAt));
     }
-  });
-  // The timer still owns active deadlines/wake(), but an idle sweep is realigned to this pulse
-  // after activity, rather than keeping a second two-hour cadence at a different wall-clock phase.
-  scheduler.add('tournaments', tournamentTick);
-  scheduler.add('db_health', async () => {
-    // Snapshot commit counters after the pulse's writes, so a monitor cannot extend the suspend tail
-    // by treating those same maintenance writes as fresh traffic one minute later.
-    await scheduler.waitFor(['commerce', 'worker', 'tournaments']);
-    await probeDb();
-  });
-  scheduler.add('backup', async () => {
-    await scheduler.waitFor(['commerce', 'worker', 'tournaments']);
-    // Preserve future commit deadlines even when a pulse starts this lane early. systemctl
-    // may join an already-started unit whose snapshot predates those commits.
+  }));
+  scheduler.add('backup', () => hooks.runInLane(async () => {
+    await scheduler.waitFor(['commerce', 'tournaments', 'db_health', 'worker']);
+    // A commit during the attempt keeps its own <=300s wake; never certify it from the
+    // subprocess result. A pulse that starts this lane early joins the already-running unit.
     try { await backup(); }
     catch (error) { scheduler.wake('backup', BACKUP_RETRY_MS); throw error; }
-  });
+  }));
   return {
     get pulseCount() { return scheduler.pulseCount; },
     wakeWorker() { scheduler.wake('worker', 0); },
@@ -401,7 +411,7 @@ function createIdleMaintenance({ worker, pool, commerceTasks = {}, tournamentTic
     async start() {
       worker.start(); // intervalMs: 0; only the composition arms worker deadlines.
       scheduler.start();
-      await Promise.all(['commerce', 'worker', 'tournaments', 'db_health', 'backup'].map((name) => scheduler.run(name)));
+      await Promise.all(['commerce', 'tournaments', 'db_health', 'worker', 'backup'].map((name) => scheduler.run(name)));
     },
     stop() { return scheduler.stop(); },
   };
@@ -1762,6 +1772,7 @@ async function main() {
   const { probeDbHealth } = require(path.join(ROOT, 'apps/api/routes/well-known.js'));
   idleMaintenance = createIdleMaintenance({
     worker, pool: workerPool, commerceTasks,
+    hooks: writeHooks,
     tournamentTick: () => tournamentTimer.tick(),
     intervalMs: Number(arg('--idle-pulse-minutes', '120')) * 60 * 1000,
     probeDb: () => probeDbHealth(apiContext),

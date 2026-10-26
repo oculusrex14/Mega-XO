@@ -417,19 +417,16 @@ function createPgPool(input = {}) {
   // The private acquire is shared by both modes; POOLED defers ONLY
   // search_path (re-established and fully verified inside BEGIN).
   const { client, release } = await acquire({ checkSearchPath: !pooled, sanitize: !pooled });
- if (onCommit && !client.__mxWriteSniff) {
-   client.__mxWriteSniff = true;
-   const guarded = client.query.bind(client);
-    client.query = (text, params) => {
-    if (isWriteSql(typeof text === 'string' ? text : text && text.text)) client.__mxWrote = true;
-    return guarded(text, params);
-   };
-  }
   try {
-   client.__mxWrote = false;
    const result = await withIdempotentTransaction(client, fn, { ...options, connected: true, expectSession: expectations });
-   // Post-commit signal: the work is now durable and visible to every reader.
-   if (onCommit && client.__mxWrote) { client.__mxWrote = false; try { onCommit(); } catch { /* the hook must never break a query */ } }
+   // Post-commit signal: the lease is durable and visible to every reader. Fired after
+   // EVERY successful lease - read or write, classified or not: text sniffing missed
+   // mutating SELECTs (e.g. SELECT privacy.erase_account_core_state(...)), and the
+   // transactional database clock (0070) is the sole authoritative write detector.
+   // A rollback rejects above, so a rolled-back lease never signals. The hook must
+   // never break the query path; lane contexts (createWriteWakeHooks) suppress
+   // pulse-owned leases.
+   if (onCommit) { try { onCommit(); } catch { /* the hook must never break a query */ } }
    return result;
   } finally {
    await release();
@@ -556,16 +553,6 @@ function fromEnvironment(env = process.env, overrides = {}) {
  *    result (single-flight), mirroring how command outcomes replay.
  */
 const SCOPES = new WeakMap();
-
-/* A4 idle-budget hook: config.onCommit() fires ONCE after a lease whose transaction
- * COMMITTED at least one write-class statement. A rolled-back or statement-less lease
- * never fires, so consumers only learn about durable state changes they can observe.
- * The callback must never throw into the query path; each pooled client is wrapped at
- * most once. */
-const WRITE_SQL_RE = /^(insert|update|delete|truncate|merge|create|alter|drop|grant|revoke|comment|do|call|copy|refresh|reindex|lock)\b/i;
-function isWriteSql(text) {
- return typeof text === 'string' && (WRITE_SQL_RE.test(text) || /^with\b/i.test(text));
-}
 
 class PgTransactionScope {
  constructor(client, clock) {

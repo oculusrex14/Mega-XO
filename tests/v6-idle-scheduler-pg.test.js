@@ -111,11 +111,13 @@ test('a producer held open past the former debounce is delivered by its post-com
   assert.equal((await pool.query('SELECT state FROM ops.outbox WHERE outbox_id=$1', [id])).rows[0].state, 'sent');
   assert.deepEqual(errors, []);
 
-  // The same producer connection must reset the write marker on rollback and read-only reuse.
+  // Lease contract: a rolled-back lease never fires; EVERY successful lease fires exactly once,
+  // read-only included - the backup unit's 0070 clock probe, not the hook, decides write-ness.
   await assert.rejects(producer.withTransaction(async (tx) => {
     await app.jobService.enqueueJob({ id: 'a4-rolled-back', kind: 'otp', payload: app.mailWorker.seal(message) }, tx);
     throw Error('intentional rollback');
   }), /intentional rollback/);
+  assert.equal(producerCommits, 1, 'a rolled-back lease must not fire');
   await producer.query('SELECT 1');
-  assert.equal(producerCommits, 1);
+  assert.equal(producerCommits, 2, 'every successful lease fires once, read-only included');
 });

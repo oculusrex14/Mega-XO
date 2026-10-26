@@ -41,21 +41,26 @@ function temp(t) {
 }
 function fixture(t, extra = {}) {
   const dir = temp(t), clock = fakeClock(), calls = [], errors = [];
-  let due = null, tickHook = null;
+  let due = null, tickHook = null, maintenance = null;
+  const hooks = mod.createWriteWakeHooks({
+    wakeWorker: () => maintenance?.wakeWorker(),
+    wakeCommerce: () => maintenance?.wakeCommerce(),
+    armBackup: () => maintenance?.armBackup(),
+  });
   const worker = {
     start() { calls.push(['start', clock.now()]); },
     async tick(options) { calls.push(['worker', clock.now(), options.includeSlow]); if (tickHook) await tickHook(); },
     async nextWakeAt() { calls.push(['deadline', clock.now()]); return due; },
   };
   const pool = { async query(sql) { assert.match(sql, /FROM ops\.outbox/); calls.push(['counts', clock.now()]); return { rows: [{ dlq: 0, backlog: 0 }] }; } };
-  const maintenance = mod.createIdleMaintenance({ worker, pool, now: clock.now, timers: clock.timers,
+  maintenance = mod.createIdleMaintenance({ worker, pool, hooks, now: clock.now, timers: clock.timers,
     observationFile: path.join(dir, 'worker.json'),
     commerceTasks: Object.fromEntries(['pass', 'finalization', 'intro'].map((name) => [name, async () => calls.push([name, clock.now()])])),
     tournamentTick: async () => calls.push(['tournaments', clock.now()]),
     backup: async () => calls.push(['backup', clock.now()]),
     probeDb: async () => calls.push(['health', clock.now()]), onError: (lane, error) => errors.push([lane, error.message]), ...extra });
   t.after(() => maintenance.stop());
-  return { dir, clock, calls, worker, pool, maintenance, errors,
+  return { dir, clock, calls, worker, pool, maintenance, hooks, errors,
     setDue(value) { due = value; }, setTick(value) { tickHook = value; } };
 }
 test('one interval clusters all idle work; no SQL until the two-hour pulse', async (t) => {
@@ -74,8 +79,7 @@ test('one interval clusters all idle work; no SQL until the two-hour pulse', asy
   await f.maintenance.stop(); assert.equal(f.clock.pending, 0);
 });
 function hooksFor(f) {
-  return mod.createWriteWakeHooks({ wakeWorker: () => f.maintenance.wakeWorker(),
-    wakeCommerce: () => f.maintenance.wakeCommerce(), armBackup: () => f.maintenance.armBackup() });
+  return f.hooks;
 }
 test('commits wake worker and commerce immediately, coalescing a burst into one pass', async (t) => {
   const f = fixture(t); await f.maintenance.start(); const hooks = hooksFor(f), before = f.calls.length;
@@ -96,13 +100,25 @@ test('commits during the final deadline read remain latched and single-flight', 
   release(); await flush(); await f.clock.advance(0);
   assert.equal(f.calls.filter(([name]) => name === 'worker').length, 3);
 });
-test('an empty worker consumes its own expiry-commit wake after the final queue read', async (t) => {
+test('pulse worker-lane commits arm nothing; HTTP commits wake the worker and arm the backup', async (t) => {
   const f = fixture(t), hooks = hooksFor(f); f.setTick(() => hooks.onCommit());
-  await f.maintenance.start(); await f.clock.advance(0);
-  assert.equal(f.calls.filter(([name]) => name === 'worker').length, 1);
-  const before = f.calls.length, at = f.clock.now(); await f.clock.advance(mod.BACKUP_BATCH_MS);
-  assert.deepEqual(f.calls.slice(before), [['backup', at + mod.BACKUP_BATCH_MS]],
-    'a commit keeps its backup deadline even if the boot unit was already running');
+  await f.maintenance.start(); await f.clock.advance(0); const boot = f.clock.now();
+  assert.equal(f.calls.filter(([name]) => name === 'worker').length, 1, 'lane-owned expiry commits never self-wake the worker');
+  assert.equal(f.calls.filter(([name]) => name === 'backup').length, 1, 'the boot unit runs without an arming commit');
+  await f.clock.advance(mod.DEFAULT_IDLE_PULSE_MS);
+  assert.equal(f.calls.filter(([name]) => name === 'worker').length, 2);
+  assert.equal(f.calls.filter(([name]) => name === 'backup').length, 2, 'the pulse backstop joins the unit');
+  await f.clock.advance(mod.BACKUP_BATCH_MS);
+  assert.equal(f.calls.filter(([name]) => name === 'backup').length, 2, 'pulse-owned commits never arm a post-pulse probe');
+  assert.equal(f.calls.filter(([name]) => name === 'worker').length, 2);
+  hooks.onCommit(); // an HTTP-context lease: visible work, wakes everything
+  await f.clock.advance(0);
+  assert.equal(f.calls.filter(([name]) => name === 'worker').length, 3);
+  assert.equal(f.calls.filter(([name]) => name === 'backup').length, 2);
+  const armedAt = f.clock.now() + mod.BACKUP_BATCH_MS;
+  await f.clock.advance(mod.BACKUP_BATCH_MS);
+  assert.deepEqual(f.calls.filter(([name]) => name === 'backup').map(([, at]) => at),
+    [boot, boot + mod.DEFAULT_IDLE_PULSE_MS, armedAt]);
 });
 test('durable deadlines beat pulse; failed deadline reads retry after ten seconds', async (t) => {
   const f = fixture(t); f.setDue(f.clock.now() + 45000); await f.maintenance.start(); f.setDue(null);

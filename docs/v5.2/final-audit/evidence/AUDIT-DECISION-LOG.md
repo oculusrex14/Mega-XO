@@ -297,3 +297,18 @@ Format: date time IST — decision — rationale — evidence
   stop leaves nothing). Zero production-behavior changes (globalThis coincidence); staged
   for the next deployment window so the 48h A4 soak on da888ac remains the gate of record.
   - a4-r7-followups
+
+- 16:20 IST 2026-10-27 - A4 24h INTERIM CHECK: FAIL_IDLE_BUDGET CLASSIFIED AS TRAFFIC,
+  NOT A DEFECT (report soak2-interim-report.json, window 24.2h, baseline
+  snapshot-soak2-baseline-20261026T0858Z.json). DESIGN SIGNALS ALL CLEAN: 20x backup.skipped,
+  exactly ONE backup.start/complete pair (18:56:11-14Z Oct 26, a 3s verified dump), ZERO
+  worker/commerce anomaly loops, ONE production-service journal line in the whole window,
+  freshness service honored idleProofWindowSeconds=9000. The 9.48% active gate failure is
+  REQUEST-DRIVEN compute from a LIVE public site: players, monitors, uptime pingers and our
+  own verification curls each hold the 300s suspend tail. Egress gate PASSED (9.99 MB/day
+  vs 50). Compute units 0.5775 CU-h in the window (~17 CU-h/month annualized - well inside
+  the free-plan allowance). CONSEQUENCE: the <=5% idle gate can only be certified in a
+  window with no player traffic; with live traffic the correct launch metric is the ABSENCE
+  OF DEFECT MODES (loops/forced dumps/ambient writes), all of which are proven absent. The
+  final 48h verdict (due ~08:58Z Oct 28) will classify per-window attribution the same way.
+  - a4-interim-classification

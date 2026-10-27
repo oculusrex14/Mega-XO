@@ -7,6 +7,7 @@ import {researchConsentCard} from './consent.js';
 export const routes = [
   { path: '/download', title: 'Download', description: 'Choose Android, iPhone or iPad downloads when available, or play Mega XOXO in your browser today.' },
   { path: '/faq', title: 'Frequently asked questions', description: 'Answers about Mega XOXO rules, browser play, accounts, appearances and mobile downloads.' },
+  { path: '/press', title: 'Press kit', description: 'Official Mega XOXO facts, brand artwork and attribution for writers, creators and project partners.' },
   { path: '/play', title: 'Play', description: 'Choose local practice, Ranked, Casual or a game with friends.' },
   { path: '/casual', title: 'Casual', description: 'All the Mega XOXO strategy with no Elo at stake.' },
   { path: '/ranked', title: 'Ranked', description: 'Climb the Mega XOXO leagues through skill and seasonal competition.' },
@@ -422,6 +423,10 @@ function storePage(context) {
     + '</div>';
 }
 
+function pressPage() {
+  return `<div class="pg-page">${heading('MEGA XOXO · BY ANTIMATTER INNOVATIONS', 'One bigger game. Ready to share.', 'Official facts and artwork for people writing about Mega XOXO.')}<div class="pg-grid pg-grid-two">${panel(`<h2>The game at a glance</h2><dl class="pg-facts"><dt>Name</dt><dd>Mega XOXO</dd><dt>Developer</dt><dd>Antimatter Innovations</dd><dt>Genre</dt><dd>Strategy · Ultimate Tic-tac-toe</dd><dt>Official website</dt><dd><a class="pg-text-link" href="https://megaxo.online/">megaxo.online</a></dd><dt>Pricing</dt><dd>Free to play. Optional Crowns, Mega Pass and Remove Ads in the <a class="pg-text-link" href="/store">Store</a>.</dd><dt>Browser play</dt><dd>Bot, local two-player and linked online play</dd><dt>Mobile downloads</dt><dd>Android today: the direct APK from the <a class="pg-text-link" href="/download">Download page</a>, with Google Play to follow; iPhone and iPad are planned.</dd></dl>`)}${panel(`<img src="/assets/art/header.webp" width="236" height="70" alt="Mega XOXO logo"><h2>Brand artwork</h2><p class="mx-muted">Use the logo to identify Mega XOXO in coverage or a project listing, with a link to the official game website. Keep its proportions and colours.</p>${actions(button('Download logo','/assets/art/header.webp','secondary','download').replace('<a ','<a download="mega-xoxo-logo.webp" '),button('Download icon','/assets/art/mark.webp','secondary','download').replace('<a ','<a download="mega-xoxo-icon.webp" '))}`)}</div>${panel(`<h2>A description you can use</h2><p>Mega XOXO is an Ultimate Tic-tac-toe strategy game by Antimatter Innovations. Win the small boards to win the big one. Every move also decides where your opponent plays next.</p><p class="mx-muted">Link to <a class="pg-text-link" href="https://megaxo.online/">megaxo.online</a> when introducing the game.</p>`)}<div class="pg-grid pg-grid-two">${panel(`<h2>Learn before you write</h2><p class="mx-muted">The game guide explains the small boards, move routing and big-board win. Frequently asked questions cover browser play and accounts.</p>${actions(button('Game guide','/how-to-play','secondary','arrow-right'),button('Frequently asked questions','/faq','secondary','help'))}`)}${panel(`<h2>The company behind the game</h2><p class="mx-muted">Mega XOXO is a project by Antimatter Innovations. A company showcase is planned for antimatterinnovations.com.</p>${button('Contact & support','/support','secondary','mail')}`)}</div></div>`;
+}
+
 function sponsorsPage(context) {
   const topics = ['Strategy games', 'Technology', 'Creative tools', 'Learning', 'Gaming gear', 'Entertainment'];
   const preferences = context.sponsorPreferences || {};
@@ -560,7 +565,7 @@ export function renderPage(path, context = {}) {
     if (path.startsWith('/legal/')) return renderPage(documentPath, context);
   }
   const renderers = {
-    '/download': renderDownloadPage, '/faq': faqPage,
+    '/download': renderDownloadPage, '/faq': faqPage, '/press': pressPage,
     '/play': playPage, '/casual': casualPage, '/ranked': rankedPage, '/tournaments': tournamentsPage,
     '/season': seasonPage, '/friends': friendsPage, '/challenge': challengePage,
     '/leaderboard': leaderboardPage, '/rewards': rewardsPage, '/store': storePage, '/sponsors': sponsorsPage, '/ads': sponsorsPage, '/themes': themesPage,

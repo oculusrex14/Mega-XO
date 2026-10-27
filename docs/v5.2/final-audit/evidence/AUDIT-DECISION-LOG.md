@@ -288,3 +288,12 @@ Format: date time IST — decision — rationale — evidence
   NON-BLOCKING FOLLOW-UPS (documented, not deployed): R7-F1 export the custom-service
   attempt-budget fallback constant; R7-F2 tournament-timer cancellation should use the
   injected timers object consistently. - a4-option-b-deploy
+
+- 15:10 IST 2026-10-27 - A4 R7 FOLLOW-UPS CLOSED (P2, f16d11f on V6, NOT deployed): F1 -
+  DEFAULT_MAX_ATTEMPTS exported from jobs.js so a legacy injected job service falls back to
+  the documented 3 instead of undefined (assertion in tests/v6-r7-followups.test.js); F2 -
+  tournament-timer schedule() cancels via the injected timers object consistently, proven by
+  a cancellation assertion (first injected id cleared, every clear targets an injected id,
+  stop leaves nothing). Zero production-behavior changes (globalThis coincidence); staged
+  for the next deployment window so the 48h A4 soak on da888ac remains the gate of record.
+  - a4-r7-followups

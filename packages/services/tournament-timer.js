@@ -36,7 +36,9 @@ function createTournamentTimer({ tournaments, owner, intervalMs = 1000, activeMa
  let wakeLatched = false;
  function schedule(delayMs) {
   if (stopped) return;
-  if (timer) { clearTimeout(timer); timer = null; }
+  /* Sol R7-F2: cancel through the SAME injected timers object that registered the timer -
+   * a mixed global/injected pair can retain a timer the reschedule intended to cancel. */
+  if (timer) { timers.clearTimeout(timer); timer = null; }
   timer = timers.setTimeout(runTick, delayMs);
   timer.unref?.();
  }

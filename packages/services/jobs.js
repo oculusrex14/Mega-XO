@@ -549,4 +549,6 @@ function createJobService(options = {}) {
  });
 }
 
-module.exports = { createJobService, WORKER_ROLE, ENVELOPE_VERSION, ENQUEUE_SQL };
+/* DEFAULT_MAX_ATTEMPTS is exported so a legacy injected job service without a valid
+ * attemptBudget falls back to the documented default, never to undefined (Sol R7-F1). */
+module.exports = { createJobService, WORKER_ROLE, ENVELOPE_VERSION, ENQUEUE_SQL, DEFAULT_MAX_ATTEMPTS };
